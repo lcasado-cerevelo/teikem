@@ -1,0 +1,126 @@
+<svg width="100%" viewBox="0 0 980 640" xmlns="http://www.w3.org/2000/svg" font-family="'Segoe UI',system-ui,sans-serif">
+<title>Cross-dock vs. Almacenaje — comparación de conceptos</title>
+<desc>Diagrama comparando el flujo de cross-dock (sin guardar, mismo día) contra el flujo de almacenaje normal (con estadía en bin), en el contexto de Teikem.</desc>
+
+<rect width="980" height="640" fill="#0D1220"/>
+<text x="40" y="46" font-size="24" font-weight="700" fill="#E8ECF5">Cross-dock vs. Almacenaje</text>
+<text x="40" y="70" font-size="13.5" fill="#8C97AD">Mismo muelle, dos formas muy distintas de mover la mercancía</text>
+
+<!-- ===== TOP: CROSS-DOCK ===== -->
+<rect x="40" y="100" width="900" height="230" rx="16" fill="#141B2E" stroke="#1F6FE5" stroke-width="1.5"/>
+<text x="66" y="132" font-size="17" font-weight="700" fill="#6EA8FF">Cross-dock</text>
+<text x="66" y="152" font-size="12.5" fill="#8C97AD">Entra por un muelle, sale por otro — el mismo día, sin tocar un bin de almacén</text>
+
+<!-- truck inbound -->
+<g transform="translate(80,190)">
+  <rect x="0" y="10" width="70" height="40" rx="4" fill="#1F6FE5"/>
+  <rect x="55" y="20" width="22" height="26" rx="3" fill="#123A85"/>
+  <circle cx="16" cy="54" r="7" fill="#0B2C66"/><circle cx="60" cy="54" r="7" fill="#0B2C66"/>
+  <text x="35" y="0" font-size="11" fill="#6EA8FF" text-anchor="middle">Camión entra</text>
+</g>
+
+<!-- dock inbound -->
+<g transform="translate(210,175)">
+  <rect x="0" y="0" width="60" height="80" rx="4" fill="#182136" stroke="#243252"/>
+  <text x="30" y="-8" font-size="10.5" fill="#8C97AD" text-anchor="middle">Muelle IN</text>
+  <path d="M0 40 H60" stroke="#1F6FE5" stroke-width="2" stroke-dasharray="3 3"/>
+</g>
+
+<!-- staging (brief, no storage) -->
+<g transform="translate(330,185)">
+  <rect x="0" y="0" width="90" height="60" rx="10" fill="#182136" stroke="#FF6A1A" stroke-width="1.5" stroke-dasharray="5 4"/>
+  <text x="45" y="24" font-size="10.5" font-weight="700" fill="#FF8B4D" text-anchor="middle">Staging</text>
+  <text x="45" y="40" font-size="9.5" fill="#8C97AD" text-anchor="middle">minutos,</text>
+  <text x="45" y="52" font-size="9.5" fill="#8C97AD" text-anchor="middle">no días</text>
+</g>
+
+<!-- arrow through -->
+<path d="M480 215 H560" stroke="#FF6A1A" stroke-width="3" fill="none" marker-end="url(#arr)"/>
+<text x="520" y="200" font-size="10.5" fill="#FF8B4D" text-anchor="middle">reasigna</text>
+
+<!-- dock outbound -->
+<g transform="translate(580,175)">
+  <rect x="0" y="0" width="60" height="80" rx="4" fill="#182136" stroke="#243252"/>
+  <text x="30" y="-8" font-size="10.5" fill="#8C97AD" text-anchor="middle">Muelle OUT</text>
+  <path d="M0 40 H60" stroke="#1F6FE5" stroke-width="2" stroke-dasharray="3 3"/>
+</g>
+
+<!-- truck outbound -->
+<g transform="translate(700,190)">
+  <rect x="0" y="10" width="70" height="40" rx="4" fill="#1F6FE5"/>
+  <rect x="55" y="20" width="22" height="26" rx="3" fill="#123A85"/>
+  <circle cx="16" cy="54" r="7" fill="#0B2C66"/><circle cx="60" cy="54" r="7" fill="#0B2C66"/>
+  <text x="35" y="0" font-size="11" fill="#6EA8FF" text-anchor="middle">Camión sale</text>
+</g>
+
+<!-- crossed bin with slash = no storage -->
+<g transform="translate(830,150)">
+  <rect x="0" y="30" width="70" height="70" rx="8" fill="#182136" stroke="#243252"/>
+  <path d="M8 100 L8 40 M22 100 L22 40 M36 100 L36 40 M50 100 L50 40 M64 100 L64 40" stroke="#243252" stroke-width="1"/>
+  <path d="M2 24 L68 106" stroke="#F26A60" stroke-width="4" stroke-linecap="round"/>
+  <text x="35" y="118" font-size="10.5" fill="#F26A60" text-anchor="middle">sin bin</text>
+</g>
+
+<text x="66" y="305" font-size="12" fill="#5B6680">Tablas: DockAppointment · CrossDockAllocation · InventoryTxnType='CROSSDOCK'</text>
+
+<!-- ===== BOTTOM: ALMACENAJE ===== -->
+<rect x="40" y="360" width="900" height="240" rx="16" fill="#141B2E" stroke="#FF6A1A" stroke-width="1.5"/>
+<text x="66" y="392" font-size="17" font-weight="700" fill="#FF8B4D">Almacenaje normal</text>
+<text x="66" y="412" font-size="12.5" fill="#8C97AD">Entra, se guarda en un bin días o semanas, sale cuando hay una orden que lo pide</text>
+
+<g transform="translate(80,450)">
+  <rect x="0" y="10" width="70" height="40" rx="4" fill="#FF6A1A"/>
+  <rect x="55" y="20" width="22" height="26" rx="3" fill="#B94A0C"/>
+  <circle cx="16" cy="54" r="7" fill="#0B2C66"/><circle cx="60" cy="54" r="7" fill="#0B2C66"/>
+  <text x="35" y="0" font-size="11" fill="#FF8B4D" text-anchor="middle">Vagón entra</text>
+</g>
+
+<g transform="translate(210,435)">
+  <rect x="0" y="0" width="60" height="80" rx="4" fill="#182136" stroke="#243252"/>
+  <text x="30" y="-8" font-size="10.5" fill="#8C97AD" text-anchor="middle">Recibo</text>
+</g>
+
+<path d="M280 475 H350" stroke="#243252" stroke-width="2" fill="none" marker-end="url(#arrg)"/>
+
+<!-- warehouse bins with boxes staying -->
+<g transform="translate(360,420)">
+  <rect x="0" y="0" width="200" height="110" rx="10" fill="#182136" stroke="#243252"/>
+  <text x="100" y="-8" font-size="10.5" fill="#8C97AD" text-anchor="middle">Almacén — Ubicaciones (bins)</text>
+  <g font-size="9">
+    <rect x="14" y="16" width="40" height="30" rx="3" fill="#0B2C66" stroke="#1F6FE5"/>
+    <rect x="64" y="16" width="40" height="30" rx="3" fill="#0B2C66" stroke="#1F6FE5"/>
+    <rect x="114" y="16" width="40" height="30" rx="3" fill="#123A85" stroke="#1F6FE5" opacity=".5"/>
+    <rect x="164" y="16" width="26" height="30" rx="3" fill="#0B2C66" stroke="#1F6FE5"/>
+    <rect x="14" y="58" width="40" height="30" rx="3" fill="#123A85" stroke="#1F6FE5" opacity=".5"/>
+    <rect x="64" y="58" width="40" height="30" rx="3" fill="#0B2C66" stroke="#1F6FE5"/>
+    <rect x="114" y="58" width="40" height="30" rx="3" fill="#0B2C66" stroke="#1F6FE5"/>
+    <rect x="164" y="58" width="26" height="30" rx="3" fill="#123A85" stroke="#1F6FE5" opacity=".5"/>
+  </g>
+  <text x="100" y="104" font-size="9.5" fill="#5B6680" text-anchor="middle">días / semanas</text>
+</g>
+
+<path d="M580 475 H650" stroke="#243252" stroke-width="2" fill="none" marker-end="url(#arrg)"/>
+
+<g transform="translate(660,435)">
+  <rect x="0" y="0" width="60" height="80" rx="4" fill="#182136" stroke="#243252"/>
+  <text x="30" y="-8" font-size="10.5" fill="#8C97AD" text-anchor="middle">Picking</text>
+</g>
+
+<g transform="translate(770,450)">
+  <rect x="0" y="10" width="70" height="40" rx="4" fill="#46CE82"/>
+  <rect x="55" y="20" width="22" height="26" rx="3" fill="#1E9457"/>
+  <circle cx="16" cy="54" r="7" fill="#0B2C66"/><circle cx="60" cy="54" r="7" fill="#0B2C66"/>
+  <text x="35" y="0" font-size="11" fill="#46CE82" text-anchor="middle">Sale a entrega</text>
+</g>
+
+<text x="66" y="565" font-size="12" fill="#5B6680">Tablas: ReceiptLine · StockBalance · WarehouseTask (putaway/pick) · InventoryTransaction (ledger)</text>
+
+<defs>
+  <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#FF6A1A"/></marker>
+  <marker id="arrg" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="#5B6680"/></marker>
+</defs>
+
+<!-- bottom callout: Advance's case -->
+<rect x="40" y="610" width="900" height="26" rx="8" fill="#182136"/>
+<text x="60" y="627" font-size="11.5" fill="#8C97AD"><tspan fill="#FF8B4D" font-weight="700">El caso de los vagones de Advance</tspan> — llegan seguido y no sabes cuánto se quedan → eso apunta a Almacenaje, no Cross-dock.</text>
+</svg>
