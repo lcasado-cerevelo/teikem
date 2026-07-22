@@ -605,7 +605,10 @@ const T={
      dispatchFeeTbl:'Cargo por despacho',dispatchFeeLabel:'Monto fijo por despacho ($)',
      codFeeTbl:'Cargo por COD',codFeeType:'Tipo de cargo',codFeeFixed:'Fijo ($)',codFeePercent:'Porciento (%)',codFeeValue:'Valor',
      svcTbl:'Servicios especiales',svcLabel:'Servicio',svcRate:'Tarifa',svcPh:'ej. Vagón del muelle',addSvc:'Agregar',removeSvc:'Quitar',noSvc:'Este cliente no tiene servicios especiales todavía',fillSvc:'Completa el servicio',
-     newSvcType:'+ Nuevo tipo de servicio especial…',newSvcTypeLabel:'Nombre del nuevo servicio especial'},
+     newSvcType:'+ Nuevo tipo de servicio especial…',newSvcTypeLabel:'Nombre del nuevo servicio especial',
+     dupeRate:'Ya existe una tarifa para ese servicio y paquete — edita la tarifa existente en vez de crear otra',
+     badRange:'El rango de piezas no es válido (desde debe ser menor o igual a hasta)',
+     overlapRange:'Ese rango de piezas se traslapa con otro ya configurado para el mismo servicio y paquete'},
    disp:{title:'Sala de despacho',sub:'Arma rutas: selecciona órdenes, asígnalas a un chofer, optimiza y trackea',
      optimize:'Optimizar',optimizing:'Recalculando la secuencia con VROOM/OSM…',optimized:'Ruta optimizada: -12% distancia, -8 min',
      dispatch:'Despachar ruta',dispatched:'Ruta despachada — el chofer la recibe en su app',
@@ -740,7 +743,10 @@ const T={
      dispatchFeeTbl:'Dispatch fee',dispatchFeeLabel:'Flat dispatch amount ($)',
      codFeeTbl:'COD fee',codFeeType:'Fee type',codFeeFixed:'Fixed ($)',codFeePercent:'Percent (%)',codFeeValue:'Value',
      svcTbl:'Special services',svcLabel:'Service',svcRate:'Rate',svcPh:'e.g. Container from the dock',addSvc:'Add',removeSvc:'Remove',noSvc:'This client has no special services yet',fillSvc:'Fill in the service',
-     newSvcType:'+ New special service type…',newSvcTypeLabel:'New special service name'},
+     newSvcType:'+ New special service type…',newSvcTypeLabel:'New special service name',
+     dupeRate:'A rate for that service and package already exists — edit the existing one instead of creating another',
+     badRange:'Invalid piece range (from must be less than or equal to to)',
+     overlapRange:'That piece range overlaps another one already configured for the same service and package'},
    disp:{title:'Dispatch room',sub:'Build routes: select orders, assign a driver, optimize and track',
      optimize:'Optimize',optimizing:'Recalculating sequence with VROOM/OSM…',optimized:'Route optimized: -12% distance, -8 min',
      dispatch:'Dispatch route',dispatched:'Route dispatched — the driver gets it on their app',
@@ -1745,9 +1751,11 @@ window.toggleClientBilling=(id,flag,checked)=>{const c=CLIENTS.find(x=>x.id===id
 window.setDispatchFee=(id,val)=>{const c=CLIENTS.find(x=>x.id===id);if(c)c.dispatchFee=parseFloat(val)||0;go('clientes',true)};
 window.setCodFeeType=(id,val)=>{const c=CLIENTS.find(x=>x.id===id);if(c)c.codFeeType=val;go('clientes',true)};
 window.setCodFeeValue=(id,val)=>{const c=CLIENTS.find(x=>x.id===id);if(c)c.codFeeValue=parseFloat(val)||0;go('clientes',true)};
+function pieceRangesOverlap(a,b){return a.from<=b.to && a.to>=b.from}
 window.addSvcRate=()=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;
  const svc=document.getElementById('nsrSvc').value;const pkg=document.getElementById('nsrPkg').value;
  const rate=parseFloat(document.getElementById('nsrRate').value)||0;
+ if(c.svcRates.some(r=>r.svc===svc&&r.pkg===pkg)){toast(t('clientes.dupeRate'));return}
  c.svcRates.push({svc,pkg,rate});go('clientes',true)};
 window.removeSvcRate=(idx)=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;c.svcRates.splice(idx,1);go('clientes',true)};
 window.setSvcRateField=(idx,field,val)=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;const row=c.svcRates[idx];if(!row)return;
@@ -1757,12 +1765,20 @@ window.addPieceRate=()=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;
  const svc=document.getElementById('nprSvc').value;const pkg=document.getElementById('nprPkg').value;
  const from=parseInt(document.getElementById('nprFrom').value)||1;const to=parseInt(document.getElementById('nprTo').value)||from;
  const rate=parseFloat(document.getElementById('nprRate').value)||0;
+ if(to<from){toast(t('clientes.badRange'));return}
+ const overlap=c.extraPieceRates.some(r=>r.svc===svc&&r.pkg===pkg&&pieceRangesOverlap(r,{from,to}));
+ if(overlap){toast(t('clientes.overlapRange'));return}
  c.extraPieceRates.push({svc,pkg,from,to,rate});go('clientes',true)};
 window.removePieceRate=(idx)=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;c.extraPieceRates.splice(idx,1);go('clientes',true)};
 window.setPieceRateField=(idx,field,val)=>{const c=CLIENTS.find(x=>x.id===CLIENTSEL);if(!c)return;const row=c.extraPieceRates[idx];if(!row)return;
- if(field==='svc'||field==='pkg') row[field]=val;
- else if(field==='rate') row[field]=parseFloat(val)||0;
+ const prevFrom=row.from,prevTo=row.to;
+ if(field==='rate') row[field]=parseFloat(val)||0;
  else row[field]=parseInt(val)||0; // from/to
+ if(field==='from'||field==='to'){
+   if(row.to<row.from){toast(t('clientes.badRange'));row.from=prevFrom;row.to=prevTo;go('clientes',true);return}
+   const overlap=c.extraPieceRates.some((r,i)=>i!==idx&&r.svc===row.svc&&r.pkg===row.pkg&&pieceRangesOverlap(r,row));
+   if(overlap){toast(t('clientes.overlapRange'));row.from=prevFrom;row.to=prevTo;go('clientes',true);return}
+ }
  go('clientes',true)};
 window.onSpecialSvcLabelChange=(val)=>{const wrap=document.getElementById('nsvNewWrap');if(!wrap)return;
  wrap.style.display=(val==='__new__')?'':'none';
@@ -1820,7 +1836,7 @@ function clientes(){const cl=t('clientes');
      <div class="ph2">${ic('doc')} ${cl.svcRatesTbl}</div>
      <div class="pb" style="padding-top:0">
      <table class="lst densetbl"><thead><tr><th>${t('cols.svc')}</th><th>${t('cols.pkg')}</th><th class="n">${cl.svcRate}</th><th style="width:34px"></th></tr></thead><tbody>
-     ${client.svcRates.length?client.svcRates.map((r,idx)=>`<tr><td><select onchange="setSvcRateField(${idx},'svc',this.value)">${svcOpts(r.svc)}</select></td><td><select onchange="setSvcRateField(${idx},'pkg',this.value)">${pkgOpts(r.pkg)}</select></td><td class="n"><input class="mono" ${numInp(66)} value="${r.rate}" onchange="setSvcRateField(${idx},'rate',this.value)"></td><td><button class="rowbtn" onclick="removeSvcRate(${idx})" title="${cl.removeRate}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="4" style="color:var(--faint)">${cl.noSvcRates}</td></tr>`}
+     ${client.svcRates.length?client.svcRates.map((r,idx)=>`<tr><td>${r.svc}</td><td>${r.pkg}</td><td class="n"><input class="mono" ${numInp(66)} value="${r.rate}" onchange="setSvcRateField(${idx},'rate',this.value)"></td><td><button class="rowbtn" onclick="removeSvcRate(${idx})" title="${cl.removeRate}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="4" style="color:var(--faint)">${cl.noSvcRates}</td></tr>`}
      </tbody></table>
      <div style="display:grid;grid-template-columns:1fr 1fr 0.8fr auto;gap:10px;margin-top:12px;align-items:end">
       <div class="f" style="margin:0"><label>${t('cols.svc')}</label><select id="nsrSvc">${svcOpts()}</select></div>
@@ -1835,7 +1851,7 @@ function clientes(){const cl=t('clientes');
      <div class="ph2">${ic('doc')} ${cl.pieceRatesTbl}</div>
      <div class="pb" style="padding-top:0">
      <table class="lst densetbl"><thead><tr><th>${t('cols.svc')}</th><th>${t('cols.pkg')}</th><th class="n">${cl.fromPiece}</th><th class="n">${cl.toPiece}</th><th class="n">${cl.svcRate}</th><th style="width:34px"></th></tr></thead><tbody>
-     ${client.extraPieceRates.length?client.extraPieceRates.map((r,idx)=>`<tr><td><select onchange="setPieceRateField(${idx},'svc',this.value)">${svcOpts(r.svc)}</select></td><td><select onchange="setPieceRateField(${idx},'pkg',this.value)">${pkgOpts(r.pkg)}</select></td><td class="n"><input class="mono" ${numInp(50)} value="${r.from}" onchange="setPieceRateField(${idx},'from',this.value)"></td><td class="n"><input class="mono" ${numInp(50)} value="${r.to}" onchange="setPieceRateField(${idx},'to',this.value)"></td><td class="n"><input class="mono" ${numInp(60)} value="${r.rate}" onchange="setPieceRateField(${idx},'rate',this.value)"></td><td><button class="rowbtn" onclick="removePieceRate(${idx})" title="${cl.removeRate}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="6" style="color:var(--faint)">${cl.noPieceRates}</td></tr>`}
+     ${client.extraPieceRates.length?client.extraPieceRates.map((r,idx)=>`<tr><td>${r.svc}</td><td>${r.pkg}</td><td class="n"><input class="mono" ${numInp(50)} value="${r.from}" onchange="setPieceRateField(${idx},'from',this.value)"></td><td class="n"><input class="mono" ${numInp(50)} value="${r.to}" onchange="setPieceRateField(${idx},'to',this.value)"></td><td class="n"><input class="mono" ${numInp(60)} value="${r.rate}" onchange="setPieceRateField(${idx},'rate',this.value)"></td><td><button class="rowbtn" onclick="removePieceRate(${idx})" title="${cl.removeRate}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="6" style="color:var(--faint)">${cl.noPieceRates}</td></tr>`}
      </tbody></table>
      <div style="display:grid;grid-template-columns:1fr 1fr 0.7fr 0.7fr 0.8fr auto;gap:10px;margin-top:12px;align-items:end">
       <div class="f" style="margin:0"><label>${t('cols.svc')}</label><select id="nprSvc">${svcOpts()}</select></div>
