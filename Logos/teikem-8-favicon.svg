@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>Teikem — favicon</title>
+  <desc>Marca hexagonal simplificada para uso a tamaño pequeño (favicon / app icon). Versión recortada del isotipo: sin márgenes y con el contorno más grueso, para que siga legible a 16px. El split de dos azules se dibuja con dos polígonos explícitos en vez de un clipPath, para que rasterice igual en cualquier renderizador.</desc>
+  <path d="M32 3 L5 17.5 V46.5 L32 61 Z" fill="#2E7CF6"/>
+  <path d="M32 3 L59 17.5 V46.5 L32 61 Z" fill="#123A85"/>
+  <path d="M32 3 L59 17.5 V46.5 L32 61 L5 46.5 V17.5 Z" fill="none" stroke="#FFFFFF" stroke-width="3.5"/>
+  <path d="M18 25 H40" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M29 25 V48" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round"/>
+  <path d="M38 24 L53 16 L53 32 Z" fill="#FF6A1A"/>
+</svg>

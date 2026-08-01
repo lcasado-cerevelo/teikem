@@ -1,6 +1,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Teikem — Delivery Intelligence</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 3 L5 17.5 V46.5 L32 61 Z' fill='%232E7CF6'/%3E%3Cpath d='M32 3 L59 17.5 V46.5 L32 61 Z' fill='%23123A85'/%3E%3Cpath d='M32 3 L59 17.5 V46.5 L32 61 L5 46.5 V17.5 Z' fill='none' stroke='%23FFFFFF' stroke-width='3.5'/%3E%3Cpath d='M18 25 H40' stroke='%23FFFFFF' stroke-width='8' stroke-linecap='round'/%3E%3Cpath d='M29 25 V48' stroke='%23FFFFFF' stroke-width='8' stroke-linecap='round'/%3E%3Cpath d='M38 24 L53 16 L53 32 Z' fill='%23FF6A1A'/%3E%3C/svg%3E">
+<meta name="theme-color" content="#0B2C66">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -566,18 +568,25 @@ const T={
      tbl:'Órdenes sometidas',gen:'Generando',pdf:'PDF',
      s1:'Cliente y servicio',s1d:'Para quién es la orden y con qué nivel de servicio',
      s2:'Consignatario',s2d:'A quién y a dónde se entrega',
-     s3:'Paquete y COD',s3d:'Qué se envía y qué se cobra en la entrega',
+     s3:'Paquetes y COD',s3d:'Qué se envía y qué se cobra en la entrega',
      name:'Nombre',phone:'Teléfono',svc:'Servicio',ready:'Lista',due:'Límite',
-     pkgtype:'Tipo de paquete',pieces:'Piezas',codtype:'Tipo de COD',codamt:'Monto COD',none:'Ninguno',
+     pkgtype:'Tipo de paquete',pieces:'Piezas',codamt:'Monto COD',
+     pkgDesc:'Descripción',pkgDescPh:'Qué va en este paquete…',addPkg:'Añadir paquete',removePkg:'Quitar paquete',packagesTitle:'Paquetes',
+     pkgSummary:'paquete(s)',needOnePkg:'La orden necesita al menos un paquete',
      ticket:'Ticket de la orden',saveprint:'Guardar e imprimir label',
      note:'El label sale automático en la impresora de esta estación al guardar. Configúralo en <b>Impresoras y labels</b>.',
      comment:'Comentario',selectConsignee:'Buscar consignatario\u2026',newConsignee:'Nuevo consignatario',consName:'Nombre',consNumber:'N\u00famero de consignatario',phone:'Tel\u00e9fono',consigneeCreated:'consignatario creado',orderSaved:'orden guardada',
      needConsignee:'Falta el consignatario',needPkg:'Falta el tipo de paquete',needSvc:'Falta el servicio',
+     dupTitle:'Factura repetida para este consignatario',
+     dupBody:'<b>{cons}</b> ya tiene la orden <b>{ref}</b> con el número de factura <b>{inv}</b>. Este consignatario permite repetirlo. ¿Creas la orden de todos modos?',
+     dupCreate:'Crear de todos modos',dupDont:'No crear la orden',
+     dupBlocked:'{cons} no permite repetir el número de factura {inv} — ya lo usa la orden {ref}. La orden no se creó.',
+     dupCancelled:'Orden no creada',
      special:'Es una entrega especial',specialHint:'Un servicio del cat\u00e1logo del cliente (ej. traer un vag\u00f3n del muelle) en vez de un paquete \u2014 se le asigna el chofer de una vez, no pasa por Despacho.',
      specialSvc:'Servicio especial',noSpecialSvc:'Este cliente no tiene servicios especiales configurados',driver:'Chofer',selectDriver:'Selecciona un chofer\u2026',
      needSpecialSvc:'Falta el servicio especial',needDriver:'Falta el chofer',s3dSpecial:'Escoge el servicio del catálogo del cliente y el chofer que lo va a hacer',save:'Guardar',
      orderNoLabel:'Número de orden',clientInvoiceLabel:'Número de factura',pkgNoLabel:'Número de paquete',autoTag:'(automático)',autoPh:'Se genera automáticamente'},
-   ordenes:{title:'Órdenes',sub:'La lista maestra: todo lo que se mueve, con filtros y orden por columna',newOrder:'Nueva orden',collapseNew:'Ocultar formulario',editOrder:'Editar orden',editHint:'Cliente: <b>{client}</b> · Empaque: <b>{pack}</b> · Factura: <b>{invoice}</b> — estos no se pueden cambiar aquí; corrige el resto de los datos de la orden.',orderUpdated:'orden actualizada'},
+   ordenes:{title:'Órdenes',sub:'La lista maestra: todo lo que se mueve, con filtros y orden por columna',newOrder:'Nueva orden',collapseNew:'Ocultar formulario',orderUpdated:'orden actualizada'},
    scan:{title:'Estación de escaneo',sub:'Un solo carril: escanea, confirma y sigue — inbound, outbound o cuadre COD',
      out:'Outbound',inn:'Inbound',codm:'Procesamiento',hascod:'¿Con COD?',yes:'Con COD',no:'Sin COD',ph:'Escanea o teclea la referencia…',go:'Registrar',
      hint:'El lector escribe aquí y dispara Enter solo. Cada registro confirma con luz verde.',
@@ -680,6 +689,10 @@ const T={
      titlePortal:'Consignatarios',subPortal:'Tus destinatarios frecuentes — alta, edición e inactivación',
      list:'Consignatarios',active:'Activo',inactive:'Inactivo',number:'Número',name:'Nombre',address:'Dirección',phone:'Teléfono',
      scope:'Cliente dueño',shared:'Compartido (todos los clientes)',status:'Estado',info:'Ficha del consignatario',edit:'Editar',
+     dupInvTitle:'Número de factura repetido',
+     dupInvAllow:'Permitir repetir el número de factura',
+     dupInvOn:'Permitido (avisa antes de crear)',dupInvOff:'No permitido (bloquea)',
+     dupInvHint:'Si se permite, al capturar una orden con un número de factura que este consignatario ya tiene, el sistema avisa y deja decidir si continuar. Si no se permite, la orden no se crea.',
      newConsignee:'Nuevo consignatario',editConsignee:'Editar consignatario',noneYet:'Sin consignatarios todavía',selectOne:'Selecciona un consignatario de la lista',
      created:'consignatario creado',updated:'consignatario actualizado',
      filterClient:'Cliente',filterAll:'Todos los clientes',
@@ -699,6 +712,9 @@ const T={
      importTplEditorHint:'Define qué campo corresponde a cada columna, en el mismo orden en que aparecen en tu archivo — por ejemplo, que el primer campo sea el nombre, el segundo el número, el tercero la dirección…',
      importColumnN:'Columna {n}',importColumnFileHint:'tu último archivo trae',importAddColumn:'Agregar columna',importRemoveColumn:'Quitar esta columna',
      importClientIgnoredHint:'El campo Cliente de la plantilla se ignora en esta importación — los consignatarios quedan asignados al cliente ya fijo aquí.',
+     importClientLabel:'Cliente dueño de los consignatarios',
+     importClientHint:'Todos los consignatarios del archivo quedan asignados a este cliente.',
+     importClientColHint:'Esta plantilla mapea una columna Cliente: cada fila que traiga un cliente válido se asigna a ese; las demás caen en el escogido aquí.',
      f_number:'Número',f_name:'Nombre',f_address:'Dirección',f_town:'Pueblo',f_phone:'Teléfono',f_client:'Cliente'},
    disp:{title:'Sala de despacho',sub:'Arma rutas: selecciona órdenes, asígnalas a un chofer, optimiza y trackea',
      optimize:'Optimizar',optimizing:'Recalculando la secuencia con VROOM/OSM…',optimized:'Ruta optimizada: -12% distancia, -8 min',
@@ -714,7 +730,9 @@ const T={
      confirmDispatch:'Despachar seleccionadas',cancel:'Cancelar',dispatchedN:'rutas despachadas',
      statusPlanned:'Planificada',statusDispatched:'En ruta',statusCompleted:'Completada',
      deleteRoute:'Eliminar ruta',routeOrders:'Órdenes en esta ruta',removeFromRoute:'Quitar de la ruta',noOrdersYet:'Todavía no tiene órdenes asignadas'},
-   rec:{tl:'Línea de tiempo',audit:'auditoría completa',label:'Label',pod:'POD',assign:'Asignar chofer',amount:'Monto',type:'Tipo',state:'Estado',cf:'Campos personalizados',byentity:'por entidad',contacts:'Contactos',receipt:'recibo',e1:'Creada',e2:'Escaneada en almacén',e3:'Asignada a ruta 2026-0142',e4:'En ruta',e5:'COD por cobrar $125.82'},
+   rec:{tl:'Línea de tiempo',audit:'auditoría completa',label:'Label',pod:'POD',assign:'Asignar chofer',amount:'Monto',type:'Tipo',state:'Estado',cf:'Campos personalizados',byentity:'por entidad',contacts:'Contactos',receipt:'recibo',e1:'Creada',e2:'Escaneada en almacén',e3:'Asignada a ruta 2026-0142',e4:'En ruta',e5:'COD por cobrar $125.82',
+     detail:'Detalle de la orden',editableHint:'Esta orden está en Entrada: puedes corregir sus datos y sus paquetes.',lockedHint:'Esta orden ya avanzó de Entrada — sus datos se muestran como referencia, ya no se editan aquí.',
+     saveChanges:'Guardar cambios',backToList:'Volver a Órdenes',notFound:'No se encontró la orden',pendingType:'se define al entregar',codTypeAtDelivery:'El tipo de cobro (efectivo, cheque…) se registra al momento de entregar, no al capturar la orden.'},
    views:{title:'Vistas',sub:'Informes guardados y un constructor por fuente de datos — escoge de dónde vienen los datos, combínalos y guarda el resultado',newv:'Nueva vista',note:'Cada vista combina una o más fuentes de datos (Órdenes, Clientes, Productos, Inventario, Movimientos) y se guarda para volver a usarla cuando quieras.',
      colsCount:'columnas',noViews:'Todavía no hay vistas guardadas — crea la primera con "Nueva vista".',
      builderNewTitle:'Nueva vista',builderEditTitle:'Editar vista',nameLabel:'Nombre de la vista',namePh:'ej. Entregas pendientes por chofer',
@@ -737,7 +755,10 @@ const T={
      entities:'Entidades',newField:'Nuevo campo',noFields:'Todavía no hay campos personalizados para esta entidad.',
      fieldLabel:'Etiqueta',fieldKey:'Clave',fieldType:'Tipo',requiredLabel:'Requerido',uniqueLabel:'Único',showInListLabel:'Mostrar en listados',
      newFieldTitle:'Nuevo campo personalizado',editFieldTitle:'Editar campo personalizado',entityLabel:'Entidad',
-     labelEsLabel:'Etiqueta (español)',labelEnLabel:'Etiqueta (inglés)',optionsLabel:'Opciones (separadas por coma)',optionsPh:'ej. Alto, Medio, Bajo',
+     labelEsLabel:'Etiqueta (español)',labelEnLabel:'Etiqueta (inglés)',optionsPh:'ej. Alto, Medio, Bajo',
+     listLabel:'Lista de valores',listPick:'Escoge una lista…',listHint:'Las opciones salen de una lista del catálogo — la misma tabla que llena los demás dropdowns. Así, renombrar una opción actualiza todos los registros que ya la usan, y la lista se puede reutilizar en otros campos.',
+     newListBtn:'Nueva lista…',newListTitle:'Nueva lista de valores',newListNamePh:'Nombre de la lista',newListSave:'Crear lista',
+     newListNeed:'Ponle nombre a la lista y al menos una opción',newListCreated:'lista creada',needList:'Escoge o crea una lista de valores',
      defaultLabel:'Valor por defecto',saveField:'Guardar campo',
      note:'Cada campo se define una vez por entidad y aparece disponible para todos los registros de esa entidad — mismo principio que un campo nativo, sin deploy.'},
    indicators:{title:'Indicadores',sub:'KPIs de un solo número, calculados sobre una fuente de datos',newInd:'Nuevo indicador',
@@ -890,18 +911,25 @@ const T={
      tbl:'Submitted orders',gen:'Generating',pdf:'PDF',
      s1:'Client & service',s1d:'Who the order is for and at what service level',
      s2:'Consignee',s2d:'Who receives it and where',
-     s3:'Package & COD',s3d:'What ships and what gets collected on delivery',
+     s3:'Packages & COD',s3d:'What ships and what gets collected on delivery',
      name:'Name',phone:'Phone',svc:'Service',ready:'Ready',due:'Due',
-     pkgtype:'Package type',pieces:'Pieces',codtype:'COD type',codamt:'COD amount',none:'None',
+     pkgtype:'Package type',pieces:'Pieces',codamt:'COD amount',
+     pkgDesc:'Description',pkgDescPh:'What goes in this package…',addPkg:'Add package',removePkg:'Remove package',packagesTitle:'Packages',
+     pkgSummary:'package(s)',needOnePkg:'The order needs at least one package',
      ticket:'Order ticket',saveprint:'Save & print label',
      note:'The label prints automatically on this station\u2019s printer on save. Configure it in <b>Printers & labels</b>.',
      comment:'Comment',selectConsignee:'Search consignee\u2026',newConsignee:'New consignee',consName:'Name',consNumber:'Consignee number',phone:'Phone',consigneeCreated:'consignee created',orderSaved:'order saved',
      needConsignee:'Consignee is required',needPkg:'Package type is required',needSvc:'Service is required',
+     dupTitle:'Repeated invoice for this consignee',
+     dupBody:'<b>{cons}</b> already has order <b>{ref}</b> with invoice number <b>{inv}</b>. This consignee allows repeating it. Create the order anyway?',
+     dupCreate:'Create anyway',dupDont:'Don’t create the order',
+     dupBlocked:'{cons} does not allow repeating invoice number {inv} — order {ref} already uses it. The order was not created.',
+     dupCancelled:'Order not created',
      special:'This is a special delivery',specialHint:'A service from the client\u2019s catalog (e.g. bringing a container from the dock) instead of a package \u2014 the driver is assigned right away, it doesn\u2019t go through Dispatch.',
      specialSvc:'Special service',noSpecialSvc:'This client has no special services configured',driver:'Driver',selectDriver:'Select a driver\u2026',
      needSpecialSvc:'Special service is required',needDriver:'Driver is required',s3dSpecial:'Pick the service from the client’s catalog and the driver who’ll do it',save:'Save',
      orderNoLabel:'Order number',clientInvoiceLabel:'Invoice number',pkgNoLabel:'Package number',autoTag:'(auto)',autoPh:'Auto-generated'},
-   ordenes:{title:'Orders',sub:'The master list: everything moving, with filters and column sorting',newOrder:'New order',collapseNew:'Hide form',editOrder:'Edit order',editHint:'Client: <b>{client}</b> · Pack: <b>{pack}</b> · Invoice: <b>{invoice}</b> — these can’t be changed here; correct the rest of the order’s details.',orderUpdated:'order updated'},
+   ordenes:{title:'Orders',sub:'The master list: everything moving, with filters and column sorting',newOrder:'New order',collapseNew:'Hide form',orderUpdated:'order updated'},
    scan:{title:'Scan station',sub:'One lane: scan, confirm, next — inbound, outbound or COD reconcile',
      out:'Outbound',inn:'Inbound',codm:'Processing',hascod:'Has COD?',yes:'With COD',no:'No COD',ph:'Scan or type the reference…',go:'Register',
      hint:'The scanner types here and fires Enter on its own. Each hit confirms in green.',
@@ -1004,6 +1032,10 @@ const T={
      titlePortal:'Consignees',subPortal:'Your frequent recipients — create, edit and deactivate',
      list:'Consignees',active:'Active',inactive:'Inactive',number:'Number',name:'Name',address:'Address',phone:'Phone',
      scope:'Owning client',shared:'Shared (all clients)',status:'Status',info:'Consignee profile',edit:'Edit',
+     dupInvTitle:'Repeated invoice number',
+     dupInvAllow:'Allow repeating the invoice number',
+     dupInvOn:'Allowed (warns before creating)',dupInvOff:'Not allowed (blocks)',
+     dupInvHint:'If allowed, capturing an order with an invoice number this consignee already has will warn and let you decide whether to continue. If not allowed, the order is not created.',
      newConsignee:'New consignee',editConsignee:'Edit consignee',noneYet:'No consignees yet',selectOne:'Select a consignee from the list',
      created:'consignee created',updated:'consignee updated',
      filterClient:'Client',filterAll:'All clients',
@@ -1023,6 +1055,9 @@ const T={
      importTplEditorHint:'Define which field corresponds to each column, in the same order they appear in your file — e.g. the first field is name, the second is number, the third is address…',
      importColumnN:'Column {n}',importColumnFileHint:'your last file had',importAddColumn:'Add column',importRemoveColumn:'Remove this column',
      importClientIgnoredHint:'The template’s Client field is ignored in this import — consignees are assigned to the client already fixed here.',
+     importClientLabel:'Client owning the consignees',
+     importClientHint:'Every consignee in the file is assigned to this client.',
+     importClientColHint:'This template maps a Client column: each row with a valid client goes to that one; the rest fall back to the client picked here.',
      f_number:'Number',f_name:'Name',f_address:'Address',f_town:'Town',f_phone:'Phone',f_client:'Client'},
    disp:{title:'Dispatch room',sub:'Build routes: select orders, assign a driver, optimize and track',
      optimize:'Optimize',optimizing:'Recalculating sequence with VROOM/OSM…',optimized:'Route optimized: -12% distance, -8 min',
@@ -1038,7 +1073,9 @@ const T={
      confirmDispatch:'Dispatch selected',cancel:'Cancel',dispatchedN:'routes dispatched',
      statusPlanned:'Planned',statusDispatched:'On route',statusCompleted:'Completed',
      deleteRoute:'Delete route',routeOrders:'Orders in this route',removeFromRoute:'Remove from route',noOrdersYet:'No orders assigned yet'},
-   rec:{tl:'Timeline',audit:'full audit',label:'Label',pod:'POD',assign:'Assign driver',amount:'Amount',type:'Type',state:'Status',cf:'Custom fields',byentity:'per entity',contacts:'Contacts',receipt:'receipt',e1:'Created',e2:'Scanned in warehouse',e3:'Assigned to relay 0142',e4:'On route',e5:'COD to collect $125.82'},
+   rec:{tl:'Timeline',audit:'full audit',label:'Label',pod:'POD',assign:'Assign driver',amount:'Amount',type:'Type',state:'Status',cf:'Custom fields',byentity:'per entity',contacts:'Contacts',receipt:'receipt',e1:'Created',e2:'Scanned in warehouse',e3:'Assigned to relay 0142',e4:'On route',e5:'COD to collect $125.82',
+     detail:'Order details',editableHint:'This order is in Entry: you can correct its details and its packages.',lockedHint:'This order has moved past Entry — its details are shown for reference and are no longer editable here.',
+     saveChanges:'Save changes',backToList:'Back to Orders',notFound:'Order not found',pendingType:'set on delivery',codTypeAtDelivery:'The collection type (cash, check…) is recorded at delivery time, not when the order is captured.'},
    views:{title:'Views',sub:'Saved reports and a per-dataset builder — pick where the data comes from, combine it, and save the result',newv:'New view',note:'Each view combines one or more datasets (Orders, Clients, Products, Inventory, Movements) and gets saved so you can reuse it later.',
      colsCount:'columns',noViews:'No saved views yet — create the first one with "New view".',
      builderNewTitle:'New view',builderEditTitle:'Edit view',nameLabel:'View name',namePh:'e.g. Pending deliveries by driver',
@@ -1061,7 +1098,10 @@ const T={
      entities:'Entities',newField:'New field',noFields:'No custom fields for this entity yet.',
      fieldLabel:'Label',fieldKey:'Key',fieldType:'Type',requiredLabel:'Required',uniqueLabel:'Unique',showInListLabel:'Show in lists',
      newFieldTitle:'New custom field',editFieldTitle:'Edit custom field',entityLabel:'Entity',
-     labelEsLabel:'Label (Spanish)',labelEnLabel:'Label (English)',optionsLabel:'Options (comma-separated)',optionsPh:'e.g. High, Medium, Low',
+     labelEsLabel:'Label (Spanish)',labelEnLabel:'Label (English)',optionsPh:'e.g. High, Medium, Low',
+     listLabel:'Value list',listPick:'Pick a list…',listHint:'Options come from a list in the catalog — the same table that fills the app’s other dropdowns. That way, renaming an option updates every record already using it, and the list can be reused by other fields.',
+     newListBtn:'New list…',newListTitle:'New value list',newListNamePh:'List name',newListSave:'Create list',
+     newListNeed:'Give the list a name and at least one option',newListCreated:'list created',needList:'Pick or create a value list',
      defaultLabel:'Default value',saveField:'Save field',
      note:'Each field is defined once per entity and becomes available on every record of that entity — same principle as a native field, no deploy required.'},
    indicators:{title:'Indicators',sub:'Single-number KPIs computed over a data source',newInd:'New indicator',
@@ -1209,10 +1249,15 @@ setInterval(tickClock,15000);
 const senders=['Advance Solutions','TRUSS PUERTO RICO','AXISCARE HEALTH','Beauty Code LLC','INTECHSOL'];
 const townZip={'Toa Baja':'00949','Bayamón':'00959','Caguas':'00725','Carolina':'00979','Guaynabo':'00969','Aguas Buenas':'00703','Cupey':'00926','Condado':'00907','Trujillo Alto':'00976','Barranquitas':'00794'};
 const towns=Object.keys(townZip);
+/* `allowDupInvoice` (pedido explícito de Luis): controla, POR CONSIGNATARIO, si el sistema acepta que
+   se repita un número de factura ya usado por ese mismo consignatario. `false`/ausente = no se permite
+   y la orden no se crea; `true` = se permite, pero avisando antes y dejando decidir si continuar. El
+   default es NO permitir (repetir una factura suele ser un error de captura); se siembran dos
+   consignatarios con la excepción activada para que ambos caminos se vean funcionando. */
 const CONSIGNEES=[
- {id:'C1',number:'1001',name:'Farmacia Las Marías',address:'Ave. Comercio #45',town:'Toa Baja',phone:'787-555-0142',active:true,clientId:'Advance Solutions'},
- {id:'C2',number:'1002',name:'Farmacia La Botica',address:'Calle Luna #12',town:'Bayamón',phone:'787-555-0198',active:true,clientId:'Advance Solutions'},
- {id:'C3',number:'1003',name:'Best Pharmacy',address:'PR-2 Km 8.4',town:'Caguas',phone:'787-555-0233',active:true,clientId:'AXISCARE HEALTH'},
+ {id:'C1',number:'1001',name:'Farmacia Las Marías',address:'Ave. Comercio #45',town:'Toa Baja',phone:'787-555-0142',active:true,clientId:'Advance Solutions',allowDupInvoice:false},
+ {id:'C2',number:'1002',name:'Farmacia La Botica',address:'Calle Luna #12',town:'Bayamón',phone:'787-555-0198',active:true,clientId:'Advance Solutions',allowDupInvoice:true},
+ {id:'C3',number:'1003',name:'Best Pharmacy',address:'PR-2 Km 8.4',town:'Caguas',phone:'787-555-0233',active:true,clientId:'AXISCARE HEALTH',allowDupInvoice:true},
  {id:'C4',number:'1004',name:'Studio M by Mitchy',address:'Calle Sol #78',town:'Trujillo Alto',phone:'787-555-0287',active:true,clientId:'Beauty Code LLC'},
  {id:'C5',number:'1005',name:'Maritza Salon',address:'Ave. Piñeiro #201',town:'Guaynabo',phone:'787-555-0311',active:true,clientId:'Beauty Code LLC'},
  {id:'C6',number:'1006',name:'Beauty Spa',address:'Calle Loíza #56',town:'Condado',phone:'787-555-0356',active:true,clientId:'Beauty Code LLC'},
@@ -1248,9 +1293,43 @@ window.saveConsignee=()=>{const name=(document.getElementById('cc_name').value||
  QUICK_ROW_FOR_CONS=null;QUICK_ROWID_FOR_CONS=null;
  toast(t('entry.consigneeCreated')+': '+name)};
 
-const svcs=['Next day','Same day','Standard'];
+/* ===== Catálogo de listas (lookups) =====
+   Decisión de Luis, traída de Sephas: los campos personalizados de tipo lista NO guardan sus opciones
+   como texto separado por comas, sino que apuntan a una LISTA de un catálogo compartido — la misma
+   tabla que llena los dropdowns propios de la aplicación, para que el usuario pueda crear los suyos.
+
+   El motivo de fondo no es reutilizar, es el RENOMBRE: con opciones separadas por coma el valor que se
+   guarda en el registro *es* la etiqueta, así que renombrar una opción deja huérfanos todos los
+   registros históricos. Con catálogo se guarda la referencia a la opción y renombrar la etiqueta
+   actualiza la historia entera sin migrar nada. Además es el mismo principio que este diseño ya había
+   adoptado para los tipos de servicio especial (módulo 1): no se escriben libres, salen de un catálogo
+   con opción de crear uno nuevo, precisamente para no terminar con "Vagón del muelle" y "Vagon Muelle".
+
+   `system:true` marca las listas de las que depende el propio funcionamiento de la app (tipos de
+   servicio, de paquete, categorías de producto): en el sistema real se pueden editar sus valores pero
+   no borrar la lista. Nota: en el mock NO se construyó la pantalla de mantenimiento de listas — por
+   pedido explícito de Luis queda solo en el diseño (ver el .md).
+
+   IMPORTANTE para el sistema real: aquí los valores son strings porque el mock no tiene persistencia,
+   pero el registro debe guardar el ID de la opción, no su etiqueta (es lo que hace que el renombre
+   funcione). La importación/exportación CSV sí debe seguir siendo por etiqueta, resolviendo
+   etiqueta→ID al importar, o los archivos dejan de ser legibles para un humano. */
+let LOOKUPS=[
+ {id:'LK-SVC', name:'Tipos de servicio', nameEn:'Service types', system:true, values:['Next day','Same day','Standard']},
+ {id:'LK-PKG', name:'Tipos de paquete', nameEn:'Package types', system:true, values:['Box','Envelope','Pallet']},
+ {id:'LK-PRODCAT', name:'Categorías de producto', nameEn:'Product categories', system:true, values:['Consumibles','Equipo médico','Empaque','Repuestos']},
+ {id:'LK-COND', name:'Condición del paquete', nameEn:'Package condition', system:false, values:['Nuevo','Usado','Refrigerado','Frágil']},
+ {id:'LK-MOTIVO', name:'Motivo de devolución', nameEn:'Return reason', system:false, values:['Dirección incorrecta','Cliente ausente','Rechazado','Dañado']},
+];
+let LOOKUP_SEQ=0;
+function lookupById(id){return LOOKUPS.find(l=>l.id===id)}
+function lookupValues(id){const l=lookupById(id);return l?l.values:[]}
+function lookupLabel(l){return LANG==='es'?l.name:(l.nameEn||l.name)}
+/* Los dropdowns propios de la app salen del MISMO catálogo — es lo que hace que "una sola tabla" sea
+   cierto en el mock y no solo una intención escrita en el diseño. */
+const svcs=lookupValues('LK-SVC');
 const TENANT_DEFAULTS={pkg:'Box', svc:'Next day'}; // Tenant.DefaultPackageTypeLookupId / DefaultServiceTypeLookupId
-const pkgs=['Box','Envelope','Pallet'];
+const pkgs=lookupValues('LK-PKG');
 const routes=['R-01','R-02','R-03','R-04'];
 const stk=['deliv','route','disp','wh','cap','fail','cod'];
 const stcls={deliv:'s-deliv',route:'s-route',disp:'s-disp',wh:'s-wh',cap:'s-cap',fail:'s-fail',cod:'s-cod'};
@@ -1312,6 +1391,35 @@ const ORDERS=[];
  for(let i=0;i<58;i++){const town=rnd(towns);const cod=Math.random()<.5?+(Math.random()*240+20).toFixed(2):0;
   const daysAgo=Math.random()<.6?0:1+Math.floor(Math.random()*5);
   ORDERS.push({inv:'AX-'+(inv++),date:isoDaysAgo(daysAgo),sender:rnd(senders),cons:rnd(consn),town,zip:townZip[town],svc:rnd(svcs),pkg:rnd(pkgs),pcs:1+Math.floor(Math.random()*3),cod,dr:rnd(['010','001','002','814','823','850','—']),st:rnd(stk),pickBatch:nextEmpaqueNo()})}})();
+/* Un par de órdenes sembradas con MÁS DE UN PAQUETE de tipos distintos, para que el caso se vea
+   funcionando desde que abre el mock (pedido explícito de Luis: una misma orden puede llevar
+   paquetes de tipos distintos — ver `orderPackages`/`orderPkgGroups` abajo). */
+(function(){const a=ORDERS.find(o=>o.st==='cap'),b=ORDERS.find(o=>o.st!=='cap'&&o!==a);
+ if(a)a.packages=[{pkg:'Box',desc:'Medicamentos refrigerados',pcs:2},{pkg:'Envelope',desc:'Documentos de aduana',pcs:1}];
+ if(b)b.packages=[{pkg:'Pallet',desc:'Equipo médico',pcs:1},{pkg:'Box',desc:'Accesorios y cables',pcs:3}];})();
+
+/* ===== Paquetes de una orden =====
+   Pedido explícito de Luis ("¿por qué no podemos manejar en una misma orden dos tipos de paquetes
+   distintos?"): una orden es UNA solicitud de envío — un consignatario, un COD que se cobra una sola
+   vez, una firma de entrega — y puede llevar varios paquetes, de tipos distintos. Así que el paquete
+   pasa a ser una LÍNEA de la orden (`Order.packages[] = {pkg, desc, pcs}`), no un atributo suelto.
+
+   `orderPackages` normaliza: las órdenes viejas (y las sembradas al azar) que solo tienen `pkg`/`pcs`
+   se leen como una sola línea, así que ninguna pantalla existente se rompe mientras se migra.
+   `orderPkgGroups` consolida por tipo — dos cajas capturadas por separado son una sola fila "Box ·3",
+   pero una caja y un sobre son dos filas; eso es exactamente la regla que pidió Luis para el listado.
+   `orderPcs` es el total de piezas de la orden (lo que factura y liquidación siguen necesitando). */
+function orderPackages(o){
+ if(o&&Array.isArray(o.packages)&&o.packages.length)return o.packages;
+ return [{pkg:(o&&o.pkg)||'',desc:'',pcs:(o&&o.pcs)||1}]}
+function orderPkgGroups(o){const out=[];
+ orderPackages(o).forEach(p=>{const hit=out.find(x=>x.pkg===p.pkg);
+   if(hit){hit.pcs+=(p.pcs||0);if(p.desc)hit.descs.push(p.desc)}
+   else out.push({pkg:p.pkg,pcs:p.pcs||0,descs:p.desc?[p.desc]:[]})});
+ return out}
+function orderPcs(o){return orderPackages(o).reduce((s,p)=>s+(p.pcs||0),0)}
+function orderPkgLabel(o){const g=orderPkgGroups(o);
+ return g.length===1?g[0].pkg:g.map(x=>x.pkg+' ×'+x.pcs).join(' + ')}
 
 /* ===== NAV ===== */
 /* Orden de grupos del menú (pedido explícito de Luis: "mueve el portal de clientes como la ultima
@@ -1371,6 +1479,34 @@ function mselRefresh(id){const st=window['__msel_'+id];
   lbl.textContent = st.sel.size===0? st.allLabel : (st.sel.size===1?[...st.sel][0]:st.sel.size+' '+t('ui.selected'));
   st.onchange([...st.sel])}
 document.addEventListener('click',e=>{if(!e.target.closest('.msel'))document.querySelectorAll('.msel.open').forEach(m=>m.classList.remove('open'))});
+
+/* ===== ssel: dropdown de UN solo valor, con el mismo estilo y buscador que msel =====
+   Pedido explícito de Luis ("el dropdown debe tener el mismo estilo y funcionalidad de todos los
+   dropdowns que hemos manejado"): reusa exactamente las mismas clases CSS de msel (.msel/.mp/.msearch/
+   .milist/.mi), así que se ve idéntico y hereda el buscador — la única diferencia de comportamiento es
+   que escoger un valor reemplaza al anterior y cierra el panel, en vez de acumular selección. Las
+   opciones son {value,label} para poder mostrar una etiqueta distinta del valor guardado (ej. la
+   opción "Compartido" con valor vacío). */
+function ssel(id, options, selected, onchange, placeholder){
+  window['__ssel_'+id]={options,onchange,placeholder};
+  const cur=options.find(o=>o.value===selected);
+  return `<div class="msel" id="msel-${id}">
+    <button type="button" onclick="mselOpen('${id}')"><span data-ic="chevD" style="width:12px;height:12px"></span><span id="ssel-lbl-${id}">${cur?cur.label:placeholder}</span></button>
+    <div class="mp">
+      <div class="msearch">${ic('search')}<input type="text" placeholder="${t('ui.mselSearch')}" oninput="sselFilter('${id}',this.value)" onclick="event.stopPropagation()"></div>
+      <div class="milist" id="mlist-${id}">${sselItemsHtml(id,options,selected)}</div>
+    </div>
+  </div>`}
+function sselItemsHtml(id,options,selected){
+  return options.map(o=>`<label class="mi"><span class="mck ${o.value===selected?'on':''}" onclick="event.stopPropagation();sselPick('${id}','${String(o.value).replace(/'/g,"\\'")}')">${ic('check')}</span><span onclick="event.stopPropagation();sselPick('${id}','${String(o.value).replace(/'/g,"\\'")}')">${o.label}</span></label>`).join('')||`<div class="mnone">${t('ui.mselNone')}</div>`}
+window.sselFilter=(id,q)=>{const st=window['__ssel_'+id];q=(q||'').toLowerCase();
+  const filtered=st.options.filter(o=>String(o.label).toLowerCase().includes(q));
+  document.getElementById('mlist-'+id).innerHTML=sselItemsHtml(id,filtered,st.selected)};
+window.sselPick=(id,value)=>{const st=window['__ssel_'+id];st.selected=value;
+  const cur=st.options.find(o=>String(o.value)===String(value));
+  const lbl=document.getElementById('ssel-lbl-'+id);if(lbl)lbl.textContent=cur?cur.label:st.placeholder;
+  const el=document.getElementById('msel-'+id);if(el)el.classList.remove('open');
+  st.onchange(value)};
 
 /* ===== qbox: campo de búsqueda libre reutilizable — filtra por CUALQUIER dato mostrado en el item =====
    Patrón único en todo el sistema: un input de texto simple (con lupa) que hace match tipo "contiene"
@@ -1442,8 +1578,16 @@ window.toast=toast;
 function report(kind){const path1='entry.r.'+kind, path2='inv2.'+kind;let lbl=t(path1);if(lbl===path1)lbl=t(path2);toast(t('entry.gen')+' '+lbl+' ('+t('entry.pdf')+')…')}
 window.report=report;
 /* abrir expediente: doble clic en la fila, Enter con foco, o botón chevron (accesible) */
-function rowAttrs(){return `tabindex="0" ondblclick="go('envio')" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='BUTTON'){go('envio')}"`}
-function openBtn(){return `<button class="rowbtn" onclick="event.stopPropagation();go('envio')" aria-label="${t('ui.openrow')}" title="${t('ui.openrow')}">${ic('chev')}</button>`}
+/* El expediente de orden (`envio`/record()) ya no es una pantalla de ejemplo con datos fijos: ahora
+   abre LA orden de la fila (pedido explícito de Luis: "El mismo icono de la flecha, la pantalla que
+   abre, ademas de lo que tiene debe tener el detalle de la orden como aparece en la entrada de
+   ordenes detallada"). `openRecord` guarda cuál orden se abrió; sin argumento cae en la primera
+   orden disponible, para que llegar por el buscador de comandos siga mostrando algo coherente. */
+let RECORD_INV=null;
+window.openRecord=(inv)=>{RECORD_INV=inv||null;RE_PKGS=null;go('envio')};
+function rowAttrs(inv){const call=`openRecord(${inv?`'${inv}'`:''})`;
+ return `tabindex="0" ondblclick="${call}" onkeydown="if(event.key==='Enter'&&event.target.tagName!=='BUTTON'){${call}}"`}
+function openBtn(inv){return `<button class="rowbtn" onclick="event.stopPropagation();openRecord(${inv?`'${inv}'`:''})" aria-label="${t('ui.openrow')}" title="${t('ui.openrow')}">${ic('chev')}</button>`}
 
 /* ===== HOME + RADAR ===== */
 let RQ='';let RGROUP='town';
@@ -1539,11 +1683,16 @@ function filtered(){return ORDERS.filter(o=>
   (!F.inv||o.inv.toLowerCase().includes(F.inv.toLowerCase()))&&
   (!F.cons||o.cons.toLowerCase().includes(F.cons.toLowerCase()))&&
   (!F.client.length||F.client.includes(o.sender))&&
-  (!F.svc.length||F.svc.includes(o.svc))&&(!F.pkg.length||F.pkg.includes(o.pkg))&&(!F.town.length||F.town.includes(o.town))&&
+  (!F.svc.length||F.svc.includes(o.svc))&&(!F.pkg.length||orderPkgGroups(o).some(g=>F.pkg.includes(g.pkg)))&&(!F.town.length||F.town.includes(o.town))&&
   (!F.zip||o.zip.startsWith(F.zip))&&
   (!F.invoice||(o.clientInvoice||'').toLowerCase().includes(F.invoice.toLowerCase()))&&
   (!F.pack||(o.pickBatch||'').toLowerCase().includes(F.pack.toLowerCase())))
-  .sort((a,b)=>{const k=SORT.k;let va=a[k],vb=b[k];if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return (va<vb?-1:va>vb?1:0)*SORT.dir})}
+  /* Ordenar por Paquete/Piezas usa los valores derivados de las líneas de paquete, no los campos
+     sueltos `pkg`/`pcs` — de lo contrario una orden con varios tipos ordenaría por el tipo "principal"
+     y por las piezas de una sola línea, no por lo que la fila realmente muestra. */
+  .sort((a,b)=>{const k=SORT.k;
+    const val=o=>k==='pkg'?orderPkgLabel(o):k==='pcs'?orderPcs(o):o[k];
+    let va=val(a),vb=val(b);if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return (va<vb?-1:va>vb?1:0)*SORT.dir})}
 function filtersHtml(){const f=t('entry.f');
  return `<div class="filters">
   <div class="f"><label>${f.from}</label><input type="date" value="${F.from}" onchange="setF('from',this.value)"></div>
@@ -1561,11 +1710,31 @@ function filtersHtml(){const f=t('entry.f');
  </div>`}
 const TCOLS=[['pickBatch','pickBatch',0],['inv','inv',0],['date','date',0],['cons','cons',0],['town','town',0],['zip','zip',0],['svc','svc',0],['pkg','pkg',0],['pcs','pcs',1],['cod','cod',1],['st','status',0]];
 function tableHtml(){const rows=filtered();
- const th=TCOLS.map(([k,lk,num])=>`<th class="sort ${num?'n':''}" onclick="sortBy('${k}')">${t('cols.'+lk)}${SORT.k===k?`<span class="arr">${SORT.dir>0?'▲':'▼'}</span>`:''}</th>`).join('')+'<th></th><th></th><th></th>';
- /* Pedido explícito de Luis: "las ordenes con estatus entradas pueden ser editadas" — mismo guard
-    que ya tenía "Eliminar" (solo mientras la orden sigue en Entrada, st==='cap'): se agrega un botón
-    de lápiz junto al de basurero que abre el modal de edición (ver openOrderEditor). */
- const body=rows.map(o=>`<tr ${rowAttrs()}><td><span class="ref" style="font-size:11px">${o.pickBatch||'—'}</span></td><td><span class="ref">${o.inv}</span></td><td class="mono">${o.date.slice(5)}</td><td>${o.cons}</td><td>${o.town}</td><td class="mono">${o.zip}</td><td>${o.svc}</td><td>${o.pkg}</td><td class="n">${o.pcs}</td><td class="n"><span class="cash ${o.cod?'':'z'}">${o.cod?'$'+money(o.cod):'—'}</span></td><td><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span></td><td style="width:32px">${o.st==='cap'?`<button class="rowbtn" onclick="event.stopPropagation();openOrderEditor('${o.inv}')" aria-label="${t('consign.edit')}" title="${t('consign.edit')}">${ic('pencil')}</button>`:''}</td><td style="width:32px">${o.st==='cap'?`<button class="rowbtn" onclick="event.stopPropagation();deleteOrder('${o.inv}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button>`:''}</td><td style="width:36px">${openBtn()}</td></tr>`).join('');
+ const th=TCOLS.map(([k,lk,num])=>`<th class="sort ${num?'n':''}" onclick="sortBy('${k}')">${t('cols.'+lk)}${SORT.k===k?`<span class="arr">${SORT.dir>0?'▲':'▼'}</span>`:''}</th>`).join('')+'<th></th><th></th>';
+ /* Una fila por TIPO de paquete (pedido explícito de Luis: "si el tipo de paquete es distinto a los
+    que ya estan creados, en el listado de ordenes debe aparecer varios"). Las filas siguientes de una
+    misma orden repiten su número, fecha, consignatario, COD y estatus — son la MISMA orden, no varias —
+    así que esas celdas se dejan vacías en las continuaciones y el bloque se marca con una línea
+    divisoria arriba, para que se lea como un solo envío con varias líneas de paquete. Ojo: eliminar y
+    abrir el expediente son acciones de la ORDEN completa, así que sus botones solo salen en la primera
+    fila del grupo. */
+ const body=rows.map(o=>{const groups=orderPkgGroups(o);
+   return groups.map((g,gi)=>{const first=gi===0;
+     const dim='style="color:var(--faint)"';
+     return `<tr ${rowAttrs(o.inv)} ${first?'style="border-top:1px solid var(--line-2)"':''}>
+      <td>${first?`<span class="ref" style="font-size:11px">${o.pickBatch||'—'}</span>`:''}</td>
+      <td>${first?`<span class="ref">${o.inv}</span>`:`<span ${dim} style="font-size:11px">↳</span>`}</td>
+      <td class="mono">${first?o.date.slice(5):''}</td>
+      <td>${first?o.cons:''}</td>
+      <td>${first?o.town:''}</td>
+      <td class="mono">${first?o.zip:''}</td>
+      <td>${first?o.svc:''}</td>
+      <td>${g.pkg}${g.descs.length?`<div class="meta" style="font-size:11px">${g.descs.join(' · ')}</div>`:''}</td>
+      <td class="n">${g.pcs}</td>
+      <td class="n">${first?`<span class="cash ${o.cod?'':'z'}">${o.cod?'$'+money(o.cod):'—'}</span>`:''}</td>
+      <td>${first?`<span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span>`:''}</td>
+      <td style="width:32px">${first&&o.st==='cap'?`<button class="rowbtn" onclick="event.stopPropagation();deleteOrder('${o.inv}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button>`:''}</td>
+      <td style="width:36px">${first?openBtn(o.inv):''}</td></tr>`}).join('')}).join('');
  const r=t('entry.r');
  return `<div class="panel"><div class="ph2">${ic('layers')} ${t('entry.tbl')} <span class="r" id="tcount">${rows.length}</span></div>
    <div style="overflow:auto;max-height:380px"><table class="lst"><thead><tr>${th}</tr></thead><tbody id="trows">${body}</tbody></table></div>
@@ -1645,7 +1814,9 @@ function initQuick(){const body=document.getElementById('bbody');if(!body)return
     const quickClient=ENTRY_SCOPE_CLIENT||'Advance Solutions';
     const inv=tr.querySelector('.inv').value||nextOrderNo(quickClient);
     /* modo r\u00e1pido: sin campo de factura/paquete en pantalla \u2014 Teikem genera empaque y factura solos, igual que en el detallado cuando el cliente no los entra */
-    ORDERS.unshift({inv,date:TODAY,sender:quickClient,cons:consObj?consObj.name:(document.getElementById('cac-inp-'+rid).value||'\u2014'),town,zip:townZip[town],svc:svcVal,pkg:pkgVal,pcs:1,cod:cd,dr:'\u2014',st:'cap',note:tr.querySelector('.note').value||'',pickBatch:nextEmpaqueNo(),clientInvoice:nextClientInvoiceNo(quickClient)});
+    /* el modo r\u00e1pido captura un solo paquete por fila (es su raz\u00f3n de ser: una tecla por orden); aun
+       as\u00ed se guarda como l\u00ednea de `packages` para que todas las \u00f3rdenes tengan la misma forma. */
+    ORDERS.unshift({inv,date:TODAY,sender:quickClient,cons:consObj?consObj.name:(document.getElementById('cac-inp-'+rid).value||'\u2014'),town,zip:townZip[town],svc:svcVal,pkg:pkgVal,pcs:1,packages:[{pkg:pkgVal,desc:'',pcs:1}],cod:cd,dr:'\u2014',st:'cap',note:tr.querySelector('.note').value||'',pickBatch:nextEmpaqueNo(),clientInvoice:nextClientInvoiceNo(quickClient)});
     tr.dataset.orderInv=inv;
     tr.classList.add('saved');[...tr.querySelectorAll('input,select,button')].forEach(x=>x.disabled=true);
     document.getElementById('bcod').textContent='$'+money(tot);document.getElementById('bc').textContent=c;
@@ -1656,6 +1827,22 @@ function initQuick(){const body=document.getElementById('bbody');if(!body)return
   return tr}
  body.appendChild(mk());setTimeout(()=>body.querySelector('.inv')?.focus(),60)}
 let DETAIL_CONS_ID=null;
+/* Líneas de paquete de la entrada detallada (pedido explícito de Luis: "debe poderse crear mas de un
+   paquete"). Cada línea es {tipo, descripción, piezas}; se agregan y quitan en vivo. Al escribir en
+   descripción o piezas NO se repinta la lista — solo se actualiza el estado y el ticket — porque
+   repintar en cada tecla le robaría el foco al campo; el repintado solo ocurre al añadir o quitar. */
+let DE_PKGS=[{pkg:TENANT_DEFAULTS.pkg||'',desc:'',pcs:1}];
+function newDePkg(){return {pkg:TENANT_DEFAULTS.pkg||'',desc:'',pcs:1}}
+window.setDePkg=(i,k,v)=>{if(!DE_PKGS[i])return;DE_PKGS[i][k]=(k==='pcs')?(Math.max(1,parseInt(v)||1)):v;updateDetailTicket()};
+window.addDePkg=()=>{DE_PKGS.push(newDePkg());redrawDePkgs()};
+window.removeDePkg=(i)=>{if(DE_PKGS.length<=1)return;DE_PKGS.splice(i,1);redrawDePkgs()};
+function redrawDePkgs(){const host=document.getElementById('de_pkglist');if(host)host.innerHTML=dePkgListHtml();updateDetailTicket()}
+function dePkgListHtml(){const e=t('entry');
+ return DE_PKGS.map((p,i)=>`<div class="r3" style="margin-bottom:8px;align-items:end">
+   <div class="f" style="margin:0"><label>${e.pkgtype}</label><select onchange="setDePkg(${i},'pkg',this.value)">${p.pkg?'':`<option value="" disabled selected>${e.pkgtype}…</option>`}${pkgs.map(x=>`<option ${p.pkg===x?'selected':''}>${x}</option>`).join('')}</select></div>
+   <div class="f" style="margin:0"><label>${e.pkgDesc}</label><input value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="${e.pkgDescPh}" oninput="setDePkg(${i},'desc',this.value)"></div>
+   <div class="f" style="margin:0"><label>${e.pieces}</label><div style="display:flex;gap:6px;align-items:center"><input class="mono" style="flex:1" value="${p.pcs}" oninput="setDePkg(${i},'pcs',this.value)"><button class="rowbtn" ${DE_PKGS.length<=1?'disabled':''} onclick="removeDePkg(${i})" aria-label="${e.removePkg}" title="${e.removePkg}">${ic('trash')}</button></div></div>
+  </div>`).join('')}
 window.detailConsSelect=(c)=>{DETAIL_CONS_ID=c?c.id:null;
  document.getElementById('de_number').value=c?(c.number||''):'';
  document.getElementById('de_addr').value=c?c.address:'';
@@ -1683,10 +1870,13 @@ function updateDetailTicket(){const t2=document.getElementById('dt_cons'),tw=doc
    const drvObj=(drvSel&&drvSel.value)?DRIVERS.find(d=>d.code===drvSel.value):null;
    tc.textContent=drvObj?(drvObj.code+' \u00b7 '+drvObj.name):'\u2014';
  } else {
-   if(tpl) tpl.textContent=t('cols.pkg');
+   const e=t('entry');
+   if(tpl) tpl.textContent=e.packagesTitle;
    if(tcl) tcl.textContent='COD';
-   tp.textContent=(document.getElementById('de_pkg').value||'\u2014')+' \u00b7 '+(document.getElementById('de_pcs').value||1);
-   tc.textContent='$'+money(parseFloat(document.getElementById('de_codamt').value)||0);
+   const lines=DE_PKGS.filter(p=>p.pkg);
+   tp.textContent=lines.length?orderPkgGroups({packages:lines}).map(g=>g.pkg+' \u00d7'+g.pcs).join(' + '):'\u2014';
+   const codEl=document.getElementById('de_codamt');
+   tc.textContent='$'+money(codEl?(parseFloat(codEl.value)||0):0);
  }}
 window.saveDetailOrder=()=>{
  const nameEl=document.getElementById('cac-inp-de_cons');const typedName=(nameEl.value||'').trim();
@@ -1698,34 +1888,74 @@ window.saveDetailOrder=()=>{
  const phone=document.getElementById('de_phone').value||'';
  let consObj=DETAIL_CONS_ID?CONSIGNEES.find(x=>x.id===DETAIL_CONS_ID):CONSIGNEES.find(x=>x.name.toLowerCase()===typedName.toLowerCase());
  if(!consObj){CONS_SEQ++;consObj={id:'C'+CONS_SEQ,number:number||undefined,name:typedName,address,town,phone,active:true,clientId:ENTRY_SCOPE_CLIENT||null};CONSIGNEES.push(consObj)}
- const inv=document.getElementById('de_inv').value||nextOrderNo(clientVal);
- /* n\u00famero de factura: lo entra el cliente si su ajuste de numeraci\u00f3n lo pide (de_clientinv);
-    si no, o si el campo no existe en esta variante del formulario (entrada especial), Teikem lo genera. */
+ /* n\u00famero de orden y de factura: ya no se piden en la secci\u00f3n de paquetes (ver renderSec3) \u2014 Teikem
+    los genera. El campo `de_inv` solo sobrevive en la variante de entrega especial, as\u00ed que se lee
+    con guarda en vez de asumir que existe. */
+ const invEl=document.getElementById('de_inv');
+ const inv=(invEl&&invEl.value.trim())||nextOrderNo(clientVal);
  const clientInvEl=document.getElementById('de_clientinv');
  const clientInvoice=(clientInvEl&&clientInvEl.value.trim())||nextClientInvoiceNo(clientVal);
  /* n\u00famero de empaque: SIEMPRE tiene valor; en esta v\u00eda de entrada (no Recolecci\u00f3n y empaque) lo genera Teikem */
  const pickBatch=nextEmpaqueNo();
+ /* El n\u00famero de factura solo puede repetirse si lo TECLE\u00d3 alguien: cuando lo genera Teikem es \u00fanico
+    por construcci\u00f3n. `typedInvoice` distingue los dos casos. */
+ const typedInvoice=!!(clientInvEl&&!clientInvEl.disabled&&clientInvEl.value.trim());
+ let order=null,trip=null;
  if(ENTRY_SPECIAL){
    const svcSel=document.getElementById('de_svcspecial');const svcLabel=svcSel?svcSel.value:'';
    if(!svcLabel){toast(t('entry.needSpecialSvc'));if(svcSel)svcSel.focus();return}
    const drvSel=document.getElementById('de_driver');const driverCode=drvSel?drvSel.value:'';
    if(!driverCode){toast(t('entry.needDriver'));if(drvSel)drvSel.focus();return}
    const amount=driverTripRateFor(driverCode,svcLabel); // congelado al crear el viaje \u2014 ver principio "freeze at generation"; tarifa del CHOFER (DriverTripRate), no la del cliente
-   ORDERS.unshift({inv,date:TODAY,sender:clientVal,cons:consObj.name,town,zip:townZip[town]||document.getElementById('de_zip').value,svc:svcVal,pkg:svcLabel,pcs:1,cod:0,dr:driverCode,st:'route',note:'',special:true,pickBatch,clientInvoice});
-   TRIP_SEQ++;DRIVER_TRIPS.unshift({id:'VJ-'+TRIP_SEQ,driver:driverCode,date:TODAY,desc:svcLabel+' \u2014 '+consObj.name,label:svcLabel,amount});
-   toast(t('entry.orderSaved')+': '+consObj.name);
+   order={inv,date:TODAY,sender:clientVal,cons:consObj.name,town,zip:townZip[town]||document.getElementById('de_zip').value,svc:svcVal,pkg:svcLabel,pcs:1,packages:[{pkg:svcLabel,desc:'',pcs:1}],cod:0,dr:driverCode,st:'route',note:'',special:true,pickBatch,clientInvoice};
+   trip={driver:driverCode,date:TODAY,desc:svcLabel+' \u2014 '+consObj.name,label:svcLabel,amount};
  } else {
-   const pkgVal=document.getElementById('de_pkg').value;if(!pkgVal){toast(t('entry.needPkg'));document.getElementById('de_pkg').focus();return}
+   /* Una orden puede llevar varias l\u00edneas de paquete, de tipos distintos (ver DE_PKGS). Se descartan
+      las l\u00edneas sin tipo escogido; `pkg`/`pcs` se siguen guardando como tipo principal y total de
+      piezas para que las pantallas que a\u00fan los leen sueltos (facturaci\u00f3n, liquidaci\u00f3n, portal) no se
+      rompan, pero la fuente de verdad es `packages`. */
+   const pkgLines=DE_PKGS.filter(p=>p.pkg).map(p=>({pkg:p.pkg,desc:(p.desc||'').trim(),pcs:Math.max(1,parseInt(p.pcs)||1)}));
+   if(!pkgLines.length){toast(t('entry.needPkg'));return}
    const cd=parseFloat(document.getElementById('de_codamt').value)||0;
-   const pkgNoEl=document.getElementById('de_pkgno');
-   const packageNo=(pkgNoEl&&pkgNoEl.value.trim())||nextPackageNo(clientVal);
-   ORDERS.unshift({inv,date:TODAY,sender:clientVal,cons:consObj.name,town,zip:townZip[town]||document.getElementById('de_zip').value,svc:svcVal,pkg:pkgVal,pcs:parseInt(document.getElementById('de_pcs').value)||1,cod:cd,dr:'\u2014',st:'cap',note:'',pickBatch,clientInvoice,packageNo});
-   toast(t('entry.orderSaved')+': '+consObj.name);
+   const totalPcs=pkgLines.reduce((s,p)=>s+p.pcs,0);
+   order={inv,date:TODAY,sender:clientVal,cons:consObj.name,town,zip:townZip[town]||document.getElementById('de_zip').value,svc:svcVal,pkg:pkgLines[0].pkg,pcs:totalPcs,packages:pkgLines,cod:cd,dr:'\u2014',st:'cap',note:'',pickBatch,clientInvoice,packageNo:nextPackageNo(clientVal)};
  }
+ /* Factura repetida para el MISMO consignatario (pedido explicito de Luis). Se busca solo entre las
+    ordenes de ese consignatario: el mismo numero en otro consignatario no es conflicto. El
+    consignatario decide que pasa - `allowDupInvoice` false (default) bloquea la creacion; true avisa
+    y deja escoger. No aplica cuando el numero lo genero Teikem: ahi es unico de fabrica. */
+ if(typedInvoice){
+   const dup=ORDERS.find(o=>o.cons===consObj.name&&(o.clientInvoice||'')===clientInvoice);
+   if(dup){
+     if(consObj.allowDupInvoice!==true){
+       toast(t('entry.dupBlocked').replace('{cons}',consObj.name).replace('{inv}',clientInvoice).replace('{ref}',dup.inv));
+       return;
+     }
+     PENDING_ORDER={order,trip};
+     openDupInvoiceModal(consObj.name,clientInvoice,dup.inv);
+     return;
+   }
+ }
+ commitDetailOrder({order,trip})};
+/* La confirmacion de factura repetida es un modal, asi que la creacion tuvo que separarse de la
+   validacion: el borrador ya armado espera en PENDING_ORDER y solo se escribe si el usuario confirma. */
+let PENDING_ORDER=null;
+function commitDetailOrder(p){
+ ORDERS.unshift(p.order);
+ if(p.trip){TRIP_SEQ++;DRIVER_TRIPS.unshift({id:'VJ-'+TRIP_SEQ,...p.trip})}
+ toast(t('entry.orderSaved')+': '+p.order.cons);
  report('label');
  renderTable();
- DETAIL_CONS_ID=null;ENTRY_SPECIAL=false;go(CURRENT,true)}; // CURRENT y no 'entrada' fijo: también se llama desde portalEntrada
-function initDetail(){DETAIL_CONS_ID=null;
+ DETAIL_CONS_ID=null;ENTRY_SPECIAL=false;DE_PKGS=[newDePkg()];go(CURRENT,true)}
+window.openDupInvoiceModal=(consName,invoiceNo,dupRef)=>{const e=t('entry');
+ const gm=document.getElementById('genModal');gm.style.width='520px';
+ gm.innerHTML=`<div class="pi" style="justify-content:space-between"><b style="font-size:15px">${ic('alert')} ${e.dupTitle}</b><button class="x" onclick="cancelDupInvoice()" style="border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px">\u2715</button></div>
+  <div class="pb"><p style="margin:0;font-size:13.5px;line-height:1.5">${e.dupBody.replace('{cons}',consName).replace('{ref}',dupRef).replace('{inv}',invoiceNo)}</p></div>
+  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="cancelDupInvoice()">${e.dupDont}</button><button class="btn sm flow" onclick="confirmDupInvoice()">${ic('check')} ${e.dupCreate}</button></div>`;
+ document.getElementById('genScrim').classList.add('on')};
+window.confirmDupInvoice=()=>{const p=PENDING_ORDER;PENDING_ORDER=null;closeGenModal();if(p)commitDetailOrder(p)};
+window.cancelDupInvoice=()=>{PENDING_ORDER=null;closeGenModal();toast(t('entry.dupCancelled'))};
+function initDetail(){DETAIL_CONS_ID=null;DE_PKGS=[newDePkg()];
  cacRegister('de_cons', c=>detailConsSelect(c), typed=>detailConsNew(typed));
  updateDetailTicket()}
 window.toggleSpecialEntry=(checked)=>{ENTRY_SPECIAL=checked;
@@ -1734,21 +1964,37 @@ window.toggleSpecialEntry=(checked)=>{ENTRY_SPECIAL=checked;
  updateDetailTicket()};
 window.onDetailClientChange=()=>{
  const host=document.getElementById('de_sec3');if(host) host.innerHTML=renderSec3();
+ /* quién asigna el número de factura depende del cliente (CLIENTS[].invoiceBy), así que el campo se
+    repinta al cambiar de cliente */
+ const inv=document.getElementById('de_invbox');if(inv) inv.innerHTML=detailInvoiceFieldHtml();
  updateDetailTicket()};
+/* Número de factura de la orden. Luis lo había mandado a quitar de la sección de PAQUETES ("de la
+   información del paquete no hace falta el numero de orden ni numero de factura") — con razón: es un
+   dato de la orden, no del paquete. Pero sí hace falta poder entrarlo, porque hay clientes cuya
+   numeración de factura la asigna el propio cliente (CLIENTS[].invoiceBy==='client', ej. AXISCARE) y
+   porque la validación de facturas repetidas por consignatario necesita un número tecleado. Así que
+   vuelve, pero en el paso 01 (Cliente y servicio), junto al resto de los datos de la orden. Cuando la
+   numeración es de Teikem el campo se muestra deshabilitado y marcado como automático — misma
+   convención que ya tenía antes. */
+function detailInvoiceFieldHtml(){const e=t('entry');
+ const el=document.getElementById('de_client');
+ const clientId=el?el.value:(ENTRY_SCOPE_CLIENT||senders[0]);
+ const c=CLIENTS.find(x=>x.id===clientId);
+ const byClient=c?(c.invoiceBy||'system')==='client':false;
+ return `<div class="f" style="margin:0"><label>${e.clientInvoiceLabel}${byClient?'':' <span style="color:var(--faint);font-weight:400">'+e.autoTag+'</span>'}</label>
+  <input id="de_clientinv" class="mono" ${byClient?'':`disabled placeholder="${e.autoPh}"`}></div>`}
 function renderSec3(){const e=t('entry');
  if(!ENTRY_SPECIAL){
-   const clientElx=document.getElementById('de_client');const clientIdX=clientElx?clientElx.value:(ENTRY_SCOPE_CLIENT||senders[0]);
-   const clientObjX=CLIENTS.find(x=>x.id===clientIdX);
-   const orderBy=clientObjX?(clientObjX.orderBy||'client'):'client';
-   const invoiceBy=clientObjX?(clientObjX.invoiceBy||'system'):'system';
+   /* Pedido expl\u00edcito de Luis: de la informaci\u00f3n del paquete se quitaron el n\u00famero de orden y el
+      n\u00famero de factura (son datos de la ORDEN, no del paquete, y aqu\u00ed siempre los genera Teikem) y se
+      agreg\u00f3 una descripci\u00f3n por paquete. Tambi\u00e9n se quit\u00f3 el "Tipo de COD": c\u00f3mo se cobra (efectivo,
+      cheque\u2026) se sabe al ENTREGAR, no al capturar \u2014 ese dato se registra en Procesar entregas y se
+      muestra en el expediente de la orden. */
    return `<h3><span class="num">03</span> ${e.s3}</h3><p class="d">${e.s3d}</p>
-    <div class="r3">
-     <div class="f"><label>${e.orderNoLabel}${orderBy==='system'?' <span style="color:var(--faint);font-weight:400">'+e.autoTag+'</span>':''}</label><input id="de_inv" class="mono" ${orderBy==='system'?`disabled placeholder="${e.autoPh}"`:''}></div>
-     <div class="f"><label>${e.clientInvoiceLabel}${invoiceBy==='system'?' <span style="color:var(--faint);font-weight:400">'+e.autoTag+'</span>':''}</label><input id="de_clientinv" class="mono" ${invoiceBy==='system'?`disabled placeholder="${e.autoPh}"`:''}></div>
-     <div class="f"><label>${e.pkgNoLabel}</label><input id="de_pkgno" class="mono" placeholder="${e.autoPh}"></div>
-    </div>
-    <div class="r3"><div class="f"><label>${e.pkgtype}</label><select id="de_pkg" onchange="updateDetailTicket()">${TENANT_DEFAULTS.pkg?'':`<option value="" disabled selected>${e.pkgtype}\u2026</option>`}${pkgs.map(x=>`<option ${TENANT_DEFAULTS.pkg===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f"><label>${e.pieces}</label><input id="de_pcs" class="mono" value="1" oninput="updateDetailTicket()"></div></div>
-    <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${e.codtype}</label><select id="de_codtype"><option>${e.none}</option><option>Efectivo</option><option>Cheque</option><option>Company check</option></select></div><div class="f" style="margin:0"><label>${e.codamt}</label><input id="de_codamt" class="mono" value="0.00" oninput="updateDetailTicket()"></div></div>`;
+    <div id="de_pkglist">${dePkgListHtml()}</div>
+    <button class="btn sm" style="margin-bottom:16px" onclick="addDePkg()">${ic('plus')} ${e.addPkg}</button>
+    <div class="f" style="margin-bottom:0;max-width:230px"><label>${e.codamt}</label><input id="de_codamt" class="mono" value="0.00" oninput="updateDetailTicket()"></div>
+    <p class="d" style="margin:8px 0 0">${t('rec.codTypeAtDelivery')}</p>`;
  }
  const clientEl=document.getElementById('de_client');const client=clientEl?clientEl.value:senders[0];
  const csvcs=specialServicesFor(client);
@@ -1761,7 +2007,8 @@ function detailEditor(){const e=t('entry');
   <div>
    <div class="docsec"><h3><span class="num">01</span> ${e.s1}</h3><p class="d">${e.s1d}</p>
     <div class="r2"><div class="f"><label>${e.client}</label>${ENTRY_SCOPE_CLIENT?`<input id="de_client" value="${ENTRY_SCOPE_CLIENT}" disabled>`:`<select id="de_client" onchange="onDetailClientChange()">${senders.map(s=>`<option ${s==='Advance Solutions'?'selected':''}>${s}</option>`).join('')}</select>`}</div><div class="f"><label>${e.svc}</label><select id="de_svc" onchange="updateDetailTicket()">${TENANT_DEFAULTS.svc?'':`<option value="" disabled selected>${e.svc}…</option>`}${svcs.map(s=>`<option ${TENANT_DEFAULTS.svc===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-    <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${e.ready}</label><input id="de_ready" type="date" value="${TODAY}"></div><div class="f" style="margin:0"><label>${e.due}</label><input id="de_due" type="date" value="${TODAY}"></div></div></div>
+    <div class="r3" style="margin-bottom:0"><div class="f" style="margin:0"><label>${e.ready}</label><input id="de_ready" type="date" value="${TODAY}"></div><div class="f" style="margin:0"><label>${e.due}</label><input id="de_due" type="date" value="${TODAY}"></div>
+     <div id="de_invbox">${detailInvoiceFieldHtml()}</div></div></div>
    <div class="docsec"><h3><span class="num">02</span> ${e.s2}</h3><p class="d">${e.s2d}</p>
     <div class="r2"><div class="f"><label>${e.name}</label>${cacInput('de_cons','',t('cols.cons'))}</div><div class="f"><label>${e.consNumber}</label><input id="de_number" class="mono"></div></div>
     <div class="f"><label>${e.addr}</label><input id="de_addr" oninput="updateDetailTicket()"></div>
@@ -1799,46 +2046,11 @@ function ordenes(){const e=t('ordenes');const en=t('entry');
  }
  return head+entrySection+filtersHtml()+`<div id="tablehost">${tableHtml()}</div>`}
 
-/* ===== Edición de una orden en Entrada (pedido explícito de Luis: "las ordenes con estatus
-   entradas pueden ser editadas") — hasta ahora una orden en estatus Entrada (`st==='cap'`) solo se
-   podía eliminar desde la tabla, nunca corregir; el chevron de la fila abre `record()` ("Expediente
-   de orden"), que es una pantalla de ejemplo con datos fijos (AX-48217 · Farmacia Las Marías) para
-   ilustrar la línea de tiempo de una orden, no un editor real por-orden — así que no servía para
-   esto. Se agrega un modal de edición liviano con los mismos campos que ya se capturan en la Entrada
-   detallada y que sí viven en el objeto `Order`: consignatario, pueblo, ZIP, servicio, tipo de
-   paquete, piezas, COD y comentario. Deliberadamente NO incluye cliente ni los números de
-   orden/factura/empaque — esos definen la identidad y numeración de la orden (ligada al cliente en
-   el momento de crearla) y cambiarlos después es un problema de re-numeración distinto al de corregir
-   un dato de captura; se muestran como referencia de solo lectura en el encabezado del modal. Sigue
-   la misma guarda que "Eliminar": solo disponible mientras la orden sigue en Entrada. */
-let OB=null; // {inv}: qué orden se está editando; los valores del formulario se leen del ORDERS vivo, no de un borrador aparte
-window.openOrderEditor=(inv)=>{const o=ORDERS.find(x=>x.inv===inv);if(!o||o.st!=='cap')return;
- OB={inv};
- const gm=document.getElementById('genModal');gm.style.width='560px';
- gm.innerHTML=renderOrderEditorHtml();document.getElementById('genScrim').classList.add('on')};
-window.cancelOrderEdit=()=>{OB=null;closeGenModal()};
-window.saveOrderEdit=()=>{const e=t('ordenes');const en=t('entry');
- const o=ORDERS.find(x=>x.inv===OB.inv);if(!o){OB=null;closeGenModal();return}
- const consEl=document.getElementById('oe_cons');const cons=(consEl.value||'').trim();
- if(!cons){toast(en.needConsignee);consEl.focus();return}
- const svcEl=document.getElementById('oe_svc');if(!svcEl.value){toast(en.needSvc);svcEl.focus();return}
- const pkgEl=document.getElementById('oe_pkg');if(!pkgEl.value){toast(en.needPkg);pkgEl.focus();return}
- const townEl=document.getElementById('oe_town'),zipEl=document.getElementById('oe_zip'),pcsEl=document.getElementById('oe_pcs'),codEl=document.getElementById('oe_cod'),noteEl=document.getElementById('oe_note');
- o.cons=cons;o.town=townEl.value;o.zip=zipEl.value||townZip[townEl.value]||o.zip;o.svc=svcEl.value;o.pkg=pkgEl.value;
- o.pcs=parseInt(pcsEl.value)||1;o.cod=parseFloat(codEl.value)||0;o.note=noteEl.value||'';
- toast(e.orderUpdated+': '+o.inv);
- OB=null;closeGenModal();renderTable()};
-function renderOrderEditorHtml(){const e=t('ordenes');const en=t('entry');const o=ORDERS.find(x=>x.inv===OB.inv);
- if(!o){return `<div class="pb"><p class="d">—</p></div>`}
- return `<div class="pi" style="justify-content:space-between"><b style="font-size:15px">${ic('pencil')} ${e.editOrder} · <span class="ref">${o.inv}</span></b><button class="x" onclick="cancelOrderEdit()" style="border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px">✕</button></div>
- <div class="pb">
-  <p class="d" style="margin-top:0">${e.editHint.replace('{client}',o.sender).replace('{pack}',o.pickBatch||'—').replace('{invoice}',o.clientInvoice||'—')}</p>
-  <div class="r2"><div class="f"><label>${t('cols.cons')}</label><input id="oe_cons" value="${(o.cons||'').replace(/"/g,'&quot;')}"></div><div class="f"><label>${en.svc}</label><select id="oe_svc">${svcs.map(s=>`<option ${o.svc===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-  <div class="r3" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="oe_town" onchange="document.getElementById('oe_zip').value=townZip[this.value]||''">${towns.map(x=>`<option ${o.town===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${t('cols.zip')}</label><input id="oe_zip" class="mono" value="${o.zip||''}"></div><div class="f" style="margin:0"><label>${en.pieces}</label><input id="oe_pcs" class="mono" value="${o.pcs}"></div></div>
-  <div class="r2"><div class="f"><label>${en.pkgtype}</label><select id="oe_pkg">${pkgs.map(x=>`<option ${o.pkg===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f"><label>${t('cols.cod')}</label><input id="oe_cod" class="mono" value="${money(o.cod||0)}"></div></div>
-  <div class="f" style="margin-bottom:0"><label>${en.comment}</label><input id="oe_note" value="${(o.note||'').replace(/"/g,'&quot;')}"></div>
- </div>
- <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="cancelOrderEdit()">${t('drv.cancel')}</button><button class="btn sm flow" onclick="saveOrderEdit()">${ic('check')} ${t('roles').saveBtn}</button></div>`}
+/* Nota de diseño: la edición de una orden en Entrada vivía aquí como un modal aparte, abierto con un
+   ícono de lápiz en la tabla. Luis lo descartó ("Para la edición de la orden no hacia falta un nuevo
+   icono de lapiz") — ahora se edita dentro del propio Expediente de orden, la pantalla que ya abría
+   la flecha de la fila (ver `record()`/`recordDetailPanelHtml`), que además muestra el detalle
+   completo con la misma estructura de la entrada detallada. El modal y su ícono se eliminaron. */
 
 /* ===== ESCANEO ===== */
 let SCANMODE='out';let PEND=[];let FEED=[];
@@ -2026,7 +2238,47 @@ function codbox(){const es=LANG==='es';
 /* ===== FACTURACIÓN (BillingRun · basado en el reporte real Advance Logistics / TRUSS PR) ===== */
 function svcLabel(code){const map={PK:{es:'Recogido',en:'Pickup'},ND:{es:'Next day',en:'Next day'},NI:{es:'Next day Isla',en:'Next day Island'},WA:{es:'Walk-in',en:'Walk-in'}};
  if(map[code])return map[code][LANG]||map[code].es; return code}
+/* ===== Tarifas: del contrato del cliente, con la genérica del tenant como respaldo =====
+   `billRateFor` y las constantes de abajo son la tarifa GENÉRICA del tenant: la que aplica cuando el
+   contrato del cliente no configura ese componente. El contrato (módulo 1) tiene cinco componentes
+   independientes, cada uno con su checkbox en `client.billing`; hasta ahora la generación de corridas
+   los ignoraba por completo y cobraba siempre lo genérico, aunque la pantalla "Clientes y contratos"
+   ya los dejaba configurar. Estos tres resolvedores los conectan. */
 function billRateFor(svc,pkg){const base={'Next day':12,'Same day':16,'Standard':10}[svc]??12;const pkgAdj={'Pallet':6,'Envelope':-4,'Box':0}[pkg]??0;return base+pkgAdj}
+const GENERIC_EXTRA_PIECE=2.00; // tarifa genérica por pieza extra (la que aplica sin componente "pieza extra")
+const GENERIC_COD_FEE=3.00;     // cargo genérico por COD
+function contractOf(clientId){return CLIENTS.find(c=>c.id===clientId)}
+/* Componente 1, "Por servicio": tarifa de la PRIMERA pieza, con clave servicio+paquete. Si el
+   contrato no tiene fila para esa combinación (o el componente está apagado), cae a la genérica. */
+function contractBaseRate(clientId,svc,pkg){const c=contractOf(clientId);
+ if(c&&c.billing&&c.billing.porServicio){const row=(c.svcRates||[]).find(r=>r.svc===svc&&r.pkg===pkg);if(row)return row.rate}
+ return billRateFor(svc,pkg)}
+/* Componente 2, "Pieza extra con precio especial": tabla de rangos por servicio+paquete, con
+   `TierMode = GRADUATED` (módulo 1) — o sea **marginal**: cada pieza paga la tarifa del tramo en el
+   que cae, no se aplica un solo precio a todas. Ej. con tramos 2–5 a $1.00 y 6+ a $0.75, ocho piezas
+   pagan 4×$1.00 (piezas 2–5) + 3×$0.75 (piezas 6–8) = $6.25. La primera pieza nunca es extra.
+   Si el componente está apagado o no hay tramo para esa combinación, se cobra la pieza extra genérica
+   — que es exactamente lo que dice el módulo 1: este componente existe "cuando el cliente no cobra la
+   pieza extra al precio genérico, sino con su propia tabla". */
+function contractExtraPieces(clientId,svc,pkg,pcs){
+ const n=Math.max(0,(pcs||1)-1); if(!n)return 0;
+ const c=contractOf(clientId);
+ const tiers=(c&&c.billing&&c.billing.piezaExtra)?(c.extraPieceRates||[]).filter(r=>r.svc===svc&&r.pkg===pkg):[];
+ if(!tiers.length)return +(n*GENERIC_EXTRA_PIECE).toFixed(2);
+ let sum=0;
+ for(let piece=2;piece<=pcs;piece++){const tier=tiers.find(r=>piece>=r.from&&piece<=r.to);
+   sum+=tier?tier.rate:GENERIC_EXTRA_PIECE}
+ return +sum.toFixed(2)}
+/* Componente 4, "Cargo por COD": fijo o por ciento del monto cobrado. A diferencia de la pieza extra,
+   aquí el checkbox apagado significa que el cliente NO tiene cargo por COD (es un cargo aditivo que
+   simplemente no forma parte de su factura), no que se cobre el genérico. */
+function contractCodFee(clientId,codAmount){
+ if(!(codAmount>0))return 0;
+ const c=contractOf(clientId);
+ if(!c||!c.billing)return GENERIC_COD_FEE;
+ if(!c.billing.cod)return 0;
+ if(c.codFeeType==='percent')return +(codAmount*(c.codFeeValue||0)/100).toFixed(2);
+ return +(c.codFeeValue||0).toFixed(2)}
 const BILLRUNS=[
  {id:'BR-2026-013', client:'Advance Solutions', from:isoDaysAgo(6), to:isoDaysAgo(4), status:'aprobada', genDate:isoDaysAgo(2), days:[
    {date:isoDaysAgo(6), lines:[
@@ -2105,8 +2357,29 @@ window.generateBillRun=()=>{const client=document.getElementById('nrClient').val
  const rows=ORDERS.filter(o=>o.sender===client&&o.date>=from&&o.date<=to&&o.st==='deliv');
  if(!rows.length){toast(t('fact.noOrders'));return}
  const byDate={};
- rows.forEach(o=>{const priceItem=billRateFor(o.svc,o.pkg),priceOver=(o.pcs-1)*2,priceCod=o.cod>0?3:0;
-   (byDate[o.date]=byDate[o.date]||[]).push({ref:o.inv,cons:o.cons,city:o.town,pkg:o.pkg,svc:o.svc,cod:o.cod,items:o.pcs,priceItem,priceOver,priceCod,priceAdj:0})});
+ /* Una línea de factura POR TIPO DE PAQUETE, no por orden. La tarifa del modelo documentado
+    (módulo 1, componente "Por servicio") tiene clave **servicio + tipo de paquete** — `RateComponent`
+    no conoce ningún concepto de "tipo principal" de una orden — así que una orden con 2 cajas y 1
+    sobre toca dos componentes de tarifa distintos y debe cotizarse con los dos. Dentro de cada tipo
+    se mantiene la estructura de siempre: la primera pieza va a tarifa base y las demás a pieza extra.
+
+    Lo que NO se repite por línea es el COD: es un solo cobro contra el consignatario, con una sola
+    firma — se carga (`priceCod`) y se arrastra (`cod`) únicamente en la primera línea de la orden,
+    para que ni el cargo ni el monto se cuenten dos veces en los totales ni en el resumen.
+    `contLine` marca las líneas de continuación para que la tabla las muestre subordinadas. */
+ rows.forEach(o=>{
+   orderPkgGroups(o).forEach((g,gi)=>{
+     const first=gi===0;
+     /* Precios tomados del CONTRATO del cliente (ver contractBaseRate/contractExtraPieces/
+        contractCodFee), no de la tarifa genérica. Quedan congelados en la línea al generar, según el
+        principio "congelar al generar" — si mañana cambia la tarifa, esta corrida no se recalcula. */
+     (byDate[o.date]=byDate[o.date]||[]).push({
+       ref:o.inv,cons:o.cons,city:o.town,pkg:g.pkg,svc:o.svc,
+       cod:first?o.cod:0,items:g.pcs,
+       priceItem:contractBaseRate(client,o.svc,g.pkg),
+       priceOver:contractExtraPieces(client,o.svc,g.pkg,g.pcs),
+       priceCod:first?contractCodFee(client,o.cod):0,priceAdj:0,
+       pkgDesc:g.descs.join(' · '),contLine:!first})})});
  const days=Object.keys(byDate).sort().map(date=>({date,lines:byDate[date]}));
  BILL_SEQ++;const run={id:'BR-2026-'+BILL_SEQ,client,from,to,status:'generada',genDate:TODAY,days};
  BILLRUNS.unshift(run);BILLSEL=run.id;
@@ -2154,7 +2427,10 @@ function renderBillRunDetail(run){const es=LANG==='es';
    return `<tr><td colspan="12" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${d.date}</td></tr>
    ${d.lines.map((l,li)=>{const lineTotal=l.priceItem+l.priceOver+l.priceCod+l.priceAdj;
      const inp=(field,val,w)=>editable?`<input class="mono" style="width:${w}px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${val}" oninput="setBillLineField('${run.id}',${di},${li},'${field}',this.value)">`:`<span class="mono">${field==='items'?val:'$'+money(val)}</span>`;
-     return `<tr><td><span class="ref">${l.ref}</span></td><td>${l.cons}</td><td>${l.city}</td><td>${l.pkg}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?'$'+money(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
+     /* `contLine` = segunda (o siguiente) línea de la MISMA orden, por llevar otro tipo de paquete:
+        se subordina visualmente (referencia con ↳, consignatario y ciudad en blanco) para que no
+        parezca otra orden. El COD no se repite ahí — se cobró completo en la primera línea. */
+     return `<tr><td>${l.contLine?`<span style="color:var(--faint);font-size:11px">↳ ${l.ref}</span>`:`<span class="ref">${l.ref}</span>`}</td><td>${l.contLine?'':l.cons}</td><td>${l.contLine?'':l.city}</td><td>${l.pkg}${l.pkgDesc?`<div class="meta" style="font-size:10.5px">${l.pkgDesc}</div>`:''}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?'$'+money(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
    <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('fact.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-items">${dt.items}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-base">$${money(dt.base)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-over">$${money(dt.over)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-codc">$${money(dt.codc)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-adj">$${money(dt.adj)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-total">$${money(dt.total)}</td></tr>`}).join('')}
   </tbody></table>
   </div>
@@ -2741,7 +3017,7 @@ function consignatariosScreenHtml(fixedClient,showFilter){const cn=t('consign');
  const shown=pool.filter(c=>matchesQ([c.number,c.name,c.address,c.town,c.phone,consigneeScopeLabel(c),c.active!==false?cn.active:cn.inactive],CONSADMQ));
  const sel=shown.find(c=>c.id===CONSADMSEL)||shown[0]||null;
  return `<div class="head"><div><h1>${fixedClient?cn.titlePortal:cn.title}</h1><p>${fixedClient?cn.subPortal:cn.sub}</p></div>
-  <div class="act">${showFilter?consAdmClientFilterHtml():''}<button class="btn flow" onclick="openConsigneeAdminModal(null,'${escNewEdit}')">${ic('plus')} ${cn.newConsignee}</button><button class="btn" onclick="openConsigneeImportModal('${escEff}')">${ic('upload')} ${cn.importBtn}</button></div></div>
+  <div class="act">${showFilter?consAdmClientFilterHtml():''}<button class="btn flow" onclick="openConsigneeAdminModal(null,'${escNewEdit}')">${ic('plus')} ${cn.newConsignee}</button><button class="btn" onclick="openConsigneeImportModal('${escEff}',${fixedClient?'true':'false'})">${ic('upload')} ${cn.importBtn}</button></div></div>
   <div class="cols" style="grid-template-columns:280px 1fr">
    <div class="panel"><div class="ph2">${ic('users')} ${cn.list} <span class="r">${shown.length}</span></div>
     <div class="qrow">${qbox('consadmq',CONSADMQ,t('ui.mselSearch'),"setConsAdmQ(this.value)")}</div>
@@ -2759,6 +3035,10 @@ function consignatariosScreenHtml(fixedClient,showFilter){const cn=t('consign');
       <div class="f" style="margin:0;grid-column:1/-1"><label>${cn.status}</label>
        <label class="sw"><input type="checkbox" ${sel.active!==false?'checked':''} onchange="setConsigneeActive('${sel.id}',this.checked)"><span class="tk"></span>${sel.active!==false?cn.active:cn.inactive}</label>
       </div>
+      <div class="f" style="margin:0;grid-column:1/-1"><label>${cn.dupInvTitle}</label>
+       <label class="sw"><input type="checkbox" ${sel.allowDupInvoice===true?'checked':''} onchange="setConsigneeDupInvoice('${sel.id}',this.checked)"><span class="tk"></span>${sel.allowDupInvoice===true?cn.dupInvOn:cn.dupInvOff}</label>
+       <p class="d" style="margin:6px 0 0">${cn.dupInvHint}</p>
+      </div>
      </div></div>${customFieldsPanelHtml('ubicacion')}`:`<div class="empty" style="min-height:300px"><p>${cn.selectOne}</p></div>`}
    </div>
   </div>`}
@@ -2775,6 +3055,9 @@ function renderConsigneeAdminModalHtml(c){const cn=t('consign');const lockedClie
   <div class="f"><label>${cn.address}</label><input id="ca_addr" value="${c&&c.address?c.address.replace(/"/g,'&quot;'):''}"></div>
   <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="ca_town">${towns.map(x=>`<option ${c&&c.town===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${cn.phone}</label><input id="ca_phone" class="mono" placeholder="787-000-0000" value="${c&&c.phone?c.phone:''}"></div></div>
   ${lockedClient?'':`<div class="f" style="margin-top:10px;margin-bottom:0"><label>${cn.scope}</label><select id="ca_client"><option value="">${cn.shared}</option>${CLIENTS.map(cl=>`<option value="${cl.id}" ${c&&c.clientId===cl.id?'selected':''}>${cl.id}</option>`).join('')}</select></div>`}
+  <div class="f" style="margin-top:12px;margin-bottom:0"><label>${cn.dupInvTitle}</label>
+   <label class="sw"><input type="checkbox" id="ca_dupinv" ${c&&c.allowDupInvoice===true?'checked':''}><span class="tk"></span>${cn.dupInvAllow}</label>
+   <p class="d" style="margin:6px 0 0">${cn.dupInvHint}</p></div>
  </div>
  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="closeGenModal()">${t('drv.cancel')}</button><button class="btn sm flow" onclick="saveConsigneeAdmin()">${ic('check')} ${t('drv.save')}</button></div>`}
 window.saveConsigneeAdmin=()=>{
@@ -2785,16 +3068,18 @@ window.saveConsigneeAdmin=()=>{
  const phone=document.getElementById('ca_phone').value||'';
  const clientSel=document.getElementById('ca_client');
  const clientId=CONSADM_SCOPE?CONSADM_SCOPE:(clientSel&&clientSel.value?clientSel.value:null);
+ const dupEl=document.getElementById('ca_dupinv');const allowDupInvoice=!!(dupEl&&dupEl.checked);
  if(CONSADM_EDIT_ID){
   const c=CONSIGNEES.find(x=>x.id===CONSADM_EDIT_ID);
-  if(c){c.number=number||undefined;c.name=name;c.address=address;c.town=town;c.phone=phone;if(!CONSADM_SCOPE)c.clientId=clientId;toast(t('consign.updated')+': '+name)}
+  if(c){c.number=number||undefined;c.name=name;c.address=address;c.town=town;c.phone=phone;c.allowDupInvoice=allowDupInvoice;if(!CONSADM_SCOPE)c.clientId=clientId;toast(t('consign.updated')+': '+name)}
  } else {
   CONS_SEQ++;const id='C'+CONS_SEQ;
-  const c={id,number:number||undefined,name,address,town,phone,active:true,clientId};
+  const c={id,number:number||undefined,name,address,town,phone,active:true,clientId,allowDupInvoice};
   CONSIGNEES.push(c);CONSADMSEL=id;toast(t('consign.created')+': '+name);
  }
  closeGenModal();go(CURRENT,true)};
 window.setConsigneeActive=(id,checked)=>{const c=CONSIGNEES.find(x=>x.id===id);if(!c)return;c.active=checked;go(CURRENT,true)};
+window.setConsigneeDupInvoice=(id,checked)=>{const c=CONSIGNEES.find(x=>x.id===id);if(!c)return;c.allowDupInvoice=!!checked;go(CURRENT,true)};
 
 /* ===== Importar consignatarios desde CSV — el mapeo lo define una PLANTILLA, por posición de
    columna ("el primer campo es nombre, el segundo es número, el tercero la dirección…", tal como
@@ -2803,7 +3088,7 @@ window.setConsigneeActive=(id,checked)=>{const c=CONSIGNEES.find(x=>x.id===id);i
    el botón de escoger archivo queda deshabilitado hasta que hay una activa. CONSIMP_SCOPE fija el
    cliente dueño de los importados; cuando no hay alcance fijo (Catálogo con filtro "todos") se
    ofrece además un campo "Cliente" como una columna más a mapear. ===== */
-let CONSIMP_SCOPE='',CONSIMP_SHOW_CLIENT_COL=false,CONSIMP_HEADERS=[],CONSIMP_ROWS=[],CONSIMP_FILENAME='';
+let CONSIMP_SCOPE='',CONSIMP_FIXED='',CONSIMP_SHOW_CLIENT_COL=false,CONSIMP_HEADERS=[],CONSIMP_ROWS=[],CONSIMP_FILENAME='';
 const CONSIMP_DIACRITICS_RE=new RegExp('[̀-ͯ]','g');
 function normConsImp(s){return (s||'').toString().normalize('NFD').replace(CONSIMP_DIACRITICS_RE,'').toLowerCase().trim()}
 /* El catálogo de campos destino es fijo — son TODOS los campos que tiene un consignatario (número,
@@ -2826,8 +3111,12 @@ function parseConsImpCsv(text){
   cells.push(cur);
   return cells.map(c=>c.trim());
  })}
-window.openConsigneeImportModal=(scopeClient)=>{
- CONSIMP_SCOPE=scopeClient||'';CONSIMP_SHOW_CLIENT_COL=!CONSIMP_SCOPE;
+window.setConsImpClient=(v)=>{CONSIMP_SCOPE=v||'';document.getElementById('genModal').innerHTML=renderConsigneeImportModalHtml()};
+window.openConsigneeImportModal=(scopeClient,fixed)=>{
+ /* CONSIMP_FIXED: el Portal de clientes entra con el cliente fijo y ahí el dropdown no se ofrece.
+    En Catálogo el filtro de pantalla solo PRESELECCIONA el dropdown; se puede cambiar. */
+ CONSIMP_FIXED=fixed?(scopeClient||''):'';
+ CONSIMP_SCOPE=scopeClient||'';CONSIMP_SHOW_CLIENT_COL=true;
  CONSIMP_HEADERS=[];CONSIMP_ROWS=[];CONSIMP_FILENAME='';
  CONSIMP_TPL_SEL=CONSIMP_TEMPLATES.length?CONSIMP_TEMPLATES[0].id:null; // nunca empieza "sin plantilla" si ya hay alguna guardada
  const gm=document.getElementById('genModal');gm.style.width='680px';
@@ -2933,6 +3222,17 @@ function renderConsigneeImportModalHtml(){const cn=t('consign');
    <button class="btn sm" onclick="openConsImpTplEditor(null)">${ic('plus')} ${cn.importTplNewBtn}</button>
    ${activeTpl?`<button class="btn sm" onclick="openConsImpTplEditor('${activeTpl.id}')">${ic('gear')} ${cn.importTplEditBtn}</button>`:''}
   </div>
+  ${/* Pedido explícito de Luis: la importación debe traer un dropdown para identificar el cliente, con
+       el mismo estilo y funcionalidad de los demás (por eso `ssel`, que reusa las clases de `msel` y
+       hereda su buscador). Antes el cliente salía del filtro de la pantalla o se adivinaba haciendo
+       match por nombre contra una columna del CSV; ahora se escoge explícitamente. Si la plantilla
+       además mapea una columna `client`, ese valor manda POR FILA — así un archivo mezclado sigue
+       funcionando — y este dropdown queda como el destino por defecto de las filas sin columna o con
+       un nombre que no cuadra con ningún cliente. En el Portal el cliente viene fijo y no se ofrece. */''}
+  ${CONSIMP_FIXED?`<div class="f"><label>${cn.importClientLabel}</label><input value="${CONSIMP_FIXED}" disabled></div>`
+   :`<div class="f"><label>${cn.importClientLabel}</label>
+     ${ssel('cimpclient',[{value:'',label:cn.shared}].concat(CLIENTS.map(c=>({value:c.id,label:c.id}))),CONSIMP_SCOPE||'',v=>setConsImpClient(v),cn.shared)}
+     <p class="d" style="margin:6px 0 0">${colIndexFor('client')>=0?cn.importClientColHint:cn.importClientHint}</p></div>`}
   ${activeTpl?`<div class="note" style="margin:0 0 14px;display:flex;align-items:center;gap:8px"><span>${ic('doc')} ${cn.importTplPreviewLabel}: ${activeTpl.columns.map((c,i)=>c?`<b>${i+1}.</b> ${cn['f_'+c]}`:'').filter(Boolean).join(' · ')||cn.importIgnore}</span><button class="rowbtn" style="margin-left:auto" onclick="deleteConsImpTemplate('${activeTpl.id}')" title="${cn.importTplDelete}">${ic('trash')}</button></div>`
    :`<div class="note" style="margin:0 0 14px">${cn.importTplNoneHint}</div>`}
   <div class="f"><label>${cn.importFile}</label>
@@ -2962,12 +3262,17 @@ window.importConsignees=()=>{
   const address=get(r,'address');
   const town=get(r,'town')||undefined;
   const phone=get(r,'phone');
-  let clientId=CONSIMP_SCOPE||null;
-  if(CONSIMP_SHOW_CLIENT_COL){
-   const raw=get(r,'client');
-   if(raw){const match=CLIENTS.find(cl=>normConsImp(cl.id)===normConsImp(raw));clientId=match?match.id:null}
+  /* Precedencia del cliente: el dropdown escogido manda como destino por defecto; si la plantilla
+     mapea una columna `client` y esa fila trae un nombre que cuadra con un cliente real, esa fila se
+     va a ese cliente (permite un archivo mezclado). Una fila con nombre que no cuadra con nadie NO se
+     queda huérfana: cae en lo escogido en el dropdown. */
+  let clientId=(CONSIMP_FIXED||CONSIMP_SCOPE)||null;
+  const rawClient=get(r,'client');
+  if(!CONSIMP_FIXED&&rawClient){
+   const match=CLIENTS.find(cl=>normConsImp(cl.id)===normConsImp(rawClient));
+   if(match)clientId=match.id;
   }
-  CONSIGNEES.push({id,number,name,address,town,phone,active:true,clientId});
+  CONSIGNEES.push({id,number,name,address,town,phone,active:true,clientId,allowDupInvoice:false});
   created++;
  });
  closeGenModal();
@@ -3453,18 +3758,87 @@ function dispatch(){DSEL=0;DSEL_REFS=[];const d=t('disp');
   </div>`}
 
 /* ===== EXPEDIENTE ===== */
-function record(){const e=['e1','e2','e3','e4','e5'],tm=['09:14','10:02','11:20','12:05','—'],wh=['Luis Casado','Estación A','Despacho','Chofer 010','—'];
-  return `<div class="head"><div><h1><span class="ref" style="font-size:20px">AX-48217</span> · Farmacia Las Marías</h1><p>Toa Baja · Advance Solutions</p></div>
-   <div class="act"><button class="btn" onclick="report('label')">${ic('print')} ${t('rec.label')}</button><button class="btn">${ic('doc')} ${t('rec.pod')}</button><button class="btn flow">${ic('truck')} ${t('rec.assign')}</button></div></div>
+/* ===== Expediente de orden =====
+   Pedido explícito de Luis: "El mismo icono de la flecha, la pantalla que abre, ademas de lo que
+   tiene debe tener el detalle de la orden como aparece en la entrada de ordenes detallada". Antes
+   esta pantalla mostraba SIEMPRE la misma orden de ejemplo (AX-48217 · Farmacia Las Marías) con datos
+   escritos a mano — por eso hacía falta un lápiz aparte en la tabla para poder editar. Ahora abre la
+   orden de la fila (ver `openRecord`/RECORD_INV) y trae, además de lo que ya tenía (línea de tiempo,
+   COD, campos personalizados, contactos), el detalle completo de la orden con la misma estructura de
+   la entrada detallada: cliente y servicio, consignatario, y las líneas de paquete.
+
+   Mientras la orden está en Entrada (`st==='cap'`) esos campos son editables ahí mismo y se guardan
+   con un botón — sustituye por completo al modal del lápiz, que se eliminó. Una vez que la orden
+   avanza, los mismos datos se muestran de solo lectura, porque corregirlos ya implica otros procesos
+   (reimprimir etiquetas, reprocesar) y no una simple edición de captura. */
+let RE_PKGS=null; // líneas de paquete en edición dentro del expediente; null = no se ha empezado a editar
+function recordOrder(){return RECORD_INV?ORDERS.find(o=>o.inv===RECORD_INV):ORDERS[0]}
+function recEditable(o){return !!o&&o.st==='cap'}
+function recPkgs(o){if(!RE_PKGS)RE_PKGS=orderPackages(o).map(p=>({...p}));return RE_PKGS}
+window.setRePkg=(i,k,v)=>{const a=RE_PKGS;if(!a||!a[i])return;a[i][k]=(k==='pcs')?Math.max(1,parseInt(v)||1):v};
+window.addRePkg=()=>{const o=recordOrder();recPkgs(o).push({pkg:TENANT_DEFAULTS.pkg||pkgs[0],desc:'',pcs:1});go('envio',true)};
+window.removeRePkg=(i)=>{if(!RE_PKGS||RE_PKGS.length<=1)return;RE_PKGS.splice(i,1);go('envio',true)};
+window.saveRecordOrder=()=>{const o=recordOrder();if(!recEditable(o))return;
+ const g=id=>document.getElementById(id);
+ const cons=(g('re_cons').value||'').trim();
+ if(!cons){toast(t('entry.needConsignee'));g('re_cons').focus();return}
+ const lines=(RE_PKGS||orderPackages(o)).filter(p=>p.pkg).map(p=>({pkg:p.pkg,desc:(p.desc||'').trim(),pcs:Math.max(1,parseInt(p.pcs)||1)}));
+ if(!lines.length){toast(t('entry.needOnePkg'));return}
+ o.cons=cons;o.svc=g('re_svc').value;o.town=g('re_town').value;
+ o.zip=(g('re_zip').value||'').trim()||townZip[o.town]||o.zip;
+ o.cod=parseFloat(g('re_cod').value)||0;o.note=g('re_note').value||'';
+ o.packages=lines;o.pkg=lines[0].pkg;o.pcs=lines.reduce((s,p)=>s+p.pcs,0);
+ RE_PKGS=null;
+ toast(t('ordenes.orderUpdated')+': '+o.inv);
+ go('envio',true)};
+function recordDetailPanelHtml(o){const e=t('entry');const r=t('rec');const ed=recEditable(o);
+ const lines=ed?recPkgs(o):orderPackages(o);
+ const ro=(val)=>`<div style="padding:7px 0;font-size:13.5px">${val||'—'}</div>`;
+ return `<div class="panel" style="margin-bottom:16px"><div class="ph2">${ic('form')} ${r.detail}
+   ${ed?`<button class="btn sm flow" style="margin-left:auto" onclick="saveRecordOrder()">${ic('check')} ${r.saveChanges}</button>`:''}</div>
+  <div class="pb">
+   <p class="d" style="margin-top:0">${ed?r.editableHint:r.lockedHint}</p>
+   <div class="r2"><div class="f"><label>${e.client}</label>${ro(o.sender)}</div>
+    <div class="f"><label>${e.svc}</label>${ed?`<select id="re_svc">${svcs.map(s=>`<option ${o.svc===s?'selected':''}>${s}</option>`).join('')}</select>`:ro(o.svc)}</div></div>
+   <div class="r3"><div class="f"><label>${t('cols.cons')}</label>${ed?`<input id="re_cons" value="${(o.cons||'').replace(/"/g,'&quot;')}">`:ro(o.cons)}</div>
+    <div class="f"><label>${t('cols.town')}</label>${ed?`<select id="re_town" onchange="document.getElementById('re_zip').value=townZip[this.value]||''">${towns.map(x=>`<option ${o.town===x?'selected':''}>${x}</option>`).join('')}</select>`:ro(o.town)}</div>
+    <div class="f"><label>${t('cols.zip')}</label>${ed?`<input id="re_zip" class="mono" value="${o.zip||''}">`:ro(o.zip)}</div></div>
+   <div class="ph2" style="border:none;padding:6px 0 8px;font-size:13px">${ic('box')} ${e.packagesTitle} <span class="r" style="font-size:12px;color:var(--muted)">${orderPcs(o)} ${t('cols.pcs').toLowerCase()}</span></div>
+   ${ed?lines.map((p,i)=>`<div class="r3" style="margin-bottom:8px;align-items:end">
+      <div class="f" style="margin:0"><label>${e.pkgtype}</label><select onchange="setRePkg(${i},'pkg',this.value)">${pkgs.map(x=>`<option ${p.pkg===x?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="f" style="margin:0"><label>${e.pkgDesc}</label><input value="${(p.desc||'').replace(/"/g,'&quot;')}" placeholder="${e.pkgDescPh}" oninput="setRePkg(${i},'desc',this.value)"></div>
+      <div class="f" style="margin:0"><label>${e.pieces}</label><div style="display:flex;gap:6px;align-items:center"><input class="mono" style="flex:1" value="${p.pcs}" oninput="setRePkg(${i},'pcs',this.value)"><button class="rowbtn" ${lines.length<=1?'disabled':''} onclick="removeRePkg(${i})" aria-label="${e.removePkg}" title="${e.removePkg}">${ic('trash')}</button></div></div>
+     </div>`).join('')+`<button class="btn sm" onclick="addRePkg()">${ic('plus')} ${e.addPkg}</button>`
+    :`<table class="lst densetbl"><thead><tr><th>${e.pkgtype}</th><th>${e.pkgDesc}</th><th class="n">${e.pieces}</th></tr></thead><tbody>
+      ${lines.map(p=>`<tr><td>${p.pkg||'—'}</td><td style="color:var(--muted)">${p.desc||'—'}</td><td class="n mono">${p.pcs}</td></tr>`).join('')}
+     </tbody></table>`}
+   <div class="r2" style="margin-top:14px;margin-bottom:0"><div class="f" style="margin:0"><label>${e.codamt}</label>${ed?`<input id="re_cod" class="mono" value="${money(o.cod||0)}">`:ro(o.cod?'$'+money(o.cod):'—')}</div>
+    <div class="f" style="margin:0"><label>${e.comment}</label>${ed?`<input id="re_note" value="${(o.note||'').replace(/"/g,'&quot;')}">`:ro(o.note)}</div></div>
+  </div></div>`}
+function record(){const o=recordOrder();const r=t('rec');
+  if(!o)return `<div class="head"><div><h1>${t('nav.envio')[0]}</h1><p>${t('nav.envio')[1]}</p></div></div>
+   <div class="empty" style="min-height:300px"><div>${ic('box')}<p style="margin-top:8px">${r.notFound}</p><button class="btn flow" style="margin-top:14px" onclick="go('ordenes')">${r.backToList} ${ic('chev')}</button></div></div>`;
+  const e=['e1','e2','e3','e4','e5'],tm=['09:14','10:02','11:20','12:05','—'],wh=['Luis Casado','Estación A','Despacho','Chofer 010','—'];
+  /* La línea de tiempo sigue siendo ilustrativa (el mock no guarda eventos reales por orden); se
+     recorta hasta donde llegó el estatus de ESTA orden para que al menos no contradiga lo que la
+     fila dice — una orden en Entrada no puede mostrar "En ruta". */
+  const upto={cap:1,wh:2,disp:3,route:4,cod:5,deliv:5,fail:4}[o.st]||1;
+  const evs=e.slice(0,upto);
+  return `<div class="head"><div><h1><span class="ref" style="font-size:20px">${o.inv}</span> · ${o.cons}</h1><p>${o.town} · ${o.sender} · <span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span></p></div>
+   <div class="act"><button class="btn" onclick="go('ordenes')">${ic('chevL')} ${r.backToList}</button><button class="btn" onclick="report('label')">${ic('print')} ${r.label}</button><button class="btn">${ic('doc')} ${r.pod}</button><button class="btn flow">${ic('truck')} ${r.assign}</button></div></div>
   <div class="cols" style="grid-template-columns:1fr 320px">
-   <div class="panel"><div class="ph2">${ic('clock')} ${t('rec.tl')} <span class="r">${t('rec.audit')}</span></div><div class="pb">
-     ${e.map((k,i)=>`<div style="display:flex;gap:13px;padding-bottom:${i<e.length-1?'16px':'0'}"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)"></span>${i<e.length-1?'<span style="flex:1;width:2px;background:var(--line);margin:3px 0"></span>':''}</div><div style="flex:1"><b style="font-size:13.5px">${t('rec.'+k)}</b><div style="color:var(--muted);font-size:12px;margin-top:2px"><span class="mono">${tm[i]}</span> · ${wh[i]}</div></div></div>`).join('')}</div></div>
+   <div>
+    ${recordDetailPanelHtml(o)}
+    <div class="panel"><div class="ph2">${ic('clock')} ${r.tl} <span class="r">${r.audit}</span></div><div class="pb">
+     ${evs.map((k,i)=>`<div style="display:flex;gap:13px;padding-bottom:${i<evs.length-1?'16px':'0'}"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)"></span>${i<evs.length-1?'<span style="flex:1;width:2px;background:var(--line);margin:3px 0"></span>':''}</div><div style="flex:1"><b style="font-size:13.5px">${t('rec.'+k)}</b><div style="color:var(--muted);font-size:12px;margin-top:2px"><span class="mono">${tm[i]}</span> · ${wh[i]}</div></div></div>`).join('')}</div></div>
+   </div>
    <div><div class="panel" style="margin-bottom:16px"><div class="ph2">${ic('cash')} COD</div><div class="pb">
-       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('rec.amount')}</span><b class="cash">$125.82</b></div>
-       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('rec.type')}</span><b>Efectivo</b></div>
-       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('rec.state')}</span><span class="chip s-cod">${t('st.cod')}</span></div></div></div>
+       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.amount}</span><b class="cash">${o.cod?'$'+money(o.cod):'—'}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.type}</span><b style="color:${o.st==='deliv'||o.st==='cod'?'var(--text)':'var(--faint)'}">${o.st==='deliv'||o.st==='cod'?'Efectivo':r.pendingType}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.state}</span><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span></div>
+       ${o.cod?`<p class="d" style="margin:8px 0 0">${r.codTypeAtDelivery}</p>`:''}</div></div>
      ${customFieldsPanelHtml('orden',{cost_center:'CC-FARMA-02',fragile:true})}
-     <div class="panel"><div class="ph2">${ic('users')} ${t('rec.contacts')}</div><div class="pb"><div style="padding:4px 0"><b>Carmen Ortiz</b> · <span style="color:var(--muted)">${t('rec.receipt')}</span><div class="mono" style="color:var(--flow-2);font-size:12.5px">787-555-0142</div></div></div></div></div></div>`}
+     <div class="panel"><div class="ph2">${ic('users')} ${r.contacts}</div><div class="pb"><div style="padding:4px 0"><b>Carmen Ortiz</b> · <span style="color:var(--muted)">${r.receipt}</span><div class="mono" style="color:var(--flow-2);font-size:12.5px">787-555-0142</div></div></div></div></div></div>`}
 
 /* ===== VISTAS / IMPRESORAS / STUB ===== */
 /* ===== Vistas e informes: motor de datasets combinables =====
@@ -4051,35 +4425,59 @@ function cfTypeLabel(key){const t2=CF_TYPES.find(x=>x.key===key);return t2?t2.la
 /* Sembrados sobre 'orden' con los mismos dos campos que ya mostraba, hardcodeados, el panel
    "Campos personalizados" del Expediente de orden (función record(), ver customFieldsPanelHtml) —
    ahora ese panel lee de este catálogo en vez de tener los valores fijos en el HTML. */
-let CF_SEQ=2;
+let CF_SEQ=3;
 let CUSTOM_FIELDS=[
- {id:'CF-1', entity:'orden', key:'cost_center', labelEs:'Centro de costo', labelEn:'Cost center', type:'text', options:[], required:false, unique:false, defaultValue:'', order:0, showInList:true},
- {id:'CF-2', entity:'orden', key:'fragile', labelEs:'Frágil', labelEn:'Fragile', type:'bool', options:[], required:false, unique:false, defaultValue:false, order:1, showInList:false},
+ {id:'CF-1', entity:'orden', key:'cost_center', labelEs:'Centro de costo', labelEn:'Cost center', type:'text', lookupId:null, required:false, unique:false, defaultValue:'', order:0, showInList:true},
+ {id:'CF-2', entity:'orden', key:'fragile', labelEs:'Frágil', labelEn:'Fragile', type:'bool', lookupId:null, required:false, unique:false, defaultValue:false, order:1, showInList:false},
+ /* sembrado a propósito un campo de tipo lista, apuntando a una lista del catálogo, para que el
+    mecanismo se vea funcionando desde que abre el mock */
+ {id:'CF-3', entity:'orden', key:'condicion', labelEs:'Condición del paquete', labelEn:'Package condition', type:'select', lookupId:'LK-COND', required:false, unique:false, defaultValue:'', order:2, showInList:false},
 ];
+/* Las opciones de un campo tipo lista ya no viven en el campo: vienen de la lista del catálogo a la
+   que apunta (`lookupId`). Se mantiene la lectura del viejo `options[]` como respaldo para no romper
+   ningún campo que se hubiera creado antes de la migración. */
+function cfIsList(f){return f&&(f.type==='select'||f.type==='multiselect')}
+function cfOptions(f){if(!f)return [];if(f.lookupId)return lookupValues(f.lookupId);return f.options||[]}
 let CF_ENTITY_SEL='orden';
 window.selectCFEntity=(key)=>{CF_ENTITY_SEL=key;go('campos',true)};
-let CF_EDIT=null; // {id:existenteOrNull, entity, key, labelEs, labelEn, type, optionsStr, required, unique, defaultValue, showInList}
+let CF_EDIT=null; // {id:existenteOrNull, entity, key, labelEs, labelEn, type, lookupId, required, unique, defaultValue, showInList}
 window.openCFEditor=(id)=>{
  const f=id?CUSTOM_FIELDS.find(x=>x.id===id):null;
- CF_EDIT=f?{...f, optionsStr:(f.options||[]).join(', ')}:{id:null,entity:CF_ENTITY_SEL,key:'',labelEs:'',labelEn:'',type:'text',optionsStr:'',required:false,unique:false,defaultValue:'',showInList:true};
+ CF_EDIT=f?{...f}:{id:null,entity:CF_ENTITY_SEL,key:'',labelEs:'',labelEn:'',type:'text',lookupId:null,required:false,unique:false,defaultValue:'',showInList:true};
  document.getElementById('genModal').innerHTML=renderCFEditorHtml();document.getElementById('genScrim').classList.add('on')};
 window.setCFField=(k,v)=>{CF_EDIT[k]=v;document.getElementById('genModal').innerHTML=renderCFEditorHtml()};
 window.cancelCFEditor=()=>{CF_EDIT=null;closeGenModal()};
-window.saveCFField=()=>{const es=LANG==='es';
+/* "+ Nueva lista…" desde el propio editor del campo: sin esto, atar los campos tipo lista al catálogo
+   obligaría a un flujo de dos pasos (ir a mantener listas, volver a crear el campo). Es exactamente la
+   misma solución que este diseño ya usa para los tipos de servicio especial. La lista nace con las
+   opciones que se tecleen aquí y de ahí en adelante queda disponible para cualquier otro campo. */
+window.createLookupFromCF=()=>{const es=LANG==='es';const cf=t('cfields');
+ const nameEl=document.getElementById('cf_newlist_name');const valsEl=document.getElementById('cf_newlist_vals');
+ const name=(nameEl.value||'').trim();
+ const values=(valsEl.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+ if(!name||!values.length){toast(cf.newListNeed);return}
+ LOOKUP_SEQ++;const id='LK-U'+LOOKUP_SEQ;
+ LOOKUPS.push({id,name,nameEn:name,system:false,values});
+ CF_EDIT.lookupId=id;CF_EDIT.newList=false;
+ document.getElementById('genModal').innerHTML=renderCFEditorHtml();
+ toast(cf.newListCreated+': '+name)};
+window.saveCFField=()=>{const es=LANG==='es';const cf=t('cfields');
  const keyEl=document.getElementById('cf_key');const key=(keyEl.value||'').trim();
  const labelEsEl=document.getElementById('cf_labeles');const labelEs=(labelEsEl.value||'').trim();
  const labelEnEl=document.getElementById('cf_labelen');const labelEn=(labelEnEl.value||'').trim()||labelEs;
  if(!key||!labelEs){toast(es?'Completa la clave y la etiqueta':'Fill in the key and label');return}
  const isSel=CF_EDIT.type==='select'||CF_EDIT.type==='multiselect';
- const options=isSel?(CF_EDIT.optionsStr||'').split(',').map(s=>s.trim()).filter(Boolean):[];
- if(isSel&&!options.length){toast(es?'Agrega al menos una opción':'Add at least one option');return}
+ /* un campo tipo lista ya no lleva sus opciones encima: lleva a QUÉ lista del catálogo apunta */
+ const lookupId=isSel?(CF_EDIT.lookupId||null):null;
+ if(isSel&&!lookupId){toast(cf.needList);return}
+ const patch={key,labelEs,labelEn,type:CF_EDIT.type,lookupId,options:[],required:!!CF_EDIT.required,unique:!!CF_EDIT.unique,defaultValue:CF_EDIT.defaultValue||'',showInList:!!CF_EDIT.showInList};
  if(CF_EDIT.id){
   const f=CUSTOM_FIELDS.find(x=>x.id===CF_EDIT.id);
-  Object.assign(f,{key,labelEs,labelEn,type:CF_EDIT.type,options,required:!!CF_EDIT.required,unique:!!CF_EDIT.unique,defaultValue:CF_EDIT.defaultValue||'',showInList:!!CF_EDIT.showInList});
+  Object.assign(f,patch);
   toast((es?'Campo actualizado: ':'Field updated: ')+labelEs);
  } else {
   CF_SEQ++;
-  CUSTOM_FIELDS.push({id:'CF-'+CF_SEQ,entity:CF_EDIT.entity,key,labelEs,labelEn,type:CF_EDIT.type,options,required:!!CF_EDIT.required,unique:!!CF_EDIT.unique,defaultValue:CF_EDIT.defaultValue||'',order:CUSTOM_FIELDS.filter(x=>x.entity===CF_EDIT.entity).length,showInList:!!CF_EDIT.showInList});
+  CUSTOM_FIELDS.push({id:'CF-'+CF_SEQ,entity:CF_EDIT.entity,...patch,order:CUSTOM_FIELDS.filter(x=>x.entity===CF_EDIT.entity).length});
   toast((es?'Campo creado: ':'Field created: ')+labelEs);
  }
  CF_EDIT=null;closeGenModal();go('campos',true)};
@@ -4095,7 +4493,16 @@ function renderCFEditorHtml(){const cf=t('cfields');const isNew=!CF_EDIT.id;cons
    <div class="f"><label>${cf.fieldType}</label><select onchange="setCFField('type',this.value)">${CF_TYPES.map(t2=>`<option value="${t2.key}" ${CF_EDIT.type===t2.key?'selected':''}>${t2.label()}</option>`).join('')}</select></div></div>
   <div class="r2"><div class="f"><label>${cf.labelEsLabel}</label><input id="cf_labeles" value="${(CF_EDIT.labelEs||'').replace(/"/g,'&quot;')}" onchange="setCFField('labelEs',this.value)"></div>
    <div class="f"><label>${cf.labelEnLabel}</label><input id="cf_labelen" value="${(CF_EDIT.labelEn||'').replace(/"/g,'&quot;')}" onchange="setCFField('labelEn',this.value)"></div></div>
-  ${isSel?`<div class="f"><label>${cf.optionsLabel}</label><input value="${(CF_EDIT.optionsStr||'').replace(/"/g,'&quot;')}" placeholder="${cf.optionsPh}" onchange="setCFField('optionsStr',this.value)"></div>`:''}
+  ${isSel?(CF_EDIT.newList?`<div class="f"><label>${cf.newListTitle}</label>
+     <div class="r2" style="margin-bottom:8px"><input id="cf_newlist_name" placeholder="${cf.newListNamePh}"><input id="cf_newlist_vals" placeholder="${cf.optionsPh}"></div>
+     <div style="display:flex;gap:8px"><button class="btn sm flow" onclick="createLookupFromCF()">${ic('check')} ${cf.newListSave}</button><button class="btn sm" onclick="setCFField('newList',false)">${t('drv.cancel')}</button></div></div>`
+   :`<div class="f"><label>${cf.listLabel}</label>
+     ${ssel('cflookup',LOOKUPS.map(l=>({value:l.id,label:lookupLabel(l)+' ('+l.values.length+')'})),CF_EDIT.lookupId||'',v=>setCFField('lookupId',v),cf.listPick)}
+     <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <button class="btn sm" onclick="setCFField('newList',true)">${ic('plus')} ${cf.newListBtn}</button>
+      ${CF_EDIT.lookupId?`<span style="font-size:11.5px;color:var(--faint)">${lookupValues(CF_EDIT.lookupId).join(' · ')}</span>`:''}
+     </div>
+     <p class="d" style="margin:8px 0 0">${cf.listHint}</p></div>`):''}
   <div class="f"><label>${cf.defaultLabel}</label><input value="${(CF_EDIT.defaultValue||'').toString().replace(/"/g,'&quot;')}" onchange="setCFField('defaultValue',this.value)"></div>
   <div class="r2" style="margin-bottom:0">
    <label style="display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer"><input type="checkbox" ${CF_EDIT.required?'checked':''} onchange="setCFField('required',this.checked)"> ${cf.requiredLabel}</label>
@@ -4116,7 +4523,7 @@ function camposScreen(){const cf=t('cfields');
     <div class="ph2">${ic('tag')} ${CUSTOM_FIELD_ENTITIES.find(e=>e.key===sel).label()}<button class="btn sm flow" style="margin-left:auto" onclick="openCFEditor(null)">${ic('plus')} ${cf.newField}</button></div>
     <div class="pb" style="padding-top:0">
      ${list.length?`<table class="lst densetbl"><thead><tr>${sortTh('custfields','labelSort',cf.fieldLabel)}${sortTh('custfields','key',cf.fieldKey)}${sortTh('custfields','type',cf.fieldType)}${sortTh('custfields','required',cf.requiredLabel)}${sortTh('custfields','showInList',cf.showInListLabel)}<th></th></tr></thead><tbody>
-      ${applySort('custfields',list.map(f=>({f,order:f.order,labelSort:LANG==='es'?f.labelEs:f.labelEn})),'order').map(({f})=>`<tr><td>${LANG==='es'?f.labelEs:f.labelEn}</td><td class="mono">${f.key}</td><td>${cfTypeLabel(f.type)}</td><td>${f.required?ic('check'):'—'}</td><td>${f.showInList?ic('check'):'—'}</td><td style="text-align:right;white-space:nowrap"><button class="rowbtn" onclick="openCFEditor('${f.id}')" title="${t('consign.edit')}">${ic('pencil')}</button> <button class="rowbtn" onclick="deleteCFField('${f.id}')" title="${t('views.deleteBtn')}">${ic('trash')}</button></td></tr>`).join('')}
+      ${applySort('custfields',list.map(f=>({f,order:f.order,labelSort:LANG==='es'?f.labelEs:f.labelEn})),'order').map(({f})=>`<tr><td>${LANG==='es'?f.labelEs:f.labelEn}</td><td class="mono">${f.key}</td><td>${cfTypeLabel(f.type)}${cfIsList(f)&&f.lookupId?`<div class="meta" style="font-size:11px">${ic('tag')} ${(lookupById(f.lookupId)?lookupLabel(lookupById(f.lookupId)):f.lookupId)} · ${cfOptions(f).length}</div>`:''}</td><td>${f.required?ic('check'):'—'}</td><td>${f.showInList?ic('check'):'—'}</td><td style="text-align:right;white-space:nowrap"><button class="rowbtn" onclick="openCFEditor('${f.id}')" title="${t('consign.edit')}">${ic('pencil')}</button> <button class="rowbtn" onclick="deleteCFField('${f.id}')" title="${t('views.deleteBtn')}">${ic('trash')}</button></td></tr>`).join('')}
      </tbody></table>`:`<div class="empty" style="min-height:160px"><p>${cf.noFields}</p></div>`}
     </div>
    </div>
@@ -4839,7 +5246,7 @@ function printers(){const pr=t('pr');return `<div class="head"><div><h1>${pr.tit
   <div class="cols" style="grid-template-columns:1fr 1fr">${printerConfigPanelHtml('label')}${printerConfigPanelHtml('doc')}</div>
   ${labelBuilderPanelHtml()}`}
 /* ===== ALMACÉN: datos de ejemplo ===== */
-const PRODCATS = ['Consumibles','Equipo médico','Empaque','Repuestos'];
+const PRODCATS = lookupValues('LK-PRODCAT'); // mismo catálogo de listas que los demás dropdowns
 const PRODUCTS = [
  {sku:'GLU-100', name:'Medidor de glucosa Accu-Trend', cat:'Equipo médico', uom:'ea', total:86, reserved:12, track:'serial', reorder:20, active:true, purchaseCost:38.50, salePrice:64.99, client:null},
  {sku:'GLU-STR', name:'Tiras reactivas Accu-Trend (caja 50)', cat:'Consumibles', uom:'box', total:340, reserved:40, track:'lot', reorder:100, active:true, purchaseCost:9.20, salePrice:16.50, client:null},
@@ -5410,7 +5817,8 @@ function renderPackModalHtml(b){const e=t('entry'),p=t('pickscr'),es=LANG==='es'
   <div class="r3"><div class="f" style="margin:0"><label>${e.svc}</label><select id="pk_svc">${TENANT_DEFAULTS.svc?'':`<option value="" disabled selected>${e.svc}\u2026</option>`}${svcs.map(x=>`<option ${TENANT_DEFAULTS.svc===x?'selected':''}>${x}</option>`).join('')}</select></div>
    <div class="f" style="margin:0"><label>${e.pkgtype}</label><select id="pk_pkg">${TENANT_DEFAULTS.pkg?'':`<option value="" disabled selected>${e.pkgtype}\u2026</option>`}${pkgs.map(x=>`<option ${TENANT_DEFAULTS.pkg===x?'selected':''}>${x}</option>`).join('')}</select></div>
    <div class="f" style="margin:0"><label>${e.pieces}</label><input id="pk_pcs" class="mono" value="${defaultPcs}"></div></div>
-  <div class="r3" style="margin-bottom:0"><div class="f" style="margin:0"><label>${p.invoiceNo}</label><input id="pk_invoice" class="mono" placeholder="${p.invoiceOpt}"></div><div class="f" style="margin:0"><label>${e.codtype}</label><select id="pk_codtype"><option>${e.none}</option><option>Efectivo</option><option>Cheque</option><option>Company check</option></select></div><div class="f" style="margin:0"><label>${e.codamt}</label><input id="pk_codamt" class="mono" value="0.00"></div></div>
+  <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${p.invoiceNo}</label><input id="pk_invoice" class="mono" placeholder="${p.invoiceOpt}"></div><div class="f" style="margin:0"><label>${e.codamt}</label><input id="pk_codamt" class="mono" value="0.00"></div></div>
+  <p class="d" style="margin:8px 0 0">${t('rec.codTypeAtDelivery')}</p>
  </div>
  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="closeGenModal()">${es?'Cancelar':'Cancel'}</button><button class="btn sm flow" onclick="confirmPackOrder('${b.id}')">${ic('check')} ${p.buildPack}</button></div>`}
 window.confirmPackOrder=(batchId)=>{const b=PICK_BATCHES.find(x=>x.id===batchId);if(!b||b.status!=='collected')return;
@@ -6689,12 +7097,12 @@ document.getElementById('cmdbtn').onclick=openPal;
    solo botón (ver #cmdbar) para tener un input real (#cmdinput, escribible y compatible con
    lectores de código de barras: escriben el texto y disparan Enter solos) más un botón aparte
    (#cmdbtn, con el atajo "/") que sigue abriendo el buscador completo exactamente como antes. Al
-   presionar Enter en el input: si el texto coincide con el número de orden, empaque o factura de
-   una orden existente, se salta directo a Órdenes filtrado a esa orden (mismo mecanismo que ya usa
-   el radar de Pulso, `goOrdersWith`) y, si esa orden sigue en Entrada, abre de una vez su editor
-   (ver openOrderEditor) — el flujo típico de "escaneo el paquete que tengo en la mano para
-   corregirlo". Si no matchea ninguna orden, se asume que es una búsqueda de texto normal y cae al
-   comportamiento de siempre: abre el buscador completo, ya precargado con lo que se escribió. */
+   presionar Enter en el input: si el texto coincide con el número de orden, empaque o factura de una
+   orden existente, se abre directo su Expediente de orden — que muestra el detalle completo y, si la
+   orden sigue en Entrada, permite corregirla ahí mismo. Ese es el flujo típico de "escaneo el paquete
+   que tengo en la mano para verlo o arreglarlo", y evita el rebote de antes (ir a la lista filtrada y
+   además abrir un modal encima). Si no matchea ninguna orden, se asume que es una búsqueda de texto
+   normal y cae al comportamiento de siempre: abre el buscador completo, precargado con lo escrito. */
 document.getElementById('cmdinput').addEventListener('keydown',e=>{
  if(e.key!=='Enter')return;
  e.preventDefault();
@@ -6704,8 +7112,7 @@ document.getElementById('cmdinput').addEventListener('keydown',e=>{
  const match=ORDERS.find(o=>o.inv.toLowerCase()===q||(o.pickBatch&&o.pickBatch.toLowerCase()===q)||(o.clientInvoice&&o.clientInvoice.toLowerCase()===q));
  if(match){
    e.target.value='';
-   goOrdersWith('inv',match.inv);
-   if(match.st==='cap')openOrderEditor(match.inv);
+   openRecord(match.inv);
    toast((LANG==='es'?'Orden encontrada: ':'Order found: ')+match.inv);
    return;
  }
