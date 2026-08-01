@@ -17,6 +17,7 @@
   --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
   --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
   --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
   --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
   --label-paper:#fff; --label-ink:#0B2C66;
   --hexd:#0B2C66; --hexl:#1F6FE5;
@@ -32,6 +33,7 @@
   --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
   --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
   --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
   --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
 }
 *{box-sizing:border-box}
@@ -48,9 +50,10 @@ svg{width:16px;height:16px;flex:none}
 
 /* ===== SIDEBAR ===== */
 .rail{background:linear-gradient(180deg,var(--panel),var(--bg));border-right:1px solid var(--line-2);display:flex;flex-direction:column;overflow:hidden}
-.rbrand{display:block;cursor:pointer;padding:16px 13px 14px;border-bottom:1px solid var(--line-2);background:linear-gradient(135deg,rgba(31,111,229,.14),transparent 65%)}
+.rbrand{display:block;cursor:pointer;padding:16px 13px 14px;border-bottom:1px solid var(--line-2);background:linear-gradient(135deg,var(--brand-wash),transparent 65%)}
 #brandfull{width:100%}
-#brandfull svg{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 14px rgba(46,124,246,.4))}
+#brandfull svg{width:100%;height:auto;display:block;filter:drop-shadow(0 4px 14px var(--brand-glow))}
+#brandfull img,#brandmini img{width:100%;height:auto;display:block}
 #brandmini{display:none;width:44px;margin:0 auto}
 
 .rnav{flex:1;overflow-y:auto;padding:6px 9px}
@@ -830,7 +833,24 @@ const T={
      reauthLabel:'Ventana de reautenticación (AAL2)',minutesWord:'minutos',
      reauthHint:'Acciones sensibles (aprobar facturación, cambiar permisos, exportar a contabilidad) piden reautenticarse si la última verificación es más vieja que esta ventana.',
      note:'"Actividad" combina, en una sola tabla filtrable, dos bitácoras que en el sistema real son independientes: qué cambió (AuditLog) y quién intentó qué (SecurityEvent) — cada fila conserva su tipo. Las filas de API keys se leen en vivo desde Integraciones: crear o revocar una ahí aparece aquí sin capturarla dos veces.'},
-   tenantset:{modulesTitle:'Módulos activos de la compañía',colModule:'Módulo',colStatus:'Estado',statusOn:'Encendido',statusOff:'Apagado',
+   tenantset:{brandTitle:'Colores y logo de la compañía',
+     brandHint:'Los colores de estado (verde, ámbar, rojo) no se personalizan a propósito: verde igual a bien y rojo igual a mal es una convención que, si se rompe, hace que la interfaz se lea al revés.',
+     presetsTitle:'Temas predefinidos',customTitle:'Usar colores propios',
+     flowLabel:'Color de operación',flowHint:'Lo que sale a la calle: órdenes, rutas, entregas.',
+     moneyLabel:'Color de dinero',moneyHint:'El dinero que regresa: COD, facturación, liquidación.',
+     neutralLabel:'Tono base',neutralHint:'De aquí salen fondos, paneles, líneas y texto de toda la aplicación. Es lo que hace que el tema se sienta frío, cálido o gris.',
+     checksOk:'La combinación pasa las validaciones',checksWarn:'Revisa estos puntos antes de usarla',
+     contrastWord:'contraste',contrastMin:'mínimo',hueWord:'Separación entre los dos acentos:',hueMin:'mínimo',
+     acc_flow:'Operación',acc_money:'Dinero',acc_text:'Texto',acc_muted:'Texto atenuado',
+     modeDark:'modo oscuro',modeLight:'modo claro',
+     brandResetBtn:'Restaurar',brandReset:'Marca restaurada',
+     logoTitle:'Logo',
+     logoHint:'La barra lateral usa dos piezas: el lockup completo y la marca cuadrada para cuando está colapsada. Cada una necesita su versión invertida, porque el fondo cambia entre modo claro y oscuro. SVG o PNG, hasta 512 KB.',
+     logoFull:'Lockup — fondo claro',logoFullInv:'Lockup — fondo oscuro',
+     logoMini:'Marca cuadrada — fondo claro',logoMiniInv:'Marca cuadrada — fondo oscuro',
+     logoNone:'Sin logo',logoPick:'Cargar',logoClear:'Quitar',logoLoaded:'logo cargado',
+     logoBadType:'Formato no admitido — usa SVG, PNG, JPG o WebP',logoTooBig:'El archivo pasa de 512 KB',
+     modulesTitle:'Módulos activos de la compañía',colModule:'Módulo',colStatus:'Estado',statusOn:'Encendido',statusOff:'Apagado',
      coreLabel:'Núcleo — siempre activo',liveBadge:'Se refleja en el menú',dependsOnPrefix:'Requiere:',
      needDependency:'Primero activa: {name}',
      modulesHint:'"Se refleja en el menú" son los módulos que de verdad ocultan o muestran su pantalla del menú lateral y del buscador (WMS, Cross-dock formal, COD, Campos personalizados, Portal de clientes). Los demás se muestran para representar el catálogo completo de capacidades de la plataforma — en este mock todavía no tienen pantalla propia que ocultar, pero en el sistema real cualquiera de ellos haría lo mismo.',
@@ -1173,7 +1193,24 @@ const T={
      reauthLabel:'Reauthentication window (AAL2)',minutesWord:'minutes',
      reauthHint:'Sensitive actions (approving billing, changing permissions, exporting to accounting) require reauthentication if the last verification is older than this window.',
      note:'"Activity" combines, in one filterable table, two logs that are independent in the real system: what changed (AuditLog) and who attempted what (SecurityEvent) — each row keeps its type. API key rows are read live from Integrations: creating or revoking one there shows up here without capturing it twice.'},
-   tenantset:{modulesTitle:'Active tenant modules',colModule:'Module',colStatus:'Status',statusOn:'On',statusOff:'Off',
+   tenantset:{brandTitle:'Company colors and logo',
+     brandHint:'State colors (green, amber, red) are deliberately not customizable: green means good and red means bad is a convention that, once broken, makes the interface read backwards.',
+     presetsTitle:'Preset themes',customTitle:'Use my own colors',
+     flowLabel:'Operations color',flowHint:'What goes out to the street: orders, routes, deliveries.',
+     moneyLabel:'Money color',moneyHint:'The money coming back: COD, billing, settlement.',
+     neutralLabel:'Base tone',neutralHint:'Backgrounds, panels, lines and text across the whole app come from this. It is what makes a theme feel cool, warm or plain gray.',
+     checksOk:'This combination passes the checks',checksWarn:'Review these before using it',
+     contrastWord:'contrast',contrastMin:'minimum',hueWord:'Separation between the two accents:',hueMin:'minimum',
+     acc_flow:'Operations',acc_money:'Money',acc_text:'Text',acc_muted:'Muted text',
+     modeDark:'dark mode',modeLight:'light mode',
+     brandResetBtn:'Reset',brandReset:'Branding reset',
+     logoTitle:'Logo',
+     logoHint:'The sidebar uses two pieces: the full lockup and the square mark for when it is collapsed. Each needs its inverted version, because the background changes between light and dark mode. SVG or PNG, up to 512 KB.',
+     logoFull:'Lockup — light background',logoFullInv:'Lockup — dark background',
+     logoMini:'Square mark — light background',logoMiniInv:'Square mark — dark background',
+     logoNone:'No logo',logoPick:'Upload',logoClear:'Remove',logoLoaded:'logo loaded',
+     logoBadType:'Unsupported format — use SVG, PNG, JPG or WebP',logoTooBig:'The file is over 512 KB',
+     modulesTitle:'Active tenant modules',colModule:'Module',colStatus:'Status',statusOn:'On',statusOff:'Off',
      coreLabel:'Core — always on',liveBadge:'Reflected in the menu',dependsOnPrefix:'Requires:',
      needDependency:'Enable first: {name}',
      modulesHint:'"Reflected in the menu" are the modules that really hide or show their screen in the sidebar and the search palette (WMS, Formal cross-dock, COD, Custom fields, Client portal). The rest are shown to represent the platform’s full capability catalog — in this mock they don’t have their own screen to hide yet, but in the real system any of them would do the same.',
@@ -7012,10 +7049,240 @@ function tenantPipelinePanelHtml(){const aj=t('tenantset');const stages=ORDER_PI
    </tbody></table></div></div>
   <div class="note" style="margin:0;border:none;padding:10px 16px 14px">${aj.pipelineHint}</div>
  </div>`}
+/* ===== Marca del tenant: colores y logo =====
+   Pedido de Luis. La app ya definía TODO su color como variables CSS (37 en `:root`, y el tema claro
+   no hace más que redefinir el mismo set), así que un tema por tenant es sobrescribir un puñado de
+   esas variables — no hay que tocar una sola regla de estilo.
+
+   Qué SÍ y qué NO se deja personalizar, que es donde estos sistemas se arruinan:
+   - **Marca (personalizable):** los dos acentos `--flow` y `--money`. Ojo: aquí NO son decorativos,
+     son semánticos — todo el lenguaje visual es "dos corrientes" (azul lo que sale a la calle,
+     naranja el dinero que vuelve). Se pueden recolorear, pero el sistema VALIDA que sigan siendo
+     distinguibles entre sí (separación de matiz); si no, la metáfora se cae.
+   - **Estado (NO personalizable):** `--ok`, `--warn`, `--danger`, `--info`. Verde=bien y rojo=mal es
+     convención universal; dejar que un tenant los cambie produce una interfaz que se lee al revés.
+     No se exponen, a propósito.
+   - **Superficies (solo vía presets):** `--bg`, `--panel`, `--text` son donde se rompe el contraste,
+     así que no se ofrecen sueltas: van dentro de presets curados donde el contraste ya está resuelto.
+
+   Los presets traen valores explícitos por modo. El modo personalizado solo pide un color base por
+   acento y DERIVA el resto (variante `-2`, fondo y línea) según el modo activo — de lo contrario un
+   tenant con azul marino quedaría ilegible en oscuro y habría que pedirle dos paletas. */
+function hexToRgb(h){h=String(h||'').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');
+ const n=parseInt(h,16);return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}}
+function rgbToHex(r,g,b){const c=v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');return '#'+c(r)+c(g)+c(b)}
+function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0;const l=(mx+mn)/2;
+ if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);
+  h=mx===r?((g-b)/d+(g<b?6:0)):mx===g?((b-r)/d+2):((r-g)/d+4);h*=60}
+ return {h,s,l}}
+function hslToHex(h,s,l){h=((h%360)+360)%360;s=Math.max(0,Math.min(1,s));l=Math.max(0,Math.min(1,l));
+ const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;
+ let r=0,g=0,b=0;
+ if(h<60){r=c;g=x}else if(h<120){r=x;g=c}else if(h<180){g=c;b=x}
+ else if(h<240){g=x;b=c}else if(h<300){r=x;b=c}else{r=c;b=x}
+ return rgbToHex((r+m)*255,(g+m)*255,(b+m)*255)}
+function isValidHex(h){return /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(String(h||''))}
+/* Luminancia relativa y ratio de contraste WCAG — el guardarraíl que separa "un selector de colores"
+   de "un sistema de temas que no produce interfaces ilegibles". */
+function relLum(hex){const {r,g,b}=hexToRgb(hex);
+ const f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};
+ return 0.2126*f(r)+0.7152*f(g)+0.0722*f(b)}
+function contrastRatio(a,b){const l1=relLum(a),l2=relLum(b);const hi=Math.max(l1,l2),lo=Math.min(l1,l2);
+ return (hi+0.05)/(lo+0.05)}
+function hueDistance(a,b){const ha=rgbToHsl(...Object.values(hexToRgb(a))).h,hb=rgbToHsl(...Object.values(hexToRgb(b))).h;
+ const d=Math.abs(ha-hb)%360;return d>180?360-d:d}
+function rgbaOf(hex,alpha){const {r,g,b}=hexToRgb(hex);return `rgba(${r},${g},${b},${alpha})`}
+/* Deriva la rampa completa de un acento a partir de su color base, para el modo dado. Sigue el mismo
+   criterio que ya usaban los temas escritos a mano: en oscuro la variante `-2` ACLARA (para que lea
+   sobre fondo oscuro) y en claro OSCURECE. */
+function deriveAccent(baseHex,mode){const {h,s,l}=rgbToHsl(...Object.values(hexToRgb(baseHex)));
+ const v2=mode==='light'?hslToHex(h,Math.min(1,s+.08),Math.max(.20,l-.18)):hslToHex(h,Math.min(1,s*.92),Math.min(.82,l+.20));
+ return {base:baseHex,v2,bg:rgbaOf(baseHex,mode==='light'?.10:.14),line:rgbaOf(baseHex,mode==='light'?.30:.40)}}
+/* ===== Derivación de TODA la paleta de superficies =====
+   Un tema no es recolorear dos acentos: es la aplicación entera. Pero escribir a mano 10 superficies
+   × 2 modos × 13 temas sería inmantenible, así que se derivan de dos parámetros — **tono base** (`nh`)
+   y **saturación del neutro** (`ns`) — igual que hacen las escalas de color modernas.
+
+   Las escalas de luminosidad de abajo NO son inventadas: se midieron sobre la paleta original de
+   Teikem (que resultó ser hue 222 con 39% de saturación en superficies y 44% de esa saturación en
+   muted/faint, de forma consistente en ambos modos). Por eso el preset por defecto reproduce el
+   aspecto de siempre, y una prueba lo verifica comparando contra los hex originales. */
+const SURF_L={
+ dark:{bg2:.067,bg:.088,panel:.129,panel2:.153,line2:.180,raise:.194,line:.231,faint:.429,muted:.614,text:.935,appTop:.150},
+ light:{text:.153,muted:.429,faint:.614,line:.904,raise:.925,line2:.937,bg:.955,panel2:.965,bg2:.986,panel:1,appTop:1}
+};
+const MUTED_SAT=.44; // muted/faint van menos saturados que las superficies, como en la paleta original
+function deriveSurfaces(nh,ns,mode){const L=SURF_L[mode];const h=nh,s=ns;
+ const c=(l,sat)=>hslToHex(h,sat===undefined?s:sat,l);
+ const o={
+  '--bg':c(L.bg),'--bg-2':c(L.bg2),'--panel':mode==='light'?'#FFFFFF':c(L.panel),
+  '--panel-2':c(L.panel2),'--raise':c(L.raise),
+  '--line':c(L.line),'--line-2':c(L.line2),
+  '--text':c(L.text),'--muted':c(L.muted,s*MUTED_SAT),'--faint':c(L.faint,s*MUTED_SAT),
+  '--neutral-fg':c(mode==='light'?L.muted:L.muted,s*MUTED_SAT*.8)
+ };
+ const top=mode==='light'?'#FFFFFF':c(L.appTop);
+ o['--app-bg']=mode==='light'
+  ? `radial-gradient(1100px 560px at 82% -12%,${top} 0%,${o['--bg']} 60%)`
+  : `radial-gradient(1200px 600px at 80% -10%,${top} 0%,${o['--bg']} 55%)`;
+ return o}
+/* Los presets NO se escogieron a ojo: cada uno se pasó por las mismas validaciones que la pantalla
+   aplica al modo personalizado (contraste ≥ 4.5:1 contra el panel en AMBOS modos —para el texto, el
+   texto atenuado y los dos acentos— y ≥ 40° de separación de matiz entre acentos). Varios candidatos
+   fallaban con su tono original y se les ajustó la luminosidad conservando matiz y saturación, en vez
+   de descartarlos o dejarlos pasar rotos. `test49.js` recorre este arreglo y verifica que todos pasen,
+   así que un preset malo agregado a futuro rompe la corrida.
+   `nh`/`ns` son el tono y la saturación del NEUTRO — lo que hace que un tema se sienta azulado, cálido,
+   verdoso o gris puro. Es la diferencia entre "otro color de botón" y otro tema. */
+const BRAND_PRESETS=[
+ {id:'teikem', nameEs:'Teikem (por defecto)', nameEn:'Teikem (default)', flow:'#1F6FE5', money:'#FF6A1A', nh:222, ns:.39},
+ {id:'marino', nameEs:'Marino', nameEn:'Navy', flow:'#1F59A3', money:'#E08A17', nh:215, ns:.42},
+ {id:'acero', nameEs:'Acero', nameEn:'Steel', flow:'#3D6E9C', money:'#D2691E', nh:210, ns:.26},
+ {id:'carretera', nameEs:'Carretera', nameEn:'Highway', flow:'#D32F2F', money:'#0E8F8F', nh:8, ns:.15},
+ {id:'granate', nameEs:'Granate', nameEn:'Crimson', flow:'#B02A45', money:'#0E8F8F', nh:345, ns:.17},
+ {id:'vino', nameEs:'Vino', nameEn:'Burgundy', flow:'#9E2F4F', money:'#C69214', nh:338, ns:.20},
+ {id:'bosque', nameEs:'Bosque', nameEn:'Forest', flow:'#1E8E5A', money:'#D98324', nh:160, ns:.19},
+ {id:'selva', nameEs:'Selva', nameEn:'Jungle', flow:'#0F7A5A', money:'#C8452D', nh:168, ns:.24},
+ {id:'oliva', nameEs:'Oliva', nameEn:'Olive', flow:'#5B7A2E', money:'#C2571C', nh:92, ns:.15},
+ {id:'turquesa', nameEs:'Turquesa', nameEn:'Turquoise', flow:'#0E9AA7', money:'#E2622C', nh:190, ns:.25},
+ {id:'indigo', nameEs:'Índigo', nameEn:'Indigo', flow:'#4F46E5', money:'#EA8C00', nh:250, ns:.30},
+ {id:'violeta', nameEs:'Violeta', nameEn:'Violet', flow:'#7A4FD1', money:'#D98324', nh:265, ns:.24},
+ {id:'grafito', nameEs:'Grafito', nameEn:'Graphite', flow:'#4E5A6E', money:'#C2691C', nh:220, ns:.06},
+];
+function brandPresetById(id){return BRAND_PRESETS.find(p=>p.id===id)}
+function brandPresetName(p){return LANG==='es'?p.nameEs:p.nameEn}
+/* La saturación del neutro se toma de un color base que escoge el usuario, pero **acotada**: un color
+   vivo daría 100% de saturación y teñiría la interfaz entera de forma insoportable. 0.45 es apenas por
+   encima del 0.39 de la paleta original, o sea el techo de lo que ya se sabe que se ve bien. */
+const NEUTRAL_SAT_MAX=.45;
+let TENANT_BRAND={preset:'teikem', custom:{flow:'#1F6FE5', money:'#FF6A1A', neutral:'#2B3A5C'}, useCustom:false,
+ logoFull:null, logoFullInv:null, logoMini:null, logoMiniInv:null};
+function brandColors(){
+ if(!TENANT_BRAND.useCustom){const p=brandPresetById(TENANT_BRAND.preset)||BRAND_PRESETS[0];
+  return {flow:p.flow,money:p.money,nh:p.nh,ns:p.ns}}
+ const c=TENANT_BRAND.custom;
+ const {h,s}=rgbToHsl(...Object.values(hexToRgb(c.neutral||'#2B3A5C')));
+ return {flow:c.flow,money:c.money,nh:h,ns:Math.min(NEUTRAL_SAT_MAX,s)}}
+/* Aplica el tema completo sobrescribiendo las variables en el <html>. Va inline en el elemento raíz
+   para que gane sobre `:root` y sobre `[data-theme]` sin pelear con especificidad ni inyectar hojas de
+   estilo. Se sobrescriben superficies, líneas, texto y acentos — NO los colores de estado. */
+function applyTenantBrand(){const el=document.documentElement;if(!el)return;
+ const mode=el.dataset.theme==='light'?'light':'dark';
+ const c=brandColors();
+ const surf=deriveSurfaces(c.nh,c.ns,mode);
+ Object.keys(surf).forEach(k=>el.style.setProperty(k,surf[k]));
+ const f=deriveAccent(c.flow,mode),m=deriveAccent(c.money,mode);
+ el.style.setProperty('--flow',f.base);el.style.setProperty('--flow-2',f.v2);
+ el.style.setProperty('--flow-bg',f.bg);el.style.setProperty('--flow-line',f.line);
+ el.style.setProperty('--money',m.base);el.style.setProperty('--money-2',m.v2);
+ el.style.setProperty('--money-bg',m.bg);el.style.setProperty('--money-line',m.line);
+ el.style.setProperty('--brand-wash',rgbaOf(c.flow,mode==='light'?.10:.14));
+ el.style.setProperty('--brand-glow',rgbaOf(c.flow,mode==='light'?.22:.40));
+ /* el hexágono del logo dibujado sigue al acento de operación, o quedaría azul sobre una marca verde */
+ el.style.setProperty('--hexl',c.flow);
+ el.style.setProperty('--hexd',hslToHex(...(({h,s,l})=>[h,s,Math.max(.12,l-.22)])(rgbToHsl(...Object.values(hexToRgb(c.flow))))));
+ renderBrandLogo()}
+/* El logo: la barra lateral usa DOS assets — el lockup completo (#brandfull) y la marca cuadrada
+   (#brandmini, cuando la barra está colapsada) — y como el sidebar cambia de fondo entre claro y
+   oscuro, cada uno necesita su variante invertida. Es exactamente la distinción que el paquete de
+   logos de Teikem ya resuelve con sus archivos `-inv`. Si el tenant no cargó logo, se cae al lockup
+   dibujado en SVG de siempre. */
+function brandLogoFor(slot){const mode=(document.documentElement.dataset.theme==='light')?'light':'dark';
+ const b=TENANT_BRAND;
+ if(slot==='mini')return (mode==='light'?(b.logoMini||b.logoMiniInv):(b.logoMiniInv||b.logoMini))||null;
+ return (mode==='light'?(b.logoFull||b.logoFullInv):(b.logoFullInv||b.logoFull))||null}
+function renderBrandLogo(){const full=document.getElementById('brandfull'),mini=document.getElementById('brandmini');
+ if(full){const src=brandLogoFor('full');full.innerHTML=src?`<img src="${src}" alt="">`:teikemLockup()}
+ if(mini){const src=brandLogoFor('mini');mini.innerHTML=src?`<img src="${src}" alt="">`:teikemLogo(44)}}
+window.setBrandPreset=(id)=>{TENANT_BRAND.preset=id;TENANT_BRAND.useCustom=false;
+ const p=brandPresetById(id);if(p)TENANT_BRAND.custom={flow:p.flow,money:p.money};
+ applyTenantBrand();go('ajustes',true)};
+window.setBrandCustomOn=(on)=>{TENANT_BRAND.useCustom=!!on;applyTenantBrand();go('ajustes',true)};
+window.setBrandCustomColor=(which,val)=>{if(!isValidHex(val))return;
+ TENANT_BRAND.custom[which]=val.startsWith('#')?val:('#'+val);
+ TENANT_BRAND.useCustom=true;applyTenantBrand();go('ajustes',true)};
+/* Validación: contraste de cada acento contra la superficie donde de verdad se usa como TEXTO
+   (`--panel`), en los DOS modos — no basta con que funcione en el que el usuario tiene puesto — más
+   la separación de matiz entre los dos acentos. */
+function brandChecks(){const c=brandColors();const out=[];
+ ['dark','light'].forEach(mode=>{
+  /* el panel ya NO es un valor fijo: sale del propio tema, así que la validación mide contra la
+     superficie que el tenant realmente va a ver */
+  const surf=deriveSurfaces(c.nh,c.ns,mode);
+  const panel=surf['--panel'];
+  /* el texto contra el panel es el chequeo más importante de todos: si falla, la app es ilegible */
+  [['text',surf['--text'],7],['muted',surf['--muted'],4.5],
+   ['flow',deriveAccent(c.flow,mode).v2,4.5],['money',deriveAccent(c.money,mode).v2,4.5]].forEach(([key,color,min])=>{
+   const ratio=contrastRatio(color,panel);
+   out.push({key,mode,ratio:Math.round(ratio*100)/100,min,pass:ratio>=min,type:'contrast'})})});
+ const hd=Math.round(hueDistance(c.flow,c.money));
+ out.push({type:'hue',distance:hd,pass:hd>=40});
+ return out}
+function brandChecksPass(){return brandChecks().every(x=>x.pass)}
+window.uploadBrandLogo=(slot,input)=>{const file=input.files&&input.files[0];if(!file)return;
+ const tset=t('tenantset');
+ if(!/^image\/(svg\+xml|png|jpeg|webp)$/.test(file.type)){toast(tset.logoBadType);return}
+ if(file.size>512*1024){toast(tset.logoTooBig);return}
+ const rd=new FileReader();
+ rd.onload=e=>{TENANT_BRAND[slot]=String(e.target.result);renderBrandLogo();go('ajustes',true);toast(tset.logoLoaded)};
+ rd.readAsDataURL(file)};
+window.clearBrandLogo=(slot)=>{TENANT_BRAND[slot]=null;renderBrandLogo();go('ajustes',true)};
+window.resetBrand=()=>{TENANT_BRAND={preset:'teikem',custom:{flow:'#1F6FE5',money:'#FF6A1A',neutral:'#2B3A5C'},useCustom:false,
+ logoFull:null,logoFullInv:null,logoMini:null,logoMiniInv:null};
+ applyTenantBrand();go('ajustes',true);toast(t('tenantset').brandReset)};
+function brandLogoSlotHtml(slot,label){const tset=t('tenantset');const src=TENANT_BRAND[slot];
+ return `<div class="f" style="margin:0">
+  <label>${label}</label>
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+   <div style="width:110px;height:44px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;overflow:hidden;background:${/Inv$/.test(slot)?'#0D1220':'#FFFFFF'}">
+    ${src?`<img src="${src}" alt="" style="max-width:100%;max-height:100%">`:`<span style="font-size:11px;color:var(--faint)">${tset.logoNone}</span>`}
+   </div>
+   <label class="btn sm" style="cursor:pointer">${ic('upload')} ${tset.logoPick}<input type="file" accept="image/svg+xml,image/png,image/jpeg,image/webp" style="display:none" onchange="uploadBrandLogo('${slot}',this)"></label>
+   ${src?`<button class="rowbtn" onclick="clearBrandLogo('${slot}')" title="${tset.logoClear}">${ic('trash')}</button>`:''}
+  </div></div>`}
+function tenantBrandPanelHtml(){const tset=t('tenantset');const c=brandColors();const checks=brandChecks();
+ const hue=checks.find(x=>x.type==='hue');
+ const swatch=(hex)=>`<span style="display:inline-block;width:14px;height:14px;border-radius:4px;background:${hex};border:1px solid var(--line);vertical-align:-2px"></span>`;
+ return `<div class="panel" style="margin-top:16px"><div class="ph2">${ic('tag')} ${tset.brandTitle}
+   <button class="btn sm" style="margin-left:auto" onclick="resetBrand()">${tset.brandResetBtn}</button></div>
+  <div class="pb">
+   <p class="d" style="margin-top:0">${tset.brandHint}</p>
+   <div class="ph2" style="border:none;padding:4px 0 10px;font-size:13px">${tset.presetsTitle}</div>
+   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+    ${BRAND_PRESETS.map(p=>{const on=!TENANT_BRAND.useCustom&&TENANT_BRAND.preset===p.id;
+      return `<button class="btn sm ${on?'flow':''}" onclick="setBrandPreset('${p.id}')" style="gap:8px">
+       ${swatch(p.flow)}${swatch(p.money)} ${brandPresetName(p)}</button>`}).join('')}
+   </div>
+   <label class="sw" style="margin-bottom:10px"><input type="checkbox" ${TENANT_BRAND.useCustom?'checked':''} onchange="setBrandCustomOn(this.checked)"><span class="tk"></span>${tset.customTitle}</label>
+   ${TENANT_BRAND.useCustom?`<div class="r3" style="margin-bottom:10px">
+     <div class="f" style="margin:0"><label>${tset.flowLabel}</label>
+      <div style="display:flex;gap:8px;align-items:center"><input type="color" value="${c.flow}" onchange="setBrandCustomColor('flow',this.value)" style="width:44px;height:34px;padding:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px">
+      <input class="mono" value="${c.flow}" onchange="setBrandCustomColor('flow',this.value)" style="flex:1"></div>
+      <p class="d" style="margin:4px 0 0">${tset.flowHint}</p></div>
+     <div class="f" style="margin:0"><label>${tset.moneyLabel}</label>
+      <div style="display:flex;gap:8px;align-items:center"><input type="color" value="${c.money}" onchange="setBrandCustomColor('money',this.value)" style="width:44px;height:34px;padding:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px">
+      <input class="mono" value="${c.money}" onchange="setBrandCustomColor('money',this.value)" style="flex:1"></div>
+      <p class="d" style="margin:4px 0 0">${tset.moneyHint}</p></div>
+     <div class="f" style="margin:0"><label>${tset.neutralLabel}</label>
+      <div style="display:flex;gap:8px;align-items:center"><input type="color" value="${TENANT_BRAND.custom.neutral}" onchange="setBrandCustomColor('neutral',this.value)" style="width:44px;height:34px;padding:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px">
+      <input class="mono" value="${TENANT_BRAND.custom.neutral}" onchange="setBrandCustomColor('neutral',this.value)" style="flex:1"></div>
+      <p class="d" style="margin:4px 0 0">${tset.neutralHint}</p></div>
+    </div>`:''}
+   <div class="note" style="margin:0 0 16px;border-color:${brandChecksPass()?'var(--money-line)':'var(--danger)'}">
+    <b style="display:block;margin-bottom:6px">${brandChecksPass()?ic('check')+' '+tset.checksOk:ic('alert')+' '+tset.checksWarn}</b>
+    ${checks.filter(x=>x.type==='contrast').map(x=>`<div style="font-size:11.5px;color:${x.pass?'var(--muted)':'var(--danger)'}">${x.pass?'✓':'✕'} ${tset['acc_'+x.key]} · ${x.mode==='dark'?tset.modeDark:tset.modeLight} — ${tset.contrastWord} ${x.ratio}:1 ${x.pass?'':'('+tset.contrastMin+' '+x.min+':1)'}</div>`).join('')}
+    <div style="font-size:11.5px;color:${hue.pass?'var(--muted)':'var(--danger)'}">${hue.pass?'✓':'✕'} ${tset.hueWord} ${hue.distance}° ${hue.pass?'':'('+tset.hueMin+' 40°)'}</div>
+   </div>
+   <div class="ph2" style="border:none;padding:4px 0 10px;font-size:13px">${tset.logoTitle}</div>
+   <p class="d" style="margin:0 0 10px">${tset.logoHint}</p>
+   <div class="r2" style="margin-bottom:10px">${brandLogoSlotHtml('logoFull',tset.logoFull)}${brandLogoSlotHtml('logoFullInv',tset.logoFullInv)}</div>
+   <div class="r2" style="margin-bottom:0">${brandLogoSlotHtml('logoMini',tset.logoMini)}${brandLogoSlotHtml('logoMiniInv',tset.logoMiniInv)}</div>
+  </div></div>`}
 function ajustesScreen(){const n=t('nav.ajustes');
  return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div></div>
   ${tenantModulesPanelHtml()}
   <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:16px">${tenantDefaultsPanelHtml()}${tenantPipelinePanelHtml()}</div>
+  ${tenantBrandPanelHtml()}
   <div class="note" style="margin-top:16px">${t('tenantset').note}</div>`}
 
 function stub(v){const n=t('nav.'+v);return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div></div>
@@ -7152,7 +7419,9 @@ document.getElementById('aigo').onclick=()=>{const i=document.getElementById('ai
 document.getElementById('aiq').addEventListener('keydown',e=>{if(e.key==='Enter'){const i=e.target;if(i.value.trim()){aiAsk(i.value.trim());i.value=''}}});
 
 /* ===== theme + lang ===== */
-function setTheme(th){document.documentElement.dataset.theme=th;document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.themeSet===th))}
+/* Al cambiar de modo hay que reaplicar la marca: las variantes de cada acento se DERIVAN según el
+   modo (aclaran en oscuro, oscurecen en claro), así que no son las mismas en ambos. */
+function setTheme(th){document.documentElement.dataset.theme=th;document.querySelectorAll('#themeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.themeSet===th));applyTenantBrand()}
 const FLAGS={es:'🇵🇷',en:'🇺🇸'};
 function setLang(l){LANG=l;
   document.getElementById('langFlag').textContent=FLAGS[l];
