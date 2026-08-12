@@ -1,0 +1,364 @@
+/* ============================================================================
+   Teikem — landing.
+
+   Nada que ver con el sitio de Cerevelo, y es a propósito: aquello es una firma
+   de consultoría —blanco, líneas de un píxel, esquinas vivas— y esto es un
+   producto de software que se vende. Aquí manda el azul de la marca, las
+   tarjetas tienen esquina redonda y sombra suave, y el número grande se ve
+   antes que el párrafo.
+
+   Paleta del logotipo, sin inventar colores nuevos:
+     #0B2C66  navy      · fondos oscuros y titulares
+     #1F6FE5  azul      · acción, enlaces, énfasis
+     #FF6A1A  naranja   · el acento que se usa poco y por eso se ve
+     #CFE0FB  azul claro· superficies y bordes suaves
+   ========================================================================== */
+
+:root {
+  --navy: #0B2C66;
+  --navy-2: #082049;
+  --azul: #1F6FE5;
+  --azul-claro: #CFE0FB;
+  --naranja: #FF6A1A;
+  --naranja-2: #FF8B4D;
+
+  --fondo: #FFFFFF;
+  --fondo-2: #F5F8FD;
+  --tinta: #0C1B33;
+  --texto: #3F4E68;
+  --texto-2: #64748B;
+  --linea: #E2EAF6;
+
+  --radio: 14px;
+  --radio-g: 22px;
+  --sombra: 0 18px 40px -22px rgba(11, 44, 102, .38);
+  --sombra-g: 0 40px 80px -34px rgba(11, 44, 102, .45);
+  --ancho: 1220px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+  font-size: 17px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { color: var(--tinta); line-height: 1.14; letter-spacing: -.022em; margin: 0 0 .5em; }
+h1 { font-size: clamp(2.3rem, 4.6vw, 3.7rem); font-weight: 800; }
+h2 { font-size: clamp(1.75rem, 3.1vw, 2.6rem); font-weight: 800; }
+h3 { font-size: 1.1rem; font-weight: 700; }
+p { margin: 0 0 1.15em; }
+img { max-width: 100%; height: auto; display: block; }
+a { color: var(--azul); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap { width: min(100% - 44px, var(--ancho)); margin-inline: auto; }
+
+.saltar { position: absolute; left: -9999px; }
+.saltar:focus { left: 16px; top: 16px; z-index: 60; background: #fff; padding: 12px 18px; border-radius: var(--radio); box-shadow: var(--sombra); }
+
+.antetitulo {
+  display: inline-block; margin-bottom: 14px;
+  font-size: .74rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--azul);
+}
+.entradilla { font-size: 1.14rem; color: var(--texto); max-width: 56ch; }
+.letra-chica { font-size: .84rem; color: var(--texto-2); }
+
+/* ── Botones ──────────────────────────────────────────────────────────────── */
+
+.boton, .boton-linea {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 24px; border-radius: 999px; font-weight: 700; font-size: .97rem;
+  border: 2px solid transparent; cursor: pointer; transition: transform .18s, box-shadow .18s, background .18s;
+}
+.boton { background: var(--azul); color: #fff; box-shadow: 0 14px 26px -14px rgba(31, 111, 229, .85); }
+.boton:hover { text-decoration: none; color: #fff; transform: translateY(-1px); box-shadow: 0 18px 32px -14px rgba(31, 111, 229, .95); }
+.boton--grande { padding: 16px 32px; font-size: 1.02rem; }
+.boton-linea { border-color: var(--linea); color: var(--tinta); background: #fff; }
+.boton-linea:hover { text-decoration: none; border-color: var(--azul); color: var(--azul); }
+
+/* ── Cabecera ─────────────────────────────────────────────────────────────── */
+
+.cabecera {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(255, 255, 255, .92); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--linea);
+}
+.cabecera .wrap { display: flex; align-items: center; gap: 26px; min-height: 96px; }
+.marca { flex-shrink: 0; }
+.marca:hover { text-decoration: none; }
+/* Logotipo recompuesto: el símbolo va aparte y el bloque de nombre+lema pesa
+   más que en el original, donde el lema medía 12px sobre 150 y a tamaño de
+   cabecera se perdía. Se ve a 62px porque ahora el lema ocupa el 28% del
+   nombre en vez del 13%. */
+.marca img { height: 62px; width: auto; }
+
+.menu { margin-left: auto; }
+.menu ul { display: flex; align-items: center; gap: 26px; list-style: none; margin: 0; padding: 0; }
+.menu a { color: var(--texto); font-size: .95rem; font-weight: 600; }
+.menu a:hover { color: var(--tinta); text-decoration: none; }
+.menu .idioma a {
+  border: 1px solid var(--linea); border-radius: 999px; padding: 6px 14px;
+  font-size: .84rem; color: var(--texto-2);
+}
+.menu .idioma a:hover { border-color: var(--azul); color: var(--azul); }
+.menu .boton { color: #fff; }
+
+.alterna { display: none; }
+
+/* ── Portada ──────────────────────────────────────────────────────────────── */
+
+.portada {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(1100px 620px at 84% -8%, rgba(31, 111, 229, .30), transparent 62%),
+    radial-gradient(760px 460px at 6% 108%, rgba(255, 106, 26, .16), transparent 60%),
+    linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%);
+  color: #D8E5FA;
+  padding: clamp(56px, 8vw, 104px) 0 0;
+}
+.portada .wrap { display: grid; grid-template-columns: 1fr 1.08fr; gap: clamp(34px, 5vw, 70px); align-items: center; }
+.portada h1 { color: #fff; }
+.portada h1 em { font-style: normal; color: var(--naranja-2); }
+.portada .antetitulo { color: var(--azul-claro); }
+.portada .entradilla { color: #C4D6F2; }
+.portada .letra-chica { color: #93AFD8; }
+.acciones { display: flex; flex-wrap: wrap; gap: 14px; margin: 30px 0 18px; }
+.portada .boton-linea { background: transparent; border-color: rgba(207, 224, 251, .38); color: #E7F0FF; }
+.portada .boton-linea:hover { border-color: #fff; color: #fff; }
+
+/* La pantalla asoma por abajo: se ve que hay producto y no se gasta media
+   página en enseñarlo entero. */
+.portada-pantalla { align-self: end; }
+.portada-pantalla img {
+  border-radius: 16px 16px 0 0; border: 1px solid rgba(207, 224, 251, .28); border-bottom: 0;
+  box-shadow: var(--sombra-g); margin-bottom: -8px;
+}
+
+/* ── Cinta de capacidades ─────────────────────────────────────────────────── */
+
+.cinta { background: var(--navy-2); padding: 18px 0; border-top: 1px solid rgba(207, 224, 251, .14); }
+.cinta .wrap { display: flex; flex-wrap: wrap; gap: 10px 28px; justify-content: center; }
+.cinta span { color: #7E9CCB; font-size: .8rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
+.cinta span + span::before { content: '•'; color: var(--naranja); margin-right: 28px; }
+
+/* ── Secciones ────────────────────────────────────────────────────────────── */
+
+.seccion { padding: clamp(58px, 8vw, 108px) 0; }
+.seccion--alt { background: var(--fondo-2); }
+.seccion--oscura { background: linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%); color: #C4D6F2; }
+.seccion--oscura h2, .seccion--oscura h3 { color: #fff; }
+.seccion--oscura .antetitulo { color: var(--azul-claro); }
+.seccion--oscura .cabeza p { color: #A9C2E6; }
+.seccion--oscura .tarjeta { background: rgba(255, 255, 255, .05); border-color: rgba(207, 224, 251, .16); box-shadow: none; }
+.seccion--oscura .tarjeta p { color: #A9C2E6; }
+.seccion--oscura .icono { background: rgba(31, 111, 229, .26); color: #9FC4FF; }
+
+.cabeza { max-width: 62ch; margin-bottom: clamp(34px, 4.5vw, 58px); }
+.cabeza p { color: var(--texto-2); margin-bottom: 0; }
+
+/* ── El día paso a paso ───────────────────────────────────────────────────── */
+/* Cinco pasos en fila con una línea que los cose: se lee como un recorrido y no
+   como cinco tarjetas sueltas. */
+
+.flujo { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; }
+.flujo li { position: relative; padding: 0 22px 0 0; }
+.flujo li::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 17px; height: 2px;
+  background: linear-gradient(90deg, var(--azul-claro), var(--azul-claro));
+}
+.flujo li:last-child::before { right: 22px; }
+.flujo .paso {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%; margin-bottom: 18px;
+  background: var(--azul); color: #fff; font-size: .78rem; font-weight: 800; letter-spacing: .04em;
+}
+.flujo li:nth-child(3) .paso { background: var(--naranja); }
+.flujo h3 { margin-bottom: .35em; }
+.flujo p { font-size: .93rem; color: var(--texto-2); margin: 0; padding-right: 8px; }
+
+/* ── Banda con foto ───────────────────────────────────────────────────────── */
+
+.banda { position: relative; min-height: clamp(300px, 38vw, 460px); display: flex; align-items: flex-end; overflow: hidden; }
+.banda img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.banda::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(8, 32, 73, .94) 8%, rgba(8, 32, 73, .58) 52%, rgba(8, 32, 73, .18) 100%);
+}
+.banda .wrap { position: relative; z-index: 1; padding: 100px 0 clamp(30px, 4vw, 56px); }
+.banda h2 { color: #fff; max-width: 20ch; }
+.banda p { color: #C4D6F2; max-width: 58ch; margin: 0; }
+
+/* ── Dos columnas ─────────────────────────────────────────────────────────── */
+
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 5vw, 66px); align-items: center; }
+.dos--invertido > *:first-child { order: 2; }
+
+.pantalla { border-radius: var(--radio); border: 1px solid var(--linea); box-shadow: var(--sombra-g); }
+.figura { margin: 0; }
+.figura img { border-radius: var(--radio); box-shadow: var(--sombra); }
+.figura--pequena { max-width: 340px; margin-top: 30px; }
+
+/* ── Listas con marca ─────────────────────────────────────────────────────── */
+
+.marca { list-style: none; margin: 0 0 1.2em; padding: 0; }
+.marca li { position: relative; padding-left: 30px; margin-bottom: 13px; }
+.marca li::before {
+  content: ''; position: absolute; left: 0; top: .62em;
+  width: 9px; height: 9px; border-radius: 3px; background: var(--naranja);
+}
+.seccion--oscura .marca li { color: #C4D6F2; }
+
+/* ── Rejilla de tarjetas ──────────────────────────────────────────────────── */
+
+.rejilla { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+.rejilla--3 { grid-template-columns: repeat(3, 1fr); }
+.tarjeta {
+  background: #fff; border: 1px solid var(--linea); border-radius: var(--radio);
+  padding: 26px 24px; box-shadow: var(--sombra); transition: transform .2s, box-shadow .2s;
+}
+.tarjeta:hover { transform: translateY(-3px); box-shadow: 0 26px 50px -26px rgba(11, 44, 102, .5); }
+.tarjeta h3 { margin-bottom: .35em; }
+.tarjeta p { font-size: .92rem; color: var(--texto-2); margin: 0; }
+.seccion--alt .tarjeta { background: #fff; }
+
+.icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 12px; margin-bottom: 16px;
+  background: rgba(31, 111, 229, .1); color: var(--azul);
+}
+.icono svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ── Formulario ───────────────────────────────────────────────────────────── */
+
+.formulario {
+  display: grid; gap: 18px; background: #fff; padding: clamp(24px, 3vw, 36px);
+  border: 1px solid var(--linea); border-radius: var(--radio-g); box-shadow: var(--sombra-g);
+}
+.doble { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.campo { display: grid; gap: 7px; }
+.campo label { font-size: .78rem; font-weight: 700; color: var(--tinta); letter-spacing: .04em; }
+.campo input, .campo select, .campo textarea {
+  font: inherit; font-size: .96rem; color: var(--tinta); width: 100%;
+  padding: 12px 14px; border: 1px solid var(--linea); border-radius: 10px; background: var(--fondo-2);
+}
+.campo input:focus, .campo select:focus, .campo textarea:focus {
+  outline: none; border-color: var(--azul); background: #fff; box-shadow: 0 0 0 3px rgba(31, 111, 229, .16);
+}
+.campo textarea { min-height: 130px; resize: vertical; }
+.formulario .letra-chica { margin: 12px 0 0; }
+
+/* Fuera de pantalla y no `display:none`: hay robots que se saltan lo que está
+   oculto del todo, pero casi ninguno se salta un campo que técnicamente existe. */
+.trampa { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.aviso-envio {
+  padding: 16px 18px; border-radius: 10px; font-size: .93rem; line-height: 1.6;
+  background: var(--fondo-2); border-left: 3px solid var(--azul); color: var(--texto);
+}
+.aviso-envio strong { color: var(--tinta); }
+.aviso-envio--bien { border-left-color: #17A673; }
+.aviso-envio--ojo { border-left-color: var(--naranja); }
+.aviso-envio--mal { border-left-color: #D6453D; }
+.aviso-envio .boton { margin-top: 12px; background: #fff; color: var(--tinta); border: 1px solid var(--linea); box-shadow: none; }
+.aviso-envio .boton:hover { color: var(--azul); border-color: var(--azul); }
+
+/* ── Pie ──────────────────────────────────────────────────────────────────── */
+
+.pie { background: var(--navy-2); color: #A9C2E6; padding: clamp(44px, 6vw, 72px) 0 30px; font-size: .92rem; }
+.pie-alto { display: grid; grid-template-columns: auto 1fr; gap: 46px; align-items: center; }
+.pie-alto img { height: 58px; width: auto; }
+.pie-alto p { margin: 0; max-width: 62ch; }
+.pie a { color: var(--azul-claro); }
+.creditos {
+  margin: 40px 0 0; padding-top: 20px; border-top: 1px solid rgba(207, 224, 251, .16);
+  font-size: .78rem; line-height: 1.6; color: #7E9CCB;
+}
+.pie-legal {
+  margin-top: 18px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px;
+  font-size: .82rem; color: #7E9CCB;
+}
+
+/* ── Adaptación ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1080px) {
+  .rejilla { grid-template-columns: repeat(3, 1fr); }
+  .flujo { grid-template-columns: repeat(3, 1fr); row-gap: 34px; }
+  .flujo li::before { display: none; }
+}
+
+@media (max-width: 900px) {
+  .marca img { height: 52px; }
+  .portada .wrap { grid-template-columns: 1fr; }
+  .portada-pantalla { margin-top: 12px; }
+  .dos, .dos--invertido { grid-template-columns: 1fr; }
+  .dos--invertido > *:first-child { order: 0; }
+  .rejilla, .rejilla--3 { grid-template-columns: repeat(2, 1fr); }
+  .pie-alto { grid-template-columns: 1fr; gap: 24px; }
+
+  /* El menú se guarda detrás del botón. Sin JavaScript no se abre, así que el
+     botón solo aparece cuando el guion confirma que puede manejarlo. */
+  .alterna {
+    display: none; margin-left: auto; align-items: center; gap: 10px;
+    background: none; border: 1px solid var(--linea); border-radius: 999px;
+    padding: 9px 16px; font: inherit; font-size: .9rem; font-weight: 700; color: var(--tinta); cursor: pointer;
+  }
+  body[data-js='si'] .alterna { display: inline-flex; }
+  .alterna span { width: 18px; height: 2px; background: currentColor; box-shadow: 0 5px 0 currentColor, 0 -5px 0 currentColor; }
+  body[data-js='si'] .menu { display: none; }
+  .menu[data-abierto='si'] {
+    display: block; position: absolute; left: 0; right: 0; top: 100%;
+    background: #fff; border-bottom: 1px solid var(--linea); box-shadow: var(--sombra); padding: 18px 22px 24px;
+  }
+  .menu[data-abierto='si'] ul { flex-direction: column; align-items: flex-start; gap: 16px; }
+}
+
+@media (max-width: 620px) {
+  body { font-size: 16px; }
+  .marca img { height: 44px; }
+  .rejilla, .rejilla--3, .flujo, .doble { grid-template-columns: 1fr; }
+  .acciones .boton, .acciones .boton-linea { width: 100%; justify-content: center; }
+  .pie-legal { flex-direction: column; gap: 8px; }
+}
+
+/* ── Tira de fotos ────────────────────────────────────────────────────────── */
+/* Cuatro fotos a sangre entre dos bloques densos. Van ligeramente apagadas para
+   que no compitan con las pantallas del producto, que es lo que hay que mirar. */
+
+.tira { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--linea); }
+.tira img { width: 100%; aspect-ratio: 4/3; object-fit: cover; filter: saturate(.9); transition: filter .3s, transform .5s; }
+.tira img:hover { filter: none; transform: scale(1.02); }
+
+@media (max-width: 900px) { .tira { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Teki ─────────────────────────────────────────────────────────────────── */
+/* La conversación de ejemplo no es una captura: es HTML. Así se lee en móvil,
+   se traduce con el resto y no se queda vieja cuando cambie una pantalla. */
+
+.charla {
+  background: linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%);
+  border-radius: var(--radio-g); padding: 26px 24px; box-shadow: var(--sombra-g);
+}
+.charla-cabeza { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.charla-cabeza .icono { margin: 0; background: rgba(255, 106, 26, .18); color: var(--naranja-2); }
+.charla-cabeza b { color: #fff; display: block; font-size: 1.02rem; }
+.charla-cabeza span { color: #7E9CCB; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; }
+.charla p { margin: 0 0 12px; padding: 12px 16px; border-radius: 14px; font-size: .94rem; line-height: 1.6; }
+.dice-usted { background: rgba(255, 255, 255, .08); color: #D8E5FA; margin-left: 22%; border-bottom-right-radius: 4px; }
+.dice-teki { background: #fff; color: var(--texto); border-bottom-left-radius: 4px; margin-right: 12%; }
+.dice-teki b { color: var(--tinta); }
+.dice-teki span { color: var(--azul); font-weight: 700; font-size: .88rem; }
+
+.reglas {
+  margin-top: 26px; padding: 18px 20px; border-radius: var(--radio);
+  background: rgba(255, 106, 26, .07); border-left: 3px solid var(--naranja);
+}
+.reglas p { margin: 0; font-size: .94rem; }
+
+@media (max-width: 620px) { .dice-usted { margin-left: 8%; } .dice-teki { margin-right: 4%; } }
