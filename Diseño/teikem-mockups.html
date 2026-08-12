@@ -603,7 +603,7 @@ const T={
    fact:{title:'Facturación',sub:'Corridas por cliente y periodo · uno de los dos flujos con aprobación humana',
      note:'La corrida agrupa las órdenes entregadas del cliente en el período y calcula el cargo con el motor de tarifas: base por servicio/paquete, pieza extra y cargo COD. El ajuste manual queda auditado. Comparte la misma máquina de estados que Liquidación a choferes: generar → revisar → aprobar → exportar. Teikem calcula y exporta a contabilidad; no emite el pago.',
      newRun:'Nueva corrida',generate:'Generar corrida',runs:'Corridas',selectRun:'Selecciona una corrida',noOrders:'No hay órdenes entregadas de ese cliente en el período',fillFields:'Completa cliente y período',
-     city:'Ciudad',pieces:'Piezas',base:'Base',extra:'Extra',codchg:'Cargo COD',adj:'Ajuste',total:'Total',daySubtotal:'Subtotal del día',
+     city:'Ciudad',pieces:'Piezas',base:'Base',extra:'Extra',codchg:'Cargo COD',dispatch:'Despacho',adj:'Ajuste',total:'Total',daySubtotal:'Subtotal del día',
      summary:'Resumen de facturación',desc:'Descripción',rate:'Tarifa',amount:'Monto',grandTotal:'Total de la corrida',
      markReviewed:'Marcar revisada',approve:'Aprobar',exportBtn:'Exportar factura',viewExport:'Ver factura',generated:'Corrida generada',
      exportNote:'Este documento resume los cargos por línea de tarifa; el detalle diario por orden queda disponible en la corrida. Teikem calcula y exporta a contabilidad; no emite el pago.',
@@ -963,7 +963,7 @@ const T={
    fact:{title:'Billing',sub:'Runs by client and period · one of the product’s two human-approval flows',
      note:'The run groups the client’s delivered orders for the period and calculates the charge with the rate engine: base by service/package, extra piece and COD fee. Manual adjustments are audited. It shares the same state machine as Driver settlement: generate → review → approve → export. Teikem calculates and exports to accounting; it doesn’t issue payment.',
      newRun:'New run',generate:'Generate run',runs:'Runs',selectRun:'Select a run',noOrders:'No delivered orders for that client in the period',fillFields:'Fill client and period',
-     city:'City',pieces:'Pieces',base:'Base',extra:'Extra',codchg:'COD fee',adj:'Adjustment',total:'Total',daySubtotal:'Day subtotal',
+     city:'City',pieces:'Pieces',base:'Base',extra:'Extra',codchg:'COD fee',dispatch:'Dispatch',adj:'Adjustment',total:'Total',daySubtotal:'Day subtotal',
      summary:'Billing summary',desc:'Description',rate:'Rate',amount:'Amount',grandTotal:'Run total',
      markReviewed:'Mark reviewed',approve:'Approve',exportBtn:'Export invoice',viewExport:'View invoice',generated:'Run generated',
      exportNote:'This document summarizes charges by rate line; the daily per-order detail stays available on the run. Teikem calculates and exports to accounting; it doesn’t issue payment.',
@@ -1478,7 +1478,28 @@ let CURRENT='pulso', openGroup='ops';
 let MSEL_SEQ=0;
 /* ===== helper: producto buscable por SKU o nombre en cualquier filtro ===== */
 function productLabel(p){return p.sku+' \u00b7 '+p.name}
-function productOptions(){return PRODUCTS.map(productLabel)}
+/* El orden de los selectores de producto NO se deja al azar del arreglo de la semilla: se ordena
+   explícitamente, porque de eso depende lo primero que ve quien está recolectando.
+
+   La regla es de operación, no cosmética: primero la MERCANCÍA DE CLIENTES (lo que de verdad se
+   recolecta y se despacha) y de último los SUMINISTROS PROPIOS del operador — cajas, cinta, etiquetas —
+   que no se recolectan para enviarle a nadie, se gastan al empacar. Entre clientes manda el que tiene
+   más inventario almacenado, que es el que más se toca a diario. Con la semilla actual eso pone a
+   TRUSS de primero, pero por una razón que se sostiene sola: es quien más producto guarda. Si mañana
+   otro cliente almacena más, sube solo — no hay ningún nombre escrito a mano.
+
+   En el sistema real este orden debería poder ajustarse por tenant (por frecuencia de recolección, por
+   ejemplo), pero el criterio de fondo —mercancía antes que suministros— es el mismo. */
+function clientStockTotals(){const t={};
+ PRODUCTS.forEach(p=>{if(p.client)t[p.client]=(t[p.client]||0)+(p.total||0)});return t}
+function productOptions(){const totals=clientStockTotals();
+ return PRODUCTS.slice().sort((a,b)=>{
+  const ao=a.client?0:1, bo=b.client?0:1;            // mercancía de cliente antes que suministro propio
+  if(ao!==bo)return ao-bo;
+  if(a.client&&b.client&&a.client!==b.client)
+   return (totals[b.client]||0)-(totals[a.client]||0); // el cliente con más almacenado, primero
+  return a.name.localeCompare(b.name);
+ }).map(productLabel)}
 function productMatchesSku(sku, selectedLabels){const p=PRODUCTS.find(x=>x.sku===sku);return p&&selectedLabels.includes(productLabel(p))}
 
 function msel(id, options, selected, onchange, allLabel){
@@ -2309,6 +2330,13 @@ function contractExtraPieces(clientId,svc,pkg,pcs){
 /* Componente 4, "Cargo por COD": fijo o por ciento del monto cobrado. A diferencia de la pieza extra,
    aquí el checkbox apagado significa que el cliente NO tiene cargo por COD (es un cargo aditivo que
    simplemente no forma parte de su factura), no que se cobre el genérico. */
+/* Componente 3, "Cargo por despacho": monto fijo **por orden** (definición de Luis). Se cobra una
+   sola vez por orden, no por tipo de paquete — misma regla que el cargo por COD. Y como cualquier
+   otro cargo de la corrida, contabilización puede ajustarlo o **ponerlo en cero** al facturar, que es
+   la razón de que viaje como columna editable de la línea y no como un cálculo escondido. */
+function contractDispatchFee(clientId){const c=contractOf(clientId);
+ if(!c||!c.billing||!c.billing.despacho)return 0;
+ return +(c.dispatchFee||0).toFixed(2)}
 function contractCodFee(clientId,codAmount){
  if(!(codAmount>0))return 0;
  const c=contractOf(clientId);
@@ -2359,29 +2387,33 @@ const BILLRUNS=[
 ];
 let BILLSEL='BR-2026-013';let BILL_SEQ=15;
 window.selectBillRun=(id)=>{BILLSEL=id;go('facturacion',true)};
-function billRunTotals(run){let items=0,base=0,over=0,codc=0,adj=0,cod=0;
- run.days.forEach(d=>d.lines.forEach(l=>{items+=l.items;base+=l.priceItem;over+=l.priceOver;codc+=l.priceCod;adj+=l.priceAdj;cod+=l.cod}));
- return {items,base,over,codc,adj,cod,total:base+over+codc+adj}}
+/* `priceDispatch` puede no existir en corridas viejas (las sembradas a mano del reporte real), así
+   que se lee con `||0` en vez de asumirlo — de lo contrario esas corridas darían NaN. */
+function billRunTotals(run){let items=0,base=0,over=0,codc=0,disp=0,adj=0,cod=0;
+ run.days.forEach(d=>d.lines.forEach(l=>{items+=l.items;base+=l.priceItem;over+=l.priceOver;codc+=l.priceCod;disp+=(l.priceDispatch||0);adj+=l.priceAdj;cod+=l.cod}));
+ return {items,base,over,codc,disp,adj,cod,total:base+over+codc+disp+adj}}
 function billRunSummary(run){const es=LANG==='es';const groups={};const order=[];
  function add(key,label,pieces,amount){if(!groups[key]){groups[key]={label,pieces:0,amount:0};order.push(key)}groups[key].pieces+=pieces;groups[key].amount+=amount}
  run.days.forEach(d=>d.lines.forEach(l=>{const svc=svcLabel(l.svc);
    add(svc+'|'+l.pkg+'|item', svc+' · '+l.pkg+' — '+(es?'pieza base':'base piece'), 1, l.priceItem);
    if(l.items>1) add(svc+'|'+l.pkg+'|extra', svc+' · '+l.pkg+' — '+(es?'pieza extra':'extra piece'), l.items-1, l.priceOver);
    if(l.priceCod>0) add(svc+'|cod', svc+' — '+(es?'cargo COD':'COD fee'), 1, l.priceCod);
+   if(l.priceDispatch>0) add('despacho', es?'Cargo por despacho':'Dispatch fee', 1, l.priceDispatch);
  }));
  return order.map(k=>groups[k])}
 window.setBillLineField=(runId,dayIdx,lineIdx,field,val)=>{const run=BILLRUNS.find(r=>r.id===runId);
  if(!run||(run.status!=='generada'&&run.status!=='revisada'))return;
  const line=run.days[dayIdx].lines[lineIdx];
  line[field]=field==='items'?Math.max(0,parseInt(val)||0):(parseFloat(val)||0);
- const lineTotal=line.priceItem+line.priceOver+line.priceCod+line.priceAdj;
+ const lineTotal=line.priceItem+line.priceOver+line.priceCod+(line.priceDispatch||0)+line.priceAdj;
  const setTxt=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt};
  setTxt('blt-'+runId+'-'+dayIdx+'-'+lineIdx,'$'+money(lineTotal));
- const dt=run.days[dayIdx].lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+l.priceAdj)}),{items:0,base:0,over:0,codc:0,adj:0,total:0});
+ const dt=run.days[dayIdx].lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,disp:s.disp+(l.priceDispatch||0),adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj)}),{items:0,base:0,over:0,codc:0,disp:0,adj:0,total:0});
  setTxt('bds-'+runId+'-'+dayIdx+'-items',dt.items);
  setTxt('bds-'+runId+'-'+dayIdx+'-base','$'+money(dt.base));
  setTxt('bds-'+runId+'-'+dayIdx+'-over','$'+money(dt.over));
  setTxt('bds-'+runId+'-'+dayIdx+'-codc','$'+money(dt.codc));
+ setTxt('bds-'+runId+'-'+dayIdx+'-disp','$'+money(dt.disp));
  setTxt('bds-'+runId+'-'+dayIdx+'-adj','$'+money(dt.adj));
  setTxt('bds-'+runId+'-'+dayIdx+'-total','$'+money(dt.total));
  setTxt('billtot-'+runId,'$'+money(billRunTotals(run).total));
@@ -2415,7 +2447,8 @@ window.generateBillRun=()=>{const client=document.getElementById('nrClient').val
        cod:first?o.cod:0,items:g.pcs,
        priceItem:contractBaseRate(client,o.svc,g.pkg),
        priceOver:contractExtraPieces(client,o.svc,g.pkg,g.pcs),
-       priceCod:first?contractCodFee(client,o.cod):0,priceAdj:0,
+       priceCod:first?contractCodFee(client,o.cod):0,
+       priceDispatch:first?contractDispatchFee(client):0,priceAdj:0,
        pkgDesc:g.descs.join(' · '),contLine:!first})})});
  const days=Object.keys(byDate).sort().map(date=>({date,lines:byDate[date]}));
  BILL_SEQ++;const run={id:'BR-2026-'+BILL_SEQ,client,from,to,status:'generada',genDate:TODAY,days};
@@ -2459,16 +2492,16 @@ function renderBillRunDetail(run){const es=LANG==='es';
  const editable=run.status==='generada'||run.status==='revisada';
  return `<div class="ph2">${ic('doc')} <span class="ref">${run.id}</span> · ${run.client} <span class="r">${run.from} → ${run.to} · <span class="chip ${stcls3[run.status]}">${t('fact.st_'+run.status)}</span></span></div>
   <div style="max-height:420px;overflow:auto">
-  <table class="lst facttbl" style="font-size:11.5px"><thead><tr><th>${t('cols.inv')}</th><th>${t('cols.cons')}</th><th>${t('fact.city')}</th><th>${t('cols.pkg')}</th><th>${t('cols.svc')}</th><th class="n">${t('cols.cod')}</th><th class="n">${t('fact.pieces')}</th><th class="n">${t('fact.base')}</th><th class="n">${t('fact.extra')}</th><th class="n">${t('fact.codchg')}</th><th class="n">${t('fact.adj')}</th><th class="n">${t('fact.total')}</th></tr></thead><tbody>
-  ${run.days.map((d,di)=>{const dt=d.lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+l.priceAdj)}),{items:0,base:0,over:0,codc:0,adj:0,total:0});
+  <table class="lst facttbl" style="font-size:11.5px"><thead><tr><th>${t('cols.inv')}</th><th>${t('cols.cons')}</th><th>${t('fact.city')}</th><th>${t('cols.pkg')}</th><th>${t('cols.svc')}</th><th class="n">${t('cols.cod')}</th><th class="n">${t('fact.pieces')}</th><th class="n">${t('fact.base')}</th><th class="n">${t('fact.extra')}</th><th class="n">${t('fact.codchg')}</th><th class="n">${t('fact.dispatch')}</th><th class="n">${t('fact.adj')}</th><th class="n">${t('fact.total')}</th></tr></thead><tbody>
+  ${run.days.map((d,di)=>{const dt=d.lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,disp:s.disp+(l.priceDispatch||0),adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj)}),{items:0,base:0,over:0,codc:0,disp:0,adj:0,total:0});
    return `<tr><td colspan="12" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${d.date}</td></tr>
-   ${d.lines.map((l,li)=>{const lineTotal=l.priceItem+l.priceOver+l.priceCod+l.priceAdj;
+   ${d.lines.map((l,li)=>{const lineTotal=l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj;
      const inp=(field,val,w)=>editable?`<input class="mono" style="width:${w}px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${val}" oninput="setBillLineField('${run.id}',${di},${li},'${field}',this.value)">`:`<span class="mono">${field==='items'?val:'$'+money(val)}</span>`;
      /* `contLine` = segunda (o siguiente) línea de la MISMA orden, por llevar otro tipo de paquete:
         se subordina visualmente (referencia con ↳, consignatario y ciudad en blanco) para que no
         parezca otra orden. El COD no se repite ahí — se cobró completo en la primera línea. */
-     return `<tr><td>${l.contLine?`<span style="color:var(--faint);font-size:11px">↳ ${l.ref}</span>`:`<span class="ref">${l.ref}</span>`}</td><td>${l.contLine?'':l.cons}</td><td>${l.contLine?'':l.city}</td><td>${l.pkg}${l.pkgDesc?`<div class="meta" style="font-size:10.5px">${l.pkgDesc}</div>`:''}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?'$'+money(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
-   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('fact.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-items">${dt.items}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-base">$${money(dt.base)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-over">$${money(dt.over)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-codc">$${money(dt.codc)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-adj">$${money(dt.adj)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-total">$${money(dt.total)}</td></tr>`}).join('')}
+     return `<tr><td>${l.contLine?`<span style="color:var(--faint);font-size:11px">↳ ${l.ref}</span>`:`<span class="ref">${l.ref}</span>`}</td><td>${l.contLine?'':l.cons}</td><td>${l.contLine?'':l.city}</td><td>${l.pkg}${l.pkgDesc?`<div class="meta" style="font-size:10.5px">${l.pkgDesc}</div>`:''}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?'$'+money(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceDispatch',l.priceDispatch||0,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
+   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('fact.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-items">${dt.items}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-base">$${money(dt.base)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-over">$${money(dt.over)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-codc">$${money(dt.codc)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-disp">$${money(dt.disp)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-adj">$${money(dt.adj)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-total">$${money(dt.total)}</td></tr>`}).join('')}
   </tbody></table>
   </div>
   <div style="padding:12px 16px;border-top:1px solid var(--line-2)">
@@ -5294,7 +5327,27 @@ const PRODUCTS = [
  {sku:'WCH-STD', name:'Silla de ruedas estándar plegable', cat:'Equipo médico', uom:'ea', total:14, reserved:6, track:'serial', reorder:5, active:true, purchaseCost:210.00, salePrice:349.00, client:'AXISCARE HEALTH'},
  {sku:'O2C-5L', name:'Concentrador de oxígeno 5L', cat:'Equipo médico', uom:'ea', total:9, reserved:5, track:'serial', reorder:4, active:true, purchaseCost:640.00, salePrice:995.00, client:'AXISCARE HEALTH'},
  {sku:'FLT-O2', name:'Filtro para concentrador O2', cat:'Repuestos', uom:'ea', total:31, reserved:0, track:'lot', reorder:20, active:true, purchaseCost:18.00, salePrice:32.00, client:'AXISCARE HEALTH'},
- {sku:'BAT-SLA', name:'Batería sellada 12V para equipo', cat:'Repuestos', uom:'ea', total:11, reserved:2, track:'lot', reorder:12, active:true, purchaseCost:22.00, salePrice:0, client:'TRUSS PUERTO RICO'},
+ /* La batería sellada es un repuesto de equipo médico: pertenece a AXISCARE, no a TRUSS. Estaba
+    asignada a TRUSS y contradecía todo lo demás de la semilla — la corrida de facturación real de
+    TRUSS (BR-2026-014) despacha a peluquerías, salones y spas, o sea que TRUSS es un distribuidor de
+    productos de belleza, no de repuestos. */
+ {sku:'BAT-SLA', name:'Batería sellada 12V para equipo', cat:'Repuestos', uom:'ea', total:11, reserved:2, track:'lot', reorder:12, active:true, purchaseCost:22.00, salePrice:0, client:'AXISCARE HEALTH'},
+ /* Catálogo de TRUSS PUERTO RICO — productos profesionales de peluquería, coherentes con sus
+    consignatarios reales (PAU ALTA PELUQUERIA, GLAM SPOT, Bellize Salon, Zamara Spa…). Es el cliente
+    con más inventario almacenado, así que domina la lista de Recolección, que es como se ve un 3PL
+    cuyo cliente principal guarda producto en el almacén. */
+ {sku:'TRS-SHP-1L', name:'Shampoo profesional hidratante 1L', cat:'Consumibles', uom:'ea', total:180, reserved:24, track:'lot', reorder:60, active:true, purchaseCost:8.40, salePrice:16.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-ACN-1L', name:'Acondicionador reparador 1L', cat:'Consumibles', uom:'ea', total:165, reserved:18, track:'lot', reorder:60, active:true, purchaseCost:8.90, salePrice:17.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-MSK-500', name:'Máscara de tratamiento intensivo 500g', cat:'Consumibles', uom:'ea', total:142, reserved:12, track:'lot', reorder:50, active:true, purchaseCost:11.20, salePrice:22.50, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-KER-1L', name:'Keratina de alisado profesional 1L', cat:'Consumibles', uom:'ea', total:64, reserved:8, track:'lot', reorder:25, active:true, purchaseCost:32.00, salePrice:58.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-TIN-60', name:'Tinte permanente 60ml — surtido', cat:'Consumibles', uom:'ea', total:420, reserved:60, track:'lot', reorder:150, active:true, purchaseCost:3.80, salePrice:7.50, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-OXI-900', name:'Oxidante en crema 20 vol 900ml', cat:'Consumibles', uom:'ea', total:210, reserved:30, track:'lot', reorder:80, active:true, purchaseCost:4.10, salePrice:8.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-AMP-12', name:'Ampollas de reconstrucción (caja 12)', cat:'Consumibles', uom:'box', total:96, reserved:10, track:'lot', reorder:40, active:true, purchaseCost:14.50, salePrice:27.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-SPR-300', name:'Spray fijador extra fuerte 300ml', cat:'Consumibles', uom:'ea', total:238, reserved:22, track:'lot', reorder:90, active:true, purchaseCost:5.20, salePrice:10.50, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-ACE-100', name:'Aceite capilar de argán 100ml', cat:'Consumibles', uom:'ea', total:155, reserved:14, track:'lot', reorder:60, active:true, purchaseCost:6.75, salePrice:14.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-MAT-300', name:'Shampoo matizador violeta 300ml', cat:'Consumibles', uom:'ea', total:128, reserved:16, track:'lot', reorder:50, active:true, purchaseCost:7.30, salePrice:15.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-FOL-500', name:'Papel aluminio para mechas (rollo 500)', cat:'Consumibles', uom:'roll', total:74, reserved:6, track:'none', reorder:30, active:true, purchaseCost:9.60, salePrice:18.00, client:'TRUSS PUERTO RICO'},
+ {sku:'TRS-GLV-100', name:'Guantes de tinte (caja 100)', cat:'Consumibles', uom:'box', total:112, reserved:8, track:'none', reorder:40, active:true, purchaseCost:5.40, salePrice:11.00, client:'TRUSS PUERTO RICO'},
 ];
 let WAREHOUSES = [{code:'WH-01', name:'Almacén Toa Baja', address:'Carr. 165 Km 2.1, Toa Baja, PR 00949', active:true}];
 let CURRENT_WH = WAREHOUSES[0].code;
@@ -5305,9 +5358,11 @@ let ZONES = [
  {code:'Q', name:'Cuarentena', type:'Cuarentena', bins:6, used:1, wh:'WH-01'},
 ];
 const BINS = (function(){const out=[];const fill=[
- ['A','01',[['GLU-100',12]]],['A','02',[['GLU-STR',80]]],['A','03',[['LBL-4X6',6]]],['A','04',[]],['A','05',[['WCH-STD',3]]],['A','06',[['BOX-4X6',400],['TAPE-CLR',18]]],
- ['B','01',[['BOX-4X6',900]]],['B','02',[['BOX-8X8',300]]],['B','03',[['TAPE-CLR',30]]],['B','04',[['O2C-5L',4]]],['B','05',[]],['B','06',[['FLT-O2',31]]],
- ['R','01',[]],['R','02',[['GLU-STR',20]]],['R','03',[]],
+ ['A','01',[['GLU-100',12]]],['A','02',[['GLU-STR',80]]],['A','03',[['LBL-4X6',6]]],['A','04',[['TRS-TIN-60',180]]],['A','05',[['WCH-STD',3]]],['A','06',[['BOX-4X6',400],['TAPE-CLR',18]]],
+ ['A','07',[['TRS-SHP-1L',90],['TRS-ACN-1L',80]]],['A','08',[['TRS-SPR-300',120]]],['A','09',[['TRS-MSK-500',70]]],['A','10',[['TRS-ACE-100',75],['TRS-MAT-300',60]]],
+ ['B','01',[['BOX-4X6',900]]],['B','02',[['BOX-8X8',300]]],['B','03',[['TAPE-CLR',30]]],['B','04',[['O2C-5L',4]]],['B','05',[['TRS-OXI-900',210]]],['B','06',[['FLT-O2',31]]],
+ ['B','07',[['TRS-TIN-60',240]]],['B','08',[['TRS-FOL-500',74],['TRS-GLV-100',112]]],['B','09',[['TRS-AMP-12',96]]],
+ ['R','01',[]],['R','02',[['GLU-STR',20]]],['R','03',[['TRS-KER-1L',64]]],
  ['Q','01',[['WCH-STD',1]]],['Q','02',[]],
 ];
  fill.forEach(([z,n,stock])=>{const cap=z==='A'?150:(z==='B'?1200:60);
@@ -5798,12 +5853,23 @@ function ajustesAlmacen(){const es=LANG==='es';
    implementación. Cada item ya empacado muestra el número de la orden; eliminar un item (recolección
    sin empacar, o empaque cuya orden sigue en "Entrada") restaura el inventario con un movimiento
    compensatorio — nunca se edita ni se borra el ledger, mismo principio del resto del sistema. */
-let PICK_BATCH_SEQ=7700;
+/* Los lotes sembrados son mayormente de TRUSS, que es el cliente con inventario almacenado y el que
+   despacha a salones — así la pantalla arranca mostrando el caso típico de operación, no una
+   excepción. Se deja uno de otro cliente para que se vea que el almacén no es de uno solo. */
 let PICK_BATCHES=[
+ {id:'PK-7704', date:TODAY, lines:[{sku:'TRS-TIN-60',name:'Tinte permanente 60ml — surtido',qty:12},{sku:'TRS-OXI-900',name:'Oxidante en crema 20 vol 900ml',qty:6}], status:'collected', orderInv:null, packedDate:null},
+ {id:'PK-7703', date:TODAY, lines:[{sku:'TRS-SHP-1L',name:'Shampoo profesional hidratante 1L',qty:4},{sku:'TRS-ACN-1L',name:'Acondicionador reparador 1L',qty:4},{sku:'TRS-MSK-500',name:'Máscara de tratamiento intensivo 500g',qty:2}], status:'collected', orderInv:null, packedDate:null},
+ {id:'PK-7702', date:isoDaysAgo(1), lines:[{sku:'TRS-KER-1L',name:'Keratina de alisado profesional 1L',qty:2},{sku:'TRS-AMP-12',name:'Ampollas de reconstrucción (caja 12)',qty:3}], status:'packed', orderInv:'AX-48231', clientInvoice:'FAC-8802', packedDate:isoDaysAgo(1)},
  {id:'PK-7701', date:isoDaysAgo(1), lines:[{sku:'GLU-STR',name:'Tiras reactivas Accu-Trend',qty:2}], status:'packed', orderInv:'AX-48217', clientInvoice:'FAC-8801', packedDate:isoDaysAgo(1)},
 ];
-/* la orden de la semilla que ya viene "empacada" debe reflejar el mismo número de empaque/factura que su batch — igual que hace confirmPackOrder() al crear una orden real */
-(function(){const seedB=PICK_BATCHES[0];const o=ORDERS.find(x=>x.inv===seedB.orderInv);if(o){o.pickBatch=seedB.id;o.clientInvoice=seedB.clientInvoice}})();
+/* Toda orden de la semilla que ya venga "empacada" debe reflejar el mismo número de empaque/factura
+   que su batch — igual que hace confirmPackOrder() al crear una orden real. Recorre TODOS los lotes
+   empacados, no solo el primero: al sembrar varios lotes, mirar solo `[0]` dejaba a los demás
+   desincronizados de su orden. */
+(function(){PICK_BATCHES.filter(b=>b.orderInv).forEach(b=>{
+ const o=ORDERS.find(x=>x.inv===b.orderInv);if(o){o.pickBatch=b.id;o.clientInvoice=b.clientInvoice}})})();
+/* arranca después del último ID sembrado, o el primer lote creado a mano chocaría con uno existente */
+let PICK_BATCH_SEQ=Math.max(7700,...PICK_BATCHES.map(b=>parseInt(String(b.id).replace('PK-',''),10)||0));
 let PICK_DRAFT=[]; // {sku,qty} -- poblado desde el multi-select buscable de productos, no fila por fila
 window.setPickDraftProducts=(labels)=>{
  const skus=labels.map(l=>{const pr=PRODUCTS.find(x=>productLabel(x)===l);return pr?pr.sku:null}).filter(Boolean);

@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800" font-family="DejaVu Sans">
+<rect width="1280" height="800" fill="#EFF1F5"/>
+<rect x="0" y="0" width="200" height="800" fill="#FFFFFF"/>
+<rect x="199" y="0" width="1" height="800" fill="#E4E7EE"/>
+<rect x="24" y="26" width="32" height="32" rx="9" fill="#1F6FE5"/>
+<text x="66" y="48" font-size="17" font-weight="bold" fill="#14161C">TEIKEM</text>
+
+<text x="24" y="96" font-size="10" font-weight="bold" fill="#9AA1AF" letter-spacing="1.2">OPERACIÓN</text>
+<rect x="14" y="108" width="172" height="32" rx="10" fill="#1F6FE5"/>
+<text x="32" y="129" font-size="13" font-weight="bold" fill="#FFFFFF">Pulso del día</text>
+<text x="32" y="164" font-size="13" fill="#5A6273">Órdenes</text>
+<text x="32" y="194" font-size="13" fill="#5A6273">Escaneo</text>
+<text x="32" y="224" font-size="13" fill="#5A6273">Despacho</text>
+<text x="32" y="254" font-size="13" fill="#5A6273">Monitoreo</text>
+<text x="24" y="300" font-size="10" font-weight="bold" fill="#9AA1AF" letter-spacing="1.2">ALMACÉN</text>
+<text x="32" y="330" font-size="13" fill="#5A6273">Inventario</text>
+<text x="32" y="360" font-size="13" fill="#5A6273">Recolección</text>
+<text x="32" y="390" font-size="13" fill="#5A6273">Kárdex</text>
+<text x="24" y="436" font-size="10" font-weight="bold" fill="#9AA1AF" letter-spacing="1.2">CONTABILIDAD</text>
+<text x="32" y="466" font-size="13" fill="#5A6273">Procesar entregas</text>
+<text x="32" y="496" font-size="13" fill="#5A6273">Facturación</text>
+<text x="32" y="526" font-size="13" fill="#5A6273">Liquidación</text>
+<text x="24" y="572" font-size="10" font-weight="bold" fill="#9AA1AF" letter-spacing="1.2">CATÁLOGO</text>
+<text x="32" y="602" font-size="13" fill="#5A6273">Clientes</text>
+<text x="32" y="632" font-size="13" fill="#5A6273">Choferes</text>
+<text x="32" y="662" font-size="13" fill="#5A6273">Flota</text>
+
+<text x="228" y="58" font-size="28" font-weight="bold" fill="#14161C">Pulso del día</text>
+<text x="228" y="82" font-size="13.5" fill="#7A8192">Viernes, 31 de julio</text>
+<rect x="1096" y="32" width="152" height="34" rx="17" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<circle cx="1116" cy="49" r="4" fill="#22C55E"/>
+<text x="1128" y="54" font-size="12.5" fill="#6C7383">en vivo · 10:42</text>
+
+<rect x="228" y="108" width="562" height="214" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="264" y="150" font-size="12" font-weight="bold" fill="#1D63D6" letter-spacing="1">PAQUETES EN LA CALLE</text>
+<text x="264" y="238" font-size="78" font-weight="bold" fill="#14161C">596</text>
+<text x="264" y="270" font-size="14.5" fill="#6C7383">órdenes en movimiento ahora mismo</text>
+<rect x="264" y="288" width="490" height="8" rx="4" fill="#E7EAF0"/>
+<rect x="264" y="288" width="314" height="8" rx="4" fill="#1F6FE5"/>
+
+<rect x="806" y="108" width="442" height="214" rx="20" fill="#FFF7F1" stroke="#F5DCC8" stroke-width="1"/>
+<text x="842" y="150" font-size="12" font-weight="bold" fill="#D9600B" letter-spacing="1">DINERO DE REGRESO</text>
+<text x="842" y="238" font-size="58" font-weight="bold" fill="#14161C">$19,960</text>
+<text x="842" y="270" font-size="14.5" fill="#6C7383">COD en circulación</text>
+<rect x="842" y="288" width="370" height="8" rx="4" fill="#F6E3D4"/>
+<rect x="842" y="288" width="162" height="8" rx="4" fill="#D9600B"/>
+
+<rect x="228" y="340" width="262" height="192" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="256" y="376" font-size="11" fill="#8A90A0" letter-spacing="0.8">SIN CHOFER</text>
+<text x="256" y="442" font-size="54" font-weight="bold" fill="#D9600B">83</text>
+<text x="256" y="472" font-size="12.5" fill="#6C7383">órdenes listas esperando ruta</text>
+<rect x="256" y="486" width="118" height="28" rx="14" fill="#1F6FE5"/>
+<text x="274" y="505" font-size="12" font-weight="bold" fill="#FFFFFF">Asignar ahora</text>
+
+<rect x="506" y="340" width="262" height="192" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="534" y="376" font-size="11" fill="#8A90A0" letter-spacing="0.8">SIN CUADRAR</text>
+<text x="534" y="442" font-size="46" font-weight="bold" fill="#D9600B">$2,230</text>
+<text x="534" y="472" font-size="12.5" fill="#6C7383">cobrado en calle, falta reconciliar</text>
+<rect x="534" y="486" width="104" height="28" rx="14" fill="#D9600B"/>
+<text x="554" y="505" font-size="12" font-weight="bold" fill="#FFFFFF">Abrir caja</text>
+
+<rect x="784" y="340" width="464" height="192" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="816" y="376" font-size="11" fill="#8A90A0" letter-spacing="0.8">FLUJO DE HOY</text>
+<rect x="816" y="396" width="76" height="64" rx="12" fill="#F4F6F9"/>
+<text x="828" y="422" font-size="10" fill="#8A90A0">ENTRADA</text><text x="828" y="448" font-size="21" font-weight="bold" fill="#14161C">128</text>
+<rect x="900" y="396" width="76" height="64" rx="12" fill="#F4F6F9"/>
+<text x="912" y="422" font-size="10" fill="#8A90A0">ALMACÉN</text><text x="912" y="448" font-size="21" font-weight="bold" fill="#14161C">214</text>
+<rect x="984" y="396" width="76" height="64" rx="12" fill="#FDE7D6"/>
+<text x="996" y="422" font-size="10" fill="#B0703C">DESPACHO</text><text x="996" y="448" font-size="21" font-weight="bold" fill="#D9600B">83</text>
+<rect x="1068" y="396" width="76" height="64" rx="12" fill="#E3EDFD"/>
+<text x="1080" y="422" font-size="10" fill="#4A72B8">EN RUTA</text><text x="1080" y="448" font-size="21" font-weight="bold" fill="#1D63D6">142</text>
+<rect x="1152" y="396" width="76" height="64" rx="12" fill="#DFF3E6"/>
+<text x="1162" y="422" font-size="10" fill="#3F8259">ENTREGADO</text><text x="1164" y="448" font-size="21" font-weight="bold" fill="#15803D">29</text>
+<text x="816" y="496" font-size="12.5" fill="#8A90A0">12 choferes activos · 4 rutas cerrando</text>
+
+<rect x="228" y="550" width="262" height="118" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="256" y="586" font-size="11" fill="#8A90A0" letter-spacing="0.8">RIESGO DE SLA</text>
+<text x="256" y="636" font-size="38" font-weight="bold" fill="#DC2626">3</text>
+<text x="298" y="636" font-size="12.5" fill="#6C7383">vencen en &lt; 1h</text>
+
+<rect x="506" y="550" width="262" height="118" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="534" y="586" font-size="11" fill="#8A90A0" letter-spacing="0.8">FLOTA</text>
+<text x="534" y="636" font-size="38" font-weight="bold" fill="#B7860B">7</text>
+<text x="574" y="636" font-size="12.5" fill="#6C7383">documentos por vencer</text>
+
+<rect x="784" y="550" width="464" height="118" rx="20" fill="#FFFFFF" stroke="#E4E7EE" stroke-width="1"/>
+<text x="816" y="586" font-size="11" fill="#8A90A0" letter-spacing="0.8">ÚLTIMOS 7 DÍAS</text>
+<rect x="816" y="606" width="24" height="32" rx="5" fill="#E7EAF0"/>
+<rect x="850" y="598" width="24" height="40" rx="5" fill="#E7EAF0"/>
+<rect x="884" y="614" width="24" height="24" rx="5" fill="#E7EAF0"/>
+<rect x="918" y="592" width="24" height="46" rx="5" fill="#E7EAF0"/>
+<rect x="952" y="602" width="24" height="36" rx="5" fill="#E7EAF0"/>
+<rect x="986" y="586" width="24" height="52" rx="5" fill="#E7EAF0"/>
+<rect x="1020" y="576" width="24" height="62" rx="5" fill="#1F6FE5"/>
+<text x="1070" y="622" font-size="12.5" fill="#6C7383">+12% vs. semana pasada</text>
+
+<text x="228" y="716" font-size="11" fill="#B3B8C4">Propuesta 2 — Bento claro</text>
+</svg>

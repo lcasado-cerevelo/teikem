@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800" font-family="DejaVu Sans">
+<rect width="1280" height="800" fill="#0D1220"/>
+<rect x="0" y="0" width="212" height="800" fill="#141B2E"/>
+<rect x="211" y="0" width="1" height="800" fill="#1C2740"/>
+<rect x="0" y="0" width="212" height="74" fill="#151E33"/>
+<rect x="16" y="18" width="30" height="30" rx="8" fill="#1F6FE5"/>
+<text x="54" y="41" font-size="15" font-weight="bold" fill="#E8ECF5">TEIKEM</text>
+<text x="54" y="57" font-size="8" fill="#6EA8FF">DELIVERY INTELLIGENCE</text>
+
+<text x="18" y="102" font-size="9.5" font-weight="bold" fill="#5B6680" letter-spacing="1">OPERACIÓN</text>
+<rect x="10" y="112" width="192" height="28" rx="7" fill="#182136"/>
+<circle cx="26" cy="126" r="2.5" fill="#6EA8FF"/><text x="38" y="130" font-size="12" fill="#E8ECF5">Pulso del día</text>
+<circle cx="26" cy="156" r="2.5" fill="#5B6680"/><text x="38" y="160" font-size="12" fill="#8C97AD">Órdenes</text>
+<circle cx="26" cy="184" r="2.5" fill="#5B6680"/><text x="38" y="188" font-size="12" fill="#8C97AD">Estación de escaneo</text>
+<circle cx="26" cy="212" r="2.5" fill="#5B6680"/><text x="38" y="216" font-size="12" fill="#8C97AD">Sala de despacho</text>
+<circle cx="26" cy="240" r="2.5" fill="#5B6680"/><text x="38" y="244" font-size="12" fill="#8C97AD">Monitoreo de ruta</text>
+<text x="18" y="284" font-size="9.5" font-weight="bold" fill="#5B6680" letter-spacing="1">ALMACÉN</text>
+<circle cx="26" cy="306" r="2.5" fill="#5B6680"/><text x="38" y="310" font-size="12" fill="#8C97AD">Almacenes</text>
+<circle cx="26" cy="334" r="2.5" fill="#5B6680"/><text x="38" y="338" font-size="12" fill="#8C97AD">Productos e inventario</text>
+<circle cx="26" cy="362" r="2.5" fill="#5B6680"/><text x="38" y="366" font-size="12" fill="#8C97AD">Recolección y empaque</text>
+<text x="18" y="406" font-size="9.5" font-weight="bold" fill="#5B6680" letter-spacing="1">CONTABILIDAD</text>
+<circle cx="26" cy="428" r="2.5" fill="#5B6680"/><text x="38" y="432" font-size="12" fill="#8C97AD">Procesar entregas</text>
+<circle cx="26" cy="456" r="2.5" fill="#5B6680"/><text x="38" y="460" font-size="12" fill="#8C97AD">Facturación</text>
+
+<rect x="212" y="0" width="1068" height="54" fill="#141B2E"/>
+<rect x="212" y="53" width="1068" height="1" fill="#1C2740"/>
+<rect x="232" y="12" width="300" height="30" rx="8" fill="#0A0E18" stroke="#243252" stroke-width="1"/>
+<text x="250" y="32" font-size="12" fill="#8C97AD">Buscar o ejecutar…</text>
+<rect x="498" y="18" width="20" height="18" rx="4" fill="#1F2A44"/><text x="504" y="31" font-size="10" fill="#8C97AD">/</text>
+<circle cx="700" cy="27" r="3.5" fill="#46CE82"/><text x="712" y="31" font-size="11" fill="#8C97AD">en vivo · 10:42</text>
+<rect x="1000" y="12" width="150" height="30" rx="8" fill="#0A0E18" stroke="#243252" stroke-width="1"/>
+<text x="1014" y="32" font-size="11.5" fill="#E8ECF5">Advance Logistics</text>
+
+<text x="240" y="90" font-size="20" font-weight="bold" fill="#E8ECF5">Viernes, 31 de julio</text>
+<text x="240" y="112" font-size="12" fill="#8C97AD">596 órdenes en movimiento · $19,960 COD en circulación</text>
+<text x="240" y="136" font-size="12" fill="#5B6680">Dos corrientes: lo que sale a la calle, y el dinero que regresa al cliente.</text>
+
+<text x="240" y="170" font-size="11" font-weight="bold" fill="#6EA8FF">PAQUETES EN LA CALLE</text>
+<rect x="404" y="166" width="836" height="1" fill="#243252"/>
+
+<rect x="240" y="182" width="176" height="96" rx="11" fill="#182136" stroke="#1F6FE5" stroke-width="1"/>
+<text x="256" y="204" font-size="10.5" fill="#8C97AD">Entrada</text>
+<text x="256" y="238" font-size="26" font-weight="bold" fill="#E8ECF5">38</text>
+<text x="256" y="260" font-size="10" fill="#5B6680">órdenes nuevas</text>
+<rect x="424" y="228" width="24" height="2" fill="#243252"/>
+<rect x="456" y="182" width="176" height="96" rx="11" fill="#141B2E" stroke="#243252" stroke-width="1"/>
+<text x="472" y="204" font-size="10.5" fill="#8C97AD">En almacén</text>
+<text x="472" y="238" font-size="26" font-weight="bold" fill="#E8ECF5">214</text>
+<text x="472" y="260" font-size="10" fill="#5B6680">escaneados 0/214</text>
+<rect x="640" y="228" width="24" height="2" fill="#243252"/>
+<rect x="672" y="182" width="176" height="96" rx="11" fill="#141B2E" stroke="#243252" stroke-width="1"/>
+<text x="688" y="204" font-size="10.5" fill="#8C97AD">Por despachar</text>
+<text x="688" y="238" font-size="26" font-weight="bold" fill="#E8ECF5">83</text>
+<text x="688" y="260" font-size="10" fill="#5B6680">sin chofer</text>
+<rect x="856" y="228" width="24" height="2" fill="#243252"/>
+<rect x="888" y="182" width="176" height="96" rx="11" fill="#141B2E" stroke="#243252" stroke-width="1"/>
+<text x="904" y="204" font-size="10.5" fill="#8C97AD">En ruta</text>
+<text x="904" y="238" font-size="26" font-weight="bold" fill="#E8ECF5">195</text>
+<text x="904" y="260" font-size="10" fill="#5B6680">12 choferes</text>
+<rect x="1072" y="228" width="24" height="2" fill="#243252"/>
+<rect x="1104" y="182" width="136" height="96" rx="11" fill="#141B2E" stroke="#243252" stroke-width="1"/>
+<text x="1120" y="204" font-size="10.5" fill="#8C97AD">Entregado</text>
+<text x="1120" y="238" font-size="26" font-weight="bold" fill="#E8ECF5">66</text>
+<text x="1120" y="260" font-size="10" fill="#5B6680">hoy</text>
+
+<text x="240" y="316" font-size="11" font-weight="bold" fill="#FF8B4D">DINERO COD DE REGRESO</text>
+<rect x="420" y="312" width="820" height="1" fill="#243252"/>
+<rect x="240" y="328" width="228" height="92" rx="11" fill="#1A1723" stroke="#3A2A20" stroke-width="1"/>
+<text x="256" y="350" font-size="10.5" fill="#8C97AD">Por cobrar</text>
+<text x="256" y="382" font-size="21" font-weight="bold" fill="#FF8B4D">$19,960.55</text>
+<text x="256" y="404" font-size="10" fill="#5B6680">263 órdenes</text>
+<rect x="476" y="372" width="24" height="2" fill="#3A2A20"/>
+<rect x="508" y="328" width="228" height="92" rx="11" fill="#1A1723" stroke="#3A2A20" stroke-width="1"/>
+<text x="524" y="350" font-size="10.5" fill="#8C97AD">Cobrado</text>
+<text x="524" y="382" font-size="21" font-weight="bold" fill="#FF8B4D">$4,210.00</text>
+<text x="524" y="404" font-size="10" fill="#5B6680">ef 2,840 · ck 1,370</text>
+<rect x="744" y="372" width="24" height="2" fill="#3A2A20"/>
+<rect x="776" y="328" width="228" height="92" rx="11" fill="#1A1723" stroke="#3A2A20" stroke-width="1"/>
+<text x="792" y="350" font-size="10.5" fill="#8C97AD">En cuadre</text>
+<text x="792" y="382" font-size="21" font-weight="bold" fill="#FF8B4D">$2,230.00</text>
+<text x="792" y="404" font-size="10" fill="#5B6680">sin cuadrar</text>
+<rect x="1012" y="372" width="24" height="2" fill="#3A2A20"/>
+<rect x="1044" y="328" width="196" height="92" rx="11" fill="#1A1723" stroke="#3A2A20" stroke-width="1"/>
+<text x="1060" y="350" font-size="10.5" fill="#8C97AD">Remesa lista</text>
+<text x="1060" y="382" font-size="21" font-weight="bold" fill="#FF8B4D">$1,980.00</text>
+<text x="1060" y="404" font-size="10" fill="#5B6680">2 clientes</text>
+
+<rect x="240" y="446" width="1000" height="206" rx="12" fill="#141B2E" stroke="#1C2740" stroke-width="1"/>
+<rect x="240" y="446" width="1000" height="38" rx="12" fill="#182136"/>
+<text x="262" y="470" font-size="12.5" font-weight="bold" fill="#E8ECF5">Necesita tu decisión</text>
+<rect x="410" y="458" width="88" height="18" rx="9" fill="#1F2A44"/><text x="424" y="471" font-size="10" fill="#8C97AD">4 pendientes</text>
+
+<rect x="256" y="496" width="4" height="30" rx="2" fill="#1F6FE5"/>
+<text x="276" y="510" font-size="12" font-weight="bold" fill="#E8ECF5">83 órdenes sin chofer</text>
+<text x="276" y="526" font-size="10.5" fill="#8C97AD">Listas en almacén, esperan ruta</text>
+<rect x="1140" y="496" width="84" height="26" rx="7" fill="#1F2A44"/><text x="1160" y="513" font-size="10.5" fill="#E8ECF5">Asignar</text>
+
+<rect x="256" y="536" width="4" height="30" rx="2" fill="#FF6A1A"/>
+<text x="276" y="550" font-size="12" font-weight="bold" fill="#E8ECF5">$2,230 COD sin cuadrar</text>
+<text x="276" y="566" font-size="10.5" fill="#8C97AD">Cobrado en calle, falta reconciliar</text>
+<rect x="1140" y="536" width="84" height="26" rx="7" fill="#1F2A44"/><text x="1156" y="553" font-size="10.5" fill="#E8ECF5">Abrir caja</text>
+
+<rect x="256" y="576" width="4" height="30" rx="2" fill="#F26A60"/>
+<text x="276" y="590" font-size="12" font-weight="bold" fill="#E8ECF5">3 órdenes en riesgo de SLA</text>
+<text x="276" y="606" font-size="10.5" fill="#8C97AD">Ventana de entrega vence en &lt; 1h</text>
+<rect x="1140" y="576" width="84" height="26" rx="7" fill="#1F2A44"/><text x="1162" y="593" font-size="10.5" fill="#E8ECF5">Revisar</text>
+
+<rect x="256" y="616" width="4" height="30" rx="2" fill="#E6A93E"/>
+<text x="276" y="630" font-size="12" font-weight="bold" fill="#E8ECF5">7 documentos de flota por vencer</text>
+<text x="276" y="646" font-size="10.5" fill="#8C97AD">Seguros e inspecciones esta semana</text>
+<rect x="1140" y="616" width="84" height="26" rx="7" fill="#1F2A44"/><text x="1158" y="633" font-size="10.5" fill="#E8ECF5">Ver flota</text>
+
+<rect x="240" y="668" width="1000" height="96" rx="12" fill="#141B2E" stroke="#1C2740" stroke-width="1"/>
+<text x="262" y="694" font-size="12.5" font-weight="bold" fill="#E8ECF5">Radar de órdenes abiertas</text>
+<rect x="262" y="706" width="300" height="26" rx="7" fill="#0A0E18" stroke="#243252" stroke-width="1"/>
+<text x="276" y="723" font-size="10.5" fill="#5B6680">Busca por invoice o consignatario…</text>
+<text x="600" y="723" font-size="10.5" fill="#8C97AD">Agrupar por:</text>
+<rect x="678" y="706" width="60" height="26" rx="7" fill="#1F2A44"/><text x="694" y="723" font-size="10.5" fill="#E8ECF5">Pueblo</text>
+<rect x="746" y="706" width="60" height="26" rx="7" fill="#0A0E18"/><text x="762" y="723" font-size="10.5" fill="#8C97AD">Cliente</text>
+<text x="240" y="786" font-size="11" fill="#3A4258">Estado actual del prototipo</text>
+</svg>
