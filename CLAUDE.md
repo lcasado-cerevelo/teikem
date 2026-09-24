@@ -37,7 +37,7 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 
 ## Cómo verificar
 ```
-docker compose up -d sqlserver
+docker compose up -d sqlserver          # o, sin Docker (contenedor de Claude Code): scripts/dev-sqlserver.sh
 dotnet build Teikem.sln && dotnet test Teikem.sln
 dotnet run --project src/Teikem.Api -- db-init
 dotnet run --project src/Teikem.Api &  scripts/smoke.sh http://localhost:5000
