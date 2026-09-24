@@ -1,0 +1,36 @@
+name: ci
+on:
+  push:
+    branches: [ master, main, "claude/**" ]
+  pull_request:
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Teikem_Dev_2026!"
+          MSSQL_PID: "Developer"
+        ports: [ "1433:1433" ]
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Teikem_Dev_2026!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore & build
+        run: dotnet build Teikem.sln -c Release
+      - name: Unit tests
+        run: dotnet test Teikem.sln -c Release --no-build --logger "trx;LogFileName=tests.trx"
+      - name: db-init (Identity → estructura → seed → extensiones → seeders)
+        run: dotnet run --project src/Teikem.Api -c Release --no-build -- db-init
+      - name: Smoke test contra el API
+        run: |
+          sudo apt-get install -y jq >/dev/null
+          ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          for i in $(seq 1 30); do curl -sf http://localhost:5000/health && break; sleep 2; done
+          scripts/smoke.sh http://localhost:5000

@@ -1,3 +1,15 @@
 # Archivos temporales del sistema
 Thumbs.db
 desktop.ini
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.idea/
+*.swp
+TestResults/
+appsettings.*.local.json
+.env

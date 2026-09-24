@@ -1,0 +1,23 @@
+# SQL Server para desarrollo local. Uso:
+#   docker compose up -d sqlserver
+#   dotnet run --project src/Teikem.Api -- db-init      # crea BD, corre scripts SQL y seed
+#   dotnet run --project src/Teikem.Api                 # levanta el API (https://localhost:5001/swagger)
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: teikem-sql
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Teikem_Dev_2026!"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - teikem-sql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Teikem_Dev_2026!' -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+volumes:
+  teikem-sql-data:
