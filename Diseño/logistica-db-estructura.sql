@@ -1498,7 +1498,7 @@ CREATE TABLE dbo.RentalContract (
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     RentalAssetId INT NOT NULL REFERENCES dbo.RentalAsset(RentalAssetId),
     ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
-    ContactId    INT NULL REFERENCES dbo.Contact(ContactId),
+    ContactId    INT NULL REFERENCES dbo.ClientContact(ClientContactId),   -- corregido: la tabla es ClientContact
     LeaseStartDate DATE NOT NULL, LeaseEndDate DATE NULL,                   -- NULL = plazo abierto
     ExpectedReturnDate DATE NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='RentalContractStatus' (activo/devuelto/vencido/cancelado)
@@ -1546,7 +1546,7 @@ CREATE TABLE dbo.RentalCharge (
     PeriodStart  DATE NOT NULL, PeriodEnd DATE NOT NULL,
     Amount       DECIMAL(18,4) NOT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='RentalChargeStatus' (pendiente/facturado/pagado)
-    InvoiceId    INT NULL REFERENCES dbo.Invoice(InvoiceId),
+    InvoiceId    INT NULL,                                                  -- FK a Invoice se agrega después de crear Invoice (capa 17)
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 CREATE INDEX IX_RentalCharge_Contract ON dbo.RentalCharge(RentalContractId, StatusCodeId);
@@ -1603,6 +1603,9 @@ CREATE TABLE dbo.Invoice (
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
     CONSTRAINT UQ_Invoice_Number UNIQUE (TenantId, InvoiceNumber)
 );
+GO
+-- FK diferida: RentalCharge (capa 16C) se crea antes que Invoice
+ALTER TABLE dbo.RentalCharge ADD CONSTRAINT FK_RentalCharge_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
 GO
 
 CREATE TABLE dbo.InvoiceLine (
