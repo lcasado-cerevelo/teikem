@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Identity;
@@ -36,6 +37,9 @@ public static class DependencyInjection
                 sql.CommandTimeout(60);
             });
             options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+            // Los filtros de tenant sobre catálogos/definiciones son intencionales: la fila requerida siempre es visible
+            // (global o del mismo tenant), así que esta advertencia de EF no aplica.
+            options.ConfigureWarnings(w => w.Ignore(CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning));
         });
 
         // Identity core con llaves int. Contraseñas según NIST 800-63B: longitud ≥ 12, sin reglas de composición.

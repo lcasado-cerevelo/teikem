@@ -97,7 +97,7 @@ ACT=$(expect 200 "$(req GET '/api/v1/audit/activity?kind=all&take=20')")
 echo "$ACT" | jq -e '.total >= 5' >/dev/null || fail "actividad vacía"
 echo "$ACT" | jq -e '.items | map(select(.kind=="change")) | length >= 1' >/dev/null || fail "sin cambios auditados"
 echo "$ACT" | jq -e '.items | map(select(.kind=="security")) | length >= 1' >/dev/null || fail "sin eventos de seguridad"
-expect 200 "$(req GET '/api/v1/audit/activity/export.csv')" | head -1 | grep -q 'Cuando' || fail "csv"; ok "bitácora unificada + CSV"
+expect 200 "$(req GET '/api/v1/audit/activity/export.csv')" | grep -q 'Cuando,Tipo,Usuario' || fail "csv"; ok "bitácora unificada + CSV"
 
 step "RBAC: despachador sin admin.users → 403 + PERMISSION_DENIED"
 R2=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$DISPATCH_EMAIL\",\"password\":\"$PASS\"}")")
