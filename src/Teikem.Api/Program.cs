@@ -83,7 +83,7 @@ builder.Services.AddAuthorization(o =>
 
 var app = builder.Build();
 
-// --- Modo CLI: `dotnet run -- db-init` crea la BD, corre los scripts SQL (Diseño/ + db/migrations) y los seeders ---
+// --- Modo CLI: `dotnet run -- db-init` crea la BD, corre los dos scripts SQL de Diseño/ y los seeders ---
 if (args.Contains("db-init", StringComparer.OrdinalIgnoreCase))
 {
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();

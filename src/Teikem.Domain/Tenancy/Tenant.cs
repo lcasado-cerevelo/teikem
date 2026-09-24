@@ -18,7 +18,7 @@ public class Tenant : ISoftDeletable
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public byte[]? RowVersion { get; set; }
 
-    // --- Extensiones Lote 1 (db/migrations/0002_lote1_extensiones.sql) ---
+    // --- Extensiones Lote 1 (estructura, Lote 1) ---
     /// <summary>Tipo de servicio por defecto para Entrada de órdenes (doc módulo 2).</summary>
     public int? DefaultServiceTypeLookupId { get; set; }
     /// <summary>Tipo de paquete por defecto para Entrada de órdenes (doc módulo 2).</summary>
@@ -61,7 +61,7 @@ public class ModuleDefinition
     public string? DependsOnModuleKey { get; set; }
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
-    /// <summary>Extensión Lote 1: módulo núcleo que ningún tenant puede apagar (LTL_GROUND, SYSTEM).</summary>
+    /// <summary>Lote 1: módulo núcleo que ningún tenant puede apagar (LTL_GROUND, SYSTEM).</summary>
     public bool IsCore { get; set; }
 
     public ModuleDefinition? DependsOn { get; set; }

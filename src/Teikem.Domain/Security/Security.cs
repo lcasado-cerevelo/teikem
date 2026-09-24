@@ -68,7 +68,7 @@ public class UserRole : ITenantScoped
     public Role? Role { get; set; }
 }
 
-/// <summary>Extensión Lote 1: permiso extra concedido directo a una persona (excepción puntual, sin tocar un rol).</summary>
+/// <summary>Lote 1: permiso extra concedido directo a una persona (excepción puntual, sin tocar un rol).</summary>
 [AuditEntity(Constants.EntityTypes.User)]
 public class UserPermission : ITenantScoped
 {

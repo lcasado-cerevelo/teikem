@@ -5,8 +5,7 @@ Backend .NET 8 (ASP.NET Core + EF Core + SQL Server) construido por lotes a part
 
 | Carpeta | Contenido |
 |---|---|
-| `Diseño/` | Documento maestro, scripts SQL de estructura y seed (la BD se entrega **separada** del API, según el README de Diseño). |
-| `db/migrations/` | Scripts propios del API: `0001_identity.sql` (tablas de ASP.NET Core Identity, guarded) y `0002_lote1_extensiones.sql` (tablas/columnas que el documento describe y el script de estructura aún no tiene). |
+| `Diseño/` | Documento maestro y el **único** set de scripts SQL: `logistica-db-estructura.sql` (incluye las tablas de Identity) y `logistica-db-seed.sql`. La BD se entrega separada del API, según el README de Diseño. |
 | `src/Teikem.Domain` | Entidades (mapeo 1:1 a las tablas), constantes de catálogo, catálogo de permisos (sembrado desde código). |
 | `src/Teikem.Infrastructure` | `TeikemDbContext` (filtro global de tenant), interceptor de auditoría, runner de scripts SQL, motor de DSL/análisis y servicios de negocio. |
 | `src/Teikem.Api` | ASP.NET Core: JWT, RBAC por policy, filtros de módulo y AAL2, controladores `/api/v1/*`, Swagger. |
@@ -17,12 +16,12 @@ Backend .NET 8 (ASP.NET Core + EF Core + SQL Server) construido por lotes a part
 
 ```bash
 docker compose up -d sqlserver                     # SQL Server 2022 en localhost:1433 (sa / Teikem_Dev_2026!)
-dotnet run --project src/Teikem.Api -- db-init     # crea la BD y aplica: 0001_identity → estructura → seed → 0002+ → seeders
+dotnet run --project src/Teikem.Api -- db-init     # crea la BD y aplica: estructura → seed → seeders de código
 dotnet run --project src/Teikem.Api                # https://localhost:5001/swagger
 dotnet test                                        # pruebas unitarias
 ```
 
-`db-init` es idempotente: registra cada script en `dbo.__SchemaVersion` por nombre + hash SHA-256 y solo re-aplica los que cambian.
+`db-init` registra cada script en `dbo.__SchemaVersion` por nombre + hash SHA-256: el seed se vuelve a aplicar si cambia (es MERGE); la estructura se aplica una sola vez sobre BD limpia (si cambia, recrea la BD de desarrollo).
 Con `Seed:Demo:Enabled=true` (default en `appsettings.json`) se aprovisiona el tenant demo **Advance Logistics** con:
 
 | Usuario | Contraseña | Rol |

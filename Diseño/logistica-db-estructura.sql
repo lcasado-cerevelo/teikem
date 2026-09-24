@@ -30,41 +30,115 @@ SET XACT_ABORT ON;
 GO
 
 /* =========================================================================
-   CAPA 0 — IDENTIDAD (mínima; en prod la genera Identity)
+   CAPA 0 — IDENTIDAD (ASP.NET Core Identity, llaves INT; guarded para poder
+   convivir con la migración de Identity si algún día se genera desde EF)
    ========================================================================= */
-IF OBJECT_ID('dbo.AspNetUsers') IS NULL
-CREATE TABLE dbo.AspNetUsers (
-    Id                  INT IDENTITY(1,1) PRIMARY KEY,
-    UserName            NVARCHAR(256) NULL,
-    NormalizedUserName  NVARCHAR(256) NULL,
-    Email               NVARCHAR(256) NULL,
-    NormalizedEmail     NVARCHAR(256) NULL,
-    EmailConfirmed      BIT NOT NULL DEFAULT 0,
-    PasswordHash        NVARCHAR(MAX) NULL,
-    SecurityStamp       NVARCHAR(MAX) NULL,
-    ConcurrencyStamp    NVARCHAR(MAX) NULL,
-    PhoneNumber         NVARCHAR(50) NULL,
-    PhoneNumberConfirmed BIT NOT NULL DEFAULT 0,
-    TwoFactorEnabled    BIT NOT NULL DEFAULT 0,
-    LockoutEnd          DATETIMEOFFSET NULL,
-    LockoutEnabled      BIT NOT NULL DEFAULT 1,
-    AccessFailedCount   INT NOT NULL DEFAULT 0,
-    -- columnas de app
-    FullName            NVARCHAR(150) NULL,
-    DefaultTenantId     INT NULL,
-    UserKindLookupId    INT NULL,
-    IsActive            BIT NOT NULL DEFAULT 1,
-    CreatedAtUtc        DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    LastLoginUtc        DATETIME2 NULL
-);
-GO
 IF OBJECT_ID('dbo.AspNetRoles') IS NULL
-CREATE TABLE dbo.AspNetRoles (
-    Id   INT IDENTITY(1,1) PRIMARY KEY,
-    Name NVARCHAR(256) NULL,
-    NormalizedName NVARCHAR(256) NULL,
-    ConcurrencyStamp NVARCHAR(MAX) NULL
-);
+BEGIN
+    CREATE TABLE dbo.AspNetRoles (
+        Id               INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AspNetRoles PRIMARY KEY,
+        Name             NVARCHAR(256) NULL,
+        NormalizedName   NVARCHAR(256) NULL,
+        ConcurrencyStamp NVARCHAR(MAX) NULL
+    );
+    CREATE UNIQUE INDEX RoleNameIndex ON dbo.AspNetRoles(NormalizedName) WHERE NormalizedName IS NOT NULL;
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetUsers') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetUsers (
+        Id                   INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AspNetUsers PRIMARY KEY,
+        UserName             NVARCHAR(256) NULL,
+        NormalizedUserName   NVARCHAR(256) NULL,
+        Email                NVARCHAR(256) NULL,
+        NormalizedEmail      NVARCHAR(256) NULL,
+        EmailConfirmed       BIT NOT NULL CONSTRAINT DF_AspNetUsers_EmailConfirmed DEFAULT 0,
+        PasswordHash         NVARCHAR(MAX) NULL,
+        SecurityStamp        NVARCHAR(MAX) NULL,
+        ConcurrencyStamp     NVARCHAR(MAX) NULL,
+        PhoneNumber          NVARCHAR(50) NULL,
+        PhoneNumberConfirmed BIT NOT NULL CONSTRAINT DF_AspNetUsers_PhoneConfirmed DEFAULT 0,
+        TwoFactorEnabled     BIT NOT NULL CONSTRAINT DF_AspNetUsers_TwoFactor DEFAULT 0,
+        LockoutEnd           DATETIMEOFFSET NULL,
+        LockoutEnabled       BIT NOT NULL CONSTRAINT DF_AspNetUsers_LockoutEnabled DEFAULT 1,
+        AccessFailedCount    INT NOT NULL CONSTRAINT DF_AspNetUsers_AccessFailed DEFAULT 0,
+        -- columnas de aplicación
+        FullName             NVARCHAR(150) NULL,
+        DefaultTenantId      INT NULL,
+        UserKindLookupId     INT NULL,
+        IsActive             BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsActive DEFAULT 1,
+        CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_AspNetUsers_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+        LastLoginUtc         DATETIME2 NULL,
+        IsPlatformAdmin      BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsPlatformAdmin DEFAULT 0
+    );
+    CREATE INDEX EmailIndex ON dbo.AspNetUsers(NormalizedEmail);
+    CREATE UNIQUE INDEX UserNameIndex ON dbo.AspNetUsers(NormalizedUserName) WHERE NormalizedUserName IS NOT NULL;
+END
+ELSE IF COL_LENGTH('dbo.AspNetUsers', 'IsPlatformAdmin') IS NULL
+BEGIN
+    ALTER TABLE dbo.AspNetUsers ADD IsPlatformAdmin BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsPlatformAdmin DEFAULT 0;
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetRoleClaims') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetRoleClaims (
+        Id         INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AspNetRoleClaims PRIMARY KEY,
+        RoleId     INT NOT NULL CONSTRAINT FK_AspNetRoleClaims_AspNetRoles_RoleId FOREIGN KEY REFERENCES dbo.AspNetRoles(Id) ON DELETE CASCADE,
+        ClaimType  NVARCHAR(MAX) NULL,
+        ClaimValue NVARCHAR(MAX) NULL
+    );
+    CREATE INDEX IX_AspNetRoleClaims_RoleId ON dbo.AspNetRoleClaims(RoleId);
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetUserClaims') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetUserClaims (
+        Id         INT IDENTITY(1,1) NOT NULL CONSTRAINT PK_AspNetUserClaims PRIMARY KEY,
+        UserId     INT NOT NULL CONSTRAINT FK_AspNetUserClaims_AspNetUsers_UserId FOREIGN KEY REFERENCES dbo.AspNetUsers(Id) ON DELETE CASCADE,
+        ClaimType  NVARCHAR(MAX) NULL,
+        ClaimValue NVARCHAR(MAX) NULL
+    );
+    CREATE INDEX IX_AspNetUserClaims_UserId ON dbo.AspNetUserClaims(UserId);
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetUserLogins') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetUserLogins (
+        LoginProvider       NVARCHAR(450) NOT NULL,
+        ProviderKey         NVARCHAR(450) NOT NULL,
+        ProviderDisplayName NVARCHAR(MAX) NULL,
+        UserId              INT NOT NULL CONSTRAINT FK_AspNetUserLogins_AspNetUsers_UserId FOREIGN KEY REFERENCES dbo.AspNetUsers(Id) ON DELETE CASCADE,
+        CONSTRAINT PK_AspNetUserLogins PRIMARY KEY (LoginProvider, ProviderKey)
+    );
+    CREATE INDEX IX_AspNetUserLogins_UserId ON dbo.AspNetUserLogins(UserId);
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetUserRoles') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetUserRoles (
+        UserId INT NOT NULL CONSTRAINT FK_AspNetUserRoles_AspNetUsers_UserId FOREIGN KEY REFERENCES dbo.AspNetUsers(Id) ON DELETE CASCADE,
+        RoleId INT NOT NULL CONSTRAINT FK_AspNetUserRoles_AspNetRoles_RoleId FOREIGN KEY REFERENCES dbo.AspNetRoles(Id) ON DELETE CASCADE,
+        CONSTRAINT PK_AspNetUserRoles PRIMARY KEY (UserId, RoleId)
+    );
+    CREATE INDEX IX_AspNetUserRoles_RoleId ON dbo.AspNetUserRoles(RoleId);
+END
+GO
+
+IF OBJECT_ID('dbo.AspNetUserTokens') IS NULL
+BEGIN
+    CREATE TABLE dbo.AspNetUserTokens (
+        UserId        INT NOT NULL CONSTRAINT FK_AspNetUserTokens_AspNetUsers_UserId FOREIGN KEY REFERENCES dbo.AspNetUsers(Id) ON DELETE CASCADE,
+        LoginProvider NVARCHAR(450) NOT NULL,
+        Name          NVARCHAR(450) NOT NULL,
+        Value         NVARCHAR(MAX) NULL,
+        CONSTRAINT PK_AspNetUserTokens PRIMARY KEY (UserId, LoginProvider, Name)
+    );
+END
 GO
 
 /* =========================================================================
@@ -79,6 +153,12 @@ CREATE TABLE dbo.Tenant (
     DefaultLangCode CHAR(2) NOT NULL DEFAULT 'es',
     WorkDaysMask    TINYINT NOT NULL DEFAULT 62,  -- bits Dom=1,Lun=2,Mar=4,Mié=8,Jue=16,Vie=32,Sáb=64; 62 = L-V
     MaxStopsPerRouteDefault INT NOT NULL DEFAULT 25,  -- default de alerta; el chofer puede tener su propio límite (Driver.MaxStopsPerRoute)
+    DefaultServiceTypeLookupId INT NULL,              -- Entity='ServiceType': default de captura (FK diferida, LookupCode se crea después)
+    DefaultPackageTypeLookupId INT NULL,              -- Entity='PackageType': default de captura (FK diferida)
+    MfaRequired     BIT NOT NULL DEFAULT 0,           -- política MFA del tenant
+    Aal2WindowMinutes INT NOT NULL DEFAULT 30,        -- ventana de reautenticación AAL2 (step-up)
+    SessionDays     INT NOT NULL DEFAULT 30,          -- vida del refresh token
+    BrandingJson    NVARCHAR(MAX) NULL,               -- marca por compañía (tema de color y logos)
     IsActive        BIT NOT NULL DEFAULT 1,
     CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     RowVersion      ROWVERSION
@@ -112,6 +192,7 @@ CREATE TABLE dbo.ModuleDefinition (
     Category     NVARCHAR(40)  NOT NULL,        -- agrupación de menú: 'Operacion','Almacen','Dinero','Equipos','Catalogo','Analisis'
     DependsOnModuleKey VARCHAR(40) NULL REFERENCES dbo.ModuleDefinition(ModuleKey), -- ej. RENTAL_BILLING depende de RENTAL_EQUIPMENT
     SortOrder    INT NOT NULL DEFAULT 0,
+    IsCore       BIT NOT NULL DEFAULT 0,          -- núcleo: ningún tenant lo puede apagar (LTL_GROUND, SYSTEM)
     IsActive     BIT NOT NULL DEFAULT 1
 );
 GO
@@ -136,6 +217,7 @@ CREATE TABLE dbo.CatalogDomain (
     Description     NVARCHAR(300) NULL,
     IsSystem        BIT NOT NULL DEFAULT 1,
     IsActive        BIT NOT NULL DEFAULT 1,
+    TenantId        INT NULL REFERENCES dbo.Tenant(TenantId),   -- NULL = dominio global; con valor = lista propia del tenant
     CONSTRAINT UQ_CatalogDomain UNIQUE (DomainKey)
 );
 GO
@@ -153,6 +235,7 @@ CREATE TABLE dbo.LookupCode (
     CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     UpdatedAtUtc    DATETIME2 NULL,
     RowVersion      ROWVERSION,
+    TenantId        INT NULL REFERENCES dbo.Tenant(TenantId),   -- NULL = valor global; con valor = valor de una lista del tenant
     CONSTRAINT UQ_LookupCode UNIQUE (Entity, InternalCode),
     CONSTRAINT FK_LookupCode_Domain FOREIGN KEY (Entity) REFERENCES dbo.CatalogDomain(DomainKey)
 );
@@ -207,6 +290,10 @@ ALTER TABLE dbo.AspNetUsers ADD CONSTRAINT FK_User_DefaultTenant
     FOREIGN KEY (DefaultTenantId) REFERENCES dbo.Tenant(TenantId);
 ALTER TABLE dbo.AspNetUsers ADD CONSTRAINT FK_User_UserKind
     FOREIGN KEY (UserKindLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultServiceType
+    FOREIGN KEY (DefaultServiceTypeLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultPackageType
+    FOREIGN KEY (DefaultPackageTypeLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
 GO
 
 /* =========================================================================
@@ -265,6 +352,19 @@ CREATE TABLE dbo.UserRole (
     CONSTRAINT UQ_UserRole UNIQUE (UserId, RoleId, TenantId)
 );
 CREATE INDEX IX_UserRole_User ON dbo.UserRole(UserId, TenantId);
+GO
+
+-- Permiso extra concedido directo a una persona (excepción puntual, sin crear ni tocar un rol)
+CREATE TABLE dbo.UserPermission (
+    UserPermissionId INT IDENTITY(1,1) PRIMARY KEY,
+    UserId       INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    PermissionId INT NOT NULL REFERENCES dbo.Permission(PermissionId),
+    GrantedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    GrantedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_UserPermission UNIQUE (UserId, TenantId, PermissionId)
+);
+CREATE INDEX IX_UserPermission_User ON dbo.UserPermission(UserId, TenantId);
 GO
 
 CREATE TABLE dbo.UserDataScope (
@@ -443,8 +543,10 @@ CREATE TABLE dbo.ReportDefinition (
     DescriptionJson NVARCHAR(MAX) NULL,
     VisibilityLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='ReportVisibility'
     OwnerUserId     INT NULL REFERENCES dbo.AspNetUsers(Id),
+    IsSystem        BIT NOT NULL DEFAULT 0,          -- informe por default del tenant: nadie lo edita ni lo elimina
+    SecondaryJson   NVARCHAR(MAX) NULL,              -- fuentes secundarias combinadas (muchos-a-uno), JSON array
     ColumnsJson     NVARCHAR(MAX) NOT NULL,          -- columnas: campos nativos + custom fields (FieldKey)
-    FilterJson      NVARCHAR(MAX) NULL,              -- DSL de filtros (reusa evaluador SEPHAS)
+    FilterJson      NVARCHAR(MAX) NULL,              -- DSL de filtros (mismo evaluador que la validación de campos)
     SortJson        NVARCHAR(MAX) NULL,
     GroupJson       NVARCHAR(MAX) NULL,              -- agrupaciones/agregados
     ChartTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Entity='ReportChartType'
@@ -468,6 +570,101 @@ CREATE TABLE dbo.ReportShare (
     UserId          INT NULL REFERENCES dbo.AspNetUsers(Id),
     CanEdit         BIT NOT NULL DEFAULT 0
 );
+GO
+
+-- Módulo H — Indicadores personalizados (un solo valor agregado sobre una fuente de datos)
+CREATE TABLE dbo.IndicatorDefinition (
+    IndicatorDefinitionId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId        UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId        INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Name            NVARCHAR(150) NOT NULL,
+    DescriptionJson NVARCHAR(MAX) NULL,
+    DataSourceKey   NVARCHAR(60) NOT NULL,             -- fuente de datos (registro de fuentes)
+    FieldKey        NVARCHAR(80) NULL,                 -- campo agregado (NULL para COUNT)
+    AggregateFnLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='AggregateFn'
+    FilterJson      NVARCHAR(MAX) NULL,
+    BusinessModuleLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),-- Entity='BusinessModule'
+    IsMoney         BIT NOT NULL DEFAULT 0,
+    IsSystem        BIT NOT NULL DEFAULT 0,
+    OwnerUserId     INT NULL REFERENCES dbo.AspNetUsers(Id),
+    VisibilityLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='ReportVisibility'
+    DateRangeModeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Entity='DateRangeMode'
+    DateFrom        DATE NULL, DateTo DATE NULL,
+    ShowInPulse     BIT NOT NULL DEFAULT 0,
+    SortOrder       INT NOT NULL DEFAULT 100,
+    IsActive        BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc    DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion      ROWVERSION,
+    CONSTRAINT UQ_IndicatorDefinition UNIQUE (TenantId, Name)
+);
+CREATE INDEX IX_IndicatorDefinition_Tenant ON dbo.IndicatorDefinition(TenantId) WHERE IsActive = 1;
+GO
+CREATE TABLE dbo.IndicatorShare (
+    IndicatorShareId INT IDENTITY(1,1) PRIMARY KEY,
+    IndicatorDefinitionId INT NOT NULL REFERENCES dbo.IndicatorDefinition(IndicatorDefinitionId),
+    RoleId INT NULL REFERENCES dbo.Role(RoleId),
+    UserId INT NULL REFERENCES dbo.AspNetUsers(Id)
+);
+GO
+
+-- Módulo I — Gráficos personalizados (un campo de agrupación + un agregado; BAR/DONUT/LINE)
+CREATE TABLE dbo.ChartDefinition (
+    ChartDefinitionId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId        UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId        INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Name            NVARCHAR(150) NOT NULL,
+    DescriptionJson NVARCHAR(MAX) NULL,
+    DataSourceKey   NVARCHAR(60) NOT NULL,
+    GroupByField    NVARCHAR(80) NOT NULL,
+    FieldKey        NVARCHAR(80) NULL,
+    AggregateFnLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    ChartTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='ReportChartType' (BAR/DONUT/LINE)
+    FilterJson      NVARCHAR(MAX) NULL,
+    BusinessModuleLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    IsMoney         BIT NOT NULL DEFAULT 0,
+    IsSystem        BIT NOT NULL DEFAULT 0,
+    OwnerUserId     INT NULL REFERENCES dbo.AspNetUsers(Id),
+    VisibilityLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    DateRangeModeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    DateFrom        DATE NULL, DateTo DATE NULL,
+    ShowInPulse     BIT NOT NULL DEFAULT 0,
+    SortOrder       INT NOT NULL DEFAULT 100,
+    IsActive        BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy       INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc    DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion      ROWVERSION,
+    CONSTRAINT UQ_ChartDefinition UNIQUE (TenantId, Name)
+);
+CREATE INDEX IX_ChartDefinition_Tenant ON dbo.ChartDefinition(TenantId) WHERE IsActive = 1;
+GO
+CREATE TABLE dbo.ChartShare (
+    ChartShareId INT IDENTITY(1,1) PRIMARY KEY,
+    ChartDefinitionId INT NOT NULL REFERENCES dbo.ChartDefinition(ChartDefinitionId),
+    RoleId INT NULL REFERENCES dbo.Role(RoleId),
+    UserId INT NULL REFERENCES dbo.AspNetUsers(Id)
+);
+GO
+
+-- Preferencias de visualización por usuario: Pulso del día y rango de fecha son POR USUARIO; la definición es el default
+CREATE TABLE dbo.UserAnalyticsPreference (
+    UserAnalyticsPreferenceId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    UserId       INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    IndicatorDefinitionId INT NULL REFERENCES dbo.IndicatorDefinition(IndicatorDefinitionId),
+    ChartDefinitionId     INT NULL REFERENCES dbo.ChartDefinition(ChartDefinitionId),
+    ShowInPulse  BIT NULL,
+    DateRangeModeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    DateFrom     DATE NULL, DateTo DATE NULL,
+    UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_UserAnalyticsPreference_Target CHECK (
+        (IndicatorDefinitionId IS NOT NULL AND ChartDefinitionId IS NULL) OR
+        (IndicatorDefinitionId IS NULL AND ChartDefinitionId IS NOT NULL))
+);
+CREATE UNIQUE INDEX UQ_UserAnalyticsPreference_Indicator ON dbo.UserAnalyticsPreference(UserId, IndicatorDefinitionId) WHERE IndicatorDefinitionId IS NOT NULL;
+CREATE UNIQUE INDEX UQ_UserAnalyticsPreference_Chart ON dbo.UserAnalyticsPreference(UserId, ChartDefinitionId) WHERE ChartDefinitionId IS NOT NULL;
 GO
 
 /* =========================================================================
@@ -1755,5 +1952,5 @@ LEFT JOIN dbo.LookupCode txn ON txn.LookupCodeId = t.TxnTypeLookupId
 LEFT JOIN dbo.LookupCode ref ON ref.LookupCodeId = t.RefEntityLookupId;
 GO
 
-PRINT 'Estructura creada: ~121 tablas (incl. campos personalizados, informes y ciclo COD), en capas ordenadas por dependencias + vista de genealogía.';
+PRINT 'Estructura creada: ~128 tablas (Identity, campos personalizados, informes, indicadores, gráficos y ciclo COD), en capas ordenadas por dependencias + vista de genealogía.';
 GO

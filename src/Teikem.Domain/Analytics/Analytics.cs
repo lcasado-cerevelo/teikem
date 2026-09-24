@@ -27,7 +27,7 @@ public class ReportDefinition : ITenantScoped, ISoftDeletable, IAuditStamped
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
     [NotAudited] public int? UpdatedBy { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
-    // --- Extensiones Lote 1 ---
+    // --- Lote 1 ---
     /// <summary>Informe por default del tenant: nadie lo edita ni lo elimina.</summary>
     public bool IsSystem { get; set; }
     /// <summary>Fuentes secundarias combinadas (muchos-a-uno), JSON array de claves de fuente.</summary>

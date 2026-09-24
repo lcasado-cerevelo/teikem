@@ -13,7 +13,7 @@ public class CatalogDomain : IOptionallyTenantScoped, ISoftDeletable
     public string? Description { get; set; }
     public bool IsSystem { get; set; } = true;
     public bool IsActive { get; set; } = true;
-    /// <summary>Extensión Lote 1: listas creadas por un tenant (catálogo de listas para campos personalizados).</summary>
+    /// <summary>Lote 1: listas creadas por un tenant (catálogo de listas para campos personalizados).</summary>
     public int? TenantId { get; set; }
 }
 
@@ -33,7 +33,7 @@ public class LookupCode : IOptionallyTenantScoped, ISoftDeletable
     [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
-    /// <summary>Extensión Lote 1: valor de una lista propia del tenant (NULL = valor global).</summary>
+    /// <summary>Lote 1: valor de una lista propia del tenant (NULL = valor global).</summary>
     public int? TenantId { get; set; }
 
     public CatalogDomain? Domain { get; set; }

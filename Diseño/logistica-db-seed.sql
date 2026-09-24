@@ -24,12 +24,17 @@ USING (VALUES
  ('RENTAL_BILLING','Facturación de alquiler','Rental billing','Cargos recurrentes configurables por contrato','Equipos','RENTAL_EQUIPMENT',60),
  ('MARITIME','Transporte marítimo','Maritime transport','Consolidación, viajes y manifiesto por barco','Operacion',NULL,70),
  ('CLIENT_PORTAL','Portal de clientes','Client portal','Booking, tracking y documentos para el cliente final','Catalogo',NULL,80),
- ('CUSTOM_FIELDS','Campos personalizados','Custom fields','Campos e informes por entidad, sin deploy','Analisis',NULL,90),
- ('PURCHASING','Compras','Purchasing','Proveedores, órdenes de compra e inventario propio para reventa','Almacen',NULL,35)
+ ('CUSTOM_FIELDS','Campos personalizados','Custom fields','Campos e informes por entidad, sin deploy','Analisis','ANALYTICS',90),
+ ('PURCHASING','Compras','Purchasing','Proveedores, órdenes de compra e inventario propio para reventa','Almacen',NULL,35),
+ ('CATALOG','Catálogo','Catalog','Clientes y contratos, choferes y tarifas, flota','Catalogo',NULL,85),
+ ('ANALYTICS','Análisis','Analytics','Vistas, campos personalizados, indicadores y gráficos','Analisis',NULL,88),
+ ('SYSTEM','Sistema','System','Roles y usuarios, integraciones, seguridad y ajustes (núcleo)','Sistema',NULL,95)
 ) AS s(ModuleKey,Name,NameEn,Description,Category,DependsOnModuleKey,SortOrder)
 ON t.ModuleKey = s.ModuleKey
 WHEN MATCHED THEN UPDATE SET Name=s.Name,NameEn=s.NameEn,Description=s.Description,Category=s.Category,DependsOnModuleKey=s.DependsOnModuleKey,SortOrder=s.SortOrder,IsActive=1
 WHEN NOT MATCHED THEN INSERT (ModuleKey,Name,NameEn,Description,Category,DependsOnModuleKey,SortOrder) VALUES (s.ModuleKey,s.Name,s.NameEn,s.Description,s.Category,s.DependsOnModuleKey,s.SortOrder);
+-- Módulos núcleo: no se pueden apagar (dependencias entre módulos: RENTAL_BILLING→RENTAL_EQUIPMENT, CUSTOM_FIELDS→ANALYTICS)
+UPDATE dbo.ModuleDefinition SET IsCore = CASE WHEN ModuleKey IN ('LTL_GROUND','SYSTEM') THEN 1 ELSE 0 END;
 
 DECLARE @DemoTenantId INT = (SELECT TOP 1 TenantId FROM dbo.Tenant ORDER BY TenantId);
 IF @DemoTenantId IS NOT NULL
@@ -37,7 +42,8 @@ BEGIN
     MERGE dbo.TenantModule AS t
     USING (VALUES ('LTL_GROUND',1),('COD',1),('WMS_LOTSERIAL',1),('CROSSDOCK',0),
                    ('RENTAL_EQUIPMENT',1),('RENTAL_BILLING',0),('MARITIME',0),
-                   ('CLIENT_PORTAL',1),('CUSTOM_FIELDS',1),('PURCHASING',1)
+                   ('CLIENT_PORTAL',1),('CUSTOM_FIELDS',1),('PURCHASING',1),
+                   ('CATALOG',1),('ANALYTICS',1),('SYSTEM',1)
     ) AS s(ModuleKey,IsEnabled)
     ON t.TenantId=@DemoTenantId AND t.ModuleKey=s.ModuleKey
     WHEN MATCHED THEN UPDATE SET IsEnabled=s.IsEnabled
@@ -84,6 +90,8 @@ GO
     ('CodType',1,'Tipo de COD','COD type'),('CodPaymentMethod',1,'Método de cobro COD','COD payment method'),
     ('RentalAssetType',1,'Tipo de equipo en alquiler','Rental asset type'),('RentalBillingFrequency',1,'Frecuencia de cobro','Billing frequency'),
     ('GeocodeAccuracy',1,'Precisión de geocodificación','Geocode accuracy'),
+    ('AggregateFn',1,'Función de agregación','Aggregate function'),('BusinessModule',1,'Módulo de negocio','Business module'),
+    ('DateRangeMode',1,'Rango de fecha','Date range'),('PackageType',1,'Tipo de paquete','Package type'),
     -- Status
     ('ClientStatus',2,'Estatus de cliente','Client status'),('ContractStatus',2,'Estatus de contrato','Contract status'),
     ('OrderStatus',2,'Estatus de orden','Order status'),('StopStatus',2,'Estatus de parada','Stop status'),
@@ -223,7 +231,25 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 -- Campos personalizados e informes
 ('CustomFieldDataType','TEXT','Texto','Text',1),('CustomFieldDataType','NUMBER','Número','Number',2),('CustomFieldDataType','DATE','Fecha','Date',3),('CustomFieldDataType','DATETIME','Fecha y hora','Date-time',4),('CustomFieldDataType','BOOL','Sí/No','Boolean',5),('CustomFieldDataType','SELECT','Selección','Select',6),('CustomFieldDataType','MULTISELECT','Multi-selección','Multi-select',7),('CustomFieldDataType','LOOKUP_REF','Referencia a catálogo','Lookup reference',8),
 ('ReportVisibility','PRIVATE','Privado','Private',1),('ReportVisibility','TENANT','Todo el tenant','Whole tenant',2),('ReportVisibility','SHARED','Compartido','Shared',3),
-('ReportChartType','TABLE','Tabla','Table',1),('ReportChartType','BAR','Barras','Bar',2),('ReportChartType','LINE','Líneas','Line',3),('ReportChartType','PIE','Pastel','Pie',4);
+('ReportChartType','TABLE','Tabla','Table',1),('ReportChartType','BAR','Barras','Bar',2),('ReportChartType','LINE','Líneas','Line',3),('ReportChartType','PIE','Pastel','Pie',4),('ReportChartType','DONUT','Dona','Donut',5),
+-- Indicadores y gráficos (módulos H e I)
+('AggregateFn','COUNT','Cantidad','Count',1),('AggregateFn','SUM','Suma','Sum',2),('AggregateFn','AVG','Promedio','Average',3),('AggregateFn','MIN','Mínimo','Minimum',4),('AggregateFn','MAX','Máximo','Maximum',5),
+('BusinessModule','OPERATIONS','Operación','Operations',1),('BusinessModule','WAREHOUSE','Almacén','Warehouse',2),('BusinessModule','ACCOUNTING','Contabilidad','Accounting',3),
+('DateRangeMode','LAST7','Últimos 7 días','Last 7 days',1),('DateRangeMode','LAST30','Últimos 30 días','Last 30 days',2),('DateRangeMode','THIS_MONTH','Este mes','This month',3),('DateRangeMode','CUSTOM','Rango personalizado','Custom range',4),('DateRangeMode','ALL','Todo el tiempo','All time',5),
+-- Tipo de paquete (módulo 2: default de captura por tenant)
+('PackageType','BOX','Caja','Box',1),('PackageType','ENVELOPE','Sobre','Envelope',2),('PackageType','PALLET','Tarima','Pallet',3),
+-- Categoría de permisos de análisis y eventos de seguridad adicionales
+('PermissionCategory','ANALYTICS','Análisis','Analytics',10),
+('SecurityEventType','PASSWORD_CHANGE','Cambio de contraseña','Password change',8),('SecurityEventType','LOCKOUT','Bloqueo de cuenta','Account lockout',9),
+('SecurityEventType','API_CREDENTIAL','Credencial de API','API credential',10),('SecurityEventType','TENANT_SWITCH','Cambio de compañía','Tenant switch',11),
+-- EntityType de las capas transversales (auditoría, campos personalizados y contactos sobre entidades de plataforma)
+('EntityType','TENANT','Compañía','Tenant',40),('EntityType','USER','Usuario','User',41),('EntityType','ROLE','Rol','Role',42),
+('EntityType','LOOKUP_CODE','Valor de catálogo','Lookup value',43),('EntityType','CATALOG_DOMAIN','Lista de catálogo','Catalog list',44),
+('EntityType','STATUS_CODE','Estatus','Status',45),('EntityType','STATUS_CONFIG','Configuración de estatus','Status configuration',46),
+('EntityType','CONTACT_POINT','Contacto','Contact point',47),('EntityType','CUSTOM_FIELD_DEFINITION','Campo personalizado','Custom field',48),
+('EntityType','REPORT_DEFINITION','Vista / informe','Report',49),('EntityType','INDICATOR_DEFINITION','Indicador','Indicator',50),
+('EntityType','CHART_DEFINITION','Gráfico','Chart',51),('EntityType','TENANT_MODULE','Módulo de compañía','Tenant module',52),
+('EntityType','AUDIT_LOG','Bitácora de cambios','Audit log',53),('EntityType','SECURITY_EVENT','Evento de seguridad','Security event',54);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -339,7 +365,12 @@ INSERT INTO #P VALUES
 ('admin.catalogs','ADMIN','Gestionar catálogos','Manage catalogs'),('admin.tenant','ADMIN','Configurar tenant','Configure tenant'),
 ('cod.collect','COD','Cobrar COD en entrega','Collect COD on delivery'),('cod.reconcile','COD','Reconciliar COD','Reconcile COD'),('cod.remit','COD','Generar remesas COD','Generate COD remittances'),('cod.view','COD','Ver COD','View COD'),
 ('rental.view','RENTAL','Ver equipos en alquiler','View rental equipment'),('rental.manage','RENTAL','Gestionar contratos de alquiler','Manage rental contracts'),('rental.maintenance','RENTAL','Registrar mantenimiento de equipo','Log equipment maintenance'),('rental.billing','RENTAL','Generar cargos de alquiler','Generate rental charges'),
-('purchasing.view','PURCHASING','Ver órdenes de compra','View purchase orders'),('purchasing.manage','PURCHASING','Crear y editar órdenes de compra','Create and edit purchase orders'),('purchasing.receive','PURCHASING','Recibir contra orden de compra','Receive against purchase order');
+('purchasing.view','PURCHASING','Ver órdenes de compra','View purchase orders'),('purchasing.manage','PURCHASING','Crear y editar órdenes de compra','Create and edit purchase orders'),('purchasing.receive','PURCHASING','Recibir contra orden de compra','Receive against purchase order'),
+-- Capas transversales (E, F, G/H/I, C)
+('admin.audit','ADMIN','Ver seguridad y auditoría','View security & audit'),('admin.customfields','ADMIN','Gestionar campos personalizados','Manage custom fields'),
+('admin.statusconfig','ADMIN','Configurar pipeline de estatus','Configure status pipeline'),('contacts.manage','ADMIN','Gestionar contactos','Manage contacts'),
+('analytics.view','ANALYTICS','Ver vistas, indicadores y gráficos','View reports, indicators & charts'),('analytics.manage','ANALYTICS','Crear vistas, indicadores y gráficos','Create reports, indicators & charts'),
+('analytics.dates','ANALYTICS','Cambiar rango de fecha de indicadores/gráficos ajenos','Change date range of others'' indicators/charts');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -418,5 +449,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos, dominios, lookups, estatus, permisos, roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, permisos (38), roles plantilla y zonas de despacho demo.';
 GO
