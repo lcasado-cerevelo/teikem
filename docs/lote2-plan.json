@@ -1,0 +1,1258 @@
+{
+ "spec": {
+  "entidades": [
+   {
+    "tabla": "Client",
+    "existeEnSql": true,
+    "notas": "Faltan columnas: OrderNumberBy, InvoiceNumberBy, NumberFormat (orden/factura/paquete) que el doc pide en módulo 1 y bitácora 'Numeración por cliente'. También falta el flag/estado 'modelo de facturación por servicio activo por defecto sin tarifas' al crear (doc línea 212) — no hay semántica de alta mínima documentada como constraint."
+   },
+   {
+    "tabla": "ClientContact",
+    "existeEnSql": true,
+    "notas": "El doc (línea 213, C) dice que los medios de contacto del contacto de cliente van en ContactPoint (múltiples teléfonos/correos por persona), pero ClientContact no tiene FK a ContactPoint ni columnas de teléfono/correo — solo FullName/Role/IsPrimary. Vacío: cómo se relacionan ContactPoint con ClientContact (polimórfico via OwnerEntityType/OwnerId, patrón módulo C) no está resuelto en el SQL para esta entidad."
+   },
+   {
+    "tabla": "ContactPoint",
+    "existeEnSql": true,
+    "notas": "Usado también para el perfil del cliente (teléfonos, correos del cliente mismo, línea 211) vía asociación polimórfica (Entity='CLIENT')."
+   },
+   {
+    "tabla": "Location",
+    "existeEnSql": true,
+    "notas": "Falta la columna AllowDupInvoice (control por consignatario de facturas repetidas, bitácora línea 1118-1127) — no existe en el SQL. El doc dice explícitamente que ese campo 'vive en el consignatario, no en el cliente ni en el tenant'."
+   },
+   {
+    "tabla": "Contract",
+    "existeEnSql": true,
+    "notas": "Faltan las columnas de los 5 checkboxes del modelo de facturación: svcRates activo (bool 'porServicio'), 'piezaExtra' activo, DispatchFee (monto, componente 3), CodFeeType/CodFeeValue (fijo/porciento, componente 4), y el flag 'especiales' activo (componente 5). El SQL solo tiene BillingModelLookupId (un solo valor de catálogo: por recogido/por entrega/mixto) y CodCommissionPct (que es la comisión de remesa COD del módulo 11B, un concepto distinto). El doc (línea 223) dice explícitamente que esto 'vive como columnas booleanas en Contract más las tablas RateComponent/RateTier... Contract.DispatchFee... Contract.CodFeeType/Contract.CodFeeValue' — ninguna de esas columnas existe hoy."
+   },
+   {
+    "tabla": "ContractServiceLevel",
+    "existeEnSql": true,
+    "notas": ""
+   },
+   {
+    "tabla": "ContractDocument",
+    "existeEnSql": true,
+    "notas": "Cubre 'Adjuntos de contrato' (línea 227)."
+   },
+   {
+    "tabla": "RateCard",
+    "existeEnSql": true,
+    "notas": "El doc no menciona RateCard como entidad propia; el modelo descrito en el doc liga RateComponent directo a un Contract con clave servicio+paquete (línea 217-218), no a un RateCard con vigencia propia. RateCard sí trae EffectiveFrom/EffectiveTo, lo que parcialmente cubre el principio #8 (tarifas históricas) pero a nivel de tarjeta completa, no de fila individual — el doc pide histórico por fila (RateComponent/RateTier efectivo-fechados), no solo por tarjeta."
+   },
+   {
+    "tabla": "RateComponent",
+    "existeEnSql": true,
+    "notas": "Falta PackageTypeLookupId: el doc exige la clave 'servicio+paquete' para los componentes 'por servicio' y 'pieza extra' (líneas 217-218), pero la tabla solo tiene ServiceTypeLookupId (nullable), sin tipo de paquete. Falta también EffectiveFrom/EffectiveTo a nivel de fila (principio #8, línea 518) — hoy solo RateCard los tiene. Falta el UNIQUE(ContractId,ServiceTypeId,PackageTypeId) que pide la bitácora (línea 639) como restricción real — hoy ni siquiera hay ContractId directo en RateComponent (solo via RateCardId nullable a Contract)."
+   },
+   {
+    "tabla": "RateTier",
+    "existeEnSql": true,
+    "notas": "Tiene MinValue/MaxValue que corresponden a FromUnit/ToUnit mencionados en el doc (línea 218, 640), pero el doc los nombra FromUnit/ToUnit y menciona TierMode en RateComponent (existe como TierModeLookupId) — nomenclatura de columnas no coincide exactamente, revisar antes de mapear. Falta la restricción de no-traslape de rangos por Servicio+Paquete (bitácora línea 640) — no hay constraint ni CHECK en el SQL."
+   },
+   {
+    "tabla": "SpecialService",
+    "existeEnSql": false,
+    "notas": "Catálogo de servicios especiales por cliente (id, cliente, etiqueta, tarifa) descrito en módulo 1 (línea 229-230) y bitácora (línea 605-609, 625-631) — no existe ninguna tabla en el SQL. Vacío explícito."
+   },
+   {
+    "tabla": "DriverTrip",
+    "existeEnSql": false,
+    "notas": "Referenciado desde módulo 1 (línea 256, 'entrega especial' crea un DriverTrip) y módulo 11A — no existe tabla en el SQL revisado (no aparece en el listado de CREATE TABLE). Pertenece propiamente al lote de Flota/Liquidación (11A) pero es una dependencia dura del flujo de 'entrega especial' de este módulo."
+   },
+   {
+    "tabla": "PortalUser",
+    "existeEnSql": true,
+    "notas": "Cubre 'usuario de portal' del módulo 10/D. Falta el permiso propio distinto de sistema.admin para administrar altas/bajas desde el expediente del cliente (línea 384) — no hay tabla/seed de Permission específico para esto todavía; y falta un campo/registro de invitación (token de un solo uso con expiración corta, línea 380) — no hay tabla de invitación de portal en el SQL."
+   },
+   {
+    "tabla": "TransportOrder",
+    "existeEnSql": true,
+    "notas": "Relevante solo tangencialmente (numeración de orden/factura, líneas 237-243) — pertenece propiamente al módulo 2, no a este lote, pero comparte Client.OrderNumberBy/InvoiceNumberBy."
+   },
+   {
+    "tabla": "CargoLine",
+    "existeEnSql": true,
+    "notas": "PackageTypeLookupId ya existe (línea 245 del doc), confirmado en LookupCode seed ('PackageType': BOX/ENVELOPE/PALLET) — coherente."
+   },
+   {
+    "tabla": "Client",
+    "existeEnSql": true,
+    "notas": "L673-692. PK ClientId + PublicId. TenantId FK obligatoria (ITenantScoped). UNIQUE (TenantId, Code) L691. Campos: LegalName, TaxId, CreditLimit nullable. PaymentTermLookupId y CurrencyLookupId -> LookupCode (Entity='PaymentTerm'/'Currency'), nullable. StatusCodeId NOT NULL -> StatusCode Entity='ClientStatus' (seed L299: ACTIVE inicial/pipeline, SUSPENDED lateral, PROSPECT pipeline). Auditoría CreatedBy/UpdatedBy -> AspNetUsers. RowVersion para concurrencia optimista. IsActive soft delete."
+   },
+   {
+    "tabla": "ClientContact",
+    "existeEnSql": true,
+    "notas": "L695-703. PK ClientContactId. FK ClientId NOT NULL. Campos FullName, Role nullable, IsPrimary bit default 0, IsActive default 1. Sin TenantId propio (hereda tenant vía Client — coherente con patrón de tabla hija). No tiene UNIQUE constraint declarado; no hay restricción SQL que garantice un solo IsPrimary=1 por cliente (posible regla de negocio no enforced en esquema)."
+   },
+   {
+    "tabla": "RateZone",
+    "existeEnSql": true,
+    "notas": "L705-713. PK RateZoneId. TenantId NOT NULL. UNIQUE (TenantId, Code) L711. Code/Name obligatorios, IsActive default 1."
+   },
+   {
+    "tabla": "RateZoneMember",
+    "existeEnSql": true,
+    "notas": "L715-725. PK RateZoneMemberId. FK RateZoneId NOT NULL. MatchTypeLookupId NOT NULL -> LookupCode Entity='ZoneMatchType' (seed L177: POSTAL_CODE, POSTAL_RANGE, MUNICIPALITY, POLYGON). PostalFrom/PostalTo/Municipality/Polygon(GEOGRAPHY) todos NULL — el esquema no fuerza cuál campo llenar según MatchTypeLookupId (ninguna CHECK constraint que lo condicione); es una regla implícita no enforced. Índice IX_RateZoneMember_Zone(RateZoneId)."
+   },
+   {
+    "tabla": "Location",
+    "existeEnSql": true,
+    "notas": "L727-753. PK LocationId + PublicId. TenantId NOT NULL. ClientId NULL (location puede ser propia del tenant, no de un cliente — soporta ubicaciones corporativas). Code NULL (no hay UNIQUE sobre Code, a diferencia de Client/RateZone). LocationTypeLookupId NOT NULL -> Entity='LocationType' (seed L157: PICKUP, DELIVERY, BOTH, BILLING, CORPORATE). CountryLookupId NOT NULL -> Entity='Country'. RateZoneId NULL -> RateZone. DefaultServiceMinutes NOT NULL default 0. DefaultWindowStart/End TIME nullable. Índice filtrado IX_Location_Tenant_Client(TenantId, ClientId) WHERE IsActive=1. RowVersion presente. Sin StatusCodeId (no maneja estatus formal, solo IsActive)."
+   },
+   {
+    "tabla": "Contract",
+    "existeEnSql": true,
+    "notas": "L755-774. PK ContractId + PublicId. TenantId y ClientId NOT NULL. UNIQUE (TenantId, ContractNumber) L772. StartDate NOT NULL, EndDate NULL. StatusCodeId NOT NULL -> Entity='ContractStatus' (seed L300: DRAFT pipeline inicial, ACTIVE pipeline, EXPIRED terminal, CANCELLED terminal). CurrencyLookupId, BillingModelLookupId (Entity='BillingModel', seed L169: BY_PICKUP, BY_DELIVERY, MIXED) ambos nullable. CodCommissionPct DECIMAL(5,2) nullable — comisión COD default de remesa (comentario L767). AutoRenew bit default 0. Notes NVARCHAR(MAX). RowVersion presente; sin CreatedBy/UpdatedBy a diferencia de Client (asimetría de auditoría entre tablas del mismo lote)."
+   },
+   {
+    "tabla": "ContractServiceLevel",
+    "existeEnSql": true,
+    "notas": "L776-785. PK ServiceLevelId. FK ContractId NOT NULL. ServiceTypeLookupId NOT NULL -> Entity='ServiceType' (seed L159: STANDARD, EXPRESS, SAMEDAY, SCHEDULED). MaxTransitHours, PickupWindowMin, OnTimeTargetPct(5,2), PenaltyAmount(18,4) todos NULL. No hay UNIQUE (ContractId, ServiceTypeLookupId): el esquema permite duplicar niveles de servicio para el mismo tipo dentro de un contrato — vacío/regla no enforced."
+   },
+   {
+    "tabla": "ContractDocument",
+    "existeEnSql": true,
+    "notas": "L788-797. PK ContractDocumentId. FK ContractId NOT NULL. DocTypeLookupId NOT NULL -> Entity='DocType' (seed L167, incluye 'CONTRACT'). FileName, ContentType, StoragePath, SizeBytes(BIGINT) todos NOT NULL. UploadedAtUtc default SYSUTCDATETIME(). Sin IsActive/soft-delete propio en esta tabla (contradice convención global de IsActive=soft delete del CLAUDE.md para entidades con historial; vacío de diseño, no de documento)."
+   },
+   {
+    "tabla": "RateCard",
+    "existeEnSql": true,
+    "notas": "L800-810. PK RateCardId. TenantId NOT NULL. ContractId NULL (rate card puede existir sin contrato — tarifa genérica). CurrencyLookupId NOT NULL. EffectiveFrom NOT NULL, EffectiveTo NULL (vigencia). IsActive default 1. Sin StatusCodeId, sin UNIQUE sobre (TenantId, Name) — el esquema no impide nombres duplicados ni solapamiento de vigencias (EffectiveFrom/To) para el mismo ContractId."
+   },
+   {
+    "tabla": "RateComponent",
+    "existeEnSql": true,
+    "notas": "L812-827. Comentario L812: 'Tarifas escalonadas (reemplazan el RateMatrix plano)' — indica evolución de diseño documentada en el propio SQL. PK RateComponentId. FK RateCardId NOT NULL. ComponentTypeLookupId NOT NULL -> Entity='RateComponentType' (seed L175: BASE_FREIGHT, PICKUP_FEE, SURCHARGE). BasisLookupId NOT NULL -> Entity='RateBasis' (seed L174: PER_SHIPMENT, PER_PIECE, PER_KG, PER_M3, PER_STOP, PER_KM). FromZoneId/ToZoneId NULL -> RateZone (par origen-destino opcional). ServiceTypeLookupId NULL. PricingModeLookupId NOT NULL -> Entity='PricingMode' (seed L172: FIXED, PER_UNIT, TIERED). TierModeLookupId NULL -> Entity='TierMode' (seed L173: GRADUATED, VOLUME) — solo aplica si PricingMode=TIERED, pero no hay CHECK que lo condicione. FlatAmount, UnitAmount, MinCharge todos nullable, sin CHECK que exija el campo correcto según PricingMode (p.ej. FlatAmount para FIXED, UnitAmount para PER_UNIT) — regla implícita no enforced en SQL."
+   },
+   {
+    "tabla": "RateTier",
+    "existeEnSql": true,
+    "notas": "L830-838. PK RateTierId. FK RateComponentId NOT NULL (solo aplica cuando PricingMode='TIERED' en el componente padre, no forzado por FK/CHECK). MinValue NOT NULL, MaxValue NULL (abierto en el tope). UnitAmount y FlatAmount ambos nullable — el esquema no obliga a llenar al menos uno. SortOrder default 0 para ordenar escalones. Sin UNIQUE que evite solapamiento de rangos [MinValue,MaxValue] entre tiers del mismo componente."
+   },
+   {
+    "tabla": "RateRule",
+    "existeEnSql": true,
+    "notas": "L841-851 (comentario: 'recargos / modificadores'). PK RateRuleId. FK RateCardId NOT NULL. SurchargeTypeLookupId NOT NULL -> Entity='SurchargeType' (seed L176: FUEL, OVERWEIGHT, SPECIAL_HANDLING, WAIT_TIME). PricingTypeLookupId NOT NULL -> Entity='PricingType' (seed L171: FIXED, PERCENT, PER_KG, PER_M3, PER_STOP). MinWeightKg/MaxWeightKg/MinVolumeM3/MaxVolumeM3 todos NULL (rangos opcionales de aplicación). Amount NOT NULL default 0. Priority NOT NULL default 100 (orden de aplicación cuando compiten varias reglas — el número menor probablemente gana o pierde, el SQL no lo aclara)."
+   },
+   {
+    "tabla": "PortalUser",
+    "existeEnSql": true,
+    "notas": "Fuera de CAPA 5/6, está en CAPA 17 (L1752-1766) junto a facturación/portal, no en la capa de clientes/contratos. PK PortalUserId. TenantId y ClientId NOT NULL (usuario del portal siempre atado a un cliente). UserId NULL -> AspNetUsers (permite invitar por email antes de tener cuenta ASP.NET creada). Email NOT NULL, FullName NULL. RoleLookupId NOT NULL -> Entity='PortalRole' (seed L207: CLIENT_ADMIN, CLIENT_OPERATOR, CLIENT_READONLY). StatusCodeId NOT NULL -> Entity='PortalUserStatus' (seed L320: ACTIVE pipeline inicial, INVITED pipeline, DISABLED terminal). UNIQUE (TenantId, Email) L1764 — un mismo email no puede repetirse dentro del tenant aunque pertenezca a distintos clientes. LastLoginUtc nullable."
+   }
+  ],
+  "reglas": [
+   {
+    "id": "R1",
+    "regla": "El nombre del cliente es su identidad, no editable después de creado (mismo principio que código de chofer o combinaciones servicio+paquete de una tarifa).",
+    "fuente": "logistica-funcionalidades-maestro.md:211",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R2",
+    "regla": "El resto del perfil del cliente (dirección física, dirección postal con checkbox 'misma que física', teléfonos, correos, contactos) es editable en cualquier momento, reutilizando ContactPoint con múltiples filas.",
+    "fuente": "logistica-funcionalidades-maestro.md:211",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R3",
+    "regla": "El perfil del cliente se edita desde dos superficies (Catálogo > Clientes y contratos, y Portal de clientes > Perfil) sobre el mismo registro, no dos copias.",
+    "fuente": "logistica-funcionalidades-maestro.md:211",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R4",
+    "regla": "Alta de cliente nuevo: modal captura nombre (identidad) y datos iniciales de contrato (cliente desde, SLA); nace con modelo de facturación 'por servicio' activo por defecto y sin tarifas, límite de crédito ni perfil cargados.",
+    "fuente": "logistica-funcionalidades-maestro.md:212",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R5",
+    "regla": "Location (Consignatarios) puede pertenecer a un cliente (ClientId) o ser compartida del tenant (ClientId nulo); tiene estatus activo/inactivo; inactivo deja de aparecer al capturar órdenes nuevas pero conserva historial; no hay borrado, solo inactivación.",
+    "fuente": "logistica-funcionalidades-maestro.md:214",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R6",
+    "regla": "Pantalla de Location vive en Catálogo (todos los clientes, dueño visible/editable) y en Portal de clientes (cada cliente solo ve/administra sus propios Location, nunca los compartidos ni los de otro cliente); el combobox de Entrada de órdenes sí permite compartidos además de propios.",
+    "fuente": "logistica-funcionalidades-maestro.md:214",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R7",
+    "regla": "Modelo de facturación del contrato (ContractBillingModel) es un set de 5 componentes independientes activados por checkbox, no un valor único ni texto libre: por servicio, pieza extra con precio especial, cargo por despacho, cargo por COD, servicios especiales. Ninguno es excluyente; cualquier combinación es válida.",
+    "fuente": "logistica-funcionalidades-maestro.md:216-223",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R7b",
+    "regla": "Corrección de bitácora: el campo 'Modelo de facturación' NO debe ser texto libre — debe ser 5 checkboxes independientes con panel de configuración propio que aparece/desaparece según el checkbox, sin perder datos al desmarcar.",
+    "fuente": "logistica-funcionalidades-maestro.md:612-622 (bitácora)",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R8",
+    "regla": "Componente 'por servicio': tarifa fija por combinación servicio+paquete (RateComponent con clave servicio+paquete); un cliente puede tener varias filas.",
+    "fuente": "logistica-funcionalidades-maestro.md:217",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R9",
+    "regla": "Componente 'pieza extra con precio especial': tabla de rangos por servicio+paquete (RateTier, TierMode=GRADUATED, acotado por FromUnit/ToUnit); puede tener más de un rango por servicio+paquete.",
+    "fuente": "logistica-funcionalidades-maestro.md:218",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R10",
+    "regla": "Componente 'cargo por despacho': monto fijo adicional por despachar la orden, independiente de piezas o COD, se aplica una sola vez por orden (no por tipo de paquete).",
+    "fuente": "logistica-funcionalidades-maestro.md:219 y bitácora 1211-1220",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R11",
+    "regla": "Componente 'cargo por COD': fijo (monto por orden) o por ciento (del monto COD o del total facturado según se defina la regla) — diseño abierto a propósito porque Advance lo maneja fijo hoy pero el esquema no debe asumir un solo modo para todo tenant. Es distinto de la comisión de remesa COD del módulo 11B.",
+    "fuente": "logistica-funcionalidades-maestro.md:220",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R12",
+    "regla": "Componente 'servicios especiales': activa el catálogo SpecialService de ese cliente; si no está marcado, el catálogo no se muestra ni existen servicios especiales para ese cliente.",
+    "fuente": "logistica-funcionalidades-maestro.md:221",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R13",
+    "regla": "Contratos marco con vigencia, auto-renovación y estatus por catálogo (ContractStatus).",
+    "fuente": "logistica-funcionalidades-maestro.md:215",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R14",
+    "regla": "Niveles de servicio (SLA) por contrato (ContractServiceLevel): tránsito máximo, ventana de recogida, meta de cumplimiento, penalidad.",
+    "fuente": "logistica-funcionalidades-maestro.md:224",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R15",
+    "regla": "Tarifas por zona (RateZone/RateZoneMember por código postal, rango, municipio o polígono); el escalonamiento se modela con RateComponent+RateTier, no matriz plana.",
+    "fuente": "logistica-funcionalidades-maestro.md:225",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R16",
+    "regla": "Motor de cotización resuelve zona origen/destino, busca componente de tarifa, suma recargos aplicables, aplica MinCharge; reutiliza el patrón de evaluación de reglas del DSL de SEPHAS.",
+    "fuente": "logistica-funcionalidades-maestro.md:226",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R17",
+    "regla": "Adjuntos de contrato en blob storage (metadata en BD) tipados por catálogo DocType.",
+    "fuente": "logistica-funcionalidades-maestro.md:227",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R18",
+    "regla": "Verificación de crédito al confirmar órdenes contra CreditLimit y saldo pendiente.",
+    "fuente": "logistica-funcionalidades-maestro.md:228",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R19",
+    "regla": "SpecialService: catálogo por cliente (id, cliente, etiqueta, tarifa), activo solo si el componente 5 está marcado; se usa en Entrada de órdenes (filtrado por cliente) y en Choferes y tarifas (unión de tipos de todos los clientes alimenta el selector de 'tipo de viaje').",
+    "fuente": "logistica-funcionalidades-maestro.md:229 y bitácora 605-609",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R20",
+    "regla": "El 'tipo' de un SpecialService no se escribe libre al asignarlo a un cliente por primera vez: selector con tipos ya usados por cualquier cliente del tenant + opción '+ Nuevo tipo de servicio especial…' para introducir un tipo nuevo una sola vez, que luego queda disponible para todos los clientes y para Choferes y tarifas. Una vez creada la fila, el tipo deja de ser editable (solo la tarifa).",
+    "fuente": "logistica-funcionalidades-maestro.md:230 y bitácora 625-631",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R21",
+    "regla": "Pantalla 'Clientes y contratos': lista de clientes a la izquierda (activo/inactivo + resumen de componentes de facturación marcados) y detalle a la derecha; panel Contrato con campos generales + 5 checkboxes; debajo, solo si está marcado, un panel por componente activo. Mismo patrón visual que 'Choferes y tarifas'.",
+    "fuente": "logistica-funcionalidades-maestro.md:231",
+    "esRequisitoReal": false,
+    "notaVacios": "Es descripción de UI del mock, no una regla de backend en sí, salvo la implicación de que los datos de cada componente deben persistir independientemente aunque su panel esté oculto."
+   },
+   {
+    "id": "R22",
+    "regla": "Numeración de orden y factura por cliente: dos preguntas independientes (Client.OrderNumberBy / Client.InvoiceNumberBy, cada una 'el cliente'/'Teikem'); un cliente puede asignar los dos, ninguno o solo uno; el que quede en 'Teikem' se autogenera siempre.",
+    "fuente": "logistica-funcionalidades-maestro.md:232 y bitácora 825-834 (reemplaza el modelo anterior either/or NumberMode)",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R23",
+    "regla": "Nomenclatura configurable por cliente (Client.NumberFormat) para número de orden, factura y paquete — patrón de texto con '#' por dígito (y '@' reservado para letra); mismo dato editable en Clientes y contratos y en Portal de clientes > Configuración. El número de empaque queda fuera a propósito (formato fijo EMP-nnnnn, siempre generado por Teikem).",
+    "fuente": "logistica-funcionalidades-maestro.md:232-243 y bitácora 825-834",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R24",
+    "regla": "El panel de 'Numeración de la orden' debe ser su propio panel siempre visible en Clientes y contratos, inmediatamente después del panel Contrato y antes de los paneles condicionales de tarifas — no una fila dentro del panel Contrato.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:817",
+    "esRequisitoReal": false,
+    "notaVacios": "Es una corrección de ubicación en UI del mock; el requisito de fondo (dos ajustes independientes + nomenclatura) ya está cubierto en R22/R23."
+   },
+   {
+    "id": "R25",
+    "regla": "Servicio y Tipo de paquete quedan fijos una vez creada una fila de tarifa 'por servicio' o 'pieza extra' — solo la Tarifa (y en pieza extra, Desde/Hasta) son editables; para cambiar la combinación hay que borrar y crear una fila nueva.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:617-618, 633-637",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R26",
+    "regla": "'Por servicio' no puede tener dos filas con el mismo par Servicio+Tipo de paquete para el mismo cliente/contrato — en el sistema real es UNIQUE(ContractId, ServiceTypeId, PackageTypeId) sobre RateComponent.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:639",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R27",
+    "regla": "'Pieza extra': los rangos de un mismo Servicio+Tipo de paquete no pueden traslaparse (nuevo.Desde<=existente.Hasta y nuevo.Hasta>=existente.Desde); rango inválido (Desde>Hasta) también se bloquea. En el sistema real es una restricción de rango sin solapamiento sobre RateTier acotada por servicio+paquete.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:640-641",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R28",
+    "regla": "Principio transversal #8: toda tarifa de facturación a clientes o pago a choferes es histórica (RateComponent/RateTier, DriverDeliveryRate/DriverAttemptRate/DriverTripRate, SpecialService) debe ser efectivo-fechada (EffectiveFrom/EffectiveTo); editar una tarifa cierra la vigencia de la fila vieja y abre una nueva, nunca se sobrescribe el monto en sitio. No implementado en el mock.",
+    "fuente": "logistica-funcionalidades-maestro.md:518 y bitácora 693-695",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R29",
+    "regla": "Se mantiene 'congelar al generar': una corrida ya generada (BillingRun) no se recalcula si cambia una tarifa después — esto es distinto y adicional al historial efectivo-fechado de R28.",
+    "fuente": "logistica-funcionalidades-maestro.md:531 y bitácora 1113",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R30",
+    "regla": "Generación de cargos: aplica el RateComponent/RateTier correcto según BillingModel del contrato y guarda RateComponentId en la línea para auditar el cálculo.",
+    "fuente": "logistica-funcionalidades-maestro.md:419",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R31",
+    "regla": "Una orden con múltiples tipos de paquete genera una línea de factura por tipo de paquete (no una sola línea por orden); cada tipo se cotiza con su propio componente servicio+paquete (base + extra graduado dentro del tipo).",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1092-1096",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R32",
+    "regla": "El cargo y monto COD se cobran una sola vez por orden (en la primera línea), nunca se multiplican por tipo de paquete.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1097",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R33",
+    "regla": "El cargo por despacho se aplica una sola vez por orden (en la primera línea), no por tipo de paquete; es cero si el componente está apagado para ese cliente.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1215-1216",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R34",
+    "regla": "El cargo por despacho, ya en la corrida de facturación, es una columna editable de la línea (Base/Extra/COD/Despacho/Ajuste): contabilidad puede subirlo, bajarlo o dejarlo en cero al revisar, sin tocar el contrato ni la orden, y esto recalcula en cadena los totales — solo mientras la corrida esté Generada o Revisada; al aprobar se congela.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1211-1220",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R35",
+    "regla": "contractBaseRate/contractExtraPieces/contractCodFee: si el componente correspondiente está apagado o no hay fila/tramo para la combinación, el comportamiento difiere por componente — base y pieza extra caen a la tarifa genérica del tenant; COD apagado da $0 (no genérico) porque es un cargo aditivo, no un reemplazo de tarifa base.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1105-1116",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R36",
+    "regla": "Control por consignatario de números de factura repetidos: campo Location.AllowDupInvoice (default: no permitir); si no permite, la orden no se crea y se avisa cuál orden ya usa el número; si permite, modal de confirmación con 'Crear de todos modos' / 'No crear la orden'. Solo aplica cuando la numeración de factura es del cliente (tecleada); si es de Teikem el chequeo no se intenta.",
+    "fuente": "bitácora logistica-funcionalidades-maestro.md:1118-1127",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R37",
+    "regla": "Entrega especial en Entrada de órdenes: al marcar la orden como especial se pide Servicio especial (del catálogo SpecialService del cliente de la orden) y Chofer; al guardar se crean la orden (en estatus de ruta, chofer ya asignado, sin pasar por Sala de despacho) y un DriverTrip con el monto congelado a la tarifa vigente del chofer para ese tipo de viaje.",
+    "fuente": "logistica-funcionalidades-maestro.md:256 y bitácora 601-610",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R38",
+    "regla": "Usuarios del portal: los administra un usuario de la compañía (cliente) y los administradores de Teikem — el cliente NO se autoadministra. No hay pantalla de administración de usuarios de portal dentro del portal mismo.",
+    "fuente": "logistica-funcionalidades-maestro.md:381-382 y bitácora final 1222-1233",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R39",
+    "regla": "La pantalla de administración de usuarios de portal vive dentro del expediente del cliente, en 'Clientes y contratos', no en 'Roles y usuarios' — los usuarios de portal son de otra especie (UserKind=portal) que el personal interno.",
+    "fuente": "logistica-funcionalidades-maestro.md:383 y bitácora final 1233",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R40",
+    "regla": "Administrar usuarios de portal requiere un permiso propio, distinto de sistema.admin, para poder otorgarse a un account manager sin exponerle roles, integraciones ni auditoría del tenant.",
+    "fuente": "logistica-funcionalidades-maestro.md:384 y bitácora final 1233",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R41",
+    "regla": "Alta de usuario de portal por invitación (enlace de un solo uso, expiración corta), nunca por contraseña asignada por un tercero; el usuario de portal solo puede autoservicio de credenciales (establecer/restablecer contraseña, MFA, sesiones), no administración de usuarios.",
+    "fuente": "logistica-funcionalidades-maestro.md:380,385",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R42",
+    "regla": "Toda acción de un administrador de Teikem dentro de un tenant (incluida el alta/suspensión de un usuario de portal) debe quedar atribuida a la persona (no a la compañía), entrar a SecurityEvent, y ser visible para el tenant en su propia pantalla de Seguridad y auditoría.",
+    "fuente": "logistica-funcionalidades-maestro.md:386 y bitácora final 1233",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R43",
+    "regla": "Tarifas escalonadas (modelo final): RateComponent+RateTier con TierMode (GRADUATED=marginal por tramo / VOLUME=un solo tramo por volumen total); el BillingModel del contrato (por recogido/entrega/mixto) es el disparador y es ortogonal al escalonamiento.",
+    "fuente": "logistica-funcionalidades-maestro.md:417",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R44",
+    "regla": "El selector 'viendo como' del portal es un artificio del mock; en el sistema real no existe — cada cliente entra con su propia sesión y solo ve su ClientId (nunca tomado del request).",
+    "fuente": "logistica-funcionalidades-maestro.md:376 y 407",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R1",
+    "regla": "Client.Code es único por tenant (UNIQUE TenantId+Code)",
+    "fuente": "logistica-db-estructura.sql:691",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R2",
+    "regla": "Contract.ContractNumber es único por tenant (UNIQUE TenantId+ContractNumber)",
+    "fuente": "logistica-db-estructura.sql:772",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R3",
+    "regla": "RateZone.Code es único por tenant (UNIQUE TenantId+Code)",
+    "fuente": "logistica-db-estructura.sql:711",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R4",
+    "regla": "PortalUser.Email es único por tenant (UNIQUE TenantId+Email)",
+    "fuente": "logistica-db-estructura.sql:1764",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R5",
+    "regla": "ClientStatus tiene estatus inicial ACTIVE (IsInitial=1), no PROSPECT como sugeriría el flujo de ventas típico; SUSPENDED es lateral (no terminal), PROSPECT es pipeline no inicial",
+    "fuente": "logistica-db-seed.sql:299",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R6",
+    "regla": "ContractStatus: DRAFT es el estatus inicial (pipeline); ACTIVE es pipeline; EXPIRED y CANCELLED son terminales",
+    "fuente": "logistica-db-seed.sql:300",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R7",
+    "regla": "PortalUserStatus: ACTIVE es inicial (pipeline); INVITED es pipeline; DISABLED es terminal",
+    "fuente": "logistica-db-seed.sql:320",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R8",
+    "regla": "Location puede existir sin ClientId (ClientId NULL) — ubicaciones no atadas a un cliente específico (p.ej. corporativas), soportado por LocationType='CORPORATE'",
+    "fuente": "logistica-db-estructura.sql:731,734 y logistica-db-seed.sql:157",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R9",
+    "regla": "RateCard puede existir sin ContractId (ContractId NULL) — tarifa no ligada a un contrato específico",
+    "fuente": "logistica-db-estructura.sql:803",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R10",
+    "regla": "RateComponent reemplaza un diseño anterior llamado 'RateMatrix' (comentario explícito en el SQL, evidencia de decisión de diseño ya tomada, no una tabla viva a considerar)",
+    "fuente": "logistica-db-estructura.sql:812",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R11",
+    "regla": "RateTier.RateComponentId no tiene restricción SQL que impida crear tiers para un RateComponent cuyo PricingMode no sea 'TIERED'; tampoco hay CHECK que impida solapamiento de rangos MinValue/MaxValue entre tiers del mismo componente",
+    "fuente": "logistica-db-estructura.sql:830-838",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R12",
+    "regla": "RateZoneMember no tiene CHECK que condicione qué campo (PostalFrom/To, Municipality, Polygon) debe llenarse según MatchTypeLookupId; los cuatro campos son NULL-ables simultáneamente",
+    "fuente": "logistica-db-estructura.sql:715-723",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R13",
+    "regla": "ClientContact no tiene UNIQUE ni CHECK que garantice un único IsPrimary=1 por ClientId",
+    "fuente": "logistica-db-estructura.sql:695-702",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R14",
+    "regla": "ContractServiceLevel no tiene UNIQUE (ContractId, ServiceTypeLookupId): el esquema permite duplicar el mismo tipo de servicio en un contrato",
+    "fuente": "logistica-db-estructura.sql:776-785",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R15",
+    "regla": "Contract carece de columnas CreatedBy/UpdatedBy/CreatedAtUtc/UpdatedAtUtc (solo tiene RowVersion), a diferencia de Client que sí las tiene — asimetría de auditoría dentro del mismo lote de tablas",
+    "fuente": "logistica-db-estructura.sql:755-773 vs 673-692",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R16",
+    "regla": "ContractDocument no tiene columna IsActive para soft delete, contradiciendo la convención general del proyecto (IsActive=0, nunca DELETE) declarada en CLAUDE.md para entidades con historial",
+    "fuente": "logistica-db-estructura.sql:788-797 (comparado con CLAUDE.md, convención 'Soft delete')",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R17",
+    "regla": "RateRule.Priority tiene default 100 para ordenar aplicación de recargos cuando varias reglas compiten, pero el SQL no documenta si prioridad menor o mayor gana",
+    "fuente": "logistica-db-estructura.sql:849",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "RC1",
+    "regla": "Matiz sobre R11/vacío de 'cargo por COD por ciento': en el mock, el ejemplo sembrado de AXISCARE aplica el porciento sobre el monto COD cobrado ('2.5% (sobre $200 = $5.00)'), no sobre el total facturado — es evidencia informal de una implementación de referencia, NO una decisión resuelta para el sistema real: el doc (línea 220) sigue diciendo explícitamente 'según se defina la regla' como diseño abierto. No debe tomarse como default confirmado sin que Luis lo ratifique.",
+    "fuente": "logistica-funcionalidades-maestro.md:1112 (bitácora 'Facturación cobra lo que dice el contrato del cliente'), contrastado con línea 220",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "RC2",
+    "regla": "Confirmación/precisión sobre Location: sí existen columnas AccessNotes y DeliveryNotes en el SQL (logistica-db-estructura.sql:746-747) que cubren 'instrucciones de acceso/entrega' del doc (línea 214) — el listado de columnas del borrador previo de la nota de la entidad Location no las mencionaba; no es una regla de negocio faltante, es una corrección de la nota descriptiva de la tabla.",
+    "fuente": "logistica-db-estructura.sql:746-747 y logistica-funcionalidades-maestro.md:214",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "RC3",
+    "regla": "Precisión de alcance sobre R4/alta de cliente: el doc (línea 212) dice que el modal de '+ Nuevo cliente' captura, en la misma acción, el nombre (identidad del Client) Y datos iniciales de contrato ('cliente desde', SLA) — es decir, la creación de un Client y de su Contract inicial están acopladas en un solo flujo de UI aunque sean dos entidades distintas en el modelo de datos. Ningún endpoint de la lista expresa esa composición (POST /clients y POST /contracts quedan como dos llamadas separadas); ver vacío nuevo correspondiente.",
+    "fuente": "logistica-funcionalidades-maestro.md:212",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "RC4",
+    "regla": "Precisión de alcance sobre R4/default 'por servicio' activo: el doc dice que el cliente 'nace con modelo de facturación por servicio activo por defecto' — es decir, el checkbox 'porServicio' de Contract debe quedar en true en el momento de creación del contrato inicial, no requerir un PATCH posterior a /billing-model para activarlo. Ningún endpoint de la lista distingue ese default de creación; ver vacío nuevo correspondiente.",
+    "fuente": "logistica-funcionalidades-maestro.md:212",
+    "esRequisitoReal": true
+   }
+  ],
+  "endpoints": [
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/clients",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/clients",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.create"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/clients/{publicId}",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.read"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/clients/{publicId}/profile",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.update"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/clients/{publicId}/number-settings",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/clients/{publicId}/contacts",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/clients/{publicId}/contacts",
+    "modulo": "Clientes y contratos",
+    "permiso": "clients.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/locations",
+    "modulo": "Clientes y contratos",
+    "permiso": "locations.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/locations",
+    "modulo": "Clientes y contratos",
+    "permiso": "locations.create"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/locations/{publicId}",
+    "modulo": "Clientes y contratos",
+    "permiso": "locations.update"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/locations/{publicId}/deactivate",
+    "modulo": "Clientes y contratos",
+    "permiso": "locations.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/contracts",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/contracts",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.create"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/contracts/{publicId}/billing-model",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/contracts/{publicId}/rate-components",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/contracts/{publicId}/rate-components",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/contracts/{publicId}/rate-components/{id}/tiers",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/contracts/{publicId}/dispatch-fee",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/contracts/{publicId}/cod-fee",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/clients/{publicId}/special-services",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.read"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/clients/{publicId}/special-services",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.update"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/special-service-types",
+    "modulo": "Clientes y contratos",
+    "permiso": "contracts.read"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/clients/{publicId}/portal-users",
+    "modulo": "Clientes y contratos / Portal",
+    "permiso": "portal-users.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/clients/{publicId}/portal-users/invite",
+    "modulo": "Clientes y contratos / Portal",
+    "permiso": "portal-users.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/clients/{publicId}/portal-users/{id}/suspend",
+    "modulo": "Clientes y contratos / Portal",
+    "permiso": "portal-users.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/billing/contract-rate-quote",
+    "modulo": "Facturación (motor de cotización)",
+    "permiso": "contracts.read"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/status/{entity}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/status/{entity}/validate",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/status/{entity}/{code}/override",
+    "modulo": "",
+    "permiso": "admin.statusconfig"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/status/capabilities/{entityType}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/status/capabilities/{entityType}",
+    "modulo": "",
+    "permiso": "admin.statusconfig"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/status/lateral-entries/{entityType}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/status/lateral-entries/{entityType}",
+    "modulo": "",
+    "permiso": "admin.statusconfig"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/status/history/{entityType}/{entityId}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/contacts/{ownerEntity}/{ownerId}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/contacts/{ownerEntity}/{ownerId}",
+    "modulo": "",
+    "permiso": "contacts.manage"
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/contacts/{id}",
+    "modulo": "",
+    "permiso": "contacts.manage"
+   },
+   {
+    "metodo": "DELETE",
+    "ruta": "/api/v1/contacts/{id}",
+    "modulo": "",
+    "permiso": "contacts.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/custom-fields/definitions",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/custom-fields/definitions/{id}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": ""
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/custom-fields/definitions/{entityType}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": "admin.customfields"
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/custom-fields/definitions/{id}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": "admin.customfields"
+   },
+   {
+    "metodo": "DELETE",
+    "ruta": "/api/v1/custom-fields/definitions/{id}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": "admin.customfields"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/custom-fields/definitions/{id}/restore",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": "admin.customfields"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/custom-fields/values/{entityType}/{entityId}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": ""
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/custom-fields/values/{entityType}/{entityId}",
+    "modulo": "CUSTOM_FIELDS",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/catalogs/{entity}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/catalogs/{entity}/{code}",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/modules",
+    "modulo": "",
+    "permiso": ""
+   },
+   {
+    "metodo": "PUT",
+    "ruta": "/api/v1/modules/{moduleKey}",
+    "modulo": "",
+    "permiso": "admin.tenant"
+   }
+  ],
+  "estatus": [
+   {
+    "dominio": "ClientStatus",
+    "efectos": [
+     "ACTIVE (pipeline, default 1)",
+     "SUSPENDED (lateral)",
+     "PROSPECT (pipeline)"
+    ]
+   },
+   {
+    "dominio": "ContractStatus",
+    "efectos": [
+     "DRAFT (pipeline, default 1)",
+     "ACTIVE (pipeline)",
+     "EXPIRED (terminal)",
+     "CANCELLED (terminal)"
+    ]
+   },
+   {
+    "dominio": "PortalUserStatus",
+    "efectos": [
+     "ACTIVE (pipeline, default 1)",
+     "INVITED (pipeline)",
+     "DISABLED (terminal)"
+    ]
+   },
+   {
+    "dominio": "Location.Active",
+    "efectos": [
+     "Solo booleano activo/inactivo, no es StatusCode; inactivo deja de listarse en comboboxes de Entrada de órdenes pero conserva historial en órdenes ya creadas"
+    ]
+   }
+  ],
+  "vacios": [
+   "SpecialService no existe como tabla en logistica-db-estructura.sql pese a estar descrito con detalle en el módulo 1 y en la bitácora (líneas 229-230, 605-631) — falta id, ClientId, etiqueta/tipo, tarifa, y el campo histórico EffectiveFrom/To del principio #8.",
+   "Contract carece de las columnas booleanas de los 5 componentes del modelo de facturación (porServicio, piezaExtra, despacho, especiales) y de DispatchFee/CodFeeType/CodFeeValue que el doc dice explícitamente que deben vivir ahí (línea 223) — hoy solo existe BillingModelLookupId (concepto distinto: por recogido/entrega/mixto) y CodCommissionPct (comisión de remesa COD del módulo 11B, no el cargo por COD al cliente).",
+   "RateComponent carece de PackageTypeLookupId, pese a que la clave de negocio exigida por el doc es siempre servicio+paquete (líneas 217-218, 639) — sin esa columna no se puede expresar la unicidad ni la tarifa real.",
+   "RateComponent/RateTier no tienen EffectiveFrom/EffectiveTo a nivel de fila (solo RateCard los tiene) — el principio transversal #8 (tarifas históricas, línea 518) exige histórico por fila de tarifa, no solo por tarjeta completa; falta decidir si se modela con filas cerradas/abiertas o con una tabla de vigencias aparte.",
+   "Location no tiene columna AllowDupInvoice (bitácora 1118-1127) — pedido explícito de Luis, sin reflejo en el SQL.",
+   "Client no tiene OrderNumberBy/InvoiceNumberBy/NumberFormat — el doc dedica el módulo 1 (línea 232) y una entrada completa de bitácora (825-834) a este mecanismo, y no existe ninguna columna para él en Client.",
+   "DriverTrip / DriverSettlementRun / DriverDeliveryRate / DriverAttemptRate / DriverTripRate no existen en el SQL — son dependencias duras del flujo de 'entrega especial' de este módulo (línea 256) y del catálogo SpecialService (contraparte del lado del chofer), pero pertenecen al lote de Flota/Liquidación (11A); señalar como dependencia cruzada de lote, no vacío propio de este lote.",
+   "No hay tabla ni columna en el SQL para el permiso propio de administración de usuarios de portal (R40) ni para el token de invitación de un solo uso con expiración (R41) — PortalUser solo tiene UserId/Email/RoleLookupId/StatusCodeId, sin InvitationToken/InvitationExpiresAtUtc.",
+   "Ambigüedad sin resolver en el doc: el 'cargo por COD' (componente 4) dice que puede ser 'por ciento del monto COD o del total facturado, según se defina la regla' (línea 220) — no queda decidido cuál de los dos aplica por default ni si es configurable por contrato; el doc lo marca a propósito como diseño abierto, no es un vacío de documentación sino una decisión pendiente explícita.",
+   "ClientContact no tiene relación con ContactPoint en el SQL (solo FullName/Role/IsPrimary embebidos) pese a que el módulo C dice que el mismo modelo ContactPoint debe usarse para 'nombre, puesto, teléfono, correo' de cada contacto (línea 211) — falta resolver si ClientContact debe tener FK a ContactPoint(s) o si ContactPoint debe apuntar a ClientContact vía asociación polimórfica.",
+   "No hay tabla de auditoría de 'quién es el dueño' explícita para PortalUser cuando un administrador de Teikem ejecuta la acción atribuida a la persona (R42) — depende de que AuditLog/SecurityEvent ya capturen el actor real y no solo el tenant; no se verificó en este lote si el interceptor actual distingue UserKind=teikem_admin vs personal del tenant al escribir esos logs (queda fuera del alcance de esta lectura, revisar en Domain/Security).",
+   "El doc dice que 'Comisión COD (%)' fue eliminado del panel Contrato en el mock (bitácora línea 623) por no estar conectado a ningún cálculo real — pero Contract.CodCommissionPct SIGUE existiendo en el SQL. Contradicción entre bitácora (más reciente, pide quitarlo del panel visible) y el SQL vigente (columna persiste); no está claro si CodCommissionPct debe quedarse en el modelo de datos (para 11B, remesa COD) aunque ya no se edite desde el panel Contrato de este módulo — probablemente sí, porque 11B lo sigue usando, pero merece confirmación explícita antes de tocar la tabla.",
+   "PortalUser está ubicado en 'CAPA 17 — PORTAL + FACTURACIÓN Y LIQUIDACIÓN' (línea 1752), no en 'CAPA 5 — CLIENTES Y CONTRATOS + CAPA 6 — TARIFAS' (línea 670) donde están las otras 12 tablas del Lote 2 pedido; confirmar si corresponde agruparlo en este lote o en el de Portal/Facturación.",
+   "Ninguna de las 13 tablas de este lote tiene [AuditEntity] definido en el SQL (eso se define en código C#, no en el SQL) — no se puede confirmar desde el esquema solo.",
+   "RateComponent y RateRule no tienen columna TenantId propia (heredan tenant vía RateCard), a diferencia de RateZone/RateCard que sí la tienen directamente — verificar si esto es intencional o vacío de diseño.",
+   "ContractServiceLevel y ClientContact no tienen TenantId propio ni PublicId — consistente con ser tablas hijas simples, pero sin RowVersion tampoco (sin control de concurrencia optimista).",
+   "No existe en el SQL ninguna tabla 'ContractRateZone' o similar para asociar zonas de tarifa a un contrato distinto del RateCard — si el documento maestro la menciona, no se pudo verificar (esta tarea se limitó al SQL, no se leyó el .md por instrucción explícita del encargo).",
+   "RateZoneMember.Polygon usa tipo GEOGRAPHY sin documentación de formato/SRID en el SQL.",
+   "No hay tabla de auditoría de cambios de tarifa (histórico de RateCard/RateComponent) visible en este lote; si el negocio requiere versión histórica de tarifas más allá de EffectiveFrom/EffectiveTo, no está modelado aquí.",
+   "RateComponent.ServiceTypeLookupId es nullable sin aclarar en el SQL si NULL significa 'aplica a todos los tipos de servicio' o es simplemente opcional sin semántica definida.",
+   "No existe un ModuleKeys.Clients (ni CONTRACTS) en src/Teikem.Domain/Constants/CatalogDomains.cs: si Clientes y Contratos deben poder encenderse/apagarse como módulo por tenant, hace falta agregar la clave y decidir si son núcleo o dependen de otro módulo.",
+   "No hay ningún permiso 'clients.*' ni 'contracts.*' en PermissionCatalog.cs (src/Teikem.Domain/Constants/PermissionCatalog.cs); el lote debe definirlos siguiendo la convención recurso.acción y añadirlos también a logistica-db-seed.sql.",
+   "EntityTypes.Client, EntityTypes.ClientContact y EntityTypes.Contract ya están declarados en CatalogDomains.cs (líneas 155-156, 163) pero no hay ningún IOwnedEntityResolver registrado para 'CLIENT' (solo existe UserOwnedEntityResolver para 'USER' en ContactPointService.cs); sin resolver, ContactPointService y CustomFieldService no podrán validar pertenencia de contactos/custom fields de Cliente al tenant (ver comentario línea 189 de CustomFieldService.cs: 'módulo dueño aún no construido').",
+   "No hay controlador ni servicio de Clientes/Contratos todavía (ClientsController, ContractsController no existen bajo src/Teikem.Api/Controllers); el patrón CRUD a replicar es el de CatalogsController/TenantControllers/CustomFieldsController (Route api/v1/..., [Authorize], [RequirePermission] por acción de escritura, GET sin permiso extra salvo el implícito del JWT).",
+   "Nuevo — Composición Client+Contract en el alta: el doc (línea 212) exige que '+ Nuevo cliente' capture nombre Y datos iniciales de contrato (cliente desde, SLA) en una sola acción de UI; los endpoints listados (POST /clients, POST /contracts) no expresan si esto es una sola llamada compuesta o dos llamadas encadenadas del cliente API — falta decidir el contrato de esta operación antes de implementarla (nota: por instrucción del encargo no se propone el diseño de la solución, solo se señala el vacío).",
+   "Nuevo — Default 'por servicio' activo al crear: el doc (línea 212) dice que el contrato nace con el componente 'por servicio' activo por defecto; no hay ningún endpoint ni regla que indique si ese default se aplica en el servicio de aplicación al invocar POST /contracts o si debe exponerse explícito en el payload de creación — decisión pendiente.",
+   "Nuevo — Dependencia cruzada explícita Location.AllowDupInvoice → módulo 2: el chequeo de número de factura repetido (R36, bitácora líneas 1118-1127) depende enteramente de la columna Location.AllowDupInvoice de este lote, pero la lógica de bloqueo/confirmación ocurre en la creación de la orden (módulo 2, TransportOrder), fuera de los endpoints de este lote — señalar que este lote debe entregar la columna y su edición (ficha del consignatario + modal alta/edición, según doc línea 1122) para que el lote de Órdenes pueda consumirla; ningún endpoint de la lista actual de Locations expone explícitamente este campo porque la columna todavía no existe en el SQL.",
+   "Nuevo — Precisión (no vacío nuevo, confirmación): se verificó que Location.AccessNotes y Location.DeliveryNotes sí existen en el SQL (logistica-db-estructura.sql:746-747), cubriendo 'instrucciones de acceso/entrega' del doc (línea 214) — el listado de columnas de la nota de la entidad Location en el borrador previo no las mencionaba explícitamente; se corrige aquí para que no se interprete como columna faltante.",
+   "Nuevo — Matiz sobre el 'cargo por COD por ciento' (relacionado al vacío ya señalado sobre ambigüedad de R11): la bitácora (línea 1112) muestra que el ejemplo sembrado de AXISCARE calcula el porciento sobre el monto COD cobrado, no sobre el total facturado — esto es solo el comportamiento de un ejemplo de la maqueta, no una resolución del diseño abierto que el doc deja explícito en la línea 220 ('según se defina la regla'); debe seguir tratándose como decisión pendiente de Luis, no asumirse como default del sistema real sin confirmación."
+  ],
+  "reutilizar": [
+   "ContactPoint (src/Teikem.Domain/Contacts/ContactPoint.cs) — patrón de contactos múltiples y asociación polimórfica del módulo C; reutilizar para perfil de cliente (teléfonos/correos) y personas de contacto (ClientContact), en vez de duplicar campos de contacto.",
+   "ILookupCache — para resolver LookupCodeId de ServiceType, PackageType, DocType, RateComponentType, RateBasis, TierMode, PricingMode, ZoneMatchType, PortalRole en vez de hardcodear ids.",
+   "StatusService.TransitionAsync / EnsureAllowedAsync — para transiciones de ClientStatus, ContractStatus y PortalUserStatus (todas ya sembradas como StatusCode con pipeline/lateral/terminal en el seed).",
+   "ITenantScoped / filtro global de TeikemDbContext — Client, Contract, Location, RateComponent, RateTier, SpecialService (a crear) y PortalUser ya llevan TenantId y deben implementar ITenantScoped; Location es IOptionallyTenantScoped a nivel de ClientId (no de TenantId) por el caso 'compartido del tenant'.",
+   "IOwnedEntityResolver — necesario para el Portal de clientes: validar pertenencia de Location/ContactPoint/orden al ClientId del principal (defensa en profundidad, BOLA, línea 407).",
+   "DSL de reglas de SEPHAS — reutilizar para el motor de cotización (resolución de zona, recargos, MinCharge, línea 226).",
+   "Mismo mecanismo de plantillas de exportación (ACCT_TEMPLATES) usado en Compras/Contabilización — aplicable después en Facturación (módulo 11, línea 424), no en este lote pero comparte motor.",
+   "PermissionCatalog — agregar clients.read/create/update, contracts.read/create/update, locations.read/create/update, portal-users.manage (permiso propio distinto de sistema.admin, R40) siguiendo el patrón ya sembrado en el seed (Permission table).",
+   "StatusService (src/Teikem.Infrastructure/Services/StatusService.cs) — TransitionAsync/EnsureAllowedAsync/GetInitialAsync/GetHistoryAsync para el ciclo de vida de Cliente y Contrato; requiere StatusDomain nuevo (p.ej. 'ClientStatus'/'ContractStatus') sembrado en StatusCode + StageKind, y opcionalmente un IStatusTransitionEffect propio del módulo.",
+   "ContactPointService (src/Teikem.Infrastructure/Services/ContactPointService.cs) — reutilizable tal cual vía endpoints /api/v1/contacts/{ownerEntity}/{ownerId} usando ownerEntity='CLIENT'; requiere registrar un IOwnedEntityResolver para CLIENT (patrón UserOwnedEntityResolver, líneas 24-29 del mismo archivo).",
+   "CustomFieldService (src/Teikem.Infrastructure/Services/CustomFieldService.cs) — reutilizable tal cual vía /api/v1/custom-fields/{definitions|values}/CLIENT o /CONTRACT; misma dependencia del IOwnedEntityResolver por entidad.",
+   "IDataSource / IDataSourceRegistry (src/Teikem.Infrastructure/Analytics/DataSources.cs) — el módulo debe registrar sus propias fuentes (p.ej. CLIENT, CONTRACT) en DependencyInjection para que aparezcan en vistas/indicadores/gráficos; seguir el contrato Key/Fields/Relations/LoadAsync.",
+   "PermissionCatalog (src/Teikem.Domain/Constants/PermissionCatalog.cs) — patrón de PermissionDef + registro en All + inclusión en RoleTemplates; el lote debe añadir sus propios códigos siguiendo la convención existente (no reutiliza códigos existentes salvo posiblemente contacts.manage y admin.customfields que ya cubren transversalmente contactos y campos personalizados de cualquier entidad).",
+   "ModuleKeys (src/Teikem.Domain/Constants/CatalogDomains.cs líneas 185-200) — patrón para declarar la clave de módulo nueva y usar [RequireModule(ModuleKeys.X)] en el controlador, igual que CustomFieldsController y AnalyticsController.",
+   "Patrón de controlador delgado (ExtensibilityControllers.cs, TenantControllers.cs, CatalogsController.cs): [ApiController] + [Route(\"api/v1/...\")] + [Authorize] a nivel de clase, [RequirePermission(...)] solo en acciones de escritura, inyección de un único servicio de aplicación por constructor primario, métodos que delegan 1:1 en el servicio sin lógica en el controlador, NoContent() en deactivate/delete.",
+   "ITenantContext / TenantContext.RequireTenantId() (usado en todos los servicios) para obtener TenantId del principal, nunca del request, al crear entidades Cliente/Contrato.",
+   "ILookupCache.GetIdAsync/TryGetIdAsync (usado en todos los servicios) para resolver códigos de catálogo (LookupCode) a Ids en vez de hardcodear.",
+   "MultilingualText.Resolve/Parse/Serialize/Merge (Teikem.Domain.Common) para etiquetas multilingües en DTOs, igual que StatusDto/CustomFieldDefinitionDto.",
+   "Excepciones de dominio (NotFoundException, ValidationException, ConflictException, StatusRuleException) usadas consistentemente en los tres servicios leídos — el módulo debe lanzarlas igual en vez de devolver códigos HTTP a mano."
+  ]
+ },
+ "plan": {
+  "enfoque": "MÍNIMO VIABLE con las mejoras de los jueces injertadas donde cierran un hueco real del Lote 1. Se implementan los endpoints de la especificación más los imprescindibles para que el ciclo cierre (cambio de estatus de cliente/contrato vía StatusService, PUT de niveles de servicio, accept-invite anónimo, edición efectivo-fechada de tarifas/tramos/servicios especiales, cotización POST multi-línea con asOf). Se reutiliza el Lote 1 al máximo: ContactPoint para teléfonos/correos del cliente y de sus personas de contacto (resolvers CLIENT/CLIENT_CONTACT), CustomFieldService sin tocar (resolvers LOCATION/CONTRACT), StatusService + StatusCapability para ClientStatus/ContractStatus/PortalUserStatus, token DataProtector de Identity como enlace de invitación (sin tabla nueva), Location tipo CORPORATE/BILLING como direcciones física/postal, PricingType FIXED/PERCENT para el tipo del cargo COD, módulos CATALOG y CLIENT_PORTAL ya sembrados. Al SQL solo entra lo que el documento exige literalmente (numeración por cliente, AllowDupInvoice, los 5 flags + DispatchFee/CodFee del contrato, clave servicio+paquete y vigencia por fila en RateComponent/RateTier, tablas SpecialServiceType/SpecialService) más guardas de última línea (índices únicos filtrados y CHECKs) que los jueces pidieron. Injertos adoptados: DbExtensions (transacción bajo la estrategia de reintentos que ya tiene EnableRetryOnFailure(3), traducción de violaciones únicas/concurrencia a 409, RowVersion opcional en PATCH); ContractStatusEffect (un solo contrato ACTIVE por cliente y período, sin activar con cliente SUSPENDED ni EndDate vencida); CodFeeBasis como dato (COD_AMOUNT | ORDER_TOTAL) en vez de asumir un modo; UPDATE idempotente del reorden de PortalUserStatus; propagación de permisos nuevos a los roles ya clonados; contenido de sistema (vista/indicador/gráfico) para CLIENT/CONTRACT; run-expirations manual para vigencia/auto-renovación; verificación de módulo y SecurityEvent FAILURE en accept-invite; pruebas de dinero ancladas a la bitácora ($25 orden mixta, 6.50+6.25+2.00=14.75, redondeo a 4 decimales); smoke de aislamiento entre tenants, de atribución del admin de plataforma (R42) y de módulo apagado. Fuera del lote (dependencias de otros módulos): zonas/recargos/MinCharge del motor de cotización, adjuntos en blob, verificación de crédito, chequeo de factura duplicada en la orden, entrega especial/DriverTrip, login del portal y claim de ClientId. Las piezas son disjuntas por archivo: P0 (única con archivos compartidos) deja esquema, entidades, configuraciones, constantes, permisos, DbSets, DI, seeders y esqueletos compilables; P1–P7 rellenan sus archivos en paralelo; P8 cierra con smoke y docs/lote2-decisiones.md.",
+  "resumen": "Lote 2 entrega Clientes y contratos como módulo del tenant (RequireModule CATALOG; usuarios de portal bajo CLIENT_PORTAL) con 10 permisos nuevos en la categoría CLIENTS (clients/locations/contracts .read/.create/.update + portalusers.manage; total 48) espejados en el seed y propagados a los roles ya clonados. Entidades EF nuevas en src/Teikem.Domain/Clients: Client, ClientContact, Location, Contract, ContractServiceLevel, RateComponent, RateTier, SpecialServiceType, SpecialService, PortalUser (todas [AuditEntity]; ITenantScoped donde hay TenantId; IHasStatus donde hay StatusCodeId; IEffectiveDated en tarifas y servicios especiales). Servicios: ClientService (alta compuesta Client+Contract inicial DRAFT con BillPerService=1, perfil sin Name, contactos con ContactPoint, numeración + preview, estatus), LocationService (propias y compartidas, activar/inactivar, AllowDupInvoice, CORPORATE/BILLING únicas por cliente), ContractService (5 checkboxes, DispatchFee, CodFee tipo+base+valor, SLA por reemplazo, estatus con ContractStatusEffect y capability EDIT_CONTRACT, run-expirations), RateService (por servicio = RateComponent BASE_FREIGHT/FIXED; pieza extra = EXTRA_PIECE/TIERED/GRADUATED + RateTier; unicidad de fila abierta, no-traslape, editar = cerrar+abrir, cotización POST multi-línea con asOf vía ContractRateResolver puro), SpecialServiceService (tipos compartidos del tenant normalizados, tipo inmutable, tarifa efectivo-fechada, alta solo con componente 5), PortalUserService (invitar por token Identity, reenviar, aceptar anónimo con verificación de módulo, suspender = DISABLED con efecto que desactiva la cuenta, invalida tokens y escribe SecurityEvent). Fuentes de datos CLIENT, CONTRACT y LOCATION + vista 'Clientes', indicador 'Clientes activos' y gráfico 'Contratos por estatus' de sistema. Cambios SQL en Diseño/logistica-db-estructura.sql (columnas de Client/Location/Contract/RateComponent/RateTier, tablas SpecialServiceType/SpecialService, índices únicos filtrados y CHECKs) y en el seed (dominio CodFeeBasis, códigos EXTRA_PIECE, EDIT_CONTRACT, CLIENTS, RATE_COMPONENT, SPECIAL_SERVICE, reorden de PortalUserStatus con UPDATE idempotente, StatusCapability por defecto, permisos y plantillas). Pruebas unitarias puras (vigencias, resumen de facturación, numeración, código de cliente, reglas de contrato y vencimiento, no-traslape de tramos, resolver de tarifas con los montos de la bitácora, normalización de tipos) y 18 pasos nuevos de smoke (incluidos aislamiento entre tenants, R42 y módulo apagado).",
+  "piezas": [
+   {
+    "nombre": "P0 — Base compartida: esquema SQL, seed, entidades, configuraciones EF, constantes, permisos, DbContext, DbExtensions, DI, seeders y esqueletos",
+    "descripcion": "ÚNICA pieza que toca archivos compartidos; se integra primero y deja la solución compilando y el smoke del Lote 1 verde. (1) SQL: aplicar todo 'cambiosSql' en Diseño/logistica-db-estructura.sql (inline en cada CREATE TABLE con comentario '-- Lote 2'; SpecialServiceType y SpecialService se crean justo después de ClientContact, antes de RateZone; índices/CHECK justo debajo de su tabla) y en Diseño/logistica-db-seed.sql (MERGE idempotente + UPDATE idempotente del reorden de PortalUserStatus + MERGE de StatusCapability por defecto + permisos/plantillas + PRINT 'permisos (48)'). (2) CatalogDomains.cs: EntityTypes.PortalUser='PORTAL_USER', RateComponent='RATE_COMPONENT', SpecialService='SPECIAL_SERVICE'; StatusDomains.ClientStatus/ContractStatus/PortalUserStatus; LookupDomains.PaymentTerm/Currency/LocationType/Country/BillingModel/PricingType/PricingMode/TierMode/RateBasis/RateComponentType/PortalRole/CodFeeBasis; clases ClientStatuses(ACTIVE,SUSPENDED,PROSPECT), ContractStatuses(DRAFT,ACTIVE,EXPIRED,CANCELLED), PortalUserStatuses(INVITED,ACTIVE,DISABLED), RateComponentTypes(BASE_FREIGHT,EXTRA_PIECE), PricingModes(FIXED,TIERED), TierModes(GRADUATED,VOLUME), RateBases(PER_SHIPMENT,PER_PIECE), PricingTypes(FIXED,PERCENT), CodFeeBases(COD_AMOUNT,ORDER_TOTAL), PortalRoles(CLIENT_ADMIN,CLIENT_OPERATOR,CLIENT_READONLY), LocationTypes(PICKUP,DELIVERY,BOTH,BILLING,CORPORATE), Capabilities.EditContract='EDIT_CONTRACT'. (3) PermissionCatalog.cs: ClientsRead/Create/Update, LocationsRead/Create/Update, ContractsRead/Create/Update, PortalUsersManage='portalusers.manage' (categoría 'CLIENTS'); RoleTemplates: Dispatcher += clients.read, locations.read, locations.create; Billing += clients.read, contracts.read; ReadOnly += clients.read, locations.read, contracts.read (TenantAdmin = All). (4) Entidades (src/Teikem.Domain/Clients): Client.cs → Client (ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped; PublicId y RowVersion [NotAudited]; Code, Name, LegalName?, TaxId?, CreditLimit?, PaymentTermLookupId?, CurrencyLookupId?, StatusCodeId, ClientAssignsOrderNumber, ClientAssignsInvoiceNumber, OrderNumberFormat?, InvoiceNumberFormat?, PackageNumberFormat?; navs Status, PaymentTerm, Currency, Contacts, Contracts, Locations) y ClientContact (ISoftDeletable; ClientId, FullName, Role?, IsPrimary; [AuditEntity(CLIENT_CONTACT)]; nav Client). Location.cs → Location (ITenantScoped, ISoftDeletable; ClientId?, Code?, Name, LocationTypeLookupId, Line1, Line2?, City, State?, PostalCode?, CountryLookupId, RateZoneId? (sin nav), DefaultServiceMinutes, DefaultWindowStart?/End? TimeOnly, AccessNotes?, DeliveryNotes?, AllowDupInvoice, CreatedAtUtc [NotAudited], RowVersion [NotAudited]; GeoPoint NO se mapea; navs Client, LocationType, Country; [AuditEntity(LOCATION)]). Contract.cs → Contract (ITenantScoped, ISoftDeletable, IHasStatus; ClientId, ContractNumber, Title, StartDate/EndDate DateOnly, StatusCodeId, CurrencyLookupId?, BillingModelLookupId?, CodCommissionPct? (se conserva, no se expone), AutoRenew, Notes?, BillPerService=true, BillExtraPiece, BillDispatchFee, BillCodFee, BillSpecialServices, DispatchFee?, CodFeeTypeLookupId?, CodFeeBasisLookupId?, CodFeeValue?, RowVersion [NotAudited]; navs Client, Status, Currency, BillingModel, CodFeeType, CodFeeBasis, ServiceLevels; [AuditEntity(CONTRACT)]) y ContractServiceLevel (ISoftDeletable; ServiceLevelId, ContractId, ServiceTypeLookupId, MaxTransitHours?, PickupWindowMin?, OnTimeTargetPct?, PenaltyAmount?; [AuditEntity(CONTRACT)]). Rates.cs → RateComponent (ITenantScoped, ISoftDeletable, IEffectiveDated; RateCardId?, ContractId?, ComponentTypeLookupId, BasisLookupId, FromZoneId?, ToZoneId?, ServiceTypeLookupId?, PackageTypeLookupId?, PricingModeLookupId, TierModeLookupId?, FlatAmount?, UnitAmount?, MinCharge?, EffectiveFrom, EffectiveTo?; navs Contract, Tiers; [AuditEntity(RATE_COMPONENT)]) y RateTier (IEffectiveDated; RateComponentId, MinValue, MaxValue?, UnitAmount?, FlatAmount?, SortOrder, EffectiveFrom, EffectiveTo?; [AuditEntity(RATE_COMPONENT)]). SpecialService.cs → SpecialServiceType (ITenantScoped, ISoftDeletable; Name, CreatedAtUtc [NotAudited]; [AuditEntity(SPECIAL_SERVICE)]) y SpecialService (ITenantScoped, ISoftDeletable, IEffectiveDated; ClientId, SpecialServiceTypeId, Rate, EffectiveFrom, EffectiveTo?, CreatedAtUtc [NotAudited]; navs Client, Type; [AuditEntity(SPECIAL_SERVICE)]). PortalUser.cs → PortalUser (ITenantScoped, ISoftDeletable, IHasStatus; ClientId, UserId?, Email, FullName?, RoleLookupId, StatusCodeId, LastLoginUtc? [NotAudited]; navs Client, Role, Status, User; [AuditEntity(PORTAL_USER)]). ContractDocument, RateCard, RateZone, RateZoneMember y RateRule NO se mapean en este lote. (5) src/Teikem.Domain/Common/EffectiveDated.cs: interface IEffectiveDated { DateOnly EffectiveFrom; DateOnly? EffectiveTo } + static class EffectiveDated { IsCurrentOn(row, date) = EffectiveFrom <= date && (EffectiveTo is null || EffectiveTo > date); Close(row, date) = EffectiveTo = date (400 si date < EffectiveFrom); ValidateNewVersion(open, newFrom) → newFrom >= open.EffectiveFrom (mismo día permitido: deja fila de longitud cero) }. (6) src/Teikem.Domain/Clients/BillingModelSummary.cs: static Build(bool perService, bool extraPiece, bool dispatch, bool cod, bool special, string lang) → 'Por servicio, Pieza extra, Despacho, COD, Especiales' / 'Per service, Extra piece, Dispatch, COD, Special' en orden fijo; ninguno → 'Sin componentes'/'No components'. (7) ClientConfigurations.cs (una clase IEntityTypeConfiguration por entidad, como CatalogConfigurations): ToTable 1:1 con el SQL, HasKey, PublicId HasDefaultValueSql(\"NEWID()\") + ValueGeneratedOnAdd, RowVersion IsRowVersion, decimal(18,4) en montos, decimal(14,3) en Min/MaxValue, decimal(5,2) en CodCommissionPct/OnTimeTargetPct, 'date' en StartDate/EndDate/EffectiveFrom/EffectiveTo, 'time' en DefaultWindowStart/End, MaxLength según el SQL, índices únicos (TenantId,Code) Client, (TenantId,ContractNumber) Contract, (TenantId,Email) PortalUser, (TenantId,Name) SpecialServiceType, índices filtrados UQ_RateComponent_Open/UQ_SpecialService_Open/UX_ClientContact_Primary/UX_ContractServiceLevel con HasFilter, FKs explícitas a LookupCode/StatusCode/Client/Contract con HasOne().WithMany(); nada de GeoPoint. (8) TeikemDbContext.cs: DbSets Clients, ClientContacts, Locations, Contracts, ContractServiceLevels, RateComponents, RateTiers, SpecialServiceTypes, SpecialServices, PortalUsers. (9) NUEVO src/Teikem.Infrastructure/Persistence/DbExtensions.cs (injerto): RunInTransactionAsync<T>(this TeikemDbContext db, Func<CancellationToken, Task<T>> work, ct) = db.Database.CreateExecutionStrategy().ExecuteAsync(async ct2 => { db.ChangeTracker.Clear(); await using var tx = await db.Database.BeginTransactionAsync(ct2); var r = await work(ct2); await tx.CommitAsync(ct2); return r; }, ct) (+ sobrecarga sin resultado; obligatorio porque EnableRetryOnFailure(3) rechaza transacciones de usuario fuera de la estrategia; regla: todo lo que se carga se carga dentro del delegado); SaveGuardedAsync(db, conflictMessage, ct) que traduce DbUpdateConcurrencyException → ConflictException('El registro fue modificado por otro usuario; recargue e intente de nuevo.') y DbUpdateException con SqlException 2601/2627 → ConflictException(conflictMessage); IsUniqueViolation(DbUpdateException); ApplyRowVersion(db, entity, string? base64) que fija OriginalValues['RowVersion'] cuando el PATCH trae rowVersion (409 si cambió). (10) DependencyInjection.cs: AddScoped ClientService, LocationService, ContractService, RateService, SpecialServiceService, PortalUserService; IOwnedEntityResolver → ClientOwnedEntityResolver, ClientContactOwnedEntityResolver, LocationOwnedEntityResolver, ContractOwnedEntityResolver; IDataSource → ClientDataSource, ContractDataSource, LocationDataSource; IStatusTransitionEffect → ContractStatusEffect, PortalUserStatusEffect; IInvitationSender → LoggingInvitationSender; services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(config.GetValue('Portal:InviteHours', 48))). (11) PermissionSeeder.cs (injerto): tras sembrar plantillas, los códigos NUEVOS de esta corrida (los que no existían en dbo.Permission) se agregan también a los roles ya clonados de cada tenant cuyo Name coincide con una plantilla que los incluye (IgnoreQueryFilters, solo agrega, nunca quita). (12) SystemAnalyticsSeeder.cs (injerto): vista de sistema 'Clientes' (CLIENT: Code, Name, Status, BillingSummary, CreditLimit, IsActive; orden Name asc), indicador 'Clientes activos' (CLIENT, COUNT, filtro IsActive isTrue AND StatusCode eq ACTIVE, sin rango, ShowInPulse=true, sort 60) y gráfico 'Contratos por estatus' (CONTRACT, groupBy Status, DONUT, rango ALL, sort 60); idempotente por nombre. DemoTenantSeeder.cs (injerto): en la rama 'ya existe' llama analyticsSeeder.SeedForTenantAsync(tenantId) para que una BD del Lote 1 reciba el contenido nuevo. (13) src/Teikem.Infrastructure/Clients/ClientQueries.cs (implementado completo; lo usan P1–P6): extensiones sobre TeikemDbContext ResolveClientAsync(Guid publicId) → Client o NotFoundException('Cliente'), ResolveContractAsync(Guid publicId) → Contract con Include(Client) o NotFoundException('Contrato'), CurrentContractAsync(int clientId, DateOnly asOf) → contrato IsActive con estatus ACTIVE cuyo período contiene asOf (StartDate <= asOf && (EndDate null || EndDate >= asOf)); si no hay, el DRAFT más reciente por StartDate; nunca EXPIRED/CANCELLED; null si no existe; y StatusIdAsync(domain, code) con caché por request. (14) appsettings.json: 'Portal': { 'ReturnInviteTokenInResponse': false, 'InviteHours': 48 }; appsettings.Development.json: 'Portal': { 'ReturnInviteTokenInResponse': true }. (15) Esqueletos compilables de TODOS los archivos listados en P1–P7 (clase + constructor primario + implementación mínima de las interfaces que DI exige — IDataSource, IStatusTransitionEffect, IOwnedEntityResolver, IInvitationSender — con throw new NotImplementedException(); controladores con [ApiController][Route] y sin acciones; archivos de Contracts solo con el namespace) para que la solución compile y el smoke del Lote 1 siga verde antes de que lleguen esas piezas; cada pieza reemplaza íntegramente sus archivos. (16) Prueba: tests/Teikem.Tests/EffectiveDatedAndSummaryTests.cs.",
+    "archivos": [
+     "/home/user/teikem/Diseño/logistica-db-estructura.sql",
+     "/home/user/teikem/Diseño/logistica-db-seed.sql",
+     "/home/user/teikem/src/Teikem.Domain/Constants/CatalogDomains.cs",
+     "/home/user/teikem/src/Teikem.Domain/Constants/PermissionCatalog.cs",
+     "/home/user/teikem/src/Teikem.Domain/Common/EffectiveDated.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/Client.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/Location.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/Contract.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/Rates.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/SpecialService.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/PortalUser.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/BillingModelSummary.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/Configurations/ClientConfigurations.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/TeikemDbContext.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/DbExtensions.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/DependencyInjection.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Seeding/PermissionSeeder.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Seeding/SystemAnalyticsSeeder.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Seeding/DemoTenantSeeder.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Clients/ClientQueries.cs",
+     "/home/user/teikem/src/Teikem.Api/appsettings.json",
+     "/home/user/teikem/src/Teikem.Api/appsettings.Development.json",
+     "/home/user/teikem/tests/Teikem.Tests/EffectiveDatedAndSummaryTests.cs"
+    ],
+    "dependeDe": [],
+    "tocaCompartidos": true
+   },
+   {
+    "nombre": "P1 — Clientes: alta compuesta, perfil, contactos, numeración, estatus y resolvers de pertenencia",
+    "descripcion": "ClientService (Teikem.Infrastructure.Services; ctor TeikemDbContext, ITenantContext, ILookupCache, StatusService, ContactPointService): GetListAsync(search?, includeInactive=false) → ClientListItemDto(Id, PublicId, Code, Name, Status, StatusLabel, IsActive, BillingSummary del contrato vigente vía ClientQueries.CurrentContractAsync + BillingModelSummary, ContractsCount). CreateAsync(ClientCreateRequest{Code?, Name, LegalName?, TaxId?, PaymentTerm?, Currency?, CreditLimit?, Contract?: {StartDate ('cliente desde'), Title?, EndDate?, AutoRenew?, ServiceLevels?: [{ServiceType, MaxTransitHours?, PickupWindowMin?, OnTimeTargetPct?, PenaltyAmount?}]}}) → dentro de db.RunInTransactionAsync: Client con StatusCodeId = StatusService.GetInitialAsync('ClientStatus'), SaveGuardedAsync (409 'Ya existe un cliente con ese código'), TransitionAsync('ClientStatus','CLIENT', id, null, 'ACTIVE') para dejar historial; Code = req.Code (409 si ya existe) o ClientCode.FromName(Name) con sufijo -2, -3… si choca; si viene Contract: Contract{ContractNumber = ContractRules.NextContractNumber(Code, existentes) = '{Code}-C1', Title = req.Title ?? 'Contrato marco', StartDate, EndDate, AutoRenew, BillPerService=true, resto false, StatusCodeId = GetInitialAsync('ContractStatus')} + TransitionAsync('ContractStatus','CONTRACT', id, null, 'DRAFT') + un ContractServiceLevel por ServiceType (400 si repetido). GetAsync(publicId) → ClientDetailDto(perfil, PhysicalAddress = Location activa tipo CORPORATE del cliente, PostalAddress = Location activa tipo BILLING (null ⇒ 'misma que física'), NumberSettings, Contacts (con sus ContactPoints vía ContactPointService.GetForOwnerAsync('CLIENT_CONTACT', id)), ContactPoints del cliente (GetForOwnerAsync('CLIENT', id)), Contracts resumen con flags + BillingSummary, CurrentContract, RowVersion base64). UpdateProfileAsync(publicId, ClientProfileUpdateRequest{LegalName?, TaxId?, CreditLimit? (>=0), PaymentTerm?, Currency?, RowVersion?}) — el DTO NO tiene Name (identidad, R1); ApplyRowVersion + SaveGuardedAsync. UpdateNumberSettingsAsync(publicId, ClientNumberSettingsRequest{ClientAssignsOrderNumber?, ClientAssignsInvoiceNumber?, OrderNumberFormat?, InvoiceNumberFormat?, PackageNumberFormat?}) validando cada patrón con NumberFormat.Validate (400 por campo; cadena vacía ⇒ NULL = patrón por defecto). PreviewNumber(pattern, seq) → NumberFormat.Resolve (puro, para la vista previa en vivo). GetContactsAsync(publicId) / AddContactAsync(publicId, ClientContactCreateRequest{FullName, Role?, IsPrimary, ContactPoints?: [{ContactType, Value, Extension?, Label?, IsPrimary}]}) → en transacción: si IsPrimary, primero quita IsPrimary del principal actual y guarda, luego inserta (respeta UX_ClientContact_Primary), luego cada ContactPoint con ContactPointService.AddAsync('CLIENT_CONTACT', contactId, …); UpdateContactAsync(publicId, id, {FullName?, Role?, IsPrimary?, IsActive?}) — el contacto se carga SIEMPRE a través del cliente del tenant (db.ClientContacts.Where(c => c.ClientContactId == id && c.ClientId == client.ClientId)), nunca por id suelto (regla tenant-security para hijas sin TenantId). TransitionStatusAsync(publicId, StatusChangeRequest{ToCode, Comment}) → StatusService.TransitionAsync('ClientStatus','CLIENT', id, client.StatusCodeId, toCode, comment) y asigna client.StatusCodeId. SetActiveAsync(publicId, false) = baja lógica (204). TenantId siempre de TenantContext.RequireTenantId(); catálogos con ILookupCache.GetIdAsync (404 si el código no existe). Helpers puros en Domain: NumberFormat.Validate(pattern) (1..40 chars, al menos un '#', solo letras/dígitos/'-','_','/','.','#','@'), NumberFormat.Resolve(pattern, n, letter='A') ('AX-#####',1 → 'AX-00001'; desbordamiento no trunca; '@' → letra), NumberFormat.Defaults (Order 'ORD-#####', Invoice 'FAC-#####', Package 'PQT-#####'); ClientCode.FromName(name) (mayúsculas, sin acentes/diacríticos, no alfanumérico → '-', colapsa guiones, máx 20; vacío → ValidationException). OwnedEntityResolvers.cs: ClientOwnedEntityResolver ('CLIENT': db.Clients.AnyAsync(c => c.ClientId == id)), ClientContactOwnedEntityResolver ('CLIENT_CONTACT': join a Client bajo el filtro global), LocationOwnedEntityResolver ('LOCATION'), ContractOwnedEntityResolver ('CONTRACT'). ClientsController [Route('api/v1/clients')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: GET '' clients.read; POST '' clients.create; GET 'number-format/preview?pattern=&seq=' clients.read; GET '{publicId:guid}' clients.read; PATCH '{publicId:guid}/profile' clients.update; PATCH '{publicId:guid}/number-settings' clients.update; GET '{publicId:guid}/contacts' clients.read; POST '{publicId:guid}/contacts' clients.update; PATCH '{publicId:guid}/contacts/{id:int}' clients.update; POST '{publicId:guid}/status' clients.update; POST '{publicId:guid}/deactivate' clients.update (204). Pruebas: tests/Teikem.Tests/ClientRulesTests.cs.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Clients/NumberFormat.cs",
+     "/home/user/teikem/src/Teikem.Domain/Clients/ClientCode.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/ClientContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/ClientService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/OwnedEntityResolvers.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/ClientsController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/ClientRulesTests.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P2 — Consignatarios y localizaciones (Location)",
+    "descripcion": "LocationService (TeikemDbContext, ITenantContext, ILookupCache): GetListAsync(LocationQuery{ClientPublicId?, IncludeShared=true, IncludeInactive=false, LocationType?, Search?}) → propias del cliente (ClientId==id) ∪ compartidas (ClientId==null) cuando IncludeShared; sin ClientPublicId devuelve todas las del tenant con OwnerClient visible (pantalla de Catálogo); IncludeInactive=false excluye IsActive=0 (R5: inactivo no aparece en comboboxes pero conserva historial). GetAsync(publicId). CreateAsync(LocationUpsertRequest{ClientPublicId?, Code?, Name, LocationType (código LookupDomains.LocationType), Line1, Line2?, City, State?, PostalCode?, Country (código; default 'PR'), DefaultServiceMinutes=0, DefaultWindowStart?, DefaultWindowEnd?, AccessNotes?, DeliveryNotes?, AllowDupInvoice=false}) — ClientPublicId null ⇒ compartida del tenant; el cliente se valida con ClientQueries.ResolveClientAsync (404 si no es del tenant); ventana Start<End (400); DefaultServiceMinutes >= 0; como máximo una Location activa tipo CORPORATE y una tipo BILLING por cliente (son su dirección física/postal) → 409 si ya existe; una CORPORATE/BILLING no puede ser compartida (400). UpdateAsync(publicId, LocationPatchRequest{mismos campos opcionales + ClientPublicId? + MakeShared?: bool + RowVersion?}) — cambiar dueño permitido (doc: 'dueño visible y editable'), mismas validaciones; ApplyRowVersion + SaveGuardedAsync. SetActiveAsync(publicId, bool) (204) — NUNCA DELETE. LocationDto(Id, PublicId, ClientPublicId?, ClientName?, IsShared, Code, Name, LocationType, LocationTypeLabel, Line1, Line2, City, State, PostalCode, Country, CountryLabel, DefaultServiceMinutes, DefaultWindowStart, DefaultWindowEnd, AccessNotes, DeliveryNotes, AllowDupInvoice, IsActive, CreatedAtUtc, RowVersion). LocationsController [Route('api/v1/locations')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: GET '' (query clientId, includeShared, includeInactive, locationType, search) locations.read; POST '' locations.create; GET '{publicId:guid}' locations.read; PATCH '{publicId:guid}' locations.update; POST '{publicId:guid}/deactivate' locations.update (204); POST '{publicId:guid}/reactivate' locations.update (204). El chequeo de factura duplicada (R36) NO se implementa aquí: este lote entrega la columna AllowDupInvoice y su edición (ficha + alta/edición) para que el lote de Órdenes la consuma.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/LocationContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/LocationService.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/LocationsController.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P3 — Contratos: modelo de facturación (5 checkboxes), despacho, COD, SLA, estatus con efecto y vencimientos",
+    "descripcion": "ContractService (TeikemDbContext, ITenantContext, ILookupCache, StatusService): GetListAsync(clientPublicId?, includeInactive=false) → ContractSummaryDto(Id, PublicId, ClientPublicId, ClientName, ContractNumber, Title, StartDate, EndDate, Status, StatusLabel, AutoRenew, BillingSummary, IsActive). GetAsync(publicId) → ContractDetailDto(Id, PublicId, ClientPublicId, ClientName, ContractNumber, Title, StartDate, EndDate, AutoRenew, Status, StatusLabel, Currency, BillingTrigger (BillingModel BY_PICKUP/BY_DELIVERY/MIXED), Notes, BillingModel{BillPerService, BillExtraPiece, BillDispatchFee, BillCodFee, BillSpecialServices, Summary}, DispatchFee, CodFee{Type FIXED|PERCENT, Basis COD_AMOUNT|ORDER_TOTAL, Value}, ServiceLevels[ServiceLevelDto(Id, ServiceType, ServiceTypeLabel, MaxTransitHours, PickupWindowMin, OnTimeTargetPct, PenaltyAmount)], CanEdit (EDIT_CONTRACT permitido en el estatus actual), IsActive, RowVersion). CreateAsync(ContractCreateRequest{ClientPublicId, ContractNumber?, Title, StartDate, EndDate?, AutoRenew=false, Currency?, BillingTrigger?, Notes?, ServiceLevels?}) → BillPerService=true por defecto (RC4), ContractNumber = ContractRules.NextContractNumber(client.Code, existentes) si viene vacío (409 si el explícito existe), estatus inicial GetInitialAsync('ContractStatus') + TransitionAsync desde null; EndDate >= StartDate (400); todo en RunInTransactionAsync + SaveGuardedAsync. UpdateAsync(publicId, ContractPatchRequest{Title?, EndDate?, AutoRenew?, Currency?, BillingTrigger?, Notes?, RowVersion?}). SetBillingModelAsync(publicId, BillingModelRequest{BillPerService?, BillExtraPiece?, BillDispatchFee?, BillCodFee?, BillSpecialServices?}) — solo cambia flags; NO borra DispatchFee/CodFee/tarifas/servicios especiales al desmarcar (R7b: los datos no se pierden). SetDispatchFeeAsync(publicId, {Amount}) (>= 0; no toca el flag; unidad = por orden, bitácora 'Cargo por despacho: por orden'). SetCodFeeAsync(publicId, {Type: FIXED|PERCENT (LookupDomains.PricingType), Basis?: COD_AMOUNT|ORDER_TOTAL (LookupDomains.CodFeeBasis; default COD_AMOUNT; solo aplica a PERCENT), Value}) validado con ContractRules.ValidateCodFee (FIXED >= 0; PERCENT 0..100). SetServiceLevelsAsync(publicId, [ServiceLevelUpsert]) → reemplazo completo: filas ausentes pasan a IsActive=0, un solo nivel activo por ServiceType (400 si repetido; UX_ContractServiceLevel es la segunda barrera), MaxTransitHours>0, OnTimeTargetPct 0..100 (ContractRules.ValidateServiceLevels). TransitionStatusAsync(publicId, {ToCode, Comment}) → StatusService.TransitionAsync('ContractStatus','CONTRACT', …) y asigna StatusCodeId. RunExpirationsAsync() (injerto) → por cada contrato ACTIVE con EndDate < hoy: si AutoRenew, EndDate = ContractRules.NextEndDateOnRenew(StartDate, EndDate) (misma duración) y se anota en Notes; si no, TransitionAsync ACTIVE→EXPIRED; devuelve ExpirationRunResultDto{Renewed, Expired}. Guarda de estatus en toda escritura de negocio (Update/SetBillingModel/SetDispatchFee/SetCodFee/SetServiceLevels): StatusService.EnsureAllowedAsync('CONTRACT', contract.StatusCodeId, 'EDIT_CONTRACT') — el seed deja EXPIRED/CANCELLED con EDIT_CONTRACT=0 por defecto (422 StatusRuleException); el tenant puede cambiarlo desde /status/capabilities/CONTRACT. ContractStatusEffect : IStatusTransitionEffect (StatusDomain='ContractStatus'; injerto): al llegar a ACTIVE carga el contrato (bajo filtro global) y aplica ContractRules.EnsureCanActivate(clientStatusCode, endDate, today, otrosActivosDelCliente[(StartDate, EndDate)]) → StatusRuleException (422) si el cliente está SUSPENDED, si EndDate < hoy o si otro contrato ACTIVE del mismo cliente tiene período solapado (EndDate null = abierto); al llegar a EXPIRED/CANCELLED → nada (las tarifas quedan como historial). Sin efecto para ClientStatus en este lote. ContractRules (static, puro): ValidateCodFee(type, basis, value), ValidateServiceLevels(items), NextContractNumber(clientCode, existingNumbers) → '{Code}-C{n+1}', NextEndDateOnRenew(start, end) = end + (end - start + 1 día), EnsureCanActivate(...). ContractsController [Route('api/v1/contracts')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: GET '' contracts.read; POST '' contracts.create; POST 'run-expirations' admin.tenant; GET '{publicId:guid}' contracts.read; PATCH '{publicId:guid}' contracts.update; PATCH '{publicId:guid}/billing-model' contracts.update; PATCH '{publicId:guid}/dispatch-fee' contracts.update; PATCH '{publicId:guid}/cod-fee' contracts.update; PUT '{publicId:guid}/service-levels' contracts.update; POST '{publicId:guid}/status' contracts.update. Pruebas: tests/Teikem.Tests/ContractRulesTests.cs.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/ContractContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/ContractService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/ContractStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Clients/ContractRules.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/ContractsController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/ContractRulesTests.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P4 — Tarifas por servicio y pieza extra (RateComponent/RateTier) + cotización de contrato multi-línea con asOf",
+    "descripcion": "Modelo: 'Por servicio' = RateComponent{ComponentType=BASE_FREIGHT, PricingMode=FIXED, Basis=PER_SHIPMENT, ServiceTypeLookupId, PackageTypeLookupId, FlatAmount=tarifa, EffectiveFrom, EffectiveTo=null}; 'Pieza extra' = RateComponent{ComponentType=EXTRA_PIECE, PricingMode=TIERED, TierMode=GRADUATED, Basis=PER_PIECE, servicio+paquete} + RateTier{MinValue=FromUnit, MaxValue=ToUnit (null = abierto), UnitAmount=tarifa, EffectiveFrom/To}. Todas las filas llevan TenantId y ContractId (ContractId NULL = tarifa genérica del tenant: la lee el resolver, sin endpoints en este lote; en genéricas ServiceType/PackageType NULL = comodín). RateService (TeikemDbContext, ITenantContext, ILookupCache, StatusService): GetForContractAsync(publicId, asOf?=hoy, includeHistory=false) → RateComponentsDto{ContractPublicId, AsOf, PerService:[RateRowDto(Id, ServiceType, ServiceTypeLabel, PackageType, PackageTypeLabel, Rate, EffectiveFrom, EffectiveTo, IsCurrent)], ExtraPiece:[ExtraPieceRowDto(ComponentId, ServiceType, PackageType, EffectiveFrom, EffectiveTo, IsCurrent, Tiers:[TierDto(Id, FromUnit, ToUnit, Rate, EffectiveFrom, EffectiveTo, IsCurrent)])]} (los tramos se leen SIEMPRE a través del componente del contrato, nunca por id suelto). AddComponentAsync(publicId, RateComponentCreateRequest{Kind: PER_SERVICE|EXTRA_PIECE, ServiceType, PackageType, Rate? (obligatorio y >= 0 en PER_SERVICE), EffectiveFrom?=hoy}) → 409 ConflictException si el componente correspondiente está apagado (BillPerService/BillExtraPiece) y 409 si ya hay fila abierta con el mismo (Kind, ServiceType, PackageType) (R26; UQ_RateComponent_Open + SaveGuardedAsync son la segunda barrera); Servicio y Paquete inmutables (R25): no existe PATCH para ellos. UpdateRateAsync(publicId, componentId, {Rate, EffectiveFrom?=hoy}) solo PER_SERVICE → EffectiveDated.ValidateNewVersion; cierra la fila abierta (EffectiveTo = EffectiveFrom nueva) e inserta una fila nueva copiando servicio/paquete (R28; nunca se sobrescribe el monto; misma fecha ⇒ fila de longitud cero que queda como historial). CloseComponentAsync(publicId, componentId, {EffectiveTo?=hoy}) = quitar conservando historial (los tramos abiertos de un EXTRA_PIECE se cierran con la misma fecha). AddTierAsync(publicId, componentId, TierUpsertRequest{FromUnit, ToUnit?, Rate, EffectiveFrom?=hoy}) solo EXTRA_PIECE: RateTierRules.IsValidRange (FromUnit>=2, ToUnit null o >= FromUnit; 400 'rango inválido'), Rate >= 0, sin traslape con los tramos abiertos del mismo componente (400, R27) usando RateTierRules.FindOverlap. UpdateTierAsync(publicId, componentId, tierId, {FromUnit?, ToUnit?, Rate?, EffectiveFrom?=hoy}) → cierra el tramo y abre uno nuevo validando traslape contra los demás abiertos (excluyéndose). CloseTierAsync(publicId, componentId, tierId). Todas las escrituras exigen que el contrato exista en el tenant (ClientQueries.ResolveContractAsync) y StatusService.EnsureAllowedAsync('CONTRACT', status, 'EDIT_CONTRACT'); todas en RunInTransactionAsync. QuoteAsync(RateQuoteRequest{ClientPublicId, Lines:[{ServiceType, PackageType, Pieces>=1}] (>=1 línea), CodAmount?=0, AsOf?=hoy}) → contrato vigente en AsOf (ClientQueries.CurrentContractAsync) + filas vigentes en AsOf del contrato y genéricas (ContractId null) + flags/DispatchFee/CodFee del contrato → ContractRateResolver.QuoteOrder → RateQuoteDto{ContractPublicId?, ContractStatus?, AsOf, Lines:[QuoteLineDto(ServiceType, PackageType, Pieces, BaseRate?, BaseSource CONTRACT|GENERIC|NONE, ExtraPieces, ExtraSource, LineTotal)], DispatchFee, CodFee, Total, RateComponentIds}. ContractRateResolver (puro, sin EF; namespace Teikem.Infrastructure.Clients): records RateRow(Id, ContractId?, Kind, ServiceType?, PackageType?, Rate, Tiers:[TierRow(Id, FromUnit, ToUnit?, Rate)]) y ContractFlags(BillPerService, BillExtraPiece, BillDispatchFee, BillCodFee, DispatchFee?, CodFeeType?, CodFeeBasis?, CodFeeValue?); Match(rows, kind, svc, pkg) con especificidad exacto svc+pkg > svc+NULL > NULL+pkg > NULL+NULL, filas de contrato antes que genéricas; dos filas exactas de contrato para la misma clave ⇒ InvalidOperationException (invariante, el índice lo impide); BaseRate(rows, flags, svc, pkg) → (Amount?, Source, RowId?) (R35: apagado o sin fila ⇒ genérica; sin genérica ⇒ null/NONE); ExtraPieces(rows, flags, svc, pkg, pieces) → GRADUATED marginal: la pieza 1 nunca es extra; cada pieza 2..n paga la tarifa del tramo donde cae; pieza sin tramo ⇒ tramos genéricos; sin genérica ⇒ 0 con source NONE; DispatchFee(flags) → apagado ⇒ 0, una sola vez por orden; CodFee(flags, codAmount, orderSubtotal) → apagado ⇒ 0; FIXED ⇒ value; PERCENT sobre codAmount (COD_AMOUNT) o sobre orderSubtotal = Σ(base+extra)+despacho (ORDER_TOTAL); QuoteOrder(rows, flags, lines, codAmount) → una línea por (servicio, paquete) con base+extra propios, despacho y COD solo en la primera línea (R31–R33), Total, RateComponentIds usados (R30); Money.Round4 = Math.Round(x, 4, MidpointRounding.AwayFromZero) en cada monto (el front muestra 2). RateTierRules (puro): IsValidRange(from,to), FindOverlap(candidate, existing, excludeId) con nuevo.Desde<=existente.Hasta && nuevo.Hasta>=existente.Desde (Hasta null = infinito). ContractRatesController [Route('api/v1/contracts/{publicId:guid}/rate-components')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: GET '' (query asOf, includeHistory) contracts.read; POST '' contracts.update; PATCH '{id:int}' contracts.update; POST '{id:int}/close' contracts.update; POST '{id:int}/tiers' contracts.update; PATCH '{id:int}/tiers/{tierId:int}' contracts.update; POST '{id:int}/tiers/{tierId:int}/close' contracts.update. BillingQuoteController [Route('api/v1/billing')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: POST 'contract-rate-quote' contracts.read → RateQuoteDto (lo reutilizará Facturación). Pruebas: tests/Teikem.Tests/ContractRateTests.cs.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/RateContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/RateService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Clients/ContractRateResolver.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Clients/RateTierRules.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/ContractRatesController.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/BillingQuoteController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/ContractRateTests.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P5 — Servicios especiales por cliente y tipos compartidos del tenant",
+    "descripcion": "SpecialServiceService (TeikemDbContext, ITenantContext, StatusService): GetTypesAsync(includeInactive=false) → SpecialServiceTypeDto(Id, Name, ClientsUsing (clientes con fila abierta), IsActive) — unión de tipos del tenant (alimentará el selector 'tipo de viaje' de Choferes y tarifas, R19/R20). GetForClientAsync(clientPublicId, asOf?=hoy, includeHistory=false) → SpecialServiceListDto{ClientPublicId, ContractPublicId?, ComponentEnabled (BillSpecialServices del contrato vigente; false si no hay contrato), AsOf, Items:[SpecialServiceDto(Id, TypeId, TypeName, Rate, EffectiveFrom, EffectiveTo, IsCurrent)]} — las filas se devuelven aunque el componente esté apagado (R7b: no se pierden; la UI oculta el panel). AddAsync(clientPublicId, SpecialServiceCreateRequest{TypeId?, NewTypeName?, Rate, EffectiveFrom?=hoy}) → 409 si no hay contrato vigente o el componente 5 está apagado (R12); exactamente uno de TypeId/NewTypeName (400); NewTypeName se normaliza (trim, espacios simples, máx 120) y se compara con SpecialServiceRules.SameName contra los tipos del tenant: si ya existe se reutiliza (evita 'Vagón del muelle' vs 'VAGON DEL MUELLE'), si no se crea SpecialServiceType (disponible para todos los clientes al instante, R20; UQ (TenantId, Name) + SaveGuardedAsync como segunda barrera); 409 si el cliente ya tiene una fila abierta de ese tipo (UQ_SpecialService_Open); Rate >= 0. UpdateRateAsync(clientPublicId, id, {Rate, EffectiveFrom?=hoy}) → EffectiveDated.ValidateNewVersion, cierra y abre (R28); el tipo es inmutable (no hay campo). CloseAsync(clientPublicId, id, {EffectiveTo?=hoy}) → cerrar conservando historial. Toda fila se carga a través del cliente del tenant (ClientQueries.ResolveClientAsync + ClientId == id). Escrituras exigen EnsureAllowedAsync('CONTRACT', contratoVigente.StatusCodeId, 'EDIT_CONTRACT') y corren en RunInTransactionAsync. Helper puro en src/Teikem.Domain/Clients/SpecialServiceRules.cs: NormalizeName(s) (trim, colapsa espacios, minúsculas, sin diacríticos; vacío → ValidationException), SameName(a, b). SpecialServicesController [Route('api/v1')] [Authorize] [RequireModule(ModuleKeys.Catalog)]: GET 'clients/{publicId:guid}/special-services' (query asOf, includeHistory) contracts.read; POST 'clients/{publicId:guid}/special-services' contracts.update; PATCH 'clients/{publicId:guid}/special-services/{id:int}' contracts.update; POST 'clients/{publicId:guid}/special-services/{id:int}/close' contracts.update; GET 'special-service-types' contracts.read. Pruebas: tests/Teikem.Tests/SpecialServiceRulesTests.cs.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Clients/SpecialServiceRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/SpecialServiceContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/SpecialServiceService.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/SpecialServicesController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/SpecialServiceRulesTests.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P6 — Usuarios de portal desde el expediente del cliente (invitar, reenviar, aceptar, suspender) + efecto de estatus",
+    "descripcion": "PortalUserService(TeikemDbContext, UserManager<ApplicationUser>, ITenantContext, ILookupCache, StatusService, ModuleService, ISecurityEventWriter, IInvitationSender, IPasswordBreachChecker, IConfiguration): GetForClientAsync(clientPublicId) → PortalUserDto(Id, ClientPublicId, Email, FullName, Role, RoleLabel, Status, StatusLabel, LastLoginUtc, IsActive, HasUser). InviteAsync(clientPublicId, PortalInviteRequest{Email, FullName?, Role (LookupDomains.PortalRole)}) → correo normalizado (ContactPointService.ValidateValue('EMAIL')); 409 si ya existe como PortalUser del tenant (UQ) o como ApplicationUser de otra especie (RequireUniqueEmail global; DECISIÓN); en RunInTransactionAsync: crea ApplicationUser{UserName=Email, Email, FullName, UserKindLookupId=UserKinds.Portal, DefaultTenantId=tenant, IsActive=true, EmailConfirmed=false} con users.CreateAsync(user) SIN contraseña (R41: nadie escribe la contraseña de otro; sin UserTenant: el alcance del portal es PortalUser.ClientId); crea PortalUser{ClientId, UserId, Email, FullName, RoleLookupId, StatusCodeId = GetInitialAsync('PortalUserStatus') (INVITED tras el reorden del seed)} + TransitionAsync('PortalUserStatus','PORTAL_USER', id, null, 'INVITED'); token = users.GeneratePasswordResetTokenAsync(user) (DataProtector, vida Portal:InviteHours, se invalida al usarse porque ResetPassword cambia el SecurityStamp); IInvitationSender.SendInviteAsync(email, token, clientName, expiresAtUtc, ct); SecurityEvent ROLE_CHANGE/SUCCESS con detail {action:'portal_invite', portalUser, client, byPlatformAdmin} atribuido a tenant.UserId (incluido el admin de plataforma, R42); devuelve PortalInviteResultDto(User, InviteToken solo si Portal:ReturnInviteTokenInResponse=true, ExpiresAtUtc). ResendInviteAsync(clientPublicId, id) → solo en INVITED (409 si no); nuevo token; mismo SecurityEvent {action:'portal_invite_resent'}. SuspendAsync(clientPublicId, id) → TransitionAsync a 'DISABLED' (terminal) y asigna StatusCodeId; SecurityEvent {action:'portal_user_disabled'}; el efecto hace el resto; 204. AcceptInviteAsync(PortalAcceptInviteRequest{Email, Token, Password}) [anónimo]: busca ApplicationUser por email con UserKind PORTAL y su PortalUser con IgnoreQueryFilters (únicos usos permitidos fuera de la revocación); cualquier fallo (no existe, estatus ≠ INVITED, token inválido/vencido, contraseña en brecha, módulo CLIENT_PORTAL apagado en el tenant vía ModuleService.GetEnabledKeysAsync(portalUser.TenantId)) responde el MISMO 400 'Invitación inválida o vencida' (sin enumeración) y escribe SecurityEvent PASSWORD_CHANGE/FAILURE {action:'portal_invite_accept_failed'} sin userId (tenantId del PortalUser si se resolvió); éxito: users.ResetPasswordAsync(user, token, password) (NIST: >=12, sin composición; IPasswordBreachChecker antes), EmailConfirmed=true, using tenantContext.As(portalUser.TenantId, user.Id) → TransitionAsync INVITED→ACTIVE y SecurityEvent PASSWORD_CHANGE/SUCCESS {action:'portal_invite_accepted'}; 204. IInvitationSender.cs (Abstractions): interface IInvitationSender { Task SendInviteAsync(string email, string token, string clientName, DateTime expiresAtUtc, CancellationToken ct); } + LoggingInvitationSender (ILogger): registra destinatario, cliente y expiración — NUNCA el token; punto de integración para SMTP. PortalUserStatusEffect : IStatusTransitionEffect (StatusDomain='PortalUserStatus'): al llegar a DISABLED → carga el PortalUser (filtro global) y su ApplicationUser → IsActive=false + users.UpdateSecurityStampAsync (invalida access tokens vivos) + revoca RefreshTokens del usuario (IgnoreQueryFilters, SuppressAudit como en UserAdminService.SetMembershipStatusAsync) + SecurityEvent TOKEN_REVOKED/SUCCESS {reason:'portal_user_disabled'}; al llegar a ACTIVE → nada. El login del portal sigue rechazado por AuthService (módulo 10). PortalUsersController [Authorize] [Route('api/v1')]: GET 'clients/{publicId:guid}/portal-users' [RequireModule(ModuleKeys.ClientPortal)] portalusers.manage; POST 'clients/{publicId:guid}/portal-users/invite' [RequireModule(ClientPortal)] portalusers.manage; POST 'clients/{publicId:guid}/portal-users/{id:int}/resend-invite' [RequireModule(ClientPortal)] portalusers.manage; POST 'clients/{publicId:guid}/portal-users/{id:int}/suspend' [RequireModule(ClientPortal)] portalusers.manage (204); POST 'portal-users/accept-invite' [AllowAnonymous] (204; el módulo se verifica en el servicio porque no hay tenant en el principal). Sin AAL2 (mínimo; ver decisiones).",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/PortalUserContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/PortalUserService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/PortalUserStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Abstractions/IInvitationSender.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/PortalUsersController.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P7 — Fuentes de datos CLIENT, CONTRACT y LOCATION para vistas/indicadores/gráficos",
+    "descripcion": "Un archivo con tres IDataSource siguiendo BuiltInDataSources (AsNoTracking, Take(20000), etiquetas vía ILookupCache/MultilingualText y db.StatusCodes, DefaultBusinessModule=Operations, respetan q.Ids para resolver relaciones). Los nombres de campo son los que P0 usó en SystemAnalyticsSeeder (vista 'Clientes', indicador 'Clientes activos', gráfico 'Contratos por estatus') y deben mantenerse. ClientDataSource: Key=EntityTypes.Client, LabelEs 'Clientes'/LabelEn 'Clients', EntityTypeCode='CLIENT' (habilita campos personalizados de CLIENT como columnas), DateField=null (estado actual), IdField='Id'; Fields: Id(Number), PublicId(Text), Code, Name, LegalName, TaxId, Status, StatusCode, PaymentTerm, Currency, CreditLimit(Number, IsMoney), IsActive(Bool), ClientAssignsOrderNumber(Bool), ClientAssignsInvoiceNumber(Bool), BillingSummary(Text, del contrato vigente vía ClientQueries.CurrentContractAsync + BillingModelSummary), ContractsCount(Number), CreatedAtUtc(Date); Relations: ninguna. ContractDataSource: Key=EntityTypes.Contract, 'Contratos'/'Contracts', EntityTypeCode='CONTRACT', DateField='StartDate', IdField='Id'; Fields: Id, PublicId, ContractNumber, Title, ClientId(Number), ClientName, StartDate(Date), EndDate(Date), AutoRenew(Bool), Status, StatusCode, BillingTrigger, BillPerService, BillExtraPiece, BillDispatchFee, BillCodFee, BillSpecialServices (Bool), DispatchFee(Number, IsMoney), CodFeeType, CodFeeBasis, CodFeeValue(Number), IsActive(Bool); Relations: ('Client', EntityTypes.Client, 'ClientId', 'Cliente', 'Client'); aplica q.FromUtc/q.ToUtc sobre StartDate. LocationDataSource: Key=EntityTypes.Location, 'Consignatarios y localizaciones'/'Locations', EntityTypeCode='LOCATION', DateField=null; Fields: Id, PublicId, Code, Name, ClientId(Number), ClientName, IsShared(Bool), LocationType, LocationTypeCode, City, State, PostalCode, Country, DefaultServiceMinutes(Number), AllowDupInvoice(Bool), IsActive(Bool), CreatedAtUtc(Date); Relations: ('Client', EntityTypes.Client, 'ClientId', 'Cliente', 'Client'). Los tres ya quedan registrados en DI por P0.",
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Analytics/ClientDataSources.cs"
+    ],
+    "dependeDe": [
+     "P0"
+    ],
+    "tocaCompartidos": false
+   },
+   {
+    "nombre": "P8 — Cierre: smoke test del Lote 2 y docs/lote2-decisiones.md",
+    "descripcion": "Anexa a scripts/smoke.sh, antes del step 'sesiones', un bloque 'clientes y contratos (Lote 2)' con los pasos listados en 'smoke', usando las mismas funciones req/expect, el token de admin ya emitido (y reauth cuando haga falta AAL2), TS=$(date +%s) como sufijo en Code/nombres/correos y TODAY=$(date +%F) para ser re-ejecutable; cada paso termina en ok '...'. Actualiza el comentario de cabecera ('Prueba de humo de los Lotes 1 y 2'). Redacta docs/lote2-decisiones.md con el formato de docs/lote1-decisiones.md: mapa de lo construido (tablas nuevas/extendidas, código principal, endpoints por controlador con permiso y módulo), cómo se prueba (db-init sobre BD limpia porque la estructura se aplica una sola vez por hash — una BD del Lote 1 debe recrearse; dotnet test; smoke; corrida verde de CI enlazada), decisiones tomadas (todas las 'DECISIÓN:' de este plan con su alternativa, numeradas), checklist estático de revisión tenant-security del lote (ningún IgnoreQueryFilters fuera de accept-invite y de la revocación de tokens; ninguna hija sin TenantId — ClientContact, ContractServiceLevel, RateTier — consultada por id suelto; todo RequireTenantId; PublicId en rutas; resolvers registrados para CLIENT/CLIENT_CONTACT/LOCATION/CONTRACT; el token de invitación nunca se registra en logs ni en AuditLog), y lo que queda fuera (zonas/recargos/MinCharge, adjuntos, verificación de crédito, chequeo de factura duplicada en órdenes, entrega especial/DriverTrip, login de portal y claim ClientId, tarifa genérica por endpoint, contador atómico de numeración en Órdenes, job programado de vencimientos). Verifica CI verde (build + test + db-init + smoke) y deja el enlace de la corrida en el documento.",
+    "archivos": [
+     "/home/user/teikem/scripts/smoke.sh",
+     "/home/user/teikem/docs/lote2-decisiones.md"
+    ],
+    "dependeDe": [
+     "P0",
+     "P1",
+     "P2",
+     "P3",
+     "P4",
+     "P5",
+     "P6",
+     "P7"
+    ],
+    "tocaCompartidos": false
+   }
+  ],
+  "decisiones": [
+   {
+    "decision": "DECISIÓN: POST /api/v1/clients es una operación compuesta: crea el Client y, si viene 'contract', su Contract inicial (DRAFT, BillPerService=1, ContractNumber '{Code}-C1', SLA opcional) en una sola transacción (RunInTransactionAsync), tal como el modal '+ Nuevo cliente' del documento (RC3/RC4). POST /contracts queda para contratos adicionales y también aplica BillPerService=1 por defecto.",
+    "alternativa": "Dos llamadas encadenadas desde el front (POST /clients y luego POST /contracts) y que el default 'por servicio' lo aplique solo POST /contracts."
+   },
+   {
+    "decision": "DECISIÓN: Client.Code es opcional en el alta y se autogenera desde el nombre (slug en mayúsculas sin acentos, máx. 20, sufijo -2/-3 si colisiona) porque el modal del documento solo captura el nombre; Client.Name no existe en ningún DTO de actualización (identidad, R1).",
+    "alternativa": "Code obligatorio en el request (400 si falta) y renombrado permitido solo con permiso especial."
+   },
+   {
+    "decision": "DECISIÓN: numeración por cliente como columnas BIT ClientAssignsOrderNumber/ClientAssignsInvoiceNumber (default 0 = Teikem) y tres columnas de patrón OrderNumberFormat/InvoiceNumberFormat/PackageNumberFormat NVARCHAR(40) NULL (NULL = patrón por defecto del sistema); el generador NumberFormat.Resolve queda en Domain y se expone GET /clients/number-format/preview para la vista previa en vivo; el contador atómico (siguiente consecutivo por cliente) lo agrega el lote de Órdenes.",
+    "alternativa": "Dominio LookupCode 'NumberAssignedBy' (CLIENT/SYSTEM) con FKs y una sola columna NumberFormatJson; o agregar ya columnas OrderNumberSeq/InvoiceNumberSeq/PackageNumberSeq con un ClientNumberingService.NextAsync (UPDATE … OUTPUT) atómico."
+   },
+   {
+    "decision": "DECISIÓN: las direcciones física y postal del perfil del cliente se representan como Location con ClientId y tipo CORPORATE (física) / BILLING (postal), a lo sumo una activa de cada tipo por cliente (409) y nunca compartidas; 'misma que física' = no existe Location BILLING activa. No se agregan columnas de dirección a Client (el SQL dice que Location absorbió ClientAddress) y se editan con los endpoints de /locations.",
+    "alternativa": "Columnas Physical*/Postal*/PostalSameAsPhysical en Client editables desde PATCH /clients/{id}/profile."
+   },
+   {
+    "decision": "DECISIÓN: RateComponent cuelga directo del contrato (ContractId) con TenantId propio y clave servicio+paquete, como pide el documento; RateCardId pasa a NULL y RateCard/RateZone/RateZoneMember/RateRule no se mapean ni exponen en este lote.",
+    "alternativa": "Crear automáticamente un RateCard por contrato y colgar los componentes de él (mantiene RateCardId NOT NULL)."
+   },
+   {
+    "decision": "DECISIÓN: historial efectivo-fechado (principio #8) por fila con DATE en RateComponent, RateTier y SpecialService: editar = cerrar la fila (EffectiveTo = fecha nueva) y abrir otra; 'quitar' = cerrar; dos ediciones el mismo día dejan una fila de longitud cero (EffectiveFrom = EffectiveTo) que nunca está vigente pero queda como historial; la unicidad servicio+paquete se garantiza solo sobre filas abiertas con un índice único filtrado (EffectiveTo IS NULL AND IsActive = 1); el no-traslape de tramos lo valida el servicio (SQL Server no tiene EXCLUDE) más CHECK MaxValue >= MinValue y EffectiveTo >= EffectiveFrom. La cotización acepta asOf para reproducir la tarifa vigente en una fecha pasada.",
+    "alternativa": "DATETIME2 para no generar filas de longitud cero, columnas ReplacesRateComponentId/ReplacesSpecialServiceId para encadenar versiones, o una tabla de versiones aparte."
+   },
+   {
+    "decision": "DECISIÓN: la 'tarifa genérica del tenant' (R35) se modela como RateComponent con ContractId NULL (ServiceType/PackageType NULL = comodín) y el resolver la usa como respaldo con especificidad exacto > servicio > paquete > comodín, pero no se exponen endpoints para administrarla en este lote (los agrega el lote de Facturación); sin genérica, la cotización devuelve base null / extra 0 con source NONE.",
+    "alternativa": "Agregar ahora GET/POST /api/v1/rate-components/generic con permiso contracts.update."
+   },
+   {
+    "decision": "DECISIÓN: cotización mínima como POST /api/v1/billing/contract-rate-quote con varias líneas (una por tipo de paquete, L1096) y asOf: base por servicio+paquete + pieza extra GRADUATED marginal + cargo por despacho (por orden) + cargo por COD, despacho/COD solo en la primera línea (R30–R35), redondeo a 4 decimales AwayFromZero. Quedan fuera zonas origen/destino, recargos (RateRule), MinCharge y la evaluación con el DSL (R15/R16).",
+    "alternativa": "Incluir RateZone/RateZoneMember/RateRule con ZoneResolver (POSTAL_CODE > POSTAL_RANGE > MUNICIPALITY), endpoints y resolución de zona por Location.RateZoneId en este lote."
+   },
+   {
+    "decision": "DECISIÓN: el cargo por COD 'por ciento' no asume un solo modo: Contract lleva CodFeeTypeLookupId (PricingType FIXED|PERCENT), CodFeeBasisLookupId (dominio nuevo CodFeeBasis: COD_AMOUNT | ORDER_TOTAL, default COD_AMOUNT como el ejemplo AXISCARE de la bitácora) y CodFeeValue; PERCENT sobre ORDER_TOTAL se calcula sobre Σ(base+extra)+despacho de la cotización. El documento deja el punto abierto a propósito (L220): Luis debe ratificar el default y si ORDER_TOTAL debe incluir el despacho.",
+    "alternativa": "Fijar un solo modo (por ciento sobre monto COD) sin columna de base, o modelar el tipo como FIXED/PERCENT_COD/PERCENT_INVOICE en un solo LookupCode."
+   },
+   {
+    "decision": "DECISIÓN: 'contrato vigente' de un cliente (para tarifas, servicios especiales, resumen de facturación y cotización) = contrato IsActive con estatus ACTIVE cuyo período contiene la fecha consultada; si no hay, el DRAFT más reciente por StartDate (permite configurar tarifas antes de activar); nunca EXPIRED/CANCELLED. ContractStatusEffect garantiza la unicidad: activar falla (422) si el cliente está SUSPENDED, si EndDate ya pasó o si otro contrato ACTIVE del cliente tiene período solapado.",
+    "alternativa": "Exigir estatus ACTIVE (409 si el cliente solo tiene borradores), o un flag IsPrimary en Contract sin efecto de activación."
+   },
+   {
+    "decision": "DECISIÓN: vigencia y auto-renovación se cierran con POST /api/v1/contracts/run-expirations (admin.tenant): ACTIVE con EndDate < hoy → si AutoRenew, EndDate se extiende por la misma duración; si no, ACTIVE→EXPIRED vía TransitionAsync. No hay job programado en este lote.",
+    "alternativa": "Dejar vencimiento/auto-renovación para el lote de Facturación con un job en segundo plano (IHostedService)."
+   },
+   {
+    "decision": "DECISIÓN: los tipos de servicio especial viven en una tabla propia por tenant (SpecialServiceType, UNIQUE TenantId+Name) y no como LookupCode, porque UQ_LookupCode(Entity, InternalCode) es global y dos tenants con 'Vagón del muelle' chocarían; los nombres se comparan normalizados (sin mayúsculas/acentos/espacios dobles) para no duplicar variantes.",
+    "alternativa": "LookupCode con TenantId y prefijo T{tenantId}_ en el dominio, como las listas del Lote 1."
+   },
+   {
+    "decision": "DECISIÓN: se reordena el seed de PortalUserStatus a INVITED (inicial, sort 1) → ACTIVE (sort 2) → DISABLED (terminal, sort 3) porque con ACTIVE inicial el flujo de invitación (R41) no puede pasar por StatusService.TransitionAsync; como el MERGE de StatusCode solo inserta, el seed lleva además un UPDATE idempotente que corrige IsInitial/SortOrder en BD ya sembradas.",
+    "alternativa": "Dejar ACTIVE como inicial y no usar INVITED (el usuario nace ACTIVE sin contraseña hasta aceptar)."
+   },
+   {
+    "decision": "DECISIÓN: 'suspend' de usuario de portal transiciona a DISABLED (terminal = baja definitiva); no hay reactivación en este lote. Los usuarios de portal no reciben UserTenant (no aparecen en /api/v1/users, R39): su alcance es PortalUser.ClientId y la membresía/claim 'cid' llegan con el módulo 10.",
+    "alternativa": "Agregar un lateral SUSPENDED a PortalUserStatus (seed) con endpoints suspend/reactivate y dejar DISABLED para 'quitar'; crear UserTenant con MembershipStatus INVITED al invitar."
+   },
+   {
+    "decision": "DECISIÓN: la invitación reutiliza el token de restablecimiento de ASP.NET Identity (DataProtector, TokenLifespan = Portal:InviteHours, invalidado al usarse porque cambia el SecurityStamp): sin tabla ni columnas nuevas. El envío pasa por IInvitationSender con una implementación que solo escribe en el log (destinatario y expiración, nunca el token; no hay proveedor de correo); el token se devuelve en la respuesta únicamente con Portal:ReturnInviteTokenInResponse=true (Development/smoke; false en appsettings.json). Nota: TokenLifespan afecta a todos los tokens DataProtector de Identity (incluido el futuro reset de contraseña).",
+    "alternativa": "Tabla PortalInvitation (hash del token con comparación en tiempo constante, expiración, usado) + proveedor SMTP real."
+   },
+   {
+    "decision": "DECISIÓN: se incluye POST /api/v1/portal-users/accept-invite (anónimo, misma respuesta 400 exista o no la invitación, verifica que el tenant tenga CLIENT_PORTAL encendido y escribe SecurityEvent FAILURE sin userId ante fallo) para cerrar el ciclo y probarlo en el smoke; el login del portal sigue fuera (módulo 10, AuthService lo rechaza).",
+    "alternativa": "Dejar la aceptación para el lote del Portal y probar la invitación solo por el estatus INVITED."
+   },
+   {
+    "decision": "DECISIÓN: códigos de permiso como en la especificación (clients/locations/contracts .read/.create/.update y portalusers.manage sin guion, categoría nueva CLIENTS) aunque orders.* usa view/edit; portalusers.manage es distinto de admin.users (R40). PermissionSeeder propaga los códigos nuevos de cada corrida a los roles ya clonados de los tenants existentes cuya plantilla los incluye (solo agrega, nunca quita), porque CloneTemplatesAsync solo copia al aprovisionar.",
+    "alternativa": "clients.view/clients.edit para igualar la convención de orders.*; no propagar y dejar que cada tenant agregue los permisos a mano desde Roles y usuarios."
+   },
+   {
+    "decision": "DECISIÓN: se siembra la Capability EDIT_CONTRACT con StatusCapability por defecto (TenantId NULL) = no permitido en EXPIRED y CANCELLED; toda escritura de contrato/tarifas/servicios especiales pasa por StatusService.EnsureAllowedAsync (422) y la regla queda configurable por tenant desde /status/capabilities/CONTRACT. Efectos de transición de este lote: ContractStatusEffect (activación) y PortalUserStatusEffect (DISABLED desactiva la cuenta, invalida tokens, SecurityEvent); ninguno para ClientStatus.",
+    "alternativa": "Solo verificar StageKind terminal en código sin capability configurable."
+   },
+   {
+    "decision": "DECISIÓN: Clientes, consignatarios y contratos viven bajo el módulo CATALOG existente (RequireModule) y los usuarios de portal bajo CLIENT_PORTAL; no se crea ModuleKeys.Clients porque el documento no define un módulo apagable de clientes y las órdenes dependen de ellos.",
+    "alternativa": "Nuevo ModuleDefinition CLIENTS (núcleo, no apagable) en el seed para que el menú lo trate como grupo propio."
+   },
+   {
+    "decision": "DECISIÓN: escrituras compuestas en transacción bajo la estrategia de reintentos (DbExtensions.RunInTransactionAsync con CreateExecutionStrategy().ExecuteAsync + ChangeTracker.Clear al reintentar) porque EnableRetryOnFailure(3) rechaza transacciones de usuario fuera de ella; violaciones de índice único (SqlException 2601/2627) y DbUpdateConcurrencyException se traducen a 409; los PATCH de Client/Contract/Location aceptan rowVersion opcional (409 si cambió) aprovechando las columnas ROWVERSION del esquema.",
+    "alternativa": "Sin transacciones explícitas (dos SaveChanges y compensación manual) y sin control de concurrencia optimista."
+   },
+   {
+    "decision": "DECISIÓN: guardas de última línea en SQL además del servicio: UX_ClientContact_Primary (un principal activo por cliente), UX_ContractServiceLevel (un nivel activo por servicio y contrato), UQ_RateComponent_Open, UQ_SpecialService_Open, CHECKs de montos >= 0 y EffectiveTo >= EffectiveFrom. Consecuencia: al cambiar el contacto principal el servicio limpia el anterior y guarda antes de insertar el nuevo (dos SaveChanges dentro de la misma transacción).",
+    "alternativa": "Solo validar en el servicio, sin índices filtrados ni CHECKs."
+   },
+   {
+    "decision": "DECISIÓN: regla tenant-security del lote: las hijas sin TenantId (ClientContact, ContractServiceLevel, RateTier) solo se alcanzan cargando el padre bajo el filtro global y comprobando el vínculo (ClientId/ContractId/RateComponentId), nunca por id suelto; no se les agrega TenantId ni PublicId ni RowVersion. IgnoreQueryFilters solo en accept-invite y en la revocación de refresh tokens. Se verifica con el checklist de docs/lote2-decisiones.md y con el paso de smoke de aislamiento entre tenants.",
+    "alternativa": "Agregar TenantId a esas tablas hijas para que el filtro global las cubra directamente."
+   },
+   {
+    "decision": "DECISIÓN: adjuntos de contrato (R17) quedan fuera: no hay proveedor de blob storage decidido; ContractDocument no se mapea todavía (y le falta IsActive).",
+    "alternativa": "IFileStorage + LocalFileStorage (raíz Storage:Root, tope 20 MB, content types permitidos) con endpoints de metadata + archivo y ContractDocument.IsActive/UploadedBy como implementación provisional."
+   },
+   {
+    "decision": "DECISIÓN: quedan fuera por pertenecer a otros módulos: verificación de crédito (R18, Órdenes), chequeo de factura duplicada con Location.AllowDupInvoice (R36, Órdenes; este lote entrega la columna y su edición), entrega especial/DriverTrip y las tablas DriverTrip/DriverSettlementRun/Driver*Rate (R37, 11A: dependencia cruzada de lote), congelación en corridas (R29/R34, Facturación), el filtro por ClientId del principal (claim 'cid', ITenantContext.ClientId, R44) y el login del portal (módulo 10).",
+    "alternativa": "Adelantar en este lote el endpoint de verificación de crédito como consulta pura (CreditLimit − saldo pendiente) sin saldo real, y/o ITenantContext.ClientId + LocationScope puro preparando R44."
+   },
+   {
+    "decision": "DECISIÓN: un correo no puede ser a la vez usuario interno y usuario de portal (Identity RequireUniqueEmail=true); invitar un correo ya existente como INTERNAL responde 409.",
+    "alternativa": "Relajar la unicidad global y distinguir por UserKind (requiere cambiar UserName y el login)."
+   },
+   {
+    "decision": "DECISIÓN: Location.GeoPoint (GEOGRAPHY) no se mapea en la entidad (sin NetTopologySuite); la columna queda NULL hasta el lote de geocodificación/rutas; RateZoneMember.Polygon y su SRID quedan sin definir hasta el lote de zonas.",
+    "alternativa": "Agregar el paquete NetTopologySuite ahora y exponer lat/lng en LocationDto."
+   },
+   {
+    "decision": "DECISIÓN: Contract.CodCommissionPct se conserva en el esquema y en la entidad (la remesa COD del módulo 11B lo usa) pero no se expone en ningún DTO de este lote, tal como la bitácora lo retiró del panel Contrato; PortalUser (CAPA 17 del SQL) se mapea en este lote porque el documento ubica su administración en el expediente del cliente, sin mover la tabla.",
+    "alternativa": "Eliminar CodCommissionPct del SQL ahora, o dejar PortalUser sin mapear hasta el lote del Portal."
+   },
+   {
+    "decision": "DECISIÓN: acciones del administrador de plataforma dentro del tenant (invitar/suspender usuarios de portal) quedan atribuidas a su UserId en AuditLog y SecurityEvent (el interceptor y SecurityEventWriter ya usan tenant.UserId) y son visibles para el tenant (R42); se verifica con el paso de smoke con soporte@teikem.local. No se agrega tabla ni columna nueva.",
+    "alternativa": "Columna ActorKind en SecurityEvent/AuditLog para distinguir explícitamente plataforma vs. personal del tenant."
+   },
+   {
+    "decision": "DECISIÓN: contenido de sistema del lote (vista 'Clientes', indicador 'Clientes activos' en Pulso, gráfico 'Contratos por estatus') se siembra en SystemAnalyticsSeeder para tenants nuevos y DemoTenantSeeder lo re-siembra en la rama 'ya existe'; los tenants aprovisionados antes del lote (no demo) no lo reciben automáticamente.",
+    "alternativa": "Un seeder de arranque que recorra todos los tenants activos y siembre el contenido faltante."
+   }
+  ],
+  "cambiosSql": [
+   "Diseño/logistica-db-estructura.sql · dbo.Client: agregar (inline, '-- Lote 2') ClientAssignsOrderNumber BIT NOT NULL DEFAULT 0, ClientAssignsInvoiceNumber BIT NOT NULL DEFAULT 0, OrderNumberFormat NVARCHAR(40) NULL, InvoiceNumberFormat NVARCHAR(40) NULL, PackageNumberFormat NVARCHAR(40) NULL, CONSTRAINT CK_Client_CreditLimit CHECK (CreditLimit IS NULL OR CreditLimit >= 0).",
+   "Diseño/logistica-db-estructura.sql · dbo.ClientContact: tras el CREATE TABLE, CREATE UNIQUE INDEX UX_ClientContact_Primary ON dbo.ClientContact(ClientId) WHERE IsPrimary = 1 AND IsActive = 1 (un contacto principal activo por cliente).",
+   "Diseño/logistica-db-estructura.sql · nuevas tablas justo después de dbo.ClientContact (antes de dbo.RateZone): CREATE TABLE dbo.SpecialServiceType (SpecialServiceTypeId INT IDENTITY(1,1) PRIMARY KEY, TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId), Name NVARCHAR(120) NOT NULL, IsActive BIT NOT NULL DEFAULT 1, CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CONSTRAINT UQ_SpecialServiceType UNIQUE (TenantId, Name)); CREATE TABLE dbo.SpecialService (SpecialServiceId INT IDENTITY(1,1) PRIMARY KEY, TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId), ClientId INT NOT NULL REFERENCES dbo.Client(ClientId), SpecialServiceTypeId INT NOT NULL REFERENCES dbo.SpecialServiceType(SpecialServiceTypeId), Rate DECIMAL(18,4) NOT NULL, EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE), EffectiveTo DATE NULL, IsActive BIT NOT NULL DEFAULT 1, CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CONSTRAINT CK_SpecialService_Rate CHECK (Rate >= 0), CONSTRAINT CK_SpecialService_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)); CREATE UNIQUE INDEX UQ_SpecialService_Open ON dbo.SpecialService(ClientId, SpecialServiceTypeId) WHERE EffectiveTo IS NULL AND IsActive = 1; CREATE INDEX IX_SpecialService_Client ON dbo.SpecialService(TenantId, ClientId).",
+   "Diseño/logistica-db-estructura.sql · dbo.Location: agregar AllowDupInvoice BIT NOT NULL DEFAULT 0 (control por consignatario de facturas repetidas; lo consume Órdenes).",
+   "Diseño/logistica-db-estructura.sql · dbo.Contract: agregar BillPerService BIT NOT NULL DEFAULT 1, BillExtraPiece BIT NOT NULL DEFAULT 0, BillDispatchFee BIT NOT NULL DEFAULT 0, BillCodFee BIT NOT NULL DEFAULT 0, BillSpecialServices BIT NOT NULL DEFAULT 0, DispatchFee DECIMAL(18,4) NULL, CodFeeTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='PricingType' (FIXED|PERCENT), CodFeeBasisLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='CodFeeBasis' (COD_AMOUNT|ORDER_TOTAL), CodFeeValue DECIMAL(18,4) NULL, CONSTRAINT CK_Contract_Fees CHECK ((DispatchFee IS NULL OR DispatchFee >= 0) AND (CodFeeValue IS NULL OR CodFeeValue >= 0)), CONSTRAINT CK_Contract_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate). CodCommissionPct se conserva (remesa COD, módulo 11B).",
+   "Diseño/logistica-db-estructura.sql · dbo.ContractServiceLevel: tras el CREATE TABLE, CREATE UNIQUE INDEX UX_ContractServiceLevel ON dbo.ContractServiceLevel(ContractId, ServiceTypeLookupId) WHERE IsActive = 1.",
+   "Diseño/logistica-db-estructura.sql · dbo.RateComponent: agregar TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId), ContractId INT NULL REFERENCES dbo.Contract(ContractId) (NULL = tarifa genérica del tenant), PackageTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='PackageType', EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE), EffectiveTo DATE NULL, CONSTRAINT CK_RateComponent_Amounts CHECK ((FlatAmount IS NULL OR FlatAmount >= 0) AND (UnitAmount IS NULL OR UnitAmount >= 0) AND (MinCharge IS NULL OR MinCharge >= 0)), CONSTRAINT CK_RateComponent_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom); cambiar RateCardId a INT NULL; CREATE UNIQUE INDEX UQ_RateComponent_Open ON dbo.RateComponent(TenantId, ContractId, ComponentTypeLookupId, ServiceTypeLookupId, PackageTypeLookupId) WHERE EffectiveTo IS NULL AND IsActive = 1 (UNIQUE(ContractId, ServiceTypeId, PackageTypeId) de la bitácora, acotado a filas vigentes; SQL Server trata NULL como valor igual en el índice, lo que también acota la fila genérica comodín); CREATE INDEX IX_RateComponent_Contract ON dbo.RateComponent(ContractId) WHERE ContractId IS NOT NULL.",
+   "Diseño/logistica-db-estructura.sql · dbo.RateTier: agregar EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE), EffectiveTo DATE NULL, CONSTRAINT CK_RateTier_Range CHECK (MaxValue IS NULL OR MaxValue >= MinValue), CONSTRAINT CK_RateTier_Amounts CHECK ((UnitAmount IS NULL OR UnitAmount >= 0) AND (FlatAmount IS NULL OR FlatAmount >= 0)), CONSTRAINT CK_RateTier_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom). El no-traslape por servicio+paquete lo valida el servicio (RateTierRules).",
+   "Diseño/logistica-db-seed.sql · CatalogDomain: agregar ('CodFeeBasis',1,'Base del cargo COD','COD fee basis'). LookupCode: ('CodFeeBasis','COD_AMOUNT','Sobre el monto COD','On COD amount',1), ('CodFeeBasis','ORDER_TOTAL','Sobre el total de la orden','On order total',2), ('EntityType','RATE_COMPONENT','Componente de tarifa','Rate component',55), ('EntityType','SPECIAL_SERVICE','Servicio especial','Special service',56), ('RateComponentType','EXTRA_PIECE','Pieza extra','Extra piece',4), ('PermissionCategory','CLIENTS','Clientes y contratos','Clients & contracts',11), ('Capability','EDIT_CONTRACT','Editar contrato','Edit contract',6). PORTAL_USER, CLIENT, CLIENT_CONTACT, LOCATION, CONTRACT, PackageType, PricingType FIXED/PERCENT, LocationType CORPORATE/BILLING y PortalRole ya existen.",
+   "Diseño/logistica-db-seed.sql · StatusCode PortalUserStatus en #S: reemplazar por ('PortalUserStatus','INVITED','Invitado','Invited',@PIPE,1,'#F59E0B',1),('PortalUserStatus','ACTIVE','Activo','Active',@PIPE,2,'#059669',0),('PortalUserStatus','DISABLED','Inhabilitado','Disabled',@TERM,3,'#6B7280',0); y después del MERGE de StatusCode agregar el UPDATE idempotente: UPDATE dbo.StatusCode SET IsInitial = CASE InternalCode WHEN 'INVITED' THEN 1 ELSE 0 END, SortOrder = CASE InternalCode WHEN 'INVITED' THEN 1 WHEN 'ACTIVE' THEN 2 WHEN 'DISABLED' THEN 3 ELSE SortOrder END WHERE Entity = 'PortalUserStatus' AND InternalCode IN ('INVITED','ACTIVE','DISABLED') (corrige BD ya sembradas, porque el MERGE es WHEN NOT MATCHED). ClientStatus y ContractStatus no cambian.",
+   "Diseño/logistica-db-seed.sql · StatusCapability por defecto (TenantId NULL) tras el MERGE de StatusCode: MERGE dbo.StatusCapability AS t USING (SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId FROM dbo.LookupCode et CROSS JOIN dbo.StatusCode s CROSS JOIN dbo.LookupCode c WHERE et.Entity='EntityType' AND et.InternalCode='CONTRACT' AND s.Entity='ContractStatus' AND s.InternalCode IN ('EXPIRED','CANCELLED') AND c.Entity='Capability' AND c.InternalCode='EDIT_CONTRACT') AS s ON t.TenantId IS NULL AND t.EntityTypeLookupId=s.EntityTypeLookupId AND t.StatusCodeId=s.StatusCodeId AND t.CapabilityLookupId=s.CapabilityLookupId WHEN NOT MATCHED THEN INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed) VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0).",
+   "Diseño/logistica-db-seed.sql · Permisos (#P): ('clients.read','CLIENTS','Ver clientes','View clients'),('clients.create','CLIENTS','Crear clientes','Create clients'),('clients.update','CLIENTS','Editar clientes','Edit clients'),('locations.read','CLIENTS','Ver consignatarios','View locations'),('locations.create','CLIENTS','Crear consignatarios','Create locations'),('locations.update','CLIENTS','Editar consignatarios','Edit locations'),('contracts.read','CLIENTS','Ver contratos y tarifas','View contracts & rates'),('contracts.create','CLIENTS','Crear contratos','Create contracts'),('contracts.update','CLIENTS','Editar contratos y tarifas','Edit contracts & rates'),('portalusers.manage','CLIENTS','Administrar usuarios de portal del cliente','Manage client portal users'). Plantillas (#RP): Dispatcher += clients.read, locations.read, locations.create; Billing += clients.read, contracts.read; ReadOnly += clients.read, locations.read, contracts.read (TenantAdmin toma todos vía SELECT FROM #P). Actualizar el PRINT final: 'permisos (48)'.",
+   "Nota de aplicación: la estructura se aplica una sola vez por hash (SqlScriptRunner); una BD ya inicializada del Lote 1 debe recrearse (CI usa BD limpia). El seed sí se reaplica al cambiar el hash: los MERGE insertan lo nuevo y el UPDATE idempotente corrige PortalUserStatus; PermissionSeeder (código) agrega los permisos nuevos a las plantillas y a los roles ya clonados."
+  ],
+  "pruebas": [
+   "tests/Teikem.Tests/EffectiveDatedAndSummaryTests.cs (P0): IsCurrentOn con EffectiveTo null; fila cerrada hoy (EffectiveFrom=EffectiveTo=hoy, longitud cero) no es vigente hoy ni ayer; fila con EffectiveFrom futuro no es vigente; fila cerrada mañana sí es vigente hoy (To exclusivo); Close fija EffectiveTo y lanza ValidationException si la fecha es anterior a EffectiveFrom; ValidateNewVersion acepta el mismo día y rechaza una fecha anterior; BillingModelSummary.Build: 0 de 5 → 'Sin componentes'/'No components', 5 de 5 en orden fijo en es y en, combinación parcial (por servicio + COD) → 'Por servicio, COD'.",
+   "tests/Teikem.Tests/ClientRulesTests.cs (P1): NumberFormat.Resolve('AX-#####',1)=='AX-00001', ('AX-#####',12345)=='AX-12345', desbordamiento ('AX-##',123) → 'AX-123' sin truncar; '@' resuelve a 'A' ('@@-###',7 → 'AA-007'); Validate rechaza patrón sin '#', vacío, >40 caracteres y caracteres no permitidos, acepta 'FAC-####' y 'ORD/2026-#####'; Defaults tiene los tres patrones y todos validan; ClientCode.FromName('Farmacia Las Marías') == 'FARMACIA-LAS-MARIAS', 'Beauty  Code, Inc.' → 'BEAUTY-CODE-INC', trunca a 20 sin guion final, nombre vacío o solo símbolos lanza ValidationException.",
+   "tests/Teikem.Tests/ContractRulesTests.cs (P3): ValidateCodFee FIXED negativo → error, PERCENT 150 → error, PERCENT 2.5 con COD_AMOUNT ok, PERCENT con basis desconocida → error, FIXED ignora basis; ValidateServiceLevels rechaza ServiceType repetido, MaxTransitHours <= 0 y OnTimeTargetPct 101; NextContractNumber('ACME', ['ACME-C1']) == 'ACME-C2', sin existentes → 'ACME-C1', ignora números de otro formato; NextEndDateOnRenew(2026-01-01, 2026-12-31) == 2027-12-31 y (2026-03-01, 2026-03-31) == 2027-04-30... corregido: == 2026-05-01 (misma duración de 31 días); EnsureCanActivate: cliente SUSPENDED → StatusRuleException; EndDate < hoy → StatusRuleException; otro ACTIVE con período solapado (incluido EndDate null) → StatusRuleException; otro ACTIVE con período anterior disjunto → ok.",
+   "tests/Teikem.Tests/ContractRateTests.cs (P4): RateTierRules: 2–5 vs 4–7 traslapa; 2–5 vs 6–null no; 6–null vs 8–10 traslapa; 2–5 vs 5–8 traslapa (inclusivo); IsValidRange(6,5) falso, IsValidRange(1,null) falso (la pieza 1 nunca es extra); FindOverlap excluye el propio tierId al editar. ContractRateResolver.BaseRate: encuentra 6.50 con contrato encendido (source CONTRACT); contrato apagado o sin fila cae a genérica 12.00 (GENERIC); sin genérica → null/NONE; especificidad: fila exacta gana a comodín de servicio y ésta a comodín total; dos filas exactas abiertas del mismo contrato → InvalidOperationException. ExtraPieces con tramos 2–5@1.00 y 6+@0.75: 1 pieza → 0; 2 → 1.00; 5 → 4.00; 8 → 6.25 (y explícitamente ≠ 7.00 y ≠ 5.25); 8 piezas con componente apagado y genérica 2.00 → 14.00; sin genérica → 0/NONE. CodFee: apagado → 0; FIXED 2.00 → 2.00; PERCENT 2.5 COD_AMOUNT sobre 200 → 5.00; PERCENT 10 ORDER_TOTAL sobre subtotal 14.75+3 → 1.775; PERCENT 2.5 sobre 33.33 → 0.8333 (AwayFromZero a 4 decimales). DispatchFee apagado → 0, encendido 3.00 → 3.00 una sola vez. QuoteOrder anclado a la bitácora: (a) L1094 orden mixta con genéricas base BOX 12, ENVELOPE 8, extra genérica 2.00, COD FIXED 3 → líneas (STANDARD/BOX 2 → 12+2=14), (STANDARD/ENVELOPE 1 → 8), COD 3 solo en la primera, Total 25.00; (b) L1116 integración contrato base 6.50 + tramos 2–5@1.00/6+@0.75 con 8 piezas + COD FIXED 2.00 → 6.50 + 6.25 + 2.00 = 14.75 (vs. 29.00 con genéricas 12 + 7×2 + 3); (c) RateComponentIds contiene exactamente los ids usados y ninguno de los apagados; (d) sin contrato vigente → todo GENERIC/NONE y despacho/COD 0.",
+   "tests/Teikem.Tests/SpecialServiceRulesTests.cs (P5): NormalizeName('  Vagón   del Muelle ') == 'vagon del muelle'; SameName('Vagón del muelle','Vagon Muelle') falso; SameName('Vagón del muelle','VAGON DEL MUELLE') verdadero; nombre vacío o solo espacios lanza ValidationException; nombre > 120 caracteres lanza ValidationException.",
+   "Ejecución: dotnet test Teikem.sln (xunit, lógica pura, sin BD); todas las clases nuevas viven en tests/Teikem.Tests y siguen el estilo de TotpAndTextTests.cs (clases públicas por tema, [Fact] con nombres descriptivos)."
+  ],
+  "smoke": [
+   "step 'clientes (Lote 2)': TS=$(date +%s); TODAY=$(date +%F); POST /api/v1/clients {\"name\":\"Farmacia Las Marías $TS\",\"paymentTerm\":\"NET30\",\"currency\":\"USD\",\"contract\":{\"startDate\":\"2026-01-01\",\"serviceLevels\":[{\"serviceType\":\"STANDARD\",\"maxTransitHours\":48}]}} → 200; guardar CLIENT_PID (.publicId), CLIENT_ID (.id), CONTRACT_PID (.currentContract.publicId); jq: .code empieza con 'FARMACIA-LAS-MARIAS', .status=='ACTIVE', .currentContract.status=='DRAFT', .currentContract.billingModel.billPerService==true y .billExtraPiece==false; GET /api/v1/clients → contiene el cliente con billingSummary 'Por servicio'; GET '/api/v1/clients/number-format/preview?pattern=AX-%23%23%23%23%23&seq=1' → .value=='AX-00001'.",
+   "POST /api/v1/clients con el mismo code explícito (\"code\":\"<CODE>\") → 409; PATCH /api/v1/clients/$CLIENT_PID/profile {\"legalName\":\"Farmacia Las Marías, Inc.\",\"creditLimit\":5000} → 200 y GET muestra name sin cambios y legalName nuevo; PATCH profile con {\"legalName\":\"x\",\"rowVersion\":\"AAAAAAAAAAA=\"} → 409 (concurrencia); PATCH number-settings {\"orderNumberFormat\":\"AX\"} → 400 con .errors.orderNumberFormat; {\"clientAssignsInvoiceNumber\":true,\"orderNumberFormat\":\"AX-#####\",\"invoiceNumberFormat\":\"FAC-####\"} → 200 con .numberSettings.clientAssignsInvoiceNumber==true.",
+   "Contactos: POST /api/v1/contacts/CLIENT/$CLIENT_ID {\"contactType\":\"PHONE\",\"value\":\"787-555-0100\",\"isPrimary\":true} → 200 (resolver CLIENT); POST /api/v1/contacts/CLIENT/999999 {...} → 404; POST /api/v1/clients/$CLIENT_PID/contacts {\"fullName\":\"Ana Pérez\",\"role\":\"Compras\",\"isPrimary\":true,\"contactPoints\":[{\"contactType\":\"EMAIL\",\"value\":\"ana$TS@lasmarias.pr\",\"isPrimary\":true}]} → 200 (CONTACT_ID); segundo contacto con isPrimary true → 200 y GET .../contacts muestra exactamente uno con isPrimary==true y el primero con 1 contactPoint; PUT /api/v1/custom-fields/values/CLIENT/999999 {\"values\":{}} → 404 (resolver CLIENT activo).",
+   "Consignatarios: POST /api/v1/locations {\"name\":\"Almacén compartido $TS\",\"locationType\":\"BOTH\",\"line1\":\"Calle 1\",\"city\":\"Bayamón\",\"postalCode\":\"00959\",\"country\":\"PR\"} → 200 con isShared==true (SHARED_PID); POST /api/v1/locations {\"clientPublicId\":\"$CLIENT_PID\",\"name\":\"Sucursal Caguas\",\"locationType\":\"DELIVERY\",\"line1\":\"Ave. Luis Muñoz Marín\",\"city\":\"Caguas\",\"postalCode\":\"00725\",\"country\":\"PR\",\"allowDupInvoice\":true} → 200 con allowDupInvoice==true (LOC_PID); POST location tipo CORPORATE con clientPublicId → 200 y GET /api/v1/clients/$CLIENT_PID muestra physicalAddress.city y postalAddress==null; segundo CORPORATE para el mismo cliente → 409; GET \"/api/v1/locations?clientId=$CLIENT_PID\" → incluye la propia y la compartida; POST /api/v1/locations/$LOC_PID/deactivate → 204; GET ?clientId= → ya no incluye la inactiva; con &includeInactive=true sí; POST .../reactivate → 204.",
+   "Contrato: GET /api/v1/contracts/$CONTRACT_PID → serviceLevels length 1 y canEdit==true; PATCH .../billing-model {\"billExtraPiece\":true,\"billDispatchFee\":true,\"billCodFee\":true,\"billSpecialServices\":true} → 200; PATCH .../dispatch-fee {\"amount\":3} → 200; PATCH .../cod-fee {\"type\":\"PERCENT\",\"value\":150} → 400; {\"type\":\"PERCENT\",\"basis\":\"COD_AMOUNT\",\"value\":2.5} → 200 con .codFee.basis=='COD_AMOUNT'; PUT .../service-levels [{\"serviceType\":\"STANDARD\",\"maxTransitHours\":24},{\"serviceType\":\"EXPRESS\",\"maxTransitHours\":8}] → 200 con 2 niveles; PUT con STANDARD repetido → 400; PATCH .../billing-model {\"billDispatchFee\":false} → 200 y GET sigue mostrando dispatchFee==3 (datos no se pierden); PATCH .../billing-model {\"billDispatchFee\":true} → 200 (se vuelve a encender para la cotización).",
+   "Tarifas por servicio: POST /api/v1/contracts/$CONTRACT_PID/rate-components {\"kind\":\"PER_SERVICE\",\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"rate\":6.5,\"effectiveFrom\":\"2026-01-01\"} → 200 (RC_ID); repetir el mismo par → 409; PATCH .../rate-components/$RC_ID {\"rate\":7,\"effectiveFrom\":\"$TODAY\"} → 200 con id distinto (RC_ID2); GET .../rate-components?includeHistory=true → perService length 2, una cerrada (effectiveTo==$TODAY, isCurrent==false) y una vigente con rate 7; GET .../rate-components?asOf=2026-06-01 → perService vigente con rate 6.5.",
+   "Pieza extra: POST .../rate-components {\"kind\":\"EXTRA_PIECE\",\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\"} → 200 (EP_ID); POST .../rate-components/$EP_ID/tiers {\"fromUnit\":2,\"toUnit\":5,\"rate\":1.0} → 200; {\"fromUnit\":6,\"rate\":0.75} → 200; {\"fromUnit\":4,\"toUnit\":7,\"rate\":0.5} → 400 (traslape); {\"fromUnit\":9,\"toUnit\":8,\"rate\":1} → 400 (rango inválido); PATCH .../billing-model {\"billExtraPiece\":false} y POST tier nuevo {\"fromUnit\":20,\"rate\":0.5} → 409 (componente apagado); volver a encender billExtraPiece.",
+   "Cotización: POST /api/v1/billing/contract-rate-quote {\"clientPublicId\":\"$CLIENT_PID\",\"lines\":[{\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"pieces\":8},{\"serviceType\":\"STANDARD\",\"packageType\":\"ENVELOPE\",\"pieces\":1}],\"codAmount\":200} → 200 con lines[0].baseRate==7, lines[0].baseSource=='CONTRACT', lines[0].extraPieces==6.25, lines[1].baseSource=='NONE', dispatchFee==3, codFee==5, total==21.25 y rateComponentIds contiene $RC_ID2 y $EP_ID; misma cotización con \"asOf\":\"2026-06-01\" → lines[0].baseRate==6.5 y lines[0].extraSource=='NONE' (los tramos nacieron hoy); con \"pieces\":0 → 400.",
+   "Servicios especiales: POST /api/v1/clients/$CLIENT_PID/special-services {\"newTypeName\":\"Vagón del muelle $TS\",\"rate\":150} → 200 (SS_ID, TYPE_ID); GET /api/v1/special-service-types → contiene el tipo con clientsUsing==1; POST otro con {\"newTypeName\":\"vagon del muelle $TS\",\"rate\":1} → 409 (mismo tipo normalizado ya abierto para el cliente); crear un segundo cliente (CLIENT2_PID, con contract) y POST .../billing-model {\"billSpecialServices\":true} en su contrato, luego POST /clients/$CLIENT2_PID/special-services {\"typeId\":$TYPE_ID,\"rate\":120} → 200 (tipo compartido; clientsUsing==2); PATCH /clients/$CLIENT_PID/special-services/$SS_ID {\"rate\":160} → 200 con id nuevo y GET ?includeHistory=true muestra 2 filas; PATCH billing-model {\"billSpecialServices\":false} en el contrato 1 → GET special-services devuelve componentEnabled==false pero items no vacíos; POST → 409; volver a encender.",
+   "Estatus: POST /api/v1/clients/$CLIENT_PID/status {\"toCode\":\"SUSPENDED\",\"comment\":\"smoke\"} → 200 status SUSPENDED; POST /api/v1/contracts/$CONTRACT_PID/status {\"toCode\":\"ACTIVE\"} → 422 (cliente suspendido, ContractStatusEffect); POST /clients/.../status {\"toCode\":\"ACTIVE\"} → 200 (regreso desde lateral); GET /api/v1/status/history/CLIENT/$CLIENT_ID → >= 3 filas; POST /api/v1/contracts/$CONTRACT_PID/status {\"toCode\":\"ACTIVE\"} → 200; {\"toCode\":\"DRAFT\"} → 422; POST /api/v1/contracts {\"clientPublicId\":\"$CLIENT_PID\",\"title\":\"Extra\",\"startDate\":\"2026-01-01\"} → 200 (CONTRACT2_PID, contractNumber termina en '-C2'); POST .../status {\"toCode\":\"ACTIVE\"} → 422 (período solapado con el contrato ACTIVE); POST .../status {\"toCode\":\"CANCELLED\"} → 200; PATCH /contracts/$CONTRACT2_PID/dispatch-fee {\"amount\":1} → 422 (EDIT_CONTRACT bloqueado en terminal) y GET muestra canEdit==false; POST /api/v1/contracts/run-expirations → 200 con .expired>=0.",
+   "Usuarios de portal: POST /api/v1/clients/$CLIENT_PID/portal-users/invite {\"email\":\"portal$TS@lasmarias.pr\",\"fullName\":\"Luis Cliente\",\"role\":\"CLIENT_ADMIN\"} → 200 con .user.status=='INVITED' y .inviteToken presente (Development) (PU_ID, TOKEN_INV); invitar admin@teikem.local → 409; POST .../portal-users/$PU_ID/resend-invite → 200 con token nuevo (TOKEN_INV2); POST /api/v1/portal-users/accept-invite {\"email\":\"portal$TS@lasmarias.pr\",\"token\":\"basura\",\"password\":\"una-contrasena-larga-1\"} sin Authorization → 400 'Invitación inválida o vencida'; con \"password\":\"corta\" y token real → 400 (misma respuesta); con TOKEN_INV2 real → 204; repetir con el mismo token → 400 (un solo uso); GET .../portal-users → status ACTIVE; POST /api/v1/auth/login con ese correo y contraseña → 401 (portal no entra por la app interna); GET /api/v1/users → ningún item con email portal$TS@ (R39); POST .../portal-users/$PU_ID/suspend → 204 y GET muestra DISABLED; GET '/api/v1/audit/security-events?eventType=ROLE_CHANGE&take=10' → contiene detail con 'portal_invite'; GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=5' → contiene 'portal_user_disabled'.",
+   "R42 (admin de plataforma atribuido): login soporte@teikem.local (T_SOP; SOP_ID de /me); POST /api/v1/clients/$CLIENT_PID/portal-users/invite {\"email\":\"portal2$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"} con T_SOP → 200; como admin del tenant: GET '/api/v1/audit/security-events?eventType=ROLE_CHANGE&userId=$SOP_ID&take=5' → total>=1 con detail 'portal_invite'; GET '/api/v1/audit/changes?entityType=PORTAL_USER&userId=$SOP_ID&take=5' → total>=1.",
+   "Aislamiento entre tenants: con T_SOP tras reauth (POST /auth/reauth): POST /api/v1/platform/tenants {\"name\":\"Tenant Smoke $TS\",\"modules\":[\"CATALOG\"],\"adminEmail\":\"admin$TS@smoke.local\",\"adminFullName\":\"Admin Smoke\",\"adminPassword\":\"Smoke_Admin_2026!\"} → 200; login admin$TS@smoke.local → T3; GET /api/v1/me con T3 → permissions incluye 'clients.read' (plantilla clonada con los códigos nuevos); GET /api/v1/clients/$CLIENT_PID con T3 → 404; POST /api/v1/contracts/$CONTRACT_PID/rate-components con T3 → 404; GET /api/v1/locations con T3 → 200 y length==0; GET /api/v1/contacts/CLIENT/$CLIENT_ID con T3 → 200 y length==0.",
+   "Fuentes de datos y contenido de sistema: GET /api/v1/analytics/data-sources → keys incluyen CLIENT, CONTRACT y LOCATION; POST '/api/v1/analytics/reports/CONTRACT/preview?dateRangeMode=ALL' {\"name\":\"x\",\"columns\":[\"ContractNumber\",\"Status\",\"Client.Name\"],\"secondary\":[\"Client\"]} → total >= 2 y columna Client.Name presente; POST '/api/v1/analytics/reports/CLIENT/preview?dateRangeMode=ALL' {\"name\":\"x\",\"columns\":[\"Code\",\"BillingSummary\"]} → una fila con BillingSummary que contiene 'Por servicio'; GET /api/v1/analytics/pulse → .indicators contiene name 'Clientes activos' con value >= 2.",
+   "RBAC y módulo: con el token de despacho@teikem.local (Dispatcher): GET /api/v1/clients → 200 (clients.read en plantilla), POST /api/v1/clients → 403 y queda PERMISSION_DENIED en /audit/security-events; GET /api/v1/clients/$CLIENT_PID/portal-users → 403; como admin (tras reauth): PUT /api/v1/modules/CLIENT_PORTAL {\"isEnabled\":false} → 200; GET .../portal-users → 403 con .code=='module_disabled'; POST /api/v1/portal-users/accept-invite con un token válido de portal2 (obtenido antes con T_SOP) → 400 (módulo apagado); PUT /api/v1/modules/CLIENT_PORTAL {\"isEnabled\":true} → 200.",
+   "Auditoría: GET '/api/v1/audit/activity?kind=change&take=100' → contiene cambios con type/entityType CLIENT, CLIENT_CONTACT, CONTRACT, LOCATION, RATE_COMPONENT, SPECIAL_SERVICE y PORTAL_USER (los [AuditEntity] se resolvieron contra el catálogo EntityType, ver AuditSaveChangesInterceptor); GET '/api/v1/audit/changes?entityType=RATE_COMPONENT&take=5' → total >= 3 y ningún changesJson contiene la palabra 'token'.",
+   "Cierre: el bloque termina con ok 'Lote 2: clientes, consignatarios, contratos, tarifas, especiales, portal, aislamiento y auditoría' y el script sigue con el step 'sesiones' del Lote 1; SMOKE OK al final."
+  ]
+ },
+ "puntajes": [
+  15.5,
+  14.5,
+  15.5
+ ]
+}
