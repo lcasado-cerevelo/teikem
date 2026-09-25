@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Analytics;
 using Teikem.Domain.Audit;
 using Teikem.Domain.Catalogs;
+using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Contacts;
 using Teikem.Domain.CustomFields;
@@ -75,6 +76,17 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<ChartDefinition> ChartDefinitions => Set<ChartDefinition>();
     public DbSet<ChartShare> ChartShares => Set<ChartShare>();
     public DbSet<UserAnalyticsPreference> UserAnalyticsPreferences => Set<UserAnalyticsPreference>();
+    // Lote 2 — Clientes y contratos
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientContact> ClientContacts => Set<ClientContact>();
+    public DbSet<Location> Locations => Set<Location>();
+    public DbSet<Contract> Contracts => Set<Contract>();
+    public DbSet<ContractServiceLevel> ContractServiceLevels => Set<ContractServiceLevel>();
+    public DbSet<RateComponent> RateComponents => Set<RateComponent>();
+    public DbSet<RateTier> RateTiers => Set<RateTier>();
+    public DbSet<SpecialServiceType> SpecialServiceTypes => Set<SpecialServiceType>();
+    public DbSet<SpecialService> SpecialServices => Set<SpecialService>();
+    public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -688,7 +688,17 @@ CREATE TABLE dbo.Client (
     UpdatedAtUtc DATETIME2 NULL,
     UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
     RowVersion   ROWVERSION,
-    CONSTRAINT UQ_Client_Tenant_Code UNIQUE (TenantId, Code)
+    -- Lote 2: numeración por cliente (0 = la asigna Teikem; NULL = patrón por defecto del sistema)
+    ClientAssignsOrderNumber   BIT NOT NULL DEFAULT 0,
+    ClientAssignsInvoiceNumber BIT NOT NULL DEFAULT 0,
+    OrderNumberFormat   NVARCHAR(40) NULL,
+    InvoiceNumberFormat NVARCHAR(40) NULL,
+    PackageNumberFormat NVARCHAR(40) NULL,
+    -- Lote 2: punto de recogido por defecto (Location tipo PICKUP/BOTH del cliente; NULL = en la dirección corporativa).
+    -- La FK se agrega después de crear dbo.Location (FK_Client_DefaultPickupLocation).
+    DefaultPickupLocationId INT NULL,
+    CONSTRAINT UQ_Client_Tenant_Code UNIQUE (TenantId, Code),
+    CONSTRAINT CK_Client_CreditLimit CHECK (CreditLimit IS NULL OR CreditLimit >= 0)   -- Lote 2
 );
 GO
 
@@ -700,6 +710,39 @@ CREATE TABLE dbo.ClientContact (
     IsPrimary    BIT NOT NULL DEFAULT 0,
     IsActive     BIT NOT NULL DEFAULT 1
 );
+-- Lote 2: un contacto principal activo por cliente
+CREATE UNIQUE INDEX UX_ClientContact_Primary ON dbo.ClientContact(ClientId) WHERE IsPrimary = 1 AND IsActive = 1;
+GO
+
+-- Lote 2: tipos de servicio especial del tenant (compartidos por todos sus clientes; tabla propia y no LookupCode
+-- porque UQ_LookupCode(Entity, InternalCode) es global) y tarifa efectivo-fechada por cliente (componente 5 del
+-- modelo de facturación: editar = cerrar la fila y abrir otra; quitar = cerrar).
+CREATE TABLE dbo.SpecialServiceType (
+    SpecialServiceTypeId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Name         NVARCHAR(120) NOT NULL,
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT UQ_SpecialServiceType UNIQUE (TenantId, Name)
+);
+GO
+
+CREATE TABLE dbo.SpecialService (
+    SpecialServiceId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
+    SpecialServiceTypeId INT NOT NULL REFERENCES dbo.SpecialServiceType(SpecialServiceTypeId),
+    Rate         DECIMAL(18,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    EffectiveTo  DATE NULL,                                                  -- exclusivo; NULL = abierta
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT CK_SpecialService_Rate CHECK (Rate >= 0),
+    CONSTRAINT CK_SpecialService_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+);
+-- Una sola fila abierta por cliente y tipo
+CREATE UNIQUE INDEX UQ_SpecialService_Open ON dbo.SpecialService(ClientId, SpecialServiceTypeId) WHERE EffectiveTo IS NULL AND IsActive = 1;
+CREATE INDEX IX_SpecialService_Client ON dbo.SpecialService(TenantId, ClientId);
 GO
 
 CREATE TABLE dbo.RateZone (
@@ -745,11 +788,15 @@ CREATE TABLE dbo.Location (
     DefaultWindowEnd   TIME NULL,
     AccessNotes  NVARCHAR(500) NULL,
     DeliveryNotes NVARCHAR(500) NULL,
+    AllowDupInvoice BIT NOT NULL DEFAULT 0,      -- Lote 2: el consignatario acepta facturas repetidas (lo consume Órdenes, R36)
     IsActive     BIT NOT NULL DEFAULT 1,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     RowVersion   ROWVERSION
 );
 CREATE INDEX IX_Location_Tenant_Client ON dbo.Location(TenantId, ClientId) WHERE IsActive = 1;
+-- Lote 2: FK diferida del punto de recogido por defecto del cliente (Client se crea antes que Location)
+ALTER TABLE dbo.Client ADD CONSTRAINT FK_Client_DefaultPickupLocation
+    FOREIGN KEY (DefaultPickupLocationId) REFERENCES dbo.Location(LocationId);
 GO
 
 CREATE TABLE dbo.Contract (
@@ -764,12 +811,24 @@ CREATE TABLE dbo.Contract (
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='ContractStatus'
     CurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     BillingModelLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='BillingModel'
-    CodCommissionPct DECIMAL(5,2) NULL,                                     -- comisión COD por defecto (remesa)
-    AutoRenew    BIT NOT NULL DEFAULT 0,
+    CodCommissionPct DECIMAL(5,2) NULL,                                     -- comisión COD por defecto (remesa, módulo 11B)
+    AutoRenew    BIT NOT NULL DEFAULT 0,                                    -- informativo: no hay renovación automática
     Notes        NVARCHAR(MAX) NULL,
     IsActive     BIT NOT NULL DEFAULT 1,
     RowVersion   ROWVERSION,
-    CONSTRAINT UQ_Contract_Number UNIQUE (TenantId, ContractNumber)
+    -- Lote 2: modelo de facturación (5 componentes; "por servicio" encendido por defecto), cargo por despacho (por orden)
+    -- y cargo por COD (FIXED = monto fijo por orden | PERCENT = por ciento del monto COD cobrado; "ninguno" = BillCodFee = 0).
+    BillPerService      BIT NOT NULL DEFAULT 1,
+    BillExtraPiece      BIT NOT NULL DEFAULT 0,
+    BillDispatchFee     BIT NOT NULL DEFAULT 0,
+    BillCodFee          BIT NOT NULL DEFAULT 0,
+    BillSpecialServices BIT NOT NULL DEFAULT 0,
+    DispatchFee         DECIMAL(18,4) NULL,
+    CodFeeTypeLookupId  INT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='PricingType' (FIXED|PERCENT)
+    CodFeeValue         DECIMAL(18,4) NULL,
+    CONSTRAINT UQ_Contract_Number UNIQUE (TenantId, ContractNumber),
+    CONSTRAINT CK_Contract_Fees CHECK ((DispatchFee IS NULL OR DispatchFee >= 0) AND (CodFeeValue IS NULL OR CodFeeValue >= 0)),  -- Lote 2
+    CONSTRAINT CK_Contract_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)                                                  -- Lote 2
 );
 GO
 
@@ -783,6 +842,8 @@ CREATE TABLE dbo.ContractServiceLevel (
     PenaltyAmount DECIMAL(18,4) NULL,
     IsActive     BIT NOT NULL DEFAULT 1
 );
+-- Lote 2: un nivel de servicio activo por tipo de servicio y contrato
+CREATE UNIQUE INDEX UX_ContractServiceLevel ON dbo.ContractServiceLevel(ContractId, ServiceTypeLookupId) WHERE IsActive = 1;
 GO
 
 CREATE TABLE dbo.ContractDocument (
@@ -810,21 +871,36 @@ CREATE TABLE dbo.RateCard (
 GO
 
 -- Tarifas escalonadas (reemplazan el RateMatrix plano)
+-- Lote 2: el componente cuelga directo del contrato (ContractId; NULL = tarifa genérica del tenant, con
+-- ServiceType/PackageType NULL = comodín) con TenantId propio y clave servicio+paquete; RateCardId pasa a NULL.
+-- Historial efectivo-fechado por fila: editar = cerrar (EffectiveTo) y abrir otra; solo una fila abierta por clave.
 CREATE TABLE dbo.RateComponent (
     RateComponentId INT IDENTITY(1,1) PRIMARY KEY,
-    RateCardId   INT NOT NULL REFERENCES dbo.RateCard(RateCardId),
-    ComponentTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='RateComponentType'
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),                  -- Lote 2
+    RateCardId   INT NULL REFERENCES dbo.RateCard(RateCardId),                  -- Lote 2: NULL (RateCard no se usa todavía)
+    ContractId   INT NULL REFERENCES dbo.Contract(ContractId),                  -- Lote 2: NULL = tarifa genérica del tenant
+    ComponentTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='RateComponentType' (BASE_FREIGHT | EXTRA_PIECE ...)
     BasisLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),         -- Entity='RateBasis'
     FromZoneId   INT NULL REFERENCES dbo.RateZone(RateZoneId),
     ToZoneId     INT NULL REFERENCES dbo.RateZone(RateZoneId),
-    ServiceTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
+    ServiceTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Entity='ServiceType'
+    PackageTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Lote 2: Entity='PackageType'
     PricingModeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='PricingMode'
     TierModeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),          -- Entity='TierMode'
     FlatAmount   DECIMAL(18,4) NULL,
     UnitAmount   DECIMAL(18,4) NULL,
     MinCharge    DECIMAL(18,4) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),        -- Lote 2
+    EffectiveTo  DATE NULL,                                                     -- Lote 2: exclusivo; NULL = abierta
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CONSTRAINT CK_RateComponent_Amounts CHECK ((FlatAmount IS NULL OR FlatAmount >= 0) AND (UnitAmount IS NULL OR UnitAmount >= 0) AND (MinCharge IS NULL OR MinCharge >= 0)),  -- Lote 2
+    CONSTRAINT CK_RateComponent_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)                                                                    -- Lote 2
 );
+-- Lote 2: UNIQUE(ContractId, ServiceTypeId, PackageTypeId) de la bitácora, acotado a filas vigentes (SQL Server trata NULL
+-- como valor igual en el índice, lo que también acota la fila genérica comodín)
+CREATE UNIQUE INDEX UQ_RateComponent_Open ON dbo.RateComponent(TenantId, ContractId, ComponentTypeLookupId, ServiceTypeLookupId, PackageTypeLookupId)
+    WHERE EffectiveTo IS NULL AND IsActive = 1;
+CREATE INDEX IX_RateComponent_Contract ON dbo.RateComponent(ContractId) WHERE ContractId IS NOT NULL;
 GO
 
 CREATE TABLE dbo.RateTier (
@@ -834,8 +910,14 @@ CREATE TABLE dbo.RateTier (
     MaxValue     DECIMAL(14,3) NULL,
     UnitAmount   DECIMAL(18,4) NULL,
     FlatAmount   DECIMAL(18,4) NULL,
-    SortOrder    INT NOT NULL DEFAULT 0
+    SortOrder    INT NOT NULL DEFAULT 0,
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),        -- Lote 2
+    EffectiveTo  DATE NULL,                                                     -- Lote 2: exclusivo; NULL = abierto
+    CONSTRAINT CK_RateTier_Range CHECK (MaxValue IS NULL OR MaxValue >= MinValue),                                             -- Lote 2
+    CONSTRAINT CK_RateTier_Amounts CHECK ((UnitAmount IS NULL OR UnitAmount >= 0) AND (FlatAmount IS NULL OR FlatAmount >= 0)), -- Lote 2
+    CONSTRAINT CK_RateTier_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)                                    -- Lote 2
 );
+-- Lote 2: el no-traslape de tramos abiertos por servicio+paquete lo valida el servicio (RateTierRules; SQL Server no tiene EXCLUDE)
 GO
 
 CREATE TABLE dbo.RateRule (    -- recargos / modificadores

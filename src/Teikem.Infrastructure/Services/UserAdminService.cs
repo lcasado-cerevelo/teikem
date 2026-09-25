@@ -14,10 +14,15 @@ namespace Teikem.Infrastructure.Services;
 /// <summary>Pantalla "Roles y usuarios": usuarios del tenant, sus roles, permisos extra, membresía y alcance de datos; y /me.</summary>
 public sealed class UserAdminService(TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, ILookupCache lookups, PermissionService permissions, ModuleService modules, ISecurityEventWriter security)
 {
+    /// <summary>Mensaje del 409 al dar de alta como interno un correo que ya es de portal (espejo del 409 de PortalUserService).</summary>
+    public const string PortalAccountMessage = "Ese correo ya pertenece a un usuario de portal; un usuario de portal no puede ser a la vez usuario interno.";
+
     public async Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
-        var memberships = await db.UserTenants.AsNoTracking().Include(m => m.User).ThenInclude(u => u!.UserKind).Include(m => m.Status).Where(m => m.TenantId == tenantId).ToListAsync(ct);
+        // Los usuarios de portal nunca son usuarios de la compañía (R39): aunque existiera una membresía espuria, no se listan.
+        var memberships = await db.UserTenants.AsNoTracking().Include(m => m.User).ThenInclude(u => u!.UserKind).Include(m => m.Status)
+            .Where(m => m.TenantId == tenantId && (m.User!.UserKind == null || m.User.UserKind.InternalCode != UserKinds.Portal)).ToListAsync(ct);
         var ids = memberships.Select(m => m.UserId).ToList();
         var roles = await db.AppUserRoles.AsNoTracking().Where(r => ids.Contains(r.UserId)).Select(r => new { r.UserId, r.Role!.Name }).ToListAsync(ct);
         var extras = await db.UserPermissions.AsNoTracking().Where(p => ids.Contains(p.UserId)).Select(p => new { p.UserId, p.Permission!.Code }).ToListAsync(ct);
@@ -49,8 +54,16 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
             var result = await users.CreateAsync(user, req.Password ?? temp!);
             if (!result.Succeeded) throw new ValidationException("password", string.Join(" ", result.Errors.Select(e => e.Description)));
         }
-        else if (await db.UserTenants.IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId, ct))
-            throw new ConflictException("El usuario ya pertenece a esta compañía.");
+        else
+        {
+            // Un correo no puede ser a la vez usuario interno y de portal (decisión ratificada, bidireccional): la cuenta de portal
+            // de un cliente (de esta compañía o de otra) no se adjunta como usuario interno ni se toca desde aquí.
+            var existingKind = user.UserKindLookupId is null ? null : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
+            if (string.Equals(existingKind, UserKinds.Portal, StringComparison.OrdinalIgnoreCase))
+                throw new ConflictException(PortalAccountMessage);
+            if (await db.UserTenants.IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId, ct))
+                throw new ConflictException("El usuario ya pertenece a esta compañía.");
+        }
 
         db.UserTenants.Add(new UserTenant { UserId = user.Id, TenantId = tenantId, StatusCodeId = activeId, IsDefault = user.DefaultTenantId == tenantId, InvitedBy = tenant.UserId, JoinedAtUtc = DateTime.UtcNow });
         await db.SaveChangesAsync(ct);
@@ -162,9 +175,11 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
             await GetDataScopesAsync(userId, ct), user.TwoFactorEnabled, tenant.Aal2VerifiedAtUtc);
     }
 
+    /// <summary>Miembro del tenant activo y cuenta interna: una cuenta de portal (aunque tuviera una membresía espuria) responde 404 desde estas pantallas.</summary>
     private async Task EnsureMemberAsync(int userId, CancellationToken ct)
     {
-        if (!await db.UserTenants.AnyAsync(m => m.UserId == userId, ct)) throw new NotFoundException("Usuario", userId);
+        if (!await db.UserTenants.AnyAsync(m => m.UserId == userId && (m.User!.UserKind == null || m.User.UserKind.InternalCode != UserKinds.Portal), ct))
+            throw new NotFoundException("Usuario", userId);
     }
 
     public static string GenerateTemporaryPassword()

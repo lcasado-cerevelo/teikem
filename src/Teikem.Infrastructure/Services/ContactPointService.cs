@@ -29,12 +29,14 @@ public sealed class UserOwnedEntityResolver(TeikemDbContext db, ITenantContext t
 }
 
 /// <summary>Capa C: N contactos tipados por entidad. La integridad de la asociación polimórfica vive aquí, no en FK.</summary>
-public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers)
+public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers, PermissionService permissions)
 {
     private static readonly Regex PhoneRegex = new(@"^\+?[0-9][0-9\s\-().]{6,24}$", RegexOptions.Compiled);
 
     public async Task<IReadOnlyList<ContactPointDto>> GetForOwnerAsync(string ownerEntity, int ownerId, bool includeInactive, CancellationToken ct)
     {
+        // Ver los contactos de un dueño exige el permiso de lectura de esa entidad (CLIENT/CLIENT_CONTACT → clients.read, ...).
+        if (PermissionCatalog.OwnerReadPermission.TryGetValue(ownerEntity, out var readPerm)) await permissions.EnsureAsync(readPerm, ct);
         var ownerEntityId = await lookups.GetIdAsync(LookupDomains.EntityType, ownerEntity, ct);
         var q = db.ContactPoints.AsNoTracking().Include(c => c.ContactType).Include(c => c.OwnerEntity)
             .Where(c => c.OwnerEntityLookupId == ownerEntityId && c.OwnerId == ownerId);

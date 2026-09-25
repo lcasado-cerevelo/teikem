@@ -17,7 +17,11 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    usuarios y roles del tenant, catálogos, estatus, puntos de contacto, campos personalizados, vistas,
    indicadores, gráficos y Pulso del día, auditoría y seguridad, módulos por tenant, configuración de la
    compañía, administración de plataforma.
-2. 02 — Clientes y contratos: en preparación.
+2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
+   contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas), contratos
+   (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
+   pieza extra con historial efectivo-fechado, cotización, servicios especiales y tipos compartidos, usuarios de portal del
+   cliente, permisos y módulos, fuentes de análisis y auditoría.
 
 ## Preguntas frecuentes
 

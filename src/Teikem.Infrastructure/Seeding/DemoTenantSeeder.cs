@@ -15,7 +15,7 @@ namespace Teikem.Infrastructure.Seeding;
 /// apagados Cross-dock, Marítimo, Facturación de alquiler), admin de compañía, un despachador y un admin de plataforma.
 /// Se activa con Seed:Demo:Enabled=true. Idempotente.
 /// </summary>
-public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, IConfiguration config, ProvisioningService provisioning, UserAdminService userAdmin, ILogger<DemoTenantSeeder> logger)
+public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, IConfiguration config, ProvisioningService provisioning, UserAdminService userAdmin, SystemAnalyticsSeeder analyticsSeeder, ILogger<DemoTenantSeeder> logger)
 {
     public static readonly string[] AdvanceModules =
     {
@@ -47,7 +47,9 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
                 tenantId = existing.TenantId;
                 using var _ = tc.As(tenantId);
                 await provisioning.EnsureAdminUserAsync(existing, adminEmail, "Administrador Advance", adminPassword, ct);
-                logger.LogInformation("Tenant demo '{Name}' ya existe (id {Id}); se verifica admin.", name, tenantId);
+                // Una BD del Lote 1 recibe el contenido de sistema nuevo (vistas/indicadores/gráficos de lotes posteriores); idempotente por nombre.
+                await analyticsSeeder.SeedForTenantAsync(tenantId, ct);
+                logger.LogInformation("Tenant demo '{Name}' ya existe (id {Id}); se verifica admin y contenido de análisis de sistema.", name, tenantId);
             }
         }
 

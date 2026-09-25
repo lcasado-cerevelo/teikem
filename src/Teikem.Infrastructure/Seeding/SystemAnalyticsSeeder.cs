@@ -10,7 +10,8 @@ namespace Teikem.Infrastructure.Seeding;
 
 /// <summary>
 /// Vistas, indicadores y gráficos por default (IsSystem=1) que un tenant trae de fábrica. En el Lote 1 usan las fuentes
-/// transversales (AUDIT_LOG, SECURITY_EVENT, USER); cada lote de negocio agrega los suyos (Órdenes, Inventario, ...).
+/// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); cada lote de
+/// negocio agrega los suyos (Órdenes, Inventario, ...).
 /// Idempotente por nombre.
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
@@ -26,6 +27,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         var ops = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Operations, ct);
         var last7 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last7, ct);
         var last30 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last30, ct);
+        var all = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.All, ct);
         var bar = await lookups.GetIdAsync(LookupDomains.ReportChartType, ChartTypes.Bar, ct);
         var donut = await lookups.GetIdAsync(LookupDomains.ReportChartType, ChartTypes.Donut, ct);
         var line = await lookups.GetIdAsync(LookupDomains.ReportChartType, ChartTypes.Line, ct);
@@ -50,6 +52,9 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             new[] { "FullName", "Email", "Roles", "MembershipStatus", "IsActive", "MfaEnabled", "LastLoginUtc" }, null, null, "[{\"field\":\"FullName\",\"dir\":\"asc\"}]");
         await Report(EntityTypes.AuditLog, "Cambios por usuario y acción", "Conteo de cambios agrupado por usuario y acción", "Change count grouped by user and action",
             Array.Empty<string>(), null, "{\"by\":[\"UserName\",\"Action\"],\"aggregates\":[{\"fn\":\"COUNT\"}],\"totals\":true}", null);
+        // Lote 2 — Clientes y contratos
+        await Report(EntityTypes.Client, "Clientes", "Directorio de clientes con estatus y modelo de facturación vigente", "Client directory with status and current billing model",
+            new[] { "Code", "Name", "Status", "BillingSummary", "CreditLimit", "IsActive" }, null, null, "[{\"field\":\"Name\",\"dir\":\"asc\"}]");
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
@@ -71,6 +76,9 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"MembershipStatus\",\"op\":\"eq\",\"value\":\"ACTIVE\"}]}", null, true, 40);
         Indicator("Usuarios sin MFA", "Usuarios activos sin segundo factor", "Active users without MFA", EntityTypes.User, null, count,
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"MfaEnabled\",\"op\":\"isFalse\"}]}", null, false, 50);
+        // Lote 2 — Clientes y contratos (estado actual: sin rango de fecha)
+        Indicator("Clientes activos", "Clientes activos con estatus ACTIVE", "Active clients with ACTIVE status", EntityTypes.Client, null, count,
+            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"ACTIVE\"}]}", null, true, 60);
 
         // ---- Gráficos ----
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);
@@ -88,6 +96,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart("Cambios por usuario", "Quién registró más cambios", "Who recorded the most changes", EntityTypes.AuditLog, "UserName", bar, null, last30, false, 20);
         Chart("Eventos de seguridad por día", "Tendencia diaria de eventos de seguridad", "Daily trend of security events", EntityTypes.SecurityEvent, "CreatedAtUtc", line, null, last30, true, 30);
         Chart("Usuarios por rol", "Distribución de usuarios por rol", "Users by role", EntityTypes.User, "Roles", donut, null, null, false, 40);
+        // Lote 2 — Clientes y contratos
+        Chart("Contratos por estatus", "Distribución de contratos por estatus", "Contracts by status", EntityTypes.Contract, "Status", donut, null, all, false, 60);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

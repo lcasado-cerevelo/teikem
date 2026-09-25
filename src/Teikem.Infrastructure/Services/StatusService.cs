@@ -23,7 +23,7 @@ public sealed record StatusTransitionContext(string StatusDomain, string EntityT
 /// clasificado por StageKind. El servicio valida etapa-activa + reglas de entrada lateral, registra EntityStatusHistory
 /// y dispara los efectos en código. StatusCapability = regla de negocio; Permission = seguridad. Ambas tienen que pasar.
 /// </summary>
-public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IStatusTransitionEffect> effects)
+public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IStatusTransitionEffect> effects, PermissionService permissions)
 {
     // ---------------- Consulta ----------------
 
@@ -279,6 +279,8 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
 
     public async Task<IReadOnlyList<StatusHistoryDto>> GetHistoryAsync(string entityTypeCode, int entityId, CancellationToken ct)
     {
+        // El historial (con comentarios) exige el permiso de lectura de la entidad (CLIENT → clients.read, CONTRACT → contracts.read, ...).
+        if (PermissionCatalog.OwnerReadPermission.TryGetValue(entityTypeCode, out var readPerm)) await permissions.EnsureAsync(readPerm, ct);
         var entityTypeId = await lookups.GetIdAsync(LookupDomains.EntityType, entityTypeCode, ct);
         var rows = await db.EntityStatusHistories.AsNoTracking().Include(h => h.FromStatus).Include(h => h.ToStatus)
             .Where(h => h.EntityTypeLookupId == entityTypeId && h.EntityId == entityId)

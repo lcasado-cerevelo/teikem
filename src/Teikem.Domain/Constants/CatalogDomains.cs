@@ -28,6 +28,18 @@ public static class LookupDomains
     public const string DateRangeMode = "DateRangeMode";
     public const string PackageType = "PackageType";
     public const string ServiceType = "ServiceType";
+    // Lote 2 — Clientes y contratos
+    public const string PaymentTerm = "PaymentTerm";
+    public const string Currency = "Currency";
+    public const string LocationType = "LocationType";
+    public const string Country = "Country";
+    public const string BillingModel = "BillingModel";
+    public const string PricingType = "PricingType";
+    public const string PricingMode = "PricingMode";
+    public const string TierMode = "TierMode";
+    public const string RateBasis = "RateBasis";
+    public const string RateComponentType = "RateComponentType";
+    public const string PortalRole = "PortalRole";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -35,6 +47,10 @@ public static class StatusDomains
 {
     public const string MembershipStatus = "MembershipStatus";
     public const string OrderStatus = "OrderStatus";
+    // Lote 2 — Clientes y contratos
+    public const string ClientStatus = "ClientStatus";
+    public const string ContractStatus = "ContractStatus";
+    public const string PortalUserStatus = "PortalUserStatus";
 }
 
 public static class StageKinds
@@ -56,6 +72,101 @@ public static class MembershipStatuses
     public const string Active = "ACTIVE";
     public const string Suspended = "SUSPENDED";
     public const string Invited = "INVITED";
+}
+
+// ---------------- Lote 2 — Clientes y contratos ----------------
+
+/// <summary>Dominio ClientStatus: ACTIVE (inicial, pipeline), SUSPENDED (lateral reversible), PROSPECT (pipeline).</summary>
+public static class ClientStatuses
+{
+    public const string Active = "ACTIVE";
+    public const string Suspended = "SUSPENDED";
+    public const string Prospect = "PROSPECT";
+}
+
+/// <summary>Dominio ContractStatus: DRAFT (inicial) → ACTIVE; EXPIRED y CANCELLED son terminales (solo por transición manual).</summary>
+public static class ContractStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Active = "ACTIVE";
+    public const string Expired = "EXPIRED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio PortalUserStatus: INVITED (inicial) → ACTIVE; SUSPENDED lateral reversible; DISABLED terminal (baja definitiva).</summary>
+public static class PortalUserStatuses
+{
+    public const string Invited = "INVITED";
+    public const string Active = "ACTIVE";
+    public const string Suspended = "SUSPENDED";
+    public const string Disabled = "DISABLED";
+}
+
+/// <summary>RateComponentType: BASE_FREIGHT = tarifa por servicio; EXTRA_PIECE = pieza extra (escalonada por piezas).</summary>
+public static class RateComponentTypes
+{
+    public const string BaseFreight = "BASE_FREIGHT";
+    public const string PickupFee = "PICKUP_FEE";
+    public const string Surcharge = "SURCHARGE";
+    public const string ExtraPiece = "EXTRA_PIECE";
+}
+
+public static class PricingModes
+{
+    public const string Fixed = "FIXED";
+    public const string PerUnit = "PER_UNIT";
+    public const string Tiered = "TIERED";
+}
+
+public static class TierModes
+{
+    public const string Graduated = "GRADUATED";
+    public const string Volume = "VOLUME";
+}
+
+public static class RateBases
+{
+    public const string PerShipment = "PER_SHIPMENT";
+    public const string PerPiece = "PER_PIECE";
+}
+
+/// <summary>PricingType del cargo por COD del contrato: FIXED = monto fijo por orden; PERCENT = por ciento del monto COD cobrado.</summary>
+public static class PricingTypes
+{
+    public const string Fixed = "FIXED";
+    public const string Percent = "PERCENT";
+}
+
+public static class PortalRoles
+{
+    public const string ClientAdmin = "CLIENT_ADMIN";
+    public const string ClientOperator = "CLIENT_OPERATOR";
+    public const string ClientReadOnly = "CLIENT_READONLY";
+}
+
+/// <summary>
+/// LocationType: PICKUP/BOTH = almacenes o puntos de recogido del cliente; DELIVERY = consignatarios;
+/// CORPORATE = dirección corporativa (física); BILLING = dirección postal / de facturación.
+/// </summary>
+public static class LocationTypes
+{
+    public const string Pickup = "PICKUP";
+    public const string Delivery = "DELIVERY";
+    public const string Both = "BOTH";
+    public const string Billing = "BILLING";
+    public const string Corporate = "CORPORATE";
+}
+
+/// <summary>Capacidades del motor de estatus (LookupDomains.Capability) que el código consulta por nombre.</summary>
+public static class Capabilities
+{
+    public const string EditCargo = "EDIT_CARGO";
+    public const string AssignTrip = "ASSIGN_TRIP";
+    public const string Cancel = "CANCEL";
+    public const string Reprice = "REPRICE";
+    public const string AddDocument = "ADD_DOCUMENT";
+    /// <summary>Lote 2: editar contrato, tarifas y servicios especiales (por defecto no permitido en EXPIRED/CANCELLED).</summary>
+    public const string EditContract = "EDIT_CONTRACT";
 }
 
 public static class AuditActions
@@ -180,6 +291,10 @@ public static class EntityTypes
     public const string ApiCredential = "API_CREDENTIAL";
     public const string AuditLog = "AUDIT_LOG";
     public const string SecurityEvent = "SECURITY_EVENT";
+    // Agregados por el Lote 2 (clientes y contratos)
+    public const string PortalUser = "PORTAL_USER";
+    public const string RateComponent = "RATE_COMPONENT";
+    public const string SpecialService = "SPECIAL_SERVICE";
 }
 
 public static class ModuleKeys

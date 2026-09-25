@@ -75,12 +75,34 @@ public static class DependencyInjection
         services.AddScoped<UserAdminService>();
         services.AddScoped<ProvisioningService>();
 
+        // Lote 2 — Clientes y contratos
+        services.AddScoped<ClientService>();
+        services.AddScoped<LocationService>();
+        services.AddScoped<ContractService>();
+        services.AddScoped<RateService>();
+        services.AddScoped<SpecialServiceService>();
+        services.AddScoped<PortalUserService>();
+        services.AddScoped<IStatusTransitionEffect, ContractStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, PortalUserStatusEffect>();
+        services.AddScoped<IInvitationSender, LoggingInvitationSender>();
+        // La invitación al portal reutiliza el token DataProtector de Identity: su vida es Portal:InviteHours (48 h por defecto).
+        // Nota: afecta a todos los tokens DataProtector de Identity (incluido el futuro reset de contraseña).
+        services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(Math.Max(1, config.GetValue("Portal:InviteHours", 48))));
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
         services.AddScoped<IDataSource, SecurityEventDataSource>();
         services.AddScoped<IDataSource, UserDataSource>();
         services.AddScoped<IOwnedEntityResolver, UserOwnedEntityResolver>();
+        // Lote 2
+        services.AddScoped<IDataSource, ClientDataSource>();
+        services.AddScoped<IDataSource, ContractDataSource>();
+        services.AddScoped<IDataSource, LocationDataSource>();
+        services.AddScoped<IOwnedEntityResolver, ClientOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ClientContactOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, LocationOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ContractOwnedEntityResolver>();
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

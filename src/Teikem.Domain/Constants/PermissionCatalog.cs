@@ -5,7 +5,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (31 códigos) y añade los de las capas transversales A-I.
+/// en cada arranque. Coincide con logistica-db-seed.sql (48 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1)
+/// y los de Clientes y contratos (Lote 2, categoría CLIENTS).
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -54,6 +55,17 @@ public static class PermissionCatalog
     public const string AnalyticsDates = "analytics.dates";
     // Contactos
     public const string ContactsManage = "contacts.manage";
+    // Clientes y contratos (Lote 2; categoría CLIENTS). portalusers.manage es distinto de admin.users (R40).
+    public const string ClientsRead = "clients.read";
+    public const string ClientsCreate = "clients.create";
+    public const string ClientsUpdate = "clients.update";
+    public const string LocationsRead = "locations.read";
+    public const string LocationsCreate = "locations.create";
+    public const string LocationsUpdate = "locations.update";
+    public const string ContractsRead = "contracts.read";
+    public const string ContractsCreate = "contracts.create";
+    public const string ContractsUpdate = "contracts.update";
+    public const string PortalUsersManage = "portalusers.manage";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -95,18 +107,63 @@ public static class PermissionCatalog
         new(AnalyticsManage, "ANALYTICS", "Crear vistas, indicadores y gráficos", "Create reports, indicators & charts"),
         new(AnalyticsDates, "ANALYTICS", "Cambiar rango de fecha de indicadores/gráficos ajenos", "Change date range of others' indicators/charts"),
         new(ContactsManage, "ADMIN", "Gestionar contactos", "Manage contacts"),
+        // Lote 2 — Clientes y contratos
+        new(ClientsRead, "CLIENTS", "Ver clientes", "View clients"),
+        new(ClientsCreate, "CLIENTS", "Crear clientes", "Create clients"),
+        new(ClientsUpdate, "CLIENTS", "Editar clientes", "Edit clients"),
+        new(LocationsRead, "CLIENTS", "Ver consignatarios", "View locations"),
+        new(LocationsCreate, "CLIENTS", "Crear consignatarios", "Create locations"),
+        new(LocationsUpdate, "CLIENTS", "Editar consignatarios", "Edit locations"),
+        new(ContractsRead, "CLIENTS", "Ver contratos y tarifas", "View contracts & rates"),
+        new(ContractsCreate, "CLIENTS", "Crear contratos", "Create contracts"),
+        new(ContractsUpdate, "CLIENTS", "Editar contratos y tarifas", "Edit contracts & rates"),
+        new(PortalUsersManage, "CLIENTS", "Administrar usuarios de portal del cliente", "Manage client portal users"),
+    };
+
+    /// <summary>
+    /// Permiso de lectura de la entidad dueña en las rutas polimórficas (contactos, historial de estatus, valores de campos
+    /// personalizados). Sin entrada (hoy USER) se conserva "cualquier autenticado" hasta que su lote la registre.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> OwnerReadPermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [EntityTypes.Client] = ClientsRead,
+        [EntityTypes.ClientContact] = ClientsRead,
+        [EntityTypes.Location] = LocationsRead,
+        [EntityTypes.Contract] = ContractsRead,
+        [EntityTypes.PortalUser] = PortalUsersManage,
+    };
+
+    /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
+    public static readonly IReadOnlyDictionary<string, string> OwnerWritePermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [EntityTypes.Client] = ClientsUpdate,
+        [EntityTypes.ClientContact] = ClientsUpdate,
+        [EntityTypes.Location] = LocationsUpdate,
+        [EntityTypes.Contract] = ContractsUpdate,
+        [EntityTypes.PortalUser] = PortalUsersManage,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView },
-        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView },
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate },
+        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead },
         ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive },
         ["Driver"] = new[] { OrdersView, CodCollect },
-        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView },
+        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead },
     };
+
+    /// <summary>
+    /// Códigos que un rol clonado de un tenant debe recibir al actualizar la plataforma (Lote 2, PermissionSeeder):
+    /// los de la plantilla del mismo nombre que sean nuevos en esta corrida y que el rol todavía no tenga.
+    /// Lista vacía si el nombre no es una plantilla. Solo agrega, nunca quita (lógica pura, probada con xunit).
+    /// </summary>
+    public static IReadOnlyList<string> CodesToPropagate(string roleName, IReadOnlySet<string> newCodes, IReadOnlySet<string> assignedCodes)
+    {
+        if (string.IsNullOrEmpty(roleName) || !RoleTemplates.TryGetValue(roleName, out var template)) return Array.Empty<string>();
+        return template.Where(c => newCodes.Contains(c) && !assignedCodes.Contains(c)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
 
     public static readonly IReadOnlyDictionary<string, (string Es, string En)> RoleTemplateLabels = new Dictionary<string, (string, string)>
     {

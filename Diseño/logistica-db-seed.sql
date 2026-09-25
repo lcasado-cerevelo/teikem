@@ -249,7 +249,12 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','CONTACT_POINT','Contacto','Contact point',47),('EntityType','CUSTOM_FIELD_DEFINITION','Campo personalizado','Custom field',48),
 ('EntityType','REPORT_DEFINITION','Vista / informe','Report',49),('EntityType','INDICATOR_DEFINITION','Indicador','Indicator',50),
 ('EntityType','CHART_DEFINITION','Gráfico','Chart',51),('EntityType','TENANT_MODULE','Módulo de compañía','Tenant module',52),
-('EntityType','AUDIT_LOG','Bitácora de cambios','Audit log',53),('EntityType','SECURITY_EVENT','Evento de seguridad','Security event',54);
+('EntityType','AUDIT_LOG','Bitácora de cambios','Audit log',53),('EntityType','SECURITY_EVENT','Evento de seguridad','Security event',54),
+-- Lote 2 — Clientes y contratos: entidades auditables nuevas, componente de pieza extra, categoría de permisos y capacidad
+('EntityType','RATE_COMPONENT','Componente de tarifa','Rate component',55),('EntityType','SPECIAL_SERVICE','Servicio especial','Special service',56),
+('RateComponentType','EXTRA_PIECE','Pieza extra','Extra piece',4),
+('PermissionCategory','CLIENTS','Clientes y contratos','Clients & contracts',11),
+('Capability','EDIT_CONTRACT','Editar contrato','Edit contract',6);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -317,7 +322,8 @@ INSERT INTO #S VALUES
 ('AppointmentStatus','SCHEDULED','Agendada','Scheduled',@PIPE,1,'#9CA3AF',1),('AppointmentStatus','ARRIVED','Llegó','Arrived',@PIPE,2,'#10B981',0),('AppointmentStatus','COMPLETED','Completada','Completed',@TERM,3,'#059669',0),('AppointmentStatus','NO_SHOW','No llegó','No show',@LAT,4,'#EF4444',0),
 ('CrossDockStatus','OPEN','Abierto','Open',@PIPE,1,'#9CA3AF',1),('CrossDockStatus','ALLOCATED','Asignado','Allocated',@PIPE,2,'#F59E0B',0),('CrossDockStatus','COMPLETED','Completado','Completed',@TERM,3,'#059669',0),
 ('AllocationStatus','PLANNED','Planificada','Planned',@PIPE,1,'#9CA3AF',1),('AllocationStatus','MOVED','Movida','Moved',@TERM,2,'#059669',0),
-('PortalUserStatus','ACTIVE','Activo','Active',@PIPE,1,'#059669',1),('PortalUserStatus','INVITED','Invitado','Invited',@PIPE,2,'#F59E0B',0),('PortalUserStatus','DISABLED','Inhabilitado','Disabled',@TERM,3,'#6B7280',0),
+-- Lote 2: INVITED es la etapa inicial (el flujo de invitación pasa por StatusService), SUSPENDED es lateral reversible y DISABLED terminal
+('PortalUserStatus','INVITED','Invitado','Invited',@PIPE,1,'#F59E0B',1),('PortalUserStatus','ACTIVE','Activo','Active',@PIPE,2,'#059669',0),('PortalUserStatus','SUSPENDED','Suspendido','Suspended',@LAT,3,'#EF4444',0),('PortalUserStatus','DISABLED','Inhabilitado','Disabled',@TERM,4,'#6B7280',0),
 ('InvoiceStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),('InvoiceStatus','ISSUED','Emitida','Issued',@PIPE,2,'#3B82F6',0),('InvoiceStatus','PAID','Pagada','Paid',@TERM,3,'#059669',0),('InvoiceStatus','OVERDUE','Vencida','Overdue',@LAT,4,'#EF4444',0),('InvoiceStatus','VOID','Anulada','Void',@TERM,5,'#6B7280',0),
 ('BillingRunStatus','GENERATED','Generada','Generated',@PIPE,1,'#9CA3AF',1),('BillingRunStatus','REVIEWED','Revisada','Reviewed',@PIPE,2,'#F59E0B',0),('BillingRunStatus','APPROVED','Aprobada','Approved',@PIPE,3,'#3B82F6',0),('BillingRunStatus','EXPORTED','Exportada','Exported',@TERM,4,'#059669',0),
 ('SettlementStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),('SettlementStatus','APPROVED','Aprobada','Approved',@PIPE,2,'#3B82F6',0),('SettlementStatus','PAID','Pagada','Paid',@TERM,3,'#059669',0),
@@ -344,6 +350,33 @@ USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, ColorHex, SortOrder, StageKindLookupId, IsInitial, IsActive)
     VALUES (s.Entity, s.Code, N'{"es":"'+s.Es+'","en":"'+s.En+'"}', s.Color, s.Srt, s.Stage, s.IsInitial, 1);
+
+-- Lote 2: reorden idempotente de PortalUserStatus en BD ya sembradas (el MERGE solo inserta; SUSPENDED entra por el MERGE)
+UPDATE dbo.StatusCode
+SET IsInitial = CASE InternalCode WHEN 'INVITED' THEN 1 ELSE 0 END,
+    SortOrder = CASE InternalCode WHEN 'INVITED' THEN 1 WHEN 'ACTIVE' THEN 2 WHEN 'SUSPENDED' THEN 3 WHEN 'DISABLED' THEN 4 ELSE SortOrder END
+WHERE Entity = 'PortalUserStatus' AND InternalCode IN ('INVITED','ACTIVE','SUSPENDED','DISABLED');
+GO
+
+/* -------------------------------------------------------------------------
+   3B) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 2
+       EDIT_CONTRACT no permitido en contratos EXPIRED/CANCELLED (el tenant lo
+       puede cambiar desde /status/capabilities/CONTRACT).
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='CONTRACT'
+      AND s.Entity='ContractStatus' AND s.InternalCode IN ('EXPIRED','CANCELLED')
+      AND c.Entity='Capability' AND c.InternalCode='EDIT_CONTRACT'
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
 GO
 
 /* -------------------------------------------------------------------------
@@ -370,7 +403,12 @@ INSERT INTO #P VALUES
 ('admin.audit','ADMIN','Ver seguridad y auditoría','View security & audit'),('admin.customfields','ADMIN','Gestionar campos personalizados','Manage custom fields'),
 ('admin.statusconfig','ADMIN','Configurar pipeline de estatus','Configure status pipeline'),('contacts.manage','ADMIN','Gestionar contactos','Manage contacts'),
 ('analytics.view','ANALYTICS','Ver vistas, indicadores y gráficos','View reports, indicators & charts'),('analytics.manage','ANALYTICS','Crear vistas, indicadores y gráficos','Create reports, indicators & charts'),
-('analytics.dates','ANALYTICS','Cambiar rango de fecha de indicadores/gráficos ajenos','Change date range of others'' indicators/charts');
+('analytics.dates','ANALYTICS','Cambiar rango de fecha de indicadores/gráficos ajenos','Change date range of others'' indicators/charts'),
+-- Lote 2 — Clientes y contratos (categoría CLIENTS; portalusers.manage es distinto de admin.users, R40)
+('clients.read','CLIENTS','Ver clientes','View clients'),('clients.create','CLIENTS','Crear clientes','Create clients'),('clients.update','CLIENTS','Editar clientes','Edit clients'),
+('locations.read','CLIENTS','Ver consignatarios','View locations'),('locations.create','CLIENTS','Crear consignatarios','Create locations'),('locations.update','CLIENTS','Editar consignatarios','Edit locations'),
+('contracts.read','CLIENTS','Ver contratos y tarifas','View contracts & rates'),('contracts.create','CLIENTS','Crear contratos','Create contracts'),('contracts.update','CLIENTS','Editar contratos y tarifas','Edit contracts & rates'),
+('portalusers.manage','CLIENTS','Administrar usuarios de portal del cliente','Manage client portal users');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -404,15 +442,18 @@ CREATE TABLE #RP (RoleName NVARCHAR(80), PermCode NVARCHAR(80));
 -- TenantAdmin: todos
 INSERT INTO #RP SELECT 'TenantAdmin', Code FROM #P;
 -- Dispatcher
-INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create'),('Dispatcher','orders.edit'),('Dispatcher','orders.cancel'),('Dispatcher','trips.plan'),('Dispatcher','trips.dispatch'),('Dispatcher','trips.optimize');
+INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create'),('Dispatcher','orders.edit'),('Dispatcher','orders.cancel'),('Dispatcher','trips.plan'),('Dispatcher','trips.dispatch'),('Dispatcher','trips.optimize'),
+('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create');   -- Lote 2
 -- Billing
-INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage');
+INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
+('Billing','clients.read'),('Billing','contracts.read');   -- Lote 2
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive');
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
-INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view');
+INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
+('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read');   -- Lote 2
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -449,5 +490,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, permisos (38), roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto, permisos (48), roles plantilla y zonas de despacho demo.';
 GO

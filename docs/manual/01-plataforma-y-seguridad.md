@@ -258,6 +258,7 @@ Validaciones:
 | Alta de usuario de portal | `Los usuarios de portal se administran desde el expediente del cliente (Lote 2).` | 400 |
 | Contraseña inválida (Identity) | mensaje de Identity, ej. `Passwords must be at least 12 characters.` | 400 |
 | Usuario ya pertenece al tenant | `El usuario ya pertenece a esta compañía.` | 409 |
+| El correo ya es de un usuario de portal (de esta u otra compañía) | `Ese correo ya pertenece a un usuario de portal; un usuario de portal no puede ser a la vez usuario interno.` (Lote 2: la cuenta de portal no se adjunta a la compañía ni se puede editar desde `/users`, que responde 404 para ella) | 409 |
 | Desactivarse a sí mismo | `No puede desactivarse a sí mismo.` | 409 |
 | Roles desconocidos | `Roles desconocidos: <lista>.` | 400 |
 | Permisos desconocidos | `Permisos desconocidos: <lista>.` | 400 |
@@ -339,8 +340,10 @@ cada compañía puede habilitar/deshabilitar etapas, cambiar su color/orden/etiq
 entidades de negocio en próximos lotes) se hace únicamente vía `StatusService.TransitionAsync`, que valida el
 pipeline y escribe historial.
 
-Quién puede: ver pipeline/capacidades/laterales/historial, cualquier autenticado; configurar (overrides,
-capacidades, entradas laterales), `admin.statusconfig`.
+Quién puede: ver pipeline/capacidades/laterales, cualquier autenticado; ver el **historial** de un registro, el permiso
+de lectura de la entidad dueña (CLIENT/CLIENT_CONTACT → `clients.read`, LOCATION → `locations.read`, CONTRACT →
+`contracts.read`, PORTAL_USER → `portalusers.manage`; USER y entidades sin registrar → cualquier autenticado; sin él,
+`Falta el permiso '<código>'.` 403); configurar (overrides, capacidades, entradas laterales), `admin.statusconfig`.
 
 Cómo se usa:
 - `GET /api/v1/status/{entity}` — etapas resueltas para el tenant (ej. `entity=OrderStatus`).
@@ -394,7 +397,9 @@ Qué hace: guarda varios contactos (teléfono, correo, etc.) para cualquier enti
 (hoy: usuarios; cada módulo de negocio registra las suyas). La pertenencia (que el `ownerId` exista y sea del
 tenant activo) se valida contra un "resolver" por tipo de entidad, no por llave foránea directa.
 
-Quién puede: ver, cualquier autenticado; crear/editar/desactivar, `contacts.manage`.
+Quién puede: ver, el permiso de lectura de la entidad dueña (CLIENT/CLIENT_CONTACT → `clients.read`, LOCATION →
+`locations.read`, CONTRACT → `contracts.read`, PORTAL_USER → `portalusers.manage`; USER → cualquier autenticado); sin él,
+`Falta el permiso '<código>'.` (403, queda PERMISSION_DENIED en la bitácora de seguridad). Crear/editar/desactivar, `contacts.manage`.
 
 Cómo se usa:
 - `GET /api/v1/contacts/{ownerEntity}/{ownerId}` (ej. `ownerEntity=USER`)
@@ -424,9 +429,11 @@ selección simple/múltiple, o referencia a una lista de catálogo) sin necesida
 ser obligatorio, único, tener valor por defecto, reglas de validación (JSON con `regex`, `min`, `max`,
 `minLength`, `maxLength`) y mostrarse en listados (`showInList`).
 
-Quién puede: ver definiciones y valores, cualquier autenticado; crear/editar/desactivar/reactivar definiciones,
-`admin.customfields`; poner valores en un registro, cualquier autenticado (el permiso real de "quién puede
-editar ese registro" lo controla el módulo dueño de la entidad).
+Quién puede: ver definiciones, cualquier autenticado; crear/editar/desactivar/reactivar definiciones,
+`admin.customfields`. Ver los **valores** de un registro exige el permiso de lectura de la entidad dueña y poner valores
+exige su permiso de edición: CLIENT/CLIENT_CONTACT → `clients.read` / `clients.update`, LOCATION → `locations.read` /
+`locations.update`, CONTRACT → `contracts.read` / `contracts.update`, PORTAL_USER → `portalusers.manage`; sin él,
+`Falta el permiso '<código>'.` (403). Para USER (y entidades cuyo módulo aún no existe) basta cualquier autenticado.
 
 Cómo se usa:
 - `GET /api/v1/custom-fields/definitions?entityType=USER`

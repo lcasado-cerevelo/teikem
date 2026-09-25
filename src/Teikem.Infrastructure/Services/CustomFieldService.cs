@@ -17,7 +17,7 @@ namespace Teikem.Infrastructure.Services;
 /// Capa F: campos personalizados por tenant + entidad. Definiciones (con opciones o lista de catálogo), y valores EAV tipados
 /// por registro con validación en servicio: requerido, único por entidad, tipo, DSL (regex/min/max/longitud), opciones válidas.
 /// </summary>
-public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers)
+public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers, PermissionService permissions)
 {
     private static readonly Regex KeyRegex = new("^[a-z][a-z0-9_]{1,59}$", RegexOptions.Compiled);
 
@@ -118,6 +118,8 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
 
     public async Task<IReadOnlyList<CustomFieldValueDto>> GetValuesAsync(string entityType, int entityId, CancellationToken ct)
     {
+        // Defensa en profundidad: leer valores exige el permiso de lectura de la entidad dueña (403 + PERMISSION_DENIED).
+        if (PermissionCatalog.OwnerReadPermission.TryGetValue(entityType, out var readPerm)) await permissions.EnsureAsync(readPerm, ct);
         var defs = await ActiveDefinitionsAsync(entityType, ct);
         var ids = defs.Select(d => d.CustomFieldDefinitionId).ToList();
         var values = await db.CustomFieldValues.AsNoTracking().Where(v => ids.Contains(v.CustomFieldDefinitionId) && v.EntityId == entityId).ToDictionaryAsync(v => v.CustomFieldDefinitionId, ct);
@@ -135,6 +137,8 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
     public async Task<IReadOnlyList<CustomFieldValueDto>> SetValuesAsync(string entityType, int entityId, IDictionary<string, object?> input, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
+        // Escribir valores exige el permiso de edición del módulo dueño (CLIENT → clients.update, etc.); sin entrada, comportamiento anterior.
+        if (PermissionCatalog.OwnerWritePermission.TryGetValue(entityType, out var writePerm)) await permissions.EnsureAsync(writePerm, ct);
         await EnsureEntityExistsAsync(entityType, entityId, ct);
         var defs = await ActiveDefinitionsAsync(entityType, ct);
         var defByKey = defs.ToDictionary(d => d.FieldKey, StringComparer.OrdinalIgnoreCase);

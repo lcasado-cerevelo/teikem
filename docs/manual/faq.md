@@ -82,7 +82,11 @@ hora del dispositivo y vuelve a intentar.
 
 **¿Qué significa "Falta el permiso '<código>'."?**
 Tu usuario (ni por rol ni por permiso extra) no tiene el permiso indicado. Pide a un administrador de tu
-compañía (`admin.users`/`admin.roles`) que te lo asigne, si corresponde a tu función.
+compañía (`admin.users`/`admin.roles`) que te lo asigne, si corresponde a tu función. También aparece en las rutas
+transversales (contactos, historial de estatus y valores de campos personalizados) cuando el registro pertenece a una
+entidad con módulo propio: leer exige el permiso de lectura de esa entidad (`clients.read`, `locations.read`, `contracts.read`,
+`portalusers.manage`) y escribir campos personalizados exige el de edición (`clients.update`, `locations.update`,
+`contracts.update`). Cada rechazo queda como PERMISSION_DENIED en la bitácora de seguridad.
 
 **No tengo permiso para algo que debería poder hacer.**
 Revisa `GET /api/v1/me`: el arreglo `permissions` lista tus permisos efectivos (los de tu rol más los que te
@@ -121,6 +125,11 @@ Uno o más de los nombres/códigos que enviaste no existen en el catálogo. Revi
 **¿Qué significa "El usuario ya pertenece a esta compañía."?**
 Intentaste dar de alta a alguien que ya tiene membresía en tu tenant. Búscalo en `GET /api/v1/users` en vez de
 crearlo de nuevo.
+
+**¿Qué significa "Ese correo ya pertenece a un usuario de portal; un usuario de portal no puede ser a la vez usuario interno."?**
+Intentaste dar de alta como usuario interno (`POST /api/v1/users`) un correo que ya es usuario de portal de un cliente (de tu
+compañía o de otra). Un correo es interno o de portal, nunca ambos: usa otro correo para la persona interna. Esa cuenta de
+portal tampoco se puede editar desde `/users` (responde 404): se administra desde el expediente de su cliente.
 
 **¿Qué significa "No puede desactivarse a sí mismo."? / "No puede cambiar su propia membresía."?**
 Por seguridad, no puedes quitarte a ti mismo el acceso desde estas pantallas. Pide a otro administrador que lo
@@ -276,3 +285,257 @@ Es el mensaje genérico de acceso prohibido cuando no aplica un mensaje más esp
 **¿Qué significa un error con `"code": "internal"` y `status: 500`?**
 Un error no controlado en el servidor. Guarda el `correlationId` de la respuesta y compártelo con soporte
 para que lo busquen en los registros del servidor.
+
+## Lote 2 — Clientes y contratos
+
+Mensajes verificados contra `src/Teikem.Infrastructure/Services/{Client,Location,Contract,Rate,SpecialService,PortalUser}Service.cs`,
+`src/Teikem.Infrastructure/Clients/*` y `src/Teikem.Domain/Clients/*`. El capítulo completo está en
+[02-clientes-y-contratos.md](02-clientes-y-contratos.md).
+
+### Clientes
+
+**¿Qué significa "Ya existe un cliente con ese código."?**
+Enviaste un `code` explícito que ya usa otro cliente de tu compañía (o dos altas simultáneas chocaron). Deja el código
+vacío para que se genere desde el nombre (con sufijo `-2`, `-3`… si hace falta) o elige otro.
+
+**¿Por qué el código generado no es igual al nombre, o termina en `-2`?**
+El código se forma con el nombre en mayúsculas, sin acentos, con `-` en vez de espacios y símbolos, y se recorta a 20
+caracteres. Si ya existía uno igual se agrega `-2`, `-3`… recortando la base si no cabe (`FARMACIA-LAS-MARIA-2`).
+
+**¿Qué significa "El nombre del cliente no contiene letras ni dígitos para generar el código."?**
+El nombre solo tiene símbolos o espacios. Escribe un nombre con letras o números, o envía un `code` explícito.
+
+**¿Puedo cambiar el nombre de un cliente?**
+No. El nombre es la identidad del cliente y no hay forma de editarlo (`PATCH .../profile` no lo acepta). Si hay un error de
+captura, da de baja el cliente (`POST .../deactivate`) y crea uno nuevo; la razón social (`legalName`) sí se edita.
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo."?**
+Enviaste `rowVersion` en el PATCH y otro usuario guardó antes que tú. Vuelve a abrir la ficha y repite el cambio.
+
+**¿Qué significa "El punto de recogido debe ser un almacén activo del cliente (tipo PICKUP o BOTH)."?**
+La localización que elegiste como recogido habitual no es del cliente, está inactiva o no es un almacén (por ejemplo es un
+consignatario DELIVERY). Crea o elige una localización del cliente de tipo PICKUP o BOTH.
+
+**¿Qué significa "El patrón debe incluir al menos un '#' para el consecutivo." / "Carácter no permitido en el patrón: 'x'…"?**
+El patrón de numeración necesita al menos un `#` (cada `#` es un dígito) y solo admite letras, dígitos y `- _ / . # @`.
+Ejemplo válido: `AX-#####` → `AX-00001`. Deja el campo vacío para volver al patrón por defecto (`ORD-#####`, `FAC-#####`, `PQT-#####`).
+
+**¿Por qué la vista previa muestra `FAC-00001` si el mock decía `FAC-0001`?**
+Los patrones por defecto del sistema tienen cinco dígitos, uniformes con el de orden (decisión del Lote 2). Si tu cliente
+quiere cuatro, fija `FAC-####` en su numeración.
+
+**¿Qué significa "Ya existe un contacto principal activo para este cliente."?**
+Dos altas o ediciones simultáneas intentaron dejar dos contactos principales. Normalmente no ocurre: al marcar uno como
+principal el anterior deja de serlo solo. Recarga y repite.
+
+**¿Por qué mi contacto dejó de ser el principal al inactivarlo?**
+Un contacto inactivo nunca es el principal. Marca otro contacto activo como principal si lo necesitas.
+
+**¿Qué significa "Contacto '<id>' no encontrado."?**
+Ese contacto no existe o no pertenece al cliente indicado en la URL (los contactos se alcanzan siempre a través de su cliente).
+
+**¿Qué significa "Tipo de servicio desconocido: 'X'."?**
+En los niveles de servicio (SLA) del alta o del contrato usaste un código que no está en el catálogo `ServiceType`. Consulta
+`GET /api/v1/catalogs/ServiceType`.
+
+**Dí de baja un cliente y no aparece en la lista, ¿se borró?**
+No. Es una baja lógica: aparece con `GET /api/v1/clients?includeInactive=true`, su ficha sigue disponible y `POST .../reactivate`
+lo devuelve a la lista.
+
+### Consignatarios y localizaciones
+
+**¿Qué significa "Una dirección corporativa o postal (facturación) debe pertenecer a un cliente; no puede ser compartida."?**
+Intentaste crear (o volver compartida) una localización de tipo CORPORATE o BILLING sin cliente. Esas dos son siempre
+direcciones de un cliente; indica `clientPublicId`.
+
+**¿Qué significa "El cliente ya tiene una dirección corporativa activa; desactívela o edítela." (o "…dirección postal (facturación) activa…")?**
+Solo puede haber una dirección física y una postal activas por cliente. Edita la existente, o desactívala antes de crear
+otra. Reactivar una desactivada cuando ya hay otra activa da el mismo mensaje.
+
+**¿Qué significa "Indique un cliente o marque la localización como compartida, no ambos."?**
+En el PATCH enviaste `makeShared: true` y `clientPublicId` a la vez. Envía solo uno.
+
+**¿Qué significa "La ventana horaria requiere hora de inicio y hora de fin." / "La hora de fin de la ventana debe ser posterior a la de inicio."?**
+La ventana de entrega se guarda completa o vacía (`clearWindow: true` la borra), y el fin debe ser posterior al inicio
+(formato `HH:mm:ss`).
+
+**¿Qué significa "Los minutos de servicio no pueden ser negativos."?**
+`defaultServiceMinutes` debe ser 0 o mayor.
+
+**¿Por qué el punto de recogido del cliente volvió a "misma que la corporativa"?**
+El almacén que era su recogido por defecto se desactivó, cambió de dueño o cambió a un tipo que no es PICKUP/BOTH. Vuelve a
+elegir un almacén en el perfil del cliente.
+
+**¿Qué significa "La localización fue modificada por otro usuario; recargue e intente de nuevo."?**
+Igual que en clientes: `rowVersion` desactualizado. Recarga la ficha.
+
+**¿Qué significa "Localización '<guid>' no encontrado."?**
+No existe o pertenece a otra compañía.
+
+### Contratos
+
+**¿Qué significa "La fecha fin no puede ser anterior a la fecha de inicio."?**
+`endDate` es anterior a `startDate` (o cambiaste "cliente desde" a una fecha posterior a la fecha fin ya guardada). Corrige
+una de las dos; `clearEndDate: true` borra la fecha fin.
+
+**¿Qué significa "Indique una fecha fin o márquela para borrar, no ambas."?**
+Enviaste `endDate` y `clearEndDate: true` juntos. Envía solo uno.
+
+**¿Qué significa "Ya existe un contrato con el número 'X'."?**
+Enviaste un `contractNumber` que ya existe en tu compañía. Déjalo vacío para que se numere solo (`{CÓDIGO}-C2`, `-C3`…).
+
+**¿Qué significa "El estatus actual no permite la acción 'EDIT_CONTRACT'."?**
+El contrato está en un estatus donde no se edita (por defecto EXPIRED y CANCELLED): ni datos generales, ni modelo de
+facturación, ni tarifas, ni servicios especiales. Si tu compañía necesita editar contratos cancelados, un administrador puede
+cambiarlo en `PUT /api/v1/status/capabilities/CONTRACT`. La ficha lo anticipa con `canEdit: false`.
+
+**¿Qué significa "No se puede activar el contrato: el cliente está suspendido. Reactive al cliente primero."?**
+El cliente está en SUSPENDED. Devuélvelo a ACTIVE (`POST /api/v1/clients/{publicId}/status {"toCode":"ACTIVE"}`) y vuelve a activar el contrato.
+
+**¿Qué significa "El cliente ya tiene un contrato vigente. Cancele o expire el contrato anterior antes de activar este."?**
+Solo puede haber un contrato ACTIVE por cliente. Pasa el anterior a EXPIRED o CANCELLED y luego activa el nuevo.
+
+**Mi contrato tiene fecha fin pasada y sigue apareciendo como vigente, ¿es un error?**
+No. La fecha fin es informativa: no hay vencimiento automático. Si el contrato terminó de verdad, pásalo a EXPIRED (o
+CANCELLED) manualmente; si no se renovó, se sigue trabajando con lo que hay.
+
+**Desmarqué "Despacho" (o COD, Especiales, Pieza extra) y el monto sigue en la ficha, ¿no se guardó?**
+Sí se guardó: desmarcar un componente no borra lo configurado, solo deja de cobrarse. Al volver a marcarlo, reaparece.
+
+**¿Qué significa "El por ciento del cargo por COD debe estar entre 0 y 100." / "El cargo fijo por COD no puede ser negativo."?**
+Con `type: PERCENT` el valor es un por ciento del monto COD cobrado (0..100); con `type: FIXED` es un monto por orden (≥ 0).
+Si no quieres cobrar COD, apaga el checkbox `billCodFee` en el modelo de facturación.
+
+**¿Qué significa "El tipo de servicio 'STANDARD' está repetido: solo puede haber un nivel de servicio por tipo."?**
+La lista de SLA trae dos veces el mismo tipo (sin distinguir mayúsculas). Deja uno por tipo; `PUT` reemplaza la lista completa.
+
+**¿Qué significa "Solo puede haber un nivel de servicio activo por tipo de servicio."?**
+Dos escrituras simultáneas chocaron en el índice único. Recarga y repite el `PUT`.
+
+### Tarifas y cotización
+
+**¿Qué significa "El componente 'Por servicio' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tarifas." (o "…'Pieza extra'…tramos")?**
+El checkbox correspondiente del contrato está desmarcado. Enciéndelo en `PATCH /api/v1/contracts/{publicId}/billing-model`
+y vuelve a intentar. Las filas que ya existían no se perdieron.
+
+**¿Qué significa "Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra."?**
+Para ese par servicio+paquete ya hay una fila que estará vigente en la fecha de inicio que enviaste (abierta, o cerrada
+con una fecha posterior). No puede haber dos tarifas vigentes el mismo día: para cambiar el monto usa `PATCH` (cierra y abre
+una nueva); para dejar de cobrarla usa `.../close`.
+
+**¿Por qué al editar la tarifa me devuelve un `id` distinto?**
+Editar nunca sobrescribe el monto: cierra la fila vigente en la fecha nueva y abre otra. El historial completo se ve con
+`?includeHistory=true`, y la tarifa vigente en una fecha pasada con `?asOf=yyyy-MM-dd`.
+
+**¿Qué significa "La tarifa ya está cerrada; cree una nueva en lugar de editarla." / "El componente ya está cerrado." / "El tramo ya está cerrado…"?**
+La fila que intentas editar o cerrar ya tiene fecha de cierre. Crea una fila nueva (misma combinación permitida una vez cerrada la anterior).
+
+**¿Qué significa "La nueva vigencia (…) no puede ser anterior al inicio de la fila actual (…)." / "La fecha (…) no puede ser anterior al inicio de vigencia de la fila (…)."?**
+La fecha que enviaste en `effectiveFrom`/`effectiveTo` es anterior al inicio de la fila. Usa una fecha igual o posterior (el mismo día está permitido y deja una fila de longitud cero como historial).
+
+**¿Qué significa "Rango inválido: 'desde' debe ser al menos 2 (la pieza 1 va en la tarifa por servicio) y 'hasta' debe ser mayor o igual que 'desde' o quedar vacío (abierto)."?**
+Los tramos de pieza extra empiezan en la pieza 2 (la 1 la paga la tarifa por servicio) y `toUnit` no puede ser menor que
+`fromUnit`; déjalo vacío para "6+".
+
+**¿Qué significa "El tramo 4–7 se traslapa con el tramo vigente 2–5."?**
+Los tramos de un mismo componente no pueden cruzarse (ni al crear ni al editar Desde/Hasta). Ajusta el rango o cierra el tramo que estorba.
+
+**¿Qué significa "Solo las tarifas por servicio se editan aquí; los tramos de pieza extra se editan en /tiers." / "Los tramos solo aplican a componentes de pieza extra."?**
+Usaste la ruta equivocada: `PATCH .../rate-components/{id}` es para tarifas por servicio; los tramos van en `.../rate-components/{id}/tiers`.
+
+**¿Qué significa "El componente de pieza extra está cerrado; cree uno nuevo para agregar tramos."?**
+El componente ya tiene fecha de cierre. Crea otro componente EXTRA_PIECE para ese servicio y paquete.
+
+**¿Qué significa "El par servicio/tipo de paquete está repetido; envíe una sola línea por (servicio, tipo de paquete) con el total de piezas."?**
+En la cotización enviaste dos líneas con el mismo servicio y tipo de paquete. Agrúpalas en una sola sumando las piezas: así
+la primera pieza paga la tarifa base y las demás la pieza extra.
+
+**¿Qué significa "La cantidad de piezas debe ser al menos 1." / "Indique al menos una línea (servicio, tipo de paquete, piezas)."?**
+Cada línea necesita al menos una pieza y la cotización al menos una línea.
+
+**La cotización dice `baseSource: "NONE"` o `extraSource: "NONE"`, ¿qué significa?**
+No hay tarifa para ese servicio y paquete ni en el contrato ni entre las tarifas genéricas de la compañía (o el componente
+está apagado y no hay genérica). La base sale `null` y la pieza extra 0. Configura la tarifa en el contrato.
+
+**¿Qué significa "La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe."?**
+Intentó abrir una nueva versión o cerrar una tarifa, un tramo o un servicio especial con una fecha pasada. El historial de
+tarifas es el que sustenta lo que ya se cotizó y facturó, así que no se puede cambiar hacia atrás. Use hoy (o deje la fecha
+vacía) o una fecha futura. Si necesita cargar tarifas históricas al configurar un contrato, hágalo con el alta de la tarifa,
+que sí admite `effectiveFrom` pasado.
+
+### Servicios especiales
+
+**¿Qué significa "El cliente no tiene un contrato vigente; cree o active un contrato antes de configurar servicios especiales."?**
+El cliente no tiene ningún contrato ACTIVE ni DRAFT (solo EXPIRED/CANCELLED, o ninguno). Crea un contrato nuevo.
+
+**¿Qué significa "El componente 'Servicios especiales' está apagado en el contrato vigente; enciéndalo en el modelo de facturación para agregar servicios especiales."?**
+El checkbox "Especiales" del contrato vigente está desmarcado. Las filas existentes se siguen mostrando (`componentEnabled: false`), pero no se pueden crear ni editar hasta encenderlo.
+
+**¿Qué significa "Indique el tipo de servicio especial: un tipo existente (typeId) o el nombre de uno nuevo (newTypeName), no ambos."?**
+Envía solo `typeId` (tipo de la lista `GET /api/v1/special-service-types`) o solo `newTypeName`.
+
+**Escribí "VAGON DEL MUELLE" y me dice "El cliente ya tiene una tarifa vigente en esa fecha para el tipo 'Vagón del muelle'…"**
+Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: es el mismo tipo, y el cliente ya tiene una tarifa
+vigente de ese tipo. Edítala (`PATCH`) o ciérrala.
+
+**¿Qué significa "El tipo de servicio especial está inactivo; reactívelo o elija otro."?**
+El `typeId` apunta a un tipo dado de baja (`POST /api/v1/special-service-types/{id}/deactivate`). Reactívalo con
+`.../reactivate`, elige otro tipo, o crea el servicio con `newTypeName` (si coincide con el tipo inactivo, se reactiva solo).
+
+**¿Qué significa "El tipo tiene tarifas vigentes en N cliente(s); ciérrelas antes de inactivarlo."?**
+No se puede dar de baja un tipo de servicio especial mientras algún cliente tenga una tarifa abierta de ese tipo. Cierra esas
+tarifas (`.../special-services/{id}/close`) y vuelve a intentarlo; el historial se conserva.
+
+**¿Qué significa "El tipo ya está inactivo." / "El tipo ya está activo."?**
+Pediste dar de baja un tipo que ya estaba inactivo, o reactivar uno que ya estaba activo. No hay nada que hacer.
+
+**¿Qué significa "La tarifa ya está cerrada; agregue un servicio especial nuevo si necesita volver a cobrarlo."?**
+La fila ya tiene fecha de cierre. Crea otra del mismo tipo.
+
+### Usuarios de portal
+
+**¿Qué significa "Invitación inválida o vencida."?**
+Es la única respuesta de `accept-invite` cuando algo falla, a propósito (no revela si el correo existe: un correo que no
+existe o que pertenece a un usuario interno recibe exactamente la misma respuesta). Causas posibles:
+el correo no coincide con la invitación, el enlace venció (`expiresAtUtc` de la invitación, 48 horas por defecto) o ya se usó, la compañía **reenvió** la
+invitación y este es el enlace viejo (solo vale el último), la contraseña tiene menos de 12 caracteres (el chequeo contra
+brechas conocidas existe en el código pero hoy es no-op, como en el cambio de contraseña del Lote 1), el usuario ya no está en
+INVITED (aceptó, fue suspendido o dado de baja), o el módulo de portal de la compañía está apagado. Pide a la compañía que
+reenvíe la invitación (`.../resend-invite`) y usa el enlace más reciente.
+
+**¿Qué significa "Ese correo no está disponible para el portal de esta compañía."?**
+Ese correo ya está registrado en la plataforma: como usuario de portal de tu compañía (en cualquier cliente y en cualquier
+estatus salvo dado de baja), como usuario de portal de otra compañía, o como usuario interno. El mensaje es el mismo en todos
+los casos a propósito (no revela dónde está el correo). Si es un usuario de portal tuyo, búscalo en el cliente correspondiente;
+si fue dado de baja (DISABLED) en **ese mismo cliente**, la invitación no da 409: lo reinvita. Si está dado de baja en otro
+cliente, reinvítalo desde ese cliente (mover una persona de cliente es una decisión de negocio). En cualquier otro caso usa
+otro correo. Cada 409 de estos deja un `SecurityEvent` ROLE_CHANGE/FAILURE `portal_invite_conflict` en la bitácora de seguridad.
+
+**¿Qué significa "Solo se puede reenviar la invitación a un usuario que todavía no la ha aceptado (estatus INVITED)."?**
+El usuario ya aceptó (o fue suspendido/dado de baja). No hay nada que reenviar; si olvidó su contraseña, ese flujo llega con el módulo del portal.
+
+**¿Qué significa "Solo se puede suspender un usuario de portal en estatus ACTIVE." / "Solo se puede reactivar un usuario de portal en estatus SUSPENDED."?**
+Suspender es solo desde ACTIVE y reactivar solo desde SUSPENDED. Un INVITED no se suspende (dalo de baja con `.../remove` si no
+debe entrar); un DISABLED no se reactiva: se vuelve a invitar con el mismo correo (`.../invite`).
+
+**¿Qué significa "El usuario de portal ya está dado de baja."?**
+Ya está en DISABLED (terminal). No hay más transiciones desde ahí; si la persona debe volver, invítala de nuevo con el mismo
+correo desde el mismo cliente (`.../invite`): renace en INVITED con su historial y fija contraseña nueva al aceptar.
+
+**¿Qué significa "Los usuarios de portal se autentican en el portal de clientes." al iniciar sesión?**
+La cuenta es de portal y la aplicación interna no la acepta. El login del portal llega en su propio módulo.
+
+**¿Qué significa "El módulo 'CLIENT_PORTAL' no está habilitado para esta compañía."?**
+La compañía tiene apagado el portal de clientes. Un administrador puede encenderlo en `PUT /api/v1/modules/CLIENT_PORTAL` (requiere reautenticación reciente).
+
+**¿Por qué no veo al usuario de portal en `/api/v1/users`?**
+Los usuarios de portal no son usuarios de la compañía: se administran desde el expediente del cliente (`.../portal-users`) con el permiso `portalusers.manage`.
+
+**¿Qué significa "Catálogo <Dominio> 'X' no encontrado."?**
+El código de catálogo que enviaste (`paymentTerm`, `currency`, `locationType`, `country`, `role`, `type` del COD…) no existe.
+Consulta `GET /api/v1/catalogs/<Dominio>`.
+
+**Invité a un usuario de portal y ahora no puede aceptar la invitación, aunque el enlace es reciente.**
+Además de un token vencido o ya usado, la aceptación falla si la compañía está desactivada por el administrador de plataforma
+o si el módulo Portal de clientes está apagado. La respuesta es siempre la misma (`Invitación inválida o vencida.`) para no
+revelar la causa; revise el estado de la compañía y del módulo y reenvíe la invitación.
