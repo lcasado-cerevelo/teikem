@@ -28,6 +28,12 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
   `ForbiddenException`) → el middleware las traduce a ProblemDetails. Los servicios devuelven DTOs de `Contracts/`.
 - Identificadores en inglés (como el SQL); comentarios, documentos, mensajes de error y commits en español.
 
+- **Manual funcional obligatorio por lote** en `docs/manual/`: un capítulo por módulo (`docs/manual/NN-<modulo>.md`) escrito para el
+  usuario final y el soporte: cada funcionalidad (qué hace, quién puede: permiso y módulo, cómo se usa: pantalla/endpoint),
+  campos y validaciones con el **mensaje de error exacto y el código HTTP**, estatus y transiciones (de → a, quién, efectos,
+  qué bloquea), y casos frecuentes. Las preguntas y respuestas se acumulan en `docs/manual/faq.md` (cada mensaje de error
+  del lote aparece ahí con qué hacer). Índice en `docs/manual/README.md`. Un lote no se cierra sin su capítulo y su FAQ.
+
 ## Estructura
 - `src/Teikem.Domain`: entidades, constantes de catálogo, `PermissionCatalog`.
 - `src/Teikem.Infrastructure`: DbContext, configuraciones, interceptores, runner SQL, DSL, motor de análisis, servicios, seeders.
@@ -43,4 +49,5 @@ dotnet run --project src/Teikem.Api -- db-init
 dotnet run --project src/Teikem.Api &  scripts/smoke.sh http://localhost:5000
 ```
 Si el entorno no puede descargar el SDK (hosts bloqueados), el árbitro es el CI de GitHub Actions al hacer push.
-Un lote no se da por terminado sin CI verde y sin `docs/loteN-decisiones.md` (qué se construyó, cómo se probó, decisiones a revisar).
+Un lote no se da por terminado sin CI verde, sin `docs/loteN-decisiones.md` (qué se construyó, cómo se probó, decisiones a revisar)
+y sin su capítulo del manual funcional + FAQ en `docs/manual/`.

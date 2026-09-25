@@ -5,7 +5,7 @@ export const meta = {
   phases: [
     { title: 'Implementar', detail: 'una pieza por agente, luego integración de archivos compartidos y build' },
     { title: 'Verificar', detail: '4 lentes → refutación adversarial → corrección; hasta 2 rondas limpias' },
-    { title: 'Documentar', detail: 'docs/loteN-decisiones.md' },
+    { title: 'Documentar', detail: 'docs/loteN-decisiones.md y manual funcional en docs/manual/' },
   ],
 }
 
@@ -67,4 +67,7 @@ phase('Documentar')
 const doc = await agent(`${contexto}\n\nEscribe docs/lote${lote}-decisiones.md con el formato de docs/lote1-decisiones.md. Fecha: ${a.fecha || 'sin fecha'}. Hallazgos corregidos en verificación: ${corregidos}. Build local: ${build && build.compilado ? 'sí' : 'no (CI)'}. Lista las decisiones abiertas del plan y todo lo que quedó fuera. También agrega al final de scripts/smoke.sh los pasos del plan ("smoke") si existen, sin romper los anteriores.`,
   { agentType: 'scribe', label: 'decisiones', schema: RESULT })
 
-return { piezas: hechas.length + piezasCompartidas.length, buildLocal: !!(build && build.compilado), rondas: ronda, corregidos, doc }
+const manual = await agent(`${contexto}\n\nEscribe el MANUAL FUNCIONAL del lote ${lote} (${titulo}) en docs/manual/ siguiendo tu definición: capítulo docs/manual/${String(lote).padStart(2, '0')}-<slug-del-modulo>.md (funcionalidades, quién puede, cómo se usa, validaciones con el mensaje de error exacto del código y su código HTTP, estatus y transiciones con efectos, preguntas frecuentes), agrega las preguntas y respuestas del lote a docs/manual/faq.md (créalo si no existe; si existe, anexa una sección del lote sin borrar lo anterior) y actualiza el índice docs/manual/README.md (créalo si no existe). Lee los controladores, servicios, efectos de estatus y excepciones reales del lote antes de escribir; no inventes mensajes.`,
+  { agentType: 'scribe', label: 'manual', schema: RESULT })
+
+return { piezas: hechas.length + piezasCompartidas.length, buildLocal: !!(build && build.compilado), rondas: ronda, corregidos, doc, manual }
