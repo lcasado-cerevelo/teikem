@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Revisor con una lente asignada (compilación y EF, fuga entre tenants/seguridad, conformidad con el documento maestro, pruebas). Reporta hallazgos concretos con archivo y línea; no edita.
-model: fable
+model: opus
 effort: xhigh
 tools: Read, Grep, Glob, Bash
 ---

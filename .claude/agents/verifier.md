@@ -1,7 +1,7 @@
 ---
 name: verifier
 description: Verificador adversarial. Recibe un hallazgo de revisión e intenta refutarlo leyendo el código; responde si el hallazgo es real y por qué.
-model: fable
+model: opus
 effort: xhigh
 tools: Read, Grep, Glob, Bash
 ---

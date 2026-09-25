@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Implementador. Escribe el código de una pieza concreta del plan (entidades, servicio, controlador, SQL, pruebas) siguiendo los patrones del repo. Compila y prueba localmente si hay SDK.
-model: fable
+model: opus
 effort: high
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---

@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Diseñador. A partir de una especificación estructurada produce un plan de implementación para un módulo de Teikem (entidades, cambios de esquema, servicios, endpoints, permisos, efectos, pruebas), respetando los patrones ya existentes en src/.
-model: fable
+model: opus
 effort: xhigh
 tools: Read, Grep, Glob, Bash
 ---
