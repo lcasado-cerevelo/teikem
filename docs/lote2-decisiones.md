@@ -228,3 +228,7 @@ Decisiones nuevas de la ronda de revisión (hallazgos confirmados y corregidos):
 - Prueba de integración de la propagación de permisos a roles clonados (decisión 35).
 - Caducidad real del token de invitación (R41): la valida el `DataProtectorTokenProvider` de Identity con `Portal:InviteHours` (suelo 1 h), no
   comprobable en el smoke; este solo afirma que `expiresAtUtc` anuncia la ventana configurada (48 h).
+
+---
+
+**Corrida de CI del cierre del Lote 2:** https://github.com/lcasado-cerevelo/teikem/actions/runs/36143967292 (run 12, verde: build, 119 pruebas, db-init ×2 sobre BD limpia y smoke de los Lotes 1 y 2).
