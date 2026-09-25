@@ -111,7 +111,9 @@ GO
     ('MembershipStatus',2,'Estatus de membresía','Membership status'),
     ('CodStatus',2,'Estatus COD de la orden','Order COD status'),('CodCollectionStatus',2,'Estatus de cobro COD','COD collection status'),('RemittanceStatus',2,'Estatus de remesa','Remittance status'),
     ('RentalAssetStatus',2,'Estatus del equipo','Asset status'),('RentalContractStatus',2,'Estatus del contrato de alquiler','Rental contract status'),('RentalChargeStatus',2,'Estatus del cargo de alquiler','Rental charge status'),
-    ('PurchaseOrderStatus',2,'Estatus de la orden de compra','Purchase order status')
+    ('PurchaseOrderStatus',2,'Estatus de la orden de compra','Purchase order status'),
+    -- Lote 3 — Órdenes de transporte (importador)
+    ('ImportBatchStatus',2,'Estatus de lote de importación','Import batch status')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -254,7 +256,10 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','RATE_COMPONENT','Componente de tarifa','Rate component',55),('EntityType','SPECIAL_SERVICE','Servicio especial','Special service',56),
 ('RateComponentType','EXTRA_PIECE','Pieza extra','Extra piece',4),
 ('PermissionCategory','CLIENTS','Clientes y contratos','Clients & contracts',11),
-('Capability','EDIT_CONTRACT','Editar contrato','Edit contract',6);
+('Capability','EDIT_CONTRACT','Editar contrato','Edit contract',6),
+-- Lote 3 — Órdenes de transporte: historial del ciclo COD (separado del de OrderStatus) y de las paradas; importador de órdenes
+('EntityType','ORDER_COD','COD de la orden','Order COD',57),('EntityType','ORDER_STOP','Parada de orden','Order stop',58),
+('EntityType','IMPORT_TEMPLATE','Plantilla de importación','Import template',59),('EntityType','IMPORT_BATCH','Lote de importación','Import batch',60);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -343,7 +348,9 @@ INSERT INTO #S VALUES
 -- Equipos: estatus del cargo recurrente
 ('RentalChargeStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('RentalChargeStatus','INVOICED','Facturado','Invoiced',@PIPE,2,'#3B82F6',0),('RentalChargeStatus','PAID','Pagado','Paid',@TERM,3,'#10B981',0),
 -- Compras: estatus de la orden de compra al proveedor
-('PurchaseOrderStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),('PurchaseOrderStatus','SENT','Enviada','Sent',@PIPE,2,'#3B82F6',0),('PurchaseOrderStatus','PARTIAL','Recibida parcial','Partially received',@PIPE,3,'#F59E0B',0),('PurchaseOrderStatus','RECEIVED','Recibida','Received',@TERM,4,'#10B981',0),('PurchaseOrderStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0);
+('PurchaseOrderStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),('PurchaseOrderStatus','SENT','Enviada','Sent',@PIPE,2,'#3B82F6',0),('PurchaseOrderStatus','PARTIAL','Recibida parcial','Partially received',@PIPE,3,'#F59E0B',0),('PurchaseOrderStatus','RECEIVED','Recibida','Received',@TERM,4,'#10B981',0),('PurchaseOrderStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0),
+-- Lote 3 — Órdenes de transporte: lote del importador (validar → confirmar; descartar)
+('ImportBatchStatus','VALIDATED','Validado','Validated',@PIPE,1,'#9CA3AF',1),('ImportBatchStatus','CONFIRMED','Confirmado','Confirmed',@PIPE,2,'#059669',0),('ImportBatchStatus','DISCARDED','Descartado','Discarded',@TERM,3,'#6B7280',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -380,6 +387,33 @@ WHEN NOT MATCHED THEN
 GO
 
 /* -------------------------------------------------------------------------
+   3C) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 3, TRANSPORT_ORDER
+       EDIT_CARGO solo en DRAFT ('editable solo en Entrada', L1063/L1088); REPRICE solo en CONFIRMED;
+       CANCEL apagado en DELIVERED/CANCELLED; ASSIGN_TRIP apagado en DRAFT y terminales.
+       El tenant lo cambia desde /status/capabilities/TRANSPORT_ORDER.
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='TRANSPORT_ORDER'
+      AND s.Entity='OrderStatus' AND c.Entity='Capability'
+      AND (
+           (c.InternalCode='EDIT_CARGO'  AND s.InternalCode IN ('CONFIRMED','PICKUP','INBOUND','PLANNED','IN_TRANSIT','ARRIVED','DELIVERED','ON_HOLD','PARTIAL','FAILED','CANCELLED'))
+        OR (c.InternalCode='REPRICE'     AND s.InternalCode IN ('DRAFT','PICKUP','INBOUND','PLANNED','IN_TRANSIT','ARRIVED','DELIVERED','ON_HOLD','PARTIAL','FAILED','CANCELLED'))
+        OR (c.InternalCode='CANCEL'      AND s.InternalCode IN ('DELIVERED','CANCELLED'))
+        OR (c.InternalCode='ASSIGN_TRIP' AND s.InternalCode IN ('DRAFT','DELIVERED','CANCELLED'))
+      )
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+
+/* -------------------------------------------------------------------------
    4) PERMISOS  (vocabulario de la app — sembrado desde código)
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#P') IS NOT NULL DROP TABLE #P;
@@ -408,7 +442,9 @@ INSERT INTO #P VALUES
 ('clients.read','CLIENTS','Ver clientes','View clients'),('clients.create','CLIENTS','Crear clientes','Create clients'),('clients.update','CLIENTS','Editar clientes','Edit clients'),
 ('locations.read','CLIENTS','Ver consignatarios','View locations'),('locations.create','CLIENTS','Crear consignatarios','Create locations'),('locations.update','CLIENTS','Editar consignatarios','Edit locations'),
 ('contracts.read','CLIENTS','Ver contratos y tarifas','View contracts & rates'),('contracts.create','CLIENTS','Crear contratos','Create contracts'),('contracts.update','CLIENTS','Editar contratos y tarifas','Edit contracts & rates'),
-('portalusers.manage','CLIENTS','Administrar usuarios de portal del cliente','Manage client portal users');
+('portalusers.manage','CLIENTS','Administrar usuarios de portal del cliente','Manage client portal users'),
+-- Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
+('orders.credit_override','ORDERS','Autorizar órdenes sobre el límite de crédito','Authorize orders over credit limit');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -446,7 +482,8 @@ INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create
 ('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create');   -- Lote 2
 -- Billing
 INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
-('Billing','clients.read'),('Billing','contracts.read');   -- Lote 2
+('Billing','clients.read'),('Billing','contracts.read'),   -- Lote 2
+('Billing','orders.credit_override');   -- Lote 3
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive');
 -- Driver
@@ -490,5 +527,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto, permisos (48), roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT y TRANSPORT_ORDER), permisos (49), roles plantilla y zonas de despacho demo.';
 GO

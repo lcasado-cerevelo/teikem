@@ -40,6 +40,13 @@ public static class LookupDomains
     public const string RateBasis = "RateBasis";
     public const string RateComponentType = "RateComponentType";
     public const string PortalRole = "PortalRole";
+    // Lote 3 — Órdenes de transporte
+    public const string StopType = "StopType";
+    public const string OrderPriority = "OrderPriority";
+    public const string OrderRefType = "OrderRefType";
+    public const string CodType = "CodType";
+    public const string GeocodeAccuracy = "GeocodeAccuracy";
+    public const string UnitOfMeasure = "UnitOfMeasure";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -51,6 +58,11 @@ public static class StatusDomains
     public const string ClientStatus = "ClientStatus";
     public const string ContractStatus = "ContractStatus";
     public const string PortalUserStatus = "PortalUserStatus";
+    // Lote 3 — Órdenes de transporte
+    public const string StopStatus = "StopStatus";
+    public const string CodStatus = "CodStatus";
+    /// <summary>Lotes del importador de órdenes: VALIDATED (inicial) → CONFIRMED; DISCARDED terminal.</summary>
+    public const string ImportBatchStatus = "ImportBatchStatus";
 }
 
 public static class StageKinds
@@ -295,6 +307,73 @@ public static class EntityTypes
     public const string PortalUser = "PORTAL_USER";
     public const string RateComponent = "RATE_COMPONENT";
     public const string SpecialService = "SPECIAL_SERVICE";
+    // Agregados por el Lote 3 (órdenes de transporte)
+    /// <summary>Historial del ciclo COD de la orden, separado del de OrderStatus (DECISIÓN 7: StatusService resuelve el regreso por (EntityType, EntityId)).</summary>
+    public const string OrderCod = "ORDER_COD";
+    /// <summary>Historial de StopStatus de cada parada de la orden.</summary>
+    public const string OrderStop = "ORDER_STOP";
+    public const string ImportTemplate = "IMPORT_TEMPLATE";
+    public const string ImportBatch = "IMPORT_BATCH";
+}
+
+// ---------------- Lote 3 — Órdenes de transporte ----------------
+
+/// <summary>
+/// Dominio OrderStatus (seed): DRAFT (inicial) → CONFIRMED → PICKUP → INBOUND → PLANNED → IN_TRANSIT → ARRIVED → DELIVERED (terminal);
+/// ON_HOLD, PARTIAL y FAILED laterales; CANCELLED terminal. Este lote solo mueve DRAFT → siguiente etapa (confirmar), laterales y CANCELLED.
+/// </summary>
+public static class OrderStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Confirmed = "CONFIRMED";
+    public const string Pickup = "PICKUP";
+    public const string Inbound = "INBOUND";
+    public const string Planned = "PLANNED";
+    public const string InTransit = "IN_TRANSIT";
+    public const string Arrived = "ARRIVED";
+    public const string Delivered = "DELIVERED";
+    public const string OnHold = "ON_HOLD";
+    public const string Partial = "PARTIAL";
+    public const string Failed = "FAILED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio StopStatus: PENDING (inicial) → EN_ROUTE → COMPLETED (terminal); FAILED lateral.</summary>
+public static class StopStatuses
+{
+    public const string Pending = "PENDING";
+    public const string EnRoute = "EN_ROUTE";
+    public const string Completed = "COMPLETED";
+    public const string Failed = "FAILED";
+}
+
+/// <summary>Dominio CodStatus de la orden: PENDING (inicial) → PARTIAL → COLLECTED → RECONCILED → REMITTED (terminal). Este lote solo escribe PENDING.</summary>
+public static class CodStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Partial = "PARTIAL";
+    public const string Collected = "COLLECTED";
+    public const string Reconciled = "RECONCILED";
+    public const string Remitted = "REMITTED";
+}
+
+/// <summary>LookupDomains.StopType: parada de recogido o de entrega.</summary>
+public static class StopTypes
+{
+    public const string Pickup = "PICKUP";
+    public const string Delivery = "DELIVERY";
+}
+
+/// <summary>
+/// Tipos de contador de dbo.NumberSequence (columna Kind; CHECK CK_NumberSequence_Kind). ORDER, INVOICE y PACKAGE se
+/// cuentan por cliente; PACKBATCH es uno por tenant (ClientId NULL) con patrón fijo EMP-#####.
+/// </summary>
+public static class NumberKinds
+{
+    public const string Order = "ORDER";
+    public const string Invoice = "INVOICE";
+    public const string Package = "PACKAGE";
+    public const string PackBatch = "PACKBATCH";
 }
 
 public static class ModuleKeys

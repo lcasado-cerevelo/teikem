@@ -10,8 +10,8 @@ namespace Teikem.Infrastructure.Seeding;
 
 /// <summary>
 /// Vistas, indicadores y gráficos por default (IsSystem=1) que un tenant trae de fábrica. En el Lote 1 usan las fuentes
-/// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); cada lote de
-/// negocio agrega los suyos (Órdenes, Inventario, ...).
+/// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); el Lote 3
+/// agrega Órdenes (TRANSPORT_ORDER); cada lote de negocio agrega los suyos (Inventario, ...).
 /// Idempotente por nombre.
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
@@ -24,6 +24,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
 
         var visTenant = await lookups.GetIdAsync(LookupDomains.ReportVisibility, ReportVisibilities.Tenant, ct);
         var count = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Count, ct);
+        var sum = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Sum, ct);
         var ops = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Operations, ct);
         var last7 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last7, ct);
         var last30 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last30, ct);
@@ -55,16 +56,19 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 2 — Clientes y contratos
         await Report(EntityTypes.Client, "Clientes", "Directorio de clientes con estatus y modelo de facturación vigente", "Client directory with status and current billing model",
             new[] { "Code", "Name", "Status", "BillingSummary", "CreditLimit", "IsActive" }, null, null, "[{\"field\":\"Name\",\"dir\":\"asc\"}]");
+        // Lote 3 — Órdenes de transporte (los nombres de campo son los de TransportOrderDataSource; no cambiarlos sin cambiar ambos)
+        await Report(EntityTypes.TransportOrder, "Órdenes", "Órdenes de transporte con empaque, consignatario, estatus y COD", "Transport orders with pack batch, consignee, status and COD",
+            new[] { "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "ConsigneeName", "Status", "TotalPieces", "CodAmount", "CreatedAtUtc" }, null, null, "[{\"field\":\"CreatedAtUtc\",\"dir\":\"desc\"}]");
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
-        void Indicator(string name, string es, string en, string source, string? field, int fn, string? filter, int? range, bool pulse, int sort)
+        void Indicator(string name, string es, string en, string source, string? field, int fn, string? filter, int? range, bool pulse, int sort, bool isMoney = false)
         {
             if (existingInd.Contains(name)) return;
             db.IndicatorDefinitions.Add(new IndicatorDefinition
             {
                 TenantId = tenantId, Name = name, DescriptionJson = MultilingualText.Build(es, en), DataSourceKey = source, FieldKey = field, AggregateFnLookupId = fn,
-                FilterJson = filter, BusinessModuleLookupId = ops, IsMoney = false, IsSystem = true, VisibilityLookupId = visTenant, DateRangeModeLookupId = range, ShowInPulse = pulse, SortOrder = sort,
+                FilterJson = filter, BusinessModuleLookupId = ops, IsMoney = isMoney, IsSystem = true, VisibilityLookupId = visTenant, DateRangeModeLookupId = range, ShowInPulse = pulse, SortOrder = sort,
             });
         }
         Indicator("Cambios registrados", "Cambios auditados en el período", "Audited changes in the period", EntityTypes.AuditLog, null, count, null, last7, true, 10);
@@ -79,6 +83,11 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 2 — Clientes y contratos (estado actual: sin rango de fecha)
         Indicator("Clientes activos", "Clientes activos con estatus ACTIVE", "Active clients with ACTIVE status", EntityTypes.Client, null, count,
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"ACTIVE\"}]}", null, true, 60);
+        // Lote 3 — Órdenes de transporte (estado actual: sin rango de fecha)
+        Indicator("Órdenes en curso", "Órdenes activas confirmadas y aún no entregadas", "Active orders confirmed and not yet delivered", EntityTypes.TransportOrder, null, count,
+            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\",\"IN_TRANSIT\",\"ARRIVED\"]}]}", null, true, 70);
+        Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas", "Sum of pending COD of active orders", EntityTypes.TransportOrder, "CodAmount", sum,
+            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"CodStatusCode\",\"op\":\"eq\",\"value\":\"PENDING\"}]}", null, true, 71, isMoney: true);
 
         // ---- Gráficos ----
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);
@@ -98,6 +107,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart("Usuarios por rol", "Distribución de usuarios por rol", "Users by role", EntityTypes.User, "Roles", donut, null, null, false, 40);
         // Lote 2 — Clientes y contratos
         Chart("Contratos por estatus", "Distribución de contratos por estatus", "Contracts by status", EntityTypes.Contract, "Status", donut, null, all, false, 60);
+        // Lote 3 — Órdenes de transporte
+        Chart("Órdenes por estatus", "Distribución de las órdenes de los últimos 30 días por estatus", "Orders of the last 30 days by status", EntityTypes.TransportOrder, "Status", donut, null, last30, true, 70);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

@@ -714,6 +714,21 @@ CREATE TABLE dbo.ClientContact (
 CREATE UNIQUE INDEX UX_ClientContact_Primary ON dbo.ClientContact(ClientId) WHERE IsPrimary = 1 AND IsActive = 1;
 GO
 
+-- Lote 3: contador atómico de numeración (ORDER/INVOICE/PACKAGE por cliente, PACKBATCH por tenant con ClientId NULL); se consume
+-- con UPDATE … OUTPUT dentro de la transacción del alta (bloqueo de fila hasta el commit: sin huecos); la fila se asegura antes
+-- en autocommit. UNIQUE de SQL Server admite un solo NULL en ClientId por (TenantId, Kind): exactamente lo que necesita PACKBATCH.
+CREATE TABLE dbo.NumberSequence (
+    NumberSequenceId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Kind         VARCHAR(20) NOT NULL,
+    ClientId     INT NULL REFERENCES dbo.Client(ClientId),
+    NextValue    BIGINT NOT NULL DEFAULT 1,
+    CONSTRAINT UQ_NumberSequence UNIQUE (TenantId, Kind, ClientId),
+    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH')),
+    CONSTRAINT CK_NumberSequence_Next CHECK (NextValue >= 1)
+);
+GO
+
 -- Lote 2: tipos de servicio especial del tenant (compartidos por todos sus clientes; tabla propia y no LookupCode
 -- porque UQ_LookupCode(Entity, InternalCode) es global) y tarifa efectivo-fechada por cliente (componente 5 del
 -- modelo de facturación: editar = cerrar la fila y abrir otra; quitar = cerrar).
@@ -1107,6 +1122,47 @@ GO
 /* =========================================================================
    CAPA 11 — ÓRDENES DE TRANSPORTE
    ========================================================================= */
+-- Lote 3 (ajuste D): importador de órdenes por plantilla de posición de columna (reutilizable; ClientId NULL = general del
+-- tenant) y lote de importación en dos pasos (validar → confirmar). RowsJson guarda una entrada por fila: número de fila,
+-- valores parseados, consignatario resuelto/por crear, errores por campo y, tras confirmar, orderPublicId o el error.
+CREATE TABLE dbo.ImportTemplate (
+    ImportTemplateId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Kind         NVARCHAR(20) NOT NULL DEFAULT 'ORDER',
+    Name         NVARCHAR(120) NOT NULL,
+    ClientId     INT NULL REFERENCES dbo.Client(ClientId),                    -- NULL = plantilla general del tenant
+    Delimiter    NCHAR(1) NOT NULL DEFAULT ',',
+    HasHeader    BIT NOT NULL DEFAULT 1,
+    ColumnsJson  NVARCHAR(MAX) NOT NULL,                                       -- [{position:int, field:string}] (catálogo ImportFields)
+    DefaultsJson NVARCHAR(MAX) NULL,                                           -- valores fijos por campo, p. ej. serviceType STANDARD
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedAtUtc DATETIME2 NULL,
+    CONSTRAINT UQ_ImportTemplate UNIQUE (TenantId, Kind, Name)
+);
+GO
+
+CREATE TABLE dbo.ImportBatch (
+    ImportBatchId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Kind         NVARCHAR(20) NOT NULL DEFAULT 'ORDER',
+    ImportTemplateId INT NOT NULL REFERENCES dbo.ImportTemplate(ImportTemplateId),
+    ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
+    FileName     NVARCHAR(260) NULL,
+    [RowCount]   INT NOT NULL,                                               -- palabra reservada de T-SQL: entre corchetes
+    ValidRows    INT NOT NULL,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='ImportBatchStatus' (VALIDATED → CONFIRMED; DISCARDED)
+    RowsJson     NVARCHAR(MAX) NOT NULL,
+    CreatedBy    INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    ConfirmedAtUtc DATETIME2 NULL,
+    ConfirmedBy  INT NULL REFERENCES dbo.AspNetUsers(Id)
+);
+CREATE INDEX IX_ImportBatch_Client ON dbo.ImportBatch(TenantId, ClientId);
+GO
+
 CREATE TABLE dbo.TransportOrder (
     TransportOrderId INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
@@ -1114,26 +1170,43 @@ CREATE TABLE dbo.TransportOrder (
     ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
     ContractId   INT NULL REFERENCES dbo.Contract(ContractId),
     OrderNumber  NVARCHAR(40) NOT NULL,
+    ClientInvoiceNumber NVARCHAR(40) NOT NULL,  -- Lote 3: número de factura del cliente; lo asigna el cliente o Teikem si queda en blanco (siempre tiene valor, L240)
+    PackBatchNumber NVARCHAR(40) NOT NULL,      -- Lote 3: número de empaque, siempre con valor (EMP-##### fijo o id del lote de Recolección y empaque)
     ServiceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='ServiceType'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='OrderStatus'
     PriorityLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),        -- Entity='OrderPriority'
     RequestedDate DATETIME2 NULL, PromisedDate DATETIME2 NULL,
     TotalWeightKg DECIMAL(14,3) NULL, TotalVolumeM3 DECIMAL(14,4) NULL, TotalPieces INT NULL,
     QuotedAmount DECIMAL(18,4) NULL,
+    QuotedAtUtc  DATETIME2 NULL,                -- Lote 3: la cotización se congela al confirmar (QuotedAmount/QuotedAtUtc/ContractId)
     CurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     -- COD (cobro contra entrega)
-    CodTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),         -- Entity='CodType' (NONE/CASH/CHECK/COMPANY_CHECK)
+    CodTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),         -- Entity='CodType' (NONE/CASH/CHECK/COMPANY_CHECK); el Lote 3 nunca lo escribe: se define al entregar
     CodAmount    DECIMAL(18,4) NULL,
     CodCurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     CodStatusCodeId INT NULL REFERENCES dbo.StatusCode(StatusCodeId),         -- Entity='CodStatus' (NULL = sin COD)
+    -- Lote 3: entrega especial (servicio del catálogo del cliente; sin paquetes ni COD) y origen de la orden (patrón RefEntity/RefId)
+    IsSpecialDelivery BIT NOT NULL DEFAULT 0,
+    SpecialServiceId INT NULL REFERENCES dbo.SpecialService(SpecialServiceId),
+    SourceEntityTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='EntityType' (lo llena Recolección y empaque / IMPORT_BATCH)
+    SourceEntityId INT NULL,
+    ConfirmedAtUtc DATETIME2 NULL,              -- Lote 3
     Notes        NVARCHAR(MAX) NULL,
     IsActive     BIT NOT NULL DEFAULT 1,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
     UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),
     RowVersion   ROWVERSION,
-    CONSTRAINT UQ_Order_Number UNIQUE (TenantId, OrderNumber)
+    -- Lote 3: UQ_Order_Number (TenantId, OrderNumber) se reemplaza por el índice único filtrado UX_Order_Number por cliente
+    CONSTRAINT CK_Order_Amounts CHECK ((CodAmount IS NULL OR CodAmount >= 0) AND (QuotedAmount IS NULL OR QuotedAmount >= 0) AND (TotalPieces IS NULL OR TotalPieces >= 0)),  -- Lote 3
+    CONSTRAINT CK_Order_Special CHECK (IsSpecialDelivery = 0 OR SpecialServiceId IS NOT NULL)                                                                            -- Lote 3
 );
+-- Lote 3: el número de orden es el consecutivo interno del cliente (L237/L240): único por cliente, no por tenant; una orden
+-- eliminada en captura (IsActive = 0) libera su número. PackBatchNumber es el identificador de escaneo único por tenant.
+CREATE UNIQUE INDEX UX_Order_Number ON dbo.TransportOrder(TenantId, ClientId, OrderNumber) WHERE IsActive = 1;
+CREATE UNIQUE INDEX UX_Order_PackBatch ON dbo.TransportOrder(TenantId, PackBatchNumber) WHERE IsActive = 1;
+CREATE INDEX IX_Order_Invoice ON dbo.TransportOrder(TenantId, ClientInvoiceNumber);                        -- Lote 3: búsqueda y chequeo de factura repetida (R36)
+CREATE INDEX IX_Order_Client ON dbo.TransportOrder(TenantId, ClientId, CreatedAtUtc) WHERE IsActive = 1;   -- Lote 3: listado por cliente y saldo pendiente de crédito
 CREATE INDEX IX_Order_Tenant_Status ON dbo.TransportOrder(TenantId, StatusCodeId) WHERE IsActive = 1;
 CREATE INDEX IX_Order_Cod ON dbo.TransportOrder(TenantId, CodStatusCodeId) WHERE CodStatusCodeId IS NOT NULL;
 GO
@@ -1157,6 +1230,9 @@ CREATE TABLE dbo.OrderStop (
     Notes        NVARCHAR(500) NULL
 );
 CREATE INDEX IX_OrderStop_Order ON dbo.OrderStop(TransportOrderId);
+-- Lote 3: chequeo de factura repetida por consignatario (R36) y filtro por consignatario. Notes recibe el snapshot de
+-- Location.DeliveryNotes (recortado); WindowStartUtc/WindowEndUtc reciben RequestedDate + ventana por defecto de la Location.
+CREATE INDEX IX_OrderStop_Location ON dbo.OrderStop(LocationId) WHERE LocationId IS NOT NULL;
 GO
 
 CREATE TABLE dbo.CargoLine (
@@ -1165,6 +1241,8 @@ CREATE TABLE dbo.CargoLine (
     PickupStopId INT NULL REFERENCES dbo.OrderStop(OrderStopId),
     DeliveryStopId INT NULL REFERENCES dbo.OrderStop(OrderStopId),
     ProductId    INT NULL REFERENCES dbo.Product(ProductId),
+    PackageTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Lote 3: Entity='PackageType' (L245; NULL solo en la línea de una entrega especial)
+    PackageNumber NVARCHAR(40) NULL,                                          -- Lote 3: número de paquete por línea (PQT-##### del patrón del cliente si se deja en blanco)
     Description  NVARCHAR(250) NOT NULL,
     Quantity     DECIMAL(14,3) NOT NULL DEFAULT 1,
     UomLookupId  INT NULL REFERENCES dbo.LookupCode(LookupCodeId),            -- Entity='UnitOfMeasure'
@@ -1172,8 +1250,10 @@ CREATE TABLE dbo.CargoLine (
     LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
     SerialId     INT NULL REFERENCES dbo.InventorySerial(SerialId),
     HandlingFlags INT NOT NULL DEFAULT 0,
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CONSTRAINT CK_CargoLine_Quantity CHECK (Quantity > 0)                     -- Lote 3
 );
+CREATE INDEX IX_CargoLine_Order ON dbo.CargoLine(TransportOrderId);          -- Lote 3
 GO
 
 CREATE TABLE dbo.OrderReference (
@@ -1843,7 +1923,7 @@ CREATE TABLE dbo.PortalUser (
     RoleLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),        -- Entity='PortalRole'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='PortalUserStatus'
     LastLoginUtc DATETIME2 NULL, IsActive BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_PortalUser UNIQUE (TenantId, Email)
+    CONSTRAINT UQ_PortalUser UNIQUE (TenantId, ClientId, Email)   -- Lote 3: una cuenta de portal por cliente (la unicidad del correo entre cuentas la da AspNetUsers)
 );
 GO
 

@@ -186,7 +186,8 @@ public sealed class PortalUserConfiguration : IEntityTypeConfiguration<PortalUse
         b.HasKey(p => p.PortalUserId);
         b.Property(p => p.Email).HasMaxLength(150).IsRequired();
         b.Property(p => p.FullName).HasMaxLength(150);
-        b.HasIndex(p => new { p.TenantId, p.Email }).IsUnique().HasDatabaseName("UQ_PortalUser");
+        // Lote 3 (ajuste B): una cuenta de portal puede pertenecer a varios clientes del tenant: una fila por (cliente, cuenta).
+        b.HasIndex(p => new { p.TenantId, p.ClientId, p.Email }).IsUnique().HasDatabaseName("UQ_PortalUser");
         b.HasOne(p => p.Client).WithMany().HasForeignKey(p => p.ClientId);
         b.HasOne(p => p.Role).WithMany().HasForeignKey(p => p.RoleLookupId);
         b.HasOne(p => p.Status).WithMany().HasForeignKey(p => p.StatusCodeId);

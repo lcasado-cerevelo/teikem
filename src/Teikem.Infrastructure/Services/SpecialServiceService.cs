@@ -126,6 +126,7 @@ public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext ten
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
             var client = await db.ResolveClientAsync(clientPublicId, ct2);
+            ClientQueries.EnsureClientActive(client); // Lote 3 (ajuste A): cliente dado de baja ⇒ 409, sin servicios especiales nuevos
             var contract = await RequireCurrentContractAsync(client.ClientId, ct2);
             if (!contract.BillSpecialServices) throw new ConflictException(ComponentOffMessage);
             await status.EnsureAllowedAsync(EntityTypes.Contract, contract.StatusCodeId, Capabilities.EditContract, ct2);

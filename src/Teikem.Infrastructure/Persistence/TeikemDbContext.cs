@@ -9,6 +9,7 @@ using Teikem.Domain.Common;
 using Teikem.Domain.Contacts;
 using Teikem.Domain.CustomFields;
 using Teikem.Domain.Identity;
+using Teikem.Domain.Orders;
 using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
 using Teikem.Infrastructure.Abstractions;
@@ -87,6 +88,14 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<SpecialServiceType> SpecialServiceTypes => Set<SpecialServiceType>();
     public DbSet<SpecialService> SpecialServices => Set<SpecialService>();
     public DbSet<PortalUser> PortalUsers => Set<PortalUser>();
+    // Lote 3 — Órdenes de transporte (las hijas sin TenantId se alcanzan solo a través de la orden filtrada)
+    public DbSet<TransportOrder> TransportOrders => Set<TransportOrder>();
+    public DbSet<OrderStop> OrderStops => Set<OrderStop>();
+    public DbSet<CargoLine> CargoLines => Set<CargoLine>();
+    public DbSet<OrderReference> OrderReferences => Set<OrderReference>();
+    public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
+    public DbSet<ImportTemplate> ImportTemplates => Set<ImportTemplate>();
+    public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

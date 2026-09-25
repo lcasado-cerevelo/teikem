@@ -89,6 +89,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
             var contract = await LoadContractForWriteAsync(contractPublicId, ct2);
+            ClientQueries.EnsureClientActive(contract.Client!); // Lote 3 (ajuste A): cliente dado de baja ⇒ 409, sin tarifas nuevas
             EnsureComponentEnabled(contract, kind);
 
             // Guarda por intervalo (documento L639: nunca dos filas vigentes el mismo día para el mismo servicio+paquete). La fila
@@ -190,6 +191,7 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
         {
             var contract = await LoadContractForWriteAsync(contractPublicId, ct2);
             var component = await LoadExtraPieceComponentAsync(contract.ContractId, componentId, extraId, ct2);
+            ClientQueries.EnsureClientActive(contract.Client!); // Lote 3 (ajuste A): cliente dado de baja ⇒ 409, sin tramos nuevos
             EnsureComponentEnabled(contract, RateKinds.ExtraPiece);   // 404 por pertenencia antes que 409 por regla de negocio
 
             var candidate = new RateTierRules.TierRange(0, req.FromUnit, req.ToUnit);

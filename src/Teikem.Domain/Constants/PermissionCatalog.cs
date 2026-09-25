@@ -5,8 +5,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (48 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1)
-/// y los de Clientes y contratos (Lote 2, categoría CLIENTS).
+/// en cada arranque. Coincide con logistica-db-seed.sql (49 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
+/// los de Clientes y contratos (Lote 2, categoría CLIENTS) y orders.credit_override (Lote 3, ajuste C).
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -16,6 +16,8 @@ public static class PermissionCatalog
     public const string OrdersCreate = "orders.create";
     public const string OrdersEdit = "orders.edit";
     public const string OrdersCancel = "orders.cancel";
+    /// <summary>Lote 3 (ajuste C): autorizar la confirmación de una orden que excede el límite de crédito del cliente (overrideCredit=true).</summary>
+    public const string OrdersCreditOverride = "orders.credit_override";
     public const string TripsPlan = "trips.plan";
     public const string TripsDispatch = "trips.dispatch";
     public const string TripsOptimize = "trips.optimize";
@@ -118,6 +120,8 @@ public static class PermissionCatalog
         new(ContractsCreate, "CLIENTS", "Crear contratos", "Create contracts"),
         new(ContractsUpdate, "CLIENTS", "Editar contratos y tarifas", "Edit contracts & rates"),
         new(PortalUsersManage, "CLIENTS", "Administrar usuarios de portal del cliente", "Manage client portal users"),
+        // Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
+        new(OrdersCreditOverride, "ORDERS", "Autorizar órdenes sobre el límite de crédito", "Authorize orders over credit limit"),
     };
 
     /// <summary>
@@ -131,6 +135,8 @@ public static class PermissionCatalog
         [EntityTypes.Location] = LocationsRead,
         [EntityTypes.Contract] = ContractsRead,
         [EntityTypes.PortalUser] = PortalUsersManage,
+        // Lote 3
+        [EntityTypes.TransportOrder] = OrdersView,
     };
 
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
@@ -141,6 +147,8 @@ public static class PermissionCatalog
         [EntityTypes.Location] = LocationsUpdate,
         [EntityTypes.Contract] = ContractsUpdate,
         [EntityTypes.PortalUser] = PortalUsersManage,
+        // Lote 3
+        [EntityTypes.TransportOrder] = OrdersEdit,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
@@ -148,7 +156,7 @@ public static class PermissionCatalog
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate },
-        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead },
+        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride },
         ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive },
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead },

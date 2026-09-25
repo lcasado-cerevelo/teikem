@@ -21,6 +21,20 @@ public static class ClientQueries
         => await db.Clients.AsNoTracking().FirstOrDefaultAsync(c => c.PublicId == publicId, ct)
            ?? throw new NotFoundException("Cliente");
 
+    /// <summary>Mensaje exacto (Lote 3, ajuste A) cuando se intenta crear algo nuevo sobre un cliente dado de baja.</summary>
+    public const string ClientInactiveMessage = "El cliente está dado de baja; solo se consulta su historial.";
+
+    /// <summary>
+    /// Lote 3 (ajuste A): un cliente dado de baja (IsActive=0) conserva ficha, historial, órdenes, contratos y tarifas en
+    /// consulta, pero no admite nada NUEVO (órdenes, invitaciones de portal, contratos, componentes/tramos de tarifa,
+    /// servicios especiales) → 409. Las lecturas, cierres, cancelaciones, suspensiones y reactivaciones no pasan por aquí.
+    /// </summary>
+    public static Client EnsureClientActive(Client client)
+    {
+        if (!client.IsActive) throw new ConflictException(ClientInactiveMessage);
+        return client;
+    }
+
     /// <summary>Contrato del tenant por PublicId con su cliente (lectura, sin tracking) o 404 'Contrato'.</summary>
     public static async Task<Contract> ResolveContractAsync(this TeikemDbContext db, Guid publicId, CancellationToken ct)
         => await db.Contracts.AsNoTracking().Include(c => c.Client).FirstOrDefaultAsync(c => c.PublicId == publicId, ct)

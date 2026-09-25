@@ -66,6 +66,7 @@ public sealed class ContractService(TeikemDbContext db, ITenantContext tenant, I
         var contractId = await db.RunInTransactionAsync(async ct2 =>
         {
             var client = await db.ResolveClientAsync(req.ClientPublicId, ct2);
+            ClientQueries.EnsureClientActive(client); // Lote 3 (ajuste A): cliente dado de baja ⇒ 409, sin contratos nuevos
 
             string number;
             if (explicitNumber is not null)

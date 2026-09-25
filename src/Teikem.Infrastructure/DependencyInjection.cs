@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
+using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Persistence.Interceptors;
 using Teikem.Infrastructure.Persistence.Scripts;
@@ -89,6 +90,19 @@ public static class DependencyInjection
         // Nota: afecta a todos los tokens DataProtector de Identity (incluido el futuro reset de contraseña).
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(Math.Max(1, config.GetValue("Portal:InviteHours", 48))));
 
+        // Lote 3 — Órdenes de transporte
+        services.AddScoped<OrderService>();
+        services.AddScoped<OrderReadService>();
+        services.AddScoped<OrderStatusService>();
+        services.AddScoped<OrderQuoteService>();
+        services.AddScoped<INumberSequenceService, NumberSequenceService>();
+        // Costura del "saldo pendiente" de crédito (R18): hoy Σ QuotedAmount de órdenes en curso; Facturación registrará otra implementación.
+        services.AddScoped<IClientBalanceProvider, QuotedOrdersBalanceProvider>();
+        services.AddScoped<IStatusTransitionEffect, OrderStatusEffect>();
+        // Importador de órdenes (ajuste D)
+        services.AddScoped<ImportTemplateService>();
+        services.AddScoped<OrderImportService>();
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
@@ -103,6 +117,9 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver, ClientContactOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, LocationOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ContractOwnedEntityResolver>();
+        // Lote 3
+        services.AddScoped<IDataSource, TransportOrderDataSource>();
+        services.AddScoped<IOwnedEntityResolver, TransportOrderOwnedEntityResolver>();
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();
