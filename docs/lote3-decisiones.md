@@ -219,3 +219,5 @@ enumeración exhaustiva de los 54):
 **Verificación del cierre (2026-09-26, sobre BD recreada desde cero):** `dotnet build` sin errores, `dotnet test` 261/261,
 `db-init` dos veces (49 permisos, idempotente) y `scripts/smoke.sh` completo de los Lotes 1, 2 y 3 en `SMOKE OK` (50 pasos).
 Corrida de CI: ver enlace al final.
+
+**Corrida de CI del cierre del Lote 3:** https://github.com/lcasado-cerevelo/teikem/actions/runs/36210048909 (run 18, verde: build, 261 pruebas, db-init ×2 sobre BD limpia y smoke de los Lotes 1, 2 y 3).
