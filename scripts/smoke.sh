@@ -1274,6 +1274,10 @@ expect 400 "$(req POST /api/v1/vehicles "$(vb "VX$TS" '{"maxStops":0}')")" | jq 
 expect 400 "$(req POST /api/v1/vehicles "$(vb "VX$TS" '{"maxWeightKg":1.23456}')")" | jq -e '.errors.maxWeightKg[0] | startswith("El valor admite como máximo 3 decimales")' >/dev/null || fail "precisión de maxWeightKg"
 expect 200 "$(req PATCH "/api/v1/vehicles/$VH1_PID" "{\"plateNumber\":\"CD-$TS\"}")" | jq -e --arg p "CD-$TS" '.plateNumber==$p' >/dev/null || fail "PATCH placa"
 expect 400 "$(req PATCH "/api/v1/vehicles/$VH1_PID" '{"code":"OTRO"}')" | jq -e --arg m "El código del vehículo se fija al crearlo; no se puede cambiar." "$HASM" >/dev/null || fail "código de vehículo fijo"
+# Hallazgo de revisión: el almacén base también es fijo en el PATCH (clave en Extra)
+expect 400 "$(req PATCH "/api/v1/vehicles/$VH1_PID" '{"homeWarehouseId":1}')" | jq -e --arg m "El código del vehículo se fija al crearlo; no se puede cambiar." "$HASM" >/dev/null || fail "almacén base del vehículo fijo"
+# Hallazgo de revisión: concurrencia optimista (rowVersion obsoleto → 409)
+expect 409 "$(req PATCH "/api/v1/vehicles/$VH1_PID" '{"make":"x","rowVersion":"AAAAAAAAAAA="}')" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en el vehículo"
 expect 200 "$(req GET "/api/v1/vehicles?search=$(echo "${VIN:6:10}" | tr 'A-Z' 'a-z')")" | jq -e --arg p "$VH1_PID" 'any(.[]; .publicId==$p)' >/dev/null || fail "qbox por parte del VIN en minúsculas"
 expect 200 "$(req GET "/api/v1/vehicles?search=diesel")" | jq -e --arg p "$VH1_PID" 'any(.[]; .publicId==$p)' >/dev/null || fail "qbox 'diesel' encuentra 'Diésel'"
 # Hallazgo de revisión: VIN repetido entre activos (alta) y qbox por placa y propiedad
@@ -1283,7 +1287,7 @@ expect 200 "$(req GET "/api/v1/vehicles?search=propio")" | jq -e --arg p "$VH1_P
 expect 200 "$(req GET "/api/v1/vehicles?search=V$TS&vehicleType=TRUCK")" | jq -e --arg p "$VH1_PID" 'all(.[]; .publicId!=$p)' >/dev/null || fail "filtro vehicleType"
 expect 400 "$(req GET "/api/v1/vehicles?status=NOPE")" >/dev/null
 expect 200 "$(req GET "/api/v1/status/history/VEHICLE/$VH1_ID")" | jq -e 'any(.[]; .toCode=="ACTIVE")' >/dev/null || fail "historial del vehículo"
-ok "alta con estatus inicial, 409 por código repetido y por VIN repetido entre activos, 400 por catálogo/tope/precisión, placa editable, código fijo, qbox (VIN, placa, propiedad, 'diesel') y filtros"
+ok "alta con estatus inicial, 409 por código repetido y por VIN repetido entre activos, 400 por catálogo/tope/precisión, placa editable, código y almacén base fijos, qbox (VIN, placa, propiedad, 'diesel') y filtros, 409 por rowVersion obsoleto"
 
 step "vehículos (Lote 4): estatus y baja lógica"
 expect 200 "$(req POST "/api/v1/vehicles/$VH1_PID/status" '{"toCode":"MAINTENANCE","comment":"smoke"}')" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "ACTIVE → MAINTENANCE"
@@ -1318,6 +1322,8 @@ expect 409 "$(req POST /api/v1/drivers "{\"code\":\"d1$TS\",\"fullName\":\"Otra\
 expect 400 "$(req POST /api/v1/drivers "{\"code\":\"DX$TS\",\"fullName\":\" \"}")" | jq -e '.errors.fullName' >/dev/null || fail "nombre del chofer obligatorio"
 expect 200 "$(req PATCH "/api/v1/drivers/$DR1_PID" '{"maxStopsPerRoute":18}')" | jq -e '.maxStopsPerRoute==18 and .effectiveMaxStops==18' >/dev/null || fail "tope propio"
 expect 400 "$(req PATCH "/api/v1/drivers/$DR1_PID" '{"code":"OTRO"}')" | jq -e --arg m "El código del chofer se fija al crearlo; no se puede cambiar." "$HASM" >/dev/null || fail "código del chofer fijo"
+expect 400 "$(req PATCH "/api/v1/drivers/$DR1_PID" '{"employeeCode":"X"}')" | jq -e --arg m "El código del chofer se fija al crearlo; no se puede cambiar." "$HASM" >/dev/null || fail "número de empleado del chofer fijo"
+expect 409 "$(req PATCH "/api/v1/drivers/$DR1_PID" '{"fullName":"x","rowVersion":"AAAAAAAAAAA="}')" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en el chofer"
 expect 409 "$(req POST "/api/v1/dispatch-zones/$ZN_ID/deactivate")" | jq -e '.title=="La zona tiene choferes asignados; reasígnelos antes de inactivarla."' >/dev/null || fail "zona con choferes"
 expect 200 "$(req GET "/api/v1/dispatch-zones")" | jq -e --argjson z "$ZN_ID" '.[] | select(.id==$z) | .driverCount==1' >/dev/null || fail "driverCount de la zona"
 # Vínculo con usuario: admin.users + usuario INTERNAL con membresía ACTIVE, único por compañía
@@ -1366,7 +1372,7 @@ DR3=$(expect 200 "$(req POST /api/v1/drivers "{\"code\":\"D3$TS\",\"fullName\":\
 DR3_NAME="Carla Díaz $TS"
 # Hallazgo de revisión: sin licencias, licenseExpiry no se serializa (null), nunca 0001-01-01
 expect 200 "$(req GET "/api/v1/drivers?search=D2$TS")" | jq -e 'length==1 and (.[0] | has("licenseExpiry") | not)' >/dev/null || fail "licenseExpiry de un chofer sin licencias"
-ok "zona (código fijo, 409 repetida, 409 con choferes), chofer con zona/área y tope efectivo 30→18, código fijo, vínculo con usuario (403 sin admin.users al vincular y al desvincular, 400 portal, 409 repetido, 409 membresía no activa, 404), zona reasignada/quitada, zona inactiva 400, inexistente o ajena 404, inactivar/reactivar zona, UNAVAILABLE, Activo reversible, licenseExpiry vacío"
+ok "zona (código fijo, 409 repetida, 409 con choferes), chofer con zona/área y tope efectivo 30→18, código fijo (code y employeeCode), vínculo con usuario (403 sin admin.users al vincular y al desvincular, 400 portal, 409 repetido, 409 membresía no activa, 404), zona reasignada/quitada, zona inactiva 400, inexistente o ajena 404, inactivar/reactivar zona, UNAVAILABLE, Activo reversible, licenseExpiry vacío, 409 por rowVersion obsoleto"
 
 step "documentos (Lote 4): licencias, certificaciones, documentos de vehículo y 'Documentos por vencer'"
 expect 400 "$(req POST "/api/v1/vehicles/$VH1_PID/documents" "{\"docType\":\"INSURANCE\",\"issuedDate\":\"$(dplus 5)\",\"expiryDate\":\"$(dplus 1)\"}")" | jq -e '.errors.expiryDate[0]=="La fecha de vencimiento no puede ser anterior a la de emisión."' >/dev/null || fail "emisión posterior al vencimiento"
@@ -1395,6 +1401,10 @@ echo "$EXP" | jq -e --argjson m "$MINE" --arg v "V$TS" --arg d1 "D1$TS" --arg d2
 echo "$EXP" | jq -e '[.[].expiryDate] as $d | $d == ($d | sort)' >/dev/null || fail "orden por vencimiento"
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=LICENSE')" | jq -e 'length >= 2 and all(.[]; .documentKind=="LICENSE")' >/dev/null || fail "filtro docType=LICENSE"
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?entity=VEHICLE')" | jq -e 'length >= 2 and all(.[]; .ownerKind=="VEHICLE")' >/dev/null || fail "filtro entity=VEHICLE"
+# Hallazgo de revisión: filtro por tipo de documento de vehículo, filtro mixto vehículo+chofer y entity=DRIVER
+expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=INSURANCE')" | jq -e --arg n "SEG-$TS" 'any(.[]; .docNumber==$n) and all(.[]; .ownerKind=="VEHICLE" and .documentKind=="INSURANCE")' >/dev/null || fail "filtro docType=INSURANCE"
+expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=REGISTRATION&docType=LICENSE')" | jq -e --arg v "V$TS" --arg d1 "D1$TS" 'any(.[]; .ownerCode==$v and .documentKind=="REGISTRATION") and any(.[]; .ownerCode==$d1 and .documentKind=="LICENSE") and all(.[]; .documentKind=="REGISTRATION" or .documentKind=="LICENSE")' >/dev/null || fail "filtro docType mixto vehículo+chofer"
+expect 200 "$(req GET '/api/v1/fleet/expiring-documents?entity=DRIVER')" | jq -e 'length >= 3 and all(.[]; .ownerKind=="DRIVER")' >/dev/null || fail "filtro entity=DRIVER"
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?includeExpired=false')" | jq -e 'all(.[]; .expiryState!="EXPIRED")' >/dev/null || fail "includeExpired=false"
 expect 400 "$(req GET '/api/v1/fleet/expiring-documents?docType=FOO')" >/dev/null
 expect 400 "$(req GET '/api/v1/fleet/expiring-documents?entity=FOO')" >/dev/null
@@ -1408,7 +1418,7 @@ expect 200 "$(req GET '/api/v1/fleet/expiring-documents?withinDays=30')" | jq -e
 expect 204 "$(req POST "/api/v1/vehicles/$VE_PID/reactivate")" >/dev/null
 expect 200 "$(req POST "/api/v1/vehicles/$VE_PID/status" '{"toCode":"INACTIVE","comment":"baja"}')" >/dev/null
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?withinDays=30')" | jq -e --arg v "VE$TS" 'all(.[]; .ownerCode!=$v)' >/dev/null || fail "documento de un vehículo dado de baja en el panel"
-ok "fechas validadas, estados EXPIRED/EXPIRING/OK, panel unido (vehículos, licencias, certificaciones) ordenado, filtros por tipo/entidad/vencidos, 400 por valores desconocidos y sin documentos de dueños inactivos o dados de baja"
+ok "fechas validadas, estados EXPIRED/EXPIRING/OK, panel unido (vehículos, licencias, certificaciones) ordenado, filtros por tipo/entidad/vencidos, 400 por valores desconocidos y sin documentos de dueños inactivos o dados de baja (docType de vehículo como INSURANCE, mixto REGISTRATION+LICENSE, entity=VEHICLE y entity=DRIVER)"
 
 step "disponibilidad para despacho (Lote 4)"
 expect 200 "$(req POST "/api/v1/drivers/$DR3_PID/status" '{"toCode":"UNAVAILABLE"}')" >/dev/null
@@ -1419,8 +1429,20 @@ echo "$AV" | jq -e --arg p "$DR3_PID" '.drivers[] | select(.publicId==$p) | (.av
 echo "$AV" | jq -e --arg p "$VH1_PID" '.vehicles[] | select(.publicId==$p) | (.available | not) and any(.issues[]; .code=="VEHICLE_DOC_EXPIRED" and .blocking)' >/dev/null || fail "V1 con documento vencido"
 echo "$AV" | jq -e --arg p "$VH3_PID" '.vehicles[] | select(.publicId==$p) | .available and any(.issues[]; .code=="VEHICLE_NO_DOCUMENTS" and (.blocking | not))' >/dev/null || fail "vehículo sin documentos"
 expect 200 "$(req GET '/api/v1/fleet/availability?onlyAvailable=true')" | jq -e --arg p "$DR2_PID" 'all(.drivers[]; .available) and all(.drivers[]; .publicId!=$p)' >/dev/null || fail "onlyAvailable"
+# Hallazgo de revisión: el checkbox Activo saca de despacho al chofer y al vehículo (DRIVER_INACTIVE / VEHICLE_INACTIVE)
+expect 204 "$(req POST "/api/v1/drivers/$DR1_PID/deactivate")" >/dev/null
+expect 204 "$(req POST "/api/v1/vehicles/$VH3_PID/deactivate")" >/dev/null
+AVI=$(expect 200 "$(req GET /api/v1/fleet/availability)")
+echo "$AVI" | jq -e --arg p "$DR1_PID" '.drivers[] | select(.publicId==$p) | (.available | not) and any(.issues[]; .code=="DRIVER_INACTIVE" and .blocking)' >/dev/null || fail "chofer inactivo (checkbox) no se ofrece en despacho"
+echo "$AVI" | jq -e --arg p "$VH3_PID" '.vehicles[] | select(.publicId==$p) | (.available | not) and any(.issues[]; .code=="VEHICLE_INACTIVE" and .blocking)' >/dev/null || fail "vehículo inactivo (checkbox) no se ofrece en despacho"
+expect 200 "$(req GET '/api/v1/fleet/availability?onlyAvailable=true')" | jq -e --arg d "$DR1_PID" --arg v "$VH3_PID" 'all(.drivers[]; .publicId!=$d) and all(.vehicles[]; .publicId!=$v)' >/dev/null || fail "onlyAvailable con inactivos"
+expect 204 "$(req POST "/api/v1/drivers/$DR1_PID/reactivate")" >/dev/null
+expect 204 "$(req POST "/api/v1/vehicles/$VH3_PID/reactivate")" >/dev/null
+# Hallazgo de revisión: la disponibilidad se evalúa en la fecha pedida (a hoy+10 la licencia de D1, que vence en 5 días, ya venció)
+AVD=$(dplus 10)
+expect 200 "$(req GET "/api/v1/fleet/availability?date=$AVD")" | jq -e --arg p "$DR1_PID" --arg d "$AVD" '.date==$d and (.drivers[] | select(.publicId==$p) | (.available | not) and any(.issues[]; .code=="NO_VALID_LICENSE" and .blocking))' >/dev/null || fail "disponibilidad evaluada en la fecha pedida (D1 con licencia vencida a hoy+10)"
 expect 200 "$(req POST "/api/v1/drivers/$DR3_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
-ok "D1 disponible con aviso DOC_EXPIRING, D2 bloqueado (NO_VALID_LICENSE) con aviso CERT_EXPIRED, D3 UNAVAILABLE bloqueado, V1 bloqueado por documento vencido, vehículo sin documentos con aviso"
+ok "D1 disponible con aviso DOC_EXPIRING, D2 bloqueado (NO_VALID_LICENSE) con aviso CERT_EXPIRED, D3 UNAVAILABLE bloqueado, V1 bloqueado por documento vencido, vehículo sin documentos con aviso; chofer y vehículo inactivos (checkbox) bloqueados (DRIVER_INACTIVE / VEHICLE_INACTIVE) y fuera de onlyAvailable; con ?date=hoy+10 D1 queda bloqueado (NO_VALID_LICENSE)"
 
 step "documento vigente por tipo (Lote 4): la renovación supera al vencido"
 expect 200 "$(req POST "/api/v1/vehicles/$VH1_PID/documents" "{\"docType\":\"REGISTRATION\",\"docNumber\":\"MAR-NEW-$TS\",\"expiryDate\":\"$(dplus 365)\"}")" >/dev/null
@@ -1431,6 +1453,9 @@ expect 200 "$(req GET "/api/v1/vehicles?search=V$TS")" | jq -e --arg p "$VH1_PID
 # BOLA por id hijo en el mismo tenant: documento de V1 bajo la ruta de V3
 expect 404 "$(req PATCH "/api/v1/vehicles/$VH3_PID/documents/$DOC_INS" '{"docNumber":"x"}')" | jq -e '.title=="Documento no encontrado."' >/dev/null || fail "documento de otro vehículo"
 expect 404 "$(req PATCH "/api/v1/drivers/$DR1_PID/licenses/$LIC2" '{"licenseNumber":"x"}')" | jq -e '.title=="Licencia no encontrada."' >/dev/null || fail "licencia de otro chofer"
+# Hallazgo de revisión: dispositivos del chofer (la app del Lote 7 los registra; aquí solo se listan y se desactivan)
+expect 200 "$(req GET "/api/v1/drivers/$DR1_PID/devices?includeInactive=true")" | jq -e 'length==0' >/dev/null || fail "dispositivos del chofer"
+expect 404 "$(req POST "/api/v1/drivers/$DR1_PID/devices/999999/deactivate")" | jq -e '.title=="Dispositivo no encontrado."' >/dev/null || fail "dispositivo inexistente"
 # Hallazgo de revisión: editar y quitar documentos, licencias y certificaciones; el quitado deja de contar
 DOCX=$(expect 200 "$(req POST "/api/v1/vehicles/$VH1_PID/documents" "{\"docType\":\"PERMIT\",\"docNumber\":\"PER-$TS\",\"issuedDate\":\"$(dplus -10)\",\"expiryDate\":\"$(dplus 20)\"}")" | jq -r .id)
 expect 200 "$(req PATCH "/api/v1/vehicles/$VH1_PID/documents/$DOCX" "{\"docNumber\":\"EDIT-$TS\",\"clearIssuedDate\":true}")" | jq -e --arg n "EDIT-$TS" '.docNumber==$n and .issuedDate==null and .isActive' >/dev/null || fail "editar documento (clearIssuedDate)"
@@ -1451,10 +1476,12 @@ expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=LICENSE')" | jq 
 expect 200 "$(req GET "/api/v1/drivers?search=D3$TS")" | jq -e --arg d "$(dplus 365)" '.[0].licenseExpiry==$d' >/dev/null || fail "licencia quitada sigue contando en licenseExpiry"
 CERTX=$(expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/certifications" "{\"certType\":\"FORKLIFT\",\"certNumber\":\"FK-$TS\",\"expiryDate\":\"$(dplus 15)\"}")" | jq -r .id)
 expect 200 "$(req PATCH "/api/v1/drivers/$DR1_PID/certifications/$CERTX" "{\"certNumber\":\"FK2-$TS\"}")" | jq -e --arg n "FK2-$TS" '.certNumber==$n' >/dev/null || fail "editar certificación"
+expect 404 "$(req PATCH "/api/v1/drivers/$DR2_PID/certifications/$CERTX" '{"certNumber":"x"}')" | jq -e '.title=="Certificación no encontrada."' >/dev/null || fail "certificación de otro chofer"
+expect 404 "$(req POST "/api/v1/drivers/$DR2_PID/certifications/$CERTX/deactivate")" >/dev/null
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=CERTIFICATION')" | jq -e --arg k "DC-$CERTX" 'any(.[]; .rowKey==$k)' >/dev/null || fail "certificación en el panel"
 expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/certifications/$CERTX/deactivate")" | jq -e '.isActive==false' >/dev/null || fail "quitar certificación"
 expect 200 "$(req GET '/api/v1/fleet/expiring-documents?docType=CERTIFICATION')" | jq -e --arg k "DC-$CERTX" 'all(.[]; .rowKey!=$k)' >/dev/null || fail "certificación quitada sigue en el panel"
-ok "REGISTRATION renovado: el viejo queda isSuperseded, sale del panel, no bloquea y no cuenta para el próximo vencimiento; hijos bajo otro padre → 404; editar (clear de fechas, 400 de fechas) y quitar documento/licencia/certificación: deja de contar en panel, ficha y licenseExpiry"
+ok "REGISTRATION renovado: el viejo queda isSuperseded, sale del panel, no bloquea y no cuenta para el próximo vencimiento; hijos bajo otro padre → 404; editar (clear de fechas, 400 de fechas) y quitar documento/licencia/certificación: deja de contar en panel, ficha y licenseExpiry; dispositivos: lista vacía y 404 por id ajeno; certificación bajo otro chofer → 404"
 
 step "contactos, campos personalizados e historial de flota (Lote 4)"
 expect 200 "$(req POST "/api/v1/contacts/DRIVER/$DR1_ID" '{"contactType":"PHONE","value":"787-555-0142","isPrimary":true}')" >/dev/null
@@ -1493,7 +1520,31 @@ WOV_PID=$(echo "$WOV" | jq -r .publicId); WOV_NUM=$(echo "$WOV" | jq -r .number)
 expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOV_PID/status" '{"toCode":"CLOSED","odometerKm":5200}')" | jq -e --arg t "$TODAY" '.statusCode=="CLOSED" and .completedDate==$t and .odometerKm==5200' >/dev/null || fail "cerrar OT del programa por tipo"
 due "$VA_PID" "$SCHV" | jq -e --arg n "$WOV_NUM" --arg t "$TODAY" '.lastServiceKm==5200 and .lastWorkOrderNumber==$n and .lastServiceDate==$t and .state=="OK" and .currentOdometerKm==5200' >/dev/null || fail "línea base por la OT cerrada: $(due "$VA_PID" "$SCHV")"
 due "$VB_PID" "$SCHV" | jq -e '.lastServiceKm==null and .lastWorkOrderNumber==null and .state=="NO_BASELINE"' >/dev/null || fail "otra van del tipo sigue sin historial"
-ok "por vehículo: OK → DUE_SOON (≤10 %) → OVERDUE por odómetro; por tiempo OVERDUE; por tipo: NO_BASELINE hasta cerrar una OT (5200, número, fecha) sin afectar a otra van; 400 por vehículo+tipo, sin intervalo y disparador desconocido"
+# Hallazgo de revisión: el programa por tipo solo se expande a vehículos activos no dados de baja (VH2, VW y VE son vans de baja)
+expect 200 "$(req GET /api/v1/maintenance-schedules/due)" | jq -e --argjson s "$SCHV" --arg a "$VH2_PID" --arg b "$VW_PID" --arg c "$VE_PID" --arg vb "$VB_PID" 'any(.[]; .scheduleId==$s and .vehiclePublicId==$vb) and all(.[]; .scheduleId!=$s or (.vehiclePublicId!=$a and .vehiclePublicId!=$b and .vehiclePublicId!=$c))' >/dev/null || fail "el programa por tipo no debe expandirse a vans dadas de baja"
+expect 204 "$(req POST "/api/v1/vehicles/$VB_PID/deactivate")" >/dev/null
+expect 200 "$(req GET /api/v1/maintenance-schedules/due)" | jq -e --argjson s "$SCHV" --arg vb "$VB_PID" 'all(.[]; .scheduleId!=$s or .vehiclePublicId!=$vb)' >/dev/null || fail "un vehículo inactivo sale del panel preventivo"
+expect 204 "$(req POST "/api/v1/vehicles/$VB_PID/reactivate")" >/dev/null
+# Hallazgo de revisión: protección del odómetro (bajar un error tecleado, OT cerrada como piso, el cierre de una OT no baja)
+expect 200 "$(req PATCH "/api/v1/vehicles/$VA_PID" '{"currentOdometerKm":5300}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/vehicles/$VA_PID" '{"currentOdometerKm":5250}')" | jq -e '.currentOdometerKm==5250' >/dev/null || fail "corrección manual hacia abajo por encima de la última lectura"
+expect 400 "$(req PATCH "/api/v1/vehicles/$VA_PID" '{"currentOdometerKm":5100}')" | jq -e --arg m "El odómetro no puede ser menor que la última lectura registrada (5200 km el $TODAY)." "$HASM" >/dev/null || fail "la OT cerrada es piso de la corrección manual"
+WOV2_PID=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VA_PID\",\"maintenanceType\":\"CORRECTIVE\"}")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOV2_PID/status" '{"toCode":"CLOSED","odometerKm":5000}')" >/dev/null
+expect 200 "$(req GET "/api/v1/vehicles/$VA_PID")" | jq -e '.currentOdometerKm==5250' >/dev/null || fail "cerrar una OT con lectura menor no baja el odómetro"
+# Hallazgo de revisión: edición y checkbox Activo del programa (P4 c/d)
+expect 400 "$(req PATCH "/api/v1/maintenance-schedules/$SCH1" '{"trigger":"TIME"}')" | jq -e '.errors.intervalDays' >/dev/null || fail "PATCH revalida el intervalo contra el disparador resultante"
+expect 204 "$(req POST "/api/v1/maintenance-schedules/$SCH1/deactivate")" >/dev/null
+due "$VH1_PID" "$SCH1" | jq -e '. == null' >/dev/null || fail "un programa inactivo no aparece en el panel"
+expect 204 "$(req POST "/api/v1/maintenance-schedules/$SCH1/reactivate")" >/dev/null
+due "$VH1_PID" "$SCH1" | jq -e '.state=="OVERDUE"' >/dev/null || fail "el programa reactivado vuelve al panel"
+SCHX=$(expect 200 "$(req POST /api/v1/maintenance-schedules "{\"name\":\"Cambio objetivo $TS\",\"vehiclePublicId\":\"$VH1_PID\",\"trigger\":\"MILEAGE\",\"intervalKm\":1000,\"lastServiceKm\":100}")" | jq -r .id)
+expect 200 "$(req PATCH "/api/v1/maintenance-schedules/$SCHX" '{"vehicleType":"VAN"}')" | jq -e '.vehiclePublicId==null and .vehicleTypeCode=="VAN" and .lastServiceKm==null and .lastServiceDate==null' >/dev/null || fail "pasar a programa por tipo limpia el último servicio"
+expect 400 "$(req PATCH "/api/v1/maintenance-schedules/$SCHX" '{"lastServiceKm":10}')" | jq -e --arg m "El último servicio solo se captura en programas de un vehículo; en los de tipo se toma de sus órdenes de trabajo cerradas." "$HASM" >/dev/null || fail "último servicio en programa por tipo"
+expect 204 "$(req POST "/api/v1/maintenance-schedules/$SCHX/deactivate")" >/dev/null
+expect 404 "$(req PATCH /api/v1/maintenance-schedules/999999 '{"name":"x"}')" | jq -e '.title=="Programa de mantenimiento no encontrado."' >/dev/null || fail "PATCH de programa inexistente"
+expect 404 "$(req POST /api/v1/maintenance-schedules/999999/deactivate)" >/dev/null
+ok "por vehículo: OK → DUE_SOON (≤10 %) → OVERDUE por odómetro; por tiempo OVERDUE; por tipo: NO_BASELINE hasta cerrar una OT (5200, número, fecha) sin afectar a otra van; 400 por vehículo+tipo, sin intervalo y disparador desconocido; PATCH revalida el intervalo contra el disparador (400), vehículo → tipo limpia el último servicio (400 si se captura en uno por tipo), inactivar/reactivar lo saca y lo regresa al panel, 404 por programa inexistente; el programa por tipo no se expande a vans dadas de baja ni a una inactiva (checkbox); odómetro: la corrección manual baja un error (5300 → 5250) pero no bajo la OT cerrada (5200, 400) y cerrar una OT con lectura menor (5000) no lo baja"
 
 step "órdenes de trabajo (Lote 4): número, tareas, costos, cierre y efecto en el vehículo"
 WO1=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VH1_PID\",\"scheduleId\":$SCH1,\"vendor\":\"Taller $TS\"}")")
@@ -1507,7 +1558,11 @@ W=$(expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WO1_PID/tasks" '{"d
 echo "$W" | jq -e '.laborCost==35 and .partsCost==55 and .totalCost==90 and .costsFromTasks' >/dev/null || fail "costos sumados de las tareas: $W"
 TK2=$(echo "$W" | jq -r --argjson a "$TK1" '[.tasks[] | select(.id!=$a)][0].id')
 expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WO1_PID" '{"laborCost":10}')" | jq -e --arg m "La orden tiene tareas: los costos de labor y partes se calculan con la suma de sus tareas." "$HASM" >/dev/null || fail "costos del encabezado con tareas"
-expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WO1_PID" '{"number":"OT-1"}')" >/dev/null
+expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WO1_PID" '{"number":"OT-1"}')" | jq -e --arg m "El número y el vehículo de la orden de trabajo se fijan al crearla." "$HASM" >/dev/null || fail "número de la OT fijo"
+expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WO1_PID" "{\"vehiclePublicId\":\"$VH3_PID\"}")" | jq -e --arg m "El número y el vehículo de la orden de trabajo se fijan al crearla." "$HASM" >/dev/null || fail "vehículo de la OT fijo"
+expect 409 "$(req PATCH "/api/v1/maintenance-work-orders/$WO1_PID" '{"notes":"x","rowVersion":"AAAAAAAAAAA="}')" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en el PATCH de la OT"
+expect 409 "$(req POST "/api/v1/maintenance-work-orders/$WO1_PID/status" '{"toCode":"IN_PROGRESS","rowVersion":"AAAAAAAAAAA="}')" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en el estatus de la OT"
+expect 200 "$(req GET "/api/v1/vehicles/$VH1_PID")" | jq -e '.statusCode=="ACTIVE"' >/dev/null || fail "el 409 de la OT no debe dejar el vehículo en MAINTENANCE"
 expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WO1_PID/status" '{"toCode":"IN_PROGRESS"}')" | jq -e '.statusCode=="IN_PROGRESS"' >/dev/null || fail "OT IN_PROGRESS"
 expect 200 "$(req GET "/api/v1/vehicles/$VH1_PID")" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "el vehículo pasa a MAINTENANCE"
 expect 200 "$(req GET /api/v1/fleet/availability)" | jq -e --arg p "$VH1_PID" --arg n "$WO1_NUM" '.vehicles[] | select(.publicId==$p) | (.available | not) and any(.issues[]; .code=="WORK_ORDER_IN_PROGRESS" and (.message | contains($n)))' >/dev/null || fail "WORK_ORDER_IN_PROGRESS en disponibilidad"
@@ -1541,10 +1596,34 @@ expect 200 "$(req GET "/api/v1/vehicles/$VH3_PID")" | jq -e '.statusCode=="MAINT
 expect 200 "$(req GET /api/v1/fleet/availability)" | jq -e --arg p "$VH3_PID" --arg n "$WOC_NUM" '.vehicles[] | select(.publicId==$p) | any(.issues[]; .code=="WORK_ORDER_IN_PROGRESS" and (.message | contains($n)))' >/dev/null || fail "WORK_ORDER_IN_PROGRESS con el número de la otra OT"
 expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOC_PID/status" '{"toCode":"CLOSED"}')" >/dev/null
 expect 200 "$(req GET "/api/v1/vehicles/$VH3_PID")" | jq -e '.statusCode=="ACTIVE"' >/dev/null || fail "al cerrar la última OT en proceso el vehículo vuelve a ACTIVE"
+# Hallazgo de revisión: MAINTENANCE puesto a mano + OT en proceso → al cerrar la OT el vehículo vuelve a ACTIVE
+VM_PID=$(expect 200 "$(req POST /api/v1/vehicles "$(vb "VM$TS")")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/vehicles/$VM_PID/status" '{"toCode":"MAINTENANCE","comment":"a mano"}')" >/dev/null
+WOM_PID=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VM_PID\",\"maintenanceType\":\"CORRECTIVE\"}")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOM_PID/status" '{"toCode":"IN_PROGRESS"}')" >/dev/null
+expect 200 "$(req GET "/api/v1/vehicles/$VM_PID")" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "MAINTENANCE a mano se conserva al iniciar la OT"
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOM_PID/status" '{"toCode":"CLOSED"}')" >/dev/null
+expect 200 "$(req GET "/api/v1/vehicles/$VM_PID")" | jq -e '.statusCode=="ACTIVE"' >/dev/null || fail "MAINTENANCE puesto a mano vuelve a ACTIVE al cerrar la OT"
+# Hallazgo de revisión: vehículo dado de baja con OT en proceso → cerrar la OT no toca su estatus ni su odómetro
+VX_PID=$(expect 200 "$(req POST /api/v1/vehicles "$(vb "VX$TS" '{"currentOdometerKm":1000}')")" | jq -r .publicId)
+WOX_PID=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VX_PID\",\"maintenanceType\":\"CORRECTIVE\"}")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOX_PID/status" '{"toCode":"IN_PROGRESS"}')" >/dev/null
+expect 200 "$(req POST "/api/v1/vehicles/$VX_PID/status" '{"toCode":"INACTIVE","comment":"baja"}')" >/dev/null
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOX_PID/status" '{"toCode":"CLOSED","odometerKm":9000}')" >/dev/null
+expect 200 "$(req GET "/api/v1/vehicles/$VX_PID")" | jq -e '.statusCode=="INACTIVE" and .currentOdometerKm==1000' >/dev/null || fail "vehículo terminal: cerrar la OT no cambia su estatus ni su odómetro"
 # Hallazgo de revisión: quitar tareas (deja de contar para el cierre y recalcula costos), costos negativos, cierre con fecha futura
 WOD_PID=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VH3_PID\",\"maintenanceType\":\"CORRECTIVE\"}")" | jq -r .publicId)
 expect 400 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/tasks" '{"description":"x","partCost":-1}')" | jq -e --arg m "Los costos no pueden ser negativos." "$HASM" >/dev/null || fail "costo negativo en tarea"
 expect 400 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VH3_PID\",\"maintenanceType\":\"CORRECTIVE\",\"laborCost\":-5}")" | jq -e --arg m "Los costos no pueden ser negativos." "$HASM" >/dev/null || fail "costo negativo en el encabezado"
+# Hallazgo de revisión: sin tareas los costos se capturan en el encabezado (TotalCost computado en SQL); precisión (18,4)
+WOE=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$VH3_PID\",\"maintenanceType\":\"CORRECTIVE\",\"laborCost\":100.5,\"partsCost\":49.5}")")
+echo "$WOE" | jq -e '.laborCost==100.5 and .partsCost==49.5 and .totalCost==150 and (.costsFromTasks | not)' >/dev/null || fail "costos capturados en el encabezado: $WOE"
+WOE_PID=$(echo "$WOE" | jq -r .publicId)
+expect 200 "$(req PATCH "/api/v1/maintenance-work-orders/$WOE_PID" '{"partsCost":10}')" | jq -e '.laborCost==100.5 and .partsCost==10 and .totalCost==110.5' >/dev/null || fail "PATCH de costos del encabezado sin tareas"
+expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WOE_PID" '{"laborCost":1.23456}')" | jq -e '.errors.laborCost[0] | startswith("El valor admite como máximo 4 decimales")' >/dev/null || fail "precisión del costo de la OT"
+expect 400 "$(req PATCH "/api/v1/maintenance-work-orders/$WOE_PID" '{"partsCost":100000000000000}')" | jq -e '.errors.partsCost' >/dev/null || fail "magnitud del costo de la OT"
+expect 400 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/tasks" '{"description":"x","laborCost":1.23456}')" | jq -e '.errors.laborCost[0] | startswith("El valor admite como máximo 4 decimales")' >/dev/null || fail "precisión del costo de la tarea"
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOE_PID/status" '{"toCode":"CANCELLED","comment":"smoke costos"}')" >/dev/null
 TD1=$(expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/tasks" '{"description":"A","partCost":40,"laborCost":25,"isCompleted":true}')" | jq -r '.tasks[0].id')
 TD2=$(expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/tasks" '{"description":"B","partCost":15,"laborCost":10}')" | jq -r --argjson a "$TD1" '[.tasks[] | select(.id!=$a)][0].id')
 expect 422 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/status" '{"toCode":"CLOSED"}')" >/dev/null
@@ -1556,7 +1635,7 @@ expect 400 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/status" "{\"toC
 expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOD_PID/status" '{"toCode":"CLOSED"}')" | jq -e '.statusCode=="CLOSED"' >/dev/null || fail "cerrar tras quitar la tarea pendiente"
 # Hallazgo de revisión: to=9999-12-31 no desborda (antes 500)
 expect 200 "$(req GET "/api/v1/maintenance-work-orders?vehiclePublicId=$VH3_PID&to=9999-12-31")" | jq -e --arg p "$WOD_PID" 'any(.[]; .publicId==$p)' >/dev/null || fail "filtro to=9999-12-31"
-ok "OT-##### OPEN, programa ajeno 400, tareas suman costos (400 al editarlos), IN_PROGRESS → MAINTENANCE + WORK_ORDER_IN_PROGRESS, cierre 422 (tarea) / 400 (odómetro) / CLOSED → ACTIVE, odómetro y programa al día, 422 tras cerrar, historial, 409 en vehículo de baja; cancelar devuelve a ACTIVE; dos en proceso: sigue en MAINTENANCE hasta cerrar la última; quitar tareas (recalcula, deja cerrar, idempotente, 404 ajena), costos negativos y cierre futuro 400, to=9999-12-31 sin 500"
+ok "OT-##### OPEN, programa ajeno 400, tareas suman costos (400 al editarlos), número y vehículo fijos (400), IN_PROGRESS → MAINTENANCE + WORK_ORDER_IN_PROGRESS, cierre 422 (tarea) / 400 (odómetro) / CLOSED → ACTIVE, odómetro y programa al día, 422 tras cerrar, historial, 409 en vehículo de baja; cancelar devuelve a ACTIVE; dos en proceso: sigue en MAINTENANCE hasta cerrar la última; quitar tareas (recalcula, deja cerrar, idempotente, 404 ajena), costos negativos y cierre futuro 400, to=9999-12-31 sin 500; 409 por rowVersion obsoleto (PATCH y estatus, sin tocar el vehículo); MAINTENANCE puesto a mano vuelve a ACTIVE al cerrar la OT; un vehículo dado de baja no cambia de estatus ni de odómetro al cerrar su OT; costos del encabezado sin tareas (150 → 110.5) y precisión 18,4 en OT y tarea"
 
 step "órdenes de trabajo (Lote 4): 8 altas simultáneas con números consecutivos"
 TMPW=$(mktemp -d)
@@ -1568,7 +1647,9 @@ WO8_PID=$(sed '$d' "$TMPW/1" | jq -r .publicId); rm -rf "$TMPW"
 [[ $(echo "$WNUMS" | uniq | wc -l) -eq 8 ]] || fail "números de OT repetidos: $WNUMS"
 FIRSTW=$(seqof "$(echo "$WNUMS" | head -n1)"); LASTW=$(seqof "$(echo "$WNUMS" | tail -n1)")
 [[ $((LASTW - FIRSTW)) -eq 7 ]] || fail "números de OT no consecutivos: $WNUMS"
-ok "8 × 200, sin 409 ni 500, números distintos y consecutivos ($(echo "$WNUMS" | head -n1) … $(echo "$WNUMS" | tail -n1))"
+# Hallazgo de revisión: solo IN_PROGRESS inhabilita; V3 tiene ahora 8 OT en OPEN y sigue disponible
+expect 200 "$(req GET /api/v1/fleet/availability)" | jq -e --arg p "$VH3_PID" '.vehicles[] | select(.publicId==$p) | .available and all(.issues[]; .code!="WORK_ORDER_IN_PROGRESS")' >/dev/null || fail "una OT en OPEN no inhabilita el vehículo"
+ok "8 × 200, sin 409 ni 500, números distintos y consecutivos ($(echo "$WNUMS" | head -n1) … $(echo "$WNUMS" | tail -n1)); con 8 OT en OPEN el vehículo sigue disponible"
 
 step "bitácora de combustible (Lote 4): km/L, costo/km y odómetro protegido"
 fl() { jq -cn --arg v "$VH1_PID" --arg f "$1" --argjson o "$2" --argjson l "${3:-40}" --argjson c "${4:-60}" '{vehiclePublicId:$v,fillDateUtc:$f,odometerKm:$o,liters:$l,totalCost:$c,station:"Puma"}'; }
@@ -1577,6 +1658,16 @@ F2=$(expect 200 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 120)" 5600)")" | jq 
 F3=$(expect 200 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 60)" 6000 40 64)")" | jq -r .id)
 FP=$(expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID")")
 echo "$FP" | jq -e --argjson a "$F1" --argjson b "$F2" --argjson c "$F3" '(.items[] | select(.id==$a) | .kmPerLiter==null) and (.items[] | select(.id==$b) | .distanceKm==400 and .kmPerLiter==10 and .costPerKm==0.15) and (.items[] | select(.id==$c) | .kmPerLiter==10 and .costPerKm==0.16) and .summary[0].kmPerLiter==10 and .total==3' >/dev/null || fail "eficiencia: $(echo "$FP" | jq -c '[.items[] | {id,odometerKm,distanceKm,kmPerLiter,costPerKm}], .summary')"
+# Hallazgo de revisión: paginación, rango (fromUtc inclusivo, toUtc exclusivo) y eficiencia sobre la serie completa, no la página
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID&take=1")" | jq -e --argjson c "$F3" '.total==3 and (.items|length)==1 and .items[0].id==$c and .items[0].distanceKm==400 and .items[0].kmPerLiter==10 and .summary[0].kmPerLiter==10' >/dev/null || fail "eficiencia calculada sobre la página"
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID&skip=1&take=1")" | jq -e --argjson b "$F2" '(.items|length)==1 and .items[0].id==$b' >/dev/null || fail "skip"
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID&fromUtc=$(mago 90)")" | jq -e --argjson c "$F3" '.total==1 and .items[0].id==$c and .items[0].distanceKm==400 and .items[0].kmPerLiter==10' >/dev/null || fail "fromUtc recorta la serie de eficiencia"
+F3D=$(echo "$FP" | jq -r --argjson c "$F3" '.items[] | select(.id==$c) | .fillDateUtc')
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID&toUtc=$F3D")" | jq -e '.total==2' >/dev/null || fail "toUtc debe ser exclusivo"
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID&fromUtc=$F3D")" | jq -e '.total==1' >/dev/null || fail "fromUtc debe ser inclusivo"
+expect 400 "$(req GET "/api/v1/fuel-logs?take=0")" | jq -e --arg m "take debe estar entre 1 y 500." "$HASM" >/dev/null || fail "take=0"
+expect 400 "$(req GET "/api/v1/fuel-logs?take=501")" | jq -e --arg m "take debe estar entre 1 y 500." "$HASM" >/dev/null || fail "take=501"
+expect 400 "$(req GET "/api/v1/fuel-logs?skip=-1")" | jq -e --arg m "skip no puede ser negativo." "$HASM" >/dev/null || fail "skip negativo"
 expect 400 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 90)" 5500)")" | jq -e '.title | contains("es menor que la de una carga anterior del mismo vehículo")' >/dev/null || fail "odómetro no monótono"
 expect 400 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 30)" 6100 0)")" | jq -e '.errors.liters' >/dev/null || fail "0 litros"
 expect 400 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 30)" 6100 1.23456)")" | jq -e '.errors.liters[0] | startswith("El valor admite como máximo 3 decimales")' >/dev/null || fail "precisión de litros"
@@ -1593,7 +1684,7 @@ FD=$(expect 200 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 20)" 6100 | jq -c --
 echo "$FD" | jq -e --arg d "$DR1_PID" '.driverPublicId==$d and (.driverName | length > 0)' >/dev/null || fail "carga con chofer: $FD"
 expect 200 "$(req GET "/api/v1/fuel-logs?driverPublicId=$DR1_PID")" | jq -e --argjson f "$(echo "$FD" | jq .id)" '.total==1 and .items[0].id==$f' >/dev/null || fail "filtro por chofer"
 expect 200 "$(req PATCH "/api/v1/fuel-logs/$(echo "$FD" | jq -r .id)" '{"clearDriver":true}')" | jq -e '.driverPublicId==null' >/dev/null || fail "clearDriver"
-ok "km/L 10 y costo/km 0.15/0.16 sobre la serie, 400 por odómetro no monótono / 0 L / precisión / fecha futura, 409 en vehículo de baja, odómetro sube a 6000 y la corrección manual no baja de la última lectura; desactivar deja de contar; carga con chofer, filtro por chofer y clearDriver"
+ok "km/L 10 y costo/km 0.15/0.16 sobre la serie, 400 por odómetro no monótono / 0 L / precisión / fecha futura, 409 en vehículo de baja, odómetro sube a 6000 y la corrección manual no baja de la última lectura; desactivar deja de contar; carga con chofer, filtro por chofer y clearDriver; paginación (take/skip, 400 fuera de rango), fromUtc inclusivo y toUtc exclusivo, y km/L calculado sobre la serie completa aunque la página o el rango solo traigan la última carga"
 
 step "bitácora de combustible (Lote 4): 8 cargas simultáneas del mismo vehículo (bloqueo de fila del odómetro)"
 VF_PID=$(expect 200 "$(req POST /api/v1/vehicles "$(vb "VF$TS" '{"currentOdometerKm":1000}')")" | jq -r .publicId)
@@ -1664,8 +1755,17 @@ TR1=$(expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates" "{\"specialSe
 expect 409 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates" "{\"specialServiceTypeId\":$VAGON,\"rate\":70}")" | jq -e --arg n "Vagón $TS" '.title | contains($n)' >/dev/null || fail "tarifa por viaje repetida"
 expect 400 "$(req PATCH "/api/v1/drivers/$DR1_PID/trip-rates/$TR1" "{\"rate\":75,\"specialServiceTypeId\":$MONTA}")" | jq -e --arg m "El tipo de viaje se fija al crear la tarifa; quite la fila y agregue una con el tipo correcto." "$HASM" >/dev/null || fail "tipo de viaje fijo"
 expect 400 "$(req POST "/api/v1/drivers/$DT3_PID/trip-rates" '{"specialServiceTypeId":1,"rate":10}' "$T3")" | jq -e --arg m "Sin servicios especiales: agréguelos en Clientes y contratos antes de configurar tarifas por viaje." "$HASM" >/dev/null || fail "tenant sin servicios especiales"
+# Hallazgo de revisión: tipo de viaje inexistente (404) o inactivo (400), en tarifas por viaje y en viajes
+expect 404 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates" '{"specialServiceTypeId":999999,"rate":10}')" | jq -e '.title=="Tipo de servicio especial no encontrado."' >/dev/null || fail "tipo de viaje inexistente (tarifa)"
+expect 404 "$(req POST "/api/v1/drivers/$DR1_PID/trips" '{"specialServiceTypeId":999999}')" | jq -e '.title=="Tipo de servicio especial no encontrado."' >/dev/null || fail "tipo de viaje inexistente (viaje)"
+SSX=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/special-services" "{\"newTypeName\":\"Inactivo $TS\",\"rate\":1}")")
+SSX_TYPE=$(echo "$SSX" | jq -r .typeId)
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/special-services/$(echo "$SSX" | jq -r .id)/close" '{}')" >/dev/null
+expect 200 "$(req POST "/api/v1/special-service-types/$SSX_TYPE/deactivate")" >/dev/null
+expect 400 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates" "{\"specialServiceTypeId\":$SSX_TYPE,\"rate\":10}")" | jq -e --arg m "El tipo de servicio especial está inactivo; reactívelo o elija otro." "$HASM" >/dev/null || fail "tipo de viaje inactivo (tarifa)"
+expect 400 "$(req POST "/api/v1/drivers/$DR1_PID/trips" "{\"specialServiceTypeId\":$SSX_TYPE}")" | jq -e --arg m "El tipo de servicio especial está inactivo; reactívelo o elija otro." "$HASM" >/dev/null || fail "tipo de viaje inactivo (viaje)"
 expect 409 "$(req POST "/api/v1/special-service-types/$VAGON/deactivate")" | jq -e '.title=="El tipo tiene tarifas por viaje vigentes en 1 chofer(es); ciérrelas antes de inactivarlo."' >/dev/null || fail "inactivar un tipo con tarifas de chofer"
-ok "tipos de viaje = servicios especiales activos (solo id y nombre, sin clientsUsing), alta 75, 409 repetida, tipo fijo, 'Sin servicios especiales…' en T3, 409 al inactivar un tipo con tarifas vigentes"
+ok "tipos de viaje = servicios especiales activos (solo id y nombre, sin clientsUsing), alta 75, 409 repetida, tipo fijo, 'Sin servicios especiales…' en T3, 409 al inactivar un tipo con tarifas vigentes, tipo inexistente 404 e inactivo 400 (en tarifas y en viajes)"
 
 step "viajes del chofer (Lote 4): monto congelado"
 TP1=$(expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trips" "{\"specialServiceTypeId\":$VAGON}")")
@@ -1675,6 +1775,8 @@ TR2=$(expect 200 "$(req PATCH "/api/v1/drivers/$DR1_PID/trip-rates/$TR1" '{"rate
 [[ "$TR2" =~ ^[0-9]+$ && "$TR2" != "$TR1" ]] || fail "editar la tarifa por viaje debe abrir una fila nueva ($TR1 → $TR2)"
 expect 200 "$(req GET "/api/v1/drivers/$DR1_PID/rates?includeHistory=true")" | jq -e --argjson a "$TR1" --argjson b "$TR2" --argjson v "$VAGON" --arg t "$TODAY" '[.tripRates[] | select(.specialServiceTypeId==$v)] | length==2 and any(.[]; .id==$a and .effectiveTo==$t and (.isCurrent | not)) and any(.[]; .id==$b and .rate==80 and .isCurrent)' >/dev/null || fail "historial de la tarifa por viaje"
 expect 400 "$(req PATCH "/api/v1/drivers/$DR1_PID/trip-rates/$TR2" "{\"rate\":81,\"effectiveFrom\":\"$YESTERDAY\"}")" | jq -e '.errors.effectiveFrom' >/dev/null || fail "tarifa por viaje en el pasado"
+expect 404 "$(req PATCH "/api/v1/drivers/$DR2_PID/trip-rates/$TR2" '{"rate":5}')" | jq -e '.title=="Tarifa no encontrada."' >/dev/null || fail "tarifa por viaje de otro chofer"
+expect 404 "$(req POST "/api/v1/drivers/$DR2_PID/trip-rates/$TR2/close")" >/dev/null
 expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trips" "{\"specialServiceTypeId\":$VAGON}")" | jq -e '.amount==80' >/dev/null || fail "viaje nuevo a 80"
 # Hallazgo de revisión: se congela la tarifa vigente en tripDate (ayer no había ninguna: la de 75 empezó hoy)
 expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trips" "{\"specialServiceTypeId\":$VAGON,\"tripDate\":\"$YESTERDAY\"}")" | jq -e --arg y "$YESTERDAY" '.tripDate==$y and .amount==0 and .rateMissing' >/dev/null || fail "viaje de ayer: se aplica la tarifa vigente en tripDate (ninguna)"
@@ -1695,7 +1797,7 @@ expect 204 "$(req POST "/api/v1/drivers/$DR2_PID/reactivate")" >/dev/null
 expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates/$TR2/close")" | jq -e --arg t "$TODAY" '.effectiveTo==$t' >/dev/null || fail "cerrar la tarifa por viaje"
 expect 409 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates/$TR2/close")" | jq -e '.title=="La tarifa ya está cerrada; agregue una nueva si necesita volver a pagarla."' >/dev/null || fail "cerrar dos veces la tarifa por viaje"
 expect 200 "$(req POST "/api/v1/drivers/$DR1_PID/trip-rates" "{\"specialServiceTypeId\":$VAGON,\"rate\":80}")" >/dev/null   # se restituye para los pasos siguientes
-ok "viaje congelado en 75 aunque la tarifa suba a 80, sin tarifa → 0 con rateMissing, 400 futura/sin tipo, cancelar (CANCELLED + isActive=false, 422 la segunda vez), 404 bajo otro chofer, vigentes 2 / con cancelados 3; tarifa por viaje: editar = cerrar y abrir (historial), 400 en el pasado, cerrar (409 la segunda vez); viaje de ayer sin tarifa (se aplica la vigente en tripDate); chofer inactivo admite tarifas y viajes"
+ok "viaje congelado en 75 aunque la tarifa suba a 80, sin tarifa → 0 con rateMissing, 400 futura/sin tipo, cancelar (CANCELLED + isActive=false, 422 la segunda vez), 404 bajo otro chofer, vigentes 2 / con cancelados 3; tarifa por viaje: editar = cerrar y abrir (historial), 400 en el pasado, cerrar (409 la segunda vez); viaje de ayer sin tarifa (se aplica la vigente en tripDate); chofer inactivo admite tarifas y viajes; tarifa por viaje bajo otro chofer → 404"
 
 step "entrega especial con chofer (Lote 4 sobre el Lote 3)"
 SSN=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/special-services" "{\"typeId\":$VAGON,\"rate\":150}")" | jq -r .id)
@@ -1732,6 +1834,21 @@ LASTS=$(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderN
 expect 409 "$(req POST /api/v1/orders "$(spb "{\"driverPublicId\":\"$DR2_PID\"}")")" | jq -e '.title | startswith("El chofer no está disponible para despacho: ")' >/dev/null || fail "chofer no disponible"
 [[ $(ocount) -eq $N0 ]] || fail "el 409 de disponibilidad dejó una orden"
 [[ $(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderNumber)") -eq $((LASTS + 1)) ]] || fail "el 409 de disponibilidad dejó hueco en la numeración"
+# Hallazgo de revisión: un chofer inactivo (checkbox) no se asigna a una entrega especial
+expect 204 "$(req POST "/api/v1/drivers/$DR3_PID/deactivate")" >/dev/null
+expect 409 "$(req POST /api/v1/orders "$(spb "{\"driverPublicId\":\"$DR3_PID\"}")")" | jq -e '.title=="El chofer no está disponible para despacho: El chofer está inactivo."' >/dev/null || fail "entrega especial con chofer inactivo"
+expect 204 "$(req POST "/api/v1/drivers/$DR3_PID/reactivate")" >/dev/null
+# Hallazgo de revisión: en POST /orders el único guardián de trips.dispatch es el servicio (PrepareAsync): 403 sin orden ni hueco
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Captura $TS\",\"permissions\":[\"orders.view\",\"orders.create\",\"clients.read\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"captura$TS@teikem.local\",\"fullName\":\"Captura\",\"password\":\"$PASS\",\"roles\":[\"Captura $TS\"]}")" >/dev/null
+TCAP=$(login "captura$TS@teikem.local" "$PASS")
+LASTS=$(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderNumber)"); N0=$(ocount)
+expect 403 "$(req POST /api/v1/orders "$(spb "{\"driverPublicId\":\"$DR1_PID\"}")" "$TCAP")" | jq -e '.title=="Falta el permiso '"'"'trips.dispatch'"'"'."' >/dev/null || fail "alta con chofer sin trips.dispatch"
+[[ $(ocount) -eq $N0 ]] || fail "el 403 de trips.dispatch dejó una orden"
+[[ $(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderNumber)") -eq $((LASTS + 1)) ]] || fail "el 403 de trips.dispatch dejó hueco en la numeración"
+# Hallazgo de revisión: rowVersion obsoleto en la asignación → 409 y la orden sigue con su chofer
+expect 409 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DR1_PID\",\"rowVersion\":\"AAAAAAAAAAA=\"}")" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en la asignación"
+expect 200 "$(req GET "/api/v1/orders/$SP4_PID")" | jq -e --arg p "$DR3_PID" '.assignedDriverPublicId==$p' >/dev/null || fail "el 409 de rowVersion cambió el chofer"
 # Reasignación
 expect 200 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DR1_PID\"}")" | jq -e --arg p "$DR1_PID" '.assignedDriverPublicId==$p and .status=="IN_TRANSIT"' >/dev/null || fail "reasignar a D1"
 expect 200 "$(req GET "/api/v1/drivers/$DR3_PID/trips?includeCancelled=true")" | jq -e --arg o "$SP4_PID" '[.[] | select(.orderPublicId==$o)] | length==1 and .[0].statusCode=="CANCELLED" and .[0].isActive==false' >/dev/null || fail "el viaje de D3 queda cancelado"
@@ -1746,6 +1863,9 @@ RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); T
 expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
 expect 403 "$(req POST "/api/v1/orders/$SP4_PID/driver" "{\"driverPublicId\":\"$DR3_PID\"}")" | jq -e '.code=="module_disabled"' >/dev/null || fail "asignar chofer con CATALOG apagado"
 expect 403 "$(req GET /api/v1/vehicles)" | jq -e '.code=="module_disabled"' >/dev/null || fail "flota con CATALOG apagado"
+for P in /api/v1/driver-pay-policy "/api/v1/drivers/$DR1_PID/trips" /api/v1/maintenance-schedules /api/v1/fuel-logs /api/v1/dispatch-zones; do
+  expect 403 "$(req GET "$P")" | jq -e '.code=="module_disabled"' >/dev/null || fail "$P con CATALOG apagado"
+done
 expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
 # Hallazgo de revisión: en un lateral (o después de IN_TRANSIT) no se asigna ni reasigna; desde DRAFT se confirma y avanza
 expect 200 "$(req POST "/api/v1/orders/$SP4_PID/status" '{"toCode":"ON_HOLD","comment":"smoke"}')" | jq -e '.status=="ON_HOLD"' >/dev/null || fail "entrega especial en ON_HOLD"
@@ -1762,7 +1882,7 @@ expect 200 "$(req PUT '/api/v1/status/lateral-entries/TRANSPORT_ORDER?statusDoma
 expect 200 "$(req POST "/api/v1/orders/$SP4_PID/cancel" '{"comment":"cliente canceló"}')" | jq -e '.status=="CANCELLED"' >/dev/null || fail "cancelar la entrega especial"
 expect 200 "$(req GET "/api/v1/drivers/$DR1_PID/trips?includeCancelled=true")" | jq -e --arg o "$SP4_PID" '[.[] | select(.orderPublicId==$o)] | length==1 and .[0].statusCode=="CANCELLED" and .[0].isActive==false' >/dev/null || fail "cancelar la orden cancela su viaje"
 expect 200 "$(req GET "/api/v1/orders/$SP4_PID")" | jq -e '.assignedDriverPublicId==null' >/dev/null || fail "la orden cancelada queda sin chofer vigente"
-ok "crédito excedido 422 (sin orden, viaje ni hueco), override 403/200 con bitácora, alta con chofer hasta IN_TRANSIT (5 pasos) con viaje de 80, 400/409 sin orden ni hueco, reasignación (cancela el viaje anterior, un solo vigente), 409/422/403/404, 422 en lateral, asignación desde DRAFT (override 403, confirma y avanza 5 pasos), CATALOG apagado 403, cancelar orden → cancela su viaje"
+ok "crédito excedido 422 (sin orden, viaje ni hueco), override 403/200 con bitácora, alta con chofer hasta IN_TRANSIT (5 pasos) con viaje de 80, 400/409 sin orden ni hueco, 409 con chofer inactivo (checkbox), reasignación (cancela el viaje anterior, un solo vigente), 409/422/403/404, 422 en lateral, asignación desde DRAFT (override 403, confirma y avanza 5 pasos), CATALOG apagado 403, cancelar orden → cancela su viaje; alta con chofer sin trips.dispatch 403 (sin orden ni hueco); asignación con rowVersion obsoleto 409; CATALOG apagado 403 también en política de pago, viajes, programas, combustible y zonas"
 
 step "eliminar chofer (Lote 4): baja definitiva sin borrar historial"
 DDR3=$(expect 200 "$(req POST "/api/v1/drivers/$DR3_PID/delivery-rates" '{"serviceType":"STANDARD","packageType":"BOX","rate":5}')" | jq -r .id)
@@ -1810,7 +1930,14 @@ expect 403 "$(req POST /api/v1/fuel-logs "$(fl "$(mago 5)" 7000)" "$T8")" >/dev/
 expect 200 "$(req GET /api/v1/drivers '' "$T2")" >/dev/null
 expect 403 "$(req POST "/api/v1/drivers/$DR1_PID/delivery-rates" '{"serviceType":"STANDARD","packageType":"ENVELOPE","rate":1}' "$TBILL")" >/dev/null
 expect 200 "$(req GET "/api/v1/drivers/$DR1_PID/rates" '' "$TBILL")" >/dev/null
-ok "solo fleet.view: lectura 200, escritura 403 (PERMISSION_DENIED), tarifas e historial de viajes 403; fleet.manage sin fleet.maintenance: OT/combustible 403; Despachador lee choferes; Facturación lee tarifas pero no las cambia"
+# Hallazgo de revisión: driverpay.view sin driverpay.manage no cambia la política ni los viajes; fleet.manage sin fleet.maintenance no crea programas
+expect 403 "$(req PATCH /api/v1/driver-pay-policy '{"payoutFormula":"DELIVERY_PLUS_ATTEMPTS"}' "$TBILL")" >/dev/null
+expect 403 "$(req POST /api/v1/driver-pay-policy/attempt-levels '' "$TBILL")" >/dev/null
+expect 200 "$(req GET /api/v1/driver-pay-policy '' "$TBILL")" >/dev/null
+expect 403 "$(req POST "/api/v1/drivers/$DR1_PID/trips" "{\"specialServiceTypeId\":$VAGON}" "$TBILL")" >/dev/null
+expect 403 "$(req POST "/api/v1/drivers/$DR1_PID/trips/$TP1_PID/cancel" '' "$TBILL")" >/dev/null
+expect 403 "$(req POST /api/v1/maintenance-schedules "{\"name\":\"X $TS\",\"vehiclePublicId\":\"$VH1_PID\",\"trigger\":\"MILEAGE\",\"intervalKm\":5000}" "$T8")" >/dev/null
+ok "solo fleet.view: lectura 200, escritura 403 (PERMISSION_DENIED), tarifas e historial de viajes 403; fleet.manage sin fleet.maintenance: OT/combustible 403; Despachador lee choferes; Facturación lee tarifas pero no las cambia; Facturación (driverpay.view) no cambia la política ni crea o cancela viajes (403); fleet.manage sin fleet.maintenance tampoco crea programas"
 
 step "aislamiento entre tenants y BOLA por id hijo (Lote 4)"
 expect 404 "$(req GET "/api/v1/vehicles/$VH1_PID" '' "$T3")" >/dev/null
@@ -1823,6 +1950,16 @@ expect 404 "$(req POST "/api/v1/contacts/DRIVER/$DR1_ID" '{"contactType":"PHONE"
 expect 200 "$(req GET /api/v1/fleet/expiring-documents '' "$T3")" | jq -e 'length==0' >/dev/null || fail "documentos de otro tenant visibles"
 expect 200 "$(req GET /api/v1/fleet/availability '' "$T3")" | jq -e --arg p "$DT3_PID" '(.vehicles | length)==0 and all(.drivers[]; .publicId==$p)' >/dev/null || fail "disponibilidad con datos ajenos"
 expect 200 "$(req GET "/api/v1/fuel-logs" '' "$T3")" | jq -e '.total==0' >/dev/null || fail "combustible de otro tenant visible"
+# Hallazgo de revisión: recursos con id entero sin padre (carga, programa, zona) → su única barrera es el filtro de tenant
+expect 404 "$(req PATCH "/api/v1/fuel-logs/$F1" '{"station":"x"}' "$T3")" | jq -e '.title=="Carga de combustible no encontrada."' >/dev/null || fail "PATCH de carga de otro tenant"
+expect 404 "$(req POST "/api/v1/fuel-logs/$F1/deactivate" '' "$T3")" | jq -e '.title=="Carga de combustible no encontrada."' >/dev/null || fail "desactivar carga de otro tenant"
+expect 404 "$(req PATCH "/api/v1/maintenance-schedules/$SCH1" '{"name":"x"}' "$T3")" | jq -e '.title=="Programa de mantenimiento no encontrado."' >/dev/null || fail "PATCH de programa de otro tenant"
+expect 404 "$(req POST "/api/v1/maintenance-schedules/$SCH1/deactivate" '' "$T3")" >/dev/null
+expect 404 "$(req PATCH "/api/v1/dispatch-zones/$ZN_ID" '{"name":"x"}' "$T3")" | jq -e '.title=="Zona de despacho no encontrada."' >/dev/null || fail "PATCH de zona de otro tenant"
+expect 404 "$(req POST "/api/v1/dispatch-zones/$ZN_ID/deactivate" '' "$T3")" >/dev/null
+expect 200 "$(req GET "/api/v1/fuel-logs?vehiclePublicId=$VH1_PID")" | jq -e --argjson f "$F1" 'any(.items[]; .id==$f and .isActive and .station=="Puma")' >/dev/null || fail "la carga del demo cambió desde otro tenant"
+expect 200 "$(req GET /api/v1/maintenance-schedules)" | jq -e --argjson s "$SCH1" --arg n "Aceite 5000 $TS" 'any(.[]; .id==$s and .isActive and .name==$n)' >/dev/null || fail "el programa del demo cambió desde otro tenant"
+expect 200 "$(req GET /api/v1/dispatch-zones)" | jq -e --argjson z "$ZN_ID" 'any(.[]; .id==$z and .isActive and .name=="Toa Baja · Bayamón")' >/dev/null || fail "la zona del demo cambió desde otro tenant"
 # T3 crea sus propios hijos; el admin del demo los intenta alcanzar bajo SUS padres → 404
 VT3_PID=$(expect 200 "$(req POST /api/v1/vehicles "$(vb "VT$TS")" "$T3")" | jq -r .publicId)
 DOCT3=$(expect 200 "$(req POST "/api/v1/vehicles/$VT3_PID/documents" "{\"docType\":\"INSURANCE\",\"expiryDate\":\"$(dplus 100)\"}" "$T3")" | jq -r .id)
@@ -1834,13 +1971,14 @@ expect 404 "$(req PATCH "/api/v1/drivers/$DR1_PID/delivery-rates/$RT3" '{"rate":
 expect 404 "$(req PATCH "/api/v1/maintenance-work-orders/$WO8_PID/tasks/$TKT3" '{"description":"x"}')" | jq -e '.title=="Tarea no encontrada."' >/dev/null || fail "tarea de otro tenant"
 expect 404 "$(req GET "/api/v1/vehicles/$VT3_PID")" >/dev/null
 expect 200 "$(req GET "/api/v1/maintenance-work-orders/$WT3_PID" '' "$T3")" | jq -e '(.tasks[0].description)=="Frenos"' >/dev/null || fail "la tarea de T3 no debía cambiar"
-ok "otro tenant: 404 por PublicId (vehículo, chofer, tarifas, OT, contactos), listas/panel/disponibilidad/combustible sin datos ajenos; ids hijos de T3 (documento, tarifa, tarea) bajo padres del demo → 404"
+ok "otro tenant: 404 por PublicId (vehículo, chofer, tarifas, OT, contactos), listas/panel/disponibilidad/combustible sin datos ajenos; carga, programa y zona del demo por id entero (PATCH y desactivar) → 404 sin cambios; ids hijos de T3 (documento, tarifa, tarea) bajo padres del demo → 404"
 
 step "fuentes de datos, contenido de sistema y auditoría (Lote 4)"
 DS=$(expect 200 "$(req GET /api/v1/analytics/data-sources)")
 echo "$DS" | jq -e 'map(.key) as $k | (["VEHICLE","DRIVER","WORK_ORDER","FUEL_LOG","FLEET_DOCUMENT"] | all(.[]; . as $x | $k | index($x))) and ($k | index("DRIVER_TRIP") | not) and ($k | index("DRIVER_RATE") | not)' >/dev/null || fail "fuentes de datos de flota"
 expect 200 "$(req POST '/api/v1/analytics/reports/FUEL_LOG/preview?dateRangeMode=ALL' '{"name":"x","columns":["VehicleCode","DriverName","OdometerKm","KmPerLiter","CostPerKm"]}')" | jq -e --arg v "V$TS" 'any(.rows[]; .VehicleCode==$v and .KmPerLiter==10)' >/dev/null || fail "preview FUEL_LOG con KmPerLiter"
 expect 200 "$(req POST '/api/v1/analytics/reports/WORK_ORDER/preview?dateRangeMode=ALL' '{"name":"x","columns":["Number","Status","TotalCost","Vehicle.Code"],"secondary":["Vehicle"]}')" | jq -e --arg n "$WO1_NUM" 'any(.rows[]; .Number==$n and .TotalCost==90)' >/dev/null || fail "preview WORK_ORDER con Vehicle"
+expect 200 "$(req POST '/api/v1/analytics/reports/DRIVER/preview?dateRangeMode=ALL' "$(jq -cn --arg c "D1$TS" '{name:"x",columns:["Code","ZoneCode","Area","EffectiveMaxStops","LicenseExpiry","HasUser"],filterJson:({field:"Code",op:"eq",value:$c} | tojson)}')")" | jq -e --arg c "D1$TS" --arg z "Z$TS" --arg d "$(dplus 5)" 'any(.rows[]; .Code==$c and .ZoneCode==$z and .Area=="Toa Baja · Bayamón" and .EffectiveMaxStops==18 and (.LicenseExpiry|tostring|startswith($d)) and .HasUser==true)' >/dev/null || fail "preview DRIVER (zona, tope efectivo, licencia vigente)"
 PU=$(expect 200 "$(req GET /api/v1/analytics/pulse)")
 echo "$PU" | jq -e '([.indicators[] | select(.name=="Documentos por vencer" and .value >= 3)] | length)==1 and ([.indicators[] | select(.name=="Órdenes de trabajo abiertas")] | length)==1' >/dev/null || fail "indicadores de flota en Pulso: $(echo "$PU" | jq -c '[.indicators[] | {name,value}]')"
 RV=$(expect 200 "$(req GET /api/v1/analytics/reports)" | jq -r '[.[] | select(.name=="Vehículos" and .isSystem==true)][0].id')
@@ -1851,7 +1989,7 @@ echo "$RDR" | jq -e --arg s "SEG-$TS" --arg o "MAR-OLD-$TS" 'any(.rows[]; .DocNu
 for ET in VEHICLE DRIVER DRIVER_RATE DRIVER_TRIP WORK_ORDER; do
   expect 200 "$(req GET "/api/v1/audit/changes?entityType=$ET&take=50")" | jq -e '.total >= 1 and ([.items[] | select((.changesJson // "") | ascii_downcase | (contains("rowversion") or contains("pushtoken")))] | length)==0' >/dev/null || fail "auditoría de $ET"
 done
-ok "VEHICLE/DRIVER/WORK_ORDER/FUEL_LOG/FLEET_DOCUMENT (sin DRIVER_TRIP/DRIVER_RATE), preview con km/L y join a Vehicle, Pulso, vistas de sistema (sin el documento superado) y AuditLog sin rowVersion ni pushToken"
+ok "VEHICLE/DRIVER/WORK_ORDER/FUEL_LOG/FLEET_DOCUMENT (sin DRIVER_TRIP/DRIVER_RATE), preview con km/L y join a Vehicle, Pulso, vistas de sistema (sin el documento superado) y AuditLog sin rowVersion ni pushToken; preview de DRIVER con zona, área, tope efectivo 18, licencia vigente y usuario"
 
 step "sesiones: refresh con rotación y logout"
 NEW=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$REFRESH\"}")")

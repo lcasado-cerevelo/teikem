@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Teikem.Domain.Common;
+using Teikem.Domain.Fleet;
 using Teikem.Infrastructure.Contracts;
 using Xunit;
 
@@ -132,5 +134,16 @@ public class FleetContractsTests
         Assert.Equal((0, 100), (w.Skip, w.Take));
         var e = new ExpiringDocumentsQuery();
         Assert.Equal((30, true), (e.WithinDays, e.IncludeExpired));
+    }
+
+    /// <summary>
+    /// Hallazgo de revisión: ningún flujo del lote crea DriverDevice (lo registra la app del Lote 7), así que la auditoría del
+    /// smoke no puede demostrar que el PushToken no llega a AuditLog; se fija el atributo por reflexión.
+    /// </summary>
+    [Fact]
+    public void Driver_device_push_token_is_sensitive_and_last_seen_not_audited()
+    {
+        Assert.NotNull(typeof(DriverDevice).GetProperty(nameof(DriverDevice.PushToken))!.GetCustomAttribute<SensitiveDataAttribute>());
+        Assert.NotNull(typeof(DriverDevice).GetProperty(nameof(DriverDevice.LastSeenUtc))!.GetCustomAttribute<NotAuditedAttribute>());
     }
 }

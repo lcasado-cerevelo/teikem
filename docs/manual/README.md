@@ -26,6 +26,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    especial), numeración de los cuatro identificadores, cotización y chequeo de crédito al confirmar (con autorización por
    permiso cuando se excede), estatus y transiciones, importador de órdenes por plantilla (validar → confirmar), el
    bloqueo de lo nuevo para un cliente dado de baja, permisos y módulos, fuentes de análisis y auditoría.
+4. [04 — Flota, choferes y mantenimiento](04-flota-choferes-mantenimiento.md): vehículos y sus documentos, choferes
+   (identidad, licencias, certificaciones, dispositivos, zonas de despacho), documentos por vencer y disponibilidad
+   para despacho, mantenimiento preventivo y órdenes de trabajo, bitácora de combustible, tarifas del chofer (por
+   entrega, por intento, por viaje) y política de pago con vista previa, viajes pagados al chofer, la entrega
+   especial con chofer (extiende el Lote 3), estatus y transiciones, permisos y módulos, fuentes de análisis y
+   auditoría.
 
 ## Preguntas frecuentes
 

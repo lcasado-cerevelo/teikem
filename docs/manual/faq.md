@@ -467,7 +467,8 @@ está apagado y no hay genérica). La base sale `null` y la pieza extra 0. Confi
 Intentó abrir una nueva versión o cerrar una tarifa, un tramo o un servicio especial con una fecha pasada. El historial de
 tarifas es el que sustenta lo que ya se cotizó y facturó, así que no se puede cambiar hacia atrás. Use hoy (o deje la fecha
 vacía) o una fecha futura. Si necesita cargar tarifas históricas al configurar un contrato, hágalo con el alta de la tarifa,
-que sí admite `effectiveFrom` pasado.
+que sí admite `effectiveFrom` pasado. La misma regla y el mismo mensaje aplican, en el Lote 4, a las tres tarifas del
+chofer (sección "Choferes y tarifas" más abajo).
 
 ### Servicios especiales
 
@@ -485,12 +486,18 @@ Los nombres se comparan sin mayúsculas, acentos ni espacios dobles: es el mismo
 vigente de ese tipo. Edítala (`PATCH`) o ciérrala.
 
 **¿Qué significa "El tipo de servicio especial está inactivo; reactívelo o elija otro."?**
-El `typeId` apunta a un tipo dado de baja (`POST /api/v1/special-service-types/{id}/deactivate`). Reactívalo con
-`.../reactivate`, elige otro tipo, o crea el servicio con `newTypeName` (si coincide con el tipo inactivo, se reactiva solo).
+El `typeId`/`specialServiceTypeId` apunta a un tipo dado de baja (`POST /api/v1/special-service-types/{id}/deactivate`).
+Reactívalo con `.../reactivate`, elige otro tipo, o crea el servicio con `newTypeName` (si coincide con el tipo inactivo,
+se reactiva solo). El mismo mensaje aparece en el Lote 4 al agregar una tarifa por viaje de un chofer con un tipo inactivo.
 
 **¿Qué significa "El tipo tiene tarifas vigentes en N cliente(s); ciérrelas antes de inactivarlo."?**
 No se puede dar de baja un tipo de servicio especial mientras algún cliente tenga una tarifa abierta de ese tipo. Cierra esas
 tarifas (`.../special-services/{id}/close`) y vuelve a intentarlo; el historial se conserva.
+
+**¿Qué significa "El tipo tiene tarifas por viaje vigentes en N chofer(es); ciérrelas antes de inactivarlo."?**
+Es el mismo candado que el anterior, agregado en el Lote 4: además de clientes, ese tipo de servicio especial también se usa
+como "tipo de viaje" en las tarifas por viaje de uno o más choferes (capítulo 04, sección 8.3). Cierra esas tarifas
+(`POST /api/v1/drivers/{publicId}/trip-rates/{id}/close`) antes de inactivar el tipo.
 
 **¿Qué significa "El tipo ya está inactivo." / "El tipo ya está activo."?**
 Pediste dar de baja un tipo que ya estaba inactivo, o reactivar uno que ya estaba activo. No hay nada que hacer.
@@ -576,7 +583,8 @@ módulo dueño: `orders.edit` para una orden, `clients.update` para un cliente o
 para un consignatario, `contracts.update` para un contrato. El permiso se revisa antes de buscar el registro, así que la
 respuesta es la misma exista o no la orden. Leer los contactos exige el permiso de lectura del dueño (`orders.view`).
 Los teléfonos que el importador guarda en la orden al confirmar un lote no piden `orders.edit` (los crea la importación,
-que ya exige `orders.create`).
+que ya exige `orders.create`). En el Lote 4, la misma regla aplica a `fleet.manage` (contactos de VEHICLE/DRIVER/DISPATCH_ZONE)
+y `fleet.maintenance` (contactos de MAINTENANCE_SCHEDULE/WORK_ORDER/FUEL_LOG).
 
 **Guardo campos personalizados de una parada, del COD de una orden, de un lote o de una plantilla de importación y responde "ORDER_STOP '…' no encontrado." (HTTP 404). ¿Por qué?**
 El registro no existe en tu compañía. Para `ORDER_STOP` el id es el de la parada de una orden; para `ORDER_COD`, el id de
@@ -640,7 +648,8 @@ Toda orden necesita exactamente un consignatario: o el `publicId` de una localiz
 Al confirmar, la suma de lo que el cliente tiene en curso (órdenes ya cotizadas que no son borrador ni terminales) más
 el monto de esta orden pasa su límite de crédito. No es un bloqueo definitivo: la orden queda como estaba (sin
 confirmar) y quien tenga el permiso `orders.credit_override` puede repetir la confirmación con `overrideCredit: true`
-para autorizarla (ver capítulo 03, sección 3.3).
+para autorizarla (ver capítulo 03, sección 3.3; en el Lote 4, `overrideCredit` también se acepta junto con
+`driverPublicId` al crear una entrega especial con chofer, capítulo 04, sección 11).
 
 **¿Qué significa "No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar."? (HTTP 422)**
 Al cotizar, alguna línea (combinación de tipo de servicio y tipo de paquete) no tiene tarifa vigente ni en el contrato
@@ -659,8 +668,9 @@ para no dejar un monto viejo). Si no quieres relajar esa regla, cancela la orden
 
 **¿Qué significa "El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales."? (HTTP 422)**
 `POST /api/v1/orders/{id}/status` solo mueve la orden a un estatus lateral (`ON_HOLD`, `PARTIAL`, `FAILED`) o la regresa
-al pipeline del que salió. Avanzar el pipeline en sí (recogido, en tránsito, entregada…) lo hará el módulo de rutas y
-entregas de un lote posterior, no este endpoint.
+al pipeline del que salió. Avanzar el pipeline en sí (recogido, en tránsito, entregada…) lo hace, desde el Lote 4, la
+asignación de chofer a una entrega especial (capítulo 04, sección 11), o lo hará el módulo de rutas y entregas de un
+lote posterior para las demás órdenes.
 
 **Invito el mismo correo desde otro cliente de mi compañía y ya era usuario de portal: ¿por qué a veces queda ACTIVE de inmediato y otras veces me pide invitación?**
 Si la cuenta ya tenía contraseña (ya había aceptado alguna invitación anterior en cualquier cliente) y sigue habilitada,
@@ -672,3 +682,325 @@ enlace de invitación como siempre. Ver capítulo 03, sección 6.
 No: desde el Lote 3, una cuenta de portal puede pertenecer a varios clientes de la compañía (una fila por cliente). Quitar
 o suspender actúa solo sobre la fila de ese cliente; la cuenta (contraseña, sesiones) se desactiva únicamente cuando no
 le queda **ninguna otra** fila activa en la compañía, y se reactiva en cuanto vuelve a haber una.
+
+## Lote 4 — Flota, choferes y mantenimiento
+
+Mensajes verificados contra `src/Teikem.Domain/Fleet/*`, `src/Teikem.Infrastructure/Fleet/*` y
+`src/Teikem.Infrastructure/Services/{Vehicle,Driver,DispatchZone,Fleet,Maintenance,FuelLog,DriverRate,
+DriverPayPolicy,DriverTrip,SpecialDelivery}*.cs`. El capítulo completo está en
+[04-flota-choferes-mantenimiento.md](04-flota-choferes-mantenimiento.md).
+
+### Vehículos y sus documentos
+
+**¿Qué significa "Ya existe un vehículo con ese código."?**
+El `code` que enviaste ya lo usa otro vehículo de tu compañía, aunque esté dado de baja: el código no se libera al
+eliminar un vehículo. Elige otro código.
+
+**¿Qué significa "Ya existe un vehículo activo con ese VIN."?**
+Otro vehículo **activo** ya tiene ese VIN. Si el otro vehículo está dado de baja (no activo), el VIN sí se puede
+reutilizar.
+
+**¿Qué significa "El código del vehículo se fija al crearlo; no se puede cambiar."?**
+Enviaste `code` (o `homeWarehouseId`) en un `PATCH /vehicles/{publicId}`. Ninguno de los dos se edita después del alta.
+
+**¿Qué significa "El VIN admite como máximo 40 caracteres."?**
+El VIN se guarda en mayúsculas sin espacios; no puede exceder 40 caracteres.
+
+**¿Qué significa "El año del modelo debe estar entre 1900 y {año+1}."?**
+`modelYear` está fuera de rango: se acepta hasta el año siguiente al actual (el modelo del año próximo ya se vende).
+
+**¿Qué significa "El odómetro no puede ser menor que la última lectura registrada ({km} km el yyyy-MM-dd)."?**
+Intentaste corregir manualmente `currentOdometerKm` del vehículo por debajo de un hecho ya registrado: una carga de
+combustible activa o una orden de trabajo cerrada. Puedes bajar un error de captura, pero nunca por debajo de esa
+lectura. Revisa las cargas de combustible (sección "Bitácora de combustible") y las órdenes de trabajo del vehículo.
+
+**¿Qué significa "El vehículo está dado de baja definitiva; no se puede reactivar."?**
+El vehículo llegó al estatus terminal `INACTIVE` (baja definitiva); ya no se reactiva ni con el checkbox Activo. Si
+fue un error, crea un vehículo nuevo.
+
+**¿Qué significa "El vehículo está inactivo; reactívelo para registrar órdenes de trabajo o cargas de combustible."?**
+El vehículo tiene el checkbox Activo apagado o está en el estatus terminal `INACTIVE`. Reactívalo
+(`POST /vehicles/{id}/reactivate`, si no está dado de baja definitiva) antes de registrar una nueva orden de trabajo
+o una carga de combustible.
+
+**¿Qué significa "Tipo de vehículo desconocido: 'X'." / "Propiedad desconocida: 'X'." / "Tipo de combustible desconocido: 'X'."?**
+El código que enviaste (`vehicleType`, `ownership` o `fuelType`) no existe en el catálogo del tenant. Consulta
+`GET /api/v1/catalogs/{VehicleType|Ownership|FuelType}` para ver los códigos válidos.
+
+**¿Qué significa "El tipo de documento de vehículo desconocido: 'X'."?**
+El `docType` no es uno de `REGISTRATION`, `INSURANCE`, `INSPECTION`, `PERMIT` (u otro que tu compañía haya agregado a
+ese catálogo).
+
+**¿Qué significa "Documento no encontrado."? (documento de vehículo)**
+El `id` del documento no pertenece al vehículo de la URL (es de otro vehículo, o de otro tenant). Los documentos se
+consultan siempre bajo su vehículo (`/vehicles/{publicId}/documents/{id}`), nunca por id suelto.
+
+**Renové un documento vencido y no lo desactivé: ¿por qué dejó de aparecer en "Documentos por vencer"?**
+Un documento con vencimiento queda "superado" cuando el mismo dueño tiene otro **activo** del mismo tipo con
+vencimiento posterior (`isSuperseded: true` en su ficha). Un documento superado no bloquea la disponibilidad, no
+cuenta para el próximo vencimiento y no aparece en el panel "Documentos por vencer": no hace falta desactivar el
+viejo a mano al renovar.
+
+### Choferes, licencias, certificaciones, dispositivos y zonas
+
+**¿Qué significa "Ya existe un chofer con ese código."?**
+El `code` (empleado) ya lo usa otro chofer de tu compañía, aunque esté eliminado: el código no se libera. Elige otro.
+
+**¿Qué significa "El código del chofer se fija al crearlo; no se puede cambiar."?**
+Enviaste `code`/`employeeCode` en un `PATCH /drivers/{publicId}`. El código de un chofer es inmutable.
+
+**¿Qué significa "El chofer fue eliminado; solo se consulta su historial."?**
+El chofer llegó al estatus terminal `INACTIVE` (acción "Eliminar chofer"). Su ficha, licencias, certificaciones y
+viajes se siguen consultando, pero no admite ediciones ni tarifas nuevas.
+
+**¿Qué significa "El chofer fue eliminado; no se puede reactivar."?**
+"Eliminar chofer" es una baja **definitiva** (estatus terminal): a diferencia del checkbox Activo, no tiene vuelta
+atrás. Si el chofer regresa, da de alta uno nuevo.
+
+**¿Qué significa "El chofer ya fue eliminado."?**
+Intentaste `DELETE /drivers/{publicId}` sobre un chofer que ya estaba en el estatus terminal. No hay nada que hacer.
+
+**¿Qué significa "Falta el permiso 'admin.users'."? (al vincular o quitar el usuario de un chofer)**
+Vincular o desvincular el usuario interno de un chofer (`userId`/`clearUser`) exige, además de `fleet.manage`, el
+permiso `admin.users`. Pide a un administrador que lo agregue a tu rol, o que haga el vínculo él mismo.
+
+**¿Qué significa "Solo un usuario interno se puede vincular a un chofer."?**
+El `userId` que enviaste corresponde a un usuario de **portal** (cliente final), no a un usuario interno de la
+compañía. Solo los usuarios internos se vinculan a un chofer.
+
+**¿Qué significa "El usuario no tiene una membresía activa en esta compañía."?**
+El usuario existe, pero su membresía en tu tenant está suspendida o inactiva. Reactívala primero
+(`PATCH /api/v1/users/{id}/membership`, capítulo 01) o elige otro usuario.
+
+**¿Qué significa "El usuario ya está vinculado a otro chofer."?**
+Cada usuario interno se vincula a **un solo** chofer por compañía. Desvincúlalo del otro chofer primero
+(`clearUser: true`) si en verdad debe pasar a este.
+
+**¿Qué significa "La zona de despacho está inactiva."?**
+El `dispatchZoneId` que enviaste como zona primaria del chofer está dado de baja. Reactívala o elige otra zona.
+
+**¿Qué significa "La zona tiene choferes asignados; reasígnelos antes de inactivarla."?**
+No se puede inactivar una zona mientras algún chofer activo la tenga como zona primaria. Cámbiales la zona
+(`PATCH /drivers/{id} {"dispatchZoneId": ...}` o `clearZone: true`) y vuelve a intentar.
+
+**¿Qué significa "Ya existe una zona de despacho con ese código."?**
+El `code` de la zona ya lo usa otra zona de tu compañía. Elige otro.
+
+**¿Qué significa "Clase de licencia desconocida: 'X'." / "Tipo de certificación desconocido: 'X'."?**
+El código que enviaste no existe en el catálogo `LicenseClass`/`CertificationType` de tu compañía. Consulta
+`GET /api/v1/catalogs/{LicenseClass|CertificationType}`.
+
+**¿Qué significa "Licencia no encontrada." / "Certificación no encontrada." / "Dispositivo no encontrado."?**
+El `id` no pertenece al chofer de la URL (es de otro chofer, o de otro tenant). Estos recursos se consultan siempre
+bajo su chofer (`/drivers/{publicId}/licenses/{id}`, etc.), nunca por id suelto.
+
+**Un dispositivo dejó de recibir notificaciones después de eliminar al chofer, ¿es correcto?**
+Sí. Al "Eliminar chofer" (estatus terminal), todos sus dispositivos quedan desactivados automáticamente, además de
+desvincularse el usuario, quitarse la zona y cerrarse sus tarifas abiertas.
+
+### Documentos por vencer y disponibilidad para despacho
+
+**¿Qué significa "withinDays debe estar entre 0 y 365."?**
+El parámetro `withinDays` del panel "Documentos por vencer" está fuera de rango. Usa un valor entre 0 y 365 (30 por
+defecto).
+
+**¿Qué significa "Tipo de documento desconocido: 'X'."? (panel "Documentos por vencer")**
+El `docType` del filtro no es uno de `REGISTRATION`, `INSURANCE`, `INSPECTION`, `PERMIT`, `LICENSE`, `CERTIFICATION`.
+
+**¿Qué significa "Entidad desconocida: 'X'; use VEHICLE o DRIVER."?**
+El filtro `entity` solo acepta `VEHICLE` o `DRIVER`.
+
+**El chofer/vehículo sale "no disponible" en el panel de disponibilidad y no entiendo por qué.**
+Revisa el arreglo `issues` de la respuesta: cada motivo trae `code`, `message` y `blocking`. Los que bloquean de
+verdad (`blocking: true`) son: chofer o vehículo con el checkbox Activo apagado, chofer o vehículo en un estatus
+distinto del inicial, chofer sin licencia vigente, documento del vehículo vencido (no superado), o una orden de
+trabajo del vehículo en `IN_PROGRESS`. Los demás (certificación vencida, documento que vence pronto, vehículo sin
+documentos) solo son avisos: el recurso puede seguir `available: true`.
+
+### Mantenimiento preventivo y órdenes de trabajo
+
+**¿Qué significa "Indique el vehículo o el tipo de vehículo del programa, no ambos."?**
+Un programa de mantenimiento aplica a **un** vehículo o a **un** tipo de vehículo, nunca a los dos ni a ninguno.
+Envía exactamente uno de `vehiclePublicId`/`vehicleType`.
+
+**¿Qué significa "Un programa por kilometraje exige un intervalo en km mayor que 0."? / "Un programa por tiempo exige un intervalo en días mayor que 0."?**
+El disparador (`trigger`) que elegiste (`MILEAGE`, `TIME` o `BOTH`) exige el intervalo correspondiente
+(`intervalKm`/`intervalDays`), mayor que cero.
+
+**¿Qué significa "El último servicio solo se captura en programas de un vehículo; en los de tipo se toma de sus órdenes de trabajo cerradas."?**
+Un programa **por tipo de vehículo** no tiene un "último servicio" propio: se calcula, vehículo por vehículo, con su
+última orden de trabajo cerrada ligada a ese programa. `lastServiceKm`/`lastServiceDate` solo se capturan en un
+programa **por vehículo**.
+
+**¿Qué significa "Programa de mantenimiento no encontrado."?**
+El `scheduleId` no existe en tu compañía.
+
+**¿Qué significa "El programa de mantenimiento no aplica a este vehículo."?**
+El programa que indicaste en la orden de trabajo es de otro vehículo, o de un tipo de vehículo distinto al del
+vehículo de la orden.
+
+**¿Qué significa "Una orden correctiva no se asocia a un programa preventivo."?**
+Enviaste `scheduleId` (que siempre es de un programa preventivo) junto con `maintenanceType: CORRECTIVE`. Quita el
+programa o cambia el tipo a `PREVENTIVE`.
+
+**¿Qué significa "El estatus actual no permite la acción 'EDIT_WORK_ORDER'."?**
+La orden de trabajo está en un estatus donde no se edita (por defecto `CLOSED` y `CANCELLED`): ni el encabezado ni
+sus tareas. Un administrador puede relajarlo en `PUT /api/v1/status/capabilities/WORK_ORDER` si tu compañía lo
+necesita; la ficha lo anticipa con `canEdit: false`.
+
+**¿Qué significa "La orden tiene tareas: los costos de labor y partes se calculan con la suma de sus tareas."?**
+Con tareas activas, `laborCost`/`partsCost` del encabezado son la **suma** de las tareas: no se capturan a mano.
+Edita los costos de cada tarea, o desactívalas todas si prefieres capturar el costo directo en el encabezado.
+
+**¿Qué significa "La orden tiene N tarea(s) sin completar; márquelas como completadas o quítelas antes de cerrarla."? (HTTP 422)**
+No se puede cerrar la orden de trabajo con tareas activas pendientes. Marca `isCompleted: true` en cada tarea, o
+desactívala si ya no aplica.
+
+**¿Qué significa "Indique la lectura de odómetro para cerrar una orden de un programa por kilometraje."?**
+La orden está ligada a un programa por kilometraje (o ambos) y le falta el odómetro de cierre. Envía `odometerKm` en
+el cuerpo del cambio de estatus, o captúralo antes en el encabezado.
+
+**¿Qué significa "La fecha de cierre no puede ser futura."?**
+`completedDate` (al cerrar la orden) no puede ser una fecha por venir.
+
+**Cerré la orden de trabajo y el vehículo volvió solo a "Activo". ¿Es correcto?**
+Sí. Al iniciar una OT (`IN_PROGRESS`) el vehículo pasa a `MAINTENANCE` si estaba `ACTIVE`; al cerrarla o cancelarla,
+si no queda ninguna otra OT `IN_PROGRESS` de ese vehículo, regresa a `ACTIVE` automáticamente (aunque `MAINTENANCE`
+se hubiera puesto a mano).
+
+**¿Qué significa "Ya existe una orden de trabajo con ese número; intente de nuevo."?**
+Dos altas simultáneas chocaron al sacar el número `OT-#####`. Reintenta la petición: el número es automático y
+consecutivo, así que no hay que elegir uno.
+
+### Bitácora de combustible
+
+**¿Qué significa "Los litros deben ser mayores que 0."?**
+`liters` debe ser un número positivo.
+
+**¿Qué significa "El vehículo de una carga no se cambia; desactívela y registre otra."?**
+El vehículo de una carga de combustible es inmutable. Si te equivocaste de vehículo, desactiva la carga
+(`POST /fuel-logs/{id}/deactivate`) y registra una nueva en el vehículo correcto.
+
+**¿Qué significa "La carga de combustible está inactiva; no se puede corregir."?**
+Intentaste editar (`PATCH`) una carga que ya está dada de baja lógica. Reactivarla no está disponible en este
+lote; registra una carga nueva si hace falta.
+
+**¿Qué significa "La lectura de odómetro (…) es menor que la de una carga anterior del mismo vehículo (…)."? / "…es mayor que la de una carga posterior del mismo vehículo (…)."?**
+El odómetro de las cargas de un vehículo debe ser monótono por fecha: no puede quedar por debajo de una carga
+anterior ni por encima de una posterior. Revisa la fecha y la lectura que capturaste.
+
+**¿Qué significa "La carga de combustible cambió mientras se guardaba; recargue e intente de nuevo."?**
+Dos correcciones a la misma carga chocaron (bloqueo de fila del vehículo). Recarga la carga y repite la corrección.
+
+**¿Por qué el km/L de una carga sale vacío (`null`)?**
+Falta el odómetro de esa carga, o de la carga anterior con odómetro del mismo vehículo (la primera carga con
+odómetro de la serie nunca tiene km/L propio), o la distancia calculada no es positiva. El km/L y el costo/km se
+calculan al leer, sobre la serie activa completa del vehículo, no se guardan.
+
+### Tarifas del chofer y política de pago
+
+**¿Qué significa "El chofer fue eliminado; sus tarifas y viajes solo se consultan."?**
+El chofer está en el estatus terminal `INACTIVE` ("Eliminar chofer"). Ya no se le agregan, editan ni cierran
+tarifas ni viajes nuevos; su historial y sus viajes existentes se siguen viendo.
+
+**¿Qué significa "Tarifa no encontrada."?**
+El `id` de la tarifa no pertenece al chofer de la URL (es de otro chofer, o de otro tenant). Las tres tarifas
+(entrega, intento, viaje) se consultan siempre bajo `/drivers/{publicId}/...`, nunca por id suelto.
+
+**¿Qué significa "Indique el servicio y el tipo de paquete de la tarifa."?**
+Al agregar una tarifa por entrega faltó `serviceType` o `packageType`; ambos son obligatorios y exactos (no hay
+comodín "cualquier paquete").
+
+**¿Qué significa "El chofer ya tiene una tarifa vigente para {Servicio} + {Paquete}; edite esa tarifa o ciérrela antes de agregar otra."?**
+Ya existe una tarifa por entrega abierta (o vigente en la fecha indicada) para ese mismo par servicio+paquete.
+Edítala (`PATCH`, cierra y abre una versión nueva) o ciérrala (`.../close`) antes de agregar otra.
+
+**¿Qué significa "El servicio y el paquete se fijan al crear la tarifa; quite la fila y cree una nueva."?**
+Enviaste `serviceType`/`packageType` en un `PATCH` de tarifa por entrega. Esos dos campos son inmutables: cierra la
+fila y crea una nueva con la combinación correcta.
+
+**¿Qué significa "La tarifa ya está cerrada; agregue una nueva si necesita volver a pagarla."?**
+Intentaste editar o cerrar una fila de tarifa (entrega, intento o viaje) que ya tiene fecha de cierre. Agrega una
+fila nueva.
+
+**¿Qué significa "El intento {n} no existe; los niveles configurados van de 1 a {N}."?**
+El número de intento que enviaste supera los niveles configurados en la política de la compañía
+(`DriverPayPolicy.AttemptLevels`, tope 20). Sube el número de niveles con `POST /driver-pay-policy/attempt-levels`
+antes de fijar la tarifa de un intento más alto.
+
+**¿Qué significa "El chofer ya tiene una tarifa vigente para el intento {n}; edite esa tarifa o ciérrela antes de agregar otra."?**
+Igual que la de entrega, pero para el nivel de intento indicado.
+
+**¿Qué significa "El intento {n} tiene una tarifa vigente hasta el {fecha}; la nueva debe empezar en esa fecha o después."?**
+Ese nivel de intento tiene una fila **ya cerrada a futuro**; la nueva vigencia que intentas abrir no puede empezar
+antes de que termine esa fila. Usa esa fecha o una posterior.
+
+**¿Qué significa "Se alcanzó el máximo de 20 niveles de intento."?**
+`AttemptLevels` de la compañía ya está en el tope (20). No se pueden agregar más niveles de intento (ni tampoco se
+quitan en este lote).
+
+**¿Qué significa "Fórmula de pago desconocida: 'X'."?**
+El código de fórmula (`payoutFormula`/`formula`) no es uno de `DELIVERY_PLUS_ATTEMPTS`, `DELIVERY_INCLUDES_FIRST` o
+`FAILED_REPLACES_DELIVERY`.
+
+**¿Qué significa "Sin servicios especiales: agréguelos en Clientes y contratos antes de configurar tarifas por viaje."?**
+Tu compañía no tiene ningún tipo de servicio especial activo (capítulo 02, sección 6): el "tipo de viaje" de las
+tarifas por viaje es ese mismo catálogo. Crea al menos uno antes de configurar tarifas por viaje.
+
+**¿Qué significa "El tipo de viaje es obligatorio."?**
+Al agregar una tarifa por viaje (o un viaje manual) faltó `specialServiceTypeId`.
+
+**¿Qué significa "El tipo de viaje se fija al crear la tarifa; quite la fila y agregue una con el tipo correcto."?**
+Enviaste `specialServiceTypeId` en un `PATCH` de tarifa por viaje. Ese campo es inmutable: cierra la fila y agrega
+una nueva con el tipo correcto.
+
+**¿Qué significa "El chofer ya tiene una tarifa vigente para el tipo de viaje '{tipo}'; edite esa tarifa o ciérrela antes de agregar otra."?**
+Igual que la de entrega/intento, pero para ese tipo de viaje.
+
+**Hice una vista previa de pago y una línea sale en $0 con la nota "sin tarifa configurada". ¿Es un error?**
+No: es intencional (R15). Cuando falta la tarifa de la entrega o de un intento, esa línea se muestra en $0 con la
+nota, en vez de omitirse, para que el vacío quede visible y se pueda corregir configurando la tarifa que falta.
+
+### Viajes pagados al chofer y entrega especial con chofer
+
+**¿Qué significa "Viaje no encontrado."?**
+El `tripPublicId` no pertenece al chofer de la URL (es de otro chofer o de otro tenant).
+
+**¿Qué significa "El viaje nace de una entrega especial; cancele la orden o reasigne el chofer."?**
+Un viaje ligado a una orden (entrega especial) vigente no se cancela directamente desde
+`/drivers/{id}/trips/{tripId}/cancel`. Cancela la orden de transporte, o asigna la entrega a otro chofer
+(`POST /orders/{id}/driver`): el viaje anterior se cancela automáticamente.
+
+**¿Qué significa "El chofer no está disponible para despacho: {motivos}."?**
+Al asignar un chofer a una entrega especial, la disponibilidad (la misma del panel de la sección
+"Disponibilidad para despacho") encontró al menos un motivo bloqueante: chofer/vehículo inactivo o en un estatus
+distinto del inicial, chofer sin licencia vigente, etc. Revisa `GET /api/v1/fleet/availability` para ver el detalle
+de ese chofer y resuélvelo (renueva la licencia, reactívalo…) antes de reintentar.
+
+**¿Qué significa "El chofer solo se asigna en una entrega especial."?**
+Enviaste `driverPublicId` al crear una orden que **no** es una entrega especial (`isSpecialDelivery: false`). El
+chofer solo se indica en entregas especiales; las demás órdenes se despachan desde Sala de despacho (módulo
+posterior).
+
+**¿Qué significa "Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho."?**
+Llamaste a `POST /orders/{publicId}/driver` sobre una orden normal (no entrega especial). Ese endpoint es
+exclusivo de entregas especiales.
+
+**¿Qué significa "La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer."?**
+La orden ya pasó de `IN_TRANSIT`, o está en un estatus lateral o terminal (cancelada, en espera, etc.). El chofer ya
+no se puede asignar ni reasignar en ese punto.
+
+**¿Qué significa "La orden ya está asignada a ese chofer."?**
+Intentaste asignar el mismo chofer que ya tiene el viaje vigente de esa orden. No hay nada que cambiar.
+
+**¿Qué significa "La orden ya tiene un viaje vigente; recargue e intente de nuevo."?**
+Dos asignaciones (o reasignaciones) simultáneas a la misma orden chocaron. Recarga la ficha de la orden y repite.
+
+**Reasigné la entrega a otro chofer, ¿qué pasa con el viaje del chofer anterior?**
+Se cancela automáticamente (queda `CANCELLED` e `isActive: false`) antes de crear el viaje del chofer nuevo: la
+base de datos garantiza que solo hay un viaje vigente por orden en todo momento.
+
+**¿Por qué el historial de la orden muestra varios cambios de estatus seguidos al asignarle un chofer?**
+La asignación avanza la orden **etapa por etapa** (sin saltos) desde donde estaba hasta `IN_TRANSIT`, respetando el
+pipeline configurado por tu compañía (salta las etapas que tengas deshabilitadas). Cada etapa queda como un
+registro de historial propio, con el mismo comentario ("Entrega especial asignada a …" o "Reasignada a …").
