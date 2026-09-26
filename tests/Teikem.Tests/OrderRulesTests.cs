@@ -153,6 +153,57 @@ public class OrderRulesTests
         Assert.Null(OrderRules.ValidateCod(12.5m));
     }
 
+    // ---------------------------------------------------------------- topes (precisión de las columnas → 400, nunca 500)
+
+    [Fact]
+    public void ValidateCod_caps_at_the_column_precision()
+    {
+        Assert.Null(OrderRules.ValidateCod(OrderRules.MaxCodAmount));
+        Assert.Equal(OrderRules.CodTooLargeMessage, OrderRules.ValidateCod(OrderRules.MaxCodAmount + 0.0001m));
+        Assert.Equal(OrderRules.CodTooLargeMessage, OrderRules.ValidateCod(100000000000000000m));
+    }
+
+    [Fact]
+    public void ValidatePackages_caps_line_weight_and_volume()
+    {
+        Assert.Empty(OrderRules.ValidatePackages(new[] { new PackageLineInput(null, 1, OrderRules.MaxLineWeightKg, OrderRules.MaxLineVolumeM3) }, isSpecialDelivery: false));
+
+        var errors = OrderRules.ValidatePackages(new[]
+        {
+            new PackageLineInput(null, 1, OrderRules.MaxLineWeightKg + 0.001m, OrderRules.MaxLineVolumeM3 + 0.0001m),
+        }, isSpecialDelivery: false);
+        Assert.Equal(OrderRules.LineWeightTooLargeMessage, errors["packages[0].weightKg"]);
+        Assert.Equal(OrderRules.LineVolumeTooLargeMessage, errors["packages[0].volumeM3"]);
+        Assert.False(errors.ContainsKey("packages"));
+    }
+
+    [Fact]
+    public void ValidatePackages_rejects_total_pieces_that_overflow_int()
+    {
+        var ok = OrderRules.ValidatePackages(new[] { new PackageLineInput(null, int.MaxValue) }, isSpecialDelivery: false);
+        Assert.Empty(ok);
+
+        var errors = OrderRules.ValidatePackages(new[] { new PackageLineInput(null, 2000000000), new PackageLineInput(null, 2000000000) }, isSpecialDelivery: false);
+        Assert.Equal(OrderRules.TotalPiecesTooLargeMessage, errors["packages"]);
+    }
+
+    [Fact]
+    public void ValidatePackages_caps_total_weight_and_volume()
+    {
+        var heavy = Enumerable.Range(0, 101).Select(_ => new PackageLineInput(null, 1, OrderRules.MaxLineWeightKg)).ToList();
+        Assert.Equal(OrderRules.TotalWeightTooLargeMessage, OrderRules.ValidatePackages(heavy, isSpecialDelivery: false)["packages"]);
+
+        var bulky = Enumerable.Range(0, 101).Select(_ => new PackageLineInput(null, 1, null, OrderRules.MaxLineVolumeM3)).ToList();
+        Assert.Equal(OrderRules.TotalVolumeTooLargeMessage, OrderRules.ValidatePackages(bulky, isSpecialDelivery: false)["packages"]);
+
+        var justUnder = Enumerable.Range(0, 100).Select(_ => new PackageLineInput(null, 1, OrderRules.MaxLineWeightKg, OrderRules.MaxLineVolumeM3)).ToList();
+        Assert.Empty(OrderRules.ValidatePackages(justUnder, isSpecialDelivery: false));
+    }
+
+    [Fact]
+    public void Totals_throws_on_overflow_as_a_safety_net()
+        => Assert.Throws<OverflowException>(() => OrderRules.Totals(new[] { new PackageLineInput(null, int.MaxValue), new PackageLineInput(null, 1) }));
+
     // ---------------------------------------------------------------- ApplySnapshot
 
     private static Location SampleLocation(TimeOnly? start = null, TimeOnly? end = null, string? notes = "Portón azul") => new()
@@ -238,4 +289,35 @@ public class OrderRulesTests
         Assert.Null(stop.WindowStartUtc);
         Assert.Null(stop.WindowEndUtc);
     }
+
+    // ---------------------------------------------------------------- R36 ajena, paginación y país
+
+    [Theory]
+    [InlineData(null, 5, false)]
+    [InlineData(5, 5, false)]
+    [InlineData(5, 6, true)]
+    public void IsForeignDuplicate_only_when_the_scope_fixes_another_client(int? scoped, int existing, bool expected)
+        => Assert.Equal(expected, OrderRules.IsForeignDuplicate(scoped, existing));
+
+    [Theory]
+    [InlineData(0, 1000, 0, 500)]
+    [InlineData(0, 500, 0, 500)]
+    [InlineData(0, 1, 0, 1)]
+    [InlineData(0, 0, 0, 100)]
+    [InlineData(0, -5, 0, 100)]
+    [InlineData(-3, 10, 0, 10)]
+    [InlineData(20, 10, 20, 10)]
+    public void NormalizePaging_bounds_take_to_1_500_with_default_100_and_skip_to_non_negative(int skip, int take, int expSkip, int expTake)
+        => Assert.Equal((expSkip, expTake), OrderRules.NormalizePaging(skip, take));
+
+    [Theory]
+    [InlineData("PR", true)]
+    [InlineData("US", true)]
+    [InlineData("MEX", false)]
+    [InlineData("P", false)]
+    [InlineData("pr", false)]
+    [InlineData("P1", false)]
+    [InlineData(null, false)]
+    public void CountryCode_accepts_only_iso_alpha2(string? code, bool expected)
+        => Assert.Equal(expected, Teikem.Domain.Common.CountryCode.IsValid(code));
 }

@@ -111,6 +111,8 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
                      ?? throw new NotFoundException("Dominio de catálogo", entity);
         EnsureCanEditDomain(domain);
         var code = NormalizeCode(req.Code);
+        // Country alimenta el snapshot CHAR(2) de las paradas de orden (Lote 3): solo códigos ISO alfa-2.
+        if (entity == LookupDomains.Country && !CountryCode.IsValid(code)) throw new ValidationException("code", CountryCode.InvalidMessage);
         if (await db.LookupCodes.AnyAsync(l => l.Entity == entity && l.InternalCode == code, ct))
             throw new ConflictException($"Ya existe el valor '{code}' en {entity}.");
         if (req.Labels is null || req.Labels.Count == 0) throw new ValidationException("labels", "La etiqueta es obligatoria.");

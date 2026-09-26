@@ -23,8 +23,11 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class OrderImportController(OrderImportService imports) : ControllerBase
 {
-    /// <summary>Validar (JSON): el CSV viaja en content. Límite 5.000 filas / 2 MB → 400.</summary>
-    [HttpPost("validate"), Consumes("application/json"), RequirePermission(PermissionCatalog.OrdersCreate)]
+    /// <summary>
+    /// Validar (JSON): el CSV viaja en content. Límite 5.000 filas / 2 MB → 400. Sin [Consumes] a propósito: la variante
+    /// multipart gana por su [Consumes] y una petición sin Content-Type cae aquí (415 del [FromBody]) en vez de ser ambigua (500).
+    /// </summary>
+    [HttpPost("validate"), RequirePermission(PermissionCatalog.OrdersCreate)]
     public Task<ImportPreviewDto> ValidateJson([FromBody] ImportValidateRequest req, CancellationToken ct)
         => imports.ValidateAsync(req, OrderScope.Any, ct);
 

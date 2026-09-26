@@ -137,6 +137,10 @@ public static class PermissionCatalog
         [EntityTypes.PortalUser] = PortalUsersManage,
         // Lote 3
         [EntityTypes.TransportOrder] = OrdersView,
+        [EntityTypes.OrderCod] = OrdersView,
+        [EntityTypes.OrderStop] = OrdersView,
+        [EntityTypes.ImportBatch] = OrdersView,
+        [EntityTypes.ImportTemplate] = OrdersEdit,
     };
 
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
@@ -149,6 +153,10 @@ public static class PermissionCatalog
         [EntityTypes.PortalUser] = PortalUsersManage,
         // Lote 3
         [EntityTypes.TransportOrder] = OrdersEdit,
+        [EntityTypes.OrderCod] = OrdersEdit,
+        [EntityTypes.OrderStop] = OrdersEdit,
+        [EntityTypes.ImportBatch] = OrdersEdit,
+        [EntityTypes.ImportTemplate] = OrdersEdit,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>

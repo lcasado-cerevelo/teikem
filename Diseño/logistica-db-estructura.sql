@@ -1171,6 +1171,7 @@ CREATE TABLE dbo.TransportOrder (
     ContractId   INT NULL REFERENCES dbo.Contract(ContractId),
     OrderNumber  NVARCHAR(40) NOT NULL,
     ClientInvoiceNumber NVARCHAR(40) NOT NULL,  -- Lote 3: número de factura del cliente; lo asigna el cliente o Teikem si queda en blanco (siempre tiene valor, L240)
+    ClientInvoiceNumberTyped BIT NOT NULL CONSTRAINT DF_Order_InvoiceTyped DEFAULT 0, -- Lote 3: 1 = la factura se tecleó al crear (R36 solo aplica a números tecleados, L1124)
     PackBatchNumber NVARCHAR(40) NOT NULL,      -- Lote 3: número de empaque, siempre con valor (EMP-##### fijo o id del lote de Recolección y empaque)
     ServiceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='ServiceType'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='OrderStatus'

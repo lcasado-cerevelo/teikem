@@ -21,7 +21,11 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
    pieza extra con historial efectivo-fechado, cotización, servicios especiales y tipos compartidos, usuarios de portal del
-   cliente, permisos y módulos, fuentes de análisis y auditoría.
+   cliente (incluye el portal multi-cliente del Lote 3), permisos y módulos, fuentes de análisis y auditoría.
+3. [03 — Órdenes de transporte](03-ordenes-de-transporte.md): captura de órdenes (entrada rápida, detallada y de entrega
+   especial), numeración de los cuatro identificadores, cotización y chequeo de crédito al confirmar (con autorización por
+   permiso cuando se excede), estatus y transiciones, importador de órdenes por plantilla (validar → confirmar), el
+   bloqueo de lo nuevo para un cliente dado de baja, permisos y módulos, fuentes de análisis y auditoría.
 
 ## Preguntas frecuentes
 

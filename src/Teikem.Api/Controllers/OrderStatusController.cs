@@ -20,17 +20,36 @@ public sealed record OrderConfirmBody(string? RowVersion = null, bool OverrideCr
 [Route("api/v1/orders/{publicId:guid}")]
 [Authorize]
 [RequireModule(ModuleKeys.LtlGround)]
-public sealed class OrderStatusController(OrderStatusService service) : ControllerBase
+public sealed class OrderStatusController(OrderStatusService service, PermissionService permissions) : ControllerBase
 {
     /// <summary>Cotización y chequeo de crédito sin persistir (líneas, despacho, COD, total, contrato, límite/pendiente/disponible/excede).</summary>
     [HttpGet("quote"), RequirePermission(PermissionCatalog.OrdersView)]
     public Task<OrderQuotePreviewDto> PreviewQuote(Guid publicId, CancellationToken ct)
         => service.PreviewQuoteAsync(publicId, OrderScope.Any, ct);
 
-    /// <summary>Confirmar: cotiza, congela y verifica crédito al salir de la etapa inicial. 422 credit_exceeded; overrideCredit=true exige orders.credit_override.</summary>
-    [HttpPost("confirm"), RequirePermission(PermissionCatalog.OrdersEdit)]
-    public Task<OrderDetailDto> Confirm(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] OrderConfirmBody? body, CancellationToken ct)
-        => service.ConfirmAsync(publicId, new OrderConfirmRequest(body?.RowVersion), OrderScope.Any, body?.OverrideCredit ?? false, ct);
+    /// <summary>
+    /// Confirmar: cotiza, congela y verifica crédito al salir de la etapa inicial. 422 credit_exceeded.
+    /// Permisos (ajuste C): sin overrideCredit exige orders.edit; con overrideCredit=true exige orders.credit_override y basta
+    /// con él cuando el crédito realmente se excede (así Facturación, que no tiene orders.edit, autoriza desde aquí). Si el
+    /// crédito no se excede, confirmar sigue exigiendo orders.edit: el permiso de autorización no sirve para confirmar
+    /// órdenes normales. OrderStatusService vuelve a comprobar orders.credit_override (defensa en profundidad).
+    /// </summary>
+    [HttpPost("confirm")]
+    public async Task<OrderDetailDto> Confirm(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] OrderConfirmBody? body, CancellationToken ct)
+    {
+        var overrideCredit = body?.OverrideCredit ?? false;
+        if (!overrideCredit) await permissions.EnsureAsync(PermissionCatalog.OrdersEdit, ct);
+        else
+        {
+            await permissions.EnsureAsync(PermissionCatalog.OrdersCreditOverride, ct);
+            if (!await permissions.HasPermissionAsync(PermissionCatalog.OrdersEdit, ct))
+            {
+                var preview = await service.PreviewQuoteAsync(publicId, OrderScope.Any, ct); // 404/409/422 igual que confirmar
+                if (!preview.Credit.Exceeds) await permissions.EnsureAsync(PermissionCatalog.OrdersEdit, ct);
+            }
+        }
+        return await service.ConfirmAsync(publicId, new OrderConfirmRequest(body?.RowVersion), OrderScope.Any, overrideCredit, ct);
+    }
 
     /// <summary>Re-cotiza una orden ya cotizada (capacidad REPRICE: por defecto solo en CONFIRMED).</summary>
     [HttpPost("reprice"), RequirePermission(PermissionCatalog.OrdersEdit)]

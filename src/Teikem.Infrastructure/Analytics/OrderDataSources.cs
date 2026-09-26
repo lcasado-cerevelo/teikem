@@ -46,6 +46,10 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("ServiceTypeCode", "Código de tipo de servicio", "Service type code", DataFieldType.Text),
         new DataField("Status", "Estatus", "Status", DataFieldType.Text),
         new DataField("StatusCode", "Código de estatus", "Status code", DataFieldType.Text),
+        // Tipo de paquete principal (agrupable: 'Órdenes por tipo de paquete'); una orden mixta cuenta una sola vez, bajo el
+        // tipo con más piezas (empate: la primera línea). Null en una entrega especial o sin líneas.
+        new DataField("PackageType", "Tipo de paquete principal", "Main package type", DataFieldType.Text),
+        new DataField("PackageTypeCode", "Código de tipo de paquete principal", "Main package type code", DataFieldType.Text),
         new DataField("IsSpecialDelivery", "Entrega especial", "Special delivery", DataFieldType.Bool),
         new DataField("SpecialServiceName", "Servicio especial", "Special service", DataFieldType.Text),
         new DataField("TotalPieces", "Piezas", "Pieces", DataFieldType.Number),
@@ -124,6 +128,7 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
             var delivery = deliveryByOrder.GetValueOrDefault(o.TransportOrderId);
             var lines = linesByOrder.GetValueOrDefault(o.TransportOrderId);
             var specialName = o.SpecialServiceId is int ssId ? specialNames.GetValueOrDefault(ssId) : null;
+            var mainPackageTypeId = MainPackageTypeId(lines);
 
             rows.Add(new DataRow
             {
@@ -145,6 +150,8 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["IsSpecialDelivery"] = o.IsSpecialDelivery,
                 ["SpecialServiceName"] = specialName,
                 ["TotalPieces"] = o.TotalPieces,
+                ["PackageType"] = mainPackageTypeId is int ptId ? await ClientDataSourceHelpers.LookupLabelAsync(lookups, ptId, lang, ct) : null,
+                ["PackageTypeCode"] = mainPackageTypeId is int ptc ? await ClientDataSourceHelpers.LookupCodeAsync(lookups, ptc, ct) : null,
                 ["PackagesSummary"] = await PackagesSummaryAsync(o.IsSpecialDelivery, specialName, lines, lang, ct),
                 ["CodAmount"] = o.CodAmount,
                 ["CodStatus"] = o.CodStatusCodeId is int cs ? ClientDataSourceHelpers.StatusLabel(codStatus, cs, lang) : null,
@@ -157,6 +164,15 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         }
         return rows;
     }
+
+    /// <summary>Tipo de paquete con más piezas entre las líneas activas (empate: el de la línea de menor id); null sin tipos.</summary>
+    public static int? MainPackageTypeId(IReadOnlyList<CargoLine>? lines)
+        => lines?.Where(l => l.PackageTypeLookupId.HasValue)
+            .GroupBy(l => l.PackageTypeLookupId!.Value)
+            .Select(g => new { TypeId = g.Key, Pieces = g.Sum(l => l.Quantity), FirstLine = g.Min(l => l.CargoLineId) })
+            .OrderByDescending(x => x.Pieces).ThenBy(x => x.FirstLine)
+            .Select(x => (int?)x.TypeId)
+            .FirstOrDefault();
 
     /// <summary>
     /// Resumen "Caja ×2 + Sobre ×1" consolidado por tipo de paquete (OrderRules.PackagesSummary); una entrega especial

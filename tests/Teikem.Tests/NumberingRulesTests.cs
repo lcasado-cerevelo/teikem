@@ -167,4 +167,35 @@ public class NumberingRulesTests
         Assert.Equal("AX-####", NumberingRules.EffectivePattern(NumberKinds.Order, s));
         Assert.Equal("FAC-#####", NumberingRules.EffectivePattern(NumberKinds.Invoice, s));
     }
+
+    // ---------------------------------------------------------------- ResolveChecked (números automáticos que no caben en NVARCHAR(40))
+
+    [Fact]
+    public void ResolveChecked_returns_the_number_when_it_fits_in_40_characters()
+    {
+        Assert.Equal("ORD-00001", NumberingRules.ResolveChecked(NumberKinds.Order, "ORD-#####", 1));
+        var pattern = new string('X', 38) + "-#"; // 40 caracteres
+        Assert.Equal(new string('X', 38) + "-9", NumberingRules.ResolveChecked(NumberKinds.Order, pattern, 9));
+    }
+
+    [Theory]
+    [InlineData(NumberKinds.Order, "El número de orden generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
+    [InlineData(NumberKinds.Invoice, "El número de factura generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
+    [InlineData(NumberKinds.Package, "El número de paquete generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente.")]
+    public void ResolveChecked_rejects_a_generated_number_longer_than_40_characters_with_the_exact_message(string kind, string message)
+    {
+        var pattern = new string('X', 38) + "-#"; // 40 caracteres: el consecutivo 10 lo lleva a 41 (Resolve no trunca)
+        var ex = Assert.Throws<ArgumentException>(() => NumberingRules.ResolveChecked(kind, pattern, 10));
+        Assert.Equal(message, ex.Message);
+        Assert.Equal(message, NumberingRules.GeneratedTooLongMessage(kind));
+    }
+
+    [Fact]
+    public void Typed_number_messages_have_no_parameter_suffix()
+    {
+        var ex = Assert.Throws<ArgumentException>(() => NumberingRules.EnsureTypedAllowed(NumberKinds.Order, NoPatterns, "X-1"));
+        Assert.Equal("El número de orden lo asigna Teikem para este cliente; déjelo en blanco.", ex.Message);
+        var tooLong = Assert.Throws<ArgumentException>(() => NumberingRules.NormalizeTyped(new string('A', 41)));
+        Assert.Equal("El número no puede exceder 40 caracteres.", tooLong.Message);
+    }
 }

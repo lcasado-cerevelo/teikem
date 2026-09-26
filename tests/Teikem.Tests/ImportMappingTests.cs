@@ -34,6 +34,24 @@ public class ImportMappingTests
     }
 
     [Fact]
+    public void Row_without_consignee_name_or_code_is_an_error_on_consigneeName()
+    {
+        var values = ImportMapping.Map(new[] { "", "Calle 5", "Ponce", "BOX", "1" }, Columns, null);
+        var error = ImportMapping.RequireConsignee(values);
+        Assert.NotNull(error);
+        Assert.Equal("consigneeName", error!.Value.Field);
+        Assert.Equal("Indique el consignatario: nombre (con dirección) o código del directorio.", error.Value.Message);
+    }
+
+    [Fact]
+    public void Row_with_consignee_code_or_name_passes_the_consignee_rule()
+    {
+        var columns = new[] { new ImportColumn(1, "consigneeCode"), new ImportColumn(2, "consigneeName") };
+        Assert.Null(ImportMapping.RequireConsignee(ImportMapping.Map(new[] { "C-1", "" }, columns, null)));
+        Assert.Null(ImportMapping.RequireConsignee(ImportMapping.Map(new[] { "", "Farmacia" }, columns, null)));
+    }
+
+    [Fact]
     public void Cell_value_wins_over_default()
     {
         var defaults = new Dictionary<string, string> { ["packageType"] = "BOX" };

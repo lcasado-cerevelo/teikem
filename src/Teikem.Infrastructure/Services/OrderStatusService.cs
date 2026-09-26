@@ -86,6 +86,8 @@ public sealed class OrderStatusService(
     /// </summary>
     public async Task ConfirmTrackedAsync(TransportOrder order, bool overrideCredit, CancellationToken ct)
     {
+        // Una orden eliminada en captura (IsActive=0) no vuelve al pipeline (L253); ResolveOrderForWriteAsync ya la excluye.
+        if (!order.IsActive) throw new NotFoundException(OrderQueries.OrderLabel);
         if (!await db.IsInitialAsync(order.StatusCodeId, ct)) throw new StatusRuleException(NotInitialMessage);
         var target = await ConfirmTargetAsync(ct);
 
@@ -209,6 +211,30 @@ public sealed class OrderStatusService(
             var isReturn = string.Equals(toKind, StageKinds.Pipeline, StringComparison.OrdinalIgnoreCase)
                            && string.Equals(currentKind, StageKinds.Lateral, StringComparison.OrdinalIgnoreCase);
             if (!isLateral && !isReturn) throw new StatusRuleException(ReservedAdvanceMessage(to.InternalCode));
+
+            // Regreso desde un lateral: solo a la etapa PIPELINE desde la que se desvió la orden. StatusService admitiría también
+            // la siguiente, lo que permitiría confirmar sin cotizar ni verificar crédito (DRAFT → ON_HOLD → CONFIRMED) o avanzar
+            // el pipeline reservado a Trips/POD (CONFIRMED → ON_HOLD → PICKUP).
+            if (isReturn)
+            {
+                var orderId = order.TransportOrderId;
+                var lastPipelineId = await db.EntityStatusHistories.AsNoTracking()
+                    .Where(h => h.EntityId == orderId
+                                && h.EntityType!.Entity == LookupDomains.EntityType
+                                && h.EntityType.InternalCode == EntityTypes.TransportOrder
+                                && h.ToStatus!.StageKind!.InternalCode == StageKinds.Pipeline)
+                    .OrderByDescending(h => h.EntityStatusHistoryId)
+                    .Select(h => (int?)h.ToStatusCodeId)
+                    .FirstOrDefaultAsync(ct2);
+                if (lastPipelineId is not null && to.StatusCodeId != lastPipelineId)
+                {
+                    var target = await ConfirmTargetAsync(ct2);
+                    var lastIsInitial = await db.IsInitialAsync(lastPipelineId.Value, ct2);
+                    throw new StatusRuleException(lastIsInitial && target.Id == to.StatusCodeId
+                        ? UseConfirmMessage
+                        : ReservedAdvanceMessage(to.InternalCode));
+                }
+            }
 
             var result = await statuses.TransitionAsync(StatusDomains.OrderStatus, EntityTypes.TransportOrder, order.TransportOrderId,
                 order.StatusCodeId, to.InternalCode, req.Comment, ct2);

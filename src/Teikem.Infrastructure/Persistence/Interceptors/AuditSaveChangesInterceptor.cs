@@ -55,6 +55,38 @@ public sealed class AuditSaveChangesInterceptor(ITenantContext tenant, ILookupCa
         return await base.SavedChangesAsync(eventData, result, cancellationToken);
     }
 
+    // Un SaveChanges fallido o cancelado descarta su bitácora pendiente: si el mismo DbContext se reutiliza (importador: una
+    // transacción por fila), el siguiente SaveChanges exitoso no debe escribir AuditLog de cambios que nunca se guardaron.
+    public override void SaveChangesFailed(DbContextErrorEventData eventData)
+    {
+        DiscardPending(eventData.Context as TeikemDbContext);
+        base.SaveChangesFailed(eventData);
+    }
+
+    public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
+    {
+        DiscardPending(eventData.Context as TeikemDbContext);
+        return base.SaveChangesFailedAsync(eventData, cancellationToken);
+    }
+
+    public override void SaveChangesCanceled(DbContextEventData eventData)
+    {
+        DiscardPending(eventData.Context as TeikemDbContext);
+        base.SaveChangesCanceled(eventData);
+    }
+
+    public override Task SaveChangesCanceledAsync(DbContextEventData eventData, CancellationToken cancellationToken = default)
+    {
+        DiscardPending(eventData.Context as TeikemDbContext);
+        return base.SaveChangesCanceledAsync(eventData, cancellationToken);
+    }
+
+    private static void DiscardPending(TeikemDbContext? ctx)
+    {
+        if (ctx is null || ctx.SuppressAudit) return;
+        ctx.PendingAudits.Clear();
+    }
+
     private void Prepare(TeikemDbContext? ctx)
     {
         if (ctx is null || ctx.SuppressAudit) return;

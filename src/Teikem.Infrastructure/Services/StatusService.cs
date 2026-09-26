@@ -186,12 +186,18 @@ public sealed class StatusService(TeikemDbContext db, ITenantContext tenant, ILo
         => await db.StatusCodes.AsNoTracking().Include(s => s.StageKind).FirstOrDefaultAsync(s => s.Entity == statusDomain && s.InternalCode == code, ct)
            ?? throw new NotFoundException($"Estatus {statusDomain}", code);
 
+    /// <summary>Largo máximo del comentario de una transición (= EntityStatusHistory.Comment NVARCHAR(500)).</summary>
+    public const int CommentMaxLength = 500;
+    public const string CommentTooLongMessage = "El comentario admite como máximo 500 caracteres.";
+
     /// <summary>
     /// Transición segura: valida etapa activa + dependencia dura, registra EntityStatusHistory y dispara efectos.
     /// Devuelve el StatusCode destino; el llamador asigna StatusCodeId en su entidad dentro de la misma unidad de trabajo.
     /// </summary>
     public async Task<StatusCode> TransitionAsync(string statusDomain, string entityTypeCode, int entityId, int? fromStatusId, string toCode, string? comment, CancellationToken ct)
     {
+        // EntityStatusHistory.Comment es NVARCHAR(500): un comentario más largo terminaría en 500 al guardar (truncado en SQL).
+        if (comment is { Length: > CommentMaxLength }) throw new ValidationException("comment", CommentTooLongMessage);
         var enabled = await LoadEnabledAsync(statusDomain, ct);
         var to = enabled.FirstOrDefault(s => s.InternalCode.Equals(toCode, StringComparison.OrdinalIgnoreCase))
                  ?? throw new StatusRuleException($"El estatus '{toCode}' no existe o no está habilitado para esta compañía.");

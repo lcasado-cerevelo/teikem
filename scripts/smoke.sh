@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prueba de humo de los Lotes 1 y 2 contra un API levantado (default http://localhost:5000).
+# Prueba de humo de los Lotes 1, 2 y 3 contra un API levantado (default http://localhost:5000).
 # Requiere: curl, jq. Uso: scripts/smoke.sh [base_url]
 set -euo pipefail
 BASE="${1:-http://localhost:5000}"
@@ -331,7 +331,7 @@ expect 400 "$(req POST "/api/v1/clients/$CLIENT_PID/special-services" "{\"typeId
 expect 400 "$(req POST "/api/v1/clients/$CLIENT_PID/special-services" '{"rate":1}')" | jq -e '.errors.typeId' >/dev/null || fail "sin tipo"
 expect 400 "$(req POST "/api/v1/clients/$CLIENT_PID/special-services" "{\"newTypeName\":\"Negativo $TS\",\"rate\":-1}")" | jq -e '.errors.rate' >/dev/null || fail "tarifa negativa"
 C2=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Beauty Code $TS\",\"contract\":{\"startDate\":\"2026-01-01\"}}")")
-CLIENT2_PID=$(echo "$C2" | jq -r .publicId); CONTRACT_C2_PID=$(echo "$C2" | jq -r .currentContract.publicId)
+CLIENT2_PID=$(echo "$C2" | jq -r .publicId); CONTRACT_C2_PID=$(echo "$C2" | jq -r .currentContract.publicId); CLIENT2_ID=$(echo "$C2" | jq -r .id)
 expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_C2_PID/billing-model" '{"billSpecialServices":true}')" >/dev/null
 SS_C2=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT2_PID/special-services" "{\"typeId\":$TYPE_ID,\"rate\":120}")")
 echo "$SS_C2" | jq -e --argjson t "$TYPE_ID" '.typeId==$t' >/dev/null || fail "tipo compartido"; SS_C2_ID=$(echo "$SS_C2" | jq -r .id)
@@ -553,6 +553,686 @@ done
 expect 200 "$(req GET '/api/v1/audit/changes?entityType=RATE_COMPONENT&take=5')" | jq -e '.total >= 3 and ([.items[] | select((.changesJson // "") | ascii_downcase | contains("token"))] | length)==0' >/dev/null || fail "RATE_COMPONENT auditado sin secretos"
 expect 200 "$(req GET '/api/v1/audit/activity?kind=changes&take=100')" | jq -e '.total >= 1 and ([.items[] | select(.kind=="change")] | length >= 1)' >/dev/null || fail "actividad de cambios"
 ok "Lote 2: clientes, consignatarios, contratos, tarifas, especiales, portal, aislamiento y auditoría"
+
+# ============================================================================================================
+# Lote 3 — Órdenes de transporte. Re-ejecutable: TS en nombres y patrón de numeración (contadores por cliente nuevos en
+# cada corrida). Reutiliza del Lote 2: CLIENT_PID/CLIENT2_PID/CONTRACT_C2_PID, SHARED_PID, LOC_PID, SS_ID3, PU2_ID.
+# ============================================================================================================
+login() { expect 200 "$(anon POST /api/v1/auth/login "{\"email\":\"$1\",\"password\":\"$2\"}")" | jq -r .tokens.accessToken; }
+ordnum() { printf 'T%s-%05d' "$TS" "$1"; }   # número de orden automático del cliente de órdenes (patrón T$TS-#####)
+seqof() { local n=${1##*-}; echo $((10#$n)); }  # consecutivo de un número automático
+T2=$(login "$DISPATCH_EMAIL" "$PASS"); T3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!"); T4=$(login "soloordenes$TS@teikem.local" "$PASS")
+RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
+
+step "órdenes de transporte (Lote 3): prerrequisitos (cliente con contrato y tarifas, servicio especial, consignatarios)"
+expect 200 "$(req PUT '/api/v1/status/lateral-entries/TRANSPORT_ORDER?statusDomain=OrderStatus' '[{"lateralStatusCode":"CANCELLED","fromStatusCode":"PICKUP","isAllowed":true},{"lateralStatusCode":"CANCELLED","fromStatusCode":"DRAFT","isAllowed":true},{"lateralStatusCode":"CANCELLED","fromStatusCode":"CONFIRMED","isAllowed":true}]')" >/dev/null
+CO=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Órdenes $TS\",\"paymentTerm\":\"NET30\",\"currency\":\"USD\",\"contract\":{\"startDate\":\"2026-01-01\"}}")")
+CLIENT_O_PID=$(echo "$CO" | jq -r .publicId); CONTRACT_O_PID=$(echo "$CO" | jq -r .currentContract.publicId)
+expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_O_PID/billing-model" '{"billExtraPiece":true,"billDispatchFee":true,"billCodFee":true,"billSpecialServices":true}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_O_PID/dispatch-fee" '{"amount":3}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_O_PID/cod-fee" '{"type":"PERCENT","value":2.5}')" >/dev/null
+expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":7}')" >/dev/null
+expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"ENVELOPE","rate":5}')" >/dev/null
+EPO=$(expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/rate-components" '{"kind":"EXTRA_PIECE","serviceType":"STANDARD","packageType":"BOX"}')" | jq -r .id)
+expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/rate-components/$EPO/tiers" '{"fromUnit":2,"toUnit":5,"rate":1.0}')" >/dev/null
+expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_O_PID/rate-components/$EPO/tiers" '{"fromUnit":6,"rate":0.75}')" >/dev/null
+SS_O_ID=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/special-services" "{\"newTypeName\":\"Vagón $TS\",\"rate\":150}")" | jq -r .id)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" "{\"clientAssignsInvoiceNumber\":true,\"orderNumberFormat\":\"T$TS-#####\"}")" >/dev/null
+expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Central $TS\",\"locationType\":\"CORPORATE\",\"line1\":\"Calle Sol 1\",\"city\":\"Ponce\",\"postalCode\":\"00716\",\"country\":\"PR\",\"deliveryNotes\":\"Portón azul\",\"defaultWindowStart\":\"08:00:00\",\"defaultWindowEnd\":\"12:00:00\"}")" >/dev/null
+LOC_A_PID=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Consignatario A $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 5 #12\",\"city\":\"Ponce\",\"postalCode\":\"00716\",\"country\":\"PR\",\"allowDupInvoice\":true}")" | jq -r .publicId)
+LOC_B_PID=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Consignatario B $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 7\",\"city\":\"Juana Díaz\",\"country\":\"PR\",\"allowDupInvoice\":false}")" | jq -r .publicId)
+COB=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Órdenes B $TS\",\"contract\":{\"startDate\":\"2026-01-01\"}}")"); CLIENT_OB_PID=$(echo "$COB" | jq -r .publicId)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_OB_PID/number-settings" '{"clientAssignsOrderNumber":true}')" >/dev/null
+LOC_BB_PID=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_OB_PID\",\"name\":\"Consignatario BB $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 9\",\"city\":\"Arecibo\",\"country\":\"PR\"}")" | jq -r .publicId)
+LOC_COUNT_0=$(expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_O_PID")" | jq 'length')
+# Cuerpo base de una orden del cliente de órdenes hacia el consignatario A (jq -c añade/pisa campos con --argjson extra)
+ob() { local x=${1:-}; [[ -n "$x" ]] || x='{}'
+  jq -cn --arg c "$CLIENT_O_PID" --arg l "$LOC_A_PID" --argjson x "$x" '{clientPublicId:$c,consigneeLocationPublicId:$l,packages:[{pieces:1}]} + $x'; }
+ok "clientes, contrato ACTIVE con tarifas (BOX 7, ENVELOPE 5, tramos 2–5/6+, despacho 3, COD 2.5 %), servicio especial y consignatarios"
+
+step "órdenes (Lote 3): entrada rápida con defaults del tenant, numeración y snapshot de paradas"
+O1=$(expect 200 "$(req POST /api/v1/orders "$(ob)")")
+O1_PID=$(echo "$O1" | jq -r .publicId); O1_ID=$(echo "$O1" | jq -r .id); O1_NUM=$(echo "$O1" | jq -r .orderNumber); O1_PB=$(echo "$O1" | jq -r .packBatchNumber)
+echo "$O1" | jq -e --arg n "$(ordnum 1)" --arg c "Consignatario A $TS" --arg p "Central $TS" '.status=="DRAFT" and .isInitialStatus and .serviceType=="STANDARD" and .packages[0].packageType=="BOX" and .orderNumber==$n and (.packBatchNumber | test("^EMP-[0-9]{5,}$")) and (.clientInvoiceNumber | test("^FAC-[0-9]{5}$")) and (.packages[0].packageNumber | test("^PQT-")) and .delivery.name==$c and .delivery.line1=="Calle 5 #12" and .delivery.city=="Ponce" and .delivery.windowStartUtc==null and .pickup.name==$p and .pickup.notes=="Portón azul" and .codStatus==null and .capabilities.canEditCargo and .capabilities.canDelete and .capabilities.canConfirm and (.capabilities.canReprice | not)' >/dev/null || fail "entrada rápida: $O1"
+O2=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"requestedDate":"2026-10-05T00:00:00"}')")")
+echo "$O2" | jq -e --arg n "$(ordnum 2)" --arg f "$(echo "$O1" | jq -r .clientInvoiceNumber)" '.orderNumber==$n and .clientInvoiceNumber!=$f and (.pickup.windowStartUtc | startswith("2026-10-05T08:00:00")) and (.pickup.windowEndUtc | startswith("2026-10-05T12:00:00"))' >/dev/null || fail "segunda orden / ventana copiada: $O2"
+expect 200 "$(req GET "/api/v1/orders/$O1_PID")" | jq -e --arg n "$O1_NUM" --arg b "$O1_PB" '.orderNumber==$n and .packBatchNumber==$b' >/dev/null || fail "ficha"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$O1_ID")" | jq -e 'length==1 and .[0].toCode=="DRAFT" and .[0].fromCode==null' >/dev/null || fail "historial de nacimiento"
+# Snapshot (L236/L254): editar el consignatario después no altera la orden; se restaura porque LOC_A se reutiliza abajo
+expect 200 "$(req PATCH "/api/v1/locations/$LOC_A_PID" '{"line1":"Otra 99","city":"Yauco"}')" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/$O1_PID")" | jq -e '.delivery.line1=="Calle 5 #12" and .delivery.city=="Ponce"' >/dev/null || fail "snapshot: la orden no debe cambiar al editar el consignatario"
+expect 200 "$(req PATCH "/api/v1/locations/$LOC_A_PID" '{"line1":"Calle 5 #12","city":"Ponce"}')" >/dev/null
+ok "DRAFT con STANDARD/BOX por defecto, T$TS-00001/00002, EMP-/FAC-/PQT- generados, recogido en la corporativa con notas y ventana, snapshot de paradas aislado del directorio"
+
+step "órdenes (Lote 3): concurrencia del contador (8 altas simultáneas)"
+TMPD=$(mktemp -d)
+for i in 1 2 3 4 5 6 7 8; do req POST /api/v1/orders "$(ob)" > "$TMPD/$i" & done
+wait
+for i in 1 2 3 4 5 6 7 8; do [[ $(tail -n1 "$TMPD/$i") == "200" ]] || fail "alta simultánea $i: $(cat "$TMPD/$i")"; done
+ALL=$(for i in 1 2 3 4 5 6 7 8; do sed '$d' "$TMPD/$i"; echo; done | jq -s '.'); rm -rf "$TMPD"
+echo "$ALL" | jq -e '([.[].orderNumber] | unique | length)==8 and ([.[].packBatchNumber] | unique | length)==8 and ([.[].clientInvoiceNumber] | unique | length)==8 and ([.[].orderNumber | split("-") | last | tonumber] | (max - min)==7)' >/dev/null || fail "números repetidos o con huecos: $(echo "$ALL" | jq -c '[.[].orderNumber]')"
+ok "ocho creaciones simultáneas, ocho números distintos y consecutivos (sin 409/500)"
+
+step "órdenes (Lote 3): quién asigna cada número, unicidad por cliente y colisión automático/tecleado"
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"MANUAL-$TS\"}")")" | jq -e '.errors.orderNumber' >/dev/null || fail "número tecleado cuando lo asigna Teikem"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" '{"clientAssignsOrderNumber":true}')" >/dev/null
+O_MAN=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"MANUAL-$TS\"}")")"); O_MAN_PID=$(echo "$O_MAN" | jq -r .publicId)
+echo "$O_MAN" | jq -e --arg n "MANUAL-$TS" '.orderNumber==$n' >/dev/null || fail "número tecleado"
+expect 409 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"MANUAL-$TS\"}")")" | jq -e '.title=="Ya existe una orden con ese número para este cliente."' >/dev/null || fail "número repetido en el mismo cliente"
+expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_OB_PID\",\"consigneeLocationPublicId\":\"$LOC_BB_PID\",\"orderNumber\":\"MANUAL-$TS\",\"packages\":[{\"pieces\":1}]}")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/lookup?code=MANUAL-$TS")" | jq -e '.matchedBy=="ORDER_NUMBER" and (.matches | length)==2' >/dev/null || fail "mismo número en dos clientes"
+# Patrón de 40 caracteres: el consecutivo 10 lo desborda (Resolve no trunca) → 409 con mensaje de negocio y rollback de los consecutivos
+LONGPAT="$(printf 'X%.0s' $(seq 1 39))#"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_OB_PID/number-settings" "{\"packageNumberFormat\":\"$LONGPAT\"}")" >/dev/null
+PK12=$(jq -cn --arg c "$CLIENT_OB_PID" --arg l "$LOC_BB_PID" '{clientPublicId:$c,consigneeLocationPublicId:$l,packages:[range(12) | {pieces:1}]}')
+expect 409 "$(req POST /api/v1/orders "$PK12")" | jq -e '.title=="El número de paquete generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente."' >/dev/null || fail "número de paquete generado demasiado largo"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_OB_PID/number-settings" '{"packageNumberFormat":""}')" >/dev/null
+expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_OB_PID\",\"consigneeLocationPublicId\":\"$LOC_BB_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -e '.packages[0].packageNumber=="PQT-00002"' >/dev/null || fail "el 409 por número largo no debía gastar consecutivos de paquete"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"codType":"CASH"}')")" | jq -e '.title | contains("se registra al entregar")' >/dev/null || fail "codType en la captura"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packBatchNumber":"EMP-1"}')")" | jq -e '.title | contains("siempre lo genera Teikem")' >/dev/null || fail "packBatchNumber en la captura"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"INV-$TS-1\"}")")" | jq -e --arg f "INV-$TS-1" '.clientInvoiceNumber==$f' >/dev/null || fail "factura tecleada"
+LASTN=$(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderNumber)")
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"$(ordnum $((LASTN + 1)))\"}")")" >/dev/null   # alguien teclea el siguiente automático
+expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -e --arg n "$(ordnum $((LASTN + 2)))" '.orderNumber==$n' >/dev/null || fail "el contador debía saltar el número chocado"
+ok "400 si lo asigna Teikem, 409 por cliente, mismo número en otro cliente, codType/packBatchNumber 400, colisión con salto"
+
+step "órdenes (Lote 3): validaciones de captura y estado del cliente"
+expect 400 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_O_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -e '.errors.consignee' >/dev/null || fail "sin consignatario"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"newConsignee":{"name":"X","line1":"Y","city":"Ponce"}}')")" | jq -e '.errors.consignee' >/dev/null || fail "consignatario doble"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[]}')")" | jq -e '.errors.packages' >/dev/null || fail "sin paquetes"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"pieces":0}]}')")" | jq -e '.errors["packages[0].pieces"]' >/dev/null || fail "piezas 0"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"packageType":"NOPE","pieces":1}]}')")" | jq -e '.errors["packages[0].packageType"]' >/dev/null || fail "tipo de paquete desconocido"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"serviceType":"NOPE"}')")" | jq -e '.errors.serviceType' >/dev/null || fail "tipo de servicio desconocido"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"codAmount":-1}')")" | jq -e '.errors.codAmount' >/dev/null || fail "COD negativo"
+# Topes de las columnas: 400 por campo, nunca 500
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"pieces":1,"weightKg":1000000000000}]}')")" | jq -e '.errors["packages[0].weightKg"]' >/dev/null || fail "peso fuera de rango"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"pieces":1,"volumeM3":123456789.5}]}')")" | jq -e '.errors["packages[0].volumeM3"]' >/dev/null || fail "volumen fuera de rango"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"codAmount":100000000000000000}')")" | jq -e '.errors.codAmount' >/dev/null || fail "COD fuera de rango"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"pieces":2000000000},{"pieces":2000000000}]}')")" | jq -e '.errors.packages' >/dev/null || fail "total de piezas fuera de rango"
+# Valor de catálogo deshabilitado por el tenant (L54/L1158): deja de aceptarse al capturar
+expect 200 "$(req PUT /api/v1/catalogs/PackageType/PALLET/override '{"isEnabled":false}')" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":[{"packageType":"PALLET","pieces":1}]}')")" | jq -e '.errors["packages[0].packageType"]' >/dev/null || fail "tipo de paquete deshabilitado por el tenant"
+expect 204 "$(req DELETE /api/v1/catalogs/PackageType/PALLET/override)" >/dev/null
+expect 404 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$LOC_PID\"}")")" | jq -e '.title | contains("Consignatario")' >/dev/null || fail "consignatario de otro cliente"
+expect 204 "$(req POST "/api/v1/locations/$LOC_B_PID/deactivate")" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$LOC_B_PID\"}")")" | jq -e '.title | contains("inactivo")' >/dev/null || fail "consignatario inactivo"
+expect 204 "$(req POST "/api/v1/locations/$LOC_B_PID/reactivate")" >/dev/null
+# Recogido explícito (DECISIÓN 13): ajeno 404, inactivo 400, precedencia del almacén por defecto, orden sin recogido y alta de PICKUP por PATCH
+expect 404 "$(req POST /api/v1/orders "$(ob "{\"pickupLocationPublicId\":\"$LOC_PID\"}")")" | jq -e '.title | contains("recogido")' >/dev/null || fail "recogido de otro cliente"
+expect 204 "$(req POST "/api/v1/locations/$LOC_B_PID/deactivate")" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"pickupLocationPublicId\":\"$LOC_B_PID\"}")")" | jq -e '.errors.pickupLocationPublicId' >/dev/null || fail "recogido inactivo"
+expect 204 "$(req POST "/api/v1/locations/$LOC_B_PID/reactivate")" >/dev/null
+WH_O=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Almacén O $TS\",\"locationType\":\"PICKUP\",\"line1\":\"Carr. 1\",\"city\":\"Ponce\",\"country\":\"PR\"}")" | jq -r .publicId)
+LOC_COUNT_0=$((LOC_COUNT_0 + 1))   # el almacén cuenta en el directorio del cliente (paso de consignatario al vuelo)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" "{\"defaultPickupLocationPublicId\":\"$WH_O\"}")" >/dev/null
+expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -e --arg w "Almacén O $TS" '.pickup.name==$w' >/dev/null || fail "precedencia del almacén por defecto sobre la corporativa"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"clearDefaultPickup":true}')" >/dev/null
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"pickupLocationPublicId\":\"$WH_O\"}")")" | jq -e --arg w "Almacén O $TS" '.pickup.name==$w' >/dev/null || fail "recogido explícito"
+ONP=$(expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_OB_PID\",\"consigneeLocationPublicId\":\"$LOC_BB_PID\",\"orderNumber\":\"NOPK-$TS\",\"packages\":[{\"pieces\":1}]}")")
+echo "$ONP" | jq -e '.pickup==null' >/dev/null || fail "orden sin recogido: $ONP"
+WH_OB=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_OB_PID\",\"name\":\"Almacén OB $TS\",\"locationType\":\"PICKUP\",\"line1\":\"Carr. 2\",\"city\":\"Arecibo\",\"country\":\"PR\"}")" | jq -r .publicId)
+expect 200 "$(req PATCH "/api/v1/orders/$(echo "$ONP" | jq -r .publicId)" "{\"pickupLocationPublicId\":\"$WH_OB\"}")" | jq -e --arg w "Almacén OB $TS" '.pickup.name==$w' >/dev/null || fail "alta de la parada PICKUP por PATCH"
+# País ISO alfa-2 (snapshot CHAR(2) de la parada): 400 en la captura, en el directorio y en el catálogo global, nunca 500
+CCMSG="El código de país debe ser ISO 3166-1 alfa-2 (2 letras)."
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":null,\"newConsignee\":{\"name\":\"Mex $TS\",\"line1\":\"Calle 1\",\"city\":\"Ponce\",\"country\":\"MEX\"}}")")" | jq -e --arg m "$CCMSG" '.errors["newConsignee.country"][0]==$m' >/dev/null || fail "país de 3 letras en la captura"
+expect 400 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CLIENT_O_PID\",\"name\":\"Mex $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 1\",\"city\":\"Ponce\",\"country\":\"MEX\"}")" | jq -e --arg m "$CCMSG" '.errors.country[0]==$m' >/dev/null || fail "país de 3 letras en el directorio"
+expect 400 "$(req POST /api/v1/catalogs/Country '{"code":"MEX","labels":{"es":"México","en":"Mexico"}}' "$T_SOP")" | jq -e --arg m "$CCMSG" '.errors.code[0]==$m' >/dev/null || fail "país de 3 letras en el catálogo global"
+expect 400 "$(req POST /api/v1/orders "{\"consigneeLocationPublicId\":\"$LOC_A_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -e '.errors.clientPublicId' >/dev/null || fail "sin cliente"
+OSUS=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"SUSPENDED","comment":"smoke órdenes"}')" >/dev/null
+expect 422 "$(req POST /api/v1/orders "$(ob)")" | jq -e '.title | contains("suspendido")' >/dev/null || fail "cliente suspendido"
+expect 422 "$(req POST "/api/v1/orders/$OSUS/confirm" '{}')" | jq -e '.title=="El cliente está suspendido; no se pueden crear ni confirmar órdenes."' >/dev/null || fail "confirmar con cliente suspendido"
+expect 200 "$(req GET "/api/v1/orders/$OSUS")" | jq -e '.status=="DRAFT" and .quotedAmount==null' >/dev/null || fail "la confirmación con cliente suspendido se revirtió"
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
+ok "consignatario obligatorio/único/ajeno (404)/inactivo, recogido ajeno/inactivo/por defecto/ausente/por PATCH, país ISO-2, paquetes, servicio, COD, topes de columnas, catálogo deshabilitado, cliente obligatorio y suspendido (422: ni se crea ni se confirma)"
+
+step "órdenes (Lote 3): multi-paquete, consignatario coincidente y consignatario al vuelo"
+MP=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"packages":[{"packageType":"BOX","pieces":2},{"packageType":"ENVELOPE","pieces":1,"description":"Documentos"}]}')")")
+echo "$MP" | jq -e '.totalPieces==3 and (.packages | length)==2 and .packagesSummary=="Caja ×2 + Sobre ×1"' >/dev/null || fail "multi-paquete: $MP"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&orderNumber=$(echo "$MP" | jq -r .orderNumber)")" | jq -e '.total==1 and (.items[0].packages | length)==2 and (.items[0].packBatchNumber | length) > 0' >/dev/null || fail "listado multi-paquete"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":null,\"newConsignee\":{\"name\":\"  consignatario a $TS \",\"line1\":\"calle 5 #12\",\"city\":\"Ponce\"}}")")" | jq -e --arg l "$LOC_A_PID" '.delivery.locationPublicId==$l' >/dev/null || fail "coincidencia normalizada"
+expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_O_PID")" | jq -e --argjson n "$LOC_COUNT_0" 'length==$n' >/dev/null || fail "la coincidencia no debe crear consignatarios"
+NEWC=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":null,\"newConsignee\":{\"name\":\"Nuevo $TS\",\"line1\":\"Calle 9\",\"city\":\"Ponce\",\"postalCode\":\"00716\",\"deliveryNotes\":\"Timbre roto\"}}")")")
+echo "$NEWC" | jq -e --arg n "Nuevo $TS" '.delivery.name==$n and .delivery.notes=="Timbre roto"' >/dev/null || fail "consignatario al vuelo: $NEWC"
+expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_O_PID")" | jq -e --argjson n "$LOC_COUNT_0" --arg c "Nuevo $TS" 'length==($n + 1) and (map(select(.name==$c and .locationType=="DELIVERY" and .isShared==false)) | length)==1' >/dev/null || fail "consignatario al vuelo asignado al cliente"
+ok "Caja ×2 + Sobre ×1, coincidencia nombre + línea 1 sin duplicar el directorio, alta al vuelo DELIVERY del cliente"
+
+step "órdenes (Lote 3): factura repetida por consignatario (R36) al crear y al cambiar de consignatario"
+D1=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"DUP-$TS\"}")")"); D1_NUM=$(echo "$D1" | jq -r .orderNumber); D1_PID=$(echo "$D1" | jq -r .publicId)
+expect 409 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"DUP-$TS\"}")")" | jq -e --arg n "$D1_NUM" --arg p "$D1_PID" '.code=="duplicate_invoice_confirmable" and .errors.existingOrderNumber[0]==$n and .errors.existingOrderPublicId[0]==$p and (.title | contains($n))' >/dev/null || fail "R36 confirmable"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"DUP-$TS\",\"confirmDuplicateInvoice\":true}")")" | jq -e --arg n "$(ordnum $(( $(seqof "$D1_NUM") + 1 )))" '.orderNumber==$n' >/dev/null || fail "crear de todos modos (y el 409 no gastó consecutivo)"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$LOC_B_PID\",\"clientInvoiceNumber\":\"DUPB-$TS\"}")")" >/dev/null
+expect 409 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$LOC_B_PID\",\"clientInvoiceNumber\":\"DUPB-$TS\",\"confirmDuplicateInvoice\":true}")")" | jq -e '.code=="duplicate_invoice" and (.errors.existingOrderNumber | length)==1' >/dev/null || fail "R36 bloqueada"
+expect 409 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":null,\"newConsignee\":{\"name\":\"Consignatario A $TS\",\"line1\":\"Calle 5 #12\",\"city\":\"Ponce\"},\"clientInvoiceNumber\":\"DUP-$TS\"}")")" | jq -e '.code=="duplicate_invoice_confirmable"' >/dev/null || fail "R36 con consignatario coincidente"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$SHARED_PID\",\"clientInvoiceNumber\":\"DUP-$TS\"}")")" >/dev/null   # otro consignatario: sin aviso
+# PATCH que cambia el consignatario reevalúa R36 (la orden editada no cuenta como duplicado de sí misma)
+MV=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"DUPB-$TS\"}")")" | jq -r .publicId)
+expect 409 "$(req PATCH "/api/v1/orders/$MV" "{\"consigneeLocationPublicId\":\"$LOC_B_PID\"}")" | jq -e '.code=="duplicate_invoice"' >/dev/null || fail "PATCH hacia consignatario sin duplicados"
+MV2=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"consigneeLocationPublicId\":\"$LOC_B_PID\",\"clientInvoiceNumber\":\"DUP-$TS\"}")")" | jq -r .publicId)
+expect 409 "$(req PATCH "/api/v1/orders/$MV2" "{\"consigneeLocationPublicId\":\"$LOC_A_PID\"}")" | jq -e '.code=="duplicate_invoice_confirmable"' >/dev/null || fail "PATCH hacia consignatario con duplicado confirmable"
+expect 200 "$(req PATCH "/api/v1/orders/$MV2" "{\"consigneeLocationPublicId\":\"$LOC_A_PID\",\"confirmDuplicateInvoice\":true}")" | jq -e --arg c "Consignatario A $TS" '.delivery.name==$c' >/dev/null || fail "PATCH confirmado"
+# PATCH de una orden con factura GENERADA hacia un consignatario sin duplicados: R36 no aplica (L1124: solo números tecleados),
+# aunque el cliente teclee sus facturas y otra orden de otro cliente tenga el mismo FAC- automático en ese consignatario.
+SHR=$(expect 200 "$(req POST /api/v1/locations "{\"name\":\"Compartido R36 $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle R36\",\"city\":\"Ponce\",\"country\":\"PR\"}")" | jq -r .publicId)
+CX=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"R36 X $TS\",\"contract\":{\"startDate\":\"2026-01-01\"}}")" | jq -r .publicId)
+CY=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"R36 Y $TS\",\"contract\":{\"startDate\":\"2026-01-01\"}}")" | jq -r .publicId)
+for C in "$CX" "$CY"; do expect 200 "$(req PATCH "/api/v1/clients/$C/number-settings" '{"clientAssignsInvoiceNumber":true}')" >/dev/null; done
+LY=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CY\",\"name\":\"Propio Y $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle Y\",\"city\":\"Ponce\",\"country\":\"PR\"}")" | jq -r .publicId)
+FX=$(expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CX\",\"consigneeLocationPublicId\":\"$SHR\",\"packages\":[{\"pieces\":1}]}")" | jq -r .clientInvoiceNumber)
+OY=$(expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CY\",\"consigneeLocationPublicId\":\"$LY\",\"packages\":[{\"pieces\":1}]}")")
+echo "$OY" | jq -e --arg f "$FX" '.clientInvoiceNumber==$f' >/dev/null || fail "prerrequisito: mismo FAC- automático en dos clientes ($FX): $OY"
+expect 200 "$(req PATCH "/api/v1/orders/$(echo "$OY" | jq -r .publicId)" "{\"consigneeLocationPublicId\":\"$SHR\"}")" | jq -e --arg n "Compartido R36 $TS" '.delivery.name==$n' >/dev/null || fail "PATCH con factura generada no debe dar 409 R36"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" '{"clientAssignsInvoiceNumber":false}')" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"clientInvoiceNumber\":\"DUP-$TS\"}")")" | jq -e '.errors.clientInvoiceNumber' >/dev/null || fail "factura tecleada cuando la asigna Teikem"
+# Factura tecleada y después el cliente pasa a 'Teikem asigna': el PATCH sigue revisando R36 (la orden recuerda que se tecleó)
+expect 409 "$(req PATCH "/api/v1/orders/$MV" "{\"consigneeLocationPublicId\":\"$LOC_B_PID\"}")" | jq -e '.code=="duplicate_invoice"' >/dev/null || fail "PATCH de factura tecleada con el ajuste cambiado"
+expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -e '.clientInvoiceNumber | test("^FAC-")' >/dev/null || fail "factura automática"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" '{"clientAssignsInvoiceNumber":true}')" >/dev/null
+ok "409 duplicate_invoice_confirmable/duplicate_invoice con errors estructurados, crear de todos modos, coincidencia, otro consignatario, PATCH de consignatario (solo facturas tecleadas), 400 cuando la asigna Teikem"
+
+step "órdenes (Lote 3): vista previa y confirmar = cotizar y congelar"
+Q=$(expect 200 "$(req POST /api/v1/billing/contract-rate-quote "{\"clientPublicId\":\"$CLIENT_O_PID\",\"lines\":[{\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"pieces\":8},{\"serviceType\":\"STANDARD\",\"packageType\":\"ENVELOPE\",\"pieces\":1}],\"codAmount\":200}")")
+QT=$(echo "$Q" | jq -r .total); echo "$Q" | jq -e '.total==26.25' >/dev/null || fail "cotización del contrato (7 + 6.25 + 3 + 5 + 5): $Q"
+OQ=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"packages":[{"packageType":"BOX","pieces":8},{"packageType":"ENVELOPE","pieces":1}],"codAmount":200}')")")
+OQ_PID=$(echo "$OQ" | jq -r .publicId); OQ_ID=$(echo "$OQ" | jq -r .id); echo "$OQ" | jq -e '.codStatus=="PENDING"' >/dev/null || fail "COD PENDING"
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID/quote")" | jq -e --argjson t "$QT" '.total==$t and (.lines | length)==2 and .credit.exceeds==false and .credit.creditLimit==null and .credit.orderTotal==$t' >/dev/null || fail "vista previa"
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID")" | jq -e '.quotedAmount==null' >/dev/null || fail "la vista previa no persiste"
+expect 200 "$(req POST "/api/v1/orders/$OQ_PID/confirm" '{}')" | jq -e --argjson t "$QT" --arg c "$CONTRACT_O_PID" '.status=="CONFIRMED" and .quotedAmount==$t and .quotedAtUtc!=null and .confirmedAtUtc!=null and .contractPublicId==$c and .capabilities.canReprice and (.capabilities.canDelete | not) and (.capabilities.canConfirm | not) and (.capabilities.canEditCargo | not)' >/dev/null || fail "confirmar"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OQ_ID")" | jq -e 'length==2 and (map(select(.toCode=="PENDING")) | length)==0' >/dev/null || fail "historial de la orden sin COD mezclado"
+expect 200 "$(req GET "/api/v1/status/history/ORDER_COD/$OQ_ID")" | jq -e 'length==1 and .[0].toCode=="PENDING"' >/dev/null || fail "historial COD"
+expect 422 "$(req POST "/api/v1/orders/$OQ_PID/confirm" '{}')" >/dev/null
+expect 409 "$(req POST "/api/v1/orders/$O1_PID/confirm" '{"rowVersion":"AAAAAAAAAAA="}')" >/dev/null
+expect 200 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true}')")" | jq -e '.status=="CONFIRMED" and .quotedAmount > 0' >/dev/null || fail "confirmNow"
+ok "GET /quote sin persistir, confirmar congela monto/fecha/contrato, COD bajo ORDER_COD, 422 al reconfirmar, 409 por rowVersion, confirmNow"
+
+step "órdenes (Lote 3): crédito (aviso + autorización con permiso) y tarifa faltante"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":10}')" >/dev/null
+OC1=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId)
+expect 200 "$(req GET "/api/v1/orders/$OC1/quote")" | jq -e --argjson t "$QT" '.credit.exceeds==true and .credit.pendingBalance >= $t' >/dev/null || fail "vista previa con crédito excedido"
+expect 422 "$(req POST "/api/v1/orders/$OC1/confirm" '{}')" | jq -e '.code=="credit_exceeded" and (.title | contains("límite de crédito")) and (.errors.available | length)==1' >/dev/null || fail "crédito excedido"
+expect 200 "$(req GET "/api/v1/orders/$OC1")" | jq -e '.status=="DRAFT" and .quotedAmount==null' >/dev/null || fail "la confirmación fallida se revirtió"
+N0=$(expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&take=1")" | jq .total)
+expect 422 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true}')")" | jq -e '.code=="credit_exceeded"' >/dev/null || fail "confirmNow con crédito excedido"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&take=1")" | jq -e --argjson n "$N0" '.total==$n' >/dev/null || fail "confirmNow fallido también revierte la creación"
+# Una orden cancelada libera crédito: límite exacto = pendiente + esta orden
+expect 200 "$(req POST "/api/v1/orders/$OQ_PID/cancel" '{"comment":"Cliente desistió"}')" | jq -e '.status=="CANCELLED"' >/dev/null || fail "cancelar"
+PQ=$(expect 200 "$(req GET "/api/v1/orders/$OC1/quote")")
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" "{\"creditLimit\":$(echo "$PQ" | jq '.credit.pendingBalance + .credit.orderTotal')}")" >/dev/null
+expect 200 "$(req POST "/api/v1/orders/$OC1/confirm" '{}')" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "límite justo (la cancelada ya no cuenta)"
+# Ajuste C: 422 credit_exceeded → overrideCredit exige orders.credit_override (despacho 403; admin confirma con bitácora)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":10}')" >/dev/null
+OC2=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId); OC2_ID=$(expect 200 "$(req GET "/api/v1/orders/$OC2")" | jq -r .id)
+expect 422 "$(req POST "/api/v1/orders/$OC2/confirm" '{}')" | jq -e '.code=="credit_exceeded" and .errors.limit[0]=="10.00" and (.errors.exposure|length)==1 and (.errors.newAmount|length)==1 and (.errors.available|length)==1' >/dev/null || fail "credit_exceeded con limit/exposure/newAmount/available"
+pdtotal() { expect 200 "$(req GET '/api/v1/audit/security-events?eventType=PERMISSION_DENIED&take=1')" | jq .total; }
+PD0=$(pdtotal)
+expect 403 "$(req POST "/api/v1/orders/$OC2/confirm" '{"overrideCredit":true}' "$T2")" | jq -e '.title=="Falta el permiso '"'"'orders.credit_override'"'"'."' >/dev/null || fail "403 override sin permiso"
+[[ $(pdtotal) -gt $PD0 ]] || fail "PERMISSION_DENIED del override sin permiso"
+expect 200 "$(req POST "/api/v1/orders/$OC2/confirm" '{"overrideCredit":true}')" | jq -e '.status=="CONFIRMED" and .quotedAmount > 0' >/dev/null || fail "override con permiso"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OC2_ID")" | jq -e 'map(select((.comment // "") | startswith("Crédito excedido autorizado por"))) | length==1' >/dev/null || fail "comentario del override"
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=ROLE_CHANGE&take=10')" | jq -e '[.items[] | select((.detailJson // "") | contains("credit_override"))] | length >= 1' >/dev/null || fail "SecurityEvent credit_override"
+# Facturación (plantilla Billing: orders.view + orders.credit_override, sin orders.edit) autoriza desde POST /confirm; sin
+# overrideCredit, o si el crédito no se excede, confirmar sigue exigiendo orders.edit
+expect 200 "$(req POST /api/v1/users "{\"email\":\"facturacion$TS@teikem.local\",\"fullName\":\"Facturación $TS\",\"password\":\"$PASS\",\"roles\":[\"Billing\"]}")" >/dev/null
+TBILL=$(login "facturacion$TS@teikem.local" "$PASS")
+OC3=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId); OC3_ID=$(expect 200 "$(req GET "/api/v1/orders/$OC3")" | jq -r .id)
+expect 403 "$(req POST "/api/v1/orders/$OC3/confirm" '{}' "$TBILL")" | jq -e '.title=="Falta el permiso '"'"'orders.edit'"'"'."' >/dev/null || fail "Facturación confirma sin overrideCredit"
+expect 200 "$(req POST "/api/v1/orders/$OC3/confirm" '{"overrideCredit":true}' "$TBILL")" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "Facturación autoriza el crédito excedido"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OC3_ID")" | jq -e --arg n "Facturación $TS" 'any(.[]; (.comment // "") | startswith("Crédito excedido autorizado por " + $n))' >/dev/null || fail "comentario del override de Facturación"
+PD0=$(pdtotal)
+expect 403 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true,"overrideCredit":true}')" "$T2")" | jq -e '.title=="Falta el permiso '"'"'orders.credit_override'"'"'."' >/dev/null || fail "403 confirmNow + override sin permiso"
+[[ $(pdtotal) -gt $PD0 ]] || fail "PERMISSION_DENIED de confirmNow + override sin permiso"
+expect 400 "$(req POST /api/v1/orders "$(ob '{"overrideCredit":true}')")" | jq -e '.errors.overrideCredit' >/dev/null || fail "overrideCredit sin confirmNow"
+expect 200 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true,"overrideCredit":true}')")" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "confirmNow + overrideCredit"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":100000}')" >/dev/null
+OC4=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId)
+expect 403 "$(req POST "/api/v1/orders/$OC4/confirm" '{"overrideCredit":true}' "$TBILL")" | jq -e '.title=="Falta el permiso '"'"'orders.edit'"'"'."' >/dev/null || fail "el permiso de autorización no confirma órdenes dentro del crédito"
+OX=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"serviceType":"EXPRESS"}')")" | jq -r .publicId)
+expect 422 "$(req GET "/api/v1/orders/$OX/quote")" | jq -e '.title | contains("No hay tarifa vigente")' >/dev/null || fail "vista previa sin tarifa"
+expect 422 "$(req POST "/api/v1/orders/$OX/confirm" '{}')" | jq -e '.title | contains("No hay tarifa vigente")' >/dev/null || fail "confirmar sin tarifa"
+ok "422 credit_exceeded revierte estatus y cotización (también confirmNow), la cancelada libera crédito, override 403/200 con historial y SecurityEvent, Facturación autoriza desde /confirm (sin orders.edit solo con crédito excedido), 422 sin tarifa"
+
+step "órdenes (Lote 3): edición (solo DRAFT por defecto, campos fijos, re-cotización con REPRICE)"
+expect 200 "$(req PATCH "/api/v1/orders/$O1_PID" "{\"consigneeLocationPublicId\":\"$LOC_B_PID\",\"packages\":[{\"packageType\":\"BOX\",\"pieces\":2,\"packageNumber\":\" PK-$TS \"},{\"packageType\":\"BOX\",\"pieces\":1}],\"notes\":\"Frágil\"}")" | jq -e --arg c "Consignatario B $TS" --arg pk "PK-$TS" '.delivery.name==$c and .totalPieces==3 and .notes=="Frágil" and ([.packages[].packageNumber] | index($pk) != null) and ([.packages[].packageNumber | select(test("^PQT-"))] | length)==1' >/dev/null || fail "PATCH (número de paquete tecleado y generado)"
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" "{\"packages\":[{\"pieces\":1,\"packageNumber\":\"$(printf 'P%.0s' $(seq 1 41))\"}]}")" | jq -e '.errors["packages[0].packageNumber"]' >/dev/null || fail "número de paquete de 41 caracteres"
+# Mismas validaciones que al crear (bitácora L1064)
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"packages":[]}')" | jq -e '.errors.packages | tostring | contains("Indique al menos una línea de paquete.")' >/dev/null || fail "PATCH sin paquetes"
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"packages":[{"packageType":"NOPE","pieces":1}]}')" | jq -e '.errors["packages[0].packageType"]' >/dev/null || fail "PATCH tipo de paquete desconocido"
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"packages":[{"pieces":0}]}')" | jq -e '.errors["packages[0].pieces"]' >/dev/null || fail "PATCH piezas 0"
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"serviceType":"NOPE"}')" | jq -e '.errors.serviceType' >/dev/null || fail "PATCH tipo de servicio desconocido"
+# Consignatario escrito libre en el PATCH: coincide (nombre + línea 1) con el creado al vuelo arriba → se reutiliza; luego vuelve a B
+expect 200 "$(req PATCH "/api/v1/orders/$O1_PID" "{\"newConsignee\":{\"name\":\" nuevo $TS\",\"line1\":\"calle 9\",\"city\":\"Ponce\"}}")" | jq -e --arg n "Nuevo $TS" '.delivery.name==$n and .delivery.notes=="Timbre roto"' >/dev/null || fail "PATCH con consignatario coincidente"
+expect 200 "$(req PATCH "/api/v1/orders/$O1_PID" "{\"consigneeLocationPublicId\":\"$LOC_B_PID\"}")" >/dev/null
+for F in '{"orderNumber":"X"}' "{\"clientPublicId\":\"$CLIENT_O_PID\"}" '{"clientInvoiceNumber":"X"}' '{"packBatchNumber":"X"}' '{"codType":"CASH"}'; do
+  expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" "$F")" >/dev/null
+done
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"orderNumber":"X"}')" | jq -e '.errors.orderNumber' >/dev/null || fail "orderNumber fijo"
+expect 409 "$(req PATCH "/api/v1/orders/$O1_PID" '{"notes":"x","rowVersion":"AAAAAAAAAAA="}')" >/dev/null
+# Referencias externas (L249, DECISIÓN 20): reemplazo completo en PATCH y tipo validado contra OrderRefType
+expect 200 "$(req PATCH "/api/v1/orders/$O1_PID" '{"references":[{"refType":"CLIENT_PO","value":"PO-1"},{"refType":"carrier","value":"GUIA-9","source":"UPS"}]}')" | jq -e '(.references|length)==2 and .references[0].refType=="CLIENT_PO" and .references[0].value=="PO-1" and .references[1].refType=="CARRIER" and .references[1].source=="UPS"' >/dev/null || fail "referencias en PATCH"
+expect 200 "$(req PATCH "/api/v1/orders/$O1_PID" '{"references":[{"refType":"ECOMMERCE","value":"SHOP-7"}]}')" | jq -e '(.references|length)==1 and .references[0].refType=="ECOMMERCE"' >/dev/null || fail "reemplazo completo de referencias"
+expect 400 "$(req PATCH "/api/v1/orders/$O1_PID" '{"references":[{"refType":"NOPE","value":"X"}]}')" | jq -e '.errors["references[0].refType"]' >/dev/null || fail "tipo de referencia desconocido"
+expect 422 "$(req PATCH "/api/v1/orders/$OC1" '{"packages":[{"packageType":"BOX","pieces":2}]}')" >/dev/null   # EDIT_CARGO apagado fuera de DRAFT
+expect 200 "$(req PUT '/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus' '[{"statusCode":"CONFIRMED","capability":"EDIT_CARGO","isAllowed":true}]')" >/dev/null
+Q2=$(expect 200 "$(req POST /api/v1/billing/contract-rate-quote "{\"clientPublicId\":\"$CLIENT_O_PID\",\"lines\":[{\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"pieces\":2}]}")" | jq .total)
+expect 200 "$(req PATCH "/api/v1/orders/$OC1" '{"packages":[{"packageType":"BOX","pieces":2}]}')" | jq -e --argjson t "$Q2" '.quotedAmount==$t' >/dev/null || fail "re-cotización al editar"
+expect 200 "$(req PATCH "/api/v1/orders/$OC1" '{"codAmount":50}')" | jq -e '.codStatus=="PENDING" and .codAmount==50' >/dev/null || fail "COD por PATCH"
+expect 200 "$(req PATCH "/api/v1/orders/$OC1" '{"clearCod":true}')" | jq -e '.codAmount==null and .codStatus==null' >/dev/null || fail "clearCod"
+expect 200 "$(req PUT '/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus' '[{"statusCode":"CONFIRMED","capability":"EDIT_CARGO","isAllowed":false}]')" >/dev/null
+ok "PATCH de consignatario/paquetes (número tecleado y generado)/notas/referencias, mismas validaciones que al crear, campos fijos 400, rowVersion 409, EDIT_CARGO 422 fuera de DRAFT y re-cotización al relajarlo"
+
+step "órdenes (Lote 3): reprecio y estatus laterales"
+QA1=$(expect 200 "$(req GET "/api/v1/orders/$OC1")" | jq -r .quotedAtUtc)
+expect 200 "$(req POST "/api/v1/orders/$OC1/reprice")" | jq -e --arg a "$QA1" '.quotedAtUtc != $a' >/dev/null || fail "reprecio"
+expect 422 "$(req POST "/api/v1/orders/$O1_PID/reprice")" >/dev/null   # REPRICE apagado en DRAFT
+expect 200 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"ON_HOLD"}')" | jq -e '.status=="ON_HOLD"' >/dev/null || fail "lateral"
+expect 422 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"PICKUP"}')" | jq -e '.title | contains("módulo correspondiente")' >/dev/null || fail "rebote por lateral no avanza el pipeline"
+expect 200 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"CONFIRMED"}')" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "regreso al último pipeline"
+expect 422 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"PLANNED"}')" | jq -e '.title | contains("módulo correspondiente")' >/dev/null || fail "avance reservado"
+expect 422 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"CANCELLED"}')" | jq -e '.title | contains("cancelación")' >/dev/null || fail "cancelar por /status"
+expect 422 "$(req POST "/api/v1/orders/$O1_PID/status" '{"toCode":"CONFIRMED"}')" | jq -e '.title | contains("confirmación")' >/dev/null || fail "confirmar por /status"
+expect 200 "$(req POST "/api/v1/orders/$O1_PID/status" '{"toCode":"ON_HOLD"}')" >/dev/null
+expect 422 "$(req POST "/api/v1/orders/$O1_PID/status" '{"toCode":"CONFIRMED"}')" | jq -e '.title | contains("confirmación")' >/dev/null || fail "DRAFT → ON_HOLD → CONFIRMED no confirma sin cotizar"
+expect 200 "$(req POST "/api/v1/orders/$O1_PID/status" '{"toCode":"DRAFT"}')" | jq -e '.status=="DRAFT" and .quotedAmount==null' >/dev/null || fail "regreso a DRAFT"
+expect 404 "$(req POST "/api/v1/orders/$OC1/status" '{"toCode":"NOPE"}')" >/dev/null
+LONGC=$(printf 'x%.0s' $(seq 1 600))
+expect 400 "$(req POST "/api/v1/orders/$OC1/status" "{\"toCode\":\"ON_HOLD\",\"comment\":\"$LONGC\"}")" | jq -e '.errors.comment[0]=="El comentario admite como máximo 500 caracteres."' >/dev/null || fail "comentario de 600 caracteres en /status"
+expect 400 "$(req POST "/api/v1/orders/$O1_PID/cancel" "{\"comment\":\"$LONGC\"}")" | jq -e '.errors.comment' >/dev/null || fail "comentario de 600 caracteres en /cancel"
+expect 200 "$(req GET "/api/v1/orders/$O1_PID")" | jq -e '.status=="DRAFT"' >/dev/null || fail "el 400 por comentario no cambia el estatus"
+expect 200 "$(req PUT /api/v1/status/OrderStatus/CONFIRMED/override '{"isEnabled":false}')" >/dev/null
+OPK=$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/orders/$OPK/confirm" '{}')" | jq -e '.status=="PICKUP" and .quotedAmount > 0' >/dev/null || fail "confirmar con CONFIRMED deshabilitado"
+expect 200 "$(req PUT /api/v1/status/OrderStatus/CONFIRMED/override '{"isEnabled":true}')" >/dev/null
+ok "reprecio solo en CONFIRMED, laterales y regreso solo al último pipeline (rebote por lateral 422), avances reservados, comentario > 500 → 400, CONFIRMED deshabilitado → PICKUP"
+
+step "órdenes (Lote 3): cancelar y eliminar"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OQ_ID")" | jq -e '.[-1].comment=="Cliente desistió" and .[-1].toCode=="CANCELLED"' >/dev/null || fail "bitácora de cancelación"
+expect 200 "$(req GET "/api/v1/orders/$OQ_PID")" | jq -e '.capabilities.canCancel | not' >/dev/null || fail "canCancel en terminal"
+expect 422 "$(req POST "/api/v1/orders/$OQ_PID/cancel" '{}')" >/dev/null
+expect 422 "$(req DELETE "/api/v1/orders/$OQ_PID")" | jq -e '.title | contains("estatus inicial")' >/dev/null || fail "eliminar cancelada"
+expect 422 "$(req DELETE "/api/v1/orders/$OC1")" >/dev/null
+expect 204 "$(req DELETE "/api/v1/orders/$O_MAN_PID")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/$O_MAN_PID")" | jq -e '.isActive==false and (.capabilities.canDelete | not)' >/dev/null || fail "ficha de la eliminada (baja lógica)"
+expect 200 "$(req GET "/api/v1/orders?includeInactive=true&orderNumber=MANUAL-$TS&clientId=$CLIENT_O_PID")" | jq -e '.total==1 and .items[0].isActive==false and .items[0].status=="DRAFT"' >/dev/null || fail "eliminada visible con includeInactive"
+# Eliminada (L253): no se confirma, cancela, reprecia, edita, cambia de estatus ni se vuelve a eliminar (404 'Orden')
+expect 404 "$(req POST "/api/v1/orders/$O_MAN_PID/confirm" '{}')" >/dev/null
+expect 404 "$(req POST "/api/v1/orders/$O_MAN_PID/cancel" '{}')" >/dev/null
+expect 404 "$(req POST "/api/v1/orders/$O_MAN_PID/status" '{"toCode":"ON_HOLD"}')" >/dev/null
+expect 404 "$(req POST "/api/v1/orders/$O_MAN_PID/reprice")" >/dev/null
+expect 404 "$(req PATCH "/api/v1/orders/$O_MAN_PID" '{"notes":"x"}')" >/dev/null
+expect 404 "$(req DELETE "/api/v1/orders/$O_MAN_PID")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/$O_MAN_PID")" | jq -e '.status=="DRAFT" and .quotedAmount==null and .isActive==false' >/dev/null || fail "la eliminada sigue en DRAFT sin cotizar"
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"MANUAL-$TS\"}")")" >/dev/null   # número liberado por el índice filtrado
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Solo crear $TS\",\"permissions\":[\"orders.view\",\"orders.create\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"solocrear$TS@teikem.local\",\"fullName\":\"Solo Crear\",\"password\":\"$PASS\",\"roles\":[\"Solo crear $TS\"]}")" >/dev/null
+T6=$(login "solocrear$TS@teikem.local" "$PASS")
+OSC=$(expect 200 "$(req POST /api/v1/orders "$(ob)" "$T6")" | jq -r .publicId)
+expect 200 "$(req POST /api/v1/orders "$(ob '{"confirmNow":true}')" "$T6")" | jq -e '.status=="CONFIRMED" and .quotedAmount > 0' >/dev/null || fail "confirmNow con solo orders.create (DECISIÓN 26)"
+expect 403 "$(req POST "/api/v1/orders/$OSC/cancel" '{}' "$T6")" >/dev/null
+expect 403 "$(req DELETE "/api/v1/orders/$OSC" '' "$T6")" >/dev/null
+ok "cancelación con bitácora y terminal, eliminar solo en la etapa inicial (baja lógica que libera el número; la eliminada responde 404 a toda acción), 403 sin orders.cancel, confirmNow con solo orders.create"
+
+step "órdenes (Lote 3): buscar o escanear (exacto) y listado paginado"
+expect 200 "$(req GET "/api/v1/orders/lookup?code=$O1_NUM")" | jq -e '.matchedBy=="ORDER_NUMBER" and (.matches | length)==1' >/dev/null || fail "lookup por orden"
+expect 200 "$(req GET "/api/v1/orders/lookup?code=$O1_PB")" | jq -e '.matchedBy=="PACK_BATCH" and (.matches | length)==1' >/dev/null || fail "lookup por empaque"
+expect 200 "$(req GET "/api/v1/orders/lookup?code=DUP-$TS")" | jq -e '.matchedBy=="INVOICE" and (.matches | length) >= 3' >/dev/null || fail "lookup por factura"
+expect 200 "$(req GET "/api/v1/orders/lookup?code=DUP")" | jq -e '(.matches | length)==0 and .matchedBy==null' >/dev/null || fail "lookup parcial no cuenta"
+expect 200 "$(req GET "/api/v1/orders/lookup?code=$(echo "$O1_NUM" | tr 'A-Z' 'a-z')")" | jq -e '(.matches | length)==1' >/dev/null || fail "lookup sin distinguir mayúsculas"
+expect 400 "$(req GET "/api/v1/orders/lookup?code=")" | jq -e '.errors.code' >/dev/null || fail "lookup vacío"
+expect 200 "$(req GET "/api/v1/orders?invoice=UP-$TS")" | jq -e '.total >= 3 and all(.items[]; .clientInvoiceNumber | contains("UP-"))' >/dev/null || fail "filtro factura parcial"
+expect 200 "$(req GET "/api/v1/orders?packBatch=EMP-")" | jq -e '.total >= 10' >/dev/null || fail "filtro empaque"
+expect 200 "$(req GET "/api/v1/orders?consignee=ignatario%20B%20$TS")" | jq -e --arg c "Consignatario B $TS" '.total >= 1 and all(.items[]; .consigneeName | contains($c))' >/dev/null || fail "filtro consignatario parcial"
+expect 200 "$(req GET "/api/v1/orders?search=UP-$TS")" | jq -e '.total >= 3' >/dev/null || fail "search por factura"
+expect 200 "$(req GET "/api/v1/orders?search=${O1_PB:1}")" | jq -e --arg pb "$O1_PB" 'any(.items[]; .packBatchNumber==$pb)' >/dev/null || fail "search por empaque"
+expect 200 "$(req GET "/api/v1/orders?search=ANUAL-$TS")" | jq -e '.total >= 1' >/dev/null || fail "search por número de orden"
+expect 200 "$(req GET "/api/v1/orders?status=CONFIRMED&clientId=$CLIENT_O_PID")" | jq -e '.total >= 1 and all(.items[]; .status=="CONFIRMED")' >/dev/null || fail "filtro estatus"
+expect 400 "$(req GET "/api/v1/orders?status=NOPE")" | jq -e '.errors.status' >/dev/null || fail "estatus desconocido"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&take=2")" | jq -e '(.items | length)==2 and .total >= 12' >/dev/null || fail "paginación"
+expect 200 "$(req GET "/api/v1/orders?take=1000")" | jq -e '.total as $t | (.items | length) == ([$t, 500] | min)' >/dev/null || fail "take acotado a 500 (sin cortar por debajo)"
+expect 200 "$(req GET "/api/v1/orders?take=0")" | jq -e '.total as $t | (.items | length) == ([$t, 100] | min)' >/dev/null || fail "take=0 usa el default 100"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&from=$TODAY&to=$(date -u -d tomorrow +%F)")" | jq -e '.total >= 1 and all(.items[]; (.packBatchNumber | length) > 0 and (.clientInvoiceNumber | length) > 0)' >/dev/null || fail "rango de fechas / columnas siempre pobladas"
+ok "lookup exacto por orden/empaque/factura (CI, sin parciales), filtros y buscador parciales (factura, consignatario, empaque, número de orden), estatus validado, paginación y rango"
+
+step "órdenes (Lote 3): entrega especial"
+SP=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")")
+SP_PID=$(echo "$SP" | jq -r .publicId)
+echo "$SP" | jq -e --arg n "Vagón $TS" '.isSpecialDelivery and .specialServiceName==$n and .packages[0].description==$n and .packages[0].packageType==null and .packagesSummary==$n and (.clientInvoiceNumber | length) > 0 and (.packBatchNumber | length) > 0' >/dev/null || fail "entrega especial: $SP"
+expect 200 "$(req GET "/api/v1/orders/$SP_PID/quote")" | jq -e '.total==150 and .isSpecialDelivery' >/dev/null || fail "cotización especial"
+expect 200 "$(req POST "/api/v1/orders/$SP_PID/confirm" '{}')" | jq -e '.quotedAmount==150' >/dev/null || fail "confirmar especial"
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")" | jq -e '.errors.packages[0] | contains("entrega especial")' >/dev/null || fail "especial con paquetes"
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID,\"codAmount\":50}")")" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob '{"packages":null,"isSpecialDelivery":true}')")" | jq -e '.errors.specialServiceId' >/dev/null || fail "especial sin servicio"
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_ID3}")")" | jq -e '.title | contains("no está vigente para este cliente")' >/dev/null || fail "servicio especial de otro cliente"
+# Orden especial DRAFT con el servicio aún vigente: sirve para probar el componente apagado y el servicio cerrado después
+SP2_PID=$(expect 200 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")" | jq -r .publicId)
+expect 400 "$(req PATCH "/api/v1/orders/$SP2_PID" '{"packages":[{"pieces":1}]}')" | jq -e '.errors.packages | tostring | contains("entrega especial")' >/dev/null || fail "PATCH especial con paquetes"
+expect 400 "$(req PATCH "/api/v1/orders/$SP2_PID" '{"codAmount":50}')" | jq -e '.errors.codAmount' >/dev/null || fail "PATCH especial con COD"
+# Componente 5 'Servicios especiales' apagado en el contrato (L221/L223/L229): ni se captura ni se cotiza; 409
+SSOFF="El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal."
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_O_PID/billing-model" '{"billSpecialServices":false}')" >/dev/null
+expect 409 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")" | jq -e --arg m "$SSOFF" '.title==$m' >/dev/null || fail "especial con el componente apagado"
+expect 409 "$(req GET "/api/v1/orders/$SP2_PID/quote")" | jq -e --arg m "$SSOFF" '.title==$m' >/dev/null || fail "quote especial con el componente apagado"
+expect 409 "$(req POST "/api/v1/orders/$SP2_PID/confirm" '{}')" | jq -e --arg m "$SSOFF" '.title==$m' >/dev/null || fail "confirmar especial con el componente apagado"
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_O_PID/billing-model" '{"billSpecialServices":true}')" >/dev/null
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/special-services/$SS_O_ID/close" '{}')" >/dev/null
+expect 400 "$(req POST /api/v1/orders "$(ob "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SS_O_ID}")")" >/dev/null
+# Servicio cerrado con la orden ya capturada (DECISIÓN 9/28): 409 igual en la vista previa y en la confirmación
+SSC_MSG="El servicio especial ya no está vigente; elija otro antes de confirmar."
+expect 409 "$(req GET "/api/v1/orders/$SP2_PID/quote")" | jq -e --arg m "$SSC_MSG" '.title==$m' >/dev/null || fail "quote especial con servicio cerrado"
+expect 409 "$(req POST "/api/v1/orders/$SP2_PID/confirm" '{}')" | jq -e --arg m "$SSC_MSG" '.title==$m' >/dev/null || fail "confirmar especial con servicio cerrado"
+expect 200 "$(req GET "/api/v1/orders/$SP2_PID")" | jq -e '.status=="DRAFT" and .quotedAmount==null' >/dev/null || fail "la orden especial sigue en DRAFT sin cotizar"
+ok "entrega especial con el servicio del cliente (una línea, sin paquetes ni COD), cotiza 150, vigencia por cliente, 409 con el componente apagado y 409 en quote/confirm si el servicio se cerró"
+
+step "órdenes (Lote 3): aislamiento entre tenants"
+expect 404 "$(req GET "/api/v1/orders/$O1_PID" '' "$T3")" >/dev/null
+expect 404 "$(req GET "/api/v1/orders/$O1_PID/quote" '' "$T3")" >/dev/null
+expect 404 "$(req POST /api/v1/orders "$(ob)" "$T3")" | jq -e '.title | contains("Cliente")' >/dev/null || fail "cliente ajeno"
+expect 200 "$(req GET /api/v1/orders '' "$T3")" | jq -e '.total==0' >/dev/null || fail "órdenes de otro tenant visibles"
+expect 404 "$(req POST "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '{"contactType":"PHONE","value":"787-555-0100"}' "$T3")" >/dev/null
+expect 404 "$(req PUT "/api/v1/custom-fields/values/TRANSPORT_ORDER/$O1_ID" '{"values":{}}' "$T3")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/lookup?code=$O1_NUM" '' "$T3")" | jq -e '(.matches | length)==0' >/dev/null || fail "lookup de otro tenant"
+expect 404 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_T3_PID\",\"consigneeLocationPublicId\":\"$LOC_A_PID\",\"serviceType\":\"STANDARD\",\"packages\":[{\"packageType\":\"BOX\",\"pieces\":1}]}" "$T3")" | jq -e '.title | contains("Consignatario")' >/dev/null || fail "consignatario ajeno"
+# T3 no tiene tipo de servicio ni de paquete por defecto (L245): la captura los exige explícitos
+expect 400 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_T3_PID\",\"consigneeLocationPublicId\":\"$LOC_A_PID\",\"packages\":[{\"pieces\":1}]}" "$T3")" | jq -e '.errors.serviceType' >/dev/null || fail "tipo de servicio obligatorio sin default del tenant"
+expect 400 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT_T3_PID\",\"serviceType\":\"STANDARD\",\"newConsignee\":{\"name\":\"Sin default $TS\",\"line1\":\"Calle 1\",\"city\":\"Ponce\"},\"packages\":[{\"pieces\":1}]}" "$T3")" | jq -e '.errors["packages[0].packageType"]' >/dev/null || fail "tipo de paquete obligatorio sin default del tenant"
+ok "otro tenant: 404 por PublicId, 404 por consignatario ajeno, listas y lookup vacíos, sin oráculo; sin defaults del tenant, servicio y paquete obligatorios"
+
+step "órdenes (Lote 3): RBAC (orders.*) y rutas polimórficas de TRANSPORT_ORDER"
+expect 200 "$(req GET /api/v1/orders '' "$T4")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/$O1_PID" '' "$T4")" >/dev/null
+expect 200 "$(req GET "/api/v1/orders/$O1_PID/quote" '' "$T4")" >/dev/null
+expect 403 "$(req POST /api/v1/orders "$(ob)" "$T4")" >/dev/null
+expect 403 "$(req PATCH "/api/v1/orders/$O1_PID" '{"notes":"x"}' "$T4")" >/dev/null
+expect 403 "$(req PUT "/api/v1/custom-fields/values/TRANSPORT_ORDER/$O1_ID" '{"values":{}}' "$T4")" | jq -e '.title=="Falta el permiso '"'"'orders.edit'"'"'."' >/dev/null || fail "campos personalizados de la orden sin orders.edit"
+expect 403 "$(req POST "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '{"contactType":"PHONE","value":"787-555-0100"}' "$T4")" >/dev/null
+expect 200 "$(req GET "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '' "$T4")" >/dev/null
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$O1_ID" '' "$T4")" >/dev/null
+expect 200 "$(req GET "/api/v1/status/history/ORDER_COD/$OQ_ID" '' "$T4")" >/dev/null
+OCP_ID=$(expect 200 "$(req POST "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '{"contactType":"PHONE","value":"787-555-0100"}')" | jq -r .id)
+expect 200 "$(req GET "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID")" | jq -e 'length >= 1' >/dev/null || fail "contacto de la orden"
+# contacts.manage + orders.view sin orders.edit: agregar, editar o desactivar contactos de la orden → 403 orders.edit
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Contactos $TS\",\"permissions\":[\"contacts.manage\",\"orders.view\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"contactos$TS@teikem.local\",\"fullName\":\"Contactos\",\"password\":\"$PASS\",\"roles\":[\"Contactos $TS\"]}")" >/dev/null
+T7=$(login "contactos$TS@teikem.local" "$PASS")
+OEDIT="Falta el permiso 'orders.edit'."
+expect 403 "$(req POST "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '{"contactType":"PHONE","value":"787-555-0100"}' "$T7")" | jq -e --arg m "$OEDIT" '.title==$m' >/dev/null || fail "contacto de la orden sin orders.edit"
+expect 403 "$(req POST "/api/v1/contacts/TRANSPORT_ORDER/999999" '{"contactType":"PHONE","value":"787-555-0100"}' "$T7")" | jq -e --arg m "$OEDIT" '.title==$m' >/dev/null || fail "sin oráculo 200/404 para quien no tiene orders.edit"
+expect 403 "$(req PUT "/api/v1/contacts/$OCP_ID" '{"contactType":"PHONE","value":"787-555-0101"}' "$T7")" | jq -e --arg m "$OEDIT" '.title==$m' >/dev/null || fail "editar contacto de la orden sin orders.edit"
+expect 403 "$(req DELETE "/api/v1/contacts/$OCP_ID" '' "$T7")" | jq -e --arg m "$OEDIT" '.title==$m' >/dev/null || fail "desactivar contacto de la orden sin orders.edit"
+expect 200 "$(req GET "/api/v1/contacts/TRANSPORT_ORDER/$O1_ID" '' "$T7")" | jq -e --argjson i "$OCP_ID" 'any(.[]; .id==$i and .value=="787-555-0100")' >/dev/null || fail "el contacto de la orden no debía cambiar"
+# Dueños polimórficos del lote con resolver: un id inexistente de parada/COD/lote/plantilla → 404, nunca 200
+for E in ORDER_STOP ORDER_COD IMPORT_BATCH IMPORT_TEMPLATE; do
+  expect 404 "$(req PUT "/api/v1/custom-fields/values/$E/999999" '{"values":{}}')" >/dev/null
+done
+# Sin orders.view no se lee el historial de ORDER_COD / ORDER_STOP / IMPORT_BATCH (permiso de la entidad dueña)
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Sin órdenes $TS\",\"permissions\":[\"clients.read\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"sinordenes$TS@teikem.local\",\"fullName\":\"Sin Órdenes\",\"password\":\"$PASS\",\"roles\":[\"Sin órdenes $TS\"]}")" >/dev/null
+T5=$(login "sinordenes$TS@teikem.local" "$PASS")
+expect 403 "$(req GET "/api/v1/status/history/ORDER_COD/$OQ_ID" '' "$T5")" | jq -e '.title=="Falta el permiso '"'"'orders.view'"'"'."' >/dev/null || fail "historial ORDER_COD sin orders.view"
+expect 403 "$(req GET "/api/v1/status/history/ORDER_STOP/1" '' "$T5")" >/dev/null
+expect 403 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$O1_ID" '' "$T5")" >/dev/null
+OT2=$(expect 200 "$(req POST /api/v1/orders "$(ob)" "$T2")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/orders/$OT2/cancel" '{}' "$T2")" >/dev/null
+expect 204 "$(req DELETE "/api/v1/orders/$(expect 200 "$(req POST /api/v1/orders "$(ob)" "$T2")" | jq -r .publicId)" '' "$T2")" >/dev/null
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=PERMISSION_DENIED&take=5')" | jq -e '.total >= 1' >/dev/null || fail "PERMISSION_DENIED"
+ok "solo orders.view: lectura sí, escritura 403 (incluidos contactos y campos de la orden); contacts.manage sin orders.edit 403 en contactos de la orden; ORDER_STOP/ORDER_COD/IMPORT_* inexistentes 404; sin orders.view: historial COD/paradas 403; despachador crea, cancela y elimina"
+
+step "órdenes (Lote 3): fuentes de datos, contenido de sistema y auditoría"
+expect 200 "$(req GET /api/v1/analytics/data-sources)" | jq -e '.[] | select(.key=="TRANSPORT_ORDER") | (.relations | map(.key) | index("Client") != null and index("Consignee") != null)' >/dev/null || fail "data-source TRANSPORT_ORDER"
+PV=$(expect 200 "$(req POST '/api/v1/analytics/reports/TRANSPORT_ORDER/preview?dateRangeMode=ALL' '{"name":"x","columns":["PackBatchNumber","OrderNumber","Status","Client.Name","Consignee.Name"],"secondary":["Client","Consignee"]}')")
+echo "$PV" | jq -e --arg c "Órdenes $TS" '.total >= 10 and ([.rows[] | select(."Client.Name"==$c)] | length) >= 1' >/dev/null || fail "preview TRANSPORT_ORDER: $(echo "$PV" | head -c 300)"
+expect 200 "$(req GET /api/v1/analytics/data-sources)" | jq -e '.[] | select(.key=="TRANSPORT_ORDER") | (.fields | map(.key) | index("PackageType") != null and index("PackageTypeCode") != null)' >/dev/null || fail "campo PackageType (tipo de paquete principal) en TRANSPORT_ORDER"
+codp() { expect 200 "$(req GET /api/v1/analytics/pulse)" | jq '[.indicators[] | select(.name=="COD por cobrar")][0].value // 0'; }
+COD0=$(codp)
+OCOD=$(expect 200 "$(req POST /api/v1/orders "$(ob '{"codAmount":200}')")" | jq -r .publicId)
+COD1=$(codp)
+jq -en --argjson a "$COD0" --argjson b "$COD1" '$b - $a == 200' >/dev/null || fail "COD por cobrar suma la orden viva con COD ($COD0 → $COD1)"
+expect 200 "$(req POST "/api/v1/orders/$OCOD/cancel" '{"comment":"COD cancelado"}')" >/dev/null
+jq -en --argjson a "$COD0" --argjson b "$(codp)" '$b == $a' >/dev/null || fail "COD por cobrar no debe sumar órdenes canceladas"
+PU=$(expect 200 "$(req GET /api/v1/analytics/pulse)")
+echo "$PU" | jq -e '([.indicators[] | select(.name=="Órdenes en curso" and .value >= 1)] | length)==1 and ([.indicators[] | select(.name=="COD por cobrar")] | length)==1' >/dev/null || fail "indicadores de órdenes en Pulso: $(echo "$PU" | jq -c '[.indicators[] | {name,value}]')"
+RPT_O=$(expect 200 "$(req GET /api/v1/analytics/reports)" | jq -r '[.[] | select(.name=="Órdenes" and .isSystem==true)][0].id')
+[[ -n "$RPT_O" && "$RPT_O" != "null" ]] || fail "vista de sistema Órdenes no sembrada"
+expect 200 "$(req POST "/api/v1/analytics/reports/$RPT_O/run" '{}')" | jq -e '.total >= 10 and (.columns | map(.key) | index("PackBatchNumber") != null)' >/dev/null || fail "run de la vista Órdenes"
+CH_O=$(expect 200 "$(req GET /api/v1/analytics/charts)" | jq -r '[.[] | select(.name=="Órdenes por estatus" and .isSystem==true)][0].id')
+[[ -n "$CH_O" && "$CH_O" != "null" ]] || fail "gráfico de sistema Órdenes por estatus no sembrado"
+expect 200 "$(req GET "/api/v1/analytics/charts/$CH_O/data")" | jq -e '.points | length >= 2' >/dev/null || fail "datos del gráfico Órdenes por estatus"
+AU=$(expect 200 "$(req GET '/api/v1/audit/changes?entityType=TRANSPORT_ORDER&take=50')")
+echo "$AU" | jq -e '.total >= 5 and ([.items[] | select((.changesJson // "") | ascii_downcase | contains("rowversion"))] | length)==0' >/dev/null || fail "auditoría TRANSPORT_ORDER"
+expect 200 "$(req GET '/api/v1/audit/activity?kind=changes&take=100')" | jq -e '[.items[] | select(.kind=="change" and ((.type // "") | contains("Orden")))] | length >= 1' >/dev/null || fail "actividad con TRANSPORT_ORDER"
+ok "TRANSPORT_ORDER con Client/Consignee, Pulso (en curso, COD por cobrar sin canceladas), campo PackageType, vista y gráfico de sistema, AuditLog sin rowVersion"
+
+step "cliente dado de baja (Lote 3, ajuste A): solo se consulta su historial"
+BAJA="El cliente está dado de baja; solo se consulta su historial."
+# Antes de la baja: un componente EXTRA_PIECE (para intentar un tramo), un usuario de portal y una orden del cliente
+expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_C2_PID/billing-model" '{"billExtraPiece":true}')" >/dev/null
+EP_C2=$(expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_C2_PID/rate-components" '{"kind":"EXTRA_PIECE","serviceType":"STANDARD","packageType":"BOX"}')" | jq -r .id)
+PUB_ID=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"bajaok$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")" | jq -r .user.id)
+OB2=$(expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT2_PID\",\"consigneeLocationPublicId\":\"$SHARED_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -r .publicId)
+REVB=$(expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq .total)
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/0/resend-invite")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "reenviar invitación con cliente de baja"
+expect 409 "$(req POST "/api/v1/contracts/$CONTRACT_C2_PID/rate-components/$EP_C2/tiers" '{"fromUnit":2,"rate":1}')" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "tramo con cliente de baja"
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"baja$TS@lasmarias.pr\",\"role\":\"CLIENT_ADMIN\"}")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "invitar con cliente de baja"
+expect 409 "$(req POST /api/v1/contracts "{\"clientPublicId\":\"$CLIENT2_PID\",\"title\":\"Nuevo\",\"startDate\":\"2026-01-01\"}")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "contrato con cliente de baja"
+expect 409 "$(req POST "/api/v1/contracts/$CONTRACT_C2_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":1}')" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "tarifa con cliente de baja"
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/special-services" "{\"newTypeName\":\"Baja $TS\",\"rate\":1}")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "servicio especial con cliente de baja"
+expect 409 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT2_PID\",\"consigneeLocationPublicId\":\"$SHARED_PID\",\"packages\":[{\"pieces\":1}]}")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "orden con cliente de baja"
+expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID")" >/dev/null
+expect 200 "$(req GET "/api/v1/contracts?clientId=$CLIENT2_PID")" >/dev/null
+expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID/special-services?includeHistory=true")" >/dev/null
+# Lo que sigue permitido: historial, tarifas del contrato, usuarios de portal (la baja no toca las cuentas), órdenes y cancelarlas
+expect 200 "$(req GET "/api/v1/status/history/CLIENT/$CLIENT2_ID")" | jq -e 'length >= 1' >/dev/null || fail "historial del cliente de baja"
+expect 200 "$(req GET "/api/v1/contracts/$CONTRACT_C2_PID")" >/dev/null
+expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID/portal-users")" | jq -e --argjson i "$PUB_ID" 'any(.[]; .id==$i)' >/dev/null || fail "usuarios de portal del cliente de baja"
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq -e --argjson n "$REVB" '.total==$n' >/dev/null || fail "la baja del cliente no debe revocar cuentas de portal"
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT2_PID")" | jq -e '.total >= 1' >/dev/null || fail "órdenes del cliente de baja"
+expect 200 "$(req POST "/api/v1/orders/$OB2/cancel" '{}')" | jq -e '.status=="CANCELLED"' >/dev/null || fail "cancelar una orden del cliente de baja"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/reactivate")" >/dev/null
+expect 200 "$(req POST /api/v1/orders "{\"clientPublicId\":\"$CLIENT2_PID\",\"consigneeLocationPublicId\":\"$SHARED_PID\",\"packages\":[{\"pieces\":1}]}")" >/dev/null
+ok "409 exacto en invitar, reenviar invitación, contrato, tarifa, tramo, servicio especial y orden; ficha, historial, contrato, portal (sin revocar cuentas) y órdenes 200; cancelar una orden 200; reactivar devuelve lo nuevo"
+
+step "portal multi-cliente (Lote 3, ajuste B): una cuenta, una fila por cliente"
+# Correo de más de 150 caracteres (PortalUser.Email NVARCHAR(150)): 400 antes de crear la cuenta, nunca 500
+LONGMAIL="$(printf 'a%.0s' $(seq 1 150))@x.pr"
+expect 400 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"$LONGMAIL\",\"role\":\"CLIENT_ADMIN\"}")" | jq -e '.errors.email[0]=="Máximo 150 caracteres."' >/dev/null || fail "correo de portal de más de 150 caracteres"
+MC=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"portal2$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")")
+echo "$MC" | jq -e '.user.status=="ACTIVE" and .inviteToken==null and .user.clientsCount==2' >/dev/null || fail "segundo cliente de la misma cuenta: $MC"
+PU2C2_ID=$(echo "$MC" | jq -r .user.id)
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=ROLE_CHANGE&take=10')" | jq -e '[.items[] | select((.detailJson // "") | contains("portal_client_added"))] | length >= 1' >/dev/null || fail "SecurityEvent portal_client_added"
+expect 409 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"portal2$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")" >/dev/null   # mismo cliente ya activo
+REV0=$(expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq .total)
+expect 204 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/$PU2_ID/remove")" >/dev/null
+expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID/portal-users")" | jq -e --argjson i "$PU2C2_ID" '.[] | select(.id==$i) | .status=="ACTIVE"' >/dev/null || fail "la fila del otro cliente sigue ACTIVE"
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq -e --argjson n "$REV0" '.total==$n' >/dev/null || fail "la cuenta no debía desactivarse mientras tenga otro cliente activo"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/$PU2C2_ID/remove")" >/dev/null
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq -e --argjson n "$REV0" '.total > $n' >/dev/null || fail "sin clientes activos la cuenta se desactiva (TOKEN_REVOKED)"
+# Reinvitar tras quitar el último cliente: la cuenta está desactivada → INVITED con enlace (conserva su contraseña)
+RI3=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"portal2$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")")
+echo "$RI3" | jq -e --argjson i "$PU2C2_ID" '.user.id==$i and .user.status=="INVITED" and (.inviteToken|length)>10 and .user.hasPassword==true' >/dev/null || fail "reinvitar tras quitar el último cliente: $RI3"
+# Cuenta nueva SIN contraseña invitada desde dos clientes: ambas filas INVITED con enlace; aceptar activa las dos
+N1=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/invite" "{\"email\":\"nuevo$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")")
+echo "$N1" | jq -e '.user.status=="INVITED" and (.inviteToken|length)>10 and .user.hasPassword==false' >/dev/null || fail "cuenta nueva en el cliente 1: $N1"
+N2=$(expect 200 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/invite" "{\"email\":\"nuevo$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")")
+echo "$N2" | jq -e '.user.status=="INVITED" and (.inviteToken|length)>10 and .user.hasPassword==false and .user.clientsCount==2' >/dev/null || fail "cuenta sin contraseña en el cliente 2: $N2"
+N1_ID=$(echo "$N1" | jq -r .user.id); N2_ID=$(echo "$N2" | jq -r .user.id)
+expect 204 "$(anon POST /api/v1/portal-users/accept-invite "{\"email\":\"nuevo$TS@lasmarias.pr\",\"token\":\"$(echo "$N2" | jq -r .inviteToken)\",\"password\":\"nueva-contrasena-larga-3\"}")" >/dev/null
+expect 200 "$(req GET "/api/v1/clients/$CLIENT_PID/portal-users")" | jq -e --argjson i "$N1_ID" '.[] | select(.id==$i) | .status=="ACTIVE" and .hasPassword==true' >/dev/null || fail "accept-invite activa también la fila del cliente 1"
+expect 200 "$(req GET "/api/v1/clients/$CLIENT2_PID/portal-users")" | jq -e --argjson i "$N2_ID" '.[] | select(.id==$i) | .status=="ACTIVE"' >/dev/null || fail "accept-invite activa la fila del cliente 2"
+# Suspender una fila con otra ACTIVE no toca la cuenta; suspender la última sí; reactivar la reabre (se nota al agregar otro cliente)
+REV1=$(expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq .total)
+expect 204 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/$N1_ID/suspend")" >/dev/null
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq -e --argjson n "$REV1" '.total==$n' >/dev/null || fail "suspender con otro cliente activo no desactiva la cuenta"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/$N1_ID/reactivate")" >/dev/null
+expect 200 "$(req GET "/api/v1/clients/$CLIENT_PID/portal-users")" | jq -e --argjson i "$N1_ID" '.[] | select(.id==$i) | .status=="ACTIVE"' >/dev/null || fail "reactivar la fila"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT_PID/portal-users/$N1_ID/suspend")" >/dev/null
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/$N2_ID/suspend")" >/dev/null
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=TOKEN_REVOKED&take=1')" | jq -e --argjson n "$REV1" '.total > $n' >/dev/null || fail "suspender la última fila activa desactiva la cuenta"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/portal-users/$N2_ID/reactivate")" >/dev/null
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/portal-users/invite" "{\"email\":\"nuevo$TS@lasmarias.pr\",\"role\":\"CLIENT_READONLY\"}")" | jq -e '.user.status=="ACTIVE" and .inviteToken==null and .user.clientsCount==3' >/dev/null || fail "reactivar una fila reabre la cuenta (el tercer cliente entra ACTIVE sin enlace)"
+ok "correo > 150 → 400, invitar desde otro cliente agrega el cliente (ACTIVE sin token), quitar en un cliente no toca la cuenta, quitar el último la desactiva, reinvitar da enlace, cuenta sin contraseña en dos clientes (un accept activa ambas), suspender/reactivar por fila"
+
+step "importador de órdenes (Lote 3, ajuste D): plantilla, validar → confirmar"
+TPL=$(expect 200 "$(req POST /api/v1/import-templates "{\"name\":\"Plantilla $TS\",\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":2,\"field\":\"line1\"},{\"position\":3,\"field\":\"city\"},{\"position\":4,\"field\":\"postalCode\"},{\"position\":5,\"field\":\"packageType\"},{\"position\":6,\"field\":\"pieces\"},{\"position\":7,\"field\":\"description\"},{\"position\":8,\"field\":\"reference\"}],\"defaults\":{\"serviceType\":\"STANDARD\"}}")")
+TPL_PID=$(echo "$TPL" | jq -r .publicId)
+expect 400 "$(req POST /api/v1/import-templates "{\"name\":\"Repetida $TS\",\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":1,\"field\":\"pieces\"}]}")" >/dev/null
+expect 415 "$(curl -sS -X POST "$BASE/api/v1/orders/import/validate" -H "Authorization: Bearer $TOKEN" -w '\n%{http_code}')" >/dev/null   # sin Content-Type: 415, no 500
+# Un número automático ya tecleado por alguien: la fila importada salta el valor chocado (reintento dentro de la transacción de la fila)
+LASTI=$(seqof "$(expect 200 "$(req POST /api/v1/orders "$(ob)")" | jq -r .orderNumber)")
+expect 200 "$(req POST /api/v1/orders "$(ob "{\"orderNumber\":\"$(ordnum $((LASTI + 1)))\"}")")" >/dev/null
+CSV=$(printf 'consignatario,linea1,pueblo,zip,tipo,piezas,desc,ref\nImportado %s,Calle 10,Ponce,00716,BOX,2,Cajas,R-1\nImportado %s,Calle 10,Ponce,00716,ENVELOPE,1,"Sobre, urgente",R-2\nImportado %s,Calle 10,Ponce,00716,NOPE,1,Malo,R-3\n' "$TS" "$TS" "$TS")
+VB=$(jq -cn --arg t "$TPL_PID" --arg c "$CLIENT_O_PID" --arg s "$CSV" '{templatePublicId:$t,clientPublicId:$c,content:$s,fileName:"ordenes.csv"}')
+# Ajuste A en la importación: lote validado con el cliente activo y confirmado tras la baja → 409; validar tras la baja → 409
+CSVA=$(printf 'c,l,p,z,t,n,d,r\nBaja imp %s,Calle 14,Ponce,00716,BOX,1,A,B-1\n' "$TS")
+VBA=$(jq -cn --arg t "$TPL_PID" --arg c "$CLIENT2_PID" --arg s "$CSVA" '{templatePublicId:$t,clientPublicId:$c,content:$s}')
+BK=$(expect 200 "$(req POST /api/v1/orders/import/validate "$VBA")" | jq -r .batchPublicId)
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/deactivate")" >/dev/null
+expect 409 "$(req POST "/api/v1/orders/import/$BK/confirm" '{}')" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "confirmar importación con cliente de baja"
+expect 409 "$(req POST /api/v1/orders/import/validate "$VBA")" | jq -e --arg m "$BAJA" '.title==$m' >/dev/null || fail "validar importación con cliente de baja"
+expect 200 "$(req GET "/api/v1/orders?search=Baja%20imp%20$TS")" | jq -e '.total==0' >/dev/null || fail "la importación de un cliente de baja no crea órdenes"
+expect 204 "$(req POST "/api/v1/clients/$CLIENT2_PID/reactivate")" >/dev/null
+# Cliente SUSPENDED (DECISIÓN 16): la importación tampoco valida
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"SUSPENDED","comment":"smoke importador"}')" >/dev/null
+expect 422 "$(req POST /api/v1/orders/import/validate "$VB")" | jq -e '.title=="El cliente está suspendido; no se pueden crear ni confirmar órdenes."' >/dev/null || fail "validar importación con cliente suspendido"
+expect 200 "$(req POST "/api/v1/clients/$CLIENT_O_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
+V=$(expect 200 "$(req POST /api/v1/orders/import/validate "$VB")")
+echo "$V" | jq -e '.status=="VALIDATED" and .rowCount==3 and .validRows==2 and .rows[2].errors.packageType and .rows[0].consignee.action=="CREATE"' >/dev/null || fail "validar: $V"
+B_PID=$(echo "$V" | jq -r .batchPublicId)
+expect 200 "$(req GET "/api/v1/orders/import/$B_PID")" | jq -e '.validRows==2' >/dev/null || fail "GET del lote"
+# Archivo por multipart (campo 'file'), límites de 5.000 filas (JSON) y 2 MB (multipart), delimitador ';' sin cabecera
+FUP=$(mktemp); printf '%s' "$CSV" > "$FUP"
+mpost() { curl -sS -X POST "$BASE/api/v1/orders/import/validate" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$1" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$2;type=text/csv" -w '\n%{http_code}'; }
+expect 200 "$(mpost "$TPL_PID" "$FUP")" | jq -e '.rowCount==3 and .validRows==2' >/dev/null || fail "validar por multipart"
+LIMMSG="El archivo supera el límite de 5.000 filas o 2 MB."
+{ echo h; for i in $(seq 5001); do echo "a,b"; done; } > "$FUP"
+expect 400 "$(req POST /api/v1/orders/import/validate "$(jq -cn --arg t "$TPL_PID" --arg c "$CLIENT_O_PID" --rawfile s "$FUP" '{templatePublicId:$t,clientPublicId:$c,content:$s}')")" | jq -e --arg m "$LIMMSG" '.errors.content[0]==$m' >/dev/null || fail "5.001 filas → 400"
+head -c 2200000 /dev/zero | tr '\0' a > "$FUP"
+expect 400 "$(mpost "$TPL_PID" "$FUP")" | jq -e --arg m "$LIMMSG" '.errors.file[0]==$m' >/dev/null || fail "archivo de más de 2 MB → 400"
+TPLS_PID=$(expect 200 "$(req POST /api/v1/import-templates "{\"name\":\"Punto y coma $TS\",\"delimiter\":\";\",\"hasHeader\":false,\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":2,\"field\":\"line1\"},{\"position\":3,\"field\":\"city\"},{\"position\":4,\"field\":\"packageType\"},{\"position\":5,\"field\":\"pieces\"}]}")" | jq -r .publicId)
+printf 'PuntoComa %s;Calle 15, apto 2;Ponce;BOX;1\n' "$TS" > "$FUP"
+expect 200 "$(mpost "$TPLS_PID" "$FUP")" | jq -e '.rowCount==1 and .validRows==1 and (.rows[0].values.line1 // "" | contains("apto 2"))' >/dev/null || fail "plantilla con ';' y sin cabecera"
+rm -f "$FUP"
+CF=$(expect 200 "$(req POST "/api/v1/orders/import/$B_PID/confirm" '{}')")
+echo "$CF" | jq -e --arg a "$(ordnum $((LASTI + 2)))" --arg b "$(ordnum $((LASTI + 3)))" '.created==2 and .status=="CONFIRMED" and .rows[0].orderNumber==$a and .rows[1].orderNumber==$b' >/dev/null || fail "confirmar (con salto del número chocado): $CF"
+expect 200 "$(req GET "/api/v1/orders?search=Importado%20$TS")" | jq -e '.total==2' >/dev/null || fail "órdenes importadas"
+expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_O_PID&search=Importado%20$TS")" | jq -e 'length==1' >/dev/null || fail "un solo consignatario creado para las dos filas"
+expect 409 "$(req POST "/api/v1/orders/import/$B_PID/confirm" '{}')" >/dev/null
+expect 422 "$(req POST "/api/v1/orders/import/$B_PID/discard")" >/dev/null
+BID=$(expect 200 "$(req GET "/api/v1/audit/changes?entityType=IMPORT_BATCH&take=1")" | jq -r '.items[0].entityId')
+expect 403 "$(req GET "/api/v1/status/history/IMPORT_BATCH/$BID" '' "$T5")" >/dev/null
+# Dos confirmaciones simultáneas del mismo lote: una crea las órdenes, la otra 409 sin crear nada (reserva atómica)
+CSVP=$(printf 'c,l,p,z,t,n,d,r\nParalelo %s,Calle 11,Ponce,00716,BOX,1,A,P-1\nParalelo %s,Calle 11,Ponce,00716,BOX,1,B,P-2\n' "$TS" "$TS")
+BP=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(jq -cn --arg t "$TPL_PID" --arg c "$CLIENT_O_PID" --arg s "$CSVP" '{templatePublicId:$t,clientPublicId:$c,content:$s}')")" | jq -r .batchPublicId)
+TMPI=$(mktemp -d)
+for i in 1 2; do req POST "/api/v1/orders/import/$BP/confirm" '{}' > "$TMPI/$i" & done
+wait
+CODES=$(for i in 1 2; do echo "$(tail -n1 "$TMPI/$i")"; done | sort | tr "\n" " "); rm -rf "$TMPI"
+[[ "$CODES" == "200 409 " ]] || fail "confirmaciones simultáneas: $CODES"
+expect 200 "$(req GET "/api/v1/orders?search=Paralelo%20$TS")" | jq -e '.total==2' >/dev/null || fail "confirmación doble creó órdenes repetidas"
+# Descartar un lote VALIDATED: 200 DISCARDED con historial; confirmarlo 409; descartarlo de nuevo 422
+vbody() { jq -cn --arg t "${2:-$TPL_PID}" --arg c "$CLIENT_O_PID" --arg s "$1" '{templatePublicId:$t,clientPublicId:$c,content:$s}'; }
+csv2() { printf 'c,l,p,z,t,n,d,r\n%s %s,Calle 12,Ponce,00716,BOX,1,A,X-1\n%s %s,Calle 12,Ponce,00716,BOX,1,B,X-2\n' "$1" "$TS" "$1" "$TS"; }
+BD=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(csv2 Descartado)")")" | jq -r .batchPublicId)
+expect 200 "$(req POST "/api/v1/orders/import/$BD/discard")" | jq -e '.status=="DISCARDED"' >/dev/null || fail "descartar lote validado"
+BD_ID=$(expect 200 "$(req GET "/api/v1/audit/changes?entityType=IMPORT_BATCH&take=1")" | jq -r '.items[0].entityId')
+expect 200 "$(req GET "/api/v1/status/history/IMPORT_BATCH/$BD_ID")" | jq -e 'any(.[]; .fromCode=="VALIDATED" and .toCode=="DISCARDED")' >/dev/null || fail "historial del descarte"
+expect 409 "$(req POST "/api/v1/orders/import/$BD/confirm" '{}')" | jq -e '.title=="El lote fue descartado; valide el archivo de nuevo."' >/dev/null || fail "confirmar descartado"
+expect 422 "$(req POST "/api/v1/orders/import/$BD/discard")" | jq -e '.title=="Solo se descarta un lote pendiente de confirmar."' >/dev/null || fail "descartar dos veces"
+expect 200 "$(req GET "/api/v1/orders?search=Descartado%20$TS")" | jq -e '.total==0' >/dev/null || fail "un lote descartado no crea órdenes"
+# Confirmar y descartar a la vez: gana uno y el estado queda coherente (CONFIRMED con sus órdenes o DISCARDED sin ninguna)
+BR=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(csv2 Carrera)")")" | jq -r .batchPublicId)
+TMPR=$(mktemp -d)
+req POST "/api/v1/orders/import/$BR/confirm" '{}' > "$TMPR/c" & req POST "/api/v1/orders/import/$BR/discard" > "$TMPR/d" &
+wait
+RC=$(tail -n1 "$TMPR/c"); RD=$(tail -n1 "$TMPR/d"); rm -rf "$TMPR"
+BRS=$(expect 200 "$(req GET "/api/v1/orders/import/$BR")" | jq -r .status)
+NR=$(expect 200 "$(req GET "/api/v1/orders?search=Carrera%20$TS")" | jq .total)
+if [[ "$RC" == "200" && ( "$RD" == "409" || "$RD" == "422" ) ]]; then [[ "$BRS" == "CONFIRMED" && "$NR" == "2" ]] || fail "confirmación ganó pero el lote quedó $BRS con $NR órdenes"
+elif [[ "$RD" == "200" && "$RC" == "409" ]]; then [[ "$BRS" == "DISCARDED" && "$NR" == "0" ]] || fail "descarte ganó pero el lote quedó $BRS con $NR órdenes"
+else fail "confirmar/descartar a la vez: confirm $RC, discard $RD"; fi
+# Validación fila a fila: consignatario por código (EXISTING), por coincidencia (EXISTING), código inexistente, R36 como aviso
+# (contra órdenes y dentro del archivo), teléfono de contacto guardado como ContactPoint de la orden
+expect 200 "$(req PATCH "/api/v1/locations/$LOC_A_PID" "{\"code\":\"LA-$TS\"}")" >/dev/null
+TPL2_PID=$(expect 200 "$(req POST /api/v1/import-templates "{\"name\":\"Plantilla código $TS\",\"columns\":[{\"position\":1,\"field\":\"consigneeCode\"},{\"position\":2,\"field\":\"consigneeName\"},{\"position\":3,\"field\":\"line1\"},{\"position\":4,\"field\":\"city\"},{\"position\":5,\"field\":\"packageType\"},{\"position\":6,\"field\":\"pieces\"},{\"position\":7,\"field\":\"orderNumber\"},{\"position\":8,\"field\":\"clientInvoiceNumber\"},{\"position\":9,\"field\":\"contactPhone\"}]}")" | jq -r .publicId)
+CSVE=$(printf 'cod,nombre,l1,pueblo,tipo,n,orden,factura,tel\nLA-%s,,,,BOX,1,,DUP-%s,787-555-0199\n,Consignatario A %s,Calle 5 #12,Ponce,BOX,1,,,\nNOEXISTE-%s,,,,BOX,1,,,\nLA-%s,,,,BOX,1,,DUP-%s,\n' "$TS" "$TS" "$TS" "$TS" "$TS" "$TS")
+VE=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$CSVE" "$TPL2_PID")")")
+echo "$VE" | jq -e --arg l "$LOC_A_PID" '.rowCount==4 and .validRows==3
+  and .rows[0].consignee.action=="EXISTING" and .rows[0].consignee.locationPublicId==$l and (.rows[0].warnings|length)>=1
+  and .rows[1].consignee.action=="EXISTING" and .rows[1].consignee.locationPublicId==$l
+  and (.rows[2].errors.consigneeCode|length)>0
+  and any(.rows[3].warnings[]; contains("se repite en la fila 1"))' >/dev/null || fail "validación por código/coincidencia/R36: $VE"
+CE=$(expect 200 "$(req POST "/api/v1/orders/import/$(echo "$VE" | jq -r .batchPublicId)/confirm" '{"rows":[1],"confirmDuplicateInvoice":true}')")
+echo "$CE" | jq -e '.created==1 and .skipped==3 and .rows[1].skipped==true' >/dev/null || fail "confirmar la fila 1: $CE"
+CE_ID=$(expect 200 "$(req GET "/api/v1/orders/$(echo "$CE" | jq -r .rows[0].orderPublicId)")" | jq -r .id)
+expect 200 "$(req GET "/api/v1/contacts/TRANSPORT_ORDER/$CE_ID")" | jq -e 'any(.[]; .value | test("555.?0199"))' >/dev/null || fail "teléfono de la fila como contacto de la orden"
+expect 200 "$(req PATCH "/api/v1/locations/$LOC_B_PID" "{\"code\":\"LB-$TS\"}")" >/dev/null
+CSVD=$(printf 'cod,nombre,l1,pueblo,tipo,n,orden,factura,tel\nLB-%s,,,,BOX,1,,DUPB-%s,\nLA-%s,,,,BOX,1,,DUP-%s,\n' "$TS" "$TS" "$TS" "$TS")
+VD=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$CSVD" "$TPL2_PID")")")
+echo "$VD" | jq -e '.validRows==1 and (.rows[0].errors.clientInvoiceNumber|length)>0 and (.rows[1].warnings|length)>=1' >/dev/null || fail "R36 bloqueada en la validación: $VD"
+BDUP=$(echo "$VD" | jq -r .batchPublicId)
+expect 400 "$(req POST "/api/v1/orders/import/$BDUP/confirm" '{"rows":[1],"confirmDuplicateInvoice":true}')" | jq -e '.errors["rows[1]"]' >/dev/null || fail "fila con R36 bloqueada elegible"
+NDUP=$(expect 200 "$(req GET "/api/v1/orders?search=DUP-$TS")" | jq .total)
+expect 200 "$(req POST "/api/v1/orders/import/$BDUP/confirm" '{"rows":[2]}')" | jq -e '.created==0 and .failed==1 and ((.rows[1].error // "")|length)>0' >/dev/null || fail "confirmar sin confirmDuplicateInvoice"
+expect 200 "$(req GET "/api/v1/orders?search=DUP-$TS")" | jq -e --argjson n "$NDUP" '.total==$n' >/dev/null || fail "la fila con aviso R36 se creó sin confirmDuplicateInvoice"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" '{"clientAssignsOrderNumber":false}')" >/dev/null
+expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(printf 'c,n,l,p,t,x,o,f,tel\nLA-%s,,,,BOX,1,TEC-%s,,\n' "$TS" "$TS")" "$TPL2_PID")")" | jq -e '.validRows==0 and (.rows[0].errors.orderNumber|length)>0' >/dev/null || fail "número de orden tecleado cuando lo asigna Teikem"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/number-settings" '{"clientAssignsOrderNumber":true}')" >/dev/null
+# Subconjunto de filas: solo la 1 (las otras quedan omitidas); una fila con errores no se puede elegir (400)
+CSVS=$(printf 'c,l,p,z,t,n,d,r\nSub %s,Calle 13,Ponce,00716,BOX,1,A,S-1\nSub %s,Calle 13,Ponce,00716,BOX,1,B,S-2\nSub %s,Calle 13,Ponce,00716,NOPE,1,C,S-3\n' "$TS" "$TS" "$TS")
+BS=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$CSVS")")" | jq -r .batchPublicId)
+expect 400 "$(req POST "/api/v1/orders/import/$BS/confirm" '{"rows":[3]}')" | jq -e '.errors["rows[3]"]' >/dev/null || fail "elegir una fila con errores"
+expect 200 "$(req POST "/api/v1/orders/import/$BS/confirm" '{"rows":[1]}')" | jq -e '.created==1 and .skipped==2 and .rows[1].skipped==true and .rows[0].orderPublicId!=null' >/dev/null || fail "confirmar un subconjunto"
+expect 200 "$(req GET "/api/v1/orders?search=Sub%20$TS")" | jq -e '.total==1' >/dev/null || fail "solo la fila elegida se creó"
+# Crédito en la importación (ajuste C): overrideCredit sin confirmNow 400, sin permiso 403 (el lote sigue VALIDATED),
+# confirmNow con crédito excedido: cada fila falla sola (su transacción se revierte) y el lote se cierra con failed
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":10}')" >/dev/null
+BC=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(csv2 Crédito)")")" | jq -r .batchPublicId)
+expect 400 "$(req POST "/api/v1/orders/import/$BC/confirm" '{"overrideCredit":true}')" | jq -e '.errors.overrideCredit' >/dev/null || fail "overrideCredit sin confirmNow en la importación"
+PD0=$(pdtotal)
+expect 403 "$(req POST "/api/v1/orders/import/$BC/confirm" '{"confirmNow":true,"overrideCredit":true}' "$T2")" >/dev/null
+[[ $(pdtotal) -gt $PD0 ]] || fail "PERMISSION_DENIED del override en la importación"
+expect 200 "$(req GET "/api/v1/orders/import/$BC")" | jq -e '.status=="VALIDATED"' >/dev/null || fail "el 403 no debe reservar el lote"
+expect 200 "$(req POST "/api/v1/orders/import/$BC/confirm" '{"confirmNow":true}')" | jq -e '.created==0 and .failed==2 and all(.rows[]; (.error // "") | contains("límite de crédito"))' >/dev/null || fail "crédito excedido por fila en la importación"
+expect 200 "$(req GET "/api/v1/orders?search=Cr%C3%A9dito%20$TS")" | jq -e '.total==0' >/dev/null || fail "las filas fallidas no dejan órdenes"
+# Una fila falla y la otra no: límite = saldo en curso + una orden
+ROWAMT=$(expect 200 "$(req POST /api/v1/billing/contract-rate-quote "{\"clientPublicId\":\"$CLIENT_O_PID\",\"lines\":[{\"serviceType\":\"STANDARD\",\"packageType\":\"BOX\",\"pieces\":1}]}")" | jq .total)
+PEND=$(expect 200 "$(req GET "/api/v1/orders/$O1_PID/quote")" | jq .credit.pendingBalance)
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" "{\"creditLimit\":$(jq -n --argjson a "$PEND" --argjson b "$ROWAMT" '$a + $b')}")" >/dev/null
+B1=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(csv2 Mitad)")")" | jq -r .batchPublicId)
+expect 200 "$(req POST "/api/v1/orders/import/$B1/confirm" '{"confirmNow":true}')" | jq -e '.created==1 and .failed==1 and .rows[0].orderStatus=="CONFIRMED" and (.rows[1].error | contains("límite de crédito"))' >/dev/null || fail "una fila falla sin tumbar la otra"
+expect 200 "$(req GET "/api/v1/orders?search=Mitad%20$TS")" | jq -e '.total==1 and .items[0].status=="CONFIRMED"' >/dev/null || fail "solo la fila que cupo en el crédito existe"
+# Override con permiso: todas las filas se confirman sobre el límite
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":10}')" >/dev/null
+BO=$(expect 200 "$(req POST /api/v1/orders/import/validate "$(vbody "$(csv2 Autorizado)")")" | jq -r .batchPublicId)
+expect 200 "$(req POST "/api/v1/orders/import/$BO/confirm" '{"confirmNow":true,"overrideCredit":true}')" | jq -e '.created==2 and .failed==0 and all(.rows[]; .orderStatus=="CONFIRMED")' >/dev/null || fail "override en la importación"
+expect 200 "$(req PATCH "/api/v1/clients/$CLIENT_O_PID/profile" '{"creditLimit":100000}')" >/dev/null
+# Aislamiento del importador (otro tenant → 404 sin oráculo)
+expect 404 "$(req GET "/api/v1/orders/import/$B_PID" '' "$T3")" >/dev/null
+expect 404 "$(req POST "/api/v1/orders/import/$B_PID/discard" '' "$T3")" >/dev/null
+expect 404 "$(req GET "/api/v1/import-templates/$TPL_PID" '' "$T3")" >/dev/null
+expect 404 "$(req PATCH "/api/v1/import-templates/$TPL_PID" '{"name":"x"}' "$T3")" >/dev/null
+expect 200 "$(req GET /api/v1/import-templates '' "$T3")" | jq -e --arg p "$TPL_PID" '[.[] | select(.publicId==$p)] | length==0' >/dev/null || fail "plantilla de otro tenant visible"
+expect 404 "$(req POST /api/v1/orders/import/validate "$(jq -cn --arg t "$TPL_PID" --arg c "$CLIENT_T3_PID" --arg s "$CSV" '{templatePublicId:$t,clientPublicId:$c,content:$s}')" "$T3")" >/dev/null
+# RBAC del importador (T4 = solo orders.view)
+expect 200 "$(req GET "/api/v1/orders/import/$B_PID" '' "$T4")" >/dev/null
+expect 403 "$(req POST /api/v1/orders/import/validate "$VB" "$T4")" >/dev/null
+expect 403 "$(req POST "/api/v1/orders/import/$B_PID/confirm" '{}' "$T4")" >/dev/null
+expect 403 "$(req GET /api/v1/import-templates '' "$T4")" >/dev/null
+expect 403 "$(req POST /api/v1/import-templates "{\"name\":\"T4 $TS\",\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":2,\"field\":\"pieces\"}]}" "$T4")" >/dev/null
+# Plantilla de otro cliente del mismo tenant → 404
+TPL_C=$(expect 200 "$(req POST /api/v1/import-templates "{\"name\":\"Solo C1 $TS\",\"clientPublicId\":\"$CLIENT_PID\",\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":2,\"field\":\"line1\"},{\"position\":3,\"field\":\"city\"},{\"position\":4,\"field\":\"postalCode\"},{\"position\":5,\"field\":\"packageType\"},{\"position\":6,\"field\":\"pieces\"}]}")" | jq -r .publicId)
+expect 404 "$(req POST /api/v1/orders/import/validate "$(jq -cn --arg t "$TPL_C" --arg c "$CLIENT_O_PID" --arg s "$CSV" '{templatePublicId:$t,clientPublicId:$c,content:$s}')")" >/dev/null
+# CRUD de plantillas: lista, ficha, nombre repetido 409, PATCH revalida columnas, baja/reactivación dobles 409, inactiva no valida
+expect 200 "$(req GET /api/v1/import-templates)" | jq -e --arg p "$TPL_PID" 'any(.[]; .publicId==$p)' >/dev/null || fail "lista de plantillas"
+expect 200 "$(req GET "/api/v1/import-templates/$TPL_PID")" | jq -e '.isActive==true' >/dev/null || fail "GET plantilla"
+expect 409 "$(req POST /api/v1/import-templates "{\"name\":\"Plantilla $TS\",\"columns\":[{\"position\":1,\"field\":\"consigneeName\"},{\"position\":2,\"field\":\"pieces\"}]}")" >/dev/null
+expect 400 "$(req PATCH "/api/v1/import-templates/$TPL_PID" '{"columns":[{"position":1,"field":"consigneeName"},{"position":1,"field":"pieces"}]}')" >/dev/null
+expect 200 "$(req POST "/api/v1/import-templates/$TPL_PID/deactivate")" | jq -e '.isActive==false' >/dev/null || fail "desactivar plantilla"
+expect 409 "$(req POST "/api/v1/import-templates/$TPL_PID/deactivate")" >/dev/null
+expect 400 "$(req POST /api/v1/orders/import/validate "$VB")" | jq -e '.title | contains("inactiva")' >/dev/null || fail "validar con plantilla inactiva"
+expect 200 "$(req POST "/api/v1/import-templates/$TPL_PID/reactivate")" | jq -e '.isActive==true' >/dev/null || fail "reactivar plantilla"
+expect 409 "$(req POST "/api/v1/import-templates/$TPL_PID/reactivate")" >/dev/null
+ok "plantilla por posición (repetida 400), 415 sin Content-Type, validar sin guardar órdenes, confirmar crea las válidas (salta el número tecleado), 409 al reconfirmar (también en paralelo), descartar (200/409/422 y en carrera con confirmar), consignatario por código/coincidencia, R36 como aviso (bloqueada no elegible, sin confirmDuplicateInvoice falla la fila), baja/suspensión del cliente (409/422), multipart, 5.000 filas/2 MB (400), delimitador y cabecera de la plantilla, teléfono como contacto, número tecleado indebido, subconjunto de filas, crédito por fila (400/403/422 por fila/override), aislamiento y RBAC del importador, CRUD de plantillas"
 
 step "sesiones: refresh con rotación y logout"
 NEW=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$REFRESH\"}")")

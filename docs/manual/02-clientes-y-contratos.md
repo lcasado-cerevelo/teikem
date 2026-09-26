@@ -160,8 +160,9 @@ su ficha sigue accesible y se puede reactivar. Es idempotente (204 aunque ya est
 
 Quién puede: `clients.update`. Cómo se usa: `POST /api/v1/clients/{publicId}/deactivate` / `.../reactivate` → 204.
 
-> Un cliente dado de baja todavía **no** bloquea escrituras (invitar usuarios de portal, servicios especiales, cotizar);
-> ver decisión 39 de `docs/lote2-decisiones.md`.
+> **Actualizado por el Lote 3**: un cliente dado de baja bloquea la creación de lo nuevo (órdenes, contratos, tarifas,
+> servicios especiales, invitaciones de portal) con `409` `El cliente está dado de baja; solo se consulta su historial.`;
+> las lecturas y los cierres/cancelaciones siguen permitidos. Ver [capítulo 03, sección 5](03-ordenes-de-transporte.md#5-cliente-dado-de-baja-se-bloquea-solo-lo-nuevo).
 
 ---
 
@@ -488,13 +489,20 @@ no entran por la aplicación interna (el login del portal llega en su módulo). 
 Una persona dada de baja (DISABLED) se puede **volver a invitar con el mismo correo** desde el mismo cliente: renace en INVITED
 conservando su historial.
 
+> **Actualizado por el Lote 3 (portal multi-cliente)**: una misma cuenta (correo) puede pertenecer a **varios clientes**
+> de la compañía, cada uno con su propia fila (rol y estatus independientes). Invitar el mismo correo desde otro cliente
+> del mismo tenant ya no responde 409: agrega una fila nueva a esa cuenta (activa de inmediato si ya tenía contraseña, o
+> `INVITED` con un enlace nuevo si no). El 409 neutro sigue aplicando a un correo de usuario interno o de otro tenant, o
+> ya invitado/activo/suspendido **en ese mismo cliente**. Ver [capítulo 03, sección 6](03-ordenes-de-transporte.md#6-portal-multi-cliente-cambia-el-capítulo-02-sección-7).
+
 Quién puede: `portalusers.manage` (distinto de `admin.users`). El administrador de plataforma también puede, y sus
 acciones quedan atribuidas a él en la bitácora del tenant.
 
 Estatus (`PortalUserStatus`): **INVITED** (inicial) → **ACTIVE** (al aceptar); **SUSPENDED** (lateral, reversible);
-**DISABLED** (terminal = baja definitiva; nunca se borra). Efectos (`PortalUserStatusEffect`): al llegar a SUSPENDED o
-DISABLED la cuenta se desactiva, se invalidan sus sesiones y refresh tokens y se registra un `SecurityEvent` TOKEN_REVOKED;
-al volver a ACTIVE desde SUSPENDED la cuenta se habilita conservando la contraseña.
+**DISABLED** (terminal = baja definitiva; nunca se borra). Cada fila es por cliente. Efectos (`PortalUserStatusEffect`):
+al llegar a SUSPENDED o DISABLED, la **cuenta** (contraseña, sesiones y refresh tokens, `SecurityEvent` TOKEN_REVOKED) se
+desactiva solo cuando **no le queda ninguna otra fila ACTIVE** en la compañía; al volver a ACTIVE desde SUSPENDED, la
+cuenta se reactiva conservando la contraseña.
 
 Cómo se usa:
 - `GET /api/v1/clients/{publicId}/portal-users`

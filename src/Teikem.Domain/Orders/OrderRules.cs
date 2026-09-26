@@ -35,6 +35,22 @@ public static class OrderRules
     public const string CodNegativeMessage = "El monto COD no puede ser negativo.";
     public const string CodTypeOnCaptureMessage = "El tipo de COD se registra al entregar, no en la captura.";
     public const string PackBatchAlwaysTeikemMessage = "El número de empaque siempre lo genera Teikem.";
+    // Topes = precisión de las columnas (CargoLine.WeightKg DECIMAL(12,3), CargoLine.VolumeM3 DECIMAL(12,4),
+    // TransportOrder.TotalWeightKg DECIMAL(14,3), TotalVolumeM3 DECIMAL(14,4), CodAmount DECIMAL(18,4), TotalPieces INT):
+    // un valor mayor desbordaría el parámetro de SQL y terminaría en 500; aquí se devuelve 400 por campo.
+    public const decimal MaxLineWeightKg = 999_999_999.999m;
+    public const decimal MaxLineVolumeM3 = 99_999_999.9999m;
+    public const decimal MaxTotalWeightKg = 99_999_999_999.999m;
+    public const decimal MaxTotalVolumeM3 = 9_999_999_999.9999m;
+    public const decimal MaxCodAmount = 99_999_999_999_999.9999m;
+
+    public const string LineWeightTooLargeMessage = "El peso de la línea no puede superar 999999999.999 kg.";
+    public const string LineVolumeTooLargeMessage = "El volumen de la línea no puede superar 99999999.9999 m³.";
+    public const string TotalWeightTooLargeMessage = "El peso total de la orden no puede superar 99999999999.999 kg.";
+    public const string TotalVolumeTooLargeMessage = "El volumen total de la orden no puede superar 9999999999.9999 m³.";
+    public const string TotalPiecesTooLargeMessage = "El total de piezas de la orden es demasiado grande.";
+    public const string CodTooLargeMessage = "El monto COD no puede superar 99999999999999.9999.";
+
     public const string DeleteOnlyInitialMessage = "Solo se puede eliminar una orden en su estatus inicial; use la cancelación.";
 
     /// <summary>Campos que se fijan al crear la orden y el PATCH rechaza con 400 (L1065; DECISIÓN 15).</summary>
@@ -70,6 +86,9 @@ public static class OrderRules
             return errors;
         }
 
+        long totalPieces = 0;
+        decimal totalWeight = 0m, totalVolume = 0m;
+        var linesInRange = true;
         for (var i = 0; i < count; i++)
         {
             var line = lines![i];
@@ -77,7 +96,20 @@ public static class OrderRules
             if (line.Description is not null && line.Description.Trim().Length > DescriptionMaxLength)
                 errors[$"packages[{i}].description"] = $"Máximo {DescriptionMaxLength} caracteres.";
             if (line.WeightKg < 0) errors[$"packages[{i}].weightKg"] = "El peso no puede ser negativo.";
+            else if (line.WeightKg > MaxLineWeightKg) { errors[$"packages[{i}].weightKg"] = LineWeightTooLargeMessage; linesInRange = false; }
             if (line.VolumeM3 < 0) errors[$"packages[{i}].volumeM3"] = "El volumen no puede ser negativo.";
+            else if (line.VolumeM3 > MaxLineVolumeM3) { errors[$"packages[{i}].volumeM3"] = LineVolumeTooLargeMessage; linesInRange = false; }
+            totalPieces += Math.Max(0, line.Pieces);
+            if (line.WeightKg is > 0 and <= MaxLineWeightKg) totalWeight += line.WeightKg.Value;
+            if (line.VolumeM3 is > 0 and <= MaxLineVolumeM3) totalVolume += line.VolumeM3.Value;
+        }
+
+        // Totales de cabecera (solo si cada línea está en rango: el error por línea ya explica el problema)
+        if (!errors.ContainsKey("packages"))
+        {
+            if (totalPieces > int.MaxValue) errors["packages"] = TotalPiecesTooLargeMessage;
+            else if (linesInRange && totalWeight > MaxTotalWeightKg) errors["packages"] = TotalWeightTooLargeMessage;
+            else if (linesInRange && totalVolume > MaxTotalVolumeM3) errors["packages"] = TotalVolumeTooLargeMessage;
         }
         return errors;
     }
@@ -89,7 +121,7 @@ public static class OrderRules
         decimal? weight = null, volume = null;
         foreach (var l in lines)
         {
-            pieces += l.Pieces;
+            pieces = checked(pieces + l.Pieces); // red de seguridad: ValidatePackages ya rechaza el desborde con 400
             if (l.WeightKg is decimal w) weight = (weight ?? 0m) + w;
             if (l.VolumeM3 is decimal v) volume = (volume ?? 0m) + v;
         }
@@ -154,8 +186,27 @@ public static class OrderRules
     /// <summary>Eliminar (baja lógica) solo en la etapa inicial y solo si sigue activa (DECISIÓN 6).</summary>
     public static bool CanDelete(bool isInitialStatus, bool isActive) => isInitialStatus && isActive;
 
-    /// <summary>Mensaje de error del monto COD o null si es válido (null y 0 = sin COD).</summary>
-    public static string? ValidateCod(decimal? amount) => amount < 0 ? CodNegativeMessage : null;
+    /// <summary>
+    /// R36 con el scope fijado (portal): la orden existente es de OTRO cliente ⇒ el mensaje no la nombra ni expone su PublicId
+    /// (sin oráculo entre clientes). Sin scope (operador interno) nunca es 'ajena'.
+    /// </summary>
+    public static bool IsForeignDuplicate(int? scopedClientId, int existingClientId)
+        => scopedClientId is int scoped && existingClientId != scoped;
+
+    public const int DefaultListTake = 100;
+    public const int MaxListTake = 500;
+
+    /// <summary>Paginación del listado (DECISIÓN 18): skip &gt;= 0; take 1..500 y, si es 0 o negativo, el default 100.</summary>
+    public static (int Skip, int Take) NormalizePaging(int skip, int take)
+        => (Math.Max(skip, 0), take <= 0 ? DefaultListTake : Math.Min(take, MaxListTake));
+
+    /// <summary>Mensaje de error del monto COD o null si es válido (null y 0 = sin COD; tope = DECIMAL(18,4) de la columna).</summary>
+    public static string? ValidateCod(decimal? amount) => amount switch
+    {
+        < 0 => CodNegativeMessage,
+        > MaxCodAmount => CodTooLargeMessage,
+        _ => null,
+    };
 
     // ---------------------------------------------------------------- snapshot de parada (L236)
 

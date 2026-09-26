@@ -30,8 +30,6 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
     public const string MatchedByPackBatch = "PACK_BATCH";
     public const string MatchedByInvoice = "INVOICE";
 
-    private const int DefaultTake = 100, MaxTake = 500;
-
     private sealed record StatusInfo(string Code, string Label, bool IsInitial, string StageKind);
 
     // ---------------------------------------------------------------- ficha
@@ -128,8 +126,7 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
 
     public async Task<OrderPageDto> GetListAsync(OrderListQuery q, OrderScope scope, CancellationToken ct)
     {
-        var take = q.Take <= 0 ? DefaultTake : Math.Min(q.Take, MaxTake);
-        var skip = Math.Max(q.Skip, 0);
+        var (skip, take) = OrderRules.NormalizePaging(q.Skip, q.Take);
 
         var query = db.ScopedOrders(scope).AsNoTracking();
         if (!q.IncludeInactive) query = query.Where(o => o.IsActive);

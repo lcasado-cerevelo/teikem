@@ -77,6 +77,7 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
         var typeCode = RequireText(req.LocationType, "locationType", "El tipo de localización es obligatorio.", 40).ToUpperInvariant();
         var typeId = await lookups.GetIdAsync(LookupDomains.LocationType, typeCode, ct);
         var countryCode = string.IsNullOrWhiteSpace(req.Country) ? DefaultCountry : req.Country.Trim().ToUpperInvariant();
+        if (!CountryCode.IsValid(countryCode)) throw new ValidationException("country", CountryCode.InvalidMessage);
         var countryId = await lookups.GetIdAsync(LookupDomains.Country, countryCode, ct);
 
         ValidateWindow(req.DefaultWindowStart, req.DefaultWindowEnd);
@@ -136,7 +137,11 @@ public sealed class LocationService(TeikemDbContext db, ITenantContext tenant, I
 
         var countryId = loc.CountryLookupId;
         if (req.Country is not null)
-            countryId = await lookups.GetIdAsync(LookupDomains.Country, RequireText(req.Country, "country", "El país es obligatorio.", 10).ToUpperInvariant(), ct);
+        {
+            var countryCode = RequireText(req.Country, "country", "El país es obligatorio.", 10).ToUpperInvariant();
+            if (!CountryCode.IsValid(countryCode)) throw new ValidationException("country", CountryCode.InvalidMessage);
+            countryId = await lookups.GetIdAsync(LookupDomains.Country, countryCode, ct);
+        }
 
         // Ventana horaria: se valida sobre el valor efectivo (lo que quede tras el PATCH).
         var (winStart, winEnd) = req.ClearWindow == true

@@ -16,6 +16,14 @@ namespace Teikem.Infrastructure.Seeding;
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
 {
+    /// <summary>Filtro vigente de 'COD por cobrar': COD PENDING de órdenes activas que no estén canceladas.</summary>
+    public const string CodPendingFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"CodStatusCode\",\"op\":\"eq\",\"value\":\"PENDING\"},{\"field\":\"StatusCode\",\"op\":\"neq\",\"value\":\"CANCELLED\"}]}";
+
+    /// <summary>Filtro sembrado por la primera versión del Lote 3 (sumaba el COD de órdenes canceladas); se corrige al resembrar.</summary>
+    public const string CodPendingFilterV1 =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"CodStatusCode\",\"op\":\"eq\",\"value\":\"PENDING\"}]}";
+
     public async Task SeedForTenantAsync(int tenantId, CancellationToken ct)
     {
         var tc = (TenantContext)tenant;
@@ -26,6 +34,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         var count = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Count, ct);
         var sum = await lookups.GetIdAsync(LookupDomains.AggregateFn, AggregateFns.Sum, ct);
         var ops = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Operations, ct);
+        var acct = await lookups.GetIdAsync(LookupDomains.BusinessModule, BusinessModules.Accounting, ct);
         var last7 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last7, ct);
         var last30 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last30, ct);
         var all = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.All, ct);
@@ -62,13 +71,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
-        void Indicator(string name, string es, string en, string source, string? field, int fn, string? filter, int? range, bool pulse, int sort, bool isMoney = false)
+        void Indicator(string name, string es, string en, string source, string? field, int fn, string? filter, int? range, bool pulse, int sort, bool isMoney = false, int? module = null)
         {
             if (existingInd.Contains(name)) return;
             db.IndicatorDefinitions.Add(new IndicatorDefinition
             {
                 TenantId = tenantId, Name = name, DescriptionJson = MultilingualText.Build(es, en), DataSourceKey = source, FieldKey = field, AggregateFnLookupId = fn,
-                FilterJson = filter, BusinessModuleLookupId = ops, IsMoney = isMoney, IsSystem = true, VisibilityLookupId = visTenant, DateRangeModeLookupId = range, ShowInPulse = pulse, SortOrder = sort,
+                FilterJson = filter, BusinessModuleLookupId = module ?? ops, IsMoney = isMoney, IsSystem = true, VisibilityLookupId = visTenant, DateRangeModeLookupId = range, ShowInPulse = pulse, SortOrder = sort,
             });
         }
         Indicator("Cambios registrados", "Cambios auditados en el período", "Audited changes in the period", EntityTypes.AuditLog, null, count, null, last7, true, 10);
@@ -83,11 +92,25 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 2 — Clientes y contratos (estado actual: sin rango de fecha)
         Indicator("Clientes activos", "Clientes activos con estatus ACTIVE", "Active clients with ACTIVE status", EntityTypes.Client, null, count,
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"ACTIVE\"}]}", null, true, 60);
-        // Lote 3 — Órdenes de transporte (estado actual: sin rango de fecha)
+        // Lote 3 — Órdenes de transporte (estado actual: rango ALL, porque la fuente TRANSPORT_ORDER tiene DateField y con
+        // rango null el motor aplicaría LAST7 por defecto). 'COD por cobrar' es de Contabilidad (L155/L159: el ciclo COD vive ahí).
         Indicator("Órdenes en curso", "Órdenes activas confirmadas y aún no entregadas", "Active orders confirmed and not yet delivered", EntityTypes.TransportOrder, null, count,
-            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\",\"IN_TRANSIT\",\"ARRIVED\"]}]}", null, true, 70);
-        Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas", "Sum of pending COD of active orders", EntityTypes.TransportOrder, "CodAmount", sum,
-            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"CodStatusCode\",\"op\":\"eq\",\"value\":\"PENDING\"}]}", null, true, 71, isMoney: true);
+            "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\",\"IN_TRANSIT\",\"ARRIVED\"]}]}", all, true, 70);
+        Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas no canceladas", "Sum of pending COD of active, non-cancelled orders", EntityTypes.TransportOrder, "CodAmount", sum,
+            CodPendingFilter, all, true, 71, isMoney: true, module: acct);
+
+        // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
+        var orderIndicators = await db.IndicatorDefinitions
+            .Where(i => i.TenantId == tenantId && i.IsSystem && (i.Name == "Órdenes en curso" || i.Name == "COD por cobrar"))
+            .ToListAsync(ct);
+        foreach (var ind in orderIndicators)
+        {
+            ind.DateRangeModeLookupId ??= all;
+            if (ind.Name == "COD por cobrar" && ind.BusinessModuleLookupId == ops) ind.BusinessModuleLookupId = acct;
+            // Una orden cancelada nunca se entrega: su COD no está por cobrar. Solo se reemplaza el filtro original exacto
+            // (no se pisa un filtro que el tenant haya personalizado).
+            if (ind.Name == "COD por cobrar" && ind.FilterJson == CodPendingFilterV1) ind.FilterJson = CodPendingFilter;
+        }
 
         // ---- Gráficos ----
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);

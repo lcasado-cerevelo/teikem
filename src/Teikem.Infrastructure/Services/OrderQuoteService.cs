@@ -24,6 +24,7 @@ namespace Teikem.Infrastructure.Services;
 public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, RateService rates)
 {
     public const string SpecialServiceClosedMessage = "El servicio especial ya no está vigente; elija otro antes de confirmar.";
+    public const string SpecialServiceComponentOffMessage = "El componente 'Servicios especiales' está apagado en el contrato vigente del cliente; enciéndalo en el modelo de facturación o capture una orden normal.";
     public const string NoLinesMessage = "La orden no tiene líneas de paquete activas que cotizar.";
 
     public static string MissingRateMessage(string serviceType, string packageType)
@@ -36,6 +37,11 @@ public sealed class OrderQuoteService(TeikemDbContext db, ILookupCache lookups, 
 
         if (order.IsSpecialDelivery)
         {
+            // Componente 5 apagado en el contrato vigente → el servicio especial deja de aplicar (L221/L223/L229): 409 en la
+            // vista previa y en la confirmación, igual que un servicio especial cerrado.
+            if (contract is null || !contract.BillSpecialServices)
+                throw new ConflictException(SpecialServiceComponentOffMessage);
+
             // Servicio especial del cliente de la orden (bajo el filtro global), activo y vigente en asOf.
             SpecialService? row = null;
             if (order.SpecialServiceId is int specialServiceId)

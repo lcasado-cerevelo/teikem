@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Tenancy;
@@ -39,7 +40,8 @@ public sealed class OrderImportService(
     ImportTemplateService templates,
     OrderService orders,
     OrderStatusService orderStatuses,
-    INumberSequenceService sequences)
+    INumberSequenceService sequences,
+    ContactPointService contactPoints)
 {
     public const string BatchNotFoundLabel = "Lote de importación";
     public const string ContentRequiredMessage = "Indique el contenido del archivo CSV.";
@@ -48,7 +50,9 @@ public sealed class OrderImportService(
     public const string DiscardedMessage = "El lote fue descartado; valide el archivo de nuevo.";
     public const string DiscardOnlyValidatedMessage = "Solo se descarta un lote pendiente de confirmar.";
     public const string OverrideNeedsConfirmNowMessage = "overrideCredit requiere confirmNow=true.";
-    public const string ConsigneeRequiredMessage = "Indique el consignatario: nombre (con dirección) o código del directorio.";
+    public const string ConsigneeRequiredMessage = ImportMapping.ConsigneeRequiredMessage;
+    public const string ConfirmInProgressMessage = "El lote ya se está confirmando o fue confirmado; consulte su resultado.";
+    public const string ContactPhoneLabel = "Contacto de entrega";
     public const string UnexpectedRowErrorMessage = "Error inesperado al crear la orden; revise la fila e intente de nuevo.";
 
     /// <summary>Tipo de referencia (OrderRefType) con que se guarda la columna 'reference' del archivo.</summary>
@@ -101,7 +105,7 @@ public sealed class OrderImportService(
         var records = csvRows.Select(r => ValidateRow(r, columns, defaults, ctx)).ToList();
         CheckDuplicatesWithinFile(records);
         await CheckExistingOrderNumbersAsync(records, client.ClientId, ct);
-        await CheckDuplicateInvoicesAsync(records, ctx, ct);
+        await CheckDuplicateInvoicesAsync(records, ctx, scope, ct);
 
         var validRows = records.Count(r => r.IsValid);
         var fileName = string.IsNullOrWhiteSpace(req.FileName) ? null : req.FileName.Trim();
@@ -160,6 +164,21 @@ public sealed class OrderImportService(
         var records = DeserializeRows(batch.RowsJson);
         var selected = SelectRows(records, req.Rows);
 
+        // Reserva atómica del lote ANTES de crear filas: un UPDATE condicionado a VALIDATED y ConfirmedAtUtc NULL (bajo el filtro
+        // de tenant). Dos confirmaciones simultáneas (o confirmar y descartar a la vez) no pueden pasar ambas: la segunda afecta
+        // 0 filas y responde 409 sin crear órdenes. ConfirmedAtUtc/ConfirmedBy se reescriben al cerrar el lote.
+        var validatedId = await db.StatusIdAsync(ImportBatchStatuses.Domain, ImportBatchStatuses.Validated, ct);
+        var reservedAt = DateTime.UtcNow;
+        var reserved = await db.ImportBatches
+            .Where(b => b.ImportBatchId == batch.ImportBatchId && b.StatusCodeId == validatedId && b.ConfirmedAtUtc == null)
+            .ExecuteUpdateAsync(u => u.SetProperty(b => b.ConfirmedAtUtc, reservedAt).SetProperty(b => b.ConfirmedBy, userId), ct);
+        if (reserved == 0)
+        {
+            var current = await LoadBatchAsync(batchPublicId, scope, ct);
+            await EnsureValidatedAsync(current, ct); // CONFIRMED / DISCARDED → su 409 específico
+            throw new ConflictException(ConfirmInProgressMessage);
+        }
+
         // Filas del contador en autocommit (idempotente) para que dentro de cada transacción solo corra el UPDATE.
         await sequences.EnsureAsync(NumberKinds.Order, NumberingRules.ScopeClientId(NumberKinds.Order, client.ClientId), ct);
         await sequences.EnsureAsync(NumberKinds.Invoice, NumberingRules.ScopeClientId(NumberKinds.Invoice, client.ClientId), ct);
@@ -185,6 +204,11 @@ public sealed class OrderImportService(
                 var dto = await db.RunInTransactionAsync(async ct2 =>
                 {
                     var createdDto = await orders.CreateAsync(request, scope, options, ct2);
+                    // Teléfono de contacto de la fila → ContactPoint de la orden (capa C: nunca como texto suelto en notas).
+                    if (record.Values.TryGetValue(ImportFields.ContactPhone, out var phone) && !string.IsNullOrWhiteSpace(phone))
+                        await contactPoints.AddAsync(EntityTypes.TransportOrder, createdDto.Id,
+                            new ContactPointUpsertRequest("PHONE", phone, null, ContactPhoneLabel, IsPrimary: true), ct2,
+                            enforceOwnerWrite: false); // la importación ya exige orders.create sobre la orden que acaba de crear
                     if (req.ConfirmNow)
                         createdDto = await orderStatuses.ConfirmAsync(createdDto.PublicId, null, scope, req.OverrideCredit, ct2);
                     return createdDto;
@@ -197,6 +221,7 @@ public sealed class OrderImportService(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 db.ChangeTracker.Clear(); // lo que quedó a medias no debe contaminar la fila siguiente
+                db.PendingAudits.Clear(); // ni su bitácora pendiente escribirse con la fila siguiente
                 record.Error = ex is TeikemException te ? te.Message : UnexpectedRowErrorMessage;
                 failed++;
             }
@@ -228,8 +253,16 @@ public sealed class OrderImportService(
             var tracked = await db.ImportBatches.FirstOrDefaultAsync(b => b.ImportBatchId == batch.ImportBatchId, ct2)
                           ?? throw new NotFoundException(BatchNotFoundLabel);
             if (!await db.IsInitialAsync(tracked.StatusCodeId, ct2)) throw new StatusRuleException(DiscardOnlyValidatedMessage);
+            if (tracked.ConfirmedAtUtc is not null) throw new ConflictException(ConfirmInProgressMessage);
             var to = await statuses.TransitionAsync(ImportBatchStatuses.Domain, ImportEntityTypes.ImportBatch, tracked.ImportBatchId,
                 tracked.StatusCodeId, ImportBatchStatuses.Discarded, null, ct2);
+            // Mismo candado que la reserva de ConfirmAsync: solo descarta si nadie reservó el lote entretanto (bloqueo de fila
+            // hasta el commit; una confirmación concurrente verá DISCARDED y responderá 409).
+            var validatedId = tracked.StatusCodeId;
+            var locked = await db.ImportBatches
+                .Where(b => b.ImportBatchId == tracked.ImportBatchId && b.StatusCodeId == validatedId && b.ConfirmedAtUtc == null)
+                .ExecuteUpdateAsync(u => u.SetProperty(b => b.StatusCodeId, to.StatusCodeId), ct2);
+            if (locked == 0) throw new ConflictException(ConfirmInProgressMessage);
             tracked.StatusCodeId = to.StatusCodeId;
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
@@ -286,7 +319,15 @@ public sealed class OrderImportService(
         {
             var code = country.ToUpperInvariant();
             rec.Values[ImportFields.Country] = code;
-            if (!ctx.Countries.Contains(code)) Error(ImportFields.Country, $"País desconocido: {code}.");
+            if (!CountryCode.IsValid(code)) Error(ImportFields.Country, CountryCode.InvalidMessage);
+            else if (!ctx.Countries.Contains(code)) Error(ImportFields.Country, $"País desconocido: {code}.");
+        }
+
+        // Teléfono de contacto: misma validación que ContactPointService (se guarda como ContactPoint de la orden al confirmar)
+        if (Get(ImportFields.ContactPhone) is string phoneText)
+        {
+            try { rec.Values[ImportFields.ContactPhone] = ContactPointService.ValidateValue("PHONE", phoneText); }
+            catch (ValidationException ex) { Error(ImportFields.ContactPhone, ex.Message); }
         }
 
         // Numeración tecleada según las dos preguntas del cliente (mensajes exactos de NumberingRules)
@@ -329,9 +370,9 @@ public sealed class OrderImportService(
                 rec.Consignee = new ImportRowConsigneeRecord { Action = "CREATE", Name = name };
             }
         }
-        else
+        else if (ImportMapping.RequireConsignee(values) is (string consigneeField, string consigneeMessage))
         {
-            Error(ImportFields.ConsigneeName, ConsigneeRequiredMessage);
+            Error(consigneeField, consigneeMessage);
         }
 
         return rec;
@@ -395,7 +436,7 @@ public sealed class OrderImportService(
     }
 
     /// <summary>R36 informativa: factura tecleada ya usada por una orden activa del mismo consignatario (bloqueada → error; confirmable → aviso).</summary>
-    private async Task CheckDuplicateInvoicesAsync(List<ImportRowRecord> records, RowContext ctx, CancellationToken ct)
+    private async Task CheckDuplicateInvoicesAsync(List<ImportRowRecord> records, RowContext ctx, OrderScope scope, CancellationToken ct)
     {
         var candidates = records.Where(r => r.Values.ContainsKey(ImportFields.ClientInvoiceNumber) && !r.Errors.ContainsKey(ImportFields.ClientInvoiceNumber)
                                              && r.Consignee?.LocationPublicId is not null).ToList();
@@ -404,7 +445,7 @@ public sealed class OrderImportService(
         var existingOrders = await db.TransportOrders.AsNoTracking()
             .Where(o => o.IsActive && invoices.Contains(o.ClientInvoiceNumber))
             .OrderByDescending(o => o.TransportOrderId)
-            .Select(o => new { o.TransportOrderId, o.OrderNumber, o.PublicId, o.ClientInvoiceNumber })
+            .Select(o => new { o.TransportOrderId, o.OrderNumber, o.PublicId, o.ClientInvoiceNumber, o.ClientId })
             .ToListAsync(ct);
         if (existingOrders.Count == 0) return;
         var orderIds = existingOrders.Select(o => o.TransportOrderId).ToList();
@@ -422,18 +463,27 @@ public sealed class OrderImportService(
             var invoice = r.Values[ImportFields.ClientInvoiceNumber];
             var existing = existingOrders.FirstOrDefault(o => string.Equals(o.ClientInvoiceNumber, invoice, StringComparison.OrdinalIgnoreCase)
                                                               && deliveryByOrder.TryGetValue(o.TransportOrderId, out var locs) && locs.Contains(loc.LocationId));
+            // Con el scope fijado (portal), una orden de otro cliente no se nombra (sin oráculo entre clientes).
+            var foreign = existing is not null && OrderRules.IsForeignDuplicate(scope.ClientId, existing.ClientId);
             switch (OrderRules.DecideDuplicateInvoice(true, existing?.OrderNumber, loc.AllowDupInvoice, confirmed: false))
             {
                 case DuplicateInvoiceDecision.Blocked:
-                    r.Errors.TryAdd(ImportFields.ClientInvoiceNumber,
-                        $"El consignatario '{loc.Name}' no permite facturas repetidas: la orden {existing!.OrderNumber} ya usa el número {invoice}.");
+                    r.Errors.TryAdd(ImportFields.ClientInvoiceNumber, foreign
+                        ? OrderService.DuplicateInvoiceBlockedForeignMessage(loc.Name, invoice)
+                        : $"El consignatario '{loc.Name}' no permite facturas repetidas: la orden {existing!.OrderNumber} ya usa el número {invoice}.");
                     break;
                 case DuplicateInvoiceDecision.NeedsConfirmation:
-                    r.Warnings.Add($"El consignatario '{loc.Name}' ya tiene la factura {invoice} en la orden {existing!.OrderNumber}; la fila se creará solo si confirma facturas repetidas (confirmDuplicateInvoice).");
+                    r.Warnings.Add(foreign
+                        ? DuplicateInvoiceForeignWarning(loc.Name, invoice)
+                        : $"El consignatario '{loc.Name}' ya tiene la factura {invoice} en la orden {existing!.OrderNumber}; la fila se creará solo si confirma facturas repetidas (confirmDuplicateInvoice).");
                     break;
             }
         }
     }
+
+    /// <summary>Aviso R36 de la validación con el scope fijado (portal) y la orden existente de otro cliente: no nombra esa orden.</summary>
+    public static string DuplicateInvoiceForeignWarning(string consigneeName, string invoice)
+        => $"El consignatario '{consigneeName}' ya tiene la factura {invoice}; la fila se creará solo si confirma facturas repetidas (confirmDuplicateInvoice).";
 
     // ================================================================ contexto y carga
 
@@ -470,8 +520,15 @@ public sealed class OrderImportService(
         };
     }
 
+    /// <summary>Códigos activos del dominio, sin los que el tenant deshabilitó con su override (L54/L1158), como la captura.</summary>
     private async Task<IReadOnlySet<string>> ActiveCodesAsync(string domain, CancellationToken ct)
-        => (await lookups.GetDomainAsync(domain, ct)).Where(l => l.IsActive).Select(l => l.InternalCode.ToUpperInvariant()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+    {
+        var disabled = (await db.LookupCodeOverrides.AsNoTracking().Where(o => !o.IsEnabled).Select(o => o.LookupCodeId).ToListAsync(ct)).ToHashSet();
+        return (await lookups.GetDomainAsync(domain, ct))
+            .Where(l => l.IsActive && !disabled.Contains(l.LookupCodeId))
+            .Select(l => l.InternalCode.ToUpperInvariant())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
 
     private async Task<Client> ResolveClientForScopeAsync(OrderScope scope, Guid? clientPublicId, CancellationToken ct)
     {
@@ -537,8 +594,6 @@ public sealed class OrderImportService(
         DateTime? requestedDate = ImportMapping.TryParseDate(Get(ImportFields.RequestedDate), out var d) ? d : null;
 
         var notes = Get(ImportFields.Notes);
-        if (Get(ImportFields.ContactPhone) is string phone)
-            notes = string.IsNullOrWhiteSpace(notes) ? $"Tel. contacto: {phone}" : $"{notes} | Tel. contacto: {phone}";
 
         OrderConsigneeCreateRequest? newConsignee = null;
         Guid? consigneePublicId = null;

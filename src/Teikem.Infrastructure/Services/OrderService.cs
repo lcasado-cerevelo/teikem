@@ -37,7 +37,8 @@ public sealed class OrderService(
     LocationService locations,
     INumberSequenceService sequences,
     OrderStatusService orderStatuses,
-    OrderReadService reader)
+    OrderReadService reader,
+    PermissionService permissions)
 {
     public const string ClientInactiveMessage = "El cliente está dado de baja; solo se consulta su historial.";
     public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
@@ -48,6 +49,9 @@ public sealed class OrderService(
     public const string ConsigneeBothMessage = "Indique un consignatario del directorio o uno nuevo, no ambos.";
     public const string SpecialServiceRequiredMessage = "El servicio especial es obligatorio en una entrega especial.";
     public const string SpecialServiceNotCurrentMessage = "El servicio especial no está vigente para este cliente.";
+
+    /// <summary>Savepoint de cada intento de alta cuando CreateAsync corre dentro de una transacción ambiente (importador).</summary>
+    private const string CreateAttemptSavepoint = "OrderCreateAttempt";
 
     // ---------------------------------------------------------------- tipos internos de preparación
 
@@ -67,6 +71,11 @@ public sealed class OrderService(
 
         // (a) campos que la captura no admite (empaque siempre Teikem; tipo de COD al entregar)
         RejectExtra(req.Extra?.Keys, OrderRules.ForbiddenOnCreate);
+
+        // Ajuste C: overrideCredit solo acompaña a confirmNow; el permiso se exige pronto (403 + PERMISSION_DENIED) y
+        // ConfirmTrackedAsync lo vuelve a comprobar.
+        if (req.OverrideCredit && !req.ConfirmNow) throw new ValidationException("overrideCredit", OrderImportService.OverrideNeedsConfirmNowMessage);
+        if (req.OverrideCredit) await permissions.EnsureAsync(OrderStatusService.CreditOverridePermission, ct);
 
         // (b) cliente: el scope (portal) gana siempre; si no, clientPublicId. Dado de baja → 409; suspendido → 422.
         var client = await ResolveClientForScopeAsync(scope, req.ClientPublicId, ct);
@@ -121,7 +130,7 @@ public sealed class OrderService(
 
         // (k) factura repetida ANTES de dibujar números: solo si fue tecleada y el consignatario ya existía o coincidió
         if (typedInvoice is not null && consignee.Existing is not null)
-            await CheckDuplicateInvoiceAsync(consignee.Existing, typedInvoice, req.ConfirmDuplicateInvoice, ct);
+            await CheckDuplicateInvoiceAsync(consignee.Existing, typedInvoice, req.ConfirmDuplicateInvoice, scope, ct);
 
         // (l) filas del contador en autocommit (idempotente), solo para lo automático
         var orderSeqClient = NumberingRules.ScopeClientId(NumberKinds.Order, client.ClientId);
@@ -139,10 +148,21 @@ public sealed class OrderService(
         var consigneeCountry = consignee.Existing is null ? consignee.ToCreate!.Country : await CountryCodeAsync(consignee.Existing.CountryLookupId, ct);
         var totals = OrderRules.Totals(lines.Select(l => new PackageLineInput(l.Description, l.Pieces, l.WeightKg, l.VolumeM3)));
 
-        // (m) hasta MaxAutoRetries intentos: un choque de número automático con uno tecleado salta el valor y repite
+        // (m) hasta MaxAutoRetries intentos: un choque de número automático con uno tecleado salta el valor y repite.
+        // Con transacción propia, RunInTransactionAsync revierte el intento y limpia el tracker. Llamado dentro de una
+        // transacción ambiente (importador: una transacción por fila) RunInTransactionAsync solo se une a ella, así que cada
+        // intento se envuelve en un savepoint: el fallido se revierte (números dibujados, consignatario al vuelo, historial) y
+        // sus entidades se desprenden del tracker, para que el reintento se comporte igual que con transacción propia.
+        var ambientTx = db.Database.CurrentTransaction;
         Guid createdPublicId;
         for (var attempt = 1; ; attempt++)
         {
+            HashSet<object>? trackedBefore = null;
+            if (ambientTx is not null)
+            {
+                trackedBefore = db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
+                await ambientTx.CreateSavepointAsync(CreateAttemptSavepoint, ct);
+            }
             try
             {
                 createdPublicId = await db.RunInTransactionAsync(async ct2 =>
@@ -158,17 +178,17 @@ public sealed class OrderService(
                     }
 
                     // Números en el orden fijo ORDER → INVOICE → PACKBATCH → PACKAGE (DrawOrder)
-                    var orderNumber = typedOrder ?? NumberingRules.Resolve(NumberingRules.EffectivePattern(NumberKinds.Order, settings),
+                    var orderNumber = typedOrder ?? ResolveAuto(NumberKinds.Order, settings,
                         await sequences.NextAsync(NumberKinds.Order, orderSeqClient, ct2));
-                    var invoiceNumber = typedInvoice ?? NumberingRules.Resolve(NumberingRules.EffectivePattern(NumberKinds.Invoice, settings),
+                    var invoiceNumber = typedInvoice ?? ResolveAuto(NumberKinds.Invoice, settings,
                         await sequences.NextAsync(NumberKinds.Invoice, invoiceSeqClient, ct2));
-                    var packBatchNumber = packBatchOverride ?? NumberingRules.Resolve(NumberingRules.EffectivePattern(NumberKinds.PackBatch, settings),
+                    var packBatchNumber = packBatchOverride ?? ResolveAuto(NumberKinds.PackBatch, settings,
                         await sequences.NextAsync(NumberKinds.PackBatch, packBatchSeqClient, ct2));
                     var packageNumbers = new List<string?>(lines.Count);
                     foreach (var line in lines)
                     {
                         if (special is not null) { packageNumbers.Add(null); continue; }
-                        packageNumbers.Add(line.TypedPackageNumber ?? NumberingRules.Resolve(NumberingRules.EffectivePattern(NumberKinds.Package, settings),
+                        packageNumbers.Add(line.TypedPackageNumber ?? ResolveAuto(NumberKinds.Package, settings,
                             await sequences.NextAsync(NumberKinds.Package, packageSeqClient, ct2)));
                     }
 
@@ -180,6 +200,7 @@ public sealed class OrderService(
                         ContractId = null,
                         OrderNumber = orderNumber,
                         ClientInvoiceNumber = invoiceNumber,
+                        ClientInvoiceNumberTyped = typedInvoice is not null,
                         PackBatchNumber = packBatchNumber,
                         ServiceTypeLookupId = serviceTypeId,
                         StatusCodeId = initial.StatusCodeId,
@@ -208,6 +229,9 @@ public sealed class OrderService(
                     }
                     catch (DbUpdateException ex) when (DbExtensions.IsUniqueViolation(ex))
                     {
+                        // La orden fallida no debe reintentarse en el siguiente SaveChanges ni dejar bitácora pendiente.
+                        db.Entry(order).State = EntityState.Detached;
+                        db.PendingAudits.Clear();
                         var sqlMessage = SqlMessage(ex);
                         var collided = NumberingRules.CollidedKind(sqlMessage, orderAuto: typedOrder is null, packBatchAuto: packBatchOverride is null);
                         if (collided is not null) throw new OrderNumberCollision(collided);
@@ -266,7 +290,7 @@ public sealed class OrderService(
                     await db.SaveGuardedAsync(OrderNumberTakenMessage, ct2);
 
                     // confirmNow (DECISIÓN 26): cotiza, verifica crédito y avanza en la misma transacción; un 422 revierte también la creación.
-                    if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, ct2);
+                    if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, req.OverrideCredit, ct2);
 
                     return order.PublicId;
                 }, ct);
@@ -274,6 +298,15 @@ public sealed class OrderService(
             }
             catch (OrderNumberCollision collision)
             {
+                if (ambientTx is not null)
+                {
+                    // Revierte el intento dentro de la transacción ambiente (incluido el NextAsync que produjo el valor chocado)
+                    // y desprende lo que el intento dejó tracked; así el salto de abajo consume exactamente el valor chocado.
+                    await ambientTx.RollbackToSavepointAsync(CreateAttemptSavepoint, ct);
+                    foreach (var entry in db.ChangeTracker.Entries().Where(e => !trackedBefore!.Contains(e.Entity)).ToList())
+                        entry.State = EntityState.Detached;
+                    db.PendingAudits.Clear();
+                }
                 if (attempt >= NumberingRules.MaxAutoRetries) throw new ConflictException(NoFreeNumberMessage);
                 // El valor chocado es justo el que alguien tecleó: se consume en autocommit (el hueco coincide con un número en uso).
                 await sequences.NextAsync(collision.Kind, NumberingRules.ScopeClientId(collision.Kind, client.ClientId), ct);
@@ -345,6 +378,13 @@ public sealed class OrderService(
             // Consignatario: existente, coincidente o nuevo → re-snapshot de la parada DELIVERY
             if (consignee is not null)
             {
+                // R36 también al mover la orden a otro consignatario existente (o coincidente): misma regla que al crear
+                // (solo si la factura de ESTA orden se tecleó, L1124, sin importar el ajuste actual del cliente; la orden
+                // editada no cuenta como duplicado de sí misma).
+                if (consignee.Existing is not null && order.ClientInvoiceNumberTyped
+                    && deliveryStop.LocationId != consignee.Existing.LocationId)
+                    await CheckDuplicateInvoiceAsync(consignee.Existing, order.ClientInvoiceNumber, req.ConfirmDuplicateInvoice, scope, ct2, order.TransportOrderId);
+
                 Location loc;
                 if (consignee.Existing is not null) loc = consignee.Existing;
                 else
@@ -394,7 +434,7 @@ public sealed class OrderService(
                 foreach (var line in order.CargoLines.Where(l => l.IsActive)) line.IsActive = false;
                 foreach (var line in newLines)
                 {
-                    var packageNumber = line.TypedPackageNumber ?? NumberingRules.Resolve(NumberingRules.EffectivePattern(NumberKinds.Package, settings),
+                    var packageNumber = line.TypedPackageNumber ?? ResolveAuto(NumberKinds.Package, settings,
                         await sequences.NextAsync(NumberKinds.Package, packageSeqClient, ct2));
                     order.CargoLines.Add(new CargoLine
                     {
@@ -506,7 +546,7 @@ public sealed class OrderService(
         if (!string.IsNullOrWhiteSpace(code))
         {
             var c = code.Trim().ToUpperInvariant();
-            return await lookups.TryGetIdAsync(LookupDomains.ServiceType, c, ct)
+            return await TryGetEnabledLookupIdAsync(LookupDomains.ServiceType, c, ct)
                    ?? throw new ValidationException("serviceType", $"Tipo de servicio desconocido: {c}.");
         }
         return tenantRow.DefaultServiceTypeLookupId ?? throw new ValidationException("serviceType", "El tipo de servicio es obligatorio.");
@@ -516,7 +556,7 @@ public sealed class OrderService(
     {
         if (string.IsNullOrWhiteSpace(code)) return null;
         var c = code.Trim().ToUpperInvariant();
-        return await lookups.TryGetIdAsync(LookupDomains.OrderPriority, c, ct)
+        return await TryGetEnabledLookupIdAsync(LookupDomains.OrderPriority, c, ct)
                ?? throw new ValidationException("priority", $"Prioridad desconocida: {c}.");
     }
 
@@ -556,6 +596,9 @@ public sealed class OrderService(
             return new ConsigneeInput(match, null, match.Name);
         }
 
+        // País ISO alfa-2: el snapshot de la parada es CHAR(2) (sin esto, un código largo termina en 500 por truncado).
+        var country = string.IsNullOrWhiteSpace(fresh.Country) ? OrderRules.DefaultCountryCode : fresh.Country.Trim().ToUpperInvariant();
+        if (!CountryCode.IsValid(country)) throw new ValidationException("newConsignee.country", CountryCode.InvalidMessage);
         var toCreate = new LocationUpsertRequest(
             ClientPublicId: client.PublicId,
             Code: string.IsNullOrWhiteSpace(fresh.Code) ? null : fresh.Code.Trim(),
@@ -566,7 +609,7 @@ public sealed class OrderService(
             City: city,
             State: fresh.State,
             PostalCode: fresh.PostalCode,
-            Country: string.IsNullOrWhiteSpace(fresh.Country) ? OrderRules.DefaultCountryCode : fresh.Country.Trim().ToUpperInvariant(),
+            Country: country,
             DefaultServiceMinutes: fresh.DefaultServiceMinutes,
             DefaultWindowStart: null,
             DefaultWindowEnd: null,
@@ -579,6 +622,10 @@ public sealed class OrderService(
     private async Task<SpecialService> ResolveSpecialServiceAsync(Client client, int? specialServiceId, CancellationToken ct)
     {
         if (specialServiceId is null) throw new ValidationException("specialServiceId", SpecialServiceRequiredMessage);
+        // Componente 5 del modelo de facturación apagado → el cliente no tiene servicios especiales (L221/L223/L229).
+        var contract = await db.CurrentContractAsync(client.ClientId, Today(), ct);
+        if (contract is null || !contract.BillSpecialServices)
+            throw new ConflictException(OrderQuoteService.SpecialServiceComponentOffMessage);
         var clientId = client.ClientId;
         var id = specialServiceId.Value;
         var row = await db.SpecialServices.AsNoTracking().Include(s => s.Type)
@@ -586,6 +633,22 @@ public sealed class OrderService(
         if (row is null || row.Type is null || !EffectiveDated.IsCurrentOn(row, Today()))
             throw new ValidationException("specialServiceId", SpecialServiceNotCurrentMessage);
         return row;
+    }
+
+    /// <summary>
+    /// Id de un valor de catálogo tecleado en la captura, o null si no existe, está inactivo o el tenant lo deshabilitó con su
+    /// override (L54/L1158: un valor desactivado deja de aparecer al capturar registros nuevos). La caché de LookupCode es global;
+    /// LookupCodeOverride es ITenantScoped y el filtro global lo limita al tenant del JWT. Los defaults del tenant y las órdenes
+    /// existentes no pasan por aquí.
+    /// </summary>
+    private async Task<int?> TryGetEnabledLookupIdAsync(string domain, string code, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(domain, code, ct);
+        if (id is not int v) return null;
+        var row = await lookups.GetAsync(v, ct);
+        if (row is null || !row.IsActive) return null;
+        var disabled = await db.LookupCodeOverrides.AsNoTracking().AnyAsync(o => o.LookupCodeId == v && !o.IsEnabled, ct);
+        return disabled ? null : v;
     }
 
     private async Task<List<PreparedLine>> PrepareLinesAsync(IList<OrderPackageLineRequest> packages, Tenant tenantRow, CancellationToken ct)
@@ -598,7 +661,7 @@ public sealed class OrderService(
             if (!string.IsNullOrWhiteSpace(p.PackageType))
             {
                 var code = p.PackageType.Trim().ToUpperInvariant();
-                typeId = await lookups.TryGetIdAsync(LookupDomains.PackageType, code, ct)
+                typeId = await TryGetEnabledLookupIdAsync(LookupDomains.PackageType, code, ct)
                          ?? throw new ValidationException($"packages[{i}].packageType", $"Tipo de paquete desconocido: {code}.");
             }
             else
@@ -622,7 +685,7 @@ public sealed class OrderService(
         {
             var r = references[i];
             var code = RequireText(r.RefType, $"references[{i}].refType", "El tipo de referencia es obligatorio.", 40).ToUpperInvariant();
-            var typeId = await lookups.TryGetIdAsync(LookupDomains.OrderRefType, code, ct)
+            var typeId = await TryGetEnabledLookupIdAsync(LookupDomains.OrderRefType, code, ct)
                          ?? throw new ValidationException($"references[{i}].refType", $"Tipo de referencia desconocido: {code}.");
             var value = RequireText(r.Value, $"references[{i}].value", "El valor de la referencia es obligatorio.", OrderRules.ReferenceValueMaxLength);
             var source = OptionalText(r.Source);
@@ -636,30 +699,50 @@ public sealed class OrderService(
     /// <summary>
     /// R36: órdenes activas del tenant (cualquier estatus, cualquier scope) con la misma factura y una parada DELIVERY sobre
     /// el mismo consignatario. Blocked → 409 duplicate_invoice; NeedsConfirmation → 409 duplicate_invoice_confirmable.
+    /// La regla abarca todo el tenant (DECISIÓN 19: corre igual para operador y portal), pero si el scope fija un cliente y la
+    /// orden existente es de otro, el error no nombra esa orden ni expone su PublicId (sin oráculo entre clientes).
     /// </summary>
-    private async Task CheckDuplicateInvoiceAsync(Location consignee, string invoice, bool confirmed, CancellationToken ct)
+    private async Task CheckDuplicateInvoiceAsync(Location consignee, string invoice, bool confirmed, OrderScope scope, CancellationToken ct, int? excludeOrderId = null)
     {
         var deliveryTypeId = await lookups.GetIdAsync(LookupDomains.StopType, StopTypes.Delivery, ct);
         var locationId = consignee.LocationId;
         var existing = await db.TransportOrders.AsNoTracking()
             .Where(o => o.IsActive && o.ClientInvoiceNumber == invoice
+                        && (excludeOrderId == null || o.TransportOrderId != excludeOrderId)
                         && db.OrderStops.Any(s => s.TransportOrderId == o.TransportOrderId && s.StopTypeLookupId == deliveryTypeId && s.LocationId == locationId))
             .OrderByDescending(o => o.TransportOrderId)
-            .Select(o => new { o.OrderNumber, o.PublicId })
+            .Select(o => new { o.OrderNumber, o.PublicId, o.ClientId })
             .FirstOrDefaultAsync(ct);
 
-        switch (OrderRules.DecideDuplicateInvoice(true, existing?.OrderNumber, consignee.AllowDupInvoice, confirmed))
+        var decision = OrderRules.DecideDuplicateInvoice(true, existing?.OrderNumber, consignee.AllowDupInvoice, confirmed);
+        if (decision == DuplicateInvoiceDecision.Ok) return;
+        var foreign = OrderRules.IsForeignDuplicate(scope.ClientId, existing!.ClientId);
+        var existingNumber = foreign ? null : existing!.OrderNumber;
+        Guid? existingPublicId = foreign ? null : existing!.PublicId;
+        switch (decision)
         {
             case DuplicateInvoiceDecision.Blocked:
                 throw new DuplicateInvoiceException(
-                    $"El consignatario '{consignee.Name}' no permite facturas repetidas: la orden {existing!.OrderNumber} ya usa el número {invoice}.",
-                    confirmable: false, existing.OrderNumber, existing.PublicId);
+                    foreign
+                        ? DuplicateInvoiceBlockedForeignMessage(consignee.Name, invoice)
+                        : $"El consignatario '{consignee.Name}' no permite facturas repetidas: la orden {existingNumber} ya usa el número {invoice}.",
+                    confirmable: false, existingNumber, existingPublicId);
             case DuplicateInvoiceDecision.NeedsConfirmation:
                 throw new DuplicateInvoiceException(
-                    $"El consignatario '{consignee.Name}' ya tiene la factura {invoice} en la orden {existing!.OrderNumber}; confirme si desea crear la orden de todos modos.",
-                    confirmable: true, existing.OrderNumber, existing.PublicId);
+                    foreign
+                        ? DuplicateInvoiceConfirmableForeignMessage(consignee.Name, invoice)
+                        : $"El consignatario '{consignee.Name}' ya tiene la factura {invoice} en la orden {existingNumber}; confirme si desea crear la orden de todos modos.",
+                    confirmable: true, existingNumber, existingPublicId);
         }
     }
+
+    /// <summary>R36 contra una orden de otro cliente con el scope fijado (portal): mensaje sin nombrar la orden existente.</summary>
+    public static string DuplicateInvoiceBlockedForeignMessage(string consigneeName, string invoice)
+        => $"El consignatario '{consigneeName}' no permite facturas repetidas: el número {invoice} ya está en uso.";
+
+    /// <summary>R36 confirmable contra una orden de otro cliente con el scope fijado (portal): mensaje sin nombrar la orden existente.</summary>
+    public static string DuplicateInvoiceConfirmableForeignMessage(string consigneeName, string invoice)
+        => $"El consignatario '{consigneeName}' ya tiene la factura {invoice}; confirme si desea crear la orden de todos modos.";
 
     private async Task BornStopAsync(OrderStop stop, string initialCode, CancellationToken ct)
     {
@@ -667,8 +750,13 @@ public sealed class OrderService(
         stop.StatusCodeId = to.StatusCodeId;
     }
 
+    /// <summary>Código de país de una Location para el snapshot CHAR(2); un código del catálogo que no sea alfa-2 → 400.</summary>
     private async Task<string?> CountryCodeAsync(int countryLookupId, CancellationToken ct)
-        => (await lookups.GetAsync(countryLookupId, ct))?.InternalCode;
+    {
+        var code = (await lookups.GetAsync(countryLookupId, ct))?.InternalCode;
+        if (code is not null && !CountryCode.IsValid(code)) throw new ValidationException("country", CountryCode.InvalidMessage);
+        return code;
+    }
 
     // ================================================================ helpers puros
 
@@ -694,6 +782,17 @@ public sealed class OrderService(
     {
         try { return NumberingRules.EnsureTypedAllowed(kind, settings, typed); }
         catch (ArgumentException ex) { throw new ValidationException(field, ex.Message); }
+    }
+
+    /// <summary>
+    /// Número automático con el patrón efectivo; si no cabe en las columnas NVARCHAR(40) (patrón largo + consecutivo con más
+    /// dígitos que '#') → 409 con mensaje de negocio en vez de un 500 por truncado. Se lanza dentro de la transacción del
+    /// alta/edición: el rollback devuelve también los consecutivos ya dibujados.
+    /// </summary>
+    private static string ResolveAuto(string kind, NumberingSettings settings, long seq)
+    {
+        try { return NumberingRules.ResolveChecked(kind, NumberingRules.EffectivePattern(kind, settings), seq); }
+        catch (ArgumentException ex) { throw new ConflictException(ex.Message); }
     }
 
     private static string? NormalizeTyped(string? value, string field)

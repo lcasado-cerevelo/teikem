@@ -398,8 +398,12 @@ Qué hace: guarda varios contactos (teléfono, correo, etc.) para cualquier enti
 tenant activo) se valida contra un "resolver" por tipo de entidad, no por llave foránea directa.
 
 Quién puede: ver, el permiso de lectura de la entidad dueña (CLIENT/CLIENT_CONTACT → `clients.read`, LOCATION →
-`locations.read`, CONTRACT → `contracts.read`, PORTAL_USER → `portalusers.manage`; USER → cualquier autenticado); sin él,
-`Falta el permiso '<código>'.` (403, queda PERMISSION_DENIED en la bitácora de seguridad). Crear/editar/desactivar, `contacts.manage`.
+`locations.read`, CONTRACT → `contracts.read`, PORTAL_USER → `portalusers.manage`, TRANSPORT_ORDER → `orders.view`; USER →
+cualquier autenticado); sin él, `Falta el permiso '<código>'.` (403, queda PERMISSION_DENIED en la bitácora de seguridad).
+Crear/editar/desactivar, `contacts.manage` **y** el permiso de edición de la entidad dueña (CLIENT/CLIENT_CONTACT →
+`clients.update`, LOCATION → `locations.update`, CONTRACT → `contracts.update`, PORTAL_USER → `portalusers.manage`,
+TRANSPORT_ORDER → `orders.edit`; USER → solo `contacts.manage`). Al agregar, ese permiso se revisa antes de buscar el
+dueño: sin él la respuesta es 403 exista o no el registro (sin oráculo 200/404).
 
 Cómo se usa:
 - `GET /api/v1/contacts/{ownerEntity}/{ownerId}` (ej. `ownerEntity=USER`)

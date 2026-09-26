@@ -34,11 +34,15 @@ public static class OrderQueries
                .FirstOrDefaultAsync(o => o.PublicId == publicId, ct)
            ?? throw new NotFoundException(OrderLabel);
 
-    /// <summary>Igual que ResolveOrderForReadAsync pero con tracking (escrituras dentro de RunInTransactionAsync).</summary>
+    /// <summary>
+    /// Igual que ResolveOrderForReadAsync pero con tracking (escrituras dentro de RunInTransactionAsync) y SOLO órdenes activas:
+    /// una orden eliminada en captura (baja lógica, IsActive=0) responde 404 'Orden' en editar, eliminar, confirmar, reprecio,
+    /// cancelar y estatus (L253: después de eliminarla no vuelve al pipeline). La ficha sigue leyéndola con ResolveOrderForReadAsync.
+    /// </summary>
     public static async Task<TransportOrder> ResolveOrderForWriteAsync(this TeikemDbContext db, Guid publicId, OrderScope scope, CancellationToken ct)
         => await db.ScopedOrders(scope)
                .Include(o => o.Stops).Include(o => o.CargoLines).Include(o => o.References)
-               .FirstOrDefaultAsync(o => o.PublicId == publicId, ct)
+               .FirstOrDefaultAsync(o => o.PublicId == publicId && o.IsActive, ct)
            ?? throw new NotFoundException(OrderLabel);
 
     /// <summary>

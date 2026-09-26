@@ -120,6 +120,10 @@ public static class DependencyInjection
         // Lote 3
         services.AddScoped<IDataSource, TransportOrderDataSource>();
         services.AddScoped<IOwnedEntityResolver, TransportOrderOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, OrderStopOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, OrderCodOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ImportBatchOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ImportTemplateOwnedEntityResolver>();
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

@@ -398,11 +398,17 @@ public sealed class PortalUserService(
         p.Status?.InternalCode ?? "", MultilingualText.Resolve(p.Status?.LabelJson, tenant.Lang),
         p.LastLoginUtc, p.IsActive, p.UserId.HasValue, hasPassword, clientsCount);
 
+    /// <summary>Largo máximo del correo (= PortalUser.Email NVARCHAR(150)); AspNetUsers admite más, la fila de portal no.</summary>
+    public const int EmailMaxLength = 150;
+
     private static string NormalizeEmail(string? email)
     {
         if (string.IsNullOrWhiteSpace(email)) throw new ValidationException("email", "El correo es obligatorio.");
-        try { return ContactPointService.ValidateValue("EMAIL", email); }
+        string v;
+        try { v = ContactPointService.ValidateValue("EMAIL", email); }
         catch (ValidationException) { throw new ValidationException("email", "Correo inválido."); }
+        if (v.Length > EmailMaxLength) throw new ValidationException("email", $"Máximo {EmailMaxLength} caracteres.");
+        return v;
     }
 
     private static string? OptionalText(string? value, string field, int max)

@@ -16,6 +16,18 @@ public class OrderCatalogTests
         Assert.Equal("orders.edit", PermissionCatalog.OwnerWritePermission["TRANSPORT_ORDER"]);
     }
 
+    [Theory]
+    [InlineData("ORDER_COD", "orders.view")]
+    [InlineData("ORDER_STOP", "orders.view")]
+    [InlineData("IMPORT_BATCH", "orders.view")]
+    [InlineData("IMPORT_TEMPLATE", "orders.edit")]
+    public void Owner_permissions_close_the_other_entity_types_of_the_lot(string entityType, string readPermission)
+    {
+        // Historial, contactos y campos personalizados de estos EntityType no quedan abiertos a cualquier autenticado.
+        Assert.Equal(readPermission, PermissionCatalog.OwnerReadPermission[entityType]);
+        Assert.Equal("orders.edit", PermissionCatalog.OwnerWritePermission[entityType]);
+    }
+
     [Fact]
     public void Permission_catalog_has_49_codes_including_credit_override()
     {

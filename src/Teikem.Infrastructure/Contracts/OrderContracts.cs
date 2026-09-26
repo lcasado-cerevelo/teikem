@@ -39,8 +39,9 @@ public sealed record OrderReferenceRequest(string RefType, string Value, string?
 /// <summary>
 /// POST /orders (entrada rápida, detallada o especial). Exactamente uno de ConsigneeLocationPublicId / NewConsignee.
 /// OrderNumber/ClientInvoiceNumber solo si el cliente los asigna (400 si no). ConfirmDuplicateInvoice = 'Crear de todos modos'
-/// (R36). ConfirmNow = crear y confirmar en una sola transacción (DECISIÓN 26). Extra recoge llaves no declaradas para
-/// rechazar codType/packBatchNumber con 400 (DECISIÓN 4/15).
+/// (R36). ConfirmNow = crear y confirmar en una sola transacción (DECISIÓN 26); OverrideCredit (solo con ConfirmNow) autoriza
+/// confirmar sobre el límite de crédito con el permiso orders.credit_override (ajuste C). Extra recoge llaves no declaradas
+/// para rechazar codType/packBatchNumber con 400 (DECISIÓN 4/15).
 /// </summary>
 public sealed record OrderCreateRequest(
     Guid? ClientPublicId,
@@ -60,7 +61,8 @@ public sealed record OrderCreateRequest(
     bool IsSpecialDelivery = false,
     int? SpecialServiceId = null,
     bool ConfirmDuplicateInvoice = false,
-    bool ConfirmNow = false)
+    bool ConfirmNow = false,
+    bool OverrideCredit = false)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]
@@ -70,6 +72,7 @@ public sealed record OrderCreateRequest(
 /// <summary>
 /// PATCH /orders/{id}: null = sin cambio. Packages/References reemplazan la lista completa; ClearCod quita el COD.
 /// Cliente, número de orden, factura y empaque se fijan al crear: si llegan (Extra) responden 400 (DECISIÓN 15).
+/// ConfirmDuplicateInvoice = 'Mover de todos modos' cuando el consignatario nuevo ya tiene la factura de la orden (R36).
 /// </summary>
 public sealed record OrderPatchRequest(
     Guid? ConsigneeLocationPublicId,
@@ -84,7 +87,8 @@ public sealed record OrderPatchRequest(
     DateTime? PromisedDate,
     string? Notes,
     IList<OrderReferenceRequest>? References,
-    string? RowVersion)
+    string? RowVersion,
+    bool ConfirmDuplicateInvoice = false)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (clientPublicId/orderNumber/clientInvoiceNumber/packBatchNumber/codType → 400).</summary>
     [JsonExtensionData]

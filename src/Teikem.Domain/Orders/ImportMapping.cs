@@ -86,6 +86,20 @@ public static class ImportMapping
     public const string ColumnsRequiredMessage = "Indique al menos una columna.";
     public const string ConsigneeColumnMessage = "La plantilla debe incluir consigneeName o consigneeCode.";
     public const string PackageColumnMessage = "La plantilla debe indicar el paquete: packageType o pieces, en una columna o en defaults.";
+    public const string ConsigneeRequiredMessage = "Indique el consignatario: nombre (con dirección) o código del directorio.";
+
+    /// <summary>
+    /// Regla de fila: sin consigneeCode ni consigneeName (ni en la celda ni en defaults) → error en consigneeName; si trae
+    /// alguno de los dos, null (la resolución contra el directorio la hace el servicio).
+    /// </summary>
+    public static (string Field, string Message)? RequireConsignee(IReadOnlyDictionary<string, string> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        bool Has(string field) => values.TryGetValue(field, out var v) && !string.IsNullOrWhiteSpace(v);
+        return Has(ImportFields.ConsigneeCode) || Has(ImportFields.ConsigneeName)
+            ? null
+            : (ImportFields.ConsigneeName, ConsigneeRequiredMessage);
+    }
 
     public static string UnknownFieldMessage(string field) => $"Campo desconocido: {field}.";
     public static string DuplicatePositionMessage(int position) => $"La posición {position} está repetida.";

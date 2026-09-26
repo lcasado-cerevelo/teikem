@@ -45,9 +45,17 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
         return list.Select(ToDto).ToList();
     }
 
-    public async Task<ContactPointDto> AddAsync(string ownerEntity, int ownerId, ContactPointUpsertRequest req, CancellationToken ct)
+    /// <summary>
+    /// Agrega un contacto al dueño. Exige el permiso de escritura del módulo dueño (TRANSPORT_ORDER → orders.edit, CLIENT →
+    /// clients.update, ...) ANTES de verificar que el dueño exista: sin él no hay oráculo 200/404 sobre los ids del tenant.
+    /// enforceOwnerWrite=false solo para llamadores internos que ya autorizaron la operación de negocio (p. ej. la importación
+    /// de órdenes guarda el teléfono de la fila en la orden que acaba de crear con orders.create).
+    /// </summary>
+    public async Task<ContactPointDto> AddAsync(string ownerEntity, int ownerId, ContactPointUpsertRequest req, CancellationToken ct,
+        bool enforceOwnerWrite = true)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
+        if (enforceOwnerWrite) await EnsureOwnerWriteAsync(ownerEntity, ct);
         var ownerEntityId = await lookups.GetIdAsync(LookupDomains.EntityType, ownerEntity, ct);
         await EnsureOwnerExistsAsync(ownerEntity, ownerId, ct);
         var typeId = await lookups.GetIdAsync(LookupDomains.ContactType, req.ContactType, ct);
@@ -72,6 +80,7 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
     {
         var cp = await db.ContactPoints.Include(c => c.ContactType).Include(c => c.OwnerEntity).FirstOrDefaultAsync(c => c.ContactPointId == id, ct)
                  ?? throw new NotFoundException("Contacto", id);
+        await EnsureOwnerWriteAsync(cp.OwnerEntity!.InternalCode, ct);
         var typeId = await lookups.GetIdAsync(LookupDomains.ContactType, req.ContactType, ct);
         cp.ContactTypeLookupId = typeId;
         cp.Value = ValidateValue(req.ContactType, req.Value);
@@ -86,10 +95,18 @@ public sealed class ContactPointService(TeikemDbContext db, ITenantContext tenan
 
     public async Task DeactivateAsync(int id, CancellationToken ct)
     {
-        var cp = await db.ContactPoints.FirstOrDefaultAsync(c => c.ContactPointId == id, ct) ?? throw new NotFoundException("Contacto", id);
+        var cp = await db.ContactPoints.Include(c => c.OwnerEntity).FirstOrDefaultAsync(c => c.ContactPointId == id, ct)
+                 ?? throw new NotFoundException("Contacto", id);
+        await EnsureOwnerWriteAsync(cp.OwnerEntity!.InternalCode, ct);
         cp.IsActive = false;
         cp.IsPrimary = false;
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>Permiso de escritura del módulo dueño (sin entrada en el catálogo, hoy USER, basta contacts.manage).</summary>
+    private async Task EnsureOwnerWriteAsync(string ownerEntity, CancellationToken ct)
+    {
+        if (PermissionCatalog.OwnerWritePermission.TryGetValue(ownerEntity, out var writePerm)) await permissions.EnsureAsync(writePerm, ct);
     }
 
     private async Task EnsureOwnerExistsAsync(string ownerEntity, int ownerId, CancellationToken ct)

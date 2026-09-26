@@ -157,6 +157,12 @@ En este último caso, desactiva la lista en vez de borrarla.
 No puedes editar directamente un catálogo compartido por toda la plataforma. Usa un override (cambia solo tu
 tenant) o crea tu propia lista.
 
+**¿Qué significa "El código de país debe ser ISO 3166-1 alfa-2 (2 letras)."? (HTTP 400)**
+Los países se identifican con su código ISO de dos letras (`PR`, `US`, `DO`…). Lo verás al agregar un valor al catálogo
+global `Country` (`POST /api/v1/catalogs/Country`, campo `code`), al crear o editar una localización (`country`), al capturar
+una orden con consignatario nuevo (`newConsignee.country`) o en una fila del importador de órdenes (`country`). Usa el código
+de dos letras; las paradas de la orden guardan el país con ese formato.
+
 ### Estatus
 
 **¿Qué significa "Pipeline inválido: ..."?**
@@ -539,3 +545,130 @@ Consulta `GET /api/v1/catalogs/<Dominio>`.
 Además de un token vencido o ya usado, la aceptación falla si la compañía está desactivada por el administrador de plataforma
 o si el módulo Portal de clientes está apagado. La respuesta es siempre la misma (`Invitación inválida o vencida.`) para no
 revelar la causa; revise el estado de la compañía y del módulo y reenvíe la invitación.
+
+## Lote 3 — Órdenes de transporte
+
+**¿Qué significa "El número de orden generado con el patrón del cliente excede 40 caracteres; acorte el patrón en la ficha del cliente."? (HTTP 409)**
+También aparece como "número de factura" o "número de paquete". Teikem genera esos números con el patrón de la ficha del
+cliente (`PATCH /api/v1/clients/{id}/number-settings`) y **nunca recorta** el consecutivo: si el consecutivo tiene más dígitos
+que los `#` del patrón, los antepone. Con un patrón muy largo, el número resultante ya no cabe en los 40 caracteres del campo.
+La orden no se crea (ni en la captura, ni en el PATCH que agrega paquetes, ni en la fila del importador) y no se gasta ningún
+consecutivo. Acorta el patrón (o déjalo en blanco para usar el patrón por defecto) y vuelve a intentarlo.
+
+**Eliminé una orden en captura y ahora confirmar, cancelar, repreciar o cambiar su estatus responde "Orden no encontrado." (HTTP 404). ¿Por qué?**
+Eliminar una orden (solo en su estatus inicial) es una baja lógica: la orden sigue visible en su ficha y en el listado con
+`includeInactive=true`, pero ya no admite ninguna acción (editar, eliminar, confirmar, repreciar, cancelar ni estatus). Si la
+necesitas, captúrala de nuevo: su número de orden y de empaque quedaron libres.
+
+**Cambié el consignatario de una orden y no me avisó de factura repetida. ¿Es correcto?**
+Sí, si el número de factura de esa orden lo generó Teikem. El chequeo de factura repetida por consignatario solo aplica a
+facturas **tecleadas** al crear la orden; la orden recuerda si su factura se tecleó, así que el resultado no cambia aunque
+después se modifique en la ficha del cliente quién asigna las facturas.
+
+**¿Qué significa "El comentario admite como máximo 500 caracteres."? (HTTP 400, campo `comment`)**
+Todo cambio de estatus guarda su comentario en la bitácora de estatus, que admite hasta 500 caracteres. Aplica a
+`POST /api/v1/orders/{id}/cancel`, `POST /api/v1/orders/{id}/status` y a los cambios de estatus de clientes, contratos y
+usuarios de portal. El estatus no cambia; acorta el comentario y vuelve a intentarlo.
+
+**Tengo el permiso `contacts.manage` pero agregar, editar o desactivar un contacto de una orden responde "Falta el permiso 'orders.edit'." (HTTP 403). ¿Por qué?**
+Los contactos pertenecen a un registro dueño y escribirlos exige, además de `contacts.manage`, el permiso de edición del
+módulo dueño: `orders.edit` para una orden, `clients.update` para un cliente o un contacto de cliente, `locations.update`
+para un consignatario, `contracts.update` para un contrato. El permiso se revisa antes de buscar el registro, así que la
+respuesta es la misma exista o no la orden. Leer los contactos exige el permiso de lectura del dueño (`orders.view`).
+Los teléfonos que el importador guarda en la orden al confirmar un lote no piden `orders.edit` (los crea la importación,
+que ya exige `orders.create`).
+
+**Guardo campos personalizados de una parada, del COD de una orden, de un lote o de una plantilla de importación y responde "ORDER_STOP '…' no encontrado." (HTTP 404). ¿Por qué?**
+El registro no existe en tu compañía. Para `ORDER_STOP` el id es el de la parada de una orden; para `ORDER_COD`, el id de
+una orden **con COD**; para `IMPORT_BATCH` e `IMPORT_TEMPLATE`, el id del lote o de la plantilla. Escribirlos exige `orders.edit`.
+
+**¿Qué significa "Máximo 150 caracteres." (HTTP 400, campo `email`) al invitar a un usuario de portal?**
+El correo del usuario de portal admite hasta 150 caracteres. No se creó ninguna cuenta; usa un correo más corto. En
+`accept-invite` un correo así recibe la respuesta neutra "Invitación inválida o vencida.".
+
+**Soy de Facturación: ¿cómo autorizo una orden que excede el límite de crédito? ¿Por qué "Falta el permiso 'orders.edit'." (HTTP 403)?**
+Desde la ficha de la orden (en DRAFT), `GET /api/v1/orders/{id}/quote` muestra el aviso (`credit.exceeds=true`) y
+`POST /api/v1/orders/{id}/confirm` con `{"overrideCredit": true}` la confirma. Con la plantilla Facturación (`orders.view`
++ `orders.credit_override`, sin `orders.edit`) eso solo funciona cuando el crédito **realmente** se excede: confirmar sin
+`overrideCredit`, o una orden que cabe en el crédito, sigue exigiendo `orders.edit` (403 "Falta el permiso 'orders.edit'.").
+Sin `orders.credit_override`, `overrideCredit: true` responde 403 "Falta el permiso 'orders.credit_override'.". La
+autorización queda en el historial de estatus ("Crédito excedido autorizado por …") y en la bitácora de seguridad
+(ROLE_CHANGE `credit_override`). La creación con `confirmNow` y la confirmación del importador siguen exigiendo `orders.create`.
+
+**El indicador "COD por cobrar" bajó al cancelar una orden. ¿Es correcto?**
+Sí. Suma el COD PENDING de las órdenes activas que **no** están canceladas: una orden cancelada nunca se entrega, así que
+su COD no está por cobrar. Si tu compañía personalizó el filtro del indicador, no se toca; el filtro original se corrige solo.
+
+**¿Cómo armo el gráfico "Órdenes por tipo de paquete"?**
+La fuente Órdenes (`TRANSPORT_ORDER`) tiene los campos `PackageType` (etiqueta) y `PackageTypeCode` (código) con el
+**tipo de paquete principal** de cada orden: el tipo con más piezas entre sus líneas (si empatan, el de la primera línea).
+Una orden mixta cuenta una sola vez, bajo su tipo principal; una entrega especial queda sin tipo. Crea un gráfico de dona
+agrupado por `PackageType`.
+
+**Al validar una importación: "El archivo supera el límite de 5.000 filas o 2 MB." (HTTP 400, campo `content` o `file`)**
+El archivo tiene más de 5.000 filas de datos (sin contar la cabecera ni las filas vacías) o pesa más de 2 MB. Divídelo en
+varios archivos. El campo es `content` cuando el CSV viaja en JSON y `file` cuando se sube como archivo (multipart).
+
+**Una fila de la importación hacia un consignatario que no admite facturas repetidas sale con error en `clientInvoiceNumber` y no la puedo elegir (HTTP 400 en `rows[n]`).**
+El consignatario no permite repetir el número de factura y ya existe otra orden con ese número: la fila no se puede
+crear. Si el consignatario sí admite repetidas, la fila sale con un aviso y solo se crea si confirmas el lote con
+`confirmDuplicateInvoice: true` ("Crear de todos modos"); sin él, la fila queda fallida con el mensaje de factura repetida
+y el resto del lote sigue.
+
+**¿Qué significa "El cliente está dado de baja; solo se consulta su historial."? (HTTP 409)**
+El cliente fue dado de baja (`POST /clients/{id}/deactivate`). Su ficha, historial, órdenes, contratos y tarifas se
+siguen consultando, pero no se puede crear nada nuevo para él: órdenes (captura o importación), contratos, componentes o
+tramos de tarifa, servicios especiales, ni invitar/reenviar un usuario de portal. Cancelar o cerrar algo que ya existía
+sigue permitido. Reactiva el cliente (`POST /clients/{id}/reactivate`) para volver a crear.
+
+**Al crear o cambiar una orden a un consignatario, "El consignatario 'X' no permite facturas repetidas: la orden N ya usa el número F." o la versión "…confirme si desea crear la orden de todos modos." (HTTP 409)**
+Tecleaste un número de factura del cliente (`clientInvoiceNumber`) que ese mismo consignatario ya usa en otra orden
+activa. Si el consignatario tiene `allowDupInvoice: false`, no se puede crear con ese número (usa otro o corrige la
+factura). Si tiene `allowDupInvoice: true`, repite la petición agregando `confirmDuplicateInvoice: true` ("Crear de
+todos modos"). El error trae `errors.existingOrderNumber` y `errors.existingOrderPublicId` con la orden que ya la usa.
+Solo aplica a facturas **tecleadas**; si Teikem genera el número de factura, nunca se dispara.
+
+**¿Qué significa "El cliente está suspendido; no se pueden crear ni confirmar órdenes."? (HTTP 422)**
+El cliente está en estatus `SUSPENDED` (capítulo 02, sección 1.6). No se pueden crear órdenes nuevas para él, ni
+confirmar una que ya estaba en captura. Reactívalo (`ACTIVE`) para seguir.
+
+**¿Qué significa "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo." o "Indique un consignatario del directorio o uno nuevo, no ambos."? (HTTP 400, campo `consignee`)**
+Toda orden necesita exactamente un consignatario: o el `publicId` de una localización del directorio
+(`consigneeLocationPublicId`), o los datos de uno nuevo (`newConsignee`), nunca los dos a la vez ni ninguno.
+
+**¿Qué significa "El cliente excede su límite de crédito: límite X.XX, en curso Y.YY, esta orden Z.ZZ." (HTTP 422, `code: "credit_exceeded"`)?**
+Al confirmar, la suma de lo que el cliente tiene en curso (órdenes ya cotizadas que no son borrador ni terminales) más
+el monto de esta orden pasa su límite de crédito. No es un bloqueo definitivo: la orden queda como estaba (sin
+confirmar) y quien tenga el permiso `orders.credit_override` puede repetir la confirmación con `overrideCredit: true`
+para autorizarla (ver capítulo 03, sección 3.3).
+
+**¿Qué significa "No hay tarifa vigente para X/Y; configure la tarifa en el contrato del cliente antes de confirmar."? (HTTP 422)**
+Al cotizar, alguna línea (combinación de tipo de servicio y tipo de paquete) no tiene tarifa vigente ni en el contrato
+del cliente ni en las tarifas genéricas del tenant. La orden no se confirma ni se congela con un monto en $0: agrega el
+componente de tarifa que falta (capítulo 02, sección 5) y vuelve a intentar.
+
+**¿Qué significa "El servicio especial ya no está vigente; elija otro antes de confirmar."? (HTTP 409)**
+El servicio especial de una entrega especial se cerró (o venció su vigencia) después de crear la orden pero antes de
+confirmarla. Edita la orden con otro servicio especial vigente del cliente y confirma de nuevo.
+
+**Edito una orden confirmada y responde "El estatus actual no permite la acción 'EDIT_CARGO'." (HTTP 422). ¿Cómo la corrijo?**
+Por defecto, la carga de una orden (consignatario, paquetes, COD) solo se edita mientras está en **DRAFT** (borrador).
+Una orden confirmada ya no se edita salvo que un administrador habilite `EDIT_CARGO` para el estatus `CONFIRMED` desde
+`PUT /api/v1/status/capabilities/TRANSPORT_ORDER`; en ese caso, editarla también exige la capacidad `REPRICE` (re-cotiza
+para no dejar un monto viejo). Si no quieres relajar esa regla, cancela la orden y captura una nueva.
+
+**¿Qué significa "El avance a 'X' lo realiza el módulo correspondiente (trips/entregas); desde aquí solo se registran estatus laterales."? (HTTP 422)**
+`POST /api/v1/orders/{id}/status` solo mueve la orden a un estatus lateral (`ON_HOLD`, `PARTIAL`, `FAILED`) o la regresa
+al pipeline del que salió. Avanzar el pipeline en sí (recogido, en tránsito, entregada…) lo hará el módulo de rutas y
+entregas de un lote posterior, no este endpoint.
+
+**Invito el mismo correo desde otro cliente de mi compañía y ya era usuario de portal: ¿por qué a veces queda ACTIVE de inmediato y otras veces me pide invitación?**
+Si la cuenta ya tenía contraseña (ya había aceptado alguna invitación anterior en cualquier cliente) y sigue habilitada,
+el cliente nuevo se agrega directo en estatus `ACTIVE`, sin enlace (queda el evento `portal_client_added`). Si la
+cuenta nunca fijó contraseña, o estaba desactivada porque no le quedaba ningún cliente vivo, nace `INVITED` con un
+enlace de invitación como siempre. Ver capítulo 03, sección 6.
+
+**Quité a un usuario de portal de un cliente y sigue pudiendo entrar con la misma cuenta en otro cliente. ¿Es un error?**
+No: desde el Lote 3, una cuenta de portal puede pertenecer a varios clientes de la compañía (una fila por cliente). Quitar
+o suspender actúa solo sobre la fila de ese cliente; la cuenta (contraseña, sesiones) se desactiva únicamente cuando no
+le queda **ninguna otra** fila activa en la compañía, y se reactiva en cuanto vuelve a haber una.

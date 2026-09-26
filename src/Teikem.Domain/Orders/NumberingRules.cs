@@ -111,7 +111,7 @@ public static class NumberingRules
         if (string.IsNullOrWhiteSpace(value)) return null;
         var trimmed = value.Trim();
         if (trimmed.Length > MaxTypedLength)
-            throw new ArgumentException($"El número no puede exceder {MaxTypedLength} caracteres.", nameof(value));
+            throw new ArgumentException($"El número no puede exceder {MaxTypedLength} caracteres.");
         return trimmed;
     }
 
@@ -136,11 +136,36 @@ public static class NumberingRules
             NumberKinds.Invoice => InvoiceAssignedByTeikemMessage,
             NumberKinds.PackBatch => PackBatchAlwaysTeikemMessage,
             _ => throw UnknownKind(kind),
-        }, nameof(typed));
+        });
     }
 
     /// <summary>Resuelve el patrón con el consecutivo (delegado a NumberFormat.Resolve: relleno con ceros, sin truncar).</summary>
     public static string Resolve(string pattern, long seq) => NumberFormat.Resolve(pattern, seq);
+
+    /// <summary>
+    /// Mensaje cuando el número automático, resuelto con el patrón del cliente, no cabe en las columnas NVARCHAR(40):
+    /// Resolve nunca trunca (un consecutivo con más dígitos que '#' se antepone completo), así que un patrón largo termina
+    /// desbordando. El servicio lo traduce a 409 y revierte la transacción del alta (con los consecutivos dibujados).
+    /// </summary>
+    public static string GeneratedTooLongMessage(string kind) =>
+        $"El número {KindLabel(kind)} generado con el patrón del cliente excede {MaxTypedLength} caracteres; acorte el patrón en la ficha del cliente.";
+
+    /// <summary>Resolve + comprobación de longitud: más de 40 caracteres → ArgumentException con GeneratedTooLongMessage(kind).</summary>
+    public static string ResolveChecked(string kind, string pattern, long seq)
+    {
+        var result = Resolve(pattern, seq);
+        if (result.Length > MaxTypedLength) throw new ArgumentException(GeneratedTooLongMessage(kind));
+        return result;
+    }
+
+    private static string KindLabel(string kind) => kind switch
+    {
+        NumberKinds.Order => "de orden",
+        NumberKinds.Invoice => "de factura",
+        NumberKinds.Package => "de paquete",
+        NumberKinds.PackBatch => "de empaque",
+        _ => throw UnknownKind(kind),
+    };
 
     /// <summary>
     /// Ante una violación de índice único al insertar la orden: si chocó UX_Order_Number y el número de orden fue
