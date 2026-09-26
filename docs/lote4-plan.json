@@ -1307,11 +1307,27 @@
    "**RBAC y módulo.**\n- Rol con solo fleet.view:\n  - GET vehicles/drivers/fleet → 200;\n  - POST vehicles → 403 PERMISSION_DENIED;\n  - GET /drivers/{id}/rates → 403 'Falta el permiso 'driverpay.view'.'\n- Rol con fleet.manage sin fleet.maintenance: POST maintenance-work-orders y fuel-logs → 403.\n- Despachador: GET /drivers → 200.\n- Sin driverpay.view, /status/history/DRIVER_TRIP → 403.\n- Con CATALOG apagado, /api/v1/vehicles → 403 module_disabled; luego se enciende.",
    "**Aislamiento entre tenants y BOLA por id hijo.**\n\nDesde T3:\n- GET vehicle y driver por publicId → 404; listas vacías.\n- POST /contacts/DRIVER/{id} → 404.\n- expiring-documents y availability sin datos ajenos.\n- POST /orders/{orden especial de T3}/driver con un chofer del demo → 404 'Chofer no encontrado.'\n\nT3 crea su propio vehículo con un documento, su chofer con una tarifa y su OT con una tarea. Luego el admin del demo accede a esos ids hijos bajo SUS padres:\n- PATCH /vehicles/{V1}/documents/{docT3} → 404;\n- PATCH /drivers/{D1}/delivery-rates/{tarifaT3} → 404;\n- PATCH /maintenance-work-orders/{OT demo}/tasks/{tareaT3} → 404.\n\nMismo tenant, otro padre: PATCH /vehicles/{V2}/documents/{doc de V1} → 404.",
    "**Fuentes de datos, contenido de sistema y auditoría.**\n- /analytics/data-sources incluye VEHICLE, DRIVER, WORK_ORDER, FUEL_LOG y FLEET_DOCUMENT, y NO incluye DRIVER_TRIP.\n- El preview de FUEL_LOG trae KmPerLiter.\n- Pulso muestra 'Documentos por vencer' ≥ 3 y 'Órdenes de trabajo abiertas'.\n- Las vistas 'Vehículos' y 'Documentos por vencer' corren; la segunda no trae el REGISTRATION superado.\n- /audit/changes para VEHICLE, DRIVER, DRIVER_RATE, DRIVER_TRIP y WORK_ORDER trae al menos un cambio, y ningún diff contiene rowVersion ni pushToken."
-  ]
+  ],
+  "ajustesAprobados": "APROBACIÓN DE LUIS (2026-09-26): todas las decisiones del plan (1-43) quedan ratificadas tal como están; no hay cambios. Recordatorios de convención: la programación en inglés, comentarios/mensajes/docs en español; cada mensaje de error que se documente en el manual debe existir en el código."
  },
  "puntajes": [
   13.5,
   14,
   16
- ]
+ ],
+ "aprobacion": {
+  "fecha": "2026-09-26",
+  "por": "Luis",
+  "estado": "aprobado para implementar (todas las decisiones ratificadas tal como las propuso la síntesis)",
+  "ratificado": [
+   "Choferes y vehículos: 'Activo' reversible y 'Eliminar' definitivo sin borrado físico; códigos inmutables que no se reutilizan",
+   "Entrega especial con chofer: se confirma, avanza a IN_TRANSIT y crea el DriverTrip con monto congelado; sin tarifa → $0 marcado RateMissing",
+   "Disponibilidad para despacho: bloquean inactivo, estatus no inicial, licencia no vigente, documento de vehículo vencido y OT en proceso; avisan certificación vencida, documento por vencer (30 días) y vehículo sin documentos",
+   "Intentos: niveles por compañía (tope 20), nivel intermedio sin tarifa paga $0 con nota, fallback al nivel más alto configurado",
+   "OT en proceso pone el vehículo en MAINTENANCE y al cerrar/cancelar vuelve a ACTIVE; cerrar exige tareas completas y odómetro si el programa es por km; número OT-##### automático",
+   "Umbrales: 30 días documentos, 10 % del intervalo preventivo; documento renovado supera al anterior automáticamente",
+   "Permisos fleet.view, driverpay.view, driverpay.manage (52); plantilla Driver sin permisos de flota",
+   "'Área' = zona de despacho primaria con CRUD mínimo de zonas; fuera del lote almacén base, FleetAssignment y adjuntos"
+  ]
+ }
 }

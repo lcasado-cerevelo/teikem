@@ -1,7 +1,18 @@
-# Lote 4 — Flota, choferes y mantenimiento: plan de implementación (pendiente de aprobación)
+# Lote 4 — Flota, choferes y mantenimiento: plan de implementación (aprobado por Luis el 2026-09-26)
 
 Resultado del workflow `lote-diseno` (3 lectores, crítico de completitud, 3 arquitectos, 2 jueces y síntesis).
 Puntajes de los jueces por diseño: mínimo viable 13.5, riesgo primero 14, extensibilidad 16.
+
+## Ratificado por Luis (2026-09-26)
+
+- Choferes y vehículos: 'Activo' reversible y 'Eliminar' definitivo sin borrado físico; códigos inmutables que no se reutilizan
+- Entrega especial con chofer: se confirma, avanza a IN_TRANSIT y crea el DriverTrip con monto congelado; sin tarifa → $0 marcado RateMissing
+- Disponibilidad para despacho: bloquean inactivo, estatus no inicial, licencia no vigente, documento de vehículo vencido y OT en proceso; avisan certificación vencida, documento por vencer (30 días) y vehículo sin documentos
+- Intentos: niveles por compañía (tope 20), nivel intermedio sin tarifa paga $0 con nota, fallback al nivel más alto configurado
+- OT en proceso pone el vehículo en MAINTENANCE y al cerrar/cancelar vuelve a ACTIVE; cerrar exige tareas completas y odómetro si el programa es por km; número OT-##### automático
+- Umbrales: 30 días documentos, 10 % del intervalo preventivo; documento renovado supera al anterior automáticamente
+- Permisos fleet.view, driverpay.view, driverpay.manage (52); plantilla Driver sin permisos de flota
+- 'Área' = zona de despacho primaria con CRUD mínimo de zonas; fuera del lote almacén base, FleetAssignment y adjuntos
 
 ## Enfoque
 
@@ -1138,7 +1149,7 @@ Archivos:
 - 5) #RP: ('Dispatcher','fleet.view'), ('Billing','driverpay.view') y ('ReadOnly','fleet.view'); TenantAdmin los recibe por el SELECT sobre #P.
 - PRINT final: 'capacidades por defecto (CONTRACT, TRANSPORT_ORDER y WORK_ORDER), permisos (52)'.
 
-## Decisiones a ratificar
+## Decisiones
 
 1. DECISIÓN: El maestro de tarifas del chofer (entregas, intentos, viajes, niveles y fórmula) y DriverTrip entran en este lote.
 - Viven en la pantalla 'Choferes y tarifas' del grupo Catálogo.
