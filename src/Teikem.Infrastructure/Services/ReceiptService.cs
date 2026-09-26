@@ -234,6 +234,13 @@ public sealed class ReceiptService(
                     var po = await purchaseOrders.LockForReceiptAsync(poPublicId, ct2);
                     if (requested is not null && requested.WarehouseId != po.WarehouseId)
                         throw new ValidationException("warehousePublicId", ReceiptRules.PurchaseOrderOtherWarehouse);
+                    // Bajo el bloqueo de la PO: un segundo recibo abierto contaría dos veces el mismo pendiente → 409.
+                    var openId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct2);
+                    var poHasOpen = await (from r in db.Set<ReceiptHeader>().AsNoTracking()
+                                           join a in db.Set<Asn>().AsNoTracking() on r.AsnId equals a.AsnId
+                                           where a.PurchaseOrderId == po.PurchaseOrderId && r.IsActive && r.StatusCodeId == openId
+                                           select r.ReceiptHeaderId).AnyAsync(ct2);
+                    if (poHasOpen) throw new ConflictException(ReceiptRules.PurchaseOrderHasOpenReceipt);
                     asn = await asns.CreateForPurchaseOrderAsync(po, ct2);
                 }
                 else
@@ -287,7 +294,7 @@ public sealed class ReceiptService(
             var seq = await numbers.NextAsync(NumberKinds.Receipt, null, ct2);
             var receipt = new ReceiptHeader
             {
-                TenantId = tenantId, WarehouseId = warehouse.WarehouseId, AsnId = asn?.AsnId, DockId = req.DockId,
+                PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = warehouse.WarehouseId, AsnId = asn?.AsnId, DockId = req.DockId,
                 ReceiptTypeLookupId = typeLookupId, Number = NumberFormat.Resolve(NumberPattern, seq),
                 StatusCodeId = initial.StatusCodeId, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -464,6 +471,24 @@ public sealed class ReceiptService(
             }
             if (errors.Count > 0) throw new ValidationException(errors);
 
+            // 7 (antes de asentar). PO: lo recibido por línea de PO (las líneas extra no cuentan contra la PO); P8 bloquea la PO
+            // y la avanza a PARTIAL/RECEIVED. Va ANTES del ledger para respetar el orden de bloqueo único del lote
+            // (encabezados Receipt < Asn < PurchaseOrder y SOLO DESPUÉS saldos): así no se invierte contra quien bloquea la PO
+            // y luego asienta (resolución de faltantes). El resultado es el mismo: todo corre en esta transacción.
+            if (asn?.PurchaseOrderId is int poId)
+            {
+                var asnLineIds = lines.Where(l => l.AsnLineId != null).Select(l => l.AsnLineId!.Value).ToList();
+                var poLineByAsnLine = await db.Set<AsnLine>().AsNoTracking()
+                    .Where(al => al.AsnId == asn.AsnId && asnLineIds.Contains(al.AsnLineId) && al.PurchaseOrderLineId != null)
+                    .ToDictionaryAsync(al => al.AsnLineId, al => al.PurchaseOrderLineId!.Value, ct2);
+                var quantities = lines
+                    .Where(l => l.AsnLineId is int al && poLineByAsnLine.ContainsKey(al) && l.ReceivedQty > 0m)
+                    .GroupBy(l => poLineByAsnLine[l.AsnLineId!.Value])
+                    .Select(g => new PurchaseOrderReceiptQty(g.Key, g.Sum(l => l.ReceivedQty)))
+                    .ToList();
+                if (quantities.Count > 0) await purchaseOrders.ApplyReceiptAsync(poId, quantities, ct2);
+            }
+
             // 5. Asientos en MAGNITUD (el ledger pone el signo), To/From la posición de recepción, Ref RECEIPT + id.
             int? defaultStaging = null;
             var postings = new List<InventoryPosting>();
@@ -495,21 +520,6 @@ public sealed class ReceiptService(
             for (var i = 0; i < owners.Count; i++)
                 if (owners[i].Planned.TxnType == InventoryTxnTypes.Adjustment && owners[i].Line.AdjustmentTxnId is null)
                     owners[i].Line.AdjustmentTxnId = txnIds[i];
-
-            // 7. PO: lo recibido por línea de PO (las líneas extra no cuentan contra la PO); P8 bloquea la PO y la avanza.
-            if (asn?.PurchaseOrderId is int poId)
-            {
-                var asnLineIds = lines.Where(l => l.AsnLineId != null).Select(l => l.AsnLineId!.Value).ToList();
-                var poLineByAsnLine = await db.Set<AsnLine>().AsNoTracking()
-                    .Where(al => al.AsnId == asn.AsnId && asnLineIds.Contains(al.AsnLineId) && al.PurchaseOrderLineId != null)
-                    .ToDictionaryAsync(al => al.AsnLineId, al => al.PurchaseOrderLineId!.Value, ct2);
-                var quantities = lines
-                    .Where(l => l.AsnLineId is int al && poLineByAsnLine.ContainsKey(al) && l.ReceivedQty > 0m)
-                    .GroupBy(l => poLineByAsnLine[l.AsnLineId!.Value])
-                    .Select(g => new PurchaseOrderReceiptQty(g.Key, g.Sum(l => l.ReceivedQty)))
-                    .ToList();
-                if (quantities.Count > 0) await purchaseOrders.ApplyReceiptAsync(poId, quantities, ct2);
-            }
 
             // 8. ASN → RECEIVED.
             if (asn is not null)

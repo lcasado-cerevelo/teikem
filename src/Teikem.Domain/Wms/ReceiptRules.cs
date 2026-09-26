@@ -56,6 +56,7 @@ public static class ReceiptRules
     public const string AsnOrPurchaseOrder = "Indique el aviso de llegada o la orden de compra, no ambos.";
     public const string AsnOtherWarehouse = "El aviso de llegada es de otro almacén.";
     public const string PurchaseOrderOtherWarehouse = "La orden de compra es de otro almacén.";
+    public const string PurchaseOrderHasOpenReceipt = "La orden de compra ya tiene un recibo abierto; confírmelo o elimínelo antes de recibir de nuevo.";
     public const string AsnTypeNeedsDocument = "Un recibo con aviso de llegada se crea indicando el aviso (asnId) o la orden de compra (purchaseOrderPublicId).";
     public static string UnknownType(string type) => $"Tipo de recepción desconocido: '{type}'. Use ASN, BLIND o RETURN.";
     public const string WarehouseInactive = "El almacén está dado de baja; no admite recepciones.";

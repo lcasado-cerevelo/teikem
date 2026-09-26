@@ -429,7 +429,7 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
         if (list.Count == 0) return new Dictionary<int, WarehouseInfo>();
         return await db.Set<Warehouse>().AsNoTracking().Where(w => list.Contains(w.WarehouseId))
             .Select(w => new WarehouseInfo(w.WarehouseId, w.PublicId, w.Code))
-            .ToDictionaryAsync(w => w.WarehouseId, ct);
+            .ToDictionaryAsync(w => w.Id, ct);
     }
 
     /// <summary>Posiciones por id, unidas a su almacén filtrado (una posición de otro tenant no aparece).</summary>
