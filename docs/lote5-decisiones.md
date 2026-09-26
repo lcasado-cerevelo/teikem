@@ -190,3 +190,5 @@ cada una vive en `docs/lote5-plan.md`.
 ---
 
 **Verificación del cierre (2026-09-26, sobre BD recreada desde cero):** `dotnet build -c Release` sin errores, `dotnet test` 979/979, `db-init` dos veces (54 permisos, idempotente) y `scripts/smoke.sh` completo de los Lotes 1 a 5 en `SMOKE OK` (97 pasos). Corrida de CI: ver enlace al final.
+
+**Corrida de CI del cierre del Lote 5:** https://github.com/lcasado-cerevelo/teikem/actions/runs/36252312568 (run 29, verde: build Release, 979 pruebas, db-init ×2 sobre BD limpia y smoke de los Lotes 1 a 5).
