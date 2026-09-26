@@ -112,7 +112,7 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
         }
 
         // Orden
-        foreach (var s in spec.Sort.Reverse())
+        foreach (var s in Enumerable.Reverse(spec.Sort))
         {
             output = (s.Desc
                 ? output.OrderByDescending(r => r.GetValueOrDefault(s.Field), ValueComparer.Instance)

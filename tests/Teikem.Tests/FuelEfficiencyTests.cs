@@ -42,7 +42,7 @@ public class FuelEfficiencyTests
     public void Compute_unordered_input_gives_same_result()
     {
         var ordered = FuelEfficiency.Compute(ThreeFills());
-        var shuffled = FuelEfficiency.Compute(ThreeFills().Reverse());
+        var shuffled = FuelEfficiency.Compute(Enumerable.Reverse(ThreeFills()));
 
         Assert.Equal(new[] { 1, 2, 3 }, shuffled.Rows.Select(r => r.Id));
         foreach (var id in new[] { 1, 2, 3 }) Assert.Equal(ordered.ById[id], shuffled.ById[id]);
