@@ -1250,6 +1250,7 @@ Una OT sin programa o de programa por tiempo cierra sin odómetro.
 - km/L = distancia desde la carga anterior con odómetro / litros de la carga actual (tanque lleno).
 - costo/km = costo de la carga / distancia.
 - El odómetro debe ser monótono por fecha (400 si no).
+- Ajuste de revisión: los litros y el costo de las cargas SIN odómetro intermedias se suman al tramo que cierra la siguiente lectura (lecturas consecutivas, maestro:675). Ej.: 5200 km/40 L/$60, carga sin odómetro de 20 L/$30, 5600 km/40 L/$60 → 400 km / 60 L = 6.67 km/L y $90 / 400 km = 0.225 $/km.
    - Alternativa: Guardar DistanceKm/KmPerLiter en FuelLog, o calcular solo promedios por período.
 26. DECISIÓN: Protección del odómetro del vehículo.
 - Solo sube (máximo monotónico) desde combustible y cierre de OT, con bloqueo de fila del vehículo (UPDLOCK, ROWLOCK, filtrado por TenantId).
@@ -1300,7 +1301,7 @@ Así falla rápido sin consumir NumberSequence. La asignación se repite dentro 
    - Alternativa: Mapear un Warehouse mínimo y un CRUD de FleetAssignment con CHECK de traslape ya en este lote.
 37. DECISIÓN: No hay fuentes de datos de tarifas ni de DriverTrip, porque Análisis solo exige analytics.view y expondría la compensación. Sí se registran VEHICLE, DRIVER, WORK_ORDER, FUEL_LOG y FLEET_DOCUMENT, con el indicador 'Documentos por vencer' en Pulso.
    - Alternativa: Una fuente DRIVER_TRIP visible para todos los usuarios con analytics.view.
-38. DECISIÓN: El selector de 'tipo de viaje' usa un endpoint propio, GET /driver-trip-types (driverpay.view), que delega en SpecialServiceService.GetTypesAsync. Además, inactivar un tipo con tarifas por viaje vigentes responde 409 (cambio en el servicio del Lote 2).
+38. DECISIÓN: El selector de 'tipo de viaje' usa un endpoint propio, GET /driver-trip-types (driverpay.view), que delega en SpecialServiceService.GetTypesAsync (ajuste de revisión: consulta directa proyectada a DriverTripTypeDto(Id, Name), sin el conteo ClientsUsing, que es dato de contratos protegido con contracts.read). Además, inactivar un tipo con tarifas por viaje vigentes responde 409 (cambio en el servicio del Lote 2).
    - Alternativa: Que la pantalla llame a /special-service-types y exigir contracts.read a quien administra tarifas.
 39. DECISIÓN: Qué admite cada estado:
 - Un vehículo inactivo o dado de baja no admite OT ni cargas nuevas (409).
@@ -1516,6 +1517,7 @@ Y PermissionCatalog:
 Otros casos:
 - Programa TIME con último servicio hace 40 días → OVERDUE.
 - Programa por tipo VAN sin OT → NO_BASELINE.
+- Programa por tipo VAN con OT cerrada (hallazgo de revisión): dos vans VA y VB; se cierra en VA una OT del programa con odómetro 5200 → para VA lastServiceKm 5200, lastWorkOrderNumber = OT-#####, lastServiceDate = fecha de cierre y estado distinto de NO_BASELINE; VB sigue NO_BASELINE sin último servicio.
 - Vehículo y tipo a la vez → 400 'Indique el vehículo o el tipo de vehículo del programa, no ambos.'
 - MILEAGE sin intervalo → 400.
 - **Órdenes de trabajo: número, tareas, costos, cierre y efecto en el vehículo.**
@@ -1532,6 +1534,8 @@ Otros casos:
   - PATCH sobre la OT cerrada → 422;
   - /status/history/WORK_ORDER/{id} muestra OPEN→IN_PROGRESS→CLOSED;
   - OT sobre un vehículo inactivo → 409.
+- Cancelar una OT en proceso (hallazgo de revisión): OT → IN_PROGRESS → CANCELLED; el vehículo vuelve a ACTIVE y su último historial dice '{número} cancelada'.
+- Dos OT en proceso del mismo vehículo (hallazgo de revisión): al cerrar una, el vehículo sigue en MAINTENANCE y availability muestra WORK_ORDER_IN_PROGRESS con el número de la otra; al cerrar la segunda vuelve a ACTIVE.
 - **Concurrencia de OT.**
 - 8 POST /maintenance-work-orders simultáneos (curl en segundo plano + wait) sobre un vehículo activo.
 - Los 8 → 200, sin 409 ni 500.
@@ -1583,6 +1587,11 @@ Preparación:
 - Se crea un servicio especial NUEVO y vigente del tipo para el cliente de órdenes (SS_O_ID quedó cerrado en smoke.sh:917).
 - Se crea una tarifa por viaje de 80 para D3.
 
+Crédito con chofer (hallazgo de revisión):
+- Con creditLimit 10, POST /orders especial con driverPublicId=D3 y sin confirmNow → 422 credit_exceeded: no se crea la orden ni el DriverTrip y la numeración no deja hueco.
+- El mismo cuerpo con overrideCredit=true y un usuario sin orders.credit_override → 403 'Falta el permiso 'orders.credit_override'.' y PERMISSION_DENIED.
+- Con el admin → 200 IN_TRANSIT con el chofer, un solo comentario 'Crédito excedido autorizado por…' y SecurityEvent credit_override; luego se restaura creditLimit.
+
 Alta con chofer:
 - POST /orders especial con driverPublicId=D3 y sin confirmNow → 200, status IN_TRANSIT, assignedDriverName de D3 y quotedAmount congelado.
 - /status/history/TRANSPORT_ORDER/{id} muestra DRAFT→CONFIRMED→PICKUP→INBOUND→PLANNED→IN_TRANSIT.
@@ -1605,6 +1614,7 @@ Cancelaciones:
 - Cancelar la orden → su viaje OPEN pasa a CANCELLED.
 - **Eliminar chofer: baja definitiva sin borrar historial.**
 - DELETE /drivers/{D3} → 204.
+- Antes del DELETE (hallazgo de revisión) D3 tiene una tarifa por entrega cerrada a futuro (effectiveTo = hoy+10): después, rates?asOf=hoy+1 no la trae y con includeHistory su effectiveTo es hoy.
 - GET → status INACTIVE, isActive false, sin zona ni usuario.
 - GET rates → sin tarifas vigentes; con includeHistory aparecen cerradas hoy.
 - Sus viajes siguen visibles.

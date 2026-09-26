@@ -38,7 +38,8 @@ public sealed class OrderService(
     INumberSequenceService sequences,
     OrderStatusService orderStatuses,
     OrderReadService reader,
-    PermissionService permissions)
+    PermissionService permissions,
+    SpecialDeliveryDispatchService specialDispatch)
 {
     public const string ClientInactiveMessage = "El cliente está dado de baja; solo se consulta su historial.";
     public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
@@ -49,6 +50,8 @@ public sealed class OrderService(
     public const string ConsigneeBothMessage = "Indique un consignatario del directorio o uno nuevo, no ambos.";
     public const string SpecialServiceRequiredMessage = "El servicio especial es obligatorio en una entrega especial.";
     public const string SpecialServiceNotCurrentMessage = "El servicio especial no está vigente para este cliente.";
+    /// <summary>Lote 4 (P7): driverPublicId solo acompaña a isSpecialDelivery.</summary>
+    public const string DriverOnlySpecialMessage = "El chofer solo se asigna en una entrega especial.";
 
     /// <summary>Savepoint de cada intento de alta cuando CreateAsync corre dentro de una transacción ambiente (importador).</summary>
     private const string CreateAttemptSavepoint = "OrderCreateAttempt";
@@ -72,9 +75,12 @@ public sealed class OrderService(
         // (a) campos que la captura no admite (empaque siempre Teikem; tipo de COD al entregar)
         RejectExtra(req.Extra?.Keys, OrderRules.ForbiddenOnCreate);
 
-        // Ajuste C: overrideCredit solo acompaña a confirmNow; el permiso se exige pronto (403 + PERMISSION_DENIED) y
-        // ConfirmTrackedAsync lo vuelve a comprobar.
-        if (req.OverrideCredit && !req.ConfirmNow) throw new ValidationException("overrideCredit", OrderImportService.OverrideNeedsConfirmNowMessage);
+        // Lote 4 (P7): el chofer solo se asigna en una entrega especial.
+        if (req.DriverPublicId is not null && !req.IsSpecialDelivery) throw new ValidationException("driverPublicId", DriverOnlySpecialMessage);
+
+        // Ajuste C: overrideCredit solo acompaña a confirmNow o (Lote 4) a la asignación de chofer, que también confirma; el
+        // permiso se exige pronto (403 + PERMISSION_DENIED) y ConfirmTrackedAsync lo vuelve a comprobar.
+        if (req.OverrideCredit && !req.ConfirmNow && req.DriverPublicId is null) throw new ValidationException("overrideCredit", OrderImportService.OverrideNeedsConfirmNowMessage);
         if (req.OverrideCredit) await permissions.EnsureAsync(OrderStatusService.CreditOverridePermission, ct);
 
         // (b) cliente: el scope (portal) gana siempre; si no, clientPublicId. Dado de baja → 409; suspendido → 422.
@@ -113,6 +119,12 @@ public sealed class OrderService(
         {
             lines = await PrepareLinesAsync(req.Packages!, tenantRow, ct);
         }
+
+        // Lote 4 (P7): entrega especial con chofer. Módulo CATALOG, trips.dispatch, chofer, disponibilidad y tarifa se
+        // verifican AQUÍ, sin escribir y antes de sacar números: un rechazo no deja hueco en la numeración.
+        PreparedSpecialDelivery? preparedDriver = null;
+        if (req.DriverPublicId is Guid driverPublicId)
+            preparedDriver = await specialDispatch.PrepareAsync(driverPublicId, special!.SpecialServiceTypeId, Today(), ct);
 
         // (i) referencias, contrato vigente (solo para la moneda: ContractId se congela al confirmar, DECISIÓN 17)
         var references = await PrepareReferencesAsync(req.References, ct);
@@ -290,7 +302,10 @@ public sealed class OrderService(
                     await db.SaveGuardedAsync(OrderNumberTakenMessage, ct2);
 
                     // confirmNow (DECISIÓN 26): cotiza, verifica crédito y avanza en la misma transacción; un 422 revierte también la creación.
-                    if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, req.OverrideCredit, ct2);
+                    // Lote 4 (P7): con chofer, la asignación reemplaza a la confirmación (confirma, avanza hasta IN_TRANSIT y crea
+                    // el DriverTrip). Se repite en cada intento: el savepoint/rollback del reintento revierte también la asignación.
+                    if (preparedDriver is not null) await specialDispatch.AssignTrackedAsync(order, preparedDriver, req.OverrideCredit, null, ct2);
+                    else if (req.ConfirmNow) await orderStatuses.ConfirmTrackedAsync(order, req.OverrideCredit, ct2);
 
                     return order.PublicId;
                 }, ct);

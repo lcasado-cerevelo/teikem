@@ -52,7 +52,8 @@ public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext ten
 
     /// <summary>
     /// Baja lógica de un tipo (nunca DELETE, documento L214): deja de aparecer en el selector de todos los clientes.
-    /// Solo si ningún cliente tiene una tarifa abierta de ese tipo (409 en otro caso); las filas cerradas conservan su historial.
+    /// Solo si ningún cliente tiene una tarifa abierta de ese tipo y ningún chofer una tarifa por viaje vigente (Lote 4)
+    /// (409 en otro caso); las filas cerradas conservan su historial.
     /// </summary>
     public async Task<SpecialServiceTypeDto> DeactivateTypeAsync(int typeId, CancellationToken ct)
     {
@@ -66,6 +67,14 @@ public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext ten
                 .Select(s => s.ClientId).Distinct().CountAsync(ct2);
             if (clientsUsing > 0)
                 throw new ConflictException($"El tipo tiene tarifas vigentes en {clientsUsing} cliente(s); ciérrelas antes de inactivarlo.");
+            // Lote 4 (P6): el tipo también es el 'tipo de viaje' de las tarifas por viaje de los choferes (R21). Vigente =
+            // abierta o cerrada con fecha futura (EffectiveTo exclusivo).
+            var today = Today();
+            var driversUsing = await db.DriverTripRates.AsNoTracking()
+                .Where(r => r.SpecialServiceTypeId == typeId && r.IsActive && (r.EffectiveTo == null || r.EffectiveTo > today))
+                .Select(r => r.DriverId).Distinct().CountAsync(ct2);
+            if (driversUsing > 0)
+                throw new ConflictException($"El tipo tiene tarifas por viaje vigentes en {driversUsing} chofer(es); ciérrelas antes de inactivarlo.");
             type.IsActive = false; // el interceptor audita el cambio
             await db.SaveChangesAsync(ct2);
         }, ct);

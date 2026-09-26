@@ -724,7 +724,7 @@ CREATE TABLE dbo.NumberSequence (
     ClientId     INT NULL REFERENCES dbo.Client(ClientId),
     NextValue    BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT UQ_NumberSequence UNIQUE (TenantId, Kind, ClientId),
-    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH')),
+    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL)
     CONSTRAINT CK_NumberSequence_Next CHECK (NextValue >= 1)
 );
 GO
@@ -738,7 +738,8 @@ CREATE TABLE dbo.SpecialServiceType (
     Name         NVARCHAR(120) NOT NULL,
     IsActive     BIT NOT NULL DEFAULT 1,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_SpecialServiceType UNIQUE (TenantId, Name)
+    CONSTRAINT UQ_SpecialServiceType UNIQUE (TenantId, Name),
+    CONSTRAINT UQ_SpecialServiceType_IdTenant UNIQUE (SpecialServiceTypeId, TenantId)  -- Lote 4: destino de FKs compuestas (tarifas por viaje y DriverTrip)
 );
 GO
 
@@ -1090,6 +1091,7 @@ GO
    ========================================================================= */
 CREATE TABLE dbo.Vehicle (
     VehicleId    INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),               -- Lote 4: id de exposición externa (rutas /vehicles/{publicId})
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     Code         NVARCHAR(30) NOT NULL, PlateNumber NVARCHAR(20) NULL,
     MaxWeightKg DECIMAL(12,3) NULL, MaxVolumeM3 DECIMAL(12,4) NULL, MaxStops INT NULL,
@@ -1099,24 +1101,118 @@ CREATE TABLE dbo.Vehicle (
     Make NVARCHAR(60) NULL, Model NVARCHAR(60) NULL, ModelYear INT NULL, Vin NVARCHAR(40) NULL,
     CurrentOdometerKm DECIMAL(12,1) NULL,
     HomeWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    StatusCodeId INT NULL REFERENCES dbo.StatusCode(StatusCodeId),          -- Entity='VehicleStatus'
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='VehicleStatus' (Lote 4: NOT NULL, nace en la etapa inicial)
     IsActive     BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_Vehicle_Code UNIQUE (TenantId, Code)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),              -- Lote 4: auditoría inherente
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion   ROWVERSION,
+    CONSTRAINT UQ_Vehicle_Code UNIQUE (TenantId, Code),                     -- código irrepetible por compañía (no se libera tras la baja)
+    CONSTRAINT UQ_Vehicle_IdTenant UNIQUE (VehicleId, TenantId),            -- Lote 4: destino de las FKs compuestas
+    CONSTRAINT CK_Vehicle_Numbers CHECK ((MaxWeightKg IS NULL OR MaxWeightKg >= 0) AND (MaxVolumeM3 IS NULL OR MaxVolumeM3 >= 0)
+        AND (MaxStops IS NULL OR MaxStops >= 1) AND (CurrentOdometerKm IS NULL OR CurrentOdometerKm >= 0)
+        AND (ModelYear IS NULL OR ModelYear BETWEEN 1900 AND 2100))       -- Lote 4
 );
 GO
 
 CREATE TABLE dbo.Driver (
     DriverId     INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),               -- Lote 4: id de exposición externa (rutas /drivers/{publicId})
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     FullName     NVARCHAR(150) NOT NULL,
-    UserId       INT NULL REFERENCES dbo.AspNetUsers(Id),
-    EmployeeCode NVARCHAR(30) NULL,
+    UserId       INT NULL REFERENCES dbo.AspNetUsers(Id),                  -- usuario INTERNAL vinculado (único por compañía, UX_Driver_User)
+    EmployeeCode NVARCHAR(30) NOT NULL,                                     -- Lote 4: es el 'Código' del chofer (obligatorio, inmutable)
     HireDate     DATE NULL,
     HomeWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    StatusCodeId INT NULL REFERENCES dbo.StatusCode(StatusCodeId),          -- Entity='DriverStatus'
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='DriverStatus' (Lote 4: NOT NULL)
     MaxStopsPerRoute INT NULL,   -- override del default del tenant; NULL = usa Tenant.MaxStopsPerRouteDefault
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),              -- Lote 4: auditoría inherente
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion   ROWVERSION,
+    CONSTRAINT UQ_Driver_EmployeeCode UNIQUE (TenantId, EmployeeCode),      -- Lote 4: código irrepetible por compañía (no se libera tras la baja)
+    CONSTRAINT UQ_Driver_IdTenant UNIQUE (DriverId, TenantId),              -- Lote 4: destino de las FKs compuestas
+    CONSTRAINT CK_Driver_MaxStops CHECK (MaxStopsPerRoute IS NULL OR MaxStopsPerRoute >= 1)  -- Lote 4
 );
+-- Lote 4: un usuario se vincula a un solo chofer por compañía
+CREATE UNIQUE INDEX UX_Driver_User ON dbo.Driver(TenantId, UserId) WHERE UserId IS NOT NULL;
+GO
+
+-- Lote 4: pago a choferes (maestro del módulo 11A; el chofer es el agregado raíz, sin tabla DriverRateAgreement).
+-- Política del tenant (una fila por compañía, creada con el primer cambio; sin fila rigen 2 niveles y DELIVERY_PLUS_ATTEMPTS)
+-- y tres tablas de tarifa efectivo-fechadas (editar = cerrar y abrir; EffectiveTo exclusivo) con FK compuesta al chofer.
+CREATE TABLE dbo.DriverPayPolicy (
+    TenantId     INT NOT NULL PRIMARY KEY REFERENCES dbo.Tenant(TenantId),
+    AttemptLevels INT NOT NULL DEFAULT 2,                                   -- niveles de intento contiguos 1..N
+    PayoutFormulaLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='DriverPayoutFormula'
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT CK_DriverPayPolicy_Levels CHECK (AttemptLevels BETWEEN 1 AND 20)
+);
+GO
+
+CREATE TABLE dbo.DriverDeliveryRate (
+    DriverDeliveryRateId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    DriverId     INT NOT NULL,
+    ServiceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='ServiceType'
+    PackageTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='PackageType'
+    Rate         DECIMAL(18,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    EffectiveTo  DATE NULL,                                                  -- exclusivo; NULL = abierta
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT FK_DriverDeliveryRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),
+    CONSTRAINT CK_DriverDeliveryRate_Rate CHECK (Rate >= 0),
+    CONSTRAINT CK_DriverDeliveryRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+);
+CREATE UNIQUE INDEX UQ_DriverDeliveryRate_Open ON dbo.DriverDeliveryRate(DriverId, ServiceTypeLookupId, PackageTypeLookupId) WHERE EffectiveTo IS NULL AND IsActive = 1;
+CREATE INDEX IX_DriverDeliveryRate_Driver ON dbo.DriverDeliveryRate(TenantId, DriverId);
+GO
+
+CREATE TABLE dbo.DriverAttemptRate (
+    DriverAttemptRateId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    DriverId     INT NOT NULL,
+    AttemptNumber INT NOT NULL,                                              -- nivel 1..DriverPayPolicy.AttemptLevels
+    Rate         DECIMAL(18,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    EffectiveTo  DATE NULL,                                                  -- exclusivo; NULL = abierta
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT FK_DriverAttemptRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),
+    CONSTRAINT CK_DriverAttemptRate_Number CHECK (AttemptNumber >= 1),
+    CONSTRAINT CK_DriverAttemptRate_Rate CHECK (Rate >= 0),
+    CONSTRAINT CK_DriverAttemptRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+);
+CREATE UNIQUE INDEX UQ_DriverAttemptRate_Open ON dbo.DriverAttemptRate(DriverId, AttemptNumber) WHERE EffectiveTo IS NULL AND IsActive = 1;
+CREATE INDEX IX_DriverAttemptRate_Driver ON dbo.DriverAttemptRate(TenantId, DriverId);
+GO
+
+CREATE TABLE dbo.DriverTripRate (
+    DriverTripRateId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    DriverId     INT NOT NULL,
+    SpecialServiceTypeId INT NOT NULL,                                       -- tipo de viaje = catálogo de servicios especiales del tenant (R21)
+    Rate         DECIMAL(18,4) NOT NULL,
+    EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE),
+    EffectiveTo  DATE NULL,                                                  -- exclusivo; NULL = abierta
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT FK_DriverTripRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),
+    CONSTRAINT FK_DriverTripRate_Type FOREIGN KEY (SpecialServiceTypeId, TenantId) REFERENCES dbo.SpecialServiceType(SpecialServiceTypeId, TenantId),
+    CONSTRAINT UQ_DriverTripRate_IdTenant UNIQUE (DriverTripRateId, TenantId), -- destino de FK_DriverTrip_Rate
+    CONSTRAINT CK_DriverTripRate_Rate CHECK (Rate >= 0),
+    CONSTRAINT CK_DriverTripRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+);
+CREATE UNIQUE INDEX UQ_DriverTripRate_Open ON dbo.DriverTripRate(DriverId, SpecialServiceTypeId) WHERE EffectiveTo IS NULL AND IsActive = 1;
+CREATE INDEX IX_DriverTripRate_Driver ON dbo.DriverTripRate(TenantId, DriverId);
 GO
 
 /* =========================================================================
@@ -1200,7 +1296,8 @@ CREATE TABLE dbo.TransportOrder (
     RowVersion   ROWVERSION,
     -- Lote 3: UQ_Order_Number (TenantId, OrderNumber) se reemplaza por el índice único filtrado UX_Order_Number por cliente
     CONSTRAINT CK_Order_Amounts CHECK ((CodAmount IS NULL OR CodAmount >= 0) AND (QuotedAmount IS NULL OR QuotedAmount >= 0) AND (TotalPieces IS NULL OR TotalPieces >= 0)),  -- Lote 3
-    CONSTRAINT CK_Order_Special CHECK (IsSpecialDelivery = 0 OR SpecialServiceId IS NOT NULL)                                                                            -- Lote 3
+    CONSTRAINT CK_Order_Special CHECK (IsSpecialDelivery = 0 OR SpecialServiceId IS NOT NULL),                                                                           -- Lote 3
+    CONSTRAINT UQ_TransportOrder_IdTenant UNIQUE (TransportOrderId, TenantId)                                                                                            -- Lote 4: destino de FK_DriverTrip_Order
 );
 -- Lote 3: el número de orden es el consecutivo interno del cliente (L237/L240): único por cliente, no por tenant; una orden
 -- eliminada en captura (IsActive = 0) libera su número. PackBatchNumber es el identificador de escaneo único por tenant.
@@ -1388,9 +1485,11 @@ CREATE TABLE dbo.VehicleDocument (
     DocTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Entity='VehicleDocType'
     DocNumber    NVARCHAR(80) NULL, IssuedDate DATE NULL, ExpiryDate DATE NULL,
     FileName NVARCHAR(255) NULL, StoragePath NVARCHAR(500) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CONSTRAINT CK_VehicleDocument_Dates CHECK (IssuedDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= IssuedDate)  -- Lote 4
 );
 CREATE INDEX IX_VehicleDocument_Expiry ON dbo.VehicleDocument(ExpiryDate) WHERE IsActive = 1;
+CREATE INDEX IX_VehicleDocument_Vehicle ON dbo.VehicleDocument(VehicleId, DocTypeLookupId);   -- Lote 4: grupo de 'vigente por tipo'
 GO
 
 CREATE TABLE dbo.MaintenanceSchedule (
@@ -1402,15 +1501,20 @@ CREATE TABLE dbo.MaintenanceSchedule (
     TriggerLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Entity='MaintenanceTrigger'
     IntervalKm DECIMAL(12,1) NULL, IntervalDays INT NULL,
     LastServiceKm DECIMAL(12,1) NULL, LastServiceDate DATE NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),              -- Lote 4
+    -- Lote 4: por vehículo o por tipo de vehículo, nunca ambos; intervalo coherente con el disparador
+    CONSTRAINT CK_MaintSchedule_Target CHECK ((VehicleId IS NULL AND VehicleTypeLookupId IS NOT NULL) OR (VehicleId IS NOT NULL AND VehicleTypeLookupId IS NULL)),
+    CONSTRAINT CK_MaintSchedule_Interval CHECK ((IntervalKm IS NULL OR IntervalKm > 0) AND (IntervalDays IS NULL OR IntervalDays > 0) AND (IntervalKm IS NOT NULL OR IntervalDays IS NOT NULL))
 );
+CREATE INDEX IX_MaintSchedule_Vehicle ON dbo.MaintenanceSchedule(VehicleId) WHERE VehicleId IS NOT NULL;  -- Lote 4
 GO
 
 CREATE TABLE dbo.MaintenanceWorkOrder (
     WorkOrderId  INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    VehicleId    INT NOT NULL REFERENCES dbo.Vehicle(VehicleId),
+    VehicleId    INT NOT NULL,                                               -- Lote 4: FK compuesta FK_WorkOrder_Vehicle
     MaintenanceScheduleId INT NULL REFERENCES dbo.MaintenanceSchedule(MaintenanceScheduleId),
     Number       NVARCHAR(40) NOT NULL,
     MaintenanceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='MaintenanceType'
@@ -1422,8 +1526,16 @@ CREATE TABLE dbo.MaintenanceWorkOrder (
     CurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     Notes NVARCHAR(MAX) NULL,
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_WorkOrder_Number UNIQUE (TenantId, Number)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),              -- Lote 4: auditoría inherente
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT UQ_WorkOrder_Number UNIQUE (TenantId, Number),
+    CONSTRAINT FK_WorkOrder_Vehicle FOREIGN KEY (VehicleId, TenantId) REFERENCES dbo.Vehicle(VehicleId, TenantId),  -- Lote 4
+    CONSTRAINT CK_WorkOrder_Costs CHECK ((LaborCost IS NULL OR LaborCost >= 0) AND (PartsCost IS NULL OR PartsCost >= 0) AND (OdometerKm IS NULL OR OdometerKm >= 0))  -- Lote 4
 );
+CREATE INDEX IX_WorkOrder_Vehicle ON dbo.MaintenanceWorkOrder(VehicleId, StatusCodeId) WHERE IsActive = 1;                          -- Lote 4
+CREATE INDEX IX_WorkOrder_Schedule ON dbo.MaintenanceWorkOrder(MaintenanceScheduleId) WHERE MaintenanceScheduleId IS NOT NULL;       -- Lote 4
 GO
 
 CREATE TABLE dbo.MaintenanceTask (
@@ -1431,19 +1543,30 @@ CREATE TABLE dbo.MaintenanceTask (
     WorkOrderId  INT NOT NULL REFERENCES dbo.MaintenanceWorkOrder(WorkOrderId),
     Description  NVARCHAR(250) NOT NULL,
     PartCost DECIMAL(18,4) NULL, LaborCost DECIMAL(18,4) NULL,
-    IsCompleted  BIT NOT NULL DEFAULT 0
+    IsCompleted  BIT NOT NULL DEFAULT 0,
+    IsActive     BIT NOT NULL DEFAULT 1,                                     -- Lote 4: quitar una tarea = IsActive 0 (nunca DELETE)
+    CONSTRAINT CK_MaintTask_Costs CHECK ((PartCost IS NULL OR PartCost >= 0) AND (LaborCost IS NULL OR LaborCost >= 0))  -- Lote 4
 );
+CREATE INDEX IX_MaintenanceTask_WorkOrder ON dbo.MaintenanceTask(WorkOrderId);  -- Lote 4
 GO
 
 CREATE TABLE dbo.FuelLog (
     FuelLogId    INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    VehicleId    INT NOT NULL REFERENCES dbo.Vehicle(VehicleId),
-    DriverId     INT NULL REFERENCES dbo.Driver(DriverId),
+    VehicleId    INT NOT NULL,                                               -- Lote 4: FK compuesta FK_FuelLog_Vehicle
+    DriverId     INT NULL,                                                   -- Lote 4: FK compuesta FK_FuelLog_Driver (NULL no se evalúa)
     FillDateUtc  DATETIME2 NOT NULL, OdometerKm DECIMAL(12,1) NULL,
     Liters DECIMAL(10,3) NOT NULL, TotalCost DECIMAL(18,4) NOT NULL,
     CurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
-    Station NVARCHAR(150) NULL
+    Station NVARCHAR(150) NULL,
+    IsActive     BIT NOT NULL DEFAULT 1,                                     -- Lote 4: quitar una carga = IsActive 0 (deja de contar en km/L)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),              -- Lote 4: auditoría inherente
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT FK_FuelLog_Vehicle FOREIGN KEY (VehicleId, TenantId) REFERENCES dbo.Vehicle(VehicleId, TenantId),  -- Lote 4
+    CONSTRAINT FK_FuelLog_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),      -- Lote 4
+    CONSTRAINT CK_FuelLog_Amounts CHECK (Liters > 0 AND TotalCost >= 0 AND (OdometerKm IS NULL OR OdometerKm >= 0))  -- Lote 4
 );
 CREATE INDEX IX_FuelLog_Vehicle ON dbo.FuelLog(VehicleId, FillDateUtc);
 GO
@@ -1453,9 +1576,11 @@ CREATE TABLE dbo.DriverLicense (
     DriverId     INT NOT NULL REFERENCES dbo.Driver(DriverId),
     LicenseClassLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='LicenseClass'
     LicenseNumber NVARCHAR(60) NOT NULL, IssuedDate DATE NULL, ExpiryDate DATE NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CONSTRAINT CK_DriverLicense_Dates CHECK (IssuedDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= IssuedDate)  -- Lote 4
 );
 CREATE INDEX IX_DriverLicense_Expiry ON dbo.DriverLicense(ExpiryDate) WHERE IsActive = 1;
+CREATE INDEX IX_DriverLicense_Driver ON dbo.DriverLicense(DriverId, LicenseClassLookupId);   -- Lote 4: grupo de 'vigente por tipo'
 GO
 
 CREATE TABLE dbo.DriverCertification (
@@ -1463,8 +1588,11 @@ CREATE TABLE dbo.DriverCertification (
     DriverId     INT NOT NULL REFERENCES dbo.Driver(DriverId),
     CertTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='CertificationType'
     CertNumber NVARCHAR(60) NULL, IssuedDate DATE NULL, ExpiryDate DATE NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CONSTRAINT CK_DriverCertification_Dates CHECK (IssuedDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= IssuedDate)  -- Lote 4
 );
+CREATE INDEX IX_DriverCertification_Expiry ON dbo.DriverCertification(ExpiryDate) WHERE IsActive = 1;          -- Lote 4: paridad con licencias y documentos
+CREATE INDEX IX_DriverCertification_Driver ON dbo.DriverCertification(DriverId, CertTypeLookupId);           -- Lote 4: grupo de 'vigente por tipo'
 GO
 
 CREATE TABLE dbo.FleetAssignment (
@@ -1476,6 +1604,38 @@ CREATE TABLE dbo.FleetAssignment (
     StartDate DATE NOT NULL, EndDate DATE NULL,
     IsActive     BIT NOT NULL DEFAULT 1
 );
+GO
+
+-- Lote 4: viaje pagado al chofer (monto congelado; insumo de la liquidación del Lote 9). Es la fila de pago, distinta de
+-- dbo.Trip (Despacho). Un solo viaje vigente por orden, garantizado en BD (UX_DriverTrip_Order; CANCELLED implica IsActive = 0).
+CREATE TABLE dbo.DriverTrip (
+    DriverTripId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    DriverId     INT NOT NULL,
+    SpecialServiceTypeId INT NOT NULL,                                       -- tipo de viaje (catálogo de servicios especiales, R21)
+    DriverTripRateId INT NULL,                                               -- tarifa usada; NULL = sin tarifa
+    TransportOrderId INT NULL,                                               -- entrega especial de origen; NULL = alta manual
+    TripDate     DATE NOT NULL,
+    Amount       DECIMAL(18,4) NOT NULL,                                     -- congelado al crear
+    RateMissing  BIT NOT NULL DEFAULT 0,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='DriverTripStatus'
+    Notes        NVARCHAR(500) NULL,
+    IsActive     BIT NOT NULL DEFAULT 1,                                     -- CANCELLED implica 0
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion   ROWVERSION,
+    CONSTRAINT FK_DriverTrip_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),
+    CONSTRAINT FK_DriverTrip_Type FOREIGN KEY (SpecialServiceTypeId, TenantId) REFERENCES dbo.SpecialServiceType(SpecialServiceTypeId, TenantId),
+    CONSTRAINT FK_DriverTrip_Rate FOREIGN KEY (DriverTripRateId, TenantId) REFERENCES dbo.DriverTripRate(DriverTripRateId, TenantId),
+    CONSTRAINT FK_DriverTrip_Order FOREIGN KEY (TransportOrderId, TenantId) REFERENCES dbo.TransportOrder(TransportOrderId, TenantId),
+    CONSTRAINT CK_DriverTrip_Amount CHECK (Amount >= 0),
+    CONSTRAINT CK_DriverTrip_Rate CHECK ((RateMissing = 1 AND DriverTripRateId IS NULL AND Amount = 0) OR (RateMissing = 0 AND DriverTripRateId IS NOT NULL))
+);
+CREATE UNIQUE INDEX UX_DriverTrip_Order ON dbo.DriverTrip(TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1;
+CREATE INDEX IX_DriverTrip_Driver_Date ON dbo.DriverTrip(TenantId, DriverId, TripDate);
 GO
 
 /* =========================================================================
@@ -1716,6 +1876,8 @@ CREATE TABLE dbo.DriverDevice (
     PushToken NVARCHAR(400) NULL, AppVersion NVARCHAR(20) NULL,
     LastSeenUtc DATETIME2 NULL, IsActive BIT NOT NULL DEFAULT 1
 );
+-- Lote 4: un token de push activo pertenece a un solo dispositivo por compañía
+CREATE UNIQUE INDEX UX_DriverDevice_Token ON dbo.DriverDevice(TenantId, PushToken) WHERE PushToken IS NOT NULL AND IsActive = 1;
 GO
 
 CREATE TABLE dbo.DriverLocationPing (
@@ -2115,5 +2277,5 @@ LEFT JOIN dbo.LookupCode txn ON txn.LookupCodeId = t.TxnTypeLookupId
 LEFT JOIN dbo.LookupCode ref ON ref.LookupCodeId = t.RefEntityLookupId;
 GO
 
-PRINT 'Estructura creada: ~128 tablas (Identity, campos personalizados, informes, indicadores, gráficos y ciclo COD), en capas ordenadas por dependencias + vista de genealogía.';
+PRINT 'Estructura creada: ~133 tablas (Identity, campos personalizados, informes, indicadores, gráficos, ciclo COD y pago a choferes), en capas ordenadas por dependencias + vista de genealogía.';
 GO

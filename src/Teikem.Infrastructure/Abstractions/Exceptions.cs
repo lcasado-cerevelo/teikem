@@ -8,8 +8,19 @@ public abstract class TeikemException(string message, int statusCode, string cod
     public IDictionary<string, string[]>? Errors { get; init; }
 }
 
-public sealed class NotFoundException(string what, object? key = null)
-    : TeikemException(key is null ? $"{what} no encontrado." : $"{what} '{key}' no encontrado.", 404, "not_found");
+/// <summary>
+/// 404 con el mensaje '{what} no encontrado.' (o '{what} '{key}' no encontrado.'). Con feminine = true concuerda en
+/// femenino: 'Zona de despacho no encontrada.', 'Licencia no encontrada.' (Lote 4). Las llamadas existentes no cambian.
+/// </summary>
+public sealed class NotFoundException(string what, object? key = null, bool feminine = false)
+    : TeikemException(BuildMessage(what, key, feminine), 404, "not_found")
+{
+    private static string BuildMessage(string what, object? key, bool feminine)
+    {
+        var suffix = feminine ? "no encontrada." : "no encontrado.";
+        return key is null ? $"{what} {suffix}" : $"{what} '{key}' {suffix}";
+    }
+}
 
 public sealed class ValidationException : TeikemException
 {

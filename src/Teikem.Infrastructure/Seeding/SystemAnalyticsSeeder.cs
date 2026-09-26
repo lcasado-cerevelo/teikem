@@ -11,7 +11,8 @@ namespace Teikem.Infrastructure.Seeding;
 /// <summary>
 /// Vistas, indicadores y gráficos por default (IsSystem=1) que un tenant trae de fábrica. En el Lote 1 usan las fuentes
 /// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); el Lote 3
-/// agrega Órdenes (TRANSPORT_ORDER); cada lote de negocio agrega los suyos (Inventario, ...).
+/// agrega Órdenes (TRANSPORT_ORDER); el Lote 4 agrega Flota (VEHICLE, FLEET_DOCUMENT, WORK_ORDER); cada lote de negocio agrega
+/// los suyos (Inventario, ...).
 /// Idempotente por nombre.
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
@@ -23,6 +24,14 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     /// <summary>Filtro sembrado por la primera versión del Lote 3 (sumaba el COD de órdenes canceladas); se corrige al resembrar.</summary>
     public const string CodPendingFilterV1 =
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"CodStatusCode\",\"op\":\"eq\",\"value\":\"PENDING\"}]}";
+
+    /// <summary>Lote 4: documentos vencidos o por vencer (ventana fija de 30 días de la fuente FLEET_DOCUMENT).</summary>
+    public const string FleetDocumentsDueFilter =
+        "{\"and\":[{\"field\":\"ExpiryState\",\"op\":\"in\",\"value\":[\"EXPIRED\",\"EXPIRING\"]}]}";
+
+    /// <summary>Lote 4: órdenes de trabajo activas abiertas o en proceso.</summary>
+    public const string OpenWorkOrdersFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"OPEN\",\"IN_PROGRESS\"]}]}";
 
     public async Task SeedForTenantAsync(int tenantId, CancellationToken ct)
     {
@@ -68,6 +77,11 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 3 — Órdenes de transporte (los nombres de campo son los de TransportOrderDataSource; no cambiarlos sin cambiar ambos)
         await Report(EntityTypes.TransportOrder, "Órdenes", "Órdenes de transporte con empaque, consignatario, estatus y COD", "Transport orders with pack batch, consignee, status and COD",
             new[] { "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "ConsigneeName", "Status", "TotalPieces", "CodAmount", "CreatedAtUtc" }, null, null, "[{\"field\":\"CreatedAtUtc\",\"dir\":\"desc\"}]");
+        // Lote 4 — Flota (los nombres de campo son los de VehicleDataSource y FleetDocumentDataSource; no cambiarlos sin cambiar ambos)
+        await Report(EntityTypes.Vehicle, "Vehículos", "Flota con tipo, propiedad, combustible, odómetro y estatus", "Fleet with type, ownership, fuel, odometer and status",
+            new[] { "Code", "PlateNumber", "VehicleType", "Ownership", "FuelType", "CurrentOdometerKm", "Status", "IsActive" }, null, null, "[{\"field\":\"Code\",\"dir\":\"asc\"}]");
+        await Report(EntityTypes.FleetDocument, "Documentos por vencer", "Documentos de vehículos y choferes vencidos o que vencen en 30 días", "Vehicle and driver documents expired or expiring within 30 days",
+            new[] { "ExpiryDate", "OwnerKind", "OwnerCode", "OwnerName", "DocumentType", "DocNumber", "DaysToExpiry", "ExpiryState" }, FleetDocumentsDueFilter, null, "[{\"field\":\"ExpiryDate\",\"dir\":\"asc\"}]");
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
@@ -98,6 +112,12 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\",\"IN_TRANSIT\",\"ARRIVED\"]}]}", all, true, 70);
         Indicator("COD por cobrar", "Suma del COD pendiente de cobro de las órdenes activas no canceladas", "Sum of pending COD of active, non-cancelled orders", EntityTypes.TransportOrder, "CodAmount", sum,
             CodPendingFilter, all, true, 71, isMoney: true, module: acct);
+        // Lote 4 — Flota. FLEET_DOCUMENT es un estado actual sin DateField (sin rango); WORK_ORDER tiene DateField, así que
+        // su estado actual va con rango ALL (con null el motor aplicaría LAST7).
+        Indicator("Documentos por vencer", "Documentos de vehículos y choferes vencidos o que vencen en 30 días", "Vehicle and driver documents expired or expiring within 30 days",
+            EntityTypes.FleetDocument, null, count, FleetDocumentsDueFilter, null, true, 80, module: ops);
+        Indicator("Órdenes de trabajo abiertas", "Órdenes de trabajo de mantenimiento abiertas o en proceso", "Maintenance work orders open or in progress",
+            EntityTypes.WorkOrder, null, count, OpenWorkOrdersFilter, all, true, 81, module: ops);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions

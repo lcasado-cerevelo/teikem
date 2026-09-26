@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
+using Teikem.Infrastructure.Fleet;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Persistence.Interceptors;
@@ -103,6 +104,31 @@ public static class DependencyInjection
         services.AddScoped<ImportTemplateService>();
         services.AddScoped<OrderImportService>();
 
+        // Lote 4 — Flota, choferes y mantenimiento
+        services.AddScoped<VehicleService>();
+        services.AddScoped<VehicleDocumentService>();
+        services.AddScoped<DriverService>();
+        services.AddScoped<DriverDocumentService>();
+        services.AddScoped<DispatchZoneService>();
+        services.AddScoped<FleetDocumentService>();
+        // Disponibilidad para despacho (R7): costura que consumirá tal cual el planificador de Despacho.
+        services.AddScoped<IFleetAvailabilityService, FleetAvailabilityService>();
+        services.AddScoped<MaintenanceScheduleService>();
+        services.AddScoped<MaintenanceWorkOrderService>();
+        services.AddScoped<FuelLogService>();
+        services.AddScoped<DriverRateService>();
+        services.AddScoped<DriverPayPolicyService>();
+        // Resolvedor de tarifas del chofer: costura para la entrega especial y la liquidación del Lote 9.
+        services.AddScoped<IDriverRateResolver, DriverRateResolver>();
+        services.AddScoped<DriverTripService>();
+        services.AddScoped<SpecialDeliveryDispatchService>();
+        services.AddScoped<IStatusTransitionEffect, VehicleStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, DriverStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, DriverRatesRetirementEffect>();
+        services.AddScoped<IStatusTransitionEffect, WorkOrderStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, DriverTripOrderEffect>();
+        services.AddScoped<IStatusTransitionEffect, DriverTripStatusEffect>();
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
@@ -124,6 +150,24 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver, OrderCodOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ImportBatchOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ImportTemplateOwnedEntityResolver>();
+        // Lote 4 (no hay fuentes de tarifas ni de DriverTrip: Análisis solo exige analytics.view y expondría la compensación)
+        services.AddScoped<IDataSource, VehicleDataSource>();
+        services.AddScoped<IDataSource, DriverDataSource>();
+        services.AddScoped<IDataSource, WorkOrderDataSource>();
+        services.AddScoped<IDataSource, FuelLogDataSource>();
+        services.AddScoped<IDataSource, FleetDocumentDataSource>();
+        services.AddScoped<IOwnedEntityResolver, VehicleOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, DriverOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, DispatchZoneOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, MaintenanceScheduleOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, WorkOrderOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, FuelLogOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, DriverTripOwnedEntityResolver>();
+        // Resolver cerrado (siempre 404): tarifas y documentos de flota no admiten contactos ni campos por id suelto.
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.DriverRate));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.FleetDocument));
+        // Hueco del Lote 2: PORTAL_USER tenía permiso de dueño pero no resolver (CustomFieldService omitía la verificación).
+        services.AddScoped<IOwnedEntityResolver, PortalUserOwnedEntityResolver>();
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

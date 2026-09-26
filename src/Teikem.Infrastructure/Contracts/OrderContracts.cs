@@ -62,7 +62,10 @@ public sealed record OrderCreateRequest(
     int? SpecialServiceId = null,
     bool ConfirmDuplicateInvoice = false,
     bool ConfirmNow = false,
-    bool OverrideCredit = false)
+    bool OverrideCredit = false,
+    // Lote 4: entrega especial con chofer (solo con IsSpecialDelivery). Va al final y con default: el importador usa
+    // argumentos con nombre y no cambia.
+    Guid? DriverPublicId = null)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]
@@ -195,7 +198,11 @@ public sealed record OrderDetailDto(
     bool IsActive,
     DateTime CreatedAtUtc,
     DateTime? UpdatedAtUtc,
-    string? RowVersion);
+    string? RowVersion,
+    // Lote 4: chofer asignado a la entrega especial (DriverTrip vigente). Solo identidad, nunca montos.
+    Guid? AssignedDriverPublicId = null,
+    string? AssignedDriverCode = null,
+    string? AssignedDriverName = null);
 
 /// <summary>Fila del listado: Empaque es la primera columna de negocio (siempre con valor).</summary>
 public sealed record OrderListItemDto(

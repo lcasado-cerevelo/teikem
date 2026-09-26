@@ -8,6 +8,7 @@ using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Contacts;
 using Teikem.Domain.CustomFields;
+using Teikem.Domain.Fleet;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Security;
@@ -96,6 +97,25 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<NumberSequence> NumberSequences => Set<NumberSequence>();
     public DbSet<ImportTemplate> ImportTemplates => Set<ImportTemplate>();
     public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+    // Lote 4 — Flota, choferes y mantenimiento (las hijas sin TenantId — documentos, licencias, certificaciones, zonas del
+    // chofer y tareas — se alcanzan solo a través de su dueño filtrado)
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+    public DbSet<VehicleDocument> VehicleDocuments => Set<VehicleDocument>();
+    public DbSet<Driver> Drivers => Set<Driver>();
+    public DbSet<DriverLicense> DriverLicenses => Set<DriverLicense>();
+    public DbSet<DriverCertification> DriverCertifications => Set<DriverCertification>();
+    public DbSet<DriverDevice> DriverDevices => Set<DriverDevice>();
+    public DbSet<DispatchZone> DispatchZones => Set<DispatchZone>();
+    public DbSet<DriverZone> DriverZones => Set<DriverZone>();
+    public DbSet<MaintenanceSchedule> MaintenanceSchedules => Set<MaintenanceSchedule>();
+    public DbSet<MaintenanceWorkOrder> MaintenanceWorkOrders => Set<MaintenanceWorkOrder>();
+    public DbSet<MaintenanceTask> MaintenanceTasks => Set<MaintenanceTask>();
+    public DbSet<FuelLog> FuelLogs => Set<FuelLog>();
+    public DbSet<DriverPayPolicy> DriverPayPolicies => Set<DriverPayPolicy>();
+    public DbSet<DriverDeliveryRate> DriverDeliveryRates => Set<DriverDeliveryRate>();
+    public DbSet<DriverAttemptRate> DriverAttemptRates => Set<DriverAttemptRate>();
+    public DbSet<DriverTripRate> DriverTripRates => Set<DriverTripRate>();
+    public DbSet<DriverTrip> DriverTrips => Set<DriverTrip>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

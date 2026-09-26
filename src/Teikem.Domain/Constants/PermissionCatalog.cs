@@ -5,8 +5,9 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (49 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
-/// los de Clientes y contratos (Lote 2, categoría CLIENTS) y orders.credit_override (Lote 3, ajuste C).
+/// en cada arranque. Coincide con logistica-db-seed.sql (52 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
+/// los de Clientes y contratos (Lote 2, categoría CLIENTS), orders.credit_override (Lote 3, ajuste C) y fleet.view,
+/// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8).
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -30,6 +31,12 @@ public static class PermissionCatalog
     public const string BillingExport = "billing.export";
     public const string FleetManage = "fleet.manage";
     public const string FleetMaintenance = "fleet.maintenance";
+    /// <summary>Lote 4: lectura de flota, choferes, mantenimiento y combustible (sin tarifas ni viajes pagados).</summary>
+    public const string FleetView = "fleet.view";
+    /// <summary>Lote 4: ver tarifas, política de pago y viajes pagados a choferes (compensación, R8).</summary>
+    public const string DriverPayView = "driverpay.view";
+    /// <summary>Lote 4: gestionar tarifas, política de pago y viajes pagados a choferes.</summary>
+    public const string DriverPayManage = "driverpay.manage";
     // Administración
     public const string AdminUsers = "admin.users";
     public const string AdminRoles = "admin.roles";
@@ -122,6 +129,10 @@ public static class PermissionCatalog
         new(PortalUsersManage, "CLIENTS", "Administrar usuarios de portal del cliente", "Manage client portal users"),
         // Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
         new(OrdersCreditOverride, "ORDERS", "Autorizar órdenes sobre el límite de crédito", "Authorize orders over credit limit"),
+        // Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación, R8)
+        new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
+        new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
+        new(DriverPayManage, "FLEET", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"),
     };
 
     /// <summary>
@@ -141,6 +152,16 @@ public static class PermissionCatalog
         [EntityTypes.OrderStop] = OrdersView,
         [EntityTypes.ImportBatch] = OrdersView,
         [EntityTypes.ImportTemplate] = OrdersEdit,
+        // Lote 4 — flota con fleet.view; compensación con driverpay.view
+        [EntityTypes.Vehicle] = FleetView,
+        [EntityTypes.Driver] = FleetView,
+        [EntityTypes.DispatchZone] = FleetView,
+        [EntityTypes.MaintenanceSchedule] = FleetView,
+        [EntityTypes.WorkOrder] = FleetView,
+        [EntityTypes.FuelLog] = FleetView,
+        [EntityTypes.FleetDocument] = FleetView,
+        [EntityTypes.DriverRate] = DriverPayView,
+        [EntityTypes.DriverTrip] = DriverPayView,
     };
 
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
@@ -157,17 +178,27 @@ public static class PermissionCatalog
         [EntityTypes.OrderStop] = OrdersEdit,
         [EntityTypes.ImportBatch] = OrdersEdit,
         [EntityTypes.ImportTemplate] = OrdersEdit,
+        // Lote 4
+        [EntityTypes.Vehicle] = FleetManage,
+        [EntityTypes.Driver] = FleetManage,
+        [EntityTypes.DispatchZone] = FleetManage,
+        [EntityTypes.FleetDocument] = FleetManage,
+        [EntityTypes.MaintenanceSchedule] = FleetMaintenance,
+        [EntityTypes.WorkOrder] = FleetMaintenance,
+        [EntityTypes.FuelLog] = FleetMaintenance,
+        [EntityTypes.DriverRate] = DriverPayManage,
+        [EntityTypes.DriverTrip] = DriverPayManage,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate },
-        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride },
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView },
+        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView },
         ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive },
         ["Driver"] = new[] { OrdersView, CodCollect },
-        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead },
+        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView },
     };
 
     /// <summary>

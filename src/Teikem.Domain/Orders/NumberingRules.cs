@@ -181,7 +181,7 @@ public static class NumberingRules
         return null;
     }
 
-    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch;
+    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch or NumberKinds.WorkOrder;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 

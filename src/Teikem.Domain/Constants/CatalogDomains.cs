@@ -47,6 +47,18 @@ public static class LookupDomains
     public const string CodType = "CodType";
     public const string GeocodeAccuracy = "GeocodeAccuracy";
     public const string UnitOfMeasure = "UnitOfMeasure";
+    // Lote 4 — Flota, choferes y mantenimiento
+    public const string VehicleType = "VehicleType";
+    public const string Ownership = "Ownership";
+    public const string FuelType = "FuelType";
+    public const string VehicleDocType = "VehicleDocType";
+    public const string MaintenanceTrigger = "MaintenanceTrigger";
+    public const string MaintenanceType = "MaintenanceType";
+    public const string LicenseClass = "LicenseClass";
+    public const string CertificationType = "CertificationType";
+    public const string DevicePlatform = "DevicePlatform";
+    /// <summary>Fórmula de pago a choferes (DriverPayPolicy.PayoutFormulaLookupId).</summary>
+    public const string DriverPayoutFormula = "DriverPayoutFormula";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -63,6 +75,12 @@ public static class StatusDomains
     public const string CodStatus = "CodStatus";
     /// <summary>Lotes del importador de órdenes: VALIDATED (inicial) → CONFIRMED; DISCARDED terminal.</summary>
     public const string ImportBatchStatus = "ImportBatchStatus";
+    // Lote 4 — Flota, choferes y mantenimiento
+    public const string VehicleStatus = "VehicleStatus";
+    public const string DriverStatus = "DriverStatus";
+    public const string WorkOrderStatus = "WorkOrderStatus";
+    /// <summary>Viaje pagado al chofer: OPEN (inicial) → SETTLED | CANCELLED (terminales).</summary>
+    public const string DriverTripStatus = "DriverTripStatus";
 }
 
 public static class StageKinds
@@ -179,6 +197,8 @@ public static class Capabilities
     public const string AddDocument = "ADD_DOCUMENT";
     /// <summary>Lote 2: editar contrato, tarifas y servicios especiales (por defecto no permitido en EXPIRED/CANCELLED).</summary>
     public const string EditContract = "EDIT_CONTRACT";
+    /// <summary>Lote 4: editar una orden de trabajo de mantenimiento y sus tareas (por defecto no permitido en CLOSED/CANCELLED).</summary>
+    public const string EditWorkOrder = "EDIT_WORK_ORDER";
 }
 
 public static class AuditActions
@@ -314,6 +334,17 @@ public static class EntityTypes
     public const string OrderStop = "ORDER_STOP";
     public const string ImportTemplate = "IMPORT_TEMPLATE";
     public const string ImportBatch = "IMPORT_BATCH";
+    // Agregados por el Lote 4 (flota, choferes y mantenimiento)
+    /// <summary>Orden de trabajo de mantenimiento: reutiliza el EntityType 'WORK_ORDER' ya sembrado (no existe MAINTENANCE_WORK_ORDER).</summary>
+    public const string WorkOrder = "WORK_ORDER";
+    public const string MaintenanceSchedule = "MAINTENANCE_SCHEDULE";
+    public const string FuelLog = "FUEL_LOG";
+    /// <summary>Fila virtual que une documentos de vehículo, licencias y certificaciones (fuente de datos; sin tabla propia).</summary>
+    public const string FleetDocument = "FLEET_DOCUMENT";
+    /// <summary>Tarifas del chofer (entrega, intento, viaje) y política de pago del tenant.</summary>
+    public const string DriverRate = "DRIVER_RATE";
+    public const string DriverTrip = "DRIVER_TRIP";
+    public const string DispatchZone = "DISPATCH_ZONE";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -374,6 +405,8 @@ public static class NumberKinds
     public const string Invoice = "INVOICE";
     public const string Package = "PACKAGE";
     public const string PackBatch = "PACKBATCH";
+    /// <summary>Lote 4: número de orden de trabajo OT-##### (uno por tenant, ClientId NULL).</summary>
+    public const string WorkOrder = "WORKORDER";
 }
 
 public static class ModuleKeys
@@ -391,4 +424,101 @@ public static class ModuleKeys
     public const string Catalog = "CATALOG";
     public const string Analytics = "ANALYTICS";
     public const string System = "SYSTEM";
+}
+
+// ---------------- Lote 4 — Flota, choferes y mantenimiento ----------------
+
+/// <summary>Dominio VehicleStatus: ACTIVE (inicial) ↔ MAINTENANCE (lateral); INACTIVE terminal (baja definitiva).</summary>
+public static class VehicleStatuses
+{
+    public const string Active = "ACTIVE";
+    public const string Maintenance = "MAINTENANCE";
+    public const string Inactive = "INACTIVE";
+}
+
+/// <summary>Dominio DriverStatus: ACTIVE (inicial) ↔ UNAVAILABLE (lateral); INACTIVE terminal ('Eliminar chofer').</summary>
+public static class DriverStatuses
+{
+    public const string Active = "ACTIVE";
+    public const string Unavailable = "UNAVAILABLE";
+    public const string Inactive = "INACTIVE";
+}
+
+/// <summary>Dominio WorkOrderStatus: OPEN (inicial) → IN_PROGRESS → CLOSED; CANCELLED terminal.</summary>
+public static class WorkOrderStatuses
+{
+    public const string Open = "OPEN";
+    public const string InProgress = "IN_PROGRESS";
+    public const string Closed = "CLOSED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio DriverTripStatus: OPEN (inicial, por liquidar) → SETTLED (Lote 9) | CANCELLED.</summary>
+public static class DriverTripStatuses
+{
+    public const string Open = "OPEN";
+    public const string Settled = "SETTLED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>LookupDomains.MaintenanceTrigger: por kilometraje, por tiempo o ambos (el peor).</summary>
+public static class MaintenanceTriggers
+{
+    public const string Mileage = "MILEAGE";
+    public const string Time = "TIME";
+    public const string Both = "BOTH";
+}
+
+/// <summary>LookupDomains.MaintenanceType.</summary>
+public static class MaintenanceTypes
+{
+    public const string Preventive = "PREVENTIVE";
+    public const string Corrective = "CORRECTIVE";
+}
+
+/// <summary>LookupDomains.DriverPayoutFormula: los tres modelos de pago a choferes (DriverPayoutRules.Compute).</summary>
+public static class DriverPayoutFormulas
+{
+    public const string DeliveryPlusAttempts = "DELIVERY_PLUS_ATTEMPTS";
+    public const string DeliveryIncludesFirst = "DELIVERY_INCLUDES_FIRST";
+    public const string FailedReplacesDelivery = "FAILED_REPLACES_DELIVERY";
+}
+
+/// <summary>
+/// Clase de documento de flota (panel 'Documentos por vencer'): los tipos de VehicleDocType en un vehículo; LICENSE o
+/// CERTIFICATION en un chofer.
+/// </summary>
+public static class FleetDocumentKinds
+{
+    public const string Registration = "REGISTRATION";
+    public const string Insurance = "INSURANCE";
+    public const string Inspection = "INSPECTION";
+    public const string Permit = "PERMIT";
+    public const string License = "LICENSE";
+    public const string Certification = "CERTIFICATION";
+}
+
+/// <summary>Dueño de un documento de flota.</summary>
+public static class FleetOwnerKinds
+{
+    public const string Vehicle = "VEHICLE";
+    public const string Driver = "DRIVER";
+}
+
+/// <summary>Estado de vencimiento de un documento (FleetRules.ExpiryState).</summary>
+public static class ExpiryStates
+{
+    public const string Expired = "EXPIRED";
+    public const string Expiring = "EXPIRING";
+    public const string Ok = "OK";
+    public const string NoExpiry = "NO_EXPIRY";
+}
+
+/// <summary>Estado del mantenimiento preventivo: Al día / Por vencer / Vencido / Sin historial.</summary>
+public static class MaintenanceDueStates
+{
+    public const string Ok = "OK";
+    public const string DueSoon = "DUE_SOON";
+    public const string Overdue = "OVERDUE";
+    public const string NoBaseline = "NO_BASELINE";
 }

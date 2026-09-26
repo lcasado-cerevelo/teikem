@@ -47,6 +47,17 @@ public static class EffectiveDated
     }
 
     /// <summary>
+    /// Recorte de vigencia a una fecha (Lote 4, baja definitiva del chofer): deja la fila sin vigencia a partir de 'date'.
+    /// Una fila abierta o cerrada después de 'date' queda con EffectiveTo = max(date, EffectiveFrom) (una fila que nacía
+    /// después queda de longitud cero, nunca con EffectiveTo &lt; EffectiveFrom). Una fila ya cerrada en 'date' o antes no se toca.
+    /// </summary>
+    public static void CutOffAt(IEffectiveDated row, DateOnly date)
+    {
+        if (row.EffectiveTo is not null && row.EffectiveTo.Value <= date) return;
+        row.EffectiveTo = date < row.EffectiveFrom ? row.EffectiveFrom : date;
+    }
+
+    /// <summary>
     /// Valida que una versión nueva pueda abrirse en newFrom sobre la fila abierta: newFrom &gt;= EffectiveFrom.
     /// El mismo día está permitido (la fila anterior queda de longitud cero, como historial).
     /// </summary>

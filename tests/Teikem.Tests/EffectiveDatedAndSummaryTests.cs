@@ -144,6 +144,28 @@ public class EffectiveDatedIntervalGuardTests
         EffectiveDated.CloseNotBefore(alreadyClosed, Today);
         Assert.Equal(Today.AddDays(-5), alreadyClosed.EffectiveTo); // una fila cerrada no se toca
     }
+
+    [Fact]
+    public void CutOffAt_leaves_no_rate_current_after_the_date()
+    {
+        // Lote 4 (baja definitiva del chofer): toda tarifa viva queda cerrada hoy, incluidas las cerradas a futuro.
+        var open = new Row { EffectiveFrom = Today.AddDays(-30), EffectiveTo = null };
+        EffectiveDated.CutOffAt(open, Today);
+        Assert.Equal(Today, open.EffectiveTo);
+
+        var closedInFuture = new Row { EffectiveFrom = Today.AddDays(-30), EffectiveTo = Today.AddDays(10) };
+        EffectiveDated.CutOffAt(closedInFuture, Today);
+        Assert.Equal(Today, closedInFuture.EffectiveTo);
+        Assert.False(EffectiveDated.IsCurrentOn(closedInFuture, Today.AddDays(1)));
+
+        var bornLater = new Row { EffectiveFrom = Today.AddDays(3), EffectiveTo = Today.AddDays(10) };
+        EffectiveDated.CutOffAt(bornLater, Today);
+        Assert.Equal(Today.AddDays(3), bornLater.EffectiveTo); // longitud cero, nunca EffectiveTo < EffectiveFrom
+
+        var closedBefore = new Row { EffectiveFrom = Today.AddDays(-30), EffectiveTo = Today.AddDays(-5) };
+        EffectiveDated.CutOffAt(closedBefore, Today);
+        Assert.Equal(Today.AddDays(-5), closedBefore.EffectiveTo); // ya cerrada antes: sin cambio
+    }
 }
 
 public class BillingModelSummaryTests

@@ -101,6 +101,17 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             CanConfirm: status.IsInitial && order.IsActive,
             CanReprice: canReprice);
 
+        // Lote 4 (P7): chofer asignado = el del DriverTrip vigente (IsActive = 1) de la orden; solo identidad, nunca montos.
+        var orderId = order.TransportOrderId;
+        var assigned = !order.IsSpecialDelivery
+            ? null
+            : await (from t in db.DriverTrips.AsNoTracking()
+                     join d in db.Drivers.AsNoTracking() on t.DriverId equals d.DriverId
+                     where t.TransportOrderId == orderId && t.IsActive
+                     orderby t.DriverTripId descending
+                     select new { d.PublicId, d.EmployeeCode, d.FullName })
+                .FirstOrDefaultAsync(ct);
+
         return new OrderDetailDto(
             order.TransportOrderId, order.PublicId, order.OrderNumber, order.ClientInvoiceNumber, order.PackBatchNumber,
             client.PublicId, client.Name, contractPublicId,
@@ -119,7 +130,10 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             order.RequestedDate, order.PromisedDate, order.Notes,
             capabilities,
             order.IsActive, order.CreatedAtUtc, order.UpdatedAtUtc,
-            Convert.ToBase64String(order.RowVersion ?? Array.Empty<byte>()));
+            Convert.ToBase64String(order.RowVersion ?? Array.Empty<byte>()),
+            AssignedDriverPublicId: assigned?.PublicId,
+            AssignedDriverCode: assigned?.EmployeeCode,
+            AssignedDriverName: assigned?.FullName);
     }
 
     // ---------------------------------------------------------------- listado paginado

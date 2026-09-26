@@ -92,6 +92,8 @@ GO
     ('GeocodeAccuracy',1,'Precisión de geocodificación','Geocode accuracy'),
     ('AggregateFn',1,'Función de agregación','Aggregate function'),('BusinessModule',1,'Módulo de negocio','Business module'),
     ('DateRangeMode',1,'Rango de fecha','Date range'),('PackageType',1,'Tipo de paquete','Package type'),
+    -- Lote 4 — Flota, choferes y mantenimiento (pago a choferes)
+    ('DriverPayoutFormula',1,'Fórmula de pago a choferes','Driver payout formula'),
     -- Status
     ('ClientStatus',2,'Estatus de cliente','Client status'),('ContractStatus',2,'Estatus de contrato','Contract status'),
     ('OrderStatus',2,'Estatus de orden','Order status'),('StopStatus',2,'Estatus de parada','Stop status'),
@@ -113,7 +115,9 @@ GO
     ('RentalAssetStatus',2,'Estatus del equipo','Asset status'),('RentalContractStatus',2,'Estatus del contrato de alquiler','Rental contract status'),('RentalChargeStatus',2,'Estatus del cargo de alquiler','Rental charge status'),
     ('PurchaseOrderStatus',2,'Estatus de la orden de compra','Purchase order status'),
     -- Lote 3 — Órdenes de transporte (importador)
-    ('ImportBatchStatus',2,'Estatus de lote de importación','Import batch status')
+    ('ImportBatchStatus',2,'Estatus de lote de importación','Import batch status'),
+    -- Lote 4 — Flota, choferes y mantenimiento (viaje pagado al chofer)
+    ('DriverTripStatus',2,'Estatus de viaje de chofer','Driver trip status')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -259,7 +263,16 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('Capability','EDIT_CONTRACT','Editar contrato','Edit contract',6),
 -- Lote 3 — Órdenes de transporte: historial del ciclo COD (separado del de OrderStatus) y de las paradas; importador de órdenes
 ('EntityType','ORDER_COD','COD de la orden','Order COD',57),('EntityType','ORDER_STOP','Parada de orden','Order stop',58),
-('EntityType','IMPORT_TEMPLATE','Plantilla de importación','Import template',59),('EntityType','IMPORT_BATCH','Lote de importación','Import batch',60);
+('EntityType','IMPORT_TEMPLATE','Plantilla de importación','Import template',59),('EntityType','IMPORT_BATCH','Lote de importación','Import batch',60),
+-- Lote 4 — Flota, choferes y mantenimiento: fórmulas de pago a choferes, entidades auditables nuevas (la orden de trabajo
+-- reutiliza 'WORK_ORDER', ya sembrado arriba; no se crea MAINTENANCE_WORK_ORDER) y capacidad de edición de la OT
+('DriverPayoutFormula','DELIVERY_PLUS_ATTEMPTS','Entrega + cada intento','Delivery + each attempt',1),
+('DriverPayoutFormula','DELIVERY_INCLUDES_FIRST','La entrega incluye el 1er intento','Delivery includes 1st attempt',2),
+('DriverPayoutFormula','FAILED_REPLACES_DELIVERY','Intento fallido reemplaza a entrega','Failed attempt replaces delivery',3),
+('EntityType','MAINTENANCE_SCHEDULE','Programa de mantenimiento','Maintenance schedule',61),('EntityType','FUEL_LOG','Carga de combustible','Fuel log',62),
+('EntityType','FLEET_DOCUMENT','Documento de flota','Fleet document',63),('EntityType','DRIVER_RATE','Tarifa de chofer','Driver rate',64),
+('EntityType','DRIVER_TRIP','Viaje de chofer','Driver trip',65),('EntityType','DISPATCH_ZONE','Zona de despacho','Dispatch zone',66),
+('Capability','EDIT_WORK_ORDER','Editar orden de trabajo','Edit work order',7);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -350,7 +363,9 @@ INSERT INTO #S VALUES
 -- Compras: estatus de la orden de compra al proveedor
 ('PurchaseOrderStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),('PurchaseOrderStatus','SENT','Enviada','Sent',@PIPE,2,'#3B82F6',0),('PurchaseOrderStatus','PARTIAL','Recibida parcial','Partially received',@PIPE,3,'#F59E0B',0),('PurchaseOrderStatus','RECEIVED','Recibida','Received',@TERM,4,'#10B981',0),('PurchaseOrderStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0),
 -- Lote 3 — Órdenes de transporte: lote del importador (validar → confirmar; descartar)
-('ImportBatchStatus','VALIDATED','Validado','Validated',@PIPE,1,'#9CA3AF',1),('ImportBatchStatus','CONFIRMED','Confirmado','Confirmed',@PIPE,2,'#059669',0),('ImportBatchStatus','DISCARDED','Descartado','Discarded',@TERM,3,'#6B7280',0);
+('ImportBatchStatus','VALIDATED','Validado','Validated',@PIPE,1,'#9CA3AF',1),('ImportBatchStatus','CONFIRMED','Confirmado','Confirmed',@PIPE,2,'#059669',0),('ImportBatchStatus','DISCARDED','Descartado','Discarded',@TERM,3,'#6B7280',0),
+-- Lote 4 — viaje pagado al chofer: OPEN (por liquidar) → SETTLED (Lote 9) | CANCELLED
+('DriverTripStatus','OPEN','Por liquidar','Open',@PIPE,1,'#9CA3AF',1),('DriverTripStatus','SETTLED','Liquidado','Settled',@TERM,2,'#059669',0),('DriverTripStatus','CANCELLED','Cancelado','Cancelled',@TERM,3,'#6B7280',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -414,6 +429,27 @@ WHEN NOT MATCHED THEN
 GO
 
 /* -------------------------------------------------------------------------
+   3D) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 4, WORK_ORDER
+       EDIT_WORK_ORDER no permitido en órdenes de trabajo CLOSED/CANCELLED (el
+       tenant lo puede cambiar desde /status/capabilities/WORK_ORDER).
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='WORK_ORDER'
+      AND s.Entity='WorkOrderStatus' AND s.InternalCode IN ('CLOSED','CANCELLED')
+      AND c.Entity='Capability' AND c.InternalCode='EDIT_WORK_ORDER'
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+
+/* -------------------------------------------------------------------------
    4) PERMISOS  (vocabulario de la app — sembrado desde código)
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#P') IS NOT NULL DROP TABLE #P;
@@ -444,7 +480,11 @@ INSERT INTO #P VALUES
 ('contracts.read','CLIENTS','Ver contratos y tarifas','View contracts & rates'),('contracts.create','CLIENTS','Crear contratos','Create contracts'),('contracts.update','CLIENTS','Editar contratos y tarifas','Edit contracts & rates'),
 ('portalusers.manage','CLIENTS','Administrar usuarios de portal del cliente','Manage client portal users'),
 -- Lote 3 — Órdenes de transporte (ajuste C: crédito excedido = aviso + autorización con permiso)
-('orders.credit_override','ORDERS','Autorizar órdenes sobre el límite de crédito','Authorize orders over credit limit');
+('orders.credit_override','ORDERS','Autorizar órdenes sobre el límite de crédito','Authorize orders over credit limit'),
+-- Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación de choferes, R8)
+('fleet.view','FLEET','Ver flota y choferes','View fleet & drivers'),
+('driverpay.view','FLEET','Ver tarifas y viajes de choferes','View driver rates & trips'),
+('driverpay.manage','FLEET','Gestionar tarifas y viajes de choferes','Manage driver rates & trips');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -479,18 +519,21 @@ CREATE TABLE #RP (RoleName NVARCHAR(80), PermCode NVARCHAR(80));
 INSERT INTO #RP SELECT 'TenantAdmin', Code FROM #P;
 -- Dispatcher
 INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create'),('Dispatcher','orders.edit'),('Dispatcher','orders.cancel'),('Dispatcher','trips.plan'),('Dispatcher','trips.dispatch'),('Dispatcher','trips.optimize'),
-('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create');   -- Lote 2
+('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create'),   -- Lote 2
+('Dispatcher','fleet.view');   -- Lote 4
 -- Billing
 INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
 ('Billing','clients.read'),('Billing','contracts.read'),   -- Lote 2
-('Billing','orders.credit_override');   -- Lote 3
+('Billing','orders.credit_override'),   -- Lote 3
+('Billing','driverpay.view');   -- Lote 4
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive');
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
 INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
-('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read');   -- Lote 2
+('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read'),   -- Lote 2
+('ReadOnly','fleet.view');   -- Lote 4
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -527,5 +570,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT y TRANSPORT_ORDER), permisos (49), roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER y WORK_ORDER), permisos (52), roles plantilla y zonas de despacho demo.';
 GO
