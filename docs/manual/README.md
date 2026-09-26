@@ -32,6 +32,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    entrega, por intento, por viaje) y política de pago con vista previa, viajes pagados al chofer, la entrega
    especial con chofer (extiende el Lote 3), estatus y transiciones, permisos y módulos, fuentes de análisis y
    auditoría.
+5. [05 — Trips y rutas](05-trips-y-rutas.md): planificación diaria (alta con numeración y chofer/salida por
+   defecto, ficha, edición de cabecera, eliminar ruta, reasignación en bloque), consolidación de órdenes en la
+   ruta y lista "Sin asignar", optimización en tres fases (motor HEURISTIC), reordenamiento manual y pin por
+   parada, despacho y salida (extiende la costura del futuro Lote 7), zonas de despacho por código postal/rango/
+   municipio (extiende el Lote 4), estación de escaneo Outbound, "Planificar el día", monitor de rutas, estatus y
+   transiciones, permisos y módulos, fuentes de análisis y auditoría.
 
 ## Preguntas frecuentes
 

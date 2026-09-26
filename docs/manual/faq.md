@@ -1007,43 +1007,374 @@ registro de historial propio, con el mismo comentario ("Entrega especial asignad
 
 ## Lote 5 — Trips y rutas
 
-### Corridas de optimización
+### Números y alta de la ruta
 
-**¿Por qué `POST /api/v1/contacts/OPTIMIZATION_RUN/{id}` o `PUT /api/v1/custom-fields/values/OPTIMIZATION_RUN/{id}` responden 404 aunque la corrida existe?**
-Las corridas de optimización son una bitácora de **solo lectura**: se consultan con `GET /api/v1/trips/{publicId}/optimization-runs`
-(permiso `trips.view`), pero no admiten contactos ni valores de campos personalizados por id suelto. Para esos endpoints
-toda corrida responde **404** (`OPTIMIZATION_RUN` usa el resolver cerrado, igual que `DRIVER_RATE` y `FLEET_DOCUMENT`),
-exista o no: así nadie puede escribir sobre una corrida ni averiguar qué ids existen. En campos personalizados, quien no
-tiene `trips.view` recibe antes **403** ("Falta el permiso 'trips.view'."), también sin revelar si la corrida existe.
-Si necesitas anotar algo sobre una optimización, hazlo en la ruta (`TRIP`), que sí admite contactos y campos
-personalizados con el permiso `trips.plan`.
+**¿Qué significa "Indique la fecha de la ruta."? (400)**
+`POST /api/v1/trips`, `PATCH /api/v1/trips/{publicId}` (cuando cambia la fecha), `POST /api/v1/trips/reassign-zone`
+y `POST /api/v1/trips/plan-day` exigen `planDate`. Envíala en formato fecha (`"2026-09-28"`).
+
+**¿Qué significa "La fecha de la ruta no puede ser anterior a ayer ni posterior a 60 días."? (400)**
+La fecha del plan solo se acepta entre ayer y hoy + 60 días. No se pueden crear ni mover rutas a fechas muy
+lejanas en el pasado o en el futuro. Corrige `planDate` (o `dispatchZoneIds`/`planDate` de "Planificar el día").
+
+**¿Qué significa "La hora de salida debe caer en la fecha de la ruta (±12 h por zona horaria)."? (400)**
+`plannedStartUtc` debe caer dentro de la fecha del plan, con un margen de 12 horas hacia atrás y hacia adelante
+(para cubrir zonas horarias). Si no envías nada, la ruta usa 12:00 UTC (08:00 hora de Puerto Rico) de esa fecha.
+
+**¿Qué significa "Ya existe una ruta con ese número."? (409)**
+Dos altas simultáneas chocaron en el número consecutivo (muy raro: el contador se bloquea internamente hasta el
+commit). Reintenta la solicitud; el sistema le dará el siguiente número disponible.
+
+**¿Por qué mi `POST /api/v1/trips` con zona pero sin chofer no trae ningún chofer asignado?**
+El chofer "estándar" de la zona solo se asigna si hay **exactamente un** chofer activo con esa zona como zona
+primaria y está disponible ese día, y el módulo `CATALOG` está encendido. Si hay cero, dos o más choferes con esa
+zona primaria, o el único candidato no está disponible, la ruta nace sin chofer (no es un error) y lo asignas a
+mano con `PATCH`.
 
 ### Cabecera de la ruta, reasignación y planificación del día
 
-**¿Qué significa "Una ruta despachada debe conservar chofer, vehículo y hora de salida; cámbielos en lugar de quitarlos."? (422)**
-Tu compañía habilitó la capacidad `EDIT_TRIP` en `DISPATCHED` o `IN_PROGRESS`, así que la cabecera de una ruta despachada
-se puede corregir (por ejemplo, cambiar el chofer si el camión se averió). Pero una ruta despachada **no se puede quedar sin
-chofer, sin vehículo ni sin hora de salida**: el chofer ya la ve en su app y las ETAs dependen de la salida. En el
-`PATCH /api/v1/trips/{publicId}` envía el chofer, el vehículo o la hora **nuevos** (`driverPublicId`, `vehiclePublicId`,
-`plannedStartUtc`) en lugar de `clearDriver`, `clearVehicle` o `clearPlannedStart`. Por la misma razón, registrar la salida
-(`POST /trips/{publicId}/start`) de una ruta sin chofer o sin vehículo responde 422 "La ruta … no se puede despachar: …".
+**¿Qué significa "El número de la ruta se fija al crearlo; no se puede cambiar."? (400)**
+El `PATCH /api/v1/trips/{publicId}` no acepta `code` ni `tripCode` en el cuerpo. Quita esa llave del JSON; el
+número no se edita nunca.
 
-**¿Por qué la reasignación en bloque (`POST /api/v1/trips/reassign-zone`) no cambió el chofer de algunas rutas abiertas?**
-La reasignación solo toca las rutas **abiertas** (DRAFT o PLANNED, activas) de esas zonas y esa fecha, y además respeta la
-capacidad `EDIT_TRIP`: si tu compañía la negó para el estatus de una ruta (`/status/capabilities/TRIP`), esa ruta se omite,
-igual que las ya despachadas, porque tampoco se le podría cambiar el chofer con un `PATCH`. La respuesta lista en `trips`
-solo las rutas actualizadas y `tripsUpdated` las cuenta (puede ser 0, con 200). Si necesitas reasignarlas, vuelve a
-permitir `EDIT_TRIP` en ese estatus.
+**¿Qué significa "El estatus de la ruta cambia con sus acciones (optimizar, despachar, eliminar)."? (400)**
+No existe un `PATCH` que cambie el estatus directamente (`status`/`statusCode`/`toCode`): el estatus se mueve
+optimizando, despachando, registrando la salida o eliminando la ruta. Quita esas llaves del cuerpo.
+
+**¿Qué significa "Ese campo no se puede modificar."? (400)**
+El cuerpo del `PATCH` trae `tenantId`, `version`, `routeVersion` u `originWarehouseId`: ninguno se edita por esta
+vía. El tenant sale de tu sesión; la versión de la ruta cambia solo al optimizar.
+
+**¿Qué significan "Indique el chofer o quítelo, no ambos.", "Indique el vehículo o quítelo, no ambos.", "Indique
+la zona o quítela, no ambas." e "Indique la hora de salida o quítela, no ambas."? (400)**
+Enviaste a la vez el valor nuevo (`driverPublicId`, `vehiclePublicId`, `dispatchZoneId`, `plannedStartUtc`) y su
+bandera de "quitar" (`clearDriver`, `clearVehicle`, `clearZone`, `clearPlannedStart`). Envía solo uno de los dos.
+
+**¿Qué significa "Una ruta despachada debe conservar chofer, vehículo y hora de salida; cámbielos en lugar de
+quitarlos."? (422)**
+Tu compañía habilitó la capacidad `EDIT_TRIP` en `DISPATCHED` o `IN_PROGRESS`, así que la cabecera de una ruta
+despachada se puede corregir (por ejemplo, cambiar el chofer si el camión se averió). Pero una ruta despachada
+**no se puede quedar sin chofer, sin vehículo ni sin hora de salida**: el chofer ya la ve en su app y las ETAs
+dependen de la salida. En el `PATCH /api/v1/trips/{publicId}` envía el chofer, el vehículo o la hora **nuevos**
+(`driverPublicId`, `vehiclePublicId`, `plannedStartUtc`) en lugar de `clearDriver`, `clearVehicle` o
+`clearPlannedStart`. Por la misma razón, registrar la salida (`POST /trips/{publicId}/start`) de una ruta sin
+chofer o sin vehículo responde 422 "La ruta … no se puede despachar: …".
+
+**¿Qué significa "La fecha y la zona de una ruta despachada no se cambian."? (422)**
+Aunque tu compañía habilitó `EDIT_TRIP` para el estatus actual de la ruta, la fecha del plan y la zona de despacho
+de una ruta **ya despachada** nunca se editan (cambiarían por completo el sentido de la ruta). Si necesitas mover
+las entregas a otro día o zona, crea o usa otra ruta.
+
+**¿Por qué la reasignación en bloque (`POST /api/v1/trips/reassign-zone`) no cambió el chofer de algunas rutas
+abiertas?**
+La reasignación solo toca las rutas **abiertas** (`DRAFT` o `PLANNED`, activas) de esas zonas y esa fecha, y además
+respeta la capacidad `EDIT_TRIP`: si tu compañía la negó para el estatus de una ruta
+(`/status/capabilities/TRIP`), esa ruta se omite, igual que las ya despachadas, porque tampoco se le podría cambiar
+el chofer con un `PATCH`. La respuesta lista en `trips` solo las rutas actualizadas y `tripsUpdated` las cuenta
+(puede ser 0, con 200). Si necesitas reasignarlas, vuelve a permitir `EDIT_TRIP` en ese estatus.
+
+**¿Qué significan "Indique al menos una zona.", "Máximo 50 zonas por reasignación." e "Indique el chofer."? (400)**
+`POST /api/v1/trips/reassign-zone` exige `dispatchZoneIds` con al menos una zona (máximo 50) y `driverPublicId`.
+Completa el que falte.
 
 **¿Qué significa "La ruta {código} está cerrada; solo se consulta."? (422)**
-La ruta fue eliminada (`CANCELLED`, `isActive: false`) o ya terminó (`COMPLETED`). No admite `PATCH`, agregar órdenes ni un
-segundo `DELETE`; su ficha sigue disponible para consulta. En el listado `GET /api/v1/trips` las rutas eliminadas no
-aparecen salvo que pidas `includeCancelled=true` o filtres `status=CANCELLED`.
+La ruta fue eliminada (`CANCELLED`, `isActive: false`) o ya terminó (`COMPLETED`). No admite `PATCH`, agregar
+órdenes ni un segundo `DELETE`; su ficha sigue disponible para consulta. En el listado `GET /api/v1/trips` las
+rutas eliminadas no aparecen salvo que pidas `includeCancelled=true` o filtres `status=CANCELLED`.
+
+**¿Qué significa "La ruta {código} ya fue despachada; no se puede editar ni eliminar."? (422)**
+La ruta está `DISPATCHED` o `IN_PROGRESS` y su estatus no tiene la capacidad `EDIT_TRIP` habilitada (el valor de
+fábrica). No admite `PATCH` de cabecera, agregar/quitar órdenes, optimizar, reordenar, pin manual ni `DELETE`.
+Si necesitas corregir el chofer, el vehículo o la hora de salida de una ruta ya despachada, pídele a un
+administrador que habilite `EDIT_TRIP` para ese estatus en `PUT /api/v1/status/capabilities/TRIP`.
 
 **¿Qué significa "Estatus de ruta desconocido: 'X'."? (400)**
-El filtro `status` de `GET /api/v1/trips` lleva un código que no existe en `TripStatus` (DRAFT, PLANNED, DISPATCHED,
-IN_PROGRESS, COMPLETED, CANCELLED). Corrige el código; puedes repetir `status` para filtrar por varios.
+El filtro `status` de `GET /api/v1/trips` lleva un código que no existe en `TripStatus` (`DRAFT`, `PLANNED`,
+`DISPATCHED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`). Corrige el código; puedes repetir `status` para filtrar
+por varios a la vez.
 
-**¿Qué significa "La zona de despacho está inactiva." al planificar el día? (400)**
-Una de las zonas de `dispatchZoneIds` en `POST /api/v1/trips/plan-day` está dada de baja. Quítala de la lista o reactívala.
-Si no envías `dispatchZoneIds`, se planifican **todas las zonas activas** de tu compañía y las inactivas se ignoran sin error.
+**¿Qué significa "La zona de despacho está inactiva." al planificar el día o al crear/editar una ruta? (400)**
+Una de las zonas indicadas está dada de baja. Quítala de la lista o reactívala primero en `dispatch-zones`. En
+"Planificar el día", si no envías `dispatchZoneIds`, se planifican **todas las zonas activas** de tu compañía y
+las inactivas simplemente se ignoran, sin error.
+
+**¿Qué significa "Ruta no encontrada."? (404)**
+El `publicId` no corresponde a ninguna ruta **de tu compañía**, ya sea porque no existe o porque es de otro
+tenant. Por seguridad, ambos casos dan el mismo `404` (nunca se revela si la ruta existe en otra compañía).
+
+### Órdenes en la ruta y lista "Sin asignar"
+
+**¿Qué significa "Indique al menos una orden." y "Agregue como máximo 200 órdenes por solicitud."? (400)**
+`POST /api/v1/trips/{publicId}/orders` exige al menos un `orderPublicIds` y admite como máximo 200 distintos por
+solicitud (los duplicados se colapsan solos). Si necesitas agregar más, hazlo en varias llamadas.
+
+**¿Qué significa "Orden no encontrado."? (404)**
+El `orderPublicId` no es de tu compañía, no existe, está inactivo, o (al quitar) esa orden no está registrada en
+absoluto. Verifica el id; si la orden existe pero no está en ESA ruta, el mensaje es otro (ver abajo).
+
+**¿Qué significa "Hay órdenes que no se pueden asignar a la ruta."? (422)**
+Al agregar varias órdenes de una vez, **una sola** que no sea elegible rechaza la solicitud **completa** (nada se
+agrega): revisa `errors`, que trae el número de cada orden problemática y su motivo exacto (ver la tabla de
+elegibilidad más abajo). Quita esas órdenes de la solicitud, o resuelve su causa (confírmalas, sácalas de un
+lateral, etc.) y vuelve a intentar.
+
+**¿Cuáles son los motivos exactos por los que una orden no es elegible para una ruta?**
+- `La orden está en Entrada; confírmela antes de asignarla a una ruta.` — todavía está en `DRAFT` (etapa inicial).
+- `Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho.` — usa
+  `POST /api/v1/orders/{publicId}/driver` (capítulo 04).
+- `La orden está en '{estatus}'; regrésela al pipeline antes de asignarla a una ruta.` — está en un lateral
+  (`ON_HOLD`, `PARTIAL`, `FAILED`, …); primero regrésala al pipeline normal.
+- `La orden ya salió a ruta o terminó; no se puede asignar a otra ruta.` — está inactiva, en una etapa terminal, o
+  ya llegó a `IN_TRANSIT` o después.
+- `El estatus actual no permite la acción 'ASSIGN_TRIP'.` — tu compañía apagó esa capacidad para ese estatus
+  (`PUT /api/v1/status/capabilities/TRANSPORT_ORDER`).
+- `La orden no tiene una parada de entrega pendiente.` — no le queda ninguna parada `DELIVERY` sin terminar.
+
+**¿Qué significa "La orden ya está en esta ruta."? (409)**
+Intentaste agregar una orden que ya tiene una parada vigente en la misma ruta. No hay nada que hacer; ya está.
+
+**¿Qué significa "La orden ya está asignada a la ruta {código}."? (409)**
+La orden ya tiene una ruta vigente **distinta** de la que estás editando. Quítala de esa ruta primero
+(`DELETE .../orders/{orderPublicId}`) si quieres moverla a otra.
+
+**¿Qué significa "La orden ya está asignada a otra ruta." al agregar una orden? (409)**
+Dos altas simultáneas a la misma orden (en rutas distintas, o desde el escaneo Outbound y Sala de despacho a la
+vez) chocaron; la que llegó primero ganó. Recarga la lista "Sin asignar" y repite si aún la necesitas en tu ruta.
+
+**¿Qué significa "Una ruta admite como máximo 300 paradas."? (400)**
+Es el tope técnico duro de este lote. Divide la carga en dos rutas si necesitas más de 300 paradas.
+
+**¿Qué significa "La orden no está en esta ruta."? (404)**
+Intentaste quitar (`DELETE .../orders/{orderPublicId}`) una orden que no tiene una parada vigente en ESA ruta
+(puede estar en otra ruta, o en ninguna). Verifica en qué ruta está realmente antes de quitarla.
+
+**¿Qué significa "Use dispatchZoneId o noZone, no ambos."? (400)**
+El filtro de "Sin asignar" (`GET /api/v1/trips/unassigned-orders`) no acepta `dispatchZoneId` y `noZone=true` a la
+vez: usa uno u otro.
+
+**¿Qué significa "El rango de fechas es inválido." en "Sin asignar"? (400)**
+`requestedFrom` es posterior a `requestedTo`. Corrige el orden del rango.
+
+### Optimización, secuencia manual y pin por parada
+
+**¿Qué significa "La ruta no tiene paradas que optimizar."? (422)**
+La versión vigente de la ruta no tiene ninguna orden asignada. Agrega al menos una orden antes de optimizar; no se
+crea ninguna corrida cuando pasa esto.
+
+**¿Qué significa "La ruta cambió mientras se optimizaba; vuelva a optimizar."? (409)**
+La optimización corre en tres fases y el motor calcula **sin bloquear la ruta**: entre que empezó y que terminó,
+alguien más la modificó (agregó/quitó una orden, la reordenó a mano, la editó, u otra optimización llegó primero).
+La corrida queda registrada con `ERROR`. Simplemente vuelve a pedir `POST .../optimize`: como la ruta ya está en
+su estado más reciente, la nueva corrida sí debería aplicar.
+
+**¿Qué significa "El optimizador no pudo calcular la ruta; la corrida quedó registrada con error."? (409)**
+El motor (`HEURISTIC`) lanzó un error interno, tardó más de 60 segundos, o devolvió un resultado que no pasó las
+validaciones (por ejemplo, una parada repetida o ajena a la solicitud). Consulta
+`GET /api/v1/trips/{publicId}/optimization-runs` para ver el detalle técnico (`errorMessage`) y vuelve a intentar;
+si persiste, es un caso para soporte.
+
+**¿Qué significa "La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir."? (400)**
+`PUT /api/v1/trips/{publicId}/route/sequence` exige que `routeStopIds` sea una **permutación exacta** de las
+paradas de la versión vigente de esa ruta: ni de más, ni de menos, ni repetidas, ni de otra ruta (u otra versión ya
+archivada). Pide primero la ficha (`GET .../{publicId}`) para tomar los `id` correctos de `stops`.
+
+**¿Qué significan "Indique la latitud y la longitud.", "La latitud debe estar entre -90 y 90." y "La longitud
+debe estar entre -180 y 180."? (400)**
+`PUT /api/v1/trips/{publicId}/stops/{routeStopId}/location` exige `lat` y `lng` numéricos dentro de rango. Revisa
+que no estén invertidos (latitud y longitud al revés es el error más común).
+
+**¿Qué significa "Parada no encontrada en esta ruta."? (404)**
+El `routeStopId` no pertenece a la versión **vigente** de esa ruta (es de otra ruta, de otro tenant, o de una
+versión ya archivada por una optimización posterior). Vuelve a pedir la ficha para tomar los ids vigentes.
+
+**¿Por qué después de fijar el pin manual de una parada cambiaron las ETAs de las paradas siguientes?**
+El pin manual recalcula toda la ruta con la nueva coordenada (misma fórmula que la optimización: haversine × 1.3 a
+35 km/h), así que los tramos y horarios posteriores a esa parada se ajustan. Es el comportamiento esperado.
+
+### Despacho y salida
+
+**¿Qué significa "La ruta {código} no se puede despachar: {motivos}."? (422)**
+El despacho tiene uno o más **bloqueantes** activos; `errors` trae el código de cada uno (`NO_DRIVER`,
+`NO_VEHICLE`, `NO_STOPS`, `DRIVER_UNAVAILABLE`, `VEHICLE_UNAVAILABLE`, `ORDER_NOT_ELIGIBLE`) con su mensaje. Antes
+de despachar, revisa `GET /api/v1/trips/dispatchable` o la ficha de la ruta (`issues`) para ver exactamente qué
+falta: asignar chofer/vehículo, resolver la disponibilidad, agregar paradas o resolver la orden no elegible
+(sección de elegibilidad de arriba).
+
+**¿Qué significa "El pipeline de rutas de esta compañía no tiene habilitada la etapa DISPATCHED." (o "ACTIVE")? (422)**
+Tu compañía deshabilitó esa etapa en `PUT /api/v1/status/capabilities` o en el pipeline de `TripStatus`/
+`RouteStatus`. Sin `DISPATCHED` habilitado no se puede despachar ninguna ruta; sin `ACTIVE` la versión de la ruta
+no puede congelarse al despachar. Vuelve a habilitar la etapa si necesitas usar el despacho.
+
+**¿Qué significa "Orden {número}: {motivo}" al despachar? (422)**
+Una orden que estaba en la ruta dejó de ser elegible entre que se armó el selector y el momento del despacho (por
+ejemplo, alguien la canceló, la mandó a un lateral, o tu compañía le apagó `ASSIGN_TRIP`). El motivo es el mismo
+catálogo de la sección de elegibilidad. Quita esa orden de la ruta o resuelve la causa, y vuelve a despachar.
+
+**¿Qué significa "Seleccione al menos una ruta." y "Máximo 50 rutas por despacho."? (400)**
+El despacho en lote (`POST /api/v1/trips/dispatch`) exige `tripPublicIds` con al menos una ruta, hasta un máximo
+de 50 por solicitud. Divide la selección si necesitas despachar más.
+
+**¿Un id ajeno o inexistente en el despacho en lote hace fallar toda la solicitud?**
+No. El despacho en lote responde siempre `200`; cada ruta se procesa en su propia transacción. Un id que no
+corresponde a ninguna ruta tuya queda en la lista de resultados con `dispatched: false` y
+`error: "Ruta no encontrada."`; las demás rutas del lote se despachan normalmente.
+
+**¿Qué significa "La ruta {código} no está despachada; despáchela antes de registrar su salida."? (422)**
+`POST /api/v1/trips/{publicId}/start` exige que la ruta esté `DISPATCHED`. Si sigue en `DRAFT`/`PLANNED`,
+despáchala primero con `POST .../dispatch`.
+
+**¿Qué significa "La ruta {código} ya salió."? (422)**
+La ruta ya está `IN_PROGRESS`: la salida ya se registró una vez y no se repite. Consulta la ficha para ver
+`actualStartUtc`.
+
+**¿Qué significa "La orden va en la ruta {código} ya despachada; no se puede cancelar mientras la ruta esté en
+curso."? (422)**
+Intentaste cancelar una orden que va en una ruta `DISPATCHED`/`IN_PROGRESS`. Una vez despachada, la ruta y sus
+órdenes quedan comprometidas con el chofer; para resolverlo, coordina con Despacho (quitarla de la ruta requiere
+que la ruta esté abierta, o esperar al cierre en el Lote 7). Si la orden va en una ruta `DRAFT`/`PLANNED`
+(todavía no despachada), cancelarla la libera automáticamente sin este error.
+
+### Zonas de despacho: miembros y resolución "código postal/pueblo → zona"
+
+**¿Qué significa "Indique el criterio de la zona (POSTAL_CODE, POSTAL_RANGE o MUNICIPALITY)." y "Criterio de zona
+desconocido: 'X'."? (400)**
+`POST /api/v1/dispatch-zones/{id}/members` exige `matchType` con uno de esos tres valores exactos (en mayúsculas).
+`POLYGON` existe como catálogo pero todavía no se soporta (ver el siguiente mensaje).
+
+**¿Qué significa "Las zonas por polígono todavía no se soportan; use código postal, rango postal o municipio."? (400)**
+Este lote solo resuelve zonas por código postal exacto, rango postal o municipio. Define el territorio con uno de
+esos tres criterios en su lugar.
+
+**¿Qué significan "Indique el valor del criterio." e "Indique el municipio."? (400)**
+Falta `matchValue` en el alta del miembro de la zona. Para `MUNICIPALITY` el mensaje nombra el municipio
+específicamente; para `POSTAL_CODE`/`POSTAL_RANGE` es el mensaje genérico.
+
+**¿Qué significa "El código postal debe tener 5 dígitos (ej. 00949)."? (400)**
+`matchValue` de un criterio `POSTAL_CODE` no tiene la forma de 5 dígitos. Se acepta el formato ZIP+4
+(`"00949-1234"`), que se recorta automáticamente a los primeros 5 dígitos.
+
+**¿Qué significa "El rango postal debe tener la forma 00900-00999 (inicio menor o igual que el fin)."? (400)**
+`matchValue` de un criterio `POSTAL_RANGE` debe ser dos códigos postales de 5 dígitos separados por un guion, con
+el primero menor o igual que el segundo.
+
+**¿Qué significa "El municipio admite como máximo 120 caracteres."? (400)**
+El nombre del municipio en `matchValue` es demasiado largo. Los municipios se comparan sin acentos ni mayúsculas
+("Bayamón" = "bayamon" = "BAYAMON"), así que no hace falta escribirlos de una forma particular.
+
+**¿Qué significa "La zona ya tiene ese criterio."? (409)**
+Ya existe exactamente ese criterio (mismo tipo y mismo valor normalizado) en la misma zona. No hace falta
+agregarlo de nuevo.
+
+**¿Qué significa "El valor '{v}' ya pertenece a la zona {código}."? (409)**
+Dos zonas **activas** no pueden compartir territorio: el código postal, el rango o el municipio que intentas
+agregar (o que tiene un miembro de una zona que estás reactivando) ya lo cubre otra zona activa. Quita el criterio
+de la otra zona primero, o inactiva la zona dueña, si de verdad el territorio cambió de zona.
+
+**¿Qué significa "Criterio de zona no encontrado."? (404)**
+El `memberId` que intentas borrar no pertenece a ESA zona (`{id}` de la URL): es de otra zona, o de otro tenant.
+Verifica que estás usando el `id` de la zona correcta.
+
+**¿Qué significa "Indique el código postal o el pueblo."? (400)**
+`GET /api/v1/dispatch-zones/resolve` exige al menos uno de `postalCode` o `city`.
+
+**¿Por qué `resolve` devuelve `dispatchZoneId: null` sin dar error?**
+No es un error: significa que ninguna zona activa tiene un miembro que cubra ese código postal ni ese pueblo (o
+que el resultado quedó `ambiguous: true` porque dos zonas empatan en el mismo nivel de precedencia — CP exacto,
+luego rango postal, luego municipio). En ese caso, agrega el criterio que falta a la zona correspondiente, o
+resuelve el empate quitando el criterio de una de las dos zonas.
+
+**¿Qué significa "La zona tiene rutas abiertas; ciérrelas o cámbielas de zona antes de inactivarla."? (409)**
+No se puede inactivar una zona de despacho mientras tenga rutas en `DRAFT`/`PLANNED` (además de la regla ya
+existente del capítulo 04: no se puede inactivar con choferes activos asignados como primaria). Elimina o
+reasigna esas rutas a otra zona primero.
+
+### Estación de escaneo Outbound
+
+**¿Qué significan "Escanee o escriba un código." y "El código no puede exceder 40 caracteres."? (400)**
+`POST /api/v1/scan/outbound` exige `code` no vacío y de hasta 40 caracteres. Vuelve a escanear o escribe el código
+a mano.
+
+**¿Qué significa que el escaneo responda `NOT_FOUND` con "No se encontró la orden."?**
+El código escaneado (número de orden, empaque o factura) no coincide con ninguna orden de tu compañía. Revisa que
+sea el código correcto; el escaneo nunca da `404`, siempre `200` con este resultado tipado.
+
+**¿Qué significa `NOT_FOUND` "Hay varias órdenes con ese código; escanee el empaque."?**
+El código escaneado (por ejemplo, un número de factura del cliente) coincide con **más de una** orden. Escanea en
+su lugar el número de empaque, que sí identifica una sola orden.
+
+**¿Qué significa `ALREADY_ASSIGNED` "Ya estaba en la ruta {código}."?**
+La orden ya tiene una ruta vigente (la misma que le acabas de escanear, u otra). No se vuelve a asignar; el
+resultado solo confirma cuál es su ruta actual. La estación pronuncia "dup" para que el operador sepa que no hace
+falta escanearla de nuevo.
+
+**¿Qué significa `NOT_ELIGIBLE` al escanear una orden?**
+La orden no cumple la elegibilidad para rutas (ver la tabla de motivos de la sección "Órdenes en la ruta"): por
+ejemplo, sigue en Entrada sin confirmar, está en un estatus lateral, o su estatus no tiene `ASSIGN_TRIP`
+habilitado. El mensaje trae el motivo exacto y la estación pronuncia "notfound".
+
+**¿Qué significa `FOUND_UNASSIGNED` "No se pudo resolver la zona de despacho por código postal ni pueblo; queda
+sin asignar."?**
+La dirección de entrega de la orden no coincide con ningún criterio de ninguna zona activa. Agrega un miembro
+(código postal, rango o municipio) a la zona correspondiente; mientras tanto, la orden queda "sin asignar" y se
+puede agregar a mano desde Sala de despacho.
+
+**¿Qué significa `FOUND_UNASSIGNED` "El código postal o pueblo pertenece a varias zonas ({códigos}); queda sin
+asignar."?**
+Dos zonas activas empatan en el mismo nivel de precedencia para esa dirección (por ejemplo, el mismo municipio
+está registrado en dos zonas). Resuelve el empate quitando el criterio de una de las dos zonas.
+
+**¿Qué significa `FOUND_UNASSIGNED` "No hay ruta abierta para la zona {código} en la fecha {fecha}; queda sin
+asignar."?**
+La zona de la orden se resolvió correctamente, pero no hay ninguna ruta `DRAFT`/`PLANNED` de esa zona para esa
+fecha. Crea una ruta para esa zona y fecha (a mano, o con "Planificar el día") y vuelve a escanear: el escaneo
+nunca crea rutas por sí mismo.
+
+### Planificar el día
+
+**¿Qué significa "Máximo 50 zonas por planificación."? (400)**
+`POST /api/v1/trips/plan-day` acepta como máximo 50 zonas en `dispatchZoneIds` por solicitud. Divide la
+planificación en varias llamadas, o no envíes la lista para planificar todas las zonas activas de una vez.
+
+**¿"Planificar el día" crea una ruta nueva por zona cada vez que lo ejecuto?**
+No: es **idempotente**. Si ya hay una ruta abierta (`DRAFT`/`PLANNED`, activa) de esa zona y esa fecha, la
+reutiliza (la de menor número si hubiera más de una) y solo agrega las órdenes que sigan sin ruta vigente.
+Repetirlo varias veces seguidas no crea rutas de más ni duplica órdenes.
+
+**¿Por qué algunas zonas sin órdenes no generan ninguna ruta al planificar el día?**
+Por defecto, "Planificar el día" solo crea una ruta nueva si hay al menos una orden asignable en esa zona. Si
+necesitas que el escaneo Outbound tenga una ruta destino desde temprano aunque todavía no haya órdenes, envía
+`createEmptyTrips: true`.
+
+**¿Qué significa el aviso `CAPACITY_HARD_CAP` "La ruta llegó al máximo de 300 paradas; la orden queda sin
+asignar." en el resultado de "Planificar el día"?**
+No es un error HTTP: es un aviso informativo por zona. Esa orden en particular habría hecho que la ruta pasara de
+300 paradas (el tope técnico), así que se dejó sin asignar; agrégala a mano a otra ruta de la misma zona.
+
+### Monitoreo
+
+**¿Por qué al buscar en el monitor (`GET /api/v1/trips/monitor?search=…`) los totales no cambian?**
+Es a propósito: `totals` siempre refleja **todas** las rutas de la fecha y la zona filtradas, sin importar el
+texto de búsqueda; `search` solo acota la lista `trips` que se muestra. Así el resumen del día no "parpadea" al
+escribir en el buscador.
+
+### Permisos y RBAC
+
+**¿Qué diferencia hay entre `trips.view`, `trips.plan`, `trips.optimize`, `trips.dispatch` y `trips.scan`?**
+`trips.view` es de solo lectura (listado, ficha, "Sin asignar", corridas de optimización, monitor).
+`trips.plan` cubre crear/editar/eliminar la ruta, agregar/quitar órdenes, reordenar, el pin manual, la
+reasignación en bloque y "Planificar el día". `trips.optimize` es exclusivo para lanzar la optimización
+automática. `trips.dispatch` cubre el selector de despacho, despachar y registrar la salida (y también asignar el
+chofer de una entrega especial, capítulo 04). `trips.scan` es solo para la estación de escaneo Outbound. Un rol
+puede tener cualquier combinación; por ejemplo, el Operador de almacén trae `trips.view` y `trips.scan` pero no
+`trips.plan` ni `trips.dispatch`.
+
+**¿Por qué `POST /api/v1/contacts/OPTIMIZATION_RUN/{id}` o `PUT /api/v1/custom-fields/values/OPTIMIZATION_RUN/{id}`
+responden 404 aunque la corrida existe?**
+Las corridas de optimización son una bitácora de **solo lectura**: se consultan con
+`GET /api/v1/trips/{publicId}/optimization-runs` (permiso `trips.view`), pero no admiten contactos ni valores de
+campos personalizados por id suelto. Para esos endpoints toda corrida responde **404**
+(`OPTIMIZATION_RUN` usa el resolver cerrado, igual que `DRIVER_RATE` y `FLEET_DOCUMENT`), exista o no: así nadie
+puede escribir sobre una corrida ni averiguar qué ids existen. En campos personalizados, quien no tiene
+`trips.view` recibe antes **403** ("Falta el permiso 'trips.view'."), también sin revelar si la corrida existe.
+Si necesitas anotar algo sobre una optimización, hazlo en la ruta (`TRIP`), que sí admite contactos y campos
+personalizados con el permiso `trips.plan`.
