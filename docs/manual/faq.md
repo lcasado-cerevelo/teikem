@@ -1017,3 +1017,33 @@ exista o no: así nadie puede escribir sobre una corrida ni averiguar qué ids e
 tiene `trips.view` recibe antes **403** ("Falta el permiso 'trips.view'."), también sin revelar si la corrida existe.
 Si necesitas anotar algo sobre una optimización, hazlo en la ruta (`TRIP`), que sí admite contactos y campos
 personalizados con el permiso `trips.plan`.
+
+### Cabecera de la ruta, reasignación y planificación del día
+
+**¿Qué significa "Una ruta despachada debe conservar chofer, vehículo y hora de salida; cámbielos en lugar de quitarlos."? (422)**
+Tu compañía habilitó la capacidad `EDIT_TRIP` en `DISPATCHED` o `IN_PROGRESS`, así que la cabecera de una ruta despachada
+se puede corregir (por ejemplo, cambiar el chofer si el camión se averió). Pero una ruta despachada **no se puede quedar sin
+chofer, sin vehículo ni sin hora de salida**: el chofer ya la ve en su app y las ETAs dependen de la salida. En el
+`PATCH /api/v1/trips/{publicId}` envía el chofer, el vehículo o la hora **nuevos** (`driverPublicId`, `vehiclePublicId`,
+`plannedStartUtc`) en lugar de `clearDriver`, `clearVehicle` o `clearPlannedStart`. Por la misma razón, registrar la salida
+(`POST /trips/{publicId}/start`) de una ruta sin chofer o sin vehículo responde 422 "La ruta … no se puede despachar: …".
+
+**¿Por qué la reasignación en bloque (`POST /api/v1/trips/reassign-zone`) no cambió el chofer de algunas rutas abiertas?**
+La reasignación solo toca las rutas **abiertas** (DRAFT o PLANNED, activas) de esas zonas y esa fecha, y además respeta la
+capacidad `EDIT_TRIP`: si tu compañía la negó para el estatus de una ruta (`/status/capabilities/TRIP`), esa ruta se omite,
+igual que las ya despachadas, porque tampoco se le podría cambiar el chofer con un `PATCH`. La respuesta lista en `trips`
+solo las rutas actualizadas y `tripsUpdated` las cuenta (puede ser 0, con 200). Si necesitas reasignarlas, vuelve a
+permitir `EDIT_TRIP` en ese estatus.
+
+**¿Qué significa "La ruta {código} está cerrada; solo se consulta."? (422)**
+La ruta fue eliminada (`CANCELLED`, `isActive: false`) o ya terminó (`COMPLETED`). No admite `PATCH`, agregar órdenes ni un
+segundo `DELETE`; su ficha sigue disponible para consulta. En el listado `GET /api/v1/trips` las rutas eliminadas no
+aparecen salvo que pidas `includeCancelled=true` o filtres `status=CANCELLED`.
+
+**¿Qué significa "Estatus de ruta desconocido: 'X'."? (400)**
+El filtro `status` de `GET /api/v1/trips` lleva un código que no existe en `TripStatus` (DRAFT, PLANNED, DISPATCHED,
+IN_PROGRESS, COMPLETED, CANCELLED). Corrige el código; puedes repetir `status` para filtrar por varios.
+
+**¿Qué significa "La zona de despacho está inactiva." al planificar el día? (400)**
+Una de las zonas de `dispatchZoneIds` en `POST /api/v1/trips/plan-day` está dada de baja. Quítala de la lista o reactívala.
+Si no envías `dispatchZoneIds`, se planifican **todas las zonas activas** de tu compañía y las inactivas se ignoran sin error.
