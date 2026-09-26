@@ -1,0 +1,1317 @@
+{
+ "spec": {
+  "entidades": [
+   {
+    "tabla": "Vehicle",
+    "existeEnSql": true,
+    "notas": "Diseño/logistica-db-estructura.sql:1091-1106. Cubre Code, Ownership/FuelType/VehicleType (LookupCode), VIN, odómetro, capacidad MaxWeightKg/MaxVolumeM3/MaxStops, HomeWarehouseId, StatusCodeId, IsActive. Falta PublicId/CreatedAtUtc/RowVersion que sí llevan otras entidades del mismo lote (MaintenanceWorkOrder sí los tiene) — inconsistente con el principio #2/#3 de CLAUDE.md; hay que decidir si se agregan en este lote."
+   },
+   {
+    "tabla": "Driver",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1108-1120. FullName, UserId, EmployeeCode, HireDate, HomeWarehouseId, StatusCodeId, MaxStopsPerRoute (tope de paradas), IsActive. No tiene PublicId/RowVersion/CreatedAtUtc (mismo hueco que Vehicle). No tiene columnas 'Zona'/'Área' como campo simple — el modal del mock (bitácora línea 667) pide 'código, nombre, zona, área y tope de paradas', pero en el esquema la 'zona' real es la tabla puente DriverZone→DispatchZone (capa 12, líneas 1341-1366); 'Área' no tiene equivalente en el SQL (vacío)."
+   },
+   {
+    "tabla": "VehicleDocument",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1385-1394. Doc vencible de vehículo (DocTypeLookupId, ExpiryDate indexado) — alimenta el panel 'Documentos por vencer' (línea 675)."
+   },
+   {
+    "tabla": "DriverLicense",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1451-1459. Doc vencible de chofer (licencia) con ExpiryDate indexado."
+   },
+   {
+    "tabla": "DriverCertification",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1461-1467. Doc vencible de chofer (certificación), sin índice de ExpiryDate a diferencia de DriverLicense/VehicleDocument — inconsistencia menor a revisar. El mock (bitácora línea 675) une 'VEHICLE_DOCS' y 'DRIVER_DOCS' en una sola lista; el SQL no tiene una tabla 'DriverDocument' unificada — la unificación tendría que hacerse en la consulta (UNION de VehicleDocument + DriverLicense + DriverCertification), no en el esquema."
+   },
+   {
+    "tabla": "MaintenanceSchedule",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1396-1407. Por vehículo o por VehicleTypeLookupId, TriggerLookupId (kilometraje/tiempo/ambos), IntervalKm/IntervalDays, LastServiceKm/LastServiceDate — soporta el cálculo de módulo 4 línea 282."
+   },
+   {
+    "tabla": "MaintenanceWorkOrder",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1409-1427. LaborCost/PartsCost/TotalCost (computada), Vendor, OdometerKm, StatusCodeId (WorkOrderStatus: OPEN→IN_PROGRESS→CLOSED/CANCELLED en el seed). Este sí lleva PublicId/IsActive/RowVersion."
+   },
+   {
+    "tabla": "MaintenanceTask",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1429-1435. Tareas de la orden de trabajo con PartCost/LaborCost/IsCompleted."
+   },
+   {
+    "tabla": "FuelLog",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1438-1448. Litros, TotalCost, OdometerKm por vehículo/chofer — el km/L y costo/km (línea 284, 675) se calculan en servicio a partir de lecturas consecutivas, no hay columna computada en SQL."
+   },
+   {
+    "tabla": "FleetAssignment",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1470-1478. Asignación chofer↔vehículo por tipo/fecha; no mencionada explícitamente en las secciones citadas del maestro/bitácora para este lote, pero ya existe en el esquema y es candidata a reutilizarse para 'disponibilidad para despacho' (línea 286)."
+   },
+   {
+    "tabla": "DriverZone / DispatchZone",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1341-1366, ya construidas en un lote anterior (capa 12, despacho). No forman parte de la bitácora de este lote pero son el modelo real detrás del campo 'zona' del modal de chofer."
+   },
+   {
+    "tabla": "DriverDevice",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:1711-1719. PushToken, AppVersion, LastSeenUtc, PlatformLookupId — lo que el módulo 8 (línea 341) pide dejar preparado para la app del Lote 7; no incluye idempotency-key/outbox (eso vive en middleware transversal, no en esta tabla)."
+   },
+   {
+    "tabla": "SpecialServiceType / SpecialService",
+    "existeEnSql": true,
+    "notas": "logistica-db-estructura.sql:735-761, construidas en Lote 2 (R19/R20). Ya son efectivo-fechadas (EffectiveFrom/EffectiveTo) y ya exponen GetTypesAsync (SpecialServiceService, Lote 2) — este lote debe reutilizar ese servicio/endpoint para alimentar el selector de 'tipo de viaje' de Choferes y tarifas (línea 439, 607), no crear un catálogo nuevo."
+   },
+   {
+    "tabla": "DriverRateAgreement",
+    "existeEnSql": false,
+    "notas": "Nombrada como 'maestro' en el doc (línea 428, 430) pero la bitácora final (línea 697-707, más reciente) rediseña la pantalla a 'maestro-detalle con el chofer como maestro' y nunca vuelve a mencionar una tabla propia — sugiere que en el esquema real el maestro podría ser simplemente Driver, con DriverDeliveryRate/DriverAttemptRate/DriverTripRate como hijas directas de Driver, sin una tabla intermedia DriverRateAgreement. Queda como decisión de diseño abierta, no crear la tabla por el solo nombre del módulo 11A."
+   },
+   {
+    "tabla": "DriverDeliveryRate",
+    "existeEnSql": false,
+    "notas": "Tarifa por Servicio+Paquete+monto por chofer (línea 430, 665-667). Debe seguir el mismo patrón efectivo-fechado que RateComponent (líneas 892-919 del SQL): Servicio/Paquete fijos al crear, UNIQUE por (DriverId, ServiceTypeLookupId, PackageTypeLookupId) acotado a fila vigente, EffectiveFrom/EffectiveTo por principio #8 (línea 518, 695)."
+   },
+   {
+    "tabla": "DriverAttemptRate",
+    "existeEnSql": false,
+    "notas": "Tarifa por número de intento (línea 430, 595, 704). Lista abierta de niveles ('+Agregar intento' añade un nivel a TODOS los choferes a la vez, línea 595) — esto implica que además de la fila (DriverId, AttemptNumber, Rate) el esquema real necesita algún registro de qué niveles existen en el tenant, para poder provisionar la fila $0 a todos los choferes al agregar un nivel nuevo; no está modelado en el SQL. Fallback: intento > nivel máximo usa la tarifa del nivel más alto (línea 430) — regla de servicio, no de esquema."
+   },
+   {
+    "tabla": "DriverTripRate",
+    "existeEnSql": false,
+    "notas": "Tarifa por tipo de viaje (etiqueta+monto) por chofer (línea 438-439, 596). La etiqueta debe salir de SpecialServiceType/SpecialService (unión allServiceLabels), no texto libre (línea 439, 607) — necesita FK a SpecialServiceType (o a la etiqueta compartida), no un campo string."
+   },
+   {
+    "tabla": "DriverTrip",
+    "existeEnSql": false,
+    "notas": "Viaje real de un chofer que congela el monto al crearse (línea 439, 609) — 'freeze at generation'. Debe poder nacer (a) manual y (b) automáticamente desde la entrega especial de Entrada de órdenes al asignar chofer (línea 608-609): ese caso crea la orden en estatus 'route' sin pasar por Sala de despacho, con el chofer ya asignado, y un DriverTrip cuyo monto = driverTripRateFor(chofer, servicio) vigente en ese momento. Este es justamente lo que este lote (4) debe dejar preparado, pendiente de la decisión 2 del Lote 3."
+   },
+   {
+    "tabla": "DeliveryAttempt",
+    "existeEnSql": false,
+    "notas": "Ledger fuente de verdad de intentos de entrega (orden, número, chofer, fecha, resultado, razón de fallo) — línea 432, 597. Nace del evento físico (chofer marca entrega/fallo en la app o Sala de despacho). Es insumo tanto para Liquidación (Lote 9/11A) como, a futuro, para el cargo opcional por intento en Facturación (línea 422, 597) — este lote solo necesita dejar claro que el ledger no existe todavía en SQL, aunque el consumo real (DriverSettlementRun) es Lote 9."
+   },
+   {
+    "tabla": "DriverSettlementRun / DriverSettlementLine",
+    "existeEnSql": false,
+    "notas": "El doc nombra estas entidades (módulo 11A, líneas 426, 437, 440-441) pero el SQL solo tiene dbo.CarrierSettlement/dbo.SettlementLine (líneas 1993-2013), con nombres distintos y con StatusCode 'SettlementStatus' seedeado como DRAFT→APPROVED→PAID (seed:334) — no coincide con el flujo Generada→Revisada→Aprobada→Exportada que el doc exige para DriverSettlementRun (línea 420, 437, 598) y que sí tiene BillingRunStatus (seed:333). Esto es contradicción de esquema a resolver en el Lote 9 (la corrida en sí), pero Lote 4 debe tenerlo presente porque el DriverTrip que congela aquí es el insumo directo de esa corrida futura."
+   },
+   {
+    "tabla": "Vehicle",
+    "existeEnSql": true,
+    "notas": "Línea 1091. PK VehicleId. UQ_Vehicle_Code (TenantId, Code). Code/PlateNumber, capacidades (MaxWeightKg, MaxVolumeM3, MaxStops), FKs a LookupCode VehicleType/Ownership/FuelType, HomeWarehouseId->Warehouse, StatusCodeId->StatusCode (Entity='VehicleStatus'), IsActive. No tiene PublicId ni RowVersion ni CreatedAtUtc (a diferencia de otras entidades del módulo de flota como TransportOrder/Trip)."
+   },
+   {
+    "tabla": "VehicleDocument",
+    "existeEnSql": true,
+    "notas": "Línea 1385. PK VehicleDocumentId, FK VehicleId, DocTypeLookupId (Entity='VehicleDocType'), DocNumber/IssuedDate/ExpiryDate, FileName/StoragePath, IsActive. Índice IX_VehicleDocument_Expiry filtrado IsActive=1 (para vencimientos). No tiene TenantId propio (se infiere vía Vehicle); no tiene PublicId ni auditoría de subida (no UploadedAtUtc/UploadedBy)."
+   },
+   {
+    "tabla": "Driver",
+    "existeEnSql": true,
+    "notas": "Línea 1108. PK DriverId, FullName, UserId->AspNetUsers (nullable), EmployeeCode, HireDate, HomeWarehouseId, StatusCodeId (Entity='DriverStatus'), MaxStopsPerRoute (override de Tenant.MaxStopsPerRouteDefault), IsActive. Sin UNIQUE en EmployeeCode; sin PublicId."
+   },
+   {
+    "tabla": "DriverLicense",
+    "existeEnSql": true,
+    "notas": "Línea 1451. PK DriverLicenseId, FK DriverId, LicenseClassLookupId (Entity='LicenseClass'), LicenseNumber NOT NULL, IssuedDate/ExpiryDate, IsActive. Índice IX_DriverLicense_Expiry filtrado IsActive=1. Sin UNIQUE de LicenseNumber; un chofer puede tener múltiples licencias activas (no hay restricción de una vigente por clase)."
+   },
+   {
+    "tabla": "DriverCertification",
+    "existeEnSql": true,
+    "notas": "Línea 1461. PK DriverCertificationId, FK DriverId, CertTypeLookupId (Entity='CertificationType'), CertNumber nullable, IssuedDate/ExpiryDate, IsActive. Sin índice de vencimiento (a diferencia de DriverLicense y VehicleDocument, que sí lo tienen); posible inconsistencia/vacío."
+   },
+   {
+    "tabla": "DriverZone",
+    "existeEnSql": true,
+    "notas": "Línea 1361, capa 12B. PK compuesta (DriverId, DispatchZoneId), FKs a Driver y DispatchZone, IsPrimary BIT default 1. Comentario: 'asignación estándar, no impide reasignar ese día'. Nota: el nombre coincide con lo pedido en la tarea, pero conceptualmente es zona de DESPACHO (DispatchZone), distinta de RateZone (tarifas); el propio SQL lo aclara en el comentario de capa."
+   },
+   {
+    "tabla": "DriverDevice",
+    "existeEnSql": true,
+    "notas": "Línea 1711, capa 16 (app móvil). PK DriverDeviceId, TenantId, DriverId, PlatformLookupId (Entity='DevicePlatform'), PushToken, AppVersion, LastSeenUtc, IsActive. Sin UNIQUE sobre PushToken ni sobre (DriverId, PlatformLookupId)."
+   },
+   {
+    "tabla": "FleetAssignment",
+    "existeEnSql": true,
+    "notas": "Línea 1470. PK FleetAssignmentId, TenantId, DriverId nullable, VehicleId nullable (ambos nullable: el CHECK no obliga a que al menos uno esté presente), AssignmentTypeLookupId (Entity='AssignmentType'), StartDate NOT NULL, EndDate nullable, IsActive. No hay CHECK que impida DriverId y VehicleId ambos NULL, ni índice único que evite solapamiento de fechas para el mismo chofer o vehículo."
+   },
+   {
+    "tabla": "MaintenanceSchedule",
+    "existeEnSql": true,
+    "notas": "Línea 1396. PK MaintenanceScheduleId, TenantId, VehicleId nullable, VehicleTypeLookupId nullable (permite programa por vehículo específico o por tipo de vehículo), Name, TriggerLookupId (Entity='MaintenanceTrigger': MILEAGE/TIME/BOTH), IntervalKm/IntervalDays nullable, LastServiceKm/LastServiceDate, IsActive. Sin CHECK que exija VehicleId o VehicleTypeLookupId, ni que IntervalKm/IntervalDays correspondan al TriggerLookupId elegido."
+   },
+   {
+    "tabla": "MaintenanceWorkOrder",
+    "existeEnSql": true,
+    "notas": "Línea 1409. PK WorkOrderId, PublicId, TenantId, VehicleId NOT NULL, MaintenanceScheduleId nullable, Number NOT NULL, MaintenanceTypeLookupId (Entity='MaintenanceType'), StatusCodeId (Entity='WorkOrderStatus'), OdometerKm/ScheduledDate/CompletedDate, Vendor, LaborCost/PartsCost, TotalCost columna COMPUTADA PERSISTED = ISNULL(LaborCost,0)+ISNULL(PartsCost,0), CurrencyLookupId, Notes, IsActive, RowVersion. UQ_WorkOrder_Number (TenantId, Number)."
+   },
+   {
+    "tabla": "MaintenanceTask",
+    "existeEnSql": true,
+    "notas": "Línea 1429. PK MaintenanceTaskId, FK WorkOrderId, Description, PartCost/LaborCost nullable, IsCompleted BIT default 0. Sin TenantId propio (hereda de WorkOrder); sin índice explícito por WorkOrderId."
+   },
+   {
+    "tabla": "FuelLog",
+    "existeEnSql": true,
+    "notas": "Línea 1438. PK FuelLogId, TenantId, VehicleId NOT NULL, DriverId nullable, FillDateUtc NOT NULL, OdometerKm nullable, Liters NOT NULL, TotalCost NOT NULL, CurrencyLookupId, Station. Índice IX_FuelLog_Vehicle(VehicleId, FillDateUtc). Sin CHECK de Liters>0/TotalCost>=0 (a diferencia de otras tablas del esquema que sí usan CHECK, p. ej. SpecialService.Rate)."
+   },
+   {
+    "tabla": "DriverTrip",
+    "existeEnSql": false,
+    "notas": "No existe ninguna tabla con este nombre en Diseño/logistica-db-estructura.sql (verificado con grep exhaustivo). La tabla de viajes existente es dbo.Trip (capa 12, línea 1283), que referencia VehicleId y DriverId directamente (1:1 chofer-viaje por campo, no tabla puente DriverTrip)."
+   },
+   {
+    "tabla": "DriverTripRate",
+    "existeEnSql": false,
+    "notas": "No existe ninguna tabla con este nombre ni equivalente evidente (no hay tarifa por chofer/viaje) en el SQL. No se encontró en grep sobre logistica-db-estructura.sql."
+   },
+   {
+    "tabla": "TransportOrder",
+    "existeEnSql": true,
+    "notas": "Línea 1166, capa 11. Muchas columnas propias del Lote 3 (facturación, COD, entrega especial); ver reglas."
+   },
+   {
+    "tabla": "SpecialService",
+    "existeEnSql": true,
+    "notas": "Línea 745. PK SpecialServiceId, TenantId, ClientId, SpecialServiceTypeId->SpecialServiceType, Rate DECIMAL(18,4) NOT NULL, EffectiveFrom/EffectiveTo, IsActive. CHECK Rate>=0 y CHECK EffectiveTo>=EffectiveFrom. Índice único filtrado UQ_SpecialService_Open (ClientId, SpecialServiceTypeId) WHERE EffectiveTo IS NULL AND IsActive=1: solo una tarifa 'abierta' por cliente/tipo."
+   },
+   {
+    "tabla": "RateZone",
+    "existeEnSql": true,
+    "notas": "Línea 763. PK RateZoneId, TenantId, Code, Name, IsActive. UQ_RateZone (TenantId, Code). Tabla relacionada RateZoneMember (línea 773) define el detalle de matching (postal/municipio/polígono) vía MatchTypeLookupId (Entity='ZoneMatchType'), reutilizado también por DispatchZoneMember."
+   }
+  ],
+  "reglas": [
+   {
+    "id": "R1",
+    "regla": "Registro de flota completo: tipo, propiedad (propio/arrendado/tercero), combustible, VIN, odómetro actual, almacén base, capacidad (MaxWeightKg/MaxVolumeM3).",
+    "fuente": "logistica-funcionalidades-maestro.md:280",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R2",
+    "regla": "Documentos vencibles de vehículo (registro, seguro, inspección) y de chofer (licencia, certificaciones) con ExpiryDate indexado → alertas de vencimiento para el dashboard operacional.",
+    "fuente": "logistica-funcionalidades-maestro.md:281",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R3",
+    "regla": "Mantenimiento preventivo por kilometraje o tiempo (MaintenanceSchedule): el sistema compara odómetro/fecha actual contra el intervalo y genera avisos/órdenes.",
+    "fuente": "logistica-funcionalidades-maestro.md:282",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R4",
+    "regla": "Órdenes de trabajo preventivas y correctivas con costo de labor/partes (total computado), proveedor, odómetro y tareas; estatus por catálogo.",
+    "fuente": "logistica-funcionalidades-maestro.md:283",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R5",
+    "regla": "Bitácora de combustible (FuelLog) con litros, costo y odómetro → cálculo de rendimiento (km/L) y costo por km.",
+    "fuente": "logistica-funcionalidades-maestro.md:284",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R6",
+    "regla": "Choferes con código de empleado, fecha de contratación, licencias y certificaciones vencibles; teléfonos/correos en ContactPoint.",
+    "fuente": "logistica-funcionalidades-maestro.md:285",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R7",
+    "regla": "Disponibilidad para despacho: el planificador de trips solo ofrece vehículos/choferes activos, con documentos vigentes y sin mantenimiento abierto que los inhabilite.",
+    "fuente": "logistica-funcionalidades-maestro.md:286",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R8",
+    "regla": "Lo que se le paga al chofer (DriverRateAgreement/tarifas, corridas de liquidación) no vive en Flota — este módulo es identidad y flota, no compensación (separación de responsabilidad entre módulo 4 y 11A).",
+    "fuente": "logistica-funcionalidades-maestro.md:287",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R9",
+    "regla": "Cinco paneles de Flota y mantenimiento: Documentos por vencer (une vehículo y chofer, filtro por Tipo de documento y por Entidad), Vehículos (alta/edición/baja + buscador libre), Mantenimiento preventivo (estatus Al día/Por vencer/Vencido), Órdenes de trabajo, Bitácora de combustible.",
+    "fuente": "logistica-funcionalidades-maestro.md:675",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R10",
+    "regla": "CRUD de vehículos con mismo patrón que Choferes: modal alta/edición, código único validado contra duplicados, checkbox Activo para inactivar sin borrar historial.",
+    "fuente": "logistica-funcionalidades-maestro.md:676",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R11",
+    "regla": "Buscador de texto libre (qbox) en Vehículos por código, placa, tipo, propiedad, combustible, VIN — patrón replicado en 13 pantallas del producto.",
+    "fuente": "logistica-funcionalidades-maestro.md:646-651,678",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R12",
+    "regla": "Filtro de 'Documentos por vencer' debe usar el contenedor estándar .filters (no .qrow.tight) — corrección de estándar visual aplicable a este lote si se construye pantalla propia (no aplica al backend, pero condiciona los parámetros del endpoint de filtrado).",
+    "fuente": "logistica-funcionalidades-maestro.md:712 y 677",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R13",
+    "regla": "DriverRateAgreement (maestro conceptual): por chofer, una tabla de tarifas por entrega (DriverDeliveryRate: Servicio+Paquete+monto) + una tabla de tarifas por intento (DriverAttemptRate: número de intento→monto); dos maestros independientes del lado del cliente.",
+    "fuente": "logistica-funcionalidades-maestro.md:430",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R14",
+    "regla": "Servicio y Paquete quedan fijos una vez creada la fila de DriverDeliveryRate (solo la Tarifa es editable); para cambiar la combinación hay que quitar la fila y crear una nueva; se bloquean duplicados exactos de chofer+servicio+paquete.",
+    "fuente": "logistica-funcionalidades-maestro.md:430,666",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R15",
+    "regla": "Si el chofer no tiene tarifa configurada para el Servicio+Paquete real de la orden, la liquidación deja la línea en $0 con la nota 'sin tarifa configurada' en vez de inventar un monto — el vacío queda visible, no disfrazado.",
+    "fuente": "logistica-funcionalidades-maestro.md:430,665",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R16",
+    "regla": "El número de niveles de intento es una lista abierta ('+Agregar intento' suma un nivel en vivo a todos los choferes); un intento con número mayor al máximo configurado usa la tarifa del nivel más alto definido (fallback), para que la corrida nunca se rompa.",
+    "fuente": "logistica-funcionalidades-maestro.md:430,595",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R17",
+    "regla": "Alta/edición/baja de choferes desde la misma pantalla de tarifas; eliminar un chofer borra en cascada su DriverRateAgreement completo (entregas, intentos, viajes); inactivar (checkbox Activo) es la alternativa que conserva historial. Crear un chofer nuevo provisiona automáticamente una ficha de tarifas vacía (ensureDriverRate).",
+    "fuente": "logistica-funcionalidades-maestro.md:431,667,703",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R18",
+    "regla": "DeliveryAttempt (ledger, fuente de verdad): una fila por intento de entrega con orden, número, chofer, fecha, resultado y razón de fallo; nace del evento físico (app o Sala de despacho). Nada se paga fuera de este registro — se reconstruye de él, mismo principio que InventoryTransaction.",
+    "fuente": "logistica-funcionalidades-maestro.md:432,597",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R19",
+    "regla": "Fórmula configurable de cómo combina 'pago por entrega' con 'pago por intento' (tres modelos: entrega+cada intento / entrega incluye 1er intento / intento fallido reemplaza entrega); la corrida congela la fórmula usada (DriverSettlementRun.PayoutFormula) — el motor de cálculo pertenece a Lote 9, pero el selector/valor configurado por tenant debe existir para que la corrida lo pueda leer y congelar.",
+    "fuente": "logistica-funcionalidades-maestro.md:433-437,594",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R20",
+    "regla": "DriverTrip: pago por viaje (no por paquete/intento), monto plano vía DriverTripRate (lista abierta por chofer: etiqueta+monto). Cada viaje real referencia una de esas tarifas y entra a la liquidación del período igual que las entregas.",
+    "fuente": "logistica-funcionalidades-maestro.md:438,596",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R21",
+    "regla": "La etiqueta de DriverTripRate ya no es texto libre: sale del catálogo SpecialService (unión de etiquetas de servicios especiales de todos los clientes, allServiceLabels()); si el tenant no tiene ningún servicio especial configurado, el selector lo dice explícitamente en vez de dejar escribir libre.",
+    "fuente": "logistica-funcionalidades-maestro.md:439,607",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R22",
+    "regla": "El tipo de viaje de una fila ya creada de DriverTripRate no es editable (mismo principio que las demás tarifas 'ya creadas'): se muestra como texto fijo; para cambiar el tipo hay que quitar la fila y agregar una con el tipo correcto.",
+    "fuente": "logistica-funcionalidades-maestro.md:607,669",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R23",
+    "regla": "Un DriverTrip creado directamente desde Entrada de órdenes ('entrega especial') congela el monto del chofer al momento de crearse, tomando la tarifa vigente de DriverTripRate para ese chofer y esa etiqueta — mismo principio de 'freeze at generation'.",
+    "fuente": "logistica-funcionalidades-maestro.md:439,609",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R24",
+    "regla": "Checkbox 'Es una entrega especial' en Entrada de órdenes (después de Consignatario, antes de la sección de paquete): pide Servicio especial (filtrado por el cliente de la sección 01) y Chofer (de los ya existentes), en vez de tipo de paquete/piezas/COD.",
+    "fuente": "logistica-funcionalidades-maestro.md:608",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R25",
+    "regla": "Al guardar una entrega especial se crean dos registros: la orden en estatus 'route' de una vez con el chofer ya asignado (no pasa por Sala de despacho) y un DriverTrip nuevo con el monto congelado con driverTripRateFor(chofer, servicio). Este DriverTrip entra a la próxima liquidación de ese chofer igual que uno creado a mano.",
+    "fuente": "logistica-funcionalidades-maestro.md:609",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R26",
+    "regla": "Pendiente explícito del Lote 3 (decisión 2): la orden con IsSpecialDelivery/SpecialServiceId ya existe desde Lote 3, pero la asignación de chofer y la creación de DriverTrip quedaron fuera de ese lote y son responsabilidad del Lote 4 (según el encargo de esta tarea) — el propio doc maestro las asigna al módulo 11A/Lote 9 para la corrida, pero la creación del DriverTrip congelado en el momento de guardar la orden es lo que este lote debe dejar preparado.",
+    "fuente": "docs/lote3-decisiones.md:88-89,204 y logistica-funcionalidades-maestro.md:609",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R27",
+    "regla": "Toda tarifa de pago a chofer (DriverDeliveryRate/DriverAttemptRate/DriverTripRate) debe ser efectivo-fechada (EffectiveFrom/EffectiveTo) en el sistema real — editar cierra la fila vieja y abre una nueva, no se sobrescribe el monto en el sitio. El mock actual no lo implementa (simplificación de maqueta) — el esquema real sí debe.",
+    "fuente": "logistica-funcionalidades-maestro.md:518,695",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R28",
+    "regla": "Choferes y tarifas es maestro-detalle: el chofer es el maestro (lista a la izquierda), ficha editable en línea a la derecha (Nombre, Zona, Área, Tope de paradas, Estado); el modal 'Nuevo chofer' se reserva solo para el alta (Código fijo, único campo inmutable tras crear).",
+    "fuente": "logistica-funcionalidades-maestro.md:699-707 (bitácora más reciente, sustituye la versión de tabla plana de la entrada anterior de la misma bitácora, línea 661-669)",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R29",
+    "regla": "Contradicción resuelta por bitácora más reciente: la entrada 'Choferes y tarifas — tarifas por entrega...' (línea 661) describía tres tablas planas con filtro de Chofer redundante; la entrada posterior 'rediseño a maestro-detalle' (línea 697) la reemplaza explícitamente — las tarifas por intento y por entrega vuelven a estar juntas en un solo panel del chofer seleccionado, sin filtro de Chofer ni de Activo en la tabla de intentos.",
+    "fuente": "logistica-funcionalidades-maestro.md:697-707, gana sobre 661-669",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R30",
+    "regla": "Filtro de Tarifas por viaje (por Tipo de viaje, limitado a los tipos que ese chofer ya tiene configurados) y filtro de Tarifas por entrega (Servicio/Paquete, sin Chofer) usan el contenedor .filters estándar.",
+    "fuente": "logistica-funcionalidades-maestro.md:705-706",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R31",
+    "regla": "addDeliveryRate()/addTripRate() reciben el código del chofer como parámetro directo (ya no de un <select> del formulario) porque el maestro-detalle ya fija el chofer seleccionado — detalle de implementación de UI, informa que el backend real debe exponer los endpoints ya scopeados por DriverId de la ruta, no recibir DriverId en el body.",
+    "fuente": "logistica-funcionalidades-maestro.md:707",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R32",
+    "regla": "App móvil (módulo 8): al despachar un trip, el dispositivo descarga ruta/paradas/contactos a SQLite local; DriverDevice guarda el token de push para notificaciones. Este lote solo debe dejar preparado el modelo Driver/DriverDevice (identidad y registro del dispositivo) — la app en sí (offline-first, outbox, idempotencia, navegación, pings GPS) es del Lote 7.",
+    "fuente": "logistica-funcionalidades-maestro.md:333-342",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R33",
+    "regla": "Notificaciones push (token en DriverDevice): nuevo trip asignado, cambio de ruta, mensaje del dispatcher — requisito de que DriverDevice exista con PushToken y esté asociado a un Driver activo, aunque el disparo real de la notificación es de otro lote.",
+    "fuente": "logistica-funcionalidades-maestro.md:341",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R34",
+    "regla": "Un chofer también puede inactivarse sin eliminarlo para dejar de ofrecerlo en despacho sin perder su historial de tarifas.",
+    "fuente": "logistica-funcionalidades-maestro.md:431",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R35",
+    "regla": "Toda tabla debe poder ordenarse por columnas, todo filtro tipo Producto busca por SKU y nombre, todo dropdown multi-selección trae buscador (msel), eliminar/editar con guardas de estatus, ninguna pantalla genera scroll horizontal — convenciones de interfaz transversales, no reglas de negocio propias del módulo pero aplican a cualquier pantalla que este lote construya.",
+    "fuente": "logistica-funcionalidades-maestro.md:520-531",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R1",
+    "regla": "Vehicle.Code es único por tenant (UQ_Vehicle_Code (TenantId, Code)).",
+    "fuente": "Diseño/logistica-db-estructura.sql:1104",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R2",
+    "regla": "MaintenanceWorkOrder.Number es único por tenant (UQ_WorkOrder_Number).",
+    "fuente": "Diseño/logistica-db-estructura.sql:1425",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R3",
+    "regla": "MaintenanceWorkOrder.TotalCost es una columna computada y persistida: ISNULL(LaborCost,0)+ISNULL(PartsCost,0). No debe escribirse directamente, se recalcula por SQL Server.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1421",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R4",
+    "regla": "Driver.MaxStopsPerRoute, cuando es NULL, usa el default del tenant (Tenant.MaxStopsPerRouteDefault) — comentario explícito en la columna.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1117",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R5",
+    "regla": "VehicleDocument e DriverLicense tienen índices filtrados por IsActive=1 sobre ExpiryDate, indicando que el sistema debe poder consultar vencimientos vigentes (documentos y licencias por vencer).",
+    "fuente": "Diseño/logistica-db-estructura.sql:1393,1458",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R6",
+    "regla": "DriverZone es la 'asignación estándar' (no exclusiva del día): el comentario aclara que no impide reasignar un chofer a otra zona ese día en Despacho.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1360",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R7",
+    "regla": "DispatchZone (zona de despacho, territorio fijo tipo 'R-01') es conceptualmente distinta de RateZone (zona de tarifas); el módulo de flota usa DispatchZone/DriverZone, no RateZone, para asignación de choferes.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1336-1339",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R8",
+    "regla": "FleetAssignment.AssignmentTypeLookupId distingue asignaciones PERMANENT/TEMPORARY (según seed), pero el esquema no impone que DriverId y VehicleId no sean ambos NULL simultáneamente ni evita solapamiento de fechas.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1470-1478",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R9",
+    "regla": "MaintenanceSchedule puede aplicar a un vehículo específico (VehicleId) o a un tipo de vehículo (VehicleTypeLookupId); TriggerLookupId define si el disparo es por kilometraje, tiempo o ambos.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1396-1406 y seed línea 193 (MaintenanceTrigger MILEAGE/TIME/BOTH)",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R10",
+    "regla": "SpecialService solo permite una fila 'abierta' (EffectiveTo IS NULL) por combinación ClientId+SpecialServiceTypeId mientras esté activa.",
+    "fuente": "Diseño/logistica-db-estructura.sql:759",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R11",
+    "regla": "TransportOrder.OrderNumber es único por cliente (no por tenant) y solo entre filas activas; una orden eliminada en captura libera el número. PackBatchNumber es único por tenant entre filas activas.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1205-1208",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R12",
+    "regla": "CodTypeLookupId de TransportOrder 'el Lote 3 nunca lo escribe: se define al entregar' — es decir, en el alcance de Flota/Choferes (Lote 4) sí podría tocarse al capturar la prueba de entrega, pero el SQL no define ninguna tabla de Lote 4 que escriba CodType; el POD (ProofOfDelivery) no tiene columnas de COD.",
+    "fuente": "Diseño/logistica-db-estructura.sql:1185",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "R13",
+    "regla": "El estatus de Vehicle usa el dominio VehicleStatus con pipeline ACTIVE(inicial)→MAINTENANCE(lateral)→INACTIVE(terminal); Driver usa DriverStatus con ACTIVE(inicial)→UNAVAILABLE(lateral)→INACTIVE(terminal); MaintenanceWorkOrder usa WorkOrderStatus OPEN(inicial)→IN_PROGRESS→CLOSED(terminal)/CANCELLED(terminal).",
+    "fuente": "Diseño/logistica-db-seed.sql:313,314,318",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "R14",
+    "regla": "No existe en el seed un dominio de estatus para FleetAssignment, MaintenanceSchedule, MaintenanceTask, FuelLog, DriverLicense, DriverCertification, VehicleDocument, DriverDevice ni DriverZone: todas usan solo el flag IsActive, sin StatusService/EntityStatusHistory.",
+    "fuente": "Diseño/logistica-db-seed.sql (ausencia de StatusCode Entity correspondiente); Diseño/logistica-db-estructura.sql (ninguna de estas tablas tiene StatusCodeId)",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "C1",
+    "regla": "DriverRateAgreement sigue vigente como término normativo en el módulo 11A (línea 430), no solo residual de bitácora vieja; puede seguir siendo el agregado de dominio aunque en UI el maestro visible sea Driver (rediseño línea 697) — no hay contradicción real, solo decisión de esquema abierta, tal como ya lo trató la consolidación.",
+    "fuente": "logistica-funcionalidades-maestro.md:287,430 vs 697-707",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "C2",
+    "regla": "El requisito de niveles de intento abiertos ('el sistema debe quedar abierto', línea 590; 'no está limitado a dos intentos en el diseño', línea 430) confirma que se necesita alguna entidad de nivel compartido a nivel tenant para poder iterar 'a todos los choferes' al agregar un nivel (línea 595) y provisionar la fila $0 — el SQL no la tiene; vacío correctamente señalado.",
+    "fuente": "logistica-funcionalidades-maestro.md:430,595",
+    "esRequisitoReal": true
+   },
+   {
+    "id": "C3",
+    "regla": "El doc es más explícito en la bitácora que en el módulo 11A sobre el uso futuro de DeliveryAttempt para cargo por intento en Facturación: 'ese segundo uso queda documentado... como mecanismo listo pero no activado todavía (falta el RateComponent de tipo intento en el contrato del cliente)' — cita adicional que refuerza R18 pero no la contradice.",
+    "fuente": "logistica-funcionalidades-maestro.md:597",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "C4",
+    "regla": "El doc exige que Liquidación a choferes use 'mismo mecanismo de plantillas de exportación configurables que Facturación... alcance liquidacion del mismo catálogo compartido ACCT_TEMPLATES' — no se encontró tabla ni referencia a ACCT_TEMPLATES en el SQL; alcance Lote 9/11 pero condiciona el destino final del DriverTrip que este lote debe dejar preparado.",
+    "fuente": "logistica-funcionalidades-maestro.md:441",
+    "esRequisitoReal": false
+   },
+   {
+    "id": "C5",
+    "regla": "SettlementStatus sembrado (DRAFT→APPROVED→PAID, seed:334) contradice el flujo Generada→Revisada→Aprobada→Exportada exigido tanto en el módulo 11A (línea 428) como, más explícitamente y con fecha más reciente, en la bitácora (línea 598: 'mismo flujo Generada → Revisada → Aprobada → Exportada'). Refuerza el vacío ya señalado con mejor evidencia documental.",
+    "fuente": "logistica-funcionalidades-maestro.md:428,598 vs Diseño/logistica-db-seed.sql:333-334",
+    "esRequisitoReal": true
+   }
+  ],
+  "endpoints": [
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/vehicles",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage",
+    "ruta_nota": "listado con filtros (código, tipo, propiedad, combustible) y qbox de texto libre"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/vehicles",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/vehicles/{id:int}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/vehicles/{id:int}/deactivate",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/vehicles/{id:int}/documents",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/vehicles/{id:int}/documents",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/fleet/expiring-documents",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/maintenance-schedules",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/maintenance-schedules",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/maintenance-work-orders",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/maintenance-work-orders",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/maintenance-work-orders/{id:int}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/fuel-logs",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/fuel-logs",
+    "modulo": "CATALOG",
+    "permiso": "fleet.maintenance"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/drivers",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/drivers/{publicId:guid}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "DELETE",
+    "ruta": "/api/v1/drivers/{publicId:guid}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/deactivate",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/drivers/{publicId:guid}/rates",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage",
+    "ruta_nota": "ficha completa: delivery+attempt+trip rates del chofer"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/delivery-rates",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/drivers/{publicId:guid}/delivery-rates/{id:int}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage",
+    "ruta_nota": "solo permite actualizar Rate (efectivo-fechado); Servicio/Paquete inmutables"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/delivery-rates/{id:int}/close",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/attempt-rates",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/drivers/{publicId:guid}/attempt-rates/{attemptNumber:int}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/tenant/attempt-levels",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage",
+    "ruta_nota": "añade un nivel de intento nuevo a todos los choferes ('+Agregar intento'); requiere modelar el nivel a nivel de tenant, no solo por chofer"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/trip-rates",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/drivers/{publicId:guid}/trip-rates/{id:int}",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "/api/v1/drivers/{publicId:guid}/trip-rates/{id:int}/close",
+    "modulo": "CATALOG",
+    "permiso": "fleet.manage"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "/api/v1/special-service-types",
+    "modulo": "CATALOG",
+    "permiso": "contracts.read",
+    "ruta_nota": "YA EXISTE (Lote 2, SpecialServicesController) — reutilizar para alimentar el selector de tipo de viaje, no duplicar"
+   },
+   {
+    "metodo": "PATCH",
+    "ruta": "/api/v1/orders/{publicId:guid}/special-delivery",
+    "modulo": "LTL_GROUND",
+    "permiso": "orders.dispatch",
+    "ruta_nota": "extensión de la entrega especial ya construida en Lote 3: asigna Chofer y crea el DriverTrip congelado, mueve la orden a estatus route sin pasar por despacho"
+   },
+   {
+    "metodo": "GET",
+    "ruta": "api/v1/contacts/DRIVER/{ownerId}",
+    "permiso": "OwnerReadPermission[DRIVER] (no definido aun)",
+    "modulo": "CATALOG"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "api/v1/contacts/DRIVER/{ownerId}",
+    "permiso": "OwnerWritePermission[DRIVER] (no definido aun)",
+    "modulo": "CATALOG"
+   },
+   {
+    "metodo": "GET/POST/PATCH",
+    "ruta": "api/v1/customfields/definitions|values/{entityType}/{entityId}",
+    "permiso": "admin.customfields + OwnerWritePermission[VEHICLE|DRIVER] (no definido aun)",
+    "modulo": "CATALOG"
+   },
+   {
+    "metodo": "POST",
+    "ruta": "api/v1/{recurso}/{publicId}/status",
+    "permiso": "fleet.manage o fleet.maintenance (a decidir)",
+    "modulo": "CATALOG"
+   },
+   {
+    "metodo": "*",
+    "ruta": "todas las rutas del modulo 4",
+    "permiso": "fleet.manage / fleet.maintenance (ya sembrados en PermissionCatalog)",
+    "modulo": "CATALOG (RequireModule ModuleKeys.Catalog, no existe ModuleKeys.Fleet)"
+   }
+  ],
+  "estatus": [
+   {
+    "dominio": "VehicleStatus",
+    "efectos": [
+     "ACTIVE (inicial, disponible para despacho)",
+     "MAINTENANCE (excluye al vehículo del planificador de trips por mantenimiento abierto)",
+     "INACTIVE (terminal, baja lógica, excluye de despacho, no oculta historial)"
+    ]
+   },
+   {
+    "dominio": "DriverStatus",
+    "efectos": [
+     "ACTIVE (inicial, disponible para despacho)",
+     "UNAVAILABLE (excluye del planificador sin ser baja)",
+     "INACTIVE (terminal, baja lógica, conserva historial de tarifas)"
+    ]
+   },
+   {
+    "dominio": "WorkOrderStatus",
+    "efectos": [
+     "OPEN (inicial)",
+     "IN_PROGRESS",
+     "CLOSED (terminal)",
+     "CANCELLED (terminal)"
+    ]
+   },
+   {
+    "dominio": "DeliveryAttempt.Resultado",
+    "efectos": [
+     "entregada — alimenta la línea de entrega y cuenta como intento exitoso en la fórmula de pago",
+     "fallida (con razón por catálogo DeliveryFailureReason) — cuenta como intento en la fórmula, dispara reintento/reprogramación"
+    ]
+   },
+   {
+    "dominio": "SpecialService (reutilizado, ya Lote 2)",
+    "efectos": [
+     "fila abierta (EffectiveTo NULL) es la vigente para resolver driverTripRateFor()/tarifa del cliente",
+     "cerrar (EffectiveTo=hoy) conserva historial sin borrar"
+    ]
+   },
+   {
+    "dominio": "VehicleStatus",
+    "efectos": [
+     "ACTIVE es el estatus inicial (IsInitial=1, según seed línea 313)",
+     "MAINTENANCE es lateral (@LAT)",
+     "INACTIVE es terminal (@TERM)",
+     "El SQL no define qué IStatusTransitionEffect dispara cada transición; eso es de otra etapa"
+    ]
+   },
+   {
+    "dominio": "DriverStatus",
+    "efectos": [
+     "ACTIVE inicial",
+     "UNAVAILABLE lateral",
+     "INACTIVE terminal",
+     "Sin efectos codificados en el SQL"
+    ]
+   },
+   {
+    "dominio": "WorkOrderStatus",
+    "efectos": [
+     "OPEN inicial",
+     "IN_PROGRESS intermedio (pipeline)",
+     "CLOSED y CANCELLED terminales",
+     "MaintenanceWorkOrder.CompletedDate y TotalCost sugieren que el cierre (CLOSED) se relaciona con tener CompletedDate, pero el SQL no impone un CHECK que lo obligue"
+    ]
+   }
+  ],
+  "vacios": [
+   "No existen en el SQL las tablas DriverRateAgreement, DriverDeliveryRate, DriverAttemptRate, DriverTripRate, DriverTrip ni DeliveryAttempt — el módulo 11A y la bitácora las dan por existentes pero este lote debe crearlas desde cero, decidiendo primero si DriverRateAgreement es una tabla real o si el chofer mismo es el agregado raíz (la bitácora más reciente, línea 697, sugiere lo segundo pero nunca lo dice explícitamente a nivel de esquema).",
+   "No hay tabla ni columna para modelar los 'niveles de intento' como concepto de tenant (independiente de cada fila DriverAttemptRate) — el mock añade un nivel 'a todos los choferes a la vez' (línea 430,595), lo que implica un catálogo de niveles compartido que hoy no existe; sin él no está claro cómo provisionar la fila $0 a cada chofer al agregar un nivel.",
+   "No hay dónde persistir la fórmula de pago configurable (PayoutFormula: los 3 modelos) antes de que se congele en una corrida — el doc solo dice que DriverSettlementRun.PayoutFormula la congela (línea 437), pero no dice si el valor 'vigente' vive en Driver, en Tenant, o en una tabla de configuración nueva.",
+   "CarrierSettlement/SettlementLine (SQL) vs. DriverSettlementRun/DriverSettlementLine (doc, módulo 11A) son nombres distintos para lo que parece el mismo concepto, y SettlementStatus (DRAFT→APPROVED→PAID, seed:334) no coincide con el flujo Generada→Revisada→Aprobada→Exportada exigido para DriverSettlementRun (línea 420,437) — contradicción de esquema a resolver antes o durante el Lote 9, pero que condiciona a qué tabla apuntará el DriverTrip que este lote debe dejar listo.",
+   "No existe una tabla 'DriverDocument' unificada — el panel 'Documentos por vencer' del mock une VEHICLE_DOCS y DRIVER_DOCS (línea 675), pero en SQL el lado chofer está repartido en DriverLicense y DriverCertification, dos tablas con forma parecida pero no idéntica (DriverCertification no tiene índice de ExpiryDate). Falta decidir si se consulta como UNION o si conviene una vista.",
+   "El campo 'Área' del chofer, mencionado en el modal del mock (línea 667, 703: 'código, nombre, zona, área y tope de paradas'), no tiene ninguna columna ni catálogo correspondiente en el SQL — ni en Driver ni en DriverZone/DispatchZone. Falta definir qué es 'Área' (¿un lookup nuevo? ¿un campo de texto libre? ¿sinónimo de Zona mal nombrado en el mock?).",
+   "Vehicle y Driver no llevan PublicId/CreatedAtUtc/RowVersion, a diferencia de MaintenanceWorkOrder y del resto de entidades del sistema (principios #2 y #3 de CLAUDE.md) — vacío de consistencia de esquema, no de negocio, pero bloquea exponer estas entidades con el mismo contrato PublicId que usa el resto de la API.",
+   "No hay ningún ModuleKeys específico para Flota/Choferes/Liquidación (existen LtlGround, Cod, WmsLotSerial, CrossDock, RentalEquipment, RentalBilling, Maritime, ClientPortal, CustomFields, Purchasing, Catalog, Analytics, System) — falta decidir si estas pantallas van bajo ModuleKeys.Catalog (grupo de menú 'Catálogo' donde vive la pantalla, línea 428) o si no requieren [RequireModule] por ser funcionalidad core siempre encendida.",
+   "No existe permiso específico para administrar tarifas de chofer (solo fleet.manage/fleet.maintenance, orientados a Vehículos/Mantenimiento) — falta decidir el nombre del permiso para el CRUD de Choferes y tarifas (¿fleet.manage sirve para ambos, o hace falta uno separado tipo 'driver.rate.manage'?).",
+   "El doc no especifica el mecanismo exacto por el cual el planificador de trips excluye vehículos/choferes 'con mantenimiento abierto que los inhabilite' (línea 286) — no dice qué tipos de MaintenanceWorkOrder/estatus bloquean (¿cualquier OPEN/IN_PROGRESS, o solo cierto MaintenanceTypeLookupId?).",
+   "Contradicción de bitácora ya resuelta pero que conviene dejar anotada explícitamente: la entrada 'tarifas por entrega con servicio+paquete, CRUD de choferes, filtros' (línea 661-669) describe tres tablas planas con filtros de Chofer/Activo; la entrada posterior 'rediseño a maestro-detalle' (línea 697-707) la reemplaza — gana esta última por ser más reciente (regla R29).",
+   "DriverTrip: no existe como tabla en logistica-db-estructura.sql. La tarea del Lote 4 la nombra explícitamente pero el SQL no la define; la relación chofer-viaje vive únicamente en dbo.Trip.DriverId (columna, no tabla puente). No hay decisión documentada en el SQL sobre por qué se omitió o si Trip la reemplaza.",
+   "DriverTripRate: no existe como tabla ni columna equivalente en el SQL (no hay tarifa por viaje/chofer en ninguna tabla de la capa 10, 12 ni 13). Vacío total: ni el nombre ni un concepto sustituto aparecen.",
+   "VehicleDocument no tiene TenantId propio ni PublicId; si el módulo requiere exponer documentos de vehículo por API pública, falta el campo de exposición externa (PublicId) que sí tienen otras entidades del esquema (Vehicle tampoco tiene PublicId, a diferencia de TransportOrder, Trip, MaintenanceWorkOrder).",
+   "DriverCertification no tiene índice de vencimiento (IX_..._Expiry) pese a tener ExpiryDate e IsActive, a diferencia de DriverLicense y VehicleDocument que sí lo tienen; posible omisión de paridad en el esquema.",
+   "FleetAssignment no tiene CHECK que impida DriverId y VehicleId ambos NULL simultáneamente, ni restricción de traslape de fechas (StartDate/EndDate) para el mismo chofer o vehículo: el propio SQL no resuelve qué pasa si dos asignaciones activas coinciden en fecha.",
+   "Ninguna tabla de este lote (Vehicle, Driver, FleetAssignment, MaintenanceSchedule, MaintenanceTask, FuelLog, DriverLicense, DriverCertification, VehicleDocument, DriverDevice, DriverZone) tiene AuditEntity marcado en el SQL en sí (eso se define en código); el SQL no dice cuáles de estas requieren auditoría automática ni cuáles campos son [SensitiveData].",
+   "El SQL no incluye StatusCode para FleetAssignment, MaintenanceSchedule, MaintenanceTask, FuelLog, VehicleDocument, DriverLicense, DriverCertification, DriverDevice ni DriverZone: solo tienen IsActive. Falta decisión sobre si alguna de estas necesita un ciclo de estatus real vía StatusService o si el IsActive basta.",
+   "No se pudo consultar el contenido de Diseño/logistica-funcionalidades-maestro.md como la tarea instruyó leer 'SOLO el SQL'; por tanto no se contrastan aquí las reglas del documento maestro con lo hallado en el esquema. Cualquier regla de negocio narrativa (ej. reglas de vencimiento de licencias, bloqueo de despacho por documento vencido, cálculo de tarifa por chofer) queda fuera de este análisis por instrucción explícita de la tarea.",
+   "PermissionCatalog trae fleet.manage y fleet.maintenance (categoria FLEET) pero no fleet.read/view; falta decidir si listar/ver flota exige fleet.manage o si falta un permiso de solo lectura.",
+   "RoleTemplates['Driver'] solo tiene orders.view y cod.collect, ningun permiso fleet.*; falta decidir permisos del chofer sobre su propio vehiculo/odometro/combustible.",
+   "No existen DriverOwnedEntityResolver ni VehicleOwnedEntityResolver en DependencyInjection.cs (solo User, Client, ClientContact, Location, Contract, TransportOrder, OrderStop, OrderCod, ImportBatch, ImportTemplate); sin ellos ContactPointService y CustomFieldService no pueden validar dueno DRIVER/VEHICLE.",
+   "OwnerReadPermission y OwnerWritePermission no tienen entradas para EntityTypes.Driver ni EntityTypes.Vehicle; sin ellas el acceso cae a 'cualquier autenticado' segun el propio comentario del archivo.",
+   "dbo.Vehicle y dbo.Driver (logistica-db-estructura.sql, capa 10) no tienen columna PublicId, a diferencia de las demas entidades expuestas externamente (Client, Contract, ImportTemplate); rompe la convencion PK INT IDENTITY + PublicId si se reutiliza el patron de controlador con rutas {publicId:guid}.",
+   "StatusDomains (CatalogDomains.cs) no tiene constantes VehicleStatus/DriverStatus/WorkOrderStatus aunque esos StatusCode ya estan sembrados en logistica-db-seed.sql (lineas 313,314,318).",
+   "El documento maestro (linea 278) remite a la bitacora del mock (UI) para el detalle de que se implemento, pero no define contrato de API/DTOs para el backend real; deben derivarse de los 5 paneles descritos (Documentos por vencer, Vehiculos, Mantenimiento preventivo, Ordenes de trabajo, Bitacora de combustible).",
+   "No hay servicio existente que module 'disponibilidad para despacho' (linea 286: vehiculos/choferes activos, documentos vigentes, sin mantenimiento abierto) para que el planificador de trips los filtre; es regla real sin implementacion reutilizable ya construida.",
+   "Falta en la consolidación citar explícitamente la bitácora (línea 598), más reciente y más tajante que el módulo 11A narrativo (línea 428), para el vacío de SettlementStatus vs. el flujo Generada→Revisada→Aprobada→Exportada exigido para Liquidación a choferes.",
+   "No se encontró en el esquema ninguna tabla ni referencia a 'ACCT_TEMPLATES' (plantillas de exportación compartidas entre Facturación y Liquidación, alcance 'liquidacion', logistica-funcionalidades-maestro.md:441) — vacío adicional no listado explícitamente en la consolidación entregada; de alcance Lote 9/11, pero Lote 4 debe tenerlo presente porque el DriverTrip que congela aquí es insumo directo de esa exportación futura.",
+   "Confirmado por grep: DriverRateAgreement no existe como CREATE TABLE en el SQL, y el doc normativo (módulo 11A, línea 430) sigue usando el término activamente hoy (no es residuo de bitácora vieja) — la decisión de si es tabla propia o si Driver es el agregado raíz sigue abierta, tal como ya señalaba la consolidación.",
+   "Confirmado por grep en PermissionCatalog.cs: RoleTemplates['Driver'] solo trae OrdersView y CodCollect (línea 169), ningún permiso fleet.* — coincide con el vacío ya señalado sobre permisos del propio chofer sobre vehículo/odómetro/combustible.",
+   "Todas las citas de número de línea de SQL revisadas contra el archivo (Vehicle:1091, Driver:1108, VehicleDocument:1385, DriverLicense:1451, DriverCertification:1461, MaintenanceSchedule:1396, MaintenanceWorkOrder:1409, MaintenanceTask:1429, FuelLog:1438, FleetAssignment:1470, DriverZone:1361, DriverDevice:1711, CarrierSettlement:1993, SettlementLine:2005, SpecialService:745, RateZone:763) coinciden exactamente; no se detectaron errores de cita de línea en la especificación consolidada."
+  ],
+  "reutilizar": [
+   "src/Teikem.Infrastructure/Services/SpecialServiceService.cs y src/Teikem.Api/Controllers/SpecialServicesController.cs (Lote 2) — GetTypesAsync ya expone la unión de etiquetas de servicios especiales que este lote debe usar para 'tipo de viaje', no reimplementar",
+   "src/Teikem.Domain/Clients/SpecialServiceRules.cs — patrón de normalización de nombre (NormalizeName/SameName) reutilizable para cualquier '+ Nuevo tipo' análogo si aplicara",
+   "Diseño/logistica-db-estructura.sql:892-936 (RateComponent/RateTier) — patrón de tabla efectivo-fechada con UNIQUE índice filtrado por fila vigente; DriverDeliveryRate/DriverAttemptRate/DriverTripRate deben calcar esta estructura",
+   "StatusService.TransitionAsync / EnsureAllowedAsync — para WorkOrderStatus y para el eventual estatus de DriverSettlementRun (Lote 9)",
+   "IOwnedEntityResolver — si ContactPoint se usa para teléfonos/correos de chofer (línea 285) el mismo resolver polimórfico ya existente debe extenderse a 'Driver' como entidad dueña",
+   "ILookupCache — todos los catálogos de este módulo (VehicleType, Ownership, FuelType, MaintenanceTrigger, MaintenanceType, LicenseClass, CertificationType, VehicleDocType, DevicePlatform) ya están sembrados en Diseño/logistica-db-seed.sql:73-83,189-205 — no crear catálogos nuevos, solo resolverlos",
+   "PermissionCatalog: FleetManage ('fleet.manage') y FleetMaintenance ('fleet.maintenance') ya existen (src/Teikem.Domain/Constants/PermissionCatalog.cs:31-32) — reutilizar en vez de inventar permisos nuevos para Vehículos/Mantenimiento; falta un permiso equivalente para el CRUD de choferes y tarifas (no existe 'driver.rate.manage' ni similar)",
+   "Patrón de pantalla maestro-detalle de 'Clientes y contratos' (línea 699, 727) — mismo patrón visual/funcional a replicar en el backend de 'Choferes y tarifas' (lista+ficha, edición en línea sin modal salvo alta)",
+   "dbo.LookupCode / ILookupCache para VehicleType, Ownership, FuelType, VehicleDocType, MaintenanceTrigger, MaintenanceType, LicenseClass, CertificationType, AssignmentType, DevicePlatform (todos ya sembrados en logistica-db-seed.sql líneas 73-80, 189-197, 205).",
+   "dbo.StatusCode / StatusService.TransitionAsync para VehicleStatus, DriverStatus y WorkOrderStatus (dominios ya sembrados con pipeline/lateral/terminal en logistica-db-seed.sql líneas 313,314,318).",
+   "dbo.RateZoneMember / MatchTypeLookupId (Entity='ZoneMatchType') como patrón ya existente que DispatchZoneMember reutiliza literalmente para el mismo tipo de coincidencia geográfica (postal/municipio/polígono).",
+   "Patrón RefEntity/RefId (RefEntityLookupId + RefId) ya usado en InventoryTransaction, WarehouseTask y TransportOrder.SourceEntityTypeLookupId/SourceEntityId para orígenes polimórficos, aplicable si Flota necesita referencias similares.",
+   "dbo.AspNetUsers como FK de Driver.UserId (vínculo chofer-usuario) y de CreatedBy/UpdatedBy en otras tablas del esquema.",
+   "StatusService (src/Teikem.Infrastructure/Services/StatusService.cs): TransitionAsync y EnsureAllowedAsync, mismo patron que ClientsController/OrderStatusController; aplicable a VehicleStatus, DriverStatus, WorkOrderStatus (StatusCode ya sembrados) tras agregar las constantes de StatusDomains que faltan.",
+   "ContactPointService (src/Teikem.Infrastructure/Services/ContactPointService.cs): GetForOwnerAsync/AddAsync para telefonos/correos del chofer (linea 285 del maestro); requiere registrar IOwnedEntityResolver para DRIVER.",
+   "CustomFieldService (src/Teikem.Infrastructure/Services/CustomFieldService.cs): definiciones y valores por entidad; el maestro (linea 123) ya lista Vehiculo y Chofer entre las entidades con custom fields soportadas; requiere IOwnedEntityResolver + entradas Owner*Permission para VEHICLE/DRIVER.",
+   "IDataSource / IDataSourceRegistry (src/Teikem.Infrastructure/Analytics/DataSources.cs), patron ya usado por OrderDataSources.cs y ClientDataSources.cs registrados en DependencyInjection.cs; el modulo 4 deberia registrar sus propias fuentes (Vehiculo, Chofer, MaintenanceWorkOrder, FuelLog) con el mismo contrato.",
+   "PermissionCatalog (src/Teikem.Domain/Constants/PermissionCatalog.cs): FleetManage='fleet.manage' y FleetMaintenance='fleet.maintenance' (categoria FLEET) ya sembrados desde antes de este lote; se reutilizan tal cual en [RequirePermission].",
+   "ModuleKeys.Catalog (src/Teikem.Domain/Constants/CatalogDomains.cs): mismo modulo que ClientsController/ContractsController; la bitacora confirma que Flota y mantenimiento vive dentro del grupo Catalogo, no en un modulo aparte.",
+   "Patron de controlador de ClientsController.cs (src/Teikem.Api/Controllers/ClientsController.cs): [ApiController]/[Route]/[Authorize]/[RequireModule] a nivel de clase, [RequirePermission] por accion, rutas {publicId:guid}, /status via StatusService, /deactivate y /reactivate (SetActiveAsync) en vez de DELETE; reutilizable tal cual para VehiclesController/DriversController.",
+   "Patron de DTOs record devueltos por los servicios (ver Contracts/CustomFieldContracts.cs y los *Dto/*Request de ClientsController), nunca entidades EF expuestas directamente.",
+   "Atributo [AuditEntity(Constants.EntityTypes.X)] (visto en src/Teikem.Domain/Security/Security.cs) a aplicar sobre Vehicle/Driver/MaintenanceWorkOrder/FuelLog para auditoria automatica."
+  ]
+ },
+ "plan": {
+  "enfoque": "EXTENSIBILIDAD sin sobre-diseño, sobre el plan ganador (índice 2) con los injertos de los jueces. El Lote 4 construye el módulo 4 (Flota, choferes y mantenimiento, con sus cinco paneles) y el maestro 'Choferes y tarifas' del grupo Catálogo. Deja tres costuras explícitas para que Órdenes/Despacho, Liquidación/Facturación y Portal/App no tengan que rehacer tablas ni servicios de este lote.\n\n(1) ÓRDENES / DESPACHO. La entrega especial del Lote 3 se completa aquí. El chofer, su disponibilidad y su tarifa se preparan ANTES de sacar números (PrepareAsync, sin consumir NumberSequence) y el despacho se repite dentro de cada reintento por colisión de OrderService. La orden avanza hasta IN_TRANSIT etapa por etapa vía StatusService y se crea un DriverTrip con el monto congelado. La BD garantiza un solo viaje vigente por orden (UX_DriverTrip_Order filtrado por IsActive; CANCELLED implica IsActive=0). Además se verifica CATALOG encendido aunque el endpoint viva en LTL_GROUND. La disponibilidad (R7) vive en un único IFleetAvailabilityService con reglas puras, que el planificador de Despacho consumirá tal cual. Los documentos se leen con un helper compartido, FleetQueries.LoadFleetDocumentsAsync: parte siempre de Vehicles/Drivers filtrados por tenant y aplica la regla 'documento vigente por tipo', así que un documento vencido que ya se renovó no bloquea ni aparece por vencer.\n\n(2) LIQUIDACIÓN (Lote 9). Las tarifas efectivo-fechadas (entrega, intento, viaje) siguen el patrón de RateComponent/SpecialService. Hay un resolvedor IDriverRateResolver y el motor puro de las tres fórmulas (DriverPayoutRules). La política vigente por tenant está en DriverPayPolicy. DriverTrip lleva monto congelado, RateMissing (CHECK de coherencia en BD) y estatus OPEN→SETTLED/CANCELLED.\n\n(3) PORTAL (Lote 8) / APP (Lote 7). La orden expone solo la identidad del chofer asignado, nunca montos. Driver.UserId es único por compañía y exige admin.users más un usuario INTERNAL con membresía ACTIVE. DriverDevice tiene token único.\n\nDefensa en profundidad reforzada:\n- FKs compuestas (Id, TenantId) en las tablas nuevas, FuelLog y MaintenanceWorkOrder.\n- Resolvers de pertenencia para TODOS los EntityTypes con permiso de dueño, incluido el hueco PORTAL_USER del Lote 2, porque CustomFieldService.cs:193 omite la verificación si no hay resolver.\n- Pruebas de modelo (TenantIsolationModelTests) y de cobertura de resolvers.\n- BOLA por id hijo en el smoke.\n\nIntegridad numérica:\n- Validación previa de precisión DECIMAL: nunca un 500 por desbordamiento.\n- Odómetro con bloqueo de fila (UPDLOCK, ROWLOCK, TenantId), máximo monotónico y piso para la corrección manual.\n- Cerrar una OT exige tareas completas y odómetro si el programa es por kilometraje.\n\nSe reutiliza el EntityType WORK_ORDER ya sembrado (seed:140) en lugar de crear MAINTENANCE_WORK_ORDER. Se reutilizan sin excepción los patrones de los Lotes 1-3: TenantId del principal, PublicId en rutas, StatusService.TransitionAsync con efectos (StatusService perezoso cuando el efecto transiciona), EnsureAllowedAsync(EDIT_WORK_ORDER), [RequirePermission] + [RequireModule], IOwnedEntityResolver + Owner*Permission, IDataSource, ILookupCache, NumberSequence, RunInTransactionAsync/SaveGuardedAsync/ApplyRowVersion y excepciones de dominio con mensajes exactos.\n\nSeparación flota vs. compensación (R8) por permisos: fleet.view (nuevo), fleet.manage, fleet.maintenance, driverpay.view y driverpay.manage (nuevos); 52 en total.\n\nOrganización:\n- P0 es la ÚNICA pieza con archivos compartidos. Entrega todo el SQL/seed, entidades, configuraciones, constantes, permisos, DTOs con firma posicional completa (el contrato real entre piezas), costuras implementadas (FleetQueries), DI, contenido de análisis y esqueletos compilables.\n- P1-P8 se implementan en paralelo con archivos disjuntos.\n- P9 cierra con smoke, decisiones, manual y FAQ.\n\nEl plan sale de la especificación consolidada. P9 contrasta el capítulo del manual con Diseño/logistica-funcionalidades-maestro.md (módulos 4 y 11A y la bitácora) y anota las discrepancias en docs/lote4-decisiones.md.",
+  "resumen": "El Lote 4 entrega los cinco paneles de Flota y mantenimiento:\n- **Vehículos**, con buscador libre.\n- **Documentos por vencer**, de vehículo y de chofer unidos, contando solo el documento vigente de cada tipo.\n- **Mantenimiento preventivo**, con estatus Al día / Por vencer / Vencido / Sin historial.\n- **Órdenes de trabajo**, con número automático OT-#####, tareas, costos sumados y efecto en el estatus del vehículo. Cerrar exige tareas completas y odómetro en programas por km.\n- **Bitácora de combustible**, con km/L y costo/km, y el odómetro protegido por bloqueo de fila.\n\nTambién entrega el maestro-detalle de Choferes y tarifas:\n- Alta con código fijo, zona/área y tope de paradas.\n- Licencias y certificaciones.\n- Vínculo con un usuario interno, que exige admin.users.\n- Inactivar o eliminar sin borrar historial.\n- Tarifas efectivo-fechadas por entrega (servicio+paquete), por intento (niveles del tenant con fallback) y por viaje (tipo del catálogo de servicios especiales).\n- Fórmula de pago configurable con vista previa.\n\nCierra el pendiente del Lote 3: la entrega especial con chofer se prepara antes de numerar, se confirma, llega a IN_TRANSIT y crea un DriverTrip con monto congelado. La BD garantiza un solo viaje vigente por orden.\n\nEn esquema:\n- Vehicle y Driver reciben PublicId, auditoría, RowVersion y UQ (Id, TenantId).\n- 5 tablas nuevas: DriverPayPolicy, DriverDeliveryRate, DriverAttemptRate, DriverTripRate y DriverTrip, con FKs compuestas por tenant.\n- IsActive en FuelLog y MaintenanceTask; CHECKs e índices de vencimiento.\n- Estatus DriverTripStatus, capacidad EDIT_WORK_ORDER sobre el EntityType WORK_ORDER ya sembrado y 3 permisos (52 en total).\n\nDeja listas las costuras para:\n- **Despacho:** disponibilidad y helper de documentos.\n- **Liquidación:** resolvedor, motor de fórmulas y viajes congelados con estatus.\n- **App/Portal:** usuario y dispositivo del chofer; chofer asignado visible sin montos.\n\nSuma pruebas de modelo multi-tenant, de cobertura de resolvers y de contratos por reflexión, y un smoke con concurrencia (8 OT simultáneas) y BOLA por id hijo.",
+  "piezas": [
+   {
+    "nombre": "P0 — Base compartida: SQL, seed, constantes, permisos, excepciones, entidades, configuraciones EF, DbContext, DTOs con firma posicional completa, costuras implementadas (FleetQueries), DI, contenido de análisis, esqueletos compilables y pruebas de modelo",
+    "tocaCompartidos": true,
+    "dependeDe": [],
+    "archivos": [
+     "/home/user/teikem/Diseño/logistica-db-estructura.sql",
+     "/home/user/teikem/Diseño/logistica-db-seed.sql",
+     "/home/user/teikem/src/Teikem.Domain/Constants/CatalogDomains.cs",
+     "/home/user/teikem/src/Teikem.Domain/Constants/PermissionCatalog.cs",
+     "/home/user/teikem/src/Teikem.Domain/Orders/NumberingRules.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/Vehicle.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/Driver.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/DispatchZone.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/Maintenance.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FuelLog.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/DriverPay.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FleetRules.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FleetAvailability.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FleetDocuments.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Abstractions/Exceptions.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/Configurations/FleetConfigurations.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/Configurations/DriverPayConfigurations.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Persistence/TeikemDbContext.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/DependencyInjection.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Seeding/SystemAnalyticsSeeder.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/FleetContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/DriverContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/MaintenanceContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/DriverPayContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Contracts/OrderContracts.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Fleet/FleetQueries.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Fleet/IDriverRateResolver.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Fleet/IFleetAvailabilityService.cs",
+     "/home/user/teikem/tests/Teikem.Tests/FleetCatalogTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/FleetContractsTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/FleetRulesTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/OrderCatalogTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/TenantIsolationModelTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/OwnedEntityResolverCoverageTests.cs"
+    ],
+    "descripcion": "Es la ÚNICA pieza con archivos compartidos. Se integra primero y debe dejar:\n- la solución compilando;\n- las 261 pruebas previas y las nuevas de P0 en verde;\n- los smokes de los Lotes 1-3 en verde sobre una BD recreada.\n\nComo el script de estructura se aplica una sola vez por hash, P0 entrega TODO el SQL del lote.\n\n**(1) SQL y seed.** Aplicar completo 'cambiosSql', inline, con el comentario '-- Lote 4'. Respetar capas y orden de FKs: las UQ (Id, TenantId) de Vehicle, Driver, SpecialServiceType, TransportOrder y DriverTripRate se declaran en su CREATE TABLE antes de que otra tabla las referencie.\n\n**(2) CatalogDomains.cs.**\n- LookupDomains: VehicleType, Ownership, FuelType, VehicleDocType, MaintenanceTrigger, MaintenanceType, LicenseClass, CertificationType, DevicePlatform y DriverPayoutFormula.\n- StatusDomains: VehicleStatus, DriverStatus, WorkOrderStatus y DriverTripStatus.\n- Clases de códigos:\n  - VehicleStatuses (ACTIVE, MAINTENANCE, INACTIVE)\n  - DriverStatuses (ACTIVE, UNAVAILABLE, INACTIVE)\n  - WorkOrderStatuses (OPEN, IN_PROGRESS, CLOSED, CANCELLED)\n  - DriverTripStatuses (OPEN, SETTLED, CANCELLED)\n  - MaintenanceTriggers (MILEAGE, TIME, BOTH)\n  - MaintenanceTypes (PREVENTIVE, CORRECTIVE)\n  - DriverPayoutFormulas (DELIVERY_PLUS_ATTEMPTS, DELIVERY_INCLUDES_FIRST, FAILED_REPLACES_DELIVERY)\n  - FleetDocumentKinds (REGISTRATION, INSURANCE, INSPECTION, PERMIT, LICENSE, CERTIFICATION)\n  - FleetOwnerKinds (VEHICLE, DRIVER)\n  - ExpiryStates (EXPIRED, EXPIRING, OK, NO_EXPIRY)\n  - MaintenanceDueStates (OK, DUE_SOON, OVERDUE, NO_BASELINE)\n- Capabilities.EditWorkOrder='EDIT_WORK_ORDER'.\n- EntityTypes:\n  - WorkOrder='WORK_ORDER': reutiliza el EntityType YA sembrado en logistica-db-seed.sql:140 ('Orden de trabajo'); NO se crea MAINTENANCE_WORK_ORDER.\n  - Nuevos: MaintenanceSchedule='MAINTENANCE_SCHEDULE', FuelLog='FUEL_LOG', FleetDocument='FLEET_DOCUMENT', DriverRate='DRIVER_RATE', DriverTrip='DRIVER_TRIP' y DispatchZone='DISPATCH_ZONE'.\n- NumberKinds.WorkOrder='WORKORDER'.\n\n**(3) PermissionCatalog.cs.** Pasa de 49 a 52 permisos; se actualiza el comentario de cabecera.\n- Nuevos, todos en categoría FLEET:\n  - FleetView='fleet.view' ('Ver flota y choferes'/'View fleet & drivers')\n  - DriverPayView='driverpay.view' ('Ver tarifas y viajes de choferes'/'View driver rates & trips')\n  - DriverPayManage='driverpay.manage' ('Gestionar tarifas y viajes de choferes'/'Manage driver rates & trips')\n- OwnerReadPermission:\n  - VEHICLE, DRIVER, DISPATCH_ZONE, MAINTENANCE_SCHEDULE, WORK_ORDER, FUEL_LOG y FLEET_DOCUMENT → fleet.view\n  - DRIVER_RATE y DRIVER_TRIP → driverpay.view\n- OwnerWritePermission:\n  - VEHICLE, DRIVER, DISPATCH_ZONE y FLEET_DOCUMENT → fleet.manage\n  - MAINTENANCE_SCHEDULE, WORK_ORDER y FUEL_LOG → fleet.maintenance\n  - DRIVER_RATE y DRIVER_TRIP → driverpay.manage\n- RoleTemplates: Dispatcher += FleetView; Billing += DriverPayView; ReadOnly += FleetView. Driver sin cambios.\n\n**(4) NumberingRules.IsKnownKind** acepta WORKORDER. Es el único cambio en ese archivo.\n\n**(5) Exceptions.cs.** NotFoundException(string what, object? key = null, bool feminine = false): con feminine el mensaje es '{what} no encontrada.'. Las llamadas existentes no cambian. Mensajes 404 del lote:\n- 'Vehículo no encontrado.'\n- 'Chofer no encontrado.'\n- 'Zona de despacho no encontrada.'\n- 'Orden de trabajo no encontrada.'\n- 'Programa de mantenimiento no encontrado.'\n- 'Carga de combustible no encontrada.'\n- 'Documento no encontrado.'\n- 'Licencia no encontrada.'\n- 'Certificación no encontrada.'\n- 'Tarea no encontrada.'\n- 'Tarifa no encontrada.'\n- 'Viaje no encontrado.'\n- 'Dispositivo no encontrado.'\n- 'Usuario no encontrado.'\n\n**(6) Entidades.** Namespace Teikem.Domain.Fleet, mapeadas 1:1 con el SQL.\n- **Vehicle** ([AuditEntity(VEHICLE)]; ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped): VehicleId, [NotAudited] PublicId, TenantId, Code, PlateNumber?, MaxWeightKg?, MaxVolumeM3?, MaxStops?, VehicleTypeLookupId?, OwnershipLookupId?, FuelTypeLookupId?, Make?, Model?, ModelYear?, Vin?, CurrentOdometerKm?, HomeWarehouseId? (sin navegación), StatusCodeId, IsActive, CreatedAtUtc/CreatedBy/UpdatedAtUtc/UpdatedBy (timestamps [NotAudited]) y [NotAudited] RowVersion. Navegaciones: VehicleType, Ownership, FuelType, Status y Documents.\n- **VehicleDocument** ([AuditEntity(VEHICLE)]; ISoftDeletable; sin TenantId): VehicleDocumentId, VehicleId, DocTypeLookupId, DocNumber?, IssuedDate?/ExpiryDate? (DateOnly), FileName?/StoragePath? (mapeados, no expuestos) e IsActive.\n- **Driver** ([AuditEntity(DRIVER)]; ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped): DriverId, PublicId, TenantId, EmployeeCode, FullName, UserId?, HireDate?, HomeWarehouseId?, StatusCodeId, MaxStopsPerRoute?, IsActive, auditoría y RowVersion. Navegaciones: Status, User, Licenses, Certifications, Zones y Devices.\n- **DriverLicense**: LicenseClassLookupId, LicenseNumber. **DriverCertification**: CertTypeLookupId, CertNumber. Ambas con [AuditEntity(DRIVER)], ISoftDeletable y sin TenantId.\n- **DriverDevice** ([AuditEntity(DRIVER)]; ITenantScoped, ISoftDeletable): PlatformLookupId, [SensitiveData] PushToken, AppVersion y [NotAudited] LastSeenUtc.\n- **DispatchZone** ([AuditEntity(DISPATCH_ZONE)]; ITenantScoped, ISoftDeletable).\n- **DriverZone** ([AuditEntity(DRIVER)]; PK DriverId+DispatchZoneId; IsPrimary).\n- **MaintenanceSchedule** ([AuditEntity(MAINTENANCE_SCHEDULE)]; ITenantScoped, ISoftDeletable; CreatedAtUtc).\n- **MaintenanceWorkOrder** ([AuditEntity(WORK_ORDER)]; ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped): WorkOrderId, PublicId, VehicleId, MaintenanceScheduleId?, Number, MaintenanceTypeLookupId, StatusCodeId, OdometerKm?, ScheduledDate?, CompletedDate?, Vendor?, LaborCost?, PartsCost?, TotalCost ([NotAudited], solo lectura), CurrencyLookupId?, Notes?, IsActive, auditoría, RowVersion y Tasks.\n- **MaintenanceTask** ([AuditEntity(WORK_ORDER)]; ISoftDeletable; sin TenantId): MaintenanceTaskId, WorkOrderId, Description, PartCost?, LaborCost?, IsCompleted (columna existente) e IsActive.\n- **FuelLog** ([AuditEntity(FUEL_LOG)]; ITenantScoped, ISoftDeletable, IAuditStamped).\n- **DriverPayPolicy** ([AuditEntity(DRIVER_RATE)]; ITenantScoped; PK TenantId): AttemptLevels, PayoutFormulaLookupId, UpdatedAtUtc y UpdatedBy.\n- **DriverDeliveryRate / DriverAttemptRate / DriverTripRate** ([AuditEntity(DRIVER_RATE)]; ITenantScoped, ISoftDeletable, IEffectiveDated; CreatedAtUtc y CreatedBy).\n- **DriverTrip** ([AuditEntity(DRIVER_TRIP)]; ITenantScoped, ISoftDeletable, IHasStatus, IAuditStamped): DriverTripId, PublicId, DriverId, SpecialServiceTypeId, DriverTripRateId?, TransportOrderId?, TripDate, Amount, RateMissing, StatusCodeId, Notes?, IsActive, auditoría y RowVersion. Navegaciones: Driver, TripType, Rate, Order y Status.\n\n**(7) FleetConfigurations.cs y DriverPayConfigurations.cs.** Una IEntityTypeConfiguration por entidad con ToTable/HasKey.\n- Claves: DriverZone compuesta; DriverPayPolicy con HasKey(TenantId) y ValueGeneratedNever; MaintenanceWorkOrder con WorkOrderId.\n- PublicId con HasDefaultValueSql('NEWID()'); RowVersion con IsRowVersion.\n- Precisiones: (12,3) MaxWeightKg, (12,4) MaxVolumeM3, (12,1) odómetros e intervalos km, (10,3) Liters y (18,4) dinero.\n- TotalCost: HasComputedColumnSql('ISNULL([LaborCost],0) + ISNULL([PartsCost],0)', stored: true).\n- Las FKs compuestas (Id, TenantId) del SQL NO se mapean en EF: las relaciones siguen por columna simple y EF no genera esquema.\n- Índices únicos espejo con el mismo nombre y filtro: UQ_Vehicle_Code, UQ_Driver_EmployeeCode, UX_Driver_User, UQ_DispatchZone, UQ_WorkOrder_Number, UQ_DriverDeliveryRate_Open, UQ_DriverAttemptRate_Open, UQ_DriverTripRate_Open, UX_DriverTrip_Order y UX_DriverDevice_Token.\n\n**(8) TeikemDbContext.** DbSets Vehicles, VehicleDocuments, Drivers, DriverLicenses, DriverCertifications, DriverDevices, DispatchZones, DriverZones, MaintenanceSchedules, MaintenanceWorkOrders, MaintenanceTasks, FuelLogs, DriverPayPolicies, DriverDeliveryRates, DriverAttemptRates, DriverTripRates y DriverTrips.\n\n**(9) Contracts.** Firma posicional COMPLETA; es el contrato entre piezas paralelas y ninguna pieza la cambia. Son records sealed. Donde se indica '+Extra', el record lleva la propiedad [JsonExtensionData] IDictionary<string, JsonElement>? Extra, como OrderCreateRequest.\n\n*FleetContracts:*\n- VehicleListQuery(string? Search=null, string[]? VehicleType=null, string[]? Ownership=null, string[]? FuelType=null, string[]? Status=null, bool IncludeInactive=false)\n- VehicleListItemDto(int Id, Guid PublicId, string Code, string? PlateNumber, string? VehicleTypeCode, string? VehicleType, string? OwnershipCode, string? Ownership, string? FuelTypeCode, string? FuelType, string? Make, string? Model, int? ModelYear, string? Vin, decimal? CurrentOdometerKm, string StatusCode, string Status, string? StatusColor, bool IsActive, DateOnly? NextDocumentExpiry)\n- VehicleDocumentDto(int Id, string DocTypeCode, string DocType, string? DocNumber, DateOnly? IssuedDate, DateOnly? ExpiryDate, string ExpiryState, int? DaysToExpiry, bool IsSuperseded, bool IsActive)\n- VehicleDetailDto(int Id, Guid PublicId, string Code, string? PlateNumber, decimal? MaxWeightKg, decimal? MaxVolumeM3, int? MaxStops, string? VehicleTypeCode, string? VehicleType, string? OwnershipCode, string? Ownership, string? FuelTypeCode, string? FuelType, string? Make, string? Model, int? ModelYear, string? Vin, decimal? CurrentOdometerKm, string StatusCode, string Status, bool IsTerminal, bool IsActive, IReadOnlyList<VehicleDocumentDto> Documents, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string RowVersion)\n- VehicleCreateRequest(string? Code, string? PlateNumber=null, string? VehicleType=null, string? Ownership=null, string? FuelType=null, string? Make=null, string? Model=null, int? ModelYear=null, string? Vin=null, decimal? MaxWeightKg=null, decimal? MaxVolumeM3=null, int? MaxStops=null, decimal? CurrentOdometerKm=null)\n- VehiclePatchRequest(string? PlateNumber=null, string? VehicleType=null, string? Ownership=null, string? FuelType=null, string? Make=null, string? Model=null, int? ModelYear=null, string? Vin=null, decimal? MaxWeightKg=null, decimal? MaxVolumeM3=null, int? MaxStops=null, decimal? CurrentOdometerKm=null, string? RowVersion=null) +Extra\n- VehicleDocumentRequest(string? DocType=null, string? DocNumber=null, DateOnly? IssuedDate=null, DateOnly? ExpiryDate=null, bool? ClearIssuedDate=null, bool? ClearExpiryDate=null)\n- ExpiringDocumentsQuery(int WithinDays=30, string[]? DocType=null, string[]? Entity=null, bool IncludeExpired=true)\n- ExpiringDocumentDto(string RowKey, string OwnerKind, Guid OwnerPublicId, string OwnerCode, string OwnerName, string DocumentKind, string DocumentTypeCode, string DocumentType, string? DocNumber, DateOnly? IssuedDate, DateOnly ExpiryDate, int DaysToExpiry, string ExpiryState)\n- AvailabilityIssueDto(string Code, string Message, bool Blocking)\n- DriverAvailabilityDto(int Id, Guid PublicId, string Code, string FullName, string? ZoneCode, bool Available, IReadOnlyList<AvailabilityIssueDto> Issues)\n- VehicleAvailabilityDto(int Id, Guid PublicId, string Code, string? PlateNumber, string? VehicleTypeCode, bool Available, IReadOnlyList<AvailabilityIssueDto> Issues)\n- FleetAvailabilityDto(DateOnly Date, IReadOnlyList<DriverAvailabilityDto> Drivers, IReadOnlyList<VehicleAvailabilityDto> Vehicles)\n\n*DriverContracts:*\n- DriverListQuery(string? Search=null, string[]? Status=null, int? DispatchZoneId=null, bool IncludeInactive=false)\n- DriverListItemDto(int Id, Guid PublicId, string Code, string FullName, int? DispatchZoneId, string? ZoneCode, string? Area, int? MaxStopsPerRoute, int? EffectiveMaxStops, DateOnly? HireDate, string StatusCode, string Status, string? StatusColor, bool IsActive, DateOnly? LicenseExpiry, bool HasUser)\n- DriverUserDto(int UserId, string Email, string? FullName)\n- DriverLicenseDto(int Id, string LicenseClassCode, string LicenseClass, string LicenseNumber, DateOnly? IssuedDate, DateOnly? ExpiryDate, string ExpiryState, int? DaysToExpiry, bool IsSuperseded, bool IsActive)\n- DriverLicenseRequest(string? LicenseClass=null, string? LicenseNumber=null, DateOnly? IssuedDate=null, DateOnly? ExpiryDate=null, bool? ClearIssuedDate=null, bool? ClearExpiryDate=null)\n- DriverCertificationDto(int Id, string CertTypeCode, string CertType, string? CertNumber, DateOnly? IssuedDate, DateOnly? ExpiryDate, string ExpiryState, int? DaysToExpiry, bool IsSuperseded, bool IsActive)\n- DriverCertificationRequest(string? CertType=null, string? CertNumber=null, DateOnly? IssuedDate=null, DateOnly? ExpiryDate=null, bool? ClearIssuedDate=null, bool? ClearExpiryDate=null)\n- DriverDeviceDto(int Id, string PlatformCode, string Platform, string? AppVersion, bool HasPushToken, DateTime? LastSeenUtc, bool IsActive)\n- DriverDetailDto(int Id, Guid PublicId, string Code, string FullName, int? DispatchZoneId, string? ZoneCode, string? Area, int? MaxStopsPerRoute, int? EffectiveMaxStops, DateOnly? HireDate, DriverUserDto? User, string StatusCode, string Status, bool IsTerminal, bool IsActive, IReadOnlyList<DriverLicenseDto> Licenses, IReadOnlyList<DriverCertificationDto> Certifications, IReadOnlyList<DriverDeviceDto> Devices, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string RowVersion)\n- DriverCreateRequest(string? Code, string? FullName, int? DispatchZoneId=null, int? MaxStopsPerRoute=null, DateOnly? HireDate=null, int? UserId=null)\n- DriverPatchRequest(string? FullName=null, int? DispatchZoneId=null, bool? ClearZone=null, int? MaxStopsPerRoute=null, bool? ClearMaxStopsPerRoute=null, DateOnly? HireDate=null, int? UserId=null, bool? ClearUser=null, string? RowVersion=null) +Extra\n- DriverRetireRequest(string? Comment=null)\n- DispatchZoneDto(int Id, string Code, string? Name, int DriverCount, bool IsActive)\n- DispatchZoneRequest(string? Code=null, string? Name=null)\n\n*MaintenanceContracts:*\n- MaintenanceScheduleDto(int Id, string Name, Guid? VehiclePublicId, string? VehicleCode, string? VehicleTypeCode, string? VehicleType, string TriggerCode, string Trigger, decimal? IntervalKm, int? IntervalDays, decimal? LastServiceKm, DateOnly? LastServiceDate, bool IsActive, DateTime CreatedAtUtc)\n- MaintenanceScheduleRequest(string? Name=null, Guid? VehiclePublicId=null, string? VehicleType=null, string? Trigger=null, decimal? IntervalKm=null, int? IntervalDays=null, decimal? LastServiceKm=null, DateOnly? LastServiceDate=null, bool? ClearIntervalKm=null, bool? ClearIntervalDays=null)\n- MaintenanceDueQuery(Guid? VehiclePublicId=null, string[]? Status=null)\n- MaintenanceDueDto(int ScheduleId, string ScheduleName, Guid VehiclePublicId, string VehicleCode, string TriggerCode, decimal? IntervalKm, int? IntervalDays, decimal? LastServiceKm, DateOnly? LastServiceDate, string? LastWorkOrderNumber, decimal? CurrentOdometerKm, decimal? NextDueKm, DateOnly? NextDueDate, decimal? KmRemaining, int? DaysRemaining, string State)\n- WorkOrderListQuery(Guid? VehiclePublicId=null, string[]? Status=null, string[]? MaintenanceType=null, int? ScheduleId=null, DateOnly? From=null, DateOnly? To=null, bool IncludeInactive=false, int Skip=0, int Take=100)\n- WorkOrderListItemDto(int Id, Guid PublicId, string Number, Guid VehiclePublicId, string VehicleCode, string MaintenanceTypeCode, string MaintenanceType, int? ScheduleId, string? ScheduleName, string StatusCode, string Status, string? StatusColor, DateOnly? ScheduledDate, DateOnly? CompletedDate, decimal? OdometerKm, string? Vendor, decimal TotalCost, bool IsActive)\n- MaintenanceTaskDto(int Id, string Description, decimal? PartCost, decimal? LaborCost, bool IsCompleted, bool IsActive)\n- MaintenanceTaskRequest(string? Description=null, decimal? PartCost=null, decimal? LaborCost=null, bool? IsCompleted=null)\n- WorkOrderDetailDto(int Id, Guid PublicId, string Number, Guid VehiclePublicId, string VehicleCode, string MaintenanceTypeCode, string MaintenanceType, int? ScheduleId, string? ScheduleName, string? ScheduleTriggerCode, string StatusCode, string Status, bool IsTerminal, DateOnly? ScheduledDate, DateOnly? CompletedDate, decimal? OdometerKm, string? Vendor, decimal? LaborCost, decimal? PartsCost, decimal TotalCost, string? CurrencyCode, string? Notes, bool CostsFromTasks, bool CanEdit, IReadOnlyList<MaintenanceTaskDto> Tasks, bool IsActive, DateTime CreatedAtUtc, DateTime? UpdatedAtUtc, string RowVersion)\n- WorkOrderCreateRequest(Guid VehiclePublicId, string? MaintenanceType=null, int? ScheduleId=null, DateOnly? ScheduledDate=null, decimal? OdometerKm=null, string? Vendor=null, decimal? LaborCost=null, decimal? PartsCost=null, string? Currency=null, string? Notes=null)\n- WorkOrderPatchRequest(DateOnly? ScheduledDate=null, decimal? OdometerKm=null, string? Vendor=null, decimal? LaborCost=null, decimal? PartsCost=null, string? Currency=null, string? Notes=null, string? RowVersion=null) +Extra\n- WorkOrderStatusRequest(string ToCode, string? Comment=null, DateOnly? CompletedDate=null, decimal? OdometerKm=null, string? RowVersion=null)\n- FuelLogQuery(Guid? VehiclePublicId=null, Guid? DriverPublicId=null, DateTime? FromUtc=null, DateTime? ToUtc=null, bool IncludeInactive=false, int Skip=0, int Take=100)\n- FuelLogDto(int Id, Guid VehiclePublicId, string VehicleCode, Guid? DriverPublicId, string? DriverName, DateTime FillDateUtc, decimal? OdometerKm, decimal Liters, decimal TotalCost, string? CurrencyCode, string? Station, decimal? DistanceKm, decimal? KmPerLiter, decimal? CostPerKm, bool IsActive)\n- FuelVehicleSummaryDto(Guid VehiclePublicId, string VehicleCode, int Fills, decimal TotalLiters, decimal TotalCost, decimal? DistanceKm, decimal? KmPerLiter, decimal? CostPerKm)\n- FuelLogPageDto(int Total, int Skip, int Take, IReadOnlyList<FuelLogDto> Items, IReadOnlyList<FuelVehicleSummaryDto> Summary)\n- FuelLogCreateRequest(Guid VehiclePublicId, DateTime FillDateUtc, decimal Liters, decimal TotalCost, decimal? OdometerKm=null, Guid? DriverPublicId=null, string? Currency=null, string? Station=null)\n- FuelLogPatchRequest(DateTime? FillDateUtc=null, decimal? Liters=null, decimal? TotalCost=null, decimal? OdometerKm=null, bool? ClearOdometer=null, Guid? DriverPublicId=null, bool? ClearDriver=null, string? Currency=null, string? Station=null) +Extra\n\n*DriverPayContracts:*\n- DriverDeliveryRateDto(int Id, string ServiceTypeCode, string ServiceType, string PackageTypeCode, string PackageType, decimal Rate, DateOnly EffectiveFrom, DateOnly? EffectiveTo, bool IsCurrent)\n- DriverAttemptRateDto(int AttemptNumber, int? Id, decimal? Rate, DateOnly? EffectiveFrom, DateOnly? EffectiveTo, bool IsCurrent)\n- DriverTripRateDto(int Id, int SpecialServiceTypeId, string TripType, bool TripTypeActive, decimal Rate, DateOnly EffectiveFrom, DateOnly? EffectiveTo, bool IsCurrent)\n- DriverRatesDto(Guid DriverPublicId, string DriverCode, string DriverName, bool ReadOnly, DateOnly AsOf, int AttemptLevels, string PayoutFormulaCode, IReadOnlyList<DriverDeliveryRateDto> DeliveryRates, IReadOnlyList<DriverAttemptRateDto> AttemptRates, IReadOnlyList<DriverTripRateDto> TripRates)\n- DriverDeliveryRateCreateRequest(string? ServiceType, string? PackageType, decimal Rate, DateOnly? EffectiveFrom=null)\n- DriverRateUpdateRequest(decimal Rate, DateOnly? EffectiveFrom=null) +Extra\n- DriverRateCloseRequest(DateOnly? EffectiveTo=null)\n- DriverTripRateCreateRequest(int? SpecialServiceTypeId, decimal Rate, DateOnly? EffectiveFrom=null)\n- PayoutFormulaOptionDto(string Code, string Label)\n- DriverPayPolicyDto(int AttemptLevels, string PayoutFormulaCode, string PayoutFormula, IReadOnlyList<PayoutFormulaOptionDto> Formulas, bool IsDefault, DateTime? UpdatedAtUtc)\n- DriverPayPolicyPatchRequest(string? PayoutFormula=null)\n- PayoutAttemptInput(int Number, bool Delivered)\n- PayoutAttemptRateInput(int Number, decimal Rate)\n- PayoutPreviewRequest(IReadOnlyList<PayoutAttemptInput> Attempts, decimal? DeliveryRate=null, IReadOnlyList<PayoutAttemptRateInput>? AttemptRates=null, string? Formula=null)\n- PayoutLineDto(string Kind, int? AttemptNumber, decimal Amount, string? Note)\n- PayoutPreviewDto(string FormulaCode, decimal Total, IReadOnlyList<PayoutLineDto> Lines)\n- DriverTripListQuery(DateOnly? From=null, DateOnly? To=null, string[]? Status=null, bool IncludeCancelled=false)\n- DriverTripDto(int Id, Guid PublicId, Guid DriverPublicId, string DriverCode, int SpecialServiceTypeId, string TripType, DateOnly TripDate, decimal Amount, bool RateMissing, string? Note, Guid? OrderPublicId, string? OrderNumber, string StatusCode, string Status, string? Notes, bool IsActive, DateTime CreatedAtUtc)\n- DriverTripCreateRequest(int? SpecialServiceTypeId, DateOnly? TripDate=null, string? Notes=null)\n- DriverTripCancelRequest(string? Comment=null)\n- SpecialDeliveryAssignRequest(Guid DriverPublicId, bool OverrideCredit=false, string? Comment=null, string? RowVersion=null)\n\nNinguna solicitud de tarifa ni de viaje lleva DriverId ni DriverPublicId: el chofer sale de la ruta (R31).\n\n*OrderContracts (antes en P7; se mueve aquí para que el contrato quede fijo):*\n- OrderCreateRequest agrega al final 'Guid? DriverPublicId = null', después de OverrideCredit. El importador (OrderImportService.cs:621 usa argumentos con nombre) no cambia.\n- OrderDetailDto agrega al final 'Guid? AssignedDriverPublicId = null, string? AssignedDriverCode = null, string? AssignedDriverName = null', sin montos.\n\n**(10) Costuras y consultas compartidas** (IMPLEMENTADAS en P0, no esqueleto).\n\nFleetQueries (extensiones sobre TeikemDbContext):\n- ResolveVehicleAsync(Guid publicId, bool track, ct) → 404 'Vehículo no encontrado.'.\n- ResolveDriverAsync(Guid publicId, bool track, ct) → 404 'Chofer no encontrado.'.\n- IsTerminalAsync(int statusCodeId, ct).\n- LockVehicleAsync(int vehicleId, ct): db.Vehicles.FromSqlInterpolated('SELECT * FROM dbo.Vehicle WITH (UPDLOCK, ROWLOCK) WHERE VehicleId = {id} AND TenantId = {db.CurrentTenantId}'), tracked. Exige transacción ambiente; sin ella lanza InvalidOperationException. Es la ÚNICA forma de cargar el vehículo en escrituras que tocan el odómetro.\n- LastRecordedOdometerAsync(int vehicleId, ct) → (decimal Km, DateOnly Date, string Source)?: la mayor lectura entre FuelLog activos y OT CLOSED activas.\n- LoadFleetDocumentsAsync(DateOnly today, FleetDocumentScope scope, ct) → IReadOnlyList<FleetDocumentRow>.\n  - FleetDocumentScope(bool IncludeVehicles=true, bool IncludeDrivers=true, bool OnlyActiveOwners=true, IReadOnlyCollection<int>? VehicleIds=null, IReadOnlyCollection<int>? DriverIds=null).\n  - Hace tres consultas que parten SIEMPRE de db.Vehicles/db.Drivers (filtro de tenant): documentos de vehículo, licencias y certificaciones activos. Marca owner activo/terminal y aplica FleetDocuments.MarkSuperseded.\n  - Lo reutilizan el panel, la disponibilidad y la fuente FLEET_DOCUMENT; la regla no se triplica.\n- Constantes:\n  - VehicleInactiveMessage='El vehículo está inactivo; reactívelo para registrar órdenes de trabajo o cargas de combustible.'\n  - DriverRetiredMessage='El chofer fue eliminado; sus tarifas y viajes solo se consultan.'\n\nIDriverRateResolver:\n- DeliveryRateAsync(int driverId, int serviceTypeLookupId, int packageTypeLookupId, DateOnly asOf, ct) → DriverRateResolution\n- AttemptRatesAsync(int driverId, DateOnly asOf, ct) → IReadOnlyDictionary<int, decimal>\n- TripRateAsync(int driverId, int specialServiceTypeId, DateOnly asOf, ct) → DriverRateResolution\n- PolicyAsync(ct) → DriverPayPolicySnapshot\n- Records: DriverRateResolution(decimal Amount, int? RateId, bool Missing) y DriverPayPolicySnapshot(int AttemptLevels, string FormulaCode).\n\nIFleetAvailabilityService:\n- GetAsync(DateOnly date, bool onlyAvailable, ct) → FleetAvailabilityDto\n- CheckDriverAsync(int driverId, DateOnly date, ct) → AvailabilityResult\n- CheckVehicleAsync(int vehicleId, DateOnly date, ct) → AvailabilityResult\n\nDomain/Fleet/FleetAvailability.cs:\n- AvailabilityIssue(string Code, string Message, bool Blocking)\n- AvailabilityResult(bool Available, IReadOnlyList<AvailabilityIssue> Issues)\n- AvailabilityDocSnapshot(string TypeCode, string TypeLabel, DateOnly? ExpiryDate, bool IsSuperseded)\n- DriverAvailabilitySnapshot(int DriverId, bool IsActive, bool IsInitialStatus, bool IsTerminal, string StatusLabel, IReadOnlyList<AvailabilityDocSnapshot> Licenses, IReadOnlyList<AvailabilityDocSnapshot> Certifications)\n- VehicleAvailabilitySnapshot(int VehicleId, bool IsActive, bool IsInitialStatus, bool IsTerminal, string StatusLabel, IReadOnlyList<AvailabilityDocSnapshot> Documents, IReadOnlyList<string> InProgressWorkOrderNumbers)\n- AvailabilityIssueCodes: DRIVER_INACTIVE, DRIVER_STATUS, NO_VALID_LICENSE, CERT_EXPIRED, VEHICLE_INACTIVE, VEHICLE_STATUS, VEHICLE_DOC_EXPIRED, WORK_ORDER_IN_PROGRESS, DOC_EXPIRING y VEHICLE_NO_DOCUMENTS.\n\nDomain/Fleet/FleetDocuments.cs (puro):\n- FleetDocumentRow(string RowKey, string OwnerKind, int OwnerId, Guid OwnerPublicId, string OwnerCode, string OwnerName, bool OwnerIsActive, bool OwnerIsTerminal, string DocumentKind, int DocTypeLookupId, string DocTypeCode, string? DocNumber, DateOnly? IssuedDate, DateOnly? ExpiryDate, bool IsSuperseded=false).\n- MarkSuperseded(rows): agrupa por (OwnerKind, OwnerId, DocumentKind, DocTypeCode). Un documento con ExpiryDate queda IsSuperseded=true si en su grupo existe otro activo con ExpiryDate no nula y posterior. Los documentos sin vencimiento nunca superan ni quedan superados.\n\nDomain/Fleet/FleetRules.cs (puro):\n- NormalizeCode(string? raw, int maxLen, string requiredMessage) → (string? Code, string? Error). Recorta, pasa a mayúsculas; si excede: 'El código no puede exceder {n} caracteres.'\n- MatchesSearch(string? query, params string?[] fields): sin distinguir acentos ni mayúsculas.\n- EffectiveMaxStops(int? own, int? tenantDefault).\n- ValidateDocumentDates(issued, expiry) → 'La fecha de vencimiento no puede ser anterior a la de emisión.'\n- ExpiryState(DateOnly? expiry, DateOnly today, int withinDays=30).\n- DaysTo(expiry, today).\n- DecimalError(decimal? value, int precision, int scale) → null o 'El valor admite como máximo {scale} decimales y debe ser menor que {10^(precision-scale):N0}.' (cultura invariante). Todas las piezas lo aplican antes de guardar: ningún desbordamiento termina en 500.\n- RaiseOdometer(decimal? current, decimal? reading) → máximo monotónico.\n\n**(11) DI.**\n- Servicios: VehicleService, VehicleDocumentService, DriverService, DriverDocumentService, DispatchZoneService, FleetDocumentService, IFleetAvailabilityService→FleetAvailabilityService, MaintenanceScheduleService, MaintenanceWorkOrderService, FuelLogService, DriverRateService, DriverPayPolicyService, IDriverRateResolver→DriverRateResolver, DriverTripService y SpecialDeliveryDispatchService.\n- IStatusTransitionEffect: VehicleStatusEffect, DriverStatusEffect, DriverRatesRetirementEffect, WorkOrderStatusEffect, DriverTripOrderEffect y DriverTripStatusEffect.\n- IDataSource: VehicleDataSource, DriverDataSource, WorkOrderDataSource, FuelLogDataSource y FleetDocumentDataSource.\n- IOwnedEntityResolver: VehicleOwnedEntityResolver, DriverOwnedEntityResolver, DispatchZoneOwnedEntityResolver, MaintenanceScheduleOwnedEntityResolver, WorkOrderOwnedEntityResolver, FuelLogOwnedEntityResolver, DriverTripOwnedEntityResolver, ClosedOwnedEntityResolver (dos instancias: DRIVER_RATE y FLEET_DOCUMENT, registradas con factory) y PortalUserOwnedEntityResolver (hueco del Lote 2).\n\n**(12) SystemAnalyticsSeeder**, bloque '// Lote 4'.\n- Vistas:\n  - 'Vehículos' (VEHICLE: Code, PlateNumber, VehicleType, Ownership, FuelType, CurrentOdometerKm, Status, IsActive; orden Code asc).\n  - 'Documentos por vencer' (FLEET_DOCUMENT: ExpiryDate, OwnerKind, OwnerCode, OwnerName, DocumentType, DocNumber, DaysToExpiry, ExpiryState; filtro ExpiryState in [EXPIRED, EXPIRING]; orden ExpiryDate asc).\n- Indicadores:\n  - 'Documentos por vencer' (FLEET_DOCUMENT, COUNT, mismo filtro, sin rango, Pulso, orden 80, OPERATIONS).\n  - 'Órdenes de trabajo abiertas' (WORK_ORDER, COUNT, IsActive y StatusCode in [OPEN, IN_PROGRESS], rango ALL, Pulso, orden 81).\n\n**(13) Esqueletos compilables.** Clases referenciadas por DI con su firma pública (definida en P1-P8) y cuerpo throw new NotImplementedException(), salvo:\n- EntityTypeCode de cada resolver y Key/EntityTypeCode de cada IDataSource, que se implementan ya (las pruebas de cobertura de P0 los leen).\n\nCada pieza reemplaza su archivo completo.\n\n**(14) Pruebas.** FleetCatalogTests, FleetContractsTests, FleetRulesTests, TenantIsolationModelTests y OwnedEntityResolverCoverageTests. En OrderCatalogTests, 49 pasa a 52 conservando las aserciones de orders.credit_override."
+   },
+   {
+    "nombre": "P1 — Vehículos (panel Vehículos) y documentos de vehículo",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/VehicleRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/VehicleService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/VehicleDocumentService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/VehicleStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/VehiclesController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/VehicleRulesTests.cs"
+    ],
+    "descripcion": "**VehicleRules (puro)**\n- NormalizeVin: mayúsculas, sin espacios, máximo 40 ('El VIN admite como máximo 40 caracteres.').\n- ValidateCapacities: 'La capacidad no puede ser negativa.'; MaxStops ≥ 1 ('El tope de paradas debe ser mayor o igual a 1.').\n- ValidateOdometer: 'El odómetro no puede ser negativo.'\n- ValidateModelYear: 1900..año actual+1 ('El año del modelo debe estar entre 1900 y {año+1}.').\n- ValidateManualOdometer(decimal newKm, (decimal Km, DateOnly Date)? lastRecorded) → 'El odómetro no puede ser menor que la última lectura registrada ({km} km el yyyy-MM-dd).'\n\nAdemás se aplica FleetRules.DecimalError a MaxWeightKg (12,3), MaxVolumeM3 (12,4) y CurrentOdometerKm (12,1). El error va en errors del campo.\n\n**VehicleService(db, tenant, lookups, StatusService statuses)**\n\n(a) ListAsync(VehicleListQuery)\n- Filtro de tenant; IsActive salvo includeInactive.\n- Filtros multi-valor vehicleType[]/ownership[]/fuelType[]/status[] por código; un código desconocido da 400.\n- qbox 'search' en memoria con FleetRules.MatchesSearch sobre código, placa, etiquetas e InternalCode de tipo/propiedad/combustible, VIN, marca y modelo.\n- NextDocumentExpiry = mínima ExpiryDate de los documentos activos NO superados (FleetDocuments.MarkSuperseded).\n- Orden por Code.\n\n(b) GetAsync(publicId): 404 'Vehículo no encontrado.'\n\n(c) CreateAsync\n- Code con FleetRules.NormalizeCode: 400 'El código del vehículo es obligatorio.'; 400 'El código no puede exceder 30 caracteres.'\n- Duplicado, aunque el otro esté dado de baja: 409 'Ya existe un vehículo con ese código.' Chequeo previo más UQ_Vehicle_Code vía SaveGuardedAsync.\n- Lookups por código: 400 'Tipo de vehículo desconocido: 'X'.', 'Propiedad desconocida: 'X'.', 'Tipo de combustible desconocido: 'X'.'\n- VIN repetido entre activos: 409 'Ya existe un vehículo activo con ese VIN.'\n- Dentro de RunInTransactionAsync, el vehículo nace en el estatus inicial: GetInitialAsync + TransitionAsync(VehicleStatus, VEHICLE, id, null, inicial).\n\n(d) UpdateAsync (PATCH)\n- null = sin cambio; rowVersion opcional con ApplyRowVersion (409).\n- 'code' u 'homeWarehouseId' en Extra: 400 'El código del vehículo se fija al crearlo; no se puede cambiar.'\n- Si llega CurrentOdometerKm, dentro de RunInTransactionAsync se carga con FleetQueries.LockVehicleAsync y se valida con ValidateManualOdometer contra FleetQueries.LastRecordedOdometerAsync. La corrección queda auditada y puede bajar un error manual, pero no por debajo de la última lectura de combustible u OT cerrada.\n\n(e) TransitionStatusAsync(StatusChangeRequest)\n- 400 si falta toCode.\n- ACTIVE↔MAINTENANCE (MAINTENANCE es lateral) y → INACTIVE (terminal, baja definitiva), solo vía TransitionAsync.\n\n(f) SetActiveAsync(publicId, active)\n- Checkbox Activo, sin DELETE.\n- Reactivar un terminal: 409 'El vehículo está dado de baja definitiva; no se puede reactivar.'\n\n**VehicleDocumentService**\n- ListAsync(includeInactive), AddAsync, UpdateAsync y DeactivateAsync, siempre a través del vehículo del tenant.\n- El id de documento debe pertenecer a ESE vehículo; si no (otro vehículo u otro tenant, BOLA por id hijo): 404 'Documento no encontrado.'\n- DocType por código VehicleDocType: 400 'Tipo de documento de vehículo desconocido: 'X'.'\n- Fechas validadas con FleetRules.ValidateDocumentDates.\n- ExpiryState/DaysToExpiry con FleetRules (30 días) e IsSuperseded con FleetDocuments.MarkSuperseded sobre los documentos del vehículo.\n- Los adjuntos no se exponen.\n\n**VehicleStatusEffect (VehicleStatus)**\n- Al entrar a una etapa TERMINAL pone IsActive=0 en la entidad tracked; no transiciona nada.\n\n**VehiclesController** [Route('api/v1/vehicles')][Authorize][RequireModule(ModuleKeys.Catalog)]\n- GET '' (fleet.view; search, vehicleType, ownership, fuelType, status, includeInactive)\n- POST '' (fleet.manage)\n- GET '{publicId:guid}' (fleet.view)\n- PATCH '{publicId:guid}' (fleet.manage)\n- POST '{publicId:guid}/status' (fleet.manage)\n- POST '{publicId:guid}/deactivate' y '/reactivate' (fleet.manage, 204)\n- GET '{publicId:guid}/documents' (fleet.view, includeInactive)\n- POST '{publicId:guid}/documents', PATCH '{publicId:guid}/documents/{id:int}' y POST '{publicId:guid}/documents/{id:int}/deactivate' (fleet.manage)"
+   },
+   {
+    "nombre": "P2 — Choferes (identidad, ficha maestro-detalle, vínculo con usuario), licencias, certificaciones, dispositivos y zonas de despacho",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/DriverRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverDocumentService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DispatchZoneService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/DriversController.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/DispatchZonesController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/DriverRulesTests.cs"
+    ],
+    "descripcion": "**DriverRules (puro)**\n- ValidateFullName: obligatorio, máximo 150 ('El nombre del chofer es obligatorio.' / 'El nombre del chofer admite como máximo 150 caracteres.').\n- ValidateMaxStops: 'El tope de paradas debe ser mayor o igual a 1.'\n- ValidateLicenseNumber: obligatorio, máximo 60 ('El número de licencia es obligatorio.').\n\n**DriverService(db, tenant, lookups, statuses, PermissionService permissions)**\n\n(a) ListAsync(DriverListQuery)\n- qbox sobre código, nombre, zona y área.\n- ZoneCode/Area salen de la zona primaria (Area = DispatchZone.Name).\n- EffectiveMaxStops = FleetRules.EffectiveMaxStops(MaxStopsPerRoute, Tenant.MaxStopsPerRouteDefault) (R4).\n- LicenseExpiry = mínima ExpiryDate de las licencias activas NO superadas.\n\n(b) GetAsync → DriverDetailDto con licencias, certificaciones, dispositivos y usuario vinculado.\n\n(c) CreateAsync\n- Code (EmployeeCode) normalizado y obligatorio: 400 'El código del chofer es obligatorio.'; máximo 30.\n- Duplicado aunque el otro esté dado de baja: 409 'Ya existe un chofer con ese código.'\n- dispatchZoneId opcional: zona del tenant (404 'Zona de despacho no encontrada.') y activa (400 'La zona de despacho está inactiva.'). Se guarda DriverZone(IsPrimary=1).\n- MaxStopsPerRoute ≥ 1.\n- userId opcional, vía ValidateUserLinkAsync: exige admin.users (403 'Falta el permiso 'admin.users'.'), membresía UserTenant en el tenant (404 'Usuario no encontrado.'), usuario de tipo UserKinds.Internal (400 'Solo un usuario interno se puede vincular a un chofer.'), membresía ACTIVE (409 'El usuario no tiene una membresía activa en esta compañía.') y que no esté vinculado a otro chofer (409 'El usuario ya está vinculado a otro chofer.', también por UX_Driver_User vía SaveGuardedAsync).\n- El chofer nace en el estatus inicial vía TransitionAsync.\n- No crea filas de tarifa.\n\n(d) UpdateAsync (PATCH en línea)\n- Campos: fullName; dispatchZoneId o clearZone (reemplaza la fila primaria); maxStopsPerRoute o clearMaxStopsPerRoute; hireDate; userId (ValidateUserLinkAsync) o clearUser (también exige admin.users); rowVersion.\n- 'code'/'employeeCode' en Extra: 400 'El código del chofer se fija al crearlo; no se puede cambiar.'\n\n(e) TransitionStatusAsync: ACTIVE↔UNAVAILABLE (lateral).\n\n(f) SetActiveAsync: reactivar un terminal da 409 'El chofer fue eliminado; no se puede reactivar.'\n\n(g) RetireAsync(publicId, DriverRetireRequest?) = DELETE: TransitionAsync(DriverStatus → INACTIVE, comentario), sin borrado físico; cascada por efectos.\n\n(h) GetDevicesAsync y DeactivateDeviceAsync\n- Nunca devuelven el PushToken.\n- Dispositivo de otro chofer: 404 'Dispositivo no encontrado.'\n\n**DriverDocumentService**\n- Licencias: LicenseClass por código (400 'Clase de licencia desconocida: 'X'.').\n- Certificaciones: CertificationType por código (400 'Tipo de certificación desconocido: 'X'.').\n- list/add/update/deactivate a través del chofer del tenant. El id hijo debe pertenecer a ese chofer: 404 'Licencia no encontrada.' / 'Certificación no encontrada.' (BOLA por id hijo).\n- Fechas con FleetRules, ExpiryState e IsSuperseded.\n\n**DispatchZoneService**\n- ListAsync(includeInactive) con DriverCount.\n- CreateAsync: Code obligatorio, máximo 20, en mayúsculas. Duplicado: 409 'Ya existe una zona de despacho con ese código.' Name máximo 120.\n- UpdateAsync: code en el body → 400 'El código de la zona se fija al crearla; no se puede cambiar.'\n- SetActiveAsync: inactivar con choferes activos asignados → 409 'La zona tiene choferes asignados; reasígnelos antes de inactivarla.'\n\n**DriverStatusEffect (DriverStatus)**\n- Al entrar a TERMINAL: IsActive=0, UserId=NULL, desactiva los DriverDevice y borra sus filas DriverZone (asociación de estado actual).\n\n**Controladores** con [RequireModule(Catalog)].\n\nDriversController [Route('api/v1/drivers')]:\n- GET '' (fleet.view)\n- POST '' (fleet.manage)\n- GET '{publicId:guid}' (fleet.view)\n- PATCH '{publicId:guid}' (fleet.manage; admin.users adicional lo exige el servicio si toca el usuario)\n- POST '{publicId:guid}/status' (fleet.manage)\n- POST '/deactivate' y '/reactivate' (fleet.manage, 204)\n- DELETE '{publicId:guid}' (fleet.manage, 204, cuerpo opcional {comment})\n- GET/POST '{publicId:guid}/licenses', PATCH '/licenses/{id:int}' y POST '/licenses/{id:int}/deactivate'. Las mismas rutas para '/certifications'. Lectura fleet.view, escritura fleet.manage.\n- GET '{publicId:guid}/devices' (fleet.view)\n- POST '/devices/{id:int}/deactivate' (fleet.manage)\n\nDispatchZonesController [Route('api/v1/dispatch-zones')]:\n- GET (fleet.view)\n- POST, PATCH '{id:int}' y POST '{id:int}/deactivate'|'/reactivate' (fleet.manage)"
+   },
+   {
+    "nombre": "P3 — Documentos por vencer y disponibilidad para despacho",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FleetAvailabilityRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/FleetDocumentService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/FleetAvailabilityService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Analytics/FleetDocumentDataSource.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/FleetController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/FleetAvailabilityRulesTests.cs"
+    ],
+    "descripcion": "Los tres consumidores de documentos usan EXCLUSIVAMENTE FleetQueries.LoadFleetDocumentsAsync (P0); ninguno reescribe la unión ni la regla de 'vigente por tipo'.\n\n**FleetDocumentService.GetExpiringAsync(ExpiringDocumentsQuery)**\n- Toma las filas del helper con dueños activos no terminales y excluye las IsSuperseded.\n- ExpiryDate no nula y ≤ hoy+withinDays; con includeExpired=false excluye vencidos.\n- docType[] ∈ FleetDocumentKinds: REGISTRATION/INSURANCE/INSPECTION/PERMIT, LICENSE y CERTIFICATION. Desconocido: 400 'Tipo de documento desconocido: 'X'.'\n- entity[] ∈ {VEHICLE, DRIVER}. Desconocido: 400 'Entidad desconocida: 'X'; use VEHICLE o DRIVER.'\n- withinDays 0..365: 400 'withinDays debe estar entre 0 y 365.'\n- Orden: ExpiryDate asc y luego código del dueño.\n- RowKey 'VD-{id}'|'DL-{id}'|'DC-{id}'.\n- Etiquetas con ILookupCache/MultilingualText.\n\n**FleetAvailabilityRules (puro)**\n- EvaluateDriver(snapshot, date) y EvaluateVehicle(snapshot, date) → AvailabilityResult. IGNORAN los documentos IsSuperseded.\n- Bloquean:\n  - DRIVER_INACTIVE\n  - DRIVER_STATUS (estatus distinto del inicial)\n  - NO_VALID_LICENSE: sin licencias vigentes no superadas ('Sin licencia vigente.') o todas vencidas ('Licencia vencida el yyyy-MM-dd.')\n  - VEHICLE_INACTIVE\n  - VEHICLE_STATUS\n  - VEHICLE_DOC_EXPIRED ('{tipo} vencido el yyyy-MM-dd.')\n  - WORK_ORDER_IN_PROGRESS ('Orden de trabajo {número} en proceso.')\n- Solo avisan: CERT_EXPIRED, DOC_EXPIRING (≤ 30 días) y VEHICLE_NO_DOCUMENTS.\n- El preventivo vencido no se evalúa aquí.\n\n**FleetAvailabilityService : IFleetAvailabilityService**\n- Arma los snapshots por lote, sin N+1: LoadFleetDocumentsAsync con los ids del lote, OT IN_PROGRESS activas por vehículo, estatus iniciales/terminales y zona primaria.\n- GetAsync(date, onlyAvailable).\n- CheckDriverAsync y CheckVehicleAsync evalúan un id; los usan P7 y el futuro planificador de Despacho.\n\n**FleetController** [Route('api/v1/fleet')][RequireModule(Catalog)]\n- GET 'expiring-documents' (fleet.view; withinDays=30, docType[], entity[], includeExpired=true)\n- GET 'availability' (fleet.view; date = hoy por defecto, onlyAvailable)\n\n**FleetDocumentDataSource**\n- key FLEET_DOCUMENT; EntityTypeCode null; DateField null; IdField 'RowKey'; DefaultBusinessModule OPERATIONS.\n- Filas del helper no superadas, de dueños activos no terminales.\n- Campos: RowKey, OwnerKind, OwnerCode, OwnerName, DocumentKind, DocumentType, DocNumber, IssuedDate, ExpiryDate, DaysToExpiry y ExpiryState (ventana fija de 30 días). Son los nombres que usa SystemAnalyticsSeeder.\n- Respeta q.Ids y el tope MaxRows."
+   },
+   {
+    "nombre": "P4 — Mantenimiento preventivo y órdenes de trabajo",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/MaintenanceDue.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/MaintenanceScheduleService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/MaintenanceWorkOrderService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/WorkOrderStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/MaintenanceSchedulesController.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/MaintenanceWorkOrdersController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/MaintenanceDueTests.cs"
+    ],
+    "descripcion": "**MaintenanceDue (puro)**\n\nEvaluate(trigger, intervalKm, intervalDays, lastServiceKm, lastServiceDate, currentOdometerKm, today) → NextDueKm, NextDueDate, KmRemaining, DaysRemaining y State.\n- MILEAGE usa km, TIME usa días y BOTH toma el peor.\n- OVERDUE si lo restante ≤ 0; DUE_SOON si ≤ 10 % del intervalo; OK en otro caso.\n- NO_BASELINE si falta el último servicio de la dimensión requerida, o el odómetro actual en MILEAGE.\n\nValidateClose(int incompleteTasks, string? scheduleTriggerCode, decimal? odometerKm) → (int Status, string Message)?:\n- Tareas pendientes → 422 'La orden tiene {n} tarea(s) sin completar; márquelas como completadas o quítelas antes de cerrarla.'\n- Programa MILEAGE/BOTH sin odómetro → 400 'Indique la lectura de odómetro para cerrar una orden de un programa por kilometraje.'\n\n**MaintenanceScheduleService**\n\n(a) ListAsync(includeInactive).\n\n(b) GetDueAsync(MaintenanceDueQuery)\n- Expande cada programa activo a sus vehículos activos no terminales: el VehicleId, o todos los del VehicleTypeLookupId.\n- Último servicio por (programa, vehículo) = última OT CLOSED activa con ese MaintenanceScheduleId y VehicleId. Si el programa es por vehículo, respaldo con LastServiceKm/LastServiceDate.\n- Filtros vehiclePublicId y status[].\n\n(c) CreateAsync/UpdateAsync\n- Exactamente uno de vehiclePublicId/vehicleType: 400 'Indique el vehículo o el tipo de vehículo del programa, no ambos.'\n- Name obligatorio, máximo 150: 'El nombre del programa es obligatorio.'\n- Trigger por código: 400 'Disparador desconocido: 'X'.'\n- Coherencia del intervalo:\n  - MILEAGE: 'Un programa por kilometraje exige un intervalo en km mayor que 0.'\n  - TIME: 'Un programa por tiempo exige un intervalo en días mayor que 0.'\n  - BOTH exige ambos.\n- DecimalError sobre IntervalKm/LastServiceKm (12,1); LastServiceKm ≥ 0; LastServiceDate no futura.\n- Programa inexistente: 404 'Programa de mantenimiento no encontrado.'\n\n(d) SetActiveAsync.\n\n**MaintenanceWorkOrderService**\n\n(a) ListAsync(WorkOrderListQuery) y GetAsync(publicId): 404 'Orden de trabajo no encontrada.' Devuelve CanEdit (capacidad) y CostsFromTasks.\n\n(b) CreateAsync\n- Vehículo del tenant (404) activo y no terminal (409 FleetQueries.VehicleInactiveMessage).\n- MaintenanceType por código. PREVENTIVE por defecto con programa; sin programa es obligatorio (400 'El tipo de mantenimiento es obligatorio.').\n- Programa opcional:\n  - debe aplicar al vehículo (400 'El programa de mantenimiento no aplica a este vehículo.');\n  - solo con PREVENTIVE (400 'Una orden correctiva no se asocia a un programa preventivo.').\n- Costos ≥ 0 ('Los costos no pueden ser negativos.') y DecimalError (18,4); odómetro (12,1).\n- Número 'OT-#####' con NumberSequence Kind WORKORDER por tenant (ClientId null):\n  - EnsureAsync antes de la transacción, NextAsync dentro y NumberFormat.Resolve.\n  - SaveGuardedAsync con UQ_WorkOrder_Number.\n  - El bloqueo de fila de NextAsync serializa altas concurrentes: números consecutivos sin 409 ni 500.\n- La OT nace OPEN vía TransitionAsync(WorkOrderStatus, WORK_ORDER, id, null, inicial).\n\n(c) UpdateAsync (PATCH)\n- 'number'/'vehiclePublicId' en Extra: 400 'El número y el vehículo de la orden de trabajo se fijan al crearla.'\n- EnsureAllowedAsync(WORK_ORDER, StatusCodeId, EDIT_WORK_ORDER): 422 en CLOSED/CANCELLED por defecto.\n- Con tareas activas se rechazan los costos del encabezado: 400 'La orden tiene tareas: los costos de labor y partes se calculan con la suma de sus tareas.'\n\n(d) AddTaskAsync, UpdateTaskAsync (incluye IsCompleted) y DeactivateTaskAsync\n- Misma capacidad.\n- El taskId debe pertenecer a esa OT: 404 'Tarea no encontrada.' (BOLA por id hijo).\n- Description obligatoria, máximo 250: 'La descripción de la tarea es obligatoria.'\n- Costos ≥ 0 y DecimalError.\n- Recalcula LaborCost = Σ LaborCost y PartsCost = Σ PartCost de las tareas activas.\n\n(e) TransitionStatusAsync(WorkOrderStatusRequest)\n- Para CLOSED:\n  - fija CompletedDate (hoy por defecto; futura → 400 'La fecha de cierre no puede ser futura.');\n  - fija OdometerKm ≥ 0 (con DecimalError) en la entidad tracked;\n  - aplica MaintenanceDue.ValidateClose (tareas activas incompletas y odómetro si el programa es MILEAGE/BOTH) antes de TransitionAsync.\n- IN_PROGRESS y CANCELLED van directo. OPEN→CLOSED directo también es válido: el terminal fuera de orden lo permite StatusService.\n\n**WorkOrderStatusEffect (WorkOrderStatus)**\n\nStatusService perezoso vía IServiceProvider, como OrderStatusEffect. Carga el vehículo SIEMPRE con FleetQueries.LockVehicleAsync.\n- IN_PROGRESS: si el vehículo está ACTIVE lo transiciona a MAINTENANCE ('{número} en proceso').\n- Al salir a CLOSED/CANCELLED: si el vehículo está en MAINTENANCE y no queda otra OT IN_PROGRESS activa, lo regresa a ACTIVE ('{número} cerrada/cancelada').\n- En CLOSED además:\n  - actualiza LastServiceKm/LastServiceDate si el programa es por vehículo;\n  - aplica Vehicle.CurrentOdometerKm = FleetRules.RaiseOdometer(actual, lectura).\n- Un vehículo terminal no se toca.\n\n**Controladores** con [RequireModule(Catalog)].\n\nMaintenanceSchedulesController [Route('api/v1/maintenance-schedules')]:\n- GET '' y GET 'due' (fleet.view)\n- POST '', PATCH '{id:int}' y POST '{id:int}/deactivate'|'/reactivate' (fleet.maintenance)\n\nMaintenanceWorkOrdersController [Route('api/v1/maintenance-work-orders')]:\n- GET '' y GET '{publicId:guid}' (fleet.view)\n- POST '', PATCH '{publicId:guid}', POST '{publicId:guid}/status', POST '{publicId:guid}/tasks', PATCH '{publicId:guid}/tasks/{taskId:int}' y POST '{publicId:guid}/tasks/{taskId:int}/deactivate' (fleet.maintenance)\n\nEl historial se consulta con /status/history/WORK_ORDER/{id} y las capacidades con /status/capabilities/WORK_ORDER."
+   },
+   {
+    "nombre": "P5 — Bitácora de combustible (km/L y costo/km)",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/FuelEfficiency.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/FuelLogService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Analytics/FuelLogDataSource.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/FuelLogsController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/FuelEfficiencyTests.cs"
+    ],
+    "descripcion": "**FuelEfficiency (puro)**\n\nCompute(IEnumerable<FuelReading(Id, FillDateUtc, OdometerKm?, Liters, TotalCost)>)\n- Ordena por fecha e id.\n- Para cada carga con odómetro que tenga una anterior con odómetro: DistanceKm = O_i − O_prev, KmPerLiter = Distance / Liters_i y CostPerKm = TotalCost_i / Distance, redondeados a 2 y 4 decimales.\n- null si no hay anterior, si falta el odómetro o si la distancia ≤ 0.\n- Summary por vehículo = Σ distancia / Σ litros de las cargas con distancia, y el costo/km equivalente.\n\nValidateOdometer(readings, fillDate, odometer, excludeId) → mensaje si la lectura es menor que la de una carga anterior o mayor que la de una posterior del mismo vehículo. Ejemplo: 'La lectura de odómetro (5,100 km) es menor que la de una carga anterior del mismo vehículo (5,200 km el 2026-09-20).'\n\n**FuelLogService**\n\n(a) ListAsync(FuelLogQuery)\n- Paginado: skip/take 1..500, default 100.\n- Filtros vehículo, chofer, rango (FromUtc inclusivo, ToUtc exclusivo) e includeInactive.\n- La eficiencia se calcula sobre la serie activa COMPLETA de cada vehículo del resultado, no sobre la página.\n- Devuelve Summary.\n\n(b) CreateAsync\n- Dentro de RunInTransactionAsync, el vehículo se carga con FleetQueries.LockVehicleAsync: serializa las cargas concurrentes del mismo vehículo, así que la validación monótona y la subida del odómetro no compiten.\n- Vehículo del tenant activo y no terminal: 409 FleetQueries.VehicleInactiveMessage.\n- Chofer opcional del tenant: 404 'Chofer no encontrado.'\n- Liters > 0 ('Los litros deben ser mayores que 0.') y DecimalError (10,3).\n- TotalCost ≥ 0 ('El costo total no puede ser negativo.') y DecimalError (18,4).\n- OdometerKm ≥ 0 y DecimalError (12,1).\n- FillDateUtc no futura: 'La fecha de la carga no puede ser futura.'\n- Odómetro monótono por fecha: 400.\n- Currency por código opcional.\n- Vehicle.CurrentOdometerKm = FleetRules.RaiseOdometer(actual, lectura).\n\n(c) UpdateAsync\n- Mismas validaciones y bloqueo, excluyendo la propia fila.\n- Carga de otro tenant: 404 'Carga de combustible no encontrada.'\n- El vehículo no se cambia: 400 'El vehículo de una carga no se cambia; desactívela y registre otra.'\n\n(d) DeactivateAsync: IsActive=0; deja de contar en la eficiencia. El odómetro del vehículo no baja.\n\n**FuelLogsController** [Route('api/v1/fuel-logs')][RequireModule(Catalog)]\n- GET '' (fleet.view)\n- POST '', PATCH '{id:int}' y POST '{id:int}/deactivate' (fleet.maintenance)\n\n**FuelLogDataSource**\n- key FUEL_LOG; EntityTypeCode FUEL_LOG; DateField 'FillDateUtc'.\n- Relaciones Vehicle→VEHICLE (VehicleId) y Driver→DRIVER (DriverId).\n- Campos: Id, VehicleId, VehicleCode, DriverId, DriverName, FillDateUtc, OdometerKm, Liters, TotalCost (IsMoney), Station, DistanceKm, KmPerLiter, CostPerKm (IsMoney) e IsActive.\n- Mismo patrón que TransportOrderDataSource: AsNoTracking, MaxRows, q.Ids y rango."
+   },
+   {
+    "nombre": "P6 — Tarifas del chofer (entrega, intento, viaje), política de pago del tenant y resolvedor para Liquidación",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Fleet/DriverPayoutRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverRateService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverPayPolicyService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverRateResolver.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverRatesRetirementEffect.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/SpecialServiceService.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/DriverRatesController.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/DriverPayPolicyController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/DriverPayoutRulesTests.cs"
+    ],
+    "descripcion": "**DriverPayoutRules (puro)**: el motor que reutilizará el Lote 9.\n- PickCurrent<T>(IEnumerable<T> rows, DateOnly asOf) where T: IEffectiveDated: la fila con EffectiveDated.IsCurrentOn. EffectiveTo es exclusivo; las filas de longitud cero nunca son vigentes; ante empate gana la de EffectiveFrom mayor.\n- AttemptRate(ratesByLevel, n):\n  - si n supera el nivel más alto con tarifa, usa ese nivel (fallback R16);\n  - un nivel intermedio sin tarifa o la ausencia total de niveles da 0 con NoRateNote='sin tarifa configurada'.\n- Compute(formula, deliveryRate?, attemptRates, attempts[(Number, Delivered)]) → PayoutResult(Total, Lines):\n  - DELIVERY_PLUS_ATTEMPTS: la entrega una vez si hubo entrega, más cada intento, incluido el exitoso.\n  - DELIVERY_INCLUDES_FIRST: la entrega si hubo entrega, más los intentos desde el 2º.\n  - FAILED_REPLACES_DELIVERY: cada fallido paga su tarifa y el exitoso solo la entrega.\n  - Una entrega sin tarifa genera una línea de 0 con la nota (R15).\n- ValidateAttemptNumber(n, levels), MaxAttemptLevels=20 e IsKnownFormula.\n\n**DriverRateService(db, tenant, lookups, SpecialServiceService specials)**\n\nReglas generales:\n- Todas las filas se alcanzan a través del chofer del tenant (FleetQueries.ResolveDriverAsync + DriverId); nunca por id suelto.\n- Un id de tarifa que no pertenece a ese chofer (otro chofer u otro tenant) da 404 'Tarifa no encontrada.'\n- Chofer terminal: cualquier escritura da 409 FleetQueries.DriverRetiredMessage.\n- Efectivo-fechadas con EffectiveDated: editar = cerrar y abrir. effectiveFrom/effectiveTo anteriores a hoy dan 400 RateService.PastDateMessage.\n- Primero se cierra y se guarda, luego se inserta, con SaveGuardedAsync contra UQ_*_Open.\n- Rate ≥ 0 ('La tarifa no puede ser negativa.') y FleetRules.DecimalError (18,4) antes de guardar.\n\n(a) GetAsync(driverPublicId, asOf?, includeHistory) → DriverRatesDto. AttemptRates trae una entrada por nivel 1..AttemptLevels (Rate null = sin tarifa) más los niveles superiores con historial.\n\n(b) Entregas\n- AddDeliveryRateAsync:\n  - serviceType y packageType obligatorios, por código: 400 'Indique el servicio y el tipo de paquete de la tarifa.'; 'Tipo de servicio desconocido: 'X'.' / 'Tipo de paquete desconocido: 'X'.'\n  - Fila viva: 409 'El chofer ya tiene una tarifa vigente para {Servicio} + {Paquete}; edite esa tarifa o ciérrela antes de agregar otra.'\n- UpdateDeliveryRateAsync:\n  - solo Rate y effectiveFrom;\n  - serviceType/packageType en Extra: 400 'El servicio y el paquete se fijan al crear la tarifa; quite la fila y cree una nueva.';\n  - fila cerrada: 409 'La tarifa ya está cerrada; agregue una nueva si necesita volver a pagarla.'\n- CloseDeliveryRateAsync.\n\n(c) Intentos\n- SetAttemptRateAsync(attemptNumber): nivel 1..AttemptLevels (400 'El intento {n} no existe; los niveles configurados van de 1 a {N}.'). Crea o versiona.\n- CloseAttemptRateAsync.\n\n(d) Viajes\n- GetTripTypesAsync() delega en SpecialServiceService.GetTypesAsync(includeInactive:false) (R21).\n- AddTripRateAsync:\n  - specialServiceTypeId obligatorio;\n  - tenant sin tipos activos: 400 'Sin servicios especiales: agréguelos en Clientes y contratos antes de configurar tarifas por viaje.';\n  - inexistente: 404 'Tipo de servicio especial no encontrado.';\n  - inactivo: 400 'El tipo de servicio especial está inactivo; reactívelo o elija otro.';\n  - fila viva: 409 'El chofer ya tiene una tarifa vigente para el tipo de viaje '{tipo}'; edite esa tarifa o ciérrela antes de agregar otra.'\n- UpdateTripRateAsync: el tipo en Extra da 400 'El tipo de viaje se fija al crear la tarifa; quite la fila y agregue una con el tipo correcto.'\n- CloseTripRateAsync.\n\n**DriverPayPolicyService**\n- GetAsync: sin fila devuelve los defaults AttemptLevels=2 y DELIVERY_PLUS_ATTEMPTS, sin escribir.\n- UpdateAsync: payoutFormula por código DriverPayoutFormula (400 'Fórmula de pago desconocida: 'X'.').\n- AddAttemptLevelAsync: upsert con AttemptLevels+1 hasta 20 (409 'Se alcanzó el máximo de 20 niveles de intento.'). No crea filas de tarifa.\n- Preview(PayoutPreviewRequest) → DriverPayoutRules.Compute, sin BD; usa la fórmula vigente si no se indica.\n\n**DriverRateResolver : IDriverRateResolver**\n- Consulta las filas del chofer y elige con DriverPayoutRules.PickCurrent en asOf.\n- Sin fila: Missing=true, Amount=0, RateId=null.\n\n**DriverRatesRetirementEffect (DriverStatus)**\n- Al entrar a TERMINAL cierra con EffectiveDated.CloseNotBefore(hoy) todas las tarifas abiertas del chofer (R17, sin borrar historial).\n\n**Cambio en el Lote 2, SpecialServiceService.DeactivateTypeAsync**: 409 si hay DriverTripRate vigentes de ese tipo: 'El tipo tiene tarifas por viaje vigentes en {n} chofer(es); ciérrelas antes de inactivarlo.'\n\n**Controladores** con [RequireModule(Catalog)].\n\nDriverRatesController [Route('api/v1')]:\n- GET 'drivers/{publicId:guid}/rates' (driverpay.view; asOf, includeHistory)\n- POST 'drivers/{publicId:guid}/delivery-rates', PATCH '.../delivery-rates/{id:int}' y POST '.../delivery-rates/{id:int}/close'\n- PUT '.../attempt-rates/{attemptNumber:int}' y POST '.../attempt-rates/{attemptNumber:int}/close'\n- POST '.../trip-rates', PATCH '.../trip-rates/{id:int}' y POST '.../trip-rates/{id:int}/close'\n- Todas las escrituras exigen driverpay.manage.\n- GET 'driver-trip-types' (driverpay.view)\n\nDriverPayPolicyController [Route('api/v1/driver-pay-policy')]:\n- GET '' (driverpay.view)\n- PATCH '' (driverpay.manage)\n- POST 'attempt-levels' (driverpay.manage)\n- POST 'preview' (driverpay.view)"
+   },
+   {
+    "nombre": "P7 — Viajes pagados al chofer (DriverTrip) y entrega especial con chofer (extensión del Lote 3)",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Domain/Orders/PipelinePath.cs",
+     "/home/user/teikem/src/Teikem.Domain/Fleet/DriverTripRules.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverTripService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/SpecialDeliveryDispatchService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverTripOrderEffect.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/DriverTripStatusEffect.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/OrderService.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/OrderReadService.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/DriverTripsController.cs",
+     "/home/user/teikem/src/Teikem.Api/Controllers/SpecialDeliveryController.cs",
+     "/home/user/teikem/tests/Teikem.Tests/PipelinePathTests.cs",
+     "/home/user/teikem/tests/Teikem.Tests/DriverTripRulesTests.cs"
+    ],
+    "descripcion": "En ejecución usa IDriverRateResolver (P6) e IFleetAvailabilityService (P3) por sus interfaces de P0; compila en paralelo con los esqueletos. Los cambios de DTO de orden (DriverPublicId, AssignedDriver*) ya los dejó P0 en OrderContracts.cs.\n\n**PipelinePath (puro)**\n\nStepsTo(enabledStages[(Code, SortOrder, Kind, IsInitial)], fromCode, targetCode):\n- Devuelve los códigos a recorrer, siempre la siguiente etapa no lateral por SortOrder, igual que StatusService.\n- Destino deshabilitado: termina en la última PIPELINE habilitada anterior.\n- Vacío si ya está en el destino o después.\n- InvalidOperationException si el origen es lateral o terminal.\n\n**DriverTripRules (puro)**\n- Freeze(decimal? rate, int? rateId) → (Amount, RateId, RateMissing, Note): sin tarifa da 0, null, true, 'sin tarifa configurada'. Cumple CK_DriverTrip_Rate.\n- ValidateTripDate(date, today): 'La fecha del viaje no puede ser futura.'\n- ValidateNotes: máximo 500.\n\n**DriverTripService(db, tenant, statuses, IDriverRateResolver rates)**\n\n(a) CreateTrackedAsync(driver, specialServiceTypeId, tripDate, transportOrderId?, notes, DriverRateResolution? preResolved = null)\n- Dentro de la transacción del llamador congela con DriverTripRules.Freeze la tarifa preResolved o rates.TripRateAsync(asOf: tripDate).\n- Guarda DriverTripRateId.\n- Nace OPEN vía TransitionAsync(DriverTripStatus, DRIVER_TRIP, id, null, inicial).\n\n(b) CreateAsync(driverPublicId, DriverTripCreateRequest)\n- Tipo obligatorio: 400 'El tipo de viaje es obligatorio.'\n- Tipo inexistente o inactivo: mismos mensajes que P6.\n- tripDate hoy por defecto; ValidateTripDate.\n- Chofer eliminado: 409 DriverRetiredMessage.\n\n(c) ListAsync(driverPublicId, DriverTripListQuery): por defecto solo vigentes (IsActive=1); includeCancelled=true agrega los cancelados.\n\n(d) CancelAsync(driverPublicId, tripPublicId, comment)\n- Viaje de otro chofer o tenant: 404 'Viaje no encontrado.'\n- TransitionAsync → CANCELLED; SETTLED/CANCELLED son terminales (422).\n- Viaje ligado a una orden: 409 'El viaje nace de una entrega especial; cancele la orden o reasigne el chofer.'\n\n(e) CancelTrackedAsync(trip, comment): uso interno; transiciona y hace SaveChanges ANTES de que el llamador inserte otro viaje, para no chocar con UX_DriverTrip_Order.\n\n**DriverTripStatusEffect (DriverTripStatus)**\n- Al entrar a CANCELLED pone IsActive=0 en la entidad tracked. Con eso UX_DriverTrip_Order (TransportOrderId WHERE IsActive=1) garantiza en BD un solo viaje vigente por orden.\n\n**SpecialDeliveryDispatchService(db, tenant, statuses, OrderStatusService orderStatuses, DriverTripService trips, IFleetAvailabilityService availability, IDriverRateResolver rates, PermissionService permissions, ModuleService modules, OrderReadService reader)**\n\n(a) PrepareAsync(Guid driverPublicId, int specialServiceTypeId, DateOnly date, ct) → PreparedSpecialDelivery(int DriverId, string DriverCode, string DriverName, DriverRateResolution TripRate). Es un record público de este archivo, en namespace Services, NO en Contracts. Hace, sin escribir nada y ANTES de sacar números:\n- modules.EnsureEnabledAsync(CATALOG): 403 module_disabled; el endpoint vive en LTL_GROUND pero usa choferes y tarifas de CATALOG;\n- permissions.EnsureAsync(trips.dispatch): 403 'Falta el permiso 'trips.dispatch'.';\n- chofer del tenant: 404 'Chofer no encontrado.';\n- disponibilidad: 409 'El chofer no está disponible para despacho: {mensajes bloqueantes separados por '; '}.';\n- resolución de la tarifa por viaje.\n\n(b) AssignTrackedAsync(order tracked, PreparedSpecialDelivery p, bool overrideCredit, string? comment), paso a paso:\n1. La orden debe ser entrega especial: 422 'Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.'\n2. En la etapa inicial llama a orderStatuses.ConfirmTrackedAsync(order, overrideCredit): 422 credit_exceeded igual que el Lote 3.\n3. EnsureAllowedAsync(TRANSPORT_ORDER, estatus, ASSIGN_TRIP).\n4. Lateral, terminal o posterior a IN_TRANSIT: 422 'La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.'\n5. Mismo chofer con viaje vigente: 409 'La orden ya está asignada a ese chofer.'\n6. Otro chofer: CancelTrackedAsync del anterior ('Reasignada a {código} {nombre}').\n7. Avanza con PipelinePath.StepsTo(…, IN_TRANSIT), una TransitionAsync por paso ('Entrega especial asignada a {código} {nombre}').\n8. CreateTrackedAsync(tipo = SpecialService.SpecialServiceTypeId de la orden, TripDate = hoy, TransportOrderId, preResolved = p.TripRate).\n9. SaveGuardedAsync('La orden ya tiene un viaje vigente; recargue e intente de nuevo.'): dos asignaciones concurrentes chocan en UX_DriverTrip_Order.\n\n(c) AssignAsync(orderPublicId, SpecialDeliveryAssignRequest, OrderScope)\n- Antes de la transacción: resolución de la orden y su tipo, más PrepareAsync.\n- overrideCredit exige orders.credit_override.\n- Luego RunInTransactionAsync con ResolveOrderForWriteAsync, ApplyRowVersion y AssignTrackedAsync.\n- Devuelve OrderDetailDto.\n\n**DriverTripOrderEffect (OrderStatus; StatusService perezoso)**\n- Cuando la orden pasa a CANCELLED, cancela su DriverTrip OPEN vigente ('Orden {número} cancelada'). DriverTripStatusEffect lo deja IsActive=0.\n\n**Cambios en archivos del Lote 3**\n\nOrderService.CreateAsync:\n- La guarda de OrderService.cs:77 pasa a 'if (req.OverrideCredit && !req.ConfirmNow && req.DriverPublicId is null)'. overrideCredit se acepta con confirmNow o con driverPublicId; el EnsureAsync de credit_override se conserva.\n- driverPublicId sin isSpecialDelivery: 400 (campo driverPublicId) 'El chofer solo se asigna en una entrega especial.'\n- Con chofer, tras resolver el servicio especial y ANTES del bucle de reintentos (sin sacar números), prepared = PrepareAsync(…, special.SpecialServiceTypeId, hoy).\n- Dentro de CADA intento del bucle, tras SaveGuardedAsync, AssignTrackedAsync(order, prepared, req.OverrideCredit, null) reemplaza a ConfirmTrackedAsync. El savepoint del reintento revierte también la asignación, y cualquier 4xx revierte todo.\n- El importador no cambia.\n\nOrderReadService: llena AssignedDriver* desde el DriverTrip vigente (IsActive=1) de la orden.\n\n**Controladores**\n\nDriverTripsController [Route('api/v1/drivers/{publicId:guid}/trips')][RequireModule(Catalog)]:\n- GET '' (driverpay.view; from, to, status, includeCancelled)\n- POST '' y POST '{tripPublicId:guid}/cancel' (driverpay.manage)\n\nSpecialDeliveryController [Route('api/v1/orders/{publicId:guid}/driver')][RequireModule(LtlGround)]:\n- POST '' (trips.dispatch; cuerpo SpecialDeliveryAssignRequest)"
+   },
+   {
+    "nombre": "P8 — Fuentes de datos de identidad de flota y resolvers de pertenencia (todos los EntityTypes con permiso de dueño)",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0"
+    ],
+    "archivos": [
+     "/home/user/teikem/src/Teikem.Infrastructure/Analytics/FleetDataSources.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/FleetOwnedEntityResolvers.cs",
+     "/home/user/teikem/src/Teikem.Infrastructure/Services/PortalUserOwnedEntityResolver.cs"
+    ],
+    "descripcion": "**FleetDataSources.cs** sigue el patrón de ClientDataSources/TransportOrderDataSource: AsNoTracking, tope ClientDataSourceHelpers.MaxRows, etiquetas con ILookupCache/MultilingualText y StatusMapAsync, respetando q.Ids y el rango.\n\n(1) VehicleDataSource\n- key VEHICLE; EntityTypeCode VEHICLE; DateField null; IdField 'Id'; OPERATIONS.\n- Campos: Id, PublicId, Code, PlateNumber, VehicleType, VehicleTypeCode, Ownership, OwnershipCode, FuelType, FuelTypeCode, Make, Model, ModelYear, Vin, CurrentOdometerKm, MaxWeightKg, MaxVolumeM3, MaxStops, Status, StatusCode, NextDocumentExpiry (solo documentos no superados, con FleetDocuments.MarkSuperseded), IsActive y CreatedAtUtc.\n\n(2) DriverDataSource\n- key DRIVER; EntityTypeCode DRIVER; DateField null.\n- Campos: Id, PublicId, Code, FullName, ZoneCode, Area, MaxStopsPerRoute, EffectiveMaxStops, HireDate, Status, StatusCode, LicenseExpiry (no superadas), HasUser, IsActive y CreatedAtUtc.\n\n(3) WorkOrderDataSource\n- key WORK_ORDER; EntityTypeCode WORK_ORDER; DateField 'CreatedAtUtc'; relación Vehicle→VEHICLE (VehicleId).\n- Campos: Id, PublicId, Number, VehicleId, VehicleCode, MaintenanceType, MaintenanceTypeCode, ScheduleName, Status, StatusCode, ScheduledDate, CompletedDate, OdometerKm, Vendor, LaborCost, PartsCost, TotalCost (IsMoney), IsActive y CreatedAtUtc.\n\nNo hay fuentes de tarifas ni de DriverTrip.\n\n**FleetOwnedEntityResolvers.cs**\n- VEHICLE, DRIVER, DISPATCH_ZONE, MAINTENANCE_SCHEDULE, WORK_ORDER, FUEL_LOG y DRIVER_TRIP responden con AnyAsync bajo el filtro de tenant.\n- ClosedOwnedEntityResolver(string entityTypeCode) siempre devuelve false (404). Se registra para DRIVER_RATE y FLEET_DOCUMENT, así sus rutas de contactos y campos personalizados no quedan abiertas.\n\n**PortalUserOwnedEntityResolver.cs** (hueco del Lote 2)\n- PORTAL_USER tiene OwnerRead/WritePermission pero no tenía resolver, y CustomFieldService.cs:193 omite la verificación de pertenencia si no hay resolver.\n- Responde con db.PortalUsers.AnyAsync(p => p.PortalUserId == id) bajo el filtro de tenant.\n\nLa cobertura la verifican OwnedEntityResolverCoverageTests (P0) y el smoke."
+   },
+   {
+    "nombre": "P9 — Cierre: smoke del Lote 4, docs/lote4-decisiones.md, manual funcional 04 y FAQ",
+    "tocaCompartidos": false,
+    "dependeDe": [
+     "P0",
+     "P1",
+     "P2",
+     "P3",
+     "P4",
+     "P5",
+     "P6",
+     "P7",
+     "P8"
+    ],
+    "archivos": [
+     "/home/user/teikem/scripts/smoke.sh",
+     "/home/user/teikem/docs/lote4-decisiones.md",
+     "/home/user/teikem/docs/manual/04-flota-choferes-y-mantenimiento.md",
+     "/home/user/teikem/docs/manual/faq.md",
+     "/home/user/teikem/docs/manual/README.md"
+    ],
+    "descripcion": "**scripts/smoke.sh**\n- Agrega el bloque 'Lote 4 — Flota, choferes y mantenimiento' antes del paso de sesiones.\n- Es re-ejecutable: usa $TS en los códigos.\n- Reutiliza datos reales del smoke existente:\n  - CLIENT_O_PID;\n  - el tipo 'Vagón $TS';\n  - ob();\n  - T2 (despachador), T3 (otro tenant) y T7 (contacts.manage + orders.view, sin fleet.*; smoke.sh:956);\n  - maxStopsPerRouteDefault=30 fijado en smoke.sh:68;\n  - un servicio especial NUEVO para el cliente de órdenes, porque SS_O_ID quedó cerrado en smoke.sh:917.\n- La concurrencia usa 8 curl en segundo plano con wait.\n- Los pasos están en 'smoke'. La cabecera pasa a 'Lotes 1, 2, 3 y 4'.\n\n**docs/lote4-decisiones.md**, formato del Lote 3:\n- mapa de lo construido: tablas, código y endpoints con módulo y permiso;\n- cómo se probó, con ejecución real: build, test, db-init ×2 con 52 permisos, smoke y enlace de CI;\n- decisiones tomadas y a revisar: las de este plan más las de la verificación;\n- lo que queda fuera;\n- contraste con Diseño/logistica-funcionalidades-maestro.md (módulos 4 y 11A y la bitácora, incluida la línea 598 sobre el flujo de liquidación).\n\n**docs/manual/04-flota-choferes-y-mantenimiento.md**, por funcionalidad:\n- qué hace;\n- quién puede (permiso y módulo);\n- cómo se usa (pantalla y endpoint);\n- campos y validaciones con el mensaje exacto y el código HTTP, incluidos los de precisión decimal, odómetro, cierre de OT y vínculo de usuario;\n- estatus y transiciones de VehicleStatus, DriverStatus, WorkOrderStatus y DriverTripStatus (de → a, quién, efectos, qué bloquea);\n- casos frecuentes:\n  - 'eliminar vs. inactivar un chofer'\n  - 'por qué el vehículo pasó a En mant.'\n  - 'viaje con $0 sin tarifa configurada'\n  - 'no me deja asignar el chofer a la entrega especial'\n  - 'Por vencer vs. Vencido'\n  - 'renové el registro y el viejo ya no aparece'\n  - 'no me deja bajar el odómetro'\n  - 'no me deja cerrar la OT'\n  - 'km/L vacío en la primera carga'\n\n**docs/manual/faq.md**: sección 'Lote 4 — Flota, choferes y mantenimiento' con cada mensaje de error del lote y qué hacer.\n\n**docs/manual/README.md**: capítulo 4 en el índice.\n\n**Verificación**\n- dotnet build y dotnet test;\n- db-init dos veces sobre BD limpia (52 permisos, idempotente);\n- smoke completo en SMOKE OK;\n- CI verde."
+   }
+  ],
+  "cambiosSql": [
+   "Diseño/logistica-db-estructura.sql · CAPA 10 dbo.Vehicle (inline '-- Lote 4'):\n- PublicId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID() tras VehicleId.\n- StatusCodeId pasa a NOT NULL (-- Entity='VehicleStatus').\n- Nuevas columnas: CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id), UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id) y RowVersion ROWVERSION.\n- CONSTRAINT UQ_Vehicle_IdTenant UNIQUE (VehicleId, TenantId): destino de las FKs compuestas.\n- CONSTRAINT CK_Vehicle_Numbers CHECK ((MaxWeightKg IS NULL OR MaxWeightKg >= 0) AND (MaxVolumeM3 IS NULL OR MaxVolumeM3 >= 0) AND (MaxStops IS NULL OR MaxStops >= 1) AND (CurrentOdometerKm IS NULL OR CurrentOdometerKm >= 0) AND (ModelYear IS NULL OR ModelYear BETWEEN 1900 AND 2100)).\n- Se conservan UQ_Vehicle_Code y HomeWarehouseId.",
+   "Diseño/logistica-db-estructura.sql · CAPA 10 dbo.Driver:\n- PublicId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID().\n- EmployeeCode pasa a NOT NULL (es el 'Código', inmutable).\n- StatusCodeId pasa a NOT NULL (-- Entity='DriverStatus').\n- CreatedAtUtc/CreatedBy/UpdatedAtUtc/UpdatedBy y RowVersion ROWVERSION.\n- CONSTRAINT UQ_Driver_EmployeeCode UNIQUE (TenantId, EmployeeCode).\n- CONSTRAINT UQ_Driver_IdTenant UNIQUE (DriverId, TenantId).\n- CONSTRAINT CK_Driver_MaxStops CHECK (MaxStopsPerRoute IS NULL OR MaxStopsPerRoute >= 1).\n- Tras la tabla: CREATE UNIQUE INDEX UX_Driver_User ON dbo.Driver(TenantId, UserId) WHERE UserId IS NOT NULL.",
+   "Diseño/logistica-db-estructura.sql · Destinos de FKs compuestas en tablas de lotes previos:\n- dbo.SpecialServiceType (Lote 2): CONSTRAINT UQ_SpecialServiceType_IdTenant UNIQUE (SpecialServiceTypeId, TenantId).\n- dbo.TransportOrder (CAPA 11, Lote 3): CONSTRAINT UQ_TransportOrder_IdTenant UNIQUE (TransportOrderId, TenantId).\n- Solo agregan restricciones únicas sobre la PK más TenantId; no cambian datos ni código.",
+   "Diseño/logistica-db-estructura.sql · CAPA 10, tras dbo.Driver, bloque '-- Lote 4: pago a choferes (maestro del módulo 11A; el chofer es el agregado raíz, sin tabla DriverRateAgreement)':\n- CREATE TABLE dbo.DriverPayPolicy (TenantId INT NOT NULL PRIMARY KEY REFERENCES dbo.Tenant(TenantId), AttemptLevels INT NOT NULL DEFAULT 2, PayoutFormulaLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='DriverPayoutFormula', UpdatedAtUtc DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id), CONSTRAINT CK_DriverPayPolicy_Levels CHECK (AttemptLevels BETWEEN 1 AND 20)).",
+   "Diseño/logistica-db-estructura.sql · CAPA 10: CREATE TABLE dbo.DriverDeliveryRate.\n- Columnas: DriverDeliveryRateId INT IDENTITY(1,1) PRIMARY KEY, TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId), DriverId INT NOT NULL, ServiceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='ServiceType', PackageTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId) -- Entity='PackageType', Rate DECIMAL(18,4) NOT NULL, EffectiveFrom DATE NOT NULL DEFAULT CAST(SYSUTCDATETIME() AS DATE), EffectiveTo DATE NULL -- exclusivo, IsActive BIT NOT NULL DEFAULT 1, CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id).\n- CONSTRAINT FK_DriverDeliveryRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId).\n- CONSTRAINT CK_DriverDeliveryRate_Rate CHECK (Rate >= 0).\n- CONSTRAINT CK_DriverDeliveryRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom).\n- Índices: CREATE UNIQUE INDEX UQ_DriverDeliveryRate_Open ON dbo.DriverDeliveryRate(DriverId, ServiceTypeLookupId, PackageTypeLookupId) WHERE EffectiveTo IS NULL AND IsActive = 1; CREATE INDEX IX_DriverDeliveryRate_Driver ON dbo.DriverDeliveryRate(TenantId, DriverId).",
+   "Diseño/logistica-db-estructura.sql · CAPA 10: CREATE TABLE dbo.DriverAttemptRate.\n- Columnas: DriverAttemptRateId INT IDENTITY(1,1) PRIMARY KEY, TenantId, DriverId, AttemptNumber INT NOT NULL, Rate DECIMAL(18,4) NOT NULL, EffectiveFrom, EffectiveTo, IsActive, CreatedAtUtc y CreatedBy, con los mismos tipos y defaults que DriverDeliveryRate.\n- CONSTRAINT FK_DriverAttemptRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId).\n- CONSTRAINT CK_DriverAttemptRate_Number CHECK (AttemptNumber >= 1), CK_DriverAttemptRate_Rate CHECK (Rate >= 0) y CK_DriverAttemptRate_Dates.\n- Índices: CREATE UNIQUE INDEX UQ_DriverAttemptRate_Open ON dbo.DriverAttemptRate(DriverId, AttemptNumber) WHERE EffectiveTo IS NULL AND IsActive = 1; CREATE INDEX IX_DriverAttemptRate_Driver ON dbo.DriverAttemptRate(TenantId, DriverId).",
+   "Diseño/logistica-db-estructura.sql · CAPA 10: CREATE TABLE dbo.DriverTripRate.\n- Columnas: DriverTripRateId INT IDENTITY(1,1) PRIMARY KEY, TenantId, DriverId, SpecialServiceTypeId INT NOT NULL -- tipo de viaje = catálogo de servicios especiales del tenant (R21), Rate DECIMAL(18,4) NOT NULL, EffectiveFrom, EffectiveTo, IsActive, CreatedAtUtc y CreatedBy.\n- CONSTRAINT FK_DriverTripRate_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId).\n- CONSTRAINT FK_DriverTripRate_Type FOREIGN KEY (SpecialServiceTypeId, TenantId) REFERENCES dbo.SpecialServiceType(SpecialServiceTypeId, TenantId).\n- CONSTRAINT UQ_DriverTripRate_IdTenant UNIQUE (DriverTripRateId, TenantId).\n- CK_DriverTripRate_Rate CHECK (Rate >= 0) y CK_DriverTripRate_Dates.\n- Índices: CREATE UNIQUE INDEX UQ_DriverTripRate_Open ON dbo.DriverTripRate(DriverId, SpecialServiceTypeId) WHERE EffectiveTo IS NULL AND IsActive = 1; CREATE INDEX IX_DriverTripRate_Driver ON dbo.DriverTripRate(TenantId, DriverId).",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.VehicleDocument:\n- CONSTRAINT CK_VehicleDocument_Dates CHECK (IssuedDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= IssuedDate).\n- CREATE INDEX IX_VehicleDocument_Vehicle ON dbo.VehicleDocument(VehicleId, DocTypeLookupId): es el grupo de 'vigente por tipo'.\n- Se conserva IX_VehicleDocument_Expiry.",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.MaintenanceSchedule:\n- Nueva columna CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME().\n- CONSTRAINT CK_MaintSchedule_Target CHECK ((VehicleId IS NULL AND VehicleTypeLookupId IS NOT NULL) OR (VehicleId IS NOT NULL AND VehicleTypeLookupId IS NULL)).\n- CONSTRAINT CK_MaintSchedule_Interval CHECK ((IntervalKm IS NULL OR IntervalKm > 0) AND (IntervalDays IS NULL OR IntervalDays > 0) AND (IntervalKm IS NOT NULL OR IntervalDays IS NOT NULL)).\n- CREATE INDEX IX_MaintSchedule_Vehicle ON dbo.MaintenanceSchedule(VehicleId) WHERE VehicleId IS NOT NULL.",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.MaintenanceWorkOrder:\n- VehicleId deja el REFERENCES inline y pasa a CONSTRAINT FK_WorkOrder_Vehicle FOREIGN KEY (VehicleId, TenantId) REFERENCES dbo.Vehicle(VehicleId, TenantId).\n- Nuevas columnas: CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id), UpdatedAtUtc DATETIME2 NULL y UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id).\n- CONSTRAINT CK_WorkOrder_Costs CHECK ((LaborCost IS NULL OR LaborCost >= 0) AND (PartsCost IS NULL OR PartsCost >= 0) AND (OdometerKm IS NULL OR OdometerKm >= 0)).\n- Índices: CREATE INDEX IX_WorkOrder_Vehicle ON dbo.MaintenanceWorkOrder(VehicleId, StatusCodeId) WHERE IsActive = 1; CREATE INDEX IX_WorkOrder_Schedule ON dbo.MaintenanceWorkOrder(MaintenanceScheduleId) WHERE MaintenanceScheduleId IS NOT NULL.\n- TotalCost PERSISTED y UQ_WorkOrder_Number sin cambios.",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.MaintenanceTask:\n- Nueva columna IsActive BIT NOT NULL DEFAULT 1. IsCompleted ya existe y se usa para la regla de cierre.\n- CONSTRAINT CK_MaintTask_Costs CHECK ((PartCost IS NULL OR PartCost >= 0) AND (LaborCost IS NULL OR LaborCost >= 0)).\n- CREATE INDEX IX_MaintenanceTask_WorkOrder ON dbo.MaintenanceTask(WorkOrderId).",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.FuelLog:\n- VehicleId/DriverId dejan el REFERENCES inline y pasan a CONSTRAINT FK_FuelLog_Vehicle FOREIGN KEY (VehicleId, TenantId) REFERENCES dbo.Vehicle(VehicleId, TenantId) y CONSTRAINT FK_FuelLog_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId). Con DriverId NULL la FK no se evalúa.\n- Nuevas columnas: IsActive BIT NOT NULL DEFAULT 1, CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id), UpdatedAtUtc DATETIME2 NULL y UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id).\n- CONSTRAINT CK_FuelLog_Amounts CHECK (Liters > 0 AND TotalCost >= 0 AND (OdometerKm IS NULL OR OdometerKm >= 0)).\n- Se conserva IX_FuelLog_Vehicle.",
+   "Diseño/logistica-db-estructura.sql · CAPA 13 dbo.DriverLicense y dbo.DriverCertification:\n- DriverLicense: CONSTRAINT CK_DriverLicense_Dates CHECK (IssuedDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= IssuedDate); CREATE INDEX IX_DriverLicense_Driver ON dbo.DriverLicense(DriverId, LicenseClassLookupId).\n- DriverCertification: CONSTRAINT CK_DriverCertification_Dates (mismo CHECK); CREATE INDEX IX_DriverCertification_Expiry ON dbo.DriverCertification(ExpiryDate) WHERE IsActive = 1 (paridad con licencias y documentos de vehículo); CREATE INDEX IX_DriverCertification_Driver ON dbo.DriverCertification(DriverId, CertTypeLookupId).",
+   "Diseño/logistica-db-estructura.sql · CAPA 13, tras dbo.FleetAssignment, bloque '-- Lote 4: viaje pagado al chofer (monto congelado; insumo de la liquidación del Lote 9)'. CREATE TABLE dbo.DriverTrip:\n- Columnas: DriverTripId INT IDENTITY(1,1) PRIMARY KEY, PublicId UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(), TenantId INT NOT NULL REFERENCES dbo.Tenant(TenantId), DriverId INT NOT NULL, SpecialServiceTypeId INT NOT NULL, DriverTripRateId INT NULL -- tarifa usada; NULL = sin tarifa, TransportOrderId INT NULL -- entrega especial de origen; NULL = alta manual, TripDate DATE NOT NULL, Amount DECIMAL(18,4) NOT NULL, RateMissing BIT NOT NULL DEFAULT 0, StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId) -- Entity='DriverTripStatus', Notes NVARCHAR(500) NULL, IsActive BIT NOT NULL DEFAULT 1 -- CANCELLED implica 0, CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CreatedBy, UpdatedAtUtc, UpdatedBy y RowVersion ROWVERSION.\n- FKs compuestas: FK_DriverTrip_Driver (DriverId, TenantId) → Driver; FK_DriverTrip_Type (SpecialServiceTypeId, TenantId) → SpecialServiceType; FK_DriverTrip_Rate (DriverTripRateId, TenantId) → DriverTripRate(DriverTripRateId, TenantId); FK_DriverTrip_Order (TransportOrderId, TenantId) → TransportOrder(TransportOrderId, TenantId).\n- CONSTRAINT CK_DriverTrip_Amount CHECK (Amount >= 0).\n- CONSTRAINT CK_DriverTrip_Rate CHECK ((RateMissing = 1 AND DriverTripRateId IS NULL AND Amount = 0) OR (RateMissing = 0 AND DriverTripRateId IS NOT NULL)).\n- Índices:\n  - CREATE UNIQUE INDEX UX_DriverTrip_Order ON dbo.DriverTrip(TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1: un solo viaje vigente por orden, garantizado en BD.\n  - CREATE INDEX IX_DriverTrip_Driver_Date ON dbo.DriverTrip(TenantId, DriverId, TripDate).",
+   "Diseño/logistica-db-estructura.sql · CAPA 16 dbo.DriverDevice:\n- CREATE UNIQUE INDEX UX_DriverDevice_Token ON dbo.DriverDevice(TenantId, PushToken) WHERE PushToken IS NOT NULL AND IsActive = 1.",
+   "Diseño/logistica-db-estructura.sql · dbo.NumberSequence y cierre del script:\n- CK_NumberSequence_Kind pasa a CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER')), para el número de OT por tenant con ClientId NULL.\n- El PRINT final se actualiza al nuevo total de tablas (+5).",
+   "Diseño/logistica-db-seed.sql · 1) CATALOG DOMAINS:\n- Agregar ('DriverPayoutFormula',1,'Fórmula de pago a choferes','Driver payout formula') y ('DriverTripStatus',2,'Estatus de viaje de chofer','Driver trip status').\n- VehicleStatus, DriverStatus y WorkOrderStatus ya existen.",
+   "Diseño/logistica-db-seed.sql · 2) LOOKUP CODES (#L), bloque '-- Lote 4':\n- DriverPayoutFormula:\n  - ('DriverPayoutFormula','DELIVERY_PLUS_ATTEMPTS','Entrega + cada intento','Delivery + each attempt',1)\n  - ('DriverPayoutFormula','DELIVERY_INCLUDES_FIRST','La entrega incluye el 1er intento','Delivery includes 1st attempt',2)\n  - ('DriverPayoutFormula','FAILED_REPLACES_DELIVERY','Intento fallido reemplaza a entrega','Failed attempt replaces delivery',3)\n- EntityType nuevos:\n  - ('MAINTENANCE_SCHEDULE','Programa de mantenimiento','Maintenance schedule',61)\n  - ('FUEL_LOG','Carga de combustible','Fuel log',62)\n  - ('FLEET_DOCUMENT','Documento de flota','Fleet document',63)\n  - ('DRIVER_RATE','Tarifa de chofer','Driver rate',64)\n  - ('DRIVER_TRIP','Viaje de chofer','Driver trip',65)\n  - ('DISPATCH_ZONE','Zona de despacho','Dispatch zone',66)\n- NO se agrega MAINTENANCE_WORK_ORDER: se reutiliza 'WORK_ORDER', ya sembrado en la línea 140.\n- ('Capability','EDIT_WORK_ORDER','Editar orden de trabajo','Edit work order',7).",
+   "Diseño/logistica-db-seed.sql · 3) STATUS CODES (#S), '-- Lote 4':\n- ('DriverTripStatus','OPEN','Por liquidar','Open',@PIPE,1,'#9CA3AF',1)\n- ('DriverTripStatus','SETTLED','Liquidado','Settled',@TERM,2,'#059669',0)\n- ('DriverTripStatus','CANCELLED','Cancelado','Cancelled',@TERM,3,'#6B7280',0)",
+   "Diseño/logistica-db-seed.sql · nuevo 3D) STATUS CAPABILITY por defecto (TenantId NULL):\n- MERGE idempotente igual a 3B, para EntityType WORK_ORDER + Capability EDIT_WORK_ORDER con IsAllowed = 0 en WorkOrderStatus CLOSED y CANCELLED.\n- El tenant lo cambia en /status/capabilities/WORK_ORDER.",
+   "Diseño/logistica-db-seed.sql · 4) PERMISOS (#P), '-- Lote 4':\n- Nuevos: ('fleet.view','FLEET','Ver flota y choferes','View fleet & drivers'), ('driverpay.view','FLEET','Ver tarifas y viajes de choferes','View driver rates & trips') y ('driverpay.manage','FLEET','Gestionar tarifas y viajes de choferes','Manage driver rates & trips').\n- 5) #RP: ('Dispatcher','fleet.view'), ('Billing','driverpay.view') y ('ReadOnly','fleet.view'); TenantAdmin los recibe por el SELECT sobre #P.\n- PRINT final: 'capacidades por defecto (CONTRACT, TRANSPORT_ORDER y WORK_ORDER), permisos (52)'."
+  ],
+  "decisiones": [
+   {
+    "decision": "DECISIÓN: El maestro de tarifas del chofer (entregas, intentos, viajes, niveles y fórmula) y DriverTrip entran en este lote.\n- Viven en la pantalla 'Choferes y tarifas' del grupo Catálogo.\n- El Lote 3 dejó pendiente el DriverTrip de la entrega especial.\n- La corrida de liquidación (DriverSettlementRun), el ledger DeliveryAttempt y la exportación quedan para los Lotes 7 y 9.",
+    "alternativa": "Lote 4 solo con identidad y flota (lectura literal de R8/línea 287) y todo 11A en el Lote 9, dejando la entrega especial sin chofer hasta entonces."
+   },
+   {
+    "decision": "DECISIÓN: No hay tabla DriverRateAgreement: el chofer es el agregado raíz.\n- Las tres tablas de tarifa cuelgan de Driver.\n- La 'ficha vacía' de ensureDriverRate es la ausencia de filas.\n- Así lo sugiere la bitácora (línea 697), aunque el módulo 11A (línea 430) todavía usa el término.",
+    "alternativa": "Crear DriverRateAgreement 1:1 con Driver como cabecera (vigencia/moneda), con una tabla y un paso más en cada alta."
+   },
+   {
+    "decision": "DECISIÓN: Se sigue la entrada más reciente de la bitácora, el rediseño maestro-detalle (líneas 697-707), sobre la anterior de tres tablas planas con filtros (661-669), por la regla R29.",
+    "alternativa": "Tres pantallas planas de tarifas con filtros de Chofer/Activo, como la entrada anterior."
+   },
+   {
+    "decision": "DECISIÓN: Los niveles de intento son un entero por tenant: DriverPayPolicy.AttemptLevels, niveles contiguos 1..N, tope 20.\n- '+ Agregar intento' solo sube N; no crea filas de $0 por chofer.\n- Un nivel sin fila se ve como 'sin tarifa', distinguible de un $0 capturado a propósito.\n- En este lote no se quitan niveles.",
+    "alternativa": "Tabla de niveles del tenant y filas de $0 provisionadas a todos los choferes al agregar un nivel. Es fiel al mock, pero se pierde la distinción entre '$0 a propósito' y 'no configurado'."
+   },
+   {
+    "decision": "DECISIÓN: Fallback de intentos: se usa la tarifa del nivel más alto que el chofer tenga configurado, vigente en la fecha. Un nivel intermedio sin tarifa paga $0 con la nota 'sin tarifa configurada'.",
+    "alternativa": "Tomar como fallback el nivel N del tenant aunque el chofer no lo tenga configurado (daría $0 más a menudo)."
+   },
+   {
+    "decision": "DECISIÓN: La fórmula de pago vigente (tres modelos, catálogo DriverPayoutFormula) y los niveles viven en la tabla nueva DriverPayPolicy.\n- Una fila por tenant, creada con el primer cambio; el default es 'Entrega + cada intento'.\n- El Lote 9 solo invoca DriverPayoutRules.Compute y congela la fórmula en su corrida.",
+    "alternativa": "Columnas en Tenant (patrón DefaultServiceTypeLookupId, con FK diferida), editadas desde Ajustes de la compañía con admin.tenant."
+   },
+   {
+    "decision": "DECISIÓN: Vehicle y Driver reciben PublicId, CreatedAt/By, UpdatedAt/By y RowVersion, y sus rutas usan {publicId:guid}.\n- Los hijos (documentos, licencias, certificaciones, tareas, cargas, tarifas, dispositivos) NO reciben PublicId ni TenantId propio.\n- Se exponen con id entero SOLO bajo la ruta de su padre, y el servicio verifica que el hijo pertenece a ese padre (404 si no).",
+    "alternativa": "Agregar PublicId (y TenantId) a cada hija para exponerlas con rutas planas por GUID."
+   },
+   {
+    "decision": "DECISIÓN: El 'Código' del chofer es Driver.EmployeeCode (NOT NULL, único por compañía, inmutable). El código del vehículo también es inmutable. Ninguno se libera tras la baja: UNIQUE sin filtro.",
+    "alternativa": "Código de vehículo editable con validación de duplicados, y/o índices filtrados por IsActive para reutilizar códigos dados de baja."
+   },
+   {
+    "decision": "DECISIÓN: 'Área' no es un campo propio: es el nombre de la zona de despacho primaria del chofer (DispatchZone.Name). En el mock, 'área' siempre es el texto de los pueblos de la zona.",
+    "alternativa": "Columna Driver.AreaText libre, o un catálogo DriverArea editable por tenant."
+   },
+   {
+    "decision": "DECISIÓN: Cada chofer tiene una zona primaria (DriverZone.IsPrimary) y el lote trae un CRUD mínimo de DispatchZone (código, nombre, activo).\n- Los miembros de zona (CP/municipios) y las zonas secundarias quedan para Despacho.\n- El CRUD hace falta porque el seed de zonas demo no siembra nada en una BD limpia.",
+    "alternativa": "Sin CRUD: sembrar R-01..R-04 desde DemoTenantSeeder y dejar la zona vacía en los demás tenants."
+   },
+   {
+    "decision": "DECISIÓN: 'Activo' e 'Eliminar' son dos cosas distintas.\n- El checkbox 'Activo' es IsActive reversible: saca al chofer de despacho y conserva todo.\n- El estatus terminal INACTIVE es la baja definitiva. 'Eliminar chofer' (DELETE) transiciona a INACTIVE sin borrado físico:\n  - cierra hoy sus tarifas abiertas;\n  - desactiva sus dispositivos;\n  - quita su zona;\n  - desvincula el usuario;\n  - conserva sus viajes para pagarle lo pendiente.",
+    "alternativa": "DELETE físico en cascada cuando el chofer no tiene ningún historial, y baja definitiva en los demás casos."
+   },
+   {
+    "decision": "DECISIÓN: Tres permisos nuevos, para un total de 52. Así quedan separadas flota y compensación (R8).\n- fleet.view: lectura de flota y choferes; para Despachador y Solo lectura.\n- driverpay.view: para Facturación.\n- driverpay.manage: solo Admin por plantilla.",
+    "alternativa": "Todo con fleet.manage/fleet.maintenance, como sugería la especificación: quien edita un vehículo vería y cambiaría pagos, y no habría permiso de solo lectura."
+   },
+   {
+    "decision": "DECISIÓN: La plantilla de rol Driver no recibe ningún permiso fleet.* ni driverpay.*. Que el chofer registre su combustible u odómetro desde su propio vehículo es de la app (Lote 7), con un permiso propio o por pertenencia.",
+    "alternativa": "Dar ya a la plantilla Driver fleet.maintenance limitado a su vehículo asignado (requiere FleetAssignment, que queda fuera)."
+   },
+   {
+    "decision": "DECISIÓN: Todo Flota/Choferes/Tarifas va bajo [RequireModule(Catalog)]: el seed describe CATALOG como 'Clientes y contratos, choferes y tarifas, flota'.\n- Asignar chofer a la entrega especial va bajo LTL_GROUND con trips.dispatch, pero el servicio verifica además ModuleService.EnsureEnabledAsync(CATALOG), porque usa choferes y tarifas.\n- Con CATALOG apagado responde 403 module_disabled.",
+    "alternativa": "Un ModuleKeys.Fleet nuevo apagable por tenant y un permiso orders.dispatch; o no verificar CATALOG en la asignación (permitiría usar choferes con el módulo apagado)."
+   },
+   {
+    "decision": "DECISIÓN: Disponibilidad para despacho.\n- Bloquean:\n  - chofer o vehículo inactivo;\n  - estatus distinto del inicial;\n  - chofer sin licencia vigente;\n  - documento activo de vehículo vencido;\n  - OT en IN_PROGRESS.\n- Solo avisan: certificación vencida, documento que vence en 30 días o menos, y vehículo sin documentos.\n- El preventivo vencido no se evalúa aquí.",
+    "alternativa": "Que el preventivo vencido también bloquee, o que un chofer sin licencia registrada solo genere aviso."
+   },
+   {
+    "decision": "DECISIÓN: Documento vigente por tipo. Un documento con vencimiento queda 'superado' si el mismo dueño tiene otro activo del mismo tipo (tipo de documento, clase de licencia o tipo de certificación) con vencimiento posterior.\n- Uno superado NO bloquea la disponibilidad, NO aparece en 'Documentos por vencer' ni en Análisis, y NO cuenta para el próximo vencimiento.\n- Sigue visible en la ficha con IsSuperseded=true.\n- Así, al renovar no hay que desactivar el documento viejo a mano.",
+    "alternativa": "Que todo documento activo cuente, obligando a desactivar el viejo al renovarlo."
+   },
+   {
+    "decision": "DECISIÓN: 'Documentos por vencer' une documentos de vehículo, licencias y certificaciones en código, con un solo helper (FleetQueries.LoadFleetDocumentsAsync) que usan el panel, la disponibilidad y la fuente FLEET_DOCUMENT. No hay vista SQL ni tabla DriverDocument unificada; se agrega a DriverCertification el índice de vencimiento que le faltaba.",
+    "alternativa": "Una vista SQL vFleetDocument (UNION ALL) mapeada como keyless en EF, o unificar licencias y certificaciones en una tabla DriverDocument."
+   },
+   {
+    "decision": "DECISIÓN: Solo una OT en IN_PROGRESS inhabilita el vehículo.\n- Al iniciar la OT, el efecto pasa el vehículo a MAINTENANCE.\n- Al cerrar o cancelar, lo regresa a ACTIVE si no queda otra en proceso, aunque el MAINTENANCE se hubiera puesto a mano.\n- OPEN = programada; el vehículo sigue operando.",
+    "alternativa": "Que una OT correctiva en OPEN también inhabilite, o no cambiar el estatus del vehículo automáticamente."
+   },
+   {
+    "decision": "DECISIÓN: Cerrar una OT exige:\n- todas sus tareas activas completadas (422 si no);\n- la lectura de odómetro, si su programa es por kilometraje o ambos (400 si no), para que la línea base del preventivo no quede vacía.\n\nUna OT sin programa o de programa por tiempo cierra sin odómetro.",
+    "alternativa": "Cerrar sin exigir tareas completas ni odómetro; el preventivo quedaría 'Sin historial' si falta la lectura."
+   },
+   {
+    "decision": "DECISIÓN: Costos de la OT: con tareas son la suma de sus tareas activas; sin tareas se capturan directo en el encabezado. TotalCost lo calcula SQL (columna computada).",
+    "alternativa": "Encabezado y tareas independientes (tareas solo informativas)."
+   },
+   {
+    "decision": "DECISIÓN: El número de OT es automático, 'OT-#####' por compañía, con NumberSequence Kind WORKORDER; no se teclea.",
+    "alternativa": "Número tecleado libre (p. ej. el del proveedor) con validación de unicidad, o patrón configurable por tenant."
+   },
+   {
+    "decision": "DECISIÓN: Se reutiliza el EntityType 'WORK_ORDER' ya sembrado (logistica-db-seed.sql:140) para auditoría, historial de estatus, capacidad EDIT_WORK_ORDER, permisos de dueño, fuente de datos e indicador. No se crea MAINTENANCE_WORK_ORDER.",
+    "alternativa": "Crear MAINTENANCE_WORK_ORDER y reservar WORK_ORDER para un futuro concepto genérico (quedarían dos códigos para lo mismo)."
+   },
+   {
+    "decision": "DECISIÓN: Umbrales de 'Por vencer':\n- Mantenimiento: queda el 10 % o menos del intervalo, en km o en días.\n- Documentos: 30 días. Es el parámetro withinDays en el panel y un valor fijo en Análisis.",
+    "alternativa": "Umbrales fijos (1,000 km / 15 días) o configurables por tenant."
+   },
+   {
+    "decision": "DECISIÓN: Un programa por tipo de vehículo se evalúa vehículo por vehículo con su última OT CERRADA ligada al programa; sin ninguna, el estatus es 'Sin historial'. No hay generación automática de OT (no hay job).",
+    "alternativa": "Expandir cada programa por tipo en programas por vehículo al crearlo, y/o un job diario que genere las OT preventivas."
+   },
+   {
+    "decision": "DECISIÓN: km/L y costo/km se calculan al leer, no se guardan.\n- km/L = distancia desde la carga anterior con odómetro / litros de la carga actual (tanque lleno).\n- costo/km = costo de la carga / distancia.\n- El odómetro debe ser monótono por fecha (400 si no).",
+    "alternativa": "Guardar DistanceKm/KmPerLiter en FuelLog, o calcular solo promedios por período."
+   },
+   {
+    "decision": "DECISIÓN: Protección del odómetro del vehículo.\n- Solo sube (máximo monotónico) desde combustible y cierre de OT, con bloqueo de fila del vehículo (UPDLOCK, ROWLOCK, filtrado por TenantId).\n- La corrección manual puede bajar un error tecleado, pero nunca por debajo de la última lectura registrada en combustible u OT cerrada (400).",
+    "alternativa": "Odómetro manual libre (solo auditado) y sin bloqueo, aceptando que dos cargas concurrentes puedan dejar un valor menor."
+   },
+   {
+    "decision": "DECISIÓN: FuelLog y MaintenanceTask reciben IsActive (y FuelLog columnas de auditoría) para cumplir 'nunca DELETE'. Solo Vehicle, Driver, MaintenanceWorkOrder y DriverTrip tienen ciclo de estatus vía StatusService; programas, tareas, cargas, documentos, licencias, certificaciones, dispositivos, zonas y DriverZone usan solo IsActive.",
+    "alternativa": "No permitir quitar cargas ni tareas, solo corregirlas; o dar estatus propio a documentos (p. ej. VIGENTE/RENOVADO)."
+   },
+   {
+    "decision": "DECISIÓN: Auditoría automática en todas las entidades del lote.\n- Las hijas se auditan bajo el EntityType de su padre: documentos bajo VEHICLE; licencias, certificaciones, zonas y dispositivos bajo DRIVER; tareas bajo WORK_ORDER.\n- PushToken es [SensitiveData]; LastSeenUtc, timestamps y RowVersion son [NotAudited].",
+    "alternativa": "Auditar solo Vehicle, Driver, OT y tarifas, sin las hijas."
+   },
+   {
+    "decision": "DECISIÓN: El 'estatus route' del mock es IN_TRANSIT.\n- La entrega especial con chofer se confirma (cotiza y verifica crédito como en el Lote 3).\n- Avanza etapa por etapa, CONFIRMED→PICKUP→INBOUND→PLANNED→IN_TRANSIT, saltando las deshabilitadas, con historial y comentario, porque StatusService no permite saltos.",
+    "alternativa": "Dejarla en PLANNED y que la app del chofer marque la salida, o agregar a StatusService un 'avance de sistema' con un solo registro (cambio transversal)."
+   },
+   {
+    "decision": "DECISIÓN: La entrega especial con chofer se prepara ANTES de sacar números:\n- módulo CATALOG;\n- trips.dispatch;\n- chofer;\n- disponibilidad;\n- tarifa.\n\nAsí falla rápido sin consumir NumberSequence. La asignación se repite dentro de cada reintento por colisión de número. overrideCredit se acepta con confirmNow o con driverPublicId (cambia la guarda de OrderService.cs:77).",
+    "alternativa": "Validar el chofer dentro de la transacción (un 409 de disponibilidad dejaría hueco en la numeración si el número ya se sacó)."
+   },
+   {
+    "decision": "DECISIÓN: La asignación del chofer a la entrega especial se registra en DriverTrip.TransportOrderId; no se crea Trip/TripOrder, que son de Despacho. DriverTrip es la fila de pago, distinta de dbo.Trip. La ficha de la orden expone solo el chofer asignado, nunca el monto.",
+    "alternativa": "Crear ya un Trip de una sola parada con el chofer."
+   },
+   {
+    "decision": "DECISIÓN: La BD garantiza un solo viaje vigente por orden.\n- Índice único filtrado UX_DriverTrip_Order (TransportOrderId WHERE IsActive = 1).\n- Todo viaje que pasa a CANCELLED queda además IsActive=0; lo hace DriverTripStatusEffect.\n- El listado de viajes muestra por defecto solo los vigentes; los cancelados, con includeCancelled.",
+    "alternativa": "Confiar solo en el servicio (sin índice), manteniendo IsActive=1 en los cancelados."
+   },
+   {
+    "decision": "DECISIÓN: Si el chofer no tiene tarifa por viaje para ese tipo, el DriverTrip se crea igual con $0 y RateMissing, para que el vacío quede visible (R15). La coherencia la garantiza el CHECK CK_DriverTrip_Rate: RateMissing ⇔ sin tarifa y monto 0. Se aplica la tarifa vigente en TripDate.",
+    "alternativa": "Bloquear el alta o la asignación con 409 hasta que se configure la tarifa."
+   },
+   {
+    "decision": "DECISIÓN: DriverTrip tiene estatus propio, DriverTripStatus (OPEN → SETTLED | CANCELLED), vía StatusService.\n- El Lote 9 lo pasará a SETTLED y lo referenciará desde su línea de liquidación, sin FK desde DriverTrip.\n- Cancelar la orden cancela su viaje OPEN.\n- El viaje de una orden no se cancela directo (409).",
+    "alternativa": "Usar solo IsActive y que el Lote 9 agregue una columna de liquidación en DriverTrip."
+   },
+   {
+    "decision": "DECISIÓN: No se crean DeliveryAttempt ni DriverSettlementRun/Line.\n- CarrierSettlement y SettlementStatus (DRAFT→APPROVED→PAID) quedan intactos.\n- La contradicción con el flujo Generada→Revisada→Aprobada→Exportada queda documentada para que la resuelva el Lote 9. Ese flujo lo exigen el módulo 11A (líneas 420/437) y, más tajante y reciente, la bitácora (línea 598).",
+    "alternativa": "Crear ya DeliveryAttempt (sin nadie que lo escriba) y renombrar CarrierSettlement."
+   },
+   {
+    "decision": "DECISIÓN: Quedan fuera de este lote:\n- el almacén base (HomeWarehouseId: Warehouse no está mapeado);\n- FleetAssignment: sin CRUD, sin CHECK de chofer/vehículo nulos y sin regla de traslape de fechas, que definirá Despacho;\n- los adjuntos de documentos (no hay proveedor de archivos);\n- las plantillas de exportación ACCT_TEMPLATES de Liquidación/Facturación (Lotes 9/11). DriverTrip ya lleva lo que esa exportación necesitará: chofer, tipo, fecha, monto, orden y estatus.",
+    "alternativa": "Mapear un Warehouse mínimo y un CRUD de FleetAssignment con CHECK de traslape ya en este lote."
+   },
+   {
+    "decision": "DECISIÓN: No hay fuentes de datos de tarifas ni de DriverTrip, porque Análisis solo exige analytics.view y expondría la compensación. Sí se registran VEHICLE, DRIVER, WORK_ORDER, FUEL_LOG y FLEET_DOCUMENT, con el indicador 'Documentos por vencer' en Pulso.",
+    "alternativa": "Una fuente DRIVER_TRIP visible para todos los usuarios con analytics.view."
+   },
+   {
+    "decision": "DECISIÓN: El selector de 'tipo de viaje' usa un endpoint propio, GET /driver-trip-types (driverpay.view), que delega en SpecialServiceService.GetTypesAsync. Además, inactivar un tipo con tarifas por viaje vigentes responde 409 (cambio en el servicio del Lote 2).",
+    "alternativa": "Que la pantalla llame a /special-service-types y exigir contracts.read a quien administra tarifas."
+   },
+   {
+    "decision": "DECISIÓN: Qué admite cada estado:\n- Un vehículo inactivo o dado de baja no admite OT ni cargas nuevas (409).\n- Un chofer inactivo sí admite tarifas y viajes, porque se puede reactivar.\n- Un chofer eliminado solo se consulta.",
+    "alternativa": "Permitir OT sobre vehículos inactivos (reparar antes de reactivar)."
+   },
+   {
+    "decision": "DECISIÓN: Driver.UserId se puede vincular ya (único por compañía, UX_Driver_User), pero vincular o desvincular exige además admin.users y un usuario INTERNAL con membresía ACTIVE en el tenant. DriverDevice solo se lista y se desactiva; el registro del dispositivo es de la app del Lote 7.",
+    "alternativa": "Vincular solo con fleet.manage y membresía (como el plan original), o dejar el vínculo fuera hasta el Lote 7."
+   },
+   {
+    "decision": "DECISIÓN: La tarifa por entrega exige servicio y tipo de paquete exactos; no hay comodín de 'cualquier paquete'.",
+    "alternativa": "PackageType NULL como comodín, igual que en RateComponent del cliente."
+   },
+   {
+    "decision": "DECISIÓN: FKs compuestas (Id, TenantId) como segunda barrera multi-tenant en SQL.\n- Dónde: las tablas nuevas (tarifas y DriverTrip), FuelLog y MaintenanceWorkOrder.\n- Requiere UQ (Id, TenantId) en Vehicle, Driver, SpecialServiceType, TransportOrder y DriverTripRate.\n- EF sigue mapeando las relaciones por columna simple.",
+    "alternativa": "FK de columna simple como el resto del esquema, confiando solo en el filtro global y en los servicios."
+   },
+   {
+    "decision": "DECISIÓN: Se cierra un hueco del Lote 2: PORTAL_USER tiene permiso de dueño pero no tenía IOwnedEntityResolver, y CustomFieldService omite la verificación de pertenencia sin resolver.\n- Se agrega el resolver.\n- Una prueba exige resolver para TODO EntityType con OwnerRead/WritePermission.",
+    "alternativa": "Dejar PORTAL_USER como está y limitar la prueba de cobertura a los EntityTypes del Lote 4."
+   }
+  ],
+  "pruebas": [
+   "tests/Teikem.Tests/FleetCatalogTests.cs (P0): las constantes coinciden con los literales del seed:\n- VehicleStatuses, DriverStatuses, WorkOrderStatuses, DriverTripStatuses, MaintenanceTriggers, MaintenanceTypes, DriverPayoutFormulas y FleetDocumentKinds.\n- EntityTypes.WorkOrder == 'WORK_ORDER' (sembrado) y los 6 EntityTypes nuevos.\n- Capabilities.EditWorkOrder, NumberKinds.WorkOrder y NumberingRules.IsKnownKind('WORKORDER').\n\nY PermissionCatalog:\n- 52 códigos distintos.\n- fleet.view, driverpay.view y driverpay.manage en FLEET, con etiquetas es/en.\n- fleet.view solo en TenantAdmin, Dispatcher y ReadOnly; driverpay.view solo en TenantAdmin y Billing; driverpay.manage solo en TenantAdmin.\n- La plantilla Driver sin fleet.* ni driverpay.*.\n- OwnerRead/WritePermission correctos para los 9 EntityTypes del lote.",
+   "tests/Teikem.Tests/FleetContractsTests.cs (P0), por reflexión como OrderContractsTests:\n- VehiclePatchRequest sin Code/HomeWarehouseId y DriverPatchRequest sin Code/EmployeeCode; ambos con Extra [JsonExtensionData].\n- DriverRateUpdateRequest sin ServiceType/PackageType/SpecialServiceTypeId y con Extra.\n- WorkOrderPatchRequest sin Number/VehiclePublicId.\n- DriverDeviceDto sin PushToken.\n- Ninguna solicitud de tarifa ni de viaje (DriverDeliveryRateCreateRequest, DriverTripRateCreateRequest, DriverRateUpdateRequest, DriverTripCreateRequest) trae DriverId ni DriverPublicId (R31).\n- OrderCreateRequest expone DriverPublicId como último parámetro opcional con default null, así el importador no cambia.\n- OrderDetailDto trae AssignedDriver* y ninguna propiedad Amount/Rate de chofer.\n- Ningún tipo 'Prepared*' (PreparedSpecialDelivery) vive en el namespace Teikem.Infrastructure.Contracts (comparación por nombre, sin referencia de compilación).\n- Ningún DTO de flota es entidad EF.",
+   "tests/Teikem.Tests/FleetRulesTests.cs (P0):\n- NormalizeCode: recorta, pasa a mayúsculas; vacío → error; mayor que el máximo → error.\n- MatchesSearch sin acentos ni mayúsculas: 'diesel' encuentra 'Diésel'; una parte del VIN en minúsculas lo encuentra.\n- EffectiveMaxStops(null, 25)=25 y (18, 25)=18.\n- ValidateDocumentDates con el mensaje exacto.\n- ExpiryState en los bordes: ayer EXPIRED; hoy EXPIRING con 0 días; hoy+30 EXPIRING; hoy+31 OK; null NO_EXPIRY.\n- DecimalError: (18,4) 1.23456 → mensaje con '4 decimales'; 1e14 → error; 99999999999999.9999 → null; (10,3) 10000000 → error.\n- RaiseOdometer: (null, 5) = 5; (6000, 5500) = 6000.\n- FleetDocuments.MarkSuperseded:\n  - REGISTRATION vencido + REGISTRATION posterior del mismo vehículo → el viejo superado;\n  - tipos distintos → ninguno superado;\n  - dueños distintos → ninguno;\n  - documento sin vencimiento → nunca superado ni supera;\n  - mismo vencimiento → ninguno superado;\n  - licencias de clases distintas → independientes.",
+   "tests/Teikem.Tests/TenantIsolationModelTests.cs (P0). Construye TeikemDbContext con UseSqlServer y una cadena ficticia (no se conecta) y un ITenantContext de prueba, e inspecciona db.Model:\n(1) Toda entidad Teikem.Domain* con propiedad TenantId tiene query filter, salvo una lista cerrada de excepciones previas, enumerada explícitamente. La prueba falla si aparece una nueva.\n(2) En Teikem.Domain.Fleet, las entidades sin TenantId son exactamente {VehicleDocument, DriverLicense, DriverCertification, DriverZone, MaintenanceTask}.\n(3) MaintenanceWorkOrder.TotalCost es computada y stored.\n(4) RowVersion es token de concurrencia en Vehicle, Driver, MaintenanceWorkOrder y DriverTrip.\n(5) Nombres y filtros de los índices únicos coinciden con el SQL: UQ_Vehicle_Code, UQ_Driver_EmployeeCode, UX_Driver_User, UQ_WorkOrder_Number, UQ_DriverDeliveryRate_Open, UQ_DriverAttemptRate_Open, UQ_DriverTripRate_Open, UX_DriverTrip_Order ('[TransportOrderId] IS NOT NULL AND [IsActive] = 1') y UX_DriverDevice_Token.\n(6) DriverPayPolicy tiene clave TenantId sin generación de valor.",
+   "tests/Teikem.Tests/OwnedEntityResolverCoverageTests.cs (P0):\n- Instancia por reflexión (ActivatorUtilities, con TeikemDbContext InMemory y un ITenantContext de prueba) todas las implementaciones de IOwnedEntityResolver del ensamblado, incluidas las dos instancias del ClosedOwnedEntityResolver.\n- Exige que el conjunto de EntityTypeCode cubra todas las llaves de OwnerReadPermission ∪ OwnerWritePermission (incluye PORTAL_USER, hueco del Lote 2).\n- Exige que no haya dos resolvers para el mismo código.",
+   "tests/Teikem.Tests/OrderCatalogTests.cs (P0): Permission_catalog_has_49_codes pasa a 52, conservando las aserciones de orders.credit_override.",
+   "tests/Teikem.Tests/VehicleRulesTests.cs (P1):\n- NormalizeVin: espacios, mayúsculas; más de 40 → error.\n- Capacidades negativas → error.\n- MaxStops 0 → error; 1 es válido.\n- Odómetro negativo → error.\n- ModelYear 1899 y año+2 → error; año+1 es válido.\n- ValidateManualOdometer:\n  - menor que la última lectura → mensaje exacto con km y fecha;\n  - igual → válido;\n  - sin lecturas → válido.",
+   "tests/Teikem.Tests/DriverRulesTests.cs (P2): nombre vacío o de más de 150 → mensajes exactos; tope de paradas 0 → error; número de licencia vacío o de más de 60 → error.",
+   "tests/Teikem.Tests/FleetAvailabilityRulesTests.cs (P3):\n- Chofer activo con licencia vigente → disponible.\n- Sin licencias → NO_VALID_LICENSE bloqueante.\n- Todas vencidas → bloqueante con la fecha.\n- Una vencida SUPERADA y una vigente → disponible, sin issue de la vencida.\n- Certificación vencida → CERT_EXPIRED, solo aviso.\n- UNAVAILABLE → DRIVER_STATUS.\n- IsActive=0 → DRIVER_INACTIVE.\n- Vehículo:\n  - con documento vencido no superado → VEHICLE_DOC_EXPIRED;\n  - REGISTRATION vencido superado por uno vigente → disponible;\n  - OT en proceso → WORK_ORDER_IN_PROGRESS con el número;\n  - sin documentos → aviso VEHICLE_NO_DOCUMENTS;\n  - documento que vence en 10 días → DOC_EXPIRING, aviso.",
+   "tests/Teikem.Tests/MaintenanceDueTests.cs (P4):\n- MILEAGE 5000 con último servicio en 0: odómetro 1000 OK; 4600 DUE_SOON; 5000 OVERDUE; 5200 OVERDUE con KmRemaining -200.\n- TIME 30 días: último hace 10 días OK; hace 28 DUE_SOON; hace 40 OVERDUE.\n- BOTH toma el peor.\n- Sin último servicio → NO_BASELINE; MILEAGE sin odómetro actual → NO_BASELINE.\n- NextDueKm y NextDueDate calculados.\n- ValidateClose:\n  - 2 tareas incompletas → 422 con 'La orden tiene 2 tarea(s) sin completar…';\n  - MILEAGE sin odómetro → 400 con el mensaje exacto;\n  - TIME sin odómetro → válido;\n  - sin programa → válido.",
+   "tests/Teikem.Tests/FuelEfficiencyTests.cs (P5):\n- Tres cargas 5200/5600/6000 con 40 L y $60/$60/$64: la primera null; la segunda 400 km, 10 km/L, 0.15/km; la tercera 10 km/L, 0.16/km.\n- Entrada desordenada → mismo resultado.\n- Carga sin odómetro → null, y la siguiente usa la última con odómetro.\n- Distancia ≤ 0 → null.\n- Summary = Σ distancia / Σ litros.\n- ValidateOdometer: menor que una anterior → mensaje exacto; mayor que una posterior → mensaje; al editar excluye la propia fila.",
+   "tests/Teikem.Tests/DriverPayoutRulesTests.cs (P6):\n- Con entrega 4.00, intentos {1: 1.00, 2: 1.50, 3: 2.00} y fallido×3 + entregado:\n  - DELIVERY_PLUS_ATTEMPTS = 10.50;\n  - DELIVERY_INCLUDES_FIRST = 9.50;\n  - FAILED_REPLACES_DELIVERY = 8.50.\n- Entrega al 1er intento: 5.00 / 4.00 / 4.00.\n- Sin entrega (dos fallidos): 2.50 / 1.50 / 2.50.\n- Entrega sin tarifa → línea 0 con 'sin tarifa configurada'.\n- Nivel intermedio faltante → 0 con nota; sin niveles → intentos en 0 con nota.\n- ValidateAttemptNumber(3, 2) → mensaje exacto; fórmula desconocida → false.\n- PickCurrent:\n  - EffectiveTo exclusivo: la fila que cierra hoy no es vigente hoy y la nueva sí;\n  - fila de longitud cero nunca vigente;\n  - sin filas → null;\n  - asOf anterior a toda vigencia → null.",
+   "tests/Teikem.Tests/PipelinePathTests.cs (P7), con el pipeline de OrderStatus completo:\n- DRAFT→IN_TRANSIT = [CONFIRMED, PICKUP, INBOUND, PLANNED, IN_TRANSIT].\n- CONFIRMED→IN_TRANSIT = [PICKUP, INBOUND, PLANNED, IN_TRANSIT].\n- PICKUP e INBOUND deshabilitados → [CONFIRMED, PLANNED, IN_TRANSIT].\n- IN_TRANSIT deshabilitado → termina en PLANNED.\n- Desde IN_TRANSIT o ARRIVED → vacío.\n- Desde ON_HOLD o CANCELLED → InvalidOperationException.",
+   "tests/Teikem.Tests/DriverTripRulesTests.cs (P7):\n- Freeze(75, 12) → (75, 12, false, null).\n- Freeze(null, null) → (0, null, true, 'sin tarifa configurada').\n- Freeze(0, 7) → $0 a propósito: RateMissing=false y RateId 7.\n- Cada resultado cumple CK_DriverTrip_Rate.\n- ValidateTripDate: mañana → 'La fecha del viaje no puede ser futura.'; hoy y ayer → válidas.\n- ValidateNotes: 501 caracteres → error.",
+   "Verificación: dotnet build Teikem.sln sin errores ni warnings; dotnet test Teikem.sln con las 261 pruebas previas más las nuevas en verde."
+  ],
+  "smoke": [
+   "**db-init dos veces sobre BD limpia.**\n- 52 permisos en el catálogo.\n- La segunda corrida es idempotente (0 permisos nuevos propagados).\n- Los roles clonados de Despachador y Solo lectura reciben fleet.view; el de Facturación, driverpay.view.",
+   "**Flota (Lote 4): permisos, catálogos, pipelines y capacidades.**\n- /me del admin incluye fleet.view, driverpay.view y driverpay.manage.\n- GET /api/v1/catalogs/{VehicleType|Ownership|FuelType|VehicleDocType|LicenseClass|CertificationType|MaintenanceTrigger|MaintenanceType|DriverPayoutFormula} traen valores.\n- GET /api/v1/status/{VehicleStatus|DriverStatus|WorkOrderStatus|DriverTripStatus} → 200.\n- En DriverTripStatus, OPEN es inicial y SETTLED/CANCELLED son terminales.\n- GET /api/v1/status/capabilities/WORK_ORDER muestra EDIT_WORK_ORDER denegado en CLOSED y CANCELLED.",
+   "**Vehículos: alta, código único, qbox, código fijo y precisión.**\n- POST /api/v1/vehicles V$TS (VAN, OWNED, DIESEL, VIN, odómetro 1000, capacidades) → 200, status ACTIVE e isActive.\n- El mismo código → 409 'Ya existe un vehículo con ese código.'\n- vehicleType FOO → 400 con errors.vehicleType.\n- maxStops 0 → 400.\n- maxWeightKg 1.23456 → 400 con 'El valor admite como máximo 3 decimales…'.\n- PATCH de la placa → 200; PATCH {code} → 400 'El código del vehículo se fija al crearlo; no se puede cambiar.'\n- ?search=<parte del VIN en minúsculas> y ?search=diesel lo encuentran; ?vehicleType=TRUCK no.\n- /status/history/VEHICLE/{id} muestra ACTIVE.",
+   "**Vehículos: estatus y baja lógica.**\n- status MAINTENANCE → 200; regreso a ACTIVE → 200.\n- deactivate → 204: fuera de la lista por defecto, presente con includeInactive; reactivate → 204.\n- Un segundo vehículo pasado a INACTIVE queda isActive=false; reactivate → 409 'El vehículo está dado de baja definitiva; no se puede reactivar.'",
+   "**Zonas y choferes: código fijo, zona/área, tope de paradas y usuario.**\n- POST /api/v1/dispatch-zones Z$TS 'Toa Baja · Bayamón' → 200; duplicada → 409.\n- POST /api/v1/drivers D1$TS con la zona y sin tope → effectiveMaxStops == 30 (el maxStopsPerRouteDefault que fija smoke.sh:68) y area == nombre de la zona.\n- Código repetido → 409 'Ya existe un chofer con ese código.'\n- PATCH maxStopsPerRoute 18 → effectiveMaxStops 18. PATCH {code} → 400.\n- El admin vincula el usuario del despachador → 200.\n  - Un rol con fleet.manage sin admin.users que intenta vincular → 403 'Falta el permiso 'admin.users'.'\n  - Vincular un usuario de portal del Lote 2 → 400 'Solo un usuario interno se puede vincular a un chofer.'\n  - El mismo usuario en otro chofer → 409 'El usuario ya está vinculado a otro chofer.'\n- UNAVAILABLE y regreso; deactivate/reactivate → 204.\n- Se crean además D2$TS y D3$TS.",
+   "**Documentos: licencias, certificaciones, documentos de vehículo y 'Documentos por vencer'.**\n- Datos:\n  - V1: INSURANCE que vence en 10 días, REGISTRATION vencido ayer e INSPECTION a 90 días.\n  - D1 y D3: CDL_A que vence en 5 días y en 1 año.\n  - D2: licencia vencida y HAZMAT vencida.\n- Emisión posterior al vencimiento → 400 'La fecha de vencimiento no puede ser anterior a la de emisión.'\n- GET /api/v1/fleet/expiring-documents?withinDays=30 trae vencidos y por vencer (no la inspección), ordenados, con expiryState EXPIRED/EXPIRING.\n- docType=LICENSE → solo licencias; entity=VEHICLE → solo del vehículo; includeExpired=false → sin vencidos; docType=FOO → 400.",
+   "**Disponibilidad para despacho.** GET /api/v1/fleet/availability:\n- D1 disponible con aviso DOC_EXPIRING.\n- D2 no disponible con NO_VALID_LICENSE (bloqueante) y CERT_EXPIRED (aviso).\n- V1 no disponible por VEHICLE_DOC_EXPIRED.\n- Un vehículo sin documentos, disponible con aviso VEHICLE_NO_DOCUMENTS.\n- Un chofer en UNAVAILABLE, no disponible (DRIVER_STATUS).",
+   "**Documento vigente por tipo (renovación).**\n- Se agrega a V1 un REGISTRATION nuevo que vence en 1 año.\n- expiring-documents ya no trae el REGISTRATION vencido.\n- GET del vehículo lo muestra con isSuperseded=true.\n- availability deja a V1 disponible (solo el aviso DOC_EXPIRING del seguro).\n- nextDocumentExpiry de V1 es la del seguro.",
+   "**Contactos, campos personalizados e historial.**\n- POST /api/v1/contacts/DRIVER/{id} con un teléfono → 200.\n- Definición de campo para VEHICLE y PUT /api/v1/custom-fields/values/VEHICLE/{id} → 200.\n- T7 (contacts.manage sin fleet.*): POST /contacts/DRIVER/{id} → 403 'Falta el permiso 'fleet.manage'.'\n- Id inexistente → 404 en VEHICLE, DRIVER, DISPATCH_ZONE, MAINTENANCE_SCHEDULE, WORK_ORDER, FUEL_LOG y DRIVER_TRIP.\n- DRIVER_RATE y FLEET_DOCUMENT → 404 (resolver cerrado).\n- PUT /custom-fields/values/PORTAL_USER/999999 → 404 (resolver nuevo del hueco del Lote 2).",
+   "**Mantenimiento preventivo: Al día / Por vencer / Vencido.** Programa MILEAGE de 5000 km sobre V1, con último servicio en 0 km:\n- con odómetro 1000, GET /maintenance-schedules/due → OK;\n- PATCH del odómetro a 4600 → DUE_SOON;\n- a 5200 → OVERDUE.\n\nOtros casos:\n- Programa TIME con último servicio hace 40 días → OVERDUE.\n- Programa por tipo VAN sin OT → NO_BASELINE.\n- Vehículo y tipo a la vez → 400 'Indique el vehículo o el tipo de vehículo del programa, no ambos.'\n- MILEAGE sin intervalo → 400.",
+   "**Órdenes de trabajo: número, tareas, costos, cierre y efecto en el vehículo.**\n- POST OT desde el programa MILEAGE → number OT-##### y status OPEN.\n- Programa de otro vehículo → 400.\n- Dos tareas con costos → laborCost/partsCost son las sumas y totalCost = labor + partes.\n- PATCH laborCost con tareas → 400.\n- status IN_PROGRESS → el vehículo pasa a MAINTENANCE y availability muestra WORK_ORDER_IN_PROGRESS.\n- Cerrar:\n  - con una tarea sin completar → 422 'La orden tiene 1 tarea(s) sin completar…';\n  - completadas las tareas pero sin odómetro → 400 'Indique la lectura de odómetro para cerrar una orden de un programa por kilometraje.';\n  - CLOSED con odómetro 5200 → el vehículo vuelve a ACTIVE, el programa queda OK (último servicio 5200) y el odómetro del vehículo es 5200.\n- Después del cierre:\n  - PATCH sobre la OT cerrada → 422;\n  - /status/history/WORK_ORDER/{id} muestra OPEN→IN_PROGRESS→CLOSED;\n  - OT sobre un vehículo inactivo → 409.",
+   "**Concurrencia de OT.**\n- 8 POST /maintenance-work-orders simultáneos (curl en segundo plano + wait) sobre un vehículo activo.\n- Los 8 → 200, sin 409 ni 500.\n- Los 8 números son distintos y consecutivos.",
+   "**Bitácora de combustible: km/L, costo/km y odómetro.**\n- Cargas en V1 a 5200 (40 L, $60), 5600 (40 L, $60) y 6000 (40 L, $64):\n  - la segunda: kmPerLiter 10 y costPerKm 0.15;\n  - la tercera: 10 y 0.16;\n  - summary kmPerLiter 10.\n- Validaciones:\n  - una carga de 5500 fechada después de la de 5600 → 400 con el mensaje de odómetro;\n  - 0 litros → 400;\n  - liters 1.23456 → 400 de precisión;\n  - fecha futura → 400.\n- CurrentOdometerKm del vehículo = 6000.\n- PATCH manual del odómetro a 5000 → 400 'El odómetro no puede ser menor que la última lectura registrada (6000 km el …).'\n- Desactivar una carga → 200 y deja de contar.",
+   "**Tarifas por entrega.**\n- POST /drivers/{D1}/delivery-rates STANDARD+BOX 3.50 → 200.\n- Repetida → 409 con el mensaje exacto.\n- rate 1.23456 → 400 de precisión.\n- PATCH rate 4.00 → fila nueva y la anterior cerrada (includeHistory trae 2).\n- PATCH {packageType} → 400 'El servicio y el paquete se fijan al crear la tarifa; quite la fila y cree una nueva.'\n- close → 200; PATCH sobre la fila cerrada → 409.\n- Servicio desconocido → 400.\n- PATCH /drivers/{D2}/delivery-rates/{id de D1} → 404 'Tarifa no encontrada.'",
+   "**Niveles de intento, fórmula y vista previa.**\n- GET /driver-pay-policy → attemptLevels 2 y DELIVERY_PLUS_ATTEMPTS.\n- PUT attempt-rates/1 = 1.00 y /2 = 1.50; PUT /3 → 400 'El intento 3 no existe; los niveles configurados van de 1 a 2.'\n- POST attempt-levels → 3; GET rates muestra el nivel 3 con rate null; PUT /3 = 2.00.\n- POST preview con entrega 4.00, tres fallidos y el 4º entregado → 10.50 / 9.50 / 8.50 según la fórmula.\n- Sin tarifa de entrega → línea 0 con 'sin tarifa configurada'.\n- PATCH formula FOO → 400.",
+   "**Tarifas por viaje.**\n- GET /driver-trip-types incluye 'Vagón $TS'.\n- POST /drivers/{D1}/trip-rates con ese tipo a 75 → 200; repetida → 409; PATCH {specialServiceTypeId} → 400.\n- En T3 (sin servicios especiales), POST trip-rates → 400 'Sin servicios especiales: agréguelos en Clientes y contratos antes de configurar tarifas por viaje.'\n- Inactivar el tipo con la tarifa vigente → 409 'El tipo tiene tarifas por viaje vigentes en 1 chofer(es); ciérrelas antes de inactivarlo.'",
+   "**Viajes del chofer: monto congelado.**\n- POST /drivers/{D1}/trips con el tipo → amount 75, OPEN.\n- PATCH de la tarifa por viaje a 80 → el viaje existente sigue en 75 y uno nuevo sale en 80.\n- Un tipo sin tarifa → amount 0 y rateMissing=true.\n- Fecha futura → 400.\n- Cancelar el viaje de $0 → CANCELLED e isActive=false; cancelarlo otra vez → 422.\n- GET trips?from&to → 2 vigentes; con includeCancelled=true → 3.",
+   "**Entrega especial con chofer (Lote 4 sobre el Lote 3).**\n\nPreparación:\n- Se crea un servicio especial NUEVO y vigente del tipo para el cliente de órdenes (SS_O_ID quedó cerrado en smoke.sh:917).\n- Se crea una tarifa por viaje de 80 para D3.\n\nAlta con chofer:\n- POST /orders especial con driverPublicId=D3 y sin confirmNow → 200, status IN_TRANSIT, assignedDriverName de D3 y quotedAmount congelado.\n- /status/history/TRANSPORT_ORDER/{id} muestra DRAFT→CONFIRMED→PICKUP→INBOUND→PLANNED→IN_TRANSIT.\n- GET /drivers/{D3}/trips trae el viaje de 80 ligado a la orden.\n\nRechazos:\n- driverPublicId en una orden normal → 400 'El chofer solo se asigna en una entrega especial.'\n- overrideCredit=true sin confirmNow ni chofer → 400, como el Lote 3.\n- Con D2 → 409 'El chofer no está disponible para despacho: …'. La orden no se crea y el siguiente número de orden no tiene hueco.\n\nReasignación:\n- POST /orders/{id}/driver con D1 → el viaje de D3 queda CANCELLED con isActive=false y hay un único viaje vigente, de D1.\n- Con el mismo D1 → 409 'La orden ya está asignada a ese chofer.'\n- Sobre una orden normal → 422.\n- Usuario sin trips.dispatch → 403.\n- Con CATALOG apagado → 403 module_disabled (luego se enciende).\n\nCancelaciones:\n- Cancelar directo el viaje de la orden → 409.\n- Cancelar la orden → su viaje OPEN pasa a CANCELLED.",
+   "**Eliminar chofer: baja definitiva sin borrar historial.**\n- DELETE /drivers/{D3} → 204.\n- GET → status INACTIVE, isActive false, sin zona ni usuario.\n- GET rates → sin tarifas vigentes; con includeHistory aparecen cerradas hoy.\n- Sus viajes siguen visibles.\n- reactivate → 409 'El chofer fue eliminado; no se puede reactivar.'\n- POST delivery-rates → 409 'El chofer fue eliminado; sus tarifas y viajes solo se consultan.'",
+   "**RBAC y módulo.**\n- Rol con solo fleet.view:\n  - GET vehicles/drivers/fleet → 200;\n  - POST vehicles → 403 PERMISSION_DENIED;\n  - GET /drivers/{id}/rates → 403 'Falta el permiso 'driverpay.view'.'\n- Rol con fleet.manage sin fleet.maintenance: POST maintenance-work-orders y fuel-logs → 403.\n- Despachador: GET /drivers → 200.\n- Sin driverpay.view, /status/history/DRIVER_TRIP → 403.\n- Con CATALOG apagado, /api/v1/vehicles → 403 module_disabled; luego se enciende.",
+   "**Aislamiento entre tenants y BOLA por id hijo.**\n\nDesde T3:\n- GET vehicle y driver por publicId → 404; listas vacías.\n- POST /contacts/DRIVER/{id} → 404.\n- expiring-documents y availability sin datos ajenos.\n- POST /orders/{orden especial de T3}/driver con un chofer del demo → 404 'Chofer no encontrado.'\n\nT3 crea su propio vehículo con un documento, su chofer con una tarifa y su OT con una tarea. Luego el admin del demo accede a esos ids hijos bajo SUS padres:\n- PATCH /vehicles/{V1}/documents/{docT3} → 404;\n- PATCH /drivers/{D1}/delivery-rates/{tarifaT3} → 404;\n- PATCH /maintenance-work-orders/{OT demo}/tasks/{tareaT3} → 404.\n\nMismo tenant, otro padre: PATCH /vehicles/{V2}/documents/{doc de V1} → 404.",
+   "**Fuentes de datos, contenido de sistema y auditoría.**\n- /analytics/data-sources incluye VEHICLE, DRIVER, WORK_ORDER, FUEL_LOG y FLEET_DOCUMENT, y NO incluye DRIVER_TRIP.\n- El preview de FUEL_LOG trae KmPerLiter.\n- Pulso muestra 'Documentos por vencer' ≥ 3 y 'Órdenes de trabajo abiertas'.\n- Las vistas 'Vehículos' y 'Documentos por vencer' corren; la segunda no trae el REGISTRATION superado.\n- /audit/changes para VEHICLE, DRIVER, DRIVER_RATE, DRIVER_TRIP y WORK_ORDER trae al menos un cambio, y ningún diff contiene rowVersion ni pushToken."
+  ]
+ },
+ "puntajes": [
+  13.5,
+  14,
+  16
+ ]
+}
