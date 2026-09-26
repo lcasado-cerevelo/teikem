@@ -254,3 +254,5 @@ hallazgos individuales cubre el punto.
 **Verificación de este cierre (2026-09-26, sobre BD recreada desde cero, esta sesión):** `dotnet build` sin errores ni
 advertencias; `dotnet test` 495/495; `db-init` dos veces (52 permisos, idempotente); `scripts/smoke.sh` completo (70
 pasos, Lotes 1-4) en `SMOKE OK`. Sin push en esta sesión: no hay corrida de CI que citar para este cierre puntual.
+
+**Corrida de CI del cierre del Lote 4:** https://github.com/lcasado-cerevelo/teikem/actions/runs/36232088124 (run 24, verde: build Release, 495 pruebas, db-init ×2 sobre BD limpia y smoke de los Lotes 1 a 4). La corrida 23 falló por una deriva del compilador del runner (SDK 10), corregida con `global.json`.
