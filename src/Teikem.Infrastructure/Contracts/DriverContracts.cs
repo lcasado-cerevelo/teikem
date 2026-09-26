@@ -138,3 +138,25 @@ public sealed record DriverRetireRequest(string? Comment = null);
 public sealed record DispatchZoneDto(int Id, string Code, string? Name, int DriverCount, bool IsActive);
 
 public sealed record DispatchZoneRequest(string? Code = null, string? Name = null);
+
+// ---------------- Lote 5 — miembros de la zona de despacho y resolución 'CP/pueblo → zona' ----------------
+
+/// <summary>Criterio de la zona: MatchTypeCode (POSTAL_CODE, POSTAL_RANGE, MUNICIPALITY) y su valor normalizado.</summary>
+public sealed record DispatchZoneMemberDto(int Id, string MatchTypeCode, string MatchType, string MatchValue);
+
+public sealed record DispatchZoneMembersDto(int ZoneId, string Code, string? Name, bool IsActive, IReadOnlyList<DispatchZoneMemberDto> Members);
+
+public sealed record DispatchZoneMemberRequest(string? MatchType, string? MatchValue);
+
+/// <summary>
+/// Resolución de una dirección: zona ganadora (id y código) y por qué criterio (MatchedBy); Ambiguous con los códigos
+/// empatados en Candidates; sin coincidencia, DispatchZoneId null.
+/// </summary>
+public sealed record ZoneResolutionDto(
+    string? PostalCode,
+    string? City,
+    int? DispatchZoneId,
+    string? ZoneCode,
+    string? MatchedBy,
+    bool Ambiguous,
+    IReadOnlyList<string> Candidates);

@@ -13,6 +13,7 @@ using Teikem.Infrastructure.Persistence.Interceptors;
 using Teikem.Infrastructure.Persistence.Scripts;
 using Teikem.Infrastructure.Seeding;
 using Teikem.Infrastructure.Services;
+using Teikem.Infrastructure.Trips;
 
 namespace Teikem.Infrastructure;
 
@@ -129,6 +130,24 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, DriverTripOrderEffect>();
         services.AddScoped<IStatusTransitionEffect, DriverTripStatusEffect>();
 
+        // Lote 5 — Trips y rutas. RouteWriter es la única vía de escritura de TripOrder/Route/RouteStop; el motor de
+        // optimización va detrás de IRouteOptimizer (HEURISTIC en este lote). Los efectos de TripStatus y OrderStatus resuelven
+        // StatusService/RouteWriter de forma perezosa (IServiceProvider) para no formar un ciclo con StatusService.
+        services.AddScoped<RouteWriter>();
+        services.AddScoped<TripIssueBuilder>();
+        services.AddScoped<IRouteOptimizer, HeuristicRouteOptimizer>();
+        services.AddScoped<TripReadService>();
+        services.AddScoped<TripService>();
+        services.AddScoped<TripOrderService>();
+        services.AddScoped<RouteOptimizationService>();
+        services.AddScoped<TripDispatchService>();
+        services.AddScoped<TripLifecycleService>();
+        services.AddScoped<TripDayPlanningService>();
+        services.AddScoped<OutboundScanService>();
+        services.AddScoped<TripMonitorService>();
+        services.AddScoped<IStatusTransitionEffect, TripStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, TripOrderReleaseEffect>();
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
@@ -168,6 +187,14 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.FleetDocument));
         // Hueco del Lote 2: PORTAL_USER tenía permiso de dueño pero no resolver (CustomFieldService omitía la verificación).
         services.AddScoped<IOwnedEntityResolver, PortalUserOwnedEntityResolver>();
+        // Lote 5 — fuente TRIP (DateField PlanDate; sin montos) y resolvers de pertenencia de rutas
+        services.AddScoped<IDataSource, TripDataSource>();
+        services.AddScoped<IOwnedEntityResolver, TripOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, RouteOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, RouteStopOwnedEntityResolver>();
+        // OPTIMIZATION_RUN es bitácora de solo lectura (trips.view): sin permiso de escritura de dueño, así que la escritura
+        // por id suelto (contactos, campos personalizados) se cierra con el resolver cerrado (siempre 404, sin oráculo).
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.OptimizationRun));
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

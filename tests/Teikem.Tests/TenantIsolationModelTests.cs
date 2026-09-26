@@ -5,6 +5,11 @@ using Teikem.Domain.Fleet;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
 using Xunit;
+using OptimizationRunEntity = Teikem.Domain.Trips.OptimizationRun;
+using RouteStopEntity = Teikem.Domain.Trips.RouteStop;
+using TripEntity = Teikem.Domain.Trips.Trip;
+using TripOrderEntity = Teikem.Domain.Trips.TripOrder;
+using TripRoute = Teikem.Domain.Trips.Route;
 
 namespace Teikem.Tests;
 
@@ -13,6 +18,8 @@ namespace Teikem.Tests;
 /// toda entidad con TenantId lleva el filtro global (salvo una lista cerrada de excepciones previas), las hijas de flota sin
 /// TenantId son exactamente las esperadas, y los índices únicos filtrados, la columna computada, los RowVersion y la llave
 /// de DriverPayPolicy coinciden con Diseño/logistica-db-estructura.sql.
+/// Lote 5 / P0: Trip, TripOrder y OptimizationRun llevan filtro; las entidades de Trips sin TenantId son exactamente Route y
+/// RouteStop (y Flota suma DispatchZoneMember); índices espejo, RowVersion, decimal(12,3), DATE e INT de OptimizationRunId.
 /// </summary>
 public class TenantIsolationModelTests
 {
@@ -71,7 +78,8 @@ public class TenantIsolationModelTests
         var withoutTenant = DomainEntities(db)
             .Where(e => e.ClrType.Namespace == "Teikem.Domain.Fleet" && e.FindProperty("TenantId") is null)
             .Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
-        Assert.Equal(new[] { "DriverCertification", "DriverLicense", "DriverZone", "MaintenanceTask", "VehicleDocument" }, withoutTenant);
+        // Lote 5: + DispatchZoneMember (solo se alcanza por su zona filtrada).
+        Assert.Equal(new[] { "DispatchZoneMember", "DriverCertification", "DriverLicense", "DriverZone", "MaintenanceTask", "VehicleDocument" }, withoutTenant);
 
         // Y todas las demás de flota tienen filtro de tenant.
         var fleetWithTenant = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Fleet" && e.FindProperty("TenantId") is not null).ToList();
@@ -169,5 +177,66 @@ public class TenantIsolationModelTests
         Assert.Equal("decimal(18,4)", Type<DriverTrip>(nameof(DriverTrip.Amount)));
         Assert.Equal("decimal(18,4)", Type<DriverDeliveryRate>(nameof(DriverDeliveryRate.Rate)));
         Assert.Equal("decimal(18,4)", Type<MaintenanceTask>(nameof(MaintenanceTask.PartCost)));
+    }
+
+    // ================================================================ Lote 5 — Trips y rutas
+
+    [Fact]
+    public void Trip_entities_with_TenantId_have_the_filter_and_only_Route_and_RouteStop_lack_it()
+    {
+        using var db = CreateSqlServerModelContext();
+        var trips = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Trips").ToList();
+
+        var withoutTenant = trips.Where(e => e.FindProperty("TenantId") is null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(new[] { "Route", "RouteStop" }, withoutTenant);
+
+        var withTenant = trips.Where(e => e.FindProperty("TenantId") is not null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(new[] { "OptimizationRun", "Trip", "TripOrder" }, withTenant);
+        Assert.All(trips.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
+    }
+
+    [Theory]
+    [InlineData(typeof(TripEntity), "UQ_Trip_Code", new[] { "TenantId", "Code" }, null)]
+    [InlineData(typeof(TripOrderEntity), "UQ_TripOrder", new[] { "TripId", "TransportOrderId" }, null)]
+    [InlineData(typeof(TripOrderEntity), "UX_TripOrder_Current", new[] { "TransportOrderId" }, "[IsCurrent] = 1")]
+    [InlineData(typeof(TripRoute), "UX_Route_Trip_Active", new[] { "TripId" }, "[IsActive] = 1")]
+    [InlineData(typeof(TripRoute), "UQ_Route_Version", new[] { "TripId", "Version" }, null)]
+    [InlineData(typeof(RouteStopEntity), "UQ_RouteStop", new[] { "RouteId", "OrderStopId" }, null)]
+    [InlineData(typeof(DispatchZoneMember), "UQ_DispatchZoneMember", new[] { "DispatchZoneId", "MatchTypeLookupId", "MatchValue" }, null)]
+    public void Trip_unique_indexes_mirror_the_sql(Type clr, string name, string[] columns, string? filter)
+        => Unique_indexes_mirror_the_sql_names_columns_and_filters(clr, name, columns, filter);
+
+    [Theory]
+    [InlineData(typeof(TripEntity))]
+    [InlineData(typeof(TripRoute))]
+    public void Trip_and_route_row_versions_are_concurrency_tokens(Type clr) => RowVersion_is_a_concurrency_token(clr);
+
+    [Fact]
+    public void Trip_tables_columns_and_types_map_one_to_one()
+    {
+        using var db = CreateSqlServerModelContext();
+        var tables = new Dictionary<Type, string>
+        {
+            [typeof(TripEntity)] = "Trip", [typeof(TripOrderEntity)] = "TripOrder", [typeof(TripRoute)] = "Route",
+            [typeof(RouteStopEntity)] = "RouteStop", [typeof(OptimizationRunEntity)] = "OptimizationRun", [typeof(DispatchZoneMember)] = "DispatchZoneMember",
+        };
+        foreach (var (clr, table) in tables)
+            Assert.Equal(table, db.Model.FindEntityType(clr)!.GetTableName());
+
+        string Type<T>(string prop) => db.Model.FindEntityType(typeof(T))!.FindProperty(prop)!.GetColumnType();
+        Assert.Equal("decimal(12,3)", Type<TripEntity>(nameof(TripEntity.TotalDistanceKm)));
+        Assert.Equal("decimal(12,3)", Type<TripRoute>(nameof(TripRoute.TotalDistanceKm)));
+        Assert.Equal("decimal(12,3)", Type<RouteStopEntity>(nameof(RouteStopEntity.DistanceFromPrevKm)));
+        Assert.Equal("decimal(12,3)", Type<OptimizationRunEntity>(nameof(OptimizationRunEntity.TotalDistanceKm)));
+        Assert.Equal("date", Type<TripEntity>(nameof(TripEntity.PlanDate)));
+        Assert.Equal(typeof(DateOnly), db.Model.FindEntityType(typeof(TripEntity))!.FindProperty(nameof(TripEntity.PlanDate))!.ClrType);
+
+        // OptimizationRunId es INT (el SQL pasó de BIGINT a INT en el Lote 5).
+        var runId = db.Model.FindEntityType(typeof(OptimizationRunEntity))!.FindPrimaryKey()!.Properties.Single();
+        Assert.Equal(typeof(int), runId.ClrType);
+        Assert.Equal("int", runId.GetColumnType());
+
+        // GeoPoint (GEOGRAPHY) no se mapea: se lee y escribe solo por TripQueries.
+        Assert.Null(db.Model.FindEntityType(typeof(Teikem.Domain.Orders.OrderStop))!.FindProperty("GeoPoint"));
     }
 }

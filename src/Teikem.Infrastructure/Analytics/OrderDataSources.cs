@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Orders;
+using Teikem.Domain.Trips;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Trips;
 
 namespace Teikem.Infrastructure.Analytics;
 
@@ -16,6 +18,11 @@ namespace Teikem.Infrastructure.Analytics;
 ///   (SelectMany sobre db.TransportOrders), en dos consultas por ids (sin N+1).
 /// - Los nombres de campo son los que usa SystemAnalyticsSeeder (vista "Órdenes", indicadores "Órdenes en curso" y
 ///   "COD por cobrar" —este usa CodStatusCode—, gráfico "Órdenes por estatus"): no cambiarlos sin cambiar el seeder.
+/// - Lote 5 (P7): ruta vigente (TripId/TripCode/TripStatusCode), chofer asignado (el de la ruta vigente o, si no hay, el del
+///   DriverTrip activo de la entrega especial), zona de despacho resuelta por CP/pueblo (DispatchZoneMatcher; ambigua = null)
+///   e IsException (ON_HOLD, PARTIAL, FAILED). Los usan los indicadores "Órdenes sin chofer asignado" y "Órdenes en
+///   excepción". Se calculan con dos consultas por lote (TripOrder vigente → Trip → Driver; DriverTrip activo → Driver),
+///   solo identidad: nunca montos de chofer.
 /// </summary>
 public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant) : IDataSource
 {
@@ -61,12 +68,22 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
         new DataField("ConfirmedAtUtc", "Confirmada el", "Confirmed at", DataFieldType.Date),
         new DataField("CreatedAtUtc", "Creada el", "Created at", DataFieldType.Date),
         new DataField("IsActive", "Activa", "Active", DataFieldType.Bool),
+        // Lote 5 — ruta vigente, chofer asignado, zona de despacho y excepción
+        new DataField("TripId", "Id de ruta", "Trip id", DataFieldType.Number),
+        new DataField("TripCode", "Ruta", "Trip", DataFieldType.Text),
+        new DataField("TripStatusCode", "Código de estatus de la ruta", "Trip status code", DataFieldType.Text),
+        new DataField("AssignedDriverCode", "Código del chofer asignado", "Assigned driver code", DataFieldType.Text),
+        new DataField("AssignedDriverName", "Chofer asignado", "Assigned driver", DataFieldType.Text),
+        new DataField("HasAssignedDriver", "Tiene chofer asignado", "Has assigned driver", DataFieldType.Bool),
+        new DataField("DispatchZoneCode", "Zona de despacho", "Dispatch zone", DataFieldType.Text),
+        new DataField("IsException", "En excepción", "In exception", DataFieldType.Bool),
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = new[]
     {
         new DataRelation("Client", EntityTypes.Client, "ClientId", "Cliente", "Client"),
         new DataRelation("Consignee", EntityTypes.Location, "ConsigneeLocationId", "Consignatario", "Consignee"),
+        new DataRelation("Trip", EntityTypes.Trip, "TripId", "Ruta", "Trip"),
     };
 
     public async Task<List<DataRow>> LoadAsync(DataQuery q, CancellationToken ct)
@@ -122,10 +139,22 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
             : await db.SpecialServices.AsNoTracking().Where(s => specialIds.Contains(s.SpecialServiceId))
                 .Select(s => new { s.SpecialServiceId, Name = s.Type!.Name }).ToDictionaryAsync(s => s.SpecialServiceId, s => s.Name, ct);
 
+        // Lote 5: ruta vigente y chofer asignado (dos consultas por lote) y zona de despacho (miembros cargados una vez).
+        var assignments = await AssignmentsAsync(ids, ct);
+        var zoneMembers = await db.ActiveZoneMembersAsync(ct);
+
         var rows = new List<DataRow>(orders.Count);
         foreach (var o in orders)
         {
             var delivery = deliveryByOrder.GetValueOrDefault(o.TransportOrderId);
+            var assignment = assignments.GetValueOrDefault(o.TransportOrderId);
+            var statusCode = ClientDataSourceHelpers.StatusCodeOf(orderStatus, o.StatusCodeId);
+            string? zoneCode = null;
+            if (delivery is not null)
+            {
+                var zone = DispatchZoneMatcher.Resolve(zoneMembers, delivery.SnapPostalCode, delivery.SnapCity);
+                zoneCode = zone.Ambiguous ? null : zone.ZoneCode;
+            }
             var lines = linesByOrder.GetValueOrDefault(o.TransportOrderId);
             var specialName = o.SpecialServiceId is int ssId ? specialNames.GetValueOrDefault(ssId) : null;
             var mainPackageTypeId = MainPackageTypeId(lines);
@@ -146,7 +175,7 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["ServiceType"] = await ClientDataSourceHelpers.LookupLabelAsync(lookups, o.ServiceTypeLookupId, lang, ct),
                 ["ServiceTypeCode"] = await ClientDataSourceHelpers.LookupCodeAsync(lookups, o.ServiceTypeLookupId, ct),
                 ["Status"] = ClientDataSourceHelpers.StatusLabel(orderStatus, o.StatusCodeId, lang),
-                ["StatusCode"] = ClientDataSourceHelpers.StatusCodeOf(orderStatus, o.StatusCodeId),
+                ["StatusCode"] = statusCode,
                 ["IsSpecialDelivery"] = o.IsSpecialDelivery,
                 ["SpecialServiceName"] = specialName,
                 ["TotalPieces"] = o.TotalPieces,
@@ -160,9 +189,63 @@ public sealed class TransportOrderDataSource(TeikemDbContext db, ILookupCache lo
                 ["ConfirmedAtUtc"] = o.ConfirmedAtUtc,
                 ["CreatedAtUtc"] = o.CreatedAtUtc,
                 ["IsActive"] = o.IsActive,
+                ["TripId"] = assignment?.TripId,
+                ["TripCode"] = assignment?.TripCode,
+                ["TripStatusCode"] = assignment?.TripStatusCode,
+                ["AssignedDriverCode"] = assignment?.DriverCode,
+                ["AssignedDriverName"] = assignment?.DriverName,
+                ["HasAssignedDriver"] = assignment?.DriverCode is not null,
+                ["DispatchZoneCode"] = zoneCode,
+                ["IsException"] = OrderDispatchFlags.IsException(statusCode ?? string.Empty),
             });
         }
         return rows;
+    }
+
+    /// <summary>Ruta vigente y chofer asignado de una orden (solo identidad; nunca montos).</summary>
+    private sealed record OrderAssignment(int? TripId, string? TripCode, string? TripStatusCode, string? DriverCode, string? DriverName);
+
+    /// <summary>
+    /// Asignación por orden en dos consultas por lote:
+    /// (1) TripOrder vigente → Trip (bajo el filtro de tenant) → su chofer (LEFT JOIN);
+    /// (2) DriverTrip activo → Driver, para la entrega especial o como respaldo cuando la ruta no tiene chofer.
+    /// El chofer de la ruta vigente gana al del DriverTrip.
+    /// </summary>
+    private async Task<Dictionary<int, OrderAssignment>> AssignmentsAsync(List<int> orderIds, CancellationToken ct)
+    {
+        var tripStatus = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.TripStatus, ct);
+
+        var tripRows = await (from to in db.TripOrders.AsNoTracking()
+                              join t in db.Trips.AsNoTracking() on to.TripId equals t.TripId
+                              join d in db.Drivers.AsNoTracking() on t.DriverId equals (int?)d.DriverId into dj
+                              from d in dj.DefaultIfEmpty()
+                              where to.IsCurrent && orderIds.Contains(to.TransportOrderId)
+                              select new
+                              {
+                                  to.TransportOrderId, t.TripId, t.Code, t.StatusCodeId,
+                                  DriverCode = d == null ? null : d.EmployeeCode,
+                                  DriverName = d == null ? null : d.FullName,
+                              }).ToListAsync(ct);
+
+        var driverTrips = await (from dt in db.DriverTrips.AsNoTracking()
+                                 join d in db.Drivers.AsNoTracking() on dt.DriverId equals d.DriverId
+                                 where dt.IsActive && dt.TransportOrderId != null && orderIds.Contains(dt.TransportOrderId.Value)
+                                 select new { OrderId = dt.TransportOrderId!.Value, dt.DriverTripId, d.EmployeeCode, d.FullName })
+            .ToListAsync(ct);
+        var driverByOrder = driverTrips.GroupBy(x => x.OrderId)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.DriverTripId).First());
+
+        var result = new Dictionary<int, OrderAssignment>();
+        foreach (var r in tripRows.GroupBy(x => x.TransportOrderId).Select(g => g.OrderByDescending(x => x.TripId).First()))
+        {
+            var fallback = r.DriverCode is null ? driverByOrder.GetValueOrDefault(r.TransportOrderId) : null;
+            result[r.TransportOrderId] = new OrderAssignment(r.TripId, r.Code, ClientDataSourceHelpers.StatusCodeOf(tripStatus, r.StatusCodeId),
+                r.DriverCode ?? fallback?.EmployeeCode, r.DriverName ?? fallback?.FullName);
+        }
+        foreach (var (orderId, dt) in driverByOrder)
+            if (!result.ContainsKey(orderId))
+                result[orderId] = new OrderAssignment(null, null, null, dt.EmployeeCode, dt.FullName);
+        return result;
     }
 
     /// <summary>Tipo de paquete con más piezas entre las líneas activas (empate: el de la línea de menor id); null sin tipos.</summary>

@@ -202,7 +202,10 @@ public sealed record OrderDetailDto(
     // Lote 4: chofer asignado a la entrega especial (DriverTrip vigente). Solo identidad, nunca montos.
     Guid? AssignedDriverPublicId = null,
     string? AssignedDriverCode = null,
-    string? AssignedDriverName = null);
+    string? AssignedDriverName = null,
+    // Lote 5: ruta vigente de la orden (solo ficha interna; el portal no la recibe). Con ruta, AssignedDriver* es su chofer.
+    Guid? AssignedTripPublicId = null,
+    string? AssignedTripCode = null);
 
 /// <summary>Fila del listado: Empaque es la primera columna de negocio (siempre con valor).</summary>
 public sealed record OrderListItemDto(

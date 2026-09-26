@@ -139,6 +139,9 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         // Escribir valores exige el permiso de edición del módulo dueño (CLIENT → clients.update, etc.); sin entrada, comportamiento anterior.
         if (PermissionCatalog.OwnerWritePermission.TryGetValue(entityType, out var writePerm)) await permissions.EnsureAsync(writePerm, ct);
+        // La respuesta relee los valores con el permiso de lectura del dueño: se exige ANTES de guardar, para que nunca se
+        // persista un valor cuya respuesta termine en 403.
+        if (PermissionCatalog.OwnerReadPermission.TryGetValue(entityType, out var readPermFirst)) await permissions.EnsureAsync(readPermFirst, ct);
         await EnsureEntityExistsAsync(entityType, entityId, ct);
         var defs = await ActiveDefinitionsAsync(entityType, ct);
         var defByKey = defs.ToDictionary(d => d.FieldKey, StringComparer.OrdinalIgnoreCase);

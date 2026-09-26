@@ -21,7 +21,7 @@ namespace Teikem.Tests;
 public class OwnedEntityResolverCoverageTests
 {
     /// <summary>Resolvers con constructor no inyectable: se registran con factory en DependencyInjection.</summary>
-    private static readonly string[] ClosedResolverCodes = { EntityTypes.DriverRate, EntityTypes.FleetDocument };
+    private static readonly string[] ClosedResolverCodes = { EntityTypes.DriverRate, EntityTypes.FleetDocument, EntityTypes.OptimizationRun };
 
     private static HashSet<string> OwnerCodes()
         => PermissionCatalog.OwnerReadPermission.Keys.Concat(PermissionCatalog.OwnerWritePermission.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);

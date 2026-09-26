@@ -181,11 +181,11 @@ public static class NumberingRules
         return null;
     }
 
-    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch or NumberKinds.WorkOrder;
+    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch or NumberKinds.WorkOrder or NumberKinds.Trip;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 
     private static ArgumentOutOfRangeException UnknownKind(string kind)
-        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE o PACKBATCH.");
+        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE, PACKBATCH, WORKORDER o TRIP.");
 }
 }

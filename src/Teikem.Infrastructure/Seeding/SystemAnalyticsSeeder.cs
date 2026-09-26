@@ -11,7 +11,8 @@ namespace Teikem.Infrastructure.Seeding;
 /// <summary>
 /// Vistas, indicadores y gráficos por default (IsSystem=1) que un tenant trae de fábrica. En el Lote 1 usan las fuentes
 /// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); el Lote 3
-/// agrega Órdenes (TRANSPORT_ORDER); el Lote 4 agrega Flota (VEHICLE, FLEET_DOCUMENT, WORK_ORDER); cada lote de negocio agrega
+/// agrega Órdenes (TRANSPORT_ORDER); el Lote 4 agrega Flota (VEHICLE, FLEET_DOCUMENT, WORK_ORDER); el Lote 5 agrega Rutas (TRIP) e
+/// indicadores de despacho sobre TRANSPORT_ORDER; cada lote de negocio agrega
 /// los suyos (Inventario, ...).
 /// Idempotente por nombre.
 /// </summary>
@@ -32,6 +33,21 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     /// <summary>Lote 4: órdenes de trabajo activas abiertas o en proceso.</summary>
     public const string OpenWorkOrdersFilter =
         "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"OPEN\",\"IN_PROGRESS\"]}]}";
+
+    /// <summary>
+    /// Lote 5: órdenes activas pendientes de despacho (CONFIRMED..PLANNED) sin chofer asignado: ni ruta vigente con chofer ni
+    /// DriverTrip activo (campo HasAssignedDriver de TransportOrderDataSource).
+    /// </summary>
+    public const string OrdersWithoutDriverFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"CONFIRMED\",\"PICKUP\",\"INBOUND\",\"PLANNED\"]},{\"field\":\"HasAssignedDriver\",\"op\":\"isFalse\"}]}";
+
+    /// <summary>Lote 5: órdenes activas en excepción (ON_HOLD, PARTIAL, FAILED; CANCELLED no cuenta).</summary>
+    public const string OrdersInExceptionFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"IsException\",\"op\":\"isTrue\"}]}";
+
+    /// <summary>Lote 5: rutas activas no cerradas cuyo número de paradas pasa el máximo del chofer.</summary>
+    public const string TripsOverStopLimitFilter =
+        "{\"and\":[{\"field\":\"IsActive\",\"op\":\"isTrue\"},{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"DRAFT\",\"PLANNED\",\"DISPATCHED\",\"IN_PROGRESS\"]},{\"field\":\"OverStopLimit\",\"op\":\"isTrue\"}]}";
 
     public async Task SeedForTenantAsync(int tenantId, CancellationToken ct)
     {
@@ -82,6 +98,9 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             new[] { "Code", "PlateNumber", "VehicleType", "Ownership", "FuelType", "CurrentOdometerKm", "Status", "IsActive" }, null, null, "[{\"field\":\"Code\",\"dir\":\"asc\"}]");
         await Report(EntityTypes.FleetDocument, "Documentos por vencer", "Documentos de vehículos y choferes vencidos o que vencen en 30 días", "Vehicle and driver documents expired or expiring within 30 days",
             new[] { "ExpiryDate", "OwnerKind", "OwnerCode", "OwnerName", "DocumentType", "DocNumber", "DaysToExpiry", "ExpiryState" }, FleetDocumentsDueFilter, null, "[{\"field\":\"ExpiryDate\",\"dir\":\"asc\"}]");
+        // Lote 5 — Rutas (los nombres de campo son los de TripDataSource; no cambiarlos sin cambiar ambos)
+        await Report(EntityTypes.Trip, "Rutas", "Rutas por fecha con zona, chofer, vehículo, estatus, paradas y distancia", "Trips by date with zone, driver, vehicle, status, stops and distance",
+            new[] { "PlanDate", "Code", "ZoneCode", "DriverName", "VehicleCode", "Status", "StopCount", "OverStopLimit", "TotalDistanceKm" }, null, null, "[{\"field\":\"PlanDate\",\"dir\":\"desc\"}]");
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
@@ -118,6 +137,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             EntityTypes.FleetDocument, null, count, FleetDocumentsDueFilter, null, true, 80, module: ops);
         Indicator("Órdenes de trabajo abiertas", "Órdenes de trabajo de mantenimiento abiertas o en proceso", "Maintenance work orders open or in progress",
             EntityTypes.WorkOrder, null, count, OpenWorkOrdersFilter, all, true, 81, module: ops);
+        // Lote 5 — Despacho (estado actual: rango ALL; los campos son los de TransportOrderDataSource y TripDataSource).
+        Indicator("Órdenes sin chofer asignado", "Órdenes activas pendientes de despacho sin ruta con chofer ni entrega especial asignada", "Active orders pending dispatch without a driver",
+            EntityTypes.TransportOrder, null, count, OrdersWithoutDriverFilter, all, true, 72, module: ops);
+        Indicator("Órdenes en excepción", "Órdenes activas en espera, entrega parcial o fallida", "Active orders on hold, partial or failed",
+            EntityTypes.TransportOrder, null, count, OrdersInExceptionFilter, all, true, 73, module: ops);
+        Indicator("Rutas sobre el máximo de paradas", "Rutas abiertas o en curso con más paradas que el máximo del chofer", "Open or running trips over the driver's stop limit",
+            EntityTypes.Trip, null, count, TripsOverStopLimitFilter, all, true, 82, module: ops);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
@@ -152,6 +178,8 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart("Contratos por estatus", "Distribución de contratos por estatus", "Contracts by status", EntityTypes.Contract, "Status", donut, null, all, false, 60);
         // Lote 3 — Órdenes de transporte
         Chart("Órdenes por estatus", "Distribución de las órdenes de los últimos 30 días por estatus", "Orders of the last 30 days by status", EntityTypes.TransportOrder, "Status", donut, null, last30, true, 70);
+        // Lote 5 — Rutas (por fecha de la ruta, PlanDate)
+        Chart("Rutas por estatus", "Distribución de las rutas de los últimos 7 días por estatus", "Trips of the last 7 days by status", EntityTypes.Trip, "Status", donut, null, last7, true, 80);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

@@ -13,6 +13,7 @@ using Teikem.Domain.Identity;
 using Teikem.Domain.Orders;
 using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
+using Teikem.Domain.Trips;
 using Teikem.Infrastructure.Abstractions;
 
 namespace Teikem.Infrastructure.Persistence;
@@ -116,6 +117,14 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<DriverAttemptRate> DriverAttemptRates => Set<DriverAttemptRate>();
     public DbSet<DriverTripRate> DriverTripRates => Set<DriverTripRate>();
     public DbSet<DriverTrip> DriverTrips => Set<DriverTrip>();
+    // Lote 5 — Trips y rutas. Trip, TripOrder y OptimizationRun llevan TenantId (filtro global); Route, RouteStop y
+    // DispatchZoneMember no: se alcanzan SOLO a través de un Trip o una DispatchZone ya filtrados.
+    public DbSet<DispatchZoneMember> DispatchZoneMembers => Set<DispatchZoneMember>();
+    public DbSet<Trip> Trips => Set<Trip>();
+    public DbSet<TripOrder> TripOrders => Set<TripOrder>();
+    public DbSet<Route> Routes => Set<Route>();
+    public DbSet<RouteStop> RouteStops => Set<RouteStop>();
+    public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

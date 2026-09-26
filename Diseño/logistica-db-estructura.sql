@@ -724,7 +724,7 @@ CREATE TABLE dbo.NumberSequence (
     ClientId     INT NULL REFERENCES dbo.Client(ClientId),
     NextValue    BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT UQ_NumberSequence UNIQUE (TenantId, Kind, ClientId),
-    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL)
+    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL). Lote 5: TRIP = número de ruta AAAA-#### por tenant (ClientId NULL)
     CONSTRAINT CK_NumberSequence_Next CHECK (NextValue >= 1)
 );
 GO
@@ -1377,44 +1377,77 @@ GO
 /* =========================================================================
    CAPA 12 — TRIPS Y RUTAS
    ========================================================================= */
+-- Lote 5: la ruta del día (Trip) + su versión vigente del plan (Route). FKs compuestas (Id, TenantId) hacia Vehicle, Driver y
+-- DispatchZone (esta última con ALTER TABLE después del CREATE de DispatchZone, capa 12B): segunda barrera multi-tenant.
+-- Número AAAA-#### (NumberSequence TRIP). UQ_Trip_IdTenant es el destino de las FKs compuestas de TripOrder y OptimizationRun.
 CREATE TABLE dbo.Trip (
     TripId       INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     Code         NVARCHAR(40) NOT NULL, PlanDate DATE NOT NULL,
+    DispatchZoneId INT NULL,                                                  -- Lote 5: FK_Trip_DispatchZone (compuesta) en la capa 12B
     OriginWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    VehicleId    INT NULL REFERENCES dbo.Vehicle(VehicleId),
-    DriverId     INT NULL REFERENCES dbo.Driver(DriverId),
+    VehicleId    INT NULL,
+    DriverId     INT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='TripStatus'
     PlannedStartUtc DATETIME2 NULL, PlannedEndUtc DATETIME2 NULL,
     ActualStartUtc DATETIME2 NULL, ActualEndUtc DATETIME2 NULL,
     TotalDistanceKm DECIMAL(12,3) NULL, TotalDurationMin INT NULL,
-    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_Trip_Code UNIQUE (TenantId, Code)
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 5
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RowVersion ROWVERSION,
+    CONSTRAINT UQ_Trip_Code UNIQUE (TenantId, Code),
+    CONSTRAINT UQ_Trip_IdTenant UNIQUE (TripId, TenantId),                    -- Lote 5: destino de FKs compuestas
+    CONSTRAINT FK_Trip_Vehicle FOREIGN KEY (VehicleId, TenantId) REFERENCES dbo.Vehicle(VehicleId, TenantId),
+    CONSTRAINT FK_Trip_Driver FOREIGN KEY (DriverId, TenantId) REFERENCES dbo.Driver(DriverId, TenantId),
+    CONSTRAINT CK_Trip_Numbers CHECK ((TotalDistanceKm IS NULL OR TotalDistanceKm >= 0) AND (TotalDurationMin IS NULL OR TotalDurationMin >= 0)
+        AND (PlannedEndUtc IS NULL OR PlannedStartUtc IS NULL OR PlannedEndUtc >= PlannedStartUtc)
+        AND (ActualEndUtc IS NULL OR ActualStartUtc IS NULL OR ActualEndUtc >= ActualStartUtc))
 );
 CREATE INDEX IX_Trip_Tenant_Date ON dbo.Trip(TenantId, PlanDate) WHERE IsActive = 1;
+CREATE INDEX IX_Trip_Zone_Date ON dbo.Trip(TenantId, PlanDate, DispatchZoneId) WHERE IsActive = 1;                        -- Lote 5
+CREATE INDEX IX_Trip_Driver_Date ON dbo.Trip(TenantId, DriverId, PlanDate) WHERE IsActive = 1 AND DriverId IS NOT NULL;   -- Lote 5
 GO
 
+-- Lote 5: una orden solo puede estar en UNA ruta vigente (UX_TripOrder_Current); IsCurrent pasa a 0 al completar la ruta.
+-- Liberar una orden de una ruta abierta es un DELETE físico (L272). FKs compuestas: la orden y la ruta son del mismo tenant.
 CREATE TABLE dbo.TripOrder (
     TripOrderId  INT IDENTITY(1,1) PRIMARY KEY,
-    TripId       INT NOT NULL REFERENCES dbo.Trip(TripId),
-    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),                -- Lote 5
+    TripId       INT NOT NULL,
+    TransportOrderId INT NOT NULL,
     SortHint     INT NULL,
-    CONSTRAINT UQ_TripOrder UNIQUE (TripId, TransportOrderId)
+    IsCurrent    BIT NOT NULL CONSTRAINT DF_TripOrder_IsCurrent DEFAULT 1,    -- Lote 5
+    AssignedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                -- Lote 5
+    AssignedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 5
+    CONSTRAINT UQ_TripOrder UNIQUE (TripId, TransportOrderId),
+    CONSTRAINT FK_TripOrder_Trip FOREIGN KEY (TripId, TenantId) REFERENCES dbo.Trip(TripId, TenantId),
+    CONSTRAINT FK_TripOrder_Order FOREIGN KEY (TransportOrderId, TenantId) REFERENCES dbo.TransportOrder(TransportOrderId, TenantId)
 );
+CREATE UNIQUE INDEX UX_TripOrder_Current ON dbo.TripOrder(TransportOrderId) WHERE IsCurrent = 1;   -- Lote 5
+CREATE INDEX IX_TripOrder_Trip ON dbo.TripOrder(TripId) WHERE IsCurrent = 1;                        -- Lote 5
 GO
 
+-- Versión del plan de la ruta. Lote 5: a lo sumo una vigente por Trip (UX_Route_Trip_Active) y versiones únicas por Trip.
+-- StopCount y los totales los escribe la aplicación (RouteWriter.RecomputeAsync): sin columnas computadas ni triggers.
 CREATE TABLE dbo.Route (
     RouteId      INT IDENTITY(1,1) PRIMARY KEY,
     TripId       INT NOT NULL REFERENCES dbo.Trip(TripId),
     Version      INT NOT NULL DEFAULT 1, IsActive BIT NOT NULL DEFAULT 1,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='RouteStatus'
     TotalDistanceKm DECIMAL(12,3) NULL, TotalDurationMin INT NULL, StopCount INT NOT NULL DEFAULT 0,
-    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), RowVersion ROWVERSION
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), RowVersion ROWVERSION,
+    CONSTRAINT UQ_Route_Version UNIQUE (TripId, Version),                    -- Lote 5
+    CONSTRAINT CK_Route_Numbers CHECK (Version >= 1 AND StopCount >= 0 AND (TotalDistanceKm IS NULL OR TotalDistanceKm >= 0)
+        AND (TotalDurationMin IS NULL OR TotalDurationMin >= 0))             -- Lote 5
 );
-CREATE INDEX IX_Route_Trip ON dbo.Route(TripId) WHERE IsActive = 1;
+CREATE UNIQUE INDEX UX_Route_Trip_Active ON dbo.Route(TripId) WHERE IsActive = 1;   -- Lote 5 (reemplaza IX_Route_Trip)
 GO
 
+-- Lote 5: sin UNIQUE sobre (RouteId, Sequence) a propósito: el reordenamiento reescribe la secuencia bajo el bloqueo del Trip.
 CREATE TABLE dbo.RouteStop (
     RouteStopId  INT IDENTITY(1,1) PRIMARY KEY,
     RouteId      INT NOT NULL REFERENCES dbo.Route(RouteId),
@@ -1424,7 +1457,9 @@ CREATE TABLE dbo.RouteStop (
     DistanceFromPrevKm DECIMAL(12,3) NULL, DurationFromPrevMin INT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='RouteStopStatus'
     ActualArrivalUtc DATETIME2 NULL, ActualDepartureUtc DATETIME2 NULL,
-    CONSTRAINT UQ_RouteStop UNIQUE (RouteId, OrderStopId)
+    CONSTRAINT UQ_RouteStop UNIQUE (RouteId, OrderStopId),
+    CONSTRAINT CK_RouteStop_Numbers CHECK (Sequence >= 1 AND (DistanceFromPrevKm IS NULL OR DistanceFromPrevKm >= 0)
+        AND (DurationFromPrevMin IS NULL OR DurationFromPrevMin >= 0))       -- Lote 5
 );
 CREATE INDEX IX_RouteStop_Route ON dbo.RouteStop(RouteId, Sequence);
 GO
@@ -1441,15 +1476,23 @@ CREATE TABLE dbo.DispatchZone (
     Code         NVARCHAR(20) NOT NULL,          -- 'R-01'
     Name         NVARCHAR(120) NULL,
     IsActive     BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_DispatchZone UNIQUE (TenantId, Code)
+    CONSTRAINT UQ_DispatchZone UNIQUE (TenantId, Code),
+    CONSTRAINT UQ_DispatchZone_IdTenant UNIQUE (DispatchZoneId, TenantId)    -- Lote 5: destino de FK_Trip_DispatchZone
 );
 GO
 
+-- Lote 5: la zona de la ruta es del mismo tenant (FK compuesta; Trip se crea en la capa 12, antes que DispatchZone).
+ALTER TABLE dbo.Trip ADD CONSTRAINT FK_Trip_DispatchZone FOREIGN KEY (DispatchZoneId, TenantId) REFERENCES dbo.DispatchZone(DispatchZoneId, TenantId);
+GO
+
+-- Lote 5: MatchValue se guarda normalizado (CP de 5 dígitos, rango 'AAAAA-BBBBB', municipio sin espacios de más); el
+-- solapamiento entre zonas ACTIVAS lo impide el servicio (DispatchZoneService); el repetido en la misma zona, además, la UQ.
 CREATE TABLE dbo.DispatchZoneMember (
     DispatchZoneMemberId INT IDENTITY(1,1) PRIMARY KEY,
     DispatchZoneId INT NOT NULL REFERENCES dbo.DispatchZone(DispatchZoneId),
     MatchTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- reutiliza Entity='ZoneMatchType'
-    MatchValue   NVARCHAR(120) NOT NULL                                     -- ej. '00949' o 'Toa Baja'
+    MatchValue   NVARCHAR(120) NOT NULL,                                    -- ej. '00949' o 'Toa Baja'
+    CONSTRAINT UQ_DispatchZoneMember UNIQUE (DispatchZoneId, MatchTypeLookupId, MatchValue)   -- Lote 5
 );
 CREATE INDEX IX_DispatchZoneMember_Zone ON dbo.DispatchZoneMember(DispatchZoneId);
 GO
@@ -1463,17 +1506,24 @@ CREATE TABLE dbo.DriverZone (
 );
 GO
 
+-- Lote 5: OptimizationRunId pasa a INT (EntityStatusHistory.EntityId e IOwnedEntityResolver trabajan con int; nadie la
+-- referenciaba). Bitácora de cada corrida (historial OPTIMIZATION_RUN; sin AuditLog). FK compuesta hacia la ruta del tenant.
 CREATE TABLE dbo.OptimizationRun (
-    OptimizationRunId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    OptimizationRunId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    TripId       INT NULL REFERENCES dbo.Trip(TripId),
+    TripId       INT NULL,
     RouteId      INT NULL REFERENCES dbo.Route(RouteId),
     EngineLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),      -- Entity='OptimizerEngine'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='OptimizationRunStatus'
     RequestJson NVARCHAR(MAX) NOT NULL, ResponseJson NVARCHAR(MAX) NULL, ErrorMessage NVARCHAR(MAX) NULL,
     TotalDistanceKm DECIMAL(12,3) NULL, TotalDurationMin INT NULL, UnassignedCount INT NULL,
-    StartedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CompletedAtUtc DATETIME2 NULL
+    StartedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), CompletedAtUtc DATETIME2 NULL,
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 5
+    CONSTRAINT FK_OptimizationRun_Trip FOREIGN KEY (TripId, TenantId) REFERENCES dbo.Trip(TripId, TenantId),
+    CONSTRAINT CK_OptimizationRun_Numbers CHECK ((UnassignedCount IS NULL OR UnassignedCount >= 0)
+        AND (TotalDistanceKm IS NULL OR TotalDistanceKm >= 0) AND (TotalDurationMin IS NULL OR TotalDurationMin >= 0))
 );
+CREATE INDEX IX_OptimizationRun_Trip ON dbo.OptimizationRun(TenantId, TripId, StartedAtUtc);   -- Lote 5
 GO
 
 /* =========================================================================
@@ -1890,6 +1940,7 @@ CREATE TABLE dbo.DriverLocationPing (
     CapturedAtUtc DATETIME2 NOT NULL, ReceivedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
 );
 CREATE INDEX IX_LocationPing_Trip ON dbo.DriverLocationPing(TripId, CapturedAtUtc);
+CREATE INDEX IX_LocationPing_Driver ON dbo.DriverLocationPing(TenantId, DriverId, CapturedAtUtc);   -- Lote 5: ping de respaldo del chofer en el monitor
 GO
 
 CREATE TABLE dbo.ProofOfDelivery (

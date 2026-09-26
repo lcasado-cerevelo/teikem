@@ -29,11 +29,11 @@ public class OrderCatalogTests
     }
 
     [Fact]
-    public void Permission_catalog_has_52_codes_including_credit_override()
+    public void Permission_catalog_has_54_codes_including_credit_override()
     {
-        // Lote 4: 49 → 52 (fleet.view, driverpay.view, driverpay.manage).
-        Assert.Equal(52, PermissionCatalog.All.Count);
-        Assert.Equal(52, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        // Lote 4: 49 → 52 (fleet.view, driverpay.view, driverpay.manage). Lote 5: 52 → 54 (trips.view, trips.scan).
+        Assert.Equal(54, PermissionCatalog.All.Count);
+        Assert.Equal(54, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         var credit = Assert.Single(PermissionCatalog.All, p => p.Code == "orders.credit_override");
         Assert.Equal("ORDERS", credit.Category);
         Assert.Equal("Autorizar órdenes sobre el límite de crédito", credit.LabelEs);

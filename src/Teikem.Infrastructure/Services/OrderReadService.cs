@@ -23,6 +23,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Las etiquetas salen de ILookupCache + MultilingualText; los estatus de un mapa por dominio (OrderStatus,
 ///   StopStatus, CodStatus) con la etiqueta personalizada del tenant si existe.
 /// - CodType siempre es null en este lote: se define al entregar (11B/POD).
+/// - Lote 5 (P7): la ficha interna (OrderScope.Any) de una orden no especial muestra su ruta vigente y el chofer de esa ruta;
+///   LookupAsync no cambia (lo reutiliza el escaneo Outbound).
 /// </summary>
 public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses)
 {
@@ -112,6 +114,35 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
                      select new { d.PublicId, d.EmployeeCode, d.FullName })
                 .FirstOrDefaultAsync(ct);
 
+        // Lote 5 (P7): ruta vigente (TripOrder IsCurrent) de una orden NO especial y el chofer de esa ruta. Solo para el
+        // operador interno (OrderScope.Any): el portal no recibe nada nuevo. Solo identidad, nunca montos.
+        Guid? assignedTripPublicId = null;
+        string? assignedTripCode = null;
+        if (!order.IsSpecialDelivery && scope.ClientId is null)
+        {
+            var trip = await (from to in db.TripOrders.AsNoTracking()
+                              join t in db.Trips.AsNoTracking() on to.TripId equals t.TripId
+                              join d in db.Drivers.AsNoTracking() on t.DriverId equals (int?)d.DriverId into dj
+                              from d in dj.DefaultIfEmpty()
+                              where to.TransportOrderId == orderId && to.IsCurrent
+                              orderby t.TripId descending
+                              select new
+                              {
+                                  t.PublicId, t.Code,
+                                  DriverPublicId = d == null ? (Guid?)null : d.PublicId,
+                                  DriverCode = d == null ? null : d.EmployeeCode,
+                                  DriverName = d == null ? null : d.FullName,
+                              })
+                .FirstOrDefaultAsync(ct);
+            if (trip is not null)
+            {
+                assignedTripPublicId = trip.PublicId;
+                assignedTripCode = trip.Code;
+                if (trip.DriverPublicId is Guid driverPublicId)
+                    assigned = new { PublicId = driverPublicId, EmployeeCode = trip.DriverCode!, FullName = trip.DriverName! };
+            }
+        }
+
         return new OrderDetailDto(
             order.TransportOrderId, order.PublicId, order.OrderNumber, order.ClientInvoiceNumber, order.PackBatchNumber,
             client.PublicId, client.Name, contractPublicId,
@@ -133,7 +164,9 @@ public sealed class OrderReadService(TeikemDbContext db, ITenantContext tenant, 
             Convert.ToBase64String(order.RowVersion ?? Array.Empty<byte>()),
             AssignedDriverPublicId: assigned?.PublicId,
             AssignedDriverCode: assigned?.EmployeeCode,
-            AssignedDriverName: assigned?.FullName);
+            AssignedDriverName: assigned?.FullName,
+            AssignedTripPublicId: assignedTripPublicId,
+            AssignedTripCode: assignedTripCode);
     }
 
     // ---------------------------------------------------------------- listado paginado

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Prueba de humo de los Lotes 1, 2, 3 y 4 contra un API levantado (default http://localhost:5000).
+# Prueba de humo de los Lotes 1, 2, 3, 4 y 5 contra un API levantado (default http://localhost:5000).
 # Requiere: curl, jq. Uso: scripts/smoke.sh [base_url]
+# Opcional: SMOKE_SQL="sqlcmd … -d <bd> -b -h -1 -Q" habilita los pasos que insertan datos por SQL (pings del monitor, Lote 5).
 set -euo pipefail
 BASE="${1:-http://localhost:5000}"
 EMAIL="${TEIKEM_ADMIN_EMAIL:-admin@teikem.local}"
@@ -1990,6 +1991,591 @@ for ET in VEHICLE DRIVER DRIVER_RATE DRIVER_TRIP WORK_ORDER; do
   expect 200 "$(req GET "/api/v1/audit/changes?entityType=$ET&take=50")" | jq -e '.total >= 1 and ([.items[] | select((.changesJson // "") | ascii_downcase | (contains("rowversion") or contains("pushtoken")))] | length)==0' >/dev/null || fail "auditoría de $ET"
 done
 ok "VEHICLE/DRIVER/WORK_ORDER/FUEL_LOG/FLEET_DOCUMENT (sin DRIVER_TRIP/DRIVER_RATE), preview con km/L y join a Vehicle, Pulso, vistas de sistema (sin el documento superado) y AuditLog sin rowVersion ni pushToken; preview de DRIVER con zona, área, tope efectivo 18, licencia vigente y usuario"
+
+# ============================================================================================================
+# Lote 5 — Trips y rutas. Re-ejecutable: TS en códigos de zonas, choferes y vehículos y en los pueblos de los
+# consignatarios (las zonas del bloque resuelven por MUNICIPIO 'Pueblo X $TS', único por corrida; los criterios por código
+# postal se prueban y se quitan en el mismo paso). Las fechas salen de TODAY (UTC). Reutiliza: T2 (Despachador), T3 (otro
+# tenant), T7 (contacts.manage sin trips.*), TBILL (Facturación) y 'lectura$TS' (Solo lectura). Todo lo que el bloque
+# cambia de la configuración del tenant (capacidades ASSIGN_TRIP/EDIT_TRIP, etapa DISPATCHED, estatus del chofer, módulo
+# CATALOG) se restaura en el mismo paso.
+# ============================================================================================================
+T2=$(login "$DISPATCH_EMAIL" "$PASS"); T3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!"); T7=$(login "contactos$TS@teikem.local" "$PASS")
+TBILL=$(login "facturacion$TS@teikem.local" "$PASS"); TREAD=$(login "lectura$TS@teikem.local" "$PASS")
+RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
+TOMORROW=$(dplus 1)
+tpost() { req POST /api/v1/trips "$(jq -cn --arg d "$TODAY" --argjson x "${1:-{\}}" '{planDate:$d} + $x')" "${2:-$TOKEN}"; }   # alta de ruta (hoy + campos)
+trip() { expect 200 "$(req GET "/api/v1/trips/$1" '' "${2:-$TOKEN}")"; }                                                           # ficha
+rv() { trip "$1" | jq -r .rowVersion; }
+stopof() { trip "$1" | jq -r --arg o "$2" '.stops[] | select(.orderPublicId==$o) | .id'; }                                        # RouteStopId de una orden en la ruta
+ostatus() { expect 200 "$(req GET "/api/v1/orders/$1")" | jq -r .status; }
+scan() { req POST /api/v1/scan/outbound "$(jq -cn --arg c "$1" --arg d "$TODAY" '{code:$c,planDate:$d}')" "${2:-$TOKEN}"; }
+plan() { req POST /api/v1/trips/plan-day "$1" "${2:-$TOKEN}"; }
+
+step "trips (Lote 5): permisos, catálogos, pipelines, capacidades y entradas laterales"
+expect 200 "$(req GET /api/v1/me)" | jq -e '.permissions as $p | ["trips.view","trips.plan","trips.optimize","trips.dispatch","trips.scan"] | all(.[]; . as $x | ($p | index($x)) != null)' >/dev/null || fail "admin sin permisos del Lote 5"
+expect 200 "$(req GET /api/v1/me '' "$T2")" | jq -e '.permissions as $p | ["trips.view","trips.plan","trips.optimize","trips.dispatch","trips.scan"] | all(.[]; . as $x | ($p | index($x)) != null)' >/dev/null || fail "Despachador sin trips.*"
+expect 200 "$(req GET /api/v1/me '' "$TREAD")" | jq -e '(.permissions | index("trips.view")) != null and (.permissions | index("trips.plan")) == null and (.permissions | index("trips.scan")) == null' >/dev/null || fail "Solo lectura: trips.view sí, trips.plan/scan no"
+expect 200 "$(req POST /api/v1/users "{\"email\":\"bodega$TS@teikem.local\",\"fullName\":\"Operador de almacén $TS\",\"password\":\"$PASS\",\"roles\":[\"WarehouseOperator\"]}")" >/dev/null
+TWH=$(login "bodega$TS@teikem.local" "$PASS")
+expect 200 "$(req GET /api/v1/me '' "$TWH")" | jq -e '(.permissions | index("trips.view")) != null and (.permissions | index("trips.scan")) != null and (.permissions | index("trips.plan")) == null' >/dev/null || fail "Operador de almacén: trips.view y trips.scan sin trips.plan"
+for D in TripStatus RouteStatus RouteStopStatus OptimizationRunStatus; do expect 200 "$(req GET "/api/v1/status/$D")" | jq -e 'length >= 3' >/dev/null || fail "pipeline $D"; done
+expect 200 "$(req GET /api/v1/catalogs/OptimizerEngine)" | jq -e 'any(.[]; .code=="HEURISTIC")' >/dev/null || fail "motor HEURISTIC sembrado"
+expect 200 "$(req GET /api/v1/status/capabilities/TRIP)" | jq -e 'any(.[]; .capability=="EDIT_TRIP" and .statusCode=="DISPATCHED" and .isAllowed==false)' >/dev/null || fail "EDIT_TRIP negada en DISPATCHED"
+expect 200 "$(req GET /api/v1/status/lateral-entries/TRIP)" | jq -e '([.[] | select(.lateralStatusCode=="CANCELLED" and .isAllowed) | .fromStatusCode] | sort) == ["DRAFT","PLANNED"]' >/dev/null || fail "laterales de TRIP (CANCELLED desde DRAFT y PLANNED)"
+ok "permisos (admin, Despachador, Solo lectura, Operador de almacén), 4 pipelines, motor HEURISTIC, EDIT_TRIP negada desde DISPATCHED y 'Eliminar ruta' solo desde DRAFT/PLANNED"
+
+step "zonas (Lote 5): miembros por código postal, rango y municipio, sin solapamiento, y resolución ZIP/pueblo → zona"
+zone() { expect 200 "$(req POST /api/v1/dispatch-zones "{\"code\":\"$1\",\"name\":\"$2\"}")" | jq -r .id; }
+member() { req POST "/api/v1/dispatch-zones/$1/members" "{\"matchType\":\"$2\",\"matchValue\":\"$3\"}" "${4:-$TOKEN}"; }
+Z1=$(zone "Z1$TS" "Zona 1"); Z2=$(zone "Z2$TS" "Zona 2"); Z3=$(zone "Z3$TS" "Zona 3"); Z4=$(zone "Z4$TS" "Zona 4"); Z5=$(zone "Z5$TS" "Zona 5"); Z6=$(zone "Z6$TS" "Zona 6")
+for i in 1 2 3 4 5 6; do eval "expect 200 \"\$(member \$Z$i MUNICIPALITY 'Pueblo $i $TS')\"" >/dev/null; done
+ZB=$((10000 + (TS % 8000) * 10)); ZIP1=$(printf '%05d' "$ZB"); ZIP2=$(printf '%05d' $((ZB + 1))); ZR="$(printf '%05d' $((ZB + 2)))-$(printf '%05d' $((ZB + 9)))"
+M1=$(expect 200 "$(member "$Z1" POSTAL_CODE "$ZIP1")" | jq -r --arg v "$ZIP1" '.members[] | select(.matchValue==$v) | .id')
+expect 200 "$(member "$Z1" POSTAL_CODE "$ZIP2-1234")" | jq -e --arg v "$ZIP2" 'any(.members[]; .matchTypeCode=="POSTAL_CODE" and .matchValue==$v)' >/dev/null || fail "ZIP+4 se guarda normalizado a 5 dígitos"
+M3=$(expect 200 "$(member "$Z2" POSTAL_RANGE "$ZR")" | jq -r '.members[] | select(.matchTypeCode=="POSTAL_RANGE") | .id')
+expect 400 "$(member "$Z1" POSTAL_CODE "123")" | jq -e --arg m "El código postal debe tener 5 dígitos (ej. 00949)." "$HASM" >/dev/null || fail "código postal inválido"
+expect 400 "$(member "$Z1" POLYGON "x")" | jq -e --arg m "Las zonas por polígono todavía no se soportan; use código postal, rango postal o municipio." "$HASM" >/dev/null || fail "POLYGON"
+expect 400 "$(member "$Z1" FOO "x")" | jq -e --arg m "Criterio de zona desconocido: 'FOO'." "$HASM" >/dev/null || fail "criterio desconocido"
+expect 409 "$(member "$Z2" POSTAL_CODE "$ZIP1")" | jq -e --arg m "El valor '$ZIP1' ya pertenece a la zona Z1$TS." '.title==$m' >/dev/null || fail "CP de otra zona activa"
+expect 409 "$(member "$Z1" POSTAL_CODE "$ZIP1")" | jq -e '.title=="La zona ya tiene ese criterio."' >/dev/null || fail "criterio repetido en la zona"
+expect 409 "$(member "$Z3" MUNICIPALITY "PUEBLO 1 $TS")" >/dev/null   # municipio de otra zona activa (sin distinguir mayúsculas)
+res() { expect 200 "$(req GET "/api/v1/dispatch-zones/resolve?$1")"; }
+res "postalCode=$ZIP1" | jq -e --arg z "Z1$TS" '.zoneCode==$z and .matchedBy=="POSTAL_CODE" and (.ambiguous|not)' >/dev/null || fail "resolver por CP"
+res "postalCode=$ZIP2-9999" | jq -e --arg z "Z1$TS" '.zoneCode==$z' >/dev/null || fail "resolver ZIP+4"
+res "postalCode=$(printf '%05d' $((ZB + 5)))" | jq -e --arg z "Z2$TS" '.zoneCode==$z and .matchedBy=="POSTAL_RANGE"' >/dev/null || fail "resolver por rango"
+res "city=pueblo%203%20$TS" | jq -e --arg z "Z3$TS" '.zoneCode==$z and .matchedBy=="MUNICIPALITY"' >/dev/null || fail "resolver por municipio en minúsculas"
+res "postalCode=$ZIP1&city=Pueblo%203%20$TS" | jq -e --arg z "Z1$TS" '.zoneCode==$z' >/dev/null || fail "precedencia CP > municipio"
+res "postalCode=99999" | jq -e '.dispatchZoneId==null and .zoneCode==null' >/dev/null || fail "CP sin zona"
+expect 400 "$(req GET /api/v1/dispatch-zones/resolve)" | jq -e '.title=="Indique el código postal o el pueblo."' >/dev/null || fail "resolver sin parámetros"
+expect 200 "$(req GET "/api/v1/dispatch-zones/$Z1/members" '' "$T2")" | jq -e '(.members | length)==3' >/dev/null || fail "miembros de la zona"
+expect 404 "$(req DELETE "/api/v1/dispatch-zones/$Z2/members/$M1")" | jq -e '.title=="Criterio de zona no encontrado."' >/dev/null || fail "miembro de otra zona"
+# Los criterios por código postal se quitan (DELETE físico auditado): las corridas siguientes reutilizan esos ZIP.
+for M in $(expect 200 "$(req GET "/api/v1/dispatch-zones/$Z1/members")" | jq -r '.members[] | select(.matchTypeCode=="POSTAL_CODE") | .id'); do
+  expect 204 "$(req DELETE "/api/v1/dispatch-zones/$Z1/members/$M")" >/dev/null
+done
+expect 204 "$(req DELETE "/api/v1/dispatch-zones/$Z2/members/$M3")" >/dev/null
+res "postalCode=$ZIP1" | jq -e '.zoneCode==null' >/dev/null || fail "CP quitado sigue resolviendo"
+ok "Z1..Z6 por municipio; CP, ZIP+4 normalizado y rango; 400 (CP inválido, POLYGON, criterio desconocido); 409 (valor de otra zona activa, criterio repetido); resolución CP > rango > municipio sin mayúsculas; 99999 sin zona; DELETE de otra zona 404 y propio 204"
+
+step "rutas (Lote 5): prerrequisitos (cliente, consignatarios por pueblo, choferes con licencia, vehículos y órdenes confirmadas)"
+CR=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Rutas $TS\",\"paymentTerm\":\"NET30\",\"currency\":\"USD\",\"contract\":{\"startDate\":\"2026-01-01\"}}")")
+CR_PID=$(echo "$CR" | jq -r .publicId); KR_PID=$(echo "$CR" | jq -r .currentContract.publicId)
+expect 200 "$(req POST "/api/v1/contracts/$KR_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
+expect 200 "$(req POST "/api/v1/contracts/$KR_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":7}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/contracts/$KR_PID/billing-model" '{"billSpecialServices":true}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/clients/$CR_PID/number-settings" "{\"orderNumberFormat\":\"R$TS-#####\"}")" >/dev/null   # números únicos para el escaneo por número
+SSR=$(expect 200 "$(req POST "/api/v1/clients/$CR_PID/special-services" "{\"newTypeName\":\"Grúa $TS\",\"rate\":90}")" | jq -r .id)
+loc() { expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CR_PID\",\"name\":\"$1 $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 1\",\"city\":\"$2\",\"country\":\"PR\",\"allowDupInvoice\":true}")" | jq -r .publicId; }
+for i in 1 2 3 4 5 6; do eval "L$i=\$(loc 'Consignatario $i' 'Pueblo $i $TS')"; done
+LN=$(loc "Consignatario sin zona" "Sin Zona $TS")
+# Orden confirmada hacia un consignatario (extra pisa campos); devuelve la ficha completa
+mko() { local x=${2:-}; [[ -n "$x" ]] || x='{}'
+  expect 200 "$(req POST /api/v1/orders "$(jq -cn --arg c "$CR_PID" --arg l "$1" --argjson x "$x" '{clientPublicId:$c,consigneeLocationPublicId:$l,packages:[{pieces:1,weightKg:10}],confirmNow:true} + $x')")"; }
+pid() { echo "$1" | jq -r .publicId; }
+OA1=$(mko "$L1"); OA2=$(mko "$L1"); OA3=$(mko "$L1"); OA4=$(mko "$L1"); OA5=$(mko "$L1")
+OB1=$(mko "$L2"); OB2=$(mko "$L2"); OB3=$(mko "$L2"); OB4=$(mko "$L2")
+OP1=$(mko "$L3"); OP2=$(mko "$L3"); OP3=$(mko "$L3"); ON1=$(mko "$LN")
+OD=$(mko "$L1" '{"confirmNow":false}'); OS=$(mko "$L1" "{\"packages\":null,\"isSpecialDelivery\":true,\"specialServiceId\":$SSR}")
+echo "$OA1" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "orden confirmada: $OA1"
+echo "$OD" | jq -e '.status=="DRAFT"' >/dev/null || fail "orden en DRAFT"
+echo "$OS" | jq -e '.isSpecialDelivery and .status=="CONFIRMED"' >/dev/null || fail "entrega especial confirmada: $OS"
+OC_PB=(); OC_PID=()
+for i in 1 2 3 4 5 6 7 8; do X=$(mko "$L1"); OC_PB+=("$(echo "$X" | jq -r .packBatchNumber)"); OC_PID+=("$(pid "$X")"); done
+drv() { expect 200 "$(req POST /api/v1/drivers "$1")" | jq -r .publicId; }
+lic() { expect 200 "$(req POST "/api/v1/drivers/$1/licenses" "{\"licenseClass\":\"CDL_A\",\"licenseNumber\":\"L$RANDOM-$TS\",\"expiryDate\":\"$(dplus "$2")\"}")" >/dev/null; }
+D1=$(drv "{\"code\":\"R1$TS\",\"fullName\":\"Rita Uno $TS\",\"dispatchZoneId\":$Z1}"); lic "$D1" 365
+D2=$(drv "{\"code\":\"R2$TS\",\"fullName\":\"Rafa Dos $TS\"}"); lic "$D2" 365
+D3=$(drv "{\"code\":\"R3$TS\",\"fullName\":\"Rosa Tres $TS\",\"dispatchZoneId\":$Z3}"); lic "$D3" 365
+DX=$(drv "{\"code\":\"RX$TS\",\"fullName\":\"Raúl Vencido $TS\"}"); lic "$DX" -30
+expect 200 "$(req PATCH "/api/v1/drivers/$D1" '{"maxStopsPerRoute":1}')" | jq -e '.effectiveMaxStops==1' >/dev/null || fail "máximo de paradas de R1"
+V1=$(expect 200 "$(req POST /api/v1/vehicles "{\"code\":\"RV1$TS\",\"vehicleType\":\"VAN\",\"ownership\":\"OWNED\",\"fuelType\":\"DIESEL\",\"maxStops\":2}")" | jq -r .publicId)
+V2=$(expect 200 "$(req POST /api/v1/vehicles "{\"code\":\"RV2$TS\",\"vehicleType\":\"VAN\",\"ownership\":\"OWNED\",\"fuelType\":\"DIESEL\"}")" | jq -r .publicId)
+# Segundo cliente (consolidación multi-cliente, maestro L263) con el MISMO formato de número: la numeración es por cliente,
+# así que su primera orden OX1 (consignatario en Pueblo 1 → Z1) repite el número de OA1 y el escaneo por ese número es ambiguo.
+CR2=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Rutas B $TS\",\"paymentTerm\":\"NET30\",\"currency\":\"USD\",\"contract\":{\"startDate\":\"2026-01-01\"}}")")
+CR2_PID=$(echo "$CR2" | jq -r .publicId); KR2_PID=$(echo "$CR2" | jq -r .currentContract.publicId)
+expect 200 "$(req POST "/api/v1/contracts/$KR2_PID/status" '{"toCode":"ACTIVE"}')" >/dev/null
+expect 200 "$(req POST "/api/v1/contracts/$KR2_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":7}')" >/dev/null
+expect 200 "$(req PATCH "/api/v1/clients/$CR2_PID/number-settings" "{\"orderNumberFormat\":\"R$TS-#####\"}")" >/dev/null
+LX=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CR2_PID\",\"name\":\"Consignatario B $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle 2\",\"city\":\"Pueblo 1 $TS\",\"country\":\"PR\",\"allowDupInvoice\":true}")" | jq -r .publicId)
+OX1=$(mko "$LX" "{\"clientPublicId\":\"$CR2_PID\"}")
+echo "$OX1" | jq -e --arg n "$(echo "$OA1" | jq -r .orderNumber)" '.status=="CONFIRMED" and .orderNumber==$n' >/dev/null || fail "la primera orden del segundo cliente repite el número de OA1: $(echo "$OX1" | jq -c '{orderNumber,status}')"
+ok "cliente con contrato, 7 consignatarios (Pueblo 1..6 y sin zona), 21 órdenes confirmadas + una en DRAFT + una entrega especial, segundo cliente con OX1 (mismo número que OA1, Z1), choferes R1 (Z1, máximo 1), R2, R3 (Z3) con licencia y RX vencida, vehículos RV1 (máximo 2) y RV2"
+
+step "alta de ruta (Lote 5): número AAAA-####, chofer por defecto de la zona, salida 12:00 UTC y validaciones"
+TR1J=$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z1,\"vehiclePublicId\":\"$V1\"}")")
+echo "$TR1J" | jq -e --arg d "$TODAY" --arg c "R1$TS" '(.code | test("^[0-9]{4}-[0-9]{4,}$")) and .statusCode=="DRAFT" and .driverCode==$c and (.plannedStartUtc | startswith($d + "T12:00:00")) and .stopCount==0 and .isEditable and .canEditHeader' >/dev/null || fail "alta de ruta: $TR1J"
+TR1=$(pid "$TR1J"); TR1_ID=$(echo "$TR1J" | jq -r .id); TR1_CODE=$(echo "$TR1J" | jq -r .code)
+[[ "${TR1_CODE%%-*}" == "${TODAY%%-*}" ]] || fail "el número de ruta empieza con el año: $TR1_CODE"
+expect 200 "$(req GET "/api/v1/status/history/TRIP/$TR1_ID")" | jq -e 'length==1 and .[0].toCode=="DRAFT"' >/dev/null || fail "historial de nacimiento de la ruta"
+expect 400 "$(req POST /api/v1/trips "{\"planDate\":\"$(dplus -3)\"}")" | jq -e --arg m "La fecha de la ruta no puede ser anterior a ayer ni posterior a 60 días." "$HASM" >/dev/null || fail "fecha fuera de rango"
+expect 400 "$(req POST /api/v1/trips '{}')" | jq -e --arg m "Indique la fecha de la ruta." "$HASM" >/dev/null || fail "fecha obligatoria"
+Z0=$(zone "Z0$TS" "Zona inactiva"); expect 200 "$(req POST "/api/v1/dispatch-zones/$Z0/deactivate")" >/dev/null
+expect 400 "$(tpost "{\"dispatchZoneId\":$Z0}")" | jq -e --arg m "La zona de despacho está inactiva." "$HASM" >/dev/null || fail "zona inactiva"
+expect 409 "$(tpost "{\"driverPublicId\":\"$DX\"}")" | jq -e '.title | startswith("El chofer no está disponible para despacho")' >/dev/null || fail "chofer con licencia vencida"
+expect 400 "$(req PATCH "/api/v1/trips/$TR1" '{"code":"2000-0001"}')" | jq -e --arg m "El número de la ruta se fija al crearlo; no se puede cambiar." "$HASM" >/dev/null || fail "número de ruta fijo"
+expect 409 "$(req PATCH "/api/v1/trips/$TR1" '{"plannedStartUtc":null,"rowVersion":"AAAAAAAAAAA="}')" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "rowVersion obsoleto en la ruta"
+TR2J=$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z2,\"driverPublicId\":\"$D2\",\"vehiclePublicId\":\"$V2\"}")"); TR2=$(pid "$TR2J"); TR2_CODE=$(echo "$TR2J" | jq -r .code)
+TR3J=$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z1}")"); TR3=$(pid "$TR3J"); TR3_CODE=$(echo "$TR3J" | jq -r .code)
+echo "$TR3J" | jq -e --arg c "R1$TS" '.driverCode==$c and .vehicleCode==null' >/dev/null || fail "TR3 con chofer por defecto y sin vehículo"
+ok "$TR1_CODE en DRAFT con R1 por defecto y salida $TODAY 12:00Z, historial de nacimiento, 400 (fecha, zona inactiva, número fijo), 409 (chofer no disponible, rowVersion); $TR2_CODE (Z2, R2, RV2) y $TR3_CODE (Z1, sin vehículo)"
+
+step "números de ruta concurrentes (Lote 5): 8 altas simultáneas"
+TMPT=$(mktemp -d)
+for i in 1 2 3 4 5 6 7 8; do tpost > "$TMPT/$i" & done
+wait
+CODES=()
+for i in 1 2 3 4 5 6 7 8; do [[ $(tail -n1 "$TMPT/$i") == "200" ]] || fail "alta simultánea de ruta $i: $(cat "$TMPT/$i")"; CODES+=("$(sed '$d' "$TMPT/$i" | jq -r .code)"); done
+[[ $(printf '%s\n' "${CODES[@]}" | sort -u | wc -l) -eq 8 ]] || fail "números de ruta repetidos: ${CODES[*]}"
+SEQS=$(printf '%s\n' "${CODES[@]}" | sed 's/^[0-9]*-//' | sed 's/^0*//' | sort -n)
+[[ $(( $(echo "$SEQS" | tail -1) - $(echo "$SEQS" | head -1) )) -eq 7 ]] || fail "números de ruta no consecutivos: ${CODES[*]}"
+for i in 1 2 3 4 5 6 7 8; do expect 204 "$(req DELETE "/api/v1/trips/$(sed '$d' "$TMPT/$i" | jq -r .publicId)")" >/dev/null; done
+ok "8 × 200 con números distintos y consecutivos ($(echo "$SEQS" | head -1)..$(echo "$SEQS" | tail -1)); eliminadas (204)"
+
+step "sin asignar y agregar órdenes (Lote 5): consolidación atómica, elegibilidad y la orden no cambia de estatus"
+num() { echo "$1" | jq -r .orderNumber; }; pb() { echo "$1" | jq -r .packBatchNumber; }   # el empaque es único en la compañía; el número, por cliente
+UA=$(expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&take=500")")
+echo "$UA" | jq -e --arg a "$(pid "$OA1")" --arg b "$(pid "$OA4")" --arg d "$(pid "$OD")" --arg s "$(pid "$OS")" --arg z "Z1$TS" \
+  '(.items | map(.publicId)) as $ids | ($ids | index($a)) and ($ids | index($b)) and ($ids | index($d) | not) and ($ids | index($s) | not) and all(.items[]; .zoneCode==$z)' >/dev/null || fail "sin asignar de Z1: $(echo "$UA" | jq -c '.total')"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?noZone=true&search=$(pb "$ON1")")" | jq -e --arg n "$(pid "$ON1")" '.total==1 and .items[0].publicId==$n and .items[0].dispatchZoneId==null' >/dev/null || fail "sin asignar sin zona"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&search=$(pb "$OA2")")" | jq -e --arg n "$(pid "$OA2")" '.total==1 and .items[0].publicId==$n' >/dev/null || fail "búsqueda después del filtro de zona"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z2&search=$(pb "$OA2")")" | jq -e '.total==0' >/dev/null || fail "la búsqueda no salta el filtro de zona"
+expect 400 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&noZone=true")" | jq -e --arg m "Use dispatchZoneId o noZone, no ambos." "$HASM" >/dev/null || fail "zona y sin zona a la vez"
+addo() { req POST "/api/v1/trips/$1/orders" "$(jq -cn --args '{orderPublicIds:$ARGS.positional}' "${@:2}")"; }
+D=$(expect 200 "$(addo "$TR1" "$(pid "$OA1")" "$(pid "$OA2")")")
+echo "$D" | jq -e '([.stops[].sequence]==[1,2]) and .routeVersion==1 and .routeStatusCode=="DRAFT" and .stopCount==2 and all(.stops[]; .plannedArrivalUtc != null)' >/dev/null || fail "agregar órdenes: $D"
+expect 422 "$(addo "$TR1" "$(pid "$OA3")" "$(pid "$OD")")" | jq -e --arg m "La orden está en Entrada; confírmela antes de asignarla a una ruta." '.title=="Hay órdenes que no se pueden asignar a la ruta." and ([.errors[][]] | index($m))' >/dev/null || fail "orden en DRAFT (atómico)"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&search=$(pb "$OA3")")" | jq -e '.total==1' >/dev/null || fail "el 422 atómico asignó OA3"
+expect 422 "$(addo "$TR1" "$(pid "$OS")")" | jq -e --arg m "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho." '[.errors[][]] | index($m)' >/dev/null || fail "entrega especial"
+expect 409 "$(addo "$TR1" "$(pid "$OA1")")" | jq -e '.title=="La orden ya está en esta ruta."' >/dev/null || fail "orden repetida en la ruta"
+expect 409 "$(addo "$TR3" "$(pid "$OA1")")" | jq -e --arg m "La orden ya está asignada a la ruta $TR1_CODE." '.title==$m' >/dev/null || fail "orden en otra ruta"
+expect 404 "$(addo "$TR1" "$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)")" | jq -e '.title=="Orden no encontrado."' >/dev/null || fail "orden inexistente"
+expect 200 "$(req GET "/api/v1/orders/$(pid "$OA1")")" | jq -e --arg t "$TR1_CODE" --arg d "R1$TS" '.status=="CONFIRMED" and .assignedTripCode==$t and .assignedDriverCode==$d' >/dev/null || fail "ficha de la orden con ruta y chofer"
+ok "sin asignar por zona (excluye DRAFT y entrega especial), sin zona y búsqueda después del filtro; $TR1_CODE con 2 paradas (v1 DRAFT, ETAs); 422 atómico, 409 misma ruta / otra ruta, 404; la orden sigue CONFIRMED con ruta y chofer en su ficha"
+
+step "concurrencia de asignación (Lote 5): la misma orden a dos rutas a la vez"
+addo "$TR1" "$(pid "$OA3")" > "$TMPT/a1" & addo "$TR3" "$(pid "$OA3")" > "$TMPT/a2" & wait
+C1=$(tail -n1 "$TMPT/a1"); C2=$(tail -n1 "$TMPT/a2")
+[[ "$C1$C2" == "200409" || "$C1$C2" == "409200" ]] || fail "carrera de asignación: $C1 / $C2: $(cat "$TMPT/a1" "$TMPT/a2")"
+for F in a1 a2; do [[ $(tail -n1 "$TMPT/$F") == 409 ]] && { sed '$d' "$TMPT/$F" | jq -e '.title | contains("ya está asignada a")' >/dev/null || fail "mensaje del perdedor: $(cat "$TMPT/$F")"; }; done
+IN1=$(trip "$TR1" | jq --arg o "$(pid "$OA3")" '[.stops[] | select(.orderPublicId==$o)] | length'); IN3=$(trip "$TR3" | jq --arg o "$(pid "$OA3")" '[.stops[] | select(.orderPublicId==$o)] | length')
+[[ $((IN1 + IN3)) -eq 1 ]] || fail "OA3 en $IN1 + $IN3 rutas"
+WIN=$([[ $IN1 -eq 1 ]] && echo "$TR1" || echo "$TR3")
+ok "un 200 y un 409 ('ya está asignada a'); OA3 queda en una sola ruta"
+
+step "quitar y liberar (Lote 5): resecuencia, la orden vuelve a 'sin asignar' con su estatus"
+expect 200 "$(req DELETE "/api/v1/trips/$WIN/orders/$(pid "$OA3")")" >/dev/null
+D=$(expect 200 "$(req DELETE "/api/v1/trips/$TR1/orders/$(pid "$OA1")")")
+echo "$D" | jq -e '[.stops[].sequence]==[1] and .stopCount==1' >/dev/null || fail "resecuencia al quitar: $D"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&search=$(pb "$OA1")")" | jq -e '.total==1 and .items[0].statusCode=="CONFIRMED"' >/dev/null || fail "OA1 vuelve a sin asignar con su estatus"
+expect 404 "$(req DELETE "/api/v1/trips/$TR1/orders/$(pid "$OB1")")" | jq -e '.title=="La orden no está en esta ruta."' >/dev/null || fail "quitar una orden que no está en la ruta"
+expect 200 "$(req GET '/api/v1/audit/changes?entityType=TRIP&take=100')" | jq -e --argjson o "$(echo "$OA1" | jq .id)" 'any(.items[]; .action=="Borrar" and ((.changesJson // "{}") | fromjson | .TransportOrderId==$o))' >/dev/null || fail "AuditLog sin el DELETE del TripOrder"
+RV0=$(rv "$TR1")
+D=$(expect 200 "$(addo "$TR1" "$(pid "$OA1")" "$(pid "$OA3")")"); echo "$D" | jq -e '[.stops[].sequence]==[1,2,3]' >/dev/null || fail "volver a agregar"
+# Agregar órdenes cambia el RowVersion del Trip: una secuencia o un PATCH con el rowVersion anterior responden 409.
+[[ "$(echo "$D" | jq -r .rowVersion)" != "$RV0" ]] || fail "agregar órdenes no cambió el rowVersion de la ruta"
+expect 409 "$(req PUT "/api/v1/trips/$TR1/route/sequence" "$(echo "$D" | jq -c --arg r "$RV0" '{routeStopIds:([.stops[].id] | reverse),rowVersion:$r}')")" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "secuencia con el rowVersion anterior a agregar una orden"
+expect 409 "$(req PATCH "/api/v1/trips/$TR1" "$(jq -cn --arg r "$RV0" --arg s "${TODAY}T12:00:00Z" '{plannedStartUtc:$s,rowVersion:$r}')")" | jq -e '.title | startswith("El registro fue modificado")' >/dev/null || fail "PATCH con el rowVersion anterior a agregar una orden"
+trip "$TR1" | jq -e '[.stops[].sequence]==[1,2,3]' >/dev/null || fail "el 409 cambió la ruta"
+expect 200 "$(addo "$TR2" "$(pid "$OB1")")" >/dev/null
+ok "quitar resecuencia 1..N, OA1 libre y CONFIRMED, 404 'La orden no está en esta ruta.', AuditLog con el DELETE; agregar cambia el rowVersion (secuencia y PATCH con el anterior → 409); $TR1_CODE queda con 3 paradas y $TR2_CODE con OB1"
+
+step "pin manual y ETAs (Lote 5): precisión MANUAL, distancia recalculada y BOLA por id de parada"
+loc5() { req PUT "/api/v1/trips/$1/stops/$2/location" "$3" "${4:-$TOKEN}"; }
+S1=$(trip "$TR1" | jq -r '.stops[0].id'); S2=$(trip "$TR1" | jq -r '.stops[1].id'); S2TR2=$(trip "$TR2" | jq -r '.stops[0].id')
+trip "$TR1" | jq -e --argjson s "$S1" '(.stops[] | select(.id==$s) | .isApproximate and .point==null) and any(.issues[]; .code=="APPROXIMATE_PINS" and (.blocking|not))' >/dev/null || fail "parada sin pin: isApproximate y APPROXIMATE_PINS antes del pin manual: $(trip "$TR1" | jq -c '{s: [.stops[] | {id,isApproximate,geocodeAccuracyCode}], i: [.issues[].code]}')"
+expect 200 "$(loc5 "$TR1" "$S1" '{"lat":18.4655,"lng":-66.1057}')" | jq -e --argjson s "$S1" '.stops[] | select(.id==$s) | .geocodeAccuracyCode=="MANUAL" and (.isApproximate|not) and .point.lat==18.4655' >/dev/null || fail "pin de la parada 1"
+D=$(expect 200 "$(loc5 "$TR1" "$S2" '{"lat":18.3985,"lng":-66.1553}')")
+echo "$D" | jq -e --argjson s "$S2" '.stops[] | select(.id==$s) | .distanceFromPrevKm >= 11.6 and .distanceFromPrevKm <= 12.0 and .plannedArrivalUtc != null' >/dev/null || fail "distancia San Juan → Bayamón recalculada: $(echo "$D" | jq -c '[.stops[] | {id,distanceFromPrevKm,durationFromPrevMin}]')"
+expect 400 "$(loc5 "$TR1" "$S1" '{"lat":91,"lng":0}')" | jq -e --arg m "La latitud debe estar entre -90 y 90." "$HASM" >/dev/null || fail "latitud fuera de rango"
+expect 400 "$(loc5 "$TR1" "$S1" '{}')" | jq -e --arg m "Indique la latitud y la longitud." "$HASM" >/dev/null || fail "pin sin coordenadas"
+expect 404 "$(loc5 "$TR1" "$S2TR2" '{"lat":18.4,"lng":-66.1}')" | jq -e '.title=="Parada no encontrada en esta ruta."' >/dev/null || fail "parada de otra ruta por la URL de esta"
+expect 200 "$(req GET '/api/v1/audit/changes?entityType=TRANSPORT_ORDER&take=100')" | jq -e 'any(.items[]; (.changesJson // "") | contains("GeocodeAccuracy"))' >/dev/null || fail "AuditLog de TRANSPORT_ORDER sin el cambio de precisión"
+ok "MANUAL, isApproximate false y punto; 11.6–12.0 km entre los pines; 400 (latitud, sin coordenadas); 404 con una parada de $TR2_CODE; AuditLog de la precisión"
+
+step "optimizar, versiones y secuencia (Lote 5): tres fases, corridas OK/ERROR y reordenamiento sin re-optimizar"
+runs() { expect 200 "$(req GET "/api/v1/trips/$1/optimization-runs")"; }
+V1ROUTE=$(trip "$TR1" | jq -r .routeId)
+OPT=$(expect 200 "$(req POST "/api/v1/trips/$TR1/optimize" '{}')")
+echo "$OPT" | jq -e '.engineCode=="HEURISTIC" and .statusCode=="OK" and .routeVersion==2 and .unassignedCount==1 and .unassigned[0].reasonCode=="CAPACITY_STOPS" and .trip.statusCode=="PLANNED" and .trip.routeStatusCode=="OPTIMIZED" and .trip.stopCount==2' >/dev/null || fail "optimizar: $(echo "$OPT" | jq -c 'del(.trip)')"
+UNA=$(echo "$OPT" | jq -r '.unassigned[0].orderPublicId')
+trip "$TR1" | jq -e --arg o "$UNA" '.lastRunUnassigned[0].orderPublicId==$o and .lastRunUnassigned[0].reason=="Excede el máximo de paradas del vehículo."' >/dev/null || fail "ficha con el motivo de la parada que no cupo"
+expect 200 "$(req GET "/api/v1/orders/$UNA")" | jq -e '.status=="CONFIRMED" and .assignedTripCode==null' >/dev/null || fail "la que no cupo vuelve a sin asignar"
+expect 200 "$(req GET "/api/v1/status/history/ROUTE/$V1ROUTE")" | jq -e '.[-1].toCode=="ARCHIVED"' >/dev/null || fail "la versión 1 queda archivada"
+if [[ -n "${SMOKE_SQL:-}" ]]; then   # la v1 archivada conserva sus 3 paradas: la que no cupo se libera de la v2, no de la v1
+  N1=$($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.RouteStop WHERE RouteId = $V1ROUTE;" | tr -d '[:space:]')
+  [[ "$N1" == "3" ]] || fail "la versión 1 archivada debe conservar sus 3 paradas: $N1"
+fi
+runs "$TR1" | jq -e 'length==1 and .[0].statusCode=="OK" and .[0].routeVersion==2 and .[0].engineCode=="HEURISTIC"' >/dev/null || fail "corridas de optimización"
+IDS=$(trip "$TR1" | jq -c '[.stops[].id] | reverse')
+D=$(expect 200 "$(req PUT "/api/v1/trips/$TR1/route/sequence" "$(jq -cn --argjson i "$IDS" --arg r "$(rv "$TR1")" '{routeStopIds:$i,rowVersion:$r}')")")
+echo "$D" | jq -e --argjson i "$IDS" '[.stops[].id]==$i and .routeVersion==2 and ([.stops[].plannedArrivalUtc] as $a | $a==($a|sort))' >/dev/null || fail "reordenar: $(echo "$D" | jq -c '[.stops[] | {id,plannedArrivalUtc}]')"
+runs "$TR1" | jq -e 'length==1' >/dev/null || fail "reordenar no crea corrida"
+SEQMSG="La secuencia debe incluir exactamente las paradas de la ruta vigente, sin repetir."
+expect 400 "$(req PUT "/api/v1/trips/$TR1/route/sequence" "$(jq -cn --argjson i "$IDS" --argjson o "$S2TR2" '{routeStopIds:[$i[0],$o]}')")" | jq -e --arg m "$SEQMSG" "$HASM" >/dev/null || fail "secuencia con una parada de otra ruta"
+expect 400 "$(req PUT "/api/v1/trips/$TR1/route/sequence" "$(jq -cn --argjson i "$IDS" '{routeStopIds:[$i[0]]}')")" | jq -e --arg m "$SEQMSG" "$HASM" >/dev/null || fail "secuencia incompleta"
+req POST "/api/v1/trips/$TR1/optimize" '{}' > "$TMPT/o1" & req POST "/api/v1/trips/$TR1/optimize" '{}' > "$TMPT/o2" & wait
+N200=0; N409=0
+for F in o1 o2; do
+  case $(tail -n1 "$TMPT/$F") in
+    200) N200=$((N200 + 1)) ;;
+    409) sed '$d' "$TMPT/$F" | jq -e '.title=="La ruta cambió mientras se optimizaba; vuelva a optimizar."' >/dev/null || fail "409 inesperado: $(cat "$TMPT/$F")"; N409=$((N409 + 1)) ;;
+    *) fail "optimización simultánea: $(cat "$TMPT/$F")" ;;
+  esac
+done
+[[ $N200 -ge 1 ]] || fail "ninguna optimización simultánea ganó"
+runs "$TR1" | jq -e --argjson ok $((1 + N200)) --argjson err "$N409" '([.[] | select(.statusCode=="OK")] | length)==$ok and ([.[] | select(.statusCode=="ERROR")] | length)==$err and all(.[]; .statusCode!="PENDING")' >/dev/null || fail "corridas tras la carrera: $(runs "$TR1" | jq -c '[.[] | {statusCode,routeVersion,errorMessage}]')"
+trip "$TR1" | jq -e --argjson v $((2 + N200)) '.routeVersion==$v' >/dev/null || fail "versión vigente tras la carrera"
+expect 422 "$(req POST "/api/v1/trips/$TR3/optimize" '{}')" | jq -e '.title=="La ruta no tiene paradas que optimizar."' >/dev/null || fail "optimizar sin paradas"
+runs "$TR3" | jq -e 'length==0' >/dev/null || fail "optimizar sin paradas creó una corrida"
+ok "v2 HEURISTIC con 1 parada liberada (CAPACITY_STOPS, motivo en la ficha), v1 ARCHIVED, PLANNED/OPTIMIZED; reordenar = misma versión, ETAs crecientes y sin corrida; 400 de secuencia; 2 optimizaciones simultáneas: $N200 × 200 y $N409 × 409 con corridas OK/ERROR iguales y ninguna PENDING; 422 sin paradas y sin corrida"
+
+step "alerta de máximo de paradas (Lote 5)"
+trip "$TR1" | jq -e '.overStopLimit and .effectiveMaxStops==1 and any(.issues[]; .code=="OVER_STOP_LIMIT" and .message=="La ruta tiene 2 paradas y el máximo del chofer es 1." and (.blocking|not))' >/dev/null || fail "aviso OVER_STOP_LIMIT: $(trip "$TR1" | jq -c '.issues')"
+indval() { local id; id=$(expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -r --arg n "$1" '[.[] | select(.name==$n)][0].id'); [[ "$id" =~ ^[0-9]+$ ]] || fail "indicador '$1' no sembrado"; expect 200 "$(req GET "/api/v1/analytics/indicators/$id/value")" | jq -r .value; }
+[[ $(indval "Rutas sobre el máximo de paradas") -ge 1 ]] || fail "indicador 'Rutas sobre el máximo de paradas'"
+# Respaldo del tenant (maestro L270): R2 no tiene override → el máximo efectivo es Tenant.MaxStopsPerRouteDefault (30).
+trip "$TR2" | jq -e '.effectiveMaxStops==30 and (.overStopLimit|not)' >/dev/null || fail "máximo efectivo por defecto del tenant: $(trip "$TR2" | jq -c '{effectiveMaxStops,overStopLimit}')"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY")" | jq -e --arg a "$TR1" --arg b "$TR2" 'any(.[]; .publicId==$a and .overStopLimit and .effectiveMaxStops==1) and any(.[]; .publicId==$b and .effectiveMaxStops==30 and (.overStopLimit|not))' >/dev/null || fail "alerta de máximo de paradas en el listado"
+expect 200 "$(req GET "/api/v1/trips/dispatchable?date=$TODAY")" | jq -e --arg a "$TR1" 'any(.[]; .trip.publicId==$a and .trip.overStopLimit and any(.issues[]; .code=="OVER_STOP_LIMIT" and (.blocking|not)))' >/dev/null || fail "alerta de máximo de paradas en el selector de despacho"
+ok "overStopLimit y OVER_STOP_LIMIT (aviso, no bloquea) en ficha, listado y selector; respaldo del tenant (30) sin override del chofer; indicador ≥ 1"
+
+step "planificar el día (Lote 5): por zona, idempotente, con chofer estándar y rutas vacías para el escaneo"
+PD=$(expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z3]}")")
+echo "$PD" | jq -e '.tripsCreated==1 and .ordersAssigned==3 and .zones[0].tripCreated and .zones[0].ordersAssigned==3' >/dev/null || fail "planificar Z3: $PD"
+TRP=$(echo "$PD" | jq -r '.zones[0].tripPublicId'); TRP_CODE=$(echo "$PD" | jq -r '.zones[0].tripCode')
+trip "$TRP" | jq -e --arg c "R3$TS" --arg d "$TODAY" '.driverCode==$c and (.plannedStartUtc | startswith($d + "T12:00:00")) and .stopCount==3 and .vehicleCode==null and .statusCode=="DRAFT"' >/dev/null || fail "ruta de Z3 con chofer estándar y salida 12:00Z"
+expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z3]}")" | jq -e '.tripsCreated==0 and .ordersAssigned==0' >/dev/null || fail "planificar dos veces no cambia nada"
+OP4=$(mko "$L3")
+expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z3]}")" | jq -e --arg c "$TRP_CODE" '.tripsCreated==0 and .ordersAssigned==1 and .zones[0].tripCode==$c and (.zones[0].tripCreated|not)' >/dev/null || fail "la orden nueva entra en la MISMA ruta"
+expect 200 "$(req GET "/api/v1/orders/$(pid "$OP1")")" | jq -e '.status=="CONFIRMED"' >/dev/null || fail "planificar no cambia el estatus de la orden"
+# Por fecha (maestro L262): una orden pedida para mañana no entra en la ruta de hoy; sí al planificar mañana.
+OP5=$(mko "$L3" "{\"requestedDate\":\"${TOMORROW}T00:00:00\"}")
+expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z3]}")" | jq -e '.tripsCreated==0 and .ordersAssigned==0' >/dev/null || fail "una orden pedida para mañana entró al planificar hoy"
+trip "$TRP" | jq -e --arg o "$(pid "$OP5")" '.stopCount==4 and all(.stops[]; .orderPublicId!=$o)' >/dev/null || fail "OP5 quedó en la ruta de hoy"
+PDM=$(expect 200 "$(plan "{\"planDate\":\"$TOMORROW\",\"dispatchZoneIds\":[$Z3]}")")
+echo "$PDM" | jq -e '.tripsCreated==1 and .ordersAssigned==1' >/dev/null || fail "la orden pedida para mañana entra al planificar mañana: $PDM"
+trip "$(echo "$PDM" | jq -r '.zones[0].tripPublicId')" | jq -e --arg d "$TOMORROW" --arg o "$(pid "$OP5")" '.planDate==$d and .stops[0].orderPublicId==$o' >/dev/null || fail "ruta de mañana con OP5"
+expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z4]}")" | jq -e '.tripsCreated==0 and .ordersAssigned==0' >/dev/null || fail "zona sin órdenes no crea ruta"
+PD4=$(expect 200 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z4],\"createEmptyTrips\":true}")")
+echo "$PD4" | jq -e '.tripsCreated==1 and .zones[0].tripCreated' >/dev/null || fail "createEmptyTrips: $PD4"
+TR4Z=$(echo "$PD4" | jq -r '.zones[0].tripPublicId'); trip "$TR4Z" | jq -e '.stopCount==0' >/dev/null || fail "ruta vacía de Z4"
+B5="{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z5],\"createEmptyTrips\":true}"
+plan "$B5" > "$TMPT/p1" & plan "$B5" > "$TMPT/p2" & wait
+for F in p1 p2; do [[ $(tail -n1 "$TMPT/$F") == 200 ]] || fail "planificación simultánea: $(cat "$TMPT/$F")"; done
+expect 200 "$(req GET "/api/v1/trips?dispatchZoneId=$Z5&date=$TODAY")" | jq -e 'length==1' >/dev/null || fail "dos planificaciones simultáneas dejaron más de una ruta en Z5"
+expect 400 "$(plan "$(jq -cn --arg d "$TODAY" '{planDate:$d,dispatchZoneIds:[range(1;52)]}')")" | jq -e --arg m "Máximo 50 zonas por planificación." "$HASM" >/dev/null || fail "51 zonas"
+ZT3=$(expect 200 "$(req POST /api/v1/dispatch-zones "{\"code\":\"W$TS\",\"name\":\"Zona T3\"}" "$T3")" | jq -r .id)
+expect 404 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$ZT3]}")" | jq -e '.title=="Zona de despacho no encontrada."' >/dev/null || fail "zona de otro tenant"
+expect 400 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z0]}")" | jq -e --arg m "La zona de despacho está inactiva." "$HASM" >/dev/null || fail "plan-day con zona inactiva"
+# Sin lista = todas las zonas ACTIVAS del tenant. Se prueba en T3 (aislado de las órdenes del demo) con una zona inactiva.
+ZT3I=$(expect 200 "$(req POST /api/v1/dispatch-zones "{\"code\":\"WI$TS\",\"name\":\"Zona T3 inactiva\"}" "$T3")" | jq -r .id)
+expect 200 "$(req POST "/api/v1/dispatch-zones/$ZT3I/deactivate" '' "$T3")" >/dev/null
+expect 200 "$(plan "{\"planDate\":\"$TODAY\"}" "$T3")" | jq -e --argjson a "$ZT3" --argjson i "$ZT3I" '(.zones | map(.dispatchZoneId)) as $z | ($z | index($a)) != null and ($z | index($i)) == null' >/dev/null || fail "plan-day sin lista: todas las zonas activas y ninguna inactiva"
+expect 403 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z3]}" "$TREAD")" >/dev/null
+ok "$TRP_CODE (Z3, R3, 12:00Z) con 3 órdenes; repetir = 0/0; OP4 entra en la misma ruta; OP5 (pedida para mañana) solo entra al planificar mañana; Z4 vacía solo con createEmptyTrips; 2 simultáneas en Z5 = 1 ruta; sin lista = zonas activas (sin la inactiva); 400 (51 zonas, zona inactiva), 404 (zona ajena), 403 (Solo lectura)"
+
+step "escaneo Outbound (Lote 5): lookup número > empaque > factura, ruta abierta de la zona y palabra de voz"
+expect 200 "$(scan "$(pb "$OA4")")" | jq -e --arg t "$TR1_CODE" '.outcome=="FOUND_ASSIGNED" and .voice=="found" and .matchedBy=="PACK_BATCH" and .tripCode==$t' >/dev/null || fail "empaque de OA4 → $TR1_CODE"
+expect 200 "$(scan "$(pb "$OA4")")" | jq -e --arg t "$TR1_CODE" '.outcome=="ALREADY_ASSIGNED" and .voice=="dup" and .tripCode==$t' >/dev/null || fail "segundo escaneo = dup"
+expect 200 "$(scan "NOEXISTE$TS")" | jq -e '.outcome=="NOT_FOUND" and .voice=="notfound"' >/dev/null || fail "código inexistente"
+expect 200 "$(scan "$(pb "$OD")")" | jq -e '.outcome=="NOT_ELIGIBLE" and .voice=="notfound" and .message=="La orden está en Entrada; confírmela antes de asignarla a una ruta."' >/dev/null || fail "orden en DRAFT"
+expect 200 "$(scan "$(pb "$OB2")")" | jq -e --arg t "$TR2_CODE" '.outcome=="FOUND_ASSIGNED" and .tripCode==$t' >/dev/null || fail "OB2 → $TR2_CODE"
+expect 200 "$(scan "$(pb "$ON1")")" | jq -e '.outcome=="FOUND_UNASSIGNED" and .reasonCode=="NO_ZONE" and .voice=="found"' >/dev/null || fail "orden sin zona"
+OB5=$(mko "$L2")
+expect 200 "$(scan "$(num "$OB5")")" | jq -e --arg t "$TR2_CODE" '.outcome=="FOUND_ASSIGNED" and .matchedBy=="ORDER_NUMBER" and .tripCode==$t' >/dev/null || fail "por número de orden"
+OZ4=$(mko "$L4")
+expect 200 "$(scan "$(pb "$OZ4")" "$TWH")" | jq -e --arg t "$(trip "$TR4Z" | jq -r .code)" '.outcome=="FOUND_ASSIGNED" and .tripCode==$t' >/dev/null || fail "orden de Z4 → la ruta vacía de 'Planificar el día' (Operador de almacén)"
+expect 400 "$(scan "")" | jq -e --arg m "Escanee o escriba un código." "$HASM" >/dev/null || fail "código vacío"
+expect 403 "$(scan "$(pb "$OA5")" "$TREAD")" >/dev/null
+for i in 0 1 2 3 4 5 6 7; do scan "${OC_PB[$i]}" > "$TMPT/s$i" & done
+wait
+for i in 0 1 2 3 4 5 6 7; do [[ $(tail -n1 "$TMPT/s$i") == 200 ]] && sed '$d' "$TMPT/s$i" | jq -e --arg t "$TR1_CODE" '.outcome=="FOUND_ASSIGNED" and .tripCode==$t' >/dev/null || fail "escaneo simultáneo $i: $(cat "$TMPT/s$i")"; done
+trip "$TR1" | jq -e '[.stops[].sequence]==[range(1; (.stops|length)+1)] and .stopCount==11' >/dev/null || fail "secuencias tras 8 escaneos: $(trip "$TR1" | jq -c '[.stops[].sequence]')"
+[[ $(ostatus "${OC_PID[0]}") == CONFIRMED ]] || fail "escanear no cambia el estatus de la orden"
+ok "FOUND_ASSIGNED (empaque, número), ALREADY_ASSIGNED, NOT_FOUND, NOT_ELIGIBLE, FOUND_UNASSIGNED NO_ZONE, ruta vacía de Z4 desde el Operador de almacén, 400 vacío, 403 Solo lectura; 8 escaneos simultáneos → $TR1_CODE con secuencia 1..11 sin huecos"
+
+step "consolidación multi-cliente (Lote 5): órdenes de dos clientes en la misma ruta física, aunque repitan el número"
+D=$(expect 200 "$(addo "$TR1" "$(pid "$OX1")")")
+echo "$D" | jq -e --arg a "Rutas $TS" --arg b "Rutas B $TS" --arg o "$(pid "$OX1")" '.stopCount==12 and ([.stops[].clientName] | unique)==([$a,$b] | sort) and (.stops[-1].orderPublicId==$o)' >/dev/null || fail "ruta con órdenes de dos clientes: $(echo "$D" | jq -c '[.stops[] | {orderNumber,clientName}]')"
+expect 200 "$(scan "$(num "$OA1")")" | jq -e '.outcome=="NOT_FOUND" and .reasonCode=="MULTIPLE_MATCHES" and .voice=="notfound" and .message=="Hay varias órdenes con ese código; escanee el empaque."' >/dev/null || fail "escaneo por un número repetido entre clientes"
+expect 200 "$(scan "$(pb "$OX1")")" | jq -e --arg t "$TR1_CODE" '.outcome=="ALREADY_ASSIGNED" and .tripCode==$t and .matchedBy=="PACK_BATCH"' >/dev/null || fail "el empaque distingue la orden del segundo cliente"
+ok "$TR1_CODE con 12 paradas de 'Rutas $TS' y 'Rutas B $TS'; el número repetido entre clientes da NOT_FOUND MULTIPLE_MATCHES y el empaque distingue la orden (ALREADY_ASSIGNED)"
+
+step "bloqueantes de despacho vistos desde fuera (Lote 5): chofer no disponible, ASSIGN_TRIP apagada y etapa DISPATCHED deshabilitada"
+dispatchable() { expect 200 "$(req GET "/api/v1/trips/dispatchable?date=$TODAY" '' "${1:-$TOKEN}")"; }
+dispatch() { req POST "/api/v1/trips/$1/dispatch" '{}' "${2:-$TOKEN}"; }
+dispatchable | jq -e --arg t "$TR2" 'any(.[]; .trip.publicId==$t and .canDispatch)' >/dev/null || fail "$TR2_CODE despachable al inicio: $(dispatchable | jq -c --arg t "$TR2" '.[] | select(.trip.publicId==$t) | .issues')"
+expect 200 "$(req POST "/api/v1/drivers/$D2/status" '{"toCode":"UNAVAILABLE","comment":"smoke Lote 5"}')" >/dev/null
+SEL=$(dispatchable); RD=$(dispatch "$TR2")
+expect 200 "$(req POST "/api/v1/drivers/$D2/status" '{"toCode":"ACTIVE"}')" >/dev/null
+echo "$SEL" | jq -e --arg t "$TR2" 'any(.[]; .trip.publicId==$t and (.canDispatch|not) and any(.issues[]; .code=="DRIVER_UNAVAILABLE" and .blocking))' >/dev/null || fail "selector con DRIVER_UNAVAILABLE"
+expect 422 "$RD" | jq -e '(.title | contains("no se puede despachar")) and (.title | contains("El chofer no está disponible para despacho:"))' >/dev/null || fail "despachar con el chofer no disponible"
+# Vehículo con una orden de trabajo en proceso (maestro L286): 409 al asignarlo (alta y PATCH), bloqueante en el selector y
+# 422 al despachar. La OT se cancela ANTES de verificar: TR2 se despacha más adelante con RV2.
+WOT=$(expect 200 "$(req POST /api/v1/maintenance-work-orders "{\"vehiclePublicId\":\"$V2\",\"maintenanceType\":\"CORRECTIVE\"}")" | jq -r .publicId)
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOT/status" '{"toCode":"IN_PROGRESS"}')" >/dev/null
+SELV=$(dispatchable); RDV=$(dispatch "$TR2"); RCV=$(tpost "{\"vehiclePublicId\":\"$V2\"}"); RPV=$(req PATCH "/api/v1/trips/$TR3" "{\"vehiclePublicId\":\"$V2\"}")
+expect 200 "$(req POST "/api/v1/maintenance-work-orders/$WOT/status" '{"toCode":"CANCELLED","comment":"smoke Lote 5"}')" >/dev/null
+echo "$SELV" | jq -e --arg t "$TR2" 'any(.[]; .trip.publicId==$t and (.canDispatch|not) and any(.issues[]; .code=="VEHICLE_UNAVAILABLE" and .blocking))' >/dev/null || fail "selector con VEHICLE_UNAVAILABLE: $(echo "$SELV" | jq -c --arg t "$TR2" '.[] | select(.trip.publicId==$t) | .issues')"
+expect 422 "$RDV" | jq -e '(.title | contains("no se puede despachar")) and (.title | contains("El vehículo no está disponible para despacho:"))' >/dev/null || fail "despachar con el vehículo en taller"
+expect 409 "$RCV" | jq -e '.title | startswith("El vehículo no está disponible para despacho")' >/dev/null || fail "alta de ruta con vehículo en taller"
+expect 409 "$RPV" | jq -e '.title | startswith("El vehículo no está disponible para despacho")' >/dev/null || fail "cambiar a un vehículo en taller"
+dispatchable | jq -e --arg t "$TR2" 'any(.[]; .trip.publicId==$t and .canDispatch)' >/dev/null || fail "$TR2_CODE vuelve a ser despachable al cancelar la OT"
+CAPS='/api/v1/status/capabilities/TRANSPORT_ORDER?statusDomain=OrderStatus'
+# Cada cambio de configuración se restaura ANTES de verificar la respuesta capturada.
+expect 200 "$(req PUT "$CAPS" '[{"statusCode":"CONFIRMED","capability":"ASSIGN_TRIP","isAllowed":false}]')" >/dev/null
+RD=$(dispatch "$TR2")
+expect 200 "$(req PUT "$CAPS" '[{"statusCode":"CONFIRMED","capability":"ASSIGN_TRIP","isAllowed":true}]')" >/dev/null
+expect 422 "$RD" | jq -e --arg m "Orden $(num "$OB2"): El estatus actual no permite la acción 'ASSIGN_TRIP'." '(.title | contains($m)) or ([(.errors // {})[][]] | any(contains($m)))' >/dev/null || fail "despachar con ASSIGN_TRIP apagada"
+expect 200 "$(req PUT /api/v1/status/TripStatus/DISPATCHED/override '{"isEnabled":false}')" >/dev/null
+RD=$(dispatch "$TR2")
+expect 200 "$(req PUT /api/v1/status/TripStatus/DISPATCHED/override '{"isEnabled":true}')" >/dev/null
+expect 422 "$RD" | jq -e '.title=="El pipeline de rutas de esta compañía no tiene habilitada la etapa DISPATCHED."' >/dev/null || fail "despachar sin la etapa DISPATCHED"
+trip "$TR2" | jq -e '.statusCode=="DRAFT" and .isEditable' >/dev/null || fail "$TR2_CODE sigue abierta tras los 422"
+ok "DRIVER_UNAVAILABLE en el selector y 422 al despachar; vehículo con OT en proceso: VEHICLE_UNAVAILABLE, 422 al despachar y 409 al asignarlo (alta y PATCH); 'Orden …: El estatus actual no permite la acción 'ASSIGN_TRIP'.'; 422 sin la etapa DISPATCHED; chofer, capacidad y etapa restaurados"
+
+step "despacho y salida (Lote 5): congela la ruta, órdenes a PLANNED; la salida las lleva a IN_TRANSIT"
+dispatchable | jq -e --arg t "$TR3" 'any(.[]; .trip.publicId==$t and (.canDispatch|not) and any(.issues[]; .code=="NO_VEHICLE"))' >/dev/null || fail "$TR3_CODE sin vehículo en el selector"
+expect 422 "$(dispatch "$TR3")" >/dev/null
+NTRIPS0=$(expect 200 "$(req GET "/api/v1/drivers/$D1/trips?includeCancelled=true")" | jq length)
+OT1=$(trip "$TR1" | jq -r '.stops[0].orderPublicId'); OT1_ID=$(expect 200 "$(req GET "/api/v1/orders/$OT1")" | jq -r .id)
+expect 200 "$(dispatch "$TR1")" | jq -e '.statusCode=="DISPATCHED" and .routeStatusCode=="ACTIVE" and (.isEditable|not) and (.canEditHeader|not)' >/dev/null || fail "despachar $TR1_CODE"
+[[ $(ostatus "$OT1") == PLANNED ]] || fail "la orden despachada no quedó en PLANNED"
+[[ $(ostatus "$(pid "$OX1")") == PLANNED ]] || fail "la orden del segundo cliente no quedó en PLANNED al despachar la ruta consolidada"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OT1_ID")" | jq -e --arg c "Despachada en la ruta $TR1_CODE" '(map(.toCode) | index("PICKUP") and index("INBOUND") and index("PLANNED")) and any(.[]; .comment==$c) and all(.[]; .toCode!="IN_TRANSIT")' >/dev/null || fail "historial del despacho de la orden"
+dispatchable | jq -e --arg t "$TR1" 'all(.[]; .trip.publicId!=$t)' >/dev/null || fail "el selector sigue mostrando $TR1_CODE"
+FROZEN="La ruta $TR1_CODE ya fue despachada; no se puede editar ni eliminar."
+expect 422 "$(req PATCH "/api/v1/trips/$TR1" "{\"plannedStartUtc\":\"${TODAY}T13:00:00Z\"}")" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "PATCH de una ruta despachada"
+expect 422 "$(addo "$TR1" "$(pid "$OA5")")" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "agregar a una ruta despachada"
+expect 422 "$(req POST "/api/v1/trips/$TR1/optimize" '{}')" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "optimizar una ruta despachada"
+expect 422 "$(req PUT "/api/v1/trips/$TR1/route/sequence" "$(trip "$TR1" | jq -c '{routeStopIds:[.stops[].id]}')")" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "reordenar una ruta despachada"
+expect 422 "$(loc5 "$TR1" "$S1" '{"lat":18.4,"lng":-66.1}')" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "pin en una ruta despachada"
+expect 422 "$(req DELETE "/api/v1/trips/$TR1")" | jq -e --arg m "$FROZEN" '.title==$m' >/dev/null || fail "eliminar una ruta despachada"
+LAT='/api/v1/status/lateral-entries/TRANSPORT_ORDER?statusDomain=OrderStatus'
+expect 200 "$(req PUT "$LAT" '[{"lateralStatusCode":"CANCELLED","fromStatusCode":"PLANNED","isAllowed":true}]')" >/dev/null
+RC1=$(req POST "/api/v1/orders/$OT1/cancel" '{}')
+expect 200 "$(req PUT "$LAT" '[{"lateralStatusCode":"CANCELLED","fromStatusCode":"PLANNED","isAllowed":false}]')" >/dev/null
+expect 422 "$RC1" | jq -e --arg m "La orden va en la ruta $TR1_CODE ya despachada; no se puede cancelar mientras la ruta esté en curso." '.title==$m' >/dev/null || fail "cancelar una orden de una ruta despachada"
+expect 200 "$(req POST "/api/v1/trips/$TR1/start" '{}')" | jq -e '.statusCode=="IN_PROGRESS" and .actualStartUtc != null' >/dev/null || fail "salida de $TR1_CODE"
+[[ $(ostatus "$OT1") == IN_TRANSIT ]] || fail "la salida no llevó la orden a IN_TRANSIT"
+expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OT1_ID")" | jq -e --arg c "Salió en la ruta $TR1_CODE" 'any(.[]; .toCode=="IN_TRANSIT" and .comment==$c)' >/dev/null || fail "comentario de la salida"
+expect 422 "$(req POST "/api/v1/trips/$TR1/start" '{}')" | jq -e --arg m "La ruta $TR1_CODE ya salió." '.title==$m' >/dev/null || fail "segunda salida"
+expect 422 "$(req POST "/api/v1/trips/$TR3/start" '{}')" | jq -e --arg m "La ruta $TR3_CODE no está despachada; despáchela antes de registrar su salida." '.title==$m' >/dev/null || fail "salida de una ruta no despachada"
+[[ $(expect 200 "$(req GET "/api/v1/drivers/$D1/trips?includeCancelled=true")" | jq length) -eq $NTRIPS0 ]] || fail "despachar creó un viaje del chofer (DriverTrip)"
+FOREIGN=$(cat /proc/sys/kernel/random/uuid)
+BR=$(expect 200 "$(req POST /api/v1/trips/dispatch "$(jq -cn --arg a "$TR2" --arg b "$TR3" --arg c "$FOREIGN" '{tripPublicIds:[$a,$b,$c]}')")")
+echo "$BR" | jq -e --arg a "$TR2" --arg b "$TR3" --arg c "$FOREIGN" '.requested==3 and .dispatched==1 and ([.items[].tripPublicId]==[$a,$b,$c]) and .items[0].dispatched and (.items[1].dispatched|not) and any(.items[1].issues[]; .code=="NO_VEHICLE") and .items[2].error=="Ruta no encontrada."' >/dev/null || fail "despacho en lote: $BR"
+ok "$TR1_CODE DISPATCHED/ACTIVE; orden PLANNED con PICKUP, INBOUND, PLANNED y 'Despachada en la ruta …'; contenido y cabecera congelados (422); cancelar una orden despachada 422; salida → IN_PROGRESS e IN_TRANSIT; 422 (ya salió / no despachada); sin DriverTrip; lote {$TR2_CODE, $TR3_CODE, ajeno} = 3/1"
+
+step "cabecera con EDIT_TRIP (Lote 5): configurable por compañía; fecha, zona y contenido siguen congelados"
+TCAPS='/api/v1/status/capabilities/TRIP?statusDomain=TripStatus'
+FROZEN2="La ruta $TR2_CODE ya fue despachada; no se puede editar ni eliminar."
+REQD="Una ruta despachada debe conservar chofer, vehículo y hora de salida; cámbielos en lugar de quitarlos."
+expect 422 "$(req PATCH "/api/v1/trips/$TR2" "{\"driverPublicId\":\"$D1\"}")" | jq -e --arg m "$FROZEN2" '.title==$m' >/dev/null || fail "PATCH de una ruta despachada sin EDIT_TRIP"
+expect 200 "$(req PUT "$TCAPS" '[{"statusCode":"DISPATCHED","capability":"EDIT_TRIP","isAllowed":true}]')" >/dev/null
+RE1=$(req PATCH "/api/v1/trips/$TR2" "{\"driverPublicId\":\"$D1\"}"); RE2=$(req PATCH "/api/v1/trips/$TR2" "{\"planDate\":\"$TOMORROW\"}"); RE3=$(addo "$TR2" "$(pid "$OB3")")
+RE4=$(req PATCH "/api/v1/trips/$TR2" '{"clearDriver":true}'); RE5=$(req PATCH "/api/v1/trips/$TR2" '{"clearVehicle":true}'); RE6=$(req PATCH "/api/v1/trips/$TR2" '{"clearPlannedStart":true}')
+expect 200 "$(req PUT "$TCAPS" '[{"statusCode":"DISPATCHED","capability":"EDIT_TRIP","isAllowed":false}]')" >/dev/null
+expect 200 "$RE1" | jq -e --arg c "R1$TS" '.driverCode==$c and .canEditHeader and .statusCode=="DISPATCHED"' >/dev/null || fail "cambiar el chofer de una ruta despachada con EDIT_TRIP"
+expect 422 "$RE2" | jq -e '.title=="La fecha y la zona de una ruta despachada no se cambian."' >/dev/null || fail "fecha de una ruta despachada"
+expect 422 "$RE3" | jq -e --arg m "$FROZEN2" '.title==$m' >/dev/null || fail "agregar a una ruta despachada con EDIT_TRIP"
+for R in "$RE4" "$RE5" "$RE6"; do expect 422 "$R" | jq -e --arg m "$REQD" '.title==$m' >/dev/null || fail "quitar chofer, vehículo u hora de salida de una ruta despachada"; done
+trip "$TR2" | jq -e --arg c "R1$TS" '.driverCode==$c and .vehicleCode!=null and .plannedStartUtc!=null' >/dev/null || fail "la ruta despachada perdió chofer, vehículo u hora de salida"
+expect 422 "$(req PATCH "/api/v1/trips/$TR2" "{\"driverPublicId\":\"$D2\"}")" | jq -e --arg m "$FROZEN2" '.title==$m' >/dev/null || fail "PATCH tras restaurar EDIT_TRIP"
+ok "sin EDIT_TRIP 422; con EDIT_TRIP el chofer cambia (200) pero la fecha no (422), el contenido tampoco (422) y chofer, vehículo y hora de salida no se quitan (422); capacidad restaurada"
+
+step "reasignación en bloque (Lote 5): solo rutas abiertas de esas zonas y esa fecha; no toca la zona del chofer"
+TRMJ=$(expect 200 "$(req POST /api/v1/trips "{\"planDate\":\"$TOMORROW\",\"dispatchZoneId\":$Z1}")"); TRM=$(pid "$TRMJ")
+TR5=$(pid "$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z2}")")")
+TRC=$(pid "$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z1}")")"); expect 204 "$(req DELETE "/api/v1/trips/$TRC")" >/dev/null   # eliminada (CANCELLED)
+D2ZONE=$(expect 200 "$(req GET "/api/v1/drivers/$D2")" | jq -c .zoneCode)
+reassign() { req POST /api/v1/trips/reassign-zone "$(jq -cn --arg d "$TODAY" --argjson z "$1" --arg p "$2" '{planDate:$d,dispatchZoneIds:$z,driverPublicId:$p}')" "${3:-$TOKEN}"; }
+# EDIT_TRIP negada en DRAFT (TR3 y TR5 lo están): el PATCH y la reasignación la respetan; se restaura antes de verificar.
+expect 200 "$(req PUT "$TCAPS" '[{"statusCode":"DRAFT","capability":"EDIT_TRIP","isAllowed":false}]')" >/dev/null
+RAX=$(reassign "[$Z1,$Z2]" "$D2"); RPX=$(req PATCH "/api/v1/trips/$TR5" "{\"driverPublicId\":\"$D2\"}")
+expect 200 "$(req PUT "$TCAPS" '[{"statusCode":"DRAFT","capability":"EDIT_TRIP","isAllowed":true}]')" >/dev/null
+expect 200 "$RAX" | jq -e '.tripsUpdated==0 and (.trips | length)==0' >/dev/null || fail "la reasignación ignoró EDIT_TRIP negada: $RAX"
+expect 422 "$RPX" >/dev/null
+RA=$(expect 200 "$(reassign "[$Z1,$Z2]" "$D2")")
+echo "$RA" | jq -e --arg c "R2$TS" --arg a "$TR3" --arg b "$TR5" '.tripsUpdated==2 and ([.trips[].publicId] | sort)==([$a,$b] | sort) and all(.trips[]; .driverCode==$c) and any(.issues[]; .code=="DRIVER_DOUBLE_BOOKED")' >/dev/null || fail "reasignación: $RA"
+trip "$TR1" | jq -e --arg c "R1$TS" '.driverCode==$c' >/dev/null || fail "la ruta en curso no cambia de chofer"
+trip "$TR2" | jq -e --arg c "R1$TS" '.driverCode==$c' >/dev/null || fail "la ruta despachada no cambia de chofer"
+trip "$TRM" | jq -e --arg c "R1$TS" '.driverCode==$c' >/dev/null || fail "la ruta de mañana no cambia de chofer"
+trip "$TRC" | jq -e --arg c "R1$TS" '.driverCode==$c and .statusCode=="CANCELLED"' >/dev/null || fail "la ruta eliminada no cambia de chofer"
+[[ $(expect 200 "$(req GET "/api/v1/drivers/$D2")" | jq -c .zoneCode) == "$D2ZONE" ]] || fail "la reasignación tocó la zona del chofer"
+expect 409 "$(reassign "[$Z1]" "$DX")" | jq -e '.title | startswith("El chofer no está disponible para despacho")' >/dev/null || fail "reasignar a un chofer no disponible"
+expect 400 "$(reassign "[]" "$D2")" | jq -e --arg m "Indique al menos una zona." "$HASM" >/dev/null || fail "sin zonas"
+expect 400 "$(reassign "$(jq -cn '[range(1;52)]')" "$D2")" | jq -e --arg m "Máximo 50 zonas por reasignación." "$HASM" >/dev/null || fail "51 zonas"
+expect 404 "$(reassign "[$ZT3]" "$D2")" >/dev/null
+expect 403 "$(reassign "[$Z1]" "$D2" "$TREAD")" >/dev/null
+expect 200 "$(reassign "[$Z6]" "$D2")" | jq -e '.tripsUpdated==0' >/dev/null || fail "zona sin rutas abiertas"
+ok "con EDIT_TRIP negada en DRAFT no se reasigna nada (200 con 0) y el PATCH da 422; 2 rutas abiertas (Z1/Z2 de hoy) pasan a R2 con aviso DRIVER_DOUBLE_BOOKED; en curso, despachada, eliminada y de mañana intactas; zona del chofer intacta; 409/400/400/404/403 y 200 con 0"
+
+step "eliminar ruta y cancelar órdenes (Lote 5): libera sin retroceder estatus"
+TR4J=$(expect 200 "$(tpost "{\"dispatchZoneId\":$Z2}")"); TR4=$(pid "$TR4J"); TR4_CODE=$(echo "$TR4J" | jq -r .code)
+expect 200 "$(addo "$TR4" "$(pid "$OB3")" "$(pid "$OB4")")" >/dev/null
+expect 200 "$(req POST "/api/v1/orders/$(pid "$OB3")/cancel" '{}')" | jq -e '.status=="CANCELLED"' >/dev/null || fail "cancelar una orden de una ruta abierta"
+trip "$TR4" | jq -e '.stopCount==1' >/dev/null || fail "cancelar la orden no la liberó de la ruta"
+expect 204 "$(req DELETE "/api/v1/trips/$TR4" '{"comment":"Ruta de prueba"}')" >/dev/null
+trip "$TR4" | jq -e '.statusCode=="CANCELLED" and (.isActive|not)' >/dev/null || fail "ruta eliminada"
+CLOSED="La ruta $TR4_CODE está cerrada; solo se consulta."
+expect 422 "$(req PATCH "/api/v1/trips/$TR4" "{\"plannedStartUtc\":\"${TODAY}T13:00:00Z\"}")" | jq -e --arg m "$CLOSED" '.title==$m' >/dev/null || fail "PATCH de una ruta eliminada"
+expect 422 "$(req DELETE "/api/v1/trips/$TR4")" | jq -e --arg m "$CLOSED" '.title==$m' >/dev/null || fail "eliminar dos veces una ruta"
+expect 422 "$(addo "$TR4" "$(pid "$OB4")")" | jq -e --arg m "$CLOSED" '.title==$m' >/dev/null || fail "agregar a una ruta eliminada"
+# Listado: las eliminadas se ocultan salvo includeCancelled o filtro de estatus; estatus desconocido y rango invertido → 400;
+# la búsqueda corre después del filtro de zona.
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY")" | jq -e --arg a "$TR4" 'all(.[]; .publicId!=$a)' >/dev/null || fail "la ruta eliminada aparece sin includeCancelled"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY&includeCancelled=true")" | jq -e --arg a "$TR4" 'any(.[]; .publicId==$a)' >/dev/null || fail "includeCancelled no trae la eliminada"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY&status=CANCELLED")" | jq -e --arg a "$TR4" 'any(.[]; .publicId==$a) and all(.[]; .statusCode=="CANCELLED")' >/dev/null || fail "filtro de estatus"
+expect 400 "$(req GET "/api/v1/trips?status=FOO")" | jq -e --arg m "Estatus de ruta desconocido: 'FOO'." "$HASM" >/dev/null || fail "estatus desconocido"
+expect 400 "$(req GET "/api/v1/trips?from=$TOMORROW&to=$TODAY")" | jq -e --arg m "El rango de fechas es inválido." "$HASM" >/dev/null || fail "rango de fechas invertido"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY&dispatchZoneId=$Z2&search=$TR1_CODE")" | jq -e 'length==0' >/dev/null || fail "la búsqueda salta el filtro de zona"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY&dispatchZoneId=$Z1&search=$TR1_CODE")" | jq -e --arg a "$TR1" 'any(.[]; .publicId==$a)' >/dev/null || fail "búsqueda por código dentro de la zona"
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z2&search=$(pb "$OB4")")" | jq -e '.total==1 and .items[0].statusCode=="CONFIRMED"' >/dev/null || fail "la orden de la ruta eliminada vuelve a sin asignar"
+expect 204 "$(req DELETE "/api/v1/trips/$TR3")" >/dev/null
+expect 200 "$(scan "$(pb "$OA5")")" | jq -e --arg m "No hay ruta abierta para la zona Z1$TS en la fecha $TODAY; queda sin asignar." '.outcome=="FOUND_UNASSIGNED" and .reasonCode=="NO_OPEN_ROUTE" and .message==$m' >/dev/null || fail "escaneo sin ruta abierta"
+ok "cancelar libera (stopCount 1); DELETE → CANCELLED/isActive false y la orden vuelve CONFIRMED a sin asignar; ruta cerrada: PATCH, segundo DELETE y agregar → 422 'está cerrada'; listado oculta la eliminada salvo includeCancelled/estatus, 400 (estatus desconocido, rango), búsqueda después de la zona; sin ruta abierta en Z1 el escaneo responde NO_OPEN_ROUTE"
+
+step "monitoreo (Lote 5): despachadas y en curso, totales sobre la fecha y búsqueda solo sobre la lista"
+MON=$(expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY")")
+echo "$MON" | jq -e --arg a "$TR1" --arg b "$TR2" '(.trips | map(.publicId) | index($a) and index($b)) and (.trips[] | select(.publicId==$a) | .statusCode=="IN_PROGRESS" and .completedStops==0 and .nextEtaUtc != null and .lastPing==null) and .totals.trips >= 2 and all(.trips[]; .statusCode!="DRAFT" and .statusCode!="PLANNED")' >/dev/null || fail "monitor: $(echo "$MON" | jq -c '.totals')"
+echo "$MON" | jq -e --arg a "$TR1" '(.trips[] | select(.publicId==$a) | .overStopLimit) and .totals.overStopLimitTrips >= 1' >/dev/null || fail "alerta de máximo de paradas en el monitor: $(echo "$MON" | jq -c '.totals')"
+MONS=$(expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY&search=$TR1_CODE")")
+[[ $(echo "$MONS" | jq '.trips | length') -eq 1 && $(echo "$MONS" | jq -c .totals) == $(echo "$MON" | jq -c .totals) ]] || fail "la búsqueda cambió los totales del monitor"
+# Pings (maestro L268): el API de pings es del Lote 7, así que se insertan por SQL, solo si SMOKE_SQL está definida (el CI la
+# define con sqlcmd dentro del contenedor de SQL Server; en local es opcional). Primero el respaldo del chofer (TripId NULL):
+# gana el último desde ActualStartUtc y los anteriores a la salida no cuentan; después un ping con TripId gana al respaldo.
+PINGS="omitidos (sin SMOKE_SQL)"
+if [[ -n "${SMOKE_SQL:-}" ]]; then
+  ping_sql() { $SMOKE_SQL "SET NOCOUNT ON; INSERT dbo.DriverLocationPing (TenantId, DriverId, TripId, GeoPoint, CapturedAtUtc) SELECT TenantId, DriverId, $1, geography::Point($2, $3, 4326), $4 FROM dbo.Trip WHERE TripId = $TR1_ID;" >/dev/null; }
+  mon1() { expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY")"; }
+  WP0=$(echo "$MON" | jq .totals.tripsWithoutPing)
+  ping_sql NULL 18.10 -66.10 "DATEADD(minute, -5, ActualStartUtc)"
+  ping_sql NULL 18.20 -66.20 "DATEADD(second, 1, ActualStartUtc)"
+  ping_sql NULL 18.30 -66.30 "DATEADD(minute, -10, ActualStartUtc)"
+  M1=$(mon1)
+  echo "$M1" | jq -e --arg a "$TR1" --argjson w "$WP0" '(.trips[] | select(.publicId==$a) | .lastPing.linkedToTrip==false and .lastPing.point.lat==18.2 and .lastPing.point.lng==-66.2) and .totals.tripsWithoutPing==($w - 1)' >/dev/null || fail "ping de respaldo del chofer: $(echo "$M1" | jq -c --arg a "$TR1" '{t: .totals, p: (.trips[] | select(.publicId==$a) | .lastPing)}')"
+  ping_sql "$TR1_ID" 18.45 -66.07 "ActualStartUtc"
+  M2=$(mon1)
+  echo "$M2" | jq -e --arg a "$TR1" --argjson w "$WP0" '(.trips[] | select(.publicId==$a) | .lastPing.linkedToTrip==true and .lastPing.point.lat==18.45) and .totals.tripsWithoutPing==($w - 1)' >/dev/null || fail "ping de la ruta: $(echo "$M2" | jq -c --arg a "$TR1" '(.trips[] | select(.publicId==$a) | .lastPing)')"
+  trip "$TR1" | jq -e '.lastPing.linkedToTrip==true and .lastPing.point.lat==18.45' >/dev/null || fail "ficha con el último ping de la ruta"
+  PINGS="respaldo del chofer desde la salida (linkedToTrip false) y ping de la ruta que gana (true); tripsWithoutPing −1"
+fi
+ok "$TR1_CODE (IN_PROGRESS, 0 completadas, próxima ETA, sin ping) y $TR2_CODE; buscar deja 1 ruta y los mismos totales; pings: $PINGS"
+
+step "sin dinero (Lote 5): ningún JSON de rutas expone montos ni tarifas"
+for P in "/api/v1/trips/$TR1" "/api/v1/trips?date=$TODAY" "/api/v1/trips/monitor?date=$TODAY" "/api/v1/trips/dispatchable?date=$TODAY" "/api/v1/trips/$TR1/optimization-runs"; do
+  expect 200 "$(req GET "$P")" | jq -e '[paths | .[] | strings | ascii_downcase | select(contains("amount") or contains("rate"))] | length==0' >/dev/null || fail "claves de dinero en $P"
+done
+ok "ficha, listado, monitor, selector y corridas sin claves 'amount'/'rate'; despachar no creó DriverTrip (paso anterior)"
+
+step "RBAC y módulo (Lote 5)"
+PD0=$(pdtotal)
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY" '' "$TREAD")" >/dev/null
+expect 403 "$(tpost '{}' "$TREAD")" >/dev/null
+expect 403 "$(req POST "/api/v1/trips/$TRP/optimize" '{}' "$TREAD")" >/dev/null
+expect 403 "$(dispatch "$TRP" "$TREAD")" >/dev/null
+expect 403 "$(req POST "/api/v1/trips/$TR2/start" '{}' "$TREAD")" >/dev/null
+expect 403 "$(loc5 "$TRP" "$(trip "$TRP" | jq -r '.stops[0].id')" '{"lat":18.4,"lng":-66.1}' "$TREAD")" >/dev/null
+[[ $(pdtotal) -gt $PD0 ]] || fail "PERMISSION_DENIED en rutas"
+expect 403 "$(req GET "/api/v1/trips?date=$TODAY" '' "$TBILL")" >/dev/null
+expect 403 "$(req GET "/api/v1/trips?date=$TODAY" '' "$T7")" >/dev/null
+expect 403 "$(tpost '{}' "$TWH")" >/dev/null
+expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1" '' "$TWH")" >/dev/null
+TT2=$(pid "$(expect 200 "$(tpost '{}' "$T2")")"); expect 204 "$(req DELETE "/api/v1/trips/$TT2" '' "$T2")" >/dev/null
+expect 200 "$(req PATCH "/api/v1/trips/$TRP" "{\"vehiclePublicId\":\"$V2\"}" "$T2")" >/dev/null
+expect 200 "$(req POST "/api/v1/trips/$TRP/optimize" '{}' "$T2")" >/dev/null
+expect 200 "$(dispatch "$TRP" "$T2")" | jq -e '.statusCode=="DISPATCHED"' >/dev/null || fail "el Despachador despacha"
+expect 200 "$(req POST "/api/v1/trips/$TRP/start" '{}' "$T2")" | jq -e '.statusCode=="IN_PROGRESS"' >/dev/null || fail "el Despachador registra la salida"
+# Con CATALOG apagado solo se capturan las respuestas; el módulo se vuelve a encender ANTES de verificarlas.
+expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":false}')" >/dev/null
+TMD=$(tpost "{\"driverPublicId\":\"$D2\"}"); TNC=$(tpost "{\"dispatchZoneId\":$Z1}")
+# Las guardas de CATALOG van antes de bloquear o escribir: TRP (en curso) no cambia de estado.
+TMDISP=$(dispatch "$TRP"); TMBAT=$(req POST /api/v1/trips/dispatch "{\"tripPublicIds\":[\"$TRP\"]}")
+TMREA=$(reassign "[$Z1]" "$D2"); TMPD=$(req PATCH "/api/v1/trips/$TRP" "{\"driverPublicId\":\"$D2\"}"); TMPV=$(req PATCH "/api/v1/trips/$TRP" "{\"vehiclePublicId\":\"$V2\"}")
+expect 200 "$(req PUT /api/v1/modules/CATALOG '{"isEnabled":true}')" >/dev/null
+for R in "$TMD" "$TMDISP" "$TMBAT" "$TMREA" "$TMPD" "$TMPV"; do
+  expect 403 "$R" | jq -e '.code=="module_disabled"' >/dev/null || fail "acción con chofer/vehículo y CATALOG apagado: $R"
+done
+TNC_PID=$(expect 200 "$TNC" | jq -r 'select(.driverCode==null) | .publicId'); [[ -n "$TNC_PID" ]] || fail "con CATALOG apagado no hay chofer por defecto"
+# Ruta sin chofer: bloqueante NO_DRIVER en el selector y 422 al despachar.
+dispatchable | jq -e --arg t "$TNC_PID" 'any(.[]; .trip.publicId==$t and (.canDispatch|not) and any(.issues[]; .code=="NO_DRIVER" and .blocking))' >/dev/null || fail "selector con NO_DRIVER"
+expect 422 "$(dispatch "$TNC_PID")" | jq -e '(.title | contains("no se puede despachar")) and (.title | contains("La ruta no tiene chofer asignado"))' >/dev/null || fail "despachar una ruta sin chofer"
+expect 204 "$(req DELETE "/api/v1/trips/$TNC_PID")" >/dev/null
+ok "Solo lectura: lee (200) y todo lo demás 403 con PERMISSION_DENIED; Facturación y contactos 403; Operador de almacén sin alta (403) pero con 'sin asignar' (200); el Despachador crea, optimiza, despacha y registra la salida; CATALOG apagado: alta con chofer, despacho, despacho en lote, reasignación y PATCH de chofer/vehículo → 403 module_disabled, sin chofer por defecto (restaurado); ruta sin chofer: NO_DRIVER en el selector y 422 al despachar"
+
+step "aislamiento y BOLA por id hijo (Lote 5): otro tenant no alcanza rutas, paradas, órdenes ni zonas"
+NF='.title=="Ruta no encontrada."'
+expect 404 "$(req GET "/api/v1/trips/$TR1" '' "$T3")" | jq -e "$NF" >/dev/null || fail "ficha de otro tenant"
+expect 404 "$(req PATCH "/api/v1/trips/$TR1" '{"plannedStartUtc":null}' "$T3")" | jq -e "$NF" >/dev/null || fail "PATCH de otro tenant"
+expect 404 "$(req DELETE "/api/v1/trips/$TR1" '' "$T3")" | jq -e "$NF" >/dev/null || fail "DELETE de otro tenant"
+expect 404 "$(dispatch "$TR1" "$T3")" | jq -e "$NF" >/dev/null || fail "despachar de otro tenant"
+expect 404 "$(req POST "/api/v1/trips/$TR1/start" '{}' "$T3")" | jq -e "$NF" >/dev/null || fail "salida de otro tenant"
+expect 404 "$(req DELETE "/api/v1/trips/$TR2/orders/$(pid "$OB2")" '' "$T3")" >/dev/null
+T3R=$(pid "$(expect 200 "$(tpost '{}' "$T3")")")
+expect 404 "$(req POST "/api/v1/trips/$T3R/orders" "{\"orderPublicIds\":[\"$(pid "$OA3")\"]}" "$T3")" | jq -e '.title=="Orden no encontrado."' >/dev/null || fail "orden de otro tenant en una ruta propia"
+expect 400 "$(req PUT "/api/v1/trips/$T3R/route/sequence" "$(trip "$TR1" | jq -c '{routeStopIds:[.stops[].id]}')" "$T3")" >/dev/null
+expect 404 "$(loc5 "$T3R" "$S1" '{"lat":18.4,"lng":-66.1}' "$T3")" | jq -e '.title=="Parada no encontrada en esta ruta."' >/dev/null || fail "pin de una parada de otro tenant"
+expect 404 "$(plan "{\"planDate\":\"$TODAY\",\"dispatchZoneIds\":[$Z1]}" "$T3")" >/dev/null
+ZNF='.title=="Zona de despacho no encontrada."'
+expect 404 "$(tpost "{\"dispatchZoneId\":$Z1}" "$T3")" | jq -e "$ZNF" >/dev/null || fail "alta de ruta con zona de otro tenant"
+expect 404 "$(req PATCH "/api/v1/trips/$T3R" "{\"dispatchZoneId\":$Z1}" "$T3")" | jq -e "$ZNF" >/dev/null || fail "PATCH de ruta con zona de otro tenant"
+expect 404 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1" '' "$T3")" | jq -e "$ZNF" >/dev/null || fail "sin asignar con zona de otro tenant"
+expect 404 "$(req GET "/api/v1/trips?driverPublicId=$D1" '' "$T3")" | jq -e '.title=="Chofer no encontrado."' >/dev/null || fail "listado filtrado por chofer de otro tenant"
+expect 200 "$(scan "$(pb "$OA4")" "$T3")" | jq -e '.outcome=="NOT_FOUND"' >/dev/null || fail "escaneo de una orden de otro tenant"
+expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY" '' "$T3")" | jq -e --arg a "$TR1" 'all(.trips[]; .publicId!=$a)' >/dev/null || fail "monitor con rutas ajenas"
+expect 200 "$(req GET "/api/v1/trips?date=$TODAY" '' "$T3")" | jq -e --arg a "$TR1" 'all(.[]; .publicId!=$a)' >/dev/null || fail "listado con rutas ajenas"
+expect 404 "$(req GET "/api/v1/dispatch-zones/$Z1/members" '' "$T3")" >/dev/null
+H=$(req GET "/api/v1/status/history/ROUTE/$V1ROUTE" '' "$T3"); [[ $(echo "$H" | tail -n1) == 404 || $(echo "$H" | sed '$d' | jq length) == 0 ]] || fail "historial de ROUTE de otro tenant: $H"
+trip "$TR1" | jq -e '.statusCode=="IN_PROGRESS" and .isActive' >/dev/null || fail "la ruta del demo cambió desde otro tenant"
+ok "T3: 404 'Ruta no encontrada.' (ficha, PATCH, DELETE, despacho, salida), 404 al quitar una orden ajena, 'Orden no encontrado.' en su ruta, 400 con paradas ajenas en la secuencia, 404 al fijar el pin de una parada ajena, 404 al planificar una zona ajena, 404 'Zona de despacho no encontrada.' (alta, PATCH y sin asignar con zona ajena), 404 'Chofer no encontrado.' (listado por chofer ajeno), NOT_FOUND al escanear, monitor/listado sin rutas ajenas, miembros de zona 404 e historial de ROUTE vacío"
+
+step "contactos, campos personalizados e historial de rutas (Lote 5): resolvers de TRIP, ROUTE, ROUTE_STOP y OPTIMIZATION_RUN"
+DEFT=$(req POST /api/v1/custom-fields/definitions/TRIP '{"fieldKey":"sello","labels":{"es":"Sello","en":"Seal"},"dataType":"TEXT","isRequired":false,"isUnique":false,"showInList":true}')
+CODE=$(echo "$DEFT" | tail -n1); [[ "$CODE" == "200" || "$CODE" == "409" ]] || fail "definición TRIP: $DEFT"
+expect 200 "$(req PUT "/api/v1/custom-fields/values/TRIP/$TR1_ID" "{\"values\":{\"sello\":\"S-$TS\"}}")" | jq -e --arg v "S-$TS" 'any(.[]; .fieldKey=="sello" and .value==$v)' >/dev/null || fail "campo personalizado de la ruta"
+expect 403 "$(req PUT "/api/v1/custom-fields/values/TRIP/$TR1_ID" '{"values":{"sello":"X"}}' "$TREAD")" | jq -e '.title=="Falta el permiso '"'"'trips.plan'"'"'."' >/dev/null || fail "campo de la ruta sin trips.plan"
+# Con trips.plan pero sin trips.view: 403 ANTES de guardar (la respuesta relee con el permiso de lectura) y el valor no cambia.
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Solo planificar $TS\",\"permissions\":[\"trips.plan\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"planifica$TS@teikem.local\",\"fullName\":\"Solo planificar $TS\",\"password\":\"$PASS\",\"roles\":[\"Solo planificar $TS\"]}")" >/dev/null
+TPLAN=$(login "planifica$TS@teikem.local" "$PASS")
+expect 403 "$(req PUT "/api/v1/custom-fields/values/TRIP/$TR1_ID" '{"values":{"sello":"CAMBIADO"}}' "$TPLAN")" | jq -e '.title=="Falta el permiso '"'"'trips.view'"'"'."' >/dev/null || fail "campo de la ruta con trips.plan sin trips.view"
+expect 200 "$(req GET "/api/v1/custom-fields/values/TRIP/$TR1_ID")" | jq -e --arg v "S-$TS" 'any(.[]; .fieldKey=="sello" and .value==$v)' >/dev/null || fail "el 403 sin trips.view guardó el valor"
+for E in TRIP ROUTE ROUTE_STOP OPTIMIZATION_RUN; do
+  expect 404 "$(req PUT "/api/v1/custom-fields/values/$E/999999" '{"values":{}}')" >/dev/null
+done
+RUN1=$(runs "$TR1" | jq -r '.[0].id')
+expect 404 "$(req PUT "/api/v1/custom-fields/values/OPTIMIZATION_RUN/$RUN1" '{"values":{}}')" >/dev/null   # resolver cerrado: 404 aunque la corrida exista
+RS1=$(trip "$TR1" | jq -r '.stops[0].id')
+expect 200 "$(req PUT "/api/v1/custom-fields/values/ROUTE_STOP/$RS1" '{"values":{}}')" >/dev/null
+for P in "TRIP/$TR1_ID" "ROUTE/$V1ROUTE" "ROUTE_STOP/$RS1"; do
+  expect 404 "$(req PUT "/api/v1/custom-fields/values/$P" '{"values":{}}' "$T3")" >/dev/null
+done
+expect 403 "$(req POST "/api/v1/contacts/TRIP/$TR1_ID" '{"contactType":"PHONE","value":"787-555-0150"}' "$T7")" >/dev/null
+H=$(req GET "/api/v1/status/history/TRIP/$TR1_ID" '' "$T3"); [[ $(echo "$H" | tail -n1) == 404 || $(echo "$H" | sed '$d' | jq length) == 0 ]] || fail "historial de TRIP de otro tenant: $H"
+ok "campo personalizado de TRIP; 403 sin trips.plan y 403 sin trips.view sin guardar; 404 para ids inexistentes (TRIP/ROUTE/ROUTE_STOP/OPTIMIZATION_RUN) y para una corrida existente (cerrado); 404 desde T3 en TRIP/ROUTE/ROUTE_STOP; contacto de la ruta sin trips.plan 403; historial de TRIP vacío desde T3"
+
+step "fuentes de datos, contenido de sistema y auditoría (Lote 5)"
+DS=$(expect 200 "$(req GET /api/v1/analytics/data-sources)")
+echo "$DS" | jq -e '(.[] | select(.key=="TRIP") | .dateField=="PlanDate" and all(.fields[]; (.key | ascii_downcase | (contains("amount") or contains("rate"))) | not)) and (.[] | select(.key=="TRANSPORT_ORDER") | [.fields[].key] as $f | ["TripCode","HasAssignedDriver","IsException","DispatchZoneCode"] | all(.[]; . as $x | $f | index($x)))' >/dev/null || fail "fuentes TRIP y TRANSPORT_ORDER del Lote 5"
+RR=$(expect 200 "$(req GET /api/v1/analytics/reports)" | jq -r '[.[] | select(.name=="Rutas" and .isSystem==true)][0].id')
+expect 200 "$(req POST "/api/v1/analytics/reports/$RR/run" '{}')" | jq -e --arg c "$TR1_CODE" 'any(.rows[]; .Code==$c)' >/dev/null || fail "vista 'Rutas'"
+# Por valor (definición V5): asignar una orden libre a una ruta con chofer baja 'sin chofer' en 1; pasar a ON_HOLD una orden
+# libre sube 'en excepción' en 1. La asignación a una variable propaga el fallo de indval (set -e).
+SIN0=$(indval "Órdenes sin chofer asignado"); [[ $SIN0 -ge 1 ]] || fail "indicador 'Órdenes sin chofer asignado' = $SIN0 (ON1 no tiene chofer)"
+expect 200 "$(addo "$TR5" "$(pid "$OB4")")" | jq -e --arg c "R2$TS" '.driverCode==$c' >/dev/null || fail "OB4 a una ruta abierta con chofer"
+SIN1=$(indval "Órdenes sin chofer asignado"); [[ $SIN1 -eq $((SIN0 - 1)) ]] || fail "'Órdenes sin chofer asignado' no bajó al asignar OB4 a una ruta con chofer: $SIN0 → $SIN1"
+EXC0=$(indval "Órdenes en excepción")
+expect 200 "$(req POST "/api/v1/orders/$(pid "$OA5")/status" '{"toCode":"ON_HOLD","comment":"smoke Lote 5"}')" | jq -e '.status=="ON_HOLD"' >/dev/null || fail "OA5 a ON_HOLD"
+EXC1=$(indval "Órdenes en excepción"); [[ $EXC1 -eq $((EXC0 + 1)) ]] || fail "'Órdenes en excepción' no subió con OA5 en ON_HOLD: $EXC0 → $EXC1"
+CHR=$(expect 200 "$(req GET /api/v1/analytics/charts)" | jq -r '[.[] | select(.name=="Rutas por estatus")][0].id')
+expect 200 "$(req GET "/api/v1/analytics/charts/$CHR/data")" | jq -e '.points | length >= 1' >/dev/null || fail "gráfico 'Rutas por estatus'"
+for ET in TRIP ROUTE DISPATCH_ZONE TRANSPORT_ORDER; do
+  expect 200 "$(req GET "/api/v1/audit/changes?entityType=$ET&take=20")" | jq -e '.total >= 1 and ([.items[] | select((.changesJson // "") | ascii_downcase | contains("rowversion"))] | length)==0' >/dev/null || fail "auditoría de $ET"
+done
+ok "TRIP (PlanDate, sin montos) y TRANSPORT_ORDER (TripCode, HasAssignedDriver, IsException, DispatchZoneCode); vista 'Rutas', indicadores por valor (sin chofer −1 al asignar, excepción +1 con ON_HOLD) y gráfico 'Rutas por estatus'; AuditLog de TRIP, ROUTE, DISPATCH_ZONE y TRANSPORT_ORDER sin rowVersion"
 
 step "sesiones: refresh con rotación y logout"
 NEW=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$REFRESH\"}")")

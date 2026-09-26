@@ -1004,3 +1004,16 @@ base de datos garantiza que solo hay un viaje vigente por orden en todo momento.
 La asignación avanza la orden **etapa por etapa** (sin saltos) desde donde estaba hasta `IN_TRANSIT`, respetando el
 pipeline configurado por tu compañía (salta las etapas que tengas deshabilitadas). Cada etapa queda como un
 registro de historial propio, con el mismo comentario ("Entrega especial asignada a …" o "Reasignada a …").
+
+## Lote 5 — Trips y rutas
+
+### Corridas de optimización
+
+**¿Por qué `POST /api/v1/contacts/OPTIMIZATION_RUN/{id}` o `PUT /api/v1/custom-fields/values/OPTIMIZATION_RUN/{id}` responden 404 aunque la corrida existe?**
+Las corridas de optimización son una bitácora de **solo lectura**: se consultan con `GET /api/v1/trips/{publicId}/optimization-runs`
+(permiso `trips.view`), pero no admiten contactos ni valores de campos personalizados por id suelto. Para esos endpoints
+toda corrida responde **404** (`OPTIMIZATION_RUN` usa el resolver cerrado, igual que `DRIVER_RATE` y `FLEET_DOCUMENT`),
+exista o no: así nadie puede escribir sobre una corrida ni averiguar qué ids existen. En campos personalizados, quien no
+tiene `trips.view` recibe antes **403** ("Falta el permiso 'trips.view'."), también sin revelar si la corrida existe.
+Si necesitas anotar algo sobre una optimización, hazlo en la ruta (`TRIP`), que sí admite contactos y campos
+personalizados con el permiso `trips.plan`.

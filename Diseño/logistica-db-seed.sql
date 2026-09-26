@@ -272,7 +272,12 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','MAINTENANCE_SCHEDULE','Programa de mantenimiento','Maintenance schedule',61),('EntityType','FUEL_LOG','Carga de combustible','Fuel log',62),
 ('EntityType','FLEET_DOCUMENT','Documento de flota','Fleet document',63),('EntityType','DRIVER_RATE','Tarifa de chofer','Driver rate',64),
 ('EntityType','DRIVER_TRIP','Viaje de chofer','Driver trip',65),('EntityType','DISPATCH_ZONE','Zona de despacho','Dispatch zone',66),
-('Capability','EDIT_WORK_ORDER','Editar orden de trabajo','Edit work order',7);
+('Capability','EDIT_WORK_ORDER','Editar orden de trabajo','Edit work order',7),
+-- Lote 5 — Trips y rutas: motor HEURISTIC (determinista, sin llamadas externas), entidades con historial/auditoría nuevas
+-- (TRIP y ROUTE ya estaban sembradas arriba) y capacidad de edición de la cabecera de la ruta
+('OptimizerEngine','HEURISTIC','Heurística (zona y ventana)','Heuristic (zone & window)',4),
+('EntityType','ROUTE_STOP','Parada de ruta','Route stop',67),('EntityType','OPTIMIZATION_RUN','Corrida de optimización','Optimization run',68),
+('Capability','EDIT_TRIP','Editar ruta','Edit trip',8);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -450,6 +455,56 @@ WHEN NOT MATCHED THEN
 GO
 
 /* -------------------------------------------------------------------------
+   3E) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 5, TRIP
+       EDIT_TRIP (cabecera: chofer, vehículo, hora de salida) no permitido en
+       rutas DISPATCHED/IN_PROGRESS/COMPLETED/CANCELLED. El tenant la puede
+       habilitar en DISPATCHED/IN_PROGRESS desde /status/capabilities/TRIP
+       (la fecha, la zona y el contenido de una ruta despachada nunca cambian).
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='TRIP'
+      AND s.Entity='TripStatus' AND s.InternalCode IN ('DISPATCHED','IN_PROGRESS','COMPLETED','CANCELLED')
+      AND c.Entity='Capability' AND c.InternalCode='EDIT_TRIP'
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+
+/* -------------------------------------------------------------------------
+   3F) STATUS LATERAL ENTRY por defecto (TenantId NULL) — Lote 5
+       TRIP: CANCELLED ('Eliminar ruta') solo desde DRAFT y PLANNED (una ruta
+       despachada no se elimina; TripStatusEffect lo vuelve a exigir).
+       ROUTE: ARCHIVED solo desde DRAFT y OPTIMIZED (la versión ACTIVE está
+       congelada). El tenant lo cambia desde /status/lateral-entries/{TRIP|ROUTE}.
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusLateralEntry AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, lat.StatusCodeId AS LateralStatusCodeId, frm.StatusCodeId AS FromStatusCodeId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode lat
+    CROSS JOIN dbo.StatusCode frm
+    WHERE et.Entity='EntityType'
+      AND (
+           (et.InternalCode='TRIP'  AND lat.Entity='TripStatus'  AND lat.InternalCode='CANCELLED'
+                                    AND frm.Entity='TripStatus'  AND frm.InternalCode IN ('DRAFT','PLANNED'))
+        OR (et.InternalCode='ROUTE' AND lat.Entity='RouteStatus' AND lat.InternalCode='ARCHIVED'
+                                    AND frm.Entity='RouteStatus' AND frm.InternalCode IN ('DRAFT','OPTIMIZED'))
+      )
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, LateralStatusCodeId, FromStatusCodeId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.LateralStatusCodeId, s.FromStatusCodeId, 1);
+GO
+
+/* -------------------------------------------------------------------------
    4) PERMISOS  (vocabulario de la app — sembrado desde código)
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#P') IS NOT NULL DROP TABLE #P;
@@ -484,7 +539,10 @@ INSERT INTO #P VALUES
 -- Lote 4 — Flota, choferes y mantenimiento (flota separada de la compensación de choferes, R8)
 ('fleet.view','FLEET','Ver flota y choferes','View fleet & drivers'),
 ('driverpay.view','FLEET','Ver tarifas y viajes de choferes','View driver rates & trips'),
-('driverpay.manage','FLEET','Gestionar tarifas y viajes de choferes','Manage driver rates & trips');
+('driverpay.manage','FLEET','Gestionar tarifas y viajes de choferes','Manage driver rates & trips'),
+-- Lote 5 — Trips y rutas (leer rutas y escanear la salida sin poder planificar)
+('trips.view','TRIPS','Ver rutas y despacho','View trips & dispatch'),
+('trips.scan','TRIPS','Escanear salida (Outbound)','Scan outbound');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -520,20 +578,23 @@ INSERT INTO #RP SELECT 'TenantAdmin', Code FROM #P;
 -- Dispatcher
 INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create'),('Dispatcher','orders.edit'),('Dispatcher','orders.cancel'),('Dispatcher','trips.plan'),('Dispatcher','trips.dispatch'),('Dispatcher','trips.optimize'),
 ('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create'),   -- Lote 2
-('Dispatcher','fleet.view');   -- Lote 4
+('Dispatcher','fleet.view'),   -- Lote 4
+('Dispatcher','trips.view'),('Dispatcher','trips.scan');   -- Lote 5
 -- Billing
 INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
 ('Billing','clients.read'),('Billing','contracts.read'),   -- Lote 2
 ('Billing','orders.credit_override'),   -- Lote 3
 ('Billing','driverpay.view');   -- Lote 4
 -- WarehouseOperator
-INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive');
+INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
+('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan');   -- Lote 5
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
 INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
 ('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read'),   -- Lote 2
-('ReadOnly','fleet.view');   -- Lote 4
+('ReadOnly','fleet.view'),   -- Lote 4
+('ReadOnly','trips.view');   -- Lote 5
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -570,5 +631,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER y WORK_ORDER), permisos (52), roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER y TRIP), entradas laterales (TRIP y ROUTE), permisos (54), roles plantilla y zonas de despacho demo.';
 GO

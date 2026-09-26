@@ -131,6 +131,22 @@ public sealed class DispatchZoneConfiguration : IEntityTypeConfiguration<Dispatc
         b.Property(z => z.Code).HasMaxLength(20).IsRequired();
         b.Property(z => z.Name).HasMaxLength(120);
         b.HasIndex(z => new { z.TenantId, z.Code }).IsUnique().HasDatabaseName("UQ_DispatchZone");
+        b.HasMany(z => z.Members).WithOne(m => m.DispatchZone).HasForeignKey(m => m.DispatchZoneId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>Lote 5 — miembro de zona (CP, rango postal o municipio). Sin TenantId: se alcanza solo por su zona filtrada.</summary>
+public sealed class DispatchZoneMemberConfiguration : IEntityTypeConfiguration<DispatchZoneMember>
+{
+    public void Configure(EntityTypeBuilder<DispatchZoneMember> b)
+    {
+        b.ToTable("DispatchZoneMember");
+        b.HasKey(m => m.DispatchZoneMemberId);
+        b.Property(m => m.MatchValue).HasMaxLength(120).IsRequired();
+        b.HasIndex(m => m.DispatchZoneId).HasDatabaseName("IX_DispatchZoneMember_Zone");
+        // Repetido en la misma zona: segunda barrera (el solapamiento entre zonas activas lo impide el servicio).
+        b.HasIndex(m => new { m.DispatchZoneId, m.MatchTypeLookupId, m.MatchValue }).IsUnique().HasDatabaseName("UQ_DispatchZoneMember");
+        b.HasOne<Teikem.Domain.Catalogs.LookupCode>().WithMany().HasForeignKey(m => m.MatchTypeLookupId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 

@@ -5,9 +5,10 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (52 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
-/// los de Clientes y contratos (Lote 2, categoría CLIENTS), orders.credit_override (Lote 3, ajuste C) y fleet.view,
-/// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8).
+/// en cada arranque. Coincide con logistica-db-seed.sql (54 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
+/// los de Clientes y contratos (Lote 2, categoría CLIENTS), orders.credit_override (Lote 3, ajuste C), fleet.view,
+/// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8) y
+/// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar).
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -22,6 +23,10 @@ public static class PermissionCatalog
     public const string TripsPlan = "trips.plan";
     public const string TripsDispatch = "trips.dispatch";
     public const string TripsOptimize = "trips.optimize";
+    /// <summary>Lote 5: ver rutas, sala de despacho (lectura), 'sin asignar' y monitoreo.</summary>
+    public const string TripsView = "trips.view";
+    /// <summary>Lote 5: estación de escaneo Outbound (asigna la orden a la ruta abierta de su zona).</summary>
+    public const string TripsScan = "trips.scan";
     public const string WarehouseReceive = "warehouse.receive";
     public const string WarehousePick = "warehouse.pick";
     public const string WarehouseCount = "warehouse.count";
@@ -133,6 +138,9 @@ public static class PermissionCatalog
         new(FleetView, "FLEET", "Ver flota y choferes", "View fleet & drivers"),
         new(DriverPayView, "FLEET", "Ver tarifas y viajes de choferes", "View driver rates & trips"),
         new(DriverPayManage, "FLEET", "Gestionar tarifas y viajes de choferes", "Manage driver rates & trips"),
+        // Lote 5 — Trips y rutas
+        new(TripsView, "TRIPS", "Ver rutas y despacho", "View trips & dispatch"),
+        new(TripsScan, "TRIPS", "Escanear salida (Outbound)", "Scan outbound"),
     };
 
     /// <summary>
@@ -162,6 +170,11 @@ public static class PermissionCatalog
         [EntityTypes.FleetDocument] = FleetView,
         [EntityTypes.DriverRate] = DriverPayView,
         [EntityTypes.DriverTrip] = DriverPayView,
+        // Lote 5 — rutas
+        [EntityTypes.Trip] = TripsView,
+        [EntityTypes.Route] = TripsView,
+        [EntityTypes.RouteStop] = TripsView,
+        [EntityTypes.OptimizationRun] = TripsView,
     };
 
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
@@ -188,17 +201,21 @@ public static class PermissionCatalog
         [EntityTypes.FuelLog] = FleetMaintenance,
         [EntityTypes.DriverRate] = DriverPayManage,
         [EntityTypes.DriverTrip] = DriverPayManage,
+        // Lote 5 — rutas (OPTIMIZATION_RUN es bitácora: solo lectura)
+        [EntityTypes.Trip] = TripsPlan,
+        [EntityTypes.Route] = TripsPlan,
+        [EntityTypes.RouteStop] = TripsPlan,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView },
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan },
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView },
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive },
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan },
         ["Driver"] = new[] { OrdersView, CodCollect },
-        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView },
+        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView },
     };
 
     /// <summary>

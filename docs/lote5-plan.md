@@ -812,8 +812,8 @@ FASE 3, RunInTransactionAsync #2:
 - LockTripAsync y RouteEditRules.IsStale.
 - Si la ruta cambió: la corrida pasa PENDING→ERROR con ErrorMessage 'Descartada: la ruta cambió durante el cálculo.', se guarda, y FUERA de la lambda se responde 409 StaleMessage.
 - Si no cambió:
-  1. cada parada sin asignar → RouteWriter.ReleaseOrderAsync;
-  2. ReplaceActiveRouteAsync(ordenado, OPTIMIZED, 'Optimización #{runId}');
+  1. ReplaceActiveRouteAsync(ordenado + sin asignar al final, OPTIMIZED, 'Optimización #{runId}') y se guarda: la versión n se archiva INTACTA (sus paradas, secuencias y ETAs son el plan anterior);
+  2. cada parada sin asignar → RouteWriter.ReleaseOrderAsync sobre la versión n+1 (ya vigente), guardar y RecomputeAsync;
   3. si el Trip estaba en DRAFT → PLANNED ('Ruta optimizada (versión n)');
   4. la corrida pasa a OK con RouteId, ResponseJson = RoutePlanJson.Serialize(...), totales, UnassignedCount y CompletedAtUtc;
   5. SaveGuardedAsync.

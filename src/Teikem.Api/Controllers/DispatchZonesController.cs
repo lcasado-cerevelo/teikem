@@ -9,7 +9,9 @@ namespace Teikem.Api.Controllers;
 
 /// <summary>
 /// Lote 4 (P2) — Zonas de despacho (código, nombre, activo): el nombre de la zona primaria es el 'Área' del chofer.
-/// Módulo CATALOG; lectura con fleet.view y escritura con fleet.manage. Nunca DELETE.
+/// Módulo CATALOG; lectura con fleet.view y escritura con fleet.manage. La zona nunca se borra (baja lógica).
+/// Lote 5 (P5) — Miembros de la zona (código postal, rango postal, municipio) sin solapamiento entre zonas activas y
+/// resolución 'ZIP/pueblo → zona'. Quitar un miembro sí es un DELETE físico auditado.
 /// </summary>
 [ApiController]
 [Route("api/v1/dispatch-zones")]
@@ -34,4 +36,28 @@ public sealed class DispatchZonesController(DispatchZoneService zones) : Control
 
     [HttpPost("{id:int}/reactivate"), RequirePermission(PermissionCatalog.FleetManage)]
     public Task<DispatchZoneDto> Reactivate(int id, CancellationToken ct) => zones.SetActiveAsync(id, true, ct);
+
+    // ---------------- Lote 5: miembros y resolución ----------------
+
+    /// <summary>Resolución 'ZIP/pueblo → zona' (CP &gt; rango postal &gt; municipio; empate = ambigua). 400 sin parámetros.</summary>
+    [HttpGet("resolve"), RequirePermission(PermissionCatalog.FleetView)]
+    public Task<ZoneResolutionDto> Resolve([FromQuery] string? postalCode, [FromQuery] string? city, CancellationToken ct)
+        => zones.ResolveAsync(postalCode, city, ct);
+
+    /// <summary>Miembros de la zona (activa o no).</summary>
+    [HttpGet("{id:int}/members"), RequirePermission(PermissionCatalog.FleetView)]
+    public Task<DispatchZoneMembersDto> ListMembers(int id, CancellationToken ct) => zones.ListMembersAsync(id, ct);
+
+    /// <summary>Agrega un criterio (POSTAL_CODE, POSTAL_RANGE o MUNICIPALITY); 409 si choca con otra zona activa.</summary>
+    [HttpPost("{id:int}/members"), RequirePermission(PermissionCatalog.FleetManage)]
+    public Task<DispatchZoneMembersDto> AddMember(int id, [FromBody] DispatchZoneMemberRequest req, CancellationToken ct)
+        => zones.AddMemberAsync(id, req, ct);
+
+    /// <summary>Quita un criterio de ESA zona (DELETE físico auditado); 404 si el miembro es de otra zona.</summary>
+    [HttpDelete("{id:int}/members/{memberId:int}"), RequirePermission(PermissionCatalog.FleetManage)]
+    public async Task<IActionResult> RemoveMember(int id, int memberId, CancellationToken ct)
+    {
+        await zones.RemoveMemberAsync(id, memberId, ct);
+        return NoContent();
+    }
 }

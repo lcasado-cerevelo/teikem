@@ -81,9 +81,11 @@ public class FleetContractsTests
     [Fact]
     public void Order_detail_exposes_the_assigned_driver_without_amounts()
     {
+        // Lote 5: al trío AssignedDriver* le siguen AssignedTripPublicId y AssignedTripCode (ruta vigente), todos con default.
         var ctor = typeof(OrderDetailDto).GetConstructors().Single();
-        var tail = ctor.GetParameters().TakeLast(3).ToArray();
-        Assert.Equal(new[] { "AssignedDriverPublicId", "AssignedDriverCode", "AssignedDriverName" }, tail.Select(p => p.Name));
+        var tail = ctor.GetParameters().TakeLast(5).ToArray();
+        Assert.Equal(new[] { "AssignedDriverPublicId", "AssignedDriverCode", "AssignedDriverName", "AssignedTripPublicId", "AssignedTripCode" },
+            tail.Select(p => p.Name));
         Assert.All(tail, p => Assert.True(p.HasDefaultValue));
 
         var names = PropertyNames(typeof(OrderDetailDto));

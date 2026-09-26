@@ -59,6 +59,11 @@ public static class LookupDomains
     public const string DevicePlatform = "DevicePlatform";
     /// <summary>Fórmula de pago a choferes (DriverPayPolicy.PayoutFormulaLookupId).</summary>
     public const string DriverPayoutFormula = "DriverPayoutFormula";
+    // Lote 5 — Trips y rutas (GeocodeAccuracy ya existe desde el Lote 3)
+    /// <summary>Criterio de un miembro de zona de despacho (DispatchZoneMember.MatchTypeLookupId).</summary>
+    public const string ZoneMatchType = "ZoneMatchType";
+    /// <summary>Motor de una corrida de optimización (OptimizationRun.EngineLookupId).</summary>
+    public const string OptimizerEngine = "OptimizerEngine";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -81,6 +86,11 @@ public static class StatusDomains
     public const string WorkOrderStatus = "WorkOrderStatus";
     /// <summary>Viaje pagado al chofer: OPEN (inicial) → SETTLED | CANCELLED (terminales).</summary>
     public const string DriverTripStatus = "DriverTripStatus";
+    // Lote 5 — Trips y rutas
+    public const string TripStatus = "TripStatus";
+    public const string RouteStatus = "RouteStatus";
+    public const string RouteStopStatus = "RouteStopStatus";
+    public const string OptimizationRunStatus = "OptimizationRunStatus";
 }
 
 public static class StageKinds
@@ -199,6 +209,11 @@ public static class Capabilities
     public const string EditContract = "EDIT_CONTRACT";
     /// <summary>Lote 4: editar una orden de trabajo de mantenimiento y sus tareas (por defecto no permitido en CLOSED/CANCELLED).</summary>
     public const string EditWorkOrder = "EDIT_WORK_ORDER";
+    /// <summary>
+    /// Lote 5: editar la cabecera de una ruta (chofer, vehículo, hora de salida). Por defecto negada desde DISPATCHED,
+    /// IN_PROGRESS, COMPLETED y CANCELLED; el tenant puede habilitarla en DISPATCHED/IN_PROGRESS.
+    /// </summary>
+    public const string EditTrip = "EDIT_TRIP";
 }
 
 public static class AuditActions
@@ -345,6 +360,11 @@ public static class EntityTypes
     public const string DriverRate = "DRIVER_RATE";
     public const string DriverTrip = "DRIVER_TRIP";
     public const string DispatchZone = "DISPATCH_ZONE";
+    // Agregados por el Lote 5 (Trips y rutas); TRIP ya existía.
+    /// <summary>Versión del plan de una ruta (Route); su ciclo es RouteStatus.</summary>
+    public const string Route = "ROUTE";
+    public const string RouteStop = "ROUTE_STOP";
+    public const string OptimizationRun = "OPTIMIZATION_RUN";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -407,6 +427,8 @@ public static class NumberKinds
     public const string PackBatch = "PACKBATCH";
     /// <summary>Lote 4: número de orden de trabajo OT-##### (uno por tenant, ClientId NULL).</summary>
     public const string WorkOrder = "WORKORDER";
+    /// <summary>Lote 5: número de ruta AAAA-#### (uno por tenant, ClientId NULL; no se reinicia por año).</summary>
+    public const string Trip = "TRIP";
 }
 
 public static class ModuleKeys
@@ -521,4 +543,74 @@ public static class MaintenanceDueStates
     public const string DueSoon = "DUE_SOON";
     public const string Overdue = "OVERDUE";
     public const string NoBaseline = "NO_BASELINE";
+}
+
+// ---------------- Lote 5 — Trips y rutas ----------------
+
+/// <summary>
+/// Dominio TripStatus: DRAFT (inicial) → PLANNED → DISPATCHED → IN_PROGRESS → COMPLETED (terminal); CANCELLED terminal
+/// ('Eliminar ruta', solo desde DRAFT/PLANNED).
+/// </summary>
+public static class TripStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Planned = "PLANNED";
+    public const string Dispatched = "DISPATCHED";
+    public const string InProgress = "IN_PROGRESS";
+    public const string Completed = "COMPLETED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio RouteStatus (ciclo de la VERSIÓN del plan): DRAFT (inicial) → OPTIMIZED → ACTIVE (congelada); ARCHIVED terminal.</summary>
+public static class RouteStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Optimized = "OPTIMIZED";
+    public const string Active = "ACTIVE";
+    public const string Archived = "ARCHIVED";
+}
+
+/// <summary>Dominio RouteStopStatus: PENDING (inicial) → ON_THE_WAY → ARRIVED → COMPLETED (terminal); FAILED lateral.</summary>
+public static class RouteStopStatuses
+{
+    public const string Pending = "PENDING";
+    public const string OnTheWay = "ON_THE_WAY";
+    public const string Arrived = "ARRIVED";
+    public const string Completed = "COMPLETED";
+    public const string Failed = "FAILED";
+}
+
+/// <summary>Dominio OptimizationRunStatus: PENDING (inicial) → OK | ERROR (terminales).</summary>
+public static class OptimizationRunStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Ok = "OK";
+    public const string Error = "ERROR";
+}
+
+/// <summary>LookupDomains.ZoneMatchType: criterio de un miembro de zona. POLYGON existe en el catálogo pero no se soporta aún.</summary>
+public static class ZoneMatchTypes
+{
+    public const string PostalCode = "POSTAL_CODE";
+    public const string PostalRange = "POSTAL_RANGE";
+    public const string Municipality = "MUNICIPALITY";
+    public const string Polygon = "POLYGON";
+}
+
+/// <summary>LookupDomains.OptimizerEngine. El motor de este lote es HEURISTIC (determinista, sin llamadas externas).</summary>
+public static class OptimizerEngines
+{
+    public const string Vroom = "VROOM";
+    public const string OrTools = "ORTOOLS";
+    public const string Manual = "MANUAL";
+    public const string Heuristic = "HEURISTIC";
+}
+
+/// <summary>LookupDomains.GeocodeAccuracy: precisión del pin de una parada. EXACT y MANUAL no son aproximados.</summary>
+public static class GeocodeAccuracies
+{
+    public const string Exact = "EXACT";
+    public const string ZipCentroid = "ZIP_CENTROID";
+    public const string CityCentroid = "CITY_CENTROID";
+    public const string Manual = "MANUAL";
 }
