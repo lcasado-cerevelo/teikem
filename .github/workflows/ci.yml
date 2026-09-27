@@ -39,3 +39,18 @@ jobs:
           # (pings del chofer del Lote 7, que el monitor del Lote 5 ya lee). Sin esta variable el smoke omite esos pasos.
           export SMOKE_SQL="docker exec ${{ job.services.sqlserver.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Teikem_Dev_2026! -d Teikem -b -h -1 -Q"
           scripts/smoke.sh http://localhost:5000
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+      - name: Instalar y verificar (tipos generados, tsc, lint, vitest, build)
+        working-directory: web-app
+        run: |
+          npm ci
+          npm run check

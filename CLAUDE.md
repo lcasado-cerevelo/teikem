@@ -41,12 +41,22 @@ y `Diseño/logistica-db-seed.sql`. Se construye por lotes (ver `docs/lote1-decis
 - `tests/Teikem.Tests`: pruebas unitarias xunit de lógica pura.
 - `scripts/smoke.sh`: prueba de humo end-to-end; `.github/workflows/ci.yml`: build + test + db-init + smoke con SQL Server 2022.
 
+## Frontend web (`web-app/`)
+- React 18+ con TypeScript y Vite; cliente del API **generado** desde `web-app/openapi.json` (`npm run api:types`); nunca DTOs a mano.
+- El contrato del kit y los patrones de pantalla están en `web-app/KIT.md`: quien construye una pantalla lee ese archivo, no el núcleo.
+- Textos de interfaz con `t('clave')` en `src/kernel/i18n/{es,en}.json`; identificadores en inglés; comentarios en español.
+- Permisos y módulos siempre con `<Can perm>` / `<ModuleGate module>` usando los códigos exactos del API.
+- Full responsive (360 px en adelante), sin scroll horizontal de página; convenciones de interfaz del documento maestro (ordenar columnas, buscador libre `QBox`, chips sin envolver, idioma sin reiniciar).
+- Compuerta antes de cualquier revisión: `npm run check` (tipos generados, tsc, oxlint, vitest, build). Recorridos Playwright en `web-app/e2e` contra el API real.
+- Cierre de un lote de frontend: `docs/frontend/loteFN-decisiones.md` + capítulo del manual de pantallas en `docs/manual/frontend/` con capturas.
+
 ## Cómo verificar
 ```
 docker compose up -d sqlserver          # o, sin Docker (contenedor de Claude Code): scripts/dev-sqlserver.sh
 dotnet build Teikem.sln && dotnet test Teikem.sln
 dotnet run --project src/Teikem.Api -- db-init
 dotnet run --project src/Teikem.Api &  scripts/smoke.sh http://localhost:5000
+cd web-app && npm ci && npm run check && npx playwright test   # frontend (API arriba en :5000)
 ```
 Si el entorno no puede descargar el SDK (hosts bloqueados), el árbitro es el CI de GitHub Actions al hacer push.
 Un lote no se da por terminado sin CI verde, sin `docs/loteN-decisiones.md` (qué se construyó, cómo se probó, decisiones a revisar)
