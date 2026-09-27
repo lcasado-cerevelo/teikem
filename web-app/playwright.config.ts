@@ -19,6 +19,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'escritorio', use: { ...devices['Desktop Chrome'] } },
-    { name: 'movil', use: { ...devices['Pixel 7'] } },
+    // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
+    { name: 'movil', use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
   ],
 })

@@ -1,5 +1,6 @@
 // Recorrido del Lote F1 (docs/frontend/loteF1-plan.md, "Recorrido Playwright") contra el API real (db-init hecho,
-// API en API_URL, por defecto http://localhost:5000). Proyecto 'escritorio': pasos 1-7; proyecto 'movil' (Pixel 7): paso 8.
+// API en API_URL, por defecto http://localhost:5000). Proyecto 'escritorio': pasos 1-7; proyecto 'movil' (Pixel 7 a 360 px):
+// pasos 8 y 9.
 // Nada de este recorrido deja cambios que rompan otra corrida: la contraseña y el MFA solo se intentan con datos inválidos.
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
@@ -62,13 +63,39 @@ async function login(page: Page, user: { email: string; password: string }) {
   await page.waitForURL((url) => url.pathname === '/')
 }
 
-/** Sin scroll horizontal de página. */
+/**
+ * Sin scroll horizontal de página y sin contenido recortado. El shell recorta (`.app`/`.main` overflow hidden,
+ * `.stage` overflow-x hidden, `body` overflow-x hidden): el scrollWidth del documento nunca pasa del viewport aunque algo
+ * desborde. Por eso se mide cada contenedor que recorta y cada elemento visible dentro de `.stage` y `.bar` (o de `body`
+ * en las pantallas sin shell): ninguno puede salirse del viewport. Los contenedores con scroll horizontal propio a
+ * propósito (`.seg`, pestañas) se miden ellos mismos, no su contenido.
+ */
 async function expectNoHorizontalScroll(page: Page) {
-  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    innerWidth: window.innerWidth,
-  }))
+  const { scrollWidth, innerWidth, offenders } = await page.evaluate(() => {
+    const vw = document.documentElement.clientWidth
+    const out: string[] = []
+    const describe = (el: Element) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}.${String(el.getAttribute('class') ?? '').trim().replace(/\s+/g, '.')}`
+    for (const sel of ['.stage', '.main', '.bar']) {
+      document.querySelectorAll<HTMLElement>(sel).forEach((el) => {
+        if (el.scrollWidth > el.clientWidth + 1) out.push(`${describe(el)} scrollWidth ${el.scrollWidth} > ${el.clientWidth}`)
+      })
+    }
+    const OWN_SCROLL = '.seg'
+    const roots = document.querySelectorAll('.stage, .bar')
+    const scope: Element[] = roots.length > 0 ? Array.from(roots) : [document.body]
+    for (const root of scope) {
+      root.querySelectorAll('*').forEach((el) => {
+        if (el.parentElement?.closest(OWN_SCROLL)) return // dentro de un contenedor con scroll propio
+        const style = getComputedStyle(el)
+        if (style.visibility === 'hidden' || style.display === 'none') return
+        const r = el.getBoundingClientRect()
+        if (r.width > 0 && (r.right > vw + 1 || r.left < -1)) out.push(`${describe(el)} [${Math.round(r.left)}, ${Math.round(r.right)}] fuera de 0..${vw}`)
+      })
+    }
+    return { scrollWidth: document.documentElement.scrollWidth, innerWidth: window.innerWidth, offenders: out }
+  })
   expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
+  expect(offenders).toEqual([])
 }
 
 test.describe('Lote F1 — escritorio', () => {
@@ -155,12 +182,13 @@ test.describe('Lote F1 — escritorio', () => {
   })
 })
 
-test.describe('Lote F1 — móvil (Pixel 7)', () => {
-  test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (Pixel 7)')
+test.describe('Lote F1 — móvil (360 px)', () => {
+  test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
   test('8. menú en cajón, Pulso apila las tarjetas y no hay scroll horizontal', async ({ page, request }) => {
     await ensureChartInPulse(request)
     await login(page, ADMIN)
+    expect(page.viewportSize()?.width).toBe(360)
     await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
 
     // Cajón: oculto hasta que se abre con el botón de menú
@@ -169,8 +197,8 @@ test.describe('Lote F1 — móvil (Pixel 7)', () => {
     await page.getByRole('button', { name: 'Abrir menú' }).click()
     await expect(rail).toBeInViewport()
     await expect(rail.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
-    // Tocar fuera del cajón (el velo) lo cierra
-    await page.locator('.drawer-scrim').click({ position: { x: 395, y: 400 } })
+    // Tocar fuera del cajón (el velo, a la derecha del cajón de 280 px) lo cierra
+    await page.locator('.drawer-scrim').click({ position: { x: 340, y: 400 } })
     await expect(rail).not.toBeInViewport()
 
     // Tarjetas apiladas: todas en una sola columna (mismo borde izquierdo)
@@ -178,10 +206,47 @@ test.describe('Lote F1 — móvil (Pixel 7)', () => {
     await expect(cards.first()).toBeVisible()
     const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
     expect(new Set(lefts).size).toBe(1)
+    await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
+    await expectNoHorizontalScroll(page)
 
+    // Diálogo "Mi rango de fecha" de una tarjeta: cabe a 360 px; se cancela sin guardar
+    await cards.first().getByRole('button', { name: /^Cambiar mi rango de fecha de / }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    const box = await dialog.boundingBox()
+    expect((box?.x ?? -1) >= 0 && (box?.x ?? 0) + (box?.width ?? 999) <= 360).toBeTruthy()
+    await dialog.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(dialog).toHaveCount(0)
+  })
+
+  test('9. a 360 px: login, cabecera y todas las pestañas de Mi cuenta sin scroll horizontal', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
     await expectNoHorizontalScroll(page)
-    await page.goto('/account?tab=sessions')
-    await expect(page.getByText('Esta sesión').first()).toBeVisible()
+
+    // Selección de compañía (si el admin tiene varias membresías) y cabecera con el selector de compañía
+    await page.getByLabel('Correo electrónico').fill(ADMIN.email)
+    await page.getByLabel('Contraseña').fill(ADMIN.password)
+    await page.getByRole('button', { name: 'Entrar' }).click()
+    await page.waitForURL((url) => url.pathname !== '/login')
+    if (new URL(page.url()).pathname === '/select-tenant') {
+      await expectNoHorizontalScroll(page)
+      const def = page.locator('.tenant-list button', { hasText: 'Predeterminada' })
+      await ((await def.count()) > 0 ? def.first() : page.locator('.tenant-list button').first()).click()
+    }
+    await page.waitForURL((url) => url.pathname === '/')
+    await expect(page.locator('.bar')).toBeVisible()
     await expectNoHorizontalScroll(page)
+
+    for (const [tab, check] of [
+      ['', () => page.getByRole('heading', { level: 1, name: 'Mi cuenta' })],
+      ['?tab=password', () => page.getByLabel(/Contraseña actual/)],
+      ['?tab=mfa', () => page.getByRole('button', { name: /^(Activar|Desactivar)$/ })],
+      ['?tab=sessions', () => page.getByText('Esta sesión').first()],
+    ] as const) {
+      await page.goto(`/account${tab}`)
+      await expect(check()).toBeVisible()
+      await expectNoHorizontalScroll(page)
+    }
   })
 })

@@ -30,22 +30,28 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   (nombres del servidor normalizados a camelCase: `$.Email` → `email`). Error de red → `code: 'network'`.
 - Política automática (no la repitas en pantallas): 401 → un solo `POST /api/v1/auth/refresh` compartido por las peticiones que
   fallen a la vez, rota tokens y reintenta una vez; si el refresh falla → login. 403 `aal2_required` → modal de reautenticación y
-  reintento una vez. Los 401 de `/auth/login`, `/auth/mfa/verify`, `/auth/reauth`, `/auth/refresh`, `/auth/logout`,
-  `/auth/switch-tenant` no refrescan (son la respuesta del propio paso).
+  reintento una vez. Los 401 de `/auth/login`, `/auth/mfa/verify`, `/auth/refresh`, `/auth/logout`,
+  `/auth/switch-tenant` no refrescan (son la respuesta del propio paso). En `/auth/reauth` solo se refresca el 401 del esquema
+  (access token vencido: sin cuerpo ni `code`); el 401 del servicio ('Contraseña incorrecta.', con `code`) no.
 - Lecturas con 403 `module_disabled`/`forbidden` → el shell navega a `/module-off` o `/forbidden`. Si una consulta secundaria no
   debe sacar al usuario de la pantalla: `useQuery({ ..., meta: { handleAccessDenied: false } })`. Las mutaciones no se interceptan.
+- **Fechas del API**: el backend manda las marcas UTC sin zona (`"2026-09-27T14:00:00.123"`) y `new Date()` las leería como hora
+  local. Léelas siempre con `parseApiDate(iso)` (`src/kernel/api/dates.ts`: sin zona = UTC, como la DSL) antes de formatear.
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
 ## Shell (`src/app`)
 - `AppShell`: barra lateral por grupos de la maqueta (`NAV_GROUPS` en `navigation.ts`: Operación, Catálogo, Almacén, Análisis,
-  Administración), filtrada por módulos y permisos (un grupo sin entradas visibles no se pinta), colapsable en escritorio y
+  Administración), filtrada por módulos y permisos con `visibleNav(routes, permissions, modules)` (lógica pura en
+  `navigation.ts`; un grupo sin entradas visibles no se pinta), colapsable en escritorio y
   cajón bajo 900 px; cabecera con compañía (selector si hay más de una membresía ACTIVE/PLATFORM: `switchableMemberships` en `app/memberships.ts`), idioma, usuario (→ `/account`) y salir.
 - Rutas en `src/app/routes.tsx`: `AppRoute = { path, element, perm?, module?, nav? }`, `element` con carga diferida
   `lazy(() => import('../features/<modulo>/<Pantalla>'))` (la pantalla exporta `default`). `appRoutes` = internas (dentro del
   shell, con sesión); `publicRoutes` = sin sesión. `module`/`perm` se aplican solos (pantallas 'Módulo apagado' / 'Sin permiso').
   `nav: { group: 'ops' | 'catalog' | 'warehouse' | 'analytics' | 'admin', labelKey, order? }` la pone en el menú.
   Para agregar una pantalla solo se añade su entrada ahí. `/` es Pulso (`features/analytics/Pulse`): sin `analytics.view` o sin el
-  módulo ANALYTICS muestra la bienvenida sin consultar el API (la pantalla de inicio nunca redirige a 'Módulo apagado'). `/account` es `features/account/AccountPage`
+  módulo ANALYTICS muestra la bienvenida sin consultar el API (la pantalla de inicio nunca redirige a 'Módulo apagado'); cada tarjeta tiene "Rango" (mi rango
+  de fecha, `PUT .../my-date-range`: preferencia por usuario con solo `analytics.view`; en CUSTOM el `toUtc` del DTO es exclusivo y
+  se muestra el día anterior). `/account` es `features/account/AccountPage`
   (pestañas Perfil, Contraseña, MFA y Sesiones; `?tab=password|mfa|sessions` abre una pestaña directamente).
 - `useSession()` (`app/session.tsx`) → `{ me, isAuthenticated, isLoading, error, tenantId, lang, setLang, logout, switchTenant,
   permissions, modules, reloadMe }`. `me` es `MeDto` de `GET /api/v1/me` (clave de consulta `ME_QUERY_KEY`).
@@ -173,10 +179,12 @@ propia sección `clients.*`).
   campo que el API no permite borrar (p. ej. `creditLimit`) se valida en zod para no quedar vacío.
 
 ## Pruebas de extremo a extremo (`e2e/`)
-Playwright (`playwright.config.ts`, proyectos `escritorio` y `movil` = Pixel 7) contra el API real (`API_URL`, por defecto
+Playwright (`playwright.config.ts`, proyectos `escritorio` y `movil` = Pixel 7 a 360 px de ancho) contra el API real (`API_URL`, por defecto
 http://localhost:5000, con db-init hecho) y Vite en :5173: `npm run e2e`. El recorrido de cada lote va en `e2e/loteFN.spec.ts`
-(pasos en español, `test.use({ locale: 'es-PR' })`), comprueba `document.documentElement.scrollWidth <= window.innerWidth` en
-móvil y no deja cambios persistentes que rompan otra corrida. El CI lo corre en el job del backend después del smoke.
+(pasos en español, `test.use({ locale: 'es-PR' })`), comprueba en móvil con
+`expectNoHorizontalScroll(page)` que nada se sale del viewport (el shell recorta con overflow hidden, así que el `scrollWidth` del
+documento no basta: se miden `.stage`/`.main`/`.bar` y cada elemento visible dentro; los contenedores con scroll horizontal propio,
+`.seg`, se miden ellos mismos) y no deja cambios persistentes que rompan otra corrida. El CI lo corre en el job del backend después del smoke.
 
 ## Antes de devolver una pieza
 `npm run check` en verde (tipos generados, tsc, oxlint, vitest, build). Si tocaste el kit: prueba unitaria y línea en este archivo.
