@@ -8,6 +8,7 @@ El diseño resumido vive en el maestro (`Diseño/logistica-funcionalidades-maest
 ## 1. Arquitectura
 
 - **Proyecto**: `app-almacen/` en este repo (Expo SDK actual, React Native, TypeScript), *development build* nativo (no Expo Go).
+  **Es la única app móvil que se construye**; la app de choferes del módulo 8 no se hace.
   Android únicamente en esta versión. Versión mínima Android 7.0 (API 24), que cubre toda la serie MC3300.
 - **Comparte con `web-app/`** (copiando módulos puros, no importando entre proyectos): cliente del API generado desde
   `openapi.json` (`openapi-fetch`), `applyProblemDetails`, i18n es/en, evaluador de reglas y utilidades de fechas. Los
@@ -26,9 +27,14 @@ El diseño resumido vive en el maestro (`Diseño/logistica-funcionalidades-maest
      mismo documento se re-escriben con el id real. Un rechazo definitivo (4xx de negocio) marca la operación `requiere revisión`
      con el mensaje del API; la cola no se detiene, salta a otros documentos.
   3. Dispara: al abrir la app, cada 60 s con red, al recuperar conectividad (`NetInfo`), y con el botón "Sincronizar ahora".
-- **Sesión**: login con usuario y contraseña (misma identidad interna, permisos de almacén), *refresh token* válido para
-  todo el turno sin red (ver backend), PIN local de 4 dígitos para desbloquear sin escribir la contraseña con guantes;
-  la app guarda el almacén elegido y no pide MFA en el aparato (decisión a ratificar: MFA solo en la web).
+- **Sesión y seguridad (ajustada a aparatos que no salen del almacén)**: el administrador registra cada terminal una vez
+  desde la web ("aparato de confianza": `UserDevice` con un código que se teclea en la app la primera vez); desde entonces
+  el aparato queda enlazado al tenant. Cada almacenista entra con su **PIN de 4 a 6 dígitos** (lo define en Mi cuenta de la
+  web o se lo asigna el administrador; se guarda cifrado en el servidor y una copia cifrada en el aparato para desbloquear sin
+  red). No hay contraseña ni MFA en el aparato. Cambiar de usuario en el mismo aparato es teclear otro PIN, así cada
+  operación queda a nombre de quien la hizo (auditoría y Actividad reciente). El token del aparato dura 30 días y se renueva
+  al sincronizar; si un aparato se pierde, el administrador lo desactiva en la web y deja de sincronizar en el acto (los
+  datos locales viven en el almacenamiento privado de la app, borrado al desinstalar). La app también guarda el almacén elegido.
 - **Vocabulario del piso**: todas las etiquetas por i18n; "Posición" es la palabra para lo que ellos llaman "almacén" en su
   sistema actual; el nombre del almacén grande se muestra como "Almacén · ALM-01".
 
@@ -52,7 +58,7 @@ API bajo el campo con el mensaje exacto; sonido y vibración distintos para ok y
 
 | Pieza | Qué deja |
 |---|---|
-| P0 base compartida | Middleware de **idempotencia** (módulo 13 del maestro): cabecera `Idempotency-Key` en POST/PUT/DELETE, respuesta guardada en `IntegrationMessageLog` por (tenant, usuario, clave) 7 días, misma clave → misma respuesta, misma clave con cuerpo distinto → 409 "La clave de idempotencia ya se usó con otro contenido."; tabla `UserDevice` (generaliza `DriverDevice`: TenantId, UserId, DriverId NULL, Platform, PushToken, AppVersion, Model, LastSeenUtc, IsActive) en estructura y seed; vida del *refresh token* configurable (`RefreshTokenDays`, por defecto 14 para dispositivos registrados, 1 para la web) |
+| P0 base compartida | PIN de usuario (`UserPin` cifrado en `AspNetUsers` o tabla aparte, alta desde Mi cuenta y desde Usuarios), registro de aparato de confianza con código de un solo uso, `POST /api/v1/auth/device-login` (aparato + PIN → tokens); middleware de **idempotencia** (módulo 13 del maestro): cabecera `Idempotency-Key` en POST/PUT/DELETE, respuesta guardada en `IntegrationMessageLog` por (tenant, usuario, clave) 7 días, misma clave → misma respuesta, misma clave con cuerpo distinto → 409 "La clave de idempotencia ya se usó con otro contenido."; tabla `UserDevice` (generaliza `DriverDevice`: TenantId, UserId, DriverId NULL, Platform, PushToken, AppVersion, Model, LastSeenUtc, IsActive) en estructura y seed; vida del *refresh token* configurable (`RefreshTokenDays`, por defecto 14 para dispositivos registrados, 1 para la web) |
 | P1 sincronización | `GET /api/v1/sync/products`, `/sync/bins?warehousePublicId=`, `/sync/purchase-orders`, `/sync/asns`, `/sync/warehouse-tasks` con `modifiedSinceUtc` y `take` (paginado por cursor), incluyendo borrados lógicos (`isActive=false`); `GET /api/v1/products/by-barcode/{code}` (código de barras o SKU); `POST /api/v1/devices/register` y `.../heartbeat` |
 | P2 operaciones desde el aparato | Ajustes para que cada operación de la cola sea una sola llamada atómica: `POST /receipts` acepta líneas completas y `confirm=true`; `POST /pick-batches` acepta `pack` en la misma llamada; `PUT /cycle-counts/{id}/lines` acepta lote de líneas; todas devuelven los números definitivos. Conteo a ciegas: `GET /cycle-counts/{id}` omite cantidades esperadas si el usuario no tiene `warehouse.count` |
 | Pruebas y humo | pruebas de idempotencia (misma clave, cuerpo distinto), del cursor de sincronización y del recibo en una llamada; paso `sync` e `idempotency` en `scripts/smoke.sh` |
@@ -86,14 +92,14 @@ con el API apagado a mitad del recorrido y sincronización al final). Prueba en 
 | Parte | Tokens |
 |---|---|
 | Lote 8 backend (3 piezas, 4 lentes, smoke, docs) | 3 a 4 M |
-| Lote A1 app (6 piezas, motor sin señal, Maestro, docs) | 8 a 12 M |
-| **Total** | **11 a 16 M** |
+| Lote A1 app (6 piezas, motor sin señal, Maestro, docs) | 8 a 11 M |
+| **Total (solo la app de almacén; la de choferes no se construye)** | **11 a 15 M** |
 
 Sugerencia de orden: Lote 8 completo → A0 + A1 (Recibir) y probar en el aparato → A2 a A5.
 
 ## 7. Decisiones que debe ratificar Luis
 
-1. Sin MFA en el aparato (PIN local tras el login con contraseña); MFA se mantiene en la web.
+1. Seguridad del aparato: registro único por el administrador + PIN por almacenista, sin contraseña ni MFA en el aparato (MFA solo en la web). Riesgo aceptado porque los aparatos no salen del almacén y el APK solo se instala en ellos.
 2. Conteo a ciegas por defecto para quien no tiene `warehouse.count`; la reconciliación se hace en la web.
 3. El empaque desde el aparato pide solo lo mínimo de la orden (cliente, consignatario, bultos); el resto se completa en la web.
 4. Orden de compra: no se crea desde el aparato; el recibo ciego basta para recibir, y si contabilidad la necesita se genera
