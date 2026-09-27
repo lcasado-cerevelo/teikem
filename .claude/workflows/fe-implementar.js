@@ -24,6 +24,11 @@ const VERDICT = { type: 'object', properties: { real: { type: 'boolean' }, evide
 const cabecera = `Lote ${lote} del frontend (${titulo}). Trabajas en web-app/. Lee primero web-app/KIT.md. El plan completo está en docs/frontend/lote${lote}-plan.md: consulta solo lo que tu pieza necesite.`
 // Los agentes fe-* de .claude/agents solo se cargan al iniciar la sesión; mientras tanto se usan los agentes base con
 // modelo y esfuerzo explícitos y sus reglas en el prompt (reglas = el contenido de .claude/agents/fe-*.md).
+const SALIDA_FE = `Antes de devolver tu pieza, cumple esta lista de salida (decisión de Luis: hacerlo bien a la primera):
+1. PRUEBAS PRIMERO: escribe las pruebas vitest de tu pieza (render con datos del DTO, acciones, errores del servidor bajo el campo, permisos ocultan/muestran) y ejecútalas.
+2. \`npm run check\` completo en verde (tipos generados, tsc, oxlint, vitest, build).
+3. AUTO-REVISIÓN de tu diff con las dos lentes de los revisores: PARIDAD (tipos generados, permisos y módulos exactos del API, códigos de estatus y mensajes reales, nada que el API rechace siempre, sin scroll horizontal a 360 px) y CONVENCIONES (ordenar columnas, QBox después de los filtros, chips sin envolver, idioma sin reinicio, textos por t()).
+4. Corrige lo que encuentres antes de devolver y anota en 'notas' qué verificaste.`
 const REGLAS_FE = `Reglas del implementador de frontend: lee primero web-app/KIT.md; usa SIEMPRE el cliente generado (src/kernel/api) y sus tipos, nunca DTOs a mano ni any; copia los patrones del kit; textos con t('clave') en src/kernel/i18n/{es,en}.json; permisos y módulos con <Can perm> / <ModuleGate module> con los códigos exactos del API; errores del servidor con applyProblemDetails; responsive a 360 px sin scroll horizontal; identificadores en inglés, comentarios en español; termina con "npm run check" en verde (tsc, oxlint, vitest, build). Si tocas src/kernel, documenta en KIT.md y agrega una prueba.`
 const optsPieza = (p) => (p.agente === 'core'
   ? { agentType: 'implementer', model: 'opus', effort: 'high' }
@@ -37,7 +42,7 @@ for (const o of ordenes) {
   const grupo = plan.piezas.filter(p => (p.orden || 1) === o)
   log(`Grupo ${o}: ${grupo.map(p => p.nombre).join(' | ')}`)
   const res = (await parallel(grupo.map(p => () =>
-    agent(`${cabecera}\n${REGLAS_FE}\n\nImplementa SOLO la pieza "${p.nombre}":\n${p.descripcion}\nArchivos previstos: ${(p.archivos || []).join(', ')}.\nOtras piezas del mismo grupo se implementan a la vez en otros archivos: no toques archivos fuera de los tuyos salvo KIT.md, i18n (agrega claves, no borres) y routes.tsx (agrega tu ruta). Termina con npm run check en verde.`,
+    agent(`${cabecera}\n${REGLAS_FE}\n\nImplementa SOLO la pieza "${p.nombre}":\n${p.descripcion}\nArchivos previstos: ${(p.archivos || []).join(', ')}.\nOtras piezas del mismo grupo se implementan a la vez en otros archivos: no toques archivos fuera de los tuyos salvo KIT.md, i18n (agrega claves, no borres) y routes.tsx (agrega tu ruta). Termina con npm run check en verde.\n\n${SALIDA_FE}`,
       { ...optsPieza(p), label: `pieza:${p.nombre}`, schema: RESULT })))).filter(Boolean)
   hechas.push(...res)
 }

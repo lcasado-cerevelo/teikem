@@ -21,17 +21,30 @@ const VERDICT = { type: 'object', properties: { real: { type: 'boolean' }, evide
 
 const contexto = `Lote ${lote} (${titulo}). Plan aprobado:\n${JSON.stringify(plan, null, 1)}`
 
+// Decisión de Luis (2026-09-27): hacerlo bien a la primera. Cada implementador prueba y revisa su pieza ANTES de devolverla,
+// con las mismas lentes que después usan los revisores, para minimizar rondas de verificación.
+const SALIDA = `Antes de devolver tu pieza, cumple esta lista de salida (no la saltes):
+1. PRUEBAS PRIMERO: escribe las pruebas unitarias xunit de toda regla pura de tu pieza (validaciones, mensajes exactos, cálculos, transiciones) y ejecútalas con \`dotnet test\`; agrega casos de borde (vacío, límite, tenant ajeno, permiso ausente).
+2. COMPILA: \`dotnet build Teikem.sln\` sin errores ni warnings nuevos; no devuelvas con el build roto.
+3. AUTO-REVISIÓN con las cuatro lentes, leyendo tu diff completo (git diff) como si fueras otro:
+   - compile-ef: mapeos 1:1 con el SQL (nombres, tipos, nulabilidad, FKs), consultas traducibles a SQL, AsNoTracking en lecturas, sin N+1.
+   - tenant-security: TenantId siempre del principal (nunca del request), filtro global aplicado, [RequirePermission]/[RequireModule] en cada endpoint, resolución de pertenencia en asociaciones polimórficas, secretos con [SensitiveData], nada sensible en logs ni en DTOs.
+   - spec: cada regla y mensaje exacto del plan y del documento maestro está implementado tal cual; catálogos por FK (LookupCode/StatusCode) y no strings; cambios de estatus solo por StatusService; soft delete; auditoría; comentarios y mensajes en español, identificadores en inglés.
+   - tests: cada rama de negocio tiene prueba; los mensajes de error se prueban por texto exacto.
+4. Corrige todo lo que encuentres antes de devolver y deja en 'notas' qué verificaste y qué no pudiste verificar.`
+
+
 phase('Implementar')
 const piezasParalelas = plan.piezas.filter(p => !p.tocaCompartidos)
 const piezasCompartidas = plan.piezas.filter(p => p.tocaCompartidos)
 log(`${piezasParalelas.length} piezas en paralelo, ${piezasCompartidas.length} de integración.`)
 
 const hechas = (await parallel(piezasParalelas.map(p => () =>
-  agent(`${contexto}\n\nImplementa SOLO la pieza "${p.nombre}": ${p.descripcion}\nArchivos: ${p.archivos.join(', ')}. No toques archivos compartidos. Otras piezas se están implementando a la vez en otros archivos: si necesitas un tipo que aún no existe, decláralo en tus propios archivos con el nombre que dice el plan.`,
+  agent(`${contexto}\n\nImplementa SOLO la pieza "${p.nombre}": ${p.descripcion}\nArchivos: ${p.archivos.join(', ')}. No toques archivos compartidos. Otras piezas se están implementando a la vez en otros archivos: si necesitas un tipo que aún no existe, decláralo en tus propios archivos con el nombre que dice el plan.\n\n${SALIDA}`,
     { agentType: 'implementer', label: `pieza:${p.nombre}`, schema: RESULT })))).filter(Boolean)
 
 for (const p of piezasCompartidas) {
-  await agent(`${contexto}\n\nYa se implementaron estas piezas: ${JSON.stringify(hechas.map(h => h.archivos))}.\nImplementa ahora la pieza de integración "${p.nombre}": ${p.descripcion}\nArchivos: ${p.archivos.join(', ')}. Registra DbSets, configuraciones, servicios, fuentes de datos y permisos que las otras piezas necesiten; aplica los cambios de SQL del plan en Diseño/ (estructura y seed) en el orden de capas correcto. Luego compila y prueba si hay dotnet.`,
+  await agent(`${contexto}\n\nYa se implementaron estas piezas: ${JSON.stringify(hechas.map(h => h.archivos))}.\nImplementa ahora la pieza de integración "${p.nombre}": ${p.descripcion}\nArchivos: ${p.archivos.join(', ')}. Registra DbSets, configuraciones, servicios, fuentes de datos y permisos que las otras piezas necesiten; aplica los cambios de SQL del plan en Diseño/ (estructura y seed) en el orden de capas correcto. Luego compila y prueba si hay dotnet.\n\n${SALIDA}`,
     { agentType: 'implementer', label: `integracion:${p.nombre}`, schema: RESULT })
 }
 
