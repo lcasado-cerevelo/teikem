@@ -98,12 +98,18 @@ public sealed class RequireAal2Attribute : Attribute, IAsyncActionFilter
 {
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var tenant = context.HttpContext.RequestServices.GetRequiredService<ITenantContext>();
-        var db = context.HttpContext.RequestServices.GetRequiredService<TeikemDbContext>();
-        var window = tenant.TenantId is null ? 30 : await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenant.TenantId).Select(t => t.Aal2WindowMinutes).FirstOrDefaultAsync(context.HttpContext.RequestAborted);
+        await EnsureAsync(context.HttpContext.RequestServices, context.HttpContext.RequestAborted);
+        await next();
+    }
+
+    /// <summary>Comprobación AAL2 compartida con el filtro y con la repetición idempotente (Lote 8A): sin reauth reciente → StepUpRequiredException.</summary>
+    public static async Task EnsureAsync(IServiceProvider services, CancellationToken ct)
+    {
+        var tenant = services.GetRequiredService<ITenantContext>();
+        var db = services.GetRequiredService<TeikemDbContext>();
+        var window = tenant.TenantId is null ? 30 : await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenant.TenantId).Select(t => t.Aal2WindowMinutes).FirstOrDefaultAsync(ct);
         if (window <= 0) window = 30;
         if (tenant.Aal2VerifiedAtUtc is null || tenant.Aal2VerifiedAtUtc.Value.AddMinutes(window) < DateTime.UtcNow)
             throw new StepUpRequiredException();
-        await next();
     }
 }

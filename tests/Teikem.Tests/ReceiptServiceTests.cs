@@ -159,6 +159,61 @@ public sealed class ReceiptServiceTests
     }
 
     [Fact]
+    public async Task Atomic_client_asn_receipt_matches_lots_and_merges_serial_scans()
+    {
+        // Lote 8A, decisión 14 — recibo en una llamada contra aviso de cliente (asnId + confirm): lo escaneado se aplica por
+        // producto y lote sobre las líneas del aviso; las lecturas repetidas de un producto por serie acumulan sus series.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var lotPublicId = Guid.NewGuid();
+        var serialPublicId = Guid.NewGuid();
+        Product P(int productId, Guid publicId, string sku, string tracking) => new()
+        {
+            ProductId = productId, PublicId = publicId, TenantId = ReceivingFixture.TenantId, ClientId = f.ClientId, Sku = sku, Name = "Producto " + sku,
+            BaseUomLookupId = f.LookupId(LookupDomains.UnitOfMeasure, "UN"),
+            TrackingTypeLookupId = f.LookupId(LookupDomains.TrackingType, tracking), PurchaseCost = 1m, IsActive = true,
+        };
+        f.Db.Set<Product>().AddRange(P(306, lotPublicId, "PCL", TrackingTypes.Lot), P(307, serialPublicId, "PCS", TrackingTypes.Serial));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var asns = f.Get<AsnService>();
+        var asn = await asns.CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(lotPublicId, 5m, "L-1"), new AsnLineRequest(serialPublicId, 3m) }), default);
+        var receipts = f.Get<ReceiptService>();
+
+        // Serie repetida entre lecturas del mismo producto → lines[2].serialNumbers; no queda recibo ni asiento.
+        var dup = await Assert.ThrowsAsync<ValidationException>(() => receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
+            Lines: new[]
+            {
+                new ReceiptLineRequest(lotPublicId, 2m, Lot: new LotInput("L-1")),
+                new ReceiptLineRequest(serialPublicId, 1m, SerialNumbers: new[] { "S1" }),
+                new ReceiptLineRequest(serialPublicId, 1m, SerialNumbers: new[] { "S1" }),
+            }, Confirm: true), default));
+        Assert.True(dup.Errors!.ContainsKey("lines[2].serialNumbers"));
+        f.Db.ChangeTracker.Clear();
+        Assert.Empty(await f.Db.Set<ReceiptHeader>().AsNoTracking().ToListAsync());
+        Assert.Empty(await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync());
+
+        var confirmed = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
+            Lines: new[]
+            {
+                new ReceiptLineRequest(lotPublicId, 2m, Lot: new LotInput("L-1")),
+                new ReceiptLineRequest(serialPublicId, 1m, SerialNumbers: new[] { "S1" }),
+                new ReceiptLineRequest(serialPublicId, 1m, SerialNumbers: new[] { "S2" }),
+            }, Confirm: true), default);
+
+        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(2, confirmed.Lines.Count);
+        Assert.All(confirmed.Lines, l => Assert.NotNull(l.AsnLineId));
+        var lot = Assert.Single(confirmed.Lines, l => l.ProductPublicId == lotPublicId);
+        Assert.Equal(2m, lot.ReceivedQty);
+        Assert.Equal("L-1", lot.LotNumber);
+        var serial = Assert.Single(confirmed.Lines, l => l.ProductPublicId == serialPublicId);
+        Assert.Equal(2m, serial.ReceivedQty);
+        Assert.Equal(new[] { "S1", "S2" }, serial.SerialNumbers.OrderBy(x => x));
+        Assert.Equal(AsnStatuses.Received, (await asns.GetAsync(asn.Id, InventoryScope.Any, default)).StatusCode);
+    }
+
+    [Fact]
     public async Task Purchase_order_with_an_open_receipt_rejects_another_until_it_is_deleted()
     {
         await using var f = await ReceivingFixture.CreateAsync();

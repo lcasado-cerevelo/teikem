@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Security;
@@ -37,7 +38,8 @@ namespace Teikem.Api.Middleware;
 /// guarda su respuesta y el reintento recibe Replay. Guardar la respuesta se reintenta si falla.</item>
 /// </list>
 /// Nunca guarda el cuerpo de la petición (puede traer PIN o contraseñas), solo su huella. Va después de UseAuthorization: las
-/// peticiones rechazadas por autenticación o permiso no dejan registro.
+/// peticiones rechazadas por autenticación o permiso no dejan registro; antes de repetir se vuelven a aplicar [RequireModule] y
+/// [RequireAal2] del endpoint (son filtros de MVC que la repetición no alcanza).
 /// </summary>
 public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger)
 {
@@ -83,6 +85,9 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         switch (IdempotencyRules.Decide(existing?.RequestHash, existing?.ResponseCode, existing?.CreatedAtUtc, hash, now))
         {
             case IdempotencyDecision.Replay:
+                // Los filtros [RequireModule] y [RequireAal2] corren dentro de MVC y la repetición no llega ahí: se vuelven a
+                // aplicar aquí para que un módulo apagado (403) o una ventana AAL2 vencida no se salten con la clave.
+                await EnsureEndpointFiltersAsync(http, ct);
                 await ReplayAsync(http, existing!.ResponseCode!.Value, existing.ResponseJson);
                 return;
             case IdempotencyDecision.BodyMismatch:
@@ -218,6 +223,17 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         {
             logger.LogError(ex, "No se pudo liberar la clave de idempotencia {RecordId}.", recordId);
         }
+    }
+
+    private static async Task EnsureEndpointFiltersAsync(HttpContext http, CancellationToken ct)
+    {
+        var meta = http.GetEndpoint()?.Metadata;
+        if (meta is null) return;
+        var modules = http.RequestServices.GetRequiredService<ModuleService>();
+        foreach (var m in meta.GetOrderedMetadata<RequireModuleAttribute>())
+            await modules.EnsureEnabledAsync(m.ModuleKey, ct);
+        if (meta.GetMetadata<RequireAal2Attribute>() is not null)
+            await RequireAal2Attribute.EnsureAsync(http.RequestServices, ct);
     }
 
     private static async Task ReplayAsync(HttpContext http, int status, string? body)

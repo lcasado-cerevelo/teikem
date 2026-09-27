@@ -351,6 +351,15 @@ public sealed class CycleCountServiceTests
         Assert.Equal(CycleCountRules.ProductInactive("PX"), product.Message);
         await AssertNothingSavedAsync();
 
+        // La misma línea por las dos vías (lineId y posición + producto) → lines[1] repetida; nada se guarda.
+        var rep = await Assert.ThrowsAsync<ValidationException>(() => svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: none.Id, CountedQty: 1m),
+            new CountBatchItem(BinId: f.PickBin1, ProductPublicId: f.ProductNonePublicId, CountedQty: 2m),
+        }), default));
+        Assert.Equal(new[] { CycleCountService.BatchLineRepeated }, rep.Errors!["lines[1]"]);
+        await AssertNothingSavedAsync();
+
         // Válido: serie por lista, cantidad y lo encontrado de PL con lote por número (se crea el lote y la línea con LotId).
         var result = await svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
         {
@@ -371,6 +380,14 @@ public sealed class CycleCountServiceTests
         Assert.Equal(4m, found.CountedQty);
         f.Db.ChangeTracker.Clear();
         Assert.Equal(found.LotId, (await f.Db.Set<InventoryLot>().AsNoTracking().SingleAsync(l => l.ProductId == f.ProductLotId && l.LotNumber == "L-8A")).LotId);
+
+        // Como cuenta la app (posición + producto, sin lineId): captura la línea existente y no agrega otra.
+        var byKey = await svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(BinId: f.PickBin1, ProductPublicId: f.ProductNonePublicId, CountedQty: 3m),
+        }), default);
+        Assert.Equal(3, byKey.Lines.Count);
+        Assert.Equal(3m, byKey.Lines.Single(l => l.Id == none.Id).CountedQty);
     }
 
     [Fact]

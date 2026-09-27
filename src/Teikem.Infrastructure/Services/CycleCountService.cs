@@ -58,7 +58,6 @@ public sealed class CycleCountService(
 
     // ================================================================ lista
 
-    /// <summary>Conteos activos (los 200 más recientes) con filtros por almacén, estatus, fecha de alta (UTC), posición, producto, categoría y búsqueda.</summary>
     /// <summary>
     /// Lote 8A — lista para quien consulta: con blind = true (sin warehouse.count) VarianceLines y NetVariance llegan null
     /// (conteo a ciegas; ver Blind).
@@ -69,6 +68,7 @@ public sealed class CycleCountService(
         return blind ? list.Select(c => c with { VarianceLines = null, NetVariance = null }).ToList() : list;
     }
 
+    /// <summary>Conteos activos (los 200 más recientes) con filtros por almacén, estatus, fecha de alta (UTC), posición, producto, categoría y búsqueda.</summary>
     public async Task<IReadOnlyList<CycleCountDto>> ListAsync(CycleCountQuery? q, CancellationToken ct)
     {
         q ??= new CycleCountQuery();

@@ -3537,6 +3537,14 @@ R8=$(expect 200 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")"); N8=$(echo "$R
 replayed && fail "la primera llamada no debe marcarse como repetida"
 [[ $(expect 200 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")" | jq -r .header.number) == "$N8" ]] || fail "la repetición con la misma clave creó otro recibo"
 replayed || fail "la repetición no trae Idempotent-Replayed: true"
+# La repetición vuelve a aplicar [RequireModule]: con WMS_LOTSERIAL apagado la misma clave responde 403 (sin repetir).
+TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
+expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null || fail "apagar WMS_LOTSERIAL"
+expect 403 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")" | jq -e '.code=="module_disabled"' >/dev/null || fail "repetición con el módulo apagado → 403 module_disabled"
+replayed && fail "la repetición con el módulo apagado no debe traer Idempotent-Replayed"
+expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null || fail "volver a encender WMS_LOTSERIAL"
+[[ $(expect 200 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")" | jq -r .header.number) == "$N8" ]] || fail "con el módulo encendido de nuevo la repetición no devolvió el mismo recibo"
+replayed || fail "la repetición tras reencender el módulo no trae Idempotent-Replayed: true"
 expect 409 "$(idem POST /api/v1/receipts "$KEY8" "$(echo "$BODY8" | jq -c '.lines[0].receivedQty=3')")" | jq -e --arg m "La clave de idempotencia ya se usó con otro contenido." "$HASM" >/dev/null || fail "misma clave con otro cuerpo → 409"
 # La clave es por usuario (TenantId, UserId, clave): la misma clave y el mismo cuerpo de otro usuario crean otro recibo.
 TWH8=$(login "bodega6$TS@teikem.local" "$PASS")
@@ -3581,7 +3589,9 @@ replayed && fail "el primer PATCH no debe marcarse como repetido"
 PA8B=$(expect 200 "$(idem PATCH "/api/v1/products/$PZ" "smoke-$TS-patch" "$BPZ" "$TOKEN")") || fail "PATCH repetido con la misma clave → 409 por rowVersion (se volvió a ejecutar)"
 replayed || fail "PATCH repetido sin Idempotent-Replayed"
 [[ $(echo "$PA8" | jq -cS .) == $(echo "$PA8B" | jq -cS .) ]] || fail "PATCH repetido con otro cuerpo de respuesta"
-expect 409 "$(req PATCH "/api/v1/products/$PZ" "$BPZ")" >/dev/null || fail "el PATCH sin clave con la rowVersion usada debe dar 409"
+# Con otro nombre para que EF emita el UPDATE (un PATCH sin cambios no revisa la concurrencia).
+BPZ2=$(jq -cn --arg rv "$RVZ" --arg n "Aparato $TS (8A-bis)" '{name:$n,rowVersion:$rv}')
+expect 409 "$(req PATCH "/api/v1/products/$PZ" "$BPZ2")" >/dev/null || fail "el PATCH sin clave con la rowVersion usada debe dar 409"
 # Ramas de la idempotencia que dependen de la BD (con SMOKE_SQL): registro sin respuesta (en vuelo) → 409; registro de más
 # de 7 días → la operación se vuelve a ejecutar (sin Idempotent-Replayed) y los vencidos se borran perezosamente al insertar.
 # QUOTED_IDENTIFIER ON: sqlcmd lo apaga por defecto y la tabla tiene un índice filtrado (UX_IntegrationLog_Idem).

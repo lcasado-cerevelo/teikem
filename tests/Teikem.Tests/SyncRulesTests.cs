@@ -304,7 +304,8 @@ public sealed class SyncRulesTests
         var partial = Po("PO-00004", PurchaseOrderStatuses.Partial);
         f.Db.Set<PurchaseOrder>().AddRange(open, closed, draft, partial);
         await SaveClearAsync(f);
-        f.Db.Set<PurchaseOrderLine>().Add(new PurchaseOrderLine { PurchaseOrderId = open.PurchaseOrderId, ProductId = p.ProductId, QtyOrdered = 10m, QtyReceived = 4m, UnitCost = 1m });
+        var poLine = new PurchaseOrderLine { PurchaseOrderId = open.PurchaseOrderId, ProductId = p.ProductId, QtyOrdered = 10m, QtyReceived = 4m, UnitCost = 1m };
+        f.Db.Set<PurchaseOrderLine>().Add(poLine);
         await SaveClearAsync(f);
         var sync = f.Get<SyncService>();
 
@@ -328,6 +329,101 @@ public sealed class SyncRulesTests
         var gone = Assert.Single(diff.Items);
         Assert.Equal(closed.PublicId, gone.PublicId);
         Assert.False(gone.IsActive);   // el aparato la borra
+
+        // Una resolución de faltante cambia qtyPending sin cambiar el estatus ni auditar el encabezado: la OC llega por esa rama.
+        var resolvedAt = DateTime.UtcNow;
+        f.Db.Set<PurchaseOrderShortageResolution>().Add(new PurchaseOrderShortageResolution
+        {
+            TenantId = WmsFixture.TenantId, PurchaseOrderId = open.PurchaseOrderId, PurchaseOrderLineId = poLine.PurchaseOrderLineId,
+            ActionLookupId = 1, Quantity = 2m, CreatedAtUtc = resolvedAt,
+        });
+        await SaveClearAsync(f);
+        var byResolution = await sync.PurchaseOrdersAsync(new SyncQuery(Since: resolvedAt.AddMinutes(-5)), default);
+        var changed = Assert.Single(byResolution.Items, i => i.PublicId == open.PublicId);
+        Assert.True(changed.IsActive);
+        Assert.Equal(4m, Assert.Single(changed.Lines).QtyPending);   // 10 - 4 recibidas - 2 resueltas
+        Assert.DoesNotContain(byResolution.Items, i => i.PublicId == draft.PublicId || i.PublicId == partial.PublicId);
+    }
+
+    [Fact]
+    public async Task Asns_difference_brings_an_asn_whose_line_changed()
+    {
+        // La auditoría de la línea (bajo ASN con el id de la línea) basta para que el aviso llegue en la diferencia. El id de la
+        // línea no coincide con ningún AsnId para que la rama del encabezado no oculte el resultado.
+        await using var f = await SyncFixtureAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var p = await f.AddProductAsync("SKU-ASNL");
+        var yesterday = DateTime.UtcNow.AddDays(-1);
+        var asn = new Asn
+        {
+            TenantId = WmsFixture.TenantId, WarehouseId = w.WarehouseId, Reference = "ASN-LINE",
+            StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Expected), IsActive = true, CreatedAtUtc = yesterday,
+        };
+        f.Db.Set<Asn>().Add(asn);
+        await SaveClearAsync(f);
+        f.Db.Set<AsnLine>().Add(new AsnLine { AsnLineId = asn.AsnId + 500, AsnId = asn.AsnId, ProductId = p.ProductId, ExpectedQty = 3m });
+        await SaveClearAsync(f);
+        var sync = f.Get<SyncService>();
+        var now = DateTime.UtcNow;
+        Assert.Empty((await sync.AsnsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items);
+
+        Audit(f, EntityTypes.Asn, asn.AsnId + 500, now);
+        await SaveClearAsync(f);
+        var diff = await sync.AsnsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default);
+        var item = Assert.Single(diff.Items);
+        Assert.Equal(asn.AsnId, item.Id);
+        Assert.True(item.IsActive);
+    }
+
+    [Fact]
+    public async Task Sync_never_returns_bins_orders_asns_or_tasks_of_another_tenant()
+    {
+        // Posición, zona y líneas no tienen TenantId: se alcanzan solo por su padre filtrado (almacén, OC, aviso).
+        await using var f = await SyncFixtureAsync();
+        var mine = await f.AddWarehouseAsync("W1");
+        var myBin = await f.AddBinAsync(await f.AddZoneAsync(mine, "PCK", ZoneTypes.Picking), "P-01");
+        var foreign = await f.AddWarehouseAsync("WX", tenantId: WmsFixture.OtherTenantId);
+        var foreignBin = await f.AddBinAsync(await f.AddZoneAsync(foreign, "PCK", ZoneTypes.Picking), "X-01");
+        var foreignProduct = await f.AddProductAsync("SKU-X", tenantId: WmsFixture.OtherTenantId);
+        var supplier = new Supplier { TenantId = WmsFixture.OtherTenantId, Name = "Proveedor ajeno" };
+        f.Db.Set<Supplier>().Add(supplier);
+        await SaveClearAsync(f);
+        var po = new PurchaseOrder
+        {
+            PublicId = Guid.NewGuid(), TenantId = WmsFixture.OtherTenantId, SupplierId = supplier.SupplierId, WarehouseId = foreign.WarehouseId,
+            Number = "PO-X", OrderDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
+        };
+        var asn = new Asn
+        {
+            TenantId = WmsFixture.OtherTenantId, WarehouseId = foreign.WarehouseId, Reference = "ASN-X",
+            StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Expected), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
+        };
+        f.Db.Set<PurchaseOrder>().Add(po);
+        f.Db.Set<Asn>().Add(asn);
+        await SaveClearAsync(f);
+        f.Db.Set<PurchaseOrderLine>().Add(new PurchaseOrderLine { PurchaseOrderId = po.PurchaseOrderId, ProductId = foreignProduct.ProductId, QtyOrdered = 5m, UnitCost = 1m });
+        f.Db.Set<AsnLine>().Add(new AsnLine { AsnId = asn.AsnId, ProductId = foreignProduct.ProductId, ExpectedQty = 5m });
+        await SaveClearAsync(f);
+        using (f.AsTenant(WmsFixture.OtherTenantId))
+            await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Count, foreign.WarehouseId));
+        var now = DateTime.UtcNow;
+        // Auditoría del tenant propio con el id de la posición ajena: la rama Since tampoco debe alcanzarla.
+        Audit(f, EntityTypes.Warehouse, foreignBin.WarehouseBinId, now);
+        await SaveClearAsync(f);
+        var sync = f.Get<SyncService>();
+
+        var bins = await sync.BinsAsync(new SyncQuery(), default);
+        Assert.Equal(new[] { myBin.WarehouseBinId }, bins.Items.Select(i => i.Id));
+        var diff = await sync.BinsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default);
+        Assert.DoesNotContain(diff.Items, i => i.Id == foreignBin.WarehouseBinId);
+        await Assert.ThrowsAsync<NotFoundException>(() => sync.BinsAsync(new SyncQuery(WarehousePublicId: foreign.PublicId), default));
+        Assert.Empty((await sync.PurchaseOrdersAsync(new SyncQuery(), default)).Items);
+        Assert.Empty((await sync.PurchaseOrdersAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items);
+        Assert.Empty((await sync.AsnsAsync(new SyncQuery(), default)).Items);
+        Assert.Empty((await sync.AsnsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items);
+        Assert.Empty((await sync.WarehouseTasksAsync(new SyncQuery(), default)).Items);
+        Assert.Empty((await sync.WarehouseTasksAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items);
     }
 
     [Fact]

@@ -189,6 +189,26 @@ public class DeviceServiceTests
     }
 
     [Fact]
+    public async Task Default_warehouse_of_another_tenant_is_not_found()
+    {
+        await using var f = await FixtureAsync();
+        var devices = f.Get<DeviceService>();
+        var foreign = await f.AddWarehouseAsync("WX", tenantId: WmsFixture.OtherTenantId);
+        var own = await devices.CreateAsync(new DeviceCreateRequest("ZB-01", null, null, null, null), default);
+        f.Db.ChangeTracker.Clear();
+
+        var c = await Assert.ThrowsAsync<NotFoundException>(() => devices.CreateAsync(new DeviceCreateRequest("ZB-02", null, null, foreign.PublicId, null), default));
+        Assert.Equal("Almacén no encontrado.", c.Message);
+        Assert.Equal(404, c.StatusCode);
+        f.Db.ChangeTracker.Clear();
+        Assert.False(await f.Db.Set<UserDevice>().IgnoreQueryFilters().AnyAsync(d => d.Code == "ZB-02"));
+
+        var u = await Assert.ThrowsAsync<NotFoundException>(() => devices.UpdateAsync(own.Device.PublicId, new DevicePatchRequest(null, foreign.PublicId), default));
+        Assert.Equal("Almacén no encontrado.", u.Message);
+        Assert.Null(Row(f, own.Device.PublicId).DefaultWarehouseId);
+    }
+
+    [Fact]
     public async Task A_device_of_another_tenant_is_not_found()
     {
         await using var f = await FixtureAsync();
