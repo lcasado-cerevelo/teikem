@@ -24,14 +24,16 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     /// subcategorías), ownerClientPublicId, ownOnly, activeOnly (selectores), warehousePublicId (totales de ese almacén) y
     /// onlyAvailable (selector de recolección: disponible recolectable &gt; 0). selectorOrder=true = orden de los selectores de
     /// producto (maestro L1207): mercancía de clientes primero (el de más inventario en mano antes) y suministros propios al
-    /// final; sin él, por SKU (pantalla Productos e inventario).
+    /// final; sin él, por SKU (pantalla Productos e inventario). belowMin=true (Lote 7A) = solo productos bajo mínimo (mismo
+    /// cálculo que isBelowMin; con warehousePublicId, el disponible de ese almacén): el Pulso los cuenta con take=1 y total.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductPageDto> List([FromQuery] string? search, [FromQuery] int[]? categoryIds, [FromQuery] Guid? ownerClientPublicId,
         [FromQuery] bool? ownOnly, [FromQuery] bool activeOnly, [FromQuery] Guid? warehousePublicId, [FromQuery] bool onlyAvailable,
-        [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, CancellationToken ct = default)
+        [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, [FromQuery] bool belowMin = false,
+        CancellationToken ct = default)
         => products.ListAsync(new ProductListQuery(search, categoryIds is { Length: > 0 } ? categoryIds : null, ownerClientPublicId, ownOnly,
-            activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder), InventoryScope.Any, ct);
+            activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin), InventoryScope.Any, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductDetailDto> Get(Guid publicId, CancellationToken ct) => products.GetAsync(publicId, InventoryScope.Any, ct);

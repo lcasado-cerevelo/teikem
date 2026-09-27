@@ -28,9 +28,12 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
 /// <summary>
 /// Filtros de la lista de productos. SelectorOrder = orden de los selectores de producto (maestro L1207): clientes 3PL primero
 /// (el de más inventario en mano antes, cada cliente en bloque) y propios al final; sin él, por SKU (pantalla Productos e inventario).
+/// BelowMin (Lote 7A) = solo productos bajo mínimo (activos, con mínimo y disponible &lt; mínimo, el mismo cálculo de IsBelowMin;
+/// con WarehousePublicId, el disponible de ese almacén): el panel Almacén del Pulso lo cuenta con take=1 y total.
 /// </summary>
 public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds = null, Guid? OwnerClientPublicId = null, bool? OwnOnly = null,
-    bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false);
+    bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false,
+    bool BelowMin = false);
 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,

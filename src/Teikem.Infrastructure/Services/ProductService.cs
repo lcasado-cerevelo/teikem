@@ -100,6 +100,15 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             query = query.Where(p => balances.Where(b => b.ProductId == p.ProductId).Sum(b => b.QtyOnHand - b.QtyReserved) > 0);
         }
 
+        if (q.BelowMin)
+        {
+            // Lote 7A: bajo mínimo con el mismo cálculo que ProductRules.IsBelowMin de la lista (activo, con mínimo y disponible
+            // = en mano − reservado de todas las posiciones, o del almacén indicado, menor que el mínimo; sin saldo = 0).
+            var stock = db.Set<StockBalance>().AsNoTracking().Where(b => warehouseId == null || b.WarehouseId == warehouseId);
+            query = query.Where(p => p.IsActive && p.MinQty != null
+                                     && (stock.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) < p.MinQty);
+        }
+
         var total = await query.CountAsync(ct);
         IOrderedQueryable<Product> ordered;
         if (q.SelectorOrder)
