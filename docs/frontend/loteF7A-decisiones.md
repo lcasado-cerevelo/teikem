@@ -136,3 +136,7 @@ Copiado de `fueraDeAlcance` de `docs/frontend/loteF7A-plan.json`, con lo verific
 No se hizo push a un repositorio remoto desde este entorno en este cierre, así que no hay una corrida de GitHub
 Actions que enlazar todavía (a diferencia de F1 y F6, donde sí se referenció una corrida verde). Lo verificado es la
 ejecución local descrita en "Cómo se prueba": `npm run check` verde y la suite completa de Playwright verde.
+
+## Verificación en CI
+
+- Corrida verde de GitHub Actions (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36321836638 (commit `1b09ece`).
