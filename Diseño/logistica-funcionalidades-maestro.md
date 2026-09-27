@@ -341,20 +341,26 @@ Offline-first, patrón colavora.
 - **Notificaciones push** (token en `DriverDevice`): nuevo trip asignado, cambio de ruta, mensaje del dispatcher.
 - **Biometría/sesión** reutilizando el patrón de SEPHAS (`expo-local-authentication`, refresh JWT con reauth).
 
-### 8B. App de almacén para terminales con escáner (decisión de Luis, 2026-09-27) — pendiente de construir
+### 8A. App de almacén para terminales con escáner (decisión de Luis, 2026-09-27) — pendiente de construir
 
 Aplicación Android instalable (Expo, mismo stack que la app de choferes; no es la app de choferes ni el portal, que es web)
 para terminales con escáner integrado (Zebra MC3300 y similares, lectura por DataWedge). **Trabajo sin señal como norma**:
 datos maestros del almacén elegido en SQLite local, operaciones en una cola de salida con `Idempotency-Key` que se envía en
 orden al recuperar señal; un rechazo de negocio del servidor deja la operación "requiere revisión" sin detener la cola. La
 sincronización va por WiFi (o por la base con puerto de red si la hay); la base sencilla solo carga e instala.
-Primera versión: entrar y elegir almacén (PIN local tras la contraseña), Recibir (contra orden de compra o aviso, o recibo
+Primera versión: entrar (aparato registrado una vez por el administrador; el almacenista elige su nombre y teclea su PIN personal, que identifica al usuario para la auditoría; sin contraseña ni MFA en el aparato) y elegir almacén, Recibir (contra orden de compra o aviso, o recibo
 ciego creado al primer escaneo), Acomodar (tareas PUTAWAY con posición sugerida), Despacho (recolectar y empacar; el servidor
 crea la orden de venta), Conteo (inventario físico diario, a ciegas para quien no tiene `warehouse.count`), Consultar y
 estado de Sincronización. Vocabulario del piso: "Posición" para la ubicación en el rack. Requiere en el backend el middleware
 de idempotencia del módulo 13, endpoints de sincronización por diferencia, búsqueda por código de barras, registro de
 dispositivo (`UserDevice`, generaliza `DriverDevice`) y vida configurable del refresh token. Plan completo, pantallas,
 piezas y decisiones a ratificar en `docs/mobile/app-almacen-plan.md`.
+
+### 8B. App de choferes — se construye después de 8A
+
+Es la app descrita arriba en este módulo 8 (offline-first, navegación, POD, pings GPS, push). No sale del plan: se hace
+después de la app de almacén y reutiliza su núcleo (autenticación por aparato, motor de sincronización con cola de salida e
+idempotencia, base local) y su módulo de escáner.
 
 ## 9. Prueba de entrega (POD)
 

@@ -8,7 +8,8 @@ El diseño resumido vive en el maestro (`Diseño/logistica-funcionalidades-maest
 ## 1. Arquitectura
 
 - **Proyecto**: `app-almacen/` en este repo (Expo SDK actual, React Native, TypeScript), *development build* nativo (no Expo Go).
-  **Es la única app móvil que se construye**; la app de choferes del módulo 8 no se hace.
+  Numeración: **Lote 8A = app de almacén** (backend previo + app, este plan); **Lote 8B = app de choferes** (diseñada en el
+  módulo 8 del maestro; se construye después, reutilizando el núcleo, el motor de sincronización y el módulo de escáner de 8A).
   Android únicamente en esta versión. Versión mínima Android 7.0 (API 24), que cubre toda la serie MC3300.
 - **Comparte con `web-app/`** (copiando módulos puros, no importando entre proyectos): cliente del API generado desde
   `openapi.json` (`openapi-fetch`), `applyProblemDetails`, i18n es/en, evaluador de reglas y utilidades de fechas. Los
@@ -29,10 +30,11 @@ El diseño resumido vive en el maestro (`Diseño/logistica-funcionalidades-maest
   3. Dispara: al abrir la app, cada 60 s con red, al recuperar conectividad (`NetInfo`), y con el botón "Sincronizar ahora".
 - **Sesión y seguridad (ajustada a aparatos que no salen del almacén)**: el administrador registra cada terminal una vez
   desde la web ("aparato de confianza": `UserDevice` con un código que se teclea en la app la primera vez); desde entonces
-  el aparato queda enlazado al tenant. Cada almacenista entra con su **PIN de 4 a 6 dígitos** (lo define en Mi cuenta de la
+  el aparato queda enlazado al tenant. Cada almacenista **elige su nombre en la lista de usuarios del almacén y teclea su PIN de 4 a 6 dígitos** (el PIN pertenece a ese usuario; no hay PIN compartido) (lo define en Mi cuenta de la
   web o se lo asigna el administrador; se guarda cifrado en el servidor y una copia cifrada en el aparato para desbloquear sin
   red). No hay contraseña ni MFA en el aparato. Cambiar de usuario en el mismo aparato es teclear otro PIN, así cada
-  operación queda a nombre de quien la hizo (auditoría y Actividad reciente). El token del aparato dura 30 días y se renueva
+  operación viaja con el token de ese usuario y queda a su nombre en `AuditLog`, `EntityStatusHistory.ChangedBy` y en la columna
+  "Quién" de Actividad reciente, exactamente igual que si la hiciera desde la web. El token del aparato dura 30 días y se renueva
   al sincronizar; si un aparato se pierde, el administrador lo desactiva en la web y deja de sincronizar en el acto (los
   datos locales viven en el almacenamiento privado de la app, borrado al desinstalar). La app también guarda el almacén elegido.
 - **Vocabulario del piso**: todas las etiquetas por i18n; "Posición" es la palabra para lo que ellos llaman "almacén" en su
@@ -54,7 +56,7 @@ El diseño resumido vive en el maestro (`Diseño/logistica-funcionalidades-maest
 Reglas de captura comunes: un solo campo enfocado; el escaneo escribe y avanza; Enter físico equivale a escanear; errores del
 API bajo el campo con el mensaje exacto; sonido y vibración distintos para ok y error (el MC3300 los tiene).
 
-## 3. Backend previo (Lote 8, `lote-implementar`)
+## 3. Backend previo (Lote 8A-backend, `lote-implementar`)
 
 | Pieza | Qué deja |
 |---|---|
@@ -65,7 +67,7 @@ API bajo el campo con el mensaje exacto; sonido y vibración distintos para ok y
 
 Sin cambios de comportamiento para la web; todo es aditivo.
 
-## 4. App (Lote A1, workflow nuevo `app-implementar` = `fe-implementar` apuntando a `app-almacen/`)
+## 4. App (Lote 8A-app, workflow nuevo `app-implementar` = `fe-implementar` apuntando a `app-almacen/`)
 
 | Pieza | Orden | Agente | Qué deja |
 |---|---|---|---|
@@ -91,11 +93,12 @@ con el API apagado a mitad del recorrido y sincronización al final). Prueba en 
 
 | Parte | Tokens |
 |---|---|
-| Lote 8 backend (3 piezas, 4 lentes, smoke, docs) | 3 a 4 M |
-| Lote A1 app (6 piezas, motor sin señal, Maestro, docs) | 8 a 11 M |
-| **Total (solo la app de almacén; la de choferes no se construye)** | **11 a 15 M** |
+| 8A backend (3 piezas, 4 lentes, smoke, docs) | 3 a 4 M |
+| 8A app (6 piezas, motor sin señal, Maestro, docs) | 8 a 11 M |
+| **Total 8A (app de almacén)** | **11 a 15 M** |
+| 8B app de choferes (después; reutiliza el núcleo de 8A) | estimación aparte cuando se planifique |
 
-Sugerencia de orden: Lote 8 completo → A0 + A1 (Recibir) y probar en el aparato → A2 a A5.
+Sugerencia de orden: 8A-backend completo → A0 + A1 (Recibir) y probar en el aparato → A2 a A5. 8B después.
 
 ## 7. Decisiones que debe ratificar Luis
 
