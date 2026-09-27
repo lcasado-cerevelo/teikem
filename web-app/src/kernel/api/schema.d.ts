@@ -1439,6 +1439,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/device/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeviceUsersRequest"];
+                    "text/json": components["schemas"]["DeviceUsersRequest"];
+                    "application/*+json": components["schemas"]["DeviceUsersRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceUserDto"][];
+                        "application/json": components["schemas"]["DeviceUserDto"][];
+                        "text/json": components["schemas"]["DeviceUserDto"][];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/device/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeviceLoginRequest"];
+                    "text/json": components["schemas"]["DeviceLoginRequest"];
+                    "application/*+json": components["schemas"]["DeviceLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TokenPairDto"];
+                        "application/json": components["schemas"]["TokenPairDto"];
+                        "text/json": components["schemas"]["TokenPairDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -4397,6 +4483,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-counts/{id}/lines/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountBatchRequest"];
+                    "text/json": components["schemas"]["CountBatchRequest"];
+                    "application/*+json": components["schemas"]["CountBatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CycleCountDetailDto"];
+                        "application/json": components["schemas"]["CycleCountDetailDto"];
+                        "text/json": components["schemas"]["CycleCountDetailDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-counts/{id}/finish": {
         parameters: {
             query?: never;
@@ -4516,6 +4647,343 @@ export interface paths {
                         "text/plain": components["schemas"]["CycleCountDetailDto"];
                         "application/json": components["schemas"]["CycleCountDetailDto"];
                         "text/json": components["schemas"]["CycleCountDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/enroll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeviceEnrollRequest"];
+                    "text/json": components["schemas"]["DeviceEnrollRequest"];
+                    "application/*+json": components["schemas"]["DeviceEnrollRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceEnrolledDto"];
+                        "application/json": components["schemas"]["DeviceEnrolledDto"];
+                        "text/json": components["schemas"]["DeviceEnrolledDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["HeartbeatRequest"];
+                    "text/json": components["schemas"]["HeartbeatRequest"];
+                    "application/*+json": components["schemas"]["HeartbeatRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceHeartbeatDto"];
+                        "application/json": components["schemas"]["DeviceHeartbeatDto"];
+                        "text/json": components["schemas"]["DeviceHeartbeatDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    includeInactive?: boolean;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceDto"][];
+                        "application/json": components["schemas"]["DeviceDto"][];
+                        "text/json": components["schemas"]["DeviceDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DeviceCreateRequest"];
+                    "text/json": components["schemas"]["DeviceCreateRequest"];
+                    "application/*+json": components["schemas"]["DeviceCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceCreatedDto"];
+                        "application/json": components["schemas"]["DeviceCreatedDto"];
+                        "text/json": components["schemas"]["DeviceCreatedDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceDto"];
+                        "application/json": components["schemas"]["DeviceDto"];
+                        "text/json": components["schemas"]["DeviceDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["DevicePatchRequest"];
+                    "text/json": components["schemas"]["DevicePatchRequest"];
+                    "application/*+json": components["schemas"]["DevicePatchRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceDto"];
+                        "application/json": components["schemas"]["DeviceDto"];
+                        "text/json": components["schemas"]["DeviceDto"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/devices/{publicId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceDto"];
+                        "application/json": components["schemas"]["DeviceDto"];
+                        "text/json": components["schemas"]["DeviceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{publicId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceDto"];
+                        "application/json": components["schemas"]["DeviceDto"];
+                        "text/json": components["schemas"]["DeviceDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{publicId}/enroll-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["DeviceCreatedDto"];
+                        "application/json": components["schemas"]["DeviceCreatedDto"];
+                        "text/json": components["schemas"]["DeviceCreatedDto"];
                     };
                 };
             };
@@ -7937,6 +8405,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PinStatusDto"];
+                        "application/json": components["schemas"]["PinStatusDto"];
+                        "text/json": components["schemas"]["PinStatusDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PinSetRequest"];
+                    "text/json": components["schemas"]["PinSetRequest"];
+                    "application/*+json": components["schemas"]["PinSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PinStatusDto"];
+                        "application/json": components["schemas"]["PinStatusDto"];
+                        "text/json": components["schemas"]["PinStatusDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/modules": {
         parameters: {
             query?: never;
@@ -8788,6 +9337,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/pick-batches/collect-and-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PickBatchCreateRequest"];
+                    "text/json": components["schemas"]["PickBatchCreateRequest"];
+                    "application/*+json": components["schemas"]["PickBatchCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PickBatchPackResultDto"];
+                        "application/json": components["schemas"]["PickBatchPackResultDto"];
+                        "text/json": components["schemas"]["PickBatchPackResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/pick-batches/{publicId}/pack": {
         parameters: {
             query?: never;
@@ -9499,6 +10091,45 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/products/by-barcode/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductDetailDto"];
+                        "application/json": components["schemas"]["ProductDetailDto"];
+                        "text/json": components["schemas"]["ProductDetailDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/products/{publicId}/lots": {
@@ -11356,6 +11987,256 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/sync/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncProductDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncProductDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncProductDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/bins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncBinDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncBinDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncBinDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/purchase-orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncPurchaseOrderDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncPurchaseOrderDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncPurchaseOrderDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/asns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncAsnDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncAsnDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncAsnDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/warehouse-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncWarehouseTaskDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncWarehouseTaskDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncWarehouseTaskDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/sync/product-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    since?: string;
+                    cursor?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["SyncProductCategoryDtoSyncPage"];
+                        "application/json": components["schemas"]["SyncProductCategoryDtoSyncPage"];
+                        "text/json": components["schemas"]["SyncProductCategoryDtoSyncPage"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -12368,6 +13249,70 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PinAdminSetRequest"];
+                    "text/json": components["schemas"]["PinAdminSetRequest"];
+                    "application/*+json": components["schemas"]["PinAdminSetRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PinStatusDto"];
+                        "application/json": components["schemas"]["PinStatusDto"];
+                        "text/json": components["schemas"]["PinStatusDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -14948,6 +15893,24 @@ export interface components {
             countedQty?: number | null;
             serialNumbers?: string[] | null;
         };
+        CountBatchItem: {
+            /** Format: int32 */
+            lineId?: number | null;
+            /** Format: int32 */
+            binId?: number | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lot?: components["schemas"]["LotInput"];
+            /** Format: double */
+            countedQty?: number | null;
+            serialNumbers?: string[] | null;
+        };
+        CountBatchRequest: {
+            lines?: components["schemas"]["CountBatchItem"][] | null;
+            rowVersion?: string | null;
+        };
         CountCaptureItem: {
             /** Format: int32 */
             lineId?: number;
@@ -15150,6 +16113,7 @@ export interface components {
             count?: components["schemas"]["CycleCountDto"];
             lines?: components["schemas"]["CycleCountLineDto"][] | null;
             rowVersion?: string | null;
+            isBlind?: boolean;
         };
         CycleCountDto: {
             /** Format: int32 */
@@ -15165,9 +16129,9 @@ export interface components {
             /** Format: int32 */
             countedLines?: number;
             /** Format: int32 */
-            varianceLines?: number;
+            varianceLines?: number | null;
             /** Format: double */
-            netVariance?: number;
+            netVariance?: number | null;
             /** Format: date-time */
             createdAtUtc?: string;
             /** Format: date-time */
@@ -15191,7 +16155,7 @@ export interface components {
             lotId?: number | null;
             lotNumber?: string | null;
             /** Format: double */
-            systemQty?: number;
+            systemQty?: number | null;
             /** Format: double */
             countedQty?: number | null;
             /** Format: double */
@@ -15200,7 +16164,7 @@ export interface components {
             countedSerials?: string[] | null;
             isStale?: boolean;
             /** Format: double */
-            currentQty?: number;
+            currentQty?: number | null;
             /** Format: double */
             reconciledSystemQty?: number | null;
             systemQtyChanged?: boolean;
@@ -15246,6 +16210,94 @@ export interface components {
             dateFrom?: string | null;
             /** Format: date */
             dateTo?: string | null;
+        };
+        DeviceCreateRequest: {
+            code?: string | null;
+            name?: string | null;
+            model?: string | null;
+            /** Format: uuid */
+            defaultWarehousePublicId?: string | null;
+            theme?: string | null;
+        };
+        DeviceCreatedDto: {
+            device?: components["schemas"]["DeviceDto"];
+            enrollCode?: string | null;
+        };
+        DeviceDto: {
+            /** Format: uuid */
+            publicId?: string;
+            code?: string | null;
+            name?: string | null;
+            model?: string | null;
+            platform?: string | null;
+            appVersion?: string | null;
+            isEnrolled?: boolean;
+            /** Format: date-time */
+            enrolledAtUtc?: string | null;
+            /** Format: date-time */
+            enrollCodeExpiresUtc?: string | null;
+            /** Format: date-time */
+            lastSeenUtc?: string | null;
+            /** Format: int32 */
+            lastUserId?: number | null;
+            lastUserName?: string | null;
+            /** Format: uuid */
+            defaultWarehousePublicId?: string | null;
+            defaultWarehouseCode?: string | null;
+            theme?: string | null;
+            /** Format: date-time */
+            registeredAtUtc?: string;
+            isActive?: boolean;
+            rowVersion?: string | null;
+        };
+        DeviceEnrollRequest: {
+            enrollCode?: string | null;
+            model?: string | null;
+            appVersion?: string | null;
+        };
+        DeviceEnrolledDto: {
+            /** Format: uuid */
+            devicePublicId?: string;
+            deviceSecret?: string | null;
+            tenantName?: string | null;
+            /** Format: uuid */
+            defaultWarehousePublicId?: string | null;
+            theme?: string | null;
+        };
+        DeviceHeartbeatDto: {
+            isActive?: boolean;
+            /** Format: uuid */
+            defaultWarehousePublicId?: string | null;
+            theme?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        DeviceLoginRequest: {
+            /** Format: uuid */
+            devicePublicId?: string;
+            deviceSecret?: string | null;
+            /** Format: int32 */
+            userId?: number;
+            pin?: string | null;
+        };
+        DevicePatchRequest: {
+            name?: string | null;
+            /** Format: uuid */
+            defaultWarehousePublicId?: string | null;
+            clearDefaultWarehouse?: boolean;
+            theme?: string | null;
+            rowVersion?: string | null;
+        };
+        DeviceUserDto: {
+            /** Format: int32 */
+            userId?: number;
+            fullName?: string | null;
+            initials?: string | null;
+        };
+        DeviceUsersRequest: {
+            /** Format: uuid */
+            devicePublicId?: string;
+            deviceSecret?: string | null;
         };
         DispatchFeeRequest: {
             /** Format: double */
@@ -15828,6 +16880,12 @@ export interface components {
             lat?: number;
             /** Format: double */
             lng?: number;
+        };
+        HeartbeatRequest: {
+            /** Format: uuid */
+            devicePublicId?: string;
+            deviceSecret?: string | null;
+            appVersion?: string | null;
         };
         ImportConfirmRequest: {
             rows?: number[] | null;
@@ -16772,6 +17830,7 @@ export interface components {
             /** Format: uuid */
             warehousePublicId?: string | null;
             lines?: components["schemas"]["PickBatchLineRequest"][] | null;
+            pack?: components["schemas"]["PickBatchPackRequest"];
         };
         PickBatchDeleteRequest: {
             comment?: string | null;
@@ -16862,6 +17921,20 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["PickBatchDto"][] | null;
+        };
+        PinAdminSetRequest: {
+            pin?: string | null;
+        };
+        PinSetRequest: {
+            currentPassword?: string | null;
+            pin?: string | null;
+        };
+        PinStatusDto: {
+            hasPin?: boolean;
+            /** Format: date-time */
+            lockedUntilUtc?: string | null;
+            /** Format: date-time */
+            updatedAtUtc?: string | null;
         };
         PipelineValidationResult: {
             isValid?: boolean;
@@ -17337,6 +18410,7 @@ export interface components {
             /** Format: int32 */
             stagingBinId?: number | null;
             lines?: components["schemas"]["ReceiptLineRequest"][] | null;
+            confirm?: boolean;
         };
         ReceiptDetailDto: {
             header?: components["schemas"]["ReceiptListItemDto"];
@@ -17936,6 +19010,179 @@ export interface components {
             /** Format: int32 */
             tenantId?: number;
         };
+        SyncAsnDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: uuid */
+            clientPublicId?: string | null;
+            clientName?: string | null;
+            /** Format: uuid */
+            purchaseOrderPublicId?: string | null;
+            purchaseOrderNumber?: string | null;
+            reference?: string | null;
+            /** Format: date */
+            expectedDate?: string | null;
+            statusCode?: string | null;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncAsnLineDto"][] | null;
+        };
+        SyncAsnDtoSyncPage: {
+            items?: components["schemas"]["SyncAsnDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncAsnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            expectedQty?: number;
+            lotNumber?: string | null;
+            /** Format: int32 */
+            purchaseOrderLineId?: number | null;
+        };
+        SyncBinDto: {
+            /** Format: int32 */
+            id?: number;
+            code?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: int32 */
+            zoneId?: number;
+            zoneCode?: string | null;
+            zoneName?: string | null;
+            zoneTypeCode?: string | null;
+            aisle?: string | null;
+            rack?: string | null;
+            level?: string | null;
+            position?: string | null;
+            isActive?: boolean;
+        };
+        SyncBinDtoSyncPage: {
+            items?: components["schemas"]["SyncBinDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncProductCategoryDto: {
+            /** Format: int32 */
+            id?: number;
+            name?: string | null;
+            /** Format: int32 */
+            parentId?: number | null;
+            isActive?: boolean;
+        };
+        SyncProductCategoryDtoSyncPage: {
+            items?: components["schemas"]["SyncProductCategoryDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncProductDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            barcode?: string | null;
+            trackingTypeCode?: string | null;
+            baseUomCode?: string | null;
+            /** Format: int32 */
+            categoryId?: number | null;
+            /** Format: uuid */
+            ownerClientPublicId?: string | null;
+            ownerName?: string | null;
+            /** Format: int32 */
+            preferredBinId?: number | null;
+            isActive?: boolean;
+        };
+        SyncProductDtoSyncPage: {
+            items?: components["schemas"]["SyncProductDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncPurchaseOrderDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            supplierName?: string | null;
+            statusCode?: string | null;
+            /** Format: date */
+            expectedDate?: string | null;
+            isActive?: boolean;
+            lines?: components["schemas"]["SyncPurchaseOrderLineDto"][] | null;
+        };
+        SyncPurchaseOrderDtoSyncPage: {
+            items?: components["schemas"]["SyncPurchaseOrderDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
+        SyncPurchaseOrderLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: double */
+            qtyOrdered?: number;
+            /** Format: double */
+            qtyReceived?: number;
+            /** Format: double */
+            qtyPending?: number;
+        };
+        SyncWarehouseTaskDto: {
+            /** Format: int32 */
+            id?: number;
+            typeCode?: string | null;
+            statusCode?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            quantity?: number | null;
+            /** Format: int32 */
+            fromBinId?: number | null;
+            fromBinCode?: string | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            toBinCode?: string | null;
+            refEntityCode?: string | null;
+            /** Format: int32 */
+            refId?: number | null;
+            /** Format: int32 */
+            assignedToUserId?: number | null;
+            /** Format: int32 */
+            priority?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+            isActive?: boolean;
+        };
+        SyncWarehouseTaskDtoSyncPage: {
+            items?: components["schemas"]["SyncWarehouseTaskDto"][] | null;
+            nextCursor?: string | null;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+        };
         TaskAssignRequest: {
             /** Format: int32 */
             userId?: number | null;
@@ -18010,6 +19257,8 @@ export interface components {
             aal2WindowMinutes?: number;
             /** Format: int32 */
             sessionDays?: number;
+            /** Format: int32 */
+            deviceSessionDays?: number;
             brandingJson?: string | null;
             isActive?: boolean;
         };
@@ -18029,6 +19278,8 @@ export interface components {
             aal2WindowMinutes?: number | null;
             /** Format: int32 */
             sessionDays?: number | null;
+            /** Format: int32 */
+            deviceSessionDays?: number | null;
             brandingJson?: string | null;
         };
         TenantSummaryDto: {
@@ -18360,6 +19611,7 @@ export interface components {
             roles?: string[] | null;
             extraPermissions?: string[] | null;
             isPlatformAdmin?: boolean;
+            hasPin?: boolean;
         };
         UserUpdateRequest: {
             fullName?: string | null;

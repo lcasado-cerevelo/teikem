@@ -158,6 +158,7 @@ CREATE TABLE dbo.Tenant (
     MfaRequired     BIT NOT NULL DEFAULT 0,           -- política MFA del tenant
     Aal2WindowMinutes INT NOT NULL DEFAULT 30,        -- ventana de reautenticación AAL2 (step-up)
     SessionDays     INT NOT NULL DEFAULT 30,          -- vida del refresh token
+    DeviceSessionDays INT NOT NULL DEFAULT 30,        -- Lote 8A: vida de la sesión de un aparato de almacén (aparato + PIN)
     BrandingJson    NVARCHAR(MAX) NULL,               -- marca por compañía (tema de color y logos)
     IsActive        BIT NOT NULL DEFAULT 1,
     CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
@@ -408,9 +409,61 @@ CREATE TABLE dbo.RefreshToken (
     IssuedAtUtc  DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     ExpiresAtUtc DATETIME2 NOT NULL,
     RevokedAtUtc DATETIME2 NULL,
-    ReplacedByTokenHash NVARCHAR(200) NULL
+    ReplacedByTokenHash NVARCHAR(200) NULL,
+    UserDeviceId INT NULL                              -- Lote 8A: sesión de un aparato de almacén (FK diferida: UserDevice va después)
 );
 CREATE INDEX IX_RefreshToken_User ON dbo.RefreshToken(UserId) WHERE RevokedAtUtc IS NULL;
+GO
+
+-- Lote 8A — aparatos de confianza de la app de almacén (terminales con escáner). Los registra el administrador
+-- (devices.manage) con un código único por compañía; el aparato se enlaza una vez con el código de registro de un solo uso
+-- (8 caracteres, 24 h) y luego se autentica con su secreto. Código y secreto se guardan SOLO como hash. DriverDevice (Lote 4)
+-- se conserva. FK del almacén por defecto diferida (Warehouse se crea en la capa 7): FK_UserDevice_DefaultWarehouse.
+CREATE TABLE dbo.UserDevice (
+    UserDeviceId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Code         NVARCHAR(30) NOT NULL,
+    Name         NVARCHAR(100) NULL,
+    Model        NVARCHAR(80) NULL,
+    PlatformLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='DevicePlatform'
+    AppVersion   NVARCHAR(20) NULL,
+    EnrollCodeHash NVARCHAR(200) NULL,                 -- hash del código de registro pendiente (un solo uso)
+    EnrollCodeExpiresUtc DATETIME2 NULL,
+    SecretHash   NVARCHAR(200) NULL,                   -- hash del secreto del aparato (NULL = aún no registrado)
+    EnrolledAtUtc DATETIME2 NULL,
+    LastSeenUtc  DATETIME2 NULL,
+    LastUserId   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    DefaultWarehouseId INT NULL,                       -- FK diferida (DefaultWarehouseId, TenantId) → Warehouse
+    ThemeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),          -- Entity='UiTheme' (LIGHT/DARK)
+    RegisteredBy INT NULL,
+    RegisteredAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    IsActive     BIT NOT NULL DEFAULT 1,
+    RowVersion   ROWVERSION,
+    CONSTRAINT UQ_UserDevice_Code UNIQUE (TenantId, Code),
+    CONSTRAINT UQ_UserDevice_PublicId UNIQUE (PublicId)
+);
+GO
+
+-- Sesiones ligadas a un aparato: desactivarlo revoca todas las suyas.
+ALTER TABLE dbo.RefreshToken ADD CONSTRAINT FK_RefreshToken_UserDevice
+    FOREIGN KEY (UserDeviceId) REFERENCES dbo.UserDevice(UserDeviceId);
+CREATE INDEX IX_RefreshToken_Device ON dbo.RefreshToken(UserDeviceId) WHERE UserDeviceId IS NOT NULL AND RevokedAtUtc IS NULL;
+GO
+
+-- Lote 8A — PIN personal (4 a 6 dígitos) para entrar en los aparatos de almacén; uno por usuario y compañía. Solo el hash
+-- (mismo PasswordHasher de Identity). 5 intentos fallidos → bloqueo de 15 minutos (LockedUntilUtc).
+CREATE TABLE dbo.UserPin (
+    UserPinId    INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    UserId       INT NOT NULL REFERENCES dbo.AspNetUsers(Id),
+    PinHash      NVARCHAR(200) NOT NULL,
+    FailedCount  INT NOT NULL DEFAULT 0,
+    LockedUntilUtc DATETIME2 NULL,
+    UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    UpdatedBy    INT NULL,
+    CONSTRAINT UQ_UserPin_User UNIQUE (TenantId, UserId)
+);
 GO
 
 /* =========================================================================
@@ -970,6 +1023,11 @@ CREATE TABLE dbo.Warehouse (
     CONSTRAINT UQ_Warehouse_Code UNIQUE (TenantId, Code),
     CONSTRAINT UQ_Warehouse_IdTenant UNIQUE (WarehouseId, TenantId)          -- Lote 6: destino de las FKs compuestas (Id, TenantId)
 );
+GO
+
+-- Lote 8A: FK diferida del almacén por defecto del aparato (capa 2); compuesta con TenantId (mismo tenant garantizado).
+ALTER TABLE dbo.UserDevice ADD CONSTRAINT FK_UserDevice_DefaultWarehouse
+    FOREIGN KEY (DefaultWarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId);
 GO
 
 CREATE TABLE dbo.WarehouseZone (
@@ -2509,9 +2567,16 @@ CREATE TABLE dbo.IntegrationMessageLog (
     DirectionLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='MessageDirection'
     Endpoint NVARCHAR(200) NULL, IdempotencyKey NVARCHAR(80) NULL,
     RequestJson NVARCHAR(MAX) NULL, ResponseCode INT NULL,
-    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    -- Lote 8A: idempotencia del API (Idempotency-Key). Clave lógica (TenantId, UserId, IdempotencyKey); RequestHash = SHA-256
+    -- hex de método, ruta y cuerpo; ResponseCode/ResponseJson NULL mientras la operación está en vuelo. Se borran a los 7 días.
+    UserId       INT NULL REFERENCES dbo.AspNetUsers(Id),
+    RequestHash  NVARCHAR(64) NULL,
+    ResponseJson NVARCHAR(MAX) NULL,
+    Method       NVARCHAR(8) NULL
 );
 CREATE INDEX IX_IntegrationLog_Idem ON dbo.IntegrationMessageLog(TenantId, IdempotencyKey);
+CREATE UNIQUE INDEX UX_IntegrationLog_Idem ON dbo.IntegrationMessageLog(TenantId, UserId, IdempotencyKey) WHERE IdempotencyKey IS NOT NULL;
 GO
 
 CREATE TABLE dbo.AuditLog (

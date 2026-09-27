@@ -77,6 +77,50 @@ public sealed class ReceiptServiceTests
     }
 
     [Fact]
+    public async Task Atomic_po_receipt_applies_the_scanned_lines_instead_of_the_expected()
+    {
+        // Lote 8A (cola del aparato): contra PO con lines + confirm, lo escaneado manda (3 de 10), no lo esperado.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var receipts = f.Get<ReceiptService>();
+        var confirmed = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId,
+            Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 3m) }, Confirm: true), default);
+
+        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        var line = Assert.Single(confirmed.Lines);
+        Assert.Equal(10m, line.ExpectedQty);
+        Assert.Equal(3m, line.ReceivedQty);
+        Assert.NotNull(line.AsnLineId);
+        Assert.Equal(new PurchaseOrderReceiptQty(f.PoLineId, 3m), Assert.Single(Assert.Single(f.PurchaseOrders.Applied).Quantities));
+        Assert.Equal(3m, (await f.Db.Set<StockBalance>().AsNoTracking().SingleAsync(b => b.ProductId == f.ProductNoneId)).QtyOnHand);
+    }
+
+    [Fact]
+    public async Task Asn_receipt_with_lines_checks_the_owner_and_merges_repeated_products()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var asn = await f.Get<AsnService>().CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 6m) }), default);
+        var receipts = f.Get<ReceiptService>();
+
+        // Producto de otro dueño: mismo 400 que una línea extra, con la clave lines[i].
+        var owner = await Assert.ThrowsAsync<ValidationException>(() => receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
+            Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 1m) }), default));
+        Assert.Contains(ReceiptRules.OwnerMismatch("PN"), owner.Errors!["lines[0].productPublicId"]);
+
+        // Dos lecturas del mismo producto se suman sobre la línea del aviso (2 + 1 = 3 de 6).
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id,
+            Lines: new[] { new ReceiptLineRequest(f.ProductClientPublicId, 2m), new ReceiptLineRequest(f.ProductClientPublicId, 1m) }), default);
+        var line = Assert.Single(created.Lines);
+        Assert.Equal(6m, line.ExpectedQty);
+        Assert.Equal(3m, line.ReceivedQty);
+        await receipts.DeleteAsync(created.Header.PublicId, default);
+
+        // Sin lines: se recibe lo esperado (R8), como siempre.
+        var plain = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id), default);
+        Assert.Equal(6m, Assert.Single(plain.Lines).ReceivedQty);
+    }
+
+    [Fact]
     public async Task Purchase_order_with_an_open_receipt_rejects_another_until_it_is_deleted()
     {
         await using var f = await ReceivingFixture.CreateAsync();

@@ -185,6 +185,12 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, WarehouseTaskStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, DockAppointmentStatusEffect>();
 
+        // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y
+        // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.
+        services.AddScoped<DeviceService>();
+        services.AddScoped<PinService>();
+        services.AddScoped<SyncService>();
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
@@ -266,6 +272,8 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ReceiptLine));
         // Lote 7A: PRODUCT_CATEGORY existe solo para auditoría; la ruta polimórfica siempre responde 404.
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ProductCategory));
+        // Lote 8A: USER_DEVICE (aparato de almacén) existe solo para auditoría; sin campos personalizados → siempre 404.
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.UserDevice));
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

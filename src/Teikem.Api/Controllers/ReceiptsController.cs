@@ -43,7 +43,9 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// Lo recibido arranca igual a lo esperado (R8). Posición de recepción: stagingBinId o la primera de una zona STAGING.
     /// Lote 8A (cola del aparato): con confirm = true crea, captura las líneas completas (lote y series incluidos) y confirma
     /// en UNA transacción; devuelve el recibo ya confirmado (RECEIVED, o PUTAWAY si no quedó nada por acomodar) con los mismos
-    /// mensajes que el flujo por pasos. Respeta Idempotency-Key (el reintento devuelve el mismo REC).
+    /// mensajes que el flujo por pasos. Respeta Idempotency-Key (el reintento devuelve el mismo REC). Contra aviso u orden de
+    /// compra, lines se aplica sobre las líneas del documento (lo escaneado manda; lo no mencionado queda en 0; un producto
+    /// fuera del documento entra como línea extra); sin lines se recibe lo esperado.
     /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> Create([FromBody] ReceiptCreateRequest req, CancellationToken ct) => receipts.CreateAsync(req, ct);

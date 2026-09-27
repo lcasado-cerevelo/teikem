@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Teikem.Api.Auth;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -29,7 +30,7 @@ public sealed class AuthController(AuthService auth, DeviceService devices, ITen
     /// definido y con inventory.view, ordenados por nombre. Aparato inválido o desactivado → 401
     /// 'El aparato no está registrado o fue desactivado.'.
     /// </summary>
-    [HttpPost("device/users"), AllowAnonymous]
+    [HttpPost("device/users"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.DeviceAuth)]
     public Task<IReadOnlyList<DeviceUserDto>> DeviceUsers([FromBody] DeviceUsersRequest req, CancellationToken ct) => devices.GetDeviceUsersAsync(req, ct);
 
     /// <summary>
@@ -37,8 +38,9 @@ public sealed class AuthController(AuthService auth, DeviceService devices, ITen
     /// (Tenant.DeviceSessionDays días, se renueva en cada refresh; el access token lleva el claim `did`).
     /// 401 'PIN incorrecto.' (cuenta el intento), 423 'PIN bloqueado por 15 minutos.' (5 fallos seguidos),
     /// 401 'El aparato no está registrado o fue desactivado.', 403 si el usuario no tiene inventory.view.
+    /// Límite de intentos (también en device/users y heartbeat): 60 por minuto por IP y ruta → 429.
     /// </summary>
-    [HttpPost("device/login"), AllowAnonymous]
+    [HttpPost("device/login"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.DeviceAuth)]
     public Task<TokenPairDto> DeviceLogin([FromBody] DeviceLoginRequest req, CancellationToken ct) => auth.DeviceLoginAsync(req, ct);
 
     [HttpPost("refresh"), AllowAnonymous]

@@ -5,8 +5,12 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int[]? ZoneIds = null, int[]? BinIds = null,
     Guid[]? ProductPublicIds = null, int[]? CategoryIds = null);
 
+/// <summary>
+/// Encabezado del conteo. VarianceLines y NetVariance llegan null en el conteo a ciegas (Lote 8A: quien consulta no tiene
+/// warehouse.count), en la ficha y en la lista: junto con lo contado revelarían lo esperado. En modo informado nunca son null.
+/// </summary>
 public sealed record CycleCountDto(int Id, string Number, Guid WarehousePublicId, string WarehouseCode, string StatusCode, string Status,
-    int LineCount, int CountedLines, int VarianceLines, decimal NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive);
+    int LineCount, int CountedLines, int? VarianceLines, decimal? NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive);
 
 /// <summary>
 /// Línea del conteo. Conteo a ciegas (Lote 8A): cuando quien consulta la ficha NO tiene warehouse.count (solo inventory.view),

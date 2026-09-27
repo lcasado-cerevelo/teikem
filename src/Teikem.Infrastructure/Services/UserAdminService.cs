@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Entities;
-using Teikem.Infrastructure.PendingP0;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;

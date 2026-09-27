@@ -104,9 +104,9 @@ public class WmsCatalogTests
     }
 
     [Fact]
-    public void Permissions_are_58_with_the_four_warehouse_ones_and_templates()
+    public void Permissions_are_60_with_the_four_warehouse_ones_and_templates()
     {
-        Assert.Equal(58, PermissionCatalog.All.Count);
+        Assert.Equal(60, PermissionCatalog.All.Count);
         foreach (var (code, es) in new[] { ("inventory.view", "Ver inventario y almacén"), ("inventory.manage", "Gestionar productos"),
                      ("inventory.adjust", "Ajustar y transferir inventario"), ("warehouse.manage", "Gestionar almacenes y tareas") })
         {
@@ -129,7 +129,20 @@ public class WmsCatalogTests
         // El Operador recolecta y reconcilia conteos (D22) pero no empaca (sin orders.create, D27).
         Assert.Contains(PermissionCatalog.WarehouseCount, t["WarehouseOperator"]);
         Assert.DoesNotContain(PermissionCatalog.OrdersCreate, t["WarehouseOperator"]);
-        Assert.Contains("permisos (58)", Seed.Value);
+        // Lote 8A: capturar a ciegas es un permiso aparte (el Operador lo tiene; Solo lectura no) y warehouse.count lo implica.
+        var capture = Assert.Single(PermissionCatalog.All, x => x.Code == "warehouse.count.capture");
+        Assert.Equal(("WAREHOUSE", "Capturar conteo (a ciegas)"), (capture.Category, capture.LabelEs));
+        Assert.Contains("('warehouse.count.capture','WAREHOUSE','Capturar conteo (a ciegas)',", Seed.Value);
+        Assert.Contains(PermissionCatalog.WarehouseCountCapture, t["WarehouseOperator"]);
+        Assert.Contains("('WarehouseOperator','warehouse.count.capture')", Seed.Value);
+        Assert.DoesNotContain(PermissionCatalog.WarehouseCountCapture, t["ReadOnly"]);
+        var set = new HashSet<string>(new[] { PermissionCatalog.WarehouseCount }, StringComparer.OrdinalIgnoreCase);
+        PermissionCatalog.ExpandImplied(set);
+        Assert.Contains(PermissionCatalog.WarehouseCountCapture, set);
+        var onlyCapture = new HashSet<string>(new[] { PermissionCatalog.WarehouseCountCapture }, StringComparer.OrdinalIgnoreCase);
+        PermissionCatalog.ExpandImplied(onlyCapture);
+        Assert.DoesNotContain(PermissionCatalog.WarehouseCount, onlyCapture);
+        Assert.Contains("permisos (60)", Seed.Value);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
@@ -8,7 +9,6 @@ using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
-using Teikem.Infrastructure.PendingP0;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Wms;
 
@@ -22,13 +22,14 @@ namespace Teikem.Infrastructure.Services;
 ///   también se muestra UNA sola vez. Código y secreto se guardan solo como hash SHA-256 (son aleatorios de alta entropía,
 ///   se buscan por igualdad, como los refresh tokens); el código es de un solo uso.
 /// - Aparato + secreto autentican la lista de usuarios, el login con PIN (AuthService) y el heartbeat.
-/// - Desactivar revoca todas las sesiones (refresh tokens) emitidas a ese aparato: deja de sincronizar en cuanto vence
-///   su access token. Reactivar no revive sesiones: cada usuario vuelve a entrar con su PIN.
+/// - Desactivar revoca todas las sesiones (refresh tokens) emitidas a ese aparato y corta en el acto sus access tokens
+///   (OnTokenValidated revisa el claim `did` contra UserDevice.IsActive con caché de 60 s que aquí se borra). Reactivar
+///   no revive sesiones: cada usuario vuelve a entrar con su PIN.
 /// - Todo cambio del aparato queda en AuditLog (USER_DEVICE); LastSeenUtc/LastUserId/AppVersion son técnicos y no se auditan.
 /// </summary>
 public sealed class DeviceService(
     TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ModuleService modules, PermissionService permissions,
-    ISecurityEventWriter security)
+    ISecurityEventWriter security, IMemoryCache cache)
 {
     public const string DuplicateCodeMessage = "Ya existe un aparato con ese código.";
     public const string InvalidEnrollCodeMessage = "El código de registro no es válido o venció.";
@@ -125,6 +126,7 @@ public sealed class DeviceService(
         device.EnrollCodeHash = null;
         device.EnrollCodeExpiresUtc = null;
         await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
+        cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
         await RevokeDeviceSessionsAsync(device, "device_deactivated", ct);
         return await GetAsync(publicId, ct);
     }
@@ -136,6 +138,7 @@ public sealed class DeviceService(
         if (device.IsActive) return await GetAsync(publicId, ct);
         device.IsActive = true;
         await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
+        cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
         return await GetAsync(publicId, ct);
     }
 
@@ -195,7 +198,7 @@ public sealed class DeviceService(
 
     /// <summary>
     /// Usuarios que pueden entrar en el aparato: internos, activos, con membresía ACTIVE en la compañía del aparato, con PIN
-    /// definido y con inventory.view; ordenados por nombre. Aparato inválido o desactivado → 401.
+    /// definido y con inventory.view (nunca el admin de plataforma); ordenados por nombre. Aparato inválido o desactivado → 401.
     /// </summary>
     public async Task<IReadOnlyList<DeviceUserDto>> GetDeviceUsersAsync(DeviceUsersRequest req, CancellationToken ct)
     {
@@ -206,13 +209,13 @@ public sealed class DeviceService(
         var candidates = await (from m in db.UserTenants.AsNoTracking()
                                 join p in db.Set<UserPin>().AsNoTracking() on m.UserId equals p.UserId
                                 where m.TenantId == device.TenantId && p.TenantId == device.TenantId && m.StatusCodeId == activeMembership
-                                      && m.User!.IsActive && (m.User.UserKindLookupId == null || m.User.UserKindLookupId != portalKind)
-                                select new { m.UserId, m.User!.FullName, m.User.Email, m.User.IsPlatformAdmin })
+                                      && m.User!.IsActive && !m.User.IsPlatformAdmin && (m.User.UserKindLookupId == null || m.User.UserKindLookupId != portalKind)
+                                select new { m.UserId, m.User!.FullName, m.User.Email })
             .ToListAsync(ct);
         var list = new List<DeviceUserDto>(candidates.Count);
         foreach (var c in candidates)
         {
-            if (!c.IsPlatformAdmin && !(await permissions.GetEffectivePermissionsAsync(c.UserId, device.TenantId, ct)).Contains(PermissionCatalog.InventoryView)) continue;
+            if (!(await permissions.GetEffectivePermissionsAsync(c.UserId, device.TenantId, ct)).Contains(PermissionCatalog.InventoryView)) continue;
             var name = string.IsNullOrWhiteSpace(c.FullName) ? c.Email ?? c.UserId.ToString() : c.FullName.Trim();
             list.Add(new DeviceUserDto(c.UserId, name, Initials(c.FullName, c.Email)));
         }
@@ -260,15 +263,22 @@ public sealed class DeviceService(
         return days > 0 ? days : DefaultDeviceSessionDays;
     }
 
-    /// <summary>Datos técnicos del aparato (LastSeenUtc, LastUserId, AppVersion) sin AuditLog.</summary>
+    /// <summary>
+    /// Datos técnicos del aparato (LastSeenUtc, LastUserId, AppVersion) sin AuditLog. Se escriben con un UPDATE directo
+    /// (ExecuteUpdate): sin el rastreador ni el control de RowVersion, para que un heartbeat y un login simultáneos del mismo
+    /// aparato no choquen (DbUpdateConcurrencyException → 500). La entidad rastreada NO se modifica (quedaría con el
+    /// RowVersion viejo y el siguiente SaveChanges volvería a chocar); quien llama no necesita ver los valores nuevos.
+    /// </summary>
     internal async Task TouchAsync(UserDevice device, int? userId, string? appVersion, CancellationToken ct)
     {
-        device.LastSeenUtc = DateTime.UtcNow;
-        if (userId.HasValue) device.LastUserId = userId;
-        if (Clip(appVersion, AppVersionMaxLength) is string v) device.AppVersion = v;
-        db.SuppressAudit = true;
-        try { await db.SaveChangesAsync(ct); }
-        finally { db.SuppressAudit = false; }
+        var now = DateTime.UtcNow;
+        var version = Clip(appVersion, AppVersionMaxLength);
+        await db.Set<UserDevice>().IgnoreQueryFilters()
+            .Where(d => d.UserDeviceId == device.UserDeviceId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(d => d.LastSeenUtc, now)
+                .SetProperty(d => d.LastUserId, d => userId ?? d.LastUserId)
+                .SetProperty(d => d.AppVersion, d => version ?? d.AppVersion), ct);
     }
 
     // ---------------------------------------------------------------- reglas puras (probables en pruebas)
@@ -344,7 +354,7 @@ public sealed class DeviceService(
     private async Task<int?> ThemeIdAsync(string theme, Dictionary<string, string[]> errors, CancellationToken ct)
     {
         var code = theme.Trim().ToUpperInvariant();
-        var id = await lookups.TryGetIdAsync(P0Keys.UiTheme, code, ct);
+        var id = await lookups.TryGetIdAsync(LookupDomains.UiTheme, code, ct);
         if (id is null) errors["theme"] = new[] { InvalidThemeMessage };
         return id;
     }

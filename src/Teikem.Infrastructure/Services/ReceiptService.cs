@@ -179,13 +179,22 @@ public sealed class ReceiptService(
     /// <summary>
     /// Alta OPEN (flujo por pasos) o, con Confirm = true (Lote 8A, cola del aparato), alta + captura de las líneas de la
     /// solicitud + confirmación en UNA transacción: se reutilizan exactamente los mismos pasos (y mensajes) que el alta y la
-    /// confirmación por separado; si cualquiera falla no queda nada (ni el número REC se consume).
+    /// confirmación por separado; si cualquiera falla no queda nada (ni el número REC se consume). Contra aviso u orden de
+    /// compra, las Lines de la solicitud se aplican sobre las líneas del documento (ApplyRequestLinesToAsnAsync); sin Lines
+    /// se recibe lo esperado (R8).
     /// </summary>
     public async Task<ReceiptDetailDto> CreateAsync(ReceiptCreateRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         if (!req.Confirm) return await GetAsync(await CreateCoreAsync(req, ct), ct);
 
+        // Permisos del recibo contra PO ANTES de la transacción externa: un PERMISSION_DENIED escrito dentro se revertiría
+        // con ella (la verificación anidada vuelve a pasar sin escribir nada).
+        if (req.PurchaseOrderPublicId is not null && req.AsnId is null)
+        {
+            await permissions.EnsureAsync(PermissionCatalog.PurchasingReceive, ct);
+            await modules.EnsureEnabledAsync(ModuleKeys.Purchasing, ct);
+        }
         // Fila del contador REC en autocommit ANTES de abrir la transacción externa (patrón de NumberSequenceService);
         // la llamada anidada de CreateCoreAsync la encuentra y no inserta nada.
         await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
@@ -282,6 +291,8 @@ public sealed class ReceiptService(
                 warehouse = await db.Set<Warehouse>().AsNoTracking().FirstAsync(w => w.WarehouseId == asn.WarehouseId, ct2);
                 if (!warehouse.IsActive) throw new StatusRuleException(ReceiptRules.WarehouseInactive);
                 lines = await LinesFromAsnAsync(asn, ct2);
+                // Lote 8A: con Lines en la solicitud (cola del aparato) lo escaneado manda sobre lo esperado; nunca se ignoran.
+                if (requestLines.Count > 0) await ApplyRequestLinesToAsnAsync(warehouse.WarehouseId, asn, lines, requestLines, ct2);
             }
             else
             {
@@ -673,6 +684,57 @@ public sealed class ReceiptService(
             });
         }
         return result;
+    }
+
+    /// <summary>
+    /// Lote 8A — recibo contra aviso u orden de compra que trae Lines (cola del aparato): lo escaneado manda sobre lo esperado,
+    /// como en la captura por pasos. Cada línea de la solicitud se valida igual que una línea extra (producto activo, dueño
+    /// según el aviso, cantidad, lote y series; mismos mensajes con la clave lines[i]) y se aplica sobre la línea del aviso
+    /// del mismo producto: primero la del mismo lote, si no la primera libre sin lote (o cualquiera libre del producto si la
+    /// solicitud no trae lote). Si ya no queda línea libre del producto, se suma a la ya aplicada del mismo producto (y lote);
+    /// si el producto no está en el aviso, entra como línea extra (no cuenta contra la PO). Las líneas del aviso que la
+    /// solicitud no menciona quedan recibidas en 0 (faltante visible al confirmar). Máximo 200 líneas en total.
+    /// </summary>
+    private async Task ApplyRequestLinesToAsnAsync(int warehouseId, Asn asn, List<ReceiptLine> lines, IReadOnlyList<ReceiptLineRequest> requestLines,
+        CancellationToken ct)
+    {
+        if (requestLines.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
+        var owner = asn.PurchaseOrderId is not null ? OwnerRule.OwnOnly : asn.ClientId is not null ? OwnerRule.Client : OwnerRule.Any;
+        var fromAsn = lines.ToList();
+        foreach (var l in fromAsn) l.ReceivedQty = 0m;
+        var applied = new HashSet<ReceiptLine>();
+        var extras = new List<ReceiptLine>();
+        var errors = new Dictionary<string, string[]>();
+        for (var i = 0; i < requestLines.Count; i++)
+        {
+            var key = $"lines[{i}]";
+            var built = await BuildLineAsync(warehouseId, requestLines[i], key, owner, asn.ClientId, errors, ct);
+            if (built is null) continue;
+
+            bool Free(ReceiptLine c) => !applied.Contains(c) && c.ProductId == built.ProductId;
+            var match = built.LotId is int lot
+                ? fromAsn.FirstOrDefault(c => Free(c) && c.LotId == lot) ?? fromAsn.FirstOrDefault(c => Free(c) && c.LotId == null)
+                : fromAsn.FirstOrDefault(Free);
+            if (match is not null)
+            {
+                match.ReceivedQty = built.ReceivedQty;
+                match.LotId = built.LotId ?? match.LotId;
+                match.SerialNumbersJson = built.SerialNumbersJson;
+                match.StagingBinId = built.StagingBinId ?? match.StagingBinId;
+                applied.Add(match);
+                continue;
+            }
+
+            var same = fromAsn.FirstOrDefault(c => applied.Contains(c) && c.ProductId == built.ProductId && (built.LotId is null || c.LotId == built.LotId));
+            if (same is null) { extras.Add(built); continue; }
+            var (serials, se) = ReceiptRules.NormalizeSerials(ParseSerials(same.SerialNumbersJson).Concat(ParseSerials(built.SerialNumbersJson)));
+            if (se is not null) { errors[key + ".serialNumbers"] = new[] { se }; continue; }
+            same.ReceivedQty += built.ReceivedQty;
+            same.SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json);
+        }
+        if (errors.Count > 0) throw new ValidationException(errors);
+        if (lines.Count + extras.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
+        lines.AddRange(extras);
     }
 
     /// <summary>Línea de la solicitud (ciega, devolución o extra): producto activo, dueño según el origen, cantidad, lote y series.</summary>

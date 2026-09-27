@@ -36,6 +36,7 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.MfaRequired.HasValue) t.MfaRequired = req.MfaRequired.Value;
         if (req.Aal2WindowMinutes.HasValue) { if (req.Aal2WindowMinutes.Value is < 5 or > 240) throw new ValidationException("aal2WindowMinutes", "Entre 5 y 240 minutos."); t.Aal2WindowMinutes = req.Aal2WindowMinutes.Value; }
         if (req.SessionDays.HasValue) { if (req.SessionDays.Value is < 1 or > 365) throw new ValidationException("sessionDays", "Entre 1 y 365 días."); t.SessionDays = req.SessionDays.Value; }
+        if (req.DeviceSessionDays.HasValue) { if (req.DeviceSessionDays.Value is < 1 or > 365) throw new ValidationException("deviceSessionDays", "Entre 1 y 365 días."); t.DeviceSessionDays = req.DeviceSessionDays.Value; }
         if (req.BrandingJson is not null)
         {
             if (req.BrandingJson.Length > 0)
@@ -110,5 +111,5 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.TenantId, t.PublicId, t.Name, t.LegalName, t.TaxId, t.DefaultLangCode, t.WorkDaysMask, t.MaxStopsPerRouteDefault,
         t.DefaultServiceTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultServiceTypeLookupId.Value, ct))?.InternalCode,
         t.DefaultPackageTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultPackageTypeLookupId.Value, ct))?.InternalCode,
-        t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.BrandingJson, t.IsActive);
+        t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.DeviceSessionDays, t.BrandingJson, t.IsActive);
 }

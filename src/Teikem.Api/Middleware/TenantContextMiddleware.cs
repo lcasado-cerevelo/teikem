@@ -53,11 +53,7 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
         {
             if (http.Response.HasStarted) throw;
             http.Response.StatusCode = ex.StatusCode;
-            await http.Response.WriteAsJsonAsync(new
-            {
-                type = "https://teikem.app/errors/" + ex.Code, title = ex.Message, status = ex.StatusCode, code = ex.Code,
-                errors = ex.Errors, correlationId = tenant.CorrelationId,
-            });
+            await http.Response.WriteAsJsonAsync(ProblemBody(ex, tenant.CorrelationId));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -67,4 +63,11 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/internal", title = "Error interno.", status = 500, code = "internal", correlationId = tenant.CorrelationId });
         }
     }
+
+    /// <summary>Cuerpo ProblemDetails de una excepción de dominio (lo reutiliza IdempotencyMiddleware para guardar la respuesta).</summary>
+    public static object ProblemBody(Teikem.Infrastructure.Exceptions.TeikemException ex, Guid correlationId) => new
+    {
+        type = "https://teikem.app/errors/" + ex.Code, title = ex.Message, status = ex.StatusCode, code = ex.Code,
+        errors = ex.Errors, correlationId,
+    };
 }

@@ -32,9 +32,11 @@ builder.Services.AddSwaggerGen(o =>
     });
 });
 builder.Services.AddHttpContextAccessor();
+// Lote 8A: limitador de intentos de los endpoints anónimos del aparato (enroll, device/users, device/login, heartbeat).
+builder.Services.AddDeviceRateLimiting(builder.Configuration);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? Array.Empty<string>())
-    .AllowAnyHeader().AllowAnyMethod().WithExposedHeaders(TenantContextMiddleware.CorrelationHeader)));
+    .AllowAnyHeader().AllowAnyMethod().WithExposedHeaders(TenantContextMiddleware.CorrelationHeader, Teikem.Domain.Security.IdempotencyRules.ReplayedHeader)));
 
 // --- Autenticación JWT (access tokens cortos; el SecurityStamp invalida tokens vivos) ---
 var jwtKey = builder.Configuration["Jwt:SigningKey"] ?? throw new InvalidOperationException("Falta Jwt:SigningKey.");
@@ -64,7 +66,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
                 var u = await db.Users.AsNoTracking().Where(x => x.Id == userId).Select(x => new { x.SecurityStamp, x.IsActive }).FirstOrDefaultAsync();
                 return u is null || !u.IsActive ? null : JwtTokenService.StampHash(u.SecurityStamp);
             });
-            if (current is null || current != ss) ctx.Fail("sesión invalidada");
+            if (current is null || current != ss) { ctx.Fail("sesión invalidada"); return; }
+            // Lote 8A: un token de aparato (claim `did`) deja de servir en cuanto el aparato se desactiva (caché de 60 s que
+            // DeviceService borra al desactivar; en otras instancias el retraso máximo es ese TTL).
+            if (ctx.Principal?.FindFirst(DeviceClaims.DeviceId)?.Value is string didRaw)
+            {
+                if (!Guid.TryParse(didRaw, out var did)) { ctx.Fail("token inválido"); return; }
+                var deviceActive = await cache.GetOrCreateAsync(DeviceClaims.ActiveCacheKey(did), async e =>
+                {
+                    e.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+                    var db = ctx.HttpContext.RequestServices.GetRequiredService<TeikemDbContext>();
+                    return await db.Set<Teikem.Domain.Entities.UserDevice>().IgnoreQueryFilters().AsNoTracking()
+                        .Where(d => d.PublicId == did).Select(d => (bool?)d.IsActive).FirstOrDefaultAsync();
+                });
+                if (deviceActive != true) ctx.Fail("aparato desactivado");
+            }
         },
     };
 });
@@ -99,9 +115,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseMiddleware<TenantContextMiddleware>();
 app.UseAuthorization();
+// Lote 8A: Idempotency-Key en escrituras autenticadas (después de autenticación, TenantContext y autorización).
+app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow })).AllowAnonymous();
 

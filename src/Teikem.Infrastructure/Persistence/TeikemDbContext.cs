@@ -8,6 +8,7 @@ using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
 using Teikem.Domain.Contacts;
 using Teikem.Domain.CustomFields;
+using Teikem.Domain.Entities;
 using Teikem.Domain.Fleet;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Orders;
@@ -67,6 +68,10 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<MfaRecoveryCode> MfaRecoveryCodes => Set<MfaRecoveryCode>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
+    // Lote 8A — aparatos de confianza de la app de almacén, PIN por usuario e idempotencia del API
+    public DbSet<UserDevice> UserDevices => Set<UserDevice>();
+    public DbSet<UserPin> UserPins => Set<UserPin>();
+    public DbSet<IntegrationMessageLog> IntegrationMessageLogs => Set<IntegrationMessageLog>();
     // Auditoría / contactos / campos / análisis
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<ContactPoint> ContactPoints => Set<ContactPoint>();

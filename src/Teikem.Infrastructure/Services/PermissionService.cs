@@ -27,6 +27,7 @@ public sealed class PermissionService(TeikemDbContext db, ITenantContext tenant,
         var extra = await db.UserPermissions.AsNoTracking().IgnoreQueryFilters()
             .Where(up => up.UserId == userId && up.TenantId == tenantId).Select(up => up.Permission!.Code).ToListAsync(ct);
         var set = new HashSet<string>(fromRoles.Concat(extra), StringComparer.OrdinalIgnoreCase);
+        PermissionCatalog.ExpandImplied(set);   // Lote 8A: warehouse.count ⇒ warehouse.count.capture
         cache.Set(CacheKey(userId, tenantId), set, TimeSpan.FromMinutes(5));
         return set;
     }

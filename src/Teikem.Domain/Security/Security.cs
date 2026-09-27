@@ -127,6 +127,8 @@ public class RefreshToken : ITenantScoped
     public DateTime ExpiresAtUtc { get; set; }
     public DateTime? RevokedAtUtc { get; set; }
     [SensitiveData] public string? ReplacedByTokenHash { get; set; }
+    /// <summary>Lote 8A: aparato de almacén (UserDevice) al que quedó ligada la sesión; desactivarlo revoca sus sesiones.</summary>
+    public int? UserDeviceId { get; set; }
     public bool IsActive => RevokedAtUtc == null && ExpiresAtUtc > DateTime.UtcNow;
 }
 

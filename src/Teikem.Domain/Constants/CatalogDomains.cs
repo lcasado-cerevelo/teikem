@@ -82,6 +82,25 @@ public static class LookupDomains
     /// catálogo y bandera alimentarán las notificaciones.
     /// </summary>
     public const string ActivityEventType = "ActivityEventType";
+    // Lote 8A — App de almacén (aparatos de confianza e idempotencia)
+    /// <summary>Tema por defecto del aparato de almacén (UserDevice.ThemeLookupId): LIGHT | DARK.</summary>
+    public const string UiTheme = "UiTheme";
+    /// <summary>Dirección del mensaje registrado en IntegrationMessageLog (la idempotencia del API escribe INBOUND).</summary>
+    public const string MessageDirection = "MessageDirection";
+}
+
+/// <summary>Lote 8A: valores de LookupCode 'UiTheme' (tema del aparato de almacén).</summary>
+public static class UiThemes
+{
+    public const string Light = "LIGHT";
+    public const string Dark = "DARK";
+}
+
+/// <summary>Valores de LookupCode 'MessageDirection' (IntegrationMessageLog.DirectionLookupId).</summary>
+public static class MessageDirections
+{
+    public const string Inbound = "INBOUND";
+    public const string Outbound = "OUTBOUND";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -427,6 +446,8 @@ public static class EntityTypes
     // Agregado por el Lote 7A: la categoría deja de compartir PRODUCT en la bitácora (su baja no es la de un producto:
     // PRODUCT_DEACTIVATED del feed "Actividad reciente" lee AuditLog PRODUCT DELETE).
     public const string ProductCategory = "PRODUCT_CATEGORY";
+    // Lote 8A: aparato de confianza de la app de almacén (UserDevice; DriverDevice del Lote 4 se audita como DRIVER).
+    public const string UserDevice = "USER_DEVICE";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------

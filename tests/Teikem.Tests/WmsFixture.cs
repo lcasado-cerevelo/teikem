@@ -162,6 +162,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in new[] { ReceiptTypes.Asn, ReceiptTypes.Blind, ReceiptTypes.Return }) L(LookupDomains.ReceiptType, c);
         foreach (var c in new[] { DockDirections.Inbound, DockDirections.Outbound }) L(LookupDomains.DockDirection, c);
         foreach (var c in new[] { ShortageActions.Close, ShortageActions.Reorder, ShortageActions.ManualAdjustment }) L(LookupDomains.ShortageAction, c);
+        L(LookupDomains.EntityType, EntityTypes.ProductCategory);   // Lote 8A: sincronización de categorías (al final: ids previos intactos)
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

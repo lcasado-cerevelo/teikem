@@ -11,7 +11,6 @@ using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
-using Teikem.Infrastructure.PendingP0;
 using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Services;
@@ -32,6 +31,12 @@ public static class DeviceClaims
 {
     /// <summary>PublicId del aparato (UserDevice) que emitió la sesión; solo en tokens de aparato.</summary>
     public const string DeviceId = "did";
+
+    /// <summary>
+    /// Clave de caché (IMemoryCache, 60 s) del estado activo del aparato que valida cada access token con `did` en
+    /// OnTokenValidated; DeviceService la borra al desactivar para que el corte sea inmediato en esa instancia.
+    /// </summary>
+    public static string ActiveCacheKey(Guid devicePublicId) => $"dev:{devicePublicId}";
 }
 
 /// <summary>
@@ -177,7 +182,8 @@ public sealed class AuthService(
 
         var user = req.UserId > 0 ? await users.FindByIdAsync(req.UserId.ToString()) : null;
         var kind = user?.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
-        if (user is null || !user.IsActive || kind == UserKinds.Portal || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
+        // El admin de plataforma nunca entra por aparato (sin contraseña ni MFA abriría todas las compañías).
+        if (user is null || !user.IsActive || user.IsPlatformAdmin || kind == UserKinds.Portal || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
         {
             // Sin enumeración de usuarios: el mismo 401 que un PIN incorrecto.
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, user?.Id, tenantId, new { stage = "device", device = device.Code, reason = "user" }, ct);
@@ -192,9 +198,10 @@ public sealed class AuthService(
             throw new ForbiddenException($"Falta el permiso '{PermissionCatalog.InventoryView}'.");
         }
 
+        // El aparato se toca ANTES de emitir: si el touch fallara no quedaría un refresh token emitido que nadie recibió.
+        await devices.TouchAsync(device, user.Id, null, ct);
         var binding = new DeviceBinding(device.UserDeviceId, device.PublicId, await devices.SessionDaysAsync(tenantId, ct));
         var pair = await IssueAsync(user, tenantId, kind, DeviceInfoOf(device), aal2At: null, ct, binding);
-        await devices.TouchAsync(device, user.Id, null, ct);
         await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "device", device = device.Code }, ct);
         return pair;
     }

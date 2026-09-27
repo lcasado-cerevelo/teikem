@@ -5,11 +5,12 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (58 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
+/// en cada arranque. Coincide con logistica-db-seed.sql (60 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
 /// los de Clientes y contratos (Lote 2, categoría CLIENTS), orders.credit_override (Lote 3, ajuste C), fleet.view,
 /// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8) y
 /// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar) e inventory.view,
-/// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE).
+/// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE) y devices.manage (Lote 8A, categoría
+/// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar): 60 códigos.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -31,6 +32,11 @@ public static class PermissionCatalog
     public const string WarehouseReceive = "warehouse.receive";
     public const string WarehousePick = "warehouse.pick";
     public const string WarehouseCount = "warehouse.count";
+    /// <summary>
+    /// Lote 8A: capturar un conteo (alta, captura, lo encontrado y terminar) SIN ver lo esperado ni reconciliar: conteo a
+    /// ciegas del almacenista en el aparato. warehouse.count (reconciliar, modo informado) lo implica (<see cref="Implied"/>).
+    /// </summary>
+    public const string WarehouseCountCapture = "warehouse.count.capture";
     public const string WarehouseCrossdock = "warehouse.crossdock";
     /// <summary>Lote 6: estructura del almacén (almacenes, zonas, posiciones, muelles) y asignar/cancelar tareas de la cola.</summary>
     public const string WarehouseManage = "warehouse.manage";
@@ -89,6 +95,12 @@ public static class PermissionCatalog
     public const string ContractsCreate = "contracts.create";
     public const string ContractsUpdate = "contracts.update";
     public const string PortalUsersManage = "portalusers.manage";
+    // Seguridad (Lote 8A, categoría SECURITY)
+    /// <summary>
+    /// Lote 8A: aparatos de confianza de la app de almacén (registrar, editar, desactivar, regenerar el código de registro) y
+    /// asignar o restablecer el PIN de otros usuarios (también lo permite admin.users).
+    /// </summary>
+    public const string DevicesManage = "devices.manage";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -155,7 +167,28 @@ public static class PermissionCatalog
         new(InventoryManage, "WAREHOUSE", "Gestionar productos", "Manage products"),
         new(InventoryAdjust, "WAREHOUSE", "Ajustar y transferir inventario", "Adjust & transfer inventory"),
         new(WarehouseManage, "WAREHOUSE", "Gestionar almacenes y tareas", "Manage warehouses & tasks"),
+        // Lote 8A — App de almacén: aparatos de confianza y PIN
+        new(DevicesManage, "SECURITY", "Gestionar aparatos y PIN", "Manage devices & PINs"),
+        new(WarehouseCountCapture, "WAREHOUSE", "Capturar conteo (a ciegas)", "Capture count (blind)"),
     };
+
+    /// <summary>
+    /// Permisos implícitos (Lote 8A): tener la llave de la izquierda da también las de la derecha en los permisos efectivos
+    /// (PermissionService). warehouse.count (contar en modo informado y reconciliar) incluye capturar a ciegas, para que los
+    /// roles propios que ya cuentan con warehouse.count no pierdan la captura al separarse el permiso.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string[]> Implied = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+    {
+        [WarehouseCount] = new[] { WarehouseCountCapture },
+    };
+
+    /// <summary>Agrega al conjunto los permisos implícitos de los que ya contiene (lógica pura, probada con xunit).</summary>
+    public static void ExpandImplied(ISet<string> codes)
+    {
+        foreach (var (code, implied) in Implied)
+            if (codes.Contains(code))
+                foreach (var i in implied) codes.Add(i);
+    }
 
     /// <summary>
     /// Permiso de lectura de la entidad dueña en las rutas polimórficas (contactos, historial de estatus, valores de campos
@@ -208,6 +241,8 @@ public static class PermissionCatalog
         [EntityTypes.ReceiptLine] = InventoryView,
         // Lote 7A: la categoría de producto tiene EntityType propio (auditoría); sin campos personalizados (resolver cerrado).
         [EntityTypes.ProductCategory] = InventoryView,
+        // Lote 8A: aparato de almacén (solo auditoría; resolver cerrado): sin devices.manage → 403, con él → 404.
+        [EntityTypes.UserDevice] = DevicesManage,
         [EntityTypes.PurchaseOrder] = PurchasingView,
         [EntityTypes.Supplier] = PurchasingView,
     };
@@ -245,6 +280,7 @@ public static class PermissionCatalog
         [EntityTypes.WarehouseDock] = WarehouseManage,
         [EntityTypes.Product] = InventoryManage,
         [EntityTypes.ProductCategory] = InventoryManage,
+        [EntityTypes.UserDevice] = DevicesManage,
         [EntityTypes.Receipt] = WarehouseReceive,
         [EntityTypes.Asn] = WarehouseReceive,
         [EntityTypes.CycleCount] = WarehouseCount,
@@ -261,7 +297,7 @@ public static class PermissionCatalog
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan },
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView },
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView },
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView },
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView },
     };

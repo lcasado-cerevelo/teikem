@@ -68,6 +68,7 @@ public class WmsControllerSecurityTests
 
         [(typeof(ProductsController), nameof(ProductsController.List))] = PermissionCatalog.InventoryView,
         [(typeof(ProductsController), nameof(ProductsController.Get))] = PermissionCatalog.InventoryView,
+        [(typeof(ProductsController), nameof(ProductsController.ByBarcode))] = PermissionCatalog.InventoryView,   // Lote 8A
         [(typeof(ProductsController), nameof(ProductsController.Lots))] = PermissionCatalog.InventoryView,
         [(typeof(ProductsController), nameof(ProductsController.Serials))] = PermissionCatalog.InventoryView,
         [(typeof(ProductsController), nameof(ProductsController.Create))] = PermissionCatalog.InventoryManage,
@@ -107,11 +108,12 @@ public class WmsControllerSecurityTests
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.RunReplenishment))] = PermissionCatalog.WarehousePick,
 
         [(typeof(CycleCountsController), nameof(CycleCountsController.List))] = PermissionCatalog.InventoryView,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.Get))] = PermissionCatalog.WarehouseCount,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.Create))] = PermissionCatalog.WarehouseCount,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.Capture))] = PermissionCatalog.WarehouseCount,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.AddLine))] = PermissionCatalog.WarehouseCount,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.Finish))] = PermissionCatalog.WarehouseCount,
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Get))] = PermissionCatalog.InventoryView,   // Lote 8A: a ciegas sin warehouse.count
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Create))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Capture))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
+        [(typeof(CycleCountsController), nameof(CycleCountsController.CaptureBatch))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A
+        [(typeof(CycleCountsController), nameof(CycleCountsController.AddLine))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Finish))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.Refresh))] = PermissionCatalog.WarehouseCount,
         [(typeof(CycleCountsController), nameof(CycleCountsController.Reconcile))] = PermissionCatalog.WarehouseCount,
         [(typeof(CycleCountsController), nameof(CycleCountsController.Delete))] = PermissionCatalog.WarehouseCount,
@@ -119,6 +121,7 @@ public class WmsControllerSecurityTests
         [(typeof(PickBatchesController), nameof(PickBatchesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Get))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Collect))] = PermissionCatalog.WarehousePick,
+        [(typeof(PickBatchesController), nameof(PickBatchesController.CollectAndPack))] = PermissionCatalog.WarehousePick,   // Lote 8A
         [(typeof(PickBatchesController), nameof(PickBatchesController.Pack))] = PermissionCatalog.WarehousePick,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Delete))] = PermissionCatalog.WarehousePick,
 
@@ -207,7 +210,18 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.InventoryAdjust, Expected[(typeof(PurchaseOrdersController), nameof(PurchaseOrdersController.Resolve))]);
         // D28: citas y planes de cruce de muelle en el módulo CROSSDOCK.
         Assert.Equal(ModuleKeys.CrossDock, ModuleOf[typeof(DockAppointmentsController)]);
-        Assert.Equal(102, Expected.Count);
+        // Lote 8A: la ficha del conteo se lee con inventory.view (a ciegas sin warehouse.count); alta, captura y terminar piden
+        // warehouse.count.capture (implícito en warehouse.count); refrescar, reconciliar y la baja siguen con warehouse.count.
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Get))]);
+        foreach (var a in new[] { nameof(CycleCountsController.Create), nameof(CycleCountsController.Capture), nameof(CycleCountsController.CaptureBatch),
+                     nameof(CycleCountsController.AddLine), nameof(CycleCountsController.Finish) })
+            Assert.Equal(PermissionCatalog.WarehouseCountCapture, Expected[(typeof(CycleCountsController), a)]);
+        foreach (var a in new[] { nameof(CycleCountsController.Refresh), nameof(CycleCountsController.Reconcile), nameof(CycleCountsController.Delete) })
+            Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), a)]);
+        Assert.Contains(PermissionCatalog.WarehouseCountCapture, PermissionCatalog.Implied[PermissionCatalog.WarehouseCount]);
+        // Lote 8A: recolectar y empacar en una llamada tiene su propia ruta y su propio tipo de respuesta.
+        Assert.Equal(PermissionCatalog.WarehousePick, Expected[(typeof(PickBatchesController), nameof(PickBatchesController.CollectAndPack))]);
+        Assert.Equal(105, Expected.Count);
     }
 
     [Fact]

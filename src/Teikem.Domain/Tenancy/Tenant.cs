@@ -29,6 +29,8 @@ public class Tenant : ISoftDeletable
     public int Aal2WindowMinutes { get; set; } = 30;
     /// <summary>Vida del refresh token (sesión) en días.</summary>
     public int SessionDays { get; set; } = 30;
+    /// <summary>Lote 8A: vida en días de la sesión de un aparato de almacén (login por aparato + PIN); se renueva al refrescar.</summary>
+    public int DeviceSessionDays { get; set; } = 30;
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
 

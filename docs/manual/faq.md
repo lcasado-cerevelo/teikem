@@ -1657,6 +1657,128 @@ Las fuentes de datos de Análisis (entre ellas `CYCLE_COUNT` y las de almacén d
 y el módulo ANALYTICS, sin el permiso del módulo de negocio. Es una decisión a revisar (`docs/lote7A-decisiones.md`); si
 no debe verlas, quítele `analytics.view` o no le comparta reportes de esas fuentes.
 
+## Lote 8A — Backend de la app de almacén: aparatos, PIN, idempotencia, sincronización y operaciones atómicas
+
+**¿Qué significa "El código de registro no es válido o venció." (401)?**
+El código de 8 caracteres que teclea el aparato es de **un solo uso** y vence en 24 horas; también deja de servir si el
+administrador generó uno nuevo (`POST /api/v1/devices/{id}/enroll-code`) o desactivó el aparato. Pida al administrador
+un código nuevo desde la pantalla de aparatos.
+
+**¿Qué significa "El aparato no está registrado o fue desactivado." (401)?**
+El aparato fue desactivado (o su secreto ya no vale porque se volvió a registrar). Al desactivarlo se cierran en el acto
+sus sesiones: el token que tenga el aparato deja de servir (401 también en la sincronización) y no se puede renovar.
+Reactívelo y vuelva a entrar con el PIN, o registre el aparato de nuevo.
+
+**¿Qué significa "PIN incorrecto." (401)?**
+El PIN no coincide, el usuario no tiene PIN en esta compañía, no es miembro activo o es el administrador de plataforma
+(que nunca entra por aparato). Cada fallo cuenta; al 5.º seguido el PIN se bloquea. Un acierto reinicia el contador.
+
+**¿Qué significa "PIN bloqueado por 15 minutos." (423)?**
+Hubo 5 PIN incorrectos seguidos. Mientras dura el bloqueo ni el PIN correcto entra. Espere 15 minutos, o vuelva a
+definir el PIN (Mi cuenta → `PUT /api/v1/me/pin`, o un administrador con `PUT /api/v1/users/{id}/pin`), lo que quita el
+bloqueo.
+
+**¿Qué significa "La contraseña actual es incorrecta." (400, en `currentPassword`)?**
+Para definir o cambiar su propio PIN (`PUT /api/v1/me/pin`) debe escribir su contraseña de acceso actual. Revise la
+contraseña; si la olvidó, cámbiela primero.
+
+**¿Por qué no aparezco en la lista de usuarios del aparato?**
+La lista muestra solo usuarios internos activos, con membresía activa en la compañía del aparato, con **PIN definido** y
+con `inventory.view`, ordenados por nombre. Defina su PIN en Mi cuenta y pida el permiso si le falta. Si tiene PIN pero
+no `inventory.view`, el login por aparato responde 403 `Falta el permiso 'inventory.view'.`.
+
+**¿Qué significa "No puede asignar ni quitar el PIN de un usuario con más permisos que usted." (403)?**
+Con `devices.manage` (o `admin.users`) puede asignar el PIN de otros, pero solo de usuarios cuyos permisos sean un
+subconjunto de los suyos: con ese PIN se entra como esa persona en un aparato sin contraseña ni MFA. Pida a un
+administrador con esos permisos que lo haga, o que la persona defina su PIN en Mi cuenta.
+
+**Al asignar el PIN de otro usuario recibo 403 `aal2_required`.**
+Asignar el PIN de otro exige una reautenticación reciente (AAL2), igual que cambiar roles o permisos: confirme su
+contraseña (`POST /api/v1/auth/reauth`) y repita.
+
+**¿Qué significa "La clave de idempotencia ya se usó con otro contenido." (409)?**
+La cabecera `Idempotency-Key` identifica UNA operación: repetirla con el mismo cuerpo devuelve la respuesta guardada
+(con `Idempotent-Replayed: true`); con otro cuerpo o en otra ruta es un error. Genere una clave nueva por operación.
+
+**¿Qué significa "La operación con esta clave todavía se está procesando." (409)?**
+Otra petición con la misma clave sigue en curso. Espere y reintente con la misma clave: recibirá su respuesta.
+
+**¿Qué significa "La clave de idempotencia no es válida." (400)?**
+La clave está vacía, repetida o tiene más de 80 caracteres. Use un identificador único corto (por ejemplo un GUID).
+
+**¿Por qué `Idempotency-Key` no tiene efecto en `/api/v1/users`?**
+Las rutas que devuelven credenciales en claro (`/api/v1/auth`, `/api/v1/me`, `/api/v1/devices`, `/api/v1/platform` y
+`/api/v1/users`, cuyo alta devuelve la contraseña temporal) quedan fuera de la idempotencia para no guardar secretos en
+la bitácora. Son operaciones de administración, no de la cola del aparato. Lo mismo vale para invitar y reenviar la
+invitación de un usuario de portal (`/api/v1/clients/{id}/portal-users/invite` y `.../resend-invite`), que devuelven el
+token de invitación.
+
+**¿La misma `Idempotency-Key` sirve para dos usuarios distintos?**
+Sí: la clave es por compañía y usuario. Si otro usuario usa la misma clave, su operación se ejecuta como nueva (no
+recibe la respuesta del primero ni un 409).
+
+**Reenvié una operación rechazada (400) con la misma clave y volvió el mismo 400.**
+Es lo esperado: los rechazos de negocio (menores a 500, salvo 401, 403, 408, 423 y 429) se guardan y se repiten con
+`Idempotent-Replayed: true`. Corrija la solicitud y mándela con una clave nueva.
+
+**¿Qué significa "Demasiados intentos; espere un minuto e intente de nuevo." (429)?**
+El aparato (o la red del almacén) mandó demasiadas peticiones anónimas en un minuto: registrar el aparato admite 10 por
+minuto por dirección IP; la lista de usuarios, el login por aparato y el heartbeat, 60 por minuto cada uno. Espere el
+tiempo de `Retry-After` (60 s) y reintente. Si muchos aparatos salen por la misma IP y se topan con el límite, soporte
+puede subirlo (`RateLimiting:DeviceAuthPerMinute`).
+
+**Mandé 5 PIN incorrectos al mismo tiempo y el PIN quedó bloqueado.**
+El bloqueo cuenta todos los intentos, lleguen en serie o en paralelo: al 5.º fallo el PIN se bloquea 15 minutos (423
+`PIN bloqueado por 15 minutos.`) y los intentos que llegan después también reciben 423, aunque traigan el PIN correcto.
+
+**El heartbeat del aparato responde `isActive: false`.**
+El aparato fue desactivado (o la compañía perdió el módulo WMS). El heartbeat no da error para que la app bloquee la
+entrada; pida al administrador que lo reactive. Con un secreto que no corresponde, el heartbeat responde 401
+`El aparato no está registrado o fue desactivado.`.
+
+**¿Qué significan "El tema no es válido; use LIGHT o DARK." (400), "El almacén por defecto está dado de baja." (422) y
+"El aparato está desactivado; reactívelo antes de generar un código de registro." (422)?**
+Al editar el aparato (`PATCH /api/v1/devices/{id}`) el tema solo admite `LIGHT` o `DARK` y el almacén por defecto debe
+estar activo. Para generar un código de registro nuevo, primero reactive el aparato (`POST /api/v1/devices/{id}/reactivate`).
+
+**Guardo campos personalizados en `USER_DEVICE` y responde 404 (o 403).**
+El aparato no admite campos personalizados: su ruta polimórfica usa el resolver cerrado (siempre 404, como
+`PRODUCT_CATEGORY`) y exige `devices.manage` (sin él, 403).
+
+**¿Qué significan "El máximo por página es 500." y "El cursor no es válido." (400)?**
+La sincronización (`/api/v1/sync/*`) pagina de a lo más 500 filas con el cursor opaco que devuelve `nextCursor`; no lo
+construya a mano. Para la siguiente pasada use `since` = `serverTimeUtc` de la pasada anterior menos 5 minutos.
+
+**Sincronizo órdenes de compra en el aparato y recibo 403.**
+`GET /api/v1/sync/purchase-orders` pide, además de `inventory.view`, el permiso `purchasing.view` y el módulo
+PURCHASING encendido (403 `El módulo 'PURCHASING' no está habilitado para esta compañía.`), igual que la consulta de
+órdenes de compra en la web. El rol Operador de almacén ya trae `purchasing.view`.
+
+**Recibí contra una orden de compra desde el aparato y el recibo quedó con menos de lo pedido.**
+Con `lines` en `POST /api/v1/receipts` (contra aviso u orden de compra) lo escaneado manda sobre lo esperado: lo no
+escaneado queda en 0 y la orden pasa a PARTIAL con su faltante. Sin `lines` se recibe lo esperado completo.
+
+**¿Qué significa "No hay un producto con ese código." (404)?**
+`GET /api/v1/products/by-barcode/{código}` busca el código de barras exacto y, si no, el SKU exacto, solo entre
+productos activos. Revise la etiqueta o dé de alta el código de barras del producto.
+
+**¿Qué significa "Para recolectar y empacar en una llamada use POST /api/v1/pick-batches/collect-and-pack." (400)?**
+`POST /api/v1/pick-batches` solo recolecta. La variante que recolecta y empaca en una transacción tiene su propia ruta
+(`/api/v1/pick-batches/collect-and-pack`) y responde `{ batch, order }`.
+
+**Contar desde el aparato me da 403, pero veo el conteo.**
+Ver la ficha (a ciegas) pide `inventory.view`; contar (alta, captura, lo encontrado y terminar) pide
+`warehouse.count.capture`, y reconciliar, refrescar y eliminar piden `warehouse.count`. Pida el permiso que falta.
+
+**¿Por qué no veo las cantidades esperadas del conteo?**
+Sin `warehouse.count` el conteo es **a ciegas** (`isBlind = true`): las cantidades esperadas llegan vacías para no
+condicionar lo que se cuenta, y también `varianceLines` y `netVariance` del encabezado (en la ficha y en la lista). La
+diferencia se revisa al reconciliar en la web.
+
+**¿Qué significa "Entre 1 y 365 días." en `deviceSessionDays` (400)?**
+La vida de la sesión de los aparatos (`PUT /api/v1/tenant/settings`, `admin.tenant`) va de 1 a 365 días (30 por
+defecto); cada renovación del aparato la extiende desde ese momento.
+
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 
 Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (validaciones de pantalla, en español, cliente) y contra

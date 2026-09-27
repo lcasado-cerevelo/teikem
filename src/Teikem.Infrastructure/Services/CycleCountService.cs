@@ -59,6 +59,16 @@ public sealed class CycleCountService(
     // ================================================================ lista
 
     /// <summary>Conteos activos (los 200 más recientes) con filtros por almacén, estatus, fecha de alta (UTC), posición, producto, categoría y búsqueda.</summary>
+    /// <summary>
+    /// Lote 8A — lista para quien consulta: con blind = true (sin warehouse.count) VarianceLines y NetVariance llegan null
+    /// (conteo a ciegas; ver Blind).
+    /// </summary>
+    public async Task<IReadOnlyList<CycleCountDto>> ListAsync(CycleCountQuery? q, bool blind, CancellationToken ct)
+    {
+        var list = await ListAsync(q, ct);
+        return blind ? list.Select(c => c with { VarianceLines = null, NetVariance = null }).ToList() : list;
+    }
+
     public async Task<IReadOnlyList<CycleCountDto>> ListAsync(CycleCountQuery? q, CancellationToken ct)
     {
         q ??= new CycleCountQuery();
@@ -175,11 +185,13 @@ public sealed class CycleCountService(
 
     /// <summary>
     /// Conteo a ciegas (Lote 8A): quita de la ficha todo lo que revela la cantidad esperada por línea (foto, diferencia, saldo
-    /// actual, series esperadas, lo reconciliado y el ajuste); conserva lo contado. Función pura.
+    /// actual, series esperadas, lo reconciliado y el ajuste) y, en el encabezado, las líneas con diferencia y la diferencia
+    /// neta (con lo contado permitirían deducir lo esperado); conserva lo contado. Función pura.
     /// </summary>
     public static CycleCountDetailDto Blind(CycleCountDetailDto detail)
         => detail with
         {
+            Count = detail.Count with { VarianceLines = null, NetVariance = null },
             Lines = detail.Lines.Select(l => l with
             {
                 SystemQty = null,

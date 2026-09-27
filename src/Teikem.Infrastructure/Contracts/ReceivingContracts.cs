@@ -24,6 +24,9 @@ public sealed record ReceiptLineRequest(Guid? ProductPublicId, decimal? Received
 /// Alta del recibo. Confirm (Lote 8A, cola del aparato) = crear, capturar las líneas de la solicitud y confirmar en UNA sola
 /// transacción: devuelve el recibo ya confirmado (RECEIVED o PUTAWAY) o nada si algo falla (mismas validaciones y mensajes
 /// que el flujo por pasos). Sin Confirm (o false) el recibo nace OPEN como siempre.
+/// Lines: en un recibo ciego o de devolución son las líneas del recibo. Contra aviso (asnId) u orden de compra se aplican
+/// sobre las líneas del documento por producto (y lote): lo escaneado manda, lo no mencionado queda en 0 y un producto que
+/// no está en el documento entra como línea extra. Sin Lines, contra aviso u orden de compra se recibe lo esperado.
 /// </summary>
 public sealed record ReceiptCreateRequest(Guid? WarehousePublicId = null, string? Type = null, int? AsnId = null, Guid? PurchaseOrderPublicId = null,
     int? DockId = null, int? StagingBinId = null, IReadOnlyList<ReceiptLineRequest>? Lines = null, bool Confirm = false);

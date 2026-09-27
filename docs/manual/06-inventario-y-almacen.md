@@ -273,6 +273,12 @@ Cómo se usa:
 - `PUT /api/v1/receipts/{publicId}/lines/{lineId}` — captura cantidad recibida, lote y series.
 - `POST/DELETE /api/v1/receipts/{publicId}/lines` (línea extra, solo `OPEN`).
 - `POST /api/v1/receipts/{publicId}/confirm` — confirma el recibo **completo** (no hay confirmación por línea).
+- Lote 8A (cola del aparato) — `POST /api/v1/receipts` con `confirm: true` crea, captura y confirma en una sola
+  transacción. Contra un aviso (`asnId`) o una orden de compra (`purchaseOrderPublicId`), las `lines` de la solicitud
+  se aplican sobre las líneas del documento: **lo escaneado manda** (por producto y, si trae lote, por lote); una línea
+  del documento que la solicitud no menciona queda recibida en 0 (faltante visible) y un producto que no está en el
+  documento entra como línea extra (no cuenta contra la orden de compra). Sin `lines` se recibe lo esperado, como en el
+  alta por pasos. Mismas validaciones y mensajes que la captura por pasos, con la clave `lines[i]`.
 - `DELETE /api/v1/receipts/{publicId}` — solo `OPEN` y sin cruce de muelle asignado.
 
 ### Validaciones
@@ -440,6 +446,27 @@ esperadas y no contadas se dan de baja, las contadas y desconocidas o fuera de i
 contadas que el sistema ya tiene en otra posición se transfieren. La tarea `COUNT` de la cola pasa a `DONE` en la
 misma transacción. Eliminar (`DELETE`, solo `OPEN`) cancela su tarea `COUNT`.
 
+### Lote 8A — conteo a ciegas (app de almacén)
+
+El almacenista cuenta **sin ver lo esperado** y la reconciliación se hace en la web con `warehouse.count`.
+
+- Permiso nuevo `warehouse.count.capture` (categoría WAREHOUSE, "Capturar conteo (a ciegas)"): alta
+  (`POST /api/v1/cycle-counts`), captura por línea (`PUT .../lines`), captura en lote (`PUT .../lines/batch`),
+  agregar lo encontrado (`POST .../lines`) y terminar (`POST .../finish`). Quien tiene `warehouse.count` lo tiene
+  implícito (los roles propios que ya contaban no pierden nada); el Operador de almacén lo trae en su plantilla.
+- Refrescar, **reconciliar** y eliminar siguen exigiendo `warehouse.count` (sin él: 403 `Falta el permiso ...`).
+- Ficha y respuestas a ciegas: quien no tiene `warehouse.count` recibe `isBlind = true` y las cantidades esperadas
+  de las líneas en `null` (`systemQty`, `varianceQty`, `currentQty`, `reconciledSystemQty`, `adjustedQty`;
+  `expectedSerials` vacío), tanto en `GET /api/v1/cycle-counts/{id}` como en la respuesta de alta, captura y
+  terminar. `onlyVariance` se ignora a ciegas.
+- Solo lectura (`inventory.view` sin `warehouse.count.capture`) ve la ficha a ciegas pero no captura (403).
+- A ciegas, el encabezado tampoco revela lo esperado: `count.varianceLines` y `count.netVariance` llegan en `null` en la
+  ficha, en las respuestas de alta, captura, captura en lote y terminar, y en la lista `GET /api/v1/cycle-counts`
+  (con lo contado permitirían deducir lo esperado). Con `warehouse.count` nunca son `null`.
+- Sincronización del aparato (`/api/v1/sync/*`, módulo WMS_LOTSERIAL, `inventory.view`): `GET /api/v1/sync/purchase-orders`
+  exige además el módulo **PURCHASING** y `purchasing.view`, igual que `/api/v1/purchase-orders` (sin el permiso 403;
+  con el módulo apagado 403 `El módulo 'PURCHASING' no está habilitado para esta compañía.`).
+
 ---
 
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
@@ -462,6 +489,13 @@ Cómo se usa:
   filtrado por `orderNumber`/`invoiceNumber`).
 - `POST /api/v1/pick-batches` — `{ "warehousePublicId": "...", "lines": [{ "productPublicId": "...", "quantity": 5 }] }`.
 - `POST /api/v1/pick-batches/{publicId}/pack` — `{ "order": { ... datos de la orden ... } }`.
+- Lote 8A (cola del aparato) — `POST /api/v1/pick-batches/collect-and-pack` — el mismo cuerpo de recolectar más
+  `"pack": { "order": { ... } }`: recolecta y empaca en **una** transacción y responde `{ batch, order }`
+  (`PickBatchPackResultDto`), con las mismas reglas, permisos y mensajes que los dos pasos. Si el empaque falla (por
+  ejemplo `Cliente no encontrado.`, 404) no queda la recolección ni sale inventario, y el número `EMP` no se consume.
+  Respeta `Idempotency-Key`. Mandar `pack` a `POST /api/v1/pick-batches` responde 400 `Para recolectar y empacar en
+  una llamada use POST /api/v1/pick-batches/collect-and-pack.`; sin `pack` en `collect-and-pack` → 400 `Indique los
+  datos de la orden que se crea al empacar.`.
 - `DELETE /api/v1/pick-batches/{publicId}`.
 
 ### Validaciones
@@ -654,6 +688,7 @@ inventario) o **CANCELLED** (terminal, libera la reserva; si ya tenía algo conf
 | `warehouse.receive` | WAREHOUSE | Recibir mercancía (ASN y recibos); completar tareas `PUTAWAY` |
 | `warehouse.pick` | WAREHOUSE | Recolectar y empacar; completar tareas `REPLENISH`; correr el reabasto |
 | `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluida la reconciliación |
+| `warehouse.count.capture` | WAREHOUSE | Lote 8A: contar a ciegas (alta, captura, lo encontrado y terminar) sin ver lo esperado ni reconciliar; implícito en `warehouse.count` |
 | `warehouse.crossdock` | WAREHOUSE | Citas y planes de cruce de muelle; completar tareas `CROSSDOCK` |
 | `purchasing.view` | PURCHASING | Ver proveedores y órdenes de compra |
 | `purchasing.manage` | PURCHASING | Gestionar proveedores y órdenes de compra |

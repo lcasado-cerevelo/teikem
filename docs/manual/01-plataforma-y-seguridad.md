@@ -242,6 +242,28 @@ Cómo se usa:
 - `GET /api/v1/users`, `GET /api/v1/users/{id}`
 - `POST /api/v1/users` `{ "email": "...", "fullName": "...", "roles": ["Dispatcher"] }` → respuesta incluye
   `temporaryPassword` si no se envió `password`.
+  Lote 8A: `/api/v1/users` (y sus subrutas) queda **fuera** de la idempotencia (`Idempotency-Key` se ignora): la
+  respuesta del alta lleva la contraseña temporal en claro y no debe guardarse en la bitácora de idempotencia. Por la
+  misma razón quedan fuera las invitaciones de portal (`POST /api/v1/clients/{id}/portal-users/invite` y
+  `.../portal-users/{id}/resend-invite`, que devuelven el token de invitación).
+- Lote 8A — PIN de otros usuarios para los aparatos de almacén (módulo **WMS_LOTSERIAL**; `devices.manage` o
+  `admin.users`): `PUT /api/v1/users/{id}/pin` `{ "pin": "4826" }` (exige **AAL2**) y `DELETE /api/v1/users/{id}/pin`.
+  No se puede asignar ni quitar el PIN de un usuario con **más permisos** que quien lo hace (403 `No puede asignar ni
+  quitar el PIN de un usuario con más permisos que usted.`) ni del administrador de plataforma (404 `Usuario no
+  encontrado.`); el administrador de plataforma nunca entra por aparato (401 `PIN incorrecto.`). La lista de usuarios
+  expone `hasPin`.
+- Lote 8A — bloqueo del PIN a prueba de intentos en paralelo: cada intento fallido se cuenta con una sola sentencia
+  atómica en la base de datos; al 5.º fallo el PIN queda bloqueado 15 minutos (423 `PIN bloqueado por 15 minutos.`)
+  aunque los intentos lleguen todos a la vez (los que llegan después del bloqueo también reciben 423, incluso con el
+  PIN correcto). Un acierto reinicia el contador.
+- Lote 8A — límite de intentos de los endpoints anónimos del aparato (por dirección IP y ruta, ventana de 1 minuto):
+  `POST /api/v1/devices/enroll` 10 por minuto; `POST /api/v1/auth/device/users`, `POST /api/v1/auth/device/login` y
+  `POST /api/v1/devices/heartbeat` 60 por minuto (`RateLimiting:DeviceEnrollPerMinute` y
+  `RateLimiting:DeviceAuthPerMinute`). Al pasarse: 429 `Demasiados intentos; espere un minuto e intente de nuevo.`
+  (código `rate_limited`, cabecera `Retry-After: 60`). El login con contraseña conserva su bloqueo por cuenta.
+- Lote 8A — el aparato (`USER_DEVICE`) existe solo para la bitácora: no admite campos personalizados. La ruta
+  polimórfica `/api/v1/custom-fields/values/USER_DEVICE/{id}` exige `devices.manage` (sin él 403) y siempre responde
+  404 (resolver cerrado, como `PRODUCT_CATEGORY`).
 - `PUT /api/v1/users/{id}` `{ "fullName": "...", "isActive": true }`
 - `PUT /api/v1/users/{id}/roles` `{ "roles": ["Dispatcher","Billing"] }` (AAL2)
 - `PUT /api/v1/users/{id}/permissions` `{ "permissions": ["analytics.dates"] }` — permiso puntual al usuario,
@@ -660,6 +682,7 @@ Validaciones:
 | `maxStopsPerRouteDefault` | ≥ 1 | `Debe ser ≥ 1.` | 400 |
 | `aal2WindowMinutes` | 5-240 | `Entre 5 y 240 minutos.` | 400 |
 | `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
+| `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `brandingJson` | JSON válido | `BrandingJson no es JSON válido.` | 400 |
 | `brandingJson` | ≤ 200.000 caracteres | `BrandingJson demasiado grande (los logos van a blob storage).` | 400 |
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |

@@ -98,6 +98,8 @@ GO
     ('AdjustmentReason',1,'Motivo de ajuste','Adjustment reason'),('ShortageAction',1,'Acción de faltante','Shortage action'),
     -- Lote 7A — Pulso: catálogo de eventos de "Actividad reciente" (y, más adelante, de notificaciones)
     ('ActivityEventType',1,'Evento de actividad','Activity event'),
+    -- Lote 8A — App de almacén: tema por defecto del aparato de confianza (UserDevice.ThemeLookupId)
+    ('UiTheme',1,'Tema de interfaz','UI theme'),
     -- Status
     ('ClientStatus',2,'Estatus de cliente','Client status'),('ContractStatus',2,'Estatus de contrato','Contract status'),
     ('OrderStatus',2,'Estatus de orden','Order status'),('StopStatus',2,'Estatus de parada','Stop status'),
@@ -301,7 +303,12 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','INVENTORY_TRANSACTION','Movimiento de inventario','Inventory transaction',77),('EntityType','STOCK_BALANCE','Saldo de inventario','Stock balance',78),
 -- Lote 7A: la categoría de producto se audita con su propio tipo (antes compartía PRODUCT; su baja parecía la de un producto)
 ('EntityType','PRODUCT_CATEGORY','Categoría de producto','Product category',79),
-('Capability','EDIT_PURCHASE_ORDER','Editar orden de compra','Edit purchase order',9);
+('Capability','EDIT_PURCHASE_ORDER','Editar orden de compra','Edit purchase order',9),
+-- Lote 8A — App de almacén: tema del aparato, categoría de permisos de seguridad (devices.manage) y aparato auditable.
+-- MessageDirection INBOUND (idempotencia del API en IntegrationMessageLog) ya se siembra arriba.
+('UiTheme','LIGHT','Claro','Light',1),('UiTheme','DARK','Oscuro','Dark',2),
+('PermissionCategory','SECURITY','Seguridad','Security',12),
+('EntityType','USER_DEVICE','Aparato de almacén','Warehouse device',80);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -690,7 +697,11 @@ INSERT INTO #P VALUES
 ('inventory.view','WAREHOUSE','Ver inventario y almacén','View inventory & warehouse'),
 ('inventory.manage','WAREHOUSE','Gestionar productos','Manage products'),
 ('inventory.adjust','WAREHOUSE','Ajustar y transferir inventario','Adjust & transfer inventory'),
-('warehouse.manage','WAREHOUSE','Gestionar almacenes y tareas','Manage warehouses & tasks');
+('warehouse.manage','WAREHOUSE','Gestionar almacenes y tareas','Manage warehouses & tasks'),
+-- Lote 8A — App de almacén (categoría SECURITY): aparatos de confianza y PIN de otros usuarios; TenantAdmin lo recibe por "todos"
+('devices.manage','SECURITY','Gestionar aparatos y PIN','Manage devices & PINs'),
+-- Lote 8A — conteo a ciegas: capturar sin ver lo esperado ni reconciliar (warehouse.count lo implica en PermissionService)
+('warehouse.count.capture','WAREHOUSE','Capturar conteo (a ciegas)','Capture count (blind)');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -737,7 +748,8 @@ INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
 ('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan'),   -- Lote 5
-('WarehouseOperator','inventory.view');   -- Lote 6
+('WarehouseOperator','inventory.view'),   -- Lote 6
+('WarehouseOperator','warehouse.count.capture');   -- Lote 8A
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
@@ -782,5 +794,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (58), roles plantilla y zonas de despacho demo. El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (60), roles plantilla y zonas de despacho demo. El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

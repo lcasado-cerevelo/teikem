@@ -159,8 +159,12 @@ public sealed class PickBatchService(
 
     // ================================================================ recolectar (D48)
 
+    /// <summary>Recolecta (sin empacar). Con 'pack' → 400: la variante atómica es CollectAndPackAsync (ruta collect-and-pack).</summary>
     public async Task<PickBatchDto> CollectAsync(PickBatchCreateRequest req, CancellationToken ct)
-        => await GetAsync(await CollectCoreAsync(req, ct), ct);
+    {
+        if (req?.Pack is not null) throw new ValidationException("pack", PickBatchRules.PackUseCollectAndPack);
+        return await GetAsync(await CollectCoreAsync(req!, ct), ct);
+    }
 
     /// <summary>
     /// Lote 8A (cola del aparato): recolectar y empacar en UNA transacción con exactamente los mismos pasos, permisos y mensajes

@@ -40,17 +40,21 @@ public sealed class PickBatchesController(PickBatchService batches) : Controller
     /// <summary>
     /// Recolecta (COLLECTED, EMP-#####): productos activos de un solo dueño; posición y lote por FEFO o explícitos; los
     /// productos con serie se recolectan escaneando la serie. Saca el inventario con un ISSUE por porción. Inventario
-    /// insuficiente → 409 insufficient_stock sin efecto parcial (el número tampoco se consume).
-    /// Lote 8A (cola del aparato): con 'pack' en el cuerpo recolecta y empaca en UNA transacción (+ orders.create, mismas
-    /// reglas que POST /{publicId}/pack) y la respuesta es un PickBatchPackResultDto { batch, order } en lugar del
-    /// PickBatchDto; si el empaque falla tampoco queda la recolección. Respeta Idempotency-Key.
+    /// insuficiente → 409 insufficient_stock sin efecto parcial (el número tampoco se consume). Con 'pack' en el cuerpo → 400
+    /// (use collect-and-pack).
     /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehousePick)]
-    [ProducesResponseType(typeof(PickBatchDto), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Collect([FromBody] PickBatchCreateRequest req, CancellationToken ct)
-        => req?.Pack is null
-            ? Ok(await batches.CollectAsync(req!, ct))
-            : Ok(await batches.CollectAndPackAsync(req, ct));
+    public Task<PickBatchDto> Collect([FromBody] PickBatchCreateRequest req, CancellationToken ct)
+        => batches.CollectAsync(req, ct);
+
+    /// <summary>
+    /// Lote 8A (cola del aparato): recolecta y empaca en UNA transacción (+ orders.create, mismas reglas y mensajes que
+    /// POST / y POST /{publicId}/pack) y devuelve { batch, order }. 'pack' es obligatorio (sin él → 400 'pack'); si el
+    /// empaque falla tampoco queda la recolección (ni sale inventario ni se consume el número). Respeta Idempotency-Key.
+    /// </summary>
+    [HttpPost("collect-and-pack"), RequirePermission(PermissionCatalog.WarehousePick)]
+    public Task<PickBatchPackResultDto> CollectAndPack([FromBody] PickBatchCreateRequest req, CancellationToken ct)
+        => batches.CollectAndPackAsync(req, ct);
 
     /// <summary>
     /// Empaca: crea la orden real (número de empaque = número de la recolección; + orders.create) y pasa a PACKED. Sin entrega

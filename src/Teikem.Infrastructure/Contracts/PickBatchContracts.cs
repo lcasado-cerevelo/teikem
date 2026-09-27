@@ -6,9 +6,10 @@ public sealed record PickBatchLineRequest(Guid? ProductPublicId, decimal? Quanti
     IReadOnlyList<string>? SerialNumbers = null);
 
 /// <summary>
-/// Recolección. Pack (Lote 8A, cola del aparato) = recolectar y empacar en UNA sola transacción: la respuesta es entonces un
-/// PickBatchPackResultDto (recolección PACKED + orden creada) en lugar de un PickBatchDto. Su RowVersion se ignora (la
-/// recolección nace en la misma llamada). Mismas validaciones y permisos que el flujo por pasos (empacar exige orders.create).
+/// Recolección. Pack (Lote 8A, cola del aparato) = recolectar y empacar en UNA sola transacción; solo se acepta en
+/// POST /api/v1/pick-batches/collect-and-pack (respuesta PickBatchPackResultDto: recolección PACKED + orden creada); en
+/// POST /api/v1/pick-batches → 400. Su RowVersion se ignora (la recolección nace en la misma llamada). Mismas validaciones
+/// y permisos que el flujo por pasos (empacar exige orders.create).
 /// </summary>
 public sealed record PickBatchCreateRequest(Guid? WarehousePublicId = null, IReadOnlyList<PickBatchLineRequest>? Lines = null,
     PickBatchPackRequest? Pack = null);

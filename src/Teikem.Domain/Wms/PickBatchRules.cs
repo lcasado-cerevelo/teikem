@@ -53,6 +53,8 @@ public static class PickBatchRules
     public const string SingleOwner = "Una recolección solo puede tener productos de un mismo dueño.";
     public const string PackSpecialNotAllowed = "Un empaque no puede ser una entrega especial ni llevar chofer.";
     public const string LinesRequired = "Indique al menos una línea a recolectar.";
+    /// <summary>Lote 8A: 'pack' en POST /api/v1/pick-batches (la variante atómica tiene su propia ruta y su propio tipo).</summary>
+    public const string PackUseCollectAndPack = "Para recolectar y empacar en una llamada use POST /api/v1/pick-batches/collect-and-pack.";
     public const string TooManyLines = "La recolección admite como máximo 100 líneas.";
     public const string ProductRequired = "Indique el producto.";
     public const string QuantityRequired = "La cantidad debe ser mayor que cero.";
