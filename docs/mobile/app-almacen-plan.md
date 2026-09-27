@@ -112,3 +112,31 @@ Sugerencia de orden: 8A-backend completo → A0 + A1 (Recibir) y probar en el ap
 7. Tema claro u oscuro: el aparato trae un tema por defecto (lo fija el administrador al registrarlo; claro para almacenes
    iluminados) y cada usuario puede cambiarlo desde la cabecera; la app recuerda la elección por usuario en ese aparato.
    Mock aprobado por Luis: `docs/mobile/mock-app-almacen.html`.
+
+## 8. Cómo apuntar la app al API (staging o desarrollo local)
+
+La app guarda la URL del API como configuración del aparato: se teclea (o se escanea de un código QR) una sola vez en la
+pantalla de registro del aparato y se puede cambiar después desde Sincronización → "Servidor". Nunca hay que recompilar.
+
+**Staging (caso normal)**: la URL pública del staging con HTTPS (por ejemplo `https://staging.teikem.example/`). Android
+bloquea el tráfico HTTP sin cifrar por defecto, así que el staging debe tener certificado válido. La base de datos es la del
+staging: lo hecho desde el aparato aparece en la web del staging y viceversa.
+
+**Desarrollo local (el API en tu computadora)**: el celular o el Zebra deben estar en la misma red WiFi que la computadora y
+el API debe escuchar en todas las interfaces, no solo en `localhost`:
+
+```
+# en la carpeta del repo, Windows o Linux
+set ASPNETCORE_ENVIRONMENT=Development
+set ASPNETCORE_URLS=http://0.0.0.0:5000
+dotnet run --project src/Teikem.Api
+```
+
+Luego, en el aparato, la URL es `http://<IP de tu computadora>:5000/` (la IP se ve con `ipconfig` en Windows o `ip addr`
+en Linux; por ejemplo `http://192.168.1.20:5000/`). Como es HTTP sin cifrar, el APK de desarrollo lleva la excepción
+`usesCleartextTraffic` activada; el APK de producción no la lleva y exige HTTPS. Si el firewall de Windows pregunta, hay que
+permitir el puerto 5000 en redes privadas.
+
+Para probar el modo sin señal en cualquiera de los dos casos: sincronizar una vez con el API alcanzable, poner el aparato en
+modo avión, operar (recibir, contar), ver la cola en "pendientes de enviar", quitar el modo avión y ver cómo la cola se
+vacía y las operaciones aparecen en la web.
