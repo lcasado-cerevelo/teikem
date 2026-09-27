@@ -65,9 +65,10 @@ while (ronda < maxRondasFe && huboAltas) {
     agent(`Intenta refutar este hallazgo de severidad alta del frontend:\n${JSON.stringify(h, null, 1)}\nSi no estás seguro, real=false.`, { agentType: 'verifier', model: 'opus', effort: 'medium', label: `refutar:${h.archivo.split('/').pop()}`, phase: 'Verificar', schema: VERDICT })
       .then(v => ({ h, real: !!(v && v.real), arreglo: v && v.arreglo }))))
   const realesAltas = juzgadas.filter(Boolean).filter(j => j.real)
-  huboAltas = realesAltas.length > 0
   const aCorregir = [...realesAltas.map(j => ({ ...j.h, arreglo: j.arreglo })), ...medias]
-  if (!aCorregir.length) { log('Nada que corregir.'); break }
+  // Se sigue revisando mientras haya algo que corregir (alta confirmada o media): la ronda limpia es la que no corrige nada.
+  huboAltas = aCorregir.length > 0
+  if (!aCorregir.length) { log('Ronda limpia: nada que corregir.'); break }
   await agent(`${cabecera}\n${REGLAS_FE}\n\nCorrige estos hallazgos con cambios mínimos (las 'alta' están confirmadas; las 'media' son convenciones de interfaz) y termina con npm run check en verde:\n${JSON.stringify(aCorregir, null, 1)}`,
     { agentType: 'implementer', model: 'opus', effort: 'high', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
   corregidos += aCorregir.length
