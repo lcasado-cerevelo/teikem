@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mock — Pulso del día (almacén)</title>
+<style>
+/* Tokens de diseño portados de Diseño/teikem-mockups.html (bloque <style>): paleta oscura por defecto y tema claro
+   con data-theme="light" en <html>. Dos acentos: flow (operación, azul) y money (dinero, naranja). */
+:root{
+  --bg:#0D1220; --bg-2:#0A0E18; --panel:#141B2E; --panel-2:#182136; --raise:#1F2A44;
+  --line:#243252; --line-2:#1C2740;
+  --text:#E8ECF5; --muted:#8C97AD; --faint:#5B6680;
+  --money:#FF6A1A; --money-2:#FF8B4D; --money-bg:rgba(255,106,26,.13); --money-line:rgba(255,106,26,.35);
+  --flow:#1F6FE5; --flow-2:#6EA8FF; --flow-bg:rgba(31,111,229,.14); --flow-line:rgba(31,111,229,.40);
+  --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
+  --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
+  --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
+  --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
+  --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
+  --label-paper:#fff; --label-ink:#0B2C66;
+  --hexd:#0B2C66; --hexl:#1F6FE5;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --ui:'Space Grotesk',system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#F0F2F7; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E5EAF3;
+  --line:#DDE4F0; --line-2:#E9EDF5;
+  --text:#182136; --muted:#5B6880; --faint:#8C97AD;
+  --money:#E05A0F; --money-2:#B94A0C; --money-bg:rgba(224,90,15,.10); --money-line:rgba(224,90,15,.30);
+  --flow:#1F6FE5; --flow-2:#0B4DB8; --flow-bg:rgba(31,111,229,.10); --flow-line:rgba(31,111,229,.30);
+  --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
+  --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
+  --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
+  --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
+  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
+}
+/* Medidas del shell (no están en la maqueta como variables; se toman de sus valores fijos). */
+:root{
+  --rail-w:250px; --rail-w-col:66px; --bar-h:54px;
+  --radius:13px; --radius-sm:9px;
+  --shadow-pop:0 30px 80px -20px rgba(0,0,0,.7);
+}
+
+/* Estilos base y clases comunes portadas del bloque <style> de Diseño/teikem-mockups.html.
+   Cambios respecto a la maqueta: el body no bloquea el scroll (lo hace .app), alturas con dvh, reglas responsive
+   (cajón bajo 900 px, una columna a 360 px, sin scroll horizontal de página) y .pal usable también como panel en línea. */
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--app-bg);background-attachment:fixed;color:var(--text);font-family:var(--ui);font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#root{min-height:100dvh}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit}
+svg{width:16px;height:16px;flex:none}
+a{color:var(--flow-2)}
+h1,h2,h3{letter-spacing:-.01em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+::selection{background:var(--flow);color:#fff}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+
+/* ===== SHELL ===== */
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);height:100dvh;overflow:hidden;transition:grid-template-columns .16s ease}
+.app.col{grid-template-columns:var(--rail-w-col) minmax(0,1fr)}
+
+.rail{background:linear-gradient(180deg,var(--panel),var(--bg));border-right:1px solid var(--line-2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.rbrand{display:flex;align-items:center;gap:10px;padding:16px 13px 14px;border-bottom:1px solid var(--line-2);background:linear-gradient(135deg,var(--brand-wash),transparent 65%);color:var(--text);text-decoration:none}
+.rbrand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--hexd),var(--hexl));display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none;box-shadow:0 4px 14px var(--brand-glow)}
+.rbrand .name{font-weight:700;font-size:18px;letter-spacing:.02em}
+.rnav{flex:1;overflow-y:auto;padding:6px 9px}
+.grp{margin-bottom:1px}
+.grp-h{display:flex;align-items:center;gap:11px;width:100%;padding:9px 9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.grp-h:hover{background:var(--panel-2);color:var(--text)}
+.grp-h .gi{display:flex;color:var(--faint)}.grp-h .gi svg{width:16px;height:16px}
+.grp-h .chev{margin-left:auto;transition:.16s;color:var(--faint);display:flex}.grp-h .chev svg{width:14px;height:14px}
+.grp.open .grp-h .chev{transform:rotate(90deg)}
+.grp.open .grp-h{color:var(--text)}.grp.open .grp-h .gi{color:var(--flow-2)}
+.grp-items{display:none;padding:1px 0 5px}
+.grp.open .grp-items{display:block}
+.navit{display:flex;align-items:center;gap:10px;padding:7px 10px 7px 13px;margin:1px 4px 1px 8px;border-radius:8px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;position:relative;text-decoration:none}
+.navit::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:2px;border-radius:2px;background:transparent}
+.navit .di{width:5px;height:5px;border-radius:50%;background:var(--faint);flex:none;margin-left:2px}
+.navit:hover{background:var(--panel-2)}
+.navit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.navit.on::before{background:var(--flow)} .navit.on .di{background:var(--flow)}
+.rfoot{padding:9px;border-top:1px solid var(--line-2)}
+.collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-size:12.5px;font-weight:500}
+.collapse:hover{background:var(--panel-2);color:var(--text)}
+.collapse svg{transition:.16s}
+.app.col .collapse svg{transform:rotate(180deg)}
+.app.col .rbrand .name,.app.col .grp-h .lbl,.app.col .grp-h .chev,.app.col .collapse span{display:none}
+.app.col .grp-items{display:none!important}
+.app.col .grp-h{justify-content:center;padding:11px}
+.app.col .rbrand{justify-content:center;padding:14px 0 12px}
+.app.col .collapse{justify-content:center}
+
+.main{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.bar{height:var(--bar-h);display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line-2);background:var(--panel);flex:none;min-width:0}
+.bar .sp{flex:1;min-width:0}
+.bar .burger{display:none;border:none;background:transparent;width:36px;height:36px;border-radius:9px;align-items:center;justify-content:center;flex:none}
+.bar .burger:hover{background:var(--panel-2)}
+.bar .burger svg{width:20px;height:20px}
+.tenant{display:flex;align-items:center;gap:8px;min-width:0;font-weight:600;font-size:13.5px}
+.tenant .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tenant select{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--text);font-size:13px;font-weight:600;max-width:100%;min-width:0}
+.langdd{position:relative;flex:none}
+.langdd>button{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.langdd>button:hover{border-color:var(--flow-line)}
+.langdd .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 40px -12px rgba(0,0,0,.5);padding:5px;display:none;min-width:170px;z-index:40}
+.langdd.open .menu{display:block}
+.langdd .menu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;text-align:left}
+.langdd .menu button:hover{background:var(--panel-2)}
+.langdd .menu button.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.who{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid var(--line-2);color:var(--text);text-decoration:none;min-width:0;flex:none}
+.who .av{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--flow),var(--money));display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;flex:none}
+.who .nm{font-size:13px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{border:none;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.iconbtn:hover{background:var(--panel-2);color:var(--text)}
+.stage{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 90px;min-width:0}
+.wrap{width:100%;max-width:1760px;margin:0}
+.drawer-scrim{display:none}
+
+/* ===== ENCABEZADOS, BOTONES, PANELES ===== */
+.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.head h1{font-size:21px;font-weight:700;margin:0}
+.head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.head .act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.subtle{color:var(--faint);font-size:12.5px;margin:0 0 20px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;color:var(--text);text-decoration:none}
+.btn:hover{background:var(--panel-2)}
+.btn svg{width:15px;height:15px}
+.btn.flow{background:var(--flow);border-color:var(--flow);color:#fff}.btn.flow:hover{background:var(--flow-2);color:#0B2C66}
+.btn.money{background:var(--money);border-color:var(--money);color:#fff}.btn.money:hover{background:var(--money-2)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
+.panel .ph2{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:600;font-size:14px;flex-wrap:wrap}
+.panel .ph2 .r{margin-left:auto;color:var(--muted);font-weight:500;font-size:12px;font-family:var(--mono)}
+.panel .ph2 svg{width:16px;height:16px;color:var(--flow-2)}
+.pb,.panel .pb{padding:16px}
+.cols{display:grid;gap:16px}
+.note{font-size:12px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:9px;padding:11px 13px}
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--flow-2);background:var(--flow-bg);border:1px solid var(--flow-line);padding:2px 7px;border-radius:6px;vertical-align:middle}
+.tag.m{color:var(--money-2);background:var(--money-bg);border-color:var(--money-line)}
+.empty{display:grid;place-items:center;min-height:220px;text-align:center;color:var(--muted);padding:16px}
+.empty h2{color:var(--text);font-size:18px;margin:0 0 6px}
+.empty p{margin:0 0 14px}
+.empty .ic{width:46px;height:46px;border-radius:13px;background:var(--panel-2);display:grid;place-items:center;margin:0 auto 12px;color:var(--faint)}
+.empty .ic svg{width:22px;height:22px}
+
+/* ===== .pal/.pi/.pb/.ft: contenedor de la paleta de la maqueta. En línea ocupa el ancho disponible; dentro de
+   .scrim es el modal (mismo padding y tipografía del shell). ===== */
+.scrim{position:fixed;inset:0;background:rgba(5,10,22,.62);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:11vh 12px 12px;z-index:50;overflow-y:auto}
+.scrim.on{display:flex}
+.pal{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;min-width:0}
+.scrim .pal{width:640px;max-width:100%;box-shadow:var(--shadow-pop)}
+.pal .pi{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid var(--line-2)}
+.pal .pi svg{width:18px;height:18px;color:var(--muted)}
+.pal .pi input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:16px;min-width:0}
+.pal .pl{max-height:46vh;overflow-y:auto;padding:7px}
+.pal .pgrp{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:11px 12px 5px}
+.pal .it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer}
+.pal .it .pic{width:30px;height:30px;border-radius:8px;background:var(--panel-2);display:grid;place-items:center;color:var(--muted)}
+.pal .it.on{background:var(--flow-bg)}.pal .it.on .pic{background:var(--flow);color:#fff}
+.pal .it .nm{font-weight:600;font-size:13.5px}.pal .it .ds{color:var(--faint);font-size:11.5px}
+.pal .ft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line-2);color:var(--faint);font-size:11px}
+.pal .ft kbd{font-family:var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+
+/* ===== CHIPS (nunca envuelven) ===== */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;line-height:1.6;white-space:nowrap;color:var(--neutral-fg);background:var(--neutral-bg)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-cap{color:var(--neutral-fg);background:var(--neutral-bg)}
+.s-wh{color:var(--violet);background:var(--violetbg)}
+.s-disp{color:var(--info);background:var(--infobg)}
+.s-route{color:var(--flow-2);background:var(--flow-bg)}
+.s-deliv{color:var(--ok);background:var(--okbg)}
+.s-cod{color:var(--money-2);background:var(--money-bg)}
+.s-fail{color:var(--danger);background:var(--dangerbg)}
+.s-warn{color:var(--warn);background:var(--warnbg)}
+
+/* ===== TABLAS ===== */
+.lst{width:100%;border-collapse:collapse;font-size:13px}
+.lst th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line-2);position:sticky;top:0;background:var(--panel)}
+.lst th.sort{cursor:pointer;user-select:none}
+.lst th.sort:hover{color:var(--flow-2)}
+.lst th .arr{font-size:9px;margin-left:4px;color:var(--flow-2)}
+.lst td{padding:8px 6px;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere;word-break:break-word}
+.lst tbody tr:hover td{background:var(--panel-2)}
+.lst td.n,.lst th.n{text-align:right;font-family:var(--mono)}
+.lst td.n{white-space:nowrap}
+.ref{font-family:var(--mono);color:var(--flow-2)}
+.cash{font-family:var(--mono);font-weight:600;color:var(--money-2)}
+.cash.z{color:var(--faint);font-weight:400}
+.dr{font-family:var(--mono);font-size:12px;background:var(--raise);border-radius:5px;padding:1px 7px;color:var(--muted)}
+
+/* ===== FORMULARIOS ===== */
+.f{margin-bottom:13px;min-width:0}.f label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;color:var(--text);outline:none}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)}
+.f input[aria-invalid="true"],.f select[aria-invalid="true"],.f textarea[aria-invalid="true"]{border-color:var(--danger)}
+.f .help{font-size:11.5px;color:var(--faint);margin-top:4px}
+.ferr{color:var(--danger);font-size:12px;font-weight:600;margin:5px 0 0}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.sw{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.f label.sw{display:inline-flex;margin-bottom:0}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}.sw .tk{width:38px;height:22px;border-radius:20px;background:var(--raise);position:relative;transition:.15s;flex:none}
+.sw .tk::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#cfd6e0;top:2px;left:2px;transition:.15s}
+.sw input:checked+.tk{background:var(--ok)}.sw input:checked+.tk::after{left:18px;background:#fff}
+.sw input:focus-visible+.tk{outline:2px solid var(--flow);outline-offset:2px}
+.filters{display:grid;grid-template-columns:repeat(8,minmax(0,1fr)) auto;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;align-items:end}
+.filters .f{margin:0}
+.filters .f input,.filters .f select{padding:7px 9px;font-size:12.5px}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:2px;max-width:100%;overflow-x:auto}
+.seg button{border:none;background:transparent;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+
+/* multi-select genérico */
+.msel{position:relative;min-width:0}
+.msel>button{width:100%;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;min-width:0}
+.msel>button:hover{border-color:var(--flow-line)}
+.msel>button .cnt{margin-left:auto;background:var(--flow);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;font-family:var(--mono)}
+.msel .mp{position:absolute;left:0;top:calc(100% + 6px);min-width:230px;width:max-content;max-width:min(300px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 50px -14px rgba(0,0,0,.6);display:none;overflow:hidden;z-index:45}
+.msel.open .mp{display:block}
+.msel .msearch{display:flex;align-items:center;gap:8px;padding:9px 11px 12px;border-bottom:1px solid var(--line-2);color:var(--faint)}
+.msel .msearch svg{width:14px;height:14px;flex:none}
+.msel .msearch input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;min-width:0}
+.msel .milist{max-height:220px;overflow-y:auto;padding:6px}
+.msel .mnone{padding:14px 10px;text-align:center;color:var(--faint);font-size:12px}
+.msel .mi{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;font-size:12.5px;cursor:pointer;line-height:1.3}
+.msel .mi:hover{background:var(--panel-2)}
+.msel .mi input[type=checkbox]{accent-color:var(--flow)}
+.msel .mf{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line-2)}
+.msel .mf button{flex:1;border:none;background:var(--panel-2);border-radius:7px;padding:6px;font-size:11px;font-weight:600;color:var(--muted)}
+.msel .mf button:hover{background:var(--raise);color:var(--text)}
+
+/* ===== qbox: búsqueda libre dentro de una sección/panel ===== */
+.qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
+.qrow.tight{padding-top:0}
+.qbox{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--muted);width:100%;max-width:280px;flex:1 1 200px;min-width:0}
+.qbox:focus-within{border-color:var(--flow-line)}
+.qbox svg{width:13px;height:13px;flex:none;color:var(--faint)}
+.qbox input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;min-width:0}
+.qbox input::placeholder{color:var(--faint)}
+
+/* ===== TOAST y SPINNER ===== */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--flow-line);color:var(--text);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:0 18px 50px -12px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.22s;display:flex;align-items:center;gap:10px;z-index:80;max-width:calc(100vw - 24px)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast svg{color:var(--flow-2)}
+.spin{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--flow);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.splash{display:grid;place-items:center;min-height:50vh}
+.splash.full{min-height:100dvh}
+
+/* ===== AUTENTICACIÓN (login, MFA, selección de compañía) ===== */
+.auth{min-height:100dvh;display:grid;place-items:center;padding:60px 14px 24px}
+.auth-card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 24px;box-shadow:var(--shadow-pop)}
+.auth-card .rbrand{border:none;background:none;padding:0 0 18px}
+.auth-card h1{font-size:20px;margin:0 0 4px}
+.auth-card .subtle{margin-bottom:18px}
+.auth-card .alert{background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:14px}
+.auth-card .links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:12.5px}
+.auth-card .linkbtn{border:none;background:none;padding:0;color:var(--flow-2);font-size:12.5px;font-weight:600}
+.auth-lang{position:fixed;top:12px;right:12px}
+.tenant-list{display:flex;flex-direction:column;gap:8px}
+.tenant-list button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600}
+.tenant-list button:hover{border-color:var(--flow-line);background:var(--panel-2)}
+.secret{font-family:var(--mono);font-size:13px;background:var(--bg-2);border:1px dashed var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere;margin:6px 0 12px}
+.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;font-family:var(--mono);font-size:12.5px;margin:8px 0 14px}
+.codes span{background:var(--bg-2);border:1px solid var(--line-2);border-radius:7px;padding:6px 8px;text-align:center}
+
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2s}.app,.rail{transition:none}}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Bajo 900 px la barra lateral es un cajón que se abre con el botón de menú. */
+@media(max-width:900px){
+  .app,.app.col{grid-template-columns:minmax(0,1fr)}
+  .rail{position:fixed;inset:0 auto 0 0;width:min(280px,86vw);z-index:70;transform:translateX(-102%);transition:transform .18s ease;box-shadow:var(--shadow-pop)}
+  .app.drawer .rail{transform:none}
+  .app.drawer .drawer-scrim{display:block;position:fixed;inset:0;background:rgba(5,10,22,.55);z-index:65}
+  /* en el cajón siempre se ve el menú completo */
+  .app.col .rbrand .name,.app.col .grp-h .lbl,.app.col .grp-h .chev{display:revert}
+  .app.col .grp-items{display:revert!important}
+  .app.col .grp:not(.open) .grp-items{display:none!important}
+  .app.col .grp-h{justify-content:flex-start;padding:9px}
+  .app.col .rbrand{justify-content:flex-start;padding:16px 13px 14px}
+  .rfoot{display:none}
+  .bar{padding:0 10px;gap:8px}
+  .bar .burger{display:inline-flex}
+  .stage{padding:14px 12px 80px}
+}
+@media(max-width:720px){
+  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .r3{grid-template-columns:1fr 1fr}
+  .who{padding-left:8px}
+  .who .nm{display:none}
+  .qbox{max-width:none}
+}
+@media(max-width:480px){
+  .r2,.r3,.filters{grid-template-columns:minmax(0,1fr)}
+  .langdd>button .lbl{display:none}
+  .head h1{font-size:19px}
+  .auth-card{padding:22px 16px}
+}
+
+/* ===== Solo para el mock (no forma parte del kit) ===== */
+.mocktb{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--bg-2);border-bottom:1px solid var(--line);font-size:12.5px}
+.mocktb b{font-size:13px}
+.mocktb .leg{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.mocktb .seg button{cursor:pointer}
+.embed .mocktb{display:none}
+.mockapp{height:auto;min-height:calc(100dvh - 44px);overflow:visible}
+.mockapp .main,.mockapp .stage{overflow:visible}
+.mockapp .rail{position:sticky;top:44px;height:calc(100dvh - 44px)}
+.embed .mockapp{min-height:100dvh}
+@media(max-width:900px){.mockapp .rail{position:fixed;top:0;height:auto}}
+.phone{display:none;padding:18px;justify-content:center}
+.phone iframe{width:360px;height:760px;border:10px solid #1b2236;border-radius:28px;background:var(--bg)}
+body.movil .mockapp{display:none}
+body.movil .phone{display:flex}
+.tag.ok{color:var(--ok);background:var(--okbg);border-color:rgba(70,206,130,.35)}
+.ind-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tile{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px}
+.tile .lb{font-size:12.5px;color:var(--muted)}
+.tile .v{font-size:26px;font-weight:800;line-height:1.2;margin-top:2px}
+.tile ul{list-style:none;margin:8px 0 0;padding:0;font-size:13px}
+.tile li{display:flex;justify-content:space-between;gap:8px}.tile li span:first-child{color:var(--muted)}
+.ph{display:flex;align-items:flex-start;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.ph .tt{font-weight:700;font-size:14.5px}.ph .st{font-size:12.5px;color:var(--muted);margin-top:2px}
+.ph .acts{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bars{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;align-items:end;height:170px;padding:6px 4px 0}
+.bars div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;font-size:11.5px;color:var(--muted);text-align:center}
+.bars i{display:block;width:70%;max-width:56px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--flow-2),var(--flow))}
+.bars b{font-family:var(--mono);color:var(--text);font-size:12px}
+.act-cards{display:none}
+.card{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:13px}
+.card .top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
+.card .who{border:none;padding:0;color:var(--muted);font-size:12px;margin-top:6px}
+.ob{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--danger);background:var(--dangerbg);border:1px solid rgba(242,106,96,.35);border-radius:5px;padding:1px 5px;margin-left:6px;white-space:nowrap}
+.sect{margin-bottom:20px}.sect h2{font-size:14px;font-weight:700;margin:0 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{white-space:nowrap}
+@media(max-width:1100px){.ind-grid,.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.act-table{display:none}.act-cards{display:block}.ph .acts{margin-left:0;width:100%}}
+@media(max-width:480px){.ind-grid,.tiles{grid-template-columns:1fr}.bars{height:130px}}
+</style>
+</head>
+<body>
+<div class="mocktb">
+  <b>Mock · Pulso del día para un usuario de almacén</b>
+  <div class="seg"><button class="on" id="bEsc" type="button">Escritorio</button><button id="bMov" type="button">Móvil 360 px</button></div>
+  <div class="leg"><span class="tag ok">ya programado</span><span class="tag m">propuesto · próximo lote</span><span class="ob" style="margin:0">oblig.</span> <span style="color:var(--muted)">= evento obligatorio (no se puede ocultar)</span></div>
+</div>
+
+<div class="phone"><iframe title="Vista móvil" src="?embed=1"></iframe></div>
+
+<div class="app mockapp">
+  <aside class="rail">
+    <div class="rbrand"><div class="logo">T</div><div class="name">Teikem</div></div>
+    <nav class="rnav">
+      <div class="grp open"><button class="grp-h" type="button"><span class="gi">🚚</span><span class="lbl">OPERACIÓN</span><span class="chev">›</span></button>
+        <div class="grp-items"><a class="navit on"><span class="di"></span>Pulso del día</a><a class="navit"><span class="di"></span>Órdenes</a></div></div>
+      <div class="grp open"><button class="grp-h" type="button"><span class="gi">🏬</span><span class="lbl">ALMACÉN</span><span class="chev">›</span></button>
+        <div class="grp-items">
+          <a class="navit"><span class="di"></span>Almacenes</a><a class="navit"><span class="di"></span>Productos</a><a class="navit"><span class="di"></span>Inventario</a>
+          <a class="navit"><span class="di"></span>Recepción</a><a class="navit"><span class="di"></span>Tareas de almacén</a><a class="navit"><span class="di"></span>Conteo cíclico</a>
+          <a class="navit"><span class="di"></span>Recolección y empaque</a><a class="navit"><span class="di"></span>Proveedores</a><a class="navit"><span class="di"></span>Órdenes de compra</a>
+        </div></div>
+    </nav>
+    <div class="rfoot"><button class="collapse" type="button">‹ <span>Contraer</span></button></div>
+  </aside>
+  <div class="main">
+    <header class="bar">
+      <button class="burger" type="button" aria-label="Menú">☰</button>
+      <div class="tenant"><span class="tn">Advance Logistics</span></div>
+      <div class="sp"></div>
+      <div class="langdd"><button type="button">🌐 ES</button></div>
+      <div class="who"><div class="av">MR</div><span class="nm">María Rivera</span></div>
+      <button class="iconbtn" type="button" aria-label="Salir">⎋</button>
+    </header>
+    <main class="stage"><div class="wrap">
+
+      <div class="head">
+        <div><h1>Pulso del día</h1><p>Bienvenida, María Rivera. Así viene el día en su almacén.</p></div>
+        <div class="act"><span class="chip s-wh">Rol: Almacenista</span><span class="chip s-cap">Módulos: Almacén · Compras</span></div>
+      </div>
+
+      <!-- 1. Indicadores del motor (F1): los que tengan "Aparece en Pulso" y el usuario pueda ver -->
+      <section class="sect">
+        <h2>Indicadores <span class="tag ok">ya programado (F1)</span> <span class="tag">se ven solo los del módulo Almacén que el usuario puede ver</span></h2>
+        <div class="ind-grid">
+          <div class="panel"><div class="ph"><div><div class="tt">Productos activos</div></div><div class="acts"><button class="btn sm" type="button">Rango</button></div></div><div class="pb"><div style="font-size:26px;font-weight:800">59</div></div></div>
+          <div class="panel"><div class="ph"><div><div class="tt">Productos bajo mínimo</div><div class="st"><span class="tag m">propuesto</span> indicador de sistema nuevo</div></div><div class="acts"><button class="btn sm" type="button">Rango</button></div></div><div class="pb"><div style="font-size:26px;font-weight:800;color:var(--warn)">7</div></div></div>
+          <div class="panel"><div class="ph"><div><div class="tt">Unidades recibidas</div><div class="st"><span class="tag m">propuesto</span> ledger · tipo RECEIPT</div></div><div class="acts"><button class="btn sm" type="button">Rango</button></div></div><div class="pb"><div style="font-size:26px;font-weight:800">1,240</div><div style="margin-top:4px;font-size:12.5px;color:var(--muted)">Últimos 7 días</div></div></div>
+          <div class="panel"><div class="ph"><div><div class="tt">Conteos con diferencia</div><div class="st"><span class="tag m">propuesto</span> conteos RECONCILED con varianza ≠ 0</div></div><div class="acts"><button class="btn sm" type="button">Rango</button></div></div><div class="pb"><div style="font-size:26px;font-weight:800">3</div><div style="margin-top:4px;font-size:12.5px;color:var(--muted)">Últimos 30 días</div></div></div>
+        </div>
+      </section>
+
+      <!-- 2. Gráficos del motor (F1) -->
+      <section class="sect">
+        <h2>Gráficos <span class="tag ok">ya programado (F1)</span></h2>
+        <div class="panel" style="max-width:640px"><div class="ph"><div><div class="tt">Movimientos de inventario por tipo</div><div class="st"><span class="tag m">propuesto</span> gráfico de sistema nuevo · fuente ledger · Últimos 7 días</div></div><div class="acts"><button class="btn sm" type="button">Rango</button></div></div>
+          <div class="pb"><div class="bars">
+            <div><b>412</b><i style="height:78%"></i>Recibo</div><div><b>530</b><i style="height:100%"></i>Salida</div><div><b>96</b><i style="height:22%"></i>Transferencia</div><div><b>41</b><i style="height:11%"></i>Ajuste</div><div><b>0</b><i style="height:2%"></i>Cross-dock</div>
+          </div></div></div>
+      </section>
+
+      <!-- 3. Panel Almacén (F6): saldo actual, sin rango de fecha -->
+      <section class="sect">
+        <div class="panel"><div class="ph"><div><div class="tt">Almacén <span class="tag ok">ya programado (F6)</span></div><div class="st">Saldo actual de su compañía (no depende de un rango de fecha).</div></div></div>
+          <div class="pb"><div class="tiles">
+            <div class="tile"><div class="lb">En mano total</div><div class="v">311</div></div>
+            <div class="tile"><div class="lb">Disponible total</div><div class="v">298</div></div>
+            <div class="tile"><div class="lb">Recibos abiertos</div><div class="v">2</div></div>
+            <div class="tile"><div class="lb">Tareas pendientes</div><div class="v">23</div><ul><li><span>Putaway</span><b>20</b></li><li><span>Reabasto</span><b>3</b></li><li><span>Conteo</span><b>0</b></li><li><span>Cross-dock</span><b>0</b></li></ul></div>
+            <div class="tile"><div class="lb">Conteos abiertos</div><div class="v">1</div></div>
+          </div></div></div>
+      </section>
+
+      <!-- 4. Actividad reciente (nuevo) -->
+      <section class="sect">
+        <div class="panel"><div class="ph">
+            <div><div class="tt">Actividad reciente <span class="tag m">propuesto · próximo lote</span></div><div class="st">Lo que pasó en su compañía. Cada pestaña es un módulo de negocio; solo aparecen los que usted puede ver.</div></div>
+            <div class="acts">
+              <div class="seg"><button class="on" type="button">Almacén</button><button type="button" style="opacity:.55">Operación</button><button type="button" style="opacity:.55">Contabilidad</button></div>
+              <select class="btn sm" style="padding:6px 8px"><option>Últimas 24 h</option><option>Últimas 48 h</option><option>Hoy</option></select>
+              <label class="sw"><input type="checkbox"><span class="tk"></span>Solo obligatorios</label>
+            </div></div>
+          <div class="pb">
+            <div class="act-table"><table class="lst">
+              <thead><tr><th class="sort">Hora <span class="arr">▼</span></th><th class="sort">Evento</th><th>Referencia</th><th>Detalle</th><th class="sort">Quién</th></tr></thead>
+              <tbody>
+                <tr><td class="n">09:42</td><td><span class="chip s-fail">Diferencia en recibo</span><span class="ob">oblig.</span></td><td><span class="ref">REC-000318</span></td><td>SKU AB-1200: esperado 24, recibido 22 (−2)</td><td>Carlos Rivera</td></tr>
+                <tr><td class="n">09:40</td><td><span class="chip s-deliv">Recibo confirmado</span><span class="ob">oblig.</span></td><td><span class="ref">REC-000318</span></td><td>ALM-01 · 6 líneas · contra OC-000091</td><td>Carlos Rivera</td></tr>
+                <tr><td class="n">09:31</td><td><span class="chip s-route">Conteo reconciliado</span><span class="ob">oblig.</span></td><td><span class="ref">CNT-000027</span></td><td>ALM-01 zona RSV · varianza neta −3</td><td>María Rivera</td></tr>
+                <tr><td class="n">09:12</td><td><span class="chip s-warn">Ajuste de inventario</span><span class="ob">oblig.</span></td><td><span class="ref">AJ-4471</span></td><td>SKU CJ-0042 · −5 · motivo DAMAGE · PCK-A-03</td><td>Luis Ortiz</td></tr>
+                <tr><td class="n">08:58</td><td><span class="chip s-wh">Transferencia entre almacenes</span></td><td><span class="ref">TR-2210</span></td><td>SKU AB-1200 · 40 · ALM-01 → ALM-02</td><td>Luis Ortiz</td></tr>
+                <tr><td class="n">08:47</td><td><span class="chip s-wh">Acomodo completado</span></td><td><span class="ref">TSK-5580</span></td><td>SKU AB-1200 · 24 · STG-01 → RSV-B-07</td><td>Carlos Rivera</td></tr>
+                <tr><td class="n">08:30</td><td><span class="chip s-cod">Recolección empacada</span></td><td><span class="ref">EMP-00112</span></td><td>Cliente Farmacias Norte · 3 líneas · 18 uds</td><td>Ana Pérez</td></tr>
+                <tr><td class="n">08:05</td><td><span class="chip s-disp">Orden de compra enviada</span></td><td><span class="ref">OC-000094</span></td><td>Proveedor Distribuidora Caribe · 12 líneas</td><td>María Rivera</td></tr>
+                <tr><td class="n">07:55</td><td><span class="chip s-cap">Producto dado de baja</span></td><td><span class="ref">SKU ZZ-0009</span></td><td>Sin inventario en mano</td><td>María Rivera</td></tr>
+              </tbody></table></div>
+            <div class="act-cards">
+              <div class="card"><div class="top"><span class="chip s-fail">Diferencia en recibo</span><span class="ob">oblig.</span><span class="n mono" style="margin-left:auto">09:42</span></div><div><span class="ref">REC-000318</span> · SKU AB-1200: esperado 24, recibido 22 (−2)</div><div class="who">Carlos Rivera</div></div>
+              <div class="card"><div class="top"><span class="chip s-deliv">Recibo confirmado</span><span class="ob">oblig.</span><span class="mono" style="margin-left:auto">09:40</span></div><div><span class="ref">REC-000318</span> · ALM-01 · 6 líneas · contra OC-000091</div><div class="who">Carlos Rivera</div></div>
+              <div class="card"><div class="top"><span class="chip s-route">Conteo reconciliado</span><span class="ob">oblig.</span><span class="mono" style="margin-left:auto">09:31</span></div><div><span class="ref">CNT-000027</span> · zona RSV · varianza neta −3</div><div class="who">María Rivera</div></div>
+              <div class="card"><div class="top"><span class="chip s-warn">Ajuste de inventario</span><span class="ob">oblig.</span><span class="mono" style="margin-left:auto">09:12</span></div><div><span class="ref">AJ-4471</span> · SKU CJ-0042 · −5 · DAMAGE</div><div class="who">Luis Ortiz</div></div>
+              <div class="card"><div class="top"><span class="chip s-wh">Transferencia</span><span class="mono" style="margin-left:auto">08:58</span></div><div><span class="ref">TR-2210</span> · SKU AB-1200 · 40 · ALM-01 → ALM-02</div><div class="who">Luis Ortiz</div></div>
+              <div class="card"><div class="top"><span class="chip s-wh">Acomodo completado</span><span class="mono" style="margin-left:auto">08:47</span></div><div><span class="ref">TSK-5580</span> · 24 · STG-01 → RSV-B-07</div><div class="who">Carlos Rivera</div></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12.5px;color:var(--muted)"><span>9 eventos · últimas 24 h</span><button class="btn sm" type="button">Ver más</button></div>
+          </div></div>
+      </section>
+
+      <div class="note">Regla de visibilidad propuesta: la pestaña Almacén aparece si el usuario tiene <code>inventory.view</code>; Operación si tiene <code>orders.view</code>; Contabilidad si tiene <code>billing.view</code>. Los eventos <b>obligatorios</b> se muestran siempre a quien ve el módulo; los <b>opcionales</b> se pueden apagar por usuario. La referencia enlaza a la ficha. Lista de eventos: <code>docs/frontend/actividad-reciente-propuesta.md</code>.</div>
+
+    </div></main>
+  </div>
+</div>
+<script>
+  if (location.search.includes('embed')) document.body.classList.add('embed');
+  document.getElementById('bEsc').onclick = () => { document.body.classList.remove('movil'); bEsc.classList.add('on'); bMov.classList.remove('on'); };
+  document.getElementById('bMov').onclick = () => { document.body.classList.add('movil'); bMov.classList.add('on'); bEsc.classList.remove('on'); };
+</script>
+</body>
+</html>
