@@ -529,7 +529,7 @@ con varianza ≠ 0, últimos 30 días) y el gráfico de barras *Movimientos de i
   últimas 24 h (opciones 48 h y hoy), máximo 50 filas por pestaña con "Ver más". Bajo 720 px las filas son tarjetas.
 - **No es la auditoría**: `AuditLog` sigue exigiendo `admin.audit`; el feed es lectura de negocio filtrada por permisos.
 - **Visibilidad por permiso, no por rol**: pestaña Almacén con `inventory.view`, Operación con `orders.view`, Contabilidad con
-  `billing.view`. Cada rol ve lo suyo sin configuración; el administrador ve todo.
+  `billing.view` (permiso nuevo, se crea con el módulo de contabilidad del frontend). Cada rol ve lo suyo sin configuración; el administrador ve todo.
 - **Obligatorio u opcional**: cada evento del catálogo lleva la bandera. Un evento obligatorio se muestra siempre a quien ve
   el módulo; uno opcional el usuario puede apagarlo (interruptor "Solo obligatorios" en el panel; la preferencia guardada por
   usuario llega junto con las notificaciones). **Este mismo catálogo y esta misma bandera alimentarán las notificaciones por

@@ -1,0 +1,48 @@
+{
+ "lote": "F7",
+ "titulo": "Pulso de almacén con filtro y Actividad reciente (frontend)",
+ "aprobacion": "Mock aprobado por Luis el 2026-09-27 (docs/frontend/mock-pulso-almacen.html); diseño en el maestro, módulo 12. PENDIENTE de la orden de ejecutar; requiere el Lote 7 de backend desplegado y web-app/openapi.json regenerado.",
+ "objetivo": "Filtro de almacén y de categoría o producto en el panel Almacén de Pulso, y panel Actividad reciente con pestañas por módulo, ventana, interruptor de obligatorios, tabla y tarjetas.",
+ "fueraDeAlcance": [
+  "Preferencia de eventos opcionales guardada por usuario (llega con las notificaciones)",
+  "Pestañas Operación y Contabilidad (se activan solas cuando el API las devuelva en visibleModules)",
+  "Administración del catálogo de eventos"
+ ],
+ "piezas": [
+  {
+   "nombre": "P0 — Panel Almacén con filtro de almacén y de categoría o producto",
+   "orden": 1,
+   "agente": "core",
+   "descripcion": "En `features/analytics/Pulse.tsx` (panel `WarehousePulsePanel`, ya existente de F6) y `features/analytics/WarehouseFilter.tsx` (nuevo): (1) `Select` de almacén (opción 'Todos los almacenes' + `useWarehouses` activos) que aplica `warehousePublicIds` a las cinco tarjetas. (2) `CategoryProductPicker` (nuevo, en `kernel/ui` si es reutilizable, documentado en KIT.md): un combobox con buscador y dos secciones: 'Categorías' (árbol completo de `useProductCategories`, sangría por nivel, con conteo de productos si el DTO lo trae) y 'Productos' (búsqueda con 250 ms de espera sobre `GET /api/v1/products?search=&activeOnly=true&take=20`, opción 'SKU · Nombre'); valor = {kind:'category', id} | {kind:'product', publicId} | null; chip del valor con botón ✕; teclado: flechas, Enter, Escape. (3) Las tarjetas de saldo pasan a ser: 'En mano' (`totalOnHand`, subtítulo con el nombre de la categoría y cantidad de productos, o el SKU), 'Disponible' (`totalAvailable` y 'Reservado: en mano − disponible'), 'Bajo mínimo' (`GET /api/v1/products?belowMin=true&categoryIds=|productPublicIds=&take=1` → `total`; con producto: 'Sí/No' y enlace 'Ver Kárdex' a `/warehouse/inventory?tab=kardex&product=`); con categoría, el enlace 'Ver en Inventario' lleva a `/warehouse/inventory?categoryIds=`. Recibos, tareas y conteos solo reciben el filtro de almacén, con la marca 'almacén' del mock. (4) La última selección (almacén + categoría/producto) se guarda en `localStorage` con clave por tenant y usuario y se restaura al abrir; si el producto o la categoría ya no existe, se limpia sin error. (5) Responsive: filtros en una fila que envuelve; a 360 px el combobox ocupa todo el ancho. Pruebas: CategoryProductPicker (busca, selecciona categoría y producto, limpia), restauración de localStorage, tarjetas con las cantidades del DTO.",
+   "archivos": [
+    "web-app/src/features/analytics/Pulse.tsx",
+    "web-app/src/features/analytics/WarehouseFilter.tsx",
+    "web-app/src/kernel/ui/CategoryProductPicker.tsx",
+    "web-app/src/features/analytics/api.ts",
+    "web-app/KIT.md"
+   ]
+  },
+  {
+   "nombre": "P1 — Panel Actividad reciente",
+   "orden": 1,
+   "agente": "core",
+   "descripcion": "`features/analytics/ActivityPanel.tsx` + `activity.ts` (hook `useActivity(query)` sobre `GET /api/v1/analytics/activity` con los tipos generados `ActivityPageDto`/`ActivityEventDto`). Se monta en Pulso debajo del panel Almacén (con `key` estable, ver decisión 1 de F6) solo si el usuario tiene `analytics.view`; el panel se oculta si `visibleModules` viene vacío. Cabecera: pestañas `Tabs` por módulo en el orden Almacén, Operación, Contabilidad (solo los de `visibleModules`, etiquetas por i18n), `Select` de ventana (24 h / 48 h / Hoy), `Toggle` 'Solo obligatorios'. Cuerpo: `DataTable` con columnas Hora (hora local del navegador, `parseApiDate`, ordenable), Evento (`Chip` con tono por familia: recibo=ok, conteo=route, ajuste/diferencia=warn o fail, recolección=cod, compra=disp, baja=cap; los obligatorios llevan la marca 'oblig.' como en el mock), Referencia (enlace a la ficha según `entityType` → ruta: RECEIPT `/warehouse/receipts/{publicId}`, CYCLE_COUNT `/warehouse/cycle-counts/{entityId}`, PICK_BATCH `/warehouse/pick-batches/{publicId}`, PURCHASE_ORDER `/warehouse/purchase-orders/{publicId}`, WAREHOUSE_TASK `/warehouse/tasks`, PRODUCT `/warehouse/products/{publicId}`, WAREHOUSE `/warehouse/warehouses/{publicId}`, INVENTORY_TRANSACTION `/warehouse/inventory?tab=kardex&ref=`), Detalle, Quién. Pie: 'N eventos · ventana' y botón 'Ver más' (paginación con `skip`, acumulando filas). Tarjetas bajo 720 px (el `DataTable` ya lo hace). Estados: cargando, vacío ('Sin actividad en esta ventana'), error con `applyProblemDetails`. Pruebas: pestañas según `visibleModules`, interruptor cambia la consulta, enlace correcto por tipo de entidad, 'Ver más' acumula.",
+   "archivos": [
+    "web-app/src/features/analytics/ActivityPanel.tsx",
+    "web-app/src/features/analytics/activity.ts",
+    "web-app/src/features/analytics/Pulse.tsx",
+    "web-app/src/kernel/i18n/es.json",
+    "web-app/src/kernel/i18n/en.json"
+   ]
+  }
+ ],
+ "recorrido": [
+  "Login con admin@teikem.local → Pulso: el panel Almacén muestra el selector de almacén y el control 'Categoría o producto'.",
+  "Crear categoría CAT-{timestamp} y producto PROD-{timestamp} en ella con mínimo 5; ajustar +3 en ALM-01; en Pulso elegir la categoría: En mano 3, Bajo mínimo 1; elegir el producto: Bajo mínimo 'Sí' y el enlace lleva al Kárdex filtrado.",
+  "Recargar la página: la selección se conserva; quitar con ✕ vuelve a los totales generales.",
+  "Panel Actividad reciente: pestaña Almacén muestra 'Ajuste de inventario' con marca de obligatorio y la referencia; activar 'Solo obligatorios' y comprobar que 'Recolección creada' (crear una recolección antes) desaparece.",
+  "Cambiar la ventana a 'Hoy' y el idioma a inglés: las etiquetas de eventos cambian sin recargar.",
+  "despacho@teikem.local: Pulso sin panel Almacén y sin pestaña Almacén en Actividad reciente (sin inventory.view).",
+  "Proyecto móvil (Pixel 7): panel Almacén y Actividad reciente en tarjetas, sin scroll horizontal."
+ ]
+}

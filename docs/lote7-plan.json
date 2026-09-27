@@ -1,0 +1,78 @@
+{
+ "lote": "7",
+ "titulo": "Pulso de almacén y Actividad reciente (backend)",
+ "aprobacion": "Diseño aprobado por Luis el 2026-09-27 y escrito en Diseño/logistica-funcionalidades-maestro.md (módulo 12, 'Pulso del día — diseño consolidado'). Plan armado por Claude; PENDIENTE de la orden de ejecutar.",
+ "resumen": "Catálogo de eventos de actividad, servicio de lectura que une historial de estatus, ledger y auditoría por módulo y permisos, endpoint bajo /api/v1/analytics, índice por tenant y fecha en EntityStatusHistory, filtro belowMin en productos, e indicadores y gráfico de sistema de almacén sembrados desde código. Sin tablas nuevas.",
+ "piezas": [
+  {
+   "nombre": "P0 — Base compartida: SQL (índice), seed del catálogo ActivityEventType, constantes, contratos, registro en DI",
+   "tocaCompartidos": true,
+   "dependeDe": [],
+   "archivos": [
+    "Diseño/logistica-db-estructura.sql",
+    "Diseño/logistica-db-seed.sql",
+    "src/Teikem.Domain/Constants/ActivityEvents.cs",
+    "src/Teikem.Domain/Constants/CatalogDomains.cs",
+    "src/Teikem.Infrastructure/Contracts/ActivityContracts.cs",
+    "src/Teikem.Infrastructure/Abstractions/IActivityEventProvider.cs",
+    "src/Teikem.Infrastructure/DependencyInjection.cs"
+   ],
+   "descripcion": "Única pieza con archivos compartidos; se integra primero. (1) Estructura: CREATE INDEX IX_EntityStatusHistory_TenantDate ON dbo.EntityStatusHistory(TenantId, ChangedAtUtc) junto al índice existente (línea ~452); nada más cambia en la estructura (recrear la BD local, el hash cambia). (2) Seed: MERGE idempotente de LookupCode Entity='ActivityEventType' con los 23 códigos de Almacén del maestro (RECEIPT_CONFIRMED … WAREHOUSE_DEACTIVATED), LabelJson {es,en} exactos del maestro, ExtraJson {\"module\":\"WAREHOUSE\",\"mandatory\":true|false,\"defaultOn\":true|false} (BIN_MOVED defaultOn=false), SortOrder por orden de la tabla; los de Operación y Contabilidad NO se siembran en este lote. (3) Domain: `ActivityEvents` con las constantes de código y `CatalogDomains.ActivityEventType`. (4) Contratos: `ActivityQuery(string? Module, string Window = \"24h\" | \"48h\" | \"today\", bool OnlyMandatory = false, int Skip = 0, int Take = 50)` (Take tope 50 → ValidationException 'El máximo por página es 50.'), `ActivityEventDto(DateTime OccurredAtUtc, string Code, string Module, bool Mandatory, string Label, string EntityType, int EntityId, Guid? PublicId, string Reference, string? Detail, int? UserId, string? UserName)`, `ActivityPageDto(int Total, IReadOnlyList<string> VisibleModules, IReadOnlyList<ActivityEventDto> Items)`. (5) Abstracción `IActivityEventProvider { string Module; string RequiredPermission; Task<IReadOnlyList<ActivityEventDto>> ReadAsync(ActivityScope scope, DateTime fromUtc, bool onlyMandatory, CancellationToken) }` registrada en DI como colección, igual que IDataSource. Registrar `ActivityFeedService` y `WarehouseActivityProvider` (la pieza P1 los implementa; P0 deja stubs que compilan). Pruebas: `ActivityRulesTests` para la ventana (24h/48h/today en la zona del tenant) y el tope de página."
+  },
+  {
+   "nombre": "P1 — WarehouseActivityProvider + ActivityFeedService + endpoint + filtro belowMin en productos",
+   "tocaCompartidos": false,
+   "dependeDe": [
+    "P0"
+   ],
+   "archivos": [
+    "src/Teikem.Infrastructure/Services/ActivityFeedService.cs",
+    "src/Teikem.Infrastructure/Services/Activity/WarehouseActivityProvider.cs",
+    "src/Teikem.Infrastructure/Services/Activity/ActivityRules.cs",
+    "src/Teikem.Api/Controllers/ActivityController.cs",
+    "src/Teikem.Infrastructure/Services/ProductService.cs",
+    "src/Teikem.Infrastructure/Contracts/ProductContracts.cs",
+    "src/Teikem.Api/Controllers/ProductsController.cs",
+    "tests/Teikem.Tests/ActivityRulesTests.cs"
+   ],
+   "descripcion": "`WarehouseActivityProvider` (Module=WAREHOUSE, RequiredPermission=inventory.view) lee con AsNoTracking bajo el filtro de tenant, desde `fromUtc`, y produce eventos según el maestro: (a) EntityStatusHistory de RECEIPT (→RECEIVED, →PUTAWAY), ASN (→CANCELLED), CYCLE_COUNT (→COUNTED, →RECONCILED), PICK_BATCH (→COLLECTED, →PACKED, →CANCELLED), PURCHASE_ORDER (→SENT, →RECEIVED, →CANCELLED), CROSSDOCK_PLAN (→COMPLETED, solo si el módulo CROSSDOCK está encendido), WAREHOUSE (→INACTIVE), con join a la entidad para Reference (número) y Detail (almacén, líneas, varianza, cliente); (b) WarehouseTask →DONE/CANCELLED por tipo (PUTAWAY_DONE, REPLENISH_DONE, TASK_CANCELLED) desde EntityStatusHistory o desde la tabla de tareas si no escriben historial (leer WarehouseTaskService para saber cuál); (c) ledger: ADJUSTMENT agrupado por referencia de operación con motivo RECEIPT_VARIANCE → RECEIPT_VARIANCE, COUNT_VARIANCE → COUNT_VARIANCE, motivos manuales → INVENTORY_ADJUSTED; TRANSFER entre almacenes distintos → INVENTORY_TRANSFERRED, mismo almacén → BIN_MOVED; (d) AuditLog PRODUCT UPDATE con IsActive 1→0 → PRODUCT_DEACTIVATED, y UPDATE de línea de compra con acción de faltante → PO_SHORTAGE_RESOLVED. `ActivityRules` (lógica pura, probada): ventana → fromUtc; mapeo motivo de ajuste → código; misma/distinta bodega → código; ordenar por fecha desc y paginar; Mandatory/Label salen del LookupCode vía ILookupCache. `ActivityFeedService.GetAsync(query)`: VisibleModules = proveedores cuyo RequiredPermission tiene el usuario (y módulo del tenant encendido); si `Module` viene y no es visible → ForbiddenException 'No tiene permiso para ver la actividad del módulo {module}.'; sin `Module` → primer módulo visible; une, filtra OnlyMandatory, pagina. `ActivityController`: `GET /api/v1/analytics/activity` con `[RequirePermission(PermissionCatalog.AnalyticsView)]` y `[RequireModule(ModuleKeys.Analytics)]` (mismo patrón que /pulse). Productos: agregar `bool BelowMin = false` a `ProductListQuery`/query string (`belowMin=true` → solo productos con disponible < mínimo, mismo cálculo de `IsBelowMin`), para que el panel del Pulso cuente bajo mínimo por categoría con `take=1` y `total`. Smoke: nuevo paso `activity` en scripts/smoke.sh después del recibo confirmado: `GET /api/v1/analytics/activity?module=WAREHOUSE` contiene `RECEIPT_CONFIRMED` con `mandatory=true`; `?onlyMandatory=true` no contiene `PO_SENT`; `despacho@teikem.local` (sin inventory.view) recibe 403 con `module=WAREHOUSE`."
+  },
+  {
+   "nombre": "P2 — Indicadores y gráfico de sistema de almacén en Pulso (seed desde código)",
+   "tocaCompartidos": false,
+   "dependeDe": [
+    "P0"
+   ],
+   "archivos": [
+    "src/Teikem.Infrastructure/Seeding/SystemAnalyticsSeeder.cs",
+    "tests/Teikem.Tests/AnalyticsSeedFieldsTests.cs"
+   ],
+   "descripcion": "Con las fuentes ya registradas (PRODUCT, INVENTORY_TRANSACTION, CYCLE_COUNT si existe —si no, usar el reporte/fuente disponible o agregar `CycleCountDataSource` siguiendo WarehouseDataSource—): indicadores de sistema módulo WAREHOUSE, ShowInPulse=1, visibles a todos: 'Productos bajo mínimo' (PRODUCT, COUNT, filtro IsBelowMin=true; reutilizar el filtro del reporte 'Inventario bajo mínimo'), 'Unidades recibidas' (INVENTORY_TRANSACTION, SUM Quantity, filtro Type=RECEIPT, rango últimos 7 días), 'Conteos con diferencia' (CYCLE_COUNT, COUNT, filtro Status=RECONCILED y NetVariance≠0, rango últimos 30 días); gráfico de barras 'Movimientos de inventario por tipo' (INVENTORY_TRANSACTION agrupado por Type, SUM Quantity, últimos 7 días). 'Productos activos' ya existe: no duplicar. Idempotente por nombre (MERGE por (TenantId, Name)) y sembrado para el tenant demo como los demás. Prueba: AnalyticsSeedFieldsTests verifica que los campos y filtros usados existen en la fuente."
+  }
+ ],
+ "pruebas": [
+  "ActivityRulesTests (ventana, tope 50, mapeo de motivos, misma/distinta bodega, orden)",
+  "AnalyticsSeedFieldsTests extendida",
+  "smoke: paso activity"
+ ],
+ "smoke": [
+  "activity: recibo confirmado aparece como RECEIPT_CONFIRMED mandatory=true; onlyMandatory excluye PO_SENT; usuario sin inventory.view recibe 403"
+ ],
+ "cambiosSql": [
+  "Estructura: índice IX_EntityStatusHistory_TenantDate (TenantId, ChangedAtUtc). Seed: LookupCode ActivityEventType (23 filas de Almacén)."
+ ],
+ "decisiones": [
+  {
+   "decision": "Sin tabla de eventos: el feed se calcula al leer (ventana corta e índice por fecha). Alternativa: tabla ActivityEvent alimentada por IStatusTransitionEffect; queda para cuando lleguen las notificaciones, si el volumen lo pide."
+  },
+  {
+   "decision": "Bandera obligatorio/opcional en ExtraJson del LookupCode (sin columna nueva). Alternativa: columna IsMandatory en LookupCode."
+  },
+  {
+   "decision": "La pestaña Contabilidad usa un permiso 'billing.view' que todavía no existe; se crea en el lote de contabilidad del frontend. En este lote solo se construye el proveedor de Almacén."
+  },
+  {
+   "decision": "Endpoint bajo /api/v1/analytics con analytics.view + permiso del módulo, en vez de un permiso nuevo 'activity.view'."
+  }
+ ]
+}
