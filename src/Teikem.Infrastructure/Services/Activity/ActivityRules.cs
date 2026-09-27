@@ -17,7 +17,7 @@ public sealed record ActivityEventMeta(string? Module, bool Mandatory, bool Defa
 public static class ActivityRules
 {
     /// <summary>Dominio del catálogo de eventos en LookupCode.Entity.</summary>
-    public const string CatalogDomain = "ActivityEventType";
+    public const string CatalogDomain = LookupDomains.ActivityEventType;
 
     public const string Window24h = "24h";
     public const string Window48h = "48h";

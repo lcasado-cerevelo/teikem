@@ -76,6 +76,12 @@ public static class LookupDomains
     public const string AdjustmentReason = "AdjustmentReason";
     /// <summary>Acción con la que se resuelve un faltante de orden de compra (PurchaseOrderShortageResolution.ActionLookupId, D8).</summary>
     public const string ShortageAction = "ShortageAction";
+    // Lote 7A — Pulso y Actividad reciente
+    /// <summary>
+    /// Catálogo de eventos de "Actividad reciente" (ActivityEvents); ExtraJson {"module","mandatory","defaultOn"}. El mismo
+    /// catálogo y bandera alimentarán las notificaciones.
+    /// </summary>
+    public const string ActivityEventType = "ActivityEventType";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>

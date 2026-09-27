@@ -242,6 +242,9 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, WarehouseTaskDataSource>();
         services.AddScoped<IDataSource, PickBatchDataSource>();
         services.AddScoped<IDataSource, CycleCountDataSource>();   // Lote 7A (P2): indicador de Pulso 'Conteos con diferencia'
+        // Lote 7A — "Actividad reciente": un proveedor de eventos por BusinessModule (colección, igual que IDataSource) y el feed.
+        services.AddScoped<IActivityEventProvider, WarehouseActivityProvider>();
+        services.AddScoped<ActivityFeedService>();
         services.AddScoped<IOwnedEntityResolver, WarehouseOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, WarehouseDockOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ProductOwnedEntityResolver>();

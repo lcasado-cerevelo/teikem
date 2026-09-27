@@ -190,6 +190,31 @@ public sealed class ActivityRulesTests
         (ActivityEvents.ProductDeactivated, false, true), (ActivityEvents.WarehouseDeactivated, true, true),
     };
 
+    /// <summary>
+    /// P0: el seed siembra los 23 eventos de Almacén en el orden del catálogo, con la bandera de obligatorio y el encendido por
+    /// defecto del maestro (los mismos que usa este archivo), el dominio ActivityEventType y el índice por tenant y fecha.
+    /// </summary>
+    [Fact]
+    public void Seed_catalog_matches_constants_and_flags()
+    {
+        var root = TripCatalogTests.RepoRoot();
+        var seed = File.ReadAllText(Path.Combine(root, "Diseño", "logistica-db-seed.sql"));
+        var structure = File.ReadAllText(Path.Combine(root, "Diseño", "logistica-db-estructura.sql"));
+        Assert.Contains($"('{LookupDomains.ActivityEventType}',1,", seed);
+        Assert.Contains("CREATE INDEX IX_EntityStatusHistory_TenantDate ON dbo.EntityStatusHistory(TenantId, ChangedAtUtc);", structure);
+
+        var start = seed.IndexOf("AS s ON t.Entity = 'ActivityEventType'", StringComparison.Ordinal);
+        Assert.True(start > 0, "No está el MERGE de ActivityEventType en el seed.");
+        var block = seed[seed.LastIndexOf("MERGE dbo.LookupCode", start, StringComparison.Ordinal)..start];
+        var rows = System.Text.RegularExpressions.Regex.Matches(block, @"\('([A-Z_]+)',N'[^']+',N'[^']+',([01]),([01]),(\d+)\)")
+            .Select(m => (Code: m.Groups[1].Value, Mandatory: m.Groups[2].Value == "1", DefaultOn: m.Groups[3].Value == "1",
+                Sort: int.Parse(m.Groups[4].Value)))
+            .ToList();
+        Assert.Equal(ActivityEvents.Warehouse, rows.Select(r => r.Code).ToList());
+        Assert.Equal(Enumerable.Range(1, 23), rows.Select(r => r.Sort));
+        Assert.Equal(Catalog.Select(c => (c.Code, c.Mandatory, c.DefaultOn)), rows.Select(r => (r.Code, r.Mandatory, r.DefaultOn)));
+    }
+
     private static async Task<WmsFixture> CreateAsync()
     {
         var f = await WmsFixture.CreateAsync(s =>

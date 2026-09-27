@@ -96,6 +96,8 @@ GO
     ('DriverPayoutFormula',1,'Fórmula de pago a choferes','Driver payout formula'),
     -- Lote 6 — Inventario y almacén (motivos de ajuste y acciones de faltante de compras)
     ('AdjustmentReason',1,'Motivo de ajuste','Adjustment reason'),('ShortageAction',1,'Acción de faltante','Shortage action'),
+    -- Lote 7A — Pulso: catálogo de eventos de "Actividad reciente" (y, más adelante, de notificaciones)
+    ('ActivityEventType',1,'Evento de actividad','Activity event'),
     -- Status
     ('ClientStatus',2,'Estatus de cliente','Client status'),('ContractStatus',2,'Estatus de contrato','Contract status'),
     ('OrderStatus',2,'Estatus de orden','Order status'),('StopStatus',2,'Estatus de parada','Stop status'),
@@ -309,6 +311,48 @@ WHEN NOT MATCHED THEN
 -- El MERGE solo inserta: en BD ya sembradas se corrige la etiqueta. Idempotente.
 UPDATE dbo.LookupCode SET LabelJson = N'{"es":"Cruce de muelle","en":"Cross-dock"}'
 WHERE Entity = 'InventoryTxnType' AND InternalCode = 'CROSSDOCK' AND LabelJson <> N'{"es":"Cruce de muelle","en":"Cross-dock"}';
+
+-- Lote 7A (maestro, módulo 12, 'Catálogo inicial — Almacén'): catálogo ActivityEventType de "Actividad reciente". La bandera
+-- de obligatorio, el módulo y el encendido por defecto van en ExtraJson (sin columna nueva; BIN_MOVED nace apagado). Qué
+-- transición o movimiento produce cada evento vive en código (IActivityEventProvider). Operación y Contabilidad se siembran
+-- cuando su módulo llegue al frontend. Idempotente: inserta lo que falte y corrige etiqueta, ExtraJson y orden si cambiaron.
+MERGE dbo.LookupCode AS t
+USING (
+    SELECT v.Code, N'{"es":"' + v.Es + N'","en":"' + v.En + N'"}' AS LabelJson,
+           N'{"module":"WAREHOUSE","mandatory":' + CASE v.Mandatory WHEN 1 THEN N'true' ELSE N'false' END
+             + N',"defaultOn":' + CASE v.DefaultOn WHEN 1 THEN N'true' ELSE N'false' END + N'}' AS ExtraJson,
+           v.Srt
+    FROM (VALUES
+('RECEIPT_CONFIRMED',N'Recibo confirmado',N'Receipt confirmed',1,1,1),
+('RECEIPT_VARIANCE',N'Diferencia en recibo',N'Receipt variance',1,1,2),
+('RECEIPT_PUTAWAY_DONE',N'Recibo acomodado',N'Receipt put away',0,1,3),
+('ASN_CANCELLED',N'Aviso de llegada cancelado',N'ASN cancelled',0,1,4),
+('PUTAWAY_DONE',N'Acomodo completado',N'Put-away completed',0,1,5),
+('REPLENISH_DONE',N'Reabasto completado',N'Replenishment completed',0,1,6),
+('TASK_CANCELLED',N'Tarea cancelada',N'Task cancelled',0,1,7),
+('COUNT_FINISHED',N'Conteo terminado',N'Count finished',0,1,8),
+('COUNT_RECONCILED',N'Conteo reconciliado',N'Count reconciled',1,1,9),
+('COUNT_VARIANCE',N'Diferencia de conteo aplicada',N'Count variance applied',1,1,10),
+('INVENTORY_ADJUSTED',N'Ajuste de inventario',N'Inventory adjustment',1,1,11),
+('INVENTORY_TRANSFERRED',N'Transferencia entre almacenes',N'Warehouse transfer',0,1,12),
+('BIN_MOVED',N'Movimiento de posición',N'Bin move',0,0,13),
+('PICK_COLLECTED',N'Recolección creada',N'Pick batch collected',0,1,14),
+('PICK_PACKED',N'Recolección empacada',N'Pick batch packed',0,1,15),
+('PICK_CANCELLED',N'Recolección eliminada',N'Pick batch cancelled',1,1,16),
+('PO_SENT',N'Orden de compra enviada',N'Purchase order sent',0,1,17),
+('PO_RECEIVED',N'Orden de compra recibida completa',N'Purchase order fully received',0,1,18),
+('PO_CANCELLED',N'Orden de compra cancelada',N'Purchase order cancelled',1,1,19),
+('PO_SHORTAGE_RESOLVED',N'Faltante resuelto',N'Shortage resolved',0,1,20),
+('CROSSDOCK_COMPLETED',N'Cruce de muelle completado',N'Cross-dock completed',0,1,21),
+('PRODUCT_DEACTIVATED',N'Producto dado de baja',N'Product deactivated',0,1,22),
+('WAREHOUSE_DEACTIVATED',N'Almacén dado de baja',N'Warehouse deactivated',1,1,23)
+    ) v(Code, Es, En, Mandatory, DefaultOn, Srt)
+) AS s ON t.Entity = 'ActivityEventType' AND t.InternalCode = s.Code
+WHEN NOT MATCHED THEN
+    INSERT (Entity, InternalCode, LabelJson, ExtraJson, SortOrder, IsSystem, IsActive)
+    VALUES ('ActivityEventType', s.Code, s.LabelJson, s.ExtraJson, s.Srt, 1, 1)
+WHEN MATCHED AND (t.LabelJson <> s.LabelJson OR ISNULL(t.ExtraJson, N'') <> s.ExtraJson OR t.SortOrder <> s.Srt) THEN
+    UPDATE SET LabelJson = s.LabelJson, ExtraJson = s.ExtraJson, SortOrder = s.Srt, UpdatedAtUtc = SYSUTCDATETIME();
 GO
 
 /* -------------------------------------------------------------------------

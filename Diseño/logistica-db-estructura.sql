@@ -450,6 +450,8 @@ CREATE TABLE dbo.EntityStatusHistory (
     ChangedBy    INT NULL REFERENCES dbo.AspNetUsers(Id)
 );
 CREATE INDEX IX_EntityStatusHistory ON dbo.EntityStatusHistory(EntityTypeLookupId, EntityId);
+-- Lote 7A: "Actividad reciente" lee el historial del tenant por ventana de fecha (últimas 24/48 h u hoy).
+CREATE INDEX IX_EntityStatusHistory_TenantDate ON dbo.EntityStatusHistory(TenantId, ChangedAtUtc);
 GO
 
 /* =========================================================================
