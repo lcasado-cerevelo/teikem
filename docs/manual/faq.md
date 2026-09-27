@@ -1612,6 +1612,42 @@ en la asignación (no la que se había planeado originalmente, si hubo un faltan
 Un plan de cruce de muelle solo se completa (estatus terminal) cuando ninguna de sus asignaciones sigue
 `PLANNED`: muévelas (para que salgan del inventario) o cancélalas primero.
 
+## Lote 7A — Pulso de almacén y Actividad reciente
+
+**¿Qué significa "No tiene permiso para ver la actividad del módulo WAREHOUSE."? (403)**
+Pediste la pestaña Almacén de "Actividad reciente" (`GET /api/v1/analytics/activity?module=WAREHOUSE`) sin el permiso
+`inventory.view`, o con el módulo `WMS_LOTSERIAL` apagado. Pida el permiso a un administrador; sin `module`, el panel abre
+la primera pestaña que sí puede ver. Si además no tiene `analytics.view` (p. ej. el Operador de almacén), el 403 llega antes,
+desde la política del endpoint.
+
+**¿Qué significa "El máximo por página es 50."? (400)**
+El panel pide como máximo 50 eventos por página (`take` ≤ 50); use "Ver más" (`skip`) para las siguientes.
+
+**¿Qué significa "La ventana debe ser 24h, 48h o today."? (400)**
+El parámetro `window` solo acepta `24h` (por defecto), `48h` o `today` (desde la medianoche de hoy).
+
+**¿Por qué un ajuste FOUND de un faltante de compra aparece dos veces en Actividad reciente?**
+Porque son dos hechos: se resolvió un faltante de la orden de compra (`PO_SHORTAGE_RESOLVED`, opcional, enlaza a la orden)
+y cambió el saldo de inventario con un motivo manual (`INVENTORY_ADJUSTED`, obligatorio, enlaza al producto). Con "Solo
+obligatorios" queda solo el ajuste.
+
+**¿Por qué dar de baja una categoría no aparece como "Producto dado de baja"?**
+La categoría se registra en la bitácora con su propio tipo (`PRODUCT_CATEGORY`); `PRODUCT_DEACTIVATED` es solo para
+productos. Una baja de producto aparece aunque el producto se haya reactivado después dentro de la ventana.
+
+**¿Qué suma el indicador "Unidades recibidas"?**
+Lo que realmente entró en los últimos 7 días: movimientos de recepción más las diferencias de recepción (con su signo). Un
+recibo con 10 esperados y 8 recibidos suma 8.
+
+**¿Qué cuenta el indicador "Conteos con diferencia"?**
+Conteos cíclicos reconciliados en los últimos 30 días con al menos una línea con diferencia o con ajuste, aunque sobrantes y
+faltantes se compensen en el total.
+
+**¿Por qué alguien sin `inventory.view` puede ver conteos cíclicos en Análisis?**
+Las fuentes de datos de Análisis (entre ellas `CYCLE_COUNT` y las de almacén del Lote 6) se consultan con `analytics.view`
+y el módulo ANALYTICS, sin el permiso del módulo de negocio. Es una decisión a revisar (`docs/lote7A-decisiones.md`); si
+no debe verlas, quítele `analytics.view` o no le comparta reportes de esas fuentes.
+
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 
 Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (validaciones de pantalla, en español, cliente) y contra
