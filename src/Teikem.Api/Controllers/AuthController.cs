@@ -9,7 +9,7 @@ namespace Teikem.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public sealed class AuthController(AuthService auth, ITenantContext tenant) : ControllerBase
+public sealed class AuthController(AuthService auth, DeviceService devices, ITenantContext tenant) : ControllerBase
 {
     private long SessionId => long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0;
 
@@ -21,6 +21,25 @@ public sealed class AuthController(AuthService auth, ITenantContext tenant) : Co
     [HttpPost("mfa/verify"), Authorize(Policy = Policies.MfaChallenge)]
     public Task<AuthResultDto> VerifyMfa([FromBody] MfaVerifyRequest req, CancellationToken ct)
         => auth.VerifyMfaAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value), User.FindFirst("device")?.Value, req, ct);
+
+    // ---------------- Lote 8A: aparatos de confianza (app de almacén) ----------------
+
+    /// <summary>
+    /// Usuarios que pueden entrar en el aparato (anónimo: aparato + secreto). Internos, activos, con membresía activa, con PIN
+    /// definido y con inventory.view, ordenados por nombre. Aparato inválido o desactivado → 401
+    /// 'El aparato no está registrado o fue desactivado.'.
+    /// </summary>
+    [HttpPost("device/users"), AllowAnonymous]
+    public Task<IReadOnlyList<DeviceUserDto>> DeviceUsers([FromBody] DeviceUsersRequest req, CancellationToken ct) => devices.GetDeviceUsersAsync(req, ct);
+
+    /// <summary>
+    /// Login por aparato + PIN (sin contraseña ni MFA). Devuelve el par de tokens de una sesión ligada al aparato
+    /// (Tenant.DeviceSessionDays días, se renueva en cada refresh; el access token lleva el claim `did`).
+    /// 401 'PIN incorrecto.' (cuenta el intento), 423 'PIN bloqueado por 15 minutos.' (5 fallos seguidos),
+    /// 401 'El aparato no está registrado o fue desactivado.', 403 si el usuario no tiene inventory.view.
+    /// </summary>
+    [HttpPost("device/login"), AllowAnonymous]
+    public Task<TokenPairDto> DeviceLogin([FromBody] DeviceLoginRequest req, CancellationToken ct) => auth.DeviceLoginAsync(req, ct);
 
     [HttpPost("refresh"), AllowAnonymous]
     public Task<TokenPairDto> Refresh([FromBody] RefreshRequest req, CancellationToken ct) => auth.RefreshAsync(req.RefreshToken, Request.Headers.UserAgent.FirstOrDefault(), ct);
@@ -57,14 +76,4 @@ public sealed class AuthController(AuthService auth, ITenantContext tenant) : Co
 
     [HttpDelete("mfa/totp"), Authorize, RequireAal2]
     public async Task<IActionResult> DisableTotp(CancellationToken ct) { await auth.DisableTotpAsync(ct); return NoContent(); }
-}
-
-[ApiController]
-[Route("api/v1/me")]
-[Authorize]
-public sealed class MeController(UserAdminService users) : ControllerBase
-{
-    /// <summary>Sesión actual: tenant activo, membresías (selector de compañía solo si hay más de una), permisos efectivos y módulos encendidos (menú).</summary>
-    [HttpGet]
-    public Task<MeDto> Get(CancellationToken ct) => users.GetMeAsync(ct);
 }

@@ -148,6 +148,29 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         return await ToDetailAsync(p, ct);
     }
 
+    /// <summary>Lote 8A — 404 de la búsqueda por código escaneado.</summary>
+    public const string BarcodeNotFound = "No hay un producto con ese código.";
+
+    /// <summary>404 con el mensaje exacto de la búsqueda por código (NotFoundException arma '{qué} no encontrado.').</summary>
+    public sealed class BarcodeNotFoundException() : TeikemException(BarcodeNotFound, 404, "not_found");
+
+    /// <summary>
+    /// Lote 8A — producto por código escaneado (aparato de almacén): primero por código de barras exacto y, si no hay, por
+    /// SKU exacto; solo productos activos dentro del scope. Un mismo SKU puede existir para varios dueños (propio y clientes
+    /// 3PL): gana el propio y, entre clientes, el de menor id (orden estable). Sin coincidencia → 404 'No hay un producto con
+    /// ese código.'.
+    /// </summary>
+    public async Task<ProductDetailDto> GetByBarcodeAsync(string? code, InventoryScope scope, CancellationToken ct)
+    {
+        var c = code?.Trim();
+        if (string.IsNullOrEmpty(c)) throw new BarcodeNotFoundException();
+        var active = Scoped(scope ?? InventoryScope.Any).AsNoTracking().Where(p => p.IsActive);
+        var p = await active.Where(x => x.Barcode == c).OrderBy(x => x.ClientId != null).ThenBy(x => x.ProductId).FirstOrDefaultAsync(ct)
+                ?? await active.Where(x => x.Sku == c).OrderBy(x => x.ClientId != null).ThenBy(x => x.ProductId).FirstOrDefaultAsync(ct)
+                ?? throw new BarcodeNotFoundException();
+        return await ToDetailAsync(p, ct);
+    }
+
     /// <summary>Lotes del producto con su existencia en mano (todas las ubicaciones). Orden FEFO: vencimiento ascendente, sin fecha al final.</summary>
     public async Task<IReadOnlyList<LotDto>> ListLotsAsync(Guid publicId, InventoryScope scope, CancellationToken ct)
     {

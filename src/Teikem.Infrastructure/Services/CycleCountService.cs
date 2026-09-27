@@ -161,6 +161,40 @@ public sealed class CycleCountService(
         return await BuildDetailAsync(cc, q, ct);
     }
 
+    /// <summary>
+    /// Lote 8A — ficha para quien consulta: con blind = true (sin warehouse.count, solo inventory.view) es el conteo a ciegas:
+    /// las cantidades esperadas de las líneas se omiten (ver Blind) y el filtro onlyVariance se ignora (filtrar por diferencia
+    /// revelaría lo esperado).
+    /// </summary>
+    public async Task<CycleCountDetailDto> GetAsync(int id, CycleCountLinesQuery? q, bool blind, CancellationToken ct)
+    {
+        if (!blind) return await GetAsync(id, q, ct);
+        var detail = await GetAsync(id, q is null ? null : q with { OnlyVariance = null }, ct);
+        return Blind(detail);
+    }
+
+    /// <summary>
+    /// Conteo a ciegas (Lote 8A): quita de la ficha todo lo que revela la cantidad esperada por línea (foto, diferencia, saldo
+    /// actual, series esperadas, lo reconciliado y el ajuste); conserva lo contado. Función pura.
+    /// </summary>
+    public static CycleCountDetailDto Blind(CycleCountDetailDto detail)
+        => detail with
+        {
+            Lines = detail.Lines.Select(l => l with
+            {
+                SystemQty = null,
+                VarianceQty = null,
+                ExpectedSerials = Array.Empty<string>(),
+                IsStale = false,
+                CurrentQty = null,
+                ReconciledSystemQty = null,
+                SystemQtyChanged = false,
+                AdjustedQty = null,
+                AdjustmentTxnId = null,
+            }).ToList(),
+            IsBlind = true,
+        };
+
     // ================================================================ alta
 
     /// <summary>
@@ -298,6 +332,146 @@ public sealed class CycleCountService(
                 line.CountedSerialsJson = serials is null ? null : JsonSerializer.Serialize(serials, Json);
             }
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+        }, ct);
+
+        return await GetAsync(id, null, ct);
+    }
+
+    public const string BatchLineRepeated = "La línea se repite en la solicitud.";
+
+    /// <summary>
+    /// Lote 8A — captura en lote (cola del aparato): cada renglón por LineId o por posición + producto (+ lote por id o por
+    /// número). Una línea existente se captura (mismas reglas que CaptureAsync); una que no está en el conteo se agrega con su
+    /// captura (mismas reglas que AddLineAsync: posición del almacén 404 / inactiva 422, producto 404 / inactivo 422, lote del
+    /// producto 404, seguimiento 400). Todo en UNA transacción: errores de forma o de captura → 400 con Errors por renglón
+    /// ('lines[i].campo') sin guardar nada. Un renglón repetido (misma línea) → 400 'La línea se repite en la solicitud.'.
+    /// </summary>
+    public async Task<CycleCountDetailDto> CaptureBatchAsync(int id, CountBatchRequest req, CancellationToken ct)
+    {
+        if (req?.Lines is not { Count: > 0 }) throw new ValidationException("lines", CycleCountRules.CaptureRequired);
+        if (req.Lines.Count > CycleCountRules.MaxLines) throw new ValidationException("lines", CycleCountRules.TooManyLines);
+
+        // Forma (400) antes de tocar la BD.
+        var shapeErrors = new Dictionary<string, string[]>();
+        var lotNumbers = new string?[req.Lines.Count];
+        for (var i = 0; i < req.Lines.Count; i++)
+        {
+            var item = req.Lines[i];
+            if (item is null) { shapeErrors[$"lines[{i}]"] = new[] { CycleCountRules.ProductRequired }; continue; }
+            if (item.LineId is not null) continue;
+            if (item.BinId is null) shapeErrors[$"lines[{i}].binId"] = new[] { CycleCountRules.BinRequired };
+            if (item.ProductPublicId is null) shapeErrors[$"lines[{i}].productPublicId"] = new[] { CycleCountRules.ProductRequired };
+            if (item.LotId is not null && item.Lot is not null) shapeErrors[$"lines[{i}].lot"] = new[] { CycleCountRules.LotAmbiguous };
+            if (item.Lot is not null)
+            {
+                var n = item.Lot.Number?.Trim();
+                if (string.IsNullOrEmpty(n)) shapeErrors[$"lines[{i}].lot.number"] = new[] { CycleCountRules.LotNumberRequired };
+                else if (n.Length > 60) shapeErrors[$"lines[{i}].lot.number"] = new[] { CycleCountRules.LotNumberTooLong };
+                else lotNumbers[i] = n;
+                if (item.Lot.ManufactureDate is DateOnly m && item.Lot.ExpiryDate is DateOnly e && m > e)
+                    shapeErrors[$"lines[{i}].lot.manufactureDate"] = new[] { CycleCountRules.LotDates };
+            }
+        }
+        if (shapeErrors.Count > 0) throw new ValidationException(shapeErrors);
+        var current = await ResolveAsync(id, ct);
+
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var (cc, _) = await LockEditableAsync(current.CycleCountId, ct2);
+            EnsureRowVersion(cc, req.RowVersion);
+
+            var lines = await db.Set<CycleCountLine>().Where(l => l.CycleCountId == cc.CycleCountId).ToListAsync(ct2);
+            var byId = lines.ToDictionary(l => l.CycleCountLineId);
+            var byKey = new Dictionary<LineKey, CycleCountLine>();
+            foreach (var l in lines) byKey.TryAdd(new LineKey(l.ProductId, l.WarehouseBinId, l.LotId), l);
+
+            var items = req.Lines;
+            var newItems = items.Where(x => x.LineId is null).ToList();
+            var binIds = newItems.Select(x => x.BinId!.Value).Distinct().ToList();
+            var bins = await db.Set<WarehouseBin>().AsNoTracking()
+                .Where(b => b.WarehouseId == cc.WarehouseId && binIds.Contains(b.WarehouseBinId))
+                .ToDictionaryAsync(b => b.WarehouseBinId, ct2);
+            var publicIds = newItems.Select(x => x.ProductPublicId!.Value).Distinct().ToList();
+            var productsByPublic = await db.Set<Product>().AsNoTracking().Where(p => publicIds.Contains(p.PublicId))
+                .ToDictionaryAsync(p => p.PublicId, ct2);
+            var productIds = lines.Select(l => l.ProductId).Concat(productsByPublic.Values.Select(p => p.ProductId)).Distinct().ToList();
+            var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId))
+                .ToDictionaryAsync(p => p.ProductId, ct2);
+            var tracking = await TrackingCodesAsync(products.Values.Select(p => p.TrackingTypeLookupId), ct2);
+
+            var errors = new Dictionary<string, string[]>();
+            var touched = new HashSet<CycleCountLine>(ReferenceEqualityComparer.Instance);
+            var changes = new List<(CycleCountLine Line, decimal? Counted, IReadOnlyList<string>? Serials)>();
+            var added = new List<CycleCountLine>();
+            for (var i = 0; i < items.Count; i++)
+            {
+                var item = items[i];
+                CycleCountLine line;
+                Product product;
+                if (item.LineId is int lineId)
+                {
+                    line = byId.GetValueOrDefault(lineId) ?? throw new NotFoundException(CycleCountRules.LineNotFoundWhat, feminine: true);
+                    product = products[line.ProductId];
+                }
+                else
+                {
+                    var bin = bins.GetValueOrDefault(item.BinId!.Value) ?? throw new NotFoundException("Posición", feminine: true);
+                    product = productsByPublic.GetValueOrDefault(item.ProductPublicId!.Value) ?? throw new NotFoundException("Producto");
+                    int? lotId = null;
+                    if (item.LotId is int lid)
+                    {
+                        lotId = await db.Set<InventoryLot>().AsNoTracking()
+                                    .Where(l => l.LotId == lid && l.ProductId == product.ProductId).Select(l => (int?)l.LotId).FirstOrDefaultAsync(ct2)
+                                ?? throw new NotFoundException("Lote");
+                    }
+                    else if (lotNumbers[i] is string lotNumber)
+                    {
+                        // Lote por número: el existente del producto o uno nuevo (EnsureLot, en esta transacción: un error revierte).
+                        lotId = await EnsureLotAsync(product.ProductId, lotNumber, item.Lot!.ManufactureDate, item.Lot.ExpiryDate, ct2);
+                    }
+
+                    var key = new LineKey(product.ProductId, bin.WarehouseBinId, lotId);
+                    if (byKey.TryGetValue(key, out var existing))
+                    {
+                        line = existing;
+                    }
+                    else
+                    {
+                        // Lo encontrado: mismas reglas que agregar una línea a mano.
+                        if (!bin.IsActive) throw new StatusRuleException(BinInactive(bin.Code));
+                        if (!product.IsActive) throw new StatusRuleException(CycleCountRules.ProductInactive(product.Sku));
+                        var trackingCode = tracking.GetValueOrDefault(product.TrackingTypeLookupId, TrackingTypes.None);
+                        var lotError = CycleCountRules.ValidateLot(trackingCode, product.Sku, lotId is not null);
+                        if (lotError is not null) { errors[$"lines[{i}].lot"] = new[] { lotError }; continue; }
+                        var systemQty = await db.Set<StockBalance>().AsNoTracking()
+                            .Where(b => b.WarehouseId == cc.WarehouseId && b.ProductId == product.ProductId && b.WarehouseBinId == bin.WarehouseBinId && b.LotId == lotId)
+                            .SumAsync(b => b.QtyOnHand, ct2);
+                        line = new CycleCountLine
+                        {
+                            CycleCountId = cc.CycleCountId, WarehouseBinId = bin.WarehouseBinId, ProductId = product.ProductId, LotId = lotId,
+                            SystemQty = systemQty,
+                        };
+                        byKey[key] = line;
+                        added.Add(line);
+                    }
+                }
+
+                if (!touched.Add(line)) { errors[$"lines[{i}]"] = new[] { BatchLineRepeated }; continue; }
+                var code = tracking.GetValueOrDefault(product.TrackingTypeLookupId, TrackingTypes.None);
+                var (counted, serials, field, error) = CycleCountRules.Capture(code, product.Sku, item.CountedQty, item.SerialNumbers);
+                if (error is not null) errors[$"lines[{i}].{field}"] = new[] { error };
+                else changes.Add((line, counted, serials));
+            }
+            if (errors.Count > 0) throw new ValidationException(errors);
+            if (lines.Count + added.Count > CycleCountRules.MaxLines) throw new ValidationException("lines", CycleCountRules.TooManyLines);
+
+            foreach (var (line, counted, serials) in changes)
+            {
+                line.CountedQty = counted;
+                line.CountedSerialsJson = serials is null ? null : JsonSerializer.Serialize(serials, Json);
+            }
+            db.Set<CycleCountLine>().AddRange(added);
+            await db.SaveGuardedAsync(CycleCountRules.LineDuplicated, ct2);
         }, ct);
 
         return await GetAsync(id, null, ct);

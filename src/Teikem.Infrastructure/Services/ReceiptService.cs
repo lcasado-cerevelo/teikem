@@ -176,7 +176,30 @@ public sealed class ReceiptService(
 
     // ================================================================ alta
 
+    /// <summary>
+    /// Alta OPEN (flujo por pasos) o, con Confirm = true (Lote 8A, cola del aparato), alta + captura de las líneas de la
+    /// solicitud + confirmación en UNA transacción: se reutilizan exactamente los mismos pasos (y mensajes) que el alta y la
+    /// confirmación por separado; si cualquiera falla no queda nada (ni el número REC se consume).
+    /// </summary>
     public async Task<ReceiptDetailDto> CreateAsync(ReceiptCreateRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (!req.Confirm) return await GetAsync(await CreateCoreAsync(req, ct), ct);
+
+        // Fila del contador REC en autocommit ANTES de abrir la transacción externa (patrón de NumberSequenceService);
+        // la llamada anidada de CreateCoreAsync la encuentra y no inserta nada.
+        await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
+        var publicId = await db.RunInTransactionAsync(async ct2 =>
+        {
+            // Las transacciones internas de alta y confirmación se unen a ésta (RunInTransactionAsync anidado).
+            var created = await CreateCoreAsync(req, ct2);
+            await ConfirmCoreAsync(created, null, ct2);
+            return created;
+        }, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    private async Task<Guid> CreateCoreAsync(ReceiptCreateRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (req.AsnId is not null && req.PurchaseOrderPublicId is not null)
@@ -308,7 +331,7 @@ public sealed class ReceiptService(
             return receipt.PublicId;
         }, ct);
 
-        return await GetAsync(publicId, ct);
+        return publicId;
     }
 
     // ================================================================ edición de líneas (solo OPEN)
@@ -434,6 +457,12 @@ public sealed class ReceiptService(
     // ================================================================ confirmación
 
     public async Task<ReceiptDetailDto> ConfirmAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
+    {
+        await ConfirmCoreAsync(publicId, req, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    private async Task ConfirmCoreAsync(Guid publicId, ReceiptConfirmRequest? req, CancellationToken ct)
     {
         var current = await ResolveAsync(publicId, ct);
         var comment = string.IsNullOrWhiteSpace(req?.Comment) ? null : req!.Comment!.Trim();
@@ -564,8 +593,6 @@ public sealed class ReceiptService(
             }
             await SaveReceiptAsync(ct2);
         }, ct);
-
-        return await GetAsync(publicId, ct);
     }
 
     // ================================================================ baja

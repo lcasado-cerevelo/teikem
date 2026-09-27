@@ -10,8 +10,9 @@ namespace Teikem.Api.Controllers;
 
 /// <summary>
 /// Lote 6 (P6) — Conteo cíclico en modo informado (R16, R33; D22) bajo el módulo WMS_LOTSERIAL. La lista se consulta con
-/// inventory.view; la ficha (que muestra la foto del sistema y las series esperadas), el alta, la captura, terminar,
-/// refrescar, RECONCILIAR y la baja requieren warehouse.count (el Operador de almacén lo tiene: reconcilia, como el mock).
+/// inventory.view; el alta, la captura, terminar, refrescar, RECONCILIAR y la baja requieren warehouse.count (el Operador de
+/// almacén lo tiene: reconcilia, como el mock). La ficha se lee con inventory.view: completa (foto del sistema y series
+/// esperadas) con warehouse.count y a ciegas sin él (Lote 8A).
 /// El conteo se expone por id entero (no tiene PublicId) filtrado por tenant; sus líneas SOLO dentro de su conteo.
 /// Historial de estatus: /api/v1/status/history/CYCLE_COUNT/{id}. La tarea COUNT de la cola se completa aquí (reconciliar).
 /// </summary>
@@ -19,7 +20,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/cycle-counts")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class CycleCountsController(CycleCountService counts) : ControllerBase
+public sealed class CycleCountsController(CycleCountService counts, PermissionService permissions) : ControllerBase
 {
     /// <summary>
     /// Conteos activos (los 200 más recientes) con filtros: warehousePublicIds (selección múltiple, maestro L553), status (OPEN, COUNTED, RECONCILED), from/to
@@ -35,17 +36,23 @@ public sealed class CycleCountsController(CycleCountService counts) : Controller
             categoryIds is { Length: > 0 } ? categoryIds : null, search), ct);
 
     /// <summary>
-    /// Ficha en modo informado: foto (systemQty), contado, diferencia contra la foto, series esperadas y contadas, saldo
-    /// actual (currentQty) con isStale, y tras reconciliar reconciledSystemQty, systemQtyChanged, adjustedQty y el
-    /// movimiento de ajuste. Filtros de líneas: binIds, productPublicIds, categoryIds, onlyVariance, onlyPending, search.
+    /// Ficha en modo informado (con warehouse.count): foto (systemQty), contado, diferencia contra la foto, series esperadas
+    /// y contadas, saldo actual (currentQty) con isStale, y tras reconciliar reconciledSystemQty, systemQtyChanged, adjustedQty
+    /// y el movimiento de ajuste. Filtros de líneas: binIds, productPublicIds, categoryIds, onlyVariance, onlyPending, search.
+    /// Lote 8A — conteo a ciegas: con solo inventory.view (sin warehouse.count) la ficha llega con isBlind = true y las
+    /// cantidades esperadas de las líneas en null (systemQty, varianceQty, currentQty, reconciledSystemQty, adjustedQty;
+    /// expectedSerials vacío); onlyVariance se ignora.
     /// </summary>
-    [HttpGet("{id:int}"), RequirePermission(PermissionCatalog.WarehouseCount)]
-    public Task<CycleCountDetailDto> Get(int id, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
+    [HttpGet("{id:int}"), RequirePermission(PermissionCatalog.InventoryView)]
+    public async Task<CycleCountDetailDto> Get(int id, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] int[]? categoryIds, [FromQuery] bool? onlyVariance, [FromQuery] bool? onlyPending, [FromQuery] string? search,
         CancellationToken ct = default)
-        => counts.GetAsync(id, new CycleCountLinesQuery(binIds is { Length: > 0 } ? binIds : null,
+    {
+        var blind = !await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct);
+        return await counts.GetAsync(id, new CycleCountLinesQuery(binIds is { Length: > 0 } ? binIds : null,
             productPublicIds is { Length: > 0 } ? productPublicIds : null, categoryIds is { Length: > 0 } ? categoryIds : null,
-            onlyVariance, onlyPending, search), ct);
+            onlyVariance, onlyPending, search), blind, ct);
+    }
 
     /// <summary>
     /// Alta OPEN con número CC-#####: una línea por saldo en mano del almacén (warehousePublicId o el único activo) según
@@ -60,6 +67,16 @@ public sealed class CycleCountsController(CycleCountService counts) : Controller
     [HttpPut("{id:int}/lines"), RequirePermission(PermissionCatalog.WarehouseCount)]
     public Task<CycleCountDetailDto> Capture(int id, [FromBody] CountCaptureRequest req, CancellationToken ct)
         => counts.CaptureAsync(id, req, ct);
+
+    /// <summary>
+    /// Lote 8A — captura en lote (cola del aparato): varias líneas en una llamada, cada una por lineId o por binId +
+    /// productPublicId (+ lotId o lot); la que no está en el conteo se agrega con su captura (lo encontrado). Todo o nada:
+    /// errores por renglón → 400 ('lines[i].campo'); renglón repetido → 400 'La línea se repite en la solicitud.';
+    /// reconciliado → 422. Respeta Idempotency-Key.
+    /// </summary>
+    [HttpPut("{id:int}/lines/batch"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<CycleCountDetailDto> CaptureBatch(int id, [FromBody] CountBatchRequest req, CancellationToken ct)
+        => counts.CaptureBatchAsync(id, req, ct);
 
     /// <summary>Línea agregada a mano (lo encontrado): posición del almacén del conteo, producto, lote y captura. Repetida → 409.</summary>
     [HttpPost("{id:int}/lines"), RequirePermission(PermissionCatalog.WarehouseCount)]

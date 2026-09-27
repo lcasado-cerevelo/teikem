@@ -160,6 +160,34 @@ public sealed class PickBatchService(
     // ================================================================ recolectar (D48)
 
     public async Task<PickBatchDto> CollectAsync(PickBatchCreateRequest req, CancellationToken ct)
+        => await GetAsync(await CollectCoreAsync(req, ct), ct);
+
+    /// <summary>
+    /// Lote 8A (cola del aparato): recolectar y empacar en UNA transacción con exactamente los mismos pasos, permisos y mensajes
+    /// que CollectAsync + PackAsync. Si el empaque falla (permiso, orden inválida, dueño 3PL) la recolección tampoco queda: el
+    /// inventario no sale y el número EMP no se consume. El RowVersion del empaque se ignora (la recolección nace aquí).
+    /// </summary>
+    public async Task<PickBatchPackResultDto> CollectAndPackAsync(PickBatchCreateRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        if (req.Pack is null) throw new ValidationException("pack", PickBatchRules.OrderRequired);
+        var pack = req.Pack with { RowVersion = null };
+        // Permiso y forma del empaque ANTES de sacar inventario (mismo orden de mensajes que empacar por separado).
+        await ValidatePackRequestAsync(pack, ct);
+        // Fila del contador PACKBATCH en autocommit antes de la transacción externa (la llamada anidada no inserta nada).
+        await numbers.EnsureAsync(NumberKinds.PackBatch, PackBatchCounterClientId, ct);
+
+        var (publicId, order) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            // Las transacciones internas de recolección y empaque se unen a ésta (RunInTransactionAsync anidado).
+            var collected = await CollectCoreAsync(req with { Pack = null }, ct2);
+            var created = await PackCoreAsync(collected, pack, ct2);
+            return (collected, created);
+        }, ct);
+        return new PickBatchPackResultDto(await GetAsync(publicId, ct), order);
+    }
+
+    private async Task<Guid> CollectCoreAsync(PickBatchCreateRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
@@ -254,7 +282,7 @@ public sealed class PickBatchService(
             return batch.PublicId;
         }, ct);
 
-        return await GetAsync(publicId, ct);
+        return publicId;
     }
 
     /// <summary>
@@ -371,11 +399,23 @@ public sealed class PickBatchService(
 
     public async Task<PickBatchPackResultDto> PackAsync(Guid publicId, PickBatchPackRequest req, CancellationToken ct)
     {
+        await ValidatePackRequestAsync(req, ct);
+        var orderDetail = await PackCoreAsync(publicId, req, ct);
+        return new PickBatchPackResultDto(await GetAsync(publicId, ct), orderDetail);
+    }
+
+    /// <summary>Permiso orders.create y forma de la solicitud de empaque (400 sin orden o con entrega especial/chofer).</summary>
+    private async Task ValidatePackRequestAsync(PickBatchPackRequest? req, CancellationToken ct)
+    {
         await permissions.EnsureAsync(PermissionCatalog.OrdersCreate, ct);
         if (req?.Order is null) throw new ValidationException("order", PickBatchRules.OrderRequired);
         if (!PickBatchRules.PackRequestAllowed(req.Order.IsSpecialDelivery, req.Order.DriverPublicId is not null))
             throw new ValidationException("order", PickBatchRules.PackSpecialNotAllowed);
+    }
 
+    private async Task<OrderDetailDto> PackCoreAsync(Guid publicId, PickBatchPackRequest req, CancellationToken ct)
+    {
+        var orderRequest = req.Order ?? throw new ValidationException("order", PickBatchRules.OrderRequired);
         var current = await ResolveAsync(publicId, ct);
         var orderDetail = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -394,12 +434,12 @@ public sealed class PickBatchService(
             {
                 var owner = await db.Clients.AsNoTracking().Where(c => c.ClientId == ownerClientId)
                     .Select(c => new { c.ClientId, c.PublicId, c.Name }).FirstAsync(ct2);
-                if (req.Order.ClientPublicId != owner.PublicId)
+                if (orderRequest.ClientPublicId != owner.PublicId)
                     throw new ValidationException("order.clientPublicId", PickBatchRules.OrderClientMustBeOwner(owner.Name));
             }
 
             // La orden REAL, en esta transacción: número de empaque = número de la recolección, origen PICK_BATCH.
-            var order = await orders.CreateAsync(req.Order, OrderScope.Any,
+            var order = await orders.CreateAsync(orderRequest, OrderScope.Any,
                 new OrderCreationOptions(batch.Number, EntityTypes.PickBatch, batch.PickBatchId), ct2);
 
             var packed = await statuses.TransitionAsync(StatusDomains.PickBatchStatus, EntityTypes.PickBatch, batch.PickBatchId,
@@ -413,7 +453,7 @@ public sealed class PickBatchService(
             return order;
         }, ct);
 
-        return new PickBatchPackResultDto(await GetAsync(publicId, ct), orderDetail);
+        return orderDetail;
     }
 
     // ================================================================ eliminar (D12/D13)

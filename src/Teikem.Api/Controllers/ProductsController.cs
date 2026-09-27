@@ -38,6 +38,13 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductDetailDto> Get(Guid publicId, CancellationToken ct) => products.GetAsync(publicId, InventoryScope.Any, ct);
 
+    /// <summary>
+    /// Lote 8A — producto por código escaneado: código de barras exacto y, si no hay, SKU exacto; solo activos (con el mismo
+    /// SKU en varios dueños gana el propio). Sin coincidencia → 404 'No hay un producto con ese código.'.
+    /// </summary>
+    [HttpGet("by-barcode/{code}"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<ProductDetailDto> ByBarcode(string code, CancellationToken ct) => products.GetByBarcodeAsync(code, InventoryScope.Any, ct);
+
     /// <summary>Lotes del producto con existencia en mano y días al vencimiento (orden FEFO).</summary>
     [HttpGet("{publicId:guid}/lots"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<IReadOnlyList<LotDto>> Lots(Guid publicId, CancellationToken ct) => products.ListLotsAsync(publicId, InventoryScope.Any, ct);

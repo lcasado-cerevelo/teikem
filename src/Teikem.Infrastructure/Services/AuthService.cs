@@ -1,12 +1,17 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Entities;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
+using Teikem.Infrastructure.PendingP0;
 using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Services;
@@ -22,14 +27,26 @@ public sealed class NoOpPasswordBreachChecker : IPasswordBreachChecker
     public Task<bool> IsBreachedAsync(string password, CancellationToken ct) => Task.FromResult(false);
 }
 
+/// <summary>Claims propios de las sesiones de aparato (Lote 8A).</summary>
+public static class DeviceClaims
+{
+    /// <summary>PublicId del aparato (UserDevice) que emitió la sesión; solo en tokens de aparato.</summary>
+    public const string DeviceId = "did";
+}
+
 /// <summary>
 /// Capa D: identidad y sesiones. Login con Identity (hash, lockout), tenant activo al login → JWT; refresh tokens hasheados
 /// con rotación; revocación por dispositivo o global (SecurityStamp invalida access tokens vivos); MFA TOTP + códigos de
 /// recuperación; step-up AAL2 (reauth). Todo evento entra a SecurityEvent.
+/// Lote 8A (P1): login por aparato de confianza + PIN (sin contraseña ni MFA): la sesión queda ligada al aparato
+/// (RefreshToken.UserDeviceId), dura Tenant.DeviceSessionDays días y se renueva en cada refresh; el access token lleva el
+/// claim `did` con el PublicId del aparato y los mismos `tid`/permisos del usuario. Si el aparato se desactiva, el refresh
+/// se rechaza con 401.
 /// </summary>
 public sealed class AuthService(
     TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, JwtTokenService jwt, ILookupCache lookups,
-    ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions)
+    ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
+    DeviceService devices, PinService pins)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
     private readonly IDataProtector _protector = dataProtection.CreateProtector("Teikem.Mfa.Totp");
@@ -121,23 +138,105 @@ public sealed class AuthService(
             .Select(m => new TenantOptionDto(m.TenantId, m.Tenant!.Name, m.IsDefault)).ToListAsync(ct);
     }
 
-    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct)
+    /// <summary>Aparato al que queda ligada una sesión (Lote 8A): Id para RefreshToken.UserDeviceId, PublicId para `did`.</summary>
+    private sealed record DeviceBinding(int UserDeviceId, Guid PublicId, int SessionDays);
+
+    private async Task<TokenPairDto> IssueAsync(ApplicationUser user, int tenantId, string? kind, string? deviceInfo, DateTime? aal2At, CancellationToken ct, DeviceBinding? device = null)
     {
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().FirstAsync(x => x.TenantId == tenantId, ct);
         var raw = JwtTokenService.NewRefreshToken();
         var rt = new RefreshToken
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
-            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddDays(t.SessionDays), Aal2VerifiedAtUtc = aal2At,
+            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddDays(device?.SessionDays ?? t.SessionDays), Aal2VerifiedAtUtc = aal2At,
         };
         db.SuppressAudit = true;
         db.RefreshTokens.Add(rt);
+        if (device is not null) SetTokenDevice(rt, device.UserDeviceId);
         user.LastLoginUtc = DateTime.UtcNow;
         db.Users.Update(user);
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
-        var (access, exp) = jwt.CreateAccessToken(user, tenantId, rt.RefreshTokenId, kind, aal2At);
+        var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId);
         return new TokenPairDto(access, exp, raw, rt.ExpiresAtUtc, tenantId);
+    }
+
+    // ---------------- Login por aparato (Lote 8A) ----------------
+
+    /// <summary>
+    /// Aparato registrado + secreto + usuario + PIN → par de tokens de sesión de aparato. El usuario debe ser interno,
+    /// activo, con membresía ACTIVE en la compañía del aparato y con inventory.view (los mismos de /auth/device/users).
+    /// Aparato inválido → 401 'El aparato no está registrado o fue desactivado.'; PIN incorrecto → 401 'PIN incorrecto.'
+    /// (cuenta el intento); bloqueado → 423 'PIN bloqueado por 15 minutos.'. Escribe SecurityEvent LOGIN (stage = device).
+    /// </summary>
+    public async Task<TokenPairDto> DeviceLoginAsync(DeviceLoginRequest req, CancellationToken ct)
+    {
+        var device = await devices.AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, ct);
+        var tenantId = device.TenantId;
+        using var scope = ((TenantContext)tenant).As(tenantId);
+
+        var user = req.UserId > 0 ? await users.FindByIdAsync(req.UserId.ToString()) : null;
+        var kind = user?.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
+        if (user is null || !user.IsActive || kind == UserKinds.Portal || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
+        {
+            // Sin enumeración de usuarios: el mismo 401 que un PIN incorrecto.
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, user?.Id, tenantId, new { stage = "device", device = device.Code, reason = "user" }, ct);
+            throw new UnauthorizedException(PinService.WrongPinMessage);
+        }
+
+        await pins.VerifyForLoginAsync(user, tenantId, req.Pin, device.Code, ct);
+
+        if (!user.IsPlatformAdmin && !(await permissions.GetEffectivePermissionsAsync(user.Id, tenantId, ct)).Contains(PermissionCatalog.InventoryView))
+        {
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, tenantId, new { stage = "device", device = device.Code, permission = PermissionCatalog.InventoryView }, ct);
+            throw new ForbiddenException($"Falta el permiso '{PermissionCatalog.InventoryView}'.");
+        }
+
+        var binding = new DeviceBinding(device.UserDeviceId, device.PublicId, await devices.SessionDaysAsync(tenantId, ct));
+        var pair = await IssueAsync(user, tenantId, kind, DeviceInfoOf(device), aal2At: null, ct, binding);
+        await devices.TouchAsync(device, user.Id, null, ct);
+        await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "device", device = device.Code }, ct);
+        return pair;
+    }
+
+    private static string DeviceInfoOf(UserDevice device)
+        => string.IsNullOrWhiteSpace(device.Model) ? $"Aparato {device.Code}" : $"Aparato {device.Code} · {device.Model}";
+
+    /// <summary>RefreshToken.UserDeviceId (columna de P0) por nombre: la sesión queda ligada al aparato.</summary>
+    private void SetTokenDevice(RefreshToken rt, int? userDeviceId)
+        => db.Entry(rt).Property<int?>(DeviceService.RefreshTokenDeviceColumn).CurrentValue = userDeviceId;
+
+    private int? TokenDevice(RefreshToken rt)
+        => db.Entry(rt).Property<int?>(DeviceService.RefreshTokenDeviceColumn).CurrentValue;
+
+    /// <summary>Aparato de una sesión: null si no es de aparato; 401 (y revoca la sesión) si el aparato ya no sirve.</summary>
+    private async Task<UserDevice?> SessionDeviceAsync(RefreshToken rt, CancellationToken ct)
+    {
+        if (TokenDevice(rt) is not int deviceId) return null;
+        var device = await devices.FindByIdAsync(deviceId, ct);
+        if (device is not null && device.IsActive && device.TenantId == rt.TenantId) return device;
+        await RevokeAsync(rt, null, ct);
+        await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId, new { reason = "device_inactive", device = device?.Code }, ct);
+        throw new UnauthorizedException(DeviceService.InvalidDeviceMessage);
+    }
+
+    /// <summary>
+    /// Access token del usuario; en sesiones de aparato agrega el claim `did`. Se firma con la misma llave, emisor,
+    /// audiencia y vigencia que JwtTokenService (se re-firma su token con el claim extra para no duplicar la lista de claims).
+    /// </summary>
+    private (string Token, DateTime ExpiresAtUtc) CreateAccess(ApplicationUser user, int tenantId, long sessionId, string? kind, DateTime? aal2At, Guid? devicePublicId)
+    {
+        var (token, exp) = jwt.CreateAccessToken(user, tenantId, sessionId, kind, aal2At);
+        if (devicePublicId is not Guid did) return (token, exp);
+        var handler = new JwtSecurityTokenHandler();
+        var parsed = handler.ReadJwtToken(token);
+        var registered = new HashSet<string>(StringComparer.Ordinal)
+            { JwtRegisteredClaimNames.Iss, JwtRegisteredClaimNames.Aud, JwtRegisteredClaimNames.Exp, JwtRegisteredClaimNames.Nbf, JwtRegisteredClaimNames.Iat };
+        var claims = parsed.Claims.Where(c => !registered.Contains(c.Type)).Select(c => new Claim(c.Type, c.Value)).ToList();
+        claims.Add(new Claim(DeviceClaims.DeviceId, did.ToString()));
+        var signed = new JwtSecurityToken(parsed.Issuer, parsed.Audiences.FirstOrDefault(), claims, parsed.ValidFrom, parsed.ValidTo,
+            new SigningCredentials(jwt.SigningKey, SecurityAlgorithms.HmacSha256));
+        return (handler.WriteToken(signed), exp);
     }
 
     // ---------------- Refresh / logout / switch ----------------
@@ -149,22 +248,27 @@ public sealed class AuthService(
         if (user is null || !user.IsActive) throw new UnauthorizedException();
         var memberships = await ActiveMembershipsAsync(user, ct);
         if (!memberships.Any(m => m.TenantId == rt.TenantId)) { await RevokeAsync(rt, null, ct); throw new ForbiddenException("La membresía ya no está activa."); }
+        // Sesión de aparato (Lote 8A): el aparato debe seguir activo; la vigencia se renueva (DeviceSessionDays desde hoy).
+        var device = await SessionDeviceAsync(rt, ct);
+        var expires = device is null ? rt.ExpiresAtUtc : DateTime.UtcNow.AddDays(await devices.SessionDaysAsync(rt.TenantId, ct));
 
         // Rotación: el token usado se revoca y apunta al nuevo
         var raw = JwtTokenService.NewRefreshToken();
         var next = new RefreshToken
         {
-            UserId = rt.UserId, TenantId = rt.TenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo ?? rt.DeviceInfo,
-            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = rt.ExpiresAtUtc, Aal2VerifiedAtUtc = rt.Aal2VerifiedAtUtc,
+            UserId = rt.UserId, TenantId = rt.TenantId, TokenHash = JwtTokenService.HashToken(raw),
+            DeviceInfo = device is null ? deviceInfo ?? rt.DeviceInfo : rt.DeviceInfo,
+            IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = expires, Aal2VerifiedAtUtc = rt.Aal2VerifiedAtUtc,
         };
         db.SuppressAudit = true;
         db.RefreshTokens.Add(next);
+        if (device is not null) SetTokenDevice(next, device.UserDeviceId);
         rt.RevokedAtUtc = DateTime.UtcNow;
         rt.ReplacedByTokenHash = next.TokenHash;
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var (access, exp) = jwt.CreateAccessToken(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc);
+        var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId);
         return new TokenPairDto(access, exp, raw, next.ExpiresAtUtc, rt.TenantId);
     }
 
@@ -193,6 +297,7 @@ public sealed class AuthService(
     public async Task<TokenPairDto> SwitchTenantAsync(SwitchTenantRequest req, CancellationToken ct)
     {
         var rt = await FindActiveAsync(req.RefreshToken, ct);
+        if (TokenDevice(rt) is not null) throw new ForbiddenException("La sesión de un aparato no cambia de compañía.");
         var user = await users.FindByIdAsync(rt.UserId.ToString()) ?? throw new UnauthorizedException();
         var memberships = await ActiveMembershipsAsync(user, ct);
         if (!memberships.Any(m => m.TenantId == req.TenantId)) throw new ForbiddenException("No pertenece a esa compañía.");
@@ -281,10 +386,11 @@ public sealed class AuthService(
         }
         var rt = await db.RefreshTokens.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.RefreshTokenId == sessionId && t.UserId == userId && t.RevokedAtUtc == null, ct)
                  ?? throw new UnauthorizedException("Sesión inválida.");
+        var device = await SessionDeviceAsync(rt, ct);
         rt.Aal2VerifiedAtUtc = DateTime.UtcNow;
         db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
-        var (access, exp) = jwt.CreateAccessToken(user, rt.TenantId, rt.RefreshTokenId, kind, rt.Aal2VerifiedAtUtc);
+        var (access, exp) = CreateAccess(user, rt.TenantId, rt.RefreshTokenId, kind, rt.Aal2VerifiedAtUtc, device?.PublicId);
         await security.WriteAsync(SecurityEventTypes.Reauth, SecurityOutcomes.Success, userId, tenant.TenantId, null, ct);
         return new ReauthResultDto(access, exp, rt.Aal2VerifiedAtUtc.Value);
     }

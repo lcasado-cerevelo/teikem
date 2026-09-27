@@ -4,7 +4,9 @@ public sealed record PermissionDto(int Id, string Code, string Category, string 
 public sealed record RoleDto(int Id, string Name, string? Description, IDictionary<string, string> Descriptions, bool IsSystem, bool IsTemplate, bool IsActive, IReadOnlyList<string> Permissions, int UserCount);
 public sealed record RoleUpsertRequest(string Name, IDictionary<string, string>? Descriptions, IList<string> Permissions);
 
-public sealed record UserSummaryDto(int Id, string? FullName, string? Email, string? UserKind, bool IsActive, string MembershipStatus, bool MfaEnabled, DateTime? LastLoginUtc, IReadOnlyList<string> Roles, IReadOnlyList<string> ExtraPermissions, bool IsPlatformAdmin);
+/// <summary>HasPin (Lote 8A): el usuario tiene PIN para los aparatos de almacén en la compañía activa.</summary>
+public sealed record UserSummaryDto(int Id, string? FullName, string? Email, string? UserKind, bool IsActive, string MembershipStatus, bool MfaEnabled, DateTime? LastLoginUtc, IReadOnlyList<string> Roles, IReadOnlyList<string> ExtraPermissions, bool IsPlatformAdmin,
+    bool HasPin = false);
 public sealed record UserCreateRequest(string Email, string FullName, string? Password, IList<string>? Roles, string? UserKind);
 public sealed record UserUpdateRequest(string? FullName, bool? IsActive);
 public sealed record UserRolesRequest(IList<string> Roles);

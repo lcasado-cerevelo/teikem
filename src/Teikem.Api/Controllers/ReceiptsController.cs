@@ -41,6 +41,9 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// Alta OPEN con número REC-#####: contra un aviso de cliente (asnId), contra una orden de compra (purchaseOrderPublicId;
     /// + purchasing.receive y módulo PURCHASING), ciega (type BLIND, por defecto) o de devolución (RETURN) con sus líneas.
     /// Lo recibido arranca igual a lo esperado (R8). Posición de recepción: stagingBinId o la primera de una zona STAGING.
+    /// Lote 8A (cola del aparato): con confirm = true crea, captura las líneas completas (lote y series incluidos) y confirma
+    /// en UNA transacción; devuelve el recibo ya confirmado (RECEIVED, o PUTAWAY si no quedó nada por acomodar) con los mismos
+    /// mensajes que el flujo por pasos. Respeta Idempotency-Key (el reintento devuelve el mismo REC).
     /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> Create([FromBody] ReceiptCreateRequest req, CancellationToken ct) => receipts.CreateAsync(req, ct);

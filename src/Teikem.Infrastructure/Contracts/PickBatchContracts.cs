@@ -5,7 +5,13 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record PickBatchLineRequest(Guid? ProductPublicId, decimal? Quantity, int? BinId = null, int? LotId = null,
     IReadOnlyList<string>? SerialNumbers = null);
 
-public sealed record PickBatchCreateRequest(Guid? WarehousePublicId = null, IReadOnlyList<PickBatchLineRequest>? Lines = null);
+/// <summary>
+/// Recolección. Pack (Lote 8A, cola del aparato) = recolectar y empacar en UNA sola transacción: la respuesta es entonces un
+/// PickBatchPackResultDto (recolección PACKED + orden creada) en lugar de un PickBatchDto. Su RowVersion se ignora (la
+/// recolección nace en la misma llamada). Mismas validaciones y permisos que el flujo por pasos (empacar exige orders.create).
+/// </summary>
+public sealed record PickBatchCreateRequest(Guid? WarehousePublicId = null, IReadOnlyList<PickBatchLineRequest>? Lines = null,
+    PickBatchPackRequest? Pack = null);
 
 public sealed record PickBatchQuery(DateOnly? From = null, DateOnly? To = null, Guid[]? ProductPublicIds = null, string[]? Status = null,
     string? OrderNumber = null, string? InvoiceNumber = null, string? Search = null, bool IncludeDeleted = false, int Skip = 0, int Take = 100);

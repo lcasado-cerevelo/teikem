@@ -20,8 +20,13 @@ public sealed record AsnQuery(Guid? WarehousePublicId = null, string[]? Status =
 public sealed record ReceiptLineRequest(Guid? ProductPublicId, decimal? ReceivedQty, LotInput? Lot = null, IReadOnlyList<string>? SerialNumbers = null,
     int? StagingBinId = null);
 
+/// <summary>
+/// Alta del recibo. Confirm (Lote 8A, cola del aparato) = crear, capturar las líneas de la solicitud y confirmar en UNA sola
+/// transacción: devuelve el recibo ya confirmado (RECEIVED o PUTAWAY) o nada si algo falla (mismas validaciones y mensajes
+/// que el flujo por pasos). Sin Confirm (o false) el recibo nace OPEN como siempre.
+/// </summary>
 public sealed record ReceiptCreateRequest(Guid? WarehousePublicId = null, string? Type = null, int? AsnId = null, Guid? PurchaseOrderPublicId = null,
-    int? DockId = null, int? StagingBinId = null, IReadOnlyList<ReceiptLineRequest>? Lines = null);
+    int? DockId = null, int? StagingBinId = null, IReadOnlyList<ReceiptLineRequest>? Lines = null, bool Confirm = false);
 
 public sealed record ReceiptLineUpdateRequest(decimal? ReceivedQty = null, LotInput? Lot = null, bool? ClearLot = null,
     IReadOnlyList<string>? SerialNumbers = null, int? StagingBinId = null);

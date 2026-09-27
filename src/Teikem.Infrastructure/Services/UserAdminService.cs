@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Entities;
+using Teikem.Infrastructure.PendingP0;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
@@ -26,10 +28,13 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         var ids = memberships.Select(m => m.UserId).ToList();
         var roles = await db.AppUserRoles.AsNoTracking().Where(r => ids.Contains(r.UserId)).Select(r => new { r.UserId, r.Role!.Name }).ToListAsync(ct);
         var extras = await db.UserPermissions.AsNoTracking().Where(p => ids.Contains(p.UserId)).Select(p => new { p.UserId, p.Permission!.Code }).ToListAsync(ct);
+        // Lote 8A: PIN de aparato definido en la compañía activa (UserPin lleva filtro de tenant).
+        var withPin = (await db.Set<UserPin>().AsNoTracking().Where(p => ids.Contains(p.UserId)).Select(p => p.UserId).ToListAsync(ct)).ToHashSet();
         return memberships.OrderBy(m => m.User!.FullName).Select(m => new UserSummaryDto(m.UserId, m.User!.FullName, m.User.Email, m.User.UserKind?.InternalCode, m.User.IsActive,
             m.Status?.InternalCode ?? "", m.User.TwoFactorEnabled, m.User.LastLoginUtc,
             roles.Where(r => r.UserId == m.UserId).Select(r => r.Name).OrderBy(n => n).ToList(),
-            extras.Where(e => e.UserId == m.UserId).Select(e => e.Code).OrderBy(c => c).ToList(), m.User.IsPlatformAdmin)).ToList();
+            extras.Where(e => e.UserId == m.UserId).Select(e => e.Code).OrderBy(c => c).ToList(), m.User.IsPlatformAdmin,
+            withPin.Contains(m.UserId))).ToList();
     }
 
     public async Task<UserSummaryDto> GetUserAsync(int userId, CancellationToken ct)
