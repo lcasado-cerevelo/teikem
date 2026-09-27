@@ -211,6 +211,15 @@ El PIN impuesto por un administrador abre una sesión sin contraseña ni MFA; po
 quitar) el PIN de alguien con más permisos efectivos que quien lo hace, y el administrador de plataforma nunca
 es visible ni entra por esta vía.
 
+Ese límite **no se revisa solo al asignarlo**: en cada login por aparato y en cada refresh de una sesión de aparato
+se vuelve a comprobar contra quien asignó el PIN (`UserPin.UpdatedBy`). Si después al usuario le subieron los
+permisos (roles, permisos extra o un rol editado), o quien lo asignó perdió los suyos, se desactivó o dejó la
+compañía, el PIN deja de servir: el login responde 403 `Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.` (evento `LOGIN` / `BLOCKED` con
+`reason = pin_assigner_lower_privileges`) y el refresh de la sesión abierta responde 401 con el mismo mensaje y la
+revoca (evento `TOKEN_REVOKED`). Se exceptúa el PIN asignado por un administrador de plataforma activo. El PIN que
+el propio usuario define en Mi cuenta nunca se ve afectado; la salida es que lo defina él (o que se lo reasigne
+alguien con al menos sus permisos).
+
 ### 3.3 Lista de usuarios del aparato y login por PIN (anónimo)
 
 Cómo se usa (ambos sin `Authorization`, autenticados con aparato + secreto; límite de 60 por minuto por IP):
@@ -239,6 +248,8 @@ el dueño ya no podría entrar a la web con su contraseña. El segundo factor se
 | PIN incorrecto, usuario sin PIN, sin membresía activa o administrador de plataforma | `PIN incorrecto.` | 401 |
 | Refresh de una sesión de aparato con el aparato desactivado o el módulo WMS_LOTSERIAL apagado | `El aparato no está registrado o fue desactivado.` | 401 |
 | PIN bloqueado (ver abajo) | `PIN bloqueado por 15 minutos.` | 423 |
+| PIN correcto, pero lo asignó otra persona que ya no cubre los permisos actuales del usuario (ver 3.2) | `Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.` | 403 |
+| Refresh de una sesión de aparato en ese mismo caso (la sesión queda revocada) | `Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.` | 401 |
 | Usuario válido y PIN correcto, pero sin `inventory.view` | `Falta el permiso 'inventory.view'.` | 403 |
 | `deviceSessionDays` fuera de 1–365 (configuración) | `Entre 1 y 365 días.` | 400 |
 | Cambiar de compañía con una sesión de aparato (`POST /auth/switch-tenant`) | `La sesión de un aparato no cambia de compañía.` | 403 |

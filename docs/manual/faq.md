@@ -1712,6 +1712,14 @@ Con `devices.manage` (o `admin.users`) puede asignar el PIN de otros, pero solo 
 subconjunto de los suyos: con ese PIN se entra como esa persona en un aparato sin contraseña ni MFA. Pida a un
 administrador con esos permisos que lo haga, o que la persona defina su PIN en Mi cuenta.
 
+**¿Qué significa "Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta." (403 en el login del aparato, 401 al renovar la sesión)?**
+Su PIN no lo definió usted: se lo asignó otra persona (con `devices.manage` o `admin.users`), y esa persona ya no tiene
+todos los permisos que usted tiene hoy (a usted le dieron más permisos o un rol nuevo, o a ella se los quitaron, se
+desactivó o dejó la compañía). Como el PIN abre su cuenta sin contraseña ni MFA, deja de servir hasta que usted lo
+defina en Mi cuenta (`PUT /api/v1/me/pin`, con su contraseña) o se lo reasigne alguien con al menos sus permisos. Si
+tenía una sesión abierta en el aparato, el siguiente refresh la cierra con este mismo mensaje (401). En la bitácora de
+seguridad queda `LOGIN` / `BLOCKED` (o `TOKEN_REVOKED`) con `reason = pin_assigner_lower_privileges`.
+
 **Al asignar el PIN de otro usuario recibo 403 `aal2_required`.**
 Asignar el PIN de otro exige una reautenticación reciente (AAL2), igual que cambiar roles o permisos: confirme su
 contraseña (`POST /api/v1/auth/reauth`) y repita. Este 403 solo lo recibe quien **sí** tiene `devices.manage` o

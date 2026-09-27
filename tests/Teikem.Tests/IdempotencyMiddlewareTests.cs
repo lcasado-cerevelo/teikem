@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Teikem.Api.Middleware;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Entities;
 using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Exceptions;
@@ -128,5 +129,74 @@ public class IdempotencyMiddlewareTests
 
         Assert.Same(originalBody, http.Response.Body);
         AssertKeyReleased(db, logger);
+    }
+
+    /// <summary>Siembra una respuesta ya guardada para (TenantId, UserId, clave) con la huella de método, ruta y cuerpo.</summary>
+    private static async Task SeedStoredAsync(TeikemDbContext db, string key, string method, string path, string body, int status, string responseJson)
+    {
+        db.IntegrationMessageLogs.Add(new IntegrationMessageLog
+        {
+            TenantId = TenantId, UserId = UserId, IdempotencyKey = key, Method = method, Endpoint = path, DirectionLookupId = 77,
+            RequestHash = IdempotencyRules.ComputeHash(method, path, Encoding.UTF8.GetBytes(body)),
+            ResponseCode = status, ResponseJson = responseJson, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-1),
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+    }
+
+    private static DefaultHttpContext Request(string key, string method, string path, string body)
+    {
+        var http = Request(key);
+        http.Request.Method = method;
+        http.Request.Path = path;
+        http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        return http;
+    }
+
+    /// <summary>
+    /// DELETE repetido por la cola del aparato (p. ej. DELETE /receipts/{id} dos veces con la misma clave): la respuesta
+    /// guardada es un 204 sin cuerpo (ResponseJson vacío). El reintento debe dar el mismo 204 con Idempotent-Replayed y cuerpo
+    /// vacío, sin volver a ejecutar la operación (que ya daría 404).
+    /// </summary>
+    [Fact]
+    public async Task A_stored_204_without_body_is_replayed_empty_without_calling_next()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts/0b0d3e8a-2f7e-4c55-9d7c-1f1e7a0c1a11";
+        await SeedStoredAsync(db, "del-1", "DELETE", path, "", 204, "");
+        var called = false;
+        var middleware = new IdempotencyMiddleware(_ => { called = true; return Task.CompletedTask; }, new CapturingLogger());
+        var http = Request("del-1", "DELETE", path, "");
+
+        await middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions()));
+
+        Assert.False(called);
+        Assert.Equal(204, http.Response.StatusCode);
+        Assert.Equal("true", http.Response.Headers[IdempotencyRules.ReplayedHeader].ToString());
+        Assert.Equal(0, http.Response.Body.Length);
+    }
+
+    /// <summary>PATCH repetido con la misma clave y el mismo cuerpo: el mismo 200 y el mismo cuerpo guardados (no un 409 por rowVersion obsoleto).</summary>
+    [Fact]
+    public async Task A_stored_patch_response_is_replayed_with_the_same_status_and_body()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/products/0b0d3e8a-2f7e-4c55-9d7c-1f1e7a0c1a12";
+        const string body = "{\"name\":\"X\",\"rowVersion\":\"AAAAAAAAB9E=\"}";
+        const string stored = "{\"name\":\"X\",\"rowVersion\":\"AAAAAAAAB9I=\"}";
+        await SeedStoredAsync(db, "patch-1", "PATCH", path, body, 200, stored);
+        var called = false;
+        var middleware = new IdempotencyMiddleware(_ => { called = true; return Task.CompletedTask; }, new CapturingLogger());
+        var http = Request("patch-1", "PATCH", path, body);
+
+        await middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions()));
+
+        Assert.False(called);
+        Assert.Equal(200, http.Response.StatusCode);
+        Assert.Equal("true", http.Response.Headers[IdempotencyRules.ReplayedHeader].ToString());
+        http.Response.Body.Position = 0;
+        Assert.Equal(stored, new StreamReader(http.Response.Body, Encoding.UTF8).ReadToEnd());
     }
 }

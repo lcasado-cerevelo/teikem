@@ -252,6 +252,16 @@ secretos en claro (decisión 6 ter).
     quien tenga una sesión puede bloquear 15 minutos la cuenta web de su dueño equivocándose a propósito (igual que ya
     podía cualquiera que supiera el correo por el login).
 
+28. **El límite de privilegios del PIN impuesto se vuelve a comprobar en cada login y refresh del aparato.**
+    `PinService.AssignerStillCoversAsync`: si `UserPin.UpdatedBy` es otra persona, sus permisos efectivos actuales deben
+    cubrir los del usuario, y debe seguir activa y con membresía ACTIVE en la compañía (se exceptúa el admin de
+    plataforma activo). Si no: el login por aparato responde 403 `Su PIN lo asignó otra persona que ya no tiene sus
+    permisos; defina su propio PIN en Mi cuenta.` (`LOGIN` / `BLOCKED`, `reason = pin_assigner_lower_privileges`,
+    solo después de un PIN correcto para no dar oráculo) y el refresh de una sesión de aparato la revoca con 401 y el
+    mismo mensaje (`TOKEN_REVOKED`). Antes solo se revisaba al asignar: subir después los permisos del usuario dejaba a
+    quien asignó el PIN entrar como él con más privilegios. A revisar: no se borran los PIN al cambiar roles (el PIN
+    queda inservible pero no desaparece; `hasPin` sigue en true hasta que el usuario lo redefina o alguien lo quite).
+
 ## Lo que queda fuera de este lote (a propósito)
 
 - **La app instalable de almacén** (`app-almacen/`, Expo/React Native): este lote es solo el backend previo
@@ -345,9 +355,12 @@ Correcciones de la ronda 6 (cobertura de reglas que ninguna prueba fijaba; sin c
 
 Correcciones de la ronda 7 (revisión de seguridad de la sesión de aparato y cobertura):
 - Decisión 26: enroll y confirm de TOTP con sesión de aparato → 403 (`DeviceControllerSecurityTests` y smoke).
-- Decisión 27: bloqueo por cuenta en `PUT /me/pin`, reauth y cambio de contraseña (`DeviceServiceTests`: la contraseña
-  equivocada cuenta, un acierto reinicia, al 5.º fallo la cuenta queda bloqueada 15 minutos y ni la contraseña correcta
-  guarda el PIN).
+- Decisión 27: bloqueo por cuenta en `PUT /me/pin`, reauth y cambio de contraseña. `PUT /me/pin` lo prueba
+  `DeviceServiceTests` (la contraseña equivocada cuenta, un acierto reinicia, al 5.º fallo la cuenta queda bloqueada 15
+  minutos y ni la contraseña correcta guarda el PIN); `POST /auth/reauth` y `PUT /auth/password` los prueba
+  `AuthLockoutTests` (la contraseña equivocada sube `AccessFailedCount`, un acierto lo deja en 0, tras 5 fallos
+  `LockoutEnd` queda a más de 14 minutos y la contraseña correcta da 401 `Contraseña incorrecta.` sin fijar
+  `Aal2VerifiedAtUtc` o el 400 en `newPassword` sin cambiar el hash, con `LOCKOUT` stage=reauth/password_change).
 - Decisión 12 con prueba: `WmsCatalogTests` fija `devices.manage` como permiso de dueño (lectura y escritura) de
   `USER_DEVICE`; smoke: `GET`/`PUT /custom-fields/values/USER_DEVICE/1` sin `devices.manage` → 403 con el permiso exacto
   y con él `PUT` → 404 (resolver cerrado).
@@ -362,3 +375,17 @@ Correcciones de la ronda 7 (revisión de seguridad de la sesión de aparato y co
   la respuesta ya iniciada, libera la clave del registro insertado y se relanza (con InMemory se verifica el intento de
   borrado por el error que registra `DeleteAsync`; el borrado real lo cubre SQL Server).
 - `dotnet test`: **2025 pruebas, 0 fallidas**.
+
+Correcciones de la ronda 8 (privilegios del PIN impuesto y cobertura):
+- Decisión 28: `DeviceServiceTests` (`AssignerStillCoversAsync` con permisos subidos, quien asignó desactivado, fuera de
+  la compañía o admin de plataforma) y smoke (login 403 y refresh 401 con el mensaje exacto, evento
+  `pin_assigner_lower_privileges`). Manual 08 §3.2 y §3.3 y FAQ.
+- Decisión 27: `AuthLockoutTests` cubre reauth y cambio de contraseña (antes solo `PUT /me/pin`); ronda 7 corregida.
+- Captura de conteo en lote: `CycleCountServiceTests` (serie, lote por número, lote faltante, cantidad en serie,
+  posición y producto dados de baja) y smoke contra SQL Server (el lote creado en un renglón se revierte si otro falla).
+- Idempotencia: `IdempotencyMiddlewareTests` repite un 204 sin cuerpo (DELETE) y un 200 de PATCH sin llamar a la
+  operación; smoke con `DELETE /receipts/{id}` y `PATCH /products/{id}` repetidos con la misma clave.
+- Smoke: refresh 200 de la sesión de aparato tras el 403 de switch-tenant (decisión 20); collect-and-pack fallido no
+  consume el número EMP; alta de aparato con nombre de 101 y modelo de 81 caracteres → 400 (y pruebas en
+  `DeviceServiceTests`, también en la edición).
+- `dotnet test`: **2033 pruebas, 0 fallidas**.

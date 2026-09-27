@@ -55,26 +55,33 @@ log(build && build.compilado ? 'Build y pruebas en verde.' : 'Sin SDK local: la 
 phase('Verificar')
 const LENTES = ['compile-ef', 'tenant-security', 'spec', 'tests']
 const vistos = new Set()
-// Decisión de Luis (2026-09-27): se revisa hasta que salga limpio (dos rondas seguidas sin hallazgos confirmados). El tope de
-// rondas es solo un freno de seguridad contra un bucle sin fin (por defecto 12); no se usa para ahorrar.
+// Decisión de Luis (2026-09-27): se revisa hasta que salga limpio. Ajuste tras la corrida 3b del Lote 8A (no convergía):
+// (1) la revisión se acota a los archivos de ESTE lote (los del plan y los que el lote creó), no a toda la rama;
+// (2) una ronda es limpia cuando no queda ningún hallazgo confirmado de severidad alta o media; los de severidad baja
+// (pruebas faltantes, estilo, documentación) se corrigen en la misma pasada pero no reinician el contador;
+// (3) hacen falta dos rondas limpias seguidas. El tope de rondas (12) es solo un freno de seguridad.
 const limpiasReq = Number(a.limpiasRequeridas) || 2, maxRondas = Number(a.maxRondas) || 12
+const archivosLote = [...new Set(plan.piezas.flatMap(p => p.archivos || []))]
+const ALCANCE = `ALCANCE: revisa SOLO estos archivos del lote y los archivos nuevos que el lote haya creado junto a ellos (git diff origin/master...HEAD -- <archivo>): ${archivosLote.join(', ')}. No reportes nada de otros archivos ni de lotes anteriores. Cada hallazgo lleva severidad: "alta" = error real, fuga entre tenants, permiso o módulo mal aplicado, dato incorrecto, prueba o smoke que falla; "media" = regla o mensaje del plan o del documento maestro incumplido; "baja" = prueba faltante, estilo, comentario o documentación. Máximo 15 hallazgos, los más graves primero.`
 let limpias = 0, ronda = 0, corregidos = 0
 while (limpias < limpiasReq && ronda < maxRondas) {
   ronda++
   const encontrados = (await parallel(LENTES.map(l => () =>
-    agent(`${contexto}\n\nRonda ${ronda}. Revisa el diff del lote (git diff origin/master...HEAD y archivos nuevos) con la lente "${l}". Reporta solo hallazgos verificables.`,
+    agent(`${contexto}\n\nRonda ${ronda}. Revisa el diff del lote con la lente "${l}". ${ALCANCE} Reporta solo hallazgos verificables.`,
       { agentType: 'reviewer', label: `revisar:${l}`, phase: 'Verificar', schema: FINDINGS })))).filter(Boolean).flatMap(r => r.hallazgos)
   const frescos = encontrados.filter(h => { const k = `${h.archivo}:${h.resumen}`.toLowerCase(); if (vistos.has(k)) return false; vistos.add(k); return true })
   log(`Ronda ${ronda}: ${encontrados.length} hallazgos, ${frescos.length} nuevos.`)
-  if (!frescos.length) { limpias++; continue }
+  if (!frescos.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}).`); continue }
   const juzgados = await parallel(frescos.map(h => () =>
     parallel([0, 1].map(v => () => agent(`Intenta refutar este hallazgo (verificador ${v + 1}):\n${JSON.stringify(h, null, 1)}\nSi no estás seguro, real=false.`, { agentType: 'verifier', label: `refutar:${h.archivo.split('/').pop()}`, phase: 'Verificar', schema: VERDICT })))
       .then(vs => ({ h, real: vs.filter(Boolean).filter(x => x.real).length >= 2, arreglo: (vs.filter(Boolean).find(x => x.real) || {}).arreglo }))))
   const reales = juzgados.filter(Boolean).filter(j => j.real)
-  log(`Ronda ${ronda}: ${reales.length} hallazgos confirmados.`)
-  if (!reales.length) { limpias++; continue }
-  limpias = 0
-  await agent(`${contexto}\n\nCorrige estos hallazgos confirmados con cambios mínimos y vuelve a compilar/probar si hay dotnet:\n${JSON.stringify(reales.map(r => ({ ...r.h, arreglo: r.arreglo })), null, 1)}`, { agentType: 'implementer', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
+  const bloqueantes = reales.filter(j => (j.h.severidad || 'media') !== 'baja')
+  log(`Ronda ${ronda}: ${reales.length} hallazgos confirmados (${bloqueantes.length} de severidad alta o media).`)
+  if (!bloqueantes.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}); ${reales.length} hallazgos bajos se corrigen sin reiniciar el contador.`) } else { limpias = 0 }
+  if (!reales.length) continue
+  await agent(`${contexto}\n\nCorrige estos hallazgos confirmados con cambios mínimos, en los archivos del lote, y vuelve a compilar y probar (dotnet build y dotnet test) hasta que pasen:\n${JSON.stringify(reales.map(r => ({ ...r.h, arreglo: r.arreglo })), null, 1)}`,
+    { agentType: 'implementer', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
   corregidos += reales.length
 }
 if (ronda >= maxRondas && limpias < limpiasReq) log(`Tope de ${maxRondas} rondas alcanzado: revisar manualmente los últimos hallazgos.`)
