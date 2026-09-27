@@ -1,8 +1,8 @@
 # Actividad reciente en Pulso — propuesta de eventos (borrador para aprobación de Luis)
 
-Estado: **propuesta, pendiente de aprobación**. Cuando Luis apruebe, la decisión se escribe en
-`Diseño/logistica-funcionalidades-maestro.md` (módulo 12, dashboard) como fuente única y se implementa como el
-próximo lote (backend + frontend). Mock: `docs/frontend/mock-pulso-almacen.html` (abrir en el navegador; botón "Móvil 360 px").
+Estado: **aprobada por Luis el 2026-09-27 e incorporada al documento maestro** (`Diseño/logistica-funcionalidades-maestro.md`,
+módulo 12, subsección "Pulso del día — diseño consolidado"), que es la fuente única; este archivo queda como borrador de
+referencia. Cambio adicional aprobado: filtro de almacén y de categoría o producto en el panel Almacén (ver el maestro). Mock: `docs/frontend/mock-pulso-almacen.html` (abrir en el navegador; botón "Móvil 360 px").
 
 ## 1. Qué es
 

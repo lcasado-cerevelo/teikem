@@ -324,7 +324,7 @@ body.movil .mockapp{display:none}
 body.movil .phone{display:flex}
 .tag.ok{color:var(--ok);background:var(--okbg);border-color:rgba(70,206,130,.35)}
 .ind-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
-.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
 .tile{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px}
 .tile .lb{font-size:12.5px;color:var(--muted)}
 .tile .v{font-size:26px;font-weight:800;line-height:1.2;margin-top:2px}
@@ -337,6 +337,19 @@ body.movil .phone{display:flex}
 .bars div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%;font-size:11.5px;color:var(--muted);text-align:center}
 .bars i{display:block;width:70%;max-width:56px;border-radius:6px 6px 0 0;background:linear-gradient(180deg,var(--flow-2),var(--flow))}
 .bars b{font-family:var(--mono);color:var(--text);font-size:12px}
+.tile .sub{font-size:12px;color:var(--muted);margin-top:4px}
+.tile.warn{border-color:rgba(230,169,62,.45)}
+.cbx{display:inline-flex;align-items:center;gap:8px;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;padding:5px 9px;font-size:12.5px;max-width:100%}
+.cbx .lbl{color:var(--faint);font-size:11px}.cbx .val{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cbx .x,.cbx .car{color:var(--muted);cursor:pointer}
+.ddwrap{display:flex;gap:14px;margin-top:14px;flex-wrap:wrap;align-items:flex-start}
+.ddnote{font-size:12px;color:var(--muted);flex-basis:100%}
+.dd{width:340px;max-width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px;box-shadow:var(--shadow-pop)}
+.ddin{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line-2);margin-bottom:6px}.ddin input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;min-width:0}
+.ddg{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 10px 4px}.ddg .ds{letter-spacing:0;text-transform:none;font-weight:400;font-size:11px}
+.ddi{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;font-size:13px;cursor:pointer}.ddi:hover{background:var(--panel-2)}.ddi.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.ddi .pic{width:22px;height:22px;border-radius:6px;background:var(--panel-2);display:grid;place-items:center;font-size:11px;color:var(--muted);flex:none}.ddi.on .pic{background:var(--flow);color:#fff}
+.ddi .ds{margin-left:auto;color:var(--faint);font-size:11.5px;font-weight:400}
+@media(max-width:720px){.dd{width:100%}.ddwrap .dd+.dd{margin-left:0!important}}
 .act-cards{display:none}
 .card{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;font-size:13px}
 .card .top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
@@ -409,16 +422,44 @@ body.movil .phone{display:flex}
           </div></div></div>
       </section>
 
-      <!-- 3. Panel Almacén (F6): saldo actual, sin rango de fecha -->
+      <!-- 3. Panel Almacén (F6): saldo actual, sin rango de fecha; filtro por almacén y por categoría/ítem (decisión de Luis) -->
       <section class="sect">
-        <div class="panel"><div class="ph"><div><div class="tt">Almacén <span class="tag ok">ya programado (F6)</span></div><div class="st">Saldo actual de su compañía (no depende de un rango de fecha).</div></div></div>
+        <div class="panel"><div class="ph">
+            <div><div class="tt">Almacén <span class="tag ok">ya programado (F6)</span> <span class="tag m">filtro propuesto</span></div><div class="st">Saldo actual (no depende de un rango de fecha). El filtro de categoría o producto aplica a las tarjetas de saldo; los contadores de documentos son de todo el almacén.</div></div>
+            <div class="acts">
+              <select class="btn sm" style="padding:6px 8px"><option>ALM-01 · Almacén principal</option><option>Todos los almacenes</option></select>
+              <div class="cbx"><span class="lbl">Categoría o producto</span><span class="val"><span class="tag" style="margin:0">Categoría</span> Farmacia › Analgésicos</span><span class="x" title="Quitar">✕</span><span class="car">▾</span></div>
+            </div></div>
           <div class="pb"><div class="tiles">
-            <div class="tile"><div class="lb">En mano total</div><div class="v">311</div></div>
-            <div class="tile"><div class="lb">Disponible total</div><div class="v">298</div></div>
-            <div class="tile"><div class="lb">Recibos abiertos</div><div class="v">2</div></div>
-            <div class="tile"><div class="lb">Tareas pendientes</div><div class="v">23</div><ul><li><span>Putaway</span><b>20</b></li><li><span>Reabasto</span><b>3</b></li><li><span>Conteo</span><b>0</b></li><li><span>Cross-dock</span><b>0</b></li></ul></div>
-            <div class="tile"><div class="lb">Conteos abiertos</div><div class="v">1</div></div>
-          </div></div></div>
+            <div class="tile"><div class="lb">En mano</div><div class="v">1,240</div><div class="sub">Analgésicos · 14 productos</div></div>
+            <div class="tile"><div class="lb">Disponible</div><div class="v">1,180</div><div class="sub">Reservado: <b class="mono">60</b></div></div>
+            <div class="tile warn"><div class="lb">Bajo mínimo</div><div class="v" style="color:var(--warn)">2</div><div class="sub"><a class="ref" href="#">Ver en Inventario ›</a></div></div>
+            <div class="tile"><div class="lb">Recibos abiertos <span class="dr">almacén</span></div><div class="v">2</div></div>
+            <div class="tile"><div class="lb">Tareas pendientes <span class="dr">almacén</span></div><div class="v">23</div><ul><li><span>Putaway</span><b>20</b></li><li><span>Reabasto</span><b>3</b></li><li><span>Conteo</span><b>0</b></li><li><span>Cross-dock</span><b>0</b></li></ul></div>
+            <div class="tile"><div class="lb">Conteos abiertos <span class="dr">almacén</span></div><div class="v">1</div></div>
+          </div>
+          <div class="ddwrap"><div class="ddnote">Así se ve el desplegable abierto: un solo control, dos secciones. Las categorías se cargan completas (árbol); los productos se buscan escribiendo. Recuerda la última selección por usuario.</div>
+            <div class="dd">
+              <div class="ddin">🔍 <input value="anal" readonly></div>
+              <div class="ddg">Categorías</div>
+              <div class="ddi"><span class="pic">▣</span>Farmacia</div>
+              <div class="ddi on" style="padding-left:28px"><span class="pic">▣</span>Analgésicos <span class="ds">14 productos</span></div>
+              <div class="ddi" style="padding-left:28px"><span class="pic">▣</span>Antibióticos <span class="ds">9 productos</span></div>
+              <div class="ddg">Productos <span class="ds">coinciden con "anal"</span></div>
+              <div class="ddi"><span class="pic">#</span><span class="mono">AN-0100</span> · Analgésico 500 mg x 20</div>
+              <div class="ddi"><span class="pic">#</span><span class="mono">AN-0140</span> · Analgésico infantil jarabe</div>
+              <div class="ddi"><span class="pic">#</span><span class="mono">AN-0201</span> · Analgésico gel tópico</div>
+            </div>
+            <div class="dd" style="margin-left:14px">
+              <div class="ddnote" style="margin:0 0 8px">Con un <b>producto</b> elegido, las tarjetas de saldo muestran ese producto:</div>
+              <div class="tiles" style="grid-template-columns:1fr 1fr;gap:8px">
+                <div class="tile"><div class="lb">En mano</div><div class="v">312</div><div class="sub">AN-0100 · mínimo 400</div></div>
+                <div class="tile"><div class="lb">Disponible</div><div class="v">290</div><div class="sub">Reservado: <b class="mono">22</b></div></div>
+                <div class="tile warn" style="grid-column:1/-1"><div class="lb">Bajo mínimo</div><div class="v" style="color:var(--warn)">Sí</div><div class="sub"><a class="ref" href="#">Ver Kárdex de AN-0100 ›</a></div></div>
+              </div>
+            </div>
+          </div>
+          </div></div>
       </section>
 
       <!-- 4. Actividad reciente (nuevo) -->

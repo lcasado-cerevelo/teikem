@@ -491,6 +491,105 @@ Tres audiencias: operacional (dispatcher), gerencial (tendencias/costos), client
 - **Alertas operacionales** (patrón panel SEPHAS): documentos por vencer (vehículo/chofer), mantenimiento pendiente, paradas en riesgo de SLA, crédito de cliente excedido.
 - **Snapshots opcionales** (`KpiDailySnapshot`) recalculados por job nocturno cuando los KPIs sobre el ledger crudo se vuelvan lentos; mientras tanto, vistas/consultas en vivo.
 
+### Pulso del día — diseño consolidado y estado de construcción (decisión de Luis, 2026-09-27)
+
+Fuente única del dashboard de inicio ("Pulso del día", ruta `/` del frontend web). **Lo marcado "construido" ya está
+programado y verificado (CI verde); ningún lote posterior lo rediseña ni lo reescribe: solo agrega sus propios
+indicadores, gráficos o eventos al catálogo.** Mock aprobado: `docs/frontend/mock-pulso-almacen.html` (escritorio y móvil).
+
+**Estructura de la pantalla, de arriba abajo:**
+
+1. **Indicadores** — *construido (Lote F1)*. Tarjetas del motor de analítica (`IndicatorDefinition`) marcadas `ShowInPulse`,
+   filtradas por visibilidad (todos / privado / compartido por rol o usuario) y agrupadas por `BusinessModule`. Rango de fecha
+   editable por tarjeta con el permiso `analytics.dates`. Cada módulo de negocio siembra los suyos como indicadores de sistema.
+2. **Gráficos** — *construido (Lote F1)*. Mismo mecanismo con `ChartDefinition` (barra, dona, línea).
+3. **Panel "Almacén"** — *construido (Lote F6)*, visible con `inventory.view` y el módulo `WMS_LOTSERIAL`. Saldo actual, sin
+   rango de fecha, calculado en cliente con `take=1` sobre los endpoints existentes: en mano, disponible, recibos abiertos,
+   tareas pendientes por tipo, conteos abiertos. **Cambio aprobado (pendiente de construir):** un filtro de almacén (todos o
+   uno) para las cinco tarjetas y **un solo control "Categoría o producto"** que gobierna únicamente las tarjetas de saldo:
+   con una categoría, los totales incluyen sus subcategorías (el API ya lo hace: `categoryIds` con descendientes en
+   `InventoryReadService`); con un producto, los del producto. Las tarjetas de saldo pasan a ser: en mano, disponible (con
+   reservado = en mano − disponible) y bajo mínimo (conteo de productos con `isBelowMin`; con un producto elegido, sí/no y
+   enlace a su Kárdex). Los tres contadores de documentos (recibos, tareas, conteos) no se filtran por producto porque un
+   documento tiene muchas líneas; solo por almacén. El control es un buscador con dos secciones: categorías (árbol completo,
+   con sangría por nivel) y productos (se buscan escribiendo por SKU o nombre, nunca se carga la lista entera). La última
+   selección se recuerda por usuario (almacenamiento local del navegador; sin tabla nueva).
+4. **Panel "Actividad reciente"** — *aprobado, pendiente de construir* (ver abajo).
+5. Sin permiso `analytics.view` o con el módulo de analítica apagado, la pantalla muestra solo la bienvenida — *construido (F1)*.
+
+**Indicadores y gráfico de sistema de almacén aprobados** (solo seed del motor existente, sin código nuevo; módulo
+`WAREHOUSE`, `ShowInPulse = 1`, visibles a toda la organización): *Productos activos* (ya sembrado), *Productos bajo mínimo*,
+*Unidades recibidas* (ledger tipo `RECEIPT`, rango por defecto últimos 7 días), *Conteos con diferencia* (conteos `RECONCILED`
+con varianza ≠ 0, últimos 30 días) y el gráfico de barras *Movimientos de inventario por tipo* (ledger, últimos 7 días).
+
+#### Actividad reciente (feed de eventos de negocio por módulo)
+
+- **Qué es**: panel al pie de Pulso con una pestaña por `BusinessModule` (Almacén, Operación, Contabilidad). Cada fila es un
+  evento: hora, evento (chip de color), referencia (enlace a la ficha), detalle corto y quién lo hizo. Ventana por defecto
+  últimas 24 h (opciones 48 h y hoy), máximo 50 filas por pestaña con "Ver más". Bajo 720 px las filas son tarjetas.
+- **No es la auditoría**: `AuditLog` sigue exigiendo `admin.audit`; el feed es lectura de negocio filtrada por permisos.
+- **Visibilidad por permiso, no por rol**: pestaña Almacén con `inventory.view`, Operación con `orders.view`, Contabilidad con
+  `billing.view`. Cada rol ve lo suyo sin configuración; el administrador ve todo.
+- **Obligatorio u opcional**: cada evento del catálogo lleva la bandera. Un evento obligatorio se muestra siempre a quien ve
+  el módulo; uno opcional el usuario puede apagarlo (interruptor "Solo obligatorios" en el panel; la preferencia guardada por
+  usuario llega junto con las notificaciones). **Este mismo catálogo y esta misma bandera alimentarán las notificaciones por
+  correo o push** (`PortalNotificationPref` y los webhooks del módulo 13 se mantienen para el portal e integraciones); no se
+  crea un segundo catálogo de eventos.
+- **Fuentes**: `EntityStatusHistory` (transiciones), `InventoryLedger` (movimientos) y `AuditLog` (altas y bajas de
+  catálogo). **No hay tabla de eventos**: el feed se calcula al leer. Backend: catálogo `ActivityEventType` en `LookupCode`
+  (bandera de obligatorio y módulo en la fila; la definición de qué transición o movimiento produce cada evento vive en
+  código, en un registro por módulo igual que las fuentes de datos `IDataSource`), servicio `ActivityFeedService`, endpoint
+  `GET /api/v1/analytics/activity?module=&window=&onlyMandatory=&skip=&take=` con permiso `analytics.view` más el permiso del
+  módulo pedido, e índice `IX_EntityStatusHistory_TenantDate (TenantId, ChangedAtUtc)` en el script de estructura.
+- **Criterio de "obligatorio"**: todo lo que cambia el saldo de inventario fuera del flujo normal (ajustes, diferencias,
+  reconciliaciones, eliminación de una recolección) o cierra o anula un documento (recibo confirmado, orden de compra
+  cancelada, almacén dado de baja, entrega fallida, factura anulada). Lo rutinario es opcional.
+
+**Catálogo inicial — Almacén** (se construye completo en el lote de Actividad reciente):
+
+| Código | Fuente y condición | Etiqueta es / en | Oblig. | Enlace |
+|---|---|---|---|---|
+| `RECEIPT_CONFIRMED` | `EntityStatusHistory` RECEIPT → RECEIVED | Recibo confirmado / Receipt confirmed | Sí | Recibo |
+| `RECEIPT_VARIANCE` | ledger ADJUSTMENT motivo `RECEIPT_VARIANCE` | Diferencia en recibo / Receipt variance | Sí | Recibo |
+| `RECEIPT_PUTAWAY_DONE` | RECEIPT → PUTAWAY | Recibo acomodado / Receipt put away | No | Recibo |
+| `ASN_CANCELLED` | ASN → CANCELLED | Aviso de llegada cancelado / ASN cancelled | No | ASN |
+| `PUTAWAY_DONE` | tarea PUTAWAY → DONE | Acomodo completado / Put-away completed | No | Tarea |
+| `REPLENISH_DONE` | tarea REPLENISH → DONE | Reabasto completado / Replenishment completed | No | Tarea |
+| `TASK_CANCELLED` | tarea → CANCELLED | Tarea cancelada / Task cancelled | No | Tarea |
+| `COUNT_FINISHED` | CYCLE_COUNT → COUNTED | Conteo terminado / Count finished | No | Conteo |
+| `COUNT_RECONCILED` | CYCLE_COUNT → RECONCILED | Conteo reconciliado / Count reconciled | Sí | Conteo |
+| `COUNT_VARIANCE` | ledger ADJUSTMENT motivo `COUNT_VARIANCE` | Diferencia de conteo aplicada / Count variance applied | Sí | Conteo |
+| `INVENTORY_ADJUSTED` | ledger ADJUSTMENT motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER) | Ajuste de inventario / Inventory adjustment | Sí | Kárdex filtrado |
+| `INVENTORY_TRANSFERRED` | ledger TRANSFER entre almacenes distintos | Transferencia entre almacenes / Warehouse transfer | No | Kárdex filtrado |
+| `BIN_MOVED` | ledger TRANSFER dentro del mismo almacén | Movimiento de posición / Bin move | No (apagado por defecto) | Kárdex filtrado |
+| `PICK_COLLECTED` | PICK_BATCH → COLLECTED | Recolección creada / Pick batch collected | No | Recolección |
+| `PICK_PACKED` | PICK_BATCH → PACKED | Recolección empacada / Pick batch packed | No | Recolección |
+| `PICK_CANCELLED` | PICK_BATCH → CANCELLED | Recolección eliminada / Pick batch cancelled | Sí | Recolección |
+| `PO_SENT` | PURCHASE_ORDER → SENT | Orden de compra enviada / Purchase order sent | No | Orden de compra |
+| `PO_RECEIVED` | PURCHASE_ORDER → RECEIVED | Orden de compra recibida completa / Purchase order fully received | No | Orden de compra |
+| `PO_CANCELLED` | PURCHASE_ORDER → CANCELLED | Orden de compra cancelada / Purchase order cancelled | Sí | Orden de compra |
+| `PO_SHORTAGE_RESOLVED` | `AuditLog` UPDATE de línea de compra al resolver faltante | Faltante resuelto / Shortage resolved | No | Orden de compra |
+| `CROSSDOCK_COMPLETED` | CROSSDOCK_PLAN → COMPLETED (solo con módulo CROSSDOCK) | Cruce de muelle completado / Cross-dock completed | No | Plan |
+| `PRODUCT_DEACTIVATED` | `AuditLog` PRODUCT con `IsActive` 1 → 0 | Producto dado de baja / Product deactivated | No | Producto |
+| `WAREHOUSE_DEACTIVATED` | WAREHOUSE → INACTIVE | Almacén dado de baja / Warehouse deactivated | Sí | Almacén |
+
+**Catálogo inicial — Operación** (se siembra cuando su módulo llegue al frontend; la lista se afina en ese lote):
+`ORDER_CONFIRMED` (No), `ORDER_DELIVERED` (No), `ORDER_FAILED` (Sí), `ORDER_ON_HOLD` (Sí), `ORDER_CANCELLED` (Sí),
+`TRIP_DISPATCHED` (No), `TRIP_COMPLETED` (No), `TRIP_CANCELLED` (Sí), `ROUTE_OVER_MAX_STOPS` (Sí, la alerta de máximo de
+paradas ya diseñada en el módulo 5), `DOCUMENT_EXPIRING` (Sí, documento de flota o chofer con vencimiento a 30 días o menos).
+
+**Catálogo inicial — Contabilidad** (ídem): `INVOICE_ISSUED` (No), `INVOICE_PAID` (No), `INVOICE_OVERDUE` (Sí), `INVOICE_VOID`
+(Sí), `COD_COLLECTED` (No), `COD_REMITTED` (No), `BILLING_RUN_APPROVED` (Sí), `CREDIT_EXCEEDED` (Sí, orden creada con crédito
+excedido vía `orders.credit_override`).
+
+Las **alertas operacionales** listadas arriba (documentos por vencer, mantenimiento pendiente, paradas en riesgo, crédito
+excedido, máximo de paradas) se materializan como eventos obligatorios de este catálogo en sus módulos; no tienen un panel
+aparte.
+
+**Plan de construcción**: un lote corto "Pulso de almacén y Actividad reciente" (backend: catálogo, servicio, endpoint,
+índice, seed de indicadores y gráfico; frontend: filtro del panel Almacén, panel de actividad, pruebas, Playwright y capítulo
+del manual). Los lotes de Operación y Contabilidad del frontend solo siembran sus eventos e indicadores.
+
 ## 13. API para integraciones
 
 - **REST versionada** (`/api/v1/...`) con autenticación por `ApiCredential` (client_id/secret → token), scopes por integración y rate limiting por credencial.
