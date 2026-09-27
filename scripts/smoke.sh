@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prueba de humo de los Lotes 1 a 6 contra un API levantado (default http://localhost:5000).
+# Prueba de humo de los Lotes 1 a 7A contra un API levantado (default http://localhost:5000).
 # Requiere: curl, jq. Uso: scripts/smoke.sh [base_url]
 # Opcional: SMOKE_SQL="sqlcmd … -d <bd> -b -h -1 -Q" habilita los pasos que insertan datos por SQL (pings del monitor, Lote 5).
 set -euo pipefail
@@ -2995,6 +2995,33 @@ expect 422 "$(req POST "/api/v1/purchase-orders/$PO3P/lines/$PO3L/resolve" '{"ac
 expect 200 "$(req GET /api/v1/purchase-orders/shortages)" | jq -e --arg p "$PO3P" 'all(.[]; .publicId!=$p)' >/dev/null || fail "PO cancelada en la lista de faltantes"
 expect 409 "$(req DELETE "/api/v1/purchase-orders/$PO3P")" | jq -e '.title=="Una orden de compra cancelada con recepciones se conserva con su bitácora; no se elimina."' >/dev/null || fail "eliminar PO cancelada con recepciones"
 ok "proveedor repetido 409, dado de baja no admite OC (422) y se reactiva; línea de compra con producto inactivo 400; OC en DRAFT editada (200) y eliminada (204, luego 404); PO SENT sin edición (422) y proveedor fijo (400); recibo contra PO sin purchasing.receive 403; recibo contra PO → PARTIAL; REORDER sin purchasing.manage 403 sin efecto; dos CLOSE en paralelo 200 + 409 y PO RECEIVED sin movimiento; REORDER → DRAFT al mismo proveedor por 2 a 2.5; MANUAL 1 → ADJUSTMENT +1 PO_SHORTAGE con Ref PURCHASE_ORDER, excedido 400, sin inventory.adjust 403; con recibo OPEN no se cancela (409); cancelada desde PARTIAL: 422 al resolver, fuera de faltantes y no se elimina (409 con su mensaje)"
+
+step "actividad reciente (Lote 7A): recibo confirmado obligatorio, solo obligatorios, belowMin y permiso del módulo"
+activity() { # query [token] → todos los eventos de la ventana (páginas de 50) como un solo arreglo JSON
+  local q=$1 tok=${2:-$TOKEN} skip=0 all='[]' page total
+  while :; do
+    page=$(expect 200 "$(req GET "/api/v1/analytics/activity?$q&skip=$skip&take=50" '' "$tok")")
+    all=$(jq -c --argjson a "$all" '$a + .items' <<<"$page"); total=$(jq -r .total <<<"$page")
+    skip=$((skip+50)); [[ $skip -lt $total && $skip -lt 5000 ]] || break
+  done
+  echo "$all"
+}
+EV=$(activity "module=WAREHOUSE")
+echo "$EV" | jq -e --argjson r "$R6ID" 'any(.[]; .code=="RECEIPT_CONFIRMED" and .module=="WAREHOUSE" and .entityType=="RECEIPT" and .entityId==$r and .mandatory==true and (.label|length)>0)' >/dev/null || fail "RECEIPT_CONFIRMED obligatorio del recibo $R6ID"
+echo "$EV" | jq -e --arg p "$PO1P" 'any(.[]; .code=="PO_SENT" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==false)' >/dev/null || fail "PO_SENT (opcional) de la orden enviada"
+expect 200 "$(req GET '/api/v1/analytics/activity?take=1')" | jq -e '.visibleModules==["WAREHOUSE"] and (.items|length)==1 and .total>=2' >/dev/null || fail "sin module → primer módulo visible (WAREHOUSE) con total y take=1"
+EM=$(activity "module=WAREHOUSE&onlyMandatory=true")
+echo "$EM" | jq -e 'length>=1 and all(.[]; .mandatory==true) and all(.[]; .code!="PO_SENT") and any(.[]; .code=="RECEIPT_CONFIRMED")' >/dev/null || fail "onlyMandatory incluye opcionales (PO_SENT)"
+expect 200 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE&window=today&take=1')" >/dev/null
+expect 400 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE&take=51')" | jq -e --arg m "El máximo por página es 50." "$HASM" >/dev/null || fail "take > 50 → 400"
+expect 400 "$(req GET '/api/v1/analytics/activity?window=7d')" | jq -e --arg m "La ventana debe ser 24h, 48h o today." "$HASM" >/dev/null || fail "ventana inválida → 400"
+TD7=$(login "$DISPATCH_EMAIL" "$PASS")
+expect 403 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TD7")" | jq -e '.title=="No tiene permiso para ver la actividad del módulo WAREHOUSE."' >/dev/null || fail "despachador sin inventory.view ve la actividad de Almacén"
+expect 200 "$(req GET '/api/v1/analytics/activity' '' "$TD7")" | jq -e '.visibleModules==[] and .total==0' >/dev/null || fail "despachador: sin módulos visibles"
+BM=$(expect 200 "$(req GET '/api/v1/products?belowMin=true&take=200')")
+echo "$BM" | jq -e '(.items|length)==([.total,200]|min) and all(.items[]; .isBelowMin==true)' >/dev/null || fail "belowMin devuelve productos que no están bajo mínimo"
+expect 200 "$(req GET '/api/v1/products?belowMin=true&take=1')" | jq -e --argjson t "$(echo "$BM" | jq .total)" '.total==$t' >/dev/null || fail "belowMin con take=1 cuenta distinto"
+ok "RECEIPT_CONFIRMED del recibo confirmado (obligatorio) y PO_SENT (opcional) en Almacén; sin module → WAREHOUSE; onlyMandatory sin PO_SENT; take 51 → 400 y ventana inválida → 400; despachador (sin inventory.view) 403 'No tiene permiso para ver la actividad del módulo WAREHOUSE.' y sin pestañas; belowMin solo bajo mínimo con el mismo total en take=1"
 
 step "conteo cíclico con filtro de almacenes (Lote 6)"
 CC6=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B_PCK]}")"); CC6ID=$(echo "$CC6" | jq -r .count.id)
