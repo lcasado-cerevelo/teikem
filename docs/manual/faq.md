@@ -1796,6 +1796,26 @@ pantalla oculta esa columna. Antes estos roles veían la diferencia real. Si la 
 La vida de la sesión de los aparatos (`PUT /api/v1/tenant/settings`, `admin.tenant`) va de 1 a 365 días (30 por
 defecto); cada renovación del aparato la extiende desde ese momento.
 
+**¿Qué significa "Ya existe un aparato con ese código." (409)?**
+El código del aparato (`POST /api/v1/devices`, campo `code`) es único por compañía, incluso si el aparato que ya
+lo usa está desactivado (ese código no se reutiliza). Elija otro código.
+
+**¿Qué significan "El nombre admite hasta 100 caracteres." y "El modelo admite hasta 80 caracteres." (400)?**
+Límites de longitud del nombre y el modelo del aparato al darlo de alta o editarlo (`POST`/`PATCH
+/api/v1/devices`).
+
+**¿Qué significa "Aparato no encontrado." (404)?**
+El `publicId` del aparato no existe, o es de otra compañía. Revise el enlace o la lista de aparatos.
+
+**¿Qué significa "Falta el permiso 'devices.manage' o 'admin.users'." (403)?**
+Para asignar o quitar el PIN de otro usuario (`PUT`/`DELETE /api/v1/users/{id}/pin`) hace falta uno de esos dos
+permisos. Pida que se lo asignen o que otro administrador haga el cambio.
+
+**Quise asignar el PIN de un usuario y me da 404 "Usuario no encontrado." aunque el usuario existe.**
+El usuario es de otra compañía, es una cuenta de portal, o es el administrador de plataforma: ninguno de los tres
+tiene PIN de aparato (el administrador de plataforma nunca entra por esta vía, así que ni siquiera es visible
+aquí).
+
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 
 Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (validaciones de pantalla, en español, cliente) y contra

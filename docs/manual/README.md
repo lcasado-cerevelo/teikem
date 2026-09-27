@@ -50,6 +50,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
    recibidas, Conteos con diferencia, Movimientos de inventario por tipo). Operación (7B) y Contabilidad (7C)
    agregan su propia pestaña más adelante.
+8. [8A — Backend de la app de almacén](08-aparatos-y-sincronizacion.md): idempotencia de escrituras
+   (`Idempotency-Key`), aparatos de confianza (alta con código de registro, enroll y heartbeat anónimos,
+   desactivar/reactivar), PIN por usuario y login por aparato (bloqueo por intentos), sincronización por
+   diferencia (productos, posiciones, órdenes de compra, avisos de llegada, tareas, categorías), búsqueda por
+   código de barras, y las operaciones atómicas de la cola del aparato (recibo, recolección y empaque, conteo en
+   lote y a ciegas). Es solo el backend: la app instalable no se construye en este lote.
 
 ## Manual de pantallas (frontend web)
 
