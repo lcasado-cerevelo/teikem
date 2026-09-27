@@ -24,3 +24,4 @@ APK; Luis actualiza su copia local con `git pull origin claude/great-davinci-t2n
 ## Bitácora
 
 - 2026-09-27: plan escrito; arranca el paso 1. Luis decide probar el aparato solo al final: la prueba pasa a ser el paso 6.
+- 2026-09-27 (durante el paso 1): lectura de cuota de Luis: semana general 11 %, Fable 13 % (reinicio viernes 6:00 PM). Regla: si la proyección del siguiente paso supera el 50 % de cualquiera de los dos medidores, no se arranca; se deja todo subido y se reporta.
