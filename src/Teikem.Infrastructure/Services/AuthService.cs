@@ -210,12 +210,10 @@ public sealed class AuthService(
     private static string DeviceInfoOf(UserDevice device)
         => string.IsNullOrWhiteSpace(device.Model) ? $"Aparato {device.Code}" : $"Aparato {device.Code} · {device.Model}";
 
-    /// <summary>RefreshToken.UserDeviceId (columna de P0) por nombre: la sesión queda ligada al aparato.</summary>
-    private void SetTokenDevice(RefreshToken rt, int? userDeviceId)
-        => db.Entry(rt).Property<int?>(DeviceService.RefreshTokenDeviceColumn).CurrentValue = userDeviceId;
+    /// <summary>RefreshToken.UserDeviceId: la sesión queda ligada al aparato (desactivarlo la revoca).</summary>
+    private static void SetTokenDevice(RefreshToken rt, int? userDeviceId) => rt.UserDeviceId = userDeviceId;
 
-    private int? TokenDevice(RefreshToken rt)
-        => db.Entry(rt).Property<int?>(DeviceService.RefreshTokenDeviceColumn).CurrentValue;
+    private static int? TokenDevice(RefreshToken rt) => rt.UserDeviceId;
 
     /// <summary>Aparato de una sesión: null si no es de aparato; 401 (y revoca la sesión) si el aparato ya no sirve.</summary>
     private async Task<UserDevice?> SessionDeviceAsync(RefreshToken rt, CancellationToken ct)

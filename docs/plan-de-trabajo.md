@@ -32,3 +32,4 @@ APK; Luis actualiza su copia local con `git pull origin claude/great-davinci-t2n
 - 2026-09-27 17:30 UTC: Luis: hacerlo bien a la primera. Los implementadores de ambos workflows ahora escriben y corren sus pruebas unitarias, compilan y se auto-revisan con las mismas lentes de los revisores antes de devolver la pieza (lista de salida), para reducir rondas.
 - 2026-09-27 17:40 UTC: lectura de Luis: semana general 23 % (12 puntos desde el inicio del paso 1 ≈ 16 M tokens → ~1.3 M por punto). Proyección de cierre del plan: 34 a 40 %.
 - 2026-09-27 18:00 UTC: paso 3 (8A backend) terminado con el tope viejo de 3 rondas (53 correcciones, 8.5 M tokens); arranca el paso 3b: re-verificación sin tope hasta dos rondas limpias.
+- 2026-09-27 18:10 UTC: lectura de Luis: Fable 19 %. Estimación restante: 12 a 18 h (3b: 3 a 5 h; app: 9 a 13 h).

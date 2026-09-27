@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Teikem.Api.Auth;
-using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Services;
 
@@ -10,7 +9,7 @@ namespace Teikem.Api.Controllers;
 
 [ApiController]
 [Route("api/v1/auth")]
-public sealed class AuthController(AuthService auth, DeviceService devices, ITenantContext tenant) : ControllerBase
+public sealed class AuthController(AuthService auth, DeviceService devices) : ControllerBase
 {
     private long SessionId => long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0;
 

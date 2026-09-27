@@ -47,13 +47,8 @@ public sealed class DeviceService(
     public const int EnrollCodeLength = 8;
     public static readonly TimeSpan EnrollCodeLifetime = TimeSpan.FromHours(24);
     public const int DefaultDeviceSessionDays = 30;
-    public const string DefaultTheme = "LIGHT";
+    public const string DefaultTheme = UiThemes.Light;
     public const string DefaultPlatform = "ANDROID";
-
-    /// <summary>Columna RefreshToken.UserDeviceId (P0) leída por nombre para revocar por aparato.</summary>
-    public const string RefreshTokenDeviceColumn = "UserDeviceId";
-    /// <summary>Columna Tenant.DeviceSessionDays (P0): vida de la sesión del aparato en días.</summary>
-    public const string TenantDeviceSessionDaysColumn = "DeviceSessionDays";
 
     /// <summary>Alfabeto del código de registro: sin 0/O, 1/I/L para teclearlo sin confusiones en el aparato.</summary>
     private const string EnrollAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -267,7 +262,7 @@ public sealed class DeviceService(
     internal async Task<int> SessionDaysAsync(int tenantId, CancellationToken ct)
     {
         var days = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId)
-            .Select(t => EF.Property<int>(t, TenantDeviceSessionDaysColumn)).FirstOrDefaultAsync(ct);
+            .Select(t => t.DeviceSessionDays).FirstOrDefaultAsync(ct);
         return days > 0 ? days : DefaultDeviceSessionDays;
     }
 
@@ -355,7 +350,7 @@ public sealed class DeviceService(
     private async Task RevokeDeviceSessionsAsync(UserDevice device, string reason, CancellationToken ct)
     {
         var tokens = await db.RefreshTokens.IgnoreQueryFilters()
-            .Where(t => t.TenantId == device.TenantId && t.RevokedAtUtc == null && EF.Property<int?>(t, RefreshTokenDeviceColumn) == device.UserDeviceId)
+            .Where(t => t.TenantId == device.TenantId && t.RevokedAtUtc == null && t.UserDeviceId == device.UserDeviceId)
             .ToListAsync(ct);
         if (tokens.Count == 0) return;
         var now = DateTime.UtcNow;

@@ -203,7 +203,7 @@ namespace Teikem.Infrastructure.Services
             var pin = await db.Set<UserPin>().AsTracking().FirstOrDefaultAsync(p => p.UserId == userId && p.TenantId == tenantId, ct);
             // Sesiones en aparatos del usuario (refresh tokens ligados a un UserDevice): sin PIN no se vuelve a entrar.
             var deviceTokens = await db.RefreshTokens
-                .Where(t => t.UserId == userId && t.TenantId == tenantId && t.RevokedAtUtc == null && EF.Property<int?>(t, DeviceService.RefreshTokenDeviceColumn) != null)
+                .Where(t => t.UserId == userId && t.TenantId == tenantId && t.RevokedAtUtc == null && t.UserDeviceId != null)
                 .ToListAsync(ct);
             var now = DateTime.UtcNow;
             foreach (var t in deviceTokens) t.RevokedAtUtc = now;
