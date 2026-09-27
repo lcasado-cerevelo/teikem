@@ -120,3 +120,7 @@ Copiado de la sección "Fuera de alcance de F1 mínimo" de `docs/frontend/loteF1
   `PasswordTab` solo cubre el cambio con sesión iniciada.
 - SMS de respaldo y biometría para MFA: el backend tampoco los implementó en el Lote 1 (`docs/lote1-decisiones.md`, decisión
   11); el frontend solo cubre TOTP + códigos de recuperación, que es todo lo que expone el API.
+
+## Verificación en CI
+
+- Corrida verde de GitHub Actions (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36293392824 (commit `ad69fe5`).
