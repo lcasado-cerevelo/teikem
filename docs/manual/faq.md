@@ -615,7 +615,7 @@ agrupado por `PackageType`.
 
 **Al validar una importación: "El archivo supera el límite de 5.000 filas o 2 MB." (HTTP 400, campo `content` o `file`)**
 El archivo tiene más de 5.000 filas de datos (sin contar la cabecera ni las filas vacías) o pesa más de 2 MB. Divídelo en
-varios archivos. El campo es `content` cuando el CSV viaja en JSON y `file` cuando se sube como archivo (multipart).
+varios archivos. El campo es `content` cuando el CSV viaja en JSON (`/import/validate`) y `file` cuando se sube como archivo multipart (`/import/validate-file`).
 
 **Una fila de la importación hacia un consignatario que no admite facturas repetidas sale con error en `clientInvoiceNumber` y no la puedo elegir (HTTP 400 en `rows[n]`).**
 El consignatario no permite repetir el número de factura y ya existe otra orden con ese número: la fila no se puede

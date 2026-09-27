@@ -25,6 +25,7 @@ expect() { # expected_code response
 }
 
 step "health"; expect 200 "$(req GET /health)" >/dev/null; ok "/health"
+step "openapi"; expect 200 "$(req GET /swagger/v1/swagger.json)" | jq -e '.paths | length > 200' >/dev/null || fail "el documento OpenAPI no se genera (rutas en conflicto)"; ok "/swagger/v1/swagger.json"
 
 step "login admin"
 R=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"deviceInfo\":\"smoke\"}")")
@@ -1102,7 +1103,7 @@ B_PID=$(echo "$V" | jq -r .batchPublicId)
 expect 200 "$(req GET "/api/v1/orders/import/$B_PID")" | jq -e '.validRows==2' >/dev/null || fail "GET del lote"
 # Archivo por multipart (campo 'file'), límites de 5.000 filas (JSON) y 2 MB (multipart), delimitador ';' sin cabecera
 FUP=$(mktemp); printf '%s' "$CSV" > "$FUP"
-mpost() { curl -sS -X POST "$BASE/api/v1/orders/import/validate" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$1" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$2;type=text/csv" -w '\n%{http_code}'; }
+mpost() { curl -sS -X POST "$BASE/api/v1/orders/import/validate-file" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$1" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$2;type=text/csv" -w '\n%{http_code}'; }
 expect 200 "$(mpost "$TPL_PID" "$FUP")" | jq -e '.rowCount==3 and .validRows==2' >/dev/null || fail "validar por multipart"
 LIMMSG="El archivo supera el límite de 5.000 filas o 2 MB."
 { echo h; for i in $(seq 5001); do echo "a,b"; done; } > "$FUP"

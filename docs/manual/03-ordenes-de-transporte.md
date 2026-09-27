@@ -427,7 +427,7 @@ repetidas). Guarda un lote (`ImportBatch`, estatus **VALIDATED**) con el resulta
 Quién puede: `orders.create`.
 
 Cómo se usa: `POST /api/v1/orders/import/validate` — JSON `{ "templatePublicId", "clientPublicId", "content": "<CSV>" }`
-o `multipart/form-data` con los mismos campos y el archivo en `file`. Límite: **5.000 filas y 2 MB**.
+o `POST /api/v1/orders/import/validate-file` como `multipart/form-data` con los mismos campos y el archivo en `file`. Límite: **5.000 filas y 2 MB**.
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|

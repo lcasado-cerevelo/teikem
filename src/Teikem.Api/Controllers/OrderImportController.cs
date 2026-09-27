@@ -23,16 +23,16 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class OrderImportController(OrderImportService imports) : ControllerBase
 {
-    /// <summary>
-    /// Validar (JSON): el CSV viaja en content. Límite 5.000 filas / 2 MB → 400. Sin [Consumes] a propósito: la variante
-    /// multipart gana por su [Consumes] y una petición sin Content-Type cae aquí (415 del [FromBody]) en vez de ser ambigua (500).
-    /// </summary>
+    /// <summary>Validar (JSON): el CSV viaja en content. Límite 5.000 filas / 2 MB → 400. Una petición sin Content-Type responde 415.</summary>
     [HttpPost("validate"), RequirePermission(PermissionCatalog.OrdersCreate)]
     public Task<ImportPreviewDto> ValidateJson([FromBody] ImportValidateRequest req, CancellationToken ct)
         => imports.ValidateAsync(req, OrderScope.Any, ct);
 
-    /// <summary>Validar (multipart/form-data): campos templatePublicId y clientPublicId y el archivo 'file' (UTF-8). Límite 5.000 filas / 2 MB → 400.</summary>
-    [HttpPost("validate"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.OrdersCreate)]
+    /// <summary>
+    /// Validar (multipart/form-data): campos templatePublicId y clientPublicId y el archivo 'file' (UTF-8). Límite 5.000 filas / 2 MB → 400.
+    /// Ruta propia (validate-file): dos acciones en la misma ruta rompían la generación del documento OpenAPI (500 en /swagger).
+    /// </summary>
+    [HttpPost("validate-file"), Consumes("multipart/form-data"), RequirePermission(PermissionCatalog.OrdersCreate)]
     [RequestSizeLimit(4 * 1024 * 1024)]
     public async Task<ImportPreviewDto> ValidateFile([FromForm] Guid templatePublicId, [FromForm] Guid clientPublicId, IFormFile? file, CancellationToken ct)
     {
