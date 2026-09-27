@@ -199,6 +199,23 @@
       "noAccess": "Your user cannot view products.",
       "clear": "Remove product",
       "inactive": "Inactive"
+    },
+    "categoryProductPicker": {
+      "label": "Category or product",
+      "all": "All",
+      "search": "Search category or product…",
+      "categories": "Categories",
+      "products": "Products",
+      "matching": "matching “{q}”",
+      "productCount": "{count} products",
+      "productCountOne": "1 product",
+      "typeToSearch": "Type to search products by SKU or name.",
+      "noCategories": "No categories match.",
+      "noProducts": "No products match.",
+      "noAccess": "Your user cannot view products.",
+      "clear": "Remove category or product",
+      "kindCategory": "Category",
+      "kindProduct": "Product"
     }
   },
   "examples": {
@@ -346,12 +363,26 @@
       "chartEmpty": "This chart has no data in the configured range.",
       "warehouse": {
         "title": "Warehouse",
-        "subtitle": "Current balance of your company (not tied to a date range).",
-        "onHand": "Total on hand",
-        "available": "Total available",
+        "subtitle": "Current balance (not tied to a date range). The category or product filter applies to the balance cards; document counters only use the warehouse.",
+        "onHand": "On hand",
+        "available": "Available",
+        "belowMin": "Below minimum",
         "openReceipts": "Open receipts",
         "pendingTasks": "Pending tasks",
-        "openCounts": "Open counts"
+        "openCounts": "Open counts",
+        "reserved": "Reserved:",
+        "categorySub": "{name} · {count} products",
+        "categorySubOne": "{name} · 1 product",
+        "productMin": "{sku} · minimum {qty}",
+        "yes": "Yes",
+        "no": "No",
+        "viewInventory": "View in Inventory ›",
+        "viewKardex": "View {sku} ledger ›",
+        "scopeTag": "warehouse",
+        "scopeTagTitle": "Only the warehouse filter applies (not the category or product).",
+        "filters": "Warehouse panel filters",
+        "warehouseFilter": "Warehouse",
+        "allWarehouses": "All warehouses"
       }
     },
     "range": {
@@ -370,6 +401,43 @@
         "toRequired": "Enter the To date.",
         "fromAfterTo": "From cannot be later than To."
       }
+    },
+    "activity": {
+      "title": "Recent activity",
+      "subtitle": "What happened in your company. Each tab is a business module; only the ones you can see appear.",
+      "tabsLabel": "Activity modules",
+      "modules": {
+        "WAREHOUSE": "Warehouse",
+        "OPERATIONS": "Operations",
+        "ACCOUNTING": "Accounting"
+      },
+      "windowLabel": "Time window",
+      "windows": {
+        "24h": "Last 24 h",
+        "48h": "Last 48 h",
+        "today": "Today"
+      },
+      "windowFooter": {
+        "24h": "last 24 h",
+        "48h": "last 48 h",
+        "today": "today"
+      },
+      "onlyMandatory": "Mandatory only",
+      "columns": {
+        "time": "Time",
+        "event": "Event",
+        "reference": "Reference",
+        "detail": "Detail",
+        "user": "Who"
+      },
+      "mandatoryMark": "req.",
+      "mandatoryTitle": "Mandatory event: always shown to whoever can see the module.",
+      "systemUser": "System",
+      "tableLabel": "Recent events",
+      "empty": "No activity in this window",
+      "footer": "{count} events · {window}",
+      "footerOne": "1 event · {window}",
+      "more": "Show more"
     }
   },
   "orders": {

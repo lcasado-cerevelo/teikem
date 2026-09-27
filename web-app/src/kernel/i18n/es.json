@@ -199,6 +199,23 @@
       "noAccess": "Su usuario no puede consultar productos.",
       "clear": "Quitar producto",
       "inactive": "Inactivo"
+    },
+    "categoryProductPicker": {
+      "label": "Categoría o producto",
+      "all": "Todos",
+      "search": "Buscar categoría o producto…",
+      "categories": "Categorías",
+      "products": "Productos",
+      "matching": "coinciden con «{q}»",
+      "productCount": "{count} productos",
+      "productCountOne": "1 producto",
+      "typeToSearch": "Escriba para buscar productos por SKU o nombre.",
+      "noCategories": "No hay categorías que coincidan.",
+      "noProducts": "No hay productos que coincidan.",
+      "noAccess": "Su usuario no puede consultar productos.",
+      "clear": "Quitar categoría o producto",
+      "kindCategory": "Categoría",
+      "kindProduct": "Producto"
     }
   },
   "examples": {
@@ -346,12 +363,26 @@
       "chartEmpty": "Este gráfico no tiene datos en el rango configurado.",
       "warehouse": {
         "title": "Almacén",
-        "subtitle": "Saldo actual de su compañía (no depende de un rango de fecha).",
-        "onHand": "En mano total",
-        "available": "Disponible total",
+        "subtitle": "Saldo actual (no depende de un rango de fecha). El filtro de categoría o producto aplica a las tarjetas de saldo; los contadores de documentos solo usan el almacén.",
+        "onHand": "En mano",
+        "available": "Disponible",
+        "belowMin": "Bajo mínimo",
         "openReceipts": "Recibos abiertos",
         "pendingTasks": "Tareas pendientes",
-        "openCounts": "Conteos abiertos"
+        "openCounts": "Conteos abiertos",
+        "reserved": "Reservado:",
+        "categorySub": "{name} · {count} productos",
+        "categorySubOne": "{name} · 1 producto",
+        "productMin": "{sku} · mínimo {qty}",
+        "yes": "Sí",
+        "no": "No",
+        "viewInventory": "Ver en Inventario ›",
+        "viewKardex": "Ver Kárdex de {sku} ›",
+        "scopeTag": "almacén",
+        "scopeTagTitle": "Solo aplica el filtro de almacén (no el de categoría o producto).",
+        "filters": "Filtros del panel Almacén",
+        "warehouseFilter": "Almacén",
+        "allWarehouses": "Todos los almacenes"
       }
     },
     "range": {
@@ -370,6 +401,43 @@
         "toRequired": "Indique la fecha Hasta.",
         "fromAfterTo": "Desde no puede ser mayor que Hasta."
       }
+    },
+    "activity": {
+      "title": "Actividad reciente",
+      "subtitle": "Lo que pasó en su compañía. Cada pestaña es un módulo de negocio; solo aparecen los que usted puede ver.",
+      "tabsLabel": "Módulos de la actividad",
+      "modules": {
+        "WAREHOUSE": "Almacén",
+        "OPERATIONS": "Operación",
+        "ACCOUNTING": "Contabilidad"
+      },
+      "windowLabel": "Ventana de tiempo",
+      "windows": {
+        "24h": "Últimas 24 h",
+        "48h": "Últimas 48 h",
+        "today": "Hoy"
+      },
+      "windowFooter": {
+        "24h": "últimas 24 h",
+        "48h": "últimas 48 h",
+        "today": "hoy"
+      },
+      "onlyMandatory": "Solo obligatorios",
+      "columns": {
+        "time": "Hora",
+        "event": "Evento",
+        "reference": "Referencia",
+        "detail": "Detalle",
+        "user": "Quién"
+      },
+      "mandatoryMark": "oblig.",
+      "mandatoryTitle": "Evento obligatorio: siempre se muestra a quien ve el módulo.",
+      "systemUser": "Sistema",
+      "tableLabel": "Eventos recientes",
+      "empty": "Sin actividad en esta ventana",
+      "footer": "{count} eventos · {window}",
+      "footerOne": "1 evento · {window}",
+      "more": "Ver más"
     }
   },
   "orders": {

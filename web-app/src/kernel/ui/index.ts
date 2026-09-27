@@ -1,6 +1,10 @@
 // Kit de componentes (src/kernel/ui). Contrato y props en web-app/KIT.md; patrones completos en ./templates.
 export { ClientPicker, ClientPickerInput } from './ClientPicker'
 export type { ClientOption, ClientPickerInputProps, ClientPickerProps } from './ClientPicker'
+export { CategoryProductPicker } from './CategoryProductPicker'
+export type { CategoryOption, CategoryProductPickerProps, ProductSearchOption } from './CategoryProductPicker'
+export { categoryLabel, categoryTree, filterCategoryTree, isCategoryProductValue, sameCategoryProduct } from './categoryTree'
+export type { CategoryNode, CategoryProductValue, CategoryTreeRow } from './categoryTree'
 export { Chip } from './Chip'
 export type { ChipProps, ChipTone } from './Chip'
 export { ConfirmDialog } from './ConfirmDialog'

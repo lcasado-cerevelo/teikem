@@ -87,3 +87,28 @@
   .dt-card dl{grid-template-columns:minmax(0,1fr)}
   .dt-card dt{padding-top:4px}
 }
+
+/* ===== CategoryProductPicker (un control, dos secciones: Categorías y Productos) ===== */
+.cpp{position:relative;min-width:0;max-width:100%}
+.cpp .cpp-box{display:flex;align-items:center;gap:4px;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;padding:2px 4px 2px 0;min-width:0;max-width:100%}
+.cpp .cpp-box:hover{border-color:var(--flow-line)}
+.cpp .cpp-trigger{flex:1;display:flex;align-items:center;gap:8px;min-width:0;background:transparent;border:none;color:var(--text);font-size:12.5px;padding:5px 4px 5px 9px;text-align:left;cursor:pointer}
+.cpp .cpp-trigger svg{width:14px;height:14px;flex:none;color:var(--muted);margin-left:auto}
+.cpp .cpp-lbl{color:var(--faint);font-size:11px;flex:none}
+.cpp .cpp-val{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600}
+.cpp .cpp-val .tag{flex:none}
+.cpp .cpp-valtx,.cpp .cpp-ph{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.cpp .cpp-ph{color:var(--muted)}
+.cpp .cpp-x{flex:none}
+.cpp .mp{width:340px;max-width:min(340px,calc(100vw - 24px))}
+.cpp .cpp-list{max-height:320px}
+.cpp .cpp-g{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 8px 4px}
+.cpp .cpp-gds{letter-spacing:0;text-transform:none;font-weight:400;font-size:11px}
+.cpp .cpp-opt{min-width:0}
+.cpp .cpp-opt.sel{color:var(--flow-2);font-weight:600}
+.cpp .cpp-pic{width:22px;height:22px;border-radius:6px;background:var(--panel-2);display:grid;place-items:center;font-size:11px;color:var(--muted);flex:none}
+.cpp .cpp-opt.sel .cpp-pic{background:var(--flow);color:#fff}
+.cpp .cpp-txt{min-width:0;overflow-wrap:anywhere}
+.cpp .cpp-txt .code{font-family:var(--mono);color:var(--flow-2)}
+.cpp .cpp-ds{margin-left:auto;color:var(--faint);font-size:11.5px;font-weight:400;white-space:nowrap;padding-left:6px}
+@media(max-width:480px){.cpp{width:100%}.cpp .mp{width:100%;max-width:none}}

@@ -52,7 +52,11 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   módulo ANALYTICS muestra la bienvenida sin consultar el API (la pantalla de inicio nunca redirige a 'Módulo apagado'); cada tarjeta tiene "Rango" (mi rango
   de fecha, `PUT .../my-date-range`: preferencia por usuario con solo `analytics.view`; en CUSTOM el `toUtc` del DTO es exclusivo y
   se muestra el día anterior). Debajo, con `inventory.view` + WMS_LOTSERIAL, el panel 'Almacén' (F6: saldo en mano/disponible,
-  recibos abiertos, tareas pendientes por tipo, conteos abiertos; calculado en cliente con `take=1`, sin rango). `/account` es `features/account/AccountPage`
+  recibos abiertos, tareas pendientes por tipo, conteos abiertos; calculado en cliente con `take=1`, sin rango). F7A: filtro de
+  almacén (a las seis tarjetas) y `CategoryProductPicker` (solo a En mano, Disponible —con 'Reservado'— y Bajo mínimo:
+  `GET /api/v1/products?belowMin=true&take=1` → `total`; con producto, 'Sí/No' buscando su SKU con `belowMin=true`); los
+  documentos llevan la marca 'almacén'. La selección se guarda en localStorage (`teikem.pulse.warehouseFilter.<tenant>.<usuario>`,
+  `useWarehouseFilter` en `features/analytics/api.ts`) y lo que ya no existe se descarta sin error (`sanitizeWarehouseFilter`). `/account` es `features/account/AccountPage`
   (pestañas Perfil, Contraseña, MFA y Sesiones; `?tab=password|mfa|sessions` abre una pestaña directamente).
 - `useSession()` (`app/session.tsx`) → `{ me, isAuthenticated, isLoading, error, tenantId, lang, setLang, logout, switchTenant,
   permissions, modules, reloadMe }`. `me` es `MeDto` de `GET /api/v1/me` (clave de consulta `ME_QUERY_KEY`).
@@ -153,6 +157,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `Spinner` | `label?`, `block?` (centrado) | carga (`role="status"`) |
 | `toast` | `toast.success(msg)`, `toast.error(msg)`, `toast.info(msg)` | aviso abajo al centro (errores 6 s, resto 3.5 s). Se monta solo en `<body>` la primera vez; llamable desde `onSuccess` |
 | `ClientPicker` | `value` (publicId \| null), `onChange(publicId, client)`, `includeInactive?` (por defecto false), `placeholder?`, `disabled?`, `invalid?`, `aria-label?` | combobox con buscador: `GET /api/v1/clients?search=&includeInactive=` (250 ms entre teclas; mantiene los resultados anteriores mientras busca), opciones "Code · Name" (marca "Inactivo"), teclado ↑/↓/Enter/Escape. Con un valor inicial pide `GET /api/v1/clients/{publicId}` para mostrar la etiqueta. Sin `clients.read`: "Su usuario no puede consultar clientes" (no saca de la pantalla) |
+| `CategoryProductPicker` | `value: CategoryProductValue` (`{kind:'category', id}` \| `{kind:'product', publicId}` \| `null` = todos), `onChange(value, detail?)` (`detail.category`/`detail.product` = fila elegida), `categories` (árbol completo: `useProductCategories().data`), `categoriesLoading?`, `label?` (por defecto "Categoría o producto"), `id?`, `disabled?` | un solo combobox con buscador y dos secciones: 'Categorías' (árbol con sangría por nivel y "N productos" de `productCount`; el texto filtra por nombre o ruta) y 'Productos' (`GET /api/v1/products?search=&activeOnly=true&take=20`, 250 ms entre teclas, "SKU · Nombre"; sin texto no consulta). El valor se ve como píldora ("Categoría"/"Producto" + ruta o "SKU · Nombre", con elipsis) con ✕ para quitarlo; un producto que llega de fuera pide `GET /api/v1/products/{publicId}` para su etiqueta. Teclado ↑/↓ (recorre ambas secciones), Enter, Escape (cierra y devuelve el foco). A ≤ 480 px ocupa todo el ancho. 403 de productos: aviso en su sección. Lógica pura en `categoryTree.ts`: `categoryTree(cats)` (aplanado padre→hijos con `level`; padre ausente = raíz), `filterCategoryTree`, `categoryLabel`, `isCategoryProductValue` (validar lo leído de localStorage), `sameCategoryProduct` |
 | `useMediaQuery(q)`, `CARDS_QUERY` | | `true` mientras se cumpla la media query (`'(max-width: 720px)'` = modo tarjetas) |
 
 **Orden y paginación de `DataTable`**

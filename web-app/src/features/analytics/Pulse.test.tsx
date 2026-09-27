@@ -263,8 +263,8 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     mock.handler = warehouseHandler
     renderPulse(WAREHOUSE)
     expect(await screen.findByRole('heading', { name: 'Almacén' })).toBeInTheDocument()
-    await waitFor(async () => expect(within(await tile('En mano total')).getByText('1,250.50')).toBeInTheDocument())
-    await waitFor(async () => expect(within(await tile('Disponible total')).getByText('1,000')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('En mano')).getByText('1,250.50')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Disponible')).getByText('1,000')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('3')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('2')).toBeInTheDocument())
     const tasks = await tile('Tareas pendientes')
@@ -303,7 +303,8 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     renderPulse({ permissions: ['analytics.view'], modules: ['ANALYTICS', 'WMS_LOTSERIAL'] })
     await waitFor(() => expect(screen.getAllByText('Ventas')).toHaveLength(2))
     expect(screen.queryByRole('heading', { name: 'Almacén' })).not.toBeInTheDocument()
-    expect(mock.calls.filter((c) => c !== '/api/v1/analytics/pulse')).toEqual([])
+    // Solo lo del módulo de análisis (Pulso y, desde F7A, Actividad reciente): ninguna consulta de almacén.
+    expect(mock.calls.filter((c) => c !== '/api/v1/analytics/pulse' && c !== '/api/v1/analytics/activity')).toEqual([])
   })
 
   it('un 403 de un endpoint de almacén no saca de Pulso: la tarjeta muestra —', async () => {
