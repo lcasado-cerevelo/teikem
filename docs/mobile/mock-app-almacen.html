@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mock — App de almacén (Zebra MC3300)</title>
+<style>
+/* Tokens de diseño portados de Diseño/teikem-mockups.html (bloque <style>): paleta oscura por defecto y tema claro
+   con data-theme="light" en <html>. Dos acentos: flow (operación, azul) y money (dinero, naranja). */
+:root{
+  --bg:#0D1220; --bg-2:#0A0E18; --panel:#141B2E; --panel-2:#182136; --raise:#1F2A44;
+  --line:#243252; --line-2:#1C2740;
+  --text:#E8ECF5; --muted:#8C97AD; --faint:#5B6680;
+  --money:#FF6A1A; --money-2:#FF8B4D; --money-bg:rgba(255,106,26,.13); --money-line:rgba(255,106,26,.35);
+  --flow:#1F6FE5; --flow-2:#6EA8FF; --flow-bg:rgba(31,111,229,.14); --flow-line:rgba(31,111,229,.40);
+  --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
+  --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
+  --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
+  --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
+  --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
+  --label-paper:#fff; --label-ink:#0B2C66;
+  --hexd:#0B2C66; --hexl:#1F6FE5;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --ui:'Space Grotesk',system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#F0F2F7; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E5EAF3;
+  --line:#DDE4F0; --line-2:#E9EDF5;
+  --text:#182136; --muted:#5B6880; --faint:#8C97AD;
+  --money:#E05A0F; --money-2:#B94A0C; --money-bg:rgba(224,90,15,.10); --money-line:rgba(224,90,15,.30);
+  --flow:#1F6FE5; --flow-2:#0B4DB8; --flow-bg:rgba(31,111,229,.10); --flow-line:rgba(31,111,229,.30);
+  --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
+  --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
+  --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
+  --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
+  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
+}
+/* Medidas del shell (no están en la maqueta como variables; se toman de sus valores fijos). */
+:root{
+  --rail-w:250px; --rail-w-col:66px; --bar-h:54px;
+  --radius:13px; --radius-sm:9px;
+  --shadow-pop:0 30px 80px -20px rgba(0,0,0,.7);
+}
+
+/* Estilos base y clases comunes portadas del bloque <style> de Diseño/teikem-mockups.html.
+   Cambios respecto a la maqueta: el body no bloquea el scroll (lo hace .app), alturas con dvh, reglas responsive
+   (cajón bajo 900 px, una columna a 360 px, sin scroll horizontal de página) y .pal usable también como panel en línea. */
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--app-bg);background-attachment:fixed;color:var(--text);font-family:var(--ui);font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#root{min-height:100dvh}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit}
+svg{width:16px;height:16px;flex:none}
+a{color:var(--flow-2)}
+h1,h2,h3{letter-spacing:-.01em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+::selection{background:var(--flow);color:#fff}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+
+/* ===== SHELL ===== */
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);height:100dvh;overflow:hidden;transition:grid-template-columns .16s ease}
+.app.col{grid-template-columns:var(--rail-w-col) minmax(0,1fr)}
+
+.rail{background:linear-gradient(180deg,var(--panel),var(--bg));border-right:1px solid var(--line-2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.rbrand{display:flex;align-items:center;gap:10px;padding:16px 13px 14px;border-bottom:1px solid var(--line-2);background:linear-gradient(135deg,var(--brand-wash),transparent 65%);color:var(--text);text-decoration:none}
+.rbrand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--hexd),var(--hexl));display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none;box-shadow:0 4px 14px var(--brand-glow)}
+.rbrand .name{font-weight:700;font-size:18px;letter-spacing:.02em}
+.rnav{flex:1;overflow-y:auto;padding:6px 9px}
+.grp{margin-bottom:1px}
+.grp-h{display:flex;align-items:center;gap:11px;width:100%;padding:9px 9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.grp-h:hover{background:var(--panel-2);color:var(--text)}
+.grp-h .gi{display:flex;color:var(--faint)}.grp-h .gi svg{width:16px;height:16px}
+.grp-h .chev{margin-left:auto;transition:.16s;color:var(--faint);display:flex}.grp-h .chev svg{width:14px;height:14px}
+.grp.open .grp-h .chev{transform:rotate(90deg)}
+.grp.open .grp-h{color:var(--text)}.grp.open .grp-h .gi{color:var(--flow-2)}
+.grp-items{display:none;padding:1px 0 5px}
+.grp.open .grp-items{display:block}
+.navit{display:flex;align-items:center;gap:10px;padding:7px 10px 7px 13px;margin:1px 4px 1px 8px;border-radius:8px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;position:relative;text-decoration:none}
+.navit::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:2px;border-radius:2px;background:transparent}
+.navit .di{width:5px;height:5px;border-radius:50%;background:var(--faint);flex:none;margin-left:2px}
+.navit:hover{background:var(--panel-2)}
+.navit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.navit.on::before{background:var(--flow)} .navit.on .di{background:var(--flow)}
+.rfoot{padding:9px;border-top:1px solid var(--line-2)}
+.collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-size:12.5px;font-weight:500}
+.collapse:hover{background:var(--panel-2);color:var(--text)}
+.collapse svg{transition:.16s}
+.app.col .collapse svg{transform:rotate(180deg)}
+.app.col .rbrand .name,.app.col .grp-h .lbl,.app.col .grp-h .chev,.app.col .collapse span{display:none}
+.app.col .grp-items{display:none!important}
+.app.col .grp-h{justify-content:center;padding:11px}
+.app.col .rbrand{justify-content:center;padding:14px 0 12px}
+.app.col .collapse{justify-content:center}
+
+.main{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.bar{height:var(--bar-h);display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line-2);background:var(--panel);flex:none;min-width:0}
+.bar .sp{flex:1;min-width:0}
+.bar .burger{display:none;border:none;background:transparent;width:36px;height:36px;border-radius:9px;align-items:center;justify-content:center;flex:none}
+.bar .burger:hover{background:var(--panel-2)}
+.bar .burger svg{width:20px;height:20px}
+.tenant{display:flex;align-items:center;gap:8px;min-width:0;font-weight:600;font-size:13.5px}
+.tenant .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tenant select{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--text);font-size:13px;font-weight:600;max-width:100%;min-width:0}
+.langdd{position:relative;flex:none}
+.langdd>button{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.langdd>button:hover{border-color:var(--flow-line)}
+.langdd .menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 40px -12px rgba(0,0,0,.5);padding:5px;display:none;min-width:170px;z-index:40}
+.langdd.open .menu{display:block}
+.langdd .menu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;text-align:left}
+.langdd .menu button:hover{background:var(--panel-2)}
+.langdd .menu button.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.who{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid var(--line-2);color:var(--text);text-decoration:none;min-width:0;flex:none}
+.who .av{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--flow),var(--money));display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;flex:none}
+.who .nm{font-size:13px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{border:none;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.iconbtn:hover{background:var(--panel-2);color:var(--text)}
+.stage{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 90px;min-width:0}
+.wrap{width:100%;max-width:1760px;margin:0}
+.drawer-scrim{display:none}
+
+/* ===== ENCABEZADOS, BOTONES, PANELES ===== */
+.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.head h1{font-size:21px;font-weight:700;margin:0}
+.head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.head .act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.subtle{color:var(--faint);font-size:12.5px;margin:0 0 20px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;color:var(--text);text-decoration:none}
+.btn:hover{background:var(--panel-2)}
+.btn svg{width:15px;height:15px}
+.btn.flow{background:var(--flow);border-color:var(--flow);color:#fff}.btn.flow:hover{background:var(--flow-2);color:#0B2C66}
+.btn.money{background:var(--money);border-color:var(--money);color:#fff}.btn.money:hover{background:var(--money-2)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
+.panel .ph2{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:600;font-size:14px;flex-wrap:wrap}
+.panel .ph2 .r{margin-left:auto;color:var(--muted);font-weight:500;font-size:12px;font-family:var(--mono)}
+.panel .ph2 svg{width:16px;height:16px;color:var(--flow-2)}
+.pb,.panel .pb{padding:16px}
+.cols{display:grid;gap:16px}
+.note{font-size:12px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:9px;padding:11px 13px}
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--flow-2);background:var(--flow-bg);border:1px solid var(--flow-line);padding:2px 7px;border-radius:6px;vertical-align:middle}
+.tag.m{color:var(--money-2);background:var(--money-bg);border-color:var(--money-line)}
+.empty{display:grid;place-items:center;min-height:220px;text-align:center;color:var(--muted);padding:16px}
+.empty h2{color:var(--text);font-size:18px;margin:0 0 6px}
+.empty p{margin:0 0 14px}
+.empty .ic{width:46px;height:46px;border-radius:13px;background:var(--panel-2);display:grid;place-items:center;margin:0 auto 12px;color:var(--faint)}
+.empty .ic svg{width:22px;height:22px}
+
+/* ===== .pal/.pi/.pb/.ft: contenedor de la paleta de la maqueta. En línea ocupa el ancho disponible; dentro de
+   .scrim es el modal (mismo padding y tipografía del shell). ===== */
+.scrim{position:fixed;inset:0;background:rgba(5,10,22,.62);backdrop-filter:blur(3px);display:none;align-items:flex-start;justify-content:center;padding:11vh 12px 12px;z-index:50;overflow-y:auto}
+.scrim.on{display:flex}
+.pal{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;min-width:0}
+.scrim .pal{width:640px;max-width:100%;box-shadow:var(--shadow-pop)}
+.pal .pi{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid var(--line-2)}
+.pal .pi svg{width:18px;height:18px;color:var(--muted)}
+.pal .pi input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:16px;min-width:0}
+.pal .pl{max-height:46vh;overflow-y:auto;padding:7px}
+.pal .pgrp{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:11px 12px 5px}
+.pal .it{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:9px;cursor:pointer}
+.pal .it .pic{width:30px;height:30px;border-radius:8px;background:var(--panel-2);display:grid;place-items:center;color:var(--muted)}
+.pal .it.on{background:var(--flow-bg)}.pal .it.on .pic{background:var(--flow);color:#fff}
+.pal .it .nm{font-weight:600;font-size:13.5px}.pal .it .ds{color:var(--faint);font-size:11.5px}
+.pal .ft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line-2);color:var(--faint);font-size:11px}
+.pal .ft kbd{font-family:var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+
+/* ===== CHIPS (nunca envuelven) ===== */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;line-height:1.6;white-space:nowrap;color:var(--neutral-fg);background:var(--neutral-bg)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-cap{color:var(--neutral-fg);background:var(--neutral-bg)}
+.s-wh{color:var(--violet);background:var(--violetbg)}
+.s-disp{color:var(--info);background:var(--infobg)}
+.s-route{color:var(--flow-2);background:var(--flow-bg)}
+.s-deliv{color:var(--ok);background:var(--okbg)}
+.s-cod{color:var(--money-2);background:var(--money-bg)}
+.s-fail{color:var(--danger);background:var(--dangerbg)}
+.s-warn{color:var(--warn);background:var(--warnbg)}
+
+/* ===== TABLAS ===== */
+.lst{width:100%;border-collapse:collapse;font-size:13px}
+.lst th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line-2);position:sticky;top:0;background:var(--panel)}
+.lst th.sort{cursor:pointer;user-select:none}
+.lst th.sort:hover{color:var(--flow-2)}
+.lst th .arr{font-size:9px;margin-left:4px;color:var(--flow-2)}
+.lst td{padding:8px 6px;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere;word-break:break-word}
+.lst tbody tr:hover td{background:var(--panel-2)}
+.lst td.n,.lst th.n{text-align:right;font-family:var(--mono)}
+.lst td.n{white-space:nowrap}
+.ref{font-family:var(--mono);color:var(--flow-2)}
+.cash{font-family:var(--mono);font-weight:600;color:var(--money-2)}
+.cash.z{color:var(--faint);font-weight:400}
+.dr{font-family:var(--mono);font-size:12px;background:var(--raise);border-radius:5px;padding:1px 7px;color:var(--muted)}
+
+/* ===== FORMULARIOS ===== */
+.f{margin-bottom:13px;min-width:0}.f label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;color:var(--text);outline:none}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)}
+.f input[aria-invalid="true"],.f select[aria-invalid="true"],.f textarea[aria-invalid="true"]{border-color:var(--danger)}
+.f .help{font-size:11.5px;color:var(--faint);margin-top:4px}
+.ferr{color:var(--danger);font-size:12px;font-weight:600;margin:5px 0 0}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+.sw{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.f label.sw{display:inline-flex;margin-bottom:0}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}.sw .tk{width:38px;height:22px;border-radius:20px;background:var(--raise);position:relative;transition:.15s;flex:none}
+.sw .tk::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#cfd6e0;top:2px;left:2px;transition:.15s}
+.sw input:checked+.tk{background:var(--ok)}.sw input:checked+.tk::after{left:18px;background:#fff}
+.sw input:focus-visible+.tk{outline:2px solid var(--flow);outline-offset:2px}
+.filters{display:grid;grid-template-columns:repeat(8,minmax(0,1fr)) auto;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;align-items:end}
+.filters .f{margin:0}
+.filters .f input,.filters .f select{padding:7px 9px;font-size:12.5px}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:2px;max-width:100%;overflow-x:auto}
+.seg button{border:none;background:transparent;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+
+/* multi-select genérico */
+.msel{position:relative;min-width:0}
+.msel>button{width:100%;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:12.5px;color:var(--text);display:flex;align-items:center;gap:6px;min-width:0}
+.msel>button:hover{border-color:var(--flow-line)}
+.msel>button .cnt{margin-left:auto;background:var(--flow);color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;font-family:var(--mono)}
+.msel .mp{position:absolute;left:0;top:calc(100% + 6px);min-width:230px;width:max-content;max-width:min(300px,calc(100vw - 24px));background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 50px -14px rgba(0,0,0,.6);display:none;overflow:hidden;z-index:45}
+.msel.open .mp{display:block}
+.msel .msearch{display:flex;align-items:center;gap:8px;padding:9px 11px 12px;border-bottom:1px solid var(--line-2);color:var(--faint)}
+.msel .msearch svg{width:14px;height:14px;flex:none}
+.msel .msearch input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;min-width:0}
+.msel .milist{max-height:220px;overflow-y:auto;padding:6px}
+.msel .mnone{padding:14px 10px;text-align:center;color:var(--faint);font-size:12px}
+.msel .mi{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;font-size:12.5px;cursor:pointer;line-height:1.3}
+.msel .mi:hover{background:var(--panel-2)}
+.msel .mi input[type=checkbox]{accent-color:var(--flow)}
+.msel .mf{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line-2)}
+.msel .mf button{flex:1;border:none;background:var(--panel-2);border-radius:7px;padding:6px;font-size:11px;font-weight:600;color:var(--muted)}
+.msel .mf button:hover{background:var(--raise);color:var(--text)}
+
+/* ===== qbox: búsqueda libre dentro de una sección/panel ===== */
+.qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
+.qrow.tight{padding-top:0}
+.qbox{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--muted);width:100%;max-width:280px;flex:1 1 200px;min-width:0}
+.qbox:focus-within{border-color:var(--flow-line)}
+.qbox svg{width:13px;height:13px;flex:none;color:var(--faint)}
+.qbox input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;min-width:0}
+.qbox input::placeholder{color:var(--faint)}
+
+/* ===== TOAST y SPINNER ===== */
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--flow-line);color:var(--text);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:0 18px 50px -12px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.22s;display:flex;align-items:center;gap:10px;z-index:80;max-width:calc(100vw - 24px)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast svg{color:var(--flow-2)}
+.spin{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--line);border-top-color:var(--flow);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.splash{display:grid;place-items:center;min-height:50vh}
+.splash.full{min-height:100dvh}
+
+/* ===== AUTENTICACIÓN (login, MFA, selección de compañía) ===== */
+.auth{min-height:100dvh;display:grid;place-items:center;padding:60px 14px 24px}
+.auth-card{width:100%;max-width:400px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px 24px;box-shadow:var(--shadow-pop)}
+.auth-card .rbrand{border:none;background:none;padding:0 0 18px}
+.auth-card h1{font-size:20px;margin:0 0 4px}
+.auth-card .subtle{margin-bottom:18px}
+.auth-card .alert{background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:14px}
+.auth-card .links{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:12.5px}
+.auth-card .linkbtn{border:none;background:none;padding:0;color:var(--flow-2);font-size:12.5px;font-weight:600}
+.auth-lang{position:fixed;top:12px;right:12px}
+.tenant-list{display:flex;flex-direction:column;gap:8px}
+.tenant-list button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;font-weight:600}
+.tenant-list button:hover{border-color:var(--flow-line);background:var(--panel-2)}
+.secret{font-family:var(--mono);font-size:13px;background:var(--bg-2);border:1px dashed var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere;margin:6px 0 12px}
+.codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;font-family:var(--mono);font-size:12.5px;margin:8px 0 14px}
+.codes span{background:var(--bg-2);border:1px solid var(--line-2);border-radius:7px;padding:6px 8px;text-align:center}
+
+@media(prefers-reduced-motion:reduce){.spin{animation-duration:2s}.app,.rail{transition:none}}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}}
+/* Bajo 900 px la barra lateral es un cajón que se abre con el botón de menú. */
+@media(max-width:900px){
+  .app,.app.col{grid-template-columns:minmax(0,1fr)}
+  .rail{position:fixed;inset:0 auto 0 0;width:min(280px,86vw);z-index:70;transform:translateX(-102%);transition:transform .18s ease;box-shadow:var(--shadow-pop)}
+  .app.drawer .rail{transform:none}
+  .app.drawer .drawer-scrim{display:block;position:fixed;inset:0;background:rgba(5,10,22,.55);z-index:65}
+  /* en el cajón siempre se ve el menú completo */
+  .app.col .rbrand .name,.app.col .grp-h .lbl,.app.col .grp-h .chev{display:revert}
+  .app.col .grp-items{display:revert!important}
+  .app.col .grp:not(.open) .grp-items{display:none!important}
+  .app.col .grp-h{justify-content:flex-start;padding:9px}
+  .app.col .rbrand{justify-content:flex-start;padding:16px 13px 14px}
+  .rfoot{display:none}
+  .bar{padding:0 10px;gap:8px}
+  .bar .burger{display:inline-flex}
+  .stage{padding:14px 12px 80px}
+}
+@media(max-width:720px){
+  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .r3{grid-template-columns:1fr 1fr}
+  .who{padding-left:8px}
+  .who .nm{display:none}
+  .qbox{max-width:none}
+}
+@media(max-width:480px){
+  .r2,.r3,.filters{grid-template-columns:minmax(0,1fr)}
+  .langdd>button .lbl{display:none}
+  .head h1{font-size:19px}
+  .auth-card{padding:22px 16px}
+}
+
+/* ===== Solo para el mock ===== */
+body{padding:0;margin:0}
+.mocktb{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--bg-2);border-bottom:1px solid var(--line);font-size:12.5px}
+.mocktb b{font-size:13px}.mocktb .r{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:flex;flex-wrap:wrap;gap:22px;padding:18px;align-items:flex-start}
+.ph{width:320px;flex:none}
+.ph .cap{font-size:12.5px;color:var(--muted);margin:0 0 6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.ph .cap b{color:var(--text)}
+.scr{width:320px;height:533px;background:var(--bg);border:8px solid #1b2236;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-pop);position:relative}
+[data-theme="light"] .scr{border-color:#2b3447}
+.top{height:40px;display:flex;align-items:center;gap:8px;padding:0 10px;border-bottom:1px solid var(--line-2);background:var(--panel);font-size:13px;font-weight:700;flex:none}
+.top .bk{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;background:var(--panel-2);font-weight:400}
+.top .sp{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .net{font-size:10px;font-weight:600;padding:2px 6px;border-radius:5px;background:var(--okbg);color:var(--ok)}.top .net.off{background:var(--dangerbg);color:var(--danger)}
+.body{flex:1;overflow:hidden;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.foot{flex:none;padding:8px 10px;border-top:1px solid var(--line-2);display:flex;gap:8px;background:var(--panel)}
+.big{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:16px;font-weight:700}
+.big .ic{width:38px;height:38px;border-radius:10px;background:var(--flow-bg);color:var(--flow-2);display:grid;place-items:center;font-size:20px;flex:none}
+.big .n{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--muted);font-weight:500}
+.scanf{border:2px dashed var(--flow-line);background:var(--flow-bg);border-radius:12px;padding:12px;text-align:center}
+.scanf .l{font-size:11px;color:var(--flow-2);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.scanf .v{font-family:var(--mono);font-size:20px;margin-top:4px;min-height:26px}
+.scanf .h{font-size:11.5px;color:var(--muted);margin-top:4px}
+.btn.xl{padding:13px;font-size:15px;justify-content:center;width:100%}
+.btn.lg{padding:10px 6px;font-size:13px;justify-content:center;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foot{flex-wrap:wrap}.foot .btn.sm{flex:1;justify-content:center}
+.line{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:9px;background:var(--panel);border:1px solid var(--line);font-size:13px}
+.line .sku{font-family:var(--mono);color:var(--flow-2);font-size:12.5px}.line .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line .q{font-family:var(--mono);font-weight:700;font-size:16px}
+.lines{display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.kv{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px solid var(--line-2)}.kv span:first-child{color:var(--muted)}.kv b{font-family:var(--mono)}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pad button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;padding:10px;font-size:20px;font-weight:700;font-family:var(--mono)}
+.pinv{display:flex;justify-content:center;gap:12px;padding:6px 0}.pinv i{width:14px;height:14px;border-radius:50%;border:2px solid var(--flow-2);display:block}.pinv i.on{background:var(--flow-2)}
+.usr{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:var(--panel);border:1px solid var(--line);font-size:14px;font-weight:600}.usr .av{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--flow),var(--money));color:#fff;display:grid;place-items:center;font-size:12px}
+.usr.on{border-color:var(--flow);background:var(--flow-bg)}
+.bin{font-family:var(--mono);font-size:30px;font-weight:800;text-align:center;padding:12px;border-radius:12px;background:var(--panel);border:1px solid var(--line)}
+.bin small{display:block;font-family:var(--ui);font-size:11.5px;color:var(--muted);font-weight:500}
+.tot{display:flex;gap:8px}.tot .tile{flex:1;padding:8px 10px}.tot .v{font-size:20px}
+.ok-row{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 10px;border-radius:8px}
+.ok-row.g{background:var(--okbg);color:var(--ok)}.ok-row.w{background:var(--warnbg);color:var(--warn)}.ok-row.d{background:var(--dangerbg);color:var(--danger)}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px}.tile .lb{font-size:11.5px;color:var(--muted)}.tile .v{font-size:22px;font-weight:800;font-family:var(--mono)}
+.f{margin-bottom:8px}.f label{font-size:11px}.f input,.f select{padding:9px 10px;font-size:14px}
+.note2{font-size:11.5px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:8px;padding:7px 9px}
+.legend{padding:0 18px 18px;font-size:12.5px;color:var(--muted);max-width:980px}
+</style>
+</head>
+<body>
+<div class="mocktb"><b>Mock · App de almacén para Zebra MC3300</b> <span>pantalla 4" vertical (320 × 533 px CSS), botones grandes, un campo de escaneo enfocado; el gatillo físico escribe el código y avanza</span>
+  <div class="r"><div class="seg"><button class="on" id="tD" type="button">Tema oscuro</button><button id="tL" type="button">Tema claro (almacén iluminado)</button></div></div></div>
+
+<div class="grid">
+
+<div class="ph"><p class="cap"><b>1 · Entrar</b> aparato ya registrado por el administrador; nombre + PIN, sin contraseña</p>
+<div class="scr"><div class="top"><span class="sp">Teikem · Advance Logistics</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="usr"><span class="av">CR</span>Carlos Rivera</div>
+  <div class="usr on"><span class="av">MR</span>María Rivera <span style="margin-left:auto;font-size:11px;color:var(--flow-2)">PIN</span></div>
+  <div class="usr"><span class="av">LO</span>Luis Ortiz</div>
+  <div class="pinv"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+  <div class="pad"><button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button style="font-size:13px">borrar</button><button>0</button><button style="background:var(--flow);border-color:var(--flow);color:#fff;font-size:13px">Entrar</button></div>
+</div>
+<div class="foot"><span style="font-size:11.5px;color:var(--muted)">Aparato ZB-03 · Almacén principal ALM-01 · 5 intentos, luego 15 min de bloqueo</span></div></div></div>
+
+<div class="ph"><p class="cap"><b>2 · Inicio</b> cinco acciones y el estado de sincronización siempre a la vista</p>
+<div class="scr"><div class="top"><span class="sp">María Rivera · ALM-01</span><span class="net off">Sin red</span></div>
+<div class="body">
+  <div class="big"><span class="ic">⬇</span>Recibir<span class="n">2 abiertos</span></div>
+  <div class="big"><span class="ic">▦</span>Acomodar<span class="n">20 tareas</span></div>
+  <div class="big"><span class="ic">⬆</span>Despacho</div>
+  <div class="big"><span class="ic">☑</span>Conteo<span class="n">1 abierto</span></div>
+  <div class="big"><span class="ic">🔍</span>Consultar</div>
+  <div class="ok-row w" style="font-size:12px">⟳ 7 pendientes de enviar · última sincronización 09:12</div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Sincronizar ahora</button><button class="btn lg" type="button">Cambiar usuario</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>3 · Recibir</b> escanear la orden de compra o el aviso; o recibo ciego con un toque</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Recibir</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="scanf"><div class="l">Escanee orden de compra o aviso</div><div class="v">▮</div><div class="h">o teclee el número · o cree un recibo sin documento</div></div>
+  <button class="btn xl flow" type="button">Recibo ciego (sin documento)</button>
+  <div class="note2">Recibos abiertos en este aparato</div>
+  <div class="line"><span class="sku">REC-local-2</span><span class="nm">contra OC-000094 · 4 líneas</span><span class="chip s-warn">pendiente de enviar</span></div>
+  <div class="line"><span class="sku">REC-000318</span><span class="nm">ciego · 6 líneas</span><span class="chip s-deliv">enviado</span></div>
+</div>
+<div class="foot"><span style="font-size:11.5px;color:var(--muted)">Al escanear una OC, el recibo se crea solo y trae sus líneas esperadas.</span></div></div></div>
+
+<div class="ph"><p class="cap"><b>3b · Recibir: capturar líneas</b> producto escaneado, cantidad con teclado grande, lote o series solo si el producto lo pide</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Recibo contra OC-000094</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="scanf"><div class="l">Producto</div><div class="v">7501031311309</div><div class="h">AN-0100 · Analgésico 500 mg x 20 · esperado 24</div></div>
+  <div class="kv"><span>Cantidad recibida</span><b style="font-size:22px">22</b></div>
+  <div class="pad" style="grid-template-columns:repeat(4,1fr)"><button>7</button><button>8</button><button>9</button><button style="font-size:13px">+1</button><button>4</button><button>5</button><button>6</button><button style="font-size:13px">×</button><button>1</button><button>2</button><button>3</button><button style="background:var(--flow);border-color:var(--flow);color:#fff;font-size:13px">OK</button></div>
+  <div class="ok-row w">⚠ Diferencia −2 contra la orden · se registrará al confirmar</div>
+  <div class="lines"><div class="line"><span class="sku">CJ-0042</span><span class="nm">Jarabe infantil</span><span class="q">12</span></div><div class="line"><span class="sku">ZZ-0009</span><span class="nm">Gel tópico · lote L2409</span><span class="q">6</span></div></div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Siguiente</button><button class="btn lg flow" type="button">Confirmar recibo</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>4 · Acomodar</b> tarea de putaway con la posición sugerida en grande; escanear la posición destino</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Acomodar · tarea 3 de 20</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="line"><span class="sku">AN-0100</span><span class="nm">Analgésico 500 mg x 20</span><span class="q">24</span></div>
+  <div class="kv"><span>Está en</span><b>STG-01 (recepción)</b></div>
+  <div class="bin"><small>Posición sugerida</small>RSV-B-07<small>reserva · pasillo B · rack 07 · libre</small></div>
+  <div class="scanf"><div class="l">Escanee la posición destino</div><div class="v">▮</div><div class="h">si escanea otra posición, se acomoda ahí y se anota</div></div>
+  <div class="ok-row g">✓ Anterior: CJ-0042 → PCK-A-03 (08:47)</div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Saltar</button><button class="btn lg flow" type="button">Completar</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>5 · Despacho</b> recolectar escaneando; al empacar el servidor crea la orden de venta</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Despacho · recolección</span><span class="net off">Sin red</span></div>
+<div class="body">
+  <div class="scanf"><div class="l">Escanee producto</div><div class="v">▮</div><div class="h">luego cantidad y la posición de la que sale (FEFO sugerido)</div></div>
+  <div class="lines"><div class="line"><span class="sku">AN-0100</span><span class="nm">de RSV-B-07 · lote L2405</span><span class="q">10</span></div><div class="line"><span class="sku">CJ-0042</span><span class="nm">de PCK-A-03</span><span class="q">6</span></div><div class="line"><span class="sku">AN-0140</span><span class="nm">de PCK-A-05</span><span class="q">2</span></div></div>
+  <div class="note2"><b>Empacar</b> pide lo mínimo: cliente (buscador local), consignatario y bultos. La orden EMP-##### se numera al sincronizar; mientras, referencia local.</div>
+  <div class="f"><label>Cliente</label><input value="Farmacias Norte" readonly></div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Quitar línea</button><button class="btn lg money" type="button">Empacar · 18 uds</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>6 · Conteo (inventario físico)</b> escanear posición → productos; a ciegas para quien no reconcilia</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Conteo CNT-local-1 · zona RSV</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="bin" style="font-size:24px;padding:8px"><small>Posición</small>RSV-B-07</div>
+  <div class="scanf"><div class="l">Escanee cada producto de la posición</div><div class="v">▮</div><div class="h">o toque uno de la lista y teclee la cantidad</div></div>
+  <div class="lines">
+    <div class="line"><span class="sku">AN-0100</span><span class="nm">Analgésico 500 mg</span><span class="q">14</span></div>
+    <div class="line"><span class="sku">AN-0140</span><span class="nm">Jarabe infantil</span><span class="q" style="color:var(--faint)">—</span></div>
+    <div class="line" style="border-style:dashed"><span class="sku">ZZ-0031</span><span class="nm">no esperado aquí · agregado</span><span class="q">3</span></div>
+  </div>
+  <div class="ok-row g">✓ 6 de 9 posiciones contadas · 1 pendiente en esta</div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Posición lista</button><button class="btn lg flow" type="button">Terminar conteo</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>7 · Consultar</b> producto → dónde está; posición → qué hay; con datos locales si no hay red</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Consultar</span><span class="net off">Sin red</span></div>
+<div class="body">
+  <div class="scanf"><div class="l">Escanee producto o posición</div><div class="v">AN-0100</div><div class="h">Analgésico 500 mg x 20 · mínimo 400</div></div>
+  <div class="tot"><div class="tile"><div class="lb">En mano</div><div class="v">312</div></div><div class="tile"><div class="lb">Disponible</div><div class="v">290</div></div></div>
+  <div class="ok-row w">⚠ Bajo mínimo</div>
+  <div class="lines"><div class="line"><span class="sku">RSV-B-07</span><span class="nm">lote L2405 · vence 2027-03</span><span class="q">240</span></div><div class="line"><span class="sku">PCK-A-03</span><span class="nm">picking</span><span class="q">72</span></div></div>
+  <div class="note2">Datos locales de hace 14 min (sin red).</div>
+</div>
+<div class="foot"><button class="btn lg" type="button">Nueva consulta</button></div></div></div>
+
+<div class="ph"><p class="cap"><b>8 · Sincronización</b> pendientes, errores con el mensaje del API, reintentar o descartar</p>
+<div class="scr"><div class="top"><span class="bk">‹</span><span class="sp">Sincronización</span><span class="net">WiFi</span></div>
+<div class="body">
+  <div class="tot"><div class="tile"><div class="lb">Pendientes</div><div class="v">7</div></div><div class="tile"><div class="lb">Enviadas hoy</div><div class="v">41</div></div><div class="tile"><div class="lb">Con error</div><div class="v" style="color:var(--danger)">1</div></div></div>
+  <div class="ok-row d">✕ Despacho local-3 · "Inventario insuficiente de AN-0100 en RSV-B-07: disponible 8, solicitado 10."</div>
+  <div style="display:flex;gap:6px"><button class="btn sm" style="flex:1;justify-content:center" type="button">Reintentar</button><button class="btn sm" style="flex:1;justify-content:center" type="button">Corregir</button><button class="btn sm" style="flex:1;justify-content:center" type="button">Descartar</button></div>
+  <div class="kv"><span>Datos maestros</span><b>09:12</b></div>
+  <div class="kv"><span>Productos · posiciones · OC abiertas</span><b>1,204 · 386 · 12</b></div>
+  <div class="kv"><span>Cola de salida</span><b>en orden, se envía sola</b></div>
+</div>
+<div class="foot"><button class="btn lg flow" type="button">Sincronizar ahora</button></div></div></div>
+
+</div>
+<div class="legend">Reglas comunes: un solo campo enfocado por pantalla; el escaneo escribe y avanza; Enter físico equivale a escanear; sonido y vibración distintos para ok y error; todos los textos por i18n ("Posición" es lo que en el piso llaman almacén). Detalle del plan: <code>docs/mobile/app-almacen-plan.md</code>.</div>
+<script>
+  tD.onclick=()=>{document.documentElement.removeAttribute('data-theme');tD.classList.add('on');tL.classList.remove('on')};
+  tL.onclick=()=>{document.documentElement.setAttribute('data-theme','light');tL.classList.add('on');tD.classList.remove('on')};
+</script>
+</body></html>
