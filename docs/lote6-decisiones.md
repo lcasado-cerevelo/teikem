@@ -33,10 +33,7 @@ dejó abiertas y lo que queda fuera.
 > abajo). No se hizo push en esta sesión, así que no hay una corrida de CI de GitHub Actions que
 > citar para este cierre puntual; el árbitro formal sigue siendo `.github/workflows/ci.yml` en el primer push.
 >
-> **Manual funcional: pendiente.** Esta pasada solo cerró el documento de decisiones y el arreglo de
-> `scripts/smoke.sh` que pedía el encargo; `docs/manual/06-inventario-y-almacen.md` y la ampliación de
-> `docs/manual/faq.md` con los mensajes de este lote quedan para una pasada posterior, antes de dar el lote por
-> cerrado del todo (CLAUDE.md lo exige).
+> **Manual funcional:** `docs/manual/06-inventario-y-almacen.md` y sección "Lote 6" de `docs/manual/faq.md`, escritos leyendo el código real.
 
 ## Mapa de lo construido
 
@@ -191,9 +188,6 @@ repiten aquí; el texto completo de cada una vive en `docs/lote6-plan.md`.
 
 ## Lo que queda fuera de este lote
 
-- **Manual funcional y FAQ del Lote 6** (ver nota al inicio de este documento): `docs/manual/06-inventario-y-almacen.md`
-  y la ampliación de `docs/manual/faq.md` con los mensajes exactos de este lote quedan pendientes de una pasada
-  posterior; sin ellos el lote no está cerrado del todo según CLAUDE.md.
 - Olas de picking (`PickWave`/`PickTask`) y packing en cartones (`Carton`/`CartonLine`): diferidas (D1); sus tablas
   del script de estructura no se tocan.
 - Plantillas de exportación (`ACCT_TEMPLATES`) y contabilización de compras y despachos: para el Lote 10; quedan como
