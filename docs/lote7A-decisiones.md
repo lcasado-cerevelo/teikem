@@ -147,3 +147,7 @@ al motor de análisis, es un servicio propio con su propio contrato.
   (decisión #1): no se tocó `AnalyticsService` en este lote.
 - **Manual funcional y FAQ**: capítulo `docs/manual/07-pulso-y-actividad.md` (sección Almacén) y entradas nuevas en
   `docs/manual/faq.md` se escriben en este mismo cierre, junto con este documento.
+
+## Verificación en CI
+
+- Corrida verde de GitHub Actions (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36318016740 (commit `12f8d2a`).
