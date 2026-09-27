@@ -432,13 +432,16 @@ public sealed class SyncRulesTests
         var byBarcode = await f.AddProductAsync("SKU-1");
         byBarcode.Barcode = "7501234567890";
         var bySku = await f.AddProductAsync("7501234567890X");
+        var skuCollision = await f.AddProductAsync("7501234567890");   // SKU = código de barras de byBarcode: gana el código de barras
         var inactive = await f.AddProductAsync("SKU-OFF", isActive: false);
         inactive.Barcode = "999";
         f.Db.Products.UpdateRange(byBarcode, inactive);   // el fixture suelta el tracker al guardar
         await f.Db.SaveChangesAsync();
         var products = f.Get<ProductService>();
 
-        Assert.Equal(byBarcode.PublicId, (await products.GetByBarcodeAsync("7501234567890", InventoryScope.Any, default)).Product.PublicId);
+        var hit = (await products.GetByBarcodeAsync("7501234567890", InventoryScope.Any, default)).Product.PublicId;
+        Assert.Equal(byBarcode.PublicId, hit);
+        Assert.NotEqual(skuCollision.PublicId, hit);
         Assert.Equal(bySku.PublicId, (await products.GetByBarcodeAsync(" 7501234567890X ", InventoryScope.Any, default)).Product.PublicId);
         var ex = await Assert.ThrowsAsync<ProductService.BarcodeNotFoundException>(() => products.GetByBarcodeAsync("999", InventoryScope.Any, default));
         Assert.Equal("No hay un producto con ese código.", ex.Message);

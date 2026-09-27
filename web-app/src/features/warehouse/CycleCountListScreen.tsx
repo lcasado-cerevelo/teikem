@@ -186,16 +186,23 @@ export default function CycleCountListScreen() {
         sortValue: (c) => (c.lineCount ? (c.countedLines ?? 0) / c.lineCount : 0),
         align: 'end',
       },
-      {
-        id: 'netVariance',
-        header: t('warehouse.cycleCounts.columns.netVariance'),
-        cell: (c) => ((c.netVariance ?? 0) !== 0 ? <Chip tone="warn">{formatNumber(c.netVariance, lang)}</Chip> : '0'),
-        sortValue: (c) => c.netVariance ?? 0,
-        align: 'end',
-      },
+      // Conteo a ciegas (Lote 8A): sin warehouse.count el API devuelve netVariance = null; la columna no se muestra y,
+      // por defensa, null se pinta como '—' (nunca '0', que diría "todo cuadra").
+      ...(canCount
+        ? [
+            {
+              id: 'netVariance',
+              header: t('warehouse.cycleCounts.columns.netVariance'),
+              cell: (c: CycleCountDto) =>
+                c.netVariance == null ? '—' : c.netVariance !== 0 ? <Chip tone="warn">{formatNumber(c.netVariance, lang)}</Chip> : '0',
+              sortValue: (c: CycleCountDto) => c.netVariance ?? undefined,
+              align: 'end' as const,
+            },
+          ]
+        : []),
       { id: 'createdAt', header: t('warehouse.cycleCounts.columns.createdAt'), cell: (c) => formatDateTime(c.createdAtUtc, lang), sortValue: (c) => c.createdAtUtc },
     ],
-    [t, lang],
+    [t, lang, canCount],
   )
 
   const actions = useMemo<RowAction<CycleCountDto>[]>(

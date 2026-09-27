@@ -95,6 +95,44 @@ public sealed class ReceiptServiceTests
     }
 
     [Fact]
+    public async Task Atomic_po_receipt_leaves_unmentioned_lines_at_zero_and_takes_foreign_products_as_extra()
+    {
+        // Decisión 13 del Lote 8A: OC de 2 líneas; se escanea solo una y un producto ajeno al documento. La no mencionada
+        // queda en 0 (faltante visible), el ajeno entra como línea extra y ninguno de los dos cuenta contra la OC.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var otherPublicId = Guid.NewGuid();
+        var foreignPublicId = Guid.NewGuid();
+        Product P(int productId, Guid publicId, string sku) => new()
+        {
+            ProductId = productId, PublicId = publicId, TenantId = ReceivingFixture.TenantId, ClientId = null, Sku = sku, Name = "Producto " + sku,
+            BaseUomLookupId = f.LookupId(LookupDomains.UnitOfMeasure, "UN"),
+            TrackingTypeLookupId = f.LookupId(LookupDomains.TrackingType, TrackingTypes.None), PurchaseCost = 12.5m, IsActive = true,
+        };
+        f.Db.Set<Product>().AddRange(P(304, otherPublicId, "PN2"), P(305, foreignPublicId, "PX"));
+        f.Db.Set<PurchaseOrderLine>().Add(new PurchaseOrderLine { PurchaseOrderLineId = 602, PurchaseOrderId = f.PoId, ProductId = 304, QtyOrdered = 5m, UnitCost = 12.5m });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        f.PurchaseOrders.Pending = new PurchaseOrderForReceipt(f.PoId, "PO-00001", f.WarehouseId,
+            new[] { new PurchaseOrderPendingLine(f.PoLineId, f.ProductNoneId, 10m, 12.5m), new PurchaseOrderPendingLine(602, 304, 5m, 12.5m) });
+
+        var confirmed = await f.Get<ReceiptService>().CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId,
+            Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 3m), new ReceiptLineRequest(foreignPublicId, 2m) }, Confirm: true), default);
+
+        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(3, confirmed.Lines.Count);
+        var scanned = Assert.Single(confirmed.Lines, l => l.ProductPublicId == f.ProductNonePublicId);
+        Assert.Equal(3m, scanned.ReceivedQty);
+        var unmentioned = Assert.Single(confirmed.Lines, l => l.ProductPublicId == otherPublicId);
+        Assert.Equal(5m, unmentioned.ExpectedQty);
+        Assert.Equal(0m, unmentioned.ReceivedQty);
+        var extra = Assert.Single(confirmed.Lines, l => l.ProductPublicId == foreignPublicId);
+        Assert.Null(extra.AsnLineId);
+        Assert.Null(extra.ExpectedQty);
+        Assert.Equal(2m, extra.ReceivedQty);
+        Assert.Equal(new PurchaseOrderReceiptQty(f.PoLineId, 3m), Assert.Single(Assert.Single(f.PurchaseOrders.Applied).Quantities));
+    }
+
+    [Fact]
     public async Task Asn_receipt_with_lines_checks_the_owner_and_merges_repeated_products()
     {
         await using var f = await ReceivingFixture.CreateAsync();

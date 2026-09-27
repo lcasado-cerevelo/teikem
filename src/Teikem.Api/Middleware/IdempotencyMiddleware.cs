@@ -33,6 +33,8 @@ namespace Teikem.Api.Middleware;
 /// (salvo 401/403/408/423/429) y es JSON o texto; si no, el registro se borra para permitir el reintento con la misma clave.</item>
 /// <item>Registros de más de 7 días no cuentan y se borran perezosamente al insertar uno nuevo; uno en vuelo por más de 10
 /// minutos (proceso caído) se descarta.</item>
+/// <item>Con la clave registrada, la operación ya no se cancela si el cliente se desconecta (RequestAborted desligado): termina,
+/// guarda su respuesta y el reintento recibe Replay. Guardar la respuesta se reintenta si falla.</item>
 /// </list>
 /// Nunca guarda el cuerpo de la petición (puede traer PIN o contraseñas), solo su huella. Va después de UseAuthorization: las
 /// peticiones rechazadas por autenticación o permiso no dejan registro.
@@ -93,6 +95,12 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         }
 
         var recordId = await InsertInFlightAsync(db, lookups, tenantId, userId, key!, method, pathAndQuery, hash, now, ct);
+
+        // Con el registro en vuelo, la operación se desliga de la desconexión del cliente: si el aparato pierde la señal
+        // después del commit (p. ej. al releer el recibo confirmado), la operación termina, su respuesta se guarda y el
+        // reintento de la cola recibe Replay en vez de ejecutarse otra vez (sin esto la cancelación borraba la clave y el
+        // reintento duplicaba la operación). El enlace de CancellationToken de MVC lee este valor.
+        http.RequestAborted = CancellationToken.None;
 
         var originalBody = http.Response.Body;
         await using var buffer = new MemoryStream();
@@ -170,17 +178,33 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         return record.IntegrationMessageLogId;
     }
 
-    /// <summary>Guarda la respuesta (ExecuteUpdate: no toca el rastreador ni guarda cambios pendientes del controlador).</summary>
+    private const int StoreAttempts = 3;
+
+    /// <summary>
+    /// Guarda la respuesta (ExecuteUpdate: no toca el rastreador ni guarda cambios pendientes del controlador). La operación
+    /// ya se ejecutó: si el guardado falla se reintenta, porque un registro sin respuesta termina dándose por abandonado
+    /// (<see cref="IdempotencyRules.InFlightTimeout"/>) y el reintento del cliente volvería a ejecutar la operación.
+    /// </summary>
     private async Task StoreAsync(TeikemDbContext db, long recordId, int status, string body)
     {
-        try
+        for (var attempt = 1; ; attempt++)
         {
-            await db.IntegrationMessageLogs.Where(l => l.IntegrationMessageLogId == recordId)
-                .ExecuteUpdateAsync(s => s.SetProperty(l => l.ResponseCode, status).SetProperty(l => l.ResponseJson, body), CancellationToken.None);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "No se pudo guardar la respuesta idempotente {RecordId}.", recordId);
+            try
+            {
+                await db.IntegrationMessageLogs.Where(l => l.IntegrationMessageLogId == recordId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.ResponseCode, status).SetProperty(l => l.ResponseJson, body), CancellationToken.None);
+                return;
+            }
+            catch (Exception ex) when (attempt < StoreAttempts)
+            {
+                logger.LogWarning(ex, "No se pudo guardar la respuesta idempotente {RecordId} (intento {Attempt}); se reintenta.", recordId, attempt);
+                await Task.Delay(TimeSpan.FromMilliseconds(200 * attempt));
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "No se pudo guardar la respuesta idempotente {RecordId}.", recordId);
+                return;
+            }
         }
     }
 

@@ -54,6 +54,26 @@ verificación del lote; el cierre del lote lo completa con el mapa de lo constru
    `/api/v1/clients/` (`IdempotencyRules.ExcludedClientPathSuffixes`). Alternativa a revisar: un atributo
    `[SkipIdempotency]` en el endpoint, más robusto ante rutas futuras.
 
+6 ter. **Idempotencia: desviaciones del plan P0-5 (pendiente de ratificar por Luis).** El plan pedía idempotencia en
+   todo POST/PUT/PATCH/DELETE con la cabecera, huella del cuerpo, guardar toda respuesta menor a 500 y 409 siempre para un
+   registro en vuelo. El código se aparta en cuatro puntos:
+   - (a) **Prefijos excluidos** `/api/v1/auth`, `/api/v1/me`, `/api/v1/devices` y `/api/v1/platform` (además de
+     `/api/v1/users` y las invitaciones de portal, decisiones 6 y 6 bis): devuelven tokens, secretos del aparato, códigos
+     de registro o contraseñas temporales, que no deben quedar 7 días en `IntegrationMessageLog.ResponseJson`.
+     Alternativa si no se ratifica: un atributo `[SkipIdempotency]` en cada endpoint.
+   - (b) **No se guardan 401, 403, 408, 423 ni 429**: son rechazos de acceso o de ritmo, no de negocio; reintentar con la
+     misma clave (tras reautenticarse, esperar el bloqueo del PIN o el límite) debe volver a intentarlo. Alternativa: guardarlas
+     como las demás (el aparato tendría que cambiar de clave tras un 401).
+   - (c) **Un registro en vuelo con más de 10 minutos (`IdempotencyRules.InFlightTimeout`) se da por abandonado** y la
+     petición se vuelve a ejecutar; el plan pedía 409 siempre. Motivo: un proceso caído a mitad de la operación dejaría la
+     clave bloqueada hasta que venza la retención (7 días). Riesgo: si la operación original sigue en curso a los 10
+     minutos (o terminó y no pudo guardar su respuesta), el reintento la duplica. Mitigado en esta revisión: la operación ya
+     no se cancela si el cliente se desconecta (decisión 17) y el guardado de la respuesta se reintenta. Alternativa: 409
+     siempre y limpiar los registros en vuelo por otra vía.
+   - (d) **La huella SHA-256 cubre método, ruta con query y cuerpo**; el plan solo pedía el cuerpo. Efecto: la misma clave
+     en otra ruta responde 409 `La clave de idempotencia ya se usó con otro contenido.` en vez de devolver la respuesta de
+     otra operación.
+
 7. **`Tenant.DeviceSessionDays` configurable** en `GET/PUT /api/v1/tenant/settings` (`deviceSessionDays`, 1 a 365; 400
    `Entre 1 y 365 días.`).
 
@@ -90,6 +110,29 @@ verificación del lote; el cierre del lote lo completa con el mapa de lo constru
 14. **Conteo a ciegas sin diferencia en el encabezado.** `CycleCountDto.VarianceLines` y `NetVariance` pasan a
     `int?`/`decimal?` y llegan `null` a quien no tiene `warehouse.count` (ficha, respuestas y lista); ponerlos en 0
     diría "todo cuadra", que es falso. `web-app/openapi.json` y los tipos del cliente se regeneraron.
+    **Cambio de comportamiento en la web** (el plan decía que la web no cambiaba): en Almacén → Conteos cíclicos los roles
+    sin `warehouse.count` (Solo lectura y Facturación) veían la diferencia neta real y, con el API ya cegado, la pantalla
+    pintaba 0 en todas las filas. Se corrigió en la web: sin `warehouse.count` la columna "Diferencia neta" no se muestra,
+    y `null` se pinta como "—" (lista y ficha), nunca como 0. Queda como cambio visible para esos roles (manual 06 y FAQ).
 
-15. **Vigencia del código de registro probada solo por su valor (24 h).** El filtro de vencimiento del enroll no se
-    prueba con un reloj falso (habría que inyectar `TimeProvider` en `DeviceService`); queda a revisar.
+15. **Vigencia del código de registro (cerrada).** El filtro de vencimiento del enroll se prueba en el smoke: con
+    `SMOKE_SQL` se pone `EnrollCodeExpiresUtc` en el pasado, el mismo código (hash correcto) da 401 `El código de registro
+    no es válido o venció.` y, al restaurar la vigencia, registra el aparato. Sin `TimeProvider` en `DeviceService`.
+
+16. **Flujos anónimos del aparato sin el usuario de un bearer ajeno.** `TenantContextMiddleware` llena `UserId` con
+    cualquier bearer válido aunque el endpoint sea `[AllowAnonymous]`; el registro, la lista de usuarios, el heartbeat y el
+    login por aparato cambiaban al tenant del aparato con `As(tenantId)` y conservaban ese usuario, así que un token de
+    otra compañía dejaba su `UserId` en el `AuditLog` y en `TOKEN_REVOKED` de la compañía del aparato. Ahora usan
+    `TenantContext.AsAnonymous(tenantId)` (tenant del aparato, usuario vacío) y los eventos de fallo de esos flujos se
+    escriben sin el tenant ni el usuario del contexto.
+
+17. **La operación con `Idempotency-Key` no se cancela si el cliente se desconecta.** El middleware pone
+    `HttpContext.RequestAborted = CancellationToken.None` después de registrar la clave: si el aparato pierde la señal
+    después del commit (p. ej. al releer el recibo confirmado en una llamada), la operación termina, su respuesta se guarda
+    y el reintento de la cola recibe `Idempotent-Replayed` en vez de crear y confirmar otro recibo. Antes la cancelación
+    borraba la clave y el reintento duplicaba la entrada de inventario. Guardar la respuesta se reintenta (3 veces) si
+    falla. A revisar: la solución completa es escribir `ResponseCode` en la misma transacción de negocio.
+
+18. **Intentos rechazados del aparato en la bitácora.** `DeviceService.AuthenticateAsync` (device/login y device/users)
+    escribe `LOGIN` / `FAILURE` con `stage = device`, `action` y `reason` (`device_invalid`, `device_inactive`,
+    `tenant_unusable`) antes del 401, en la compañía del aparato si existe. Antes solo quedaban los fallos de usuario o PIN.

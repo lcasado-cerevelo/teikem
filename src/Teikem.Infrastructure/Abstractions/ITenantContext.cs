@@ -54,5 +54,17 @@ public sealed class TenantContext : ITenantContext
         return new Restore(() => { TenantId = t; UserId = u; });
     }
 
+    /// <summary>
+    /// Ejecuta un bloque como un tenant concreto SIN usuario (flujos anónimos del aparato): la bitácora y los eventos
+    /// no heredan el usuario de un bearer ajeno que venga en la petición. Restaura ambos al salir.
+    /// </summary>
+    public IDisposable AsAnonymous(int tenantId)
+    {
+        var (t, u) = (TenantId, UserId);
+        TenantId = tenantId;
+        UserId = null;
+        return new Restore(() => { TenantId = t; UserId = u; });
+    }
+
     private sealed class Restore(Action a) : IDisposable { public void Dispose() => a(); }
 }

@@ -210,4 +210,46 @@ public class DeviceControllerSecurityTests
         await Assert.ThrowsAsync<NotFoundException>(() => f.Get<PinService>().SetForUserAsync(TargetId, new PinAdminSetRequest("4826"), default));
         await Assert.ThrowsAsync<NotFoundException>(() => f.Get<PinService>().RemoveForUserAsync(TargetId, default));
     }
+
+    [Fact]
+    public async Task Admin_users_without_devices_manage_can_set_and_remove_another_users_pin()
+    {
+        // Vía alternativa del plan (P1): admin.users basta para el PIN de otro, sin devices.manage.
+        await using var f = await PinFixtureAsync();
+        f.SetPermissions(PermissionCatalog.AdminUsers, PermissionCatalog.InventoryView);
+        TargetPermissions(f, PermissionCatalog.InventoryView);
+        var pins = f.Get<PinService>();
+
+        var status = await pins.SetForUserAsync(TargetId, new PinAdminSetRequest("4826"), default);
+        Assert.True(status.HasPin);
+        Assert.Single(f.Db.Set<Teikem.Domain.Entities.UserPin>().ToList());
+
+        await pins.RemoveForUserAsync(TargetId, default);
+        f.Db.ChangeTracker.Clear();
+        Assert.Empty(f.Db.Set<Teikem.Domain.Entities.UserPin>().ToList());
+    }
+
+    [Theory]
+    [InlineData("luis casado prado", null, "LC")]
+    [InlineData("  ana   ", null, "A")]
+    [InlineData(null, "zeta@x.com", "Z")]
+    [InlineData("   ", "bob@x.com", "B")]
+    [InlineData(null, null, "?")]
+    [InlineData("", "", "?")]
+    public void Device_user_initials(string? fullName, string? email, string expected)
+        => Assert.Equal(expected, DeviceService.Initials(fullName, email));
+
+    [Theory]
+    [InlineData("", DeviceService.CodeRequiredMessage)]
+    [InlineData("   ", DeviceService.CodeRequiredMessage)]
+    [InlineData(null, DeviceService.CodeRequiredMessage)]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", DeviceService.CodeTooLongMessage)]   // 31 caracteres
+    public async Task Device_code_is_required_and_up_to_30_characters(string? code, string expected)
+    {
+        await using var f = await WmsFixture.CreateAsync(s => s.AddSingleton<DeviceService>());
+        f.SetPermissions(PermissionCatalog.DevicesManage);
+        var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+            f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest(code, null, null, null, null), default));
+        Assert.Equal(new[] { expected }, ex.Errors!["code"]);
+    }
 }

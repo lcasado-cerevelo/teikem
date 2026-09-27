@@ -1667,7 +1667,10 @@ un código nuevo desde la pantalla de aparatos.
 **¿Qué significa "El aparato no está registrado o fue desactivado." (401)?**
 El aparato fue desactivado (o su secreto ya no vale porque se volvió a registrar). Al desactivarlo se cierran en el acto
 sus sesiones: el token que tenga el aparato deja de servir (401 también en la sincronización) y no se puede renovar.
-Reactívelo y vuelva a entrar con el PIN, o registre el aparato de nuevo.
+Reactívelo y vuelva a entrar con el PIN, o registre el aparato de nuevo. Cada intento rechazado del login por aparato o de
+la lista de usuarios queda en Auditoría → eventos de seguridad como `LOGIN` / `FAILURE` con `stage = device` y el motivo
+(`device_invalid`, `device_inactive` o `tenant_unusable`); si el aparato existe, en su compañía. Sirve para ver si un
+aparato perdido y desactivado sigue intentando entrar.
 
 **¿Qué significa "PIN incorrecto." (401)?**
 El PIN no coincide, el usuario no tiene PIN en esta compañía, no es miembro activo o es el administrador de plataforma
@@ -1774,6 +1777,20 @@ Ver la ficha (a ciegas) pide `inventory.view`; contar (alta, captura, lo encontr
 Sin `warehouse.count` el conteo es **a ciegas** (`isBlind = true`): las cantidades esperadas llegan vacías para no
 condicionar lo que se cuenta, y también `varianceLines` y `netVariance` del encabezado (en la ficha y en la lista). La
 diferencia se revisa al reconciliar en la web.
+
+**¿Qué significa "La sesión de un aparato no cambia de compañía." (403)?**
+Se intentó `POST /api/v1/auth/switch-tenant` con el refresh token de una sesión abierta con PIN en un aparato. Esa sesión
+no tiene contraseña ni MFA, así que queda atada a la compañía del aparato. Para trabajar en otra compañía, entre con
+contraseña (y MFA) desde la web, o registre un aparato en esa compañía. La sesión del aparato sigue viva.
+
+**¿Qué significan "El código del aparato es obligatorio." y "El código del aparato admite hasta 30 caracteres." (400)?**
+Al dar de alta un aparato (`POST /api/v1/devices`) el código es obligatorio (vacío o solo espacios cuenta como vacío) y
+admite de 1 a 30 caracteres. El error llega en `errors.code`. Indique un código corto, por ejemplo el de la etiqueta del
+aparato (`ZB-01`).
+
+**Con el rol Solo lectura, la lista de conteos cíclicos ya no muestra "Diferencia neta".**
+Desde el Lote 8A, sin `warehouse.count` el conteo es a ciegas también en la lista: el API no envía la diferencia y la
+pantalla oculta esa columna. Antes estos roles veían la diferencia real. Si la persona debe verla, dele `warehouse.count`.
 
 **¿Qué significa "Entre 1 y 365 días." en `deviceSessionDays` (400)?**
 La vida de la sesión de los aparatos (`PUT /api/v1/tenant/settings`, `admin.tenant`) va de 1 a 365 días (30 por

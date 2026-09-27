@@ -499,11 +499,11 @@ export default function CycleCountDetailScreen() {
           </div>
           <div className="f">
             <label>{t('warehouse.cycleCounts.detail.varianceLines')}</label>
-            <p>{count.varianceLines ?? 0}</p>
+            <p>{count.varianceLines ?? '—'}</p>
           </div>
           <div className="f">
             <label>{t('warehouse.cycleCounts.columns.netVariance')}</label>
-            <p>{(count.netVariance ?? 0) !== 0 ? <Chip tone="warn">{formatNumber(count.netVariance, lang)}</Chip> : '0'}</p>
+            <p>{count.netVariance == null ? '—' : count.netVariance !== 0 ? <Chip tone="warn">{formatNumber(count.netVariance, lang)}</Chip> : '0'}</p>
           </div>
           {count.reconciledAtUtc && (
             <div className="f">

@@ -88,6 +88,7 @@ Validaciones:
 | Refresh expirado | `Sesión expirada.` | 401 |
 | Membresía ya no activa en el tenant del refresh | `La membresía ya no está activa.` | 403 |
 | `switch-tenant` a un tenant sin membresía | `No pertenece a esa compañía.` | 403 |
+| `switch-tenant` con el refresh token de una sesión de aparato (Lote 8A) | `La sesión de un aparato no cambia de compañía.` | 403 |
 
 ### 1.4 Reautenticación reciente (AAL2 / step-up)
 
@@ -261,6 +262,12 @@ Cómo se usa:
   `POST /api/v1/devices/heartbeat` 60 por minuto (`RateLimiting:DeviceEnrollPerMinute` y
   `RateLimiting:DeviceAuthPerMinute`). Al pasarse: 429 `Demasiados intentos; espere un minuto e intente de nuevo.`
   (código `rate_limited`, cabecera `Retry-After: 60`). El login con contraseña conserva su bloqueo por cuenta.
+- Lote 8A — alta de aparatos (`POST /api/v1/devices`, `devices.manage`): el código es obligatorio (400 `El código del
+  aparato es obligatorio.`, también si viene vacío o solo con espacios), admite hasta 30 caracteres (400 `El código del
+  aparato admite hasta 30 caracteres.`) y es único en la compañía (409 `Ya existe un aparato con ese código.`). Ambos
+  400 llegan en `errors.code`.
+- Lote 8A — la sesión abierta con PIN en un aparato queda atada a la compañía del aparato: `POST /api/v1/auth/switch-tenant`
+  con su refresh token responde 403 `La sesión de un aparato no cambia de compañía.` (sin revocar la sesión).
 - Lote 8A — el aparato (`USER_DEVICE`) existe solo para la bitácora: no admite campos personalizados. La ruta
   polimórfica `/api/v1/custom-fields/values/USER_DEVICE/{id}` exige `devices.manage` (sin él 403) y siempre responde
   404 (resolver cerrado, como `PRODUCT_CATEGORY`).
@@ -612,6 +619,15 @@ llamada que produjo el cambio, útil para reconstruir "qué pasó en esa petici�
 Entidades que **no** generan bitácora de cambios por diseño (no tienen `[AuditEntity]`): `RefreshToken`,
 `MfaRecoveryCode`, `AuditLog`, `SecurityEvent`, `EntityStatusHistory`, `CustomFieldValue`,
 `UserAnalyticsPreference`.
+
+Lote 8A — aparatos de almacén en la bitácora:
+- Un login por aparato o una consulta de sus usuarios rechazados porque el aparato no existe, su secreto no vale, está
+  desactivado o la compañía perdió el módulo WMS queda como `LOGIN` con resultado `FAILURE` y detalle `stage = device`,
+  `action` (`login` o `users`) y `reason` (`device_invalid`, `device_inactive` o `tenant_unusable`). Si el aparato
+  existe, el evento queda en su compañía; si no, sin compañía (igual que un login con un correo inexistente).
+- Los flujos anónimos del aparato (registrar, lista de usuarios, login y heartbeat) nunca toman el usuario de un token que
+  venga en la petición: la bitácora del aparato (cambio `USER_DEVICE` del registro, `TOKEN_REVOKED`, evento de registro)
+  queda sin usuario.
 
 FAQ:
 - **Un usuario intentó algo sin permiso, ¿queda registro?** Sí: cada intento fallido por falta de permiso

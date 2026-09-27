@@ -35,6 +35,7 @@ public sealed class DeviceService(
     public const string InvalidEnrollCodeMessage = "El código de registro no es válido o venció.";
     public const string InvalidDeviceMessage = "El aparato no está registrado o fue desactivado.";
     public const string CodeRequiredMessage = "El código del aparato es obligatorio.";
+    public const string CodeTooLongMessage = "El código del aparato admite hasta 30 caracteres.";
     public const string InvalidThemeMessage = "El tema no es válido; use LIGHT o DARK.";
     public const string InactiveWarehouseMessage = "El almacén por defecto está dado de baja.";
     public const string InactiveDeviceMessage = "El aparato está desactivado; reactívelo antes de generar un código de registro.";
@@ -79,7 +80,7 @@ public sealed class DeviceService(
         var errors = new Dictionary<string, string[]>();
         var code = req.Code?.Trim().ToUpperInvariant();
         if (string.IsNullOrEmpty(code)) errors["code"] = new[] { CodeRequiredMessage };
-        else if (code.Length > CodeMaxLength) errors["code"] = new[] { $"El código del aparato admite hasta {CodeMaxLength} caracteres." };
+        else if (code.Length > CodeMaxLength) errors["code"] = new[] { CodeTooLongMessage };
         var name = Optional(req.Name, "name", "El nombre", NameMaxLength, errors);
         var model = Optional(req.Model, "model", "El modelo", ModelMaxLength, errors);
         var themeId = await ThemeIdAsync(string.IsNullOrWhiteSpace(req.Theme) ? DefaultTheme : req.Theme, errors, ct);
@@ -174,11 +175,11 @@ public sealed class DeviceService(
         }
         if (device is null || !await TenantUsableAsync(device.TenantId, ct))
         {
-            await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Failure, null, device?.TenantId, new { action = "device_enroll" }, ct);
+            await WriteAnonymousFailureAsync(SecurityEventTypes.ApiCredential, device?.TenantId, new { action = "device_enroll" }, ct);
             throw new UnauthorizedException(InvalidEnrollCodeMessage);
         }
 
-        using var _ = ((TenantContext)tenant).As(device.TenantId);
+        using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var secret = NewSecret();
         device.SecretHash = Hash(secret);
         device.EnrollCodeHash = null;
@@ -202,8 +203,8 @@ public sealed class DeviceService(
     /// </summary>
     public async Task<IReadOnlyList<DeviceUserDto>> GetDeviceUsersAsync(DeviceUsersRequest req, CancellationToken ct)
     {
-        var device = await AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, ct);
-        using var _ = ((TenantContext)tenant).As(device.TenantId);
+        var device = await AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, "users", ct);
+        using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var activeMembership = await ActiveMembershipIdAsync(ct);
         var portalKind = await lookups.TryGetIdAsync(LookupDomains.UserKind, UserKinds.Portal, ct);
         var candidates = await (from m in db.UserTenants.AsNoTracking()
@@ -230,7 +231,7 @@ public sealed class DeviceService(
     public async Task<DeviceHeartbeatDto> HeartbeatAsync(HeartbeatRequest req, CancellationToken ct)
     {
         var device = await FindBySecretAsync(req.DevicePublicId, req.DeviceSecret, ct) ?? throw new UnauthorizedException(InvalidDeviceMessage);
-        using var _ = ((TenantContext)tenant).As(device.TenantId);
+        using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var usable = device.IsActive && await TenantUsableAsync(device.TenantId, ct);
         await TouchAsync(device, null, req.AppVersion, ct);
         var (warehousePublicId, theme) = await PreferencesAsync(device, ct);
@@ -243,11 +244,18 @@ public sealed class DeviceService(
     /// Aparato activo por PublicId + secreto, de una compañía activa con el módulo WMS encendido; si no, 401
     /// 'El aparato no está registrado o fue desactivado.'. Devuelve la entidad rastreada.
     /// </summary>
-    internal async Task<UserDevice> AuthenticateAsync(Guid publicId, string? secret, CancellationToken ct)
+    internal async Task<UserDevice> AuthenticateAsync(Guid publicId, string? secret, string action, CancellationToken ct)
     {
         var device = await FindBySecretAsync(publicId, secret, ct);
         if (device is null || !device.IsActive || !await TenantUsableAsync(device.TenantId, ct))
+        {
+            // El intento rechazado queda como LOGIN/FAILURE con stage=device (p. ej. el aparato perdido que el
+            // administrador desactivó); con aparato conocido, en la bitácora de su compañía.
+            await WriteAnonymousFailureAsync(SecurityEventTypes.Login, device?.TenantId,
+                new { stage = "device", action, device = device?.Code, devicePublicId = publicId,
+                      reason = device is null ? "device_invalid" : !device.IsActive ? "device_inactive" : "tenant_unusable" }, ct);
             throw new UnauthorizedException(InvalidDeviceMessage);
+        }
         return device;
     }
 
@@ -328,6 +336,20 @@ public sealed class DeviceService(
         if (!active) return false;
         using var _ = ((TenantContext)tenant).As(tenantId);
         return await modules.IsEnabledAsync(ModuleKeys.WmsLotSerial, ct);
+    }
+
+    /// <summary>
+    /// Evento de fallo de un flujo anónimo del aparato: sin el usuario ni la compañía de un bearer ajeno que venga en la
+    /// petición (el writer usaría el contexto como respaldo). Con aparato conocido, en la compañía del aparato.
+    /// </summary>
+    private async Task WriteAnonymousFailureAsync(string eventType, int? tenantId, object detail, CancellationToken ct)
+    {
+        var ctx = (TenantContext)tenant;
+        var (t, u) = (ctx.TenantId, ctx.UserId);
+        ctx.TenantId = null;
+        ctx.UserId = null;
+        try { await security.WriteAsync(eventType, SecurityOutcomes.Failure, null, tenantId, detail, ct); }
+        finally { ctx.TenantId = t; ctx.UserId = u; }
     }
 
     private async Task RevokeDeviceSessionsAsync(UserDevice device, string reason, CancellationToken ct)

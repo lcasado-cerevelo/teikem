@@ -463,6 +463,9 @@ El almacenista cuenta **sin ver lo esperado** y la reconciliación se hace en la
 - A ciegas, el encabezado tampoco revela lo esperado: `count.varianceLines` y `count.netVariance` llegan en `null` en la
   ficha, en las respuestas de alta, captura, captura en lote y terminar, y en la lista `GET /api/v1/cycle-counts`
   (con lo contado permitirían deducir lo esperado). Con `warehouse.count` nunca son `null`.
+- En la web (Almacén → Conteos cíclicos) esto cambia lo que ven los roles sin `warehouse.count` (Solo lectura,
+  Facturación): la columna "Diferencia neta" ya no se muestra, porque el API ya no la envía. Antes veían la diferencia
+  real. En la ficha, un valor `null` se pinta como "—", nunca como 0.
 - Sincronización del aparato (`/api/v1/sync/*`, módulo WMS_LOTSERIAL, `inventory.view`): `GET /api/v1/sync/purchase-orders`
   exige además el módulo **PURCHASING** y `purchasing.view`, igual que `/api/v1/purchase-orders` (sin el permiso 403;
   con el módulo apagado 403 `El módulo 'PURCHASING' no está habilitado para esta compañía.`).

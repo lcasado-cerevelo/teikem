@@ -10,7 +10,7 @@ namespace Teikem.Infrastructure.Contracts;
 /// Alta de un aparato (devices.manage). Code: obligatorio, hasta 30, único por compañía (409 'Ya existe un aparato con ese
 /// código.'). DefaultWarehousePublicId: almacén por defecto (opcional). Theme: LIGHT | DARK (LIGHT si no se indica).
 /// </summary>
-public sealed record DeviceCreateRequest(string Code, string? Name, string? Model, Guid? DefaultWarehousePublicId, string? Theme);
+public sealed record DeviceCreateRequest(string? Code, string? Name, string? Model, Guid? DefaultWarehousePublicId, string? Theme);
 
 /// <summary>
 /// Aparato para la pantalla de administración. IsEnrolled = ya se registró en el aparato (tiene secreto).

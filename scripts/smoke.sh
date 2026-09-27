@@ -3290,6 +3290,8 @@ hours24() { jq -e '((.device.enrollCodeExpiresUtc | sub("\\.[0-9]+";"") | sub("Z
 echo "$DEV" | hours24 || fail "el código de registro no vence en 24 h: $(echo "$DEV" | jq -r .device.enrollCodeExpiresUtc)"
 expect 409 "$(req POST /api/v1/devices "{\"code\":\"ZB-$TS\"}")" | jq -e --arg m "Ya existe un aparato con ese código." "$HASM" >/dev/null || fail "código de aparato repetido → 409"
 expect 403 "$(req POST /api/v1/devices "{\"code\":\"ZX-$TS\"}" "$TWH6")" >/dev/null || fail "alta de aparato sin devices.manage → 403"
+expect 400 "$(req POST /api/v1/devices '{"code":""}')" | jq -e --arg m "El código del aparato es obligatorio." "$HASM" >/dev/null || fail "alta de aparato sin código → 400"
+expect 400 "$(req POST /api/v1/devices "{\"code\":\"$(printf 'A%.0s' {1..31})\"}")" | jq -e --arg m "El código del aparato admite hasta 30 caracteres." "$HASM" >/dev/null || fail "alta de aparato con código de 31 caracteres → 400"
 ENR=$(expect 200 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$ENROLL\",\"model\":\"MC3300\",\"appVersion\":\"1.0.0\"}")")
 [[ $(echo "$ENR" | jq -r .devicePublicId) == "$DEVP" ]] || fail "enroll devuelve el aparato: $ENR"
 SECRET=$(echo "$ENR" | jq -r .deviceSecret); [[ -n "$SECRET" && "$SECRET" != null ]] || fail "enroll sin secreto"
@@ -3302,6 +3304,13 @@ DEV2=$(expect 200 "$(req POST /api/v1/devices "{\"code\":\"ZC-$TS\"}")"); C1=$(e
 DEV2B=$(expect 200 "$(req POST "/api/v1/devices/$D2/enroll-code" '{}')"); C2=$(echo "$DEV2B" | jq -r .enrollCode); [[ ${#C2} -eq 8 && "$C2" != "$C1" ]] || fail "código de registro regenerado"
 echo "$DEV2B" | hours24 || fail "el código regenerado no vence en 24 h"
 expect 401 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C1\"}")" | jq -e --arg m "El código de registro no es válido o venció." "$HASM" >/dev/null || fail "el código anterior sigue sirviendo tras regenerarlo"
+# Código vencido (hash correcto, fecha pasada) → 401 sin oráculo; se restaura la vigencia y el mismo código registra (el 401
+# se debió a la fecha, no al hash).
+if [[ -n "${SMOKE_SQL:-}" ]]; then
+  $SMOKE_SQL "SET NOCOUNT ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(minute,-1,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
+  expect 401 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C2\"}")" | jq -e --arg m "El código de registro no es válido o venció." "$HASM" >/dev/null || fail "código de registro vencido → 401"
+  $SMOKE_SQL "SET NOCOUNT ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(hour,24,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
+fi
 expect 200 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C2\"}")" | jq -e --arg d "$D2" '.devicePublicId==$d' >/dev/null || fail "el código regenerado no registra el aparato"
 # PIN del admin desde Mi cuenta: exige la contraseña actual (incorrecta → 400 en errors.currentPassword).
 expect 400 "$(req PUT /api/v1/me/pin '{"currentPassword":"No_Es_La_Clave_2026!","pin":"4826"}')" | jq -e --arg m "La contraseña actual es incorrecta." '(.errors.currentPassword // []) | index($m) != null' >/dev/null || fail "PUT /me/pin con contraseña incorrecta → 400 en errors.currentPassword"
@@ -3383,6 +3392,23 @@ expect 403 "$(DLOGIN 5937 "$UCH")" | jq -e --arg m "Falta el permiso 'inventory.
 ok2xx "$(req DELETE "/api/v1/users/$UWH6/pin")" "DELETE /users/{id}/pin"
 expect 200 "$(req GET /api/v1/users)" | jq -e --argjson u "$UWH6" 'any(.[]; .id==$u and .hasPin==false)' >/dev/null || fail "hasPin=false tras quitar el PIN"
 expect 200 "$(anon POST /api/v1/auth/device/users "{\"devicePublicId\":\"$DEVP\",\"deviceSecret\":\"$SECRET\"}")" | jq -e --argjson u "$UWH6" 'all(.[]; .userId!=$u)' >/dev/null || fail "device/users incluye a un usuario sin PIN"
+# Con PIN e inventory.view pero con la membresía suspendida o el usuario desactivado: fuera de la lista y login 401 (el mismo
+# 'PIN incorrecto.', sin enumeración); al restaurarlo vuelve a aparecer. Se usa el usuario "Aparatos 8" (su token ya no se
+# usa: desactivarlo cambia su sello de seguridad).
+UDV8=$(expect 200 "$(req GET /api/v1/users)" | jq -r --arg e "aparatos8$TS@teikem.local" '.[] | select(.email==$e) | .id')
+expect 200 "$(req PUT "/api/v1/users/$UDV8/pin" '{"pin":"6048"}')" >/dev/null
+DUSERS() { anon POST /api/v1/auth/device/users "{\"devicePublicId\":\"$DEVP\",\"deviceSecret\":\"$SECRET\"}"; }
+expect 200 "$(DUSERS)" | jq -e --argjson u "$UDV8" 'any(.[]; .userId==$u and (.initials | length) > 0)' >/dev/null || fail "device/users no incluye al usuario con PIN e inventory.view"
+expect 200 "$(req PUT "/api/v1/users/$UDV8/membership" '{"status":"SUSPENDED"}')" >/dev/null
+expect 200 "$(DUSERS)" | jq -e --argjson u "$UDV8" 'all(.[]; .userId!=$u)' >/dev/null || fail "device/users incluye a un usuario con membresía suspendida"
+expect 401 "$(DLOGIN 6048 "$UDV8")" | jq -e --arg m "PIN incorrecto." "$HASM" >/dev/null || fail "device/login con membresía suspendida → 401"
+expect 200 "$(req PUT "/api/v1/users/$UDV8/membership" '{"status":"ACTIVE"}')" >/dev/null
+expect 200 "$(req PUT "/api/v1/users/$UDV8" '{"isActive":false}')" >/dev/null
+expect 200 "$(DUSERS)" | jq -e --argjson u "$UDV8" 'all(.[]; .userId!=$u)' >/dev/null || fail "device/users incluye a un usuario desactivado"
+expect 401 "$(DLOGIN 6048 "$UDV8")" | jq -e --arg m "PIN incorrecto." "$HASM" >/dev/null || fail "device/login de un usuario desactivado → 401"
+expect 200 "$(req PUT "/api/v1/users/$UDV8" '{"isActive":true}')" >/dev/null
+expect 200 "$(DUSERS)" | jq -e --argjson u "$UDV8" 'any(.[]; .userId==$u)' >/dev/null || fail "device/users no devuelve al usuario restaurado"
+ok2xx "$(req DELETE "/api/v1/users/$UDV8/pin")" "quitar el PIN de Aparatos 8"
 # Idempotencia: misma clave y mismo cuerpo → mismo REC con Idempotent-Replayed; misma clave con otro cuerpo → 409.
 KEY8="smoke-$TS-rec"
 BODY8=$(jq -cn --arg w "$W6P" --argjson s "$B_STG" --arg p "$PZ" '{warehousePublicId:$w,type:"BLIND",stagingBinId:$s,lines:[{productPublicId:$p,receivedQty:2}]}')
@@ -3466,7 +3492,11 @@ expect 403 "$(req PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "{\"lines\":[{\"
 BATCH8="{\"lines\":[{\"lineId\":$L8,\"countedQty\":1},{\"binId\":$B_CC,\"productPublicId\":\"$PZ\",\"countedQty\":2}]}"
 expect 200 "$(idem PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "smoke-$TS-cc" "$BATCH8")" | jq -e --arg p "$PZ" --argjson l "$L8" 'any(.lines[]; .id==$l and .countedQty==1) and any(.lines[]; .productPublicId==$p and .countedQty==2)' >/dev/null || fail "captura en lote con línea encontrada"
 expect 200 "$(idem PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "smoke-$TS-cc" "$BATCH8")" >/dev/null; replayed || fail "captura en lote repetida sin Idempotent-Replayed"
-expect 400 "$(req PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "{\"lines\":[{\"lineId\":$L8,\"countedQty\":1},{\"lineId\":$L8,\"countedQty\":2}]}" "$DT")" | jq -e --arg m "La línea se repite en la solicitud." "$HASM" >/dev/null || fail "renglón repetido en el lote → 400"
+# Lote inválido → 400/404 sin guardar nada: el primer renglón (L8 → 7) no se aplica y no se agregan líneas.
+N8L=$(expect 200 "$(req GET "/api/v1/cycle-counts/$CC8ID")" | jq '.lines | length')
+expect 400 "$(req PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "{\"lines\":[{\"lineId\":$L8,\"countedQty\":7},{\"lineId\":$L8,\"countedQty\":2}]}" "$DT")" | jq -e --arg m "La línea se repite en la solicitud." "$HASM" >/dev/null || fail "renglón repetido en el lote → 400"
+expect 404 "$(req PUT "/api/v1/cycle-counts/$CC8ID/lines/batch" "{\"lines\":[{\"lineId\":$L8,\"countedQty\":7},{\"binId\":999999999,\"productPublicId\":\"$PZ\",\"countedQty\":1}]}" "$DT")" | jq -e --arg m "Posición no encontrada." "$HASM" >/dev/null || fail "renglón con posición inexistente en el lote → 404"
+expect 200 "$(req GET "/api/v1/cycle-counts/$CC8ID")" | jq -e --argjson l "$L8" --argjson n "$N8L" 'any(.lines[]; .id==$l and .countedQty==1) and (.lines | length)==$n' >/dev/null || fail "el lote inválido guardó algo"
 expect 204 "$(req DELETE "/api/v1/cycle-counts/$CC8ID")" >/dev/null
 # Contador a ciegas (inventory.view + warehouse.count.capture, sin warehouse.count): crea, captura en lote y termina viendo
 # la ficha a ciegas; reconciliar sigue siendo de warehouse.count (403).
@@ -3489,18 +3519,27 @@ expect 200 "$(req GET /api/v1/me/pin)" | jq -e '.hasPin==false' >/dev/null || fa
 expect 401 "$(DLOGIN 4826)" | jq -e --arg m "PIN incorrecto." "$HASM" >/dev/null || fail "sin PIN no se entra en el aparato"
 ok2xx "$(req PUT /api/v1/me/pin "{\"currentPassword\":\"$PASS\",\"pin\":\"4826\"}")" "PUT /me/pin de nuevo"
 DL9=$(expect 200 "$(DLOGIN 4826)"); DT=$(echo "$DL9" | jq -r .accessToken); DRT_DEV=$(echo "$DL9" | jq -r .refreshToken)
+# La sesión abierta con PIN no salta de compañía (ni siquiera a una de la que el usuario es miembro); el 403 va antes de
+# revocar, así que DRT_DEV sigue vivo.
+expect 403 "$(anon POST /api/v1/auth/switch-tenant "{\"refreshToken\":\"$DRT_DEV\",\"tenantId\":$ME_TID}")" | jq -e --arg m "La sesión de un aparato no cambia de compañía." "$HASM" >/dev/null || fail "la sesión de un aparato cambió de compañía"
 expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null
 # Aparato desactivado: deja de entrar y de sincronizar en el acto (el access token vivo también se rechaza).
 ok2xx "$(req POST "/api/v1/devices/$DEVP/deactivate" '{}')" "desactivar el aparato"
 expect 401 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null || fail "el access token de un aparato desactivado sigue sincronizando"
 expect 401 "$(DLOGIN 4826)" | jq -e --arg m "El aparato no está registrado o fue desactivado." "$HASM" >/dev/null || fail "aparato desactivado → device/login 401"
+expect 200 "$(req GET '/api/v1/audit/security-events?eventType=LOGIN&take=50')" | jq -e '[.items[] | select(((.detailJson // "") | contains("\"reason\":\"device_inactive\"")) and .outcome=="Fallo")] | length >= 1' >/dev/null || fail "el login rechazado por aparato desactivado no dejó SecurityEvent LOGIN/FAILURE"
 expect 401 "$(anon POST /api/v1/auth/device/users "{\"devicePublicId\":\"$DEVP\",\"deviceSecret\":\"$SECRET\"}")" | jq -e --arg m "$BADDEV" "$HASM" >/dev/null || fail "aparato desactivado → device/users 401"
 expect 200 "$(HB)" | jq -e '.isActive==false' >/dev/null || fail "heartbeat de un aparato desactivado debe devolver isActive=false (no 401)"
 expect 422 "$(req POST "/api/v1/devices/$DEVP/enroll-code" '{}')" | jq -e --arg m "El aparato está desactivado; reactívelo antes de generar un código de registro." "$HASM" >/dev/null || fail "código de registro de un aparato desactivado → 422"
 expect 200 "$(req GET /api/v1/devices)" | jq -e --arg d "$DEVP" 'all(.[]; .publicId!=$d)' >/dev/null || fail "aparato desactivado oculto por defecto"
 expect 200 "$(req GET '/api/v1/devices?includeInactive=true')" | jq -e --arg d "$DEVP" 'any(.[]; .publicId==$d and .isActive==false)' >/dev/null || fail "aparato desactivado visible con includeInactive"
+# Límite de intentos del enroll (10 por minuto por IP y ruta): se repite con un código inventado hasta el primer 429 (tope 25,
+# cubre dos ventanas). Es la última llamada a enroll del smoke.
+RL8=""; for i in $(seq 1 25); do R=$(anon POST /api/v1/devices/enroll '{"enrollCode":"ZZZZ3333"}'); if [[ "$(echo "$R" | tail -n1)" == 429 ]]; then RL8="$R"; break; fi; done
+[[ -n "$RL8" ]] || fail "enroll sin límite de intentos: nunca respondió 429"
+expect 429 "$RL8" | jq -e --arg m "Demasiados intentos; espere un minuto e intente de nuevo." '.title==$m and .code=="rate_limited" and .status==429' >/dev/null || fail "429 de enroll sin el ProblemDetails rate_limited"
 rm -f "$IDH"
-ok "aparato ZB-$TS (código repetido 409, sin devices.manage 403; código de registro de 24 h), enroll (código reutilizado, inventado o regenerado 401), secreto incorrecto 401 en device/users, device/login y heartbeat; heartbeat (activo con almacén y tema, desactivado isActive=false); PATCH (tema inválido 400, almacén dado de baja 422), lastSeenUtc/lastUserId; admin de plataforma fuera del aparato; DeviceSessionDays 7 (0 y 366 → 400); SecurityEvent PASSWORD_CHANGE/LOGIN/LOCKOUT del aparato; misma clave de otro usuario → otro recibo; rechazo 400 repetido con Idempotent-Replayed y clave inválida 400; recibo contra OC en una llamada con lo escaneado (PARTIAL); sync/purchase-orders sin purchasing.view 403; conteo a ciegas sin varianceLines/netVariance (ficha y lista); PIN desde Mi cuenta (contraseña incorrecta 400), bloqueo al 5.º PIN incorrecto (423, el acierto reinicia), device/login con did y 30 días (también tras refresh); PIN de otros: hasPin, 403 sin permiso, 404 de otra compañía, 403 aal2_required y 403 a quien tiene más permisos; usuarios del aparato por nombre sin chofer ni usuarios sin PIN (login sin inventory.view 403); Idempotency-Key: repetición con el mismo $N8 e Idempotent-Replayed, otro cuerpo 409; sync/products desde hace 1 h con PZ$TS (take 501 y cursor inválido 400), sync/bins con zona y los demás recursos; by-barcode por SKU y código de barras (inexistente 404); recibo confirmado en una llamada y atómico (serie sin capturar 400 sin consumir el REC); collect-and-pack PACKED idempotente y atómico ('pack' en POST /pick-batches 400); conteo a ciegas para Solo lectura (captura 403) y del contador con warehouse.count.capture (alta, lote y terminar a ciegas; reconciliar 403); captura en lote idempotente (renglón repetido 400); DELETE /me/pin; aparato desactivado → token vivo 401 y device/login 401"
+ok "aparato ZB-$TS (código vacío o de 31 caracteres 400) (código repetido 409, sin devices.manage 403; código de registro de 24 h), enroll (código reutilizado, inventado, regenerado o vencido 401; 429 al exceder el límite de intentos), secreto incorrecto 401 en device/users, device/login y heartbeat; heartbeat (activo con almacén y tema, desactivado isActive=false); PATCH (tema inválido 400, almacén dado de baja 422), lastSeenUtc/lastUserId; admin de plataforma fuera del aparato; DeviceSessionDays 7 (0 y 366 → 400); SecurityEvent PASSWORD_CHANGE/LOGIN/LOCKOUT del aparato; misma clave de otro usuario → otro recibo; rechazo 400 repetido con Idempotent-Replayed y clave inválida 400; recibo contra OC en una llamada con lo escaneado (PARTIAL); sync/purchase-orders sin purchasing.view 403; conteo a ciegas sin varianceLines/netVariance (ficha y lista); PIN desde Mi cuenta (contraseña incorrecta 400), bloqueo al 5.º PIN incorrecto (423, el acierto reinicia), device/login con did y 30 días (también tras refresh); PIN de otros: hasPin, 403 sin permiso, 404 de otra compañía, 403 aal2_required y 403 a quien tiene más permisos; usuarios del aparato por nombre sin chofer ni usuarios sin PIN, con membresía suspendida o desactivados (login 401; sin inventory.view 403); Idempotency-Key: repetición con el mismo $N8 e Idempotent-Replayed, otro cuerpo 409; sync/products desde hace 1 h con PZ$TS (take 501 y cursor inválido 400), sync/bins con zona y los demás recursos; by-barcode por SKU y código de barras (inexistente 404); recibo confirmado en una llamada y atómico (serie sin capturar 400 sin consumir el REC); collect-and-pack PACKED idempotente y atómico ('pack' en POST /pick-batches 400); conteo a ciegas para Solo lectura (captura 403) y del contador con warehouse.count.capture (alta, lote y terminar a ciegas; reconciliar 403); captura en lote idempotente (renglón repetido 400 y posición inexistente 404 sin guardar nada); switch-tenant con sesión de aparato 403; DELETE /me/pin; aparato desactivado → token vivo 401 y device/login 401 (SecurityEvent LOGIN/FAILURE device_inactive)"
 
 step "sesiones: refresh con rotación y logout"
 NEW=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$REFRESH\"}")")

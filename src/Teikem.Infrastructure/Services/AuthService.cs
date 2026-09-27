@@ -176,9 +176,10 @@ public sealed class AuthService(
     /// </summary>
     public async Task<TokenPairDto> DeviceLoginAsync(DeviceLoginRequest req, CancellationToken ct)
     {
-        var device = await devices.AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, ct);
+        var device = await devices.AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, "login", ct);
         var tenantId = device.TenantId;
-        using var scope = ((TenantContext)tenant).As(tenantId);
+        // Sin el usuario de un bearer ajeno que venga en la petición (flujo anónimo del aparato).
+        using var scope = ((TenantContext)tenant).AsAnonymous(tenantId);
 
         var user = req.UserId > 0 ? await users.FindByIdAsync(req.UserId.ToString()) : null;
         var kind = user?.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
