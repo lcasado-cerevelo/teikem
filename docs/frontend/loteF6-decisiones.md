@@ -133,3 +133,7 @@ Copiado de "Fuera de alcance" de `docs/frontend/loteF6-plan.md`, con lo verifica
 - Viajes, rutas, flota, facturación, COD, contratos, portal de clientes.
 - Administración de indicadores/gráficos de Pulso: las tarjetas del panel "Almacén" se calculan en cliente
   (`useWarehousePulse`), no hay una definición nueva en `ReportDefinition`/`IndicatorDefinition`/`ChartDefinition`.
+
+## Verificación en CI
+
+- Corrida verde de GitHub Actions (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36300747548 (commit `dd046ff`).
