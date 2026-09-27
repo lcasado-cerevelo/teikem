@@ -33,6 +33,22 @@ Con `Seed:Demo:Enabled=true` (default en `appsettings.json`) se aprovisiona el t
 Flujo básico: `POST /api/v1/auth/login` → `GET /api/v1/me` (tenant activo, permisos efectivos, módulos encendidos) → resto de endpoints con `Authorization: Bearer <accessToken>`.
 El idioma de las etiquetas sale de `Accept-Language` (o `X-Lang: en`).
 
-## Lote 1 — capas transversales A-I + módulo 0B
+## Estado: seis lotes construidos
 
-Ver `docs/lote1-decisiones.md` para qué se construyó, cómo se prueba y las decisiones que hay que revisar.
+| Lote | Módulo | Cierre | Manual |
+|---|---|---|---|
+| 1 | Plataforma y seguridad (catálogos, estatus, contactos, RBAC, auditoría, campos personalizados, vistas, indicadores, gráficos, módulos) | `docs/lote1-decisiones.md` | `docs/manual/01-plataforma-y-seguridad.md` |
+| 2 | Clientes y contratos | `docs/lote2-decisiones.md` | `docs/manual/02-clientes-y-contratos.md` |
+| 3 | Órdenes de transporte (con importador) | `docs/lote3-decisiones.md` | `docs/manual/03-ordenes-de-transporte.md` |
+| 4 | Flota, choferes y mantenimiento | `docs/lote4-decisiones.md` | `docs/manual/04-flota-choferes-mantenimiento.md` |
+| 5 | Trips y rutas | `docs/lote5-decisiones.md` | `docs/manual/05-trips-y-rutas.md` |
+| 6 | Inventario y almacén (WMS, compras mínimas, cross-dock) | `docs/lote6-decisiones.md` | `docs/manual/06-inventario-y-almacen.md` |
+
+Cada cierre documenta qué se construyó, cómo se probó (con el enlace a la corrida de CI) y las decisiones a revisar.
+El manual funcional completo, con preguntas frecuentes, está en `docs/manual/` (índice en `docs/manual/README.md`).
+Los planes de diseño aprobados de cada lote están en `docs/loteN-plan.md`.
+
+## Prueba de humo end-to-end
+
+Con SQL Server y el API arriba, `scripts/smoke.sh http://localhost:5000` recorre los seis lotes (112 pasos) creando datos con sufijo
+de tiempo; es re-ejecutable sobre una BD persistente. Necesita `bash`, `curl` y `jq` (en Windows: Git Bash o WSL).

@@ -24,7 +24,7 @@ builder.Services.AddControllers().AddJsonOptions(o =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o =>
 {
-    o.SwaggerDoc("v1", new OpenApiInfo { Title = "Teikem API", Version = "v1", Description = "Plataforma de logística multi-tenant — Lote 1: capas transversales A-I + módulo 0B." });
+    o.SwaggerDoc("v1", new OpenApiInfo { Title = "Teikem API", Version = "v1", Description = "Plataforma de logística multi-tenant — Lotes 1 a 6." });
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme { Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT", In = ParameterLocation.Header, Name = "Authorization" });
     o.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
