@@ -220,3 +220,5 @@ esta sesión; el árbitro formal para la corrida de CI de GitHub Actions queda p
 **Verificación del cierre (2026-09-27, sobre BD recreada desde cero):** `dotnet build -c Release` sin errores, `dotnet test` 1731/1731,
 `db-init` dos veces (58 permisos, idempotente, almacén demo ALM-01) y `scripts/smoke.sh` completo de los Lotes 1 a 6 en `SMOKE OK` (112 pasos).
 Corrida de CI: ver enlace al final.
+
+**Corrida de CI del cierre del Lote 6:** https://github.com/lcasado-cerevelo/teikem/actions/runs/36282074421 (run 34, verde: build Release, 1731 pruebas, db-init ×2 sobre BD limpia y smoke de los Lotes 1 a 6).
