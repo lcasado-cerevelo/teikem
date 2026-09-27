@@ -2,7 +2,10 @@
 // API en API_URL, por defecto http://localhost:5000). Proyecto 'escritorio': pasos 1-7; proyecto 'movil' (Pixel 7 a 360 px):
 // pasos 8 y 9.
 // Nada de este recorrido deja cambios que rompan otra corrida: la contraseña y el MFA solo se intentan con datos inválidos.
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+// Capturas para el manual (docs/manual/frontend/img/f1-<pantalla>.png): las del proyecto 'escritorio' y dos de 'movil'.
+import { mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
@@ -14,6 +17,27 @@ const DISPATCH = { email: 'despacho@teikem.local', password: process.env.TEIKEM_
 
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
+
+const IMG_DIR = fileURLToPath(new URL('../../docs/manual/frontend/img/', import.meta.url))
+
+/** Captura de la pantalla actual para el manual, cuando ya no hay peticiones pendientes. `mask` tapa datos variables o secretos. */
+async function shot(page: Page, name: string, opts: { mask?: Locator[] } = {}) {
+  await page.waitForLoadState('networkidle')
+  mkdirSync(IMG_DIR, { recursive: true })
+  await page.screenshot({
+    path: `${IMG_DIR}f1-${name}.png`,
+    animations: 'disabled',
+    caret: 'hide',
+    mask: opts.mask,
+    maskColor: '#2a3346',
+  })
+}
+
+/** El control con esa etiqueta queda inválido y su descripción accesible es exactamente el mensaje (el `.ferr` bajo el campo). */
+async function expectFieldError(field: Locator, message: string) {
+  await expect(field).toHaveAttribute('aria-invalid', 'true')
+  await expect(field).toHaveAccessibleDescription(message)
+}
 
 /** Token de acceso del admin por el API (para preparar datos del recorrido). */
 async function apiToken(request: APIRequestContext): Promise<string> {
@@ -102,6 +126,9 @@ test.describe('Lote F1 — escritorio', () => {
   test.skip(({ isMobile }) => isMobile, 'recorrido de escritorio')
 
   test('1. admin entra a Pulso; el menú muestra los grupos según módulos y permisos', async ({ page }) => {
+    await page.goto('/login')
+    await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
+    await shot(page, 'login')
     await login(page, ADMIN)
     await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
     const menu = page.getByRole('complementary', { name: 'Menú principal' })
@@ -117,6 +144,7 @@ test.describe('Lote F1 — escritorio', () => {
     await page.getByRole('link', { name: /Carlos Rivera|despacho@teikem\.local/ }).click()
     await expect(page).toHaveURL(/\/account$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Mi cuenta' })).toBeVisible()
+    await shot(page, 'mi-cuenta')
   })
 
   test('3. cambiar el idioma conserva la pantalla, el grupo del menú y lo escrito; los textos cambian', async ({ page }) => {
@@ -135,6 +163,7 @@ test.describe('Lote F1 — escritorio', () => {
     await expect(page).toHaveURL(/\/account\?tab=password$/)
     await expect(page.getByRole('button', { name: 'Operations' })).toHaveAttribute('aria-expanded', 'false')
     await expect(page.getByLabel(/Current password/)).toHaveValue('a-medias')
+    await shot(page, 'idioma-ingles')
   })
 
   test('4. Pulso muestra al menos un indicador y un gráfico del tenant demo', async ({ page, request }) => {
@@ -144,31 +173,66 @@ test.describe('Lote F1 — escritorio', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Gráficos' })).toBeVisible()
     await expect(page.locator('h2:has-text("Indicadores") + div > *').first()).toBeVisible()
     await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
+    await shot(page, 'pulso')
+    // El shell desplaza dentro de `.stage` (una captura de página completa no lo incluye): segunda captura con los gráficos.
+    await page.getByRole('heading', { level: 2, name: 'Gráficos' }).evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await page.waitForTimeout(1500) // la animación de entrada de los gráficos es de la librería (JS), no CSS
+    await shot(page, 'pulso-graficos')
   })
 
   test('5. Mi cuenta: sesiones lista la actual; contraseña actual incorrecta muestra el mensaje del API', async ({ page }) => {
     await login(page, ADMIN)
     await page.goto('/account?tab=sessions')
     await expect(page.getByText('Esta sesión').first()).toBeVisible()
+    await shot(page, 'mi-cuenta-sesiones')
 
     await page.goto('/account?tab=password')
-    await page.getByLabel(/Contraseña actual/).fill('No_Es_La_Clave_2026!')
-    await page.getByLabel(/^Nueva contraseña/).fill('Otra_Clave_Segura_e2e_2026!')
-    await page.getByLabel(/^Repita la nueva contraseña/).fill('Otra_Clave_Segura_e2e_2026!')
-    await page.getByRole('button', { name: 'Cambiar contraseña' }).click()
-    await expect(page.locator('.ferr').first()).toBeVisible()
+    const fields: Record<string, Locator> = {
+      currentPassword: page.getByLabel(/Contraseña actual/),
+      newPassword: page.getByLabel(/^Nueva contraseña/),
+      confirmPassword: page.getByLabel(/^Repita la nueva contraseña/),
+    }
+    const newPassword = `Otra_Clave_e2e_${Date.now()}!`
+    await fields.currentPassword.fill('No_Es_La_Clave_2026!')
+    await fields.newPassword.fill(newPassword)
+    await fields.confirmPassword.fill(newPassword)
+    const [res] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/password') && r.request().method() === 'PUT'),
+      page.getByRole('button', { name: 'Cambiar contraseña' }).click(),
+    ])
+    // El API rechaza el cambio (400 validation) y su mensaje queda bajo el campo que nombra.
+    expect(res.status()).toBe(400)
+    const problem = (await res.json()) as { errors?: Record<string, string[]> }
+    const entries = Object.entries(problem.errors ?? {})
+    expect(entries.length).toBeGreaterThan(0)
+    for (const [name, messages] of entries) {
+      expect(fields[name], `campo del API sin control en la pantalla: ${name}`).toBeDefined()
+      await expectFieldError(fields[name], messages.join(' '))
+    }
     await expect(page).toHaveURL(/\/account\?tab=password$/)
+    await shot(page, 'mi-cuenta-contrasena')
   })
 
   test('6. MFA: activar muestra la clave y pide código; uno inválido muestra el error; cancelar la deja desactivada', async ({ page }) => {
     await login(page, ADMIN)
     await page.goto('/account?tab=mfa')
     await expect(page.getByText('Desactivada')).toBeVisible()
+    await shot(page, 'mi-cuenta-mfa')
     await page.getByRole('button', { name: 'Activar', exact: true }).click()
     await expect(page.getByTestId('mfa-secret')).not.toBeEmpty()
-    await page.getByLabel(/Código de verificación/).fill('000000')
-    await page.getByRole('button', { name: 'Confirmar y activar' }).click()
-    await expect(page.locator('.ferr, .form-alert').first()).toBeVisible()
+    const code = page.getByLabel(/Código de verificación/)
+    await code.fill('000000')
+    const [res] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith('/api/v1/auth/mfa/totp/confirm')),
+      page.getByRole('button', { name: 'Confirmar y activar' }).click(),
+    ])
+    // El API responde 400 validation con el error en `code`; la pantalla lo pinta bajo el campo del código.
+    expect(res.status()).toBe(400)
+    const problem = (await res.json()) as { errors?: Record<string, string[]> }
+    expect(problem.errors?.code?.length).toBeGreaterThan(0)
+    await expectFieldError(code, problem.errors?.code?.join(' ') ?? '')
+    // La clave y el URI son de un enrolamiento sin confirmar, pero no se publican en el manual.
+    await shot(page, 'mi-cuenta-mfa-activar', { mask: [page.getByTestId('mfa-secret'), page.getByTestId('mfa-uri')] })
     await page.getByRole('button', { name: 'Cancelar' }).click()
     await expect(page.getByText('Desactivada')).toBeVisible()
   })
@@ -177,8 +241,10 @@ test.describe('Lote F1 — escritorio', () => {
     await login(page, ADMIN)
     await page.goto('/forbidden')
     await expect(page.getByTestId('forbidden-screen')).toContainText('Sin permiso')
+    await shot(page, 'sin-permiso')
     await page.goto('/module-off')
     await expect(page.getByTestId('module-off-screen')).toContainText('Módulo apagado')
+    await shot(page, 'modulo-apagado')
   })
 })
 
@@ -197,6 +263,7 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await page.getByRole('button', { name: 'Abrir menú' }).click()
     await expect(rail).toBeInViewport()
     await expect(rail.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
+    await shot(page, 'menu-movil')
     // Tocar fuera del cajón (el velo, a la derecha del cajón de 280 px) lo cierra
     await page.locator('.drawer-scrim').click({ position: { x: 340, y: 400 } })
     await expect(rail).not.toBeInViewport()
@@ -208,6 +275,7 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     expect(new Set(lefts).size).toBe(1)
     await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
     await expectNoHorizontalScroll(page)
+    await shot(page, 'pulso-movil')
 
     // Diálogo "Mi rango de fecha" de una tarjeta: cabe a 360 px; se cancela sin guardar
     await cards.first().getByRole('button', { name: /^Cambiar mi rango de fecha de / }).click()

@@ -1611,3 +1611,76 @@ en la asignación (no la que se había planeado originalmente, si hubo un faltan
 **¿Qué significa "Mueva o cancele las asignaciones pendientes antes de completar el plan."? (422)**
 Un plan de cruce de muelle solo se completa (estatus terminal) cuando ninguna de sus asignaciones sigue
 `PLANNED`: muévelas (para que salgan del inventario) o cancélalas primero.
+
+## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
+
+Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (validaciones de pantalla, en español, cliente) y contra
+`src/Teikem.Infrastructure/Services/AuthService.cs` (mensajes del servidor que la pantalla muestra bajo el campo). Capítulo:
+`docs/manual/frontend/f1-nucleo-y-mi-cuenta.md`.
+
+**¿Qué significa "Escriba un correo válido."?**
+Al iniciar sesión, lo que escribió en "Correo electrónico" no tiene forma de correo. Es una validación de la
+pantalla (no llega a llamar al servidor); corrija el correo.
+
+**¿Qué significa "Escriba su contraseña."?**
+Dejó el campo "Contraseña" vacío al iniciar sesión. Escriba su contraseña.
+
+**¿Qué significa "Escriba su contraseña actual."?**
+En "Mi cuenta › Contraseña" dejó "Contraseña actual" vacío. Escríbala antes de guardar la nueva.
+
+**¿Qué significa "La nueva contraseña debe tener al menos 12 caracteres."?**
+La "Nueva contraseña" de "Mi cuenta › Contraseña" no llega al mínimo que exige la plataforma (12 caracteres).
+Elija una más larga.
+
+**¿Qué significa "Las contraseñas no coinciden."?**
+En "Mi cuenta › Contraseña", lo que escribió en "Repita la nueva contraseña" no es igual a "Nueva contraseña".
+Vuelva a escribirlas iguales.
+
+**¿Qué significa "Incorrect password." (en inglés) bajo "Nueva contraseña" al cambiar mi contraseña?**
+Es el mensaje que el servidor devuelve cuando la "Contraseña actual" que escribió no es la correcta; queda bajo
+el campo "Nueva contraseña" porque el servicio (`AuthService.ChangePasswordAsync`) agrupa ahí cualquier rechazo
+de ASP.NET Core Identity, sea por la contraseña actual o por la política de la nueva. Aparece en inglés porque
+Identity no tiene un traductor de errores configurado en este lote; es un mensaje real del servidor, no un error
+de la pantalla. Verifique que escribió bien su contraseña actual e inténtelo de nuevo.
+
+**¿Qué significa "Escriba los 6 dígitos que muestra su app."?**
+Al confirmar la activación de la verificación en dos pasos (Mi cuenta › Verificación en dos pasos, o al enrolar
+durante el login), el código no tiene 6 dígitos. Escriba el código completo tal como lo muestra su app.
+
+**¿Qué significa "Elija un rango."? (Pulso, "Mi rango de fecha")**
+En el diálogo "Rango" de una tarjeta de Pulso no seleccionó ningún modo. Elija uno de la lista.
+
+**¿Qué significa "Indique la fecha Desde." / "Indique la fecha Hasta."?**
+En "Mi rango de fecha" eligió el modo personalizado y dejó una de las dos fechas vacía. Complete ambas.
+
+**¿Qué significa "Desde no puede ser mayor que Hasta."?**
+En el rango personalizado de una tarjeta de Pulso, la fecha "Desde" es posterior a "Hasta". Corrija el orden de
+las fechas.
+
+**¿Qué significa "Su usuario no tiene permiso para ver esta pantalla. Pida al administrador de su compañía que se lo asigne."?**
+Intentó entrar a una pantalla (por URL directa o un enlace) para la que le falta el permiso que exige. Pida a un
+administrador de su compañía que se lo asigne, si corresponde a su función.
+
+**¿Qué significa "Este módulo no está habilitado para su compañía."?**
+La pantalla a la que entró pertenece a un módulo que su compañía tiene apagado. Pida a un administrador que lo
+active en Administración › Módulos (fuera del Lote F1).
+
+**¿Qué significa "Su usuario no tiene permiso para ver los indicadores y gráficos del Pulso del día..."?**
+Le falta el permiso `analytics.view`; la pantalla de inicio (Pulso del día) se ve igual, pero sin indicadores ni
+gráficos. Pida a un administrador que le asigne el permiso.
+
+**¿Qué significa "Los indicadores y gráficos del Pulso del día son parte del módulo de Análisis, que no está activo..."?**
+El módulo `ANALYTICS` está apagado en su compañía. Pida a un administrador que lo active.
+
+**¿Qué significa "No se pudo copiar; selecciónelo y cópielo a mano."?**
+Al copiar la clave de MFA o los códigos de recuperación, el navegador no permitió usar el portapapeles
+(por ejemplo, por permisos del navegador). Seleccione el texto a mano y cópielo con su teclado.
+
+**¿Qué significa "No se pudo conectar con el servidor. Revise su conexión e intente de nuevo."?**
+La pantalla no logró comunicarse con el API (sin red, o el servidor no responde). Revise su conexión a
+Internet e intente de nuevo; si persiste, contacte a soporte.
+
+**¿Qué significa "Ocurrió un error. Intente de nuevo."?**
+Es el mensaje genérico cuando el servidor respondió con un error que la pantalla no sabe describir mejor
+(por ejemplo, un error interno inesperado, 500). Intente de nuevo; si persiste, avise a soporte con la hora
+en que ocurrió.

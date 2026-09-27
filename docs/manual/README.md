@@ -46,6 +46,16 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
    módulos.
 
+## Manual de pantallas (frontend web)
+
+Capítulos escritos para el usuario final y soporte sobre las pantallas reales del frontend web (`web-app/`), con
+capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN-decisiones.md`.
+
+1. [F1 — Acceso, menú, Pulso del día y Mi cuenta](frontend/f1-nucleo-y-mi-cuenta.md): iniciar sesión, verificación en
+   dos pasos, elegir compañía, menú y cabecera (grupos por permisos y módulos, cambio de idioma), Pulso del día
+   (indicadores, gráficos, mi rango de fecha), Mi cuenta (perfil, contraseña, verificación en dos pasos, sesiones
+   activas), reautenticación (AAL2), pantallas "Sin permiso" y "Módulo apagado".
+
 ## Preguntas frecuentes
 
 Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote.
