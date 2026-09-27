@@ -7,7 +7,7 @@ import { z } from 'zod'
 import { Can } from '../../kernel/access'
 import { StatusChip, useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { DataTable, type DataColumn, Field, Filters, Form, Modal, Panel, QBox, Select, SelectFilter, TextInput, toast } from '../../kernel/ui'
+import { DataTable, type DataColumn, Field, Filters, Form, matchesQ, Modal, Panel, QBox, Select, SelectFilter, TextInput, toast } from '../../kernel/ui'
 import { useCreateWarehouse, useWarehouses, type WarehouseDto } from './api'
 
 /** Dominio de estatus del almacén (CatalogDomains.WarehouseStatus). */
@@ -113,7 +113,7 @@ export default function WarehouseListScreen() {
 
   const rows = useMemo(() => (data ?? []).filter((w) => w.code || w.name), [data])
   const filtered = useMemo(
-    () => rows.filter((w) => !q || `${w.code ?? ''} ${w.name ?? ''} ${w.city ?? ''}`.toLowerCase().includes(q.toLowerCase())),
+    () => rows.filter((w) => matchesQ(q, w.code, w.name, w.city)),
     [rows, q],
   )
 

@@ -208,8 +208,10 @@ export default function Pulse() {
   const name = me?.fullName ?? ''
   const warehouseOn = useModule(ModuleKeys.WmsLotSerial)
   const canViewInventory = useCan('inventory.view')
+  // Clave estable: el panel de Almacén aparece en distinta posición según haya o no indicadores/gráficos (bienvenida,
+  // carga o Pulso cargado); sin una key fija React lo desmonta y lo vuelve a montar al pasar de un estado a otro.
   const warehouse = warehouseOn && canViewInventory ? (
-    <section style={{ marginTop: 20 }}>
+    <section key="pulse-warehouse-panel" style={{ marginTop: 20 }}>
       <WarehousePulsePanel />
     </section>
   ) : null

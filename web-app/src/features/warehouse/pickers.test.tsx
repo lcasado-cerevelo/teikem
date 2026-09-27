@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../../kernel/i18n/i18n'
-import { ProductPicker, WarehousePicker } from './pickers'
+import { ProductMultiFilter, ProductPicker, WarehousePicker, type ProductFilterItem } from './pickers'
 
 // El cliente de la app se sustituye por uno con la misma política sobre un fetch simulado.
 const mock = vi.hoisted(() => ({ requests: [] as URL[], handler: (_url: URL): unknown => [] }))
@@ -113,5 +113,66 @@ describe('ProductPicker', () => {
   it('con un valor inicial pide la ficha para mostrar "SKU · Nombre"', async () => {
     wrap(<ProductPicker value={PRODUCTS[2].publicId} onChange={vi.fn()} aria-label="Producto" />)
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Producto' })).toHaveValue('CLAV-01 · Clavo'))
+  })
+})
+
+describe('ProductMultiFilter', () => {
+  function Harness({ onChange }: { onChange: (v: ProductFilterItem[]) => void }) {
+    const [value, setValue] = useState<ProductFilterItem[]>([])
+    return (
+      <ProductMultiFilter
+        label="Producto"
+        value={value}
+        onChange={(v) => {
+          setValue(v)
+          onChange(v)
+        }}
+      />
+    )
+  }
+
+  it('busca en el API por SKU o nombre (no en una página fija), agrega una píldora por producto y la quita', async () => {
+    const user = userEvent.setup()
+    const onChange = vi.fn()
+    wrap(<Harness onChange={onChange} />)
+    await user.type(screen.getByRole('combobox', { name: 'Producto' }), 'clavo')
+    await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/products' && u.searchParams.get('search') === 'clavo')).toBe(true))
+    await user.click(await screen.findByRole('option', { name: /CLAV-01 · Clavo/ }))
+    expect(onChange).toHaveBeenLastCalledWith([{ publicId: PRODUCTS[2].publicId, sku: 'CLAV-01', label: 'CLAV-01 · Clavo' }])
+    // el buscador queda vacío para agregar otro
+    expect(screen.getByRole('combobox', { name: 'Producto' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Quitar CLAV-01' }))
+    expect(onChange).toHaveBeenLastCalledWith([])
+  })
+
+  it('por defecto busca solo activos; con includeInactive (Kárdex) omite activeOnly y marca los dados de baja', async () => {
+    const user = userEvent.setup()
+    const OLD = { id: 9, publicId: 'aaaaaaaa-0000-0000-0000-000000000009', sku: 'VIEJ-01', name: 'Viejo', isOwn: true, isActive: false, trackingTypeCode: 'NONE' }
+    mock.handler = (url) => {
+      if (url.pathname !== '/api/v1/products') return route(url)
+      const items = url.searchParams.get('activeOnly') === 'true' ? PRODUCTS : [...PRODUCTS, OLD]
+      return { total: items.length, skip: 0, take: 50, items }
+    }
+    const { unmount } = wrap(<ProductMultiFilter label="Producto" value={[]} onChange={() => {}} />)
+    await user.click(screen.getByRole('combobox', { name: 'Producto' }))
+    await screen.findByRole('option', { name: /TORN-01/ })
+    expect(mock.requests.filter((u) => u.pathname === '/api/v1/products').every((u) => u.searchParams.get('activeOnly') === 'true')).toBe(true)
+    expect(screen.queryByRole('option', { name: /VIEJ-01/ })).toBeNull()
+    unmount()
+
+    mock.requests = []
+    wrap(<ProductMultiFilter label="Producto" value={[]} onChange={() => {}} includeInactive />)
+    await user.click(screen.getByRole('combobox', { name: 'Producto' }))
+    const option = await screen.findByRole('option', { name: /VIEJ-01/ })
+    expect(option).toHaveTextContent('Inactivo')
+    expect(mock.requests.filter((u) => u.pathname === '/api/v1/products').every((u) => u.searchParams.get('activeOnly') !== 'true')).toBe(true)
+  })
+
+  it('la píldora recorta un SKU largo con elipsis (no desborda a 360 px)', () => {
+    const sku = 'X'.repeat(60)
+    wrap(<ProductMultiFilter label="Producto" value={[{ publicId: 'p1', sku, label: `${sku} · Largo` }]} onChange={() => {}} />)
+    const text = screen.getByText(sku)
+    expect(text).toHaveClass('pfilter-text')
+    expect(text.closest('.chip')?.parentElement).toHaveClass('pfilter-chips')
   })
 })

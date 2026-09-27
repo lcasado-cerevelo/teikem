@@ -1,5 +1,7 @@
 // Pantalla E (Lote F6) — Cruce de muelle (demo): citas de muelle. `/warehouse/dock-appointments`. Lectura: inventory.view
-// + CROSSDOCK (aplicado por la ruta). Agendar/reprogramar/cambiar estatus: warehouse.crossdock.
+// + CROSSDOCK (aplicado por la ruta). Agendar/reprogramar/cambiar estatus: warehouse.crossdock. Muelles y avisos de llegada
+// son lecturas de WMS_LOTSERIAL (otro módulo): se piden con `handleAccessDenied: false` para que un tenant con CROSSDOCK y
+// sin WMS vea la agenda en lugar de 'Módulo apagado'; los ASN solo se piden al elegir vincular uno.
 import { useMemo, useState } from 'react'
 import { useController, useForm, useFormContext } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
@@ -99,8 +101,13 @@ function CreateAppointmentModal({ open, onClose }: { open: boolean; onClose: () 
   })
   const warehousePublicId = form.watch('warehousePublicId')
   const linkType = form.watch('linkType')
-  const { data: docks = [] } = useWarehouseDocks(warehousePublicId || null, { includeInactive: false })
-  const { data: asns = [] } = useAsns(warehousePublicId ? { warehousePublicId } : {})
+  const { data: docks = [] } = useWarehouseDocks(warehousePublicId || null, { includeInactive: false }, { enabled: open, handleAccessDenied: false })
+  const { data: allAsns = [] } = useAsns(warehousePublicId ? { warehousePublicId } : {}, {
+    enabled: open && linkType === 'asn',
+    handleAccessDenied: false,
+  })
+  // un ASN cancelado no admite cita (DockScheduleRules.AsnNotActive)
+  const asns = useMemo(() => allAsns.filter((a) => a.statusCode !== 'CANCELLED'), [allAsns])
   const formId = 'dock-appointment-create'
 
   const close = () => {
@@ -133,6 +140,15 @@ function CreateAppointmentModal({ open, onClose }: { open: boolean; onClose: () 
             form.setError('dockId', { message: t('warehouse.dockAppointments.errors.dockRequired') })
             return
           }
+          // el API rechaza una cita sin dirección (DockScheduleRules.NormalizeDirection) y, con aviso de llegada, exige INBOUND
+          if (!v.direction) {
+            form.setError('direction', { message: t('warehouse.dockAppointments.errors.directionRequired') })
+            return
+          }
+          if (v.linkType === 'asn' && v.asnId && v.direction !== 'INBOUND') {
+            form.setError('direction', { message: t('warehouse.dockAppointments.errors.asnInboundOnly') })
+            return
+          }
           if (!v.scheduledStartUtc) {
             form.setError('scheduledStartUtc', { message: t('warehouse.dockAppointments.errors.startRequired') })
             return
@@ -162,8 +178,8 @@ function CreateAppointmentModal({ open, onClose }: { open: boolean; onClose: () 
           </Field>
         </div>
         <div className="r2">
-          <Field name="direction" label={t('warehouse.dockAppointments.fields.direction')}>
-            <Select options={directions.map((d) => ({ value: d.code, label: d.label }))} placeholder="" />
+          <Field name="direction" label={t('warehouse.dockAppointments.fields.direction')} required>
+            <Select options={directions.map((d) => ({ value: d.code, label: d.label }))} placeholder={t('warehouse.dockAppointments.fields.selectDirection')} />
           </Field>
         </div>
         <div className="r2">
@@ -213,7 +229,7 @@ interface ReprogramFormValues {
 function ReprogramModal({ appointment, open, onClose }: { appointment: DockAppointmentDto | null; open: boolean; onClose: () => void }) {
   const t = useT()
   const save = useSaveDockAppointment()
-  const { data: docks = [] } = useWarehouseDocks(appointment?.warehousePublicId ?? null, { includeInactive: false })
+  const { data: docks = [] } = useWarehouseDocks(appointment?.warehousePublicId ?? null, { includeInactive: false }, { enabled: open, handleAccessDenied: false })
   const form = useForm<ReprogramFormValues>({
     values: {
       dockId: appointment?.dockId != null ? String(appointment.dockId) : '',
@@ -309,7 +325,7 @@ export default function DockAppointmentListScreen() {
   const [reprogramming, setReprogramming] = useState<DockAppointmentDto | null>(null)
   const [changingStatus, setChangingStatus] = useState<DockAppointmentDto | null>(null)
 
-  const { data: docks = [] } = useWarehouseDocks(warehousePublicId, { includeInactive: true })
+  const { data: docks = [] } = useWarehouseDocks(warehousePublicId, { includeInactive: true }, { handleAccessDenied: false })
   const { data: statusOptions = [] } = useStatuses(STATUS_DOMAIN)
 
   const query = useMemo(
@@ -326,21 +342,32 @@ export default function DockAppointmentListScreen() {
 
   const columns = useMemo<DataColumn<DockAppointmentDto>[]>(
     () => [
-      { id: 'dock', header: t('warehouse.dockAppointments.columns.dock'), cell: (a) => <span className="ref">{a.dockCode}</span>, card: 'title' },
-      { id: 'direction', header: t('warehouse.dockAppointments.columns.direction'), cell: (a) => a.direction ?? a.directionCode },
+      { id: 'dock', header: t('warehouse.dockAppointments.columns.dock'), cell: (a) => <span className="ref">{a.dockCode}</span>, sortValue: (a) => a.dockCode, card: 'title' },
+      {
+        id: 'direction',
+        header: t('warehouse.dockAppointments.columns.direction'),
+        cell: (a) => a.direction ?? a.directionCode,
+        sortValue: (a) => a.direction ?? a.directionCode,
+      },
       {
         id: 'start',
         header: t('warehouse.dockAppointments.columns.start'),
         cell: (a) => formatDateTime(a.scheduledStartUtc, lang),
         sortValue: (a) => a.scheduledStartUtc,
       },
-      { id: 'end', header: t('warehouse.dockAppointments.columns.end'), cell: (a) => formatDateTime(a.scheduledEndUtc, lang) },
+      { id: 'end', header: t('warehouse.dockAppointments.columns.end'), cell: (a) => formatDateTime(a.scheduledEndUtc, lang), sortValue: (a) => a.scheduledEndUtc },
       {
         id: 'status',
         header: t('warehouse.dockAppointments.columns.status'),
         cell: (a) => <StatusChip domain={STATUS_DOMAIN} code={a.statusCode} label={a.status} />,
+        sortValue: (a) => a.status ?? a.statusCode,
       },
-      { id: 'ref', header: t('warehouse.dockAppointments.columns.ref'), cell: (a) => a.asnReference ?? a.tripCode ?? '—' },
+      {
+        id: 'ref',
+        header: t('warehouse.dockAppointments.columns.ref'),
+        cell: (a) => a.asnReference ?? a.tripCode ?? '—',
+        sortValue: (a) => a.asnReference ?? a.tripCode,
+      },
     ],
     [t, lang],
   )

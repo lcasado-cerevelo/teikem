@@ -31,6 +31,7 @@ import {
 import { useCreateProduct, useProductCategories, useProducts, type ProductListItemDto } from './api'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { WarehousePicker } from './pickers'
+import { moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
 
 type ListTab = 'products' | 'categories'
 
@@ -38,11 +39,6 @@ const PAGE_SIZE = 25
 // eslint-disable-next-line no-control-regex -- intencional: el SKU no admite caracteres de control (manual §2).
 const CONTROL_CHARS_OR_SPACES = /[\s\x00-\x1F\x7F]/
 
-function decimals(n: number): number {
-  const s = String(n)
-  const i = s.indexOf('.')
-  return i === -1 ? 0 : s.length - i - 1
-}
 
 // ---- Modal de alta ----
 function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -64,18 +60,10 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
         name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
         barcode: z.string().trim().max(60, t('warehouse.products.errors.barcodeMax')),
         trackingType: z.string().min(1, t('warehouse.products.errors.trackingTypeRequired')),
-        purchaseCost: z
-          .number(t('warehouse.products.errors.numberInvalid'))
-          .min(0, t('warehouse.products.errors.negative'))
-          .refine((v) => decimals(v) <= 4, t('warehouse.products.errors.decimals4'))
-          .nullable(),
-        salePrice: z
-          .number(t('warehouse.products.errors.numberInvalid'))
-          .min(0, t('warehouse.products.errors.negative'))
-          .refine((v) => decimals(v) <= 4, t('warehouse.products.errors.decimals4'))
-          .nullable(),
-        weightKg: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.negative')).nullable(),
-        volumeM3: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.negative')).nullable(),
+        purchaseCost: moneySchema(t, 'cost'),
+        salePrice: moneySchema(t, 'price'),
+        weightKg: weightKgSchema(t),
+        volumeM3: volumeM3Schema(t),
         minQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
         ownerClientPublicId: z.string().nullable(),
       }),
@@ -224,12 +212,15 @@ function ProductsTab() {
   // El buscador libre de este listado va al API (paginación de servidor): pausa de 250 ms, como ProductPicker.
   // Cada filtro nuevo vuelve a la primera página (se hace en el propio setter, no en un efecto).
   useEffect(() => {
+    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
+    const next = text.trim()
+    if (next === search) return
     const h = setTimeout(() => {
-      setSearch(text.trim())
+      setSearch(next)
       setPage(1)
     }, 250)
     return () => clearTimeout(h)
-  }, [text])
+  }, [text, search])
 
   function withPageReset<T>(setter: (v: T) => void) {
     return (v: T) => {

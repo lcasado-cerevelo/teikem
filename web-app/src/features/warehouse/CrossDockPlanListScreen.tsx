@@ -12,6 +12,7 @@ import { useCrossDockAction, useCrossDockPlans, useWarehouseZones, type CrossDoc
 import { WarehousePicker, WarehousePickerInput } from './pickers'
 
 const STATUS_DOMAIN = 'CrossDockStatus'
+const STAGING_ZONE_TYPES = new Set(['STAGING', 'CROSSDOCK'])
 
 function formatDateTime(iso: string | null | undefined, lang: string): string {
   if (!iso) return ''
@@ -31,8 +32,10 @@ function CreatePlanModal({ open, onClose }: { open: boolean; onClose: () => void
   const action = useCrossDockAction()
   const form = useForm<CreateFormValues>({ defaultValues: { warehousePublicId: '', stagingZoneId: '' } })
   const warehousePublicId = form.watch('warehousePublicId')
-  const { data: zones = [] } = useWarehouseZones(warehousePublicId || null, { includeInactive: false })
-  const stagingZones = zones.filter((z) => z.zoneTypeCode === 'STAGING')
+  // Zonas (lectura de WMS_LOTSERIAL, otro módulo): sin acceso no se saca al usuario de la pantalla.
+  const { data: zones = [] } = useWarehouseZones(warehousePublicId || null, { includeInactive: false }, { enabled: open, handleAccessDenied: false })
+  // CrossDockRules.IsStagingZoneType acepta zonas STAGING y CROSSDOCK
+  const stagingZones = zones.filter((z) => STAGING_ZONE_TYPES.has(z.zoneTypeCode ?? ''))
   const formId = 'cross-dock-plan-create'
 
   const close = () => {
@@ -102,13 +105,18 @@ export default function CrossDockPlanListScreen() {
 
   const columns = useMemo<DataColumn<CrossDockPlanDto>[]>(
     () => [
-      { id: 'number', header: t('warehouse.crossDockPlans.columns.number'), cell: (p) => <span className="ref">{p.number}</span>, card: 'title' },
-      { id: 'warehouse', header: t('warehouse.crossDockPlans.columns.warehouse'), cell: (p) => p.warehouseCode },
-      { id: 'status', header: t('warehouse.crossDockPlans.columns.status'), cell: (p) => <StatusChip domain={STATUS_DOMAIN} code={p.statusCode} label={p.status} /> },
-      { id: 'allocations', header: t('warehouse.crossDockPlans.columns.allocations'), cell: (p) => p.allocationCount, align: 'end' },
-      { id: 'allocatedQty', header: t('warehouse.crossDockPlans.columns.allocatedQty'), cell: (p) => p.allocatedQty, align: 'end' },
-      { id: 'movedQty', header: t('warehouse.crossDockPlans.columns.movedQty'), cell: (p) => p.movedQty, align: 'end' },
-      { id: 'shortQty', header: t('warehouse.crossDockPlans.columns.shortQty'), cell: (p) => p.shortQty, align: 'end' },
+      { id: 'number', header: t('warehouse.crossDockPlans.columns.number'), cell: (p) => <span className="ref">{p.number}</span>, sortValue: (p) => p.number, card: 'title' },
+      { id: 'warehouse', header: t('warehouse.crossDockPlans.columns.warehouse'), cell: (p) => p.warehouseCode, sortValue: (p) => p.warehouseCode },
+      {
+        id: 'status',
+        header: t('warehouse.crossDockPlans.columns.status'),
+        cell: (p) => <StatusChip domain={STATUS_DOMAIN} code={p.statusCode} label={p.status} />,
+        sortValue: (p) => p.status ?? p.statusCode,
+      },
+      { id: 'allocations', header: t('warehouse.crossDockPlans.columns.allocations'), cell: (p) => p.allocationCount, sortValue: (p) => p.allocationCount, align: 'end' },
+      { id: 'allocatedQty', header: t('warehouse.crossDockPlans.columns.allocatedQty'), cell: (p) => p.allocatedQty, sortValue: (p) => p.allocatedQty, align: 'end' },
+      { id: 'movedQty', header: t('warehouse.crossDockPlans.columns.movedQty'), cell: (p) => p.movedQty, sortValue: (p) => p.movedQty, align: 'end' },
+      { id: 'shortQty', header: t('warehouse.crossDockPlans.columns.shortQty'), cell: (p) => p.shortQty, sortValue: (p) => p.shortQty, align: 'end' },
       {
         id: 'createdAt',
         header: t('warehouse.crossDockPlans.columns.createdAt'),

@@ -197,7 +197,8 @@
       "placeholder": "Buscar producto por SKU o nombre…",
       "none": "No hay productos que coincidan.",
       "noAccess": "Su usuario no puede consultar productos.",
-      "clear": "Quitar producto"
+      "clear": "Quitar producto",
+      "inactive": "Inactivo"
     }
   },
   "examples": {
@@ -642,10 +643,15 @@
         "trackingTypeRequired": "Seleccione el tipo de seguimiento.",
         "numberInvalid": "Se esperaba un número.",
         "negative": "El costo y el precio no pueden ser negativos.",
-        "decimals4": "El costo o el precio admite como máximo 4 decimales.",
+        "costDecimals": "El costo admite como máximo 4 decimales.",
+        "priceDecimals": "El precio admite como máximo 4 decimales.",
+        "moneyTooLarge": "El costo o el precio excede el máximo permitido.",
         "minNegative": "Los mínimos no pueden ser negativos.",
         "maxPickLtMin": "El máximo de la posición de picking debe ser mayor o igual al mínimo.",
-        "pickZoneRequired": "El mínimo de picking requiere una posición preferida en una zona PICKING."
+        "pickZoneRequired": "El mínimo de picking requiere una posición preferida en una zona PICKING.",
+        "measuresNegative": "El peso y el volumen no pueden ser negativos.",
+        "weightInvalid": "El peso admite como máximo 3 decimales y debe ser menor que 1,000,000,000.",
+        "volumeInvalid": "El volumen admite como máximo 4 decimales y debe ser menor que 100,000,000."
       }
     },
     "categories": {
@@ -726,7 +732,8 @@
           "warehouse": "Almacén",
           "bin": "Posición",
           "quantity": "Cantidad",
-          "ref": "Referencia"
+          "ref": "Referencia",
+          "reason": "Motivo"
         },
         "filters": {
           "range": "Fecha",
@@ -951,13 +958,22 @@
             "found": "Encontrado"
           },
           "bin": "Posición",
-          "notes": "Notas"
+          "notes": "Notas",
+          "lot": "Lote",
+          "lotHelp": "Si el lote ya existe se usa; si no, se crea.",
+          "lotExpiry": "Vencimiento del lote",
+          "serialNumbers": "Números de serie",
+          "serialNumbersHelp": "Una por renglón; tantas como la cantidad."
         },
         "errors": {
           "quantityPositive": "La cantidad debe ser mayor que cero.",
           "quantityDecimals": "La cantidad admite como máximo 3 decimales.",
           "quantityExceeds": "La cantidad no puede exceder el faltante pendiente.",
-          "binRequired": "Indique la posición donde entra la mercancía."
+          "binRequired": "Indique la posición donde entra la mercancía.",
+          "lotRequired": "El producto {sku} se controla por lote; indique el lote.",
+          "serialInteger": "En productos con serie la cantidad debe ser entera.",
+          "serialsRequired": "El producto {sku} se controla por serie; capture los números de serie.",
+          "serialCountMismatch": "Se capturaron {count} serie(s) para una cantidad de {qty}; deben coincidir."
         }
       }
     },
@@ -1013,7 +1029,9 @@
         "serialsHelp": "Separados por coma; solo para productos con seguimiento por serie.",
         "suggestion": "Posición sugerida:",
         "noSuggestion": "No hay una posición sugerida para esta tarea.",
-        "saved": "Tarea completada."
+        "saved": "Tarea completada.",
+        "suggested": "sugerida",
+        "anyBin": "Sin elegir"
       },
       "replenish": {
         "title": "Correr reabasto",
@@ -1063,11 +1081,14 @@
         "asn": "Aviso de llegada",
         "selectAsn": "Seleccione un aviso…",
         "trip": "Viaje",
-        "tripHelp": "Id público del viaje."
+        "tripHelp": "Id público del viaje.",
+        "selectDirection": "Seleccione la dirección…"
       },
       "errors": {
         "dockRequired": "Indique el muelle.",
-        "startRequired": "Indique el inicio programado."
+        "startRequired": "Indique el inicio programado.",
+        "directionRequired": "Indique la dirección de la cita (entrada o salida).",
+        "asnInboundOnly": "Una cita de un aviso de llegada debe ser de entrada (INBOUND)."
       }
     },
     "crossDockPlans": {
@@ -1131,11 +1152,13 @@
         "available": "Disponible: {qty}",
         "order": "Orden",
         "orderPlaceholder": "Número de orden, factura o lote de empaque",
-        "noMatches": "Sin coincidencias.",
+        "noMatches": "Sin coincidencias exactas.",
         "selected": "Orden elegida:",
         "orderRequired": "Elija una orden.",
         "quantity": "Cantidad",
-        "saved": "Asignación creada."
+        "saved": "Asignación creada.",
+        "orderHelp": "Escriba el número completo: la búsqueda es por coincidencia exacta.",
+        "lookupDenied": "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND."
       },
       "move": {
         "title": "Mover",
@@ -1533,6 +1556,10 @@
         "deleteBody": "¿Eliminar el conteo abierto {number}? Su tarea de conteo se cancela.",
         "deleted": "Conteo {number} eliminado."
       }
+    },
+    "productFilter": {
+      "placeholder": "Buscar por SKU o nombre…",
+      "remove": "Quitar {sku}"
     }
   }
 }

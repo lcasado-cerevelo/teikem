@@ -32,23 +32,20 @@ import {
   useInventoryTransactions,
   useLotGenealogy,
   useProductCategories,
-  useProducts,
   useSerialTrace,
   useWarehouses,
-  productLabel,
   warehouseLabel,
   type BalanceDto,
 } from './api'
 import { InventoryAdjustModal } from './InventoryAdjustModal'
 import { InventoryTransferModal } from './InventoryTransferModal'
-import { ProductPicker } from './pickers'
+import { ProductMultiFilter, ProductPicker, type ProductFilterItem } from './pickers'
 
 type KardexRowDto = components['schemas']['KardexRowDto']
 type ReconciliationRowDto = components['schemas']['ReconciliationRowDto']
 
 type TabKey = 'balances' | 'kardex' | 'reconciliation'
 const PAGE_SIZE = 25
-const PRODUCT_OPTION_LIMIT = 200
 
 function formatDate(iso: string | null | undefined, lang: string): string {
   if (!iso) return ''
@@ -77,25 +74,37 @@ function ToggleFilter({ label, checked, onChange }: { label: string; checked: bo
   )
 }
 
-/** Columnas de un Kárdex (compartidas por la pestaña y los modales de genealogía / rastro de serie). */
-function useKardexColumns(): DataColumn<KardexRowDto>[] {
+/**
+ * Columnas de un Kárdex (compartidas por la pestaña y los modales de genealogía / rastro de serie).
+ * `clientSort = false` en la pestaña Kárdex: su lista viene paginada del servidor (skip/take) y el endpoint no acepta orden,
+ * así que ordenar en el cliente solo reacomodaría la página visible.
+ */
+function useKardexColumns(clientSort = true): DataColumn<KardexRowDto>[] {
   const t = useT()
   const lang = useLang()
-  return useMemo(
-    () => [
-      { id: 'date', header: t('warehouse.inventory.kardex.columns.date'), cell: (r) => formatDateTime(r.createdAtUtc, lang), card: 'title' },
-      { id: 'type', header: t('warehouse.inventory.kardex.columns.type'), cell: (r) => <Chip>{r.type ?? r.typeCode}</Chip> },
-      { id: 'sku', header: t('warehouse.inventory.kardex.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span> },
-      { id: 'product', header: t('warehouse.inventory.kardex.columns.product'), cell: (r) => r.productName },
+  return useMemo(() => {
+    const cols: DataColumn<KardexRowDto>[] = [
+      {
+        id: 'date',
+        header: t('warehouse.inventory.kardex.columns.date'),
+        cell: (r) => formatDateTime(r.createdAtUtc, lang),
+        sortValue: (r) => r.createdAtUtc,
+        card: 'title',
+      },
+      { id: 'type', header: t('warehouse.inventory.kardex.columns.type'), cell: (r) => <Chip>{r.type ?? r.typeCode}</Chip>, sortValue: (r) => r.type ?? r.typeCode },
+      { id: 'sku', header: t('warehouse.inventory.kardex.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span>, sortValue: (r) => r.sku },
+      { id: 'product', header: t('warehouse.inventory.kardex.columns.product'), cell: (r) => r.productName, sortValue: (r) => r.productName },
       {
         id: 'warehouse',
         header: t('warehouse.inventory.kardex.columns.warehouse'),
         cell: (r) => [r.fromWarehouseCode, r.toWarehouseCode].filter(Boolean).join(' → ') || r.fromWarehouseCode || r.toWarehouseCode || '',
+        sortValue: (r) => r.fromWarehouseCode ?? r.toWarehouseCode,
       },
       {
         id: 'bin',
         header: t('warehouse.inventory.kardex.columns.bin'),
         cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || r.fromBinCode || r.toBinCode || '',
+        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
       },
       {
         id: 'quantity',
@@ -104,12 +113,21 @@ function useKardexColumns(): DataColumn<KardexRowDto>[] {
           const q = r.signedQuantity ?? r.quantity ?? 0
           return <span className="ref">{q > 0 ? `+${q}` : q}</span>
         },
+        sortValue: (r) => r.signedQuantity ?? r.quantity,
         align: 'end',
       },
-      { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (r) => r.refLabel ?? '' },
-    ],
-    [t, lang],
-  )
+      {
+        id: 'reason',
+        header: t('warehouse.inventory.kardex.columns.reason'),
+        cell: (r) => (
+          <span title={r.notes ?? undefined}>{r.reason ?? r.reasonCode ?? ''}</span>
+        ),
+        sortValue: (r) => r.reason ?? r.reasonCode,
+      },
+      { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (r) => r.refLabel ?? '', sortValue: (r) => r.refLabel },
+    ]
+    return clientSort ? cols : cols.map((c) => ({ ...c, sortValue: undefined }))
+  }, [t, lang, clientSort])
 }
 
 // =====================================================================================================================
@@ -123,10 +141,16 @@ function GenealogyModal({ lotId, onClose }: { lotId: number | null; onClose: () 
 
   const destinationColumns = useMemo<DataColumn<components['schemas']['GenealogyDestinationDto']>[]>(
     () => [
-      { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (d) => d.refLabel ?? '', card: 'title' },
-      { id: 'client', header: t('warehouse.inventory.genealogy.client'), cell: (d) => d.clientName ?? '' },
-      { id: 'consignee', header: t('warehouse.inventory.genealogy.consignee'), cell: (d) => d.consigneeName ?? '', card: 'hidden' },
-      { id: 'quantity', header: t('warehouse.inventory.kardex.columns.quantity'), cell: (d) => d.quantity, align: 'end' },
+      { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (d) => d.refLabel ?? '', sortValue: (d) => d.refLabel, card: 'title' },
+      { id: 'client', header: t('warehouse.inventory.genealogy.client'), cell: (d) => d.clientName ?? '', sortValue: (d) => d.clientName },
+      {
+        id: 'consignee',
+        header: t('warehouse.inventory.genealogy.consignee'),
+        cell: (d) => d.consigneeName ?? '',
+        sortValue: (d) => d.consigneeName,
+        card: 'hidden',
+      },
+      { id: 'quantity', header: t('warehouse.inventory.kardex.columns.quantity'), cell: (d) => d.quantity, sortValue: (d) => d.quantity, align: 'end' },
     ],
     [t],
   )
@@ -285,22 +309,35 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>([])
-  const [productPublicIds, setProductPublicIds] = useState<string[]>([])
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [lotNumber, setLotNumber] = useState('')
   const [includeZero, setIncludeZero] = useState(false)
   const [onlyAvailable, setOnlyAvailable] = useState(false)
   const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    const h = setTimeout(() => setSearch(text.trim()), 250)
-    return () => clearTimeout(h)
-  }, [text])
+  // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
+  function withPageReset<T>(setter: (v: T) => void) {
+    return (v: T) => {
+      setPage(1)
+      setter(v)
+    }
+  }
 
+  useEffect(() => {
+    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
+    const next = text.trim()
+    if (next === search) return
+    const h = setTimeout(() => {
+      setSearch(next)
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(h)
+  }, [text, search])
+
+  const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
   const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
-  const { data: productPage } = useProducts({ activeOnly: true, take: PRODUCT_OPTION_LIMIT })
-  const productOptions = useMemo(() => (productPage?.items ?? []).map((p) => ({ value: p.publicId ?? '', label: productLabel(p) })), [productPage])
   const { data: categories = [] } = useProductCategories()
   const categoryOptions = useMemo(() => categories.map((c) => ({ value: String(c.id), label: c.name ?? '' })), [categories])
 
@@ -334,7 +371,12 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
       { id: 'available', header: t('warehouse.inventory.balances.columns.available'), cell: (b) => b.qtyAvailable, align: 'end' },
       { id: 'cost', header: t('warehouse.inventory.balances.columns.cost'), cell: (b) => b.costValue ?? '', align: 'end', card: 'hidden' },
       { id: 'sale', header: t('warehouse.inventory.balances.columns.sale'), cell: (b) => b.saleValue ?? '', align: 'end', card: 'hidden' },
-      { id: 'updated', header: t('warehouse.inventory.balances.columns.updated'), cell: (b) => formatDateTime(b.updatedAtUtc, lang), card: 'hidden' },
+      {
+        id: 'updated',
+        header: t('warehouse.inventory.balances.columns.updated'),
+        cell: (b) => formatDateTime(b.updatedAtUtc, lang),
+        card: 'hidden',
+      },
     ],
     [t, lang],
   )
@@ -362,8 +404,9 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
     <>
       <Filters
         onClear={() => {
+          setPage(1)
           setWarehousePublicIds([])
-          setProductPublicIds([])
+          setProducts([])
           setCategoryIds([])
           setLotNumber('')
           setIncludeZero(false)
@@ -374,26 +417,21 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
           label={t('warehouse.inventory.balances.filters.warehouse')}
           options={warehouseOptions}
           value={warehousePublicIds}
-          onChange={setWarehousePublicIds}
+          onChange={withPageReset(setWarehousePublicIds)}
         />
-        <SearchSelect
-          label={t('warehouse.inventory.balances.filters.product')}
-          options={productOptions}
-          value={productPublicIds}
-          onChange={setProductPublicIds}
-        />
+        <ProductMultiFilter label={t('warehouse.inventory.balances.filters.product')} value={products} onChange={withPageReset(setProducts)} />
         <SearchSelect
           label={t('warehouse.inventory.balances.filters.category')}
           options={categoryOptions}
           value={categoryIds}
-          onChange={setCategoryIds}
+          onChange={withPageReset(setCategoryIds)}
         />
         <div className="f">
           <label htmlFor="balances-lot">{t('warehouse.inventory.balances.filters.lotNumber')}</label>
-          <input id="balances-lot" type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} maxLength={60} />
+          <input id="balances-lot" type="text" value={lotNumber} onChange={(e) => withPageReset(setLotNumber)(e.target.value)} maxLength={60} />
         </div>
-        <ToggleFilter label={t('warehouse.inventory.balances.filters.includeZero')} checked={includeZero} onChange={setIncludeZero} />
-        <ToggleFilter label={t('warehouse.inventory.balances.filters.onlyAvailable')} checked={onlyAvailable} onChange={setOnlyAvailable} />
+        <ToggleFilter label={t('warehouse.inventory.balances.filters.includeZero')} checked={includeZero} onChange={withPageReset(setIncludeZero)} />
+        <ToggleFilter label={t('warehouse.inventory.balances.filters.onlyAvailable')} checked={onlyAvailable} onChange={withPageReset(setOnlyAvailable)} />
       </Filters>
 
       <Panel flush title={t('warehouse.inventory.tabBalances')} subtitle={data ? t('warehouse.inventory.balances.count', { count: data.total ?? 0 }) : undefined}>
@@ -428,26 +466,39 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
 // =====================================================================================================================
 function KardexTab({ onSerialTrace }: { onSerialTrace: (productPublicId: string, serialNumber: string) => void }) {
   const t = useT()
-  const columns = useKardexColumns()
+  const columns = useKardexColumns(false)
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [types, setTypes] = useState<string[]>([])
   const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>([])
-  const [productPublicIds, setProductPublicIds] = useState<string[]>([])
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [lotNumber, setLotNumber] = useState('')
   const [serialNumber, setSerialNumber] = useState('')
   const [page, setPage] = useState(1)
 
-  useEffect(() => {
-    const h = setTimeout(() => setSearch(text.trim()), 250)
-    return () => clearTimeout(h)
-  }, [text])
+  // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
+  function withPageReset<T>(setter: (v: T) => void) {
+    return (v: T) => {
+      setPage(1)
+      setter(v)
+    }
+  }
 
+  useEffect(() => {
+    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
+    const next = text.trim()
+    if (next === search) return
+    const h = setTimeout(() => {
+      setSearch(next)
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(h)
+  }, [text, search])
+
+  const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
   const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
-  const { data: productPage } = useProducts({ activeOnly: true, take: PRODUCT_OPTION_LIMIT })
-  const productOptions = useMemo(() => (productPage?.items ?? []).map((p) => ({ value: p.publicId ?? '', label: productLabel(p) })), [productPage])
   const { data: txnTypes = [] } = useLookups('InventoryTxnType')
   const typeOptions = useMemo(() => txnTypes.map((o) => ({ value: o.code, label: o.label })), [txnTypes])
 
@@ -487,35 +538,31 @@ function KardexTab({ onSerialTrace }: { onSerialTrace: (productPublicId: string,
     <>
       <Filters
         onClear={() => {
+          setPage(1)
           setRange(EMPTY_RANGE)
           setTypes([])
           setWarehousePublicIds([])
-          setProductPublicIds([])
+          setProducts([])
           setLotNumber('')
           setSerialNumber('')
         }}
       >
-        <DateRangeFilter label={t('warehouse.inventory.kardex.filters.range')} value={range} onChange={setRange} />
-        <SearchSelect label={t('warehouse.inventory.kardex.filters.type')} options={typeOptions} value={types} onChange={setTypes} />
+        <DateRangeFilter label={t('warehouse.inventory.kardex.filters.range')} value={range} onChange={withPageReset(setRange)} />
+        <SearchSelect label={t('warehouse.inventory.kardex.filters.type')} options={typeOptions} value={types} onChange={withPageReset(setTypes)} />
         <SearchSelect
           label={t('warehouse.inventory.kardex.filters.warehouse')}
           options={warehouseOptions}
           value={warehousePublicIds}
-          onChange={setWarehousePublicIds}
+          onChange={withPageReset(setWarehousePublicIds)}
         />
-        <SearchSelect
-          label={t('warehouse.inventory.kardex.filters.product')}
-          options={productOptions}
-          value={productPublicIds}
-          onChange={setProductPublicIds}
-        />
+        <ProductMultiFilter label={t('warehouse.inventory.kardex.filters.product')} value={products} onChange={withPageReset(setProducts)} includeInactive />
         <div className="f">
           <label htmlFor="kardex-lot">{t('warehouse.inventory.kardex.filters.lotNumber')}</label>
-          <input id="kardex-lot" type="text" value={lotNumber} onChange={(e) => setLotNumber(e.target.value)} maxLength={60} />
+          <input id="kardex-lot" type="text" value={lotNumber} onChange={(e) => withPageReset(setLotNumber)(e.target.value)} maxLength={60} />
         </div>
         <div className="f">
           <label htmlFor="kardex-serial">{t('warehouse.inventory.kardex.filters.serialNumber')}</label>
-          <input id="kardex-serial" type="text" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} maxLength={60} />
+          <input id="kardex-serial" type="text" value={serialNumber} onChange={(e) => withPageReset(setSerialNumber)(e.target.value)} maxLength={60} />
         </div>
       </Filters>
 
@@ -564,12 +611,12 @@ function ReconciliationTab() {
 
   const mismatchColumns = useMemo<DataColumn<ReconciliationRowDto>[]>(
     () => [
-      { id: 'sku', header: t('warehouse.inventory.reconciliation.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span>, card: 'title' },
-      { id: 'warehouse', header: t('warehouse.inventory.reconciliation.columns.warehouse'), cell: (r) => r.warehouseCode ?? '' },
-      { id: 'bin', header: t('warehouse.inventory.reconciliation.columns.bin'), cell: (r) => r.binCode ?? '' },
-      { id: 'lot', header: t('warehouse.inventory.reconciliation.columns.lot'), cell: (r) => r.lotNumber ?? '' },
-      { id: 'ledger', header: t('warehouse.inventory.reconciliation.columns.ledgerQty'), cell: (r) => r.ledgerQty, align: 'end' },
-      { id: 'balance', header: t('warehouse.inventory.reconciliation.columns.balanceQty'), cell: (r) => r.balanceQty, align: 'end' },
+      { id: 'sku', header: t('warehouse.inventory.reconciliation.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span>, sortValue: (r) => r.sku, card: 'title' },
+      { id: 'warehouse', header: t('warehouse.inventory.reconciliation.columns.warehouse'), cell: (r) => r.warehouseCode ?? '', sortValue: (r) => r.warehouseCode },
+      { id: 'bin', header: t('warehouse.inventory.reconciliation.columns.bin'), cell: (r) => r.binCode ?? '', sortValue: (r) => r.binCode },
+      { id: 'lot', header: t('warehouse.inventory.reconciliation.columns.lot'), cell: (r) => r.lotNumber ?? '', sortValue: (r) => r.lotNumber },
+      { id: 'ledger', header: t('warehouse.inventory.reconciliation.columns.ledgerQty'), cell: (r) => r.ledgerQty, sortValue: (r) => r.ledgerQty, align: 'end' },
+      { id: 'balance', header: t('warehouse.inventory.reconciliation.columns.balanceQty'), cell: (r) => r.balanceQty, sortValue: (r) => r.balanceQty, align: 'end' },
     ],
     [t],
   )

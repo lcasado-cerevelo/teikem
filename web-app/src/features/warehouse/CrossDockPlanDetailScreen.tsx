@@ -10,7 +10,7 @@ import { StatusChip, StatusPipeline } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, DataTable, EmptyState, Field, Form, Modal, NumberInput, Panel, Spinner, TextInput, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useCrossDockAction, useCrossDockCandidates, useCrossDockPlan, useOrderLookup, type CrossDockCandidateDto, type OrderListItemDto } from './api'
-import { isAccessDenied } from './pickers'
+import { isAccessDenied } from './accessDenied'
 
 type CrossDockAllocationDto = components['schemas']['CrossDockAllocationDto']
 

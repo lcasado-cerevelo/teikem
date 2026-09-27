@@ -10,19 +10,16 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { useController, useFormContext } from 'react-hook-form'
 import { api, unwrap } from '../../kernel/api/client'
-import { ApiError } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n/useT'
 import { Chip } from '../../kernel/ui/Chip'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { IconClose } from '../../kernel/ui/icons'
 import { useDismiss } from '../../kernel/ui/useDismiss'
 import '../../kernel/ui/ui.css'
+import './warehouse.css'
+import { isAccessDenied } from './accessDenied'
 import { productLabel, useWarehouse, useWarehouses, warehouseLabel, type ProductListItemDto, type WarehouseDto } from './api'
 
-/** 403 `forbidden` o `module_disabled` en una consulta secundaria (se avisa sin sacar al usuario de la pantalla). */
-export function isAccessDenied(error: unknown): boolean {
-  return error instanceof ApiError && (error.code === 'forbidden' || error.code === 'module_disabled')
-}
 
 // =====================================================================================================================
 // WarehousePicker
@@ -133,6 +130,8 @@ export interface ProductPickerProps {
   /** Limita a productos con existencia en este almacén (junto con `onlyAvailable`). */
   warehousePublicId?: string | null
   onlyAvailable?: boolean
+  /** Incluye productos dados de baja (marcados "Inactivo"), p. ej. para filtrar el historial del Kárdex. */
+  includeInactive?: boolean
   id?: string
   placeholder?: string
   disabled?: boolean
@@ -150,6 +149,7 @@ export function ProductPicker({
   ownerClientPublicId,
   warehousePublicId,
   onlyAvailable,
+  includeInactive,
   id,
   placeholder,
   disabled,
@@ -179,7 +179,7 @@ export function ProductPicker({
 
   const query = {
     search: search || undefined,
-    activeOnly: true,
+    activeOnly: !includeInactive,
     ownOnly: ownOnly || undefined,
     ownerClientPublicId: ownerClientPublicId || undefined,
     warehousePublicId: warehousePublicId || undefined,
@@ -300,9 +300,71 @@ export function ProductPicker({
                     <span className="code">{p.sku}</span> · {p.name}
                   </span>
                   {!p.isOwn && p.ownerName && <Chip>{p.ownerName}</Chip>}
+                  {p.isActive === false && <Chip tone="fail">{t('ui.productPicker.inactive')}</Chip>}
                 </div>
               ))}
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =====================================================================================================================
+// ProductMultiFilter: filtro de varios productos que busca en el API por SKU o nombre (no solo sobre una página cargada)
+// =====================================================================================================================
+
+/** Producto elegido en el filtro (se guarda la etiqueta para no volver a pedirla). */
+export interface ProductFilterItem {
+  publicId: string
+  sku: string
+  label: string
+}
+
+export interface ProductMultiFilterProps {
+  label: string
+  value: ProductFilterItem[]
+  onChange: (value: ProductFilterItem[]) => void
+  /** Deja elegir productos dados de baja (Kárdex: su historial sigue en el ledger). */
+  includeInactive?: boolean
+}
+
+/**
+ * Filtro "Producto" de listas (Saldos, Kárdex): ProductPicker para agregar (busca en `GET /api/v1/products?search=`) y
+ * una píldora por producto elegido con botón para quitarlo. Vacío = todos.
+ */
+export function ProductMultiFilter({ label, value, onChange, includeInactive }: ProductMultiFilterProps) {
+  const t = useT()
+  const id = useId()
+  return (
+    <div className="f">
+      <label htmlFor={id}>{label}</label>
+      <ProductPicker
+        id={id}
+        value={null}
+        includeInactive={includeInactive}
+        placeholder={t('warehouse.productFilter.placeholder')}
+        onChange={(publicId, product) => {
+          if (!publicId || value.some((v) => v.publicId === publicId)) return
+          onChange([...value, { publicId, sku: product?.sku ?? '', label: productLabel(product) }])
+        }}
+      />
+      {value.length > 0 && (
+        <div className="pfilter-chips">
+          {value.map((v) => (
+            <Chip key={v.publicId} title={v.label}>
+              {/* un SKU admite 60 caracteres sin espacios: se recorta con elipsis para no salirse a 360 px */}
+              <span className="pfilter-text">{v.sku || v.label}</span>
+              <button
+                type="button"
+                className="iconbtn"
+                aria-label={t('warehouse.productFilter.remove', { sku: v.sku || v.label })}
+                onClick={() => onChange(value.filter((x) => x.publicId !== v.publicId))}
+              >
+                <IconClose />
+              </button>
+            </Chip>
+          ))}
         </div>
       )}
     </div>

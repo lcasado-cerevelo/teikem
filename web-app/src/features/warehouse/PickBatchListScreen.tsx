@@ -40,7 +40,7 @@ import {
   useDebounced,
   type LineIssue,
 } from './lineRules'
-import { ProductPicker, ProductPickerInput, WarehousePickerInput } from './pickers'
+import { ProductMultiFilter, ProductPickerInput, WarehousePickerInput, type ProductFilterItem } from './pickers'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'PickBatchStatus'
@@ -261,7 +261,7 @@ export default function PickBatchListScreen() {
   const navigate = useNavigate()
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [status, setStatus] = useState<string[]>([])
-  const [productPublicId, setProductPublicId] = useState<string | null>(null)
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [orderNumber, setOrderNumber] = useState('')
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [includeDeleted, setIncludeDeleted] = useState(false)
@@ -286,7 +286,7 @@ export default function PickBatchListScreen() {
     () => ({
       from: range.from || undefined,
       to: range.to || undefined,
-      productPublicIds: productPublicId ? [productPublicId] : undefined,
+      productPublicIds: products.length > 0 ? products.map((p) => p.publicId) : undefined,
       status: status.length > 0 ? status : undefined,
       orderNumber: order || undefined,
       invoiceNumber: invoice || undefined,
@@ -295,7 +295,7 @@ export default function PickBatchListScreen() {
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    [range, productPublicId, status, order, invoice, search, includeDeleted, page],
+    [range, products, status, order, invoice, search, includeDeleted, page],
   )
   const { data, isLoading, error } = usePickBatches(query)
 
@@ -347,7 +347,7 @@ export default function PickBatchListScreen() {
           setPage(1)
           setRange(EMPTY_RANGE)
           setStatus([])
-          setProductPublicId(null)
+          setProducts([])
           setOrderNumber('')
           setInvoiceNumber('')
           setIncludeDeleted(false)
@@ -356,10 +356,7 @@ export default function PickBatchListScreen() {
       >
         <DateRangeFilter label={t('warehouse.pickBatches.filters.collected')} value={range} onChange={reset(setRange)} />
         <SearchSelect label={t('warehouse.pickBatches.filters.status')} options={statusOptions} value={status} onChange={reset(setStatus)} />
-        <div className="f">
-          <label>{t('warehouse.pickBatches.filters.product')}</label>
-          <ProductPicker value={productPublicId} onChange={reset((v: string | null) => setProductPublicId(v))} aria-label={t('warehouse.pickBatches.filters.product')} />
-        </div>
+        <ProductMultiFilter label={t('warehouse.pickBatches.filters.product')} value={products} onChange={reset(setProducts)} includeInactive />
         <TextFilter label={t('warehouse.pickBatches.filters.orderNumber')} value={orderNumber} onChange={reset(setOrderNumber)} />
         <TextFilter label={t('warehouse.pickBatches.filters.invoiceNumber')} value={invoiceNumber} onChange={reset(setInvoiceNumber)} />
         <ToggleFilter label={t('warehouse.pickBatches.filters.includeDeleted')} checked={includeDeleted} onChange={reset(setIncludeDeleted)} />

@@ -1,0 +1,5 @@
+/* Almacén (Lote F6): píldoras del filtro Producto. Un SKU largo (hasta 60 caracteres sin espacios) no debe sacar la página
+   del viewport a 360 px: la píldora no pasa del ancho de su columna y el texto se recorta con elipsis. */
+.pfilter-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;min-width:0;max-width:100%}
+.pfilter-chips .chip{max-width:100%;min-width:0}
+.pfilter-chips .pfilter-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

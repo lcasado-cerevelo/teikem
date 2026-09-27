@@ -197,7 +197,8 @@
       "placeholder": "Search product by SKU or name…",
       "none": "No products match.",
       "noAccess": "Your user cannot view products.",
-      "clear": "Remove product"
+      "clear": "Remove product",
+      "inactive": "Inactive"
     }
   },
   "examples": {
@@ -642,10 +643,15 @@
         "trackingTypeRequired": "Select the tracking type.",
         "numberInvalid": "A number was expected.",
         "negative": "Cost and price cannot be negative.",
-        "decimals4": "Cost or price admits at most 4 decimals.",
+        "costDecimals": "Cost admits at most 4 decimals.",
+        "priceDecimals": "Price admits at most 4 decimals.",
+        "moneyTooLarge": "Cost or price exceeds the maximum allowed.",
         "minNegative": "Minimums cannot be negative.",
         "maxPickLtMin": "The pick bin maximum must be greater than or equal to the minimum.",
-        "pickZoneRequired": "A minimum pick quantity requires a preferred bin in a PICKING zone."
+        "pickZoneRequired": "A minimum pick quantity requires a preferred bin in a PICKING zone.",
+        "measuresNegative": "Weight and volume cannot be negative.",
+        "weightInvalid": "Weight admits at most 3 decimals and must be less than 1,000,000,000.",
+        "volumeInvalid": "Volume admits at most 4 decimals and must be less than 100,000,000."
       }
     },
     "categories": {
@@ -726,7 +732,8 @@
           "warehouse": "Warehouse",
           "bin": "Bin",
           "quantity": "Quantity",
-          "ref": "Reference"
+          "ref": "Reference",
+          "reason": "Reason"
         },
         "filters": {
           "range": "Date",
@@ -951,13 +958,22 @@
             "found": "Found"
           },
           "bin": "Bin",
-          "notes": "Notes"
+          "notes": "Notes",
+          "lot": "Lot",
+          "lotHelp": "An existing lot is reused; otherwise it is created.",
+          "lotExpiry": "Lot expiry",
+          "serialNumbers": "Serial numbers",
+          "serialNumbersHelp": "One per line; as many as the quantity."
         },
         "errors": {
           "quantityPositive": "The quantity must be greater than zero.",
           "quantityDecimals": "The quantity admits at most 3 decimals.",
           "quantityExceeds": "The quantity cannot exceed the pending shortage.",
-          "binRequired": "Enter the bin where the goods will be put away."
+          "binRequired": "Enter the bin where the goods will be put away.",
+          "lotRequired": "Product {sku} is lot-tracked; enter the lot.",
+          "serialInteger": "For serial-tracked products the quantity must be a whole number.",
+          "serialsRequired": "Product {sku} is serial-tracked; enter the serial numbers.",
+          "serialCountMismatch": "{count} serial(s) entered for a quantity of {qty}; they must match."
         }
       }
     },
@@ -1013,7 +1029,9 @@
         "serialsHelp": "Comma-separated; only for serial-tracked products.",
         "suggestion": "Suggested bin:",
         "noSuggestion": "There is no suggested bin for this task.",
-        "saved": "Task completed."
+        "saved": "Task completed.",
+        "suggested": "suggested",
+        "anyBin": "Not selected"
       },
       "replenish": {
         "title": "Run replenishment",
@@ -1063,11 +1081,14 @@
         "asn": "Arrival notice",
         "selectAsn": "Select an arrival notice…",
         "trip": "Trip",
-        "tripHelp": "Public id of the trip."
+        "tripHelp": "Public id of the trip.",
+        "selectDirection": "Select the direction…"
       },
       "errors": {
         "dockRequired": "Enter the dock.",
-        "startRequired": "Enter the scheduled start."
+        "startRequired": "Enter the scheduled start.",
+        "directionRequired": "Enter the appointment direction (inbound or outbound).",
+        "asnInboundOnly": "An advance ship notice appointment must be inbound (INBOUND)."
       }
     },
     "crossDockPlans": {
@@ -1131,11 +1152,13 @@
         "available": "Available: {qty}",
         "order": "Order",
         "orderPlaceholder": "Order number, invoice or pack batch",
-        "noMatches": "No matches.",
+        "noMatches": "No exact matches.",
         "selected": "Chosen order:",
         "orderRequired": "Choose an order.",
         "quantity": "Quantity",
-        "saved": "Allocation created."
+        "saved": "Allocation created.",
+        "orderHelp": "Type the full number: the search is an exact match.",
+        "lookupDenied": "Searching orders requires the orders.view permission and the LTL_GROUND module."
       },
       "move": {
         "title": "Move",
@@ -1533,6 +1556,10 @@
         "deleteBody": "Delete open count {number}? Its count task is cancelled.",
         "deleted": "Count {number} deleted."
       }
+    },
+    "productFilter": {
+      "placeholder": "Search by SKU or name…",
+      "remove": "Remove {sku}"
     }
   }
 }

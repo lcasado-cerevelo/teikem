@@ -57,12 +57,12 @@ export default function OrderDetailScreen() {
 
   const packageColumns = useMemo<DataColumn<Package>[]>(
     () => [
-      { id: 'packageNumber', header: t('orders.detail.packages.number'), cell: (p) => p.packageNumber ?? '—', card: 'title' },
-      { id: 'type', header: t('orders.detail.packages.type'), cell: (p) => p.packageTypeLabel ?? p.packageType },
-      { id: 'description', header: t('orders.detail.packages.description'), cell: (p) => p.description ?? '—' },
-      { id: 'pieces', header: t('orders.detail.packages.pieces'), cell: (p) => p.pieces, align: 'end' },
-      { id: 'weight', header: t('orders.detail.packages.weight'), cell: (p) => p.weightKg ?? '—', align: 'end' },
-      { id: 'volume', header: t('orders.detail.packages.volume'), cell: (p) => p.volumeM3 ?? '—', align: 'end' },
+      { id: 'packageNumber', header: t('orders.detail.packages.number'), cell: (p) => p.packageNumber ?? '—', card: 'title', sortValue: (p) => p.packageNumber },
+      { id: 'type', header: t('orders.detail.packages.type'), cell: (p) => p.packageTypeLabel ?? p.packageType, sortValue: (p) => p.packageTypeLabel ?? p.packageType },
+      { id: 'description', header: t('orders.detail.packages.description'), cell: (p) => p.description ?? '—', sortValue: (p) => p.description },
+      { id: 'pieces', header: t('orders.detail.packages.pieces'), cell: (p) => p.pieces, align: 'end', sortValue: (p) => p.pieces },
+      { id: 'weight', header: t('orders.detail.packages.weight'), cell: (p) => p.weightKg ?? '—', align: 'end', sortValue: (p) => p.weightKg },
+      { id: 'volume', header: t('orders.detail.packages.volume'), cell: (p) => p.volumeM3 ?? '—', align: 'end', sortValue: (p) => p.volumeM3 },
     ],
     [t],
   )

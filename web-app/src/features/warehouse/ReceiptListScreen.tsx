@@ -49,7 +49,7 @@ import {
   type ReceiptListItemDto,
 } from './api'
 import { decimalsOf, formatDate, formatDateTime, formatNumber, parseSerials, receiptLineIssues, useDebounced, type LineIssue } from './lineRules'
-import { ProductPicker, ProductPickerInput, WarehousePicker, WarehousePickerInput } from './pickers'
+import { ProductMultiFilter, ProductPickerInput, WarehousePicker, WarehousePickerInput, type ProductFilterItem } from './pickers'
 
 type Schemas = components['schemas']
 type TabKey = 'receipts' | 'asns'
@@ -623,7 +623,7 @@ function ReceiptsTab() {
   const [status, setStatus] = useState<string[]>([])
   const [types, setTypes] = useState<string[]>([])
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
-  const [productPublicId, setProductPublicId] = useState<string | null>(null)
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [variance, setVariance] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
@@ -648,13 +648,13 @@ function ReceiptsTab() {
       types: types.length > 0 ? types : undefined,
       from: range.from || undefined,
       to: range.to || undefined,
-      productPublicIds: productPublicId ? [productPublicId] : undefined,
+      productPublicIds: products.length > 0 ? products.map((p) => p.publicId) : undefined,
       hasVariance: variance === '' ? undefined : variance === 'yes',
       search: search || undefined,
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
     }),
-    [warehousePublicId, status, types, range, productPublicId, variance, search, page],
+    [warehousePublicId, status, types, range, products, variance, search, page],
   )
   const { data, isLoading, error } = useReceipts(query)
 
@@ -689,7 +689,7 @@ function ReceiptsTab() {
           setStatus([])
           setTypes([])
           setRange(EMPTY_RANGE)
-          setProductPublicId(null)
+          setProducts([])
           setVariance('')
           setQ('')
         }}
@@ -701,10 +701,7 @@ function ReceiptsTab() {
         <SearchSelect label={t('warehouse.receipts.filters.status')} options={statusOptions} value={status} onChange={reset(setStatus)} />
         <SearchSelect label={t('warehouse.receipts.filters.types')} options={typeOptions} value={types} onChange={reset(setTypes)} />
         <DateRangeFilter label={t('warehouse.receipts.filters.created')} value={range} onChange={reset(setRange)} />
-        <div className="f">
-          <label>{t('warehouse.receipts.filters.product')}</label>
-          <ProductPicker value={productPublicId} onChange={reset((v: string | null) => setProductPublicId(v))} aria-label={t('warehouse.receipts.filters.product')} />
-        </div>
+        <ProductMultiFilter label={t('warehouse.receipts.filters.product')} value={products} onChange={reset(setProducts)} includeInactive />
         <SelectFilter
           label={t('warehouse.receipts.filters.variance')}
           value={variance}

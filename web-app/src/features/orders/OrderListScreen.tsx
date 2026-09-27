@@ -101,7 +101,6 @@ export default function OrderListScreen() {
         id: 'createdAt',
         header: t('orders.list.columns.createdAt'),
         cell: (o) => formatDateTime(o.createdAtUtc, lang),
-        sortValue: (o) => o.createdAtUtc,
         card: 'hidden',
       },
     ],

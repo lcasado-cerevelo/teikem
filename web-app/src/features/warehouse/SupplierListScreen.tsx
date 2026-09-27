@@ -168,14 +168,15 @@ export default function SupplierListScreen() {
   const columns = useMemo<DataColumn<SupplierDto>[]>(
     () => [
       { id: 'name', header: t('warehouse.suppliers.fields.name'), cell: (s) => s.name, sortValue: (s) => s.name, card: 'title' },
-      { id: 'contact', header: t('warehouse.suppliers.fields.contactName'), cell: (s) => s.contactName ?? '', card: 'hidden' },
-      { id: 'email', header: t('warehouse.suppliers.fields.email'), cell: (s) => s.email ?? '' },
+      { id: 'contact', header: t('warehouse.suppliers.fields.contactName'), cell: (s) => s.contactName ?? '', card: 'hidden', sortValue: (s) => s.contactName },
+      { id: 'email', header: t('warehouse.suppliers.fields.email'), cell: (s) => s.email ?? '', sortValue: (s) => s.email },
       {
         id: 'active',
         header: t('warehouse.list.status'),
         cell: (s) => (
           <Chip tone={s.isActive ? 'neutral' : 'fail'}>{s.isActive ? t('warehouse.suppliers.active') : t('warehouse.suppliers.inactive')}</Chip>
         ),
+        sortValue: (s) => s.isActive,
       },
     ],
     [t],

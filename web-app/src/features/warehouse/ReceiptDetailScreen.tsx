@@ -253,11 +253,11 @@ function PutawayTasks({ tasks }: { tasks: readonly WarehouseTaskDto[] }) {
   const lang = useLang()
   const columns = useMemo<DataColumn<WarehouseTaskDto>[]>(
     () => [
-      { id: 'product', header: t('warehouse.receipts.detail.columns.product'), cell: (r) => productLabel({ sku: r.sku, name: r.productName }), card: 'title' },
-      { id: 'status', header: t('warehouse.receipts.columns.status'), cell: (r) => <StatusChip domain={TASK_STATUS_DOMAIN} code={r.statusCode} label={r.status} /> },
-      { id: 'qty', header: t('warehouse.receipts.detail.columns.quantity'), cell: (r) => formatNumber(r.quantity, lang), align: 'end' },
-      { id: 'bins', header: t('warehouse.receipts.detail.columns.bins'), cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—' },
-      { id: 'assigned', header: t('warehouse.receipts.detail.columns.assignedTo'), cell: (r) => r.assignedToName ?? '—' },
+      { id: 'product', header: t('warehouse.receipts.detail.columns.product'), cell: (r) => productLabel({ sku: r.sku, name: r.productName }), card: 'title', sortValue: (r) => r.sku },
+      { id: 'status', header: t('warehouse.receipts.columns.status'), cell: (r) => <StatusChip domain={TASK_STATUS_DOMAIN} code={r.statusCode} label={r.status} />, sortValue: (r) => r.status ?? r.statusCode },
+      { id: 'qty', header: t('warehouse.receipts.detail.columns.quantity'), cell: (r) => formatNumber(r.quantity, lang), align: 'end', sortValue: (r) => r.quantity },
+      { id: 'bins', header: t('warehouse.receipts.detail.columns.bins'), cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—', sortValue: (r) => r.fromBinCode ?? r.toBinCode },
+      { id: 'assigned', header: t('warehouse.receipts.detail.columns.assignedTo'), cell: (r) => r.assignedToName ?? '—', sortValue: (r) => r.assignedToName },
     ],
     [t, lang],
   )
@@ -345,6 +345,7 @@ export default function ReceiptDetailScreen() {
         header: t('warehouse.receipts.detail.columns.serials'),
         cell: (l) => (l.trackingTypeCode === 'SERIAL' ? t('warehouse.receipts.detail.serialCount', { count: l.serialNumbers?.length ?? 0 }) : '—'),
         card: 'hidden',
+        sortValue: (l) => l.serialNumbers?.length,
       },
       { id: 'staging', header: t('warehouse.receipts.detail.columns.staging'), cell: (l) => l.stagingBinCode ?? '—', sortValue: (l) => l.stagingBinCode },
       {
@@ -353,6 +354,7 @@ export default function ReceiptDetailScreen() {
         cell: (l) => ((l.allocatedToCrossDock ?? 0) > 0 ? <Chip tone="route">{formatNumber(l.allocatedToCrossDock, lang)}</Chip> : '—'),
         align: 'end',
         card: 'hidden',
+        sortValue: (l) => l.allocatedToCrossDock,
       },
     ],
     [t, lang, lineErrors],

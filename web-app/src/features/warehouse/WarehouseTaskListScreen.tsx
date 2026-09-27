@@ -342,40 +342,35 @@ export default function WarehouseTaskListScreen() {
   // Orden en cliente sobre la página cargada (el API no recibe parámetro de orden).
   const columns = useMemo<DataColumn<WarehouseTaskDto>[]>(
     () => [
-      { id: 'type', header: t('warehouse.tasks.columns.type'), cell: (r) => r.type ?? r.typeCode, sortValue: (r) => r.type ?? r.typeCode, card: 'title' },
+      { id: 'type', header: t('warehouse.tasks.columns.type'), cell: (r) => r.type ?? r.typeCode, card: 'title' },
       {
         id: 'status',
         header: t('warehouse.tasks.columns.status'),
         cell: (r) => <StatusChip domain={STATUS_DOMAIN} code={r.statusCode} label={r.status} />,
-        sortValue: (r) => r.status ?? r.statusCode,
       },
-      { id: 'priority', header: t('warehouse.tasks.columns.priority'), cell: (r) => r.priority, sortValue: (r) => r.priority, align: 'end' },
-      { id: 'warehouse', header: t('warehouse.tasks.columns.warehouse'), cell: (r) => r.warehouseCode, sortValue: (r) => r.warehouseCode },
+      { id: 'priority', header: t('warehouse.tasks.columns.priority'), cell: (r) => r.priority, align: 'end' },
+      { id: 'warehouse', header: t('warehouse.tasks.columns.warehouse'), cell: (r) => r.warehouseCode },
       {
         id: 'product',
         header: t('warehouse.tasks.columns.product'),
         cell: (r) => productLabel({ sku: r.sku, name: r.productName }),
-        sortValue: (r) => r.sku,
       },
-      { id: 'quantity', header: t('warehouse.tasks.columns.quantity'), cell: (r) => r.quantity, sortValue: (r) => r.quantity, align: 'end' },
+      { id: 'quantity', header: t('warehouse.tasks.columns.quantity'), cell: (r) => r.quantity, align: 'end' },
       {
         id: 'bins',
         header: t('warehouse.tasks.columns.bins'),
         cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—',
-        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
       },
-      { id: 'ref', header: t('warehouse.tasks.columns.ref'), cell: (r) => r.refLabel, sortValue: (r) => r.refLabel },
+      { id: 'ref', header: t('warehouse.tasks.columns.ref'), cell: (r) => r.refLabel },
       {
         id: 'assignedTo',
         header: t('warehouse.tasks.columns.assignedTo'),
         cell: (r) => r.assignedToName ?? t('warehouse.tasks.unassigned'),
-        sortValue: (r) => r.assignedToName,
       },
       {
         id: 'createdAt',
         header: t('warehouse.tasks.columns.createdAt'),
         cell: (r) => formatDateTime(r.createdAtUtc, lang),
-        sortValue: (r) => r.createdAtUtc,
         card: 'hidden',
       },
     ],

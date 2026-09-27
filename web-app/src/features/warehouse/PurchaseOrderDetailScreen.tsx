@@ -317,7 +317,7 @@ function ResolveShortageModal({
   const sku = line?.sku ?? ''
 
   /** Réplica de AdjustmentRules.ValidateTracking (LOT exige lote; SERIAL, cantidad entera y una serie por unidad). */
-  function trackingErrors(v: { quantity: number | null; lot: string; serialNumbers: string }): boolean {
+  function trackingErrors(v: { quantity?: number | null; lot: string; serialNumbers: string }): boolean {
     let failed = false
     const qty = v.quantity ?? 0
     const serials = parseSerials(v.serialNumbers)

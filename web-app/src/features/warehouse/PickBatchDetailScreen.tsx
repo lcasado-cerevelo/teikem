@@ -333,11 +333,12 @@ export default function PickBatchDetailScreen() {
       { id: 'bin', header: t('warehouse.pickBatches.detail.bin'), cell: (l) => l.binCode ?? '—', sortValue: (l) => l.binCode },
       { id: 'lot', header: t('warehouse.pickBatches.detail.lot'), cell: (l) => l.lotNumber ?? '—', sortValue: (l) => l.lotNumber },
       { id: 'serial', header: t('warehouse.pickBatches.detail.serial'), cell: (l) => l.serialNumber ?? '—', sortValue: (l) => l.serialNumber },
-      { id: 'cost', header: t('warehouse.pickBatches.detail.unitCost'), cell: (l) => (l.unitCost != null ? formatNumber(l.unitCost, lang) : '—'), align: 'end', card: 'hidden' },
+      { id: 'cost', header: t('warehouse.pickBatches.detail.unitCost'), cell: (l) => (l.unitCost != null ? formatNumber(l.unitCost, lang) : '—'), align: 'end', card: 'hidden', sortValue: (l) => l.unitCost },
       {
         id: 'reversed',
         header: t('warehouse.pickBatches.detail.reversal'),
         cell: (l) => (l.reversalTxnId != null ? <Chip tone="warn">{t('warehouse.pickBatches.detail.reversed')}</Chip> : '—'),
+        sortValue: (l) => l.reversalTxnId != null,
       },
     ],
     [t, lang],

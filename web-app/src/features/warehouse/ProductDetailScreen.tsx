@@ -43,15 +43,11 @@ import {
   type SerialDto,
 } from './api'
 import { WarehousePicker } from './pickers'
+import { moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
 
 type TabKey = 'data' | 'lots' | 'serials'
 const PICKING_ZONE = 'PICKING'
 
-function decimals(n: number): number {
-  const s = String(n)
-  const i = s.indexOf('.')
-  return i === -1 ? 0 : s.length - i - 1
-}
 
 // ---- Pestaña Datos ----
 function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetailDto }) {
@@ -72,18 +68,10 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
           trackingType: z.string(),
           baseUom: z.string(),
           ownerClientPublicId: z.string().nullable(),
-          purchaseCost: z
-            .number(t('warehouse.products.errors.numberInvalid'))
-            .min(0, t('warehouse.products.errors.negative'))
-            .refine((v) => decimals(v) <= 4, t('warehouse.products.errors.decimals4'))
-            .nullable(),
-          salePrice: z
-            .number(t('warehouse.products.errors.numberInvalid'))
-            .min(0, t('warehouse.products.errors.negative'))
-            .refine((v) => decimals(v) <= 4, t('warehouse.products.errors.decimals4'))
-            .nullable(),
-          weightKg: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.negative')).nullable(),
-          volumeM3: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.negative')).nullable(),
+          purchaseCost: moneySchema(t, 'cost'),
+          salePrice: moneySchema(t, 'price'),
+          weightKg: weightKgSchema(t),
+          volumeM3: volumeM3Schema(t),
           minQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           minPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
           maxPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
@@ -282,6 +270,7 @@ function LotsTab({ publicId }: { publicId: string }) {
         id: 'active',
         header: t('warehouse.products.fields.active'),
         cell: (l) => <Chip tone={l.isActive ? 'neutral' : 'fail'}>{l.isActive ? t('warehouse.products.active') : t('warehouse.products.inactive')}</Chip>,
+        sortValue: (l) => l.isActive,
       },
     ],
     [t],
@@ -315,8 +304,9 @@ function SerialsTab({ publicId }: { publicId: string }) {
         id: 'status',
         header: t('warehouse.products.serials.status'),
         cell: (s) => <StatusChip domain="SerialStatus" code={s.statusCode} label={s.status} />,
+        sortValue: (s) => s.status ?? s.statusCode,
       },
-      { id: 'bin', header: t('warehouse.products.serials.bin'), cell: (s) => s.binCode ?? '' },
+      { id: 'bin', header: t('warehouse.products.serials.bin'), cell: (s) => s.binCode ?? '', sortValue: (s) => s.binCode },
     ],
     [t],
   )

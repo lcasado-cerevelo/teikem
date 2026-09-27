@@ -183,9 +183,20 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
 - `pickers.tsx`: `WarehousePicker` (`<select>` simple de almacenes activos; `value` publicId, `onChange(publicId, dto)`,
   `placeholder?` —`null` = sin opción vacía—; conserva con su etiqueta un valor inactivo) y `ProductPicker` (combobox como
   `ClientPicker`: `GET /api/v1/products?search=&activeOnly=true`, 250 ms entre teclas, "SKU · Nombre", marca el dueño cliente;
-  `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`; `onChange(publicId, fila)` con `trackingTypeCode`).
+  `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`, `includeInactive?` (omite `activeOnly` y marca
+  "Inactivo"); `onChange(publicId, fila)` con `trackingTypeCode`).
   Dentro de un `Field`: `WarehousePickerInput` / `ProductPickerInput` (`onPicked?(fila)` para condicionar lote/series).
-  Sin acceso (403) muestran un aviso y no sacan de la pantalla.
+  Sin acceso (403) muestran un aviso y no sacan de la pantalla. `ProductMultiFilter` (`label`, `value: ProductFilterItem[]`,
+  `onChange`, `includeInactive?`): filtro "Producto" (multi-select buscable) de listas —Saldos, Kárdex, Recibos, Recolecciones— que
+  busca en el API por SKU o nombre y pinta una píldora por producto elegido (recortada con elipsis: un SKU de 60 caracteres no
+  desborda a 360 px). En listas de historial (Kárdex, Recibos, Recolecciones) va con `includeInactive` para poder filtrar
+  productos dados de baja.
+  `isAccessDenied(error)` (`accessDenied.ts`) para avisar junto a un campo cuando una consulta secundaria da 403.
+- `productRules.ts`: esquemas zod de peso (`weightKgSchema`), volumen (`volumeM3Schema`) y costo/precio (`moneySchema(t, 'cost' |
+  'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06; pruebas en `productRules.test.ts`.
+- Orden de las listas paginadas del almacén (Saldos, Kárdex, Productos, Órdenes, Órdenes de compra, Recibos, Recolecciones,
+  Tareas): sus endpoints solo aceptan `skip/take`, sin parámetro de orden, así que sus columnas NO llevan `sortValue` (ordenarían
+  solo la página visible). Llega el orden del servidor; si un endpoint gana `sort`, se agrega `sortable` + `onSort`.
 - `lineRules.ts`: reglas puras de captura de líneas (réplica de `ReceiptRules`/`PickBatchRules`/`CycleCountRules`):
   `receiptLineIssues`, `countLineIssues`, `countLotIssue`, `pickLineIssues`, `pickDuplicateAcrossLines`, `firstOtherOwner`
   devuelven `{ field, code, params }` que se traducen con `t('warehouse.lineRules.<code>', params)` (mensaje exacto del manual 06)
