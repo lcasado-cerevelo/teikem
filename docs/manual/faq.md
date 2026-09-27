@@ -1684,3 +1684,233 @@ Internet e intente de nuevo; si persiste, contacte a soporte.
 Es el mensaje genérico cuando el servidor respondió con un error que la pantalla no sabe describir mejor
 (por ejemplo, un error interno inesperado, 500). Intente de nuevo; si persiste, avise a soporte con la hora
 en que ocurrió.
+
+## Lote F6 — Frontend: almacén e inventario (mínimo) + consulta de órdenes
+
+Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (sección `warehouse.*` y `orders.*`, validaciones de
+pantalla en el cliente) y contra el código de `web-app/src/features/warehouse/` y `web-app/src/features/orders/`.
+Capítulo: `docs/manual/frontend/f6-almacen-e-inventario.md`. Los mensajes que **manda el servidor** (409/422 de reglas
+de negocio) ya están documentados con más detalle en "Lote 6 — Inventario y almacén" arriba; aquí solo se listan los
+que agrega la pantalla (validación antes de llamar al API) o que la pantalla muestra literalmente bajo un campo.
+
+### Almacenes, zonas, posiciones y muelles
+
+**¿Qué significa "El código es obligatorio."?**
+Dejaste vacío el campo "Código" al dar de alta un almacén, una zona o un muelle. Escribe un código.
+
+**¿Qué significa "El código solo admite letras, números, guion y guion bajo (máximo 30)."?**
+El código de un almacén no acepta espacios ni otros símbolos. Usa solo `A-Z`, `0-9`, `-` o `_`, hasta 30 caracteres.
+
+**¿Qué significa "El nombre es obligatorio."?**
+Dejaste vacío "Nombre" al dar de alta o editar un almacén o una zona. Escribe un nombre.
+
+**¿Qué significa "Indique el código de la posición o su pasillo/rack/nivel/posición."?**
+Al dar de alta una posición hay que escribir su código directamente, o al menos uno de "Pasillo", "Rack", "Nivel"
+o "Posición" para que el sistema arme el código.
+
+**¿Qué significa "El peso máximo debe ser mayor que cero." / "...admite hasta 3 decimales."?**
+El "Peso máximo (kg)" de una posición, si lo indicas, tiene que ser un número positivo con hasta 3 decimales.
+
+### Productos y categorías
+
+**¿Qué significa "El SKU es obligatorio."?**
+Dejaste vacío el campo "SKU" al dar de alta un producto. Es el identificador del artículo; escríbelo antes de
+guardar.
+
+**¿Qué significa "El SKU no puede exceder 60 caracteres." / "El SKU no admite espacios ni caracteres de control."?**
+El SKU tiene un límite de 60 caracteres y no acepta espacios ni caracteres invisibles (tabulaciones, saltos de
+línea). Quita los espacios o acórtalo.
+
+**¿Qué significa "El nombre del producto es obligatorio." / "...no puede exceder 200 caracteres."?**
+El campo "Nombre" del producto es obligatorio y tiene un máximo de 200 caracteres.
+
+**¿Qué significa "Seleccione el tipo de seguimiento."?**
+El producto necesita indicar si se rastrea "Sin seguimiento", "Por lote" o "Por serie"; elige una opción.
+
+**¿Qué significa "El costo y el precio no pueden ser negativos." / "El costo admite como máximo 4 decimales." /
+"El precio admite como máximo 4 decimales." / "El costo o el precio excede el máximo permitido."?**
+"Costo" y "Precio" del producto (o el costo unitario de una línea de orden de compra) deben ser cero o positivos,
+con hasta 4 decimales, y no exceder el tope que admite el sistema.
+
+**¿Qué significa "Los mínimos no pueden ser negativos."?**
+"Mínimo de inventario", "Mínimo de picking" o "Máximo de picking" no aceptan valores negativos.
+
+**¿Qué significa "El máximo de la posición de picking debe ser mayor o igual al mínimo."?**
+"Máximo de picking" tiene que ser igual o mayor que "Mínimo de picking".
+
+**¿Qué significa "El mínimo de picking requiere una posición preferida en una zona PICKING."?**
+Si capturas "Mínimo de picking" también hay que elegir una "Posición preferida" que esté en una zona de tipo
+PICKING; sin eso, el sistema no sabría dónde reabastecer.
+
+**¿Qué significa "El peso y el volumen no pueden ser negativos." / "El peso admite como máximo 3 decimales..." /
+"El volumen admite como máximo 4 decimales..."?**
+"Peso (kg)" y "Volumen (m³)" del producto no aceptan negativos y tienen un límite de decimales y de magnitud.
+
+**¿Qué significa "El nombre de la categoría es obligatorio." / "...no puede exceder 150 caracteres."?**
+El nombre de una categoría de producto es obligatorio y tiene un máximo de 150 caracteres.
+
+### Inventario: saldos, Kárdex, ajustes, transferencias y conciliación
+
+**¿Qué significa "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."?**
+En el filtro de rango del Kárdex, la fecha "Desde" quedó después de "Hasta". Corrige el orden de las fechas.
+
+**¿Qué significa "Seleccione un producto." / "Seleccione un almacén." / "Seleccione una posición." / "Seleccione
+un motivo."?**
+Son campos obligatorios del formulario de "Ajustar" (o de "Transferir", para almacén/posición de origen y destino):
+faltó elegir uno.
+
+**¿Qué significa "La cantidad del ajuste no puede ser cero."?**
+Un ajuste de inventario tiene que sumar o restar algo; una cantidad de 0 no tendría efecto.
+
+**¿Qué significa "La cantidad admite como máximo 3 decimales."?**
+Aplica a la cantidad de un ajuste, una transferencia, una línea de orden de compra, un recibo, un conteo o una
+recolección: como mucho 3 decimales.
+
+**¿Qué significa "Indique el número de lote." / "Indique al menos un número de serie."?**
+Al ajustar (o transferir) un producto que se rastrea por lote o por serie, hay que capturar el lote o al menos una
+serie: el sistema no puede asentar el movimiento sin saber a cuál lote/serie afecta.
+
+**¿Qué significa "El origen y el destino no pueden ser la misma posición."?**
+En "Transferir", la posición de origen y la de destino tienen que ser distintas.
+
+### Recepción (recibos y avisos de llegada)
+
+**¿Qué significa "Elija el almacén." / "Elija el aviso de llegada." / "Elija la orden de compra." / "Indique el
+producto."?**
+Campos obligatorios al crear un recibo o una línea: según lo que elegiste en "Recibir" (Ciego, Devolución, contra
+Aviso de llegada o contra Orden de compra), la pantalla exige el dato correspondiente.
+
+**¿Qué significa "El recibo admite como máximo 200 líneas."? / "El aviso de llegada admite como máximo 200
+líneas."?**
+Es el tope de líneas por documento en este lote; si necesitas más, divide la recepción en varios recibos o avisos.
+
+**¿Qué significa "Indique el cliente dueño de la mercancía del aviso de llegada."?**
+Un aviso de llegada (ASN) siempre pertenece a un cliente 3PL; hay que elegirlo antes de guardar.
+
+**¿Qué significa "El producto {sku} se controla por lote: indique el lote." / "...por serie: capture {qty}
+número(s) de serie (hay {n})."?**
+Al capturar una línea de recibo (o de conteo/recolección) de un producto con seguimiento por lote o por serie, hay
+que dar el lote, o exactamente tantas series como la cantidad recibida/contada/recolectada.
+
+**¿Qué significa "El número de serie '{serial}' está repetido."?**
+Escribiste el mismo número de serie más de una vez en la misma línea; cada serie debe aparecer una sola vez.
+
+### Tareas de almacén
+
+**¿Qué significa "Su usuario no puede consultar el listado de usuarios."?**
+Al intentar **Asignar** una tarea, su cuenta no tiene permiso para ver la lista de usuarios de la compañía; pida a
+un administrador que se la asigne o que asigne la tarea por usted.
+
+**¿Qué significa "Vacío usa la posición sugerida." / "Vacío completa la cantidad total de la tarea; el remanente
+queda como tarea nueva."?**
+Son ayudas del formulario "Completar tarea": no son obligatorios: dejarlos en blanco usa el valor por defecto que
+describe el texto.
+
+**¿Qué significa "No hay una posición sugerida para esta tarea."?**
+El sistema no calculó una posición recomendada para esa tarea (normal fuera de Putaway); elige la posición destino
+a mano.
+
+### Conteo cíclico
+
+**¿Qué significa "El conteo admite como máximo 1000 líneas; acote los filtros."?**
+Un conteo cíclico sin zonas ni posiciones toma todo el saldo en mano del almacén; si supera 1000 líneas, hay que
+acotarlo eligiendo zonas o posiciones específicas antes de crearlo.
+
+**¿Qué significa "Indique la posición." / "Indique la cantidad contada."?**
+Al agregar o capturar una línea de conteo a mano, faltó la posición o la cantidad contada.
+
+**¿Qué significa "Indique el lote por su id o por su número, no ambos."?**
+Al agregar una línea de conteo con lote, hay que elegir un lote existente **o** escribir un número nuevo, no las
+dos cosas a la vez.
+
+**¿Qué significa "Faltan {n} línea(s) por contar."?**
+"Terminar conteo" exige que todas las líneas ya tengan una captura (cantidad o series); revisa cuáles faltan en la
+tabla (las que dicen "Pendiente").
+
+### Recolección y empaque
+
+**¿Qué significa "Indique al menos una línea a recolectar." / "La recolección admite como máximo 100 líneas."?**
+Al crear una recolección hace falta al menos una línea, y como máximo 100.
+
+**¿Qué significa "Una recolección solo puede tener productos de un mismo dueño."?**
+No se pueden mezclar en la misma recolección productos propios con productos de un cliente, ni de dos clientes
+distintos. Crea recolecciones separadas por dueño.
+
+**¿Qué significa "El producto {sku} tiene serie: escanee las series a recolectar." / "En productos con serie la
+cantidad debe ser igual al número de series escaneadas."?**
+Un producto que se rastrea por serie exige capturar tantas series como la cantidad que se recolecta.
+
+**¿Qué significa "Indique el cliente de la orden." / "El consignatario es obligatorio: elija uno del directorio o
+capture uno nuevo."?**
+Al **Empacar** una recolección, hace falta elegir el cliente que será dueño de la orden y un consignatario (del
+directorio o uno nuevo).
+
+**¿Qué significa "El nombre del consignatario es obligatorio." / "La dirección (línea 1) del consignatario es
+obligatoria." / "La ciudad del consignatario es obligatoria."?**
+Si eliges "Nuevo" consignatario al empacar, esos tres campos son obligatorios.
+
+**¿Qué significa "Use el código ISO de 2 letras del país."?**
+El campo "País" del consignatario nuevo espera el código de 2 letras (por ejemplo, `PR`, `US`), no el nombre
+completo.
+
+**¿Qué significa "Indique al menos una línea de paquete." / "La cantidad de piezas debe ser al menos 1." / "El
+peso no puede ser negativo."?**
+Al empacar, hace falta al menos un paquete, con al menos 1 pieza y un peso que no sea negativo.
+
+### Proveedores
+
+**¿Qué significa "El nombre del proveedor es obligatorio." / "Ya existe un proveedor activo con ese nombre."?**
+El nombre de un proveedor es obligatorio y único entre los proveedores activos de la compañía.
+
+**¿Qué significa "El correo electrónico no es válido."?**
+El campo "Correo electrónico" del proveedor no tiene forma de correo; corrígelo o déjalo vacío.
+
+### Órdenes de compra
+
+**¿Qué significa "Indique el proveedor." / "Indique el producto."?**
+Campos obligatorios al crear una orden de compra o una de sus líneas.
+
+**¿Qué significa "La cantidad ordenada debe ser mayor que cero." / "El costo unitario no puede ser negativo."?**
+Cada línea de la orden de compra necesita una cantidad positiva; el costo unitario, si lo indicas, no puede ser
+negativo.
+
+**¿Qué significa "Ese producto ya está en la orden de compra."?**
+No se puede repetir el mismo producto en dos líneas de la misma orden de compra; edita la línea existente en vez
+de agregar otra.
+
+**¿Qué significa "La orden de compra debe tener al menos una línea." / "...admite como máximo 200 líneas."?**
+Límites de líneas por orden de compra: al menos una, como máximo 200.
+
+**¿Qué significa "La cantidad no puede exceder el faltante pendiente."?**
+Al resolver un faltante con "Ajuste manual", la cantidad no puede ser mayor que lo que de verdad falta por recibir
+en esa línea (columna "Pendiente" de la tabla de faltantes).
+
+**¿Qué significa "Indique la posición donde entra la mercancía."?**
+Al resolver un faltante con "Ajuste manual", hay que indicar en qué posición entra el inventario.
+
+### Citas de muelle y cruce de muelle
+
+**¿Qué significa "Indique el muelle." / "Indique el inicio programado." / "Indique la dirección de la cita (entrada
+o salida)."?**
+Campos obligatorios al agendar una cita de muelle.
+
+**¿Qué significa "Una cita de un aviso de llegada debe ser de entrada (INBOUND)."?**
+Si enlazas la cita a un aviso de llegada, la dirección tiene que ser "Entrada"; un aviso de llegada no se asocia a
+una cita de salida.
+
+**¿Qué significa "Una cita se enlaza a un aviso de llegada o a un viaje, no a ambos."?**
+El campo "Se enlaza a" de una cita admite ninguno, un aviso de llegada o un viaje, pero no los dos a la vez.
+
+**¿Qué significa "Elija una orden." / "Sin coincidencias exactas."?**
+Al **Asignar** una línea de recibo a una orden en un plan de cruce de muelle, hay que escribir el número completo
+de la orden, factura o lote de empaque (la búsqueda es por coincidencia exacta) y elegirla de la lista.
+
+**¿Qué significa "Para buscar órdenes necesita el permiso orders.view y el módulo LTL_GROUND."?**
+Sin ese permiso y ese módulo activos, la pantalla no puede buscar órdenes para asignarlas en el plan de cruce de
+muelle; pida a un administrador que se lo asigne o que encienda el módulo, si corresponde a su función.
+
+### Consulta de órdenes
+
+**¿Qué significa "La orden no existe o no pertenece a su compañía."?**
+El enlace a la ficha de la orden es incorrecto, la orden se eliminó o pertenece a otra compañía (tenant). Vuelva a
+la lista de "Órdenes" y búsquela de nuevo.

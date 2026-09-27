@@ -55,6 +55,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    dos pasos, elegir compañía, menú y cabecera (grupos por permisos y módulos, cambio de idioma), Pulso del día
    (indicadores, gráficos, mi rango de fecha), Mi cuenta (perfil, contraseña, verificación en dos pasos, sesiones
    activas), reautenticación (AAL2), pantallas "Sin permiso" y "Módulo apagado".
+2. [F6 — Almacén e inventario (mínimo) + consulta de órdenes](frontend/f6-almacen-e-inventario.md): panel "Almacén" en
+   Pulso del día, almacenes (zonas, posiciones y muelles), productos y categorías, inventario (saldos, Kárdex, ajustes,
+   transferencias, genealogía, rastro de serie y conciliación), recepción (recibos y avisos de llegada), tareas de
+   almacén, conteo cíclico, recolección y empaque, proveedores, órdenes de compra, citas de muelle, cruce de muelle
+   (planes) y consulta de órdenes de transporte de solo lectura.
 
 ## Preguntas frecuentes
 
