@@ -1,0 +1,187 @@
+// Recorrido del Lote F1 (docs/frontend/loteF1-plan.md, "Recorrido Playwright") contra el API real (db-init hecho,
+// API en API_URL, por defecto http://localhost:5000). Proyecto 'escritorio': pasos 1-7; proyecto 'movil' (Pixel 7): paso 8.
+// Nada de este recorrido deja cambios que rompan otra corrida: la contraseña y el MFA solo se intentan con datos inválidos.
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import type { components } from '../src/kernel/api/schema'
+
+type AuthResultDto = components['schemas']['AuthResultDto']
+type AnalyticsDefinitionDto = components['schemas']['AnalyticsDefinitionDto']
+
+const API_URL = process.env.API_URL ?? 'http://localhost:5000'
+const ADMIN = { email: 'admin@teikem.local', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+const DISPATCH = { email: 'despacho@teikem.local', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+
+// Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
+test.use({ locale: 'es-PR' })
+
+/** Token de acceso del admin por el API (para preparar datos del recorrido). */
+async function apiToken(request: APIRequestContext): Promise<string> {
+  let res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } })
+  expect(res.ok()).toBeTruthy()
+  let body = (await res.json()) as AuthResultDto
+  if (body.status === 'tenant_selection') {
+    const tenant = body.tenants?.find((t) => t.isDefault) ?? body.tenants?.[0]
+    res = await request.post(`${API_URL}/api/v1/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password, tenantId: tenant?.tenantId } })
+    body = (await res.json()) as AuthResultDto
+  }
+  expect(body.status).toBe('ok')
+  return body.tokens?.accessToken ?? ''
+}
+
+/** Garantiza al menos un gráfico en el Pulso del admin (los indicadores de sistema ya vienen en Pulso). */
+async function ensureChartInPulse(request: APIRequestContext): Promise<void> {
+  const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+  const res = await request.get(`${API_URL}/api/v1/analytics/charts`, { headers })
+  expect(res.ok()).toBeTruthy()
+  const charts = (await res.json()) as AnalyticsDefinitionDto[]
+  if (charts.some((c) => c.showInPulse)) return
+  let id = charts[0]?.id
+  if (id == null) {
+    const created = await request.post(`${API_URL}/api/v1/analytics/charts`, {
+      headers,
+      data: { name: `Cambios por entidad (e2e)`, dataSource: 'AUDIT_LOG', groupByField: 'EntityType', aggregateFn: 'COUNT', chartType: 'DONUT', dateRangeMode: 'ALL' },
+    })
+    expect(created.ok()).toBeTruthy()
+    id = ((await created.json()) as AnalyticsDefinitionDto).id
+  }
+  const marked = await request.put(`${API_URL}/api/v1/analytics/charts/${id}/my-pulse`, { headers, data: { showInPulse: true } })
+  expect(marked.ok()).toBeTruthy()
+}
+
+async function login(page: Page, user: { email: string; password: string }) {
+  await page.goto('/login')
+  await page.getByLabel('Correo electrónico').fill(user.email)
+  await page.getByLabel('Contraseña').fill(user.password)
+  await page.getByRole('button', { name: 'Entrar' }).click()
+  // Si el usuario pertenece a varias compañías, se elige la predeterminada.
+  await page.waitForURL((url) => url.pathname !== '/login')
+  if (new URL(page.url()).pathname === '/select-tenant') {
+    const def = page.locator('.tenant-list button', { hasText: 'Predeterminada' })
+    await ((await def.count()) > 0 ? def.first() : page.locator('.tenant-list button').first()).click()
+  }
+  await page.waitForURL((url) => url.pathname === '/')
+}
+
+/** Sin scroll horizontal de página. */
+async function expectNoHorizontalScroll(page: Page) {
+  const { scrollWidth, innerWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    innerWidth: window.innerWidth,
+  }))
+  expect(scrollWidth).toBeLessThanOrEqual(innerWidth)
+}
+
+test.describe('Lote F1 — escritorio', () => {
+  test.skip(({ isMobile }) => isMobile, 'recorrido de escritorio')
+
+  test('1. admin entra a Pulso; el menú muestra los grupos según módulos y permisos', async ({ page }) => {
+    await login(page, ADMIN)
+    await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
+    const menu = page.getByRole('complementary', { name: 'Menú principal' })
+    await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
+  })
+
+  test('2. despacho: el menú no muestra Administración; Mi cuenta está disponible', async ({ page }) => {
+    await login(page, DISPATCH)
+    const menu = page.getByRole('complementary', { name: 'Menú principal' })
+    await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
+    await expect(menu.getByRole('button', { name: 'Administración' })).toHaveCount(0)
+    await page.getByRole('link', { name: /Carlos Rivera|despacho@teikem\.local/ }).click()
+    await expect(page).toHaveURL(/\/account$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Mi cuenta' })).toBeVisible()
+  })
+
+  test('3. cambiar el idioma conserva la pantalla, el grupo del menú y lo escrito; los textos cambian', async ({ page }) => {
+    await login(page, ADMIN)
+    await page.goto('/account?tab=password')
+    const current = page.getByLabel(/Contraseña actual/)
+    await current.fill('a-medias')
+    const group = page.getByRole('button', { name: 'Operación' })
+    await group.click() // el usuario cierra el grupo
+    await expect(group).toHaveAttribute('aria-expanded', 'false')
+
+    await page.getByRole('button', { name: 'Idioma' }).click()
+    await page.getByRole('menuitemradio', { name: 'English' }).click()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'My account' })).toBeVisible()
+    await expect(page).toHaveURL(/\/account\?tab=password$/)
+    await expect(page.getByRole('button', { name: 'Operations' })).toHaveAttribute('aria-expanded', 'false')
+    await expect(page.getByLabel(/Current password/)).toHaveValue('a-medias')
+  })
+
+  test('4. Pulso muestra al menos un indicador y un gráfico del tenant demo', async ({ page, request }) => {
+    await ensureChartInPulse(request)
+    await login(page, ADMIN)
+    await expect(page.getByRole('heading', { level: 2, name: 'Indicadores' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Gráficos' })).toBeVisible()
+    await expect(page.locator('h2:has-text("Indicadores") + div > *').first()).toBeVisible()
+    await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
+  })
+
+  test('5. Mi cuenta: sesiones lista la actual; contraseña actual incorrecta muestra el mensaje del API', async ({ page }) => {
+    await login(page, ADMIN)
+    await page.goto('/account?tab=sessions')
+    await expect(page.getByText('Esta sesión').first()).toBeVisible()
+
+    await page.goto('/account?tab=password')
+    await page.getByLabel(/Contraseña actual/).fill('No_Es_La_Clave_2026!')
+    await page.getByLabel(/^Nueva contraseña/).fill('Otra_Clave_Segura_e2e_2026!')
+    await page.getByLabel(/^Repita la nueva contraseña/).fill('Otra_Clave_Segura_e2e_2026!')
+    await page.getByRole('button', { name: 'Cambiar contraseña' }).click()
+    await expect(page.locator('.ferr').first()).toBeVisible()
+    await expect(page).toHaveURL(/\/account\?tab=password$/)
+  })
+
+  test('6. MFA: activar muestra la clave y pide código; uno inválido muestra el error; cancelar la deja desactivada', async ({ page }) => {
+    await login(page, ADMIN)
+    await page.goto('/account?tab=mfa')
+    await expect(page.getByText('Desactivada')).toBeVisible()
+    await page.getByRole('button', { name: 'Activar', exact: true }).click()
+    await expect(page.getByTestId('mfa-secret')).not.toBeEmpty()
+    await page.getByLabel(/Código de verificación/).fill('000000')
+    await page.getByRole('button', { name: 'Confirmar y activar' }).click()
+    await expect(page.locator('.ferr, .form-alert').first()).toBeVisible()
+    await page.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(page.getByText('Desactivada')).toBeVisible()
+  })
+
+  test("7. pantallas 'Sin permiso' y 'Módulo apagado'", async ({ page }) => {
+    await login(page, ADMIN)
+    await page.goto('/forbidden')
+    await expect(page.getByTestId('forbidden-screen')).toContainText('Sin permiso')
+    await page.goto('/module-off')
+    await expect(page.getByTestId('module-off-screen')).toContainText('Módulo apagado')
+  })
+})
+
+test.describe('Lote F1 — móvil (Pixel 7)', () => {
+  test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (Pixel 7)')
+
+  test('8. menú en cajón, Pulso apila las tarjetas y no hay scroll horizontal', async ({ page, request }) => {
+    await ensureChartInPulse(request)
+    await login(page, ADMIN)
+    await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
+
+    // Cajón: oculto hasta que se abre con el botón de menú
+    const rail = page.locator('#app-rail')
+    await expect(rail).not.toBeInViewport()
+    await page.getByRole('button', { name: 'Abrir menú' }).click()
+    await expect(rail).toBeInViewport()
+    await expect(rail.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
+    // Tocar fuera del cajón (el velo) lo cierra
+    await page.locator('.drawer-scrim').click({ position: { x: 395, y: 400 } })
+    await expect(rail).not.toBeInViewport()
+
+    // Tarjetas apiladas: todas en una sola columna (mismo borde izquierdo)
+    const cards = page.locator('h2:has-text("Indicadores") + div > *')
+    await expect(cards.first()).toBeVisible()
+    const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
+    expect(new Set(lefts).size).toBe(1)
+
+    await expectNoHorizontalScroll(page)
+    await page.goto('/account?tab=sessions')
+    await expect(page.getByText('Esta sesión').first()).toBeVisible()
+    await expectNoHorizontalScroll(page)
+  })
+})

@@ -1,0 +1,37 @@
+/* Tokens de diseño portados de Diseño/teikem-mockups.html (bloque <style>): paleta oscura por defecto y tema claro
+   con data-theme="light" en <html>. Dos acentos: flow (operación, azul) y money (dinero, naranja). */
+:root{
+  --bg:#0D1220; --bg-2:#0A0E18; --panel:#141B2E; --panel-2:#182136; --raise:#1F2A44;
+  --line:#243252; --line-2:#1C2740;
+  --text:#E8ECF5; --muted:#8C97AD; --faint:#5B6680;
+  --money:#FF6A1A; --money-2:#FF8B4D; --money-bg:rgba(255,106,26,.13); --money-line:rgba(255,106,26,.35);
+  --flow:#1F6FE5; --flow-2:#6EA8FF; --flow-bg:rgba(31,111,229,.14); --flow-line:rgba(31,111,229,.40);
+  --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
+  --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
+  --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
+  --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
+  --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
+  --label-paper:#fff; --label-ink:#0B2C66;
+  --hexd:#0B2C66; --hexl:#1F6FE5;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --ui:'Space Grotesk',system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#F0F2F7; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E5EAF3;
+  --line:#DDE4F0; --line-2:#E9EDF5;
+  --text:#182136; --muted:#5B6880; --faint:#8C97AD;
+  --money:#E05A0F; --money-2:#B94A0C; --money-bg:rgba(224,90,15,.10); --money-line:rgba(224,90,15,.30);
+  --flow:#1F6FE5; --flow-2:#0B4DB8; --flow-bg:rgba(31,111,229,.10); --flow-line:rgba(31,111,229,.30);
+  --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
+  --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
+  --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
+  --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
+  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
+}
+/* Medidas del shell (no están en la maqueta como variables; se toman de sus valores fijos). */
+:root{
+  --rail-w:250px; --rail-w-col:66px; --bar-h:54px;
+  --radius:13px; --radius-sm:9px;
+  --shadow-pop:0 30px 80px -20px rgba(0,0,0,.7);
+}

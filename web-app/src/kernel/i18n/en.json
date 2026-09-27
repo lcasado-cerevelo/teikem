@@ -1,0 +1,325 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "copy": "Copy"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Could not reach the server. Check your connection and try again."
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English"
+  },
+  "auth": {
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "mfaCode": "Verification code"
+    },
+    "errors": {
+      "emailInvalid": "Enter a valid email.",
+      "passwordRequired": "Enter your password."
+    },
+    "backToLogin": "Back to sign in",
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Use your email and password.",
+      "submit": "Sign in"
+    },
+    "selectTenant": {
+      "title": "Choose a company",
+      "subtitle": "Your user belongs to several companies. Which one do you want to work with?",
+      "default": "Default"
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "subtitle": "Enter the 6-digit code from your authenticator app or one of your recovery codes.",
+      "verify": "Verify",
+      "enrollTitle": "Set up two-step verification",
+      "enrollSubtitle": "Your company requires a second factor. Set it up now with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…).",
+      "enrollStart": "Start setup",
+      "enrollScan": "Add this key to your authenticator app and enter the code it shows.",
+      "secretLabel": "Key for manual entry:",
+      "openInApp": "Open in authenticator app",
+      "confirm": "Confirm",
+      "recoveryTitle": "Save your recovery codes",
+      "recoverySubtitle": "Each code works once if you lose your phone. They will not be shown again.",
+      "recoveryNext": "To finish signing in, enter a new code from your app."
+    },
+    "reauth": {
+      "title": "Confirm your identity",
+      "help": "This is a sensitive action and requires you to enter your password again.",
+      "submit": "Confirm"
+    }
+  },
+  "access": {
+    "backHome": "Go to home",
+    "forbidden": {
+      "title": "No permission",
+      "body": "Your user is not allowed to see this screen. Ask your company administrator to grant it."
+    },
+    "moduleOff": {
+      "title": "Module turned off",
+      "body": "This module is not enabled for your company.",
+      "bodyNamed": "The {module} module is not enabled for your company."
+    }
+  },
+  "shell": {
+    "menu": "Main menu",
+    "openMenu": "Open menu",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "language": "Language",
+    "tenant": "Company",
+    "account": "My account",
+    "logout": "Sign out",
+    "sessionError": "Your session could not be loaded",
+    "placeholder": {
+      "title": "Under construction",
+      "body": "This screen arrives in a later piece of this batch."
+    },
+    "notFound": {
+      "title": "Screen not found",
+      "body": "The address does not match any screen."
+    }
+  },
+  "nav": {
+    "groups": {
+      "ops": "Operations",
+      "catalog": "Catalog",
+      "warehouse": "Warehouse",
+      "analytics": "Analytics",
+      "admin": "Administration"
+    },
+    "pulse": "Daily pulse"
+  },
+  "status": {
+    "none": "No status",
+    "pipeline": "Status stages",
+    "lateral": "Detours",
+    "terminal": "Closures",
+    "advanceTo": "Advance to {status}",
+    "moveTo": "Move to {status}",
+    "confirmTitle": "Change status to “{status}”",
+    "comment": "Comment (optional)",
+    "commentTooLong": "The comment allows at most {max} characters.",
+    "confirm": "Change status",
+    "pipelineInvalid": "This company's status setup has errors; let your administrator know.",
+    "history": "Status history",
+    "historyEmpty": "No status changes yet.",
+    "system": "System"
+  },
+  "customFields": {
+    "choose": "Select…",
+    "yes": "Yes",
+    "no": "No",
+    "errors": {
+      "required": "This field is required.",
+      "number": "A number was expected.",
+      "date": "A valid date was expected.",
+      "minLength": "Minimum length {limit}.",
+      "maxLength": "Maximum length {limit}.",
+      "pattern": "Does not match the required format.",
+      "patternInvalid": "Invalid regular expression in the field definition.",
+      "min": "Minimum value {limit}.",
+      "max": "Maximum value {limit}.",
+      "minDate": "Date is earlier than the minimum allowed.",
+      "maxDate": "Date is later than the maximum allowed."
+    }
+  },
+  "ui": {
+    "qbox": {
+      "placeholder": "Search…"
+    },
+    "table": {
+      "empty": "No results",
+      "emptyBody": "No records match the filters or the search.",
+      "sortBy": "Sort by",
+      "sortAsc": "Ascending",
+      "sortDesc": "Descending",
+      "actions": "Actions",
+      "pagination": "Pagination",
+      "range": "{from}–{to} of {total}",
+      "pageOf": "Page {page} of {pages}",
+      "prev": "Previous page",
+      "next": "Next page"
+    },
+    "filters": {
+      "label": "Filters",
+      "clear": "Clear",
+      "all": "All",
+      "from": "From",
+      "to": "To"
+    },
+    "searchSelect": {
+      "selected": "{count} selected",
+      "none": "No matches",
+      "all": "All",
+      "clear": "None"
+    },
+    "modal": {
+      "close": "Close"
+    },
+    "confirm": {
+      "ok": "Confirm"
+    },
+    "form": {
+      "save": "Save"
+    },
+    "clientPicker": {
+      "placeholder": "Search client by code or name…",
+      "none": "No clients match.",
+      "noAccess": "Your user cannot view clients.",
+      "inactive": "Inactive",
+      "clear": "Remove client"
+    }
+  },
+  "examples": {
+    "clients": {
+      "title": "Clients",
+      "subtitle": "The company's clients, their status and contracts.",
+      "count": "{count} clients",
+      "new": "New client",
+      "view": "View",
+      "code": "Code",
+      "codeHelp": "Empty = generated automatically.",
+      "name": "Name",
+      "legalName": "Legal name",
+      "taxId": "Tax ID",
+      "creditLimit": "Credit limit",
+      "status": "Status",
+      "billing": "Billing",
+      "contracts": "Contracts",
+      "active": "Active",
+      "inactive": "Inactive",
+      "show": "Show",
+      "onlyActive": "Active only",
+      "includeInactive": "Include inactive",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivateTitle": "Deactivate client",
+      "deactivateBody": "{name} will become inactive and cannot be chosen on new orders. Its history is kept and you can reactivate it later.",
+      "reactivateTitle": "Reactivate client",
+      "reactivateBody": "{name} will be available again for new orders.",
+      "created": "Client created.",
+      "saved": "Changes saved.",
+      "deactivated": "Client deactivated.",
+      "reactivated": "Client reactivated.",
+      "tabProfile": "Profile",
+      "tabContacts": "Contacts",
+      "contactName": "Name",
+      "contactRole": "Role",
+      "primary": "Primary",
+      "noContacts": "This client has no contacts.",
+      "notFound": "The client does not exist or does not belong to your company.",
+      "back": "Back to clients",
+      "errors": {
+        "nameRequired": "Enter the client's name.",
+        "codeMax": "The code cannot exceed 30 characters.",
+        "creditLimitNumber": "Enter a number.",
+        "creditLimitMin": "The credit limit cannot be negative.",
+        "creditLimitRequired": "The credit limit cannot be left empty; enter 0 if it does not apply."
+      }
+    }
+  },
+  "account": {
+    "title": "My account",
+    "tabs": {
+      "profile": "Profile",
+      "password": "Password",
+      "mfa": "Two-step verification",
+      "sessions": "Sessions"
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "Your user details in the active company.",
+      "fullName": "Name",
+      "email": "Email",
+      "tenant": "Active company",
+      "lang": "Language",
+      "mfa": "Two-step verification",
+      "aal2": "Last identity confirmation",
+      "aal2Never": "Not confirmed in this session",
+      "role": "Role",
+      "platformAdmin": "Platform administrator",
+      "memberships": "Companies",
+      "current": "Active",
+      "default": "Default"
+    },
+    "password": {
+      "title": "Change password",
+      "subtitle": "Changing it signs out your other sessions; this one stays open.",
+      "current": "Current password",
+      "new": "New password",
+      "confirm": "Repeat the new password",
+      "help": "At least {min} characters. Do not use passwords that appear in known breaches.",
+      "submit": "Change password",
+      "changed": "Password changed. Your other sessions were signed out.",
+      "errors": {
+        "currentRequired": "Enter your current password.",
+        "minLength": "The new password must be at least {min} characters long.",
+        "mismatch": "Passwords do not match."
+      }
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "subtitle": "A code from your authenticator app in addition to your password.",
+      "state": "Status:",
+      "on": "On",
+      "off": "Off",
+      "enabledHelp": "You will be asked for your app's code when signing in. If you lose your phone, use a recovery code.",
+      "disabledHelp": "Turn it on with an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…).",
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "enrollTitle": "Set up your authenticator app",
+      "enrollSubtitle": "Add the key to your app (or open the link on your phone) and enter the 6-digit code it shows.",
+      "secretLabel": "Key to enter manually:",
+      "uriLabel": "Setup link (otpauth):",
+      "copySecret": "Copy key",
+      "openInApp": "Open in authenticator app",
+      "confirm": "Confirm and turn on",
+      "enabled": "Two-step verification turned on.",
+      "disabled": "Two-step verification turned off.",
+      "recoveryTitle": "Save your recovery codes",
+      "recoverySubtitle": "Each code works once if you lose your phone. They will not be shown again.",
+      "recoveryDone": "I saved them",
+      "copied": "Copied to clipboard.",
+      "copyFailed": "Could not copy; select it and copy it manually.",
+      "errors": {
+        "code": "Enter the 6 digits shown by your app."
+      }
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "subtitle": "Devices where you are signed in. Close the current session with \"Sign out\".",
+      "device": "Device",
+      "issued": "Started",
+      "expires": "Expires",
+      "aal2": "Identity confirmed",
+      "current": "This session",
+      "unknownDevice": "Unknown device",
+      "revoke": "Sign out",
+      "revokeTitle": "Sign out session",
+      "revokeBody": "The session on {device} will be signed out. That device will have to sign in again.",
+      "revoked": "Session signed out.",
+      "empty": "No active sessions."
+    }
+  },
+  "analytics": {
+    "pulse": {
+      "title": "Day pulse",
+      "subtitle": "Welcome, {name}. Here's how today looks for your company.",
+      "welcomeTitle": "Welcome, {name}",
+      "welcomeBody": "Your user does not have permission to see Day pulse indicators and charts. Ask your company administrator to grant it.",
+      "moduleOffBody": "Day pulse indicators and charts are part of the Analytics module, which is not enabled for your company. Ask your administrator to enable it.",
+      "emptyTitle": "Nothing in Pulse yet",
+      "emptyBody": "Mark indicators or charts so they show up here (the \"Show in Day pulse\" option).",
+      "indicators": "Indicators",
+      "charts": "Charts",
+      "chartEmpty": "This chart has no data in the configured range."
+    }
+  }
+}

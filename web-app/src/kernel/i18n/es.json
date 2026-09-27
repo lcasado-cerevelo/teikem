@@ -1,0 +1,325 @@
+{
+  "common": {
+    "loading": "Cargando…",
+    "cancel": "Cancelar",
+    "retry": "Reintentar",
+    "copy": "Copiar"
+  },
+  "errors": {
+    "generic": "Ocurrió un error. Intente de nuevo.",
+    "network": "No se pudo conectar con el servidor. Revise su conexión e intente de nuevo."
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English"
+  },
+  "auth": {
+    "fields": {
+      "email": "Correo electrónico",
+      "password": "Contraseña",
+      "mfaCode": "Código de verificación"
+    },
+    "errors": {
+      "emailInvalid": "Escriba un correo válido.",
+      "passwordRequired": "Escriba su contraseña."
+    },
+    "backToLogin": "Volver al inicio de sesión",
+    "login": {
+      "title": "Iniciar sesión",
+      "subtitle": "Entre con su correo y contraseña.",
+      "submit": "Entrar"
+    },
+    "selectTenant": {
+      "title": "Elija la compañía",
+      "subtitle": "Su usuario pertenece a varias compañías. ¿Con cuál quiere trabajar?",
+      "default": "Predeterminada"
+    },
+    "mfa": {
+      "title": "Verificación en dos pasos",
+      "subtitle": "Escriba el código de 6 dígitos de su app de autenticación o uno de sus códigos de recuperación.",
+      "verify": "Verificar",
+      "enrollTitle": "Configure la verificación en dos pasos",
+      "enrollSubtitle": "Su compañía exige un segundo factor. Configúrelo ahora con una app de autenticación (Google Authenticator, Microsoft Authenticator, 1Password…).",
+      "enrollStart": "Comenzar configuración",
+      "enrollScan": "Agregue esta clave en su app de autenticación y escriba el código que le muestre.",
+      "secretLabel": "Clave para ingresar a mano:",
+      "openInApp": "Abrir en la app de autenticación",
+      "confirm": "Confirmar",
+      "recoveryTitle": "Guarde sus códigos de recuperación",
+      "recoverySubtitle": "Cada código sirve una sola vez si pierde el teléfono. No se volverán a mostrar.",
+      "recoveryNext": "Para terminar de entrar, escriba un código nuevo de su app."
+    },
+    "reauth": {
+      "title": "Confirme su identidad",
+      "help": "Esta acción es sensible y requiere que vuelva a escribir su contraseña.",
+      "submit": "Confirmar"
+    }
+  },
+  "access": {
+    "backHome": "Ir al inicio",
+    "forbidden": {
+      "title": "Sin permiso",
+      "body": "Su usuario no tiene permiso para ver esta pantalla. Pida al administrador de su compañía que se lo asigne."
+    },
+    "moduleOff": {
+      "title": "Módulo apagado",
+      "body": "Este módulo no está habilitado para su compañía.",
+      "bodyNamed": "El módulo {module} no está habilitado para su compañía."
+    }
+  },
+  "shell": {
+    "menu": "Menú principal",
+    "openMenu": "Abrir menú",
+    "collapse": "Contraer",
+    "expand": "Expandir",
+    "language": "Idioma",
+    "tenant": "Compañía",
+    "account": "Mi cuenta",
+    "logout": "Salir",
+    "sessionError": "No se pudo cargar su sesión",
+    "placeholder": {
+      "title": "En construcción",
+      "body": "Esta pantalla llega en una pieza siguiente del lote."
+    },
+    "notFound": {
+      "title": "Pantalla no encontrada",
+      "body": "La dirección no corresponde a ninguna pantalla."
+    }
+  },
+  "nav": {
+    "groups": {
+      "ops": "Operación",
+      "catalog": "Catálogo",
+      "warehouse": "Almacén",
+      "analytics": "Análisis",
+      "admin": "Administración"
+    },
+    "pulse": "Pulso del día"
+  },
+  "status": {
+    "none": "Sin estatus",
+    "pipeline": "Etapas del estatus",
+    "lateral": "Desvíos",
+    "terminal": "Cierres",
+    "advanceTo": "Avanzar a {status}",
+    "moveTo": "Pasar a {status}",
+    "confirmTitle": "Cambiar el estatus a «{status}»",
+    "comment": "Comentario (opcional)",
+    "commentTooLong": "El comentario admite como máximo {max} caracteres.",
+    "confirm": "Cambiar estatus",
+    "pipelineInvalid": "La configuración de estatus de esta compañía tiene errores; avise a su administrador.",
+    "history": "Historial de estatus",
+    "historyEmpty": "Todavía no hay cambios de estatus.",
+    "system": "Sistema"
+  },
+  "customFields": {
+    "choose": "Seleccione…",
+    "yes": "Sí",
+    "no": "No",
+    "errors": {
+      "required": "Este campo es obligatorio.",
+      "number": "Se esperaba un número.",
+      "date": "Se esperaba una fecha válida.",
+      "minLength": "Longitud mínima {limit}.",
+      "maxLength": "Longitud máxima {limit}.",
+      "pattern": "No cumple el formato requerido.",
+      "patternInvalid": "Expresión regular inválida en la definición del campo.",
+      "min": "Valor mínimo {limit}.",
+      "max": "Valor máximo {limit}.",
+      "minDate": "Fecha anterior a la mínima permitida.",
+      "maxDate": "Fecha posterior a la máxima permitida."
+    }
+  },
+  "ui": {
+    "qbox": {
+      "placeholder": "Buscar…"
+    },
+    "table": {
+      "empty": "Sin resultados",
+      "emptyBody": "No hay registros que coincidan con los filtros o la búsqueda.",
+      "sortBy": "Ordenar por",
+      "sortAsc": "Ascendente",
+      "sortDesc": "Descendente",
+      "actions": "Acciones",
+      "pagination": "Paginación",
+      "range": "{from}–{to} de {total}",
+      "pageOf": "Página {page} de {pages}",
+      "prev": "Página anterior",
+      "next": "Página siguiente"
+    },
+    "filters": {
+      "label": "Filtros",
+      "clear": "Limpiar",
+      "all": "Todos",
+      "from": "Desde",
+      "to": "Hasta"
+    },
+    "searchSelect": {
+      "selected": "{count} elegidos",
+      "none": "Sin coincidencias",
+      "all": "Todos",
+      "clear": "Ninguno"
+    },
+    "modal": {
+      "close": "Cerrar"
+    },
+    "confirm": {
+      "ok": "Confirmar"
+    },
+    "form": {
+      "save": "Guardar"
+    },
+    "clientPicker": {
+      "placeholder": "Buscar cliente por código o nombre…",
+      "none": "No hay clientes que coincidan.",
+      "noAccess": "Su usuario no puede consultar clientes.",
+      "inactive": "Inactivo",
+      "clear": "Quitar cliente"
+    }
+  },
+  "examples": {
+    "clients": {
+      "title": "Clientes",
+      "subtitle": "Clientes de la compañía, su estatus y contratos.",
+      "count": "{count} clientes",
+      "new": "Nuevo cliente",
+      "view": "Ver",
+      "code": "Código",
+      "codeHelp": "Vacío = se genera solo.",
+      "name": "Nombre",
+      "legalName": "Razón social",
+      "taxId": "Identificación fiscal",
+      "creditLimit": "Límite de crédito",
+      "status": "Estatus",
+      "billing": "Facturación",
+      "contracts": "Contratos",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "show": "Mostrar",
+      "onlyActive": "Solo activos",
+      "includeInactive": "Incluir inactivos",
+      "deactivate": "Dar de baja",
+      "reactivate": "Reactivar",
+      "deactivateTitle": "Dar de baja el cliente",
+      "deactivateBody": "{name} quedará inactivo: no se podrá elegir en órdenes nuevas. Su historial se conserva y puede reactivarlo después.",
+      "reactivateTitle": "Reactivar el cliente",
+      "reactivateBody": "{name} volverá a estar disponible para órdenes nuevas.",
+      "created": "Cliente creado.",
+      "saved": "Cambios guardados.",
+      "deactivated": "Cliente dado de baja.",
+      "reactivated": "Cliente reactivado.",
+      "tabProfile": "Perfil",
+      "tabContacts": "Contactos",
+      "contactName": "Nombre",
+      "contactRole": "Puesto",
+      "primary": "Principal",
+      "noContacts": "Este cliente no tiene contactos.",
+      "notFound": "El cliente no existe o no pertenece a su compañía.",
+      "back": "Volver a clientes",
+      "errors": {
+        "nameRequired": "Escriba el nombre del cliente.",
+        "codeMax": "El código no puede exceder 30 caracteres.",
+        "creditLimitNumber": "Escriba un número.",
+        "creditLimitMin": "El límite de crédito no puede ser negativo.",
+        "creditLimitRequired": "El límite de crédito no se puede dejar vacío; escriba 0 si no aplica."
+      }
+    }
+  },
+  "account": {
+    "title": "Mi cuenta",
+    "tabs": {
+      "profile": "Perfil",
+      "password": "Contraseña",
+      "mfa": "Verificación en dos pasos",
+      "sessions": "Sesiones"
+    },
+    "profile": {
+      "title": "Perfil",
+      "subtitle": "Datos de su usuario en la compañía activa.",
+      "fullName": "Nombre",
+      "email": "Correo electrónico",
+      "tenant": "Compañía activa",
+      "lang": "Idioma",
+      "mfa": "Verificación en dos pasos",
+      "aal2": "Última confirmación de identidad",
+      "aal2Never": "Sin confirmar en esta sesión",
+      "role": "Rol",
+      "platformAdmin": "Administrador de la plataforma",
+      "memberships": "Compañías",
+      "current": "Activa",
+      "default": "Predeterminada"
+    },
+    "password": {
+      "title": "Cambiar contraseña",
+      "subtitle": "Al cambiarla se cierran sus demás sesiones; esta sigue abierta.",
+      "current": "Contraseña actual",
+      "new": "Nueva contraseña",
+      "confirm": "Repita la nueva contraseña",
+      "help": "Mínimo {min} caracteres. No use contraseñas que aparezcan en filtraciones conocidas.",
+      "submit": "Cambiar contraseña",
+      "changed": "Contraseña cambiada. Sus demás sesiones se cerraron.",
+      "errors": {
+        "currentRequired": "Escriba su contraseña actual.",
+        "minLength": "La nueva contraseña debe tener al menos {min} caracteres.",
+        "mismatch": "Las contraseñas no coinciden."
+      }
+    },
+    "mfa": {
+      "title": "Verificación en dos pasos",
+      "subtitle": "Un código de su app de autenticación además de la contraseña.",
+      "state": "Estado:",
+      "on": "Activa",
+      "off": "Desactivada",
+      "enabledHelp": "Al entrar se le pedirá el código de su app. Si pierde el teléfono, use un código de recuperación.",
+      "disabledHelp": "Actívela con una app de autenticación (Google Authenticator, Microsoft Authenticator, 1Password…).",
+      "enable": "Activar",
+      "disable": "Desactivar",
+      "enrollTitle": "Configure su app de autenticación",
+      "enrollSubtitle": "Agregue la clave en su app (o abra el enlace desde el teléfono) y escriba el código de 6 dígitos que le muestre.",
+      "secretLabel": "Clave para ingresar a mano:",
+      "uriLabel": "Enlace de configuración (otpauth):",
+      "copySecret": "Copiar clave",
+      "openInApp": "Abrir en la app de autenticación",
+      "confirm": "Confirmar y activar",
+      "enabled": "Verificación en dos pasos activada.",
+      "disabled": "Verificación en dos pasos desactivada.",
+      "recoveryTitle": "Guarde sus códigos de recuperación",
+      "recoverySubtitle": "Cada código sirve una sola vez si pierde el teléfono. No se volverán a mostrar.",
+      "recoveryDone": "Ya los guardé",
+      "copied": "Copiado al portapapeles.",
+      "copyFailed": "No se pudo copiar; selecciónelo y cópielo a mano.",
+      "errors": {
+        "code": "Escriba los 6 dígitos que muestra su app."
+      }
+    },
+    "sessions": {
+      "title": "Sesiones activas",
+      "subtitle": "Dispositivos con su sesión abierta. La sesión actual se cierra con \"Salir\".",
+      "device": "Dispositivo",
+      "issued": "Inicio",
+      "expires": "Vence",
+      "aal2": "Identidad confirmada",
+      "current": "Esta sesión",
+      "unknownDevice": "Dispositivo desconocido",
+      "revoke": "Cerrar sesión",
+      "revokeTitle": "Cerrar la sesión",
+      "revokeBody": "Se cerrará la sesión en {device}. Ese dispositivo tendrá que volver a iniciar sesión.",
+      "revoked": "Sesión cerrada.",
+      "empty": "No hay sesiones activas."
+    }
+  },
+  "analytics": {
+    "pulse": {
+      "title": "Pulso del día",
+      "subtitle": "Bienvenido, {name}. Así viene el día en su compañía.",
+      "welcomeTitle": "Bienvenido, {name}",
+      "welcomeBody": "Su usuario no tiene permiso para ver los indicadores y gráficos del Pulso del día. Pida al administrador de su compañía que se lo asigne.",
+      "moduleOffBody": "Los indicadores y gráficos del Pulso del día son parte del módulo de Análisis, que no está activo en su compañía. Pida al administrador que lo active.",
+      "emptyTitle": "Todavía no hay nada en Pulso",
+      "emptyBody": "Marque indicadores o gráficos para que aparezcan aquí (opción «Mostrar en Pulso del día»).",
+      "indicators": "Indicadores",
+      "charts": "Gráficos",
+      "chartEmpty": "Este gráfico no tiene datos en el rango configurado."
+    }
+  }
+}

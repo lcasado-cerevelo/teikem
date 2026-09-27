@@ -1,0 +1,24 @@
+/* Pipeline de estatus e historial (kernel/catalogs). Todo envuelve: nada genera scroll horizontal a 360 px. */
+.stpipe{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stpipe-steps{display:flex;flex-wrap:wrap;align-items:center;gap:6px;list-style:none;margin:0;padding:0;min-width:0}
+.stpipe-step{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;font-size:12px;font-weight:600;color:var(--faint)}
+.stpipe-step .dot{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;flex:none;border:1.5px solid var(--line);background:var(--bg-2);color:var(--faint)}
+.stpipe-step .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.stpipe-step.done{color:var(--muted)}
+.stpipe-step.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.stpipe-step.current{color:var(--text)}
+.stpipe-step.current .dot{background:var(--flow);border-color:var(--flow);color:#fff;box-shadow:0 0 0 3px var(--flow-bg)}
+.stpipe-sep{width:14px;height:2px;border-radius:2px;background:var(--line);flex:none}
+.stpipe-side{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.stpipe-k{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-right:2px}
+.stpipe-side .chip{opacity:.55;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.stpipe-side .chip.on{opacity:1;outline:1.5px solid currentColor;outline-offset:1px}
+.stpipe-act{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.stpipe-act .btn{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.stpipe-count{font-size:11px;color:var(--faint);text-align:right;margin-top:4px}
+.sthist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.sthist li{display:flex;flex-direction:column;gap:5px;padding:10px 0;border-bottom:1px solid var(--line-2);min-width:0}
+.sthist li:last-child{border-bottom:none}
+.sthist .mv{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.sthist .meta{font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.sthist .cmt{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere;white-space:pre-wrap}

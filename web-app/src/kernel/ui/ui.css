@@ -1,0 +1,89 @@
+/* Estilos propios del kit (src/kernel/ui). Complementan base.css (clases de la maqueta) sin redefinirlas.
+   Reglas de oro: nada genera scroll horizontal de página; bajo 720 px las tablas son tarjetas. */
+
+/* ===== Panel ===== */
+/* .pal recorta (overflow:hidden) en la maqueta; en el kit los desplegables (SearchSelect, ClientPicker) deben poder salir */
+.pal.kit-pal{overflow:visible}
+.pal .pi.kit-ph{flex-wrap:wrap;gap:8px 11px}
+.pal .pi .kit-title{flex:1 1 auto;margin:0;font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere}
+.pal .pi .kit-sub{flex-basis:100%;margin:-4px 0 0;color:var(--muted);font-size:12.5px}
+.pal .pi .kit-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.pal .pb.flush{padding:0}
+
+/* ===== DataTable ===== */
+.dt{min-width:0}
+/* Sin scrollbar horizontal propio (maestro: la tabla termina en bloque al borde del panel, no se recorta ni escrolea):
+   el texto envuelve (también los encabezados), los números no; si no cabe, la tabla se compacta (.densetbl). */
+.dt-scroll{width:100%;min-width:0}
+.dt .lst th{overflow-wrap:anywhere;hyphens:auto}
+/* Entre el modo tarjetas (720 px) y el escritorio amplio, toda tabla del kit reduce su padding para caber */
+@media(min-width:721px) and (max-width:1100px){.dt .lst td,.dt .lst th{padding:7px 4px}}
+.lst.densetbl{font-size:12px}
+.dt .lst.densetbl td,.dt .lst.densetbl th,.lst.densetbl td,.lst.densetbl th{padding:6px 3px}
+.lst.densetbl th{font-size:9.5px;letter-spacing:.03em}
+.lst th .sortbtn{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;display:inline-flex;align-items:center;gap:2px;cursor:pointer;text-align:inherit}
+.lst th .sortbtn:hover{color:var(--flow-2)}
+.lst th.n .sortbtn{justify-content:flex-end}
+.lst tr.click{cursor:pointer}
+.lst td.acts{width:1%;white-space:nowrap}
+.rowacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.danger:hover{background:var(--dangerbg)}
+.btn.danger.solid{background:var(--danger);color:#fff}
+.dt-cards{display:flex;flex-direction:column;gap:10px;padding:10px;margin:0;list-style:none}
+.dt-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg-2);min-width:0}
+.dt-card.click{cursor:pointer}
+.dt-card .ttl{font-weight:700;font-size:14px;margin-bottom:8px;overflow-wrap:anywhere}
+.dt-card dl{display:grid;grid-template-columns:minmax(0,38%) minmax(0,1fr);gap:5px 10px;margin:0;font-size:12.5px}
+.dt-card dt{color:var(--faint);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding-top:2px}
+.dt-card dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.dt-card .rowacts{justify-content:flex-start;margin-top:10px}
+.dt-sortbar{display:flex;align-items:center;gap:8px;padding:10px 10px 0;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.dt-sortbar select{flex:1 1 140px;min-width:0;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--text);font-size:12.5px}
+.dt-pager{display:flex;align-items:center;gap:8px 12px;justify-content:space-between;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted)}
+.dt-pager .pg{display:flex;align-items:center;gap:6px}
+.dt-loading{display:flex;justify-content:center;padding:18px}
+
+/* ===== Filtros ===== */
+.filters .f.span2{grid-column:span 2}
+/* 'Limpiar' usa el ancho de su contenido (no se estira a la columna) y se alinea con el borde inferior de los controles */
+.filters .filters-clear{justify-self:start;align-self:end;width:auto}
+.drange{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
+.filters .msel>button{padding:7px 9px}
+.msel>button .sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.msel .mi.on{background:var(--flow-bg)}
+.msel .mi .sub{color:var(--faint);font-size:11.5px}
+
+/* ===== Formularios ===== */
+.f .req{color:var(--danger);margin-left:3px}
+.form-alert{background:var(--dangerbg);border:1px solid var(--danger);color:var(--danger);border-radius:10px;padding:10px 12px;font-size:12.5px;font-weight:600;margin-bottom:14px}
+.form-acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px}
+
+/* ===== Modal ===== */
+.scrim .pal.lg{width:880px}
+.scrim .pal.sm{width:440px}
+.pal .ft.kit-ft{font-size:13px;color:var(--text)}
+.modal-x{margin-left:auto}
+
+/* ===== Toast ===== */
+.toast.err{border-color:var(--danger)}
+.toast.err svg{color:var(--danger)}
+.toast.ok svg{color:var(--ok)}
+.toast .tx{min-width:0;overflow-wrap:anywhere}
+
+/* ===== ClientPicker ===== */
+.cpick{position:relative;min-width:0}
+.cpick .cpin{display:flex;align-items:center;gap:6px}
+.cpick .cpin input{flex:1;min-width:0}
+.cpick .mp{width:100%;max-width:none;min-width:0}
+.cpick .mi .code{font-family:var(--mono);color:var(--flow-2)}
+
+/* ===== Spinner ===== */
+.spin-wrap{display:inline-flex;align-items:center;gap:9px;color:var(--muted);font-size:12.5px}
+.spin-wrap.block{display:flex;justify-content:center;padding:24px}
+
+@media(max-width:480px){
+  .filters .f.span2{grid-column:auto}
+  .dt-card dl{grid-template-columns:minmax(0,1fr)}
+  .dt-card dt{padding-top:4px}
+}

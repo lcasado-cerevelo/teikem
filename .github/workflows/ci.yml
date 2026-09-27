@@ -39,6 +39,29 @@ jobs:
           # (pings del chofer del Lote 7, que el monitor del Lote 5 ya lee). Sin esta variable el smoke omite esos pasos.
           export SMOKE_SQL="docker exec ${{ job.services.sqlserver.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Teikem_Dev_2026! -d Teikem -b -h -1 -Q"
           scripts/smoke.sh http://localhost:5000
+      # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
+      # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web-app/package-lock.json
+      - name: Recorrido Playwright del frontend (escritorio y móvil Pixel 7)
+        working-directory: web-app
+        env:
+          API_URL: http://localhost:5000
+        run: |
+          curl -sf http://localhost:5000/health
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run e2e
+      - name: Evidencia del recorrido Playwright (si falla)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: web-app/test-results
+          if-no-files-found: ignore
 
   frontend:
     runs-on: ubuntu-latest
