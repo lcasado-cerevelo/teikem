@@ -42,8 +42,10 @@ log(build && build.compilado ? 'Build y pruebas en verde.' : 'Sin SDK local: la 
 phase('Verificar')
 const LENTES = ['compile-ef', 'tenant-security', 'spec', 'tests']
 const vistos = new Set()
+// args.limpiasRequeridas (por defecto 2) y args.maxRondas (por defecto 4) permiten acotar el costo de la verificación.
+const limpiasReq = Number(a.limpiasRequeridas) || 2, maxRondas = Number(a.maxRondas) || 4
 let limpias = 0, ronda = 0, corregidos = 0
-while (limpias < 2 && ronda < 4) {
+while (limpias < limpiasReq && ronda < maxRondas) {
   ronda++
   const encontrados = (await parallel(LENTES.map(l => () =>
     agent(`${contexto}\n\nRonda ${ronda}. Revisa el diff del lote (git diff origin/master...HEAD y archivos nuevos) con la lente "${l}". Reporta solo hallazgos verificables.`,
@@ -61,7 +63,7 @@ while (limpias < 2 && ronda < 4) {
   await agent(`${contexto}\n\nCorrige estos hallazgos confirmados con cambios mínimos y vuelve a compilar/probar si hay dotnet:\n${JSON.stringify(reales.map(r => ({ ...r.h, arreglo: r.arreglo })), null, 1)}`, { agentType: 'implementer', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
   corregidos += reales.length
 }
-if (ronda >= 4 && limpias < 2) log('Tope de 4 rondas alcanzado: revisar manualmente los últimos hallazgos.')
+if (ronda >= maxRondas && limpias < limpiasReq) log(`Tope de ${maxRondas} rondas alcanzado: revisar manualmente los últimos hallazgos.`)
 
 phase('Documentar')
 const doc = await agent(`${contexto}\n\nEscribe docs/lote${lote}-decisiones.md con el formato de docs/lote1-decisiones.md. Fecha: ${a.fecha || 'sin fecha'}. Hallazgos corregidos en verificación: ${corregidos}. Build local: ${build && build.compilado ? 'sí' : 'no (CI)'}. Lista las decisiones abiertas del plan y todo lo que quedó fuera. También agrega al final de scripts/smoke.sh los pasos del plan ("smoke") si existen, sin romper los anteriores.`,

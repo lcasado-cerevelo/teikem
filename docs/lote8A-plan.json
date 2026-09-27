@@ -1,0 +1,99 @@
+{
+ "lote": "8A",
+ "titulo": "Backend previo de la app de almacén: idempotencia, aparatos y PIN, sincronización, código de barras, operaciones atómicas",
+ "aprobacion": "Diseño aprobado por Luis (2026-09-27) en Diseño/logistica-funcionalidades-maestro.md sección 8A y docs/mobile/app-almacen-plan.md §1 y §3. Todo aditivo: la web no cambia de comportamiento.",
+ "resumen": "Middleware de idempotencia con Idempotency-Key, tabla UserDevice (aparatos de confianza con código de enrolamiento y secreto), tabla UserPin (PIN por usuario, bloqueo por intentos), login por aparato + PIN con sesión larga, endpoints de sincronización por diferencia, búsqueda por código de barras, y operaciones atómicas para la cola del aparato (recibo con líneas y confirmación en una llamada, recolección con empaque en una llamada, líneas de conteo en lote, conteo a ciegas). Leer docs/mobile/app-almacen-plan.md antes de empezar.",
+ "piezas": [
+  {
+   "nombre": "P0 — Base compartida: SQL (UserDevice, UserPin, columnas de idempotencia y de sesión de aparato), seed, permisos, entidades, configuraciones, contratos, middleware de idempotencia, DI",
+   "tocaCompartidos": true,
+   "dependeDe": [],
+   "archivos": [
+    "Diseño/logistica-db-estructura.sql",
+    "Diseño/logistica-db-seed.sql",
+    "src/Teikem.Domain/Constants/PermissionCatalog.cs",
+    "src/Teikem.Domain/Entities/UserDevice.cs",
+    "src/Teikem.Domain/Entities/UserPin.cs",
+    "src/Teikem.Infrastructure/Persistence/Configurations/UserDeviceConfiguration.cs",
+    "src/Teikem.Infrastructure/Persistence/Configurations/UserPinConfiguration.cs",
+    "src/Teikem.Infrastructure/Persistence/TeikemDbContext.cs",
+    "src/Teikem.Infrastructure/Contracts/DeviceContracts.cs",
+    "src/Teikem.Infrastructure/Contracts/SyncContracts.cs",
+    "src/Teikem.Api/Middleware/IdempotencyMiddleware.cs",
+    "src/Teikem.Api/Program.cs",
+    "src/Teikem.Infrastructure/DependencyInjection.cs",
+    "tests/Teikem.Tests/IdempotencyRulesTests.cs",
+    "tests/Teikem.Tests/PinRulesTests.cs"
+   ],
+   "descripcion": "Única pieza con archivos compartidos; se integra primero. (1) Estructura SQL (capa de seguridad, después de RefreshToken): `UserDevice` (UserDeviceId INT IDENTITY PK, PublicId UNIQUEIDENTIFIER, TenantId FK, Code NVARCHAR(30) NOT NULL, Name NVARCHAR(100) NULL, Model NVARCHAR(80) NULL, PlatformLookupId FK LookupCode Entity='DevicePlatform', AppVersion NVARCHAR(20) NULL, EnrollCodeHash NVARCHAR(200) NULL, EnrollCodeExpiresUtc DATETIME2 NULL, SecretHash NVARCHAR(200) NULL, EnrolledAtUtc DATETIME2 NULL, LastSeenUtc DATETIME2 NULL, LastUserId INT NULL FK AspNetUsers, DefaultWarehouseId INT NULL FK Warehouse, ThemeLookupId INT NULL FK LookupCode Entity='UiTheme' (LIGHT/DARK), RegisteredBy INT NULL, RegisteredAtUtc, IsActive BIT DEFAULT 1, RowVersion; UNIQUE (TenantId, Code)). `DriverDevice` se conserva tal cual (no romper el Lote 4). `UserPin` (UserPinId PK, TenantId FK, UserId FK AspNetUsers, PinHash NVARCHAR(200) NOT NULL, FailedCount INT DEFAULT 0, LockedUntilUtc DATETIME2 NULL, UpdatedAtUtc, UpdatedBy INT NULL; UNIQUE (TenantId, UserId)). `Tenant` gana `DeviceSessionDays INT NOT NULL DEFAULT 30`. `IntegrationMessageLog` gana `UserId INT NULL FK AspNetUsers`, `RequestHash NVARCHAR(64) NULL`, `ResponseJson NVARCHAR(MAX) NULL`, `Method NVARCHAR(8) NULL`, e índice único filtrado `UX_IntegrationLog_Idem (TenantId, UserId, IdempotencyKey) WHERE IdempotencyKey IS NOT NULL`. Respetar el orden de FKs por capas. (2) Seed: LookupCode `UiTheme` (LIGHT/DARK) y `MessageDirection` INBOUND si no existe; permisos nuevos en PermissionCatalog y espejados en el seed: `devices.manage` (grupo SECURITY: registrar/desactivar aparatos, asignar y restablecer PIN de otros) asignado al rol administrador demo. (3) Entidades `UserDevice` (ITenantScoped, [AuditEntity(\"USER_DEVICE\")] con EntityType nuevo USER_DEVICE en seed, `SecretHash`/`EnrollCodeHash` con [SensitiveData]) y `UserPin` (ITenantScoped, PinHash [SensitiveData]), configuraciones 1:1 y DbSets. (4) Contratos: `DeviceCreateRequest(Code, Name, Model, DefaultWarehousePublicId, Theme)`, `DeviceDto`, `DeviceCreatedDto(Device, EnrollCode)` (código de 8 caracteres mostrado una sola vez, vence en 24 h), `DeviceEnrollRequest(EnrollCode, Model, AppVersion)`, `DeviceEnrolledDto(DevicePublicId, DeviceSecret, TenantName, DefaultWarehousePublicId, Theme)` (secreto mostrado una sola vez), `DeviceUsersRequest(DevicePublicId, DeviceSecret)`, `DeviceUserDto(UserId, FullName, Initials)`, `DeviceLoginRequest(DevicePublicId, DeviceSecret, UserId, Pin)`, `PinSetRequest(CurrentPassword, Pin)` (Mi cuenta) y `PinAdminSetRequest(Pin)`, `HeartbeatRequest(DevicePublicId, DeviceSecret, AppVersion)`; `SyncPage<T>(Items, NextCursor, ServerTimeUtc)` y `SyncQuery(Since, Cursor, Take≤500, WarehousePublicId)`. (5) `IdempotencyMiddleware` registrado en Program.cs después de UseAuthentication y TenantContextMiddleware: aplica a POST/PUT/PATCH/DELETE con cabecera `Idempotency-Key` (1–80 caracteres; si viene vacía o más larga → 400 'La clave de idempotencia no es válida.'); clave lógica = (TenantId, UserId, clave); calcula SHA-256 del cuerpo; si existe registro con misma clave y mismo hash → responde el mismo código y cuerpo guardados con cabecera `Idempotent-Replayed: true`; misma clave y hash distinto → 409 ProblemDetails 'La clave de idempotencia ya se usó con otro contenido.'; si el registro existe sin respuesta (en vuelo) → 409 'La operación con esta clave todavía se está procesando.'; si no existe, inserta el registro (Method, Endpoint, RequestHash, Direction INBOUND) antes de ejecutar, captura la respuesta (solo si < 500; los 5xx no se guardan para permitir reintento) y la guarda en ResponseJson/ResponseCode; registros de más de 7 días se ignoran (y se borran perezosamente al insertar). Lógica pura en `IdempotencyRules` (validación de clave, hash, decisión replay/conflict/proceed) con pruebas. (6) `PinRules` puro y probado: 4 a 6 dígitos ('El PIN debe tener de 4 a 6 dígitos.'), sin secuencias triviales ni todos iguales ('El PIN no puede ser una secuencia trivial.'), 5 intentos fallidos → bloqueo 15 minutos ('PIN bloqueado por 15 minutos.'), hash con el mismo PasswordHasher de Identity."
+  },
+  {
+   "nombre": "P1 — Aparatos, PIN y login por aparato: servicios y endpoints",
+   "tocaCompartidos": false,
+   "dependeDe": [
+    "P0"
+   ],
+   "archivos": [
+    "src/Teikem.Infrastructure/Services/DeviceService.cs",
+    "src/Teikem.Infrastructure/Services/PinService.cs",
+    "src/Teikem.Infrastructure/Services/AuthService.cs",
+    "src/Teikem.Api/Controllers/DevicesController.cs",
+    "src/Teikem.Api/Controllers/AuthController.cs",
+    "src/Teikem.Api/Controllers/MeController.cs",
+    "src/Teikem.Api/Controllers/UsersController.cs"
+   ],
+   "descripcion": "`DevicesController` (`[RequireModule(ModuleKeys.WmsLotSerial)]`): `GET /api/v1/devices` y `GET /{publicId}` (devices.manage), `POST /api/v1/devices` (devices.manage → DeviceCreatedDto con EnrollCode en claro una sola vez; código único por tenant; 'Ya existe un aparato con ese código.' 409), `PATCH /{publicId}` (nombre, almacén por defecto, tema), `POST /{publicId}/deactivate` y `/reactivate` (devices.manage; desactivar revoca todos los refresh tokens emitidos a ese aparato: RefreshToken gana `UserDeviceId INT NULL` en P0 si no existe otra forma), `POST /{publicId}/enroll-code` (regenera el código, devices.manage). Endpoints públicos (sin JWT, con `[AllowAnonymous]` y limitación de intentos por IP como el login): `POST /api/v1/devices/enroll` (EnrollCode válido y no vencido → genera DeviceSecret aleatorio de 32 bytes, guarda su hash, devuelve DeviceEnrolledDto; código inválido o vencido → 401 'El código de registro no es válido o venció.'), `POST /api/v1/auth/device/users` (aparato + secreto válidos → usuarios activos del tenant con PIN definido y con al menos un permiso de almacén (inventory.view), ordenados por nombre; aparato inválido o inactivo → 401 'El aparato no está registrado o fue desactivado.'), `POST /api/v1/auth/device/login` (aparato + secreto + UserId + Pin → valida PIN con PinRules y bloqueo, escribe SecurityEvent LOGIN con Outcome SUCCESS/FAILURE y detalle 'device', emite TokenPair con refresh de `Tenant.DeviceSessionDays` días ligado al aparato, actualiza LastSeenUtc/LastUserId; PIN incorrecto → 401 'PIN incorrecto.' y cuenta el intento; bloqueado → 423 'PIN bloqueado por 15 minutos.'), `POST /api/v1/devices/heartbeat` (aparato + secreto → LastSeenUtc, AppVersion; devuelve `{ isActive, defaultWarehousePublicId, theme, serverTimeUtc }`). PIN: `PUT /api/v1/me/pin` (PinSetRequest: exige la contraseña actual correcta → 'La contraseña actual es incorrecta.' 400 en español; guarda hash, reinicia contador), `DELETE /api/v1/me/pin`; `PUT /api/v1/users/{id}/pin` y `DELETE` (devices.manage o admin.users; usuario del mismo tenant), `GET /api/v1/users/{id}` expone `hasPin`. Todo escribe AuditLog (UserDevice) y SecurityEvent (login por aparato, PIN cambiado con SecurityEventType PASSWORD_CHANGE y detalle 'pin'). El JWT emitido por aparato lleva el claim `did` (PublicId del aparato) y el mismo `tid`/permisos del usuario."
+  },
+  {
+   "nombre": "P2 — Sincronización por diferencia, código de barras y operaciones atómicas para la cola del aparato",
+   "tocaCompartidos": false,
+   "dependeDe": [
+    "P0"
+   ],
+   "archivos": [
+    "src/Teikem.Infrastructure/Services/SyncService.cs",
+    "src/Teikem.Api/Controllers/SyncController.cs",
+    "src/Teikem.Infrastructure/Services/ProductService.cs",
+    "src/Teikem.Api/Controllers/ProductsController.cs",
+    "src/Teikem.Infrastructure/Services/ReceivingService.cs",
+    "src/Teikem.Api/Controllers/ReceiptsController.cs",
+    "src/Teikem.Infrastructure/Services/PickBatchService.cs",
+    "src/Teikem.Api/Controllers/PickBatchesController.cs",
+    "src/Teikem.Infrastructure/Services/CycleCountService.cs",
+    "src/Teikem.Api/Controllers/CycleCountsController.cs",
+    "src/Teikem.Infrastructure/Contracts/ReceivingContracts.cs",
+    "src/Teikem.Infrastructure/Contracts/PickBatchContracts.cs",
+    "src/Teikem.Infrastructure/Contracts/CycleCountContracts.cs",
+    "tests/Teikem.Tests/SyncRulesTests.cs",
+    "scripts/smoke.sh"
+   ],
+   "descripcion": "`SyncController` (`[RequireModule(ModuleKeys.WmsLotSerial)]`, permiso inventory.view): `GET /api/v1/sync/products`, `/sync/bins?warehousePublicId=` (posiciones con su zona), `/sync/purchase-orders` (abiertas: DRAFT/SENT/PARTIAL, con líneas y pendiente), `/sync/asns` (EXPECTED, con líneas), `/sync/warehouse-tasks?warehousePublicId=` (abiertas), `/sync/product-categories`; todos con `since` (UTC; incluye filas con UpdatedAtUtc >= since, o CreatedAtUtc si no hay UpdatedAtUtc) y `cursor` (paginación por cursor opaco = último Id, `take` ≤ 500, 'El máximo por página es 500.' 400), devuelven `SyncPage` con `items` (DTOs compactos: id, publicId, campos que la app necesita, `isActive` para que el aparato borre lo dado de baja) y `serverTimeUtc` para la siguiente marca de agua; el aparato pide `since` = serverTimeUtc anterior menos 5 minutos (documentarlo en el XML del endpoint). Si alguna de esas tablas no tiene `UpdatedAtUtc` que se actualice en cada cambio, agregarlo en el SQL de estructura (columna NULL con índice por TenantId, UpdatedAtUtc) y mantenerlo desde el interceptor de auditoría o el servicio: coordínalo escribiendo en el mismo bloque de la capa correspondiente del script y documentándolo en la descripción de la pieza integrada. `GET /api/v1/products/by-barcode/{code}` (inventory.view): busca por Barcode exacto y, si no, por SKU exacto, solo activos; 404 'No hay un producto con ese código.'. Operaciones atómicas: `POST /api/v1/receipts` acepta `Lines` completas (ya existe) y un `Confirm` bool nuevo: si true, crea, captura y confirma en la misma transacción y devuelve el recibo confirmado (mismas validaciones y mensajes que el flujo por pasos); `POST /api/v1/pick-batches` acepta `Pack: PickBatchPackRequest?`: si viene, recolecta y empaca en la misma transacción devolviendo `PickBatchPackResultDto`; `PUT /api/v1/cycle-counts/{id}/lines` acepta `Lines[]` (varias líneas en una llamada; hoy es por línea: mantener el contrato existente y agregar `PUT /api/v1/cycle-counts/{id}/lines/batch`); conteo a ciegas: `GET /api/v1/cycle-counts/{id}` omite `expectedQty`/`snapshotQty` de las líneas (null) cuando el usuario no tiene `warehouse.count` y solo `inventory.view`; documentarlo en el DTO. Todas estas rutas respetan `Idempotency-Key` por el middleware (no hay que hacer nada especial, pero verificar con una prueba de integración ligera si existe patrón; si no, solo el smoke). `SyncRules` puro y probado: cursor opaco (codificar/decodificar), tope de página, since menos 5 minutos. Smoke (scripts/smoke.sh, nuevo bloque `aparatos y sincronización (Lote 8A)`): admin crea aparato ZB-{ts} → enroll con el código → users del aparato incluye al admin tras `PUT /me/pin` con contraseña → device/login con PIN correcto devuelve tokens (y con PIN incorrecto 401; 5 veces → 423) → con ese token, `POST /receipts` con `Idempotency-Key` dos veces devuelve el mismo número y la segunda trae `Idempotent-Replayed: true`; misma clave con otro cuerpo → 409 → `GET /sync/products?since=<hace 1 h>` contiene el producto del smoke → `GET /products/by-barcode/{sku}` 200 y con código inexistente 404 → `POST /receipts` con Confirm=true deja el recibo RECEIVED en una llamada → desactivar el aparato → device/login 401."
+  }
+ ],
+ "pruebas": [
+  "IdempotencyRulesTests",
+  "PinRulesTests",
+  "SyncRulesTests",
+  "pruebas existentes en verde (1807+)"
+ ],
+ "smoke": [
+  "aparatos y sincronización (Lote 8A): enroll, PIN, device/login, idempotencia (replay y 409), sync, by-barcode, recibo atómico, aparato desactivado"
+ ],
+ "cambiosSql": [
+  "Estructura: UserDevice, UserPin, Tenant.DeviceSessionDays, columnas de idempotencia en IntegrationMessageLog, RefreshToken.UserDeviceId, UpdatedAtUtc donde falte para sincronizar. Seed: UiTheme, EntityType USER_DEVICE, permiso devices.manage."
+ ],
+ "decisiones": [
+  {
+   "decision": "DriverDevice se conserva; UserDevice es la tabla nueva para aparatos de almacén (8B podrá migrar DriverDevice a UserDevice)."
+  },
+  {
+   "decision": "El secreto del aparato y el código de enrolamiento se guardan solo como hash y se muestran una sola vez."
+  },
+  {
+   "decision": "Sin MFA ni contraseña en el aparato: aparato registrado + PIN por usuario; sesión de Tenant.DeviceSessionDays (30) días."
+  },
+  {
+   "decision": "La idempotencia se guarda en IntegrationMessageLog ampliada, sin tabla nueva; los 5xx no se guardan."
+  }
+ ]
+}
