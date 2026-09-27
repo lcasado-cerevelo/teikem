@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: 'Después de lote-diseno y de que el dueño apruebe el plan. args: { lote, titulo, plan: <objeto plan aprobado>, fecha: "YYYY-MM-DD" }',
   phases: [
     { title: 'Implementar', detail: 'una pieza por agente, luego integración de archivos compartidos y build' },
-    { title: 'Verificar', detail: '4 lentes → refutación adversarial → corrección; hasta 2 rondas limpias' },
+    { title: 'Verificar', detail: '4 lentes → refutación adversarial → corrección; hasta que haya 2 rondas limpias seguidas' },
     { title: 'Documentar', detail: 'docs/loteN-decisiones.md y manual funcional en docs/manual/' },
   ],
 }
@@ -42,8 +42,9 @@ log(build && build.compilado ? 'Build y pruebas en verde.' : 'Sin SDK local: la 
 phase('Verificar')
 const LENTES = ['compile-ef', 'tenant-security', 'spec', 'tests']
 const vistos = new Set()
-// args.limpiasRequeridas (por defecto 2) y args.maxRondas (por defecto 4) permiten acotar el costo de la verificación.
-const limpiasReq = Number(a.limpiasRequeridas) || 2, maxRondas = Number(a.maxRondas) || 4
+// Decisión de Luis (2026-09-27): se revisa hasta que salga limpio (dos rondas seguidas sin hallazgos confirmados). El tope de
+// rondas es solo un freno de seguridad contra un bucle sin fin (por defecto 12); no se usa para ahorrar.
+const limpiasReq = Number(a.limpiasRequeridas) || 2, maxRondas = Number(a.maxRondas) || 12
 let limpias = 0, ronda = 0, corregidos = 0
 while (limpias < limpiasReq && ronda < maxRondas) {
   ronda++

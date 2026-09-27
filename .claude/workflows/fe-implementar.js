@@ -4,7 +4,7 @@ export const meta = {
   whenToUse: 'Después de que el dueño apruebe el plan de un lote de frontend (docs/frontend/loteFN-plan.json). args: { lote: "F1", titulo, plan, fecha }',
   phases: [
     { title: 'Implementar', detail: 'grupos por orden: núcleo (opus) y pantallas (sonnet), cada pieza pasa npm run check' },
-    { title: 'Verificar', detail: '2 lentes → refutar solo severidad alta → corregir; máximo 2 rondas' },
+    { title: 'Verificar', detail: '2 lentes → refutar solo severidad alta → corregir; hasta que no queden hallazgos altos' },
     { title: 'Recorrido', detail: 'Playwright contra el API real, con capturas para el manual' },
     { title: 'Documentar', detail: 'docs/frontend/loteFN-decisiones.md y capítulo del manual' },
   ],
@@ -49,8 +49,10 @@ log(check && check.checkVerde ? 'npm run check en verde.' : 'ATENCIÓN: npm run 
 phase('Verificar')
 const LENTES = ['paridad', 'pruebas']
 const vistos = new Set()
+// Decisión de Luis (2026-09-27): se revisa hasta que no queden hallazgos altos confirmados; el tope (12) es solo un freno de seguridad.
+const maxRondasFe = Number(a.maxRondas) || 12
 let ronda = 0, corregidos = 0, huboAltas = true
-while (ronda < 2 && huboAltas) {
+while (ronda < maxRondasFe && huboAltas) {
   ronda++
   const encontrados = (await parallel(LENTES.map(l => () =>
     agent(`${cabecera}\n\nRonda ${ronda}. Revisa SOLO el frontend: el diff del lote (git diff HEAD -- web-app y archivos nuevos bajo web-app/). ${REGLAS_REV[l]} No reportes lo que npm run check ya atrapa. Máximo 15 hallazgos, los más graves primero, con severidad alta/media/baja. No edites.`,
