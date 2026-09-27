@@ -25,3 +25,4 @@ APK; Luis actualiza su copia local con `git pull origin claude/great-davinci-t2n
 
 - 2026-09-27: plan escrito; arranca el paso 1. Luis decide probar el aparato solo al final: la prueba pasa a ser el paso 6.
 - 2026-09-27 (durante el paso 1): lectura de cuota de Luis: semana general 11 %, Fable 13 % (reinicio viernes 6:00 PM). Regla: si la proyección del siguiente paso supera el 50 % de cualquiera de los dos medidores, no se arranca; se deja todo subido y se reporta.
+- 2026-09-27 12:10 UTC: paso 1 (7A backend) cerrado localmente (build, 1807 pruebas, db-init ×2 en base limpia, smoke verde) en el commit 12f8d2a; consumo real del workflow: 7.6 M tokens de agentes (114 agentes, 4 rondas de revisión, 29 correcciones), el doble de lo estimado. Arranca el paso 2.
