@@ -13,7 +13,8 @@ namespace Teikem.Infrastructure.Seeding;
 /// transversales (AUDIT_LOG, SECURITY_EVENT, USER); el Lote 2 agrega Clientes y contratos (CLIENT, CONTRACT); el Lote 3
 /// agrega Órdenes (TRANSPORT_ORDER); el Lote 4 agrega Flota (VEHICLE, FLEET_DOCUMENT, WORK_ORDER); el Lote 5 agrega Rutas (TRIP) e
 /// indicadores de despacho sobre TRANSPORT_ORDER; el Lote 6 agrega Inventario y almacén (STOCK_BALANCE, PRODUCT,
-/// INVENTORY_TRANSACTION, RECEIPT, WAREHOUSE_TASK) en el módulo WAREHOUSE; cada lote de negocio agrega los suyos.
+/// INVENTORY_TRANSACTION, RECEIPT, WAREHOUSE_TASK) en el módulo WAREHOUSE; el Lote 7A agrega los indicadores y el gráfico
+/// de almacén del Pulso (INVENTORY_TRANSACTION, CYCLE_COUNT); cada lote de negocio agrega los suyos.
 /// Idempotente por nombre.
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
@@ -67,6 +68,21 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
 
     /// <summary>Lote 6: tareas de almacén abiertas (pendientes o en proceso).</summary>
     public const string OpenWarehouseTasksFilter = "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"PENDING\",\"IN_PROGRESS\"]}]}";
+
+    /// <summary>Lote 7A: movimientos de recepción del ledger ('Unidades recibidas'; Quantity de un RECEIPT es positiva).</summary>
+    public const string ReceiptMovementsFilter = "{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"RECEIPT\"}]}";
+
+    /// <summary>
+    /// Lote 7A: conteos reconciliados con diferencia ('Conteos con diferencia'). HasVariance de CycleCountDataSource = alguna
+    /// línea contada con diferencia contra el saldo asentado; no se usa NetVariance ≠ 0 porque sobrantes y faltantes de un
+    /// mismo conteo pueden compensarse y el conteo sí tuvo diferencia.
+    /// </summary>
+    public const string ReconciledCountsWithVarianceFilter =
+        "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"RECONCILED\"},{\"field\":\"HasVariance\",\"op\":\"isTrue\"}]}";
+
+    public const string ReceivedUnitsIndicatorName = "Unidades recibidas";
+    public const string CountsWithVarianceIndicatorName = "Conteos con diferencia";
+    public const string MovementsByTypeChartName = "Movimientos de inventario por tipo";
 
     /// <summary>Lote 6 (bitácora del maestro L887, que amplía la L874): 'Movimientos por tipo y producto', agrupada por tipo y
     /// SKU (dos campos de agrupación) con conteo, suma de cantidad (con signo del ledger) y fila de totales.</summary>
@@ -230,6 +246,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Indicator("Tareas de almacén pendientes", "Tareas de la cola pendientes o en proceso", "Queue tasks pending or in progress",
             EntityTypes.WarehouseTask, null, count, OpenWarehouseTasksFilter, all, true, 96, module: wh);
 
+        // Lote 7A — Pulso de almacén (maestro, módulo 12 'Pulso del día'): visibles a toda la organización y en Pulso.
+        // 'Productos activos' y 'Productos bajo mínimo' ya vienen del Lote 6 (mismo filtro que la vista 'Inventario bajo mínimo').
+        Indicator(ReceivedUnitsIndicatorName, "Unidades recibidas en el período (movimientos de recepción del ledger)", "Units received in the period (ledger receipt movements)",
+            EntityTypes.InventoryTransaction, "Quantity", sum, ReceiptMovementsFilter, last7, true, 97, module: wh);
+        Indicator(CountsWithVarianceIndicatorName, "Conteos cíclicos reconciliados en el período con alguna diferencia", "Cycle counts reconciled in the period with a variance",
+            EntityTypes.CycleCount, null, count, ReconciledCountsWithVarianceFilter, last30, true, 98, module: wh);
+
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
             .Where(i => i.TenantId == tenantId && i.IsSystem && (i.Name == "Órdenes en curso" || i.Name == "COD por cobrar"))
@@ -287,6 +310,10 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             module: wh);
         Chart("Movimientos por día", "Tendencia diaria de movimientos de inventario", "Daily trend of inventory movements", EntityTypes.InventoryTransaction, "Date", line, null, last30, true, 95,
             module: wh);
+
+        // Lote 7A — gráfico de barras del Pulso de almacén: suma de cantidad (con signo del ledger: el despacho resta) por tipo.
+        Chart(MovementsByTypeChartName, "Cantidad movida en los últimos 7 días por tipo de movimiento", "Quantity moved in the last 7 days by movement type",
+            EntityTypes.InventoryTransaction, "TxnType", bar, null, last7, true, 96, field: "Quantity", fn: sum, module: wh);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

@@ -337,7 +337,7 @@ public class AnalyticsSeedFieldsTests
     private static readonly string[] WmsSources =
     {
         EntityTypes.Warehouse, EntityTypes.Product, EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.Receipt,
-        EntityTypes.WarehouseTask, EntityTypes.PickBatch,
+        EntityTypes.WarehouseTask, EntityTypes.PickBatch, EntityTypes.CycleCount,
     };
 
     private static Teikem.Infrastructure.Analytics.IDataSource WmsSource(string key)
@@ -355,6 +355,7 @@ public class AnalyticsSeedFieldsTests
             EntityTypes.Receipt => new ReceiptDataSource(db, tenant, lookups),
             EntityTypes.WarehouseTask => new WarehouseTaskDataSource(db, tenant, lookups),
             EntityTypes.PickBatch => new PickBatchDataSource(db, tenant),
+            EntityTypes.CycleCount => new CycleCountDataSource(db, tenant),
             _ => throw new ArgumentOutOfRangeException(nameof(key)),
         };
     }
@@ -396,11 +397,11 @@ public class AnalyticsSeedFieldsTests
                      ("Tareas de almacén pendientes", EntityTypes.WarehouseTask),
                  })
             Assert.Contains((name, source), indicators);
-        Assert.Equal(7, indicators.Count);
+        Assert.Equal(9, indicators.Count);   // 7 del Lote 6 + 'Unidades recibidas' y 'Conteos con diferencia' (Lote 7A)
         foreach (var name in new[] { "Valor de inventario por categoría", "Disponible por categoría", "Movimientos por tipo", "Movimientos por usuario",
                      "Productos por categoría", "Movimientos por día" })
             Assert.Contains(charts, c => c.Name == name);
-        Assert.Equal(6, charts.Count);
+        Assert.Equal(7, charts.Count);   // 6 del Lote 6 + 'Movimientos de inventario por tipo' (Lote 7A)
 
         // Forma exacta de las vistas del mock (L874) y de los indicadores de dinero, todos en el módulo WAREHOUSE.
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
@@ -475,6 +476,8 @@ public class AnalyticsSeedFieldsTests
                 "Quantity", "FromBin", "ToBin", "AssignedTo", "CompletedAtUtc", "AgeHours", "RefLabel" }, Array.Empty<string>()),
             [EntityTypes.PickBatch] = ("CollectedAtUtc", new[] { "Id", "PublicId", "Number", "CollectedAtUtc", "Status", "StatusCode", "WarehouseCode", "LineCount", "TotalQty",
                 "TotalCost", "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "PackedAtUtc", "IsActive" }, new[] { "TotalCost" }),
+            [EntityTypes.CycleCount] = ("ReconciledAtUtc", new[] { "Id", "Number", "WarehouseId", "WarehouseCode", "Status", "StatusCode", "LineCount", "CountedLines",
+                "VarianceLines", "NetVariance", "HasVariance", "CreatedAtUtc", "ReconciledAtUtc" }, Array.Empty<string>()),
         };
         foreach (var (key, (dateField, fields, money)) in expected)
         {
@@ -484,5 +487,148 @@ public class AnalyticsSeedFieldsTests
             Assert.Equal(fields.OrderBy(f => f, StringComparer.Ordinal), source.Fields.Select(f => f.Key).OrderBy(f => f, StringComparer.Ordinal));
             Assert.Equal(money.OrderBy(f => f, StringComparer.Ordinal), source.Fields.Where(f => f.IsMoney).Select(f => f.Key).OrderBy(f => f, StringComparer.Ordinal));
         }
+    }
+    // ================================================================ Lote 7A — Pulso de almacén
+
+    [Fact]
+    public async Task Lote7A_warehouse_pulse_indicators_and_chart_are_seeded_for_everyone_in_the_warehouse_module()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        var received = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == SystemAnalyticsSeeder.ReceivedUnitsIndicatorName);
+        Assert.Equal("Unidades recibidas", received.Name);
+        Assert.Equal(EntityTypes.InventoryTransaction, received.DataSourceKey);
+        Assert.Equal("Quantity", received.FieldKey);
+        Assert.Equal(AggregateFns.Sum, lookups.CodeOf(received.AggregateFnLookupId));
+        Assert.Equal(SystemAnalyticsSeeder.ReceiptMovementsFilter, received.FilterJson);
+        Assert.Contains("\"value\":\"" + InventoryTxnTypes.Receipt + "\"", received.FilterJson);
+        Assert.Equal(DateRangeModes.Last7, lookups.CodeOf(received.DateRangeModeLookupId!.Value));
+
+        var counts = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == SystemAnalyticsSeeder.CountsWithVarianceIndicatorName);
+        Assert.Equal("Conteos con diferencia", counts.Name);
+        Assert.Equal(EntityTypes.CycleCount, counts.DataSourceKey);
+        Assert.Null(counts.FieldKey);
+        Assert.Equal(AggregateFns.Count, lookups.CodeOf(counts.AggregateFnLookupId));
+        Assert.Contains("\"value\":\"" + CycleCountStatuses.Reconciled + "\"", counts.FilterJson);
+        Assert.Equal(DateRangeModes.Last30, lookups.CodeOf(counts.DateRangeModeLookupId!.Value));
+
+        // 'Productos bajo mínimo' ya existía (Lote 6) con el mismo filtro que la vista 'Inventario bajo mínimo'; 'Productos
+        // activos' tampoco se duplica.
+        var below = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == "Productos bajo mínimo");
+        var belowView = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == "Inventario bajo mínimo");
+        Assert.Equal(belowView.FilterJson, below.FilterJson);
+        Assert.Equal(EntityTypes.Product, below.DataSourceKey);
+        Assert.Equal(1, await db.IndicatorDefinitions.CountAsync(i => i.Name == "Productos activos"));
+
+        var chart = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == SystemAnalyticsSeeder.MovementsByTypeChartName);
+        Assert.Equal("Movimientos de inventario por tipo", chart.Name);
+        Assert.Equal(EntityTypes.InventoryTransaction, chart.DataSourceKey);
+        Assert.Equal("TxnType", chart.GroupByField);
+        Assert.Equal("Quantity", chart.FieldKey);
+        Assert.Equal(AggregateFns.Sum, lookups.CodeOf(chart.AggregateFnLookupId));
+        Assert.Equal(ChartTypes.Bar, lookups.CodeOf(chart.ChartTypeLookupId));
+        Assert.Equal(DateRangeModes.Last7, lookups.CodeOf(chart.DateRangeModeLookupId!.Value));
+        Assert.False(chart.IsMoney);
+
+        // Todos: sistema, en Pulso, módulo WAREHOUSE y visibles a toda la organización.
+        foreach (var d in new Teikem.Domain.Analytics.AnalyticsDefinitionBase[] { received, counts, below, chart })
+        {
+            Assert.True(d.IsSystem);
+            Assert.True(d.ShowInPulse);
+            Assert.Equal(BusinessModules.Warehouse, lookups.CodeOf(d.BusinessModuleLookupId));
+            Assert.Equal(ReportVisibilities.Tenant, lookups.CodeOf(d.VisibilityLookupId));
+        }
+    }
+
+    [Fact]
+    public async Task Lote7A_reseeding_is_idempotent_by_name()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        foreach (var name in new[] { SystemAnalyticsSeeder.ReceivedUnitsIndicatorName, SystemAnalyticsSeeder.CountsWithVarianceIndicatorName, "Productos bajo mínimo", "Productos activos" })
+            Assert.Equal(1, await db.IndicatorDefinitions.CountAsync(i => i.TenantId == TenantId && i.Name == name));
+        Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.TenantId == TenantId && c.Name == SystemAnalyticsSeeder.MovementsByTypeChartName));
+    }
+
+    [Fact]
+    public void Lote7A_cycle_count_data_source_is_registered()
+    {
+        // Sin la fuente registrada el indicador 'Conteos con diferencia' haría fallar el Pulso completo (registry.Get → 404).
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Teikem.Infrastructure.DependencyInjection.AddTeikemInfrastructure(services,
+            new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build());
+        var sources = services.Where(d => d.ServiceType == typeof(Teikem.Infrastructure.Analytics.IDataSource)).Select(d => d.ImplementationType).ToList();
+        Assert.Contains(typeof(CycleCountDataSource), sources);
+        Assert.Contains(typeof(InventoryTransactionDataSource), sources);
+        Assert.Contains(typeof(ProductDataSource), sources);
+    }
+
+    [Fact]
+    public async Task Lote7A_cycle_count_data_source_flags_variance_against_the_posted_balance()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        using var db = InMemoryDb(tenant);
+        db.StatusCodes.AddRange(
+            new StatusCode { StatusCodeId = 1, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.Open, LabelJson = "{\"es\":\"Abierto\"}" },
+            new StatusCode { StatusCodeId = 2, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.Reconciled, LabelJson = "{\"es\":\"Reconciliado\",\"en\":\"Reconciled\"}" });
+        db.Warehouses.Add(new Teikem.Domain.Wms.Warehouse { WarehouseId = 5, TenantId = TenantId, Code = "WH1", Name = "Central", StatusCodeId = 1, IsActive = true });
+        var reconciledAt = new DateTime(2026, 9, 20, 15, 0, 0, DateTimeKind.Utc);
+        Teikem.Domain.Wms.CycleCount Cc(int id, int status, DateTime? reconciled, bool active = true, int tenantId = TenantId) => new()
+        {
+            CycleCountId = id, TenantId = tenantId, WarehouseId = 5, Number = "CC-" + id.ToString("00000"), StatusCodeId = status,
+            CreatedAtUtc = reconciledAt.AddDays(-1), ReconciledAtUtc = reconciled, IsActive = active,
+        };
+        db.CycleCounts.AddRange(
+            Cc(1, 2, reconciledAt),                   // reconciliado, +2 y −2: neta 0 pero con diferencia
+            Cc(2, 2, reconciledAt),                   // reconciliado; la foto difería pero el saldo asentado cuadró: sin diferencia
+            Cc(3, 1, null),                           // abierto con captura distinta a la foto
+            Cc(4, 2, reconciledAt, active: false),    // eliminado: no aparece
+            Cc(5, 2, reconciledAt, tenantId: 2));     // otro tenant
+        Teikem.Domain.Wms.CycleCountLine L(int id, int cc, decimal system, decimal? counted, decimal? reconciled = null) => new()
+        {
+            CycleCountLineId = id, CycleCountId = cc, WarehouseBinId = 1, ProductId = id, SystemQty = system, CountedQty = counted,
+            ReconciledSystemQty = reconciled,
+        };
+        db.CycleCountLines.AddRange(
+            L(1, 1, 10, 12, 10), L(2, 1, 5, 3, 5), L(3, 1, 7, 7, 7),
+            L(4, 2, 10, 8, 8),
+            L(5, 3, 4, 6), L(6, 3, 4, null),
+            L(7, 5, 1, 9, 1));
+        await db.SaveChangesAsync();
+
+        var source = new CycleCountDataSource(db, tenant);
+        var rows = (await source.LoadAsync(new DataQuery(), default)).ToDictionary(r => (int)r["Id"]!);
+        Assert.Equal(new[] { 1, 2, 3 }, rows.Keys.OrderBy(k => k));
+
+        Assert.Equal(CycleCountStatuses.Reconciled, rows[1]["StatusCode"]);
+        Assert.Equal("Reconciliado", rows[1]["Status"]);
+        Assert.Equal("WH1", rows[1]["WarehouseCode"]);
+        Assert.Equal(3, rows[1]["LineCount"]);
+        Assert.Equal(2, rows[1]["VarianceLines"]);
+        Assert.Equal(0m, rows[1]["NetVariance"]);
+        Assert.Equal(true, rows[1]["HasVariance"]);
+
+        Assert.Equal(0, rows[2]["VarianceLines"]);
+        Assert.Equal(false, rows[2]["HasVariance"]);
+
+        Assert.Equal(1, rows[3]["CountedLines"]);
+        Assert.Equal(2m, rows[3]["NetVariance"]);
+        Assert.Equal(true, rows[3]["HasVariance"]);
+
+        // Rango sobre ReconciledAtUtc: el abierto (sin fecha) queda fuera; desde inclusivo, hasta exclusivo.
+        var ranged = await source.LoadAsync(new DataQuery { FromUtc = reconciledAt, ToUtc = reconciledAt.AddSeconds(1) }, default);
+        Assert.Equal(new[] { 1, 2 }, ranged.Select(r => (int)r["Id"]!).OrderBy(i => i));
+        Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = reconciledAt.AddSeconds(1) }, default));
+
+        // El filtro sembrado de 'Conteos con diferencia' selecciona solo el conteo 1.
+        var filter = Teikem.Infrastructure.Dsl.RuleEvaluator.Parse(SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter);
+        Assert.Equal(new[] { 1 }, rows.Values.Where(r => filter.Evaluate(r)).Select(r => (int)r["Id"]!));
     }
 }

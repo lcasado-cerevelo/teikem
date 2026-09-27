@@ -241,6 +241,7 @@ public static class DependencyInjection
         services.AddScoped<IDataSource, ReceiptDataSource>();
         services.AddScoped<IDataSource, WarehouseTaskDataSource>();
         services.AddScoped<IDataSource, PickBatchDataSource>();
+        services.AddScoped<IDataSource, CycleCountDataSource>();   // Lote 7A (P2): indicador de Pulso 'Conteos con diferencia'
         services.AddScoped<IOwnedEntityResolver, WarehouseOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, WarehouseDockOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ProductOwnedEntityResolver>();
