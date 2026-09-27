@@ -628,7 +628,7 @@ public class AnalyticsSeedFieldsTests
         Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = reconciledAt.AddSeconds(1) }, default));
 
         // El filtro sembrado de 'Conteos con diferencia' selecciona solo el conteo 1.
-        var filter = Teikem.Infrastructure.Dsl.RuleEvaluator.Parse(SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter);
-        Assert.Equal(new[] { 1 }, rows.Values.Where(r => filter.Evaluate(r)).Select(r => (int)r["Id"]!));
+        Assert.Equal(new[] { 1 }, rows.Values.Where(r => Teikem.Infrastructure.Dsl.RuleEvaluator.Matches(r, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter))
+            .Select(r => (int)r["Id"]!));
     }
 }
