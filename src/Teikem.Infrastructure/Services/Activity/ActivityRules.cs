@@ -132,6 +132,33 @@ public static class ActivityRules
     public static bool IsShown(bool mandatory, bool defaultOn, bool onlyMandatory)
         => mandatory || (!onlyMandatory && defaultOn);
 
+    /// <summary>
+    /// Aplica el LookupCodeOverride del tenant (maestro L54) a los metadatos base de un evento. El módulo y la bandera de
+    /// obligatorio son de la semilla base: un tenant no puede degradar un obligatorio. Deshabilitar (IsEnabled = 0) apaga un
+    /// opcional (null = no se muestra); un obligatorio se sigue mostrando. El encendido por defecto se toma del CustomExtraJson
+    /// solo si trae "defaultOn"; si no, queda el de la base.
+    /// </summary>
+    public static ActivityEventMeta? ApplyOverride(ActivityEventMeta baseMeta, bool isEnabled, string? customExtraJson)
+    {
+        if (!isEnabled && !baseMeta.Mandatory) return null;
+        var defaultOn = baseMeta.DefaultOn;
+        if (!string.IsNullOrWhiteSpace(customExtraJson))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(customExtraJson);
+                if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("defaultOn", out var d)
+                    && d.ValueKind is JsonValueKind.True or JsonValueKind.False)
+                    defaultOn = d.GetBoolean();
+            }
+            catch (JsonException)
+            {
+                // JSON inválido en el override: se conserva el encendido de la base.
+            }
+        }
+        return baseMeta with { DefaultOn = defaultOn };
+    }
+
     // ================================================================ módulos
 
     /// <summary>Módulo del tenant (TenantModule) que debe estar encendido para ver la pestaña; null = sin requisito.</summary>

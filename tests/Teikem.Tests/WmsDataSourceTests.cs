@@ -111,4 +111,32 @@ public sealed class WmsDataSourceTests
         // La suma CON signo sin TRANSFER (lo que agrega 'Movimientos por tipo y producto') cuadra con el saldo en mano.
         Assert.Equal(5m, pn.Where(r => (string?)r["TxnTypeCode"] != InventoryTxnTypes.Transfer).Sum(r => (decimal)r["Quantity"]!));
     }
+
+    [Fact]
+    public async Task Lote7A_received_units_filter_sums_what_was_received()
+    {
+        // Maestro (Pulso de almacén, 'Unidades recibidas') y lote7A-decisiones #3: 10 esperados y 8 recibidos suman 8, no 10.
+        await using var f = await WmsFixture.CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var bin = await f.AddBinAsync(await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking), "P-01");
+        var p = await f.AddProductAsync("PR");
+        var receipt = await f.AddReceiptAsync(w, ReceiptStatuses.Received);
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 10m, ToWarehouseId: w.WarehouseId, ToBinId: bin.WarehouseBinId,
+            RefEntityType: EntityTypes.Receipt, RefId: receipt.ReceiptHeaderId));
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Adjustment, p.ProductId, 2m, FromWarehouseId: w.WarehouseId, FromBinId: bin.WarehouseBinId,
+            RefEntityType: EntityTypes.Receipt, RefId: receipt.ReceiptHeaderId, ReasonCode: AdjustmentReasons.ReceiptVariance));
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Adjustment, p.ProductId, 1m, FromWarehouseId: w.WarehouseId, FromBinId: bin.WarehouseBinId,
+            ReasonCode: AdjustmentReasons.Damage));
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Issue, p.ProductId, 4m, FromWarehouseId: w.WarehouseId, FromBinId: bin.WarehouseBinId));
+
+        var rows = await new InventoryTransactionDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups)).LoadAsync(new DataQuery(), default);
+        Assert.Equal(4, rows.Count);
+        decimal Sum(string filter)
+        {
+            var match = Teikem.Infrastructure.Dsl.RuleEvaluator.CompileFilter(filter);
+            return rows.Where(r => match(r)).Sum(r => (decimal)r["Quantity"]!);
+        }
+        Assert.Equal(8m, Sum(Teikem.Infrastructure.Seeding.SystemAnalyticsSeeder.ReceiptMovementsFilter));     // neto = lo recibido
+        Assert.Equal(10m, Sum(Teikem.Infrastructure.Seeding.SystemAnalyticsSeeder.ReceiptMovementsFilterV1));  // la V1 sumaba lo esperado
+    }
 }

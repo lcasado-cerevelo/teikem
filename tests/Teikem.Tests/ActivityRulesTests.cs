@@ -38,6 +38,7 @@ public sealed class ActivityRulesTests
     {
         Assert.Equal(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now));
         Assert.Equal(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, ActivityRules.TenantZone));
+        // La zona UTC−4 solo prueba la regla: hoy el servicio pasa TenantZone (= UTC) porque Tenant no guarda zona (decisión 8).
         // UTC−4 (Puerto Rico): a las 15:30 UTC son las 11:30 locales; la medianoche local es 04:00 UTC.
         var pr = TimeZoneInfo.CreateCustomTimeZone("UTC-4", TimeSpan.FromHours(-4), "UTC-4", "UTC-4");
         Assert.Equal(new DateTime(2026, 9, 27, 4, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, pr));
@@ -137,6 +138,20 @@ public sealed class ActivityRulesTests
     }
 
     [Fact]
+    public void Tenant_override_disables_optionals_and_switches_default_but_never_degrades_mandatory()
+    {
+        var optional = new ActivityEventMeta("WAREHOUSE", false, true);
+        var mandatory = new ActivityEventMeta("WAREHOUSE", true, true);
+        Assert.Equal(optional, ActivityRules.ApplyOverride(optional, true, null));
+        Assert.Null(ActivityRules.ApplyOverride(optional, false, null));                              // deshabilitado: fuera
+        Assert.Equal(mandatory, ActivityRules.ApplyOverride(mandatory, false, null));                 // obligatorio: sigue
+        Assert.Equal(mandatory, ActivityRules.ApplyOverride(mandatory, true, "{\"mandatory\":false}"));   // no se degrada
+        Assert.Equal(optional with { DefaultOn = false }, ActivityRules.ApplyOverride(optional, true, "{\"defaultOn\":false}"));
+        Assert.Equal(optional, ActivityRules.ApplyOverride(optional, true, "{\"otro\":1}"));        // sin defaultOn: el de la base
+        Assert.Equal(optional, ActivityRules.ApplyOverride(optional, true, "no es json"));
+    }
+
+    [Fact]
     public void Mandatory_always_shown_optional_only_when_on()
     {
         Assert.True(ActivityRules.IsShown(mandatory: true, defaultOn: false, onlyMandatory: true));
@@ -213,22 +228,64 @@ public sealed class ActivityRulesTests
         var start = seed.IndexOf("AS s ON t.Entity = 'ActivityEventType'", StringComparison.Ordinal);
         Assert.True(start > 0, "No está el MERGE de ActivityEventType en el seed.");
         var block = seed[seed.LastIndexOf("MERGE dbo.LookupCode", start, StringComparison.Ordinal)..start];
-        var rows = System.Text.RegularExpressions.Regex.Matches(block, @"\('([A-Z_]+)',N'[^']+',N'[^']+',([01]),([01]),(\d+)\)")
-            .Select(m => (Code: m.Groups[1].Value, Mandatory: m.Groups[2].Value == "1", DefaultOn: m.Groups[3].Value == "1",
-                Sort: int.Parse(m.Groups[4].Value)))
+        var rows = System.Text.RegularExpressions.Regex.Matches(block, @"\('([A-Z_]+)',N'([^']+)',N'([^']+)',([01]),([01]),(\d+)\)")
+            .Select(m => (Code: m.Groups[1].Value, Es: m.Groups[2].Value, En: m.Groups[3].Value, Mandatory: m.Groups[4].Value == "1",
+                DefaultOn: m.Groups[5].Value == "1", Sort: int.Parse(m.Groups[6].Value)))
             .ToList();
         Assert.Equal(ActivityEvents.Warehouse, rows.Select(r => r.Code).ToList());
         Assert.Equal(Enumerable.Range(1, 23), rows.Select(r => r.Sort));
         Assert.Equal(Catalog.Select(c => (c.Code, c.Mandatory, c.DefaultOn)), rows.Select(r => (r.Code, r.Mandatory, r.DefaultOn)));
+
+        // El maestro es la referencia única: etiqueta es / en y bandera de obligatorio de la tabla 'Catálogo inicial — Almacén'.
+        var master = MasterWarehouseCatalog(root);
+        Assert.Equal(rows.Select(r => r.Code), master.Select(m => m.Code));
+        Assert.Equal(master.Select(m => (m.Code, m.Es, m.En, m.Mandatory)), rows.Select(r => (r.Code, r.Es, r.En, r.Mandatory)));
     }
 
-    private static async Task<WmsFixture> CreateAsync()
+    /// <summary>Filas de la tabla 'Catálogo inicial — Almacén' del maestro: código, etiqueta es / en y obligatorio (Sí/No).</summary>
+    private static List<(string Code, string Es, string En, bool Mandatory)> MasterWarehouseCatalog(string root)
+    {
+        var text = File.ReadAllText(Path.Combine(root, "Diseño", "logistica-funcionalidades-maestro.md"));
+        var start = text.IndexOf("**Catálogo inicial — Almacén**", StringComparison.Ordinal);
+        Assert.True(start > 0, "No está la tabla 'Catálogo inicial — Almacén' en el maestro.");
+        var end = text.IndexOf("**Catálogo inicial — Operación**", start, StringComparison.Ordinal);
+        Assert.True(end > start, "No está el cierre de la tabla de Almacén en el maestro.");
+        var result = new List<(string, string, string, bool)>();
+        foreach (var line in text[start..end].Split('\n'))
+        {
+            var cells = line.Trim().Split('|');
+            if (cells.Length < 7) continue;
+            var code = System.Text.RegularExpressions.Regex.Match(cells[1].Trim(), @"^`([A-Z_]+)`$");
+            if (!code.Success) continue;
+            var labels = cells[3].Split(" / ");
+            Assert.True(labels.Length == 2, $"Etiqueta es / en mal formada en el maestro: {cells[3]}");
+            var flag = cells[4].Trim();
+            Assert.True(flag.StartsWith("Sí") || flag.StartsWith("No"), $"Bandera de obligatorio no reconocida en el maestro: {flag}");
+            result.Add((code.Groups[1].Value, labels[0].Trim(), labels[1].Trim(), flag.StartsWith("Sí")));
+        }
+        return result;
+    }
+
+    /// <summary>Escritor de eventos de seguridad que guarda las llamadas (para probar el PERMISSION_DENIED del 403).</summary>
+    private sealed class RecordingSecurityEventWriter : ISecurityEventWriter
+    {
+        public List<(string EventType, string Outcome)> Calls { get; } = new();
+
+        public Task WriteAsync(string eventType, string outcome, int? userId = null, int? tenantId = null, object? detail = null, CancellationToken ct = default)
+        {
+            Calls.Add((eventType, outcome));
+            return Task.CompletedTask;
+        }
+    }
+
+    private static async Task<WmsFixture> CreateAsync(bool binMovedOn = false, ISecurityEventWriter? security = null)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
             s.AddSingleton<ProductService>();
             s.AddSingleton<IActivityEventProvider, WarehouseActivityProvider>();
             s.AddSingleton<ActivityFeedService>();
+            if (security is not null) s.AddSingleton(security);   // el último registro gana
         });
         var existing = await f.Db.LookupCodes.AsNoTracking().ToListAsync();
         var id = 5000;
@@ -236,7 +293,7 @@ public sealed class ActivityRulesTests
         {
             LookupCodeId = id++, Entity = ActivityRules.CatalogDomain, InternalCode = c.Code, IsActive = true, IsSystem = true,
             LabelJson = $"{{\"es\":\"es {c.Code}\",\"en\":\"en {c.Code}\"}}",
-            ExtraJson = $"{{\"module\":\"WAREHOUSE\",\"mandatory\":{(c.Mandatory ? "true" : "false")},\"defaultOn\":{(c.DefaultOn ? "true" : "false")}}}",
+            ExtraJson = $"{{\"module\":\"WAREHOUSE\",\"mandatory\":{(c.Mandatory ? "true" : "false")},\"defaultOn\":{(c.DefaultOn || (binMovedOn && c.Code == ActivityEvents.BinMoved) ? "true" : "false")}}}",
         }).ToList();
         // Bitácora (PRODUCT_DEACTIVATED): acción DELETE y el EntityType propio de la categoría (Lote 7A).
         activity.Add(new LookupCode { LookupCodeId = id++, Entity = LookupDomains.AuditAction, InternalCode = AuditActions.Delete, IsActive = true, LabelJson = "{\"es\":\"DELETE\"}" });
@@ -314,6 +371,119 @@ public sealed class ActivityRulesTests
         var first = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(null, "24h", false, 0, 1), default);
         Assert.Equal(3, first.Total);
         Assert.Single(first.Items);
+    }
+
+    [Fact]
+    public async Task Feed_labels_follow_the_user_language()
+    {
+        await using var f = await CreateAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var r = await f.AddReceiptAsync(w1, ReceiptStatuses.Received);
+        f.Db.Set<Teikem.Domain.Wms.ReceiptLine>().Add(new Teikem.Domain.Wms.ReceiptLine
+        {
+            ReceiptHeaderId = r.ReceiptHeaderId, ProductId = (await f.AddProductAsync("SKU-A")).ProductId, ReceivedQty = 2m,
+        });
+        History(f, EntityTypes.Receipt, r.ReceiptHeaderId, StatusDomains.ReceiptStatus, ReceiptStatuses.Received, DateTime.UtcNow.AddMinutes(-5));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        f.Tenant.Lang = "en";
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var confirmed = Assert.Single(page.Items, i => i.Code == ActivityEvents.ReceiptConfirmed);
+        Assert.Equal("en " + ActivityEvents.ReceiptConfirmed, confirmed.Label);
+        Assert.Contains("1 line", confirmed.Detail);
+
+        f.Tenant.Lang = "es";
+        var es = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var confirmedEs = Assert.Single(es.Items, i => i.Code == ActivityEvents.ReceiptConfirmed);
+        Assert.Equal("es " + ActivityEvents.ReceiptConfirmed, confirmedEs.Label);
+        Assert.Contains("1 línea", confirmedEs.Detail);
+    }
+
+    /// <summary>
+    /// Maestro L54: el LookupCodeOverride del tenant renombra y deshabilita eventos del catálogo también en el feed. Un
+    /// obligatorio deshabilitado se sigue mostrando (no se degrada); el override de otro tenant no aplica.
+    /// </summary>
+    [Fact]
+    public async Task Feed_applies_the_tenant_catalog_override()
+    {
+        await using var f = await CreateAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var r = await f.AddReceiptAsync(w1, ReceiptStatuses.Received);
+        var po = await AddPurchaseOrderAsync(f, w1, "PO-00077");
+        var at = DateTime.UtcNow.AddMinutes(-5);
+        History(f, EntityTypes.Receipt, r.ReceiptHeaderId, StatusDomains.ReceiptStatus, ReceiptStatuses.Received, at);
+        History(f, EntityTypes.PurchaseOrder, po.PurchaseOrderId, StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent, at);
+        History(f, EntityTypes.PurchaseOrder, po.PurchaseOrderId, StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Cancelled, at);
+        int CatalogId(string code) => LookupIdOf(f, ActivityRules.CatalogDomain, code);
+        f.Db.LookupCodeOverrides.AddRange(
+            new LookupCodeOverride { TenantId = f.Tenant.TenantId!.Value, LookupCodeId = CatalogId(ActivityEvents.ReceiptConfirmed), CustomLabelJson = "{\"es\":\"Recepción cerrada\"}" },
+            new LookupCodeOverride { TenantId = f.Tenant.TenantId!.Value, LookupCodeId = CatalogId(ActivityEvents.PoSent), IsEnabled = false },
+            new LookupCodeOverride { TenantId = f.Tenant.TenantId!.Value, LookupCodeId = CatalogId(ActivityEvents.PoCancelled), IsEnabled = false,
+                CustomExtraJson = "{\"mandatory\":false}" },
+            // Otro tenant renombra el mismo evento: no debe verse aquí.
+            new LookupCodeOverride { TenantId = WmsFixture.OtherTenantId, LookupCodeId = CatalogId(ActivityEvents.ReceiptConfirmed), CustomLabelJson = "{\"es\":\"Ajeno\"}" });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var confirmed = Assert.Single(page.Items, i => i.Code == ActivityEvents.ReceiptConfirmed);
+        Assert.Equal("Recepción cerrada", confirmed.Label);
+        Assert.True(confirmed.Mandatory);
+        Assert.DoesNotContain(page.Items, i => i.Code == ActivityEvents.PoSent);              // opcional deshabilitado
+        var cancelled = Assert.Single(page.Items, i => i.Code == ActivityEvents.PoCancelled);  // obligatorio: sigue y sigue obligatorio
+        Assert.True(cancelled.Mandatory);
+
+        f.Tenant.Lang = "en";   // el override solo trae "es": en inglés queda la etiqueta base
+        var en = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        Assert.Equal("en " + ActivityEvents.ReceiptConfirmed, Assert.Single(en.Items, i => i.Code == ActivityEvents.ReceiptConfirmed).Label);
+    }
+
+    private static async Task<Teikem.Domain.Wms.PurchaseOrder> AddPurchaseOrderAsync(WmsFixture f, Teikem.Domain.Wms.Warehouse w, string number)
+    {
+        var po = new Teikem.Domain.Wms.PurchaseOrder
+        {
+            PublicId = Guid.NewGuid(), TenantId = f.Tenant.TenantId!.Value, SupplierId = 1, WarehouseId = w.WarehouseId, Number = number,
+            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
+            IsActive = true, CreatedAtUtc = DateTime.UtcNow,
+        };
+        f.Db.Set<Teikem.Domain.Wms.PurchaseOrder>().Add(po);
+        await f.Db.SaveChangesAsync();
+        return po;
+    }
+
+    /// <summary>
+    /// Las fuentes del proveedor (StatusSources) incluyen RECEIPT → PUTAWAY y PURCHASE_ORDER → RECEIVED / CANCELLED: quitar
+    /// cualquiera de esos estatus rompe esta prueba (PO_CANCELLED es obligatorio y también sale con 'solo obligatorios').
+    /// </summary>
+    [Fact]
+    public async Task Warehouse_provider_reads_receipt_putaway_and_purchase_order_received_and_cancelled()
+    {
+        await using var f = await CreateAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var r = await f.AddReceiptAsync(w1, ReceiptStatuses.Putaway);
+        var received = await AddPurchaseOrderAsync(f, w1, "PO-00101");
+        var cancelled = await AddPurchaseOrderAsync(f, w1, "PO-00102");
+        var at = DateTime.UtcNow.AddMinutes(-5);
+        History(f, EntityTypes.Receipt, r.ReceiptHeaderId, StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, at);
+        History(f, EntityTypes.PurchaseOrder, received.PurchaseOrderId, StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Received, at);
+        History(f, EntityTypes.PurchaseOrder, cancelled.PurchaseOrderId, StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Cancelled, at);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var putaway = Assert.Single(page.Items, i => i.Code == ActivityEvents.ReceiptPutawayDone);
+        Assert.Equal((EntityTypes.Receipt, r.ReceiptHeaderId, r.Number, false), (putaway.EntityType, putaway.EntityId, putaway.Reference, putaway.Mandatory));
+        var poReceived = Assert.Single(page.Items, i => i.Code == ActivityEvents.PoReceived);
+        Assert.Equal((EntityTypes.PurchaseOrder, received.PurchaseOrderId, received.PublicId, "PO-00101", false),
+            (poReceived.EntityType, poReceived.EntityId, poReceived.PublicId!.Value, poReceived.Reference, poReceived.Mandatory));
+        var poCancelled = Assert.Single(page.Items, i => i.Code == ActivityEvents.PoCancelled);
+        Assert.Equal((EntityTypes.PurchaseOrder, cancelled.PurchaseOrderId, cancelled.PublicId, "PO-00102", true),
+            (poCancelled.EntityType, poCancelled.EntityId, poCancelled.PublicId!.Value, poCancelled.Reference, poCancelled.Mandatory));
+
+        var mandatory = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse, "24h", OnlyMandatory: true), default);
+        Assert.Contains(mandatory.Items, i => i.Code == ActivityEvents.PoCancelled && i.Reference == "PO-00102");
+        Assert.DoesNotContain(mandatory.Items, i => i.Code is ActivityEvents.PoReceived or ActivityEvents.ReceiptPutawayDone);
     }
 
     [Fact]
@@ -499,12 +669,15 @@ public sealed class ActivityRulesTests
     [Fact]
     public async Task Feed_requires_the_module_permission_and_the_wms_module()
     {
-        await using var f = await CreateAsync();
+        var security = new RecordingSecurityEventWriter();
+        await using var f = await CreateAsync(security: security);
         var feed = f.Get<ActivityFeedService>();
 
         f.SetPermissions(PermissionCatalog.AnalyticsView);
         var ex = await Assert.ThrowsAsync<ForbiddenException>(() => feed.GetAsync(new ActivityQuery("warehouse"), default));
         Assert.Equal("No tiene permiso para ver la actividad del módulo WAREHOUSE.", ex.Message);
+        // El 403 queda en la bitácora de seguridad (PERMISSION_DENIED, BLOCKED).
+        Assert.Equal((SecurityEventTypes.PermissionDenied, SecurityOutcomes.Blocked), Assert.Single(security.Calls));
         var none = await feed.GetAsync(new ActivityQuery(), default);
         Assert.Empty(none.VisibleModules);
         Assert.Equal(0, none.Total);
@@ -515,6 +688,158 @@ public sealed class ActivityRulesTests
         f.SetModules(ModuleKeys.Purchasing);   // WMS_LOTSERIAL apagado: la pestaña Almacén desaparece
         await Assert.ThrowsAsync<ForbiddenException>(() => feed.GetAsync(new ActivityQuery(BusinessModules.Warehouse), default));
         await Assert.ThrowsAsync<ValidationException>(() => feed.GetAsync(new ActivityQuery(Take: 51), default));
+    }
+
+    [Fact]
+    public async Task Warehouse_provider_maps_done_and_cancelled_tasks_by_type()
+    {
+        await using var f = await CreateAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var p = await f.AddProductAsync("SKU-A");
+        var putaway = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Putaway, w1.WarehouseId, p.ProductId, 3m));
+        var replenish = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Replenish, w1.WarehouseId, p.ProductId, 2m));
+        var cancelled = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Putaway, w1.WarehouseId, p.ProductId, 1m));
+        var count = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Count, w1.WarehouseId, p.ProductId, 1m));   // control
+        var at = DateTime.UtcNow.AddMinutes(-5);
+        History(f, EntityTypes.WarehouseTask, putaway.WarehouseTaskId, StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Done, at);
+        History(f, EntityTypes.WarehouseTask, replenish.WarehouseTaskId, StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Done, at);
+        History(f, EntityTypes.WarehouseTask, cancelled.WarehouseTaskId, StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Cancelled, at);
+        History(f, EntityTypes.WarehouseTask, count.WarehouseTaskId, StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Done, at);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var done = Assert.Single(page.Items, i => i.Code == ActivityEvents.PutawayDone);
+        Assert.Equal((EntityTypes.WarehouseTask, putaway.WarehouseTaskId, $"#{putaway.WarehouseTaskId}"), (done.EntityType, done.EntityId, done.Reference));
+        Assert.Contains("W1", done.Detail);
+        Assert.Contains("SKU-A", done.Detail);
+        var replenished = Assert.Single(page.Items, i => i.Code == ActivityEvents.ReplenishDone);
+        Assert.Equal((EntityTypes.WarehouseTask, replenish.WarehouseTaskId), (replenished.EntityType, replenished.EntityId));
+        var taskCancelled = Assert.Single(page.Items, i => i.Code == ActivityEvents.TaskCancelled);
+        Assert.Equal((EntityTypes.WarehouseTask, cancelled.WarehouseTaskId), (taskCancelled.EntityType, taskCancelled.EntityId));
+        Assert.DoesNotContain(page.Items, i => i.EntityId == count.WarehouseTaskId && i.EntityType == EntityTypes.WarehouseTask);   // COUNT DONE: sin evento
+        Assert.Equal(3, page.Items.Count(i => i.EntityType == EntityTypes.WarehouseTask));
+    }
+
+    [Fact]
+    public async Task Warehouse_provider_reads_asn_count_pick_and_warehouse_history()
+    {
+        await using var f = await CreateAsync();
+        var tenantId = f.Tenant.TenantId!.Value;
+        var w1 = await f.AddWarehouseAsync("W1");
+        var w9 = await f.AddWarehouseAsync("W9");
+        var b1 = await f.AddBinAsync(await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking), "P-01");
+        var client = await f.AddClientAsync("CLI");
+        var pa = await f.AddProductAsync("SKU-A");
+        var pb = await f.AddProductAsync("SKU-B");
+
+        var asn = new Teikem.Domain.Wms.Asn
+        {
+            TenantId = tenantId, WarehouseId = w1.WarehouseId, ClientId = client.ClientId, Reference = null,
+            StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Cancelled), CreatedAtUtc = DateTime.UtcNow,
+        };
+        var cc = new Teikem.Domain.Wms.CycleCount
+        {
+            TenantId = tenantId, WarehouseId = w1.WarehouseId, Number = "CC-00088",
+            StatusCodeId = f.StatusId(StatusDomains.CycleCountStatus, CycleCountStatuses.Reconciled), CreatedAtUtc = DateTime.UtcNow,
+        };
+        var batch = new Teikem.Domain.Wms.PickBatch
+        {
+            PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = w1.WarehouseId, Number = "PB-00007", ClientInvoiceNumber = "FAC-77",
+            StatusCodeId = f.StatusId(StatusDomains.PickBatchStatus, PickBatchStatuses.Cancelled), CollectedAtUtc = DateTime.UtcNow,
+        };
+        f.Db.Set<Teikem.Domain.Wms.Asn>().Add(asn);
+        f.Db.Set<Teikem.Domain.Wms.CycleCount>().Add(cc);
+        f.Db.Set<Teikem.Domain.Wms.PickBatch>().Add(batch);
+        await f.Db.SaveChangesAsync();
+        f.Db.Set<Teikem.Domain.Wms.AsnLine>().AddRange(
+            new Teikem.Domain.Wms.AsnLine { AsnId = asn.AsnId, ProductId = pa.ProductId, ExpectedQty = 5m },
+            new Teikem.Domain.Wms.AsnLine { AsnId = asn.AsnId, ProductId = pb.ProductId, ExpectedQty = 3m });
+        // Línea 1: la foto decía 5, el saldo al reconciliar era 6 y se contaron 7 → +1 (no +2). Línea 2 cuadra.
+        f.Db.Set<Teikem.Domain.Wms.CycleCountLine>().AddRange(
+            new Teikem.Domain.Wms.CycleCountLine { CycleCountId = cc.CycleCountId, WarehouseBinId = b1.WarehouseBinId, ProductId = pa.ProductId, SystemQty = 5m, CountedQty = 7m, ReconciledSystemQty = 6m },
+            new Teikem.Domain.Wms.CycleCountLine { CycleCountId = cc.CycleCountId, WarehouseBinId = b1.WarehouseBinId, ProductId = pb.ProductId, SystemQty = 3m, CountedQty = 3m, ReconciledSystemQty = 3m });
+        f.Db.Set<Teikem.Domain.Wms.PickBatchLine>().AddRange(
+            new Teikem.Domain.Wms.PickBatchLine { PickBatchId = batch.PickBatchId, ProductId = pa.ProductId, FromBinId = b1.WarehouseBinId, Quantity = 1m, IssueTxnId = 1 },
+            new Teikem.Domain.Wms.PickBatchLine { PickBatchId = batch.PickBatchId, ProductId = pb.ProductId, FromBinId = b1.WarehouseBinId, Quantity = 2m, IssueTxnId = 2 });
+        var at = DateTime.UtcNow.AddMinutes(-5);
+        History(f, EntityTypes.Asn, asn.AsnId, StatusDomains.AsnStatus, AsnStatuses.Cancelled, at);
+        History(f, EntityTypes.CycleCount, cc.CycleCountId, StatusDomains.CycleCountStatus, CycleCountStatuses.Counted, at.AddMinutes(-1));
+        History(f, EntityTypes.CycleCount, cc.CycleCountId, StatusDomains.CycleCountStatus, CycleCountStatuses.Reconciled, at);
+        History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, at.AddMinutes(-2));
+        History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, at.AddMinutes(-1));
+        History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Cancelled, at);
+        History(f, EntityTypes.Warehouse, w9.WarehouseId, StatusDomains.WarehouseStatus, WarehouseStatuses.Inactive, at);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+
+        var asnCancelled = Assert.Single(page.Items, i => i.Code == ActivityEvents.AsnCancelled);
+        Assert.Equal((EntityTypes.Asn, asn.AsnId, (Guid?)null, $"ASN #{asn.AsnId}", false),
+            (asnCancelled.EntityType, asnCancelled.EntityId, asnCancelled.PublicId, asnCancelled.Reference, asnCancelled.Mandatory));
+        Assert.Contains("W1", asnCancelled.Detail);
+        Assert.Contains("2 líneas", asnCancelled.Detail);
+
+        var finished = Assert.Single(page.Items, i => i.Code == ActivityEvents.CountFinished);
+        Assert.Equal((EntityTypes.CycleCount, cc.CycleCountId, (Guid?)null, "CC-00088", false),
+            (finished.EntityType, finished.EntityId, finished.PublicId, finished.Reference, finished.Mandatory));
+        Assert.Contains("2 líneas", finished.Detail);
+        Assert.DoesNotContain("Diferencia neta", finished.Detail);
+        var reconciled = Assert.Single(page.Items, i => i.Code == ActivityEvents.CountReconciled);
+        Assert.Equal((EntityTypes.CycleCount, cc.CycleCountId, (Guid?)null, "CC-00088", true),
+            (reconciled.EntityType, reconciled.EntityId, reconciled.PublicId, reconciled.Reference, reconciled.Mandatory));
+        Assert.Contains("W1", reconciled.Detail);
+        Assert.Contains("Diferencia neta +1", reconciled.Detail);   // contra ReconciledSystemQty, no contra la foto
+
+        foreach (var code in new[] { ActivityEvents.PickCollected, ActivityEvents.PickPacked, ActivityEvents.PickCancelled })
+        {
+            var e = Assert.Single(page.Items, i => i.Code == code);
+            Assert.Equal((EntityTypes.PickBatch, batch.PickBatchId, (Guid?)batch.PublicId, "PB-00007"), (e.EntityType, e.EntityId, e.PublicId, e.Reference));
+            Assert.Contains("W1", e.Detail);
+            Assert.Contains("FAC-77", e.Detail);
+            Assert.Contains("2 líneas", e.Detail);
+        }
+
+        var deactivated = Assert.Single(page.Items, i => i.Code == ActivityEvents.WarehouseDeactivated);
+        Assert.Equal((EntityTypes.Warehouse, w9.WarehouseId, (Guid?)w9.PublicId, "W9", true),
+            (deactivated.EntityType, deactivated.EntityId, deactivated.PublicId, deactivated.Reference, deactivated.Mandatory));
+
+        var mandatory = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse, "24h", OnlyMandatory: true), default);
+        Assert.Equal(new[] { ActivityEvents.CountReconciled, ActivityEvents.PickCancelled, ActivityEvents.WarehouseDeactivated },
+            mandatory.Items.Select(i => i.Code).OrderBy(c => c, StringComparer.Ordinal).ToArray());
+    }
+
+    [Fact]
+    public async Task Transfers_with_a_source_document_count_only_when_they_cross_warehouses()
+    {
+        await using var f = await CreateAsync(binMovedOn: true);
+        var w1 = await f.AddWarehouseAsync("W1");
+        var w2 = await f.AddWarehouseAsync("W2");
+        var b1 = await f.AddBinAsync(await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking), "P-01");
+        var b1b = await f.AddBinAsync(await f.AddZoneAsync(w1, "RSV", ZoneTypes.Reserve), "R-01");
+        var b2 = await f.AddBinAsync(await f.AddZoneAsync(w2, "PCK", ZoneTypes.Picking), "P-02");
+        var p = await f.AddProductAsync("SKU-A");
+        await f.PostAsync(
+            new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 10m, ToWarehouseId: w1.WarehouseId, ToBinId: b1.WarehouseBinId),
+            new InventoryPosting(InventoryTxnTypes.Receipt, p.ProductId, 10m, ToWarehouseId: w2.WarehouseId, ToBinId: b2.WarehouseBinId));
+
+        // Conciliación por serie de un conteo: la serie estaba en W2 y se contó en W1 → cruza de almacén.
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, p.ProductId, 1m, FromWarehouseId: w2.WarehouseId, FromBinId: b2.WarehouseBinId,
+            ToWarehouseId: w1.WarehouseId, ToBinId: b1.WarehouseBinId, RefEntityType: EntityTypes.CycleCount, RefId: 77));
+        // Con documento y dentro del mismo almacén: ya es COUNT_RECONCILED / PUTAWAY_DONE / REPLENISH_DONE.
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, p.ProductId, 2m, FromWarehouseId: w1.WarehouseId, FromBinId: b1.WarehouseBinId,
+            ToWarehouseId: w1.WarehouseId, ToBinId: b1b.WarehouseBinId, RefEntityType: EntityTypes.CycleCount, RefId: 77));
+        // Manual dentro del mismo almacén: BIN_MOVED (encendido en esta prueba).
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, p.ProductId, 3m, FromWarehouseId: w1.WarehouseId, FromBinId: b1.WarehouseBinId,
+            ToWarehouseId: w1.WarehouseId, ToBinId: b1b.WarehouseBinId));
+
+        var page = await f.Get<ActivityFeedService>().GetAsync(new ActivityQuery(BusinessModules.Warehouse), default);
+        var transferred = Assert.Single(page.Items, i => i.Code == ActivityEvents.InventoryTransferred);
+        Assert.Contains("W2 → W1", transferred.Detail);
+        var moved = Assert.Single(page.Items, i => i.Code == ActivityEvents.BinMoved);
+        Assert.Contains("P-01 → R-01", moved.Detail);
+        Assert.EndsWith("· 3", moved.Detail);   // la de 2 (con documento, mismo almacén) no aparece
     }
 
     [Fact]

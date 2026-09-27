@@ -560,8 +560,8 @@ faltantes de un mismo conteo se compensan—, últimos 30 días) y el gráfico d
   usuario llega junto con las notificaciones). **Este mismo catálogo y esta misma bandera alimentarán las notificaciones por
   correo o push** (`PortalNotificationPref` y los webhooks del módulo 13 se mantienen para el portal e integraciones); no se
   crea un segundo catálogo de eventos.
-- **Fuentes**: `EntityStatusHistory` (transiciones), `InventoryLedger` (movimientos) y `AuditLog` (altas y bajas de
-  catálogo). **No hay tabla de eventos**: el feed se calcula al leer. Backend: catálogo `ActivityEventType` en `LookupCode`
+- **Fuentes**: `EntityStatusHistory` (transiciones), `InventoryLedger` (movimientos), `AuditLog` (altas y bajas de
+  catálogo) y `PurchaseOrderShortageResolution` (faltantes de compra resueltos, Lote 6). **No hay tabla de eventos**: el feed se calcula al leer. Backend: catálogo `ActivityEventType` en `LookupCode`
   (bandera de obligatorio y módulo en la fila; la definición de qué transición o movimiento produce cada evento vive en
   código, en un registro por módulo igual que las fuentes de datos `IDataSource`), servicio `ActivityFeedService`, endpoint
   `GET /api/v1/analytics/activity?module=&window=&onlyMandatory=&skip=&take=` con permiso `analytics.view` más el permiso del
@@ -585,15 +585,15 @@ faltantes de un mismo conteo se compensan—, últimos 30 días) y el gráfico d
 | `COUNT_RECONCILED` | CYCLE_COUNT → RECONCILED | Conteo reconciliado / Count reconciled | Sí | Conteo |
 | `COUNT_VARIANCE` | ledger ADJUSTMENT motivo `COUNT_VARIANCE` | Diferencia de conteo aplicada / Count variance applied | Sí | Conteo |
 | `INVENTORY_ADJUSTED` | ledger ADJUSTMENT motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER), con o sin documento de origen, o cualquier otro motivo no asignado por el sistema sin documento de origen | Ajuste de inventario / Inventory adjustment | Sí | Kárdex filtrado |
-| `INVENTORY_TRANSFERRED` | ledger TRANSFER entre almacenes distintos | Transferencia entre almacenes / Warehouse transfer | No | Kárdex filtrado |
-| `BIN_MOVED` | ledger TRANSFER dentro del mismo almacén | Movimiento de posición / Bin move | No (apagado por defecto) | Kárdex filtrado |
+| `INVENTORY_TRANSFERRED` | ledger TRANSFER entre almacenes distintos (manual o con documento de origen, p. ej. la conciliación por serie de un conteo que mueve la serie desde otro almacén) | Transferencia entre almacenes / Warehouse transfer | No | Kárdex filtrado |
+| `BIN_MOVED` | ledger TRANSFER manual (sin documento de origen) dentro del mismo almacén; los de putaway, reabasto y conteo ya son `PUTAWAY_DONE`, `REPLENISH_DONE` y `COUNT_RECONCILED` | Movimiento de posición / Bin move | No (apagado por defecto) | Kárdex filtrado |
 | `PICK_COLLECTED` | PICK_BATCH → COLLECTED | Recolección creada / Pick batch collected | No | Recolección |
 | `PICK_PACKED` | PICK_BATCH → PACKED | Recolección empacada / Pick batch packed | No | Recolección |
 | `PICK_CANCELLED` | PICK_BATCH → CANCELLED | Recolección eliminada / Pick batch cancelled | Sí | Recolección |
 | `PO_SENT` | PURCHASE_ORDER → SENT | Orden de compra enviada / Purchase order sent | No | Orden de compra |
 | `PO_RECEIVED` | PURCHASE_ORDER → RECEIVED | Orden de compra recibida completa / Purchase order fully received | No | Orden de compra |
 | `PO_CANCELLED` | PURCHASE_ORDER → CANCELLED | Orden de compra cancelada / Purchase order cancelled | Sí | Orden de compra |
-| `PO_SHORTAGE_RESOLVED` | `AuditLog` UPDATE de línea de compra al resolver faltante | Faltante resuelto / Shortage resolved | No | Orden de compra |
+| `PO_SHORTAGE_RESOLVED` | cada fila de `PurchaseOrderShortageResolution` (CLOSE, REORDER o MANUAL_ADJUSTMENT; INSERT auditado bajo `PURCHASE_ORDER`; la línea de compra no se modifica al resolver) | Faltante resuelto / Shortage resolved | No | Orden de compra |
 | `CROSSDOCK_COMPLETED` | CROSSDOCK_PLAN → COMPLETED (solo con módulo CROSSDOCK) | Cruce de muelle completado / Cross-dock completed | No | Plan |
 | `PRODUCT_DEACTIVATED` | `AuditLog` PRODUCT con `IsActive` 1 → 0 (la categoría se audita como `PRODUCT_CATEGORY` desde 7A) | Producto dado de baja / Product deactivated | No | Producto |
 | `WAREHOUSE_DEACTIVATED` | WAREHOUSE → INACTIVE | Almacén dado de baja / Warehouse deactivated | Sí | Almacén |
@@ -622,7 +622,11 @@ bitácora (`PRODUCT_CATEGORY`), porque su baja era indistinguible de la de un pr
 de un faltante de compra cuenta como `INVENTORY_ADJUSTED` (obligatorio) además de `PO_SHORTAGE_RESOLVED` (opcional), y un
 ajuste manual sin documento con un motivo fuera de la lista fija también es `INVENTORY_ADJUSTED`; (3) *Unidades recibidas*
 suma RECEIPT + `RECEIPT_VARIANCE` (lo recibido, no lo esperado); (4) *Conteos con diferencia* usa la fuente nueva
-`CYCLE_COUNT` y su campo `HasVariance`. Detalle en `docs/lote7A-decisiones.md`.
+`CYCLE_COUNT` y su campo `HasVariance`; (5) la fuente de `PO_SHORTAGE_RESOLVED` es la tabla de resoluciones
+(`PurchaseOrderShortageResolution`, Lote 6, D8), porque resolver un faltante no hace UPDATE de la línea de compra; (6) un
+TRANSFER con documento de origen que cruza de almacén (conciliación por serie de un conteo) es `INVENTORY_TRANSFERRED`; solo
+los TRANSFER con documento dentro del mismo almacén quedan fuera (ya los cubre el evento de su documento). Detalle en
+`docs/lote7A-decisiones.md`.
 
 ## 13. API para integraciones
 

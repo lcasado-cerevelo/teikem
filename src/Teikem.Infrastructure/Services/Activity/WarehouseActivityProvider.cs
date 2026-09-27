@@ -17,12 +17,14 @@ namespace Teikem.Infrastructure.Services;
 /// (b) WarehouseTask → DONE/CANCELLED: las tareas escriben historial (WarehouseTaskService, handlers y efectos van por
 ///     StatusService.TransitionAsync), así que se leen del mismo historial con el tipo de la tarea;
 /// (c) ledger: ADJUSTMENT agrupado por operación (Ref + instante + usuario; los manuales además por producto) y TRANSFER
-///     manual (sin Ref: los de putaway, reabasto y conteo ya son PUTAWAY_DONE, REPLENISH_DONE y COUNT_RECONCILED);
+///     sin Ref, salvo los que cruzan de almacén, p. ej. la conciliación por serie de un conteo (los de putaway, reabasto y
+///     conteo dentro del mismo almacén ya son PUTAWAY_DONE, REPLENISH_DONE y COUNT_RECONCILED);
 /// (d) baja de producto: AuditLog PRODUCT con acción DELETE (el interceptor clasifica IsActive 1 → 0 como DELETE); la
 ///     categoría se audita como PRODUCT_CATEGORY y el lote nunca genera DELETE, así que cada fila es la baja de un producto
 ///     (aunque se haya reactivado después); faltante resuelto: cada fila de PurchaseOrderShortageResolution (la resolución es un INSERT
 ///     auditado bajo PURCHASE_ORDER, no un UPDATE de la línea).
-/// La etiqueta y la bandera de obligatorio salen del catálogo ActivityEventType (ILookupCache); un evento opcional apagado
+/// La etiqueta y la bandera de obligatorio salen del catálogo ActivityEventType (ILookupCache + LookupCodeOverride del
+/// tenant para la etiqueta, el deshabilitado y el encendido); un evento opcional apagado
 /// por defecto (BIN_MOVED) o excluido por 'solo obligatorios' ni se consulta.
 /// </summary>
 public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache lookups) : IActivityEventProvider
@@ -79,16 +81,27 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         }
     }
 
-    /// <summary>Eventos activos de Almacén del catálogo (TenantId NULL, sembrados), con su etiqueta en el idioma del usuario.</summary>
+    /// <summary>
+    /// Eventos activos de Almacén del catálogo (TenantId NULL, sembrados), con su etiqueta en el idioma del usuario y el
+    /// LookupCodeOverride del tenant aplicado (maestro L54: renombrar, deshabilitar, encendido en CustomExtraJson). El override
+    /// es ITenantScoped: el filtro global lo limita al tenant del JWT. Módulo y obligatorio quedan en la semilla base.
+    /// </summary>
     private async Task<IReadOnlyDictionary<string, CatalogEntry>> CatalogAsync(string lang, CancellationToken ct)
     {
         var map = new Dictionary<string, CatalogEntry>(StringComparer.OrdinalIgnoreCase);
-        foreach (var l in await lookups.GetDomainAsync(ActivityRules.CatalogDomain, ct))
+        var rows = (await lookups.GetDomainAsync(ActivityRules.CatalogDomain, ct)).Where(l => l.IsActive && l.TenantId is null).ToList();
+        if (rows.Count == 0) return map;
+        var ids = rows.Select(l => l.LookupCodeId).ToList();
+        var overrides = await db.LookupCodeOverrides.AsNoTracking().Where(o => ids.Contains(o.LookupCodeId))
+            .ToDictionaryAsync(o => o.LookupCodeId, ct);
+        foreach (var l in rows)
         {
-            if (!l.IsActive || l.TenantId is not null) continue;
-            var meta = ActivityRules.ParseMeta(l.ExtraJson);
-            if (meta.Module is not null && !string.Equals(meta.Module, BusinessModules.Warehouse, StringComparison.OrdinalIgnoreCase)) continue;
-            map[l.InternalCode] = new CatalogEntry(MultilingualText.Resolve(l.LabelJson, lang), meta.Mandatory, meta.DefaultOn);
+            var baseMeta = ActivityRules.ParseMeta(l.ExtraJson);
+            if (baseMeta.Module is not null && !string.Equals(baseMeta.Module, BusinessModules.Warehouse, StringComparison.OrdinalIgnoreCase)) continue;
+            var o = overrides.GetValueOrDefault(l.LookupCodeId);
+            if (ActivityRules.ApplyOverride(baseMeta, o?.IsEnabled ?? true, o?.CustomExtraJson) is not { } meta) continue;
+            map[l.InternalCode] = new CatalogEntry(MultilingualText.Resolve(MultilingualText.Merge(l.LabelJson, o?.CustomLabelJson), lang),
+                meta.Mandatory, meta.DefaultOn);
         }
         return map;
     }
@@ -401,10 +414,13 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         if (!ctx.Wanted(ActivityEvents.InventoryTransferred) && !ctx.Wanted(ActivityEvents.BinMoved)) return;
         if (await lookups.TryGetIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Transfer, ct) is not int transferId) return;
 
-        // Solo transferencias manuales (sin documento de origen): las de putaway, reabasto y conteo ya tienen su evento.
+        // Transferencias sin documento de origen, salvo las que cruzan de almacén (p. ej. la conciliación por serie de un
+        // conteo mueve la serie desde otro almacén): las de putaway, reabasto y conteo dentro del mismo almacén ya tienen su evento.
         var from = ctx.FromUtc;
         var rows = await db.InventoryTransactions.AsNoTracking()
-            .Where(t => t.CreatedAtUtc >= from && t.TxnTypeLookupId == transferId && t.RefEntityLookupId == null)
+            .Where(t => t.CreatedAtUtc >= from && t.TxnTypeLookupId == transferId
+                && (t.RefEntityLookupId == null
+                    || (t.FromWarehouseId != null && t.ToWarehouseId != null && t.FromWarehouseId != t.ToWarehouseId)))
             .Select(t => new { t.ProductId, t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId, t.Quantity, t.CreatedAtUtc, t.CreatedBy })
             .ToListAsync(ct);
         var coded = rows.Select(r => new { Row = r, Code = ActivityRules.TransferEventCode(r.FromWarehouseId, r.ToWarehouseId) })

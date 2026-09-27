@@ -264,6 +264,8 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.StockBalance));
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.InventoryTransaction));
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ReceiptLine));
+        // Lote 7A: PRODUCT_CATEGORY existe solo para auditoría; la ruta polimórfica siempre responde 404.
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ProductCategory));
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

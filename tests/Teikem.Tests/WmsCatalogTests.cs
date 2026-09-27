@@ -96,7 +96,8 @@ public class WmsCatalogTests
         };
         Assert.Equal(10, added.Distinct().Count());
         Assert.All(added, e => Assert.True(SeedHas(LookupDomains.EntityType, e), e));
-        foreach (var e in new[] { EntityTypes.CycleCount, EntityTypes.CrossDockPlan, EntityTypes.PurchaseOrder, EntityTypes.Supplier, EntityTypes.ReceiptLine, EntityTypes.Warehouse, EntityTypes.Product })
+        foreach (var e in new[] { EntityTypes.CycleCount, EntityTypes.CrossDockPlan, EntityTypes.PurchaseOrder, EntityTypes.Supplier, EntityTypes.ReceiptLine, EntityTypes.Warehouse, EntityTypes.Product,
+                     EntityTypes.ProductCategory })   // Lote 7A: la categoría se audita con su propio EntityType
             Assert.True(SeedHas(LookupDomains.EntityType, e), e);
         Assert.Equal("EDIT_PURCHASE_ORDER", Capabilities.EditPurchaseOrder);
         Assert.True(SeedHas(LookupDomains.Capability, Capabilities.EditPurchaseOrder));

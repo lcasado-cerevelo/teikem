@@ -559,6 +559,35 @@ public class AnalyticsSeedFieldsTests
     }
 
     [Fact]
+    public async Task Lote7A_received_units_v1_filter_is_corrected_once_and_custom_filter_is_kept()
+    {
+        // Tenant sembrado con la primera versión (solo RECEIPT): el seeder la corrige; un filtro personalizado se respeta.
+        const string custom = "{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"ADJUSTMENT\"}]}";
+        foreach (var (initial, expected) in new[]
+                 {
+                     (SystemAnalyticsSeeder.ReceiptMovementsFilterV1, SystemAnalyticsSeeder.ReceiptMovementsFilter),
+                     (custom, custom),
+                 })
+        {
+            var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+            var lookups = new FakeLookups();
+            using var db = InMemoryDb(tenant);
+            db.IndicatorDefinitions.Add(new Teikem.Domain.Analytics.IndicatorDefinition
+            {
+                TenantId = TenantId, Name = SystemAnalyticsSeeder.ReceivedUnitsIndicatorName, IsSystem = true,
+                DataSourceKey = EntityTypes.InventoryTransaction, FieldKey = "Quantity", FilterJson = initial,
+            });
+            await db.SaveChangesAsync();
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+            var received = Assert.Single(await db.IndicatorDefinitions.AsNoTracking()
+                .Where(i => i.Name == SystemAnalyticsSeeder.ReceivedUnitsIndicatorName).ToListAsync());
+            Assert.Equal(expected, received.FilterJson);
+        }
+    }
+
+    [Fact]
     public void Lote7A_cycle_count_data_source_is_registered()
     {
         // Sin la fuente registrada el indicador 'Conteos con diferencia' haría fallar el Pulso completo (registry.Get → 404).
@@ -591,22 +620,24 @@ public class AnalyticsSeedFieldsTests
             Cc(2, 2, reconciledAt),                   // reconciliado; la foto difería pero el saldo asentado cuadró: sin diferencia
             Cc(3, 1, null),                           // abierto con captura distinta a la foto
             Cc(4, 2, reconciledAt, active: false),    // eliminado: no aparece
-            Cc(5, 2, reconciledAt, tenantId: 2));     // otro tenant
-        Teikem.Domain.Wms.CycleCountLine L(int id, int cc, decimal system, decimal? counted, decimal? reconciled = null) => new()
+            Cc(5, 2, reconciledAt, tenantId: 2),      // otro tenant
+            Cc(6, 2, reconciledAt));                  // reconciliado; cuadra pero con ajuste enlazado (sustitución de serie)
+        Teikem.Domain.Wms.CycleCountLine L(int id, int cc, decimal system, decimal? counted, decimal? reconciled = null, long? adj = null) => new()
         {
             CycleCountLineId = id, CycleCountId = cc, WarehouseBinId = 1, ProductId = id, SystemQty = system, CountedQty = counted,
-            ReconciledSystemQty = reconciled,
+            ReconciledSystemQty = reconciled, AdjustmentTxnId = adj,
         };
         db.CycleCountLines.AddRange(
             L(1, 1, 10, 12, 10), L(2, 1, 5, 3, 5), L(3, 1, 7, 7, 7),
             L(4, 2, 10, 8, 8),
             L(5, 3, 4, 6), L(6, 3, 4, null),
-            L(7, 5, 1, 9, 1));
+            L(7, 5, 1, 9, 1),
+            L(8, 6, 1, 1, 1, adj: 900));
         await db.SaveChangesAsync();
 
         var source = new CycleCountDataSource(db, tenant);
         var rows = (await source.LoadAsync(new DataQuery(), default)).ToDictionary(r => (int)r["Id"]!);
-        Assert.Equal(new[] { 1, 2, 3 }, rows.Keys.OrderBy(k => k));
+        Assert.Equal(new[] { 1, 2, 3, 6 }, rows.Keys.OrderBy(k => k));
 
         Assert.Equal(CycleCountStatuses.Reconciled, rows[1]["StatusCode"]);
         Assert.Equal("Reconciliado", rows[1]["Status"]);
@@ -623,13 +654,18 @@ public class AnalyticsSeedFieldsTests
         Assert.Equal(2m, rows[3]["NetVariance"]);
         Assert.Equal(true, rows[3]["HasVariance"]);
 
+        // Cuadra, pero la línea tiene ajuste enlazado (maestro: 'o con ajuste enlazado'): cuenta como diferencia.
+        Assert.Equal(1, rows[6]["VarianceLines"]);
+        Assert.Equal(0m, rows[6]["NetVariance"]);
+        Assert.Equal(true, rows[6]["HasVariance"]);
+
         // Rango sobre ReconciledAtUtc: el abierto (sin fecha) queda fuera; desde inclusivo, hasta exclusivo.
         var ranged = await source.LoadAsync(new DataQuery { FromUtc = reconciledAt, ToUtc = reconciledAt.AddSeconds(1) }, default);
-        Assert.Equal(new[] { 1, 2 }, ranged.Select(r => (int)r["Id"]!).OrderBy(i => i));
+        Assert.Equal(new[] { 1, 2, 6 }, ranged.Select(r => (int)r["Id"]!).OrderBy(i => i));
         Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = reconciledAt.AddSeconds(1) }, default));
 
-        // El filtro sembrado de 'Conteos con diferencia' selecciona solo el conteo 1.
-        Assert.Equal(new[] { 1 }, rows.Values.Where(r => Teikem.Infrastructure.Dsl.RuleEvaluator.Matches(r, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter))
-            .Select(r => (int)r["Id"]!));
+        // El filtro sembrado de 'Conteos con diferencia' selecciona los conteos 1 y 6.
+        Assert.Equal(new[] { 1, 6 }, rows.Values.Where(r => Teikem.Infrastructure.Dsl.RuleEvaluator.Matches(r, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter))
+            .Select(r => (int)r["Id"]!).OrderBy(i => i));
     }
 }

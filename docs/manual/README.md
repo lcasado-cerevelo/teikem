@@ -45,6 +45,11 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    modo informado; recolección y empaque ad hoc (Pick & Pack); compras mínimas (proveedores, órdenes de compra y
    resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
    módulos.
+7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
+   recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
+   filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
+   recibidas, Conteos con diferencia, Movimientos de inventario por tipo). Operación (7B) y Contabilidad (7C)
+   agregan su propia pestaña más adelante.
 
 ## Manual de pantallas (frontend web)
 

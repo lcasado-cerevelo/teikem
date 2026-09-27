@@ -1624,12 +1624,21 @@ desde la política del endpoint.
 El panel pide como máximo 50 eventos por página (`take` ≤ 50); use "Ver más" (`skip`) para las siguientes.
 
 **¿Qué significa "La ventana debe ser 24h, 48h o today."? (400)**
-El parámetro `window` solo acepta `24h` (por defecto), `48h` o `today` (desde la medianoche de hoy).
+El parámetro `window` solo acepta `24h` (por defecto), `48h` o `today` (desde la medianoche de hoy en UTC; el tenant aún no tiene zona
+horaria configurada, así que en Puerto Rico "hoy" empieza a las 20:00 del día anterior).
 
 **¿Por qué un ajuste FOUND de un faltante de compra aparece dos veces en Actividad reciente?**
 Porque son dos hechos: se resolvió un faltante de la orden de compra (`PO_SHORTAGE_RESOLVED`, opcional, enlaza a la orden)
 y cambió el saldo de inventario con un motivo manual (`INVENTORY_ADJUSTED`, obligatorio, enlaza al producto). Con "Solo
 obligatorios" queda solo el ajuste.
+
+**Renombré o deshabilité un evento del catálogo `ActivityEventType`; ¿por qué un obligatorio sigue apareciendo?**
+Actividad reciente respeta el override del tenant del catálogo (`PUT /api/v1/catalogs/ActivityEventType/{código}/override`,
+permiso `admin.catalogs`): la etiqueta renombrada se muestra en el feed (en el idioma que el override traiga; los demás
+idiomas conservan la etiqueta base) y un evento **opcional** deshabilitado deja de aparecer. Un evento **obligatorio**
+(por ejemplo `PO_CANCELLED` o `RECEIPT_CONFIRMED`) no se puede ocultar ni volver opcional desde el override: sigue
+apareciendo, también con "Solo obligatorios". Con `"extraJson": "{\"defaultOn\":true}"` en el override se enciende para todo el tenant un
+opcional apagado por defecto (`BIN_MOVED`).
 
 **¿Por qué dar de baja una categoría no aparece como "Producto dado de baja"?**
 La categoría se registra en la bitácora con su propio tipo (`PRODUCT_CATEGORY`); `PRODUCT_DEACTIVATED` es solo para

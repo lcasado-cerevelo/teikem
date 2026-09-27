@@ -206,6 +206,8 @@ public static class PermissionCatalog
         [EntityTypes.StockBalance] = InventoryView,
         [EntityTypes.InventoryTransaction] = InventoryView,
         [EntityTypes.ReceiptLine] = InventoryView,
+        // Lote 7A: la categoría de producto tiene EntityType propio (auditoría); sin campos personalizados (resolver cerrado).
+        [EntityTypes.ProductCategory] = InventoryView,
         [EntityTypes.PurchaseOrder] = PurchasingView,
         [EntityTypes.Supplier] = PurchasingView,
     };
@@ -242,6 +244,7 @@ public static class PermissionCatalog
         [EntityTypes.Warehouse] = WarehouseManage,
         [EntityTypes.WarehouseDock] = WarehouseManage,
         [EntityTypes.Product] = InventoryManage,
+        [EntityTypes.ProductCategory] = InventoryManage,
         [EntityTypes.Receipt] = WarehouseReceive,
         [EntityTypes.Asn] = WarehouseReceive,
         [EntityTypes.CycleCount] = WarehouseCount,

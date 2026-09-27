@@ -27,6 +27,8 @@ public class OwnedEntityResolverCoverageTests
         // Lote 6: bitácoras/hijas sin escritura de dueño (siempre 404, sin oráculo).
         EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.CrossDockAllocation,
         EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.ReceiptLine,
+        // Lote 7A: categoría de producto (solo auditoría).
+        EntityTypes.ProductCategory,
     };
 
     private static HashSet<string> OwnerCodes()

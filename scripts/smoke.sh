@@ -3007,27 +3007,46 @@ activity() { # query [token] → todos los eventos de la ventana (páginas de 50
   echo "$all"
 }
 EV=$(activity "module=WAREHOUSE")
+# Tareas (maestro, catálogo de Almacén): PUTAWAY completada, reabasto completado y PUTAWAY cancelada desde la cola.
+echo "$EV" | jq -e --argjson t "$PUT6" 'any(.[]; .code=="PUTAWAY_DONE" and .entityType=="WAREHOUSE_TASK" and .entityId==$t)' >/dev/null || fail "PUTAWAY_DONE de la tarea $PUT6"
+echo "$EV" | jq -e 'any(.[]; .code=="REPLENISH_DONE" and .entityType=="WAREHOUSE_TASK")' >/dev/null || fail "REPLENISH_DONE del reabasto"
+echo "$EV" | jq -e --argjson t "$PUTA" 'any(.[]; .code=="TASK_CANCELLED" and .entityType=="WAREHOUSE_TASK" and .entityId==$t)' >/dev/null || fail "TASK_CANCELLED de la PUTAWAY $PUTA"
+# Aviso de llegada cancelado (opcional) y recolección eliminada (PICK_CANCELLED, obligatorio).
+echo "$EV" | jq -e --argjson a "$ASNC" 'any(.[]; .code=="ASN_CANCELLED" and .entityType=="ASN" and .entityId==$a and .mandatory==false)' >/dev/null || fail "ASN_CANCELLED del aviso $ASNC"
 echo "$EV" | jq -e --argjson r "$R6ID" 'any(.[]; .code=="RECEIPT_CONFIRMED" and .module=="WAREHOUSE" and .entityType=="RECEIPT" and .entityId==$r and .mandatory==true and (.label|length)>0 and (.userId != null) and ((.userName // "") | length) > 0)' >/dev/null || fail "RECEIPT_CONFIRMED obligatorio del recibo $R6ID (con quién lo hizo)"
 echo "$EV" | jq -e --arg p "$PO1P" 'any(.[]; .code=="PO_SENT" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==false and (.userId != null) and ((.userName // "") | length) > 0)' >/dev/null || fail "PO_SENT (opcional) de la orden enviada (con quién lo hizo)"
+# Recibo R6 pasó a PUTAWAY con la última tarea; PO1 quedó RECEIVED al resolver su faltante (CLOSE).
+echo "$EV" | jq -e --argjson r "$R6ID" 'any(.[]; .code=="RECEIPT_PUTAWAY_DONE" and .entityType=="RECEIPT" and .entityId==$r and .mandatory==false)' >/dev/null || fail "RECEIPT_PUTAWAY_DONE del recibo $R6ID"
+echo "$EV" | jq -e --arg p "$PO1P" 'any(.[]; .code=="PO_RECEIVED" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==false)' >/dev/null || fail "PO_RECEIVED de PO1"
 # PO2: tres resoluciones de faltante en la ventana (REORDER y dos MANUAL_ADJUSTMENT de 1), enlazadas a la orden.
 echo "$EV" | jq -e --arg p "$PO2P" --arg n "$(echo "$PO2" | jq -r .number)" '[.[] | select(.code=="PO_SHORTAGE_RESOLVED" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .reference==$n and .mandatory==false)] | length==3' >/dev/null || fail "PO_SHORTAGE_RESOLVED de PO2 (REORDER + 2 ajustes manuales) con referencia = número de PO2"
 # PD se dio de baja dos veces (y se reactivó): cada baja es un PRODUCT_DEACTIVATED aunque hoy esté activo.
 echo "$EV" | jq -e --arg p "$PD" '[.[] | select(.code=="PRODUCT_DEACTIVATED" and .entityType=="PRODUCT" and .publicId==$p)] | length>=2' >/dev/null || fail "PRODUCT_DEACTIVATED de las bajas de PD (reactivado)"
 expect 200 "$(req GET '/api/v1/analytics/activity?take=1')" | jq -e '.visibleModules==["WAREHOUSE"] and (.items|length)==1 and .total>=2' >/dev/null || fail "sin module → primer módulo visible (WAREHOUSE) con total y take=1"
 EM=$(activity "module=WAREHOUSE&onlyMandatory=true")
+echo "$EM" | jq -e --arg p "$PO3P" 'any(.[]; .code=="PO_CANCELLED" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==true)' >/dev/null || fail "PO_CANCELLED (obligatorio) de PO3"
 echo "$EM" | jq -e 'length>=1 and all(.[]; .mandatory==true) and all(.[]; .code!="PO_SENT") and any(.[]; .code=="RECEIPT_CONFIRMED")' >/dev/null || fail "onlyMandatory incluye opcionales (PO_SENT)"
+echo "$EM" | jq -e --arg p "$PB7P" 'any(.[]; .code=="PICK_CANCELLED" and .entityType=="PICK_BATCH" and .publicId==$p and .mandatory==true)' >/dev/null || fail "PICK_CANCELLED de la recolección eliminada $PB7P"
 expect 200 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE&window=today&take=1')" >/dev/null
 expect 400 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE&take=51')" | jq -e --arg m "El máximo por página es 50." "$HASM" >/dev/null || fail "take > 50 → 400"
 expect 400 "$(req GET '/api/v1/analytics/activity?window=7d')" | jq -e --arg m "La ventana debe ser 24h, 48h o today." "$HASM" >/dev/null || fail "ventana inválida → 400"
 TD7=$(login "$DISPATCH_EMAIL" "$PASS")
+# El despachador pasa la política (tiene analytics.view): el 403 y su PERMISSION_DENIED los pone el servicio.
+PD7=$(pdcount)
 expect 403 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TD7")" | jq -e '.title=="No tiene permiso para ver la actividad del módulo WAREHOUSE."' >/dev/null || fail "despachador sin inventory.view ve la actividad de Almacén"
+[[ $(pdcount) -gt $PD7 ]] || fail "PERMISSION_DENIED del 403 de la actividad del módulo"
 expect 200 "$(req GET '/api/v1/analytics/activity' '' "$TD7")" | jq -e '.visibleModules==[] and .total==0' >/dev/null || fail "despachador: sin módulos visibles"
 # El 403 del operador de almacén lo pone la política (analytics.view), no el servicio: sí tiene inventory.view.
 expect 403 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TWH6")" >/dev/null || fail "operador de almacén (inventory.view sin analytics.view) ve la actividad"
+# Producto con mínimo y sin saldo: en SQL Server el SUM de un conjunto vacío es NULL (InMemory da 0); debe contar como bajo mínimo.
+PBM=$(prod "{\"sku\":\"PBM$TS\",\"name\":\"Bajo mínimo 7A $TS\",\"minQty\":5}")
+expect 200 "$(req GET "/api/v1/products?belowMin=true&search=PBM$TS")" | jq -e --arg s "PBM$TS" '.total==1 and .items[0].sku==$s and .items[0].isBelowMin==true' >/dev/null || fail "belowMin no incluye un producto con mínimo y sin saldo (SUM NULL en SQL)"
+# PN tiene saldo y no tiene mínimo: no está bajo mínimo.
+expect 200 "$(req GET "/api/v1/products?belowMin=true&search=PN$TS")" | jq -e '.total==0' >/dev/null || fail "belowMin incluye un producto sin mínimo (PN)"
 BM=$(expect 200 "$(req GET '/api/v1/products?belowMin=true&take=200')")
-echo "$BM" | jq -e '(.items|length)==([.total,200]|min) and all(.items[]; .isBelowMin==true)' >/dev/null || fail "belowMin devuelve productos que no están bajo mínimo"
+echo "$BM" | jq -e '.total>=1 and (.items|length)==([.total,200]|min) and all(.items[]; .isBelowMin==true)' >/dev/null || fail "belowMin devuelve productos que no están bajo mínimo"
 expect 200 "$(req GET '/api/v1/products?belowMin=true&take=1')" | jq -e --argjson t "$(echo "$BM" | jq .total)" '.total==$t' >/dev/null || fail "belowMin con take=1 cuenta distinto"
-ok "RECEIPT_CONFIRMED del recibo confirmado (obligatorio) y PO_SENT (opcional) en Almacén, con quién lo hizo; 3 PO_SHORTAGE_RESOLVED de PO2; PRODUCT_DEACTIVATED de PD aunque se reactivó; sin module → WAREHOUSE; onlyMandatory sin PO_SENT; take 51 → 400 y ventana inválida → 400; despachador (sin inventory.view) 403 'No tiene permiso para ver la actividad del módulo WAREHOUSE.' y sin pestañas; operador de almacén (sin analytics.view) 403; belowMin solo bajo mínimo con el mismo total en take=1"
+ok "RECEIPT_CONFIRMED del recibo confirmado (obligatorio) y PO_SENT (opcional) en Almacén, con quién lo hizo; RECEIPT_PUTAWAY_DONE del recibo R6, PO_RECEIVED de PO1 y PO_CANCELLED (obligatorio) de PO3; PUTAWAY_DONE, REPLENISH_DONE y TASK_CANCELLED de las tareas; ASN_CANCELLED del aviso cancelado; PICK_CANCELLED (obligatorio) de la recolección eliminada; 3 PO_SHORTAGE_RESOLVED de PO2; PRODUCT_DEACTIVATED de PD aunque se reactivó; sin module → WAREHOUSE; onlyMandatory sin PO_SENT; take 51 → 400 y ventana inválida → 400; despachador (sin inventory.view) 403 'No tiene permiso para ver la actividad del módulo WAREHOUSE.' con PERMISSION_DENIED y sin pestañas; operador de almacén (sin analytics.view) 403; belowMin incluye el producto con mínimo y sin saldo, solo bajo mínimo y con el mismo total en take=1"
 
 step "conteo cíclico con filtro de almacenes (Lote 6)"
 CC6=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B_PCK]}")"); CC6ID=$(echo "$CC6" | jq -r .count.id)
@@ -3057,8 +3076,10 @@ kardex "refEntity=CYCLE_COUNT&refId=$CC7ID" | jq -e '.total==2 and all(.items[];
 expect 422 "$(req PUT "/api/v1/cycle-counts/$CC7ID/lines" "{\"lines\":[{\"lineId\":$CL1,\"countedQty\":7}]}" "$TWH6")" | jq -e '.title=="El conteo ya fue reconciliado; solo se consulta."' >/dev/null || fail "capturar después de conciliar"
 expect 200 "$(req GET "/api/v1/warehouse-tasks?warehousePublicId=$W6P&types=COUNT&includeClosed=true&take=200")" | jq -e --argjson c "$CC7ID" 'any(.items[]; .refEntityCode=="CYCLE_COUNT" and .refId==$c and .statusCode=="DONE")' >/dev/null || fail "tarea COUNT DONE al conciliar"
 # Lote 7A: la conciliación aparece en Actividad reciente como COUNT_VARIANCE (obligatorio) enlazado al conteo.
-activity "module=WAREHOUSE&onlyMandatory=true" | jq -e --argjson c "$CC7ID" 'any(.[]; .code=="COUNT_VARIANCE" and .entityType=="CYCLE_COUNT" and .entityId==$c and .mandatory==true)' >/dev/null || fail "COUNT_VARIANCE del conteo $CC7ID en Actividad reciente"
-ok "conteo conciliado por el Operador contra el saldo actual (+2 con systemQtyChanged, −1 sin él; COUNT_VARIANCE; captura posterior 422; tarea COUNT DONE); conteo CC sobre P-01; filtro warehousePublicIds de selección múltiple (maestro L553); reconciliar sin warehouse.count 403; COUNT no se cancela desde la cola (422)"
+EM7=$(activity "module=WAREHOUSE&onlyMandatory=true")
+echo "$EM7" | jq -e --argjson c "$CC7ID" 'any(.[]; .code=="COUNT_VARIANCE" and .entityType=="CYCLE_COUNT" and .entityId==$c and .mandatory==true)' >/dev/null || fail "COUNT_VARIANCE del conteo $CC7ID en Actividad reciente"
+echo "$EM7" | jq -e --argjson c "$CC7ID" 'any(.[]; .code=="COUNT_RECONCILED" and .entityType=="CYCLE_COUNT" and .entityId==$c and .mandatory==true)' >/dev/null || fail "COUNT_RECONCILED del conteo $CC7ID en Actividad reciente"
+ok "conteo conciliado por el Operador contra el saldo actual (+2 con systemQtyChanged, −1 sin él; COUNT_VARIANCE y COUNT_RECONCILED; captura posterior 422; tarea COUNT DONE); conteo CC sobre P-01; filtro warehousePublicIds de selección múltiple (maestro L553); reconciliar sin warehouse.count 403; COUNT no se cancela desde la cola (422)"
 
 step "cruce de muelle (Lote 6, módulo CROSSDOCK): 403 apagado, citas solapadas y tarea de la cola con el módulo"
 expect 403 "$(req GET /api/v1/cross-dock-plans)" | jq -e '.code=="module_disabled"' >/dev/null || fail "CROSSDOCK apagado"
@@ -3218,13 +3239,13 @@ while :; do PG=$(expect 200 "$(req GET "/api/v1/inventory/balances?skip=$SK&take
 IV=$(indval "Valor de inventario a costo")
 jq -n --argjson a "$IV" --argjson b "$SUMCV" '(($a - $b) | fabs) < 0.00005' | grep -q true || fail "'Valor de inventario a costo' ($IV) ≠ Σ costValue ($SUMCV)"
 BM=$(indval "Productos bajo mínimo"); [[ $(jq -n --argjson v "$BM" '$v >= 1') == true ]] || fail "'Productos bajo mínimo' = $BM"
-for ET in WAREHOUSE PRODUCT RECEIPT PICK_BATCH PURCHASE_ORDER; do
+for ET in WAREHOUSE PRODUCT PRODUCT_CATEGORY RECEIPT PICK_BATCH PURCHASE_ORDER; do
   expect 200 "$(req GET "/api/v1/audit/changes?entityType=$ET&take=20")" | jq -e '.total >= 1 and ([.items[] | select((.changesJson // "") | ascii_downcase | contains("rowversion"))] | length)==0' >/dev/null || fail "auditoría de $ET"
 done
 for ET in STOCK_BALANCE INVENTORY_TRANSACTION; do
   expect 200 "$(req GET "/api/v1/audit/changes?entityType=$ET&take=1")" | jq -e '.total==0' >/dev/null || fail "AuditLog de $ET (debe estar vacío)"
 done
-ok "7 fuentes WMS; vistas 'Inventario bajo mínimo', 'Movimientos por tipo y producto' (tipo + SKU, ISSUE negativo y RECEIPT positivo, totales) y 'Ajustes de inventario'; 'Valor de inventario a costo' = Σ costValue ($SUMCV); 'Productos bajo mínimo' $BM; AuditLog de WAREHOUSE, PRODUCT, RECEIPT, PICK_BATCH y PURCHASE_ORDER sin rowVersion, ninguno de STOCK_BALANCE ni INVENTORY_TRANSACTION"
+ok "7 fuentes WMS; vistas 'Inventario bajo mínimo', 'Movimientos por tipo y producto' (tipo + SKU, ISSUE negativo y RECEIPT positivo, totales) y 'Ajustes de inventario'; 'Valor de inventario a costo' = Σ costValue ($SUMCV); 'Productos bajo mínimo' $BM; AuditLog de WAREHOUSE, PRODUCT, PRODUCT_CATEGORY, RECEIPT, PICK_BATCH y PURCHASE_ORDER sin rowVersion, ninguno de STOCK_BALANCE ni INVENTORY_TRANSACTION"
 
 step "sin descuadre (Lote 6): conciliación ledger ↔ saldo después de todo"
 RC=$(reconcile)
@@ -3239,7 +3260,9 @@ expect 200 "$(req POST "/api/v1/warehouses/$W9P/deactivate" '{}')" | jq -e '.war
 expect 422 "$(req POST "/api/v1/warehouses/$W9P/deactivate" '{}')" | jq -e --arg m "El almacén está dado de baja; solo se consulta." "$HASM" >/dev/null || fail "segunda baja de un almacén ya inactivo → 422"
 expect 200 "$(req GET "/api/v1/warehouses?includeInactive=true")" | jq -e --arg w "$W9P" 'any(.[]; .publicId==$w and .isActive==false)' >/dev/null || fail "almacén inactivo visible con includeInactive"
 expect 200 "$(req GET /api/v1/warehouses)" | jq -e --arg w "$W9P" 'all(.[]; .publicId!=$w)' >/dev/null || fail "almacén inactivo oculto por defecto"
-ok "almacén vacío W9$TS se da de baja (ACTIVE→INACTIVE terminal, isActive=false); segunda baja 422 'El almacén está dado de baja; solo se consulta.'; oculto por defecto y visible con includeInactive"
+# Lote 7A: la baja aparece en Actividad reciente como WAREHOUSE_DEACTIVATED (obligatorio).
+activity "module=WAREHOUSE&onlyMandatory=true" | jq -e --arg w "$W9P" 'any(.[]; .code=="WAREHOUSE_DEACTIVATED" and .entityType=="WAREHOUSE" and .publicId==$w and .mandatory==true)' >/dev/null || fail "WAREHOUSE_DEACTIVATED de W9$TS en Actividad reciente"
+ok "almacén vacío W9$TS se da de baja (ACTIVE→INACTIVE terminal, isActive=false); segunda baja 422 'El almacén está dado de baja; solo se consulta.'; oculto por defecto y visible con includeInactive; WAREHOUSE_DEACTIVATED obligatorio en Actividad reciente"
 
 step "sesiones: refresh con rotación y logout"
 NEW=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$REFRESH\"}")")
