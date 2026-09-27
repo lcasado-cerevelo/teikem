@@ -1,5 +1,5 @@
 {
- "lote": "F7",
+ "lote": "F7A",
  "titulo": "Pulso de almacén con filtro y Actividad reciente (frontend)",
  "aprobacion": "Mock aprobado por Luis el 2026-09-27 (docs/frontend/mock-pulso-almacen.html); diseño en el maestro, módulo 12. PENDIENTE de la orden de ejecutar; requiere el Lote 7 de backend desplegado y web-app/openapi.json regenerado.",
  "objetivo": "Filtro de almacén y de categoría o producto en el panel Almacén de Pulso, y panel Actividad reciente con pestañas por módulo, ventana, interruptor de obligatorios, tabla y tarjetas.",

@@ -1,10 +1,16 @@
-# Lote 7 — Pulso de almacén y Actividad reciente: plan (backend + frontend)
+# Lote 7A — Pulso de almacén y Actividad reciente (solo Almacén): plan (backend + frontend)
+
+> El Lote 7 completo es el dashboard de todos los módulos. Este 7A construye únicamente la parte de Almacén (panel con filtro,
+> eventos e indicadores de almacén). Quedan en el plan, para después: **7B Operación** (eventos e indicadores de órdenes,
+> viajes, flota, alertas de documentos y paradas) y **7C Contabilidad** (facturas, COD, corridas de facturación, crédito).
+> Lo que 7A deja de infraestructura (catálogo, servicio, endpoint, panel) lo reutilizan 7B y 7C sin cambios: solo agregan
+> un proveedor de eventos, su seed y su permiso de vista.
 
 **Estado: plan armado, pendiente de la orden de Luis para ejecutar.** Diseño aprobado el 2026-09-27 y escrito en
 `Diseño/logistica-funcionalidades-maestro.md` (módulo 12, "Pulso del día — diseño consolidado"). Mock aprobado:
 `docs/frontend/mock-pulso-almacen.html`.
 
-Archivos que consumen los workflows: `docs/lote7-plan.json` (backend, `lote-implementar`) y `docs/frontend/loteF7-plan.json`
+Archivos que consumen los workflows: `docs/lote7A-plan.json` (backend, `lote-implementar`) y `docs/frontend/loteF7A-plan.json`
 (frontend, `fe-implementar`). Orden: primero backend, luego regenerar `web-app/openapi.json`, luego frontend.
 
 ## Parte A — Backend (`lote-implementar`, 3 piezas)
@@ -35,8 +41,8 @@ Recorrido Playwright de 7 pasos (en el JSON), incluidos el usuario sin `inventor
 
 1. Backend: `dotnet build && dotnet test`; base limpia + `db-init` dos veces; `scripts/smoke.sh` con el paso `activity`.
 2. `cd web-app && npm run api:types` (nuevo `openapi.json` desde el API) y `npm run check`; `npx playwright test`.
-3. CI verde; `docs/lote7-decisiones.md` y `docs/frontend/loteF7-decisiones.md`; manual: `docs/manual/07-pulso-y-actividad.md`
-   (backend: eventos, mensajes de error) y `docs/manual/frontend/f7-pulso-almacen.md` (pantalla) + FAQ.
+3. CI verde; `docs/lote7A-decisiones.md` y `docs/frontend/loteF7A-decisiones.md`; manual: `docs/manual/07-pulso-y-actividad.md (sección Almacén; 7B y 7C agregan las suyas)`
+   (backend: eventos, mensajes de error) y `docs/manual/frontend/f7a-pulso-almacen.md` (pantalla) + FAQ.
 
 ## Estimación de consumo
 

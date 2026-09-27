@@ -1,5 +1,5 @@
 {
- "lote": "7",
+ "lote": "7A",
  "titulo": "Pulso de almacén y Actividad reciente (backend)",
  "aprobacion": "Diseño aprobado por Luis el 2026-09-27 y escrito en Diseño/logistica-funcionalidades-maestro.md (módulo 12, 'Pulso del día — diseño consolidado'). Plan armado por Claude; PENDIENTE de la orden de ejecutar.",
  "resumen": "Catálogo de eventos de actividad, servicio de lectura que une historial de estatus, ledger y auditoría por módulo y permisos, endpoint bajo /api/v1/analytics, índice por tenant y fecha en EntityStatusHistory, filtro belowMin en productos, e indicadores y gráfico de sistema de almacén sembrados desde código. Sin tablas nuevas.",

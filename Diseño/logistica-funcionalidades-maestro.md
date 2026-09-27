@@ -586,9 +586,11 @@ Las **alertas operacionales** listadas arriba (documentos por vencer, mantenimie
 excedido, máximo de paradas) se materializan como eventos obligatorios de este catálogo en sus módulos; no tienen un panel
 aparte.
 
-**Plan de construcción**: un lote corto "Pulso de almacén y Actividad reciente" (backend: catálogo, servicio, endpoint,
-índice, seed de indicadores y gráfico; frontend: filtro del panel Almacén, panel de actividad, pruebas, Playwright y capítulo
-del manual). Los lotes de Operación y Contabilidad del frontend solo siembran sus eventos e indicadores.
+**Plan de construcción (Lote 7, en tres partes)**: **7A Almacén** (backend: catálogo, servicio, endpoint, índice, seed de
+indicadores y gráfico de almacén; frontend: filtro del panel Almacén, panel de actividad, pruebas, Playwright y capítulo del
+manual; plan en `docs/lote7A-plan.md`), **7B Operación** y **7C Contabilidad** (cada uno agrega su proveedor de eventos, su
+seed de eventos e indicadores y su permiso de vista sobre la misma infraestructura; se construyen cuando esos módulos lleguen
+al frontend). Nada del dashboard sale del plan por hacerse en partes.
 
 ## 13. API para integraciones
 
