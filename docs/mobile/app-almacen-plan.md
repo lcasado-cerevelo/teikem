@@ -109,3 +109,6 @@ Sugerencia de orden: 8A-backend completo → A0 + A1 (Recibir) y probar en el ap
    desde el recibo confirmado en la web (acción nueva, fuera de este plan).
 5. Actualizaciones JavaScript sin reinstalar (`expo-updates`) servidas por el API.
 6. Vida del *refresh token* para dispositivos: 14 días.
+7. Tema claro u oscuro: el aparato trae un tema por defecto (lo fija el administrador al registrarlo; claro para almacenes
+   iluminados) y cada usuario puede cambiarlo desde la cabecera; la app recuerda la elección por usuario en ese aparato.
+   Mock aprobado por Luis: `docs/mobile/mock-app-almacen.html`.

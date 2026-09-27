@@ -354,7 +354,8 @@ crea la orden de venta), Conteo (inventario físico diario, a ciegas para quien 
 estado de Sincronización. Vocabulario del piso: "Posición" para la ubicación en el rack. Requiere en el backend el middleware
 de idempotencia del módulo 13, endpoints de sincronización por diferencia, búsqueda por código de barras, registro de
 dispositivo (`UserDevice`, generaliza `DriverDevice`) y vida configurable del refresh token. Plan completo, pantallas,
-piezas y decisiones a ratificar en `docs/mobile/app-almacen-plan.md`.
+piezas y decisiones a ratificar en `docs/mobile/app-almacen-plan.md`; mock de pantallas aprobado: `docs/mobile/mock-app-almacen.html`
+(tema claro u oscuro: por defecto del aparato, cambiable por cada usuario).
 
 ### 8B. App de choferes — se construye después de 8A
 
