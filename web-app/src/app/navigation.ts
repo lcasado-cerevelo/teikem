@@ -26,3 +26,28 @@ export interface NavEntry {
   /** Orden dentro del grupo (menor primero). */
   order?: number
 }
+
+/** Lo que el menú necesita de una ruta (AppRoute lo cumple). */
+export interface NavRoute {
+  nav?: NavEntry
+  perm?: string
+  module?: string
+}
+
+/**
+ * Grupos del menú con sus rutas visibles: una ruta aparece si tiene `nav`, su `module` está encendido y el usuario
+ * tiene su `perm`; dentro del grupo, por `nav.order` (sin orden, al final). Un grupo sin rutas visibles no se devuelve.
+ */
+export function visibleNav<R extends NavRoute>(
+  routes: readonly R[],
+  permissions: ReadonlySet<string>,
+  modules: ReadonlySet<string>,
+): (NavGroup & { items: R[] })[] {
+  return NAV_GROUPS.map((g) => ({
+    ...g,
+    items: routes
+      .filter((r) => r.nav?.group === g.key)
+      .filter((r) => (!r.module || modules.has(r.module)) && (!r.perm || permissions.has(r.perm)))
+      .sort((a, b) => (a.nav?.order ?? 100) - (b.nav?.order ?? 100)),
+  })).filter((g) => g.items.length > 0)
+}

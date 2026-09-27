@@ -320,6 +320,23 @@
       "indicators": "Indicators",
       "charts": "Charts",
       "chartEmpty": "This chart has no data in the configured range."
+    },
+    "range": {
+      "edit": "Range",
+      "editFor": "Change my date range for {name}",
+      "title": "My date range · {name}",
+      "help": "This only changes how you see it; other users keep their own range.",
+      "mode": "Range",
+      "choose": "Select…",
+      "from": "From",
+      "to": "To",
+      "saved": "Range updated.",
+      "errors": {
+        "modeRequired": "Choose a range.",
+        "fromRequired": "Enter the From date.",
+        "toRequired": "Enter the To date.",
+        "fromAfterTo": "From cannot be later than To."
+      }
     }
   }
 }

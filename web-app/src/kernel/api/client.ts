@@ -22,8 +22,11 @@ const NO_REFRESH = [
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
   '/api/v1/auth/switch-tenant',
-  '/api/v1/auth/reauth',
 ]
+
+// Rutas autenticadas cuyo servicio también responde 401 por credenciales (con `code` en el cuerpo, p. ej.
+// 'Contraseña incorrecta.'): solo se refresca el 401 del esquema JwtBearer (access token vencido, sin cuerpo ni `code`).
+const REFRESH_ONLY_WITHOUT_CODE = ['/api/v1/auth/reauth']
 
 let authLostHandler: (() => void) | null = null
 let stepUpHandler: (() => Promise<boolean>) | null = null
@@ -123,7 +126,14 @@ export function createApiClient(options: ApiClientOptions) {
     const first = prepare(template)
     let response = await baseFetch(first.request)
 
-    if (response.status === 401 && !first.explicitAuth && !NO_REFRESH.includes(pathOf(template.url)) && getRefreshToken()) {
+    const path = pathOf(template.url)
+    if (
+      response.status === 401 &&
+      !first.explicitAuth &&
+      !NO_REFRESH.includes(path) &&
+      getRefreshToken() &&
+      (!REFRESH_ONLY_WITHOUT_CODE.includes(path) || (await readCode(response)) === undefined)
+    ) {
       const current = getAccessToken()
       // Si otra petición ya rotó el token mientras esta viajaba, basta con reintentar.
       const renewed = current !== null && current !== first.token ? true : await refreshOnce()

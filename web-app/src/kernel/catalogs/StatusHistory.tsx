@@ -1,3 +1,4 @@
+import { parseApiDate } from '../api/dates'
 import { applyProblemDetails } from '../api/problem'
 import { useLang, useT } from '../i18n'
 import { useStatuses, useStatusHistory } from './api'
@@ -46,7 +47,7 @@ export function StatusHistory({ entityType, entityId, domain }: StatusHistoryPro
             </span>
           </div>
           <div className="meta">
-            {h.changedAtUtc ? format.format(new Date(h.changedAtUtc)) : ''}
+            {h.changedAtUtc ? format.format(parseApiDate(h.changedAtUtc)) : ''}
             {' · '}
             {h.changedByName || t('status.system')}
           </div>

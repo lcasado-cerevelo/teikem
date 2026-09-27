@@ -9,7 +9,7 @@ import { useT } from '../kernel/i18n/useT'
 import { IconChev, IconCollapse, IconLogout, IconMenu } from './icons'
 import { LangSelect } from './LangSelect'
 import { switchableMemberships } from './memberships'
-import { NAV_GROUPS, type NavGroup, type NavGroupKey } from './navigation'
+import { visibleNav, type NavGroup, type NavGroupKey } from './navigation'
 import { appRoutes, type AppRoute } from './routes'
 import { useSession } from './session'
 import { Splash } from './Splash'
@@ -32,17 +32,7 @@ function readCollapsed(): boolean {
 /** Rutas visibles en el menú para los permisos y módulos del usuario, agrupadas. */
 function useVisibleNav(): (NavGroup & { items: AppRoute[] })[] {
   const { permissions, modules } = useAccess()
-  return useMemo(
-    () =>
-      NAV_GROUPS.map((g) => ({
-        ...g,
-        items: appRoutes
-          .filter((r) => r.nav?.group === g.key)
-          .filter((r) => (!r.module || modules.has(r.module)) && (!r.perm || permissions.has(r.perm)))
-          .sort((a, b) => (a.nav?.order ?? 100) - (b.nav?.order ?? 100)),
-      })).filter((g) => g.items.length > 0),
-    [permissions, modules],
-  )
+  return useMemo(() => visibleNav(appRoutes, permissions, modules), [permissions, modules])
 }
 
 export function AppShell() {

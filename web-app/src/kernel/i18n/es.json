@@ -320,6 +320,23 @@
       "indicators": "Indicadores",
       "charts": "Gráficos",
       "chartEmpty": "Este gráfico no tiene datos en el rango configurado."
+    },
+    "range": {
+      "edit": "Rango",
+      "editFor": "Cambiar mi rango de fecha de {name}",
+      "title": "Mi rango de fecha · {name}",
+      "help": "Solo cambia cómo lo ve usted; los demás usuarios siguen con su propio rango.",
+      "mode": "Rango",
+      "choose": "Seleccione…",
+      "from": "Desde",
+      "to": "Hasta",
+      "saved": "Rango actualizado.",
+      "errors": {
+        "modeRequired": "Elija un rango.",
+        "fromRequired": "Indique la fecha Desde.",
+        "toRequired": "Indique la fecha Hasta.",
+        "fromAfterTo": "Desde no puede ser mayor que Hasta."
+      }
     }
   }
 }

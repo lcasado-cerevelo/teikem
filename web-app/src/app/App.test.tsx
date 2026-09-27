@@ -18,6 +18,12 @@ const ME = {
 }
 
 let me: typeof ME & { memberships: { tenantId: number; tenantName: string; status: string; isDefault: boolean }[] } = ME
+/** Respuesta propia para otras rutas del API (por defecto 404). */
+let other: (path: string) => Response = () => new Response(null, { status: 404 })
+
+function problem(status: number, code: string, title: string): Response {
+  return new Response(JSON.stringify({ status, code, title }), { status, headers: { 'Content-Type': 'application/problem+json' } })
+}
 
 async function renderAppAt(path: string) {
   window.history.pushState({}, '', path)
@@ -30,13 +36,14 @@ describe('App (shell)', () => {
   beforeEach(() => {
     setLang('es')
     me = ME
+    other = () => new Response(null, { status: 404 })
     vi.stubEnv('VITE_API_URL', 'http://api.test')
     vi.stubGlobal(
       'fetch',
       vi.fn(async (req: Request) =>
         new URL(req.url).pathname === '/api/v1/me'
           ? new Response(JSON.stringify(me), { status: 200, headers: { 'Content-Type': 'application/json' } })
-          : new Response(null, { status: 404 }),
+          : other(new URL(req.url).pathname),
       ),
     )
   })
@@ -125,5 +132,21 @@ describe('App (shell)', () => {
     const select = await screen.findByRole('combobox', { name: 'Compañía' })
     const names = within(select).getAllByRole('option').map((o) => o.textContent)
     expect(names).toEqual(['Demo Logística', 'Otra Activa'])
+  })
+
+  it('una lectura con 403 module_disabled lleva a "Módulo apagado" (y forbidden a "Sin permiso")', async () => {
+    setTokens({ accessToken: 'a', refreshToken: 'r', tenantId: 1 })
+    other = (path) => (path === '/api/v1/auth/sessions' ? problem(403, 'module_disabled', 'Módulo apagado.') : new Response(null, { status: 404 }))
+    await renderAppAt('/account?tab=sessions')
+    expect(await screen.findByTestId('module-off-screen')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/module-off')
+  })
+
+  it('una lectura con 403 forbidden lleva a "Sin permiso"', async () => {
+    setTokens({ accessToken: 'a', refreshToken: 'r', tenantId: 1 })
+    other = (path) => (path === '/api/v1/auth/sessions' ? problem(403, 'forbidden', 'Sin permiso.') : new Response(null, { status: 404 }))
+    await renderAppAt('/account?tab=sessions')
+    expect(await screen.findByTestId('forbidden-screen')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/forbidden')
   })
 })

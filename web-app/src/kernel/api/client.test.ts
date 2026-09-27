@@ -88,6 +88,30 @@ describe('cliente del API', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
+  it('en /auth/reauth no refresca el 401 del servicio (contraseña incorrecta, con code)', async () => {
+    const fetch = vi.fn(async () => json({ title: 'Contraseña incorrecta.', code: 'unauthorized' }, 401))
+    const api = createApiClient({ baseUrl: BASE, fetch })
+    await expect(unwrap(api.POST('/api/v1/auth/reauth', { body: { password: 'x' } }))).rejects.toMatchObject({
+      title: 'Contraseña incorrecta.',
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('en /auth/reauth refresca el 401 del esquema (access token vencido, sin cuerpo) y reintenta', async () => {
+    const paths: string[] = []
+    const fetch = vi.fn(async (req: Request) => {
+      const path = new URL(req.url).pathname
+      paths.push(path)
+      if (path === '/api/v1/auth/refresh') return json({ accessToken: 'new-access', refreshToken: 'new-refresh', tenantId: 1 })
+      return req.headers.get('Authorization') === 'Bearer new-access'
+        ? json({ accessToken: 'aal2-access', refreshToken: 'new-refresh', tenantId: 1 })
+        : new Response(null, { status: 401 })
+    })
+    const api = createApiClient({ baseUrl: BASE, fetch })
+    await unwrap(api.POST('/api/v1/auth/reauth', { body: { password: 'ok' } }))
+    expect(paths).toEqual(['/api/v1/auth/reauth', '/api/v1/auth/refresh', '/api/v1/auth/reauth'])
+  })
+
   it('ante 403 aal2_required pide reautenticación y reintenta la acción', async () => {
     let aal2 = false
     setStepUpHandler(async () => {

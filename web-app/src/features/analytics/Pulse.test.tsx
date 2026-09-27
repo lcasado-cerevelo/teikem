@@ -1,23 +1,25 @@
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createQueryClient, setAccessDeniedHandler } from '../../app/queryClient'
 import { SessionContext, type MeDto, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
-import { chartKind, formatValue } from './format'
+import { apiDateToYmd, chartKind, customRangeDays, formatValue, formatYmd } from './format'
 import Pulse from './Pulse'
 
 // Cliente de la app sobre un fetch simulado (misma política que el real).
-type Handler = (path: string) => Response | unknown
-const mock = vi.hoisted(() => ({ calls: [] as string[], handler: null as unknown }))
+type Handler = (path: string, method: string) => Response | unknown
+const mock = vi.hoisted(() => ({ calls: [] as string[], writes: [] as { method: string; path: string; body: unknown }[], handler: null as unknown }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
     const path = new URL(req.url).pathname
     mock.calls.push(path)
-    const result = (mock.handler as Handler)(path)
+    if (req.method !== 'GET') mock.writes.push({ method: req.method, path, body: await req.clone().json().catch(() => null) })
+    const result = (mock.handler as Handler)(path, req.method)
     if (result instanceof Response) return result
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
@@ -81,6 +83,7 @@ afterAll(() => {
 })
 beforeEach(() => {
   mock.calls = []
+  mock.writes = []
   onAccessDenied.mockReset()
 })
 
@@ -92,6 +95,15 @@ describe('formatValue / chartKind', () => {
     expect(formatValue(2.345, false)).toBe('2.35')
     expect(formatValue(null, false)).toBe('—')
     expect(formatValue(undefined, true)).toBe('—')
+  })
+
+  it('rango CUSTOM: toUtc es exclusivo (se resta un día) y las fechas se leen como UTC', () => {
+    expect(customRangeDays('2026-09-01T00:00:00', '2026-09-16T00:00:00')).toEqual({ from: '2026-09-01', to: '2026-09-15' })
+    expect(customRangeDays('2026-09-01T00:00:00Z', '2026-10-01T00:00:00Z')).toEqual({ from: '2026-09-01', to: '2026-09-30' })
+    expect(apiDateToYmd(null)).toBe('')
+    expect(apiDateToYmd('no-es-fecha')).toBe('')
+    expect(formatYmd('', 'es')).toBe('…')
+    expect(formatYmd('2026-09-15', 'en')).toBe('9/15/2026')
   })
 
   it('elige el gráfico por chartType: LINE, DONUT, PIE; el resto barras', () => {
@@ -161,5 +173,62 @@ describe('Pulse', () => {
     // Rejilla auto-fill con mínimo de 220 px: a 360 px (stage de ~336 px) cabe una sola columna, las tarjetas se apilan.
     const grid = screen.getByRole('heading', { name: 'Indicadores' }).nextElementSibling as HTMLElement
     expect(grid.getAttribute('style')).toContain('minmax(220px, 1fr)')
+  })
+
+  it('rango CUSTOM: muestra el Hasta que eligió el usuario (no el límite exclusivo del servidor)', async () => {
+    mock.handler = () => ({
+      indicators: [{ id: 1, name: 'Ventas', value: 10, isMoney: false, dateRangeMode: 'CUSTOM', fromUtc: '2026-09-01T00:00:00', toUtc: '2026-09-16T00:00:00' }],
+      charts: [],
+    })
+    renderPulse(FULL)
+    expect(await screen.findByText(`${formatYmd('2026-09-01', 'es')} → ${formatYmd('2026-09-15', 'es')}`)).toBeInTheDocument()
+  })
+
+  it('"Rango" cambia MI rango de la tarjeta (PUT my-date-range) con Desde/Hasta y recalcula Pulso', async () => {
+    let saved = false
+    mock.handler = (path: string, method: string) => {
+      if (path === '/api/v1/catalogs/DateRangeMode')
+        return [
+          { code: 'LAST7', label: 'Últimos 7 días', sortOrder: 1, isEnabled: true },
+          { code: 'CUSTOM', label: 'Personalizado', sortOrder: 2, isEnabled: true },
+        ]
+      if (method === 'PUT') {
+        saved = true
+        return { id: 1, name: 'Ventas' }
+      }
+      return {
+        indicators: [
+          saved
+            ? { id: 1, name: 'Ventas', value: 5, isMoney: false, dateRangeMode: 'CUSTOM', fromUtc: '2026-09-01T00:00:00', toUtc: '2026-09-16T00:00:00' }
+            : { id: 1, name: 'Ventas', value: 10, isMoney: false, dateRangeMode: 'LAST7' },
+        ],
+        charts: [],
+      }
+    }
+    const user = userEvent.setup()
+    renderPulse(FULL)
+    await user.click(await screen.findByRole('button', { name: 'Cambiar mi rango de fecha de Ventas' }))
+    const dialog = await screen.findByRole('dialog')
+    const mode = within(dialog).getByLabelText(/^Rango/)
+    await waitFor(() => expect(within(mode).getByRole('option', { name: 'Personalizado' })).toBeInTheDocument())
+    await user.selectOptions(mode, 'CUSTOM')
+    // Validación en cliente: Desde y Hasta obligatorios en el personalizado.
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    expect(await within(dialog).findByText('Indique la fecha Desde.')).toBeInTheDocument()
+    expect(mock.writes).toEqual([])
+    await user.type(within(dialog).getByLabelText(/^Desde/), '2026-09-01')
+    await user.type(within(dialog).getByLabelText(/^Hasta/), '2026-09-15')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() =>
+      expect(mock.writes).toEqual([
+        {
+          method: 'PUT',
+          path: '/api/v1/analytics/indicators/1/my-date-range',
+          body: { dateRangeMode: 'CUSTOM', dateFrom: '2026-09-01', dateTo: '2026-09-15' },
+        },
+      ]),
+    )
+    expect(await screen.findByText(`${formatYmd('2026-09-01', 'es')} → ${formatYmd('2026-09-15', 'es')}`)).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 })

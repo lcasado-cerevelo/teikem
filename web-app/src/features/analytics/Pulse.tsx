@@ -1,7 +1,8 @@
 // P3 — Pulso del día (inicio, solo lectura): GET /api/v1/analytics/pulse.
 // Tarjetas de indicadores (un solo número) y gráficos (Recharts) marcados por cada usuario para Pulso.
-// El servidor ya calcula el valor con el rango de fecha configurado; aquí solo se muestra (no hay edición del rango).
-import { useMemo, type CSSProperties } from 'react'
+// El servidor calcula el valor con el rango de fecha de cada tarjeta; el botón "Rango" de la tarjeta cambia MI rango
+// (preferencia por usuario, PUT .../my-date-range con solo analytics.view) y Pulso se recalcula.
+import { useMemo, useState, type CSSProperties } from 'react'
 import {
   Bar,
   BarChart,
@@ -18,7 +19,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useSession } from '../../app/session'
-import { ModuleKeys, useCan, useModule } from '../../kernel/access'
+import { Can, ModuleKeys, useCan, useModule } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
 import { useLookups } from '../../kernel/catalogs'
@@ -26,8 +27,9 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { EmptyState } from '../../kernel/ui/EmptyState'
 import { Panel } from '../../kernel/ui/Panel'
 import { Spinner } from '../../kernel/ui/Spinner'
-import { usePulse } from './api'
-import { chartKind, formatValue } from './format'
+import { usePulse, type PulseItemKind } from './api'
+import { chartKind, customRangeDays, CUSTOM_RANGE, formatValue, formatYmd } from './format'
+import { RangeModal } from './RangeModal'
 
 type Indicator = components['schemas']['IndicatorValueDto']
 type ChartDatum = components['schemas']['ChartDataDto']
@@ -42,18 +44,45 @@ function useRangeCaption(dateRangeMode: string | null | undefined, fromUtc: stri
   const lang = useLang()
   const { data: modes = [] } = useLookups('DateRangeMode', { includeDisabled: true, enabled: !!dateRangeMode })
   if (!dateRangeMode || dateRangeMode === 'ALL') return null
-  if (dateRangeMode === 'CUSTOM') {
+  if (dateRangeMode === CUSTOM_RANGE) {
     if (!fromUtc && !toUtc) return null
-    const fmt = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString(lang) : '…')
-    return `${fmt(fromUtc)} → ${fmt(toUtc)}`
+    // toUtc es exclusivo (día siguiente a Hasta): se muestra el Hasta que eligió el usuario, como fecha UTC.
+    const { from, to } = customRangeDays(fromUtc, toUtc)
+    return `${formatYmd(from, lang)} → ${formatYmd(to, lang)}`
   }
   return modes.find((m) => m.code === dateRangeMode)?.label ?? dateRangeMode
+}
+
+/** Botón "Rango" de la tarjeta y su diálogo (mi rango de fecha para este indicador o gráfico). */
+function RangeButton({ kind, item }: { kind: PulseItemKind; item: Indicator | ChartDatum }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  if (item.id == null) return null
+  const name = item.name ?? ''
+  return (
+    <Can perm="analytics.view">
+      <button type="button" className="btn sm" aria-label={t('analytics.range.editFor', { name })} onClick={() => setOpen(true)}>
+        {t('analytics.range.edit')}
+      </button>
+      {open && (
+        <RangeModal
+          kind={kind}
+          id={item.id}
+          name={name}
+          dateRangeMode={item.dateRangeMode}
+          fromUtc={item.fromUtc}
+          toUtc={item.toUtc}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </Can>
+  )
 }
 
 function IndicatorCard({ indicator }: { indicator: Indicator }) {
   const caption = useRangeCaption(indicator.dateRangeMode, indicator.fromUtc, indicator.toUtc)
   return (
-    <Panel title={indicator.name}>
+    <Panel title={indicator.name} actions={<RangeButton kind="indicator" item={indicator} />}>
       <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.2 }}>{formatValue(indicator.value, indicator.isMoney)}</div>
       {caption != null && <div style={{ marginTop: 4, fontSize: 12.5, color: 'var(--muted)' }}>{caption}</div>}
     </Panel>
@@ -71,7 +100,7 @@ function ChartCard({ chart }: { chart: ChartDatum }) {
   const valueFmt = (v: number) => formatValue(v, chart.isMoney)
 
   return (
-    <Panel title={chart.name} subtitle={caption ?? undefined}>
+    <Panel title={chart.name} subtitle={caption ?? undefined} actions={<RangeButton kind="chart" item={chart} />}>
       {data.length === 0 ? (
         <p style={{ color: 'var(--muted)', fontSize: 13 }}>{t('analytics.pulse.chartEmpty')}</p>
       ) : (

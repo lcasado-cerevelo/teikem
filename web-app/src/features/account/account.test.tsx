@@ -99,6 +99,8 @@ describe('format', () => {
     expect(formatDateTime(null, 'es')).toBe('')
     expect(formatDateTime('no-es-fecha', 'es')).toBe('')
     expect(formatDateTime('2026-09-27T10:00:00Z', 'es')).toMatch(/2026/)
+    // El API manda UTC sin 'Z': se muestra igual que la misma hora con 'Z' (no como hora local).
+    expect(formatDateTime('2026-09-27T14:00:00.123', 'es')).toBe(formatDateTime('2026-09-27T14:00:00.123Z', 'es'))
   })
 })
 

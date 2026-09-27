@@ -1,9 +1,10 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../access/AccessProvider'
 import { setLang } from '../i18n/i18n'
-import { DataTable, type DataColumn, type RowAction } from './DataTable'
+import { DataTable, type DataColumn, type RowAction, type SortState } from './DataTable'
 
 interface Row {
   id: number
@@ -33,6 +34,31 @@ function codes(): string[] {
   return within(body)
     .getAllByRole('row')
     .map((tr) => within(tr).getAllByRole('cell')[0].textContent ?? '')
+}
+
+/** Simula el modo tarjetas (bajo 720 px); devuelve la función que restaura matchMedia. */
+function cardsMode(): () => void {
+  const original = window.matchMedia
+  window.matchMedia = ((query: string) => ({
+    matches: query === '(max-width: 720px)',
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia
+  return () => {
+    window.matchMedia = original
+  }
+}
+
+/** Códigos en el orden en que se ven las tarjetas (el código es el título de cada una). */
+function cardCodes(): string[] {
+  return within(screen.getByRole('list', { name: 'Artículos' }))
+    .getAllByRole('listitem')
+    .map((li) => li.querySelector('.ttl')?.textContent ?? '')
 }
 
 describe('DataTable', () => {
@@ -146,6 +172,72 @@ describe('DataTable', () => {
       expect(cards[0]).toHaveTextContent('Cantidad5')
     } finally {
       window.matchMedia = original
+    }
+  })
+
+  it('en tarjetas ordena con "Ordenar por" y el botón ▲/▼ invierte el sentido (orden local)', async () => {
+    const restore = cardsMode()
+    try {
+      const user = userEvent.setup()
+      render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} label="Artículos" />)
+      expect(cardCodes()).toEqual(['B-02', 'A-10', 'A-2', 'C-01', 'D-07'])
+      expect(screen.queryByRole('button', { name: 'Ascendente' })).toBeNull()
+
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'code')
+      expect(cardCodes()).toEqual(['A-2', 'A-10', 'B-02', 'C-01', 'D-07'])
+      await user.click(screen.getByRole('button', { name: 'Ascendente' }))
+      expect(cardCodes()).toEqual(['D-07', 'C-01', 'B-02', 'A-10', 'A-2'])
+      expect(screen.getByRole('button', { name: 'Descendente' })).toHaveTextContent('▼')
+
+      // otra columna vuelve a empezar en ascendente; vacíos al final
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'qty')
+      expect(cardCodes()).toEqual(['C-01', 'B-02', 'D-07', 'A-2', 'A-10'])
+      await user.click(screen.getByRole('button', { name: 'Ascendente' }))
+      expect(cardCodes()).toEqual(['A-2', 'D-07', 'B-02', 'C-01', 'A-10'])
+
+      // sin columna: vuelve al orden de llegada
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), '')
+      expect(cardCodes()).toEqual(['B-02', 'A-10', 'A-2', 'C-01', 'D-07'])
+    } finally {
+      restore()
+    }
+  })
+
+  it('en tarjetas con orden del servidor avisa con onSort (columna y sentido)', async () => {
+    const restore = cardsMode()
+    try {
+      const user = userEvent.setup()
+      const onSort = vi.fn()
+      const serverCols: DataColumn<Row>[] = [
+        { id: 'code', header: 'Código', cell: (r) => r.code, sortable: true },
+        { id: 'qty', header: 'Cantidad', cell: (r) => r.qty ?? '—', sortable: true },
+      ]
+      function Host() {
+        const [sort, setSort] = useState<SortState | null>(null)
+        return (
+          <DataTable
+            columns={serverCols}
+            rows={ROWS}
+            rowKey={(r) => r.id}
+            label="Artículos"
+            sort={sort}
+            onSort={(next) => {
+              onSort(next)
+              setSort(next)
+            }}
+          />
+        )
+      }
+      render(<Host />)
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Ordenar por' }), 'qty')
+      expect(onSort).toHaveBeenLastCalledWith({ id: 'qty', desc: false })
+      // el servidor ordena: las tarjetas conservan el orden recibido
+      expect(cardCodes()).toEqual(['B-02', 'A-10', 'A-2', 'C-01', 'D-07'])
+      await user.click(screen.getByRole('button', { name: 'Ascendente' }))
+      expect(onSort).toHaveBeenLastCalledWith({ id: 'qty', desc: true })
+      expect(screen.getByRole('button', { name: 'Descendente' })).toBeInTheDocument()
+    } finally {
+      restore()
     }
   })
 
