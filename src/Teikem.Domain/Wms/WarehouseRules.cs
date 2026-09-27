@@ -187,7 +187,7 @@ public static class WarehouseRules
         if (u.OpenReceipts > 0) errors["receipts"] = new[] { $"Recibos abiertos: {u.OpenReceipts}." };
         if (u.OpenCycleCounts > 0) errors["cycleCounts"] = new[] { $"Conteos cíclicos sin reconciliar: {u.OpenCycleCounts}." };
         if (u.OpenTasks > 0) errors["tasks"] = new[] { $"Tareas de almacén abiertas: {u.OpenTasks}." };
-        if (u.CollectedPickBatches > 0) errors["pickBatches"] = new[] { $"Recolecciones sin empacar: {u.CollectedPickBatches}." };
+        if (u.CollectedPickBatches > 0) errors["pickBatches"] = new[] { $"Recolecciones sin empacar o con orden en etapa inicial: {u.CollectedPickBatches}." };
         if (u.OpenCrossDockPlans > 0) errors["crossDockPlans"] = new[] { $"Planes de cruce de muelle abiertos: {u.OpenCrossDockPlans}." };
         if (u.ActiveAppointments > 0) errors["appointments"] = new[] { $"Citas de muelle agendadas o en curso: {u.ActiveAppointments}." };
         return errors;

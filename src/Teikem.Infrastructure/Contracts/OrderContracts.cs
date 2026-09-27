@@ -119,6 +119,13 @@ public sealed record OrderCreationOptions(
     string? SourceEntityType = null,
     int? SourceEntityId = null);
 
+/// <summary>
+/// Lote 6 (D12) — opciones de borrado de llamadores internos. Una orden nacida de una recolección (SourceEntity PICK_BATCH)
+/// solo se borra desde 'Recolección y empaque' (AllowedSourceEntityType = PICK_BATCH), que además restaura el inventario;
+/// desde Órdenes responde 409. No es un DTO HTTP.
+/// </summary>
+public sealed record OrderDeletionOptions(string? AllowedSourceEntityType = null);
+
 // ---------------------------------------------------------------- lectura
 
 public sealed record OrderStopDto(

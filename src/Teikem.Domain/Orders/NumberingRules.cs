@@ -181,11 +181,13 @@ public static class NumberingRules
         return null;
     }
 
-    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch or NumberKinds.WorkOrder or NumberKinds.Trip;
+    public static bool IsKnownKind(string? kind) => kind is NumberKinds.Order or NumberKinds.Invoice or NumberKinds.Package or NumberKinds.PackBatch or NumberKinds.WorkOrder or NumberKinds.Trip
+        // Lote 6: recibos, conteos, planes de cruce de muelle y órdenes de compra (por tenant, ClientId NULL)
+        or NumberKinds.Receipt or NumberKinds.CycleCount or NumberKinds.CrossDock or NumberKinds.Purchase;
 
     private static string Coalesce(string? pattern, string fallback) => string.IsNullOrWhiteSpace(pattern) ? fallback : pattern.Trim();
 
     private static ArgumentOutOfRangeException UnknownKind(string kind)
-        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE, PACKBATCH, WORKORDER o TRIP.");
+        => new(nameof(kind), kind, "Tipo de número desconocido; use ORDER, INVOICE, PACKAGE, PACKBATCH, WORKORDER, TRIP, RECEIPT, CYCLECOUNT, CROSSDOCK o PURCHASE.");
 }
 }

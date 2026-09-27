@@ -109,6 +109,26 @@ public class KardexRulesTests
         Assert.Null(KardexRules.RefLabel(null, 8));
     }
 
+    [Fact]
+    public void RefLabel_and_type_chip_in_english()
+    {
+        Assert.Equal("Receipt REC-00001", KardexRules.RefLabel(EntityTypes.Receipt, 5, "REC-00001", "en"));
+        Assert.Equal("Pick batch EMP-00007", KardexRules.RefLabel(EntityTypes.PickBatch, 9, "EMP-00007", "en-US"));
+        Assert.Equal("Count CC-00002", KardexRules.RefLabel(EntityTypes.CycleCount, 2, "CC-00002", "en"));
+        Assert.Equal("Purchase order PO-00003", KardexRules.RefLabel(EntityTypes.PurchaseOrder, 3, "PO-00003", "en"));
+        Assert.Equal("Order 2026-000123", KardexRules.RefLabel(EntityTypes.TransportOrder, 3, "2026-000123", "en"));
+        Assert.Equal("Cross-dock XD-00001", KardexRules.RefLabel(EntityTypes.CrossDockAllocation, 4, "XD-00001", "en"));
+        Assert.Equal("Task #12", KardexRules.RefLabel(EntityTypes.WarehouseTask, 12, null, "en"));
+        Assert.Equal("RECEIPT·5", KardexRules.RefLabel(EntityTypes.Receipt, 5, null, "en"));
+        // Español (o idioma desconocido) por defecto.
+        Assert.Equal("Recibo REC-00001", KardexRules.RefLabel(EntityTypes.Receipt, 5, "REC-00001", "es"));
+        Assert.Equal("Tarea #12", KardexRules.RefLabel(EntityTypes.WarehouseTask, 12, null, "fr"));
+
+        Assert.Equal("Cross-dock", KardexRules.TypeChip(InventoryTxnTypes.CrossDock, "en"));
+        Assert.Equal("Issue", KardexRules.TypeChip(InventoryTxnTypes.Issue, "en"));
+        Assert.Equal("Cruce de muelle", KardexRules.TypeChip(InventoryTxnTypes.CrossDock, "es"));
+    }
+
     [Theory]
     [InlineData(InventoryTxnTypes.Receipt, "Recepción")]
     [InlineData(InventoryTxnTypes.Issue, "Despacho")]

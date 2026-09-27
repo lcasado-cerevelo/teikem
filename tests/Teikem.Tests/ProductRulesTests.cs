@@ -135,7 +135,7 @@ public class ProductRulesTests
     {
         Assert.Equal("El producto PN-1 tiene inventario en mano (12.5); no se puede desactivar.", ProductRules.DeactivateWithStock("PN-1", 12.500m));
         Assert.Equal("El producto PN-1 tiene inventario en mano (3); no se puede desactivar.", ProductRules.DeactivateWithStock("PN-1", 3m));
-        Assert.Equal("El producto PN-1 está en recibos abiertos o tareas pendientes; ciérrelos antes de desactivarlo.",
+        Assert.Equal("El producto PN-1 está en recibos abiertos, tareas pendientes, recolecciones o conteos abiertos; ciérrelos antes de desactivarlo.",
             ProductRules.DeactivateOpenDocs("PN-1"));
         Assert.Equal("Ya existe un producto con ese SKU para ese dueño.", ProductRules.SkuTaken);
         Assert.Equal("Ya existe un producto activo con ese código de barras.", ProductRules.BarcodeTaken);

@@ -14,6 +14,7 @@ using Teikem.Domain.Orders;
 using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
 using Teikem.Domain.Trips;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 
 namespace Teikem.Infrastructure.Persistence;
@@ -125,6 +126,38 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Route> Routes => Set<Route>();
     public DbSet<RouteStop> RouteStops => Set<RouteStop>();
     public DbSet<OptimizationRun> OptimizationRuns => Set<OptimizationRun>();
+    // Lote 6 — Inventario y almacén. 15 entidades llevan TenantId y reciben el filtro global: Warehouse, ProductCategory,
+    // Product, StockBalance, InventoryTransaction, Supplier, PurchaseOrder, PurchaseOrderShortageResolution, Asn, ReceiptHeader,
+    // WarehouseTask, CycleCount, PickBatch, DockAppointment y CrossDockPlan. Las 11 hijas SIN TenantId se alcanzan SOLO a
+    // través de su padre filtrado (WmsResolve): WarehouseZone, WarehouseBin y WarehouseDock (almacén); InventoryLot e
+    // InventorySerial (producto; heredan la tenencia por FK compuesta); PurchaseOrderLine (PO); AsnLine (ASN); ReceiptLine
+    // (recibo); CycleCountLine (conteo); PickBatchLine (recolección); CrossDockAllocation (plan).
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<WarehouseZone> WarehouseZones => Set<WarehouseZone>();
+    public DbSet<WarehouseBin> WarehouseBins => Set<WarehouseBin>();
+    public DbSet<WarehouseDock> WarehouseDocks => Set<WarehouseDock>();
+    public DbSet<ProductCategory> ProductCategories => Set<ProductCategory>();
+    public DbSet<Product> Products => Set<Product>();
+    public DbSet<InventoryLot> InventoryLots => Set<InventoryLot>();
+    public DbSet<InventorySerial> InventorySerials => Set<InventorySerial>();
+    public DbSet<StockBalance> StockBalances => Set<StockBalance>();
+    public DbSet<InventoryTransaction> InventoryTransactions => Set<InventoryTransaction>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<PurchaseOrderShortageResolution> PurchaseOrderShortageResolutions => Set<PurchaseOrderShortageResolution>();
+    public DbSet<Asn> Asns => Set<Asn>();
+    public DbSet<AsnLine> AsnLines => Set<AsnLine>();
+    public DbSet<ReceiptHeader> ReceiptHeaders => Set<ReceiptHeader>();
+    public DbSet<ReceiptLine> ReceiptLines => Set<ReceiptLine>();
+    public DbSet<WarehouseTask> WarehouseTasks => Set<WarehouseTask>();
+    public DbSet<CycleCount> CycleCounts => Set<CycleCount>();
+    public DbSet<CycleCountLine> CycleCountLines => Set<CycleCountLine>();
+    public DbSet<PickBatch> PickBatches => Set<PickBatch>();
+    public DbSet<PickBatchLine> PickBatchLines => Set<PickBatchLine>();
+    public DbSet<DockAppointment> DockAppointments => Set<DockAppointment>();
+    public DbSet<CrossDockPlan> CrossDockPlans => Set<CrossDockPlan>();
+    public DbSet<CrossDockAllocation> CrossDockAllocations => Set<CrossDockAllocation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

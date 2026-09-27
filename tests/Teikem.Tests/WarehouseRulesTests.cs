@@ -135,6 +135,7 @@ public class WarehouseRulesTests
         Assert.Equal(new[] { "inventory", "receipts", "cycleCounts", "tasks", "pickBatches", "crossDockPlans", "appointments" }, e.Keys.ToArray());
         Assert.Equal("Inventario en mano 5.5, reservado 1.", e["inventory"][0]);
         Assert.Equal("Recibos abiertos: 2.", e["receipts"][0]);
+        Assert.Equal("Recolecciones sin empacar o con orden en etapa inicial: 1.", e["pickBatches"][0]);
     }
 
     [Fact]

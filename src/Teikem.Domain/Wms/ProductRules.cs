@@ -61,7 +61,7 @@ public static class ProductRules
     public static string DeactivateWithStock(string sku, decimal qty)
         => $"El producto {sku} tiene inventario en mano ({FormatQty(qty)}); no se puede desactivar.";
     public static string DeactivateOpenDocs(string sku)
-        => $"El producto {sku} está en recibos abiertos o tareas pendientes; ciérrelos antes de desactivarlo.";
+        => $"El producto {sku} está en recibos abiertos, tareas pendientes, recolecciones o conteos abiertos; ciérrelos antes de desactivarlo.";
 
     public const string CategoryNameRequired = "El nombre de la categoría es obligatorio.";
     public static string CategoryNameTooLong => $"El nombre de la categoría no puede exceder {CategoryNameMaxLength} caracteres.";

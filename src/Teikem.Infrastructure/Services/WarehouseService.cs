@@ -241,10 +241,19 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         return await db.WarehouseTasks.CountAsync(t => t.WarehouseId == warehouseId && ids.Contains(t.StatusCodeId), ct);
     }
 
+    /// <summary>
+    /// Recolecciones que todavía se pueden eliminar (maestro L780, criterio de PickBatchRules.CanDelete): COLLECTED, o PACKED
+    /// con su orden activa y en etapa inicial. Su reversa entra al almacén, y el ledger rechaza entradas a un almacén INACTIVE
+    /// (terminal): darlo de baja las dejaría sin poder eliminarse para siempre.
+    /// </summary>
     private async Task<int> CollectedPickBatchesAsync(int warehouseId, CancellationToken ct)
     {
-        var ids = await StatusIdsAsync(StatusDomains.PickBatchStatus, ct, PickBatchStatuses.Collected);
-        return await db.PickBatches.CountAsync(p => p.WarehouseId == warehouseId && p.IsActive && ids.Contains(p.StatusCodeId), ct);
+        var collected = await StatusIdsAsync(StatusDomains.PickBatchStatus, ct, PickBatchStatuses.Collected);
+        var packed = await StatusIdsAsync(StatusDomains.PickBatchStatus, ct, PickBatchStatuses.Packed);
+        return await db.PickBatches.CountAsync(p => p.WarehouseId == warehouseId && p.IsActive &&
+            (collected.Contains(p.StatusCodeId) ||
+             (packed.Contains(p.StatusCodeId) && db.TransportOrders.Any(o => o.TransportOrderId == p.TransportOrderId && o.IsActive
+                 && db.StatusCodes.Any(s => s.StatusCodeId == o.StatusCodeId && s.IsInitial)))), ct);
     }
 
     private async Task<int> OpenCrossDockPlansAsync(int warehouseId, CancellationToken ct)

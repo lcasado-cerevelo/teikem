@@ -21,7 +21,13 @@ namespace Teikem.Tests;
 public class OwnedEntityResolverCoverageTests
 {
     /// <summary>Resolvers con constructor no inyectable: se registran con factory en DependencyInjection.</summary>
-    private static readonly string[] ClosedResolverCodes = { EntityTypes.DriverRate, EntityTypes.FleetDocument, EntityTypes.OptimizationRun };
+    private static readonly string[] ClosedResolverCodes =
+    {
+        EntityTypes.DriverRate, EntityTypes.FleetDocument, EntityTypes.OptimizationRun,
+        // Lote 6: bitácoras/hijas sin escritura de dueño (siempre 404, sin oráculo).
+        EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.CrossDockAllocation,
+        EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.ReceiptLine,
+    };
 
     private static HashSet<string> OwnerCodes()
         => PermissionCatalog.OwnerReadPermission.Keys.Concat(PermissionCatalog.OwnerWritePermission.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -128,8 +134,42 @@ public class OwnedEntityResolverCoverageTests
         var sources = p.GetRequiredService<IDataSourceRegistry>();
         foreach (var key in new[] { EntityTypes.Vehicle, EntityTypes.Driver, EntityTypes.WorkOrder, EntityTypes.FuelLog, EntityTypes.FleetDocument })
             Assert.True(sources.TryGet(key, out _), $"Falta la fuente {key}");
+        foreach (var key in new[] { EntityTypes.Warehouse, EntityTypes.Product, EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.Receipt, EntityTypes.WarehouseTask, EntityTypes.PickBatch })
+            Assert.True(sources.TryGet(key, out _), $"Falta la fuente {key}");
         // Sin fuentes de compensación: Análisis solo exige analytics.view.
         Assert.False(sources.TryGet(EntityTypes.DriverTrip, out _));
         Assert.False(sources.TryGet(EntityTypes.DriverRate, out _));
+    }
+
+    [Fact]
+    public void Wms_services_seams_handlers_and_effects_resolve_from_the_container()
+    {
+        using var sp = BuildContainer();
+        using var scope = sp.CreateScope();
+        var p = scope.ServiceProvider;
+        foreach (var t in new[]
+                 {
+                     typeof(Teikem.Infrastructure.Wms.InventoryLedger), typeof(Teikem.Infrastructure.Wms.WarehouseTaskWriter), typeof(Teikem.Infrastructure.Wms.PutawaySuggester),
+                     typeof(WarehouseService), typeof(WarehouseLayoutService), typeof(ProductService), typeof(ProductCategoryService), typeof(InventoryReadService),
+                     typeof(InventoryAdjustmentService), typeof(TraceabilityService), typeof(AsnService), typeof(ReceiptService), typeof(WarehouseTaskService),
+                     typeof(ReplenishmentService), typeof(CycleCountService), typeof(PickBatchService), typeof(SupplierService), typeof(PurchaseOrderService),
+                     typeof(PurchaseShortageService), typeof(DockAppointmentService), typeof(CrossDockService),
+                     typeof(Teikem.Infrastructure.Wms.IPurchaseOrderReceiving), typeof(Teikem.Infrastructure.Wms.IReceiptConfirmationParticipant),
+                     typeof(Teikem.Infrastructure.Wms.IOrderInventoryLines),
+                 })
+            Assert.NotNull(p.GetRequiredService(t));
+
+        var handlers = p.GetServices<Teikem.Infrastructure.Wms.IWarehouseTaskHandler>().ToDictionary(h => h.TaskType, h => h.RequiredPermission);
+        Assert.Equal(new Dictionary<string, string>
+        {
+            [WarehouseTaskTypes.Putaway] = PermissionCatalog.WarehouseReceive,
+            [WarehouseTaskTypes.Replenish] = PermissionCatalog.WarehousePick,
+            [WarehouseTaskTypes.Count] = PermissionCatalog.WarehouseCount,
+            [WarehouseTaskTypes.CrossDock] = PermissionCatalog.WarehouseCrossdock,
+        }, handlers);
+
+        var effects = p.GetServices<IStatusTransitionEffect>().Select(e => e.GetType().Name).ToList();
+        Assert.Contains("WarehouseTaskStatusEffect", effects);
+        Assert.Contains("DockAppointmentStatusEffect", effects);
     }
 }

@@ -131,7 +131,7 @@ public sealed class TraceabilityService(TeikemDbContext db, ITenantContext tenan
         {
             var order = orderOf.GetValueOrDefault((code, id)) is int oid ? orders.GetValueOrDefault(oid) : null;
             var number = code == EntityTypes.TransportOrder ? order?.OrderNumber : numberOf.GetValueOrDefault((code, id));
-            result.Add(new GenealogyDestinationDto(code, id, KardexRules.RefLabel(code, id, number),
+            result.Add(new GenealogyDestinationDto(code, id, KardexRules.RefLabel(code, id, number, tenant.Lang),
                 order?.PublicId, order?.PackBatchNumber,
                 order is null ? null : clients.GetValueOrDefault(order.ClientId),
                 order is null ? null : consignees.GetValueOrDefault(order.Id), qty));

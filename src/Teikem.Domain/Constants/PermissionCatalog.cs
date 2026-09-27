@@ -5,10 +5,11 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 
 /// <summary>
 /// Vocabulario de permisos de la plataforma. Es la fuente de verdad: PermissionSeeder hace MERGE contra dbo.Permission
-/// en cada arranque. Coincide con logistica-db-seed.sql (54 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
+/// en cada arranque. Coincide con logistica-db-seed.sql (58 códigos): los 31 de negocio, los de las capas transversales A-I (Lote 1),
 /// los de Clientes y contratos (Lote 2, categoría CLIENTS), orders.credit_override (Lote 3, ajuste C), fleet.view,
 /// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8) y
-/// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar).
+/// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar) e inventory.view,
+/// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE).
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -31,6 +32,14 @@ public static class PermissionCatalog
     public const string WarehousePick = "warehouse.pick";
     public const string WarehouseCount = "warehouse.count";
     public const string WarehouseCrossdock = "warehouse.crossdock";
+    /// <summary>Lote 6: estructura del almacén (almacenes, zonas, posiciones, muelles) y asignar/cancelar tareas de la cola.</summary>
+    public const string WarehouseManage = "warehouse.manage";
+    /// <summary>Lote 6: ver inventario, productos, Kárdex, trazabilidad y documentos de almacén (incluye costos, D31).</summary>
+    public const string InventoryView = "inventory.view";
+    /// <summary>Lote 6: maestro de productos y categorías.</summary>
+    public const string InventoryManage = "inventory.manage";
+    /// <summary>Lote 6: ajustes manuales, transferencias, conciliación y resolución de faltantes de compras.</summary>
+    public const string InventoryAdjust = "inventory.adjust";
     public const string BillingGenerate = "billing.generate";
     public const string BillingApprove = "billing.approve";
     public const string BillingExport = "billing.export";
@@ -141,6 +150,11 @@ public static class PermissionCatalog
         // Lote 5 — Trips y rutas
         new(TripsView, "TRIPS", "Ver rutas y despacho", "View trips & dispatch"),
         new(TripsScan, "TRIPS", "Escanear salida (Outbound)", "Scan outbound"),
+        // Lote 6 — Inventario y almacén
+        new(InventoryView, "WAREHOUSE", "Ver inventario y almacén", "View inventory & warehouse"),
+        new(InventoryManage, "WAREHOUSE", "Gestionar productos", "Manage products"),
+        new(InventoryAdjust, "WAREHOUSE", "Ajustar y transferir inventario", "Adjust & transfer inventory"),
+        new(WarehouseManage, "WAREHOUSE", "Gestionar almacenes y tareas", "Manage warehouses & tasks"),
     };
 
     /// <summary>
@@ -175,6 +189,25 @@ public static class PermissionCatalog
         [EntityTypes.Route] = TripsView,
         [EntityTypes.RouteStop] = TripsView,
         [EntityTypes.OptimizationRun] = TripsView,
+        // Lote 6 — inventario y almacén con inventory.view; compras con purchasing.view
+        [EntityTypes.Warehouse] = InventoryView,
+        [EntityTypes.WarehouseDock] = InventoryView,
+        [EntityTypes.Product] = InventoryView,
+        [EntityTypes.InventorySerial] = InventoryView,
+        [EntityTypes.Receipt] = InventoryView,
+        [EntityTypes.Asn] = InventoryView,
+        [EntityTypes.WarehouseTask] = InventoryView,
+        [EntityTypes.CycleCount] = InventoryView,
+        [EntityTypes.PickBatch] = InventoryView,
+        [EntityTypes.DockAppointment] = InventoryView,
+        [EntityTypes.CrossDockPlan] = InventoryView,
+        [EntityTypes.CrossDockAllocation] = InventoryView,
+        // Sin escritura de dueño (resolver cerrado): la lectura polimórfica (campos personalizados, contactos) exige inventory.view.
+        [EntityTypes.StockBalance] = InventoryView,
+        [EntityTypes.InventoryTransaction] = InventoryView,
+        [EntityTypes.ReceiptLine] = InventoryView,
+        [EntityTypes.PurchaseOrder] = PurchasingView,
+        [EntityTypes.Supplier] = PurchasingView,
     };
 
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
@@ -205,6 +238,18 @@ public static class PermissionCatalog
         [EntityTypes.Trip] = TripsPlan,
         [EntityTypes.Route] = TripsPlan,
         [EntityTypes.RouteStop] = TripsPlan,
+        // Lote 6 — INVENTORY_SERIAL, WAREHOUSE_TASK y CROSSDOCK_ALLOCATION sin escritura de dueño (resolver cerrado)
+        [EntityTypes.Warehouse] = WarehouseManage,
+        [EntityTypes.WarehouseDock] = WarehouseManage,
+        [EntityTypes.Product] = InventoryManage,
+        [EntityTypes.Receipt] = WarehouseReceive,
+        [EntityTypes.Asn] = WarehouseReceive,
+        [EntityTypes.CycleCount] = WarehouseCount,
+        [EntityTypes.PickBatch] = WarehousePick,
+        [EntityTypes.DockAppointment] = WarehouseCrossdock,
+        [EntityTypes.CrossDockPlan] = WarehouseCrossdock,
+        [EntityTypes.PurchaseOrder] = PurchasingManage,
+        [EntityTypes.Supplier] = PurchasingManage,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
@@ -212,10 +257,10 @@ public static class PermissionCatalog
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan },
-        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView },
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan },
+        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView },
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView },
         ["Driver"] = new[] { OrdersView, CodCollect },
-        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView },
+        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView },
     };
 
     /// <summary>

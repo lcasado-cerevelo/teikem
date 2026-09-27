@@ -94,6 +94,8 @@ GO
     ('DateRangeMode',1,'Rango de fecha','Date range'),('PackageType',1,'Tipo de paquete','Package type'),
     -- Lote 4 — Flota, choferes y mantenimiento (pago a choferes)
     ('DriverPayoutFormula',1,'Fórmula de pago a choferes','Driver payout formula'),
+    -- Lote 6 — Inventario y almacén (motivos de ajuste y acciones de faltante de compras)
+    ('AdjustmentReason',1,'Motivo de ajuste','Adjustment reason'),('ShortageAction',1,'Acción de faltante','Shortage action'),
     -- Status
     ('ClientStatus',2,'Estatus de cliente','Client status'),('ContractStatus',2,'Estatus de contrato','Contract status'),
     ('OrderStatus',2,'Estatus de orden','Order status'),('StopStatus',2,'Estatus de parada','Stop status'),
@@ -117,7 +119,9 @@ GO
     -- Lote 3 — Órdenes de transporte (importador)
     ('ImportBatchStatus',2,'Estatus de lote de importación','Import batch status'),
     -- Lote 4 — Flota, choferes y mantenimiento (viaje pagado al chofer)
-    ('DriverTripStatus',2,'Estatus de viaje de chofer','Driver trip status')
+    ('DriverTripStatus',2,'Estatus de viaje de chofer','Driver trip status'),
+    -- Lote 6 — Inventario y almacén (recolección y empaque ad hoc)
+    ('PickBatchStatus',2,'Estatus de recolección','Pick batch status')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -185,7 +189,7 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('UnitOfMeasure','UN','Unidad','Unit',1),('UnitOfMeasure','BOX','Caja','Box',2),('UnitOfMeasure','PALLET','Tarima','Pallet',3),('UnitOfMeasure','KG','Kilogramo','Kilogram',4),('UnitOfMeasure','L','Litro','Liter',5),
 ('TrackingType','NONE','Ninguno','None',1),('TrackingType','LOT','Lote','Lot',2),('TrackingType','SERIAL','Serie','Serial',3),
 ('ZoneType','PICKING','Picking','Picking',1),('ZoneType','RESERVE','Reserva','Reserve',2),('ZoneType','REFRIGERATED','Refrigerado','Refrigerated',3),('ZoneType','QUARANTINE','Cuarentena','Quarantine',4),('ZoneType','CROSSDOCK','Cross-dock','Cross-dock',5),
-('InventoryTxnType','RECEIPT','Recepción','Receipt',1),('InventoryTxnType','ISSUE','Despacho','Issue',2),('InventoryTxnType','TRANSFER','Transferencia','Transfer',3),('InventoryTxnType','ADJUSTMENT','Ajuste','Adjustment',4),('InventoryTxnType','CROSSDOCK','Cross-dock','Cross-dock',5),
+('InventoryTxnType','RECEIPT','Recepción','Receipt',1),('InventoryTxnType','ISSUE','Despacho','Issue',2),('InventoryTxnType','TRANSFER','Transferencia','Transfer',3),('InventoryTxnType','ADJUSTMENT','Ajuste','Adjustment',4),('InventoryTxnType','CROSSDOCK','Cruce de muelle','Cross-dock',5),
 ('OptimizerEngine','VROOM','VROOM','VROOM',1),('OptimizerEngine','ORTOOLS','OR-Tools','OR-Tools',2),('OptimizerEngine','MANUAL','Manual','Manual',3),
 -- Capability
 ('Capability','EDIT_CARGO','Editar carga','Edit cargo',1),('Capability','ASSIGN_TRIP','Asignar a trip','Assign trip',2),('Capability','CANCEL','Cancelar','Cancel',3),('Capability','REPRICE','Reprecio','Reprice',4),('Capability','ADD_DOCUMENT','Añadir documento','Add document',5),
@@ -277,13 +281,34 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 -- (TRIP y ROUTE ya estaban sembradas arriba) y capacidad de edición de la cabecera de la ruta
 ('OptimizerEngine','HEURISTIC','Heurística (zona y ventana)','Heuristic (zone & window)',4),
 ('EntityType','ROUTE_STOP','Parada de ruta','Route stop',67),('EntityType','OPTIMIZATION_RUN','Corrida de optimización','Optimization run',68),
-('Capability','EDIT_TRIP','Editar ruta','Edit trip',8);
+('Capability','EDIT_TRIP','Editar ruta','Edit trip',8),
+-- Lote 6 — Inventario y almacén: zona de recepción STAGING (D21), motivos de ajuste (D7; RECEIPT_VARIANCE, COUNT_VARIANCE y
+-- PICK_BATCH_REVERSAL los asigna solo el sistema), acciones de faltante (D8), entidades con historial/auditoría nuevas
+-- (WAREHOUSE, PRODUCT, CYCLE_COUNT, CROSSDOCK_PLAN, PURCHASE_ORDER, SUPPLIER y RECEIPT_LINE ya estaban sembradas) y capacidad
+-- de edición de la orden de compra (D46)
+('ZoneType','STAGING','Recepción (staging)','Staging',6),
+('AdjustmentReason','RECEIPT_VARIANCE','Diferencia de recepción','Receipt variance',1),('AdjustmentReason','COUNT_VARIANCE','Diferencia de conteo','Count variance',2),
+('AdjustmentReason','DAMAGE','Daño','Damage',3),('AdjustmentReason','LOSS','Pérdida','Loss',4),('AdjustmentReason','FOUND','Encontrado','Found',5),
+('AdjustmentReason','EXPIRED','Vencido','Expired',6),('AdjustmentReason','PO_SHORTAGE','Faltante de compra','PO shortage',7),
+('AdjustmentReason','PICK_BATCH_REVERSAL','Reversa de recolección','Pick batch reversal',8),('AdjustmentReason','OTHER','Otro','Other',9),
+('ShortageAction','CLOSE','Cerrar','Close',1),('ShortageAction','REORDER','Reordenar','Reorder',2),('ShortageAction','MANUAL_ADJUSTMENT','Ajuste manual','Manual adjustment',3),
+('EntityType','RECEIPT','Recibo','Receipt',69),('EntityType','ASN','Aviso de llegada','ASN',70),
+('EntityType','WAREHOUSE_DOCK','Muelle','Warehouse dock',71),('EntityType','INVENTORY_SERIAL','Serie de inventario','Inventory serial',72),
+('EntityType','WAREHOUSE_TASK','Tarea de almacén','Warehouse task',73),('EntityType','PICK_BATCH','Recolección','Pick batch',74),
+('EntityType','DOCK_APPOINTMENT','Cita de muelle','Dock appointment',75),('EntityType','CROSSDOCK_ALLOCATION','Asignación de cruce de muelle','Cross-dock allocation',76),
+('EntityType','INVENTORY_TRANSACTION','Movimiento de inventario','Inventory transaction',77),('EntityType','STOCK_BALANCE','Saldo de inventario','Stock balance',78),
+('Capability','EDIT_PURCHASE_ORDER','Editar orden de compra','Edit purchase order',9);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (s.Entity, s.Code, N'{"es":"'+s.Es+'","en":"'+s.En+'"}', s.Srt, 1, 1);
+
+-- Lote 6 (maestro L582): en español el tipo de movimiento CROSSDOCK del Kárdex es 'Cruce de muelle' (en inglés, 'Cross-dock').
+-- El MERGE solo inserta: en BD ya sembradas se corrige la etiqueta. Idempotente.
+UPDATE dbo.LookupCode SET LabelJson = N'{"es":"Cruce de muelle","en":"Cross-dock"}'
+WHERE Entity = 'InventoryTxnType' AND InternalCode = 'CROSSDOCK' AND LabelJson <> N'{"es":"Cruce de muelle","en":"Cross-dock"}';
 GO
 
 /* -------------------------------------------------------------------------
@@ -331,7 +356,7 @@ INSERT INTO #S VALUES
 ('VehicleStatus','ACTIVE','Activo','Active',@PIPE,1,'#059669',1),('VehicleStatus','MAINTENANCE','En mant.','Maintenance',@LAT,2,'#F59E0B',0),('VehicleStatus','INACTIVE','Inactivo','Inactive',@TERM,3,'#6B7280',0),
 ('DriverStatus','ACTIVE','Activo','Active',@PIPE,1,'#059669',1),('DriverStatus','UNAVAILABLE','No disponible','Unavailable',@LAT,2,'#F59E0B',0),('DriverStatus','INACTIVE','Inactivo','Inactive',@TERM,3,'#6B7280',0),
 ('WarehouseStatus','ACTIVE','Activo','Active',@PIPE,1,'#059669',1),('WarehouseStatus','INACTIVE','Inactivo','Inactive',@TERM,2,'#6B7280',0),
-('SerialStatus','AVAILABLE','Disponible','Available',@PIPE,1,'#059669',1),('SerialStatus','RESERVED','Reservado','Reserved',@PIPE,2,'#F59E0B',0),('SerialStatus','SHIPPED','Despachado','Shipped',@TERM,3,'#6B7280',0),
+('SerialStatus','AVAILABLE','Disponible','Available',@PIPE,1,'#059669',1),('SerialStatus','RESERVED','Reservado','Reserved',@LAT,2,'#F59E0B',0),('SerialStatus','SHIPPED','Despachado','Shipped',@LAT,3,'#6B7280',0),   -- Lote 6 (D16): RESERVED y SHIPPED laterales
 ('OptimizationRunStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('OptimizationRunStatus','OK','OK','OK',@TERM,2,'#059669',0),('OptimizationRunStatus','ERROR','Error','Error',@TERM,3,'#EF4444',0),
 ('WorkOrderStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('WorkOrderStatus','IN_PROGRESS','En proceso','In progress',@PIPE,2,'#F59E0B',0),('WorkOrderStatus','CLOSED','Cerrada','Closed',@TERM,3,'#059669',0),('WorkOrderStatus','CANCELLED','Cancelada','Cancelled',@TERM,4,'#6B7280',0),
 ('AsnStatus','EXPECTED','Esperada','Expected',@PIPE,1,'#9CA3AF',1),('AsnStatus','RECEIVED','Recibida','Received',@TERM,2,'#059669',0),('AsnStatus','CANCELLED','Cancelada','Cancelled',@TERM,3,'#6B7280',0),
@@ -370,7 +395,13 @@ INSERT INTO #S VALUES
 -- Lote 3 — Órdenes de transporte: lote del importador (validar → confirmar; descartar)
 ('ImportBatchStatus','VALIDATED','Validado','Validated',@PIPE,1,'#9CA3AF',1),('ImportBatchStatus','CONFIRMED','Confirmado','Confirmed',@PIPE,2,'#059669',0),('ImportBatchStatus','DISCARDED','Descartado','Discarded',@TERM,3,'#6B7280',0),
 -- Lote 4 — viaje pagado al chofer: OPEN (por liquidar) → SETTLED (Lote 9) | CANCELLED
-('DriverTripStatus','OPEN','Por liquidar','Open',@PIPE,1,'#9CA3AF',1),('DriverTripStatus','SETTLED','Liquidado','Settled',@TERM,2,'#059669',0),('DriverTripStatus','CANCELLED','Cancelado','Cancelled',@TERM,3,'#6B7280',0);
+('DriverTripStatus','OPEN','Por liquidar','Open',@PIPE,1,'#9CA3AF',1),('DriverTripStatus','SETTLED','Liquidado','Settled',@TERM,2,'#059669',0),('DriverTripStatus','CANCELLED','Cancelado','Cancelled',@TERM,3,'#6B7280',0),
+-- Lote 6 — Inventario y almacén (D16, D20): recolección y empaque; CANCELLED en tareas, citas y asignaciones; serie dada de baja
+('PickBatchStatus','COLLECTED','Recolectada','Collected',@PIPE,1,'#F59E0B',1),('PickBatchStatus','PACKED','Empacada','Packed',@PIPE,2,'#059669',0),('PickBatchStatus','CANCELLED','Eliminada','Cancelled',@TERM,3,'#6B7280',0),
+('WarehouseTaskStatus','CANCELLED','Cancelada','Cancelled',@TERM,4,'#6B7280',0),
+('AppointmentStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0),
+('AllocationStatus','CANCELLED','Cancelada','Cancelled',@TERM,3,'#6B7280',0),
+('SerialStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,4,'#EF4444',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -383,6 +414,11 @@ UPDATE dbo.StatusCode
 SET IsInitial = CASE InternalCode WHEN 'INVITED' THEN 1 ELSE 0 END,
     SortOrder = CASE InternalCode WHEN 'INVITED' THEN 1 WHEN 'ACTIVE' THEN 2 WHEN 'SUSPENDED' THEN 3 WHEN 'DISABLED' THEN 4 ELSE SortOrder END
 WHERE Entity = 'PortalUserStatus' AND InternalCode IN ('INVITED','ACTIVE','SUSPENDED','DISABLED');
+
+-- Lote 6 (D16): en BD ya sembradas, RESERVED y SHIPPED de SerialStatus pasan a LATERAL (AVAILABLE → SHIPPED → AVAILABLE es legal
+-- y queda con historial: reversas de recolección y devoluciones). Idempotente.
+UPDATE dbo.StatusCode SET StageKindLookupId = @LAT
+WHERE Entity = 'SerialStatus' AND InternalCode IN ('RESERVED','SHIPPED') AND StageKindLookupId <> @LAT;
 GO
 
 /* -------------------------------------------------------------------------
@@ -505,6 +541,67 @@ WHEN NOT MATCHED THEN
 GO
 
 /* -------------------------------------------------------------------------
+   3G) STATUS LATERAL ENTRY por defecto (TenantId NULL) — Lote 6
+       PICK_BATCH: CANCELLED ('Eliminar recolección') desde COLLECTED y PACKED.
+       WAREHOUSE_TASK: CANCELLED desde PENDING e IN_PROGRESS.
+       DOCK_APPOINTMENT: NO_SHOW y CANCELLED desde SCHEDULED.
+       CROSSDOCK_ALLOCATION: CANCELLED desde PLANNED.
+       ASN: CANCELLED desde EXPECTED.
+       PURCHASE_ORDER: SIN regla a propósito (D47). StatusService permite un lateral o terminal sin reglas desde cualquier
+       etapa, así que CANCELLED se permite desde DRAFT, SENT y PARTIAL (RECEIVED es terminal y no admite más transiciones);
+       el servicio exige además que no haya un recibo OPEN y deja el comentario en el historial.
+       El tenant lo cambia desde /status/lateral-entries/{entidad}.
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusLateralEntry AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, lat.StatusCodeId AS LateralStatusCodeId, frm.StatusCodeId AS FromStatusCodeId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode lat
+    CROSS JOIN dbo.StatusCode frm
+    WHERE et.Entity='EntityType'
+      AND (
+           (et.InternalCode='PICK_BATCH'           AND lat.Entity='PickBatchStatus'     AND lat.InternalCode='CANCELLED'
+                                                   AND frm.Entity='PickBatchStatus'     AND frm.InternalCode IN ('COLLECTED','PACKED'))
+        OR (et.InternalCode='WAREHOUSE_TASK'       AND lat.Entity='WarehouseTaskStatus' AND lat.InternalCode='CANCELLED'
+                                                   AND frm.Entity='WarehouseTaskStatus' AND frm.InternalCode IN ('PENDING','IN_PROGRESS'))
+        OR (et.InternalCode='DOCK_APPOINTMENT'     AND lat.Entity='AppointmentStatus'   AND lat.InternalCode IN ('NO_SHOW','CANCELLED')
+                                                   AND frm.Entity='AppointmentStatus'   AND frm.InternalCode='SCHEDULED')
+        OR (et.InternalCode='CROSSDOCK_ALLOCATION' AND lat.Entity='AllocationStatus'    AND lat.InternalCode='CANCELLED'
+                                                   AND frm.Entity='AllocationStatus'    AND frm.InternalCode='PLANNED')
+        OR (et.InternalCode='ASN'                  AND lat.Entity='AsnStatus'           AND lat.InternalCode='CANCELLED'
+                                                   AND frm.Entity='AsnStatus'           AND frm.InternalCode='EXPECTED')
+      )
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, LateralStatusCodeId, FromStatusCodeId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.LateralStatusCodeId, s.FromStatusCodeId, 1);
+GO
+
+/* -------------------------------------------------------------------------
+   3H) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 6, PURCHASE_ORDER
+       EDIT_PURCHASE_ORDER (fechas, notas y líneas) no permitido en órdenes de compra
+       SENT, PARTIAL, RECEIVED y CANCELLED (D46). El tenant la puede habilitar en
+       SENT/PARTIAL desde /status/capabilities/PURCHASE_ORDER; aun así, las líneas
+       con recepciones no se eliminan, no bajan de lo recibido y no cambian de costo.
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusCapability AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, s.StatusCodeId, c.LookupCodeId AS CapabilityLookupId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode s
+    CROSS JOIN dbo.LookupCode c
+    WHERE et.Entity='EntityType' AND et.InternalCode='PURCHASE_ORDER'
+      AND s.Entity='PurchaseOrderStatus' AND s.InternalCode IN ('SENT','PARTIAL','RECEIVED','CANCELLED')
+      AND c.Entity='Capability' AND c.InternalCode='EDIT_PURCHASE_ORDER'
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.StatusCodeId = s.StatusCodeId AND t.CapabilityLookupId = s.CapabilityLookupId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, StatusCodeId, CapabilityLookupId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.StatusCodeId, s.CapabilityLookupId, 0);
+GO
+
+/* -------------------------------------------------------------------------
    4) PERMISOS  (vocabulario de la app — sembrado desde código)
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#P') IS NOT NULL DROP TABLE #P;
@@ -542,7 +639,12 @@ INSERT INTO #P VALUES
 ('driverpay.manage','FLEET','Gestionar tarifas y viajes de choferes','Manage driver rates & trips'),
 -- Lote 5 — Trips y rutas (leer rutas y escanear la salida sin poder planificar)
 ('trips.view','TRIPS','Ver rutas y despacho','View trips & dispatch'),
-('trips.scan','TRIPS','Escanear salida (Outbound)','Scan outbound');
+('trips.scan','TRIPS','Escanear salida (Outbound)','Scan outbound'),
+-- Lote 6 — Inventario y almacén (categoría WAREHOUSE)
+('inventory.view','WAREHOUSE','Ver inventario y almacén','View inventory & warehouse'),
+('inventory.manage','WAREHOUSE','Gestionar productos','Manage products'),
+('inventory.adjust','WAREHOUSE','Ajustar y transferir inventario','Adjust & transfer inventory'),
+('warehouse.manage','WAREHOUSE','Gestionar almacenes y tareas','Manage warehouses & tasks');
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -584,17 +686,20 @@ INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create
 INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
 ('Billing','clients.read'),('Billing','contracts.read'),   -- Lote 2
 ('Billing','orders.credit_override'),   -- Lote 3
-('Billing','driverpay.view');   -- Lote 4
+('Billing','driverpay.view'),   -- Lote 4
+('Billing','inventory.view');   -- Lote 6
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
-('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan');   -- Lote 5
+('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan'),   -- Lote 5
+('WarehouseOperator','inventory.view');   -- Lote 6
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
 INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
 ('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read'),   -- Lote 2
 ('ReadOnly','fleet.view'),   -- Lote 4
-('ReadOnly','trips.view');   -- Lote 5
+('ReadOnly','trips.view'),   -- Lote 5
+('ReadOnly','inventory.view');   -- Lote 6
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -631,5 +736,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER y TRIP), entradas laterales (TRIP y ROUTE), permisos (54), roles plantilla y zonas de despacho demo.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (58), roles plantilla y zonas de despacho demo. El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

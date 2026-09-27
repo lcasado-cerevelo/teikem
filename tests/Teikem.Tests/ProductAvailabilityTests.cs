@@ -1,0 +1,54 @@
+using Microsoft.Extensions.DependencyInjection;
+using Teikem.Domain.Constants;
+using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Services;
+using Teikem.Infrastructure.Wms;
+using Xunit;
+
+namespace Teikem.Tests;
+
+/// <summary>
+/// Lote 6 (P2/P3; R37, bitácora L781) — el filtro OnlyAvailable del selector de recolección y de los saldos descuenta lo
+/// reservado y no cuenta las zonas QUARANTINE ni CROSSDOCK (InMemory, WmsFixture). La traducción a SQL la cubre el smoke.
+/// </summary>
+public sealed class ProductAvailabilityTests
+{
+    private static Task<WmsFixture> CreateAsync() => WmsFixture.CreateAsync(s =>
+    {
+        s.AddSingleton<ProductService>();
+        s.AddSingleton<InventoryReadService>();
+    });
+
+    [Fact]
+    public async Task Only_available_discounts_reserved_and_ignores_quarantine_and_cross_dock()
+    {
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var pck = await f.AddBinAsync(await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking), "P-01");
+        var qua = await f.AddBinAsync(await f.AddZoneAsync(w, "QUA", ZoneTypes.Quarantine), "Q-01");
+        var xd = await f.AddBinAsync(await f.AddZoneAsync(w, "XD", ZoneTypes.CrossDock), "XD-01");
+        var reserved = await f.AddProductAsync("PR");
+        var quarantined = await f.AddProductAsync("PQ");
+        var free = await f.AddProductAsync("PF");
+        InventoryPosting In(int productId, int binId, decimal qty)
+            => new(InventoryTxnTypes.Receipt, productId, qty, ToWarehouseId: w.WarehouseId, ToBinId: binId);
+        await f.PostAsync(In(reserved.ProductId, pck.WarehouseBinId, 3m), In(quarantined.ProductId, qua.WarehouseBinId, 5m),
+            In(quarantined.ProductId, xd.WarehouseBinId, 2m), In(free.ProductId, pck.WarehouseBinId, 1m));
+        await f.ReserveAsync(new StockReservation(reserved.ProductId, w.WarehouseId, pck.WarehouseBinId, null, 3m));
+
+        var products = f.Get<ProductService>();
+        var available = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId, OnlyAvailable: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PF" }, available.Items.Select(i => i.Sku).ToArray());
+        var all = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId), InventoryScope.Any, default);
+        Assert.Equal(3, all.Total);
+
+        var balances = await f.Get<InventoryReadService>().BalancesAsync(
+            new BalanceQuery(ProductPublicIds: new[] { reserved.PublicId }, OnlyAvailable: true), InventoryScope.Any, default);
+        Assert.Empty(balances.Items);
+
+        // Al liberar 1, vuelve a aparecer con disponible 1.
+        await f.ReleaseAsync(new StockReservation(reserved.ProductId, w.WarehouseId, pck.WarehouseBinId, null, 1m));
+        var again = await products.ListAsync(new ProductListQuery(WarehousePublicId: w.PublicId, OnlyAvailable: true), InventoryScope.Any, default);
+        Assert.Contains(again.Items, i => i.Sku == "PR" && i.QtyAvailable == 1m);
+    }
+}

@@ -182,17 +182,8 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
            ?? throw new NotFoundException("Almacén");
 
     /// <summary>El almacén indicado o, si se omite, el único activo del tenant (D26): ninguno o más de uno → 400.</summary>
-    private async Task<Warehouse> ResolveWarehouseOrDefaultAsync(Guid? publicId, CancellationToken ct)
-    {
-        if (publicId is Guid pid) return await ResolveWarehouseAsync(pid, ct);
-        var active = await db.Set<Warehouse>().AsNoTracking().Where(w => w.IsActive).OrderBy(w => w.WarehouseId).Take(2).ToListAsync(ct);
-        return active.Count switch
-        {
-            0 => throw new ValidationException("warehousePublicId", NoActiveWarehouse),
-            1 => active[0],
-            _ => throw new ValidationException("warehousePublicId", WarehouseRequired),
-        };
-    }
+    private Task<Warehouse> ResolveWarehouseOrDefaultAsync(Guid? publicId, CancellationToken ct)
+        => WmsResolve.ResolveWarehouseOrDefaultAsync(db, publicId, ct); // única implementación (D26): 404 / 400 con más de uno / 422 sin ninguno
 
     /// <summary>Posición dentro de su almacén filtrado: de otro almacén u otro tenant → 404 'Posición no encontrada.'.</summary>
     private async Task<WarehouseBin> ResolveBinAsync(int warehouseId, int binId, CancellationToken ct)
@@ -222,34 +213,16 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
     }
 
     /// <summary>
-    /// EnsureLot de una entrada: reutiliza el lote con ese número si las fechas capturadas coinciden (409 si difieren, D34);
-    /// si no existe lo crea. UQ_Lot (ProductId, LotNumber) es la última línea ante un alta concurrente (409, reintentar).
+    /// EnsureLot de una entrada: valida el lote capturado y delega en la sentencia (17) de InventoryQueries (UPDLOCK + HOLDLOCK):
+    /// reutiliza el lote con ese número si las fechas capturadas coinciden (409 si difieren, D34); si no existe lo crea.
     /// </summary>
     private async Task<InventoryLot> EnsureLotAsync(int productId, LotInput input, CancellationToken ct)
     {
         var (number, error) = AdjustmentRules.ValidateLotInput(input.Number, input.ManufactureDate, input.ExpiryDate);
         if (error is not null) throw new ValidationException("lot", error);
-        var existing = await (from l in db.Set<InventoryLot>().AsNoTracking()
-                              join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
-                              where l.ProductId == productId && l.LotNumber == number
-                              select l).FirstOrDefaultAsync(ct);
-        if (existing is not null)
-        {
-            if (!AdjustmentRules.LotDatesMatch(existing.ManufactureDate, existing.ExpiryDate, input.ManufactureDate, input.ExpiryDate))
-                throw new ConflictException(AdjustmentRules.LotExistsWithOtherDates(existing.LotNumber));
-            return existing;
-        }
-        var lot = new InventoryLot
-        {
-            ProductId = productId,
-            LotNumber = number!,
-            ManufactureDate = input.ManufactureDate,
-            ExpiryDate = input.ExpiryDate,
-            IsActive = true,
-        };
-        db.Set<InventoryLot>().Add(lot);
-        await db.SaveGuardedAsync(LotConcurrent(number!), ct);
-        return lot;
+        var lotId = await db.EnsureLotAsync(productId, number!, input.ManufactureDate, input.ExpiryDate, ct);
+        return db.ChangeTracker.Entries<InventoryLot>().Select(e => e.Entity).FirstOrDefault(l => l.LotId == lotId)
+               ?? await db.Set<InventoryLot>().AsNoTracking().SingleAsync(l => l.LotId == lotId, ct);
     }
 
     private async Task<string> TrackingOfAsync(Product product, CancellationToken ct)

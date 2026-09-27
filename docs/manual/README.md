@@ -38,6 +38,13 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    parada, despacho y salida (extiende la costura del futuro Lote 7), zonas de despacho por código postal/rango/
    municipio (extiende el Lote 4), estación de escaneo Outbound, "Planificar el día", monitor de rutas, estatus y
    transiciones, permisos y módulos, fuentes de análisis y auditoría.
+6. [06 — Inventario y almacén](06-inventario-y-almacen.md): almacenes, zonas, posiciones y muelles; productos,
+   categorías, lotes y series; inventario (saldos, Kárdex con cantidad con signo, ajustes, transferencias,
+   genealogía, rastro de serie y conciliación ledger↔saldo); recepción (avisos de llegada y recibos, incluida la
+   recepción contra orden de compra); cola de tareas de almacén (putaway dirigido y reabasto); conteo cíclico en
+   modo informado; recolección y empaque ad hoc (Pick & Pack); compras mínimas (proveedores, órdenes de compra y
+   resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
+   módulos.
 
 ## Preguntas frecuentes
 

@@ -10,6 +10,7 @@ using RouteStopEntity = Teikem.Domain.Trips.RouteStop;
 using TripEntity = Teikem.Domain.Trips.Trip;
 using TripOrderEntity = Teikem.Domain.Trips.TripOrder;
 using TripRoute = Teikem.Domain.Trips.Route;
+using Teikem.Domain.Wms;
 
 namespace Teikem.Tests;
 
@@ -20,6 +21,8 @@ namespace Teikem.Tests;
 /// de DriverPayPolicy coinciden con Diseño/logistica-db-estructura.sql.
 /// Lote 5 / P0: Trip, TripOrder y OptimizationRun llevan filtro; las entidades de Trips sin TenantId son exactamente Route y
 /// RouteStop (y Flota suma DispatchZoneMember); índices espejo, RowVersion, decimal(12,3), DATE e INT de OptimizationRunId.
+/// Lote 6 / P0: 15 entidades WMS con filtro y exactamente 11 hijas sin TenantId; columnas computadas, RowVersion, índices espejo
+/// con su filtro, precisiones, DateOnly, WarehouseTaskId INT, InventoryTransactionId BIGINT y GeoPoint del almacén sin mapear.
 /// </summary>
 public class TenantIsolationModelTests
 {
@@ -238,5 +241,112 @@ public class TenantIsolationModelTests
 
         // GeoPoint (GEOGRAPHY) no se mapea: se lee y escribe solo por TripQueries.
         Assert.Null(db.Model.FindEntityType(typeof(Teikem.Domain.Orders.OrderStop))!.FindProperty("GeoPoint"));
+    }
+
+    // ================================================================ Lote 6 — Inventario y almacén
+
+    [Fact]
+    public void Wms_entities_with_TenantId_have_the_filter_and_exactly_eleven_children_lack_it()
+    {
+        using var db = CreateSqlServerModelContext();
+        var wms = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms").ToList();
+        var withTenant = wms.Where(e => e.FindProperty("TenantId") is not null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(new[]
+        {
+            "Asn", "CrossDockPlan", "CycleCount", "DockAppointment", "InventoryTransaction", "PickBatch", "Product", "ProductCategory", "PurchaseOrder",
+            "PurchaseOrderShortageResolution", "ReceiptHeader", "StockBalance", "Supplier", "Warehouse", "WarehouseTask",
+        }, withTenant);
+        Assert.All(wms.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
+
+        var withoutTenant = wms.Where(e => e.FindProperty("TenantId") is null).Select(e => e.ClrType.Name).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+        Assert.Equal(new[]
+        {
+            "AsnLine", "CrossDockAllocation", "CycleCountLine", "InventoryLot", "InventorySerial", "PickBatchLine", "PurchaseOrderLine", "ReceiptLine",
+            "WarehouseBin", "WarehouseDock", "WarehouseZone",
+        }, withoutTenant);
+    }
+
+    [Theory]
+    [InlineData(typeof(StockBalance), "QtyAvailable", "[QtyOnHand]-[QtyReserved]")]
+    [InlineData(typeof(PurchaseOrderLine), "LineTotal", "[QtyOrdered]*[UnitCost]")]
+    [InlineData(typeof(CycleCountLine), "VarianceQty", "isnull([CountedQty],(0))-[SystemQty]")]
+    public void Wms_computed_columns_are_stored(Type clr, string prop, string sql)
+    {
+        using var db = CreateSqlServerModelContext();
+        var p = db.Model.FindEntityType(clr)!.FindProperty(prop)!;
+        Assert.Equal(sql, p.GetComputedColumnSql());
+        Assert.True(p.GetIsStored());
+        Assert.Equal(ValueGenerated.OnAddOrUpdate, p.ValueGenerated);
+    }
+
+    [Theory]
+    [InlineData(typeof(Warehouse))]
+    [InlineData(typeof(Product))]
+    [InlineData(typeof(StockBalance))]
+    [InlineData(typeof(Supplier))]
+    [InlineData(typeof(PurchaseOrder))]
+    [InlineData(typeof(ReceiptHeader))]
+    [InlineData(typeof(CycleCount))]
+    [InlineData(typeof(PickBatch))]
+    public void Wms_row_versions_are_concurrency_tokens(Type clr) => RowVersion_is_a_concurrency_token(clr);
+
+    [Theory]
+    [InlineData(typeof(Warehouse), "UQ_Warehouse_Code", new[] { "TenantId", "Code" }, null)]
+    [InlineData(typeof(WarehouseZone), "UQ_WarehouseZone", new[] { "WarehouseId", "Code" }, null)]
+    [InlineData(typeof(WarehouseBin), "UQ_WarehouseBin", new[] { "WarehouseZoneId", "Code" }, null)]
+    [InlineData(typeof(WarehouseBin), "UQ_WarehouseBin_WhCode", new[] { "WarehouseId", "Code" }, null)]
+    [InlineData(typeof(WarehouseDock), "UQ_WarehouseDock", new[] { "WarehouseId", "Code" }, null)]
+    [InlineData(typeof(Product), "UQ_Product_Sku", new[] { "TenantId", "ClientId", "Sku" }, null)]
+    [InlineData(typeof(Product), "UX_Product_Barcode", new[] { "TenantId", "Barcode" }, "[Barcode] IS NOT NULL AND [IsActive] = 1")]
+    [InlineData(typeof(ProductCategory), "UX_ProductCategory_Name", new[] { "TenantId", "ParentId", "Name" }, "[IsActive] = 1")]
+    [InlineData(typeof(InventoryLot), "UQ_Lot", new[] { "ProductId", "LotNumber" }, null)]
+    [InlineData(typeof(InventorySerial), "UQ_Serial", new[] { "ProductId", "SerialNumber" }, null)]
+    [InlineData(typeof(StockBalance), "UQ_StockBalance", new[] { "ProductId", "WarehouseId", "WarehouseBinId", "LotId" }, null)]
+    [InlineData(typeof(PurchaseOrder), "UQ_PurchaseOrder_Number", new[] { "TenantId", "Number" }, null)]
+    [InlineData(typeof(Supplier), "UX_Supplier_Name", new[] { "TenantId", "Name" }, "[IsActive] = 1")]
+    [InlineData(typeof(ReceiptHeader), "UQ_Receipt_Number", new[] { "TenantId", "Number" }, null)]
+    [InlineData(typeof(ReceiptHeader), "UX_Receipt_Asn", new[] { "AsnId" }, "[AsnId] IS NOT NULL AND [IsActive] = 1")]
+    [InlineData(typeof(CycleCount), "UQ_CycleCount_Number", new[] { "TenantId", "Number" }, null)]
+    [InlineData(typeof(CycleCountLine), "UQ_CycleCountLine", new[] { "CycleCountId", "WarehouseBinId", "ProductId", "LotId" }, null)]
+    [InlineData(typeof(PickBatch), "UQ_PickBatch_Number", new[] { "TenantId", "Number" }, null)]
+    [InlineData(typeof(PickBatch), "UX_PickBatch_Order", new[] { "TransportOrderId" }, "[TransportOrderId] IS NOT NULL AND [IsActive] = 1")]
+    [InlineData(typeof(CrossDockPlan), "UQ_CrossDockPlan_Number", new[] { "TenantId", "Number" }, null)]
+    public void Wms_unique_indexes_mirror_the_sql(Type clr, string name, string[] columns, string? filter)
+        => Unique_indexes_mirror_the_sql_names_columns_and_filters(clr, name, columns, filter);
+
+    [Fact]
+    public void Wms_tables_precisions_dates_and_keys_map_one_to_one()
+    {
+        using var db = CreateSqlServerModelContext();
+        foreach (var e in DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms"))
+            Assert.Equal(e.ClrType == typeof(ReceiptHeader) ? "ReceiptHeader" : e.ClrType.Name, e.GetTableName());
+        Assert.Equal(26, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));
+
+        string Type<T>(string prop) => db.Model.FindEntityType(typeof(T))!.FindProperty(prop)!.GetColumnType();
+        foreach (var (qty, type) in new[]
+                 {
+                     (Type<StockBalance>(nameof(StockBalance.QtyOnHand)), "decimal(16,3)"), (Type<StockBalance>(nameof(StockBalance.QtyReserved)), "decimal(16,3)"),
+                     (Type<InventoryTransaction>(nameof(InventoryTransaction.Quantity)), "decimal(16,3)"),
+                     (Type<CycleCountLine>(nameof(CycleCountLine.ReconciledSystemQty)), "decimal(16,3)"),
+                     (Type<CrossDockAllocation>(nameof(CrossDockAllocation.ConfirmedQty)), "decimal(16,3)"),
+                     (Type<PurchaseOrderLine>(nameof(PurchaseOrderLine.QtyOrdered)), "decimal(16,3)"), (Type<PickBatchLine>(nameof(PickBatchLine.Quantity)), "decimal(16,3)"),
+                     (Type<Product>(nameof(Product.PurchaseCost)), "decimal(18,4)"), (Type<Product>(nameof(Product.SalePrice)), "decimal(18,4)"),
+                     (Type<PurchaseOrderLine>(nameof(PurchaseOrderLine.UnitCost)), "decimal(18,4)"), (Type<PickBatchLine>(nameof(PickBatchLine.UnitCost)), "decimal(18,4)"),
+                     (Type<Product>(nameof(Product.WeightKg)), "decimal(12,3)"), (Type<WarehouseBin>(nameof(WarehouseBin.MaxWeightKg)), "decimal(12,3)"),
+                     (Type<Product>(nameof(Product.VolumeM3)), "decimal(12,4)"),
+                     (Type<InventoryLot>(nameof(InventoryLot.ExpiryDate)), "date"), (Type<PurchaseOrder>(nameof(PurchaseOrder.OrderDate)), "date"),
+                     (Type<Asn>(nameof(Asn.ExpectedDate)), "date"),
+                 })
+            Assert.Equal(type, qty);
+        Assert.Equal(typeof(DateOnly), db.Model.FindEntityType(typeof(PurchaseOrder))!.FindProperty(nameof(PurchaseOrder.OrderDate))!.ClrType);
+        Assert.Equal(typeof(bool), db.Model.FindEntityType(typeof(CycleCountLine))!.FindProperty(nameof(CycleCountLine.SystemQtyChanged))!.ClrType);
+
+        // D19: WarehouseTaskId INT; el ledger sigue en BIGINT.
+        Assert.Equal(typeof(int), db.Model.FindEntityType(typeof(WarehouseTask))!.FindPrimaryKey()!.Properties.Single().ClrType);
+        Assert.Equal(typeof(long), db.Model.FindEntityType(typeof(InventoryTransaction))!.FindPrimaryKey()!.Properties.Single().ClrType);
+
+        // GeoPoint del almacén (GEOGRAPHY) no se mapea; PickWave, PickTask, Carton y CartonLine tampoco (D1).
+        Assert.Null(db.Model.FindEntityType(typeof(Warehouse))!.FindProperty("GeoPoint"));
+        Assert.DoesNotContain(db.Model.GetEntityTypes(), e => e.GetTableName() is "PickWave" or "PickTask" or "Carton" or "CartonLine");
     }
 }

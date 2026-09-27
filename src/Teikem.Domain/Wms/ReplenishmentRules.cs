@@ -3,10 +3,10 @@ using Teikem.Domain.Constants;
 namespace Teikem.Domain.Wms;
 
 /// <summary>Producto candidato a reabasto de su posición preferida de PICKING (D23).</summary>
-/// <param name="PickBinOnHand">Existencia EN MANO actual de la posición preferida (todos los lotes).</param>
+/// <param name="PickBinAvailable">DISPONIBLE actual (en mano − reservado) de la posición preferida (todos los lotes; maestro L306).</param>
 /// <param name="HasOpenTask">Ya hay una REPLENISH abierta hacia esa posición (idempotencia por almacén).</param>
 public sealed record ReplenishmentProduct(
-    int ProductId, string Sku, int PickBinId, decimal? MinPickQty, decimal? MaxPickQty, decimal PickBinOnHand, bool HasOpenTask);
+    int ProductId, string Sku, int PickBinId, decimal? MinPickQty, decimal? MaxPickQty, decimal PickBinAvailable, bool HasOpenTask);
 
 /// <summary>Saldo de origen posible (una fila de StockBalance del mismo producto y almacén).</summary>
 public sealed record ReplenishmentSource(
@@ -21,8 +21,9 @@ public sealed record ReplenishmentPlan(int ProductId, decimal Target, decimal Ne
 /// <summary>
 /// Lote 6 (P5) — reabasto bajo demanda de la posición de picking (R15, D23), puro:
 /// - Aplica a productos con MinPickQty y posición preferida en una zona PICKING (sin serie; lo filtra el servicio).
-/// - Dispara cuando la existencia en mano de la posición preferida es MENOR que MinPickQty.
-/// - Objetivo = MaxPickQty o, si no hay, 2 × MinPickQty; se pide objetivo − existencia, acotado por la reserva disponible.
+/// - Dispara cuando el DISPONIBLE (en mano − reservado) de la posición preferida es MENOR que MinPickQty (maestro L306:
+///   "cuando el disponible baja del mínimo"). Lo reservado en la posición no cuenta como surtido para picking.
+/// - Objetivo = MaxPickQty o, si no hay, 2 × MinPickQty; se pide objetivo − disponible, acotado por la reserva disponible.
 /// - Origen: SOLO saldos de zonas RESERVE activas, con disponible = en mano − reservado &gt; 0 (lo reservado no se toca), en
 ///   orden FEFO (vencimiento ascendente, sin fecha al final), luego código de posición y lote: determinista, el mismo orden
 ///   que StockAllocator restringido a RESERVE.
@@ -42,7 +43,7 @@ public static class ReplenishmentRules
     public static decimal Target(decimal minPickQty, decimal? maxPickQty)
         => maxPickQty is decimal max && max > 0m ? max : 2m * minPickQty;
 
-    public static bool IsBelowMin(decimal onHand, decimal minPickQty) => onHand < minPickQty;
+    public static bool IsBelowMin(decimal available, decimal minPickQty) => available < minPickQty;
 
     /// <summary>Disponible de un saldo (lo reservado no se reabastece).</summary>
     public static decimal Available(decimal onHand, decimal reserved) => Math.Max(0m, onHand - reserved);
@@ -65,9 +66,9 @@ public static class ReplenishmentRules
     {
         var min = product.MinPickQty ?? 0m;
         var target = Applies(product.MinPickQty) ? Target(min, product.MaxPickQty) : 0m;
-        var needed = Math.Max(0m, target - product.PickBinOnHand);
+        var needed = Math.Max(0m, target - product.PickBinAvailable);
 
-        if (!Applies(product.MinPickQty) || !IsBelowMin(product.PickBinOnHand, min) || needed <= 0m)
+        if (!Applies(product.MinPickQty) || !IsBelowMin(product.PickBinAvailable, min) || needed <= 0m)
             return new ReplenishmentPlan(product.ProductId, target, 0m, SkipNotBelowMin, Array.Empty<ReplenishmentMove>());
         if (product.HasOpenTask)
             return new ReplenishmentPlan(product.ProductId, target, needed, SkipOpenTask, Array.Empty<ReplenishmentMove>());

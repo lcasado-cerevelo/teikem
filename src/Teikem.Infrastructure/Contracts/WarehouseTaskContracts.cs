@@ -1,0 +1,28 @@
+namespace Teikem.Infrastructure.Contracts;
+
+// Lote 6 — Cola de tareas de almacén (D41). Firma posicional FIJA. CompletableFromQueue = existe un handler para el tipo y
+// su NotFromQueueMessage es null.
+
+public sealed record WarehouseTaskDto(int Id, string TypeCode, string Type, string StatusCode, string Status, int Priority, Guid WarehousePublicId,
+    string WarehouseCode, Guid? ProductPublicId, string? Sku, string? ProductName, int? LotId, string? LotNumber, string? SerialNumber,
+    decimal? Quantity, int? FromBinId, string? FromBinCode, int? ToBinId, string? ToBinCode, string? RefEntityCode, int? RefId,
+    string? RefLabel, int? AssignedToUserId, string? AssignedToName, bool CompletableFromQueue, DateTime CreatedAtUtc, DateTime? CompletedAtUtc);
+
+public sealed record WarehouseTaskQuery(Guid? WarehousePublicId = null, string[]? Types = null, string[]? Status = null, bool AssignedToMe = false,
+    int? AssignedUserId = null, bool IncludeClosed = false, int Skip = 0, int Take = 100);
+
+public sealed record WarehouseTaskPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseTaskDto> Items);
+
+public sealed record TaskAssignRequest(int? UserId);
+
+public sealed record TaskCompleteRequest(int? ToBinId = null, decimal? Quantity = null, IReadOnlyList<string>? SerialNumbers = null, string? Comment = null);
+
+public sealed record TaskCancelRequest(string? Comment = null);
+
+public sealed record ReplenishmentRunRequest(Guid? WarehousePublicId = null);
+
+public sealed record ReplenishmentResultDto(int ProductsEvaluated, int TasksCreated, int SkippedWithOpenTask, int SkippedNoReserve,
+    IReadOnlyList<WarehouseTaskDto> Tasks);
+
+public sealed record PutawaySuggestionDto(int BinId, string BinCode, string ZoneCode, string? ZoneTypeCode, string ReasonCode, string Reason,
+    string RotationClass);

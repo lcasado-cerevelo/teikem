@@ -22,14 +22,16 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     /// <summary>
     /// Lista paginada (take ≤ 200) con buscador (SKU, nombre, código de barras, dueño) y filtros: categoryIds (con
     /// subcategorías), ownerClientPublicId, ownOnly, activeOnly (selectores), warehousePublicId (totales de ese almacén) y
-    /// onlyAvailable (selector de recolección: disponible recolectable &gt; 0).
+    /// onlyAvailable (selector de recolección: disponible recolectable &gt; 0). selectorOrder=true = orden de los selectores de
+    /// producto (maestro L1207): mercancía de clientes primero (el de más inventario en mano antes) y suministros propios al
+    /// final; sin él, por SKU (pantalla Productos e inventario).
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductPageDto> List([FromQuery] string? search, [FromQuery] int[]? categoryIds, [FromQuery] Guid? ownerClientPublicId,
         [FromQuery] bool? ownOnly, [FromQuery] bool activeOnly, [FromQuery] Guid? warehousePublicId, [FromQuery] bool onlyAvailable,
-        [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
+        [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, CancellationToken ct = default)
         => products.ListAsync(new ProductListQuery(search, categoryIds is { Length: > 0 } ? categoryIds : null, ownerClientPublicId, ownOnly,
-            activeOnly, warehousePublicId, onlyAvailable, skip, take), InventoryScope.Any, ct);
+            activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder), InventoryScope.Any, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductDetailDto> Get(Guid publicId, CancellationToken ct) => products.GetAsync(publicId, InventoryScope.Any, ct);
@@ -52,7 +54,7 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     public Task<ProductDetailDto> Update(Guid publicId, [FromBody] ProductPatchRequest req, CancellationToken ct)
         => products.UpdateAsync(publicId, req, ct);
 
-    /// <summary>Baja lógica: 409 con inventario en mano, recibos abiertos o tareas pendientes.</summary>
+    /// <summary>Baja lógica: 409 con inventario en mano, recibos abiertos, tareas pendientes, recolecciones eliminables o conteos abiertos.</summary>
     [HttpPost("{publicId:guid}/deactivate"), RequirePermission(PermissionCatalog.InventoryManage)]
     public Task<ProductDetailDto> Deactivate(Guid publicId, CancellationToken ct) => products.DeactivateAsync(publicId, ct);
 

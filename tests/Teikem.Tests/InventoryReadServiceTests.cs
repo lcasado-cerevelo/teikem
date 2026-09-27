@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Teikem.Domain.Catalogs;
 using Teikem.Domain.Clients;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Orders;
@@ -33,7 +34,8 @@ public class InventoryReadServiceTests
         InventoryLot LotA, ProductCategory Root, ProductCategory Child, TransportOrder Order, InventorySerial SerialB);
 
     /// <summary>
-    /// PA (cliente A, categoría hija, lote L-A): RECEIPT +10 a B1, TRANSFER 4 B1→B2, ISSUE −3 desde B2 hacia la orden.
+    /// PA (cliente A, categoría hija, lote L-A): RECEIPT +10 a B1, TRANSFER 4 B1→B2, ISSUE −3 desde B2 por la recolección
+    /// EMP-00777 empacada en la orden.
     /// PB (cliente B, serie SB-1): RECEIPT +1 a B1. POwn (propio): RECEIPT +2 a B1. Saldos consistentes con el ledger.
     /// </summary>
     private static async Task<World> SeedAsync()
@@ -53,12 +55,14 @@ public class InventoryReadServiceTests
         var lotA = await f.AddLotAsync(pa, "L-A", new DateOnly(2027, 1, 31));
         var serialB = await f.AddSerialAsync(pb, "SB-1", w1, b1);
         var order = await f.AddOrderAsync(ClientA, "2026-000777", "Farmacia Central");
+        // El ISSUE real nace de una recolección (Ref PICK_BATCH); la orden se alcanza por PickBatch.TransportOrderId.
+        var batch = await f.AddPickBatchAsync(w1, "EMP-00777", order.TransportOrderId);
 
         var t0 = new DateTime(2026, 9, 20, 10, 0, 0, DateTimeKind.Utc);
         await f.AddTxnAsync("RECEIPT", pa, 10m, to: (w1, b1), lot: lotA, at: t0);
         await f.AddTxnAsync("TRANSFER", pa, 4m, from: (w1, b1), to: (w1, b2), lot: lotA, at: t0.AddHours(1));
         await f.AddTxnAsync("ISSUE", pa, -3m, from: (w1, b2), lot: lotA, at: t0.AddHours(2),
-            refEntity: EntityTypes.TransportOrder, refId: order.TransportOrderId);
+            refEntity: EntityTypes.PickBatch, refId: batch.PickBatchId);
         await f.AddTxnAsync("RECEIPT", pb, 1m, to: (w1, b1), serial: serialB, at: t0.AddHours(3));
         await f.AddTxnAsync("RECEIPT", pown, 2m, to: (w1, b1), at: t0.AddDays(2));
 
@@ -155,8 +159,8 @@ public class InventoryReadServiceTests
         Assert.Equal(-3m, issue.Quantity);
         Assert.Equal(-3m, issue.SignedQuantity);
         Assert.Equal("Despacho", issue.Type);
-        Assert.Equal("Orden 2026-000777", issue.RefLabel);
-        Assert.Equal(EntityTypes.TransportOrder, issue.RefEntityCode);
+        Assert.Equal("Recolección EMP-00777", issue.RefLabel);
+        Assert.Equal(EntityTypes.PickBatch, issue.RefEntityCode);
         Assert.Equal("Ana Operadora", issue.UserName);
 
         var fromB1 = await reads.KardexAsync(new KardexQuery(BinIds: new[] { w.B1.WarehouseBinId },
@@ -193,6 +197,76 @@ public class InventoryReadServiceTests
         Assert.Equal(KardexRules.RangeInverted, inverted.Message);
     }
 
+    [Fact]
+    public async Task Kardex_type_and_ref_label_follow_the_user_language()
+    {
+        // Maestro L582: el tipo de movimiento sale del catálogo en el idioma del usuario ('Cruce de muelle' / 'Cross-dock').
+        var w = await SeedAsync();
+        var reads = w.F.Get<InventoryReadService>();
+        var q = new KardexQuery(ProductPublicIds: new[] { w.PA.PublicId });
+
+        var es = await reads.KardexAsync(q, InventoryScope.Any, default);
+        Assert.Equal("Recepción", es.Items.Single(r => r.TypeCode == "RECEIPT").Type);
+        Assert.Equal("Recolección EMP-00777", es.Items.Single(r => r.TypeCode == "ISSUE").RefLabel);
+
+        w.F.Tenant.Lang = "en";
+        var en = await reads.KardexAsync(q, InventoryScope.Any, default);
+        Assert.Equal("Receipt", en.Items.Single(r => r.TypeCode == "RECEIPT").Type);
+        var issue = en.Items.Single(r => r.TypeCode == "ISSUE");
+        Assert.Equal("Issue", issue.Type);
+        Assert.Equal("Pick batch EMP-00777", issue.RefLabel);
+        Assert.Equal("Transfer", en.Items.Single(r => r.TypeCode == "TRANSFER").Type);
+    }
+
+    // ---------------------------------------------------------------- productos (D44 y orden de selectores, maestro L1207)
+
+    [Fact]
+    public async Task Products_lots_and_serials_respect_owner_scope()
+    {
+        var w = await SeedAsync();
+        var products = w.F.Get<ProductService>();
+        var scopeA = new InventoryScope(ClientA);
+
+        var listA = await products.ListAsync(new ProductListQuery(), scopeA, default);
+        Assert.Equal("PA", Assert.Single(listA.Items).Sku);
+        var any = await products.ListAsync(new ProductListQuery(), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PA", "PB", "POWN" }, any.Items.Select(i => i.Sku).OrderBy(x => x).ToArray());
+
+        Assert.Equal("PA", (await products.GetAsync(w.PA.PublicId, scopeA, default)).Product.Sku);
+        var notFound = await Assert.ThrowsAsync<NotFoundException>(() => products.GetAsync(w.PB.PublicId, scopeA, default));
+        Assert.Equal("Producto no encontrado.", notFound.Message);
+        await Assert.ThrowsAsync<NotFoundException>(() => products.GetAsync(w.POwn.PublicId, scopeA, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => products.ListLotsAsync(w.PB.PublicId, scopeA, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => products.ListSerialsAsync(w.PB.PublicId, null, null, scopeA, default));
+
+        Assert.Equal("L-A", Assert.Single(await products.ListLotsAsync(w.PA.PublicId, scopeA, default)).LotNumber);
+        Assert.Equal("SB-1", Assert.Single(await products.ListSerialsAsync(w.PB.PublicId, null, null, new InventoryScope(ClientB), default)).SerialNumber);
+        Assert.Equal("SB-1", Assert.Single(await products.ListSerialsAsync(w.PB.PublicId, null, null, InventoryScope.Any, default)).SerialNumber);
+    }
+
+    [Fact]
+    public async Task Selector_order_puts_client_goods_first_by_stored_volume_and_own_supplies_last()
+    {
+        // En mano: cliente A = 7 (PA), cliente B = 1 (PB) + 0 (AAB), propios = 2 (POWN) + 0 (AOWN).
+        var w = await SeedAsync();
+        await w.F.AddProductAsync("AAB", "NONE", ClientB);
+        await w.F.AddProductAsync("AOWN", "NONE");
+        var products = w.F.Get<ProductService>();
+
+        // Pantalla Productos e inventario: por SKU.
+        var bySku = await products.ListAsync(new ProductListQuery(), InventoryScope.Any, default);
+        Assert.Equal(new[] { "AAB", "AOWN", "PA", "PB", "POWN" }, bySku.Items.Select(i => i.Sku).ToArray());
+
+        // Selectores: cliente A (más inventario) → cliente B en bloque → propios al final; dentro de cada bloque, por SKU.
+        var selector = await products.ListAsync(new ProductListQuery(SelectorOrder: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "PA", "AAB", "PB", "AOWN", "POWN" }, selector.Items.Select(i => i.Sku).ToArray());
+
+        // Más inventario del cliente B que del A → B pasa primero.
+        await w.F.AddBalanceAsync(w.PB, w.W1, w.B2, null, 20m);
+        var swapped = await products.ListAsync(new ProductListQuery(SelectorOrder: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "AAB", "PB", "PA", "AOWN", "POWN" }, swapped.Items.Select(i => i.Sku).ToArray());
+    }
+
     // ---------------------------------------------------------------- trazabilidad
 
     [Fact]
@@ -208,7 +282,8 @@ public class InventoryReadServiceTests
         Assert.Equal(7m, g.QtyOnHand);
         Assert.Equal(3, g.Movements.Count);
         var dest = Assert.Single(g.Destinations);
-        Assert.Equal(EntityTypes.TransportOrder, dest.RefEntityCode);
+        Assert.Equal(EntityTypes.PickBatch, dest.RefEntityCode);
+        Assert.Equal("Recolección EMP-00777", dest.RefLabel);
         Assert.Equal(w.Order.PublicId, dest.OrderPublicId);
         Assert.Equal("Cliente A", dest.ClientName);
         Assert.Equal("Farmacia Central", dest.ConsigneeName);
@@ -218,6 +293,52 @@ public class InventoryReadServiceTests
         var ex = await Assert.ThrowsAsync<NotFoundException>(() => trace.LotGenealogyAsync(w.LotA.LotId, new InventoryScope(ClientB), default));
         Assert.Equal("Lote no encontrado.", ex.Message);
         Assert.Equal(10m, (await trace.LotGenealogyAsync(w.LotA.LotId, InventoryScope.Any, default)).QtyIn);
+    }
+
+    /// <summary>
+    /// Destinos por las referencias que el lote escribe de verdad (PICK_BATCH y CROSSDOCK_ALLOCATION): recolección sin empacar
+    /// (sin orden), cruce de muelle (orden de la asignación), recolección revertida (no aparece) y asignación cuyo plan es de
+    /// otro tenant (el join con el plan filtrado no la resuelve: destino sin orden).
+    /// </summary>
+    [Fact]
+    public async Task Genealogy_destinations_pick_batch_and_crossdock()
+    {
+        var w = await SeedAsync();
+        var f = w.F;
+        var lot = await f.AddLotAsync(w.PA, "L-B", null);
+        var unpacked = await f.AddPickBatchAsync(w.W1, "EMP-00901", null);
+        var reverted = await f.AddPickBatchAsync(w.W1, "EMP-00902", w.Order.TransportOrderId);
+        var allocation = await f.AddCrossDockAllocationAsync(w.W1, "XD-00001", w.Order.TransportOrderId);
+        var foreign = await f.AddCrossDockAllocationAsync(w.W1, "XD-00077", w.Order.TransportOrderId, InventoryServiceFixture.OtherTenantId);
+        var t0 = new DateTime(2026, 9, 21, 10, 0, 0, DateTimeKind.Utc);
+        await f.AddTxnAsync("RECEIPT", w.PA, 10m, to: (w.W1, w.B1), lot: lot, at: t0);
+        await f.AddTxnAsync("ISSUE", w.PA, -1m, from: (w.W1, w.B1), lot: lot, at: t0.AddHours(1), refEntity: EntityTypes.PickBatch, refId: unpacked.PickBatchId);
+        await f.AddTxnAsync("CROSSDOCK", w.PA, -2m, from: (w.W1, w.B1), lot: lot, at: t0.AddHours(2),
+            refEntity: EntityTypes.CrossDockAllocation, refId: allocation.CrossDockAllocationId);
+        await f.AddTxnAsync("ISSUE", w.PA, -3m, from: (w.W1, w.B1), lot: lot, at: t0.AddHours(3), refEntity: EntityTypes.PickBatch, refId: reverted.PickBatchId);
+        await f.AddTxnAsync("ADJUSTMENT", w.PA, 3m, to: (w.W1, w.B1), lot: lot, at: t0.AddHours(4), refEntity: EntityTypes.PickBatch,
+            refId: reverted.PickBatchId, reason: "PICK_BATCH_REVERSAL");
+        await f.AddTxnAsync("CROSSDOCK", w.PA, -1m, from: (w.W1, w.B1), lot: lot, at: t0.AddHours(5),
+            refEntity: EntityTypes.CrossDockAllocation, refId: foreign.CrossDockAllocationId);
+
+        var g = await f.Get<TraceabilityService>().LotGenealogyAsync(lot.LotId, InventoryScope.Any, default);
+
+        Assert.Equal(3, g.Destinations.Count);
+        var pick = Assert.Single(g.Destinations, d => d.RefEntityCode == EntityTypes.PickBatch);
+        Assert.Equal(unpacked.PickBatchId, pick.RefId);
+        Assert.Null(pick.OrderPublicId);
+        Assert.Contains("EMP-00901", pick.RefLabel);
+        Assert.Equal(1m, pick.Quantity);
+        Assert.DoesNotContain(g.Destinations, d => d.RefEntityCode == EntityTypes.PickBatch && d.RefId == reverted.PickBatchId);
+
+        var xd = Assert.Single(g.Destinations, d => d.RefEntityCode == EntityTypes.CrossDockAllocation && d.RefId == allocation.CrossDockAllocationId);
+        Assert.Equal(w.Order.PublicId, xd.OrderPublicId);
+        Assert.Equal("Cliente A", xd.ClientName);
+        Assert.Equal(2m, xd.Quantity);
+
+        var other = Assert.Single(g.Destinations, d => d.RefEntityCode == EntityTypes.CrossDockAllocation && d.RefId == foreign.CrossDockAllocationId);
+        Assert.Null(other.OrderPublicId);
+        Assert.Null(other.ClientName);
     }
 
     [Fact]
@@ -293,13 +414,15 @@ internal sealed class InventoryServiceFixture
 
     private readonly Dictionary<string, int> _statusIds = new(StringComparer.OrdinalIgnoreCase);
 
-    private InventoryServiceFixture(TeikemDbContext db, ServiceProvider services, TripTestLookups lookups)
+    private InventoryServiceFixture(TeikemDbContext db, ServiceProvider services, TripTestLookups lookups, TenantContext tenant)
     {
+        Tenant = tenant;
         Db = db;
         Services = services;
         Lookups = lookups;
     }
 
+    public TenantContext Tenant { get; }
     public TeikemDbContext Db { get; }
     public ServiceProvider Services { get; }
     public TripTestLookups Lookups { get; }
@@ -328,7 +451,8 @@ internal sealed class InventoryServiceFixture
         services.AddSingleton<InventoryReadService>();
         services.AddSingleton<InventoryAdjustmentService>();
         services.AddSingleton<TraceabilityService>();
-        var f = new InventoryServiceFixture(db, services.BuildServiceProvider(), lookups);
+        services.AddSingleton<ProductService>();
+        var f = new InventoryServiceFixture(db, services.BuildServiceProvider(), lookups, tenant);
         await f.SeedCatalogsAsync();
         return f;
     }
@@ -351,7 +475,17 @@ internal sealed class InventoryServiceFixture
                      "CROSSDOCK_PLAN", "CLIENT",
                  })
             all.Add(L(LookupDomains.EntityType, e));
-        foreach (var c in new[] { "RECEIPT", "ISSUE", "TRANSFER", "ADJUSTMENT", "CROSSDOCK" }) all.Add(L("InventoryTxnType", c));
+        // Tipos de movimiento con las etiquetas del seed (es/en): el Kárdex las resuelve por idioma (maestro L582).
+        foreach (var (c, es, en) in new[]
+                 {
+                     ("RECEIPT", "Recepción", "Receipt"), ("ISSUE", "Despacho", "Issue"), ("TRANSFER", "Transferencia", "Transfer"),
+                     ("ADJUSTMENT", "Ajuste", "Adjustment"), ("CROSSDOCK", "Cruce de muelle", "Cross-dock"),
+                 })
+        {
+            var t = L("InventoryTxnType", c);
+            t.LabelJson = MultilingualText.Build(es, en);
+            all.Add(t);
+        }
         foreach (var c in new[] { "RECEIPT_VARIANCE", "COUNT_VARIANCE", "DAMAGE", "LOSS", "FOUND", "EXPIRED", "PO_SHORTAGE", "PICK_BATCH_REVERSAL", "OTHER" })
             all.Add(L("AdjustmentReason", c));
         foreach (var c in new[] { "NONE", "LOT", "SERIAL" }) all.Add(L("TrackingType", c));
@@ -478,6 +612,27 @@ internal sealed class InventoryServiceFixture
             Sequence = 2, SnapName = consignee, StatusCodeId = 1,
         });
         return order;
+    }
+
+    /// <summary>Recolección (COLLECTED o empacada si trae orden) del tenant indicado.</summary>
+    public Task<PickBatch> AddPickBatchAsync(Warehouse w, string number, int? transportOrderId, int tenantId = TenantId) => SaveAsync(new PickBatch
+    {
+        PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = w.WarehouseId, Number = number, StatusCodeId = 1,
+        TransportOrderId = transportOrderId, CollectedAtUtc = DateTime.UtcNow, IsActive = true,
+    });
+
+    /// <summary>Plan de cruce de muelle (del tenant indicado) con una asignación a la orden.</summary>
+    public async Task<CrossDockAllocation> AddCrossDockAllocationAsync(Warehouse w, string planNumber, int orderId, int tenantId = TenantId)
+    {
+        var plan = await SaveAsync(new CrossDockPlan
+        {
+            TenantId = tenantId, WarehouseId = w.WarehouseId, Number = planNumber, StatusCodeId = 1, CreatedAtUtc = DateTime.UtcNow,
+        });
+        return await SaveAsync(new CrossDockAllocation
+        {
+            CrossDockPlanId = plan.CrossDockPlanId, ReceiptLineId = 1, TransportOrderId = orderId, AllocatedQty = 2m, StatusCodeId = 1,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
     }
 
     public Task<EntityStatusHistory> AddSerialHistoryAsync(InventorySerial s, string? from, string to) => SaveAsync(new EntityStatusHistory

@@ -265,14 +265,18 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             var reasonCode = t.ReasonLookupId is int rl ? refs.Codes.GetValueOrDefault(rl) : null;
             var reason = t.ReasonLookupId is int rl2 ? refs.Labels.GetValueOrDefault(rl2) : null;
 
-            result.Add(new KardexRowDto(t.InventoryTransactionId, t.CreatedAtUtc, typeCode, KardexRules.TypeChip(typeCode),
+            // Tipo: etiqueta del catálogo InventoryTxnType en el idioma del usuario (maestro L582); respaldo TypeChip.
+            var typeLabel = refs.Labels.GetValueOrDefault(t.TxnTypeLookupId);
+            if (string.IsNullOrEmpty(typeLabel)) typeLabel = KardexRules.TypeChip(typeCode, tenant.Lang);
+
+            result.Add(new KardexRowDto(t.InventoryTransactionId, t.CreatedAtUtc, typeCode, typeLabel,
                 p?.PublicId ?? Guid.Empty, p?.Sku ?? string.Empty, p?.Name ?? string.Empty,
                 t.Quantity,
                 KardexRules.SignedQuantity(t.Quantity, typeCode, t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId, filter),
                 fromWh, fromBin, toWh, toBin, KardexRules.Position(fromWh, fromBin, toWh, toBin),
                 t.LotId is int lid ? refs.Lots.GetValueOrDefault(lid)?.Number : null,
                 t.SerialId is int sid ? refs.Serials.GetValueOrDefault(sid) : null,
-                refCode, t.RefId, KardexRules.RefLabel(refCode, t.RefId, refNumber),
+                refCode, t.RefId, KardexRules.RefLabel(refCode, t.RefId, refNumber, tenant.Lang),
                 reasonCode, reason, t.Notes,
                 t.CreatedBy, t.CreatedBy is int uid ? refs.Users.GetValueOrDefault(uid) : null));
         }

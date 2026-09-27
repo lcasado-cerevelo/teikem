@@ -73,6 +73,7 @@ public sealed class ReceiptServiceTests
         var putaway = Assert.Single(confirmed.PutawayTasks);   // sin cruce de muelle: todo lo recibido va a putaway
         Assert.Equal(8m, putaway.Quantity);
         Assert.Equal(f.StagingBinId, putaway.FromBinId);
+        Assert.Equal(f.ReserveBinId, putaway.ToBinId);          // L301: posición sugerida (la única fuera de staging)
     }
 
     [Fact]
@@ -120,6 +121,7 @@ public sealed class ReceiptServiceTests
         Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
         var task = Assert.Single(confirmed.PutawayTasks);
         Assert.Equal(5m, task.Quantity);
+        Assert.Equal(f.ReserveBinId, task.ToBinId);
         var txn = Assert.Single(await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync());   // ciego: sin ajuste
         Assert.Equal(8m, txn.Quantity);
         Assert.Null(Assert.Single(confirmed.Lines).AdjustmentTxnId);
@@ -179,6 +181,53 @@ public sealed class ReceiptServiceTests
     }
 
     [Fact]
+    public async Task Asn_reads_respect_the_owner_scope()
+    {
+        // D44: con InventoryScope de dueño, solo los ASN de ese cliente; el de otro dueño → 404 sin oráculo.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var asns = f.Get<AsnService>();
+        var asn = await asns.CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 6m) }), default);
+        var owner = new InventoryScope(f.ClientId);
+        var other = new InventoryScope(f.ClientId + 1);
+
+        Assert.Equal(asn.Id, (await asns.GetAsync(asn.Id, owner, default)).Id);
+        Assert.Equal(asn.Id, Assert.Single(await asns.ListAsync(new AsnQuery(), owner, default)).Id);
+        Assert.Equal(asn.Id, Assert.Single(await asns.ListAsync(new AsnQuery(), InventoryScope.Any, default)).Id);
+        await Assert.ThrowsAsync<NotFoundException>(() => asns.GetAsync(asn.Id, other, default));
+        Assert.Empty(await asns.ListAsync(new AsnQuery(), other, default));
+    }
+
+    [Fact]
+    public async Task Warehouse_is_required_with_more_than_one_active_and_422_without_any()
+    {
+        // D26 (maestro L294): con un solo almacén activo se toma por defecto; con más de uno → 400; sin ninguno → 422.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var receipts = f.Get<ReceiptService>();
+        var blind = new ReceiptCreateRequest(Type: ReceiptTypes.Blind, Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 1m) });
+
+        f.Db.Set<Warehouse>().Add(new Warehouse
+        {
+            WarehouseId = 20, PublicId = Guid.NewGuid(), TenantId = ReceivingFixture.TenantId, Code = "W2", Name = "Almacén 2",
+            CountryLookupId = f.LookupId(LookupDomains.Country, "PR"),
+            StatusCodeId = f.StatusId(StatusDomains.WarehouseStatus, WarehouseStatuses.Active), IsActive = true,
+        });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var many = await Assert.ThrowsAsync<ValidationException>(() => receipts.CreateAsync(blind, default));
+        Assert.Equal(WmsResolve.WarehouseRequiredMessage, Assert.Single(many.Errors!["warehousePublicId"]));
+        Assert.Equal("Indique el almacén: la compañía tiene más de uno.", WmsResolve.WarehouseRequiredMessage);
+
+        foreach (var w in await f.Db.Set<Warehouse>().ToListAsync()) w.IsActive = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var none = await Assert.ThrowsAsync<StatusRuleException>(() => receipts.CreateAsync(blind, default));
+        Assert.Equal(WmsResolve.NoActiveWarehouseMessage, none.Message);
+        Assert.Equal("La compañía no tiene almacenes activos.", none.Message);
+        Assert.Empty(await f.Db.Set<ReceiptHeader>().AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
     public async Task Client_asn_rejects_products_of_another_owner()
     {
         await using var f = await ReceivingFixture.CreateAsync();
@@ -223,6 +272,163 @@ public sealed class ReceiptServiceTests
     }
 
     [Fact]
+    public async Task Putaway_created_on_confirmation_targets_the_preferred_bin()
+    {
+        // Maestro L301 (putaway dirigido): la PUTAWAY del recibo nace con la posición sugerida; la preferida va primero.
+        await using var f = await ReceivingFixture.CreateAsync();
+        f.Db.Set<WarehouseZone>().Add(new WarehouseZone
+        {
+            WarehouseZoneId = 13, WarehouseId = f.WarehouseId, Code = "PCK", Name = "Picking",
+            ZoneTypeLookupId = f.LookupId(LookupDomains.ZoneType, ZoneTypes.Picking), IsActive = true,
+        });
+        f.Db.Set<WarehouseBin>().Add(new WarehouseBin { WarehouseBinId = 203, WarehouseZoneId = 13, WarehouseId = f.WarehouseId, Code = "P-01", IsActive = true });
+        var pn = await f.Db.Set<Product>().SingleAsync(p => p.ProductId == f.ProductNoneId);
+        pn.PreferredWarehouseId = f.WarehouseId;
+        pn.PreferredBinId = 203;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 4m) }), default);
+        var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, null, default);
+
+        var putaway = Assert.Single(confirmed.PutawayTasks);
+        Assert.Equal((f.StagingBinId, 203), (putaway.FromBinId!.Value, putaway.ToBinId!.Value));
+        Assert.Equal("P-01", putaway.ToBinCode);
+        var suggestion = (await f.Get<PutawaySuggester>().SuggestAsync(f.WarehouseId, f.ProductNoneId, null, 4m, f.StagingBinId, 3, default))[0];
+        Assert.Equal((203, "PREFERRED"), (suggestion.BinId, suggestion.ReasonCode));
+        Assert.False(string.IsNullOrEmpty(suggestion.RotationClass));
+    }
+
+    [Fact]
+    public async Task Extra_line_on_a_client_asn_receipt_is_confirmed_as_an_inbound_adjustment()
+    {
+        // Maestro L300: el excedente de un producto que no venía en el aviso entra como línea extra (solo ajuste de entrada).
+        await using var f = await ReceivingFixture.CreateAsync();
+        var asn = await f.Get<AsnService>().CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 6m) }), default);
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id), default);
+
+        var owner = await Assert.ThrowsAsync<ValidationException>(() =>
+            receipts.AddLineAsync(created.Header.PublicId, new ReceiptLineRequest(f.ProductNonePublicId, 1m), default));
+        Assert.Contains(ReceiptRules.OwnerMismatch("PN"), owner.Errors!.Values.SelectMany(v => v));
+
+        var withExtra = await receipts.AddLineAsync(created.Header.PublicId, new ReceiptLineRequest(f.ProductClientPublicId, 2m), default);
+        var extra = Assert.Single(withExtra.Lines, l => l.AsnLineId is null);
+        Assert.Null(extra.ExpectedQty);
+        var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, null, default);
+
+        var txns = await f.Db.Set<InventoryTransaction>().AsNoTracking().OrderBy(t => t.InventoryTransactionId).ToListAsync();
+        var receiptType = f.LookupId(LookupDomains.InventoryTxnType, InventoryTxnTypes.Receipt);
+        var adjustmentType = f.LookupId(LookupDomains.InventoryTxnType, InventoryTxnTypes.Adjustment);
+        Assert.Equal(6m, Assert.Single(txns, t => t.TxnTypeLookupId == receiptType).Quantity);
+        var adj = Assert.Single(txns, t => t.TxnTypeLookupId == adjustmentType);
+        Assert.Equal(2m, adj.Quantity);
+        Assert.Equal(f.LookupId(LookupDomains.AdjustmentReason, AdjustmentReasons.ReceiptVariance), adj.ReasonLookupId);
+        Assert.Equal(adj.InventoryTransactionId, confirmed.Lines.Single(l => l.Id == extra.Id).AdjustmentTxnId);
+        Assert.Equal(8m, (await f.Db.Set<StockBalance>().AsNoTracking().Where(b => b.ProductId == 303).SumAsync(b => b.QtyOnHand)));
+    }
+
+    [Fact]
+    public async Task Only_extra_lines_are_removed_and_po_receipts_only_take_own_products()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId), default);
+
+        var asnLine = await Assert.ThrowsAsync<ConflictException>(() => receipts.RemoveLineAsync(created.Header.PublicId, created.Lines[0].Id, default));
+        Assert.Equal(ReceiptRules.AsnLineNotRemovable, asnLine.Message);
+
+        var clientProduct = await Assert.ThrowsAsync<ValidationException>(() =>
+            receipts.AddLineAsync(created.Header.PublicId, new ReceiptLineRequest(f.ProductClientPublicId, 1m), default));
+        Assert.Contains(ReceiptRules.OwnProductsOnly("PC"), clientProduct.Errors!.Values.SelectMany(v => v));
+
+        var withExtra = await receipts.AddLineAsync(created.Header.PublicId, new ReceiptLineRequest(f.ProductNonePublicId, 1m), default);
+        Assert.Equal(2, withExtra.Lines.Count);
+        var extra = withExtra.Lines.Single(l => l.AsnLineId is null);
+        var after = await receipts.RemoveLineAsync(created.Header.PublicId, extra.Id, default);
+        Assert.Equal(created.Lines[0].Id, Assert.Single(after.Lines).Id);
+    }
+
+    [Fact]
+    public async Task Confirmed_receipt_is_frozen()
+    {
+        // Maestro L300: editable hasta confirmar; después es contenido congelado (ya está en el ledger).
+        await using var f = await ReceivingFixture.CreateAsync();
+        var receipts = f.Get<ReceiptService>();
+        var created = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId), default);
+        await receipts.ConfirmAsync(created.Header.PublicId, null, default);
+        var txnsBefore = await f.Db.Set<InventoryTransaction>().AsNoTracking().CountAsync();
+        var onHandBefore = await f.Db.Set<StockBalance>().AsNoTracking().SumAsync(b => b.QtyOnHand);
+        var expected = ReceiptRules.ReceiptNotOpen(created.Header.Number);
+        var id = created.Header.PublicId;
+        var lineId = created.Lines[0].Id;
+
+        foreach (var attempt in new Func<Task>[]
+                 {
+                     () => receipts.UpdateLineAsync(id, lineId, new ReceiptLineUpdateRequest(ReceivedQty: 1m), default),
+                     () => receipts.AddLineAsync(id, new ReceiptLineRequest(f.ProductNonePublicId, 1m), default),
+                     () => receipts.RemoveLineAsync(id, lineId, default),
+                     () => receipts.DeleteAsync(id, default),
+                 })
+        {
+            var ex = await Assert.ThrowsAsync<StatusRuleException>(attempt);
+            Assert.Equal(expected, ex.Message);
+            f.Db.ChangeTracker.Clear();
+        }
+        Assert.Equal(txnsBefore, await f.Db.Set<InventoryTransaction>().AsNoTracking().CountAsync());
+        Assert.Equal(onHandBefore, await f.Db.Set<StockBalance>().AsNoTracking().SumAsync(b => b.QtyOnHand));
+        Assert.Equal(10m, (await receipts.GetAsync(id, default)).Lines[0].ReceivedQty);
+    }
+
+    [Fact]
+    public async Task Warehouse_without_a_staging_zone_cannot_receive()
+    {
+        // D21: el recibo exige una posición de recepción; sin zona STAGING activa → 422 NoStagingBin.
+        await using var f = await ReceivingFixture.CreateAsync();
+        var zone = await f.Db.Set<WarehouseZone>().SingleAsync(z => z.WarehouseZoneId == 11);
+        zone.IsActive = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var ex = await Assert.ThrowsAsync<StatusRuleException>(() => f.Get<ReceiptService>().CreateAsync(new ReceiptCreateRequest(
+            Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 1m) }), default));
+        Assert.Equal(ReceiptRules.NoStagingBin, ex.Message);
+        Assert.Empty(await f.Db.Set<ReceiptHeader>().AsNoTracking().ToListAsync());
+    }
+
+    [Fact]
+    public async Task Cancelling_an_asn_requires_no_active_receipt_and_only_applies_while_expected()
+    {
+        await using var f = await ReceivingFixture.CreateAsync();
+        var asns = f.Get<AsnService>();
+        var receipts = f.Get<ReceiptService>();
+        var asn = await asns.CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 3m) }), default);
+        var receipt = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: asn.Id), default);
+
+        var busy = await Assert.ThrowsAsync<ConflictException>(() => asns.CancelAsync(asn.Id, default));
+        Assert.Equal(ReceiptRules.AsnHasOpenReceipt, busy.Message);
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(AsnStatuses.Expected, (await asns.GetAsync(asn.Id, InventoryScope.Any, default)).StatusCode);
+
+        await receipts.DeleteAsync(receipt.Header.PublicId, default);
+        var cancelled = await asns.CancelAsync(asn.Id, default);
+        Assert.Equal(AsnStatuses.Cancelled, cancelled.StatusCode);
+        var again = await Assert.ThrowsAsync<StatusRuleException>(() => asns.CancelAsync(asn.Id, default));
+        Assert.Equal(ReceiptRules.AsnNotExpected, again.Message);
+
+        // Un ASN ya recibido tampoco se cancela.
+        var received = await asns.CreateAsync(new AsnCreateRequest(null, f.ClientPublicId,
+            Lines: new[] { new AsnLineRequest(f.ProductClientPublicId, 2m) }), default);
+        var r2 = await receipts.CreateAsync(new ReceiptCreateRequest(AsnId: received.Id), default);
+        await receipts.ConfirmAsync(r2.Header.PublicId, null, default);
+        var done = await Assert.ThrowsAsync<StatusRuleException>(() => asns.CancelAsync(received.Id, default));
+        Assert.Equal(ReceiptRules.AsnNotExpected, done.Message);
+    }
+
+    [Fact]
     public async Task Staging_bin_must_be_in_a_staging_zone()
     {
         await using var f = await ReceivingFixture.CreateAsync();
@@ -263,6 +469,7 @@ internal sealed class ReceivingFixture : IAsyncDisposable
     public T Get<T>() where T : notnull => Services.GetRequiredService<T>();
 
     public int WarehouseId => 10;
+    public int ClientId => 7;
     public int StagingBinId => 101;
     public int ReserveBinId => 201;
     public int ProductNoneId => 301;
@@ -412,7 +619,7 @@ internal sealed class ReceivingFixture : IAsyncDisposable
 
         Db.Clients.Add(new Teikem.Domain.Clients.Client
         {
-            ClientId = 7, PublicId = ClientPublicId, TenantId = TenantId, Code = "C1", Name = "Cliente Uno",
+            ClientId = ClientId, PublicId = ClientPublicId, TenantId = TenantId, Code = "C1", Name = "Cliente Uno",
             StatusCodeId = 1, IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         });
 

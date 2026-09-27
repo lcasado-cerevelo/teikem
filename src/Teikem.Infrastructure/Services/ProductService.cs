@@ -101,7 +101,31 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         }
 
         var total = await query.CountAsync(ct);
-        var page = await query.OrderBy(p => p.Sku).ThenBy(p => p.ProductId).Skip(skip).Take(take).ToListAsync(ct);
+        IOrderedQueryable<Product> ordered;
+        if (q.SelectorOrder)
+        {
+            // Orden de los selectores de producto (maestro L1207): primero la mercancía de clientes 3PL, el cliente que más
+            // inventario en mano almacena antes (Σ QtyOnHand de todos sus productos en el tenant), cada cliente como bloque
+            // contiguo; al final los suministros propios (ClientId NULL). Dentro de cada bloque, por SKU. Sin nombres fijos.
+            var stock = db.Set<StockBalance>().AsNoTracking();
+            var owned = db.Set<Product>().AsNoTracking();
+            ordered = query
+                .OrderBy(p => p.ClientId == null ? 1 : 0)
+                .ThenByDescending(p => p.ClientId == null
+                    ? 0m
+                    : (from b in stock
+                       join o in owned on b.ProductId equals o.ProductId
+                       where o.ClientId == p.ClientId
+                       select (decimal?)b.QtyOnHand).Sum() ?? 0m)
+                .ThenBy(p => p.ClientId)
+                .ThenBy(p => p.Sku);
+        }
+        else
+        {
+            // Pantalla Productos e inventario: por SKU.
+            ordered = query.OrderBy(p => p.Sku);
+        }
+        var page = await ordered.ThenBy(p => p.ProductId).Skip(skip).Take(take).ToListAsync(ct);
 
         var items = await ToItemsAsync(page, warehouseId, ct);
         return new ProductPageDto(total, skip, take, items);
@@ -410,7 +434,9 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     /// <summary>
     /// Desactivar (IsActive = 0), en el orden obligatorio del lote: 1) encabezado Product bloqueado; 2) rango de saldos del
     /// producto HOLDLOCK (ningún movimiento entra mientras se decide); 3) Σ|en mano| &gt; 0 → 409 DeactivateWithStock;
-    /// 4) recibos OPEN o tareas abiertas con el producto → 409 DeactivateOpenDocs; 5) IsActive = 0. Ya inactivo: sin cambio.
+    /// 4) recibos OPEN, tareas abiertas, recolecciones que aún se pueden eliminar (COLLECTED, o PACKED con la orden activa en
+    /// etapa inicial) o conteos OPEN/COUNTED con el producto → 409 DeactivateOpenDocs (maestro L326 y L780: su reversa o su
+    /// reconciliación son entradas, que el ledger rechaza con el producto inactivo); 5) IsActive = 0. Ya inactivo: sin cambio.
     /// </summary>
     public async Task<ProductDetailDto> DeactivateAsync(Guid publicId, CancellationToken ct)
     {
@@ -420,6 +446,13 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         {
             await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, ct),
             await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.InProgress, ct),
+        };
+        var collectedPickId = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, ct);
+        var packedPickId = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, ct);
+        var openCountIds = new List<int>
+        {
+            await db.StatusIdAsync(StatusDomains.CycleCountStatus, CycleCountStatuses.Open, ct),
+            await db.StatusIdAsync(StatusDomains.CycleCountStatus, CycleCountStatuses.Counted, ct),
         };
 
         await db.RunInTransactionAsync(async ct2 =>
@@ -439,6 +472,25 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             var inOpenTask = await db.Set<WarehouseTask>().AsNoTracking()
                 .AnyAsync(t => t.ProductId == product.ProductId && openTaskIds.Contains(t.StatusCodeId), ct2);
             if (inOpenReceipt || inOpenTask) throw new ConflictException(ProductRules.DeactivateOpenDocs(product.Sku));
+
+            // Recolección que aún se puede eliminar (su reversa es una ENTRADA, que el ledger rechaza con el producto
+            // inactivo): COLLECTED, o PACKED con su orden activa y en etapa inicial (criterio de PickBatchRules.CanDelete).
+            // PickBatchLine no lleva TenantId: se alcanza por su lote filtrado.
+            var inRevertiblePick = await (from l in db.Set<PickBatchLine>().AsNoTracking()
+                                          join b in db.Set<PickBatch>().AsNoTracking() on l.PickBatchId equals b.PickBatchId
+                                          where l.ProductId == product.ProductId && l.ReversalTxnId == null && b.IsActive
+                                                && (b.StatusCodeId == collectedPickId
+                                                    || (b.StatusCodeId == packedPickId
+                                                        && db.TransportOrders.Any(o => o.TransportOrderId == b.TransportOrderId && o.IsActive
+                                                            && db.StatusCodes.Any(s => s.StatusCodeId == o.StatusCodeId && s.IsInitial))))
+                                          select l.PickBatchLineId).AnyAsync(ct2);
+            // Conteo abierto (OPEN/COUNTED) con líneas del producto: su reconciliación puede asentar entradas. La tarea COUNT
+            // nace sin ProductId, así que la verificación de tareas no la ve. CycleCountLine se alcanza por su conteo filtrado.
+            var inOpenCount = await (from cl in db.Set<CycleCountLine>().AsNoTracking()
+                                     join c in db.Set<CycleCount>().AsNoTracking() on cl.CycleCountId equals c.CycleCountId
+                                     where cl.ProductId == product.ProductId && c.IsActive && openCountIds.Contains(c.StatusCodeId)
+                                     select cl.CycleCountLineId).AnyAsync(ct2);
+            if (inRevertiblePick || inOpenCount) throw new ConflictException(ProductRules.DeactivateOpenDocs(product.Sku));
 
             product.IsActive = false;
             await SaveProductAsync(ct2);

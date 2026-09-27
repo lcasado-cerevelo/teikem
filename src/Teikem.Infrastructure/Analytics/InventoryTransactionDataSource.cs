@@ -8,7 +8,7 @@ namespace Teikem.Infrastructure.Analytics;
 
 /// <summary>
 /// Lote 6 (P3) — fuente de datos INVENTORY_TRANSACTION (actividad por CreatedAtUtc) para las vistas 'Kárdex de movimientos',
-/// 'Movimientos por tipo' (agrupada por TxnType con suma de Quantity, L874) y 'Ajustes de inventario', el indicador
+/// 'Movimientos por tipo y producto' (agrupada por TxnType y Sku con suma de Quantity, L887) y 'Ajustes de inventario', el indicador
 /// 'Movimientos registrados' y los gráficos por tipo, usuario y día.
 /// - Quantity = la cantidad del ledger CON signo (D3, L331: despacho negativo, recepción positiva; TRANSFER positiva con
 ///   origen y destino). SignedQuantity = la perspectiva sin filtro de ubicación (TRANSFER = 0): sumarla da el cambio neto de

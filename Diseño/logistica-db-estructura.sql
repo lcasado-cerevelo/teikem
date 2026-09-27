@@ -698,7 +698,8 @@ CREATE TABLE dbo.Client (
     -- La FK se agrega después de crear dbo.Location (FK_Client_DefaultPickupLocation).
     DefaultPickupLocationId INT NULL,
     CONSTRAINT UQ_Client_Tenant_Code UNIQUE (TenantId, Code),
-    CONSTRAINT CK_Client_CreditLimit CHECK (CreditLimit IS NULL OR CreditLimit >= 0)   -- Lote 2
+    CONSTRAINT CK_Client_CreditLimit CHECK (CreditLimit IS NULL OR CreditLimit >= 0),  -- Lote 2
+    CONSTRAINT UQ_Client_IdTenant UNIQUE (ClientId, TenantId)                          -- Lote 6: destino de FK_Product_Client y FK_Asn_Client
 );
 GO
 
@@ -724,7 +725,7 @@ CREATE TABLE dbo.NumberSequence (
     ClientId     INT NULL REFERENCES dbo.Client(ClientId),
     NextValue    BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT UQ_NumberSequence UNIQUE (TenantId, Kind, ClientId),
-    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL). Lote 5: TRIP = número de ruta AAAA-#### por tenant (ClientId NULL)
+    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL). Lote 5: TRIP = número de ruta AAAA-#### por tenant (ClientId NULL). Lote 6: RECEIPT (REC-#####), CYCLECOUNT (CC-#####), CROSSDOCK (XD-#####) y PURCHASE (PO-#####) por tenant (ClientId NULL); la recolección reutiliza PACKBATCH
     CONSTRAINT CK_NumberSequence_Next CHECK (NextValue >= 1)
 );
 GO
@@ -964,7 +965,8 @@ CREATE TABLE dbo.Warehouse (
     GeoPoint     GEOGRAPHY NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='WarehouseStatus'
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_Warehouse_Code UNIQUE (TenantId, Code)
+    CONSTRAINT UQ_Warehouse_Code UNIQUE (TenantId, Code),
+    CONSTRAINT UQ_Warehouse_IdTenant UNIQUE (WarehouseId, TenantId)          -- Lote 6: destino de las FKs compuestas (Id, TenantId)
 );
 GO
 
@@ -974,17 +976,25 @@ CREATE TABLE dbo.WarehouseZone (
     Code         NVARCHAR(30) NOT NULL, Name NVARCHAR(120) NOT NULL,
     ZoneTypeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),      -- Entity='ZoneType'
     IsActive     BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_WarehouseZone UNIQUE (WarehouseId, Code)
+    CONSTRAINT UQ_WarehouseZone UNIQUE (WarehouseId, Code),
+    CONSTRAINT UQ_WarehouseZone_IdWh UNIQUE (WarehouseZoneId, WarehouseId)   -- Lote 6: destino de FK_WarehouseBin_Zone y FK_CdPlan_StagingZone
 );
 GO
 
+-- Lote 6 (D18): la posición lleva WarehouseId (FK compuesta con su zona) y su código es único por almacén. Sin TenantId:
+-- se alcanza SOLO a través de su almacén filtrado.
 CREATE TABLE dbo.WarehouseBin (
     WarehouseBinId INT IDENTITY(1,1) PRIMARY KEY,
-    WarehouseZoneId INT NOT NULL REFERENCES dbo.WarehouseZone(WarehouseZoneId),
+    WarehouseZoneId INT NOT NULL,
+    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),        -- Lote 6
     Code         NVARCHAR(40) NOT NULL,
     Aisle NVARCHAR(20) NULL, Rack NVARCHAR(20) NULL, Level NVARCHAR(20) NULL, Position NVARCHAR(20) NULL,
     MaxWeightKg  DECIMAL(12,3) NULL, IsActive BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code)
+    CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code),
+    CONSTRAINT FK_WarehouseBin_Zone FOREIGN KEY (WarehouseZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId),  -- Lote 6
+    CONSTRAINT UQ_WarehouseBin_IdWh UNIQUE (WarehouseBinId, WarehouseId),   -- Lote 6: destino de las FKs (Posición, Almacén)
+    CONSTRAINT UQ_WarehouseBin_WhCode UNIQUE (WarehouseId, Code),           -- Lote 6: código único por almacén
+    CONSTRAINT CK_WarehouseBin_MaxWeight CHECK (MaxWeightKg IS NULL OR MaxWeightKg > 0)  -- Lote 6
 );
 GO
 
@@ -995,7 +1005,8 @@ CREATE TABLE dbo.WarehouseDock (
     DockTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='DockType'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='DockStatus'
     IsActive     BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_WarehouseDock UNIQUE (WarehouseId, Code)
+    CONSTRAINT UQ_WarehouseDock UNIQUE (WarehouseId, Code),
+    CONSTRAINT UQ_WarehouseDock_IdWh UNIQUE (WarehouseDockId, WarehouseId)   -- Lote 6: destino de FK_Receipt_Dock y FK_DockAppt_Dock
 );
 GO
 
@@ -1005,85 +1016,145 @@ GO
 CREATE TABLE dbo.ProductCategory (
     ProductCategoryId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    ParentId     INT NULL REFERENCES dbo.ProductCategory(ProductCategoryId),
-    Name         NVARCHAR(150) NOT NULL, IsActive BIT NOT NULL DEFAULT 1
+    ParentId     INT NULL,                                                  -- Lote 6: FK compuesta (ParentId, TenantId) abajo
+    Name         NVARCHAR(150) NOT NULL, IsActive BIT NOT NULL DEFAULT 1,
+    CONSTRAINT UQ_ProductCategory_IdTenant UNIQUE (ProductCategoryId, TenantId)  -- Lote 6
 );
+-- Lote 6: la categoría padre es del mismo tenant; nombre único entre activas por nivel.
+ALTER TABLE dbo.ProductCategory ADD CONSTRAINT FK_ProductCategory_Parent FOREIGN KEY (ParentId, TenantId) REFERENCES dbo.ProductCategory(ProductCategoryId, TenantId);
+CREATE UNIQUE INDEX UX_ProductCategory_Name ON dbo.ProductCategory(TenantId, ParentId, Name) WHERE IsActive = 1;
 GO
 
+-- Lote 6: ClientId = DUEÑO DEL INVENTARIO (cliente 3PL de dbo.Client; NULL = propio del tenant), distinto de TenantId (el
+-- dueño de los datos). FKs compuestas (Id, TenantId) contra Client, ProductCategory y Warehouse; la posición preferida con
+-- (Posición, Almacén). Seguimiento, UoM y dueño son inmutables tras el primer movimiento (regla de servicio, D25).
 CREATE TABLE dbo.Product (
     ProductId    INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    ClientId     INT NULL REFERENCES dbo.Client(ClientId),
+    ClientId     INT NULL,
     Sku          NVARCHAR(60) NOT NULL, Name NVARCHAR(200) NOT NULL,
-    ProductCategoryId INT NULL REFERENCES dbo.ProductCategory(ProductCategoryId),
+    ProductCategoryId INT NULL,
     BaseUomLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Entity='UnitOfMeasure'
     TrackingTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='TrackingType'
     WeightKg DECIMAL(12,3) NULL, VolumeM3 DECIMAL(12,4) NULL, Barcode NVARCHAR(60) NULL,
     PurchaseCost DECIMAL(18,4) NULL,   -- default para la línea de PO; costo de compra al proveedor
     SalePrice    DECIMAL(18,4) NULL,   -- precio de venta al cliente final (alimenta InvoiceLine ChargeType='PRODUCT_SALE')
-    PreferredWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId), -- almacén por default al recibir
-    PreferredBinId INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),  -- posición por default al recibir; sugerencia de putaway, NO es la ubicación real (esa vive en StockBalance)
+    PreferredWarehouseId INT NULL,     -- almacén por default al recibir
+    PreferredBinId INT NULL,           -- posición por default al recibir; sugerencia de putaway, NO es la ubicación real (esa vive en StockBalance)
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_Product_Sku UNIQUE (TenantId, ClientId, Sku)
+    MinQty       DECIMAL(16,3) NULL,   -- Lote 6 (D23): mínimo del disponible total ('Inventario bajo mínimo')
+    MinPickQty   DECIMAL(16,3) NULL,   -- Lote 6 (D23): reabasto de la posición preferida en PICKING
+    MaxPickQty   DECIMAL(16,3) NULL,   -- Lote 6 (D23)
+    CONSTRAINT UQ_Product_Sku UNIQUE (TenantId, ClientId, Sku),
+    CONSTRAINT UQ_Product_IdTenant UNIQUE (ProductId, TenantId),                                                              -- Lote 6
+    CONSTRAINT FK_Product_Client FOREIGN KEY (ClientId, TenantId) REFERENCES dbo.Client(ClientId, TenantId),                  -- Lote 6
+    CONSTRAINT FK_Product_Category FOREIGN KEY (ProductCategoryId, TenantId) REFERENCES dbo.ProductCategory(ProductCategoryId, TenantId),  -- Lote 6
+    CONSTRAINT FK_Product_PrefWarehouse FOREIGN KEY (PreferredWarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),     -- Lote 6
+    CONSTRAINT FK_Product_PrefBin FOREIGN KEY (PreferredBinId, PreferredWarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),  -- Lote 6
+    CONSTRAINT CK_Product_Numbers CHECK ((PurchaseCost IS NULL OR PurchaseCost >= 0) AND (SalePrice IS NULL OR SalePrice >= 0)
+        AND (WeightKg IS NULL OR WeightKg >= 0) AND (VolumeM3 IS NULL OR VolumeM3 >= 0) AND (MinQty IS NULL OR MinQty >= 0)
+        AND (MinPickQty IS NULL OR MinPickQty >= 0) AND (MaxPickQty IS NULL OR MaxPickQty >= 0)
+        AND (MinPickQty IS NULL OR MaxPickQty IS NULL OR MaxPickQty >= MinPickQty)),                                          -- Lote 6
+    CONSTRAINT CK_Product_PrefBin CHECK (PreferredBinId IS NULL OR PreferredWarehouseId IS NOT NULL)                          -- Lote 6
 );
+-- Lote 6: código de barras único entre los productos activos del tenant.
+CREATE UNIQUE INDEX UX_Product_Barcode ON dbo.Product(TenantId, Barcode) WHERE Barcode IS NOT NULL AND IsActive = 1;
 GO
 
+-- Lote 6: sin TenantId propio; hereda la tenencia de Product por FK (se alcanza SOLO a través del producto filtrado).
 CREATE TABLE dbo.InventoryLot (
     LotId        INT IDENTITY(1,1) PRIMARY KEY,
     ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
     LotNumber    NVARCHAR(60) NOT NULL, ManufactureDate DATE NULL, ExpiryDate DATE NULL,
     IsActive     BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_Lot UNIQUE (ProductId, LotNumber)
+    CONSTRAINT UQ_Lot UNIQUE (ProductId, LotNumber),
+    CONSTRAINT UQ_Lot_IdProduct UNIQUE (LotId, ProductId),                  -- Lote 6: destino de las FKs (Lote, Producto)
+    CONSTRAINT CK_Lot_Dates CHECK (ManufactureDate IS NULL OR ExpiryDate IS NULL OR ExpiryDate >= ManufactureDate)  -- Lote 6
 );
 GO
 
+-- Lote 6: sin TenantId propio; hereda la tenencia de Product por FK. La ubicación actual (D17) y el estatus los escribe SOLO
+-- el ledger (InventoryLedger); su rastro es EntityStatusHistory (INVENTORY_SERIAL) más InventoryTransaction.
 CREATE TABLE dbo.InventorySerial (
     SerialId     INT IDENTITY(1,1) PRIMARY KEY,
     ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
+    LotId        INT NULL,
     SerialNumber NVARCHAR(80) NOT NULL,
     StatusCodeId INT NULL REFERENCES dbo.StatusCode(StatusCodeId),  -- Entity='SerialStatus'
-    CONSTRAINT UQ_Serial UNIQUE (ProductId, SerialNumber)
+    CurrentWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),   -- Lote 6 (D17)
+    CurrentBinId INT NULL,                                                -- Lote 6 (D17)
+    CONSTRAINT UQ_Serial UNIQUE (ProductId, SerialNumber),
+    CONSTRAINT UQ_Serial_IdProduct UNIQUE (SerialId, ProductId),                                                           -- Lote 6
+    CONSTRAINT FK_Serial_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),                -- Lote 6
+    CONSTRAINT FK_Serial_CurrentBin FOREIGN KEY (CurrentBinId, CurrentWarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),  -- Lote 6
+    CONSTRAINT CK_Serial_Location CHECK (CurrentBinId IS NULL OR CurrentWarehouseId IS NOT NULL)                          -- Lote 6
 );
+CREATE INDEX IX_Serial_CurrentBin ON dbo.InventorySerial(CurrentBinId) WHERE CurrentBinId IS NOT NULL;   -- Lote 6
 GO
 
+-- Lote 6 (D2): proyección BLOQUEADA del ledger; solo la escribe InventoryLedger. CK_StockBalance_Qty es la última línea
+-- contra saldos negativos o con más reservado que en mano (el ledger traduce la violación 547 a 409 insufficient_stock).
+-- QtyAvailable es computada: la aplicación nunca la usa en lógica (InventoryRules.Available).
 CREATE TABLE dbo.StockBalance (
     StockBalanceId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    WarehouseBinId INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
-    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
+    ProductId    INT NOT NULL,
+    WarehouseId  INT NOT NULL,
+    WarehouseBinId INT NULL,
+    LotId        INT NULL,
     QtyOnHand    DECIMAL(16,3) NOT NULL DEFAULT 0,
     QtyReserved  DECIMAL(16,3) NOT NULL DEFAULT 0,
     QtyAvailable AS (QtyOnHand - QtyReserved) PERSISTED,
     UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(), RowVersion ROWVERSION,
-    CONSTRAINT UQ_StockBalance UNIQUE (ProductId, WarehouseId, WarehouseBinId, LotId)
+    CONSTRAINT UQ_StockBalance UNIQUE (ProductId, WarehouseId, WarehouseBinId, LotId),
+    CONSTRAINT FK_StockBalance_Product FOREIGN KEY (ProductId, TenantId) REFERENCES dbo.Product(ProductId, TenantId),              -- Lote 6
+    CONSTRAINT FK_StockBalance_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),      -- Lote 6
+    CONSTRAINT FK_StockBalance_Bin FOREIGN KEY (WarehouseBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),  -- Lote 6
+    CONSTRAINT FK_StockBalance_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),                   -- Lote 6
+    CONSTRAINT CK_StockBalance_Qty CHECK (QtyOnHand >= 0 AND QtyReserved >= 0 AND QtyReserved <= QtyOnHand)                        -- Lote 6
 );
 CREATE INDEX IX_StockBalance_WH ON dbo.StockBalance(WarehouseId, ProductId);
+CREATE INDEX IX_StockBalance_Bin ON dbo.StockBalance(WarehouseBinId);   -- Lote 6
 GO
 
+-- Lote 6 (D2, D3): ledger de SOLO INSERCIÓN (una reversa es un movimiento nuevo; Ref y motivo van en el INSERT).
+-- Quantity con signo (maestro L331): + entra a To; − sale de From. TRANSFER + con From y To.
+-- RECEIPT +, ISSUE y CROSSDOCK −, ADJUSTMENT ± (motivo obligatorio del catálogo AdjustmentReason).
 CREATE TABLE dbo.InventoryTransaction (
     InventoryTransactionId BIGINT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     TxnTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='InventoryTxnType'
-    ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
-    SerialId     INT NULL REFERENCES dbo.InventorySerial(SerialId),
-    FromWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    FromBinId    INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
-    ToWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    ToBinId      INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    ProductId    INT NOT NULL,
+    LotId        INT NULL,
+    SerialId     INT NULL,
+    FromWarehouseId INT NULL,
+    FromBinId    INT NULL,
+    ToWarehouseId INT NULL,
+    ToBinId      INT NULL,
     Quantity     DECIMAL(16,3) NOT NULL,
     RefEntityLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='EntityType'
     RefId        INT NULL,
     Notes        NVARCHAR(300) NULL,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id)
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    ReasonLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Lote 6: Entity='AdjustmentReason' (D7)
+    CONSTRAINT FK_InvTxn_Product FOREIGN KEY (ProductId, TenantId) REFERENCES dbo.Product(ProductId, TenantId),                  -- Lote 6
+    CONSTRAINT FK_InvTxn_FromWh FOREIGN KEY (FromWarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),          -- Lote 6
+    CONSTRAINT FK_InvTxn_ToWh FOREIGN KEY (ToWarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),              -- Lote 6
+    CONSTRAINT FK_InvTxn_FromBin FOREIGN KEY (FromBinId, FromWarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),  -- Lote 6
+    CONSTRAINT FK_InvTxn_ToBin FOREIGN KEY (ToBinId, ToWarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),        -- Lote 6
+    CONSTRAINT FK_InvTxn_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),                       -- Lote 6
+    CONSTRAINT FK_InvTxn_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),           -- Lote 6
+    CONSTRAINT CK_InvTxn_Quantity CHECK (Quantity <> 0),                                                                          -- Lote 6
+    CONSTRAINT CK_InvTxn_Direction CHECK (((Quantity > 0 AND ToWarehouseId IS NOT NULL) OR (Quantity < 0 AND FromWarehouseId IS NOT NULL AND ToWarehouseId IS NULL))
+        AND (FromBinId IS NULL OR FromWarehouseId IS NOT NULL) AND (ToBinId IS NULL OR ToWarehouseId IS NOT NULL))                -- Lote 6
 );
 CREATE INDEX IX_InvTxn_Product ON dbo.InventoryTransaction(ProductId, CreatedAtUtc);
 CREATE INDEX IX_InvTxn_Ref ON dbo.InventoryTransaction(RefEntityLookupId, RefId);
+CREATE INDEX IX_InvTxn_Tenant_Date ON dbo.InventoryTransaction(TenantId, CreatedAtUtc);            -- Lote 6
+CREATE INDEX IX_InvTxn_Lot ON dbo.InventoryTransaction(LotId) WHERE LotId IS NOT NULL;            -- Lote 6
+CREATE INDEX IX_InvTxn_Serial ON dbo.InventoryTransaction(SerialId) WHERE SerialId IS NOT NULL;   -- Lote 6
 GO
 
 /* =========================================================================
@@ -1703,23 +1774,30 @@ CREATE TABLE dbo.Supplier (
     ContactName  NVARCHAR(150) NULL, Phone NVARCHAR(40) NULL, Email NVARCHAR(150) NULL,
     PaymentTermLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- reutiliza Entity='PaymentTerm'
     Notes        NVARCHAR(MAX) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION
+    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
+    CONSTRAINT UQ_Supplier_IdTenant UNIQUE (SupplierId, TenantId)            -- Lote 6: destino de FK_PurchaseOrder_Supplier
 );
+CREATE UNIQUE INDEX UX_Supplier_Name ON dbo.Supplier(TenantId, Name) WHERE IsActive = 1;   -- Lote 6
 GO
 
 CREATE TABLE dbo.PurchaseOrder (
     PurchaseOrderId INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    SupplierId   INT NOT NULL REFERENCES dbo.Supplier(SupplierId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),         -- a qué almacén llega
+    SupplierId   INT NOT NULL,
+    WarehouseId  INT NOT NULL,                                               -- a qué almacén llega
     Number       NVARCHAR(40) NOT NULL,
     OrderDate    DATE NOT NULL, ExpectedDate DATE NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),       -- Entity='PurchaseOrderStatus'
     CurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     Notes        NVARCHAR(MAX) NULL,
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_PurchaseOrder_Number UNIQUE (TenantId, Number)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                    -- Lote 6
+    CONSTRAINT UQ_PurchaseOrder_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_PurchaseOrder_IdTenant UNIQUE (PurchaseOrderId, TenantId),                                                     -- Lote 6
+    CONSTRAINT FK_PurchaseOrder_Supplier FOREIGN KEY (SupplierId, TenantId) REFERENCES dbo.Supplier(SupplierId, TenantId),       -- Lote 6
+    CONSTRAINT FK_PurchaseOrder_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId)    -- Lote 6
 );
 CREATE INDEX IX_PurchaseOrder_Status ON dbo.PurchaseOrder(TenantId, StatusCodeId);
 GO
@@ -1731,8 +1809,33 @@ CREATE TABLE dbo.PurchaseOrderLine (
     QtyOrdered   DECIMAL(16,3) NOT NULL,
     QtyReceived  DECIMAL(16,3) NOT NULL DEFAULT 0,
     UnitCost     DECIMAL(18,4) NOT NULL,
-    LineTotal    AS (QtyOrdered * UnitCost) PERSISTED
+    LineTotal    AS (QtyOrdered * UnitCost) PERSISTED,
+    CONSTRAINT CK_POLine_Numbers CHECK (QtyOrdered > 0 AND QtyReceived >= 0 AND UnitCost >= 0),   -- Lote 6
+    CONSTRAINT UQ_POLine_IdPo UNIQUE (PurchaseOrderLineId, PurchaseOrderId)                       -- Lote 6: destino de FK_PoShortage_Line
 );
+GO
+
+-- Lote 6 (D8): resolución de faltantes por línea de PO ('Ajustes de inventario', bitácora L762). CLOSE y REORDER resuelven el
+-- faltante completo; MANUAL_ADJUSTMENT admite una cantidad parcial con su movimiento del ledger.
+CREATE TABLE dbo.PurchaseOrderShortageResolution (
+    PurchaseOrderShortageResolutionId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    PurchaseOrderId INT NOT NULL,
+    PurchaseOrderLineId INT NOT NULL,
+    ActionLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Entity='ShortageAction'
+    Quantity     DECIMAL(16,3) NOT NULL,
+    ReasonLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),         -- Entity='AdjustmentReason'
+    Notes        NVARCHAR(300) NULL,
+    ReorderPurchaseOrderId INT NULL,
+    InventoryTransactionId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT FK_PoShortage_Po FOREIGN KEY (PurchaseOrderId, TenantId) REFERENCES dbo.PurchaseOrder(PurchaseOrderId, TenantId),
+    CONSTRAINT FK_PoShortage_Line FOREIGN KEY (PurchaseOrderLineId, PurchaseOrderId) REFERENCES dbo.PurchaseOrderLine(PurchaseOrderLineId, PurchaseOrderId),
+    CONSTRAINT FK_PoShortage_Reorder FOREIGN KEY (ReorderPurchaseOrderId, TenantId) REFERENCES dbo.PurchaseOrder(PurchaseOrderId, TenantId),
+    CONSTRAINT CK_PoShortage_Qty CHECK (Quantity > 0)
+);
+CREATE INDEX IX_PoShortage_Line ON dbo.PurchaseOrderShortageResolution(PurchaseOrderLineId);
 GO
 
 /* =========================================================================
@@ -1741,12 +1844,19 @@ GO
 CREATE TABLE dbo.Asn (
     AsnId        INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    ClientId     INT NULL REFERENCES dbo.Client(ClientId),                    -- cargo de un cliente (pasa por almacén, no es de Advance)
-    PurchaseOrderId INT NULL REFERENCES dbo.PurchaseOrder(PurchaseOrderId),   -- compra de Advance a un proveedor (inventario propio)
+    WarehouseId  INT NOT NULL,
+    ClientId     INT NULL,                                                    -- cargo de un cliente (pasa por almacén, no es de Advance)
+    PurchaseOrderId INT NULL,                                                 -- compra de Advance a un proveedor (inventario propio)
     Reference NVARCHAR(80) NULL, ExpectedDate DATE NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='AsnStatus'
-    IsActive     BIT NOT NULL DEFAULT 1
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CONSTRAINT UQ_Asn_IdTenant UNIQUE (AsnId, TenantId),                                                                 -- Lote 6
+    CONSTRAINT FK_Asn_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),     -- Lote 6
+    CONSTRAINT FK_Asn_Client FOREIGN KEY (ClientId, TenantId) REFERENCES dbo.Client(ClientId, TenantId),                 -- Lote 6
+    CONSTRAINT FK_Asn_Po FOREIGN KEY (PurchaseOrderId, TenantId) REFERENCES dbo.PurchaseOrder(PurchaseOrderId, TenantId), -- Lote 6
+    CONSTRAINT CK_Asn_Origin CHECK (ClientId IS NULL OR PurchaseOrderId IS NULL)                                         -- Lote 6: de un cliente o de una PO, nunca ambos
 );
 GO
 
@@ -1754,58 +1864,87 @@ CREATE TABLE dbo.AsnLine (
     AsnLineId    INT IDENTITY(1,1) PRIMARY KEY,
     AsnId        INT NOT NULL REFERENCES dbo.Asn(AsnId),
     ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    ExpectedQty  DECIMAL(16,3) NOT NULL, LotNumber NVARCHAR(60) NULL
+    ExpectedQty  DECIMAL(16,3) NOT NULL, LotNumber NVARCHAR(60) NULL,
+    PurchaseOrderLineId INT NULL REFERENCES dbo.PurchaseOrderLine(PurchaseOrderLineId),  -- Lote 6: línea de PO de origen
+    CONSTRAINT CK_AsnLine_Qty CHECK (ExpectedQty > 0)                                     -- Lote 6
 );
 GO
 
+-- Lote 6: ReceivedAtUtc = fecha de confirmación del recibo (insumo de Contabilización de compras, Lote 10). Un ASN tiene un
+-- solo recibo activo (UX_Receipt_Asn, D6).
 CREATE TABLE dbo.ReceiptHeader (
     ReceiptHeaderId INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
-    AsnId        INT NULL REFERENCES dbo.Asn(AsnId),
-    DockId       INT NULL REFERENCES dbo.WarehouseDock(WarehouseDockId),
+    WarehouseId  INT NOT NULL,
+    AsnId        INT NULL,
+    DockId       INT NULL,
     ReceiptTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='ReceiptType'
     Number       NVARCHAR(40) NOT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='ReceiptStatus'
     ReceivedAtUtc DATETIME2 NULL,
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_Receipt_Number UNIQUE (TenantId, Number)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    ReceivedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CONSTRAINT UQ_Receipt_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_Receipt_IdTenant UNIQUE (ReceiptHeaderId, TenantId),                                                     -- Lote 6
+    CONSTRAINT FK_Receipt_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),   -- Lote 6
+    CONSTRAINT FK_Receipt_Asn FOREIGN KEY (AsnId, TenantId) REFERENCES dbo.Asn(AsnId, TenantId),                           -- Lote 6
+    CONSTRAINT FK_Receipt_Dock FOREIGN KEY (DockId, WarehouseId) REFERENCES dbo.WarehouseDock(WarehouseDockId, WarehouseId) -- Lote 6
 );
+CREATE UNIQUE INDEX UX_Receipt_Asn ON dbo.ReceiptHeader(AsnId) WHERE AsnId IS NOT NULL AND IsActive = 1;   -- Lote 6 (D6)
+CREATE INDEX IX_Receipt_Tenant_Status ON dbo.ReceiptHeader(TenantId, StatusCodeId);                         -- Lote 6
 GO
 
+-- Lote 6: ReceivedQty arranca igual a ExpectedQty (R8); AdjustmentTxnId enlaza el ADJUSTMENT RECEIPT_VARIANCE (D4).
 CREATE TABLE dbo.ReceiptLine (
     ReceiptLineId INT IDENTITY(1,1) PRIMARY KEY,
     ReceiptHeaderId INT NOT NULL REFERENCES dbo.ReceiptHeader(ReceiptHeaderId),
     AsnLineId    INT NULL REFERENCES dbo.AsnLine(AsnLineId),
     ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
-    SerialId     INT NULL REFERENCES dbo.InventorySerial(SerialId),
+    LotId        INT NULL,
+    SerialId     INT NULL,
     ReceivedQty  DECIMAL(16,3) NOT NULL,
-    StagingBinId INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId)
+    StagingBinId INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    ExpectedQty  DECIMAL(16,3) NULL,                                                              -- Lote 6
+    SerialNumbersJson NVARCHAR(MAX) NULL,                                                         -- Lote 6
+    AdjustmentTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),      -- Lote 6
+    CONSTRAINT FK_ReceiptLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),               -- Lote 6
+    CONSTRAINT FK_ReceiptLine_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),   -- Lote 6
+    CONSTRAINT CK_ReceiptLine_Qty CHECK (ReceivedQty >= 0 AND (ExpectedQty IS NULL OR ExpectedQty >= 0))                       -- Lote 6
 );
+CREATE INDEX IX_ReceiptLine_Header ON dbo.ReceiptLine(ReceiptHeaderId);   -- Lote 6
 GO
 
+-- Lote 6 (D19): WarehouseTaskId pasa a INT (historial de estatus, resolvers y RefId son int).
 CREATE TABLE dbo.WarehouseTask (
-    WarehouseTaskId BIGINT IDENTITY(1,1) PRIMARY KEY,
+    WarehouseTaskId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+    WarehouseId  INT NOT NULL,
     TaskTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='WarehouseTaskType'
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='WarehouseTaskStatus'
-    ProductId    INT NULL REFERENCES dbo.Product(ProductId),
+    ProductId    INT NULL,
     LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
     SerialId     INT NULL REFERENCES dbo.InventorySerial(SerialId),
     Quantity     DECIMAL(16,3) NULL,
-    FromBinId    INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
-    ToBinId      INT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    FromBinId    INT NULL,
+    ToBinId      INT NULL,
     RefEntityLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Entity='EntityType'
     RefId        INT NULL,
     AssignedToUserId INT NULL REFERENCES dbo.AspNetUsers(Id),
     Priority     INT NOT NULL DEFAULT 100,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CompletedAtUtc DATETIME2 NULL
+    CompletedAtUtc DATETIME2 NULL,
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CONSTRAINT FK_WhTask_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),       -- Lote 6
+    CONSTRAINT FK_WhTask_Product FOREIGN KEY (ProductId, TenantId) REFERENCES dbo.Product(ProductId, TenantId),               -- Lote 6
+    CONSTRAINT FK_WhTask_FromBin FOREIGN KEY (FromBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),  -- Lote 6
+    CONSTRAINT FK_WhTask_ToBin FOREIGN KEY (ToBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),      -- Lote 6
+    CONSTRAINT CK_WarehouseTask_Qty CHECK (Quantity IS NULL OR Quantity >= 0)                                                  -- Lote 6
 );
 CREATE INDEX IX_WarehouseTask_Queue ON dbo.WarehouseTask(WarehouseId, TaskTypeLookupId, StatusCodeId, Priority);
+CREATE INDEX IX_WarehouseTask_Ref ON dbo.WarehouseTask(RefEntityLookupId, RefId);   -- Lote 6
 GO
 
 CREATE TABLE dbo.PickWave (
@@ -1833,6 +1972,8 @@ CREATE TABLE dbo.PickTask (
 );
 GO
 
+-- Lote 6 (D1): PickWave, PickTask, Carton y CartonLine quedan SIN cambios y sin mapear (las olas se difieren). Carton no
+-- tiene TenantId: el vacío se resuelve cuando se construyan las olas.
 CREATE TABLE dbo.Carton (
     CartonId     INT IDENTITY(1,1) PRIMARY KEY,
     PickWaveId   INT NULL REFERENCES dbo.PickWave(PickWaveId),
@@ -1856,38 +1997,112 @@ GO
 CREATE TABLE dbo.CycleCount (
     CycleCountId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+    WarehouseId  INT NOT NULL,
     Number       NVARCHAR(40) NOT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='CycleCountStatus'
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_CycleCount_Number UNIQUE (TenantId, Number)
+    IsActive     BIT NOT NULL DEFAULT 1,                                      -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    ReconciledAtUtc DATETIME2 NULL,                                           -- Lote 6
+    ReconciledBy INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    RowVersion   ROWVERSION,                                                  -- Lote 6
+    CONSTRAINT UQ_CycleCount_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_CycleCount_IdTenant UNIQUE (CycleCountId, TenantId),                                                     -- Lote 6
+    CONSTRAINT FK_CycleCount_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId)  -- Lote 6
 );
 GO
 
+-- Lote 6 (D22): SystemQty = foto al crear; VarianceQty es informativa (contra la foto). ReconciledSystemQty = saldo en mano
+-- bloqueado al reconciliar (base del ajuste); SystemQtyChanged marca que el saldo se movió desde la foto.
 CREATE TABLE dbo.CycleCountLine (
     CycleCountLineId INT IDENTITY(1,1) PRIMARY KEY,
     CycleCountId INT NOT NULL REFERENCES dbo.CycleCount(CycleCountId),
     WarehouseBinId INT NOT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
     ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
-    LotId        INT NULL REFERENCES dbo.InventoryLot(LotId),
+    LotId        INT NULL,
     SystemQty    DECIMAL(16,3) NOT NULL, CountedQty DECIMAL(16,3) NULL,
     VarianceQty  AS (ISNULL(CountedQty,0) - SystemQty) PERSISTED,
-    AdjustmentTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId)
+    AdjustmentTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+    CountedSerialsJson NVARCHAR(MAX) NULL,                                    -- Lote 6
+    ReconciledSystemQty DECIMAL(16,3) NULL,                                   -- Lote 6 (D22)
+    SystemQtyChanged BIT NOT NULL DEFAULT 0,                                  -- Lote 6 (D22)
+    CONSTRAINT FK_CycleCountLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),   -- Lote 6
+    CONSTRAINT UQ_CycleCountLine UNIQUE (CycleCountId, WarehouseBinId, ProductId, LotId),                            -- Lote 6
+    CONSTRAINT CK_CycleCountLine_Qty CHECK (SystemQty >= 0 AND (CountedQty IS NULL OR CountedQty >= 0) AND (ReconciledSystemQty IS NULL OR ReconciledSystemQty >= 0))  -- Lote 6
 );
+GO
+
+-- Lote 6 (D43): recolección y empaque ad hoc. Number = EMP-##### del contador PACKBATCH (D10): al empacar es el PackBatchNumber
+-- de la orden. Una orden nace de a lo sumo una recolección activa (UX_PickBatch_Order).
+CREATE TABLE dbo.PickBatch (
+    PickBatchId  INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    WarehouseId  INT NOT NULL,
+    Number       NVARCHAR(40) NOT NULL,
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='PickBatchStatus'
+    TransportOrderId INT NULL,
+    ClientInvoiceNumber NVARCHAR(40) NULL,
+    CollectedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CollectedBy  INT NULL REFERENCES dbo.AspNetUsers(Id),
+    PackedAtUtc  DATETIME2 NULL,
+    PackedBy     INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CancelledAtUtc DATETIME2 NULL,
+    CancelledBy  INT NULL REFERENCES dbo.AspNetUsers(Id),
+    IsActive     BIT NOT NULL DEFAULT 1,
+    RowVersion   ROWVERSION,
+    CONSTRAINT UQ_PickBatch_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_PickBatch_IdTenant UNIQUE (PickBatchId, TenantId),
+    CONSTRAINT FK_PickBatch_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),
+    CONSTRAINT FK_PickBatch_Order FOREIGN KEY (TransportOrderId, TenantId) REFERENCES dbo.TransportOrder(TransportOrderId, TenantId),
+    CONSTRAINT CK_PickBatch_Packed CHECK (TransportOrderId IS NULL OR PackedAtUtc IS NOT NULL)
+);
+CREATE UNIQUE INDEX UX_PickBatch_Order ON dbo.PickBatch(TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1;
+CREATE INDEX IX_PickBatch_Tenant_Date ON dbo.PickBatch(TenantId, CollectedAtUtc);
+GO
+
+-- Lote 6: línea recolectada. Quantity en MAGNITUD (el ISSUE del ledger la guarda negativa); UnitCost congelado (D35);
+-- ReversalTxnId = ADJUSTMENT PICK_BATCH_REVERSAL al eliminar la recolección (D13).
+CREATE TABLE dbo.PickBatchLine (
+    PickBatchLineId INT IDENTITY(1,1) PRIMARY KEY,
+    PickBatchId  INT NOT NULL REFERENCES dbo.PickBatch(PickBatchId),
+    ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
+    LotId        INT NULL,
+    SerialId     INT NULL,
+    FromBinId    INT NOT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),
+    Quantity     DECIMAL(16,3) NOT NULL,
+    UnitCost     DECIMAL(18,4) NULL,
+    IssueTxnId   BIGINT NOT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+    ReversalTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+    CONSTRAINT FK_PickBatchLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),
+    CONSTRAINT FK_PickBatchLine_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),
+    CONSTRAINT CK_PickBatchLine CHECK (Quantity > 0 AND (UnitCost IS NULL OR UnitCost >= 0) AND (SerialId IS NULL OR Quantity = 1))
+);
+CREATE INDEX IX_PickBatchLine_Batch ON dbo.PickBatchLine(PickBatchId);
 GO
 
 /* =========================================================================
    CAPA 15 — CROSS-DOCKING
    ========================================================================= */
+-- Lote 6 (D30): cita de muelle sin solapamiento por muelle (regla de servicio bajo el bloqueo del muelle); ASN o Trip, nunca ambos.
 CREATE TABLE dbo.DockAppointment (
     DockAppointmentId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseDockId INT NOT NULL REFERENCES dbo.WarehouseDock(WarehouseDockId),
+    WarehouseDockId INT NOT NULL,
     DirectionLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='DockDirection'
-    AsnId        INT NULL REFERENCES dbo.Asn(AsnId),
-    TripId       INT NULL REFERENCES dbo.Trip(TripId),
+    AsnId        INT NULL,
+    TripId       INT NULL,
     ScheduledStartUtc DATETIME2 NOT NULL, ScheduledEndUtc DATETIME2 NULL,
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId)         -- Entity='AppointmentStatus'
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='AppointmentStatus'
+    WarehouseId  INT NOT NULL,                                                -- Lote 6
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CONSTRAINT FK_DockAppt_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),          -- Lote 6
+    CONSTRAINT FK_DockAppt_Dock FOREIGN KEY (WarehouseDockId, WarehouseId) REFERENCES dbo.WarehouseDock(WarehouseDockId, WarehouseId),  -- Lote 6
+    CONSTRAINT FK_DockAppt_Asn FOREIGN KEY (AsnId, TenantId) REFERENCES dbo.Asn(AsnId, TenantId),                                  -- Lote 6
+    CONSTRAINT FK_DockAppt_Trip FOREIGN KEY (TripId, TenantId) REFERENCES dbo.Trip(TripId, TenantId),                              -- Lote 6
+    CONSTRAINT CK_DockAppt_Window CHECK (ScheduledEndUtc IS NULL OR ScheduledEndUtc > ScheduledStartUtc),                          -- Lote 6
+    CONSTRAINT CK_DockAppt_Ref CHECK (AsnId IS NULL OR TripId IS NULL)                                                             -- Lote 6
 );
 CREATE INDEX IX_DockAppointment_Dock ON dbo.DockAppointment(WarehouseDockId, ScheduledStartUtc);
 GO
@@ -1895,24 +2110,38 @@ GO
 CREATE TABLE dbo.CrossDockPlan (
     CrossDockPlanId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+    WarehouseId  INT NOT NULL,
     Number       NVARCHAR(40) NOT NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='CrossDockStatus'
-    StagingZoneId INT NULL REFERENCES dbo.WarehouseZone(WarehouseZoneId),
+    StagingZoneId INT NULL,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    CONSTRAINT UQ_CrossDockPlan_Number UNIQUE (TenantId, Number)
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CompletedAtUtc DATETIME2 NULL,                                            -- Lote 6
+    CONSTRAINT UQ_CrossDockPlan_Number UNIQUE (TenantId, Number),
+    CONSTRAINT UQ_CrossDockPlan_IdTenant UNIQUE (CrossDockPlanId, TenantId),                                                  -- Lote 6
+    CONSTRAINT FK_CdPlan_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),       -- Lote 6
+    CONSTRAINT FK_CdPlan_StagingZone FOREIGN KEY (StagingZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId)  -- Lote 6
 );
 GO
 
+-- Lote 6 (D29): ConfirmedQty = cantidad cubierta al confirmar el recibo; NULL mientras el recibo está abierto;
+-- AllocatedQty − ConfirmedQty = faltante outbound visible (L320). Lo confirmado queda reservado en staging hasta moverlo.
 CREATE TABLE dbo.CrossDockAllocation (
     CrossDockAllocationId INT IDENTITY(1,1) PRIMARY KEY,
     CrossDockPlanId INT NOT NULL REFERENCES dbo.CrossDockPlan(CrossDockPlanId),
     ReceiptLineId INT NOT NULL REFERENCES dbo.ReceiptLine(ReceiptLineId),
-    TransportOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),
+    TransportOrderId INT NOT NULL REFERENCES dbo.TransportOrder(TransportOrderId),   -- Lote 6: NOT NULL
     CargoLineId  INT NULL REFERENCES dbo.CargoLine(CargoLineId),
     AllocatedQty DECIMAL(16,3) NOT NULL,
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId)         -- Entity='AllocationStatus'
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='AllocationStatus'
+    WarehouseTaskId INT NULL REFERENCES dbo.WarehouseTask(WarehouseTaskId),   -- Lote 6
+    InventoryTransactionId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),  -- Lote 6
+    ConfirmedQty DECIMAL(16,3) NULL,                                          -- Lote 6 (D29)
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 6
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    CONSTRAINT CK_CdAlloc_Qty CHECK (AllocatedQty > 0 AND (ConfirmedQty IS NULL OR (ConfirmedQty >= 0 AND ConfirmedQty <= AllocatedQty)))  -- Lote 6
 );
+CREATE INDEX IX_CdAlloc_ReceiptLine ON dbo.CrossDockAllocation(ReceiptLineId);   -- Lote 6
 GO
 
 /* =========================================================================
@@ -2314,19 +2543,26 @@ GO
 /* =========================================================================
    VISTAS
    ========================================================================= */
+-- Lote 6 (D32): ampliada para BI y SQL externo (la API arma la genealogía por LINQ con filtro de tenant). Conserva las columnas
+-- existentes en su orden y agrega al final el id del movimiento, las posiciones, NetQuantity (0 en TRANSFER: Σ NetQuantity por
+-- producto = existencia, maestro L331), el motivo y el usuario. Quantity viene CON SIGNO (D3).
 CREATE VIEW dbo.vw_LotGenealogy AS
 SELECT t.TenantId, t.ProductId, p.Sku, p.Name AS ProductName,
        t.LotId, l.LotNumber, l.ExpiryDate, t.SerialId, s.SerialNumber,
        t.TxnTypeLookupId, txn.InternalCode AS TxnType, t.Quantity,
        t.FromWarehouseId, t.ToWarehouseId,
-       t.RefEntityLookupId, ref.InternalCode AS RefEntity, t.RefId, t.CreatedAtUtc
+       t.RefEntityLookupId, ref.InternalCode AS RefEntity, t.RefId, t.CreatedAtUtc,
+       t.InventoryTransactionId, t.FromBinId, t.ToBinId,
+       NetQuantity = CASE WHEN txn.InternalCode = 'TRANSFER' THEN 0 ELSE t.Quantity END,
+       t.ReasonLookupId, reason.InternalCode AS Reason, t.CreatedBy
 FROM dbo.InventoryTransaction t
 JOIN dbo.Product p ON p.ProductId = t.ProductId
 LEFT JOIN dbo.InventoryLot l ON l.LotId = t.LotId
 LEFT JOIN dbo.InventorySerial s ON s.SerialId = t.SerialId
 LEFT JOIN dbo.LookupCode txn ON txn.LookupCodeId = t.TxnTypeLookupId
-LEFT JOIN dbo.LookupCode ref ON ref.LookupCodeId = t.RefEntityLookupId;
+LEFT JOIN dbo.LookupCode ref ON ref.LookupCodeId = t.RefEntityLookupId
+LEFT JOIN dbo.LookupCode reason ON reason.LookupCodeId = t.ReasonLookupId;
 GO
 
-PRINT 'Estructura creada: ~133 tablas (Identity, campos personalizados, informes, indicadores, gráficos, ciclo COD y pago a choferes), en capas ordenadas por dependencias + vista de genealogía.';
+PRINT 'Estructura creada: ~136 tablas (Identity, campos personalizados, informes, indicadores, gráficos, ciclo COD, pago a choferes, faltantes de compras y recolección y empaque), en capas ordenadas por dependencias + vista de genealogía.';
 GO

@@ -4,13 +4,14 @@ using Xunit;
 namespace Teikem.Tests;
 
 /// <summary>
-/// Lote 5 / P0: el SQL crudo está confinado. FromSql*, SqlQuery* y ExecuteSql* solo aparecen en los cuatro archivos que lo
-/// necesitan (bloqueos de fila, contadores, GEOGRAPHY y pings), y cada sentencia de TripQueries filtra explícitamente por
-/// 'TenantId =' (el SQL crudo no pasa por el filtro global cuando no se compone sobre un DbSet).
+/// Lote 5 / P0: el SQL crudo está confinado. FromSql*, SqlQuery* y ExecuteSql* solo aparecen en los archivos que lo
+/// necesitan (bloqueos de fila, contadores, GEOGRAPHY y pings; Lote 6: InventoryQueries con los bloqueos del inventario), y
+/// cada sentencia de TripQueries e InventoryQueries filtra explícitamente por 'TenantId =' (el SQL crudo no pasa por el filtro
+/// global cuando no se compone sobre un DbSet).
 /// </summary>
 public class RawSqlConfinementTests
 {
-    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs" };
+    private static readonly string[] Allowed = { "FleetQueries.cs", "NumberSequenceService.cs", "DriverPayPolicyService.cs", "TripQueries.cs", "InventoryQueries.cs" };
 
     private static readonly Regex RawSqlApi = new(@"\b(FromSql\w*|SqlQuery\w*|ExecuteSql\w*)\s*[<(]", RegexOptions.Compiled);
 
@@ -53,6 +54,31 @@ public class RawSqlConfinementTests
         Assert.Contains(statements, s => s.Contains("p.TripId IS NULL AND p.CapturedAtUtc >= k.StartUtc"));
 
         // Solo interpolación parametrizada: nada de FromSqlRaw/ExecuteSqlRaw con cadenas armadas a mano.
+        Assert.DoesNotContain("SqlRaw", text);
+    }
+
+    [Fact]
+    public void Every_inventory_queries_statement_filters_by_tenant()
+    {
+        var file = SourceFiles().Single(f => Path.GetFileName(f) == "InventoryQueries.cs");
+        var text = File.ReadAllText(file);
+        var statements = Regex.Matches(text, "\\$\"((?:SELECT|UPDATE|IF|INSERT|MERGE)[^\"]*)\"").Select(m => m.Groups[1].Value).ToList();
+
+        // (1) upsert, (2) bloqueo por clave, (3-5) rangos, (6-14) encabezados, (15) muelle, (16) series, (17) lote.
+        Assert.Equal(17, statements.Count);
+        Assert.All(statements, s => Assert.Contains("TenantId = {tenantId}", s));
+        Assert.Contains(statements, s => s.StartsWith("IF NOT EXISTS (SELECT 1 FROM dbo.StockBalance WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal) && s.Contains("INSERT INTO dbo.StockBalance"));
+        Assert.Contains(statements, s => s.StartsWith("SELECT * FROM dbo.StockBalance WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));
+        Assert.Equal(3, statements.Count(s => s.StartsWith("SELECT * FROM dbo.StockBalance WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal)));
+        foreach (var (table, pk) in new[] { ("PickBatch", "PickBatchId"), ("CrossDockPlan", "CrossDockPlanId"), ("CycleCount", "CycleCountId"),
+                     ("ReceiptHeader", "ReceiptHeaderId"), ("Asn", "AsnId"), ("PurchaseOrder", "PurchaseOrderId"), ("Product", "ProductId"),
+                     ("Warehouse", "WarehouseId"), ("WarehouseTask", "WarehouseTaskId") })
+            Assert.Contains(statements, s => s.StartsWith($"SELECT {pk} AS Value FROM dbo.{table} WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal));
+        Assert.Contains(statements, s => s.StartsWith("SELECT d.WarehouseDockId AS Value FROM dbo.WarehouseDock d WITH (UPDLOCK, ROWLOCK) JOIN dbo.Warehouse w", StringComparison.Ordinal));
+        Assert.Contains(statements, s => s.StartsWith("SELECT s.* FROM dbo.InventorySerial s WITH (UPDLOCK, ROWLOCK)", StringComparison.Ordinal) && s.Contains("OPENJSON"));
+        Assert.Contains(statements, s => s.StartsWith("SELECT l.LotId AS Value FROM dbo.InventoryLot l WITH (UPDLOCK, HOLDLOCK)", StringComparison.Ordinal));
+        // Warehouse.GeoPoint es GEOGRAPHY: nunca 'SELECT *' sobre el almacén.
+        Assert.DoesNotContain(statements, s => s.Contains("SELECT * FROM dbo.Warehouse ", StringComparison.Ordinal));
         Assert.DoesNotContain("SqlRaw", text);
     }
 }

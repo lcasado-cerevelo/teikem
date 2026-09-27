@@ -1378,3 +1378,236 @@ puede escribir sobre una corrida ni averiguar qué ids existen. En campos person
 `trips.view` recibe antes **403** ("Falta el permiso 'trips.view'."), también sin revelar si la corrida existe.
 Si necesitas anotar algo sobre una optimización, hazlo en la ruta (`TRIP`), que sí admite contactos y campos
 personalizados con el permiso `trips.plan`.
+
+## Lote 6 — Inventario y almacén
+
+### Almacenes y ubicaciones
+
+**¿Qué significa "El código solo admite letras, números, guion y guion bajo (máximo 30)."? (400)**
+El código de un almacén, zona o muelle solo acepta `A-Z`, `0-9`, `-` y `_`, hasta 30 caracteres (se guarda en
+mayúsculas). Corrige el código en la solicitud.
+
+**¿Qué significa "Indique el código de la posición o su pasillo/rack/nivel/posición."? (400)**
+Al crear una posición hay que dar un código explícito o al menos una de sus partes (pasillo, rack, nivel,
+posición): con las partes, el sistema arma el código compuesto (`A01-R02-N3-P04`).
+
+**¿Qué significa "Ya existe un almacén con ese código."? (409)**
+El código de almacén es único por compañía. Elige otro código; el existente no se puede reutilizar aunque esté
+dado de baja.
+
+**¿Qué significa "El código del almacén no se puede cambiar."? (400)**
+El código de un almacén (o de una zona o un muelle) es inmutable una vez creado. Si lo escribiste mal, da de baja
+el almacén y crea uno nuevo con el código correcto (solo si sigue vacío).
+
+**¿Qué significa "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja."? (409)**
+La baja de un almacén es **definitiva**: solo procede si no tiene saldo (en mano ni reservado) y no tiene recibos,
+conteos, tareas, recolecciones, planes de cruce de muelle o citas abiertas. La respuesta trae `errors` con el
+detalle por tipo (`inventory`, `receipts`, `cycleCounts`, `tasks`, `pickBatches`, `crossDockPlans`,
+`appointments`): cierra o vacía lo que aparezca ahí antes de reintentar.
+
+**¿Qué significa "El almacén está dado de baja; solo se consulta."? (422)**
+Intentaste editar o volver a dar de baja un almacén ya inactivo. La baja de almacén no tiene reversa: si necesitas
+operar en él, da de alta un almacén nuevo.
+
+**¿Qué significa "La posición {code} tiene inventario; no se puede desactivar."? (409)**
+Mueve o retira el inventario de esa posición (transferencia o ajuste de salida) antes de desactivarla.
+
+**¿Qué significa "Indique el almacén: la compañía tiene más de uno."? (400)**
+Varias acciones (recibir, recolectar, contar, crear una orden de compra o un plan de cruce de muelle) usan el
+único almacén activo del tenant si no se indica ninguno. Con más de un almacén activo hay que enviar
+`warehousePublicId` explícitamente.
+
+### Productos y categorías
+
+**¿Qué significa "Ya existe un producto con ese SKU para ese dueño."? (409)**
+El SKU es único **por dueño**: el mismo SKU puede repetirse entre un producto propio del tenant y uno de un
+cliente 3PL distinto, pero no dos veces para el mismo dueño. Cambia el SKU o revisa si ya existe el producto.
+
+**¿Qué significa "No se puede cambiar {el tipo de seguimiento / la unidad de medida base / el dueño} de un
+producto que ya tiene movimientos."? (409)**
+El tipo de seguimiento (NONE/LOT/SERIAL), la unidad de medida base y el dueño (`ClientId`) del producto se fijan
+en la práctica desde el primer movimiento del ledger (una recepción, un ajuste, etc.). Si el producto todavía no
+tiene ningún movimiento, esos campos sí se pueden editar.
+
+**¿Qué significa "El producto {sku} tiene inventario en mano ({qty}); no se puede desactivar."? (409)**
+Saca o transfiere el inventario en mano del producto (a cero) antes de darlo de baja.
+
+**¿Qué significa "El mínimo de picking requiere una posición preferida en una zona PICKING."? (400)**
+`MinPickQty` dispara el reabasto automático hacia la posición preferida del producto; esa posición tiene que
+existir y estar en una zona de tipo `PICKING`. Asigna primero `preferredBinPublicId`/`preferredWarehousePublicId`
+en una posición de picking, o quita `minPickQty`.
+
+### Inventario, Kárdex y ajustes
+
+**¿Qué significa "Inventario insuficiente de {sku} en {bin}: disponible {x}, solicitado {y}."? (409,
+`insufficient_stock`)**
+Un despacho, transferencia, ajuste de salida o recolección pidió más de lo disponible (en mano menos reservado)
+en esa posición. La operación se revierte completa (no queda ningún movimiento parcial). Reduce la cantidad,
+recolecta de otra posición o corrige el saldo con un conteo cíclico.
+
+**¿Qué significa "El motivo {código} lo asigna el sistema."? (400)**
+`RECEIPT_VARIANCE`, `COUNT_VARIANCE` y `PICK_BATCH_REVERSAL` son motivos que solo el sistema usa (recepción,
+conteo y reversa de una recolección, respectivamente). Un ajuste manual capturado por un usuario debe usar otro
+motivo del catálogo `AdjustmentReason` (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER`).
+
+**¿Qué significa "El origen y el destino no pueden ser la misma posición."? (400)**
+Una transferencia mueve inventario entre dos posiciones distintas (pueden ser de almacenes distintos). Si
+necesitas "mover" dentro de la misma posición, no hay nada que hacer: ya está ahí.
+
+**¿Qué significa "El lote {n} ya existe con otras fechas; corrija las fechas o use otro número de lote."? (409)**
+El número de lote ya existe para ese producto con fechas de fabricación/vencimiento distintas a las que
+capturaste. El sistema nunca sobrescribe las fechas de un lote existente: usa el mismo número sin capturar fechas
+(se reutiliza tal cual) o da de alta un número de lote distinto.
+
+**¿Qué significa "La reserva a liberar excede lo reservado."? (409)**
+Se intentó liberar más cantidad reservada de la que realmente hay reservada en esa posición/lote (por ejemplo,
+al cancelar una asignación de cruce de muelle dos veces). Es una guarda interna; si la ves como usuario, revisa
+si la operación ya se hizo antes.
+
+### Recepción (ASN y recibos)
+
+**¿Qué significa "El almacén no tiene una posición de recepción (zona STAGING); indíquela."? (422)**
+El almacén necesita al menos una posición activa en una zona de tipo `STAGING` para poder recibir mercancía (ahí
+"aterriza" antes del putaway). Crea una zona `STAGING` con al menos una posición, o indica `stagingBinId`
+explícitamente si ya existe.
+
+**¿Qué significa "El aviso de llegada ya tiene un recibo abierto o confirmado."? (409)**
+Un mismo aviso de llegada (ASN) admite un solo recibo activo a la vez. Si el recibo anterior se equivocó,
+elimínalo (solo si sigue `OPEN`) antes de crear uno nuevo contra el mismo aviso.
+
+**¿Qué significa "La orden de compra debe estar enviada o recibida parcial para recibir contra ella."? (422)**
+Solo se recibe contra una PO en `SENT` o `PARTIAL`. Una `DRAFT` primero se debe enviar (`POST .../send`); una
+`RECEIVED` o `CANCELLED` ya no admite más recepciones.
+
+**¿Qué significa "El recibo {n} ya fue confirmado; no se puede modificar."? (422)**
+Los recibos se confirman **completos**, no línea por línea, y una vez confirmados quedan congelados (no se
+capturan más líneas ni se cambian cantidades). Si algo salió mal después de confirmar, usa un ajuste manual de
+inventario o, si aplica, una devolución (`RETURN`).
+
+**¿Qué significa "Las líneas del aviso de llegada no se eliminan; capture 0 como recibido."? (400)**
+Una línea que viene del aviso de llegada (o de la orden de compra) no se borra del recibo, porque documenta lo
+esperado: si al final no llegó nada, captura `receivedQty: 0` en esa línea en vez de intentar eliminarla.
+
+**¿Qué significa "El producto {sku} no pertenece al cliente del aviso de llegada."? (400)**
+Un aviso de llegada de un cliente 3PL solo admite productos cuyo dueño (`ClientId`) sea ese mismo cliente.
+Verifica el dueño del producto o el cliente del aviso.
+
+### Tareas de almacén (cola, putaway, reabasto)
+
+**¿Qué significa "Las tareas de tipo {tipo} no se completan desde la cola."? (422)**
+Este lote solo trae handlers para `PUTAWAY`, `REPLENISH`, `COUNT` y `CROSSDOCK`. Los tipos `PICK`, `PACK` y `LOAD`
+todavía no tienen una pantalla ni un handler que los complete desde la cola (quedan para lotes posteriores).
+
+**¿Qué significa "Las tareas de conteo se completan desde Conteo cíclico."? (422)**
+Una tarea `COUNT` se puede **iniciar** desde la cola de tareas, pero solo se **completa** reconciliando su conteo
+(`POST /api/v1/cycle-counts/{id}/reconcile`), porque ahí es donde se calculan y asientan los ajustes.
+
+**¿Qué significa "La cantidad excede la de la tarea."? (400)**
+Al completar una tarea desde la cola, la cantidad indicada no puede ser mayor que la de la tarea. Si sobró
+producto, complétala por la cantidad de la tarea; el remanente (si lo hay, por menos de lo pedido) queda como una
+tarea nueva automáticamente.
+
+### Conteo cíclico
+
+**¿Qué significa "El conteo de {sku} en {bin} ({contado}) es menor que lo reservado ({reservado}); libere la
+reserva antes de reconciliar."? (409)**
+Al reconciliar, lo contado no puede quedar por debajo de lo que ya está reservado en esa posición (por ejemplo,
+para un cruce de muelle): el ajuste dejaría el saldo reservado por encima del saldo en mano, lo que el sistema
+nunca permite. Libera esa reserva (o espera a que se mueva) antes de reconciliar esa línea.
+
+**¿Qué significa "Faltan {n} línea(s) por contar."? (422)**
+"Terminar de contar" (`OPEN → COUNTED`) exige que todas las líneas del conteo tengan una captura (cantidad o
+series). Completa las que falten o elimínalas si no aplican.
+
+**¿Por qué una línea del conteo aparece marcada `systemQtyChanged`?**
+Significa que el saldo en mano se movió (por otro movimiento del ledger) entre el momento en que se tomó la foto
+del sistema y el momento en que se reconcilió. El ajuste que se asentó es correcto (se calculó contra el saldo
+**actual**, no contra la foto vieja), pero la marca sirve para que alguien revise si ese movimiento intermedio
+tiene sentido.
+
+### Recolección y empaque
+
+**¿Qué significa "Una recolección solo puede tener productos de un mismo dueño."? (400)**
+No se mezclan en una misma recolección productos propios del tenant con productos de un cliente 3PL, ni de dos
+clientes distintos. Haz recolecciones separadas por dueño.
+
+**¿Qué significa "Inventario insuficiente de {sku} en {where}: disponible {x}, solicitado {y}."? (409,
+`insufficient_stock`) al recolectar**
+No hay suficiente disponible del producto (FEFO agotado o posición/lote/serie explícito sin existencia) para
+cubrir la cantidad pedida. La recolección completa se cancela, incluido el número `EMP-#####` (no queda ningún
+hueco en la numeración). Reduce la cantidad o revisa el saldo disponible antes de reintentar.
+
+**¿Qué significa "La orden de la recolección {n} ya avanzó a '{estatus}'; la recolección ya no se puede
+eliminar."? (422)**
+Una recolección ya empacada (`PACKED`) solo se elimina si su orden real todavía está en la **etapa inicial** (por
+ejemplo, sin confirmar todavía). Si la orden ya avanzó, hay que trabajar sobre la orden directamente (ver el
+siguiente mensaje).
+
+**¿Qué significa "Esta orden nació de la recolección {n}; elimínela desde Recolección y empaque para restaurar el
+inventario."? (409)**
+Una orden creada al "empacar" una recolección solo se elimina desde `DELETE /api/v1/pick-batches/{publicId}`, no
+desde `DELETE /api/v1/orders/{publicId}`, porque eliminarla desde ahí no revierte el inventario que salió al
+recolectar. Ve a Recolección y empaque para eliminarla correctamente.
+
+### Compras y faltantes
+
+**¿Qué significa "El estatus actual no permite la acción 'EDIT_PURCHASE_ORDER'."? (422)**
+Por defecto, una orden de compra solo se edita en `DRAFT`. Fuera de ese estatus (enviada, recibida parcial,
+recibida o cancelada) la edición está negada, salvo que el administrador del tenant la habilite para `SENT` o
+`PARTIAL` desde `/api/v1/status/capabilities/PURCHASE_ORDER`.
+
+**¿Qué significa "La línea de {sku} ya tiene recepciones: no se elimina, no baja de lo recibido ({x}) y su costo
+no cambia."? (400/409)**
+Aunque tu compañía habilite editar una orden de compra fuera de `DRAFT`, una línea que ya recibió mercancía queda
+protegida: no se puede quitar de la orden, no se puede pedir menos de lo ya recibido, y su costo unitario no
+cambia (ya se usó para calcular el valor de lo recibido).
+
+**¿Qué significa "Una orden de compra recibida completa no se cancela."? (422)**
+Una orden `RECEIVED` es terminal: ya se recibió todo lo pedido (o se resolvió el faltante). No hay nada que
+cancelar; si algo llegó mal, corrígelo con un ajuste de inventario.
+
+**¿Qué significa "La orden de compra tiene un recibo abierto; confírmelo o elimínelo antes de cancelar."? (409)**
+No se puede cancelar una orden de compra mientras tiene un recibo `OPEN` (una recepción a medio capturar) contra
+ella. Confirma ese recibo o elimínalo primero.
+
+**¿Qué significa "Una orden de compra con recepciones no se elimina; cancélela."? (409)**
+Una vez que una orden de compra tiene alguna recepción confirmada, ya no se borra (se conserva por su historial
+de inventario): en su lugar se cancela (posible desde `DRAFT`, `SENT` o `PARTIAL`).
+
+**¿Qué significa "La cantidad del ajuste excede el faltante pendiente ({pendiente})."? (400)**
+Un ajuste manual sobre el faltante de una línea no puede pedir más de lo que realmente falta por recibir en esa
+línea (ordenado − recibido − ya resuelto). Revisa el pendiente actual (`GET .../shortage-lines`) antes de resolver.
+
+**¿Qué significa "Cerrar y Reordenar resuelven el faltante completo ({pendiente}); para una parte use el ajuste
+manual."? (400)**
+Las acciones `CLOSE` y `REORDER` siempre resuelven **todo** el pendiente de la línea; no aceptan una cantidad
+parcial. Si solo quieres resolver una parte del faltante, usa `MANUAL_ADJUSTMENT` con la cantidad exacta.
+
+### Cruce de muelle
+
+**¿Qué significa "El módulo 'CROSSDOCK' no está habilitado para esta compañía."? (403, `module_disabled`)**
+El cruce de muelle es una demostración funcional, apagada por defecto. Un administrador la enciende desde
+Configuración de la compañía (acción sensible: exige reautenticación reciente, `POST /api/v1/auth/reauth`).
+
+**¿Qué significa "El muelle ya tiene una cita que se solapa con ese horario."? (409)**
+Dos citas no pueden ocupar el mismo muelle al mismo tiempo (ventana semiabierta: una cita que termina a las 10:00
+no choca con otra que empieza a las 10:00). Elige otro horario o otro muelle.
+
+**¿Qué significa "La cantidad excede lo disponible para cruce de muelle ({disponible})."? (409)**
+La cantidad que intentas asignar a una orden supera lo que todavía se puede asignar de esa línea de recibo (lo
+recibido/esperado menos lo ya asignado a otras órdenes, o el putaway pendiente si el recibo ya está confirmado).
+Revisa `GET /api/v1/cross-dock-plans/{id}/candidates` para ver lo asignable real.
+
+**¿Qué significa "La recepción de la línea todavía no se confirma; la mercancía se mueve después de confirmar."?
+(422)**
+Cuando la asignación es sobre un recibo todavía **abierto**, la mercancía física no se mueve (el `CROSSDOCK`)
+hasta que ese recibo se confirme: al confirmarlo, el sistema reparte lo realmente recibido entre las asignaciones
+y ahí sí queda lista para moverse.
+
+**¿Qué significa "La tarea de cruce de muelle se completa por la cantidad confirmada ({qty})."? (400)**
+Al completar la tarea `CROSSDOCK` desde la cola, la cantidad tiene que ser exactamente la que quedó **confirmada**
+en la asignación (no la que se había planeado originalmente, si hubo un faltante al confirmar el recibo).
+
+**¿Qué significa "Mueva o cancele las asignaciones pendientes antes de completar el plan."? (422)**
+Un plan de cruce de muelle solo se completa (estatus terminal) cuando ninguna de sus asignaciones sigue
+`PLANNED`: muévelas (para que salgan del inventario) o cancélalas primero.

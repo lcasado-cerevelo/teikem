@@ -61,14 +61,18 @@ public class AnalyticsSeedFieldsTests
     private sealed record FieldUse(string Source, string Where, string Field);
 
     /// <summary>Corre el seeder real y devuelve cada uso de campo de las definiciones de TRIP y TRANSPORT_ORDER.</summary>
-    private static async Task<(List<FieldUse> Uses, List<string> Reports, List<(string Name, string Source)> Indicators, List<(string Name, string Source)> Charts)> SeedAsync()
+    private static Task<(List<FieldUse> Uses, List<string> Reports, List<(string Name, string Source)> Indicators, List<(string Name, string Source)> Charts)> SeedAsync()
+        => SeedAsync(new[] { EntityTypes.Trip, EntityTypes.TransportOrder }, EntityTypes.Trip);
+
+    /// <summary>Corre el seeder real y devuelve cada uso de campo de las definiciones de las fuentes dadas.</summary>
+    private static async Task<(List<FieldUse> Uses, List<string> Reports, List<(string Name, string Source)> Indicators, List<(string Name, string Source)> Charts)> SeedAsync(
+        string[] sources, string? reportSource)
     {
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
         var lookups = new FakeLookups();
         using var db = InMemoryDb(tenant);
         await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
 
-        var sources = new[] { EntityTypes.Trip, EntityTypes.TransportOrder };
         var uses = new List<FieldUse>();
 
         var reports = new List<string>();
@@ -76,7 +80,7 @@ public class AnalyticsSeedFieldsTests
         {
             var source = lookups.CodeOf(r.BaseEntityTypeLookupId);
             if (source is null || !sources.Contains(source)) continue;
-            if (source == EntityTypes.Trip) reports.Add(r.Name);
+            if (reportSource is null || source == reportSource) reports.Add(r.Name);
             var where = $"vista '{r.Name}'";
             foreach (var c in JsonSerializer.Deserialize<string[]>(r.ColumnsJson ?? "[]") ?? Array.Empty<string>()) uses.Add(new(source, where, c));
             foreach (var f in JsonFields(r.FilterJson)) uses.Add(new(source, where + " (filtro)", f));
@@ -326,5 +330,159 @@ public class AnalyticsSeedFieldsTests
         Assert.Single(await source.LoadAsync(new DataQuery { FromUtc = new DateTime(2026, 9, 26), ToUtc = new DateTime(2026, 9, 27) }, default));
         Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = new DateTime(2026, 9, 27), ToUtc = new DateTime(2026, 9, 28) }, default));
         Assert.Empty(await source.LoadAsync(new DataQuery { Ids = new[] { 200 } }, default));
+    }
+
+    // ================================================================ Lote 6 — Inventario y almacén
+
+    private static readonly string[] WmsSources =
+    {
+        EntityTypes.Warehouse, EntityTypes.Product, EntityTypes.StockBalance, EntityTypes.InventoryTransaction, EntityTypes.Receipt,
+        EntityTypes.WarehouseTask, EntityTypes.PickBatch,
+    };
+
+    private static Teikem.Infrastructure.Analytics.IDataSource WmsSource(string key)
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var db = InMemoryDb(tenant);
+        var lookups = new FakeLookups();
+        var reads = new Teikem.Infrastructure.Services.InventoryReadService(db, tenant, lookups);
+        return key switch
+        {
+            EntityTypes.Warehouse => new WarehouseDataSource(db, tenant),
+            EntityTypes.Product => new ProductDataSource(db, lookups),
+            EntityTypes.StockBalance => new StockBalanceDataSource(db, reads),
+            EntityTypes.InventoryTransaction => new InventoryTransactionDataSource(db, reads),
+            EntityTypes.Receipt => new ReceiptDataSource(db, tenant, lookups),
+            EntityTypes.WarehouseTask => new WarehouseTaskDataSource(db, tenant, lookups),
+            EntityTypes.PickBatch => new PickBatchDataSource(db, tenant),
+            _ => throw new ArgumentOutOfRangeException(nameof(key)),
+        };
+    }
+
+    [Fact]
+    public async Task Lote6_old_movements_view_is_renamed_once_without_duplicates()
+    {
+        // Tenant sembrado con la versión L874 ('Movimientos por tipo', un solo campo): el seeder la corrige a la L887.
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        db.ReportDefinitions.Add(new Teikem.Domain.Analytics.ReportDefinition
+        {
+            TenantId = TenantId, Name = SystemAnalyticsSeeder.MovementsByTypeReportNameV1, IsSystem = true,
+            GroupJson = SystemAnalyticsSeeder.MovementsByTypeGroupV1,
+        });
+        await db.SaveChangesAsync();
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        var views = await db.ReportDefinitions.AsNoTracking().Where(r => r.Name.StartsWith("Movimientos por tipo")).ToListAsync();
+        var view = Assert.Single(views);
+        Assert.Equal(SystemAnalyticsSeeder.MovementsByTypeReportName, view.Name);
+        Assert.Equal(SystemAnalyticsSeeder.MovementsByTypeGroup, view.GroupJson);
+    }
+
+    [Fact]
+    public async Task Lote6_system_content_is_seeded_in_the_warehouse_module()
+    {
+        var (_, reports, indicators, charts) = await SeedAsync(WmsSources, null);
+        foreach (var name in new[] { "Inventario", "Inventario bajo mínimo", "Productos por cliente dueño", "Kárdex de movimientos", "Movimientos por tipo y producto",
+                     "Ajustes de inventario", "Próximos a vencer", "Recepciones con diferencia" })
+            Assert.Contains(name, reports);
+        foreach (var (name, source) in new[]
+                 {
+                     ("Productos activos", EntityTypes.Product), ("Inventario disponible", EntityTypes.StockBalance),
+                     ("Movimientos registrados", EntityTypes.InventoryTransaction), ("Valor de inventario a costo", EntityTypes.StockBalance),
+                     ("Productos bajo mínimo", EntityTypes.Product), ("Valor de inventario a venta", EntityTypes.StockBalance),
+                     ("Tareas de almacén pendientes", EntityTypes.WarehouseTask),
+                 })
+            Assert.Contains((name, source), indicators);
+        Assert.Equal(7, indicators.Count);
+        foreach (var name in new[] { "Valor de inventario por categoría", "Disponible por categoría", "Movimientos por tipo", "Movimientos por usuario",
+                     "Productos por categoría", "Movimientos por día" })
+            Assert.Contains(charts, c => c.Name == name);
+        Assert.Equal(6, charts.Count);
+
+        // Forma exacta de las vistas del mock (L874) y de los indicadores de dinero, todos en el módulo WAREHOUSE.
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        // Maestro L887 (amplía la L874): 'Movimientos por tipo y producto', dos campos de agrupación y fila de totales.
+        var byType = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == SystemAnalyticsSeeder.MovementsByTypeReportName);
+        Assert.Equal("Movimientos por tipo y producto", byType.Name);
+        Assert.Equal(SystemAnalyticsSeeder.MovementsByTypeGroup, byType.GroupJson);
+        using (var group = JsonDocument.Parse(byType.GroupJson!))
+        {
+            var by = group.RootElement.GetProperty("by").EnumerateArray().Select(e => e.GetString()).ToArray();
+            Assert.Equal(new[] { "TxnType", "Sku" }, by);
+            Assert.True(group.RootElement.GetProperty("totals").GetBoolean());
+        }
+        Assert.False(await db.ReportDefinitions.AnyAsync(r => r.Name == SystemAnalyticsSeeder.MovementsByTypeReportNameV1));
+        Assert.Contains("\"fn\":\"SUM\",\"field\":\"Quantity\"", byType.GroupJson);
+        var byOwner = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == "Productos por cliente dueño");
+        Assert.Equal(SystemAnalyticsSeeder.ActiveProductsFilter, byOwner.FilterJson);
+        Assert.Equal(new[] { "OwnerName", "Sku", "Name", "QtyOnHand", "QtyAvailable" }, JsonSerializer.Deserialize<string[]>(byOwner.ColumnsJson!));
+        var below = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == "Inventario bajo mínimo");
+        Assert.Equal(SystemAnalyticsSeeder.ProductsBelowMinFilter, below.FilterJson);
+
+        var wh = lookups.CodeOf((await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == "Valor de inventario a costo")).BusinessModuleLookupId);
+        Assert.Equal(BusinessModules.Warehouse, wh);
+        Assert.True((await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == "Valor de inventario a costo")).IsMoney);
+        Assert.True((await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == "Valor de inventario a venta")).IsMoney);
+        var movements = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == "Movimientos registrados");
+        Assert.Equal(DateRangeModes.Last7, lookups.CodeOf(movements.DateRangeModeLookupId!.Value));   // maestro L948
+        var costChart = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == "Valor de inventario por categoría");
+        Assert.True(costChart.IsMoney);
+        Assert.Equal("CostValue", costChart.FieldKey);
+        Assert.Equal(AggregateFns.Sum, lookups.CodeOf(costChart.AggregateFnLookupId));
+        var donut = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == "Movimientos por tipo");
+        Assert.Equal(DateRangeModes.Last30, lookups.CodeOf(donut.DateRangeModeLookupId!.Value));
+        Assert.Equal(ChartTypes.Donut, lookups.CodeOf(donut.ChartTypeLookupId));
+        // Los gráficos anteriores siguen con COUNT en Operación (el helper ganó parámetros opcionales).
+        var old = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == "Rutas por estatus");
+        Assert.Equal(AggregateFns.Count, lookups.CodeOf(old.AggregateFnLookupId));
+        Assert.Equal(BusinessModules.Operations, lookups.CodeOf(old.BusinessModuleLookupId));
+        Assert.Null(old.FieldKey);
+    }
+
+    [Fact]
+    public async Task Every_lote6_seeded_field_exists_in_its_data_source()
+    {
+        var (uses, _, _, _) = await SeedAsync(WmsSources, null);
+        Assert.NotEmpty(uses);
+        var known = WmsSources.ToDictionary(s => s, s => WmsSource(s).Fields.Select(f => f.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));
+        var missing = uses.Where(u => !known[u.Source].Contains(u.Field)).Select(u => $"{u.Source} · {u.Where}: '{u.Field}'").Distinct().ToList();
+        Assert.True(missing.Count == 0, "Campos sembrados que la fuente no expone:\n" + string.Join("\n", missing));
+    }
+
+    [Fact]
+    public void Wms_data_sources_have_the_documented_fields_date_field_and_money()
+    {
+        var expected = new Dictionary<string, (string? DateField, string[] Fields, string[] Money)>
+        {
+            [EntityTypes.Warehouse] = (null, new[] { "Id", "PublicId", "Code", "Name", "City", "Status", "StatusCode", "IsActive", "ZoneCount", "BinCount", "ActiveBinCount", "DockCount", "QtyOnHand" }, Array.Empty<string>()),
+            [EntityTypes.Product] = (null, new[] { "Id", "PublicId", "Sku", "Name", "CategoryId", "Category", "OwnerClientId", "OwnerName", "IsOwn", "BaseUom", "TrackingType", "Barcode",
+                "PurchaseCost", "SalePrice", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "MinQty", "IsBelowMin", "IsActive" }, new[] { "PurchaseCost", "SalePrice", "CostValue", "SaleValue" }),
+            [EntityTypes.StockBalance] = (null, new[] { "Id", "WarehouseId", "WarehouseCode", "ZoneCode", "ZoneType", "BinCode", "ProductId", "Sku", "ProductName", "Category", "OwnerName",
+                "IsOwn", "LotNumber", "ExpiryDate", "DaysToExpiry", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "UpdatedAtUtc" }, new[] { "CostValue", "SaleValue" }),
+            [EntityTypes.InventoryTransaction] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Date", "TxnType", "TxnTypeCode", "ProductId", "Sku", "ProductName", "Category",
+                "Quantity", "SignedQuantity", "FromWarehouse", "FromBin", "ToWarehouse", "ToBin", "Position", "LotNumber", "SerialNumber", "RefEntity", "RefId", "RefLabel",
+                "Reason", "ReasonCode", "UserName" }, Array.Empty<string>()),
+            [EntityTypes.Receipt] = ("ReceivedAtUtc", new[] { "Id", "PublicId", "Number", "Type", "TypeCode", "Origin", "WarehouseCode", "SupplierName", "ClientName",
+                "PurchaseOrderNumber", "Status", "StatusCode", "LineCount", "ExpectedQty", "ReceivedQty", "VarianceQty", "HasVariance", "ReceivedCost", "CreatedAtUtc",
+                "ReceivedAtUtc" }, new[] { "ReceivedCost" }),
+            [EntityTypes.WarehouseTask] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Type", "TypeCode", "Status", "StatusCode", "Priority", "WarehouseCode", "Sku",
+                "Quantity", "FromBin", "ToBin", "AssignedTo", "CompletedAtUtc", "AgeHours", "RefLabel" }, Array.Empty<string>()),
+            [EntityTypes.PickBatch] = ("CollectedAtUtc", new[] { "Id", "PublicId", "Number", "CollectedAtUtc", "Status", "StatusCode", "WarehouseCode", "LineCount", "TotalQty",
+                "TotalCost", "PackBatchNumber", "OrderNumber", "ClientInvoiceNumber", "ClientName", "PackedAtUtc", "IsActive" }, new[] { "TotalCost" }),
+        };
+        foreach (var (key, (dateField, fields, money)) in expected)
+        {
+            var source = WmsSource(key);
+            Assert.Equal(key, source.Key);
+            Assert.Equal(dateField, source.DateField);
+            Assert.Equal(fields.OrderBy(f => f, StringComparer.Ordinal), source.Fields.Select(f => f.Key).OrderBy(f => f, StringComparer.Ordinal));
+            Assert.Equal(money.OrderBy(f => f, StringComparer.Ordinal), source.Fields.Where(f => f.IsMoney).Select(f => f.Key).OrderBy(f => f, StringComparer.Ordinal));
+        }
     }
 }

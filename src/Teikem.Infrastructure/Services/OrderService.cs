@@ -519,12 +519,23 @@ public sealed class OrderService(
 
     // ================================================================ ELIMINAR (baja lógica en la etapa inicial)
 
-    public async Task DeleteAsync(Guid publicId, OrderScope scope, CancellationToken ct)
+    public Task DeleteAsync(Guid publicId, OrderScope scope, CancellationToken ct)
+        => DeleteAsync(publicId, scope, new OrderDeletionOptions(), ct);
+
+    /// <summary>
+    /// Lote 6 (P7, D12): una orden nacida de una recolección (origen PICK_BATCH) responde 409 aquí salvo que el llamador lo
+    /// permita explícitamente (OrderDeletionOptions.AllowedSourceEntityType = PICK_BATCH; solo PickBatchService, que además
+    /// restaura el inventario). Se une a la transacción del llamador si la hay.
+    /// </summary>
+    public async Task DeleteAsync(Guid publicId, OrderScope scope, OrderDeletionOptions options, CancellationToken ct)
     {
         await db.RunInTransactionAsync(async ct2 =>
         {
             var order = await db.ResolveOrderForWriteAsync(publicId, scope, ct2);
             if (!order.IsActive) throw new NotFoundException("Orden");
+            var sourceType = order.SourceEntityTypeLookupId is int sourceTypeId ? (await lookups.GetAsync(sourceTypeId, ct2))?.InternalCode : null;
+            if (!OrderRules.CanDeleteFromOrders(sourceType, options?.AllowedSourceEntityType))
+                throw new ConflictException(OrderRules.PickBatchOrderDeleteMessage(order.PackBatchNumber));
             var isInitial = await db.IsInitialAsync(order.StatusCodeId, ct2);
             if (!OrderRules.CanDelete(isInitial, order.IsActive)) throw new StatusRuleException(OrderRules.DeleteOnlyInitialMessage);
 

@@ -14,6 +14,7 @@ using Teikem.Infrastructure.Persistence.Scripts;
 using Teikem.Infrastructure.Seeding;
 using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Trips;
+using Teikem.Infrastructure.Wms;
 
 namespace Teikem.Infrastructure;
 
@@ -148,6 +149,42 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, TripStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, TripOrderReleaseEffect>();
 
+        // Lote 6 — Inventario y almacén. InventoryLedger es la ÚNICA vía de escritura del inventario (saldos, ledger y series);
+        // WarehouseTaskWriter crea y cierra tareas con historial; PutawaySuggester sugiere posiciones con rotación (D24).
+        services.AddScoped<InventoryLedger>();
+        services.AddScoped<WarehouseTaskWriter>();
+        services.AddScoped<PutawaySuggester>();
+        services.AddScoped<WarehouseService>();
+        services.AddScoped<WarehouseLayoutService>();
+        services.AddScoped<ProductService>();
+        services.AddScoped<ProductCategoryService>();
+        services.AddScoped<InventoryReadService>();
+        services.AddScoped<InventoryAdjustmentService>();
+        services.AddScoped<TraceabilityService>();
+        services.AddScoped<AsnService>();
+        services.AddScoped<ReceiptService>();
+        services.AddScoped<WarehouseTaskService>();
+        services.AddScoped<ReplenishmentService>();
+        services.AddScoped<CycleCountService>();
+        services.AddScoped<PickBatchService>();
+        services.AddScoped<SupplierService>();
+        services.AddScoped<PurchaseOrderService>();
+        services.AddScoped<PurchaseShortageService>();
+        services.AddScoped<DockAppointmentService>();
+        services.AddScoped<CrossDockService>();
+        // Cola unificada: un handler por tipo de tarea (D41); PICK, PACK y LOAD no tienen handler en este lote (422).
+        services.AddScoped<IWarehouseTaskHandler, PutawayTaskHandler>();
+        services.AddScoped<IWarehouseTaskHandler, ReplenishTaskHandler>();
+        services.AddScoped<IWarehouseTaskHandler, CountTaskHandler>();
+        services.AddScoped<IWarehouseTaskHandler, CrossDockTaskHandler>();
+        // Costuras entre piezas (interfaz en P0, implementación en su pieza).
+        services.AddScoped<IPurchaseOrderReceiving, PurchaseOrderReceivingService>();
+        services.AddScoped<IReceiptConfirmationParticipant, CrossDockReceiptParticipant>();
+        services.AddScoped<IOrderInventoryLines, OrderInventoryLinesProvider>();
+        // Efectos de estatus: resuelven sus dependencias de forma perezosa (IServiceProvider) para no formar ciclo con StatusService.
+        services.AddScoped<IStatusTransitionEffect, WarehouseTaskStatusEffect>();
+        services.AddScoped<IStatusTransitionEffect, DockAppointmentStatusEffect>();
+
         // Registro de fuentes de datos (cada lote agrega las suyas) y resolvers de pertenencia
         services.AddScoped<IDataSourceRegistry, DataSourceRegistry>();
         services.AddScoped<IDataSource, AuditLogDataSource>();
@@ -195,6 +232,34 @@ public static class DependencyInjection
         // OPTIMIZATION_RUN es bitácora de solo lectura (trips.view): sin permiso de escritura de dueño, así que la escritura
         // por id suelto (contactos, campos personalizados) se cierra con el resolver cerrado (siempre 404, sin oráculo).
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.OptimizationRun));
+        // Lote 6 — fuentes de inventario y almacén (DateField en las que representan actividad de un período) y resolvers de
+        // pertenencia. INVENTORY_SERIAL, WAREHOUSE_TASK y CROSSDOCK_ALLOCATION no tienen escritura de dueño: resolver cerrado.
+        services.AddScoped<IDataSource, WarehouseDataSource>();
+        services.AddScoped<IDataSource, ProductDataSource>();
+        services.AddScoped<IDataSource, StockBalanceDataSource>();
+        services.AddScoped<IDataSource, InventoryTransactionDataSource>();
+        services.AddScoped<IDataSource, ReceiptDataSource>();
+        services.AddScoped<IDataSource, WarehouseTaskDataSource>();
+        services.AddScoped<IDataSource, PickBatchDataSource>();
+        services.AddScoped<IOwnedEntityResolver, WarehouseOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, WarehouseDockOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ProductOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, ReceiptOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, AsnOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, CycleCountOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, PickBatchOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, DockAppointmentOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, CrossDockPlanOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, PurchaseOrderOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, SupplierOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.InventorySerial));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.WarehouseTask));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.CrossDockAllocation));
+        // STOCK_BALANCE e INVENTORY_TRANSACTION (proyección y ledger, solo los escribe InventoryLedger) y RECEIPT_LINE (hija del
+        // recibo): sin resolver, CustomFieldService omitiría la pertenencia (PUT de valores sobre ids ajenos → 200). Cerrados → 404.
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.StockBalance));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.InventoryTransaction));
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ReceiptLine));
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

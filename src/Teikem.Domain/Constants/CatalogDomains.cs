@@ -64,6 +64,18 @@ public static class LookupDomains
     public const string ZoneMatchType = "ZoneMatchType";
     /// <summary>Motor de una corrida de optimización (OptimizationRun.EngineLookupId).</summary>
     public const string OptimizerEngine = "OptimizerEngine";
+    // Lote 6 — Inventario y almacén (UnitOfMeasure y PaymentTerm ya existen)
+    public const string ZoneType = "ZoneType";
+    public const string DockType = "DockType";
+    public const string DockDirection = "DockDirection";
+    public const string TrackingType = "TrackingType";
+    public const string InventoryTxnType = "InventoryTxnType";
+    public const string ReceiptType = "ReceiptType";
+    public const string WarehouseTaskType = "WarehouseTaskType";
+    /// <summary>Motivo de un ajuste de inventario (InventoryTransaction.ReasonLookupId; obligatorio en ADJUSTMENT, D7).</summary>
+    public const string AdjustmentReason = "AdjustmentReason";
+    /// <summary>Acción con la que se resuelve un faltante de orden de compra (PurchaseOrderShortageResolution.ActionLookupId, D8).</summary>
+    public const string ShortageAction = "ShortageAction";
 }
 
 /// <summary>Dominios de estatus (StatusCode.Entity) que usa la capa transversal.</summary>
@@ -91,6 +103,20 @@ public static class StatusDomains
     public const string RouteStatus = "RouteStatus";
     public const string RouteStopStatus = "RouteStopStatus";
     public const string OptimizationRunStatus = "OptimizationRunStatus";
+    // Lote 6 — Inventario y almacén
+    public const string WarehouseStatus = "WarehouseStatus";
+    public const string DockStatus = "DockStatus";
+    public const string SerialStatus = "SerialStatus";
+    public const string AsnStatus = "AsnStatus";
+    public const string ReceiptStatus = "ReceiptStatus";
+    public const string WarehouseTaskStatus = "WarehouseTaskStatus";
+    public const string CycleCountStatus = "CycleCountStatus";
+    /// <summary>Recolección y empaque ad hoc: COLLECTED (inicial) → PACKED; CANCELLED terminal (D20).</summary>
+    public const string PickBatchStatus = "PickBatchStatus";
+    public const string PurchaseOrderStatus = "PurchaseOrderStatus";
+    public const string AppointmentStatus = "AppointmentStatus";
+    public const string CrossDockStatus = "CrossDockStatus";
+    public const string AllocationStatus = "AllocationStatus";
 }
 
 public static class StageKinds
@@ -214,6 +240,11 @@ public static class Capabilities
     /// IN_PROGRESS, COMPLETED y CANCELLED; el tenant puede habilitarla en DISPATCHED/IN_PROGRESS.
     /// </summary>
     public const string EditTrip = "EDIT_TRIP";
+    /// <summary>
+    /// Lote 6 (D46): editar una orden de compra (fechas, notas y líneas). Por defecto negada en SENT, PARTIAL, RECEIVED y
+    /// CANCELLED; el tenant puede habilitarla en SENT/PARTIAL (las líneas con recepciones siguen protegidas).
+    /// </summary>
+    public const string EditPurchaseOrder = "EDIT_PURCHASE_ORDER";
 }
 
 public static class AuditActions
@@ -365,6 +396,28 @@ public static class EntityTypes
     public const string Route = "ROUTE";
     public const string RouteStop = "ROUTE_STOP";
     public const string OptimizationRun = "OPTIMIZATION_RUN";
+    // Agregados por el Lote 6 (Inventario y almacén); WAREHOUSE y PRODUCT ya existían.
+    /// <summary>Recibo (ReceiptHeader + ReceiptLine); su ciclo es ReceiptStatus.</summary>
+    public const string Receipt = "RECEIPT";
+    /// <summary>Aviso de llegada (Asn + AsnLine); su ciclo es AsnStatus.</summary>
+    public const string Asn = "ASN";
+    public const string WarehouseDock = "WAREHOUSE_DOCK";
+    /// <summary>Serie de inventario: su rastro es EntityStatusHistory (SerialStatus) más el ledger; sin AuditLog.</summary>
+    public const string InventorySerial = "INVENTORY_SERIAL";
+    public const string WarehouseTask = "WAREHOUSE_TASK";
+    public const string PickBatch = "PICK_BATCH";
+    public const string DockAppointment = "DOCK_APPOINTMENT";
+    public const string CrossDockAllocation = "CROSSDOCK_ALLOCATION";
+    /// <summary>Movimiento del ledger (fuente de datos; solo inserción, sin AuditLog).</summary>
+    public const string InventoryTransaction = "INVENTORY_TRANSACTION";
+    /// <summary>Saldo por almacén/posición/lote (fuente de datos; proyección del ledger, sin AuditLog).</summary>
+    public const string StockBalance = "STOCK_BALANCE";
+    // Códigos ya sembrados antes del Lote 6 que este lote usa por nombre
+    public const string CycleCount = "CYCLE_COUNT";
+    public const string CrossDockPlan = "CROSSDOCK_PLAN";
+    public const string PurchaseOrder = "PURCHASE_ORDER";
+    public const string Supplier = "SUPPLIER";
+    public const string ReceiptLine = "RECEIPT_LINE";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -429,6 +482,14 @@ public static class NumberKinds
     public const string WorkOrder = "WORKORDER";
     /// <summary>Lote 5: número de ruta AAAA-#### (uno por tenant, ClientId NULL; no se reinicia por año).</summary>
     public const string Trip = "TRIP";
+    /// <summary>Lote 6: número de recibo REC-##### por tenant (ClientId NULL).</summary>
+    public const string Receipt = "RECEIPT";
+    /// <summary>Lote 6: número de conteo cíclico CC-##### por tenant (ClientId NULL).</summary>
+    public const string CycleCount = "CYCLECOUNT";
+    /// <summary>Lote 6: número de plan de cruce de muelle XD-##### por tenant (ClientId NULL).</summary>
+    public const string CrossDock = "CROSSDOCK";
+    /// <summary>Lote 6: número de orden de compra PO-##### por tenant (ClientId NULL).</summary>
+    public const string Purchase = "PURCHASE";
 }
 
 public static class ModuleKeys
@@ -613,4 +674,214 @@ public static class GeocodeAccuracies
     public const string ZipCentroid = "ZIP_CENTROID";
     public const string CityCentroid = "CITY_CENTROID";
     public const string Manual = "MANUAL";
+}
+
+// ---------------- Lote 6 — Inventario y almacén ----------------
+
+/// <summary>Dominio WarehouseStatus: ACTIVE (inicial) → INACTIVE (terminal: baja definitiva, D26).</summary>
+public static class WarehouseStatuses
+{
+    public const string Active = "ACTIVE";
+    public const string Inactive = "INACTIVE";
+}
+
+/// <summary>Dominio DockStatus: FREE (inicial); OCCUPIED y MAINTENANCE laterales (la llegada de una cita ocupa el muelle).</summary>
+public static class DockStatuses
+{
+    public const string Free = "FREE";
+    public const string Occupied = "OCCUPIED";
+    public const string Maintenance = "MAINTENANCE";
+}
+
+/// <summary>
+/// Dominio SerialStatus (D16): AVAILABLE (inicial); RESERVED y SHIPPED laterales (AVAILABLE → SHIPPED → AVAILABLE es legal:
+/// reversas y devoluciones); SCRAPPED terminal (una serie dada de baja no vuelve).
+/// </summary>
+public static class SerialStatuses
+{
+    public const string Available = "AVAILABLE";
+    public const string Reserved = "RESERVED";
+    public const string Shipped = "SHIPPED";
+    public const string Scrapped = "SCRAPPED";
+}
+
+/// <summary>Dominio AsnStatus: EXPECTED (inicial) → RECEIVED; CANCELLED terminal.</summary>
+public static class AsnStatuses
+{
+    public const string Expected = "EXPECTED";
+    public const string Received = "RECEIVED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio ReceiptStatus: OPEN (inicial) → RECEIVED (confirmado) → PUTAWAY (terminal: último putaway cerrado).</summary>
+public static class ReceiptStatuses
+{
+    public const string Open = "OPEN";
+    public const string Received = "RECEIVED";
+    public const string Putaway = "PUTAWAY";
+}
+
+/// <summary>Dominio WarehouseTaskStatus: PENDING (inicial) → IN_PROGRESS → DONE; CANCELLED terminal (D20).</summary>
+public static class WarehouseTaskStatuses
+{
+    public const string Pending = "PENDING";
+    public const string InProgress = "IN_PROGRESS";
+    public const string Done = "DONE";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio CycleCountStatus: OPEN (inicial) → COUNTED → RECONCILED (terminal).</summary>
+public static class CycleCountStatuses
+{
+    public const string Open = "OPEN";
+    public const string Counted = "COUNTED";
+    public const string Reconciled = "RECONCILED";
+}
+
+/// <summary>Dominio PickBatchStatus (D20): COLLECTED (inicial) → PACKED; CANCELLED terminal (eliminar con reversa).</summary>
+public static class PickBatchStatuses
+{
+    public const string Collected = "COLLECTED";
+    public const string Packed = "PACKED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>
+/// Dominio PurchaseOrderStatus: DRAFT (inicial) → SENT → PARTIAL → RECEIVED (terminal); CANCELLED terminal, permitido desde
+/// DRAFT, SENT y PARTIAL (sin regla lateral sembrada, D47).
+/// </summary>
+public static class PurchaseOrderStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Sent = "SENT";
+    public const string Partial = "PARTIAL";
+    public const string Received = "RECEIVED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio AppointmentStatus: SCHEDULED (inicial) → ARRIVED → COMPLETED; NO_SHOW lateral; CANCELLED terminal.</summary>
+public static class AppointmentStatuses
+{
+    public const string Scheduled = "SCHEDULED";
+    public const string Arrived = "ARRIVED";
+    public const string Completed = "COMPLETED";
+    public const string NoShow = "NO_SHOW";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>Dominio CrossDockStatus: OPEN (inicial) → ALLOCATED → COMPLETED (terminal).</summary>
+public static class CrossDockStatuses
+{
+    public const string Open = "OPEN";
+    public const string Allocated = "ALLOCATED";
+    public const string Completed = "COMPLETED";
+}
+
+/// <summary>Dominio AllocationStatus: PLANNED (inicial) → MOVED (terminal); CANCELLED terminal.</summary>
+public static class AllocationStatuses
+{
+    public const string Planned = "PLANNED";
+    public const string Moved = "MOVED";
+    public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>LookupDomains.ZoneType. STAGING (Lote 6, D21) es la zona de recepción.</summary>
+public static class ZoneTypes
+{
+    public const string Picking = "PICKING";
+    public const string Reserve = "RESERVE";
+    public const string Refrigerated = "REFRIGERATED";
+    public const string Quarantine = "QUARANTINE";
+    public const string CrossDock = "CROSSDOCK";
+    public const string Staging = "STAGING";
+}
+
+/// <summary>LookupDomains.DockType.</summary>
+public static class DockTypes
+{
+    public const string Inbound = "INBOUND";
+    public const string Outbound = "OUTBOUND";
+    public const string Both = "BOTH";
+}
+
+/// <summary>LookupDomains.DockDirection (dirección de una cita de muelle).</summary>
+public static class DockDirections
+{
+    public const string Inbound = "INBOUND";
+    public const string Outbound = "OUTBOUND";
+}
+
+/// <summary>LookupDomains.TrackingType: seguimiento del producto.</summary>
+public static class TrackingTypes
+{
+    public const string None = "NONE";
+    public const string Lot = "LOT";
+    public const string Serial = "SERIAL";
+}
+
+/// <summary>
+/// LookupDomains.InventoryTxnType. Signo del ledger (D3, maestro L331): RECEIPT +; ISSUE y CROSSDOCK −; ADJUSTMENT ±;
+/// TRANSFER + en una sola fila con From y To.
+/// </summary>
+public static class InventoryTxnTypes
+{
+    public const string Receipt = "RECEIPT";
+    public const string Issue = "ISSUE";
+    public const string Transfer = "TRANSFER";
+    public const string Adjustment = "ADJUSTMENT";
+    public const string CrossDock = "CROSSDOCK";
+}
+
+/// <summary>LookupDomains.ReceiptType.</summary>
+public static class ReceiptTypes
+{
+    public const string Asn = "ASN";
+    public const string Blind = "BLIND";
+    public const string Return = "RETURN";
+}
+
+/// <summary>LookupDomains.WarehouseTaskType. PICK, PACK y LOAD no tienen handler en este lote (D41).</summary>
+public static class WarehouseTaskTypes
+{
+    public const string Putaway = "PUTAWAY";
+    public const string Pick = "PICK";
+    public const string Pack = "PACK";
+    public const string Replenish = "REPLENISH";
+    public const string Count = "COUNT";
+    public const string Load = "LOAD";
+    public const string CrossDock = "CROSSDOCK";
+}
+
+/// <summary>
+/// LookupDomains.AdjustmentReason (D7). RECEIPT_VARIANCE, COUNT_VARIANCE y PICK_BATCH_REVERSAL los asigna solo el sistema.
+/// </summary>
+public static class AdjustmentReasons
+{
+    public const string ReceiptVariance = "RECEIPT_VARIANCE";
+    public const string CountVariance = "COUNT_VARIANCE";
+    public const string Damage = "DAMAGE";
+    public const string Loss = "LOSS";
+    public const string Found = "FOUND";
+    public const string Expired = "EXPIRED";
+    public const string PoShortage = "PO_SHORTAGE";
+    public const string PickBatchReversal = "PICK_BATCH_REVERSAL";
+    public const string Other = "OTHER";
+
+    /// <summary>Motivos que solo asigna el sistema (un ajuste manual no puede usarlos).</summary>
+    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal };
+}
+
+/// <summary>LookupDomains.ShortageAction (D8).</summary>
+public static class ShortageActions
+{
+    public const string Close = "CLOSE";
+    public const string Reorder = "REORDER";
+    public const string ManualAdjustment = "MANUAL_ADJUSTMENT";
+}
+
+/// <summary>Rotación aproximada del putaway dirigido (D24): salidas de 30 días contra la existencia.</summary>
+public static class RotationClasses
+{
+    public const string Fast = "FAST";
+    public const string Slow = "SLOW";
 }

@@ -1,4 +1,5 @@
 using Teikem.Domain.Clients;
+using Teikem.Domain.Constants;
 
 namespace Teikem.Domain.Orders;
 
@@ -185,6 +186,25 @@ public static class OrderRules
 
     /// <summary>Eliminar (baja lógica) solo en la etapa inicial y solo si sigue activa (DECISIÓN 6).</summary>
     public static bool CanDelete(bool isInitialStatus, bool isActive) => isInitialStatus && isActive;
+
+    /// <summary>
+    /// Lote 6 (P7, D12): una orden nacida de una recolección (origen PICK_BATCH) no se borra desde Órdenes (409); solo
+    /// 'Recolección y empaque' la borra, porque además restaura el inventario. {n} es su número de empaque, que es el mismo
+    /// número de la recolección (D10).
+    /// </summary>
+    public static string PickBatchOrderDeleteMessage(string packBatchNumber)
+        => $"Esta orden nació de la recolección {packBatchNumber}; elimínela desde Recolección y empaque para restaurar el inventario.";
+
+    /// <summary>
+    /// Lote 6 (P7, D12): ¿se puede borrar desde Órdenes una orden con este origen? Un origen PICK_BATCH solo lo borra quien
+    /// declara ese origen como permitido (OrderDeletionOptions.AllowedSourceEntityType, lo usa PickBatchService); cualquier
+    /// otro origen (importador, sin origen) no cambia la regla de siempre.
+    /// </summary>
+    public static bool CanDeleteFromOrders(string? sourceEntityType, string? allowedSourceEntityType)
+    {
+        if (!string.Equals(sourceEntityType?.Trim(), EntityTypes.PickBatch, StringComparison.OrdinalIgnoreCase)) return true;
+        return string.Equals(allowedSourceEntityType?.Trim(), EntityTypes.PickBatch, StringComparison.OrdinalIgnoreCase);
+    }
 
     /// <summary>
     /// R36 con el scope fijado (portal): la orden existente es de OTRO cliente ⇒ el mensaje no la nombra ni expone su PublicId

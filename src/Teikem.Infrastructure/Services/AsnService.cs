@@ -288,19 +288,8 @@ internal static class ReceivingSupport
     /// Almacén por PublicId (404 'Almacén no encontrado.') o, sin él, el único almacén activo del tenant (con más de uno
     /// → 400 'Indique el almacén: la compañía tiene más de uno.'; sin ninguno → 422). Mismos mensajes que WmsResolve.
     /// </summary>
-    public static async Task<Warehouse> ResolveWarehouseOrDefaultAsync(TeikemDbContext db, Guid? publicId, CancellationToken ct)
-    {
-        if (publicId is Guid id)
-            return await db.Set<Warehouse>().AsNoTracking().FirstOrDefaultAsync(w => w.PublicId == id, ct)
-                   ?? throw new NotFoundException("Almacén");
-        var active = await db.Set<Warehouse>().AsNoTracking().Where(w => w.IsActive).OrderBy(w => w.WarehouseId).Take(2).ToListAsync(ct);
-        return active.Count switch
-        {
-            0 => throw new StatusRuleException(NoActiveWarehouseMessage),
-            1 => active[0],
-            _ => throw new ValidationException("warehousePublicId", WarehouseRequiredMessage),
-        };
-    }
+    public static Task<Warehouse> ResolveWarehouseOrDefaultAsync(TeikemDbContext db, Guid? publicId, CancellationToken ct)
+        => WmsResolve.ResolveWarehouseOrDefaultAsync(db, publicId, ct); // única implementación (D26): 404 / 400 con más de uno / 422 sin ninguno
 
     /// <summary>Productos del tenant por PublicId (los que no existen simplemente no aparecen).</summary>
     public static async Task<Dictionary<Guid, Product>> ProductsByPublicIdAsync(TeikemDbContext db, IEnumerable<Guid?> publicIds, CancellationToken ct)
@@ -376,29 +365,11 @@ internal static class ReceivingSupport
         => db.LockAsnAsync(asnId, ct);
 
     /// <summary>
-    /// Lote del producto por número (EnsureLot, D34), por LINQ bajo el producto ya resuelto del tenant: si existe se
+    /// Lote del producto por número (EnsureLot, D34): delega en la sentencia (17) de InventoryQueries, que toma UPDLOCK +
+    /// HOLDLOCK sobre la clave (así un alta concurrente del mismo lote espera en vez de chocar con UQ_Lot). Si existe se
     /// reutiliza cuando las fechas capturadas coinciden (una fecha no capturada no se compara); con otras fechas → 409
-    /// 'El lote {n} ya existe con otras fechas; …' (no se sobrescriben). Si no existe se crea; UQ_Lot (ProductId,
-    /// LotNumber) es la última línea ante un alta concurrente (409, reintentar).
+    /// 'El lote {n} ya existe con otras fechas; …' (no se sobrescriben). Si no existe se crea. Exige la transacción del llamador.
     /// </summary>
-    public static async Task<int> EnsureLotAsync(TeikemDbContext db, int productId, string lotNumber, DateOnly? manufactureDate, DateOnly? expiryDate, CancellationToken ct)
-    {
-        var existing = await (from l in db.Set<InventoryLot>().AsNoTracking()
-                              join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
-                              where l.ProductId == productId && l.LotNumber == lotNumber
-                              select new { l.LotId, l.LotNumber, l.ManufactureDate, l.ExpiryDate }).FirstOrDefaultAsync(ct);
-        if (existing is not null)
-        {
-            if (!ReceiptRules.LotDatesMatch(existing.ManufactureDate, existing.ExpiryDate, manufactureDate, expiryDate))
-                throw new ConflictException(ReceiptRules.LotExistsWithOtherDates(existing.LotNumber));
-            return existing.LotId;
-        }
-        var lot = new InventoryLot
-        {
-            ProductId = productId, LotNumber = lotNumber, ManufactureDate = manufactureDate, ExpiryDate = expiryDate, IsActive = true,
-        };
-        db.Set<InventoryLot>().Add(lot);
-        await db.SaveGuardedAsync(ReceiptRules.LotCreatedConcurrently(lotNumber), ct);
-        return lot.LotId;
-    }
+    public static Task<int> EnsureLotAsync(TeikemDbContext db, int productId, string lotNumber, DateOnly? manufactureDate, DateOnly? expiryDate, CancellationToken ct)
+        => db.EnsureLotAsync(productId, lotNumber, manufactureDate, expiryDate, ct);
 }

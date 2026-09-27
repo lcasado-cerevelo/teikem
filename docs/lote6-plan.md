@@ -246,7 +246,7 @@ El Lote 6 entrega Inventario y almacén: WMS, trazabilidad por lote y serie, Com
 
 **Análisis**
 - 7 fuentes nuevas.
-- Vistas del mock: 'Inventario bajo mínimo', 'Productos por cliente dueño' y 'Movimientos por tipo' (agrupada, con suma de cantidad), más las propias.
+- Vistas del mock: 'Inventario bajo mínimo', 'Productos por cliente dueño' y 'Movimientos por tipo y producto' (agrupada por tipo y SKU, con suma de cantidad y fila de totales; maestro L887), más las propias.
 - 7 indicadores y 6 gráficos.
 - vw_LotGenealogy ampliada con posiciones, motivo, usuario y NetQuantity para BI.
 
@@ -432,7 +432,7 @@ ProductContracts:
 - LotInput(string? Number, DateOnly? ManufactureDate=null, DateOnly? ExpiryDate=null)
 - ProductCreateRequest(string? Sku, string? Name, Guid? OwnerClientPublicId=null, int? CategoryId=null, string? BaseUom=null, string? TrackingType=null, decimal? WeightKg=null, decimal? VolumeM3=null, string? Barcode=null, decimal? PurchaseCost=null, decimal? SalePrice=null, Guid? PreferredWarehousePublicId=null, int? PreferredBinId=null, decimal? MinQty=null, decimal? MinPickQty=null, decimal? MaxPickQty=null)
 - ProductPatchRequest(string? Name=null, Guid? OwnerClientPublicId=null, bool? ClearOwner=null, int? CategoryId=null, bool? ClearCategory=null, string? BaseUom=null, string? TrackingType=null, decimal? WeightKg=null, decimal? VolumeM3=null, string? Barcode=null, bool? ClearBarcode=null, decimal? PurchaseCost=null, decimal? SalePrice=null, Guid? PreferredWarehousePublicId=null, int? PreferredBinId=null, bool? ClearPreferred=null, decimal? MinQty=null, decimal? MinPickQty=null, decimal? MaxPickQty=null, string? RowVersion=null) +Extra (sku)
-- ProductListQuery(string? Search=null, int[]? CategoryIds=null, Guid? OwnerClientPublicId=null, bool? OwnOnly=null, bool ActiveOnly=false, Guid? WarehousePublicId=null, bool OnlyAvailable=false, int Skip=0, int Take=100)
+- ProductListQuery(string? Search=null, int[]? CategoryIds=null, Guid? OwnerClientPublicId=null, bool? OwnOnly=null, bool ActiveOnly=false, Guid? WarehousePublicId=null, bool OnlyAvailable=false, int Skip=0, int Take=100, bool SelectorOrder=false) (SelectorOrder = orden de los selectores de producto, maestro L1207: clientes 3PL primero por inventario en mano descendente, cada cliente en bloque, y propios al final; sin él, por SKU)
 - ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName, Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode, decimal? PurchaseCost, decimal? SalePrice, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? MinQty, bool IsBelowMin, bool IsActive)
 - ProductPageDto(int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items)
 - ProductDetailDto(ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId, string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty, bool HasMovements, string RowVersion)
@@ -491,7 +491,7 @@ CycleCountContracts:
 - CycleCountDto(int Id, string Number, Guid WarehousePublicId, string WarehouseCode, string StatusCode, string Status, int LineCount, int CountedLines, int VarianceLines, decimal NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive)
 - CycleCountLineDto(int Id, int BinId, string BinCode, string ZoneCode, Guid ProductPublicId, string Sku, string ProductName, string? CategoryName, string TrackingTypeCode, int? LotId, string? LotNumber, decimal SystemQty, decimal? CountedQty, decimal? VarianceQty, IReadOnlyList<string> ExpectedSerials, IReadOnlyList<string> CountedSerials, bool IsStale, decimal CurrentQty, decimal? ReconciledSystemQty, bool SystemQtyChanged, decimal? AdjustedQty, long? AdjustmentTxnId)
 - CycleCountDetailDto(CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion)
-- CycleCountQuery(Guid? WarehousePublicId=null, string[]? Status=null, DateOnly? From=null, DateOnly? To=null, int[]? BinIds=null, Guid[]? ProductPublicIds=null, int[]? CategoryIds=null, string? Search=null)
+- CycleCountQuery(Guid[]? WarehousePublicIds=null, string[]? Status=null, DateOnly? From=null, DateOnly? To=null, int[]? BinIds=null, Guid[]? ProductPublicIds=null, int[]? CategoryIds=null, string? Search=null) (almacén de selección múltiple, como BalanceQuery y KardexQuery; maestro L553)
 - CycleCountLinesQuery(int[]? BinIds=null, Guid[]? ProductPublicIds=null, int[]? CategoryIds=null, bool? OnlyVariance=null, bool? OnlyPending=null, string? Search=null)
 - CountCaptureItem(int LineId, decimal? CountedQty=null, IReadOnlyList<string>? SerialNumbers=null)
 - CountCaptureRequest(IReadOnlyList<CountCaptureItem>? Lines, string? RowVersion=null)
@@ -674,7 +674,7 @@ Services/WmsOwnedEntityResolvers.cs: 11 resolvers reales y 3 ClosedOwnedEntityRe
   - 'Inventario bajo mínimo' (PRODUCT, filtro IsBelowMin = true, como el mock)
   - 'Productos por cliente dueño' (PRODUCT, filtro IsActive = true, columnas OwnerName, Sku, Name, QtyOnHand y QtyAvailable, orden OwnerName)
   - 'Kárdex de movimientos' (INVENTORY_TRANSACTION, CreatedAtUtc desc)
-  - 'Movimientos por tipo' (INVENTORY_TRANSACTION, GroupJson {by:[TxnType], aggregates:[COUNT, SUM Quantity], totals:true}; L874)
+  - 'Movimientos por tipo y producto' (INVENTORY_TRANSACTION, GroupJson {by:[TxnType, Sku], aggregates:[COUNT, SUM Quantity], totals:true}; L887, que amplía la L874)
   - 'Ajustes de inventario' (TxnTypeCode = ADJUSTMENT)
   - 'Próximos a vencer'
   - 'Recepciones con diferencia'
@@ -805,7 +805,7 @@ Pantalla de mantenimiento de almacenes (R6) y jerarquía física (R2, R3). Sin c
 - DeactivateAsync:
   1. LockHeader Warehouse.
   2. Rango de saldos HOLDLOCK.
-  3. 409 si hay QtyOnHand ≠ 0 o QtyReserved ≠ 0, o documentos abiertos: recibos OPEN, conteos OPEN/COUNTED, tareas abiertas, recolecciones COLLECTED, planes OPEN/ALLOCATED o citas SCHEDULED/ARRIVED.
+  3. 409 si hay QtyOnHand ≠ 0 o QtyReserved ≠ 0, o documentos abiertos: recibos OPEN, conteos OPEN/COUNTED, tareas abiertas, recolecciones que aún se pueden eliminar (COLLECTED, o PACKED con la orden activa en etapa inicial), planes OPEN/ALLOCATED o citas SCHEDULED/ARRIVED.
   4. ACTIVE→INACTIVE (terminal) + IsActive=0.
 
 **WarehouseLayoutService**
@@ -852,7 +852,7 @@ Maestro de productos (R23, R24, R26, R31, R32).
   - 'El mínimo de picking requiere una posición preferida en una zona PICKING.'
 - Immutable(campo) = 'No se puede cambiar {campo} de un producto que ya tiene movimientos.'
 - DeactivateWithStock(sku, qty) = 'El producto {sku} tiene inventario en mano ({qty}); no se puede desactivar.'
-- DeactivateOpenDocs(sku) = 'El producto {sku} está en recibos abiertos o tareas pendientes; ciérrelos antes de desactivarlo.'
+- DeactivateOpenDocs(sku) = 'El producto {sku} está en recibos abiertos, tareas pendientes, recolecciones o conteos abiertos; ciérrelos antes de desactivarlo.' (también bloquean las recolecciones que aún se pueden eliminar y los conteos OPEN/COUNTED con el producto)
 - SkuTaken = 'Ya existe un producto con ese SKU para ese dueño.'
 - BarcodeTaken = 'Ya existe un producto activo con ese código de barras.'
 - PreferredBinMismatch = 'La posición preferida debe pertenecer al almacén preferido.'
@@ -860,7 +860,7 @@ Maestro de productos (R23, R24, R26, R31, R32).
 
 **ProductService**
 Todas las lecturas reciben InventoryScope (D44): con OwnerClientId, solo los productos de ese dueño; los demás dan 404, sin oráculo.
-- ListAsync(ProductListQuery, InventoryScope) → ProductPageDto: totales agrupados sin N+1; OnlyAvailable para el selector de recolección (R37); ActiveOnly para los selectores (R24); dueño = cliente o 'Propio' (R31).
+- ListAsync(ProductListQuery, InventoryScope) → ProductPageDto: totales agrupados sin N+1; OnlyAvailable para el selector de recolección (R37); ActiveOnly para los selectores (R24); dueño = cliente o 'Propio' (R31). SelectorOrder (selectorOrder=true) = orden de los nueve selectores de producto (maestro L1207): mercancía de clientes 3PL primero, el cliente con más inventario en mano antes y cada cliente en bloque, y los suministros propios al final; sin él, por SKU (pantalla Productos e inventario). El orden por tenant configurable queda para cuando se construya la app.
 - GetAsync(Guid, InventoryScope) → ProductDetailDto.
 - ListLotsAsync(Guid, InventoryScope).
 - ListSerialsAsync(Guid, string? status, string? search, InventoryScope).
@@ -1864,7 +1864,7 @@ Un tipo sin handler (PICK, PACK, LOAD) responde 422 hasta que su lote registre e
 - tests/Teikem.Tests/RawSqlConfinementTests.cs (P0, SE EXTIENDE): InventoryQueries.cs permitido; las 17 sentencias con 'TenantId = {tenantId}'; upsert, bloqueos, rangos, encabezados, muelle, series y EnsureLot presentes; la de Warehouse sin 'SELECT *'; sin SqlRaw.
 - tests/Teikem.Tests/OwnedEntityResolverCoverageTests.cs (P0, SE AJUSTA) y WmsOwnedEntityResolversTests.cs (P0, InMemory con dos tenants): 11 resolvers reales y 3 cerrados; WAREHOUSE_DOCK por JOIN.
 - tests/Teikem.Tests/AnalyticsSeedFieldsTests.cs (P0, SE EXTIENDE):
-- campos válidos de las 7 fuentes en vistas, indicadores y gráficos del Lote 6, incluidas 'Productos por cliente dueño' (filtro IsActive) y 'Movimientos por tipo' (GroupJson by TxnType con SUM Quantity);
+- campos válidos de las 7 fuentes en vistas, indicadores y gráficos del Lote 6, incluidas 'Productos por cliente dueño' (filtro IsActive) y 'Movimientos por tipo y producto' (GroupJson by TxnType y Sku con SUM Quantity);
 - DateField por fuente;
 - IsMoney.
 - tests/Teikem.Tests/WarehouseRulesTests.cs (P1): NormalizeCode, ComposeBinCode, DefaultWarehouse, muelle manual y mensajes.
@@ -2046,7 +2046,7 @@ Un tipo sin handler (PICK, PACK, LOAD) responde 422 hasta que su lote registre e
 - Sin inventory.adjust → 403.
 - análisis (Lote 6):
 - /analytics/sources con las 7 fuentes.
-- Vistas 'Inventario', 'Inventario bajo mínimo', 'Productos por cliente dueño' (solo activos), 'Kárdex de movimientos', 'Movimientos por tipo' (agrupada: la fila ISSUE con suma negativa y la RECEIPT positiva) y 'Ajustes de inventario'.
+- Vistas 'Inventario', 'Inventario bajo mínimo', 'Productos por cliente dueño' (solo activos), 'Kárdex de movimientos', 'Movimientos por tipo y producto' (agrupada por tipo y SKU: las filas ISSUE con suma negativa y las RECEIPT positivas) y 'Ajustes de inventario'.
 - 7 indicadores y 6 gráficos.
 - 'Valor de inventario a costo' = Σ costValue de los saldos (4 decimales).
 - 'Productos bajo mínimo' ≥ 1.

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Persistence;
@@ -13,10 +14,27 @@ namespace Teikem.Infrastructure.Seeding;
 /// Tenant demo (Advance Logistics) para desarrollo: módulos encendidos según el módulo 0B del documento maestro
 /// (Última milla, COD, WMS, Equipos en alquiler solo tracking, Portal, Campos personalizados, Compras + Catálogo/Análisis/Sistema;
 /// apagados Cross-dock, Marítimo, Facturación de alquiler), admin de compañía, un despachador y un admin de plataforma.
-/// Se activa con Seed:Demo:Enabled=true. Idempotente.
+/// Lote 6 (D49): si el tenant tiene WMS_LOTSERIAL, siembra el almacén ALM-01 con zonas STG (STAGING), PCK, RSV y QUA, sus
+/// posiciones y los muelles D1/D2, sin productos ni inventario (la conciliación queda en cero). Así el tenant demo recibe desde
+/// el primer arranque. Se activa con Seed:Demo:Enabled=true. Idempotente (por código).
 /// </summary>
-public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, IConfiguration config, ProvisioningService provisioning, UserAdminService userAdmin, SystemAnalyticsSeeder analyticsSeeder, ILogger<DemoTenantSeeder> logger)
+public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, IConfiguration config, ProvisioningService provisioning, UserAdminService userAdmin,
+    SystemAnalyticsSeeder analyticsSeeder, StatusService statuses, ILookupCache lookups, ILogger<DemoTenantSeeder> logger)
 {
+    public const string DemoWarehouseCode = "ALM-01";
+    public const string DemoWarehouseName = "Almacén principal";
+
+    /// <summary>Zonas del almacén demo: código, nombre, tipo y posiciones (código, pasillo, rack, nivel, posición).</summary>
+    private static readonly (string Code, string Name, string ZoneType, (string Code, string? Aisle, string? Rack, string? Level, string? Position)[] Bins)[] DemoZones =
+    {
+        ("STG", "Recepción", ZoneTypes.Staging, new (string, string?, string?, string?, string?)[] { ("STG-01", null, null, null, null) }),
+        ("PCK", "Picking", ZoneTypes.Picking, Enumerable.Range(1, 4).Select(i => ($"A01-R01-N1-P0{i}", (string?)"A01", (string?)"R01", (string?)"N1", (string?)$"P0{i}")).ToArray()),
+        ("RSV", "Reserva", ZoneTypes.Reserve, Enumerable.Range(1, 4).Select(i => ($"B01-R01-N1-P0{i}", (string?)"B01", (string?)"R01", (string?)"N1", (string?)$"P0{i}")).ToArray()),
+        ("QUA", "Cuarentena", ZoneTypes.Quarantine, new (string, string?, string?, string?, string?)[] { ("Q-01", null, null, null, null) }),
+    };
+
+    private static readonly (string Code, string DockType)[] DemoDocks = { ("D1", DockTypes.Inbound), ("D2", DockTypes.Outbound) };
+
     public static readonly string[] AdvanceModules =
     {
         ModuleKeys.LtlGround, ModuleKeys.Cod, ModuleKeys.WmsLotSerial, ModuleKeys.RentalEquipment, ModuleKeys.ClientPortal,
@@ -70,7 +88,75 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
                 platform = await db.Users.FirstAsync(u => u.Id == created.Id, ct);
             }
             if (!platform.IsPlatformAdmin) { platform.IsPlatformAdmin = true; await db.SaveChangesAsync(ct); }
+            await SeedDemoWarehouseAsync(tenantId, ct);
             tc.UserId = null;
+        }
+    }
+
+    /// <summary>
+    /// Lote 6 (D49): almacén demo ALM-01 'Almacén principal' (PR), ACTIVE con historial WAREHOUSE; zonas y posiciones; muelles
+    /// D1 INBOUND y D2 OUTBOUND, FREE con historial WAREHOUSE_DOCK. Solo si el tenant tiene WMS_LOTSERIAL; idempotente por código.
+    /// </summary>
+    private async Task SeedDemoWarehouseAsync(int tenantId, CancellationToken ct)
+    {
+        if (!await db.TenantModules.AsNoTracking().AnyAsync(m => m.TenantId == tenantId && m.ModuleKey == ModuleKeys.WmsLotSerial && m.IsEnabled, ct)) return;
+
+        var warehouse = await db.Warehouses.FirstOrDefaultAsync(w => w.Code == DemoWarehouseCode, ct);
+        if (warehouse is null)
+        {
+            var active = await statuses.GetInitialAsync(StatusDomains.WarehouseStatus, ct);
+            warehouse = new Warehouse
+            {
+                PublicId = Guid.NewGuid(), TenantId = tenantId, Code = DemoWarehouseCode, Name = DemoWarehouseName, City = "San Juan",
+                CountryLookupId = await lookups.GetIdAsync(LookupDomains.Country, "PR", ct), StatusCodeId = active.StatusCodeId, IsActive = true,
+            };
+            db.Warehouses.Add(warehouse);
+            await db.SaveChangesAsync(ct);
+            var to = await statuses.TransitionAsync(StatusDomains.WarehouseStatus, EntityTypes.Warehouse, warehouse.WarehouseId, null, active.InternalCode, null, ct);
+            warehouse.StatusCodeId = to.StatusCodeId;
+            await db.SaveChangesAsync(ct);
+            logger.LogInformation("Almacén demo {Code} creado (id {Id}).", DemoWarehouseCode, warehouse.WarehouseId);
+        }
+
+        foreach (var (zoneCode, zoneName, zoneType, bins) in DemoZones)
+        {
+            var zone = await db.WarehouseZones.FirstOrDefaultAsync(z => z.WarehouseId == warehouse.WarehouseId && z.Code == zoneCode, ct);
+            if (zone is null)
+            {
+                zone = new WarehouseZone
+                {
+                    WarehouseId = warehouse.WarehouseId, Code = zoneCode, Name = zoneName, IsActive = true,
+                    ZoneTypeLookupId = await lookups.GetIdAsync(LookupDomains.ZoneType, zoneType, ct),
+                };
+                db.WarehouseZones.Add(zone);
+                await db.SaveChangesAsync(ct);
+            }
+            foreach (var bin in bins)
+            {
+                if (await db.WarehouseBins.AnyAsync(b => b.WarehouseId == warehouse.WarehouseId && b.Code == bin.Code, ct)) continue;
+                db.WarehouseBins.Add(new WarehouseBin
+                {
+                    WarehouseZoneId = zone.WarehouseZoneId, WarehouseId = warehouse.WarehouseId, Code = bin.Code,
+                    Aisle = bin.Aisle, Rack = bin.Rack, Level = bin.Level, Position = bin.Position, IsActive = true,
+                });
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
+        foreach (var (dockCode, dockType) in DemoDocks)
+        {
+            if (await db.WarehouseDocks.AnyAsync(d => d.WarehouseId == warehouse.WarehouseId && d.Code == dockCode, ct)) continue;
+            var free = await statuses.GetInitialAsync(StatusDomains.DockStatus, ct);
+            var dock = new WarehouseDock
+            {
+                WarehouseId = warehouse.WarehouseId, Code = dockCode, DockTypeLookupId = await lookups.GetIdAsync(LookupDomains.DockType, dockType, ct),
+                StatusCodeId = free.StatusCodeId, IsActive = true,
+            };
+            db.WarehouseDocks.Add(dock);
+            await db.SaveChangesAsync(ct);
+            var to = await statuses.TransitionAsync(StatusDomains.DockStatus, EntityTypes.WarehouseDock, dock.WarehouseDockId, null, free.InternalCode, null, ct);
+            dock.StatusCodeId = to.StatusCodeId;
+            await db.SaveChangesAsync(ct);
         }
     }
 }

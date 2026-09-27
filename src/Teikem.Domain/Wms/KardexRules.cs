@@ -87,44 +87,76 @@ public static class KardexRules
     /// Origen legible del movimiento por EntityType. Con número de documento: 'Recibo REC-00001', 'Recolección EMP-00001',
     /// 'Conteo CC-00001', 'Orden de compra PO-00001', 'Orden 2026-000123', 'Cruce de muelle XD-00001'; la tarea de almacén
     /// se muestra como 'Tarea #12'. Sin número conocido: fallback 'TIPO·id'. Sin referencia: NULL.
+    /// lang = idioma del usuario (maestro L582): 'en' da 'Receipt REC-00001', 'Pick batch …', 'Cross-dock …', 'Task #12';
+    /// cualquier otro valor (o NULL) da el español.
     /// </summary>
-    public static string? RefLabel(string? refEntityCode, int? refId, string? documentNumber = null)
+    public static string? RefLabel(string? refEntityCode, int? refId, string? documentNumber = null, string? lang = null)
     {
         if (string.IsNullOrWhiteSpace(refEntityCode)) return null;
         var id = refId?.ToString(CultureInfo.InvariantCulture) ?? "?";
         if (string.Equals(refEntityCode, EntityTypes.WarehouseTask, StringComparison.OrdinalIgnoreCase))
-            return refId is null ? Fallback(refEntityCode, id) : "Tarea #" + id;
+            return refId is null ? Fallback(refEntityCode, id) : (IsEnglish(lang) ? "Task #" : "Tarea #") + id;
         if (string.IsNullOrWhiteSpace(documentNumber)) return Fallback(refEntityCode, id);
 
-        var prefix = RefPrefix(refEntityCode);
+        var prefix = RefPrefix(refEntityCode, lang);
         return prefix is null ? documentNumber : prefix + " " + documentNumber;
     }
 
-    /// <summary>Prefijo del origen legible por EntityType (NULL = solo el número).</summary>
-    public static string? RefPrefix(string refEntityCode) => refEntityCode.ToUpperInvariant() switch
-    {
-        EntityTypes.Receipt => "Recibo",
-        EntityTypes.PickBatch => "Recolección",
-        EntityTypes.CycleCount => "Conteo",
-        EntityTypes.PurchaseOrder => "Orden de compra",
-        EntityTypes.TransportOrder => "Orden",
-        EntityTypes.CrossDockAllocation => "Cruce de muelle",
-        EntityTypes.CrossDockPlan => "Cruce de muelle",
-        _ => null,
-    };
+    /// <summary>Prefijo del origen legible por EntityType (NULL = solo el número), en el idioma pedido ('en' o español).</summary>
+    public static string? RefPrefix(string refEntityCode, string? lang = null) => IsEnglish(lang)
+        ? refEntityCode.ToUpperInvariant() switch
+        {
+            EntityTypes.Receipt => "Receipt",
+            EntityTypes.PickBatch => "Pick batch",
+            EntityTypes.CycleCount => "Count",
+            EntityTypes.PurchaseOrder => "Purchase order",
+            EntityTypes.TransportOrder => "Order",
+            EntityTypes.CrossDockAllocation => "Cross-dock",
+            EntityTypes.CrossDockPlan => "Cross-dock",
+            _ => null,
+        }
+        : refEntityCode.ToUpperInvariant() switch
+        {
+            EntityTypes.Receipt => "Recibo",
+            EntityTypes.PickBatch => "Recolección",
+            EntityTypes.CycleCount => "Conteo",
+            EntityTypes.PurchaseOrder => "Orden de compra",
+            EntityTypes.TransportOrder => "Orden",
+            EntityTypes.CrossDockAllocation => "Cruce de muelle",
+            EntityTypes.CrossDockPlan => "Cruce de muelle",
+            _ => null,
+        };
+
+    /// <summary>¿El idioma pedido es inglés? (mismo criterio que MultilingualText: los dos primeros caracteres).</summary>
+    private static bool IsEnglish(string? lang)
+        => !string.IsNullOrWhiteSpace(lang) && lang.Trim().StartsWith("en", StringComparison.OrdinalIgnoreCase);
 
     private static string Fallback(string code, string id) => code.ToUpperInvariant() + "·" + id;
 
-    /// <summary>Etiqueta corta (chip) del tipo de movimiento.</summary>
-    public static string TypeChip(string typeCode) => (typeCode ?? string.Empty).ToUpperInvariant() switch
-    {
-        InventoryTxnTypes.Receipt => "Recepción",
-        InventoryTxnTypes.Issue => "Despacho",
-        InventoryTxnTypes.Transfer => "Transferencia",
-        InventoryTxnTypes.Adjustment => "Ajuste",
-        InventoryTxnTypes.CrossDock => "Cruce de muelle",
-        _ => typeCode ?? string.Empty,
-    };
+    /// <summary>
+    /// Etiqueta corta (chip) del tipo de movimiento. Es el RESPALDO: el Kárdex y la fuente INVENTORY_TRANSACTION usan la
+    /// etiqueta del catálogo InventoryTxnType resuelta por idioma (maestro L582: 'Cruce de muelle' en español, 'Cross-dock'
+    /// en inglés) y solo caen aquí si el código no está en el catálogo.
+    /// </summary>
+    public static string TypeChip(string typeCode, string? lang = null) => IsEnglish(lang)
+        ? (typeCode ?? string.Empty).ToUpperInvariant() switch
+        {
+            InventoryTxnTypes.Receipt => "Receipt",
+            InventoryTxnTypes.Issue => "Issue",
+            InventoryTxnTypes.Transfer => "Transfer",
+            InventoryTxnTypes.Adjustment => "Adjustment",
+            InventoryTxnTypes.CrossDock => "Cross-dock",
+            _ => typeCode ?? string.Empty,
+        }
+        : (typeCode ?? string.Empty).ToUpperInvariant() switch
+        {
+            InventoryTxnTypes.Receipt => "Recepción",
+            InventoryTxnTypes.Issue => "Despacho",
+            InventoryTxnTypes.Transfer => "Transferencia",
+            InventoryTxnTypes.Adjustment => "Ajuste",
+            InventoryTxnTypes.CrossDock => "Cruce de muelle",
+            _ => typeCode ?? string.Empty,
+        };
 
     /// <summary>¿'desde' es posterior a 'hasta'? (400 RangeInverted).</summary>
     public static bool IsRangeInverted(DateOnly? from, DateOnly? to) => from is DateOnly f && to is DateOnly t && f > t;
