@@ -22,7 +22,13 @@ const VERDICT = { type: 'object', properties: { real: { type: 'boolean' }, evide
 
 // Contexto mínimo: el agente lee KIT.md y su pieza; el plan completo queda en disco.
 const cabecera = `Lote ${lote} del frontend (${titulo}). Trabajas en web-app/. Lee primero web-app/KIT.md. El plan completo está en docs/frontend/lote${lote}-plan.md: consulta solo lo que tu pieza necesite.`
-const tipo = (p) => (p.agente === 'core' ? 'fe-implementer-core' : 'fe-implementer')
+// Los agentes fe-* de .claude/agents solo se cargan al iniciar la sesión; mientras tanto se usan los agentes base con
+// modelo y esfuerzo explícitos y sus reglas en el prompt (reglas = el contenido de .claude/agents/fe-*.md).
+const REGLAS_FE = `Reglas del implementador de frontend: lee primero web-app/KIT.md; usa SIEMPRE el cliente generado (src/kernel/api) y sus tipos, nunca DTOs a mano ni any; copia los patrones del kit; textos con t('clave') en src/kernel/i18n/{es,en}.json; permisos y módulos con <Can perm> / <ModuleGate module> con los códigos exactos del API; errores del servidor con applyProblemDetails; responsive a 360 px sin scroll horizontal; identificadores en inglés, comentarios en español; termina con "npm run check" en verde (tsc, oxlint, vitest, build). Si tocas src/kernel, documenta en KIT.md y agrega una prueba.`
+const optsPieza = (p) => (p.agente === 'core'
+  ? { agentType: 'implementer', model: 'opus', effort: 'high' }
+  : { agentType: 'implementer', model: 'sonnet', effort: 'medium' })
+const REGLAS_REV = { paridad: 'Lente PARIDAD: las pantallas usan los tipos generados (schema.d.ts), los permisos, módulos, códigos de estatus y mensajes reales del API (web-app/openapi.json y controladores); severidad alta = permiso o módulo mal aplicado, dato del API con nombre/tipo incorrecto, acción que el API rechazaría siempre, pantalla rota en móvil.', pruebas: 'Lente PRUEBAS Y CONVENCIONES: convenciones de interfaz del documento maestro (ordenar columnas, buscador libre QBox aplicado después de los filtros, sin scroll horizontal, chips sin envolver, idioma sin reinicio, responsive 360 px), pruebas unitarias existentes y suficientes, recorrido Playwright; severidad media = convención incumplida; baja = estilo.' }
 
 phase('Implementar')
 const ordenes = [...new Set(plan.piezas.map(p => p.orden || 1))].sort((x, y) => x - y)
@@ -31,13 +37,13 @@ for (const o of ordenes) {
   const grupo = plan.piezas.filter(p => (p.orden || 1) === o)
   log(`Grupo ${o}: ${grupo.map(p => p.nombre).join(' | ')}`)
   const res = (await parallel(grupo.map(p => () =>
-    agent(`${cabecera}\n\nImplementa SOLO la pieza "${p.nombre}":\n${p.descripcion}\nArchivos previstos: ${(p.archivos || []).join(', ')}.\nOtras piezas del mismo grupo se implementan a la vez en otros archivos: no toques archivos fuera de los tuyos salvo KIT.md, i18n (agrega claves, no borres) y routes.tsx (agrega tu ruta). Termina con npm run check en verde.`,
-      { agentType: tipo(p), label: `pieza:${p.nombre}`, schema: RESULT })))).filter(Boolean)
+    agent(`${cabecera}\n${REGLAS_FE}\n\nImplementa SOLO la pieza "${p.nombre}":\n${p.descripcion}\nArchivos previstos: ${(p.archivos || []).join(', ')}.\nOtras piezas del mismo grupo se implementan a la vez en otros archivos: no toques archivos fuera de los tuyos salvo KIT.md, i18n (agrega claves, no borres) y routes.tsx (agrega tu ruta). Termina con npm run check en verde.`,
+      { ...optsPieza(p), label: `pieza:${p.nombre}`, schema: RESULT })))).filter(Boolean)
   hechas.push(...res)
 }
 
 const check = await agent(`${cabecera}\n\nIntegración: ejecuta "npm run check" en web-app/ y corrige lo que falle (conflictos entre piezas, rutas duplicadas, claves i18n faltantes en es/en, tipos). Cambios mínimos. Devuelve checkVerde=true solo si viste pasar tsc, lint, vitest y build.`,
-  { agentType: 'fe-implementer-core', label: 'integrar+check', schema: RESULT })
+  { agentType: 'implementer', model: 'opus', effort: 'high', label: 'integrar+check', schema: RESULT })
 log(check && check.checkVerde ? 'npm run check en verde.' : 'ATENCIÓN: npm run check no quedó en verde.')
 
 phase('Verificar')
@@ -47,27 +53,27 @@ let ronda = 0, corregidos = 0, huboAltas = true
 while (ronda < 2 && huboAltas) {
   ronda++
   const encontrados = (await parallel(LENTES.map(l => () =>
-    agent(`${cabecera}\n\nRonda ${ronda}. Revisa el diff del lote (git diff HEAD -- web-app y archivos nuevos) con la lente "${l}". No reportes lo que npm run check ya atrapa. Máximo 15 hallazgos, los más graves primero, con severidad alta/media/baja.`,
-      { agentType: 'fe-reviewer', label: `revisar:${l}`, phase: 'Verificar', schema: FINDINGS })))).filter(Boolean).flatMap(r => r.hallazgos)
+    agent(`${cabecera}\n\nRonda ${ronda}. Revisa SOLO el frontend: el diff del lote (git diff HEAD -- web-app y archivos nuevos bajo web-app/). ${REGLAS_REV[l]} No reportes lo que npm run check ya atrapa. Máximo 15 hallazgos, los más graves primero, con severidad alta/media/baja. No edites.`,
+      { agentType: 'reviewer', model: 'opus', effort: 'high', label: `revisar:${l}`, phase: 'Verificar', schema: FINDINGS })))).filter(Boolean).flatMap(r => r.hallazgos)
   const frescos = encontrados.filter(h => { const k = `${h.archivo}:${h.resumen}`.toLowerCase(); if (vistos.has(k)) return false; vistos.add(k); return true })
   const altas = frescos.filter(h => h.severidad === 'alta')
   const medias = frescos.filter(h => h.severidad === 'media')
   log(`Ronda ${ronda}: ${frescos.length} hallazgos nuevos (${altas.length} altas, ${medias.length} medias).`)
   const juzgadas = await parallel(altas.map(h => () =>
-    agent(`Intenta refutar este hallazgo de severidad alta del frontend:\n${JSON.stringify(h, null, 1)}\nSi no estás seguro, real=false.`, { agentType: 'fe-verifier', label: `refutar:${h.archivo.split('/').pop()}`, phase: 'Verificar', schema: VERDICT })
+    agent(`Intenta refutar este hallazgo de severidad alta del frontend:\n${JSON.stringify(h, null, 1)}\nSi no estás seguro, real=false.`, { agentType: 'verifier', model: 'opus', effort: 'medium', label: `refutar:${h.archivo.split('/').pop()}`, phase: 'Verificar', schema: VERDICT })
       .then(v => ({ h, real: !!(v && v.real), arreglo: v && v.arreglo }))))
   const realesAltas = juzgadas.filter(Boolean).filter(j => j.real)
   huboAltas = realesAltas.length > 0
   const aCorregir = [...realesAltas.map(j => ({ ...j.h, arreglo: j.arreglo })), ...medias]
   if (!aCorregir.length) { log('Nada que corregir.'); break }
-  await agent(`${cabecera}\n\nCorrige estos hallazgos con cambios mínimos (las 'alta' están confirmadas; las 'media' son convenciones de interfaz) y termina con npm run check en verde:\n${JSON.stringify(aCorregir, null, 1)}`,
-    { agentType: 'fe-implementer-core', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
+  await agent(`${cabecera}\n${REGLAS_FE}\n\nCorrige estos hallazgos con cambios mínimos (las 'alta' están confirmadas; las 'media' son convenciones de interfaz) y termina con npm run check en verde:\n${JSON.stringify(aCorregir, null, 1)}`,
+    { agentType: 'implementer', model: 'opus', effort: 'high', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
   corregidos += aCorregir.length
 }
 
 phase('Recorrido')
-const e2e = await agent(`${cabecera}\n\nEscribe o actualiza el recorrido Playwright del lote en web-app/e2e/${String(lote).toLowerCase()}.spec.ts según la sección "recorrido" del plan: ${JSON.stringify(plan.recorrido || [], null, 1)}\nEl API real ya corre en http://localhost:5000 con la BD inicializada (usuarios demo del README). Usa sufijos de tiempo en los datos que crees. Guarda capturas de cada pantalla en docs/manual/frontend/img/${String(lote).toLowerCase()}-<pantalla>.png (proyecto escritorio) para el manual. Ejecuta "npx playwright test" (ambos proyectos) y corrige la aplicación o el recorrido hasta que pase. Devuelve checkVerde=true solo si viste pasar Playwright.`,
-  { agentType: 'fe-implementer-core', label: 'playwright', schema: RESULT })
+const e2e = await agent(`${cabecera}\n${REGLAS_FE}\n\nEscribe o actualiza el recorrido Playwright del lote en web-app/e2e/${String(lote).toLowerCase()}.spec.ts según la sección "recorrido" del plan: ${JSON.stringify(plan.recorrido || [], null, 1)}\nEl API real ya corre en http://localhost:5000 con la BD inicializada (usuarios demo del README). Usa sufijos de tiempo en los datos que crees. Guarda capturas de cada pantalla en docs/manual/frontend/img/${String(lote).toLowerCase()}-<pantalla>.png (proyecto escritorio) para el manual. Ejecuta "npx playwright test" (ambos proyectos) y corrige la aplicación o el recorrido hasta que pase. Devuelve checkVerde=true solo si viste pasar Playwright.`,
+  { agentType: 'implementer', model: 'opus', effort: 'high', label: 'playwright', schema: RESULT })
 log(e2e && e2e.checkVerde ? 'Playwright en verde.' : 'ATENCIÓN: Playwright no quedó en verde.')
 
 phase('Documentar')
