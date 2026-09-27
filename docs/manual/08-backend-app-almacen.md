@@ -94,6 +94,10 @@ Cómo se usa:
   Devuelve el aparato y, **una sola vez**, `enrollCode` (8 caracteres, vence en 24 h): apúntelo o compártalo con
   quien va a instalar la app, porque no se puede volver a consultar.
 - `PATCH /api/v1/devices/{publicId}` — edita nombre, almacén por defecto (o lo quita) y tema; el código no cambia.
+  Acepta la `rowVersion` que devolvió el `GET` (concurrencia optimista): responde 409 solo si otro administrador editó,
+  desactivó, reactivó o regeneró el código del aparato entretanto. El heartbeat y los logins con PIN **no** cambian la
+  `rowVersion` (los datos técnicos "visto por última vez", "último usuario" y "versión de la app" se guardan aparte), así
+  que un aparato en línea no hace fallar la edición.
 - `POST /api/v1/devices/{publicId}/enroll-code` — genera un código de registro nuevo (el anterior deja de servir).
 - `POST /api/v1/devices/{publicId}/deactivate` / `.../reactivate`.
 
@@ -110,6 +114,7 @@ Cómo se usa:
 | Almacén por defecto dado de baja | `El almacén por defecto está dado de baja.` | 422 |
 | Regenerar el código de un aparato desactivado | `El aparato está desactivado; reactívelo antes de generar un código de registro.` | 422 |
 | Aparato de otra compañía o inexistente | `Aparato no encontrado.` | 404 |
+| `rowVersion` vieja: otro administrador cambió el aparato después de que usted lo abrió | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
 
 ### 2.2 Registro en el aparato y heartbeat (anónimo, sin sesión)
 
@@ -130,8 +135,8 @@ Cómo se usa:
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Código de registro inválido, vencido, de un aparato desactivado o de una compañía sin el módulo | `El código de registro no es válido o venció.` | 401 |
-| Secreto que no corresponde al aparato (heartbeat) | `El aparato no está registrado o fue desactivado.` | 401 |
+| Código de registro inválido, vencido, **ausente**, de un aparato desactivado o de una compañía sin el módulo | `El código de registro no es válido o venció.` | 401 |
+| Secreto que no corresponde al aparato, o sin `deviceSecret` (heartbeat) | `El aparato no está registrado o fue desactivado.` | 401 |
 | Demasiadas peticiones en un minuto (por IP y ruta) | `Demasiados intentos; espere un minuto e intente de nuevo.` | 429 |
 
 ### Estatus y transiciones
@@ -158,32 +163,49 @@ Quién puede: cualquier usuario interno, con el módulo **WMS_LOTSERIAL** encend
 Cómo se usa:
 - `GET /api/v1/me/pin` — estado (`hasPin`, `lockedUntilUtc`, `updatedAtUtc`); el PIN nunca se devuelve.
 - `PUT /api/v1/me/pin` — `{ "currentPassword": "...", "pin": "4826" }`. Reinicia el contador de intentos y el
-  bloqueo si los había.
+  bloqueo si los había. **Cambiar** un PIN que ya existía cierra las sesiones del usuario en aparatos: su refresh
+  responde 401 y debe volver a entrar con el PIN nuevo (evento `TOKEN_REVOKED`, motivo `pin_changed`).
 - `DELETE /api/v1/me/pin` — quita el PIN y cierra las sesiones que el usuario tuviera abiertas en aparatos.
+
+La contraseña actual equivocada en `PUT /api/v1/me/pin` **cuenta** en el bloqueo de la cuenta, el mismo del login
+web: 5 contraseñas equivocadas seguidas (sumando login, `PUT /me/pin`, `POST /auth/reauth` y `PUT /auth/password`)
+bloquean la cuenta 15 minutos, también para entrar en la web. Mientras dure, `PUT /me/pin` responde el mismo 400
+`La contraseña actual es incorrecta.` aunque la contraseña sea correcta (la reautenticación responde 401
+`Contraseña incorrecta.` y el cambio de contraseña el mismo 400 de contraseña actual incorrecta). Una contraseña
+correcta antes del bloqueo reinicia el contador. Así, una sesión abierta con PIN en un aparato no sirve para
+adivinar la contraseña de la web.
 
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Contraseña actual incorrecta | `La contraseña actual es incorrecta.` (campo `currentPassword`) | 400 |
+| Contraseña actual incorrecta o sin `currentPassword` | `La contraseña actual es incorrecta.` (campo `currentPassword`) | 400 |
+| Cuenta bloqueada por intentos fallidos de contraseña (5 seguidos entre login, `PUT /me/pin`, reautenticación y cambio de contraseña; dura 15 minutos), aunque la contraseña sea correcta | `La contraseña actual es incorrecta.` (campo `currentPassword`) | 400 |
 | PIN con menos de 4 o más de 6 dígitos, o con algo que no sea un dígito | `El PIN debe tener de 4 a 6 dígitos.` | 400 |
 | PIN trivial (todos los dígitos iguales, o una secuencia consecutiva como `1234` o `9876`) | `El PIN no puede ser una secuencia trivial.` | 400 |
+| El PIN se definió al mismo tiempo en otra sesión | `El PIN del usuario cambió al mismo tiempo en otra sesión; intente de nuevo.` | 409 |
 
 ### 3.2 PIN de otro usuario (administración)
 
 Quién puede: `devices.manage` **o** `admin.users`; asignarlo exige además **AAL2** (reautenticación reciente,
-igual que cambiar roles). Módulo **WMS_LOTSERIAL**.
+igual que cambiar roles). Módulo **WMS_LOTSERIAL**. El permiso se revisa **antes** que la reautenticación: a quien no
+tiene ninguno de los dos permisos se le responde 403 de permiso (queda `PERMISSION_DENIED` en la bitácora de
+seguridad), nunca "requiere reautenticación"; a quien sí tiene el permiso pero no se reautenticó, 403 `aal2_required`.
 
-Cómo se usa: `PUT /api/v1/users/{id}/pin` — `{ "pin": "4826" }`; `DELETE /api/v1/users/{id}/pin`.
+Cómo se usa: `PUT /api/v1/users/{id}/pin` — `{ "pin": "4826" }`; `DELETE /api/v1/users/{id}/pin`. Restablecer
+(o quitar) el PIN de un usuario que ya tenía uno cierra sus sesiones en aparatos: quien hubiera entrado con el PIN
+viejo pierde la sesión en el siguiente refresh (401).
 
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Sin `devices.manage` ni `admin.users` | `Falta el permiso 'devices.manage' o 'admin.users'.` | 403 |
+| Sin `devices.manage` ni `admin.users` | 403 de la política de permisos (código `forbidden`, sin cuerpo propio; evento `PERMISSION_DENIED` con `devices.manage\|admin.users`) | 403 |
+| Con el permiso pero sin reautenticación reciente (solo `PUT`) | `Esta acción requiere reautenticación reciente (AAL2).` (código `aal2_required`) | 403 |
 | Usuario de otra compañía, de portal, o administrador de plataforma | `Usuario no encontrado.` | 404 |
 | El usuario destino tiene permisos que quien llama no tiene | `No puede asignar ni quitar el PIN de un usuario con más permisos que usted.` | 403 |
 | PIN inválido (formato o trivial) | igual que en Mi cuenta | 400 |
+| El PIN se definió al mismo tiempo en otra sesión | `El PIN del usuario cambió al mismo tiempo en otra sesión; intente de nuevo.` | 409 |
 
 El PIN impuesto por un administrador abre una sesión sin contraseña ni MFA; por eso no se puede asignar (ni
 quitar) el PIN de alguien con más permisos efectivos que quien lo hace, y el administrador de plataforma nunca
@@ -198,18 +220,29 @@ Cómo se usa (ambos sin `Authorization`, autenticados con aparato + secreto; lí
 - `POST /api/v1/auth/device/login` — `{ "devicePublicId": "...", "deviceSecret": "...", "userId": 12, "pin":
   "4826" }`. Devuelve el mismo par de tokens (`access`/`refresh`) que un login normal; la sesión queda ligada al
   aparato, dura `Tenant.DeviceSessionDays` días (30 por defecto, configurable de 1 a 365 en `PUT
-  /api/v1/tenant/settings` con `admin.tenant`) y se renueva en cada refresh mientras el aparato siga activo.
+  /api/v1/tenant/settings` con `admin.tenant`) y se renueva en cada refresh mientras el aparato siga activo y la
+  compañía siga activa con el módulo **WMS_LOTSERIAL** encendido. Si el aparato se desactiva o se apaga el módulo,
+  `POST /api/v1/auth/refresh` de esa sesión responde 401 `El aparato no está registrado o fue desactivado.` y la
+  sesión queda revocada (encender otra vez el módulo no la revive: se vuelve a entrar con el PIN).
+
+Lo que la sesión de aparato **no** puede hacer (no tiene contraseña ni MFA): cambiar de compañía (`POST
+/auth/switch-tenant` → 403) ni activar o confirmar la verificación en dos pasos de la cuenta (`POST
+/auth/mfa/totp/enroll` y `/confirm` → 403 `La sesión de un aparato no administra el segundo factor.`). Quien viera el
+PIN en un aparato compartido, o quien lo asignó, se quedaría si no con el secreto TOTP y los códigos de recuperación, y
+el dueño ya no podría entrar a la web con su contraseña. El segundo factor se activa desde la web (Mi cuenta).
 
 ### Validaciones
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
-| Aparato inválido o desactivado | `El aparato no está registrado o fue desactivado.` | 401 |
+| Aparato inválido o desactivado, o sin `deviceSecret` | `El aparato no está registrado o fue desactivado.` | 401 |
 | PIN incorrecto, usuario sin PIN, sin membresía activa o administrador de plataforma | `PIN incorrecto.` | 401 |
+| Refresh de una sesión de aparato con el aparato desactivado o el módulo WMS_LOTSERIAL apagado | `El aparato no está registrado o fue desactivado.` | 401 |
 | PIN bloqueado (ver abajo) | `PIN bloqueado por 15 minutos.` | 423 |
 | Usuario válido y PIN correcto, pero sin `inventory.view` | `Falta el permiso 'inventory.view'.` | 403 |
 | `deviceSessionDays` fuera de 1–365 (configuración) | `Entre 1 y 365 días.` | 400 |
 | Cambiar de compañía con una sesión de aparato (`POST /auth/switch-tenant`) | `La sesión de un aparato no cambia de compañía.` | 403 |
+| Activar o confirmar la verificación en dos pasos con una sesión de aparato (`POST /auth/mfa/totp/enroll` o `/confirm`) | `La sesión de un aparato no administra el segundo factor.` | 403 |
 
 ### Estatus y transiciones — bloqueo del PIN
 
@@ -240,7 +273,12 @@ Protocolo:
 3. Cuando `nextCursor` sea `null`, guardar el `serverTimeUtc` de la **primera** página de esa pasada. En la
    siguiente pasada, pedir `since` = ese `serverTimeUtc` **menos 5 minutos** (margen de seguridad).
 4. Con `since`, además de lo nuevo llegan las filas dadas de baja, cerradas o canceladas con `isActive: false`:
-   el aparato las borra de su base local.
+   el aparato las borra de su base local. Ejemplos: la tarea COUNT de un conteo eliminado llega `CANCELLED` con
+   `isActive: false`; una orden de compra que recibe una segunda entrega parcial (sigue `PARTIAL`) vuelve a llegar con el
+   pendiente nuevo.
+
+El parámetro se llama exactamente `since` (UTC). Un parámetro con otro nombre (por ejemplo `modifiedSinceUtc`) se
+ignora **sin error**: la respuesta sería una carga completa de lo vigente, que nunca trae las bajas.
 
 ### Validaciones
 

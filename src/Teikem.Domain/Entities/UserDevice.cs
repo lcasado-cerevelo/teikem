@@ -9,6 +9,8 @@ namespace Teikem.Domain.Entities;
 /// hash ([SensitiveData]: nunca salen en un DTO ni en la bitácora) y se muestran en claro una sola vez.
 /// DriverDevice (Lote 4, push del chofer) se conserva; 8B podrá migrarlo a esta tabla.
 /// Soft delete: desactivar (IsActive = 0) revoca las sesiones emitidas al aparato (RefreshToken.UserDeviceId).
+/// Los datos técnicos (último contacto, último usuario, versión de la app) viven en <see cref="UserDeviceActivity"/> para que
+/// el heartbeat y el login no cambien el RowVersion de esta fila (token de concurrencia de las ediciones del administrador).
 /// </summary>
 [AuditEntity(Constants.EntityTypes.UserDevice)]
 public class UserDevice : ITenantScoped, ISoftDeletable
@@ -22,17 +24,12 @@ public class UserDevice : ITenantScoped, ISoftDeletable
     public string? Model { get; set; }
     /// <summary>LookupCode Entity='DevicePlatform' (ANDROID en esta versión).</summary>
     public int PlatformLookupId { get; set; }
-    public string? AppVersion { get; set; }
     /// <summary>Hash del código de registro pendiente (null = sin código vigente; es de un solo uso).</summary>
     [SensitiveData] public string? EnrollCodeHash { get; set; }
     public DateTime? EnrollCodeExpiresUtc { get; set; }
     /// <summary>Hash del secreto del aparato (null = aún no se registra en el aparato).</summary>
     [SensitiveData] public string? SecretHash { get; set; }
     public DateTime? EnrolledAtUtc { get; set; }
-    /// <summary>Último contacto (heartbeat o login): dato técnico, no se audita.</summary>
-    [NotAudited] public DateTime? LastSeenUtc { get; set; }
-    /// <summary>Último usuario que entró con PIN en el aparato (dato técnico, no se audita).</summary>
-    [NotAudited] public int? LastUserId { get; set; }
     public int? DefaultWarehouseId { get; set; }
     /// <summary>LookupCode Entity='UiTheme' (LIGHT | DARK): tema por defecto del aparato.</summary>
     public int? ThemeLookupId { get; set; }
@@ -40,4 +37,18 @@ public class UserDevice : ITenantScoped, ISoftDeletable
     [NotAudited] public DateTime RegisteredAtUtc { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
+}
+
+/// <summary>
+/// Lote 8A — datos técnicos del aparato (1:1 con UserDevice, PK = UserDeviceId): último contacto (heartbeat o login con PIN),
+/// último usuario que entró y versión de la app. Tabla aparte y sin RowVersion: escribirla no cambia el RowVersion de
+/// UserDevice, así que el PATCH del administrador solo da 409 ante ediciones reales. No se audita (sin [AuditEntity]).
+/// </summary>
+public class UserDeviceActivity : ITenantScoped
+{
+    public int UserDeviceId { get; set; }
+    public int TenantId { get; set; }
+    [NotAudited] public DateTime? LastSeenUtc { get; set; }
+    [NotAudited] public int? LastUserId { get; set; }
+    [NotAudited] public string? AppVersion { get; set; }
 }

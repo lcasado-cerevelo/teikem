@@ -9,7 +9,7 @@ y la app de choferes (Lote 8B) no se tocan en este lote.
 
 | Pieza | Tablas / columnas | Código principal | Endpoints |
 |---|---|---|---|
-| P0 — base compartida | `UserDevice` (código, plataforma, código de registro con hash y vencimiento, secreto con hash, almacén y tema por defecto, último usuario/visto), `UserPin` (hash, intentos, bloqueo; único por `TenantId+UserId`), `Tenant.DeviceSessionDays` (30 por defecto), `IntegrationMessageLog` ampliada (`UserId`, `RequestHash`, `ResponseJson`, `Method` + índice único filtrado `UX_IntegrationLog_Idem`), `RefreshToken.UserDeviceId`; seed: `LookupCode.UiTheme` (LIGHT/DARK), `EntityType.USER_DEVICE`, permisos `devices.manage` y `warehouse.count.capture` | `IdempotencyRules`, `PinRules` (puros, con pruebas), `IdempotencyMiddleware`, configuraciones EF de `UserDevice`/`UserPin` | Sin endpoints propios; el middleware de idempotencia es transversal (después de autenticación y del contexto de tenant) |
+| P0 — base compartida | `UserDevice` (código, plataforma, código de registro con hash y vencimiento, secreto con hash, almacén y tema por defecto), `UserDeviceActivity` (1:1 con `UserDevice`, sin `ROWVERSION`: último contacto, último usuario y versión de la app; decisión 10), `UserPin` (hash, intentos, bloqueo; único por `TenantId+UserId`), `Tenant.DeviceSessionDays` (30 por defecto), `IntegrationMessageLog` ampliada (`UserId`, `RequestHash`, `ResponseJson`, `Method` + índice único filtrado `UX_IntegrationLog_Idem`), `RefreshToken.UserDeviceId`; seed: `LookupCode.UiTheme` (LIGHT/DARK), `EntityType.USER_DEVICE`, permisos `devices.manage` y `warehouse.count.capture` | `IdempotencyRules`, `PinRules` (puros, con pruebas), `IdempotencyMiddleware`, configuraciones EF de `UserDevice`/`UserDeviceActivity`/`UserPin` | Sin endpoints propios; el middleware de idempotencia es transversal (después de autenticación y del contexto de tenant) |
 | P1 — aparatos, PIN, login por aparato | (usa las tablas de P0) | `DeviceService`, `PinService`, `AuthService` (ampliado con login por aparato y `did` en el JWT), `DeviceRateLimits` | `GET/POST/PATCH /api/v1/devices`, `.../deactivate`, `.../reactivate`, `.../enroll-code`; anónimos: `POST /devices/enroll`, `POST /auth/device/users`, `POST /auth/device/login`, `POST /devices/heartbeat`; `PUT/DELETE /api/v1/me/pin`, `PUT/DELETE /api/v1/users/{id}/pin` |
 | P2 — sincronización, código de barras, operaciones atómicas | Sin tablas nuevas (la sincronización por diferencia usa `AuditLog`/`EntityStatusHistory` existentes, no `UpdatedAtUtc`; ver decisión 1) | `SyncService` + `SyncRules` (puro, con pruebas: cursor opaco, tope de página, `since`), `ProductService.GetByBarcodeAsync`, `ReceiptService` (`Confirm` atómico), `PickBatchService` (`collect-and-pack`), `CycleCountService` (captura en lote y conteo a ciegas) | `GET /api/v1/sync/products|bins|purchase-orders|asns|warehouse-tasks|product-categories`, `GET /api/v1/products/by-barcode/{code}`, `POST /api/v1/receipts` (`confirm:true`), `POST /api/v1/pick-batches/collect-and-pack`, `PUT /api/v1/cycle-counts/{id}/lines/batch` |
 
@@ -21,7 +21,7 @@ secretos en claro (decisión 6 ter).
 
 1. `dotnet build Teikem.sln` — compiló sin errores (2 advertencias `xUnit2012` preexistentes en `RouteWriterTests.cs`,
    ajenas a este lote; verificado en este entorno).
-2. `dotnet test Teikem.sln` — **1981 pruebas, 0 fallidas** (verificado en este entorno). Del lote: `IdempotencyRulesTests`
+2. `dotnet test Teikem.sln` — **2007 pruebas, 0 fallidas** tras la ronda 5 (1981 al cierre; verificado en este entorno). Del lote: `IdempotencyRulesTests`
    (validación de la clave, huella, decisión replay/conflicto/en vuelo/expirado), `PinRulesTests` (formato, secuencias
    triviales, bloqueo/desbloqueo), `SyncRulesTests` (cursor opaco, tope de página, `since`), `DeviceControllerSecurityTests`
    (permisos y módulo por reflexión), más ajustes a `ReceiptServiceTests`, `WmsCatalogTests`, `WmsContractsTests`,
@@ -37,7 +37,8 @@ secretos en claro (decisión 6 ter).
    PIN desde Mi cuenta (exige la contraseña actual), PIN de otros (permiso, AAL2, no a un usuario con más permisos, no
    al administrador de plataforma); `device/users` y `device/login` (PIN incorrecto 401, bloqueo al 5.º intento 423,
    sesión de 30 días con `did`); `Idempotency-Key` (repetición con el mismo cuerpo → `Idempotent-Replayed: true`, otro
-   cuerpo → 409, clave inválida → 400, en vuelo → 409); `GET /sync/products|bins|purchase-orders` (sin `purchasing.view`
+   cuerpo → 409, clave inválida → 400; con `SMOKE_SQL`, registro en vuelo → 409 y clave de más de 7 días que se vuelve a ejecutar con borrado
+   perezoso de los vencidos); `GET /sync/products|bins|purchase-orders` (sin `purchasing.view`
    → 403) con `since`/`cursor`/`take`; `GET /products/by-barcode/{code}` (SKU o código de barras, 404 si no existe);
    `POST /receipts` con `confirm:true` contra una orden de compra (lo escaneado manda, la orden queda PARTIAL);
    `POST /pick-batches/collect-and-pack` (atómico: un empaque que falla no deja recolección ni saca inventario; `pack`
@@ -131,11 +132,17 @@ secretos en claro (decisión 6 ter).
    en paralelo dejaban `FailedCount = 1` sin bloqueo. Se prefirió al bloqueo de fila con transacción porque
    `RunInTransactionAsync` limpia el rastreador y desconectaría el `UserDevice` que usa el login.
 
-10. **Datos técnicos del aparato sin control de concurrencia.** `LastSeenUtc`, `LastUserId` y `AppVersion` se escriben
-    con `ExecuteUpdate` (sin RowVersion ni auditoría) y el login los toca ANTES de emitir los tokens: un heartbeat y un
-    login simultáneos daban 500 y dejaban refresh tokens huérfanos. A revisar: aun así, cualquier `UPDATE` sube la
-    `ROWVERSION`, de modo que un `PATCH`/desactivar del administrador sin `rowVersion` puede recibir 409 si un heartbeat
-    cae entre su lectura y su guardado (ventana de milisegundos; reintentar basta).
+10. **Datos técnicos del aparato en tabla aparte, sin `ROWVERSION` (`UserDeviceActivity`).** `LastSeenUtc`,
+    `LastUserId` y `AppVersion` salieron de `UserDevice` a `dbo.UserDeviceActivity` (PK = `UserDeviceId`, `TenantId`,
+    sin `ROWVERSION`, sin auditoría). En SQL Server cualquier `UPDATE` de la fila sube su `ROWVERSION`, que es el token de
+    concurrencia del `PATCH` (y de desactivar, reactivar y regenerar el código): con las columnas en `UserDevice`, un
+    aparato en línea (heartbeat periódico o login con PIN) dejaba vieja la `rowVersion` que leyó la pantalla y el `PATCH`
+    respondía 409 `El registro fue modificado por otro usuario; recargue e intente de nuevo.` sin que nadie hubiera
+    editado el aparato. Ahora el heartbeat y el login escriben con `ExecuteUpdate` sobre `UserDeviceActivity` (sin el
+    rastreador: un heartbeat y un login simultáneos no chocan) y el login lo hace ANTES de emitir los tokens; el enroll
+    crea la fila en la misma transacción. Solo una edición real da 409. El `DeviceDto` no cambia (`appVersion`,
+    `lastSeenUtc`, `lastUserId` se leen de la tabla nueva). Se descartó la alternativa de un `EditVersion INT` como token
+    (más corta, pero deja el `ROWVERSION` de la fila sin uso real y rompe la convención del proyecto).
 
 11. **Límite de intentos de los endpoints anónimos del aparato** (limitador de .NET 8, sin paquetes): ventana fija de 1
     minuto por IP y ruta; `enroll` 10, `device/users`, `device/login` y `heartbeat` 60 (configurables en
@@ -197,6 +204,54 @@ secretos en claro (decisión 6 ter).
     captura en lote, conteo a ciegas, límite de intentos, sesiones revocadas). Se corrió tal cual, verde de punta a
     punta, sin tocarlo.
 
+22. **`PUT/DELETE /api/v1/users/{id}/pin` con política "cualquiera de" (`perm:devices.manage|admin.users`).**
+    `[RequireAal2]` es un filtro de acción y corría antes que la verificación de permiso del servicio: un usuario sin
+    `devices.manage` ni `admin.users` y sin reauth recibía 403 `aal2_required` (le pedía reautenticarse cuando le faltaba
+    el permiso) y no quedaba `PERMISSION_DENIED`. `RequirePermissionAttribute` acepta ahora varios códigos separados por
+    `|` (basta uno; `PermissionHandler` escribe `PERMISSION_DENIED` con la cadena completa si no tiene ninguno) y
+    `UserPinsController` lo usa a nivel de clase; `PinService` conserva su verificación (defensa en profundidad).
+
+23. **Campos de entrada anulables en los contratos del aparato y del PIN.** Con `<Nullable>enable</Nullable>`,
+    [ApiController] trataba los `string` no anulables como obligatorios y respondía el 400 genérico de MVC en inglés
+    (`The EnrollCode field is required.`) antes de llegar al servicio. `DeviceEnrollRequest.EnrollCode`,
+    `DeviceUsersRequest.DeviceSecret`, `DeviceLoginRequest.DeviceSecret`/`Pin`, `PinSetRequest.CurrentPassword`/`Pin`,
+    `PinAdminSetRequest.Pin` y `HeartbeatRequest.DeviceSecret` pasan a `string?`: si faltan, responde el servicio con su
+    mensaje (401 `El código de registro no es válido o venció.`, 401 `El aparato no está registrado o fue desactivado.`,
+    400 `La contraseña actual es incorrecta.`, 400 `El PIN debe tener de 4 a 6 dígitos.`). Nombres y posiciones no
+    cambian; el documento OpenAPI generado no cambia (Swashbuckle no marca la anulabilidad de referencia). Los contratos
+    anteriores (p. ej. `LoginRequest`) conservan el comportamiento de siempre; la alternativa global
+    (`SuppressImplicitRequiredAttributeForNonNullableReferenceTypes`) queda a revisar.
+
+24. **Eliminar un conteo cierra su tarea COUNT con `CompletedAtUtc`.** `CycleCountService.DeleteAsync` cancelaba la
+    tarea sin fecha de cierre (a diferencia de `WarehouseTaskWriter.CancelAsync`): su antigüedad (`AgeHours`) seguía
+    creciendo y la diferencia de `sync/warehouse-tasks` solo la veía por `EntityStatusHistory`. Ahora llega por las dos
+    ramas con `isActive=false` y `statusCode=CANCELLED`.
+
+25. **Contrato de la app: manda el API.** `docs/mobile/app-almacen-plan.md` §1, §2, §3 y §7 se alinearon con lo
+    construido (`since`/`cursor`/`take`, `POST /devices/enroll`, `POST /auth/device/users`, `POST /auth/device/login`,
+    `POST /pick-batches/collect-and-pack`, `PUT /cycle-counts/{id}/lines/batch`, `Tenant.DeviceSessionDays` de 30 días
+    configurable en lugar de `RefreshTokenDays` 14/1) y llevan la nota "el contrato vigente es `web-app/openapi.json` y este
+    documento; si difieren, manda el contrato". El documento decía `?modifiedSinceUtc=` (el API lo ignora sin error y
+    cada pasada sería una carga completa que nunca trae las bajas), `/auth/device-login` y `/devices/register`.
+
+26. **La sesión abierta con PIN en un aparato no administra el segundo factor** (junto a la decisión 20). `POST
+    /api/v1/auth/mfa/totp/enroll` y `/confirm` con un access token que trae el claim `did` responden 403 `La sesión de un
+    aparato no administra el segundo factor.` antes de llamar al servicio (guarda en `AuthController`; el challenge token
+    del login nunca lleva `did`, así que enrolar durante el login sigue igual). Sin esto, quien viera el PIN en un aparato
+    compartido, o quien lo asignó con `devices.manage`, se quedaba con el secreto TOTP y los códigos de recuperación de una
+    cuenta sin MFA y el dueño ya no podía entrar a la web con su contraseña. A revisar: `logout-all` y `DELETE
+    /auth/sessions/{id}` siguen abiertos a la sesión de aparato (solo cierran sesiones, no toman la cuenta).
+
+27. **Contraseña equivocada con bloqueo por cuenta en todas las rutas que la verifican.** `PUT /api/v1/me/pin`, `POST
+    /api/v1/auth/reauth` y `PUT /api/v1/auth/password` usan ahora el mismo bloqueo de Identity que el login
+    (`IsLockedOutAsync` → `AccessFailedAsync` → `ResetAccessFailedCountAsync`; 5 fallos → 15 minutos, contados en conjunto
+    con el login). Con la cuenta bloqueada responden como una contraseña incorrecta (400 `La contraseña actual es
+    incorrecta.`, 401 `Contraseña incorrecta.` y el 400 de Identity en `newPassword`, respectivamente) y escriben
+    `LOCKOUT` / `BLOCKED`. Antes, una sesión de aparato abierta solo con PIN podía probar contraseñas sin límite por
+    `PUT /me/pin` (y por reauth y el cambio de contraseña), incluso con la cuenta bloqueada en la web. Efecto aceptado:
+    quien tenga una sesión puede bloquear 15 minutos la cuenta web de su dueño equivocándose a propósito (igual que ya
+    podía cualquiera que supiera el correo por el login).
+
 ## Lo que queda fuera de este lote (a propósito)
 
 - **La app instalable de almacén** (`app-almacen/`, Expo/React Native): este lote es solo el backend previo
@@ -206,6 +261,15 @@ secretos en claro (decisión 6 ter).
   este cierre. `DriverDevice` se conserva sin cambios; `UserDevice` es la tabla nueva para aparatos de almacén.
 - **Columna `UpdatedAtUtc`** en `Product`, `ProductCategory`, `WarehouseBin`, `WarehouseZone`, `PurchaseOrder`, `Asn` y
   `WarehouseTask`: no se agregó (decisión 1); la sincronización usa `AuditLog`/`EntityStatusHistory` en su lugar.
+- **Sincronización de clientes y consignatarios** (`sync/clients`, `sync/consignee-locations`): no se construyó; la lista
+  de sincronización es la del plan aprobado (productos, posiciones, órdenes de compra, avisos, tareas y categorías). Efecto:
+  el despacho de **inventario propio** (`Product.ClientId` nulo) **sin señal** no puede elegir el cliente ni el consignatario
+  de la orden que crea `POST /api/v1/pick-batches/collect-and-pack`; en 3PL el cliente queda fijado al dueño, que sí llega en
+  `SyncProductDto.OwnerClientPublicId`. Mientras tanto la app los busca **en línea** con `GET /api/v1/clients` (permiso
+  `clients.read`) y `GET /api/v1/locations` (permiso `locations.read`, módulo `CATALOG`). La plantilla *Operador de almacén*
+  no trae `orders.create` (lo exige collect-and-pack) ni `clients.read`/`locations.read`: quien despache desde el aparato
+  necesita un rol que los agregue. Queda para el lote de la app (o un 8A-bis): sincronizar clientes activos aptos para
+  órdenes y sus consignatarios con el mismo protocolo `since`/`cursor`/`take`, detrás de `warehouse.pick`.
 - **`[SkipIdempotency]` como atributo declarativo**: los prefijos excluidos de la idempotencia están hoy en una lista
   fija en `IdempotencyRules` (decisiones 6 y 7-a), no en un atributo por endpoint.
 - **Zona horaria del tenant** para "since menos 5 minutos" u otras ventanas: sigue en UTC, sin `Tenant.TimeZoneId`
@@ -218,3 +282,83 @@ secretos en claro (decisión 6 ter).
 Antes de este cierre se corrigieron 53 hallazgos durante la verificación del lote (historial de commits, mensajes
 "punto de control — correcciones de revisión"); no se llevó una lista aparte de los 53 por separado de este documento y
 del historial de `git log`.
+
+Correcciones posteriores al cierre (revisión de seguridad y cobertura):
+- El login por aparato con un `userId` que no es (ni fue) miembro de la compañía del aparato escribe el evento `LOGIN` /
+  `FAILURE` sin usuario (`requestedUserId` en el detalle), igual que el login con contraseña: la bitácora de una compañía
+  ya no revela el nombre ni el correo de usuarios de otras.
+- Cambiar o restablecer un PIN existente (`PUT /me/pin`, `PUT /users/{id}/pin`) revoca las sesiones del usuario en
+  aparatos (`TOKEN_REVOKED` con `pin_changed`), como ya hacía quitarlo.
+- El refresh de una sesión de aparato exige también la compañía activa y el módulo WMS_LOTSERIAL encendido (401
+  `El aparato no está registrado o fue desactivado.` y la sesión queda revocada). Pendiente a revisar: el access token
+  vivo (minutos) no se corta al apagar el módulo; habría que revisarlo en `OnTokenValidated` o revocar al apagarlo.
+- El capítulo del manual se renombró a `docs/manual/08-backend-app-almacen.md` (el índice apuntaba a un archivo
+  inexistente) y la FAQ ganó los mensajes que faltaban.
+- Smoke: enroll con almacén y tema; login por aparato de Operador 6 (sub, `/me`, `lastUserId`, autoría en AuditLog y
+  sus propios permisos); refresh con el módulo apagado 401; PIN restablecido → refresh 401; AuditLog de `USER_DEVICE`
+  sin secretos; ramas de BD de la idempotencia (en vuelo, vencida, borrado perezoso) con `SMOKE_SQL`.
+
+Correcciones de la ronda 5 (revisión de concurrencia, contratos, permisos y cobertura):
+- Heartbeat y login con PIN ya no invalidan la `rowVersion` del aparato (decisión 10, tabla `UserDeviceActivity`).
+- Contratos del aparato y del PIN con campos anulables: mensajes en español del servicio en lugar del 400 de MVC
+  (decisión 23).
+- PIN de otros: política `perm:devices.manage|admin.users` antes de AAL2, con `PERMISSION_DENIED` (decisión 22).
+- `docs/mobile/app-almacen-plan.md` alineado con el API construido (decisión 25).
+- Eliminar un conteo fija `CompletedAtUtc` en su tarea COUNT cancelada (decisión 24).
+- Pruebas nuevas: `SyncRulesTests` (tarea cancelada sin `CompletedAtUtc` que llega por `EntityStatusHistory` con
+  `isActive=false`), `CycleCountFilterTests` (a ciegas `onlyVariance` se ignora y los demás filtros aplican),
+  `DeviceServiceTests` (el enroll escribe la actividad en `UserDeviceActivity`), `DeviceControllerSecurityTests` (política
+  de la clase de `UserPinsController`). `dotnet test`: **2007 pruebas, 0 fallidas**.
+- Smoke (bloque 8A), verde de punta a punta contra una base recién creada con `SMOKE_SQL`: la `rowVersion` no cambia con
+  heartbeat ni login y el `PATCH` con ella pasa (con la misma tras una edición real → 409); enroll sin código 401,
+  device/login sin secreto 401 y `PUT /me/pin` sin contraseña 400 en español; PIN de otro sin permiso → 403 que no es
+  `aal2_required` y deja `PERMISSION_DENIED`; vencido el bloqueo del PIN se vuelve a entrar sin restablecerlo (un fallo
+  cuenta desde cero); 10 PIN incorrectos en paralelo → a lo más 4 × 401 y el resto 423, y luego el PIN correcto 423
+  (decisión 9); carrera de 4 peticiones con la misma clave → un solo REC (200 con el mismo número o 409 en vuelo) sin
+  consumir otro número; desconexión del cliente a mitad de un recibo confirmado → el reintento recibe
+  `Idempotent-Replayed`, una sola entrada de inventario y un solo número REC (decisión 18; si la operación termina antes
+  del corte, el paso sigue pasando); segunda recepción parcial (PARTIAL→PARTIAL) → `sync/purchase-orders` trae la orden
+  con el pendiente nuevo; `onlyVariance` a ciegas devuelve todas las líneas; `PUT` y `POST /cycle-counts/{id}/lines` del
+  contador llegan a ciegas; la tarea COUNT del conteo eliminado llega a `sync/warehouse-tasks` con `isActive=false`.
+- Pendiente a revisar: la rama `IsUniqueViolation → 409` del middleware (dos inserciones simultáneas de la misma clave)
+  la ejercita el smoke en paralelo cuando hay carrera real, pero no de forma determinista; haría falta una prueba de
+  integración contra SQL Server.
+
+Correcciones de la ronda 6 (cobertura de reglas que ninguna prueba fijaba; sin cambios de código de producción):
+- `PermissionServiceImpliedTests`: `warehouse.count ⇒ warehouse.count.capture` calculado desde los datos del rol (sin la
+  caché `perms:`), y la política "cualquiera de" de `PermissionHandler` (`devices.manage|admin.users`) con solo el segundo
+  permiso, solo el primero y ninguno.
+- `DeviceServiceTests`: `device/users` → 401 con el módulo WMS_LOTSERIAL apagado y con la compañía inactiva; enroll y
+  `device/users` con un usuario en el contexto (bearer ajeno) escriben sus eventos y su `SaveChanges` sin usuario y
+  restauran el contexto (decisión 17).
+- `CycleCountServiceTests`: la tarea COUNT del conteo eliminado queda con `CompletedAtUtc` (decisión 24).
+- Web (vitest): lista de conteos sin `warehouse.count` sin la columna "Diferencia neta"; con ella y `netVariance` nulo
+  pinta '—'; la ficha a ciegas pinta '—' en el resumen (decisión 15).
+- Smoke (bloque 8A): `POST /devices` con `Idempotency-Key` se ejecuta dos veces (200 y 409 por código repetido, sin
+  Replay) y no deja registro en `IntegrationMessageLog`; con el módulo apagado `device/login` y `device/users` → 401 y el
+  heartbeat → `isActive=false`; un 403 del servicio con clave (recibo contra OC sin `purchasing.receive`) no se guarda y,
+  concedido el permiso, el reintento con la misma clave se ejecuta sin `Idempotent-Replayed`; tras reactivar el aparato el
+  access token nuevo sincroniza al momento (caché `did` limpiada).
+- Sincronización de clientes y consignatarios: anotada en "Lo que queda fuera de este lote" (despacho de inventario propio
+  sin señal).
+- `dotnet test`: **2014 pruebas, 0 fallidas**.
+
+Correcciones de la ronda 7 (revisión de seguridad de la sesión de aparato y cobertura):
+- Decisión 26: enroll y confirm de TOTP con sesión de aparato → 403 (`DeviceControllerSecurityTests` y smoke).
+- Decisión 27: bloqueo por cuenta en `PUT /me/pin`, reauth y cambio de contraseña (`DeviceServiceTests`: la contraseña
+  equivocada cuenta, un acierto reinicia, al 5.º fallo la cuenta queda bloqueada 15 minutos y ni la contraseña correcta
+  guarda el PIN).
+- Decisión 12 con prueba: `WmsCatalogTests` fija `devices.manage` como permiso de dueño (lectura y escritura) de
+  `USER_DEVICE`; smoke: `GET`/`PUT /custom-fields/values/USER_DEVICE/1` sin `devices.manage` → 403 con el permiso exacto
+  y con él `PUT` → 404 (resolver cerrado).
+- Decisión 23 con prueba: `DeviceContractsTests` fija por reflexión la firma anulable de los seis contratos de entrada
+  del aparato y del PIN; smoke: `device/users` y heartbeat sin `deviceSecret` → 401, `PUT /me/pin` y `PUT
+  /users/{id}/pin` sin `pin` → 400 en `errors.pin` con `El PIN debe tener de 4 a 6 dígitos.`.
+- Decisión 17 en `device/login`: el smoke repite el login con un `userId` ajeno mandando el bearer de otra compañía y
+  exige que el evento `LOGIN` quede sin usuario.
+- PIN por compañía: `DeviceServiceTests` (un miembro con PIN solo en otra compañía no sale en `device/users`) y smoke con
+  `SMOKE_SQL` (ese PIN no lista al usuario ni abre el aparato: 401 `PIN incorrecto.`).
+- "Los 5xx no se guardan": `IdempotencyMiddlewareTests` comprueba que una excepción no controlada, o una de dominio con
+  la respuesta ya iniciada, libera la clave del registro insertado y se relanza (con InMemory se verifica el intento de
+  borrado por el error que registra `DeleteAsync`; el borrado real lo cubre SQL Server).
+- `dotnet test`: **2025 pruebas, 0 fallidas**.

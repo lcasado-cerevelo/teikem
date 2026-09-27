@@ -25,7 +25,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Desactivar revoca todas las sesiones (refresh tokens) emitidas a ese aparato y corta en el acto sus access tokens
 ///   (OnTokenValidated revisa el claim `did` contra UserDevice.IsActive con caché de 60 s que aquí se borra). Reactivar
 ///   no revive sesiones: cada usuario vuelve a entrar con su PIN.
-/// - Todo cambio del aparato queda en AuditLog (USER_DEVICE); LastSeenUtc/LastUserId/AppVersion son técnicos y no se auditan.
+/// - Todo cambio del aparato queda en AuditLog (USER_DEVICE); LastSeenUtc/LastUserId/AppVersion son técnicos, no se auditan
+///   y viven en UserDeviceActivity (sin RowVersion) para que el heartbeat y el login no invaliden la rowVersion del PATCH.
 /// </summary>
 public sealed class DeviceService(
     TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ModuleService modules, PermissionService permissions,
@@ -180,9 +181,14 @@ public sealed class DeviceService(
         device.EnrollCodeHash = null;
         device.EnrollCodeExpiresUtc = null;
         device.EnrolledAtUtc = DateTime.UtcNow;
-        device.LastSeenUtc = DateTime.UtcNow;
         if (Clip(req.Model, ModelMaxLength) is string model) device.Model = model;
-        if (Clip(req.AppVersion, AppVersionMaxLength) is string version) device.AppVersion = version;
+        // Datos técnicos en UserDeviceActivity (misma transacción del SaveChanges): último contacto y versión de la app.
+        var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
+            .FirstOrDefaultAsync(a => a.UserDeviceId == device.UserDeviceId, ct);
+        if (activity is null)
+            db.Set<UserDeviceActivity>().Add(activity = new UserDeviceActivity { UserDeviceId = device.UserDeviceId, TenantId = device.TenantId });
+        activity.LastSeenUtc = DateTime.UtcNow;
+        if (Clip(req.AppVersion, AppVersionMaxLength) is string version) activity.AppVersion = version;
         await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
         await RevokeDeviceSessionsAsync(device, "device_enrolled", ct);
         await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Success, null, device.TenantId, new { action = "device_enrolled", device = device.Code }, ct);
@@ -267,21 +273,36 @@ public sealed class DeviceService(
     }
 
     /// <summary>
-    /// Datos técnicos del aparato (LastSeenUtc, LastUserId, AppVersion) sin AuditLog. Se escriben con un UPDATE directo
-    /// (ExecuteUpdate): sin el rastreador ni el control de RowVersion, para que un heartbeat y un login simultáneos del mismo
-    /// aparato no choquen (DbUpdateConcurrencyException → 500). La entidad rastreada NO se modifica (quedaría con el
-    /// RowVersion viejo y el siguiente SaveChanges volvería a chocar); quien llama no necesita ver los valores nuevos.
+    /// Datos técnicos del aparato (LastSeenUtc, LastUserId, AppVersion) sin AuditLog, en UserDeviceActivity (tabla 1:1 sin
+    /// RowVersion): así el heartbeat y el login con PIN NO cambian el ROWVERSION de UserDevice y la rowVersion que leyó la
+    /// pantalla de administración sigue sirviendo para el PATCH (solo una edición real da 409). Se escribe con un UPDATE
+    /// directo (ExecuteUpdate), sin el rastreador, para que un heartbeat y un login simultáneos del mismo aparato no choquen.
+    /// La fila la crea el enroll; si faltara, se inserta (y ante la carrera de dos inserciones se vuelve a actualizar).
     /// </summary>
     internal async Task TouchAsync(UserDevice device, int? userId, string? appVersion, CancellationToken ct)
     {
         var now = DateTime.UtcNow;
         var version = Clip(appVersion, AppVersionMaxLength);
-        await db.Set<UserDevice>().IgnoreQueryFilters()
-            .Where(d => d.UserDeviceId == device.UserDeviceId)
+        Task<int> UpdateRowAsync() => db.Set<UserDeviceActivity>().IgnoreQueryFilters()
+            .Where(a => a.UserDeviceId == device.UserDeviceId)
             .ExecuteUpdateAsync(s => s
-                .SetProperty(d => d.LastSeenUtc, now)
-                .SetProperty(d => d.LastUserId, d => userId ?? d.LastUserId)
-                .SetProperty(d => d.AppVersion, d => version ?? d.AppVersion), ct);
+                .SetProperty(a => a.LastSeenUtc, now)
+                .SetProperty(a => a.LastUserId, a => userId ?? a.LastUserId)
+                .SetProperty(a => a.AppVersion, a => version ?? a.AppVersion), ct);
+        if (await UpdateRowAsync() > 0) return;
+
+        var row = new UserDeviceActivity { UserDeviceId = device.UserDeviceId, TenantId = device.TenantId, LastSeenUtc = now, LastUserId = userId, AppVersion = version };
+        db.Set<UserDeviceActivity>().Add(row);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException ex) when (DbExtensions.IsUniqueViolation(ex))
+        {
+            db.Entry(row).State = EntityState.Detached;
+            await UpdateRowAsync();
+        }
+        finally
+        {
+            if (db.Entry(row).State != EntityState.Detached) db.Entry(row).State = EntityState.Detached;
+        }
     }
 
     // ---------------------------------------------------------------- reglas puras (probables en pruebas)
@@ -324,8 +345,8 @@ public sealed class DeviceService(
         return CryptographicOperations.FixedTimeEquals(expected, actual) ? device : null;
     }
 
-    /// <summary>Compañía activa y con el módulo WMS_LOTSERIAL encendido.</summary>
-    private async Task<bool> TenantUsableAsync(int tenantId, CancellationToken ct)
+    /// <summary>Compañía activa y con el módulo WMS_LOTSERIAL encendido (también lo usa el refresh de sesiones de aparato).</summary>
+    internal async Task<bool> TenantUsableAsync(int tenantId, CancellationToken ct)
     {
         var active = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == tenantId).Select(t => t.IsActive).FirstOrDefaultAsync(ct);
         if (!active) return false;
@@ -398,7 +419,10 @@ public sealed class DeviceService(
         var warehouseIds = rows.Where(d => d.DefaultWarehouseId.HasValue).Select(d => d.DefaultWarehouseId!.Value).Distinct().ToList();
         var warehouses = await db.Warehouses.AsNoTracking().Where(w => warehouseIds.Contains(w.WarehouseId))
             .Select(w => new { w.WarehouseId, w.PublicId, w.Code }).ToDictionaryAsync(w => w.WarehouseId, ct);
-        var userIds = rows.Where(d => d.LastUserId.HasValue).Select(d => d.LastUserId!.Value).Distinct().ToList();
+        var deviceIds = rows.Select(d => d.UserDeviceId).ToList();
+        var activity = await db.Set<UserDeviceActivity>().AsNoTracking().Where(a => deviceIds.Contains(a.UserDeviceId))
+            .ToDictionaryAsync(a => a.UserDeviceId, ct);
+        var userIds = activity.Values.Where(a => a.LastUserId.HasValue).Select(a => a.LastUserId!.Value).Distinct().ToList();
         var userNames = await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id))
             .Select(u => new { u.Id, Name = u.FullName ?? u.Email }).ToDictionaryAsync(u => u.Id, u => u.Name, ct);
 
@@ -408,10 +432,11 @@ public sealed class DeviceService(
             var platform = await lookups.GetAsync(d.PlatformLookupId, ct);
             var theme = d.ThemeLookupId is int tid ? await lookups.GetAsync(tid, ct) : null;
             var w = d.DefaultWarehouseId is int wid && warehouses.TryGetValue(wid, out var wr) ? wr : null;
+            var a = activity.GetValueOrDefault(d.UserDeviceId);
             list.Add(new DeviceDto(
-                d.PublicId, d.Code, d.Name, d.Model, platform?.InternalCode, d.AppVersion, d.SecretHash is not null, d.EnrolledAtUtc,
-                d.EnrollCodeHash is not null ? d.EnrollCodeExpiresUtc : null, d.LastSeenUtc, d.LastUserId,
-                d.LastUserId is int uid ? userNames.GetValueOrDefault(uid) : null, w?.PublicId, w?.Code, theme?.InternalCode,
+                d.PublicId, d.Code, d.Name, d.Model, platform?.InternalCode, a?.AppVersion, d.SecretHash is not null, d.EnrolledAtUtc,
+                d.EnrollCodeHash is not null ? d.EnrollCodeExpiresUtc : null, a?.LastSeenUtc, a?.LastUserId,
+                a?.LastUserId is int uid ? userNames.GetValueOrDefault(uid) : null, w?.PublicId, w?.Code, theme?.InternalCode,
                 d.RegisteredAtUtc, d.IsActive, d.RowVersion is { Length: > 0 } rv ? Convert.ToBase64String(rv) : null));
         }
         return list;

@@ -1683,7 +1683,24 @@ bloqueo.
 
 **¿Qué significa "La contraseña actual es incorrecta." (400, en `currentPassword`)?**
 Para definir o cambiar su propio PIN (`PUT /api/v1/me/pin`) debe escribir su contraseña de acceso actual. Revise la
-contraseña; si la olvidó, cámbiela primero.
+contraseña; si la olvidó, cámbiela primero. Cada contraseña equivocada cuenta en el bloqueo de la cuenta (el mismo del
+login web): tras 5 seguidas la cuenta queda bloqueada 15 minutos y, mientras tanto, este mismo mensaje sale aunque
+escriba la contraseña correcta (y tampoco puede entrar a la web). Espere los 15 minutos y vuelva a intentarlo con la
+contraseña correcta.
+
+**¿Por qué me aparece "Contraseña incorrecta." o "La contraseña actual es incorrecta." con la contraseña correcta?**
+Desde el Lote 8A la reautenticación (`POST /api/v1/auth/reauth`), el cambio de contraseña (`PUT /api/v1/auth/password`)
+y el PIN propio (`PUT /api/v1/me/pin`) cuentan las contraseñas equivocadas en el mismo bloqueo del login: 5 seguidas
+bloquean la cuenta 15 minutos. Mientras dure, esas rutas responden como si la contraseña fuera incorrecta (401
+`Contraseña incorrecta.` en la reautenticación; 400 de contraseña actual incorrecta en las otras dos) y el login web
+responde `Credenciales inválidas.`. Espere 15 minutos. Si no fue usted quien falló, avise a su administrador: alguien
+pudo intentar adivinar su contraseña, por ejemplo desde un aparato donde entró con su PIN.
+
+**¿Qué significa "La sesión de un aparato no administra el segundo factor." (403)?**
+Se intentó activar o confirmar la verificación en dos pasos (`POST /api/v1/auth/mfa/totp/enroll` o `/confirm`) con la
+sesión de un aparato, que se abre solo con el PIN. Si se permitiera, quien viera el PIN en un aparato compartido (o
+quien lo asignó) se quedaría con el secreto y los códigos de recuperación, y el dueño de la cuenta ya no podría entrar a
+la web con su contraseña. Active la verificación en dos pasos desde la web (Mi cuenta), con su contraseña.
 
 **¿Por qué no aparezco en la lista de usuarios del aparato?**
 La lista muestra solo usuarios internos activos, con membresía activa en la compañía del aparato, con **PIN definido** y
@@ -1697,7 +1714,9 @@ administrador con esos permisos que lo haga, o que la persona defina su PIN en M
 
 **Al asignar el PIN de otro usuario recibo 403 `aal2_required`.**
 Asignar el PIN de otro exige una reautenticación reciente (AAL2), igual que cambiar roles o permisos: confirme su
-contraseña (`POST /api/v1/auth/reauth`) y repita.
+contraseña (`POST /api/v1/auth/reauth`) y repita. Este 403 solo lo recibe quien **sí** tiene `devices.manage` o
+`admin.users`: sin ninguno de los dos, el permiso se rechaza antes (403 de permiso, evento `PERMISSION_DENIED`) y
+reautenticarse no sirve de nada.
 
 **¿Qué significa "La clave de idempotencia ya se usó con otro contenido." (409)?**
 La cabecera `Idempotency-Key` identifica UNA operación: repetirla con el mismo cuerpo devuelve la respuesta guardada
@@ -1807,14 +1826,79 @@ Límites de longitud del nombre y el modelo del aparato al darlo de alta o edita
 **¿Qué significa "Aparato no encontrado." (404)?**
 El `publicId` del aparato no existe, o es de otra compañía. Revise el enlace o la lista de aparatos.
 
-**¿Qué significa "Falta el permiso 'devices.manage' o 'admin.users'." (403)?**
+**Asignar o quitar el PIN de otro usuario me da 403 (sin `aal2_required`), o "Falta el permiso 'devices.manage' o 'admin.users'."**
 Para asignar o quitar el PIN de otro usuario (`PUT`/`DELETE /api/v1/users/{id}/pin`) hace falta uno de esos dos
-permisos. Pida que se lo asignen o que otro administrador haga el cambio.
+permisos. La política de permisos lo rechaza antes que cualquier otra revisión (queda `PERMISSION_DENIED` con
+`devices.manage|admin.users` en Auditoría → eventos de seguridad); el texto "Falta el permiso …" es la misma regla
+revisada otra vez por el servicio. Pida que se lo asignen o que otro administrador haga el cambio.
 
 **Quise asignar el PIN de un usuario y me da 404 "Usuario no encontrado." aunque el usuario existe.**
 El usuario es de otra compañía, es una cuenta de portal, o es el administrador de plataforma: ninguno de los tres
 tiene PIN de aparato (el administrador de plataforma nunca entra por esta vía, así que ni siquiera es visible
 aquí).
+
+**¿Qué significa "El PIN debe tener de 4 a 6 dígitos." (400, en `pin`)?**
+Al definir el PIN (`PUT /api/v1/me/pin` o `PUT /api/v1/users/{id}/pin`), use solo de 4 a 6 números. Los espacios al
+inicio y al final no cuentan.
+
+**¿Qué significa "El PIN no puede ser una secuencia trivial." (400, en `pin`)?**
+No se admiten PIN con todos los dígitos iguales ni secuencias consecutivas como `1234` o `9876`. Elija otro.
+
+**¿Qué significa "La línea se repite en la solicitud." (400, en `lines[i]`)?**
+En `PUT /api/v1/cycle-counts/{id}/lines/batch` la misma línea viene dos veces y no se guarda nada. Deje un solo
+renglón por línea y reenvíe.
+
+**¿Qué significa "El PIN del usuario cambió al mismo tiempo en otra sesión; intente de nuevo." (409)?**
+Otra sesión definió el PIN de ese usuario en el mismo momento. Repita la operación.
+
+**Cambié (o restablecí) el PIN y el aparato me sacó de la sesión.**
+Es lo esperado: cambiar un PIN que ya existía (Mi cuenta o `PUT /api/v1/users/{id}/pin`), igual que quitarlo, cierra
+las sesiones de ese usuario en los aparatos de la compañía (evento `TOKEN_REVOKED` con motivo `pin_changed`). Así,
+quien hubiera entrado con el PIN viejo no conserva la sesión. Vuelva a entrar en el aparato con el PIN nuevo.
+
+**Apagaron el módulo WMS_LOTSERIAL y el aparato responde "El aparato no está registrado o fue desactivado." (401) al
+renovar la sesión.**
+Sin el módulo no se puede entrar por aparato, y tampoco renovar una sesión de aparato ya abierta: el refresh responde
+401 y la sesión queda revocada. Al encender otra vez el módulo, cada usuario vuelve a entrar con su PIN.
+
+**¿Por qué un intento de login por aparato aparece en la bitácora de seguridad sin usuario?**
+Si el `userId` pedido no es (ni fue) miembro de la compañía del aparato, el evento `LOGIN` / `FAILURE` se registra sin
+usuario (el id pedido va en el detalle como `requestedUserId`) para no revelar el nombre ni el correo de usuarios de
+otras compañías. Un intento así suele indicar que alguien prueba ids al azar con un aparato registrado: revise ese
+aparato y desactívelo si no lo reconoce.
+
+**Edité un aparato y recibí "El registro fue modificado por otro usuario; recargue e intente de nuevo." (409).**
+Otro administrador editó, desactivó, reactivó o regeneró el código de ese aparato después de que usted lo abrió.
+Recargue el aparato (`GET /api/v1/devices/{publicId}`) y repita el cambio con la `rowVersion` nueva. El heartbeat y los
+logins con PIN del aparato **no** provocan este 409: "visto por última vez", "último usuario" y "versión de la app" se
+guardan aparte y no cambian la `rowVersion`.
+
+**Mandé `POST /api/v1/devices/enroll` sin `enrollCode` (o `device/login` sin `deviceSecret`) y respondió 401, no 400.**
+Es lo esperado: un código de registro ausente es un código inválido (401 `El código de registro no es válido o
+venció.`) y un aparato sin secreto no está autenticado (401 `El aparato no está registrado o fue desactivado.`). Del
+mismo modo, `PUT /api/v1/me/pin` sin `currentPassword` responde 400 `La contraseña actual es incorrecta.` en
+`currentPassword`. Nunca llega el mensaje genérico en inglés ("The … field is required.").
+
+**El aparato perdió la señal a mitad de una operación con `Idempotency-Key`. ¿Se duplica al reintentar?**
+No. La operación no se cancela cuando el aparato se desconecta: termina, su respuesta se guarda y el reintento con la
+misma clave y el mismo cuerpo recibe esa respuesta con `Idempotent-Replayed: true` (el mismo recibo, sin otra entrada de
+inventario ni otro número). Si el reintento llega mientras la primera sigue en curso, responde 409 `La operación con esta
+clave todavía se está procesando.`: espere unos segundos y reintente con la misma clave. Dos reintentos simultáneos con
+la misma clave tampoco duplican: uno ejecuta y los demás reciben la repetición o ese 409.
+
+**Sincronizo con `modifiedSinceUtc` y al aparato nunca le llegan las bajas.**
+El parámetro de la sincronización se llama `since` (UTC). Un parámetro con otro nombre se ignora sin error y la
+respuesta es una carga completa de lo vigente, que no trae las filas con `isActive: false`. Use `since` = el
+`serverTimeUtc` de la pasada anterior menos 5 minutos, con `cursor` y `take` (hasta 500).
+
+**Eliminé un conteo cíclico y su tarea sigue en el aparato.**
+Al eliminar un conteo abierto su tarea COUNT pasa a `CANCELLED` (con fecha de cierre). En la siguiente sincronización
+por diferencia (`GET /api/v1/sync/warehouse-tasks?since=...`) llega con `isActive: false` y el aparato la borra. Si
+sigue apareciendo, el aparato no está mandando `since` (ver la pregunta anterior).
+
+**Filtro el conteo por diferencia (`onlyVariance=true`) y me llegan todas las líneas.**
+Sin `warehouse.count` el conteo es a ciegas: filtrar por diferencia revelaría qué líneas no cuadran con lo esperado,
+así que ese filtro se ignora. Los demás filtros (posición, producto, categoría, pendientes) sí aplican.
 
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 

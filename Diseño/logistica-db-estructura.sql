@@ -427,13 +427,10 @@ CREATE TABLE dbo.UserDevice (
     Name         NVARCHAR(100) NULL,
     Model        NVARCHAR(80) NULL,
     PlatformLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='DevicePlatform'
-    AppVersion   NVARCHAR(20) NULL,
     EnrollCodeHash NVARCHAR(200) NULL,                 -- hash del código de registro pendiente (un solo uso)
     EnrollCodeExpiresUtc DATETIME2 NULL,
     SecretHash   NVARCHAR(200) NULL,                   -- hash del secreto del aparato (NULL = aún no registrado)
     EnrolledAtUtc DATETIME2 NULL,
-    LastSeenUtc  DATETIME2 NULL,
-    LastUserId   INT NULL REFERENCES dbo.AspNetUsers(Id),
     DefaultWarehouseId INT NULL,                       -- FK diferida (DefaultWarehouseId, TenantId) → Warehouse
     ThemeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),          -- Entity='UiTheme' (LIGHT/DARK)
     RegisteredBy INT NULL,
@@ -442,6 +439,18 @@ CREATE TABLE dbo.UserDevice (
     RowVersion   ROWVERSION,
     CONSTRAINT UQ_UserDevice_Code UNIQUE (TenantId, Code),
     CONSTRAINT UQ_UserDevice_PublicId UNIQUE (PublicId)
+);
+GO
+
+-- Lote 8A — datos técnicos del aparato (último contacto, último usuario, versión de la app), 1:1 con UserDevice. Van en
+-- tabla aparte y SIN ROWVERSION: el heartbeat y el login con PIN escriben aquí y no cambian el ROWVERSION de UserDevice,
+-- que es el token de concurrencia del PATCH/desactivar/reactivar/código de registro (solo ediciones reales dan 409).
+CREATE TABLE dbo.UserDeviceActivity (
+    UserDeviceId INT NOT NULL PRIMARY KEY REFERENCES dbo.UserDevice(UserDeviceId),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    LastSeenUtc  DATETIME2 NULL,
+    LastUserId   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    AppVersion   NVARCHAR(20) NULL
 );
 GO
 

@@ -97,5 +97,14 @@ public sealed class CycleCountFilterTests
         await svc.CaptureAsync(id, new CountCaptureRequest(new[] { new CountCaptureItem(alfa.Id, 4m) }), default);
         Assert.Equal("SKU-ALFA", Assert.Single((await svc.GetAsync(id, new CycleCountLinesQuery(OnlyVariance: true), default)).Lines).Sku);
         Assert.Equal("SKU-BETA", Assert.Single((await svc.GetAsync(id, new CycleCountLinesQuery(OnlyPending: true), default)).Lines).Sku);
+
+        // A ciegas, onlyVariance se ignora: filtrar por diferencia revelaría qué líneas difieren de lo esperado.
+        var ciego = await svc.GetAsync(id, new CycleCountLinesQuery(OnlyVariance: true), blind: true, default);
+        Assert.True(ciego.IsBlind);
+        Assert.Equal(2, ciego.Lines.Count);
+        Assert.All(ciego.Lines, l => Assert.Null(l.SystemQty));
+        Assert.All(ciego.Lines, l => Assert.Null(l.VarianceQty));
+        // Los demás filtros sí aplican a ciegas.
+        Assert.Equal("SKU-BETA", Assert.Single((await svc.GetAsync(id, new CycleCountLinesQuery(OnlyPending: true), blind: true, default)).Lines).Sku);
     }
 }

@@ -27,7 +27,8 @@ public sealed class MeController(UserAdminService users, PinService pins) : Cont
     /// <summary>
     /// Define o cambia el PIN propio: exige la contraseña actual (400 'La contraseña actual es incorrecta.'); PIN de 4 a 6
     /// dígitos (400 'El PIN debe tener de 4 a 6 dígitos.') y no trivial (400 'El PIN no puede ser una secuencia trivial.').
-    /// Reinicia el contador de intentos y el bloqueo.
+    /// Reinicia el contador de intentos y el bloqueo. Si ya había PIN, cierra las sesiones del usuario en aparatos (su refresh
+    /// responde 401).
     /// </summary>
     [HttpPut("pin"), RequireModule(ModuleKeys.WmsLotSerial)]
     public Task<PinStatusDto> SetPin([FromBody] PinSetRequest req, CancellationToken ct) => pins.SetMineAsync(req, ct);

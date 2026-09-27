@@ -416,7 +416,7 @@ Cómo se usa:
 - `POST /api/v1/cycle-counts/{id}/finish` — `OPEN → COUNTED`, exige todas las líneas capturadas.
 - `POST /api/v1/cycle-counts/{id}/refresh` — re-fotografía las líneas con foto vieja y borra su captura.
 - `POST /api/v1/cycle-counts/{id}/reconcile` — asienta los ajustes y pasa a `RECONCILED`.
-- `DELETE /api/v1/cycle-counts/{id}` — solo `OPEN`.
+- `DELETE /api/v1/cycle-counts/{id}` — solo `OPEN`. Cancela su tarea COUNT (`CANCELLED`, con fecha de cierre: deja de sumar antigüedad y el aparato la borra en su siguiente sincronización).
 
 ### Validaciones
 

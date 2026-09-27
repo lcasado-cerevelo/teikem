@@ -8,6 +8,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
+import CycleCountDetailScreen from './CycleCountDetailScreen'
+import CycleCountListScreen from './CycleCountListScreen'
 import DockAppointmentListScreen from './DockAppointmentListScreen'
 import PurchaseOrderDetailScreen from './PurchaseOrderDetailScreen'
 import WarehouseTaskListScreen from './WarehouseTaskListScreen'
@@ -33,8 +35,24 @@ const TASKS = [
   { id: 2, typeCode: 'REPLENISH', type: 'Reabasto', statusCode: 'PENDING', status: 'Pendiente', warehousePublicId: WH, warehouseCode: 'ALM-01', completableFromQueue: true },
 ]
 
+// Conteo a ciegas (Lote 8A, decisión 15): sin warehouse.count el API manda netVariance/varianceLines = null.
+const BLIND_COUNT = {
+  id: 1,
+  number: 'CC-00001',
+  warehouseCode: 'ALM-01',
+  statusCode: 'OPEN',
+  status: 'Abierto',
+  lineCount: 3,
+  countedLines: 1,
+  netVariance: null,
+  varianceLines: null,
+  createdAtUtc: '2026-01-01T00:00:00Z',
+}
+
 function route(url: URL): unknown {
   const p = url.pathname
+  if (p === '/api/v1/cycle-counts') return [BLIND_COUNT]
+  if (p === '/api/v1/cycle-counts/1') return { count: BLIND_COUNT, isBlind: true, lines: [] }
   if (p === '/api/v1/warehouse-tasks') return { total: TASKS.length, skip: 0, take: 25, items: TASKS }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
   if (p === '/api/v1/dock-appointments') return []
@@ -100,5 +118,38 @@ describe('PurchaseOrderDetailScreen', () => {
     expect(await screen.findByLabelText(/Acción/)).toHaveValue('CLOSE')
     expect(mock.requests.some((u) => u.pathname.endsWith('/bins'))).toBe(false)
     expect(mock.requests.some((u) => u.pathname.startsWith('/api/v1/products/'))).toBe(false)
+  })
+})
+
+describe('CycleCountListScreen', () => {
+  it("sin warehouse.count no hay columna 'Diferencia neta'", async () => {
+    wrap(<CycleCountListScreen />, ['inventory.view'], ['WMS_LOTSERIAL'])
+    await screen.findAllByText('CC-00001')
+    expect(screen.queryByText('Diferencia neta')).toBeNull()
+  })
+
+  it("con warehouse.count y netVariance null la celda es '—', nunca '0'", async () => {
+    wrap(<CycleCountListScreen />, ['inventory.view', 'warehouse.count'], ['WMS_LOTSERIAL'])
+    await screen.findAllByText('CC-00001')
+    expect(screen.getAllByText('Diferencia neta').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.queryByText('0')).toBeNull()
+  })
+})
+
+describe('CycleCountDetailScreen', () => {
+  it("a ciegas el resumen pinta '—' en líneas con diferencia y diferencia neta (no '0')", async () => {
+    wrap(
+      <CycleCountDetailScreen />,
+      ['inventory.view', 'warehouse.count.capture'],
+      ['WMS_LOTSERIAL'],
+      '/warehouse/cycle-counts/1',
+      '/warehouse/cycle-counts/:id',
+    )
+    for (const label of ['Líneas con diferencia', 'Diferencia neta']) {
+      const field = (await screen.findByText(label, { selector: 'label' })).closest('.f') as HTMLElement
+      expect(within(field).getByText('—')).toBeInTheDocument()
+      expect(within(field).queryByText('0')).toBeNull()
+    }
   })
 })

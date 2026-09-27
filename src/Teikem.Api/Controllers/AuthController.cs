@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Teikem.Api.Auth;
 using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Services;
 
 namespace Teikem.Api.Controllers;
@@ -12,6 +13,20 @@ namespace Teikem.Api.Controllers;
 public sealed class AuthController(AuthService auth, DeviceService devices) : ControllerBase
 {
     private long SessionId => long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0;
+
+    /// <summary>Sesión abierta en un aparato con PIN (access token con el claim `did`): sin contraseña ni MFA.</summary>
+    private bool IsDeviceSession => User.HasClaim(c => c.Type == DeviceClaims.DeviceId);
+
+    /// <summary>
+    /// Lote 8A: la sesión de un aparato (solo PIN) no administra el segundo factor de la cuenta: quien viera el PIN en un
+    /// aparato compartido, o quien lo asignó, se quedaría con el secreto TOTP y los códigos de recuperación y dejaría al
+    /// dueño fuera de la web. 403 'La sesión de un aparato no administra el segundo factor.'. El challenge token del login
+    /// nunca lleva `did`, así que el enrolamiento durante el login sigue igual.
+    /// </summary>
+    private void EnsureNotDeviceSession()
+    {
+        if (IsDeviceSession) throw new ForbiddenException(AuthService.DeviceSessionMfaMessage);
+    }
 
     /// <summary>Paso 1: correo + contraseña (+ tenant opcional). Puede devolver mfa_required o tenant_selection.</summary>
     [HttpPost("login"), AllowAnonymous]
@@ -69,11 +84,21 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req, CancellationToken ct) { await auth.ChangePasswordAsync(req, SessionId, ct); return NoContent(); }
 
     /// <summary>Enrolar TOTP (con access token, o con challenge token cuando el tenant exige MFA y el usuario aún no lo tiene).</summary>
+    /// <remarks>Con la sesión de un aparato (claim `did`) → 403 'La sesión de un aparato no administra el segundo factor.'.</remarks>
     [HttpPost("mfa/totp/enroll"), Authorize(Policy = Policies.AccessOrMfa)]
-    public Task<MfaEnrollResultDto> EnrollTotp(CancellationToken ct) => auth.EnrollTotpAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), ct);
+    public Task<MfaEnrollResultDto> EnrollTotp(CancellationToken ct)
+    {
+        EnsureNotDeviceSession();
+        return auth.EnrollTotpAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), ct);
+    }
 
+    /// <remarks>Con la sesión de un aparato (claim `did`) → 403 'La sesión de un aparato no administra el segundo factor.'.</remarks>
     [HttpPost("mfa/totp/confirm"), Authorize(Policy = Policies.AccessOrMfa)]
-    public Task<MfaConfirmResultDto> ConfirmTotp([FromBody] MfaConfirmRequest req, CancellationToken ct) => auth.ConfirmTotpAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), req, ct);
+    public Task<MfaConfirmResultDto> ConfirmTotp([FromBody] MfaConfirmRequest req, CancellationToken ct)
+    {
+        EnsureNotDeviceSession();
+        return auth.ConfirmTotpAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), req, ct);
+    }
 
     [HttpDelete("mfa/totp"), Authorize, RequireAal2]
     public async Task<IActionResult> DisableTotp(CancellationToken ct) { await auth.DisableTotpAsync(ct); return NoContent(); }

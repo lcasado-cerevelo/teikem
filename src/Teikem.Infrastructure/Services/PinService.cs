@@ -17,11 +17,14 @@ namespace Teikem.Infrastructure.Services
     /// <summary>
     /// Lote 8A (P1) — PIN por usuario para entrar en los aparatos de almacén (UserPin, uno por usuario y compañía).
     /// - El PIN se guarda solo como hash con el MISMO PasswordHasher de Identity; nunca sale en un DTO ni en la bitácora.
-    /// - Mi cuenta: definirlo exige la contraseña actual (400 'La contraseña actual es incorrecta.'); quitarlo no.
+    /// - Mi cuenta: definirlo exige la contraseña actual (400 'La contraseña actual es incorrecta.'); quitarlo no. Cada
+    ///   contraseña equivocada cuenta en el bloqueo por cuenta de Identity (el mismo del login: 5 fallos → 15 minutos) y,
+    ///   con la cuenta bloqueada, responde el mismo 400 aunque la contraseña sea correcta.
     /// - Administración (devices.manage o admin.users, y AAL2 para asignarlo): asignar o quitar el PIN de un usuario interno
     ///   de la misma compañía que NO tenga más permisos que quien lo hace (403) ni sea admin de plataforma (404): un PIN
     ///   impuesto por otro no puede abrir una cuenta con más privilegios (el login por aparato no pide contraseña ni MFA).
-    /// - Guardar un PIN reinicia el contador de intentos y el bloqueo; quitarlo cierra las sesiones del usuario en aparatos.
+    /// - Guardar un PIN reinicia el contador de intentos y el bloqueo; cambiarlo, restablecerlo o quitarlo cierra las
+    ///   sesiones del usuario en aparatos (sus refresh tokens con UserDeviceId quedan revocados; SecurityEvent TOKEN_REVOKED).
     /// - Todo cambio escribe SecurityEvent PASSWORD_CHANGE con detalle target = 'pin'.
     /// - En el login por aparato: 5 fallos seguidos → bloqueo de 15 minutos (PinRules); 401 'PIN incorrecto.' / 423.
     /// </summary>
@@ -32,6 +35,13 @@ namespace Teikem.Infrastructure.Services
         public const string WrongPinMessage = "PIN incorrecto.";
         public const string DuplicatePinMessage = "El PIN del usuario cambió al mismo tiempo en otra sesión; intente de nuevo.";
         public const string HigherPrivilegesMessage = "No puede asignar ni quitar el PIN de un usuario con más permisos que usted.";
+        /// <summary>
+        /// 403 del login por aparato (y 401 del refresh de una sesión de aparato) cuando el PIN lo asignó otra persona que ya no
+        /// cubre los permisos actuales del usuario (le subieron los permisos, o quien lo asignó perdió los suyos, se desactivó o
+        /// dejó la compañía). El PIN deja de servir hasta que el propio usuario lo defina en Mi cuenta (o lo reasigne alguien
+        /// con al menos sus permisos).
+        /// </summary>
+        public const string AssignerLowerPrivilegesMessage = "Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.";
 
         // ---------------------------------------------------------------- Mi cuenta
 
@@ -52,11 +62,22 @@ namespace Teikem.Infrastructure.Services
             var tenantId = ctx.RequireTenantId();
             var pinValue = ValidatePin(req.Pin);
             var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
-            if (!await users.CheckPasswordAsync(user, req.CurrentPassword ?? string.Empty))
+            // Mismo bloqueo por cuenta de Identity que el login (5 fallos → 15 minutos): una sesión de aparato abierta solo con
+            // PIN no puede usar esta ruta para adivinar la contraseña sin límite. Bloqueada → el mismo 400 (sin oráculo).
+            if (await users.IsLockedOutAsync(user))
             {
-                await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Failure, userId, tenantId, new { target = "pin", reason = "password" }, ct);
+                await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenantId, new { target = "pin", reason = "password" }, ct);
                 throw new ValidationException("currentPassword", WrongPasswordMessage);
             }
+            if (!await users.CheckPasswordAsync(user, req.CurrentPassword ?? string.Empty))
+            {
+                await users.AccessFailedAsync(user);
+                var locked = await users.IsLockedOutAsync(user);
+                await security.WriteAsync(locked ? SecurityEventTypes.Lockout : SecurityEventTypes.PasswordChange, locked ? SecurityOutcomes.Blocked : SecurityOutcomes.Failure,
+                    userId, tenantId, new { target = "pin", reason = "password" }, ct);
+                throw new ValidationException("currentPassword", WrongPasswordMessage);
+            }
+            await users.ResetAccessFailedCountAsync(user);
             var pin = await UpsertAsync(user, tenantId, pinValue, userId, ct);
             await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, userId, tenantId, new { target = "pin" }, ct);
             return ToStatus(pin);
@@ -155,6 +176,44 @@ namespace Teikem.Infrastructure.Services
                     .SetProperty(p => p.PinHash, rehash), ct)
                 : await row.ExecuteUpdateAsync(s => s.SetProperty(p => p.FailedCount, failed).SetProperty(p => p.LockedUntilUtc, cleared), ct);
             if (reset == 0) await LockedAsync(user, tenantId, deviceCode, ct);
+
+            // Anti-escalada diferida: el límite de privilegios del PIN impuesto por otro se vuelve a comprobar en cada login
+            // (no solo al asignarlo), porque los permisos del usuario pueden haber subido después. Solo tras un PIN correcto.
+            if (!await AssignerStillCoversAsync(user.Id, tenantId, ct))
+            {
+                await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, tenantId,
+                    new { stage = "device", device = deviceCode, target = "pin", reason = "pin_assigner_lower_privileges" }, ct);
+                throw new ForbiddenException(AssignerLowerPrivilegesMessage);
+            }
+        }
+
+        /// <summary>
+        /// ¿Sigue valiendo el PIN del usuario respecto de quien lo asignó (UserPin.UpdatedBy)? true si no hay PIN, si lo
+        /// definió el propio usuario (UpdatedBy null o él mismo), o si quien lo asignó es admin de plataforma activo, o si está
+        /// activo, con membresía ACTIVE en la compañía y los permisos efectivos ACTUALES del usuario caben en los suyos.
+        /// Lo usan el login por aparato y el refresh de una sesión de aparato (AuthService).
+        /// </summary>
+        public async Task<bool> AssignerStillCoversAsync(int userId, int tenantId, CancellationToken ct)
+        {
+            var pin = await db.Set<UserPin>().AsNoTracking().IgnoreQueryFilters()
+                .Where(p => p.UserId == userId && p.TenantId == tenantId)
+                .Select(p => new { p.UpdatedBy })
+                .FirstOrDefaultAsync(ct);
+            if (pin?.UpdatedBy is not int assignerId || assignerId == userId) return true;
+            var assigner = await db.Users.AsNoTracking().IgnoreQueryFilters()
+                .Where(u => u.Id == assignerId).Select(u => new { u.IsActive, u.IsPlatformAdmin })
+                .FirstOrDefaultAsync(ct);
+            if (assigner is null || !assigner.IsActive) return false;
+            if (assigner.IsPlatformAdmin) return true;
+            var activeMembership = await db.StatusCodes.AsNoTracking()
+                .Where(s => s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active)
+                .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+            var member = activeMembership is not null && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
+                .AnyAsync(m => m.UserId == assignerId && m.TenantId == tenantId && m.StatusCodeId == activeMembership, ct);
+            if (!member) return false;
+            var target = await permissions.GetEffectivePermissionsAsync(userId, tenantId, ct);
+            var theirs = await permissions.GetEffectivePermissionsAsync(assignerId, tenantId, ct);
+            return target.IsSubsetOf(theirs);
         }
 
         /// <summary>PIN bloqueado: SecurityEvent LOCKOUT y 423 'PIN bloqueado por 15 minutos.'.</summary>
@@ -184,10 +243,21 @@ namespace Teikem.Infrastructure.Services
         private async Task<UserPin> UpsertAsync(ApplicationUser user, int tenantId, string pinValue, int? by, CancellationToken ct)
         {
             var pin = await db.Set<UserPin>().AsTracking().FirstOrDefaultAsync(p => p.UserId == user.Id && p.TenantId == tenantId, ct);
+            var deviceTokens = new List<RefreshToken>();
             if (pin is null)
             {
                 pin = new UserPin { TenantId = tenantId, UserId = user.Id };
                 db.Set<UserPin>().Add(pin);
+            }
+            else
+            {
+                // Cambiar o restablecer el PIN cierra las sesiones del usuario en aparatos (quien entró con el PIN viejo
+                // no sigue renovando su sesión), en la misma unidad de trabajo que el hash nuevo.
+                deviceTokens = await db.RefreshTokens
+                    .Where(t => t.UserId == user.Id && t.TenantId == tenantId && t.RevokedAtUtc == null && t.UserDeviceId != null)
+                    .ToListAsync(ct);
+                var now = DateTime.UtcNow;
+                foreach (var t in deviceTokens) t.RevokedAtUtc = now;
             }
             pin.PinHash = users.PasswordHasher.HashPassword(user, pinValue);
             pin.FailedCount = 0;
@@ -195,6 +265,9 @@ namespace Teikem.Infrastructure.Services
             pin.UpdatedAtUtc = DateTime.UtcNow;
             pin.UpdatedBy = by;
             await db.SaveGuardedAsync(DuplicatePinMessage, ct);
+            if (deviceTokens.Count > 0)
+                await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Success, user.Id, tenantId,
+                    new { scope = "devices", reason = "pin_changed", count = deviceTokens.Count }, ct);
             return pin;
         }
 

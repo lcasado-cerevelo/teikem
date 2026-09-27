@@ -31,32 +31,36 @@ public sealed record DeviceCreatedDto(DeviceDto Device, string EnrollCode);
 /// </summary>
 public sealed record DevicePatchRequest(string? Name, Guid? DefaultWarehousePublicId, bool ClearDefaultWarehouse = false, string? Theme = null, string? RowVersion = null);
 
-/// <summary>Registro en el aparato (anónimo) con el código de un solo uso; Model y AppVersion informativos.</summary>
-public sealed record DeviceEnrollRequest(string EnrollCode, string? Model, string? AppVersion);
+/// <summary>
+/// Registro en el aparato (anónimo) con el código de un solo uso; Model y AppVersion informativos. Los campos de entrada de
+/// estos contratos son anulables a propósito: si faltan, responde el servicio con su mensaje en español (p. ej. 401 'El código
+/// de registro no es válido o venció.'), no el 400 genérico de MVC en inglés.
+/// </summary>
+public sealed record DeviceEnrollRequest(string? EnrollCode, string? Model, string? AppVersion);
 
 /// <summary>Aparato registrado: su PublicId y su secreto (se muestra UNA sola vez; el aparato lo guarda cifrado), compañía, almacén y tema.</summary>
 public sealed record DeviceEnrolledDto(Guid DevicePublicId, string DeviceSecret, string TenantName, Guid? DefaultWarehousePublicId, string? Theme);
 
 /// <summary>Lista de usuarios que pueden entrar en el aparato (anónimo: se autentica con aparato + secreto).</summary>
-public sealed record DeviceUsersRequest(Guid DevicePublicId, string DeviceSecret);
+public sealed record DeviceUsersRequest(Guid DevicePublicId, string? DeviceSecret);
 
 /// <summary>Usuario elegible en el aparato: activo en la compañía, con PIN definido y con inventory.view.</summary>
 public sealed record DeviceUserDto(int UserId, string FullName, string Initials);
 
 /// <summary>Login por aparato: aparato + secreto + usuario elegido + PIN (401 'PIN incorrecto.'; 423 'PIN bloqueado por 15 minutos.').</summary>
-public sealed record DeviceLoginRequest(Guid DevicePublicId, string DeviceSecret, int UserId, string Pin);
+public sealed record DeviceLoginRequest(Guid DevicePublicId, string? DeviceSecret, int UserId, string? Pin);
 
 /// <summary>Mi cuenta: definir o cambiar el PIN propio; exige la contraseña actual (400 'La contraseña actual es incorrecta.').</summary>
-public sealed record PinSetRequest(string CurrentPassword, string Pin);
+public sealed record PinSetRequest(string? CurrentPassword, string? Pin);
 
 /// <summary>Administración (devices.manage o admin.users): asignar o restablecer el PIN de otro usuario de la compañía.</summary>
-public sealed record PinAdminSetRequest(string Pin);
+public sealed record PinAdminSetRequest(string? Pin);
 
 /// <summary>Estado del PIN (nunca el PIN): definido, bloqueado hasta (si está bloqueado) y última actualización.</summary>
 public sealed record PinStatusDto(bool HasPin, DateTime? LockedUntilUtc, DateTime? UpdatedAtUtc);
 
 /// <summary>Latido del aparato (anónimo): aparato + secreto y versión de la app.</summary>
-public sealed record HeartbeatRequest(Guid DevicePublicId, string DeviceSecret, string? AppVersion);
+public sealed record HeartbeatRequest(Guid DevicePublicId, string? DeviceSecret, string? AppVersion);
 
 /// <summary>Respuesta del heartbeat: el aparato desactivado recibe IsActive = false (la app bloquea la entrada).</summary>
 public sealed record DeviceHeartbeatDto(bool IsActive, Guid? DefaultWarehousePublicId, string? Theme, DateTime ServerTimeUtc);

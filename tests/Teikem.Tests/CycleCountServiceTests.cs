@@ -287,6 +287,93 @@ public sealed class CycleCountServiceTests
     }
 
     [Fact]
+    public async Task Capture_batch_applies_tracking_rules_to_existing_and_found_lines()
+    {
+        // Lote 8A — PUT /cycle-counts/{id}/lines/batch: mismas reglas que CaptureAsync y AddLineAsync, con errores por renglón
+        // ('lines[i].campo') y sin guardar nada si algún renglón falla.
+        await using var f = await CycleCountFixture.CreateAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 2m);
+        await f.ReceiveSerialAsync(f.ProductSerialId, f.PickBin1, "S1");
+        // Posición inactiva del almacén y producto inactivo (para lo encontrado).
+        f.Db.Set<WarehouseBin>().Add(new WarehouseBin { WarehouseBinId = 109, WarehouseZoneId = 11, WarehouseId = f.WarehouseId, Code = "A01-R01-N1-P09", IsActive = false });
+        var inactive = new Product
+        {
+            ProductId = 309, PublicId = Guid.NewGuid(), TenantId = CycleCountFixture.TenantId, Sku = "PX", Name = "Producto PX",
+            BaseUomLookupId = f.LookupId(LookupDomains.UnitOfMeasure, "UN"), TrackingTypeLookupId = f.LookupId(LookupDomains.TrackingType, TrackingTypes.None),
+            PurchaseCost = 1m, IsActive = false,
+        };
+        f.Db.Set<Product>().Add(inactive);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var svc = f.Get<CycleCountService>();
+        var created = await svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { f.PickBin1 }), default);
+        var none = created.Lines.Single(l => l.Sku == "PN");
+        var serial = created.Lines.Single(l => l.Sku == "PS");
+
+        async Task AssertNothingSavedAsync()
+        {
+            f.Db.ChangeTracker.Clear();
+            var lines = await f.Db.Set<CycleCountLine>().AsNoTracking().Where(l => l.CycleCountId == created.Count.Id).ToListAsync();
+            Assert.Equal(2, lines.Count);
+            Assert.All(lines, l => Assert.Null(l.CountedQty));
+        }
+
+        // Serie con cantidad y sin lista → lines[1].countedQty; el renglón válido [0] tampoco se guarda.
+        var qty = await Assert.ThrowsAsync<ValidationException>(() => svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: none.Id, CountedQty: 2m),
+            new CountBatchItem(LineId: serial.Id, CountedQty: 1m),
+        }), default));
+        Assert.Equal(new[] { CycleCountRules.SerialCountedByList }, qty.Errors!["lines[1].countedQty"]);
+        await AssertNothingSavedAsync();
+
+        // Lo encontrado de un producto con lote sin lote → lines[1].lot.
+        var lot = await Assert.ThrowsAsync<ValidationException>(() => svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: none.Id, CountedQty: 2m),
+            new CountBatchItem(BinId: f.PickBin2, ProductPublicId: f.ProductLotPublicId, CountedQty: 1m),
+        }), default));
+        Assert.Equal(new[] { "El producto PL se controla por lote; indique el lote." }, lot.Errors!["lines[1].lot"]);
+        await AssertNothingSavedAsync();
+
+        // Posición inactiva y producto inactivo en lo encontrado → 422.
+        var bin = await Assert.ThrowsAsync<StatusRuleException>(() => svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(BinId: 109, ProductPublicId: f.ProductNonePublicId, CountedQty: 1m),
+        }), default));
+        Assert.Equal(422, bin.StatusCode);
+        Assert.Equal("La posición A01-R01-N1-P09 está inactiva.", bin.Message);
+        var product = await Assert.ThrowsAsync<StatusRuleException>(() => svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(BinId: f.PickBin2, ProductPublicId: inactive.PublicId, CountedQty: 1m),
+        }), default));
+        Assert.Equal(422, product.StatusCode);
+        Assert.Equal(CycleCountRules.ProductInactive("PX"), product.Message);
+        await AssertNothingSavedAsync();
+
+        // Válido: serie por lista, cantidad y lo encontrado de PL con lote por número (se crea el lote y la línea con LotId).
+        var result = await svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: none.Id, CountedQty: 2m),
+            new CountBatchItem(LineId: serial.Id, SerialNumbers: new[] { "S1" }),
+            new CountBatchItem(BinId: f.PickBin2, ProductPublicId: f.ProductLotPublicId, Lot: new LotInput("L-8A"), CountedQty: 4m),
+        }), default);
+        Assert.Equal(3, result.Lines.Count);
+        Assert.Equal(2m, result.Lines.Single(l => l.Id == none.Id).CountedQty);
+        var s = result.Lines.Single(l => l.Id == serial.Id);
+        Assert.Equal(1m, s.CountedQty);
+        Assert.Equal(new[] { "S1" }, s.CountedSerials);
+        var found = result.Lines.Single(l => l.Sku == "PL");
+        Assert.Equal(f.PickBin2, found.BinId);
+        Assert.Equal("L-8A", found.LotNumber);
+        Assert.NotNull(found.LotId);
+        Assert.Equal(0m, found.SystemQty);
+        Assert.Equal(4m, found.CountedQty);
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(found.LotId, (await f.Db.Set<InventoryLot>().AsNoTracking().SingleAsync(l => l.ProductId == f.ProductLotId && l.LotNumber == "L-8A")).LotId);
+    }
+
+    [Fact]
     public async Task Delete_open_count_cancels_its_task_and_hides_it()
     {
         await using var f = await CycleCountFixture.CreateAsync();
@@ -298,6 +385,8 @@ public sealed class CycleCountServiceTests
 
         await Assert.ThrowsAsync<NotFoundException>(() => svc.GetAsync(created.Count.Id, null, default));
         Assert.Equal(WarehouseTaskStatuses.Cancelled, await f.CountTaskStatusAsync(created.Count.Id));
+        // Decisión 24 (Lote 8A): la tarea COUNT se cierra con fecha (AgeHours deja de crecer; llega a sync/warehouse-tasks).
+        Assert.NotNull((await f.CountTaskAsync(created.Count.Id)).CompletedAtUtc);
         Assert.Empty(await svc.ListAsync(null, default));
     }
 
@@ -443,11 +532,17 @@ internal sealed class CycleCountFixture : IAsyncDisposable
 
     public async Task<string> CountTaskStatusAsync(int cycleCountId)
     {
+        var task = await CountTaskAsync(cycleCountId);
+        return await Db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == task.StatusCodeId).Select(s => s.InternalCode).SingleAsync();
+    }
+
+    /// <summary>La tarea COUNT del conteo (sin rastrear).</summary>
+    public async Task<WarehouseTask> CountTaskAsync(int cycleCountId)
+    {
         var refType = LookupId(LookupDomains.EntityType, EntityTypes.CycleCount);
         var countType = LookupId(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Count);
-        var task = await Db.Set<WarehouseTask>().AsNoTracking()
+        return await Db.Set<WarehouseTask>().AsNoTracking()
             .SingleAsync(t => t.RefEntityLookupId == refType && t.RefId == cycleCountId && t.TaskTypeLookupId == countType);
-        return await Db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == task.StatusCodeId).Select(s => s.InternalCode).SingleAsync();
     }
 
     // ---------------------------------------------------------------- siembra

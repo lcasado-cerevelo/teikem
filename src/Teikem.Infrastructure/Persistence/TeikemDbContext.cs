@@ -70,6 +70,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
     // Lote 8A — aparatos de confianza de la app de almacén, PIN por usuario e idempotencia del API
     public DbSet<UserDevice> UserDevices => Set<UserDevice>();
+    public DbSet<UserDeviceActivity> UserDeviceActivities => Set<UserDeviceActivity>();
     public DbSet<UserPin> UserPins => Set<UserPin>();
     public DbSet<IntegrationMessageLog> IntegrationMessageLogs => Set<IntegrationMessageLog>();
     // Auditoría / contactos / campos / análisis

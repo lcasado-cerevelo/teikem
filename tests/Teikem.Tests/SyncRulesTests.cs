@@ -400,6 +400,43 @@ public sealed class SyncRulesTests
     }
 
     [Fact]
+    public async Task Warehouse_tasks_difference_brings_a_task_cancelled_without_CompletedAtUtc_as_inactive_by_its_status_history()
+    {
+        // Caso de la tarea COUNT de un conteo eliminado: WarehouseTask no se audita, así que una cancelación sin CompletedAtUtc
+        // solo se ve por EntityStatusHistory. La tarea se crea "ayer" para que la rama CreatedAtUtc >= since no la traiga.
+        await using var f = await SyncFixtureAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var created = await f.AddTaskAsync(new WarehouseTaskSpec(WarehouseTaskTypes.Count, w1.WarehouseId));
+        var t = await f.Db.WarehouseTasks.AsTracking().SingleAsync(x => x.WarehouseTaskId == created.WarehouseTaskId);
+        t.CreatedAtUtc = DateTime.UtcNow.AddDays(-1);
+        await SaveClearAsync(f);
+        await Task.Delay(20);
+        var since = DateTime.UtcNow;
+
+        t = await f.Db.WarehouseTasks.AsTracking().SingleAsync(x => x.WarehouseTaskId == created.WarehouseTaskId);
+        var to = await f.Get<StatusService>().TransitionAsync(StatusDomains.WarehouseTaskStatus, EntityTypes.WarehouseTask, t.WarehouseTaskId,
+            t.StatusCodeId, WarehouseTaskStatuses.Cancelled, "Conteo eliminado.", default);
+        t.StatusCodeId = to.StatusCodeId;
+        await SaveClearAsync(f);
+        var stored = await f.Db.WarehouseTasks.AsNoTracking().SingleAsync(x => x.WarehouseTaskId == created.WarehouseTaskId);
+        Assert.Null(stored.CompletedAtUtc);
+        Assert.True(stored.CreatedAtUtc < since);
+        var sync = f.Get<SyncService>();
+
+        var full = await sync.WarehouseTasksAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+        Assert.DoesNotContain(full.Items, i => i.Id == created.WarehouseTaskId);
+
+        var diff = await sync.WarehouseTasksAsync(new SyncQuery(Since: since, WarehousePublicId: w1.PublicId), default);
+        var gone = Assert.Single(diff.Items, i => i.Id == created.WarehouseTaskId);
+        Assert.False(gone.IsActive);
+        Assert.Equal(WarehouseTaskStatuses.Cancelled, gone.StatusCode);
+
+        // Sin el historial (since posterior a la cancelación) ya no llega: la rama que la trajo fue EntityStatusHistory.
+        var later = await sync.WarehouseTasksAsync(new SyncQuery(Since: DateTime.UtcNow.AddMinutes(1), WarehousePublicId: w1.PublicId), default);
+        Assert.DoesNotContain(later.Items, i => i.Id == created.WarehouseTaskId);
+    }
+
+    [Fact]
     public async Task Product_categories_full_load_brings_active_and_difference_marks_deactivated_inactive()
     {
         await using var f = await SyncFixtureAsync();

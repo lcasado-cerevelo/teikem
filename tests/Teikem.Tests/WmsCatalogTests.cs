@@ -171,6 +171,10 @@ public class WmsCatalogTests
         Assert.Equal(PermissionCatalog.WarehouseCrossdock, write[EntityTypes.CrossDockPlan]);
         Assert.Equal(PermissionCatalog.PurchasingManage, write[EntityTypes.PurchaseOrder]);
         Assert.Equal(PermissionCatalog.PurchasingManage, write[EntityTypes.Supplier]);
+        // Lote 8A, decisión 12: USER_DEVICE (resolver cerrado) exige devices.manage para leer y escribir en las rutas
+        // polimórficas; sin la entrada quedaría abierta a cualquier autenticado (404 en vez de 403).
+        Assert.Equal(PermissionCatalog.DevicesManage, read[EntityTypes.UserDevice]);
+        Assert.Equal(PermissionCatalog.DevicesManage, write[EntityTypes.UserDevice]);
         foreach (var closed in new[]
                  {
                      EntityTypes.InventorySerial, EntityTypes.WarehouseTask, EntityTypes.CrossDockAllocation,

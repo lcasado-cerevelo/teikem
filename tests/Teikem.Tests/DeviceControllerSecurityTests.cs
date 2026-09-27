@@ -96,15 +96,45 @@ public class DeviceControllerSecurityTests
     }
 
     [Fact]
+    public async Task A_device_session_cannot_enroll_or_confirm_totp()
+    {
+        // Sesión abierta con PIN en un aparato (claim did): enroll y confirm de TOTP → 403 antes de tocar el servicio (por eso
+        // los servicios pueden ser null). Sin did (access token web o challenge del login) la guarda no interviene.
+        static AuthController Controller(bool device)
+        {
+            var claims = new List<System.Security.Claims.Claim> { new(TeikemClaims.Subject, "7") };
+            if (device) claims.Add(new(DeviceClaims.DeviceId, Guid.NewGuid().ToString()));
+            return new AuthController(null!, null!)
+            {
+                ControllerContext = new ControllerContext
+                {
+                    HttpContext = new Microsoft.AspNetCore.Http.DefaultHttpContext { User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity(claims, "test")) },
+                },
+            };
+        }
+
+        var enroll = await Assert.ThrowsAsync<ForbiddenException>(() => Controller(device: true).EnrollTotp(default));
+        Assert.Equal("La sesión de un aparato no administra el segundo factor.", enroll.Message);
+        Assert.Equal(403, enroll.StatusCode);
+        var confirm = await Assert.ThrowsAsync<ForbiddenException>(() => Controller(device: true).ConfirmTotp(new MfaConfirmRequest("123456"), default));
+        Assert.Equal(AuthService.DeviceSessionMfaMessage, confirm.Message);
+        // Sin did la guarda deja pasar (llega al servicio, que aquí es null).
+        await Assert.ThrowsAsync<NullReferenceException>(() => Controller(device: false).EnrollTotp(default));
+    }
+
+    [Fact]
     public void User_pins_controller_is_authorized_under_the_wms_module_and_setting_a_pin_requires_aal2()
     {
         var t = typeof(UserPinsController);
         Assert.Equal(new[] { ModuleKeys.WmsLotSerial }, Modules(t));
         Assert.Equal("api/v1/users", t.GetCustomAttribute<RouteAttribute>()!.Template);
-        Assert.NotNull(t.GetCustomAttribute<AuthorizeAttribute>());
+        Assert.NotEmpty(t.GetCustomAttributes<AuthorizeAttribute>());
         var actions = Actions(t);
         Assert.Equal(new[] { "RemovePin", "SetPin" }, actions.Select(a => a.Name).OrderBy(n => n));
-        // El permiso (devices.manage o admin.users) lo valida PinService: ver las pruebas de servicio de abajo.
+        // devices.manage o admin.users en la política de la clase ("cualquiera de"): la autorización rechaza antes que
+        // [RequireAal2] y deja PERMISSION_DENIED; PinService lo vuelve a validar (pruebas de servicio de abajo).
+        Assert.Equal(new[] { RequirePermissionAttribute.Prefix + PermissionCatalog.DevicesManage + "|" + PermissionCatalog.AdminUsers },
+            t.GetCustomAttributes<RequirePermissionAttribute>().Select(a => a.Policy!));
         Assert.All(actions, a => Assert.Empty(Permissions(a)));
         var set = t.GetMethod(nameof(UserPinsController.SetPin))!;
         Assert.Equal("{id:int}/pin", set.GetCustomAttribute<HttpPutAttribute>()!.Template);

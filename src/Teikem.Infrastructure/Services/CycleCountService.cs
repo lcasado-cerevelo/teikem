@@ -774,6 +774,8 @@ public sealed class CycleCountService(
                 var to = await statuses.TransitionAsync(StatusDomains.WarehouseTaskStatus, EntityTypes.WarehouseTask, task.WarehouseTaskId,
                     task.StatusCodeId, WarehouseTaskStatuses.Cancelled, $"Conteo {cc.Number} eliminado.", ct2);
                 task.StatusCodeId = to.StatusCodeId;
+                // Como WarehouseTaskWriter.CancelAsync: la cancelación cierra la tarea (AgeHours y sync/warehouse-tasks por CompletedAtUtc).
+                task.CompletedAtUtc = DateTime.UtcNow;
             }
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);

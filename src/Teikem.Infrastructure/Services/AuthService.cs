@@ -54,6 +54,9 @@ public sealed class AuthService(
     DeviceService devices, PinService pins)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
+
+    /// <summary>403 de enroll/confirm de TOTP con la sesión de un aparato (claim `did`, abierta solo con PIN).</summary>
+    public const string DeviceSessionMfaMessage = "La sesión de un aparato no administra el segundo factor.";
     private readonly IDataProtector _protector = dataProtection.CreateProtector("Teikem.Mfa.Totp");
 
     // ---------------- Login ----------------
@@ -186,8 +189,13 @@ public sealed class AuthService(
         // El admin de plataforma nunca entra por aparato (sin contraseña ni MFA abriría todas las compañías).
         if (user is null || !user.IsActive || user.IsPlatformAdmin || kind == UserKinds.Portal || !(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == tenantId))
         {
-            // Sin enumeración de usuarios: el mismo 401 que un PIN incorrecto.
-            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, user?.Id, tenantId, new { stage = "device", device = device.Code, reason = "user" }, ct);
+            // Sin enumeración de usuarios: el mismo 401 que un PIN incorrecto. El evento va a la bitácora de la compañía del
+            // aparato: solo se liga al usuario si es (o fue) miembro de ella; si no, userId null (como el login con
+            // contraseña) para que esa bitácora no revele el nombre o el correo de usuarios de otras compañías.
+            var attributable = user is not null && !user.IsPlatformAdmin && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
+                .AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId, ct);
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Failure, attributable ? user!.Id : null, tenantId,
+                new { stage = "device", device = device.Code, reason = "user", requestedUserId = req.UserId }, ct);
             throw new UnauthorizedException(PinService.WrongPinMessage);
         }
 
@@ -215,14 +223,19 @@ public sealed class AuthService(
 
     private static int? TokenDevice(RefreshToken rt) => rt.UserDeviceId;
 
-    /// <summary>Aparato de una sesión: null si no es de aparato; 401 (y revoca la sesión) si el aparato ya no sirve.</summary>
+    /// <summary>
+    /// Aparato de una sesión: null si no es de aparato; 401 (y revoca la sesión) si el aparato ya no sirve: inactivo, de
+    /// otra compañía, o su compañía inactiva o sin el módulo WMS_LOTSERIAL (la misma condición que device/login).
+    /// </summary>
     private async Task<UserDevice?> SessionDeviceAsync(RefreshToken rt, CancellationToken ct)
     {
         if (TokenDevice(rt) is not int deviceId) return null;
         var device = await devices.FindByIdAsync(deviceId, ct);
-        if (device is not null && device.IsActive && device.TenantId == rt.TenantId) return device;
+        var deviceOk = device is not null && device.IsActive && device.TenantId == rt.TenantId;
+        if (deviceOk && await devices.TenantUsableAsync(rt.TenantId, ct)) return device;
         await RevokeAsync(rt, null, ct);
-        await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId, new { reason = "device_inactive", device = device?.Code }, ct);
+        await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId,
+            new { reason = deviceOk ? "tenant_unusable" : "device_inactive", device = device?.Code }, ct);
         throw new UnauthorizedException(DeviceService.InvalidDeviceMessage);
     }
 
@@ -256,6 +269,15 @@ public sealed class AuthService(
         if (!memberships.Any(m => m.TenantId == rt.TenantId)) { await RevokeAsync(rt, null, ct); throw new ForbiddenException("La membresía ya no está activa."); }
         // Sesión de aparato (Lote 8A): el aparato debe seguir activo; la vigencia se renueva (DeviceSessionDays desde hoy).
         var device = await SessionDeviceAsync(rt, ct);
+        // PIN impuesto por otro (Lote 8A): si quien lo asignó ya no cubre los permisos actuales del usuario, la sesión de
+        // aparato no se renueva con esos permisos: se revoca (401) y el usuario debe definir su propio PIN en Mi cuenta.
+        if (device is not null && !await pins.AssignerStillCoversAsync(rt.UserId, rt.TenantId, ct))
+        {
+            await RevokeAsync(rt, null, ct);
+            await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId,
+                new { reason = "pin_assigner_lower_privileges", device = device.Code }, ct);
+            throw new UnauthorizedException(PinService.AssignerLowerPrivilegesMessage);
+        }
         var expires = device is null ? rt.ExpiresAtUtc : DateTime.UtcNow.AddDays(await devices.SessionDaysAsync(rt.TenantId, ct));
 
         // Rotación: el token usado se revoca y apunta al nuevo
@@ -380,11 +402,22 @@ public sealed class AuthService(
     {
         var userId = ((TenantContext)tenant).RequireUserId();
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
-        if (!await users.CheckPasswordAsync(user, req.Password ?? ""))
+        // Mismo bloqueo por cuenta que el login (5 fallos → 15 minutos): una sesión de aparato abierta solo con PIN llega aquí
+        // y no debe poder adivinar la contraseña sin límite. Bloqueada → el mismo 401 (sin oráculo).
+        if (await users.IsLockedOutAsync(user))
         {
-            await security.WriteAsync(SecurityEventTypes.Reauth, SecurityOutcomes.Failure, userId, tenant.TenantId, null, ct);
+            await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenant.TenantId, new { stage = "reauth" }, ct);
             throw new UnauthorizedException("Contraseña incorrecta.");
         }
+        if (!await users.CheckPasswordAsync(user, req.Password ?? ""))
+        {
+            await users.AccessFailedAsync(user);
+            var locked = await users.IsLockedOutAsync(user);
+            await security.WriteAsync(locked ? SecurityEventTypes.Lockout : SecurityEventTypes.Reauth, locked ? SecurityOutcomes.Blocked : SecurityOutcomes.Failure,
+                userId, tenant.TenantId, locked ? new { stage = "reauth" } : null, ct);
+            throw new UnauthorizedException("Contraseña incorrecta.");
+        }
+        await users.ResetAccessFailedCountAsync(user);
         if (await ConfirmedTotpAsync(userId, ct) is not null && !await VerifyCodeAsync(user, req.MfaCode, ct))
         {
             await security.WriteAsync(SecurityEventTypes.Reauth, SecurityOutcomes.Failure, userId, tenant.TenantId, new { reason = "mfa" }, ct);
@@ -408,12 +441,26 @@ public sealed class AuthService(
         var userId = ((TenantContext)tenant).RequireUserId();
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
         if (await breachChecker.IsBreachedAsync(req.NewPassword ?? "", ct)) throw new ValidationException("newPassword", "Esta contraseña aparece en brechas conocidas; elija otra.");
+        // Mismo bloqueo por cuenta que el login: con la cuenta bloqueada responde igual que una contraseña actual incorrecta
+        // (sin oráculo) y la contraseña actual equivocada cuenta un intento (una sesión de aparato abierta con PIN llega aquí).
+        if (await users.IsLockedOutAsync(user))
+        {
+            await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenant.TenantId, new { stage = "password_change" }, ct);
+            throw new ValidationException("newPassword", users.ErrorDescriber.PasswordMismatch().Description);
+        }
         var result = await users.ChangePasswordAsync(user, req.CurrentPassword ?? "", req.NewPassword ?? "");
         if (!result.Succeeded)
         {
+            if (result.Errors.Any(e => e.Code == nameof(IdentityErrorDescriber.PasswordMismatch)))
+            {
+                await users.AccessFailedAsync(user);
+                if (await users.IsLockedOutAsync(user))
+                    await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, userId, tenant.TenantId, new { stage = "password_change" }, ct);
+            }
             await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Failure, userId, tenant.TenantId, new { errors = result.Errors.Select(e => e.Code) }, ct);
             throw new ValidationException("newPassword", string.Join(" ", result.Errors.Select(e => e.Description)));
         }
+        await users.ResetAccessFailedCountAsync(user);
         // Cambio de contraseña: se cierran las demás sesiones (Identity ya rotó el SecurityStamp).
         var others = await db.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == userId && t.RevokedAtUtc == null && t.RefreshTokenId != currentSessionId).ToListAsync(ct);
         foreach (var t in others) t.RevokedAtUtc = DateTime.UtcNow;

@@ -7,6 +7,8 @@ using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
+using Teikem.Domain.Tenancy;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
@@ -29,13 +31,14 @@ public class DeviceServiceTests
     private const int ActiveMembershipId = 900;
     private const int SuspendedMembershipId = 901;
 
-    private static async Task<WmsFixture> FixtureAsync()
+    private static async Task<WmsFixture> FixtureAsync(Action<IServiceCollection>? configure = null)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
             s.AddIdentityCore<ApplicationUser>().AddRoles<ApplicationRole>().AddEntityFrameworkStores<TeikemDbContext>();
             s.AddSingleton<DeviceService>();
             s.AddSingleton<PinService>();
+            configure?.Invoke(s);
         });
         // Catálogos del Lote 8A que WmsFixture no siembra (como logistica-db-seed.sql).
         f.Db.LookupCodes.AddRange(
@@ -212,7 +215,8 @@ public class DeviceServiceTests
     {
         await using var f = await FixtureAsync();
         var devices = f.Get<DeviceService>();
-        var created = await devices.CreateAsync(new DeviceCreateRequest("ZB-01", null, null, null, "DARK"), default);
+        var w = await f.AddWarehouseAsync("W1");
+        var created = await devices.CreateAsync(new DeviceCreateRequest("ZB-01", null, null, w.PublicId, "DARK"), default);
         f.Db.ChangeTracker.Clear();
 
         // El código se acepta en minúsculas y con guion (como lo teclea el operador).
@@ -222,6 +226,7 @@ public class DeviceServiceTests
         Assert.Equal(created.Device.PublicId, enrolled.DevicePublicId);
         Assert.Equal("Tenant de prueba", enrolled.TenantName);
         Assert.Equal(UiThemes.Dark, enrolled.Theme);
+        Assert.Equal(w.PublicId, enrolled.DefaultWarehousePublicId);
         Assert.Equal(43, enrolled.DeviceSecret.Length);   // 32 bytes en base64url sin relleno
         Assert.Equal(32, Convert.FromBase64String(enrolled.DeviceSecret.Replace('-', '+').Replace('_', '/') + "=").Length);
 
@@ -231,7 +236,12 @@ public class DeviceServiceTests
         Assert.Null(row.EnrollCodeExpiresUtc);
         Assert.NotNull(row.EnrolledAtUtc);
         Assert.Equal("TC52", row.Model);
-        Assert.Equal("1.0.0", row.AppVersion);
+        // Datos técnicos en UserDeviceActivity (no en UserDevice): no tocan el RowVersion del aparato.
+        var activity = f.Db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsNoTracking().Single(a => a.UserDeviceId == row.UserDeviceId);
+        Assert.Equal("1.0.0", activity.AppVersion);
+        Assert.NotNull(activity.LastSeenUtc);
+        Assert.Equal(row.TenantId, activity.TenantId);
+        Assert.Equal("1.0.0", (await devices.GetAsync(created.Device.PublicId, default)).AppVersion);
 
         // Un solo uso.
         var again = await Assert.ThrowsAsync<UnauthorizedException>(() => devices.EnrollAsync(new DeviceEnrollRequest(created.EnrollCode, null, null), default));
@@ -357,6 +367,26 @@ public class DeviceServiceTests
     }
 
     [Fact]
+    public async Task Device_users_ignore_a_pin_defined_only_in_another_company()
+    {
+        // El PIN es por compañía (UserPin único por TenantId + UserId): un miembro activo de la compañía del aparato, con
+        // inventory.view, cuyo único PIN es de otra compañía no aparece en la lista del aparato.
+        await using var f = await FixtureAsync();
+        var (_, enrolled) = await EnrolledDeviceAsync(f, "ZB-01");
+        f.Db.Users.Add(new ApplicationUser { Id = 20, UserName = "u20@t.local", Email = "u20@t.local", FullName = "Pin Ajeno", SecurityStamp = "s20", IsActive = true });
+        f.Db.UserTenants.Add(new UserTenant { UserId = 20, TenantId = WmsFixture.TenantId, StatusCodeId = ActiveMembershipId, IsDefault = true });
+        f.Db.UserTenants.Add(new UserTenant { UserId = 20, TenantId = WmsFixture.OtherTenantId, StatusCodeId = ActiveMembershipId });
+        f.Db.Set<UserPin>().Add(new UserPin { TenantId = WmsFixture.OtherTenantId, UserId = 20, PinHash = "hash" });
+        f.Get<IMemoryCache>().Set($"perms:20:{WmsFixture.TenantId}", new HashSet<string>(new[] { PermissionCatalog.InventoryView }, StringComparer.OrdinalIgnoreCase));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var list = await f.Get<DeviceService>().GetDeviceUsersAsync(new DeviceUsersRequest(enrolled.DevicePublicId, enrolled.DeviceSecret), default);
+
+        Assert.DoesNotContain(list, u => u.UserId == 20);
+    }
+
+    [Fact]
     public async Task Device_users_with_a_wrong_secret_or_a_deactivated_device_is_401()
     {
         await using var f = await FixtureAsync();
@@ -377,6 +407,87 @@ public class DeviceServiceTests
         Assert.Equal(DeviceService.InvalidDeviceMessage, off.Message);
     }
 
+    [Fact]
+    public async Task Device_users_is_401_when_the_tenant_is_unusable()
+    {
+        // TenantUsableAsync en AuthenticateAsync (device/users y device/login): módulo WMS_LOTSERIAL apagado o compañía
+        // inactiva → el mismo 401 que un aparato desactivado. El heartbeat (isActive=false) y el login usan ExecuteUpdate,
+        // no soportado por InMemory: los cubre el smoke con el módulo apagado.
+        await using var f = await FixtureAsync();
+        var devices = f.Get<DeviceService>();
+        var (_, enrolled) = await EnrolledDeviceAsync(f, "ZB-01");
+        var request = new DeviceUsersRequest(enrolled.DevicePublicId, enrolled.DeviceSecret);
+        Assert.Empty(await devices.GetDeviceUsersAsync(request, default));   // utilizable: sin error
+        f.Db.ChangeTracker.Clear();
+
+        f.SetModules(ModuleKeys.Purchasing);
+        var moduleOff = await Assert.ThrowsAsync<UnauthorizedException>(() => devices.GetDeviceUsersAsync(request, default));
+        Assert.Equal(DeviceService.InvalidDeviceMessage, moduleOff.Message);
+        f.Db.ChangeTracker.Clear();
+
+        f.SetModules(ModuleKeys.WmsLotSerial, ModuleKeys.Purchasing);
+        var tenantRow = f.Db.Set<Tenant>().IgnoreQueryFilters().Single(t => t.TenantId == WmsFixture.TenantId);
+        tenantRow.IsActive = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var inactive = await Assert.ThrowsAsync<UnauthorizedException>(() => devices.GetDeviceUsersAsync(request, default));
+        Assert.Equal(DeviceService.InvalidDeviceMessage, inactive.Message);
+    }
+
+    /// <summary>Guarda el usuario efectivo de cada evento (userId ?? contexto, como SecurityEventWriter).</summary>
+    private sealed class CapturingSecurityEventWriter(TenantContext tenant) : ISecurityEventWriter
+    {
+        public List<(string EventType, string Outcome, int? UserId)> Events { get; } = new();
+
+        public Task WriteAsync(string eventType, string outcome, int? userId = null, int? tenantId = null, object? detail = null, CancellationToken ct = default)
+        {
+            Events.Add((eventType, outcome, userId ?? tenant.UserId));
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task Anonymous_device_flows_do_not_use_the_user_of_a_bearer_in_the_context()
+    {
+        // Decisión 17: enroll y device/users corren con AsAnonymous(tenant del aparato): ni los SecurityEvent (TOKEN_REVOKED,
+        // API_CREDENTIAL, fallos) ni el SaveChanges (autor del AuditLog/UpdatedBy) llevan el usuario de un bearer ajeno; al
+        // terminar el contexto se restaura.
+        await using var f = await FixtureAsync(s =>
+        {
+            s.AddSingleton<CapturingSecurityEventWriter>();
+            s.AddSingleton<ISecurityEventWriter>(sp => sp.GetRequiredService<CapturingSecurityEventWriter>());
+        });
+        var devices = f.Get<DeviceService>();
+        var writer = f.Get<CapturingSecurityEventWriter>();
+        var (created, _) = await EnrolledDeviceAsync(f, "ZB-01");
+        // Reinstalación con una sesión viva del aparato: el enroll la revoca (TOKEN_REVOKED).
+        f.Db.RefreshTokens.Add(Token(1, Row(f, created.Device.PublicId).UserDeviceId));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var code = (await devices.RegenerateEnrollCodeAsync(created.Device.PublicId, default)).EnrollCode;
+        f.Db.ChangeTracker.Clear();
+
+        writer.Events.Clear();
+        var saveUsers = new List<int?>();
+        f.Db.SavingChanges += (_, _) => saveUsers.Add(f.Tenant.UserId);
+        Assert.Equal(1, f.Tenant.UserId);   // el contexto trae el usuario de un bearer
+
+        var again = await devices.EnrollAsync(new DeviceEnrollRequest(code, null, null), default);
+        f.Db.ChangeTracker.Clear();
+        await Assert.ThrowsAsync<UnauthorizedException>(() => devices.EnrollAsync(new DeviceEnrollRequest("ZZZZ2222", null, null), default));
+        await devices.GetDeviceUsersAsync(new DeviceUsersRequest(again.DevicePublicId, again.DeviceSecret), default);
+        await Assert.ThrowsAsync<UnauthorizedException>(() => devices.GetDeviceUsersAsync(new DeviceUsersRequest(again.DevicePublicId, "otro"), default));
+
+        Assert.Contains(writer.Events, e => e.EventType == SecurityEventTypes.TokenRevoked);
+        Assert.Contains(writer.Events, e => e.EventType == SecurityEventTypes.ApiCredential && e.Outcome == SecurityOutcomes.Success);
+        Assert.Contains(writer.Events, e => e.Outcome == SecurityOutcomes.Failure);
+        Assert.All(writer.Events, e => Assert.Null(e.UserId));
+        Assert.NotEmpty(saveUsers);
+        Assert.All(saveUsers, u => Assert.Null(u));
+        Assert.Equal(1, f.Tenant.UserId);
+        Assert.Equal(WmsFixture.TenantId, f.Tenant.TenantId);
+    }
+
     // ================================================================ PIN propio (Mi cuenta)
 
     [Fact]
@@ -388,6 +499,41 @@ public class DeviceServiceTests
         Assert.Equal(400, ex.StatusCode);
         Assert.Equal(new[] { "La contraseña actual es incorrecta." }, ex.Errors!["currentPassword"]);
         Assert.Empty(f.Db.Set<UserPin>().AsNoTracking().ToList());
+    }
+
+    [Fact]
+    public async Task Wrong_password_on_my_pin_counts_toward_the_account_lockout()
+    {
+        // PUT /me/pin sirve con el token de una sesión de aparato (solo PIN): la contraseña equivocada cuenta en el bloqueo de
+        // Identity (5 fallos → 15 minutos, el mismo del login) y, bloqueada, responde el mismo 400 aunque la contraseña sea
+        // correcta. Un acierto antes del bloqueo reinicia el contador.
+        await using var f = await FixtureAsync(s => s.Configure<IdentityOptions>(o => { o.Lockout.MaxFailedAccessAttempts = 5; o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15); }));
+        var me = f.Db.Users.Single(u => u.Id == 1);
+        me.LockoutEnabled = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var pins = f.Get<PinService>();
+
+        await Assert.ThrowsAsync<ValidationException>(() => pins.SetMineAsync(new PinSetRequest("equivocada", "4826"), default));
+        await Assert.ThrowsAsync<ValidationException>(() => pins.SetMineAsync(new PinSetRequest("equivocada", "4826"), default));
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(2, f.Db.Users.AsNoTracking().Single(u => u.Id == 1).AccessFailedCount);
+        await pins.SetMineAsync(new PinSetRequest(Password, "4826"), default);
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(0, f.Db.Users.AsNoTracking().Single(u => u.Id == 1).AccessFailedCount);
+
+        for (var i = 0; i < 5; i++)
+            await Assert.ThrowsAsync<ValidationException>(() => pins.SetMineAsync(new PinSetRequest("equivocada", "5937"), default));
+        f.Db.ChangeTracker.Clear();
+        Assert.True(f.Db.Users.AsNoTracking().Single(u => u.Id == 1).LockoutEnd > DateTimeOffset.UtcNow.AddMinutes(14));
+
+        var locked = await Assert.ThrowsAsync<ValidationException>(() => pins.SetMineAsync(new PinSetRequest(Password, "5937"), default));
+        Assert.Equal(new[] { "La contraseña actual es incorrecta." }, locked.Errors!["currentPassword"]);
+        f.Db.ChangeTracker.Clear();
+        var hasher = new PasswordHasher<ApplicationUser>();
+        var user = f.Db.Users.AsNoTracking().Single(u => u.Id == 1);
+        var pin = Assert.Single(f.Db.Set<UserPin>().AsNoTracking().ToList());
+        Assert.NotEqual(PasswordVerificationResult.Failed, hasher.VerifyHashedPassword(user, pin.PinHash, "4826"));
     }
 
     [Theory]
@@ -448,5 +594,107 @@ public class DeviceServiceTests
         Assert.Null(tokens.Single(t => t.UserId == 1 && t.UserDeviceId == null).RevokedAtUtc);   // la sesión web sigue
         Assert.Null(tokens.Single(t => t.UserId == 2).RevokedAtUtc);                             // otro usuario no se toca
         Assert.False((await f.Get<PinService>().GetMineAsync(default)).HasPin);
+    }
+
+    // ================================================================ nombre y modelo del aparato (400)
+
+    [Fact]
+    public async Task Device_name_and_model_have_length_limits_on_create_and_update()
+    {
+        await using var f = await FixtureAsync();
+        var devices = f.Get<DeviceService>();
+
+        var name = await Assert.ThrowsAsync<ValidationException>(() => devices.CreateAsync(new DeviceCreateRequest("ZB-01", new string('N', 101), null, null, null), default));
+        Assert.Equal(400, name.StatusCode);
+        Assert.Equal(new[] { "El nombre admite hasta 100 caracteres." }, name.Errors!["name"]);
+        var model = await Assert.ThrowsAsync<ValidationException>(() => devices.CreateAsync(new DeviceCreateRequest("ZB-01", null, new string('M', 81), null, null), default));
+        Assert.Equal(new[] { "El modelo admite hasta 80 caracteres." }, model.Errors!["model"]);
+        f.Db.ChangeTracker.Clear();
+        Assert.Empty(f.Db.Set<UserDevice>().IgnoreQueryFilters().AsNoTracking().ToList());
+
+        // En el límite exacto se aceptan.
+        var created = await devices.CreateAsync(new DeviceCreateRequest("ZB-01", new string('N', 100), new string('M', 80), null, null), default);
+        Assert.Equal(100, created.Device.Name!.Length);
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(80, Row(f, created.Device.PublicId).Model!.Length);
+
+        // Edición: el mismo 400 y el nombre no cambia.
+        var upd = await Assert.ThrowsAsync<ValidationException>(() => devices.UpdateAsync(created.Device.PublicId, new DevicePatchRequest(new string('X', 101), null), default));
+        Assert.Equal(new[] { "El nombre admite hasta 100 caracteres." }, upd.Errors!["name"]);
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal(new string('N', 100), Row(f, created.Device.PublicId).Name);
+    }
+
+    // ================================================================ PIN impuesto por otro: límite de privilegios en cada login
+
+    [Fact]
+    public async Task Pin_assigned_by_another_user_stops_working_when_the_user_gets_more_privileges()
+    {
+        // Hallazgo de revisión: el límite 'los permisos del usuario caben en los de quien asigna' se revisaba solo al asignar.
+        // AssignerStillCoversAsync (login por aparato y refresh de sesión de aparato) lo vuelve a comprobar con los permisos
+        // ACTUALES; si quien lo asignó ya no los cubre (o se desactivó, dejó la compañía), el PIN deja de servir.
+        await using var f = await FixtureAsync();
+        const int T = WmsFixture.TenantId;
+        f.Db.Users.Add(new ApplicationUser { Id = 2, UserName = "b@t.local", Email = "b@t.local", SecurityStamp = "s2", IsActive = true });
+        f.Db.UserTenants.Add(new UserTenant { UserId = 2, TenantId = T, StatusCodeId = ActiveMembershipId });
+        f.Db.Set<UserPin>().Add(new UserPin { TenantId = T, UserId = 2, PinHash = "hash", UpdatedBy = 1 });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var cache = f.Get<IMemoryCache>();
+        void Perms(int userId, params string[] codes) => cache.Set($"perms:{userId}:{T}", new HashSet<string>(codes, StringComparer.OrdinalIgnoreCase));
+        var pins = f.Get<PinService>();
+
+        // A (1) = {devices.manage, inventory.view}; B (2) = {inventory.view}: los permisos de B caben en los de A.
+        Perms(1, PermissionCatalog.DevicesManage, PermissionCatalog.InventoryView);
+        Perms(2, PermissionCatalog.InventoryView);
+        Assert.True(await pins.AssignerStillCoversAsync(2, T, default));
+
+        // A B le suben los permisos (TenantAdmin): el PIN que puso A ya no sirve.
+        Perms(2, PermissionCatalog.InventoryView, PermissionCatalog.AdminUsers);
+        Assert.False(await pins.AssignerStillCoversAsync(2, T, default));
+
+        // Si B define su propio PIN (UpdatedBy = él mismo o null) vuelve a servir.
+        await SetUpdatedByAsync(f, 2, 2);
+        Assert.True(await pins.AssignerStillCoversAsync(2, T, default));
+        await SetUpdatedByAsync(f, 2, null);
+        Assert.True(await pins.AssignerStillCoversAsync(2, T, default));
+
+        // Quien asignó se desactiva o deja la compañía → no sirve aunque los permisos quepan.
+        await SetUpdatedByAsync(f, 2, 1);
+        Perms(2, PermissionCatalog.InventoryView);
+        Assert.True(await pins.AssignerStillCoversAsync(2, T, default));
+        var membership = f.Db.UserTenants.Single(m => m.UserId == 1 && m.TenantId == T);
+        membership.StatusCodeId = SuspendedMembershipId;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Assert.False(await pins.AssignerStillCoversAsync(2, T, default));
+        membership = f.Db.UserTenants.Single(m => m.UserId == 1 && m.TenantId == T);
+        membership.StatusCodeId = ActiveMembershipId;
+        var a = f.Db.Users.Single(u => u.Id == 1);
+        a.IsActive = false;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Assert.False(await pins.AssignerStillCoversAsync(2, T, default));
+
+        // Asignado por un admin de plataforma (activo): se exceptúa.
+        a = f.Db.Users.Single(u => u.Id == 1);
+        a.IsActive = true;
+        a.IsPlatformAdmin = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Perms(2, PermissionCatalog.InventoryView, PermissionCatalog.AdminUsers);
+        Assert.True(await pins.AssignerStillCoversAsync(2, T, default));
+
+        // Sin PIN no hay nada que revisar.
+        Assert.True(await pins.AssignerStillCoversAsync(99, T, default));
+        Assert.Equal("Su PIN lo asignó otra persona que ya no tiene sus permisos; defina su propio PIN en Mi cuenta.", PinService.AssignerLowerPrivilegesMessage);
+    }
+
+    private static async Task SetUpdatedByAsync(WmsFixture f, int userId, int? by)
+    {
+        var pin = f.Db.Set<UserPin>().Single(p => p.UserId == userId);
+        pin.UpdatedBy = by;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
     }
 }

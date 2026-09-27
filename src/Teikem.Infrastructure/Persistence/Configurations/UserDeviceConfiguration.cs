@@ -15,11 +15,22 @@ public sealed class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevic
         b.Property(x => x.Code).HasMaxLength(30).IsRequired();
         b.Property(x => x.Name).HasMaxLength(100);
         b.Property(x => x.Model).HasMaxLength(80);
-        b.Property(x => x.AppVersion).HasMaxLength(20);
         b.Property(x => x.EnrollCodeHash).HasMaxLength(200);
         b.Property(x => x.SecretHash).HasMaxLength(200);
         b.Property(x => x.RowVersion).IsRowVersion();
         b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique().HasDatabaseName("UQ_UserDevice_Code");
         b.HasIndex(x => x.PublicId).IsUnique().HasDatabaseName("UQ_UserDevice_PublicId");
+    }
+}
+
+/// <summary>Lote 8A — dbo.UserDeviceActivity (datos técnicos del aparato, 1:1 con UserDevice, sin RowVersion).</summary>
+public sealed class UserDeviceActivityConfiguration : IEntityTypeConfiguration<UserDeviceActivity>
+{
+    public void Configure(EntityTypeBuilder<UserDeviceActivity> b)
+    {
+        b.ToTable("UserDeviceActivity");
+        b.HasKey(x => x.UserDeviceId);
+        b.Property(x => x.UserDeviceId).ValueGeneratedNever();
+        b.Property(x => x.AppVersion).HasMaxLength(20);
     }
 }

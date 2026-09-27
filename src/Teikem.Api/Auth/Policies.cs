@@ -10,10 +10,15 @@ using Teikem.Infrastructure.Services;
 
 namespace Teikem.Api.Auth;
 
-/// <summary>[RequirePermission("trips.dispatch")] → policy "perm:trips.dispatch" resuelta por PermissionPolicyProvider.</summary>
+/// <summary>
+/// [RequirePermission("trips.dispatch")] → policy "perm:trips.dispatch" resuelta por PermissionPolicyProvider.
+/// Lote 8A: "a|b" = basta CUALQUIERA de los permisos (p. ej. devices.manage|admin.users en el PIN de otros usuarios).
+/// </summary>
 public sealed class RequirePermissionAttribute : AuthorizeAttribute
 {
     public const string Prefix = "perm:";
+    /// <summary>Separador de "cualquiera de" dentro del código de permiso de la política.</summary>
+    public const char AnyOfSeparator = '|';
     public RequirePermissionAttribute(string permission) => Policy = Prefix + permission;
 }
 
@@ -22,13 +27,17 @@ public sealed class PermissionRequirement(string permission) : IAuthorizationReq
     public string Permission { get; } = permission;
 }
 
-/// <summary>Verifica que el UserRole del tenant activo (∪ permisos extra) incluya el permiso; registra PERMISSION_DENIED si no.</summary>
+/// <summary>
+/// Verifica que el UserRole del tenant activo (∪ permisos extra) incluya el permiso (o alguno de "a|b"); registra
+/// PERMISSION_DENIED (con la cadena completa) si no.
+/// </summary>
 public sealed class PermissionHandler(PermissionService permissions, ITenantContext tenant, ISecurityEventWriter security) : AuthorizationHandler<PermissionRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
         if (!tenant.IsAuthenticated) return;
-        if (await permissions.HasPermissionAsync(requirement.Permission, CancellationToken.None)) { context.Succeed(requirement); return; }
+        foreach (var permission in requirement.Permission.Split(RequirePermissionAttribute.AnyOfSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            if (await permissions.HasPermissionAsync(permission, CancellationToken.None)) { context.Succeed(requirement); return; }
         await security.WriteAsync(SecurityEventTypes.PermissionDenied, SecurityOutcomes.Blocked, tenant.UserId, tenant.TenantId, new { permission = requirement.Permission });
     }
 }
