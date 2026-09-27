@@ -1,0 +1,423 @@
+// Pantalla E (Lote F6) — Cruce de muelle (demo): citas de muelle. `/warehouse/dock-appointments`. Lectura: inventory.view
+// + CROSSDOCK (aplicado por la ruta). Agendar/reprogramar/cambiar estatus: warehouse.crossdock.
+import { useMemo, useState } from 'react'
+import { useController, useForm, useFormContext } from 'react-hook-form'
+import { Can, useCan } from '../../kernel/access'
+import { parseApiDate } from '../../kernel/api/dates'
+import { StatusChip, StatusPipeline, useLookups, useStatuses } from '../../kernel/catalogs'
+import { useLang, useT } from '../../kernel/i18n'
+import {
+  DataTable,
+  DateRangeFilter,
+  EMPTY_RANGE,
+  Field,
+  Filters,
+  Form,
+  Modal,
+  Panel,
+  Select,
+  SelectFilter,
+  SearchSelect,
+  TextInput,
+  toast,
+  type DataColumn,
+  type DateRange,
+  type RowAction,
+} from '../../kernel/ui'
+import { useFieldInfo } from '../../kernel/ui/formContext'
+import { useAsns, useDockAppointments, useSaveDockAppointment, useWarehouseDocks, type DockAppointmentDto } from './api'
+import { WarehousePicker, WarehousePickerInput } from './pickers'
+
+/** Fecha y hora (`<input type="datetime-local">`; no lo tiene el kit): registrado con `useController` como
+ *  WarehousePickerInput/ProductPickerInput en pickers.tsx. Valor de formulario: 'YYYY-MM-DDTHH:mm' en hora local. */
+function DateTimeInput() {
+  const info = useFieldInfo('DateTimeInput')
+  const { control } = useFormContext()
+  const { field } = useController({ name: info.name, control })
+  return (
+    <input
+      id={info.id}
+      type="datetime-local"
+      value={(field.value as string | undefined) ?? ''}
+      onChange={(e) => field.onChange(e.target.value)}
+      onBlur={field.onBlur}
+      aria-invalid={info.invalid || undefined}
+      aria-required={info.required || undefined}
+      aria-describedby={info.describedBy}
+    />
+  )
+}
+
+const STATUS_DOMAIN = 'AppointmentStatus'
+const ENTITY_TYPE = 'DOCK_APPOINTMENT'
+const DIRECTION_DOMAIN = 'DockDirection'
+
+function formatDateTime(iso: string | null | undefined, lang: string): string {
+  if (!iso) return ''
+  const date = parseApiDate(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** ISO del API (sin zona = UTC) → valor de un <input type="datetime-local"> en hora local. */
+function toLocalInput(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = parseApiDate(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Valor de un <input type="datetime-local"> (hora local) → ISO UTC para el request. */
+function fromLocalInput(v: string): string | null {
+  if (!v) return null
+  const d = new Date(v)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Alta (agendar)
+// ---------------------------------------------------------------------------------------------------------------------
+interface CreateFormValues {
+  warehousePublicId: string
+  dockId: string
+  direction: string
+  scheduledStartUtc: string
+  scheduledEndUtc: string
+  linkType: 'none' | 'asn' | 'trip'
+  asnId: string
+  tripPublicId: string
+}
+
+function CreateAppointmentModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT()
+  const save = useSaveDockAppointment()
+  const { data: directions = [] } = useLookups(DIRECTION_DOMAIN)
+  const form = useForm<CreateFormValues>({
+    defaultValues: { warehousePublicId: '', dockId: '', direction: '', scheduledStartUtc: '', scheduledEndUtc: '', linkType: 'none', asnId: '', tripPublicId: '' },
+  })
+  const warehousePublicId = form.watch('warehousePublicId')
+  const linkType = form.watch('linkType')
+  const { data: docks = [] } = useWarehouseDocks(warehousePublicId || null, { includeInactive: false })
+  const { data: asns = [] } = useAsns(warehousePublicId ? { warehousePublicId } : {})
+  const formId = 'dock-appointment-create'
+
+  const close = () => {
+    form.reset({ warehousePublicId: '', dockId: '', direction: '', scheduledStartUtc: '', scheduledEndUtc: '', linkType: 'none', asnId: '', tripPublicId: '' })
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('warehouse.dockAppointments.new')}
+      onClose={close}
+      dismissible={!form.formState.isSubmitting}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={close}>
+            {t('common.cancel')}
+          </button>
+          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <Form
+        id={formId}
+        form={form}
+        onSubmit={async (v) => {
+          if (!v.dockId) {
+            form.setError('dockId', { message: t('warehouse.dockAppointments.errors.dockRequired') })
+            return
+          }
+          if (!v.scheduledStartUtc) {
+            form.setError('scheduledStartUtc', { message: t('warehouse.dockAppointments.errors.startRequired') })
+            return
+          }
+          await save.mutateAsync({
+            action: 'create',
+            body: {
+              warehousePublicId: v.warehousePublicId || null,
+              dockId: Number(v.dockId),
+              direction: v.direction || null,
+              scheduledStartUtc: fromLocalInput(v.scheduledStartUtc),
+              scheduledEndUtc: fromLocalInput(v.scheduledEndUtc),
+              asnId: v.linkType === 'asn' && v.asnId ? Number(v.asnId) : null,
+              tripPublicId: v.linkType === 'trip' && v.tripPublicId ? v.tripPublicId : null,
+            },
+          })
+          toast.success(t('warehouse.dockAppointments.created'))
+          close()
+        }}
+      >
+        <div className="r2">
+          <Field name="warehousePublicId" label={t('warehouse.dockAppointments.fields.warehouse')} required>
+            <WarehousePickerInput />
+          </Field>
+          <Field name="dockId" label={t('warehouse.dockAppointments.fields.dock')} required>
+            <Select options={docks.map((d) => ({ value: String(d.id), label: d.code ?? '' }))} placeholder={t('warehouse.dockAppointments.fields.selectDock')} />
+          </Field>
+        </div>
+        <div className="r2">
+          <Field name="direction" label={t('warehouse.dockAppointments.fields.direction')}>
+            <Select options={directions.map((d) => ({ value: d.code, label: d.label }))} placeholder="" />
+          </Field>
+        </div>
+        <div className="r2">
+          <Field name="scheduledStartUtc" label={t('warehouse.dockAppointments.fields.start')} required>
+            <DateTimeInput />
+          </Field>
+          <Field name="scheduledEndUtc" label={t('warehouse.dockAppointments.fields.end')}>
+            <DateTimeInput />
+          </Field>
+        </div>
+        <Field name="linkType" label={t('warehouse.dockAppointments.fields.linkType')} help={t('warehouse.dockAppointments.fields.linkHelp')}>
+          <Select
+            options={[
+              { value: 'none', label: t('warehouse.dockAppointments.fields.linkNone') },
+              { value: 'asn', label: t('warehouse.dockAppointments.fields.linkAsn') },
+              { value: 'trip', label: t('warehouse.dockAppointments.fields.linkTrip') },
+            ]}
+          />
+        </Field>
+        {linkType === 'asn' && (
+          <Field name="asnId" label={t('warehouse.dockAppointments.fields.asn')}>
+            <Select
+              options={asns.map((a) => ({ value: String(a.id), label: a.reference ?? String(a.id) }))}
+              placeholder={t('warehouse.dockAppointments.fields.selectAsn')}
+            />
+          </Field>
+        )}
+        {linkType === 'trip' && (
+          <Field name="tripPublicId" label={t('warehouse.dockAppointments.fields.trip')} help={t('warehouse.dockAppointments.fields.tripHelp')}>
+            <TextInput />
+          </Field>
+        )}
+      </Form>
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Reprogramar
+// ---------------------------------------------------------------------------------------------------------------------
+interface ReprogramFormValues {
+  dockId: string
+  scheduledStartUtc: string
+  scheduledEndUtc: string
+}
+
+function ReprogramModal({ appointment, open, onClose }: { appointment: DockAppointmentDto | null; open: boolean; onClose: () => void }) {
+  const t = useT()
+  const save = useSaveDockAppointment()
+  const { data: docks = [] } = useWarehouseDocks(appointment?.warehousePublicId ?? null, { includeInactive: false })
+  const form = useForm<ReprogramFormValues>({
+    values: {
+      dockId: appointment?.dockId != null ? String(appointment.dockId) : '',
+      scheduledStartUtc: toLocalInput(appointment?.scheduledStartUtc),
+      scheduledEndUtc: toLocalInput(appointment?.scheduledEndUtc),
+    },
+  })
+  const formId = 'dock-appointment-reprogram'
+  if (!appointment) return null
+
+  return (
+    <Modal
+      open={open}
+      title={t('warehouse.dockAppointments.reprogram')}
+      onClose={onClose}
+      dismissible={!form.formState.isSubmitting}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose}>
+            {t('common.cancel')}
+          </button>
+          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <Form
+        id={formId}
+        form={form}
+        onSubmit={async (v) => {
+          await save.mutateAsync({
+            action: 'update',
+            id: appointment.id ?? 0,
+            body: {
+              dockId: v.dockId ? Number(v.dockId) : null,
+              scheduledStartUtc: fromLocalInput(v.scheduledStartUtc),
+              scheduledEndUtc: fromLocalInput(v.scheduledEndUtc),
+            },
+          })
+          toast.success(t('warehouse.dockAppointments.saved'))
+          onClose()
+        }}
+      >
+        <Field name="dockId" label={t('warehouse.dockAppointments.fields.dock')}>
+          <Select options={docks.map((d) => ({ value: String(d.id), label: d.code ?? '' }))} placeholder="" />
+        </Field>
+        <div className="r2">
+          <Field name="scheduledStartUtc" label={t('warehouse.dockAppointments.fields.start')}>
+            <DateTimeInput />
+          </Field>
+          <Field name="scheduledEndUtc" label={t('warehouse.dockAppointments.fields.end')}>
+            <DateTimeInput />
+          </Field>
+        </div>
+      </Form>
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Cambiar estatus
+// ---------------------------------------------------------------------------------------------------------------------
+function StatusModal({ appointment, open, onClose }: { appointment: DockAppointmentDto | null; open: boolean; onClose: () => void }) {
+  const t = useT()
+  const save = useSaveDockAppointment()
+  if (!appointment) return null
+  return (
+    <Modal open={open} title={t('warehouse.dockAppointments.changeStatus')} onClose={onClose} size="sm">
+      <StatusPipeline
+        domain={STATUS_DOMAIN}
+        entityType={ENTITY_TYPE}
+        entityId={appointment.id}
+        currentCode={appointment.statusCode}
+        onTransition={(toCode, comment) => save.mutateAsync({ action: 'status', id: appointment.id ?? 0, body: { status: toCode, comment: comment ?? null } })}
+      />
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Pantalla
+// ---------------------------------------------------------------------------------------------------------------------
+export default function DockAppointmentListScreen() {
+  const t = useT()
+  const lang = useLang()
+  const canManage = useCan('warehouse.crossdock')
+  const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
+  const [dockId, setDockId] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string[]>([])
+  const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
+  const [creating, setCreating] = useState(false)
+  const [reprogramming, setReprogramming] = useState<DockAppointmentDto | null>(null)
+  const [changingStatus, setChangingStatus] = useState<DockAppointmentDto | null>(null)
+
+  const { data: docks = [] } = useWarehouseDocks(warehousePublicId, { includeInactive: true })
+  const { data: statusOptions = [] } = useStatuses(STATUS_DOMAIN)
+
+  const query = useMemo(
+    () => ({
+      warehousePublicId: warehousePublicId || undefined,
+      dockId: dockId ? Number(dockId) : undefined,
+      fromUtc: range.from || undefined,
+      toUtc: range.to ? `${range.to}T23:59:59` : undefined,
+      status: statusFilter.length > 0 ? statusFilter : undefined,
+    }),
+    [warehousePublicId, dockId, range, statusFilter],
+  )
+  const { data = [], isLoading, error } = useDockAppointments(query)
+
+  const columns = useMemo<DataColumn<DockAppointmentDto>[]>(
+    () => [
+      { id: 'dock', header: t('warehouse.dockAppointments.columns.dock'), cell: (a) => <span className="ref">{a.dockCode}</span>, card: 'title' },
+      { id: 'direction', header: t('warehouse.dockAppointments.columns.direction'), cell: (a) => a.direction ?? a.directionCode },
+      {
+        id: 'start',
+        header: t('warehouse.dockAppointments.columns.start'),
+        cell: (a) => formatDateTime(a.scheduledStartUtc, lang),
+        sortValue: (a) => a.scheduledStartUtc,
+      },
+      { id: 'end', header: t('warehouse.dockAppointments.columns.end'), cell: (a) => formatDateTime(a.scheduledEndUtc, lang) },
+      {
+        id: 'status',
+        header: t('warehouse.dockAppointments.columns.status'),
+        cell: (a) => <StatusChip domain={STATUS_DOMAIN} code={a.statusCode} label={a.status} />,
+      },
+      { id: 'ref', header: t('warehouse.dockAppointments.columns.ref'), cell: (a) => a.asnReference ?? a.tripCode ?? '—' },
+    ],
+    [t, lang],
+  )
+
+  const rowActions = useMemo<RowAction<DockAppointmentDto>[]>(
+    () => [
+      { key: 'reprogram', label: t('warehouse.dockAppointments.reprogram'), perm: 'warehouse.crossdock', onClick: (a) => setReprogramming(a) },
+      { key: 'status', label: t('warehouse.dockAppointments.changeStatus'), perm: 'warehouse.crossdock', onClick: (a) => setChangingStatus(a) },
+    ],
+    [t],
+  )
+
+  return (
+    <div className="wrap">
+      <div className="head">
+        <div>
+          <h1>{t('warehouse.dockAppointments.title')}</h1>
+          <p>{t('warehouse.dockAppointments.subtitle')}</p>
+        </div>
+        <div className="act">
+          <Can perm="warehouse.crossdock">
+            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
+              {t('warehouse.dockAppointments.new')}
+            </button>
+          </Can>
+        </div>
+      </div>
+
+      <Filters
+        onClear={() => {
+          setWarehousePublicId(null)
+          setDockId('')
+          setStatusFilter([])
+          setRange(EMPTY_RANGE)
+        }}
+      >
+        <div className="f">
+          <label>{t('warehouse.dockAppointments.filters.warehouse')}</label>
+          <WarehousePicker value={warehousePublicId} onChange={setWarehousePublicId} placeholder={t('warehouse.dockAppointments.filters.anyWarehouse')} />
+        </div>
+        <SelectFilter
+          label={t('warehouse.dockAppointments.filters.dock')}
+          value={dockId}
+          onChange={setDockId}
+          options={docks.map((d) => ({ value: String(d.id), label: d.code ?? '' }))}
+          allLabel={t('warehouse.dockAppointments.filters.anyDock')}
+        />
+        <SearchSelect
+          label={t('warehouse.dockAppointments.filters.status')}
+          options={statusOptions.map((s) => ({ value: s.code, label: s.label }))}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <DateRangeFilter label={t('warehouse.dockAppointments.filters.range')} value={range} onChange={setRange} />
+      </Filters>
+
+      <Panel flush title={t('warehouse.dockAppointments.title')} subtitle={t('warehouse.dockAppointments.count', { count: data.length })}>
+        {error ? (
+          <p className="pb ferr" role="alert">
+            {error.message}
+          </p>
+        ) : (
+          <DataTable
+            label={t('warehouse.dockAppointments.title')}
+            columns={columns}
+            rows={data}
+            rowKey={(a) => a.id ?? 0}
+            defaultSort={{ id: 'start', desc: false }}
+            loading={isLoading}
+            rowActions={canManage ? rowActions : []}
+          />
+        )}
+      </Panel>
+
+      <CreateAppointmentModal open={creating} onClose={() => setCreating(false)} />
+      <ReprogramModal appointment={reprogramming} open={reprogramming !== null} onClose={() => setReprogramming(null)} />
+      <StatusModal appointment={changingStatus} open={changingStatus !== null} onClose={() => setChangingStatus(null)} />
+    </div>
+  )
+}

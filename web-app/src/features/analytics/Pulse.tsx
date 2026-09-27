@@ -2,7 +2,10 @@
 // Tarjetas de indicadores (un solo número) y gráficos (Recharts) marcados por cada usuario para Pulso.
 // El servidor calcula el valor con el rango de fecha de cada tarjeta; el botón "Rango" de la tarjeta cambia MI rango
 // (preferencia por usuario, PUT .../my-date-range con solo analytics.view) y Pulso se recalcula.
-import { useMemo, useState, type CSSProperties } from 'react'
+// Lote F6: debajo de lo que calcula el API, un panel 'Almacén' (solo con inventory.view y el módulo WMS_LOTSERIAL) con
+// tarjetas calculadas en cliente: saldo en mano y disponible, recibos abiertos, tareas pendientes por tipo y conteos
+// abiertos. Son saldo actual: sin selector de rango.
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   Bar,
   BarChart,
@@ -27,7 +30,7 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { EmptyState } from '../../kernel/ui/EmptyState'
 import { Panel } from '../../kernel/ui/Panel'
 import { Spinner } from '../../kernel/ui/Spinner'
-import { usePulse, type PulseItemKind } from './api'
+import { PULSE_TASK_TYPES, usePulse, useWarehousePulse, type PulseItemKind } from './api'
 import { chartKind, customRangeDays, CUSTOM_RANGE, formatValue, formatYmd } from './format'
 import { RangeModal } from './RangeModal'
 
@@ -37,6 +40,11 @@ type ChartDatum = components['schemas']['ChartDataDto']
 const CHART_COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#84cc16', '#ec4899']
 const CARD_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }
 const CHART_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }
+// Tarjetas del panel 'Almacén': una columna a 360 px (min(100%, …) evita que la columna mínima desborde el panel).
+const TILE_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 12 }
+const TILE: CSSProperties = { border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', minWidth: 0 }
+const TILE_LABEL: CSSProperties = { fontSize: 12.5, color: 'var(--muted)' }
+const TILE_VALUE: CSSProperties = { fontSize: 26, fontWeight: 800, lineHeight: 1.2 }
 
 /** Texto del rango de fecha del indicador/gráfico si el DTO lo trae (`dateRangeMode`); null si no aplica (sin fecha o "todo").
  *  La etiqueta del modo sale del catálogo DateRangeMode del API (ya traducida); si el catálogo no responde, el código. */
@@ -140,6 +148,54 @@ function ChartCard({ chart }: { chart: ChartDatum }) {
   )
 }
 
+/** Tarjeta simple del panel 'Almacén' (etiqueta y número). */
+function WarehouseTile({ label, value, children }: { label: string; value: string; children?: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} style={TILE}>
+      <div style={TILE_LABEL}>{label}</div>
+      <div style={TILE_VALUE}>{value}</div>
+      {children}
+    </div>
+  )
+}
+
+/** Número de una tarjeta de almacén: '…' mientras carga, '—' si la consulta falló (p. ej. 403). */
+function tileValue(value: number | null | undefined, loading: boolean): string {
+  return loading ? '…' : formatValue(value, false)
+}
+
+/** Panel 'Almacén' de Pulso: se monta solo con inventory.view y WMS_LOTSERIAL (lo decide Pulse). */
+function WarehousePulsePanel() {
+  const t = useT()
+  const { balances, openReceipts, pendingTasks, tasksByType, openCounts } = useWarehousePulse(true)
+  const { data: taskTypes = [] } = useLookups('WarehouseTaskType', { includeDisabled: true })
+  const typeLabel = (code: string) => taskTypes.find((o) => o.code === code)?.label ?? code
+
+  return (
+    <Panel title={t('analytics.pulse.warehouse.title')} subtitle={t('analytics.pulse.warehouse.subtitle')}>
+      <div style={TILE_GRID}>
+        <WarehouseTile label={t('analytics.pulse.warehouse.onHand')} value={tileValue(balances.data?.totalOnHand, balances.isLoading)} />
+        <WarehouseTile label={t('analytics.pulse.warehouse.available')} value={tileValue(balances.data?.totalAvailable, balances.isLoading)} />
+        <WarehouseTile label={t('analytics.pulse.warehouse.openReceipts')} value={tileValue(openReceipts.data?.total, openReceipts.isLoading)} />
+        <WarehouseTile label={t('analytics.pulse.warehouse.pendingTasks')} value={tileValue(pendingTasks.data?.total, pendingTasks.isLoading)}>
+          <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0, fontSize: 13 }}>
+            {PULSE_TASK_TYPES.map((type, i) => {
+              const q = tasksByType[i]
+              return (
+                <li key={type} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, minWidth: 0 }}>
+                  <span style={{ color: 'var(--muted)', overflowWrap: 'anywhere' }}>{typeLabel(type)}</span>
+                  <strong>{tileValue(q?.data?.total, q?.isLoading ?? false)}</strong>
+                </li>
+              )
+            })}
+          </ul>
+        </WarehouseTile>
+        <WarehouseTile label={t('analytics.pulse.warehouse.openCounts')} value={tileValue(openCounts.data?.length, openCounts.isLoading)} />
+      </div>
+    </Panel>
+  )
+}
+
 /** Pantalla de inicio (`/`): indicadores y gráficos de Pulso, solo lectura. Sin `analytics.view` o sin el módulo ANALYTICS
  *  encendido en el tenant: bienvenida sin datos (no se consulta el API, así el inicio nunca redirige a 'Módulo apagado'). */
 export default function Pulse() {
@@ -150,23 +206,41 @@ export default function Pulse() {
   const canView = moduleOn && hasPerm
   const { data, isLoading, error } = usePulse(canView)
   const name = me?.fullName ?? ''
+  const warehouseOn = useModule(ModuleKeys.WmsLotSerial)
+  const canViewInventory = useCan('inventory.view')
+  const warehouse = warehouseOn && canViewInventory ? (
+    <section style={{ marginTop: 20 }}>
+      <WarehousePulsePanel />
+    </section>
+  ) : null
+
+  // Sin datos del API (bienvenida, carga, error o vacío): el mensaje y, debajo, el panel de almacén si aplica.
+  const alone = (content: ReactNode) =>
+    warehouse ? (
+      <div className="wrap">
+        {content}
+        {warehouse}
+      </div>
+    ) : (
+      content
+    )
 
   if (!canView) {
     const body = moduleOn ? t('analytics.pulse.welcomeBody') : t('analytics.pulse.moduleOffBody')
-    return <EmptyState title={t('analytics.pulse.welcomeTitle', { name })} body={body} />
+    return alone(<EmptyState title={t('analytics.pulse.welcomeTitle', { name })} body={body} />)
   }
 
-  if (isLoading) return <Spinner block label={t('common.loading')} />
+  if (isLoading) return alone(<Spinner block label={t('common.loading')} />)
 
   if (error) {
-    return <EmptyState title={error instanceof ApiError ? error.title : t('errors.generic')} />
+    return alone(<EmptyState title={error instanceof ApiError ? error.title : t('errors.generic')} />)
   }
 
   const indicators = data?.indicators ?? []
   const charts = data?.charts ?? []
 
   if (indicators.length === 0 && charts.length === 0) {
-    return <EmptyState title={t('analytics.pulse.emptyTitle')} body={t('analytics.pulse.emptyBody')} />
+    return alone(<EmptyState title={t('analytics.pulse.emptyTitle')} body={t('analytics.pulse.emptyBody')} />)
   }
 
   return (
@@ -199,6 +273,8 @@ export default function Pulse() {
           </div>
         </section>
       )}
+
+      {warehouse}
     </div>
   )
 }

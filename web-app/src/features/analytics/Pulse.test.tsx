@@ -11,15 +11,17 @@ import { apiDateToYmd, chartKind, customRangeDays, formatValue, formatYmd } from
 import Pulse from './Pulse'
 
 // Cliente de la app sobre un fetch simulado (misma política que el real).
-type Handler = (path: string, method: string) => Response | unknown
-const mock = vi.hoisted(() => ({ calls: [] as string[], writes: [] as { method: string; path: string; body: unknown }[], handler: null as unknown }))
+type Handler = (path: string, method: string, url: URL) => Response | unknown
+const mock = vi.hoisted(() => ({ calls: [] as string[], urls: [] as string[], writes: [] as { method: string; path: string; body: unknown }[], handler: null as unknown }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
-    const path = new URL(req.url).pathname
+    const url = new URL(req.url)
+    const path = url.pathname
     mock.calls.push(path)
+    mock.urls.push(`${path}${url.search}`)
     if (req.method !== 'GET') mock.writes.push({ method: req.method, path, body: await req.clone().json().catch(() => null) })
-    const result = (mock.handler as Handler)(path, req.method)
+    const result = (mock.handler as Handler)(path, req.method, url)
     if (result instanceof Response) return result
     return new Response(JSON.stringify(result), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
@@ -83,6 +85,7 @@ afterAll(() => {
 })
 beforeEach(() => {
   mock.calls = []
+  mock.urls = []
   mock.writes = []
   onAccessDenied.mockReset()
 })
@@ -230,5 +233,90 @@ describe('Pulse', () => {
     )
     expect(await screen.findByText(`${formatYmd('2026-09-01', 'es')} → ${formatYmd('2026-09-15', 'es')}`)).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
+describe('Pulse — panel Almacén (Lote F6)', () => {
+  const WAREHOUSE = { permissions: ['analytics.view', 'inventory.view'], modules: ['ANALYTICS', 'WMS_LOTSERIAL'] }
+  const TASKS_BY_TYPE: Record<string, number> = { PUTAWAY: 4, REPLENISH: 2, COUNT: 1, CROSSDOCK: 0 }
+
+  function warehouseHandler(path: string, _method: string, url: URL): unknown {
+    if (path === '/api/v1/analytics/pulse') return { indicators: [{ id: 1, name: 'Ventas', value: 10, isMoney: false }], charts: [] }
+    if (path === '/api/v1/catalogs/WarehouseTaskType')
+      return [
+        { code: 'PUTAWAY', label: 'Acomodo', sortOrder: 1, isEnabled: true },
+        { code: 'REPLENISH', label: 'Reabasto', sortOrder: 2, isEnabled: true },
+      ]
+    if (path === '/api/v1/inventory/balances') return { total: 37, skip: 0, take: 1, totalOnHand: 1250.5, totalAvailable: 1000, items: [] }
+    if (path === '/api/v1/receipts') return { total: 3, skip: 0, take: 1, items: [] }
+    if (path === '/api/v1/warehouse-tasks') {
+      const type = url.searchParams.get('types')
+      return { total: type ? TASKS_BY_TYPE[type] : 7, skip: 0, take: 1, items: [] }
+    }
+    if (path === '/api/v1/cycle-counts') return [{ id: 1 }, { id: 2 }]
+    return []
+  }
+
+  const tile = (name: string) => screen.findByRole('group', { name })
+
+  it('con inventory.view y WMS_LOTSERIAL: saldo, recibos abiertos, tareas por tipo y conteos abiertos, sin rango de fecha', async () => {
+    mock.handler = warehouseHandler
+    renderPulse(WAREHOUSE)
+    expect(await screen.findByRole('heading', { name: 'Almacén' })).toBeInTheDocument()
+    await waitFor(async () => expect(within(await tile('En mano total')).getByText('1,250.50')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Disponible total')).getByText('1,000')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('3')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('2')).toBeInTheDocument())
+    const tasks = await tile('Tareas pendientes')
+    await waitFor(() => expect(within(tasks).getByText('7')).toBeInTheDocument())
+    // por tipo: etiqueta del catálogo del tenant; sin etiqueta, el código
+    await waitFor(() => expect(within(within(tasks).getByText('Acomodo').closest('li') as HTMLElement).getByText('4')).toBeInTheDocument())
+    expect(within(within(tasks).getByText('Reabasto').closest('li') as HTMLElement).getByText('2')).toBeInTheDocument()
+    expect(within(within(tasks).getByText('CROSSDOCK').closest('li') as HTMLElement).getByText('0')).toBeInTheDocument()
+    // consultas acotadas (take=1: solo los totales) y sin fecha
+    expect(mock.urls).toContain('/api/v1/inventory/balances?includeZero=false&take=1')
+    expect(mock.urls).toContain('/api/v1/receipts?status=OPEN&take=1')
+    expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1')
+    expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1&types=PUTAWAY')
+    expect(mock.urls).toContain('/api/v1/cycle-counts?status=OPEN')
+    expect(mock.urls.some((u) => /from|to=|fromUtc|toUtc/.test(u) && !u.includes('analytics'))).toBe(false)
+    // una columna a 360 px: la columna mínima nunca excede el ancho del panel
+    const grid = (await tile('Recibos abiertos')).parentElement as HTMLElement
+    expect(grid.getAttribute('style')).toContain('minmax(min(100%, 200px), 1fr)')
+    // los indicadores del API siguen arriba
+    expect(screen.getByText('Ventas')).toBeInTheDocument()
+  })
+
+  it('sin analytics.view pero con inventario: bienvenida y, debajo, el panel Almacén', async () => {
+    mock.handler = warehouseHandler
+    renderPulse({ permissions: ['inventory.view'], modules: ['WMS_LOTSERIAL'] })
+    expect(screen.getByText('Bienvenido, Ana Admin')).toBeInTheDocument()
+    await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('3')).toBeInTheDocument())
+    expect(mock.calls).not.toContain('/api/v1/analytics/pulse')
+  })
+
+  it('sin inventory.view o con WMS_LOTSERIAL apagado: no hay panel Almacén ni consultas de almacén', async () => {
+    mock.handler = warehouseHandler
+    renderPulse({ permissions: ['analytics.view', 'inventory.view'], modules: ['ANALYTICS'] })
+    expect(await screen.findByText('Ventas')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Almacén' })).not.toBeInTheDocument()
+    renderPulse({ permissions: ['analytics.view'], modules: ['ANALYTICS', 'WMS_LOTSERIAL'] })
+    await waitFor(() => expect(screen.getAllByText('Ventas')).toHaveLength(2))
+    expect(screen.queryByRole('heading', { name: 'Almacén' })).not.toBeInTheDocument()
+    expect(mock.calls.filter((c) => c !== '/api/v1/analytics/pulse')).toEqual([])
+  })
+
+  it('un 403 de un endpoint de almacén no saca de Pulso: la tarjeta muestra —', async () => {
+    mock.handler = (path: string, method: string, url: URL) =>
+      path === '/api/v1/receipts'
+        ? new Response(JSON.stringify({ status: 403, code: 'forbidden', title: 'Sin permiso.' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/problem+json' },
+          })
+        : warehouseHandler(path, method, url)
+    renderPulse(WAREHOUSE)
+    await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('—')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('2')).toBeInTheDocument())
+    expect(onAccessDenied).not.toHaveBeenCalled()
   })
 })

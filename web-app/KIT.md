@@ -51,7 +51,8 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   Para agregar una pantalla solo se añade su entrada ahí. `/` es Pulso (`features/analytics/Pulse`): sin `analytics.view` o sin el
   módulo ANALYTICS muestra la bienvenida sin consultar el API (la pantalla de inicio nunca redirige a 'Módulo apagado'); cada tarjeta tiene "Rango" (mi rango
   de fecha, `PUT .../my-date-range`: preferencia por usuario con solo `analytics.view`; en CUSTOM el `toUtc` del DTO es exclusivo y
-  se muestra el día anterior). `/account` es `features/account/AccountPage`
+  se muestra el día anterior). Debajo, con `inventory.view` + WMS_LOTSERIAL, el panel 'Almacén' (F6: saldo en mano/disponible,
+  recibos abiertos, tareas pendientes por tipo, conteos abiertos; calculado en cliente con `take=1`, sin rango). `/account` es `features/account/AccountPage`
   (pestañas Perfil, Contraseña, MFA y Sesiones; `?tab=password|mfa|sessions` abre una pestaña directamente).
 - `useSession()` (`app/session.tsx`) → `{ me, isAuthenticated, isLoading, error, tenantId, lang, setLang, logout, switchTenant,
   permissions, modules, reloadMe }`. `me` es `MeDto` de `GET /api/v1/me` (clave de consulta `ME_QUERY_KEY`).
@@ -164,6 +165,32 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
   const { data } = useQuery({ queryKey: ['/api/v1/audit/changes', query], queryFn: () => unwrap(api.GET('/api/v1/audit/changes', { params: { query } })), placeholderData: keepPreviousData })
   <DataTable columns={cols} rows={data?.items ?? NO_ROWS} rowKey={(r) => r.id!} page={page} pageSize={25} total={data?.total ?? 0} onPage={setPage} />
   ```
+
+## Almacén (`src/features/warehouse`, Lote F6)
+No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, del cruce de muelle y la consulta de órdenes.
+- `api.ts`: un hook por lectura con clave `[ruta, params]` (`useWarehouses(query?)`, `useWarehouse(publicId)`,
+  `useWarehouseZones/Bins/Docks(publicId, query?)`, `useProducts`, `useProduct`, `useProductLots/Serials`, `useProductCategories`,
+  `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
+  `useReceipts`, `useReceipt`, `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
+  `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
+  `usePurchaseOrderShortageLines`, `useDockAppointments`, `useCrossDockPlans`, `useCrossDockPlan`, `useCrossDockCandidates`,
+  `useOrdersReadonly`, `useOrderReadonly`, `useOrderLookup`). `query` es el tipo del esquema (`GetQuery<'/api/v1/…'>`); el último
+  argumento `{ enabled?, handleAccessDenied? }`. Las listas paginadas usan `keepPreviousData`. Escrituras: `useCreateX`/`useUpdateX`
+  o un hook de acciones con unión discriminada por `action` (`useSaveWarehouseZone`, `useWarehouseTaskAction`, `useCycleCountAction`,
+  `usePurchaseOrderAction`, `useCrossDockAction`…); cada una invalida por prefijo su lista, su ficha y, si mueve inventario,
+  saldos/Kárdex/existencias (`warehouseKeys` tiene los prefijos). `warehouseLabel` ("Code · Name") y `productLabel` ("SKU · Nombre").
+- `pickers.tsx`: `WarehousePicker` (`<select>` simple de almacenes activos; `value` publicId, `onChange(publicId, dto)`,
+  `placeholder?` —`null` = sin opción vacía—; conserva con su etiqueta un valor inactivo) y `ProductPicker` (combobox como
+  `ClientPicker`: `GET /api/v1/products?search=&activeOnly=true`, 250 ms entre teclas, "SKU · Nombre", marca el dueño cliente;
+  `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`; `onChange(publicId, fila)` con `trackingTypeCode`).
+  Dentro de un `Field`: `WarehousePickerInput` / `ProductPickerInput` (`onPicked?(fila)` para condicionar lote/series).
+  Sin acceso (403) muestran un aviso y no sacan de la pantalla.
+- `lineRules.ts`: reglas puras de captura de líneas (réplica de `ReceiptRules`/`PickBatchRules`/`CycleCountRules`):
+  `receiptLineIssues`, `countLineIssues`, `countLotIssue`, `pickLineIssues`, `pickDuplicateAcrossLines`, `firstOtherOwner`
+  devuelven `{ field, code, params }` que se traducen con `t('warehouse.lineRules.<code>', params)` (mensaje exacto del manual 06)
+  y se ponen bajo el campo con `ctx.addIssue` en zod. `parseSerials` (una serie por renglón o separadas por coma),
+  `remapProblemFields(err, rename)` (renombra campos de un `ApiError`, p. ej. `lines[0].countedQty` → `countedQty`),
+  `lineErrorsByIndex(err)`, `formatNumber/formatDate/formatDateTime` y `useDebounced` (búsqueda libre que va al API). Pruebas en `lineRules.test.ts`.
 
 ## Patrones de pantalla (copiar de `src/kernel/ui/templates`)
 Plantillas completas y compilables (no montadas en rutas) sobre clientes; textos en `examples.clients.*` (una pantalla real usa su
