@@ -84,6 +84,23 @@ describe('StatusPipeline', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
+  it('con manualTargets solo ofrece esos códigos (el resto lo dispara el sistema)', async () => {
+    mock.handler = route
+    const onTransition = vi.fn(async () => undefined)
+    wrap(
+      <StatusPipeline
+        domain="OrderStatus"
+        entityType="TRANSPORT_ORDER"
+        entityId={7}
+        currentCode="CONFIRMED"
+        onTransition={onTransition}
+        manualTargets={['ON_HOLD']}
+      />,
+    )
+    expect(await screen.findByRole('button', { name: 'Pasar a En espera' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Avanzar a En ruta' })).toBeNull()
+  })
+
   it('sin onTransition es solo lectura', async () => {
     mock.handler = route
     wrap(<StatusPipeline domain="OrderStatus" entityType="TRANSPORT_ORDER" currentCode="CONFIRMED" />)

@@ -1,8 +1,8 @@
 // Pantalla E (Lote F6) — Tareas de almacén: cola unificada. `/warehouse/tasks`. Lectura: inventory.view + WMS_LOTSERIAL
 // (aplicado por la ruta). Asignar/cancelar: warehouse.manage. Iniciar: el permiso del handler de cada tipo (PUTAWAY →
 // warehouse.receive, REPLENISH → warehouse.pick, COUNT → warehouse.count, CROSSDOCK → warehouse.crossdock). Completar:
-// se ofrece solo cuando `completableFromQueue` (COUNT y CROSSDOCK se completan desde su propia pantalla). Correr reabasto:
-// warehouse.pick.
+// el mismo permiso por tipo (WarehouseTaskService.CompleteAsync exige el del handler) y solo cuando `completableFromQueue`
+// (COUNT y CROSSDOCK se completan desde su propia pantalla). Correr reabasto: warehouse.pick.
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -28,14 +28,22 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../kernel/ui'
-import { useRunReplenishment, usePutawaySuggestions, useWarehouseTaskAction, useWarehouseTasks, productLabel, type WarehouseTaskDto } from './api'
+import {
+  useRunReplenishment,
+  usePutawaySuggestions,
+  useWarehouseBins,
+  useWarehouseTaskAction,
+  useWarehouseTasks,
+  productLabel,
+  type WarehouseTaskDto,
+} from './api'
 import { WarehousePicker } from './pickers'
 
 const PAGE_SIZE = 25
 const TYPE_DOMAIN = 'WarehouseTaskType'
 const STATUS_DOMAIN = 'WarehouseTaskStatus'
 
-/** Permiso del handler de 'Iniciar' según el tipo (StartService lo vuelve a validar en el servidor). */
+/** Permiso del handler de 'Iniciar' y 'Completar' según el tipo (el servidor lo vuelve a validar en StartAsync/CompleteAsync). */
 const START_PERM: Record<string, string> = {
   PUTAWAY: 'warehouse.receive',
   REPLENISH: 'warehouse.pick',
@@ -128,7 +136,8 @@ function AssignModal({ task, open, onClose }: { task: WarehouseTaskDto | null; o
 // Completar (con sugerencia de posición para PUTAWAY)
 // ---------------------------------------------------------------------------------------------------------------------
 interface CompleteFormValues {
-  toBinId: number | null
+  /** Id de la posición destino como texto (valor del Select); '' = sin elegir. */
+  toBinId: string
   quantity: number | null
   serialNumbers: string
 }
@@ -138,12 +147,26 @@ function CompleteModal({ task, open, onClose }: { task: WarehouseTaskDto | null;
   const action = useWarehouseTaskAction()
   const isPutaway = task?.typeCode === 'PUTAWAY'
   const suggestions = usePutawaySuggestions({ taskId: task?.id }, { enabled: open && isPutaway && Boolean(task?.id) })
-  const form = useForm<CompleteFormValues>({ defaultValues: { toBinId: null, quantity: null, serialNumbers: '' } })
+  // Posiciones activas del almacén de la tarea: el usuario elige por código y se envía el id (nunca un número a mano).
+  const { data: bins = [] } = useWarehouseBins(task?.warehousePublicId ?? null, {}, { enabled: open, handleAccessDenied: false })
+  const binOptions = useMemo(() => {
+    const suggested = new Set((suggestions.data ?? []).map((s) => s.binId))
+    const label = (code: string | null | undefined, zone: string | null | undefined, id: number | undefined) =>
+      `${code ?? ''}${zone ? ` · ${zone}` : ''}${suggested.has(id) ? ` (${t('warehouse.tasks.complete.suggested')})` : ''}`
+    const active = bins.filter((b) => b.isActive !== false)
+    // las sugeridas primero, en el orden del servidor
+    const first = (suggestions.data ?? [])
+      .filter((s) => s.binId != null)
+      .map((s) => ({ value: String(s.binId), label: label(s.binCode, s.zoneCode, s.binId) }))
+    const rest = active.filter((b) => !suggested.has(b.id)).map((b) => ({ value: String(b.id), label: label(b.code, b.zoneCode, b.id) }))
+    return [...first, ...rest]
+  }, [bins, suggestions.data, t])
+  const form = useForm<CompleteFormValues>({ defaultValues: { toBinId: '', quantity: null, serialNumbers: '' } })
   const formId = 'warehouse-task-complete'
   if (!task) return null
 
   const close = () => {
-    form.reset({ toBinId: null, quantity: null, serialNumbers: '' })
+    form.reset({ toBinId: '', quantity: null, serialNumbers: '' })
     onClose()
   }
 
@@ -186,7 +209,7 @@ function CompleteModal({ task, open, onClose }: { task: WarehouseTaskDto | null;
             id: task.id ?? 0,
             action: 'complete',
             body: {
-              toBinId: v.toBinId,
+              toBinId: v.toBinId ? Number(v.toBinId) : null,
               quantity: v.quantity,
               serialNumbers: v.serialNumbers.trim() ? v.serialNumbers.split(',').map((s) => s.trim()).filter(Boolean) : null,
             },
@@ -197,7 +220,7 @@ function CompleteModal({ task, open, onClose }: { task: WarehouseTaskDto | null;
       >
         <div className="r2">
           <Field name="toBinId" label={t('warehouse.tasks.complete.toBin')} help={isPutaway ? t('warehouse.tasks.complete.toBinHelp') : undefined}>
-            <NumberInput step="1" />
+            <Select options={binOptions} placeholder={t('warehouse.tasks.complete.anyBin')} />
           </Field>
           <Field name="quantity" label={t('warehouse.tasks.complete.quantity')} help={t('warehouse.tasks.complete.quantityHelp')}>
             <NumberInput step="0.001" />
@@ -316,22 +339,45 @@ export default function WarehouseTaskListScreen() {
     onError: (err) => toast.error(applyProblemDetails(err).title),
   })
 
+  // Orden en cliente sobre la página cargada (el API no recibe parámetro de orden).
   const columns = useMemo<DataColumn<WarehouseTaskDto>[]>(
     () => [
-      { id: 'type', header: t('warehouse.tasks.columns.type'), cell: (r) => r.type ?? r.typeCode, card: 'title' },
-      { id: 'status', header: t('warehouse.tasks.columns.status'), cell: (r) => <StatusChip domain={STATUS_DOMAIN} code={r.statusCode} label={r.status} /> },
-      { id: 'priority', header: t('warehouse.tasks.columns.priority'), cell: (r) => r.priority, align: 'end' },
-      { id: 'warehouse', header: t('warehouse.tasks.columns.warehouse'), cell: (r) => r.warehouseCode },
-      { id: 'product', header: t('warehouse.tasks.columns.product'), cell: (r) => productLabel({ sku: r.sku, name: r.productName }) },
-      { id: 'quantity', header: t('warehouse.tasks.columns.quantity'), cell: (r) => r.quantity, align: 'end' },
+      { id: 'type', header: t('warehouse.tasks.columns.type'), cell: (r) => r.type ?? r.typeCode, sortValue: (r) => r.type ?? r.typeCode, card: 'title' },
+      {
+        id: 'status',
+        header: t('warehouse.tasks.columns.status'),
+        cell: (r) => <StatusChip domain={STATUS_DOMAIN} code={r.statusCode} label={r.status} />,
+        sortValue: (r) => r.status ?? r.statusCode,
+      },
+      { id: 'priority', header: t('warehouse.tasks.columns.priority'), cell: (r) => r.priority, sortValue: (r) => r.priority, align: 'end' },
+      { id: 'warehouse', header: t('warehouse.tasks.columns.warehouse'), cell: (r) => r.warehouseCode, sortValue: (r) => r.warehouseCode },
+      {
+        id: 'product',
+        header: t('warehouse.tasks.columns.product'),
+        cell: (r) => productLabel({ sku: r.sku, name: r.productName }),
+        sortValue: (r) => r.sku,
+      },
+      { id: 'quantity', header: t('warehouse.tasks.columns.quantity'), cell: (r) => r.quantity, sortValue: (r) => r.quantity, align: 'end' },
       {
         id: 'bins',
         header: t('warehouse.tasks.columns.bins'),
         cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—',
+        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
       },
-      { id: 'ref', header: t('warehouse.tasks.columns.ref'), cell: (r) => r.refLabel },
-      { id: 'assignedTo', header: t('warehouse.tasks.columns.assignedTo'), cell: (r) => r.assignedToName ?? t('warehouse.tasks.unassigned') },
-      { id: 'createdAt', header: t('warehouse.tasks.columns.createdAt'), cell: (r) => formatDateTime(r.createdAtUtc, lang), card: 'hidden' },
+      { id: 'ref', header: t('warehouse.tasks.columns.ref'), cell: (r) => r.refLabel, sortValue: (r) => r.refLabel },
+      {
+        id: 'assignedTo',
+        header: t('warehouse.tasks.columns.assignedTo'),
+        cell: (r) => r.assignedToName ?? t('warehouse.tasks.unassigned'),
+        sortValue: (r) => r.assignedToName,
+      },
+      {
+        id: 'createdAt',
+        header: t('warehouse.tasks.columns.createdAt'),
+        cell: (r) => formatDateTime(r.createdAtUtc, lang),
+        sortValue: (r) => r.createdAtUtc,
+        card: 'hidden',
+      },
     ],
     [t, lang],
   )
@@ -348,6 +394,19 @@ export default function WarehouseTaskListScreen() {
     [t, startMutation],
   )
 
+  // Completar: mismo permiso por tipo que Iniciar (el servidor exige el del handler; sin él respondería 403).
+  const completeActions = useMemo<RowAction<WarehouseTaskDto>[]>(
+    () =>
+      Object.entries(START_PERM).map(([typeCode, perm]) => ({
+        key: `complete-${typeCode}`,
+        label: t('warehouse.tasks.actions.complete'),
+        perm,
+        visible: (r) => r.typeCode === typeCode && r.completableFromQueue === true,
+        onClick: (r) => setCompleteTask(r),
+      })),
+    [t],
+  )
+
   const rowActions = useMemo<RowAction<WarehouseTaskDto>[]>(
     () => [
       {
@@ -358,12 +417,7 @@ export default function WarehouseTaskListScreen() {
         onClick: (r) => setAssignTask(r),
       },
       ...startActions,
-      {
-        key: 'complete',
-        label: t('warehouse.tasks.actions.complete'),
-        visible: (r) => r.completableFromQueue === true,
-        onClick: (r) => setCompleteTask(r),
-      },
+      ...completeActions,
       {
         key: 'cancel',
         label: t('warehouse.tasks.actions.cancel'),
@@ -373,7 +427,7 @@ export default function WarehouseTaskListScreen() {
         tone: 'danger',
       },
     ],
-    [t, startActions],
+    [t, startActions, completeActions],
   )
 
   const typeSelectOptions = useMemo(() => typeOptions.map((o) => ({ value: o.code, label: o.label })), [typeOptions])

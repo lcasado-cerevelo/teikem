@@ -10,6 +10,7 @@ import { StatusChip, StatusPipeline } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, DataTable, EmptyState, Field, Form, Modal, NumberInput, Panel, Spinner, TextInput, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useCrossDockAction, useCrossDockCandidates, useCrossDockPlan, useOrderLookup, type CrossDockCandidateDto, type OrderListItemDto } from './api'
+import { isAccessDenied } from './pickers'
 
 type CrossDockAllocationDto = components['schemas']['CrossDockAllocationDto']
 
@@ -18,7 +19,9 @@ const ENTITY_TYPE = 'CROSSDOCK_PLAN'
 const ALLOCATION_STATUS_DOMAIN = 'AllocationStatus'
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Asignar (elegir orden por número/factura/lote de empaque vía /orders/lookup)
+// Asignar (elegir orden por número/factura/lote de empaque vía /orders/lookup). El lookup exige orders.view + LTL_GROUND,
+// que la pantalla no pide: un 403 se avisa junto al campo sin sacar al usuario (handleAccessDenied: false). La búsqueda
+// es por coincidencia exacta (OrdersController), así que se avisa en la ayuda del campo.
 // ---------------------------------------------------------------------------------------------------------------------
 interface AllocateFormValues {
   quantity: number | null
@@ -31,7 +34,8 @@ function AllocateModal({ planId, candidate, open, onClose }: { planId: number; c
   const [search, setSearch] = useState('')
   const [order, setOrder] = useState<OrderListItemDto | null>(null)
   const [orderError, setOrderError] = useState<string | null>(null)
-  const lookup = useOrderLookup(search || null, { enabled: Boolean(search) })
+  const lookup = useOrderLookup(search || null, { enabled: Boolean(search), handleAccessDenied: false })
+  const lookupDenied = isAccessDenied(lookup.error)
   const form = useForm<AllocateFormValues>({ values: { quantity: candidate?.allocatable ?? null } })
   const formId = 'cross-dock-allocate'
 
@@ -70,17 +74,27 @@ function AllocateModal({ planId, candidate, open, onClose }: { planId: number; c
           type="text"
           value={code}
           placeholder={t('warehouse.crossDockPlans.allocate.orderPlaceholder')}
+          aria-describedby="cross-dock-order-search-help"
           onChange={(e) => {
             setCode(e.target.value)
             setOrder(null)
             setOrderError(null)
           }}
         />
+        <p id="cross-dock-order-search-help" className="help">
+          {t('warehouse.crossDockPlans.allocate.orderHelp')}
+        </p>
       </div>
-      {search && !order && (
+      {search && lookupDenied && (
+        <p className="note" role="alert">
+          {t('warehouse.crossDockPlans.allocate.lookupDenied')}
+        </p>
+      )}
+      {search && !order && !lookupDenied && (
         <div className="milist" role="listbox" style={{ marginBottom: 10 }}>
           {lookup.isLoading && <div className="mnone">{t('common.loading')}</div>}
-          {!lookup.isLoading && matches.length === 0 && <div className="mnone">{t('warehouse.crossDockPlans.allocate.noMatches')}</div>}
+          {!lookup.isLoading && lookup.error && <div className="mnone">{lookup.error.message}</div>}
+          {!lookup.isLoading && !lookup.error && matches.length === 0 && <div className="mnone">{t('warehouse.crossDockPlans.allocate.noMatches')}</div>}
           {matches.map((o) => (
             <div
               key={o.publicId}
@@ -195,13 +209,13 @@ export default function CrossDockPlanDetailScreen() {
 
   const candidateColumns = useMemo<DataColumn<CrossDockCandidateDto>[]>(
     () => [
-      { id: 'receipt', header: t('warehouse.crossDockPlans.candidates.receipt'), cell: (c) => c.receiptNumber, card: 'title' },
-      { id: 'sku', header: t('warehouse.crossDockPlans.candidates.sku'), cell: (c) => c.sku },
-      { id: 'lot', header: t('warehouse.crossDockPlans.candidates.lot'), cell: (c) => c.lotNumber ?? '—' },
-      { id: 'bin', header: t('warehouse.crossDockPlans.candidates.bin'), cell: (c) => c.stagingBinCode ?? '—' },
-      { id: 'base', header: t('warehouse.crossDockPlans.candidates.base'), cell: (c) => c.baseQty, align: 'end' },
-      { id: 'allocated', header: t('warehouse.crossDockPlans.candidates.allocated'), cell: (c) => c.allocatedQty, align: 'end' },
-      { id: 'available', header: t('warehouse.crossDockPlans.candidates.available'), cell: (c) => c.allocatable, align: 'end' },
+      { id: 'receipt', header: t('warehouse.crossDockPlans.candidates.receipt'), cell: (c) => c.receiptNumber, sortValue: (c) => c.receiptNumber, card: 'title' },
+      { id: 'sku', header: t('warehouse.crossDockPlans.candidates.sku'), cell: (c) => c.sku, sortValue: (c) => c.sku },
+      { id: 'lot', header: t('warehouse.crossDockPlans.candidates.lot'), cell: (c) => c.lotNumber ?? '—', sortValue: (c) => c.lotNumber },
+      { id: 'bin', header: t('warehouse.crossDockPlans.candidates.bin'), cell: (c) => c.stagingBinCode ?? '—', sortValue: (c) => c.stagingBinCode },
+      { id: 'base', header: t('warehouse.crossDockPlans.candidates.base'), cell: (c) => c.baseQty, sortValue: (c) => c.baseQty, align: 'end' },
+      { id: 'allocated', header: t('warehouse.crossDockPlans.candidates.allocated'), cell: (c) => c.allocatedQty, sortValue: (c) => c.allocatedQty, align: 'end' },
+      { id: 'available', header: t('warehouse.crossDockPlans.candidates.available'), cell: (c) => c.allocatable, sortValue: (c) => c.allocatable, align: 'end' },
     ],
     [t],
   )
@@ -221,16 +235,28 @@ export default function CrossDockPlanDetailScreen() {
 
   const allocationColumns = useMemo<DataColumn<CrossDockAllocationDto>[]>(
     () => [
-      { id: 'receipt', header: t('warehouse.crossDockPlans.allocations.receipt'), cell: (a) => a.receiptNumber, card: 'title' },
-      { id: 'sku', header: t('warehouse.crossDockPlans.allocations.sku'), cell: (a) => a.sku },
-      { id: 'order', header: t('warehouse.crossDockPlans.allocations.order'), cell: (a) => a.packBatchNumber ?? a.clientName },
-      { id: 'quantity', header: t('warehouse.crossDockPlans.allocations.quantity'), cell: (a) => a.quantity, align: 'end' },
-      { id: 'confirmed', header: t('warehouse.crossDockPlans.allocations.confirmed'), cell: (a) => a.confirmedQty ?? '—', align: 'end' },
-      { id: 'short', header: t('warehouse.crossDockPlans.allocations.short'), cell: (a) => a.shortQty, align: 'end' },
+      { id: 'receipt', header: t('warehouse.crossDockPlans.allocations.receipt'), cell: (a) => a.receiptNumber, sortValue: (a) => a.receiptNumber, card: 'title' },
+      { id: 'sku', header: t('warehouse.crossDockPlans.allocations.sku'), cell: (a) => a.sku, sortValue: (a) => a.sku },
+      {
+        id: 'order',
+        header: t('warehouse.crossDockPlans.allocations.order'),
+        cell: (a) => a.packBatchNumber ?? a.clientName,
+        sortValue: (a) => a.packBatchNumber ?? a.clientName,
+      },
+      { id: 'quantity', header: t('warehouse.crossDockPlans.allocations.quantity'), cell: (a) => a.quantity, sortValue: (a) => a.quantity, align: 'end' },
+      {
+        id: 'confirmed',
+        header: t('warehouse.crossDockPlans.allocations.confirmed'),
+        cell: (a) => a.confirmedQty ?? '—',
+        sortValue: (a) => a.confirmedQty,
+        align: 'end',
+      },
+      { id: 'short', header: t('warehouse.crossDockPlans.allocations.short'), cell: (a) => a.shortQty, sortValue: (a) => a.shortQty, align: 'end' },
       {
         id: 'status',
         header: t('warehouse.crossDockPlans.allocations.status'),
         cell: (a) => <StatusChip domain={ALLOCATION_STATUS_DOMAIN} code={a.statusCode} label={a.status} />,
+        sortValue: (a) => a.status ?? a.statusCode,
       },
     ],
     [t],

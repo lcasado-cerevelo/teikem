@@ -27,13 +27,18 @@ export interface StatusPipelineProps {
   onTransition?: (toCode: string, comment: string | undefined) => Promise<unknown> | void
   /** Oculta las acciones (p. ej. el usuario no tiene el permiso de la acción). */
   disabled?: boolean
+  /**
+   * Códigos a los que el usuario puede mover el registro desde la pantalla (los demás los dispara el sistema, p. ej. la
+   * recepción de una orden de compra). Sin la prop se ofrecen todas las transiciones válidas.
+   */
+  manualTargets?: readonly string[]
 }
 
 /**
  * Pipeline de estatus: etapas del pipeline en orden (hechas / actual / pendientes), laterales y terminales como píldoras,
  * y botones con las transiciones que el servidor aceptaría desde el estatus actual (con comentario opcional).
  */
-export function StatusPipeline({ domain, entityType, entityId, currentCode, onTransition, disabled }: StatusPipelineProps) {
+export function StatusPipeline({ domain, entityType, entityId, currentCode, onTransition, disabled, manualTargets }: StatusPipelineProps) {
   const t = useT()
   const queryClient = useQueryClient()
   const actionable = !!onTransition && !disabled
@@ -54,9 +59,10 @@ export function StatusPipeline({ domain, entityType, entityId, currentCode, onTr
 
   // Las reglas y el historial deben estar resueltos (o haber fallado) antes de ofrecer transiciones.
   const rulesReady = !lateral.isPending && (!entityId || !history.isPending)
-  const targets = actionable && rulesReady
+  const targets = (actionable && rulesReady
     ? allowedTransitions({ statuses, currentCode, lateralEntries: lateral.data ?? [], historyToCodes: historyCodes })
     : []
+  ).filter((s) => !manualTargets || manualTargets.some((c) => sameCode(c, s.code)))
   const next = current?.stageKind === StageKinds.Pipeline ? targets.find((s) => s.stageKind !== StageKinds.Lateral && s.sortOrder > current.sortOrder) : undefined
 
   if (statusesQuery.isPending) return <div className="spin" role="status" aria-label={t('common.loading')} />

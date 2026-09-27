@@ -19,7 +19,8 @@ import { useDismiss } from '../../kernel/ui/useDismiss'
 import '../../kernel/ui/ui.css'
 import { productLabel, useWarehouse, useWarehouses, warehouseLabel, type ProductListItemDto, type WarehouseDto } from './api'
 
-function isAccessDenied(error: unknown): boolean {
+/** 403 `forbidden` o `module_disabled` en una consulta secundaria (se avisa sin sacar al usuario de la pantalla). */
+export function isAccessDenied(error: unknown): boolean {
   return error instanceof ApiError && (error.code === 'forbidden' || error.code === 'module_disabled')
 }
 

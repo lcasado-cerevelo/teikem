@@ -1,6 +1,8 @@
 // Pantalla D (Lote F6) — Compras: ficha de la orden de compra. `/warehouse/purchase-orders/:publicId`.
 // Lectura: purchasing.view + PURCHASING (por la ruta). Edición/enviar/cancelar/eliminar: purchasing.manage.
-// Resolver un faltante: inventory.adjust (REORDER exige además purchasing.manage; MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL).
+// Resolver un faltante: inventory.adjust (REORDER exige además purchasing.manage; MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL:
+// solo entonces se consultan posiciones y el seguimiento del producto, sin sacar al usuario ante un 403).
+// Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
@@ -26,11 +28,13 @@ import {
   Spinner,
   Tabs,
   TextArea,
+  TextInput,
   toast,
   type DataColumn,
   type RowAction,
 } from '../../kernel/ui'
 import {
+  useProduct,
   usePurchaseOrder,
   usePurchaseOrderAction,
   usePurchaseOrderShortageLines,
@@ -39,10 +43,13 @@ import {
   type PurchaseOrderDto,
   type ShortageLineDto,
 } from './api'
+import { parseSerials } from './lineRules'
 import { ProductPickerInput } from './pickers'
 
 const STATUS_DOMAIN = 'PurchaseOrderStatus'
 const ENTITY_TYPE = 'PURCHASE_ORDER'
+/** Transiciones que se piden desde la pantalla (POST send / cancel); PARTIAL y RECEIVED las dispara el sistema. */
+const MANUAL_TARGETS = ['SENT', 'CANCELLED'] as const
 type TabKey = 'lines' | 'shortages'
 
 function decimals(n: number): number {
@@ -254,8 +261,6 @@ function ResolveShortageModal({
   const resolve = useResolveShortage()
   const canManage = useCan('purchasing.manage')
   const hasLotSerial = useModule(ModuleKeys.WmsLotSerial)
-  const { data: bins = [] } = useWarehouseBins(po.warehousePublicId ?? null, {}, { enabled: open })
-  const binOptions = useMemo(() => bins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [bins])
   const pending = line?.qtyPending ?? 0
 
   const actionOptions = useMemo(() => {
@@ -268,7 +273,16 @@ function ResolveShortageModal({
   const schema = useMemo(
     () =>
       z
-        .object({ action: z.string().min(1), quantity: z.number().nullable(), reason: z.string(), binId: z.string(), notes: z.string() })
+        .object({
+          action: z.string().min(1),
+          quantity: z.number().nullable(),
+          reason: z.string(),
+          binId: z.string(),
+          notes: z.string(),
+          lot: z.string(),
+          lotExpiry: z.string(),
+          serialNumbers: z.string(),
+        })
         .superRefine((v, ctx) => {
           if (v.action !== 'MANUAL_ADJUSTMENT') return
           if (v.quantity === null || v.quantity <= 0) {
@@ -282,15 +296,51 @@ function ResolveShortageModal({
             }
           }
           if (!v.binId) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.shortages.errors.binRequired'), path: ['binId'] })
+          if (v.lot.trim().length > 60) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.lineRules.lotTooLong'), path: ['lot'] })
         }),
     [t, pending],
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    values: { action: 'CLOSE', quantity: null as number | null, reason: 'PO_SHORTAGE', binId: '', notes: '' },
+    values: { action: 'CLOSE', quantity: null as number | null, reason: 'PO_SHORTAGE', binId: '', notes: '', lot: '', lotExpiry: '', serialNumbers: '' },
   })
   const action = form.watch('action')
   const formId = 'shortage-resolve'
+  const isManual = action === 'MANUAL_ADJUSTMENT' && hasLotSerial
+
+  // Solo el ajuste manual usa posiciones y el seguimiento del producto (WMS_LOTSERIAL). CLOSE/REORDER no consultan nada
+  // de WMS; un 403 no saca al usuario de la ficha (la ruta es de compras).
+  const { data: bins = [] } = useWarehouseBins(po.warehousePublicId ?? null, {}, { enabled: open && isManual, handleAccessDenied: false })
+  const binOptions = useMemo(() => bins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [bins])
+  const product = useProduct(line?.productPublicId ?? null, { enabled: open && isManual, handleAccessDenied: false })
+  const tracking = (product.data?.product?.trackingTypeCode ?? '').toUpperCase()
+  const sku = line?.sku ?? ''
+
+  /** Réplica de AdjustmentRules.ValidateTracking (LOT exige lote; SERIAL, cantidad entera y una serie por unidad). */
+  function trackingErrors(v: { quantity: number | null; lot: string; serialNumbers: string }): boolean {
+    let failed = false
+    const qty = v.quantity ?? 0
+    const serials = parseSerials(v.serialNumbers)
+    if (tracking === 'LOT' && !v.lot.trim()) {
+      form.setError('lot', { message: t('warehouse.purchaseOrders.shortages.errors.lotRequired', { sku }) })
+      failed = true
+    }
+    if (tracking === 'SERIAL') {
+      if (!Number.isInteger(qty)) {
+        form.setError('quantity', { message: t('warehouse.purchaseOrders.shortages.errors.serialInteger') })
+        failed = true
+      } else if (serials.length === 0) {
+        form.setError('serialNumbers', { message: t('warehouse.purchaseOrders.shortages.errors.serialsRequired', { sku }) })
+        failed = true
+      } else if (serials.length !== qty) {
+        form.setError('serialNumbers', {
+          message: t('warehouse.purchaseOrders.shortages.errors.serialCountMismatch', { count: serials.length, qty: String(qty) }),
+        })
+        failed = true
+      }
+    }
+    return failed
+  }
 
   const close = () => {
     form.reset()
@@ -319,15 +369,21 @@ function ResolveShortageModal({
         id={formId}
         form={form}
         onSubmit={async (v) => {
+          const manual = v.action === 'MANUAL_ADJUSTMENT'
+          if (manual && trackingErrors(v)) return
+          const serials = parseSerials(v.serialNumbers)
           await resolve.mutateAsync({
             publicId: po.publicId ?? '',
             lineId: line.purchaseOrderLineId ?? 0,
             body: {
               action: v.action,
-              quantity: v.action === 'MANUAL_ADJUSTMENT' ? v.quantity : null,
-              reason: v.action === 'MANUAL_ADJUSTMENT' ? v.reason || 'PO_SHORTAGE' : null,
+              quantity: manual ? v.quantity : null,
+              reason: manual ? v.reason || 'PO_SHORTAGE' : null,
               notes: v.notes || null,
-              binId: v.action === 'MANUAL_ADJUSTMENT' && v.binId ? Number(v.binId) : null,
+              binId: manual && v.binId ? Number(v.binId) : null,
+              // lote (existente por número o nuevo) y series: solo en el ajuste manual (el API los rechaza con otras acciones)
+              lot: manual && v.lot.trim() ? { number: v.lot.trim(), expiryDate: v.lotExpiry || null } : undefined,
+              serialNumbers: manual && serials.length > 0 ? serials : null,
               rowVersion: po.rowVersion ?? null,
             },
           })
@@ -359,6 +415,26 @@ function ResolveShortageModal({
             <Field name="binId" label={t('warehouse.purchaseOrders.shortages.modal.bin')} required>
               <Select options={binOptions} placeholder={t('warehouse.products.fields.none')} />
             </Field>
+            {tracking === 'LOT' && (
+              <div className="r2">
+                <Field name="lot" label={t('warehouse.purchaseOrders.shortages.modal.lot')} required help={t('warehouse.purchaseOrders.shortages.modal.lotHelp')}>
+                  <TextInput maxLength={60} />
+                </Field>
+                <Field name="lotExpiry" label={t('warehouse.purchaseOrders.shortages.modal.lotExpiry')}>
+                  <DateInput />
+                </Field>
+              </div>
+            )}
+            {tracking === 'SERIAL' && (
+              <Field
+                name="serialNumbers"
+                label={t('warehouse.purchaseOrders.shortages.modal.serialNumbers')}
+                required
+                help={t('warehouse.purchaseOrders.shortages.modal.serialNumbersHelp')}
+              >
+                <TextArea rows={4} />
+              </Field>
+            )}
           </>
         )}
         <Field name="notes" label={t('warehouse.purchaseOrders.shortages.modal.notes')}>
@@ -376,15 +452,16 @@ function ShortagesTab({ po }: { po: PurchaseOrderDto }) {
 
   const columns = useMemo<DataColumn<ShortageLineDto>[]>(
     () => [
-      { id: 'sku', header: t('warehouse.purchaseOrders.shortages.columns.sku'), cell: (l) => <span className="ref">{l.sku}</span>, card: 'title' },
-      { id: 'product', header: t('warehouse.purchaseOrders.shortages.columns.product'), cell: (l) => l.productName },
-      { id: 'qtyOrdered', header: t('warehouse.purchaseOrders.shortages.columns.qtyOrdered'), cell: (l) => l.qtyOrdered, align: 'end' },
-      { id: 'qtyReceived', header: t('warehouse.purchaseOrders.shortages.columns.qtyReceived'), cell: (l) => l.qtyReceived, align: 'end' },
-      { id: 'qtyResolved', header: t('warehouse.purchaseOrders.shortages.columns.qtyResolved'), cell: (l) => l.qtyResolved, align: 'end' },
+      { id: 'sku', header: t('warehouse.purchaseOrders.shortages.columns.sku'), cell: (l) => <span className="ref">{l.sku}</span>, sortValue: (l) => l.sku, card: 'title' },
+      { id: 'product', header: t('warehouse.purchaseOrders.shortages.columns.product'), cell: (l) => l.productName, sortValue: (l) => l.productName },
+      { id: 'qtyOrdered', header: t('warehouse.purchaseOrders.shortages.columns.qtyOrdered'), cell: (l) => l.qtyOrdered, sortValue: (l) => l.qtyOrdered, align: 'end' },
+      { id: 'qtyReceived', header: t('warehouse.purchaseOrders.shortages.columns.qtyReceived'), cell: (l) => l.qtyReceived, sortValue: (l) => l.qtyReceived, align: 'end' },
+      { id: 'qtyResolved', header: t('warehouse.purchaseOrders.shortages.columns.qtyResolved'), cell: (l) => l.qtyResolved, sortValue: (l) => l.qtyResolved, align: 'end' },
       {
         id: 'qtyPending',
         header: t('warehouse.purchaseOrders.shortages.columns.pending'),
         cell: (l) => (l.qtyPending ?? 0) > 0 ? <Chip tone="warn">{l.qtyPending}</Chip> : l.qtyPending,
+        sortValue: (l) => l.qtyPending,
         align: 'end',
       },
     ],
@@ -486,6 +563,7 @@ export default function PurchaseOrderDetailScreen() {
           entityId={po.id}
           currentCode={po.statusCode}
           disabled={!canManage}
+          manualTargets={MANUAL_TARGETS}
           onTransition={(toCode, comment) => {
             if (toCode === 'SENT') return action.mutateAsync({ publicId, action: 'send', body: { comment, rowVersion: po.rowVersion ?? null } })
             if (toCode === 'CANCELLED') return action.mutateAsync({ publicId, action: 'cancel', body: { comment, rowVersion: po.rowVersion ?? null } })
