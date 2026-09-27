@@ -37,7 +37,8 @@ const KEY = 'teikem.pulse.warehouseFilter.3.7'
 const WH1 = { id: 1, publicId: 'wh-0000-0001', code: 'ALM-01', name: 'Almacén principal', isActive: true }
 const WH2 = { id: 2, publicId: 'wh-0000-0002', code: 'ALM-02', name: 'Almacén norte', isActive: true }
 const CATEGORIES = [
-  { id: 1, name: 'Farmacia', parentId: null, path: 'Farmacia', isActive: true, productCount: 23 },
+  // Farmacia solo tiene productos en su subcategoría (productCount del DTO = directos)
+  { id: 1, name: 'Farmacia', parentId: null, path: 'Farmacia', isActive: true, productCount: 0 },
   { id: 2, name: 'Analgésicos', parentId: 1, path: 'Farmacia › Analgésicos', isActive: true, productCount: 14 },
 ]
 const PRODUCT = {
@@ -170,6 +171,14 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(within(await tile('En mano')).queryByText('almacén')).toBeNull()
   })
 
+  it('categoría padre: el subtítulo cuenta los productos de sus subcategorías, como las cifras del API', async () => {
+    window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: null, item: { kind: 'category', id: 1 } }))
+    renderPulse()
+    const onHand = await tile('En mano')
+    await waitFor(() => expect(within(onHand).getByText('1,240')).toBeInTheDocument())
+    await waitFor(() => expect(within(onHand).getByText('Farmacia · 14 productos')).toBeInTheDocument())
+  })
+
   it('restaura almacén + categoría de localStorage: saldo de la categoría, documentos solo por almacén y enlace a Inventario', async () => {
     window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: WH1.publicId, item: { kind: 'category', id: 2 } }))
     renderPulse()
@@ -179,7 +188,10 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(within(await tile('Disponible')).getByText('60')).toBeInTheDocument()
     const below = await tile('Bajo mínimo')
     await waitFor(() => expect(within(below).getByText('2')).toBeInTheDocument())
-    expect(within(below).getByRole('link', { name: 'Ver en Inventario ›' })).toHaveAttribute('href', '/warehouse/inventory?categoryIds=2')
+    expect(within(below).getByRole('link', { name: 'Ver en Inventario ›' })).toHaveAttribute(
+      'href',
+      `/warehouse/inventory?categoryIds=2&warehousePublicIds=${encodeURIComponent(WH1.publicId!)}`,
+    )
     await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('2')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Tareas pendientes')).getByText('23')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('1')).toBeInTheDocument())

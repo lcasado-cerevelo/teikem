@@ -133,9 +133,11 @@ test.describe('Lote F6 — escritorio', () => {
   test("1. Pulso muestra el panel 'Almacén' (saldo, recibos abiertos, tareas pendientes, conteos abiertos)", async ({ page }) => {
     await login(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Almacén', exact: true })).toBeVisible()
-    await expect(page.getByText('Saldo actual de su compañía (no depende de un rango de fecha).')).toBeVisible()
-    for (const label of ['En mano total', 'Disponible total', 'Recibos abiertos', 'Tareas pendientes', 'Conteos abiertos']) {
-      await expect(page.getByText(label, { exact: true }).first()).toBeVisible()
+    // desde F7A el panel trae filtros (almacén, categoría o producto) y la tarjeta 'Bajo mínimo' (recorrido en f7a.spec.ts)
+    await expect(page.getByText('Saldo actual (no depende de un rango de fecha).', { exact: false })).toBeVisible()
+    for (const label of ['En mano', 'Disponible', 'Bajo mínimo', 'Recibos abiertos', 'Tareas pendientes', 'Conteos abiertos']) {
+      // cada tarjeta es un role=group con su etiqueta (las de documentos llevan además la marca 'almacén')
+      await expect(page.getByRole('group', { name: label, exact: true })).toBeVisible()
     }
     await expect(await warehouseMenuLink(page, 'Almacenes')).toBeVisible()
     // el panel 'Almacén' va debajo de los indicadores del API: se lleva a la vista para la captura

@@ -65,6 +65,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    transferencias, genealogía, rastro de serie y conciliación), recepción (recibos y avisos de llegada), tareas de
    almacén, conteo cíclico, recolección y empaque, proveedores, órdenes de compra, citas de muelle, cruce de muelle
    (planes) y consulta de órdenes de transporte de solo lectura.
+3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
+   almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
+   nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
+   y enlaces a la ficha de cada evento).
 
 ## Preguntas frecuentes
 

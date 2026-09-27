@@ -62,14 +62,15 @@ function route(url: URL): unknown {
   if (p === '/api/v1/inventory/balances') return page(url, balance)
   if (p === '/api/v1/inventory/transactions') return page(url, movement)
   if (p === '/api/v1/products') return { total: 1, skip: 0, take: 50, items: [PRODUCT] }
+  if (p === `/api/v1/products/${PRODUCT.publicId}`) return { product: PRODUCT }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
   return []
 }
 
-function wrap(ui: ReactNode) {
+function wrap(ui: ReactNode, url = '/warehouse/inventory') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={client}>
         <AccessProvider permissions={['inventory.view']} modules={['WMS_LOTSERIAL']}>
           {ui}
@@ -174,5 +175,82 @@ describe('InventoryScreen · Kárdex', () => {
     await user.type(screen.getByRole('searchbox'), 'ajuste')
     await waitLast(PATH, (u) => u.searchParams.get('search') === 'ajuste')
     expect(last(PATH).searchParams.get('skip')).toBe('0')
+  })
+})
+
+describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', () => {
+  it('?tab=kardex&product=X abre el Kárdex filtrado por el producto y muestra su SKU en la píldora', async () => {
+    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}`)
+    expect(await screen.findByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
+    expect(last('/api/v1/inventory/transactions').searchParams.get('skip')).toBe('0')
+    // Saldos no se consulta: la pestaña inicial es el Kárdex
+    expect(mock.requests.some((u) => u.pathname === '/api/v1/inventory/balances')).toBe(false)
+    // el SKU sale de la ficha del producto
+    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
+  })
+
+  it('?categoryIds=7 abre Saldos filtrado por la categoría', async () => {
+    wrap(<InventoryScreen />, '/warehouse/inventory?categoryIds=7')
+    expect(await screen.findByRole('tab', { name: 'Saldos' })).toHaveAttribute('aria-selected', 'true')
+    await waitLast('/api/v1/inventory/balances', (u) => u.searchParams.getAll('categoryIds').includes('7'))
+  })
+
+  it('?warehousePublicIds=W&categoryIds=7 abre Saldos con el almacén y la categoría (los mismos filtros que la cifra de Pulso)', async () => {
+    wrap(<InventoryScreen />, `/warehouse/inventory?categoryIds=7&warehousePublicIds=${WH}`)
+    await waitLast(
+      '/api/v1/inventory/balances',
+      (u) => u.searchParams.getAll('categoryIds').includes('7') && u.searchParams.getAll('warehousePublicIds').includes(WH),
+    )
+  })
+
+  it('?tab=kardex&product=X&warehousePublicIds=W manda el almacén al Kárdex', async () => {
+    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
+    await waitLast(
+      '/api/v1/inventory/transactions',
+      (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId) && u.searchParams.getAll('warehousePublicIds').includes(WH),
+    )
+  })
+
+  it('varios productos en la URL: cada píldora toma su SKU; la ficha que no se puede leer muestra un texto fijo', async () => {
+    const other = { ...PRODUCT, id: 2, publicId: 'aaaaaaaa-0000-0000-0000-000000000002', sku: 'TUER-02', name: 'Tuerca' }
+    const missing = 'aaaaaaaa-0000-0000-0000-000000000009'
+    mock.handler = (url: URL) => {
+      if (url.pathname === `/api/v1/products/${other.publicId}`) return { product: other }
+      if (url.pathname === `/api/v1/products/${missing}`)
+        return new Response(JSON.stringify({ title: 'No encontrado', status: 404 }), { status: 404, headers: { 'Content-Type': 'application/problem+json' } })
+      return route(url)
+    }
+    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId},${other.publicId}&product=${missing}`)
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').length === 3)
+    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Quitar TUER-02' }, { timeout: 4000 })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Quitar Producto no disponible' }, { timeout: 4000 })).toBeInTheDocument()
+    expect(screen.queryByText('…')).toBeNull()
+  })
+
+  it('los filtros de la URL son de la pestaña abierta: al cambiar de pestaña no pasan a la otra ni reaparecen al volver', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
+    await user.click(screen.getByRole('tab', { name: 'Saldos' }))
+    await waitLast('/api/v1/inventory/balances', (u) => u.searchParams.get('skip') === '0')
+    const balances = last('/api/v1/inventory/balances').searchParams
+    expect(balances.has('productPublicIds')).toBe(false)
+    expect(balances.has('warehousePublicIds')).toBe(false)
+    const before = mock.requests.length
+    await user.click(screen.getByRole('tab', { name: 'Kárdex' }))
+    await waitFor(() => expect(mock.requests.slice(before).some((u) => u.pathname === '/api/v1/inventory/transactions')).toBe(true), { timeout: 4000 })
+    const kardex = last('/api/v1/inventory/transactions').searchParams
+    expect(kardex.has('productPublicIds')).toBe(false)
+    expect(kardex.has('warehousePublicIds')).toBe(false)
+    expect(screen.queryByRole('button', { name: 'Quitar TORN-01' })).toBeNull()
+  })
+
+  it('?ref= ya no se usa: el Kárdex no manda búsqueda (el API no compara el documento de origen)', async () => {
+    wrap(<InventoryScreen />, '/warehouse/inventory?tab=kardex&ref=REC-000318')
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    expect(last('/api/v1/inventory/transactions').searchParams.has('search')).toBe(false)
+    expect(screen.getByRole('searchbox')).toHaveValue('')
   })
 })

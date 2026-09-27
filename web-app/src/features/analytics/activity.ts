@@ -73,6 +73,8 @@ export interface ActivityLink {
 /**
  * Ficha a la que lleva la referencia según `entityType` (código EntityType). `null` si el tipo no tiene pantalla (p. ej. ASN)
  * o si falta el identificador que usa la ruta (publicId o id).
+ * INVENTORY_TRANSACTION no lleva enlace: el API reporta ajustes y transferencias como PRODUCT, y la búsqueda del Kárdex no
+ * compara el documento de origen (una referencia no localizaría el movimiento).
  */
 export function activityLink(e: ActivityEventDto): ActivityLink | null {
   const wms = ModuleKeys.WmsLotSerial
@@ -96,8 +98,6 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
       return byPublicId('/warehouse/products')
     case 'WAREHOUSE':
       return byPublicId('/warehouse/warehouses')
-    case 'INVENTORY_TRANSACTION':
-      return { to: `/warehouse/inventory?tab=kardex&ref=${encodeURIComponent(e.reference ?? '')}`, perm: 'inventory.view', module: wms }
     case 'CROSSDOCK_PLAN':
       return byId('/warehouse/cross-dock-plans', 'inventory.view', ModuleKeys.CrossDock)
     default:

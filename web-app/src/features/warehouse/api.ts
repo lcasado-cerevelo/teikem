@@ -3,7 +3,7 @@
 // invalida la lista de su entidad (prefijo `[ruta]`) y, si cambia saldos, las consultas de inventario que dependen de ellos.
 // Permisos y módulos (los aplica el API; aquí solo se documentan): lecturas con `inventory.view` + WMS_LOTSERIAL (compras:
 // `purchasing.view` + PURCHASING; citas y cruce de muelle: `inventory.view` + CROSSDOCK; órdenes: `orders.view` + LTL_GROUND).
-import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components, paths } from '../../kernel/api/schema'
 
@@ -323,6 +323,18 @@ export function useProduct(publicId: string | null | undefined, options?: Wareho
     queryFn: () => unwrap(api.GET('/api/v1/products/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
     enabled: Boolean(publicId) && (options?.enabled ?? true),
     meta: meta(options),
+  })
+}
+
+/** Varias fichas `GET /api/v1/products/{publicId}` a la vez (misma clave que `useProduct`: comparten caché). */
+export function useProductsByPublicId(publicIds: readonly string[], options?: WarehouseQueryOptions) {
+  return useQueries({
+    queries: publicIds.map((publicId) => ({
+      queryKey: [warehouseKeys.product[0], publicId],
+      queryFn: () => unwrap(api.GET('/api/v1/products/{publicId}', { params: { path: { publicId } } })),
+      enabled: options?.enabled ?? true,
+      meta: meta(options),
+    })),
   })
 }
 

@@ -3,7 +3,12 @@
 // no tiene estatus de entidad, solo mensajes de validación.
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta). Ajuste/transferencia/ejecutar conciliación:
 // inventory.adjust.
+// Parámetros de URL (Lote F7A, enlaces de Pulso): `tab=kardex` abre el Kárdex; `warehousePublicIds=<publicId>` filtra por
+// almacén y `product=<publicId>` por producto (Saldos o Kárdex); `categoryIds=<id>` filtra Saldos por categoría (los tres
+// repetibles o separados por comas). Solo se leen al montar y solo los recibe la pestaña abierta: al cambiar de pestaña se
+// descartan y después los filtros son de la pantalla.
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { parseApiDate } from '../../kernel/api/dates'
 import type { components } from '../../kernel/api/schema'
@@ -31,6 +36,8 @@ import {
   useInventoryReconciliation,
   useInventoryTransactions,
   useLotGenealogy,
+  productLabel,
+  useProductsByPublicId,
   useProductCategories,
   useSerialTrace,
   useWarehouses,
@@ -46,6 +53,53 @@ type ReconciliationRowDto = components['schemas']['ReconciliationRowDto']
 
 type TabKey = 'balances' | 'kardex' | 'reconciliation'
 const PAGE_SIZE = 25
+
+/** Filtros iniciales que llegan en la URL (enlaces de Pulso). */
+interface InitialFilters {
+  warehousePublicIds: string[]
+  products: ProductFilterItem[]
+  categoryIds: string[]
+}
+
+/** Sin filtros iniciales: lo que recibe una pestaña a la que se llega cambiando de pestaña. */
+const NO_INITIAL_FILTERS: InitialFilters = { warehousePublicIds: [], products: [], categoryIds: [] }
+
+/** Valores de un parámetro repetible o separado por comas, sin vacíos ni duplicados. */
+function listParam(params: URLSearchParams, name: string): string[] {
+  const values = params
+    .getAll(name)
+    .flatMap((v) => v.split(','))
+    .map((v) => v.trim())
+    .filter(Boolean)
+  return [...new Set(values)]
+}
+
+/** Lee `warehousePublicIds`, `product` y `categoryIds` de la URL. Un producto llega solo con su publicId: su SKU se resuelve después. */
+function initialFiltersFromUrl(params: URLSearchParams): InitialFilters {
+  return {
+    warehousePublicIds: listParam(params, 'warehousePublicIds'),
+    products: listParam(params, 'product').map((publicId) => ({ publicId, sku: '', label: '' })),
+    categoryIds: listParam(params, 'categoryIds').filter((v) => /^\d+$/.test(v)),
+  }
+}
+
+/**
+ * Productos del filtro para pintar: los que llegaron por URL sin SKU (pueden ser varios) toman "SKU · Nombre" de su ficha
+ * (`GET /api/v1/products/{publicId}`); mientras llega se muestra '…' y, si la ficha no se puede leer (404/403), un texto
+ * fijo para que la píldora se pueda quitar. Un elemento sin SKU sigue pendiente aunque el filtro lo haya guardado con '…'.
+ */
+function useResolvedProducts(products: ProductFilterItem[]): ProductFilterItem[] {
+  const t = useT()
+  const pending = useMemo(() => products.filter((p) => !p.sku).map((p) => p.publicId), [products])
+  const results = useProductsByPublicId(pending, { handleAccessDenied: false })
+  return products.map((p) => {
+    if (p.sku) return p
+    const r = results[pending.indexOf(p.publicId)]
+    const found = r?.data?.product
+    if (found) return { publicId: p.publicId, sku: found.sku ?? '', label: productLabel(found) }
+    return { ...p, label: r?.isError ? t('warehouse.inventory.productUnavailable') : '…' }
+  })
+}
 
 function formatDate(iso: string | null | undefined, lang: string): string {
   if (!iso) return ''
@@ -303,14 +357,22 @@ function SerialTraceModal({
 // =====================================================================================================================
 // Pestaña Saldos
 // =====================================================================================================================
-function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: number) => void; onSerialTrace: (productPublicId: string) => void }) {
+function BalancesTab({
+  initial,
+  onGenealogy,
+  onSerialTrace,
+}: {
+  initial: InitialFilters
+  onGenealogy: (lotId: number) => void
+  onSerialTrace: (productPublicId: string) => void
+}) {
   const t = useT()
   const lang = useLang()
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
-  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>([])
-  const [products, setProducts] = useState<ProductFilterItem[]>([])
-  const [categoryIds, setCategoryIds] = useState<string[]>([])
+  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>(initial.warehousePublicIds)
+  const [products, setProducts] = useState<ProductFilterItem[]>(initial.products)
+  const [categoryIds, setCategoryIds] = useState<string[]>(initial.categoryIds)
   const [lotNumber, setLotNumber] = useState('')
   const [includeZero, setIncludeZero] = useState(false)
   const [onlyAvailable, setOnlyAvailable] = useState(false)
@@ -336,6 +398,7 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
   }, [text, search])
 
   const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
+  const shownProducts = useResolvedProducts(products)
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
   const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
   const { data: categories = [] } = useProductCategories()
@@ -419,7 +482,7 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
           value={warehousePublicIds}
           onChange={withPageReset(setWarehousePublicIds)}
         />
-        <ProductMultiFilter label={t('warehouse.inventory.balances.filters.product')} value={products} onChange={withPageReset(setProducts)} />
+        <ProductMultiFilter label={t('warehouse.inventory.balances.filters.product')} value={shownProducts} onChange={withPageReset(setProducts)} />
         <SearchSelect
           label={t('warehouse.inventory.balances.filters.category')}
           options={categoryOptions}
@@ -464,15 +527,21 @@ function BalancesTab({ onGenealogy, onSerialTrace }: { onGenealogy: (lotId: numb
 // =====================================================================================================================
 // Pestaña Kárdex
 // =====================================================================================================================
-function KardexTab({ onSerialTrace }: { onSerialTrace: (productPublicId: string, serialNumber: string) => void }) {
+function KardexTab({
+  initial,
+  onSerialTrace,
+}: {
+  initial: InitialFilters
+  onSerialTrace: (productPublicId: string, serialNumber: string) => void
+}) {
   const t = useT()
   const columns = useKardexColumns(false)
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [types, setTypes] = useState<string[]>([])
-  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>([])
-  const [products, setProducts] = useState<ProductFilterItem[]>([])
+  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>(initial.warehousePublicIds)
+  const [products, setProducts] = useState<ProductFilterItem[]>(initial.products)
   const [lotNumber, setLotNumber] = useState('')
   const [serialNumber, setSerialNumber] = useState('')
   const [page, setPage] = useState(1)
@@ -497,6 +566,7 @@ function KardexTab({ onSerialTrace }: { onSerialTrace: (productPublicId: string,
   }, [text, search])
 
   const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
+  const shownProducts = useResolvedProducts(products)
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
   const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
   const { data: txnTypes = [] } = useLookups('InventoryTxnType')
@@ -555,7 +625,7 @@ function KardexTab({ onSerialTrace }: { onSerialTrace: (productPublicId: string,
           value={warehousePublicIds}
           onChange={withPageReset(setWarehousePublicIds)}
         />
-        <ProductMultiFilter label={t('warehouse.inventory.kardex.filters.product')} value={products} onChange={withPageReset(setProducts)} includeInactive />
+        <ProductMultiFilter label={t('warehouse.inventory.kardex.filters.product')} value={shownProducts} onChange={withPageReset(setProducts)} includeInactive />
         <div className="f">
           <label htmlFor="kardex-lot">{t('warehouse.inventory.kardex.filters.lotNumber')}</label>
           <input id="kardex-lot" type="text" value={lotNumber} onChange={(e) => withPageReset(setLotNumber)(e.target.value)} maxLength={60} />
@@ -671,7 +741,16 @@ function ReconciliationTab() {
 // =====================================================================================================================
 export default function InventoryScreen() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('balances')
+  const [params] = useSearchParams()
+  // Solo al montar: los enlaces de Pulso abren la pestaña y los filtros indicados en la URL. Esos filtros son de la
+  // pestaña abierta: al cambiar de pestaña se descartan (la otra no los hereda y al volver no reaparecen).
+  const [tab, setTab] = useState<TabKey>(() => (params.get('tab') === 'kardex' ? 'kardex' : 'balances'))
+  const [initial, setInitial] = useState(() => initialFiltersFromUrl(params))
+
+  function changeTab(next: TabKey) {
+    if (next !== tab) setInitial(NO_INITIAL_FILTERS)
+    setTab(next)
+  }
   const [adjusting, setAdjusting] = useState(false)
   const [transferring, setTransferring] = useState(false)
   const [genealogyLotId, setGenealogyLotId] = useState<number | null>(null)
@@ -700,7 +779,7 @@ export default function InventoryScreen() {
         <Tabs<TabKey>
           label={t('warehouse.inventory.title')}
           value={tab}
-          onChange={setTab}
+          onChange={changeTab}
           tabs={[
             { key: 'balances', label: t('warehouse.inventory.tabBalances') },
             { key: 'kardex', label: t('warehouse.inventory.tabKardex') },
@@ -711,12 +790,13 @@ export default function InventoryScreen() {
 
       {tab === 'balances' && (
         <BalancesTab
+          initial={initial}
           onGenealogy={setGenealogyLotId}
           onSerialTrace={(productPublicId) => setSerialTrace({ productPublicId, serialNumber: '' })}
         />
       )}
       {tab === 'kardex' && (
-        <KardexTab onSerialTrace={(productPublicId, serialNumber) => setSerialTrace({ productPublicId, serialNumber })} />
+        <KardexTab initial={initial} onSerialTrace={(productPublicId, serialNumber) => setSerialTrace({ productPublicId, serialNumber })} />
       )}
       {tab === 'reconciliation' && <ReconciliationTab />}
 

@@ -31,6 +31,7 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { EmptyState } from '../../kernel/ui/EmptyState'
 import { Panel } from '../../kernel/ui/Panel'
 import { Spinner } from '../../kernel/ui/Spinner'
+import { categoryProductTotals } from '../../kernel/ui/categoryTree'
 import { PULSE_TASK_TYPES, usePulse, useWarehouseFilter, useWarehousePulse, type PulseItemKind } from './api'
 import { chartKind, customRangeDays, CUSTOM_RANGE, formatValue, formatYmd } from './format'
 import { ActivityPanel } from './ActivityPanel'
@@ -45,7 +46,8 @@ const CARD_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat
 const CHART_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }
 // Tarjetas del panel 'Almacén': una columna a 360 px (min(100%, …) evita que la columna mínima desborde el panel).
 const TILE_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 12 }
-const TILE: CSSProperties = { border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', minWidth: 0 }
+// Borde en propiedades separadas: TILE_WARN cambia solo el color y React avisa si se mezcla con el atajo `border`.
+const TILE: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--line)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', minWidth: 0 }
 const TILE_LABEL: CSSProperties = { fontSize: 12.5, color: 'var(--muted)' }
 const TILE_VALUE: CSSProperties = { fontSize: 26, fontWeight: 800, lineHeight: 1.2 }
 const TILE_WARN: CSSProperties = { ...TILE, borderColor: 'rgba(230,169,62,.45)' }
@@ -215,18 +217,29 @@ function WarehousePulsePanel() {
   const onHand = balances.data?.totalOnHand
   const available = balances.data?.totalAvailable
 
+  // Productos por categoría contando sus subcategorías: las cifras de saldo y bajo mínimo también las incluyen.
+  const categoryTotals = useMemo(() => categoryProductTotals(categories.data ?? []), [categories.data])
+
   // Subtítulo de 'En mano': la categoría y su cantidad de productos, o el SKU del producto (con su mínimo si tiene).
   let onHandSub: ReactNode = null
   if (item?.kind === 'category' && category) {
+    const count = (category.id != null ? categoryTotals.get(category.id) : undefined) ?? category.productCount ?? 0
     onHandSub =
-      category.productCount === 1
+      count === 1
         ? t('analytics.pulse.warehouse.categorySubOne', { name: category.name ?? '' })
-        : t('analytics.pulse.warehouse.categorySub', { name: category.name ?? '', count: formatValue(category.productCount ?? 0, false) })
+        : t('analytics.pulse.warehouse.categorySub', { name: category.name ?? '', count: formatValue(count, false) })
   } else if (item?.kind === 'product' && product) {
     onHandSub =
       product.minQty != null
         ? t('analytics.pulse.warehouse.productMin', { sku: product.sku ?? '', qty: formatValue(product.minQty, false) })
         : product.sku
+  }
+
+  // Enlaces a Inventario con los mismos filtros que las cifras (almacén incluido), para que el destino cuadre con la tarjeta.
+  const inventoryLink = (extra: Record<string, string>) => {
+    const q = new URLSearchParams(extra)
+    if (filter.warehousePublicId) q.set('warehousePublicIds', filter.warehousePublicId)
+    return `/warehouse/inventory?${q.toString()}`
   }
 
   // 'Bajo mínimo': cantidad de productos (todos o de la categoría) o Sí/No del producto elegido.
@@ -238,7 +251,7 @@ function WarehousePulsePanel() {
     else belowValue = belowMin.isError || productError ? '—' : '…'
     belowWarn = productBelowMin === true
     belowLink = (
-      <Link className="ref" to={`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(item.publicId)}`}>
+      <Link className="ref" to={inventoryLink({ tab: 'kardex', product: item.publicId })}>
         {t('analytics.pulse.warehouse.viewKardex', { sku: product?.sku ?? '' })}
       </Link>
     )
@@ -247,7 +260,7 @@ function WarehousePulsePanel() {
     belowWarn = (belowMin.data?.total ?? 0) > 0
     if (item?.kind === 'category')
       belowLink = (
-        <Link className="ref" to={`/warehouse/inventory?categoryIds=${item.id}`}>
+        <Link className="ref" to={inventoryLink({ categoryIds: String(item.id) })}>
           {t('analytics.pulse.warehouse.viewInventory')}
         </Link>
       )

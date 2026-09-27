@@ -758,6 +758,7 @@
       "tabBalances": "Balances",
       "tabKardex": "Ledger",
       "tabReconciliation": "Reconciliation",
+      "productUnavailable": "Product unavailable",
       "adjust": "Adjust",
       "transfer": "Transfer",
       "balances": {

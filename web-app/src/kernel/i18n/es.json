@@ -758,6 +758,7 @@
       "tabBalances": "Saldos",
       "tabKardex": "Kárdex",
       "tabReconciliation": "Conciliación",
+      "productUnavailable": "Producto no disponible",
       "adjust": "Ajustar",
       "transfer": "Transferir",
       "balances": {

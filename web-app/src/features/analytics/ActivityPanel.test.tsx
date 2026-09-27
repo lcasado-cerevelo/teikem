@@ -92,10 +92,10 @@ describe('activity (lógica pura)', () => {
     expect(to('WAREHOUSE_TASK')).toBe('/warehouse/tasks')
     expect(to('PRODUCT')).toBe(`/warehouse/products/${pid}`)
     expect(to('WAREHOUSE')).toBe(`/warehouse/warehouses/${pid}`)
-    expect(to('INVENTORY_TRANSACTION', { reference: 'AJ 4471' })).toBe('/warehouse/inventory?tab=kardex&ref=AJ%204471')
     expect(to('CROSSDOCK_PLAN')).toBe('/warehouse/cross-dock-plans/27')
     // sin pantalla (ASN) o sin el identificador que usa la ruta: sin enlace
     expect(to('ASN')).toBeUndefined()
+    expect(to('INVENTORY_TRANSACTION', { reference: 'AJ 4471' })).toBeUndefined()
     expect(to('RECEIPT', { publicId: null })).toBeUndefined()
     // guarda de la ruta destino (como routes.tsx)
     expect(activityLink(event({ entityType: 'PURCHASE_ORDER' }))).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING' })
@@ -221,6 +221,42 @@ describe('ActivityPanel', () => {
     expect(screen.getByText('Recibo confirmado')).toHaveClass('chip', 's-deliv')
     expect(screen.getByText('Recolección creada')).toHaveClass('chip', 's-cod')
     expect(screen.getByText('3 eventos · últimas 24 h')).toBeInTheDocument()
+  })
+
+  it('buscador libre sobre lo cargado (sin ir al API) y Referencia ordenable', async () => {
+    mock.handler = () => ({
+      total: 3,
+      visibleModules: ['WAREHOUSE'],
+      items: [
+        event({ reference: 'REC-000318' }),
+        event({ code: 'PICK_COLLECTED', label: 'Recolección creada', mandatory: false, entityType: 'PICK_BATCH', reference: 'EMP-00112', detail: 'ALM-01 · 3 unidades' }),
+        event({ reference: 'REC-000020', detail: 'ALM-02 · 1 línea', userName: 'Ana Pérez' }),
+      ],
+    })
+    const user = userEvent.setup()
+    renderPanel()
+    await screen.findByText('REC-000318')
+    const calls = activityCalls().length
+    // Referencia es un código: se ordena con orden natural (REC-000020 antes que REC-000318)
+    const table = screen.getByRole('table', { name: 'Eventos recientes' })
+    await user.click(within(screen.getByRole('columnheader', { name: /Referencia/ })).getByRole('button'))
+    const refs = within(table)
+      .getAllByRole('row')
+      .slice(1)
+      .map((r) => within(r).getAllByRole('cell')[2].textContent)
+    expect(refs).toEqual(['EMP-00112', 'REC-000020', 'REC-000318'])
+
+    await user.type(screen.getByRole('searchbox'), 'recoleccion')
+    await waitFor(() => expect(screen.queryByText('REC-000318')).not.toBeInTheDocument())
+    expect(screen.getByText('EMP-00112')).toBeInTheDocument()
+    await user.clear(screen.getByRole('searchbox'))
+    await user.type(screen.getByRole('searchbox'), 'ana alm-02')
+    await waitFor(() => expect(screen.queryByText('EMP-00112')).not.toBeInTheDocument())
+    expect(screen.getByText('REC-000020')).toBeInTheDocument()
+    await user.clear(screen.getByRole('searchbox'))
+    await user.type(screen.getByRole('searchbox'), 'nada que coincida')
+    expect(await screen.findByText('Sin resultados')).toBeInTheDocument()
+    expect(activityCalls()).toHaveLength(calls)
   })
 
   it('sin permiso para la ficha destino (orden de compra sin purchasing.view): referencia sin enlace', async () => {

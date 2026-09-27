@@ -77,3 +77,34 @@ export function sameCategoryProduct(a: CategoryProductValue, b: CategoryProductV
   if (a.kind === 'product' && b.kind === 'product') return a.publicId === b.publicId
   return false
 }
+
+/**
+ * Productos de cada categoría contando sus subcategorías (id → suma de `productCount` de todo el subárbol). Es lo que
+ * filtra el API con `categoryIds` (saldos y bajo mínimo expanden a los descendientes), mientras `productCount` del DTO
+ * cuenta solo los productos directos. Un padre ausente de la lista corta el subárbol; un ciclo no cuelga el recorrido.
+ */
+export function categoryProductTotals(categories: readonly CategoryNode[]): Map<number, number> {
+  const ids = new Set(categories.map((c) => c.id))
+  const children = new Map<number, CategoryNode[]>()
+  for (const c of categories) {
+    if (c.parentId == null || !ids.has(c.parentId) || c.parentId === c.id) continue
+    const list = children.get(c.parentId) ?? []
+    list.push(c)
+    children.set(c.parentId, list)
+  }
+  const totals = new Map<number, number>()
+  const visit = (c: CategoryNode, path: Set<number>): number => {
+    if (c.id == null) return c.productCount ?? 0
+    const cached = totals.get(c.id)
+    if (cached != null) return cached
+    if (path.has(c.id)) return 0
+    path.add(c.id)
+    let sum = c.productCount ?? 0
+    for (const child of children.get(c.id) ?? []) sum += visit(child, path)
+    path.delete(c.id)
+    totals.set(c.id, sum)
+    return sum
+  }
+  for (const c of categories) visit(c, new Set())
+  return totals
+}

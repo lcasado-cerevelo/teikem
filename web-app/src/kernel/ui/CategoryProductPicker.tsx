@@ -11,7 +11,7 @@ import { api, unwrap } from '../api/client'
 import { ApiError } from '../api/problem'
 import type { components } from '../api/schema'
 import { useT } from '../i18n/useT'
-import { categoryLabel, categoryTree, filterCategoryTree, type CategoryProductValue } from './categoryTree'
+import { categoryLabel, categoryProductTotals, categoryTree, filterCategoryTree, type CategoryProductValue } from './categoryTree'
 import { IconChevronDown, IconClose, IconSearch } from './icons'
 import { useDismiss } from './useDismiss'
 import './ui.css'
@@ -88,6 +88,8 @@ export function CategoryProductPicker({ value, onChange, categories, categoriesL
   })
 
   const tree = useMemo(() => categoryTree(categories), [categories])
+  // "N productos" cuenta también las subcategorías: es lo que filtra el API al elegir la categoría.
+  const totals = useMemo(() => categoryProductTotals(categories), [categories])
   const shownCategories = useMemo(() => filterCategoryTree(tree, text), [tree, text])
   const foundProducts = search ? (products.data?.items ?? []) : []
 
@@ -203,9 +205,12 @@ export function CategoryProductPicker({ value, onChange, categories, categoriesL
           <span className="cpp-txt">{o.category.name}</span>
           {o.category.productCount != null && (
             <span className="cpp-ds">
-              {o.category.productCount === 1
-                ? t('ui.categoryProductPicker.productCountOne')
-                : t('ui.categoryProductPicker.productCount', { count: o.category.productCount })}
+              {(() => {
+                const count = (o.category.id != null ? totals.get(o.category.id) : undefined) ?? o.category.productCount
+                return count === 1
+                  ? t('ui.categoryProductPicker.productCountOne')
+                  : t('ui.categoryProductPicker.productCount', { count })
+              })()}
             </span>
           )}
         </>

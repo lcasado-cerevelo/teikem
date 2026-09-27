@@ -12,19 +12,13 @@ pantalla de inicio donde ya se ven los indicadores y gráficos del Lote F1.
 
 **Cómo se llega.** Aparece automáticamente debajo de los indicadores y gráficos de Pulso (`/`), sin pedir nada aparte.
 
-**Qué se ve.**
-
-![Panel Almacén en Pulso: en mano, disponible, recibos abiertos, tareas por tipo y conteos abiertos](img/f6-pulso-almacen.png)
-
-Cinco tarjetas: **En mano total**, **Disponible total**, **Recibos abiertos**, **Tareas pendientes** (con el
-desglose por tipo: Putaway, Reabasto, Conteo, Cruce de muelle) y **Conteos abiertos**. El texto "Saldo actual de su
-compañía (no depende de un rango de fecha)." aclara que estas tarjetas no tienen el botón "Rango" de las demás.
+> Este panel se extendió en el Lote F7A con el filtro de almacén y de categoría o producto, y con la tarjeta "Bajo
+> mínimo". La descripción y las capturas actuales están en
+> [F7A — Pulso: panel Almacén con filtro y Actividad reciente](f7a-pulso-almacen-y-actividad.md#pulso-del-día-panel-almacén-con-filtro).
+> Aquí queda solo la referencia de permiso, que no cambió.
 
 **Permiso.** Se pinta solo si tiene `inventory.view` **y** el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`)
 encendido; sin alguno de los dos, Pulso se ve igual que en F1 (sin este panel, sin pedir nada al servidor).
-
-**Mensajes que puede ver.** Mientras carga cada tarjeta, muestra "…"; si una consulta falla (por ejemplo, un 403),
-muestra "—" en esa tarjeta en vez de sacarlo de la pantalla de inicio.
 
 ## Almacenes: zonas, posiciones y muelles
 

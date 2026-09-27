@@ -36,7 +36,10 @@ const WH_SELECT: CSSProperties = {
   padding: '7px 2px',
   textOverflow: 'ellipsis',
 }
-const ITEM_BOX: CSSProperties = { flex: '1 1 280px', maxWidth: 440, minWidth: 0 }
+// Base de 340 px = ancho del desplegable del picker (`.cpp .mp`): si los dos controles comparten renglón, este nunca queda
+// más angosto que su desplegable, que se ancla a la izquierda y el `overflow: hidden` del panel recortaría (tablet vertical).
+// Si no cabe, pasa a su propio renglón y ocupa todo el ancho.
+const ITEM_BOX: CSSProperties = { flex: '1 1 340px', maxWidth: 440, minWidth: 0 }
 
 export interface WarehouseFilterProps {
   filter: WarehousePulseFilter

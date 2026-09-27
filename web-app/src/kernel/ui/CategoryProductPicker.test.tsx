@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../i18n/i18n'
 import { CategoryProductPicker, type CategoryOption } from './CategoryProductPicker'
-import { categoryTree, filterCategoryTree, isCategoryProductValue, sameCategoryProduct, type CategoryProductValue } from './categoryTree'
+import { categoryProductTotals, categoryTree, filterCategoryTree, isCategoryProductValue, sameCategoryProduct, type CategoryProductValue } from './categoryTree'
 
 // El cliente de la app se sustituye por uno con la misma política sobre un fetch simulado.
 const mock = vi.hoisted(() => ({ requests: [] as URL[], handler: (_url: URL): unknown => [] }))
@@ -21,7 +21,8 @@ vi.mock('../api/client', async (importOriginal) => {
 })
 
 const CATEGORIES: CategoryOption[] = [
-  { id: 1, name: 'Farmacia', parentId: null, path: 'Farmacia', isActive: true, productCount: 23 },
+  // Farmacia no tiene productos directos: su conteo (23) es el de sus subcategorías
+  { id: 1, name: 'Farmacia', parentId: null, path: 'Farmacia', isActive: true, productCount: 0 },
   { id: 2, name: 'Analgésicos', parentId: 1, path: 'Farmacia › Analgésicos', isActive: true, productCount: 14 },
   { id: 3, name: 'Antibióticos', parentId: 1, path: 'Farmacia › Antibióticos', isActive: true, productCount: 9 },
   { id: 4, name: 'Ferretería', parentId: null, path: 'Ferretería', isActive: true, productCount: 1 },
@@ -69,6 +70,22 @@ beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.requests = []
   mock.handler = route
+})
+
+describe('categoryProductTotals', () => {
+  it('suma los productos de las subcategorías (como filtra el API) y no se cuelga con un ciclo', () => {
+    const totals = categoryProductTotals(CATEGORIES)
+    expect([1, 2, 3, 4].map((id) => totals.get(id))).toEqual([23, 14, 9, 1])
+    const deep = categoryProductTotals([
+      { id: 1, parentId: null, productCount: 2 },
+      { id: 2, parentId: 1, productCount: 0 },
+      { id: 3, parentId: 2, productCount: 5 },
+      { id: 4, parentId: 99, productCount: 1 },
+    ])
+    expect(deep.get(1)).toBe(7)
+    expect(deep.get(4)).toBe(1)
+    expect(categoryProductTotals([{ id: 6, parentId: 7, productCount: 1 }, { id: 7, parentId: 6, productCount: 2 }]).size).toBe(2)
+  })
 })
 
 describe('categoryTree', () => {

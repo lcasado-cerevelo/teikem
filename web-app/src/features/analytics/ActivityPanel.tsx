@@ -2,6 +2,7 @@
 // Pestañas por módulo de negocio (solo las que el servidor devuelve en `visibleModules`), ventana 24 h / 48 h / Hoy e
 // interruptor 'Solo obligatorios'. Tabla (tarjetas bajo 720 px) con hora local, evento (chip por familia y marca de
 // obligatorio), referencia con enlace a la ficha, detalle y quién. 'Ver más' pide la siguiente página (skip) y acumula.
+// Buscador libre (QBox) sobre las filas ya cargadas, aplicado después de los filtros (pestaña, ventana, obligatorios).
 // Lo monta Pulse solo con `analytics.view` y el módulo ANALYTICS; si el usuario no ve ningún módulo el panel no se pinta.
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
@@ -9,7 +10,7 @@ import { useAccess } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { parseApiDate } from '../../kernel/api/dates'
 import { useLang, useT } from '../../kernel/i18n/useT'
-import { Chip, DataTable, EmptyState, Panel, Spinner, Tabs, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, EmptyState, matchesQ, Panel, QBox, Spinner, Tabs, type DataColumn } from '../../kernel/ui'
 import {
   ACTIVITY_WINDOWS,
   activityLink,
@@ -62,6 +63,7 @@ export function ActivityPanel() {
   const [module, setModule] = useState<ActivityModule | null>(null)
   const [win, setWin] = useState<ActivityWindow>('24h')
   const [onlyMandatory, setOnlyMandatory] = useState(false)
+  const [q, setQ] = useState('')
 
   // Sin pestaña elegida no se manda `module`: el servidor lee el primer módulo visible.
   const filters = useMemo<ActivityFilters>(
@@ -79,6 +81,11 @@ export function ActivityPanel() {
         (p.items ?? []).map((e, i) => ({ ...e, rowId: `${pi}-${i}-${e.code ?? ''}-${e.entityType ?? ''}-${e.entityId ?? ''}` })),
       ),
     [pages],
+  )
+  // Búsqueda libre sobre lo acumulado (no va al API): evento, código, referencia, detalle y quién.
+  const shown = useMemo(
+    () => (q.trim() ? rows.filter((r) => matchesQ(q, r.label, r.code, r.reference, r.detail, r.userName)) : rows),
+    [rows, q],
   )
 
   const columns = useMemo<DataColumn<ActivityRow>[]>(() => {
@@ -127,6 +134,7 @@ export function ActivityPanel() {
             <span style={{ overflowWrap: 'anywhere' }}>{text}</span>
           )
         },
+        sortValue: (r) => r.reference ?? null,
       },
       {
         id: 'detail',
@@ -223,14 +231,18 @@ export function ActivityPanel() {
 
   return (
     <Panel title={title} subtitle={subtitle} actions={controls} footer={footer} flush>
+      <div className="qrow">
+        <QBox value={q} onChange={setQ} />
+      </div>
       <DataTable
         columns={columns}
-        rows={rows}
+        rows={shown}
         rowKey={(r) => r.rowId}
         defaultSort={{ id: 'time', desc: true }}
         loading={query.isPlaceholderData}
         label={t('analytics.activity.tableLabel')}
-        empty={<EmptyState title={t('analytics.activity.empty')} />}
+        // sin coincidencias del buscador: el vacío genérico de la tabla ('Sin resultados')
+        empty={rows.length > 0 ? undefined : <EmptyState title={t('analytics.activity.empty')} />}
       />
     </Panel>
   )
