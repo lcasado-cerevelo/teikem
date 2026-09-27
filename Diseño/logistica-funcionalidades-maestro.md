@@ -539,10 +539,13 @@ indicadores, gráficos o eventos al catálogo.** Mock aprobado: `docs/frontend/m
 4. **Panel "Actividad reciente"** — *aprobado, pendiente de construir* (ver abajo).
 5. Sin permiso `analytics.view` o con el módulo de analítica apagado, la pantalla muestra solo la bienvenida — *construido (F1)*.
 
-**Indicadores y gráfico de sistema de almacén aprobados** (solo seed del motor existente, sin código nuevo; módulo
-`WAREHOUSE`, `ShowInPulse = 1`, visibles a toda la organización): *Productos activos* (ya sembrado), *Productos bajo mínimo*,
-*Unidades recibidas* (ledger tipo `RECEIPT`, rango por defecto últimos 7 días), *Conteos con diferencia* (conteos `RECONCILED`
-con varianza ≠ 0, últimos 30 días) y el gráfico de barras *Movimientos de inventario por tipo* (ledger, últimos 7 días).
+**Indicadores y gráfico de sistema de almacén aprobados** (seed del motor existente; *Conteos con diferencia* requirió una
+fuente de datos nueva, `CYCLE_COUNT`, que no existía; módulo `WAREHOUSE`, `ShowInPulse = 1`, visibles a toda la organización):
+*Productos activos* (ya sembrado), *Productos bajo mínimo*, *Unidades recibidas* (ledger tipo `RECEIPT` más los ajustes
+`RECEIPT_VARIANCE`: por D4 del Lote 6 el neto con signo es lo recibido; rango por defecto últimos 7 días), *Conteos con
+diferencia* (conteos `RECONCILED` con alguna línea con diferencia o con ajuste enlazado —no la suma neta, porque sobrantes y
+faltantes de un mismo conteo se compensan—, últimos 30 días) y el gráfico de barras *Movimientos de inventario por tipo*
+(ledger, últimos 7 días).
 
 #### Actividad reciente (feed de eventos de negocio por módulo)
 
@@ -581,7 +584,7 @@ con varianza ≠ 0, últimos 30 días) y el gráfico de barras *Movimientos de i
 | `COUNT_FINISHED` | CYCLE_COUNT → COUNTED | Conteo terminado / Count finished | No | Conteo |
 | `COUNT_RECONCILED` | CYCLE_COUNT → RECONCILED | Conteo reconciliado / Count reconciled | Sí | Conteo |
 | `COUNT_VARIANCE` | ledger ADJUSTMENT motivo `COUNT_VARIANCE` | Diferencia de conteo aplicada / Count variance applied | Sí | Conteo |
-| `INVENTORY_ADJUSTED` | ledger ADJUSTMENT motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER) | Ajuste de inventario / Inventory adjustment | Sí | Kárdex filtrado |
+| `INVENTORY_ADJUSTED` | ledger ADJUSTMENT motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER), con o sin documento de origen, o cualquier otro motivo no asignado por el sistema sin documento de origen | Ajuste de inventario / Inventory adjustment | Sí | Kárdex filtrado |
 | `INVENTORY_TRANSFERRED` | ledger TRANSFER entre almacenes distintos | Transferencia entre almacenes / Warehouse transfer | No | Kárdex filtrado |
 | `BIN_MOVED` | ledger TRANSFER dentro del mismo almacén | Movimiento de posición / Bin move | No (apagado por defecto) | Kárdex filtrado |
 | `PICK_COLLECTED` | PICK_BATCH → COLLECTED | Recolección creada / Pick batch collected | No | Recolección |
@@ -592,7 +595,7 @@ con varianza ≠ 0, últimos 30 días) y el gráfico de barras *Movimientos de i
 | `PO_CANCELLED` | PURCHASE_ORDER → CANCELLED | Orden de compra cancelada / Purchase order cancelled | Sí | Orden de compra |
 | `PO_SHORTAGE_RESOLVED` | `AuditLog` UPDATE de línea de compra al resolver faltante | Faltante resuelto / Shortage resolved | No | Orden de compra |
 | `CROSSDOCK_COMPLETED` | CROSSDOCK_PLAN → COMPLETED (solo con módulo CROSSDOCK) | Cruce de muelle completado / Cross-dock completed | No | Plan |
-| `PRODUCT_DEACTIVATED` | `AuditLog` PRODUCT con `IsActive` 1 → 0 | Producto dado de baja / Product deactivated | No | Producto |
+| `PRODUCT_DEACTIVATED` | `AuditLog` PRODUCT con `IsActive` 1 → 0 (la categoría se audita como `PRODUCT_CATEGORY` desde 7A) | Producto dado de baja / Product deactivated | No | Producto |
 | `WAREHOUSE_DEACTIVATED` | WAREHOUSE → INACTIVE | Almacén dado de baja / Warehouse deactivated | Sí | Almacén |
 
 **Catálogo inicial — Operación** (se siembra cuando su módulo llegue al frontend; la lista se afina en ese lote):
@@ -613,6 +616,13 @@ indicadores y gráfico de almacén; frontend: filtro del panel Almacén, panel d
 manual; plan en `docs/lote7A-plan.md`), **7B Operación** y **7C Contabilidad** (cada uno agrega su proveedor de eventos, su
 seed de eventos e indicadores y su permiso de vista sobre la misma infraestructura; se construyen cuando esos módulos lleguen
 al frontend). Nada del dashboard sale del plan por hacerse en partes.
+
+*Ajustes de la revisión de 7A (2026-09-27)*: (1) la categoría de producto deja de compartir el `EntityType` PRODUCT en la
+bitácora (`PRODUCT_CATEGORY`), porque su baja era indistinguible de la de un producto con el mismo id; (2) un ajuste FOUND
+de un faltante de compra cuenta como `INVENTORY_ADJUSTED` (obligatorio) además de `PO_SHORTAGE_RESOLVED` (opcional), y un
+ajuste manual sin documento con un motivo fuera de la lista fija también es `INVENTORY_ADJUSTED`; (3) *Unidades recibidas*
+suma RECEIPT + `RECEIPT_VARIANCE` (lo recibido, no lo esperado); (4) *Conteos con diferencia* usa la fuente nueva
+`CYCLE_COUNT` y su campo `HasVariance`. Detalle en `docs/lote7A-decisiones.md`.
 
 ## 13. API para integraciones
 

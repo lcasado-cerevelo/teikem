@@ -18,8 +18,9 @@ namespace Teikem.Infrastructure.Services;
 ///     StatusService.TransitionAsync), así que se leen del mismo historial con el tipo de la tarea;
 /// (c) ledger: ADJUSTMENT agrupado por operación (Ref + instante + usuario; los manuales además por producto) y TRANSFER
 ///     manual (sin Ref: los de putaway, reabasto y conteo ya son PUTAWAY_DONE, REPLENISH_DONE y COUNT_RECONCILED);
-/// (d) baja de producto: AuditLog PRODUCT con acción DELETE (el interceptor clasifica IsActive 1 → 0 como DELETE) sobre un
-///     producto hoy inactivo; faltante resuelto: cada fila de PurchaseOrderShortageResolution (la resolución es un INSERT
+/// (d) baja de producto: AuditLog PRODUCT con acción DELETE (el interceptor clasifica IsActive 1 → 0 como DELETE); la
+///     categoría se audita como PRODUCT_CATEGORY y el lote nunca genera DELETE, así que cada fila es la baja de un producto
+///     (aunque se haya reactivado después); faltante resuelto: cada fila de PurchaseOrderShortageResolution (la resolución es un INSERT
 ///     auditado bajo PURCHASE_ORDER, no un UPDATE de la línea).
 /// La etiqueta y la bandera de obligatorio salen del catálogo ActivityEventType (ILookupCache); un evento opcional apagado
 /// por defecto (BIN_MOVED) o excluido por 'solo obligatorios' ni se consulta.
@@ -446,7 +447,9 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         if (await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.Product, ct) is not int productTypeId) return;
         if (await lookups.TryGetIdAsync(LookupDomains.AuditAction, AuditActions.Delete, ct) is not int deleteId) return;
 
-        // PRODUCT agrupa también categorías y lotes en la bitácora: se exige que el id sea un producto hoy inactivo.
+        // Bajo PRODUCT solo se auditan el producto y sus lotes (la categoría usa PRODUCT_CATEGORY desde el Lote 7A) y un lote no
+        // es ISoftDeletable (nunca genera DELETE): cada fila DELETE con IsActive es la baja de un producto. No se exige que siga
+        // inactivo: una baja reactivada dentro de la ventana también ocurrió.
         var from = ctx.FromUtc;
         var rows = await db.AuditLogs.AsNoTracking()
             .Where(a => a.CreatedAtUtc >= from && a.EntityTypeLookupId == productTypeId && a.ActionLookupId == deleteId
@@ -454,7 +457,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
             .Select(a => new { a.EntityId, a.CreatedAtUtc, a.UserId }).ToListAsync(ct);
         if (rows.Count == 0) return;
         var ids = rows.Select(r => r.EntityId).Distinct().ToList();
-        var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.ProductId) && !p.IsActive)
+        var products = await db.Set<Product>().AsNoTracking().Where(p => ids.Contains(p.ProductId))
             .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.Name }).ToDictionaryAsync(p => p.ProductId, ct);
 
         foreach (var r in rows)

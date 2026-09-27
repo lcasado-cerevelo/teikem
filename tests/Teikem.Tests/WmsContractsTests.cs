@@ -259,7 +259,7 @@ public class WmsContractsTests
         new object?[] { typeof(WarehouseZone), EntityTypes.Warehouse },
         new object?[] { typeof(WarehouseBin), EntityTypes.Warehouse },
         new object?[] { typeof(WarehouseDock), EntityTypes.WarehouseDock },
-        new object?[] { typeof(ProductCategory), EntityTypes.Product },
+        new object?[] { typeof(ProductCategory), EntityTypes.ProductCategory },   // Lote 7A: propio, para no confundir su baja con la de un producto
         new object?[] { typeof(Product), EntityTypes.Product },
         new object?[] { typeof(InventoryLot), EntityTypes.Product },
         new object?[] { typeof(Supplier), EntityTypes.Supplier },

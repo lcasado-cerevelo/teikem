@@ -69,8 +69,16 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     /// <summary>Lote 6: tareas de almacén abiertas (pendientes o en proceso).</summary>
     public const string OpenWarehouseTasksFilter = "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"in\",\"value\":[\"PENDING\",\"IN_PROGRESS\"]}]}";
 
-    /// <summary>Lote 7A: movimientos de recepción del ledger ('Unidades recibidas'; Quantity de un RECEIPT es positiva).</summary>
-    public const string ReceiptMovementsFilter = "{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"RECEIPT\"}]}";
+    /// <summary>
+    /// Lote 7A: 'Unidades recibidas' = RECEIPT más los ajustes RECEIPT_VARIANCE del ledger. Por D4 una línea con esperado E se
+    /// asienta como RECEIPT por E más un ADJUSTMENT RECEIPT_VARIANCE por la diferencia (y una línea extra solo como ajuste):
+    /// el neto con signo de ambos es lo recibido.
+    /// </summary>
+    public const string ReceiptMovementsFilter =
+        "{\"or\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"RECEIPT\"},{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"ADJUSTMENT\"},{\"field\":\"ReasonCode\",\"op\":\"eq\",\"value\":\"RECEIPT_VARIANCE\"}]}]}";
+
+    /// <summary>Primera versión del filtro de 'Unidades recibidas' (solo RECEIPT: sumaba lo esperado); se corrige al resembrar.</summary>
+    public const string ReceiptMovementsFilterV1 = "{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"RECEIPT\"}]}";
 
     /// <summary>
     /// Lote 7A: conteos reconciliados con diferencia ('Conteos con diferencia'). HasVariance de CycleCountDataSource = alguna
@@ -248,7 +256,7 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
 
         // Lote 7A — Pulso de almacén (maestro, módulo 12 'Pulso del día'): visibles a toda la organización y en Pulso.
         // 'Productos activos' y 'Productos bajo mínimo' ya vienen del Lote 6 (mismo filtro que la vista 'Inventario bajo mínimo').
-        Indicator(ReceivedUnitsIndicatorName, "Unidades recibidas en el período (movimientos de recepción del ledger)", "Units received in the period (ledger receipt movements)",
+        Indicator(ReceivedUnitsIndicatorName, "Unidades recibidas en el período (recepciones más diferencias de recepción: neto = lo recibido)", "Units received in the period (receipts plus receipt variances: net = received)",
             EntityTypes.InventoryTransaction, "Quantity", sum, ReceiptMovementsFilter, last7, true, 97, module: wh);
         Indicator(CountsWithVarianceIndicatorName, "Conteos cíclicos reconciliados en el período con alguna diferencia", "Cycle counts reconciled in the period with a variance",
             EntityTypes.CycleCount, null, count, ReconciledCountsWithVarianceFilter, last30, true, 98, module: wh);
@@ -272,6 +280,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             .Where(i => i.TenantId == tenantId && i.IsSystem && i.Name == "Movimientos registrados" && i.DateRangeModeLookupId == last30)
             .ToListAsync(ct);
         foreach (var ind in movementsIndicator) ind.DateRangeModeLookupId = last7;
+
+        // Lote 7A: 'Unidades recibidas' se sembró primero solo con RECEIPT (sumaba lo esperado, D4). Solo se reemplaza el filtro
+        // original exacto del indicador de sistema (no se pisa uno personalizado).
+        var receivedIndicator = await db.IndicatorDefinitions
+            .Where(i => i.TenantId == tenantId && i.IsSystem && i.Name == ReceivedUnitsIndicatorName && i.FilterJson == ReceiptMovementsFilterV1)
+            .ToListAsync(ct);
+        foreach (var ind in receivedIndicator) ind.FilterJson = ReceiptMovementsFilter;
 
         // ---- Gráficos ----
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);

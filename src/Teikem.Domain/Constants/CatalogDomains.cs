@@ -424,6 +424,9 @@ public static class EntityTypes
     public const string PurchaseOrder = "PURCHASE_ORDER";
     public const string Supplier = "SUPPLIER";
     public const string ReceiptLine = "RECEIPT_LINE";
+    // Agregado por el Lote 7A: la categoría deja de compartir PRODUCT en la bitácora (su baja no es la de un producto:
+    // PRODUCT_DEACTIVATED del feed "Actividad reciente" lee AuditLog PRODUCT DELETE).
+    public const string ProductCategory = "PRODUCT_CATEGORY";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------

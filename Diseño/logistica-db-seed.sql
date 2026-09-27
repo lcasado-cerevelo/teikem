@@ -299,6 +299,8 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','WAREHOUSE_TASK','Tarea de almacén','Warehouse task',73),('EntityType','PICK_BATCH','Recolección','Pick batch',74),
 ('EntityType','DOCK_APPOINTMENT','Cita de muelle','Dock appointment',75),('EntityType','CROSSDOCK_ALLOCATION','Asignación de cruce de muelle','Cross-dock allocation',76),
 ('EntityType','INVENTORY_TRANSACTION','Movimiento de inventario','Inventory transaction',77),('EntityType','STOCK_BALANCE','Saldo de inventario','Stock balance',78),
+-- Lote 7A: la categoría de producto se audita con su propio tipo (antes compartía PRODUCT; su baja parecía la de un producto)
+('EntityType','PRODUCT_CATEGORY','Categoría de producto','Product category',79),
 ('Capability','EDIT_PURCHASE_ORDER','Editar orden de compra','Edit purchase order',9);
 
 MERGE dbo.LookupCode AS t

@@ -2,8 +2,11 @@ using Teikem.Domain.Common;
 
 namespace Teikem.Domain.Wms;
 
-/// <summary>Categoría jerárquica de productos (ParentId del mismo tenant por FK compuesta; sin ciclos, máximo 5 niveles).</summary>
-[AuditEntity(Constants.EntityTypes.Product)]
+/// <summary>
+/// Categoría jerárquica de productos (ParentId del mismo tenant por FK compuesta; sin ciclos, máximo 5 niveles). Lote 7A: se
+/// audita con su propio EntityType (PRODUCT_CATEGORY) para que su baja no se confunda con la de un producto del mismo id.
+/// </summary>
+[AuditEntity(Constants.EntityTypes.ProductCategory)]
 public class ProductCategory : ITenantScoped, ISoftDeletable
 {
     public int ProductCategoryId { get; set; }

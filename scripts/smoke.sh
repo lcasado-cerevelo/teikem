@@ -3007,8 +3007,12 @@ activity() { # query [token] → todos los eventos de la ventana (páginas de 50
   echo "$all"
 }
 EV=$(activity "module=WAREHOUSE")
-echo "$EV" | jq -e --argjson r "$R6ID" 'any(.[]; .code=="RECEIPT_CONFIRMED" and .module=="WAREHOUSE" and .entityType=="RECEIPT" and .entityId==$r and .mandatory==true and (.label|length)>0)' >/dev/null || fail "RECEIPT_CONFIRMED obligatorio del recibo $R6ID"
-echo "$EV" | jq -e --arg p "$PO1P" 'any(.[]; .code=="PO_SENT" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==false)' >/dev/null || fail "PO_SENT (opcional) de la orden enviada"
+echo "$EV" | jq -e --argjson r "$R6ID" 'any(.[]; .code=="RECEIPT_CONFIRMED" and .module=="WAREHOUSE" and .entityType=="RECEIPT" and .entityId==$r and .mandatory==true and (.label|length)>0 and (.userId != null) and ((.userName // "") | length) > 0)' >/dev/null || fail "RECEIPT_CONFIRMED obligatorio del recibo $R6ID (con quién lo hizo)"
+echo "$EV" | jq -e --arg p "$PO1P" 'any(.[]; .code=="PO_SENT" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .mandatory==false and (.userId != null) and ((.userName // "") | length) > 0)' >/dev/null || fail "PO_SENT (opcional) de la orden enviada (con quién lo hizo)"
+# PO2: tres resoluciones de faltante en la ventana (REORDER y dos MANUAL_ADJUSTMENT de 1), enlazadas a la orden.
+echo "$EV" | jq -e --arg p "$PO2P" --arg n "$(echo "$PO2" | jq -r .number)" '[.[] | select(.code=="PO_SHORTAGE_RESOLVED" and .entityType=="PURCHASE_ORDER" and .publicId==$p and .reference==$n and .mandatory==false)] | length==3' >/dev/null || fail "PO_SHORTAGE_RESOLVED de PO2 (REORDER + 2 ajustes manuales) con referencia = número de PO2"
+# PD se dio de baja dos veces (y se reactivó): cada baja es un PRODUCT_DEACTIVATED aunque hoy esté activo.
+echo "$EV" | jq -e --arg p "$PD" '[.[] | select(.code=="PRODUCT_DEACTIVATED" and .entityType=="PRODUCT" and .publicId==$p)] | length>=2' >/dev/null || fail "PRODUCT_DEACTIVATED de las bajas de PD (reactivado)"
 expect 200 "$(req GET '/api/v1/analytics/activity?take=1')" | jq -e '.visibleModules==["WAREHOUSE"] and (.items|length)==1 and .total>=2' >/dev/null || fail "sin module → primer módulo visible (WAREHOUSE) con total y take=1"
 EM=$(activity "module=WAREHOUSE&onlyMandatory=true")
 echo "$EM" | jq -e 'length>=1 and all(.[]; .mandatory==true) and all(.[]; .code!="PO_SENT") and any(.[]; .code=="RECEIPT_CONFIRMED")' >/dev/null || fail "onlyMandatory incluye opcionales (PO_SENT)"
@@ -3018,10 +3022,12 @@ expect 400 "$(req GET '/api/v1/analytics/activity?window=7d')" | jq -e --arg m "
 TD7=$(login "$DISPATCH_EMAIL" "$PASS")
 expect 403 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TD7")" | jq -e '.title=="No tiene permiso para ver la actividad del módulo WAREHOUSE."' >/dev/null || fail "despachador sin inventory.view ve la actividad de Almacén"
 expect 200 "$(req GET '/api/v1/analytics/activity' '' "$TD7")" | jq -e '.visibleModules==[] and .total==0' >/dev/null || fail "despachador: sin módulos visibles"
+# El 403 del operador de almacén lo pone la política (analytics.view), no el servicio: sí tiene inventory.view.
+expect 403 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TWH6")" >/dev/null || fail "operador de almacén (inventory.view sin analytics.view) ve la actividad"
 BM=$(expect 200 "$(req GET '/api/v1/products?belowMin=true&take=200')")
 echo "$BM" | jq -e '(.items|length)==([.total,200]|min) and all(.items[]; .isBelowMin==true)' >/dev/null || fail "belowMin devuelve productos que no están bajo mínimo"
 expect 200 "$(req GET '/api/v1/products?belowMin=true&take=1')" | jq -e --argjson t "$(echo "$BM" | jq .total)" '.total==$t' >/dev/null || fail "belowMin con take=1 cuenta distinto"
-ok "RECEIPT_CONFIRMED del recibo confirmado (obligatorio) y PO_SENT (opcional) en Almacén; sin module → WAREHOUSE; onlyMandatory sin PO_SENT; take 51 → 400 y ventana inválida → 400; despachador (sin inventory.view) 403 'No tiene permiso para ver la actividad del módulo WAREHOUSE.' y sin pestañas; belowMin solo bajo mínimo con el mismo total en take=1"
+ok "RECEIPT_CONFIRMED del recibo confirmado (obligatorio) y PO_SENT (opcional) en Almacén, con quién lo hizo; 3 PO_SHORTAGE_RESOLVED de PO2; PRODUCT_DEACTIVATED de PD aunque se reactivó; sin module → WAREHOUSE; onlyMandatory sin PO_SENT; take 51 → 400 y ventana inválida → 400; despachador (sin inventory.view) 403 'No tiene permiso para ver la actividad del módulo WAREHOUSE.' y sin pestañas; operador de almacén (sin analytics.view) 403; belowMin solo bajo mínimo con el mismo total en take=1"
 
 step "conteo cíclico con filtro de almacenes (Lote 6)"
 CC6=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B_PCK]}")"); CC6ID=$(echo "$CC6" | jq -r .count.id)
@@ -3050,6 +3056,8 @@ kardex "refEntity=CYCLE_COUNT&refId=$CC7ID" | jq -e '.total==2 and all(.items[];
 [[ $(onhand "$W6P" "$B_CC" "$PCC1") == 6 && $(onhand "$W6P" "$B_CC" "$PCC2") == 4 ]] || fail "saldos tras conciliar (6 y 4)"
 expect 422 "$(req PUT "/api/v1/cycle-counts/$CC7ID/lines" "{\"lines\":[{\"lineId\":$CL1,\"countedQty\":7}]}" "$TWH6")" | jq -e '.title=="El conteo ya fue reconciliado; solo se consulta."' >/dev/null || fail "capturar después de conciliar"
 expect 200 "$(req GET "/api/v1/warehouse-tasks?warehousePublicId=$W6P&types=COUNT&includeClosed=true&take=200")" | jq -e --argjson c "$CC7ID" 'any(.items[]; .refEntityCode=="CYCLE_COUNT" and .refId==$c and .statusCode=="DONE")' >/dev/null || fail "tarea COUNT DONE al conciliar"
+# Lote 7A: la conciliación aparece en Actividad reciente como COUNT_VARIANCE (obligatorio) enlazado al conteo.
+activity "module=WAREHOUSE&onlyMandatory=true" | jq -e --argjson c "$CC7ID" 'any(.[]; .code=="COUNT_VARIANCE" and .entityType=="CYCLE_COUNT" and .entityId==$c and .mandatory==true)' >/dev/null || fail "COUNT_VARIANCE del conteo $CC7ID en Actividad reciente"
 ok "conteo conciliado por el Operador contra el saldo actual (+2 con systemQtyChanged, −1 sin él; COUNT_VARIANCE; captura posterior 422; tarea COUNT DONE); conteo CC sobre P-01; filtro warehousePublicIds de selección múltiple (maestro L553); reconciliar sin warehouse.count 403; COUNT no se cancela desde la cola (422)"
 
 step "cruce de muelle (Lote 6, módulo CROSSDOCK): 403 apagado, citas solapadas y tarea de la cola con el módulo"

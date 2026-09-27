@@ -505,6 +505,7 @@ public class AnalyticsSeedFieldsTests
         Assert.Equal(AggregateFns.Sum, lookups.CodeOf(received.AggregateFnLookupId));
         Assert.Equal(SystemAnalyticsSeeder.ReceiptMovementsFilter, received.FilterJson);
         Assert.Contains("\"value\":\"" + InventoryTxnTypes.Receipt + "\"", received.FilterJson);
+        Assert.Contains("\"value\":\"" + AdjustmentReasons.ReceiptVariance + "\"", received.FilterJson);   // D4: neto = lo recibido
         Assert.Equal(DateRangeModes.Last7, lookups.CodeOf(received.DateRangeModeLookupId!.Value));
 
         var counts = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == SystemAnalyticsSeeder.CountsWithVarianceIndicatorName);

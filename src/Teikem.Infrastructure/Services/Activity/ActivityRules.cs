@@ -39,7 +39,10 @@ public static class ActivityRules
     /// <summary>Orden de las pestañas (maestro: Almacén, Operación, Contabilidad).</summary>
     private static readonly string[] ModuleOrder = { BusinessModules.Warehouse, BusinessModules.Operations, BusinessModules.Accounting };
 
-    /// <summary>Motivos de ajuste que captura una persona (DAMAGE, LOSS, FOUND, EXPIRED, OTHER): INVENTORY_ADJUSTED.</summary>
+    /// <summary>
+    /// Motivos manuales del maestro (DAMAGE, LOSS, FOUND, EXPIRED, OTHER): INVENTORY_ADJUSTED aunque el ajuste lleve documento
+    /// de origen (el FOUND de un faltante de compra lleva Ref PURCHASE_ORDER).
+    /// </summary>
     public static readonly IReadOnlySet<string> ManualAdjustmentReasons = new HashSet<string>(
         new[] { AdjustmentReasons.Damage, AdjustmentReasons.Loss, AdjustmentReasons.Found, AdjustmentReasons.Expired, AdjustmentReasons.Other },
         StringComparer.OrdinalIgnoreCase);
@@ -157,10 +160,12 @@ public static class ActivityRules
     // ================================================================ mapeos de Almacén
 
     /// <summary>
-    /// ADJUSTMENT del ledger → evento por motivo: RECEIPT_VARIANCE y COUNT_VARIANCE por su nombre; los motivos manuales
-    /// (DAMAGE, LOSS, FOUND, EXPIRED, OTHER) sin documento de origen → INVENTORY_ADJUSTED. PICK_BATCH_REVERSAL y PO_SHORTAGE
-    /// (o un FOUND de un faltante de compra, que lleva Ref PURCHASE_ORDER) ya los cuentan PICK_CANCELLED y
-    /// PO_SHORTAGE_RESOLVED: null.
+    /// ADJUSTMENT del ledger → evento por motivo (todo cambio de saldo fuera del flujo normal es obligatorio):
+    /// RECEIPT_VARIANCE y COUNT_VARIANCE por su nombre; un motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER) →
+    /// INVENTORY_ADJUSTED con o sin documento de origen (el FOUND de un faltante de compra aparece además como
+    /// PO_SHORTAGE_RESOLVED); cualquier otro motivo que no asigne el sistema (PO_SHORTAGE, un código nuevo del catálogo) sin
+    /// documento de origen → INVENTORY_ADJUSTED. PICK_BATCH_REVERSAL (motivo de sistema) y el PO_SHORTAGE de un faltante (con
+    /// Ref) ya los cuentan PICK_CANCELLED y PO_SHORTAGE_RESOLVED: null.
     /// </summary>
     public static string? AdjustmentEventCode(string? reasonCode, bool hasOperationRef)
     {
@@ -168,7 +173,8 @@ public static class ActivityRules
         var reason = reasonCode.Trim().ToUpperInvariant();
         if (reason == AdjustmentReasons.ReceiptVariance) return ActivityEvents.ReceiptVariance;
         if (reason == AdjustmentReasons.CountVariance) return ActivityEvents.CountVariance;
-        return !hasOperationRef && ManualAdjustmentReasons.Contains(reason) ? ActivityEvents.InventoryAdjusted : null;
+        if (Teikem.Domain.Wms.AdjustmentRules.SystemReasons.Contains(reason)) return null;
+        return ManualAdjustmentReasons.Contains(reason) || !hasOperationRef ? ActivityEvents.InventoryAdjusted : null;
     }
 
     /// <summary>TRANSFER del ledger: entre almacenes distintos → INVENTORY_TRANSFERRED; dentro del mismo → BIN_MOVED.</summary>
