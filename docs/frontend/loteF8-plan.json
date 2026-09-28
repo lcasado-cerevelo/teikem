@@ -1,0 +1,73 @@
+{
+ "lote": "F8a",
+ "titulo": "Sistema, Análisis y Pulso organizable (frontend) + shell a la maqueta",
+ "aprobacion": "PENDIENTE de Luis (2026-09-28). Ver docs/frontend/loteF8-plan.md, Parte 4 (decisiones 1 a 6). Requiere la pieza P1 de backend desplegada y web-app/openapi.json regenerado antes de P2.",
+ "objetivo": "Que el administrador pueda organizar su Pulso (qué sale y en qué orden, incluidos los paneles Almacén y Actividad), crear usuarios y roles, asignar el PIN de la app móvil y registrar aparatos, y mantener los catálogos de valores; y que el menú y la cabecera queden como la maqueta (grupos, orden, nombres, paleta de comandos, tema, reloj).",
+ "fueraDeAlcance": [
+  "Ríos de Operación (Paquetes en la calle / Dinero COD), bandeja 'Necesita tu decisión' y Radar del Pulso (F3, F5, 7C)",
+  "Vistas e informes, Campos personalizados, Estatus, Seguridad y auditoría, Ajustes de la compañía, alcances de datos, Administración de plataforma (F8b)",
+  "Clientes y contratos, Consignatarios, Choferes, Flota (F2, F4)",
+  "Impresoras y labels, Integraciones / API, colores y logo, Portal de clientes, Contabilidad (sin backend)"
+ ],
+ "piezas": [
+  {
+   "nombre": "P1 — Backend mínimo: orden y paneles del Pulso por usuario",
+   "orden": 1,
+   "agente": "implementer",
+   "descripcion": "Columna PulseSortOrder INT NULL en dbo.UserAnalyticsPreference y tabla nueva dbo.UserPulsePanel (TenantId, UserId, PanelKey, IsVisible, SortOrder, UpdatedAtUtc; UNIQUE TenantId+UserId+PanelKey; ITenantScoped) en Diseño/logistica-db-estructura.sql (capa de análisis, sin seed). Entidad + configuración EF 1:1. PulseDto(Indicators, Charts, Panels): indicadores y gráficos ordenados por PulseSortOrder del usuario (nulos al final), SortOrder global y nombre, con pulseSortOrder en IndicatorValueDto/ChartDataDto; Panels = [{key, isVisible, sortOrder}] para las claves WAREHOUSE y ACTIVITY (constantes en Teikem.Domain), con valor por defecto (visible, al final) si no hay fila. PUT /api/v1/analytics/pulse/layout (analytics.view, módulo ANALYTICS) con cuerpo { items:[{kind:'indicator'|'chart', id, sortOrder, showInPulse}], panels:[{key, isVisible, sortOrder}] }: escribe UserAnalyticsPreference (404 si el usuario no puede ver el indicador/gráfico) y UserPulsePanel (clave desconocida → ValidationException 'Panel de Pulso desconocido: {key}', 400); devuelve el PulseDto nuevo. my-pulse se conserva. Pruebas xunit de la ordenación; smoke.sh con PUT layout + GET pulse; manual de análisis + FAQ.",
+   "archivos": ["Diseño/logistica-db-estructura.sql", "src/Teikem.Domain/Analytics/*", "src/Teikem.Infrastructure/Persistence/Configurations/*", "src/Teikem.Infrastructure/Contracts/AnalyticsContracts.cs", "src/Teikem.Infrastructure/Services/AnalyticsService.cs", "src/Teikem.Api/Controllers/ExtensibilityControllers.cs", "tests/Teikem.Tests/*", "scripts/smoke.sh", "docs/manual/*"]
+  },
+  {
+   "nombre": "P0 — Shell y menú a la maqueta",
+   "orden": 2,
+   "agente": "core",
+   "descripcion": "navigation.ts: NAV_GROUPS en el orden y claves de la maqueta (ops, warehouse, money, catalog, analytics, system, portal) con etiquetas Operación · Almacén · Contabilidad · Catálogo · Análisis · Sistema · Portal de clientes (y las inglesas de la maqueta); los grupos vacíos siguen ocultos; admin → system en las rutas. Renombre 'Recepción' → 'Recibo' (Decisión 1). Botón de tema claro/oscuro en la cabecera (segmento sol/luna), data-theme en <html>, persistido en localStorage 'teikem.theme', inicial prefers-color-scheme, sin desmontar nada. Reloj '● en vivo · HH:MM:SS' (oculto bajo 600 px). Paleta de comandos kernel/ui/CommandPalette.tsx: barra 'Buscar o ejecutar…' en la cabecera (icono de lupa en móvil), atajos '/' y Ctrl/⌘+K, rutas visibles de visibleNav agrupadas, filtro sin acentos, flechas + Enter navega, Esc cierra. KIT.md actualizado. Pruebas: visibleNav con los grupos nuevos, paleta filtra y navega, tema persiste.",
+   "archivos": ["web-app/src/app/navigation.ts", "web-app/src/app/routes.tsx", "web-app/src/app/AppShell.tsx", "web-app/src/kernel/ui/CommandPalette.tsx", "web-app/src/kernel/i18n/es.json", "web-app/src/kernel/i18n/en.json", "web-app/src/styles/base.css", "web-app/KIT.md"]
+  },
+  {
+   "nombre": "P2 — Pulso del día a la maqueta + modo Organizar",
+   "orden": 3,
+   "agente": "core",
+   "descripcion": "Título = fecha del día en el idioma activo, saludo como subtítulo, botón 'Organizar' (analytics.view). Secciones en el orden de la maqueta y solo con contenido: 'Tus indicadores' como río (.streamlabel + .river + .node flow|money según isMoney; nodo con icono, nombre, valor, rango, botón Rango; clic → /analytics/indicators), 'Tus gráficos' (grilla 2 columnas / 1 en móvil, panel compacto con el gráfico Recharts actual, título → /analytics/charts), panel Almacén (F7A tal cual), Actividad reciente (F7A tal cual); el orden lo dicta GET /pulse (pulseSortOrder de indicadores/gráficos y panels[].sortOrder, intercalables). Modo Organizar: ▲ ▼ y ojo en cada nodo, gráfico y panel; arrastrar con el ratón en escritorio (HTML5 drag, sin librería), solo botones en táctil; los ocultos al final en gris con 'Mostrar'; 'Listo' → un solo PUT /analytics/pulse/layout; 'Cancelar' descarta; toast 'Pulso guardado'. Vacío: 'Aún no tienes indicadores ni gráficos en tu Pulso' con enlace a Indicadores, conservando Almacén y Actividad. Río envuelve bajo 980 px, una columna a 360 px, sin scroll horizontal. Pruebas: orden por pulseSortOrder, ocultar/mostrar, cuerpo del PUT, vacío.",
+   "archivos": ["web-app/src/features/analytics/Pulse.tsx", "web-app/src/features/analytics/PulseOrganizer.tsx", "web-app/src/features/analytics/api.ts", "web-app/src/features/analytics/Pulse.test.tsx"]
+  },
+  {
+   "nombre": "P3 — Indicadores y Gráficos (grupo Análisis)",
+   "orden": 3,
+   "agente": "pantalla",
+   "descripcion": "Rutas /analytics/indicators y /analytics/charts (analytics.view, módulo ANALYTICS). Cabecera de la maqueta con 'Nuevo indicador'/'Nuevo gráfico' (analytics.manage). Paneles por módulo de negocio (businessModule, etiqueta del catálogo BusinessModule) con contador; tarjetas en 3 columnas (1 en móvil): nombre, valor actual (GET indicators/{id}/value o gráfico con charts/{id}/data), rango, switch 'Mostrar en Pulso' (PUT .../my-pulse), botón Rango (RangeModal), chip de visibilidad, editar y eliminar (analytics.manage, ConfirmDialog). Editor modal: nombre es/en, fuente (GET data-sources), campo y agregación, filtro con filas campo · operador · valor (JSON del API; DSL de kernel/dsl), módulo de negocio, es dinero, visibilidad, rango por defecto, orden global, mostrar en Pulso por defecto; gráficos añaden agrupar por y tipo (barra, dona, línea). Errores por campo al formulario. Nota al pie de la maqueta. Pruebas: agrupación por módulo, switch llama a my-pulse, editor envía el cuerpo correcto.",
+   "archivos": ["web-app/src/features/analytics/IndicatorsPage.tsx", "web-app/src/features/analytics/ChartsPage.tsx", "web-app/src/features/analytics/DefinitionEditor.tsx", "web-app/src/features/analytics/api.ts", "web-app/src/app/routes.tsx"]
+  },
+  {
+   "nombre": "P4 — Roles y usuarios + PIN de la app (grupo Sistema)",
+   "orden": 3,
+   "agente": "pantalla",
+   "descripcion": "Ruta /system/users (admin.users o admin.roles; el segmento Roles | Usuarios muestra solo lo permitido), como la maqueta. Roles: tabla ordenable Rol · Permisos (n / total) · Usuarios · acciones; chips sistema/plantilla; modal Nuevo/Editar rol con nombre y descripción es/en y casillas de permisos agrupadas por category con icono del grupo y 'marcar grupo'; PUT/DELETE con reauth AAL2. Usuarios: GET users paginado con QBox; columnas Nombre · Correo · Roles (chips → modal multi-selección, PUT {id}/roles, AAL2) · Permisos extra ('+n'/'Añadir' → modal con los del rol bloqueados '(del rol)', PUT {id}/permissions, AAL2) · Estado (switch → PUT {id}/membership) · MFA · Último acceso · PIN app (solo con módulo WMS_LOTSERIAL y devices.manage o admin.users: chip hasPin, 'Asignar/Restablecer PIN' modal con PIN y confirmación → PUT {id}/pin AAL2 con los mensajes exactos del API, 'Quitar PIN' → DELETE {id}/pin con ConfirmDialog); 'Cerrar sesiones' (DELETE {id}/sessions); 'Nuevo usuario' (correo, nombre, roles, contraseña opcional → POST users); editar nombre/activo (PUT {id}). Mi cuenta: pestaña 'PIN de la app' (GET/PUT/DELETE /me/pin con contraseña actual) solo con WMS_LOTSERIAL; estado, bloqueo y fecha.",
+   "archivos": ["web-app/src/features/system/UsersPage.tsx", "web-app/src/features/system/RolesTab.tsx", "web-app/src/features/system/UsersTab.tsx", "web-app/src/features/system/PinModal.tsx", "web-app/src/features/account/PinTab.tsx", "web-app/src/features/account/AccountPage.tsx", "web-app/src/app/routes.tsx"]
+  },
+  {
+   "nombre": "P5 — Aparatos móviles (grupo Sistema)",
+   "orden": 3,
+   "agente": "pantalla",
+   "descripcion": "Ruta /system/devices (devices.manage, módulo WMS_LOTSERIAL), según el mini-mock aprobado. Tabla ordenable Código · Nombre · Modelo · Almacén por defecto · Estado · Último latido · Versión de la app (GET devices, QBox, filtro 'incluir inactivos'). 'Nuevo aparato': código opcional, nombre, modelo, almacén por defecto (useWarehouses), tema; al guardar, modal 'Código de registro' con el código en grande (mono), botón copiar y el texto 'Escríbelo en la pantalla Registrar de Teikem Almacén' (solo se muestra una vez). Acciones: renombrar / almacén / tema (PATCH con rowVersion), desactivar y reactivar (ConfirmDialog), 'Nuevo código de registro' (POST …/enroll-code, mismo modal).",
+   "archivos": ["web-app/src/features/system/DevicesPage.tsx", "web-app/src/features/system/EnrollCodeModal.tsx", "web-app/src/features/system/api.ts", "web-app/src/app/routes.tsx"]
+  },
+  {
+   "nombre": "P6 — Catálogos de valores (grupo Sistema)",
+   "orden": 3,
+   "agente": "pantalla",
+   "descripcion": "Ruta /system/catalogs (admin.catalogs), según el mini-mock aprobado. Maestro-detalle: izquierda lista de dominios (GET catalogs/domains) con QBox, chip sistema/propio, 'Nueva lista' (POST catalogs/lists con nombre es/en, descripción y valores iniciales) y eliminar lista propia (DELETE lists/{domainKey}); derecha tabla ordenable Código · Etiqueta (es) · Etiqueta (en) · Orden · Habilitado · Origen (Sistema / Ajustado / Propio). Valor de sistema: 'Ajustar' (etiquetas, habilitado, orden → PUT {entity}/{code}/override) y 'Restaurar' (DELETE …/override). Valor propio: crear (POST {entity}), editar (PUT {entity}/{code}), desactivar (DELETE) y restaurar (POST …/restore). Al guardar, invalidar la caché de kernel/catalogs. Móvil: dominios como selector arriba, valores en tarjetas.",
+   "archivos": ["web-app/src/features/system/CatalogsPage.tsx", "web-app/src/features/system/api.ts", "web-app/src/kernel/catalogs/*", "web-app/src/app/routes.tsx"]
+  }
+ ],
+ "recorrido": [
+  "teikem+admin@cerevelo.com → el menú muestra Operación, Almacén, Análisis y Sistema (Catálogo, Contabilidad y Portal no, por estar vacíos). '/' abre la paleta; 'usu' + Enter lleva a Roles y usuarios. El botón de tema cambia data-theme y persiste al recargar.",
+  "Análisis → Indicadores: apagar 'Mostrar en Pulso' de 'Productos bajo mínimo'; Pulso ya no lo muestra; encenderlo, aparece.",
+  "Pulso → Organizar: mover 'Actividad reciente' arriba de 'Tus indicadores', ocultar 'Almacén', Listo; recargar: el orden se conserva y Almacén no aparece; Organizar → Mostrar Almacén → vuelve. teikem+dispatch@cerevelo.com no ve ese orden.",
+  "Sistema → Roles y usuarios: crear rol 'Auditor E2E' con 2 permisos (reauth); crear usuario e2e+{ts}@cerevelo.com con ese rol; PIN 2846 (reauth) → chip Sí; PIN 1234 → 'El PIN no puede ser una secuencia trivial.'; quitar PIN → No; suspender → Suspendido.",
+  "Sistema → Aparatos: crear 'Tablet E2E'; se muestra el código de registro; 'Nuevo código de registro' muestra otro; desactivar y reactivar.",
+  "Sistema → Catálogos: ajustar la etiqueta española de un valor de WarehouseTaskType; el panel Almacén del Pulso muestra la etiqueta nueva sin recargar; restaurar.",
+  "Mi cuenta → PIN de la app: fijar con contraseña actual; quitar.",
+  "Proyecto móvil (Pixel 7): Pulso, Roles y usuarios y Catálogos sin scroll horizontal; paleta desde el icono de lupa."
+ ]
+}
