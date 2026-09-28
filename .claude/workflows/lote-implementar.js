@@ -64,6 +64,7 @@ const limpiasReq = Number(a.limpiasRequeridas) || 2, maxRondas = Number(a.maxRon
 const archivosLote = [...new Set(plan.piezas.flatMap(p => p.archivos || []))]
 const ALCANCE = `ALCANCE: revisa SOLO estos archivos del lote y los archivos nuevos que el lote haya creado junto a ellos (git diff origin/master...HEAD -- <archivo>): ${archivosLote.join(', ')}. No reportes nada de otros archivos ni de lotes anteriores. Cada hallazgo lleva severidad: "alta" = error real, fuga entre tenants, permiso o módulo mal aplicado, dato incorrecto, prueba o smoke que falla; "media" = regla o mensaje del plan o del documento maestro incumplido; "baja" = prueba faltante, estilo, comentario o documentación. Máximo 15 hallazgos, los más graves primero.`
 let limpias = 0, ronda = 0, corregidos = 0
+const sugerencias = []
 while (limpias < limpiasReq && ronda < maxRondas) {
   ronda++
   const encontrados = (await parallel(LENTES.map(l => () =>
@@ -72,14 +73,20 @@ while (limpias < limpiasReq && ronda < maxRondas) {
   const frescos = encontrados.filter(h => { const k = `${h.archivo}:${h.resumen}`.toLowerCase(); if (vistos.has(k)) return false; vistos.add(k); return true })
   log(`Ronda ${ronda}: ${encontrados.length} hallazgos, ${frescos.length} nuevos.`)
   if (!frescos.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}).`); continue }
-  const juzgados = await parallel(frescos.map(h => () =>
+  // Ajuste (Luis, 2026-09-28): los hallazgos de severidad baja (pruebas faltantes, estilo, documentación) NO se refutan ni se
+  // corrigen en el bucle: se acumulan como sugerencias para el documento de decisiones. Solo alta y media pasan por los
+  // refutadores y la corrección. Así la lente de pruebas no puede alargar la verificación indefinidamente.
+  const graves = frescos.filter(h => (h.severidad || 'media') !== 'baja')
+  const bajasRonda = frescos.filter(h => (h.severidad || 'media') === 'baja')
+  sugerencias.push(...bajasRonda)
+  if (!graves.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}); ${bajasRonda.length} sugerencias bajas anotadas.`); continue }
+  const juzgados = await parallel(graves.map(h => () =>
     parallel([0, 1].map(v => () => agent(`Intenta refutar este hallazgo (verificador ${v + 1}):\n${JSON.stringify(h, null, 1)}\nSi no estás seguro, real=false.`, { agentType: 'verifier', label: `refutar:${h.archivo.split('/').pop()}`, phase: 'Verificar', schema: VERDICT })))
       .then(vs => ({ h, real: vs.filter(Boolean).filter(x => x.real).length >= 2, arreglo: (vs.filter(Boolean).find(x => x.real) || {}).arreglo }))))
   const reales = juzgados.filter(Boolean).filter(j => j.real)
-  const bloqueantes = reales.filter(j => (j.h.severidad || 'media') !== 'baja')
-  log(`Ronda ${ronda}: ${reales.length} hallazgos confirmados (${bloqueantes.length} de severidad alta o media).`)
-  if (!bloqueantes.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}); ${reales.length} hallazgos bajos se corrigen sin reiniciar el contador.`) } else { limpias = 0 }
-  if (!reales.length) continue
+  log(`Ronda ${ronda}: ${graves.length} hallazgos alta/media, ${reales.length} confirmados; ${bajasRonda.length} bajas anotadas como sugerencias.`)
+  if (!reales.length) { limpias++; log(`Ronda ${ronda} limpia (${limpias}/${limpiasReq}).`); continue }
+  limpias = 0
   await agent(`${contexto}\n\nCorrige estos hallazgos confirmados con cambios mínimos, en los archivos del lote, y vuelve a compilar y probar (dotnet build y dotnet test) hasta que pasen:\n${JSON.stringify(reales.map(r => ({ ...r.h, arreglo: r.arreglo })), null, 1)}`,
     { agentType: 'implementer', label: `corregir:ronda${ronda}`, phase: 'Verificar', schema: RESULT })
   corregidos += reales.length
@@ -87,7 +94,7 @@ while (limpias < limpiasReq && ronda < maxRondas) {
 if (ronda >= maxRondas && limpias < limpiasReq) log(`Tope de ${maxRondas} rondas alcanzado: revisar manualmente los últimos hallazgos.`)
 
 phase('Documentar')
-const doc = await agent(`${contexto}\n\nEscribe docs/lote${lote}-decisiones.md con el formato de docs/lote1-decisiones.md. Fecha: ${a.fecha || 'sin fecha'}. Hallazgos corregidos en verificación: ${corregidos}. Build local: ${build && build.compilado ? 'sí' : 'no (CI)'}. Lista las decisiones abiertas del plan y todo lo que quedó fuera. También agrega al final de scripts/smoke.sh los pasos del plan ("smoke") si existen, sin romper los anteriores.`,
+const doc = await agent(`${contexto}\n\nEscribe docs/lote${lote}-decisiones.md con el formato de docs/lote1-decisiones.md. Fecha: ${a.fecha || 'sin fecha'}. Hallazgos corregidos en verificación: ${corregidos}. Build local: ${build && build.compilado ? 'sí' : 'no (CI)'}. Lista las decisiones abiertas del plan y todo lo que quedó fuera. Agrega una sección 'Sugerencias de la revisión (severidad baja, no corregidas)' con esta lista, para que Luis decida qué entra en un lote posterior: ${JSON.stringify(sugerencias.map(h => ({ archivo: h.archivo, resumen: h.resumen })), null, 1)}. También agrega al final de scripts/smoke.sh los pasos del plan ("smoke") si existen, sin romper los anteriores.`,
   { agentType: 'scribe', label: 'decisiones', schema: RESULT })
 
 const manual = await agent(`${contexto}\n\nEscribe el MANUAL FUNCIONAL del lote ${lote} (${titulo}) en docs/manual/ siguiendo tu definición: capítulo docs/manual/${String(lote).padStart(2, '0')}-<slug-del-modulo>.md (funcionalidades, quién puede, cómo se usa, validaciones con el mensaje de error exacto del código y su código HTTP, estatus y transiciones con efectos, preguntas frecuentes), agrega las preguntas y respuestas del lote a docs/manual/faq.md (créalo si no existe; si existe, anexa una sección del lote sin borrar lo anterior) y actualiza el índice docs/manual/README.md (créalo si no existe). Lee los controladores, servicios, efectos de estatus y excepciones reales del lote antes de escribir; no inventes mensajes.`,
