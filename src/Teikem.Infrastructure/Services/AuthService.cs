@@ -176,13 +176,23 @@ public sealed class AuthService(
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddDays(device?.SessionDays ?? t.SessionDays), Aal2VerifiedAtUtc = aal2At,
         };
+        // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
+        // fallido concurrente: Identity no lanza, devuelve un IdentityResult fallido), se recarga para no arrastrar ese
+        // ConcurrencyStamp viejo al guardar la sesión.
+        var userEntry = db.Entry(user);
+        if (userEntry.State == EntityState.Modified) await userEntry.ReloadAsync(ct);
         db.SuppressAudit = true;
         db.RefreshTokens.Add(rt);
         if (device is not null) SetTokenDevice(rt, device.UserDeviceId);
-        user.LastLoginUtc = DateTime.UtcNow;
-        db.Users.Update(user);
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;
+        // LastLoginUtc se escribe con un UPDATE dirigido a la columna, sin pasar por el ConcurrencyStamp de Identity: guardar
+        // el usuario completo fallaba con 500 (DbUpdateConcurrencyException) cuando otra petición cambiaba la fila en el mismo
+        // instante (un intento con contraseña incorrecta del mismo usuario, activar MFA, cambiar la contraseña), y además
+        // pisaba ese cambio con los valores leídos antes.
+        var now = DateTime.UtcNow;
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginUtc, now), ct);
+        user.LastLoginUtc = now;
         var (access, exp) = CreateAccess(user, tenantId, rt.RefreshTokenId, kind, aal2At, device?.PublicId);
         return new TokenPairDto(access, exp, raw, rt.ExpiresAtUtc, tenantId);
     }

@@ -41,14 +41,18 @@ JSON), el API no vuelve a ejecutar la operación: responde el mismo código y cu
 cabecera `Idempotent-Replayed: true`. La clave es **por compañía y por usuario**: dos usuarios pueden usar la
 misma clave sin chocar entre sí. La clave **distingue mayúsculas**: `abc-1` y `ABC-1` son dos claves distintas.
 
-Antes de repetir una respuesta guardada, el API vuelve a comprobar lo que la operación original comprobó: el
-permiso de la ruta, el módulo (`[RequireModule]`), la ventana de reautenticación cuando la ruta la exige, y además
-los módulos y permisos que se revisan dentro de la operación (por ejemplo `purchasing.receive` y el módulo
+Antes de repetir una respuesta guardada, el API vuelve a exigir lo que la ruta exige siempre, repetición o no
+(esto no lo agrega la idempotencia): el permiso propio de la ruta (`[RequirePermission]`, ya lo revisa la
+autorización de cada petición), el módulo (`[RequireModule]`) y la ventana de reautenticación (`[RequireAal2]`)
+cuando la ruta la exige; si algo de esto ya no se cumple, el 403 (o `module_disabled`/`aal2_required`) es igual al
+de una llamada nueva. Además, la operación original pudo comprobar por su cuenta, dentro del servicio o el
+controlador, otros módulos o permisos que no son los de la ruta (por ejemplo `purchasing.receive` y el módulo
 **PURCHASING** al recibir contra una orden de compra, `orders.create` al recolectar y empacar, o `warehouse.count`,
-que decide si el conteo se ve a ciegas). Si algo que se cumplía ya no se cumple, la repetición recibe el mismo 403
-que una llamada nueva; si cambió en el otro sentido (por ejemplo, el usuario ganó `warehouse.count` y la respuesta
-guardada estaba a ciegas), responde 409 `La operación con esta clave ya no puede repetirse con los permisos
-actuales.` y no devuelve la respuesta guardada.
+que decide si el conteo se ve a ciegas): antes de repetir se vuelven a evaluar y, si **cualquiera** de ellos cambió,
+en **cualquier sentido** (se perdió o se ganó), la respuesta guardada ya no se puede repetir: 409 `La operación con
+esta clave ya no puede repetirse con los permisos actuales.`, sin devolverla. No importa si el cambio hizo que la
+operación fuera ahora más permisiva o menos: cualquiera de los dos casos da este mismo 409, nunca la respuesta
+guardada.
 
 No aplica (la cabecera se ignora, aunque venga) en rutas que devuelven un secreto en claro, para no dejarlo 7
 días en la bitácora de idempotencia: `/api/v1/auth`, `/api/v1/me`, `/api/v1/devices`, `/api/v1/platform`,
@@ -63,8 +67,8 @@ días en la bitácora de idempotencia: `/api/v1/auth`, `/api/v1/me`, `/api/v1/de
 | Misma clave, mismo cuerpo, con respuesta ya guardada | Se repite esa respuesta (mismo código y cuerpo), cabecera `Idempotent-Replayed: true`; no se vuelve a ejecutar |
 | Misma clave, mismo cuerpo, **sin** respuesta todavía (otra petición en curso) | 409 `La operación con esta clave todavía se está procesando.` |
 | Misma clave, **otro** cuerpo o **otra** ruta | 409 `La clave de idempotencia ya se usó con otro contenido.` |
-| Misma clave y mismo cuerpo, pero ya no se tiene un permiso o módulo que la operación comprobó | 403 (el mismo de una llamada nueva: `module_disabled` o falta de permiso) |
-| Misma clave y mismo cuerpo, y cambió otro permiso que decidió la respuesta (p. ej. el conteo a ciegas) | 409 `La operación con esta clave ya no puede repetirse con los permisos actuales.` |
+| Misma clave y mismo cuerpo, pero el permiso, el módulo o la reautenticación que **exige la ruta** ya no se cumplen | El mismo 403 (o `module_disabled`/`aal2_required`) de una llamada nueva; esto no cambia con la idempotencia |
+| Misma clave y mismo cuerpo, y cambió — se ganó **o** se perdió, cualquiera de los dos — un módulo o permiso que la operación revisó **por su cuenta** dentro del servicio o el controlador (p. ej. el conteo a ciegas) | 409 `La operación con esta clave ya no puede repetirse con los permisos actuales.` (ya no importa el sentido del cambio) |
 | El registro tiene más de 7 días, o quedó "en curso" más de 10 minutos sin respuesta (proceso caído) | Se descarta y se ejecuta como si fuera nueva |
 
 Qué se guarda para repetir: solo respuestas con código menor a 500, salvo 401, 403, 408, 423 y 429 (esos son
@@ -79,7 +83,11 @@ guarda (podría traer un PIN o una contraseña), solo su huella.
 | Cabecera vacía, repetida, con más de 80 caracteres o con caracteres de control | `La clave de idempotencia no es válida.` | 400 |
 | Misma clave con otro cuerpo o ruta | `La clave de idempotencia ya se usó con otro contenido.` | 409 |
 | Misma clave sin respuesta todavía | `La operación con esta clave todavía se está procesando.` | 409 |
-| Misma clave y cuerpo, con un permiso que decidió la respuesta cambiado desde la primera vez | `La operación con esta clave ya no puede repetirse con los permisos actuales.` | 409 |
+| Misma clave y cuerpo, con un módulo o permiso revisado **dentro de la operación** (no el de la ruta) que cambió desde la primera vez, perdido o ganado | `La operación con esta clave ya no puede repetirse con los permisos actuales.` | 409 |
+
+La longitud (1 a 80) se mide sobre el valor **tal como llega** en la cabecera, antes de recortar los espacios de
+los extremos: una clave de 81 caracteres con espacios alrededor sigue siendo inválida aunque, ya recortada, quedara
+en 80 o menos.
 
 ### Preguntas frecuentes
 
@@ -131,13 +139,19 @@ Cómo se usa:
 ### 2.2 Registro en el aparato y heartbeat (anónimo, sin sesión)
 
 Estos dos endpoints no llevan `Authorization`: el propio aparato se identifica con su código de registro o con
-su secreto. Están limitados a 10 (`enroll`) y 60 (`heartbeat`) peticiones por minuto y por dirección IP.
+su secreto. Están limitados a 10 (`enroll`) y 60 (`heartbeat`) peticiones por minuto y por dirección IP (la ruta se
+normaliza a minúsculas y sin la barra final antes de contar: `/Enroll/` y `/enroll` comparten el mismo cupo).
 
 Cómo se usa:
 - `POST /api/v1/devices/enroll` — `{ "enrollCode": "AB12CD34", "model": "Zebra TC21", "appVersion": "1.0.0" }`.
   Devuelve, **una sola vez**, `deviceSecret` (la app lo guarda cifrado en el aparato; sin él no vuelve a entrar) y
   el `defaultWarehousePublicId`/`theme` con los que arrancar. Instalar de nuevo con un código válido revoca las
-  sesiones que el aparato tuviera abiertas.
+  sesiones que el aparato tuviera abiertas y fija de nuevo el sello de sesiones del aparato (como desactivar o
+  reactivar): un access token con `did` emitido antes de esta reinstalación deja de servir aunque el aparato siga
+  activo. Registrar y desactivar corren en una sola transacción. Dos registros a la vez con el mismo código
+  (carrera): el que pierde recibe el mismo 401 `El código de registro no es válido o venció.` (nunca 409), con el
+  mismo evento de seguridad que un código inválido (`API_CREDENTIAL` / `FAILURE`, `action = device_enroll`); el que
+  gana lo registra con éxito (`API_CREDENTIAL` / `SUCCESS`, `action = device_enrolled`).
 - `POST /api/v1/devices/heartbeat` — `{ "devicePublicId": "...", "deviceSecret": "...", "appVersion": "1.0.1" }`.
   Actualiza "visto por última vez" y la versión de la app; responde `{ isActive, defaultWarehousePublicId, theme,
   serverTimeUtc }`. Un aparato desactivado (o cuya compañía perdió el módulo) recibe `isActive: false` **sin
@@ -153,12 +167,17 @@ Cómo se usa:
 
 ### Estatus y transiciones
 
-El aparato no tiene un flujo de estatus formal; es activo o no (`IsActive`).
+El aparato no tiene un flujo de estatus formal; es activo o no (`IsActive`). Además guarda un sello
+(`UserDevice.SessionsNotBeforeUtc`) con el momento de la última baja, reactivación o registro: cualquier access
+token con el claim `did` (aparato) emitido **antes** de ese sello (comparado por su `iat`, al segundo, sin
+tolerancia de reloj) se rechaza al validarlo, aunque el aparato esté activo hoy; un token sin `iat` también se
+rechaza. Cada baja, reactivación o registro que revoque sesiones abiertas escribe `TOKEN_REVOKED` con el motivo
+(`device_deactivated`, `device_reactivated` — siempre, aunque no hubiera ninguna sesión viva — o `device_enrolled`).
 
 | De → a | Quién | Qué hace | Qué bloquea |
 |---|---|---|---|
-| Activo → Desactivado (`.../deactivate`) | `devices.manage` | Invalida el código de registro pendiente; revoca **todas** las sesiones (refresh tokens) emitidas a ese aparato; el corte de los access tokens ya emitidos es inmediato (hasta 60 s de retraso en otra instancia del API) | El aparato deja de sincronizar y de recibir `POST /auth/device/login`; el heartbeat responde `isActive: false` en vez de error |
-| Desactivado → Activo (`.../reactivate`) | `devices.manage` | Conserva el secreto ya instalado; revoca las sesiones que hubieran quedado vivas y fija el sello de sesiones del aparato | **No** revive las sesiones revocadas ni los access tokens emitidos antes de la baja (siguen en 401): cada usuario vuelve a entrar con su PIN |
+| Activo → Desactivado (`.../deactivate`) | `devices.manage` | Invalida el código de registro pendiente; revoca **todas** las sesiones (refresh tokens) emitidas a ese aparato y fija el sello de sesiones, todo en una sola transacción; el corte de los access tokens ya emitidos es inmediato (hasta 60 s de retraso en otra instancia del API) | El aparato deja de sincronizar y de recibir `POST /auth/device/login`; el heartbeat responde `isActive: false` en vez de error |
+| Desactivado → Activo (`.../reactivate`) | `devices.manage` | Conserva el secreto ya instalado; revoca las sesiones que hubieran quedado vivas y fija de nuevo el sello de sesiones del aparato | **No** revive las sesiones revocadas ni los access tokens emitidos antes de la baja o de la propia reactivación (siguen en 401): cada usuario vuelve a entrar con su PIN |
 
 ---
 
@@ -166,7 +185,8 @@ El aparato no tiene un flujo de estatus formal; es activo o no (`IsActive`).
 
 Qué hace: cada usuario define un PIN corto (4 a 6 dígitos) para entrar en un aparato ya registrado, sin escribir
 su contraseña ni pasar por MFA. El PIN es **por compañía**: el mismo usuario puede tener un PIN distinto (o
-ninguno) en cada compañía a la que pertenece.
+ninguno) en cada compañía a la que pertenece. Al verificarlo en el login por aparato se recorta igual que al
+definirlo: los espacios al inicio o al final no cuentan (` 4826 ` entra igual que `4826`).
 
 ### 3.1 Mi cuenta (el propio PIN)
 
@@ -237,14 +257,19 @@ alguien con al menos sus permisos).
 Cómo se usa (ambos sin `Authorization`, autenticados con aparato + secreto; límite de 60 por minuto por IP):
 - `POST /api/v1/auth/device/users` — `{ "devicePublicId": "...", "deviceSecret": "..." }`. Devuelve los usuarios
   internos activos, con membresía activa en la compañía del aparato, con **PIN definido** y con `inventory.view`,
-  ordenados por nombre (nunca el administrador de plataforma).
+  ordenados por nombre (nunca el administrador de plataforma). Quien no tiene nombre completo cargado se muestra
+  como `Usuario` (nunca su correo: el aparato es compartido).
 - `POST /api/v1/auth/device/login` — `{ "devicePublicId": "...", "deviceSecret": "...", "userId": 12, "pin":
   "4826" }`. Devuelve el mismo par de tokens (`access`/`refresh`) que un login normal; la sesión queda ligada al
   aparato, dura `Tenant.DeviceSessionDays` días (30 por defecto, configurable de 1 a 365 en `PUT
   /api/v1/tenant/settings` con `admin.tenant`) y se renueva en cada refresh mientras el aparato siga activo y la
   compañía siga activa con el módulo **WMS_LOTSERIAL** encendido. Si el aparato se desactiva o se apaga el módulo,
   `POST /api/v1/auth/refresh` de esa sesión responde 401 `El aparato no está registrado o fue desactivado.` y la
-  sesión queda revocada (encender otra vez el módulo no la revive: se vuelve a entrar con el PIN).
+  sesión queda revocada (encender otra vez el módulo no la revive: se vuelve a entrar con el PIN). Cada refresh de
+  una sesión de aparato revalida además al **usuario** (la misma condición que `device/login` y que el límite de
+  privilegios del PIN de 3.2): que siga activo, con membresía activa en esta compañía y con `inventory.view`. Si
+  alguna ya no se cumple, el refresh responde 401 `Refresh token inválido.` y revoca la sesión (evento
+  `TOKEN_REVOKED`); no basta con que el aparato siga activo, hay que volver a entrar con el PIN.
 
 Lo que la sesión de aparato **no** puede hacer (no tiene contraseña ni MFA): cambiar de compañía (`POST
 /auth/switch-tenant` → 403) ni activar o confirmar la verificación en dos pasos de la cuenta (`POST
@@ -266,6 +291,7 @@ el dueño ya no podría entrar a la web con su contraseña. El segundo factor se
 | `deviceSessionDays` fuera de 1–365 (configuración) | `Entre 1 y 365 días.` | 400 |
 | Cambiar de compañía con una sesión de aparato (`POST /auth/switch-tenant`) | `La sesión de un aparato no cambia de compañía.` | 403 |
 | Activar o confirmar la verificación en dos pasos con una sesión de aparato (`POST /auth/mfa/totp/enroll` o `/confirm`) | `La sesión de un aparato no administra el segundo factor.` | 403 |
+| Refresh de una sesión de aparato cuyo usuario ya no está activo, perdió la membresía activa en la compañía, o ya no tiene `inventory.view` | `Refresh token inválido.` | 401 |
 
 ### Estatus y transiciones — bloqueo del PIN
 
