@@ -433,7 +433,7 @@ CREATE TABLE dbo.UserDevice (
     EnrolledAtUtc DATETIME2 NULL,
     DefaultWarehouseId INT NULL,                       -- FK diferida (DefaultWarehouseId, TenantId) → Warehouse
     ThemeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),          -- Entity='UiTheme' (LIGHT/DARK)
-    RegisteredBy INT NULL,
+    RegisteredBy INT NULL REFERENCES dbo.AspNetUsers(Id),
     RegisteredAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     IsActive     BIT NOT NULL DEFAULT 1,
     RowVersion   ROWVERSION,
@@ -470,7 +470,7 @@ CREATE TABLE dbo.UserPin (
     FailedCount  INT NOT NULL DEFAULT 0,
     LockedUntilUtc DATETIME2 NULL,
     UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    UpdatedBy    INT NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
     CONSTRAINT UQ_UserPin_User UNIQUE (TenantId, UserId)
 );
 GO

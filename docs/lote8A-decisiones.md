@@ -398,3 +398,55 @@ Correcciones de la ronda 8 (privilegios del PIN impuesto y cobertura):
   consume el número EMP; alta de aparato con nombre de 101 y modelo de 81 caracteres → 400 (y pruebas en
   `DeviceServiceTests`, también en la edición).
 - `dotnet test`: **2033 pruebas, 0 fallidas**.
+
+
+## Re-verificación (paso 3b del plan de trabajo, 27 y 28 de septiembre de 2026)
+
+Tras el cierre con tope de 3 rondas, se reanudó la verificación sin tope. La primera reanudación revisaba toda la rama y no
+convergía (6 rondas, 7 a 11 hallazgos confirmados por ronda, la mayoría de severidad baja sobre pruebas faltantes). Se acotó
+la revisión a los archivos del lote y se redefinió la ronda limpia (sin hallazgos alta ni media confirmados). En la corrida
+acotada, 4 rondas: hallazgos graves confirmados y corregidos: (1) el humo fallaba en el bloque de aparatos por un PATCH de
+producto sin `Idempotency-Key`; (2) el conteo a ciegas se podía saltar con `inventory.view`; (3) la respuesta repetida por
+idempotencia no volvía a aplicar permisos y módulos del endpoint; (4) `UserDevice.RegisteredBy` y `UserPin.UpdatedBy` sin
+llave foránea a `AspNetUsers` (corregido a mano por el orquestador). Por decisión de Luis (consumo), el workflow se detuvo
+ahí y el cierre se hizo tarea por tarea: `dotnet build`, `dotnet test` (2048 pruebas, 0 fallidas), base limpia con `db-init`
+dos veces y `scripts/smoke.sh` completo en verde. Las lentes no reportaron más hallazgos alta ni media en la última ronda
+revisada (compile-ef y tenant-security en cero).
+
+## Sugerencias de la revisión (severidad baja, no corregidas; decide Luis si entran en un lote posterior)
+
+Recogidas de las rondas de re-verificación acotada del 27 y 28 de septiembre de 2026 (lente de pruebas en su mayoría).
+
+- `IdempotencyMiddleware.cs`: La repetición idempotente responde sin pasar por [RequireModule] ni [RequireAal2]
+- `AuthController.cs`: La documentación XML de POST /auth/device/login no menciona el 403 del PIN asignado por otra persona
+- `CycleCountService.cs`: Comentario XML duplicado: la sobrecarga nueva ListAsync(q, blind, ct) tiene dos <summary> y la original ListAsync(q, ct) se quedó sin ninguno
+- `CycleCountService.cs`: Ninguna prueba ni paso del smoke captura en lote una línea existente identificada por posición + producto (sin lineId)
+- `PickBatchService.cs`: No hay prueba de collect-and-pack sin orders.create (403, sin sacar inventario ni consumir el EMP)
+- `ReceiptService.cs`: Recibo en una llamada contra aviso de cliente (asnId + confirm:true) y la aplicación de lecturas por lote y por serie, sin prueba
+- `DeviceService.cs`: Re-registrar un aparato ya enlazado: no se prueba que el secreto anterior deje de servir ni que se revoquen sus sesiones
+- `SyncService.cs`: El aislamiento entre compañías de sync/bins, purchase-orders, asns y warehouse-tasks no tiene prueba con filas de otro tenant
+- `IdempotencyMiddleware.cs`: No se prueba la parte TenantId de la clave lógica de idempotencia (el mismo usuario y la misma clave en otra compañía)
+- `ProductService.cs`: by-barcode: no hay prueba de «gana el propio» entre dueños ni del aislamiento entre compañías
+- `DeviceService.cs`: No se prueba que los usuarios de portal queden fuera del aparato (device/users, device/login) ni del PIN impuesto
+- `SyncService.cs`: No se prueban las ramas de diferencia de sync por líneas del aviso ni por resoluciones de faltantes de la OC
+- `DeviceService.cs`: No se prueba que un almacén por defecto de otra compañía dé 404 al crear o editar un aparato
+- `IdempotencyMiddleware.cs`: Ninguna prueba cubre que la repetición (Replay) vuelva a exigir [RequireAal2]
+- `PinService.cs`: Nada verifica los SecurityEvent de PIN asignado o quitado por un administrador ni el TOKEN_REVOKED pin_removed
+- `DeviceService.cs`: Reinstalar un aparato ya registrado: no se prueba que el secreto anterior deje de servir ni que las sesiones queden revocadas
+- `ProductService.cs`: by-barcode: la regla 'con el mismo código en varios dueños gana el propio' no tiene prueba
+- `PinService.cs`: El 409 'El PIN del usuario cambió al mismo tiempo en otra sesión; intente de nuevo.' está documentado pero no tiene prueba
+- `PinService.cs`: GET /api/v1/me/pin con el PIN bloqueado: no se prueba que devuelva lockedUntilUtc
+- `IdempotencyMiddleware.cs`: En SQL Server la búsqueda de la Idempotency-Key no distingue mayúsculas; las pruebas en InMemory sí
+- `PinService.cs`: Ninguna prueba ni paso del smoke cubre la exclusión de usuarios de portal del PIN y del login por aparato
+- `IdempotencyMiddleware.cs`: La parte TenantId de la clave de idempotencia (TenantId, UserId, clave) no tiene prueba
+- `SyncService.cs`: El filtro warehousePublicId de sync/purchase-orders y sync/asns no tiene prueba que excluya otro almacén
+- `SyncRulesTests.cs`: La prueba nueva de by-barcode dice en su nombre 'menor id de cliente', pero el código desempata por menor ProductId y los datos no distinguen las dos reglas
+- `AuthService.cs`: El cambio de contraseña con la cuenta bloqueada (rama nueva del lote) responde un mensaje en inglés
+- `DeviceService.cs`: Volver a registrar un aparato (código regenerado) revoca sus sesiones y anula el secreto anterior, pero ninguna prueba ni paso del smoke lo cubre
+- `PickBatchService.cs`: Falta probar collect-and-pack sin orders.create (403 sin recolectar ni sacar inventario)
+- `smoke.sh`: El 403 por falta de purchasing.receive en el recibo atómico contra orden de compra (confirm:true) no tiene prueba
+- `smoke.sh`: La aserción de AuditLog de USER_DEVICE solo exige total >= 1; no comprueba que la edición, la baja y la reactivación se auditen, aunque el mensaje ok lo afirma
+- `PinService.cs`: La exclusión de usuarios de portal (PIN de otros → 404; fuera de device/users) está documentada pero no tiene prueba
+- `SyncService.cs`: Ninguna prueba verifica el dueño 3PL (ownerClientPublicId/ownerName) de sync/products, del que depende el despacho sin señal
+- `SyncService.cs`: sync/bins con el almacén dado de baja (rama por historial de estatus del almacén) sin prueba
+- `IdempotencyMiddleware.cs`: Nada verifica el contenido del registro de idempotencia insertado (Method, Endpoint, RequestHash, Direction INBOUND, sin cuerpo de la petición)
