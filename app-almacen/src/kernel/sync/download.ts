@@ -1,0 +1,263 @@
+// Lote 8A-app — bajada por diferencia (docs/mobile/app-almacen-plan.md §1.1): un recurso a la vez, `since` = el
+// `serverTimeUtc` de la PRIMERA página de la pasada anterior menos 5 minutos (margen de reloj entre aparato y
+// servidor), se sigue `nextCursor` hasta que llega null. `take` fijo en 500 (el máximo que acepta el API).
+// Solo los recursos que usa Recibir en esta entrega: productos, órdenes de compra y avisos (con sus líneas). Almacenes,
+// tareas y categorías se agregan con Acomodar/Conteo (próxima entrega); las tablas locales ya existen (schema.ts).
+import { api, unwrap } from '../api/client'
+import { getDb, type SQLiteDatabase } from '../db/database'
+
+const TAKE = 500
+
+interface SyncPage<T> {
+  items: T[]
+  nextCursor: string | null
+  serverTimeUtc: string
+}
+
+export interface DownloadResult {
+  resource: string
+  pages: number
+  items: number
+}
+
+function subtractMinutes(isoUtc: string, minutes: number): string {
+  const d = new Date(isoUtc)
+  d.setUTCMinutes(d.getUTCMinutes() - minutes)
+  return d.toISOString()
+}
+
+function watermarkOf(db: SQLiteDatabase, resource: string): string | undefined {
+  const row = db.getFirstSync<{ since_utc: string | null }>('SELECT since_utc FROM sync_watermark WHERE resource = ?', [
+    resource,
+  ])
+  return row?.since_utc ?? undefined
+}
+
+function saveWatermark(db: SQLiteDatabase, resource: string, firstServerTimeUtc: string): void {
+  const since = subtractMinutes(firstServerTimeUtc, 5)
+  db.runSync(
+    `INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES (?, ?, ?)
+     ON CONFLICT(resource) DO UPDATE SET since_utc = excluded.since_utc, last_run_utc = excluded.last_run_utc`,
+    [resource, since, new Date().toISOString()],
+  )
+}
+
+/** Baja todas las páginas de un recurso y aplica cada una (upsert/borrado) dentro de una transacción por página. */
+async function runDiffDownload<T>(
+  resource: string,
+  fetchPage: (since: string | undefined, cursor: string | undefined) => Promise<SyncPage<T>>,
+  apply: (db: SQLiteDatabase, items: T[]) => void,
+): Promise<DownloadResult> {
+  const db = getDb()
+  const since = watermarkOf(db, resource)
+  let cursor: string | undefined
+  let firstServerTime: string | null = null
+  let pages = 0
+  let itemCount = 0
+  for (;;) {
+    const page = await fetchPage(since, cursor)
+    firstServerTime ??= page.serverTimeUtc
+    db.withTransactionSync(() => apply(db, page.items))
+    itemCount += page.items.length
+    pages += 1
+    cursor = page.nextCursor ?? undefined
+    if (!cursor) break
+  }
+  if (firstServerTime) saveWatermark(db, resource, firstServerTime)
+  return { resource, pages, items: itemCount }
+}
+
+function applyProducts(db: SQLiteDatabase, items: Array<{
+  id?: number
+  publicId?: string
+  sku?: string | null
+  name?: string | null
+  barcode?: string | null
+  trackingTypeCode?: string | null
+  baseUomCode?: string | null
+  categoryId?: number | null
+  ownerClientPublicId?: string | null
+  ownerName?: string | null
+  preferredBinId?: number | null
+  isActive?: boolean
+}>): void {
+  for (const p of items) {
+    if (p.id == null) continue
+    if (p.isActive === false) {
+      db.runSync('DELETE FROM product WHERE id = ?', [p.id])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO product (id, public_id, sku, name, barcode, tracking_type_code, base_uom_code, category_id,
+                             owner_client_public_id, owner_name, preferred_bin_id, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+       ON CONFLICT(id) DO UPDATE SET public_id = excluded.public_id, sku = excluded.sku, name = excluded.name,
+         barcode = excluded.barcode, tracking_type_code = excluded.tracking_type_code, base_uom_code = excluded.base_uom_code,
+         category_id = excluded.category_id, owner_client_public_id = excluded.owner_client_public_id,
+         owner_name = excluded.owner_name, preferred_bin_id = excluded.preferred_bin_id, is_active = 1`,
+      [
+        p.id,
+        p.publicId ?? '',
+        p.sku ?? null,
+        p.name ?? '',
+        p.barcode ?? null,
+        p.trackingTypeCode ?? null,
+        p.baseUomCode ?? null,
+        p.categoryId ?? null,
+        p.ownerClientPublicId ?? null,
+        p.ownerName ?? null,
+        p.preferredBinId ?? null,
+      ],
+    )
+  }
+}
+
+export async function downloadProducts(): Promise<DownloadResult> {
+  return runDiffDownload(
+    'products',
+    async (since, cursor) => {
+      const page = await unwrap(api.GET('/api/v1/sync/products', { params: { query: { since, cursor, take: TAKE } } }))
+      return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+    },
+    applyProducts,
+  )
+}
+
+function applyPurchaseOrderLines(db: SQLiteDatabase, purchaseOrderId: number, lines: Array<{
+  id?: number
+  productPublicId?: string
+  sku?: string | null
+  productName?: string | null
+  qtyOrdered?: number
+  qtyReceived?: number
+  qtyPending?: number
+}> | null | undefined): void {
+  db.runSync('DELETE FROM purchase_order_line WHERE purchase_order_id = ?', [purchaseOrderId])
+  for (const l of lines ?? []) {
+    db.runSync(
+      `INSERT INTO purchase_order_line (id, purchase_order_id, product_public_id, sku, product_name, qty_ordered, qty_received, qty_pending)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [l.id ?? 0, purchaseOrderId, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.qtyOrdered ?? 0, l.qtyReceived ?? 0, l.qtyPending ?? 0],
+    )
+  }
+}
+
+function applyPurchaseOrders(db: SQLiteDatabase, items: Array<{
+  id?: number
+  publicId?: string
+  number?: string | null
+  warehousePublicId?: string
+  supplierName?: string | null
+  statusCode?: string | null
+  expectedDate?: string | null
+  isActive?: boolean
+  lines?: Array<{ id?: number; productPublicId?: string; sku?: string | null; productName?: string | null; qtyOrdered?: number; qtyReceived?: number; qtyPending?: number }> | null
+}>): void {
+  for (const po of items) {
+    if (po.id == null) continue
+    if (po.isActive === false) {
+      db.runSync('DELETE FROM purchase_order_line WHERE purchase_order_id = ?', [po.id])
+      db.runSync('DELETE FROM purchase_order WHERE id = ?', [po.id])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO purchase_order (id, public_id, number, warehouse_public_id, supplier_name, status_code, expected_date, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+       ON CONFLICT(id) DO UPDATE SET public_id = excluded.public_id, number = excluded.number,
+         warehouse_public_id = excluded.warehouse_public_id, supplier_name = excluded.supplier_name,
+         status_code = excluded.status_code, expected_date = excluded.expected_date, is_active = 1`,
+      [po.id, po.publicId ?? '', po.number ?? '', po.warehousePublicId ?? '', po.supplierName ?? null, po.statusCode ?? null, po.expectedDate ?? null],
+    )
+    applyPurchaseOrderLines(db, po.id, po.lines)
+  }
+}
+
+export async function downloadPurchaseOrders(): Promise<DownloadResult> {
+  return runDiffDownload(
+    'purchaseOrders',
+    async (since, cursor) => {
+      const page = await unwrap(api.GET('/api/v1/sync/purchase-orders', { params: { query: { since, cursor, take: TAKE } } }))
+      return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+    },
+    applyPurchaseOrders,
+  )
+}
+
+function applyAsnLines(db: SQLiteDatabase, asnId: number, lines: Array<{
+  id?: number
+  productPublicId?: string
+  sku?: string | null
+  productName?: string | null
+  expectedQty?: number
+  lotNumber?: string | null
+  purchaseOrderLineId?: number | null
+}> | null | undefined): void {
+  db.runSync('DELETE FROM asn_line WHERE asn_id = ?', [asnId])
+  for (const l of lines ?? []) {
+    db.runSync(
+      `INSERT INTO asn_line (id, asn_id, product_public_id, sku, product_name, expected_qty, lot_number, purchase_order_line_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [l.id ?? 0, asnId, l.productPublicId ?? '', l.sku ?? null, l.productName ?? null, l.expectedQty ?? 0, l.lotNumber ?? null, l.purchaseOrderLineId ?? null],
+    )
+  }
+}
+
+function applyAsns(db: SQLiteDatabase, items: Array<{
+  id?: number
+  warehousePublicId?: string
+  clientPublicId?: string | null
+  clientName?: string | null
+  purchaseOrderPublicId?: string | null
+  purchaseOrderNumber?: string | null
+  reference?: string | null
+  expectedDate?: string | null
+  statusCode?: string | null
+  isActive?: boolean
+  lines?: Array<{ id?: number; productPublicId?: string; sku?: string | null; productName?: string | null; expectedQty?: number; lotNumber?: string | null; purchaseOrderLineId?: number | null }> | null
+}>): void {
+  for (const asn of items) {
+    if (asn.id == null) continue
+    if (asn.isActive === false) {
+      db.runSync('DELETE FROM asn_line WHERE asn_id = ?', [asn.id])
+      db.runSync('DELETE FROM asn WHERE id = ?', [asn.id])
+      continue
+    }
+    db.runSync(
+      `INSERT INTO asn (id, warehouse_public_id, client_public_id, client_name, purchase_order_public_id, purchase_order_number,
+                         reference, expected_date, status_code, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+       ON CONFLICT(id) DO UPDATE SET warehouse_public_id = excluded.warehouse_public_id, client_public_id = excluded.client_public_id,
+         client_name = excluded.client_name, purchase_order_public_id = excluded.purchase_order_public_id,
+         purchase_order_number = excluded.purchase_order_number, reference = excluded.reference,
+         expected_date = excluded.expected_date, status_code = excluded.status_code, is_active = 1`,
+      [
+        asn.id,
+        asn.warehousePublicId ?? '',
+        asn.clientPublicId ?? null,
+        asn.clientName ?? null,
+        asn.purchaseOrderPublicId ?? null,
+        asn.purchaseOrderNumber ?? null,
+        asn.reference ?? null,
+        asn.expectedDate ?? null,
+        asn.statusCode ?? null,
+      ],
+    )
+    applyAsnLines(db, asn.id, asn.lines)
+  }
+}
+
+export async function downloadAsns(): Promise<DownloadResult> {
+  return runDiffDownload(
+    'asns',
+    async (since, cursor) => {
+      const page = await unwrap(api.GET('/api/v1/sync/asns', { params: { query: { since, cursor, take: TAKE } } }))
+      return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+    },
+    applyAsns,
+  )
+}
+
+/** Corre los tres recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). */
+export async function downloadForReceiving(): Promise<DownloadResult[]> {
+  return [await downloadProducts(), await downloadPurchaseOrders(), await downloadAsns()]
+}

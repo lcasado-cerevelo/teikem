@@ -1,0 +1,107 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "retry": "Retry",
+    "back": "Back",
+    "next": "Next",
+    "remove": "Remove",
+    "save": "Save",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "pending": "pending",
+    "warehouse": "Warehouse"
+  },
+  "errors": {
+    "generic": "Something went wrong. Try again.",
+    "network": "No connection to the server. The operation is queued to send."
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English",
+    "switch": "Language"
+  },
+  "server": {
+    "title": "Server",
+    "urlLabel": "API address",
+    "urlHelp": "For example http://192.168.1.20:5000/ (same WiFi as the computer) or the staging URL.",
+    "urlInvalid": "Enter a valid address, e.g. http://192.168.1.20:5000/",
+    "save": "Save server"
+  },
+  "enroll": {
+    "title": "Register this device",
+    "codeLabel": "Registration code",
+    "codeHelp": "The administrator creates it on the web (Devices); it lasts 24 hours.",
+    "submit": "Register",
+    "success": "Device registered",
+    "changeServer": "Change server"
+  },
+  "login": {
+    "title": "Who are you?",
+    "chooseUser": "Choose your name",
+    "pinLabel": "PIN",
+    "pinHelp": "4 to 6 digits",
+    "submit": "Sign in",
+    "loadingUsers": "Loading device users…",
+    "noUsers": "No users have access to this device.",
+    "changeDevice": "Register another device"
+  },
+  "home": {
+    "title": "Teikem Warehouse",
+    "receive": "Receive",
+    "putaway": "Putaway",
+    "dispatch": "Dispatch",
+    "count": "Count",
+    "lookup": "Lookup",
+    "comingSoon": "Available in the next release.",
+    "syncStatusPending": "{count} pending to send",
+    "syncStatusOk": "All sent",
+    "syncStatusError": "{count} with errors",
+    "syncNow": "Sync now",
+    "signOut": "Switch user",
+    "warehouseLabel": "Warehouse: {name}"
+  },
+  "receive": {
+    "title": "Receive",
+    "startBlind": "Blind receipt",
+    "startBlindHelp": "No purchase order or ASN: receive freely.",
+    "scanDocLabel": "Scan the order or ASN",
+    "scanDocHelp": "Or tap \"Blind receipt\" to receive without a document.",
+    "docNotFound": "No order or ASN matches that code. You can continue with a blind receipt.",
+    "scanProductLabel": "Scan the product",
+    "scanProductHelp": "Barcode or SKU.",
+    "productNotFound": "No product matches that code.",
+    "qtyLabel": "Quantity",
+    "lotLabel": "Lot",
+    "lotRequired": "This product requires a lot.",
+    "expiryLabel": "Expiry (optional)",
+    "serialsLabel": "Serial numbers",
+    "serialsRequired": "This product requires {count} serial numbers.",
+    "addLine": "Add",
+    "linesTitle": "Captured lines",
+    "lineQty": "{qty} {sku}",
+    "confirmReceipt": "Confirm receipt",
+    "confirmHelp": "Closes the receipt and creates putaway tasks.",
+    "confirmed": "Receipt queued to send",
+    "confirmedQueued": "Saved on the device; it will send once there is a signal.",
+    "docLabelPo": "Order {number}",
+    "docLabelAsn": "ASN {reference}",
+    "removeLineConfirm": "Remove this line?"
+  },
+  "scanner": {
+    "manualLabel": "Or type the code",
+    "cameraButton": "Use camera"
+  },
+  "sync": {
+    "title": "Sync",
+    "lastSync": "Last time: {when}",
+    "never": "never",
+    "pendingTitle": "Pending",
+    "errorTitle": "With errors",
+    "empty": "No pending operations.",
+    "retry": "Retry",
+    "discard": "Discard"
+  }
+}

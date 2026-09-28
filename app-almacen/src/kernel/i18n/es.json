@@ -1,0 +1,107 @@
+{
+  "common": {
+    "loading": "Cargando…",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "retry": "Reintentar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "remove": "Quitar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No",
+    "pending": "pendientes",
+    "warehouse": "Almacén"
+  },
+  "errors": {
+    "generic": "Ocurrió un error. Intente de nuevo.",
+    "network": "No hay conexión con el servidor. La operación queda pendiente de enviar."
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English",
+    "switch": "Idioma"
+  },
+  "server": {
+    "title": "Servidor",
+    "urlLabel": "Dirección del API",
+    "urlHelp": "Por ejemplo http://192.168.1.20:5000/ (misma red WiFi que la computadora) o la URL de staging.",
+    "urlInvalid": "Escriba una dirección válida, por ejemplo http://192.168.1.20:5000/",
+    "save": "Guardar servidor"
+  },
+  "enroll": {
+    "title": "Registrar este aparato",
+    "codeLabel": "Código de registro",
+    "codeHelp": "El administrador lo crea en la web (Aparatos) y dura 24 horas.",
+    "submit": "Registrar",
+    "success": "Aparato registrado",
+    "changeServer": "Cambiar servidor"
+  },
+  "login": {
+    "title": "¿Quién eres?",
+    "chooseUser": "Elige tu nombre",
+    "pinLabel": "PIN",
+    "pinHelp": "de 4 a 6 dígitos",
+    "submit": "Entrar",
+    "loadingUsers": "Cargando usuarios del aparato…",
+    "noUsers": "No hay usuarios con acceso a este aparato.",
+    "changeDevice": "Registrar otro aparato"
+  },
+  "home": {
+    "title": "Teikem Almacén",
+    "receive": "Recibir",
+    "putaway": "Acomodar",
+    "dispatch": "Despacho",
+    "count": "Conteo",
+    "lookup": "Consultar",
+    "comingSoon": "Disponible en la próxima entrega.",
+    "syncStatusPending": "{count} pendientes de enviar",
+    "syncStatusOk": "Todo enviado",
+    "syncStatusError": "{count} con error",
+    "syncNow": "Sincronizar ahora",
+    "signOut": "Cambiar de usuario",
+    "warehouseLabel": "Almacén: {name}"
+  },
+  "receive": {
+    "title": "Recibir",
+    "startBlind": "Recibo ciego",
+    "startBlindHelp": "Sin orden de compra ni aviso: se recibe libre.",
+    "scanDocLabel": "Escanea la orden o el aviso",
+    "scanDocHelp": "O toca \"Recibo ciego\" para recibir sin documento.",
+    "docNotFound": "No se encontró una orden ni un aviso con ese código. Puede seguir con recibo ciego.",
+    "scanProductLabel": "Escanea el producto",
+    "scanProductHelp": "Código de barras o SKU.",
+    "productNotFound": "No hay un producto con ese código.",
+    "qtyLabel": "Cantidad",
+    "lotLabel": "Lote",
+    "lotRequired": "Este producto necesita lote.",
+    "expiryLabel": "Vencimiento (opcional)",
+    "serialsLabel": "Números de serie",
+    "serialsRequired": "Este producto necesita {count} números de serie.",
+    "addLine": "Agregar",
+    "linesTitle": "Líneas capturadas",
+    "lineQty": "{qty} {sku}",
+    "confirmReceipt": "Confirmar recibo",
+    "confirmHelp": "Cierra el recibo y crea las tareas de acomodo.",
+    "confirmed": "Recibo enviado a la cola",
+    "confirmedQueued": "Se guardó en el aparato; se enviará cuando haya señal.",
+    "docLabelPo": "Orden {number}",
+    "docLabelAsn": "Aviso {reference}",
+    "removeLineConfirm": "¿Quitar esta línea?"
+  },
+  "scanner": {
+    "manualLabel": "O escribe el código",
+    "cameraButton": "Usar cámara"
+  },
+  "sync": {
+    "title": "Sincronización",
+    "lastSync": "Última vez: {when}",
+    "never": "nunca",
+    "pendingTitle": "Pendientes",
+    "errorTitle": "Con error",
+    "empty": "No hay operaciones pendientes.",
+    "retry": "Reintentar",
+    "discard": "Descartar"
+  }
+}
