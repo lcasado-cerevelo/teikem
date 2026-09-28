@@ -256,6 +256,11 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(lastUrl('/api/v1/inventory/balances')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
     expect(lastUrl('/api/v1/products')!.searchParams.get('warehousePublicId')).toBe(WH2.publicId)
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ warehousePublicId: WH2.publicId, item: null })
+    // Tareas pendientes y Conteos abiertos también piden y muestran los valores del segundo almacén
+    expect(lastUrl('/api/v1/warehouse-tasks')!.searchParams.get('warehousePublicId')).toBe(WH2.publicId)
+    expect(lastUrl('/api/v1/cycle-counts')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
+    await waitFor(async () => expect(within(await tile('Tareas pendientes')).getByText('23')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('1')).toBeInTheDocument())
   })
 
   it('lo guardado que ya no existe (almacén dado de baja, producto 404) se limpia sin error', async () => {
