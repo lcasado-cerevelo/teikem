@@ -204,16 +204,17 @@ public sealed class DeviceService(
         var deviceTenantId = device.TenantId;
         var codeHash = Hash(normalized!);
         // Secreto nuevo, código consumido, datos técnicos y cierre de sesiones previas en una sola transacción.
-        // RunInTransactionAsync limpia el rastreador: el aparato se vuelve a leer dentro, con bloqueo de fila (UPDLOCK), y
-        // se exige el mismo código aún vigente. Dos enroll simultáneos con el mismo código: el segundo espera al primero y
-        // al releer ya no encuentra el código → el mismo 401 que un código inválido (sin oráculo), nunca un 409.
+        // RunInTransactionAsync limpia el rastreador: el aparato se vuelve a leer dentro y se exige el mismo código aún
+        // vigente. Dos enroll simultáneos con el mismo código: el segundo, o ya no encuentra el código al releer, o choca al
+        // guardar (RowVersion de UserDevice o PK de UserDeviceActivity → ConflictException); en ambos casos recibe el mismo
+        // 401 que un código inválido (sin oráculo), nunca un 409.
         int revoked;
         try
         {
             (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
             {
                 var now = DateTime.UtcNow;
-                var d = await LockDeviceAsync(deviceId, ct2);
+                var d = await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(x => x.UserDeviceId == deviceId, ct2);
                 if (d is null || d.EnrollCodeHash != codeHash || !(d.EnrollCodeExpiresUtc > now) || !d.IsActive)
                     throw new UnauthorizedException(InvalidEnrollCodeMessage);
                 d.SecretHash = Hash(secret);
@@ -234,7 +235,7 @@ public sealed class DeviceService(
         }
         catch (Exception ex) when (ex is UnauthorizedException or ConflictException)
         {
-            // Código consumido por otro enroll (relectura) o, como respaldo, el choque de concurrencia del guardado:
+            // Código consumido por otro enroll (relectura) o choque con el enroll que ganó la carrera (guardado):
             // mismo 401 y mismo SecurityEvent que el camino de código inválido, fuera de la transacción ya revertida.
             db.ChangeTracker.Clear();
             await WriteAnonymousFailureAsync(SecurityEventTypes.ApiCredential, deviceTenantId, new { action = "device_enroll" }, ct);
@@ -385,19 +386,6 @@ public sealed class DeviceService(
     {
         var q = track ? db.Set<UserDevice>().AsTracking() : db.Set<UserDevice>().AsNoTracking();
         return await q.FirstOrDefaultAsync(d => d.PublicId == publicId, ct) ?? throw new NotFoundException("Aparato");
-    }
-
-    /// <summary>
-    /// Aparato por Id con bloqueo de fila (UPDLOCK, ROWLOCK) hasta el fin de la transacción del llamador, rastreado y sin
-    /// filtro de tenant; null si no existe. Con InMemory (pruebas) es una lectura normal.
-    /// </summary>
-    private async Task<UserDevice?> LockDeviceAsync(int userDeviceId, CancellationToken ct)
-    {
-        if (!db.Database.IsRelational())
-            return await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(d => d.UserDeviceId == userDeviceId, ct);
-        return await db.Set<UserDevice>()
-            .FromSqlInterpolated($"SELECT * FROM dbo.UserDevice WITH (UPDLOCK, ROWLOCK) WHERE UserDeviceId = {userDeviceId}")
-            .IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(ct);
     }
 
     private async Task<UserDevice?> FindBySecretAsync(Guid publicId, string? secret, bool track, CancellationToken ct)
