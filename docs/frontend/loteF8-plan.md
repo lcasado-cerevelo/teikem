@@ -24,7 +24,9 @@ existe o lo construye este lote:
 
 1. Sistema → Roles y usuarios → Roles: usar la plantilla **Operador de almacén** (o crear "Almacén solo lectura") y dejarle solo
    permisos de las categorías Almacén (`inventory.view`, `warehouse.receive`, `warehouse.pick`, `warehouse.count`…) y del
-   Pulso (`pulse.warehouse`, `pulse.indicators`, `pulse.charts`, `pulse.activity`). Quitar `orders.view`, `trips.*`, `cod.*`.
+   Pulso (`pulse.warehouse`, `pulse.indicators`, `pulse.charts`, `pulse.activity`) y `analytics.view` (decisión de Luis en la
+   ejecución: sin él, la política de `/analytics/activity` bloquea el panel Actividad reciente antes de llegar al filtro por
+   módulo — la plantilla Operador de almacén ya lo trae). Quitar `orders.view`, `trips.*`, `cod.*`.
 2. Usuarios → Nuevo usuario → correo, nombre, ese rol; opcionalmente PIN de la app.
 3. Resultado: el menú muestra Operación → Pulso del día y el grupo Almacén; nada de Contabilidad, Catálogo, Análisis, Sistema
    ni Portal (sus ítems exigen permisos que no tiene). El Pulso muestra el panel Almacén, Actividad reciente (solo eventos de
