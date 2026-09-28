@@ -1,26 +1,12 @@
-// Lote 8A-app — consultas locales de Recibir: producto por código de barras o SKU, documento por número (orden) o
-// referencia (aviso), y el recibo en curso (sobrevive a cerrar la app: local_receipt/local_receipt_line, schema.ts).
+// Lote 8A-app — consultas locales de Recibir: documento por número (orden) o referencia (aviso), y el recibo en curso
+// (sobrevive a cerrar la app: local_receipt/local_receipt_line, schema.ts). El producto por código es compartido
+// (Recibir, Despacho, Conteo): kernel/warehouse/productLookup.ts.
 import { getDb } from '../../kernel/db/database'
+import { findProductByCode, type LocalProduct, type TrackingType } from '../../kernel/warehouse/productLookup'
 import type { DraftLine } from './receiveLogic'
 
-export type TrackingType = 'NONE' | 'LOT' | 'SERIAL'
-
-export interface LocalProduct {
-  publicId: string
-  sku: string
-  name: string
-  trackingTypeCode: TrackingType
-}
-
-export function findProductByCode(code: string): LocalProduct | null {
-  const row = getDb().getFirstSync<{ public_id: string; sku: string; name: string; tracking_type_code: string | null }>(
-    'SELECT public_id, sku, name, tracking_type_code FROM product WHERE is_active = 1 AND (barcode = ? OR sku = ?) LIMIT 1',
-    [code, code],
-  )
-  if (!row) return null
-  const tracking = row.tracking_type_code === 'LOT' || row.tracking_type_code === 'SERIAL' ? row.tracking_type_code : 'NONE'
-  return { publicId: row.public_id, sku: row.sku, name: row.name, trackingTypeCode: tracking }
-}
+export { findProductByCode }
+export type { LocalProduct, TrackingType }
 
 export interface LocalDoc {
   kind: 'po' | 'asn'

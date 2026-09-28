@@ -1945,6 +1945,57 @@ sigue apareciendo, el aparato no está mandando `since` (ver la pregunta anterio
 Sin `warehouse.count` el conteo es a ciegas: filtrar por diferencia revelaría qué líneas no cuadran con lo esperado,
 así que ese filtro se ignora. Los demás filtros (posición, producto, categoría, pendientes) sí aplican.
 
+## Lote 8A-app — App de almacén (pantallas): Recibir, Acomodar, Despacho, Conteo, Consultar, Sincronización
+
+Ver el [capítulo 9 — App de almacén](09-app-almacen.md) para cada pantalla completa (qué hace, quién puede, campos
+y validaciones). Esta sección junta las dudas de uso diario.
+
+**Cerré la app a mitad de un recibo (o un despacho, o un conteo). ¿Se perdió?**
+No. Mientras no se confirme (o se cancele explícitamente), el documento sigue guardado en el aparato. Al volver a
+abrir la app y entrar con el mismo o con otro usuario, la pantalla correspondiente lo retoma tal cual quedó (mismas
+líneas capturadas); nunca empieza uno nuevo por encima. En Conteo, la lista de líneas esperadas se vuelve a pedir al
+servidor al reabrir (no se guarda localmente, solo lo ya capturado), así que hace falta señal en ese momento.
+
+**Toco Acomodar (o Despacho, o Conteo, o Consultar) y me dice "Termina o cancela el recibo en curso antes de usar
+esto."**
+Es la regla de "un documento a la vez por aparato": mientras haya un recibo, un despacho o un conteo abiertos, las
+demás acciones quedan bloqueadas con este aviso hasta que se confirme o se cancele el que está en curso. El botón de
+la acción que sigue abierta (no las otras) siempre la retoma en vez de bloquear.
+
+**¿Por qué Recibir/Despacho/Conteo a veces funcionan sin señal y Acomodar/Consultar no?**
+Recibir, recolectar en Despacho y capturar en Conteo son documentos propios de este aparato: se capturan sin señal y
+se mandan solos cuando la haya (cola de salida). Acomodar (la lista de tareas de todo el almacén), empacar un
+despacho (elegir consignatario) y abrir un conteo (reclamar la posición) tocan algo que otro aparato o la web podría
+estar viendo o tomando al mismo tiempo, así que esas llamadas siempre son directas y necesitan señal en el momento.
+
+**Una operación quedó "con error" en Sincronización. ¿Qué hago?**
+Quiere decir que el servidor la rechazó por algo que reintentarla igual no arregla (un dato inválido, un documento
+que ya no existe, un permiso que cambió) — nunca por falta de señal, eso la deja "pendiente" en cambio, y se manda
+sola. Lea el mensaje de la fila: si el problema ya no aplica, toque "Reintentar"; si ya no corresponde (por ejemplo,
+se canceló esa operación desde la web), toque "Descartar" para que deje de intentarse.
+
+**Escaneo un producto en Despacho y me dice que solo despacha inventario de clientes 3PL.**
+Esta entrega de Despacho solo recolecta y empaca inventario de clientes 3PL (el dueño del producto ya viene
+sincronizado con él). Inventario propio del tenant todavía no se despacha desde el aparato: se completa desde la
+web. El mismo aviso sale si se escanea un producto de un cliente distinto al del despacho que ya está en curso (un
+despacho es de un solo cliente).
+
+**Toco "Cancelar conteo" y me sale un error de permiso.**
+Cancelar un conteo (`DELETE /api/v1/cycle-counts/{id}`) exige el permiso completo `warehouse.count`, no solo
+`warehouse.count.capture` (el que basta para contar a ciegas). Terminar el conteo con lo que ya se contó sigue
+funcionando igual sin `warehouse.count`; para poder cancelarlo hace falta ese permiso completo.
+
+**En Despacho, "Empacar" me falla al buscar los consignatarios aunque puedo recolectar sin problema.**
+Recolectar y empacar (el envío final) exigen `warehouse.pick`; buscar los consignatarios del cliente para elegir uno
+exige, por separado, `locations.read`. Con `warehouse.pick` pero sin `locations.read` se puede recolectar todo el
+despacho, pero "Empacar" devuelve el error de permiso del servidor al pedir la lista. Pida que el rol del aparato
+tenga ambos permisos.
+
+**Consulto un producto sin señal y me sale "Datos de hace N min", pero yo no había consultado eso antes.**
+Sí lo había hecho: la app guarda la última respuesta de cada código exacto consultado (por almacén), aunque haya
+sido hace días. Si la búsqueda fue por texto libre y por producto en momentos distintos, cuenta como dos consultas
+distintas (dos claves de caché), aunque el resultado final se parezca.
+
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 
 Mensajes verificados contra `web-app/src/kernel/i18n/es.json` (validaciones de pantalla, en español, cliente) y contra

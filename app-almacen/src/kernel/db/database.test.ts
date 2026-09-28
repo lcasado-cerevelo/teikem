@@ -17,7 +17,19 @@ describe('base local', () => {
       .getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")
       .map((t) => t.name)
     expect(tables).toEqual(
-      expect.arrayContaining(['product', 'bin', 'outbox', 'sync_watermark', 'local_receipt', 'local_receipt_line']),
+      expect.arrayContaining([
+        'product',
+        'bin',
+        'outbox',
+        'sync_watermark',
+        'local_receipt',
+        'local_receipt_line',
+        'local_pick',
+        'local_pick_line',
+        'local_count',
+        'local_count_line',
+        'balance_cache',
+      ]),
     )
   })
 

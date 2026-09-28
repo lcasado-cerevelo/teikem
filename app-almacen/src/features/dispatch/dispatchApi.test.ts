@@ -1,0 +1,91 @@
+import { __resetAllForTests } from 'expo-sqlite'
+
+import { api } from '../../kernel/api/client'
+import { __resetDbForTests } from '../../kernel/db/database'
+import { countPending, listOutbox } from '../../kernel/sync/outbox'
+import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import type { PickLine } from './dispatchLogic'
+
+jest.mock('../../kernel/api/client', () => {
+  const actual = jest.requireActual('../../kernel/api/client')
+  return { ...actual, api: { GET: jest.fn(), POST: jest.fn() } }
+})
+
+const getMock = api.GET as jest.Mock
+const postMock = api.POST as jest.Mock
+
+function ok(data: unknown) {
+  return Promise.resolve({ data, response: new Response(null, { status: 200 }) })
+}
+
+beforeEach(() => {
+  __resetAllForTests()
+  __resetDbForTests()
+  getMock.mockReset()
+  postMock.mockReset()
+})
+
+describe('fetchConsigneesForClient', () => {
+  it('mapea las ubicaciones del cliente a nombre y ciudad', async () => {
+    getMock.mockResolvedValueOnce(ok([{ publicId: 'loc-1', name: 'Tienda Centro', city: 'San Juan' }]))
+    const rows = await fetchConsigneesForClient('client-1')
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ clientId: 'client-1' })
+    expect(rows).toEqual([{ publicId: 'loc-1', label: 'Tienda Centro · San Juan' }])
+  })
+})
+
+const LINE_A: PickLine = { productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'B-1' }
+const LINE_B: PickLine = { productPublicId: 'p2', sku: 'B', productName: 'B', quantity: 1, fromBinCode: 'B-2' }
+
+describe('resolveBinCodes', () => {
+  it('resuelve un código por posición distinta y arma las líneas con el binId real', async () => {
+    getMock.mockResolvedValueOnce(ok([{ id: 10, code: 'B-1' }])).mockResolvedValueOnce(ok([{ id: 20, code: 'B-2' }]))
+    const result = await resolveBinCodes('wh-1', [LINE_A, LINE_B])
+    expect(result.notFound).toEqual([])
+    expect(result.lines).toEqual([
+      { ...LINE_A, fromBinId: 10 },
+      { ...LINE_B, fromBinId: 20 },
+    ])
+    expect(getMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('un código repetido solo se resuelve una vez', async () => {
+    getMock.mockResolvedValueOnce(ok([{ id: 10, code: 'B-1' }]))
+    const result = await resolveBinCodes('wh-1', [LINE_A, { ...LINE_A, productPublicId: 'p3' }])
+    expect(getMock).toHaveBeenCalledTimes(1)
+    expect(result.lines.every((l) => l.fromBinId === 10)).toBe(true)
+  })
+
+  it('un código que no existe se reporta en notFound y no arma líneas', async () => {
+    getMock.mockResolvedValueOnce(ok([]))
+    const result = await resolveBinCodes('wh-1', [LINE_A])
+    expect(result.notFound).toEqual(['B-1'])
+    expect(result.lines).toEqual([])
+  })
+})
+
+describe('submitCollectAndPack', () => {
+  const RESOLVED = [{ ...LINE_A, fromBinId: 10 }]
+
+  it('si el API responde, no encola nada', async () => {
+    postMock.mockResolvedValueOnce(ok({ batch: {}, order: {} }))
+    const result = await submitCollectAndPack('wh-1', 'client-1', 'loc-1', 1, RESOLVED)
+    expect(result).toEqual({ queued: false })
+    expect(countPending()).toBe(0)
+    expect(postMock.mock.calls[0][1].body).toMatchObject({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 2, binId: 10 }] })
+  })
+
+  it('sin red, encola el cuerpo armado como kind pack', async () => {
+    postMock.mockResolvedValueOnce({ response: Response.error() })
+    const result = await submitCollectAndPack('wh-1', 'client-1', 'loc-1', 1, RESOLVED)
+    expect(result).toEqual({ queued: true })
+    expect(countPending()).toBe(1)
+    expect(listOutbox()[0].path).toBe('/api/v1/pick-batches/collect-and-pack')
+  })
+
+  it('un rechazo de negocio no se encola: se propaga para mostrarlo', async () => {
+    postMock.mockResolvedValueOnce({ error: { title: 'Crédito excedido.', code: 'validation' }, response: new Response(null, { status: 400 }) })
+    await expect(submitCollectAndPack('wh-1', 'client-1', 'loc-1', 1, RESOLVED)).rejects.toMatchObject({ title: 'Crédito excedido.' })
+    expect(countPending()).toBe(0)
+  })
+})

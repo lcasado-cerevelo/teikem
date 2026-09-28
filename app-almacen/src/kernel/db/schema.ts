@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -169,6 +169,68 @@ export const MIGRATIONS: readonly string[] = [
     resource TEXT PRIMARY KEY NOT NULL,
     since_utc TEXT,
     last_run_utc TEXT
+  );
+  `,
+  // v2 (segunda entrega): Despacho y Conteo empiezan con una llamada en línea (reclaman un recurso compartido: el
+  // producto sale de una posición real, el conteo bloquea la posición para otros) y de ahí en adelante trabajan sin
+  // señal; sus documentos locales sobreviven a cerrar la app igual que local_receipt. Consultar guarda una copia con
+  // fecha de lo último que preguntó en línea, para poder responder "de hace N min" sin red.
+  `
+  -- Despacho (recolectar y empacar): un despacho local a la vez, igual que el recibo.
+  CREATE TABLE IF NOT EXISTS local_pick (
+    id INTEGER PRIMARY KEY NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    client_public_id TEXT,
+    client_name TEXT,
+    created_at_utc TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS local_pick_line (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pick_id INTEGER NOT NULL,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    quantity REAL NOT NULL,
+    from_bin_code TEXT NOT NULL,
+    from_bin_id INTEGER,
+    serial_numbers TEXT,
+    FOREIGN KEY (pick_id) REFERENCES local_pick(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS ix_local_pick_line_pick ON local_pick_line(pick_id);
+
+  -- Conteo: el conteo en sí (count_id) ya existe en el servidor desde que se escanea la posición (POST /cycle-counts,
+  -- en línea, reclama la posición); las líneas capturadas se guardan aquí y se mandan en lote al terminar.
+  CREATE TABLE IF NOT EXISTS local_count (
+    id INTEGER PRIMARY KEY NOT NULL,
+    count_id INTEGER NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    bin_id INTEGER NOT NULL,
+    bin_code TEXT,
+    is_blind INTEGER NOT NULL DEFAULT 1,
+    created_at_utc TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS local_count_line (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    local_count_id INTEGER NOT NULL,
+    line_id INTEGER,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    system_qty REAL,
+    counted_qty REAL NOT NULL,
+    serial_numbers TEXT,
+    is_extra INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (local_count_id) REFERENCES local_count(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS ix_local_count_line_count ON local_count_line(local_count_id);
+
+  -- Consultar: última respuesta en línea de saldos, por si se repite la pregunta sin red ("datos de hace N min").
+  CREATE TABLE IF NOT EXISTS balance_cache (
+    cache_key TEXT PRIMARY KEY NOT NULL,
+    payload_json TEXT NOT NULL,
+    fetched_at_utc TEXT NOT NULL
   );
   `,
 ]

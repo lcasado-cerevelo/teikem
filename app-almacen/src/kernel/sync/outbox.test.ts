@@ -6,15 +6,18 @@ import { countPending, discardRow, enqueue, listOutbox, retryRow, runOutbox } fr
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
-  return { ...actual, api: { POST: jest.fn() } }
+  return { ...actual, api: { POST: jest.fn(), PUT: jest.fn() } }
 })
 
 const postMock = api.POST as jest.Mock
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const putMock = (api as any).PUT as jest.Mock
 
 beforeEach(() => {
   __resetAllForTests()
   __resetDbForTests()
   postMock.mockReset()
+  putMock.mockReset()
 })
 
 function ok(data: unknown) {
@@ -123,10 +126,39 @@ describe('cola de salida', () => {
 })
 
 describe('enqueue', () => {
-  it('guarda el cuerpo como JSON y la ruta según el tipo', () => {
+  it('guarda el cuerpo como JSON y la ruta según el tipo (receipt, pack: ruta fija)', () => {
     const id = enqueue({ kind: 'receipt', body: { warehousePublicId: 'wh-1' } })
-    const row = getDb().getFirstSync<{ path: string; body: string }>('SELECT path, body FROM outbox WHERE id = ?', [id])
+    const row = getDb().getFirstSync<{ path: string; method: string; body: string }>('SELECT path, method, body FROM outbox WHERE id = ?', [id])
     expect(row?.path).toBe('/api/v1/receipts')
+    expect(row?.method).toBe('POST')
     expect(JSON.parse(row?.body ?? '{}')).toEqual({ warehousePublicId: 'wh-1' })
+
+    const packId = enqueue({ kind: 'pack', body: { warehousePublicId: 'wh-1' } })
+    const packRow = getDb().getFirstSync<{ path: string }>('SELECT path FROM outbox WHERE id = ?', [packId])
+    expect(packRow?.path).toBe('/api/v1/pick-batches/collect-and-pack')
+  })
+
+  it('countBatch/countFinish exigen path (la ruta lleva el id del conteo, solo se sabe en línea)', () => {
+    expect(() => enqueue({ kind: 'countBatch', body: {} })).toThrow(/hace falta 'path'/i)
+
+    const id = enqueue({ kind: 'countBatch', body: { lines: [] }, path: '/api/v1/cycle-counts/42/lines/batch' })
+    const row = getDb().getFirstSync<{ path: string; method: string }>('SELECT path, method FROM outbox WHERE id = ?', [id])
+    expect(row).toEqual({ path: '/api/v1/cycle-counts/42/lines/batch', method: 'PUT' })
+
+    const finishId = enqueue({ kind: 'countFinish', body: {}, path: '/api/v1/cycle-counts/42/finish' })
+    const finishRow = getDb().getFirstSync<{ method: string }>('SELECT method FROM outbox WHERE id = ?', [finishId])
+    expect(finishRow?.method).toBe('POST')
+  })
+
+  it('runOutbox manda countBatch con PUT a la ruta guardada', async () => {
+    enqueue({ kind: 'countBatch', body: { lines: [{ lineId: 1, countedQty: 3 }] }, path: '/api/v1/cycle-counts/42/lines/batch' })
+    putMock.mockResolvedValueOnce(ok({ count: { id: 42 } }))
+
+    const result = await runOutbox()
+
+    expect(result.sent).toBe(1)
+    expect(putMock).toHaveBeenCalledTimes(1)
+    expect(putMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts/42/lines/batch')
+    expect(putMock.mock.calls[0][1].body).toEqual({ lines: [{ lineId: 1, countedQty: 3 }] })
   })
 })

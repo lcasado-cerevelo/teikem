@@ -94,7 +94,76 @@
     "cancelConfirmBody": "Se pierde todo lo capturado. No se puede deshacer."
   },
   "lock": {
-    "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto."
+    "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
+    "dispatchInProgress": "Termina o cancela el despacho en curso antes de usar esto.",
+    "countInProgress": "Termina o cancela el conteo en curso antes de usar esto."
+  },
+  "putaway": {
+    "empty": "No hay tareas de acomodo pendientes.",
+    "suggestedBin": "Posición sugerida",
+    "scanDestLabel": "Escanea la posición destino",
+    "binNotFound": "No hay una posición con ese código."
+  },
+  "dispatch": {
+    "title": "Despacho",
+    "scanProductLabel": "Escanea el producto",
+    "scanProductHelp": "Código de barras o SKU.",
+    "productNotFound": "No hay un producto con ese código.",
+    "ownedInventoryBlocked": "Esta pantalla solo despacha inventario de clientes 3PL por ahora; para inventario propio se completa en la web.",
+    "qtyLabel": "Cantidad",
+    "fromBinLabel": "Escanea de qué posición sale",
+    "fromBinHelp": "El sistema no sugiere posición todavía; escanea de dónde lo tomaste.",
+    "binNotFound": "No hay una posición con ese código.",
+    "addLine": "Agregar",
+    "linesTitle": "Líneas recolectadas",
+    "lineQty": "{qty} {sku}",
+    "packButton": "Empacar",
+    "packHelp": "Elige el consignatario y confirma; se manda cuando haya señal.",
+    "chooseConsignee": "¿A quién se despacha?",
+    "loadingConsignees": "Buscando los consignatarios de {client}…",
+    "noConsignees": "Este cliente no tiene consignatarios en el sistema.",
+    "consigneesError": "No se pudo consultar los consignatarios (necesita señal).",
+    "piecesLabel": "Bultos",
+    "confirmPack": "Confirmar despacho",
+    "cancelDispatch": "Cancelar despacho",
+    "cancelConfirmTitle": "¿Cancelar este despacho?",
+    "cancelConfirmBody": "Se pierde todo lo recolectado. No se puede deshacer.",
+    "confirmedQueued": "Despacho enviado a la cola"
+  },
+  "count": {
+    "title": "Conteo",
+    "scanBinLabel": "Escanea la posición a contar",
+    "binNotFound": "No hay una posición con ese código.",
+    "startError": "No se pudo abrir el conteo de esa posición (necesita señal).",
+    "expectedTitle": "Lo que se espera aquí",
+    "blindNotice": "Conteo a ciegas: no se muestran las cantidades del sistema.",
+    "emptyExpected": "El sistema no espera nada en esta posición.",
+    "scanProductLabel": "Escanea el producto contado",
+    "productNotFound": "No hay un producto con ese código.",
+    "foundQtyLabel": "Cantidad encontrada",
+    "addFound": "Agregar",
+    "finishBin": "Terminar esta posición",
+    "finishHelp": "Se manda cuando haya señal; la reconciliación se hace en la web.",
+    "cancelCount": "Cancelar conteo",
+    "cancelConfirmTitle": "¿Cancelar este conteo?",
+    "cancelConfirmBody": "Se libera la posición sin guardar lo capturado. Necesita señal.",
+    "cancelError": "No se pudo cancelar (necesita señal); se puede intentar de nuevo.",
+    "confirmedQueued": "Conteo enviado a la cola",
+    "expectedQtyLabel": "Esperado: {qty}",
+    "foundLineTitle": "{name} · {qty}"
+  },
+  "lookup": {
+    "title": "Consultar",
+    "scanLabel": "Escanea un producto o una posición",
+    "scanHelp": "El resultado se guarda para verlo sin señal la próxima vez.",
+    "productResult": "Saldo por posición",
+    "binResult": "Qué hay en {bin}",
+    "notFound": "No hay nada con ese código.",
+    "noNetworkNoCache": "Sin señal y sin una consulta anterior de esto.",
+    "cachedNote": "Datos de hace {minutes} min (sin señal ahora)",
+    "onHand": "En mano",
+    "available": "Disponible",
+    "empty": "Nada en esa posición."
   },
   "scanner": {
     "manualLabel": "O escribe el código",
@@ -105,9 +174,13 @@
     "lastSync": "Última vez: {when}",
     "never": "nunca",
     "pendingTitle": "Pendientes",
+    "pendingWithCount": "Pendientes ({count})",
+    "rejectedTitle": "Con error",
+    "rejectedWithCount": "Con error ({count})",
     "errorTitle": "Con error",
     "empty": "No hay operaciones pendientes.",
     "retry": "Reintentar",
+    "retryRow": "Reintentar: {kind}",
     "discard": "Descartar"
   }
 }

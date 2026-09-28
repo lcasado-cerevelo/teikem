@@ -1,20 +1,26 @@
 // Lote 8A-app — cola de subida (docs/mobile/app-almacen-plan.md §1.2). Cada operación de una pantalla es una sola
-// llamada atómica al API (decisión del Lote 8A backend: recibo con `confirm:true`, `collect-and-pack`, conteo por lote),
-// así que no hay que re-escribir ids entre pasos de un mismo documento: basta con mandarlas en el orden en que se
-// crearon y dejar que la clave de idempotencia (Idempotency-Key) proteja contra un doble envío si la app se cierra a
-// mitad de la respuesta.
+// llamada atómica al API (decisión del Lote 8A backend: recibo con `confirm:true`, `collect-and-pack`, conteo por
+// lote), así que no hay que re-escribir ids entre pasos de un mismo documento: basta con mandarlas en el orden en que
+// se crearon y dejar que la clave de idempotencia (Idempotency-Key) proteja contra un doble envío si la app se cierra
+// a mitad de la respuesta. Recibir y Despacho tienen una ruta fija (no dependen de nada que solo se sepa en línea);
+// Conteo manda a un id de conteo que el servidor ya asignó en línea al escanear la posición, así que su ruta se arma
+// al encolar (`path` explícito) en vez de derivarse del tipo.
 import { api, ApiError, unwrap } from '../api/client'
 import { getDb } from '../db/database'
 
-export type OutboxKind = 'receipt'
+export type OutboxKind = 'receipt' | 'pack' | 'countBatch' | 'countFinish'
+type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
   kind: OutboxKind
   body: unknown
+  /** Requerido para countBatch/countFinish (la ruta lleva el id del conteo); receipt/pack tienen una ruta fija. */
+  path?: string
 }
 
 // La cuenta de pendientes se lee siempre de la base (nunca queda desincronizada), pero el aviso a quien la muestra
-// (Inicio) hay que darlo a mano en cada cambio: encolar, cada fila que termina en runOutbox, reintentar, descartar.
+// (Inicio, Sincronización) hay que darlo a mano en cada cambio: encolar, cada fila que termina en runOutbox,
+// reintentar, descartar.
 const listeners = new Set<() => void>()
 function notify(): void {
   listeners.forEach((l) => l())
@@ -24,11 +30,14 @@ export function subscribeOutbox(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-interface OutboxRow {
+export interface OutboxRow {
   id: number
   idempotency_key: string
   kind: string
+  method: string
+  path: string
   body: string
+  created_at_utc: string
   status: string
   attempts: number
   last_error: string | null
@@ -41,23 +50,24 @@ function newIdempotencyKey(): string {
   return `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${counter}`
 }
 
+const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
+  receipt: '/api/v1/receipts',
+  pack: '/api/v1/pick-batches/collect-and-pack',
+}
+const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', countBatch: 'PUT', countFinish: 'POST' }
+
 /** Encola una operación (kind + cuerpo ya armado); devuelve el id local de la fila. */
 export function enqueue(input: EnqueueInput): number {
+  const path = input.path ?? DEFAULT_PATH[input.kind]
+  if (!path) throw new Error(`enqueue: hace falta 'path' para el tipo '${input.kind}' (no tiene una ruta fija).`)
   const key = newIdempotencyKey()
   const info = getDb().runSync(
     `INSERT INTO outbox (idempotency_key, kind, method, path, body, created_at_utc, status, attempts)
-     VALUES (?, ?, 'POST', ?, ?, ?, 'pending', 0)`,
-    [key, input.kind, pathFor(input.kind), JSON.stringify(input.body), new Date().toISOString()],
+     VALUES (?, ?, ?, ?, ?, ?, 'pending', 0)`,
+    [key, input.kind, METHOD[input.kind], path, JSON.stringify(input.body), new Date().toISOString()],
   )
   notify()
   return info.lastInsertRowId
-}
-
-function pathFor(kind: OutboxKind): string {
-  switch (kind) {
-    case 'receipt':
-      return '/api/v1/receipts'
-  }
 }
 
 export function listOutbox(): OutboxRow[] {
@@ -66,6 +76,11 @@ export function listOutbox(): OutboxRow[] {
 
 export function countPending(): number {
   const row = getDb().getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE status = 'pending'")
+  return row?.n ?? 0
+}
+
+export function countRejected(): number {
+  const row = getDb().getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE status = 'rejected'")
   return row?.n ?? 0
 }
 
@@ -83,16 +98,13 @@ export function discardRow(id: number): void {
 
 async function sendRow(row: OutboxRow): Promise<unknown> {
   const body: unknown = JSON.parse(row.body)
-  switch (row.kind as OutboxKind) {
-    case 'receipt':
-      return unwrap(
-        api.POST('/api/v1/receipts', {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          body: body as any,
-          headers: { 'Idempotency-Key': row.idempotency_key },
-        }),
-      )
-  }
+  const headers = { 'Idempotency-Key': row.idempotency_key }
+  // Rutas dinámicas (countBatch/countFinish llevan el id del conteo): openapi-fetch solo tipa rutas conocidas en el
+  // contrato, así que aquí se sale del tipado para mandar la ruta guardada tal cual.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const client = api as any
+  if (row.method === 'PUT') return unwrap(client.PUT(row.path, { body, headers }))
+  return unwrap(client.POST(row.path, { body, headers }))
 }
 
 /** Rechazo de negocio (dato inválido o que ya no aplica): no tiene sentido reintentar tal cual. */

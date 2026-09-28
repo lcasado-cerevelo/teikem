@@ -56,6 +56,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    diferencia (productos, posiciones, órdenes de compra, avisos de llegada, tareas, categorías), búsqueda por
    código de barras, y las operaciones atómicas de la cola del aparato (recibo, recolección y empaque, conteo en
    lote y a ciegas). Es solo el backend: la app instalable no se construye en este lote.
+9. [9 — App de almacén](09-app-almacen.md): la app instalable en sí (`app-almacen/`, Android/Expo) — registrar el
+   aparato y entrar con PIN, cómo funciona sin señal (documentos propios del aparato vs. recursos compartidos, un
+   documento a la vez), Inicio, Recibir, Acomodar, Despacho (solo clientes 3PL por ahora), Conteo (a ciegas según
+   permiso), Consultar (con caché para responder sin señal) y Sincronización (pendientes, con error, reintentar).
 
 ## Manual de pantallas (frontend web)
 

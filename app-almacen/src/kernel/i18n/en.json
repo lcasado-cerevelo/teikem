@@ -94,7 +94,76 @@
     "cancelConfirmBody": "Everything captured is lost. This can't be undone."
   },
   "lock": {
-    "receiveInProgress": "Finish or cancel the receipt in progress before using this."
+    "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
+    "dispatchInProgress": "Finish or cancel the dispatch in progress before using this.",
+    "countInProgress": "Finish or cancel the count in progress before using this."
+  },
+  "putaway": {
+    "empty": "No putaway tasks pending.",
+    "suggestedBin": "Suggested bin",
+    "scanDestLabel": "Scan the destination bin",
+    "binNotFound": "No bin matches that code."
+  },
+  "dispatch": {
+    "title": "Dispatch",
+    "scanProductLabel": "Scan the product",
+    "scanProductHelp": "Barcode or SKU.",
+    "productNotFound": "No product matches that code.",
+    "ownedInventoryBlocked": "This screen only dispatches 3PL client inventory for now; owned inventory is completed on the web.",
+    "qtyLabel": "Quantity",
+    "fromBinLabel": "Scan which bin it came from",
+    "fromBinHelp": "The system doesn't suggest a bin yet; scan where you took it from.",
+    "binNotFound": "No bin matches that code.",
+    "addLine": "Add",
+    "linesTitle": "Collected lines",
+    "lineQty": "{qty} {sku}",
+    "packButton": "Pack",
+    "packHelp": "Choose the consignee and confirm; it sends once there is a signal.",
+    "chooseConsignee": "Who is this dispatched to?",
+    "loadingConsignees": "Looking up {client}'s consignees…",
+    "noConsignees": "This client has no consignees in the system.",
+    "consigneesError": "Couldn't look up consignees (needs a signal).",
+    "piecesLabel": "Packages",
+    "confirmPack": "Confirm dispatch",
+    "cancelDispatch": "Cancel dispatch",
+    "cancelConfirmTitle": "Cancel this dispatch?",
+    "cancelConfirmBody": "Everything collected is lost. This can't be undone.",
+    "confirmedQueued": "Dispatch queued to send"
+  },
+  "count": {
+    "title": "Count",
+    "scanBinLabel": "Scan the bin to count",
+    "binNotFound": "No bin matches that code.",
+    "startError": "Couldn't open the count for that bin (needs a signal).",
+    "expectedTitle": "What's expected here",
+    "blindNotice": "Blind count: system quantities are not shown.",
+    "emptyExpected": "The system doesn't expect anything at this bin.",
+    "scanProductLabel": "Scan the counted product",
+    "productNotFound": "No product matches that code.",
+    "foundQtyLabel": "Quantity found",
+    "addFound": "Add",
+    "finishBin": "Finish this bin",
+    "finishHelp": "It sends once there is a signal; reconciliation happens on the web.",
+    "cancelCount": "Cancel count",
+    "cancelConfirmTitle": "Cancel this count?",
+    "cancelConfirmBody": "Releases the bin without saving what was captured. Needs a signal.",
+    "cancelError": "Couldn't cancel (needs a signal); you can try again.",
+    "confirmedQueued": "Count queued to send",
+    "expectedQtyLabel": "Expected: {qty}",
+    "foundLineTitle": "{name} · {qty}"
+  },
+  "lookup": {
+    "title": "Lookup",
+    "scanLabel": "Scan a product or a bin",
+    "scanHelp": "The result is saved so you can see it offline next time.",
+    "productResult": "Balance by bin",
+    "binResult": "What's in {bin}",
+    "notFound": "Nothing matches that code.",
+    "noNetworkNoCache": "No signal and no earlier lookup of this.",
+    "cachedNote": "Data from {minutes} min ago (no signal now)",
+    "onHand": "On hand",
+    "available": "Available",
+    "empty": "Nothing in that bin."
   },
   "scanner": {
     "manualLabel": "Or type the code",
@@ -105,9 +174,13 @@
     "lastSync": "Last time: {when}",
     "never": "never",
     "pendingTitle": "Pending",
+    "pendingWithCount": "Pending ({count})",
+    "rejectedTitle": "With errors",
+    "rejectedWithCount": "With errors ({count})",
     "errorTitle": "With errors",
     "empty": "No pending operations.",
     "retry": "Retry",
+    "retryRow": "Retry: {kind}",
     "discard": "Discard"
   }
 }
