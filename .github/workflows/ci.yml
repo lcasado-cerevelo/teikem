@@ -148,3 +148,80 @@ jobs:
           name: app-almacen-release-apk
           path: app-almacen/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+  android-e2e:
+    needs: android
+    runs-on: ubuntu-latest
+    # Nuevo, primera ejecución: continuar si falla para iterar sin bloquear otros jobs.
+    # Remover continue-on-error cuando los flujos Maestro sean estables.
+    continue-on-error: true
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "Teikem_Dev_2026!"
+          MSSQL_PID: "Developer"
+        ports: [ "1433:1433" ]
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'Teikem_Dev_2026!' -Q 'SELECT 1' || exit 1"
+          --health-interval 10s --health-timeout 5s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Compilar backend
+        run: dotnet build Teikem.sln -c Release
+      - name: db-init
+        run: dotnet run --project src/Teikem.Api -c Release --no-build -- db-init
+      - name: Iniciar API en segundo plano
+        run: |
+          sudo apt-get install -y jq >/dev/null
+          ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          for i in $(seq 1 30); do curl -sf http://localhost:5000/health && break; sleep 2; done
+      - name: Crear fixtures para Maestro
+        run: |
+          chmod +x scripts/e2e-mobile-fixtures.sh
+          scripts/e2e-mobile-fixtures.sh http://localhost:5000
+      - name: Descargar APK
+        uses: actions/download-artifact@v4
+        with:
+          name: app-almacen-release-apk
+          path: /tmp/apk
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Ejecutar Maestro E2E contra emulador Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            set -euo pipefail
+            # Instalar Maestro CLI
+            curl -Ls "https://get.maestro.mobile.dev" | bash
+            export PATH="$HOME/.maestro/bin:$PATH"
+
+            # Instalar APK en emulador
+            adb install -r /tmp/apk/app-release.apk
+
+            FLOWS="app-almacen/e2e-maestro"
+            ENV_ARGS=(-e "E2E_ENROLL_CODE=$E2E_ENROLL_CODE" -e "E2E_CONSIGNEE_LABEL=$E2E_CONSIGNEE_LABEL" -e "E2E_SERVER_URL=$E2E_SERVER_URL")
+
+            maestro test "$FLOWS/01-registrar-y-entrar.yaml" "${ENV_ARGS[@]}"
+            maestro test "$FLOWS/02-recibir.yaml" "${ENV_ARGS[@]}"
+            maestro test "$FLOWS/03-despacho.yaml" "${ENV_ARGS[@]}"
+
+            # 04: recibo sin señal (verifica que queda pendiente) y, ya con señal, que se manda solo. Maestro no
+            # tiene un comando confiable para cortar la red del emulador, así que se hace con adb alrededor de los
+            # dos flujos (ver comentario en 04a-recibo-sin-senal.yaml).
+            adb shell svc wifi disable
+            adb shell svc data disable
+            maestro test "$FLOWS/04a-recibo-sin-senal.yaml" "${ENV_ARGS[@]}"
+            adb shell svc wifi enable
+            adb shell svc data enable
+            maestro test "$FLOWS/04b-verificar-envio.yaml" "${ENV_ARGS[@]}"

@@ -1,0 +1,34 @@
+# Flujo Maestro: completar un despacho de punta a punta (recolectar y empacar).
+# Home → Despacho → escanear producto → cantidad (default) → escanear posición → Agregar → Empacar →
+# elegir consignatario → Confirmar despacho → Home.
+# Corre después de 01-registrar-y-entrar.yaml. Variable -e E2E_CONSIGNEE_LABEL (la escribe
+# scripts/e2e-mobile-fixtures.sh: "{nombre de la ubicación} · {ciudad}", igual que dispatchApi.ts la arma).
+appId: com.teikem.almacen
+---
+- launchApp
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Despacho"
+
+# dispatch.tsx muestra el ScanField de producto de una vez (sin paso previo como Recibir); se auto-enfoca.
+- assertVisible: "Escanea el producto"
+- inputText: "E2E-BARCODE-DISP"
+- pressKey: Enter
+
+# Borrador de línea: cantidad ya viene "1" (newPickLineDraft), el ScanField de posición se auto-enfoca.
+- assertVisible: "Cantidad"
+- assertVisible: "Escanea de qué posición sale"
+- inputText: "A01-R01-N1-P01"
+- pressKey: Enter
+- tapOn: "Agregar"
+
+# De vuelta en la recolección, con la línea capturada.
+- assertVisible: "Líneas recolectadas"
+- tapOn: "Empacar"
+
+# Resuelve las posiciones y busca los consignatarios (llamadas en línea) antes de mostrar la lista.
+- assertVisible: "¿A quién se despacha?"
+- assertVisible: "${E2E_CONSIGNEE_LABEL}"
+- tapOn: "${E2E_CONSIGNEE_LABEL}"
+
+- assertVisible: "Teikem Almacén"

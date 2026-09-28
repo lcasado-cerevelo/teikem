@@ -1,0 +1,29 @@
+# Flujo Maestro: completar un recibo ciego de punta a punta.
+# Home → Recibir → Recibo ciego → escanear producto → Agregar (cantidad por defecto 1) → Confirmar recibo → Home.
+# Corre después de 01-registrar-y-entrar.yaml (mismo aparato ya enrollado y con la sesión abierta).
+appId: com.teikem.almacen
+---
+- launchApp
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Recibir"
+
+# Sin recibo en curso: pantalla de "escanear orden o recibo ciego" (receive.tsx, paso 1).
+- assertVisible: "Recibo ciego"
+- tapOn: "Recibo ciego"
+
+# Ahora sí, la pantalla de captura de producto (receive.tsx, paso 2). El ScanField se auto-enfoca al montar
+# (ScanField.tsx, autoFocus por defecto), así que se escribe directo sin un tapOn previo.
+- assertVisible: "Escanea el producto"
+- inputText: "E2E-BARCODE-RECV"
+- pressKey: Enter
+
+# Paso 3: captura de cantidad (ya viene "1" por defecto, newLineDraft en receiveLogic.ts) — solo agregar.
+- assertVisible: "Agregar"
+- tapOn: "Agregar"
+
+# De vuelta en el recibo, con la línea capturada.
+- assertVisible: "Líneas capturadas"
+- tapOn: "Confirmar recibo"
+
+- assertVisible: "Teikem Almacén"

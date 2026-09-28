@@ -1,0 +1,27 @@
+# Flujo Maestro: hacer un recibo ciego SIN señal y verificar que queda en la cola de salida (pendiente), no
+# perdido ni bloqueado. `confirmReceipt()` en receive.tsx encola localmente y vuelve a Inicio siempre (la cola es lo
+# que falla sin señal, no la captura), así que el corte de red lo hace el paso de shell antes de este flujo
+# (`adb shell svc wifi disable && adb shell svc data disable`, en el job android-e2e de ci.yml) — Maestro puro no
+# tiene un comando confiable multi-dispositivo para esto.
+appId: com.teikem.almacen
+---
+- launchApp
+
+- assertVisible: "Teikem Almacén"
+- tapOn: "Recibir"
+- assertVisible: "Recibo ciego"
+- tapOn: "Recibo ciego"
+
+- assertVisible: "Escanea el producto"
+- inputText: "E2E-BARCODE-RECV"
+- pressKey: Enter
+
+- assertVisible: "Agregar"
+- tapOn: "Agregar"
+
+- assertVisible: "Líneas capturadas"
+- tapOn: "Confirmar recibo"
+
+# Sin señal: vuelve a Inicio igual (se guardó local), pero el estado de sincronización muestra lo pendiente.
+- assertVisible: "Teikem Almacén"
+- assertVisible: "pendientes de enviar"

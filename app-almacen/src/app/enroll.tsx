@@ -9,7 +9,9 @@ import { BigButton } from '../kernel/ui/BigButton'
 import { colors, spacing } from '../kernel/ui/theme'
 
 /** Pantalla 1 (parte 1): registrar este aparato con el código de un solo uso del administrador (docs/mobile/
- *  app-almacen-plan.md §2). El servidor se configura aquí la primera vez; después se cambia desde Sincronización. */
+ *  app-almacen-plan.md §2). El servidor se configura aquí la primera vez; después se cambia desde Sincronización.
+ *  Los dos campos llevan `testID` porque el texto de la etiqueta y el `accessibilityLabel` del campo son iguales
+ *  (Maestro, en app-almacen/e2e-maestro, necesita distinguir el campo del texto que solo lo describe). */
 export default function EnrollScreen() {
   const { t } = useT()
   const router = useRouter()
@@ -56,6 +58,7 @@ export default function EnrollScreen() {
             placeholderTextColor={colors.muted}
             style={styles.input}
             accessibilityLabel={t('server.urlLabel')}
+            testID="server-url-input"
           />
           <Text style={styles.help}>{t('server.urlHelp')}</Text>
         </View>
@@ -72,6 +75,7 @@ export default function EnrollScreen() {
             placeholderTextColor={colors.muted}
             style={styles.input}
             accessibilityLabel={t('enroll.codeLabel')}
+            testID="enroll-code-input"
           />
           <Text style={styles.help}>{t('enroll.codeHelp')}</Text>
         </View>

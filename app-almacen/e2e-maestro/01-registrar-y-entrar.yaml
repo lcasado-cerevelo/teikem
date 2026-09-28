@@ -1,0 +1,34 @@
+# Flujo Maestro (https://maestro.mobile.dev): registrar el aparato e entrar como admin con PIN.
+# Enroll → URL del servidor + código de registro → Login → elegir usuario → PIN → Home.
+# Variables (-e al invocar `maestro test`): E2E_SERVER_URL, E2E_ENROLL_CODE (las escribe scripts/e2e-mobile-fixtures.sh).
+appId: com.teikem.almacen
+---
+- launchApp:
+    clearState: true
+
+# Pantalla de enroll. El campo y su etiqueta comparten el mismo texto (accessibilityLabel), así que se selecciona
+# por testID (agregado en enroll.tsx) en vez de por texto, para no tocar por error la etiqueta.
+- assertVisible: "Registrar este aparato"
+- tapOn:
+    id: "server-url-input"
+- inputText: "${E2E_SERVER_URL}"
+- tapOn:
+    id: "enroll-code-input"
+- inputText: "${E2E_ENROLL_CODE}"
+- tapOn: "Registrar"
+
+- assertVisible: "Elige tu nombre"
+
+# Selecciona el usuario admin sembrado (DemoTenantSeeder.cs, ProvisionAsync).
+- tapOn: "Administrador Advance"
+
+- assertVisible: "PIN"
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "4"
+- tapOn: "Entrar"
+
+- assertVisible: "Teikem Almacén"
+- assertVisible: "Recibir"
+- assertVisible: "Despacho"
