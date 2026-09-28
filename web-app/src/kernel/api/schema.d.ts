@@ -998,43 +998,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/analytics/pulse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": components["schemas"]["PulseDto"];
-                        "application/json": components["schemas"]["PulseDto"];
-                        "text/json": components["schemas"]["PulseDto"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/asns": {
         parameters: {
             query?: never;
@@ -10291,6 +10254,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analytics/pulse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseDto"];
+                        "application/json": components["schemas"]["PulseDto"];
+                        "text/json": components["schemas"]["PulseDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/pulse/layout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: {
+                    scope?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["PulseLayoutRequest"];
+                    "text/json": components["schemas"]["PulseLayoutRequest"];
+                    "application/*+json": components["schemas"]["PulseLayoutRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PulseDto"];
+                        "application/json": components["schemas"]["PulseDto"];
+                        "text/json": components["schemas"]["PulseDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/pulse/layout/mine": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/purchase-orders": {
         parameters: {
             query?: never;
@@ -15549,6 +15627,11 @@ export interface components {
             fromUtc?: string | null;
             /** Format: date-time */
             toUtc?: string | null;
+            businessModule?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isVisible?: boolean;
+            source?: string | null;
         };
         ChartPoint: {
             label?: string | null;
@@ -17051,6 +17134,11 @@ export interface components {
             fromUtc?: string | null;
             /** Format: date-time */
             toUtc?: string | null;
+            businessModule?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isVisible?: boolean;
+            source?: string | null;
         };
         KardexPageDto: {
             /** Format: int32 */
@@ -18172,6 +18260,34 @@ export interface components {
         PulseDto: {
             indicators?: components["schemas"]["IndicatorValueDto"][] | null;
             charts?: components["schemas"]["ChartDataDto"][] | null;
+            panels?: components["schemas"]["PulsePanelDto"][] | null;
+            hasPersonalLayout?: boolean;
+            canOrganizeCompany?: boolean;
+        };
+        PulseLayoutItem: {
+            kind?: string | null;
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            sortOrder?: number;
+            isVisible?: boolean;
+        };
+        PulseLayoutPanel: {
+            key?: string | null;
+            /** Format: int32 */
+            sortOrder?: number;
+            isVisible?: boolean;
+        };
+        PulseLayoutRequest: {
+            items?: components["schemas"]["PulseLayoutItem"][] | null;
+            panels?: components["schemas"]["PulseLayoutPanel"][] | null;
+        };
+        PulsePanelDto: {
+            key?: string | null;
+            isVisible?: boolean;
+            /** Format: int32 */
+            sortOrder?: number;
+            source?: string | null;
         };
         PulseRequest: {
             showInPulse?: boolean;
