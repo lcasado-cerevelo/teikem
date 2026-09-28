@@ -96,6 +96,11 @@ jobs:
   android:
     needs: mobile
     runs-on: ubuntu-latest
+    # El contexto `secrets` no está permitido en `if:` de un step (GitHub Actions lo rechaza al validar el workflow,
+    # "Unrecognized named-value: 'secrets'"); se calcula aquí, en `env:` de job (donde sí está permitido), y el `if:`
+    # del step de abajo lee `env.HAS_RELEASE_KEYSTORE` en su lugar.
+    env:
+      HAS_RELEASE_KEYSTORE: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -123,7 +128,7 @@ jobs:
           npm ci --legacy-peer-deps
           npx expo prebuild --platform android --no-install
       - name: Llave propia de firma (si el secreto ya existe; si no, cae a la llave de depuración)
-        if: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 != '' }}
+        if: ${{ env.HAS_RELEASE_KEYSTORE == 'true' }}
         working-directory: app-almacen/android/app
         env:
           TEIKEM_RELEASE_KEYSTORE_B64: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 }}
@@ -131,7 +136,7 @@ jobs:
       - name: Compilar el APK release (llave propia si el secreto existe; si no, firma de depuración)
         working-directory: app-almacen/android
         env:
-          TEIKEM_RELEASE_KEYSTORE: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 != '' && 'release.keystore' || '' }}
+          TEIKEM_RELEASE_KEYSTORE: ${{ env.HAS_RELEASE_KEYSTORE == 'true' && 'release.keystore' || '' }}
           TEIKEM_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_PASSWORD }}
           TEIKEM_RELEASE_KEY_ALIAS: ${{ secrets.TEIKEM_RELEASE_KEY_ALIAS }}
           TEIKEM_RELEASE_KEY_PASSWORD: ${{ secrets.TEIKEM_RELEASE_KEY_PASSWORD }}
