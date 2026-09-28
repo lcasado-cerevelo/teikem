@@ -22,8 +22,10 @@ appId: com.teikem.almacen
 - pressKey: Enter
 - tapOn: "Agregar"
 
-# De vuelta en la recolección, con la línea capturada.
+# De vuelta en la recolección, con la línea capturada. El ScanField de producto se reenfoca (listo para la
+# siguiente línea) y el teclado tapa Empacar/Cancelar más abajo; cerrarlo antes de buscarlos.
 - assertVisible: "Líneas recolectadas"
+- hideKeyboard
 - tapOn: "Empacar"
 
 # Resuelve las posiciones y busca los consignatarios (llamadas en línea) antes de mostrar la lista.

@@ -20,8 +20,10 @@ appId: com.teikem.almacen
 - tapOn: "Agregar"
 
 - assertVisible: "Líneas capturadas"
+- hideKeyboard
 - tapOn: "Confirmar recibo"
 
-# Sin señal: vuelve a Inicio igual (se guardó local), pero el estado de sincronización muestra lo pendiente.
+# Sin señal: vuelve a Inicio igual (se guardó local), pero el estado de sincronización muestra lo pendiente. Maestro
+# hace match completo del texto del nodo (no substring), y home.tsx antepone la cantidad ("N pendientes de enviar").
 - assertVisible: "Teikem Almacén"
-- assertVisible: "pendientes de enviar"
+- assertVisible: ".*pendientes de enviar.*"

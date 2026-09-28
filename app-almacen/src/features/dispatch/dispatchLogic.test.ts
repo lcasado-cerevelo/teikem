@@ -44,7 +44,15 @@ describe('buildCollectAndPackBody', () => {
     expect(body).toEqual({
       warehousePublicId: 'wh-1',
       lines: [{ productPublicId: 'p1', quantity: 2, binId: 3 }],
-      pack: { order: { clientPublicId: 'client-1', consigneeLocationPublicId: 'loc-1', packages: [{ pieces: 2 }], confirmNow: true } },
+      pack: {
+        order: {
+          clientPublicId: 'client-1',
+          consigneeLocationPublicId: 'loc-1',
+          serviceType: 'STANDARD',
+          packages: [{ packageType: 'BOX', pieces: 2 }],
+          confirmNow: true,
+        },
+      },
     })
   })
 })

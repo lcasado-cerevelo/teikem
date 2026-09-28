@@ -161,3 +161,46 @@ dos llamadas del mismo archivo (ya documentado en la primera entrega con `homeLo
 
 Reporte final a Luis, y lo que ya quedó anotado en la primera entrega (cámara, reconexión inmediata NetInfo,
 `expo-updates`). El manual funcional de la app ya está en `docs/manual/09-app-almacen.md`.
+
+## Maestro corrido de verdad (en la máquina de Luis, con aceleración real), primera vez: 5/5 flujos
+
+Los 5 flujos de `app-almacen/e2e-maestro/` nunca se habían corrido contra un emulador real (decisión 7 de la primera
+entrega); en CI el emulador con `reactivecircus/android-emulator-runner` tarda >13 min solo arrancando sin KVM y
+hace timeout (`continue-on-error: true` en el job `android-e2e`). Corrí los 5 en un emulador local (Android 34,
+`google_apis`, x86_64, aceleración de hardware real) contra el backend también local. Encontré y corregí:
+
+1. **`retarget()` en `kernel/api/client.ts` perdía el cuerpo del POST bajo el `fetch` de React Native.** Reconstruir
+   la petición con `new Request(url, request)` para redirigirla al servidor configurado en tiempo de ejecución
+   pierde el body (el servidor lo recibía vacío, `Content-Length: 0`) aunque `openapi-fetch` lo mandara bien — nunca
+   se había probado con un `fetch` real, solo con el doble de las pruebas. Se corrigió copiándolo explícito como
+   bytes (`request.clone().arrayBuffer()`). **Esto bloqueaba el enrolamiento del aparato de punta a punta; sin este
+   fix ningún flujo de Maestro podía pasar del primero.**
+2. **Ninguna pantalla usaba `SafeAreaView`**: el título quedaba parcialmente debajo de la barra de estado en API 34
+   (no se notaba en API 36.1, probablemente por otra altura de barra), lo que lo sacaba del árbol de accesibilidad
+   que usa Maestro para ubicar elementos. Se aplicó el inset superior una sola vez en `_layout.tsx` (con
+   `initialWindowMetrics`, necesario para que las pruebas de Jest con `SafeAreaProvider` no cuelguen sin medidas
+   reales) en vez de tocar las 9 pantallas.
+3. **`receive.tsx` y `dispatch.tsx`, paso de "viendo lo capturado", usaban `View` en vez de `ScrollView`** (los otros
+   pasos de ambas pantallas ya usaban `ScrollView`): el `ScanField` se reenfoca tras cada línea agregada (para
+   escanear la siguiente sin tocar nada), y con el teclado abierto los botones Confirmar/Empacar/Cancelar quedaban
+   fuera del área visible sin forma de llegar a ellos. Ya corregido ahí, pero Maestro tampoco baja el scroll solo
+   para buscar un texto detrás del teclado: los flujos 02/03/04a agregaron `hideKeyboard` antes de tocarlos.
+4. **`buildCollectAndPackBody` (despacho) no mandaba `serviceType` ni `packageType`** en la orden: sin selector de
+   servicio/paquete en el aparato (decisión de diseño, un solo campo por pantalla), `OrderService.CreateAsync` los
+   exige si el tenant no tiene default configurado. Se fijó `STANDARD`/`BOX` (catálogo `ServiceType`/`PackageType`
+   sembrado) como valor implícito, igual que `confirmNow: true` ya era implícito.
+5. **`scripts/e2e-mobile-fixtures.sh` no era idempotente** contra una base de datos que persiste entre corridas
+   (normal en local; CI siempre arranca con BD vacía, así que nunca lo tocó): el aparato, los dos productos, el
+   cliente 3PL y la tarifa del contrato ahora se reutilizan si ya existen en vez de fallar con 409. Además, el
+   contrato del cliente 3PL necesita una tarifa vigente para STANDARD/BOX (`POST
+   /api/v1/contracts/{id}/rate-components`) para que `collect-and-pack` no falle con "no hay tarifa vigente" —
+   fixture que faltaba por completo.
+6. **Maestro hace match completo del texto del nodo, no substring**: `assertVisible: "pendientes de enviar"` nunca
+   iba a pasar contra el texto real `"N pendientes de enviar"` (con la cantidad al frente); se cambió a
+   `".*pendientes de enviar.*"` en 04a/04b. Aparte, 04b afirmaba el estado "pendiente" antes de sincronizar, pero
+   Inicio dispara una sincronización apenas monta (`useAutoSync`); con la señal ya restaurada, para cuando Maestro
+   alcanza a mirar la pantalla puede que ya se haya mandado solo. Se quitó esa aserción (carrera, no prueba real);
+   04b ahora solo confirma que "Sincronizar ahora" deja "Todo enviado".
+
+Nada de esto lo pude ver sin un emulador con aceleración real corriendo la app de verdad — coincide exactamente con
+lo que la decisión 7 y el comentario de `ci.yml` ya anticipaban.

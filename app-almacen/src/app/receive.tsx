@@ -201,9 +201,10 @@ export default function ReceiveScreen() {
     )
   }
 
-  // Paso 2: recibo abierto, escaneando productos y viendo lo ya capturado.
+  // Paso 2: recibo abierto, escaneando productos y viendo lo ya capturado. ScrollView (no View, como los otros dos
+  // pasos): el ScanField se reenfoca tras cada línea agregada y, con el teclado abierto, tapaba Confirmar/Cancelar.
   return (
-    <View style={styles.fill}>
+    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>
         {openReceipt.doc
           ? t(openReceipt.doc.kind === 'asn' ? 'receive.docLabelAsn' : 'receive.docLabelPo', {
@@ -230,7 +231,7 @@ export default function ReceiveScreen() {
       <BigButton label={t('receive.confirmReceipt')} onPress={confirmReceipt} disabled={openReceipt.lines.length === 0} />
       <Text style={styles.help}>{t('receive.confirmHelp')}</Text>
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
-    </View>
+    </ScrollView>
   )
 }
 

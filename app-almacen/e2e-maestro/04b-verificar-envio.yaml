@@ -1,11 +1,12 @@
-# Flujo Maestro: con la señal ya restaurada (por el job de CI, antes de correr este archivo), forzar una
-# sincronización y verificar que lo que quedó pendiente en 04a-recibo-sin-senal.yaml se mandó.
+# Flujo Maestro: con la señal ya restaurada (por el job de CI, antes de correr este archivo), verificar que lo que
+# quedó pendiente en 04a-recibo-sin-senal.yaml se mandó. No se afirma el estado "pendiente" antes de sincronizar:
+# Inicio dispara una sincronización apenas monta (kernel/sync/engine.ts, useAutoSync), así que para cuando Maestro
+# alcanza a mirar la pantalla puede que ya haya mandado todo — afirmarlo sería una carrera, no una prueba real.
 appId: com.teikem.almacen
 ---
 - launchApp
 
 - assertVisible: "Teikem Almacén"
-- assertVisible: "pendientes de enviar"
 - tapOn: "Sincronizar ahora"
 
 - assertVisible: "Todo enviado"

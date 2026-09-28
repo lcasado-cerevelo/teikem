@@ -195,9 +195,10 @@ export default function DispatchScreen() {
     )
   }
 
-  // Despacho abierto: viendo lo recolectado.
+  // Despacho abierto: viendo lo recolectado. ScrollView (no View, mismo motivo que receive.tsx paso 2): el
+  // ScanField se reenfoca tras cada línea y, con el teclado abierto, tapaba Empacar/Cancelar.
   return (
-    <View style={styles.fill}>
+    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{openPick.clientName}</Text>
       <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
       <Text style={styles.label}>{t('dispatch.linesTitle')}</Text>
@@ -214,7 +215,7 @@ export default function DispatchScreen() {
       <BigButton label={t('dispatch.packButton')} onPress={startPacking} disabled={openPick.lineRows.length === 0 || busy} />
       <Text style={styles.help}>{t('dispatch.packHelp')}</Text>
       <BigButton label={t('dispatch.cancelDispatch')} variant="danger" onPress={cancelDispatch} />
-    </View>
+    </ScrollView>
   )
 }
 

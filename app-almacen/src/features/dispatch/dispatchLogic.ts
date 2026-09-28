@@ -80,7 +80,13 @@ export function buildCollectAndPackBody(
       order: {
         clientPublicId,
         consigneeLocationPublicId,
-        packages: [{ pieces }],
+        // Sin selector de servicio en el aparato (decisión implícita, igual que confirmNow): el catálogo ServiceType
+        // trae STANDARD sembrado (Diseño/logistica-db-seed.sql); OrderService.CreateAsync exige uno si el tenant no
+        // tiene default configurado.
+        serviceType: 'STANDARD',
+        // Mismo motivo que serviceType arriba: el catálogo PackageType trae BOX sembrado; cada paquete lo exige si
+        // el tenant no tiene un tipo por defecto (OrderService.CreateAsync).
+        packages: [{ packageType: 'BOX', pieces }],
         confirmNow: true,
       },
     },

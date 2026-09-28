@@ -47,9 +47,13 @@ function pathOf(url: string): string {
   }
 }
 
-function retarget(request: Request): Request {
+/** Reconstruye la petición apuntando al origen real. `new Request(url, request)` pierde el cuerpo bajo el `fetch` de
+ *  React Native (el servidor lo recibe vacío); copiarlo explícito como bytes lo preserva en cualquier plataforma. */
+async function retarget(request: Request): Promise<Request> {
   const u = new URL(request.url)
-  return new Request(`${getApiBaseUrl()}${u.pathname}${u.search}`, request)
+  const hasBody = request.method !== 'GET' && request.method !== 'HEAD'
+  const body = hasBody ? await request.clone().arrayBuffer() : undefined
+  return new Request(`${getApiBaseUrl()}${u.pathname}${u.search}`, { method: request.method, headers: request.headers, body })
 }
 
 export interface ApiClientOptions {
@@ -63,7 +67,7 @@ export function createApiClient(options: ApiClientOptions = {}) {
 
   async function safeFetch(request: Request): Promise<Response> {
     try {
-      return await baseFetch(retarget(request))
+      return await baseFetch(await retarget(request))
     } catch {
       // Response.error(): la única forma estándar de construir una Response con status 0 (falla de red real, no un
       // 4xx/5xx del servidor); `new Response(null, { status: 0 })` no es válido (RangeError, fuera de [200, 599]).

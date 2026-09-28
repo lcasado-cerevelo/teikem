@@ -22,8 +22,10 @@ appId: com.teikem.almacen
 - assertVisible: "Agregar"
 - tapOn: "Agregar"
 
-# De vuelta en el recibo, con la línea capturada.
+# De vuelta en el recibo, con la línea capturada. El ScanField de producto se reenfoca (listo para la siguiente
+# línea) y el teclado tapa Confirmar/Cancelar más abajo en la pantalla; cerrarlo antes de buscarlos.
 - assertVisible: "Líneas capturadas"
+- hideKeyboard
 - tapOn: "Confirmar recibo"
 
 - assertVisible: "Teikem Almacén"
