@@ -456,3 +456,7 @@ Recogidas de las rondas de re-verificación acotada del 27 y 28 de septiembre de
 - `SyncService.cs`: Ninguna prueba verifica el dueño 3PL (ownerClientPublicId/ownerName) de sync/products, del que depende el despacho sin señal
 - `SyncService.cs`: sync/bins con el almacén dado de baja (rama por historial de estatus del almacén) sin prueba
 - `IdempotencyMiddleware.cs`: Nada verifica el contenido del registro de idempotencia insertado (Method, Endpoint, RequestHash, Direction INBOUND, sin cuerpo de la petición)
+
+## Verificación en CI
+
+- Corrida verde de GitHub Actions del cierre del paso 3b (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36365377942 (commit `de2f7ce`).
