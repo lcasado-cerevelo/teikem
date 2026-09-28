@@ -463,3 +463,80 @@ Recogidas de las rondas de re-verificación acotada del 27 y 28 de septiembre de
 ## Verificación en CI
 
 - Corrida verde de GitHub Actions del cierre del paso 3b (jobs `build-test` y `frontend`): https://github.com/lcasado-cerevelo/teikem/actions/runs/36365377942 (commit `de2f7ce`).
+
+## Revisión final (28 de septiembre de 2026)
+
+Cotejo letra por letra del capítulo `docs/manual/08-aparatos-y-sincronizacion.md`, la sección "Lote 8A" de
+`docs/manual/faq.md`, este documento y las partes del Lote 8A ya integradas en `docs/manual/01-plataforma-y-seguridad.md`
+y `docs/manual/06-inventario-y-almacen.md` contra el código real de la rama (HEAD `a80ad1b`), después de que tres
+rondas de revisión acotada corrigieran código sin que nadie hubiera vuelto a pasar el manual y el FAQ por esos
+cambios (pendiente anotado en la re-verificación anterior, más arriba).
+
+Rondas hechas antes de este cotejo:
+
+1. 4 lentes, 0 hallazgos altos, 7 medios (de pruebas unitarias y del script de humo) y hallazgos bajos aceptados sin
+   corregir (commit `3720706`). De los medios de código: la repetición idempotente de una comprobación de servicio
+   cambiada responde 409 en **cualquier** sentido (antes, perder el permiso daba el 403 de una llamada nueva y solo
+   ganarlo daba 409); el PIN se recorta antes de verificarlo en el login (ya se recortaba al definirlo); la clave de
+   idempotencia (1 a 80) se mide sobre el valor tal cual llega, antes de recortar los espacios de los extremos; el
+   refresh de una sesión de aparato revalida también al usuario (activo, con membresía activa y `inventory.view`),
+   no solo al aparato; el limitador de intentos normaliza la ruta (minúsculas, sin barra final) antes de contar; y
+   registrar y desactivar un aparato corren en una sola transacción.
+2. 3 hallazgos medios sobre el registro y la baja del aparato (commit `3bd4c5e`): un registro concurrente del
+   aparato con el mismo código de un solo uso responde 401 `El código de registro no es válido o venció.` (nunca
+   409), con el mismo evento `API_CREDENTIAL`/`FAILURE` (`device_enroll`) que un código inválido, para no dar
+   pistas de que el código sí existía; reactivar un aparato revoca las sesiones que hubieran quedado vivas, igual
+   que desactivarlo.
+3. 2 hallazgos medios sobre el sello del token de aparato (commit `a80ad1b`): columna nueva
+   `UserDevice.SessionsNotBeforeUtc`, que se fija al desactivar, reactivar o registrar el aparato; los access
+   tokens de sesión de aparato llevan `iat`, que `OnTokenValidated` compara contra ese sello para rechazar los
+   emitidos antes.
+4. Una ronda solo con lente de seguridad sobre el mecanismo del sello: no encontró hallazgos que exigieran cambiar
+   código.
+
+Decisiones tomadas por el orquestador (quedan como referencia para no revisitarlas sin motivo nuevo):
+
+- **409 siempre que cambie una comprobación de servicio, en cualquier sentido.** La repetición idempotente de un
+  módulo o permiso que la operación revisó **por su cuenta** (no el que exige la propia ruta) y que cambió desde la
+  primera vez — se ganó o se perdió — responde 409 `La operación con esta clave ya no puede repetirse con los
+  permisos actuales.`, sin servir la respuesta guardada. Ya no se distingue el sentido del cambio (antes, perderlo
+  daba el mismo 403 de una llamada nueva): cualquier cambio hace que la respuesta guardada ya no corresponda a los
+  permisos de hoy, y sea más o menos permisiva la operación no cambia el riesgo de servir una respuesta vieja.
+- **Reactivar revoca sesiones.** `POST /api/v1/devices/{id}/reactivate` revoca, en la misma transacción, cualquier
+  sesión (refresh token) del aparato que hubiera quedado viva (por ejemplo, un refresh que corría mientras el
+  aparato estaba desactivado) y deja constancia con `TOKEN_REVOKED`/`device_reactivated` aunque no hubiera ninguna:
+  nada revive sin que cada usuario vuelva a entrar con su PIN.
+- **Sello sin tolerancia de reloj, comparación al segundo.** `DeviceClaims.IssuedBeforeSessionsCutoff` compara el
+  `iat` (segundos enteros) del token contra `SessionsNotBeforeUtc` truncado al segundo, sin ningún margen: un token
+  emitido en el mismo segundo del sello (o después) se acepta, uno de un segundo antes no. Se aceptó sin tolerancia
+  porque el sello lo fija el mismo proceso (y la misma hora del servidor) que emite los tokens siguientes; no hay
+  reloj de otra máquina de por medio que justifique un margen.
+- **15 minutos de vida del access token tras cambiar el PIN, aceptados.** Cambiar, restablecer o quitar el PIN de un
+  usuario revoca sus refresh tokens de aparato (las sesiones), pero no corta los access tokens ya emitidos: un
+  access token vivo (hasta `AccessTokenMinutes`, 15 por defecto) sigue funcionando hasta que expira por su cuenta.
+  Se aceptó la diferencia con el corte inmediato del aparato (que si invalida el access token en el acto, vía el
+  sello y la caché de `OnTokenValidated`): desactivar o reactivar un **aparato** es una acción de administración
+  sobre un recurso compartido que justifica un corte agresivo; cambiar el PIN de **un usuario** es una acción sobre
+  su propia credencial, con el mismo riesgo residual (minutos) que ya acepta el resto de la plataforma (el
+  `SecurityStamp` tampoco corta el access token en el acto en otros flujos del Lote 1).
+- **El conteo a ciegas no es una frontera de seguridad.** Ocultar las cantidades esperadas a quien no tiene
+  `warehouse.count` es para no sesgar el conteo del almacenista, no un control de acceso a datos: quien cuenta ya
+  tiene `inventory.view` y puede consultar existencias por otras rutas del API (sincronización, fichas de
+  producto). Se aceptó tal cual, sin agregar más ocultamiento del que ya existía.
+
+Estado de verificación (de las tres rondas de código, commits `3720706`, `3bd4c5e` y `a80ad1b`): `dotnet build` sin
+errores; `dotnet test` con 2054 pruebas, 0 fallidas; `db-init` sobre una base limpia de SQL Server 2022 dos veces;
+`scripts/smoke.sh` completo (Lotes 1 a 8A) en verde con `SMOKE_SQL`, incluidos los pasos nuevos de las rondas 2 y 3
+(registro concurrente con el mismo código → 401 con el mismo evento que un código inválido, revocación de sesiones
+comprobada por SQL al reactivar, `iat` presente en los tokens de sesión de aparato). No se abrió un pull request ni
+se corrió el CI de GitHub Actions después de estas tres rondas; la corrida local sustituye a CI como evidencia de
+este tramo, y CI la puede repetir al hacer push.
+
+Este cotejo (paso aparte, sin cambios de código) corrigió lo que había quedado desactualizado en el manual y el FAQ
+por las rondas 1 a 3: el capítulo 08 (párrafo y tabla de la repetición idempotente, longitud de la clave antes de
+recortar, PIN recortado al verificar, registro y baja en transacción, evento y carrera del enroll, sello de
+sesiones del aparato con su efecto en el enroll, nombre `Usuario` sin nombre completo, revalidación del usuario al
+refrescar una sesión de aparato con su 401 `Refresh token inválido.`), la sección "Lote 8A" del FAQ (la misma
+corrección del 409/403, más las preguntas nuevas sobre el nombre `Usuario`, el registro concurrente y el sello) y
+la bitácora de aparatos de almacén en el capítulo 01 (eventos `API_CREDENTIAL` del enroll y motivos de
+`TOKEN_REVOKED`). No se tocó código en este cotejo.

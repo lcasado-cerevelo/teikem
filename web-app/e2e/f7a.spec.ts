@@ -291,9 +291,7 @@ test.describe('Lote F7A — escritorio', () => {
 
   test('3. al recargar se conserva la selección; ✕ vuelve a los totales generales', async ({ page }) => {
     await login(page, ADMIN)
-    // 'En mano' antes de elegir la categoría: tras quitarla debe volver a este mismo valor (totales generales)
     await expect(tile(page, 'En mano')).not.toContainText('…')
-    const enManoGeneral = await tile(page, 'En mano').textContent()
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY))
     await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
     await page.reload()
@@ -301,15 +299,21 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(trigger).toHaveAccessibleName(new RegExp(`^Categoría o producto: Categoría .*${CATEGORY}$`))
     await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
 
-    const balancesRequest = page.waitForRequest((r) => {
+    // Tras quitar la selección la tarjeta vuelve a los totales generales: se comparan con el totalOnHand de la misma
+    // respuesta sin filtro que recibe el panel (no con una lectura anterior, porque los otros recorridos en paralelo
+    // mueven inventario y el total general cambia mientras corre esta prueba).
+    const balancesResponse = page.waitForResponse((r) => {
       const u = new URL(r.url())
       return u.pathname === '/api/v1/inventory/balances' && !u.searchParams.has('categoryIds') && !u.searchParams.has('productPublicIds')
     })
     await pulseSection(page, 'Almacén').getByRole('button', { name: 'Quitar categoría o producto' }).click()
-    await balancesRequest
+    const general = (await (await balancesResponse).json()) as { totalOnHand: number }
     await expect(trigger).toHaveAccessibleName('Categoría o producto')
     await expect(tile(page, 'En mano')).not.toContainText(CATEGORY)
-    await expect(tile(page, 'En mano')).toHaveText(enManoGeneral ?? '')
+    const generalText = Number.isInteger(general.totalOnHand)
+      ? general.totalOnHand.toLocaleString('en-US', { maximumFractionDigits: 0 })
+      : general.totalOnHand.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    await expect(tile(page, 'En mano')).toHaveText(`En mano${generalText}`)
     await expect(tile(page, 'Bajo mínimo').getByRole('link')).toHaveCount(0)
     // sin selección no queda nada guardado: otra recarga sigue en 'Todos'
     await page.reload()

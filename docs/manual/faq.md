@@ -1707,6 +1707,11 @@ La lista muestra solo usuarios internos activos, con membresía activa en la com
 con `inventory.view`, ordenados por nombre. Defina su PIN en Mi cuenta y pida el permiso si le falta. Si tiene PIN pero
 no `inventory.view`, el login por aparato responde 403 `Falta el permiso 'inventory.view'.`.
 
+**En la lista de usuarios del aparato alguien aparece como "Usuario" en vez de su nombre.**
+Esa persona no tiene un nombre completo cargado en su cuenta. La lista nunca muestra el correo (el aparato suele ser
+compartido), así que sin nombre se ve el texto genérico `Usuario`. Pida a un administrador que le complete el nombre
+(`PUT /api/v1/users/{id}`).
+
 **¿Qué significa "No puede asignar ni quitar el PIN de un usuario con más permisos que usted." (403)?**
 Con `devices.manage` (o `admin.users`) puede asignar el PIN de otros, pero solo de usuarios cuyos permisos sean un
 subconjunto de los suyos: con ese PIN se entra como esa persona en un aparato sin contraseña ni MFA. Pida a un
@@ -1732,11 +1737,13 @@ La cabecera `Idempotency-Key` identifica UNA operación: repetirla con el mismo 
 La clave distingue mayúsculas: `abc-1` y `ABC-1` son claves distintas y no chocan entre sí.
 
 **¿Qué significa "La operación con esta clave ya no puede repetirse con los permisos actuales." (409)?**
-La operación original ya se hizo, pero desde entonces cambió un permiso que decidía su respuesta (por ejemplo, ganó
-`warehouse.count` y el conteo guardado se había devuelto a ciegas). El API no repite la respuesta vieja. Consulte el
-registro directamente (por ejemplo `GET /api/v1/cycle-counts/{id}`) en lugar de reenviar la operación; no la reenvíe con
-otra clave, porque se ejecutaría otra vez. Si en cambio se **perdió** un permiso o se apagó un módulo, la repetición
-responde el mismo 403 que una llamada nueva.
+La operación original comprobó, por su cuenta, un módulo o un permiso que no es el que exige la ruta (por ejemplo
+`warehouse.count`, que decide si el conteo se ve a ciegas), y desde entonces cambió: se ganó **o** se perdió, no
+importa el sentido. El API no repite la respuesta vieja (ya no correspondería a los permisos de hoy). Consulte el
+registro directamente (por ejemplo `GET /api/v1/cycle-counts/{id}`) en lugar de reenviar la operación; no la reenvíe
+con otra clave, porque se ejecutaría otra vez. Esto no cambia lo que exige la propia ruta (`[RequirePermission]`,
+`[RequireModule]`, `[RequireAal2]`): esos se revisan en cada petición, repetición o no, y si ya no se cumplen dan su
+403 (o `module_disabled`/`aal2_required`) de siempre, no este 409.
 
 **¿Qué significa "La operación con esta clave todavía se está procesando." (409)?**
 Otra petición con la misma clave sigue en curso. Espere y reintente con la misma clave: recibirá su respuesta.
@@ -1877,6 +1884,15 @@ renovar la sesión.**
 Sin el módulo no se puede entrar por aparato, y tampoco renovar una sesión de aparato ya abierta: el refresh responde
 401 y la sesión queda revocada. Al encender otra vez el módulo, cada usuario vuelve a entrar con su PIN.
 
+**El refresh de una sesión de aparato responde "Refresh token inválido." (401) en vez de "El aparato no está
+registrado o fue desactivado."**
+Son dos comprobaciones distintas. El segundo mensaje es sobre el **aparato** (desactivado, o su compañía sin el
+módulo); el primero es sobre el **usuario**: cada refresh de una sesión de aparato también exige que el usuario siga
+activo, con membresía activa en esta compañía y con `inventory.view` (la misma condición de `device/login`). Si al
+usuario le quitaron el permiso, se desactivó o dejó la compañía, el refresh responde 401 `Refresh token inválido.` y
+revoca la sesión (evento `TOKEN_REVOKED`); el aparato en sí puede seguir activo. Pida que le devuelvan el permiso o
+la membresía y vuelva a entrar con el PIN.
+
 **¿Por qué un intento de login por aparato aparece en la bitácora de seguridad sin usuario?**
 Si el `userId` pedido no es (ni fue) miembro de la compañía del aparato, el evento `LOGIN` / `FAILURE` se registra sin
 usuario (el id pedido va en el detalle como `requestedUserId`) para no revelar el nombre ni el correo de usuarios de
@@ -1894,6 +1910,19 @@ Es lo esperado: un código de registro ausente es un código inválido (401 `El 
 venció.`) y un aparato sin secreto no está autenticado (401 `El aparato no está registrado o fue desactivado.`). Del
 mismo modo, `PUT /api/v1/me/pin` sin `currentPassword` responde 400 `La contraseña actual es incorrecta.` en
 `currentPassword`. Nunca llega el mensaje genérico en inglés ("The … field is required.").
+
+**Dos personas registraron el mismo aparato al mismo tiempo con el mismo código y una recibió 401 en vez de 409.**
+Es lo esperado: el código es de un solo uso, así que cuando dos registros compiten por el mismo código, quien pierde
+la carrera recibe el mismo 401 `El código de registro no es válido o venció.` que un código inválido (nunca un 409
+de conflicto), con el mismo evento de seguridad (`API_CREDENTIAL` / `FAILURE`, `device_enroll`) para no distinguir
+"código ya usado" de "código inválido". Quien ganó queda registrado con éxito. Pida un código nuevo y regístrelo una
+sola vez.
+
+**Reactivé (o volví a registrar) un aparato y un token que tenía de antes ya no sirve, aunque el aparato esté activo.**
+Es lo esperado: al desactivar, reactivar o volver a registrar el aparato se fija un sello (`SessionsNotBeforeUtc`)
+con ese momento. Cualquier access token de sesión de aparato emitido **antes** de ese sello deja de aceptarse
+(comparado al segundo, sin margen), aunque el aparato vuelva a estar activo. Vuelva a entrar en el aparato con el
+PIN para obtener un token nuevo.
 
 **El aparato perdió la señal a mitad de una operación con `Idempotency-Key`. ¿Se duplica al reintentar?**
 No. La operación no se cancela cuando el aparato se desconecta: termina, su respuesta se guarda y el reintento con la

@@ -625,6 +625,13 @@ Lote 8A — aparatos de almacén en la bitácora:
   desactivado o la compañía perdió el módulo WMS queda como `LOGIN` con resultado `FAILURE` y detalle `stage = device`,
   `action` (`login` o `users`) y `reason` (`device_invalid`, `device_inactive` o `tenant_unusable`). Si el aparato
   existe, el evento queda en su compañía; si no, sin compañía (igual que un login con un correo inexistente).
+- Registrar un aparato (`POST /api/v1/devices/enroll`) queda como `API_CREDENTIAL`: `SUCCESS` con `action =
+  device_enrolled` si el código era válido, `FAILURE` con `action = device_enroll` si el código no valía, venció o
+  perdió la carrera contra otro registro simultáneo con el mismo código (mismo evento en los tres casos, sin
+  distinguirlos, para no dar pistas).
+- Desactivar, reactivar o volver a registrar un aparato que tenía sesiones vivas escribe `TOKEN_REVOKED` con el motivo
+  (`device_deactivated`, `device_reactivated` — siempre, aunque no hubiera ninguna sesión viva —, `device_enrolled` o
+  `pin_changed`/`pin_removed` cuando lo que se revoca es por un PIN nuevo).
 - Los flujos anónimos del aparato (registrar, lista de usuarios, login y heartbeat) nunca toman el usuario de un token que
   venga en la petición: la bitácora del aparato (cambio `USER_DEVICE` del registro, `TOKEN_REVOKED`, evento de registro)
   queda sin usuario.
