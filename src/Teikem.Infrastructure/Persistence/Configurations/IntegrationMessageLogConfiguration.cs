@@ -15,7 +15,8 @@ public sealed class IntegrationMessageLogConfiguration : IEntityTypeConfiguratio
         b.ToTable("IntegrationMessageLog");
         b.HasKey(x => x.IntegrationMessageLogId);
         b.Property(x => x.Endpoint).HasMaxLength(200);
-        b.Property(x => x.IdempotencyKey).HasMaxLength(80);
+        // Collation binaria (como el SQL): la clave distingue mayúsculas.
+        b.Property(x => x.IdempotencyKey).HasMaxLength(80).UseCollation("Latin1_General_100_BIN2");
         b.Property(x => x.RequestHash).HasMaxLength(64);
         b.Property(x => x.Method).HasMaxLength(8);
         b.HasIndex(x => new { x.TenantId, x.UserId, x.IdempotencyKey }).IsUnique()

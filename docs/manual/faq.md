@@ -1729,6 +1729,14 @@ reautenticarse no sirve de nada.
 **¿Qué significa "La clave de idempotencia ya se usó con otro contenido." (409)?**
 La cabecera `Idempotency-Key` identifica UNA operación: repetirla con el mismo cuerpo devuelve la respuesta guardada
 (con `Idempotent-Replayed: true`); con otro cuerpo o en otra ruta es un error. Genere una clave nueva por operación.
+La clave distingue mayúsculas: `abc-1` y `ABC-1` son claves distintas y no chocan entre sí.
+
+**¿Qué significa "La operación con esta clave ya no puede repetirse con los permisos actuales." (409)?**
+La operación original ya se hizo, pero desde entonces cambió un permiso que decidía su respuesta (por ejemplo, ganó
+`warehouse.count` y el conteo guardado se había devuelto a ciegas). El API no repite la respuesta vieja. Consulte el
+registro directamente (por ejemplo `GET /api/v1/cycle-counts/{id}`) en lugar de reenviar la operación; no la reenvíe con
+otra clave, porque se ejecutaría otra vez. Si en cambio se **perdió** un permiso o se apagó un módulo, la repetición
+responde el mismo 403 que una llamada nueva.
 
 **¿Qué significa "La operación con esta clave todavía se está procesando." (409)?**
 Otra petición con la misma clave sigue en curso. Espere y reintente con la misma clave: recibirá su respuesta.

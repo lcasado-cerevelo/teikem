@@ -14,7 +14,8 @@ namespace Teikem.Infrastructure.Services;
 /// Capa D: RBAC. Permisos efectivos = permisos de los roles del usuario en el tenant activo ∪ permisos extra del usuario.
 /// Cacheados por usuario+tenant e invalidados al cambiar roles/permisos. El admin de plataforma tiene todos.
 /// </summary>
-public sealed class PermissionService(TeikemDbContext db, ITenantContext tenant, IMemoryCache cache, ILookupCache lookups, ISecurityEventWriter security)
+public sealed class PermissionService(TeikemDbContext db, ITenantContext tenant, IMemoryCache cache, ILookupCache lookups, ISecurityEventWriter security,
+    IdempotencyCheckRecorder? idempotencyChecks = null)
 {
     private static string CacheKey(int userId, int tenantId) => $"perms:{userId}:{tenantId}";
 
@@ -41,6 +42,14 @@ public sealed class PermissionService(TeikemDbContext db, ITenantContext tenant,
     }
 
     public async Task<bool> HasPermissionAsync(string code, CancellationToken ct)
+    {
+        var result = await EvaluateAsync(code, ct);
+        // Lote 8A: la idempotencia vuelve a evaluar esta comprobación antes de repetir la respuesta.
+        idempotencyChecks?.Record(IdempotencyRules.PermissionCheck, code, result);
+        return result;
+    }
+
+    private async Task<bool> EvaluateAsync(string code, CancellationToken ct)
     {
         if (tenant.IsPlatformAdmin) return true;
         if (tenant.UserId is null || tenant.TenantId is null) return false;

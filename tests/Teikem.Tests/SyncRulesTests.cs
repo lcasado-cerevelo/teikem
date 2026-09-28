@@ -345,6 +345,69 @@ public sealed class SyncRulesTests
         Assert.DoesNotContain(byResolution.Items, i => i.PublicId == draft.PublicId || i.PublicId == partial.PublicId);
     }
 
+    /// <summary>
+    /// El aparato solo guarda los datos del almacén elegido: con warehousePublicId, sync/purchase-orders y sync/asns traen
+    /// solo lo de ese almacén, en la carga completa y en la diferencia; un almacén inexistente → 404.
+    /// </summary>
+    [Fact]
+    public async Task Purchase_orders_and_asns_are_filtered_by_warehouse()
+    {
+        await using var f = await SyncFixtureAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var w2 = await f.AddWarehouseAsync("W2");
+        var supplier = new Supplier { TenantId = WmsFixture.TenantId, Name = "Proveedor almacenes" };
+        f.Db.Set<Supplier>().Add(supplier);
+        await SaveClearAsync(f);
+        var yesterday = DateTime.UtcNow.AddDays(-1);
+        PurchaseOrder Po(string number, Warehouse w) => new()
+        {
+            PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = number,
+            OrderDate = DateOnly.FromDateTime(yesterday), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
+            IsActive = true, CreatedAtUtc = yesterday,
+        };
+        Asn NewAsn(string reference, Warehouse w) => new()
+        {
+            TenantId = WmsFixture.TenantId, WarehouseId = w.WarehouseId, Reference = reference,
+            StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Expected), IsActive = true, CreatedAtUtc = yesterday,
+        };
+        var po1 = Po("PO-W1", w1);
+        var po2 = Po("PO-W2", w2);
+        var asn1 = NewAsn("ASN-W1", w1);
+        var asn2 = NewAsn("ASN-W2", w2);
+        f.Db.Set<PurchaseOrder>().AddRange(po1, po2);
+        f.Db.Set<Asn>().AddRange(asn1, asn2);
+        await SaveClearAsync(f);
+        var sync = f.Get<SyncService>();
+
+        // Carga completa.
+        var fullPo = await sync.PurchaseOrdersAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+        Assert.Equal(po1.PublicId, Assert.Single(fullPo.Items).PublicId);
+        Assert.All(fullPo.Items, i => Assert.Equal(w1.PublicId, i.WarehousePublicId));
+        var fullAsn = await sync.AsnsAsync(new SyncQuery(WarehousePublicId: w1.PublicId), default);
+        Assert.Equal(asn1.AsnId, Assert.Single(fullAsn.Items).Id);
+        Assert.All(fullAsn.Items, i => Assert.Equal(w1.PublicId, i.WarehousePublicId));
+
+        // Diferencia: cambian los de los dos almacenes; solo llegan los del almacén pedido.
+        var now = DateTime.UtcNow;
+        Audit(f, EntityTypes.PurchaseOrder, po1.PurchaseOrderId, now);
+        Audit(f, EntityTypes.PurchaseOrder, po2.PurchaseOrderId, now);
+        Audit(f, EntityTypes.Asn, asn1.AsnId, now);
+        Audit(f, EntityTypes.Asn, asn2.AsnId, now);
+        await SaveClearAsync(f);
+        var diffPo = await sync.PurchaseOrdersAsync(new SyncQuery(Since: now.AddMinutes(-5), WarehousePublicId: w1.PublicId), default);
+        Assert.Equal(po1.PublicId, Assert.Single(diffPo.Items).PublicId);
+        Assert.DoesNotContain(diffPo.Items, i => i.PublicId == po2.PublicId);
+        var diffAsn = await sync.AsnsAsync(new SyncQuery(Since: now.AddMinutes(-5), WarehousePublicId: w1.PublicId), default);
+        Assert.Equal(asn1.AsnId, Assert.Single(diffAsn.Items).Id);
+        Assert.DoesNotContain(diffAsn.Items, i => i.Id == asn2.AsnId);
+        // Sin filtro, la diferencia trae los de los dos almacenes (el filtro es el que excluye).
+        Assert.Equal(2, (await sync.PurchaseOrdersAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items.Count);
+        Assert.Equal(2, (await sync.AsnsAsync(new SyncQuery(Since: now.AddMinutes(-5)), default)).Items.Count);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => sync.PurchaseOrdersAsync(new SyncQuery(WarehousePublicId: Guid.NewGuid()), default));
+        await Assert.ThrowsAsync<NotFoundException>(() => sync.AsnsAsync(new SyncQuery(WarehousePublicId: Guid.NewGuid()), default));
+    }
+
     [Fact]
     public async Task Asns_difference_brings_an_asn_whose_line_changed()
     {
@@ -580,6 +643,26 @@ public sealed class SyncRulesTests
         Assert.Equal("No hay un producto con ese código.", ex.Message);
         Assert.Equal(404, ex.StatusCode);
         await Assert.ThrowsAsync<ProductService.BarcodeNotFoundException>(() => products.GetByBarcodeAsync("SKU-OFF", InventoryScope.Any, default));
+    }
+
+    [Fact]
+    public async Task By_barcode_with_the_same_sku_for_several_owners_prefers_own_then_lowest_product_id()
+    {
+        // 3PL: el mismo SKU para varios dueños. El del cliente se crea primero (menor ProductId) y aun así gana el propio;
+        // sin producto propio, entre clientes gana el de menor ProductId (no el de menor ClientId: el de c2 se crea primero).
+        await using var f = await SyncFixtureAsync();
+        var c1 = await f.AddClientAsync("C3PL-1");
+        var c2 = await f.AddClientAsync("C3PL-2");
+        var foreign = await f.AddProductAsync("DUP-SKU", ownerClientId: c1.ClientId);
+        var own = await f.AddProductAsync("DUP-SKU");
+        var first = await f.AddProductAsync("DUP-CLI", ownerClientId: c2.ClientId);
+        await f.AddProductAsync("DUP-CLI", ownerClientId: c1.ClientId);
+        var products = f.Get<ProductService>();
+
+        var hit = (await products.GetByBarcodeAsync("DUP-SKU", InventoryScope.Any, default)).Product.PublicId;
+        Assert.Equal(own.PublicId, hit);
+        Assert.NotEqual(foreign.PublicId, hit);
+        Assert.Equal(first.PublicId, (await products.GetByBarcodeAsync("DUP-CLI", InventoryScope.Any, default)).Product.PublicId);
     }
 
     // ================================================================ conteo a ciegas

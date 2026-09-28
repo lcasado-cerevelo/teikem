@@ -157,7 +157,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     /// <summary>
     /// Lote 8A — producto por código escaneado (aparato de almacén): primero por código de barras exacto y, si no hay, por
     /// SKU exacto; solo productos activos dentro del scope. Un mismo SKU puede existir para varios dueños (propio y clientes
-    /// 3PL): gana el propio y, entre clientes, el de menor id (orden estable). Sin coincidencia → 404 'No hay un producto con
+    /// 3PL): gana el propio y, entre clientes, el de menor ProductId (el dado de alta primero; orden estable). Sin coincidencia → 404 'No hay un producto con
     /// ese código.'.
     /// </summary>
     public async Task<ProductDetailDto> GetByBarcodeAsync(string? code, InventoryScope scope, CancellationToken ct)

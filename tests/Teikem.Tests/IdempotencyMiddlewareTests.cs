@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Teikem.Api.Middleware;
@@ -13,6 +15,7 @@ using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Services;
 using Xunit;
 using HttpJsonOptions = Microsoft.AspNetCore.Http.Json.JsonOptions;
 
@@ -132,13 +135,15 @@ public class IdempotencyMiddlewareTests
     }
 
     /// <summary>Siembra una respuesta ya guardada para (TenantId, UserId, clave) con la huella de método, ruta y cuerpo.</summary>
-    private static async Task SeedStoredAsync(TeikemDbContext db, string key, string method, string path, string body, int status, string responseJson)
+    private static async Task SeedStoredAsync(TeikemDbContext db, string key, string method, string path, string body, int status, string responseJson,
+        string? replayChecksJson = null)
     {
         db.IntegrationMessageLogs.Add(new IntegrationMessageLog
         {
             TenantId = TenantId, UserId = UserId, IdempotencyKey = key, Method = method, Endpoint = path, DirectionLookupId = 77,
             RequestHash = IdempotencyRules.ComputeHash(method, path, Encoding.UTF8.GetBytes(body)),
             ResponseCode = status, ResponseJson = responseJson, CreatedAtUtc = DateTime.UtcNow.AddMinutes(-1),
+            ReplayChecksJson = replayChecksJson,
         });
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
@@ -198,5 +203,209 @@ public class IdempotencyMiddlewareTests
         Assert.Equal("true", http.Response.Headers[IdempotencyRules.ReplayedHeader].ToString());
         http.Response.Body.Position = 0;
         Assert.Equal(stored, new StreamReader(http.Response.Body, Encoding.UTF8).ReadToEnd());
+    }
+
+    /// <summary>La clave lógica es (TenantId, UserId, clave): el mismo usuario con la misma clave y el mismo cuerpo en otra compañía NO recibe la respuesta guardada en la primera.</summary>
+    [Fact]
+    public async Task The_same_user_and_key_in_another_tenant_is_not_replayed()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts";
+        const string body = "{\"lines\":[]}";
+        await SeedStoredAsync(db, "k-x", "POST", path, body, 200, "{\"number\":\"REC-A\"}");
+        tenant.TenantId = 2; // misma persona, otra compañía
+        var called = false;
+        // 401 no se guarda: evita los reintentos de ExecuteUpdate (InMemory no lo soporta).
+        var middleware = new IdempotencyMiddleware(h => { called = true; h.Response.StatusCode = 401; return Task.CompletedTask; }, new CapturingLogger());
+        var http = Request("k-x", "POST", path, body);
+
+        await middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions()));
+
+        Assert.True(called);
+        Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+        http.Response.Body.Position = 0;
+        Assert.DoesNotContain("REC-A", new StreamReader(http.Response.Body).ReadToEnd());
+    }
+
+    private sealed class CapturingSecurityWriter : ISecurityEventWriter
+    {
+        public List<string> Events { get; } = new();
+        public Task WriteAsync(string eventType, string outcome, int? userId = null, int? tenantId = null, object? detail = null, CancellationToken ct = default)
+        {
+            Events.Add(eventType);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>Servicios de la repetición con módulos y permisos efectivos precargados en la caché (sin BD de catálogos).</summary>
+    private static (IServiceProvider Services, CapturingSecurityWriter Security) Services(TenantContext tenant, TeikemDbContext db, TripTestLookups lookups,
+        string[] modules, string[] permissions)
+    {
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        cache.Set($"modules:{TenantId}", new HashSet<string>(modules, StringComparer.OrdinalIgnoreCase));
+        cache.Set($"perms:{UserId}:{TenantId}", new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase));
+        var security = new CapturingSecurityWriter();
+        var services = new ServiceCollection()
+            .AddSingleton<IMemoryCache>(cache)
+            .AddSingleton(tenant).AddSingleton<ITenantContext>(tenant)
+            .AddSingleton(db).AddSingleton<ILookupCache>(lookups).AddSingleton<ISecurityEventWriter>(security)
+            .AddScoped<IdempotencyCheckRecorder>().AddScoped<ModuleService>().AddScoped<PermissionService>()
+            .BuildServiceProvider();
+        return (services, security);
+    }
+
+    private static string Checks(params IdempotencyCheck[] checks) => IdempotencyRules.SerializeChecks(checks)!;
+
+    /// <summary>
+    /// Recibo contra OC repetido después de apagar PURCHASING: la operación original comprobó el módulo en el servicio (true);
+    /// ahora no se cumple → el mismo 403 module_disabled que una llamada nueva, sin repetir el cuerpo guardado.
+    /// </summary>
+    [Fact]
+    public async Task A_service_module_check_that_no_longer_holds_blocks_the_replay_with_module_disabled()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts";
+        const string body = "{\"purchaseOrderPublicId\":\"x\",\"confirm\":true}";
+        await SeedStoredAsync(db, "po-1", "POST", path, body, 200, "{\"number\":\"REC-1\"}",
+            Checks(new IdempotencyCheck(IdempotencyRules.ModuleCheck, ModuleKeys.Purchasing, true),
+                new IdempotencyCheck(IdempotencyRules.PermissionCheck, PermissionCatalog.PurchasingReceive, true)));
+        var (services, _) = Services(tenant, db, lookups, modules: Array.Empty<string>(), permissions: new[] { PermissionCatalog.PurchasingReceive });
+        var called = false;
+        var middleware = new IdempotencyMiddleware(_ => { called = true; return Task.CompletedTask; }, new CapturingLogger());
+        var http = Request("po-1", "POST", path, body);
+        http.RequestServices = services;
+
+        await Assert.ThrowsAsync<ModuleDisabledException>(
+            () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
+
+        Assert.False(called);
+        Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+    }
+
+    /// <summary>Permiso comprobado en el servicio que ya no se tiene → 403 (ForbiddenException) con PERMISSION_DENIED, sin repetir.</summary>
+    [Fact]
+    public async Task A_service_permission_check_that_no_longer_holds_blocks_the_replay_with_forbidden()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts";
+        const string body = "{\"purchaseOrderPublicId\":\"x\"}";
+        await SeedStoredAsync(db, "po-2", "POST", path, body, 200, "{\"number\":\"REC-2\"}",
+            Checks(new IdempotencyCheck(IdempotencyRules.PermissionCheck, PermissionCatalog.PurchasingReceive, true)));
+        var (services, security) = Services(tenant, db, lookups, modules: new[] { ModuleKeys.Purchasing }, permissions: Array.Empty<string>());
+        var middleware = new IdempotencyMiddleware(_ => Task.CompletedTask, new CapturingLogger());
+        var http = Request("po-2", "POST", path, body);
+        http.RequestServices = services;
+
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
+
+        Assert.Contains(SecurityEventTypes.PermissionDenied, security.Events);
+        Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+    }
+
+    /// <summary>
+    /// Conteo a ciegas: la respuesta guardada se calculó con las cantidades visibles (warehouse.count = true). Sin ese permiso
+    /// ahora solo queda la captura: repetir el cuerpo guardado se saltaría el modo a ciegas → 409, sin repetir.
+    /// Y al revés (se guardó a ciegas y ahora ve las cantidades) también 409: la respuesta sería otra.
+    /// </summary>
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_changed_blind_mode_permission_is_not_replayed(bool storedWithCount)
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/cycle-counts";
+        const string body = "{\"warehousePublicId\":\"x\"}";
+        await SeedStoredAsync(db, "cc-1", "POST", path, body, 200, "{\"lines\":[{\"systemQty\":5}]}",
+            Checks(new IdempotencyCheck(IdempotencyRules.PermissionCheck, PermissionCatalog.WarehouseCount, storedWithCount)));
+        var now = storedWithCount ? new[] { PermissionCatalog.WarehouseCountCapture } : new[] { PermissionCatalog.WarehouseCount };
+        var (services, _) = Services(tenant, db, lookups, modules: Array.Empty<string>(), permissions: now);
+        var middleware = new IdempotencyMiddleware(_ => Task.CompletedTask, new CapturingLogger());
+        var http = Request("cc-1", "POST", path, body);
+        http.RequestServices = services;
+
+        var ex = await Assert.ThrowsAnyAsync<TeikemException>(
+            () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
+
+        // Se tenía y ya no: 403 como una llamada nueva; no se tenía y ahora sí: 409.
+        if (storedWithCount) Assert.IsType<ForbiddenException>(ex);
+        else Assert.Equal(IdempotencyRules.RecheckChangedMessage, Assert.IsType<ConflictException>(ex).Message);
+        Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+    }
+
+    /// <summary>Con las mismas comprobaciones cumplidas, la repetición devuelve el cuerpo guardado.</summary>
+    [Fact]
+    public async Task Unchanged_service_checks_are_replayed()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts";
+        const string body = "{\"purchaseOrderPublicId\":\"x\"}";
+        const string stored = "{\"number\":\"REC-3\"}";
+        await SeedStoredAsync(db, "po-3", "POST", path, body, 200, stored,
+            Checks(new IdempotencyCheck(IdempotencyRules.ModuleCheck, ModuleKeys.Purchasing, true),
+                new IdempotencyCheck(IdempotencyRules.PermissionCheck, PermissionCatalog.WarehouseCount, false)));
+        var (services, _) = Services(tenant, db, lookups, modules: new[] { ModuleKeys.Purchasing }, permissions: new[] { PermissionCatalog.WarehouseCountCapture });
+        var middleware = new IdempotencyMiddleware(_ => throw new InvalidOperationException("no debe ejecutarse"), new CapturingLogger());
+        var http = Request("po-3", "POST", path, body);
+        http.RequestServices = services;
+
+        await middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions()));
+
+        Assert.Equal("true", http.Response.Headers[IdempotencyRules.ReplayedHeader].ToString());
+        http.Response.Body.Position = 0;
+        Assert.Equal(stored, new StreamReader(http.Response.Body, Encoding.UTF8).ReadToEnd());
+    }
+
+    /// <summary>Un registro de comprobaciones ilegible no se arriesga: 409, sin repetir.</summary>
+    [Fact]
+    public async Task Unreadable_recorded_checks_are_not_replayed()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        const string path = "/api/v1/receipts";
+        await SeedStoredAsync(db, "po-4", "POST", path, "{}", 200, "{}", "no-es-json");
+        var middleware = new IdempotencyMiddleware(_ => Task.CompletedTask, new CapturingLogger());
+        var http = Request("po-4", "POST", path, "{}");
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(
+            () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
+        Assert.Equal(IdempotencyRules.RecheckChangedMessage, ex.Message);
+    }
+
+    /// <summary>
+    /// La operación con clave anota las comprobaciones que hace el servicio (solo mientras corre la operación) y el registro
+    /// las guarda; fuera de ese intervalo (la autorización, que se repite sola) no se anota nada.
+    /// </summary>
+    [Fact]
+    public async Task The_recorder_only_captures_checks_made_inside_the_operation()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        var (services, _) = Services(tenant, db, lookups, modules: new[] { ModuleKeys.Purchasing }, permissions: new[] { PermissionCatalog.WarehouseCountCapture });
+        using var scope = services.CreateScope();
+        var recorder = scope.ServiceProvider.GetRequiredService<IdempotencyCheckRecorder>();
+        var modules = scope.ServiceProvider.GetRequiredService<ModuleService>();
+        var permissions = scope.ServiceProvider.GetRequiredService<PermissionService>();
+
+        await permissions.HasPermissionAsync(PermissionCatalog.InventoryView, default);   // antes: no se anota
+        recorder.Start();
+        await modules.EnsureEnabledAsync(ModuleKeys.Purchasing, default);
+        await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, default);
+        await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, default);  // repetida: una sola vez
+        var checks = recorder.Stop();
+        await permissions.HasPermissionAsync(PermissionCatalog.OrdersCreate, default);   // después: no se anota
+
+        Assert.Equal(new[]
+        {
+            new IdempotencyCheck(IdempotencyRules.ModuleCheck, ModuleKeys.Purchasing, true),
+            new IdempotencyCheck(IdempotencyRules.PermissionCheck, PermissionCatalog.WarehouseCount, false),
+        }, checks);
+        Assert.Equal(checks, IdempotencyRules.ParseChecks(IdempotencyRules.SerializeChecks(checks)));
+        Assert.Null(IdempotencyRules.SerializeChecks(Array.Empty<IdempotencyCheck>()));
     }
 }

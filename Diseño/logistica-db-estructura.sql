@@ -2574,7 +2574,8 @@ CREATE TABLE dbo.IntegrationMessageLog (
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
     ApiCredentialId INT NULL REFERENCES dbo.ApiCredential(ApiCredentialId),
     DirectionLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='MessageDirection'
-    Endpoint NVARCHAR(200) NULL, IdempotencyKey NVARCHAR(80) NULL,
+    -- Lote 8A: collation binaria para que la clave de idempotencia distinga mayúsculas (también en los índices).
+    Endpoint NVARCHAR(200) NULL, IdempotencyKey NVARCHAR(80) COLLATE Latin1_General_100_BIN2 NULL,
     RequestJson NVARCHAR(MAX) NULL, ResponseCode INT NULL,
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     -- Lote 8A: idempotencia del API (Idempotency-Key). Clave lógica (TenantId, UserId, IdempotencyKey); RequestHash = SHA-256
@@ -2582,7 +2583,9 @@ CREATE TABLE dbo.IntegrationMessageLog (
     UserId       INT NULL REFERENCES dbo.AspNetUsers(Id),
     RequestHash  NVARCHAR(64) NULL,
     ResponseJson NVARCHAR(MAX) NULL,
-    Method       NVARCHAR(8) NULL
+    Method       NVARCHAR(8) NULL,
+    -- Lote 8A: comprobaciones de módulo/permiso hechas en el servicio o el controlador (JSON); se reevalúan antes de repetir.
+    ReplayChecksJson NVARCHAR(MAX) NULL
 );
 CREATE INDEX IX_IntegrationLog_Idem ON dbo.IntegrationMessageLog(TenantId, IdempotencyKey);
 CREATE UNIQUE INDEX UX_IntegrationLog_Idem ON dbo.IntegrationMessageLog(TenantId, UserId, IdempotencyKey) WHERE IdempotencyKey IS NOT NULL;

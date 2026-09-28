@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace Teikem.Domain.Security;
 
@@ -19,6 +20,12 @@ public enum IdempotencyDecision
 }
 
 /// <summary>
+/// Comprobación de módulo (<see cref="IdempotencyRules.ModuleCheck"/>) o de permiso (<see cref="IdempotencyRules.PermissionCheck"/>)
+/// que la operación original hizo en el servicio o en el controlador (fuera de los atributos), con su resultado.
+/// </summary>
+public sealed record IdempotencyCheck(string Kind, string Code, bool Result);
+
+/// <summary>
 /// Lote 8A — reglas puras de la idempotencia del API (cabecera Idempotency-Key, módulo 13 del maestro), sin BD ni HTTP:
 /// - Aplica a POST, PUT, PATCH y DELETE autenticados que traen la cabecera. Clave de 1 a 80 caracteres visibles; vacía, más
 ///   larga, repetida o con caracteres de control → 400 'La clave de idempotencia no es válida.'.
@@ -28,6 +35,11 @@ public enum IdempotencyDecision
 ///   descartar y ejecutar; huella distinta → 409; sin respuesta → 409 en vuelo; con respuesta → repetirla.
 /// - Se guardan las respuestas menores a 500, salvo 401, 403, 408, 423 y 429 (acceso, bloqueo o saturación: reintentar con la
 ///   misma clave debe volver a intentarlo). Los 5xx nunca se guardan.
+/// - La clave distingue mayúsculas ('abc' y 'ABC' son claves distintas; la columna usa collation binaria en SQL Server).
+/// - Antes de repetir se vuelven a evaluar las comprobaciones de módulo y permiso que la operación original hizo en el
+///   servicio o el controlador (guardadas con la respuesta): la que se cumplía y ya no → el mismo 403 que una llamada nueva;
+///   cualquier otro cambio (p. ej. el permiso que decide el conteo a ciegas) → 409
+///   'La operación con esta clave ya no puede repetirse con los permisos actuales.'.
 /// - No aplica a rutas que devuelven credenciales en claro (tokens, secretos, códigos de registro, contraseñas temporales):
 ///   /api/v1/auth, /api/v1/me, /api/v1/devices, /api/v1/platform y /api/v1/users (el alta de usuario devuelve la contraseña
 ///   temporal), además de las invitaciones de portal (/api/v1/clients/{id}/portal-users/invite y
@@ -45,6 +57,12 @@ public static class IdempotencyRules
     public const string InvalidKeyMessage = "La clave de idempotencia no es válida.";
     public const string BodyMismatchMessage = "La clave de idempotencia ya se usó con otro contenido.";
     public const string InFlightMessage = "La operación con esta clave todavía se está procesando.";
+    public const string RecheckChangedMessage = "La operación con esta clave ya no puede repetirse con los permisos actuales.";
+
+    /// <summary>Tipo de comprobación guardada: módulo encendido.</summary>
+    public const string ModuleCheck = "M";
+    /// <summary>Tipo de comprobación guardada: permiso efectivo.</summary>
+    public const string PermissionCheck = "P";
 
     private static readonly string[] Methods = { "POST", "PUT", "PATCH", "DELETE" };
     private static readonly int[] NotStoredBelow500 = { 401, 403, 408, 423, 429 };
@@ -131,4 +149,22 @@ public static class IdempotencyRules
 
     /// <summary>¿Se guarda la respuesta para repetirla? Menores a 500 salvo 401, 403, 408, 423 y 429.</summary>
     public static bool ShouldStore(int statusCode) => statusCode is >= 100 and < 500 && !NotStoredBelow500.Contains(statusCode);
+
+    /// <summary>Serializa las comprobaciones de la operación original (null si no hubo ninguna).</summary>
+    public static string? SerializeChecks(IReadOnlyCollection<IdempotencyCheck>? checks)
+        => checks is null || checks.Count == 0 ? null : JsonSerializer.Serialize(checks);
+
+    /// <summary>Lee las comprobaciones guardadas: vacío si no hay; null si no se pueden leer (quien repite responde 409, no se arriesga).</summary>
+    public static IReadOnlyList<IdempotencyCheck>? ParseChecks(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return Array.Empty<IdempotencyCheck>();
+        try
+        {
+            return JsonSerializer.Deserialize<List<IdempotencyCheck>>(json) ?? new List<IdempotencyCheck>();
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }

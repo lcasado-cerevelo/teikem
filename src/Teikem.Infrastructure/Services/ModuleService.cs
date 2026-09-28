@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Teikem.Domain.Security;
 using Teikem.Domain.Tenancy;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
@@ -12,7 +13,7 @@ namespace Teikem.Infrastructure.Services;
 /// Módulo 0B: catálogo de módulos y encendido por tenant. Ausencia de fila = apagado (default seguro).
 /// Encender exige la dependencia encendida; apagar apaga en cascada los dependientes; los núcleo no se apagan.
 /// </summary>
-public sealed class ModuleService(TeikemDbContext db, ITenantContext tenant, IMemoryCache cache)
+public sealed class ModuleService(TeikemDbContext db, ITenantContext tenant, IMemoryCache cache, IdempotencyCheckRecorder? idempotencyChecks = null)
 {
     private static string CacheKey(int tenantId) => $"modules:{tenantId}";
 
@@ -28,8 +29,10 @@ public sealed class ModuleService(TeikemDbContext db, ITenantContext tenant, IMe
 
     public async Task<bool> IsEnabledAsync(string moduleKey, CancellationToken ct)
     {
-        if (tenant.TenantId is null) return false;
-        return (await GetEnabledKeysAsync(tenant.TenantId.Value, ct)).Contains(moduleKey);
+        var result = tenant.TenantId is not null && (await GetEnabledKeysAsync(tenant.TenantId.Value, ct)).Contains(moduleKey);
+        // Lote 8A: la idempotencia vuelve a evaluar esta comprobación antes de repetir la respuesta.
+        idempotencyChecks?.Record(IdempotencyRules.ModuleCheck, moduleKey, result);
+        return result;
     }
 
     public async Task EnsureEnabledAsync(string moduleKey, CancellationToken ct)

@@ -26,4 +26,9 @@ public class IntegrationMessageLog : ITenantScoped
     public string? RequestHash { get; set; }
     public string? ResponseJson { get; set; }
     public string? Method { get; set; }
+    /// <summary>
+    /// Comprobaciones de módulo y permiso que la operación hizo en el servicio o el controlador (JSON de IdempotencyCheck); se
+    /// vuelven a evaluar antes de repetir la respuesta.
+    /// </summary>
+    public string? ReplayChecksJson { get; set; }
 }

@@ -593,6 +593,30 @@ public class DeviceServiceTests
     }
 
     [Fact]
+    public async Task My_pin_status_returns_the_lock_only_while_it_is_in_force()
+    {
+        // GET /me/pin: lockedUntilUtc mientras el bloqueo sigue vigente; vencido, null (y hasPin sigue en true).
+        await using var f = await FixtureAsync();
+        var until = DateTime.UtcNow.AddMinutes(15);
+        f.Db.Set<UserPin>().Add(new UserPin { TenantId = WmsFixture.TenantId, UserId = 1, PinHash = "hash", FailedCount = 5, LockedUntilUtc = until });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var locked = await f.Get<PinService>().GetMineAsync(default);
+        Assert.True(locked.HasPin);
+        Assert.Equal(until, locked.LockedUntilUtc);
+
+        var pin = f.Db.Set<UserPin>().AsTracking().Single(p => p.UserId == 1);
+        pin.LockedUntilUtc = DateTime.UtcNow.AddMinutes(-1);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var expired = await f.Get<PinService>().GetMineAsync(default);
+        Assert.True(expired.HasPin);
+        Assert.Null(expired.LockedUntilUtc);
+    }
+
+    [Fact]
     public async Task Removing_my_pin_closes_only_my_device_sessions()
     {
         await using var f = await FixtureAsync();

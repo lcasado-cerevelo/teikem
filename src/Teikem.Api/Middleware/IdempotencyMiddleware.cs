@@ -39,7 +39,11 @@ namespace Teikem.Api.Middleware;
 /// </list>
 /// Nunca guarda el cuerpo de la petición (puede traer PIN o contraseñas), solo su huella. Va después de UseAuthorization: las
 /// peticiones rechazadas por autenticación o permiso no dejan registro; antes de repetir se vuelven a aplicar [RequireModule] y
-/// [RequireAal2] del endpoint (son filtros de MVC que la repetición no alcanza).
+/// [RequireAal2] del endpoint (son filtros de MVC que la repetición no alcanza) y las comprobaciones de módulo y permiso que la
+/// operación original hizo en el servicio o el controlador (<see cref="IdempotencyCheckRecorder"/>, guardadas en
+/// ReplayChecksJson): la que se cumplía y ya no → el mismo 403 que una llamada nueva; otro cambio (p. ej. el permiso que decide
+/// el conteo a ciegas) → 409 'La operación con esta clave ya no puede repetirse con los permisos actuales.'.
+/// La clave distingue mayúsculas (collation binaria de la columna).
 /// </summary>
 public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger)
 {
@@ -79,7 +83,7 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         // El filtro global de tenant acota la búsqueda a la compañía del principal.
         var existing = await db.IntegrationMessageLogs.AsNoTracking()
             .Where(l => l.UserId == userId && l.IdempotencyKey == key)
-            .Select(l => new { l.IntegrationMessageLogId, l.RequestHash, l.ResponseCode, l.ResponseJson, l.CreatedAtUtc })
+            .Select(l => new { l.IntegrationMessageLogId, l.RequestHash, l.ResponseCode, l.ResponseJson, l.ReplayChecksJson, l.CreatedAtUtc })
             .FirstOrDefaultAsync(ct);
 
         switch (IdempotencyRules.Decide(existing?.RequestHash, existing?.ResponseCode, existing?.CreatedAtUtc, hash, now))
@@ -88,6 +92,8 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
                 // Los filtros [RequireModule] y [RequireAal2] corren dentro de MVC y la repetición no llega ahí: se vuelven a
                 // aplicar aquí para que un módulo apagado (403) o una ventana AAL2 vencida no se salten con la clave.
                 await EnsureEndpointFiltersAsync(http, ct);
+                // Las comprobaciones que hizo el servicio o el controlador tampoco se alcanzan: se reevalúan aquí.
+                await EnsureRecordedChecksAsync(http, existing!.ReplayChecksJson, ct);
                 await ReplayAsync(http, existing!.ResponseCode!.Value, existing.ResponseJson);
                 return;
             case IdempotencyDecision.BodyMismatch:
@@ -110,6 +116,9 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         var originalBody = http.Response.Body;
         await using var buffer = new MemoryStream();
         http.Response.Body = buffer;
+        var recorder = http.RequestServices?.GetService<IdempotencyCheckRecorder>();
+        recorder?.Start();
+        string? checks = null;
         try
         {
             await next(http);
@@ -117,10 +126,11 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         catch (TeikemException ex) when (!http.Response.HasStarted)
         {
             // Rechazo de negocio: se responde aquí (mismo ProblemDetails que ExceptionHandlingMiddleware) para poder guardarlo.
+            checks = IdempotencyRules.SerializeChecks(recorder?.Stop());
             http.Response.Body = originalBody;
             http.Response.StatusCode = ex.StatusCode;
             var problem = JsonSerializer.Serialize(ExceptionHandlingMiddleware.ProblemBody(ex, tenant.CorrelationId), jsonOptions.Value.SerializerOptions);
-            if (IdempotencyRules.ShouldStore(ex.StatusCode)) await StoreAsync(db, recordId, ex.StatusCode, problem);
+            if (IdempotencyRules.ShouldStore(ex.StatusCode)) await StoreAsync(db, recordId, ex.StatusCode, problem, checks);
             else await DeleteAsync(db, recordId);
             http.Response.ContentType = "application/json; charset=utf-8";
             await http.Response.WriteAsync(problem, Encoding.UTF8, CancellationToken.None);
@@ -129,15 +139,17 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         catch
         {
             // 5xx, cancelación o respuesta ya iniciada: no se guarda; el reintento con la misma clave vuelve a ejecutar.
+            recorder?.Stop();
             http.Response.Body = originalBody;
             await DeleteAsync(db, recordId);
             throw;
         }
 
+        checks = IdempotencyRules.SerializeChecks(recorder?.Stop());
         http.Response.Body = originalBody;
         var status = http.Response.StatusCode;
         var text = Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
-        if (IdempotencyRules.ShouldStore(status) && IsTextual(http.Response.ContentType, buffer.Length)) await StoreAsync(db, recordId, status, text);
+        if (IdempotencyRules.ShouldStore(status) && IsTextual(http.Response.ContentType, buffer.Length)) await StoreAsync(db, recordId, status, text, checks);
         else await DeleteAsync(db, recordId);
 
         buffer.Position = 0;
@@ -190,14 +202,15 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
     /// ya se ejecutó: si el guardado falla se reintenta, porque un registro sin respuesta termina dándose por abandonado
     /// (<see cref="IdempotencyRules.InFlightTimeout"/>) y el reintento del cliente volvería a ejecutar la operación.
     /// </summary>
-    private async Task StoreAsync(TeikemDbContext db, long recordId, int status, string body)
+    private async Task StoreAsync(TeikemDbContext db, long recordId, int status, string body, string? checks)
     {
         for (var attempt = 1; ; attempt++)
         {
             try
             {
                 await db.IntegrationMessageLogs.Where(l => l.IntegrationMessageLogId == recordId)
-                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.ResponseCode, status).SetProperty(l => l.ResponseJson, body), CancellationToken.None);
+                    .ExecuteUpdateAsync(s => s.SetProperty(l => l.ResponseCode, status).SetProperty(l => l.ResponseJson, body)
+                        .SetProperty(l => l.ReplayChecksJson, checks), CancellationToken.None);
                 return;
             }
             catch (Exception ex) when (attempt < StoreAttempts)
@@ -234,6 +247,34 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
             await modules.EnsureEnabledAsync(m.ModuleKey, ct);
         if (meta.GetMetadata<RequireAal2Attribute>() is not null)
             await RequireAal2Attribute.EnsureAsync(http.RequestServices, ct);
+    }
+
+    /// <summary>
+    /// Reevalúa las comprobaciones de módulo y permiso que la operación original hizo en el servicio o el controlador. La que
+    /// se cumplía y ya no → el mismo rechazo que una llamada nueva (403 module_disabled, o 403 con PERMISSION_DENIED); otro
+    /// cambio (la que no se cumplía y ahora sí, p. ej. el modo a ciegas del conteo) o registro ilegible → 409, sin repetir.
+    /// </summary>
+    private static async Task EnsureRecordedChecksAsync(HttpContext http, string? checksJson, CancellationToken ct)
+    {
+        var checks = IdempotencyRules.ParseChecks(checksJson);
+        if (checks is null) throw new ConflictException(IdempotencyRules.RecheckChangedMessage);
+        if (checks.Count == 0) return;
+        var modules = http.RequestServices.GetRequiredService<ModuleService>();
+        var permissions = http.RequestServices.GetRequiredService<PermissionService>();
+        var changed = false;
+        foreach (var check in checks)
+        {
+            var isModule = check.Kind == IdempotencyRules.ModuleCheck;
+            var now = isModule ? await modules.IsEnabledAsync(check.Code, ct) : await permissions.HasPermissionAsync(check.Code, ct);
+            if (now == check.Result) continue;
+            if (check.Result)
+            {
+                if (isModule) throw new ModuleDisabledException(check.Code);
+                await permissions.EnsureAsync(check.Code, ct);
+            }
+            changed = true;
+        }
+        if (changed) throw new ConflictException(IdempotencyRules.RecheckChangedMessage);
     }
 
     private static async Task ReplayAsync(HttpContext http, int status, string? body)

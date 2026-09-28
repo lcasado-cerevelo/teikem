@@ -261,6 +261,15 @@ secretos en claro (decisión 6 ter).
     mismo mensaje (`TOKEN_REVOKED`). Antes solo se revisaba al asignar: subir después los permisos del usuario dejaba a
     quien asignó el PIN entrar como él con más privilegios. A revisar: no se borran los PIN al cambiar roles (el PIN
     queda inservible pero no desaparece; `hasPin` sigue en true hasta que el usuario lo redefina o alguien lo quite).
+29. **La repetición idempotente reevalúa las comprobaciones hechas dentro de la operación.** `IdempotencyCheckRecorder`
+    (scoped) anota, solo mientras corre la operación con clave, cada `ModuleService.IsEnabledAsync` y
+    `PermissionService.HasPermissionAsync` (incluye `EnsureAsync`/`EnsureEnabledAsync` del servicio y el modo a ciegas del
+    controlador de conteos) con su resultado; se guardan en `IntegrationMessageLog.ReplayChecksJson` (columna nueva). Antes
+    de repetir: lo que se cumplía y ya no → el mismo 403 de una llamada nueva; otro cambio o registro ilegible → 409 `La
+    operación con esta clave ya no puede repetirse con los permisos actuales.`. Además `IdempotencyKey` usa
+    `COLLATE Latin1_General_100_BIN2` (la clave distingue mayúsculas también en SQL Server, como en las pruebas InMemory).
+    A revisar: un permiso consultado dentro de la operación que no influye en la respuesta también bloquea la repetición
+    (409) si cambia de false a true.
 
 ## Lo que queda fuera de este lote (a propósito)
 

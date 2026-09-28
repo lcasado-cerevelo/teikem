@@ -39,7 +39,16 @@ Content-Type: application/json
 Si la llamada se repite con la **misma clave y el mismo cuerpo** (mismo método, misma ruta con su query, mismo
 JSON), el API no vuelve a ejecutar la operación: responde el mismo código y cuerpo que la primera vez, con la
 cabecera `Idempotent-Replayed: true`. La clave es **por compañía y por usuario**: dos usuarios pueden usar la
-misma clave sin chocar entre sí.
+misma clave sin chocar entre sí. La clave **distingue mayúsculas**: `abc-1` y `ABC-1` son dos claves distintas.
+
+Antes de repetir una respuesta guardada, el API vuelve a comprobar lo que la operación original comprobó: el
+permiso de la ruta, el módulo (`[RequireModule]`), la ventana de reautenticación cuando la ruta la exige, y además
+los módulos y permisos que se revisan dentro de la operación (por ejemplo `purchasing.receive` y el módulo
+**PURCHASING** al recibir contra una orden de compra, `orders.create` al recolectar y empacar, o `warehouse.count`,
+que decide si el conteo se ve a ciegas). Si algo que se cumplía ya no se cumple, la repetición recibe el mismo 403
+que una llamada nueva; si cambió en el otro sentido (por ejemplo, el usuario ganó `warehouse.count` y la respuesta
+guardada estaba a ciegas), responde 409 `La operación con esta clave ya no puede repetirse con los permisos
+actuales.` y no devuelve la respuesta guardada.
 
 No aplica (la cabecera se ignora, aunque venga) en rutas que devuelven un secreto en claro, para no dejarlo 7
 días en la bitácora de idempotencia: `/api/v1/auth`, `/api/v1/me`, `/api/v1/devices`, `/api/v1/platform`,
@@ -54,6 +63,8 @@ días en la bitácora de idempotencia: `/api/v1/auth`, `/api/v1/me`, `/api/v1/de
 | Misma clave, mismo cuerpo, con respuesta ya guardada | Se repite esa respuesta (mismo código y cuerpo), cabecera `Idempotent-Replayed: true`; no se vuelve a ejecutar |
 | Misma clave, mismo cuerpo, **sin** respuesta todavía (otra petición en curso) | 409 `La operación con esta clave todavía se está procesando.` |
 | Misma clave, **otro** cuerpo o **otra** ruta | 409 `La clave de idempotencia ya se usó con otro contenido.` |
+| Misma clave y mismo cuerpo, pero ya no se tiene un permiso o módulo que la operación comprobó | 403 (el mismo de una llamada nueva: `module_disabled` o falta de permiso) |
+| Misma clave y mismo cuerpo, y cambió otro permiso que decidió la respuesta (p. ej. el conteo a ciegas) | 409 `La operación con esta clave ya no puede repetirse con los permisos actuales.` |
 | El registro tiene más de 7 días, o quedó "en curso" más de 10 minutos sin respuesta (proceso caído) | Se descarta y se ejecuta como si fuera nueva |
 
 Qué se guarda para repetir: solo respuestas con código menor a 500, salvo 401, 403, 408, 423 y 429 (esos son
@@ -68,6 +79,7 @@ guarda (podría traer un PIN o una contraseña), solo su huella.
 | Cabecera vacía, repetida, con más de 80 caracteres o con caracteres de control | `La clave de idempotencia no es válida.` | 400 |
 | Misma clave con otro cuerpo o ruta | `La clave de idempotencia ya se usó con otro contenido.` | 409 |
 | Misma clave sin respuesta todavía | `La operación con esta clave todavía se está procesando.` | 409 |
+| Misma clave y cuerpo, con un permiso que decidió la respuesta cambiado desde la primera vez | `La operación con esta clave ya no puede repetirse con los permisos actuales.` | 409 |
 
 ### Preguntas frecuentes
 
@@ -311,6 +323,9 @@ entre productos activos. Pensado para el escáner del aparato.
 Quién puede: `inventory.view`. Módulo **WMS_LOTSERIAL**.
 
 Cómo se usa: `GET /api/v1/products/by-barcode/{código}` → misma ficha que `GET /api/v1/products/{publicId}`.
+
+Desempate (3PL: el mismo código o SKU para varios dueños): gana el producto propio de la compañía; si no hay propio,
+entre los de clientes gana el que se dio de alta primero (menor id de producto), no el del cliente con menor id.
 
 ### Validaciones
 

@@ -69,6 +69,7 @@ public static class DependencyInjection
         services.AddScoped<StatusService>();
         services.AddScoped<ContactPointService>();
         services.AddScoped<PermissionService>();
+        services.AddScoped<IdempotencyCheckRecorder>();   // Lote 8A: comprobaciones a repetir en la idempotencia
         services.AddScoped<AuditQueryService>();
         services.AddScoped<CustomFieldService>();
         services.AddScoped<AnalyticsService>();
