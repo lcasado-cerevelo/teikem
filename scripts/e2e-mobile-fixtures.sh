@@ -36,8 +36,8 @@ TOKEN=$(echo "$LOGIN" | jq -r .tokens.accessToken)
 ok "admin autenticado"
 
 step "crear PIN para admin"
-expect 200 "$(req PUT /api/v1/me/pin "{\"currentPassword\":\"$PASS\",\"pin\":\"1234\"}" "$TOKEN")" >/dev/null
-ok "PIN 1234 establecido"
+expect 200 "$(req PUT /api/v1/me/pin "{\"currentPassword\":\"$PASS\",\"pin\":\"2846\"}" "$TOKEN")" >/dev/null
+ok "PIN 2846 establecido"
 
 step "obtener almacén demo ALM-01"
 WAREHOUSES=$(expect 200 "$(req GET /api/v1/warehouses "" "$TOKEN")")

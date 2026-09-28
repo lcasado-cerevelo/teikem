@@ -23,10 +23,10 @@ appId: com.teikem.almacen
 - tapOn: "Administrador Advance"
 
 - assertVisible: "PIN"
-- tapOn: "1"
 - tapOn: "2"
-- tapOn: "3"
+- tapOn: "8"
 - tapOn: "4"
+- tapOn: "6"
 - tapOn: "Entrar"
 
 - assertVisible: "Teikem Almacén"
