@@ -3827,7 +3827,17 @@ DR9=$(expect 200 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_DEV
 DT=$(echo "$DR9" | jq -r .accessToken); DRT_DEV=$(echo "$DR9" | jq -r .refreshToken)
 expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null
 # Aparato desactivado: deja de entrar y de sincronizar en el acto (el access token vivo también se rechaza).
+# Que la baja revoca la sesión del aparato se comprueba aquí, sin gastar DRT_DEV (un refresh lo rotaría) y antes de que el
+# paso de sesiones reutilice el refresh web: TOKEN_REVOKED device_deactivated nuevo del usuario con count ≥ 1 y, con
+# SMOKE_SQL, la fila de DRT_DEV viva antes de desactivar y revocada después.
+devrevoked8() { expect 200 "$(req GET "/api/v1/audit/security-events?eventType=TOKEN_REVOKED&userId=$ME8&take=1000")" | jq --arg r "$1" --argjson min "$2" '[.items[] | select((.detailJson // "") | (fromjson? // {}) | (.reason==$r and .count >= $min))] | length'; }
+DRT_DEV_H=$(printf '%s' "$DRT_DEV" | sha256sum | cut -d' ' -f1)
+drtrevoked8() { $SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.RefreshToken WHERE TokenHash='$DRT_DEV_H' AND RevokedAtUtc IS NOT NULL;" | tr -d '[:space:]'; }
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 0 ]] || fail "la sesión del aparato DRT_DEV ya estaba revocada antes de desactivarlo"
+DOFF8=$(devrevoked8 device_deactivated 1)
 ok2xx "$(req POST "/api/v1/devices/$DEVP/deactivate" '{}')" "desactivar el aparato"
+[[ $(devrevoked8 device_deactivated 1) == $((DOFF8 + 1)) ]] || fail "desactivar el aparato no dejó TOKEN_REVOKED con reason device_deactivated y count ≥ 1 (no cerró su sesión)"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 1 ]] || fail "desactivar el aparato no revocó el refresh token de su sesión (DRT_DEV)"
 expect 200 "$(req GET '/api/v1/audit/changes?entityType=USER_DEVICE&take=50')" | jq -e '.total >= 1 and ([.items[] | select((.changesJson // "") | ascii_downcase | (contains("secrethash") or contains("enrollcodehash") or contains("rowversion")))] | length)==0' >/dev/null || fail "AuditLog de USER_DEVICE (alta/PATCH/baja) sin SecretHash ni EnrollCodeHash"
 expect 401 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null || fail "el access token de un aparato desactivado sigue sincronizando"
 expect 401 "$(DLOGIN 4826)" | jq -e --arg m "El aparato no está registrado o fue desactivado." "$HASM" >/dev/null || fail "aparato desactivado → device/login 401"
@@ -3856,13 +3866,16 @@ step "sesiones de aparato revocadas (Lote 8A)"
 # Que DRT_PIN quedó revocado por quitar el PIN ya se comprobó sin gastarlo (TOKEN_REVOKED pin_removed y, con SMOKE_SQL, la fila).
 expect 401 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_PIN\"}")" >/dev/null || fail "quitar el PIN no cerró la sesión del aparato"
 expect 401 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_DEV\"}")" >/dev/null || fail "el refresh del aparato desactivado sigue vivo"
-# Reactivar: el aparato vuelve a entrar con PIN, pero las sesiones revocadas no reviven.
+# Reactivar: el aparato vuelve a entrar con PIN, pero las sesiones revocadas no reviven (la reactivación revoca en su
+# transacción las que quedaran vivas y deja TOKEN_REVOKED device_reactivated, aunque sean 0).
 TOKEN=$(login "$EMAIL" "$PASS")
+DON8=$(devrevoked8 device_reactivated 0)
 expect 200 "$(req POST "/api/v1/devices/$DEVP/reactivate" '{}')" | jq -e '.isActive==true' >/dev/null || fail "reactivar el aparato"
+[[ $(devrevoked8 device_reactivated 0) == $((DON8 + 1)) ]] || fail "reactivar el aparato no dejó TOKEN_REVOKED con reason device_reactivated"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 1 ]] || fail "reactivar revivió la sesión revocada del aparato (DRT_DEV)"
 DL10=$(expect 200 "$(DLOGIN 4826)") || fail "tras reactivar, device/login con PIN"
 # El access token nuevo sirve enseguida (ReactivateAsync limpia la caché 'did' de 60 s que dejó el sync rechazado).
 expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$(echo "$DL10" | jq -r .accessToken)")" >/dev/null || fail "tras reactivar, el access token nuevo del aparato sigue rechazado (caché did sin limpiar)"
-expect 401 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_DEV\"}")" >/dev/null || fail "reactivar revivió una sesión revocada"
-ok "refresh de las sesiones de aparato tras quitar el PIN y tras desactivar el aparato → 401; reactivar deja entrar con PIN (y el token nuevo sincroniza al momento) sin revivir sesiones"
+ok "desactivar revoca la sesión del aparato antes de cualquier refresh (TOKEN_REVOKED device_deactivated; con SMOKE_SQL, la fila de DRT_DEV); refresh de las sesiones de aparato tras quitar el PIN y tras desactivar el aparato → 401; reactivar deja entrar con PIN (y el token nuevo sincroniza al momento) sin revivir sesiones (TOKEN_REVOKED device_reactivated; con SMOKE_SQL, DRT_DEV sigue revocado)"
 
 printf '\n\033[1;32mSMOKE OK\033[0m\n'

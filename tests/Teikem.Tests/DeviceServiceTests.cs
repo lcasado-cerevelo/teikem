@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -73,6 +74,41 @@ public class DeviceServiceTests
         var enrolled = await f.Get<DeviceService>().EnrollAsync(new DeviceEnrollRequest(created.EnrollCode, "TC52", "1.0.0"), default);
         f.Db.ChangeTracker.Clear();
         return (created, enrolled);
+    }
+
+    /// <summary>SecurityEvent escritos por el servicio (tipo, resultado, compañía y detalle serializado).</summary>
+    private sealed class RecordingSecurityEventWriter : ISecurityEventWriter
+    {
+        public List<(string EventType, string Outcome, int? TenantId, string Detail)> Events { get; } = new();
+
+        public Task WriteAsync(string eventType, string outcome, int? userId = null, int? tenantId = null, object? detail = null, CancellationToken ct = default)
+        {
+            Events.Add((eventType, outcome, tenantId, detail is null ? "" : JsonSerializer.Serialize(detail)));
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// Caché que ejecuta una acción (una sola vez) cuando se consultan los módulos de una compañía: el enroll lo hace entre la
+    /// búsqueda del código y su transacción, así se simula otro enroll que gana la carrera en ese intervalo.
+    /// </summary>
+    private sealed class HookedCache(IMemoryCache inner) : IMemoryCache
+    {
+        public Action? OnModulesLookup { get; set; }
+
+        public bool TryGetValue(object key, out object? value)
+        {
+            if (key is string k && k.StartsWith("modules:", StringComparison.Ordinal) && OnModulesLookup is { } hook)
+            {
+                OnModulesLookup = null;
+                hook();
+            }
+            return inner.TryGetValue(key, out value);
+        }
+
+        public ICacheEntry CreateEntry(object key) => inner.CreateEntry(key);
+        public void Remove(object key) => inner.Remove(key);
+        public void Dispose() { }
     }
 
     private static RefreshToken Token(int userId, int? deviceId, int tenantId = WmsFixture.TenantId) => new()
@@ -310,6 +346,42 @@ public class DeviceServiceTests
         Assert.Equal(DeviceService.InvalidEnrollCodeMessage, ex.Message);
     }
 
+    [Fact]
+    public async Task Enroll_is_401_with_a_failure_event_when_another_enroll_consumed_the_code_first()
+    {
+        HookedCache? hooked = null;
+        var events = new RecordingSecurityEventWriter();
+        await using var f = await FixtureAsync(s =>
+        {
+            var inner = (IMemoryCache)s.Last(d => d.ServiceType == typeof(IMemoryCache)).ImplementationInstance!;
+            hooked = new HookedCache(inner);
+            s.AddSingleton<IMemoryCache>(hooked);
+            s.AddSingleton<ISecurityEventWriter>(events);
+        });
+        var created = await f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest("ZB-01", null, null, null, null), default);
+        f.Db.ChangeTracker.Clear();
+        var otherSecret = DeviceService.Hash("secreto-del-otro-enroll");
+        // Entre la búsqueda del código y la transacción, otro enroll con el mismo código ya guardó su secreto y lo quemó.
+        hooked!.OnModulesLookup = () =>
+        {
+            var row = f.Db.Set<UserDevice>().Local.Single(d => d.PublicId == created.Device.PublicId);
+            row.SecretHash = otherSecret;
+            row.EnrollCodeHash = null;
+            row.EnrollCodeExpiresUtc = null;
+            row.EnrolledAtUtc = DateTime.UtcNow;
+            f.Db.SaveChangesAsync().GetAwaiter().GetResult();
+        };
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() => f.Get<DeviceService>().EnrollAsync(new DeviceEnrollRequest(created.EnrollCode, "TC52", "1.0.0"), default));
+
+        Assert.Null(hooked.OnModulesLookup);
+        Assert.Equal(DeviceService.InvalidEnrollCodeMessage, ex.Message);
+        Assert.Equal(401, ex.StatusCode);
+        Assert.Equal(otherSecret, Row(f, created.Device.PublicId).SecretHash);
+        var failure = Assert.Single(events.Events);
+        Assert.Equal((SecurityEventTypes.ApiCredential, SecurityOutcomes.Failure, (int?)WmsFixture.TenantId, "{\"action\":\"device_enroll\"}"), failure);
+    }
+
     // ================================================================ desactivar / reactivar / código nuevo
 
     [Fact]
@@ -350,6 +422,44 @@ public class DeviceServiceTests
         Assert.Equal(DeviceService.Hash(fresh.EnrollCode), Row(f, a.Device.PublicId).EnrollCodeHash);
         f.Db.ChangeTracker.Clear();
         await Assert.ThrowsAsync<UnauthorizedException>(() => devices.EnrollAsync(new DeviceEnrollRequest(a.EnrollCode, null, null), default));
+    }
+
+    [Fact]
+    public async Task Reactivating_revokes_any_session_of_the_device_left_alive_and_records_device_reactivated()
+    {
+        var events = new RecordingSecurityEventWriter();
+        await using var f = await FixtureAsync(s => s.AddSingleton<ISecurityEventWriter>(events));
+        var devices = f.Get<DeviceService>();
+        var a = await devices.CreateAsync(new DeviceCreateRequest("ZB-01", null, null, null, null), default);
+        var b = await devices.CreateAsync(new DeviceCreateRequest("ZB-02", null, null, null, null), default);
+        f.Db.ChangeTracker.Clear();
+        var aId = Row(f, a.Device.PublicId).UserDeviceId;
+        var bId = Row(f, b.Device.PublicId).UserDeviceId;
+        await devices.DeactivateAsync(a.Device.PublicId, default);
+        f.Db.ChangeTracker.Clear();
+        // Sesión emitida al aparato durante la baja (un refresh que corría en paralelo) y sesiones ajenas al aparato.
+        var late = Token(1, aId);
+        f.Db.RefreshTokens.AddRange(late, Token(1, bId), Token(1, null));
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        events.Events.Clear();
+
+        var on = await devices.ReactivateAsync(a.Device.PublicId, default);
+
+        Assert.True(on.IsActive);
+        var tokens = f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().ToList();
+        Assert.NotNull(tokens.Single(t => t.TokenHash == late.TokenHash).RevokedAtUtc);
+        Assert.Null(tokens.Single(t => t.UserDeviceId == bId).RevokedAtUtc);
+        Assert.Null(tokens.Single(t => t.UserDeviceId == null).RevokedAtUtc);
+        var revoked = Assert.Single(events.Events);
+        Assert.Equal(SecurityEventTypes.TokenRevoked, revoked.EventType);
+        Assert.Contains("\"reason\":\"device_reactivated\"", revoked.Detail);
+        Assert.Contains("\"count\":1", revoked.Detail);
+
+        // Reactivar un aparato ya activo no hace nada (ni revoca ni escribe).
+        f.Db.ChangeTracker.Clear();
+        await devices.ReactivateAsync(a.Device.PublicId, default);
+        Assert.Single(events.Events);
     }
 
     // ================================================================ usuarios del aparato

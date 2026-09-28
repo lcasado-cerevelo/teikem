@@ -24,7 +24,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Aparato + secreto autentican la lista de usuarios, el login con PIN (AuthService) y el heartbeat.
 /// - Desactivar revoca todas las sesiones (refresh tokens) emitidas a ese aparato y corta en el acto sus access tokens
 ///   (OnTokenValidated revisa el claim `did` contra UserDevice.IsActive con caché de 60 s que aquí se borra). Reactivar
-///   no revive sesiones: cada usuario vuelve a entrar con su PIN.
+///   no revive sesiones: en su misma transacción revoca las que quedaran vivas (TOKEN_REVOKED device_reactivated) y cada
+///   usuario vuelve a entrar con su PIN.
 /// - Todo cambio del aparato queda en AuditLog (USER_DEVICE); LastSeenUtc/LastUserId/AppVersion son técnicos, no se auditan
 ///   y viven en UserDeviceActivity (sin RowVersion) para que el heartbeat y el login no invaliden la rowVersion del PATCH.
 /// </summary>
@@ -138,14 +139,26 @@ public sealed class DeviceService(
         return await GetAsync(publicId, ct);
     }
 
-    /// <summary>Reactiva el aparato (conserva su secreto; las sesiones revocadas no reviven).</summary>
+    /// <summary>
+    /// Reactiva el aparato (conserva su secreto). En la misma transacción revoca toda sesión del aparato que siguiera viva
+    /// (p. ej. la emitida por un refresh que corría durante la baja): nada anterior a la reactivación revive; cada usuario
+    /// vuelve a entrar con su PIN. Deja TOKEN_REVOKED con motivo device_reactivated (aunque no hubiera ninguna sesión).
+    /// </summary>
     public async Task<DeviceDto> ReactivateAsync(Guid publicId, CancellationToken ct)
     {
-        var device = await ResolveAsync(publicId, track: true, ct);
-        if (device.IsActive) return await GetAsync(publicId, ct);
-        device.IsActive = true;
-        await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
-        cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
+        var (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var d = await ResolveAsync(publicId, track: true, ct2);
+            if (d.IsActive) return (d, (int?)null);
+            d.IsActive = true;
+            await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
+            return (d, (int?)await RevokeDeviceSessionsAsync(d, ct2));
+        }, ct);
+        if (revoked is int count)
+        {
+            cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
+            await WriteSessionsRevokedAsync(device, "device_reactivated", count, ct, always: true);
+        }
         return await GetAsync(publicId, ct);
     }
 
@@ -188,31 +201,45 @@ public sealed class DeviceService(
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var secret = NewSecret();
         var deviceId = device.UserDeviceId;
-        var codeHash = device.EnrollCodeHash;
+        var deviceTenantId = device.TenantId;
+        var codeHash = Hash(normalized!);
         // Secreto nuevo, código consumido, datos técnicos y cierre de sesiones previas en una sola transacción.
-        // RunInTransactionAsync limpia el rastreador: el aparato se vuelve a leer dentro (con el mismo código aún vigente).
+        // RunInTransactionAsync limpia el rastreador: el aparato se vuelve a leer dentro, con bloqueo de fila (UPDLOCK), y
+        // se exige el mismo código aún vigente. Dos enroll simultáneos con el mismo código: el segundo espera al primero y
+        // al releer ya no encuentra el código → el mismo 401 que un código inválido (sin oráculo), nunca un 409.
         int revoked;
-        (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
+        try
         {
-            var now = DateTime.UtcNow;
-            var d = await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking()
-                .FirstOrDefaultAsync(x => x.UserDeviceId == deviceId && x.EnrollCodeHash == codeHash && x.EnrollCodeExpiresUtc > now && x.IsActive, ct2)
-                ?? throw new UnauthorizedException(InvalidEnrollCodeMessage);
-            d.SecretHash = Hash(secret);
-            d.EnrollCodeHash = null;
-            d.EnrollCodeExpiresUtc = null;
-            d.EnrolledAtUtc = now;
-            if (Clip(req.Model, ModelMaxLength) is string model) d.Model = model;
-            // Datos técnicos en UserDeviceActivity (misma transacción): último contacto y versión de la app.
-            var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
-                .FirstOrDefaultAsync(a => a.UserDeviceId == d.UserDeviceId, ct2);
-            if (activity is null)
-                db.Set<UserDeviceActivity>().Add(activity = new UserDeviceActivity { UserDeviceId = d.UserDeviceId, TenantId = d.TenantId });
-            activity.LastSeenUtc = now;
-            if (Clip(req.AppVersion, AppVersionMaxLength) is string version) activity.AppVersion = version;
-            await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
-            return (d, await RevokeDeviceSessionsAsync(d, ct2));
-        }, ct);
+            (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
+            {
+                var now = DateTime.UtcNow;
+                var d = await LockDeviceAsync(deviceId, ct2);
+                if (d is null || d.EnrollCodeHash != codeHash || !(d.EnrollCodeExpiresUtc > now) || !d.IsActive)
+                    throw new UnauthorizedException(InvalidEnrollCodeMessage);
+                d.SecretHash = Hash(secret);
+                d.EnrollCodeHash = null;
+                d.EnrollCodeExpiresUtc = null;
+                d.EnrolledAtUtc = now;
+                if (Clip(req.Model, ModelMaxLength) is string model) d.Model = model;
+                // Datos técnicos en UserDeviceActivity (misma transacción): último contacto y versión de la app.
+                var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
+                    .FirstOrDefaultAsync(a => a.UserDeviceId == d.UserDeviceId, ct2);
+                if (activity is null)
+                    db.Set<UserDeviceActivity>().Add(activity = new UserDeviceActivity { UserDeviceId = d.UserDeviceId, TenantId = d.TenantId });
+                activity.LastSeenUtc = now;
+                if (Clip(req.AppVersion, AppVersionMaxLength) is string version) activity.AppVersion = version;
+                await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
+                return (d, await RevokeDeviceSessionsAsync(d, ct2));
+            }, ct);
+        }
+        catch (Exception ex) when (ex is UnauthorizedException or ConflictException)
+        {
+            // Código consumido por otro enroll (relectura) o, como respaldo, el choque de concurrencia del guardado:
+            // mismo 401 y mismo SecurityEvent que el camino de código inválido, fuera de la transacción ya revertida.
+            db.ChangeTracker.Clear();
+            await WriteAnonymousFailureAsync(SecurityEventTypes.ApiCredential, deviceTenantId, new { action = "device_enroll" }, ct);
+            throw new UnauthorizedException(InvalidEnrollCodeMessage);
+        }
         await WriteSessionsRevokedAsync(device, "device_enrolled", revoked, ct);
         await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Success, null, device.TenantId, new { action = "device_enrolled", device = device.Code }, ct);
 
@@ -360,6 +387,19 @@ public sealed class DeviceService(
         return await q.FirstOrDefaultAsync(d => d.PublicId == publicId, ct) ?? throw new NotFoundException("Aparato");
     }
 
+    /// <summary>
+    /// Aparato por Id con bloqueo de fila (UPDLOCK, ROWLOCK) hasta el fin de la transacción del llamador, rastreado y sin
+    /// filtro de tenant; null si no existe. Con InMemory (pruebas) es una lectura normal.
+    /// </summary>
+    private async Task<UserDevice?> LockDeviceAsync(int userDeviceId, CancellationToken ct)
+    {
+        if (!db.Database.IsRelational())
+            return await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(d => d.UserDeviceId == userDeviceId, ct);
+        return await db.Set<UserDevice>()
+            .FromSqlInterpolated($"SELECT * FROM dbo.UserDevice WITH (UPDLOCK, ROWLOCK) WHERE UserDeviceId = {userDeviceId}")
+            .IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(ct);
+    }
+
     private async Task<UserDevice?> FindBySecretAsync(Guid publicId, string? secret, bool track, CancellationToken ct)
     {
         if (publicId == Guid.Empty || string.IsNullOrWhiteSpace(secret)) return null;
@@ -409,10 +449,13 @@ public sealed class DeviceService(
         return tokens.Count;
     }
 
-    /// <summary>TOKEN_REVOKED de las sesiones del aparato, después de confirmar la transacción (nada si no había ninguna).</summary>
-    private async Task WriteSessionsRevokedAsync(UserDevice device, string reason, int count, CancellationToken ct)
+    /// <summary>
+    /// TOKEN_REVOKED de las sesiones del aparato, después de confirmar la transacción (nada si no había ninguna, salvo con
+    /// always: la reactivación deja constancia de que cerró las sesiones aunque el conteo sea 0).
+    /// </summary>
+    private async Task WriteSessionsRevokedAsync(UserDevice device, string reason, int count, CancellationToken ct, bool always = false)
     {
-        if (count == 0) return;
+        if (count == 0 && !always) return;
         await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Success, tenant.UserId, device.TenantId,
             new { scope = "device", device = device.Code, reason, count }, ct);
     }
