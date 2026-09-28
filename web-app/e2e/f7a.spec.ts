@@ -291,6 +291,8 @@ test.describe('Lote F7A — escritorio', () => {
 
   test('3. al recargar se conserva la selección; ✕ vuelve a los totales generales', async ({ page }) => {
     await login(page, ADMIN)
+    // 'En mano' antes de elegir la categoría: tras quitarla debe volver a este mismo valor (totales generales)
+    const enManoGeneral = await tile(page, 'En mano').textContent()
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY))
     await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
     await page.reload()
@@ -298,9 +300,15 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(trigger).toHaveAccessibleName(new RegExp(`^Categoría o producto: Categoría .*${CATEGORY}$`))
     await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
 
+    const balancesRequest = page.waitForRequest((r) => {
+      const u = new URL(r.url())
+      return u.pathname === '/api/v1/inventory/balances' && !u.searchParams.has('categoryIds') && !u.searchParams.has('productPublicIds')
+    })
     await pulseSection(page, 'Almacén').getByRole('button', { name: 'Quitar categoría o producto' }).click()
+    await balancesRequest
     await expect(trigger).toHaveAccessibleName('Categoría o producto')
     await expect(tile(page, 'En mano')).not.toContainText(CATEGORY)
+    await expect(tile(page, 'En mano')).toHaveText(enManoGeneral ?? '')
     await expect(tile(page, 'Bajo mínimo').getByRole('link')).toHaveCount(0)
     // sin selección no queda nada guardado: otra recarga sigue en 'Todos'
     await page.reload()
@@ -386,13 +394,16 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(pulseSection(page, 'Actividad reciente')).toBeVisible()
   })
 
-  test('6. despacho@ (sin inventory.view): Pulso sin panel Almacén y sin pestaña Almacén en Actividad reciente', async ({ page }) => {
+  test('6. despacho@ (sin inventory.view): Pulso sin panel Almacén y sin panel Actividad reciente', async ({ page }) => {
+    const activityResponse = page.waitForResponse((r) => new URL(r.url()).pathname === '/api/v1/analytics/activity')
     await login(page, DISPATCH)
     await page.waitForLoadState('networkidle')
     await expect(page.getByRole('heading', { level: 2, name: 'Almacén', exact: true })).toHaveCount(0)
     await expect(page.getByRole('group', { name: 'Filtros del panel Almacén' })).toHaveCount(0)
-    // el panel de actividad puede no pintarse (sin módulos visibles); si se pinta, no trae la pestaña Almacén
-    await expect(page.getByRole('tablist', { name: 'Módulos de la actividad' }).getByRole('tab', { name: 'Almacén' })).toHaveCount(0)
+    // el servidor no devuelve ningún módulo visible: el panel de Actividad reciente no se pinta
+    const activityBody = (await (await activityResponse).json()) as { visibleModules?: string[] | null }
+    expect(activityBody.visibleModules ?? []).toEqual([])
+    await expect(pulseSection(page, 'Actividad reciente')).toHaveCount(0)
     await shot(page, 'pulso-sin-almacen')
   })
 })

@@ -48,10 +48,25 @@ export function categoryTree<C extends CategoryNode>(categories: readonly C[]): 
   return out
 }
 
-/** Filas del árbol que coinciden con el texto (nombre o ruta, sin mayúsculas ni acentos); texto vacío = todas. */
+/**
+ * Filas del árbol que coinciden con el texto (nombre o ruta, sin mayúsculas ni acentos); texto vacío = todas. Se agregan
+ * los ancestros de cada coincidencia (aunque no coincidan ellos) para que ninguna fila quede huérfana, en el mismo orden
+ * de recorrido del árbol (p. ej. buscar "Analgésicos" también muestra "Farmacia" arriba, como en la maqueta).
+ */
 export function filterCategoryTree<C extends CategoryNode>(rows: readonly CategoryTreeRow<C>[], q: string): CategoryTreeRow<C>[] {
   if (!q.trim()) return [...rows]
-  return rows.filter((r) => matchesQ(q, r.category.name, r.category.path))
+  const byId = new Map(rows.map((r) => [r.category.id, r.category]))
+  const keep = new Set<number | undefined>()
+  for (const r of rows) {
+    if (!matchesQ(q, r.category.name, r.category.path)) continue
+    keep.add(r.category.id)
+    let parentId = r.category.parentId
+    while (parentId != null && byId.has(parentId)) {
+      keep.add(parentId)
+      parentId = byId.get(parentId)?.parentId
+    }
+  }
+  return rows.filter((r) => keep.has(r.category.id))
 }
 
 /** Etiqueta de una categoría: su ruta completa si el API la trae ("Farmacia › Analgésicos"), si no el nombre. */

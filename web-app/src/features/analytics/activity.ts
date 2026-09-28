@@ -94,8 +94,12 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
       return byPublicId('/warehouse/purchase-orders', 'purchasing.view', ModuleKeys.Purchasing)
     case 'WAREHOUSE_TASK':
       return { to: '/warehouse/tasks', perm: 'inventory.view', module: wms }
-    case 'PRODUCT':
+    case 'PRODUCT': {
+      const code = (e.code ?? '').toUpperCase()
+      if ((code === 'INVENTORY_ADJUSTED' || code === 'INVENTORY_TRANSFERRED' || code === 'BIN_MOVED') && e.publicId)
+        return { to: `/warehouse/inventory?tab=kardex&product=${encodeURIComponent(e.publicId)}`, perm: 'inventory.view', module: wms }
       return byPublicId('/warehouse/products')
+    }
     case 'WAREHOUSE':
       return byPublicId('/warehouse/warehouses')
     case 'CROSSDOCK_PLAN':

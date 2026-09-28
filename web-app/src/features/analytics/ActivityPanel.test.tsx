@@ -97,6 +97,16 @@ describe('activity (lógica pura)', () => {
     expect(to('ASN')).toBeUndefined()
     expect(to('INVENTORY_TRANSACTION', { reference: 'AJ 4471' })).toBeUndefined()
     expect(to('RECEIPT', { publicId: null })).toBeUndefined()
+    // PRODUCT con ajuste/transferencia/movimiento de bin va al Kárdex filtrado por producto; los demás códigos a la ficha
+    expect(to('PRODUCT', { code: 'INVENTORY_ADJUSTED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'INVENTORY_TRANSFERRED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'BIN_MOVED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'PRODUCT_DEACTIVATED' })).toBe(`/warehouse/products/${pid}`)
+    expect(to('PRODUCT', { code: 'INVENTORY_ADJUSTED', publicId: null })).toBeUndefined()
+    expect(activityLink(event({ entityType: 'PRODUCT', code: 'INVENTORY_ADJUSTED', publicId: pid }))).toMatchObject({
+      perm: 'inventory.view',
+      module: 'WMS_LOTSERIAL',
+    })
     // guarda de la ruta destino (como routes.tsx)
     expect(activityLink(event({ entityType: 'PURCHASE_ORDER' }))).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING' })
     expect(activityLink(event({ entityType: 'CYCLE_COUNT' }))).toMatchObject({ perm: 'warehouse.count', module: 'WMS_LOTSERIAL' })

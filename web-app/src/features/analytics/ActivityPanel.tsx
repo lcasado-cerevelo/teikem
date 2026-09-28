@@ -127,11 +127,13 @@ export function ActivityPanel() {
           const text = r.reference ?? ''
           const link = canOpen(r)
           return link ? (
-            <Link to={link.to} style={{ overflowWrap: 'anywhere' }}>
+            <Link to={link.to} className="ref" style={{ overflowWrap: 'anywhere' }}>
               {text}
             </Link>
           ) : (
-            <span style={{ overflowWrap: 'anywhere' }}>{text}</span>
+            <span className="ref" style={{ overflowWrap: 'anywhere' }}>
+              {text}
+            </span>
           )
         },
         sortValue: (r) => r.reference ?? null,

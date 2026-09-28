@@ -103,8 +103,12 @@ describe('categoryTree', () => {
     expect(categoryTree([{ id: 6, name: 'A', parentId: 7 }, { id: 7, name: 'B', parentId: 6 }])).toHaveLength(2)
   })
 
-  it('filtra por nombre o ruta sin acentos; valida la forma del valor guardado', () => {
-    expect(filterCategoryTree(categoryTree(CATEGORIES), 'analgesicos').map((r) => r.category.id)).toEqual([2])
+  it('filtra por nombre o ruta sin acentos; incluye los ancestros de cada coincidencia; valida la forma del valor guardado', () => {
+    // coincide solo "Analgésicos", pero se agrega su ancestro "Farmacia" arriba (sin fila huérfana con sangría)
+    expect(filterCategoryTree(categoryTree(CATEGORIES), 'analgesicos').map((r) => [r.category.name, r.level])).toEqual([
+      ['Farmacia', 0],
+      ['Analgésicos', 1],
+    ])
     expect(filterCategoryTree(categoryTree(CATEGORIES), 'farmacia').map((r) => r.category.id)).toEqual([1, 2, 3])
     expect(isCategoryProductValue(null)).toBe(true)
     expect(isCategoryProductValue({ kind: 'category', id: 3 })).toBe(true)
