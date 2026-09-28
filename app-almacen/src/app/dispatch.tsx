@@ -166,7 +166,13 @@ export default function DispatchScreen() {
             </View>
           </>
         ) : (
-          <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
+          <>
+            {/* Sin despacho abierto todavía (draft es null aquí): nada que perder, "Volver" sale directo a Inicio.
+                Pegado al título, no al final: su propio texto de ayuda queda lejos, para que no se lea como si
+                describiera a "Volver". */}
+            <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+            <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
+          </>
         )}
       </ScrollView>
     )

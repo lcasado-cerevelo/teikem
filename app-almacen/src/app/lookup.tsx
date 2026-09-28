@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
+import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
 import { colors, spacing } from '../kernel/ui/theme'
@@ -17,6 +19,7 @@ type Result = { title: string; rows: BalanceRow[]; fromCache: boolean; fetchedAt
  *  respaldo en caché por si no hay señal (docs/lote8A-app-decisiones.md, segunda entrega). */
 export default function LookupScreen() {
   const { t } = useT()
+  const router = useRouter()
   const { device } = useSession()
   const warehousePublicId = device?.defaultWarehousePublicId ?? null
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +64,7 @@ export default function LookupScreen() {
   return (
     <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{t('lookup.title')}</Text>
+      <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
       <ScanField label={t('lookup.scanLabel')} help={t('lookup.scanHelp')} error={error} onSubmit={scan} />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       {result ? (

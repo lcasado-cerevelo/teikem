@@ -122,11 +122,15 @@ export default function ReceiveScreen() {
     router.replace('/home')
   }
 
-  // Paso 1: sin recibo abierto todavía.
+  // Paso 1: sin recibo abierto todavía. Nada que perder aquí, así que "Volver" sale directo a Inicio (a diferencia
+  // de los pasos con captura en curso, donde la salida es a propósito por Confirmar o Cancelar). Va pegado al
+  // título, no al final: el texto de ayuda de "Recibo ciego" queda lejos, para que no se lea como si describiera
+  // a "Volver".
   if (!openReceipt) {
     return (
       <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t('receive.title')}</Text>
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
         <Text style={styles.help}>{t('receive.startBlindHelp')}</Text>

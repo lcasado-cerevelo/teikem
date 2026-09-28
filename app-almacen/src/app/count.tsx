@@ -162,11 +162,12 @@ export default function CountScreen() {
     router.replace('/home')
   }
 
-  // Sin conteo abierto: escanear la posición a contar.
+  // Sin conteo abierto: escanear la posición a contar. Nada que perder aquí, así que "Volver" sale directo a Inicio.
   if (!openCount) {
     return (
       <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t('count.title')}</Text>
+        <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
         <ScanField label={t('count.scanBinLabel')} error={binError} onSubmit={scanBin} />
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
       </ScrollView>

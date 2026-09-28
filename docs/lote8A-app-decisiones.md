@@ -204,3 +204,13 @@ hace timeout (`continue-on-error: true` en el job `android-e2e`). Corrí los 5 e
 
 Nada de esto lo pude ver sin un emulador con aceleración real corriendo la app de verdad — coincide exactamente con
 lo que la decisión 7 y el comentario de `ci.yml` ya anticipaban.
+
+## "Volver" en las pantallas de arranque (a pedido de Luis, probando en el emulador)
+
+Ninguna pantalla tenía una forma explícita de salir salvo el botón de atrás del sistema (asumía el botón físico del
+Zebra real); probando en el emulador no fue obvio cómo volver. Se agregó un botón "Volver" (rojo, pegado al título,
+antes de cualquier texto de ayuda para que no se lea como si describiera a otro botón) en la pantalla de arranque
+—sin operación en curso, nada que perder— de Recibir, Despacho, Conteo y Consultar. **No** se agregó en los pasos
+con una captura ya en marcha (línea siendo capturada, recibo/despacho/conteo con datos): ahí la única salida sigue
+siendo Confirmar o Cancelar, a propósito (decisión 6 de la primera entrega). Acomodar y Sincronización quedan igual
+por ahora (no se pidieron).
