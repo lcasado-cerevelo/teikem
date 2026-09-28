@@ -292,6 +292,7 @@ test.describe('Lote F7A — escritorio', () => {
   test('3. al recargar se conserva la selección; ✕ vuelve a los totales generales', async ({ page }) => {
     await login(page, ADMIN)
     // 'En mano' antes de elegir la categoría: tras quitarla debe volver a este mismo valor (totales generales)
+    await expect(tile(page, 'En mano')).not.toContainText('…')
     const enManoGeneral = await tile(page, 'En mano').textContent()
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY))
     await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
@@ -405,8 +406,10 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Almacén', exact: true })).toHaveCount(0)
     await expect(page.getByRole('group', { name: 'Filtros del panel Almacén' })).toHaveCount(0)
     // el servidor no devuelve ningún módulo visible: el panel de Actividad reciente no se pinta
-    const activityBody = (await (await activityResponse).json()) as { visibleModules?: string[] | null }
-    expect(activityBody.visibleModules ?? []).toEqual([])
+    const activityRes = await activityResponse
+    expect(activityRes.status()).toBe(200)
+    const activityBody = (await activityRes.json()) as { visibleModules?: string[] | null }
+    expect(activityBody.visibleModules).toEqual([])
     await expect(pulseSection(page, 'Actividad reciente')).toHaveCount(0)
     await shot(page, 'pulso-sin-almacen')
   })

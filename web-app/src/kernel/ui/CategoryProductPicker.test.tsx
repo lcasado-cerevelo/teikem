@@ -103,6 +103,13 @@ describe('categoryTree', () => {
     expect(categoryTree([{ id: 6, name: 'A', parentId: 7 }, { id: 7, name: 'B', parentId: 6 }])).toHaveLength(2)
   })
 
+  it('filterCategoryTree no se cuelga con un ciclo de padres ni con una categoría que es su propio padre', () => {
+    const ciclo = categoryTree([{ id: 6, name: 'A', parentId: 7 }, { id: 7, name: 'B', parentId: 6 }])
+    expect(filterCategoryTree(ciclo, 'a').map((r) => r.category.id).sort()).toEqual([6, 7])
+    const propio = categoryTree([{ id: 8, name: 'Sola', parentId: 8 }])
+    expect(filterCategoryTree(propio, 'sola').map((r) => r.category.id)).toEqual([8])
+  })
+
   it('filtra por nombre o ruta sin acentos; incluye los ancestros de cada coincidencia; valida la forma del valor guardado', () => {
     // coincide solo "Analgésicos", pero se agrega su ancestro "Farmacia" arriba (sin fila huérfana con sangría)
     expect(filterCategoryTree(categoryTree(CATEGORIES), 'analgesicos').map((r) => [r.category.name, r.level])).toEqual([

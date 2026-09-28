@@ -61,7 +61,8 @@ export function filterCategoryTree<C extends CategoryNode>(rows: readonly Catego
     if (!matchesQ(q, r.category.name, r.category.path)) continue
     keep.add(r.category.id)
     let parentId = r.category.parentId
-    while (parentId != null && byId.has(parentId)) {
+    // si el ancestro ya está en keep su cadena ya se agregó; también corta un ciclo de padres (dato corrupto)
+    while (parentId != null && byId.has(parentId) && !keep.has(parentId)) {
       keep.add(parentId)
       parentId = byId.get(parentId)?.parentId
     }
