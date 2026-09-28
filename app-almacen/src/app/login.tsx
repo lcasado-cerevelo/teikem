@@ -9,6 +9,7 @@ import { PIN_MAX_LENGTH, PIN_MIN_LENGTH } from '../kernel/auth/pinRules'
 import { useSession } from '../kernel/auth/useSession'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
+import { BrandLockup } from '../kernel/ui/BrandLockup'
 import { NumericKeypad, PinDots } from '../kernel/ui/NumericKeypad'
 import { colors, spacing } from '../kernel/ui/theme'
 
@@ -77,6 +78,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.fill}>
+      <BrandLockup />
       <Text style={styles.title}>{t('login.chooseUser')}</Text>
       {users === null && !loadError ? (
         <View style={styles.center}>

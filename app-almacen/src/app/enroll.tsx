@@ -6,6 +6,7 @@ import { ApiError, getApiBaseUrl, setApiBaseUrl } from '../kernel/api/client'
 import { enrollDevice } from '../kernel/auth/deviceAuth'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
+import { BrandLockup } from '../kernel/ui/BrandLockup'
 import { colors, spacing } from '../kernel/ui/theme'
 
 /** Pantalla 1 (parte 1): registrar este aparato con el código de un solo uso del administrador (docs/mobile/
@@ -44,6 +45,7 @@ export default function EnrollScreen() {
   return (
     <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <BrandLockup />
         <Text style={styles.title}>{t('enroll.title')}</Text>
 
         <View style={styles.field}>

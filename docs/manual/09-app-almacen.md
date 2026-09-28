@@ -335,6 +335,12 @@ compañía, el aparato no puede ni listar sus usuarios para entrar.
 
 ---
 
+## Marca
+
+Desde el lote F8a la app lleva la marca Teikem: icono (con versión monocroma para los temas de Android 13+), pantalla de arranque azul `#0B2C66` y el logotipo con el lema en el idioma activo arriba de Registrar y Entrar ([icono](frontend/img/f8a-app-icono.png), [arranque](frontend/img/f8a-app-splash.png), [Registrar](frontend/img/f8a-app-registrar.png)); los archivos se regeneran con `npm run brand:icons` desde `Logos/`.
+
+---
+
 ## 11. Preguntas frecuentes
 
 Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN, idempotencia, sincronización) y

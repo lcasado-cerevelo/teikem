@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mock — Lote F8a: Sistema (Aparatos, PIN, Catálogos)</title>
+<style>
+/* Tokens de diseño portados de Diseño/teikem-mockups.html (bloque <style>), igual que docs/frontend/mock-pulso-almacen.html. */
+:root{
+  --bg:#0D1220; --bg-2:#0A0E18; --panel:#141B2E; --panel-2:#182136; --raise:#1F2A44;
+  --line:#243252; --line-2:#1C2740;
+  --text:#E8ECF5; --muted:#8C97AD; --faint:#5B6680;
+  --money:#FF6A1A; --money-2:#FF8B4D; --money-bg:rgba(255,106,26,.13); --money-line:rgba(255,106,26,.35);
+  --flow:#1F6FE5; --flow-2:#6EA8FF; --flow-bg:rgba(31,111,229,.14); --flow-line:rgba(31,111,229,.40);
+  --ok:#46CE82; --okbg:rgba(70,206,130,.13); --warn:#E6A93E; --warnbg:rgba(230,169,62,.13);
+  --danger:#F26A60; --dangerbg:rgba(242,106,96,.13); --info:#6293FF; --infobg:rgba(98,147,255,.13);
+  --violet:#9A8CF8; --violetbg:rgba(154,140,248,.13);
+  --neutral-fg:#9aa3b2; --neutral-bg:rgba(255,255,255,.06);
+  --brand-wash:rgba(31,111,229,.14); --brand-glow:rgba(46,124,246,.4);
+  --app-bg:radial-gradient(1200px 600px at 80% -10%,#14203A 0%,#0D1220 55%);
+  --label-paper:#fff; --label-ink:#0B2C66;
+  --hexd:#0B2C66; --hexl:#1F6FE5;
+  --mono:'JetBrains Mono',ui-monospace,monospace; --ui:'Space Grotesk',system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#F0F2F7; --bg-2:#FAFBFD; --panel:#FFFFFF; --panel-2:#F2F5FA; --raise:#E5EAF3;
+  --line:#DDE4F0; --line-2:#E9EDF5;
+  --text:#182136; --muted:#5B6880; --faint:#8C97AD;
+  --money:#E05A0F; --money-2:#B94A0C; --money-bg:rgba(224,90,15,.10); --money-line:rgba(224,90,15,.30);
+  --flow:#1F6FE5; --flow-2:#0B4DB8; --flow-bg:rgba(31,111,229,.10); --flow-line:rgba(31,111,229,.30);
+  --ok:#1E9457; --okbg:rgba(30,148,87,.12); --warn:#B5811F; --warnbg:rgba(181,129,31,.13);
+  --danger:#CC4B41; --dangerbg:rgba(204,75,65,.12); --info:#3C6BE0; --infobg:rgba(60,107,224,.12);
+  --violet:#6D5FE0; --violetbg:rgba(109,95,224,.12);
+  --neutral-fg:#5B6880; --neutral-bg:rgba(0,0,0,.05);
+  --brand-wash:rgba(31,111,229,.10); --brand-glow:rgba(31,111,229,.22);
+  --app-bg:radial-gradient(1100px 560px at 82% -12%,#ffffff 0%,#F0F2F7 60%);
+}
+:root{
+  --rail-w:250px; --rail-w-col:66px; --bar-h:54px;
+  --radius:13px; --radius-sm:9px;
+  --shadow-pop:0 30px 80px -20px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--app-bg);background-attachment:fixed;color:var(--text);font-family:var(--ui);font-size:14px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+#root{min-height:100dvh}
+button{font-family:inherit;cursor:pointer;color:inherit}
+input,select,textarea{font-family:inherit}
+svg{width:16px;height:16px;flex:none}
+a{color:var(--flow-2)}
+h1,h2,h3{letter-spacing:-.01em}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+::selection{background:var(--flow);color:#fff}
+:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);height:100dvh;overflow:hidden;transition:grid-template-columns .16s ease}
+.rail{background:linear-gradient(180deg,var(--panel),var(--bg));border-right:1px solid var(--line-2);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.rbrand{display:flex;align-items:center;gap:10px;padding:16px 13px 14px;border-bottom:1px solid var(--line-2);background:linear-gradient(135deg,var(--brand-wash),transparent 65%);color:var(--text);text-decoration:none}
+.rbrand .logo{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--hexd),var(--hexl));display:grid;place-items:center;color:#fff;font-weight:800;font-size:16px;flex:none;box-shadow:0 4px 14px var(--brand-glow)}
+.rbrand .name{font-weight:700;font-size:18px;letter-spacing:.02em}
+.rnav{flex:1;overflow-y:auto;padding:6px 9px}
+.grp{margin-bottom:1px}
+.grp-h{display:flex;align-items:center;gap:11px;width:100%;padding:9px 9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.07em;text-transform:uppercase}
+.grp-h .gi{display:flex;color:var(--faint)}.grp-h .gi svg{width:16px;height:16px}
+.grp-h .chev{margin-left:auto;transition:.16s;color:var(--faint);display:flex}
+.grp.open .grp-h .chev{transform:rotate(90deg)}
+.grp.open .grp-h{color:var(--text)}.grp.open .grp-h .gi{color:var(--flow-2)}
+.grp-items{display:none;padding:1px 0 5px}
+.grp.open .grp-items{display:block}
+.navit{display:flex;align-items:center;gap:10px;padding:7px 10px 7px 13px;margin:1px 4px 1px 8px;border-radius:8px;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;position:relative;text-decoration:none}
+.navit .di{width:5px;height:5px;border-radius:50%;background:var(--faint);flex:none;margin-left:2px}
+.navit:hover{background:var(--panel-2)}
+.navit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.navit.on .di{background:var(--flow)}
+.rfoot{padding:9px;border-top:1px solid var(--line-2)}
+.collapse{display:flex;align-items:center;gap:10px;width:100%;padding:9px;border:none;background:transparent;border-radius:9px;color:var(--muted);font-size:12.5px;font-weight:500}
+
+.main{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.bar{height:var(--bar-h);display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid var(--line-2);background:var(--panel);flex:none;min-width:0}
+.bar .sp{flex:1;min-width:0}
+.bar .burger{display:none;border:none;background:transparent;width:36px;height:36px;border-radius:9px;align-items:center;justify-content:center;flex:none}
+.tenant{display:flex;align-items:center;gap:8px;min-width:0;font-weight:600;font-size:13.5px}
+.tenant .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.langdd>button{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.who{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid var(--line-2);color:var(--text);text-decoration:none;min-width:0;flex:none}
+.who .av{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--flow),var(--money));display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;flex:none}
+.who .nm{font-size:13px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iconbtn{border:none;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.stage{flex:1;overflow-y:auto;overflow-x:hidden;padding:18px 20px 90px;min-width:0}
+.wrap{width:100%;max-width:1760px;margin:0}
+
+.head{display:flex;align-items:flex-end;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.head h1{font-size:21px;font-weight:700;margin:0}
+.head p{margin:3px 0 0;color:var(--muted);font-size:13px}
+.head .act{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.subtle{color:var(--faint);font-size:12.5px;margin:0 0 20px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:8px 13px;font-weight:600;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;color:var(--text);text-decoration:none}
+.btn:hover{background:var(--panel-2)}
+.btn.flow{background:var(--flow);border-color:var(--flow);color:#fff}.btn.flow:hover{background:var(--flow-2);color:#0B2C66}
+.btn.danger{background:var(--dangerbg);border-color:var(--danger);color:var(--danger)}
+.btn.sm{padding:6px 10px;font-size:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);min-width:0}
+.panel .ph2{display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--line-2);font-weight:600;font-size:14px;flex-wrap:wrap}
+.panel .ph2 .r{margin-left:auto;color:var(--muted);font-weight:500;font-size:12px;font-family:var(--mono)}
+.pb,.panel .pb{padding:16px}
+.note{font-size:12px;color:var(--muted);background:var(--panel-2);border:1px dashed var(--line);border-radius:9px;padding:11px 13px}
+.tag{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--flow-2);background:var(--flow-bg);border:1px solid var(--flow-line);padding:2px 7px;border-radius:6px;vertical-align:middle}
+.tag.ok{color:var(--ok);background:var(--okbg);border-color:rgba(70,206,130,.35)}
+.tag.m{color:var(--money-2);background:var(--money-bg);border-color:var(--money-line)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;line-height:1.6;white-space:nowrap;color:var(--neutral-fg);background:var(--neutral-bg)}
+.chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.s-cap{color:var(--neutral-fg);background:var(--neutral-bg)}
+.s-wh{color:var(--violet);background:var(--violetbg)}
+.s-deliv{color:var(--ok);background:var(--okbg)}
+.s-fail{color:var(--danger);background:var(--dangerbg)}
+.s-warn{color:var(--warn);background:var(--warnbg)}
+.s-disp{color:var(--info);background:var(--infobg)}
+
+.lst{width:100%;border-collapse:collapse;font-size:13px}
+.lst th{text-align:left;font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--line-2);position:sticky;top:0;background:var(--panel)}
+.lst th.sort{cursor:pointer;user-select:none}
+.lst th .arr{font-size:9px;margin-left:4px;color:var(--flow-2)}
+.lst td{padding:8px 6px;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere;word-break:break-word}
+.lst tbody tr:hover td{background:var(--panel-2)}
+.ref{font-family:var(--mono);color:var(--flow-2)}
+.dr{font-family:var(--mono);font-size:12px;background:var(--raise);border-radius:5px;padding:1px 7px;color:var(--muted)}
+
+.f{margin-bottom:13px;min-width:0}.f label{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.f input,.f select,.f textarea{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font-size:13.5px;color:var(--text);outline:none}
+.f .help{font-size:11.5px;color:var(--faint);margin-top:4px}
+.ferr{color:var(--danger);font-size:12px;font-weight:600;margin:5px 0 0}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.sw{display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.sw input{position:absolute;opacity:0;width:1px;height:1px}.sw .tk{width:38px;height:22px;border-radius:20px;background:var(--raise);position:relative;transition:.15s;flex:none}
+.sw .tk::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#cfd6e0;top:2px;left:2px;transition:.15s}
+.sw input:checked+.tk{background:var(--ok)}.sw input:checked+.tk::after{left:18px;background:#fff}
+.seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:2px;max-width:100%;overflow-x:auto}
+.seg button{border:none;background:transparent;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
+.qbox{display:flex;align-items:center;gap:7px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--muted);width:100%;max-width:280px;flex:1 1 200px;min-width:0}
+.qbox input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:12.5px;min-width:0}
+
+/* ===== Master-detail (Catálogos) ===== */
+.md{display:grid;grid-template-columns:280px minmax(0,1fr);gap:14px;align-items:start}
+.domlist{display:flex;flex-direction:column;gap:2px;padding:6px}
+.domit{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px}
+.domit:hover{background:var(--panel-2)}
+.domit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
+.domit .cnt{margin-left:auto;color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+
+/* ===== Modal en línea (para el mock: siempre visible, con una etiqueta "así se ve") ===== */
+.mockmodal{border:1px dashed var(--flow-line);border-radius:var(--radius);padding:0;margin-top:14px;position:relative}
+.mockmodal::before{content:"Así se ve el modal";position:absolute;top:-10px;left:14px;background:var(--bg-2);color:var(--flow-2);font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:1px 8px;border-radius:6px}
+.mockmodal .pal{width:100%;background:var(--panel);border-radius:15px;overflow:hidden}
+.mockmodal .pi{display:flex;align-items:center;gap:9px;padding:15px 17px;border-bottom:1px solid var(--line-2);font-weight:700;font-size:14.5px}
+.mockmodal .pb{padding:17px}
+.mockmodal .ft{display:flex;gap:10px;justify-content:flex-end;padding:13px 17px;border-top:1px solid var(--line-2)}
+.secret{font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:.08em;background:var(--bg-2);border:1px dashed var(--line);border-radius:8px;padding:12px 14px;text-align:center;margin:6px 0 12px;color:var(--flow-2)}
+
+@media(max-width:900px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .bar{padding:0 10px;gap:8px}
+  .stage{padding:14px 12px 80px}
+}
+@media(max-width:720px){
+  .r2{grid-template-columns:1fr}
+  .md{grid-template-columns:1fr}
+  .who .nm{display:none}
+  .qbox{max-width:none}
+}
+
+/* ===== Solo para el mock ===== */
+.mocktb{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--bg-2);border-bottom:1px solid var(--line);font-size:12.5px}
+.mocktb b{font-size:13px}
+.mocktb select{background:var(--panel);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:5px 8px;font-size:12.5px;font-weight:600}
+.mocktb .leg{display:flex;gap:8px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.embed .mocktb{display:none}
+.mockapp{height:auto;min-height:calc(100dvh - 44px);overflow:visible}
+.mockapp .main,.mockapp .stage{overflow:visible}
+.mockapp .rail{position:sticky;top:44px;height:calc(100dvh - 44px)}
+.embed .mockapp{min-height:100dvh}
+.phone{display:none;padding:18px;justify-content:center}
+.phone iframe{width:360px;height:760px;border:10px solid #1b2236;border-radius:28px;background:var(--bg)}
+body.movil .mockapp{display:none}
+body.movil .phone{display:flex}
+.scr{display:none}
+.scr.on{display:block}
+</style>
+</head>
+<body>
+<div class="mocktb">
+  <b>Mock · Sistema (lote F8a) — sin maqueta previa, para tu OK antes de programarlas</b>
+  <select id="sScreen">
+    <option value="devices">Aparatos móviles</option>
+    <option value="users">Roles y usuarios → PIN</option>
+    <option value="account">Mi cuenta → PIN de la app</option>
+    <option value="catalogs">Catálogos de valores</option>
+  </select>
+  <div class="seg"><button class="on" id="bEsc" type="button">Escritorio</button><button id="bMov" type="button">Móvil 360 px</button></div>
+  <div class="leg"><span style="color:var(--muted)">Datos de ejemplo. Los textos exactos de error salen del API (ver loteF8-plan.md §3).</span></div>
+</div>
+
+<div class="phone"><iframe title="Vista móvil" id="phoneFrame" src="?embed=1&s=devices"></iframe></div>
+
+<div class="app mockapp">
+  <aside class="rail">
+    <div class="rbrand"><div class="logo">T</div><div class="name">Teikem</div></div>
+    <nav class="rnav">
+      <div class="grp"><button class="grp-h" type="button"><span class="gi">🚚</span><span class="lbl">OPERACIÓN</span><span class="chev">›</span></button></div>
+      <div class="grp"><button class="grp-h" type="button"><span class="gi">🏬</span><span class="lbl">ALMACÉN</span><span class="chev">›</span></button></div>
+      <div class="grp open"><button class="grp-h" type="button"><span class="gi">⚙</span><span class="lbl">SISTEMA</span><span class="chev">›</span></button>
+        <div class="grp-items">
+          <a class="navit"><span class="di"></span>Impresoras y labels</a>
+          <a class="navit nav-users"><span class="di"></span>Roles y usuarios</a>
+          <a class="navit nav-devices"><span class="di"></span>Aparatos móviles</a>
+          <a class="navit nav-catalogs"><span class="di"></span>Catálogos de valores</a>
+          <a class="navit"><span class="di"></span>Integraciones / API</a>
+          <a class="navit"><span class="di"></span>Seguridad y auditoría</a>
+          <a class="navit"><span class="di"></span>Ajustes de la compañía</a>
+        </div></div>
+    </nav>
+    <div class="rfoot"><button class="collapse" type="button">‹ <span>Contraer</span></button></div>
+  </aside>
+  <div class="main">
+    <header class="bar">
+      <button class="burger" type="button" aria-label="Menú">☰</button>
+      <div class="tenant"><span class="tn">Advance Logistics</span></div>
+      <div class="sp"></div>
+      <div class="langdd"><button type="button">🌐 ES</button></div>
+      <div class="who"><div class="av">LO</div><span class="nm">Luis Ortiz</span></div>
+      <button class="iconbtn" type="button" aria-label="Salir">⎋</button>
+    </header>
+    <main class="stage"><div class="wrap">
+
+      <!-- ===== APARATOS MÓVILES ===== -->
+      <section class="scr" id="scr-devices">
+        <div class="head">
+          <div><h1>Aparatos móviles</h1><p>Los aparatos con acceso a Teikem Almacén. El código de registro es de un solo uso y dura 24 horas.</p></div>
+          <div class="act"><button class="btn flow" type="button">+ Nuevo aparato</button></div>
+        </div>
+        <div class="panel">
+          <div class="qrow"><div class="qbox">🔍 <input placeholder="Buscar por código o nombre…"></div><label class="sw"><input type="checkbox"><span class="tk"></span>Incluir inactivos</label></div>
+          <div class="pb"><table class="lst">
+            <thead><tr><th class="sort">Código <span class="arr">▼</span></th><th class="sort">Nombre</th><th>Almacén por defecto</th><th>Estado</th><th class="sort">Último latido</th><th>Versión app</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="ref">MC33-014</td><td>Zebra MC3300 — Recibo 1</td><td>ALM-01 · Almacén principal</td><td><span class="chip s-deliv">Activo</span></td><td>hace 3 min</td><td class="mono">1.0.0</td><td><button class="btn sm" type="button">Desactivar</button> <button class="btn sm" type="button">Nuevo código</button></td></tr>
+              <tr><td class="ref">MC33-015</td><td>Zebra MC3300 — Despacho</td><td>ALM-01 · Almacén principal</td><td><span class="chip s-deliv">Activo</span></td><td>hace 1 h</td><td class="mono">1.0.0</td><td><button class="btn sm" type="button">Desactivar</button> <button class="btn sm" type="button">Nuevo código</button></td></tr>
+              <tr><td class="ref">TAB-007</td><td>Tablet conteo cíclico</td><td>ALM-02 · Sucursal norte</td><td><span class="chip s-warn">Inactivo</span></td><td>hace 6 días</td><td class="mono">0.9.4</td><td><button class="btn sm" type="button">Reactivar</button></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="mockmodal" style="max-width:460px">
+          <div class="pal">
+            <div class="pi">Código de registro</div>
+            <div class="pb">
+              <p style="margin:0 0 4px;color:var(--muted);font-size:13px">Escríbelo en la pantalla Registrar de Teikem Almacén. Solo se muestra una vez.</p>
+              <div class="secret">7K2P9QRX</div>
+              <button class="btn sm" type="button">📋 Copiar</button>
+            </div>
+            <div class="ft"><button class="btn flow sm" type="button">Listo</button></div>
+          </div>
+        </div>
+        <p class="note" style="margin-top:14px">Sin ficha ni edición de modelo/tema en esta entrega (loteF8-plan.md §3 P5). "Nuevo aparato" pide Nombre (obligatorio) y Almacén por defecto (opcional).</p>
+      </section>
+
+      <!-- ===== ROLES Y USUARIOS → PIN ===== -->
+      <section class="scr" id="scr-users">
+        <div class="head">
+          <div><h1>Roles y usuarios</h1><p>Quién entra a Teikem y qué puede hacer.</p></div>
+          <div class="act"><button class="btn flow" type="button">+ Nuevo usuario</button></div>
+        </div>
+        <div class="seg" style="margin-bottom:14px"><button type="button">Roles</button><button class="on" type="button">Usuarios</button></div>
+        <div class="panel">
+          <div class="qrow"><div class="qbox">🔍 <input placeholder="Buscar por nombre o correo…"></div><label class="sw"><input type="checkbox"><span class="tk"></span>Incluir suspendidos</label></div>
+          <div class="pb"><table class="lst">
+            <thead><tr><th>Nombre</th><th>Correo</th><th>Roles</th><th>Permisos extra</th><th>Estado</th><th>MFA</th><th>Último acceso</th><th>PIN app</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>María Rivera</td><td class="mono">maria@advance.test</td><td><span class="chip s-wh">Operador de almacén</span></td><td><a class="ref" href="#">+2</a></td><td><span class="chip s-deliv">Activo</span></td><td>Sí</td><td>hace 2 h</td>
+                <td><span class="chip s-deliv">Sí</span></td><td><button class="btn sm" type="button">Restablecer PIN</button></td></tr>
+              <tr><td>Carlos Rivera</td><td class="mono">carlos@advance.test</td><td><span class="chip s-wh">Operador de almacén</span></td><td><a class="ref" href="#">Añadir</a></td><td><span class="chip s-deliv">Activo</span></td><td>No</td><td>hace 1 día</td>
+                <td><span class="chip s-fail">No</span></td><td><button class="btn sm" type="button">Asignar PIN</button></td></tr>
+              <tr><td>Ana Pérez</td><td class="mono">ana@advance.test</td><td><span class="chip s-disp">Despacho</span></td><td>—</td><td><span class="chip s-warn">Suspendido</span></td><td>Sí</td><td>hace 12 días</td>
+                <td><span class="chip s-cap">— (sin módulo)</span></td><td></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <p class="note" style="margin-top:14px">La columna y las acciones de PIN solo aparecen con el módulo <code>WMS_LOTSERIAL</code> encendido y permiso <code>devices.manage</code> o <code>admin.users</code>.</p>
+
+        <div class="mockmodal" style="max-width:420px">
+          <div class="pal">
+            <div class="pi">Asignar PIN — Carlos Rivera</div>
+            <div class="pb">
+              <div class="f"><label>PIN (4 a 6 dígitos)</label><input type="password" value="••••" maxlength="6"></div>
+              <div class="f"><label>Confirmar PIN</label><input type="password" value="••••" maxlength="6"></div>
+              <div class="ferr">El PIN no puede ser una secuencia trivial.</div>
+              <p class="help" style="margin-top:8px">Mensajes posibles del API: "Los PIN no coinciden." (cliente), "El PIN no puede ser una secuencia trivial.", y los del capítulo 08 del manual. Pide reautenticación (AAL2).</p>
+            </div>
+            <div class="ft"><button class="btn sm" type="button">Cancelar</button><button class="btn flow sm" type="button">Guardar</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== MI CUENTA → PIN DE LA APP ===== -->
+      <section class="scr" id="scr-account">
+        <div class="head"><div><h1>Mi cuenta</h1><p>Tu perfil y tus credenciales.</p></div></div>
+        <div class="seg" style="margin-bottom:14px"><button type="button">Perfil</button><button type="button">Seguridad</button><button class="on" type="button">PIN de la app</button></div>
+        <div class="panel" style="max-width:480px">
+          <div class="ph2">PIN de Teikem Almacén <span class="tag ok">solo con módulo Almacén</span></div>
+          <div class="pb">
+            <p style="margin:0 0 12px;color:var(--muted);font-size:13px">Tienes un PIN fijado. Última actualización: hace 40 días. Bloqueado hasta: no aplica.</p>
+            <button class="btn" type="button" style="margin-right:8px">Cambiar PIN</button>
+            <button class="btn danger" type="button">Quitar PIN</button>
+          </div>
+        </div>
+        <div class="mockmodal" style="max-width:420px">
+          <div class="pal">
+            <div class="pi">Cambiar PIN</div>
+            <div class="pb">
+              <div class="f"><label>Contraseña actual</label><input type="password" value="••••••••"></div>
+              <div class="f"><label>PIN nuevo</label><input type="password" value="••••" maxlength="6"></div>
+              <div class="f"><label>Confirmar PIN</label><input type="password" value="••••" maxlength="6"></div>
+            </div>
+            <div class="ft"><button class="btn sm" type="button">Cancelar</button><button class="btn flow sm" type="button">Guardar</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== CATÁLOGOS DE VALORES ===== -->
+      <section class="scr" id="scr-catalogs">
+        <div class="head"><div><h1>Catálogos de valores</h1><p>Las listas que alimentan chips y selects en toda la aplicación.</p></div></div>
+        <div class="md">
+          <div class="panel">
+            <div class="qrow tight"><div class="qbox">🔍 <input placeholder="Buscar lista…"></div></div>
+            <div class="domlist">
+              <div class="domit"><span class="chip s-cap" style="margin:0">sistema</span>&nbsp;Tipo de servicio<span class="cnt">4</span></div>
+              <div class="domit on"><span class="chip s-cap" style="margin:0">sistema</span>&nbsp;Tipo de tarea de almacén<span class="cnt">6</span></div>
+              <div class="domit"><span class="chip s-wh" style="margin:0">propia</span>&nbsp;Motivo de ajuste (Advance)<span class="cnt">5</span></div>
+              <div class="domit">+ Nueva lista</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph2">Tipo de tarea de almacén <span class="r">6 valores</span></div>
+            <div class="pb"><table class="lst">
+              <thead><tr><th>Código</th><th>Etiqueta (es)</th><th>Etiqueta (en)</th><th class="n">Orden</th><th>Habilitado</th><th>Origen</th><th></th></tr></thead>
+              <tbody>
+                <tr><td class="mono">PUTAWAY</td><td>Acomodo</td><td>Putaway</td><td class="n">10</td><td><span class="chip s-deliv">Sí</span></td><td><span class="chip s-cap">Sistema</span></td><td><button class="btn sm" type="button">Ajustar</button></td></tr>
+                <tr><td class="mono">REPLENISH</td><td>Reabasto</td><td>Replenish</td><td class="n">20</td><td><span class="chip s-deliv">Sí</span></td><td><span class="chip s-cap">Sistema</span></td><td><button class="btn sm" type="button">Ajustar</button></td></tr>
+                <tr><td class="mono">CYCLE_COUNT</td><td>Recuento cíclico</td><td>Cycle count</td><td class="n">30</td><td><span class="chip s-deliv">Sí</span></td><td><span class="chip s-wh">Ajustado</span></td><td><button class="btn sm" type="button">Ajustar</button> <button class="btn sm" type="button">Restaurar</button></td></tr>
+                <tr><td class="mono">CROSSDOCK</td><td>Cross-dock</td><td>Cross-dock</td><td class="n">40</td><td><span class="chip s-warn">No</span></td><td><span class="chip s-cap">Sistema</span></td><td><button class="btn sm" type="button">Ajustar</button></td></tr>
+                <tr><td class="mono">CUSTOM_QC</td><td>Control de calidad</td><td>Quality check</td><td class="n">50</td><td><span class="chip s-deliv">Sí</span></td><td><span class="chip s-disp">Propia</span></td><td><button class="btn sm" type="button">Editar</button> <button class="btn sm" type="button">Desactivar</button></td></tr>
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+        <div class="mockmodal" style="max-width:420px">
+          <div class="pal">
+            <div class="pi">Ajustar — Recuento cíclico</div>
+            <div class="pb">
+              <div class="f"><label>Etiqueta (es)</label><input value="Recuento cíclico"></div>
+              <div class="f"><label>Etiqueta (en)</label><input value="Cycle count"></div>
+              <div class="r2"><div class="f"><label>Orden</label><input value="30"></div><div class="f"><label class="sw"><input type="checkbox" checked><span class="tk"></span>Habilitado</label></div></div>
+              <p class="help">Un valor de sistema no se desactiva globalmente; use este ajuste (IsEnabled=false) en vez de eliminar.</p>
+            </div>
+            <div class="ft"><button class="btn sm" type="button">Cancelar</button><button class="btn flow sm" type="button">Guardar</button></div>
+          </div>
+        </div>
+      </section>
+
+    </div></main>
+  </div>
+</div>
+<script>
+  var params = new URLSearchParams(location.search);
+  if (params.get('embed')) document.body.classList.add('embed');
+  var initial = params.get('s') || 'devices';
+  function showScreen(key){
+    document.querySelectorAll('.scr').forEach(function(el){ el.classList.toggle('on', el.id === 'scr-' + key); });
+    document.querySelectorAll('.nav-devices,.nav-users,.nav-catalogs').forEach(function(el){ el.classList.remove('on'); });
+    var navMap = { devices: '.nav-devices', users: '.nav-users', account: '.nav-users', catalogs: '.nav-catalogs' };
+    var nav = document.querySelector(navMap[key]);
+    if (nav) nav.classList.add('on');
+    var sel = document.getElementById('sScreen'); if (sel) sel.value = key;
+    var frame = document.getElementById('phoneFrame'); if (frame) frame.src = '?embed=1&s=' + key;
+  }
+  document.getElementById('sScreen').addEventListener('change', function(e){ showScreen(e.target.value); });
+  document.getElementById('bEsc').onclick = function(){ document.body.classList.remove('movil'); bEsc.classList.add('on'); bMov.classList.remove('on'); };
+  document.getElementById('bMov').onclick = function(){ document.body.classList.add('movil'); bMov.classList.add('on'); bEsc.classList.remove('on'); };
+  showScreen(initial);
+</script>
+</body>
+</html>

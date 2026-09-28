@@ -15,6 +15,13 @@ const withCleartextTraffic: ConfigPlugin = (config) =>
 // Variante de compilación: 'development' (APK instalable directo, admite HTTP sin cifrar) o 'production' (exige HTTPS).
 const variant = process.env.APP_VARIANT === 'production' ? 'production' : 'development'
 
+// Lote F8a (P8) — marca Teikem. Los PNG de assets/ los genera scripts/brand-icons.mjs (`npm run brand:icons`) desde
+// Logos/teikem-symbol.svg; no se editan a mano. Azul institucional de la marca:
+const brandBlue = '#0B2C66'
+// Splash nativo: en este SDK ya no hay clave `splash` de nivel superior en ExpoConfig; lo configura el plugin
+// expo-splash-screen (lista `plugins` de abajo).
+const splash = { image: './assets/splash-icon.png', backgroundColor: brandBlue, resizeMode: 'contain' as const }
+
 const config: ExpoConfig = {
   name: variant === 'production' ? 'Teikem Almacén' : 'Teikem Almacén (dev)',
   slug: 'teikem-almacen',
@@ -27,13 +34,19 @@ const config: ExpoConfig = {
     package: 'com.teikem.almacen',
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: '#0B1220',
+      backgroundColor: brandBlue,
       foregroundImage: './assets/android-icon-foreground.png',
+      backgroundImage: './assets/android-icon-background.png',
+      monochromeImage: './assets/android-icon-monochrome.png',
     },
     permissions: ['CAMERA'],
   },
+  web: {
+    favicon: './assets/favicon.png',
+  },
   plugins: [
     'expo-router',
+    ['expo-splash-screen', { ...splash, imageWidth: 160 }],
     'expo-sqlite',
     'expo-secure-store',
     ['expo-camera', { cameraPermission: 'Teikem Almacén necesita la cámara para escanear códigos sin lector.' }],
