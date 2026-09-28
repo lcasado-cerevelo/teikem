@@ -334,7 +334,11 @@ test.describe('Lote F7A — escritorio', () => {
     const adjustment = table.getByRole('row').filter({ hasText: SKU }).filter({ hasText: 'Ajuste de inventario' })
     await expect(adjustment).toHaveCount(1)
     await expect(adjustment.getByText('oblig.')).toBeVisible()
-    await expect(adjustment.getByRole('link', { name: SKU })).toHaveAttribute('href', `/warehouse/products/${data.productPublicId}`)
+    // ajuste de inventario: el enlace va al Kárdex filtrado por el producto, no a la ficha
+    await expect(adjustment.getByRole('link', { name: SKU })).toHaveAttribute(
+      'href',
+      `/warehouse/inventory?tab=kardex&product=${encodeURIComponent(data.productPublicId)}`,
+    )
     const pick = table.getByRole('row').filter({ hasText: batchNumber })
     await expect(pick.getByText('Recolección creada')).toBeVisible()
     await expect(pick.getByText('oblig.')).toHaveCount(0)
