@@ -3866,16 +3866,27 @@ step "sesiones de aparato revocadas (Lote 8A)"
 # Que DRT_PIN quedó revocado por quitar el PIN ya se comprobó sin gastarlo (TOKEN_REVOKED pin_removed y, con SMOKE_SQL, la fila).
 expect 401 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_PIN\"}")" >/dev/null || fail "quitar el PIN no cerró la sesión del aparato"
 expect 401 "$(anon POST /api/v1/auth/refresh "{\"refreshToken\":\"$DRT_DEV\"}")" >/dev/null || fail "el refresh del aparato desactivado sigue vivo"
-# Reactivar: el aparato vuelve a entrar con PIN, pero las sesiones revocadas no reviven (la reactivación revoca en su
-# transacción las que quedaran vivas y deja TOKEN_REVOKED device_reactivated, aunque sean 0).
+# Reactivar: el aparato vuelve a entrar con PIN, pero las sesiones revocadas no reviven (la reactivación fija el sello
+# SessionsNotBeforeUtc y revoca en su transacción las que quedaran vivas; deja TOKEN_REVOKED device_reactivated, aunque sean 0).
+# Con SMOKE_SQL se simula una sesión que quedó viva durante la baja (DRT_DEV sin revocar): la reactivación debe revocarla
+# (count ≥ 1).
 TOKEN=$(login "$EMAIL" "$PASS")
 DON8=$(devrevoked8 device_reactivated 0)
+DON8C=$(devrevoked8 device_reactivated 1)
+[[ -z "${SMOKE_SQL:-}" ]] || $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; UPDATE dbo.RefreshToken SET RevokedAtUtc=NULL WHERE TokenHash='$DRT_DEV_H';" >/dev/null
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 0 ]] || fail "no se pudo simular la sesión viva del aparato (DRT_DEV)"
+# El iat va en segundos enteros y el sello se compara truncado al segundo: se deja pasar 1 s para que la reactivación caiga
+# en un segundo posterior a la emisión de $DT (si no, un smoke muy rápido la aceptaría por empate de segundo).
+sleep 1
 expect 200 "$(req POST "/api/v1/devices/$DEVP/reactivate" '{}')" | jq -e '.isActive==true' >/dev/null || fail "reactivar el aparato"
 [[ $(devrevoked8 device_reactivated 0) == $((DON8 + 1)) ]] || fail "reactivar el aparato no dejó TOKEN_REVOKED con reason device_reactivated"
-[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 1 ]] || fail "reactivar revivió la sesión revocada del aparato (DRT_DEV)"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 1 ]] || fail "reactivar no revocó la sesión del aparato que seguía viva (DRT_DEV)"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $(devrevoked8 device_reactivated 1) == $((DON8C + 1)) ]] || fail "reactivar con una sesión viva no dejó TOKEN_REVOKED device_reactivated con count ≥ 1"
+# El access token de antes de la baja ($DT) no revive con la reactivación (iat anterior al sello SessionsNotBeforeUtc).
+expect 401 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null || fail "tras reactivar, el access token de antes de la baja volvió a sincronizar"
 DL10=$(expect 200 "$(DLOGIN 4826)") || fail "tras reactivar, device/login con PIN"
 # El access token nuevo sirve enseguida (ReactivateAsync limpia la caché 'did' de 60 s que dejó el sync rechazado).
 expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$(echo "$DL10" | jq -r .accessToken)")" >/dev/null || fail "tras reactivar, el access token nuevo del aparato sigue rechazado (caché did sin limpiar)"
-ok "desactivar revoca la sesión del aparato antes de cualquier refresh (TOKEN_REVOKED device_deactivated; con SMOKE_SQL, la fila de DRT_DEV); refresh de las sesiones de aparato tras quitar el PIN y tras desactivar el aparato → 401; reactivar deja entrar con PIN (y el token nuevo sincroniza al momento) sin revivir sesiones (TOKEN_REVOKED device_reactivated; con SMOKE_SQL, DRT_DEV sigue revocado)"
+ok "desactivar revoca la sesión del aparato antes de cualquier refresh (TOKEN_REVOKED device_deactivated; con SMOKE_SQL, la fila de DRT_DEV); refresh de las sesiones de aparato tras quitar el PIN y tras desactivar el aparato → 401; reactivar deja entrar con PIN (y el token nuevo sincroniza al momento) sin revivir sesiones: el access token de antes de la baja sigue en 401 (sello SessionsNotBeforeUtc) y TOKEN_REVOKED device_reactivated (con SMOKE_SQL, la sesión DRT_DEV que se simuló viva queda revocada y el evento lleva count ≥ 1)"
 
 printf '\n\033[1;32mSMOKE OK\033[0m\n'

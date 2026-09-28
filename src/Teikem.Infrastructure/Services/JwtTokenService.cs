@@ -75,10 +75,16 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
     {
         var now = DateTime.UtcNow;
         var expires = now.Add(lifetime);
+        // `iat` explícito (el constructor de JwtSecurityToken no lo agrega): lo usa el sello de sesiones de aparato.
+        claims = claims.Append(IssuedAtClaim(now));
         var token = new JwtSecurityToken(_o.Issuer, _o.Audience, claims, now, expires,
             new SigningCredentials(SigningKey, SecurityAlgorithms.HmacSha256));
         return (new JwtSecurityTokenHandler().WriteToken(token), expires);
     }
+
+    /// <summary>Claim `iat` (segundos Unix, numérico en el JWT).</summary>
+    public static Claim IssuedAtClaim(DateTime issuedAtUtc) =>
+        new(JwtRegisteredClaimNames.Iat, EpochTime.GetIntDate(issuedAtUtc.ToUniversalTime()).ToString(System.Globalization.CultureInfo.InvariantCulture), ClaimValueTypes.Integer64);
 
     public static string StampHash(string? stamp) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(stamp ?? ""))).ToLowerInvariant()[..16];
 

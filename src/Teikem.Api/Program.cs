@@ -67,19 +67,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
                 return u is null || !u.IsActive ? null : JwtTokenService.StampHash(u.SecurityStamp);
             });
             if (current is null || current != ss) { ctx.Fail("sesión invalidada"); return; }
-            // Lote 8A: un token de aparato (claim `did`) deja de servir en cuanto el aparato se desactiva (caché de 60 s que
-            // DeviceService borra al desactivar; en otras instancias el retraso máximo es ese TTL).
+            // Lote 8A: un token de aparato (claim `did`) deja de servir en cuanto el aparato se desactiva, y los emitidos antes
+            // del sello de sesiones del aparato (baja, reactivación o registro) no reviven al reactivarlo (caché de 60 s que
+            // DeviceService borra en esos tres casos; en otras instancias el retraso máximo es ese TTL).
             if (ctx.Principal?.FindFirst(DeviceClaims.DeviceId)?.Value is string didRaw)
             {
                 if (!Guid.TryParse(didRaw, out var did)) { ctx.Fail("token inválido"); return; }
-                var deviceActive = await cache.GetOrCreateAsync(DeviceClaims.ActiveCacheKey(did), async e =>
+                var device = await cache.GetOrCreateAsync(DeviceClaims.ActiveCacheKey(did), async e =>
                 {
                     e.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
                     var db = ctx.HttpContext.RequestServices.GetRequiredService<TeikemDbContext>();
                     return await db.Set<Teikem.Domain.Entities.UserDevice>().IgnoreQueryFilters().AsNoTracking()
-                        .Where(d => d.PublicId == did).Select(d => (bool?)d.IsActive).FirstOrDefaultAsync();
+                        .Where(d => d.PublicId == did).Select(d => new DeviceTokenState(d.IsActive, d.SessionsNotBeforeUtc)).FirstOrDefaultAsync();
                 });
-                if (deviceActive != true) ctx.Fail("aparato desactivado");
+                if (device is not { IsActive: true }) { ctx.Fail("aparato desactivado"); return; }
+                long? iat = long.TryParse(ctx.Principal.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Iat)?.Value,
+                    System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var iatValue) ? iatValue : null;
+                if (DeviceClaims.IssuedBeforeSessionsCutoff(iat, device.SessionsNotBeforeUtc)) ctx.Fail("sesión del aparato cerrada");
             }
         },
     };

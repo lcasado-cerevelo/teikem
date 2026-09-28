@@ -19,12 +19,14 @@ namespace Teikem.Infrastructure.Services;
 /// - Alta por el administrador (devices.manage): código único por compañía (409 'Ya existe un aparato con ese código.'),
 ///   almacén por defecto y tema (LIGHT | DARK). Devuelve UNA sola vez el código de registro de 8 caracteres (vence en 24 h).
 /// - Registro en el aparato (anónimo): con el código válido se genera el secreto del aparato (32 bytes aleatorios) que
-///   también se muestra UNA sola vez. Código y secreto se guardan solo como hash SHA-256 (son aleatorios de alta entropía,
+///   también se muestra UNA sola vez; cierra las sesiones previas del aparato y fija su sello SessionsNotBeforeUtc. Código y secreto se guardan solo como hash SHA-256 (son aleatorios de alta entropía,
 ///   se buscan por igualdad, como los refresh tokens); el código es de un solo uso.
 /// - Aparato + secreto autentican la lista de usuarios, el login con PIN (AuthService) y el heartbeat.
 /// - Desactivar revoca todas las sesiones (refresh tokens) emitidas a ese aparato y corta en el acto sus access tokens
-///   (OnTokenValidated revisa el claim `did` contra UserDevice.IsActive con caché de 60 s que aquí se borra). Reactivar
-///   no revive sesiones: en su misma transacción revoca las que quedaran vivas (TOKEN_REVOKED device_reactivated) y cada
+///   (OnTokenValidated revisa el claim `did` contra UserDevice.IsActive y SessionsNotBeforeUtc con caché de 60 s que aquí
+///   se borra). Desactivar, reactivar y registrar fijan el sello SessionsNotBeforeUtc = ahora: todo access token con `did`
+///   emitido antes (claim `iat`) se rechaza aunque el aparato vuelva a estar activo. Reactivar no revive sesiones: en su
+///   misma transacción fija el sello y revoca las sesiones que quedaran vivas (TOKEN_REVOKED device_reactivated) y cada
 ///   usuario vuelve a entrar con su PIN.
 /// - Todo cambio del aparato queda en AuditLog (USER_DEVICE); LastSeenUtc/LastUserId/AppVersion son técnicos, no se auditan
 ///   y viven en UserDeviceActivity (sin RowVersion) para que el heartbeat y el login no invaliden la rowVersion del PATCH.
@@ -126,6 +128,7 @@ public sealed class DeviceService(
             var d = await ResolveAsync(publicId, track: true, ct2);
             if (!d.IsActive) return (d, (int?)null);
             d.IsActive = false;
+            d.SessionsNotBeforeUtc = DateTime.UtcNow;
             d.EnrollCodeHash = null;
             d.EnrollCodeExpiresUtc = null;
             await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
@@ -140,9 +143,11 @@ public sealed class DeviceService(
     }
 
     /// <summary>
-    /// Reactiva el aparato (conserva su secreto). En la misma transacción revoca toda sesión del aparato que siguiera viva
-    /// (p. ej. la emitida por un refresh que corría durante la baja): nada anterior a la reactivación revive; cada usuario
-    /// vuelve a entrar con su PIN. Deja TOKEN_REVOKED con motivo device_reactivated (aunque no hubiera ninguna sesión).
+    /// Reactiva el aparato (conserva su secreto). En la misma transacción fija el sello SessionsNotBeforeUtc = ahora (los
+    /// access tokens con `did` emitidos antes, incluidos los de antes de la baja, siguen rechazados) y revoca toda sesión
+    /// (refresh token) del aparato que siguiera viva (p. ej. la emitida por un refresh que corría durante la baja): nada
+    /// anterior a la reactivación revive; cada usuario vuelve a entrar con su PIN. Deja TOKEN_REVOKED con motivo
+    /// device_reactivated (aunque no hubiera ninguna sesión).
     /// </summary>
     public async Task<DeviceDto> ReactivateAsync(Guid publicId, CancellationToken ct)
     {
@@ -151,6 +156,7 @@ public sealed class DeviceService(
             var d = await ResolveAsync(publicId, track: true, ct2);
             if (d.IsActive) return (d, (int?)null);
             d.IsActive = true;
+            d.SessionsNotBeforeUtc = DateTime.UtcNow;
             await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
             return (d, (int?)await RevokeDeviceSessionsAsync(d, ct2));
         }, ct);
@@ -178,8 +184,9 @@ public sealed class DeviceService(
 
     /// <summary>
     /// Registro del aparato con el código de un solo uso: genera el secreto (una sola vez), invalida el código y cierra
-    /// sesiones previas del aparato (reinstalación). Código inválido, vencido, de un aparato desactivado o de una compañía
-    /// sin el módulo WMS → 401 'El código de registro no es válido o venció.' (sin oráculo).
+    /// sesiones previas del aparato (reinstalación; sello SessionsNotBeforeUtc = ahora: sus access tokens anteriores dejan
+    /// de servir). Código inválido, vencido, de un aparato desactivado o de una compañía sin el módulo WMS → 401
+    /// 'El código de registro no es válido o venció.' (sin oráculo).
     /// </summary>
     public async Task<DeviceEnrolledDto> EnrollAsync(DeviceEnrollRequest req, CancellationToken ct)
     {
@@ -221,6 +228,7 @@ public sealed class DeviceService(
                 d.EnrollCodeHash = null;
                 d.EnrollCodeExpiresUtc = null;
                 d.EnrolledAtUtc = now;
+                d.SessionsNotBeforeUtc = now;   // reinstalación: los access tokens anteriores del aparato dejan de servir
                 if (Clip(req.Model, ModelMaxLength) is string model) d.Model = model;
                 // Datos técnicos en UserDeviceActivity (misma transacción): último contacto y versión de la app.
                 var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
@@ -241,6 +249,7 @@ public sealed class DeviceService(
             await WriteAnonymousFailureAsync(SecurityEventTypes.ApiCredential, deviceTenantId, new { action = "device_enroll" }, ct);
             throw new UnauthorizedException(InvalidEnrollCodeMessage);
         }
+        cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
         await WriteSessionsRevokedAsync(device, "device_enrolled", revoked, ct);
         await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Success, null, device.TenantId, new { action = "device_enrolled", device = device.Code }, ct);
 

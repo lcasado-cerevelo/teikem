@@ -314,7 +314,7 @@ Correcciones posteriores al cierre (revisión de seguridad y cobertura):
 - El refresh de una sesión de aparato exige también la compañía activa y el módulo WMS_LOTSERIAL encendido (401
   `El aparato no está registrado o fue desactivado.` y la sesión queda revocada). Pendiente a revisar: el access token
   vivo (minutos) no se corta al apagar el módulo; habría que revisarlo en `OnTokenValidated` o revocar al apagarlo.
-- El capítulo del manual se renombró a `docs/manual/08-backend-app-almacen.md` (el índice apuntaba a un archivo
+- El capítulo del manual se renombró a `docs/manual/08-aparatos-y-sincronizacion.md` (el índice apuntaba a un archivo
   inexistente) y la FAQ ganó los mensajes que faltaban.
 - Smoke: enroll con almacén y tema; login por aparato de Operador 6 (sub, `/me`, `lastUserId`, autoría en AuditLog y
   sus propios permisos); refresh con el módulo apagado 401; PIN restablecido → refresh 401; AuditLog de `USER_DEVICE`

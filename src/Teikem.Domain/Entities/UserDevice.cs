@@ -36,6 +36,11 @@ public class UserDevice : ITenantScoped, ISoftDeletable
     public int? RegisteredBy { get; set; }
     [NotAudited] public DateTime RegisteredAtUtc { get; set; } = DateTime.UtcNow;
     public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Sello de sesiones: los access tokens con claim `did` de este aparato emitidos (claim `iat`) antes de este instante se
+    /// rechazan en OnTokenValidated. Lo fijan la baja, la reactivación y el registro (enroll); null = sin corte.
+    /// </summary>
+    [NotAudited] public DateTime? SessionsNotBeforeUtc { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
 }
 

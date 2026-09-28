@@ -436,6 +436,7 @@ CREATE TABLE dbo.UserDevice (
     RegisteredBy INT NULL REFERENCES dbo.AspNetUsers(Id),
     RegisteredAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     IsActive     BIT NOT NULL DEFAULT 1,
+    SessionsNotBeforeUtc DATETIME2 NULL,               -- sello: access tokens con `did` emitidos antes se rechazan (baja, reactivación, registro)
     RowVersion   ROWVERSION,
     CONSTRAINT UQ_UserDevice_Code UNIQUE (TenantId, Code),
     CONSTRAINT UQ_UserDevice_PublicId UNIQUE (PublicId)

@@ -17,6 +17,7 @@ public sealed class UserDeviceConfiguration : IEntityTypeConfiguration<UserDevic
         b.Property(x => x.Model).HasMaxLength(80);
         b.Property(x => x.EnrollCodeHash).HasMaxLength(200);
         b.Property(x => x.SecretHash).HasMaxLength(200);
+        b.Property(x => x.SessionsNotBeforeUtc).HasColumnType("datetime2");
         b.Property(x => x.RowVersion).IsRowVersion();
         b.HasIndex(x => new { x.TenantId, x.Code }).IsUnique().HasDatabaseName("UQ_UserDevice_Code");
         b.HasIndex(x => x.PublicId).IsUnique().HasDatabaseName("UQ_UserDevice_PublicId");

@@ -158,7 +158,7 @@ El aparato no tiene un flujo de estatus formal; es activo o no (`IsActive`).
 | De → a | Quién | Qué hace | Qué bloquea |
 |---|---|---|---|
 | Activo → Desactivado (`.../deactivate`) | `devices.manage` | Invalida el código de registro pendiente; revoca **todas** las sesiones (refresh tokens) emitidas a ese aparato; el corte de los access tokens ya emitidos es inmediato (hasta 60 s de retraso en otra instancia del API) | El aparato deja de sincronizar y de recibir `POST /auth/device/login`; el heartbeat responde `isActive: false` en vez de error |
-| Desactivado → Activo (`.../reactivate`) | `devices.manage` | Conserva el secreto ya instalado | **No** revive las sesiones revocadas: cada usuario vuelve a entrar con su PIN |
+| Desactivado → Activo (`.../reactivate`) | `devices.manage` | Conserva el secreto ya instalado; revoca las sesiones que hubieran quedado vivas y fija el sello de sesiones del aparato | **No** revive las sesiones revocadas ni los access tokens emitidos antes de la baja (siguen en 401): cada usuario vuelve a entrar con su PIN |
 
 ---
 

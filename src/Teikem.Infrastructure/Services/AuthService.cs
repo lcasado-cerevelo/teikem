@@ -33,11 +33,29 @@ public static class DeviceClaims
     public const string DeviceId = "did";
 
     /// <summary>
-    /// Clave de caché (IMemoryCache, 60 s) del estado activo del aparato que valida cada access token con `did` en
-    /// OnTokenValidated; DeviceService la borra al desactivar para que el corte sea inmediato en esa instancia.
+    /// Clave de caché (IMemoryCache, 60 s) del estado del aparato (<see cref="DeviceTokenState"/>) que valida cada access
+    /// token con `did` en OnTokenValidated; DeviceService la borra al desactivar, reactivar y registrar para que el corte sea
+    /// inmediato en esa instancia (en otras, el retraso máximo es ese TTL).
     /// </summary>
     public static string ActiveCacheKey(Guid devicePublicId) => $"dev:{devicePublicId}";
+
+    /// <summary>
+    /// Regla del sello de sesiones del aparato (UserDevice.SessionsNotBeforeUtc): true = el access token se emitió antes del
+    /// sello y se rechaza. Sin sello → se acepta; con sello y sin `iat` → se rechaza. El `iat` va en segundos enteros, así que
+    /// se compara contra el sello truncado al segundo: un token emitido en el mismo segundo que el sello (o después) se
+    /// acepta; uno emitido en un segundo anterior, no.
+    /// </summary>
+    public static bool IssuedBeforeSessionsCutoff(long? issuedAtUnixSeconds, DateTime? sessionsNotBeforeUtc)
+    {
+        if (sessionsNotBeforeUtc is not DateTime cutoff) return false;
+        if (issuedAtUnixSeconds is not long iat) return true;
+        var cutoffSeconds = new DateTimeOffset(DateTime.SpecifyKind(cutoff, DateTimeKind.Utc)).ToUnixTimeSeconds();
+        return iat < cutoffSeconds;
+    }
 }
+
+/// <summary>Estado del aparato que OnTokenValidated guarda en caché bajo <see cref="DeviceClaims.ActiveCacheKey"/>.</summary>
+public sealed record DeviceTokenState(bool IsActive, DateTime? SessionsNotBeforeUtc);
 
 /// <summary>
 /// Capa D: identidad y sesiones. Login con Identity (hash, lockout), tenant activo al login → JWT; refresh tokens hasheados
@@ -253,6 +271,8 @@ public sealed class AuthService(
             { JwtRegisteredClaimNames.Iss, JwtRegisteredClaimNames.Aud, JwtRegisteredClaimNames.Exp, JwtRegisteredClaimNames.Nbf, JwtRegisteredClaimNames.Iat };
         var claims = parsed.Claims.Where(c => !registered.Contains(c.Type)).Select(c => new Claim(c.Type, c.Value)).ToList();
         claims.Add(new Claim(DeviceClaims.DeviceId, did.ToString()));
+        // Se conserva el `iat` del token original (numérico): OnTokenValidated lo compara con el sello de sesiones del aparato.
+        claims.Add(JwtTokenService.IssuedAtClaim(parsed.IssuedAt));
         var signed = new JwtSecurityToken(parsed.Issuer, parsed.Audiences.FirstOrDefault(), claims, parsed.ValidFrom, parsed.ValidTo,
             new SigningCredentials(jwt.SigningKey, SecurityAlgorithms.HmacSha256));
         return (handler.WriteToken(signed), exp);

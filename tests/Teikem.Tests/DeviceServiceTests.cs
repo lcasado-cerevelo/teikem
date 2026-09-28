@@ -134,6 +134,41 @@ public class DeviceServiceTests
         Assert.Equal("did", DeviceClaims.DeviceId);
     }
 
+    // ================================================================ sello de sesiones del aparato (access tokens con `did`)
+
+    [Fact]
+    public void Access_tokens_issued_before_the_device_sessions_cutoff_are_rejected()
+    {
+        var cutoff = new DateTime(2026, 9, 28, 12, 0, 0, 500, DateTimeKind.Utc);
+        var cutoffSeconds = new DateTimeOffset(cutoff).ToUnixTimeSeconds();
+        // Emitido antes del sello (p. ej. antes de la baja) → rechazado, aunque el aparato esté activo otra vez.
+        Assert.True(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds - 1, cutoff));
+        Assert.True(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds - 3600, cutoff));
+        // Emitido después del sello (o en el mismo segundo: el iat va en segundos enteros) → aceptado.
+        Assert.False(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds, cutoff));
+        Assert.False(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds + 1, cutoff));
+        // El sello leído de SQL Server llega con Kind Unspecified: se interpreta como UTC.
+        Assert.True(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds - 1, DateTime.SpecifyKind(cutoff, DateTimeKind.Unspecified)));
+        Assert.False(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds, DateTime.SpecifyKind(cutoff, DateTimeKind.Unspecified)));
+        // Sin sello → aceptado (con o sin iat); con sello y sin iat → rechazado.
+        Assert.False(DeviceClaims.IssuedBeforeSessionsCutoff(cutoffSeconds - 1, null));
+        Assert.False(DeviceClaims.IssuedBeforeSessionsCutoff(null, null));
+        Assert.True(DeviceClaims.IssuedBeforeSessionsCutoff(null, cutoff));
+    }
+
+    [Fact]
+    public void Access_tokens_carry_a_numeric_iat_claim()
+    {
+        var jwt = new JwtTokenService(Microsoft.Extensions.Options.Options.Create(new JwtOptions { SigningKey = new string('k', 64) }));
+        var user = new ApplicationUser { Id = 1, Email = "yo@t.local", FullName = "Yo Mismo", SecurityStamp = "s1" };
+        var before = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var (token, _) = jwt.CreateAccessToken(user, WmsFixture.TenantId, 1, null, null);
+        var parsed = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().ReadJwtToken(token);
+        var iat = Assert.Single(parsed.Claims, c => c.Type == "iat");
+        Assert.InRange(long.Parse(iat.Value), before, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        Assert.Contains("\"iat\":" + iat.Value, parsed.Payload.SerializeToJson());   // número, no cadena
+    }
+
     // ================================================================ alta
 
     [Fact]
@@ -291,6 +326,8 @@ public class DeviceServiceTests
         Assert.Null(row.EnrollCodeHash);
         Assert.Null(row.EnrollCodeExpiresUtc);
         Assert.NotNull(row.EnrolledAtUtc);
+        // Registrar (o reinstalar) fija el sello de sesiones: los access tokens anteriores del aparato dejan de servir.
+        Assert.Equal(row.EnrolledAtUtc, row.SessionsNotBeforeUtc);
         Assert.Equal("TC52", row.Model);
         // Datos técnicos en UserDeviceActivity (no en UserDevice): no tocan el RowVersion del aparato.
         var activity = f.Db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsNoTracking().Single(a => a.UserDeviceId == row.UserDeviceId);
@@ -398,10 +435,16 @@ public class DeviceServiceTests
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
 
+        var beforeOff = DateTime.UtcNow;
         var off = await devices.DeactivateAsync(a.Device.PublicId, default);
         Assert.False(off.IsActive);
         Assert.Null(off.EnrollCodeExpiresUtc);
         Assert.Null(Row(f, a.Device.PublicId).EnrollCodeHash);
+        // La baja fija el sello de sesiones del aparato (solo el de ese aparato).
+        var offCutoff = Row(f, a.Device.PublicId).SessionsNotBeforeUtc;
+        Assert.NotNull(offCutoff);
+        Assert.InRange(offCutoff!.Value, beforeOff, DateTime.UtcNow);
+        Assert.Null(Row(f, b.Device.PublicId).SessionsNotBeforeUtc);
         var tokens = f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().ToList();
         Assert.NotNull(tokens.Single(t => t.UserDeviceId == aId).RevokedAtUtc);
         Assert.Null(tokens.Single(t => t.UserDeviceId == bId).RevokedAtUtc);
@@ -416,6 +459,8 @@ public class DeviceServiceTests
         var on = await devices.ReactivateAsync(a.Device.PublicId, default);
         Assert.True(on.IsActive);
         Assert.NotNull(f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().Single(t => t.UserDeviceId == aId).RevokedAtUtc);
+        // La reactivación mueve el sello: los access tokens de antes de la baja siguen rechazados.
+        Assert.True(Row(f, a.Device.PublicId).SessionsNotBeforeUtc >= offCutoff);
         f.Db.ChangeTracker.Clear();
         var fresh = await devices.RegenerateEnrollCodeAsync(a.Device.PublicId, default);
         Assert.Equal(8, fresh.EnrollCode.Length);
@@ -443,10 +488,21 @@ public class DeviceServiceTests
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
         events.Events.Clear();
+        var offCutoff = Row(f, a.Device.PublicId).SessionsNotBeforeUtc;
+        Assert.NotNull(offCutoff);
+        // La caché del estado del aparato (did) se borra al reactivar: el sello nuevo rige en el acto en esta instancia.
+        var cache = f.Get<IMemoryCache>();
+        cache.Set(DeviceClaims.ActiveCacheKey(a.Device.PublicId), new DeviceTokenState(false, offCutoff));
+        var beforeOn = DateTime.UtcNow;
 
         var on = await devices.ReactivateAsync(a.Device.PublicId, default);
 
         Assert.True(on.IsActive);
+        var onCutoff = Row(f, a.Device.PublicId).SessionsNotBeforeUtc;
+        Assert.NotNull(onCutoff);
+        Assert.InRange(onCutoff!.Value, beforeOn, DateTime.UtcNow);
+        Assert.True(onCutoff >= offCutoff);
+        Assert.False(cache.TryGetValue(DeviceClaims.ActiveCacheKey(a.Device.PublicId), out _));
         var tokens = f.Db.RefreshTokens.IgnoreQueryFilters().AsNoTracking().ToList();
         Assert.NotNull(tokens.Single(t => t.TokenHash == late.TokenHash).RevokedAtUtc);
         Assert.Null(tokens.Single(t => t.UserDeviceId == bId).RevokedAtUtc);
@@ -460,6 +516,7 @@ public class DeviceServiceTests
         f.Db.ChangeTracker.Clear();
         await devices.ReactivateAsync(a.Device.PublicId, default);
         Assert.Single(events.Events);
+        Assert.Equal(onCutoff, Row(f, a.Device.PublicId).SessionsNotBeforeUtc);
     }
 
     // ================================================================ usuarios del aparato
