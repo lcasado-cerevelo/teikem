@@ -148,8 +148,9 @@ describe('CategoryProductPicker', () => {
     expect(last.searchParams.get('take')).toBe('20')
     // la búsqueda no se dispara por cada tecla
     expect(productRequests().every((u) => u.searchParams.get('search') === 'anal')).toBe(true)
-    // la sección Categorías también filtra con el texto
-    expect(within(screen.getByRole('group', { name: 'Categorías' })).getAllByRole('option')).toHaveLength(1)
+    // la sección Categorías también filtra con el texto (con el ancestro 'Farmacia' arriba, sin fila huérfana)
+    expect(within(screen.getByRole('group', { name: 'Categorías' })).getAllByRole('option')).toHaveLength(2)
+    expect(screen.getByRole('option', { name: /^Farmacia/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /Tornillo/ })).toBeNull()
 
     await user.click(option)
