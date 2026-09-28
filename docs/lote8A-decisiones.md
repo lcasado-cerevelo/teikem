@@ -265,8 +265,11 @@ secretos en claro (decisión 6 ter).
     (scoped) anota, solo mientras corre la operación con clave, cada `ModuleService.IsEnabledAsync` y
     `PermissionService.HasPermissionAsync` (incluye `EnsureAsync`/`EnsureEnabledAsync` del servicio y el modo a ciegas del
     controlador de conteos) con su resultado; se guardan en `IntegrationMessageLog.ReplayChecksJson` (columna nueva). Antes
-    de repetir: lo que se cumplía y ya no → el mismo 403 de una llamada nueva; otro cambio o registro ilegible → 409 `La
-    operación con esta clave ya no puede repetirse con los permisos actuales.`. Además `IdempotencyKey` usa
+    de repetir: cualquier comprobación que cambie, en cualquier sentido (también la que se cumplía y ya no, p. ej. perder
+    `warehouse.count` tras un conteo informado), o un registro ilegible → 409 `La operación con esta clave ya no puede
+    repetirse con los permisos actuales.`, no 403: la respuesta guardada no se puede servir y una llamada nueva daría otro
+    resultado. Los atributos del endpoint (`[RequirePermission]`, `[RequireModule]`, `[RequireAal2]`) siguen respondiendo su
+    propio 403 (`module_disabled`, `aal2_required`, falta de permiso). Además `IdempotencyKey` usa
     `COLLATE Latin1_General_100_BIN2` (la clave distingue mayúsculas también en SQL Server, como en las pruebas InMemory).
     A revisar: un permiso consultado dentro de la operación que no influye en la respuesta también bloquea la repetición
     (409) si cambia de false a true.

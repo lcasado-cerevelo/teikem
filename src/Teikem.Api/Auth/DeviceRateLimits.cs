@@ -52,7 +52,8 @@ public static class DeviceRateLimits
 
     private static RateLimitPartition<string> PerIpAndPath(HttpContext ctx, int permits)
         => RateLimitPartition.GetFixedWindowLimiter(
-            $"{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}|{ctx.Request.Path.Value?.ToLowerInvariant()}",
+            // Ruta normalizada (minúsculas, sin barra final): '/Enroll/' y '/enroll' comparten el mismo cupo.
+            $"{ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown"}|{ctx.Request.Path.Value?.TrimEnd('/').ToLowerInvariant()}",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = permits, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
 
     private static int Positive(int? value, int fallback) => value is int v && v > 0 ? v : fallback;

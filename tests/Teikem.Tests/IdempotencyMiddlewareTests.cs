@@ -259,10 +259,11 @@ public class IdempotencyMiddlewareTests
 
     /// <summary>
     /// Recibo contra OC repetido después de apagar PURCHASING: la operación original comprobó el módulo en el servicio (true);
-    /// ahora no se cumple → el mismo 403 module_disabled que una llamada nueva, sin repetir el cuerpo guardado.
+    /// ahora no se cumple → 409 'La operación con esta clave ya no puede repetirse con los permisos actuales.', sin repetir el
+    /// cuerpo guardado (las comprobaciones de servicio que cambian dan 409; solo los atributos del endpoint dan su 403).
     /// </summary>
     [Fact]
-    public async Task A_service_module_check_that_no_longer_holds_blocks_the_replay_with_module_disabled()
+    public async Task A_service_module_check_that_no_longer_holds_blocks_the_replay_with_conflict()
     {
         var (tenant, db, lookups) = Context();
         await using var _ = db;
@@ -277,16 +278,17 @@ public class IdempotencyMiddlewareTests
         var http = Request("po-1", "POST", path, body);
         http.RequestServices = services;
 
-        await Assert.ThrowsAsync<ModuleDisabledException>(
+        var ex = await Assert.ThrowsAsync<ConflictException>(
             () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
 
+        Assert.Equal(IdempotencyRules.RecheckChangedMessage, ex.Message);
         Assert.False(called);
         Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
     }
 
-    /// <summary>Permiso comprobado en el servicio que ya no se tiene → 403 (ForbiddenException) con PERMISSION_DENIED, sin repetir.</summary>
+    /// <summary>Permiso comprobado en el servicio que ya no se tiene → 409 RecheckChangedMessage (no 403 ni PERMISSION_DENIED), sin repetir.</summary>
     [Fact]
-    public async Task A_service_permission_check_that_no_longer_holds_blocks_the_replay_with_forbidden()
+    public async Task A_service_permission_check_that_no_longer_holds_blocks_the_replay_with_conflict()
     {
         var (tenant, db, lookups) = Context();
         await using var _ = db;
@@ -299,17 +301,19 @@ public class IdempotencyMiddlewareTests
         var http = Request("po-2", "POST", path, body);
         http.RequestServices = services;
 
-        await Assert.ThrowsAsync<ForbiddenException>(
+        var ex = await Assert.ThrowsAsync<ConflictException>(
             () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
 
-        Assert.Contains(SecurityEventTypes.PermissionDenied, security.Events);
+        Assert.Equal(IdempotencyRules.RecheckChangedMessage, ex.Message);
+        Assert.DoesNotContain(SecurityEventTypes.PermissionDenied, security.Events);
         Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
     }
 
     /// <summary>
     /// Conteo a ciegas: la respuesta guardada se calculó con las cantidades visibles (warehouse.count = true). Sin ese permiso
-    /// ahora solo queda la captura: repetir el cuerpo guardado se saltaría el modo a ciegas → 409, sin repetir.
-    /// Y al revés (se guardó a ciegas y ahora ve las cantidades) también 409: la respuesta sería otra.
+    /// ahora solo queda la captura: repetir el cuerpo guardado se saltaría el modo a ciegas → 409 (no 403: la respuesta
+    /// guardada no se puede servir y una llamada nueva daría otro resultado), sin repetir. Y al revés (se guardó a ciegas y
+    /// ahora ve las cantidades) también 409: la respuesta sería otra.
     /// </summary>
     [Theory]
     [InlineData(true)]
@@ -328,13 +332,49 @@ public class IdempotencyMiddlewareTests
         var http = Request("cc-1", "POST", path, body);
         http.RequestServices = services;
 
-        var ex = await Assert.ThrowsAnyAsync<TeikemException>(
+        // En los dos sentidos (se tenía y ya no, o no se tenía y ahora sí): 409 con el mismo mensaje.
+        var ex = await Assert.ThrowsAsync<ConflictException>(
             () => middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions())));
 
-        // Se tenía y ya no: 403 como una llamada nueva; no se tenía y ahora sí: 409.
-        if (storedWithCount) Assert.IsType<ForbiddenException>(ex);
-        else Assert.Equal(IdempotencyRules.RecheckChangedMessage, Assert.IsType<ConflictException>(ex).Message);
+        Assert.Equal(IdempotencyRules.RecheckChangedMessage, ex.Message);
+        Assert.Equal(409, ex.StatusCode);
         Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+    }
+
+    /// <summary>
+    /// Rechazo de negocio con clave (next lanza ValidationException): el middleware responde él mismo (para poder guardarlo)
+    /// y el cuerpo escrito debe ser idéntico al de ExceptionHandlingMiddleware (ProblemBody con las mismas opciones JSON).
+    /// </summary>
+    [Fact]
+    public async Task A_business_rejection_is_written_with_the_exception_middleware_problem_body()
+    {
+        var (tenant, db, lookups) = Context();
+        await using var _ = db;
+        tenant.CorrelationId = Guid.Parse("7c9e6679-7425-40de-944b-e07fc1f90ae7");
+        var thrown = new ValidationException("sku", "El SKU es obligatorio.");
+        // 400 sí se guarda: InMemory no soporta ExecuteUpdate, StoreAsync reintenta y deja el error en el log (no afecta el cuerpo).
+        var middleware = new IdempotencyMiddleware(_ => throw thrown, new CapturingLogger());
+        var http = Request("val-1");
+
+        await middleware.InvokeAsync(http, tenant, db, lookups, Options.Create(new HttpJsonOptions()));
+
+        Assert.Equal(400, http.Response.StatusCode);
+        Assert.StartsWith("application/json", http.Response.ContentType);
+        Assert.False(http.Response.Headers.ContainsKey(IdempotencyRules.ReplayedHeader));
+        http.Response.Body.Position = 0;
+        var written = new StreamReader(http.Response.Body, Encoding.UTF8).ReadToEnd();
+        var expected = System.Text.Json.JsonSerializer.Serialize(ExceptionHandlingMiddleware.ProblemBody(thrown, tenant.CorrelationId),
+            new HttpJsonOptions().SerializerOptions);
+        Assert.Equal(expected, written);
+
+        // Y lo mismo que escribe ExceptionHandlingMiddleware para la misma excepción.
+        var plain = new DefaultHttpContext();
+        plain.Response.Body = new MemoryStream();
+        await new ExceptionHandlingMiddleware(_ => throw thrown, Microsoft.Extensions.Logging.Abstractions.NullLogger<ExceptionHandlingMiddleware>.Instance)
+            .InvokeAsync(plain, tenant);
+        plain.Response.Body.Position = 0;
+        Assert.Equal(400, plain.Response.StatusCode);
+        Assert.Equal(new StreamReader(plain.Response.Body, Encoding.UTF8).ReadToEnd(), written);
     }
 
     /// <summary>Con las mismas comprobaciones cumplidas, la repetición devuelve el cuerpo guardado.</summary>

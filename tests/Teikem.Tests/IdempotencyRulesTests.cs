@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using Teikem.Api.Middleware;
 using Teikem.Domain.Security;
@@ -80,6 +81,18 @@ public class IdempotencyRulesTests
         Assert.Equal(IdempotencyRules.InvalidKeyMessage, IdempotencyRules.ValidateKey(new string('k', 81)).Error);
     }
 
+    [Fact]
+    public void Key_length_is_measured_before_trimming()
+    {
+        // 80 caracteres en bruto (78 visibles con un espacio a cada lado): válida y recortada.
+        var (key, error) = IdempotencyRules.ValidateKey(" " + new string('k', 78) + " ");
+        Assert.Null(error);
+        Assert.Equal(new string('k', 78), key);
+        // 81 en bruto aunque recortada quede en 80: inválida.
+        Assert.Equal(IdempotencyRules.InvalidKeyMessage, IdempotencyRules.ValidateKey(new string('k', 80) + " ").Error);
+        Assert.Equal(IdempotencyRules.InvalidKeyMessage, IdempotencyRules.ValidateKey(" " + new string('k', 80)).Error);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -111,8 +124,10 @@ public class IdempotencyRulesTests
         Assert.NotEqual(h, IdempotencyRules.ComputeHash("PUT", "/api/v1/receipts", B("{\"a\":1}")));
         Assert.NotEqual(h, IdempotencyRules.ComputeHash("POST", "/api/v1/pick-batches", B("{\"a\":1}")));
         Assert.NotEqual(h, IdempotencyRules.ComputeHash("POST", "/api/v1/receipts?x=1", B("{\"a\":1}")));
-        // SHA-256 de la cadena vacía con su encabezado: estable entre corridas.
-        Assert.Equal(IdempotencyRules.ComputeHash("DELETE", "/x", ReadOnlySpan<byte>.Empty), IdempotencyRules.ComputeHash("DELETE", "/x", Array.Empty<byte>()));
+        // Vector conocido: fija el algoritmo (SHA-256 de "MÉTODO ruta\n" + cuerpo) y el formato (hex en minúsculas).
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("DELETE /x\n"))).ToLowerInvariant(),
+            IdempotencyRules.ComputeHash("DELETE", "/x", ReadOnlySpan<byte>.Empty));
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes("POST /api/v1/receipts\n{\"a\":1}"))).ToLowerInvariant(), h);
     }
 
     [Fact]
@@ -173,7 +188,7 @@ public class IdempotencyRulesTests
         => Assert.Equal(stored, IdempotencyRules.ShouldStore(status));
 
     [Fact]
-    public void Middleware_reuses_the_problem_details_shape_of_the_exception_middleware()
+    public void ProblemBody_has_the_exception_middleware_shape()
     {
         var ex = new Teikem.Infrastructure.Exceptions.ConflictException(IdempotencyRules.BodyMismatchMessage);
         var body = System.Text.Json.JsonSerializer.Serialize(ExceptionHandlingMiddleware.ProblemBody(ex, Guid.Empty),

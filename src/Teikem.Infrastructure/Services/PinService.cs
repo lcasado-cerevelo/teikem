@@ -144,6 +144,8 @@ namespace Teikem.Infrastructure.Services
             }
             if (PinRules.IsLocked(pin.LockedUntilUtc, now)) await LockedAsync(user, tenantId, deviceCode, ct);
 
+            // Se recorta igual que al definirlo (ValidatePin): ' 4826 ' es el mismo PIN que '4826'.
+            pinValue = pinValue?.Trim();
             var result = string.IsNullOrEmpty(pinValue)
                 ? PasswordVerificationResult.Failed
                 : users.PasswordHasher.VerifyHashedPassword(user, pin.PinHash, pinValue);

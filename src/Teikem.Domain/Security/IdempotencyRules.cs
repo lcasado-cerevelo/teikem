@@ -27,8 +27,9 @@ public sealed record IdempotencyCheck(string Kind, string Code, bool Result);
 
 /// <summary>
 /// Lote 8A — reglas puras de la idempotencia del API (cabecera Idempotency-Key, módulo 13 del maestro), sin BD ni HTTP:
-/// - Aplica a POST, PUT, PATCH y DELETE autenticados que traen la cabecera. Clave de 1 a 80 caracteres visibles; vacía, más
-///   larga, repetida o con caracteres de control → 400 'La clave de idempotencia no es válida.'.
+/// - Aplica a POST, PUT, PATCH y DELETE autenticados que traen la cabecera. Clave de 1 a 80 caracteres (medidos antes de
+///   recortar los espacios de los extremos); vacía, más larga, repetida o con caracteres de control → 400 'La clave de
+///   idempotencia no es válida.'.
 /// - Clave lógica = (TenantId, UserId, clave). Huella = SHA-256 (hex en minúsculas) de método, ruta con query y cuerpo: la
 ///   misma clave en otra ruta también es "otro contenido".
 /// - Decisión: sin registro → ejecutar; vencido (más de 7 días) o en vuelo abandonado (más de 10 minutos sin respuesta) →
@@ -37,9 +38,10 @@ public sealed record IdempotencyCheck(string Kind, string Code, bool Result);
 ///   misma clave debe volver a intentarlo). Los 5xx nunca se guardan.
 /// - La clave distingue mayúsculas ('abc' y 'ABC' son claves distintas; la columna usa collation binaria en SQL Server).
 /// - Antes de repetir se vuelven a evaluar las comprobaciones de módulo y permiso que la operación original hizo en el
-///   servicio o el controlador (guardadas con la respuesta): la que se cumplía y ya no → el mismo 403 que una llamada nueva;
-///   cualquier otro cambio (p. ej. el permiso que decide el conteo a ciegas) → 409
-///   'La operación con esta clave ya no puede repetirse con los permisos actuales.'.
+///   servicio o el controlador (guardadas con la respuesta): cualquiera que cambie, en cualquier sentido (p. ej. perder o
+///   ganar warehouse.count, que decide el conteo a ciegas) → 409 'La operación con esta clave ya no puede repetirse con los
+///   permisos actuales.': la respuesta guardada ya no se puede servir y una llamada nueva daría otro resultado. Los
+///   atributos del endpoint ([RequirePermission], [RequireModule], [RequireAal2]) siguen respondiendo su propio 403.
 /// - No aplica a rutas que devuelven credenciales en claro (tokens, secretos, códigos de registro, contraseñas temporales):
 ///   /api/v1/auth, /api/v1/me, /api/v1/devices, /api/v1/platform y /api/v1/users (el alta de usuario devuelve la contraseña
 ///   temporal), además de las invitaciones de portal (/api/v1/clients/{id}/portal-users/invite y
@@ -111,8 +113,11 @@ public static class IdempotencyRules
     public static (string? Key, string? Error) ValidateKey(IReadOnlyList<string?>? values)
     {
         if (values is null || values.Count != 1) return (null, InvalidKeyMessage);
-        var key = values[0]?.Trim();
-        if (string.IsNullOrEmpty(key) || key.Length > MaxKeyLength) return (null, InvalidKeyMessage);
+        // La longitud (1 a 80) se mide sobre el valor recibido, antes de recortar: 81 caracteres con espacios siguen siendo 81.
+        var raw = values[0];
+        if (raw is null || raw.Length > MaxKeyLength) return (null, InvalidKeyMessage);
+        var key = raw.Trim();
+        if (key.Length == 0) return (null, InvalidKeyMessage);
         if (key.Any(char.IsControl)) return (null, InvalidKeyMessage);
         return (key, null);
     }

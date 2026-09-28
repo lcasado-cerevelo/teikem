@@ -41,8 +41,8 @@ namespace Teikem.Api.Middleware;
 /// peticiones rechazadas por autenticación o permiso no dejan registro; antes de repetir se vuelven a aplicar [RequireModule] y
 /// [RequireAal2] del endpoint (son filtros de MVC que la repetición no alcanza) y las comprobaciones de módulo y permiso que la
 /// operación original hizo en el servicio o el controlador (<see cref="IdempotencyCheckRecorder"/>, guardadas en
-/// ReplayChecksJson): la que se cumplía y ya no → el mismo 403 que una llamada nueva; otro cambio (p. ej. el permiso que decide
-/// el conteo a ciegas) → 409 'La operación con esta clave ya no puede repetirse con los permisos actuales.'.
+/// ReplayChecksJson): cualquiera que cambie (p. ej. el permiso que decide el conteo a ciegas, se pierda o se gane) → 409 'La
+/// operación con esta clave ya no puede repetirse con los permisos actuales.'.
 /// La clave distingue mayúsculas (collation binaria de la columna).
 /// </summary>
 public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<IdempotencyMiddleware> logger)
@@ -250,9 +250,11 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
     }
 
     /// <summary>
-    /// Reevalúa las comprobaciones de módulo y permiso que la operación original hizo en el servicio o el controlador. La que
-    /// se cumplía y ya no → el mismo rechazo que una llamada nueva (403 module_disabled, o 403 con PERMISSION_DENIED); otro
-    /// cambio (la que no se cumplía y ahora sí, p. ej. el modo a ciegas del conteo) o registro ilegible → 409, sin repetir.
+    /// Reevalúa las comprobaciones de módulo y permiso que la operación original hizo en el servicio o el controlador.
+    /// Cualquiera que cambie, en cualquier sentido (se cumplía y ya no, p. ej. perder warehouse.count del conteo a ciegas, o
+    /// al revés), o un registro ilegible → 409 RecheckChangedMessage, sin repetir: la respuesta guardada ya no se puede
+    /// servir y una llamada nueva daría otro resultado. Los atributos del endpoint siguen dando su 403 propio (autorización
+    /// y <see cref="EnsureEndpointFiltersAsync"/>).
     /// </summary>
     private static async Task EnsureRecordedChecksAsync(HttpContext http, string? checksJson, CancellationToken ct)
     {
@@ -261,20 +263,13 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, ILogger<Idempote
         if (checks.Count == 0) return;
         var modules = http.RequestServices.GetRequiredService<ModuleService>();
         var permissions = http.RequestServices.GetRequiredService<PermissionService>();
-        var changed = false;
         foreach (var check in checks)
         {
-            var isModule = check.Kind == IdempotencyRules.ModuleCheck;
-            var now = isModule ? await modules.IsEnabledAsync(check.Code, ct) : await permissions.HasPermissionAsync(check.Code, ct);
-            if (now == check.Result) continue;
-            if (check.Result)
-            {
-                if (isModule) throw new ModuleDisabledException(check.Code);
-                await permissions.EnsureAsync(check.Code, ct);
-            }
-            changed = true;
+            var now = check.Kind == IdempotencyRules.ModuleCheck
+                ? await modules.IsEnabledAsync(check.Code, ct)
+                : await permissions.HasPermissionAsync(check.Code, ct);
+            if (now != check.Result) throw new ConflictException(IdempotencyRules.RecheckChangedMessage);
         }
-        if (changed) throw new ConflictException(IdempotencyRules.RecheckChangedMessage);
     }
 
     private static async Task ReplayAsync(HttpContext http, int status, string? body)

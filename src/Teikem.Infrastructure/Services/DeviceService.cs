@@ -40,6 +40,8 @@ public sealed class DeviceService(
     public const string InvalidThemeMessage = "El tema no es válido; use LIGHT o DARK.";
     public const string InactiveWarehouseMessage = "El almacén por defecto está dado de baja.";
     public const string InactiveDeviceMessage = "El aparato está desactivado; reactívelo antes de generar un código de registro.";
+    /// <summary>Nombre que muestra device/users para un usuario sin nombre (nunca el correo: el aparato es compartido).</summary>
+    public const string UnnamedUser = "Usuario";
 
     public const int CodeMaxLength = 30;
     public const int NameMaxLength = 100;
@@ -117,14 +119,22 @@ public sealed class DeviceService(
     /// <summary>Desactiva el aparato, invalida su código de registro pendiente y revoca todas sus sesiones.</summary>
     public async Task<DeviceDto> DeactivateAsync(Guid publicId, CancellationToken ct)
     {
-        var device = await ResolveAsync(publicId, track: true, ct);
-        if (!device.IsActive) return await GetAsync(publicId, ct);
-        device.IsActive = false;
-        device.EnrollCodeHash = null;
-        device.EnrollCodeExpiresUtc = null;
-        await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
-        cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
-        await RevokeDeviceSessionsAsync(device, "device_deactivated", ct);
+        // Baja y revocación de sesiones en una sola transacción: no queda un aparato desactivado con sesiones vivas.
+        var (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var d = await ResolveAsync(publicId, track: true, ct2);
+            if (!d.IsActive) return (d, (int?)null);
+            d.IsActive = false;
+            d.EnrollCodeHash = null;
+            d.EnrollCodeExpiresUtc = null;
+            await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
+            return (d, (int?)await RevokeDeviceSessionsAsync(d, ct2));
+        }, ct);
+        if (revoked is int count)
+        {
+            cache.Remove(DeviceClaims.ActiveCacheKey(device.PublicId));
+            await WriteSessionsRevokedAsync(device, "device_deactivated", count, ct);
+        }
         return await GetAsync(publicId, ct);
     }
 
@@ -177,20 +187,33 @@ public sealed class DeviceService(
 
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var secret = NewSecret();
-        device.SecretHash = Hash(secret);
-        device.EnrollCodeHash = null;
-        device.EnrollCodeExpiresUtc = null;
-        device.EnrolledAtUtc = DateTime.UtcNow;
-        if (Clip(req.Model, ModelMaxLength) is string model) device.Model = model;
-        // Datos técnicos en UserDeviceActivity (misma transacción del SaveChanges): último contacto y versión de la app.
-        var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
-            .FirstOrDefaultAsync(a => a.UserDeviceId == device.UserDeviceId, ct);
-        if (activity is null)
-            db.Set<UserDeviceActivity>().Add(activity = new UserDeviceActivity { UserDeviceId = device.UserDeviceId, TenantId = device.TenantId });
-        activity.LastSeenUtc = DateTime.UtcNow;
-        if (Clip(req.AppVersion, AppVersionMaxLength) is string version) activity.AppVersion = version;
-        await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
-        await RevokeDeviceSessionsAsync(device, "device_enrolled", ct);
+        var deviceId = device.UserDeviceId;
+        var codeHash = device.EnrollCodeHash;
+        // Secreto nuevo, código consumido, datos técnicos y cierre de sesiones previas en una sola transacción.
+        // RunInTransactionAsync limpia el rastreador: el aparato se vuelve a leer dentro (con el mismo código aún vigente).
+        int revoked;
+        (device, revoked) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var now = DateTime.UtcNow;
+            var d = await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking()
+                .FirstOrDefaultAsync(x => x.UserDeviceId == deviceId && x.EnrollCodeHash == codeHash && x.EnrollCodeExpiresUtc > now && x.IsActive, ct2)
+                ?? throw new UnauthorizedException(InvalidEnrollCodeMessage);
+            d.SecretHash = Hash(secret);
+            d.EnrollCodeHash = null;
+            d.EnrollCodeExpiresUtc = null;
+            d.EnrolledAtUtc = now;
+            if (Clip(req.Model, ModelMaxLength) is string model) d.Model = model;
+            // Datos técnicos en UserDeviceActivity (misma transacción): último contacto y versión de la app.
+            var activity = await db.Set<UserDeviceActivity>().IgnoreQueryFilters().AsTracking()
+                .FirstOrDefaultAsync(a => a.UserDeviceId == d.UserDeviceId, ct2);
+            if (activity is null)
+                db.Set<UserDeviceActivity>().Add(activity = new UserDeviceActivity { UserDeviceId = d.UserDeviceId, TenantId = d.TenantId });
+            activity.LastSeenUtc = now;
+            if (Clip(req.AppVersion, AppVersionMaxLength) is string version) activity.AppVersion = version;
+            await db.SaveGuardedAsync(DuplicateCodeMessage, ct2);
+            return (d, await RevokeDeviceSessionsAsync(d, ct2));
+        }, ct);
+        await WriteSessionsRevokedAsync(device, "device_enrolled", revoked, ct);
         await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Success, null, device.TenantId, new { action = "device_enrolled", device = device.Code }, ct);
 
         var tenantName = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == device.TenantId).Select(t => t.Name).FirstAsync(ct);
@@ -204,7 +227,7 @@ public sealed class DeviceService(
     /// </summary>
     public async Task<IReadOnlyList<DeviceUserDto>> GetDeviceUsersAsync(DeviceUsersRequest req, CancellationToken ct)
     {
-        var device = await AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, "users", ct);
+        var device = await AuthenticateAsync(req.DevicePublicId, req.DeviceSecret, "users", ct, track: false);
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var activeMembership = await ActiveMembershipIdAsync(ct);
         var portalKind = await lookups.TryGetIdAsync(LookupDomains.UserKind, UserKinds.Portal, ct);
@@ -218,7 +241,8 @@ public sealed class DeviceService(
         foreach (var c in candidates)
         {
             if (!(await permissions.GetEffectivePermissionsAsync(c.UserId, device.TenantId, ct)).Contains(PermissionCatalog.InventoryView)) continue;
-            var name = string.IsNullOrWhiteSpace(c.FullName) ? c.Email ?? c.UserId.ToString() : c.FullName.Trim();
+            // Sin nombre: 'Usuario' (el aparato es compartido; el correo no se muestra).
+            var name = string.IsNullOrWhiteSpace(c.FullName) ? UnnamedUser : c.FullName.Trim();
             list.Add(new DeviceUserDto(c.UserId, name, Initials(c.FullName, c.Email)));
         }
         return list.OrderBy(u => u.FullName, StringComparer.CurrentCultureIgnoreCase).ToList();
@@ -231,7 +255,7 @@ public sealed class DeviceService(
     /// </summary>
     public async Task<DeviceHeartbeatDto> HeartbeatAsync(HeartbeatRequest req, CancellationToken ct)
     {
-        var device = await FindBySecretAsync(req.DevicePublicId, req.DeviceSecret, ct) ?? throw new UnauthorizedException(InvalidDeviceMessage);
+        var device = await FindBySecretAsync(req.DevicePublicId, req.DeviceSecret, track: false, ct) ?? throw new UnauthorizedException(InvalidDeviceMessage);
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var usable = device.IsActive && await TenantUsableAsync(device.TenantId, ct);
         await TouchAsync(device, null, req.AppVersion, ct);
@@ -243,11 +267,12 @@ public sealed class DeviceService(
 
     /// <summary>
     /// Aparato activo por PublicId + secreto, de una compañía activa con el módulo WMS encendido; si no, 401
-    /// 'El aparato no está registrado o fue desactivado.'. Devuelve la entidad rastreada.
+    /// 'El aparato no está registrado o fue desactivado.'. Devuelve la entidad rastreada (sin rastrear con track: false,
+    /// para quien solo lee).
     /// </summary>
-    internal async Task<UserDevice> AuthenticateAsync(Guid publicId, string? secret, string action, CancellationToken ct)
+    internal async Task<UserDevice> AuthenticateAsync(Guid publicId, string? secret, string action, CancellationToken ct, bool track = true)
     {
-        var device = await FindBySecretAsync(publicId, secret, ct);
+        var device = await FindBySecretAsync(publicId, secret, track, ct);
         if (device is null || !device.IsActive || !await TenantUsableAsync(device.TenantId, ct))
         {
             // El intento rechazado queda como LOGIN/FAILURE con stage=device (p. ej. el aparato perdido que el
@@ -335,10 +360,11 @@ public sealed class DeviceService(
         return await q.FirstOrDefaultAsync(d => d.PublicId == publicId, ct) ?? throw new NotFoundException("Aparato");
     }
 
-    private async Task<UserDevice?> FindBySecretAsync(Guid publicId, string? secret, CancellationToken ct)
+    private async Task<UserDevice?> FindBySecretAsync(Guid publicId, string? secret, bool track, CancellationToken ct)
     {
         if (publicId == Guid.Empty || string.IsNullOrWhiteSpace(secret)) return null;
-        var device = await db.Set<UserDevice>().IgnoreQueryFilters().AsTracking().FirstOrDefaultAsync(d => d.PublicId == publicId, ct);
+        var q = track ? db.Set<UserDevice>().IgnoreQueryFilters().AsTracking() : db.Set<UserDevice>().IgnoreQueryFilters().AsNoTracking();
+        var device = await q.FirstOrDefaultAsync(d => d.PublicId == publicId, ct);
         if (device?.SecretHash is null) return null;
         var expected = Encoding.ASCII.GetBytes(device.SecretHash);
         var actual = Encoding.ASCII.GetBytes(Hash(secret.Trim()));
@@ -368,19 +394,27 @@ public sealed class DeviceService(
         finally { ctx.TenantId = t; ctx.UserId = u; }
     }
 
-    private async Task RevokeDeviceSessionsAsync(UserDevice device, string reason, CancellationToken ct)
+    /// <summary>Revoca las sesiones vivas del aparato (dentro de la transacción del llamador); devuelve cuántas.</summary>
+    private async Task<int> RevokeDeviceSessionsAsync(UserDevice device, CancellationToken ct)
     {
         var tokens = await db.RefreshTokens.IgnoreQueryFilters()
             .Where(t => t.TenantId == device.TenantId && t.RevokedAtUtc == null && t.UserDeviceId == device.UserDeviceId)
             .ToListAsync(ct);
-        if (tokens.Count == 0) return;
+        if (tokens.Count == 0) return 0;
         var now = DateTime.UtcNow;
         foreach (var t in tokens) t.RevokedAtUtc = now;
         db.SuppressAudit = true;
         try { await db.SaveChangesAsync(ct); }
         finally { db.SuppressAudit = false; }
+        return tokens.Count;
+    }
+
+    /// <summary>TOKEN_REVOKED de las sesiones del aparato, después de confirmar la transacción (nada si no había ninguna).</summary>
+    private async Task WriteSessionsRevokedAsync(UserDevice device, string reason, int count, CancellationToken ct)
+    {
+        if (count == 0) return;
         await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Success, tenant.UserId, device.TenantId,
-            new { scope = "device", device = device.Code, reason, count = tokens.Count }, ct);
+            new { scope = "device", device = device.Code, reason, count }, ct);
     }
 
     private async Task<int> ActiveMembershipIdAsync(CancellationToken ct)

@@ -264,6 +264,9 @@ public sealed class AuthService(
     {
         var rt = await FindActiveAsync(refreshToken, ct);
         var user = await users.FindByIdAsync(rt.UserId.ToString());
+        // Sesión de aparato (Lote 8A): se revalida lo mismo que exige device/login (usuario activo, membresía ACTIVE en la
+        // compañía y inventory.view); si ya no se cumple, la sesión se revoca y el refresh da 401 como un token inválido.
+        if (TokenDevice(rt) is not null) await EnsureDeviceUserStillValidAsync(rt, user, ct);
         if (user is null || !user.IsActive) throw new UnauthorizedException();
         var memberships = await ActiveMembershipsAsync(user, ct);
         if (!memberships.Any(m => m.TenantId == rt.TenantId)) { await RevokeAsync(rt, null, ct); throw new ForbiddenException("La membresía ya no está activa."); }
@@ -298,6 +301,23 @@ public sealed class AuthService(
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
         var (access, exp) = CreateAccess(user, rt.TenantId, next.RefreshTokenId, kind, next.Aal2VerifiedAtUtc, device?.PublicId);
         return new TokenPairDto(access, exp, raw, next.ExpiresAtUtc, rt.TenantId);
+    }
+
+    /// <summary>
+    /// Refresh de una sesión de aparato: el usuario sigue activo, con membresía activa en la compañía de la sesión y con
+    /// inventory.view (la misma condición que device/login). Si no: revoca, TOKEN_REVOKED y 401 'Refresh token inválido.'.
+    /// </summary>
+    private async Task EnsureDeviceUserStillValidAsync(RefreshToken rt, ApplicationUser? user, CancellationToken ct)
+    {
+        string? reason = null;
+        if (user is null || !user.IsActive) reason = "user_inactive";
+        else if (!(await ActiveMembershipsAsync(user, ct)).Any(m => m.TenantId == rt.TenantId)) reason = "membership_inactive";
+        else if (!user.IsPlatformAdmin && !(await permissions.GetEffectivePermissionsAsync(user.Id, rt.TenantId, ct)).Contains(PermissionCatalog.InventoryView))
+            reason = "missing_inventory_view";
+        if (reason is null) return;
+        await RevokeAsync(rt, null, ct);
+        await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId, new { reason }, ct);
+        throw new UnauthorizedException("Refresh token inválido.");
     }
 
     public async Task LogoutAsync(string refreshToken, CancellationToken ct)

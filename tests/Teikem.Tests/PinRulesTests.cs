@@ -117,12 +117,18 @@ public class PinRulesTests
 
     // ================================================================ hash con Identity
 
+    /// <summary>
+    /// Formato del hash de Identity que guarda PinService (PasswordHasher V3: base64 que empieza con el marcador 0x01), que no
+    /// contiene el PIN en claro, verifica solo el PIN correcto y cabe en UserPin.PinHash (NVARCHAR(200)). Que PinService use
+    /// este hasher lo cubren DeviceServiceTests y el smoke.
+    /// </summary>
     [Fact]
-    public void Pin_hash_uses_the_identity_password_hasher_and_never_stores_the_pin()
+    public void Identity_password_hash_is_v3_base64_without_the_pin_and_fits_200_chars()
     {
         var hasher = new PasswordHasher<ApplicationUser>();
         var user = new ApplicationUser { Id = 7, UserName = "almacen@demo" };
         var hash = hasher.HashPassword(user, "4826");
+        Assert.Equal(0x01, Convert.FromBase64String(hash)[0]);
         Assert.DoesNotContain("4826", hash);
         Assert.NotEqual(PasswordVerificationResult.Failed, hasher.VerifyHashedPassword(user, hash, "4826"));
         Assert.Equal(PasswordVerificationResult.Failed, hasher.VerifyHashedPassword(user, hash, "4827"));
