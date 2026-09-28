@@ -4,9 +4,9 @@
 # Opcional: SMOKE_SQL="sqlcmd … -d <bd> -b -h -1 -Q" habilita los pasos que insertan datos por SQL (pings del monitor, Lote 5).
 set -euo pipefail
 BASE="${1:-http://localhost:5000}"
-EMAIL="${TEIKEM_ADMIN_EMAIL:-admin@teikem.local}"
+EMAIL="${TEIKEM_ADMIN_EMAIL:-cerevelo+admin@cerevelo.com}"
 PASS="${TEIKEM_ADMIN_PASSWORD:-Teikem_Admin_2026!}"
-DISPATCH_EMAIL="${TEIKEM_DISPATCH_EMAIL:-despacho@teikem.local}"
+DISPATCH_EMAIL="${TEIKEM_DISPATCH_EMAIL:-cerevelo+despacho@cerevelo.com}"
 
 step() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m   ok\033[0m %s\n' "$*"; }
@@ -114,7 +114,7 @@ ok "permiso denegado registrado"
 # ============================================================================================================
 TS=$(date +%s); TODAY=$(date -u +%F)
 anon() { TOKEN= req "$@"; }   # petición sin Authorization (accept-invite y logins)
-PLATFORM_EMAIL="${TEIKEM_PLATFORM_EMAIL:-soporte@teikem.local}"
+PLATFORM_EMAIL="${TEIKEM_PLATFORM_EMAIL:-cerevelo+soporte@cerevelo.com}"
 
 step "clientes (Lote 2): alta compuesta, código autogenerado, perfil y numeración"
 C1=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Farmacia Las Marías $TS\",\"paymentTerm\":\"NET30\",\"currency\":\"USD\",\"contract\":{\"startDate\":\"2026-01-01\",\"serviceLevels\":[{\"serviceType\":\"STANDARD\",\"maxTransitHours\":48}]}}")")

@@ -45,9 +45,9 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
     {
         var tc = (TenantContext)tenant;
         var name = config["Seed:Demo:TenantName"] ?? "Advance Logistics";
-        var adminEmail = config["Seed:Demo:AdminEmail"] ?? "admin@teikem.local";
+        var adminEmail = config["Seed:Demo:AdminEmail"] ?? "cerevelo+admin@cerevelo.com";
         var adminPassword = config["Seed:Demo:AdminPassword"] ?? "Teikem_Admin_2026!";
-        var platformEmail = config["Seed:Demo:PlatformAdminEmail"] ?? "soporte@teikem.local";
+        var platformEmail = config["Seed:Demo:PlatformAdminEmail"] ?? "cerevelo+soporte@cerevelo.com";
         var platformPassword = config["Seed:Demo:PlatformAdminPassword"] ?? adminPassword;
 
         int tenantId;
@@ -75,10 +75,11 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
         {
             var admin = await db.Users.AsNoTracking().FirstAsync(u => u.NormalizedEmail == adminEmail.ToUpperInvariant(), ct);
             tc.UserId = admin.Id;
-            if (!await db.Users.AnyAsync(u => u.NormalizedEmail == "DESPACHO@TEIKEM.LOCAL", ct))
+            const string despachoEmail = "cerevelo+despacho@cerevelo.com";
+            if (!await db.Users.AnyAsync(u => u.NormalizedEmail == despachoEmail.ToUpperInvariant(), ct))
             {
-                await userAdmin.CreateUserAsync(new UserCreateRequest("despacho@teikem.local", "Carlos Rivera", adminPassword, new[] { "Dispatcher" }, UserKinds.Internal), ct);
-                logger.LogInformation("Usuario demo despacho@teikem.local creado.");
+                await userAdmin.CreateUserAsync(new UserCreateRequest(despachoEmail, "Carlos Rivera", adminPassword, new[] { "Dispatcher" }, UserKinds.Internal), ct);
+                logger.LogInformation("Usuario demo {Email} creado.", despachoEmail);
             }
             // Admin de plataforma (soporte Teikem): opera cualquier tenant, sin membresía
             var platform = await db.Users.FirstOrDefaultAsync(u => u.NormalizedEmail == platformEmail.ToUpperInvariant(), ct);
