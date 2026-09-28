@@ -48,8 +48,11 @@ backend de Órdenes existe), se agrega como pieza aparte en F3.
 ## Parte 2 — Diseño de F8a
 
 **Objetivo**: menú y cabecera idénticos a la maqueta, con pantalla "pendiente" y permiso en cada ítem; Pulso organizable en
-dos niveles; Indicadores y Gráficos; Roles y usuarios con PIN de la app; Aparatos (mínimo); Catálogos de valores. Todo con
-el API existente salvo P1.
+dos niveles; Indicadores y Gráficos; Roles y usuarios con PIN de la app; Aparatos (mínimo); Catálogos de valores; **la
+marca Teikem del paquete `Logos/` en la web y en la app móvil** (P7, P8). Todo con el API existente salvo P1.
+
+Estado: **aprobado por Luis el 2026-09-28 con lo propuesto** (ríos fuera, Catálogos de valores en Sistema, mini-mock antes de
+codificar). Aún no se codifica.
 
 ### P0 — Menú completo de la maqueta, pantalla "pendiente" y cabecera (orden 2, agente: core)
 
@@ -200,6 +203,38 @@ Habilitado · Origen (Sistema / Ajustado / Propio). Valor de sistema: "Ajustar" 
 Al guardar, invalida la caché de `kernel/catalogs` (el resto de la app ve la etiqueta nueva sin recargar). Móvil: dominios
 como selector arriba, valores en tarjetas.
 
+### P7 — Marca Teikem en la web (orden 2, agente: core)
+
+Hoy la web muestra una "T" dibujada en CSS y el favicon genérico de la plantilla; la maqueta usa el lockup de Teikem
+(símbolo hexagonal + TEIKEM + "Inteligencia de Entregas") en la barra lateral, y la marca cuadrada al colapsar. El paquete
+de logos ya está en el repo (`Logos/`, mismos archivos que usa la landing `web/assets/img/logo-*.svg`). Regla de la maqueta
+(`brandLogoFor`): en tema oscuro la variante `-inv`, en claro la normal; el idioma elige el lema (es/en).
+
+- Copiar a `web-app/public/brand/`: `teikem-1b-horizontal-tagline-es(.svg|-inv.svg)`, `teikem-1a-horizontal-tagline-en(…)`,
+  `teikem-2-horizontal-notagline(…)`, `teikem-8-favicon-256.png`, `favicon.ico`, `teikem-8-appicon-180.png`. El símbolo
+  solo no viene como SVG en el paquete (solo PNG `teikem-7-symbol`): se crea `Logos/teikem-symbol.svg` extrayendo las mismas
+  rutas del hexágono y la T del lockup (idéntico al `teikemLogo()` de la maqueta) y se copia también.
+- `kernel/ui/Brand.tsx`: `<BrandLockup>` (elige el SVG por idioma y tema; `alt="Teikem"`) y `<BrandMark size>` (símbolo).
+  Barra lateral: lockup a todo el ancho con el mismo brillo de la maqueta (`drop-shadow(0 4px 14px var(--brand-glow))`);
+  marca cuadrada de 44 px al colapsar. Login, MFA, selección de compañía y `Splash`: lockup centrado arriba. Pantalla
+  "pendiente": marca pequeña.
+- `index.html`: favicon (`.ico` + PNG 256 + `apple-touch-icon` 180), `<title>Teikem</title>`, `theme-color` `#0B2C66`.
+- Sin logo por compañía (eso es "Colores y logo" de Ajustes, sin backend): el lockup de Teikem es el único, como el
+  fallback de la maqueta.
+- Pruebas: el lockup cambia de archivo al cambiar idioma y tema sin recargar; la marca aparece al colapsar.
+
+### P8 — Marca Teikem en la app móvil (orden 2, agente: implementer, fuera de `fe-implementar`)
+
+`app-almacen/assets/icon.png` y `splash-icon.png` son los de la plantilla de Expo (la "A" azul); `android-icon-*` también.
+El paquete trae el icono a 512 px y Expo pide 1024 px, así que los PNG se **generan** desde `Logos/teikem-symbol.svg` con
+un script (`scripts/brand-icons.mjs`, `sharp`, ejecutable en CI): `icon.png` 1024 (símbolo sobre `#0B2C66`),
+`android-icon-foreground.png` (símbolo con margen de seguridad), `android-icon-background.png` (`#0B2C66` liso),
+`android-icon-monochrome.png` (símbolo en blanco), `splash-icon.png` (símbolo, fondo `#0B2C66` en `app.config.ts`),
+`favicon.png`. Pantallas **Registrar** y **Entrar**: lockup (`-inv`, la app es oscura; es/en por idioma) arriba del
+formulario, como `expo-image`/`Image` con el SVG convertido a PNG @2x/@3x por el mismo script. El nombre "Teikem Almacén"
+se conserva. Verificación: `npm run check` de la app, APK del job `android` y captura del icono en el emulador para el
+manual (`docs/manual/09-app-almacen.md`).
+
 ### Recorrido Playwright (`web-app/e2e/f8a.spec.ts`)
 
 1. `teikem+admin@cerevelo.com` → el menú muestra los 7 grupos con todos los ítems de la maqueta; "Sala de despacho" abre la
@@ -235,6 +270,42 @@ como selector arriba, valores en tarjetas.
 - **Sin backend**: Impresoras y labels, Integraciones / API, colores y logo, Portal de clientes.
 
 ---
+
+## Parte 5 — Opinión sobre el dashboard de la maqueta (pedida por Luis)
+
+Lo que está bien y se conserva tal cual:
+
+- **Los dos ríos cuentan una historia** (lo que sale a la calle / el dinero que regresa) y el código de color azul/naranja
+  se sostiene en toda la página: los indicadores en dinero salen naranja, los de cantidad azul. Eso es lo que hace que la
+  página se lea de un vistazo, y P2 lo aplica a "Tus indicadores".
+- Cifras en monoespaciada, subtítulo corto por nodo ("sin chofer", "12 choferes") y sparkline de 7 días: densidad alta sin
+  ruido. Clic en un nodo lleva a la pantalla que lo explica.
+- **"Necesita tu decisión"** es la parte más valiosa: cuatro cosas concretas con su botón. Y el **Radar** con chips por pueblo
+  es una buena forma de ver lo abierto sin una tabla.
+
+Lo que cambiaría (y cómo lo recoge el plan):
+
+1. **Lo más accionable queda debajo del pliegue.** En una pantalla de 1080 px, "Necesita tu decisión" no se ve sin bajar
+   (segunda captura). Propongo que, cuando exista (F3/F5), el orden por defecto de la compañía lo ponga justo debajo de los
+   ríos, antes de "Tus indicadores" y "Tus gráficos", o al menos que el subtítulo de la fecha diga "4 pendientes" con enlace.
+   Con P2 (orden por compañía y por usuario) esto es una decisión de configuración, no de código.
+2. **Para un tenant que hoy solo opera almacén, los dos ríos estarían vacíos** y el Pulso arrancaría con dos franjas en
+   cero. P2 no pinta secciones vacías y el módulo (`LTL_GROUND`, `COD`) las apaga; con solo almacén, el Pulso abre con "Tus
+   indicadores" (los de almacén sembrados en 7A) y el panel Almacén.
+3. **Los gráficos con pocos datos se ven vacíos** ("Facturación por cliente" con una sola barra ocupa medio ancho). En P3/P2:
+   con ≤ 3 puntos, el panel muestra una lista de valores en vez del gráfico; la dona lleva el total al centro (como la
+   maqueta) y las etiquetas salen del catálogo de estatus, no los códigos (`deliv`, `cod`, `wh`).
+4. **El subtítulo de cifras es texto fijo en la maqueta** ("596 órdenes en movimiento · $19,960 COD"). En la app sale de los
+   propios ríos cuando existan; mientras, el saludo.
+5. **Título "Lunes, 28 De Septiembre"**: el `text-transform: capitalize` capitaliza también "De". En la app se capitaliza solo
+   la primera letra ("Lunes, 28 de septiembre"). Y la fecha ya está en la cabecera ("lun, 28 sept · 3:20 p. m."): se mantiene
+   en las dos porque el título grande es la identidad de la pantalla, pero la cabecera podría mostrar solo la hora.
+6. **Altura desigual de las tarjetas de gráficos** (dona alta, barra baja): en P2 la grilla alinea arriba y cada tarjeta
+   tiene altura mínima común, para que la fila no se vea "mordida".
+7. **El asistente (mascota abajo a la derecha)** no tiene backend: no entra en F8a ni se dibuja el botón, para no prometer
+   algo que no responde.
+8. Lo que la maqueta **no tiene y la app sí** (panel Almacén con filtro y Actividad reciente, F7A, aprobados sobre su propio
+   mock): entran como paneles del mismo Pulso, ordenables, después de "Tus gráficos" por defecto.
 
 ## Parte 4 — Lo que queda por confirmar
 

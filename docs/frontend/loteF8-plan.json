@@ -1,8 +1,8 @@
 {
  "lote": "F8a",
  "titulo": "Menú completo de la maqueta, Sistema, Análisis y Pulso organizable (frontend)",
- "aprobacion": "v2 con las respuestas de Luis del 2026-09-28; PENDIENTE de su 'adelante'. Ver docs/frontend/loteF8-plan.md (Parte 4: ríos de Operación, ubicación de Catálogos de valores, mini-mock). Requiere la pieza P1 de backend desplegada y web-app/openapi.json regenerado antes de P2.",
- "objetivo": "Menú y cabecera idénticos a la maqueta (7 grupos, todos los ítems, pantalla 'pendiente' con permiso y módulo en cada uno; paleta de comandos, reloj, tema); Pulso organizable en dos niveles (compañía y usuario); Indicadores y Gráficos; Roles y usuarios con PIN de la app; Aparatos móviles (mínimo); Catálogos de valores.",
+ "aprobacion": "Aprobado por Luis el 2026-09-28 con lo propuesto (ríos de Operación fuera; Catálogos de valores en Sistema; mini-mock de Aparatos, PIN y Catálogos antes de codificar). AÚN NO SE CODIFICA hasta su orden de ejecutar. Requiere la pieza P1 de backend desplegada y web-app/openapi.json regenerado antes de P2. P8 (marca en la app móvil) corre fuera de fe-implementar.",
+ "objetivo": "Menú y cabecera idénticos a la maqueta (7 grupos, todos los ítems, pantalla 'pendiente' con permiso y módulo en cada uno; paleta de comandos, reloj, tema); Pulso organizable en dos niveles (compañía y usuario); Indicadores y Gráficos; Roles y usuarios con PIN de la app; Aparatos móviles (mínimo); Catálogos de valores. Marca Teikem del paquete Logos/ en la web (P7) y en la app móvil (P8).",
  "fueraDeAlcance": [
   "Clientes y contratos, Consignatarios, Choferes, Flota (F2, F4): solo su ítem pendiente en el menú",
   "Ríos de Operación (Paquetes en la calle / Dinero COD), bandeja 'Necesita tu decisión' y Radar (F3, F5, 7C)",
@@ -16,53 +16,136 @@
    "orden": 1,
    "agente": "implementer",
    "descripcion": "Diseño/logistica-db-estructura.sql: columna PulseSortOrder INT NULL en dbo.UserAnalyticsPreference; tabla dbo.PulsePanelSetting (PulsePanelSettingId, TenantId FK, UserId INT NULL FK AspNetUsers, PanelKey NVARCHAR(40), IsVisible BIT DEFAULT 1, SortOrder INT DEFAULT 0, UpdatedAtUtc) con índices únicos filtrados (TenantId, PanelKey) WHERE UserId IS NULL y (TenantId, UserId, PanelKey) WHERE UserId IS NOT NULL; ITenantScoped; sin seed. Entidad + configuración EF 1:1. Claves de panel en Teikem.Domain: WAREHOUSE, ACTIVITY. GET /api/v1/analytics/pulse → PulseDto(Indicators, Charts, Panels, HasPersonalLayout): por elemento, preferencia del usuario si existe, si no la de la compañía (definición para indicadores/gráficos; fila UserId NULL para paneles; sin fila = visible, al final); orden efectivo PulseSortOrder del usuario → SortOrder de la compañía → nombre; cada elemento con sortOrder efectivo y source 'user'|'company'. PUT /api/v1/analytics/pulse/layout?scope=mine|company con cuerpo { items:[{kind:'indicator'|'chart', id, sortOrder, showInPulse}], panels:[{key, isVisible, sortOrder}] }: mine (analytics.view) escribe UserAnalyticsPreference y PulsePanelSetting del usuario; company (analytics.manage) escribe ShowInPulse/SortOrder de las definiciones y filas UserId NULL; clave desconocida → ValidationException 'Panel de Pulso desconocido: {key}' (400); indicador no visible para el usuario → 404; devuelve el PulseDto nuevo. DELETE /api/v1/analytics/pulse/layout/mine (analytics.view) borra orden/ocultos del usuario (no el rango). my-pulse se conserva. Pruebas xunit (orden parcial, sin orden, panel oculto por compañía y mostrado por usuario, restablecer); smoke.sh con los tres endpoints; manual de análisis + FAQ.",
-   "archivos": ["Diseño/logistica-db-estructura.sql", "src/Teikem.Domain/Analytics/*", "src/Teikem.Infrastructure/Persistence/Configurations/*", "src/Teikem.Infrastructure/Contracts/AnalyticsContracts.cs", "src/Teikem.Infrastructure/Services/AnalyticsService.cs", "src/Teikem.Api/Controllers/ExtensibilityControllers.cs", "tests/Teikem.Tests/*", "scripts/smoke.sh", "docs/manual/*"]
+   "archivos": [
+    "Diseño/logistica-db-estructura.sql",
+    "src/Teikem.Domain/Analytics/*",
+    "src/Teikem.Infrastructure/Persistence/Configurations/*",
+    "src/Teikem.Infrastructure/Contracts/AnalyticsContracts.cs",
+    "src/Teikem.Infrastructure/Services/AnalyticsService.cs",
+    "src/Teikem.Api/Controllers/ExtensibilityControllers.cs",
+    "tests/Teikem.Tests/*",
+    "scripts/smoke.sh",
+    "docs/manual/*"
+   ]
   },
   {
    "nombre": "P0 — Menú completo de la maqueta, pantalla pendiente y cabecera",
    "orden": 2,
    "agente": "core",
    "descripcion": "navigation.ts: 7 grupos en el orden y con las etiquetas es/en de la maqueta (ops Operación, warehouse Almacén, money Contabilidad, catalog Catálogo, analytics Análisis, system Sistema, portal Portal de clientes); un grupo se pinta si tiene al menos un ítem visible. routes.tsx: TODOS los ítems de la maqueta con la tabla de rutas/permisos/módulos de loteF8-plan.md P0 (Operación: Estación de escaneo trips.scan, Sala de despacho trips.dispatch, Monitoreo de ruta trips.view, módulo LTL_GROUND; Contabilidad: Contabilización de compras purchasing.view/PURCHASING, Contabilización de despachos billing.export, Procesar entregas cod.view/COD, Facturación billing.generate, Liquidación a choferes driverpay.view; Catálogo: Clientes y contratos clients.read, Consignatarios locations.read, Choferes y tarifas fleet.view, Flota y mantenimiento fleet.view, módulo CATALOG; Análisis: Vistas e informes analytics.view, Campos personalizados admin.customfields/CUSTOM_FIELDS, Indicadores, Gráficos; Sistema: Impresoras y labels admin.tenant, Roles y usuarios admin.users|admin.roles, Aparatos móviles devices.manage/WMS_LOTSERIAL, Catálogos de valores admin.catalogs, Integraciones / API admin.tenant, Seguridad y auditoría admin.audit, Ajustes de la compañía admin.tenant, módulo SYSTEM; Portal: 5 ítems portalusers.manage/CLIENT_PORTAL). Los pendientes usan app/Placeholder.tsx con título y subtítulo nav.* de la maqueta + 'Esta pantalla llega en un lote posterior' + botón 'Abrir otra pantalla' (abre la paleta). Almacén: renombrar 'Recepción' → 'Recibo'. Cabecera: barra 'Buscar o ejecutar…' con kbd '/' (kernel/ui/CommandPalette.tsx: atajos '/' y Ctrl/⌘+K, ítems visibles agrupados, filtro sin acentos, flechas + Enter navega, Esc cierra; lupa en móvil); '● en vivo · HH:MM:SS' (oculto bajo 600 px); segmento tema ☀/🌙 (data-theme en <html>, localStorage 'teikem.theme', inicial prefers-color-scheme, sin desmontar nada); compañía, idioma, avatar y Salir como hoy. KIT.md: paleta y cómo declarar un ítem pendiente. Pruebas: visibleNav con 7 grupos y pendientes por permiso/módulo; paleta filtra y navega; tema persiste; Placeholder muestra el ítem.",
-   "archivos": ["web-app/src/app/navigation.ts", "web-app/src/app/routes.tsx", "web-app/src/app/AppShell.tsx", "web-app/src/app/Placeholder.tsx", "web-app/src/kernel/ui/CommandPalette.tsx", "web-app/src/kernel/i18n/es.json", "web-app/src/kernel/i18n/en.json", "web-app/src/styles/base.css", "web-app/KIT.md"]
+   "archivos": [
+    "web-app/src/app/navigation.ts",
+    "web-app/src/app/routes.tsx",
+    "web-app/src/app/AppShell.tsx",
+    "web-app/src/app/Placeholder.tsx",
+    "web-app/src/kernel/ui/CommandPalette.tsx",
+    "web-app/src/kernel/i18n/es.json",
+    "web-app/src/kernel/i18n/en.json",
+    "web-app/src/styles/base.css",
+    "web-app/KIT.md"
+   ]
   },
   {
    "nombre": "P2 — Pulso del día a la maqueta + Organizar (mío / de la compañía)",
    "orden": 3,
    "agente": "core",
    "descripcion": "Título = fecha del día en el idioma activo (capitalizada), saludo como subtítulo; botones 'Organizar mi Pulso' (analytics.view) y 'Organizar el de la compañía' (analytics.manage). Secciones en el orden efectivo de GET /pulse, solo con contenido: (hueco para los ríos de Operación) → 'Tus indicadores' como río (.streamlabel + .river + .node flow|money según isMoney; nodo con icono del módulo, nombre, valor, rango, botón Rango; clic → /analytics/indicators) → 'Tus gráficos' (grilla 2 columnas / 1 en móvil, panel compacto, título → /analytics/charts) → panel Almacén (F7A tal cual) → Actividad reciente (F7A tal cual); los paneles se intercalan por sortOrder. Chip bajo el título: 'Pulso personal' con 'Volver al de la compañía' (DELETE layout/mine + ConfirmDialog) o 'Pulso de la compañía'. Modo Organizar (misma interfaz, cambia el scope): ▲ ▼ y ojo en cada nodo, gráfico y panel; arrastrar con el ratón en escritorio (HTML5 drag, sin librería), solo botones en táctil; ocultos al final en gris con 'Mostrar'; 'Listo' → un solo PUT layout; 'Cancelar' descarta; toast 'Pulso guardado'; en modo compañía, aviso 'Esto lo verá todo el mundo que no tenga un Pulso personal'. Vacío: 'Aún no tienes indicadores ni gráficos en tu Pulso' con enlace a Indicadores, conservando Almacén y Actividad. Río envuelve bajo 980 px, una columna a 360 px, sin scroll horizontal. Pruebas: orden efectivo, ocultar/mostrar, cuerpo del PUT por scope, restablecer, vacío.",
-   "archivos": ["web-app/src/features/analytics/Pulse.tsx", "web-app/src/features/analytics/PulseOrganizer.tsx", "web-app/src/features/analytics/api.ts", "web-app/src/features/analytics/Pulse.test.tsx"]
+   "archivos": [
+    "web-app/src/features/analytics/Pulse.tsx",
+    "web-app/src/features/analytics/PulseOrganizer.tsx",
+    "web-app/src/features/analytics/api.ts",
+    "web-app/src/features/analytics/Pulse.test.tsx"
+   ]
   },
   {
    "nombre": "P3 — Indicadores y Gráficos (grupo Análisis)",
    "orden": 3,
    "agente": "pantalla",
    "descripcion": "Rutas /analytics/indicators y /analytics/charts (analytics.view, módulo ANALYTICS), como indicadoresScreen/graficosScreen de la maqueta: cabecera con 'Nuevo indicador'/'Nuevo gráfico' (analytics.manage); paneles por módulo de negocio (businessModule, etiqueta del catálogo BusinessModule) con contador; tarjetas en 3 columnas (1 en móvil): nombre, valor actual (GET indicators/{id}/value o Recharts con charts/{id}/data), rango, switch 'Mostrar en Pulso' (PUT …/my-pulse, por usuario) y, con analytics.manage, switch '…en el de la compañía' (PUT de la definición), botón Rango (RangeModal), chip de visibilidad, editar y eliminar (analytics.manage, ConfirmDialog). Editor modal: nombre es/en, fuente (GET data-sources), campo y agregación, filtro con filas campo · operador · valor (JSON del API; DSL de kernel/dsl), módulo de negocio, es dinero, visibilidad, rango por defecto, orden en el Pulso de la compañía, mostrar en Pulso por defecto; gráficos añaden agrupar por y tipo (barra, dona, línea). Errores por campo al formulario. Nota al pie de la maqueta. Pruebas: agrupación por módulo, switches, cuerpo del editor.",
-   "archivos": ["web-app/src/features/analytics/IndicatorsPage.tsx", "web-app/src/features/analytics/ChartsPage.tsx", "web-app/src/features/analytics/DefinitionEditor.tsx", "web-app/src/features/analytics/api.ts", "web-app/src/app/routes.tsx"]
+   "archivos": [
+    "web-app/src/features/analytics/IndicatorsPage.tsx",
+    "web-app/src/features/analytics/ChartsPage.tsx",
+    "web-app/src/features/analytics/DefinitionEditor.tsx",
+    "web-app/src/features/analytics/api.ts",
+    "web-app/src/app/routes.tsx"
+   ]
   },
   {
    "nombre": "P4 — Roles y usuarios + PIN de la app (grupo Sistema)",
    "orden": 3,
    "agente": "pantalla",
    "descripcion": "Ruta /system/users (admin.users o admin.roles; el segmento Roles | Usuarios muestra solo lo permitido), exactamente usuariosScreen de la maqueta. Roles: tabla ordenable Rol · Permisos (n / total) · Usuarios · editar/eliminar; chips sistema/plantilla; eliminar bloqueado con usuarios (mensaje del API); modal Nuevo/Editar rol con nombre y descripción es/en y casillas de permisos agrupadas por category (icono del grupo del menú, 'marcar grupo'); PUT/DELETE con reauth AAL2. Usuarios: GET users paginado con QBox; Nombre · Correo · Roles (chips → modal multi-selección, PUT {id}/roles, AAL2) · Permisos extra ('+n'/'Añadir' → modal con los del rol bloqueados '(del rol)', PUT {id}/permissions, AAL2) · Estado (switch → PUT {id}/membership) · MFA · Último acceso · PIN app (solo con módulo WMS_LOTSERIAL y devices.manage o admin.users: chip hasPin, 'Asignar/Restablecer PIN' modal con PIN y confirmación → PUT {id}/pin AAL2 con los mensajes exactos del API, 'Quitar PIN' → DELETE {id}/pin con ConfirmDialog); 'Cerrar sesiones' (DELETE {id}/sessions); 'Nuevo usuario' (correo, nombre, roles, contraseña opcional → POST users); editar nombre/activo (PUT {id}). Mi cuenta: pestaña 'PIN de la app' (GET/PUT/DELETE /me/pin con contraseña actual) solo con WMS_LOTSERIAL; estado, bloqueo y fecha.",
-   "archivos": ["web-app/src/features/system/UsersPage.tsx", "web-app/src/features/system/RolesTab.tsx", "web-app/src/features/system/UsersTab.tsx", "web-app/src/features/system/PinModal.tsx", "web-app/src/features/account/PinTab.tsx", "web-app/src/features/account/AccountPage.tsx", "web-app/src/app/routes.tsx"]
+   "archivos": [
+    "web-app/src/features/system/UsersPage.tsx",
+    "web-app/src/features/system/RolesTab.tsx",
+    "web-app/src/features/system/UsersTab.tsx",
+    "web-app/src/features/system/PinModal.tsx",
+    "web-app/src/features/account/PinTab.tsx",
+    "web-app/src/features/account/AccountPage.tsx",
+    "web-app/src/app/routes.tsx"
+   ]
   },
   {
    "nombre": "P5 — Aparatos móviles, mínimo (grupo Sistema)",
    "orden": 3,
    "agente": "pantalla",
    "descripcion": "Ruta /system/devices (devices.manage, módulo WMS_LOTSERIAL). Una pantalla: tabla ordenable Código · Nombre · Almacén por defecto · Estado · Último latido (GET devices, QBox); 'Nuevo aparato' (nombre, almacén por defecto con useWarehouses) → al guardar, modal 'Código de registro' con el código en grande (mono), botón copiar y el texto 'Escríbelo en la pantalla Registrar de Teikem Almacén' (solo se muestra una vez); acciones por fila: desactivar / reactivar (ConfirmDialog) y 'Nuevo código de registro' (POST …/enroll-code, mismo modal). Sin edición de modelo/tema ni ficha.",
-   "archivos": ["web-app/src/features/system/DevicesPage.tsx", "web-app/src/features/system/EnrollCodeModal.tsx", "web-app/src/features/system/api.ts", "web-app/src/app/routes.tsx"]
+   "archivos": [
+    "web-app/src/features/system/DevicesPage.tsx",
+    "web-app/src/features/system/EnrollCodeModal.tsx",
+    "web-app/src/features/system/api.ts",
+    "web-app/src/app/routes.tsx"
+   ]
   },
   {
    "nombre": "P6 — Catálogos de valores (grupo Sistema)",
    "orden": 3,
    "agente": "pantalla",
    "descripcion": "Ruta /system/catalogs (admin.catalogs). Maestro-detalle con el lenguaje de la maqueta (.panel/.ph2/.pb, tabla .lst): izquierda lista de dominios (GET catalogs/domains) con QBox, chip sistema/propio, 'Nueva lista' (POST catalogs/lists con nombre es/en, descripción y valores iniciales) y eliminar lista propia (DELETE lists/{domainKey}); derecha tabla ordenable Código · Etiqueta (es) · Etiqueta (en) · Orden · Habilitado · Origen (Sistema / Ajustado / Propio). Valor de sistema: 'Ajustar' (etiquetas, habilitado, orden → PUT {entity}/{code}/override) y 'Restaurar' (DELETE …/override). Valor propio: crear (POST {entity}), editar (PUT {entity}/{code}), desactivar (DELETE, soft) y restaurar (POST …/restore). Al guardar, invalidar la caché de kernel/catalogs. Móvil: dominios como selector arriba, valores en tarjetas.",
-   "archivos": ["web-app/src/features/system/CatalogsPage.tsx", "web-app/src/features/system/api.ts", "web-app/src/kernel/catalogs/*", "web-app/src/app/routes.tsx"]
+   "archivos": [
+    "web-app/src/features/system/CatalogsPage.tsx",
+    "web-app/src/features/system/api.ts",
+    "web-app/src/kernel/catalogs/*",
+    "web-app/src/app/routes.tsx"
+   ]
+  },
+  {
+   "nombre": "P7 — Marca Teikem en la web",
+   "orden": 2,
+   "agente": "core",
+   "descripcion": "Copiar a web-app/public/brand/ desde Logos/: teikem-1b-horizontal-tagline-es(.svg|-inv.svg), teikem-1a-horizontal-tagline-en(…), teikem-2-horizontal-notagline(…), teikem-8-favicon-256.png, favicon.ico, teikem-8-appicon-180.png; crear Logos/teikem-symbol.svg extrayendo del lockup las rutas del hexágono y la T (idéntico a teikemLogo() de la maqueta) y copiarlo también. kernel/ui/Brand.tsx: <BrandLockup> (SVG por idioma y tema: tema oscuro → variante -inv, claro → normal; alt 'Teikem') y <BrandMark size> (símbolo). Barra lateral: lockup a todo el ancho con drop-shadow(0 4px 14px var(--brand-glow)) como la maqueta; marca cuadrada de 44 px al colapsar. Login, MFA, selección de compañía y Splash: lockup centrado arriba; Placeholder: marca pequeña. index.html: favicon .ico + PNG 256 + apple-touch-icon 180, <title>Teikem</title>, theme-color #0B2C66. Sin logo por compañía (sin backend). Pruebas: el lockup cambia de archivo al cambiar idioma y tema sin recargar; la marca aparece al colapsar. KIT.md documenta Brand.",
+   "archivos": [
+    "Logos/teikem-symbol.svg",
+    "web-app/public/brand/*",
+    "web-app/index.html",
+    "web-app/src/kernel/ui/Brand.tsx",
+    "web-app/src/app/AppShell.tsx",
+    "web-app/src/app/Splash.tsx",
+    "web-app/src/app/Placeholder.tsx",
+    "web-app/src/features/auth/LoginPage.tsx",
+    "web-app/src/features/auth/MfaPage.tsx",
+    "web-app/src/features/auth/SelectTenantPage.tsx",
+    "web-app/KIT.md"
+   ]
+  },
+  {
+   "nombre": "P8 — Marca Teikem en la app móvil (fuera de fe-implementar)",
+   "orden": 2,
+   "agente": "implementer",
+   "descripcion": "Los assets de app-almacen son los de la plantilla de Expo. scripts/brand-icons.mjs (sharp, ejecutable en CI) genera desde Logos/teikem-symbol.svg: assets/icon.png 1024 (símbolo sobre #0B2C66), android-icon-foreground.png (símbolo con margen de seguridad), android-icon-background.png (#0B2C66 liso), android-icon-monochrome.png (símbolo en blanco), splash-icon.png (fondo #0B2C66 en app.config.ts), favicon.png, y el lockup -inv es/en a PNG @2x/@3x. Pantallas Registrar y Entrar: lockup arriba del formulario (es/en por idioma). 'Teikem Almacén' se conserva. Verificación: npm run check de la app, APK del job android, captura del icono en el emulador para docs/manual/09-app-almacen.md.",
+   "archivos": [
+    "scripts/brand-icons.mjs",
+    "app-almacen/assets/*",
+    "app-almacen/app.config.ts",
+    "app-almacen/src/app/enroll.tsx",
+    "app-almacen/src/app/login.tsx",
+    "docs/manual/09-app-almacen.md"
+   ]
   }
  ],
  "recorrido": [
   "teikem+admin@cerevelo.com → el menú muestra los 7 grupos con todos los ítems de la maqueta; 'Sala de despacho' abre la pantalla pendiente con su título; '/' abre la paleta; 'usu' + Enter lleva a Roles y usuarios; el tema cambia data-theme y persiste al recargar.",
+  "La barra lateral muestra el lockup de Teikem (es, invertido en tema oscuro); al cambiar a inglés y a tema claro cambia el archivo sin recargar; al colapsar queda la marca cuadrada; la pestaña muestra el favicon de Teikem.",
   "teikem+dispatch@cerevelo.com → no ve Sistema (sin admin.*) ni Aparatos.",
   "Análisis → Indicadores: apagar 'Mostrar en Pulso' (mío) de 'Productos bajo mínimo' → Pulso no lo muestra; encender → vuelve.",
   "Pulso → 'Organizar mi Pulso': mover Actividad reciente arriba, ocultar Almacén, Listo; recargar: se conserva; teikem+dispatch no lo ve así. 'Volver al de la compañía' → orden original. 'Organizar el de la compañía': ocultar un gráfico → dispatch tampoco lo ve.",
