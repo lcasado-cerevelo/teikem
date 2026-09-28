@@ -45,9 +45,9 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
     {
         var tc = (TenantContext)tenant;
         var name = config["Seed:Demo:TenantName"] ?? "Advance Logistics";
-        var adminEmail = config["Seed:Demo:AdminEmail"] ?? "cerevelo+admin@cerevelo.com";
+        var adminEmail = config["Seed:Demo:AdminEmail"] ?? "teikem+admin@cerevelo.com";
         var adminPassword = config["Seed:Demo:AdminPassword"] ?? "Teikem_Admin_2026!";
-        var platformEmail = config["Seed:Demo:PlatformAdminEmail"] ?? "cerevelo+soporte@cerevelo.com";
+        var platformEmail = config["Seed:Demo:PlatformAdminEmail"] ?? "teikem+support@cerevelo.com";
         var platformPassword = config["Seed:Demo:PlatformAdminPassword"] ?? adminPassword;
 
         int tenantId;
@@ -75,7 +75,7 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
         {
             var admin = await db.Users.AsNoTracking().FirstAsync(u => u.NormalizedEmail == adminEmail.ToUpperInvariant(), ct);
             tc.UserId = admin.Id;
-            const string despachoEmail = "cerevelo+despacho@cerevelo.com";
+            const string despachoEmail = "teikem+dispatch@cerevelo.com";
             if (!await db.Users.AnyAsync(u => u.NormalizedEmail == despachoEmail.ToUpperInvariant(), ct))
             {
                 await userAdmin.CreateUserAsync(new UserCreateRequest(despachoEmail, "Carlos Rivera", adminPassword, new[] { "Dispatcher" }, UserKinds.Internal), ct);
