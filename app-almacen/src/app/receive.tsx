@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -94,6 +94,22 @@ export default function ReceiveScreen() {
     setDraft(null)
     vibrateOk()
     refresh()
+  }
+
+  function cancelReceipt() {
+    Alert.alert(t('receive.cancelConfirmTitle'), t('receive.cancelConfirmBody'), [
+      { text: t('common.no'), style: 'cancel' },
+      {
+        text: t('receive.cancelReceipt'),
+        style: 'destructive',
+        onPress: () => {
+          discardLocalReceipt()
+          setDraft(null)
+          setProductError(null)
+          refresh()
+        },
+      },
+    ])
   }
 
   function confirmReceipt() {
@@ -213,6 +229,7 @@ export default function ReceiveScreen() {
       />
       <BigButton label={t('receive.confirmReceipt')} onPress={confirmReceipt} disabled={openReceipt.lines.length === 0} />
       <Text style={styles.help}>{t('receive.confirmHelp')}</Text>
+      <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
     </View>
   )
 }

@@ -38,6 +38,7 @@ const config: ExpoConfig = {
     'expo-secure-store',
     ['expo-camera', { cameraPermission: 'Teikem Almacén necesita la cámara para escanear códigos sin lector.' }],
     './plugins/withDataWedge',
+    './plugins/withAndroidReleaseSigning',
   ],
   extra: {
     appVariant: variant,

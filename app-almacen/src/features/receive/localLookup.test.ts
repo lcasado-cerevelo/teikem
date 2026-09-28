@@ -92,11 +92,19 @@ describe('recibo local', () => {
     expect(getOpenReceipt()?.lineRows).toHaveLength(0)
   })
 
-  it('empezar un recibo nuevo descarta el anterior (uno a la vez)', () => {
+  it('un recibo a la vez: empezar otro mientras uno sigue abierto lanza y no toca el que ya está', () => {
     const first = startLocalReceipt('wh-1', null)
     addLocalReceiptLine(first, buildLine({ ...newLineDraft({ publicId: 'p1', sku: 'SKU-1', name: 'Uno', trackingTypeCode: 'NONE' }), qtyText: '1' }))
+    expect(() => startLocalReceipt('wh-1', null)).toThrow(/ya hay un recibo en curso/i)
+    expect(getOpenReceipt()?.id).toBe(first)
+    expect(getOpenReceipt()?.lineRows).toHaveLength(1)
+  })
+
+  it('cancelar (discardLocalReceipt) libera el aparato para empezar uno nuevo', () => {
     startLocalReceipt('wh-1', null)
-    expect(getOpenReceipt()?.lineRows).toHaveLength(0)
+    discardLocalReceipt()
+    expect(() => startLocalReceipt('wh-1', null)).not.toThrow()
+    expect(getOpenReceipt()).not.toBeNull()
   })
 
   it('discardLocalReceipt borra el recibo y sus líneas', () => {

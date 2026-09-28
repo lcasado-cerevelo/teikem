@@ -122,13 +122,24 @@ jobs:
         run: |
           npm ci --legacy-peer-deps
           npx expo prebuild --platform android --no-install
-      - name: Compilar el APK de desarrollo (debug, firma automática de Gradle)
+      - name: Llave propia de firma (si el secreto ya existe; si no, cae a la llave de depuración)
+        if: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 != '' }}
+        working-directory: app-almacen/android/app
+        env:
+          TEIKEM_RELEASE_KEYSTORE_B64: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 }}
+        run: base64 -d <<< "$TEIKEM_RELEASE_KEYSTORE_B64" > release.keystore
+      - name: Compilar el APK release (llave propia si el secreto existe; si no, firma de depuración)
         working-directory: app-almacen/android
+        env:
+          TEIKEM_RELEASE_KEYSTORE: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_B64 != '' && 'release.keystore' || '' }}
+          TEIKEM_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.TEIKEM_RELEASE_KEYSTORE_PASSWORD }}
+          TEIKEM_RELEASE_KEY_ALIAS: ${{ secrets.TEIKEM_RELEASE_KEY_ALIAS }}
+          TEIKEM_RELEASE_KEY_PASSWORD: ${{ secrets.TEIKEM_RELEASE_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
-          name: app-almacen-debug-apk
-          path: app-almacen/android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-almacen-release-apk
+          path: app-almacen/android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error

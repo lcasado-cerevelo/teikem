@@ -88,7 +88,13 @@
     "confirmedQueued": "Se guardó en el aparato; se enviará cuando haya señal.",
     "docLabelPo": "Orden {number}",
     "docLabelAsn": "Aviso {reference}",
-    "removeLineConfirm": "¿Quitar esta línea?"
+    "removeLineConfirm": "¿Quitar esta línea?",
+    "cancelReceipt": "Cancelar recibo",
+    "cancelConfirmTitle": "¿Cancelar este recibo?",
+    "cancelConfirmBody": "Se pierde todo lo capturado. No se puede deshacer."
+  },
+  "lock": {
+    "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto."
   },
   "scanner": {
     "manualLabel": "O escribe el código",

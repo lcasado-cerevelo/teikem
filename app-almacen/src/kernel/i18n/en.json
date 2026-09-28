@@ -88,7 +88,13 @@
     "confirmedQueued": "Saved on the device; it will send once there is a signal.",
     "docLabelPo": "Order {number}",
     "docLabelAsn": "ASN {reference}",
-    "removeLineConfirm": "Remove this line?"
+    "removeLineConfirm": "Remove this line?",
+    "cancelReceipt": "Cancel receipt",
+    "cancelConfirmTitle": "Cancel this receipt?",
+    "cancelConfirmBody": "Everything captured is lost. This can't be undone."
+  },
+  "lock": {
+    "receiveInProgress": "Finish or cancel the receipt in progress before using this."
   },
   "scanner": {
     "manualLabel": "Or type the code",

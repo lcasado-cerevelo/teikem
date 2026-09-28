@@ -55,10 +55,15 @@ export interface OpenReceipt {
 
 /** Crea el recibo local (blind si doc es null) y devuelve su id. Solo uno a la vez por aparato (pantalla 3 no permite
  *  abrir otro sin confirmar o cancelar el actual). */
+/** Un recibo a la vez por aparato (decisión de Luis, 2026-09-28): mientras uno esté abierto, ni la pantalla ni nada más
+ *  puede empezar otro; solo se libera confirmándolo o cancelándolo (discardLocalReceipt). Cerrar y volver a abrir la
+ *  app no lo pierde: sigue guardado y se retoma tal cual (getOpenReceipt), así que esta función nunca hace falta
+ *  llamarla "para reemplazar" uno en curso — es un error del código que la llama, no un caso normal de uso. */
 export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | null): number {
   const db = getDb()
-  db.runSync('DELETE FROM local_receipt_line WHERE receipt_id IN (SELECT id FROM local_receipt)')
-  db.runSync('DELETE FROM local_receipt')
+  if (getOpenReceipt() !== null) {
+    throw new Error('Ya hay un recibo en curso; hay que confirmarlo o cancelarlo antes de empezar otro.')
+  }
   const info = db.runSync(
     'INSERT INTO local_receipt (warehouse_public_id, purchase_order_public_id, asn_id, doc_label, created_at_utc) VALUES (?, ?, ?, ?, ?)',
     [warehousePublicId, doc?.purchaseOrderPublicId ?? null, doc?.asnId ?? null, doc?.label ?? null, new Date().toISOString()],

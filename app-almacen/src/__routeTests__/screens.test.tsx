@@ -1,5 +1,5 @@
 // Comprobación visual ligera de la navegación (docs/mobile/app-almacen-plan.md): que la pantalla real de Inicio monte
-// con el aparato y la sesión hidratados, muestre los 5 botones y el nombre de quien entró. Sin profundizar en cada
+// con el aparato y la sesión hidratados, y muestre los 5 botones y el nombre de quien entró. Sin profundizar en cada
 // pantalla o interacción: eso ya está cubierto por receiveLogic/localLookup/sync (unitarias, puras o con SQL real).
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
