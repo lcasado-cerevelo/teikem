@@ -13,3 +13,4 @@ obj/
 TestResults/
 appsettings.*.local.json
 .env
+.obsidian/
