@@ -153,3 +153,16 @@ public sealed class UserAnalyticsPreferenceConfiguration : IEntityTypeConfigurat
         b.Property(p => p.DateTo).HasColumnType("date");
     }
 }
+
+/// <summary>Lote F8a (P1): orden/visibilidad de paneles del Pulso; UserId NULL = nivel compañía. Índices espejo del SQL.</summary>
+public sealed class PulsePanelSettingConfiguration : IEntityTypeConfiguration<PulsePanelSetting>
+{
+    public void Configure(EntityTypeBuilder<PulsePanelSetting> b)
+    {
+        b.ToTable("PulsePanelSetting");
+        b.HasKey(s => s.PulsePanelSettingId);
+        b.Property(s => s.PanelKey).HasMaxLength(40).IsRequired();
+        b.HasIndex(s => new { s.TenantId, s.PanelKey }).IsUnique().HasDatabaseName("UQ_PulsePanelSetting_Company").HasFilter("[UserId] IS NULL");
+        b.HasIndex(s => new { s.TenantId, s.UserId, s.PanelKey }).IsUnique().HasDatabaseName("UQ_PulsePanelSetting_User").HasFilter("[UserId] IS NOT NULL");
+    }
+}

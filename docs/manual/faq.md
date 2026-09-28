@@ -1655,7 +1655,9 @@ faltantes se compensen en el total.
 **¿Por qué alguien sin `inventory.view` puede ver conteos cíclicos en Análisis?**
 Las fuentes de datos de Análisis (entre ellas `CYCLE_COUNT` y las de almacén del Lote 6) se consultan con `analytics.view`
 y el módulo ANALYTICS, sin el permiso del módulo de negocio. Es una decisión a revisar (`docs/lote7A-decisiones.md`); si
-no debe verlas, quítele `analytics.view` o no le comparta reportes de esas fuentes.
+no debe verlas, quítele `analytics.view` o no le comparta reportes de esas fuentes. Desde el Lote F8a los **indicadores y
+gráficos** sí exigen poder leer su fuente (`CYCLE_COUNT` → `inventory.view`, ver capítulo 07, sección 3); las **vistas e
+informes** siguen con la regla anterior.
 
 ## Lote 8A — Backend de la app de almacén: aparatos, PIN, idempotencia, sincronización y operaciones atómicas
 
@@ -2298,3 +2300,54 @@ muelle; pida a un administrador que se lo asigne o que encienda el módulo, si c
 **¿Qué significa "La orden no existe o no pertenece a su compañía."?**
 El enlace a la ficha de la orden es incorrecto, la orden se eliminó o pertenece a otra compañía (tenant). Vuelva a
 la lista de "Órdenes" y búsquela de nuevo.
+
+## Lote F8a — Pulso del día: paneles, permisos y orden
+
+Detalle en el capítulo [07 — Pulso del día](07-pulso-y-actividad.md), sección 3.
+
+**¿Por qué no veo el panel Almacén?**
+El panel Almacén exige, todo a la vez: el permiso `pulse.warehouse`, el permiso de datos `inventory.view` y el módulo
+`WMS_LOTSERIAL` encendido para la compañía. Si falta cualquiera de los tres, el servidor no lo manda y la pantalla no lo
+pinta. También puede estar **oculto** en su Pulso (o en el de la compañía): entre a "Organizar mi Pulso" y pulse "Mostrar"
+en el panel. Pida a un administrador el permiso que falte (Sistema → Roles y usuarios).
+
+**¿Por qué mi Pulso no se ve como el de otro usuario?**
+Por tres razones posibles: (1) cada panel y cada indicador o gráfico depende de los permisos de cada quien (por ejemplo,
+un indicador sobre órdenes solo lo ve quien tiene `orders.view`); (2) uno de los dos tiene un **Pulso personal** (el chip
+"Pulso personal · Volver al de la compañía" lo indica), con su propio orden y ocultos; (3) el indicador o gráfico es privado
+o compartido solo con algunas personas.
+
+**¿Cómo vuelvo al Pulso de la compañía?**
+Con "Volver al de la compañía" (`DELETE /api/v1/analytics/pulse/layout/mine`): se borran su orden y sus ocultos (paneles,
+indicadores y gráficos, incluido el interruptor "Mostrar en Pulso" propio) y vuelve a ver el orden de la compañía. Sus
+rangos de fecha propios se conservan.
+
+**Marqué un indicador para el Pulso y un usuario no lo ve.**
+"Mostrar en Pulso" (del indicador o del Pulso de la compañía) no basta: el usuario necesita además `pulse.indicators`
+(`pulse.charts` para gráficos), poder ver el indicador por su visibilidad (de toda la compañía, o compartido con él), poder
+**leer su fuente de datos** (p. ej. `orders.view` para `TRANSPORT_ORDER`, `inventory.view` para las de almacén,
+`admin.audit` para la bitácora) y que el módulo de negocio esté encendido (Almacén → `WMS_LOTSERIAL`, Operación →
+`LTL_GROUND`, Contabilidad → `COD` o `LTL_GROUND`). Revise también que ese usuario no lo haya ocultado en su Pulso personal.
+
+**¿Qué significa "Alcance inválido: use mine o company."? (400)**
+Al guardar el orden del Pulso, el parámetro `scope` debe ser `mine` (mi Pulso) o `company` (el de la compañía). La
+pantalla lo manda sola; si llega este error desde una integración, corrija la llamada.
+
+**¿Qué significa "Panel de Pulso desconocido: RADAR."? (400)**
+La clave del panel no está en el registro del Pulso (hoy: `INDICATORS`, `CHARTS`, `WAREHOUSE`, `ACTIVITY`). Suele pasar con
+una versión de la pantalla más nueva que el servidor; actualice la página o espere la actualización del servidor.
+
+**¿Qué significa "Tipo inválido: use indicator o chart."? (400)**
+Cada elemento del orden debe ser `indicator` (indicador) o `chart` (gráfico).
+
+**¿Qué significa "Falta el permiso 'pulse.organize_company'."? (403)**
+Intentó organizar el Pulso **de la compañía** sin ese permiso. Organice el suyo ("Organizar mi Pulso", no exige permiso) o
+pida el permiso a un administrador.
+
+**¿Qué significa "Panel de Pulso 'WAREHOUSE' no encontrado." o "Indicador '12' no encontrado." al guardar el orden? (404)**
+Quiso ordenar un panel o un elemento que no puede ver (le falta el permiso, el permiso de datos, el módulo o la lectura de la
+fuente, o el elemento se eliminó). Recargue el Pulso: solo aparecen los que sí puede ver. No se guarda nada del pedido.
+
+**¿Qué significa "Fuente de datos 'TRANSPORT_ORDER' no encontrado." al crear un indicador o gráfico? (404)**
+No puede leer esa fuente de datos (en el ejemplo le falta `orders.view`), así que tampoco puede crear indicadores o
+gráficos sobre ella. Elija otra fuente o pida el permiso.

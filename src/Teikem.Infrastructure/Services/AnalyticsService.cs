@@ -17,9 +17,25 @@ namespace Teikem.Infrastructure.Services;
 ///  - Visibilidad: TENANT / PRIVATE / SHARED (ReportShare/IndicatorShare/ChartShare por rol o usuario). De sistema = todos.
 ///  - Rango de fecha y "mostrar en Pulso" son preferencias POR USUARIO (UserAnalyticsPreference) con el valor de la
 ///    definición como default; cambiar el default de una definición ajena/de sistema exige `analytics.dates`.
+///  - Lote F8a (regla de lectura, loteF8-plan.md §2.2): un indicador o gráfico se lista, se lee y entra al Pulso solo si,
+///    además de la visibilidad, el usuario puede leer su fuente de datos (EntityType → PermissionCatalog.DataSourceReadPermission)
+///    y su módulo de negocio está encendido (PulsePanels.TenantModulesFor). Lo que no puede leer responde 404.
+///  - Lote F8a: Pulso del día por paneles (registro PulsePanels, un permiso pulse.* por panel) con orden y visibilidad en dos
+///    niveles: compañía (PulsePanelSetting UserId NULL + SortOrder/ShowInPulse de la definición) y usuario
+///    (PulsePanelSetting propio + UserAnalyticsPreference.PulseSortOrder/ShowInPulse).
 /// </summary>
-public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IDataSourceRegistry registry, AnalyticsEngine engine, PermissionService permissions)
+public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IDataSourceRegistry registry, AnalyticsEngine engine, PermissionService permissions,
+    ModuleService modules)
 {
+    // Mensajes exactos del plan (loteF8-plan.md, P1).
+    public const string InvalidScopeMessage = "Alcance inválido: use mine o company.";
+    public const string InvalidKindMessage = "Tipo inválido: use indicator o chart.";
+    public static string UnknownPanelMessage(string? key) => $"Panel de Pulso desconocido: {key}.";
+    public const string ScopeMine = "mine";
+    public const string ScopeCompany = "company";
+    public const string KindIndicator = "indicator";
+    public const string KindChart = "chart";
+
     // =====================================================================
     // Fuentes de datos
     // =====================================================================
@@ -67,6 +83,56 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
             ReportVisibilities.Shared => shares.Any(s => (s.UserId.HasValue && s.UserId == tenant.UserId) || (s.RoleId.HasValue && myRoles.Contains(s.RoleId.Value))),
             _ => false,
         };
+    }
+
+    // =====================================================================
+    // Regla de lectura (Lote F8a, §2.2): fuente legible + módulo de negocio encendido
+    // =====================================================================
+    /// <summary>Permisos efectivos y módulos encendidos del usuario actual (el admin de plataforma tiene todos los permisos).</summary>
+    private sealed record ReadAccess(IReadOnlySet<string> Permissions, IReadOnlySet<string> Modules, bool IsPlatformAdmin)
+    {
+        public bool Has(string code) => IsPlatformAdmin || Permissions.Contains(code);
+        public bool ModuleOn(string key) => Modules.Contains(key);
+    }
+
+    private async Task<ReadAccess> AccessAsync(CancellationToken ct)
+    {
+        IReadOnlySet<string> none = new HashSet<string>();
+        var perms = !tenant.IsPlatformAdmin && tenant.UserId is int u && tenant.TenantId is int t
+            ? await permissions.GetEffectivePermissionsAsync(u, t, ct)
+            : none;
+        var mods = tenant.TenantId is int tid ? await modules.GetEnabledKeysAsync(tid, ct) : none;
+        return new ReadAccess(perms, mods, tenant.IsPlatformAdmin);
+    }
+
+    /// <summary>
+    /// ¿Puede el usuario leer la fuente? Su EntityType (o su clave, que es el código EntityType) se traduce al permiso de lectura
+    /// con PermissionCatalog.DataSourceReadPermission; una fuente sin permiso registrado se trata como visible.
+    /// </summary>
+    private static bool CanReadSource(IDataSource source, ReadAccess access)
+    {
+        var perm = PermissionCatalog.DataSourceReadPermission(source.EntityTypeCode ?? source.Key);
+        return perm is null || access.Has(perm);
+    }
+
+    private bool CanReadSource(string sourceKey, ReadAccess access)
+    {
+        if (registry.TryGet(sourceKey, out var source)) return CanReadSource(source, access);
+        var perm = PermissionCatalog.DataSourceReadPermission(sourceKey);
+        return perm is null || access.Has(perm);
+    }
+
+    /// <summary>Reglas 3 y 4 de §2.2 para una definición ya visible por visibilidad (privado/compartido/compañía).</summary>
+    private async Task<bool> CanReadAsync(AnalyticsDefinitionBase d, ReadAccess access, CancellationToken ct)
+    {
+        if (!CanReadSource(d.DataSourceKey, access)) return false;
+        var module = (await lookups.GetAsync(d.BusinessModuleLookupId, ct))?.InternalCode;
+        return PulsePanels.IsBusinessModuleEnabled(module, access.ModuleOn);
+    }
+
+    private async Task EnsureSourceReadableAsync(IDataSource source, CancellationToken ct)
+    {
+        if (!CanReadSource(source, await AccessAsync(ct))) throw new NotFoundException("Fuente de datos", source.Key);
     }
 
     private static string ValidateDateRange(string? mode, DateOnly? from, DateOnly? to)
@@ -279,28 +345,38 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     // =====================================================================
     public async Task<IReadOnlyList<AnalyticsDefinitionDto>> GetIndicatorsAsync(CancellationToken ct)
     {
+        var result = new List<AnalyticsDefinitionDto>();
+        foreach (var i in await ReadableIndicatorsAsync(await AccessAsync(ct), ct))
+            result.Add(await IndicatorDtoAsync(i, ct));
+        return result;
+    }
+
+    /// <summary>Indicadores activos que el usuario ve (visibilidad) y puede leer (fuente y módulo, §2.2), por SortOrder y nombre.</summary>
+    private async Task<List<IndicatorDefinition>> ReadableIndicatorsAsync(ReadAccess access, CancellationToken ct)
+    {
         var list = await db.IndicatorDefinitions.AsNoTracking().Include(i => i.Shares).Where(i => i.IsActive).OrderBy(i => i.SortOrder).ThenBy(i => i.Name).ToListAsync(ct);
         var myRoles = await MyRoleIdsAsync(ct);
-        var result = new List<AnalyticsDefinitionDto>();
+        var result = new List<IndicatorDefinition>();
         foreach (var i in list)
         {
             var vis = (await lookups.GetAsync(i.VisibilityLookupId, ct))?.InternalCode ?? ReportVisibilities.Private;
             if (!IsVisible(i.IsSystem, i.OwnerUserId, vis, i.Shares.Select(s => (s.UserId, s.RoleId)), myRoles)) continue;
-            result.Add(await ToDtoAsync(i, i.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), null, null, ct));
+            if (!await CanReadAsync(i, access, ct)) continue;
+            result.Add(i);
         }
         return result;
     }
 
-    public async Task<AnalyticsDefinitionDto> GetIndicatorAsync(int id, CancellationToken ct)
-    {
-        var i = await LoadIndicatorAsync(id, ct);
-        return await ToDtoAsync(i, i.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), null, null, ct);
-    }
+    public async Task<AnalyticsDefinitionDto> GetIndicatorAsync(int id, CancellationToken ct) => await IndicatorDtoAsync(await LoadIndicatorAsync(id, ct), ct);
+
+    private Task<AnalyticsDefinitionDto> IndicatorDtoAsync(IndicatorDefinition i, CancellationToken ct)
+        => ToDtoAsync(i, i.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), null, null, ct);
 
     public async Task<AnalyticsDefinitionDto> CreateIndicatorAsync(IndicatorUpsertRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var source = registry.Get(req.DataSource);
+        await EnsureSourceReadableAsync(source, ct);
         if (string.IsNullOrWhiteSpace(req.Name)) throw new ValidationException("name", "El nombre es obligatorio.");
         if (await db.IndicatorDefinitions.AnyAsync(i => i.Name == req.Name.Trim() && i.IsActive, ct)) throw new ConflictException($"Ya existe el indicador '{req.Name}'.");
         var i = new IndicatorDefinition { TenantId = tenantId, OwnerUserId = tenant.UserId, IsSystem = false, Name = req.Name.Trim() };
@@ -308,24 +384,27 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         await ApplySharesAsync(i.Shares, req.Shares, (u, ro, _) => new IndicatorShare { UserId = u, RoleId = ro }, ct);
         db.IndicatorDefinitions.Add(i);
         await db.SaveChangesAsync(ct);
-        return await GetIndicatorAsync(i.IndicatorDefinitionId, ct);
+        // Sin la regla de lectura: quien lo crea recibe su definición aunque el módulo de negocio elegido esté apagado.
+        return await IndicatorDtoAsync(await LoadIndicatorAsync(i.IndicatorDefinitionId, ct, requireReadable: false), ct);
     }
 
     public async Task<AnalyticsDefinitionDto> UpdateIndicatorAsync(int id, IndicatorUpsertRequest req, CancellationToken ct)
     {
-        var i = await LoadIndicatorAsync(id, ct, track: true);
+        // El dueño edita su definición aunque ya no pueda leer la fuente vieja; la nueva sí debe poder leerla.
+        var i = await LoadIndicatorAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(i.IsSystem, i.OwnerUserId, false);
         var source = registry.Get(req.DataSource);
+        await EnsureSourceReadableAsync(source, ct);
         if (!string.IsNullOrWhiteSpace(req.Name)) i.Name = req.Name.Trim();
         await ApplyAsync(i, source, req.Descriptions, req.Field, req.AggregateFn, req.FilterJson, req.BusinessModule, req.IsMoney, req.Visibility, req.DateRangeMode, req.DateFrom, req.DateTo, req.ShowInPulse, req.SortOrder, ct);
         if (req.Shares is not null) { db.IndicatorShares.RemoveRange(i.Shares); i.Shares.Clear(); await ApplySharesAsync(i.Shares, req.Shares, (u, ro, _) => new IndicatorShare { UserId = u, RoleId = ro }, ct); }
         await db.SaveChangesAsync(ct);
-        return await GetIndicatorAsync(id, ct);
+        return await IndicatorDtoAsync(await LoadIndicatorAsync(id, ct, requireReadable: false), ct);
     }
 
     public async Task DeleteIndicatorAsync(int id, CancellationToken ct)
     {
-        var i = await LoadIndicatorAsync(id, ct, track: true);
+        var i = await LoadIndicatorAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(i.IsSystem, i.OwnerUserId, false);
         i.IsActive = false;
         await db.SaveChangesAsync(ct);
@@ -367,26 +446,42 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     public async Task<IndicatorValueDto> EvaluateIndicatorAsync(int id, CancellationToken ct)
     {
         var i = await LoadIndicatorAsync(id, ct);
-        return await EvaluateAsync(i, ct);
+        return await EvaluateAsync(i, await PrefAsync(i.IndicatorDefinitionId, null, false, ct), compute: true, ct);
     }
 
-    private async Task<IndicatorValueDto> EvaluateAsync(IndicatorDefinition i, CancellationToken ct)
+    /// <summary>
+    /// Valor de un indicador con la preferencia del usuario (rango, orden y visibilidad en el Pulso). compute=false devuelve el
+    /// elemento sin calcular (Value null): el Pulso no calcula lo que está oculto.
+    /// </summary>
+    private async Task<IndicatorValueDto> EvaluateAsync(IndicatorDefinition i, UserAnalyticsPreference? pref, bool compute, CancellationToken ct)
     {
         var source = registry.Get(i.DataSourceKey);
-        var (mode, from, to, _) = await EffectiveAsync(i, await PrefAsync(i.IndicatorDefinitionId, null, false, ct), ct);
+        var (mode, from, to, _) = await EffectiveAsync(i, pref, ct);
         var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to);
-        var fn = (await lookups.GetAsync(i.AggregateFnLookupId, ct))?.InternalCode ?? AggregateFns.Count;
-        var value = await engine.EvaluateIndicatorAsync(i.DataSourceKey, fn, i.FieldKey, i.FilterJson, fromUtc, toUtc, ct);
-        return new IndicatorValueDto(i.IndicatorDefinitionId, i.Name, value, i.IsMoney, source.DateField is null ? null : mode ?? DateRangeModes.Last7, fromUtc, toUtc);
+        decimal? value = null;
+        if (compute)
+        {
+            var fn = (await lookups.GetAsync(i.AggregateFnLookupId, ct))?.InternalCode ?? AggregateFns.Count;
+            value = await engine.EvaluateIndicatorAsync(i.DataSourceKey, fn, i.FieldKey, i.FilterJson, fromUtc, toUtc, ct);
+        }
+        var (visible, sort, origin) = PulsePanels.ResolveItem(pref?.PulseSortOrder, pref?.ShowInPulse, i.SortOrder, i.ShowInPulse);
+        var module = (await lookups.GetAsync(i.BusinessModuleLookupId, ct))?.InternalCode ?? "";
+        return new IndicatorValueDto(i.IndicatorDefinitionId, i.Name, value, i.IsMoney, source.DateField is null ? null : mode ?? DateRangeModes.Last7, fromUtc, toUtc,
+            module, sort, visible, origin);
     }
 
-    private async Task<IndicatorDefinition> LoadIndicatorAsync(int id, CancellationToken ct, bool track = false)
+    /// <summary>
+    /// Indicador activo visible para el usuario; con requireReadable (por defecto) además legible por §2.2 (fuente y módulo).
+    /// Lo que no ve o no puede leer responde 404 'Indicador' (no se revela).
+    /// </summary>
+    private async Task<IndicatorDefinition> LoadIndicatorAsync(int id, CancellationToken ct, bool track = false, bool requireReadable = true)
     {
         var q = db.IndicatorDefinitions.Include(i => i.Shares).AsQueryable();
         if (!track) q = q.AsNoTracking();
         var i = await q.FirstOrDefaultAsync(x => x.IndicatorDefinitionId == id && x.IsActive, ct) ?? throw new NotFoundException("Indicador", id);
         var vis = (await lookups.GetAsync(i.VisibilityLookupId, ct))?.InternalCode ?? ReportVisibilities.Private;
         if (!IsVisible(i.IsSystem, i.OwnerUserId, vis, i.Shares.Select(s => (s.UserId, s.RoleId)), await MyRoleIdsAsync(ct))) throw new NotFoundException("Indicador", id);
+        if (requireReadable && !await CanReadAsync(i, await AccessAsync(ct), ct)) throw new NotFoundException("Indicador", id);
         return i;
     }
 
@@ -395,28 +490,38 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     // =====================================================================
     public async Task<IReadOnlyList<AnalyticsDefinitionDto>> GetChartsAsync(CancellationToken ct)
     {
+        var result = new List<AnalyticsDefinitionDto>();
+        foreach (var c in await ReadableChartsAsync(await AccessAsync(ct), ct))
+            result.Add(await ChartDtoAsync(c, ct));
+        return result;
+    }
+
+    /// <summary>Gráficos activos que el usuario ve (visibilidad) y puede leer (fuente y módulo, §2.2), por SortOrder y nombre.</summary>
+    private async Task<List<ChartDefinition>> ReadableChartsAsync(ReadAccess access, CancellationToken ct)
+    {
         var list = await db.ChartDefinitions.AsNoTracking().Include(c => c.Shares).Where(c => c.IsActive).OrderBy(c => c.SortOrder).ThenBy(c => c.Name).ToListAsync(ct);
         var myRoles = await MyRoleIdsAsync(ct);
-        var result = new List<AnalyticsDefinitionDto>();
+        var result = new List<ChartDefinition>();
         foreach (var c in list)
         {
             var vis = (await lookups.GetAsync(c.VisibilityLookupId, ct))?.InternalCode ?? ReportVisibilities.Tenant;
             if (!IsVisible(c.IsSystem, c.OwnerUserId, vis, c.Shares.Select(s => (s.UserId, s.RoleId)), myRoles)) continue;
-            result.Add(await ToDtoAsync(c, c.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), c.GroupByField, (await lookups.GetAsync(c.ChartTypeLookupId, ct))?.InternalCode, ct));
+            if (!await CanReadAsync(c, access, ct)) continue;
+            result.Add(c);
         }
         return result;
     }
 
-    public async Task<AnalyticsDefinitionDto> GetChartAsync(int id, CancellationToken ct)
-    {
-        var c = await LoadChartAsync(id, ct);
-        return await ToDtoAsync(c, c.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), c.GroupByField, (await lookups.GetAsync(c.ChartTypeLookupId, ct))?.InternalCode, ct);
-    }
+    public async Task<AnalyticsDefinitionDto> GetChartAsync(int id, CancellationToken ct) => await ChartDtoAsync(await LoadChartAsync(id, ct), ct);
+
+    private async Task<AnalyticsDefinitionDto> ChartDtoAsync(ChartDefinition c, CancellationToken ct)
+        => await ToDtoAsync(c, c.Shares.Select(s => new ShareDto(s.UserId, s.RoleId, false)).ToList(), c.GroupByField, (await lookups.GetAsync(c.ChartTypeLookupId, ct))?.InternalCode, ct);
 
     public async Task<AnalyticsDefinitionDto> CreateChartAsync(ChartUpsertRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var source = registry.Get(req.DataSource);
+        await EnsureSourceReadableAsync(source, ct);
         if (string.IsNullOrWhiteSpace(req.Name)) throw new ValidationException("name", "El nombre es obligatorio.");
         if (await db.ChartDefinitions.AnyAsync(c => c.Name == req.Name.Trim() && c.IsActive, ct)) throw new ConflictException($"Ya existe el gráfico '{req.Name}'.");
         var c = new ChartDefinition { TenantId = tenantId, OwnerUserId = tenant.UserId, IsSystem = false, Name = req.Name.Trim() };
@@ -425,25 +530,26 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         await ApplySharesAsync(c.Shares, req.Shares, (u, ro, _) => new ChartShare { UserId = u, RoleId = ro }, ct);
         db.ChartDefinitions.Add(c);
         await db.SaveChangesAsync(ct);
-        return await GetChartAsync(c.ChartDefinitionId, ct);
+        return await ChartDtoAsync(await LoadChartAsync(c.ChartDefinitionId, ct, requireReadable: false), ct);
     }
 
     public async Task<AnalyticsDefinitionDto> UpdateChartAsync(int id, ChartUpsertRequest req, CancellationToken ct)
     {
-        var c = await LoadChartAsync(id, ct, track: true);
+        var c = await LoadChartAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(c.IsSystem, c.OwnerUserId, false);
         var source = registry.Get(req.DataSource);
+        await EnsureSourceReadableAsync(source, ct);
         if (!string.IsNullOrWhiteSpace(req.Name)) c.Name = req.Name.Trim();
         await ApplyChartAsync(c, source, req, ct);
         await ApplyAsync(c, source, req.Descriptions, req.Field, req.AggregateFn, req.FilterJson, req.BusinessModule, req.IsMoney, req.Visibility, req.DateRangeMode, req.DateFrom, req.DateTo, req.ShowInPulse, req.SortOrder, ct);
         if (req.Shares is not null) { db.ChartShares.RemoveRange(c.Shares); c.Shares.Clear(); await ApplySharesAsync(c.Shares, req.Shares, (u, ro, _) => new ChartShare { UserId = u, RoleId = ro }, ct); }
         await db.SaveChangesAsync(ct);
-        return await GetChartAsync(id, ct);
+        return await ChartDtoAsync(await LoadChartAsync(id, ct, requireReadable: false), ct);
     }
 
     public async Task DeleteChartAsync(int id, CancellationToken ct)
     {
-        var c = await LoadChartAsync(id, ct, track: true);
+        var c = await LoadChartAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(c.IsSystem, c.OwnerUserId, false);
         c.IsActive = false;
         await db.SaveChangesAsync(ct);
@@ -480,17 +586,29 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         return await GetChartAsync(id, ct);
     }
 
-    public async Task<ChartDataDto> EvaluateChartAsync(int id, CancellationToken ct) => await EvaluateAsync(await LoadChartAsync(id, ct), ct);
+    public async Task<ChartDataDto> EvaluateChartAsync(int id, CancellationToken ct)
+    {
+        var c = await LoadChartAsync(id, ct);
+        return await EvaluateAsync(c, await PrefAsync(null, c.ChartDefinitionId, false, ct), compute: true, ct);
+    }
 
-    private async Task<ChartDataDto> EvaluateAsync(ChartDefinition c, CancellationToken ct)
+    /// <summary>Datos de un gráfico con la preferencia del usuario; compute=false → sin calcular (Points vacío), como en el Pulso.</summary>
+    private async Task<ChartDataDto> EvaluateAsync(ChartDefinition c, UserAnalyticsPreference? pref, bool compute, CancellationToken ct)
     {
         var source = registry.Get(c.DataSourceKey);
-        var (mode, from, to, _) = await EffectiveAsync(c, await PrefAsync(null, c.ChartDefinitionId, false, ct), ct);
+        var (mode, from, to, _) = await EffectiveAsync(c, pref, ct);
         var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to);
-        var fn = (await lookups.GetAsync(c.AggregateFnLookupId, ct))?.InternalCode ?? AggregateFns.Count;
         var type = (await lookups.GetAsync(c.ChartTypeLookupId, ct))?.InternalCode ?? ChartTypes.Bar;
-        var points = await engine.EvaluateChartAsync(c.DataSourceKey, c.GroupByField, fn, c.FieldKey, c.FilterJson, type, fromUtc, toUtc, ct);
-        return new ChartDataDto(c.ChartDefinitionId, c.Name, type, c.IsMoney, points, source.DateField is null ? null : mode ?? DateRangeModes.Last7, fromUtc, toUtc);
+        IReadOnlyList<ChartPoint> points = Array.Empty<ChartPoint>();
+        if (compute)
+        {
+            var fn = (await lookups.GetAsync(c.AggregateFnLookupId, ct))?.InternalCode ?? AggregateFns.Count;
+            points = await engine.EvaluateChartAsync(c.DataSourceKey, c.GroupByField, fn, c.FieldKey, c.FilterJson, type, fromUtc, toUtc, ct);
+        }
+        var (visible, sort, origin) = PulsePanels.ResolveItem(pref?.PulseSortOrder, pref?.ShowInPulse, c.SortOrder, c.ShowInPulse);
+        var module = (await lookups.GetAsync(c.BusinessModuleLookupId, ct))?.InternalCode ?? "";
+        return new ChartDataDto(c.ChartDefinitionId, c.Name, type, c.IsMoney, points, source.DateField is null ? null : mode ?? DateRangeModes.Last7, fromUtc, toUtc,
+            module, sort, visible, origin);
     }
 
     private async Task ApplyChartAsync(ChartDefinition c, IDataSource source, ChartUpsertRequest req, CancellationToken ct)
@@ -507,13 +625,15 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     public static string SuggestChartType(IDataSource source, string groupBy)
         => source.DateField is not null && source.DateField.Equals(groupBy, StringComparison.OrdinalIgnoreCase) ? ChartTypes.Line : ChartTypes.Bar;
 
-    private async Task<ChartDefinition> LoadChartAsync(int id, CancellationToken ct, bool track = false)
+    /// <summary>Gráfico activo visible; con requireReadable (por defecto) además legible por §2.2. Si no: 404 'Gráfico'.</summary>
+    private async Task<ChartDefinition> LoadChartAsync(int id, CancellationToken ct, bool track = false, bool requireReadable = true)
     {
         var q = db.ChartDefinitions.Include(c => c.Shares).AsQueryable();
         if (!track) q = q.AsNoTracking();
         var c = await q.FirstOrDefaultAsync(x => x.ChartDefinitionId == id && x.IsActive, ct) ?? throw new NotFoundException("Gráfico", id);
         var vis = (await lookups.GetAsync(c.VisibilityLookupId, ct))?.InternalCode ?? ReportVisibilities.Tenant;
         if (!IsVisible(c.IsSystem, c.OwnerUserId, vis, c.Shares.Select(s => (s.UserId, s.RoleId)), await MyRoleIdsAsync(ct))) throw new NotFoundException("Gráfico", id);
+        if (requireReadable && !await CanReadAsync(c, await AccessAsync(ct), ct)) throw new NotFoundException("Gráfico", id);
         return c;
     }
 
@@ -576,16 +696,169 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     }
 
     // =====================================================================
-    // Pulso del día: indicadores y gráficos que ESTE usuario marcó (o default), y que puede ver
+    // Pulso del día por paneles (Lote F8a, P1)
     // =====================================================================
+    /// <summary>
+    /// Pulso del usuario: solo los paneles del registro cuyo permiso pulse.*, permisos de datos y módulo tiene (sin el módulo
+    /// ANALYTICS solo puede quedar WAREHOUSE), en su orden efectivo (usuario → compañía → registro), incluidos los ocultos para el
+    /// modo Organizar. Dentro de INDICATORS/CHARTS, solo los elementos que pasan §2.2, con su orden (PulseSortOrder propio → SortOrder
+    /// de la definición) y visibilidad (ShowInPulse propio → de la definición); orden por SortOrder efectivo y luego nombre. Solo se
+    /// calcula lo visible (elemento visible dentro de un panel visible).
+    /// </summary>
     public async Task<PulseDto> GetPulseAsync(CancellationToken ct)
     {
+        var tc = (TenantContext)tenant;
+        tc.RequireTenantId();
+        var userId = tc.RequireUserId();
+        var access = await AccessAsync(ct);
+
+        var settings = await db.Set<PulsePanelSetting>().AsNoTracking().Where(s => s.UserId == null || s.UserId == userId).ToListAsync(ct);
+        var panels = new List<PulsePanelDto>();
+        foreach (var def in PulsePanels.All.Where(p => PulsePanels.CanSee(p, access.Has, access.ModuleOn)))
+        {
+            var mine = settings.FirstOrDefault(s => s.UserId == userId && string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
+            var company = settings.FirstOrDefault(s => s.UserId == null && string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
+            var (visible, sort, source) = PulsePanels.ResolvePanel(def, mine, company);
+            panels.Add(new PulsePanelDto(def.Key, visible, sort, source));
+        }
+        panels = panels.OrderBy(p => p.SortOrder).ThenBy(p => p.Key, StringComparer.Ordinal).ToList();
+
+        var prefs = await db.UserAnalyticsPreferences.AsNoTracking().Where(p => p.UserId == userId).ToListAsync(ct);
+        var names = StringComparer.Create(System.Globalization.CultureInfo.InvariantCulture, ignoreCase: true);
+
         var indicators = new List<IndicatorValueDto>();
-        foreach (var dto in await GetIndicatorsAsync(ct))
-            if (dto.EffectiveShowInPulse) indicators.Add(await EvaluateAsync(await LoadIndicatorAsync(dto.Id, ct), ct));
+        if (panels.FirstOrDefault(p => p.Key == PulsePanels.Indicators) is { } indicatorsPanel)
+            foreach (var i in await ReadableIndicatorsAsync(access, ct))
+            {
+                var pref = prefs.FirstOrDefault(p => p.IndicatorDefinitionId == i.IndicatorDefinitionId);
+                var shown = pref?.ShowInPulse ?? i.ShowInPulse;
+                indicators.Add(await EvaluateAsync(i, pref, compute: indicatorsPanel.IsVisible && shown, ct));
+            }
+
         var charts = new List<ChartDataDto>();
-        foreach (var dto in await GetChartsAsync(ct))
-            if (dto.EffectiveShowInPulse) charts.Add(await EvaluateAsync(await LoadChartAsync(dto.Id, ct), ct));
-        return new PulseDto(indicators, charts);
+        if (panels.FirstOrDefault(p => p.Key == PulsePanels.Charts) is { } chartsPanel)
+            foreach (var c in await ReadableChartsAsync(access, ct))
+            {
+                var pref = prefs.FirstOrDefault(p => p.ChartDefinitionId == c.ChartDefinitionId);
+                var shown = pref?.ShowInPulse ?? c.ShowInPulse;
+                charts.Add(await EvaluateAsync(c, pref, compute: chartsPanel.IsVisible && shown, ct));
+            }
+
+        var hasPersonal = settings.Any(s => s.UserId == userId) || prefs.Any(p => p.PulseSortOrder.HasValue || p.ShowInPulse.HasValue);
+        return new PulseDto(
+            indicators.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, names).ToList(),
+            charts.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, names).ToList(),
+            panels, hasPersonal, access.Has(PermissionCatalog.PulseOrganizeCompany));
+    }
+
+    /// <summary>
+    /// PUT /analytics/pulse/layout?scope=mine|company. Idempotente; escribe solo lo que viene (lo ausente no se toca).
+    /// mine: UserAnalyticsPreference.PulseSortOrder/ShowInPulse + PulsePanelSetting(UserId = yo). company (pulse.organize_company,
+    /// si no 403): IndicatorDefinition/ChartDefinition.SortOrder/ShowInPulse + PulsePanelSetting(UserId NULL). Validaciones (400):
+    /// scope, clave de panel desconocida, tipo de elemento; un panel que el usuario no ve o un elemento que no puede leer → 404.
+    /// Devuelve el Pulso nuevo.
+    /// </summary>
+    public async Task<PulseDto> SaveLayoutAsync(string? scope, PulseLayoutRequest? req, CancellationToken ct)
+    {
+        var normalized = (scope ?? string.Empty).Trim().ToLowerInvariant();
+        if (normalized is not (ScopeMine or ScopeCompany)) throw new ValidationException("scope", InvalidScopeMessage);
+        var company = normalized == ScopeCompany;
+        var tc = (TenantContext)tenant;
+        var tenantId = tc.RequireTenantId();
+        var userId = tc.RequireUserId();
+        if (company) await permissions.EnsureAsync(PermissionCatalog.PulseOrganizeCompany, ct);
+
+        // 1) Validación de forma (400) de todo el cuerpo antes de tocar nada.
+        var panelReqs = req?.Panels ?? new List<PulseLayoutPanel>();
+        var itemReqs = req?.Items ?? new List<PulseLayoutItem>();
+        var panelWrites = new Dictionary<string, (PulsePanelDef Def, PulseLayoutPanel Req)>(StringComparer.Ordinal);
+        for (var n = 0; n < panelReqs.Count; n++)
+        {
+            var p = panelReqs[n];
+            var def = PulsePanels.Find(p?.Key) ?? throw new ValidationException($"panels[{n}].key", UnknownPanelMessage(p?.Key));
+            panelWrites[def.Key] = (def, p!);   // repetido: gana el último
+        }
+        var itemWrites = new Dictionary<(string Kind, int Id), PulseLayoutItem>();
+        for (var n = 0; n < itemReqs.Count; n++)
+        {
+            var it = itemReqs[n];
+            var kind = (it?.Kind ?? string.Empty).Trim().ToLowerInvariant();
+            if (kind is not (KindIndicator or KindChart)) throw new ValidationException($"items[{n}].kind", InvalidKindMessage);
+            itemWrites[(kind, it!.Id)] = it;
+        }
+
+        // 2) Alcance del usuario (404: no se revela lo que no ve).
+        var access = await AccessAsync(ct);
+        foreach (var (def, _) in panelWrites.Values)
+            if (!PulsePanels.CanSee(def, access.Has, access.ModuleOn)) throw new NotFoundException("Panel de Pulso", def.Key);
+        var canIndicators = PulsePanels.CanSee(PulsePanels.Find(PulsePanels.Indicators)!, access.Has, access.ModuleOn);
+        var canCharts = PulsePanels.CanSee(PulsePanels.Find(PulsePanels.Charts)!, access.Has, access.ModuleOn);
+
+        // 3) Elementos.
+        foreach (var ((kind, id), it) in itemWrites)
+        {
+            if (kind == KindIndicator)
+            {
+                if (!canIndicators) throw new NotFoundException("Indicador", id);
+                var i = await LoadIndicatorAsync(id, ct, track: company);
+                if (company) { i.SortOrder = it.SortOrder; i.ShowInPulse = it.IsVisible; }
+                else
+                {
+                    var pref = await PrefOrCreateAsync(i.IndicatorDefinitionId, null, ct);
+                    pref.PulseSortOrder = it.SortOrder; pref.ShowInPulse = it.IsVisible;
+                }
+            }
+            else
+            {
+                if (!canCharts) throw new NotFoundException("Gráfico", id);
+                var c = await LoadChartAsync(id, ct, track: company);
+                if (company) { c.SortOrder = it.SortOrder; c.ShowInPulse = it.IsVisible; }
+                else
+                {
+                    var pref = await PrefOrCreateAsync(null, c.ChartDefinitionId, ct);
+                    pref.PulseSortOrder = it.SortOrder; pref.ShowInPulse = it.IsVisible;
+                }
+            }
+        }
+
+        // 4) Paneles (fila de compañía UserId NULL o fila propia).
+        int? owner = company ? null : userId;
+        var rows = await db.Set<PulsePanelSetting>().Where(s => s.UserId == owner).ToListAsync(ct);
+        foreach (var (def, p) in panelWrites.Values)
+        {
+            var row = rows.FirstOrDefault(s => string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
+            if (row is null)
+            {
+                row = new PulsePanelSetting { TenantId = tenantId, UserId = owner, PanelKey = def.Key };
+                db.Set<PulsePanelSetting>().Add(row);
+                rows.Add(row);
+            }
+            row.IsVisible = p.IsVisible;
+            row.SortOrder = p.SortOrder;
+            row.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return await GetPulseAsync(ct);
+    }
+
+    /// <summary>
+    /// DELETE /analytics/pulse/layout/mine: vuelve al Pulso de la compañía. Borra PulseSortOrder y ShowInPulse propios de
+    /// UserAnalyticsPreference (conserva el rango de fecha propio) y las filas propias de PulsePanelSetting (auditadas).
+    /// </summary>
+    public async Task ResetMyLayoutAsync(CancellationToken ct)
+    {
+        var userId = ((TenantContext)tenant).RequireUserId();
+        var prefs = await db.UserAnalyticsPreferences
+            .Where(p => p.UserId == userId && (p.PulseSortOrder != null || p.ShowInPulse != null)).ToListAsync(ct);
+        foreach (var p in prefs)
+        {
+            p.PulseSortOrder = null;
+            p.ShowInPulse = null;
+            p.UpdatedAtUtc = DateTime.UtcNow;
+        }
+        var rows = await db.Set<PulsePanelSetting>().Where(s => s.UserId == userId).ToListAsync(ct);
+        db.Set<PulsePanelSetting>().RemoveRange(rows);
+        await db.SaveChangesAsync(ct);
     }
 }

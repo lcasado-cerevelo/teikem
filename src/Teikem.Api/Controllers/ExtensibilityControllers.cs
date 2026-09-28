@@ -42,7 +42,10 @@ public sealed class CustomFieldsController(CustomFieldService fields) : Controll
     public Task<IReadOnlyList<CustomFieldValueDto>> SetValues(string entityType, int entityId, [FromBody] CustomFieldValuesRequest req, CancellationToken ct) => fields.SetValuesAsync(entityType, entityId, req.Values, ct);
 }
 
-/// <summary>Módulos G/H/I: fuentes de datos, vistas, indicadores, gráficos y Pulso del día. Requiere el módulo ANALYTICS.</summary>
+/// <summary>
+/// Módulos G/H/I: fuentes de datos, vistas, indicadores y gráficos. Requiere el módulo ANALYTICS y analytics.view. El Pulso del día
+/// (Lote F8a) vive en <see cref="PulseController"/>, sin esa política: cada panel lleva su propio permiso pulse.*.
+/// </summary>
 [ApiController]
 [Route("api/v1/analytics")]
 [Authorize]
@@ -104,6 +107,7 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
     [HttpPut("indicators/{id:int}/default-date-range")]
     public Task<AnalyticsDefinitionDto> IndicatorDefaultRange(int id, [FromBody] DateRangeRequest req, CancellationToken ct) => analytics.SetIndicatorDefaultDateRangeAsync(id, req, ct);
 
+    /// <summary>Atajo de un solo elemento: mostrar/ocultar este indicador en MI Pulso (lo mismo que un item de PUT pulse/layout?scope=mine).</summary>
     [HttpPut("indicators/{id:int}/my-pulse")]
     public Task<AnalyticsDefinitionDto> IndicatorPulse(int id, [FromBody] PulseRequest req, CancellationToken ct) => analytics.SetIndicatorMyPulseAsync(id, req.ShowInPulse, ct);
 
@@ -132,10 +136,32 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
     [HttpPut("charts/{id:int}/default-date-range")]
     public Task<AnalyticsDefinitionDto> ChartDefaultRange(int id, [FromBody] DateRangeRequest req, CancellationToken ct) => analytics.SetChartDefaultDateRangeAsync(id, req, ct);
 
+    /// <summary>Atajo de un solo elemento: mostrar/ocultar este gráfico en MI Pulso (lo mismo que un item de PUT pulse/layout?scope=mine).</summary>
     [HttpPut("charts/{id:int}/my-pulse")]
     public Task<AnalyticsDefinitionDto> ChartPulse(int id, [FromBody] PulseRequest req, CancellationToken ct) => analytics.SetChartMyPulseAsync(id, req.ShowInPulse, ct);
+}
 
-    /// <summary>Pulso del día: indicadores y gráficos que este usuario marcó (o vienen por default) y puede ver.</summary>
-    [HttpGet("pulse")]
-    public Task<PulseDto> Pulse(CancellationToken ct) => analytics.GetPulseAsync(ct);
+/// <summary>
+/// Lote F8a (P1) — Pulso del día por paneles. Sin permiso ni módulo de controlador (la pantalla de inicio siempre existe): cada
+/// panel exige su permiso pulse.*, sus permisos de datos y su módulo, y cada indicador/gráfico la lectura de su fuente; el
+/// servicio solo devuelve lo que el usuario puede ver. Organizar el de la compañía exige pulse.organize_company (lo verifica el
+/// servicio porque depende de ?scope).
+/// </summary>
+[ApiController]
+[Route("api/v1/analytics/pulse")]
+[Authorize]
+public sealed class PulseController(AnalyticsService analytics) : ControllerBase
+{
+    /// <summary>Paneles visibles para el usuario (orden efectivo, incluidos los ocultos) e indicadores y gráficos legibles.</summary>
+    [HttpGet]
+    public Task<PulseDto> Get(CancellationToken ct) => analytics.GetPulseAsync(ct);
+
+    /// <summary>Guarda orden y visibilidad: scope=mine (mi Pulso, sin permiso) o scope=company (pulse.organize_company).</summary>
+    [HttpPut("layout")]
+    public Task<PulseDto> SaveLayout([FromQuery] string? scope, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] PulseLayoutRequest? req, CancellationToken ct)
+        => analytics.SaveLayoutAsync(scope, req, ct);
+
+    /// <summary>Vuelve al Pulso de la compañía: borra mi orden y mis ocultos (conserva mis rangos de fecha).</summary>
+    [HttpDelete("layout/mine")]
+    public async Task<IActionResult> ResetMine(CancellationToken ct) { await analytics.ResetMyLayoutAsync(ct); return NoContent(); }
 }

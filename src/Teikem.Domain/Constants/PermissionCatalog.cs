@@ -10,7 +10,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// driverpay.view y driverpay.manage (Lote 4, categoría FLEET: flota separada de la compensación de choferes, R8) y
 /// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar) e inventory.view,
 /// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE) y devices.manage (Lote 8A, categoría
-/// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar): 60 códigos.
+/// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar) y los 5 del Pulso del día
+/// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company): 65 códigos.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -101,6 +102,18 @@ public static class PermissionCatalog
     /// asignar o restablecer el PIN de otros usuarios (también lo permite admin.users).
     /// </summary>
     public const string DevicesManage = "devices.manage";
+    // Pulso del día (Lote F8a, categoría PULSE): un permiso por panel del registro PulsePanels + organizar el de la compañía.
+    // Organizar MI Pulso no exige permiso (son preferencias propias); no existe pulse.view: el inicio siempre existe.
+    /// <summary>Lote F8a: sección "Tus indicadores" del Pulso (cada indicador exige además leer su fuente de datos).</summary>
+    public const string PulseIndicators = "pulse.indicators";
+    /// <summary>Lote F8a: sección "Tus gráficos" del Pulso (cada gráfico exige además leer su fuente de datos).</summary>
+    public const string PulseCharts = "pulse.charts";
+    /// <summary>Lote F8a: panel Almacén del Pulso (datos: inventory.view; módulo WMS_LOTSERIAL).</summary>
+    public const string PulseWarehouse = "pulse.warehouse";
+    /// <summary>Lote F8a: panel Actividad reciente del Pulso (datos: analytics.view; módulo ANALYTICS).</summary>
+    public const string PulseActivity = "pulse.activity";
+    /// <summary>Lote F8a: organizar el Pulso de la compañía (PUT /api/v1/analytics/pulse/layout?scope=company).</summary>
+    public const string PulseOrganizeCompany = "pulse.organize_company";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -170,6 +183,12 @@ public static class PermissionCatalog
         // Lote 8A — App de almacén: aparatos de confianza y PIN
         new(DevicesManage, "SECURITY", "Gestionar aparatos y PIN", "Manage devices & PINs"),
         new(WarehouseCountCapture, "WAREHOUSE", "Capturar conteo (a ciegas)", "Capture count (blind)"),
+        // Lote F8a — Pulso del día (categoría PULSE)
+        new(PulseIndicators, "PULSE", "Ver indicadores en el Pulso", "See indicators on the Pulse"),
+        new(PulseCharts, "PULSE", "Ver gráficos en el Pulso", "See charts on the Pulse"),
+        new(PulseWarehouse, "PULSE", "Ver el panel Almacén del Pulso", "See the Warehouse panel"),
+        new(PulseActivity, "PULSE", "Ver Actividad reciente en el Pulso", "See Recent activity"),
+        new(PulseOrganizeCompany, "PULSE", "Organizar el Pulso de la compañía", "Organize the company Pulse"),
     };
 
     /// <summary>
@@ -247,6 +266,29 @@ public static class PermissionCatalog
         [EntityTypes.Supplier] = PurchasingView,
     };
 
+    /// <summary>
+    /// Lote F8a (§2.2 del plan): permiso de lectura de las fuentes de datos de Análisis que no son dueñas de rutas polimórficas
+    /// (no están en <see cref="OwnerReadPermission"/>): la bitácora y los eventos de seguridad exigen admin.audit (como la
+    /// auditoría) y el directorio de usuarios admin.users. Solo lo usa Análisis (indicadores, gráficos y Pulso).
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> DataSourceExtraReadPermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        [EntityTypes.AuditLog] = AdminAudit,
+        [EntityTypes.SecurityEvent] = AdminAudit,
+        [EntityTypes.User] = AdminUsers,
+    };
+
+    /// <summary>
+    /// Permiso de lectura de una fuente de datos por su EntityType (Lote F8a, §2.2 regla 3): el de <see cref="OwnerReadPermission"/>
+    /// o, si no está, el de <see cref="DataSourceExtraReadPermission"/>; null = sin requisito (la fuente se trata como visible).
+    /// </summary>
+    public static string? DataSourceReadPermission(string? entityTypeCode)
+    {
+        if (string.IsNullOrWhiteSpace(entityTypeCode)) return null;
+        if (OwnerReadPermission.TryGetValue(entityTypeCode, out var owner)) return owner;
+        return DataSourceExtraReadPermission.TryGetValue(entityTypeCode, out var extra) ? extra : null;
+    }
+
     /// <summary>Permiso de escritura del módulo dueño para poner valores de campos personalizados en un registro.</summary>
     public static readonly IReadOnlyDictionary<string, string> OwnerWritePermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
@@ -295,11 +337,18 @@ public static class PermissionCatalog
     public static readonly IReadOnlyDictionary<string, string[]> RoleTemplates = new Dictionary<string, string[]>
     {
         ["TenantAdmin"] = All.Select(p => p.Code).ToArray(),
-        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan },
-        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView },
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView },
+        ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
+            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+        ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
+            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView,
+            // AnalyticsView: decisión de Luis (Lote F8a) — sin él, la política de /analytics/activity bloquea a este
+            // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.
+            // El filtro por fuente de datos (§2.2) y el de módulo del servicio lo siguen acotando a WAREHOUSE.
+            AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
         ["Driver"] = new[] { OrdersView, CodCollect },
-        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView },
+        ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
+            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
     };
 
     /// <summary>

@@ -138,4 +138,23 @@ public class UserAnalyticsPreference : ITenantScoped
     public DateOnly? DateFrom { get; set; }
     public DateOnly? DateTo { get; set; }
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
+    /// <summary>Lote F8a: orden propio del elemento en el Pulso (NULL = el de la compañía, SortOrder de la definición).</summary>
+    public int? PulseSortOrder { get; set; }
+}
+
+/// <summary>
+/// Lote F8a (P1): orden y visibilidad de un panel del Pulso del día (registro <see cref="PulsePanels"/>). UserId NULL = nivel
+/// compañía (lo escribe quien tiene pulse.organize_company); UserId = el Pulso personal de ese usuario. Sin fila = visible, en el
+/// orden por defecto del registro. Resolución: usuario → compañía → registro.
+/// </summary>
+[AuditEntity(Constants.EntityTypes.PulsePanelSetting)]
+public class PulsePanelSetting : ITenantScoped
+{
+    public int PulsePanelSettingId { get; set; }
+    public int TenantId { get; set; }
+    public int? UserId { get; set; }
+    public string PanelKey { get; set; } = string.Empty;
+    public bool IsVisible { get; set; } = true;
+    public int SortOrder { get; set; }
+    [NotAudited] public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

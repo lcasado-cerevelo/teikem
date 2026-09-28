@@ -49,7 +49,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
    recibidas, Conteos con diferencia, Movimientos de inventario por tipo). Operación (7B) y Contabilidad (7C)
-   agregan su propia pestaña más adelante.
+   agregan su propia pestaña más adelante. Lote F8a (sección 3): **Pulso del día: paneles, permisos y orden** —
+   permisos `pulse.*` por panel, registro de paneles, qué indicadores y gráficos ve cada usuario (fuente legible y
+   módulo encendido) y orden/ocultos en dos niveles (compañía y usuario).
 8. [8A — Backend de la app de almacén](08-aparatos-y-sincronizacion.md): idempotencia de escrituras
    (`Idempotency-Key`), aparatos de confianza (alta con código de registro, enroll y heartbeat anónimos,
    desactivar/reactivar), PIN por usuario y login por aparato (bloqueo por intentos), sincronización por

@@ -448,6 +448,8 @@ public static class EntityTypes
     public const string ProductCategory = "PRODUCT_CATEGORY";
     // Lote 8A: aparato de confianza de la app de almacén (UserDevice; DriverDevice del Lote 4 se audita como DRIVER).
     public const string UserDevice = "USER_DEVICE";
+    // Lote F8a (P1): orden y visibilidad de los paneles del Pulso del día (nivel compañía y por usuario), auditado.
+    public const string PulsePanelSetting = "PULSE_PANEL_SETTING";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------

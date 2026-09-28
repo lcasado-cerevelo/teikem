@@ -104,9 +104,9 @@ public class WmsCatalogTests
     }
 
     [Fact]
-    public void Permissions_are_60_with_the_four_warehouse_ones_and_templates()
+    public void Permissions_are_65_with_the_four_warehouse_ones_and_templates()
     {
-        Assert.Equal(60, PermissionCatalog.All.Count);
+        Assert.Equal(65, PermissionCatalog.All.Count);
         foreach (var (code, es) in new[] { ("inventory.view", "Ver inventario y almacén"), ("inventory.manage", "Gestionar productos"),
                      ("inventory.adjust", "Ajustar y transferir inventario"), ("warehouse.manage", "Gestionar almacenes y tareas") })
         {
@@ -142,7 +142,7 @@ public class WmsCatalogTests
         var onlyCapture = new HashSet<string>(new[] { PermissionCatalog.WarehouseCountCapture }, StringComparer.OrdinalIgnoreCase);
         PermissionCatalog.ExpandImplied(onlyCapture);
         Assert.DoesNotContain(PermissionCatalog.WarehouseCount, onlyCapture);
-        Assert.Contains("permisos (60)", Seed.Value);
+        Assert.Contains("permisos (65)", Seed.Value);
     }
 
     [Fact]

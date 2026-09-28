@@ -1,7 +1,9 @@
-# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)
+# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén; Lote F8a: paneles, permisos y orden)
 
 Este capítulo describe la parte de **Almacén** de "Actividad reciente" (el panel de eventos recientes del Pulso del
-día) y los indicadores/gráfico de Almacén que se agregan al Pulso en este lote. Operación (7B) y Contabilidad (7C)
+día), los indicadores/gráfico de Almacén que se agregan al Pulso en el Lote 7A y, desde el Lote F8a, **cómo se arma el
+Pulso de cada usuario**: paneles con su propio permiso, qué indicadores y gráficos puede leer cada quien, y el orden en dos
+niveles (compañía y usuario) — sección 3. Operación (7B) y Contabilidad (7C)
 agregan su propia pestaña de Actividad reciente y sus propios indicadores más adelante, sobre la misma
 infraestructura. Los mensajes están verificados contra el código (`src/Teikem.Infrastructure/Services/Activity/
 ActivityRules.cs`, `src/Teikem.Infrastructure/Services/Activity/WarehouseActivityProvider.cs`,
@@ -113,8 +115,10 @@ la organización (`ShowInPulse = true`), en el módulo `WAREHOUSE`:
 - **Movimientos de inventario por tipo** (gráfico de barras) — suma con signo de la cantidad de los movimientos de
   inventario de los últimos 7 días, agrupada por tipo de movimiento (recepción, despacho, ajuste, transferencia).
 
-Quién puede: se ven en el Pulso del día con el mismo permiso que cualquier indicador/gráfico de sistema
-(`analytics.view` y el módulo `ANALYTICS`); son de sistema y visibles a todo el tenant, no requieren `inventory.view`.
+Quién puede: se ven en el Pulso del día con la misma regla que cualquier indicador/gráfico (sección 3): el permiso del
+panel (`pulse.indicators` / `pulse.charts`) y, **desde el Lote F8a**, poder leer su fuente de datos — todas son de
+almacén (`INVENTORY_TRANSACTION`, `CYCLE_COUNT`, `PRODUCT`, `STOCK_BALANCE`), así que exigen `inventory.view` — con el
+módulo `WMS_LOTSERIAL` encendido (módulo de negocio `WAREHOUSE`). Hasta el Lote 7A bastaba `analytics.view`.
 
 Cómo se usa: no hay endpoint propio; se leen con el resto del Pulso, `GET /api/v1/analytics/pulse`, y se listan como
 cualquier indicador con `GET /api/v1/analytics/indicators` / `GET /api/v1/analytics/charts`.
@@ -126,10 +130,134 @@ usuario.
 
 ---
 
+## 3. Pulso del día: paneles, permisos y orden (Lote F8a)
+
+Qué hace: el Pulso del día (la pantalla de inicio) se arma por **paneles**. Cada panel tiene su propio permiso
+`pulse.*`, los permisos de lectura de los datos que muestra y el módulo del tenant que debe estar encendido; el servidor
+solo devuelve los paneles que el usuario puede ver, y dentro de "Tus indicadores" y "Tus gráficos" solo los elementos cuya
+fuente de datos puede leer. Así se configura, por ejemplo, un usuario de almacén que **solo vea lo de almacén**. Además, el
+orden y los ocultos se guardan en dos niveles: **el de la compañía** (lo ve todo el que no tenga uno propio) y **el mío**.
+
+### Permisos del Pulso (categoría `PULSE`, "Pulso del día")
+
+| Código | Etiqueta (es / en) | Qué abre |
+|---|---|---|
+| `pulse.indicators` | Ver indicadores en el Pulso / See indicators on the Pulse | Sección "Tus indicadores" (cada indicador exige además leer su fuente) |
+| `pulse.charts` | Ver gráficos en el Pulso / See charts on the Pulse | Sección "Tus gráficos" (ídem) |
+| `pulse.warehouse` | Ver el panel Almacén del Pulso / See the Warehouse panel | Panel Almacén. Datos: `inventory.view`; módulo `WMS_LOTSERIAL` |
+| `pulse.activity` | Ver Actividad reciente en el Pulso / See Recent activity | Panel Actividad reciente. Datos: `analytics.view`; módulo `ANALYTICS` |
+| `pulse.organize_company` | Organizar el Pulso de la compañía / Organize the company Pulse | "Organizar el de la compañía" (`PUT …/layout?scope=company`) |
+
+Organizar **mi** Pulso no exige permiso (son preferencias propias). No existe `pulse.view`: la pantalla de inicio siempre
+existe; si el usuario no tiene ningún panel, ve la bienvenida.
+
+Plantillas de rol: **Admin de compañía** (TenantAdmin) los 5; **Operador de almacén** `pulse.warehouse`,
+`pulse.indicators`, `pulse.charts`, `pulse.activity`; **Despachador**, **Facturación** y **Solo lectura**
+`pulse.indicators`, `pulse.charts`, `pulse.activity`; **Chofer** ninguno. Ojo: el Operador de almacén tiene
+`pulse.activity` pero no `analytics.view` (dato del panel), así que **no ve Actividad reciente** hasta que se le dé
+`analytics.view`.
+
+Roles que ya existían antes de este lote: al actualizar la plataforma (db-init), cada rol de compañía con nombre de
+plantilla recibe los `pulse.*` de su plantilla, y cada rol propio recibe `pulse.indicators`, `pulse.charts` y
+`pulse.activity` si tenía `analytics.view`, y `pulse.warehouse` si tenía `inventory.view` (lo que ya veía en el Pulso). Esto
+se hace una sola vez, en la actualización que crea los permisos; después, lo que un administrador quite no vuelve.
+
+### Registro de paneles
+
+| Clave | Permiso | Permisos de datos | Módulo | Orden por defecto |
+|---|---|---|---|---|
+| `INDICATORS` ("Tus indicadores") | `pulse.indicators` | (por elemento) | `ANALYTICS` | 20 |
+| `CHARTS` ("Tus gráficos") | `pulse.charts` | (por elemento) | `ANALYTICS` | 30 |
+| `WAREHOUSE` (Almacén) | `pulse.warehouse` | `inventory.view` | `WMS_LOTSERIAL` | 40 |
+| `ACTIVITY` (Actividad reciente) | `pulse.activity` | `analytics.view` | `ANALYTICS` | 50 |
+
+Reservados para lotes futuros (no aparecen todavía): `ORDERS_RIVER` (10, "Paquetes en la calle"), `COD_RIVER` (11,
+"Dinero COD de regreso"), `DECISIONS` (15, "Necesita tu decisión") y `RADAR` (60). Con el módulo `ANALYTICS` apagado el
+Pulso solo puede mostrar el panel Almacén.
+
+### Qué indicadores y gráficos ve cada usuario
+
+Un indicador o gráfico aparece en el Pulso (y en las listas de Indicadores y Gráficos) solo si, **todas a la vez**:
+
+1. el usuario tiene `pulse.indicators` (o `pulse.charts`) — solo para el Pulso;
+2. puede verlo por su visibilidad (privado suyo, compartido con él o su rol, o de toda la compañía);
+3. **puede leer su fuente de datos**: `STOCK_BALANCE`, `INVENTORY_TRANSACTION`, `PRODUCT`, `RECEIPT`, `WAREHOUSE`,
+   `WAREHOUSE_TASK`, `PICK_BATCH`, `CYCLE_COUNT` → `inventory.view`; `TRANSPORT_ORDER` → `orders.view`; `TRIP` →
+   `trips.view`; `VEHICLE`, `DRIVER`, `WORK_ORDER`, `FUEL_LOG`, `FLEET_DOCUMENT` → `fleet.view`; `CLIENT` → `clients.read`;
+   `CONTRACT` → `contracts.read`; `LOCATION` → `locations.read`; `PURCHASE_ORDER` → `purchasing.view`; `AUDIT_LOG` y
+   `SECURITY_EVENT` → `admin.audit`; `USER` → `admin.users`;
+4. su **módulo de negocio** está encendido para la compañía: Almacén (`WAREHOUSE`) → `WMS_LOTSERIAL`; Operación
+   (`OPERATIONS`) → `LTL_GROUND`; Contabilidad (`ACCOUNTING`) → `COD` o `LTL_GROUND`.
+
+Lo que no cumple 3 o 4 no se lista y, pedido por id (`GET …/indicators/{id}`, `…/value`, `…/charts/{id}/data`, "mi rango",
+"mi Pulso"), responde 404 "Indicador '…' no encontrado." / "Gráfico '…' no encontrado." (no se revela que existe). Crear o
+editar un indicador o gráfico sobre una fuente que el usuario no puede leer responde 404 "Fuente de datos '…' no
+encontrado.".
+
+### Orden y visibilidad en dos niveles
+
+- **Panel**: fila propia del usuario → fila de la compañía → registro (orden por defecto y visible). El origen viaja en
+  `source`: `user`, `company` o `default`.
+- **Indicador o gráfico** dentro de su panel: la preferencia propia (orden y "mostrar en Pulso", campo por campo) → la
+  definición, que es el nivel compañía (orden `SortOrder` y "Mostrar en Pulso" de la definición). `source` es `user` si el
+  usuario tiene algo propio y `company` si no.
+- Orden de la lista: por el orden efectivo y, a igualdad, por nombre.
+- `hasPersonalLayout` = el usuario tiene algún orden u oculto propio (incluye el interruptor "Mostrar en Pulso" de un
+  indicador o gráfico). `canOrganizeCompany` = tiene `pulse.organize_company`.
+- Los ocultos **vienen en la respuesta** (con `isVisible: false`) para que "Organizar" pueda mostrarlos de nuevo; no se
+  calculan (valor `null`, gráfico sin puntos) y la pantalla no los pinta.
+
+Cómo se usa:
+- `GET /api/v1/analytics/pulse` — `{ "indicators": [ { "id", "name", "value", "isMoney", "dateRangeMode", "fromUtc",
+  "toUtc", "businessModule", "sortOrder", "isVisible", "source" } ], "charts": [ …igual + "chartType", "points" ],
+  "panels": [ { "key": "INDICATORS", "isVisible": true, "sortOrder": 20, "source": "default" } ], "hasPersonalLayout":
+  false, "canOrganizeCompany": true }`. Sin permiso ni módulo propio: cualquier usuario autenticado.
+- `PUT /api/v1/analytics/pulse/layout?scope=mine|company` — cuerpo `{ "items": [ { "kind": "indicator", "id": 12,
+  "sortOrder": 10, "isVisible": true } ], "panels": [ { "key": "ACTIVITY", "sortOrder": 5, "isVisible": true } ] }`.
+  Solo se escribe lo que viene (lo ausente no se toca); repetirlo no cambia nada. `mine` guarda mi orden; `company` exige
+  `pulse.organize_company` y guarda el de la compañía (orden y "Mostrar en Pulso" de cada definición y filas de panel de la
+  compañía). Devuelve el Pulso ya actualizado.
+- `DELETE /api/v1/analytics/pulse/layout/mine` — "Volver al de la compañía": borra mi orden y mis ocultos (paneles,
+  indicadores y gráficos); **conserva mis rangos de fecha**. 204.
+- `PUT …/indicators/{id}/my-pulse` y `PUT …/charts/{id}/my-pulse` (ya existían) siguen como atajo de un solo elemento:
+  equivalen a un item de `PUT …/layout?scope=mine` con solo la visibilidad.
+
+### Validaciones
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `scope` ausente o distinto de `mine` / `company` (campo `scope`) | `Alcance inválido: use mine o company.` | 400 |
+| `panels[i].key` que no está en el registro | `Panel de Pulso desconocido: {clave}.` (p. ej. `Panel de Pulso desconocido: RADAR.`) | 400 |
+| `items[i].kind` distinto de `indicator` / `chart` | `Tipo inválido: use indicator o chart.` | 400 |
+| `scope=company` sin `pulse.organize_company` | `Falta el permiso 'pulse.organize_company'.` (y `SecurityEvent` `PERMISSION_DENIED`) | 403 |
+| Panel del registro cuyo permiso, dato o módulo no tiene el usuario | `Panel de Pulso '{clave}' no encontrado.` (no se revela) | 404 |
+| Indicador o gráfico que el usuario no ve o no puede leer (o sin `pulse.indicators` / `pulse.charts`) | `Indicador '{id}' no encontrado.` / `Gráfico '{id}' no encontrado.` | 404 |
+
+Primero se valida la forma de todo el cuerpo (400) y después el alcance (403/404); si algo falla, no se guarda nada.
+
+Estatus y auditoría: no hay estatus. Cada fila de orden de panel (`PulsePanelSetting`, tanto la de la compañía como las
+de cada usuario) queda en la bitácora (`AuditLog`, tipo `PULSE_PANEL_SETTING`: alta, cambio y, al volver al de la compañía,
+baja); el orden de compañía de un indicador o gráfico queda como cambio de su definición (`INDICATOR_DEFINITION` /
+`CHART_DEFINITION`). No genera `SecurityEvent` salvo el 403.
+
+### Casos frecuentes
+
+- **Usuario que solo ve almacén**: rol con `inventory.view`, `warehouse.*` y `pulse.warehouse`, `pulse.indicators`,
+  `pulse.charts` (y `analytics.view` + `pulse.activity` si debe ver Actividad reciente), sin `orders.view`, `trips.*`,
+  `cod.*`. Su Pulso muestra el panel Almacén y solo los indicadores y gráficos de fuentes de almacén; uno sobre órdenes no
+  aparece aunque esté en el Pulso de la compañía.
+- **Reordenar el inicio para todos**: quien tiene `pulse.organize_company` usa "Organizar el de la compañía"; lo ven
+  todos los que no tengan un Pulso propio. Quien ya organizó el suyo sigue viendo el suyo hasta que pulse "Volver al de la
+  compañía".
+
+---
+
 ## Preguntas frecuentes de este capítulo
 
 Ver [faq.md](faq.md), sección "Lote 7A — Pulso de almacén y Actividad reciente", para el detalle de cada mensaje
 (qué significa y qué hacer), incluidos por qué un ajuste `FOUND` aparece dos veces, qué pasa al renombrar o
 deshabilitar un evento del catálogo desde el override del tenant, por qué dar de baja una categoría no aparece como
 "Producto dado de baja", y por qué alguien sin `inventory.view` puede ver conteos cíclicos en Análisis (decisión a
-revisar, no un defecto de este capítulo).
+revisar, no un defecto de este capítulo). Las del Pulso por paneles (sección 3) están en la sección "Lote F8a — Pulso del
+día: paneles, permisos y orden" de la FAQ: por qué no veo el panel Almacén, por qué mi Pulso no se ve como el de otro
+usuario, cómo vuelvo al Pulso de la compañía y por qué un indicador marcado para el Pulso no le sale a un usuario.

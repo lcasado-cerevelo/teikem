@@ -724,12 +724,29 @@ CREATE TABLE dbo.UserAnalyticsPreference (
     DateRangeModeLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId),
     DateFrom     DATE NULL, DateTo DATE NULL,
     UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    PulseSortOrder INT NULL,                                                  -- Lote F8a: orden propio en el Pulso (NULL = el de la compañía)
     CONSTRAINT CK_UserAnalyticsPreference_Target CHECK (
         (IndicatorDefinitionId IS NOT NULL AND ChartDefinitionId IS NULL) OR
         (IndicatorDefinitionId IS NULL AND ChartDefinitionId IS NOT NULL))
 );
 CREATE UNIQUE INDEX UQ_UserAnalyticsPreference_Indicator ON dbo.UserAnalyticsPreference(UserId, IndicatorDefinitionId) WHERE IndicatorDefinitionId IS NOT NULL;
 CREATE UNIQUE INDEX UQ_UserAnalyticsPreference_Chart ON dbo.UserAnalyticsPreference(UserId, ChartDefinitionId) WHERE ChartDefinitionId IS NOT NULL;
+GO
+
+-- Lote F8a — orden y visibilidad de los paneles del Pulso del día (registro PulsePanels en código: INDICATORS, CHARTS,
+-- WAREHOUSE, ACTIVITY). UserId NULL = nivel compañía (pulse.organize_company); con UserId = el Pulso personal. Sin fila =
+-- visible, en el orden por defecto del registro. Auditada (EntityType PULSE_PANEL_SETTING).
+CREATE TABLE dbo.PulsePanelSetting (
+    PulsePanelSettingId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    UserId       INT NULL REFERENCES dbo.AspNetUsers(Id),          -- NULL = nivel compañía
+    PanelKey     NVARCHAR(40) NOT NULL,
+    IsVisible    BIT NOT NULL DEFAULT 1,
+    SortOrder    INT NOT NULL DEFAULT 0,
+    UpdatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+);
+CREATE UNIQUE INDEX UQ_PulsePanelSetting_Company ON dbo.PulsePanelSetting(TenantId, PanelKey) WHERE UserId IS NULL;
+CREATE UNIQUE INDEX UQ_PulsePanelSetting_User    ON dbo.PulsePanelSetting(TenantId, UserId, PanelKey) WHERE UserId IS NOT NULL;
 GO
 
 /* =========================================================================

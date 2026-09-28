@@ -4,6 +4,7 @@
    Idempotente: usa MERGE/guards para poder recorrerse de nuevo.
    Etiquetas en JSON multilingüe {"es":"...","en":"..."}.
    ============================================================================ */
+
 SET NOCOUNT ON;
 GO
 
@@ -308,7 +309,10 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 -- MessageDirection INBOUND (idempotencia del API en IntegrationMessageLog) ya se siembra arriba.
 ('UiTheme','LIGHT','Claro','Light',1),('UiTheme','DARK','Oscuro','Dark',2),
 ('PermissionCategory','SECURITY','Seguridad','Security',12),
-('EntityType','USER_DEVICE','Aparato de almacén','Warehouse device',80);
+('EntityType','USER_DEVICE','Aparato de almacén','Warehouse device',80),
+-- Lote F8a — Pulso del día por paneles: categoría de permisos pulse.* y orden/visibilidad de paneles auditable.
+('PermissionCategory','PULSE','Pulso del día','Day pulse',13),
+('EntityType','PULSE_PANEL_SETTING','Panel del Pulso','Pulse panel',81);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -701,7 +705,18 @@ INSERT INTO #P VALUES
 -- Lote 8A — App de almacén (categoría SECURITY): aparatos de confianza y PIN de otros usuarios; TenantAdmin lo recibe por "todos"
 ('devices.manage','SECURITY','Gestionar aparatos y PIN','Manage devices & PINs'),
 -- Lote 8A — conteo a ciegas: capturar sin ver lo esperado ni reconciliar (warehouse.count lo implica en PermissionService)
-('warehouse.count.capture','WAREHOUSE','Capturar conteo (a ciegas)','Capture count (blind)');
+('warehouse.count.capture','WAREHOUSE','Capturar conteo (a ciegas)','Capture count (blind)'),
+-- Lote F8a — Pulso del día (categoría PULSE): un permiso por panel + organizar el de la compañía; TenantAdmin los recibe por "todos"
+('pulse.indicators','PULSE','Ver indicadores en el Pulso','See indicators on the Pulse'),
+('pulse.charts','PULSE','Ver gráficos en el Pulso','See charts on the Pulse'),
+('pulse.warehouse','PULSE','Ver el panel Almacén del Pulso','See the Warehouse panel'),
+('pulse.activity','PULSE','Ver Actividad reciente en el Pulso','See Recent activity'),
+('pulse.organize_company','PULSE','Organizar el Pulso de la compañía','Organize the company Pulse');
+
+-- Lote F8a: ¿esta corrida introduce los permisos pulse.*? (se usa en 5b para completar los roles de tenant ya clonados)
+IF OBJECT_ID('tempdb..#F8aPulseIsNew') IS NOT NULL DROP TABLE #F8aPulseIsNew;
+SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'pulse.indicators') THEN 0 ELSE 1 END AS BIT) AS IsNew
+INTO #F8aPulseIsNew;
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -738,18 +753,22 @@ INSERT INTO #RP SELECT 'TenantAdmin', Code FROM #P;
 INSERT INTO #RP VALUES ('Dispatcher','orders.view'),('Dispatcher','orders.create'),('Dispatcher','orders.edit'),('Dispatcher','orders.cancel'),('Dispatcher','trips.plan'),('Dispatcher','trips.dispatch'),('Dispatcher','trips.optimize'),
 ('Dispatcher','clients.read'),('Dispatcher','locations.read'),('Dispatcher','locations.create'),   -- Lote 2
 ('Dispatcher','fleet.view'),   -- Lote 4
-('Dispatcher','trips.view'),('Dispatcher','trips.scan');   -- Lote 5
+('Dispatcher','trips.view'),('Dispatcher','trips.scan'),   -- Lote 5
+('Dispatcher','pulse.indicators'),('Dispatcher','pulse.charts'),('Dispatcher','pulse.activity');   -- Lote F8a
 -- Billing
 INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),('Billing','billing.approve'),('Billing','billing.export'),('Billing','cod.view'),('Billing','cod.reconcile'),('Billing','cod.remit'),('Billing','rental.billing'),('Billing','rental.view'),('Billing','purchasing.view'),('Billing','purchasing.manage'),
 ('Billing','clients.read'),('Billing','contracts.read'),   -- Lote 2
 ('Billing','orders.credit_override'),   -- Lote 3
 ('Billing','driverpay.view'),   -- Lote 4
-('Billing','inventory.view');   -- Lote 6
+('Billing','inventory.view'),   -- Lote 6
+('Billing','pulse.indicators'),('Billing','pulse.charts'),('Billing','pulse.activity');   -- Lote F8a
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
 ('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan'),   -- Lote 5
 ('WarehouseOperator','inventory.view'),   -- Lote 6
-('WarehouseOperator','warehouse.count.capture');   -- Lote 8A
+('WarehouseOperator','warehouse.count.capture'),   -- Lote 8A
+('WarehouseOperator','analytics.view'),   -- Lote F8a: para ver Actividad reciente en su Pulso (decisión de Luis)
+('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity');   -- Lote F8a
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
@@ -757,7 +776,8 @@ INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
 ('ReadOnly','clients.read'),('ReadOnly','locations.read'),('ReadOnly','contracts.read'),   -- Lote 2
 ('ReadOnly','fleet.view'),   -- Lote 4
 ('ReadOnly','trips.view'),   -- Lote 5
-('ReadOnly','inventory.view');   -- Lote 6
+('ReadOnly','inventory.view'),   -- Lote 6
+('ReadOnly','pulse.indicators'),('ReadOnly','pulse.charts'),('ReadOnly','pulse.activity');   -- Lote F8a
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -767,6 +787,41 @@ USING (
     JOIN dbo.Permission p ON p.Code = rp.PermCode
 ) AS s ON t.RoleId = s.RoleId AND t.PermissionId = s.PermissionId
 WHEN NOT MATCHED THEN INSERT (RoleId, PermissionId) VALUES (s.RoleId, s.PermissionId);
+GO
+
+/* -------------------------------------------------------------------------
+   5b) Lote F8a — roles de tenant clonados antes de los permisos pulse.*
+   Hasta F8a el Pulso se veía con analytics.view (indicadores, gráficos, actividad) e inventory.view (panel Almacén); ahora
+   cada panel exige su pulse.*. PermissionSeeder no propaga estos códigos a los roles ya clonados (este seed espeja las
+   plantillas antes que él: decisión 35 del Lote 2), así que se completan aquí, UNA sola vez: solo en la corrida que crea
+   los permisos pulse.* (#F8aPulseIsNew). Solo agrega. (a) Roles con nombre de plantilla: los pulse.* de su plantilla.
+   (b) Roles propios con analytics.view: pulse.indicators, pulse.charts y pulse.activity. (c) Roles propios con
+   inventory.view: pulse.warehouse. En BD limpia no hay roles de tenant todavía: no inserta nada.
+   ------------------------------------------------------------------------- */
+IF EXISTS (SELECT 1 FROM #F8aPulseIsNew WHERE IsNew = 1)
+BEGIN
+    ;WITH HasPerm AS (
+        SELECT q.RoleId, p.Code FROM dbo.RolePermission q JOIN dbo.Permission p ON p.PermissionId = q.PermissionId
+    ), Wanted AS (
+        SELECT r.RoleId, rp.PermCode AS Code
+        FROM dbo.Role r JOIN #RP rp ON rp.RoleName = r.Name AND rp.PermCode LIKE 'pulse.%'
+        WHERE r.TenantId IS NOT NULL AND r.IsActive = 1
+        UNION
+        SELECT r.RoleId, x.Code
+        FROM dbo.Role r CROSS JOIN (VALUES ('pulse.indicators'),('pulse.charts'),('pulse.activity')) AS x(Code)
+        WHERE r.TenantId IS NOT NULL AND r.IsActive = 1 AND NOT EXISTS (SELECT 1 FROM #R t WHERE t.Name = r.Name)
+          AND EXISTS (SELECT 1 FROM HasPerm h WHERE h.RoleId = r.RoleId AND h.Code = 'analytics.view')
+        UNION
+        SELECT r.RoleId, 'pulse.warehouse'
+        FROM dbo.Role r
+        WHERE r.TenantId IS NOT NULL AND r.IsActive = 1 AND NOT EXISTS (SELECT 1 FROM #R t WHERE t.Name = r.Name)
+          AND EXISTS (SELECT 1 FROM HasPerm h WHERE h.RoleId = r.RoleId AND h.Code = 'inventory.view')
+    )
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT w.RoleId, p.PermissionId
+    FROM Wanted w JOIN dbo.Permission p ON p.Code = w.Code
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission e WHERE e.RoleId = w.RoleId AND e.PermissionId = p.PermissionId);
+END
 GO
 
 /* -------------------------------------------------------------------------
@@ -794,5 +849,5 @@ BEGIN
 END
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (60), roles plantilla y zonas de despacho demo. El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (65), roles plantilla y zonas de despacho demo. El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

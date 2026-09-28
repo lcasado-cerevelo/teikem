@@ -40,6 +40,29 @@ public sealed record ChartUpsertRequest(
 
 public sealed record DateRangeRequest(string DateRangeMode, DateOnly? DateFrom, DateOnly? DateTo);
 public sealed record PulseRequest(bool ShowInPulse);
-public sealed record IndicatorValueDto(int Id, string Name, decimal? Value, bool IsMoney, string? DateRangeMode, DateTime? FromUtc, DateTime? ToUtc);
-public sealed record ChartDataDto(int Id, string Name, string ChartType, bool IsMoney, IReadOnlyList<ChartPoint> Points, string? DateRangeMode, DateTime? FromUtc, DateTime? ToUtc);
-public sealed record PulseDto(IReadOnlyList<IndicatorValueDto> Indicators, IReadOnlyList<ChartDataDto> Charts);
+/// <summary>
+/// Valor de un indicador. Lote F8a: BusinessModule, orden y visibilidad efectivos en el Pulso de este usuario y su origen
+/// (Source: "user" = preferencia propia, "company" = la definición). En el Pulso, un elemento oculto viaja sin calcular (Value null).
+/// </summary>
+public sealed record IndicatorValueDto(int Id, string Name, decimal? Value, bool IsMoney, string? DateRangeMode,
+    DateTime? FromUtc, DateTime? ToUtc, string BusinessModule, int SortOrder, bool IsVisible, string Source);
+/// <summary>Datos de un gráfico; Lote F8a: igual que <see cref="IndicatorValueDto"/> (oculto en el Pulso → Points vacío).</summary>
+public sealed record ChartDataDto(int Id, string Name, string ChartType, bool IsMoney, IReadOnlyList<ChartPoint> Points, string? DateRangeMode,
+    DateTime? FromUtc, DateTime? ToUtc, string BusinessModule, int SortOrder, bool IsVisible, string Source);
+
+// ---- Lote F8a (P1): Pulso por paneles, orden en dos niveles (compañía / usuario) ----
+
+/// <summary>Panel del Pulso que el usuario puede ver. Source: "user" | "company" | "default" (registro PulsePanels).</summary>
+public sealed record PulsePanelDto(string Key, bool IsVisible, int SortOrder, string Source);
+/// <summary>
+/// Pulso del usuario: solo los paneles que puede ver (permiso + permisos de datos + módulo), en su orden efectivo, incluidos los
+/// ocultos (IsVisible=false) para el modo Organizar; dentro de INDICATORS/CHARTS solo los elementos que puede leer.
+/// </summary>
+public sealed record PulseDto(IReadOnlyList<IndicatorValueDto> Indicators, IReadOnlyList<ChartDataDto> Charts,
+    IReadOnlyList<PulsePanelDto> Panels, bool HasPersonalLayout, bool CanOrganizeCompany);
+/// <summary>Orden y visibilidad de un indicador o gráfico. Kind: "indicator" | "chart".</summary>
+public sealed record PulseLayoutItem(string Kind, int Id, int SortOrder, bool IsVisible);
+/// <summary>Orden y visibilidad de un panel del registro (INDICATORS, CHARTS, WAREHOUSE, ACTIVITY).</summary>
+public sealed record PulseLayoutPanel(string Key, int SortOrder, bool IsVisible);
+/// <summary>Cuerpo de PUT /analytics/pulse/layout: solo se escribe lo que viene (lo ausente no se toca).</summary>
+public sealed record PulseLayoutRequest(IList<PulseLayoutItem>? Items, IList<PulseLayoutPanel>? Panels);
