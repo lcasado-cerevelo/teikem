@@ -12,7 +12,7 @@ import type { components } from '../src/kernel/api/schema'
 type AuthResultDto = components['schemas']['AuthResultDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
-const ADMIN = { email: 'admin@teikem.local', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 const WAREHOUSE = 'ALM-01 · Almacén principal'
 
 const STAMP = Date.now()

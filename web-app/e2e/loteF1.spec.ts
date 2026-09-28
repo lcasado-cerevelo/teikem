@@ -12,8 +12,8 @@ type AuthResultDto = components['schemas']['AuthResultDto']
 type AnalyticsDefinitionDto = components['schemas']['AnalyticsDefinitionDto']
 
 const API_URL = process.env.API_URL ?? 'http://localhost:5000'
-const ADMIN = { email: 'admin@teikem.local', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
-const DISPATCH = { email: 'despacho@teikem.local', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+const ADMIN = { email: process.env.TEIKEM_ADMIN_EMAIL ?? 'teikem+admin@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
+const DISPATCH = { email: process.env.TEIKEM_DISPATCH_EMAIL ?? 'teikem+dispatch@cerevelo.com', password: process.env.TEIKEM_ADMIN_PASSWORD ?? 'Teikem_Admin_2026!' }
 
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
