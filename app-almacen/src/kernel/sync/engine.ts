@@ -77,6 +77,11 @@ export function usePendingCount(): number {
   return useSyncExternalStore(subscribeOutbox, countPending, countPending)
 }
 
+/** Resultado de la última pasada (para mostrar "última vez" y errores en Inicio/Sincronización). */
+export function useLastSync(): SyncSummary | null {
+  return useSyncExternalStore(subscribeSync, getLastSync, getLastSync)
+}
+
 export function __resetSyncEngineForTests(): void {
   lastSummary = null
   running = null

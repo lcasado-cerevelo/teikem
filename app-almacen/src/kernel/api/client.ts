@@ -135,12 +135,15 @@ export function createApiClient(options: ApiClientOptions = {}) {
 /** Cliente del API de la aplicación. `api.GET('/api/v1/warehouses')`. */
 export const api = createApiClient()
 
-type ApiResult<D> = { data: D; error?: never; response: Response } | { data?: never; error: unknown; response: Response }
-
-/** Espera la llamada y devuelve `data`, o lanza ApiError con el ProblemDetails (o code 'network' sin respuesta). */
-export async function unwrap<D>(call: Promise<ApiResult<D>>): Promise<D> {
-  const result = await call
+/**
+ * Espera la llamada y devuelve `data` (nunca undefined), o lanza ApiError con el ProblemDetails (o code 'network' sin
+ * respuesta). `T` se infiere del objeto completo que devuelve openapi-fetch (la unión data/error tal cual la tipa la
+ * librería); sacar `data` con un tipo indexado y `NonNullable` evita depender de que TypeScript unifique esa unión
+ * contra un tipo espejo declarado aparte, que en algunas combinaciones de versión no infiere D sin `| undefined`.
+ */
+export async function unwrap<T extends { response: Response; data?: unknown }>(call: Promise<T>): Promise<NonNullable<T['data']>> {
+  const result = (await call) as T & { data?: unknown; error?: unknown }
   if (result.response.status === 0) throw toApiError(null)
   if (result.error !== undefined || !result.response.ok) throw toApiError(result.error, result.response)
-  return result.data as D
+  return result.data as NonNullable<T['data']>
 }

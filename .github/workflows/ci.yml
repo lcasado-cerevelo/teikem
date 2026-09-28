@@ -77,3 +77,58 @@ jobs:
         run: |
           npm ci
           npm run check
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app-almacen/package-lock.json
+      - name: Instalar y verificar (tipos generados, tsc, lint, jest)
+        working-directory: app-almacen
+        run: |
+          npm ci --legacy-peer-deps
+          npm run check
+
+  android:
+    needs: mobile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app-almacen/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Caché de Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('app-almacen/package-lock.json') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - name: Generar el proyecto nativo Android (Continuous Native Generation)
+        working-directory: app-almacen
+        env:
+          APP_VARIANT: development
+        run: |
+          npm ci --legacy-peer-deps
+          npx expo prebuild --platform android --no-install
+      - name: Compilar el APK de desarrollo (debug, firma automática de Gradle)
+        working-directory: app-almacen/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-almacen-debug-apk
+          path: app-almacen/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

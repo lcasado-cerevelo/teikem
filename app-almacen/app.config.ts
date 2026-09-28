@@ -23,7 +23,6 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   scheme: 'teikem-almacen',
   icon: './assets/icon.png',
-  newArchEnabled: true,
   android: {
     package: 'com.teikem.almacen',
     versionCode: 1,
