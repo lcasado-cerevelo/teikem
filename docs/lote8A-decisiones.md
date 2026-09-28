@@ -410,8 +410,14 @@ producto sin `Idempotency-Key`; (2) el conteo a ciegas se podía saltar con `inv
 idempotencia no volvía a aplicar permisos y módulos del endpoint; (4) `UserDevice.RegisteredBy` y `UserPin.UpdatedBy` sin
 llave foránea a `AspNetUsers` (corregido a mano por el orquestador). Por decisión de Luis (consumo), el workflow se detuvo
 ahí y el cierre se hizo tarea por tarea: `dotnet build`, `dotnet test` (2048 pruebas, 0 fallidas), base limpia con `db-init`
-dos veces y `scripts/smoke.sh` completo en verde. Las lentes no reportaron más hallazgos alta ni media en la última ronda
-revisada (compile-ef y tenant-security en cero).
+dos veces y `scripts/smoke.sh` completo en verde. **Estado real de la verificación (sin adornos):** la revisión por lentes NO se completó. El criterio acordado (dos rondas
+limpias seguidas) no se alcanzó: la última ronda completa aún confirmó un hallazgo medio (corregido a mano), y la ronda
+siguiente quedó a medias al detener el workflow (compile-ef y tenant-security terminaron en cero; spec y tests no
+terminaron). El Lote 7A tampoco tuvo una ronda limpia después de sus últimas correcciones. Lo que sí está verificado por
+ejecución es lo listado arriba (build, pruebas unitarias, db-init, smoke). Además, este documento, el manual 08 y el FAQ se
+escribieron antes de las correcciones de las rondas 1 a 4 y no se cotejaron después contra el código: pueden tener puntos
+desactualizados (repetición idempotente y permisos, permiso del conteo a ciegas). Pendiente para el próximo lote:
+una ronda de revisión acotada de 7A y 8A hasta quedar limpia, y cotejo del manual 08 y el FAQ contra el código.
 
 ## Sugerencias de la revisión (severidad baja, no corregidas; decide Luis si entran en un lote posterior)
 
