@@ -5,6 +5,7 @@
 // pantalla aún no existe se declara con `pending({...})` (pantalla `Placeholder` con su título y subtítulo): al llegar
 // la pantalla real se cambia `pending({ ... })` por `{ ..., element: lazy(...) }` sin tocar ruta, permiso, módulo ni orden.
 import { lazy, type ComponentType } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
 import { ForbiddenScreen, ModuleOffScreen } from '../kernel/access/AccessScreens'
 import { ModuleKeys } from '../kernel/access/modules'
 import { NAV_GROUPS, type NavEntry } from './navigation'
@@ -31,6 +32,40 @@ export function pending(route: Omit<AppRoute, 'element' | 'pending'> & { nav: Na
     return <Placeholder navKey={key} icon={GroupIcon ? <GroupIcon /> : undefined} />
   }
   return { ...route, element: PendingScreen, pending: true }
+}
+
+/** Ruta que ya no es pantalla propia: lleva (sin dejar historial) a donde vive ahora; la guarda es la del destino. */
+export function redirectTo(to: string): ComponentType {
+  function Redirect() {
+    return <Navigate to={to} replace />
+  }
+  return Redirect
+}
+
+/**
+ * Como `redirectTo`, pero conserva la consulta (`?…`) de la dirección anterior; `mapSearch` la ajusta (p. ej. renombrar la
+ * pestaña). Para direcciones viejas que aún traen filtros en la URL (enlaces guardados o de otra pantalla).
+ */
+export function redirectKeepingQuery(pathname: string, mapSearch?: (params: URLSearchParams) => URLSearchParams): ComponentType {
+  function Redirect() {
+    const { search } = useLocation()
+    const params = new URLSearchParams(search)
+    const query = (mapSearch ? mapSearch(params) : params).toString()
+    return <Navigate to={query ? `${pathname}?${query}` : pathname} replace />
+  }
+  return Redirect
+}
+
+/**
+ * `/warehouse/inventory` (antes 'Inventario', con Saldos como primera pestaña) → `/warehouse/kardex` (Kárdex primero):
+ * sin `tab` era Saldos (`tab=balances`); `tab=kardex` pasa a no llevar parámetro. Los filtros se conservan.
+ */
+export function legacyInventorySearch(params: URLSearchParams): URLSearchParams {
+  const next = new URLSearchParams(params)
+  const tab = next.get('tab')
+  if (!tab) next.set('tab', 'balances')
+  else if (tab === 'kardex') next.delete('tab')
+  return next
 }
 
 /** Pantallas sin sesión (fuera del shell). */
@@ -68,7 +103,9 @@ export const appRoutes: readonly AppRoute[] = [
   // ===== Almacén =====
   // Lote F6 — Almacén e inventario (manual 06). Lecturas con inventory.view + WMS_LOTSERIAL; compras con
   // purchasing.view + PURCHASING; citas y planes de cruce de muelle con inventory.view + CROSSDOCK (las acciones exigen
-  // warehouse.crossdock dentro de la pantalla).
+  // warehouse.crossdock dentro de la pantalla). Orden de la maqueta: Almacenes, Ubicaciones, Productos e inventario,
+  // Compras (y Proveedores), Recibo, Ajustes de inventario, Recolección y empaque, Conteo cíclico, Cruce de muelle,
+  // Kárdex de movimientos. Las tareas de almacén viven en la pantalla de su tipo (features/warehouse/taskQueue.tsx).
   {
     path: '/warehouse/warehouses',
     element: lazy(() => import('../features/warehouse/WarehouseListScreen')),
@@ -83,11 +120,21 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.WmsLotSerial,
   },
   {
+    // Ubicaciones (maqueta ubicaciones()): ocupación por zona y posiciones de un almacén; mismo acceso que Almacenes.
+    path: '/warehouse/locations',
+    element: lazy(() => import('../features/warehouse/LocationsScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'locations', order: 20 },
+  },
+  {
+    // Productos e inventario (maqueta inventario(), Fase 8): catálogo con disponible/reservado/total por producto y KPIs;
+    // pestaña Categorías (?tab=categories). Alta y edición en ProductEditorModal.
     path: '/warehouse/products',
     element: lazy(() => import('../features/warehouse/ProductListScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'products', order: 20 },
+    nav: { group: 'warehouse', key: 'products', order: 30 },
   },
   {
     path: '/warehouse/products/:publicId',
@@ -95,73 +142,13 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
   },
-  {
-    path: '/warehouse/inventory',
-    element: lazy(() => import('../features/warehouse/InventoryScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'inventory', order: 30 },
-  },
-  {
-    path: '/warehouse/receipts',
-    element: lazy(() => import('../features/warehouse/ReceiptListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'receipts', order: 40 },
-  },
-  {
-    path: '/warehouse/receipts/:publicId',
-    element: lazy(() => import('../features/warehouse/ReceiptDetailScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-  },
-  {
-    path: '/warehouse/tasks',
-    element: lazy(() => import('../features/warehouse/WarehouseTaskListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'warehouseTasks', order: 50 },
-  },
-  {
-    path: '/warehouse/cycle-counts',
-    element: lazy(() => import('../features/warehouse/CycleCountListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'cycleCounts', order: 60 },
-  },
-  {
-    // la ficha del conteo (GET /cycle-counts/{id}) exige warehouse.count; la lista solo inventory.view
-    path: '/warehouse/cycle-counts/:id',
-    element: lazy(() => import('../features/warehouse/CycleCountDetailScreen')),
-    perm: 'warehouse.count',
-    module: ModuleKeys.WmsLotSerial,
-  },
-  {
-    path: '/warehouse/pick-batches',
-    element: lazy(() => import('../features/warehouse/PickBatchListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'pickBatches', order: 70 },
-  },
-  {
-    path: '/warehouse/pick-batches/:publicId',
-    element: lazy(() => import('../features/warehouse/PickBatchDetailScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-  },
-  {
-    path: '/warehouse/suppliers',
-    element: lazy(() => import('../features/warehouse/SupplierListScreen')),
-    perm: 'purchasing.view',
-    module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'suppliers', order: 80 },
-  },
+  // Compras (maqueta: 'Compras'); Proveedores no está en la maqueta y va justo después.
   {
     path: '/warehouse/purchase-orders',
     element: lazy(() => import('../features/warehouse/PurchaseOrderListScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'purchaseOrders', order: 90 },
+    nav: { group: 'warehouse', key: 'purchaseOrders', order: 40 },
   },
   {
     path: '/warehouse/purchase-orders/:publicId',
@@ -170,18 +157,71 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.Purchasing,
   },
   {
-    path: '/warehouse/dock-appointments',
-    element: lazy(() => import('../features/warehouse/DockAppointmentListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.CrossDock,
-    nav: { group: 'warehouse', key: 'dockAppointments', order: 100 },
+    path: '/warehouse/suppliers',
+    element: lazy(() => import('../features/warehouse/SupplierListScreen')),
+    perm: 'purchasing.view',
+    module: ModuleKeys.Purchasing,
+    nav: { group: 'warehouse', key: 'suppliers', order: 50 },
   },
+  // Recibo: incluye la pestaña 'Acomodo pendiente' (tareas PUTAWAY; antes 'Tareas de almacén', que no está en la maqueta).
+  {
+    path: '/warehouse/receipts',
+    element: lazy(() => import('../features/warehouse/ReceiptListScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'receipts', order: 60 },
+  },
+  {
+    path: '/warehouse/receipts/:publicId',
+    element: lazy(() => import('../features/warehouse/ReceiptDetailScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+  },
+  // Ajustes de inventario (maqueta ajustesAlmacen()): faltantes de compra, maestro-detalle por orden; mismo acceso que Compras
+  // (resolver exige inventory.adjust dentro de la pantalla).
+  {
+    path: '/warehouse/inventory-adjustments',
+    element: lazy(() => import('../features/warehouse/InventoryAdjustmentsScreen')),
+    perm: 'purchasing.view',
+    module: ModuleKeys.Purchasing,
+    nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 70 },
+  },
+  // Recolección y empaque: incluye la pestaña 'Reabasto' (tareas REPLENISH y 'Correr reabasto').
+  {
+    path: '/warehouse/pick-batches',
+    element: lazy(() => import('../features/warehouse/PickBatchListScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'pickBatches', order: 80 },
+  },
+  {
+    path: '/warehouse/pick-batches/:publicId',
+    element: lazy(() => import('../features/warehouse/PickBatchDetailScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+  },
+  // Conteo cíclico: incluye la pestaña 'Tareas de conteo' (tareas COUNT).
+  {
+    path: '/warehouse/cycle-counts',
+    element: lazy(() => import('../features/warehouse/CycleCountListScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'cycleCounts', order: 90 },
+  },
+  {
+    // la ficha del conteo (GET /cycle-counts/{id}) exige warehouse.count; la lista solo inventory.view
+    path: '/warehouse/cycle-counts/:id',
+    element: lazy(() => import('../features/warehouse/CycleCountDetailScreen')),
+    perm: 'warehouse.count',
+    module: ModuleKeys.WmsLotSerial,
+  },
+  // Cruce de muelle: incluye las pestañas 'Citas de muelle' y 'Tareas de cruce' (tareas CROSSDOCK).
   {
     path: '/warehouse/cross-dock-plans',
     element: lazy(() => import('../features/warehouse/CrossDockPlanListScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.CrossDock,
-    nav: { group: 'warehouse', key: 'crossDockPlans', order: 110 },
+    nav: { group: 'warehouse', key: 'crossDockPlans', order: 100 },
   },
   {
     path: '/warehouse/cross-dock-plans/:id',
@@ -189,6 +229,18 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.CrossDock,
   },
+  // Kárdex de movimientos (maqueta ledger()): pestañas Kárdex, Saldos (?tab=balances) y Conciliación (?tab=reconciliation).
+  {
+    path: '/warehouse/kardex',
+    element: lazy(() => import('../features/warehouse/InventoryScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'kardex', order: 110 },
+  },
+  // Direcciones anteriores (sin ítem de menú): 'Tareas de almacén', 'Citas de muelle' e 'Inventario' ya no son pantallas propias.
+  { path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },
+  { path: '/warehouse/dock-appointments', element: redirectTo('/warehouse/cross-dock-plans?tab=appointments') },
+  { path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },
 
   // ===== Contabilidad (7C) =====
   pending({ path: '/money/purchases', perm: 'purchasing.view', module: ModuleKeys.Purchasing, nav: { group: 'money', key: 'purchaseAccounting', order: 10 } }),

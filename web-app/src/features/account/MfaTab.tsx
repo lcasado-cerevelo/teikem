@@ -8,6 +8,7 @@ import { useReauth } from '../../kernel/auth/reauthContext'
 import { useT } from '../../kernel/i18n/useT'
 import { Chip, Field, Form, Panel, TextInput, toast } from '../../kernel/ui'
 import { useConfirmTotp, useDisableTotp, useEnrollTotp, type MfaEnrollResultDto } from './api'
+import { IconShield } from '../../kernel/ui/actionIcons'
 
 type Step = { kind: 'idle' } | { kind: 'enrolling'; enroll: MfaEnrollResultDto } | { kind: 'recovery'; codes: string[] }
 
@@ -84,7 +85,7 @@ export function MfaTab() {
   if (step.kind === 'recovery') {
     const text = step.codes.join('\n')
     return (
-      <Panel title={t('account.mfa.recoveryTitle')} subtitle={t('account.mfa.recoverySubtitle')} className="acct-narrow">
+      <Panel icon={<IconShield />} title={t('account.mfa.recoveryTitle')} subtitle={t('account.mfa.recoverySubtitle')} className="acct-narrow">
         <div className="codes" data-testid="recovery-codes">
           {step.codes.map((c) => (
             <span key={c}>{c}</span>
@@ -109,7 +110,7 @@ export function MfaTab() {
   if (step.kind === 'enrolling') {
     const { secret, otpAuthUri } = step.enroll
     return (
-      <Panel title={t('account.mfa.enrollTitle')} subtitle={t('account.mfa.enrollSubtitle')} className="acct-narrow">
+      <Panel icon={<IconShield />} title={t('account.mfa.enrollTitle')} subtitle={t('account.mfa.enrollSubtitle')} className="acct-narrow">
         <p className="subtle" style={{ marginBottom: 4 }}>
           {t('account.mfa.secretLabel')}
         </p>
@@ -153,7 +154,7 @@ export function MfaTab() {
   }
 
   return (
-    <Panel title={t('account.mfa.title')} subtitle={t('account.mfa.subtitle')} className="acct-narrow">
+    <Panel icon={<IconShield />} title={t('account.mfa.title')} subtitle={t('account.mfa.subtitle')} className="acct-narrow">
       <div className="acct-row">
         <span>{t('account.mfa.state')}</span>
         <Chip tone={enabled ? 'deliv' : 'warn'}>{enabled ? t('account.mfa.on') : t('account.mfa.off')}</Chip>

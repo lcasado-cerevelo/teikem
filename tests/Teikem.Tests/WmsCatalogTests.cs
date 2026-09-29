@@ -230,6 +230,9 @@ public class WmsCatalogTests
         Assert.Contains("(Quantity > 0 AND ToWarehouseId IS NOT NULL) OR (Quantity < 0 AND FromWarehouseId IS NOT NULL AND ToWarehouseId IS NULL)", sql);
         Assert.Contains("CREATE UNIQUE INDEX UX_Receipt_Asn ON dbo.ReceiptHeader(AsnId) WHERE AsnId IS NOT NULL AND IsActive = 1", sql);
         Assert.Contains("CREATE UNIQUE INDEX UX_PickBatch_Order ON dbo.PickBatch(TransportOrderId) WHERE TransportOrderId IS NOT NULL AND IsActive = 1", sql);
+        // Faltantes de compra ('Ajustes de inventario'): líneas y ASN de una orden por índice.
+        Assert.Contains("CREATE INDEX IX_POLine_Po ON dbo.PurchaseOrderLine(PurchaseOrderId);", sql);
+        Assert.Contains("CREATE INDEX IX_Asn_Po ON dbo.Asn(PurchaseOrderId) WHERE PurchaseOrderId IS NOT NULL;", sql);
         Assert.Contains("CONSTRAINT UQ_WarehouseBin_WhCode UNIQUE (WarehouseId, Code)", sql);
         Assert.Contains("CONSTRAINT FK_StockBalance_Bin FOREIGN KEY (WarehouseBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId)", sql);
         Assert.Contains("WarehouseTaskId INT IDENTITY(1,1) PRIMARY KEY", sql);

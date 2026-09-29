@@ -141,21 +141,25 @@
       "title": "Almacenes",
       "subtitle": "alta y mantenimiento de tus almacenes"
     },
-    "products": {
-      "title": "Productos",
-      "subtitle": "maestro de SKU: costo, precio, mínimos y categoría"
+    "locations": {
+      "title": "Ubicaciones",
+      "subtitle": "pasillo · rack · bin, por zona"
     },
-    "inventory": {
-      "title": "Inventario",
+    "products": {
+      "title": "Productos e inventario",
       "subtitle": "lote / serie / ledger"
+    },
+    "kardex": {
+      "title": "Kárdex de movimientos",
+      "subtitle": "el ledger: fuente de verdad del stock"
     },
     "receipts": {
       "title": "Recibo",
       "subtitle": "ASN, muelle y verificación de lo que entra"
     },
-    "warehouseTasks": {
-      "title": "Tareas de almacén",
-      "subtitle": "cola unificada: recepción, reabasto, conteo y cruce de muelle"
+    "inventoryAdjustments": {
+      "title": "Ajustes de inventario",
+      "subtitle": "recibos parciales y correcciones contra el ledger"
     },
     "cycleCounts": {
       "title": "Conteo cíclico",
@@ -170,12 +174,8 @@
       "subtitle": "proveedores de compras: contacto, término de pago y estatus"
     },
     "purchaseOrders": {
-      "title": "Órdenes de compra",
+      "title": "Compras",
       "subtitle": "órdenes de compra a proveedores: líneas, estatus y faltantes"
-    },
-    "dockAppointments": {
-      "title": "Citas de muelle",
-      "subtitle": "agenda de citas de muelle del almacén"
     },
     "crossDockPlans": {
       "title": "Cruce de muelle",
@@ -605,20 +605,25 @@
       },
       "warehouse": {
         "title": "Almacén",
-        "subtitle": "Saldo actual (no depende de un rango de fecha). El filtro de categoría o producto aplica a las tarjetas de saldo; los contadores de documentos solo usan el almacén.",
-        "onHand": "En mano",
+        "subtitle": "Saldo actual (no depende de un rango de fecha). El filtro de categoría o producto aplica al saldo (En almacén, Reservado, Disponible y Bajo mínimo); los contadores de documentos solo usan el almacén.",
         "available": "Disponible",
         "belowMin": "Bajo mínimo",
         "openReceipts": "Recibos abiertos",
         "pendingTasks": "Tareas pendientes",
         "openCounts": "Conteos abiertos",
-        "reserved": "Reservado:",
+        "river": {
+          "label": "Flujo de mercancía",
+          "inStock": "En almacén",
+          "reserved": "Reservado",
+          "belowMinAlert": "Hay productos bajo su mínimo.",
+          "belowMinAlertProduct": "El producto está bajo su mínimo."
+        },
         "categorySub": "{name} · {count} productos",
         "categorySubOne": "{name} · 1 producto",
         "productMin": "{sku} · mínimo {qty}",
         "yes": "Sí",
         "no": "No",
-        "viewInventory": "Ver en Inventario ›",
+        "viewInventory": "Ver saldos ›",
         "viewKardex": "Ver Kárdex de {sku} ›",
         "scopeTag": "almacén",
         "scopeTagTitle": "Solo aplica el filtro de almacén (no el de categoría o producto).",
@@ -642,7 +647,9 @@
         "fromRequired": "Indique la fecha Desde.",
         "toRequired": "Indique la fecha Hasta.",
         "fromAfterTo": "Desde no puede ser mayor que Hasta."
-      }
+      },
+      "cardMode": "Rango de fecha de {name}",
+      "lockedHint": "Solo quien lo creó o quien tiene permiso para cambiar fechas puede cambiar el rango."
     },
     "activity": {
       "title": "Actividad reciente",
@@ -705,7 +712,10 @@
       "showInPulsoLabel": "Mostrar en Pulso del día",
       "showInPulsoHint": "Si está activo, este indicador aparece en el Pulso de la compañía por defecto (cada usuario puede además mostrarlo u ocultarlo en el suyo).",
       "visibilityLabel": "Quién puede verlo",
-      "shareWithLabel": "Compartir con",
+      "shareWithUsersLabel": "Compartir con (usuarios)",
+      "shareWithUsersPh": "Buscar usuarios…",
+      "shareWithRolesLabel": "Compartir con (roles)",
+      "shareWithRolesPh": "Buscar roles…",
       "visAllBadge": "Todos",
       "visPrivateBadge": "Privado",
       "visSharedBadge": "Compartido ({n})",
@@ -738,7 +748,10 @@
       "typeHint": "Barras, dona o línea; se puede cambiar en cualquier momento.",
       "note": "Cada gráfico agrupa una fuente de datos por un campo y calcula un valor por grupo (cantidad, suma, promedio, mínimo o máximo), con el mismo rango de fecha y opción de Pulso que Indicadores.",
       "deleteTitle": "Eliminar gráfico",
-      "deleteBody": "¿Eliminar el gráfico {name}?"
+      "deleteBody": "¿Eliminar el gráfico {name}?",
+      "previewTitle": "Vista previa",
+      "previewIncomplete": "Elija la fuente de datos, el campo para agrupar y el cálculo para ver el gráfico.",
+      "previewTruncated": "Vista previa calculada con los primeros 5,000 registros de la fuente."
     },
     "editor": {
       "descriptionEs": "Descripción (español)",
@@ -868,6 +881,40 @@
         "nameRequired": "El nombre es obligatorio."
       }
     },
+    "locations": {
+      "title": "Ubicaciones",
+      "subtitle": "Jerarquía del almacén: zona · pasillo · rack · posición, con su ocupación",
+      "warehouse": "Almacén",
+      "noWarehouses": "No hay almacenes activos.",
+      "noZones": "Este almacén todavía no tiene zonas",
+      "noBins": "Este almacén todavía no tiene posiciones.",
+      "usedPct": "ocupadas · {pct}%",
+      "zoneAria": "Zona {zone}: {used} de {total} posiciones ocupadas ({pct}%)",
+      "riverAria": "Ocupación por zona",
+      "tableLabel": "Posiciones",
+      "fillAria": "{pct}% respecto a la posición con más unidades",
+      "fillHint": "Unidades respecto a la posición con más unidades del almacén (las posiciones no tienen capacidad registrada).",
+      "truncated": "Solo se leyeron {count} líneas de saldo: la columna Producto y su filtro pueden estar incompletos.",
+      "stockError": "No se pudieron leer los productos de las posiciones.",
+      "columns": {
+        "bin": "Posición",
+        "zone": "Zona",
+        "qty": "Cantidad",
+        "product": "Producto",
+        "occupancy": "Ocupación",
+        "state": "Estado"
+      },
+      "filters": {
+        "zone": "Zona",
+        "type": "Tipo",
+        "product": "Producto",
+        "state": "Estado"
+      },
+      "states": {
+        "EMPTY": "Vacía",
+        "OCCUPIED": "Ocupada"
+      }
+    },
     "detail": {
       "back": "Volver a almacenes",
       "notFound": "El almacén no existe o no pertenece a su compañía.",
@@ -981,11 +1028,38 @@
       }
     },
     "products": {
-      "title": "Productos",
-      "subtitle": "Maestro de SKU: costo, precio, mínimos y categoría.",
+      "title": "Productos e inventario",
+      "subtitle": "Catálogo con existencias disponibles, reservadas y rastreo por lote/serie",
       "tabProducts": "Productos",
+      "invReport": "Reporte de inventario",
+      "invReportHint": "Saldos por almacén, posición y lote (Kárdex de movimientos → Saldos), con el almacén y las categorías filtrados aquí.",
+      "adjReport": "Reporte de ajustes",
+      "adjReportHint": "Movimientos de tipo Ajuste en el Kárdex de movimientos, con el almacén filtrado aquí.",
+      "kpis": {
+        "aria": "Resumen del catálogo",
+        "activeSkus": "SKUs activos",
+        "totalUnits": "Unidades totales",
+        "belowMin": "Bajo mínimo",
+        "serial": "Con número de serie",
+        "truncated": "Contados en los primeros {count} productos activos."
+      },
+      "columns": {
+        "sku": "SKU",
+        "product": "Producto",
+        "category": "Categoría",
+        "owner": "Dueño",
+        "available": "Disponible",
+        "reserved": "Reservado",
+        "total": "Total",
+        "tracking": "Rastreo",
+        "state": "Estado"
+      },
+      "states": {
+        "ok": "OK",
+        "low": "Bajo mínimo",
+        "inactive": "Inactivo"
+      },
       "tabCategories": "Categorías",
-      "tabData": "Datos",
       "tabLots": "Lotes",
       "tabSerials": "Series",
       "new": "Nuevo producto",
@@ -998,16 +1072,46 @@
       "saved": "Cambios guardados.",
       "notFound": "El producto no existe o no pertenece a su compañía.",
       "back": "Volver a productos",
-      "deactivate": "Dar de baja",
-      "reactivate": "Reactivar",
       "deactivated": "Producto dado de baja.",
       "reactivated": "Producto reactivado.",
-      "deactivateTitle": "Dar de baja el producto",
-      "deactivateBody": "El producto {name} quedará inactivo.",
-      "reactivateTitle": "Reactivar el producto",
-      "reactivateBody": "El producto {name} volverá a estar disponible.",
       "skuLocked": "El SKU del producto no se puede cambiar.",
       "movementsLock": "No se puede cambiar: el producto ya tiene movimientos.",
+      "editor": {
+        "newTitle": "Nuevo producto",
+        "editTitle": "Editar producto",
+        "viewData": "Ver datos del producto",
+        "sku": "SKU",
+        "uom": "Unidad",
+        "name": "Nombre",
+        "category": "Categoría",
+        "tracking": "Rastreo",
+        "owner": "Dueño del inventario",
+        "purchaseCost": "Costo de compra",
+        "salePrice": "Precio de venta",
+        "preferredWarehouse": "Almacén por defecto",
+        "preferredBin": "Posición por defecto",
+        "total": "Total",
+        "useAdjust": "usa Ajustar abajo",
+        "totalOnCreate": "se ajusta al editar",
+        "reorder": "Punto de reorden",
+        "lockedByMovements": "Unidad, rastreo y dueño no se pueden cambiar: el producto ya tiene movimientos.",
+        "activeLabel": "Producto activo (aparece al crear órdenes)",
+        "hasStockNote": "No se puede desactivar mientras tenga inventario disponible.",
+        "more": "Más datos del producto",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "close": "Cerrar",
+        "updated": "Producto actualizado.",
+        "loadError": "No se pudo cargar el producto.",
+        "adjustTitle": "Ajustar inventario",
+        "adjustDelta": "Cantidad (+/-)",
+        "adjustReason": "Motivo",
+        "applyAdjust": "Aplicar ajuste",
+        "adjustApplied": "Ajuste aplicado: {qty} {sku}",
+        "traceTitle": "Lotes y series",
+        "viewLots": "Ver lotes",
+        "viewSerials": "Ver series"
+      },
       "fields": {
         "sku": "SKU",
         "name": "Nombre",
@@ -1037,7 +1141,10 @@
         "anyWarehouse": "Cualquier almacén",
         "ownOnly": "Solo propios",
         "activeOnly": "Solo activos",
-        "onlyAvailable": "Con disponible"
+        "onlyAvailable": "Con disponible",
+        "state": "Estado",
+        "stateActive": "Activos",
+        "stateLow": "Bajo mínimo"
       },
       "lots": {
         "lotNumber": "Lote",
@@ -1102,8 +1209,8 @@
       }
     },
     "inventory": {
-      "title": "Inventario",
-      "subtitle": "Saldos, Kárdex, ajustes, transferencias y conciliación.",
+      "title": "Kárdex de movimientos",
+      "subtitle": "El ledger: fuente de verdad del stock (cada recepción, despacho, transferencia, ajuste y cruce de muelle escribe aquí)",
       "tabBalances": "Saldos",
       "tabKardex": "Kárdex",
       "tabReconciliation": "Conciliación",
@@ -1362,6 +1469,7 @@
         },
         "modal": {
           "title": "Resolver faltante",
+          "context": "{sku} · {product} — Faltante: {qty}",
           "action": "Acción",
           "actions": {
             "close": "Cerrar (dar por perdido)",
@@ -1393,6 +1501,34 @@
           "serialsRequired": "El producto {sku} se controla por serie; capture los números de serie.",
           "serialCountMismatch": "Se capturaron {count} serie(s) para una cantidad de {qty}; deben coincidir."
         }
+      }
+    },
+    "inventoryAdjustments": {
+      "intro": "Órdenes de compra recibidas parcialmente. Para cada producto corto puedes cerrar el faltante (aceptarlo como final), reordenarlo con el mismo proveedor, o hacer un ajuste manual con motivo — cada resolución queda registrada.",
+      "listTitle": "Compras con recibo parcial",
+      "short": "{qty} corto",
+      "lines": "{count} línea(s)",
+      "emptyList": "Sin recibos parciales pendientes",
+      "selectPrompt": "Selecciona una compra",
+      "reorderNote": "Reordenar crea un borrador de PO nuevo con el mismo proveedor por la cantidad faltante, visible en Compras.",
+      "tableLabel": "Líneas en faltante de la compra",
+      "columns": {
+        "shortage": "Faltante",
+        "resolve": "Resolver"
+      },
+      "actions": {
+        "close": "Cerrar",
+        "reorder": "Reordenar",
+        "manual": "Ajuste manual"
+      },
+      "qtyPlaceholder": "Cant.",
+      "reasonPlaceholder": "Motivo",
+      "qtyAria": "Cantidad del ajuste de {sku}",
+      "reasonAria": "Motivo del ajuste de {sku}",
+      "toast": {
+        "closed": "Faltante cerrado: {sku}",
+        "reordered": "Reorden creada: {number}",
+        "adjusted": "Ajuste aplicado: +{qty} {sku}"
       }
     },
     "tasks": {
@@ -1512,6 +1648,12 @@
     "crossDockPlans": {
       "title": "Cruce de muelle",
       "subtitle": "Planes de cruce de muelle: asignan líneas de recibo a órdenes sin pasar por posiciones de reserva.",
+      "tabs": {
+        "plans": "Planes",
+        "appointments": "Citas de muelle",
+        "tasks": "Tareas de cruce"
+      },
+      "tasksTitle": "Tareas de cruce de muelle",
       "count": "{count} planes",
       "new": "Nuevo plan",
       "created": "Plan creado.",
@@ -1620,6 +1762,8 @@
       "subtitle": "Recibos ciegos, de devolución, contra aviso de llegada o contra orden de compra.",
       "tabReceipts": "Recibos",
       "tabAsns": "Avisos de llegada",
+      "tabPutaway": "Acomodo pendiente",
+      "putawayTitle": "Acomodo pendiente",
       "new": "Nuevo recibo",
       "create": "Crear recibo",
       "created": "Recibo {number} creado.",
@@ -1726,7 +1870,7 @@
         "deleteBody": "¿Eliminar el recibo abierto {number}? Si nació de un aviso de cliente, el aviso vuelve a quedar pendiente; si nació de una orden de compra, su aviso se cancela.",
         "deleted": "Recibo {number} eliminado.",
         "putaway": "Tareas de acomodo",
-        "goTasks": "Ir a Tareas de almacén",
+        "goTasks": "Ver todo el acomodo pendiente",
         "columns": {
           "product": "Producto",
           "tracking": "Seguimiento",
@@ -1779,6 +1923,9 @@
     "pickBatches": {
       "title": "Recolección y empaque",
       "subtitle": "Recolecte inventario por FEFO o con posición, lote o serie, y empáquelo como una orden de transporte.",
+      "tabBatches": "Recolecciones",
+      "tabReplenish": "Reabasto",
+      "replenishTitle": "Tareas de reabasto",
       "collect": "Recolectar",
       "collectTitle": "Nueva recolección",
       "collected": "Recolección {number} creada.",
@@ -1888,6 +2035,9 @@
     "cycleCounts": {
       "title": "Conteo cíclico",
       "subtitle": "Foto del saldo en mano, captura de lo contado y reconciliación contra el saldo actual.",
+      "tabCounts": "Conteos",
+      "tabTasks": "Tareas de conteo",
+      "tasksTitle": "Tareas de conteo",
       "new": "Nuevo conteo",
       "create": "Crear conteo",
       "created": "Conteo {number} creado con {count} línea(s).",
@@ -2052,7 +2202,8 @@
         "deleteTitle": "Eliminar el rol",
         "deleteBody": "El rol {name} se eliminará. Esta acción no se puede deshacer.",
         "deleted": "Rol eliminado.",
-        "note": "Un rol es un conjunto de permisos reusable: cambiarlo afecta a todos los usuarios que lo tengan asignado. {count} roles vienen ya armados ({names}); se pueden editar, renombrar o crear roles nuevos libremente — solo no se puede eliminar uno que todavía tenga usuarios."
+        "note": "Un rol es un conjunto de permisos reusable — cambiarlo afecta a todos los usuarios que lo tengan asignado. {count} roles vienen ya armados ({names}); se pueden editar, renombrar o crear roles nuevos libremente — solo no se puede eliminar uno que todavía tenga usuarios.",
+        "noteGeneric": "Un rol es un conjunto de permisos reusable — cambiarlo afecta a todos los usuarios que lo tengan asignado. Los roles se pueden editar, renombrar o crear libremente — solo no se puede eliminar uno que todavía tenga usuarios."
       },
       "users": {
         "title": "Usuarios",

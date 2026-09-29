@@ -31,9 +31,11 @@ public sealed class PurchaseShortageServiceTests
     private static async Task<Po> AddPurchaseOrderAsync(WmsFixture f, Warehouse w, Supplier supplier, string number, string status,
         params (Product Product, decimal Ordered, decimal Received, decimal Cost)[] lines)
     {
+        // Tenant del contexto activo (WmsFixture.TenantId salvo dentro de f.AsTenant(...)).
+        var tenantId = f.Tenant.TenantId!.Value;
         var po = new PurchaseOrder
         {
-            PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = number,
+            PublicId = Guid.NewGuid(), TenantId = tenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = number,
             OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, status), IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -46,14 +48,14 @@ public sealed class PurchaseShortageServiceTests
         f.Db.Set<PurchaseOrderLine>().AddRange(poLines);
         var asn = new Asn
         {
-            TenantId = WmsFixture.TenantId, WarehouseId = w.WarehouseId, PurchaseOrderId = po.PurchaseOrderId,
+            TenantId = tenantId, WarehouseId = w.WarehouseId, PurchaseOrderId = po.PurchaseOrderId,
             StatusCodeId = f.StatusId(StatusDomains.AsnStatus, AsnStatuses.Received), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<Asn>().Add(asn);
         await f.Db.SaveChangesAsync();
         f.Db.Set<ReceiptHeader>().Add(new ReceiptHeader
         {
-            PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, WarehouseId = w.WarehouseId, AsnId = asn.AsnId,
+            PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = w.WarehouseId, AsnId = asn.AsnId,
             ReceiptTypeLookupId = f.LookupId(LookupDomains.ReceiptType, ReceiptTypes.Asn), Number = "REC-" + number,
             StatusCodeId = f.StatusId(StatusDomains.ReceiptStatus, ReceiptStatuses.Received), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
             ReceivedAtUtc = DateTime.UtcNow,
@@ -65,7 +67,7 @@ public sealed class PurchaseShortageServiceTests
 
     private static async Task<Supplier> AddSupplierAsync(WmsFixture f)
     {
-        var s = new Supplier { TenantId = WmsFixture.TenantId, Name = "Proveedor Uno", IsActive = true };
+        var s = new Supplier { TenantId = f.Tenant.TenantId!.Value, Name = "Proveedor Uno", IsActive = true };
         f.Db.Set<Supplier>().Add(s);
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
@@ -341,5 +343,106 @@ public sealed class PurchaseShortageServiceTests
         f.Db.ChangeTracker.Clear();
         Assert.False((await f.Db.Set<PurchaseOrder>().AsNoTracking().SingleAsync(p => p.PublicId == draft.PublicId)).IsActive);
         await Assert.ThrowsAsync<NotFoundException>(() => orders.DeleteAsync(draft.PublicId, default));
+    }
+
+    // ================================================================ Fase 7: resumen de faltantes (panel izquierdo)
+
+    private static async Task UpdateOrderAsync(WmsFixture f, PurchaseOrder po, Action<PurchaseOrder> change)
+    {
+        var tracked = await f.Db.Set<PurchaseOrder>().IgnoreQueryFilters().SingleAsync(p => p.PurchaseOrderId == po.PurchaseOrderId);
+        change(tracked);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+    }
+
+    [Fact]
+    public async Task Shortage_summary_matches_the_pending_lines_of_each_order_and_brings_the_warehouse()
+    {
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var bin = await f.AddBinAsync(await f.AddZoneAsync(w, "RSV", ZoneTypes.Reserve), "R-01");
+        var supplier = await AddSupplierAsync(f);
+        var pa = await f.AddProductAsync("PA");
+        var pb = await f.AddProductAsync("PB");
+        var pc = await f.AddProductAsync("PC");
+        var pd = await f.AddProductAsync("PD");
+        var svc = f.Get<PurchaseShortageService>();
+
+        // Orden mixta: A parcialmente resuelta (MANUAL 1 de 2), B resuelta completa (CLOSE), C sobre-recibida (pendiente 0), D intacta.
+        var mixed = await AddPurchaseOrderAsync(f, w, supplier, "PO-00020", PurchaseOrderStatuses.Partial,
+            (pa, 10m, 8m, 2.5m), (pb, 5m, 3m, 3m), (pc, 4m, 6m, 1.25m), (pd, 3m, 0m, 1.1m));
+        await svc.ResolveAsync(mixed.Header.PublicId, mixed.Lines[0].PurchaseOrderLineId,
+            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, BinId: bin.WarehouseBinId), default);
+        await svc.ResolveAsync(mixed.Header.PublicId, mixed.Lines[1].PurchaseOrderLineId, new ShortageResolveRequest(ShortageActions.Close), default);
+        var simple = await AddPurchaseOrderAsync(f, w, supplier, "PO-00021", PurchaseOrderStatuses.Partial, (pa, 7m, 2m, 0.333m));
+
+        // Fuera de la lista: inactiva, cancelada, solo con recibo OPEN y de otro tenant (todas con pendiente).
+        var inactive = await AddPurchaseOrderAsync(f, w, supplier, "PO-00022", PurchaseOrderStatuses.Partial, (pa, 10m, 1m, 1m));
+        await UpdateOrderAsync(f, inactive.Header, p => p.IsActive = false);
+        var cancelled = await AddPurchaseOrderAsync(f, w, supplier, "PO-00023", PurchaseOrderStatuses.Cancelled, (pa, 10m, 1m, 1m));
+        var openOnly = await AddSentOrderAsync(f, w, supplier, pa, "PO-00024");
+        await AddOpenReceiptAsync(f, w, openOnly);
+        Po foreign;
+        using (f.AsTenant(WmsFixture.OtherTenantId))
+        {
+            var wx = await f.AddWarehouseAsync("WX");
+            var sx = await AddSupplierAsync(f);
+            var px = await f.AddProductAsync("PX");
+            foreign = await AddPurchaseOrderAsync(f, wx, sx, "PO-00099", PurchaseOrderStatuses.Partial, (px, 10m, 1m, 1m));
+        }
+
+        var list = await svc.ListWithShortageAsync(default);
+        Assert.Equal(new[] { mixed.Header.PublicId, simple.Header.PublicId }, list.Select(s => s.PublicId).ToArray());
+        foreach (var excluded in new[] { inactive.Header.PublicId, cancelled.Header.PublicId, openOnly.PublicId, foreign.Header.PublicId })
+            Assert.DoesNotContain(list, s => s.PublicId == excluded);
+
+        // Equivalencia con el detalle: por orden, las líneas con pendiente > 0 de LinesAsync.
+        foreach (var summary in list)
+        {
+            var pending = (await svc.LinesAsync(summary.PublicId, default)).Where(l => l.QtyPending > 0m).ToList();
+            Assert.Equal(pending.Count, summary.LinesWithShortage);
+            Assert.Equal(pending.Sum(l => l.QtyPending), summary.QtyPending);
+            Assert.Equal(PurchaseOrderRules.Round4(pending.Sum(l => l.PendingCost)), summary.PendingCost);
+            Assert.Equal(w.PublicId, summary.WarehousePublicId);
+            Assert.Equal("W1", summary.WarehouseCode);
+            Assert.Equal("Proveedor Uno", summary.SupplierName);
+        }
+
+        var mixedSummary = list[0];
+        Assert.Equal((2, 4m, 5.8m), (mixedSummary.LinesWithShortage, mixedSummary.QtyPending, mixedSummary.PendingCost));
+        Assert.Equal((1, 5m, 1.665m), (list[1].LinesWithShortage, list[1].QtyPending, list[1].PendingCost));
+    }
+
+    [Fact]
+    public async Task Received_order_without_pending_is_not_in_the_shortage_list()
+    {
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var supplier = await AddSupplierAsync(f);
+        var pa = await f.AddProductAsync("PA");
+        await AddPurchaseOrderAsync(f, w, supplier, "PO-00030", PurchaseOrderStatuses.Received, (pa, 5m, 5m, 1m));
+
+        Assert.Empty(await f.Get<PurchaseShortageService>().ListWithShortageAsync(default));
+    }
+
+    [Fact]
+    public async Task Shortage_list_is_ordered_by_order_date_then_id()
+    {
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var supplier = await AddSupplierAsync(f);
+        var pa = await f.AddProductAsync("PA");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var late = await AddPurchaseOrderAsync(f, w, supplier, "PO-00040", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
+        var sameA = await AddPurchaseOrderAsync(f, w, supplier, "PO-00041", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
+        var sameB = await AddPurchaseOrderAsync(f, w, supplier, "PO-00042", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
+        var early = await AddPurchaseOrderAsync(f, w, supplier, "PO-00043", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
+        await UpdateOrderAsync(f, sameA.Header, p => p.OrderDate = today.AddDays(-2));
+        await UpdateOrderAsync(f, sameB.Header, p => p.OrderDate = today.AddDays(-2));
+        await UpdateOrderAsync(f, early.Header, p => p.OrderDate = today.AddDays(-5));
+
+        var list = await f.Get<PurchaseShortageService>().ListWithShortageAsync(default);
+        Assert.Equal(new[] { "PO-00043", "PO-00041", "PO-00042", "PO-00040" }, list.Select(s => s.Number).ToArray());
+        Assert.Equal(late.Header.PublicId, list[^1].PublicId);
     }
 }

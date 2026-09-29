@@ -1,11 +1,11 @@
 // Pruebas de Inventario (Lote F6) sobre un fetch simulado: en Saldos y Kárdex la paginación es del servidor, así que todo
 // cambio de filtro o del buscador vuelve a la página 1 (skip=0); el filtro Producto viaja como productPublicIds; el Kárdex
-// muestra la columna Motivo y no ofrece orden en el cliente (solo reordenaría la página visible).
+// muestra la columna Motivo. Sus endpoints no aceptan orden: el orden por encabezado es en el cliente (solo la página visible).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
@@ -67,13 +67,23 @@ function route(url: URL): unknown {
   return []
 }
 
-function wrap(ui: ReactNode, url = '/warehouse/inventory') {
+/** Pestaña Saldos (desde la Fase 8 el Kárdex es la primera pestaña y va sin parámetro). */
+const BALANCES_URL = '/warehouse/kardex?tab=balances'
+
+/** Muestra la URL actual (ruta + consulta) para comprobar lo que escribe la pantalla. */
+function LocationProbe() {
+  const location = useLocation()
+  return <output data-testid="location">{location.pathname + location.search}</output>
+}
+
+function wrap(ui: ReactNode, url = '/warehouse/kardex') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={client}>
         <AccessProvider permissions={['inventory.view']} modules={['WMS_LOTSERIAL']}>
           {ui}
+          <LocationProbe />
         </AccessProvider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -112,7 +122,7 @@ describe('InventoryScreen · Saldos', () => {
 
   it('elegir un producto en el filtro vuelve a la página 1 y lo manda como productPublicIds', async () => {
     const user = userEvent.setup()
-    wrap(<InventoryScreen />)
+    wrap(<InventoryScreen />, BALANCES_URL)
     await waitLast(PATH, (u) => u.searchParams.get('skip') === '0')
     await goToPage2(user, PATH)
     await pickProduct(user)
@@ -124,7 +134,7 @@ describe('InventoryScreen · Saldos', () => {
 
   it('escribir en el buscador vuelve a la página 1 y manda search', async () => {
     const user = userEvent.setup()
-    wrap(<InventoryScreen />)
+    wrap(<InventoryScreen />, BALANCES_URL)
     await waitLast(PATH, (u) => u.searchParams.get('skip') === '0')
     await goToPage2(user, PATH)
     await user.type(screen.getByRole('searchbox'), 'tornillo')
@@ -132,11 +142,19 @@ describe('InventoryScreen · Saldos', () => {
     expect(last(PATH).searchParams.get('skip')).toBe('0')
   })
 
-  it('las columnas no se ordenan en el cliente (la lista es paginada por el servidor)', async () => {
-    wrap(<InventoryScreen />)
+  it('las columnas se ordenan por encabezado (en el cliente, sobre la página visible) sin volver a pedir al API', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, BALANCES_URL)
     const header = await screen.findByRole('columnheader', { name: 'Disponible' })
-    expect(within(header).queryByRole('button')).toBeNull()
-    expect(header).not.toHaveAttribute('aria-sort')
+    expect(header).toHaveAttribute('aria-sort', 'none')
+    const calls = mock.requests.filter((u) => u.pathname === PATH).length
+    await user.click(within(header).getByRole('button'))
+    await user.click(within(screen.getByRole('columnheader', { name: /Disponible/ })).getByRole('button'))
+    expect(screen.getByRole('columnheader', { name: /Disponible/ })).toHaveAttribute('aria-sort', 'descending')
+    // la página 1 trae A-1…A-25: en descendente la primera fila es la de mayor disponible
+    const firstRow = screen.getAllByRole('row')[1]
+    expect(within(firstRow).getByText('A-25')).toBeInTheDocument()
+    expect(mock.requests.filter((u) => u.pathname === PATH).length).toBe(calls)
   })
 })
 
@@ -150,8 +168,9 @@ describe('InventoryScreen · Kárdex', () => {
     expect(await screen.findByRole('columnheader', { name: 'Motivo' })).toBeInTheDocument()
     expect(await screen.findByText('Conteo físico 1')).toBeInTheDocument()
     expect(screen.getAllByText('+10').length).toBeGreaterThan(0)
+    // ordenable por encabezado (en el cliente, sobre la página visible)
     const dateHeader = screen.getByRole('columnheader', { name: 'Fecha' })
-    expect(within(dateHeader).queryByRole('button')).toBeNull()
+    expect(within(dateHeader).getByRole('button')).toBeInTheDocument()
   })
 
   it('el filtro Producto (con dados de baja) vuelve a la página 1 y viaja como productPublicIds', async () => {
@@ -178,9 +197,39 @@ describe('InventoryScreen · Kárdex', () => {
   })
 })
 
+describe('InventoryScreen · Kárdex de movimientos (Fase 8: ítem propio del menú)', () => {
+  it('sin parámetros abre el Kárdex (primera pestaña) con el título de la maqueta; Saldos no se consulta', async () => {
+    wrap(<InventoryScreen />)
+    expect(await screen.findByRole('heading', { level: 1, name: 'Kárdex de movimientos' })).toBeInTheDocument()
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Kárdex', 'Saldos', 'Conciliación'])
+    expect(screen.getByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    expect(mock.requests.some((u) => u.pathname === '/api/v1/inventory/balances')).toBe(false)
+  })
+
+  it('la pestaña va en la URL: Saldos → ?tab=balances, Conciliación → ?tab=reconciliation, Kárdex sin parámetro', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId}`)
+    await user.click(await screen.findByRole('tab', { name: 'Saldos' }))
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/warehouse\/kardex\?tab=balances$/)
+    await user.click(screen.getByRole('tab', { name: 'Conciliación' }))
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/warehouse\/kardex\?tab=reconciliation$/)
+    await user.click(screen.getByRole('tab', { name: 'Kárdex' }))
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/warehouse\/kardex$/)
+  })
+
+  it('?types=ADJUSTMENT (Reporte de ajustes de Productos e inventario) filtra el Kárdex por tipo', async () => {
+    wrap(<InventoryScreen />, `/warehouse/kardex?types=ADJUSTMENT&warehousePublicIds=${WH}`)
+    await waitLast(
+      '/api/v1/inventory/transactions',
+      (u) => u.searchParams.getAll('types').includes('ADJUSTMENT') && u.searchParams.getAll('warehousePublicIds').includes(WH),
+    )
+  })
+})
+
 describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', () => {
-  it('?tab=kardex&product=X abre el Kárdex filtrado por el producto y muestra su SKU en la píldora', async () => {
-    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}`)
+  it('?tab=kardex&product=X (valor anterior de la pestaña) abre el Kárdex filtrado por el producto y muestra su SKU en la píldora', async () => {
+    wrap(<InventoryScreen />, `/warehouse/kardex?tab=kardex&product=${PRODUCT.publicId}`)
     expect(await screen.findByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
     expect(last('/api/v1/inventory/transactions').searchParams.get('skip')).toBe('0')
@@ -190,22 +239,22 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
   })
 
-  it('?categoryIds=7 abre Saldos filtrado por la categoría', async () => {
-    wrap(<InventoryScreen />, '/warehouse/inventory?categoryIds=7')
+  it('?tab=balances&categoryIds=7 abre Saldos filtrado por la categoría', async () => {
+    wrap(<InventoryScreen />, '/warehouse/kardex?tab=balances&categoryIds=7')
     expect(await screen.findByRole('tab', { name: 'Saldos' })).toHaveAttribute('aria-selected', 'true')
     await waitLast('/api/v1/inventory/balances', (u) => u.searchParams.getAll('categoryIds').includes('7'))
   })
 
-  it('?warehousePublicIds=W&categoryIds=7 abre Saldos con el almacén y la categoría (los mismos filtros que la cifra de Pulso)', async () => {
-    wrap(<InventoryScreen />, `/warehouse/inventory?categoryIds=7&warehousePublicIds=${WH}`)
+  it('?tab=balances&warehousePublicIds=W&categoryIds=7 abre Saldos con el almacén y la categoría (los mismos filtros que la cifra de Pulso)', async () => {
+    wrap(<InventoryScreen />, `/warehouse/kardex?tab=balances&categoryIds=7&warehousePublicIds=${WH}`)
     await waitLast(
       '/api/v1/inventory/balances',
       (u) => u.searchParams.getAll('categoryIds').includes('7') && u.searchParams.getAll('warehousePublicIds').includes(WH),
     )
   })
 
-  it('?tab=kardex&product=X&warehousePublicIds=W manda el almacén al Kárdex', async () => {
-    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
+  it('?product=X&warehousePublicIds=W manda el almacén al Kárdex', async () => {
+    wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
     await waitLast(
       '/api/v1/inventory/transactions',
       (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId) && u.searchParams.getAll('warehousePublicIds').includes(WH),
@@ -221,7 +270,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
         return new Response(JSON.stringify({ title: 'No encontrado', status: 404 }), { status: 404, headers: { 'Content-Type': 'application/problem+json' } })
       return route(url)
     }
-    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId},${other.publicId}&product=${missing}`)
+    wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId},${other.publicId}&product=${missing}`)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').length === 3)
     expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'Quitar TUER-02' }, { timeout: 4000 })).toBeInTheDocument()
@@ -231,7 +280,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
 
   it('los filtros de la URL son de la pestaña abierta: al cambiar de pestaña no pasan a la otra ni reaparecen al volver', async () => {
     const user = userEvent.setup()
-    wrap(<InventoryScreen />, `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
+    wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
     await user.click(screen.getByRole('tab', { name: 'Saldos' }))
     await waitLast('/api/v1/inventory/balances', (u) => u.searchParams.get('skip') === '0')
@@ -248,7 +297,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
   })
 
   it('?ref= ya no se usa: el Kárdex no manda búsqueda (el API no compara el documento de origen)', async () => {
-    wrap(<InventoryScreen />, '/warehouse/inventory?tab=kardex&ref=REC-000318')
+    wrap(<InventoryScreen />, '/warehouse/kardex?ref=REC-000318')
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
     expect(last('/api/v1/inventory/transactions').searchParams.has('search')).toBe(false)
     expect(screen.getByRole('searchbox')).toHaveValue('')

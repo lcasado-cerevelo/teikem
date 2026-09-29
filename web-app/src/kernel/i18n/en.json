@@ -141,21 +141,25 @@
       "title": "Warehouses",
       "subtitle": "create and manage your warehouses"
     },
-    "products": {
-      "title": "Products",
-      "subtitle": "SKU master: cost, price, minimums and category"
+    "locations": {
+      "title": "Locations",
+      "subtitle": "aisle · rack · bin, by zone"
     },
-    "inventory": {
-      "title": "Inventory",
+    "products": {
+      "title": "Products & inventory",
       "subtitle": "lot / serial / ledger"
+    },
+    "kardex": {
+      "title": "Movement ledger",
+      "subtitle": "the ledger: single source of truth for stock"
     },
     "receipts": {
       "title": "Receiving",
       "subtitle": "ASN, dock and verification of inbound"
     },
-    "warehouseTasks": {
-      "title": "Warehouse tasks",
-      "subtitle": "unified queue: receiving, replenishment, counting and cross-dock"
+    "inventoryAdjustments": {
+      "title": "Inventory adjustments",
+      "subtitle": "partial receipts and corrections against the ledger"
     },
     "cycleCounts": {
       "title": "Cycle count",
@@ -170,12 +174,8 @@
       "subtitle": "purchasing suppliers: contact, payment term and status"
     },
     "purchaseOrders": {
-      "title": "Purchase orders",
+      "title": "Purchases",
       "subtitle": "purchase orders to suppliers: lines, status and shortages"
-    },
-    "dockAppointments": {
-      "title": "Dock appointments",
-      "subtitle": "dock appointment schedule for the warehouse"
     },
     "crossDockPlans": {
       "title": "Cross-dock",
@@ -605,20 +605,25 @@
       },
       "warehouse": {
         "title": "Warehouse",
-        "subtitle": "Current balance (not tied to a date range). The category or product filter applies to the balance cards; document counters only use the warehouse.",
-        "onHand": "On hand",
+        "subtitle": "Current balance (not tied to a date range). The category or product filter applies to the balance (In warehouse, Reserved, Available and Below minimum); document counters only use the warehouse.",
         "available": "Available",
         "belowMin": "Below minimum",
         "openReceipts": "Open receipts",
         "pendingTasks": "Pending tasks",
         "openCounts": "Open counts",
-        "reserved": "Reserved:",
+        "river": {
+          "label": "Goods flow",
+          "inStock": "In warehouse",
+          "reserved": "Reserved",
+          "belowMinAlert": "Some products are below their minimum.",
+          "belowMinAlertProduct": "The product is below its minimum."
+        },
         "categorySub": "{name} · {count} products",
         "categorySubOne": "{name} · 1 product",
         "productMin": "{sku} · minimum {qty}",
         "yes": "Yes",
         "no": "No",
-        "viewInventory": "View in Inventory ›",
+        "viewInventory": "View balances ›",
         "viewKardex": "View {sku} ledger ›",
         "scopeTag": "warehouse",
         "scopeTagTitle": "Only the warehouse filter applies (not the category or product).",
@@ -642,7 +647,9 @@
         "fromRequired": "Enter the From date.",
         "toRequired": "Enter the To date.",
         "fromAfterTo": "From cannot be later than To."
-      }
+      },
+      "cardMode": "Date range for {name}",
+      "lockedHint": "Only its creator or someone allowed to change dates can change the range."
     },
     "activity": {
       "title": "Recent activity",
@@ -705,7 +712,10 @@
       "showInPulsoLabel": "Show in the day's Pulse",
       "showInPulsoHint": "If on, this indicator shows in the company's Pulse by default (each user can still show or hide it in their own).",
       "visibilityLabel": "Who can see it",
-      "shareWithLabel": "Share with",
+      "shareWithUsersLabel": "Share with (users)",
+      "shareWithUsersPh": "Search users…",
+      "shareWithRolesLabel": "Share with (roles)",
+      "shareWithRolesPh": "Search roles…",
       "visAllBadge": "Everyone",
       "visPrivateBadge": "Private",
       "visSharedBadge": "Shared ({n})",
@@ -738,7 +748,10 @@
       "typeHint": "Bar, donut or line; can be changed at any time.",
       "note": "Each chart groups a data source by a field and computes a value per group (count, sum, average, minimum or maximum), with the same date range and Pulse option as Indicators.",
       "deleteTitle": "Delete chart",
-      "deleteBody": "Delete chart {name}?"
+      "deleteBody": "Delete chart {name}?",
+      "previewTitle": "Preview",
+      "previewIncomplete": "Choose the data source, the group-by field and the calculation to see the chart.",
+      "previewTruncated": "Preview computed with the first 5,000 records of the source."
     },
     "editor": {
       "descriptionEs": "Description (Spanish)",
@@ -868,6 +881,40 @@
         "nameRequired": "Name is required."
       }
     },
+    "locations": {
+      "title": "Locations",
+      "subtitle": "Warehouse hierarchy: zone · aisle · rack · slot, with occupancy",
+      "warehouse": "Warehouse",
+      "noWarehouses": "There are no active warehouses.",
+      "noZones": "This warehouse has no zones yet",
+      "noBins": "This warehouse has no slots yet.",
+      "usedPct": "used · {pct}%",
+      "zoneAria": "Zone {zone}: {used} of {total} slots used ({pct}%)",
+      "riverAria": "Occupancy by zone",
+      "tableLabel": "Slots",
+      "fillAria": "{pct}% of the slot with the most units",
+      "fillHint": "Units relative to the slot with the most units in the warehouse (slots have no recorded capacity).",
+      "truncated": "Only {count} stock lines were read: the Product column and its filter may be incomplete.",
+      "stockError": "The products in the slots could not be read.",
+      "columns": {
+        "bin": "Slot",
+        "zone": "Zone",
+        "qty": "Quantity",
+        "product": "Product",
+        "occupancy": "Occupancy",
+        "state": "Status"
+      },
+      "filters": {
+        "zone": "Zone",
+        "type": "Type",
+        "product": "Product",
+        "state": "Status"
+      },
+      "states": {
+        "EMPTY": "Empty",
+        "OCCUPIED": "Used"
+      }
+    },
     "detail": {
       "back": "Back to warehouses",
       "notFound": "The warehouse does not exist or does not belong to your company.",
@@ -981,11 +1028,38 @@
       }
     },
     "products": {
-      "title": "Products",
-      "subtitle": "SKU master: cost, price, minimums and category.",
+      "title": "Products & inventory",
+      "subtitle": "Catalog with available, reserved stock, and lot/serial tracking",
       "tabProducts": "Products",
+      "invReport": "Inventory report",
+      "invReportHint": "Balances by warehouse, slot and lot (Movement ledger → Balances), with the warehouse and categories filtered here.",
+      "adjReport": "Adjustment report",
+      "adjReportHint": "Adjustment movements in the Movement ledger, with the warehouse filtered here.",
+      "kpis": {
+        "aria": "Catalog summary",
+        "activeSkus": "Active SKUs",
+        "totalUnits": "Total units",
+        "belowMin": "Low stock",
+        "serial": "Serial-tracked",
+        "truncated": "Counted over the first {count} active products."
+      },
+      "columns": {
+        "sku": "SKU",
+        "product": "Product",
+        "category": "Category",
+        "owner": "Owner",
+        "available": "Available",
+        "reserved": "Reserved",
+        "total": "Total",
+        "tracking": "Tracking",
+        "state": "Status"
+      },
+      "states": {
+        "ok": "OK",
+        "low": "Low stock",
+        "inactive": "Inactive"
+      },
       "tabCategories": "Categories",
-      "tabData": "Data",
       "tabLots": "Lots",
       "tabSerials": "Serials",
       "new": "New product",
@@ -998,16 +1072,46 @@
       "saved": "Changes saved.",
       "notFound": "The product does not exist or does not belong to your company.",
       "back": "Back to products",
-      "deactivate": "Deactivate",
-      "reactivate": "Reactivate",
       "deactivated": "Product deactivated.",
       "reactivated": "Product reactivated.",
-      "deactivateTitle": "Deactivate the product",
-      "deactivateBody": "Product {name} will become inactive.",
-      "reactivateTitle": "Reactivate the product",
-      "reactivateBody": "Product {name} will be available again.",
       "skuLocked": "The product SKU cannot be changed.",
       "movementsLock": "Cannot be changed: the product already has movements.",
+      "editor": {
+        "newTitle": "New product",
+        "editTitle": "Edit product",
+        "viewData": "View product data",
+        "sku": "SKU",
+        "uom": "Unit",
+        "name": "Name",
+        "category": "Category",
+        "tracking": "Tracking",
+        "owner": "Inventory owner",
+        "purchaseCost": "Purchase cost",
+        "salePrice": "Sale price",
+        "preferredWarehouse": "Default warehouse",
+        "preferredBin": "Default slot",
+        "total": "Total",
+        "useAdjust": "use Adjust below",
+        "totalOnCreate": "adjust it when editing",
+        "reorder": "Reorder point",
+        "lockedByMovements": "Unit, tracking and owner cannot be changed: the product already has movements.",
+        "activeLabel": "Active product (shown when creating orders)",
+        "hasStockNote": "Can’t deactivate while it has available stock.",
+        "more": "More product data",
+        "save": "Save",
+        "cancel": "Cancel",
+        "close": "Close",
+        "updated": "Product updated.",
+        "loadError": "The product could not be loaded.",
+        "adjustTitle": "Adjust inventory",
+        "adjustDelta": "Quantity (+/-)",
+        "adjustReason": "Reason",
+        "applyAdjust": "Apply adjustment",
+        "adjustApplied": "Adjustment applied: {qty} {sku}",
+        "traceTitle": "Lots and serials",
+        "viewLots": "View lots",
+        "viewSerials": "View serials"
+      },
       "fields": {
         "sku": "SKU",
         "name": "Name",
@@ -1037,7 +1141,10 @@
         "anyWarehouse": "Any warehouse",
         "ownOnly": "Own only",
         "activeOnly": "Active only",
-        "onlyAvailable": "With availability"
+        "onlyAvailable": "With availability",
+        "state": "Status",
+        "stateActive": "Active",
+        "stateLow": "Low stock"
       },
       "lots": {
         "lotNumber": "Lot",
@@ -1102,8 +1209,8 @@
       }
     },
     "inventory": {
-      "title": "Inventory",
-      "subtitle": "Balances, ledger, adjustments, transfers and reconciliation.",
+      "title": "Movement ledger",
+      "subtitle": "The ledger: single source of truth for stock (every receipt, dispatch, transfer, adjustment and cross-dock writes here)",
       "tabBalances": "Balances",
       "tabKardex": "Ledger",
       "tabReconciliation": "Reconciliation",
@@ -1362,6 +1469,7 @@
         },
         "modal": {
           "title": "Resolve shortage",
+          "context": "{sku} · {product} — Short: {qty}",
           "action": "Action",
           "actions": {
             "close": "Close (write off)",
@@ -1393,6 +1501,34 @@
           "serialsRequired": "Product {sku} is serial-tracked; enter the serial numbers.",
           "serialCountMismatch": "{count} serial(s) entered for a quantity of {qty}; they must match."
         }
+      }
+    },
+    "inventoryAdjustments": {
+      "intro": "Purchase orders received with a shortage. For each short product you can close the gap (accept it as final), reorder it with the same supplier, or apply a manual adjustment with a reason — every resolution is recorded.",
+      "listTitle": "Purchases with partial receipt",
+      "short": "{qty} short",
+      "lines": "{count} line(s)",
+      "emptyList": "No pending partial receipts",
+      "selectPrompt": "Select a purchase",
+      "reorderNote": "Reordering creates a new draft PO with the same supplier for the missing quantity, visible in Purchasing.",
+      "tableLabel": "Short lines of the purchase",
+      "columns": {
+        "shortage": "Short",
+        "resolve": "Resolve"
+      },
+      "actions": {
+        "close": "Close",
+        "reorder": "Reorder",
+        "manual": "Manual adj."
+      },
+      "qtyPlaceholder": "Qty",
+      "reasonPlaceholder": "Reason",
+      "qtyAria": "Adjustment quantity for {sku}",
+      "reasonAria": "Adjustment reason for {sku}",
+      "toast": {
+        "closed": "Shortage closed: {sku}",
+        "reordered": "Reorder created: {number}",
+        "adjusted": "Adjustment applied: +{qty} {sku}"
       }
     },
     "tasks": {
@@ -1512,6 +1648,12 @@
     "crossDockPlans": {
       "title": "Cross-dock",
       "subtitle": "Cross-dock plans: allocate receipt lines to orders without going through reserve bins.",
+      "tabs": {
+        "plans": "Plans",
+        "appointments": "Dock appointments",
+        "tasks": "Cross-dock tasks"
+      },
+      "tasksTitle": "Cross-dock tasks",
       "count": "{count} plans",
       "new": "New plan",
       "created": "Plan created.",
@@ -1620,6 +1762,8 @@
       "subtitle": "Blind and return receipts, against an advance shipping notice or against a purchase order.",
       "tabReceipts": "Receipts",
       "tabAsns": "Advance shipping notices",
+      "tabPutaway": "Pending putaway",
+      "putawayTitle": "Pending putaway",
       "new": "New receipt",
       "create": "Create receipt",
       "created": "Receipt {number} created.",
@@ -1726,7 +1870,7 @@
         "deleteBody": "Delete open receipt {number}? If it came from a client notice, the notice becomes pending again; if it came from a purchase order, its notice is cancelled.",
         "deleted": "Receipt {number} deleted.",
         "putaway": "Putaway tasks",
-        "goTasks": "Go to Warehouse tasks",
+        "goTasks": "See all pending putaway",
         "columns": {
           "product": "Product",
           "tracking": "Tracking",
@@ -1779,6 +1923,9 @@
     "pickBatches": {
       "title": "Pick & pack",
       "subtitle": "Pick inventory by FEFO or by bin, lot or serial, and pack it as a transport order.",
+      "tabBatches": "Picks",
+      "tabReplenish": "Replenishment",
+      "replenishTitle": "Replenishment tasks",
       "collect": "Pick",
       "collectTitle": "New pick batch",
       "collected": "Pick batch {number} created.",
@@ -1888,6 +2035,9 @@
     "cycleCounts": {
       "title": "Cycle count",
       "subtitle": "Snapshot of on-hand stock, capture of what was counted and reconciliation against current stock.",
+      "tabCounts": "Counts",
+      "tabTasks": "Count tasks",
+      "tasksTitle": "Count tasks",
       "new": "New count",
       "create": "Create count",
       "created": "Count {number} created with {count} line(s).",
@@ -2052,7 +2202,8 @@
         "deleteTitle": "Delete the role",
         "deleteBody": "The role {name} will be deleted. This action cannot be undone.",
         "deleted": "Role deleted.",
-        "note": "A role is a reusable set of permissions: changing it affects every user who has it assigned. {count} roles come pre-built ({names}); they can be freely edited, renamed, or you can create new ones — the only guard is you can't delete one that still has users on it."
+        "note": "A role is a reusable set of permissions — changing it affects every user who has it assigned. {count} roles come pre-built ({names}); they can be freely edited, renamed, or you can create new ones — the only guard is you can't delete one that still has users on it.",
+        "noteGeneric": "A role is a reusable set of permissions — changing it affects every user who has it assigned. Roles can be freely edited, renamed, or you can create new ones — the only guard is you can't delete one that still has users on it."
       },
       "users": {
         "title": "Users",

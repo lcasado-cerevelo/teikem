@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setLang, t } from '../../kernel/i18n/i18n'
-import { decimals, moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
+import { adjustQuantitySchema, decimals, moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
 
 beforeAll(() => setLang('es'))
 
@@ -45,5 +45,14 @@ describe('productRules (ProductRules del dominio, mensajes del manual 06)', () =
     expect(firstError(cost, 99_999_999_999_999)).toBeNull()
     expect(firstError(cost, 100_000_000_000_000)).toBe('El costo o el precio excede el máximo permitido.')
     expect(firstError(price, 100_000_000_000_000)).toBe('El costo o el precio excede el máximo permitido.')
+  })
+
+  it('cantidad de ajuste: obligatoria, distinta de cero, ± y a lo sumo 3 decimales', () => {
+    const s = adjustQuantitySchema(t)
+    expect(firstError(s, 5)).toBeNull()
+    expect(firstError(s, -2.125)).toBeNull()
+    expect(firstError(s, null)).toBe('Se esperaba un número.')
+    expect(firstError(s, 0)).toBe('La cantidad del ajuste no puede ser cero.')
+    expect(firstError(s, 1.2345)).toBe('La cantidad admite como máximo 3 decimales.')
   })
 })

@@ -1,13 +1,26 @@
 /* Estilos propios del kit (src/kernel/ui). Complementan base.css (clases de la maqueta) sin redefinirlas.
    Reglas de oro: nada genera scroll horizontal de página; bajo 720 px las tablas son tarjetas. */
 
-/* ===== Panel ===== */
+/* ===== Panel (contenido en pantalla: .panel/.ph2 de base.css) ===== */
+/* .panel no recorta (sin overflow:hidden), así que los desplegables (SearchSelect, ClientPicker, CategoryProductPicker)
+   salen del panel. La cabecera .ph2 es de una línea: ícono + título + contador .r + acciones; bajo 360 px envuelve. */
+.panel .ph2.kit-ph2{gap:8px 9px}
+.panel .ph2 .kit-ic{display:inline-flex;flex:none}
+.panel .ph2 .kit-ph2-title{margin:0;font:inherit;min-width:0;overflow-wrap:anywhere;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}
+.panel .ph2 .kit-sub{flex-basis:100%;margin:-4px 0 0;color:var(--muted);font-size:12.5px;font-weight:400}
+.panel .ph2 .kit-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto;font-weight:400}
+/* con contador, este ya empuja a la derecha (.r lleva margin-left:auto); las acciones van pegadas a él */
+.panel .ph2 .r+.kit-acts{margin-left:0}
+/* los íconos de los botones de la cabecera conservan su tamaño y color (.ph2 svg es solo el ícono del título) */
+.panel .ph2 .kit-acts svg{width:15px;height:15px;color:inherit}
+.panel .pb.flush{padding:0}
+.panel .ft.kit-ft{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:11px 14px;border-top:1px solid var(--line-2);font-size:13px;color:var(--text)}
+
+/* ===== Modal (.scrim > .pal) ===== */
 /* .pal recorta (overflow:hidden) en la maqueta; en el kit los desplegables (SearchSelect, ClientPicker) deben poder salir */
 .pal.kit-pal{overflow:visible}
 .pal .pi.kit-ph{flex-wrap:wrap;gap:8px 11px}
 .pal .pi .kit-title{flex:1 1 auto;margin:0;font-size:15px;font-weight:700;min-width:0;overflow-wrap:anywhere}
-.pal .pi .kit-sub{flex-basis:100%;margin:-4px 0 0;color:var(--muted);font-size:12.5px}
-.pal .pi .kit-acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto}
 .pal .pb.flush{padding:0}
 
 /* ===== DataTable ===== */
@@ -21,12 +34,20 @@
 .lst.densetbl{font-size:12px}
 .dt .lst.densetbl td,.dt .lst.densetbl th,.lst.densetbl td,.lst.densetbl th{padding:6px 3px}
 .lst.densetbl th{font-size:9.5px;letter-spacing:.03em}
+/* la tabla compacta también debe alinear su primera/última columna con el resto de paneles de la página (16px),
+   aunque el padding entre columnas se quede apretado para que quepan más */
+.dt .lst.densetbl th:first-child,.dt .lst.densetbl td:first-child,.lst.densetbl th:first-child,.lst.densetbl td:first-child{padding-left:16px}
+.dt .lst.densetbl th:last-child,.dt .lst.densetbl td:last-child,.lst.densetbl th:last-child,.lst.densetbl td:last-child{padding-right:16px}
 .lst th .sortbtn{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;display:inline-flex;align-items:center;gap:2px;cursor:pointer;text-align:inherit}
 .lst th .sortbtn:hover{color:var(--flow-2)}
 .lst th.n .sortbtn{justify-content:flex-end}
 .lst tr.click{cursor:pointer}
+/* fila atenuada (rowClassName 'dim'): registro inactivo, como la maqueta (opacity .55) */
+.lst tr.dim,.dt-card.dim{opacity:.55}
 .lst td.acts{width:1%;white-space:nowrap}
-.rowacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+/* nowrap: con flex-wrap:wrap, una tabla table-layout:auto a veces subestima el ancho mínimo del contenedor flex y
+   deja caer el segundo ícono a otra fila (se ve apilado en vez de uno al lado del otro) */
+.rowacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:nowrap}
 /* Acción de fila solo-ícono (RowAction.icon), como en Diseño/teikem-mockups.html (.rowbtn): 28×28, sin fondo hasta
    el hover; el nombre accesible viene de aria-label/title (el label de la acción), no de texto visible. */
 .rowbtn{border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0}

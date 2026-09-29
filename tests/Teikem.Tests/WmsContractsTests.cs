@@ -141,7 +141,7 @@ public class WmsContractsTests
         { typeof(PurchaseOrderPageDto), "int Total, int Skip, int Take, IReadOnlyList<PurchaseOrderDto> Items" },
         { typeof(ShortageResolutionDto), "int Id, string ActionCode, string Action, decimal Quantity, string? ReasonCode, string? Reason, string? Notes, Guid? ReorderPurchaseOrderPublicId, string? ReorderPurchaseOrderNumber, long? InventoryTransactionId, DateTime CreatedAtUtc, string? CreatedBy" },
         { typeof(ShortageLineDto), "int PurchaseOrderLineId, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReceived, decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal PendingCost, IReadOnlyList<ShortageResolutionDto> Resolutions" },
-        { typeof(PoShortageSummaryDto), "Guid PublicId, string Number, int SupplierId, string SupplierName, int LinesWithShortage, decimal QtyPending, decimal PendingCost" },
+        { typeof(PoShortageSummaryDto), "Guid PublicId, string Number, int SupplierId, string SupplierName, int LinesWithShortage, decimal QtyPending, decimal PendingCost, Guid WarehousePublicId, string WarehouseCode" },
         { typeof(ShortageResolveRequest), "string? Action, decimal? Quantity, string? Reason, string? Notes, int? BinId, int? LotId, LotInput? Lot, IReadOnlyList<string>? SerialNumbers, string? RowVersion" },
         { typeof(ShortageResolveResultDto), "ShortageLineDto Line, PurchaseOrderDto PurchaseOrder, PurchaseOrderDto? Reorder" },
         { typeof(DockAppointmentRequest), "Guid? WarehousePublicId, int? DockId, string? Direction, DateTime? ScheduledStartUtc, DateTime? ScheduledEndUtc, int? AsnId, Guid? TripPublicId" },

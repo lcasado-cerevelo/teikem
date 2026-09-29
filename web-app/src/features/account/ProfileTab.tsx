@@ -3,6 +3,7 @@ import { LANGS } from '../../kernel/i18n'
 import { useLang, useT } from '../../kernel/i18n/useT'
 import { Chip, Panel } from '../../kernel/ui'
 import { formatDateTime } from './format'
+import { IconUsers } from '../../kernel/ui/screenIcons'
 
 /** Pestaña Perfil: datos de la sesión (`GET /api/v1/me`). Solo lectura: el alta y edición de usuarios es de Administración. */
 export function ProfileTab() {
@@ -17,7 +18,7 @@ export function ProfileTab() {
   const aal2 = formatDateTime(me.aal2VerifiedAtUtc, lang)
 
   return (
-    <Panel title={t('account.profile.title')} subtitle={t('account.profile.subtitle')}>
+    <Panel icon={<IconUsers />} title={t('account.profile.title')} subtitle={t('account.profile.subtitle')}>
       <dl className="acct-kv">
         <dt>{t('account.profile.fullName')}</dt>
         <dd>{me.fullName || '—'}</dd>

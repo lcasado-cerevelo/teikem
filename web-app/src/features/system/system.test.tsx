@@ -3,7 +3,7 @@
 // revierte si el `PUT` falla, la columna PIN solo aparece con módulo + permiso, y el modal de PIN valida la
 // coincidencia en cliente y muestra el mensaje del API.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
@@ -132,10 +132,27 @@ describe('UsersPage — el segmento se filtra por permisos', () => {
     }) satisfies Handler
   })
 
-  it('con ambos permisos: se ve el segmento Roles | Usuarios, abierto en Usuarios', async () => {
+  it('con ambos permisos: se ve el segmento Roles | Usuarios, abierto en Roles (como la maqueta)', async () => {
     wrap(<UsersPage />, { permissions: ['admin.roles', 'admin.users'] })
     expect(await screen.findByRole('tablist')).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: 'Usuarios' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Roles' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('una sola cabecera: título, segmento y el botón de alta de la pestaña activa en la misma fila', async () => {
+    const user = userEvent.setup()
+    wrap(<UsersPage />, { permissions: ['admin.roles', 'admin.users'] })
+    const h1 = await screen.findByRole('heading', { level: 1, name: 'Roles y usuarios' })
+    const head = h1.closest('.head') as HTMLElement
+    expect(within(head).getByRole('tablist')).toBeInTheDocument()
+    expect(within(head).getByRole('button', { name: 'Nuevo rol' })).toBeInTheDocument()
+    expect(within(head).queryByRole('button', { name: 'Nuevo usuario' })).toBeNull()
+
+    await user.click(within(head).getByRole('tab', { name: 'Usuarios' }))
+    expect(within(head).getByRole('button', { name: 'Nuevo usuario' })).toBeInTheDocument()
+    expect(within(head).queryByRole('button', { name: 'Nuevo rol' })).toBeNull()
+    // el botón ya no se repite dentro del panel ni en una cabecera aparte
+    expect(screen.getAllByRole('button', { name: 'Nuevo usuario' })).toHaveLength(1)
+    expect(document.querySelectorAll('.head')).toHaveLength(1)
   })
 
   it('sin admin.roles: no hay segmento, se abre directo en Usuarios', async () => {
@@ -148,7 +165,9 @@ describe('UsersPage — el segmento se filtra por permisos', () => {
   it('sin admin.users: no hay segmento, se ve Roles', async () => {
     wrap(<UsersPage />, { permissions: ['admin.roles'] })
     expect(screen.queryByRole('tablist')).toBeNull()
-    expect(await screen.findByText('0 roles')).toBeInTheDocument()
+    // cabecera del panel Roles: título + contador (badge) en la misma línea
+    const heading = await screen.findByRole('heading', { level: 2, name: 'Roles' })
+    expect(within(heading.closest('header') as HTMLElement).getByText('0')).toBeInTheDocument()
   })
 })
 
@@ -161,8 +180,10 @@ describe('RolesTab — permisos agrupados por categoría y reautenticación', ()
       if (url.pathname === '/api/v1/catalogs/PermissionCategory') return CATEGORY_LOOKUPS
       return undefined
     }) satisfies Handler
-    wrap(<RolesTab />, { permissions: ['admin.roles'] })
+    // "Nuevo rol" vive en la cabecera de la página y abre el editor de la pestaña Roles
+    wrap(<UsersPage />, { permissions: ['admin.roles'] })
     await user.click(await screen.findByRole('button', { name: 'Nuevo rol' }))
+    expect(await screen.findByRole('dialog', { name: 'Nuevo rol' })).toBeInTheDocument()
     expect(await screen.findByText('Órdenes')).toBeInTheDocument()
     expect(screen.getByText('Almacén')).toBeInTheDocument()
     expect(screen.getByText('Ver órdenes')).toBeInTheDocument()
@@ -201,6 +222,31 @@ describe('RolesTab — permisos agrupados por categoría y reautenticación', ()
     await waitFor(() => expect(putAttempts).toBe(2))
     expect(mock.calls.filter((c) => c.method === 'PUT' && c.path === '/api/v1/roles/5')).toHaveLength(2)
   })
+
+  it('nota al pie (maqueta rolesNote): nombra las plantillas de sistema por su descripción; sin ellas, la versión genérica', async () => {
+    const TEMPLATES: RoleDto[] = [
+      { ...ROLE, id: 1, name: 'TenantAdmin', description: 'Admin de tenant', isTemplate: true },
+      { ...ROLE, id: 2, name: 'Driver', description: 'Chofer', isTemplate: true },
+    ]
+    let withTemplates = true
+    mock.handler = ((_method: string, url: URL) => {
+      if (url.pathname === '/api/v1/roles')
+        return url.searchParams.get('includeTemplates') === 'true' && withTemplates ? [ROLE, ...TEMPLATES] : [ROLE]
+      if (url.pathname === '/api/v1/permissions') return PERMISSIONS
+      return undefined
+    }) satisfies Handler
+
+    const first = wrap(<RolesTab />, { permissions: ['admin.roles'] })
+    expect(await screen.findByText(/2 roles vienen ya armados \(Admin de tenant, Chofer\)/)).toBeInTheDocument()
+    // las plantillas no se cuelan en la tabla (solo el rol de la compañía)
+    expect(screen.queryByText('TenantAdmin')).toBeNull()
+    first.unmount()
+
+    withTemplates = false
+    wrap(<RolesTab />, { permissions: ['admin.roles'] })
+    await screen.findByText('Despachador')
+    expect(await screen.findByText(/Los roles se pueden editar, renombrar o crear libremente/)).toBeInTheDocument()
+  })
 })
 
 describe('UsersTab — estado, columna PIN y permisos', () => {
@@ -219,10 +265,8 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     }) satisfies Handler
     wrap(<UsersTab />, { permissions: ['admin.users'] })
 
-    const checkbox = await screen.findByRole('checkbox', { name: '' })
-    // localizamos el switch de Estado (el único checkbox de la fila fuera de "incluir suspendidos")
-    const switches = screen.getAllByRole('checkbox')
-    const statusSwitch = switches.find((el) => (el as HTMLInputElement).checked) ?? checkbox
+    // el switch de Estado lleva su estado como texto (como la maqueta), que es también su nombre accesible
+    const statusSwitch = await screen.findByRole('checkbox', { name: 'Activo' })
     expect((statusSwitch as HTMLInputElement).checked).toBe(true)
     await user.click(statusSwitch)
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/membership')).toBe(true))
@@ -266,7 +310,8 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
         return { user: { ...USERS[0], id: 3, fullName: 'Nueva Persona', email: 'nueva@advance.test' }, temporaryPassword: 'Tq7mPz2Rk' }
       return undefined
     }) satisfies Handler
-    wrap(<UsersTab />, { permissions: ['admin.users'] })
+    // "Nuevo usuario" vive en la cabecera de la página (sin admin.roles, la página abre directo en Usuarios)
+    wrap(<UsersPage />, { permissions: ['admin.users'] })
 
     await user.click(await screen.findByRole('button', { name: 'Nuevo usuario' }))
     await user.type(await screen.findByLabelText(/^Correo electrónico/), 'nueva@advance.test')

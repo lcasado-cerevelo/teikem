@@ -31,6 +31,7 @@ import {
 } from '../../kernel/ui'
 import { useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, type PurchaseOrderDto } from './api'
 import { ProductPickerInput, WarehousePicker, WarehousePickerInput } from './pickers'
+import { IconCart } from '../../kernel/ui/screenIcons'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'PurchaseOrderStatus'
@@ -257,16 +258,29 @@ export default function PurchaseOrderListScreen() {
 
   const columns = useMemo<DataColumn<PurchaseOrderDto>[]>(
     () => [
-      { id: 'number', header: t('warehouse.purchaseOrders.columns.number'), cell: (p) => <span className="ref">{p.number}</span>, card: 'title' },
-      { id: 'supplier', header: t('warehouse.purchaseOrders.columns.supplier'), cell: (p) => p.supplierName },
-      { id: 'warehouse', header: t('warehouse.purchaseOrders.columns.warehouse'), cell: (p) => p.warehouseCode },
+      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
+      { id: 'number', header: t('warehouse.purchaseOrders.columns.number'), cell: (p) => <span className="ref">{p.number}</span>, sortValue: (p) => p.number, card: 'title' },
+      { id: 'supplier', header: t('warehouse.purchaseOrders.columns.supplier'), cell: (p) => p.supplierName, sortValue: (p) => p.supplierName },
+      { id: 'warehouse', header: t('warehouse.purchaseOrders.columns.warehouse'), cell: (p) => p.warehouseCode, sortValue: (p) => p.warehouseCode },
       {
         id: 'status',
         header: t('warehouse.purchaseOrders.columns.status'),
         cell: (p) => <StatusChip domain={STATUS_DOMAIN} code={p.statusCode} label={p.status} />,
+        sortValue: (p) => p.status ?? p.statusCode,
       },
-      { id: 'expectedDate', header: t('warehouse.purchaseOrders.columns.expectedDate'), cell: (p) => formatDate(p.expectedDate, lang) },
-      { id: 'orderDate', header: t('warehouse.purchaseOrders.columns.orderDate'), cell: (p) => formatDate(p.orderDate, lang), card: 'hidden' },
+      {
+        id: 'expectedDate',
+        header: t('warehouse.purchaseOrders.columns.expectedDate'),
+        cell: (p) => formatDate(p.expectedDate, lang),
+        sortValue: (p) => p.expectedDate,
+      },
+      {
+        id: 'orderDate',
+        header: t('warehouse.purchaseOrders.columns.orderDate'),
+        cell: (p) => formatDate(p.orderDate, lang),
+        sortValue: (p) => p.orderDate,
+        card: 'hidden',
+      },
     ],
     [t, lang],
   )
@@ -311,7 +325,7 @@ export default function PurchaseOrderListScreen() {
         <DateRangeFilter label={t('warehouse.purchaseOrders.filters.range')} value={range} onChange={changeRange} />
       </Filters>
 
-      <Panel flush title={t('warehouse.purchaseOrders.title')} subtitle={data ? t('warehouse.purchaseOrders.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconCart />} title={t('warehouse.purchaseOrders.title')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={text} onChange={setText} />
         </div>

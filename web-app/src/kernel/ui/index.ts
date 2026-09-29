@@ -41,6 +41,28 @@ export type { ModalProps } from './Modal'
 export { Panel } from './Panel'
 export type { PanelProps } from './Panel'
 export { QBox } from './QBox'
+// 'check' de la maqueta (el mismo del aviso de éxito): estados vacíos "todo resuelto".
+export { IconCheck } from './icons'
+export {
+  IconBasket,
+  IconBox,
+  IconCart,
+  IconCash,
+  IconChart,
+  IconCheckin,
+  IconClip,
+  IconClock,
+  IconDoc,
+  IconGear,
+  IconGrid,
+  IconLayers,
+  IconLock,
+  IconPencil,
+  IconSwap,
+  IconTag,
+  IconUsers,
+  IconWarehouse,
+} from './screenIcons'
 export type { QBoxProps } from './QBox'
 export { SearchMultiSelect, SearchSelect } from './SearchSelect'
 export type { SearchMultiSelectProps, SearchSelectProps } from './SearchSelect'

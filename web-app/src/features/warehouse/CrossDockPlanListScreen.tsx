@@ -1,15 +1,19 @@
 // Pantalla E (Lote F6) — Cruce de muelle (demo): planes. `/warehouse/cross-dock-plans`. Lectura: inventory.view +
-// CROSSDOCK (aplicado por la ruta). Crear plan: warehouse.crossdock.
+// CROSSDOCK (aplicado por la ruta). Crear plan: warehouse.crossdock. Pestañas (?tab=appointments|tasks): 'Citas de muelle'
+// (DockAppointmentsTab.tsx) y 'Tareas de cruce' (cola CROSSDOCK de taskQueue.tsx; completar = mover la asignación).
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Can, ModuleKeys, useModule } from '../../kernel/access'
 import { parseApiDate } from '../../kernel/api/dates'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import { DataTable, Field, Filters, Form, Modal, Panel, Select, SearchSelect, toast, type DataColumn } from '../../kernel/ui'
+import { DataTable, Field, Filters, Form, Modal, Panel, Select, SearchSelect, Tabs, toast, type DataColumn } from '../../kernel/ui'
 import { useCrossDockAction, useCrossDockPlans, useWarehouseZones, type CrossDockPlanDto } from './api'
+import { DockAppointmentsTab } from './DockAppointmentsTab'
 import { WarehousePicker, WarehousePickerInput } from './pickers'
+import { TaskQueue } from './taskQueue'
+import { IconSwap } from '../../kernel/ui/screenIcons'
 
 const STATUS_DOMAIN = 'CrossDockStatus'
 const STAGING_ZONE_TYPES = new Set(['STAGING', 'CROSSDOCK'])
@@ -85,13 +89,15 @@ function CreatePlanModal({ open, onClose }: { open: boolean; onClose: () => void
   )
 }
 
-export default function CrossDockPlanListScreen() {
+// ---------------------------------------------------------------------------------------------------------------------
+// Pestaña Planes
+// ---------------------------------------------------------------------------------------------------------------------
+function PlansTab() {
   const t = useT()
   const lang = useLang()
   const navigate = useNavigate()
   const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [creating, setCreating] = useState(false)
 
   const { data: statusOptions = [] } = useStatuses(STATUS_DOMAIN)
   const query = useMemo(
@@ -129,21 +135,7 @@ export default function CrossDockPlanListScreen() {
   )
 
   return (
-    <div className="wrap">
-      <div className="head">
-        <div>
-          <h1>{t('warehouse.crossDockPlans.title')}</h1>
-          <p>{t('warehouse.crossDockPlans.subtitle')}</p>
-        </div>
-        <div className="act">
-          <Can perm="warehouse.crossdock">
-            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
-              {t('warehouse.crossDockPlans.new')}
-            </button>
-          </Can>
-        </div>
-      </div>
-
+    <>
       <Filters
         onClear={() => {
           setWarehousePublicId(null)
@@ -162,7 +154,7 @@ export default function CrossDockPlanListScreen() {
         />
       </Filters>
 
-      <Panel flush title={t('warehouse.crossDockPlans.title')} subtitle={t('warehouse.crossDockPlans.count', { count: data.length })}>
+      <Panel flush icon={<IconSwap />} title={t('warehouse.crossDockPlans.title')} badge={data.length}>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}
@@ -179,6 +171,61 @@ export default function CrossDockPlanListScreen() {
           />
         )}
       </Panel>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Pantalla: pestañas Planes, Citas de muelle (sin ítem de menú propio: la maqueta solo tiene 'Cruce de muelle') y Tareas
+// de cruce (tareas CROSSDOCK, antes en 'Tareas de almacén'; la cola exige WMS_LOTSERIAL, así que la pestaña solo aparece
+// con ese módulo y su 403 no saca de la pantalla).
+// ---------------------------------------------------------------------------------------------------------------------
+const TAB_KEYS = ['plans', 'appointments', 'tasks'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
+const CROSSDOCK_TYPES = ['CROSSDOCK'] as const
+
+export default function CrossDockPlanListScreen() {
+  const t = useT()
+  const hasWms = useModule(ModuleKeys.WmsLotSerial)
+  const visibleTabs = TAB_KEYS.filter((k) => k !== 'tasks' || hasWms)
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('tab')
+  const requested: TabKey = isTabKey(raw) ? raw : 'plans'
+  const tab: TabKey = visibleTabs.includes(requested) ? requested : 'plans'
+  const setTab = (key: TabKey) => setParams(key === 'plans' ? {} : { tab: key }, { replace: true })
+  const [creating, setCreating] = useState(false)
+
+  return (
+    <div className="wrap">
+      <div className="head">
+        <div>
+          <h1>{t('warehouse.crossDockPlans.title')}</h1>
+          <p>{t('warehouse.crossDockPlans.subtitle')}</p>
+        </div>
+        <div className="act">
+          <Can perm="warehouse.crossdock">
+            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
+              {t('warehouse.crossDockPlans.new')}
+            </button>
+          </Can>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <Tabs<TabKey>
+          label={t('warehouse.crossDockPlans.title')}
+          value={tab}
+          onChange={setTab}
+          tabs={visibleTabs.map((key) => ({ key, label: t(`warehouse.crossDockPlans.tabs.${key}`) }))}
+        />
+      </div>
+
+      {tab === 'plans' && <PlansTab />}
+      {tab === 'appointments' && <DockAppointmentsTab />}
+      {tab === 'tasks' && (
+        <TaskQueue types={CROSSDOCK_TYPES} title={t('warehouse.crossDockPlans.tasksTitle')} icon={<IconSwap />} handleAccessDenied={false} />
+      )}
 
       <CreatePlanModal open={creating} onClose={() => setCreating(false)} />
     </div>

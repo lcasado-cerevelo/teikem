@@ -18,6 +18,7 @@ import {
   type DateRange,
 } from '../../kernel/ui'
 import { useOrdersReadonly, type OrderListItemDto } from '../warehouse/api'
+import { IconLayers } from '../../kernel/ui/screenIcons'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'OrderStatus'
@@ -86,21 +87,29 @@ export default function OrderListScreen() {
 
   const columns = useMemo<DataColumn<OrderListItemDto>[]>(
     () => [
-      { id: 'orderNumber', header: t('orders.list.columns.orderNumber'), cell: (o) => <span className="ref">{o.orderNumber}</span>, card: 'title' },
-      { id: 'client', header: t('orders.list.columns.client'), cell: (o) => o.clientName },
+      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
+      { id: 'orderNumber', header: t('orders.list.columns.orderNumber'), cell: (o) => <span className="ref">{o.orderNumber}</span>, sortValue: (o) => o.orderNumber, card: 'title' },
+      { id: 'client', header: t('orders.list.columns.client'), cell: (o) => o.clientName, sortValue: (o) => o.clientName },
       {
         id: 'consignee',
         header: t('orders.list.columns.consignee'),
         cell: (o) => [o.consigneeName, o.consigneeCity].filter(Boolean).join(' · '),
+        sortValue: (o) => o.consigneeName,
       },
-      { id: 'serviceType', header: t('orders.list.columns.serviceType'), cell: (o) => o.serviceTypeLabel },
-      { id: 'status', header: t('orders.list.columns.status'), cell: (o) => <StatusChip domain={STATUS_DOMAIN} code={o.status} label={o.statusLabel} /> },
-      { id: 'pieces', header: t('orders.list.columns.pieces'), cell: (o) => o.totalPieces, align: 'end' },
-      { id: 'cod', header: t('orders.list.columns.cod'), cell: (o) => (o.codAmount != null ? o.codAmount.toFixed(2) : '—'), align: 'end' },
+      { id: 'serviceType', header: t('orders.list.columns.serviceType'), cell: (o) => o.serviceTypeLabel, sortValue: (o) => o.serviceTypeLabel ?? o.serviceType },
+      {
+        id: 'status',
+        header: t('orders.list.columns.status'),
+        cell: (o) => <StatusChip domain={STATUS_DOMAIN} code={o.status} label={o.statusLabel} />,
+        sortValue: (o) => o.statusLabel ?? o.status,
+      },
+      { id: 'pieces', header: t('orders.list.columns.pieces'), cell: (o) => o.totalPieces, sortValue: (o) => o.totalPieces, align: 'end' },
+      { id: 'cod', header: t('orders.list.columns.cod'), cell: (o) => (o.codAmount != null ? o.codAmount.toFixed(2) : '—'), sortValue: (o) => o.codAmount, align: 'end' },
       {
         id: 'createdAt',
         header: t('orders.list.columns.createdAt'),
         cell: (o) => formatDateTime(o.createdAtUtc, lang),
+        sortValue: (o) => o.createdAtUtc,
         card: 'hidden',
       },
     ],
@@ -138,7 +147,7 @@ export default function OrderListScreen() {
         <DateRangeFilter label={t('orders.list.filters.range')} value={range} onChange={changeRange} />
       </Filters>
 
-      <Panel flush title={t('orders.list.title')} subtitle={data ? t('orders.list.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconLayers />} title={t('orders.list.title')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={text} onChange={setText} />
         </div>

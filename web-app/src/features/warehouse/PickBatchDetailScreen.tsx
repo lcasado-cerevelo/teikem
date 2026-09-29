@@ -35,6 +35,7 @@ import {
 } from '../../kernel/ui'
 import { productLabel, useDeletePickBatch, usePackPickBatch, usePickBatch, warehouseKeys, type PickBatchDto } from './api'
 import { formatDateTime, formatNumber, remapProblemFields } from './lineRules'
+import { IconBasket } from '../../kernel/ui/screenIcons'
 
 type Schemas = components['schemas']
 type PickLine = Schemas['PickBatchLineDto']
@@ -404,7 +405,7 @@ export default function PickBatchDetailScreen() {
         <StatusPipeline domain={STATUS_DOMAIN} entityType={ENTITY_TYPE} entityId={batch.id} currentCode={batch.statusCode} />
       </div>
 
-      <Panel title={t('warehouse.pickBatches.detail.summary')}>
+      <Panel icon={<IconBasket />} title={t('warehouse.pickBatches.detail.summary')}>
         <div className="r3">
           <div className="f">
             <label>{t('warehouse.pickBatches.columns.collectedAt')}</label>
@@ -447,7 +448,7 @@ export default function PickBatchDetailScreen() {
         </div>
       </Panel>
 
-      <Panel flush title={t('warehouse.pickBatches.detail.lines')} subtitle={t('warehouse.receipts.detail.lineCount', { count: lines.length })}>
+      <Panel flush icon={<IconBasket />} title={t('warehouse.pickBatches.detail.lines')} badge={lines.length}>
         <DataTable label={t('warehouse.pickBatches.detail.lines')} columns={columns} rows={lines} rowKey={(l) => l.id ?? 0} pageSize={50} />
       </Panel>
 

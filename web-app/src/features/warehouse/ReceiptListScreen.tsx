@@ -1,11 +1,12 @@
 // Pieza "Recibo" (Lote F6) — Recepción: lista de recibos y avisos de llegada (ASN). `/warehouse/receipts`.
 // Lectura: inventory.view + WMS_LOTSERIAL (por la ruta). Alta de recibo y de aviso, recibir y cancelar aviso:
 // warehouse.receive. Recibir contra una orden de compra exige además purchasing.receive y el módulo PURCHASING (sin ambos
-// la opción no se ofrece). Manual 06 §4.
+// la opción no se ofrece). Manual 06 §4. Pestaña 'Acomodo pendiente' (?tab=putaway): cola de tareas PUTAWAY de todos los
+// recibos (asignar, iniciar, completar con posición sugerida, cancelar; permisos en taskQueue.tsx).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can, ModuleKeys, useCan, useModule } from '../../kernel/access'
 import type { components } from '../../kernel/api/schema'
@@ -49,9 +50,14 @@ import {
 } from './api'
 import { decimalsOf, formatDate, formatDateTime, formatNumber, parseSerials, receiptLineIssues, useDebounced, type LineIssue } from './lineRules'
 import { BinPickerInput, ProductMultiFilter, ProductPickerInput, WarehousePicker, WarehousePickerInput, type ProductFilterItem } from './pickers'
+import { TaskQueue } from './taskQueue'
+import { IconCheckin } from '../../kernel/ui/screenIcons'
 
 type Schemas = components['schemas']
-type TabKey = 'receipts' | 'asns'
+const TAB_KEYS = ['receipts', 'asns', 'putaway'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
+const PUTAWAY_TYPES = ['PUTAWAY'] as const
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'ReceiptStatus'
@@ -556,8 +562,9 @@ function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       </Filters>
       <Panel
         flush
+        icon={<IconCheckin />}
         title={t('warehouse.asns.title')}
-        subtitle={data ? t('warehouse.asns.count', { count: rows.length }) : undefined}
+        badge={data ? rows.length : undefined}
         actions={
           <Can perm="warehouse.receive">
             <button type="button" className="btn flow sm" onClick={() => setCreating(true)}>
@@ -650,27 +657,37 @@ function ReceiptsTab() {
   )
   const { data, isLoading, error } = useReceipts(query)
 
-  const columns = useMemo<DataColumn<ReceiptListItemDto>[]>(
-    () => [
-      { id: 'number', header: t('warehouse.receipts.columns.number'), cell: (r) => <span className="ref">{r.number}</span>, card: 'title' },
-      { id: 'type', header: t('warehouse.receipts.columns.type'), cell: (r) => r.type ?? r.typeCode },
-      { id: 'warehouse', header: t('warehouse.receipts.columns.warehouse'), cell: (r) => r.warehouseCode },
-      { id: 'status', header: t('warehouse.receipts.columns.status'), cell: (r) => <StatusChip domain={STATUS_DOMAIN} code={r.statusCode} label={r.status} /> },
+  const columns = useMemo<DataColumn<ReceiptListItemDto>[]>(() => {
+    // "Origen · Referencia · Remitente": se ordena por el mismo texto que se ve
+    const receiptFrom = (r: ReceiptListItemDto) =>
+      [r.origin ? t(`warehouse.receipts.origin.${r.origin}`) : null, r.originRef, r.senderName].filter(Boolean).join(' · ')
+    return [
+      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
+      { id: 'number', header: t('warehouse.receipts.columns.number'), cell: (r) => <span className="ref">{r.number}</span>, sortValue: (r) => r.number, card: 'title' },
+      { id: 'type', header: t('warehouse.receipts.columns.type'), cell: (r) => r.type ?? r.typeCode, sortValue: (r) => r.type ?? r.typeCode },
+      { id: 'warehouse', header: t('warehouse.receipts.columns.warehouse'), cell: (r) => r.warehouseCode, sortValue: (r) => r.warehouseCode },
+      {
+        id: 'status',
+        header: t('warehouse.receipts.columns.status'),
+        cell: (r) => <StatusChip domain={STATUS_DOMAIN} code={r.statusCode} label={r.status} />,
+        sortValue: (r) => r.status ?? r.statusCode,
+      },
       {
         id: 'from',
         header: t('warehouse.receipts.columns.from'),
-        cell: (r) => [r.origin ? t(`warehouse.receipts.origin.${r.origin}`) : null, r.originRef, r.senderName].filter(Boolean).join(' · '),
+        cell: (r) => receiptFrom(r),
+        sortValue: (r) => receiptFrom(r),
       },
-      { id: 'createdAt', header: t('warehouse.receipts.columns.createdAt'), cell: (r) => formatDateTime(r.createdAtUtc, lang) },
+      { id: 'createdAt', header: t('warehouse.receipts.columns.createdAt'), cell: (r) => formatDateTime(r.createdAtUtc, lang), sortValue: (r) => r.createdAtUtc },
       {
         id: 'variance',
         header: t('warehouse.receipts.columns.variance'),
         cell: (r) => (r.hasVariance ? <Chip tone="warn">{formatNumber(r.varianceQty, lang)}</Chip> : '—'),
+        sortValue: (r) => (r.hasVariance ? r.varianceQty : 0),
         align: 'end',
       },
-    ],
-    [t, lang],
-  )
+    ]
+  }, [t, lang])
 
   return (
     <>
@@ -704,7 +721,7 @@ function ReceiptsTab() {
           ]}
         />
       </Filters>
-      <Panel flush title={t('warehouse.receipts.title')} subtitle={data ? t('warehouse.receipts.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconCheckin />} title={t('warehouse.receipts.title')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={q} onChange={reset(setQ)} placeholder={t('warehouse.receipts.searchPlaceholder')} />
         </div>
@@ -737,7 +754,11 @@ function ReceiptsTab() {
 // =====================================================================================================================
 export default function ReceiptListScreen() {
   const t = useT()
-  const [tab, setTab] = useState<TabKey>('receipts')
+  // La pestaña va en la URL (?tab=asns|putaway) para poder enlazarla (Actividad reciente, ficha del recibo).
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('tab')
+  const tab: TabKey = isTabKey(raw) ? raw : 'receipts'
+  const setTab = (key: TabKey) => setParams(key === 'receipts' ? {} : { tab: key }, { replace: true })
   const [creating, setCreating] = useState<null | { asnId: number; warehousePublicId: string | null } | 'new'>(null)
 
   return (
@@ -764,15 +785,15 @@ export default function ReceiptListScreen() {
           tabs={[
             { key: 'receipts', label: t('warehouse.receipts.tabReceipts') },
             { key: 'asns', label: t('warehouse.receipts.tabAsns') },
+            { key: 'putaway', label: t('warehouse.receipts.tabPutaway') },
           ]}
         />
       </div>
 
-      {tab === 'receipts' ? (
-        <ReceiptsTab />
-      ) : (
-        <AsnsTab onReceive={(a) => setCreating({ asnId: a.id ?? 0, warehousePublicId: a.warehousePublicId ?? null })} />
-      )}
+      {tab === 'receipts' && <ReceiptsTab />}
+      {tab === 'asns' && <AsnsTab onReceive={(a) => setCreating({ asnId: a.id ?? 0, warehousePublicId: a.warehousePublicId ?? null })} />}
+      {/* Acomodo (PUTAWAY) de todos los recibos: antes en 'Tareas de almacén', que no existe en la maqueta. */}
+      {tab === 'putaway' && <TaskQueue types={PUTAWAY_TYPES} title={t('warehouse.receipts.putawayTitle')} icon={<IconCheckin />} />}
 
       {creating !== null && <CreateReceiptModal onClose={() => setCreating(null)} preset={creating === 'new' ? undefined : creating} />}
     </div>

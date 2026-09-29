@@ -58,6 +58,8 @@ public sealed class PurchaseOrderLineConfiguration : IEntityTypeConfiguration<Pu
         b.Property(l => l.UnitCost).HasColumnType("decimal(18,4)");
         b.Property(l => l.LineTotal).HasColumnType("decimal(35,7)").HasComputedColumnSql("[QtyOrdered]*[UnitCost]", stored: true);
 
+        b.HasIndex(l => l.PurchaseOrderId).HasDatabaseName("IX_POLine_Po");
+
         b.HasOne<Product>().WithMany().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.NoAction);
     }
 }
@@ -86,6 +88,8 @@ public sealed class AsnConfiguration : IEntityTypeConfiguration<Asn>
         b.HasKey(a => a.AsnId);
         b.Property(a => a.Reference).HasMaxLength(80);
         b.Property(a => a.ExpectedDate).HasColumnType("date");
+
+        b.HasIndex(a => a.PurchaseOrderId).HasFilter("[PurchaseOrderId] IS NOT NULL").HasDatabaseName("IX_Asn_Po");
 
         b.HasOne<Warehouse>().WithMany().HasForeignKey(a => a.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<PurchaseOrder>().WithMany().HasForeignKey(a => a.PurchaseOrderId).OnDelete(DeleteBehavior.NoAction);

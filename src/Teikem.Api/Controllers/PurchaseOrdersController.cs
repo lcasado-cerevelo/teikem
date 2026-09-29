@@ -35,7 +35,10 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
         => purchaseOrders.ListAsync(new PurchaseOrderQuery(status is { Length: > 0 } ? status : null, supplierId, warehousePublicId, from, to,
             search, skip, take), ct);
 
-    /// <summary>Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo).</summary>
+    /// <summary>
+    /// Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo) y el almacén de la
+    /// orden (PublicId y código, para el ajuste manual a una posición). Panel izquierdo de 'Ajustes de inventario'.
+    /// </summary>
     [HttpGet("shortages"), RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<IReadOnlyList<PoShortageSummaryDto>> Shortages(CancellationToken ct) => shortages.ListWithShortageAsync(ct);
 

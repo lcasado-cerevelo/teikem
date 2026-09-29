@@ -1,11 +1,12 @@
 // Pieza "Conteo cíclico" (Lote F6) — lista de conteos. `/warehouse/cycle-counts`.
 // Lectura de la lista: inventory.view + WMS_LOTSERIAL (por la ruta). La ficha, el alta y todo el conteo (captura, terminar,
 // refrescar, reconciliar, eliminar): warehouse.count. Sin filtros el conteo toma todo el saldo en mano del almacén
-// (máx. 1000 líneas). Manual 06 §6.
+// (máx. 1000 líneas). Manual 06 §6. Pestaña 'Tareas de conteo' (?tab=tasks): cola de tareas COUNT (asignar con
+// warehouse.manage, iniciar con warehouse.count; se completan desde la ficha del conteo); ver taskQueue.tsx.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useController, useForm, useFormContext, useWatch } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
@@ -23,6 +24,7 @@ import {
   QBox,
   SearchMultiSelect,
   SearchSelect,
+  Tabs,
   toast,
   type DataColumn,
   type DateRange,
@@ -32,6 +34,8 @@ import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useCreateCycleCount, useCycleCounts, useWarehouseBins, useWarehouseZones, useWarehouses, warehouseLabel, type CycleCountDto } from './api'
 import { formatDateTime, formatNumber, useDebounced } from './lineRules'
 import { ProductPicker, WarehousePickerInput } from './pickers'
+import { TaskQueue } from './taskQueue'
+import { IconClip } from '../../kernel/ui/screenIcons'
 
 const STATUS_DOMAIN = 'CycleCountStatus'
 const PAGE_SIZE = 25
@@ -140,9 +144,9 @@ function CreateCountModal({ onClose }: { onClose: () => void }) {
 }
 
 // =====================================================================================================================
-// Pantalla
+// Pestaña Conteos
 // =====================================================================================================================
-export default function CycleCountListScreen() {
+function CountsTab() {
   const t = useT()
   const lang = useLang()
   const navigate = useNavigate()
@@ -152,7 +156,6 @@ export default function CycleCountListScreen() {
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
   const [productPublicId, setProductPublicId] = useState<string | null>(null)
   const [q, setQ] = useState('')
-  const [creating, setCreating] = useState(false)
   const search = useDebounced(q.trim())
 
   const { data: warehouseList = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
@@ -211,21 +214,7 @@ export default function CycleCountListScreen() {
   )
 
   return (
-    <div className="wrap">
-      <div className="head">
-        <div>
-          <h1>{t('warehouse.cycleCounts.title')}</h1>
-          <p>{t('warehouse.cycleCounts.subtitle')}</p>
-        </div>
-        <div className="act">
-          <Can perm="warehouse.count">
-            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
-              {t('warehouse.cycleCounts.new')}
-            </button>
-          </Can>
-        </div>
-      </div>
-
+    <>
       <Filters
         onClear={() => {
           setWarehouses([])
@@ -244,7 +233,7 @@ export default function CycleCountListScreen() {
         </div>
       </Filters>
 
-      <Panel flush title={t('warehouse.cycleCounts.title')} subtitle={data ? t('warehouse.cycleCounts.count', { count: rows.length }) : undefined}>
+      <Panel flush icon={<IconClip />} title={t('warehouse.cycleCounts.title')} badge={data ? rows.length : undefined}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} placeholder={t('warehouse.cycleCounts.searchPlaceholder')} />
         </div>
@@ -266,6 +255,57 @@ export default function CycleCountListScreen() {
           />
         )}
       </Panel>
+    </>
+  )
+}
+
+// =====================================================================================================================
+// Pantalla: pestañas Conteos y Tareas de conteo (tareas COUNT, antes en 'Tareas de almacén', que no está en la maqueta:
+// aquí se asignan e inician; se completan desde la ficha del conteo, como exige el API)
+// =====================================================================================================================
+const TAB_KEYS = ['counts', 'tasks'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
+const COUNT_TYPES = ['COUNT'] as const
+
+export default function CycleCountListScreen() {
+  const t = useT()
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('tab')
+  const tab: TabKey = isTabKey(raw) ? raw : 'counts'
+  const setTab = (key: TabKey) => setParams(key === 'counts' ? {} : { tab: key }, { replace: true })
+  const [creating, setCreating] = useState(false)
+
+  return (
+    <div className="wrap">
+      <div className="head">
+        <div>
+          <h1>{t('warehouse.cycleCounts.title')}</h1>
+          <p>{t('warehouse.cycleCounts.subtitle')}</p>
+        </div>
+        <div className="act">
+          <Can perm="warehouse.count">
+            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
+              {t('warehouse.cycleCounts.new')}
+            </button>
+          </Can>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <Tabs<TabKey>
+          label={t('warehouse.cycleCounts.title')}
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'counts', label: t('warehouse.cycleCounts.tabCounts') },
+            { key: 'tasks', label: t('warehouse.cycleCounts.tabTasks') },
+          ]}
+        />
+      </div>
+
+      {tab === 'counts' && <CountsTab />}
+      {tab === 'tasks' && <TaskQueue types={COUNT_TYPES} title={t('warehouse.cycleCounts.tasksTitle')} icon={<IconClip />} />}
 
       {creating && <CreateCountModal onClose={() => setCreating(false)} />}
     </div>

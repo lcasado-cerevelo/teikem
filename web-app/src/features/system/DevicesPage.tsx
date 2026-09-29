@@ -30,6 +30,7 @@ import { WarehousePickerInput } from '../warehouse/pickers'
 import { useCreateDevice, useDevices, useDeviceStatusAction, useRegenerateEnrollCode, type DeviceDto } from './devicesApi'
 import { EnrollCodeModal } from './EnrollCodeModal'
 import { formatRelative } from './devicesFormat'
+import { IconGear } from '../../kernel/ui/screenIcons'
 
 // ---- Modal de alta ----
 function CreateDeviceModal({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (enrollCode: string) => void }) {
@@ -131,7 +132,7 @@ export default function DevicesPage() {
         cell: (d) => formatRelative(d.lastSeenUtc, lang) || '—',
         sortValue: (d) => d.lastSeenUtc ?? '',
       },
-      { id: 'appVersion', header: t('system.devices.columns.appVersion'), cell: (d) => <span className="mono">{d.appVersion || '—'}</span> },
+      { id: 'appVersion', header: t('system.devices.columns.appVersion'), cell: (d) => <span className="mono">{d.appVersion || '—'}</span>, sortValue: (d) => d.appVersion },
     ],
     [t, lang],
   )
@@ -201,7 +202,7 @@ export default function DevicesPage() {
         />
       </Filters>
 
-      <Panel flush title={t('system.devices.title')} subtitle={t('system.devices.count', { count: rows.length })}>
+      <Panel flush icon={<IconGear />} title={t('system.devices.title')} badge={rows.length}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} placeholder={t('system.devices.searchPlaceholder')} />
         </div>

@@ -1,7 +1,7 @@
 // Lote F8a (P3) — agrupación por módulo y permisos de "Nuevo gráfico" en la pantalla de Gráficos (mismo patrón que
 // `IndicatorsPage.test.tsx`).
 import { QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -103,7 +103,11 @@ const LOOKUPS: Record<string, unknown> = {
     { code: 'OPERATIONS', label: 'Operación', sortOrder: 1, isEnabled: true },
     { code: 'WAREHOUSE', label: 'Almacén', sortOrder: 2, isEnabled: true },
   ],
-  DateRangeMode: [{ code: 'LAST7', label: 'Últimos 7 días', sortOrder: 1, isEnabled: true }],
+  DateRangeMode: [
+    { code: 'LAST7', label: 'Últimos 7 días', sortOrder: 1, isEnabled: true },
+    { code: 'LAST30', label: 'Últimos 30 días', sortOrder: 2, isEnabled: true },
+    { code: 'CUSTOM', label: 'Rango personalizado', sortOrder: 3, isEnabled: true },
+  ],
 }
 
 beforeEach(() => {
@@ -119,7 +123,7 @@ function baseHandler(charts: AnalyticsDefinition[]): Handler {
     }
     const dataMatch = /^\/api\/v1\/analytics\/charts\/(\d+)\/data$/.exec(path)
     if (dataMatch) return { id: Number(dataMatch[1]), name: 'x', chartType: 'BAR', isMoney: false, points: [] }
-    const pulseMatch = /^\/api\/v1\/analytics\/charts\/(\d+)\/my-pulse$/.exec(path)
+    const pulseMatch = /^\/api\/v1\/analytics\/charts\/(\d+)\/(my-pulse|my-date-range)$/.exec(path)
     if (pulseMatch && method === 'PUT') return charts.find((c) => c.id === Number(pulseMatch[1])) ?? {}
     return []
   }
@@ -187,5 +191,62 @@ describe('ChartsPage', () => {
     await waitFor(() =>
       expect(invalidateSpy.mock.calls.some((c) => JSON.stringify(c[0]?.queryKey) === JSON.stringify(['/api/v1/analytics/pulse']))).toBe(true),
     )
+  })
+
+  it('Fase 10b: un solo switch de Pulso aunque pueda editar el gráfico, y sin botón "Rango"', async () => {
+    mock.handler = baseHandler([chart({ id: 1, isSystem: false, canEdit: true, canChangeDate: true, dateRangeApplies: true, effectiveDateRangeMode: 'LAST7' })])
+    renderPage()
+    await screen.findByText('Órdenes por estado')
+    expect(screen.getAllByRole('switch')).toHaveLength(1)
+    expect(screen.queryByText('…en el de la compañía')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Rango' })).not.toBeInTheDocument()
+  })
+
+  it('Fase 10b: el rango se elige en la tarjeta y guarda mi rango (my-date-range)', async () => {
+    mock.handler = baseHandler([chart({ id: 1, canChangeDate: true, dateRangeApplies: true, effectiveDateRangeMode: 'LAST7' })])
+    renderPage()
+    const select = await screen.findByLabelText('Rango de fecha de Órdenes por estado')
+    await waitFor(() => expect(select).toHaveDisplayValue('Últimos 7 días'))
+    const user = userEvent.setup()
+    await user.selectOptions(select, 'LAST30')
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')).toBe(true))
+    expect(mock.writes.find((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')?.body).toEqual({
+      dateRangeMode: 'LAST30',
+      dateFrom: null,
+      dateTo: null,
+    })
+  })
+
+  it('Fase 10b: "Rango personalizado" guarda solo con Desde y Hasta válidos', async () => {
+    mock.handler = baseHandler([chart({ id: 1, canChangeDate: true, dateRangeApplies: true, effectiveDateRangeMode: 'LAST7' })])
+    renderPage()
+    const select = await screen.findByLabelText('Rango de fecha de Órdenes por estado')
+    await waitFor(() => expect(select).toHaveDisplayValue('Últimos 7 días'))
+    const user = userEvent.setup()
+    await user.selectOptions(select, 'CUSTOM')
+    expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')).toBe(false)
+
+    const from = screen.getByLabelText('Desde')
+    const to = screen.getByLabelText('Hasta')
+    fireEvent.change(from, { target: { value: '2026-09-10' } })
+    fireEvent.change(to, { target: { value: '2026-09-01' } })
+    expect(screen.getByText('Desde no puede ser mayor que Hasta.')).toBeInTheDocument()
+    expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')).toBe(false)
+
+    fireEvent.change(to, { target: { value: '2026-09-30' } })
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')).toBe(true))
+    expect(mock.writes.find((w) => w.path === '/api/v1/analytics/charts/1/my-date-range')?.body).toEqual({
+      dateRangeMode: 'CUSTOM',
+      dateFrom: '2026-09-10',
+      dateTo: '2026-09-30',
+    })
+  })
+
+  it('Fase 10b: sin permiso de fechas el rango se ve fijo (sin selector)', async () => {
+    mock.handler = baseHandler([chart({ id: 1, canChangeDate: false, dateRangeApplies: true, effectiveDateRangeMode: 'LAST7' })])
+    renderPage()
+    await screen.findByText('Órdenes por estado')
+    expect(await screen.findByText('Últimos 7 días')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Rango de fecha de Órdenes por estado')).not.toBeInTheDocument()
   })
 })

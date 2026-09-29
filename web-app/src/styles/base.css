@@ -58,7 +58,8 @@ h1,h2,h3{letter-spacing:-.01em}
 .bar .burger{display:none;border:none;background:transparent;width:36px;height:36px;border-radius:9px;align-items:center;justify-content:center;flex:none}
 .bar .burger:hover{background:var(--panel-2)}
 .bar .burger svg{width:20px;height:20px}
-.tenant{display:flex;align-items:center;gap:8px;min-width:0;font-weight:600;font-size:13.5px}
+/* compañía activa: a la derecha del reloj; un nombre largo se recorta con elipsis en vez de empujar la cabecera */
+.tenant{display:flex;align-items:center;gap:8px;min-width:0;max-width:240px;font-weight:600;font-size:13.5px}
 .tenant .tn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tenant select{background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--text);font-size:13px;font-weight:600;max-width:100%;min-width:0}
 .langdd{position:relative;flex:none}
@@ -71,7 +72,6 @@ h1,h2,h3{letter-spacing:-.01em}
 .langdd .menu button.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
 .who{display:flex;align-items:center;gap:9px;padding-left:12px;border-left:1px solid var(--line-2);color:var(--text);text-decoration:none;min-width:0;flex:none}
 .who .av{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--flow),var(--money));display:grid;place-items:center;font-weight:700;font-size:11px;color:#fff;flex:none}
-.who .nm{font-size:13px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .iconbtn{border:none;background:transparent;color:var(--muted);width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .iconbtn:hover{background:var(--panel-2);color:var(--text)}
 /* "Buscar o ejecutar…" (abre la paleta), su lupa en pantallas angostas, reloj "en vivo" y tema claro/oscuro */
@@ -173,10 +173,15 @@ h1,h2,h3{letter-spacing:-.01em}
 .lst th.sort{cursor:pointer;user-select:none}
 .lst th.sort:hover{color:var(--flow-2)}
 .lst th .arr{font-size:9px;margin-left:4px;color:var(--flow-2)}
-.lst td{padding:8px 6px;border-bottom:1px solid var(--line-2);overflow-wrap:anywhere;word-break:break-word}
+/* break-word (no "anywhere"): envuelve en espacios/guiones cuando puede, y solo parte una palabra sin espacios si
+   de verdad no cabe entera — antes partía cualquier texto letra por letra aunque tuviera dónde envolver mejor. */
+.lst td{padding:8px 6px;border-bottom:1px solid var(--line-2);overflow-wrap:break-word}
 .lst tbody tr:hover td{background:var(--panel-2)}
 .lst td.n,.lst th.n{text-align:right;font-family:var(--mono)}
 .lst td.n{white-space:nowrap}
+/* la primera y la última columna quedan pegadas al borde del panel (flush): separarlas un poco del margen */
+.lst th:first-child,.lst td:first-child{padding-left:16px}
+.lst th:last-child,.lst td:last-child{padding-right:16px}
 .ref{font-family:var(--mono);color:var(--flow-2)}
 .cash{font-family:var(--mono);font-weight:600;color:var(--money-2)}
 .cash.z{color:var(--faint);font-weight:400}
@@ -195,7 +200,7 @@ h1,h2,h3{letter-spacing:-.01em}
 .ferr{color:var(--danger);font-size:12px;font-weight:600;margin:5px 0 0}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
-.sw{position:relative;display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600}
+.sw{position:relative;display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;white-space:nowrap}
 .f label.sw{display:inline-flex;margin-bottom:0}
 .sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}.sw .tk{width:38px;height:22px;border-radius:20px;background:var(--raise);position:relative;transition:.15s;flex:none}
 .sw .tk::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#cfd6e0;top:2px;left:2px;transition:.15s}
@@ -243,6 +248,16 @@ h1,h2,h3{letter-spacing:-.01em}
 .domit:hover{background:var(--panel-2)}
 .domit.on{background:var(--flow-bg);color:var(--flow-2);font-weight:600}
 .domit .cnt{margin-left:auto;color:var(--faint);font-size:11.5px;font-family:var(--mono)}
+/* Fila de lista de la maqueta (`.unrow`): fila de ancho completo con borde inferior; como botón (fila elegible) no lleva
+   estilo nativo y `.on` = la elegida (fondo --flow-bg), como la lista de compras de 'Ajustes de inventario'. */
+.unrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line-2);font-size:12.5px}
+.unrow:last-child{border-bottom:none}
+.unrow input{accent-color:var(--flow)}
+.unrow .meta{color:var(--faint);font-size:11.5px}
+button.unrow{width:100%;background:none;border-top:none;border-left:none;border-right:none;text-align:left;color:var(--text);cursor:pointer;font:inherit;font-size:12.5px}
+button.unrow:hover{background:var(--panel-2)}
+.unrow.on,button.unrow.on:hover{background:var(--flow-bg)}
+button.unrow:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
 
 /* ===== TOAST y SPINNER ===== */
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--panel);border:1px solid var(--flow-line);color:var(--text);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:600;box-shadow:0 18px 50px -12px rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.22s;display:flex;align-items:center;gap:10px;z-index:80;max-width:calc(100vw - 24px)}
@@ -275,8 +290,7 @@ h1,h2,h3{letter-spacing:-.01em}
 @media(prefers-reduced-motion:reduce){.spin{animation-duration:2s}.app,.rail{transition:none}.live .dot{animation:none}}
 
 /* ===== RESPONSIVE ===== */
-/* cabecera: el nombre del usuario se oculta primero, luego la palabra "en vivo" (queda el punto y la hora) */
-@media(max-width:1200px){.who .nm{display:none}}
+/* cabecera: bajo 1100 px se oculta la palabra "en vivo" (queda el punto y la hora) */
 @media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}.bar{gap:10px}.live .lbl{display:none}}
 /* Bajo 900 px la barra lateral es un cajón que se abre con el botón de menú. */
 @media(max-width:900px){
@@ -308,7 +322,6 @@ h1,h2,h3{letter-spacing:-.01em}
   .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
   .r3{grid-template-columns:1fr 1fr}
   .who{padding-left:8px}
-  .who .nm{display:none}
   .qbox{max-width:none}
   .md{grid-template-columns:1fr}
 }

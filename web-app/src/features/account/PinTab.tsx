@@ -6,6 +6,7 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { ConfirmDialog, EmptyState, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { formatDateTime } from './format'
 import { useMyPin, useRemoveMyPin, useSetMyPin } from './api'
+import { IconKey } from '../../kernel/ui/actionIcons'
 
 function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean; onClose: () => void }) {
   const t = useT()
@@ -115,7 +116,7 @@ export function PinTab() {
   if (isLoading || !data) return <Spinner block />
 
   return (
-    <Panel title={t('account.pin.title')} subtitle={t('account.pin.subtitle')} className="acct-narrow">
+    <Panel icon={<IconKey />} title={t('account.pin.title')} subtitle={t('account.pin.subtitle')} className="acct-narrow">
       <p>{data.hasPin ? t('account.pin.hasPinYes') : t('account.pin.hasPinNo')}</p>
       {data.hasPin && <p className="subtle">{t('account.pin.updated', { date: formatDateTime(data.updatedAtUtc, lang) })}</p>}
       <p className="subtle">

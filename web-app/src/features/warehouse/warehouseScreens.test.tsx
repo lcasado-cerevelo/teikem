@@ -9,10 +9,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import CycleCountDetailScreen from './CycleCountDetailScreen'
+import CrossDockPlanListScreen from './CrossDockPlanListScreen'
 import CycleCountListScreen from './CycleCountListScreen'
-import DockAppointmentListScreen from './DockAppointmentListScreen'
+import { DockAppointmentsTab } from './DockAppointmentsTab'
+import LocationsScreen from './LocationsScreen'
+import PickBatchListScreen from './PickBatchListScreen'
 import PurchaseOrderDetailScreen from './PurchaseOrderDetailScreen'
-import WarehouseTaskListScreen from './WarehouseTaskListScreen'
+import ReceiptListScreen from './ReceiptListScreen'
+import { TaskQueue } from './taskQueue'
 
 type Handler = (url: URL) => unknown
 const mock = vi.hoisted(() => ({ requests: [] as URL[], handler: null as unknown }))
@@ -55,7 +59,16 @@ function route(url: URL): unknown {
   if (p === '/api/v1/cycle-counts/1') return { count: BLIND_COUNT, isBlind: true, lines: [] }
   if (p === '/api/v1/warehouse-tasks') return { total: TASKS.length, skip: 0, take: 25, items: TASKS }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
+  if (p === `/api/v1/warehouses/${WH}/zones`)
+    return [{ id: 1, code: 'A', name: 'Zona A', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 2 }]
+  if (p === `/api/v1/warehouses/${WH}/bins`)
+    return [
+      { id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', qtyOnHand: 5, productCount: 1, isActive: true },
+      { id: 11, code: 'A-02', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, isActive: true },
+    ]
+  if (p === '/api/v1/inventory/balances') return { total: 0, skip: 0, take: 200, items: [] }
   if (p === '/api/v1/dock-appointments') return []
+  if (p === '/api/v1/cross-dock-plans') return []
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   if (p === `/api/v1/purchase-orders/${PO}`)
     return { id: 7, publicId: PO, number: 'OC-00001', supplierName: 'Proveedor', warehousePublicId: WH, warehouseCode: 'ALM-01', statusCode: 'PARTIAL', status: 'Parcial', lines: [], rowVersion: 'AA==' }
@@ -85,15 +98,42 @@ beforeEach(() => {
   mock.handler = route
 })
 
-describe('WarehouseTaskListScreen', () => {
+describe('Ubicaciones (maqueta ubicaciones())', () => {
+  const path = `/warehouse/locations?warehouse=${WH}`
+
+  it('cada nodo de zona lleva la barra .spark: 7 segmentos a la altura del % ocupado', async () => {
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    const node = await screen.findByRole('group', { name: /Zona A/ })
+    const segments = node.querySelectorAll('.spark i')
+    expect(segments).toHaveLength(7)
+    // 1 de 2 posiciones con existencias = 50 %
+    segments.forEach((s) => expect((s as HTMLElement).style.height).toBe('50%'))
+  })
+
+  it("'Nueva posición' solo con warehouse.manage, y abre el modal de alta con las zonas del almacén elegido", async () => {
+    const user = userEvent.setup()
+    const readOnly = wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByRole('group', { name: /Zona A/ })
+    expect(screen.queryByRole('button', { name: 'Nueva posición' })).toBeNull()
+    readOnly.unmount()
+
+    wrap(<LocationsScreen />, ['inventory.view', 'warehouse.manage'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByRole('group', { name: /Zona A/ })
+    await user.click(screen.getByRole('button', { name: 'Nueva posición' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nueva posición' })
+    expect(within(dialog).getByRole('option', { name: 'A' })).toBeInTheDocument()
+  })
+})
+
+describe('TaskQueue (tareas de almacén dentro de la pantalla de su tipo)', () => {
   it("'Completar' exige el permiso del tipo de tarea (como Iniciar): solo lectura no lo ve", async () => {
-    wrap(<WarehouseTaskListScreen />, ['inventory.view'], ['WMS_LOTSERIAL'])
+    wrap(<TaskQueue types={['PUTAWAY', 'REPLENISH']} title="Tareas" />, ['inventory.view'], ['WMS_LOTSERIAL'])
     await screen.findAllByText('Acomodo')
     expect(screen.queryByRole('button', { name: 'Completar' })).toBeNull()
   })
 
   it("con warehouse.receive solo se ofrece 'Completar' en PUTAWAY", async () => {
-    wrap(<WarehouseTaskListScreen />, ['inventory.view', 'warehouse.receive'], ['WMS_LOTSERIAL'])
+    wrap(<TaskQueue types={['PUTAWAY', 'REPLENISH']} title="Tareas" />, ['inventory.view', 'warehouse.receive'], ['WMS_LOTSERIAL'])
     await screen.findAllByText('Acomodo')
     expect(screen.getAllByRole('button', { name: 'Completar' })).toHaveLength(1)
     const row = screen.getAllByRole('button', { name: 'Completar' })[0].closest('tr, .card, article, li') as HTMLElement | null
@@ -101,9 +141,44 @@ describe('WarehouseTaskListScreen', () => {
   })
 })
 
-describe('DockAppointmentListScreen', () => {
+describe('Tareas y citas dentro de las pantallas de la maqueta (Fase 3)', () => {
+  const taskRequests = () => mock.requests.filter((u) => u.pathname === '/api/v1/warehouse-tasks')
+
+  it("Recibo → 'Acomodo pendiente' (?tab=putaway) pide solo tareas PUTAWAY", async () => {
+    wrap(<ReceiptListScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], '/warehouse/receipts?tab=putaway', '/warehouse/receipts')
+    expect(await screen.findByRole('tab', { name: 'Acomodo pendiente' })).toHaveAttribute('aria-selected', 'true')
+    await waitFor(() => expect(taskRequests().length).toBeGreaterThan(0))
+    expect(taskRequests().every((u) => u.searchParams.getAll('types').join() === 'PUTAWAY')).toBe(true)
+  })
+
+  it("Recolección → 'Reabasto' pide solo tareas REPLENISH y ofrece 'Correr reabasto' con warehouse.pick", async () => {
+    const user = userEvent.setup()
+    wrap(<PickBatchListScreen />, ['inventory.view', 'warehouse.pick'], ['WMS_LOTSERIAL'], '/warehouse/pick-batches', '/warehouse/pick-batches')
+    await user.click(await screen.findByRole('tab', { name: 'Reabasto' }))
+    await waitFor(() => expect(taskRequests().length).toBeGreaterThan(0))
+    expect(taskRequests().every((u) => u.searchParams.getAll('types').join() === 'REPLENISH')).toBe(true)
+    expect(screen.getByRole('button', { name: 'Correr reabasto' })).toBeInTheDocument()
+  })
+
+  it("Cruce de muelle tiene la pestaña 'Citas de muelle'; 'Tareas de cruce' solo con WMS_LOTSERIAL", async () => {
+    const user = userEvent.setup()
+    wrap(<CrossDockPlanListScreen />, ['inventory.view', 'warehouse.crossdock'], ['CROSSDOCK'], '/warehouse/cross-dock-plans', '/warehouse/cross-dock-plans')
+    await user.click(await screen.findByRole('tab', { name: 'Citas de muelle' }))
+    await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/dock-appointments')).toBe(true))
+    expect(screen.queryByRole('tab', { name: 'Tareas de cruce' })).toBeNull()
+  })
+
+  it("con WMS_LOTSERIAL, 'Tareas de cruce' pide solo tareas CROSSDOCK", async () => {
+    wrap(<CrossDockPlanListScreen />, ['inventory.view'], ['CROSSDOCK', 'WMS_LOTSERIAL'], '/warehouse/cross-dock-plans?tab=tasks', '/warehouse/cross-dock-plans')
+    expect(await screen.findByRole('tab', { name: 'Tareas de cruce' })).toHaveAttribute('aria-selected', 'true')
+    await waitFor(() => expect(taskRequests().length).toBeGreaterThan(0))
+    expect(taskRequests().every((u) => u.searchParams.getAll('types').join() === 'CROSSDOCK')).toBe(true)
+  })
+})
+
+describe('DockAppointmentsTab', () => {
   it('al cargar no pide avisos de llegada (WMS): la agenda de CROSSDOCK no depende de ese módulo', async () => {
-    wrap(<DockAppointmentListScreen />, ['inventory.view', 'warehouse.crossdock'], ['CROSSDOCK'])
+    wrap(<DockAppointmentsTab />, ['inventory.view', 'warehouse.crossdock'], ['CROSSDOCK'])
     await waitFor(() => expect(mock.requests.some((u) => u.pathname === '/api/v1/dock-appointments')).toBe(true))
     expect(mock.requests.some((u) => u.pathname === '/api/v1/asns')).toBe(false)
   })

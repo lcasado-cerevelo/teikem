@@ -91,9 +91,13 @@ async function pickWarehouse(scope: Page | Locator, box: Locator) {
   await expect(box).toHaveValue(WAREHOUSE)
 }
 
-/** Cola de tareas de ALM-01 (el filtro Almacén de la cola es el primer control de 'Filtros'). */
+/**
+ * Cola de acomodo (PUTAWAY) de ALM-01: pestaña 'Acomodo pendiente' de Recibo, que reemplaza a 'Tareas de almacén' (el filtro
+ * Almacén de la cola es el primer control de 'Filtros').
+ */
 async function openAlm01Tasks(page: Page) {
-  await page.goto('/warehouse/tasks')
+  await page.goto('/warehouse/receipts?tab=putaway')
+  await expect(page.getByRole('tab', { name: 'Acomodo pendiente' })).toHaveAttribute('aria-selected', 'true')
   await pickWarehouse(page, page.getByRole('group', { name: 'Filtros' }).getByRole('combobox').first())
 }
 
@@ -143,8 +147,8 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(page.getByRole('heading', { level: 2, name: 'Almacén', exact: true })).toBeVisible()
     // desde F7A el panel trae filtros (almacén, categoría o producto) y la tarjeta 'Bajo mínimo' (recorrido en f7a.spec.ts)
     await expect(page.getByText('Saldo actual (no depende de un rango de fecha).', { exact: false })).toBeVisible()
-    for (const label of ['En mano', 'Disponible', 'Bajo mínimo', 'Recibos abiertos', 'Tareas pendientes', 'Conteos abiertos']) {
-      // cada tarjeta es un role=group con su etiqueta (las de documentos llevan además la marca 'almacén')
+    for (const label of ['Recibos abiertos', 'En almacén', 'Reservado', 'Disponible', 'Bajo mínimo', 'Tareas pendientes', 'Conteos abiertos']) {
+      // cada nodo del río y cada tarjeta es un role=group con su etiqueta (los de documentos llevan además la marca 'almacén')
       await expect(page.getByRole('group', { name: label, exact: true })).toBeVisible()
     }
     await expect(await warehouseMenuLink(page, 'Almacenes')).toBeVisible()
@@ -190,19 +194,27 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'producto-nuevo-error')
 
     await sku.fill(SKU)
-    await expect(dialog.getByLabel('Seguimiento')).toHaveValue('NONE')
+    await expect(dialog.getByLabel('Rastreo')).toHaveValue('NONE')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expectToast(page, 'Producto creado.')
-    await expect(page).toHaveURL(/\/warehouse\/products\/[0-9a-f-]+$/)
-    await expect(page.getByRole('heading', { level: 1, name: new RegExp(SKU) })).toBeVisible()
-    await shot(page, 'producto-ficha')
+    // modal único de la maqueta: tras el alta se queda en la lista
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page).toHaveURL(/\/warehouse\/products$/)
 
-    await page.goto('/warehouse/products')
     await page.getByRole('searchbox').fill(SKU)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
-    await expect(row.getByRole('cell').nth(5)).toHaveText('0')
+    // columnas de la maqueta: SKU, Producto, Categoría, Dueño, Disponible, Reservado, Total, Rastreo, Estado
+    await expect(row.getByRole('cell').nth(6)).toHaveText('0')
     await shot(page, 'productos')
+    // clic en la fila = "Editar producto" (SKU bloqueado, Total en solo lectura)
+    await row.click()
+    const edit = page.getByRole('dialog', { name: 'Editar producto' })
+    await expect(edit.getByLabel('SKU')).toHaveValue(SKU)
+    await expect(edit.getByLabel('SKU')).toBeDisabled()
+    await shot(page, 'producto-ficha')
+    await edit.getByRole('button', { name: 'Cancelar' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('searchbox').fill('')
     await page.getByRole('tab', { name: 'Categorías' }).click()
     await shot(page, 'categorias')
@@ -210,7 +222,7 @@ test.describe('Lote F6 — escritorio', () => {
 
   test('4. Saldos: ajuste +10 con motivo FOUND en ALM-01 sube el saldo del producto a 10', async ({ page }) => {
     await login(page)
-    await page.goto('/warehouse/inventory')
+    await page.goto('/warehouse/kardex?tab=balances')
     await pickProduct(page, 'Producto', SKU)
     await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
     // sin existencias todavía (la lista no incluye saldos en cero)
@@ -241,8 +253,8 @@ test.describe('Lote F6 — escritorio', () => {
 
   test('5. Kárdex: el ajuste aparece con signo +10 y el motivo capturado', async ({ page }) => {
     await login(page)
-    await page.goto('/warehouse/inventory')
-    await page.getByRole('tab', { name: 'Kárdex' }).click()
+    await page.goto('/warehouse/kardex')
+    await expect(page.getByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
     await pickProduct(page, 'Producto', SKU)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
@@ -317,7 +329,7 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
     await shot(page, 'recepcion')
 
-    await page.goto('/warehouse/inventory')
+    await page.goto('/warehouse/kardex?tab=balances')
     await pickProduct(page, 'Producto', SKU)
     const rows = page.getByRole('row').filter({ hasText: SKU })
     await expect(rows).toHaveCount(2) // la posición del ajuste (10) y la de recepción (5)
@@ -325,10 +337,11 @@ test.describe('Lote F6 — escritorio', () => {
     expect(onHand.reduce((a, b) => a + b, 0)).toBe(15)
 
     await openAlm01Tasks(page)
-    await expect(page.getByRole('row').filter({ hasText: SKU }).filter({ hasText: /Putaway|Acomodo/ })).toHaveCount(1)
+    // la cola de acomodo solo trae tareas PUTAWAY (sin columna de tipo)
+    await expect(page.getByRole('row').filter({ hasText: SKU })).toHaveCount(1)
   })
 
-  test('8. Tareas de almacén: asignar a mí, iniciar y completar la PUTAWAY en la posición sugerida', async ({ page }) => {
+  test('8. Recibo → Acomodo pendiente: asignar a mí, iniciar y completar la PUTAWAY en la posición sugerida', async ({ page }) => {
     await login(page)
     await openAlm01Tasks(page)
     const row = page.getByRole('row').filter({ hasText: SKU })
@@ -430,13 +443,13 @@ test.describe('Lote F6 — escritorio', () => {
 test.describe('Lote F6 — móvil (360 px)', () => {
   test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
-  test('10. Almacenes, Productos e Inventario sin scroll horizontal y con las tablas como tarjetas', async ({ page, request }) => {
+  test('10. Almacenes, Productos e inventario y Kárdex de movimientos sin scroll horizontal y con las tablas como tarjetas', async ({ page, request }) => {
     await login(page)
     expect(page.viewportSize()?.width).toBe(360)
     for (const [path, heading] of [
       ['/warehouse/warehouses', 'Almacenes'],
-      ['/warehouse/products', 'Productos'],
-      ['/warehouse/inventory', 'Inventario'],
+      ['/warehouse/products', 'Productos e inventario'],
+      ['/warehouse/kardex?tab=balances', 'Kárdex de movimientos'],
     ] as const) {
       await page.goto(path)
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
@@ -446,7 +459,7 @@ test.describe('Lote F6 — móvil (360 px)', () => {
       await expect(page.locator('.dt table.lst')).toHaveCount(0)
       await expectNoHorizontalScroll(page)
     }
-    // Inventario → Kárdex (otra tabla paginada con más columnas)
+    // Saldos → Kárdex (otra tabla paginada con más columnas)
     await page.getByRole('tab', { name: 'Kárdex' }).click()
     await expect(page.locator('ul.dt-cards').first()).toBeVisible()
     await expectNoHorizontalScroll(page)

@@ -9,6 +9,7 @@ import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, EmptyState, Field, Filters, Form, Modal, Panel, Select, TextInput, toast } from '../../kernel/ui'
 import { useProductCategories, useSaveProductCategory, type ProductCategoryDto } from './api'
+import { IconLayers } from '../../kernel/ui/screenIcons'
 
 /** Nivel de indentación a partir de la ruta ("Raíz / Hija / Nieta") que arma el servidor. */
 function levelOf(path: string | null | undefined): number {
@@ -171,7 +172,7 @@ export function ProductCategoriesPanel() {
         <ToggleFilter label={t('warehouse.categories.includeInactive')} checked={includeInactive} onChange={setIncludeInactive} />
       </Filters>
 
-      <Panel flush title={t('warehouse.categories.title')}>
+      <Panel flush icon={<IconLayers />} title={t('warehouse.categories.title')}>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}

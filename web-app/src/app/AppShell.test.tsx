@@ -142,6 +142,23 @@ describe('AppShell — cabecera', () => {
     expect(screen.getByRole('dialog', { name: 'Paleta de comandos' })).toBeInTheDocument()
   })
 
+  it('orden de la maqueta: reloj → compañía → tema → idioma → iniciales, sin el nombre completo visible', () => {
+    const { container } = renderShell()
+    const bar = container.querySelector('header.bar') as HTMLElement
+    const kids = Array.from(bar.children)
+    const pos = (sel: string) => kids.findIndex((el) => el.matches(sel))
+    expect(pos('.cmd')).toBeLessThan(pos('.sp'))
+    expect(pos('.sp')).toBeLessThan(pos('.live'))
+    expect(pos('.live')).toBeLessThan(pos('.tenant'))
+    expect(pos('.tenant')).toBeLessThan(pos('.theme-seg'))
+    expect(pos('.theme-seg')).toBeLessThan(pos('.who'))
+    expect(within(bar.querySelector('.tenant') as HTMLElement).getByText('Demo Logística')).toBeInTheDocument()
+
+    const who = screen.getByRole('link', { name: 'Mi cuenta: Ana Admin' })
+    expect(who).toHaveTextContent(/^AA$/)
+    expect(within(bar).queryByText('Ana Admin')).toBeNull()
+  })
+
   it('el menú muestra los grupos de la maqueta que el usuario puede ver', () => {
     renderShell({ permissions: ['admin.roles', 'devices.manage'], modules: ['SYSTEM', 'WMS_LOTSERIAL'] })
     const menu = screen.getByRole('complementary', { name: 'Menú principal' })

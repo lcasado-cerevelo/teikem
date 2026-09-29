@@ -1,5 +1,7 @@
-// Reglas de captura del producto (réplica de ProductRules del dominio) compartidas por el alta (ProductListScreen) y la
-// ficha (ProductDetailScreen). Los mensajes son los exactos del manual 06 (claves `warehouse.products.errors.*`).
+// Reglas de captura del producto (réplica de ProductRules del dominio) que usa el modal único de alta y edición
+// (ProductEditorModal). Los mensajes son los exactos del manual 06 (claves `warehouse.products.errors.*`).
+// También la cantidad de un ajuste manual (AdjustmentRules.ToPosting), compartida por InventoryAdjustModal y el bloque
+// "Ajustar inventario" del modal de producto.
 import { z } from 'zod'
 import type { TParams } from '../../kernel/i18n'
 
@@ -44,4 +46,22 @@ export function moneySchema(t: Translate, field: 'cost' | 'price') {
     .refine((v) => decimals(v) <= 4, t(field === 'cost' ? 'warehouse.products.errors.costDecimals' : 'warehouse.products.errors.priceDecimals'))
     .refine((v) => v < MONEY_MAX_EXCLUSIVE, t('warehouse.products.errors.moneyTooLarge'))
     .nullable()
+}
+
+/**
+ * Cantidad de un ajuste manual (+ entra, − sale): obligatoria, distinta de cero y a lo sumo 3 decimales, con los
+ * mensajes de `warehouse.inventory.adjustModal.errors.*`. Vacío (null) = "Se esperaba un número.".
+ */
+export function adjustQuantitySchema(t: Translate) {
+  return z
+    .number(t('warehouse.inventory.adjustModal.errors.quantityInvalid'))
+    .nullable()
+    .superRefine((v, ctx) => {
+      if (v === null) {
+        ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityInvalid') })
+        return
+      }
+      if (v === 0) ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityZero') })
+      else if (decimals(v) > 3) ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityDecimals') })
+    })
 }

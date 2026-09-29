@@ -2,9 +2,13 @@ import type { ReactNode } from 'react'
 import './ui.css'
 
 export interface PanelProps {
-  /** Título del panel (ya traducido). Sin título no se pinta la cabecera, salvo que haya `actions`. */
+  /** Título del panel (ya traducido). Sin título, ícono, contador ni acciones no se pinta la cabecera. */
   title?: ReactNode
-  /** Línea secundaria bajo el título. */
+  /** Ícono antes del título (de `screenIcons`: el que la maqueta da a la pantalla en el menú). */
+  icon?: ReactNode
+  /** Contador a la derecha del título, en la misma línea (`.r`), p. ej. el número de filas de la tabla. */
+  badge?: string | number
+  /** Línea secundaria bajo el título, solo para texto descriptivo (un conteo va en `badge`). */
   subtitle?: ReactNode
   /** Botones a la derecha de la cabecera (envuélvelos en <Can> si requieren permiso). */
   actions?: ReactNode
@@ -16,14 +20,20 @@ export interface PanelProps {
   children?: ReactNode
 }
 
-/** Contenedor estándar de la maqueta: `.pal` con cabecera `.pi`, cuerpo `.pb` y pie `.ft`. */
-export function Panel({ title, subtitle, actions, footer, flush, className, children }: PanelProps) {
-  const hasHead = title != null || actions != null
+/**
+ * Panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra) con cabecera `.ph2` de una sola
+ * línea (ícono + título + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales usan
+ * `Modal` (`.scrim > .pal`, radio 15 px con sombra).
+ */
+export function Panel({ title, icon, badge, subtitle, actions, footer, flush, className, children }: PanelProps) {
+  const hasHead = title != null || icon != null || badge != null || actions != null
   return (
-    <section className={['pal kit-pal', className].filter(Boolean).join(' ')}>
+    <section className={['panel kit-panel', className].filter(Boolean).join(' ')}>
       {hasHead && (
-        <header className="pi kit-ph">
-          {title != null && <h2 className="kit-title">{title}</h2>}
+        <header className="ph2 kit-ph2">
+          {icon != null && <span className="kit-ic">{icon}</span>}
+          {title != null && <h2 className="kit-ph2-title">{title}</h2>}
+          {badge != null && <span className="r">{badge}</span>}
           {actions != null && <div className="kit-acts">{actions}</div>}
           {subtitle != null && <p className="kit-sub">{subtitle}</p>}
         </header>

@@ -3,6 +3,10 @@
 // del tenant (`useLookups`); el filtro son filas campo · operador · valor sobre los campos de la fuente elegida, con
 // los operadores del DSL de `kernel/dsl` (mismo motor que evalúa `RuleEvaluator.ts`). Al cambiar de fuente se limpian
 // el campo, el filtro y "Agrupar por". Errores del servidor por campo con `Form`; el título general, en el toast.
+// Fase 10a (indicadores y gráficos por igual): "Compartido" comparte con usuarios (`admin.users` para listarlos) y/o
+// con roles del tenant (`GET /roles`, sin permiso propio); cada `ShareDto` lleva `userId` o `roleId`, nunca ambos.
+// Fase 10b (solo gráficos, `kind === 'chart'`): sin selector de "Módulo de negocio" (el módulo es el de la fuente,
+// `defaultBusinessModule`; al editar se conserva el guardado hasta que cambie la fuente) y con "Vista previa" en vivo.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -14,6 +18,8 @@ import { DateInput, Field, Form, NumberInput, Select, TextArea, TextInput, Toggl
 import { Modal } from '../../kernel/ui/Modal'
 import { SearchMultiSelect } from '../../kernel/ui/SearchSelect'
 import { toast } from '../../kernel/ui/toast'
+import { useRoles } from '../system/api'
+import { ChartPreview } from './ChartPreviewPanel'
 import {
   useAnalyticsShareUsers,
   useDataSources,
@@ -62,6 +68,7 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
   const chartTypes = useMemo(() => chartTypesAll.filter((c) => CHART_TYPE_CODES.includes(c.code)), [chartTypesAll])
   const canBrowseUsers = useCan('admin.users')
   const shareUsers = useAnalyticsShareUsers(canBrowseUsers)
+  const shareRoles = useRoles()
 
   const saveIndicator = useSaveIndicator()
   const saveChart = useSaveChart()
@@ -82,7 +89,8 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
           dataSource: z.string().min(1, t('analytics.editor.errors.dataSourceRequired')),
           aggregateFn: z.string().min(1, t('analytics.editor.errors.aggregateRequired')),
           field: z.string(),
-          businessModule: z.string().min(1, t('analytics.editor.errors.moduleRequired')),
+          // Gráficos: sin selector; vacío = el servidor usa el módulo por defecto de la fuente.
+          businessModule: kind === 'chart' ? z.string() : z.string().min(1, t('analytics.editor.errors.moduleRequired')),
           isMoney: z.boolean(),
           visibility: z.string().min(1, t('analytics.editor.errors.visibilityRequired')),
           dateRangeMode: z.string(),
@@ -112,6 +120,11 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
   const aggregateFnValue = useWatch({ control: form.control, name: 'aggregateFn' })
   const visibilityValue = useWatch({ control: form.control, name: 'visibility' })
   const dateRangeModeValue = useWatch({ control: form.control, name: 'dateRangeMode' })
+  // Solo para la vista previa del gráfico (valores en vivo).
+  const [fieldValue, groupByValue, chartTypeValue, dateFromValue, dateToValue, isMoneyValue, nameValue] = useWatch({
+    control: form.control,
+    name: ['field', 'groupByField', 'chartType', 'dateFrom', 'dateTo', 'isMoney', 'name'],
+  })
 
   const selectedSource: DataSource | undefined = dataSources.data?.find((ds) => ds.key === dataSourceValue)
   const prevDataSource = useRef(dataSourceValue)
@@ -120,7 +133,9 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
       form.setValue('field', '')
       form.setValue('groupByField', '')
       setFilterRows([])
-      if (selectedSource?.defaultBusinessModule) form.setValue('businessModule', selectedSource.defaultBusinessModule)
+      // Gráficos: el módulo sigue siempre a la fuente (no hay selector); vacío = el del servidor para esa fuente.
+      if (kind === 'chart') form.setValue('businessModule', selectedSource?.defaultBusinessModule ?? '')
+      else if (selectedSource?.defaultBusinessModule) form.setValue('businessModule', selectedSource.defaultBusinessModule)
       prevDataSource.current = dataSourceValue
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -148,10 +163,19 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
   const removeFilterRow = (index: number) => setFilterRows((rows) => rows.filter((_, i) => i !== index))
 
   const userOptions = (shareUsers.data ?? []).map((u) => ({ value: String(u.id), label: u.email ? `${u.fullName ?? ''} · ${u.email}` : (u.fullName ?? '') }))
-  const shareValue = shares.filter((s) => s.userId != null).map((s) => String(s.userId))
-  // Solo reemplaza las comparticiones por usuario; las por rol (roleId, que este editor no ofrece tocar) se conservan.
-  const setShareValue = (value: string[]) =>
-    setShares((prev) => [...prev.filter((s) => s.roleId != null), ...value.map((id) => ({ userId: Number(id), roleId: null, canEdit: false }))])
+  const shareUserValue = shares.filter((s) => s.userId != null).map((s) => String(s.userId))
+  // Cada selector reemplaza solo su tipo de compartición: el de usuarios conserva las de rol y viceversa.
+  const setShareUserValue = (value: string[]) =>
+    setShares((prev) => [...prev.filter((s) => s.userId == null), ...value.map((id) => ({ userId: Number(id), roleId: null, canEdit: false }))])
+  const shareRoleValue = shares.filter((s) => s.roleId != null).map((s) => String(s.roleId))
+  // Roles activos, más los ya elegidos aunque se hayan desactivado (para poder verlos y quitarlos).
+  const roleOptions = (shareRoles.data ?? [])
+    .filter((r) => r.id != null && (r.isActive !== false || shareRoleValue.includes(String(r.id))))
+    .map((r) => ({ value: String(r.id), label: r.name ?? String(r.id) }))
+  const setShareRoleValue = (value: string[]) =>
+    setShares((prev) => [...prev.filter((s) => s.roleId == null), ...value.map((id) => ({ userId: null, roleId: Number(id), canEdit: false }))])
+
+  const liveFilterJson = keepOriginalFilter ? (definition?.filterJson ?? null) : serializeFilterRows(filterRows)
 
   return (
     <Modal
@@ -177,7 +201,7 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
         onError={(p) => toast.error(p.title)}
         onSubmit={async (v) => {
           const descriptions = { es: v.descriptionEs, en: v.descriptionEn }
-          const filterJson = keepOriginalFilter ? (definition?.filterJson ?? null) : serializeFilterRows(filterRows)
+          const filterJson = liveFilterJson
           const body =
             kind === 'indicator' ? buildIndicatorRequest(v, descriptions, filterJson, shares) : buildChartRequest(v, descriptions, filterJson, shares)
           if (kind === 'indicator') await saveIndicator.mutateAsync({ id: definition?.id ?? null, body })
@@ -221,28 +245,52 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
           </>
         )}
 
-        <Field name="businessModule" label={t('analytics.editor.businessModule')} required>
-          <Select options={businessModules.map((m) => ({ value: m.code, label: m.label }))} placeholder={t('analytics.range.choose')} />
-        </Field>
+        {kind === 'indicator' && (
+          <Field name="businessModule" label={t('analytics.editor.businessModule')} required>
+            <Select options={businessModules.map((m) => ({ value: m.code, label: m.label }))} placeholder={t('analytics.range.choose')} />
+          </Field>
+        )}
         <Field name="isMoney" label={t('analytics.editor.isMoney')}>
           <Toggle />
         </Field>
 
         <Field name="visibility" label={t('analytics.indicators.visibilityLabel')} required>
-          <Select
-            options={visibilities
-              .filter((v) => v.code !== 'SHARED' || canBrowseUsers)
-              .map((v) => ({ value: v.code, label: v.label }))}
-            placeholder={t('analytics.range.choose')}
-          />
+          <Select options={visibilities.map((v) => ({ value: v.code, label: v.label }))} placeholder={t('analytics.range.choose')} />
         </Field>
-        {visibilityValue === 'SHARED' && canBrowseUsers && (
-          <div className="f">
-            <label>{t('analytics.indicators.shareWithLabel')}</label>
-            <SearchMultiSelect options={userOptions} value={shareValue} onChange={setShareValue} placeholder={t('analytics.indicators.shareWithLabel')} />
+        {visibilityValue === 'SHARED' && (
+          <div className="r2">
+            {canBrowseUsers ? (
+              <div className="f">
+                <label htmlFor={`${formId}-share-users`} id={`${formId}-share-users-lbl`}>
+                  {t('analytics.indicators.shareWithUsersLabel')}
+                </label>
+                <SearchMultiSelect
+                  id={`${formId}-share-users`}
+                  labelledBy={`${formId}-share-users-lbl`}
+                  options={userOptions}
+                  value={shareUserValue}
+                  onChange={setShareUserValue}
+                  placeholder={t('analytics.indicators.shareWithUsersPh')}
+                />
+              </div>
+            ) : (
+              <p className="help">{t('analytics.editor.shareNeedsAdminUsers')}</p>
+            )}
+            <div className="f">
+              <label htmlFor={`${formId}-share-roles`} id={`${formId}-share-roles-lbl`}>
+                {t('analytics.indicators.shareWithRolesLabel')}
+              </label>
+              <SearchMultiSelect
+                id={`${formId}-share-roles`}
+                labelledBy={`${formId}-share-roles-lbl`}
+                options={roleOptions}
+                value={shareRoleValue}
+                onChange={setShareRoleValue}
+                placeholder={t('analytics.indicators.shareWithRolesPh')}
+              />
+            </div>
           </div>
         )}
-        {visibilityValue === 'SHARED' && !canBrowseUsers && <p className="help">{t('analytics.editor.shareNeedsAdminUsers')}</p>}
         <p className="help">{t('analytics.indicators.visibilityHint')}</p>
 
         {dateRangeApplies ? (
@@ -290,6 +338,24 @@ export function DefinitionEditor({ kind, definition, onClose }: DefinitionEditor
         <button type="button" className="btn sm" onClick={addFilterRow} disabled={fieldOptions.length === 0}>
           {t('analytics.editor.addFilter')}
         </button>
+
+        {kind === 'chart' && (
+          <div style={{ marginTop: 16 }}>
+            <ChartPreview
+              source={selectedSource}
+              groupByField={groupByValue}
+              aggregateFn={aggregateFnValue}
+              field={fieldValue}
+              chartType={chartTypeValue}
+              dateRangeMode={dateRangeModeValue}
+              dateFrom={dateFromValue}
+              dateTo={dateToValue}
+              filterJson={liveFilterJson}
+              isMoney={isMoneyValue}
+              name={nameValue}
+            />
+          </div>
+        )}
       </Form>
     </Modal>
   )

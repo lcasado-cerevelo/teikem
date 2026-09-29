@@ -67,7 +67,8 @@ describe('App (shell)', () => {
     expect(within(menu).getByText('Pulso del día')).toBeInTheDocument()
     expect(within(menu).queryByText('Sistema')).toBeNull()
     expect(screen.getByText('Demo Logística')).toBeInTheDocument()
-    expect(screen.getByText('Ana Admin')).toBeInTheDocument()
+    // el usuario se muestra solo con sus iniciales (maqueta); el nombre completo queda en el nombre accesible
+    expect(screen.getByRole('link', { name: 'Mi cuenta: Ana Admin' })).toHaveTextContent('AA')
   })
 
   it('ruta desconocida dentro del shell: pantalla no encontrada', async () => {
@@ -80,7 +81,8 @@ describe('App (shell)', () => {
     setTokens({ accessToken: 'a', refreshToken: 'r', tenantId: 1 })
     const user = userEvent.setup()
     await renderAppAt('/account?tab=password')
-    const current = await screen.findByLabelText(/Contraseña actual/)
+    // la pantalla es de carga diferida: con la máquina ocupada (npm run check) puede pasar del segundo por defecto
+    const current = await screen.findByLabelText(/Contraseña actual/, undefined, { timeout: 4000 })
     await user.type(current, 'escrito-a-medias')
     // el usuario cierra el grupo "Operación" del menú
     const group = screen.getByRole('button', { name: 'Operación' })

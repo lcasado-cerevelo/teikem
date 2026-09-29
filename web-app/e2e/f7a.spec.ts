@@ -147,9 +147,9 @@ async function login(page: Page, user: { email: string; password: string }) {
   await page.waitForURL((url) => url.pathname === '/')
 }
 
-/** Panel de Pulso (`section.pal` del kit) con ese título (h2). */
+/** Panel de Pulso (`section.panel` del kit) con ese título (h2). */
 function pulseSection(page: Page, title: string | RegExp): Locator {
-  return page.locator('section.pal').filter({ has: page.getByRole('heading', { level: 2, name: title, exact: typeof title === 'string' }) })
+  return page.locator('section.panel').filter({ has: page.getByRole('heading', { level: 2, name: title, exact: typeof title === 'string' }) })
 }
 
 /** Tarjeta del panel Almacén (role=group con la etiqueta de la tarjeta). */
@@ -231,25 +231,25 @@ test.describe('Lote F7A — escritorio', () => {
     await shot(page, 'pulso-almacen')
   })
 
-  test("2. categoría: En mano 3 y Bajo mínimo 1 y 'Ver en Inventario' abre Saldos con los mismos filtros; producto: Bajo mínimo 'Sí' y el enlace abre el Kárdex filtrado", async ({ page }) => {
+  test("2. categoría: En almacén 3 y Bajo mínimo 1 y 'Ver saldos' abre Saldos con los mismos filtros; producto: Bajo mínimo 'Sí' y el enlace abre el Kárdex filtrado", async ({ page }) => {
     await login(page, ADMIN)
     await scrollToPanel(page, 'Almacén')
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY), 'pulso-almacen-buscador')
-    await expect(tile(page, 'En mano').getByText('3', { exact: true })).toBeVisible()
-    await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
+    await expect(tile(page, 'En almacén').getByText('3', { exact: true })).toBeVisible()
+    await expect(tile(page, 'En almacén')).toContainText(`${CATEGORY} · 1 producto`)
     await expect(tile(page, 'Bajo mínimo').getByText('1', { exact: true })).toBeVisible()
     await scrollToPanel(page, 'Almacén')
     await shot(page, 'pulso-almacen-categoria')
-    await expect(tile(page, 'Bajo mínimo').getByRole('link', { name: 'Ver en Inventario ›' })).toHaveAttribute('href', `/warehouse/inventory?categoryIds=${data.categoryId}`)
+    await expect(tile(page, 'Bajo mínimo').getByRole('link', { name: 'Ver saldos ›' })).toHaveAttribute('href', `/warehouse/kardex?tab=balances&categoryIds=${data.categoryId}`)
 
-    // con almacén elegido el enlace lo lleva también: Saldos consulta al API real con almacén + categoría y cuadra con 'En mano'
+    // con almacén elegido el enlace lo lleva también: Saldos consulta al API real con almacén + categoría y cuadra con 'En almacén'
     const whSelect = pulseSection(page, 'Almacén').getByRole('combobox', { name: 'Almacén' })
     await whSelect.selectOption(data.warehousePublicId)
-    await expect(tile(page, 'En mano').getByText('3', { exact: true })).toBeVisible()
-    const inventoryLink = tile(page, 'Bajo mínimo').getByRole('link', { name: 'Ver en Inventario ›' })
+    await expect(tile(page, 'En almacén').getByText('3', { exact: true })).toBeVisible()
+    const inventoryLink = tile(page, 'Bajo mínimo').getByRole('link', { name: 'Ver saldos ›' })
     await expect(inventoryLink).toHaveAttribute(
       'href',
-      `/warehouse/inventory?categoryIds=${data.categoryId}&warehousePublicIds=${encodeURIComponent(data.warehousePublicId)}`,
+      `/warehouse/kardex?tab=balances&categoryIds=${data.categoryId}&warehousePublicIds=${encodeURIComponent(data.warehousePublicId)}`,
     )
     const balancesRequest = page.waitForRequest((r) => {
       const u = new URL(r.url())
@@ -273,13 +273,13 @@ test.describe('Lote F7A — escritorio', () => {
     await expect(whSelect).toHaveValue('')
 
     await pickCategoryOrProduct(page, SKU, new RegExp(`^${SKU} · `))
-    await expect(tile(page, 'En mano').getByText('3', { exact: true })).toBeVisible()
+    await expect(tile(page, 'En almacén').getByText('3', { exact: true })).toBeVisible()
     await expect(tile(page, 'Bajo mínimo').getByText('Sí', { exact: true })).toBeVisible()
     await scrollToPanel(page, 'Almacén')
     await shot(page, 'pulso-almacen-producto')
     await tile(page, 'Bajo mínimo').getByRole('link', { name: `Ver Kárdex de ${SKU} ›` }).click()
 
-    await expect(page).toHaveURL(/\/warehouse\/inventory\?tab=kardex&product=/)
+    await expect(page).toHaveURL(/\/warehouse\/kardex\?product=/)
     await expect(page.getByRole('tab', { name: 'Kárdex' })).toHaveAttribute('aria-selected', 'true')
     // el filtro Producto llega de la URL con su SKU resuelto
     await expect(page.getByRole('button', { name: `Quitar ${SKU}` })).toBeVisible()
@@ -291,13 +291,13 @@ test.describe('Lote F7A — escritorio', () => {
 
   test('3. al recargar se conserva la selección; ✕ vuelve a los totales generales', async ({ page }) => {
     await login(page, ADMIN)
-    await expect(tile(page, 'En mano')).not.toContainText('…')
+    await expect(tile(page, 'En almacén')).not.toContainText('…')
     await pickCategoryOrProduct(page, CATEGORY, new RegExp(CATEGORY))
-    await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
+    await expect(tile(page, 'En almacén')).toContainText(`${CATEGORY} · 1 producto`)
     await page.reload()
     const trigger = pulseSection(page, 'Almacén').getByRole('button', { name: /^Categoría o producto/ })
     await expect(trigger).toHaveAccessibleName(new RegExp(`^Categoría o producto: Categoría .*${CATEGORY}$`))
-    await expect(tile(page, 'En mano')).toContainText(`${CATEGORY} · 1 producto`)
+    await expect(tile(page, 'En almacén')).toContainText(`${CATEGORY} · 1 producto`)
 
     // Tras quitar la selección la tarjeta vuelve a los totales generales: se comparan con el totalOnHand de la misma
     // respuesta sin filtro que recibe el panel (no con una lectura anterior, porque los otros recorridos en paralelo
@@ -309,11 +309,11 @@ test.describe('Lote F7A — escritorio', () => {
     await pulseSection(page, 'Almacén').getByRole('button', { name: 'Quitar categoría o producto' }).click()
     const general = (await (await balancesResponse).json()) as { totalOnHand: number }
     await expect(trigger).toHaveAccessibleName('Categoría o producto')
-    await expect(tile(page, 'En mano')).not.toContainText(CATEGORY)
+    await expect(tile(page, 'En almacén')).not.toContainText(CATEGORY)
     const generalText = Number.isInteger(general.totalOnHand)
       ? general.totalOnHand.toLocaleString('en-US', { maximumFractionDigits: 0 })
       : general.totalOnHand.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    await expect(tile(page, 'En mano')).toHaveText(`En mano${generalText}`)
+    await expect(tile(page, 'En almacén')).toHaveText(`En almacén${generalText}`)
     await expect(tile(page, 'Bajo mínimo').getByRole('link')).toHaveCount(0)
     // sin selección no queda nada guardado: otra recarga sigue en 'Todos'
     await page.reload()
@@ -342,7 +342,7 @@ test.describe('Lote F7A — escritorio', () => {
     // ajuste de inventario: el enlace va al Kárdex filtrado por el producto, no a la ficha
     await expect(adjustment.getByRole('link', { name: SKU })).toHaveAttribute(
       'href',
-      `/warehouse/inventory?tab=kardex&product=${encodeURIComponent(data.productPublicId)}`,
+      `/warehouse/kardex?product=${encodeURIComponent(data.productPublicId)}`,
     )
     const pick = table.getByRole('row').filter({ hasText: batchNumber })
     await expect(pick.getByText('Recolección creada')).toBeVisible()
@@ -438,7 +438,7 @@ test.describe('Lote F7A — móvil (360 px)', () => {
     const warehouse = pulseSection(page, 'Almacén')
     await expect(warehouse).toBeVisible()
     // tarjetas del panel Almacén en una columna: todas del mismo ancho y apiladas
-    const onHand = warehouse.getByRole('group', { name: 'En mano', exact: true })
+    const onHand = warehouse.getByRole('group', { name: 'En almacén', exact: true })
     const available = warehouse.getByRole('group', { name: 'Disponible', exact: true })
     await expect(onHand).toBeVisible()
     const [a, b] = [await onHand.boundingBox(), await available.boundingBox()]

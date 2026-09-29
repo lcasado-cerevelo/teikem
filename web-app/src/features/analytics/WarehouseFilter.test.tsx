@@ -160,24 +160,36 @@ describe('selección guardada del filtro (lógica pura)', () => {
 })
 
 describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
-  it('sin filtro: totales generales, reservado = en mano − disponible, bajo mínimo y la marca "almacén" en los documentos', async () => {
+  it('sin filtro: río con totales generales, reservado = en almacén − disponible, bajo mínimo en alerta y la marca "almacén" en los documentos', async () => {
     renderPulse()
-    await waitFor(async () => expect(within(await tile('En mano')).getByText('9,000')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('En almacén')).getByText('9,000')).toBeInTheDocument())
     const available = await tile('Disponible')
     await waitFor(() => expect(within(available).getByText('8,500.50')).toBeInTheDocument())
-    expect(within(available).getByText('499.50')).toBeInTheDocument()
-    expect(within(available).getByText(/Reservado:/)).toBeInTheDocument()
-    await waitFor(async () => expect(within(await tile('Bajo mínimo')).getByText('7')).toBeInTheDocument())
+    expect(within(await tile('Reservado')).getByText('499.50')).toBeInTheDocument()
+    const below = await tile('Bajo mínimo')
+    await waitFor(() => expect(within(below).getByText('7')).toBeInTheDocument())
+    // satélite en tono de alerta, con el aviso también para lectores de pantalla
+    expect(below).toHaveClass('node', 'sat', 'money')
+    expect(within(below).getByText('Hay productos bajo su mínimo.')).toBeInTheDocument()
     expect(lastUrl('/api/v1/products')!.search).toBe('?belowMin=true&take=1')
+    // orden del río: Recibos abiertos → En almacén → Reservado → Disponible → (bifurcación) Bajo mínimo
+    const river = await tile('Flujo de mercancía')
+    expect(within(river).getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual([
+      'Recibos abiertos',
+      'En almacén',
+      'Reservado',
+      'Disponible',
+      'Bajo mínimo',
+    ])
     for (const name of ['Recibos abiertos', 'Tareas pendientes', 'Conteos abiertos'])
       expect(within(await tile(name)).getByText('almacén')).toBeInTheDocument()
-    expect(within(await tile('En mano')).queryByText('almacén')).toBeNull()
+    expect(within(await tile('En almacén')).queryByText('almacén')).toBeNull()
   })
 
   it('categoría padre: el subtítulo cuenta los productos de sus subcategorías, como las cifras del API', async () => {
     window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: null, item: { kind: 'category', id: 1 } }))
     renderPulse()
-    const onHand = await tile('En mano')
+    const onHand = await tile('En almacén')
     await waitFor(() => expect(within(onHand).getByText('1,240')).toBeInTheDocument())
     await waitFor(() => expect(within(onHand).getByText('Farmacia · 14 productos')).toBeInTheDocument())
   })
@@ -185,15 +197,15 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
   it('restaura almacén + categoría de localStorage: saldo de la categoría, documentos solo por almacén y enlace a Inventario', async () => {
     window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: WH1.publicId, item: { kind: 'category', id: 2 } }))
     renderPulse()
-    const onHand = await tile('En mano')
+    const onHand = await tile('En almacén')
     await waitFor(() => expect(within(onHand).getByText('1,240')).toBeInTheDocument())
     await waitFor(() => expect(within(onHand).getByText('Analgésicos · 14 productos')).toBeInTheDocument())
-    expect(within(await tile('Disponible')).getByText('60')).toBeInTheDocument()
+    expect(within(await tile('Reservado')).getByText('60')).toBeInTheDocument()
     const below = await tile('Bajo mínimo')
     await waitFor(() => expect(within(below).getByText('2')).toBeInTheDocument())
-    expect(within(below).getByRole('link', { name: 'Ver en Inventario ›' })).toHaveAttribute(
+    expect(within(below).getByRole('link', { name: 'Ver saldos ›' })).toHaveAttribute(
       'href',
-      `/warehouse/inventory?categoryIds=2&warehousePublicIds=${encodeURIComponent(WH1.publicId!)}`,
+      `/warehouse/kardex?tab=balances&categoryIds=2&warehousePublicIds=${encodeURIComponent(WH1.publicId!)}`,
     )
     await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('2')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Tareas pendientes')).getByText('23')).toBeInTheDocument())
@@ -226,15 +238,15 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     await user.type(screen.getByRole('combobox', { name: 'Buscar categoría o producto…' }), 'AN-01')
     await user.click(await screen.findByRole('option', { name: /AN-0100 · Analgésico 500 mg x 20/ }))
 
-    const onHand = await tile('En mano')
+    const onHand = await tile('En almacén')
     await waitFor(() => expect(within(onHand).getByText('312')).toBeInTheDocument())
     expect(within(onHand).getByText('AN-0100 · mínimo 400')).toBeInTheDocument()
-    expect(within(await tile('Disponible')).getByText('22')).toBeInTheDocument()
+    expect(within(await tile('Reservado')).getByText('22')).toBeInTheDocument()
     const below = await tile('Bajo mínimo')
     await waitFor(() => expect(within(below).getByText('Sí')).toBeInTheDocument())
     expect(within(below).getByRole('link', { name: 'Ver Kárdex de AN-0100 ›' })).toHaveAttribute(
       'href',
-      `/warehouse/inventory?tab=kardex&product=${PRODUCT.publicId}`,
+      `/warehouse/kardex?product=${PRODUCT.publicId}`,
     )
     expect(lastUrl('/api/v1/inventory/balances')!.searchParams.getAll('productPublicIds')).toEqual([PRODUCT.publicId])
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({
@@ -244,7 +256,7 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
 
     // ✕ vuelve a los totales generales y deja de recordarse
     await user.click(screen.getByRole('button', { name: 'Quitar categoría o producto' }))
-    await waitFor(async () => expect(within(await tile('En mano')).getByText('9,000')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('En almacén')).getByText('9,000')).toBeInTheDocument())
     expect(window.localStorage.getItem(KEY)).toBeNull()
   })
 
@@ -270,7 +282,7 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: 'wh-borrado', item: { kind: 'product', publicId: 'prod-borrado' } }))
     renderPulse()
     await waitFor(() => expect(window.localStorage.getItem(KEY)).toBeNull())
-    await waitFor(async () => expect(within(await tile('En mano')).getByText('9,000')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('En almacén')).getByText('9,000')).toBeInTheDocument())
     expect(screen.getByRole('combobox', { name: 'Almacén' })).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Categoría o producto' })).toBeInTheDocument()
     expect(screen.queryByText('No existe el producto.')).toBeNull()

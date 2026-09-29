@@ -43,6 +43,8 @@ import {
 } from './api'
 import { formatDateTime, formatNumber, lineErrorsByIndex, parseSerials, receiptLineIssues, remapProblemFields, type LineIssue } from './lineRules'
 import { BinPickerInput, ProductPickerInput } from './pickers'
+import { useTaskRowActions } from './taskActions'
+import { IconCheckin } from '../../kernel/ui/screenIcons'
 
 type Schemas = components['schemas']
 type ReceiptLine = Schemas['ReceiptLineDto']
@@ -232,11 +234,13 @@ function LineModal({ receipt, line, onClose }: { receipt: ReceiptDetailDto; line
 }
 
 // =====================================================================================================================
-// Tareas PUTAWAY del recibo (solo lectura; se trabajan en Tareas de almacén)
+// Tareas PUTAWAY del recibo: se asignan, inician, completan (con la posición sugerida) y cancelan aquí mismo, con las
+// acciones de `taskActions.tsx` (la cola de todos los recibos es la pestaña 'Acomodo pendiente' de Recibo).
 // =====================================================================================================================
 function PutawayTasks({ tasks }: { tasks: readonly WarehouseTaskDto[] }) {
   const t = useT()
   const lang = useLang()
+  const { rowActions, dialogs } = useTaskRowActions()
   const columns = useMemo<DataColumn<WarehouseTaskDto>[]>(
     () => [
       { id: 'product', header: t('warehouse.receipts.detail.columns.product'), cell: (r) => productLabel({ sku: r.sku, name: r.productName }), card: 'title', sortValue: (r) => r.sku },
@@ -248,17 +252,22 @@ function PutawayTasks({ tasks }: { tasks: readonly WarehouseTaskDto[] }) {
     [t, lang],
   )
   return (
-    <Panel
-      flush
-      title={t('warehouse.receipts.detail.putaway')}
-      actions={
-        <Link className="btn sm" to="/warehouse/tasks">
-          {t('warehouse.receipts.detail.goTasks')}
-        </Link>
-      }
-    >
-      <DataTable label={t('warehouse.receipts.detail.putaway')} columns={columns} rows={tasks} rowKey={(r) => r.id ?? 0} pageSize={25} />
-    </Panel>
+    <>
+      <Panel
+        flush
+        icon={<IconCheckin />}
+        title={t('warehouse.receipts.detail.putaway')}
+        badge={tasks.length}
+        actions={
+          <Link className="btn sm" to="/warehouse/receipts?tab=putaway">
+            {t('warehouse.receipts.detail.goTasks')}
+          </Link>
+        }
+      >
+        <DataTable label={t('warehouse.receipts.detail.putaway')} columns={columns} rows={tasks} rowKey={(r) => r.id ?? 0} pageSize={25} rowActions={rowActions} />
+      </Panel>
+      {dialogs}
+    </>
   )
 }
 
@@ -413,7 +422,7 @@ export default function ReceiptDetailScreen() {
         <p className="help">{t('warehouse.receipts.detail.statusHelp')}</p>
       </div>
 
-      <Panel title={t('warehouse.receipts.detail.summary')}>
+      <Panel icon={<IconCheckin />} title={t('warehouse.receipts.detail.summary')}>
         <div className="r3">
           <div className="f">
             <label>{t('warehouse.receipts.detail.expected')}</label>
@@ -444,8 +453,9 @@ export default function ReceiptDetailScreen() {
 
       <Panel
         flush
+        icon={<IconCheckin />}
         title={t('warehouse.receipts.detail.lines')}
-        subtitle={t('warehouse.receipts.detail.lineCount', { count: lines.length })}
+        badge={lines.length}
         actions={
           isOpen ? (
             <Can perm="warehouse.receive">

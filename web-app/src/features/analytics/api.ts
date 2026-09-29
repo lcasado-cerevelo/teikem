@@ -2,7 +2,7 @@
 // Lote F8a (P2): Pulso por paneles; guardar el orden (mío o de la compañía) y volver al de la compañía.
 // Lote F6: tarjetas de almacén calculadas en cliente (saldo actual, sin rango de fecha) sobre los endpoints del módulo.
 // Lote F7A: esas tarjetas aceptan el filtro de almacén y de categoría o producto (`WarehousePulseFilter`).
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSession } from '../../app/session'
 import { api, unwrap } from '../../kernel/api/client'
@@ -10,6 +10,7 @@ import { ApiError } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
 import { isCategoryProductValue, type CategoryProductValue } from '../../kernel/ui/categoryTree'
 import { useProduct, useProductCategories, useWarehouses, type GetQuery } from '../warehouse/api'
+import type { ChartPreviewRequest } from './chartPreview'
 import type { PulseLayoutRequest, PulseScope } from './pulseLayout'
 
 export type DateRangeRequest = components['schemas']['DateRangeRequest']
@@ -202,6 +203,28 @@ export function useAnalyticsShareUsers(enabled: boolean) {
     queryKey: ['/api/v1/users'],
     queryFn: () => unwrap(api.GET('/api/v1/users')),
     enabled,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/**
+ * Vista previa del editor de gráficos (Fase 10b): `POST /api/v1/analytics/reports/{fuente}/preview` con la petición
+ * que arma `planChartPreview` (`chartPreview.ts`); `null` = configuración incompleta, no consulta. Mantiene el resultado
+ * anterior mientras recalcula (sin parpadeo) y un 403 no saca al usuario del editor.
+ */
+export function useChartPreview(req: ChartPreviewRequest | null) {
+  return useQuery({
+    queryKey: ['/api/v1/analytics/reports/{baseEntityType}/preview', req?.baseEntityType ?? null, req?.query ?? null, req?.body ?? null],
+    queryFn: () =>
+      unwrap(
+        api.POST('/api/v1/analytics/reports/{baseEntityType}/preview', {
+          params: { path: { baseEntityType: (req as ChartPreviewRequest).baseEntityType }, query: (req as ChartPreviewRequest).query },
+          body: (req as ChartPreviewRequest).body,
+        }),
+      ),
+    enabled: req != null,
+    placeholderData: keepPreviousData,
+    staleTime: 30 * 1000,
     meta: { handleAccessDenied: false },
   })
 }

@@ -27,6 +27,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { useSaveSupplier, useSuppliers, type SupplierDto } from './api'
+import { IconLayers } from '../../kernel/ui/screenIcons'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -238,7 +239,7 @@ export default function SupplierListScreen() {
         />
       </Filters>
 
-      <Panel flush title={t('warehouse.suppliers.title')} subtitle={t('warehouse.suppliers.count', { count: rows.length })}>
+      <Panel flush icon={<IconLayers />} title={t('warehouse.suppliers.title')} badge={rows.length}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} />
         </div>

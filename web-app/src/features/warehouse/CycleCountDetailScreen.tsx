@@ -38,6 +38,7 @@ import {
 import { productLabel, useCycleCount, useCycleCountAction, useProductLots, warehouseKeys, type CycleCountDetailDto } from './api'
 import { countLineIssues, countLotIssue, formatDateTime, formatNumber, parseSerials, remapProblemFields, type LineIssue } from './lineRules'
 import { BinPickerInput, ProductPickerInput } from './pickers'
+import { IconClip } from '../../kernel/ui/screenIcons'
 
 type CountLine = components['schemas']['CycleCountLineDto']
 
@@ -484,7 +485,7 @@ export default function CycleCountDetailScreen() {
         <StatusPipeline domain={STATUS_DOMAIN} entityType={ENTITY_TYPE} entityId={count.id} currentCode={count.statusCode} />
       </div>
 
-      <Panel title={t('warehouse.cycleCounts.detail.summary')}>
+      <Panel icon={<IconClip />} title={t('warehouse.cycleCounts.detail.summary')}>
         <div className="r3">
           <div className="f">
             <label>{t('warehouse.cycleCounts.columns.progress')}</label>
@@ -512,8 +513,9 @@ export default function CycleCountDetailScreen() {
 
       <Panel
         flush
+        icon={<IconClip />}
         title={t('warehouse.cycleCounts.detail.lines')}
-        subtitle={t('warehouse.receipts.detail.lineCount', { count: lines.length })}
+        badge={lines.length}
         actions={
           editable ? (
             <Can perm="warehouse.count">

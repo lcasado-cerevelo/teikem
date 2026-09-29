@@ -82,6 +82,18 @@ pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System,
 ```
 - Textos del ítem: `nav.<key>.title` y `nav.<key>.subtitle` en `es.json`/`en.json` (los `nav.*` de la maqueta); grupo:
   `nav.groups.<group>`. Un ítem nuevo = su fila aquí + sus dos textos.
+- `redirectTo(to)`: `element` de una ruta que dejó de ser pantalla propia (sin `perm`/`module`/`nav`: la guarda es la del
+  destino); `<Navigate replace>`. Hoy `/warehouse/tasks` → `/warehouse/receipts?tab=putaway` y `/warehouse/dock-appointments` →
+  `/warehouse/cross-dock-plans?tab=appointments`.
+  `{ path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },`
+- `redirectKeepingQuery(pathname, mapSearch?)`: igual, pero conserva la consulta de la dirección anterior (`mapSearch` la
+  ajusta, lógica pura). Hoy `/warehouse/inventory` → `/warehouse/kardex` con `legacyInventorySearch` (sin `tab` era Saldos →
+  `tab=balances`; `tab=kardex` → sin parámetro; los filtros se quedan).
+  `{ path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },`
+- Pestañas enlazables: una lista con `Tabs` cuya pestaña deba poder abrirse desde un enlace la guarda en `?tab=` con
+  `useSearchParams` (la primera pestaña = sin parámetro; valor desconocido = la primera), como `AccountPage`, Recibo
+  (`asns|putaway`), Recolección (`replenish`), Conteo cíclico (`tasks`), Cruce de muelle (`appointments|tasks`), Productos e
+  inventario (`categories`) y Kárdex de movimientos (`balances|reconciliation`).
 - `<Placeholder navKey="audit" icon? brand? />`: `icon` = ícono del grupo (lo pone `pending`); `brand` = marca pequeña de Teikem
   arriba del aviso (por defecto `<BrandMark size={40} alt="" />`; `brand={null}` la quita).
 
@@ -156,13 +168,17 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
 
 ## Estilos (`src/styles`)
 - `tokens.css`: variables de la maqueta (paleta oscura por defecto, `data-theme="light"`), `--flow` (operación) y `--money` (dinero).
-- `base.css`: clases de la maqueta: `.head`, `.btn(.flow/.money/.sm/.block)`, `.panel .ph2 .pb`, `.pal .pi .pb .ft` (en línea
-  ocupa el ancho; dentro de `.scrim.on` es modal), `.chip` + `.s-cap/.s-wh/.s-disp/.s-route/.s-deliv/.s-cod/.s-fail/.s-warn`,
+- `base.css`: clases de la maqueta: `.head`, `.btn(.flow/.money/.sm/.block)`, `.panel .ph2 (.r = contador) .pb` (panel de
+  contenido en pantalla: lo pinta `Panel`), `.pal .pi .pb .ft` (solo modales y la paleta de comandos, dentro de `.scrim.on`), `.chip` + `.s-cap/.s-wh/.s-disp/.s-route/.s-deliv/.s-cod/.s-fail/.s-warn`,
   `.lst` (tabla), `.f` + `.ferr` + `.r2/.r3` (formularios), `.sw` (toggle), `.filters`, `.seg`, `.msel`, `.qrow .qbox`, `.empty`,
   `.note`, `.tag`, `.toast`, `.spin`. Breakpoints: 900 px (cajón), 720 px (tablas a tarjetas, filtros en 2 columnas), 480 px (una columna).
   `.md` (maestro-detalle a dos columnas, 280 px + resto; una columna bajo 720 px) + `.domlist`/`.domit(.on)` (lista de la
   izquierda: botón por fila, con chip de origen y contador opcional `.cnt`) — patrón de "Catálogos de valores" (F8a P6) y
   cualquier pantalla con una lista de la izquierda y el detalle a la derecha; bajo 720 px usa un `<select>` en vez de `.domlist`.
+  `.unrow` (fila de lista de la maqueta: ancho completo, borde inferior, `.meta` en tono tenue; como `<button className="unrow">`
+  es una fila elegible sin estilo nativo y `.unrow.on` = la elegida, fondo `--flow-bg`) — lista de compras de 'Ajustes de
+  inventario'. `.adj-cols` (`warehouse.css`): maestro-detalle de esa pantalla, 300 px + resto como la maqueta, una columna
+  bajo 720 px con la lista arriba (alto máx. 240 px).
 
 ## Datos comunes (`src/kernel/catalogs`, `src/kernel/custom-fields`, `src/kernel/dsl`)
 - `useLookups(domain, { includeDisabled?, enabled? })` → `useQuery` con `LookupOption[]` (`{ code, label, description, sortOrder,
@@ -204,8 +220,9 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 
 | Componente | Props | Uso |
 |---|---|---|
-| `Panel` | `title?`, `subtitle?`, `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | contenedor estándar (`.pal/.pi/.pb/.ft`) |
-| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `rowActions?`, `onRowClick?`, `empty?`, `loading?`, `label?`, `dense?` | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no; entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
+| `Panel` | `title?`, `icon?` (ícono antes del título), `badge?: string \| number` (contador a la derecha, misma línea), `subtitle?` (solo texto descriptivo, en su propia línea; un conteo va en `badge`), `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra ni recorte: los desplegables salen) con cabecera `.ph2` de una sola línea (ícono + título `h2` + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales son `Modal`/`ConfirmDialog` (`.scrim > .pal`, radio 15 px con sombra); nunca uses `.pal` para contenido en pantalla. `<Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? rows.length : undefined}>` |
+| Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Ajustes de inventario → `IconPencil` (su nota y su vacío; sus paneles usan `IconCart` como la maqueta), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
+| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?` | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no; entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'` | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`) |
 | `RowAction<T>` | `key`, `label`, `onClick(row)`, `perm?` (guarda de permiso: sin él no se pinta), `visible?(row)` (guarda de estatus/`capabilities`), `disabled?(row)`, `tone?: 'flow' \| 'danger'`, `icon?` (de `kernel/ui/actionIcons`) | acciones por fila. Con `icon`, el botón es solo ícono (28×28, `.rowbtn`, como en la maqueta) y `label` pasa a ser su `aria-label`/`title`; sin `icon`, es el botón de texto de siempre. Toda acción de fila nueva lleva `icon` — solo se deja sin él cuando de verdad no hay un ícono claro para esa acción |
 | `Filters` | `children`, `onClear?` (botón "Limpiar"), `label?` | fila `.filters` (8 → 4 → 2 → 1 columnas); "Limpiar" (`.filters-clear`) ocupa solo el ancho de su contenido |
@@ -229,6 +246,9 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `useMediaQuery(q)`, `CARDS_QUERY` | | `true` mientras se cumpla la media query (`'(max-width: 720px)'` = modo tarjetas) |
 
 **Orden y paginación de `DataTable`**
+- Toda columna que muestre un dato lleva `sortValue` (o `sortable` con orden del servidor); solo se quedan sin orden las
+  columnas sin dato propio (acciones, casillas de selección). Columna compuesta ("Cliente · Ciudad") → el campo principal;
+  chip de estatus → la etiqueta (`status ?? statusCode`), nunca el color.
 - Lista completa (la mayoría de endpoints de catálogo): no pases `onSort` ni `onPage`; DataTable ordena con `sortValue` (orden
   natural: `A-2` antes que `A-10`) y pagina con `pageSize`. Pasa `rows` memorizadas (`useMemo`): una lista nueva vuelve a la página 1.
 - Servidor (endpoints con `skip/take` y `total`, p. ej. auditoría): controla `sort`/`onSort` y `page`/`onPage`, pasa `total`, y pon
@@ -243,8 +263,11 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 ## Almacén (`src/features/warehouse`, Lote F6)
 No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, del cruce de muelle y la consulta de órdenes.
 - `api.ts`: un hook por lectura con clave `[ruta, params]` (`useWarehouses(query?)`, `useWarehouse(publicId)`,
-  `useWarehouseZones/Bins/Docks(publicId, query?)`, `useProducts`, `useProduct`, `useProductLots/Serials`, `useProductCategories`,
-  `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
+  `useWarehouseZones/Bins/Docks(publicId, query?)`, `useProducts`, `useProduct`, `useProductInventoryKpis()` (KPIs de
+  'Productos e inventario': `{ activeSkus, totalUnits, belowMin, serial }`, ver abajo), `useSerialProductCount()` (productos
+  activos con rastreo SERIAL: lee todas las páginas de 200, hasta 25; `{ count, truncated }`), `useProductLots/Serials`, `useProductCategories`,
+  `useInventoryBalances`, `useWarehouseStockLines(publicId)` (todas las líneas de saldo de un almacén, páginas de 200 hasta
+  5 000; `{ items, total, truncated }`), `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
   `useReceipts`, `useReceipt`, `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
   `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
   `usePurchaseOrderShortageLines`, `useDockAppointments`, `useCrossDockPlans`, `useCrossDockPlan`, `useCrossDockCandidates`,
@@ -286,17 +309,101 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   desborda a 360 px). En listas de historial (Kárdex, Recibos, Recolecciones) va con `includeInactive` para poder filtrar
   productos dados de baja.
   `isAccessDenied(error)` (`accessDenied.ts`) para avisar junto a un campo cuando una consulta secundaria da 403.
-- Inventario (`/warehouse/inventory`) lee la URL al montar: `tab=kardex` abre el Kárdex; `warehousePublicIds=<publicId>` y
-  `product=<publicId>` filtran Saldos o Kárdex (el SKU de cada producto se resuelve con su ficha, `useProductsByPublicId`; si
-  la ficha no se puede leer la píldora dice 'Producto no disponible'); `categoryIds=<id>` filtra Saldos (los tres repetibles o
-  separados por comas). Esos filtros son solo de la pestaña abierta: al cambiar de pestaña se descartan. Es lo que usan los
-  enlaces de Pulso, que llevan el almacén elegido para que el destino cuadre con la cifra. No hay parámetro de búsqueda: la
-  búsqueda del Kárdex no compara el documento de origen, así que Actividad reciente no enlaza movimientos al Kárdex.
+- Ubicaciones (`/warehouse/locations`, `LocationsScreen`; maqueta `ubicaciones()`): almacén arriba (`?warehouse=<publicId>`;
+  sin él, el primero activo) y "Nueva posición" (`warehouse.manage`), río de ocupación por zona (`.river`/`.node`/`.pipe` de
+  `analytics/pulse.css` dentro de un contenedor `.pulse`; cada nodo con su barra `.spark` de 7 segmentos al % ocupado), filtros Zona/Tipo/Producto/Estado (`SearchSelect`, en cliente) y tabla Posición, Zona, Cantidad,
+  Producto, Ocupación, Estado (orden local en todas; Producto ordena por el primero que se muestra). Lógica pura en `locations.ts` (`zoneOccupancy`,
+  `productsByBin`, `buildLocationRows`, `filterLocationRows`). Las posiciones no tienen capacidad en el esquema: el estado
+  es Vacía/Ocupada y la barra de Ocupación es relativa a la posición con más unidades del almacén.
+- `BinModal` (`BinModal.tsx`): alta/edición de una posición, compartido por la ficha del almacén (pestaña Posiciones) y
+  Ubicaciones. Props `publicId` (almacén), `zones` (las del almacén), `bin` (`null` = alta), `open`, `onClose`; guarda con
+  `useSaveWarehouseBin` (invalida posiciones, zonas y almacenes). Muéstralo dentro de `<Can perm="warehouse.manage">`.
+  `ReadOnlyField` (mismo archivo) = campo inmutable (código, zona) de los modales de la ficha.
+  ```tsx
+  <Can perm="warehouse.manage"><button className="btn flow" onClick={() => setOpen(true)}>{t('warehouse.bins.new')}</button></Can>
+  <BinModal publicId={warehousePublicId} zones={zones} bin={null} open={open} onClose={() => setOpen(false)} />
+  ```
+- `ProductEditorModal` (`ProductEditorModal.tsx`, maqueta `renderProductModalHtml`): el ÚNICO alta/edición de producto (no hay
+  pestaña "Datos"). Props `open`, `product: ProductDetailDto | null` (`null` = "Nuevo producto"), `onClose`, `onCreated?(publicId)`.
+  Campos en el orden de la maqueta (SKU —bloqueado al editar— · Unidad, Nombre, Categoría · Rastreo, Dueño del inventario, Costo de
+  compra · Precio de venta, Almacén · Posición por defecto, Total —solo lectura, "usa Ajustar abajo"— · Punto de reorden); al editar,
+  interruptor "Producto activo" (deactivate/reactivate al guardar; bloqueado con saldo en mano, con la nota de la maqueta), bloque
+  "Ajustar inventario" (`inventory.adjust`; `useInventoryAdjustment` con el producto fijo, almacén y posición por defecto del producto,
+  el modal sigue abierto) y "Ver lotes"/"Ver series" (según el rastreo) → `/warehouse/products/{publicId}?tab=lots|serials`.
+  Código de barras, peso, volumen, mínimo/máximo de picking y campos personalizados van plegados en "Más datos del producto" (se
+  abre solo si alguno trae error). Sin `inventory.manage` es de solo lectura ("Ver datos del producto", botón "Cerrar").
+  `ProductEditorByIdModal` (`publicId: string | null`, `onClose`) pide la ficha y abre el mismo modal (clic en una fila de Productos).
+  La ruta `/warehouse/products/:publicId` es la vista de solo lectura de Lotes/Series: sin `?tab=` abre el modal al entrar.
+  ```tsx
+  <Can perm="inventory.manage"><button className="btn flow" onClick={() => setCreating(true)}>{t('warehouse.products.new')}</button></Can>
+  <ProductEditorModal open={creating} product={null} onClose={() => setCreating(false)} />
+  <ProductEditorByIdModal publicId={editingPublicId} onClose={() => setEditingPublicId(null)} />
+  ```
+- `ResolveShortageModal` (`ResolveShortageModal.tsx`): resolver el faltante de una línea de compra (CLOSE, REORDER,
+  MANUAL_ADJUSTMENT) con `useResolveShortage`; lo comparten la pestaña Faltantes de la ficha de la orden y 'Ajustes de
+  inventario'. Props `open`, `onClose`, `po` (mínimo `{ publicId, warehousePublicId, rowVersion? }`: lo cumplen
+  `PurchaseOrderDto` y `PoShortageSummaryDto`), `line: ShortageLineDto | null`, `initialAction?` (por defecto CLOSE),
+  `initial?: { quantity?, notes? }` (precarga desde la fila), `onResolved?(result)` (con él, quien lo abre pone su aviso; sin
+  él, 'Faltante resuelto.'). Pinta arriba "SKU · Producto — Faltante: N". REORDER solo con `purchasing.manage`;
+  MANUAL_ADJUSTMENT solo con WMS_LOTSERIAL (posición con `BinPickerInput` del almacén de la orden, lote o series según el
+  producto, que se consulta solo en esa acción). Cerrar/Reordenar mandan `quantity` = el pendiente que se ve: si cambió en el
+  servidor, el 400 ('Cerrar y Reordenar resuelven el faltante completo (N)…') sale en el aviso de arriba del `Form`.
+  ```tsx
+  <ResolveShortageModal open onClose={() => setResolving(null)} po={summary} line={line} initialAction="MANUAL_ADJUSTMENT"
+    initial={{ quantity: 1, notes: 'Apareció en muelle' }} onResolved={(r) => toast.success(…)} />
+  ```
+- Ajustes de inventario (`/warehouse/inventory-adjustments`, `InventoryAdjustmentsScreen`; maqueta `ajustesAlmacen()`;
+  purchasing.view + PURCHASING): maestro-detalle `.adj-cols`. Izquierda, `usePurchaseOrderShortages()` (compras con recibo
+  parcial: `.unrow` con número, chip `fail` "N corto", proveedor y "N línea(s)"); derecha, `usePurchaseOrderShortageLines` de
+  la elegida (una sola consulta; se muestran solo las de pendiente > 0) con SKU, Producto, Ordenado, Recibido, Faltante y
+  Resolver (Cerrar `inventory.adjust`; Reordenar + `purchasing.manage`; Cant. + Motivo + Ajuste manual + WMS_LOTSERIAL: cada
+  botón abre `ResolveShortageModal` con su acción). La elegida va en `?po=<publicId>` (sin él o si ya no está, la primera).
+- Tareas de almacén (sin pantalla ni ítem de menú: la maqueta no los tiene). Cada tipo vive en la pantalla de su flujo:
+  PUTAWAY → Recibo, pestaña 'Acomodo pendiente' (`?tab=putaway`) y la tabla 'Tareas de acomodo' de la ficha del recibo;
+  REPLENISH → Recolección y empaque, pestaña 'Reabasto' (`?tab=replenish`, con 'Correr reabasto'); COUNT → Conteo cíclico,
+  pestaña 'Tareas de conteo' (se completan desde la ficha del conteo); CROSSDOCK → Cruce de muelle, pestaña 'Tareas de
+  cruce' (solo con WMS_LOTSERIAL, 403 sin sacar de la pantalla). PICK/PACK/LOAD no tienen handler en el API (D41).
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `TaskQueue` (`taskQueue.tsx`) | `types: WarehouseTaskType[]`, `title`, `icon?`, `actions?` (cabecera del panel), `handleAccessDenied?` (false = 403 sin redirigir) | filtros (almacén, estatus, asignadas a mí, incluir cerradas) + `Panel` con la cola paginada en el servidor (`GET /warehouse-tasks?types=`); columna Tipo solo con más de un tipo; acciones de `useTaskRowActions` |
+  | `ReplenishButton` (`taskQueue.tsx`) | `className?` (por defecto `btn flow`) | 'Correr reabasto' con su diálogo (almacén opcional); solo con `warehouse.pick` |
+  | `useTaskRowActions()` (`taskActions.tsx`) | → `{ rowActions: RowAction<WarehouseTaskDto>[], dialogs }` | Asignar (`warehouse.manage`), Iniciar y Completar (permiso del handler: PUTAWAY `warehouse.receive`, REPLENISH `warehouse.pick`, COUNT `warehouse.count`, CROSSDOCK `warehouse.crossdock`; Completar solo con `completableFromQueue`, con `BinPicker` y las `suggestedBinIds` del acomodo primero) y Cancelar (PUTAWAY/REPLENISH, `warehouse.manage`); pinta `dialogs` una vez |
+  | `AssignTaskModal`, `CompleteTaskModal` (`taskDialogs.tsx`) | `task`, `open`, `onClose` | los diálogos que abre `useTaskRowActions` |
+  ```tsx
+  <TaskQueue types={['REPLENISH']} title={t('warehouse.pickBatches.replenishTitle')} icon={<IconBasket />} />
+  const { rowActions, dialogs } = useTaskRowActions()
+  <DataTable columns={cols} rows={receipt.putawayTasks ?? []} rowKey={(r) => r.id ?? 0} rowActions={rowActions} />{dialogs}
+  ```
+  `useWarehouseTaskAction` invalida la cola, la ficha del recibo y, al completar, recibos, planes de cruce y el inventario.
+- Productos e inventario (`/warehouse/products`, `ProductListScreen`; maqueta `inventario()`, Fase 8): un solo ítem de menú.
+  Cabecera con "Reporte de inventario" (enlace a Kárdex → Saldos con el almacén y las categorías filtrados), "Reporte de
+  ajustes" (enlace al Kárdex con `types=ADJUSTMENT` y el almacén) y "Nuevo producto" (`inventory.manage`); río de KPIs de todo
+  el catálogo (`useProductInventoryKpis`: SKUs activos = `products?activeOnly=true&take=1` → `total`; Unidades totales =
+  `inventory/balances?includeZero=false&take=1` → `totalOnHand`; Bajo mínimo = `products?belowMin=true&take=1` → `total`; Con
+  número de serie = `useSerialProductCount`, "N+" si se truncó); filtros Almacén (`warehousePublicId`: las cantidades de cada
+  fila pasan a ser las de ese almacén), Categoría y Estado (Todos —activos e inactivos, como la maqueta—, Activos, Bajo mínimo)
+  + `QBox` (va al API como `search`); tabla SKU, Producto, Categoría, Dueño ("Propio" tenue), Disponible, Reservado ('—' en
+  cero), Total, Rastreo (etiqueta del catálogo `TrackingType`), Estado (Inactivo / Bajo mínimo / OK; fila inactiva atenuada).
+  Disponible/Reservado/Total vienen en la lista paginada (`qtyAvailable/qtyReserved/qtyOnHand`). Clic = `ProductEditorByIdModal`.
+  Pestaña Categorías en `?tab=categories`.
+- Kárdex de movimientos (`/warehouse/kardex`, `InventoryScreen`; maqueta `ledger()`): pestañas Kárdex (primera, sin
+  parámetro), Saldos (`?tab=balances`) y Conciliación (`?tab=reconciliation`), con Ajustar/Transferir en la cabecera. Lee la
+  URL al montar: `warehousePublicIds=<publicId>` y `product=<publicId>` filtran Saldos o Kárdex (el SKU de cada producto se
+  resuelve con su ficha, `useProductsByPublicId`; si la ficha no se puede leer la píldora dice 'Producto no disponible');
+  `categoryIds=<id>` filtra Saldos y `types=<InternalCode>` el Kárdex (todos repetibles o separados por comas). Esos filtros
+  son solo de la pestaña con que se abrió: al cambiar de pestaña se descartan y la URL queda solo con la pestaña. Es lo que
+  usan los enlaces de Pulso (`?tab=balances&categoryIds=…` y `?product=…`, con el almacén elegido para que el destino cuadre
+  con la cifra) y los reportes de Productos e inventario. `/warehouse/inventory` redirige aquí (`legacyInventorySearch`). No
+  hay parámetro de búsqueda: la búsqueda del Kárdex no compara el documento de origen, así que Actividad reciente no enlaza
+  movimientos al Kárdex.
 - `productRules.ts`: esquemas zod de peso (`weightKgSchema`), volumen (`volumeM3Schema`) y costo/precio (`moneySchema(t, 'cost' |
-  'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06; pruebas en `productRules.test.ts`.
+  'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06, y la cantidad de un ajuste manual
+  (`adjustQuantitySchema(t)`: obligatoria, ≠ 0, ≤ 3 decimales; la usan `InventoryAdjustModal` y el bloque de ajuste de
+  `ProductEditorModal`); pruebas en `productRules.test.ts`.
 - Orden de las listas paginadas del almacén (Saldos, Kárdex, Productos, Órdenes, Órdenes de compra, Recibos, Recolecciones,
-  Tareas): sus endpoints solo aceptan `skip/take`, sin parámetro de orden, así que sus columnas NO llevan `sortValue` (ordenarían
-  solo la página visible). Llega el orden del servidor; si un endpoint gana `sort`, se agrega `sortable` + `onSort`.
+  colas de tareas): sus endpoints solo aceptan `skip/take`, sin parámetro de orden. Llegan en el orden del servidor y, como
+  toda tabla de la app, sus columnas llevan `sortValue` (Fase 11: toda columna con dato se ordena por clic en el encabezado);
+  ahí el orden es en el cliente y reacomoda solo la página visible. Si un endpoint gana `sort`, se cambia a `sortable` + `onSort`.
 - `lineRules.ts`: reglas puras de captura de líneas (réplica de `ReceiptRules`/`PickBatchRules`/`CycleCountRules`):
   `receiptLineIssues`, `countLineIssues`, `countLotIssue`, `pickLineIssues`, `pickDuplicateAcrossLines`, `firstOtherOwner`
   devuelven `{ field, code, params }` que se traducen con `t('warehouse.lineRules.<code>', params)` (mensaje exacto del manual 06)
@@ -329,8 +436,15 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   HTML5 nativo con ratón —con `(pointer: coarse)` solo botones—; "Listo" = un solo PUT y toast "Pulso guardado"; error → `title`
   del ProblemDetails en el toast). Lógica pura en `pulseLayout.ts`: `sortPanels`, `sortItems`, `shownPanels`, `shownItems`,
   `initOrganizer`, `moveEntry`, `toggleEntry`, `buildLayoutRequest`, `moduleGroup` (BusinessModule → grupo del menú e ícono).
-- Estilos propios en `pulse.css`, todos bajo `.pulse` (`.streamlabel`, `.river`, `.node.flow|.money`, `.pipe`, `.pulse-charts`,
+- Estilos propios en `pulse.css`, todos bajo `.pulse` (`.streamlabel`, `.river`, `.node.flow|.money`, `.node .spark` —barra de
+  segmentos `<i style={{ height: '40%' }} />` del color del nodo—, `.pipe`, `.pulse-charts`,
   `.orgbar`, `.orgrow`…): río que envuelve bajo 980 px y una columna a 480 px; grilla `minmax(min(100%, 380px), 1fr)`.
+- Indicadores y Gráficos (Fase 10): el editor (`DefinitionEditor`) comparte en "Compartido" con usuarios (`admin.users`) y
+  con roles (`useRoles()` de `features/system/api`); cada `ShareDto` lleva `userId` o `roleId`. Solo en gráficos: sin
+  selector de módulo (sale de la fuente) y con `<ChartPreview …valores del formulario isMoney />` (`ChartPreviewPanel.tsx`):
+  `planChartPreview` + `chartPreviewPoints` (`chartPreview.ts`, lógica pura) sobre `POST /analytics/reports/{fuente}/preview`
+  vía `useChartPreview(req)`. La tarjeta de gráfico lleva el rango en línea (`my-date-range`) y un solo switch (`my-pulse`);
+  la de indicador sigue con el diálogo `DefinitionRangeModal` y sus dos switches.
 
 ## Patrones de pantalla (copiar de `src/kernel/ui/templates`)
 Plantillas completas y compilables (no montadas en rutas) sobre clientes; textos en `examples.clients.*` (una pantalla real usa su

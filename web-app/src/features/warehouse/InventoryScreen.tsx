@@ -1,12 +1,15 @@
-// Pantalla C (Lote F6) — Inventario: saldos, Kárdex, ajustes, transferencias, genealogía, rastro de serie y
-// conciliación. `/warehouse/inventory` con pestañas Saldos / Kárdex / Conciliación. Sin StatusPipeline: el ledger
-// no tiene estatus de entidad, solo mensajes de validación.
+// Pantalla C (Lote F6) — Kárdex de movimientos (maqueta `ledger()`, ítem propio del menú desde la Fase 8): Kárdex, saldos,
+// ajustes, transferencias, genealogía, rastro de serie y conciliación. `/warehouse/kardex` con pestañas Kárdex (la primera,
+// sin parámetro) / Saldos (`?tab=balances`) / Conciliación (`?tab=reconciliation`); la vista por producto (disponible,
+// reservado, total) es 'Productos e inventario'. `/warehouse/inventory` (dirección anterior) redirige aquí conservando la
+// consulta. Sin StatusPipeline: el ledger no tiene estatus de entidad, solo mensajes de validación.
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta). Ajuste/transferencia/ejecutar conciliación:
 // inventory.adjust.
-// Parámetros de URL (Lote F7A, enlaces de Pulso): `tab=kardex` abre el Kárdex; `warehousePublicIds=<publicId>` filtra por
-// almacén y `product=<publicId>` por producto (Saldos o Kárdex); `categoryIds=<id>` filtra Saldos por categoría (los tres
+// Parámetros de URL (Lote F7A, enlaces de Pulso y botones de reporte de 'Productos e inventario'): `tab` elige la pestaña;
+// `warehousePublicIds=<publicId>` filtra por almacén y `product=<publicId>` por producto (Saldos o Kárdex);
+// `categoryIds=<id>` filtra Saldos por categoría y `types=<InternalCode de InventoryTxnType>` el Kárdex por tipo (todos
 // repetibles o separados por comas). Solo se leen al montar y solo los recibe la pestaña abierta: al cambiar de pestaña se
-// descartan y después los filtros son de la pantalla.
+// descartan (la URL queda solo con la pestaña) y después los filtros son de la pantalla.
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
@@ -47,22 +50,29 @@ import {
 import { InventoryAdjustModal } from './InventoryAdjustModal'
 import { InventoryTransferModal } from './InventoryTransferModal'
 import { ProductMultiFilter, ProductPicker, type ProductFilterItem } from './pickers'
+import { IconDoc, IconLayers } from '../../kernel/ui/screenIcons'
 
 type KardexRowDto = components['schemas']['KardexRowDto']
 type ReconciliationRowDto = components['schemas']['ReconciliationRowDto']
 
-type TabKey = 'balances' | 'kardex' | 'reconciliation'
+type TabKey = 'kardex' | 'balances' | 'reconciliation'
 const PAGE_SIZE = 25
 
-/** Filtros iniciales que llegan en la URL (enlaces de Pulso). */
+/** Pestaña de `?tab=`: la primera (Kárdex) va sin parámetro; valor desconocido = la primera. */
+function tabFromParam(value: string | null): TabKey {
+  return value === 'balances' || value === 'reconciliation' ? value : 'kardex'
+}
+
+/** Filtros iniciales que llegan en la URL (enlaces de Pulso y reportes de 'Productos e inventario'). */
 interface InitialFilters {
   warehousePublicIds: string[]
   products: ProductFilterItem[]
   categoryIds: string[]
+  types: string[]
 }
 
 /** Sin filtros iniciales: lo que recibe una pestaña a la que se llega cambiando de pestaña. */
-const NO_INITIAL_FILTERS: InitialFilters = { warehousePublicIds: [], products: [], categoryIds: [] }
+const NO_INITIAL_FILTERS: InitialFilters = { warehousePublicIds: [], products: [], categoryIds: [], types: [] }
 
 /** Valores de un parámetro repetible o separado por comas, sin vacíos ni duplicados. */
 function listParam(params: URLSearchParams, name: string): string[] {
@@ -74,12 +84,13 @@ function listParam(params: URLSearchParams, name: string): string[] {
   return [...new Set(values)]
 }
 
-/** Lee `warehousePublicIds`, `product` y `categoryIds` de la URL. Un producto llega solo con su publicId: su SKU se resuelve después. */
+/** Lee `warehousePublicIds`, `product`, `categoryIds` y `types` de la URL. Un producto llega solo con su publicId: su SKU se resuelve después. */
 function initialFiltersFromUrl(params: URLSearchParams): InitialFilters {
   return {
     warehousePublicIds: listParam(params, 'warehousePublicIds'),
     products: listParam(params, 'product').map((publicId) => ({ publicId, sku: '', label: '' })),
     categoryIds: listParam(params, 'categoryIds').filter((v) => /^\d+$/.test(v)),
+    types: listParam(params, 'types'),
   }
 }
 
@@ -130,14 +141,14 @@ function ToggleFilter({ label, checked, onChange }: { label: string; checked: bo
 
 /**
  * Columnas de un Kárdex (compartidas por la pestaña y los modales de genealogía / rastro de serie).
- * `clientSort = false` en la pestaña Kárdex: su lista viene paginada del servidor (skip/take) y el endpoint no acepta orden,
- * así que ordenar en el cliente solo reacomodaría la página visible.
+ * En la pestaña Kárdex la lista viene paginada del servidor (skip/take) y el endpoint no acepta orden: el orden por
+ * encabezado solo reacomoda la página visible (pendiente un parámetro de orden en el endpoint).
  */
-function useKardexColumns(clientSort = true): DataColumn<KardexRowDto>[] {
+function useKardexColumns(): DataColumn<KardexRowDto>[] {
   const t = useT()
   const lang = useLang()
-  return useMemo(() => {
-    const cols: DataColumn<KardexRowDto>[] = [
+  return useMemo(
+    (): DataColumn<KardexRowDto>[] => [
       {
         id: 'date',
         header: t('warehouse.inventory.kardex.columns.date'),
@@ -179,9 +190,9 @@ function useKardexColumns(clientSort = true): DataColumn<KardexRowDto>[] {
         sortValue: (r) => r.reason ?? r.reasonCode,
       },
       { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (r) => r.refLabel ?? '', sortValue: (r) => r.refLabel },
-    ]
-    return clientSort ? cols : cols.map((c) => ({ ...c, sortValue: undefined }))
-  }, [t, lang, clientSort])
+    ],
+    [t, lang],
+  )
 }
 
 // =====================================================================================================================
@@ -422,22 +433,24 @@ function BalancesTab({
 
   const columns = useMemo<DataColumn<BalanceDto>[]>(
     () => [
-      { id: 'warehouse', header: t('warehouse.inventory.balances.columns.warehouse'), cell: (b) => b.warehouseCode },
-      { id: 'bin', header: t('warehouse.inventory.balances.columns.bin'), cell: (b) => b.binCode ?? '' },
-      { id: 'zone', header: t('warehouse.inventory.balances.columns.zone'), cell: (b) => b.zoneCode ?? '', card: 'hidden' },
-      { id: 'sku', header: t('warehouse.inventory.balances.columns.sku'), cell: (b) => <span className="ref">{b.sku}</span>, card: 'title' },
-      { id: 'product', header: t('warehouse.inventory.balances.columns.product'), cell: (b) => b.productName },
-      { id: 'lot', header: t('warehouse.inventory.balances.columns.lot'), cell: (b) => b.lotNumber ?? '' },
-      { id: 'expiry', header: t('warehouse.inventory.balances.columns.expiry'), cell: (b) => formatDate(b.expiryDate, lang) },
-      { id: 'onHand', header: t('warehouse.inventory.balances.columns.onHand'), cell: (b) => b.qtyOnHand, align: 'end' },
-      { id: 'reserved', header: t('warehouse.inventory.balances.columns.reserved'), cell: (b) => b.qtyReserved, align: 'end' },
-      { id: 'available', header: t('warehouse.inventory.balances.columns.available'), cell: (b) => b.qtyAvailable, align: 'end' },
-      { id: 'cost', header: t('warehouse.inventory.balances.columns.cost'), cell: (b) => b.costValue ?? '', align: 'end', card: 'hidden' },
-      { id: 'sale', header: t('warehouse.inventory.balances.columns.sale'), cell: (b) => b.saleValue ?? '', align: 'end', card: 'hidden' },
+      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
+      { id: 'warehouse', header: t('warehouse.inventory.balances.columns.warehouse'), cell: (b) => b.warehouseCode, sortValue: (b) => b.warehouseCode },
+      { id: 'bin', header: t('warehouse.inventory.balances.columns.bin'), cell: (b) => b.binCode ?? '', sortValue: (b) => b.binCode },
+      { id: 'zone', header: t('warehouse.inventory.balances.columns.zone'), cell: (b) => b.zoneCode ?? '', sortValue: (b) => b.zoneCode, card: 'hidden' },
+      { id: 'sku', header: t('warehouse.inventory.balances.columns.sku'), cell: (b) => <span className="ref">{b.sku}</span>, sortValue: (b) => b.sku, card: 'title' },
+      { id: 'product', header: t('warehouse.inventory.balances.columns.product'), cell: (b) => b.productName, sortValue: (b) => b.productName },
+      { id: 'lot', header: t('warehouse.inventory.balances.columns.lot'), cell: (b) => b.lotNumber ?? '', sortValue: (b) => b.lotNumber },
+      { id: 'expiry', header: t('warehouse.inventory.balances.columns.expiry'), cell: (b) => formatDate(b.expiryDate, lang), sortValue: (b) => b.expiryDate },
+      { id: 'onHand', header: t('warehouse.inventory.balances.columns.onHand'), cell: (b) => b.qtyOnHand, sortValue: (b) => b.qtyOnHand, align: 'end' },
+      { id: 'reserved', header: t('warehouse.inventory.balances.columns.reserved'), cell: (b) => b.qtyReserved, sortValue: (b) => b.qtyReserved, align: 'end' },
+      { id: 'available', header: t('warehouse.inventory.balances.columns.available'), cell: (b) => b.qtyAvailable, sortValue: (b) => b.qtyAvailable, align: 'end' },
+      { id: 'cost', header: t('warehouse.inventory.balances.columns.cost'), cell: (b) => b.costValue ?? '', sortValue: (b) => b.costValue, align: 'end', card: 'hidden' },
+      { id: 'sale', header: t('warehouse.inventory.balances.columns.sale'), cell: (b) => b.saleValue ?? '', sortValue: (b) => b.saleValue, align: 'end', card: 'hidden' },
       {
         id: 'updated',
         header: t('warehouse.inventory.balances.columns.updated'),
         cell: (b) => formatDateTime(b.updatedAtUtc, lang),
+        sortValue: (b) => b.updatedAtUtc,
         card: 'hidden',
       },
     ],
@@ -497,7 +510,7 @@ function BalancesTab({
         <ToggleFilter label={t('warehouse.inventory.balances.filters.onlyAvailable')} checked={onlyAvailable} onChange={withPageReset(setOnlyAvailable)} />
       </Filters>
 
-      <Panel flush title={t('warehouse.inventory.tabBalances')} subtitle={data ? t('warehouse.inventory.balances.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconLayers />} title={t('warehouse.inventory.tabBalances')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={text} onChange={setText} />
         </div>
@@ -535,11 +548,11 @@ function KardexTab({
   onSerialTrace: (productPublicId: string, serialNumber: string) => void
 }) {
   const t = useT()
-  const columns = useKardexColumns(false)
+  const columns = useKardexColumns()
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
-  const [types, setTypes] = useState<string[]>([])
+  const [types, setTypes] = useState<string[]>(initial.types)
   const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>(initial.warehousePublicIds)
   const [products, setProducts] = useState<ProductFilterItem[]>(initial.products)
   const [lotNumber, setLotNumber] = useState('')
@@ -636,7 +649,7 @@ function KardexTab({
         </div>
       </Filters>
 
-      <Panel flush title={t('warehouse.inventory.tabKardex')} subtitle={data ? t('warehouse.inventory.kardex.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconDoc />} title={t('warehouse.inventory.tabKardex')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={text} onChange={setText} />
         </div>
@@ -692,7 +705,7 @@ function ReconciliationTab() {
   )
 
   return (
-    <Panel title={t('warehouse.inventory.tabReconciliation')} subtitle={t('warehouse.inventory.reconciliation.subtitle')}>
+    <Panel icon={<IconDoc />} title={t('warehouse.inventory.tabReconciliation')} subtitle={t('warehouse.inventory.reconciliation.subtitle')}>
       <div className="r2">
         <div className="f">
           <label>{t('warehouse.inventory.reconciliation.product')}</label>
@@ -741,15 +754,18 @@ function ReconciliationTab() {
 // =====================================================================================================================
 export default function InventoryScreen() {
   const t = useT()
-  const [params] = useSearchParams()
-  // Solo al montar: los enlaces de Pulso abren la pestaña y los filtros indicados en la URL. Esos filtros son de la
-  // pestaña abierta: al cambiar de pestaña se descartan (la otra no los hereda y al volver no reaparecen).
-  const [tab, setTab] = useState<TabKey>(() => (params.get('tab') === 'kardex' ? 'kardex' : 'balances'))
-  const [initial, setInitial] = useState(() => initialFiltersFromUrl(params))
+  const [params, setParams] = useSearchParams()
+  // La pestaña va en la URL (`?tab=balances|reconciliation`; el Kárdex, la primera, sin parámetro) para poder enlazarla.
+  const tab = tabFromParam(params.get('tab'))
+  // Solo al montar: los enlaces de Pulso y los reportes abren la pestaña y los filtros indicados en la URL. Esos filtros son
+  // de la pestaña con que se abrió: al cambiar de pestaña se descartan (la otra no los hereda y al volver no reaparecen).
+  const [initial, setInitial] = useState(() => ({ tab, filters: initialFiltersFromUrl(params) }))
+  const initialFor = (key: TabKey) => (initial.tab === key ? initial.filters : NO_INITIAL_FILTERS)
 
   function changeTab(next: TabKey) {
-    if (next !== tab) setInitial(NO_INITIAL_FILTERS)
-    setTab(next)
+    if (next === tab) return
+    setInitial({ tab: next, filters: NO_INITIAL_FILTERS })
+    setParams(next === 'kardex' ? {} : { tab: next }, { replace: true })
   }
   const [adjusting, setAdjusting] = useState(false)
   const [transferring, setTransferring] = useState(false)
@@ -781,22 +797,25 @@ export default function InventoryScreen() {
           value={tab}
           onChange={changeTab}
           tabs={[
-            { key: 'balances', label: t('warehouse.inventory.tabBalances') },
             { key: 'kardex', label: t('warehouse.inventory.tabKardex') },
+            { key: 'balances', label: t('warehouse.inventory.tabBalances') },
             { key: 'reconciliation', label: t('warehouse.inventory.tabReconciliation') },
           ]}
         />
       </div>
 
+      {tab === 'kardex' && (
+        <KardexTab
+          initial={initialFor('kardex')}
+          onSerialTrace={(productPublicId, serialNumber) => setSerialTrace({ productPublicId, serialNumber })}
+        />
+      )}
       {tab === 'balances' && (
         <BalancesTab
-          initial={initial}
+          initial={initialFor('balances')}
           onGenealogy={setGenealogyLotId}
           onSerialTrace={(productPublicId) => setSerialTrace({ productPublicId, serialNumber: '' })}
         />
-      )}
-      {tab === 'kardex' && (
-        <KardexTab initial={initial} onSerialTrace={(productPublicId, serialNumber) => setSerialTrace({ productPublicId, serialNumber })} />
       )}
       {tab === 'reconciliation' && <ReconciliationTab />}
 

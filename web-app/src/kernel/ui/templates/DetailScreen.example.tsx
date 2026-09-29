@@ -24,6 +24,7 @@ import { Panel } from '../Panel'
 import { Spinner } from '../Spinner'
 import { Tabs } from '../Tabs'
 import { toast } from '../toast'
+import { IconUsers } from '../screenIcons'
 
 type ClientDetail = components['schemas']['ClientDetailDto']
 type Contact = components['schemas']['ClientContactDto']
@@ -252,12 +253,12 @@ export default function ClientDetailExample() {
       </div>
 
       {tab === 'profile' && (
-        <Panel title={t('examples.clients.tabProfile')}>
+        <Panel icon={<IconUsers />} title={t('examples.clients.tabProfile')}>
           <ProfileTab client={client} />
         </Panel>
       )}
       {tab === 'contacts' && (
-        <Panel flush title={t('examples.clients.tabContacts')}>
+        <Panel flush icon={<IconUsers />} title={t('examples.clients.tabContacts')}>
           <ContactsTab contacts={client.contacts ?? NO_CONTACTS} />
         </Panel>
       )}

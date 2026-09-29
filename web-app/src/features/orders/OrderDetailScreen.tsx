@@ -8,6 +8,7 @@ import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { DataTable, EmptyState, Panel, Spinner, type DataColumn } from '../../kernel/ui'
 import { useOrderReadonly, type OrderDetailDto } from '../warehouse/api'
+import { IconLayers } from '../../kernel/ui/screenIcons'
 
 const STATUS_DOMAIN = 'OrderStatus'
 const ENTITY_TYPE = 'TRANSPORT_ORDER'
@@ -95,7 +96,7 @@ export default function OrderDetailScreen() {
         </div>
       </div>
 
-      <Panel title={t('orders.detail.tabGeneral')}>
+      <Panel icon={<IconLayers />} title={t('orders.detail.tabGeneral')}>
         <div className="r3">
           <div className="f">
             <label>{t('orders.detail.fields.invoice')}</label>
@@ -152,7 +153,7 @@ export default function OrderDetailScreen() {
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <Panel flush title={t('orders.detail.tabPackages')}>
+        <Panel flush icon={<IconLayers />} title={t('orders.detail.tabPackages')}>
           <DataTable
             label={t('orders.detail.tabPackages')}
             columns={packageColumns}
@@ -164,7 +165,7 @@ export default function OrderDetailScreen() {
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <Panel title={t('orders.detail.tabHistory')}>
+        <Panel icon={<IconLayers />} title={t('orders.detail.tabHistory')}>
           <StatusHistory entityType={ENTITY_TYPE} entityId={order.id ?? 0} domain={STATUS_DOMAIN} />
         </Panel>
       </div>

@@ -89,7 +89,10 @@ describe('activity (lógica pura)', () => {
     expect(to('CYCLE_COUNT', { publicId: null })).toBe('/warehouse/cycle-counts/27')
     expect(to('PICK_BATCH')).toBe(`/warehouse/pick-batches/${pid}`)
     expect(to('PURCHASE_ORDER')).toBe(`/warehouse/purchase-orders/${pid}`)
-    expect(to('WAREHOUSE_TASK')).toBe('/warehouse/tasks')
+    // tareas: a la cola de la pantalla de su tipo (acomodo → Recibo, reabasto → Recolección); cancelada no dice el tipo
+    expect(to('WAREHOUSE_TASK', { code: 'PUTAWAY_DONE' })).toBe('/warehouse/receipts?tab=putaway')
+    expect(to('WAREHOUSE_TASK', { code: 'REPLENISH_DONE' })).toBe('/warehouse/pick-batches?tab=replenish')
+    expect(to('WAREHOUSE_TASK', { code: 'TASK_CANCELLED' })).toBeUndefined()
     expect(to('PRODUCT')).toBe(`/warehouse/products/${pid}`)
     expect(to('WAREHOUSE')).toBe(`/warehouse/warehouses/${pid}`)
     expect(to('CROSSDOCK_PLAN')).toBe('/warehouse/cross-dock-plans/27')
@@ -98,9 +101,9 @@ describe('activity (lógica pura)', () => {
     expect(to('INVENTORY_TRANSACTION', { reference: 'AJ 4471' })).toBeUndefined()
     expect(to('RECEIPT', { publicId: null })).toBeUndefined()
     // PRODUCT con ajuste/transferencia/movimiento de bin va al Kárdex filtrado por producto; los demás códigos a la ficha
-    expect(to('PRODUCT', { code: 'INVENTORY_ADJUSTED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
-    expect(to('PRODUCT', { code: 'INVENTORY_TRANSFERRED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
-    expect(to('PRODUCT', { code: 'BIN_MOVED' })).toBe(`/warehouse/inventory?tab=kardex&product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'INVENTORY_ADJUSTED' })).toBe(`/warehouse/kardex?product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'INVENTORY_TRANSFERRED' })).toBe(`/warehouse/kardex?product=${encodeURIComponent(pid)}`)
+    expect(to('PRODUCT', { code: 'BIN_MOVED' })).toBe(`/warehouse/kardex?product=${encodeURIComponent(pid)}`)
     expect(to('PRODUCT', { code: 'PRODUCT_DEACTIVATED' })).toBe(`/warehouse/products/${pid}`)
     expect(to('PRODUCT', { code: 'INVENTORY_ADJUSTED', publicId: null })).toBeUndefined()
     expect(activityLink(event({ entityType: 'PRODUCT', code: 'INVENTORY_ADJUSTED', publicId: pid }))).toMatchObject({

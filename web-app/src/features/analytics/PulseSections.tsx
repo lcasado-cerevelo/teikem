@@ -163,6 +163,7 @@ function ChartCard({ chart }: { chart: ChartDatum }) {
     () => (chart.points ?? []).map((p) => ({ name: String(p.label ?? p.key ?? ''), value: p.value ?? 0 })),
     [chart.points],
   )
+  const ModuleIcon = MODULE_ICON[moduleGroup(chart.businessModule)]
   const kind = chartKind(chart.chartType)
   const isMoney = chart.isMoney ?? false
   const valueFmt = (v: number) => formatValue(v, isMoney)
@@ -221,7 +222,7 @@ function ChartCard({ chart }: { chart: ChartDatum }) {
   }
 
   return (
-    <Panel className="pulse-chart" title={chart.name} subtitle={caption ?? undefined} actions={<RangeButton kind="chart" item={chart} />}>
+    <Panel className="pulse-chart" icon={<ModuleIcon />} title={chart.name} subtitle={caption ?? undefined} actions={<RangeButton kind="chart" item={chart} />}>
       {content}
     </Panel>
   )

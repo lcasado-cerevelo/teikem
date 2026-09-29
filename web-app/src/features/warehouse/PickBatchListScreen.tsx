@@ -1,11 +1,12 @@
 // Pieza "Recolección y empaque" (Lote F6) — lista de recolecciones. `/warehouse/pick-batches`.
 // Lectura: inventory.view + WMS_LOTSERIAL (por la ruta). Recolectar: warehouse.pick (posición/lote/series opcionales para
 // una recolección explícita; sin ellos el servidor elige por FEFO). Una recolección admite productos de un solo dueño.
-// Manual 06 §7.
+// Manual 06 §7. Pestaña 'Reabasto' (?tab=replenish): cola de tareas REPLENISH (iniciar/completar con warehouse.pick,
+// asignar/cancelar con warehouse.manage) y 'Correr reabasto' (warehouse.pick); ver taskQueue.tsx.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useId, useMemo, useState } from 'react'
 import { useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can } from '../../kernel/access'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
@@ -24,6 +25,7 @@ import {
   QBox,
   SearchSelect,
   Select,
+  Tabs,
   TextArea,
   toast,
   type DataColumn,
@@ -41,6 +43,8 @@ import {
   type LineIssue,
 } from './lineRules'
 import { BinPickerInput, ProductMultiFilter, ProductPickerInput, WarehousePickerInput, type ProductFilterItem } from './pickers'
+import { ReplenishButton, TaskQueue } from './taskQueue'
+import { IconBasket } from '../../kernel/ui/screenIcons'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'PickBatchStatus'
@@ -249,9 +253,9 @@ function CollectModal({ onClose }: { onClose: () => void }) {
 }
 
 // =====================================================================================================================
-// Pantalla
+// Pestaña Recolecciones (paginada en el servidor)
 // =====================================================================================================================
-export default function PickBatchListScreen() {
+function PickBatchesTab() {
   const t = useT()
   const lang = useLang()
   const navigate = useNavigate()
@@ -263,7 +267,6 @@ export default function PickBatchListScreen() {
   const [includeDeleted, setIncludeDeleted] = useState(false)
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
-  const [collecting, setCollecting] = useState(false)
   const search = useDebounced(q.trim())
   const order = useDebounced(orderNumber.trim())
   const invoice = useDebounced(invoiceNumber.trim())
@@ -297,8 +300,9 @@ export default function PickBatchListScreen() {
 
   const columns = useMemo<DataColumn<PickBatchDto>[]>(
     () => [
-      { id: 'number', header: t('warehouse.pickBatches.columns.number'), cell: (b) => <span className="ref">{b.number}</span>, card: 'title' },
-      { id: 'warehouse', header: t('warehouse.pickBatches.columns.warehouse'), cell: (b) => b.warehouseCode },
+      // Orden en el cliente: la lista es paginada por el servidor (sin parámetro de orden), así que solo reacomoda la página visible.
+      { id: 'number', header: t('warehouse.pickBatches.columns.number'), cell: (b) => <span className="ref">{b.number}</span>, sortValue: (b) => b.number, card: 'title' },
+      { id: 'warehouse', header: t('warehouse.pickBatches.columns.warehouse'), cell: (b) => b.warehouseCode, sortValue: (b) => b.warehouseCode },
       {
         id: 'status',
         header: t('warehouse.pickBatches.columns.status'),
@@ -313,31 +317,28 @@ export default function PickBatchListScreen() {
             )}
           </>
         ),
+        sortValue: (b) => b.status ?? b.statusCode,
       },
-      { id: 'numbers', header: t('warehouse.pickBatches.columns.numbers'), cell: (b) => b.displayNumbers ?? '—' },
-      { id: 'client', header: t('warehouse.pickBatches.columns.client'), cell: (b) => b.clientName ?? t('warehouse.pickBatches.own') },
-      { id: 'qty', header: t('warehouse.pickBatches.columns.totalQty'), cell: (b) => formatNumber(b.totalQty, lang), align: 'end' },
-      { id: 'collectedAt', header: t('warehouse.pickBatches.columns.collectedAt'), cell: (b) => formatDateTime(b.collectedAtUtc, lang) },
+      { id: 'numbers', header: t('warehouse.pickBatches.columns.numbers'), cell: (b) => b.displayNumbers ?? '—', sortValue: (b) => b.displayNumbers },
+      {
+        id: 'client',
+        header: t('warehouse.pickBatches.columns.client'),
+        cell: (b) => b.clientName ?? t('warehouse.pickBatches.own'),
+        sortValue: (b) => b.clientName ?? t('warehouse.pickBatches.own'),
+      },
+      { id: 'qty', header: t('warehouse.pickBatches.columns.totalQty'), cell: (b) => formatNumber(b.totalQty, lang), sortValue: (b) => b.totalQty, align: 'end' },
+      {
+        id: 'collectedAt',
+        header: t('warehouse.pickBatches.columns.collectedAt'),
+        cell: (b) => formatDateTime(b.collectedAtUtc, lang),
+        sortValue: (b) => b.collectedAtUtc,
+      },
     ],
     [t, lang],
   )
 
   return (
-    <div className="wrap">
-      <div className="head">
-        <div>
-          <h1>{t('warehouse.pickBatches.title')}</h1>
-          <p>{t('warehouse.pickBatches.subtitle')}</p>
-        </div>
-        <div className="act">
-          <Can perm="warehouse.pick">
-            <button type="button" className="btn flow" onClick={() => setCollecting(true)}>
-              {t('warehouse.pickBatches.collect')}
-            </button>
-          </Can>
-        </div>
-      </div>
-
+    <>
       <Filters
         onClear={() => {
           setPage(1)
@@ -358,7 +359,7 @@ export default function PickBatchListScreen() {
         <ToggleFilter label={t('warehouse.pickBatches.filters.includeDeleted')} checked={includeDeleted} onChange={reset(setIncludeDeleted)} />
       </Filters>
 
-      <Panel flush title={t('warehouse.pickBatches.title')} subtitle={data ? t('warehouse.pickBatches.count', { count: data.total ?? 0 }) : undefined}>
+      <Panel flush icon={<IconBasket />} title={t('warehouse.pickBatches.title')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
           <QBox value={q} onChange={reset(setQ)} placeholder={t('warehouse.pickBatches.searchPlaceholder')} />
         </div>
@@ -382,6 +383,61 @@ export default function PickBatchListScreen() {
           />
         )}
       </Panel>
+    </>
+  )
+}
+
+// =====================================================================================================================
+// Pantalla: pestañas Recolecciones y Reabasto (tareas REPLENISH, antes en 'Tareas de almacén', que no está en la maqueta)
+// =====================================================================================================================
+const TAB_KEYS = ['batches', 'replenish'] as const
+type TabKey = (typeof TAB_KEYS)[number]
+const isTabKey = (v: string | null): v is TabKey => (TAB_KEYS as readonly string[]).includes(v ?? '')
+const REPLENISH_TYPES = ['REPLENISH'] as const
+
+export default function PickBatchListScreen() {
+  const t = useT()
+  // La pestaña va en la URL (?tab=replenish) para poder enlazarla (Actividad reciente).
+  const [params, setParams] = useSearchParams()
+  const raw = params.get('tab')
+  const tab: TabKey = isTabKey(raw) ? raw : 'batches'
+  const setTab = (key: TabKey) => setParams(key === 'batches' ? {} : { tab: key }, { replace: true })
+  const [collecting, setCollecting] = useState(false)
+
+  return (
+    <div className="wrap">
+      <div className="head">
+        <div>
+          <h1>{t('warehouse.pickBatches.title')}</h1>
+          <p>{t('warehouse.pickBatches.subtitle')}</p>
+        </div>
+        <div className="act">
+          {tab === 'batches' ? (
+            <Can perm="warehouse.pick">
+              <button type="button" className="btn flow" onClick={() => setCollecting(true)}>
+                {t('warehouse.pickBatches.collect')}
+              </button>
+            </Can>
+          ) : (
+            <ReplenishButton />
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <Tabs<TabKey>
+          label={t('warehouse.pickBatches.title')}
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'batches', label: t('warehouse.pickBatches.tabBatches') },
+            { key: 'replenish', label: t('warehouse.pickBatches.tabReplenish') },
+          ]}
+        />
+      </div>
+
+      {tab === 'batches' && <PickBatchesTab />}
+      {tab === 'replenish' && <TaskQueue types={REPLENISH_TYPES} title={t('warehouse.pickBatches.replenishTitle')} icon={<IconBasket />} />}
 
       {collecting && <CollectModal onClose={() => setCollecting(false)} />}
     </div>

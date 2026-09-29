@@ -24,6 +24,7 @@ import { Panel } from '../Panel'
 import { QBox } from '../QBox'
 import { SearchSelect } from '../SearchSelect'
 import { toast } from '../toast'
+import { IconUsers } from '../screenIcons'
 
 type Client = components['schemas']['ClientListItemDto']
 
@@ -241,7 +242,7 @@ export default function ClientsListExample() {
         <SearchSelect label={t('examples.clients.status')} options={statusOptions} value={statuses} onChange={setStatuses} />
       </Filters>
 
-      <Panel flush title={t('examples.clients.title')} subtitle={data ? t('examples.clients.count', { count: rows.length }) : undefined}>
+      <Panel flush icon={<IconUsers />} title={t('examples.clients.title')} badge={data ? rows.length : undefined}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} />
         </div>

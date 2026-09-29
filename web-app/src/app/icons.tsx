@@ -51,57 +51,8 @@ export function IconGlobe() {
 }
 
 // Íconos de los grupos del menú: los de la maqueta (`NAV` en Diseño/teikem-mockups.html: box, layers, cash, users,
-// chart, gear, users).
-export function IconBox() {
-  return (
-    <Svg>
-      <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" />
-    </Svg>
-  )
-}
-
-export function IconLayers() {
-  return (
-    <Svg>
-      <path d="M12 3 2 8l10 5 10-5zM2 13l10 5 10-5M2 18l10 5 10-5" />
-    </Svg>
-  )
-}
-
-export function IconCash() {
-  return (
-    <Svg>
-      <rect x="2" y="6" width="20" height="12" rx="2" />
-      <circle cx="12" cy="12" r="2.5" />
-    </Svg>
-  )
-}
-
-export function IconUsers() {
-  return (
-    <Svg>
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.6a3 3 0 0 1 0 5.8M17 20a5.5 5.5 0 0 0-3-4.9" />
-    </Svg>
-  )
-}
-
-export function IconChart() {
-  return (
-    <Svg>
-      <path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9" />
-    </Svg>
-  )
-}
-
-export function IconGear() {
-  return (
-    <Svg>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 13a7 7 0 0 0 0-2l1.8-1.4-2-3.4-2.1.9a7 7 0 0 0-1.7-1L15 3h-4l-.3 2.1a7 7 0 0 0-1.7 1l-2.1-.9-2 3.4L6.6 11a7 7 0 0 0 0 2l-1.8 1.4 2 3.4 2.1-.9a7 7 0 0 0 1.7 1L11 21h4l.3-2.1a7 7 0 0 0 1.7-1l2.1.9 2-3.4z" />
-    </Svg>
-  )
-}
+// chart, gear, users). Viven en el kit (`kernel/ui/screenIcons.tsx`) porque también los usa la cabecera de `Panel`.
+export { IconBox, IconCash, IconChart, IconGear, IconLayers, IconUsers } from '../kernel/ui/screenIcons'
 
 // Cabecera: buscador (lupa) y tema claro/oscuro.
 export function IconSearch() {

@@ -67,6 +67,12 @@ const LOOKUPS: Record<string, unknown> = {
   ],
 }
 
+const ROLES = [
+  { id: 3, name: 'Supervisores', isActive: true },
+  { id: 4, name: 'Rol viejo', isActive: false },
+]
+const USERS = [{ id: 7, fullName: 'Beto Bodega', email: 'beto@teikem.local' }]
+
 function baseHandler(): Handler {
   return (path) => {
     if (path === '/api/v1/analytics/data-sources') return DATA_SOURCES
@@ -75,16 +81,20 @@ function baseHandler(): Handler {
       return LOOKUPS[entity] ?? []
     }
     if (path === '/api/v1/analytics/indicators') return { id: 99 }
+    if (path === '/api/v1/analytics/charts') return { id: 98 }
+    if (path === '/api/v1/roles') return ROLES
+    if (path === '/api/v1/users') return USERS
+    if (path === '/api/v1/analytics/reports/ORDERS/preview') return { rows: [{ status: 'OPEN', count_rows: 4 }], total: 1 }
     return []
   }
 }
 
-function renderEditor(kind: 'indicator' | 'chart', onClose = vi.fn()) {
+function renderEditor(kind: 'indicator' | 'chart', onClose = vi.fn(), permissions = ['analytics.manage']) {
   const client = createQueryClient()
   client.setDefaultOptions({ queries: { retry: false } })
   return render(
     <QueryClientProvider client={client}>
-      <AccessProvider permissions={['analytics.manage']} modules={['ANALYTICS']}>
+      <AccessProvider permissions={permissions} modules={['ANALYTICS']}>
         <DefinitionEditor kind={kind} definition={null} onClose={onClose} />
       </AccessProvider>
     </QueryClientProvider>,
@@ -147,5 +157,80 @@ describe('DefinitionEditor', () => {
     await user.selectOptions(screen.getByLabelText(/Fuente de datos/), '')
     await waitFor(() => expect(screen.queryByText('es igual a')).not.toBeInTheDocument())
     expect(screen.getByLabelText(/^Campo/)).toHaveDisplayValue('Seleccione…')
+  })
+
+  it('Fase 10a: "Compartido" comparte con roles aunque no pueda listar usuarios (indicador)', async () => {
+    const user = userEvent.setup()
+    renderEditor('indicator')
+    await user.type(screen.getByLabelText(/Nombre del indicador/), 'Por rol')
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Órdenes' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText(/Fuente de datos/), 'ORDERS')
+    await user.selectOptions(screen.getByLabelText(/Quién puede verlo/), 'SHARED')
+
+    // Sin admin.users: no hay selector de usuarios (aviso), pero sí el de roles.
+    expect(screen.getByText('Para compartir con personas específicas se necesita el permiso de administrar usuarios.')).toBeInTheDocument()
+    await user.click(screen.getByLabelText('Compartir con (roles)'))
+    // Solo roles activos.
+    expect(screen.queryByRole('option', { name: 'Rol viejo' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('option', { name: 'Supervisores' }))
+
+    await user.click(screen.getByRole('button', { name: 'Guardar indicador' }))
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/indicators')).toBe(true))
+    const body = mock.writes.find((w) => w.path === '/api/v1/analytics/indicators')?.body as { visibility: string; shares: unknown[] }
+    expect(body.visibility).toBe('SHARED')
+    expect(body.shares).toEqual([{ userId: null, roleId: 3, canEdit: false }])
+  })
+
+  it('Fase 10a: con admin.users combina usuarios y roles en `shares` (gráfico)', async () => {
+    const user = userEvent.setup()
+    renderEditor('chart', vi.fn(), ['analytics.manage', 'admin.users'])
+    await user.type(screen.getByLabelText(/Nombre del gráfico/), 'Compartido')
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Órdenes' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText(/Fuente de datos/), 'ORDERS')
+    await user.selectOptions(screen.getByLabelText(/Agrupar por/), 'status')
+    await user.selectOptions(screen.getByLabelText(/Quién puede verlo/), 'SHARED')
+
+    await user.click(screen.getByLabelText('Compartir con (usuarios)'))
+    await user.click(await screen.findByRole('option', { name: /Beto Bodega/ }))
+    await user.click(screen.getByLabelText('Compartir con (roles)'))
+    await user.click(screen.getByRole('option', { name: 'Supervisores' }))
+
+    await user.click(screen.getByRole('button', { name: 'Guardar gráfico' }))
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts')).toBe(true))
+    const body = mock.writes.find((w) => w.path === '/api/v1/analytics/charts')?.body as { shares: unknown[] }
+    expect(body.shares).toEqual([
+      { userId: 7, roleId: null, canEdit: false },
+      { userId: null, roleId: 3, canEdit: false },
+    ])
+  })
+
+  it('Fase 10b: el gráfico no tiene selector de módulo (lo pone la fuente) y muestra la vista previa en vivo', async () => {
+    const user = userEvent.setup()
+    renderEditor('chart')
+    expect(screen.queryByLabelText(/Módulo de negocio/)).not.toBeInTheDocument()
+    expect(screen.getByText('Elija la fuente de datos, el campo para agrupar y el cálculo para ver el gráfico.')).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/Nombre del gráfico/), 'Órdenes por estado')
+    await waitFor(() => expect(screen.getByRole('option', { name: 'Órdenes' })).toBeInTheDocument())
+    await user.selectOptions(screen.getByLabelText(/Fuente de datos/), 'ORDERS')
+    await user.selectOptions(screen.getByLabelText(/Agrupar por/), 'status')
+
+    // La vista previa consulta el endpoint de vista previa con la agrupación y el cálculo del formulario.
+    expect(await screen.findByText('OPEN')).toBeInTheDocument()
+    const preview = mock.writes.find((w) => w.path === '/api/v1/analytics/reports/ORDERS/preview')
+    const previewBody = preview?.body as { groupJson?: string } | undefined
+    expect(JSON.parse(previewBody?.groupJson ?? '""')).toEqual({ by: ['status'], aggregates: [{ fn: 'COUNT', field: null }] })
+
+    await user.click(screen.getByRole('button', { name: 'Guardar gráfico' }))
+    await waitFor(() => expect(mock.writes.some((w) => w.path === '/api/v1/analytics/charts')).toBe(true))
+    const body = mock.writes.find((w) => w.path === '/api/v1/analytics/charts')?.body as { businessModule: string; groupByField: string }
+    expect(body.businessModule).toBe('OPERATIONS')
+    expect(body.groupByField).toBe('status')
+  })
+
+  it('Fase 10b: el indicador conserva el selector de módulo y no tiene vista previa', async () => {
+    renderEditor('indicator')
+    expect(screen.getByLabelText(/Módulo de negocio/)).toBeInTheDocument()
+    expect(screen.queryByText('Vista previa')).not.toBeInTheDocument()
   })
 })

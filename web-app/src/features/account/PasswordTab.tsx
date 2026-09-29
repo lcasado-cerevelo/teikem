@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { useT } from '../../kernel/i18n/useT'
 import { Field, Form, Panel, TextInput, toast } from '../../kernel/ui'
 import { useChangePassword } from './api'
+import { IconLock } from '../../kernel/ui/screenIcons'
 
 /** Longitud mínima de Identity (DependencyInjection: Password.RequiredLength = 12). El resto lo valida el servidor. */
 export const MIN_PASSWORD_LENGTH = 12
@@ -34,7 +35,7 @@ export function PasswordTab() {
   const busy = form.formState.isSubmitting
 
   return (
-    <Panel title={t('account.password.title')} subtitle={t('account.password.subtitle')} className="acct-narrow">
+    <Panel icon={<IconLock />} title={t('account.password.title')} subtitle={t('account.password.subtitle')} className="acct-narrow">
       <Form
         form={form}
         onSubmit={async (v) => {

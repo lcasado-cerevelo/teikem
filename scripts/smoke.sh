@@ -2988,6 +2988,8 @@ expect 403 "$(req POST /api/v1/receipts "{\"purchaseOrderPublicId\":\"$PO1P\",\"
 receivepo "$PO1P" 8 >/dev/null
 expect 200 "$(req GET "/api/v1/purchase-orders/$PO1P")" | jq -e '.statusCode=="PARTIAL"' >/dev/null || fail "PO1 PARTIAL"
 expect 200 "$(req GET /api/v1/purchase-orders/shortages)" | jq -e --arg p "$PO1P" 'any(.[]; .publicId==$p and .qtyPending==2)' >/dev/null || fail "faltante de PO1"
+# Fase 7 (Ajustes de inventario): el resumen trae el almacén de la orden (ajuste manual) y sus líneas en faltante.
+expect 200 "$(req GET /api/v1/purchase-orders/shortages)" | jq -e --arg p "$PO1P" --arg w "$W6P" 'any(.[]; .publicId==$p and .warehousePublicId==$w and .warehouseCode!="" and .linesWithShortage==1)' >/dev/null || fail "almacén y líneas en el resumen de faltantes de PO1"
 TMP6=$(mktemp -d)
 for i in 1 2; do req POST "/api/v1/purchase-orders/$PO1P/lines/$PO1L/resolve" '{"action":"CLOSE"}' > "$TMP6/$i" & done; wait
 CODES=$(codes "$TMP6"/1 "$TMP6"/2); rm -rf "$TMP6"

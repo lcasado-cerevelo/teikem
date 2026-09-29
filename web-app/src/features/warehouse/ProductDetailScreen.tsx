@@ -1,291 +1,20 @@
-// Pantalla B (Lote F6) — ficha de producto. `/warehouse/products/:publicId`, pestañas Datos / Lotes / Series.
-// PATCH /api/v1/products/{publicId} (inventory.manage); baja/reactivación POST .../deactivate|reactivate.
-import { zodResolver } from '@hookform/resolvers/zod'
+// Pantalla B (Lote F6) — vista de un producto. `/warehouse/products/:publicId`, pestañas Lotes / Series (solo lectura).
+// Desde la Fase 5 de la reconciliación con la maqueta los datos del producto se ven y se editan SOLO en el modal único
+// ProductEditorModal (la maqueta no tiene ficha aparte): al entrar sin `?tab=` (p. ej. un enlace de Actividad reciente) el
+// modal se abre solo; "Editar producto" lo vuelve a abrir. `?tab=lots|serials` (lo que usan "Ver lotes"/"Ver series" del
+// modal) abre esa pestaña sin el modal. Aquí la pestaña siempre va en la URL: sin parámetro significa "abrir el modal".
 import { useMemo, useState } from 'react'
-import { useController, useForm, useFormContext, useWatch } from 'react-hook-form'
-import { Link, useParams } from 'react-router-dom'
-import { z } from 'zod'
-import { Can, useCan } from '../../kernel/access'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useCan } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
-import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
-import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
+import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { useFieldInfo } from '../../kernel/ui/formContext'
-import {
-  Chip,
-  ClientPickerInput,
-  ConfirmDialog,
-  DataTable,
-  EmptyState,
-  Field,
-  Filters,
-  Form,
-  NumberInput,
-  Panel,
-  QBox,
-  Select,
-  Spinner,
-  Tabs,
-  TextInput,
-  matchesQ,
-  toast,
-  type DataColumn,
-} from '../../kernel/ui'
-import {
-  useProduct,
-  useProductCategories,
-  useProductLots,
-  useProductSerials,
-  useSetProductActive,
-  useUpdateProduct,
-  useWarehouseBins,
-  type LotDto,
-  type ProductDetailDto,
-  type SerialDto,
-} from './api'
-import { WarehousePicker } from './pickers'
-import { moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
+import { Chip, DataTable, EmptyState, Filters, Panel, QBox, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
+import { useProduct, useProductLots, useProductSerials, type LotDto, type SerialDto } from './api'
+import { ProductEditorModal } from './ProductEditorModal'
+import { IconLayers } from '../../kernel/ui/screenIcons'
 
-type TabKey = 'data' | 'lots' | 'serials'
-const PICKING_ZONE = 'PICKING'
-
-/** Nivel de indentación a partir de la ruta ("Raíz / Hija / Nieta") que arma el servidor (réplica de ProductCategoriesPanel). */
-function levelOf(path: string | null | undefined): number {
-  if (!path) return 0
-  return path.split('/').length - 1
-}
-
-
-// ---- Pestaña Datos ----
-function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetailDto }) {
-  const t = useT()
-  const canEdit = useCan('inventory.manage')
-  const product = detail.product!
-  const update = useUpdateProduct()
-  const { data: trackingTypes = [] } = useLookups('TrackingType')
-  const { data: uoms = [] } = useLookups('UnitOfMeasure')
-  const { data: categories = [] } = useProductCategories()
-  const categoryOptions = useMemo(
-    () =>
-      categories
-        .filter((c) => c.isActive)
-        .map((c) => ({ value: String(c.id), label: '  '.repeat(levelOf(c.path)) + (c.name ?? '') })),
-    [categories],
-  )
-  const hasMovements = detail.hasMovements === true
-
-  const schema = useMemo(
-    () =>
-      z
-        .object({
-          name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
-          barcode: z.string().trim().max(60, t('warehouse.products.errors.barcodeMax')),
-          categoryId: z.string(),
-          trackingType: z.string(),
-          baseUom: z.string(),
-          ownerClientPublicId: z.string().nullable(),
-          purchaseCost: moneySchema(t, 'cost'),
-          salePrice: moneySchema(t, 'price'),
-          weightKg: weightKgSchema(t),
-          volumeM3: volumeM3Schema(t),
-          minQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
-          minPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
-          maxPickQty: z.number(t('warehouse.products.errors.numberInvalid')).min(0, t('warehouse.products.errors.minNegative')).nullable(),
-          preferredWarehousePublicId: z.string().nullable(),
-          preferredBinId: z.string(),
-        })
-        .refine((v) => v.maxPickQty == null || v.minPickQty == null || v.maxPickQty >= v.minPickQty, {
-          path: ['maxPickQty'],
-          message: t('warehouse.products.errors.maxPickLtMin'),
-        }),
-    [t],
-  )
-
-  const form = useForm({
-    resolver: zodResolver(schema),
-    values: {
-      name: product.name ?? '',
-      barcode: product.barcode ?? '',
-      categoryId: product.categoryId != null ? String(product.categoryId) : '',
-      trackingType: product.trackingTypeCode ?? '',
-      baseUom: product.baseUomCode ?? '',
-      ownerClientPublicId: product.ownerClientPublicId ?? null,
-      purchaseCost: product.purchaseCost ?? null,
-      salePrice: product.salePrice ?? null,
-      weightKg: detail.weightKg ?? null,
-      volumeM3: detail.volumeM3 ?? null,
-      minQty: product.minQty ?? null,
-      minPickQty: detail.minPickQty ?? null,
-      maxPickQty: detail.maxPickQty ?? null,
-      preferredWarehousePublicId: detail.preferredWarehousePublicId ?? null,
-      preferredBinId: detail.preferredBinId != null ? String(detail.preferredBinId) : '',
-    },
-  })
-
-  const preferredWarehousePublicId = useWatch({ control: form.control, name: 'preferredWarehousePublicId' })
-  const { data: bins = [] } = useWarehouseBins(preferredWarehousePublicId, {}, { enabled: Boolean(preferredWarehousePublicId) })
-  const binOptions = useMemo(() => bins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [bins])
-  const { save: saveCustomFields } = useSaveCustomFields('PRODUCT')
-
-  return (
-    <Form
-      form={form}
-      onSubmit={async (v) => {
-        const dirty = form.formState.dirtyFields
-        const minPickQty = v.minPickQty
-        if (minPickQty != null && v.preferredBinId) {
-          const bin = bins.find((b) => String(b.id) === v.preferredBinId)
-          if (bin && bin.zoneTypeCode !== PICKING_ZONE) {
-            form.setError('preferredBinId', { type: 'server', message: t('warehouse.products.errors.pickZoneRequired') })
-            return
-          }
-        }
-        await update.mutateAsync({
-          publicId,
-          body: {
-            name: v.name,
-            barcode: v.barcode || null,
-            clearBarcode: v.barcode.trim() === '' ? true : null,
-            categoryId: v.categoryId ? Number(v.categoryId) : null,
-            clearCategory: v.categoryId ? null : true,
-            trackingType: hasMovements ? null : v.trackingType || null,
-            baseUom: hasMovements ? null : v.baseUom || null,
-            ownerClientPublicId: hasMovements ? null : v.ownerClientPublicId,
-            clearOwner: hasMovements || v.ownerClientPublicId ? null : true,
-            purchaseCost: v.purchaseCost,
-            salePrice: v.salePrice,
-            weightKg: v.weightKg,
-            volumeM3: v.volumeM3,
-            minQty: v.minQty,
-            minPickQty: v.minPickQty,
-            maxPickQty: v.maxPickQty,
-            preferredWarehousePublicId: v.preferredWarehousePublicId,
-            preferredBinId: v.preferredBinId ? Number(v.preferredBinId) : null,
-            clearPreferred: dirty.preferredWarehousePublicId && !v.preferredWarehousePublicId ? true : null,
-            rowVersion: detail.rowVersion,
-          },
-        })
-        const id = product.id
-        if (typeof id === 'number' && id > 0) {
-          const problem = await saveCustomFields(id, form)
-          if (problem) toast.error(problem.title)
-        }
-        toast.success(t('warehouse.products.saved'))
-      }}
-    >
-      <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <div className="r2">
-          <div className="f">
-            <label htmlFor="product-sku-locked">{t('warehouse.products.fields.sku')}</label>
-            <input id="product-sku-locked" value={product.sku ?? ''} disabled />
-            <p className="help">{t('warehouse.products.skuLocked')}</p>
-          </div>
-          <Field name="name" label={t('warehouse.products.fields.name')} required>
-            <TextInput maxLength={200} />
-          </Field>
-        </div>
-        <div className="r2">
-          <Field name="barcode" label={t('warehouse.products.fields.barcode')}>
-            <TextInput maxLength={60} />
-          </Field>
-          <Field name="categoryId" label={t('warehouse.products.fields.category')}>
-            <Select options={categoryOptions} placeholder={t('warehouse.products.fields.none')} />
-          </Field>
-        </div>
-        <div className="r2">
-          <Field
-            name="trackingType"
-            label={t('warehouse.products.fields.trackingType')}
-            help={hasMovements ? t('warehouse.products.movementsLock') : undefined}
-          >
-            <Select
-              options={trackingTypes.map((o) => ({ value: o.code, label: o.label }))}
-              placeholder={t('warehouse.products.fields.none')}
-              disabled={hasMovements}
-            />
-          </Field>
-          <div aria-hidden="true" />
-        </div>
-        <div className="r2">
-          <Field
-            name="baseUom"
-            label={t('warehouse.products.fields.baseUom')}
-            help={hasMovements ? t('warehouse.products.movementsLock') : undefined}
-          >
-            <Select options={uoms.map((o) => ({ value: o.code, label: o.label }))} disabled={hasMovements} />
-          </Field>
-          <Field
-            name="ownerClientPublicId"
-            label={t('warehouse.products.fields.owner')}
-            help={hasMovements ? t('warehouse.products.movementsLock') : undefined}
-          >
-            <ClientPickerInput disabled={hasMovements} />
-          </Field>
-        </div>
-        <div className="r2">
-          <Field name="purchaseCost" label={t('warehouse.products.fields.purchaseCost')}>
-            <NumberInput min={0} />
-          </Field>
-          <Field name="salePrice" label={t('warehouse.products.fields.salePrice')}>
-            <NumberInput min={0} />
-          </Field>
-        </div>
-        <div className="r2">
-          <Field name="weightKg" label={t('warehouse.products.fields.weightKg')}>
-            <NumberInput min={0} />
-          </Field>
-          <Field name="volumeM3" label={t('warehouse.products.fields.volumeM3')}>
-            <NumberInput min={0} />
-          </Field>
-        </div>
-        <div className="r2">
-          <Field name="minQty" label={t('warehouse.products.fields.minQty')}>
-            <NumberInput min={0} />
-          </Field>
-          <div className="r2">
-            <Field name="minPickQty" label={t('warehouse.products.fields.minPickQty')}>
-              <NumberInput min={0} />
-            </Field>
-            <Field name="maxPickQty" label={t('warehouse.products.fields.maxPickQty')}>
-              <NumberInput min={0} />
-            </Field>
-          </div>
-        </div>
-        <div className="r2">
-          <Field name="preferredWarehousePublicId" label={t('warehouse.products.fields.preferredWarehouse')}>
-            <WarehousePickerField />
-          </Field>
-          <Field name="preferredBinId" label={t('warehouse.products.fields.preferredBin')}>
-            <Select options={binOptions} placeholder={t('warehouse.products.fields.none')} disabled={!preferredWarehousePublicId} />
-          </Field>
-        </div>
-        <CustomFieldsForm entityType="PRODUCT" entityId={product.id} form={form} disabled={!canEdit} />
-      </fieldset>
-      <Can perm="inventory.manage">
-        <div className="form-acts">
-          <button type="submit" className="btn flow" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
-            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
-          </button>
-        </div>
-      </Can>
-    </Form>
-  )
-}
-
-/** WarehousePicker (de este módulo) no tiene variante ...Input: se conecta a mano dentro de un <Field>. */
-function WarehousePickerField() {
-  const info = useFieldInfo('WarehousePickerAdapter')
-  const { control } = useFormContext()
-  const { field } = useController({ name: info.name, control })
-  return (
-    <WarehousePicker
-      id={info.id}
-      value={(field.value as string | null | undefined) ?? null}
-      onChange={(publicId) => field.onChange(publicId)}
-      invalid={info.invalid}
-    />
-  )
-}
+type TabKey = 'lots' | 'serials'
 
 // ---- Pestaña Lotes ----
 function LotsTab({ publicId }: { publicId: string }) {
@@ -344,8 +73,8 @@ function SerialsTab({ publicId }: { publicId: string }) {
     <>
       <Filters onClear={() => setStatus('')}>
         <div className="f">
-          <label>{t('warehouse.products.serials.status')}</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <label htmlFor="product-serial-status">{t('warehouse.products.serials.status')}</label>
+          <select id="product-serial-status" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">{t('ui.filters.all')}</option>
             {statuses.map((s) => (
               <option key={s.code} value={s.code}>
@@ -375,10 +104,12 @@ function SerialsTab({ publicId }: { publicId: string }) {
 export default function ProductDetailScreen() {
   const t = useT()
   const { publicId = '' } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const canManage = useCan('inventory.manage')
   const { data: detail, isLoading, error } = useProduct(publicId)
-  const setActive = useSetProductActive()
-  const [tab, setTab] = useState<TabKey>('data')
-  const [confirm, setConfirm] = useState<'deactivate' | 'reactivate' | null>(null)
+  const tab: TabKey = searchParams.get('tab') === 'serials' ? 'serials' : 'lots'
+  // sin `?tab=` al entrar, el producto se muestra en su modal (la maqueta no tiene ficha aparte)
+  const [editing, setEditing] = useState(() => !searchParams.has('tab'))
 
   if (isLoading) return <Spinner block />
   if (error || !detail || !detail.product) {
@@ -406,17 +137,12 @@ export default function ProductDetailScreen() {
           <p>{!product.isActive && <Chip tone="fail">{t('warehouse.products.inactive')}</Chip>}</p>
         </div>
         <div className="act">
-          <Can perm="inventory.manage">
-            {product.isActive ? (
-              <button type="button" className="btn danger" onClick={() => setConfirm('deactivate')}>
-                {t('warehouse.products.deactivate')}
-              </button>
-            ) : (
-              <button type="button" className="btn" onClick={() => setConfirm('reactivate')}>
-                {t('warehouse.products.reactivate')}
-              </button>
-            )}
-          </Can>
+          <Link className="btn" to="/warehouse/products">
+            {t('warehouse.products.back')}
+          </Link>
+          <button type="button" className="btn flow" onClick={() => setEditing(true)}>
+            {canManage ? t('warehouse.products.editor.editTitle') : t('warehouse.products.editor.viewData')}
+          </button>
         </div>
       </div>
 
@@ -424,45 +150,26 @@ export default function ProductDetailScreen() {
         <Tabs<TabKey>
           label={t('warehouse.products.title')}
           value={tab}
-          onChange={setTab}
+          onChange={(next) => setSearchParams({ tab: next }, { replace: true })}
           tabs={[
-            { key: 'data', label: t('warehouse.products.tabData') },
             { key: 'lots', label: t('warehouse.products.tabLots') },
             { key: 'serials', label: t('warehouse.products.tabSerials') },
           ]}
         />
       </div>
 
-      {tab === 'data' && (
-        <Panel title={t('warehouse.products.tabData')}>
-          <DataTab publicId={publicId} detail={detail} />
-        </Panel>
-      )}
       {tab === 'lots' && (
-        <Panel flush title={t('warehouse.products.tabLots')}>
+        <Panel flush icon={<IconLayers />} title={t('warehouse.products.tabLots')}>
           <LotsTab publicId={publicId} />
         </Panel>
       )}
       {tab === 'serials' && (
-        <Panel flush title={t('warehouse.products.tabSerials')}>
+        <Panel flush icon={<IconLayers />} title={t('warehouse.products.tabSerials')}>
           <SerialsTab publicId={publicId} />
         </Panel>
       )}
 
-      <ConfirmDialog
-        open={confirm !== null}
-        tone={confirm === 'deactivate' ? 'danger' : 'flow'}
-        title={confirm === 'deactivate' ? t('warehouse.products.deactivateTitle') : t('warehouse.products.reactivateTitle')}
-        message={t(confirm === 'deactivate' ? 'warehouse.products.deactivateBody' : 'warehouse.products.reactivateBody', {
-          name: product.name ?? '',
-        })}
-        confirmLabel={confirm === 'deactivate' ? t('warehouse.products.deactivate') : t('warehouse.products.reactivate')}
-        onConfirm={async () => {
-          await setActive.mutateAsync({ publicId, active: confirm === 'reactivate' })
-          toast.success(confirm === 'deactivate' ? t('warehouse.products.deactivated') : t('warehouse.products.reactivated'))
-        }}
-        onClose={() => setConfirm(null)}
-      />
+      <ProductEditorModal open={editing} product={detail} onClose={() => setEditing(false)} />
     </div>
   )
 }

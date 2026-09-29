@@ -4,6 +4,7 @@ import { useLang, useT } from '../../kernel/i18n/useT'
 import { Chip, ConfirmDialog, DataTable, EmptyState, Panel, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useRevokeSession, useSessions, type SessionDto } from './api'
 import { describeDevice, formatDateTime } from './format'
+import { IconClock } from '../../kernel/ui/screenIcons'
 
 const NO_SESSIONS: SessionDto[] = []
 
@@ -69,7 +70,7 @@ export function SessionsTab() {
 
   return (
     <>
-      <Panel flush title={t('account.sessions.title')} subtitle={t('account.sessions.subtitle')}>
+      <Panel flush icon={<IconClock />} title={t('account.sessions.title')} subtitle={t('account.sessions.subtitle')}>
         {sessions.isError ? (
           <EmptyState
             title={applyProblemDetails(sessions.error).title}

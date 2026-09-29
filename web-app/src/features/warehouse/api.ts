@@ -54,6 +54,7 @@ export type SupplierDto = Schemas['SupplierDto']
 export type PurchaseOrderDto = Schemas['PurchaseOrderDto']
 export type PoShortageSummaryDto = Schemas['PoShortageSummaryDto']
 export type ShortageLineDto = Schemas['ShortageLineDto']
+export type ShortageResolveResultDto = Schemas['ShortageResolveResultDto']
 export type DockAppointmentDto = Schemas['DockAppointmentDto']
 export type CrossDockPlanDto = Schemas['CrossDockPlanDto']
 export type CrossDockCandidateDto = Schemas['CrossDockCandidateDto']
@@ -322,6 +323,54 @@ export function useProducts(query: GetQuery<'/api/v1/products'> = {}, options?: 
   })
 }
 
+/** Páginas de 200 (tope del API) y máximo de páginas que lee el conteo de productos con serie (5 000 productos). */
+export const SERIAL_COUNT_PAGE = 200
+export const SERIAL_COUNT_MAX_PAGES = 25
+
+/**
+ * Productos activos con rastreo por serie (`trackingTypeCode === 'SERIAL'`). El API no filtra la lista por rastreo, así que
+ * se leen todas las páginas de `GET /api/v1/products?activeOnly=true` (200 por página, hasta `SERIAL_COUNT_MAX_PAGES`) y se
+ * cuentan en el cliente: el conteo es exacto salvo `truncated` (más productos de los leídos). Pendiente de backend: un
+ * filtro `trackingType` en la lista para pedirlo con `take=1` como los demás KPIs.
+ */
+export function useSerialProductCount(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.products[0], { activeOnly: true, allPages: true, count: 'SERIAL' }],
+    queryFn: async () => {
+      let count = 0
+      let read = 0
+      let total = 0
+      for (let page = 0; page < SERIAL_COUNT_MAX_PAGES; page++) {
+        const query = { activeOnly: true, skip: page * SERIAL_COUNT_PAGE, take: SERIAL_COUNT_PAGE }
+        const data = await unwrap(api.GET('/api/v1/products', { params: { query } }))
+        const items = data.items ?? []
+        count += items.filter((p) => p.trackingTypeCode === 'SERIAL').length
+        read += items.length
+        total = data.total ?? read
+        if (items.length < SERIAL_COUNT_PAGE || read >= total) break
+      }
+      return { count, truncated: read < total }
+    },
+    enabled: options?.enabled ?? true,
+    meta: meta(options),
+  })
+}
+
+/**
+ * KPIs de 'Productos e inventario' (maqueta `inventario()`), de todo el catálogo (no siguen los filtros de la tabla):
+ * - `activeSkus`: `GET /products?activeOnly=true&take=1` → `total`.
+ * - `totalUnits`: `GET /inventory/balances?includeZero=false&take=1` → `totalOnHand` (suma de todo, no solo la página).
+ * - `belowMin`: `GET /products?belowMin=true&take=1` → `total` (activo, con mínimo y disponible < mínimo).
+ * - `serial`: `useSerialProductCount` (`{ count, truncated }`).
+ */
+export function useProductInventoryKpis(options?: WarehouseQueryOptions) {
+  const activeSkus = useProducts({ activeOnly: true, take: 1 }, options)
+  const totalUnits = useInventoryBalances({ includeZero: false, take: 1 }, options)
+  const belowMin = useProducts({ belowMin: true, take: 1 }, options)
+  const serial = useSerialProductCount(options)
+  return { activeSkus, totalUnits, belowMin, serial }
+}
+
 /** `GET /api/v1/products/{publicId}` (ficha: `ProductDetailDto`, datos de lista en `product`). */
 export function useProduct(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
   return useQuery({
@@ -446,6 +495,36 @@ export function useInventoryBalances(query: GetQuery<'/api/v1/inventory/balances
     queryFn: () => unwrap(api.GET('/api/v1/inventory/balances', { params: { query } })),
     enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** Páginas de 200 (el tope del API) y máximo de páginas que lee `useWarehouseStockLines`. */
+export const STOCK_LINES_PAGE = 200
+export const STOCK_LINES_MAX_PAGES = 25
+
+/**
+ * Todas las líneas de saldo en mano de un almacén (`GET /api/v1/inventory/balances?warehousePublicIds=` página por página,
+ * hasta `STOCK_LINES_MAX_PAGES` × 200 líneas). Sirve para saber qué productos hay en cada posición (Ubicaciones).
+ * `truncated` = el almacén tiene más líneas de las que se leyeron. Se invalida con el prefijo de saldos.
+ */
+export function useWarehouseStockLines(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.balances[0], { warehousePublicIds: [publicId], allPages: true }],
+    queryFn: async () => {
+      const items: BalanceDto[] = []
+      let total = 0
+      for (let page = 0; page < STOCK_LINES_MAX_PAGES; page++) {
+        const query = { warehousePublicIds: [publicId ?? ''], skip: page * STOCK_LINES_PAGE, take: STOCK_LINES_PAGE }
+        const data = await unwrap(api.GET('/api/v1/inventory/balances', { params: { query } }))
+        const pageItems = data.items ?? []
+        items.push(...pageItems)
+        total = data.total ?? items.length
+        if (pageItems.length < STOCK_LINES_PAGE || items.length >= total) break
+      }
+      return { items, total, truncated: items.length < total }
+    },
+    enabled: Boolean(publicId) && (options?.enabled ?? true),
     meta: meta(options),
   })
 }
@@ -638,7 +717,7 @@ export function usePutawaySuggestions(query: GetQuery<'/api/v1/warehouse-tasks/p
   })
 }
 
-/** Acciones sobre una tarea: asignar (`warehouse.manage`; `userId` null desasigna), iniciar, completar y cancelar. */
+/** Acciones sobre una tarea: asignar (`warehouse.manage`; `userId` null desasigna), iniciar, completar y cancelar (UI en `taskQueue.tsx`). */
 export function useWarehouseTaskAction() {
   const qc = useQueryClient()
   return useMutation({
@@ -661,7 +740,12 @@ export function useWarehouseTaskAction() {
           return unwrap(api.POST('/api/v1/warehouse-tasks/{id}/cancel', { params: { path }, body: v.body }))
       }
     },
-    onSuccess: (_data, v) => (v.action === 'complete' ? invalidate(qc, 'tasks', 'putawaySuggestions', ...STOCK) : invalidate(qc, 'tasks')),
+    // La ficha del recibo pinta sus tareas de acomodo (y pasa a PUTAWAY al completar la última) y la del plan de cruce sus
+    // asignaciones (completar la tarea CROSSDOCK = mover la asignación): se invalidan junto con la cola.
+    onSuccess: (_data, v) =>
+      v.action === 'complete'
+        ? invalidate(qc, 'tasks', 'putawaySuggestions', 'receipt', 'receipts', 'crossDockPlan', 'crossDockPlans', ...STOCK)
+        : invalidate(qc, 'tasks', 'receipt'),
   })
 }
 

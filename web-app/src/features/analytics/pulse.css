@@ -32,6 +32,11 @@
 .pulse .node .sub{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:5px;overflow-wrap:anywhere}
 .pulse .node.flow .big{color:var(--flow-2)}
 .pulse .node.money .big{color:var(--money-2)}
+/* barra de segmentos del nodo (maqueta .node .spark): cada <i> con su altura en % (Ubicaciones: todos al % ocupado) */
+.pulse .node .spark{display:flex;gap:2px;align-items:flex-end;height:20px;margin-top:9px}
+.pulse .node .spark i{flex:1;border-radius:1px;min-height:3px;background:var(--line)}
+.pulse .node.flow .spark i{background:var(--flow-line)}
+.pulse .node.money .spark i{background:var(--money-line)}
 .pulse .node .nact{position:relative;z-index:1;margin-top:auto;padding-top:9px}
 .pulse .node .nact:empty{display:none}
 .pulse .pipe{width:30px;flex:none;align-self:center;height:3px;border-radius:3px;position:relative;overflow:hidden;background:var(--line)}
@@ -78,11 +83,27 @@
 
 /* ---- Indicadores y Gráficos (Lote F8a, P3): grupos por módulo de negocio y texto de tarjeta ---- */
 .pulse .def-group+.def-group{margin-top:16px}
-.pulse .def-count{margin-left:auto;color:var(--muted);font-size:12px;font-family:var(--mono)}
 .pulse p.sub{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin:5px 0 0;overflow-wrap:anywhere}
 .pulse p.help{color:var(--muted);font-size:12px;margin:4px 0 0}
+/* Fase 10b — pie de la tarjeta de Gráficos: rango en línea (maqueta chartCardHtml), switch de Pulso y chip; envuelve a 360 px */
+.pulse .chart-card-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;border-top:1px solid var(--line-2);padding-top:10px}
+.pulse .chart-range{display:inline-flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0;max-width:100%}
+.pulse .chart-range select{font-size:12px;padding:4px 6px;border-radius:7px;max-width:100%}
+.pulse .chart-range-days{display:flex;flex-wrap:wrap;gap:4px;max-width:100%}
+.pulse .chart-range-days input{font-size:11.5px;padding:3px 5px;border-radius:6px;min-width:0;max-width:140px}
+.pulse .chart-range .ferr{margin:0}
+.pulse p.chart-range-locked{display:flex;align-items:center;gap:5px}
+.pulse p.chart-range-locked svg{width:12px;height:12px;flex:none}
+
+/* ---- río del panel Almacén (fase 4): nodo satélite 'Bajo mínimo' tras una bifurcación punteada (sin tubería animada,
+   no es parte del flujo). En alerta toma el tono naranja de los nodos de alerta de la maqueta (.node.m + ícono alert)
+   con el borde ya encendido, para que se note sin pasar el cursor; sin alerta queda neutro. ---- */
+.pulse .river-fork{width:0;flex:none;align-self:stretch;margin:4px 16px;border-left:2px dashed var(--line)}
+.pulse .node.sat .ph svg{color:var(--muted)}
+.pulse .node.sat.money{border-color:var(--money-line)}
+.pulse .node.sat.money .ph svg{color:var(--money)}
 
 @media(prefers-reduced-motion:reduce){.pulse .pipe::after{animation:none}.pulse .node:hover{transform:none}}
 /* bajo 980 px el río envuelve sin tuberías (tres por fila); a 480 px, una columna */
-@media(max-width:980px){.pulse .pipe{display:none}.pulse .river{gap:10px}.pulse .node{flex:1 1 30%}}
+@media(max-width:980px){.pulse .pipe,.pulse .river-fork{display:none}.pulse .river{gap:10px}.pulse .node{flex:1 1 30%}}
 @media(max-width:480px){.pulse .node{flex:1 1 100%}.pulse .pulse-title h1{font-size:20px}.pulse .orgbar .acts{width:100%}.pulse .orgbar .acts .btn{flex:1}}

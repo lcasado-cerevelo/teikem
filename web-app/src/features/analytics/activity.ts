@@ -92,12 +92,17 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
       return byPublicId('/warehouse/pick-batches')
     case 'PURCHASE_ORDER':
       return byPublicId('/warehouse/purchase-orders', 'purchasing.view', ModuleKeys.Purchasing)
-    case 'WAREHOUSE_TASK':
-      return { to: '/warehouse/tasks', perm: 'inventory.view', module: wms }
+    case 'WAREHOUSE_TASK': {
+      // Sin pantalla 'Tareas de almacén': cada tipo vive en la cola de su pantalla. TASK_CANCELLED no dice el tipo: sin enlace.
+      const code = (e.code ?? '').toUpperCase()
+      if (code === 'PUTAWAY_DONE') return { to: '/warehouse/receipts?tab=putaway', perm: 'inventory.view', module: wms }
+      if (code === 'REPLENISH_DONE') return { to: '/warehouse/pick-batches?tab=replenish', perm: 'inventory.view', module: wms }
+      return null
+    }
     case 'PRODUCT': {
       const code = (e.code ?? '').toUpperCase()
       if ((code === 'INVENTORY_ADJUSTED' || code === 'INVENTORY_TRANSFERRED' || code === 'BIN_MOVED') && e.publicId)
-        return { to: `/warehouse/inventory?tab=kardex&product=${encodeURIComponent(e.publicId)}`, perm: 'inventory.view', module: wms }
+        return { to: `/warehouse/kardex?product=${encodeURIComponent(e.publicId)}`, perm: 'inventory.view', module: wms }
       return byPublicId('/warehouse/products')
     }
     case 'WAREHOUSE':

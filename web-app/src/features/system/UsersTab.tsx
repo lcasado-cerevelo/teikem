@@ -1,11 +1,14 @@
 // Pestaña Usuarios de /system/users (usuariosScreen de la maqueta): `GET /api/v1/users` no pagina en el servidor
 // (schema.d.ts sin query params), así que la pantalla busca y pagina en cliente (patrón "lista completa" del KIT).
+// El botón "Nuevo usuario" vive en la cabecera de `UsersPage` (una sola fila con las pestañas): la página avisa con
+// `creating` y el modal de alta se abre aquí. Sobre la maqueta se conservan multi-rol (modal de selección múltiple),
+// MFA, último acceso, PIN y las acciones de seguridad por fila: son funcionalidad real, no decoración.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useSession } from '../../app/session'
-import { useCanAny, useModule, ModuleKeys, Can } from '../../kernel/access'
+import { useCanAny, useModule, ModuleKeys } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/client'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n/useT'
@@ -20,6 +23,7 @@ import {
   IconLogOut,
   IconRotateCcw,
   IconShield,
+  IconUsers,
   Modal,
   Panel,
   QBox,
@@ -53,8 +57,6 @@ import {
 import { groupPermissionsByCategory } from './permissionGroups'
 import { categoryIcon } from './permissionIcons'
 import './system.css'
-
-const MEMBERSHIP_STATUS_TONE: Record<string, 'deliv' | 'warn' | 'cap'> = { ACTIVE: 'deliv', SUSPENDED: 'warn', INVITED: 'cap' }
 
 /** Editar nombre y activo (`PUT /users/{id}`). "No puede desactivarse a sí mismo." si aplica sobre el propio usuario. */
 function EditUserModal({ open, user, onClose }: { open: boolean; user: UserSummaryDto | null; onClose: () => void }) {
@@ -383,7 +385,14 @@ function ExtraPermissionsModal({
   )
 }
 
-export function UsersTab() {
+export interface UsersTabProps {
+  /** true = la cabecera de la página pidió "Nuevo usuario": se abre el modal de alta. */
+  creating?: boolean
+  /** Se llama al cerrar el modal de alta abierto por `creating`. */
+  onCreateClose?: () => void
+}
+
+export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
   const t = useT()
   const lang = useLang()
   const { me } = useSession()
@@ -400,7 +409,7 @@ export function UsersTab() {
 
   const [q, setQ] = useState('')
   const [includeSuspended, setIncludeSuspended] = useState(false)
-  const [editing, setEditing] = useState<UserSummaryDto | null | 'new'>(null)
+  const [editing, setEditing] = useState<UserSummaryDto | null>(null)
   const [rolesFor, setRolesFor] = useState<UserSummaryDto | null>(null)
   const [permsFor, setPermsFor] = useState<UserSummaryDto | null>(null)
   const [pinFor, setPinFor] = useState<UserSummaryDto | null>(null)
@@ -419,11 +428,22 @@ export function UsersTab() {
 
   const columns = useMemo<DataColumn<UserSummaryDto>[]>(() => {
     const cols: DataColumn<UserSummaryDto>[] = [
-      { id: 'fullName', header: t('system.users.users.colName'), card: 'title', sortValue: (u) => u.fullName ?? '', cell: (u) => u.fullName || '—' },
-      { id: 'email', header: t('system.users.users.colEmail'), sortValue: (u) => u.email ?? '', cell: (u) => <span className="mono">{u.email}</span> },
+      { id: 'fullName', header: t('system.users.users.colName'), card: 'title', sortValue: (u) => u.fullName ?? '', cell: (u) => <b>{u.fullName || '—'}</b> },
+      {
+        id: 'email',
+        header: t('system.users.users.colEmail'),
+        sortValue: (u) => u.email ?? '',
+        cell: (u) => (
+          <span className="mono user-email" title={u.email || undefined}>
+            {u.email || '—'}
+          </span>
+        ),
+      },
       {
         id: 'roles',
         header: t('system.users.users.colRoles'),
+        sortValue: (u) => (u.roles ?? []).join(', '),
+        // Multi-rol: los roles del usuario como píldoras; clic abre la selección múltiple (no un <select> de uno solo).
         cell: (u) => (
           <button type="button" className="linklike" onClick={() => setRolesFor(u)}>
             {(u.roles ?? []).length ? (u.roles ?? []).map((r) => <Chip key={r} tone="wh">{r}</Chip>) : t('system.users.users.roles')}
@@ -433,15 +453,32 @@ export function UsersTab() {
       {
         id: 'extra',
         header: t('system.users.users.colExtra'),
-        cell: (u) => (
-          <button type="button" className="linklike" onClick={() => setPermsFor(u)}>
-            {(u.extraPermissions ?? []).length ? `+${(u.extraPermissions ?? []).length}` : t('system.users.users.addExtra')}
-          </button>
-        ),
+        sortValue: (u) => (u.extraPermissions ?? []).length,
+        // Como la maqueta: botón de fila con texto, "escudo +n" si tiene extras o "Añadir" tenue si no.
+        cell: (u) => {
+          const extra = (u.extraPermissions ?? []).length
+          return (
+            <button
+              type="button"
+              className="rowbtn rowbtn-txt"
+              title={t('system.users.users.extraModalTitle', { name: u.fullName ?? '' })}
+              onClick={() => setPermsFor(u)}
+            >
+              {extra ? (
+                <>
+                  <IconShield /> +{extra}
+                </>
+              ) : (
+                t('system.users.users.addExtra')
+              )}
+            </button>
+          )
+        },
       },
       {
         id: 'status',
         header: t('system.users.users.colStatus'),
+        sortValue: (u) => u.membershipStatus ?? 'ACTIVE',
         cell: (u) => {
           const status = u.membershipStatus ?? 'ACTIVE'
           const label =
@@ -450,35 +487,35 @@ export function UsersTab() {
               : status === 'SUSPENDED'
                 ? t('system.users.users.statusSuspended')
                 : t('system.users.users.statusInvited')
+          // Como la maqueta: el interruptor lleva su estado como texto (y así tiene nombre accesible); un invitado
+          // todavía no tiene membresía que activar o suspender, así que solo se ve su píldora.
+          if (status === 'INVITED') return <Chip tone="cap">{label}</Chip>
           return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <Chip tone={MEMBERSHIP_STATUS_TONE[status] ?? 'cap'}>{label}</Chip>
-              {status !== 'INVITED' && (
-                <label className="sw">
-                  <input
-                    type="checkbox"
-                    checked={status === 'ACTIVE'}
-                    disabled={u.id === me?.userId}
-                    onChange={async (e) => {
-                      if (!u.id) return
-                      try {
-                        await setMembership.mutateAsync({ id: u.id, status: e.target.checked ? 'ACTIVE' : 'SUSPENDED' })
-                        toast.success(t('system.users.users.membershipSaved'))
-                      } catch (err) {
-                        toast.error(applyProblemDetails(err).title)
-                      }
-                    }}
-                  />
-                  <span className="tk" />
-                </label>
-              )}
-            </span>
+            <label className="sw">
+              <input
+                type="checkbox"
+                checked={status === 'ACTIVE'}
+                disabled={u.id === me?.userId}
+                onChange={async (e) => {
+                  if (!u.id) return
+                  try {
+                    await setMembership.mutateAsync({ id: u.id, status: e.target.checked ? 'ACTIVE' : 'SUSPENDED' })
+                    toast.success(t('system.users.users.membershipSaved'))
+                  } catch (err) {
+                    toast.error(applyProblemDetails(err).title)
+                  }
+                }}
+              />
+              <span className="tk" />
+              {label}
+            </label>
           )
         },
       },
       {
         id: 'mfa',
         header: t('system.users.users.colMfa'),
+        sortValue: (u) => u.mfaEnabled,
         cell: (u) => (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Chip tone={u.mfaEnabled ? 'deliv' : 'fail'}>{u.mfaEnabled ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>
@@ -486,12 +523,18 @@ export function UsersTab() {
           </span>
         ),
       },
-      { id: 'lastLogin', header: t('system.users.users.colLastLogin'), cell: (u) => formatDateTime(u.lastLoginUtc, lang) || '—' },
+      {
+        id: 'lastLogin',
+        header: t('system.users.users.colLastLogin'),
+        cell: (u) => formatDateTime(u.lastLoginUtc, lang) || '—',
+        sortValue: (u) => u.lastLoginUtc,
+      },
     ]
     if (canPin) {
       cols.push({
         id: 'pin',
         header: t('system.users.users.colPin'),
+        sortValue: (u) => u.hasPin,
         cell: (u) => <Chip tone={u.hasPin ? 'deliv' : 'fail'}>{u.hasPin ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>,
       })
     }
@@ -552,17 +595,7 @@ export function UsersTab() {
 
   return (
     <>
-      <div className="head" style={{ marginBottom: 12 }}>
-        <div />
-        <div className="act">
-          <Can perm="admin.users">
-            <button type="button" className="btn flow" onClick={() => setEditing('new')}>
-              {t('system.users.users.new')}
-            </button>
-          </Can>
-        </div>
-      </div>
-      <Panel flush title={t('system.users.users.title')} subtitle={t('system.users.users.count', { count: rows.length })}>
+      <Panel flush icon={<IconUsers />} title={t('system.users.users.title')} badge={rows.length}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} placeholder={t('system.users.users.searchPlaceholder')} />
           <label className="sw">
@@ -587,8 +620,8 @@ export function UsersTab() {
         {t('system.users.users.note')}
       </p>
 
-      <CreateUserModal open={editing === 'new'} roleNames={roleNames} onClose={() => setEditing(null)} />
-      <EditUserModal open={editing !== null && editing !== 'new'} user={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
+      <CreateUserModal open={creating} roleNames={roleNames} onClose={() => onCreateClose?.()} />
+      <EditUserModal open={editing !== null} user={editing} onClose={() => setEditing(null)} />
       <RolesModal open={rolesFor !== null} user={rolesFor} roleNames={roleNames} onClose={() => setRolesFor(null)} />
       <ExtraPermissionsModal open={permsFor !== null} user={permsFor} roles={roles} permissions={permissions} onClose={() => setPermsFor(null)} />
       <PinModal open={pinFor !== null} user={pinFor} onClose={() => setPinFor(null)} />

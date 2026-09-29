@@ -11,12 +11,7 @@ import { Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } f
 import { selectableAdjustmentReasons } from './adjustmentReasons'
 import { useInventoryAdjustment, type ProductListItemDto } from './api'
 import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
-
-function decimals(n: number): number {
-  const s = String(n)
-  const i = s.indexOf('.')
-  return i === -1 ? 0 : s.length - i - 1
-}
+import { adjustQuantitySchema } from './productRules'
 
 export interface InventoryAdjustModalProps {
   open: boolean
@@ -39,17 +34,7 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
         productPublicId: z.string().min(1, t('warehouse.inventory.adjustModal.errors.productRequired')),
         warehousePublicId: z.string().min(1, t('warehouse.inventory.adjustModal.errors.warehouseRequired')),
         binId: z.string().min(1, t('warehouse.inventory.adjustModal.errors.binRequired')),
-        quantity: z
-          .number(t('warehouse.inventory.adjustModal.errors.quantityInvalid'))
-          .nullable()
-          .superRefine((v, ctx) => {
-            if (v === null) {
-              ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.inventory.adjustModal.errors.quantityInvalid') })
-              return
-            }
-            if (v === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.inventory.adjustModal.errors.quantityZero') })
-            else if (decimals(v) > 3) ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.inventory.adjustModal.errors.quantityDecimals') })
-          }),
+        quantity: adjustQuantitySchema(t),
         reason: z.string().min(1, t('warehouse.inventory.adjustModal.errors.reasonRequired')),
         notes: z.string(),
         lotNumber: z.string(),

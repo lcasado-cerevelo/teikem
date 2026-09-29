@@ -3,72 +3,101 @@
 // Lote F7A: filtro de almacén (a las seis tarjetas) y de categoría o producto (solo En mano, Disponible y Bajo mínimo).
 // Lote F8a: sin cambios de comportamiento; salió de `Pulse.tsx` para ser la entrada WAREHOUSE del registro de paneles
 // (`pulsePanels.tsx`). Quién lo ve lo decide el servidor (`pulse.warehouse` + `inventory.view` + WMS_LOTSERIAL).
+// Reconciliación con la maqueta (fase 4): el saldo se pinta como río (Recibos abiertos → En almacén → Reservado →
+// Disponible) con 'Bajo mínimo' como nodo satélite de alerta; Tareas pendientes y Conteos abiertos siguen en tarjetas.
 import { useMemo, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n/useT'
+import { IconAlert } from '../../kernel/ui/icons'
 import { Panel } from '../../kernel/ui/Panel'
 import { categoryProductTotals } from '../../kernel/ui/categoryTree'
 import { PULSE_TASK_TYPES, useWarehouseFilter, useWarehousePulse } from './api'
 import { formatValue } from './format'
 import { WarehouseFilter } from './WarehouseFilter'
+import { IconBox, IconCheckin, IconLayers, IconLock, IconWarehouse } from '../../kernel/ui/screenIcons'
 
-// Tarjetas del panel 'Almacén': una columna a 360 px (min(100%, …) evita que la columna mínima desborde el panel).
-const TILE_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 12 }
-// Borde en propiedades separadas: TILE_WARN cambia solo el color y React avisa si se mezcla con el atajo `border`.
-const TILE: CSSProperties = { borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--line)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', minWidth: 0 }
+// Tarjetas del panel 'Almacén' (Tareas pendientes y Conteos abiertos): auto-fit para que las dos ocupen todo el ancho;
+// una columna a 360 px (min(100%, …) evita que la columna mínima desborde el panel).
+const TILE_GRID: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12, marginTop: 12 }
+const TILE: CSSProperties = { border: '1px solid var(--line)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', minWidth: 0 }
 const TILE_LABEL: CSSProperties = { fontSize: 12.5, color: 'var(--muted)' }
 const TILE_VALUE: CSSProperties = { fontSize: 26, fontWeight: 800, lineHeight: 1.2 }
-const TILE_WARN: CSSProperties = { ...TILE, borderColor: 'rgba(230,169,62,.45)' }
-const TILE_VALUE_WARN: CSSProperties = { ...TILE_VALUE, color: 'var(--warn)' }
-const TILE_SUB: CSSProperties = { fontSize: 12, color: 'var(--muted)', marginTop: 4, minWidth: 0, overflowWrap: 'anywhere' }
 
-/** Tarjeta del panel 'Almacén': etiqueta (con la marca 'almacén' si solo aplica ese filtro), número y subtítulo. */
-function WarehouseTile({
-  label,
-  value,
-  scope,
-  warn,
-  sub,
-  children,
-}: {
-  label: string
-  value: string
-  /** Marca 'almacén': la tarjeta solo recibe el filtro de almacén (no el de categoría o producto). */
-  scope?: boolean
-  /** Borde y número en tono de atención (bajo mínimo). */
-  warn?: boolean
-  sub?: ReactNode
-  children?: ReactNode
-}) {
+/** Marca 'almacén': la cifra solo recibe el filtro de almacén (no el de categoría o producto). */
+function ScopeTag() {
   const t = useT()
   return (
-    <div role="group" aria-label={label} style={warn ? TILE_WARN : TILE}>
+    <span className="dr" title={t('analytics.pulse.warehouse.scopeTagTitle')}>
+      {t('analytics.pulse.warehouse.scopeTag')}
+    </span>
+  )
+}
+
+/** Tarjeta del panel 'Almacén': etiqueta (con la marca 'almacén' si solo aplica ese filtro), número y desglose. */
+function WarehouseTile({ label, value, scope, children }: { label: string; value: string; scope?: boolean; children?: ReactNode }) {
+  return (
+    <div role="group" aria-label={label} style={TILE}>
       <div style={TILE_LABEL}>
         {label}
         {scope && (
           <>
             {' '}
-            <span className="dr" title={t('analytics.pulse.warehouse.scopeTagTitle')}>
-              {t('analytics.pulse.warehouse.scopeTag')}
-            </span>
+            <ScopeTag />
           </>
         )}
       </div>
-      <div style={warn ? TILE_VALUE_WARN : TILE_VALUE}>{value}</div>
-      {sub != null && <div style={TILE_SUB}>{sub}</div>}
+      <div style={TILE_VALUE}>{value}</div>
       {children}
     </div>
   )
 }
 
-/** Número de una tarjeta de almacén: '…' mientras carga, '—' si la consulta falló (p. ej. 403). */
+/** Nodo del río de Almacén (mismas clases `.node` que el río de indicadores). `tone`: 'flow' (azul) en el flujo
+ *  principal; 'alert' (naranja, como los nodos de alerta de la maqueta) o 'idle' (neutro) en el satélite 'Bajo mínimo'. */
+function RiverNode({
+  label,
+  icon,
+  value,
+  tone,
+  satellite,
+  scope,
+  sub,
+  alertText,
+}: {
+  label: string
+  icon: ReactNode
+  value: string
+  tone: 'flow' | 'alert' | 'idle'
+  satellite?: boolean
+  /** Marca 'almacén' (solo aplica el filtro de almacén). */
+  scope?: boolean
+  sub?: ReactNode
+  /** Texto para lectores de pantalla cuando el nodo está en alerta (el tono de color no basta). */
+  alertText?: string
+}) {
+  const cls = ['node', tone === 'flow' ? 'flow' : tone === 'alert' ? 'money' : '', satellite ? 'sat' : ''].filter(Boolean).join(' ')
+  return (
+    <div role="group" aria-label={label} className={cls}>
+      <div className="ph">
+        {icon}
+        <span>{label}</span>
+        {scope && <ScopeTag />}
+      </div>
+      <div className="big">{value}</div>
+      {sub != null && <div className="sub">{sub}</div>}
+      {alertText != null && <span className="sr-only">{alertText}</span>}
+    </div>
+  )
+}
+
+/** Número de un nodo o tarjeta de almacén: '…' mientras carga, '—' si la consulta falló (p. ej. 403). */
 function tileValue(value: number | null | undefined, loading: boolean): string {
   return loading ? '…' : formatValue(value, false)
 }
 
-/** Panel 'Almacén' de Pulso. Lote F7A: filtro de almacén (las seis tarjetas) y de categoría o producto (solo En mano,
- *  Disponible y Bajo mínimo), recordado por usuario. */
+/** Panel 'Almacén' de Pulso. Lote F7A: filtro de almacén (todas las cifras) y de categoría o producto (solo En almacén,
+ *  Reservado, Disponible y Bajo mínimo), recordado por usuario. */
 export function WarehousePulsePanel() {
   const t = useT()
   const { filter, setFilter, warehouses, categories, category, product, productError } = useWarehouseFilter()
@@ -83,11 +112,13 @@ export function WarehousePulsePanel() {
 
   const onHand = balances.data?.totalOnHand
   const available = balances.data?.totalAvailable
+  // Reservado = en almacén − disponible (mismo cálculo que antes iba en el subtítulo de 'Disponible').
+  const reserved = onHand != null && available != null ? onHand - available : null
 
   // Productos por categoría contando sus subcategorías: las cifras de saldo y bajo mínimo también las incluyen.
   const categoryTotals = useMemo(() => categoryProductTotals(categories.data ?? []), [categories.data])
 
-  // Subtítulo de 'En mano': la categoría y su cantidad de productos, o el SKU del producto (con su mínimo si tiene).
+  // Subtítulo de 'En almacén': la categoría y su cantidad de productos, o el SKU del producto (con su mínimo si tiene).
   let onHandSub: ReactNode = null
   if (item?.kind === 'category' && category) {
     const count = (category.id != null ? categoryTotals.get(category.id) : undefined) ?? category.productCount ?? 0
@@ -102,11 +133,12 @@ export function WarehousePulsePanel() {
         : product.sku
   }
 
-  // Enlaces a Inventario con los mismos filtros que las cifras (almacén incluido), para que el destino cuadre con la tarjeta.
+  // Enlaces a Kárdex de movimientos (pestaña Kárdex, sin `tab`, o Saldos, `tab=balances`) con los mismos filtros que las
+  // cifras (almacén incluido), para que el destino cuadre con la tarjeta.
   const inventoryLink = (extra: Record<string, string>) => {
     const q = new URLSearchParams(extra)
     if (filter.warehousePublicId) q.set('warehousePublicIds', filter.warehousePublicId)
-    return `/warehouse/inventory?${q.toString()}`
+    return `/warehouse/kardex?${q.toString()}`
   }
 
   // 'Bajo mínimo': cantidad de productos (todos o de la categoría) o Sí/No del producto elegido.
@@ -118,7 +150,7 @@ export function WarehousePulsePanel() {
     else belowValue = belowMin.isError || productError ? '—' : '…'
     belowWarn = productBelowMin === true
     belowLink = (
-      <Link className="ref" to={inventoryLink({ tab: 'kardex', product: item.publicId })}>
+      <Link className="ref" to={inventoryLink({ product: item.publicId })}>
         {t('analytics.pulse.warehouse.viewKardex', { sku: product?.sku ?? '' })}
       </Link>
     )
@@ -127,30 +159,57 @@ export function WarehousePulsePanel() {
     belowWarn = (belowMin.data?.total ?? 0) > 0
     if (item?.kind === 'category')
       belowLink = (
-        <Link className="ref" to={inventoryLink({ categoryIds: String(item.id) })}>
+        <Link className="ref" to={inventoryLink({ tab: 'balances', categoryIds: String(item.id) })}>
           {t('analytics.pulse.warehouse.viewInventory')}
         </Link>
       )
   }
 
   return (
-    <Panel title={t('analytics.pulse.warehouse.title')} subtitle={t('analytics.pulse.warehouse.subtitle')}>
+    <Panel icon={<IconLayers />} title={t('analytics.pulse.warehouse.title')} subtitle={t('analytics.pulse.warehouse.subtitle')}>
       <WarehouseFilter filter={filter} onChange={setFilter} warehouses={warehouses} categories={categories} />
-      <div style={TILE_GRID}>
-        <WarehouseTile label={t('analytics.pulse.warehouse.onHand')} value={tileValue(onHand, balances.isLoading)} sub={onHandSub} />
-        <WarehouseTile
-          label={t('analytics.pulse.warehouse.available')}
-          value={tileValue(available, balances.isLoading)}
-          sub={
-            onHand != null && available != null ? (
-              <>
-                {t('analytics.pulse.warehouse.reserved')} <b>{formatValue(onHand - available, false)}</b>
-              </>
-            ) : null
+      {/* Río de mercancía: flujo principal con tuberías; 'Bajo mínimo' queda aparte, tras una bifurcación punteada. */}
+      <div className="river" role="group" aria-label={t('analytics.pulse.warehouse.river.label')}>
+        <RiverNode
+          label={t('analytics.pulse.warehouse.openReceipts')}
+          icon={<IconCheckin />}
+          value={tileValue(openReceipts.data?.total, openReceipts.isLoading)}
+          tone="flow"
+          scope
+        />
+        <div className="pipe" aria-hidden="true" />
+        <RiverNode
+          label={t('analytics.pulse.warehouse.river.inStock')}
+          icon={<IconWarehouse />}
+          value={tileValue(onHand, balances.isLoading)}
+          tone="flow"
+          sub={onHandSub}
+        />
+        <div className="pipe" aria-hidden="true" />
+        <RiverNode
+          label={t('analytics.pulse.warehouse.river.reserved')}
+          icon={<IconLock />}
+          value={tileValue(reserved, balances.isLoading)}
+          tone="flow"
+        />
+        <div className="pipe" aria-hidden="true" />
+        <RiverNode label={t('analytics.pulse.warehouse.available')} icon={<IconBox />} value={tileValue(available, balances.isLoading)} tone="flow" />
+        <div className="river-fork" aria-hidden="true" />
+        <RiverNode
+          label={t('analytics.pulse.warehouse.belowMin')}
+          icon={<IconAlert />}
+          value={belowValue}
+          tone={belowWarn ? 'alert' : 'idle'}
+          satellite
+          sub={belowLink}
+          alertText={
+            belowWarn
+              ? t(item?.kind === 'product' ? 'analytics.pulse.warehouse.river.belowMinAlertProduct' : 'analytics.pulse.warehouse.river.belowMinAlert')
+              : undefined
           }
         />
-        <WarehouseTile label={t('analytics.pulse.warehouse.belowMin')} value={belowValue} warn={belowWarn} sub={belowLink} />
-        <WarehouseTile label={t('analytics.pulse.warehouse.openReceipts')} value={tileValue(openReceipts.data?.total, openReceipts.isLoading)} scope />
+      </div>
+      <div style={TILE_GRID}>
         <WarehouseTile label={t('analytics.pulse.warehouse.pendingTasks')} value={tileValue(pendingTasks.data?.total, pendingTasks.isLoading)} scope>
           <ul style={{ listStyle: 'none', margin: '8px 0 0', padding: 0, fontSize: 13 }}>
             {PULSE_TASK_TYPES.map((type, i) => {

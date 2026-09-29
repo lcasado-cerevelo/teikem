@@ -90,6 +90,8 @@ export interface DataTableProps<T extends RowData> {
   rowActions?: readonly RowAction<T>[]
   /** Clic en la fila (p. ej. abrir el detalle). También con Enter. */
   onRowClick?: (row: T) => void
+  /** Clase extra de la fila (`<tr>` o tarjeta), p. ej. `'dim'` para atenuar un registro inactivo como la maqueta. */
+  rowClassName?: (row: T) => string | undefined
   /** Qué pintar sin filas (por defecto EmptyState "Sin resultados"). */
   empty?: ReactNode
   loading?: boolean
@@ -114,6 +116,12 @@ function toComparable(v: SortValue): string | number | null {
 
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
+/** Une clases sin vacíos; sin ninguna, `undefined` (no pinta `class=""`). */
+function joinClass(...parts: (string | undefined)[]): string | undefined {
+  const cls = parts.filter(Boolean).join(' ')
+  return cls || undefined
+}
+
 /** Comparación ascendente de dos valores ya normalizados (TanStack invierte el signo en descendente). */
 function compareValues(x: string | number, y: string | number): number {
   if (typeof x === 'number' && typeof y === 'number') return x - y
@@ -135,7 +143,7 @@ function useAllowed(): (perm: RowAction<unknown>['perm']) => boolean {
  * Pasa `rows` memorizadas (useMemo o el `data` de la consulta): un arreglo nuevo en cada render reinicia la página local.
  */
 export function DataTable<T extends RowData>(props: DataTableProps<T>) {
-  const { columns, rows, rowKey, onSort, onPage, rowActions, onRowClick, loading, label } = props
+  const { columns, rows, rowKey, onSort, onPage, rowActions, onRowClick, rowClassName, loading, label } = props
   const dense = props.dense ?? columns.length + (rowActions?.length ? 1 : 0) >= DENSE_COLUMNS
   const t = useT()
   const cards = useMediaQuery(CARDS_QUERY)
@@ -311,7 +319,7 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
             return (
               <li
                 key={row.id}
-                className={onRowClick ? 'dt-card click' : 'dt-card'}
+                className={joinClass('dt-card', onRowClick ? 'click' : undefined, rowClassName?.(r))}
                 tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(r) : undefined}
                 onKeyDown={rowKeyDown(r)}
@@ -380,7 +388,7 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
             {visibleRows.map((row) => (
               <tr
                 key={row.id}
-                className={onRowClick ? 'click' : undefined}
+                className={joinClass(onRowClick ? 'click' : undefined, rowClassName?.(row.original))}
                 tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                 onKeyDown={rowKeyDown(row.original)}

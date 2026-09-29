@@ -256,13 +256,43 @@ export function AppShell() {
             <IconSearch />
           </button>
           <LiveClock />
+          {/* compañía a la derecha, entre el reloj y el tema (como la maqueta) */}
+          <div className="tenant">
+            {memberships.length > 1 ? (
+              <select
+                aria-label={t('shell.tenant')}
+                value={String(me?.tenantId ?? '')}
+                onChange={(e) => void onSwitchTenant(e.target.value)}
+              >
+                {memberships.map((m) => (
+                  <option key={m.tenantId} value={String(m.tenantId)}>
+                    {m.tenantName}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className="tn" title={me?.tenantName ?? ''}>
+                {me?.tenantName}
+              </span>
+            )}
+            {switchError && (
+              <span className="ferr" role="alert">
+                {switchError}
+              </span>
+            )}
+          </div>
           <ThemeSwitch />
           <LangSelect lang={lang} onChange={setLang} />
-          <Link to="/account" className="who" title={t('shell.account')}>
+          {/* usuario: solo el círculo de iniciales (maqueta); el nombre completo va en el title y en el nombre accesible */}
+          <Link
+            to="/account"
+            className="who"
+            title={`${me?.fullName ?? me?.email ?? ''} · ${t('shell.account')}`}
+            aria-label={`${t('shell.account')}: ${me?.fullName ?? me?.email ?? ''}`}
+          >
             <span className="av" aria-hidden="true">
               {initials(me?.fullName ?? me?.email)}
             </span>
-            <span className="nm">{me?.fullName ?? me?.email}</span>
           </Link>
           <button type="button" className="iconbtn" aria-label={t('shell.logout')} title={t('shell.logout')} onClick={() => void logout()}>
             <IconLogout />

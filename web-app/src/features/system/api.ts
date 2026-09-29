@@ -38,6 +38,19 @@ export function useRoles() {
   return useQuery({ queryKey: ROLES_KEY, queryFn: () => unwrap(api.GET('/api/v1/roles')) })
 }
 
+/** Plantillas de sistema (`TenantId` NULL) de las que se clonaron los roles que trae cada compañía: `GET /roles?includeTemplates=true`
+ *  filtrado a `isTemplate`. Solo para la nota de la pestaña Roles (qué roles "vienen ya armados"); un 403 no saca de la pantalla. */
+export function useRoleTemplates() {
+  const query = { includeTemplates: true }
+  return useQuery({
+    queryKey: [...ROLES_KEY, query],
+    queryFn: () => unwrap(api.GET('/api/v1/roles', { params: { query } })),
+    select: (roles) => roles.filter((r) => r.isTemplate),
+    staleTime: 10 * 60 * 1000,
+    meta: { handleAccessDenied: false },
+  })
+}
+
 /** Crear (`id: null`) o editar (`PUT`, AAL2) un rol. */
 export function useSaveRole() {
   const qc = useQueryClient()

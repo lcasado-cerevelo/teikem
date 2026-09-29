@@ -18152,6 +18152,9 @@ export interface components {
             qtyPending?: number;
             /** Format: double */
             pendingCost?: number;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
         };
         PortalAcceptInviteRequest: {
             email?: string | null;
@@ -19423,6 +19426,7 @@ export interface components {
             adminEmail?: string | null;
             adminFullName?: string | null;
             adminPassword?: string | null;
+            mfaRequired?: boolean | null;
         };
         TenantProvisionResult: {
             tenant?: components["schemas"]["TenantSummaryDto"];

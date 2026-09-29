@@ -149,7 +149,7 @@ async function maybeReauth(page: Page, password: string) {
 }
 
 /**
- * Sección de Pulso con ese título (h2): los paneles Almacén/Actividad son `section.pal` (kit `Panel`), pero
+ * Sección de Pulso con ese título (h2): los paneles Almacén/Actividad son `section.panel` (kit `Panel`), pero
  * Indicadores/Gráficos son `<section aria-labelledby>` con un `<h2 className="streamlabel">` (PulseSections.tsx) —
  * ambos son `<section>`, así que no hace falta distinguir por clase.
  */
@@ -251,10 +251,10 @@ test.describe('Lote F8a — escritorio', () => {
   test('4. Indicadores: apagar "Mostrar en Pulso" de Productos bajo mínimo lo quita del Pulso; encenderlo lo regresa', async ({ page }) => {
     await login(page, ADMIN)
     await page.goto('/analytics/indicators')
-    // tarjeta más cercana (no el panel del módulo de negocio, que también es .pal y envuelve varias tarjetas)
+    // tarjeta más cercana (no el panel del módulo de negocio, que también es .panel y envuelve varias tarjetas)
     const card = page
       .getByText('Productos bajo mínimo', { exact: true })
-      .locator('xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " pal ")][1]')
+      .locator('xpath=ancestor::section[contains(concat(" ", normalize-space(@class), " "), " panel ")][1]')
     const toggle = card.getByRole('switch', { name: 'Mostrar en Pulso del día' })
     // por si una corrida anterior lo dejó apagado: partir siempre de "encendido"
     if (!(await toggle.isChecked())) await Promise.all([page.waitForResponse((r) => r.url().includes('/my-pulse') && r.ok()), toggle.click()])

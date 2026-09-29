@@ -55,7 +55,7 @@ export default function IndicatorsPage() {
           const Icon = MODULE_GROUP_ICON[g.group]
           return (
             <div key={g.module || '—'} className="def-group">
-              <Panel title={<><Icon /> {moduleLabel(g.module)}</>} actions={<span className="def-count">{g.items.length}</span>}>
+              <Panel icon={<Icon />} title={moduleLabel(g.module)} badge={g.items.length}>
                 <div className="cols" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' }}>
                   {g.items.map((ind) => (
                     <IndicatorCard key={ind.id} indicator={ind} onEdit={() => setEditing(ind)} onDelete={() => setToDelete(ind)} />

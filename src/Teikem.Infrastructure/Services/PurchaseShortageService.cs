@@ -42,41 +42,67 @@ public sealed class PurchaseShortageService(
 
     // ================================================================ consultas
 
-    /// <summary>Órdenes activas no canceladas con recibo confirmado y algún pendiente, con líneas en faltante y su costo.</summary>
+    /// <summary>
+    /// Órdenes activas no canceladas con recibo confirmado y algún pendiente, con líneas en faltante, su costo y el almacén de
+    /// la orden. El pendiente se filtra en SQL (solo viajan las líneas en faltante); la agrupación por orden es en memoria.
+    /// </summary>
     public async Task<IReadOnlyList<PoShortageSummaryDto>> ListWithShortageAsync(CancellationToken ct)
     {
         var receivedId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, ct);
         var putawayId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, ct);
         var cancelledId = await db.StatusIdAsync(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Cancelled, ct);
 
-        var poIds = await (from r in db.Set<ReceiptHeader>().AsNoTracking()
-                           join a in db.Set<Asn>().AsNoTracking() on r.AsnId equals (int?)a.AsnId
-                           where r.IsActive && a.PurchaseOrderId != null && (r.StatusCodeId == receivedId || r.StatusCodeId == putawayId)
-                           select a.PurchaseOrderId!.Value).Distinct().ToListAsync(ct);
-        if (poIds.Count == 0) return Array.Empty<PoShortageSummaryDto>();
+        var rows = await PendingLinesQuery(cancelledId, receivedId, putawayId).ToListAsync(ct);
+        if (rows.Count == 0) return Array.Empty<PoShortageSummaryDto>();
 
-        var pos = await db.Set<PurchaseOrder>().AsNoTracking()
-            .Where(p => poIds.Contains(p.PurchaseOrderId) && p.IsActive && p.StatusCodeId != cancelledId)
-            .ToListAsync(ct);
-        if (pos.Count == 0) return Array.Empty<PoShortageSummaryDto>();
-        var ids = pos.Select(p => p.PurchaseOrderId).ToList();
-        var lines = await db.Set<PurchaseOrderLine>().AsNoTracking().Where(l => ids.Contains(l.PurchaseOrderId)).ToListAsync(ct);
-        var resolved = await PurchasingSupport.ResolvedByLineAsync(db, ids, ct);
-        var supplierIds = pos.Select(p => p.SupplierId).Distinct().ToList();
+        var supplierIds = rows.Select(r => r.SupplierId).Distinct().ToList();
         var suppliers = await db.Set<Supplier>().AsNoTracking().Where(s => supplierIds.Contains(s.SupplierId))
             .ToDictionaryAsync(s => s.SupplierId, s => s.Name, ct);
+        var warehouseIds = rows.Select(r => r.WarehouseId).Distinct().ToList();
+        var warehouses = await db.Set<Warehouse>().AsNoTracking().Where(w => warehouseIds.Contains(w.WarehouseId))
+            .Select(w => new { w.WarehouseId, w.PublicId, w.Code }).ToDictionaryAsync(w => w.WarehouseId, ct);
 
         var result = new List<PoShortageSummaryDto>();
-        foreach (var po in pos.OrderBy(p => p.OrderDate).ThenBy(p => p.PurchaseOrderId))
+        foreach (var po in rows.GroupBy(r => r.PurchaseOrderId).OrderBy(g => g.First().OrderDate).ThenBy(g => g.Key))
         {
-            var pending = lines.Where(l => l.PurchaseOrderId == po.PurchaseOrderId)
-                .Select(l => (Qty: ShortageRules.Pending(l.QtyOrdered, l.QtyReceived, resolved.GetValueOrDefault(l.PurchaseOrderLineId)), l.UnitCost))
+            // Mismas reglas puras que LinesAsync (Pending recorta a 0; PendingCost redondea a 4 decimales).
+            var pending = po.Select(r => (Qty: ShortageRules.Pending(r.QtyOrdered, r.QtyReceived, r.Resolved), r.UnitCost))
                 .Where(x => x.Qty > 0m).ToList();
             if (pending.Count == 0) continue;
-            result.Add(new PoShortageSummaryDto(po.PublicId, po.Number, po.SupplierId, suppliers.GetValueOrDefault(po.SupplierId, ""),
-                pending.Count, pending.Sum(x => x.Qty), PurchaseOrderRules.Round4(pending.Sum(x => ShortageRules.PendingCost(x.Qty, x.UnitCost)))));
+            var head = po.First();
+            var warehouse = warehouses.GetValueOrDefault(head.WarehouseId);
+            result.Add(new PoShortageSummaryDto(head.PublicId, head.Number, head.SupplierId, suppliers.GetValueOrDefault(head.SupplierId, ""),
+                pending.Count, pending.Sum(x => x.Qty), PurchaseOrderRules.Round4(pending.Sum(x => ShortageRules.PendingCost(x.Qty, x.UnitCost))),
+                warehouse?.PublicId ?? Guid.Empty, warehouse?.Code ?? ""));
         }
         return result;
+    }
+
+    /// <summary>Fila plana de una línea de compra con faltante pendiente (ordenado − recibido − resuelto &gt; 0).</summary>
+    private sealed record PendingLineRow(int PurchaseOrderId, Guid PublicId, string Number, DateOnly OrderDate, int SupplierId, int WarehouseId,
+        int PurchaseOrderLineId, decimal QtyOrdered, decimal QtyReceived, decimal UnitCost, decimal Resolved);
+
+    /// <summary>
+    /// Líneas con faltante pendiente de órdenes activas NO canceladas con algún recibo activo confirmado (RECEIVED o PUTAWAY,
+    /// el mismo criterio que ReceiptFlagsAsync). La consulta parte de la línea pero siempre unida a su orden: la línea no
+    /// tiene TenantId y el filtro de tenant llega por PurchaseOrder. Lo resuelto es una subconsulta correlacionada; no se
+    /// agrega (SUM/GroupBy) sobre una expresión que la contenga (SQL Server, error 130): la agrupación se hace en memoria.
+    /// </summary>
+    private IQueryable<PendingLineRow> PendingLinesQuery(int cancelledId, int receivedId, int putawayId)
+    {
+        var asns = db.Set<Asn>().AsNoTracking();
+        var receipts = db.Set<ReceiptHeader>().AsNoTracking();
+        var resolutions = db.Set<PurchaseOrderShortageResolution>().AsNoTracking();
+        return from l in db.Set<PurchaseOrderLine>().AsNoTracking()
+               join p in db.Set<PurchaseOrder>().AsNoTracking() on l.PurchaseOrderId equals p.PurchaseOrderId
+               where p.IsActive && p.StatusCodeId != cancelledId
+                     && asns.Any(a => a.PurchaseOrderId == p.PurchaseOrderId
+                                      && receipts.Any(r => r.AsnId == a.AsnId && r.IsActive
+                                                           && (r.StatusCodeId == receivedId || r.StatusCodeId == putawayId)))
+               let resolved = resolutions.Where(r => r.PurchaseOrderLineId == l.PurchaseOrderLineId).Sum(r => (decimal?)r.Quantity) ?? 0m
+               where l.QtyOrdered - l.QtyReceived - resolved > 0m
+               select new PendingLineRow(p.PurchaseOrderId, p.PublicId, p.Number, p.OrderDate, p.SupplierId, p.WarehouseId,
+                   l.PurchaseOrderLineId, l.QtyOrdered, l.QtyReceived, l.UnitCost, resolved);
     }
 
     /// <summary>

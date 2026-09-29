@@ -1,4 +1,6 @@
-// Pantalla E (Lote F6) — Cruce de muelle (demo): citas de muelle. `/warehouse/dock-appointments`. Lectura: inventory.view
+// Pantalla E (Lote F6) — Cruce de muelle (demo): citas de muelle. Desde la reconciliación con la maqueta (Fase 3) no tiene
+// ítem de menú propio: es la pestaña 'Citas de muelle' de Cruce de muelle (`/warehouse/cross-dock-plans?tab=appointments`;
+// `/warehouse/dock-appointments` redirige ahí). Lectura: inventory.view
 // + CROSSDOCK (aplicado por la ruta). Agendar/reprogramar/cambiar estatus: warehouse.crossdock. Muelles y avisos de llegada
 // son lecturas de WMS_LOTSERIAL (otro módulo): se piden con `handleAccessDenied: false` para que un tenant con CROSSDOCK y
 // sin WMS vea la agenda en lugar de 'Módulo apagado'; los ASN solo se piden al elegir vincular uno.
@@ -29,6 +31,7 @@ import {
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useAsns, useDockAppointments, useSaveDockAppointment, useWarehouseDocks, type DockAppointmentDto } from './api'
 import { WarehousePicker, WarehousePickerInput } from './pickers'
+import { IconSwap } from '../../kernel/ui/screenIcons'
 
 /** Fecha y hora (`<input type="datetime-local">`; no lo tiene el kit): registrado con `useController` como
  *  WarehousePickerInput/ProductPickerInput en pickers.tsx. Valor de formulario: 'YYYY-MM-DDTHH:mm' en hora local. */
@@ -311,9 +314,9 @@ function StatusModal({ appointment, open, onClose }: { appointment: DockAppointm
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Pantalla
+// Pestaña 'Citas de muelle' de Cruce de muelle (CrossDockPlanListScreen, ?tab=appointments)
 // ---------------------------------------------------------------------------------------------------------------------
-export default function DockAppointmentListScreen() {
+export function DockAppointmentsTab() {
   const t = useT()
   const lang = useLang()
   const canManage = useCan('warehouse.crossdock')
@@ -381,21 +384,7 @@ export default function DockAppointmentListScreen() {
   )
 
   return (
-    <div className="wrap">
-      <div className="head">
-        <div>
-          <h1>{t('warehouse.dockAppointments.title')}</h1>
-          <p>{t('warehouse.dockAppointments.subtitle')}</p>
-        </div>
-        <div className="act">
-          <Can perm="warehouse.crossdock">
-            <button type="button" className="btn flow" onClick={() => setCreating(true)}>
-              {t('warehouse.dockAppointments.new')}
-            </button>
-          </Can>
-        </div>
-      </div>
-
+    <>
       <Filters
         onClear={() => {
           setWarehousePublicId(null)
@@ -424,7 +413,19 @@ export default function DockAppointmentListScreen() {
         <DateRangeFilter label={t('warehouse.dockAppointments.filters.range')} value={range} onChange={setRange} />
       </Filters>
 
-      <Panel flush title={t('warehouse.dockAppointments.title')} subtitle={t('warehouse.dockAppointments.count', { count: data.length })}>
+      <Panel
+        flush
+        icon={<IconSwap />}
+        title={t('warehouse.dockAppointments.title')}
+        badge={data.length}
+        actions={
+          <Can perm="warehouse.crossdock">
+            <button type="button" className="btn flow sm" onClick={() => setCreating(true)}>
+              {t('warehouse.dockAppointments.new')}
+            </button>
+          </Can>
+        }
+      >
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}
@@ -445,6 +446,6 @@ export default function DockAppointmentListScreen() {
       <CreateAppointmentModal open={creating} onClose={() => setCreating(false)} />
       <ReprogramModal appointment={reprogramming} open={reprogramming !== null} onClose={() => setReprogramming(null)} />
       <StatusModal appointment={changingStatus} open={changingStatus !== null} onClose={() => setChangingStatus(null)} />
-    </div>
+    </>
   )
 }

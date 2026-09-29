@@ -9,6 +9,7 @@ import { StatusChip, useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { DataTable, type DataColumn, Field, Filters, Form, matchesQ, Modal, Panel, QBox, Select, SelectFilter, TextInput, toast } from '../../kernel/ui'
 import { useCreateWarehouse, useWarehouses, type WarehouseDto } from './api'
+import { IconWarehouse } from '../../kernel/ui/screenIcons'
 
 /** Dominio de estatus del almacén (CatalogDomains.WarehouseStatus). */
 const STATUS_DOMAIN = 'WarehouseStatus'
@@ -170,7 +171,7 @@ export default function WarehouseListScreen() {
         />
       </Filters>
 
-      <Panel flush title={t('warehouse.list.title')} subtitle={data ? t('warehouse.list.count', { count: filtered.length }) : undefined}>
+      <Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? filtered.length : undefined}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} />
         </div>

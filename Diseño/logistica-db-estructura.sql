@@ -1901,6 +1901,8 @@ CREATE TABLE dbo.PurchaseOrderLine (
     CONSTRAINT CK_POLine_Numbers CHECK (QtyOrdered > 0 AND QtyReceived >= 0 AND UnitCost >= 0),   -- Lote 6
     CONSTRAINT UQ_POLine_IdPo UNIQUE (PurchaseOrderLineId, PurchaseOrderId)                       -- Lote 6: destino de FK_PoShortage_Line
 );
+-- Líneas de una orden (detalle, recibo contra PO y faltantes de 'Ajustes de inventario').
+CREATE INDEX IX_POLine_Po ON dbo.PurchaseOrderLine(PurchaseOrderId);
 GO
 
 -- Lote 6 (D8): resolución de faltantes por línea de PO ('Ajustes de inventario', bitácora L762). CLOSE y REORDER resuelven el
@@ -1946,6 +1948,8 @@ CREATE TABLE dbo.Asn (
     CONSTRAINT FK_Asn_Po FOREIGN KEY (PurchaseOrderId, TenantId) REFERENCES dbo.PurchaseOrder(PurchaseOrderId, TenantId), -- Lote 6
     CONSTRAINT CK_Asn_Origin CHECK (ClientId IS NULL OR PurchaseOrderId IS NULL)                                         -- Lote 6: de un cliente o de una PO, nunca ambos
 );
+-- ASN de una orden de compra (banderas de recibo y faltantes de 'Ajustes de inventario').
+CREATE INDEX IX_Asn_Po ON dbo.Asn(PurchaseOrderId) WHERE PurchaseOrderId IS NOT NULL;
 GO
 
 CREATE TABLE dbo.AsnLine (

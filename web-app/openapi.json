@@ -29266,6 +29266,14 @@
           "pendingCost": {
             "type": "number",
             "format": "double"
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -33081,6 +33089,10 @@
           },
           "adminPassword": {
             "type": "string",
+            "nullable": true
+          },
+          "mfaRequired": {
+            "type": "boolean",
             "nullable": true
           }
         },

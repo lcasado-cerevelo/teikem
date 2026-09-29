@@ -11,6 +11,7 @@ import { useT } from '../../kernel/i18n'
 import { ConfirmDialog, DataTable, EmptyState, Field, Form, Modal, NumberInput, Panel, Spinner, TextInput, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { useCrossDockAction, useCrossDockCandidates, useCrossDockPlan, useOrderLookup, type CrossDockCandidateDto, type OrderListItemDto } from './api'
 import { isAccessDenied } from './accessDenied'
+import { IconSwap } from '../../kernel/ui/screenIcons'
 
 type CrossDockAllocationDto = components['schemas']['CrossDockAllocationDto']
 
@@ -324,7 +325,7 @@ export default function CrossDockPlanDetailScreen() {
         <StatusPipeline domain={STATUS_DOMAIN} entityType={ENTITY_TYPE} entityId={plan.id} currentCode={plan.statusCode} disabled />
       </div>
 
-      <Panel title={t('warehouse.crossDockPlans.candidates.title')} flush>
+      <Panel icon={<IconSwap />} title={t('warehouse.crossDockPlans.candidates.title')} flush>
         <DataTable
           label={t('warehouse.crossDockPlans.candidates.title')}
           columns={candidateColumns}
@@ -336,7 +337,7 @@ export default function CrossDockPlanDetailScreen() {
       </Panel>
 
       <div style={{ marginTop: 14 }}>
-        <Panel title={t('warehouse.crossDockPlans.allocations.title')} flush>
+        <Panel icon={<IconSwap />} title={t('warehouse.crossDockPlans.allocations.title')} flush>
           <DataTable
             label={t('warehouse.crossDockPlans.allocations.title')}
             columns={allocationColumns}

@@ -415,7 +415,7 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     mock.handler = warehouseHandler
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     expect(await screen.findByRole('heading', { name: 'Almacén' })).toBeInTheDocument()
-    await waitFor(async () => expect(within(await tile('En mano')).getByText('1,250.50')).toBeInTheDocument())
+    await waitFor(async () => expect(within(await tile('En almacén')).getByText('1,250.50')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Disponible')).getByText('1,000')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('3')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('2')).toBeInTheDocument())
@@ -432,8 +432,10 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1&types=PUTAWAY')
     expect(mock.urls).toContain('/api/v1/cycle-counts?status=OPEN')
     expect(mock.urls.some((u) => /from|to=|fromUtc|toUtc/.test(u) && !u.includes('analytics'))).toBe(false)
-    // una columna a 360 px: la columna mínima nunca excede el ancho del panel
-    const grid = (await tile('Recibos abiertos')).parentElement as HTMLElement
+    // Recibos abiertos abre el río (clases de la maqueta); las tarjetas restantes, una columna a 360 px: la columna
+    // mínima nunca excede el ancho del panel
+    expect((await tile('Recibos abiertos')).parentElement).toHaveClass('river')
+    const grid = (await tile('Tareas pendientes')).parentElement as HTMLElement
     expect(grid.getAttribute('style')).toContain('minmax(min(100%, 200px), 1fr)')
     // los indicadores del API siguen arriba (orden del registro)
     expect(paintedPanels(container)).toEqual(['INDICATORS', 'WAREHOUSE'])

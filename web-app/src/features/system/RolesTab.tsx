@@ -1,5 +1,6 @@
 // Pestaña Roles de /system/users (usuariosScreen de la maqueta): tabla ordenable, alta/edición con permisos
-// agrupados por categoría y baja con guarda de uso. PUT/DELETE llevan [RequireAal2]: el cliente del API pide
+// agrupados por categoría y baja con guarda de uso. El botón "Nuevo rol" vive en la cabecera de `UsersPage` (una
+// sola fila con las pestañas, como la maqueta): la página avisa con `creating` y el editor se abre aquí. PUT/DELETE llevan [RequireAal2]: el cliente del API pide
 // reautenticación sola si el servidor responde 403 `aal2_required`, y reintenta — no hace falta pedirla aquí.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -8,7 +9,6 @@ import { z } from 'zod'
 import { applyProblemDetails } from '../../kernel/api/client'
 import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n/useT'
-import { Can } from '../../kernel/access'
 import {
   Chip,
   ConfirmDialog,
@@ -16,6 +16,7 @@ import {
   Field,
   Form,
   IconEdit,
+  IconShield,
   IconTrash,
   Modal,
   Panel,
@@ -25,7 +26,7 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../kernel/ui'
-import { useDeleteRole, useRoles, useSaveRole, usePermissions, type PermissionDto, type RoleDto } from './api'
+import { useDeleteRole, useRoles, useRoleTemplates, useSaveRole, usePermissions, type PermissionDto, type RoleDto } from './api'
 import { groupPermissionsByCategory } from './permissionGroups'
 import { categoryIcon } from './permissionIcons'
 import './system.css'
@@ -97,7 +98,9 @@ function RoleEditorModal({
       title={isEdit ? t('system.users.roles.editTitle') : t('system.users.roles.newTitle')}
       onClose={close}
       dismissible={!form.formState.isSubmitting}
-      size="lg"
+      // 'md' (640 px) y no 'lg' (880 px): es la medida del kit más cercana a los 560 px de la maqueta. Los permisos
+      // van uno por renglón y las dos descripciones caben lado a lado; bajo 480 px `.r2` pasa a una columna.
+      size="md"
       footer={
         <>
           <button type="button" className="btn" onClick={close}>
@@ -159,17 +162,29 @@ function RoleEditorModal({
   )
 }
 
-export function RolesTab() {
+export interface RolesTabProps {
+  /** true = la cabecera de la página pidió "Nuevo rol": se abre el editor vacío. */
+  creating?: boolean
+  /** Se llama al cerrar el editor abierto por `creating`. */
+  onCreateClose?: () => void
+}
+
+export function RolesTab({ creating = false, onCreateClose }: RolesTabProps) {
   const t = useT()
   const { data: roles, isLoading } = useRoles()
   const { data: permissions = [] } = usePermissions()
   const deleteRole = useDeleteRole()
-  const [editing, setEditing] = useState<RoleDto | null | 'new'>(null)
+  const [editing, setEditing] = useState<RoleDto | null>(null)
   const [toDelete, setToDelete] = useState<RoleDto | null>(null)
+
+  const { data: templates = [] } = useRoleTemplates()
 
   const rows = roles ?? []
   const totalPermissions = permissions.length
-  const templateNames = rows.filter((r) => r.isTemplate).map((r) => r.name)
+  // `GET /roles` sin `includeTemplates` solo trae los roles de la compañía (nunca `isTemplate`): los que "vienen ya armados"
+  // son las plantillas de sistema de las que se clonaron. Se nombran por su descripción (traducida; el nombre es la clave
+  // interna, p. ej. 'TenantAdmin'). Sin plantillas legibles, la nota sale sin la lista.
+  const templateNames = templates.map((r) => r.description || r.name).filter((n): n is string => !!n)
 
   const columns = useMemo<DataColumn<RoleDto>[]>(
     () => [
@@ -218,18 +233,7 @@ export function RolesTab() {
 
   return (
     <>
-      <Panel
-        flush
-        title={t('system.users.roles.title')}
-        subtitle={t('system.users.roles.count', { count: rows.length })}
-        actions={
-          <Can perm="admin.roles">
-            <button type="button" className="btn flow" onClick={() => setEditing('new')}>
-              {t('system.users.roles.new')}
-            </button>
-          </Can>
-        }
-      >
+      <Panel flush icon={<IconShield />} title={t('system.users.roles.title')} badge={rows.length}>
         <DataTable
           label={t('system.users.roles.title')}
           columns={columns}
@@ -242,17 +246,21 @@ export function RolesTab() {
         />
       </Panel>
 
-      {templateNames.length > 0 && (
-        <p className="note" style={{ marginTop: 16 }}>
-          {t('system.users.roles.note', { count: templateNames.length, names: templateNames.join(', ') })}
-        </p>
-      )}
+      {/* nota al pie del panel (maqueta `rolesNote`), siempre visible como la de Usuarios */}
+      <p className="note" style={{ marginTop: 16 }}>
+        {templateNames.length > 0
+          ? t('system.users.roles.note', { count: templateNames.length, names: templateNames.join(', ') })
+          : t('system.users.roles.noteGeneric')}
+      </p>
 
       <RoleEditorModal
-        open={editing !== null}
-        role={editing === 'new' ? null : editing}
+        open={editing !== null || creating}
+        role={editing}
         permissions={permissions}
-        onClose={() => setEditing(null)}
+        onClose={() => {
+          setEditing(null)
+          onCreateClose?.()
+        }}
       />
 
       <ConfirmDialog

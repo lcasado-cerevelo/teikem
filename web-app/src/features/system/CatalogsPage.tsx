@@ -47,6 +47,7 @@ import {
   type CatalogDomain,
   type LookupValue,
 } from './api'
+import { IconGear } from '../../kernel/ui/screenIcons'
 
 const ADMIN_CATALOGS = 'admin.catalogs'
 
@@ -504,7 +505,7 @@ export default function CatalogsPage() {
       </div>
 
       <div className="md">
-        <Panel flush title={cards ? undefined : t('system.catalogs.lists')}>
+        <Panel flush icon={cards ? undefined : <IconGear />} title={cards ? undefined : t('system.catalogs.lists')}>
           {cards ? (
             <div className="pb">
               <div className="f">
@@ -557,8 +558,9 @@ export default function CatalogsPage() {
 
         <Panel
           flush
+          icon={<IconGear />}
           title={selectedDomain ? selectedDomain.label : t('system.catalogs.selectList')}
-          subtitle={selectedDomain ? t('system.catalogs.valueCount', { count: rows.length }) : undefined}
+          badge={selectedDomain ? rows.length : undefined}
           actions={
             selectedDomain && (
               <>

@@ -151,6 +151,27 @@ describe('DataTable', () => {
     expect(onDeactivate).toHaveBeenCalledWith(ROWS[0])
   })
 
+  it('rowClassName agrega su clase a la fila y a la tarjeta (junto a la de clic)', () => {
+    const dimInactive = (r: Row) => (r.active ? undefined : 'dim')
+    const { unmount } = render(
+      <DataTable columns={COLUMNS} rows={ROWS.slice(0, 2)} rowKey={(r) => r.id} onRowClick={vi.fn()} rowClassName={dimInactive} />,
+    )
+    const rows = within(screen.getAllByRole('rowgroup')[1]).getAllByRole('row')
+    expect(rows[0]).toHaveAttribute('class', 'click')
+    expect(rows[1]).toHaveAttribute('class', 'click dim')
+    unmount()
+
+    const restore = cardsMode()
+    try {
+      render(<DataTable columns={COLUMNS} rows={ROWS.slice(0, 2)} rowKey={(r) => r.id} label="Artículos" rowClassName={dimInactive} />)
+      const cards = within(screen.getByRole('list', { name: 'Artículos' })).getAllByRole('listitem')
+      expect(cards[0]).toHaveAttribute('class', 'dt-card')
+      expect(cards[1]).toHaveAttribute('class', 'dt-card dim')
+    } finally {
+      restore()
+    }
+  })
+
   it('bajo 720 px pinta tarjetas (título + etiqueta: valor) en lugar de la tabla', () => {
     const original = window.matchMedia
     window.matchMedia = ((query: string) => ({

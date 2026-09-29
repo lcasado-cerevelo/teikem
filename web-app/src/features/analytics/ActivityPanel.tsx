@@ -23,6 +23,7 @@ import {
   type ActivityModule,
   type ActivityWindow,
 } from './activity'
+import { IconClock } from '../../kernel/ui/screenIcons'
 
 /** Fila de la tabla: el evento del API con una clave estable (su posición en lo acumulado). */
 type ActivityRow = ActivityEventDto & { rowId: string }
@@ -142,6 +143,7 @@ export function ActivityPanel() {
         id: 'detail',
         header: t('analytics.activity.columns.detail'),
         cell: (r) => <span style={{ overflowWrap: 'anywhere' }}>{r.detail ?? ''}</span>,
+        sortValue: (r) => r.detail ?? null,
       },
       {
         id: 'user',
@@ -158,7 +160,7 @@ export function ActivityPanel() {
   // Primera carga: todavía no se sabe qué módulos ve el usuario.
   if (query.isPending) {
     return (
-      <Panel title={title} subtitle={subtitle}>
+      <Panel icon={<IconClock />} title={title} subtitle={subtitle}>
         <Spinner block label={t('common.loading')} />
       </Panel>
     )
@@ -169,7 +171,7 @@ export function ActivityPanel() {
     // Error sin datos previos: sin acceso (403) el panel no se pinta; otro error se muestra en su lugar.
     if (!problem || HIDDEN_ON.has(problem.code)) return null
     return (
-      <Panel title={title} subtitle={subtitle}>
+      <Panel icon={<IconClock />} title={title} subtitle={subtitle}>
         <EmptyState title={problem.title} />
       </Panel>
     )
@@ -232,7 +234,7 @@ export function ActivityPanel() {
     ) : undefined
 
   return (
-    <Panel title={title} subtitle={subtitle} actions={controls} footer={footer} flush>
+    <Panel icon={<IconClock />} title={title} subtitle={subtitle} actions={controls} footer={footer} flush>
       <div className="qrow">
         <QBox value={q} onChange={setQ} />
       </div>

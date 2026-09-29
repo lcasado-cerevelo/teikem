@@ -49,8 +49,9 @@ public sealed record ShortageResolutionDto(int Id, string ActionCode, string Act
 public sealed record ShortageLineDto(int PurchaseOrderLineId, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered,
     decimal QtyReceived, decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal PendingCost, IReadOnlyList<ShortageResolutionDto> Resolutions);
 
+// Fase 7 (Ajustes de inventario): el almacén de la orden va al final (aditivo) para el ajuste manual (posición del almacén).
 public sealed record PoShortageSummaryDto(Guid PublicId, string Number, int SupplierId, string SupplierName, int LinesWithShortage,
-    decimal QtyPending, decimal PendingCost);
+    decimal QtyPending, decimal PendingCost, Guid WarehousePublicId, string WarehouseCode);
 
 public sealed record ShortageResolveRequest(string? Action, decimal? Quantity = null, string? Reason = null, string? Notes = null, int? BinId = null,
     int? LotId = null, LotInput? Lot = null, IReadOnlyList<string>? SerialNumbers = null, string? RowVersion = null);

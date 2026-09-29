@@ -4,7 +4,7 @@ import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
 import { translate } from '../kernel/i18n/i18n'
 import { NAV_GROUPS, navSubtitleKey, navTitleKey, routeAllowed, visibleNav } from './navigation'
-import { appRoutes, type AppRoute } from './routes'
+import { appRoutes, legacyInventorySearch, type AppRoute } from './routes'
 
 const ALL_MODULES = new Set<string>(Object.values(ModuleKeys))
 const ALL_PERMS = new Set(appRoutes.flatMap((r) => (r.perm ? r.perm.split('|') : [])))
@@ -55,16 +55,16 @@ describe('menú completo (routes.tsx)', () => {
       'Sala de despacho',
       'Monitoreo de ruta',
       'Almacenes',
-      'Productos',
-      'Inventario',
-      'Recibo',
-      'Tareas de almacén',
-      'Conteo cíclico',
-      'Recolección y empaque',
+      'Ubicaciones',
+      'Productos e inventario',
+      'Compras',
       'Proveedores',
-      'Órdenes de compra',
-      'Citas de muelle',
+      'Recibo',
+      'Ajustes de inventario',
+      'Recolección y empaque',
+      'Conteo cíclico',
       'Cruce de muelle',
+      'Kárdex de movimientos',
       'Contabilización de compras',
       'Contabilización de despachos',
       'Procesar entregas',
@@ -117,6 +117,49 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/').pending).toBeUndefined()
   })
 
+  it("'Ajustes de inventario' (Fase 7) es pantalla real, con el acceso de Compras, justo después de Recibo", () => {
+    const adj = byPath('/warehouse/inventory-adjustments')
+    expect(adj).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING', nav: { group: 'warehouse', key: 'inventoryAdjustments' } })
+    expect(adj.pending).toBeUndefined()
+    const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items.map((r) => r.path)
+    expect(warehouse.indexOf('/warehouse/inventory-adjustments')).toBe(warehouse.indexOf('/warehouse/receipts') + 1)
+    expect(routeAllowed(adj, new Set(['purchasing.view']), new Set(['PURCHASING']))).toBe(true)
+    expect(routeAllowed(adj, new Set(['inventory.view']), new Set(['PURCHASING', 'WMS_LOTSERIAL']))).toBe(false)
+  })
+
+  it("Fase 8: 'Productos e inventario' es un solo ítem (3.º) y 'Kárdex de movimientos' el último de Almacén; 'Inventario' ya no es ítem", () => {
+    const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items
+    expect(warehouse.map((r) => r.path)).toEqual([
+      '/warehouse/warehouses',
+      '/warehouse/locations',
+      '/warehouse/products',
+      '/warehouse/purchase-orders',
+      '/warehouse/suppliers',
+      '/warehouse/receipts',
+      '/warehouse/inventory-adjustments',
+      '/warehouse/pick-batches',
+      '/warehouse/cycle-counts',
+      '/warehouse/cross-dock-plans',
+      '/warehouse/kardex',
+    ])
+    expect(translate('en', navTitleKey('products'))).toBe('Products & inventory')
+    expect(translate('en', navTitleKey('kardex'))).toBe('Movement ledger')
+    expect(byPath('/warehouse/kardex')).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL' })
+    expect(byPath('/warehouse/kardex').pending).toBeUndefined()
+    // la dirección anterior sigue existiendo (enlaces guardados), sin ítem, guarda ni módulo propios: redirige
+    expect(byPath('/warehouse/inventory')).toMatchObject({ path: '/warehouse/inventory' })
+    expect(byPath('/warehouse/inventory').nav).toBeUndefined()
+    expect(byPath('/warehouse/inventory').perm).toBeUndefined()
+  })
+
+  it('legacyInventorySearch: sin pestaña era Saldos (tab=balances); tab=kardex pasa a no llevar parámetro; los filtros se quedan', () => {
+    const map = (q: string) => legacyInventorySearch(new URLSearchParams(q)).toString()
+    expect(map('')).toBe('tab=balances')
+    expect(map('categoryIds=7&warehousePublicIds=W')).toBe('categoryIds=7&warehousePublicIds=W&tab=balances')
+    expect(map('tab=kardex&product=P')).toBe('product=P')
+    expect(map('tab=reconciliation')).toBe('tab=reconciliation')
+  })
+
   it('un ítem pendiente sin su permiso o sin su módulo no aparece; con los dos, sí', () => {
     const dispatch = byPath('/ops/dispatch')
     expect(dispatch).toMatchObject({ perm: 'trips.dispatch', module: 'LTL_GROUND' })
@@ -135,12 +178,12 @@ describe('menú completo (routes.tsx)', () => {
         'warehouse',
         [
           '/warehouse/warehouses',
+          '/warehouse/locations',
           '/warehouse/products',
-          '/warehouse/inventory',
           '/warehouse/receipts',
-          '/warehouse/tasks',
-          '/warehouse/cycle-counts',
           '/warehouse/pick-batches',
+          '/warehouse/cycle-counts',
+          '/warehouse/kardex',
         ],
       ],
     ])
