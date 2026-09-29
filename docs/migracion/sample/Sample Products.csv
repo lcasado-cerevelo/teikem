@@ -1,0 +1,7 @@
+,Active Status,Type,Item,Description,Sales Tax Code,Account,COGS Account,Asset Account,Accumulated Depreciation,Purchase Description,Quantity On Hand,U/M,Cost,Preferred Vendor,Tax Agency,Price,Reorder Pt (Min),MPN,Serial,Lot,Category,Brand,Model
+,Active,Inventory Part,SAM-001,Guantes de nitrilo talla M (muestra),Tax,Inventory Asset,Cost of Goods Sold,Inventory Asset,,Guantes de nitrilo talla M (muestra),120,,2.50,Proveedor Muestra A,,4.00,10,,FALSE,FALSE,,MARCA DEMO,
+,Active,Inventory Part,SAM 002,"Mascarilla quirúrgica, caja de 50 (muestra)",Tax,Inventory Asset,Cost of Goods Sold,Inventory Asset,,"Mascarilla quirúrgica, caja de 50 (muestra)","1,040",,0.74,Proveedor Muestra A,,1.25,,,FALSE,FALSE,,MARCA DEMO,
+,Active,Inventory Part,SAM-003,,Tax,Inventory Asset,Cost of Goods Sold,Inventory Asset,,,10,,0,,,0,,,FALSE,FALSE,,,
+,Active,Inventory Part,CAJ-100,Caja corrugada 12x12x12 (muestra),Tax,Inventory Asset,Cost of Goods Sold,Inventory Asset,,Caja corrugada 12x12x12 (muestra),500,,0.95,Proveedor Muestra B,,0,,,FALSE,FALSE,CARTONES,,
+,Active,Service,SRV-01,Servicio de entrega (muestra),Non,Sales,,,,,,,0,,,25.00,,,FALSE,FALSE,,,
+,Active,Inventory Part,SAM-006,Bastón de aluminio ajustable (muestra),Tax,Inventory Asset,Cost of Goods Sold,Inventory Asset,,Bastón de aluminio ajustable (muestra),-5,,8.00,Proveedor Muestra C,,15.00,,,FALSE,FALSE,,MARCA DEMO,

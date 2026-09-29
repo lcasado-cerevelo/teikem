@@ -79,8 +79,10 @@ public sealed class DeviceService(
         var ctx = (TenantContext)tenant;
         var tenantId = ctx.RequireTenantId();
         var errors = new Dictionary<string, string[]>();
+        // Sin código: se genera uno (Lote F8a, P5 — la pantalla de alta no lo pide, solo Nombre y almacén). Con
+        // código: se respeta tal cual (uso administrativo directo, como en los aparatos ya sembrados/probados).
         var code = req.Code?.Trim().ToUpperInvariant();
-        if (string.IsNullOrEmpty(code)) errors["code"] = new[] { CodeRequiredMessage };
+        if (string.IsNullOrEmpty(code)) code = null;
         else if (code.Length > CodeMaxLength) errors["code"] = new[] { CodeTooLongMessage };
         var name = Optional(req.Name, "name", "El nombre", NameMaxLength, errors);
         var model = Optional(req.Model, "model", "El modelo", ModelMaxLength, errors);
@@ -88,13 +90,20 @@ public sealed class DeviceService(
         if (errors.Count > 0) throw new ValidationException(errors);
         var warehouseId = req.DefaultWarehousePublicId is Guid wid ? await ActiveWarehouseIdAsync(wid, ct) : (int?)null;
 
-        // UNIQUE (TenantId, Code) sin filtro: el código de un aparato desactivado tampoco se reutiliza.
-        if (await db.Set<UserDevice>().AnyAsync(d => d.Code == code, ct)) throw new ConflictException(DuplicateCodeMessage);
+        if (code is not null)
+        {
+            // UNIQUE (TenantId, Code) sin filtro: el código de un aparato desactivado tampoco se reutiliza.
+            if (await db.Set<UserDevice>().AnyAsync(d => d.Code == code, ct)) throw new ConflictException(DuplicateCodeMessage);
+        }
+        else
+        {
+            code = await NewUniqueDeviceCodeAsync(ct);
+        }
 
         var enrollCode = NewEnrollCode();
         var device = new UserDevice
         {
-            PublicId = Guid.NewGuid(), TenantId = tenantId, Code = code!, Name = name, Model = model,
+            PublicId = Guid.NewGuid(), TenantId = tenantId, Code = code, Name = name, Model = model,
             PlatformLookupId = await lookups.GetIdAsync(LookupDomains.DevicePlatform, DefaultPlatform, ct),
             EnrollCodeHash = Hash(enrollCode), EnrollCodeExpiresUtc = DateTime.UtcNow.Add(EnrollCodeLifetime),
             DefaultWarehouseId = warehouseId, ThemeLookupId = themeId, RegisteredBy = ctx.UserId, RegisteredAtUtc = DateTime.UtcNow, IsActive = true,
@@ -102,6 +111,18 @@ public sealed class DeviceService(
         db.Set<UserDevice>().Add(device);
         await db.SaveGuardedAsync(DuplicateCodeMessage, ct);
         return new DeviceCreatedDto(await GetAsync(device.PublicId, ct), enrollCode);
+    }
+
+    /// <summary>Código legible generado por el servidor (p. ej. "AP-7K4QXR") cuando el alta no manda uno; unos pocos
+    /// reintentos alcanzan de sobra contra el UNIQUE (alta entropía, uso normal — no una carrera esperada).</summary>
+    private async Task<string> NewUniqueDeviceCodeAsync(CancellationToken ct)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var candidate = $"AP-{new string(Enumerable.Range(0, 6).Select(_ => EnrollAlphabet[RandomNumberGenerator.GetInt32(EnrollAlphabet.Length)]).ToArray())}";
+            if (!await db.Set<UserDevice>().AnyAsync(d => d.Code == candidate, ct)) return candidate;
+        }
+        throw new ConflictException(DuplicateCodeMessage);
     }
 
     /// <summary>Edición: nombre ("" lo quita), almacén por defecto (o quitarlo) y tema. El código no cambia.</summary>

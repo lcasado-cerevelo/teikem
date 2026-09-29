@@ -16,11 +16,11 @@ function Screen() {
 }
 
 const ROUTES: AppRoute[] = [
-  { path: '/', element: Screen, nav: { group: 'ops', labelKey: 'nav.pulse', order: 0 } },
-  { path: '/orders', element: Screen, module: 'LTL_GROUND', perm: 'orders.read', nav: { group: 'ops', labelKey: 'x.orders', order: 1 } },
-  { path: '/products', element: Screen, module: 'CATALOG', nav: { group: 'catalog', labelKey: 'x.products' } },
-  { path: '/users', element: Screen, perm: 'users.manage', nav: { group: 'admin', labelKey: 'x.users', order: 2 } },
-  { path: '/roles', element: Screen, perm: 'roles.manage', nav: { group: 'admin', labelKey: 'x.roles', order: 1 } },
+  { path: '/', element: Screen, nav: { group: 'ops', key: 'pulse', order: 0 } },
+  { path: '/orders', element: Screen, module: 'LTL_GROUND', perm: 'orders.read', nav: { group: 'ops', key: 'orders', order: 1 } },
+  { path: '/products', element: Screen, module: 'CATALOG', nav: { group: 'catalog', key: 'products' } },
+  { path: '/users', element: Screen, perm: 'users.manage', nav: { group: 'system', key: 'users', order: 2 } },
+  { path: '/roles', element: Screen, perm: 'roles.manage', nav: { group: 'system', key: 'roles', order: 1 } },
   { path: '/hidden', element: Screen, perm: 'users.manage' },
 ]
 
@@ -37,18 +37,18 @@ describe('visibleNav (menú lateral)', () => {
     expect(labels(visibleNav(ROUTES, new Set(['orders.read']), new Set(['LTL_GROUND'])))).toEqual([['ops', ['/', '/orders']]])
   })
 
-  it('el módulo encendido muestra su grupo; Administración aparece con un permiso de admin, ordenada por `order`', () => {
+  it('el módulo encendido muestra su grupo; Sistema aparece con un permiso de admin, ordenada por `order`', () => {
     expect(labels(visibleNav(ROUTES, new Set(), new Set(['CATALOG'])))).toEqual([
       ['ops', ['/']],
       ['catalog', ['/products']],
     ])
     expect(labels(visibleNav(ROUTES, new Set(['users.manage']), new Set()))).toEqual([
       ['ops', ['/']],
-      ['admin', ['/users']],
+      ['system', ['/users']],
     ])
     expect(labels(visibleNav(ROUTES, new Set(['users.manage', 'roles.manage']), new Set()))).toEqual([
       ['ops', ['/']],
-      ['admin', ['/roles', '/users']],
+      ['system', ['/roles', '/users']],
     ])
   })
 })
@@ -91,6 +91,18 @@ describe('RouteGate', () => {
     unmount()
     renderGate(users, { permissions: ['users.manage'], modules: [] })
     expect(screen.getByText('pantalla protegida')).toBeInTheDocument()
+  })
+
+  it("perm 'a|b': entra con cualquiera de los dos; sin ninguno, 'Sin permiso'", () => {
+    const either: AppRoute = { path: '/system/users', element: Screen, perm: 'admin.users|admin.roles', module: 'SYSTEM' }
+    const { unmount } = renderGate(either, { permissions: ['admin.roles'], modules: ['SYSTEM'] })
+    expect(screen.getByText('pantalla protegida')).toBeInTheDocument()
+    unmount()
+    const second = renderGate(either, { permissions: ['admin.users'], modules: ['SYSTEM'] })
+    expect(screen.getByText('pantalla protegida')).toBeInTheDocument()
+    second.unmount()
+    renderGate({ ...either, module: undefined }, { permissions: ['admin.audit'], modules: [] })
+    expect(screen.getByTestId('forbidden-screen')).toBeInTheDocument()
   })
 
   it('ruta con solo módulo: "Módulo apagado" sin él, la pantalla con él', () => {

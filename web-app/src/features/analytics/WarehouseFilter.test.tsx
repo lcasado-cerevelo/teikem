@@ -88,6 +88,9 @@ function renderPulse() {
 /** Saldos según el filtro (lo que devolvería el API), para comprobar que las tarjetas pintan el DTO. */
 function handler(path: string, url: URL): unknown {
   const p = url.searchParams
+  // Lote F8a: el panel Almacén se pinta porque el Pulso del API lo trae (pulse.warehouse + inventory.view + WMS_LOTSERIAL).
+  if (path === '/api/v1/analytics/pulse')
+    return { panels: [{ key: 'WAREHOUSE', sortOrder: 40, isVisible: true, source: 'default' }], indicators: [], charts: [] }
   if (path === '/api/v1/warehouses') return [WH1, WH2]
   if (path === '/api/v1/product-categories') return CATEGORIES
   if (path === `/api/v1/products/${PRODUCT.publicId}`) return { product: PRODUCT }

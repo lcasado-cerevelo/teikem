@@ -49,6 +49,7 @@ public static class AdjustmentRules
     public static readonly IReadOnlySet<string> SystemReasons = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         AdjustmentReasons.ReceiptVariance, AdjustmentReasons.CountVariance, AdjustmentReasons.PickBatchReversal,
+        AdjustmentReasons.OpeningBalance,   // Lote 10: solo el importador de datos heredados
     };
 
     public static string SystemReason(string code) => $"El motivo {code} lo asigna el sistema.";

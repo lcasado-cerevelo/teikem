@@ -29,7 +29,7 @@ import {
   type DataColumn,
   type DateRange,
 } from '../../kernel/ui'
-import { useCreatePickBatch, usePickBatches, useProductLots, useWarehouseBins, type PickBatchDto } from './api'
+import { useCreatePickBatch, usePickBatches, useProductLots, type PickBatchDto } from './api'
 import {
   firstOtherOwner,
   formatDateTime,
@@ -40,7 +40,7 @@ import {
   useDebounced,
   type LineIssue,
 } from './lineRules'
-import { ProductMultiFilter, ProductPickerInput, WarehousePickerInput, type ProductFilterItem } from './pickers'
+import { BinPickerInput, ProductMultiFilter, ProductPickerInput, WarehousePickerInput, type ProductFilterItem } from './pickers'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'PickBatchStatus'
@@ -93,12 +93,7 @@ function PickLineFields({ index, warehousePublicId, onRemove }: { index: number;
   const { setValue } = useFormContext()
   const productPublicId = useWatch({ name: `lines.${index}.productPublicId` }) as string | null
   const tracking = useWatch({ name: `lines.${index}.trackingTypeCode` }) as string
-  const bins = useWarehouseBins(warehousePublicId, { onlyWithStock: true }, { handleAccessDenied: false })
   const lots = useProductLots(productPublicId, { enabled: tracking === 'LOT' || tracking === 'SERIAL', handleAccessDenied: false })
-  const binOptions = useMemo(
-    () => (bins.data ?? []).filter((b) => b.isActive !== false).map((b) => ({ value: String(b.id), label: [b.code, b.zoneCode].filter(Boolean).join(' · ') })),
-    [bins.data],
-  )
   const lotOptions = useMemo(
     () =>
       (lots.data ?? [])
@@ -129,7 +124,8 @@ function PickLineFields({ index, warehousePublicId, onRemove }: { index: number;
       </div>
       <div className="r2">
         <Field name={`lines.${index}.binId`} label={t('warehouse.pickBatches.fields.bin')} help={t('warehouse.pickBatches.fields.fefoHelp')}>
-          <Select options={binOptions} placeholder={t('warehouse.pickBatches.fefo')} />
+          {/* vacío = el servidor elige por FEFO; solo posiciones con existencias; al cambiar de almacén se quita sola */}
+          <BinPickerInput warehousePublicId={warehousePublicId} onlyWithStock placeholder={t('warehouse.pickBatches.fefo')} />
         </Field>
         {(tracking === 'LOT' || tracking === 'SERIAL') && (
           <Field name={`lines.${index}.lotId`} label={t('warehouse.pickBatches.fields.lot')}>

@@ -22,7 +22,7 @@ public sealed record ReportRunRequest(string? DateRangeMode, DateOnly? DateFrom,
 public sealed record ReportRunResultDto(IReadOnlyList<ReportColumn> Columns, IReadOnlyList<IDictionary<string, object?>> Rows, IDictionary<string, object?>? Totals, int Total);
 
 public sealed record AnalyticsDefinitionDto(
-    int Id, Guid PublicId, string Name, string? Description, string DataSource, string? Field, string AggregateFn, string? FilterJson,
+    int Id, Guid PublicId, string Name, string? Description, IReadOnlyDictionary<string, string> Descriptions, string DataSource, string? Field, string AggregateFn, string? FilterJson,
     string BusinessModule, bool IsMoney, bool IsSystem, int? OwnerUserId, string? OwnerName, string Visibility,
     string? DateRangeMode, DateOnly? DateFrom, DateOnly? DateTo, bool ShowInPulse,
     bool CanEdit, bool CanChangeDate, bool DateRangeApplies,

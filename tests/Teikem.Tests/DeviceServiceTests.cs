@@ -197,6 +197,19 @@ public class DeviceServiceTests
         Assert.Null(row.SecretHash);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Device_without_a_code_gets_one_generated_by_the_server(string? code)
+    {
+        // Lote F8a (P5): la pantalla de alta no pide código (solo Nombre y almacén) — antes esto daba 400 "El código
+        // del aparato es obligatorio."; ahora el servidor genera uno legible.
+        await using var f = await FixtureAsync();
+        var created = await f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest(code, "Zebra 1", null, null, null), default);
+        Assert.Matches("^AP-[A-Z0-9]{6}$", created.Device.Code);
+    }
+
     [Fact]
     public async Task Device_code_is_unique_per_tenant_case_insensitive_and_even_when_inactive()
     {

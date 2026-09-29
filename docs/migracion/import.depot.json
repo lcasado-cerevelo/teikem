@@ -1,0 +1,68 @@
+{
+  // Lote 10 — Migración de Advance Depot (QuickBooks Depot + WMS MSWM, almacén 'Main').
+  // Los archivos de datos viven FUERA del repositorio (contienen correos y teléfonos de clientes).
+  // Uso: dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.depot.json --dry-run
+  "company": {
+    "name": "Advance Depot",
+    "legalName": "Advance Depot Solutions",
+    "taxId": null,
+    "lang": "es",
+    "modules": ["WMS_LOTSERIAL", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS"],
+    "adminEmail": "teikem+admin@cerevelo.com",
+    "adminFullName": "Administrador Advance"
+  },
+  "sources": {
+    "products": "F:/TeikemData/Depot Products.csv",
+    "customers": "F:/TeikemData/Depot Customers.csv",
+    "vendors": "F:/TeikemData/Depot Vendor.csv",
+    "mswm": { "connectionStringName": "LegacyMswm", "warehouseId": "Main" }
+  },
+  "products": {
+    "types": ["Inventory Part", "Inventory Assembly"],
+    "defaultCategory": "AxisCare",
+    "categoryByQuickBooksCategory": { "CARTONES": "CARTONES" },
+    "excludeQuickBooksCategories": ["SOLUTIONS", "NATIONAL GUARD"],
+    "excludeSkus": [],
+    "baseUom": "UN",
+    "trackingType": "NONE",
+    "nameFallbackToSku": true,
+    "createUnknownWmsSkusWithStock": true
+  },
+  "suppliers": {
+    "includeNames": null,
+    "excludeNames": []
+  },
+  "clients": {
+    "excludeNames": ["prueba2"],
+    "defaultCurrency": "USD",
+    "repCustomField": true,
+    "qbCodeCustomField": true
+  },
+  "warehouse": {
+    "code": "ALM-DEPOT",
+    "name": "Almacén Depot",
+    "line1": "Av. Shuford, PR-784",
+    "city": "Caguas",
+    "state": "PR",
+    "country": "PR",
+    "zones": [
+      { "code": "PCK", "name": "Picking", "zoneType": "PICKING", "matchDescription": "Picking Location" },
+      { "code": "RSV", "name": "Reserva", "zoneType": "RESERVE", "matchDescription": "REGULAR" },
+      { "code": "ALM", "name": "Advance Logistics", "zoneType": "RESERVE", "matchDescription": "ADVANCE LOGISTICS M" },
+      { "code": "PISO", "name": "Piso", "zoneType": "RESERVE",
+        "matchLocationIds": ["PISO", "FLOOR", "CARTONES", "MATTRESS PISO DEPOT", "15006 MATTRESS PISO"] },
+      { "code": "STG", "name": "Recepción", "zoneType": "STAGING", "matchLocationIds": ["R1"] },
+      { "code": "SHP", "name": "Embarque", "zoneType": "STAGING", "matchLocationIds": ["S1"] }
+    ],
+    "skipLocationIds": ["W1", "Z1", "01", "R-1"]
+  },
+  "openingBalances": {
+    "source": "mswm",
+    "reason": "OPENING_BALANCE",
+    "notes": "Migración WMS MSWM 2026-09-28"
+  },
+  "report": {
+    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/TeikemData), fuera del repositorio.
+    "prefix": "reporte-depot"
+  }
+}

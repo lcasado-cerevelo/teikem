@@ -41,8 +41,9 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     // =====================================================================
     public async Task<IReadOnlyList<DataSourceDto>> GetDataSourcesAsync(CancellationToken ct)
     {
+        var access = await AccessAsync(ct);
         var list = new List<DataSourceDto>();
-        foreach (var s in registry.All) list.Add(await ToDtoAsync(s, ct));
+        foreach (var s in registry.All.Where(s => CanReadSource(s, access))) list.Add(await ToDtoAsync(s, ct));
         return list;
     }
 
@@ -66,6 +67,15 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     // Visibilidad / edición (regla común)
     // =====================================================================
     private bool CanEdit(bool isSystem, int? ownerUserId) => !isSystem && ownerUserId.HasValue && ownerUserId == tenant.UserId;
+
+    /// <summary>
+    /// Igual que <see cref="CanEdit"/> (dueño, no de sistema), pero exige además que el dueño tenga HOY
+    /// analytics.manage — la regla exacta que ya aplica el `[RequirePermission]` de PUT/DELETE en el controlador.
+    /// Sin esto, el DTO diría `canEdit: true` a un dueño al que le quitaron el permiso, y el frontend mostraría
+    /// Editar/Eliminar/el switch de compañía aunque el servidor respondiera 403 al usarlos.
+    /// </summary>
+    private async Task<bool> CanEditWithManageAsync(bool isSystem, int? ownerUserId, CancellationToken ct)
+        => CanEdit(isSystem, ownerUserId) && await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct);
 
     private async Task<bool> CanChangeDateAsync(bool isSystem, int? ownerUserId, CancellationToken ct)
         => CanEdit(isSystem, ownerUserId) || await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsDates, ct);
@@ -157,8 +167,10 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         if (!string.IsNullOrWhiteSpace(baseEntityType)) q = q.Where(r => r.BaseEntityType!.InternalCode == baseEntityType);
         var list = await q.OrderByDescending(r => r.IsSystem).ThenBy(r => r.Name).ToListAsync(ct);
         var myRoles = await MyRoleIdsAsync(ct);
+        var access = await AccessAsync(ct);
         var result = new List<ReportDto>();
-        foreach (var r in list.Where(r => IsVisible(r.IsSystem, r.OwnerUserId, r.Visibility!.InternalCode, r.Shares.Select(s => (s.UserId, s.RoleId)), myRoles)))
+        foreach (var r in list.Where(r => IsVisible(r.IsSystem, r.OwnerUserId, r.Visibility!.InternalCode, r.Shares.Select(s => (s.UserId, s.RoleId)), myRoles)
+                     && CanReadSource(r.BaseEntityType!.InternalCode, access)))
             result.Add(await ToDtoAsync(r, ct));
         return result;
     }
@@ -169,6 +181,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var source = registry.Get(baseEntityType);
+        await EnsureSourceReadableAsync(source, ct);
         var baseId = await lookups.TryGetIdAsync(LookupDomains.EntityType, source.Key, ct)
                      ?? throw new ValidationException("baseEntityType", $"La fuente '{source.Key}' no está registrada como EntityType.");
         if (string.IsNullOrWhiteSpace(req.Name)) throw new ValidationException("name", "El nombre es obligatorio.");
@@ -191,7 +204,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
 
     public async Task<ReportDto> UpdateReportAsync(int id, ReportUpsertRequest req, CancellationToken ct)
     {
-        var r = await LoadReportAsync(id, ct, track: true);
+        var r = await LoadReportAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(r.IsSystem, r.OwnerUserId, r.Shares.Any(s => s.CanEdit && s.UserId == tenant.UserId));
         var source = registry.Get(r.BaseEntityType!.InternalCode);
         ValidateReportSpec(source, req);
@@ -210,7 +223,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
 
     public async Task DeleteReportAsync(int id, CancellationToken ct)
     {
-        var r = await LoadReportAsync(id, ct, track: true);
+        var r = await LoadReportAsync(id, ct, track: true, requireReadable: false);
         EnsureEditable(r.IsSystem, r.OwnerUserId, false);
         r.IsActive = false;
         await db.SaveChangesAsync(ct);
@@ -236,6 +249,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     public async Task<ReportRunResultDto> PreviewReportAsync(string baseEntityType, ReportUpsertRequest req, ReportRunRequest run, CancellationToken ct)
     {
         var source = registry.Get(baseEntityType);
+        await EnsureSourceReadableAsync(source, ct);
         ValidateReportSpec(source, req);
         var (from, to) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(run.DateRangeMode ?? DateRangeModes.All, run.DateFrom, run.DateTo);
         var (by, aggs, totals) = AnalyticsEngine.ParseGroup(req.GroupJson);
@@ -272,13 +286,14 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         r.ScheduleCron = req.ScheduleCron; r.DeliveryEmails = req.DeliveryEmails;
     }
 
-    private async Task<ReportDefinition> LoadReportAsync(int id, CancellationToken ct, bool track = false)
+    private async Task<ReportDefinition> LoadReportAsync(int id, CancellationToken ct, bool track = false, bool requireReadable = true)
     {
         var q = db.ReportDefinitions.Include(r => r.BaseEntityType).Include(r => r.Visibility).Include(r => r.Shares).AsQueryable();
         if (!track) q = q.AsNoTracking();
         var r = await q.FirstOrDefaultAsync(x => x.ReportDefinitionId == id && x.IsActive, ct) ?? throw new NotFoundException("Vista", id);
         var myRoles = await MyRoleIdsAsync(ct);
         if (!IsVisible(r.IsSystem, r.OwnerUserId, r.Visibility!.InternalCode, r.Shares.Select(s => (s.UserId, s.RoleId)), myRoles)) throw new NotFoundException("Vista", id);
+        if (requireReadable && !CanReadSource(r.BaseEntityType!.InternalCode, await AccessAsync(ct))) throw new NotFoundException("Vista", id);
         return r;
     }
 
@@ -686,12 +701,12 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         var pref = await PrefAsync(isIndicator ? id : null, isIndicator ? null : id, false, ct);
         var (mode, from, to, pulse) = await EffectiveAsync(d, pref, ct);
         registry.TryGet(d.DataSourceKey, out var source);
-        return new AnalyticsDefinitionDto(id, d.PublicId, d.Name, MultilingualText.Resolve(d.DescriptionJson, tenant.Lang), d.DataSourceKey, d.FieldKey,
+        return new AnalyticsDefinitionDto(id, d.PublicId, d.Name, MultilingualText.Resolve(d.DescriptionJson, tenant.Lang), MultilingualText.Parse(d.DescriptionJson), d.DataSourceKey, d.FieldKey,
             (await lookups.GetAsync(d.AggregateFnLookupId, ct))?.InternalCode ?? "", d.FilterJson,
             (await lookups.GetAsync(d.BusinessModuleLookupId, ct))?.InternalCode ?? "", d.IsMoney, d.IsSystem, d.OwnerUserId, await UserNameAsync(d.OwnerUserId, ct),
             (await lookups.GetAsync(d.VisibilityLookupId, ct))?.InternalCode ?? "",
             d.DateRangeModeLookupId is null ? null : (await lookups.GetAsync(d.DateRangeModeLookupId.Value, ct))?.InternalCode, d.DateFrom, d.DateTo, d.ShowInPulse,
-            CanEdit(d.IsSystem, d.OwnerUserId), await CanChangeDateAsync(d.IsSystem, d.OwnerUserId, ct), source?.DateField is not null,
+            await CanEditWithManageAsync(d.IsSystem, d.OwnerUserId, ct), await CanChangeDateAsync(d.IsSystem, d.OwnerUserId, ct), source?.DateField is not null,
             mode, from, to, pulse, groupBy, chartType, shares, d.SortOrder);
     }
 
@@ -705,25 +720,37 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     /// de la definición) y visibilidad (ShowInPulse propio → de la definición); orden por SortOrder efectivo y luego nombre. Solo se
     /// calcula lo visible (elemento visible dentro de un panel visible).
     /// </summary>
-    public async Task<PulseDto> GetPulseAsync(CancellationToken ct)
+    public Task<PulseDto> GetPulseAsync(CancellationToken ct) => GetPulseAsync(companyOnly: false, ct);
+
+    /// <summary>
+    /// `companyOnly=true` (`GET pulse?scope=company`, exige pulse.organize_company): el Pulso de la COMPAÑÍA sin la
+    /// capa personal del usuario que consulta — lo que usa "Organizar el de la compañía" para partir del estado real
+    /// de la compañía, no del Pulso personal de quien lo abre (que puede tener su propio orden/ocultos).
+    /// </summary>
+    public async Task<PulseDto> GetPulseAsync(bool companyOnly, CancellationToken ct)
     {
         var tc = (TenantContext)tenant;
         tc.RequireTenantId();
         var userId = tc.RequireUserId();
         var access = await AccessAsync(ct);
+        if (companyOnly) await permissions.EnsureAsync(PermissionCatalog.PulseOrganizeCompany, ct);
 
-        var settings = await db.Set<PulsePanelSetting>().AsNoTracking().Where(s => s.UserId == null || s.UserId == userId).ToListAsync(ct);
+        var settings = companyOnly
+            ? await db.Set<PulsePanelSetting>().AsNoTracking().Where(s => s.UserId == null).ToListAsync(ct)
+            : await db.Set<PulsePanelSetting>().AsNoTracking().Where(s => s.UserId == null || s.UserId == userId).ToListAsync(ct);
         var panels = new List<PulsePanelDto>();
         foreach (var def in PulsePanels.All.Where(p => PulsePanels.CanSee(p, access.Has, access.ModuleOn)))
         {
-            var mine = settings.FirstOrDefault(s => s.UserId == userId && string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
+            var mine = companyOnly ? null : settings.FirstOrDefault(s => s.UserId == userId && string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
             var company = settings.FirstOrDefault(s => s.UserId == null && string.Equals(s.PanelKey, def.Key, StringComparison.OrdinalIgnoreCase));
             var (visible, sort, source) = PulsePanels.ResolvePanel(def, mine, company);
             panels.Add(new PulsePanelDto(def.Key, visible, sort, source));
         }
         panels = panels.OrderBy(p => p.SortOrder).ThenBy(p => p.Key, StringComparer.Ordinal).ToList();
 
-        var prefs = await db.UserAnalyticsPreferences.AsNoTracking().Where(p => p.UserId == userId).ToListAsync(ct);
+        var prefs = companyOnly
+            ? new List<UserAnalyticsPreference>()
+            : await db.UserAnalyticsPreferences.AsNoTracking().Where(p => p.UserId == userId).ToListAsync(ct);
         var names = StringComparer.Create(System.Globalization.CultureInfo.InvariantCulture, ignoreCase: true);
 
         var indicators = new List<IndicatorValueDto>();
@@ -744,7 +771,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
                 charts.Add(await EvaluateAsync(c, pref, compute: chartsPanel.IsVisible && shown, ct));
             }
 
-        var hasPersonal = settings.Any(s => s.UserId == userId) || prefs.Any(p => p.PulseSortOrder.HasValue || p.ShowInPulse.HasValue);
+        var hasPersonal = !companyOnly && (settings.Any(s => s.UserId == userId) || prefs.Any(p => p.PulseSortOrder.HasValue || p.ShowInPulse.HasValue));
         return new PulseDto(
             indicators.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, names).ToList(),
             charts.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, names).ToList(),

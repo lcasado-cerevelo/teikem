@@ -23,8 +23,9 @@ public class Tenant : ISoftDeletable
     public int? DefaultServiceTypeLookupId { get; set; }
     /// <summary>Tipo de paquete por defecto para Entrada de órdenes (doc módulo 2).</summary>
     public int? DefaultPackageTypeLookupId { get; set; }
-    /// <summary>Política MFA: obligatorio para usuarios internos del tenant.</summary>
-    public bool MfaRequired { get; set; }
+    /// <summary>Política MFA: obligatorio para usuarios internos del tenant. Por default true (Lote F8a); el tenant demo
+    /// de desarrollo lo apaga explícitamente (DemoTenantSeeder) para no bloquear pruebas automatizadas.</summary>
+    public bool MfaRequired { get; set; } = true;
     /// <summary>Ventana de reautenticación AAL2 en minutos (step-up para acciones sensibles).</summary>
     public int Aal2WindowMinutes { get; set; } = 30;
     /// <summary>Vida del refresh token (sesión) en días.</summary>

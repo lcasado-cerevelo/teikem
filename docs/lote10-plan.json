@@ -1,0 +1,187 @@
+{
+  "lote": "10",
+  "titulo": "Migración de datos: Advance Depot y Advance Solutions (QuickBooks + WMS MSWM)",
+  "aprobacion": "Plan aprobado por Luis el 2026-09-28 en docs/migracion-depot-solutions-plan.md (once decisiones cerradas en su sección 5). Leer ese documento completo antes de empezar: contiene el análisis de los datos, el mapeo campo a campo y los totales esperados.",
+  "resumen": "Comando CLI `dotnet run --project src/Teikem.Api -- import-legacy <config.json> [--dry-run]` que aprovisiona dos compañías (tenants) nuevas, Advance Depot y Advance Solutions, y las puebla desde las exportaciones CSV de QuickBooks Desktop y desde la base MSWM del WMS actual (solo lectura por una segunda cadena de conexión), escribiendo SIEMPRE a través de los servicios existentes (ProvisioningService, ProductCategoryService, ProductService, SupplierService, ClientService, LocationService, ContactPointService, CustomFieldService, WarehouseService, WarehouseLayoutService, InventoryLedger). Nada de INSERT directo ni scripts T-SQL de datos. Idempotente por clave natural (nombre de compañía, nombre de categoría, SKU, nombre de proveedor, código QuickBooks del cliente, código de posición). Modo --dry-run que valida todo y escribe un reporte (.md + .csv) sin tocar la base. Se amplían dos catálogos compartidos en el seed (PaymentTerm y AdjustmentReason OPENING_BALANCE). Sin permisos, endpoints ni pantallas nuevas. Los archivos de datos viven fuera del repo (F:\\TeikemData) porque contienen correos y teléfonos de clientes; al repo solo entran los JSON de configuración con rutas y una muestra sintética para el smoke.",
+  "contexto": {
+    "decisiones_cerradas": [
+      "Una compañía (Tenant) por empresa. Advance Logistics (TenantId 1) no se toca.",
+      "Advance Depot: LegalName 'Advance Depot Solutions'; Advance Solutions: LegalName 'Advance Solutions Group'. TaxId null. Admin teikem+admin@cerevelo.com (el de Advance Logistics; ProvisioningService.EnsureAdminUserAsync le da membresía). Módulos de ambas: WMS_LOTSERIAL, PURCHASING, CATALOG, ANALYTICS, SYSTEM, CUSTOM_FIELDS.",
+      "Existencias de Depot: fuente de verdad = MSWM.dbo.Inventory del WarehouseId 'Main', por posición. QuickBooks Depot no trae cantidades válidas.",
+      "Todo producto se crea con TrackingType NONE y BaseUom UN. Sin lotes ni series.",
+      "Depot: categorías AxisCare (Category vacía) y CARTONES (Category='CARTONES'). Los ítems con Category='SOLUTIONS' NO van a Depot. El SKU 12525556 (Category 'NATIONAL GUARD') se descarta.",
+      "Solutions: una sola categoría 'PRODUCTOS'. Solo los ítems Type='Inventory Part' de Solutions Items.csv MENOS las cajas 101010, 121212 y 979 (esas solo existen en Depot), MÁS el SKU 00050-7 tomado de Depot Products.csv (Category='SOLUTIONS' y ausente en Solutions Items).",
+      "Proveedores de Solutions: solo ADVANCE LOGISTICS LLC, GLOBAL IMPORT SALES LLC, PADIMONT HOLDINGS CORP, SHIELD LINE, ADVANCE DEPOT SOLUTIONS, FARMACIA CENTRAL DRUG. Proveedores de Depot: los 10 de Depot Vendor.csv.",
+      "Clientes de prueba que se descartan: '1' y 'Alec' (Solutions), 'prueba2' (Depot). AxisCare sí se carga como cliente de Depot con consignatario DELIVERY (Pepsi Ind.Pk., PR#2 Km 19.5, Toa Baja PR 00949) y teléfono 787-249-8344.",
+      "Los 59 ítems de Depot sin descripción se cargan con el SKU como nombre y se listan en el reporte.",
+      "SKU con espacios: se quitan todos los espacios ('1040 P' → '1040P', 'NECH 1001' → 'NECH1001', 'TAPE CLEAR' → 'TAPECLEAR'); cada cambio se lista. El cruce entre fuentes es sin distinguir mayúsculas (ProductRules.NormalizeSku ya pone el SKU en mayúsculas).",
+      "No se migra historial contable (ventas, compras, libro mayor, balances de clientes) ni el almacén TrussPR ni sus 763 clientes salones. El importador ignora explícitamente WarehouseId <> 'Main'.",
+      "Solutions no tiene ubicaciones: almacén ALM-SOL 'Almacén Solutions' con zona GEN (RESERVE) y posición GENERAL; el saldo inicial (Quantity On Hand de Solutions Items.csv) entra ahí. La cantidad negativa (24-081028 = -208) no se carga y se informa."
+    ],
+    "fuentes": {
+      "carpeta": "F:\\TeikemData (fuera del repo)",
+      "depot": [
+        "Depot Products.csv",
+        "Depot Customers.csv",
+        "Depot Vendor.csv"
+      ],
+      "solutions": [
+        "Solutions Items.csv",
+        "Solutions Customers.csv",
+        "Solutions Vendors.csv"
+      ],
+      "mswm": "Base MSWM ya restaurada en el SQL Server local (localhost,1433); el usuario teikem_user NO tiene acceso: la cadena ConnectionStrings:LegacyMswm se configura aparte (Integrated Security o sa). Tablas que se leen: dbo.Item (WarehouseId, ItemId, Description), dbo.Inventory (WarehouseId, LocationId, ItemId, OnHandQuantity), dbo.Location (WarehouseId, LocationType, LocationId, Description, LocationHold), dbo.ItemUPC (WarehouseId, ItemId, UPC). Los textos vacíos del WMS vienen como '§'.",
+      "formato_csv_quickbooks": "Primera columna sin nombre y vacía (la fila de encabezado empieza con coma). Encabezados de Depot Products: Active Status, Type, Item, Description, Sales Tax Code, Account, COGS Account, Asset Account, Accumulated Depreciation, Purchase Description, Quantity On Hand, U/M, Cost, Preferred Vendor, Tax Agency, Price, Reorder Pt (Min), MPN, Serial, Lot, Category, Brand, Model. Solutions Items: los mismos hasta Reorder Pt (Min) sin U/M, más MPN y MANUFACTERS. Customers: Active Status, Customer, Balance, Balance Total, Company, Mr./Ms./..., First Name, M.I., Last Name, Primary Contact, Main Phone, Fax, Alt. Phone, Secondary Contact, Job Title, Main Email, Bill to 1..5, Ship to 1..5, Customer Type, Terms, Rep, Sales Tax Code, Tax item, Resale Num, Account No., Credit Limit, Job Status, Job Type, Job Description, Start Date, Projected End, End Date. Vendors: Active Status, Vendor, Balance, Balance Total, Company, Mr./Ms./..., First Name, M.I., Last Name, Bill from 1..5, Ship from 1..5, Primary Contact, Job Title, Main Phone, Fax, Alt. Phone, Secondary Contact. Los archivos ya están en UTF-8, pero el lector debe aceptar Windows-1252 (Encoding.RegisterProvider(CodePagesEncodingProvider.Instance) y reintento si UTF-8 estricto falla). Puede haber más de 5.000 filas: no usar el tope de CsvParser.MaxRows; pasar maxRows alto o leer con un parser propio equivalente."
+    },
+    "totales_esperados": {
+      "depot": {
+        "categorias": 2,
+        "productos": 552,
+        "proveedores": 10,
+        "clientes": 1,
+        "consignatarios": 1,
+        "zonas": 6,
+        "posiciones": 3887,
+        "asientos_saldo_inicial": 1310,
+        "unidades": 367329
+      },
+      "solutions": {
+        "categorias": 1,
+        "productos": 39,
+        "proveedores": 6,
+        "clientes": 693,
+        "consignatarios_delivery": 693,
+        "consignatarios_billing": 50,
+        "zonas": 1,
+        "posiciones": 1,
+        "asientos_saldo_inicial": 32
+      }
+    }
+  },
+  "piezas": [
+    {
+      "nombre": "P1 — Reglas puras de la migración (Domain) con pruebas",
+      "tocaCompartidos": false,
+      "dependeDe": [],
+      "archivos": [
+        "src/Teikem.Domain/Migration/LegacyImportRules.cs",
+        "src/Teikem.Domain/Migration/LegacyImportModels.cs",
+        "tests/Teikem.Tests/LegacyImportRulesTests.cs"
+      ],
+      "descripcion": "Clase estática `LegacyImportRules` (namespace Teikem.Domain.Migration) con toda la lógica pura, sin EF ni IO, y records de apoyo en `LegacyImportModels.cs` (`QuickBooksAddress(Name, Line1, Line2, City, State, PostalCode, Phone)`, `BinParts(Code, Aisle, Level, Position)`, `ZoneRule(Code, Name, ZoneType, MatchDescription, MatchLocationIds)`). Funciones y reglas exactas: (1) `NormalizeSku(string? raw) -> string?`: quita TODOS los espacios en blanco interiores y extremos y pasa a mayúsculas; null/vacío → null; devuelve también si cambió (`SkuChanged(raw, normalized)`). (2) `SkuKey(string)` = mayúsculas sin espacios, para cruzar fuentes. (3) `ParseQuickBooksAddress(IReadOnlyList<string?> lines) -> QuickBooksAddress`: líneas 'Bill to 1..5' o 'Ship to 1..5' ya recortadas; línea 1 = Name; la línea que cumple `^(.+?),?\\s+(PR|P\\.R\\.|Puerto Rico)\\s*(\\d{5})?(-\\d{4})?\\s*$` (sin distinguir mayúsculas) o `^(.+?)\\s+(\\d{5})$` da City/State('PR')/PostalCode; la última línea con al menos 7 dígitos y solo dígitos, puntos, guiones, espacios, paréntesis o '/' es Phone (si hay dos teléfonos separados por '/', el primero); las líneas intermedias restantes son Line1 y Line2 (la tercera en adelante se concatena en Line2 con ' / '); si no hay línea de ciudad: City='SIN CIUDAD', State='PR'; si no hay Line1: Line1 = Name. (4) `MapPaymentTerm(string? qb) -> string?` sin distinguir mayúsculas ni espacios: 'CHEQUE'→'CHEQUE', 'CASH'→'CASH', 'ACH'→'ACH', 'COD'→'COD', 'Due on receipt'→'COD', 'Net 15'→'NET15', 'Net 20'→'NET20', 'Net 30'→'NET30', 'Net 45'→'NET45', 'Net 60'→'NET60', 'Consignment'→'CONSIGNMENT', 'PK BY REP'→'PK_BY_REP'; vacío → null; desconocido → null y `UnknownPaymentTerm(qb)` = \"Término de pago de QuickBooks sin equivalente: '{qb}'.\" (5) `ParseBinCode(string locationId) -> BinParts`: patrón `^(\\d{2})-([A-Za-z])-(\\d{2})$` → Code en mayúsculas ('01-a-24' → '01-A-24'), Aisle='01', Level='A', Position='24'; cualquier otro id → Code = id recortado en mayúsculas con espacios interiores reemplazados por '-', sin partes. (6) `ResolveZone(string locationId, string? description, int locationType, IReadOnlyList<ZoneRule> rules) -> string?`: primero por `MatchLocationIds` (igualdad sin mayúsculas), luego por `MatchDescription` (la descripción del WMS EMPIEZA con ese texto, sin mayúsculas); null = no se migra. (7) `DepotCategory(string? qbCategory) -> string?`: vacío → 'AxisCare'; 'CARTONES' → 'CARTONES'; 'SOLUTIONS' → null (no es de Depot); cualquier otro → null (se descarta y se informa con `UnknownCategory(qbCategory)` = \"Categoría de QuickBooks sin regla: '{cat}'.\"). (8) `IsInventoryType(string? qbType)` = 'Inventory Part' o 'Inventory Assembly'. (9) `ParseQuickBooksNumber(string?) -> decimal?`: acepta '1,045', '-208', '0.74', '', '10.5%' → null para porcentajes; cultura invariante. (10) `SplitEmails(string?) -> IReadOnlyList<string>`: separa por ';' ',' y espacios, recorta, quita vacíos y duplicados, valida que contenga '@'. (11) `NormalizePhone(string?) -> string?`: recorta, colapsa espacios, máximo 40 caracteres, null si no tiene al menos 7 dígitos. (12) `ClientCodeFromQuickBooks(string customer)`: no se genera aquí (lo hace ClientService); solo `QuickBooksCodeKey(string)` = nombre recortado tal cual para el campo personalizado. (13) `IsWmsEmpty(string?)` = null, vacío o '§'. (14) Mensajes constantes del reporte, en español: `SkuNormalized(raw, sku)` = \"SKU '{raw}' normalizado a '{sku}'.\", `NameFromSku(sku)` = \"El ítem {sku} no tiene descripción; se usa el SKU como nombre.\", `NegativeQuantity(sku, qty)` = \"El ítem {sku} tiene existencia negativa ({qty}); no se carga saldo inicial.\", `UnknownWmsSku(sku, qty)` = \"El SKU {sku} tiene {qty} unidades en el WMS y no está en QuickBooks; se crea en la categoría por defecto.\", `LocationSkipped(id)` = \"La posición {id} del WMS no tiene zona destino; se omite.\", `TestRecordSkipped(name)` = \"Registro de prueba descartado: '{name}'.\", `AddressNotParsed(name)` = \"Dirección de '{name}' sin línea de ciudad; se usa 'SIN CIUDAD'.\". Pruebas xunit en `LegacyImportRulesTests` con casos reales de los datos: '1040 P', 'NECH 1001', 'TAPE CLEAR', '171-ac-426-b'; direcciones 'Guayama, PR 00784', 'Cayey, PR  00736', 'Añasco PR, 00610', 'Carolina 00983', 'TOA BAJA , PR 00949', 'Bayamón, PR 00961' con teléfono '787.686.6464' y '787.787.7733/787.743.1273'; términos con distinta capitalización; posiciones '01-A-01', '01-a-24', 'PISO', 'CARTONES', 'MATTRESS PISO DEPOT', 'R1', '0101'; categorías vacía/CARTONES/SOLUTIONS/NATIONAL GUARD; números '1,045', '-208', '10.5%'; correos separados por ';'."
+    },
+    {
+      "nombre": "P2 — Lectores de fuentes, configuración y reporte (Infrastructure) con pruebas",
+      "tocaCompartidos": false,
+      "dependeDe": [],
+      "archivos": [
+        "src/Teikem.Infrastructure/Migration/LegacyImportConfig.cs",
+        "src/Teikem.Infrastructure/Migration/QuickBooksCsvReader.cs",
+        "src/Teikem.Infrastructure/Migration/MswmReader.cs",
+        "src/Teikem.Infrastructure/Migration/LegacyImportReport.cs",
+        "tests/Teikem.Tests/LegacyImportReadersTests.cs"
+      ],
+      "descripcion": "Namespace Teikem.Infrastructure.Migration. (A) `LegacyImportConfig` = modelo del JSON de configuración (System.Text.Json, camelCase, comentarios y comas finales permitidos) + `LegacyImportConfig.Load(path)` con validación que lanza `ValidationException` (Teikem.Infrastructure.Exceptions) con mensajes en español: 'company.name es obligatorio.', 'sources.products es obligatorio.', 'El archivo no existe: {ruta}.', 'openingBalances.source debe ser mswm, quickbooks o none.', 'Con openingBalances.source=mswm se requiere sources.mswm.connectionStringName y sources.mswm.warehouseId.'. Secciones: `company {name, legalName, taxId, lang, modules[], adminEmail, adminFullName}`; `sources {products, customers, vendors, extraProducts {path, whereCategory} opcional, mswm {connectionStringName, warehouseId} opcional}` (rutas absolutas o relativas al JSON); `products {types[], defaultCategory, categoryByQuickBooksCategory {}, excludeQuickBooksCategories[], excludeSkus[], baseUom='UN', trackingType='NONE', nameFallbackToSku=true, createUnknownWmsSkusWithStock=false}`; `suppliers {includeNames[] opcional (null = todos), excludeNames[]}`; `clients {excludeNames[], defaultCurrency='USD', repCustomField=true, qbCodeCustomField=true}`; `warehouse {code, name, line1, city, state, postalCode, country='PR', zones[] {code,name,zoneType,matchDescription,matchLocationIds[]}, skipLocationIds[], singleBin {zone, bin} opcional}`; `openingBalances {source: mswm|quickbooks|none, reason='OPENING_BALANCE', notes}`; `report {outputDir opcional (default: carpeta del primer archivo fuente), prefix}`. (B) `QuickBooksCsvReader`: lee un archivo de lista de QuickBooks Desktop; detecta codificación (UTF-8 con BOM/estricto, si falla Windows-1252 registrando CodePagesEncodingProvider); parser CSV propio RFC-4180 (comillas dobles escapadas, saltos de línea dentro de comillas, CRLF) sin tope de filas; ignora la primera columna vacía y las filas totalmente vacías; expone `IReadOnlyList<QbRow>` donde `QbRow.Get(\"Header\")` devuelve la celda recortada por nombre de encabezado (sin distinguir mayúsculas) o null si no existe la columna; y tres proyecciones tipadas: `ReadItems(path) -> QbItem(ActiveStatus, Type, Item, Description, QuantityOnHand(string), Cost, Price, Category, Brand, Manufacturer, Upc/MPN)`, `ReadCustomers(path) -> QbCustomer(ActiveStatus, Customer, Company, FirstName, LastName, MainPhone, AltPhone, MainEmail, BillTo[5], ShipTo[5], Terms, Rep, CreditLimit)`, `ReadVendors(path) -> QbVendor(ActiveStatus, Vendor, Company, BillFrom[5], PrimaryContact, MainPhone, FirstName, LastName)`. Error si falta un encabezado obligatorio: \"El archivo {nombre} no tiene la columna '{col}'.\". (C) `MswmReader(string connectionString)`: Microsoft.Data.SqlClient, solo SELECT parametrizados por @warehouseId: `ReadItemsAsync -> WmsItem(ItemId, Description)`, `ReadLocationsAsync -> WmsLocation(LocationId, LocationType, Description, OnHold)`, `ReadInventoryAsync -> WmsInventoryRow(LocationId, ItemId, OnHandQuantity)` (solo OnHandQuantity <> 0), `ReadUpcsAsync -> WmsUpc(ItemId, Upc)`; convierte '§' a null; CommandTimeout 120; nunca escribe. (D) `LegacyImportReport`: acumulador con secciones tipadas (`Resumen` con totales por entidad: leídos, creados, ya existían, omitidos, rechazados; `Rechazos`, `Advertencias`, `Mapeos` (SKU normalizados, términos, zonas), `SaldoInicial` (SKU, posición, cantidad)); `WriteAsync(outputDir, prefix)` escribe `{prefix}-{yyyyMMdd-HHmm}.md` (tablas Markdown, en español, con la marca 'SIMULACIÓN (dry-run)' o 'CARGA REAL' en el título) y un CSV por sección; devuelve las rutas. Pruebas en `LegacyImportReadersTests`: parser CSV con comillas, comas y saltos de línea internos, columna inicial vacía y encabezado con coma inicial; proyección de un QbItem y un QbCustomer desde cadenas inline con los encabezados reales de QuickBooks; detección de Windows-1252 ('Añasco', 'Bayamón' desde bytes 1252); validación de la configuración (mensajes exactos); render del reporte (contiene el título, la tabla de resumen y una fila de rechazo). No probar MswmReader contra SQL (solo que arma las consultas con @warehouseId y filtra '§')."
+    },
+    {
+      "nombre": "P0 — Integración: servicio orquestador, comando CLI, catálogos compartidos, configuraciones y muestra para el smoke",
+      "tocaCompartidos": true,
+      "dependeDe": [
+        "P1",
+        "P2"
+      ],
+      "archivos": [
+        "src/Teikem.Infrastructure/Migration/LegacyImportService.cs",
+        "src/Teikem.Infrastructure/Migration/LegacyImportRunner.cs",
+        "src/Teikem.Api/Program.cs",
+        "src/Teikem.Infrastructure/DependencyInjection.cs",
+        "src/Teikem.Domain/Constants/CatalogDomains.cs",
+        "src/Teikem.Domain/Wms/AdjustmentRules.cs",
+        "Diseño/logistica-db-seed.sql",
+        "src/Teikem.Api/appsettings.json",
+        "docs/migracion/README.md",
+        "docs/migracion/import.depot.json",
+        "docs/migracion/import.solutions.json",
+        "docs/migracion/sample/import.sample.json",
+        "docs/migracion/sample/Sample Products.csv",
+        "docs/migracion/sample/Sample Customers.csv",
+        "docs/migracion/sample/Sample Vendors.csv",
+        "tests/Teikem.Tests/LegacyImportCatalogTests.cs",
+        "tests/Teikem.Tests/LegacyImportServiceTests.cs"
+      ],
+      "descripcion": "Se implementa después de P1 y P2 y usa sus tipos. (1) CATÁLOGOS COMPARTIDOS en `Diseño/logistica-db-seed.sql` (MERGE idempotente, mismo bloque de LookupCode, con comentario '-- Lote 10 — Migración de datos'): PaymentTerm CHEQUE ('Cheque','Check',5), CASH ('Efectivo','Cash',6), ACH ('Transferencia ACH','ACH transfer',7), NET20 ('20 días','Net 20',8), NET45 ('45 días','Net 45',9), CONSIGNMENT ('Consignación','Consignment',10), PK_BY_REP ('Cobra el representante','Paid via rep',11); AdjustmentReason OPENING_BALANCE ('Saldo inicial (migración)','Opening balance (migration)',10). En `CatalogDomains.cs`: `AdjustmentReasons.OpeningBalance = \"OPENING_BALANCE\"` y agregarlo a `SystemAssigned`; en `AdjustmentRules.SystemReasons` agregarlo también (un ajuste manual por API → 400 'El motivo OPENING_BALANCE lo asigna el sistema.'). Si existe una clase de constantes de PaymentTerm, agregar los nuevos códigos. (2) `LegacyImportService` (scoped; ctor con TeikemDbContext, TenantContext, ILookupCache, ProvisioningService, ProductCategoryService, ProductService, SupplierService, ClientService, LocationService, ContactPointService, CustomFieldService, WarehouseService, WarehouseLayoutService, InventoryLedger, IConfiguration, ILogger). `RunAsync(LegacyImportConfig cfg, bool dryRun, CancellationToken)` devuelve `LegacyImportReport`. Orden y reglas: (a) LEER todo primero (QuickBooks y, si aplica, MSWM) y construir el PLAN en memoria (qué se crearía) aplicando LegacyImportRules; en dry-run se escribe el reporte y termina sin abrir transacción ni tocar la base salvo lecturas para saber qué ya existe. (b) COMPAÑÍA: con `tc.BypassTenantFilter()` buscar Tenant por Name; si no existe y no es dry-run → `ProvisioningService.ProvisionAsync(new TenantProvisionRequest(name, legalName, taxId, lang, modules, adminEmail, adminFullName, null))`; si existe → `EnsureAdminUserAsync`. Luego todo corre dentro de `tc.As(tenantId, adminUserId)` con `tc.IsPlatformAdmin = true` y `tc.IsAuthenticated = true` (el usuario admin da CreatedBy y bitácora). (c) CATEGORÍAS por nombre (ProductCategoryService.ListAsync + CreateAsync). (d) ALMACÉN por Code (WarehouseService.CreateAsync con country PR), ZONAS por code (WarehouseLayoutService.CreateZoneAsync con ZoneType), POSICIONES: con fuente mswm se derivan de dbo.Location del WarehouseId configurado: se omiten `skipLocationIds`, las que `ResolveZone` devuelve null y las que colisionan tras normalizar a mayúsculas (se conserva la primera y se informa); cada una `CreateBinAsync(zoneId, code, aisle, rack=null, level, position)`; con `singleBin` se crea esa única zona/posición. Idempotente por código (ListBinsAsync/consulta directa de lectura). (e) PROVEEDORES: Depot desde Depot Vendor.csv; Solutions filtrado por `includeNames`; `SupplierRequest(Name=Vendor, ContactName=PrimaryContact o 'FirstName LastName', Phone=NormalizePhone(MainPhone), Email=null, PaymentTerm=null, Notes=dirección Bill from 1..5 unida por ', ')`; existente por nombre → 'ya existía'. (f) PRODUCTOS: filas con `IsInventoryType`, ActiveStatus 'Active' (inactivos se crean y luego `DeactivateAsync`; si hay inventario en el WMS para un inactivo se deja activo y se informa); categoría por `DepotCategory` (Depot) o `defaultCategory` (Solutions); exclusiones por `excludeQuickBooksCategories` y `excludeSkus`; `extraProducts` (Depot Products.csv whereCategory=SOLUTIONS) agrega SKU ausentes; `ProductCreateRequest(sku normalizado, name = Description o SKU, CategoryId, BaseUom, TrackingType, Barcode = primer UPC del WMS para ese SKU si no está repetido entre productos, PurchaseCost=Cost>0, SalePrice=Price>0)`; SKU existente (ClientId null) → 'ya existía'. Con `createUnknownWmsSkusWithStock` se crean además los SKU del WMS con OnHand>0 que no estén en QuickBooks (Name = Description del WMS o el SKU), en la categoría por defecto, con `UnknownWmsSku` en el reporte. (g) CAMPOS PERSONALIZADOS (si `clients.qbCodeCustomField`/`repCustomField`): definición en entidad CLIENT `qb_code` (TEXT, etiqueta es 'Código QuickBooks' / en 'QuickBooks code', ShowInList false) y `sales_rep` (SELECT, 'Representante'/'Sales rep', opciones = valores distintos de Rep del archivo); idempotentes por FieldKey. (h) CLIENTES: filas Active, excluidas por `excludeNames`; buscar existente por valor de `qb_code` = Customer (o por Name si no hay campo); `ClientCreateRequest(Code=null, Name=Customer, LegalName=Company, TaxId=null, PaymentTerm=MapPaymentTerm(Terms), Currency=defaultCurrency, CreditLimit=ParseQuickBooksNumber(Credit Limit) si > 0, Contract=null)`; luego `CustomFieldService.SetValuesAsync('CLIENT', clientId, {qb_code, sales_rep})`; CONSIGNATARIOS: Ship to 1..5 → `LocationUpsertRequest(ClientPublicId, Code=null, Name=Customer, LocationType='DELIVERY', dirección parseada, Country='PR', DeliveryNotes = teléfono si lo hay)`; si no hay Ship to se usa Bill to como DELIVERY; si Bill to existe y difiere de Ship to en sus líneas → otra Location 'BILLING'; idempotente: si el cliente ya tiene una Location del mismo tipo no se crea otra. CONTACTOS: `ContactPointService.AddAsync('CLIENT', clientId, new ContactPointUpsertRequest('EMAIL'|'PHONE', valor, null, null, isPrimary), ct, enforceOwnerWrite:false)` para cada correo de SplitEmails(Main Email) (el primero principal) y para NormalizePhone(Main Phone), Alt. Phone y el teléfono de la dirección (sin duplicados); existente por valor → omitido. (i) SALDO INICIAL: si en el tenant ya existe algún InventoryTransaction con motivo OPENING_BALANCE hacia el almacén destino → se omite toda la sección y se informa 'El saldo inicial ya fue cargado en {almacén}; no se repite.'. Fuente mswm: filas de dbo.Inventory del WarehouseId, agrupadas por (SkuKey(ItemId), Code de posición) sumando OnHandQuantity; solo cantidades > 0; el SKU debe existir en el tenant (si no, rechazo 'SKU {x} con existencia en el WMS no existe en Teikem.'); la posición debe haberse creado (si no, rechazo). Fuente quickbooks: Quantity On Hand > 0 de cada producto creado, hacia `singleBin`; negativos → `NegativeQuantity`. Asientos: `InventoryLedger.PostAsync` dentro de `db.RunInTransactionAsync` en lotes de 200 `InventoryPosting(TxnType='ADJUSTMENT', ProductId, Quantity, ToWarehouseId, ToBinId, ReasonCode='OPENING_BALANCE', Notes=cfg.openingBalances.notes)`; al final `InventoryLedger.ReconcileAsync(null)` y si hay filas se agrega al reporte como rechazo grave. (j) Todo rechazo de un servicio (ValidationException/ConflictException) se captura por fila, se anota en el reporte con el mensaje exacto y se sigue con la siguiente fila; nunca se aborta la carga por una fila. (k) El reporte final incluye totales comparables con `totales_esperados`. (3) `LegacyImportRunner` (singleton o scoped resuelto desde Program): `RunAsync(string[] args)`: sintaxis `import-legacy <ruta-config.json> [--dry-run]`; carga la config, crea un scope de DI, ejecuta el servicio, escribe el reporte y lo imprime por consola (ruta y tabla de resumen); código de salida 0 si no hubo rechazos graves (conciliación con diferencias o error de configuración), 1 si los hubo, 2 si la sintaxis es incorrecta ('Uso: dotnet run --project src/Teikem.Api -- import-legacy <config.json> [--dry-run]'). (4) `Program.cs`: junto a `db-init`, `if (args.Contains(\"import-legacy\"))` → runner y `return`. (5) `DependencyInjection.cs`: registrar LegacyImportService y LegacyImportRunner. (6) `appsettings.json`: `ConnectionStrings:LegacyMswm` con valor 'Server=localhost,1433;Database=MSWM;Integrated Security=True;TrustServerCertificate=True;Encrypt=False' (se sobreescribe en appsettings.*.local.json, que ya está en .gitignore). (7) CONFIGURACIONES REALES en `docs/migracion/`: `import.depot.json` (company Advance Depot / 'Advance Depot Solutions'; sources F:/TeikemData/Depot Products.csv, Depot Customers.csv, Depot Vendor.csv; mswm {connectionStringName:'LegacyMswm', warehouseId:'Main'}; products types ['Inventory Part','Inventory Assembly'], defaultCategory 'AxisCare', categoryByQuickBooksCategory {CARTONES:'CARTONES'}, excludeQuickBooksCategories ['SOLUTIONS','NATIONAL GUARD'], createUnknownWmsSkusWithStock true; clients excludeNames ['prueba2']; warehouse code 'ALM-DEPOT', name 'Almacén Depot', line1 'Av. Shuford, PR-784', city 'Caguas', state 'PR', zones: PCK/'Picking'/PICKING/matchDescription 'Picking Location'; RSV/'Reserva'/RESERVE/'REGULAR'; ALM/'Advance Logistics'/RESERVE/'ADVANCE LOGISTICS M'; PISO/'Piso'/RESERVE/matchLocationIds ['PISO','FLOOR','CARTONES','MATTRESS PISO DEPOT','15006 MATTRESS PISO']; STG/'Recepción'/STAGING/matchLocationIds ['R1']; SHP/'Embarque'/STAGING/matchLocationIds ['S1']; skipLocationIds ['W1','Z1','01','R-1']; openingBalances source mswm, notes 'Migración WMS MSWM 2026-09-28'). `import.solutions.json` (company Advance Solutions / 'Advance Solutions Group'; sources Solutions Items.csv, Solutions Customers.csv, Solutions Vendors.csv, extraProducts {path:'F:/TeikemData/Depot Products.csv', whereCategory:'SOLUTIONS'}; products types ['Inventory Part'], defaultCategory 'PRODUCTOS', excludeSkus ['101010','121212','979']; suppliers includeNames [los 6]; clients excludeNames ['1','Alec']; warehouse code 'ALM-SOL', name 'Almacén Solutions', city 'Caguas', singleBin {zone:{code:'GEN',name:'General',zoneType:'RESERVE'}, bin:'GENERAL'}; openingBalances source quickbooks, notes 'Saldo inicial QuickBooks 2026-09-28'). Ambos con modules ['WMS_LOTSERIAL','PURCHASING','CATALOG','ANALYTICS','SYSTEM','CUSTOM_FIELDS'], adminEmail 'teikem+admin@cerevelo.com', adminFullName 'Administrador Advance', lang 'es'. (8) MUESTRA SINTÉTICA para el smoke en `docs/migracion/sample/`: tres CSV con el formato exacto de QuickBooks (columna inicial vacía) y datos inventados sin PII: 6 productos (uno con espacio en el SKU, uno sin descripción, uno con Category 'CARTONES', uno Type 'Service', uno con cantidad negativa), 3 clientes (uno de prueba a excluir, uno con Ship to distinto de Bill to, correos separados por ';'), 3 proveedores; `import.sample.json` con company 'Compañía de prueba (migración)', singleBin y openingBalances quickbooks, rutas relativas al JSON. `docs/migracion/README.md`: cómo restaurar/conectar MSWM, cómo correr dry-run y carga real, dónde queda el reporte, y que los datos reales viven fuera del repo. (9) PRUEBAS: `LegacyImportCatalogTests` (el seed contiene los 7 PaymentTerm y OPENING_BALANCE con las etiquetas exactas; `AdjustmentReasons.SystemAssigned` y `AdjustmentRules.SystemReasons` contienen OPENING_BALANCE; `AdjustmentRules` rechaza OPENING_BALANCE con el mensaje exacto). `LegacyImportServiceTests`: con la muestra sintética y el proveedor InMemory de EF donde sea viable, probar al menos la construcción del plan en dry-run (conteos de productos aceptados/rechazados, exclusión del cliente de prueba, negativo informado); si el servicio no es probable con InMemory por depender de SQL, extraer la construcción del plan a una clase pura `LegacyImportPlanner` en el mismo archivo del servicio y probar esa. (10) SMOKE: agregar a `scripts/smoke.sh` un paso que ejecute `dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/sample/import.sample.json --dry-run` y verifique código de salida 0 y que el reporte .md se generó (sin tocar la base)."
+    },
+    {
+      "nombre": "P3 — Comando db-reset (recrear la base en blanco y volver a inicializar), pedido por Luis el 2026-09-29",
+      "tocaCompartidos": true,
+      "dependeDe": [
+        "P0"
+      ],
+      "archivos": [
+        "src/Teikem.Infrastructure/Persistence/Scripts/SqlScriptRunner.cs",
+        "src/Teikem.Infrastructure/Persistence/Scripts/DatabaseInitializer.cs",
+        "src/Teikem.Api/Program.cs",
+        "docs/migracion/README.md",
+        "tests/Teikem.Tests/DbResetRulesTests.cs"
+      ],
+      "descripcion": "Verbo CLI `dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]`: (1) `SqlScriptRunner.DropDatabaseAsync`: conecta a master, `IF DB_ID(@n) IS NOT NULL BEGIN ALTER DATABASE [n] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [n]; END` (QUOTENAME). (2) `DatabaseInitializer.ResetAsync`: valida los seguros y luego llama a DropDatabaseAsync y a RunAsync (crear, estructura, seed, seeders), es decir deja la base exactamente como un db-init sobre servidor limpio. (3) Seguros en una clase pura `DbResetRules` (Domain o Infrastructure, con pruebas): sin `--yes` → mensaje exacto \"db-reset borra la base de datos completa; confirme con --yes.\" y código de salida 2; si el Data Source de ConnectionStrings:Teikem no es localhost, 127.0.0.1, (local), . o ::1 (con o sin puerto/instancia) y no viene `--allow-remote` → \"La cadena de conexión no apunta a un servidor local; use --allow-remote si de verdad quiere borrar esa base.\" y código 2; nunca actúa sobre una base cuyo nombre empiece por MSWM (\"db-reset no toca la base del WMS heredado.\"). (4) Program.cs: junto a db-init e import-legacy. (5) README de migración: sección \"Recrear en blanco y volver a cargar\" con los tres comandos (db-reset, import-legacy depot, import-legacy solutions) y la nota de que el usuario de la cadena debe poder crear/borrar bases (sa o Integrated Security en appsettings.Development.local.json). Pruebas: DbResetRulesTests con los mensajes exactos y los casos localhost, localhost,1433, 127.0.0.1, ., servidor remoto, nombre MSWM."
+    },
+    {
+      "nombre": "P4 — Modo --update del importador (refrescar maestros existentes), pedido por Luis el 2026-09-29",
+      "tocaCompartidos": true,
+      "dependeDe": [
+        "P0"
+      ],
+      "archivos": [
+        "src/Teikem.Infrastructure/Migration/LegacyImportService.cs",
+        "src/Teikem.Infrastructure/Migration/LegacyImportRunner.cs",
+        "docs/migracion/README.md"
+      ],
+      "descripcion": "Bandera `--update` de `import-legacy` (compatible con `--dry-run`). Sin la bandera, el importador solo agrega (lo existente se cuenta como \"ya existía\"). Con la bandera, lo existente se ACTUALIZA desde QuickBooks: productos por SKU (nombre, categoría, costo, precio, código de barras; nunca el SKU, la unidad base ni el seguimiento), proveedores por nombre (contacto, teléfono, notas), clientes por Código QuickBooks (nombre, nombre legal, término de pago, límite de crédito, representante), consignatarios (la Location DELIVERY y BILLING existentes del cliente se actualizan con la dirección parseada) y contactos (se agregan los correos/teléfonos nuevos; no se borran los que ya no vienen). El saldo inicial NUNCA se toca en --update (el inventario lo mueve Teikem). El reporte suma una columna \"actualizados\" y una sección \"Actualizaciones\" con el campo, valor anterior y nuevo. Todo por PATCH de los servicios existentes (ProductService.UpdateAsync, SupplierService.UpdateAsync, ClientService.UpdateProfileAsync, LocationService.UpdateAsync, ContactPointService.AddAsync, CustomFieldService.SetValuesAsync). README: sección \"Refrescar datos sin empezar de cero\" (exportar solo Items y Customers de cada compañía; Vendors si cambió; correr con --update; las existencias no se refrescan: para eso db-reset y carga completa)."
+    }
+  ],
+  "pruebas": [
+    "LegacyImportRulesTests (P1): normalización de SKU, dirección de QuickBooks, término de pago, posición del WMS, zona, categoría de Depot, números, correos, teléfonos, mensajes exactos",
+    "LegacyImportReadersTests (P2): parser CSV de QuickBooks, codificación 1252, configuración y sus mensajes, render del reporte",
+    "LegacyImportCatalogTests y LegacyImportServiceTests (P0): seed y constantes nuevas, motivo reservado, plan en dry-run con la muestra",
+    "pruebas existentes en verde (2007+)",
+    "DbResetRulesTests (P3)",
+    "LegacyImportUpdateTests (P4)"
+  ],
+  "smoke": [
+    "migración (Lote 10): dry-run del importador con la muestra sintética docs/migracion/sample/import.sample.json → código 0 y reporte generado, sin escribir en la base",
+    "db-reset: sin --yes devuelve código 2 y no borra nada"
+  ],
+  "cambiosSql": [
+    "Solo seed (sin estructura): LookupCode PaymentTerm CHEQUE, CASH, ACH, NET20, NET45, CONSIGNMENT, PK_BY_REP; LookupCode AdjustmentReason OPENING_BALANCE (reservado al sistema)."
+  ],
+  "decisiones": [
+    {
+      "decision": "Los datos reales (CSV de QuickBooks y la base MSWM) no entran al repositorio: viven en F:\\TeikemData y en el SQL Server local; el repo solo lleva los JSON de configuración con rutas y una muestra sintética."
+    },
+    {
+      "decision": "El importador escribe únicamente a través de los servicios existentes y del InventoryLedger; no hay scripts T-SQL de datos ni INSERT directos."
+    },
+    {
+      "decision": "OPENING_BALANCE es un motivo de ajuste reservado al sistema: solo lo escribe el importador; un ajuste manual con ese motivo recibe 400."
+    },
+    {
+      "decision": "Los términos de pago de QuickBooks se agregan al catálogo compartido (global) porque los catálogos son comunes a todas las compañías por diseño."
+    },
+    {
+      "decision": "Idempotencia por clave natural: compañía por nombre, categoría por nombre, producto por SKU, proveedor por nombre, cliente por el campo personalizado 'Código QuickBooks', posición por código; el saldo inicial no se repite si ya existe un asiento OPENING_BALANCE hacia ese almacén."
+    },
+    {
+      "decision": "Las posiciones en minúsculas del WMS ('01-a-24') se normalizan a mayúsculas; si colisionan con una ya existente se conserva la primera y se informa."
+    },
+    {
+      "decision": "Los ítems de QuickBooks inactivos se crean y se desactivan al final, salvo que tengan existencia en el WMS (se dejan activos y se informan)."
+    },
+    {
+      "decision": "db-reset (pedido de Luis 2026-09-29): borrar y reinicializar la base es un comando explícito con confirmación --yes y protección contra servidores remotos; la migración se puede repetir desde cero las veces que haga falta."
+    },
+    {
+      "decision": "--update (pedido de Luis 2026-09-29): el refresco de maestros desde QuickBooks es opcional y explícito; agrega y actualiza, nunca borra ni toca el saldo inicial."
+    }
+  ]
+}

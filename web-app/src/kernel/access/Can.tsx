@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useCan } from './accessContext'
 
 interface Props {
-  /** Código exacto del permiso del API (p. ej. `orders.create`); con arreglo exige todos. */
+  /** Código exacto del permiso del API (p. ej. `orders.create`); con arreglo exige todos; `a|b` = cualquiera de los dos. */
   perm: string | readonly string[]
   /** Qué pintar sin permiso (por defecto nada: la acción no se pinta). */
   fallback?: ReactNode

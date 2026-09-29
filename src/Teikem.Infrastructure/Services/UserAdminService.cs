@@ -33,7 +33,7 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
             m.Status?.InternalCode ?? "", m.User.TwoFactorEnabled, m.User.LastLoginUtc,
             roles.Where(r => r.UserId == m.UserId).Select(r => r.Name).OrderBy(n => n).ToList(),
             extras.Where(e => e.UserId == m.UserId).Select(e => e.Code).OrderBy(c => c).ToList(), m.User.IsPlatformAdmin,
-            withPin.Contains(m.UserId))).ToList();
+            withPin.Contains(m.UserId), m.MfaRequired)).ToList();
     }
 
     public async Task<UserSummaryDto> GetUserAsync(int userId, CancellationToken ct)
@@ -76,9 +76,16 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         return (await GetUserAsync(user.Id, ct), temp);
     }
 
+    /// <summary>
+    /// `fullName`/`isActive` son de la cuenta (ApplicationUser), no de la membresía por compañía: editarlos afecta al
+    /// usuario en TODAS sus compañías. Un usuario que pertenece a más de una compañía solo lo edita el administrador
+    /// de plataforma; el admin de una compañía no puede tocar de refilón la cuenta de alguien que también está en otra.
+    /// </summary>
     public async Task<UserSummaryDto> UpdateUserAsync(int userId, UserUpdateRequest req, CancellationToken ct)
     {
         await EnsureMemberAsync(userId, ct);
+        if (!tenant.IsPlatformAdmin && await db.UserTenants.IgnoreQueryFilters().CountAsync(m => m.UserId == userId, ct) > 1)
+            throw new ForbiddenException("Este usuario pertenece a más de una compañía; solo el administrador de plataforma puede editar su cuenta.");
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new NotFoundException("Usuario", userId);
         if (req.FullName is not null) user.FullName = req.FullName.Trim();
         if (req.IsActive.HasValue)
@@ -142,6 +149,20 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
             db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         }
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, m.TenantId, new { user = userId, membership = req.Status }, ct);
+        return await GetUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// Lote F8a: exige (o deja de exigir) MFA a esta persona en la compañía activa, aparte de la política de la
+    /// compañía entera (Tenant.MfaRequired, "Ajustes de la compañía"). No confirma ni enrola nada por su cuenta: si
+    /// la persona todavía no tiene TOTP confirmado, su próximo login le pide enrolarlo antes de entrar.
+    /// </summary>
+    public async Task<UserSummaryDto> SetMfaRequiredAsync(int userId, bool required, CancellationToken ct)
+    {
+        var m = await db.UserTenants.FirstOrDefaultAsync(x => x.UserId == userId, ct) ?? throw new NotFoundException("Usuario", userId);
+        m.MfaRequired = required;
+        await db.SaveChangesAsync(ct);
+        await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, m.TenantId, new { user = userId, mfaRequired = required }, ct);
         return await GetUserAsync(userId, ct);
     }
 

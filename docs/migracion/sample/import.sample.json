@@ -1,0 +1,45 @@
+{
+  // Lote 10 — Muestra SINTÉTICA para el smoke y las pruebas (datos inventados, sin PII). Rutas relativas a este archivo.
+  // Uso: dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/sample/import.sample.json --dry-run
+  "company": {
+    "name": "Compañía de prueba (migración)",
+    "legalName": "Compañía de prueba (migración), LLC",
+    "lang": "es",
+    "modules": ["WMS_LOTSERIAL", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS"],
+    "adminEmail": "teikem+admin@cerevelo.com",
+    "adminFullName": "Administrador Advance"
+  },
+  "sources": {
+    "products": "Sample Products.csv",
+    "customers": "Sample Customers.csv",
+    "vendors": "Sample Vendors.csv"
+  },
+  "products": {
+    "types": ["Inventory Part", "Inventory Assembly"],
+    "defaultCategory": "MUESTRA",
+    "categoryByQuickBooksCategory": { "CARTONES": "CARTONES" },
+    "excludeQuickBooksCategories": ["SOLUTIONS"],
+    "excludeSkus": []
+  },
+  "suppliers": { "excludeNames": [] },
+  "clients": { "excludeNames": ["prueba"] },
+  "warehouse": {
+    "code": "ALM-PRUEBA",
+    "name": "Almacén de prueba",
+    "city": "Caguas",
+    "state": "PR",
+    "singleBin": {
+      "zone": { "code": "GEN", "name": "General", "zoneType": "RESERVE" },
+      "bin": "GENERAL"
+    }
+  },
+  "openingBalances": {
+    "source": "quickbooks",
+    "notes": "Muestra sintética del smoke"
+  },
+  "report": {
+    // TestResults/ está en .gitignore: el smoke no ensucia el repositorio.
+    "outputDir": "../../../TestResults/migracion",
+    "prefix": "reporte-muestra"
+  }
+}

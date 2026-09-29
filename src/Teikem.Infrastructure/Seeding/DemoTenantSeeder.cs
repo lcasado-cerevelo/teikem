@@ -58,6 +58,11 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
             {
                 var result = await provisioning.ProvisionAsync(new TenantProvisionRequest(name, "Advance Logistics, LLC", null, "es", AdvanceModules, adminEmail, "Administrador Advance", adminPassword), ct);
                 tenantId = result.Tenant.Id;
+                // Tenant.MfaRequired es true por default (Lote F8a): el tenant demo lo apaga, si no las pruebas
+                // automatizadas y el desarrollo local quedarían bloqueados por el segundo factor en cada login.
+                var created = await db.Tenants.FirstAsync(t => t.TenantId == tenantId, ct);
+                created.MfaRequired = false;
+                await db.SaveChangesAsync(ct);
                 logger.LogInformation("Tenant demo '{Name}' aprovisionado (id {Id}).", name, tenantId);
             }
             else
@@ -65,6 +70,12 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
                 tenantId = existing.TenantId;
                 using var _ = tc.As(tenantId);
                 await provisioning.EnsureAdminUserAsync(existing, adminEmail, "Administrador Advance", adminPassword, ct);
+                if (existing.MfaRequired)
+                {
+                    var tracked = await db.Tenants.FirstAsync(t => t.TenantId == tenantId, ct);
+                    tracked.MfaRequired = false;
+                    await db.SaveChangesAsync(ct);
+                }
                 // Una BD del Lote 1 recibe el contenido de sistema nuevo (vistas/indicadores/gráficos de lotes posteriores); idempotente por nombre.
                 await analyticsSeeder.SeedForTenantAsync(tenantId, ct);
                 logger.LogInformation("Tenant demo '{Name}' ya existe (id {Id}); se verifica admin y contenido de análisis de sistema.", name, tenantId);

@@ -261,6 +261,14 @@ secretos en claro (decisión 6 ter).
     mismo mensaje (`TOKEN_REVOKED`). Antes solo se revisaba al asignar: subir después los permisos del usuario dejaba a
     quien asignó el PIN entrar como él con más privilegios. A revisar: no se borran los PIN al cambiar roles (el PIN
     queda inservible pero no desaparece; `hasPin` sigue en true hasta que el usuario lo redefina o alguien lo quite).
+
+    > **Seguimiento (2026-09-28, lote F8a):** esta misma comprobación (28) es la que se dispara cuando un lote
+    > posterior le agrega permisos a la PLANTILLA de un rol (no a la asignación individual de un usuario) — el
+    > lote F8a le agregó `analytics.view` + 4 `pulse.*` a "Operador de almacén", y cualquier PIN asignado por
+    > alguien que no sea TenantAdmin ni admin de plataforma puede quedar sin cobertura el día del despliegue.
+    > `EnsureNotHigherAsync` (asignación) no evita esto — solo corre al asignar, no cuando cambia la plantilla.
+    > Discusión y opciones en `docs/frontend/loteF8a-hallazgos-plan.md` (hallazgo M1); decisión pendiente. Si se
+    > vuelve a tocar `PinService` o el catálogo de permisos de un rol ya desplegado, revisar ese documento primero.
 29. **La repetición idempotente reevalúa las comprobaciones hechas dentro de la operación.** `IdempotencyCheckRecorder`
     (scoped) anota, solo mientras corre la operación con clave, cada `ModuleService.IsEnabledAsync` y
     `PermissionService.HasPermissionAsync` (incluye `EnsureAsync`/`EnsureEnabledAsync` del servicio y el modo a ciegas del

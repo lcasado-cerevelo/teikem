@@ -3,7 +3,8 @@
     "loading": "Loading…",
     "cancel": "Cancel",
     "retry": "Retry",
-    "copy": "Copy"
+    "copy": "Copy",
+    "done": "Done"
   },
   "errors": {
     "generic": "Something went wrong. Please try again.",
@@ -17,7 +18,9 @@
     "fields": {
       "email": "Email",
       "password": "Password",
-      "mfaCode": "Verification code"
+      "mfaCode": "Verification code",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
     },
     "errors": {
       "emailInvalid": "Enter a valid email.",
@@ -76,11 +79,29 @@
     "tenant": "Company",
     "account": "My account",
     "logout": "Sign out",
-    "sessionError": "Your session could not be loaded",
-    "placeholder": {
-      "title": "Under construction",
-      "body": "This screen arrives in a later piece of this batch."
+    "palette": {
+      "label": "Command palette",
+      "placeholder": "Search or run…",
+      "open": "Search or run",
+      "empty": "No screen matches your search.",
+      "hint": {
+        "navigate": "navigate",
+        "open": "open",
+        "close": "close"
+      }
     },
+    "live": "live",
+    "clock": "Current time",
+    "theme": {
+      "label": "Theme",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "placeholder": {
+      "body": "This screen arrives in a later batch.",
+      "another": "Open another screen"
+    },
+    "sessionError": "Your session could not be loaded",
     "notFound": {
       "title": "Screen not found",
       "body": "The address does not match any screen."
@@ -89,24 +110,177 @@
   "nav": {
     "groups": {
       "ops": "Operations",
-      "catalog": "Catalog",
       "warehouse": "Warehouse",
+      "money": "Accounting",
+      "catalog": "Catalog",
       "analytics": "Analytics",
-      "admin": "Administration"
+      "system": "System",
+      "portal": "Client portal"
     },
-    "pulse": "Daily pulse",
-    "orders": "Orders",
-    "warehouses": "Warehouses",
-    "products": "Products",
-    "inventory": "Inventory",
-    "receipts": "Receiving",
-    "warehouseTasks": "Warehouse tasks",
-    "cycleCounts": "Cycle counts",
-    "pickBatches": "Picking and packing",
-    "suppliers": "Suppliers",
-    "purchaseOrders": "Purchase orders",
-    "dockAppointments": "Dock appointments",
-    "crossDockPlans": "Cross-dock"
+    "pulse": {
+      "title": "Day pulse",
+      "subtitle": "the two live currents"
+    },
+    "orders": {
+      "title": "Orders",
+      "subtitle": "master list with filters — includes new order entry"
+    },
+    "scan": {
+      "title": "Scan station",
+      "subtitle": "inbound / outbound / COD"
+    },
+    "dispatch": {
+      "title": "Dispatch room",
+      "subtitle": "build and dispatch routes"
+    },
+    "monitor": {
+      "title": "Route monitor",
+      "subtitle": "live map, telemetry and progress"
+    },
+    "warehouses": {
+      "title": "Warehouses",
+      "subtitle": "create and manage your warehouses"
+    },
+    "products": {
+      "title": "Products",
+      "subtitle": "SKU master: cost, price, minimums and category"
+    },
+    "inventory": {
+      "title": "Inventory",
+      "subtitle": "lot / serial / ledger"
+    },
+    "receipts": {
+      "title": "Receiving",
+      "subtitle": "ASN, dock and verification of inbound"
+    },
+    "warehouseTasks": {
+      "title": "Warehouse tasks",
+      "subtitle": "unified queue: receiving, replenishment, counting and cross-dock"
+    },
+    "cycleCounts": {
+      "title": "Cycle count",
+      "subtitle": "variance and adjustment against the ledger"
+    },
+    "pickBatches": {
+      "title": "Picking & packing",
+      "subtitle": "pick products, collect and build the pack"
+    },
+    "suppliers": {
+      "title": "Suppliers",
+      "subtitle": "purchasing suppliers: contact, payment term and status"
+    },
+    "purchaseOrders": {
+      "title": "Purchase orders",
+      "subtitle": "purchase orders to suppliers: lines, status and shortages"
+    },
+    "dockAppointments": {
+      "title": "Dock appointments",
+      "subtitle": "dock appointment schedule for the warehouse"
+    },
+    "crossDockPlans": {
+      "title": "Cross-dock",
+      "subtitle": "dock to dock, no put-away"
+    },
+    "purchaseAccounting": {
+      "title": "Purchase accounting",
+      "subtitle": "view, accept and export to your accounting system"
+    },
+    "dispatchAccounting": {
+      "title": "Dispatch accounting",
+      "subtitle": "inventory write-down, costing and export"
+    },
+    "cod": {
+      "title": "Process deliveries",
+      "subtitle": "collect, reconcile, remit"
+    },
+    "billing": {
+      "title": "Billing",
+      "subtitle": "runs & export"
+    },
+    "driverPay": {
+      "title": "Driver settlement",
+      "subtitle": "pay per delivery, attempt & trip"
+    },
+    "clients": {
+      "title": "Clients & contracts",
+      "subtitle": "accounts, SLA, rates"
+    },
+    "consignees": {
+      "title": "Consignees",
+      "subtitle": "recipients across all clients"
+    },
+    "drivers": {
+      "title": "Drivers & rates",
+      "subtitle": "master: pay per delivery, attempt & trip"
+    },
+    "fleet": {
+      "title": "Fleet & maintenance",
+      "subtitle": "vehicles & documents"
+    },
+    "reports": {
+      "title": "Views & reports",
+      "subtitle": "saved & per entity"
+    },
+    "customFields": {
+      "title": "Custom fields",
+      "subtitle": "per entity, no deploy"
+    },
+    "indicators": {
+      "title": "Indicators",
+      "subtitle": "operational KPIs"
+    },
+    "charts": {
+      "title": "Charts",
+      "subtitle": "bar, donut & line by data source"
+    },
+    "printers": {
+      "title": "Printers & labels",
+      "subtitle": "per-station printing"
+    },
+    "users": {
+      "title": "Roles & users",
+      "subtitle": "RBAC: roles, permissions & users"
+    },
+    "devices": {
+      "title": "Mobile devices",
+      "subtitle": "devices with access to Teikem Almacén and their enrollment code"
+    },
+    "catalogs": {
+      "title": "Value catalogs",
+      "subtitle": "the lists that feed chips and selects across the app"
+    },
+    "integrations": {
+      "title": "Integrations / API",
+      "subtitle": "ERP, webhooks"
+    },
+    "audit": {
+      "title": "Security & audit",
+      "subtitle": "logs & traceability"
+    },
+    "settings": {
+      "title": "Tenant settings",
+      "subtitle": "rules & pipeline"
+    },
+    "portalHome": {
+      "title": "Home",
+      "subtitle": "overview of your orders and account"
+    },
+    "portalOrders": {
+      "title": "Order entry",
+      "subtitle": "create orders for your account"
+    },
+    "portalConsignees": {
+      "title": "Consignees",
+      "subtitle": "your frequent recipients"
+    },
+    "portalSettings": {
+      "title": "Settings",
+      "subtitle": "printers, labels and account settings"
+    },
+    "portalProfile": {
+      "title": "Profile",
+      "subtitle": "your account information"
+    }
   },
   "status": {
     "none": "No status",
@@ -191,7 +365,17 @@
     "warehousePicker": {
       "placeholder": "Select a warehouse…",
       "none": "There are no active warehouses.",
-      "noAccess": "Your user cannot view warehouses."
+      "noAccess": "Your user cannot view warehouses.",
+      "noMatch": "No warehouses match.",
+      "clear": "Remove warehouse"
+    },
+    "binPicker": {
+      "placeholder": "Search bin by code or zone…",
+      "pickWarehouseFirst": "Choose a warehouse first",
+      "none": "No bins match.",
+      "noAccess": "Your user cannot view bins.",
+      "clear": "Remove bin",
+      "suggested": "Suggested"
     },
     "productPicker": {
       "placeholder": "Search product by SKU or name…",
@@ -272,7 +456,8 @@
       "profile": "Profile",
       "password": "Password",
       "mfa": "Two-step verification",
-      "sessions": "Sessions"
+      "sessions": "Sessions",
+      "pin": "App PIN"
     },
     "profile": {
       "title": "Profile",
@@ -347,6 +532,31 @@
       "revokeBody": "The session on {device} will be signed out. That device will have to sign in again.",
       "revoked": "Session signed out.",
       "empty": "No active sessions."
+    },
+    "pin": {
+      "title": "Teikem Almacén PIN",
+      "moduleTag": "warehouse module only",
+      "subtitle": "The short PIN to sign in to Teikem Almacén without a password.",
+      "hasPinYes": "You have a PIN set.",
+      "hasPinNo": "You don't have a PIN set yet.",
+      "updated": "Last updated: {date}.",
+      "lockedUntil": "Locked until: {date}.",
+      "notLocked": "Locked until: not applicable.",
+      "set": "Set PIN",
+      "change": "Change PIN",
+      "remove": "Remove PIN",
+      "modalSetTitle": "Set PIN",
+      "modalChangeTitle": "Change PIN",
+      "currentPassword": "Current password",
+      "pin": "New PIN",
+      "confirmPin": "Confirm PIN",
+      "mismatch": "The PINs do not match.",
+      "removeTitle": "Remove the PIN",
+      "removeBody": "You will no longer be able to sign in to Teikem Almacén with a PIN; you'll have to set a new one to use it again.",
+      "removed": "PIN removed.",
+      "saved": "PIN saved.",
+      "cancel": "Cancel",
+      "save": "Save"
     }
   },
   "analytics": {
@@ -354,13 +564,45 @@
       "title": "Day pulse",
       "subtitle": "Welcome, {name}. Here's how today looks for your company.",
       "welcomeTitle": "Welcome, {name}",
-      "welcomeBody": "Your user does not have permission to see Day pulse indicators and charts. Ask your company administrator to grant it.",
-      "moduleOffBody": "Day pulse indicators and charts are part of the Analytics module, which is not enabled for your company. Ask your administrator to enable it.",
-      "emptyTitle": "Nothing in Pulse yet",
-      "emptyBody": "Mark indicators or charts so they show up here (the \"Show in Day pulse\" option).",
-      "indicators": "Indicators",
-      "charts": "Charts",
+      "welcomeBody": "Your Day pulse has no panels yet: your user has no Pulse permissions or your company's modules don't include them. Ask your company administrator to grant them.",
+      "noItemsTitle": "You don't have indicators or charts on your Pulse yet",
+      "noItemsBody": "Mark indicators or charts with \"Show in Day pulse\", or show the panels you hid with \"Organize my Pulse\".",
+      "noItemsLink": "Go to Indicators",
       "chartEmpty": "This chart has no data in the configured range.",
+      "showInPulseMine": "Show in the day's Pulse",
+      "showInPulseCompany": "…in the company's",
+      "panels": {
+        "INDICATORS": "Your indicators",
+        "CHARTS": "Your charts"
+      },
+      "organizeMine": "Organize my Pulse",
+      "organizeCompany": "Organize the company's",
+      "personal": "Personal Pulse",
+      "company": "Company Pulse",
+      "backToCompany": "Back to the company's",
+      "resetTitle": "Back to the company Pulse",
+      "resetBody": "Your Pulse order and hidden items are cleared and you'll see the company's. Your date ranges are kept.",
+      "resetDone": "You're now seeing the company Pulse.",
+      "organizer": {
+        "titleMine": "Organizing my Pulse",
+        "titleCompany": "Organizing the company Pulse (everyone without a personal one will see it)",
+        "hint": "Drag with the mouse or use ▲ ▼. With focus on the handle, the ↑ ↓ arrow keys also move.",
+        "hintTouch": "Use ▲ ▼ to move and \"Hide\" to remove without deleting.",
+        "personalNote": "You're seeing your personal Pulse: when you save, this order and these hidden items become the company's.",
+        "done": "Done",
+        "saved": "Pulse saved",
+        "panelsLabel": "Pulse panels",
+        "itemsLabel": "Items in {name}",
+        "noItems": "No items you can see.",
+        "handle": "Move {name}",
+        "moveUp": "Move {name} up",
+        "moveDown": "Move {name} down",
+        "hide": "Hide",
+        "show": "Show",
+        "hideFor": "Hide {name}",
+        "showFor": "Show {name}",
+        "hidden": "Hidden"
+      },
       "warehouse": {
         "title": "Warehouse",
         "subtitle": "Current balance (not tied to a date range). The category or product filter applies to the balance cards; document counters only use the warehouse.",
@@ -438,6 +680,113 @@
       "footer": "{count} events · {window}",
       "footerOne": "1 event · {window}",
       "more": "Show more"
+    },
+    "indicators": {
+      "title": "Indicators",
+      "sub": "Single-number KPIs computed over a data source",
+      "newInd": "New indicator",
+      "newTitle": "New indicator",
+      "editTitle": "Edit indicator",
+      "nameLabel": "Indicator name",
+      "namePh": "e.g. Orders delivered today",
+      "datasetLabel": "Data source",
+      "fnLabel": "Calculation",
+      "fieldLabel": "Field",
+      "saveBtn": "Save indicator",
+      "dateRangeLabel": "Date range",
+      "noDateField": "This source has no applicable date field — it is a current state, not activity over a period.",
+      "saved": "Indicator saved: {name}",
+      "updated": "Indicator updated: {name}",
+      "deletedMsg": "Indicator deleted",
+      "systemBadge": "Default",
+      "createdBy": "Created by {name}",
+      "noneYet": "No indicators yet.",
+      "note": "Each indicator computes a single value (count, sum, average, minimum or maximum) over a data source, with optional filters. Sources with period activity bring a date range.",
+      "showInPulsoLabel": "Show in the day's Pulse",
+      "showInPulsoHint": "If on, this indicator shows in the company's Pulse by default (each user can still show or hide it in their own).",
+      "visibilityLabel": "Who can see it",
+      "shareWithLabel": "Share with",
+      "visAllBadge": "Everyone",
+      "visPrivateBadge": "Private",
+      "visSharedBadge": "Shared ({n})",
+      "visibilityHint": "Default indicators are visible to everyone. The ones you create are private unless you choose to share them.",
+      "deleteTitle": "Delete indicator",
+      "deleteBody": "Delete indicator {name}?"
+    },
+    "charts": {
+      "title": "Charts",
+      "sub": "Visualizations over a data source, grouped by business module",
+      "newChart": "New chart",
+      "newTitle": "New chart",
+      "editTitle": "Edit chart",
+      "nameLabel": "Chart name",
+      "namePh": "e.g. Orders by status",
+      "datasetLabel": "Data source",
+      "groupByLabel": "Group by",
+      "groupByHint": "Each bar or slice is a distinct value of this field.",
+      "metricFnLabel": "Calculation",
+      "metricFieldLabel": "Field",
+      "saveBtn": "Save chart",
+      "saved": "Chart saved: {name}",
+      "updated": "Chart updated: {name}",
+      "deletedMsg": "Chart deleted",
+      "systemBadge": "Default",
+      "createdBy": "Created by {name}",
+      "noneYet": "No charts yet.",
+      "noData": "This chart has no data with the current filters and range.",
+      "typeLabel": "Chart type",
+      "typeHint": "Bar, donut or line; can be changed at any time.",
+      "note": "Each chart groups a data source by a field and computes a value per group (count, sum, average, minimum or maximum), with the same date range and Pulse option as Indicators.",
+      "deleteTitle": "Delete chart",
+      "deleteBody": "Delete chart {name}?"
+    },
+    "editor": {
+      "descriptionEs": "Description (Spanish)",
+      "descriptionEn": "Description (English)",
+      "businessModule": "Business module",
+      "isMoney": "Is money",
+      "sortOrder": "Order in the company's Pulse",
+      "sortOrderHint": "Position among the other indicators or charts of the company's Pulse.",
+      "filtersTitle": "Filter",
+      "filtersHint": "Field · operator · value rows; all combine with \"and\".",
+      "filterField": "Field",
+      "filterOp": "Operator",
+      "filterValue": "Value",
+      "filterValueListPh": "comma-separated",
+      "addFilter": "Add filter",
+      "removeFilter": "Remove filter",
+      "editBtn": "Edit",
+      "deleteBtn": "Delete",
+      "shareNeedsAdminUsers": "Sharing with specific people needs the manage-users permission.",
+      "filterOps": {
+        "eq": "equals",
+        "ne": "does not equal",
+        "gt": "greater than",
+        "gte": "greater or equal than",
+        "lt": "less than",
+        "lte": "less or equal than",
+        "contains": "contains",
+        "startsWith": "starts with",
+        "endsWith": "ends with",
+        "in": "is in",
+        "notIn": "is not in",
+        "between": "between",
+        "isNull": "is empty",
+        "notNull": "is not empty",
+        "isTrue": "is true",
+        "isFalse": "is false"
+      },
+      "errors": {
+        "nameRequiredIndicator": "Give the indicator a name.",
+        "nameRequiredChart": "Give the chart a name.",
+        "dataSourceRequired": "Choose a data source.",
+        "aggregateRequired": "Choose a calculation.",
+        "fieldRequired": "Choose a field.",
+        "moduleRequired": "Choose a business module.",
+        "visibilityRequired": "Choose who can see it.",
+        "groupByRequired": "Choose a field to group by."
+      },
+      "filterUnrepresentable": "This filter uses advanced rules this screen can't show as rows. It's kept as-is until you add a new row; from then on, saving replaces it."
     }
   },
   "orders": {
@@ -1629,6 +1978,225 @@
     "productFilter": {
       "placeholder": "Search by SKU or name…",
       "remove": "Remove {sku}"
+    }
+  },
+  "system": {
+    "devices": {
+      "title": "Mobile devices",
+      "subtitle": "Devices with access to Teikem Almacén. The enrollment code is single-use and lasts 24 hours.",
+      "new": "New device",
+      "count": "{count} devices",
+      "searchPlaceholder": "Search by code or name…",
+      "show": "Show",
+      "onlyActive": "Active only",
+      "includeInactive": "Include inactive",
+      "active": "Active",
+      "inactive": "Inactive",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivateTitle": "Deactivate device",
+      "deactivateBody": "Deactivate {name}? All its sessions are revoked and it stops syncing.",
+      "deactivated": "Device deactivated.",
+      "reactivateTitle": "Reactivate device",
+      "reactivateBody": "Reactivate {name}? Each user signs in again with their PIN.",
+      "reactivated": "Device reactivated.",
+      "newEnrollCode": "New enrollment code",
+      "newEnrollCodeBody": "Generate a new enrollment code for {name}? The previous one stops working.",
+      "enrollCodeTitle": "Enrollment code",
+      "enrollCodeHint": "Enter it on the Register screen of Teikem Almacén. It is only shown once.",
+      "copied": "Copied",
+      "copyFailed": "Could not copy it; select it by hand.",
+      "columns": {
+        "code": "Code",
+        "name": "Name",
+        "warehouse": "Default warehouse",
+        "status": "Status",
+        "lastSeen": "Last heartbeat",
+        "appVersion": "App version"
+      },
+      "fields": {
+        "name": "Name",
+        "defaultWarehouse": "Default warehouse"
+      },
+      "errors": {
+        "nameRequired": "The name is required."
+      }
+    },
+    "users": {
+      "title": "Roles and users",
+      "subtitle": "Who can sign in to Teikem and what they can do.",
+      "tabRoles": "Roles",
+      "tabUsers": "Users",
+      "roles": {
+        "title": "Roles",
+        "count": "{count} roles",
+        "new": "New role",
+        "colName": "Role",
+        "colPermissions": "Permissions",
+        "colUsers": "Users",
+        "edit": "Edit",
+        "delete": "Delete",
+        "system": "system",
+        "template": "template",
+        "newTitle": "New role",
+        "editTitle": "Edit role",
+        "name": "Name",
+        "nameRequired": "The name is required.",
+        "descriptionEs": "Description (es)",
+        "descriptionEn": "Description (en)",
+        "permissions": "Permissions",
+        "selectAllGroup": "Whole group",
+        "save": "Save",
+        "created": "Role created.",
+        "saved": "Changes saved.",
+        "deleteTitle": "Delete the role",
+        "deleteBody": "The role {name} will be deleted. This action cannot be undone.",
+        "deleted": "Role deleted.",
+        "note": "A role is a reusable set of permissions: changing it affects every user who has it assigned. {count} roles come pre-built ({names}); they can be freely edited, renamed, or you can create new ones — the only guard is you can't delete one that still has users on it."
+      },
+      "users": {
+        "title": "Users",
+        "count": "{count} users",
+        "new": "New user",
+        "searchPlaceholder": "Search by name or email…",
+        "includeSuspended": "Include suspended",
+        "colName": "Name",
+        "colEmail": "Email",
+        "colRoles": "Roles",
+        "colExtra": "Extra permissions",
+        "colStatus": "Status",
+        "colMfa": "MFA",
+        "colLastLogin": "Last login",
+        "colPin": "App PIN",
+        "addExtra": "Add",
+        "yes": "Yes",
+        "no": "No",
+        "statusActive": "Active",
+        "statusSuspended": "Suspended",
+        "statusInvited": "Invited",
+        "edit": "Edit",
+        "roles": "Roles",
+        "closeSessions": "Sign out sessions",
+        "assignPin": "Set PIN",
+        "resetPin": "Reset PIN",
+        "removePin": "Remove PIN",
+        "requireMfa": "Require MFA",
+        "unrequireMfa": "Stop requiring MFA",
+        "resetMfa": "Reset MFA",
+        "mfaPending": "Pending",
+        "requireMfaTitle": "Require MFA",
+        "requireMfaBody": "{name} will have to set up two-step verification before they can sign in.",
+        "unrequireMfaTitle": "Stop requiring MFA",
+        "unrequireMfaBody": "{name} will no longer be required to have two-step verification (they may keep it if already active).",
+        "mfaRequiredSaved": "MFA updated.",
+        "resetMfaTitle": "Reset MFA",
+        "resetMfaBody": "Removes {name}'s two-step verification; if still required, it will ask them to set it up again on their next sign-in.",
+        "resetMfaDone": "MFA reset.",
+        "editTitle": "Edit user",
+        "fullName": "Name",
+        "active": "Active",
+        "newTitle": "New user",
+        "email": "Email",
+        "emailRequired": "The email is required.",
+        "password": "Password",
+        "passwordHelp": "Empty: a temporary password is generated and shown once, so you can send it to the person.",
+        "tempPasswordTitle": "Temporary password",
+        "tempPasswordHint": "Copy it and send it to the person — it can't be shown again. They can change it later from their account.",
+        "copied": "Copied",
+        "copyFailed": "Couldn't copy it; select it by hand.",
+        "kind": "Type",
+        "kindInternal": "Internal",
+        "kindPortal": "Portal",
+        "portalHint": "Portal users are managed from the client's record (Batch 2).",
+        "created": "User created.",
+        "saved": "Changes saved.",
+        "rolesModalTitle": "{name}'s roles",
+        "extraModalTitle": "{name}'s permissions",
+        "extraHint": "Permissions from their current role are already included and can't be removed here — edit the role for that. What you turn on below are extra permissions, just for this person.",
+        "fromRole": "from role",
+        "closeSessionsTitle": "Sign out sessions",
+        "closeSessionsBody": "All of {name}'s open sessions will be signed out.",
+        "closeSessionsDone": "Sessions signed out.",
+        "membershipSaved": "Status updated.",
+        "note": "Each user inherits their role's permissions. \"Extra permissions\" is the one-off exception: a permission granted directly to a person, without creating or changing a role just for them."
+      },
+      "pin": {
+        "assignTitle": "Set PIN — {name}",
+        "resetTitle": "Reset PIN — {name}",
+        "pin": "PIN (4 to 6 digits)",
+        "confirmPin": "Confirm PIN",
+        "mismatch": "The PINs do not match.",
+        "save": "Save",
+        "cancel": "Cancel",
+        "saved": "PIN saved.",
+        "removeTitle": "Remove the PIN",
+        "removeBody": "{name} will no longer be able to sign in to Teikem Almacén with a PIN.",
+        "removed": "PIN removed."
+      }
+    },
+    "catalogs": {
+      "title": "Value catalogs",
+      "subtitle": "The lists that feed chips and selects across the app.",
+      "lists": "Lists",
+      "searchList": "Search list…",
+      "list": "List",
+      "system": "system",
+      "own": "own",
+      "newList": "New list",
+      "selectList": "Choose a list.",
+      "valueCount": "{count} values",
+      "newValue": "New value",
+      "deleteList": "Delete list",
+      "deleteListTitle": "Delete list",
+      "deleteListBody": "Delete the list «{name}»? This action can't be undone.",
+      "listDeleted": "List deleted.",
+      "listCreated": "List created.",
+      "name": "Name (es)",
+      "nameEn": "Name (en)",
+      "description": "Description",
+      "initialValues": "Initial values",
+      "addValue": "Add value",
+      "removeValue": "Remove value {index}",
+      "code": "Code",
+      "labelEs": "Label (es)",
+      "labelEn": "Label (en)",
+      "order": "Order",
+      "enabled": "Enabled",
+      "origin": "Origin",
+      "originSystem": "System",
+      "originAdjusted": "Adjusted",
+      "originOwn": "Own",
+      "yes": "Yes",
+      "no": "No",
+      "adjust": "Adjust",
+      "restore": "Restore",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "adjustTitle": "Adjust — {label}",
+      "adjustHelp": "A system value is never disabled globally; use this adjustment (Enabled = No) instead of deleting it.",
+      "adjusted": "Value adjusted.",
+      "restoreOverrideTitle": "Restore system value",
+      "restoreOverrideBody": "Restore «{label}» to the system value? Your company's adjustment is lost.",
+      "restored": "Value restored.",
+      "newValueTitle": "New value — {label}",
+      "editValueTitle": "Edit — {label}",
+      "valueCreated": "Value created.",
+      "valueUpdated": "Value updated.",
+      "deactivateTitle": "Deactivate value",
+      "deactivateBody": "Deactivate «{label}»? It stops being offered when capturing; history still shows it.",
+      "deactivated": "Value deactivated.",
+      "restoreValueTitle": "Restore value",
+      "restoreValueBody": "Restore «{label}»? It's offered again when capturing.",
+      "restoreValueDone": "Value restored.",
+      "inactive": "Inactive",
+      "empty": "This list doesn't have any values yet.",
+      "errors": {
+        "nameRequired": "The name is required.",
+        "codeRequired": "The code is required.",
+        "labelRequired": "The label is required.",
+        "rowCodeRequired": "Row {row}: the code is required.",
+        "rowLabelRequired": "Row {row}: the label is required."
+      }
     }
   }
 }

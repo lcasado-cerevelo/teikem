@@ -44,10 +44,10 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
 
     /// <summary>Alta (por invitación): devuelve la contraseña temporal una sola vez si no se envió una.</summary>
     [HttpPost, RequirePermission(PermissionCatalog.AdminUsers)]
-    public async Task<object> Create([FromBody] UserCreateRequest req, CancellationToken ct)
+    public async Task<UserCreateResponseDto> Create([FromBody] UserCreateRequest req, CancellationToken ct)
     {
         var (user, temp) = await users.CreateUserAsync(req, ct);
-        return new { user, temporaryPassword = temp };
+        return new UserCreateResponseDto(user, temp);
     }
 
     [HttpPut("{id:int}"), RequirePermission(PermissionCatalog.AdminUsers)]
@@ -71,6 +71,14 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
 
     [HttpDelete("{id:int}/sessions"), RequirePermission(PermissionCatalog.AdminUsers)]
     public async Task<IActionResult> RevokeSessions(int id, CancellationToken ct) { await auth.RevokeUserSessionsAsync(id, ct); return NoContent(); }
+
+    /// <summary>Lote F8a: exige (o deja de exigir) MFA a este usuario en la compañía activa.</summary>
+    [HttpPut("{id:int}/mfa"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
+    public Task<UserSummaryDto> SetMfaRequired(int id, [FromBody] MfaRequiredRequest req, CancellationToken ct) => users.SetMfaRequiredAsync(id, req.Required, ct);
+
+    /// <summary>Lote F8a: resetea el MFA de otro usuario (perdió su dispositivo) — vuelve a enrolar en su próximo login.</summary>
+    [HttpDelete("{id:int}/mfa"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
+    public async Task<IActionResult> ResetMfa(int id, CancellationToken ct) { await auth.AdminResetMfaAsync(id, ct); return NoContent(); }
 }
 
 /// <summary>Capa E: pantalla "Seguridad y auditoría" — bitácora de cambios, eventos de seguridad, actividad unificada y exportación CSV.</summary>

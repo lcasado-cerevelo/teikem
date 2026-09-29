@@ -1,4 +1,5 @@
 // Datos de "Pulso del día" (P3): el GET de Pulso y la preferencia de rango de fecha de cada usuario por tarjeta.
+// Lote F8a (P2): Pulso por paneles; guardar el orden (mío o de la compañía) y volver al de la compañía.
 // Lote F6: tarjetas de almacén calculadas en cliente (saldo actual, sin rango de fecha) sobre los endpoints del módulo.
 // Lote F7A: esas tarjetas aceptan el filtro de almacén y de categoría o producto (`WarehousePulseFilter`).
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -9,23 +10,62 @@ import { ApiError } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
 import { isCategoryProductValue, type CategoryProductValue } from '../../kernel/ui/categoryTree'
 import { useProduct, useProductCategories, useWarehouses, type GetQuery } from '../warehouse/api'
+import type { PulseLayoutRequest, PulseScope } from './pulseLayout'
 
 export type DateRangeRequest = components['schemas']['DateRangeRequest']
 /** Tipo de tarjeta de Pulso: indicador o gráfico. */
 export type PulseItemKind = 'indicator' | 'chart'
+type AnalyticsDefinition = components['schemas']['AnalyticsDefinitionDto']
+type IndicatorUpsertRequest = components['schemas']['IndicatorUpsertRequest']
+type ChartUpsertRequest = components['schemas']['ChartUpsertRequest']
 
 export const PULSE_QUERY_KEY = ['/api/v1/analytics/pulse'] as const
+export const PULSE_COMPANY_QUERY_KEY = ['/api/v1/analytics/pulse', 'company'] as const
 
-/** `GET /api/v1/analytics/pulse`: indicadores y gráficos marcados para Pulso, ya calculados por el servidor.
- *  `enabled` en false evita la llamada cuando el usuario no tiene `analytics.view` o el módulo ANALYTICS está apagado
- *  (bienvenida sin datos). Es la pantalla de inicio: un 403 no redirige (evita el ciclo '/' ↔ '/module-off'),
- *  Pulso muestra el error en su lugar. */
-export function usePulse(enabled: boolean) {
+/** `GET /api/v1/analytics/pulse` (Lote F8a): paneles del usuario (orden efectivo, incluidos los ocultos), indicadores y
+ *  gráficos legibles (con su orden y visibilidad), `hasPersonalLayout` y `canOrganizeCompany`. Sin permiso ni módulo
+ *  propios: el servidor devuelve solo lo que el usuario puede ver (sin nada, `panels` vacío). Es la pantalla de inicio: un
+ *  403 no redirige (evita el ciclo '/' ↔ '/module-off'), Pulso muestra el error en su lugar. */
+export function usePulse(enabled = true) {
   return useQuery({
     queryKey: PULSE_QUERY_KEY,
     queryFn: () => unwrap(api.GET('/api/v1/analytics/pulse')),
     enabled,
     meta: { handleAccessDenied: false },
+  })
+}
+
+/** `GET /api/v1/analytics/pulse?scope=company`: el Pulso de la compañía sin la capa personal de quien consulta — lo
+ *  que usa "Organizar el de la compañía" para partir del estado real de la compañía, no del propio de quien lo abre. */
+export function usePulseCompany(enabled: boolean) {
+  return useQuery({
+    queryKey: PULSE_COMPANY_QUERY_KEY,
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/pulse', { params: { query: { scope: 'company' } } })),
+    enabled,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** `PUT /api/v1/analytics/pulse/layout?scope=mine|company`: guarda orden y visibilidad de paneles y elementos (lo que no
+ *  viene en el cuerpo no se toca). Devuelve el Pulso nuevo, que se pone en caché y se revalida. */
+export function useSaveLayout(scope: PulseScope) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PulseLayoutRequest) => unwrap(api.PUT('/api/v1/analytics/pulse/layout', { params: { query: { scope } }, body })),
+    onSuccess: (data) => {
+      qc.setQueryData(PULSE_QUERY_KEY, data)
+      void qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY })
+    },
+  })
+}
+
+/** `DELETE /api/v1/analytics/pulse/layout/mine`: vuelve al Pulso de la compañía (borra mi orden y mis ocultos; conserva
+ *  mis rangos de fecha). */
+export function useResetMyLayout() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => unwrap(api.DELETE('/api/v1/analytics/pulse/layout/mine')),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY }),
   })
 }
 
@@ -40,9 +80,133 @@ export function useSetMyDateRange() {
       kind === 'indicator'
         ? unwrap(api.PUT('/api/v1/analytics/indicators/{id}/my-date-range', { params: { path: { id } }, body }))
         : unwrap(api.PUT('/api/v1/analytics/charts/{id}/my-date-range', { params: { path: { id } }, body })),
-    onSuccess: () => qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY }),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY })
+      void qc.invalidateQueries({ queryKey: vars.kind === 'indicator' ? INDICATORS_QUERY_KEY : CHARTS_QUERY_KEY })
+      void qc.invalidateQueries({ queryKey: [vars.kind === 'indicator' ? '/api/v1/analytics/indicators/{id}/value' : '/api/v1/analytics/charts/{id}/data', vars.id] })
+    },
   })
 }
+
+/** `PUT /api/v1/analytics/{indicators|charts}/{id}/my-pulse`: "Mostrar en Pulso del día" mío (no toca la definición).
+ *  Invalida mi Pulso y la lista de Indicadores/Gráficos (P3), que trae `effectiveShowInPulse`. */
+export function useSetMyPulse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ kind, id, showInPulse }: { kind: PulseItemKind; id: number; showInPulse: boolean }) =>
+      kind === 'indicator'
+        ? unwrap(api.PUT('/api/v1/analytics/indicators/{id}/my-pulse', { params: { path: { id } }, body: { showInPulse } }))
+        : unwrap(api.PUT('/api/v1/analytics/charts/{id}/my-pulse', { params: { path: { id } }, body: { showInPulse } })),
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY })
+      void qc.invalidateQueries({ queryKey: vars.kind === 'indicator' ? INDICATORS_QUERY_KEY : CHARTS_QUERY_KEY })
+    },
+  })
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Indicadores y Gráficos (Lote F8a, P3): lista, fuentes de datos, valor/datos por tarjeta y alta/edición/baja de la
+// definición. La lista ya llega filtrada por lo que el usuario puede leer (§2.2 del plan); la pantalla no re-filtra.
+// ---------------------------------------------------------------------------------------------------------------------
+
+export const INDICATORS_QUERY_KEY = ['/api/v1/analytics/indicators'] as const
+export const CHARTS_QUERY_KEY = ['/api/v1/analytics/charts'] as const
+
+export function useIndicators() {
+  return useQuery({ queryKey: INDICATORS_QUERY_KEY, queryFn: () => unwrap(api.GET('/api/v1/analytics/indicators')) })
+}
+
+export function useCharts() {
+  return useQuery({ queryKey: CHARTS_QUERY_KEY, queryFn: () => unwrap(api.GET('/api/v1/analytics/charts')) })
+}
+
+/** `GET /api/v1/analytics/data-sources`: catálogo de fuentes (fuentes y sus campos casi no cambian; caché larga). */
+export function useDataSources() {
+  return useQuery({
+    queryKey: ['/api/v1/analytics/data-sources'],
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/data-sources')),
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Valor actual de un indicador (tarjeta, spinner propio). */
+export function useIndicatorValue(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ['/api/v1/analytics/indicators/{id}/value', id],
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/indicators/{id}/value', { params: { path: { id: id as number } } })),
+    enabled: id != null,
+  })
+}
+
+/** Datos de un gráfico (tarjeta, spinner propio). */
+export function useChartData(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ['/api/v1/analytics/charts/{id}/data', id],
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/charts/{id}/data', { params: { path: { id: id as number } } })),
+    enabled: id != null,
+  })
+}
+
+/** También invalida el valor/los datos ya calculados de ESE elemento (`id`): sin esto, editar o cambiar de rango deja
+ *  la tarjeta con el valor calculado con los datos o el rango anteriores hasta que algo más la refresque. */
+function invalidateDefinitions(qc: ReturnType<typeof useQueryClient>, kind: PulseItemKind, id?: number | null) {
+  void qc.invalidateQueries({ queryKey: kind === 'indicator' ? INDICATORS_QUERY_KEY : CHARTS_QUERY_KEY })
+  void qc.invalidateQueries({ queryKey: PULSE_QUERY_KEY })
+  if (id != null) void qc.invalidateQueries({ queryKey: [kind === 'indicator' ? '/api/v1/analytics/indicators/{id}/value' : '/api/v1/analytics/charts/{id}/data', id] })
+}
+
+/** Alta (`POST indicators`) o edición (`PUT indicators/{id}`) de un indicador. */
+export function useSaveIndicator() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number | null; body: IndicatorUpsertRequest }) =>
+      id != null
+        ? unwrap(api.PUT('/api/v1/analytics/indicators/{id}', { params: { path: { id } }, body }))
+        : unwrap(api.POST('/api/v1/analytics/indicators', { body })),
+    onSuccess: (data, vars) => invalidateDefinitions(qc, 'indicator', vars.id ?? data.id),
+  })
+}
+
+/** Alta (`POST charts`) o edición (`PUT charts/{id}`) de un gráfico. */
+export function useSaveChart() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id?: number | null; body: ChartUpsertRequest }) =>
+      id != null
+        ? unwrap(api.PUT('/api/v1/analytics/charts/{id}', { params: { path: { id } }, body }))
+        : unwrap(api.POST('/api/v1/analytics/charts', { body })),
+    onSuccess: (data, vars) => invalidateDefinitions(qc, 'chart', vars.id ?? data.id),
+  })
+}
+
+export function useDeleteIndicator() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.DELETE('/api/v1/analytics/indicators/{id}', { params: { path: { id } } })),
+    onSuccess: (_data, id) => invalidateDefinitions(qc, 'indicator', id),
+  })
+}
+
+export function useDeleteChart() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => unwrap(api.DELETE('/api/v1/analytics/charts/{id}', { params: { path: { id } } })),
+    onSuccess: (_data, id) => invalidateDefinitions(qc, 'chart', id),
+  })
+}
+
+/** Usuarios de la compañía para el buscador de "Personas específicas" del editor (`admin.users`; 403 no saca de la
+ *  pantalla, el editor ofrece solo "Toda la compañía"/"Solo yo"). */
+export function useAnalyticsShareUsers(enabled: boolean) {
+  return useQuery({
+    queryKey: ['/api/v1/users'],
+    queryFn: () => unwrap(api.GET('/api/v1/users')),
+    enabled,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+export type { AnalyticsDefinition }
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Tarjetas de almacén (Lote F6). No son indicadores del motor de analítica: se calculan en cliente con los totales que

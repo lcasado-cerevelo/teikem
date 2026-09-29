@@ -33,6 +33,35 @@ public sealed partial class SqlScriptRunner(string connectionString, ILogger log
         logger.LogInformation("Base de datos '{Db}' disponible.", dbName);
     }
 
+    /// <summary>
+    /// Lote 10 (db-reset): borra la base de la cadena de conexión si existe (SINGLE_USER WITH ROLLBACK IMMEDIATE + DROP). Antes
+    /// vacía el pool de conexiones del proceso para que ninguna conexión propia mantenga la base ocupada. Devuelve true si la borró.
+    /// </summary>
+    public async Task<bool> DropDatabaseAsync(CancellationToken ct = default)
+    {
+        var csb = new SqlConnectionStringBuilder(connectionString);
+        var dbName = csb.InitialCatalog;
+        if (string.IsNullOrWhiteSpace(dbName)) throw new InvalidOperationException("La cadena de conexión no indica Initial Catalog/Database.");
+        SqlConnection.ClearAllPools();
+        csb.InitialCatalog = "master";
+        await using var conn = new SqlConnection(csb.ConnectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandTimeout = 120;
+        cmd.CommandText = """
+            IF DB_ID(@n) IS NULL SELECT CAST(0 AS BIT);
+            ELSE BEGIN
+                DECLARE @sql NVARCHAR(600) = N'ALTER DATABASE ' + QUOTENAME(@n) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE ' + QUOTENAME(@n) + N';';
+                EXEC(@sql);
+                SELECT CAST(1 AS BIT);
+            END
+            """;
+        cmd.Parameters.AddWithValue("@n", dbName);
+        var dropped = (bool)(await cmd.ExecuteScalarAsync(ct))!;
+        logger.LogInformation(dropped ? "Base de datos '{Db}' borrada." : "Base de datos '{Db}' no existía; nada que borrar.", dbName);
+        return dropped;
+    }
+
     public async Task<IReadOnlyList<string>> ApplyAsync(IEnumerable<SqlScript> scripts, CancellationToken ct = default)
     {
         var applied = new List<string>();

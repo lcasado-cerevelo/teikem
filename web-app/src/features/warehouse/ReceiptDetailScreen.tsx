@@ -24,7 +24,6 @@ import {
   Modal,
   NumberInput,
   Panel,
-  Select,
   Spinner,
   TextArea,
   TextInput,
@@ -38,13 +37,12 @@ import {
   useDeleteReceipt,
   useReceipt,
   useSaveReceiptLine,
-  useWarehouseBins,
   warehouseKeys,
   type ReceiptDetailDto,
   type WarehouseTaskDto,
 } from './api'
 import { formatDateTime, formatNumber, lineErrorsByIndex, parseSerials, receiptLineIssues, remapProblemFields, type LineIssue } from './lineRules'
-import { ProductPickerInput } from './pickers'
+import { BinPickerInput, ProductPickerInput } from './pickers'
 
 type Schemas = components['schemas']
 type ReceiptLine = Schemas['ReceiptLineDto']
@@ -53,23 +51,12 @@ const STATUS_DOMAIN = 'ReceiptStatus'
 const ENTITY_TYPE = 'RECEIPT'
 const TASK_STATUS_DOMAIN = 'WarehouseTaskStatus'
 const MAX_LINES = 200
-const RECEIVING_ZONES = new Set(['STAGING', 'CROSSDOCK'])
+/** Tipos de zona donde se recibe (posición de staging de la línea). */
+const RECEIVING_ZONES = ['STAGING', 'CROSSDOCK'] as const
 
 function useIssueText() {
   const t = useT()
   return (issue: LineIssue) => t(`warehouse.lineRules.${issue.code}`, issue.params)
-}
-
-/** Posiciones de recepción del almacén (zonas STAGING/CROSSDOCK activas) como opciones de <Select>. */
-function useStagingOptions(warehousePublicId: string | null | undefined) {
-  const bins = useWarehouseBins(warehousePublicId, {}, { handleAccessDenied: false })
-  return useMemo(
-    () =>
-      (bins.data ?? [])
-        .filter((b) => b.isActive !== false && RECEIVING_ZONES.has(b.zoneTypeCode ?? ''))
-        .map((b) => ({ value: String(b.id), label: [b.code, b.zoneCode].filter(Boolean).join(' · ') })),
-    [bins.data],
-  )
 }
 
 /**
@@ -121,7 +108,6 @@ function LineModal({ receipt, line, onClose }: { receipt: ReceiptDetailDto; line
   const header = receipt.header ?? {}
   const publicId = header.publicId ?? ''
   const adding = line === null
-  const stagingOptions = useStagingOptions(header.warehousePublicId)
   const schema = useMemo(() => lineSchema(t, issueText, adding), [t, issueText, adding])
   const form = useForm({
     resolver: zodResolver(schema),
@@ -219,7 +205,7 @@ function LineModal({ receipt, line, onClose }: { receipt: ReceiptDetailDto; line
             <NumberInput min={0} step={tracking === 'SERIAL' ? '1' : '0.001'} />
           </Field>
           <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')}>
-            <Select options={stagingOptions} placeholder={t('warehouse.receipts.defaultStaging')} />
+            <BinPickerInput warehousePublicId={header.warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
           </Field>
         </div>
         {(tracking === 'LOT' || tracking === 'SERIAL') && (

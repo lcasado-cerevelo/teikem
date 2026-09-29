@@ -39,6 +39,7 @@ public sealed class ProvisioningService(TeikemDbContext db, UserManager<Applicat
 
         if (await db.Tenants.AnyAsync(t => t.Name == req.Name.Trim(), ct)) throw new ConflictException($"Ya existe la compañía '{req.Name}'.");
         var t = new Tenant { Name = req.Name.Trim(), LegalName = req.LegalName, TaxId = req.TaxId, DefaultLangCode = (req.DefaultLangCode ?? "es").ToLowerInvariant() };
+        if (req.MfaRequired.HasValue) t.MfaRequired = req.MfaRequired.Value;
         db.Tenants.Add(t);
         await db.SaveChangesAsync(ct);
         logger.LogInformation("Tenant {Name} creado con id {Id}", t.Name, t.TenantId);

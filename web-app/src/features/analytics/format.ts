@@ -48,6 +48,15 @@ export function customRangeDays(fromUtc: string | null | undefined, toUtc: strin
   return { from: apiDateToYmd(fromUtc), to: apiDateToYmd(toUtc, 1) }
 }
 
+/**
+ * Título del Pulso (Lote F8a): la fecha del día en el idioma de la interfaz ("Lunes, 28 de septiembre" / "Monday,
+ * September 28"), con solo la primera letra en mayúscula (el mes en español sigue en minúscula).
+ */
+export function pulseDateTitle(date: Date, lang: string): string {
+  const text = date.toLocaleDateString(lang, { weekday: 'long', day: 'numeric', month: 'long' })
+  return text.charAt(0).toLocaleUpperCase(lang) + text.slice(1)
+}
+
 /** Fecha 'YYYY-MM-DD' en el idioma de la interfaz, sin corrimiento por la zona del navegador; '…' si no hay fecha. */
 export function formatYmd(ymd: string, lang: string): string {
   if (!ymd) return '…'

@@ -39,6 +39,12 @@ const PAGE_SIZE = 25
 // eslint-disable-next-line no-control-regex -- intencional: el SKU no admite caracteres de control (manual §2).
 const CONTROL_CHARS_OR_SPACES = /[\s\x00-\x1F\x7F]/
 
+/** Nivel de indentación a partir de la ruta ("Raíz / Hija / Nieta") que arma el servidor (réplica de ProductCategoriesPanel). */
+function levelOf(path: string | null | undefined): number {
+  if (!path) return 0
+  return path.split('/').length - 1
+}
+
 
 // ---- Modal de alta ----
 function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -47,6 +53,14 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
   const create = useCreateProduct()
   const { save: saveCustomFields } = useSaveCustomFields('PRODUCT')
   const { data: trackingTypes = [] } = useLookups('TrackingType')
+  const { data: categories = [] } = useProductCategories()
+  const categoryOptions = useMemo(
+    () =>
+      categories
+        .filter((c) => c.isActive)
+        .map((c) => ({ value: String(c.id), label: '  '.repeat(levelOf(c.path)) + (c.name ?? '') })),
+    [categories],
+  )
 
   const schema = useMemo(
     () =>
@@ -59,7 +73,8 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
           .refine((v) => !CONTROL_CHARS_OR_SPACES.test(v), t('warehouse.products.errors.skuChars')),
         name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
         barcode: z.string().trim().max(60, t('warehouse.products.errors.barcodeMax')),
-        trackingType: z.string().min(1, t('warehouse.products.errors.trackingTypeRequired')),
+        categoryId: z.string(),
+        trackingType: z.string(),
         purchaseCost: moneySchema(t, 'cost'),
         salePrice: moneySchema(t, 'price'),
         weightKg: weightKgSchema(t),
@@ -75,7 +90,8 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
       sku: '',
       name: '',
       barcode: '',
-      trackingType: 'NONE',
+      categoryId: '',
+      trackingType: '',
       purchaseCost: null,
       salePrice: null,
       weightKg: null,
@@ -116,6 +132,7 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
             sku: v.sku,
             name: v.name,
             barcode: v.barcode || null,
+            categoryId: v.categoryId ? Number(v.categoryId) : null,
             trackingType: v.trackingType || null,
             purchaseCost: v.purchaseCost,
             salePrice: v.salePrice,
@@ -147,9 +164,15 @@ function CreateProductModal({ open, onClose }: { open: boolean; onClose: () => v
           <Field name="barcode" label={t('warehouse.products.fields.barcode')}>
             <TextInput maxLength={60} />
           </Field>
-          <Field name="trackingType" label={t('warehouse.products.fields.trackingType')} required>
-            <Select options={trackingTypes.map((o) => ({ value: o.code, label: o.label }))} />
+          <Field name="categoryId" label={t('warehouse.products.fields.category')}>
+            <Select options={categoryOptions} placeholder={t('warehouse.products.fields.none')} />
           </Field>
+        </div>
+        <div className="r2">
+          <Field name="trackingType" label={t('warehouse.products.fields.trackingType')}>
+            <Select options={trackingTypes.map((o) => ({ value: o.code, label: o.label }))} placeholder={t('warehouse.products.fields.none')} />
+          </Field>
+          <div aria-hidden="true" />
         </div>
         <div className="r2">
           <Field name="purchaseCost" label={t('warehouse.products.fields.purchaseCost')}>

@@ -1,0 +1,70 @@
+{
+  // Lote 10 — Migración de Advance Solutions (QuickBooks Solutions; sin ubicaciones: una zona y una posición GENERAL).
+  // Los archivos de datos viven FUERA del repositorio (contienen correos y teléfonos de clientes).
+  // Uso: dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.solutions.json --dry-run
+  "company": {
+    "name": "Advance Solutions",
+    "legalName": "Advance Solutions Group",
+    "taxId": null,
+    "lang": "es",
+    "modules": ["WMS_LOTSERIAL", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS"],
+    "adminEmail": "teikem+admin@cerevelo.com",
+    "adminFullName": "Administrador Advance"
+  },
+  "sources": {
+    "products": "F:/TeikemData/Solutions Items.csv",
+    "customers": "F:/TeikemData/Solutions Customers.csv",
+    "vendors": "F:/TeikemData/Solutions Vendors.csv",
+    // El SKU 00050-7 (categoría SOLUTIONS de Depot) no está en Solutions Items: se toma de Depot Products.
+    "extraProducts": { "path": "F:/TeikemData/Depot Products.csv", "whereCategory": "SOLUTIONS" }
+  },
+  "products": {
+    "types": ["Inventory Part"],
+    "defaultCategory": "PRODUCTOS",
+    "categoryByQuickBooksCategory": {},
+    "excludeQuickBooksCategories": [],
+    // Las cajas solo existen en Depot (categoría CARTONES).
+    "excludeSkus": ["101010", "121212", "979"],
+    "baseUom": "UN",
+    "trackingType": "NONE",
+    "nameFallbackToSku": true,
+    "createUnknownWmsSkusWithStock": false
+  },
+  "suppliers": {
+    "includeNames": [
+      "ADVANCE LOGISTICS LLC",
+      "GLOBAL IMPORT SALES LLC",
+      "PADIMONT HOLDINGS CORP",
+      "SHIELD LINE",
+      "ADVANCE DEPOT SOLUTIONS",
+      "FARMACIA CENTRAL DRUG"
+    ],
+    "excludeNames": []
+  },
+  "clients": {
+    "excludeNames": ["1", "Alec"],
+    "defaultCurrency": "USD",
+    "repCustomField": true,
+    "qbCodeCustomField": true
+  },
+  "warehouse": {
+    "code": "ALM-SOL",
+    "name": "Almacén Solutions",
+    "city": "Caguas",
+    "state": "PR",
+    "country": "PR",
+    "singleBin": {
+      "zone": { "code": "GEN", "name": "General", "zoneType": "RESERVE" },
+      "bin": "GENERAL"
+    }
+  },
+  "openingBalances": {
+    "source": "quickbooks",
+    "reason": "OPENING_BALANCE",
+    "notes": "Saldo inicial QuickBooks 2026-09-28"
+  },
+  "report": {
+    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/TeikemData), fuera del repositorio.
+    "prefix": "reporte-solutions"
+  }
+}

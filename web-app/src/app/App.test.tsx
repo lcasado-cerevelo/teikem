@@ -65,7 +65,7 @@ describe('App (shell)', () => {
     await renderAppAt('/')
     const menu = await screen.findByRole('complementary', { name: 'Menú principal' })
     expect(within(menu).getByText('Pulso del día')).toBeInTheDocument()
-    expect(within(menu).queryByText('Administración')).toBeNull()
+    expect(within(menu).queryByText('Sistema')).toBeNull()
     expect(screen.getByText('Demo Logística')).toBeInTheDocument()
     expect(screen.getByText('Ana Admin')).toBeInTheDocument()
   })

@@ -312,7 +312,14 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','USER_DEVICE','Aparato de almacén','Warehouse device',80),
 -- Lote F8a — Pulso del día por paneles: categoría de permisos pulse.* y orden/visibilidad de paneles auditable.
 ('PermissionCategory','PULSE','Pulso del día','Day pulse',13),
-('EntityType','PULSE_PANEL_SETTING','Panel del Pulso','Pulse panel',81);
+('EntityType','PULSE_PANEL_SETTING','Panel del Pulso','Pulse panel',81),
+-- Lote 10 — Migración de datos (Advance Depot y Advance Solutions desde QuickBooks y el WMS MSWM): términos de pago de
+-- QuickBooks (COD, NET15, NET30 y NET60 ya existían; 'Due on receipt' se mapea a COD) y el motivo de ajuste del saldo
+-- inicial, reservado al sistema (solo lo escribe el importador import-legacy; un ajuste manual con él recibe 400).
+('PaymentTerm','CHEQUE','Cheque','Check',5),('PaymentTerm','CASH','Efectivo','Cash',6),('PaymentTerm','ACH','Transferencia ACH','ACH transfer',7),
+('PaymentTerm','NET20','20 días','Net 20',8),('PaymentTerm','NET45','45 días','Net 45',9),('PaymentTerm','CONSIGNMENT','Consignación','Consignment',10),
+('PaymentTerm','PK_BY_REP','Cobra el representante','Paid via rep',11),
+('AdjustmentReason','OPENING_BALANCE','Saldo inicial (migración)','Opening balance (migration)',10);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -794,9 +801,11 @@ GO
    Hasta F8a el Pulso se veía con analytics.view (indicadores, gráficos, actividad) e inventory.view (panel Almacén); ahora
    cada panel exige su pulse.*. PermissionSeeder no propaga estos códigos a los roles ya clonados (este seed espeja las
    plantillas antes que él: decisión 35 del Lote 2), así que se completan aquí, UNA sola vez: solo en la corrida que crea
-   los permisos pulse.* (#F8aPulseIsNew). Solo agrega. (a) Roles con nombre de plantilla: los pulse.* de su plantilla.
-   (b) Roles propios con analytics.view: pulse.indicators, pulse.charts y pulse.activity. (c) Roles propios con
-   inventory.view: pulse.warehouse. En BD limpia no hay roles de tenant todavía: no inserta nada.
+   los permisos pulse.* (#F8aPulseIsNew). Solo agrega. (a) Roles con nombre de plantilla: los pulse.* de su plantilla y,
+   si la plantilla lo agrega (caso de WarehouseOperator), analytics.view — sin este último, un Operador de almacén ya
+   clonado tendría pulse.activity pero no vería Actividad reciente (exige analytics.view, §2.2). (b) Roles propios con
+   analytics.view: pulse.indicators, pulse.charts y pulse.activity. (c) Roles propios con inventory.view: pulse.warehouse.
+   En BD limpia no hay roles de tenant todavía: no inserta nada.
    ------------------------------------------------------------------------- */
 IF EXISTS (SELECT 1 FROM #F8aPulseIsNew WHERE IsNew = 1)
 BEGIN
@@ -804,7 +813,7 @@ BEGIN
         SELECT q.RoleId, p.Code FROM dbo.RolePermission q JOIN dbo.Permission p ON p.PermissionId = q.PermissionId
     ), Wanted AS (
         SELECT r.RoleId, rp.PermCode AS Code
-        FROM dbo.Role r JOIN #RP rp ON rp.RoleName = r.Name AND rp.PermCode LIKE 'pulse.%'
+        FROM dbo.Role r JOIN #RP rp ON rp.RoleName = r.Name AND (rp.PermCode LIKE 'pulse.%' OR rp.PermCode = 'analytics.view')
         WHERE r.TenantId IS NOT NULL AND r.IsActive = 1
         UNION
         SELECT r.RoleId, x.Code
@@ -821,6 +830,53 @@ BEGIN
     SELECT w.RoleId, p.PermissionId
     FROM Wanted w JOIN dbo.Permission p ON p.Code = w.Code
     WHERE NOT EXISTS (SELECT 1 FROM dbo.RolePermission e WHERE e.RoleId = w.RoleId AND e.PermissionId = p.PermissionId);
+END
+GO
+
+/* -------------------------------------------------------------------------
+   5c) Lote F8a — diagnóstico de PIN sin cobertura (solo lectura, no escribe nada)
+   Hallazgo M1 (docs/frontend/loteF8a-hallazgos-plan.md): este lote le agrega 5 permisos a la plantilla de Operador de
+   almacén (analytics.view + los 4 pulse.*). Si el PIN de un operador lo asignó alguien (UserPin.UpdatedBy) que no sea
+   admin de plataforma y que ya no cubra alguno de esos 5, ese PIN queda sin servir en el próximo login o refresh del
+   aparato (PinService.AssignerStillCoversAsync). Aquí se avisa por PRINT (visible en el log de `db-init`) para que se
+   reasigne antes de que el operador se tope con el bloqueo; no se toca ningún dato. Corre siempre, no solo cuando se
+   introducen los pulse.*, por si se clona un rol después con este hueco.
+   ------------------------------------------------------------------------- */
+IF OBJECT_ID('tempdb..#F8aPinGap') IS NOT NULL DROP TABLE #F8aPinGap;
+SELECT up.UserId, up.UpdatedBy AS AssignerId, p.Code
+INTO #F8aPinGap
+FROM dbo.UserPin up
+JOIN dbo.AspNetUsers a ON a.Id = up.UpdatedBy
+CROSS JOIN (VALUES ('analytics.view'),('pulse.indicators'),('pulse.charts'),('pulse.warehouse'),('pulse.activity')) AS c(Code)
+JOIN dbo.Permission p ON p.Code = c.Code
+WHERE up.UpdatedBy IS NOT NULL AND up.UpdatedBy <> up.UserId AND a.IsPlatformAdmin = 0
+  AND EXISTS (
+        SELECT 1 FROM dbo.UserRole ur JOIN dbo.Role ro ON ro.RoleId = ur.RoleId AND ro.IsActive = 1
+            JOIN dbo.RolePermission rp ON rp.RoleId = ur.RoleId
+        WHERE ur.UserId = up.UserId AND ur.TenantId = up.TenantId AND rp.PermissionId = p.PermissionId
+        UNION SELECT 1 FROM dbo.UserPermission ux WHERE ux.UserId = up.UserId AND ux.TenantId = up.TenantId AND ux.PermissionId = p.PermissionId)
+  AND NOT EXISTS (
+        SELECT 1 FROM dbo.UserRole ur2 JOIN dbo.Role ro2 ON ro2.RoleId = ur2.RoleId AND ro2.IsActive = 1
+            JOIN dbo.RolePermission rp2 ON rp2.RoleId = ur2.RoleId
+        WHERE ur2.UserId = up.UpdatedBy AND ur2.TenantId = up.TenantId AND rp2.PermissionId = p.PermissionId
+        UNION SELECT 1 FROM dbo.UserPermission ux2 WHERE ux2.UserId = up.UpdatedBy AND ux2.TenantId = up.TenantId AND ux2.PermissionId = p.PermissionId);
+
+IF EXISTS (SELECT 1 FROM #F8aPinGap)
+BEGIN
+    DECLARE @gapMsg NVARCHAR(400);
+    DECLARE gapCur CURSOR LOCAL FAST_FORWARD FOR
+        SELECT N'AVISO (Lote F8a, hallazgo M1): el PIN del usuario ' + CAST(UserId AS NVARCHAR(20)) + N' quedará sin cobertura de quien lo asignó ('
+             + CAST(AssignerId AS NVARCHAR(20)) + N') — le falta ' + STRING_AGG(Code, ', ') + N'. Reasignar el PIN antes de que el operador entre al aparato.'
+        FROM #F8aPinGap GROUP BY UserId, AssignerId;
+    OPEN gapCur;
+    FETCH NEXT FROM gapCur INTO @gapMsg;
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        PRINT @gapMsg;
+        FETCH NEXT FROM gapCur INTO @gapMsg;
+    END
+    CLOSE gapCur;
+    DEALLOCATE gapCur;
 END
 GO
 

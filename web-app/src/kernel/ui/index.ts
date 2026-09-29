@@ -1,10 +1,26 @@
 // Kit de componentes (src/kernel/ui). Contrato y props en web-app/KIT.md; patrones completos en ./templates.
+export { IconEdit, IconKey, IconLogOut, IconPower, IconRefreshCw, IconRotateCcw, IconShield, IconTrash } from './actionIcons'
+export { BrandLockup, BrandMark } from './Brand'
+export type { BrandLockupProps, BrandMarkProps } from './Brand'
+export { BRAND_SYMBOL_SRC, brandLockupSrc } from './brandAssets'
 export { ClientPicker, ClientPickerInput } from './ClientPicker'
 export type { ClientOption, ClientPickerInputProps, ClientPickerProps } from './ClientPicker'
 export { CategoryProductPicker } from './CategoryProductPicker'
 export type { CategoryOption, CategoryProductPickerProps, ProductSearchOption } from './CategoryProductPicker'
 export { categoryLabel, categoryProductTotals, categoryTree, filterCategoryTree, isCategoryProductValue, sameCategoryProduct } from './categoryTree'
 export type { CategoryNode, CategoryProductValue, CategoryTreeRow } from './categoryTree'
+export { CommandPalette } from './CommandPalette'
+export type { CommandPaletteProps } from './CommandPalette'
+export {
+  closeCommandPalette,
+  filterCommands,
+  groupCommands,
+  isCommandPaletteOpen,
+  openCommandPalette,
+  useCommandPaletteOpen,
+  useCommandPaletteShortcut,
+} from './commandPaletteStore'
+export type { CommandItem } from './commandPaletteStore'
 export { Chip } from './Chip'
 export type { ChipProps, ChipTone } from './Chip'
 export { ConfirmDialog } from './ConfirmDialog'
@@ -32,5 +48,7 @@ export { Spinner } from './Spinner'
 export type { SpinnerProps } from './Spinner'
 export { Tabs } from './Tabs'
 export type { TabItem, TabsProps } from './Tabs'
+export { getTheme, initTheme, setTheme, THEME_STORAGE_KEY, useTheme } from './theme'
+export type { Theme } from './theme'
 export { toast } from './toast'
 export { CARDS_QUERY, useMediaQuery } from './useMediaQuery'

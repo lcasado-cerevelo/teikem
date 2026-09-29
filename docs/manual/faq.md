@@ -2351,3 +2351,101 @@ fuente, o el elemento se eliminó). Recargue el Pulso: solo aparecen los que sí
 **¿Qué significa "Fuente de datos 'TRANSPORT_ORDER' no encontrado." al crear un indicador o gráfico? (404)**
 No puede leer esa fuente de datos (en el ejemplo le falta `orders.view`), así que tampoco puede crear indicadores o
 gráficos sobre ella. Elija otra fuente o pida el permiso.
+
+## Lote F8a — frontend: menú, Sistema y Análisis
+
+Detalle en el capítulo [F8a — Menú completo, marca, Pulso por paneles, Sistema y Análisis](frontend/f8a-menu-sistema-analisis-y-marca.md).
+
+**¿Por qué no veo el grupo "Análisis" (o cualquier otro) en el menú?**
+Un grupo del menú solo se pinta si tiene al menos un ítem visible para usted: revise que tenga el permiso y que el
+módulo de ese ítem esté encendido para su compañía. Un ítem sin función todavía (por ejemplo, "Sala de despacho")
+sí aparece, pero abre una pantalla que avisa "Esta pantalla llega en un lote posterior."
+
+**¿Cómo genero una nueva contraseña temporal para un usuario que ya tiene cuenta?**
+No se puede desde "Nuevo usuario" (esa pantalla es solo para el alta). Pídale que use "¿Olvidó su contraseña?" en el
+inicio de sesión, o cambie su contraseña desde Mi cuenta si tiene acceso a la cuenta.
+
+**Creé un usuario sin contraseña y cerré el modal antes de copiar la temporal, ¿cómo la recupero?**
+No se puede: se muestra una sola vez y no queda guardada en ningún lugar visible. Edite al usuario y pídale que use
+"¿Olvidó su contraseña?", o asígnele una contraseña nueva si tiene ese permiso.
+
+**¿Por qué no puedo editar el nombre o el estado de un usuario, aunque tengo `admin.users`?**
+Porque "Este usuario pertenece a más de una compañía; solo el administrador de plataforma puede editar su cuenta."
+(403): el nombre y el estado de la cuenta son de la persona, no de una compañía en particular. Sus roles y
+permisos **en su compañía** sí se pueden editar igual; para el resto, pida al administrador de plataforma.
+
+**¿Por qué "Restablecer PIN"/"Asignar PIN" me piden confirmar mi contraseña (reautenticación) y "Quitar PIN" no?**
+Asignar o cambiar el PIN de otra persona es una acción sensible (AAL2); quitarlo no lo es (equivale a bloquearle el
+acceso, no a dárselo). Si su sesión ya se reautenticó hace poco para otra acción, puede que no se lo vuelva a pedir.
+
+**¿Por qué el código de un aparato nuevo ya no se puede escribir a mano?**
+Antes de este lote la pantalla no pedía un código, pero el servidor sí lo exigía — esa inconsistencia ya no existe:
+el servidor genera uno legible (`AP-XXXXXX`) automáticamente. El código de **registro** (el que se usa una sola vez
+para dar de alta el aparato en Teikem Almacén) sigue siendo aparte y se muestra tras crear el aparato.
+
+**Ajusté la etiqueta de un valor de catálogo y no veo el cambio en otra pantalla que ya tenía abierta.**
+El cambio se aplica de inmediato en el servidor; una pantalla que ya tenía los datos cargados (por ejemplo, Pulso
+abierto en otra pestaña del navegador) los actualiza en su próxima consulta, no retroactivamente en lo que ya
+pintó. Recárguela si hace falta verlo ahí también.
+
+**"Restaurar" un valor propio desactivado no parecía hacer nada, ¿ya se arregló?**
+Sí: antes, la lista de valores excluía siempre los inactivos aunque se pidiera incluirlos, así que "Restaurar" no
+tenía efecto visible. Ahora un valor propio restaurado vuelve a la lista activa y a ofrecerse al capturar.
+
+**¿Por qué "Organizar el de la compañía" no aparece en mi Pulso?**
+Exige el permiso `pulse.organize_company`, aparte de cualquier otro permiso `pulse.*` de los paneles. "Organizar mi
+Pulso" no exige ningún permiso extra: siempre está disponible si tiene al menos un panel.
+
+**¿Por qué las acciones de las tablas de Sistema ahora son iconos y no dicen el nombre?**
+Es el estándar de la maqueta original (un icono a tono con la acción, con su nombre como tooltip al pasar el
+cursor), no un cambio de qué se puede hacer — cada icono hace exactamente lo que hacía antes el botón de texto.
+
+**Le exigí MFA a un usuario, ¿por qué no le activé yo mismo la verificación en dos pasos?**
+Exigir MFA no la activa por esa persona — cada quien enrola la suya (escanea el código QR con su propia
+aplicación de autenticación). Lo que hace "Exigir MFA" es que su **próximo** inicio de sesión le pida enrolar
+antes de dejarla entrar; hasta que lo haga, no puede iniciar sesión.
+
+**Un usuario perdió el teléfono con su verificación en dos pasos y quedó bloqueado, ¿cómo lo recupero?**
+Un administrador con `admin.users` usa "Restablecer MFA" en su fila (tabla de usuarios): le quita la verificación
+confirmada y sus códigos de recuperación. En su siguiente inicio de sesión, si todavía se le exige, se le pide
+enrolar una nueva desde cero.
+
+**¿"Ya no exigir MFA" le quita la verificación en dos pasos a la persona?**
+No: solo quita la **obligación** puntual que usted le había puesto. Si esa persona ya tenía su propia
+verificación activa (por su cuenta, o porque la compañía entera lo exige), la conserva.
+
+## Lote 10 — Migración de datos
+
+**¿Por qué la migración es un comando de línea de comandos y no una pantalla del sitio?**
+Porque es un trabajo de aprovisionamiento (crea una compañía entera) que corre una o dos veces por compañía, con
+archivos que contienen datos personales de clientes; no tiene sentido exponerlo como una pantalla ni darle permisos
+propios. Escribe con los mismos servicios que el sitio, así que el resultado es idéntico a cargarlo a mano.
+
+**Corrí `import-legacy` dos veces por error, ¿duplicó todo?**
+No. Es idempotente: la segunda corrida encuentra la compañía, las categorías, los productos, los proveedores y los
+clientes por su clave natural (nombre, SKU, "Código QuickBooks") y los cuenta como "Ya existían" en vez de crearlos
+de nuevo. El saldo inicial tampoco se repite si ya hay un asiento `OPENING_BALANCE` hacia ese almacén.
+
+**Cambié un precio en QuickBooks después de la carga inicial, ¿tengo que cargar todo otra vez?**
+No. Corra `import-legacy <config.json> --update`: agrega lo nuevo y actualiza los productos, proveedores, clientes y
+consignatarios que ya existen, sin tocar el saldo inicial. Para eso solo hace falta volver a exportar Items y
+Customers de QuickBooks.
+
+**¿Por qué el saldo inicial no se actualiza con `--update`?**
+Porque una vez que la compañía factura y despacha en Teikem, el inventario ya no lo lleva QuickBooks: lo mueven los
+recibos, despachos y ajustes de Teikem. Repetir el saldo inicial desde QuickBooks pisaría movimientos reales. Si
+necesita recargar existencias desde cero, la vía es `db-reset` y una carga completa.
+
+**Quiero probar la migración desde cero varias veces, ¿tengo que reinstalar la base a mano?**
+No: `dotnet run --project src/Teikem.Api -- db-reset --yes` borra la base configurada y la vuelve a inicializar
+exactamente como `db-init` sobre un servidor limpio. Es irreversible, por eso exige `--yes`; y solo actúa sobre un
+servidor local salvo que agregue `--allow-remote`.
+
+**¿`db-reset` puede borrar por error la base del WMS heredado (MSWM)?**
+No: rehúsa expresamente cualquier base cuyo nombre empiece por `MSWM`, con el mensaje *"db-reset no toca la base del
+WMS heredado."*, sin importar a qué servidor apunte la cadena de conexión.
+
+**El dry-run rechazó algo con "ejecute db-init antes de la carga", ¿qué hago?**
+Corra `dotnet run --project src/Teikem.Api -- db-init` sobre esa base (es aditivo: no borra nada) para que se
+apliquen los catálogos nuevos del Lote 10 (los términos de pago de QuickBooks y el motivo `OPENING_BALANCE`), y vuelva
+a correr el dry-run.

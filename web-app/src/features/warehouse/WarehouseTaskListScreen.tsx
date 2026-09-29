@@ -31,13 +31,12 @@ import {
 import {
   useRunReplenishment,
   usePutawaySuggestions,
-  useWarehouseBins,
   useWarehouseTaskAction,
   useWarehouseTasks,
   productLabel,
   type WarehouseTaskDto,
 } from './api'
-import { WarehousePicker } from './pickers'
+import { BinPickerInput, WarehousePicker } from './pickers'
 
 const PAGE_SIZE = 25
 const TYPE_DOMAIN = 'WarehouseTaskType'
@@ -136,7 +135,7 @@ function AssignModal({ task, open, onClose }: { task: WarehouseTaskDto | null; o
 // Completar (con sugerencia de posición para PUTAWAY)
 // ---------------------------------------------------------------------------------------------------------------------
 interface CompleteFormValues {
-  /** Id de la posición destino como texto (valor del Select); '' = sin elegir. */
+  /** Id de la posición destino como texto (valor de BinPickerInput); '' = sin elegir. */
   toBinId: string
   quantity: number | null
   serialNumbers: string
@@ -147,20 +146,10 @@ function CompleteModal({ task, open, onClose }: { task: WarehouseTaskDto | null;
   const action = useWarehouseTaskAction()
   const isPutaway = task?.typeCode === 'PUTAWAY'
   const suggestions = usePutawaySuggestions({ taskId: task?.id }, { enabled: open && isPutaway && Boolean(task?.id) })
-  // Posiciones activas del almacén de la tarea: el usuario elige por código y se envía el id (nunca un número a mano).
-  const { data: bins = [] } = useWarehouseBins(task?.warehousePublicId ?? null, {}, { enabled: open, handleAccessDenied: false })
-  const binOptions = useMemo(() => {
-    const suggested = new Set((suggestions.data ?? []).map((s) => s.binId))
-    const label = (code: string | null | undefined, zone: string | null | undefined, id: number | undefined) =>
-      `${code ?? ''}${zone ? ` · ${zone}` : ''}${suggested.has(id) ? ` (${t('warehouse.tasks.complete.suggested')})` : ''}`
-    const active = bins.filter((b) => b.isActive !== false)
-    // las sugeridas primero, en el orden del servidor
-    const first = (suggestions.data ?? [])
-      .filter((s) => s.binId != null)
-      .map((s) => ({ value: String(s.binId), label: label(s.binCode, s.zoneCode, s.binId) }))
-    const rest = active.filter((b) => !suggested.has(b.id)).map((b) => ({ value: String(b.id), label: label(b.code, b.zoneCode, b.id) }))
-    return [...first, ...rest]
-  }, [bins, suggestions.data, t])
+  // Posiciones activas del almacén de la tarea (BinPicker: se busca/escanea por código y se envía el id, nunca un número a
+  // mano). Las sugeridas del acomodo van primero, en el orden del servidor, con la marca "Sugerida"; no se preeligen
+  // (vacío = el servidor decide).
+  const suggestedBinIds = useMemo(() => (suggestions.data ?? []).map((s) => s.binId), [suggestions.data])
   const form = useForm<CompleteFormValues>({ defaultValues: { toBinId: '', quantity: null, serialNumbers: '' } })
   const formId = 'warehouse-task-complete'
   if (!task) return null
@@ -220,7 +209,7 @@ function CompleteModal({ task, open, onClose }: { task: WarehouseTaskDto | null;
       >
         <div className="r2">
           <Field name="toBinId" label={t('warehouse.tasks.complete.toBin')} help={isPutaway ? t('warehouse.tasks.complete.toBinHelp') : undefined}>
-            <Select options={binOptions} placeholder={t('warehouse.tasks.complete.anyBin')} />
+            <BinPickerInput warehousePublicId={task.warehousePublicId} suggestedBinIds={suggestedBinIds} placeholder={t('warehouse.tasks.complete.anyBin')} />
           </Field>
           <Field name="quantity" label={t('warehouse.tasks.complete.quantity')} help={t('warehouse.tasks.complete.quantityHelp')}>
             <NumberInput step="0.001" />

@@ -40,18 +40,25 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
 ## Shell (`src/app`)
-- `AppShell`: barra lateral por grupos de la maqueta (`NAV_GROUPS` en `navigation.ts`: Operación, Catálogo, Almacén, Análisis,
-  Administración), filtrada por módulos y permisos con `visibleNav(routes, permissions, modules)` (lógica pura en
+- `AppShell`: barra lateral con los 7 grupos de la maqueta (`NAV_GROUPS` en `navigation.ts`, en este orden: `ops` Operación,
+  `warehouse` Almacén, `money` Contabilidad, `catalog` Catálogo, `analytics` Análisis, `system` Sistema, `portal` Portal de
+  clientes), filtrada por módulos y permisos con `visibleNav(routes, permissions, modules)` (lógica pura en
   `navigation.ts`; un grupo sin entradas visibles no se pinta), colapsable en escritorio y
-  cajón bajo 900 px; cabecera con compañía (selector si hay más de una membresía ACTIVE/PLATFORM: `switchableMemberships` en `app/memberships.ts`), idioma, usuario (→ `/account`) y salir.
-- Rutas en `src/app/routes.tsx`: `AppRoute = { path, element, perm?, module?, nav? }`, `element` con carga diferida
+  cajón bajo 900 px; cabecera: compañía (selector si hay más de una membresía ACTIVE/PLATFORM: `switchableMemberships` en
+  `app/memberships.ts`), "Buscar o ejecutar…" (abre la paleta; bajo 720 px es una lupa), reloj "● en vivo · HH:MM:SS"
+  (`Intl.DateTimeFormat` del idioma, 24 h; bajo 1100 px sin la palabra, oculto bajo 600 px), tema ☀/🌙, idioma, usuario
+  (→ `/account`) y salir.
+- Rutas en `src/app/routes.tsx`: `AppRoute = { path, element, perm?, module?, nav?, pending? }`, `element` con carga diferida
   `lazy(() => import('../features/<modulo>/<Pantalla>'))` (la pantalla exporta `default`). `appRoutes` = internas (dentro del
-  shell, con sesión); `publicRoutes` = sin sesión. `module`/`perm` se aplican solos (pantallas 'Módulo apagado' / 'Sin permiso').
-  `nav: { group: 'ops' | 'catalog' | 'warehouse' | 'analytics' | 'admin', labelKey, order? }` la pone en el menú.
-  Para agregar una pantalla solo se añade su entrada ahí. `/` es Pulso (`features/analytics/Pulse`): sin `analytics.view` o sin el
-  módulo ANALYTICS muestra la bienvenida sin consultar el API (la pantalla de inicio nunca redirige a 'Módulo apagado'); cada tarjeta tiene "Rango" (mi rango
+  shell, con sesión); `publicRoutes` = sin sesión. `module`/`perm` se aplican solos (pantallas 'Módulo apagado' / 'Sin permiso');
+  `perm: 'a|b'` = cualquiera de los dos (como `[RequirePermission("a|b")]` del API; lo dividen `RouteGate`, `ModuleGate` y
+  `visibleNav`). `nav: { group: NavGroupKey, key, order? }` la pone en el menú con el título `nav.<key>.title`
+  (`navTitleKey(key)`) y el subtítulo `nav.<key>.subtitle` (`navSubtitleKey(key)`, se ve en la paleta y en la pantalla
+  pendiente); `order` = posición en la maqueta × 10. Para agregar una pantalla solo se añade su entrada ahí. `/` es Pulso
+  (`features/analytics/Pulse`, por paneles desde F8a: ver "Pulso del día por paneles" abajo; siempre consulta `GET /pulse`, que
+  no exige permiso ni módulo, y un 403 no redirige a 'Módulo apagado'); cada indicador o gráfico tiene "Rango" (mi rango
   de fecha, `PUT .../my-date-range`: preferencia por usuario con solo `analytics.view`; en CUSTOM el `toUtc` del DTO es exclusivo y
-  se muestra el día anterior). Debajo, con `inventory.view` + WMS_LOTSERIAL, el panel 'Almacén' (F6: saldo en mano/disponible,
+  se muestra el día anterior). El panel WAREHOUSE es 'Almacén' (`WarehousePulsePanel`; F6: saldo en mano/disponible,
   recibos abiertos, tareas pendientes por tipo, conteos abiertos; calculado en cliente con `take=1`, sin rango). F7A: filtro de
   almacén (a las seis tarjetas) y `CategoryProductPicker` (solo a En mano, Disponible —con 'Reservado'— y Bajo mínimo:
   `GET /api/v1/products?belowMin=true&take=1` → `total`; con producto, 'Sí/No' buscando su SKU con `belowMin=true`); los
@@ -63,6 +70,63 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   `setLang('en')` cambia diccionario y `Accept-Language` e invalida las consultas; no desmonta la pantalla ni el menú.
   `switchTenant(id)` → `POST /api/v1/auth/switch-tenant`, limpia la caché y vuelve a `/`. `logout()` revoca el refresh token y va a `/login`.
   `reloadMe()` vuelve a pedir `me` (p. ej. tras activar MFA).
+
+## Menú y pantallas pendientes (`src/app/routes.tsx`, `src/app/Placeholder.tsx`)
+El menú tiene los 41 ítems de la maqueta aunque la pantalla no exista: un ítem sin pantalla se declara con `pending({...})`,
+que pone `Placeholder` (título y subtítulo del ítem, "Esta pantalla llega en un lote posterior." y "Abrir otra pantalla", que
+abre la paleta) con los mismos `perm`/`module` que tendrá la pantalla real — el menú ya se filtra como al final.
+```tsx
+pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 60 } }),
+// al llegar la pantalla real, la misma fila pasa a:
+{ path: '/system/audit', element: lazy(() => import('../features/system/AuditScreen')), perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 60 } },
+```
+- Textos del ítem: `nav.<key>.title` y `nav.<key>.subtitle` en `es.json`/`en.json` (los `nav.*` de la maqueta); grupo:
+  `nav.groups.<group>`. Un ítem nuevo = su fila aquí + sus dos textos.
+- `<Placeholder navKey="audit" icon? brand? />`: `icon` = ícono del grupo (lo pone `pending`); `brand` = marca pequeña de Teikem
+  arriba del aviso (por defecto `<BrandMark size={40} alt="" />`; `brand={null}` la quita).
+
+## Paleta de comandos (`src/kernel/ui/CommandPalette.tsx`, `commandPaletteStore.ts`)
+El shell la monta una vez con los ítems visibles del menú (mismo orden y grupos); se abre con "Buscar o ejecutar…", la lupa
+(bajo 720 px, a pantalla completa) o los atajos `/` y Ctrl/⌘+K fuera de un campo de texto y sin otro diálogo abierto. Filtro
+libre por título y subtítulo (`matchesQ`: sin mayúsculas ni acentos, cada palabra), ↑/↓ + Enter abre, Esc o clic fuera cierra.
+
+| Pieza | Props / firma | Uso |
+|---|---|---|
+| `CommandPalette<T extends CommandItem>` | `open`, `items: T[]`, `onSelect(item)`, `onClose()` | diálogo `.scrim.cmdp > .pal` (combobox + listbox con `aria-activedescendant`); no se cierra solo al elegir |
+| `CommandItem` | `{ id, group, groupLabel, title, subtitle?, icon? }` (textos ya traducidos) | un destino; los de un grupo, juntos |
+| `openCommandPalette()` / `closeCommandPalette()` / `useCommandPaletteOpen()` | estado global | abrirla desde cualquier pantalla: `<button onClick={openCommandPalette}>` |
+| `useCommandPaletteShortcut(onOpen?)` | hook | atajos `/` y Ctrl/⌘+K (lo usa el shell) |
+| `filterCommands(items, q)`, `groupCommands(items)` | lógica pura | filtro y agrupación de la lista |
+
+## Tema claro/oscuro (`src/kernel/ui/theme.ts`)
+`data-theme="light" | "dark"` en `<html>` (tokens de `styles/tokens.css`), guardado en localStorage `teikem.theme`; sin elección
+guardada, el del sistema (`prefers-color-scheme`). `initTheme()` en `main.tsx` antes de pintar; `setTheme('light')` cambia solo el
+atributo (no desmonta nada); `useTheme()` → tema actual, para lo que dependa de él (p. ej. la variante de la marca).
+```tsx
+const theme = useTheme()
+<button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>{t('shell.theme.light')}</button>
+```
+
+## Marca (`src/kernel/ui/Brand.tsx`, archivos en `public/brand/`)
+Los archivos son copia del paquete `Logos/` (no se editan aquí: se cambian en `Logos/` y se vuelven a copiar). Regla de la
+maqueta (`brandLogoFor`): tema oscuro → variante `-inv` (trae fondo `#0B2C66`); claro → la normal; el idioma elige el lema.
+El `src` cambia al cambiar idioma o tema sin recargar ni desmontar. Sin logo por compañía (no hay backend para eso).
+
+| Pieza | Props / firma | Uso |
+|---|---|---|
+| `BrandLockup` | `tagline?` (por defecto true; false = `teikem-2-horizontal-notagline`), `className?` | `<img alt="Teikem">` símbolo + TEIKEM + lema, ancho del contenedor (`.brand-lockup`, alto por proporción) |
+| `BrandMark` | `size?` (px, cuadrado; 44 por defecto), `alt?` (`''` = decorativa), `className?` | solo el símbolo (`teikem-symbol.svg`, igual en ambos temas) para espacios chicos |
+| `brandLockupSrc(lang, theme, tagline?)`, `BRAND_SYMBOL_SRC` (`brandAssets.ts`) | lógica pura | ruta del archivo (p. ej. para una prueba o un `<link>`) |
+
+```tsx
+<div className="auth-brand"><BrandLockup /></div>          {/* lockup por idioma y tema */}
+<BrandMark size={44} alt="" />                              {/* barra colapsada */}
+<Placeholder navKey="audit" brand={null} />                 {/* pendiente sin marca */}
+```
+Dónde va: barra lateral (lockup a todo el ancho con `drop-shadow(0 4px 14px var(--brand-glow))`; colapsada, `BrandMark` de
+44 px; en el cajón móvil, siempre el lockup), `AuthLayout` (login, MFA, selección de compañía: lockup centrado arriba del
+título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`. `index.html`: `favicon.ico`, PNG 256,
+`apple-touch-icon` 180, `theme-color #0B2C66`, título "Teikem".
 
 ## Autenticación (`src/kernel/auth`)
 - `login(email, password, tenantId?)` → `{ status: 'ok' } | { status: 'mfa_required', enrollmentRequired } |
@@ -76,8 +140,9 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
 - Tokens en memoria + `sessionStorage` (`tokens.ts`: `getTokens`, `setTokens`, `clearTokens`, `subscribeTokens`); refresh con rotación.
 
 ## Acceso (`src/kernel/access`)
-- `<Can perm="orders.create" fallback?>…</Can>` (con arreglo exige todos), `useCan('a', 'b')`, `useModule('CATALOG')`,
-  `useAccess()` → `{ permissions, modules }` (Sets).
+- `<Can perm="orders.create" fallback?>…</Can>` (con arreglo exige todos; `perm="a|b"` = cualquiera), `useCan('a', 'b')` (todos),
+  `useCanAny('admin.users', 'admin.roles')` (al menos uno), `useModule('CATALOG')`, `useAccess()` → `{ permissions, modules }`
+  (Sets). Lógica pura: `permAllowed('a|b', permissions)`.
 - `<ModuleGate module="CATALOG" perm?>…</ModuleGate>`: 'Módulo apagado' si el módulo no está encendido; 'Sin permiso' si falta `perm`.
 - `ModuleKeys` (espejo de `ModuleKeys` del dominio: `LTL_GROUND`, `COD`, `WMS_LOTSERIAL`, `CROSSDOCK`, `CATALOG`, `ANALYTICS`, `SYSTEM`…).
 - `ForbiddenScreen`, `ModuleOffScreen`: pantallas propias. En pruebas: `<AccessProvider permissions={[...]} modules={[...]}>`
@@ -95,6 +160,9 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   ocupa el ancho; dentro de `.scrim.on` es modal), `.chip` + `.s-cap/.s-wh/.s-disp/.s-route/.s-deliv/.s-cod/.s-fail/.s-warn`,
   `.lst` (tabla), `.f` + `.ferr` + `.r2/.r3` (formularios), `.sw` (toggle), `.filters`, `.seg`, `.msel`, `.qrow .qbox`, `.empty`,
   `.note`, `.tag`, `.toast`, `.spin`. Breakpoints: 900 px (cajón), 720 px (tablas a tarjetas, filtros en 2 columnas), 480 px (una columna).
+  `.md` (maestro-detalle a dos columnas, 280 px + resto; una columna bajo 720 px) + `.domlist`/`.domit(.on)` (lista de la
+  izquierda: botón por fila, con chip de origen y contador opcional `.cnt`) — patrón de "Catálogos de valores" (F8a P6) y
+  cualquier pantalla con una lista de la izquierda y el detalle a la derecha; bajo 720 px usa un `<select>` en vez de `.domlist`.
 
 ## Datos comunes (`src/kernel/catalogs`, `src/kernel/custom-fields`, `src/kernel/dsl`)
 - `useLookups(domain, { includeDisabled?, enabled? })` → `useQuery` con `LookupOption[]` (`{ code, label, description, sortOrder,
@@ -139,7 +207,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `Panel` | `title?`, `subtitle?`, `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | contenedor estándar (`.pal/.pi/.pb/.ft`) |
 | `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `rowActions?`, `onRowClick?`, `empty?`, `loading?`, `label?`, `dense?` | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no; entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'` | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`) |
-| `RowAction<T>` | `key`, `label`, `onClick(row)`, `perm?` (guarda de permiso: sin él no se pinta), `visible?(row)` (guarda de estatus/`capabilities`), `disabled?(row)`, `tone?: 'flow' \| 'danger'` | acciones por fila |
+| `RowAction<T>` | `key`, `label`, `onClick(row)`, `perm?` (guarda de permiso: sin él no se pinta), `visible?(row)` (guarda de estatus/`capabilities`), `disabled?(row)`, `tone?: 'flow' \| 'danger'`, `icon?` (de `kernel/ui/actionIcons`) | acciones por fila. Con `icon`, el botón es solo ícono (28×28, `.rowbtn`, como en la maqueta) y `label` pasa a ser su `aria-label`/`title`; sin `icon`, es el botón de texto de siempre. Toda acción de fila nueva lleva `icon` — solo se deja sin él cuando de verdad no hay un ícono claro para esa acción |
 | `Filters` | `children`, `onClear?` (botón "Limpiar"), `label?` | fila `.filters` (8 → 4 → 2 → 1 columnas); "Limpiar" (`.filters-clear`) ocupa solo el ancho de su contenido |
 | `SelectFilter` | `label`, `value` (`''` = todos), `onChange`, `options: {value,label}[]`, `allLabel?` (`null` = sin opción "Todos") | filtro de selección única |
 | `DateRangeFilter` | `label`, `value: {from,to}` ('YYYY-MM-DD' o ''), `onChange` | rango de fechas (ocupa 2 columnas); filtrar lo cargado con `inDateRange(iso, range)`; `EMPTY_RANGE` |
@@ -184,13 +252,34 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   argumento `{ enabled?, handleAccessDenied? }`. Las listas paginadas usan `keepPreviousData`. Escrituras: `useCreateX`/`useUpdateX`
   o un hook de acciones con unión discriminada por `action` (`useSaveWarehouseZone`, `useWarehouseTaskAction`, `useCycleCountAction`,
   `usePurchaseOrderAction`, `useCrossDockAction`…); cada una invalida por prefijo su lista, su ficha y, si mueve inventario,
-  saldos/Kárdex/existencias (`warehouseKeys` tiene los prefijos). `warehouseLabel` ("Code · Name") y `productLabel` ("SKU · Nombre").
-- `pickers.tsx`: `WarehousePicker` (`<select>` simple de almacenes activos; `value` publicId, `onChange(publicId, dto)`,
-  `placeholder?` —`null` = sin opción vacía—; conserva con su etiqueta un valor inactivo) y `ProductPicker` (combobox como
-  `ClientPicker`: `GET /api/v1/products?search=&activeOnly=true`, 250 ms entre teclas, "SKU · Nombre", marca el dueño cliente;
-  `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`, `includeInactive?` (omite `activeOnly` y marca
-  "Inactivo"); `onChange(publicId, fila)` con `trackingTypeCode`).
-  Dentro de un `Field`: `WarehousePickerInput` / `ProductPickerInput` (`onPicked?(fila)` para condicionar lote/series).
+  saldos/Kárdex/existencias (`warehouseKeys` tiene los prefijos). `warehouseLabel` ("Code · Name"), `binLabel` ("Código · Zona")
+  y `productLabel` ("SKU · Nombre").
+- `pickers.tsx`: todos son combobox como `ClientPicker` (↑/↓/Enter/Escape, ✕ para quitar, clic para reabrir) y se pueden llenar
+  con un **lector de código de barras**: el código completo + Enter elige la opción cuyo código es exactamente ese (sin
+  mayúsculas ni acentos), aunque otra esté resaltada. Lógica pura en `pickerMatch.ts` (`foldText`, `exactCodeMatch`,
+  `filterWarehouses`, `orderBins`).
+  - `WarehousePicker` (almacenes activos, `GET /api/v1/warehouses?includeInactive=false` sin `search`: filtra EN EL CLIENTE
+    por código o nombre, subcadena; la coincidencia exacta de código va primero; `value` publicId, `onChange(publicId, dto)`,
+    `placeholder?` —texto sin valor; `null` = no se ofrece quitar—; conserva con su etiqueta un valor inactivo pidiendo su ficha).
+  - `ProductPicker` (`GET /api/v1/products?search=&activeOnly=true`, 250 ms entre teclas, "SKU · Nombre", marca el dueño
+    cliente; `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`, `includeInactive?` (omite `activeOnly`
+    y marca "Inactivo"); `onChange(publicId, fila)` con `trackingTypeCode`).
+  - `BinPicker` (posiciones de un almacén: `GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false`, 250 ms
+    entre teclas —el API compara código de posición y de zona—, "Código · Zona"). Props: `warehousePublicId` (vacío =
+    deshabilitado con "Elija primero un almacén"; al cambiarlo quita el valor con `onChange(null, null)`), `value` (id de la
+    posición, `number | null`), `onChange(binId, fila)`, `zoneTypeCodes?` (filtro en cliente, p. ej. `['STAGING','CROSSDOCK']`),
+    `onlyWithStock?`, `suggestedBinIds?` (van primero con la marca "Sugerida"), `placeholder?` (p. ej. "Staging por defecto"
+    cuando vacío = lo decide el servidor), `disabled?`, `invalid?`, `required?`, `aria-*`, `onBlur?`. Si el lector manda Enter
+    antes de la pausa de 250 ms, busca de inmediato y elige al llegar la respuesta (código exacto, o el único resultado). Un
+    valor fuera de la lista (posición dada de baja) se muestra buscando en la lista del almacén con `includeInactive=true`.
+  Dentro de un `Field`: `WarehousePickerInput` (valor publicId o null), `ProductPickerInput` (`onPicked?(fila)` para condicionar
+  lote/series) y `BinPickerInput` (mismas props que `BinPicker` salvo value/onChange, + `onPicked?(fila)`; el valor del
+  formulario es el id **como texto** —`''` = ninguna—, igual que un `Select`: el request hace `Number(v.binId)`):
+  ```tsx
+  const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
+  <Field name="warehousePublicId" label={t('…warehouse')} required><WarehousePickerInput /></Field>
+  <Field name="binId" label={t('…bin')} required><BinPickerInput warehousePublicId={warehousePublicId} /></Field>
+  ```
   Sin acceso (403) muestran un aviso y no sacan de la pantalla. `ProductMultiFilter` (`label`, `value: ProductFilterItem[]`,
   `onChange`, `includeInactive?`): filtro "Producto" (multi-select buscable) de listas —Saldos, Kárdex, Recibos, Recolecciones— que
   busca en el API por SKU o nombre y pinta una píldora por producto elegido (recortada con elipsis: un SKU de 60 caracteres no
@@ -214,6 +303,34 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   y se ponen bajo el campo con `ctx.addIssue` en zod. `parseSerials` (una serie por renglón o separadas por coma),
   `remapProblemFields(err, rename)` (renombra campos de un `ApiError`, p. ej. `lines[0].countedQty` → `countedQty`),
   `lineErrorsByIndex(err)`, `formatNumber/formatDate/formatDateTime` y `useDebounced` (búsqueda libre que va al API). Pruebas en `lineRules.test.ts`.
+
+## Pulso del día por paneles (`src/features/analytics`, Lote F8a)
+No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agregue un panel sin tocar la pantalla.
+- El servidor decide qué ve cada quien: `GET /api/v1/analytics/pulse` → `PulseDto { panels, indicators, charts, hasPersonalLayout,
+  canOrganizeCompany }` solo con los paneles cuyo permiso `pulse.*`, permisos de datos y módulo tiene el usuario (incluidos los
+  ocultos, `isVisible=false`, para el modo Organizar). La pantalla pinta EXACTAMENTE `shownPanels(panels)` (orden `sortOrder`, sin
+  ocultos ni claves desconocidas) con el registro; nunca monta un panel a mano ni vuelve a mirar permisos del panel.
+- Registro `PULSE_PANELS` (`pulsePanels.tsx`): `{ key, titleKey, render(ctx), hasContent(ctx), items? }` para `INDICATORS`
+  (río, `PulseSections.tsx`), `CHARTS` (grilla), `WAREHOUSE` (`WarehousePulsePanel`) y `ACTIVITY` (`ActivityPanel`).
+  `ctx = { pulse, indicators, charts }` con los elementos ya visibles y ordenados (`shownItems`). Un panel nuevo = su clave en
+  `PULSE_PANEL_KEYS` (`pulseLayout.ts`, espejo de `PulsePanels` del dominio) + su entrada aquí + su título en i18n:
+  ```tsx
+  ORDERS_RIVER: { key: 'ORDERS_RIVER', titleKey: 'analytics.pulse.panels.ORDERS_RIVER', hasContent: () => true,
+    render: () => <OrdersRiverPanel /> },
+  ```
+- Hooks (`api.ts`): `usePulse(enabled = true)` (clave `PULSE_QUERY_KEY`, 403 sin redirigir), `useSaveLayout(scope: 'mine' | 'company')`
+  → `mutateAsync(PulseLayoutRequest)` = `PUT .../pulse/layout?scope=` (pone el Pulso devuelto en caché e invalida), y
+  `useResetMyLayout()` = `DELETE .../pulse/layout/mine` (invalida).
+  ```tsx
+  const save = useSaveLayout('mine')
+  await save.mutateAsync(buildLayoutRequest(state))   // todos los paneles y elementos, orden = índice × 10
+  ```
+- `<PulseOrganizer scope pulse onClose />`: modo Organizar (copia local; ▲ ▼, ojo "Ocultar/Mostrar", asa con ↑/↓ y arrastre
+  HTML5 nativo con ratón —con `(pointer: coarse)` solo botones—; "Listo" = un solo PUT y toast "Pulso guardado"; error → `title`
+  del ProblemDetails en el toast). Lógica pura en `pulseLayout.ts`: `sortPanels`, `sortItems`, `shownPanels`, `shownItems`,
+  `initOrganizer`, `moveEntry`, `toggleEntry`, `buildLayoutRequest`, `moduleGroup` (BusinessModule → grupo del menú e ícono).
+- Estilos propios en `pulse.css`, todos bajo `.pulse` (`.streamlabel`, `.river`, `.node.flow|.money`, `.pipe`, `.pulse-charts`,
+  `.orgbar`, `.orgrow`…): río que envuelve bajo 980 px y una columna a 480 px; grilla `minmax(min(100%, 380px), 1fr)`.
 
 ## Patrones de pantalla (copiar de `src/kernel/ui/templates`)
 Plantillas completas y compilables (no montadas en rutas) sobre clientes; textos en `examples.clients.*` (una pantalla real usa su

@@ -70,7 +70,7 @@ export function ReauthProvider({ mfaEnabled, children }: Props) {
     <ReauthContext.Provider value={value}>
       {children}
       {open && (
-        <div className="scrim on" role="presentation">
+        <div className="scrim on reauth" role="presentation">
           <form className="pal" role="dialog" aria-modal="true" aria-labelledby="reauth-title" onSubmit={submit}>
             <div className="pi">
               <b id="reauth-title">{t('auth.reauth.title')}</b>

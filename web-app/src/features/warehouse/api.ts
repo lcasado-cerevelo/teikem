@@ -66,6 +66,12 @@ export function warehouseLabel(w: { code?: string | null; name?: string | null }
   return [w.code, w.name].filter(Boolean).join(' · ')
 }
 
+/** "Código · Zona" de una posición (opciones de BinPicker). */
+export function binLabel(b: { code?: string | null; zoneCode?: string | null } | null | undefined): string {
+  if (!b) return ''
+  return [b.code, b.zoneCode].filter(Boolean).join(' · ')
+}
+
 /** "SKU · Nombre" de un producto (opciones de ProductPicker). */
 export function productLabel(p: { sku?: string | null; name?: string | null } | null | undefined): string {
   if (!p) return ''

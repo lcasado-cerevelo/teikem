@@ -269,17 +269,13 @@ public class DeviceControllerSecurityTests
     public void Device_user_initials(string? fullName, string? email, string expected)
         => Assert.Equal(expected, DeviceService.Initials(fullName, email));
 
-    [Theory]
-    [InlineData("", DeviceService.CodeRequiredMessage)]
-    [InlineData("   ", DeviceService.CodeRequiredMessage)]
-    [InlineData(null, DeviceService.CodeRequiredMessage)]
-    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", DeviceService.CodeTooLongMessage)]   // 31 caracteres
-    public async Task Device_code_is_required_and_up_to_30_characters(string? code, string expected)
+    [Fact]
+    public async Task Device_code_up_to_30_characters()
     {
         await using var f = await WmsFixture.CreateAsync(s => s.AddSingleton<DeviceService>());
         f.SetPermissions(PermissionCatalog.DevicesManage);
         var ex = await Assert.ThrowsAsync<ValidationException>(() =>
-            f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest(code, null, null, null, null), default));
-        Assert.Equal(new[] { expected }, ex.Errors!["code"]);
+            f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", null, null, null, null), default));   // 31 caracteres
+        Assert.Equal(new[] { DeviceService.CodeTooLongMessage }, ex.Errors!["code"]);
     }
 }

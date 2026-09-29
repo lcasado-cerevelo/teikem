@@ -8,11 +8,28 @@ using Microsoft.OpenApi.Models;
 using Teikem.Api.Auth;
 using Teikem.Api.Middleware;
 using Teikem.Infrastructure;
+using Teikem.Infrastructure.Migration;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Persistence.Scripts;
 using Teikem.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Lote 10: appsettings.{Entorno}.local.json (en .gitignore, opcional) sobreescribe valores de la máquina, como la cadena
+// ConnectionStrings:LegacyMswm del importador. Se inserta justo después de los appsettings versionados para que las variables
+// de entorno y la línea de comandos sigan teniendo prioridad.
+{
+    var sources = builder.Configuration.Sources;
+    var lastJson = sources.OfType<Microsoft.Extensions.Configuration.Json.JsonConfigurationSource>().LastOrDefault();
+    var localJson = new Microsoft.Extensions.Configuration.Json.JsonConfigurationSource
+    {
+        Path = $"appsettings.{builder.Environment.EnvironmentName}.local.json",
+        Optional = true,
+        ReloadOnChange = false,
+        FileProvider = builder.Environment.ContentRootFileProvider,
+    };
+    sources.Insert(lastJson is null ? sources.Count : sources.IndexOf(lastJson) + 1, localJson);
+}
 
 builder.Services.AddTeikemInfrastructure(builder.Configuration);
 
@@ -107,6 +124,30 @@ var app = builder.Build();
 if (args.Contains("db-init", StringComparer.OrdinalIgnoreCase))
 {
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();
+    return;
+}
+// --- Modo CLI (Lote 10): `dotnet run -- db-reset --yes [--allow-remote]` borra la base de ConnectionStrings:Teikem y la vuelve a
+// inicializar como db-init sobre servidor limpio (para repetir la migración desde cero). Nunca toca MSWM*. ---
+if (args.Contains(DbResetRules.Verb, StringComparer.OrdinalIgnoreCase))
+{
+    var teikemCs = app.Configuration.GetConnectionString("Teikem");
+    var csb = string.IsNullOrWhiteSpace(teikemCs) ? null : new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(teikemCs);
+    var decision = DbResetRules.Decide(args, csb?.DataSource, csb?.InitialCatalog);
+    if (!decision.Ok)
+    {
+        Console.Error.WriteLine(decision.Message);
+        Environment.ExitCode = decision.ExitCode;
+        return;
+    }
+    Console.WriteLine($"db-reset: borrando y reinicializando la base '{csb!.InitialCatalog}' en '{csb.DataSource}'.");
+    await app.Services.GetRequiredService<DatabaseInitializer>().ResetAsync();
+    return;
+}
+
+// --- Modo CLI (Lote 10): `dotnet run -- import-legacy <config.json> [--dry-run] [--update]` migra QuickBooks + WMS MSWM a una compañía ---
+if (args.Contains(LegacyImportRunner.Verb, StringComparer.OrdinalIgnoreCase))
+{
+    Environment.ExitCode = await app.Services.GetRequiredService<LegacyImportRunner>().RunAsync(args);
     return;
 }
 if (app.Configuration.GetValue<bool>("Database:InitOnStartup"))

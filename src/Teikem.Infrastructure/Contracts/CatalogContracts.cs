@@ -4,7 +4,7 @@ public sealed record CatalogDomainDto(int Id, string DomainKey, byte Scope, stri
 
 public sealed record LookupValueDto(
     int Id, string Entity, string Code, string Label, IDictionary<string, string> Labels, string? Description,
-    string? ExtraJson, int SortOrder, bool IsSystem, bool IsEnabled, bool IsOverridden, int? TenantId);
+    string? ExtraJson, int SortOrder, bool IsSystem, bool IsEnabled, bool IsOverridden, int? TenantId, bool IsActive);
 
 public sealed record LookupCodeUpsertRequest(string Code, IDictionary<string, string> Labels, IDictionary<string, string>? Descriptions, string? ExtraJson, int? SortOrder);
 public sealed record LookupOverrideRequest(IDictionary<string, string>? Labels, string? ExtraJson, bool? IsEnabled, int? SortOverride);

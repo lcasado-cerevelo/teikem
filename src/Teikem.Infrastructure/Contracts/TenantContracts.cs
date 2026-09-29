@@ -15,7 +15,8 @@ public sealed record TenantHolidayDto(int Id, DateOnly Date, string Name, bool I
 public sealed record TenantHolidayRequest(DateOnly Date, string Name, bool IsRecurring);
 
 public sealed record TenantSummaryDto(int Id, Guid PublicId, string Name, string? LegalName, bool IsActive, DateTime CreatedAtUtc);
-public sealed record TenantProvisionRequest(string Name, string? LegalName, string? TaxId, string? DefaultLangCode, IList<string>? Modules, string AdminEmail, string AdminFullName, string? AdminPassword);
+/// <summary>`MfaRequired`: sin valor, la compañía nueva queda con la política por default (Lote F8a: exige MFA a todos).</summary>
+public sealed record TenantProvisionRequest(string Name, string? LegalName, string? TaxId, string? DefaultLangCode, IList<string>? Modules, string AdminEmail, string AdminFullName, string? AdminPassword, bool? MfaRequired = null);
 public sealed record TenantProvisionResult(TenantSummaryDto Tenant, int AdminUserId, string? TemporaryPassword);
 
 public sealed record MeDto(int UserId, string? FullName, string? Email, bool IsPlatformAdmin, int? TenantId, string? TenantName, string Lang,

@@ -62,6 +62,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    aparato y entrar con PIN, cómo funciona sin señal (documentos propios del aparato vs. recursos compartidos, un
    documento a la vez), Inicio, Recibir, Acomodar, Despacho (solo clientes 3PL por ahora), Conteo (a ciegas según
    permiso), Consultar (con caché para responder sin señal) y Sincronización (pendientes, con error, reintentar).
+10. [10 — Migración de datos heredados](10-migracion-de-datos.md): comando de línea de comandos para aprovisionar
+    una compañía desde QuickBooks Desktop y el WMS heredado MSWM, simulación (`--dry-run`), refresco de maestros sin
+    tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`).
 
 ## Manual de pantallas (frontend web)
 
@@ -81,6 +84,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
    y enlaces a la ficha de cada evento).
+4. [F8a — Menú completo, marca, Pulso por paneles, Sistema y Análisis](frontend/f8a-menu-sistema-analisis-y-marca.md):
+   los 7 grupos del menú de la maqueta y la pantalla "pendiente", la marca Teikem, paleta de comandos, Pulso del día
+   organizado en dos niveles ("Organizar mi Pulso" / "Organizar el de la compañía"), Indicadores y Gráficos, Roles y
+   usuarios (con el PIN de los aparatos de almacén y la contraseña temporal), Aparatos móviles (código autogenerado),
+   Catálogos de valores (ajustar/restaurar) y Mi cuenta → PIN de la app.
 
 ## Preguntas frecuentes
 

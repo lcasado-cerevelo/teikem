@@ -7,6 +7,7 @@ import { useSession } from '../../app/session'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { login } from '../../kernel/auth/auth'
 import { useT } from '../../kernel/i18n/useT'
+import { IconEye, IconEyeOff } from '../../kernel/ui/icons'
 import { AuthLayout } from './AuthLayout'
 import { safeNext } from './next'
 
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [params] = useSearchParams()
   const { isAuthenticated } = useSession()
   const [formError, setFormError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
   const next = safeNext(params.get('next'))
 
   const schema = useMemo(
@@ -67,13 +69,23 @@ export default function LoginPage() {
         </div>
         <div className="f">
           <label htmlFor="login-password">{t('auth.fields.password')}</label>
-          <input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            aria-invalid={errors.password ? true : undefined}
-            {...form.register('password')}
-          />
+          <div className="pwd-field">
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              aria-invalid={errors.password ? true : undefined}
+              {...form.register('password')}
+            />
+            <button
+              type="button"
+              className="iconbtn"
+              aria-label={showPassword ? t('auth.fields.hidePassword') : t('auth.fields.showPassword')}
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              {showPassword ? <IconEyeOff /> : <IconEye />}
+            </button>
+          </div>
           {errors.password && <p className="ferr">{errors.password.message}</p>}
         </div>
         <button type="submit" className="btn flow block" disabled={isSubmitting}>

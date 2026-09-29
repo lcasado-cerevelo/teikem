@@ -15,10 +15,29 @@ export function useAccess(): AccessState {
   return useContext(AccessContext)
 }
 
-/** true si el usuario tiene TODOS los permisos indicados. `useCan('orders.create')`. */
+/**
+ * true si `permissions` cumple `perm`. `perm` admite alternativas separadas por `|` (cualquiera alcanza), igual que
+ * `[RequirePermission("admin.users|admin.roles")]` del API. Sin `perm` (undefined o '') no exige nada.
+ */
+export function permAllowed(perm: string | null | undefined, permissions: ReadonlySet<string>): boolean {
+  if (!perm) return true
+  return perm
+    .split('|')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .some((p) => permissions.has(p))
+}
+
+/** true si el usuario tiene TODOS los permisos indicados (cada uno puede ser `a|b`). `useCan('orders.create')`. */
 export function useCan(...perms: string[]): boolean {
   const { permissions } = useAccess()
-  return perms.every((p) => permissions.has(p))
+  return perms.every((p) => permAllowed(p, permissions))
+}
+
+/** true si el usuario tiene AL MENOS UNO de los permisos indicados. `useCanAny('admin.users', 'admin.roles')`. */
+export function useCanAny(...perms: string[]): boolean {
+  const { permissions } = useAccess()
+  return perms.some((p) => permAllowed(p, permissions))
 }
 
 /** true si el módulo está encendido para el tenant. `useModule('CATALOG')`. */

@@ -73,7 +73,7 @@ describe('Login (AuthResultDto)', () => {
         }
         if (path === '/api/v1/auth/mfa/verify') return mfaReply()
         if (path === '/api/v1/me') return json(ME)
-        if (path === '/api/v1/analytics/pulse') return json({ indicators: [], charts: [] })
+        if (path === '/api/v1/analytics/pulse') return json({ indicators: [], charts: [], panels: [] })
         return new Response(null, { status: 404 })
       }),
     )
@@ -98,14 +98,14 @@ describe('Login (AuthResultDto)', () => {
   it('ok: entra al destino pedido (next)', async () => {
     await renderAppAt('/login?next=%2F')
     await submitLogin()
-    expect(await screen.findByText('Todavía no hay nada en Pulso')).toBeInTheDocument()
+    expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
     expect(loginBodies[0]).toMatchObject({ email: 'admin@teikem.local', tenantId: null })
   })
 
   it('ok con next externo: va al inicio (sin redirección abierta)', async () => {
     await renderAppAt('/login?next=%2F%2Fevil.example')
     await submitLogin()
-    expect(await screen.findByText('Todavía no hay nada en Pulso')).toBeInTheDocument()
+    expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
     expect(window.location.pathname).toBe('/')
   })
 
@@ -144,7 +144,7 @@ describe('Login (AuthResultDto)', () => {
     const user = await submitLogin()
     expect(await screen.findByText('Elija la compañía')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /Otra Compañía/ }))
-    expect(await screen.findByText('Todavía no hay nada en Pulso')).toBeInTheDocument()
+    expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
     await waitFor(() => expect(loginBodies).toHaveLength(2))
     expect(loginBodies[1]).toMatchObject({ email: 'admin@teikem.local', password: 'Teikem_Admin_2026!', tenantId: 2 })
   })

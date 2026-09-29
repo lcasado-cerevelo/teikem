@@ -15,6 +15,8 @@ public class UserTenant : ITenantScoped, IHasStatus
     public int StatusCodeId { get; set; }
     public int? InvitedBy { get; set; }
     public DateTime? JoinedAtUtc { get; set; }
+    /// <summary>Lote F8a: exige MFA a esta persona en esta compañía en particular, aparte de Tenant.MfaRequired.</summary>
+    public bool MfaRequired { get; set; }
     public ApplicationUser? User { get; set; }
     public Tenancy.Tenant? Tenant { get; set; }
     public Catalogs.StatusCode? Status { get; set; }

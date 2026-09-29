@@ -7,6 +7,7 @@ using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
 using Teikem.Infrastructure.Fleet;
+using Teikem.Infrastructure.Migration;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Persistence.Interceptors;
@@ -281,6 +282,9 @@ public static class DependencyInjection
         services.AddScoped<SystemAnalyticsSeeder>();
         services.AddScoped<DemoTenantSeeder>();
         services.AddSingleton<DatabaseInitializer>();
+        // Lote 10 — migración de datos heredados (QuickBooks + WMS MSWM): comando CLI import-legacy, fuera del pipeline HTTP.
+        services.AddScoped<LegacyImportService>();
+        services.AddSingleton<LegacyImportRunner>();
         return services;
     }
 }

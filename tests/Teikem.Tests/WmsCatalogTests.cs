@@ -68,7 +68,7 @@ public class WmsCatalogTests
         };
         Assert.Equal(9, reasons.Distinct().Count());
         Assert.All(reasons, r => Assert.True(SeedHas(LookupDomains.AdjustmentReason, r), r));
-        Assert.Equal(new[] { "RECEIPT_VARIANCE", "COUNT_VARIANCE", "PICK_BATCH_REVERSAL" }, AdjustmentReasons.SystemAssigned);
+        Assert.Equal(new[] { "RECEIPT_VARIANCE", "COUNT_VARIANCE", "PICK_BATCH_REVERSAL", "OPENING_BALANCE" }, AdjustmentReasons.SystemAssigned);   // Lote 10: saldo inicial
         var actions = new[] { ShortageActions.Close, ShortageActions.Reorder, ShortageActions.ManualAdjustment };
         Assert.All(actions, a => Assert.True(SeedHas(LookupDomains.ShortageAction, a), a));
         Assert.Contains("('AdjustmentReason',1,", Seed.Value);

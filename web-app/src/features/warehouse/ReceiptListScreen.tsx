@@ -44,12 +44,11 @@ import {
   usePurchaseOrders,
   useReceipts,
   useSaveAsn,
-  useWarehouseBins,
   type AsnDto,
   type ReceiptListItemDto,
 } from './api'
 import { decimalsOf, formatDate, formatDateTime, formatNumber, parseSerials, receiptLineIssues, useDebounced, type LineIssue } from './lineRules'
-import { ProductMultiFilter, ProductPickerInput, WarehousePicker, WarehousePickerInput, type ProductFilterItem } from './pickers'
+import { BinPickerInput, ProductMultiFilter, ProductPickerInput, WarehousePicker, WarehousePickerInput, type ProductFilterItem } from './pickers'
 
 type Schemas = components['schemas']
 type TabKey = 'receipts' | 'asns'
@@ -59,7 +58,8 @@ const STATUS_DOMAIN = 'ReceiptStatus'
 const ASN_STATUS_DOMAIN = 'AsnStatus'
 const TYPE_DOMAIN = 'ReceiptType'
 const MAX_LINES = 200
-const RECEIVING_ZONES = new Set(['STAGING', 'CROSSDOCK'])
+/** Tipos de zona donde se recibe (posición de staging del recibo). */
+const RECEIVING_ZONES = ['STAGING', 'CROSSDOCK'] as const
 const NO_ROWS: never[] = []
 
 /** Traduce un problema de captura de línea (mensaje exacto del manual 06). */
@@ -214,7 +214,6 @@ export function CreateReceiptModal({ onClose, preset }: { onClose: () => void; p
     { warehousePublicId: warehousePublicId ?? undefined, status: ['SENT', 'PARTIAL'], take: 200 },
     { enabled: source === 'PO' && canReceivePo && Boolean(warehousePublicId), handleAccessDenied: false },
   )
-  const bins = useWarehouseBins(warehousePublicId, {}, { enabled: Boolean(warehousePublicId), handleAccessDenied: false })
 
   const sourceOptions = useMemo(
     () => [
@@ -235,13 +234,6 @@ export function CreateReceiptModal({ onClose, preset }: { onClose: () => void; p
   const poOptions = useMemo(
     () => (pos.data?.items ?? []).map((p) => ({ value: p.publicId ?? '', label: [p.number, p.supplierName].filter(Boolean).join(' · ') })),
     [pos.data],
-  )
-  const binOptions = useMemo(
-    () =>
-      (bins.data ?? [])
-        .filter((b) => b.isActive !== false && RECEIVING_ZONES.has(b.zoneTypeCode ?? ''))
-        .map((b) => ({ value: String(b.id), label: [b.code, b.zoneCode].filter(Boolean).join(' · ') })),
-    [bins.data],
   )
   const formId = 'receipt-create'
 
@@ -316,7 +308,7 @@ export function CreateReceiptModal({ onClose, preset }: { onClose: () => void; p
             </Field>
           )}
           <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')} help={t('warehouse.receipts.fields.stagingBinHelp')}>
-            <Select options={binOptions} placeholder={t('warehouse.receipts.defaultStaging')} />
+            <BinPickerInput warehousePublicId={warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
           </Field>
         </div>
 

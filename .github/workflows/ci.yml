@@ -38,6 +38,8 @@ jobs:
           # SMOKE_SQL: sqlcmd dentro del contenedor de SQL Server para los pasos que necesitan datos sin API todavía
           # (pings del chofer del Lote 7, que el monitor del Lote 5 ya lee). Sin esta variable el smoke omite esos pasos.
           export SMOKE_SQL="docker exec ${{ job.services.sqlserver.id }} /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P Teikem_Dev_2026! -d Teikem -b -h -1 -Q"
+          # Paso de migración (Lote 10): el importador corre con el mismo build Release que el API bajo prueba.
+          export SMOKE_MIGRATION_RUN="dotnet run --project src/Teikem.Api -c Release --no-build"
           scripts/smoke.sh http://localhost:5000
       # Recorrido Playwright del frontend (Lote F1) contra el mismo API, que sigue arriba desde el paso anterior
       # (los procesos en segundo plano viven hasta el fin del job). Vite sirve la app en :5173 (CORS permitido en appsettings).

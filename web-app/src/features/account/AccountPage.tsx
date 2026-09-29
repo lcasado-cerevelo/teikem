@@ -2,15 +2,17 @@
 // cualquier usuario autenticado la ve. La pestaña va en la URL (?tab=) para poder enlazarla.
 import { useSearchParams } from 'react-router-dom'
 import { useSession } from '../../app/session'
+import { ModuleKeys, useModule } from '../../kernel/access'
 import { useT } from '../../kernel/i18n/useT'
 import { Spinner, Tabs } from '../../kernel/ui'
 import { MfaTab } from './MfaTab'
 import { PasswordTab } from './PasswordTab'
+import { PinTab } from './PinTab'
 import { ProfileTab } from './ProfileTab'
 import { SessionsTab } from './SessionsTab'
 import './account.css'
 
-const ACCOUNT_TABS = ['profile', 'password', 'mfa', 'sessions'] as const
+const ACCOUNT_TABS = ['profile', 'password', 'mfa', 'sessions', 'pin'] as const
 type AccountTab = (typeof ACCOUNT_TABS)[number]
 
 function isTab(value: string | null): value is AccountTab {
@@ -20,9 +22,13 @@ function isTab(value: string | null): value is AccountTab {
 export default function AccountPage() {
   const t = useT()
   const { me } = useSession()
+  // La pestaña "PIN de la app" (Lote 8A) solo existe con el módulo WMS_LOTSERIAL encendido para la compañía activa.
+  const hasWms = useModule(ModuleKeys.WmsLotSerial)
+  const visibleTabs = ACCOUNT_TABS.filter((key) => key !== 'pin' || hasWms)
   const [params, setParams] = useSearchParams()
   const raw = params.get('tab')
-  const tab: AccountTab = isTab(raw) ? raw : 'profile'
+  const requested: AccountTab = isTab(raw) ? raw : 'profile'
+  const tab: AccountTab = visibleTabs.includes(requested) ? requested : 'profile'
 
   if (!me) return <Spinner block />
 
@@ -40,7 +46,7 @@ export default function AccountPage() {
           label={t('account.title')}
           value={tab}
           onChange={(key) => setParams(key === 'profile' ? {} : { tab: key }, { replace: true })}
-          tabs={ACCOUNT_TABS.map((key) => ({ key, label: t(`account.tabs.${key}`) }))}
+          tabs={visibleTabs.map((key) => ({ key, label: t(`account.tabs.${key}`) }))}
         />
       </div>
 
@@ -48,6 +54,7 @@ export default function AccountPage() {
       {tab === 'password' && <PasswordTab />}
       {tab === 'mfa' && <MfaTab />}
       {tab === 'sessions' && <SessionsTab />}
+      {tab === 'pin' && hasWms && <PinTab />}
     </div>
   )
 }

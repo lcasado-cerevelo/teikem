@@ -6,9 +6,9 @@ import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, Modal, NumberInput, Select, TextArea, toast } from '../../kernel/ui'
-import { useInventoryTransfer, useWarehouseBins } from './api'
-import { ProductPickerInput, WarehousePickerInput } from './pickers'
+import { Field, Form, Modal, NumberInput, TextArea, toast } from '../../kernel/ui'
+import { useInventoryTransfer } from './api'
+import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
 
 export interface InventoryTransferModalProps {
   open: boolean
@@ -60,10 +60,6 @@ export function InventoryTransferModal({ open, onClose }: InventoryTransferModal
   const formId = 'inventory-transfer'
   const fromWarehousePublicId = form.watch('fromWarehousePublicId')
   const toWarehousePublicId = form.watch('toWarehousePublicId')
-  const { data: fromBins = [] } = useWarehouseBins(fromWarehousePublicId || null, {}, { enabled: Boolean(fromWarehousePublicId) })
-  const { data: toBins = [] } = useWarehouseBins(toWarehousePublicId || null, {}, { enabled: Boolean(toWarehousePublicId) })
-  const fromBinOptions = useMemo(() => fromBins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [fromBins])
-  const toBinOptions = useMemo(() => toBins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [toBins])
 
   useEffect(() => {
     form.setValue('fromBinId', '')
@@ -119,7 +115,8 @@ export function InventoryTransferModal({ open, onClose }: InventoryTransferModal
             <WarehousePickerInput />
           </Field>
           <Field name="fromBinId" label={t('warehouse.inventory.transferModal.fields.fromBin')} required>
-            <Select options={fromBinOptions} disabled={!fromWarehousePublicId} placeholder={t('warehouse.products.fields.none')} />
+            {/* posiciones del almacén ORIGEN */}
+            <BinPickerInput warehousePublicId={fromWarehousePublicId} />
           </Field>
         </div>
         <div className="r2">
@@ -127,7 +124,8 @@ export function InventoryTransferModal({ open, onClose }: InventoryTransferModal
             <WarehousePickerInput />
           </Field>
           <Field name="toBinId" label={t('warehouse.inventory.transferModal.fields.toBin')} required>
-            <Select options={toBinOptions} disabled={!toWarehousePublicId} placeholder={t('warehouse.products.fields.none')} />
+            {/* posiciones del almacén DESTINO (independiente del origen) */}
+            <BinPickerInput warehousePublicId={toWarehousePublicId} />
           </Field>
         </div>
         <Field name="quantity" label={t('warehouse.inventory.transferModal.fields.quantity')} required>

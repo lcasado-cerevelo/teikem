@@ -1,4 +1,4 @@
-export { AccessContext, useAccess, useCan, useModule } from './accessContext'
+export { AccessContext, permAllowed, useAccess, useCan, useCanAny, useModule } from './accessContext'
 export type { AccessState } from './accessContext'
 export { AccessProvider } from './AccessProvider'
 export { ForbiddenScreen, ModuleOffScreen } from './AccessScreens'

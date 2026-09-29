@@ -57,7 +57,7 @@ export interface SortState {
 
 export interface RowAction<T> {
   key: string
-  /** Texto del botón (ya traducido). */
+  /** Texto de la acción (ya traducido): sin `icon`, es el texto del botón; con `icon`, su `aria-label`/`title`. */
   label: string
   onClick: (row: T) => void
   /** Guarda de permiso: sin él la acción no se pinta. Con arreglo exige todos. */
@@ -67,6 +67,8 @@ export interface RowAction<T> {
   /** Se pinta deshabilitada (p. ej. mientras corre una mutación). */
   disabled?: (row: T) => boolean
   tone?: 'default' | 'flow' | 'danger'
+  /** Ícono de `kernel/ui/actionIcons`: con él, el botón es solo ícono (28×28, `.rowbtn`), como en la maqueta. */
+  icon?: ReactNode
 }
 
 export interface DataTableProps<T extends RowData> {
@@ -220,20 +222,37 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
     if (list.length === 0) return null
     return (
       <div className="rowacts">
-        {list.map((a) => (
-          <button
-            key={a.key}
-            type="button"
-            className={`btn sm${a.tone === 'flow' ? ' flow' : a.tone === 'danger' ? ' danger' : ''}`}
-            disabled={a.disabled?.(row)}
-            onClick={(e) => {
-              e.stopPropagation()
-              a.onClick(row)
-            }}
-          >
-            {a.label}
-          </button>
-        ))}
+        {list.map((a) =>
+          a.icon ? (
+            <button
+              key={a.key}
+              type="button"
+              className={`rowbtn${a.tone === 'danger' ? ' danger' : ''}`}
+              aria-label={a.label}
+              title={a.label}
+              disabled={a.disabled?.(row)}
+              onClick={(e) => {
+                e.stopPropagation()
+                a.onClick(row)
+              }}
+            >
+              {a.icon}
+            </button>
+          ) : (
+            <button
+              key={a.key}
+              type="button"
+              className={`btn sm${a.tone === 'flow' ? ' flow' : a.tone === 'danger' ? ' danger' : ''}`}
+              disabled={a.disabled?.(row)}
+              onClick={(e) => {
+                e.stopPropagation()
+                a.onClick(row)
+              }}
+            >
+              {a.label}
+            </button>
+          ),
+        )}
       </div>
     )
   }

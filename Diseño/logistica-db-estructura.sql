@@ -155,7 +155,7 @@ CREATE TABLE dbo.Tenant (
     MaxStopsPerRouteDefault INT NOT NULL DEFAULT 25,  -- default de alerta; el chofer puede tener su propio límite (Driver.MaxStopsPerRoute)
     DefaultServiceTypeLookupId INT NULL,              -- Entity='ServiceType': default de captura (FK diferida, LookupCode se crea después)
     DefaultPackageTypeLookupId INT NULL,              -- Entity='PackageType': default de captura (FK diferida)
-    MfaRequired     BIT NOT NULL DEFAULT 0,           -- política MFA del tenant
+    MfaRequired     BIT NOT NULL DEFAULT 1,           -- política MFA del tenant (Lote F8a: por default exige MFA a todos)
     Aal2WindowMinutes INT NOT NULL DEFAULT 30,        -- ventana de reautenticación AAL2 (step-up)
     SessionDays     INT NOT NULL DEFAULT 30,          -- vida del refresh token
     DeviceSessionDays INT NOT NULL DEFAULT 30,        -- Lote 8A: vida de la sesión de un aparato de almacén (aparato + PIN)
@@ -308,6 +308,7 @@ CREATE TABLE dbo.UserTenant (
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),  -- Entity='MembershipStatus'
     InvitedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
     JoinedAtUtc  DATETIME2 NULL,
+    MfaRequired  BIT NOT NULL DEFAULT 0,  -- Lote F8a: exige MFA a esta persona en esta compañía, aparte de Tenant.MfaRequired
     CONSTRAINT UQ_UserTenant UNIQUE (UserId, TenantId)
 );
 CREATE INDEX IX_UserTenant_Tenant ON dbo.UserTenant(TenantId);

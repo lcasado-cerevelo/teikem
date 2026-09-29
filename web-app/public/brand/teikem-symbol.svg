@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 124 124" width="124" height="124">
+  <title>Teikem — símbolo</title>
+  <desc>Hexágono + T de la marca Teikem, sin texto. Mismas rutas que teikemLogo() de Diseño/teikem-mockups.html. Fuente de scripts/brand-icons.mjs (iconos de app-almacen) y de la marca de la web.</desc>
+  <defs><clipPath id="hxl"><path d="M62 10 L104 34 V84 L62 108 L20 84 V34 Z"/></clipPath></defs>
+  <path d="M62 10 L104 34 V84 L62 108 L20 84 V34 Z" fill="#0B2C66"/>
+  <g clip-path="url(#hxl)"><rect x="20" y="10" width="42" height="98" fill="#2E7CF6"/><rect x="62" y="10" width="42" height="98" fill="#123A85"/></g>
+  <path d="M62 10 L104 34 V84 L62 108 L20 84 V34 Z" fill="none" stroke="#FFFFFF" stroke-width="4"/>
+  <path d="M36 42 H76" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+  <path d="M56 42 V88" stroke="#FFFFFF" stroke-width="15" stroke-linecap="round"/>
+  <path d="M70 40 L98 25 L98 55 Z" fill="#FF6A1A"/>
+</svg>

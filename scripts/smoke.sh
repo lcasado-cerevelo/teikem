@@ -8,6 +8,12 @@ EMAIL="${TEIKEM_ADMIN_EMAIL:-teikem+admin@cerevelo.com}"
 PASS="${TEIKEM_ADMIN_PASSWORD:-Teikem_Admin_2026!}"
 DISPATCH_EMAIL="${TEIKEM_DISPATCH_EMAIL:-teikem+dispatch@cerevelo.com}"
 
+# Carpeta propia para los cuerpos de req() (ver más abajo): aislada del resto de /tmp, que en una máquina con muchas
+# corridas acumuladas puede tener decenas de miles de archivos de otras herramientas y volverse lenta/inestable para
+# crear+leer un archivo nuevo a esa frecuencia (curl (26) intermitente). Se borra sola al terminar el script.
+REQ_TMPDIR=$(mktemp -d)
+trap 'rm -rf "$REQ_TMPDIR"' EXIT
+
 step() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m   ok\033[0m %s\n' "$*"; }
 fail() { printf '\033[1;31m   FAIL\033[0m %s\n' "$*" >&2; exit 1; }
@@ -15,14 +21,27 @@ req()  { # method path [json] [token]
   local m=$1 p=$2 body=${3:-} tok=${4:-${TOKEN:-}}
   local args=(-sS -X "$m" "$BASE$p" -H 'Accept: application/json' -H 'Content-Type: application/json' -H 'X-Lang: es')
   [[ -n "$tok" ]] && args+=(-H "Authorization: Bearer $tok")
-  [[ -n "$body" ]] && args+=(--data "$body")
+  # El cuerpo se manda por archivo (no --data inline): en Git Bash/Windows, curl reinterpreta un argumento con acentos
+  # u otro carácter no-ASCII (p. ej. "Exprés") a través del codepage ANSI del proceso y lo manda corrompido — por
+  # archivo, curl lee los bytes tal cual. mktemp por llamada (en $REQ_TMPDIR, no en /tmp) porque req() también se usa
+  # en paralelo (fondo).
+  local bodyfile=''
+  if [[ -n "$body" ]]; then
+    bodyfile=$(mktemp -p "$REQ_TMPDIR")
+    printf '%s' "$body" > "$bodyfile"
+    args+=(--data-binary "@$bodyfile")
+  fi
   curl "${args[@]}" -w '\n%{http_code}'
+  [[ -n "$bodyfile" ]] && rm -f "$bodyfile"
 }
 expect() { # expected_code response
   local code; code=$(echo "$2" | tail -n1); local body; body=$(echo "$2" | sed '$d')
   [[ "$code" == "$1" ]] || fail "esperado HTTP $1, recibido $code: $body"
   echo "$body"
 }
+# UUID sintáctico para "id ajeno que no existe": ni uuidgen ni /proc/sys/kernel/random/uuid existen en Git Bash/Windows
+# (solo en Linux); /dev/urandom sí, en ambos.
+randuuid() { od -An -tx1 -N16 /dev/urandom | tr -d ' \n' | sed -E 's/(.{8})(.{4})(.{4})(.{4})(.{12})/\1-\2-\3-\4-\5/'; }
 
 step "health"; expect 200 "$(req GET /health)" >/dev/null; ok "/health"
 step "openapi"; expect 200 "$(req GET /swagger/v1/swagger.json)" | jq -e '.paths | length > 200' >/dev/null || fail "el documento OpenAPI no se genera (rutas en conflicto)"; ok "/swagger/v1/swagger.json"
@@ -473,7 +492,9 @@ ok "invitación hecha por soporte@ visible y atribuida en la bitácora del tenan
 
 step "aislamiento entre tenants (Lote 2)"
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}" "$T_SOP")"); T_SOP=$(echo "$RE" | jq -r .accessToken)
-expect 200 "$(req POST /api/v1/platform/tenants "{\"name\":\"Tenant Smoke $TS\",\"modules\":[\"CATALOG\",\"CLIENT_PORTAL\"],\"adminEmail\":\"admin$TS@smoke.local\",\"adminFullName\":\"Admin Smoke\",\"adminPassword\":\"Smoke_Admin_2026!\"}" "$T_SOP")" >/dev/null
+# mfaRequired:false — el resto del smoke no enrola TOTP; sin esto, Tenant.MfaRequired por default (Lote F8a) bloquearía
+# el login normal de este tenant nuevo con "mfa_required".
+expect 200 "$(req POST /api/v1/platform/tenants "{\"name\":\"Tenant Smoke $TS\",\"modules\":[\"CATALOG\",\"CLIENT_PORTAL\"],\"adminEmail\":\"admin$TS@smoke.local\",\"adminFullName\":\"Admin Smoke\",\"adminPassword\":\"Smoke_Admin_2026!\",\"mfaRequired\":false}" "$T_SOP")" >/dev/null
 R3=$(expect 200 "$(anon POST /api/v1/auth/login "{\"email\":\"admin$TS@smoke.local\",\"password\":\"Smoke_Admin_2026!\"}")"); T3=$(echo "$R3" | jq -r .tokens.accessToken)
 expect 200 "$(req GET /api/v1/me '' "$T3")" | jq -e '.permissions | index("clients.read")' >/dev/null || fail "plantilla clonada sin clients.read"
 expect 404 "$(req GET "/api/v1/clients/$CLIENT_PID" '' "$T3")" >/dev/null
@@ -1103,7 +1124,10 @@ B_PID=$(echo "$V" | jq -r .batchPublicId)
 expect 200 "$(req GET "/api/v1/orders/import/$B_PID")" | jq -e '.validRows==2' >/dev/null || fail "GET del lote"
 # Archivo por multipart (campo 'file'), límites de 5.000 filas (JSON) y 2 MB (multipart), delimitador ';' sin cabecera
 FUP=$(mktemp); printf '%s' "$CSV" > "$FUP"
-mpost() { curl -sS -X POST "$BASE/api/v1/orders/import/validate-file" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$1" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$2;type=text/csv" -w '\n%{http_code}'; }
+# Sin ";type=text/csv" en el @archivo: en curl 8.21 para Windows (mingw32) ese sufijo hace fallar la lectura del
+# archivo (curl (26) Failed to open/read local data), aunque el archivo exista; el servidor no valida el Content-Type
+# declarado de la parte (lee el contenido tal cual), así que el sufijo no hacía falta.
+mpost() { curl -sS -X POST "$BASE/api/v1/orders/import/validate-file" -H "Authorization: Bearer $TOKEN" -F "templatePublicId=$1" -F "clientPublicId=$CLIENT_O_PID" -F "file=@$2" -w '\n%{http_code}'; }
 expect 200 "$(mpost "$TPL_PID" "$FUP")" | jq -e '.rowCount==3 and .validRows==2' >/dev/null || fail "validar por multipart"
 LIMMSG="El archivo supera el límite de 5.000 filas o 2 MB."
 { echo h; for i in $(seq 5001); do echo "a,b"; done; } > "$FUP"
@@ -2151,7 +2175,7 @@ expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1&search
 expect 422 "$(addo "$TR1" "$(pid "$OS")")" | jq -e --arg m "Las entregas especiales se asignan al chofer desde la orden; no pasan por Sala de despacho." '[.errors[][]] | index($m)' >/dev/null || fail "entrega especial"
 expect 409 "$(addo "$TR1" "$(pid "$OA1")")" | jq -e '.title=="La orden ya está en esta ruta."' >/dev/null || fail "orden repetida en la ruta"
 expect 409 "$(addo "$TR3" "$(pid "$OA1")")" | jq -e --arg m "La orden ya está asignada a la ruta $TR1_CODE." '.title==$m' >/dev/null || fail "orden en otra ruta"
-expect 404 "$(addo "$TR1" "$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid)")" | jq -e '.title=="Orden no encontrado."' >/dev/null || fail "orden inexistente"
+expect 404 "$(addo "$TR1" "$(randuuid)")" | jq -e '.title=="Orden no encontrado."' >/dev/null || fail "orden inexistente"
 expect 200 "$(req GET "/api/v1/orders/$(pid "$OA1")")" | jq -e --arg t "$TR1_CODE" --arg d "R1$TS" '.status=="CONFIRMED" and .assignedTripCode==$t and .assignedDriverCode==$d' >/dev/null || fail "ficha de la orden con ruta y chofer"
 ok "sin asignar por zona (excluye DRAFT y entrega especial), sin zona y búsqueda después del filtro; $TR1_CODE con 2 paradas (v1 DRAFT, ETAs); 422 atómico, 409 misma ruta / otra ruta, 404; la orden sigue CONFIRMED con ruta y chofer en su ficha"
 
@@ -2365,7 +2389,7 @@ expect 200 "$(req GET "/api/v1/status/history/TRANSPORT_ORDER/$OT1_ID")" | jq -e
 expect 422 "$(req POST "/api/v1/trips/$TR1/start" '{}')" | jq -e --arg m "La ruta $TR1_CODE ya salió." '.title==$m' >/dev/null || fail "segunda salida"
 expect 422 "$(req POST "/api/v1/trips/$TR3/start" '{}')" | jq -e --arg m "La ruta $TR3_CODE no está despachada; despáchela antes de registrar su salida." '.title==$m' >/dev/null || fail "salida de una ruta no despachada"
 [[ $(expect 200 "$(req GET "/api/v1/drivers/$D1/trips?includeCancelled=true")" | jq length) -eq $NTRIPS0 ]] || fail "despachar creó un viaje del chofer (DriverTrip)"
-FOREIGN=$(cat /proc/sys/kernel/random/uuid)
+FOREIGN=$(randuuid)
 BR=$(expect 200 "$(req POST /api/v1/trips/dispatch "$(jq -cn --arg a "$TR2" --arg b "$TR3" --arg c "$FOREIGN" '{tripPublicIds:[$a,$b,$c]}')")")
 echo "$BR" | jq -e --arg a "$TR2" --arg b "$TR3" --arg c "$FOREIGN" '.requested==3 and .dispatched==1 and ([.items[].tripPublicId]==[$a,$b,$c]) and .items[0].dispatched and (.items[1].dispatched|not) and any(.items[1].issues[]; .code=="NO_VEHICLE") and .items[2].error=="Ruta no encontrada."' >/dev/null || fail "despacho en lote: $BR"
 ok "$TR1_CODE DISPATCHED/ACTIVE; orden PLANNED con PICKUP, INBOUND, PLANNED y 'Despachada en la ruta …'; contenido y cabecera congelados (422); cancelar una orden despachada 422; salida → IN_PROGRESS e IN_TRANSIT; 422 (ya salió / no despachada); sin DriverTrip; lote {$TR2_CODE, $TR3_CODE, ajeno} = 3/1"
@@ -3039,6 +3063,10 @@ expect 200 "$(req GET '/api/v1/analytics/activity' '' "$TD7")" | jq -e '.visible
 # Lote F8a: el Operador de almacén ahora tiene analytics.view (para ver "Actividad reciente" en su Pulso, junto con
 # pulse.activity); la política ya no lo bloquea, pero el servicio lo sigue acotando a WAREHOUSE por su inventory.view.
 expect 200 "$(req GET '/api/v1/analytics/activity?module=WAREHOUSE' '' "$TWH6")" | jq -e '.visibleModules==["WAREHOUSE"]' >/dev/null || fail "operador de almacén (con analytics.view, Lote F8a) ve la actividad de Almacén"
+# Hallazgo S1: analytics.view solo, sin admin.audit, no debe alcanzar para leer AUDIT_LOG/SECURITY_EVENT por §2.2
+# (antes de la corrección, la vista previa de informes no aplicaba esa regla y sí dejaba leerlas).
+expect 200 "$(req GET /api/v1/analytics/data-sources '' "$TWH6")" | jq -e 'map(.key) | (index("AUDIT_LOG") == null) and (index("SECURITY_EVENT") == null)' >/dev/null || fail "operador de almacén (sin admin.audit) no debe ver AUDIT_LOG/SECURITY_EVENT en data-sources"
+expect 404 "$(req POST '/api/v1/analytics/reports/AUDIT_LOG/preview?dateRangeMode=ALL' '{"name":"x","columns":["CreatedAtUtc","Action"]}' "$TWH6")" >/dev/null || fail "operador de almacén (sin admin.audit) no debe poder previsualizar AUDIT_LOG (hallazgo S1)"
 # Producto con mínimo y sin saldo: en SQL Server el SUM de un conjunto vacío es NULL (InMemory da 0); debe contar como bajo mínimo.
 PBM=$(prod "{\"sku\":\"PBM$TS\",\"name\":\"Bajo mínimo 7A $TS\",\"minQty\":5}")
 expect 200 "$(req GET "/api/v1/products?belowMin=true&search=PBM$TS")" | jq -e --arg s "PBM$TS" '.total==1 and .items[0].sku==$s and .items[0].isBelowMin==true' >/dev/null || fail "belowMin no incluye un producto con mínimo y sin saldo (SUM NULL en SQL)"
@@ -3296,7 +3324,7 @@ expect 403 "$(req POST /api/v1/devices "{\"code\":\"ZX-$TS\"}" "$TWH6")" >/dev/n
 expect 403 "$(req GET '/api/v1/custom-fields/values/USER_DEVICE/1' '' "$TWH6")" | denied devices.manage || fail "campos de USER_DEVICE sin devices.manage (GET) → 403"
 expect 403 "$(req PUT '/api/v1/custom-fields/values/USER_DEVICE/1' '{"values":{}}' "$TWH6")" | denied devices.manage || fail "campos de USER_DEVICE sin devices.manage (PUT) → 403"
 expect 404 "$(req PUT '/api/v1/custom-fields/values/USER_DEVICE/1' '{"values":{}}')" >/dev/null || fail "campos de USER_DEVICE con devices.manage → 404 (resolver cerrado)"
-expect 400 "$(req POST /api/v1/devices '{"code":""}')" | jq -e --arg m "El código del aparato es obligatorio." "$HASM" >/dev/null || fail "alta de aparato sin código → 400"
+expect 200 "$(req POST /api/v1/devices '{"code":""}')" | jq -e '.device.code | test("^AP-[A-Z0-9]{6}$")' >/dev/null || fail "alta de aparato sin código → el servidor genera uno (AP-XXXXXX, Lote F8a)"
 expect 400 "$(req POST /api/v1/devices "{\"code\":\"$(printf 'A%.0s' {1..31})\"}")" | jq -e --arg m "El código del aparato admite hasta 30 caracteres." "$HASM" >/dev/null || fail "alta de aparato con código de 31 caracteres → 400"
 expect 400 "$(req POST /api/v1/devices "{\"code\":\"ZN-$TS\",\"name\":\"$(printf 'N%.0s' {1..101})\"}")" | jq -e --arg m "El nombre admite hasta 100 caracteres." "$HASM" >/dev/null || fail "alta de aparato con nombre de 101 caracteres → 400"
 expect 400 "$(req POST /api/v1/devices "{\"code\":\"ZN-$TS\",\"model\":\"$(printf 'M%.0s' {1..81})\"}")" | jq -e --arg m "El modelo admite hasta 80 caracteres." "$HASM" >/dev/null || fail "alta de aparato con modelo de 81 caracteres → 400"
@@ -3894,6 +3922,19 @@ expect 200 "$(req GET /api/v1/analytics/pulse '' "$TDF8")" | jq -e '(.panels | m
 expect 200 "$(req GET '/api/v1/audit/changes?entityType=PULSE_PANEL_SETTING&take=50')" | jq -e '.total >= 4' >/dev/null || fail "AuditLog de PULSE_PANEL_SETTING"
 ok "4 paneles del admin; mine (Actividad arriba, Gráficos oculto, indicador $INDF8 primero, idempotente, hasPersonalLayout); 400 con los mensajes exactos (scope, panel desconocido, tipo), 404 (gráfico inexistente, panel Almacén para el despachador); DELETE mine vuelve al de la compañía; company sin pulse.organize_company 403; el orden de la compañía le aplica al despachador (sin Almacén) y se restaura; AuditLog PULSE_PANEL_SETTING"
 
+step "MFA por usuario (Lote F8a): exigirlo a una persona sin tocar la política de la compañía, y resetearlo"
+# Tenant.MfaRequired del tenant demo está en falso (DemoTenantSeeder lo apaga para no romper el resto del smoke con
+# el segundo factor); aquí se prueba el portón por MEMBRESÍA (UserTenant.MfaRequired), que no depende de ese ajuste.
+MFAEMAIL="mfa$TS@teikem.local"; MFAPASS="Smoke_Mfa_2026!"
+MFAU=$(expect 200 "$(req POST /api/v1/users "{\"email\":\"$MFAEMAIL\",\"fullName\":\"MFA Smoke\",\"password\":\"$MFAPASS\"}")")
+MFAID=$(echo "$MFAU" | jq -r .user.id)
+expect 200 "$(req PUT "/api/v1/users/$MFAID/mfa" '{"required":true}')" | jq -e '.mfaRequired and (.mfaEnabled|not)' >/dev/null || fail "PUT mfa {required:true}"
+expect 200 "$(anon POST /api/v1/auth/login "{\"email\":\"$MFAEMAIL\",\"password\":\"$MFAPASS\"}")" | jq -e '.status=="mfa_required" and .mfaEnrollmentRequired and (.tokens==null)' >/dev/null || fail "login exige MFA por la membresía"
+expect 204 "$(req DELETE "/api/v1/users/$MFAID/mfa")" >/dev/null   # resetear (usuario que perdió su dispositivo): sin TOTP confirmado, no hay nada que deshacer aquí, pero no falla
+expect 200 "$(req PUT "/api/v1/users/$MFAID/mfa" '{"required":false}')" | jq -e '.mfaRequired|not' >/dev/null || fail "PUT mfa {required:false}"
+expect 200 "$(anon POST /api/v1/auth/login "{\"email\":\"$MFAEMAIL\",\"password\":\"$MFAPASS\"}")" | jq -e '.status=="ok"' >/dev/null || fail "login ya no exige MFA tras quitarlo"
+ok "exigir/quitar MFA de un usuario en particular y resetearlo, sin tocar el ajuste de la compañía"
+
 step "login concurrente con un intento fallido del mismo usuario (sin 500)"
 # Un login correcto que coincide con un intento de contraseña incorrecta del mismo usuario (que cambia el ConcurrencyStamp
 # de Identity) respondía 500 por DbUpdateConcurrencyException al guardar el usuario completo; ahora LastLoginUtc se escribe
@@ -3946,5 +3987,60 @@ DL10=$(expect 200 "$(DLOGIN 4826)") || fail "tras reactivar, device/login con PI
 # El access token nuevo sirve enseguida (ReactivateAsync limpia la caché 'did' de 60 s que dejó el sync rechazado).
 expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$(echo "$DL10" | jq -r .accessToken)")" >/dev/null || fail "tras reactivar, el access token nuevo del aparato sigue rechazado (caché did sin limpiar)"
 ok "desactivar revoca la sesión del aparato antes de cualquier refresh (TOKEN_REVOKED device_deactivated; con SMOKE_SQL, la fila de DRT_DEV); refresh de las sesiones de aparato tras quitar el PIN y tras desactivar el aparato → 401; reactivar deja entrar con PIN (y el token nuevo sincroniza al momento) sin revivir sesiones: el access token de antes de la baja sigue en 401 (sello SessionsNotBeforeUtc) y TOKEN_REVOKED device_reactivated (con SMOKE_SQL, la sesión DRT_DEV que se simuló viva queda revocada y el evento lleva count ≥ 1)"
+
+step "migración (Lote 10): dry-run del importador con la muestra sintética"
+# El verbo CLI import-legacy corre fuera del pipeline HTTP. En dry-run solo lee (la compañía de prueba no existe: todo se
+# informa como 'se crearía') y escribe el reporte en TestResults/migracion (en .gitignore). SMOKE_MIGRATION_RUN permite
+# cambiar el comando: el CI pasa el build Release que ya compiló ("dotnet run --project src/Teikem.Api -c Release --no-build");
+# sin la variable se usa dotnet run a secas, que compila Debug de forma incremental y ejecuta el código actual.
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+MIG_OUT="$ROOT/TestResults/migracion"
+mkdir -p "$MIG_OUT"
+MIG_MARK="$MIG_OUT/.smoke-start"; touch "$MIG_MARK"; sleep 1
+if [[ -n "${SMOKE_MIGRATION_RUN:-}" ]]; then read -r -a MIG_CMD <<< "$SMOKE_MIGRATION_RUN"
+else
+  MIG_CMD=(dotnet run --project src/Teikem.Api)
+fi
+set +e
+MIG_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- import-legacy docs/migracion/sample/import.sample.json --dry-run 2>&1); MIG_RC=$?
+set -e
+[[ $MIG_RC == 0 ]] || fail "import-legacy --dry-run terminó con código $MIG_RC: $MIG_LOG"
+MIG_MD=$(find "$MIG_OUT" -maxdepth 1 -name 'reporte-muestra-*.md' -newer "$MIG_MARK" | head -n1)
+[[ -n "$MIG_MD" ]] || fail "import-legacy --dry-run no generó el reporte .md en $MIG_OUT"
+grep -q 'SIMULACIÓN (dry-run)' "$MIG_MD" || fail "el reporte no está marcado como SIMULACIÓN (dry-run): $MIG_MD"
+grep -q '| Productos | 6 | 5 | 0 | 1 | 0 |' "$MIG_MD" || fail "resumen de productos inesperado en $MIG_MD"
+grep -q 'no se carga saldo inicial' "$MIG_MD" || fail "el reporte no informa la existencia negativa de la muestra"
+[[ $(find "$MIG_OUT" -maxdepth 1 -name 'reporte-muestra-*.csv' -newer "$MIG_MARK" | wc -l) -ge 6 ]] || fail "faltan los CSV del reporte"
+# Con SMOKE_SQL se comprueba que la simulación no aprovisionó la compañía de prueba.
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.Tenant WHERE Name = N'Compañía de prueba (migración)';" | tr -dc '0-9') == 0 ]] || fail "el dry-run aprovisionó la compañía de prueba"
+# Uso incorrecto → código 2 con el mensaje de uso.
+set +e
+MIG_USAGE=$(cd "$ROOT" && "${MIG_CMD[@]}" -- import-legacy 2>&1); MIG_RC=$?
+set -e
+[[ $MIG_RC == 2 ]] || fail "import-legacy sin configuración debería salir con código 2 (salió $MIG_RC)"
+echo "$MIG_USAGE" | grep -q 'import-legacy <config.json> \[--dry-run\] \[--update\]' || fail "falta el mensaje de uso: $MIG_USAGE"
+rm -f "$MIG_MARK"
+ok "dry-run con la muestra: código 0, reporte .md (SIMULACIÓN) y CSV generados sin escribir en la base; sintaxis incorrecta → código 2"
+
+step "migración (Lote 10): --update no toca el saldo inicial en dry-run"
+MIG_UPDATE_MARK="$MIG_OUT/.smoke-update-start"; touch "$MIG_UPDATE_MARK"; sleep 1
+set +e
+MIG_UPDATE_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- import-legacy docs/migracion/sample/import.sample.json --dry-run --update 2>&1); MIG_UPDATE_RC=$?
+set -e
+[[ $MIG_UPDATE_RC == 0 ]] || fail "import-legacy --dry-run --update terminó con código $MIG_UPDATE_RC: $MIG_UPDATE_LOG"
+MIG_UPDATE_MD=$(find "$MIG_OUT" -maxdepth 1 -name 'reporte-muestra-*.md' -newer "$MIG_UPDATE_MARK" | head -n1)
+[[ -n "$MIG_UPDATE_MD" ]] || fail "import-legacy --dry-run --update no generó el reporte .md en $MIG_OUT"
+grep -q -- "--update" "$MIG_UPDATE_MD" || fail "el reporte no marca el modo --update: $MIG_UPDATE_MD"
+grep -q 'El saldo inicial no se toca en modo --update' "$MIG_UPDATE_MD" || fail "el reporte no informa que --update no toca el saldo inicial: $MIG_UPDATE_MD"
+rm -f "$MIG_UPDATE_MARK"
+ok "dry-run con --update: modo marcado en el título y saldo inicial omitido"
+
+step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
+set +e
+DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?
+set -e
+[[ $DBRESET_RC == 2 ]] || fail "db-reset sin --yes debería salir con código 2 (salió $DBRESET_RC)"
+echo "$DBRESET_LOG" | grep -q -- '--yes' || fail "falta el mensaje de confirmación de db-reset: $DBRESET_LOG"
+ok "db-reset sin --yes: código 2, no se tocó la base"
 
 printf '\n\033[1;32mSMOKE OK\033[0m\n'

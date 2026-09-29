@@ -8,11 +8,9 @@ import { z } from 'zod'
 import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } from '../../kernel/ui'
-import { useInventoryAdjustment, useWarehouseBins, type ProductListItemDto } from './api'
-import { ProductPickerInput, WarehousePickerInput } from './pickers'
-
-// Motivos reservados al sistema: los genera el propio proceso (recepción, conteo, reversa de recolección), nunca a mano.
-const SYSTEM_RESERVED_REASONS = new Set(['RECEIPT_VARIANCE', 'COUNT_VARIANCE', 'PICK_BATCH_REVERSAL'])
+import { selectableAdjustmentReasons } from './adjustmentReasons'
+import { useInventoryAdjustment, type ProductListItemDto } from './api'
+import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
 
 function decimals(n: number): number {
   const s = String(n)
@@ -30,7 +28,7 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
   const adjust = useInventoryAdjustment()
   const { data: reasons = [] } = useLookups('AdjustmentReason')
   const reasonOptions = useMemo(
-    () => reasons.filter((r) => !SYSTEM_RESERVED_REASONS.has(r.code)).map((r) => ({ value: r.code, label: r.label })),
+    () => selectableAdjustmentReasons(reasons).map((r) => ({ value: r.code, label: r.label })),
     [reasons],
   )
   const [product, setProduct] = useState<ProductListItemDto | null>(null)
@@ -75,8 +73,6 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
   })
   const formId = 'inventory-adjust'
   const warehousePublicId = form.watch('warehousePublicId')
-  const { data: bins = [] } = useWarehouseBins(warehousePublicId || null, {}, { enabled: Boolean(warehousePublicId) })
-  const binOptions = useMemo(() => bins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [bins])
 
   useEffect(() => {
     // el almacén cambió: la posición elegida ya no aplica
@@ -138,7 +134,7 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
             <WarehousePickerInput />
           </Field>
           <Field name="binId" label={t('warehouse.inventory.adjustModal.fields.bin')} required>
-            <Select options={binOptions} disabled={!warehousePublicId} placeholder={t('warehouse.products.fields.none')} />
+            <BinPickerInput warehousePublicId={warehousePublicId} />
           </Field>
         </div>
         <div className="r2">

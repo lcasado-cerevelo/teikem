@@ -1,7 +1,7 @@
 // Pantalla D (Lote F6) — Compras: ficha de la orden de compra. `/warehouse/purchase-orders/:publicId`.
 // Lectura: purchasing.view + PURCHASING (por la ruta). Edición/enviar/cancelar/eliminar: purchasing.manage.
 // Resolver un faltante: inventory.adjust (REORDER exige además purchasing.manage; MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL:
-// solo entonces se consultan posiciones y el seguimiento del producto, sin sacar al usuario ante un 403).
+// solo entonces se consultan posiciones —al abrir el BinPicker— y el seguimiento del producto, sin sacar al usuario ante un 403).
 // Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
@@ -39,12 +39,11 @@ import {
   usePurchaseOrderAction,
   usePurchaseOrderShortageLines,
   useResolveShortage,
-  useWarehouseBins,
   type PurchaseOrderDto,
   type ShortageLineDto,
 } from './api'
 import { parseSerials } from './lineRules'
-import { ProductPickerInput } from './pickers'
+import { BinPickerInput, ProductPickerInput } from './pickers'
 
 const STATUS_DOMAIN = 'PurchaseOrderStatus'
 const ENTITY_TYPE = 'PURCHASE_ORDER'
@@ -308,10 +307,8 @@ function ResolveShortageModal({
   const formId = 'shortage-resolve'
   const isManual = action === 'MANUAL_ADJUSTMENT' && hasLotSerial
 
-  // Solo el ajuste manual usa posiciones y el seguimiento del producto (WMS_LOTSERIAL). CLOSE/REORDER no consultan nada
-  // de WMS; un 403 no saca al usuario de la ficha (la ruta es de compras).
-  const { data: bins = [] } = useWarehouseBins(po.warehousePublicId ?? null, {}, { enabled: open && isManual, handleAccessDenied: false })
-  const binOptions = useMemo(() => bins.filter((b) => b.isActive).map((b) => ({ value: String(b.id), label: b.code ?? '' })), [bins])
+  // Solo el ajuste manual usa posiciones (BinPicker: consulta al abrirlo, sin sacar de la ficha ante un 403) y el
+  // seguimiento del producto (WMS_LOTSERIAL). CLOSE/REORDER no consultan nada de WMS (la ruta es de compras).
   const product = useProduct(line?.productPublicId ?? null, { enabled: open && isManual, handleAccessDenied: false })
   const tracking = (product.data?.product?.trackingTypeCode ?? '').toUpperCase()
   const sku = line?.sku ?? ''
@@ -413,7 +410,7 @@ function ResolveShortageModal({
               />
             </Field>
             <Field name="binId" label={t('warehouse.purchaseOrders.shortages.modal.bin')} required>
-              <Select options={binOptions} placeholder={t('warehouse.products.fields.none')} />
+              <BinPickerInput warehousePublicId={po.warehousePublicId} />
             </Field>
             {tracking === 'LOT' && (
               <div className="r2">

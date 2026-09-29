@@ -31,12 +31,16 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
         return ToDto(d);
     }
 
-    /// <summary>Valores del dominio resueltos para el tenant activo (override aplicado, deshabilitados opcionales).</summary>
+    /// <summary>
+    /// Valores del dominio resueltos para el tenant activo (override aplicado). `includeDisabled` también incluye,
+    /// además de los deshabilitados por override, los valores PROPIOS desactivados (soft delete): sin esto, la
+    /// pantalla de administración no tiene cómo ofrecer "Restaurar" — el valor desactivado nunca vuelve a aparecer.
+    /// </summary>
     public async Task<IReadOnlyList<LookupValueDto>> GetValuesAsync(string entity, bool includeDisabled, CancellationToken ct)
     {
         var tenantId = tenant.TenantId;
         var codes = await db.LookupCodes.AsNoTracking()
-            .Where(l => l.Entity == entity && l.IsActive)
+            .Where(l => l.Entity == entity && (l.IsActive || includeDisabled))
             .ToListAsync(ct);
         if (codes.Count == 0 && !await db.CatalogDomains.AnyAsync(d => d.DomainKey == entity, ct))
             throw new NotFoundException("Dominio de catálogo", entity);
@@ -235,6 +239,6 @@ public sealed class LookupService(TeikemDbContext db, ITenantContext tenant, ILo
         return new LookupValueDto(
             c.LookupCodeId, c.Entity, c.InternalCode, MultilingualText.Resolve(labelJson, tenant.Lang), MultilingualText.Parse(labelJson),
             MultilingualText.Resolve(c.DescriptionJson, tenant.Lang), o?.CustomExtraJson ?? c.ExtraJson,
-            o?.SortOverride ?? c.SortOrder, c.IsSystem, o?.IsEnabled ?? true, o is not null, c.TenantId);
+            o?.SortOverride ?? c.SortOrder, c.IsSystem, o?.IsEnabled ?? true, o is not null, c.TenantId, c.IsActive);
     }
 }

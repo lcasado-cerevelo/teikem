@@ -1,0 +1,638 @@
+// Pestaña Usuarios de /system/users (usuariosScreen de la maqueta): `GET /api/v1/users` no pagina en el servidor
+// (schema.d.ts sin query params), así que la pantalla busca y pagina en cliente (patrón "lista completa" del KIT).
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { useSession } from '../../app/session'
+import { useCanAny, useModule, ModuleKeys, Can } from '../../kernel/access'
+import { applyProblemDetails } from '../../kernel/api/client'
+import { useLookups } from '../../kernel/catalogs'
+import { useLang, useT } from '../../kernel/i18n/useT'
+import {
+  Chip,
+  ConfirmDialog,
+  DataTable,
+  Field,
+  Form,
+  IconEdit,
+  IconKey,
+  IconLogOut,
+  IconRotateCcw,
+  IconShield,
+  Modal,
+  Panel,
+  QBox,
+  SearchMultiSelect,
+  Select,
+  TextInput,
+  Toggle,
+  matchesQ,
+  toast,
+  type DataColumn,
+  type RowAction,
+} from '../../kernel/ui'
+import { formatDateTime } from '../account/format'
+import { copyCode } from './EnrollCodeModal'
+import { PinModal } from './PinModal'
+import {
+  useCloseUserSessions,
+  useCreateUser,
+  useResetUserMfa,
+  useRoles,
+  useSetMembership,
+  useSetMfaRequired,
+  useSetUserExtraPermissions,
+  useSetUserRoles,
+  useUpdateUser,
+  useUsers,
+  usePermissions,
+  type UserSummaryDto,
+} from './api'
+// (useUpdateUser lo usa `EditUserModal`, useCreateUser lo usa `CreateUserModal`.)
+import { groupPermissionsByCategory } from './permissionGroups'
+import { categoryIcon } from './permissionIcons'
+import './system.css'
+
+const MEMBERSHIP_STATUS_TONE: Record<string, 'deliv' | 'warn' | 'cap'> = { ACTIVE: 'deliv', SUSPENDED: 'warn', INVITED: 'cap' }
+
+/** Editar nombre y activo (`PUT /users/{id}`). "No puede desactivarse a sí mismo." si aplica sobre el propio usuario. */
+function EditUserModal({ open, user, onClose }: { open: boolean; user: UserSummaryDto | null; onClose: () => void }) {
+  const t = useT()
+  const update = useUpdateUser()
+  const schema = useMemo(() => z.object({ fullName: z.string().trim(), active: z.boolean() }), [])
+  const form = useForm({
+    resolver: zodResolver(schema),
+    values: { fullName: user?.fullName ?? '', active: user?.isActive ?? true },
+  })
+  const formId = 'user-edit'
+
+  const close = () => {
+    form.reset()
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('system.users.users.editTitle')}
+      onClose={close}
+      dismissible={!form.formState.isSubmitting}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={close}>
+            {t('common.cancel')}
+          </button>
+          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <Form
+        id={formId}
+        form={form}
+        onError={(p) => toast.error(p.title)}
+        onSubmit={async (v) => {
+          if (!user?.id) return
+          await update.mutateAsync({ id: user.id, body: { fullName: v.fullName, isActive: v.active } })
+          toast.success(t('system.users.users.saved'))
+          close()
+        }}
+      >
+        <Field name="fullName" label={t('system.users.users.fullName')}>
+          <TextInput maxLength={200} />
+        </Field>
+        <Field name="active" label={t('system.users.users.active')}>
+          <Toggle />
+        </Field>
+      </Form>
+    </Modal>
+  )
+}
+
+/** Alta de usuario interno: correo, nombre, roles y contraseña opcional. Portal solo muestra un aviso (Lote 2). */
+function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleNames: string[]; onClose: () => void }) {
+  const t = useT()
+  const create = useCreateUser()
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  // Se muestra una sola vez, justo después del alta: el servidor no la vuelve a devolver en ninguna otra respuesta.
+  const [tempPassword, setTempPassword] = useState<string | null>(null)
+  const schema = useMemo(
+    () =>
+      z.object({
+        email: z.string().trim().min(1, t('system.users.users.emailRequired')),
+        fullName: z.string().trim(),
+        password: z.string(),
+        userKind: z.enum(['INTERNAL', 'PORTAL']),
+      }),
+    [t],
+  )
+  const form = useForm({ resolver: zodResolver(schema), defaultValues: { email: '', fullName: '', password: '', userKind: 'INTERNAL' as const } })
+  const formId = 'user-create'
+  const isPortal = form.watch('userKind') === 'PORTAL'
+
+  const close = () => {
+    form.reset()
+    setSelectedRoles([])
+    setTempPassword(null)
+    onClose()
+  }
+
+  if (tempPassword != null) {
+    return (
+      <Modal
+        open={open}
+        title={t('system.users.users.tempPasswordTitle')}
+        onClose={close}
+        dismissible={false}
+        footer={
+          <button type="button" className="btn flow" onClick={close}>
+            {t('common.done')}
+          </button>
+        }
+      >
+        <p className="help">{t('system.users.users.tempPasswordHint')}</p>
+        <div className="secret" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '.08em', textAlign: 'center' }}>
+          {tempPassword}
+        </div>
+        <button
+          type="button"
+          className="btn sm"
+          onClick={() => void copyCode(tempPassword, t('system.users.users.copied'), t('system.users.users.copyFailed'))}
+        >
+          {t('common.copy')}
+        </button>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('system.users.users.newTitle')}
+      onClose={close}
+      dismissible={!form.formState.isSubmitting}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={close}>
+            {t('common.cancel')}
+          </button>
+          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting || isPortal}>
+            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <Form
+        id={formId}
+        form={form}
+        onError={(p) => toast.error(p.title)}
+        onSubmit={async (v) => {
+          if (isPortal) return
+          const res = await create.mutateAsync({
+            email: v.email,
+            fullName: v.fullName || null,
+            password: v.password || null,
+            roles: selectedRoles,
+            userKind: 'INTERNAL',
+          })
+          toast.success(t('system.users.users.created'))
+          if (res.temporaryPassword) setTempPassword(res.temporaryPassword)
+          else close()
+        }}
+      >
+        <Field name="userKind" label={t('system.users.users.kind')}>
+          <Select options={[{ value: 'INTERNAL', label: t('system.users.users.kindInternal') }, { value: 'PORTAL', label: t('system.users.users.kindPortal') }]} />
+        </Field>
+        {isPortal ? (
+          <p className="note">{t('system.users.users.portalHint')}</p>
+        ) : (
+          <>
+            <Field name="email" label={t('system.users.users.email')} required>
+              <TextInput type="email" />
+            </Field>
+            <Field name="fullName" label={t('system.users.users.fullName')}>
+              <TextInput maxLength={200} />
+            </Field>
+            <Field name="password" label={t('system.users.users.password')} help={t('system.users.users.passwordHelp')}>
+              <TextInput type="password" autoComplete="new-password" />
+            </Field>
+            <div className="f">
+              <label>{t('system.users.roles.title')}</label>
+              <SearchMultiSelect options={roleNames.map((r) => ({ value: r, label: r }))} value={selectedRoles} onChange={setSelectedRoles} />
+            </div>
+          </>
+        )}
+      </Form>
+    </Modal>
+  )
+}
+
+/** Multi-selección de roles asignados a un usuario. `PUT /users/{id}/roles` (AAL2: el cliente del API pide
+ *  reautenticación sola si el servidor responde 403 `aal2_required`, y reintenta — no hace falta pedirla aquí). */
+function RolesModal({ open, user, roleNames, onClose }: { open: boolean; user: UserSummaryDto | null; roleNames: string[]; onClose: () => void }) {
+  const t = useT()
+  const setRoles = useSetUserRoles()
+  const [selected, setSelected] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    if (open) setSelected(user?.roles ?? [])
+  }, [open, user])
+
+  const close = () => {
+    setSelected([])
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('system.users.users.rolesModalTitle', { name: user?.fullName ?? '' })}
+      onClose={close}
+      dismissible={!busy}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={close} disabled={busy}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn flow"
+            disabled={busy}
+            onClick={async () => {
+              if (!user?.id) return
+              setBusy(true)
+              try {
+                await setRoles.mutateAsync({ id: user.id, roles: selected })
+                toast.success(t('system.users.users.saved'))
+                close()
+              } catch (err) {
+                toast.error(applyProblemDetails(err).title)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            {busy ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <SearchMultiSelect options={roleNames.map((r) => ({ value: r, label: r }))} value={selected} onChange={setSelected} />
+    </Modal>
+  )
+}
+
+/** "Permisos de {name}": los del rol se ven marcados y bloqueados ("(del rol)"); lo demás son extras togglables. */
+function ExtraPermissionsModal({
+  open,
+  user,
+  roles,
+  permissions,
+  onClose,
+}: {
+  open: boolean
+  user: UserSummaryDto | null
+  roles: readonly { name?: string | null; permissions?: string[] | null }[]
+  permissions: readonly { code?: string | null; label?: string | null; category?: string | null }[]
+  onClose: () => void
+}) {
+  const t = useT()
+  const setExtra = useSetUserExtraPermissions()
+  const [selected, setSelected] = useState<string[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const { data: categories } = useLookups('PermissionCategory')
+  const categoryLabel = (code: string) => categories?.find((c) => c.code === code)?.label ?? code
+
+  const fromRole = new Set((user?.roles ?? []).flatMap((rn) => roles.find((r) => r.name === rn)?.permissions ?? []))
+  const extra = selected ?? user?.extraPermissions ?? []
+  const groups = useMemo(() => groupPermissionsByCategory(permissions), [permissions])
+
+  const toggle = (code: string) => setSelected((prev) => {
+    const base = prev ?? user?.extraPermissions ?? []
+    return base.includes(code) ? base.filter((c) => c !== code) : [...base, code]
+  })
+
+  const close = () => {
+    setSelected(null)
+    onClose()
+  }
+
+  return (
+    <Modal
+      open={open}
+      title={t('system.users.users.extraModalTitle', { name: user?.fullName ?? '' })}
+      onClose={close}
+      dismissible={!busy}
+      size="lg"
+      footer={
+        <>
+          <button type="button" className="btn" onClick={close} disabled={busy}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn flow"
+            disabled={busy}
+            onClick={async () => {
+              if (!user?.id) return
+              setBusy(true)
+              try {
+                await setExtra.mutateAsync({ id: user.id, permissions: extra })
+                toast.success(t('system.users.users.saved'))
+                close()
+              } catch (err) {
+                toast.error(applyProblemDetails(err).title)
+              } finally {
+                setBusy(false)
+              }
+            }}
+          >
+            {busy ? t('common.loading') : t('ui.form.save')}
+          </button>
+        </>
+      }
+    >
+      <p className="note">{t('system.users.users.extraHint')}</p>
+      {groups.map((g) => {
+        const Icon = categoryIcon(g.category)
+        return (
+          <div key={g.category} className="permgrp">
+            <div className="permgrp-h">
+              <Icon />
+              <span>{categoryLabel(g.category)}</span>
+            </div>
+            <div className="permgrp-items">
+              {g.items.map((p) => {
+                const locked = fromRole.has(p.code ?? '')
+                const checked = locked || extra.includes(p.code ?? '')
+                return (
+                  <label key={p.code} className={locked ? 'permrow fromrole' : 'permrow'}>
+                    <input type="checkbox" checked={checked} disabled={locked} onChange={() => toggle(p.code ?? '')} />
+                    {p.label} {locked && <span className="tag">({t('system.users.users.fromRole')})</span>}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )
+      })}
+    </Modal>
+  )
+}
+
+export function UsersTab() {
+  const t = useT()
+  const lang = useLang()
+  const { me } = useSession()
+  const { data: users, isLoading } = useUsers()
+  const { data: roles = [] } = useRoles()
+  const { data: permissions = [] } = usePermissions()
+  const setMembership = useSetMembership()
+  const closeSessions = useCloseUserSessions()
+  const setMfaRequired = useSetMfaRequired()
+  const resetMfa = useResetUserMfa()
+  const canManagePin = useCanAny('devices.manage', 'admin.users')
+  const wmsOn = useModule(ModuleKeys.WmsLotSerial)
+  const canPin = canManagePin && wmsOn
+
+  const [q, setQ] = useState('')
+  const [includeSuspended, setIncludeSuspended] = useState(false)
+  const [editing, setEditing] = useState<UserSummaryDto | null | 'new'>(null)
+  const [rolesFor, setRolesFor] = useState<UserSummaryDto | null>(null)
+  const [permsFor, setPermsFor] = useState<UserSummaryDto | null>(null)
+  const [pinFor, setPinFor] = useState<UserSummaryDto | null>(null)
+  const [closingSessions, setClosingSessions] = useState<UserSummaryDto | null>(null)
+  const [mfaRequiredFor, setMfaRequiredFor] = useState<UserSummaryDto | null>(null)
+  const [resettingMfaFor, setResettingMfaFor] = useState<UserSummaryDto | null>(null)
+
+  const roleNames = useMemo(() => roles.map((r) => r.name ?? '').filter(Boolean), [roles])
+
+  const rows = useMemo(() => {
+    const all = users ?? []
+    return all
+      .filter((u) => includeSuspended || u.membershipStatus !== 'SUSPENDED')
+      .filter((u) => matchesQ(q, u.fullName, u.email))
+  }, [users, includeSuspended, q])
+
+  const columns = useMemo<DataColumn<UserSummaryDto>[]>(() => {
+    const cols: DataColumn<UserSummaryDto>[] = [
+      { id: 'fullName', header: t('system.users.users.colName'), card: 'title', sortValue: (u) => u.fullName ?? '', cell: (u) => u.fullName || '—' },
+      { id: 'email', header: t('system.users.users.colEmail'), sortValue: (u) => u.email ?? '', cell: (u) => <span className="mono">{u.email}</span> },
+      {
+        id: 'roles',
+        header: t('system.users.users.colRoles'),
+        cell: (u) => (
+          <button type="button" className="linklike" onClick={() => setRolesFor(u)}>
+            {(u.roles ?? []).length ? (u.roles ?? []).map((r) => <Chip key={r} tone="wh">{r}</Chip>) : t('system.users.users.roles')}
+          </button>
+        ),
+      },
+      {
+        id: 'extra',
+        header: t('system.users.users.colExtra'),
+        cell: (u) => (
+          <button type="button" className="linklike" onClick={() => setPermsFor(u)}>
+            {(u.extraPermissions ?? []).length ? `+${(u.extraPermissions ?? []).length}` : t('system.users.users.addExtra')}
+          </button>
+        ),
+      },
+      {
+        id: 'status',
+        header: t('system.users.users.colStatus'),
+        cell: (u) => {
+          const status = u.membershipStatus ?? 'ACTIVE'
+          const label =
+            status === 'ACTIVE'
+              ? t('system.users.users.statusActive')
+              : status === 'SUSPENDED'
+                ? t('system.users.users.statusSuspended')
+                : t('system.users.users.statusInvited')
+          return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <Chip tone={MEMBERSHIP_STATUS_TONE[status] ?? 'cap'}>{label}</Chip>
+              {status !== 'INVITED' && (
+                <label className="sw">
+                  <input
+                    type="checkbox"
+                    checked={status === 'ACTIVE'}
+                    disabled={u.id === me?.userId}
+                    onChange={async (e) => {
+                      if (!u.id) return
+                      try {
+                        await setMembership.mutateAsync({ id: u.id, status: e.target.checked ? 'ACTIVE' : 'SUSPENDED' })
+                        toast.success(t('system.users.users.membershipSaved'))
+                      } catch (err) {
+                        toast.error(applyProblemDetails(err).title)
+                      }
+                    }}
+                  />
+                  <span className="tk" />
+                </label>
+              )}
+            </span>
+          )
+        },
+      },
+      {
+        id: 'mfa',
+        header: t('system.users.users.colMfa'),
+        cell: (u) => (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Chip tone={u.mfaEnabled ? 'deliv' : 'fail'}>{u.mfaEnabled ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>
+            {u.mfaRequired && !u.mfaEnabled && <Chip tone="cap">{t('system.users.users.mfaPending')}</Chip>}
+          </span>
+        ),
+      },
+      { id: 'lastLogin', header: t('system.users.users.colLastLogin'), cell: (u) => formatDateTime(u.lastLoginUtc, lang) || '—' },
+    ]
+    if (canPin) {
+      cols.push({
+        id: 'pin',
+        header: t('system.users.users.colPin'),
+        cell: (u) => <Chip tone={u.hasPin ? 'deliv' : 'fail'}>{u.hasPin ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>,
+      })
+    }
+    return cols
+  }, [t, lang, canPin, setMembership, me?.userId])
+
+  const actions = useMemo<RowAction<UserSummaryDto>[]>(() => {
+    const list: RowAction<UserSummaryDto>[] = [
+      { key: 'edit', label: t('system.users.users.edit'), perm: 'admin.users', icon: <IconEdit />, onClick: (u) => setEditing(u) },
+      {
+        key: 'closeSessions',
+        label: t('system.users.users.closeSessions'),
+        perm: 'admin.users',
+        icon: <IconLogOut />,
+        onClick: (u) => setClosingSessions(u),
+      },
+    ]
+    if (canPin) {
+      list.push(
+        { key: 'assignPin', label: t('system.users.users.assignPin'), visible: (u) => !u.hasPin, icon: <IconKey />, onClick: (u) => setPinFor(u) },
+        {
+          key: 'resetPin',
+          label: t('system.users.users.resetPin'),
+          visible: (u) => Boolean(u.hasPin),
+          icon: <IconKey />,
+          onClick: (u) => setPinFor(u),
+        },
+      )
+    }
+    list.push(
+      {
+        key: 'requireMfa',
+        label: t('system.users.users.requireMfa'),
+        perm: 'admin.users',
+        visible: (u) => !u.mfaRequired,
+        icon: <IconShield />,
+        onClick: (u) => setMfaRequiredFor(u),
+      },
+      {
+        key: 'unrequireMfa',
+        label: t('system.users.users.unrequireMfa'),
+        perm: 'admin.users',
+        visible: (u) => Boolean(u.mfaRequired),
+        icon: <IconShield />,
+        onClick: (u) => setMfaRequiredFor(u),
+      },
+      {
+        key: 'resetMfa',
+        label: t('system.users.users.resetMfa'),
+        perm: 'admin.users',
+        visible: (u) => Boolean(u.mfaEnabled),
+        icon: <IconRotateCcw />,
+        onClick: (u) => setResettingMfaFor(u),
+      },
+    )
+    return list
+  }, [t, canPin])
+
+  return (
+    <>
+      <div className="head" style={{ marginBottom: 12 }}>
+        <div />
+        <div className="act">
+          <Can perm="admin.users">
+            <button type="button" className="btn flow" onClick={() => setEditing('new')}>
+              {t('system.users.users.new')}
+            </button>
+          </Can>
+        </div>
+      </div>
+      <Panel flush title={t('system.users.users.title')} subtitle={t('system.users.users.count', { count: rows.length })}>
+        <div className="qrow">
+          <QBox value={q} onChange={setQ} placeholder={t('system.users.users.searchPlaceholder')} />
+          <label className="sw">
+            <input type="checkbox" checked={includeSuspended} onChange={(e) => setIncludeSuspended(e.target.checked)} />
+            <span className="tk" />
+            {t('system.users.users.includeSuspended')}
+          </label>
+        </div>
+        <DataTable
+          label={t('system.users.users.title')}
+          columns={columns}
+          rows={rows}
+          rowKey={(u) => u.id ?? 0}
+          defaultSort={{ id: 'fullName', desc: false }}
+          pageSize={25}
+          loading={isLoading}
+          rowActions={actions}
+        />
+      </Panel>
+
+      <p className="note" style={{ marginTop: 16 }}>
+        {t('system.users.users.note')}
+      </p>
+
+      <CreateUserModal open={editing === 'new'} roleNames={roleNames} onClose={() => setEditing(null)} />
+      <EditUserModal open={editing !== null && editing !== 'new'} user={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />
+      <RolesModal open={rolesFor !== null} user={rolesFor} roleNames={roleNames} onClose={() => setRolesFor(null)} />
+      <ExtraPermissionsModal open={permsFor !== null} user={permsFor} roles={roles} permissions={permissions} onClose={() => setPermsFor(null)} />
+      <PinModal open={pinFor !== null} user={pinFor} onClose={() => setPinFor(null)} />
+
+      <ConfirmDialog
+        open={closingSessions !== null}
+        title={t('system.users.users.closeSessionsTitle')}
+        message={t('system.users.users.closeSessionsBody', { name: closingSessions?.fullName ?? '' })}
+        confirmLabel={t('system.users.users.closeSessions')}
+        onConfirm={async () => {
+          if (!closingSessions?.id) return
+          await closeSessions.mutateAsync(closingSessions.id)
+          toast.success(t('system.users.users.closeSessionsDone'))
+        }}
+        onClose={() => setClosingSessions(null)}
+      />
+
+      <ConfirmDialog
+        open={mfaRequiredFor !== null}
+        title={t(mfaRequiredFor?.mfaRequired ? 'system.users.users.unrequireMfaTitle' : 'system.users.users.requireMfaTitle')}
+        message={t(mfaRequiredFor?.mfaRequired ? 'system.users.users.unrequireMfaBody' : 'system.users.users.requireMfaBody', {
+          name: mfaRequiredFor?.fullName ?? '',
+        })}
+        confirmLabel={t(mfaRequiredFor?.mfaRequired ? 'system.users.users.unrequireMfa' : 'system.users.users.requireMfa')}
+        onConfirm={async () => {
+          if (!mfaRequiredFor?.id) return
+          await setMfaRequired.mutateAsync({ id: mfaRequiredFor.id, required: !mfaRequiredFor.mfaRequired })
+          toast.success(t('system.users.users.mfaRequiredSaved'))
+        }}
+        onClose={() => setMfaRequiredFor(null)}
+      />
+
+      <ConfirmDialog
+        open={resettingMfaFor !== null}
+        title={t('system.users.users.resetMfaTitle')}
+        message={t('system.users.users.resetMfaBody', { name: resettingMfaFor?.fullName ?? '' })}
+        confirmLabel={t('system.users.users.resetMfa')}
+        onConfirm={async () => {
+          if (!resettingMfaFor?.id) return
+          await resetMfa.mutateAsync(resettingMfaFor.id)
+          toast.success(t('system.users.users.resetMfaDone'))
+        }}
+        onClose={() => setResettingMfaFor(null)}
+      />
+    </>
+  )
+}

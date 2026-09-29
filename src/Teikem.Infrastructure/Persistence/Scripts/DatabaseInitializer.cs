@@ -39,6 +39,21 @@ public sealed class DatabaseInitializer(IServiceProvider services, IConfiguratio
         logger.LogInformation("Inicialización de BD completada.");
     }
 
+    /// <summary>
+    /// Lote 10 (db-reset, pedido de Luis 2026-09-29): borra la base de ConnectionStrings:Teikem y la vuelve a crear con RunAsync
+    /// (estructura, seed y seeders), es decir, la deja exactamente como un db-init sobre un servidor limpio. Las reglas de
+    /// seguridad (--yes, servidor local, nunca MSWM*) las aplica quien llama (DbResetRules) antes de llegar aquí.
+    /// </summary>
+    public async Task ResetAsync(CancellationToken ct = default)
+    {
+        var connectionString = config.GetConnectionString("Teikem")
+            ?? throw new InvalidOperationException("Falta ConnectionStrings:Teikem.");
+        var runner = new SqlScriptRunner(connectionString, logger);
+        await runner.DropDatabaseAsync(ct);
+        await RunAsync(ct);
+        logger.LogInformation("Base de datos recreada en blanco e inicializada.");
+    }
+
     /// <summary>Sube desde el directorio de ejecución hasta encontrar Teikem.sln (o usa la ruta configurada).</summary>
     public static string ResolveRepoRoot(string? configured)
     {

@@ -83,10 +83,18 @@ async function pickProduct(scope: Page | Locator, label: string | RegExp, sku: s
   await scope.getByRole('option', { name: new RegExp(`^${sku} · `) }).click()
 }
 
+/** Elige ALM-01 en un WarehousePicker (combobox que filtra en el cliente por código o nombre). */
+async function pickWarehouse(scope: Page | Locator, box: Locator) {
+  await box.click()
+  await box.fill('ALM-01')
+  await scope.getByRole('option', { name: WAREHOUSE, exact: true }).click()
+  await expect(box).toHaveValue(WAREHOUSE)
+}
+
 /** Cola de tareas de ALM-01 (el filtro Almacén de la cola es el primer control de 'Filtros'). */
 async function openAlm01Tasks(page: Page) {
   await page.goto('/warehouse/tasks')
-  await page.getByRole('group', { name: 'Filtros' }).getByRole('combobox').first().selectOption({ label: WAREHOUSE })
+  await pickWarehouse(page, page.getByRole('group', { name: 'Filtros' }).getByRole('combobox').first())
 }
 
 /** Espera el aviso (toast) de éxito con ese texto. */
@@ -211,11 +219,13 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('button', { name: 'Ajustar' }).click()
     const dialog = page.getByRole('dialog', { name: 'Ajuste de inventario' })
     await pickProduct(dialog, /Producto/, SKU)
-    await dialog.getByLabel(/^Almacén/).selectOption({ label: WAREHOUSE })
-    const bin = dialog.getByLabel(/^Posición/)
+    await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
+    // BinPicker: combobox con buscador sobre las posiciones del almacén elegido
+    const bin = dialog.getByRole('combobox', { name: /^Posición/ })
     await expect(bin).toBeEnabled()
-    await expect(bin.locator('option').nth(1)).toBeAttached()
-    await bin.selectOption({ index: 1 })
+    await bin.click()
+    await dialog.getByRole('option').first().click()
+    await expect(bin).not.toHaveValue('')
     await dialog.getByLabel(/^Cantidad/).fill('10')
     await dialog.getByLabel(/^Motivo/).selectOption('FOUND')
     await dialog.getByLabel(/^Notas/).fill(`Recorrido e2e ${STAMP}`)
@@ -261,7 +271,7 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('button', { name: 'Nueva orden de compra' }).click()
     dialog = page.getByRole('dialog')
     await dialog.getByLabel(/^Proveedor/).selectOption({ label: SUPPLIER })
-    await dialog.getByLabel(/^Almacén/).selectOption({ label: WAREHOUSE })
+    await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
     await pickProduct(dialog, /Producto/, SKU)
     await dialog.getByLabel(/^Cantidad ordenada/).fill('5')
     // el producto nuevo no tiene costo de compra: la línea lo pide
@@ -289,7 +299,7 @@ test.describe('Lote F6 — escritorio', () => {
     await page.getByRole('button', { name: 'Nuevo recibo' }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByLabel(/^Recibir/).selectOption('BLIND')
-    await dialog.getByLabel(/^Almacén/).selectOption({ label: WAREHOUSE })
+    await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
     await pickProduct(dialog, /Producto/, SKU)
     await dialog.getByLabel(/^Cantidad recibida/).fill('5')
     await shot(page, 'recibo-nuevo')
@@ -338,9 +348,11 @@ test.describe('Lote F6 — escritorio', () => {
     await row.getByRole('button', { name: 'Completar' }).click()
     dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Posición sugerida:')).toBeVisible()
-    const toBin = dialog.getByLabel(/^Posición destino/)
-    const suggested = toBin.locator('option', { hasText: '(sugerida)' }).first()
-    await toBin.selectOption({ label: (await suggested.textContent()) ?? '' })
+    // BinPicker: las sugeridas del acomodo van primero con la marca 'Sugerida'
+    const toBin = dialog.getByRole('combobox', { name: /^Posición destino/ })
+    await toBin.click()
+    await dialog.getByRole('option').filter({ hasText: 'Sugerida' }).first().click()
+    await expect(toBin).not.toHaveValue('')
     await shot(page, 'tarea-completar')
     await dialog.getByRole('button', { name: /Guardar|Completar/ }).click()
     await expectToast(page, 'Tarea completada.')
@@ -359,7 +371,7 @@ test.describe('Lote F6 — escritorio', () => {
     await page.goto('/warehouse/pick-batches')
     await page.getByRole('button', { name: 'Recolectar' }).click()
     let dialog = page.getByRole('dialog')
-    await dialog.getByLabel(/^Almacén/).selectOption({ label: WAREHOUSE })
+    await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
     await pickProduct(dialog, /Producto/, SKU)
     await dialog.getByLabel(/^Cantidad/).fill('3')
     await shot(page, 'recoleccion-nueva')

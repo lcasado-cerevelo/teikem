@@ -119,9 +119,12 @@ public sealed class AuthService(
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().FirstAsync(x => x.TenantId == tenantId, ct);
         if (!t.IsActive) throw new ForbiddenException("La compañía está inactiva.");
 
-        // MFA
+        // MFA: exigido por la compañía entera (Tenant.MfaRequired) o solo por esta membresía (UserTenant.MfaRequired,
+        // Lote F8a: un administrador se lo asignó puntualmente a esta persona).
         var totp = await ConfirmedTotpAsync(user.Id, ct);
-        if (totp is not null || t.MfaRequired)
+        var membershipMfaRequired = !user.IsPlatformAdmin && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
+            .AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId && m.MfaRequired, ct);
+        if (totp is not null || t.MfaRequired || membershipMfaRequired)
         {
             var (challenge, _) = jwt.CreateMfaChallengeToken(user, tenantId, req.DeviceInfo);
             await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", mfa = totp is not null ? "required" : "enrollment_required" }, ct);
@@ -562,13 +565,31 @@ public sealed class AuthService(
     {
         var userId = ((TenantContext)tenant).RequireUserId();
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
-        var factors = await db.UserMfaFactors.Where(f => f.UserId == userId).ToListAsync(ct);
+        await DisableTotpCoreAsync(user, ct);
+    }
+
+    /// <summary>
+    /// Lote F8a: un administrador (admin.users) resetea el MFA de otro usuario de la compañía activa que perdió su
+    /// dispositivo — le quita el TOTP confirmado y sus códigos de recuperación; en su próximo login (si sigue exigido,
+    /// por la compañía o por su propia membresía) vuelve a enrolar uno nuevo desde cero.
+    /// </summary>
+    public async Task AdminResetMfaAsync(int userId, CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        if (!await db.UserTenants.AnyAsync(m => m.UserId == userId && m.TenantId == tenantId, ct)) throw new NotFoundException("Usuario", userId);
+        var user = await users.FindByIdAsync(userId.ToString()) ?? throw new NotFoundException("Usuario", userId);
+        await DisableTotpCoreAsync(user, ct);
+    }
+
+    private async Task DisableTotpCoreAsync(ApplicationUser user, CancellationToken ct)
+    {
+        var factors = await db.UserMfaFactors.Where(f => f.UserId == user.Id).ToListAsync(ct);
         foreach (var f in factors) { f.IsActive = false; f.IsConfirmed = false; }
-        db.MfaRecoveryCodes.RemoveRange(db.MfaRecoveryCodes.Where(c => c.UserId == userId));
+        db.MfaRecoveryCodes.RemoveRange(db.MfaRecoveryCodes.Where(c => c.UserId == user.Id));
         user.TwoFactorEnabled = false;
         await users.UpdateAsync(user);
         await db.SaveChangesAsync(ct);
-        await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, userId, tenant.TenantId, new { action = "disabled" }, ct);
+        await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenant.TenantId, new { action = "disabled" }, ct);
     }
 
     private async Task<UserMfaFactor?> ConfirmedTotpAsync(int userId, CancellationToken ct)

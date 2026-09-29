@@ -130,17 +130,19 @@ test.describe('Lote F1 — escritorio', () => {
     await expect(page.getByRole('button', { name: 'Entrar' })).toBeVisible()
     await shot(page, 'login')
     await login(page, ADMIN)
-    await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
+    // Lote F8a: el título del Pulso es la fecha del día; 'Organizar mi Pulso' confirma que es la pantalla de inicio
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Organizar mi Pulso' })).toBeVisible()
     const menu = page.getByRole('complementary', { name: 'Menú principal' })
     await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
     await expect(menu.getByRole('link', { name: 'Pulso del día' })).toBeVisible()
   })
 
-  test('2. despacho: el menú no muestra Administración; Mi cuenta está disponible', async ({ page }) => {
+  test('2. despacho: el menú no muestra Sistema; Mi cuenta está disponible', async ({ page }) => {
     await login(page, DISPATCH)
     const menu = page.getByRole('complementary', { name: 'Menú principal' })
     await expect(menu.getByRole('button', { name: 'Operación' })).toBeVisible()
-    await expect(menu.getByRole('button', { name: 'Administración' })).toHaveCount(0)
+    await expect(menu.getByRole('button', { name: 'Sistema' })).toHaveCount(0)
     await page.getByRole('link', { name: /Carlos Rivera|despacho@teikem\.local/ }).click()
     await expect(page).toHaveURL(/\/account$/)
     await expect(page.getByRole('heading', { level: 1, name: 'Mi cuenta' })).toBeVisible()
@@ -169,13 +171,13 @@ test.describe('Lote F1 — escritorio', () => {
   test('4. Pulso muestra al menos un indicador y un gráfico del tenant demo', async ({ page, request }) => {
     await ensureChartInPulse(request)
     await login(page, ADMIN)
-    await expect(page.getByRole('heading', { level: 2, name: 'Indicadores' })).toBeVisible()
-    await expect(page.getByRole('heading', { level: 2, name: 'Gráficos' })).toBeVisible()
-    await expect(page.locator('h2:has-text("Indicadores") + div > *').first()).toBeVisible()
-    await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Tus indicadores' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'Tus gráficos' })).toBeVisible()
+    await expect(page.locator('.river > .node').first()).toBeVisible()
+    await expect(page.locator('.pulse-charts > *').first()).toBeVisible()
     await shot(page, 'pulso')
     // El shell desplaza dentro de `.stage` (una captura de página completa no lo incluye): segunda captura con los gráficos.
-    await page.getByRole('heading', { level: 2, name: 'Gráficos' }).evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await page.getByRole('heading', { level: 2, name: 'Tus gráficos' }).evaluate((el) => el.scrollIntoView({ block: 'start' }))
     await page.waitForTimeout(1500) // la animación de entrada de los gráficos es de la librería (JS), no CSS
     await shot(page, 'pulso-graficos')
   })
@@ -255,7 +257,9 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await ensureChartInPulse(request)
     await login(page, ADMIN)
     expect(page.viewportSize()?.width).toBe(360)
-    await expect(page.getByRole('heading', { level: 1, name: 'Pulso del día' })).toBeVisible()
+    // Lote F8a: el título del Pulso es la fecha del día; 'Organizar mi Pulso' confirma que es la pantalla de inicio
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Organizar mi Pulso' })).toBeVisible()
 
     // Cajón: oculto hasta que se abre con el botón de menú
     const rail = page.locator('#app-rail')
@@ -269,11 +273,11 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await expect(rail).not.toBeInViewport()
 
     // Tarjetas apiladas: todas en una sola columna (mismo borde izquierdo)
-    const cards = page.locator('h2:has-text("Indicadores") + div > *')
+    const cards = page.locator('.river > .node')
     await expect(cards.first()).toBeVisible()
     const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
     expect(new Set(lefts).size).toBe(1)
-    await expect(page.locator('h2:has-text("Gráficos") + div > *').first()).toBeVisible()
+    await expect(page.locator('.pulse-charts > *').first()).toBeVisible()
     await expectNoHorizontalScroll(page)
     await shot(page, 'pulso-movil')
 

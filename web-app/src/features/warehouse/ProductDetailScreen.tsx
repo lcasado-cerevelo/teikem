@@ -33,6 +33,7 @@ import {
 } from '../../kernel/ui'
 import {
   useProduct,
+  useProductCategories,
   useProductLots,
   useProductSerials,
   useSetProductActive,
@@ -48,6 +49,12 @@ import { moneySchema, volumeM3Schema, weightKgSchema } from './productRules'
 type TabKey = 'data' | 'lots' | 'serials'
 const PICKING_ZONE = 'PICKING'
 
+/** Nivel de indentación a partir de la ruta ("Raíz / Hija / Nieta") que arma el servidor (réplica de ProductCategoriesPanel). */
+function levelOf(path: string | null | undefined): number {
+  if (!path) return 0
+  return path.split('/').length - 1
+}
+
 
 // ---- Pestaña Datos ----
 function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetailDto }) {
@@ -57,6 +64,14 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
   const update = useUpdateProduct()
   const { data: trackingTypes = [] } = useLookups('TrackingType')
   const { data: uoms = [] } = useLookups('UnitOfMeasure')
+  const { data: categories = [] } = useProductCategories()
+  const categoryOptions = useMemo(
+    () =>
+      categories
+        .filter((c) => c.isActive)
+        .map((c) => ({ value: String(c.id), label: '  '.repeat(levelOf(c.path)) + (c.name ?? '') })),
+    [categories],
+  )
   const hasMovements = detail.hasMovements === true
 
   const schema = useMemo(
@@ -65,6 +80,7 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
         .object({
           name: z.string().trim().min(1, t('warehouse.products.errors.nameRequired')).max(200, t('warehouse.products.errors.nameMax')),
           barcode: z.string().trim().max(60, t('warehouse.products.errors.barcodeMax')),
+          categoryId: z.string(),
           trackingType: z.string(),
           baseUom: z.string(),
           ownerClientPublicId: z.string().nullable(),
@@ -90,6 +106,7 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
     values: {
       name: product.name ?? '',
       barcode: product.barcode ?? '',
+      categoryId: product.categoryId != null ? String(product.categoryId) : '',
       trackingType: product.trackingTypeCode ?? '',
       baseUom: product.baseUomCode ?? '',
       ownerClientPublicId: product.ownerClientPublicId ?? null,
@@ -129,6 +146,8 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
             name: v.name,
             barcode: v.barcode || null,
             clearBarcode: v.barcode.trim() === '' ? true : null,
+            categoryId: v.categoryId ? Number(v.categoryId) : null,
+            clearCategory: v.categoryId ? null : true,
             trackingType: hasMovements ? null : v.trackingType || null,
             baseUom: hasMovements ? null : v.baseUom || null,
             ownerClientPublicId: hasMovements ? null : v.ownerClientPublicId,
@@ -169,13 +188,23 @@ function DataTab({ publicId, detail }: { publicId: string; detail: ProductDetail
           <Field name="barcode" label={t('warehouse.products.fields.barcode')}>
             <TextInput maxLength={60} />
           </Field>
+          <Field name="categoryId" label={t('warehouse.products.fields.category')}>
+            <Select options={categoryOptions} placeholder={t('warehouse.products.fields.none')} />
+          </Field>
+        </div>
+        <div className="r2">
           <Field
             name="trackingType"
             label={t('warehouse.products.fields.trackingType')}
             help={hasMovements ? t('warehouse.products.movementsLock') : undefined}
           >
-            <Select options={trackingTypes.map((o) => ({ value: o.code, label: o.label }))} disabled={hasMovements} />
+            <Select
+              options={trackingTypes.map((o) => ({ value: o.code, label: o.label }))}
+              placeholder={t('warehouse.products.fields.none')}
+              disabled={hasMovements}
+            />
           </Field>
+          <div aria-hidden="true" />
         </div>
         <div className="r2">
           <Field

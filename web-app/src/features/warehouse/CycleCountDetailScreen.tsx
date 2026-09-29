@@ -35,9 +35,9 @@ import {
   type DataColumn,
   type RowAction,
 } from '../../kernel/ui'
-import { productLabel, useCycleCount, useCycleCountAction, useProductLots, useWarehouseBins, warehouseKeys, type CycleCountDetailDto } from './api'
+import { productLabel, useCycleCount, useCycleCountAction, useProductLots, warehouseKeys, type CycleCountDetailDto } from './api'
 import { countLineIssues, countLotIssue, formatDateTime, formatNumber, parseSerials, remapProblemFields, type LineIssue } from './lineRules'
-import { ProductPickerInput } from './pickers'
+import { BinPickerInput, ProductPickerInput } from './pickers'
 
 type CountLine = components['schemas']['CycleCountLineDto']
 
@@ -180,11 +180,6 @@ function AddLineModal({ detail, onClose }: { detail: CycleCountDetailDto; onClos
   const t = useT()
   const issueText = useIssueText()
   const action = useCycleCountAction()
-  const bins = useWarehouseBins(detail.count?.warehousePublicId, {}, { handleAccessDenied: false })
-  const binOptions = useMemo(
-    () => (bins.data ?? []).filter((b) => b.isActive !== false).map((b) => ({ value: String(b.id), label: [b.code, b.zoneCode].filter(Boolean).join(' · ') })),
-    [bins.data],
-  )
   const schema = useMemo(
     () =>
       z
@@ -270,7 +265,7 @@ function AddLineModal({ detail, onClose }: { detail: CycleCountDetailDto; onClos
       >
         <div className="r2">
           <Field name="binId" label={t('warehouse.cycleCounts.detail.bin')} required>
-            <Select options={binOptions} placeholder={t('warehouse.receipts.choose')} />
+            <BinPickerInput warehousePublicId={detail.count?.warehousePublicId} />
           </Field>
           <Field name="productPublicId" label={t('warehouse.receipts.fields.product')} required>
             <ProductPickerInput

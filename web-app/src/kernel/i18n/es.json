@@ -3,7 +3,8 @@
     "loading": "Cargando…",
     "cancel": "Cancelar",
     "retry": "Reintentar",
-    "copy": "Copiar"
+    "copy": "Copiar",
+    "done": "Listo"
   },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
@@ -17,7 +18,9 @@
     "fields": {
       "email": "Correo electrónico",
       "password": "Contraseña",
-      "mfaCode": "Código de verificación"
+      "mfaCode": "Código de verificación",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña"
     },
     "errors": {
       "emailInvalid": "Escriba un correo válido.",
@@ -76,11 +79,29 @@
     "tenant": "Compañía",
     "account": "Mi cuenta",
     "logout": "Salir",
-    "sessionError": "No se pudo cargar su sesión",
-    "placeholder": {
-      "title": "En construcción",
-      "body": "Esta pantalla llega en una pieza siguiente del lote."
+    "palette": {
+      "label": "Paleta de comandos",
+      "placeholder": "Buscar o ejecutar…",
+      "open": "Buscar o ejecutar",
+      "empty": "Ninguna pantalla coincide con la búsqueda.",
+      "hint": {
+        "navigate": "navegar",
+        "open": "abrir",
+        "close": "cerrar"
+      }
     },
+    "live": "en vivo",
+    "clock": "Hora actual",
+    "theme": {
+      "label": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "placeholder": {
+      "body": "Esta pantalla llega en un lote posterior.",
+      "another": "Abrir otra pantalla"
+    },
+    "sessionError": "No se pudo cargar su sesión",
     "notFound": {
       "title": "Pantalla no encontrada",
       "body": "La dirección no corresponde a ninguna pantalla."
@@ -89,24 +110,177 @@
   "nav": {
     "groups": {
       "ops": "Operación",
-      "catalog": "Catálogo",
       "warehouse": "Almacén",
+      "money": "Contabilidad",
+      "catalog": "Catálogo",
       "analytics": "Análisis",
-      "admin": "Administración"
+      "system": "Sistema",
+      "portal": "Portal de clientes"
     },
-    "pulse": "Pulso del día",
-    "orders": "Órdenes",
-    "warehouses": "Almacenes",
-    "products": "Productos",
-    "inventory": "Inventario",
-    "receipts": "Recepción",
-    "warehouseTasks": "Tareas de almacén",
-    "cycleCounts": "Conteo cíclico",
-    "pickBatches": "Recolección y empaque",
-    "suppliers": "Proveedores",
-    "purchaseOrders": "Órdenes de compra",
-    "dockAppointments": "Citas de muelle",
-    "crossDockPlans": "Cruce de muelle"
+    "pulse": {
+      "title": "Pulso del día",
+      "subtitle": "las dos corrientes en vivo"
+    },
+    "orders": {
+      "title": "Órdenes",
+      "subtitle": "lista maestra con filtros — incluye la entrada de nuevas órdenes"
+    },
+    "scan": {
+      "title": "Estación de escaneo",
+      "subtitle": "inbound / outbound / COD"
+    },
+    "dispatch": {
+      "title": "Sala de despacho",
+      "subtitle": "armar y despachar rutas"
+    },
+    "monitor": {
+      "title": "Monitoreo de ruta",
+      "subtitle": "mapa en vivo, telemetría y progreso"
+    },
+    "warehouses": {
+      "title": "Almacenes",
+      "subtitle": "alta y mantenimiento de tus almacenes"
+    },
+    "products": {
+      "title": "Productos",
+      "subtitle": "maestro de SKU: costo, precio, mínimos y categoría"
+    },
+    "inventory": {
+      "title": "Inventario",
+      "subtitle": "lote / serie / ledger"
+    },
+    "receipts": {
+      "title": "Recibo",
+      "subtitle": "ASN, muelle y verificación de lo que entra"
+    },
+    "warehouseTasks": {
+      "title": "Tareas de almacén",
+      "subtitle": "cola unificada: recepción, reabasto, conteo y cruce de muelle"
+    },
+    "cycleCounts": {
+      "title": "Conteo cíclico",
+      "subtitle": "varianza y ajuste contra el ledger"
+    },
+    "pickBatches": {
+      "title": "Recolección y empaque",
+      "subtitle": "escoge productos, recolecta y arma el empaque"
+    },
+    "suppliers": {
+      "title": "Proveedores",
+      "subtitle": "proveedores de compras: contacto, término de pago y estatus"
+    },
+    "purchaseOrders": {
+      "title": "Órdenes de compra",
+      "subtitle": "órdenes de compra a proveedores: líneas, estatus y faltantes"
+    },
+    "dockAppointments": {
+      "title": "Citas de muelle",
+      "subtitle": "agenda de citas de muelle del almacén"
+    },
+    "crossDockPlans": {
+      "title": "Cruce de muelle",
+      "subtitle": "de muelle a muelle sin guardar"
+    },
+    "purchaseAccounting": {
+      "title": "Contabilización de compras",
+      "subtitle": "ver, aceptar y exportar a tu sistema contable"
+    },
+    "dispatchAccounting": {
+      "title": "Contabilización de despachos",
+      "subtitle": "baja de inventario, costeo y exportación"
+    },
+    "cod": {
+      "title": "Procesar entregas",
+      "subtitle": "cobros, cuadre y remesas"
+    },
+    "billing": {
+      "title": "Facturación",
+      "subtitle": "corridas y exportación"
+    },
+    "driverPay": {
+      "title": "Liquidación a choferes",
+      "subtitle": "pagos por entrega, intento y viaje"
+    },
+    "clients": {
+      "title": "Clientes y contratos",
+      "subtitle": "cuentas, SLA, tarifas"
+    },
+    "consignees": {
+      "title": "Consignatarios",
+      "subtitle": "destinatarios de todos los clientes"
+    },
+    "drivers": {
+      "title": "Choferes y tarifas",
+      "subtitle": "maestro: pago por entrega, intento y viaje"
+    },
+    "fleet": {
+      "title": "Flota y mantenimiento",
+      "subtitle": "vehículos y documentos"
+    },
+    "reports": {
+      "title": "Vistas e informes",
+      "subtitle": "guardados y por entidad"
+    },
+    "customFields": {
+      "title": "Campos personalizados",
+      "subtitle": "por entidad, sin deploy"
+    },
+    "indicators": {
+      "title": "Indicadores",
+      "subtitle": "KPIs operacionales"
+    },
+    "charts": {
+      "title": "Gráficos",
+      "subtitle": "barras, dona y línea por fuente de datos"
+    },
+    "printers": {
+      "title": "Impresoras y labels",
+      "subtitle": "impresión por estación"
+    },
+    "users": {
+      "title": "Roles y usuarios",
+      "subtitle": "RBAC: roles, permisos y usuarios"
+    },
+    "devices": {
+      "title": "Aparatos móviles",
+      "subtitle": "aparatos con acceso a Teikem Almacén y su código de registro"
+    },
+    "catalogs": {
+      "title": "Catálogos de valores",
+      "subtitle": "las listas que alimentan chips y selects en toda la aplicación"
+    },
+    "integrations": {
+      "title": "Integraciones / API",
+      "subtitle": "ERP, webhooks"
+    },
+    "audit": {
+      "title": "Seguridad y auditoría",
+      "subtitle": "logs y trazabilidad"
+    },
+    "settings": {
+      "title": "Ajustes de la compañía",
+      "subtitle": "reglas y pipeline"
+    },
+    "portalHome": {
+      "title": "Página principal",
+      "subtitle": "resumen de tus órdenes y tu cuenta"
+    },
+    "portalOrders": {
+      "title": "Entrada de órdenes",
+      "subtitle": "crea órdenes de tu cuenta"
+    },
+    "portalConsignees": {
+      "title": "Consignatarios",
+      "subtitle": "tus destinatarios frecuentes"
+    },
+    "portalSettings": {
+      "title": "Configuración",
+      "subtitle": "impresoras, labels y ajustes de tu cuenta"
+    },
+    "portalProfile": {
+      "title": "Perfil",
+      "subtitle": "información de tu cuenta"
+    }
   },
   "status": {
     "none": "Sin estatus",
@@ -191,7 +365,17 @@
     "warehousePicker": {
       "placeholder": "Seleccione un almacén…",
       "none": "No hay almacenes activos.",
-      "noAccess": "Su usuario no puede consultar almacenes."
+      "noAccess": "Su usuario no puede consultar almacenes.",
+      "noMatch": "Ningún almacén coincide.",
+      "clear": "Quitar almacén"
+    },
+    "binPicker": {
+      "placeholder": "Buscar posición por código o zona…",
+      "pickWarehouseFirst": "Elija primero un almacén",
+      "none": "No hay posiciones que coincidan.",
+      "noAccess": "Su usuario no puede consultar posiciones.",
+      "clear": "Quitar posición",
+      "suggested": "Sugerida"
     },
     "productPicker": {
       "placeholder": "Buscar producto por SKU o nombre…",
@@ -272,7 +456,8 @@
       "profile": "Perfil",
       "password": "Contraseña",
       "mfa": "Verificación en dos pasos",
-      "sessions": "Sesiones"
+      "sessions": "Sesiones",
+      "pin": "PIN de la app"
     },
     "profile": {
       "title": "Perfil",
@@ -347,6 +532,31 @@
       "revokeBody": "Se cerrará la sesión en {device}. Ese dispositivo tendrá que volver a iniciar sesión.",
       "revoked": "Sesión cerrada.",
       "empty": "No hay sesiones activas."
+    },
+    "pin": {
+      "title": "PIN de Teikem Almacén",
+      "moduleTag": "solo con módulo Almacén",
+      "subtitle": "El PIN corto para entrar en Teikem Almacén sin contraseña.",
+      "hasPinYes": "Tiene un PIN fijado.",
+      "hasPinNo": "Todavía no tiene un PIN fijado.",
+      "updated": "Última actualización: {date}.",
+      "lockedUntil": "Bloqueado hasta: {date}.",
+      "notLocked": "Bloqueado hasta: no aplica.",
+      "set": "Fijar PIN",
+      "change": "Cambiar PIN",
+      "remove": "Quitar PIN",
+      "modalSetTitle": "Fijar PIN",
+      "modalChangeTitle": "Cambiar PIN",
+      "currentPassword": "Contraseña actual",
+      "pin": "PIN nuevo",
+      "confirmPin": "Confirmar PIN",
+      "mismatch": "Los PIN no coinciden.",
+      "removeTitle": "Quitar el PIN",
+      "removeBody": "Ya no podrá entrar en Teikem Almacén con un PIN; tendrá que fijar uno nuevo para volver a usarlo.",
+      "removed": "PIN quitado.",
+      "saved": "PIN guardado.",
+      "cancel": "Cancelar",
+      "save": "Guardar"
     }
   },
   "analytics": {
@@ -354,13 +564,45 @@
       "title": "Pulso del día",
       "subtitle": "Bienvenido, {name}. Así viene el día en su compañía.",
       "welcomeTitle": "Bienvenido, {name}",
-      "welcomeBody": "Su usuario no tiene permiso para ver los indicadores y gráficos del Pulso del día. Pida al administrador de su compañía que se lo asigne.",
-      "moduleOffBody": "Los indicadores y gráficos del Pulso del día son parte del módulo de Análisis, que no está activo en su compañía. Pida al administrador que lo active.",
-      "emptyTitle": "Todavía no hay nada en Pulso",
-      "emptyBody": "Marque indicadores o gráficos para que aparezcan aquí (opción «Mostrar en Pulso del día»).",
-      "indicators": "Indicadores",
-      "charts": "Gráficos",
+      "welcomeBody": "Su Pulso del día todavía no tiene paneles: su usuario no tiene permisos del Pulso o los módulos de su compañía no los incluyen. Pida al administrador de su compañía que se los asigne.",
+      "noItemsTitle": "Aún no tienes indicadores ni gráficos en tu Pulso",
+      "noItemsBody": "Marque indicadores o gráficos con «Mostrar en Pulso del día», o muestre los paneles que ocultó con «Organizar mi Pulso».",
+      "noItemsLink": "Ir a Indicadores",
       "chartEmpty": "Este gráfico no tiene datos en el rango configurado.",
+      "showInPulseMine": "Mostrar en Pulso del día",
+      "showInPulseCompany": "…en el de la compañía",
+      "panels": {
+        "INDICATORS": "Tus indicadores",
+        "CHARTS": "Tus gráficos"
+      },
+      "organizeMine": "Organizar mi Pulso",
+      "organizeCompany": "Organizar el de la compañía",
+      "personal": "Pulso personal",
+      "company": "Pulso de la compañía",
+      "backToCompany": "Volver al de la compañía",
+      "resetTitle": "Volver al Pulso de la compañía",
+      "resetBody": "Se borran su orden y sus ocultos del Pulso y verá el de la compañía. Sus rangos de fecha se conservan.",
+      "resetDone": "Ahora ve el Pulso de la compañía.",
+      "organizer": {
+        "titleMine": "Organizando mi Pulso",
+        "titleCompany": "Organizando el Pulso de la compañía (lo verá todo el que no tenga uno personal)",
+        "hint": "Arrastre con el ratón o use ▲ ▼. Con el foco en el asa, las flechas ↑ ↓ también mueven.",
+        "hintTouch": "Use ▲ ▼ para mover y «Ocultar» para quitar sin borrar.",
+        "personalNote": "Ahora ve su Pulso personal: al guardar, este orden y estos ocultos pasan a ser los de la compañía.",
+        "done": "Listo",
+        "saved": "Pulso guardado",
+        "panelsLabel": "Paneles del Pulso",
+        "itemsLabel": "Elementos de {name}",
+        "noItems": "Sin elementos que pueda ver.",
+        "handle": "Mover {name}",
+        "moveUp": "Subir {name}",
+        "moveDown": "Bajar {name}",
+        "hide": "Ocultar",
+        "show": "Mostrar",
+        "hideFor": "Ocultar {name}",
+        "showFor": "Mostrar {name}",
+        "hidden": "Oculto"
+      },
       "warehouse": {
         "title": "Almacén",
         "subtitle": "Saldo actual (no depende de un rango de fecha). El filtro de categoría o producto aplica a las tarjetas de saldo; los contadores de documentos solo usan el almacén.",
@@ -438,6 +680,113 @@
       "footer": "{count} eventos · {window}",
       "footerOne": "1 evento · {window}",
       "more": "Ver más"
+    },
+    "indicators": {
+      "title": "Indicadores",
+      "sub": "KPIs de un solo número, calculados sobre una fuente de datos",
+      "newInd": "Nuevo indicador",
+      "newTitle": "Nuevo indicador",
+      "editTitle": "Editar indicador",
+      "nameLabel": "Nombre del indicador",
+      "namePh": "ej. Órdenes entregadas hoy",
+      "datasetLabel": "Fuente de datos",
+      "fnLabel": "Cálculo",
+      "fieldLabel": "Campo",
+      "saveBtn": "Guardar indicador",
+      "dateRangeLabel": "Rango de fecha",
+      "noDateField": "Esta fuente no tiene un campo de fecha aplicable — es un estado actual, no actividad de un período.",
+      "saved": "Indicador guardado: {name}",
+      "updated": "Indicador actualizado: {name}",
+      "deletedMsg": "Indicador eliminado",
+      "systemBadge": "Por defecto",
+      "createdBy": "Creado por {name}",
+      "noneYet": "Todavía no hay indicadores.",
+      "note": "Cada indicador calcula un solo valor (cantidad, suma, promedio, mínimo o máximo) sobre una fuente de datos, con filtros opcionales. Las fuentes con actividad de período traen un rango de fecha.",
+      "showInPulsoLabel": "Mostrar en Pulso del día",
+      "showInPulsoHint": "Si está activo, este indicador aparece en el Pulso de la compañía por defecto (cada usuario puede además mostrarlo u ocultarlo en el suyo).",
+      "visibilityLabel": "Quién puede verlo",
+      "shareWithLabel": "Compartir con",
+      "visAllBadge": "Todos",
+      "visPrivateBadge": "Privado",
+      "visSharedBadge": "Compartido ({n})",
+      "visibilityHint": "Los indicadores por defecto son visibles para todos. Los que usted crea son privados a menos que decida compartirlos.",
+      "deleteTitle": "Eliminar indicador",
+      "deleteBody": "¿Eliminar el indicador {name}?"
+    },
+    "charts": {
+      "title": "Gráficos",
+      "sub": "Visualizaciones sobre una fuente de datos, agrupadas por módulo de negocio",
+      "newChart": "Nuevo gráfico",
+      "newTitle": "Nuevo gráfico",
+      "editTitle": "Editar gráfico",
+      "nameLabel": "Nombre del gráfico",
+      "namePh": "ej. Órdenes por estado",
+      "datasetLabel": "Fuente de datos",
+      "groupByLabel": "Agrupar por",
+      "groupByHint": "Cada barra o porción es un valor distinto de este campo.",
+      "metricFnLabel": "Cálculo",
+      "metricFieldLabel": "Campo",
+      "saveBtn": "Guardar gráfico",
+      "saved": "Gráfico guardado: {name}",
+      "updated": "Gráfico actualizado: {name}",
+      "deletedMsg": "Gráfico eliminado",
+      "systemBadge": "Por defecto",
+      "createdBy": "Creado por {name}",
+      "noneYet": "Todavía no hay gráficos.",
+      "noData": "Este gráfico no tiene datos con los filtros y el rango actuales.",
+      "typeLabel": "Tipo de gráfico",
+      "typeHint": "Barras, dona o línea; se puede cambiar en cualquier momento.",
+      "note": "Cada gráfico agrupa una fuente de datos por un campo y calcula un valor por grupo (cantidad, suma, promedio, mínimo o máximo), con el mismo rango de fecha y opción de Pulso que Indicadores.",
+      "deleteTitle": "Eliminar gráfico",
+      "deleteBody": "¿Eliminar el gráfico {name}?"
+    },
+    "editor": {
+      "descriptionEs": "Descripción (español)",
+      "descriptionEn": "Descripción (inglés)",
+      "businessModule": "Módulo de negocio",
+      "isMoney": "Es dinero",
+      "sortOrder": "Orden en el Pulso de la compañía",
+      "sortOrderHint": "Posición entre los demás indicadores o gráficos del Pulso de la compañía.",
+      "filtersTitle": "Filtro",
+      "filtersHint": "Filas campo · operador · valor; todas se combinan con \"y\".",
+      "filterField": "Campo",
+      "filterOp": "Operador",
+      "filterValue": "Valor",
+      "filterValueListPh": "separados por coma",
+      "addFilter": "Agregar filtro",
+      "removeFilter": "Quitar filtro",
+      "editBtn": "Editar",
+      "deleteBtn": "Eliminar",
+      "shareNeedsAdminUsers": "Para compartir con personas específicas se necesita el permiso de administrar usuarios.",
+      "filterOps": {
+        "eq": "es igual a",
+        "ne": "es distinto de",
+        "gt": "mayor que",
+        "gte": "mayor o igual que",
+        "lt": "menor que",
+        "lte": "menor o igual que",
+        "contains": "contiene",
+        "startsWith": "empieza con",
+        "endsWith": "termina con",
+        "in": "está en",
+        "notIn": "no está en",
+        "between": "entre",
+        "isNull": "está vacío",
+        "notNull": "no está vacío",
+        "isTrue": "es verdadero",
+        "isFalse": "es falso"
+      },
+      "errors": {
+        "nameRequiredIndicator": "Ponle un nombre al indicador.",
+        "nameRequiredChart": "Ponle un nombre al gráfico.",
+        "dataSourceRequired": "Elija una fuente de datos.",
+        "aggregateRequired": "Elija un cálculo.",
+        "fieldRequired": "Elija un campo.",
+        "moduleRequired": "Elija un módulo de negocio.",
+        "visibilityRequired": "Elija quién puede verlo.",
+        "groupByRequired": "Elija un campo para agrupar."
+      },
+      "filterUnrepresentable": "Este filtro usa reglas avanzadas que esta pantalla no puede mostrar como filas. Se conserva tal cual hasta que agregues una fila nueva; a partir de ahí, guardar lo reemplaza."
     }
   },
   "orders": {
@@ -1267,7 +1616,7 @@
       "singleOwner": "Una recolección solo puede tener productos de un mismo dueño."
     },
     "receipts": {
-      "title": "Recepción",
+      "title": "Recibo",
       "subtitle": "Recibos ciegos, de devolución, contra aviso de llegada o contra orden de compra.",
       "tabReceipts": "Recibos",
       "tabAsns": "Avisos de llegada",
@@ -1286,7 +1635,7 @@
       "removeLine": "Quitar línea",
       "fromDocumentNote": "Las líneas se toman del documento: lo recibido arranca igual a lo esperado y se corrige en la ficha antes de confirmar.",
       "notFound": "Recibo no encontrado.",
-      "back": "Volver a Recepción",
+      "back": "Volver a Recibo",
       "sources": {
         "BLIND": "Ciego",
         "RETURN": "Devolución",
@@ -1629,6 +1978,225 @@
     "productFilter": {
       "placeholder": "Buscar por SKU o nombre…",
       "remove": "Quitar {sku}"
+    }
+  },
+  "system": {
+    "devices": {
+      "title": "Aparatos móviles",
+      "subtitle": "Los aparatos con acceso a Teikem Almacén. El código de registro es de un solo uso y dura 24 horas.",
+      "new": "Nuevo aparato",
+      "count": "{count} aparatos",
+      "searchPlaceholder": "Buscar por código o nombre…",
+      "show": "Mostrar",
+      "onlyActive": "Solo activos",
+      "includeInactive": "Incluir inactivos",
+      "active": "Activo",
+      "inactive": "Inactivo",
+      "deactivate": "Desactivar",
+      "reactivate": "Reactivar",
+      "deactivateTitle": "Desactivar aparato",
+      "deactivateBody": "¿Desactivar {name}? Se revocan todas sus sesiones y deja de sincronizar.",
+      "deactivated": "Aparato desactivado.",
+      "reactivateTitle": "Reactivar aparato",
+      "reactivateBody": "¿Reactivar {name}? Cada usuario vuelve a entrar con su PIN.",
+      "reactivated": "Aparato reactivado.",
+      "newEnrollCode": "Nuevo código de registro",
+      "newEnrollCodeBody": "¿Generar un nuevo código de registro para {name}? El anterior deja de servir.",
+      "enrollCodeTitle": "Código de registro",
+      "enrollCodeHint": "Escríbelo en la pantalla Registrar de Teikem Almacén. Solo se muestra una vez.",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar; selecciónelo a mano.",
+      "columns": {
+        "code": "Código",
+        "name": "Nombre",
+        "warehouse": "Almacén por defecto",
+        "status": "Estado",
+        "lastSeen": "Último latido",
+        "appVersion": "Versión de la app"
+      },
+      "fields": {
+        "name": "Nombre",
+        "defaultWarehouse": "Almacén por defecto"
+      },
+      "errors": {
+        "nameRequired": "El nombre es obligatorio."
+      }
+    },
+    "users": {
+      "title": "Roles y usuarios",
+      "subtitle": "Quién entra a Teikem y qué puede hacer.",
+      "tabRoles": "Roles",
+      "tabUsers": "Usuarios",
+      "roles": {
+        "title": "Roles",
+        "count": "{count} roles",
+        "new": "Nuevo rol",
+        "colName": "Rol",
+        "colPermissions": "Permisos",
+        "colUsers": "Usuarios",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "system": "sistema",
+        "template": "plantilla",
+        "newTitle": "Nuevo rol",
+        "editTitle": "Editar rol",
+        "name": "Nombre",
+        "nameRequired": "El nombre es obligatorio.",
+        "descriptionEs": "Descripción (es)",
+        "descriptionEn": "Descripción (en)",
+        "permissions": "Permisos",
+        "selectAllGroup": "Todo el grupo",
+        "save": "Guardar",
+        "created": "Rol creado.",
+        "saved": "Cambios guardados.",
+        "deleteTitle": "Eliminar el rol",
+        "deleteBody": "El rol {name} se eliminará. Esta acción no se puede deshacer.",
+        "deleted": "Rol eliminado.",
+        "note": "Un rol es un conjunto de permisos reusable: cambiarlo afecta a todos los usuarios que lo tengan asignado. {count} roles vienen ya armados ({names}); se pueden editar, renombrar o crear roles nuevos libremente — solo no se puede eliminar uno que todavía tenga usuarios."
+      },
+      "users": {
+        "title": "Usuarios",
+        "count": "{count} usuarios",
+        "new": "Nuevo usuario",
+        "searchPlaceholder": "Buscar por nombre o correo…",
+        "includeSuspended": "Incluir suspendidos",
+        "colName": "Nombre",
+        "colEmail": "Correo",
+        "colRoles": "Roles",
+        "colExtra": "Permisos extra",
+        "colStatus": "Estado",
+        "colMfa": "MFA",
+        "colLastLogin": "Último acceso",
+        "colPin": "PIN app",
+        "addExtra": "Añadir",
+        "yes": "Sí",
+        "no": "No",
+        "statusActive": "Activo",
+        "statusSuspended": "Suspendido",
+        "statusInvited": "Invitado",
+        "edit": "Editar",
+        "roles": "Roles",
+        "closeSessions": "Cerrar sesiones",
+        "assignPin": "Asignar PIN",
+        "resetPin": "Restablecer PIN",
+        "removePin": "Quitar PIN",
+        "requireMfa": "Exigir MFA",
+        "unrequireMfa": "Ya no exigir MFA",
+        "resetMfa": "Restablecer MFA",
+        "mfaPending": "Pendiente",
+        "requireMfaTitle": "Exigir MFA",
+        "requireMfaBody": "{name} tendrá que activar la verificación en dos pasos antes de poder entrar.",
+        "unrequireMfaTitle": "Ya no exigir MFA",
+        "unrequireMfaBody": "{name} ya no estará obligado a tener verificación en dos pasos (puede conservar la que ya tenga activa).",
+        "mfaRequiredSaved": "MFA actualizado.",
+        "resetMfaTitle": "Restablecer MFA",
+        "resetMfaBody": "Se quita la verificación en dos pasos de {name}; si sigue exigida, la vuelve a activar en su próximo ingreso.",
+        "resetMfaDone": "MFA restablecido.",
+        "editTitle": "Editar usuario",
+        "fullName": "Nombre",
+        "active": "Activo",
+        "newTitle": "Nuevo usuario",
+        "email": "Correo electrónico",
+        "emailRequired": "El correo es obligatorio.",
+        "password": "Contraseña",
+        "passwordHelp": "Vacía: se genera una contraseña temporal que se muestra una sola vez, para que se la envíe a la persona.",
+        "tempPasswordTitle": "Contraseña temporal",
+        "tempPasswordHint": "Cópiela y envíesela a la persona — no se puede volver a ver. Puede cambiarla después desde su cuenta.",
+        "copied": "Copiada",
+        "copyFailed": "No se pudo copiar; selecciónela a mano.",
+        "kind": "Tipo",
+        "kindInternal": "Interno",
+        "kindPortal": "Portal",
+        "portalHint": "Los usuarios de portal se administran desde el expediente del cliente (Lote 2).",
+        "created": "Usuario creado.",
+        "saved": "Cambios guardados.",
+        "rolesModalTitle": "Roles de {name}",
+        "extraModalTitle": "Permisos de {name}",
+        "extraHint": "Los permisos de su rol actual ya están incluidos y no se pueden quitar aquí — para eso hay que editar el rol. Lo que active abajo son permisos extra, solo para esta persona.",
+        "fromRole": "del rol",
+        "closeSessionsTitle": "Cerrar las sesiones",
+        "closeSessionsBody": "Se cerrarán todas las sesiones abiertas de {name}.",
+        "closeSessionsDone": "Sesiones cerradas.",
+        "membershipSaved": "Estado actualizado.",
+        "note": "Cada usuario hereda los permisos de su rol. «Permisos extra» es la excepción puntual: un permiso concedido directo a una persona, sin tener que crear o cambiar un rol solo para ella."
+      },
+      "pin": {
+        "assignTitle": "Asignar PIN — {name}",
+        "resetTitle": "Restablecer PIN — {name}",
+        "pin": "PIN (4 a 6 dígitos)",
+        "confirmPin": "Confirmar PIN",
+        "mismatch": "Los PIN no coinciden.",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "saved": "PIN guardado.",
+        "removeTitle": "Quitar el PIN",
+        "removeBody": "{name} ya no podrá entrar en Teikem Almacén con PIN.",
+        "removed": "PIN quitado."
+      }
+    },
+    "catalogs": {
+      "title": "Catálogos de valores",
+      "subtitle": "Las listas que alimentan chips y selects en toda la aplicación.",
+      "lists": "Listas",
+      "searchList": "Buscar lista…",
+      "list": "Lista",
+      "system": "sistema",
+      "own": "propia",
+      "newList": "Nueva lista",
+      "selectList": "Elija una lista.",
+      "valueCount": "{count} valores",
+      "newValue": "Nuevo valor",
+      "deleteList": "Eliminar lista",
+      "deleteListTitle": "Eliminar lista",
+      "deleteListBody": "¿Eliminar la lista «{name}»? Esta acción no se puede deshacer.",
+      "listDeleted": "Lista eliminada.",
+      "listCreated": "Lista creada.",
+      "name": "Nombre (es)",
+      "nameEn": "Nombre (en)",
+      "description": "Descripción",
+      "initialValues": "Valores iniciales",
+      "addValue": "Agregar valor",
+      "removeValue": "Quitar valor {index}",
+      "code": "Código",
+      "labelEs": "Etiqueta (es)",
+      "labelEn": "Etiqueta (en)",
+      "order": "Orden",
+      "enabled": "Habilitado",
+      "origin": "Origen",
+      "originSystem": "Sistema",
+      "originAdjusted": "Ajustado",
+      "originOwn": "Propia",
+      "yes": "Sí",
+      "no": "No",
+      "adjust": "Ajustar",
+      "restore": "Restaurar",
+      "edit": "Editar",
+      "deactivate": "Desactivar",
+      "adjustTitle": "Ajustar — {label}",
+      "adjustHelp": "Un valor de sistema no se desactiva globalmente; use este ajuste (Habilitado = No) en vez de eliminar.",
+      "adjusted": "Valor ajustado.",
+      "restoreOverrideTitle": "Restaurar valor de sistema",
+      "restoreOverrideBody": "¿Restaurar «{label}» a los valores de sistema? Se pierde el ajuste hecho por su compañía.",
+      "restored": "Valor restaurado.",
+      "newValueTitle": "Nuevo valor — {label}",
+      "editValueTitle": "Editar — {label}",
+      "valueCreated": "Valor creado.",
+      "valueUpdated": "Valor actualizado.",
+      "deactivateTitle": "Desactivar valor",
+      "deactivateBody": "¿Desactivar «{label}»? Deja de ofrecerse al capturar; el historial lo sigue mostrando.",
+      "deactivated": "Valor desactivado.",
+      "restoreValueTitle": "Restaurar valor",
+      "restoreValueBody": "¿Restaurar «{label}»? Vuelve a ofrecerse al capturar.",
+      "restoreValueDone": "Valor restaurado.",
+      "inactive": "Inactivo",
+      "empty": "Todavía no hay valores en esta lista.",
+      "errors": {
+        "nameRequired": "El nombre es obligatorio.",
+        "codeRequired": "El código es obligatorio.",
+        "labelRequired": "La etiqueta es obligatoria.",
+        "rowCodeRequired": "Fila {row}: el código es obligatorio.",
+        "rowLabelRequired": "Fila {row}: la etiqueta es obligatoria."
+      }
     }
   }
 }

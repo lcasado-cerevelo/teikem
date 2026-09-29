@@ -27,6 +27,13 @@
 .lst tr.click{cursor:pointer}
 .lst td.acts{width:1%;white-space:nowrap}
 .rowacts{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
+/* Acción de fila solo-ícono (RowAction.icon), como en Diseño/teikem-mockups.html (.rowbtn): 28×28, sin fondo hasta
+   el hover; el nombre accesible viene de aria-label/title (el label de la acción), no de texto visible. */
+.rowbtn{border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0}
+.rowbtn svg{width:16px;height:16px}
+.rowbtn:hover{background:var(--panel-2);color:var(--flow-2)}
+.rowbtn:disabled{opacity:.4;pointer-events:none}
+.rowbtn.danger:hover{background:var(--dangerbg);color:var(--danger)}
 .btn.danger{color:var(--danger);border-color:var(--danger)}
 .btn.danger:hover{background:var(--dangerbg)}
 .btn.danger.solid{background:var(--danger);color:#fff}
@@ -112,3 +119,8 @@
 .cpp .cpp-txt .code{font-family:var(--mono);color:var(--flow-2)}
 .cpp .cpp-ds{margin-left:auto;color:var(--faint);font-size:11.5px;font-weight:400;white-space:nowrap;padding-left:6px}
 @media(max-width:480px){.cpp{width:100%}.cpp .mp{width:100%;max-width:none}}
+
+/* ===== Marca (Brand.tsx) ===== */
+/* el lockup nunca pasa el ancho de su contenedor; ambas variantes (clara y -inv) son transparentes */
+.brand-lockup{display:block;max-width:100%;height:auto}
+.brand-mark{display:block;flex:none;max-width:100%;height:auto}

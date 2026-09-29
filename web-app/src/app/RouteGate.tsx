@@ -3,7 +3,7 @@ import { useCan } from '../kernel/access/accessContext'
 import { ForbiddenScreen } from '../kernel/access/AccessScreens'
 import { ModuleGate } from '../kernel/access/ModuleGate'
 
-/** Aplica `module` y `perm` de la ruta antes de pintar la pantalla. */
+/** Aplica `module` y `perm` de la ruta antes de pintar la pantalla. `perm: 'a|b'` deja pasar con cualquiera de los dos. */
 export function RouteGate({ route }: { route: AppRoute }) {
   const Screen = route.element
   const allowed = useCan(...(route.perm ? [route.perm] : []))

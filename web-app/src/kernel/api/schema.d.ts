@@ -10263,7 +10263,9 @@ export interface paths {
         };
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    scope?: string;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -13446,7 +13448,11 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "text/plain": components["schemas"]["UserCreateResponseDto"];
+                        "application/json": components["schemas"]["UserCreateResponseDto"];
+                        "text/json": components["schemas"]["UserCreateResponseDto"];
+                    };
                 };
             };
         };
@@ -13736,6 +13742,70 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["MfaRequiredRequest"];
+                    "text/json": components["schemas"]["MfaRequiredRequest"];
+                    "application/*+json": components["schemas"]["MfaRequiredRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserSummaryDto"];
+                        "application/json": components["schemas"]["UserSummaryDto"];
+                        "text/json": components["schemas"]["UserSummaryDto"];
+                    };
+                };
+            };
+        };
         post?: never;
         delete: {
             parameters: {
@@ -15410,6 +15480,9 @@ export interface components {
             publicId?: string;
             name?: string | null;
             description?: string | null;
+            descriptions?: {
+                [key: string]: string;
+            } | null;
             dataSource?: string | null;
             field?: string | null;
             aggregateFn?: string | null;
@@ -17309,6 +17382,7 @@ export interface components {
             isOverridden?: boolean;
             /** Format: int32 */
             tenantId?: number | null;
+            isActive?: boolean;
         };
         LotDto: {
             /** Format: int32 */
@@ -17456,6 +17530,9 @@ export interface components {
         MfaEnrollResultDto: {
             secret?: string | null;
             otpAuthUri?: string | null;
+        };
+        MfaRequiredRequest: {
+            required?: boolean;
         };
         MfaVerifyRequest: {
             code?: string | null;
@@ -19707,6 +19784,10 @@ export interface components {
             roles?: string[] | null;
             userKind?: string | null;
         };
+        UserCreateResponseDto: {
+            user?: components["schemas"]["UserSummaryDto"];
+            temporaryPassword?: string | null;
+        };
         UserExtraPermissionsRequest: {
             permissions?: string[] | null;
         };
@@ -19728,6 +19809,7 @@ export interface components {
             extraPermissions?: string[] | null;
             isPlatformAdmin?: boolean;
             hasPin?: boolean;
+            mfaRequired?: boolean;
         };
         UserUpdateRequest: {
             fullName?: string | null;

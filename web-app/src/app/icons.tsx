@@ -50,48 +50,82 @@ export function IconGlobe() {
   )
 }
 
-export function IconOps() {
+// Íconos de los grupos del menú: los de la maqueta (`NAV` en Diseño/teikem-mockups.html: box, layers, cash, users,
+// chart, gear, users).
+export function IconBox() {
   return (
     <Svg>
-      <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7" />
-      <circle cx="7" cy="17.5" r="1.5" />
-      <circle cx="17" cy="17.5" r="1.5" />
+      <path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8" />
     </Svg>
   )
 }
 
-export function IconCatalog() {
+export function IconLayers() {
   return (
     <Svg>
-      <path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z" />
-      <path d="M8 7h6M8 11h6" />
+      <path d="M12 3 2 8l10 5 10-5zM2 13l10 5 10-5M2 18l10 5 10-5" />
     </Svg>
   )
 }
 
-export function IconWarehouse() {
+export function IconCash() {
   return (
     <Svg>
-      <path d="M3 21V9l9-5 9 5v12" />
-      <path d="M7 21v-8h10v8M7 17h10" />
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
     </Svg>
   )
 }
 
-export function IconAnalytics() {
+export function IconUsers() {
   return (
     <Svg>
-      <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 5.6a3 3 0 0 1 0 5.8M17 20a5.5 5.5 0 0 0-3-4.9" />
     </Svg>
   )
 }
 
-export function IconAdmin() {
+export function IconChart() {
+  return (
+    <Svg>
+      <path d="M3 3v18h18M8 17v-5M13 17V8M18 17v-9" />
+    </Svg>
+  )
+}
+
+export function IconGear() {
   return (
     <Svg>
       <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+      <path d="M19.4 13a7 7 0 0 0 0-2l1.8-1.4-2-3.4-2.1.9a7 7 0 0 0-1.7-1L15 3h-4l-.3 2.1a7 7 0 0 0-1.7 1l-2.1-.9-2 3.4L6.6 11a7 7 0 0 0 0 2l-1.8 1.4 2 3.4 2.1-.9a7 7 0 0 0 1.7 1L11 21h4l.3-2.1a7 7 0 0 0 1.7-1l2.1.9 2-3.4z" />
     </Svg>
   )
 }
 
+// Cabecera: buscador (lupa) y tema claro/oscuro.
+export function IconSearch() {
+  return (
+    <Svg>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </Svg>
+  )
+}
+
+export function IconSun() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </Svg>
+  )
+}
+
+export function IconMoon() {
+  return (
+    <Svg>
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </Svg>
+  )
+}

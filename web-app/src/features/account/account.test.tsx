@@ -5,12 +5,14 @@ import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionContext, type MeDto, type Session } from '../../app/session'
+import { AccessProvider } from '../../kernel/access'
 import { ReauthContext } from '../../kernel/auth/reauthContext'
 import { setLang } from '../../kernel/i18n/i18n'
 import AccountPage from './AccountPage'
 import { describeDevice, formatDateTime } from './format'
 import { MfaTab } from './MfaTab'
 import { PasswordTab } from './PasswordTab'
+import { PinTab } from './PinTab'
 import { SessionsTab } from './SessionsTab'
 
 // Cliente de la app sobre un fetch simulado (misma política que el real).
@@ -64,15 +66,20 @@ function session(me: MeDto, reloadMe = vi.fn(async () => {})): Session {
   }
 }
 
-function wrap(ui: ReactNode, opts: { me?: MeDto; reauth?: () => Promise<boolean>; reloadMe?: () => Promise<void>; path?: string } = {}) {
+function wrap(
+  ui: ReactNode,
+  opts: { me?: MeDto; reauth?: () => Promise<boolean>; reloadMe?: () => Promise<void>; path?: string; modules?: string[] } = {},
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const value = session(opts.me ?? ME, vi.fn(opts.reloadMe ?? (async () => {})))
   return render(
     <MemoryRouter initialEntries={[opts.path ?? '/account']}>
       <QueryClientProvider client={client}>
-        <SessionContext.Provider value={value}>
-          <ReauthContext.Provider value={{ reauth: opts.reauth ?? (async () => true) }}>{ui}</ReauthContext.Provider>
-        </SessionContext.Provider>
+        <AccessProvider permissions={[]} modules={opts.modules ?? []}>
+          <SessionContext.Provider value={value}>
+            <ReauthContext.Provider value={{ reauth: opts.reauth ?? (async () => true) }}>{ui}</ReauthContext.Provider>
+          </SessionContext.Provider>
+        </AccessProvider>
       </QueryClientProvider>
     </MemoryRouter>,
   )
@@ -235,5 +242,75 @@ describe('SessionsTab', () => {
     const dialog = await screen.findByRole('dialog')
     await user.click(within(dialog).getByRole('button', { name: 'Cerrar sesión' }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'DELETE' && c.path === '/api/v1/auth/sessions/11')).toBe(true))
+  })
+})
+
+describe('AccountPage — pestaña "PIN de la app" (Lote 8A)', () => {
+  it('sin el módulo WMS_LOTSERIAL no aparece la pestaña', () => {
+    wrap(<AccountPage />, { modules: [] })
+    expect(screen.queryByRole('tab', { name: 'PIN de la app' })).toBeNull()
+  })
+
+  it('con el módulo encendido aparece la pestaña y se puede abrir con ?tab=pin', async () => {
+    mock.handler = ((method: string, url: URL) => (method === 'GET' && url.pathname === '/api/v1/me/pin' ? { hasPin: false } : undefined)) satisfies Handler
+    wrap(<AccountPage />, { modules: ['WMS_LOTSERIAL'], path: '/account?tab=pin' })
+    expect(await screen.findByRole('tab', { name: 'PIN de la app' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByText('Todavía no tiene un PIN fijado.')).toBeInTheDocument()
+  })
+})
+
+describe('PinTab', () => {
+  it('sin PIN: ofrece "Fijar PIN"; fijarlo con contraseña actual llama a PUT /me/pin', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/me/pin') return { hasPin: false }
+      if (method === 'PUT' && url.pathname === '/api/v1/me/pin') return { hasPin: true, updatedAtUtc: '2026-09-28T10:00:00Z', lockedUntilUtc: null }
+      return new Response(null, { status: 404 })
+    }) satisfies Handler
+    wrap(<PinTab />, { modules: ['WMS_LOTSERIAL'] })
+    await user.click(await screen.findByRole('button', { name: 'Fijar PIN' }))
+    await user.type(screen.getByLabelText('Contraseña actual'), 'Actual_2026!')
+    await user.type(screen.getByLabelText('PIN nuevo'), '4826')
+    await user.type(screen.getByLabelText('Confirmar PIN'), '4826')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() =>
+      expect(mock.calls).toContainEqual({ method: 'PUT', path: '/api/v1/me/pin', body: { currentPassword: 'Actual_2026!', pin: '4826' } }),
+    )
+  })
+
+  it('contraseña actual incorrecta: el error del API queda bajo el campo', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/me/pin') return { hasPin: false }
+      return problem(400, { title: 'Datos inválidos.', code: 'validation', errors: { currentPassword: ['La contraseña actual es incorrecta.'] } })
+    }) satisfies Handler
+    wrap(<PinTab />, { modules: ['WMS_LOTSERIAL'] })
+    await user.click(await screen.findByRole('button', { name: 'Fijar PIN' }))
+    await user.type(screen.getByLabelText('Contraseña actual'), 'Mala_2026!')
+    await user.type(screen.getByLabelText('PIN nuevo'), '4826')
+    await user.type(screen.getByLabelText('Confirmar PIN'), '4826')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByText('La contraseña actual es incorrecta.')).toBeInTheDocument()
+  })
+
+  it('si GET /me/pin falla, muestra el error en vez de girar para siempre', async () => {
+    mock.handler = (() => problem(500, { title: 'Ocurrió un error. Intente de nuevo.', code: 'internal' })) satisfies Handler
+    wrap(<PinTab />, { modules: ['WMS_LOTSERIAL'] })
+    expect(await screen.findByText('Ocurrió un error. Intente de nuevo.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Fijar PIN' })).toBeNull()
+  })
+
+  it('con PIN: "Quitar PIN" pide confirmación y llama a DELETE /me/pin', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/me/pin') return { hasPin: true, updatedAtUtc: '2026-08-01T10:00:00Z', lockedUntilUtc: null }
+      if (method === 'DELETE' && url.pathname === '/api/v1/me/pin') return undefined
+      return new Response(null, { status: 404 })
+    }) satisfies Handler
+    wrap(<PinTab />, { modules: ['WMS_LOTSERIAL'] })
+    await user.click(await screen.findByRole('button', { name: 'Quitar PIN' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Quitar PIN' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'DELETE' && c.path === '/api/v1/me/pin')).toBe(true))
   })
 })

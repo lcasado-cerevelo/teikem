@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
+import { useCan, useCanAny } from './accessContext'
 import { AccessProvider } from './AccessProvider'
 import { Can } from './Can'
 import { ModuleGate } from './ModuleGate'
@@ -36,6 +37,42 @@ describe('Can', () => {
     expect(screen.queryByText('crear')).toBeNull()
     expect(screen.queryByText('ambos')).toBeNull()
     expect(screen.getByText('nada')).toBeInTheDocument()
+  })
+
+  it("perm 'a|b' pinta con cualquiera de los dos", () => {
+    renderWith(
+      <>
+        <Can perm="admin.users|admin.roles">usuarios</Can>
+        <Can perm="admin.users|admin.audit">auditoria</Can>
+      </>,
+      ['admin.roles'],
+      [],
+    )
+    expect(screen.getByText('usuarios')).toBeInTheDocument()
+    expect(screen.queryByText('auditoria')).toBeNull()
+  })
+})
+
+describe('useCan / useCanAny', () => {
+  function Probe({ perms }: { perms: string[] }) {
+    return (
+      <p>
+        {`all:${String(useCan(...perms))} any:${String(useCanAny(...perms))}`}
+      </p>
+    )
+  }
+
+  it('useCan exige todos; useCanAny, al menos uno', () => {
+    renderWith(<Probe perms={['admin.users', 'admin.roles']} />, ['admin.roles'], [])
+    expect(screen.getByText('all:false any:true')).toBeInTheDocument()
+  })
+
+  it('sin ninguno: los dos false; con todos: los dos true', () => {
+    const { unmount } = renderWith(<Probe perms={['a.x', 'b.y']} />, [], [])
+    expect(screen.getByText('all:false any:false')).toBeInTheDocument()
+    unmount()
+    renderWith(<Probe perms={['a.x', 'b.y']} />, ['a.x', 'b.y'], [])
+    expect(screen.getByText('all:true any:true')).toBeInTheDocument()
   })
 })
 

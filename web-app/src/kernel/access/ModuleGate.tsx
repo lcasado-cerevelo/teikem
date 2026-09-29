@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
-import { useAccess } from './accessContext'
+import { permAllowed, useAccess } from './accessContext'
 import { ForbiddenScreen, ModuleOffScreen } from './AccessScreens'
 
 interface Props {
   /** Código del módulo del API (`ModuleKeys`), p. ej. `CATALOG`. */
   module: string
-  /** Permiso opcional que además se exige para ver el contenido. */
+  /** Permiso opcional que además se exige para ver el contenido (`a|b` = cualquiera de los dos). */
   perm?: string
   children: ReactNode
 }
@@ -14,6 +14,6 @@ interface Props {
 export function ModuleGate({ module, perm, children }: Props) {
   const { modules, permissions } = useAccess()
   if (!modules.has(module)) return <ModuleOffScreen module={module} />
-  if (perm && !permissions.has(perm)) return <ForbiddenScreen />
+  if (!permAllowed(perm, permissions)) return <ForbiddenScreen />
   return <>{children}</>
 }

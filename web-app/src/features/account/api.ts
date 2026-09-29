@@ -8,6 +8,33 @@ import type { components } from '../../kernel/api/schema'
 export type SessionDto = components['schemas']['SessionDto']
 export type ChangePasswordRequest = components['schemas']['ChangePasswordRequest']
 export type MfaEnrollResultDto = components['schemas']['MfaEnrollResultDto']
+export type PinStatusDto = components['schemas']['PinStatusDto']
+export type PinSetRequest = components['schemas']['PinSetRequest']
+
+export const MY_PIN_KEY = ['/api/v1/me/pin'] as const
+
+/** Estado del PIN propio (Lote 8A, solo con el módulo WMS_LOTSERIAL): nunca devuelve el PIN, solo si hay uno. */
+export function useMyPin() {
+  return useQuery({ queryKey: MY_PIN_KEY, queryFn: () => unwrap(api.GET('/api/v1/me/pin')) })
+}
+
+/** Fijar o cambiar el PIN propio (`PinSetRequest`: contraseña actual + PIN nuevo). Cambia las sesiones del usuario en aparatos. */
+export function useSetMyPin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PinSetRequest) => unwrap(api.PUT('/api/v1/me/pin', { body })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_PIN_KEY }),
+  })
+}
+
+/** Quitar el PIN propio. */
+export function useRemoveMyPin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => unwrap(api.DELETE('/api/v1/me/pin')),
+    onSuccess: () => qc.invalidateQueries({ queryKey: MY_PIN_KEY }),
+  })
+}
 
 export const SESSIONS_KEY = ['/api/v1/auth/sessions'] as const
 

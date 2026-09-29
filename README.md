@@ -24,11 +24,11 @@ dotnet test                                        # pruebas unitarias
 `db-init` registra cada script en `dbo.__SchemaVersion` por nombre + hash SHA-256: el seed se vuelve a aplicar si cambia (es MERGE); la estructura se aplica una sola vez sobre BD limpia (si cambia, recrea la BD de desarrollo).
 Con `Seed:Demo:Enabled=true` (default en `appsettings.json`) se aprovisiona el tenant demo **Advance Logistics** con:
 
-| Usuario | Contraseña | Rol |
-|---|---|---|
-| `admin@teikem.local` | `Teikem_Admin_2026!` | TenantAdmin de Advance |
-| `despacho@teikem.local` | `Teikem_Admin_2026!` | Dispatcher |
-| `soporte@teikem.local` | `Teikem_Admin_2026!` | Administrador de plataforma (opera cualquier tenant) |
+| Usuario                 | Contraseña           | Rol                                                  |
+| ----------------------- | -------------------- | ---------------------------------------------------- |
+| `admin@teikem.local`    | `Teikem_Admin_2026!` | TenantAdmin de Advance                               |
+| `despacho@teikem.local` | `Teikem_Admin_2026!` | Dispatcher                                           |
+| `soporte@teikem.local`  | `Teikem_Admin_2026!` | Administrador de plataforma (opera cualquier tenant) |
 
 Flujo básico: `POST /api/v1/auth/login` → `GET /api/v1/me` (tenant activo, permisos efectivos, módulos encendidos) → resto de endpoints con `Authorization: Bearer <accessToken>`.
 El idioma de las etiquetas sale de `Accept-Language` (o `X-Lang: en`).

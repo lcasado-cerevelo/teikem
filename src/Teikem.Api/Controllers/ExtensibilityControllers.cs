@@ -152,9 +152,13 @@ public sealed class AnalyticsController(AnalyticsService analytics) : Controller
 [Authorize]
 public sealed class PulseController(AnalyticsService analytics) : ControllerBase
 {
-    /// <summary>Paneles visibles para el usuario (orden efectivo, incluidos los ocultos) e indicadores y gráficos legibles.</summary>
+    /// <summary>
+    /// Paneles visibles para el usuario (orden efectivo, incluidos los ocultos) e indicadores y gráficos legibles.
+    /// `scope=company` (pulse.organize_company): el Pulso de la compañía sin la capa personal de quien consulta —
+    /// lo usa "Organizar el de la compañía" para partir del estado real de la compañía.
+    /// </summary>
     [HttpGet]
-    public Task<PulseDto> Get(CancellationToken ct) => analytics.GetPulseAsync(ct);
+    public Task<PulseDto> Get([FromQuery] string? scope, CancellationToken ct) => analytics.GetPulseAsync(scope == "company", ct);
 
     /// <summary>Guarda orden y visibilidad: scope=mine (mi Pulso, sin permiso) o scope=company (pulse.organize_company).</summary>
     [HttpPut("layout")]
