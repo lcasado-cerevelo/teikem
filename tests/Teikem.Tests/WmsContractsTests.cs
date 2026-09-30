@@ -78,8 +78,8 @@ public class WmsContractsTests
         { typeof(BalanceQuery), "Guid[]? WarehousePublicIds, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? LotNumber, bool IncludeZero, bool OnlyAvailable, string? Search, int Skip, int Take, bool ActiveProductsOnly" },
         { typeof(BalanceDto), "int Id, Guid WarehousePublicId, string WarehouseCode, int? BinId, string? BinCode, string? ZoneCode, string? ZoneTypeCode, Guid ProductPublicId, string Sku, string ProductName, string? CategoryName, string? OwnerName, bool IsOwn, int? LotId, string? LotNumber, DateOnly? ExpiryDate, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? CostValue, decimal? SaleValue, DateTime UpdatedAtUtc" },
         { typeof(BalancePageDto), "int Total, int Skip, int Take, decimal TotalOnHand, decimal TotalAvailable, IReadOnlyList<BalanceDto> Items" },
-        { typeof(KardexQuery), "DateOnly? From, DateOnly? To, string[]? Types, Guid[]? WarehousePublicIds, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? LotNumber, string? SerialNumber, string? RefEntity, int? RefId, string? Search, int Skip, int Take, string[]? Brands, string? Name" },
-        { typeof(KardexRowDto), "long Id, DateTime CreatedAtUtc, string TypeCode, string Type, Guid ProductPublicId, string Sku, string ProductName, decimal Quantity, decimal SignedQuantity, string? FromWarehouseCode, string? FromBinCode, string? ToWarehouseCode, string? ToBinCode, string Position, string? LotNumber, string? SerialNumber, string? RefEntityCode, int? RefId, string? RefLabel, string? ReasonCode, string? Reason, string? Notes, int? UserId, string? UserName" },
+        { typeof(KardexQuery), "DateOnly? From, DateOnly? To, string[]? Types, Guid[]? WarehousePublicIds, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? LotNumber, string? SerialNumber, string? RefEntity, int? RefId, string? Search, int Skip, int Take, string[]? Brands, string? Name, Guid[]? OwnerClientPublicIds, bool IncludeOwn, string[]? Reasons, string? Direction, Guid[]? FromWarehousePublicIds, Guid[]? ToWarehousePublicIds, bool ManualOnly" },
+        { typeof(KardexRowDto), "long Id, DateTime CreatedAtUtc, string TypeCode, string Type, Guid ProductPublicId, string Sku, string ProductName, decimal Quantity, decimal SignedQuantity, string? FromWarehouseCode, string? FromBinCode, string? ToWarehouseCode, string? ToBinCode, string Position, string? LotNumber, string? SerialNumber, string? RefEntityCode, int? RefId, string? RefLabel, string? ReasonCode, string? Reason, string? Notes, int? UserId, string? UserName, string? OwnerName, string? CategoryName" },
         { typeof(KardexPageDto), "int Total, int Skip, int Take, IReadOnlyList<KardexRowDto> Items" },
         { typeof(AdjustmentRequest), "Guid? ProductPublicId, Guid? WarehousePublicId, int? BinId, decimal? Quantity, string? Reason, string? Notes, int? LotId, LotInput? Lot, IReadOnlyList<string>? SerialNumbers" },
         { typeof(TransferRequest), "Guid? ProductPublicId, int? FromBinId, int? ToBinId, decimal? Quantity, Guid? FromWarehousePublicId, Guid? ToWarehousePublicId, int? LotId, IReadOnlyList<string>? SerialNumbers, string? Notes" },
@@ -89,6 +89,19 @@ public class WmsContractsTests
         { typeof(SerialTraceDto), "SerialDto Serial, Guid ProductPublicId, string Sku, IReadOnlyList<KardexRowDto> Movements, IReadOnlyList<StatusHistoryDto> StatusHistory" },
         { typeof(ReconciliationRowDto), "Guid ProductPublicId, string Sku, string WarehouseCode, string? BinCode, string? LotNumber, decimal LedgerQty, decimal BalanceQty" },
         { typeof(ReconciliationDto), "DateTime CheckedAtUtc, int BalancesChecked, IReadOnlyList<ReconciliationRowDto> Mismatches" },
+        // Lote 14 (P0/P1): resumen y detalle del Kárdex, dueños, conciliación que guarda descuadres y búsqueda de posiciones.
+        { typeof(KardexSummaryDto), "int Movements, int InCount, decimal InQty, int OutCount, decimal OutQty, int InternalCount" },
+        { typeof(KardexDocumentDto), "string EntityCode, string EntityLabel, int Id, Guid? PublicId, string? Number, string? StatusCode, string? Status, DateTime? DateUtc, string? PartyName, string? Reference, KardexDocumentDto? Parent" },
+        { typeof(KardexDetailDto), "KardexRowDto Transaction, string? OwnerName, string? CategoryName, DateOnly? LotExpiryDate, KardexDocumentDto? Document, IReadOnlyList<KardexRowDto> Related, bool RelatedTruncated" },
+        { typeof(InventoryOwnerDto), "Guid? ClientPublicId, string Name, bool IsOwn" },
+        { typeof(ReconciliationRunRequest), "Guid[]? ProductPublicIds" },
+        { typeof(ReconciliationRunDto), "DateTime CheckedAtUtc, int ProductsChecked, int BalancesChecked, int Opened, int StillOpen, int SelfCorrected, IReadOnlyList<ReconciliationRowDto> Mismatches" },
+        { typeof(InventoryDiscrepancyQuery), "string[]? Status, Guid[]? WarehousePublicIds, Guid[]? ProductPublicIds, int[]? CategoryIds, int[]? BinIds, string[]? Kinds, DateOnly? From, DateOnly? To, int Skip, int Take" },
+        { typeof(InventoryDiscrepancyDto), "Guid PublicId, string KindCode, string Kind, Guid ProductPublicId, string Sku, string ProductName, Guid? WarehousePublicId, string? WarehouseCode, int? BinId, string? BinCode, int? LotId, string? LotNumber, decimal LedgerQty, decimal BalanceQty, decimal Difference, string StatusCode, string Status, string TriggerCode, string Trigger, DateTime DetectedAtUtc, DateTime LastCheckedAtUtc, int CheckCount, DateTime? ClosedAtUtc, string? ResolvedByName, string? ResolutionNotes, decimal? CorrectedFromQty, decimal? CorrectedToQty, long? LastTxnId, string RowVersion" },
+        { typeof(InventoryDiscrepancyPageDto), "int Total, int Skip, int Take, int OpenCount, IReadOnlyList<InventoryDiscrepancyDto> Items" },
+        { typeof(InventoryDiscrepancyDetailDto), "InventoryDiscrepancyDto Discrepancy, decimal? CurrentReserved, IReadOnlyList<KardexRowDto> RecentMovements, IReadOnlyList<StatusHistoryDto> History" },
+        { typeof(DiscrepancyResolveRequest), "string? Action, string? Notes, string? RowVersion" },
+        { typeof(BinSearchItemDto), "int Id, string Code, string? ZoneCode, Guid WarehousePublicId, string WarehouseCode, bool IsActive" },
         { typeof(AsnLineRequest), "Guid? ProductPublicId, decimal? ExpectedQty, string? LotNumber" },
         { typeof(AsnCreateRequest), "Guid? WarehousePublicId, Guid? ClientPublicId, string? Reference, DateOnly? ExpectedDate, IReadOnlyList<AsnLineRequest>? Lines" },
         { typeof(AsnLineDto), "int Id, Guid ProductPublicId, string Sku, string ProductName, decimal ExpectedQty, string? LotNumber, int? PurchaseOrderLineId" },
@@ -114,10 +127,14 @@ public class WmsContractsTests
         { typeof(ReplenishmentResultDto), "int ProductsEvaluated, int TasksCreated, int SkippedWithOpenTask, int SkippedNoReserve, IReadOnlyList<WarehouseTaskDto> Tasks" },
         { typeof(PutawaySuggestionDto), "int BinId, string BinCode, string ZoneCode, string? ZoneTypeCode, string ReasonCode, string Reason, string RotationClass" },
         { typeof(CycleCountCreateRequest), "Guid? WarehousePublicId, int[]? ZoneIds, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds" },
-        { typeof(CycleCountDto), "int Id, string Number, Guid WarehousePublicId, string WarehouseCode, string StatusCode, string Status, int LineCount, int CountedLines, int? VarianceLines, decimal? NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive" },
-        { typeof(CycleCountLineDto), "int Id, int BinId, string BinCode, string ZoneCode, Guid ProductPublicId, string Sku, string ProductName, string? CategoryName, string TrackingTypeCode, int? LotId, string? LotNumber, decimal? SystemQty, decimal? CountedQty, decimal? VarianceQty, IReadOnlyList<string> ExpectedSerials, IReadOnlyList<string> CountedSerials, bool IsStale, decimal? CurrentQty, decimal? ReconciledSystemQty, bool SystemQtyChanged, decimal? AdjustedQty, long? AdjustmentTxnId" },
+        { typeof(CycleCountDto), "int Id, string Number, Guid WarehousePublicId, string WarehouseCode, string StatusCode, string Status, int LineCount, int CountedLines, int? VarianceLines, decimal? NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive, int BinCount, string? BinCode, string? ZoneCode, string? OriginCode, int? TaskId, string? AssignedToName, string? Origin, DateTime? ChangesFromUtc, DateTime? ChangesToUtc, int? AssignedToUserId" },
+        { typeof(CycleCountLineDto), "int Id, int BinId, string BinCode, string ZoneCode, Guid ProductPublicId, string Sku, string ProductName, string? CategoryName, string TrackingTypeCode, int? LotId, string? LotNumber, decimal? SystemQty, decimal? CountedQty, decimal? VarianceQty, IReadOnlyList<string> ExpectedSerials, IReadOnlyList<string> CountedSerials, bool IsStale, decimal? CurrentQty, decimal? ReconciledSystemQty, bool SystemQtyChanged, decimal? AdjustedQty, long? AdjustmentTxnId, string? Barcode" },
         { typeof(CycleCountDetailDto), "CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion, bool IsBlind" },
-        { typeof(CycleCountQuery), "Guid[]? WarehousePublicIds, string[]? Status, DateOnly? From, DateOnly? To, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? Search" },
+        { typeof(CycleCountQuery), "Guid[]? WarehousePublicIds, string[]? Status, DateOnly? From, DateOnly? To, int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, string? Search, int[]? ZoneIds, string[]? Origins, int Skip, int Take" },
+        { typeof(CycleCountPageDto), "int Total, int Skip, int Take, IReadOnlyList<CycleCountDto> Items" },
+        { typeof(CycleCountFromChangesRequest), "Guid? WarehousePublicId, DateTime? FromUtc, DateTime? ToUtc, int[]? ZoneIds, bool IncludeEmpty" },
+        { typeof(CycleCountChangesPreviewDto), "DateTime FromUtc, DateTime ToUtc, int Movements, int Positions, int PositionsWithOpenCount, int PositionsInactive, int Lines, int MaxPositions, Guid WarehousePublicId, string WarehouseCode, int PositionsEmpty, DateTime? LastChangesToUtc, string? Problem" },
+        { typeof(CycleCountBatchResultDto), "CycleCountChangesPreviewDto Window, IReadOnlyList<CycleCountDto> Counts" },
         { typeof(CycleCountLinesQuery), "int[]? BinIds, Guid[]? ProductPublicIds, int[]? CategoryIds, bool? OnlyVariance, bool? OnlyPending, string? Search" },
         { typeof(CountCaptureItem), "int LineId, decimal? CountedQty, IReadOnlyList<string>? SerialNumbers" },
         { typeof(CountCaptureRequest), "IReadOnlyList<CountCaptureItem>? Lines, string? RowVersion" },
@@ -225,7 +242,7 @@ public class WmsContractsTests
     {
         foreach (var t in new[]
                  {
-                     typeof(InventoryPosting), typeof(StockReservation), typeof(ReconciliationRow), typeof(WarehouseTaskSpec), typeof(PutawaySuggestion),
+                     typeof(InventoryPosting), typeof(StockReservation), typeof(BalanceRebuildResult), typeof(WarehouseTaskSpec), typeof(PutawaySuggestion),
                      typeof(IWarehouseTaskHandler), typeof(IPurchaseOrderReceiving), typeof(IReceiptConfirmationParticipant), typeof(IOrderInventoryLines),
                      typeof(PurchaseOrderForReceipt), typeof(PurchaseOrderPendingLine), typeof(PurchaseOrderReceiptQty), typeof(OrderInventoryLine),
                  })
@@ -285,6 +302,7 @@ public class WmsContractsTests
         new object?[] { typeof(InventoryTransaction), null },
         new object?[] { typeof(InventorySerial), null },
         new object?[] { typeof(WarehouseTask), null },
+        new object?[] { typeof(InventoryDiscrepancy), EntityTypes.InventoryDiscrepancy },   // Lote 14: alta, estatus y resolución (cifras de revisión [NotAudited])
     };
 
     [Theory]

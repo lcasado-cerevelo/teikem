@@ -34,7 +34,7 @@ public class WmsCatalogTests
                 ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway,
             },
             [StatusDomains.WarehouseTaskStatus] = new[] { WarehouseTaskStatuses.Pending, WarehouseTaskStatuses.InProgress, WarehouseTaskStatuses.Done, WarehouseTaskStatuses.Cancelled },
-            [StatusDomains.CycleCountStatus] = new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted, CycleCountStatuses.Reconciled },
+            [StatusDomains.CycleCountStatus] = new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted, CycleCountStatuses.Reconciled, CycleCountStatuses.ReconciledVariance },
             [StatusDomains.PickBatchStatus] = new[] { PickBatchStatuses.Collected, PickBatchStatuses.Packed, PickBatchStatuses.Cancelled },
             [StatusDomains.PurchaseOrderStatus] = new[] { PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Sent, PurchaseOrderStatuses.Partial, PurchaseOrderStatuses.Received, PurchaseOrderStatuses.Cancelled },
             [StatusDomains.AppointmentStatus] = new[] { AppointmentStatuses.Scheduled, AppointmentStatuses.Arrived, AppointmentStatuses.Completed, AppointmentStatuses.NoShow, AppointmentStatuses.Cancelled },
@@ -89,6 +89,32 @@ public class WmsCatalogTests
     }
 
     [Fact]
+    public void Lote14_cycle_count_statuses_origins_lateral_rules_and_historic_variance_are_seeded()
+    {
+        var seed = Seed.Value.Replace("\r\n", "\n");
+        // D7: Pendiente → Contado → Concordancia | Diferencia (terminales), con las etiquetas en el INSERT y en el UPDATE idempotente.
+        Assert.Contains("('CycleCountStatus','OPEN','Pendiente','Pending',@PIPE,1,'#9CA3AF',1)", seed);
+        Assert.Contains("('CycleCountStatus','COUNTED','Contado','Counted',@PIPE,2,'#F59E0B',0)", seed);
+        Assert.Contains("('CycleCountStatus','RECONCILED','Concordancia','Matched',@TERM,3,'#059669',0)", seed);
+        Assert.Contains("('CycleCountStatus','RECONCILED_VARIANCE','Diferencia','Variance',@TERM,4,'#F59E0B',0)", seed);
+        Assert.Contains("WHERE Entity = 'CycleCountStatus' AND InternalCode IN ('OPEN','RECONCILED')", seed);
+        // Históricos con ajuste → Diferencia con historial; conteos anteriores → origen MANUAL; indicador del Pulso corregido.
+        Assert.Contains("N'Lote 14: conteo con diferencia.'", seed);
+        Assert.Contains("l.AdjustmentTxnId IS NOT NULL", seed);
+        Assert.Contains("UPDATE dbo.CycleCount SET OriginLookupId = @CcManual WHERE OriginLookupId IS NULL;", seed);
+        Assert.Contains("SET FilterJson = N'" + Teikem.Infrastructure.Seeding.SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter + "'", seed);
+        Assert.Contains("AND FilterJson = N'" + Teikem.Infrastructure.Seeding.SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilterV1 + "'", seed);
+        // D2: origen del conteo.
+        Assert.Contains("('CycleCountOrigin',1,", seed);
+        Assert.True(SeedHas(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual));
+        Assert.True(SeedHas(LookupDomains.CycleCountOrigin, CycleCountOrigins.Changes));
+        // D7/D8: 'Diferencia' desde Pendiente (confirmar en un paso) y desde Contado (a ciegas).
+        var lateral = Block(seed, "3G) STATUS LATERAL ENTRY");
+        Assert.Contains("lat.Entity='CycleCountStatus'    AND lat.InternalCode='RECONCILED_VARIANCE'", lateral);
+        Assert.Contains("frm.Entity='CycleCountStatus'    AND frm.InternalCode IN ('OPEN','COUNTED')", lateral);
+    }
+
+    [Fact]
     public void Lookup_domains_and_codes_match_the_seed()
     {
         Assert.True(SeedHas(LookupDomains.ZoneType, ZoneTypes.Staging));
@@ -137,9 +163,9 @@ public class WmsCatalogTests
     }
 
     [Fact]
-    public void Permissions_are_65_with_the_four_warehouse_ones_and_templates()
+    public void Permissions_are_66_with_the_four_warehouse_ones_and_templates()
     {
-        Assert.Equal(65, PermissionCatalog.All.Count);
+        Assert.Equal(66, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention
         foreach (var (code, es) in new[] { ("inventory.view", "Ver inventario y almacén"), ("inventory.manage", "Gestionar productos"),
                      ("inventory.adjust", "Ajustar y transferir inventario"), ("warehouse.manage", "Gestionar almacenes y tareas") })
         {
@@ -175,7 +201,7 @@ public class WmsCatalogTests
         var onlyCapture = new HashSet<string>(new[] { PermissionCatalog.WarehouseCountCapture }, StringComparer.OrdinalIgnoreCase);
         PermissionCatalog.ExpandImplied(onlyCapture);
         Assert.DoesNotContain(PermissionCatalog.WarehouseCount, onlyCapture);
-        Assert.Contains("permisos (65)", Seed.Value);
+        Assert.Contains("permisos (66)", Seed.Value);
     }
 
     [Fact]
@@ -292,6 +318,38 @@ public class WmsCatalogTests
         Assert.True(At("UQ_PurchaseOrder_IdTenant") < At("FK_Asn_Po"));
         Assert.True(At("UQ_Asn_IdTenant") < At("FK_Receipt_Asn"));
         Assert.True(At("CREATE TABLE dbo.WarehouseTask (") < At("CREATE TABLE dbo.CrossDockAllocation ("));
+    }
+
+    [Fact]
+    public void Lote14_discrepancy_catalogs_statuses_and_table_are_declared()
+    {
+        var seed = Seed.Value.Replace("\r\n", "\n");
+        foreach (var (domain, scope) in new[] { (StatusDomains.InventoryDiscrepancyStatus, 2), (LookupDomains.InventoryDiscrepancyKind, 1), (LookupDomains.ReconciliationTrigger, 1) })
+            Assert.Contains($"('{domain}',{scope},", seed);
+        Assert.Contains("('EntityType','INVENTORY_DISCREPANCY','Descuadre de inventario','Inventory discrepancy',82)", seed);
+        Assert.Equal("INVENTORY_DISCREPANCY", EntityTypes.InventoryDiscrepancy);
+        foreach (var k in new[] { DiscrepancyKinds.Balance, DiscrepancyKinds.ProductTotal })
+            Assert.True(SeedHas(LookupDomains.InventoryDiscrepancyKind, k), k);
+        foreach (var t in new[] { ReconciliationTriggers.Event, ReconciliationTriggers.Manual, ReconciliationTriggers.Scheduled, ReconciliationTriggers.Migration })
+            Assert.True(SeedHas(LookupDomains.ReconciliationTrigger, t), t);
+        // D5: Pendiente inicial; los tres cierres terminales.
+        Assert.Contains("('InventoryDiscrepancyStatus','OPEN','Pendiente','Open',@PIPE,1,'#EF4444',1)", seed);
+        Assert.Contains("('InventoryDiscrepancyStatus','RESOLVED','Resuelto','Resolved',@TERM,2,'#059669',0)", seed);
+        Assert.Contains("('InventoryDiscrepancyStatus','DISMISSED','Descartado','Dismissed',@TERM,3,'#6B7280',0)", seed);
+        Assert.Contains("('InventoryDiscrepancyStatus','SELF_CORRECTED','Se corrigió solo','Self-corrected',@TERM,4,'#0EA5E9',0)", seed);
+        Assert.Equal(PermissionCatalog.InventoryView, PermissionCatalog.OwnerReadPermission[EntityTypes.InventoryDiscrepancy]);
+        Assert.False(PermissionCatalog.OwnerWritePermission.ContainsKey(EntityTypes.InventoryDiscrepancy));
+
+        var sql = Structure.Value;
+        Assert.Contains("IF OBJECT_ID('dbo.InventoryDiscrepancy') IS NULL", sql);
+        Assert.Contains("CREATE UNIQUE INDEX UX_InvDiscrepancy_OpenKey ON dbo.InventoryDiscrepancy(TenantId, KindLookupId, ProductId, WarehouseId, WarehouseBinId, LotId)", sql);
+        Assert.Contains("CONSTRAINT CK_InvDiscrepancy_Closed CHECK (ResolvedBy IS NULL OR ClosedAtUtc IS NOT NULL)", sql);
+        Assert.Contains("CONSTRAINT FK_InvDiscrepancy_CycleCount FOREIGN KEY (CycleCountId, TenantId) REFERENCES dbo.CycleCount(CycleCountId, TenantId)", sql);
+        // Capas: la tabla va después de sus destinos (conteo, recolección y ledger) y antes del cruce de muelle.
+        int At(string s) => sql.IndexOf(s, StringComparison.Ordinal);
+        Assert.True(At("CREATE TABLE dbo.PickBatchLine (") < At("CREATE TABLE dbo.InventoryDiscrepancy ("));
+        Assert.True(At("CONSTRAINT UQ_CycleCount_IdTenant") < At("FK_InvDiscrepancy_CycleCount"));
+        Assert.True(At("CREATE TABLE dbo.InventoryDiscrepancy (") < At("CAPA 15"));
     }
 
     private static string Block(string seed, string title)

@@ -223,7 +223,7 @@ export function WarehousePulsePanel() {
             })}
           </ul>
         </WarehouseTile>
-        <WarehouseTile label={t('analytics.pulse.warehouse.openCounts')} value={tileValue(openCounts.data?.length, openCounts.isLoading)} scope />
+        <WarehouseTile label={t('analytics.pulse.warehouse.openCounts')} value={tileValue(openCounts.data?.total, openCounts.isLoading)} scope />
       </div>
     </Panel>
   )

@@ -114,7 +114,8 @@ function handler(path: string, url: URL): unknown {
     if (p.get('types')) return { total: p.get('types') === 'PUTAWAY' ? 20 : 1, skip: 0, take: 1, items: [] }
     return { total: p.get('warehousePublicId') ? 23 : 40, skip: 0, take: 1, items: [] }
   }
-  if (path === '/api/v1/cycle-counts') return p.get('warehousePublicIds') ? [{ id: 1 }] : [{ id: 1 }, { id: 2 }]
+  // Lote 14: conteos abiertos = total de la página (Pendiente y Contado), no el largo de la lista
+  if (path === '/api/v1/cycle-counts/page') return { total: p.get('warehousePublicIds') ? 1 : 2, skip: 0, take: 1, items: [] }
   return []
 }
 
@@ -218,7 +219,7 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(belowMin.get('warehousePublicId')).toBe(WH1.publicId)
     expect(belowMin.getAll('categoryIds')).toEqual(['2'])
     // recibos, tareas y conteos: solo el almacén (nunca la categoría)
-    for (const path of ['/api/v1/receipts', '/api/v1/warehouse-tasks', '/api/v1/cycle-counts']) {
+    for (const path of ['/api/v1/receipts', '/api/v1/warehouse-tasks', '/api/v1/cycle-counts/page']) {
       const u = lastUrl(path)!
       expect(u.search).toContain(WH1.publicId)
       expect(u.searchParams.has('categoryIds')).toBe(false)
@@ -273,7 +274,7 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ warehousePublicId: WH2.publicId, item: null })
     // Tareas pendientes y Conteos abiertos también piden y muestran los valores del segundo almacén
     expect(lastUrl('/api/v1/warehouse-tasks')!.searchParams.get('warehousePublicId')).toBe(WH2.publicId)
-    expect(lastUrl('/api/v1/cycle-counts')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
+    expect(lastUrl('/api/v1/cycle-counts/page')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
     await waitFor(async () => expect(within(await tile('Tareas pendientes')).getByText('23')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('1')).toBeInTheDocument())
   })

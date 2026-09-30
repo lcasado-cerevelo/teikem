@@ -59,7 +59,9 @@ public sealed class CycleCountServiceTests
         var before = await f.TxnCountAsync();
         var result = await svc.ReconcileAsync(created.Count.Id, new CountReconcileRequest("Conteo semanal"), default);
 
-        Assert.Equal(CycleCountStatuses.Reconciled, result.Count.StatusCode);
+        // Lote 14 (D7, D8): asentó ajustes → 'Diferencia', en un paso desde Pendiente (sin pasar por Contado).
+        Assert.Equal(CycleCountStatuses.ReconciledVariance, result.Count.StatusCode);
+        Assert.Equal(new[] { CycleCountStatuses.Open, CycleCountStatuses.ReconciledVariance }, await f.HistoryAsync(created.Count.Id));
         Assert.NotNull(result.Count.ReconciledAtUtc);
         var r1 = result.Lines.Single(l => l.Id == moved.Id);
         Assert.True(r1.SystemQtyChanged);
@@ -108,9 +110,9 @@ public sealed class CycleCountServiceTests
         await svc.CaptureAsync(created.Count.Id, new CountCaptureRequest(new[] { new CountCaptureItem(line.Id, null, new[] { "S2", "S3", "S9" }) }), default);
         var before = await f.TxnCountAsync();
         var result = await svc.ReconcileAsync(created.Count.Id, null, default);
-        Assert.Equal(CycleCountStatuses.Reconciled, result.Count.StatusCode);
+        Assert.Equal(CycleCountStatuses.ReconciledVariance, result.Count.StatusCode);   // Lote 14: bajas, altas y transferencias
 
-        var txns = (await f.Db.Set<InventoryTransaction>().AsNoTracking().OrderBy(t => t.InventoryTransactionId).ToListAsync()).Skip(before).ToList();
+        var txns =(await f.Db.Set<InventoryTransaction>().AsNoTracking().OrderBy(t => t.InventoryTransactionId).ToListAsync()).Skip(before).ToList();
         Assert.Equal(3, txns.Count);
         var serials = await f.Db.Set<InventorySerial>().AsNoTracking().Where(x => x.ProductId == f.ProductSerialId)
             .ToDictionaryAsync(x => x.SerialId, x => x.SerialNumber);
@@ -166,6 +168,9 @@ public sealed class CycleCountServiceTests
 
         var result = await svc.ReconcileAsync(created.Count.Id, null, default);
 
+        // Lote 14 (D7): sin movimientos → 'Concordancia'; terminado a ciegas antes → Pendiente → Contado → Concordancia.
+        Assert.Equal(CycleCountStatuses.Reconciled, result.Count.StatusCode);
+        Assert.Equal(new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted, CycleCountStatuses.Reconciled }, await f.HistoryAsync(created.Count.Id));
         var r = Assert.Single(result.Lines);
         Assert.False(r.SystemQtyChanged);
         Assert.Equal(0m, r.AdjustedQty);
@@ -498,9 +503,11 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         services.AddSingleton<PermissionService>();
         services.AddSingleton(sp => new StatusService(db, tenant, lookups, sp.GetServices<IStatusTransitionEffect>(), sp.GetRequiredService<PermissionService>()));
         services.AddSingleton<INumberSequenceService, InMemoryNumberSequence>();
+        services.AddSingleton<IInventoryChangeSink, InventoryChangeSink>();   // Lote 14 (P2): bandeja de cambios del ledger
         services.AddSingleton<InventoryLedger>();
         services.AddSingleton<WarehouseTaskWriter>();
         services.AddSingleton<CountTaskHandler>();
+        services.AddSingleton<ITenantClock>(TenantClock.Default);   // Lote 14: "hoy" en hora de Puerto Rico
         services.AddSingleton<CycleCountService>();
         var provider = services.BuildServiceProvider();
 
@@ -545,6 +552,92 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         return await Db.Set<StockBalance>().AsNoTracking()
             .Where(b => b.ProductId == productId && b.WarehouseBinId == binId && b.LotId == lotId)
             .SumAsync(b => b.QtyOnHand);
+    }
+
+    // ---------------------------------------------------------------- apoyo del Lote 14 (lo cambiado y lista paginada)
+
+    /// <summary>Varios movimientos en un solo asiento del ledger.</summary>
+    public async Task PostManyAsync(IReadOnlyList<InventoryPosting> postings)
+    {
+        var ledger = Get<InventoryLedger>();
+        await Db.RunInTransactionAsync(async ct => { await ledger.PostAsync(postings, ct); }, default);
+        Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Lote del producto (id).</summary>
+    public async Task<int> AddLotAsync(int productId, string number)
+    {
+        var lot = new InventoryLot { ProductId = productId, LotNumber = number, IsActive = true };
+        Db.Set<InventoryLot>().Add(lot);
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+        return lot.LotId;
+    }
+
+    /// <summary>Corre en el tiempo todos los movimientos existentes (para dejarlos fuera de una ventana).</summary>
+    public async Task ShiftTxnsAsync(TimeSpan delta)
+    {
+        foreach (var t in await Db.Set<InventoryTransaction>().ToListAsync()) t.CreatedAtUtc = t.CreatedAtUtc.Add(delta);
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Zona nueva del almacén con una posición; devuelve el id de la zona.</summary>
+    public async Task<int> AddZoneWithBinAsync(string zoneCode, int binId, string binCode)
+    {
+        var zone = new WarehouseZone { WarehouseId = WarehouseId, Code = zoneCode, Name = zoneCode, ZoneTypeLookupId = LookupId(LookupDomains.ZoneType, ZoneTypes.Reserve), IsActive = true };
+        Db.Set<WarehouseZone>().Add(zone);
+        await Db.SaveChangesAsync();
+        Db.Set<WarehouseBin>().Add(new WarehouseBin { WarehouseBinId = binId, WarehouseZoneId = zone.WarehouseZoneId, WarehouseId = WarehouseId, Code = binCode, IsActive = true });
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+        return zone.WarehouseZoneId;
+    }
+
+    /// <summary>n posiciones activas en la zona PCK (ids desde 1000).</summary>
+    public async Task<List<int>> AddBinsAsync(int n)
+    {
+        var ids = Enumerable.Range(1000, n).ToList();
+        Db.Set<WarehouseBin>().AddRange(ids.Select(i => new WarehouseBin { WarehouseBinId = i, WarehouseZoneId = 11, WarehouseId = WarehouseId, Code = $"Z-{i}", IsActive = true }));
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+        return ids;
+    }
+
+    public async Task SetBinActiveAsync(int binId, bool active)
+    {
+        (await Db.Set<WarehouseBin>().SingleAsync(b => b.WarehouseBinId == binId)).IsActive = active;
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
+    public async Task SetBarcodeAsync(int productId, string barcode)
+    {
+        (await Db.Set<Product>().SingleAsync(p => p.ProductId == productId)).Barcode = barcode;
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Asigna la tarea COUNT del conteo a un usuario (lo crea si no existe).</summary>
+    public async Task AssignCountTaskAsync(int cycleCountId, int userId, string fullName)
+    {
+        if (!await Db.Users.AnyAsync(u => u.Id == userId))
+            Db.Users.Add(new Teikem.Domain.Identity.ApplicationUser { Id = userId, UserName = $"u{userId}", Email = $"u{userId}@example.com", FullName = fullName });
+        var task = await CountTaskAsync(cycleCountId);
+        var tracked = await Db.Set<WarehouseTask>().SingleAsync(t => t.WarehouseTaskId == task.WarehouseTaskId);
+        tracked.AssignedToUserId = userId;
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
+    /// <summary>Estatus destino del historial del conteo, en orden (Lote 14).</summary>
+    public async Task<string[]> HistoryAsync(int cycleCountId)
+    {
+        var entity = LookupId(LookupDomains.EntityType, EntityTypes.CycleCount);
+        var ids = await Db.EntityStatusHistories.AsNoTracking().Where(h => h.EntityTypeLookupId == entity && h.EntityId == cycleCountId)
+            .OrderBy(h => h.EntityStatusHistoryId).Select(h => h.ToStatusCodeId).ToListAsync();
+        var codes = await Db.StatusCodes.AsNoTracking().ToDictionaryAsync(s => s.StatusCodeId, s => s.InternalCode);
+        return ids.Select(i => codes[i]).ToArray();
     }
 
     public async Task<string> CountTaskStatusAsync(int cycleCountId)
@@ -605,6 +698,8 @@ internal sealed class CycleCountFixture : IAsyncDisposable
             L(LookupDomains.WarehouseTaskType, c);
         var uom = L(LookupDomains.UnitOfMeasure, "UN");
         var country = L(LookupDomains.Country, "PR");
+        L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual);    // Lote 14
+        L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Changes);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -621,6 +716,7 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         S(StatusDomains.CycleCountStatus, CycleCountStatuses.Open, pipe, 1, true);
         S(StatusDomains.CycleCountStatus, CycleCountStatuses.Counted, pipe, 2);
         S(StatusDomains.CycleCountStatus, CycleCountStatuses.Reconciled, term, 3);
+        S(StatusDomains.CycleCountStatus, CycleCountStatuses.ReconciledVariance, term, 4);   // Lote 14 (D7)
         S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, pipe, 1, true);
         S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.InProgress, pipe, 2);
         S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Done, term, 3);
@@ -629,6 +725,14 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         S(StatusDomains.SerialStatus, SerialStatuses.Reserved, lat, 2);
         S(StatusDomains.SerialStatus, SerialStatuses.Shipped, lat, 3);
         S(StatusDomains.SerialStatus, SerialStatuses.Scrapped, term, 4);
+        // Lote 14 (seed 3G): 'Diferencia' solo desde Pendiente y Contado.
+        foreach (var from in new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted })
+            Db.StatusLateralEntries.Add(new StatusLateralEntry
+            {
+                EntityTypeLookupId = LookupId(LookupDomains.EntityType, EntityTypes.CycleCount),
+                LateralStatusCodeId = statusIds[StatusDomains.CycleCountStatus + "|" + CycleCountStatuses.ReconciledVariance],
+                FromStatusCodeId = statusIds[StatusDomains.CycleCountStatus + "|" + from], IsAllowed = true,
+            });
 
         Db.Tenants.Add(new Tenant { TenantId = TenantId, Name = "Tenant de prueba", IsActive = true });
         Db.Set<Warehouse>().Add(new Warehouse

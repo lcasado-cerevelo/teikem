@@ -31,6 +31,8 @@ public class OwnedEntityResolverCoverageTests
         EntityTypes.ProductCategory,
         // Lote 8A: aparato de almacén (solo auditoría).
         EntityTypes.UserDevice,
+        // Lote 14: descuadre Kárdex ↔ saldo (sin campos personalizados ni contactos).
+        EntityTypes.InventoryDiscrepancy,
     };
 
     private static HashSet<string> OwnerCodes()

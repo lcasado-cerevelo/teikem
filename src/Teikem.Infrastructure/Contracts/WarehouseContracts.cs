@@ -81,6 +81,12 @@ public sealed record WarehouseBinDto(int Id, int ZoneId, string ZoneCode, string
 public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items);
 
 /// <summary>
+/// Lote 14 — posición encontrada por la búsqueda entre almacenes (GET /warehouses/bins/search), para los filtros Posición del
+/// Kárdex y del Conteo: "Código · Zona · Almacén".
+/// </summary>
+public sealed record BinSearchItemDto(int Id, string Code, string? ZoneCode, Guid WarehousePublicId, string WarehouseCode, bool IsActive = true);
+
+/// <summary>
 /// Lote 11 — asignación del cupo máximo en bloque (POST /warehouses/{publicId}/bins/capacity). Filtros = los mismos del listado
 /// de posiciones con el mismo significado (ZoneIds, Aisle/Rack/Level/Position y Search "contiene", BinIds, IncludeInactive);
 /// OnlyWithoutCapacity = solo las posiciones que hoy no tienen cupo (no pisa ninguno ya capturado). Sin ningún filtro de

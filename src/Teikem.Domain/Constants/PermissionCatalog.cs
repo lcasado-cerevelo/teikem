@@ -11,7 +11,8 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// trips.view y trips.scan (Lote 5, categoría TRIPS: leer rutas y escanear la salida sin poder planificar) e inventory.view,
 /// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE) y devices.manage (Lote 8A, categoría
 /// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar) y los 5 del Pulso del día
-/// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company): 65 códigos.
+/// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company) y
+/// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -114,6 +115,11 @@ public static class PermissionCatalog
     public const string PulseActivity = "pulse.activity";
     /// <summary>Lote F8a: organizar el Pulso de la compañía (PUT /api/v1/analytics/pulse/layout?scope=company).</summary>
     public const string PulseOrganizeCompany = "pulse.organize_company";
+    /// <summary>
+    /// Lote 14 (D6): panel "Necesita tu atención" del Pulso (GET /api/v1/analytics/attention). Sin permiso de datos ni módulo en
+    /// el panel: cada fila decide el suyo (descuadres de inventario: inventory.view + WMS_LOTSERIAL). Lo ve quien ve inventario.
+    /// </summary>
+    public const string PulseAttention = "pulse.attention";
 
     public static readonly IReadOnlyList<PermissionDef> All = new List<PermissionDef>
     {
@@ -189,6 +195,8 @@ public static class PermissionCatalog
         new(PulseWarehouse, "PULSE", "Ver el panel Almacén del Pulso", "See the Warehouse panel"),
         new(PulseActivity, "PULSE", "Ver Actividad reciente en el Pulso", "See Recent activity"),
         new(PulseOrganizeCompany, "PULSE", "Organizar el Pulso de la compañía", "Organize the company Pulse"),
+        // Lote 14 — "Necesita tu atención" (D6)
+        new(PulseAttention, "PULSE", "Ver la sección Necesita tu atención del Pulso", "See the Needs your attention section"),
     };
 
     /// <summary>
@@ -264,6 +272,8 @@ public static class PermissionCatalog
         [EntityTypes.UserDevice] = DevicesManage,
         [EntityTypes.PurchaseOrder] = PurchasingView,
         [EntityTypes.Supplier] = PurchasingView,
+        // Lote 14: descuadre Kárdex ↔ saldo (lo ve quien ve inventario, D5); sin escritura de dueño (resolver cerrado).
+        [EntityTypes.InventoryDiscrepancy] = InventoryView,
     };
 
     /// <summary>
@@ -340,15 +350,18 @@ public static class PermissionCatalog
         ["Dispatcher"] = new[] { OrdersView, OrdersCreate, OrdersEdit, OrdersCancel, TripsPlan, TripsDispatch, TripsOptimize, AnalyticsView, ClientsRead, LocationsRead, LocationsCreate, FleetView, TripsView, TripsScan,
             PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
-            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+            PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
+            PulseAttention },   // Lote 14 (D6): la ve quien ve inventario
         ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView,
             // AnalyticsView: decisión de Luis (Lote F8a) — sin él, la política de /analytics/activity bloquea a este
             // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.
             // El filtro por fuente de datos (§2.2) y el de módulo del servicio lo siguen acotando a WAREHOUSE.
-            AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+            AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
+            PulseAttention },   // Lote 14 (D6)
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
-            PulseIndicators, PulseCharts, PulseActivity },   // Lote F8a
+            PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
+            PulseAttention },   // Lote 14 (D6)
     };
 
     /// <summary>

@@ -1,21 +1,22 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14)
 
-Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex, ajustes,
-transferencias, genealogía, rastro de serie y conciliación), Recepción (avisos de llegada y recibos, incluida la
+Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
+transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
 recepción contra una orden de compra), la cola de Tareas de almacén (putaway dirigido y reabasto), Conteo cíclico,
 Recolección y empaque ad hoc, Compras mínimas (proveedores, órdenes de compra y faltantes) y Cruce de muelle (citas
 y planes, en modo demo). Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones**
 con el mensaje exacto y el código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están
 verificados contra el código (`src/Teikem.Domain/Wms/*.cs`, `src/Teikem.Infrastructure/Wms/*.cs`,
 `src/Teikem.Domain/Catalogs/PostalLocality.cs`, `src/Teikem.Infrastructure/Services/PostalLocalityService.cs`,
+`src/Teikem.Infrastructure/Wms/{InventoryLedger,InventoryReconciler,InventoryReconciliationWorker}.cs`,
 `src/Teikem.Api/Controllers/PostalLocalitiesController.cs`,
 `src/Teikem.Infrastructure/Services/{Warehouse,WarehouseLayout,Product,ProductCategory,InventoryRead,
-InventoryAdjustment,Traceability,Asn,Receipt,WarehouseTask,Replenishment,CycleCount,PickBatch,Supplier,
+InventoryAdjustment,Traceability,InventoryReconciliation,Asn,Receipt,WarehouseTask,Replenishment,CycleCount,PickBatch,Supplier,
 PurchaseOrder,PurchaseOrderReceiving,PurchaseShortage,DockAppointment,CrossDock}Service.cs`,
 `src/Teikem.Infrastructure/Services/{PutawayTaskHandler,ReplenishTaskHandler,CountTaskHandler,CrossDockTaskHandler,
 CrossDockReceiptParticipant,WarehouseTaskStatusEffect,DockAppointmentStatusEffect}.cs`,
-`src/Teikem.Api/Controllers/{Warehouses,Products,ProductCategories,Inventory,Receipts,Asns,WarehouseTasks,
-CycleCounts,PickBatches,Suppliers,PurchaseOrders,DockAppointments,CrossDockPlans}Controller.cs`). Las preguntas y
+`src/Teikem.Api/Controllers/{Warehouses,Products,ProductCategories,Inventory,InventoryDiscrepancies,Receipts,Asns,WarehouseTasks,
+Attention,CycleCounts,PickBatches,Suppliers,PurchaseOrders,DockAppointments,CrossDockPlans}Controller.cs`). Las preguntas y
 respuestas de cada mensaje están en [faq.md](faq.md).
 
 Convenciones del capítulo:
@@ -364,27 +365,94 @@ filtros de la tabla.
 
 ---
 
-## 3. Inventario: saldos, Kárdex, ajustes, transferencias, genealogía, rastro de serie y conciliación
+## 3. Inventario: saldos, Kárdex, ajustes, transferencias, conciliación y descuadres, genealogía y rastro de serie
 
-Qué hace: expone el saldo por almacén/posición/lote, el Kárdex de solo lectura del ledger, el ajuste manual con
-motivo de catálogo, la transferencia entre posiciones o almacenes, la genealogía de un lote, el rastro de una
-serie y la conciliación ledger ↔ saldo. `InventoryLedger` es la única vía de escritura: **nadie** hace `UPDATE`
-sobre `InventoryTransaction` (una reversa siempre es un movimiento nuevo) ni escribe `StockBalance` fuera de él.
+Qué hace: expone el saldo por almacén/posición/lote, el Kárdex de solo lectura del ledger (con resumen, filtros y detalle de cada
+movimiento), el ajuste manual con motivo de catálogo, la transferencia entre posiciones o almacenes, la genealogía de un lote, el rastro
+de una serie y la **conciliación** Kárdex ↔ saldo, que ahora corre sola en segundo plano y guarda los **descuadres** que encuentra
+(Lote 14). `InventoryLedger` es la única vía de escritura: **nadie** hace `UPDATE` sobre `InventoryTransaction` (una reversa siempre es
+un movimiento nuevo) ni escribe `StockBalance` fuera de él.
 
 La cantidad del ledger se guarda **con signo** (maestro L331: "cada despacho escribe movimiento negativo; cada
 recepción, positivo"): `RECEIPT` entra (+), `ISSUE`/`CROSSDOCK` salen (−), `ADJUSTMENT` entra o sale según lo
 capturado, `TRANSFER` es una sola fila con origen y destino. El disponible siempre es "en mano − reservado"
 calculado en código (nunca la columna computada `QtyAvailable`).
 
-Quién puede: `inventory.view` (saldos, Kárdex, genealogía, rastro de serie); `inventory.adjust` (ajuste,
-transferencia, conciliación). Módulo **WMS_LOTSERIAL**.
+Quién puede (módulo **WMS_LOTSERIAL**):
+
+| Acción | Permiso |
+|---|---|
+| Saldos, Kárdex, resumen, detalle de un movimiento, dueños, búsqueda de posiciones, genealogía, rastro de serie y **ver** descuadres | `inventory.view` |
+| Ajustar, transferir, "Ejecutar conciliación", estado de la revisión automática y **resolver** un descuadre (corregir o descartar) | `inventory.adjust` |
+| "Crear conteo de esa posición" tras corregir un descuadre (es un conteo nuevo, sección 6) | `warehouse.count.capture` |
+| Ver la sección "Necesita tu atención" del Pulso (los descuadres pendientes) | `pulse.attention` y `inventory.view` (capítulo 07, sección 4) |
+
+**Día local.** Desde el Lote 14, los filtros de fecha `from` y `to` (día `AAAA-MM-DD`, `to` inclusivo) son **días de la compañía en hora de
+Puerto Rico** (America/Puerto_Rico, UTC−4), no días UTC. Aplica al Kárdex, a su resumen, a los descuadres y a la lista de conteos.
+
+### 3.1 Kárdex: filtros, resumen y detalle del movimiento
 
 Cómo se usa:
 - `GET /api/v1/inventory/balances?warehousePublicIds=&binIds=&productPublicIds=&categoryIds=&lotNumber=&
-  includeZero=&onlyAvailable=&search=&skip=&take=` (`take` ≤ 200).
+  includeZero=&onlyAvailable=&search=&skip=&take=` (`take` ≤ 200). La respuesta trae, además de las filas, `totalOnHand` y
+  `totalAvailable` (las cifras "En mano" y "Disponible" del resumen de Saldos).
 - `GET /api/v1/inventory/transactions?from=&to=&types=&warehousePublicIds=&binIds=&productPublicIds=&
-  categoryIds=&lotNumber=&serialNumber=&refEntity=&refId=&search=&brands=&name=` (`brands` y `name`, desde el Lote 12: marca
-  igual a alguna y nombre del producto que contiene el texto; ver la sección 2).
+  categoryIds=&lotNumber=&serialNumber=&refEntity=&refId=&search=&brands=&name=&ownerClientPublicIds=&includeOwn=&reasons=&
+  direction=&fromWarehousePublicIds=&toWarehousePublicIds=&manualOnly=&skip=&take=` (más recientes primero).
+- `GET /api/v1/inventory/transactions/summary?…` — **los mismos filtros** que la lista (sin `skip` ni `take`).
+- `GET /api/v1/inventory/transactions/{id}` — detalle de un movimiento.
+- `GET /api/v1/inventory/owners` — dueños para el filtro.
+- `GET /api/v1/warehouses/bins/search?search=&warehousePublicIds=&includeInactive=&take=` — posiciones de todos los almacenes (o de los
+  indicados) para el filtro Posición: `search` busca en el código de la posición o de su zona; `take` ≤ 50 (20 por defecto).
+
+Filtros de la lista (todos se combinan con "y"; los de varios valores, con "o"):
+
+| Filtro | Qué hace |
+|---|---|
+| `from`, `to` | Días locales de Puerto Rico, `to` inclusivo |
+| `types` | Tipo de movimiento (`RECEIPT`, `ISSUE`, `TRANSFER`, `ADJUSTMENT`, `CROSSDOCK`) |
+| `warehousePublicIds`, `binIds` | Movimientos que tocan esos almacenes o posiciones (de cualquiera de los dos lados) |
+| `productPublicIds`, `categoryIds` | Producto o categoría (con sus subcategorías) |
+| `lotNumber`, `serialNumber` | Lote o serie |
+| `refEntity` + `refId` | Movimientos de un documento de origen (por ejemplo `CYCLE_COUNT` y el id del conteo) |
+| `brands`, `name` | Marca del producto y texto del nombre (Lote 12) |
+| `ownerClientPublicIds`, `includeOwn` | Dueño del producto: uno o varios clientes; `includeOwn=true` agrega los productos propios ("Propio") |
+| `reasons` | Motivo del ajuste (uno o varios) |
+| `direction` | `IN` (entradas) u `OUT` (salidas), con la misma perspectiva que `signedQuantity` |
+| `fromWarehousePublicIds`, `toWarehousePublicIds` | Almacén de origen y de destino: cada uno se compara contra su lado del movimiento |
+| `manualOnly` | Solo movimientos sin documento de referencia (hechos a mano) |
+| `search` | Texto libre |
+
+La fila del Kárdex trae `quantity` (la del ledger, con signo), `signedQuantity` (la misma cantidad desde la perspectiva del filtro),
+`ownerName` (el cliente dueño o "Propio") y `categoryName`, además de posición de → a, lote, serie, motivo, nota, usuario y origen.
+
+**Resumen.** Cuenta, con los mismos filtros, los **movimientos**, las **entradas** y **salidas** (cuántos movimientos y cuántas unidades)
+y los **internos**. Sin filtro de ubicación, una transferencia es interna (no entra ni sale); con filtro de almacén o posición, es
+entrada si llega desde fuera del filtro, salida si sale, e interna si los dos lados están dentro. Sin filtro de ubicación, `IN` es
+cantidad mayor que cero que no sea transferencia, y `OUT`, cantidad menor que cero.
+
+```
+GET /api/v1/inventory/transactions/summary?from=2026-09-30&to=2026-09-30&productPublicIds=…
+→ { "movements": 3, "inCount": 1, "inQty": 10, "outCount": 1, "outQty": 2, "internalCount": 1 }
+```
+
+**Detalle de un movimiento.** Devuelve la fila completa con dueño, categoría y vencimiento del lote; el **documento de origen** con su
+número, estatus, fecha y parte (cliente o proveedor) y, para abrirlo, su `publicId` (recibo, recolección, orden de compra, orden de
+transporte y producto) o su id (conteo); y los **movimientos relacionados**: los del mismo documento o, si el movimiento no tiene
+documento, los del mismo asiento (mismo instante, usuario y producto). Tope de 200 (`relatedTruncated`). Documentos que resuelve:
+recibo (`RECEIPT`), recolección (`PICK_BATCH`), conteo (`CYCLE_COUNT`), orden de compra (`PURCHASE_ORDER`), orden de transporte
+(`TRANSPORT_ORDER`), tarea de almacén (`WAREHOUSE_TASK`, con su documento padre), producto (`PRODUCT`, el reabasto) y cruce de muelle.
+
+```
+GET /api/v1/inventory/transactions/1658
+→ { "transaction": { "id": 1658, "typeCode": "TRANSFER", "quantity": 3, … },
+    "ownerName": "Propio", "categoryName": null, "lotExpiryDate": null,
+    "document": null, "related": [ { "id": 1658, … } ], "relatedTruncated": false }
+```
+
+### 3.2 Ajustes y transferencias
+
+Cómo se usa:
 - `POST /api/v1/inventory/adjustments` — `{ "productPublicId": "...", "warehousePublicId": "...", "binId": 5,
   "quantity": -2, "reason": "DAMAGE", "notes": "Caja aplastada en el muelle" }` (positivo entra, negativo sale).
   **La nota es obligatoria** (ajuste del 2026-09-30): el API exige `notes` no vacía (después de quitar espacios), de hasta
@@ -395,11 +463,81 @@ Cómo se usa:
   migración (`OPENING_BALANCE`). Tampoco la exigen la transferencia ni el "ajuste manual" con que se resuelve un faltante de
   compra (sección 8): ahí la nota sigue siendo opcional, porque el movimiento queda ligado a la orden y a su línea.
 - `POST /api/v1/inventory/transfers` — `{ "productPublicId": "...", "fromBinId": 5, "toBinId": 8, "quantity": 3 }`
-  (entre almacenes: agrega `fromWarehousePublicId`/`toWarehousePublicId`).
-- `GET /api/v1/inventory/lots/{lotId}/genealogy`.
-- `GET /api/v1/inventory/serials/trace?productPublicId=&serialNumber=`.
-- `GET /api/v1/inventory/reconciliation?productPublicId=` — compara el saldo reconstruido desde el ledger contra
-  `StockBalance`; `mismatches: []` significa que el invariante se cumple.
+  (entre almacenes: agrega `fromWarehousePublicId`/`toWarehousePublicId`; con lote o serie: `lotId` y `serialNumbers`).
+
+**Cómo captura la pantalla (Lote 14, D11).** El API no cambió: sigue recibiendo la cantidad con signo. La pantalla pide **Tipo de ajuste:
+Subir o Bajar** (obligatorio) y una **cantidad positiva**, y pone el signo. Los **motivos dependen de la dirección** (regla **solo de la
+pantalla**; el API acepta cualquier motivo que no sea de sistema con cualquiera de los dos signos):
+
+| Motivo | Al subir | Al bajar |
+|---|---|---|
+| Encontrado (`FOUND`) | Sí | No |
+| Daño (`DAMAGE`), Pérdida (`LOSS`), Vencido (`EXPIRED`) | No | Sí |
+| Los demás motivos de catálogo que no son de sistema (por ejemplo `PO_SHORTAGE`, `OTHER`) | Sí | Sí |
+| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE` | Nunca (los asigna el sistema) | Nunca |
+
+Al cambiar de dirección, un motivo que ya no vale se quita. El motivo se elige con un buscador. La pantalla muestra **"Disponible en la
+posición: N"** y, al bajar, **no deja bajar más de lo disponible**. Un producto **por lote** pide el número de lote al subir y elige un
+lote de los que hay en la posición al bajar; uno **por serie** pide las series al subir y elige las series que salen al bajar. El mismo
+modal se usa en Transferencias y ajustes, en el Kárdex y en la ficha del producto ("Añadir ajuste").
+
+La **transferencia** se captura en este orden: almacén y posición de **origen** → **ítem** (producto y lote, de lo que hay en esa
+posición) → **series** (si el producto las lleva; la cantidad es el número de series) → almacén y posición de **destino** (por defecto,
+el almacén de origen) → cantidad (con tope en lo disponible) → nota (opcional). Antes la pantalla no permitía transferir productos con
+lote o con serie; ahora sí.
+
+Una transferencia es una sola fila `TRANSFER` con origen y destino; un ajuste es una fila `ADJUSTMENT`. Los dos aparecen en el Kárdex
+al instante y disparan la revisión automática de su producto (3.3).
+
+### 3.3 Conciliación automática y descuadres
+
+**Qué es un descuadre.** El Kárdex (la lista de movimientos) y el saldo (`StockBalance`) se escriben juntos en cada movimiento, así que
+deben coincidir. Un **descuadre** es que, para una clave (producto, almacén, posición, lote), el saldo no es igual a lo que suman los
+movimientos; o, en el **total del producto**, que la suma de sus saldos no es igual a la de sus movimientos sin contar transferencias.
+**No es una diferencia física en el estante** (eso lo resuelve un conteo cíclico). En la operación normal casi nunca ocurre; aparece
+tras un arreglo hecho directamente en la base de datos, una restauración, la migración o un error del sistema. **Un ajuste o un conteo
+no lo arreglan**, porque mueven el Kárdex y el saldo en la misma cantidad: el descuadre se corrige llevando el saldo a lo que da el
+Kárdex (el Kárdex manda) o se descarta con una nota.
+
+**Cuándo se revisa.**
+- **Sola, en segundo plano** (origen `EVENT`, "Automática (movimiento)"): unos 1,5 segundos después de cada movimiento del Kárdex, el
+  sistema revisa el producto tocado (varios movimientos seguidos se agrupan; un producto revisado hace menos de 10 segundos espera).
+  Nadie espera por ella. Si el servidor se reinicia, una revisión que estaba pendiente **se pierde**; la cubren el siguiente movimiento
+  de ese producto y el botón "Ejecutar conciliación".
+- **A pedido** (origen `MANUAL`): `POST /api/v1/inventory/reconciliation/run`, con `{ "productPublicIds": ["…"] }` (hasta 200 productos)
+  o sin cuerpo para revisar **todos** los de la compañía. Devuelve `{ checkedAtUtc, productsChecked, balancesChecked, opened,
+  stillOpen, selfCorrected, mismatches }`: cuántos abrió, cuántos siguen pendientes y cuántos se cerraron solos.
+- **Al migrar** (origen `MIGRATION`): `import-legacy` concilia al final. Las órdenes de consola (`db-init`, `import-legacy`) no arrancan la
+  revisión en segundo plano.
+- El origen `SCHEDULED` ("Programada") ya existe en el catálogo, pero no hay barrido programado todavía.
+- `GET /api/v1/inventory/reconciliation/status` (`inventory.adjust`) dice si la revisión automática está encendida, si está consumiendo,
+  cuántos productos esperan (`pending`; 0 = al día), cuántos se han revisado (`processed`), cuántos avisos se descartaron por cola llena
+  (`dropped`), cuántas revisiones fallaron (`failed`), la hora de la última (`lastProcessedAtUtc`) y el último error (`lastError`). Los
+  contadores son por compañía y viven en memoria desde que arrancó el servidor. La configuración está en `Inventory:Reconciliation`
+  (`Enabled`, `DebounceMs` 1500, `MaxBatchProducts` 500, `Capacity` 10000, `MinRecheckSeconds` 10).
+- `GET /api/v1/inventory/reconciliation?productPublicId=` (`inventory.adjust`) conserva su forma: compara y muestra las diferencias,
+  **sin guardarlas**; `mismatches: []` significa que el invariante se cumple.
+
+**Reglas de la revisión.** Solo se guarda un descuadre que se confirma **bajo bloqueo** del producto (así un movimiento en vuelo no da
+falsos positivos). Hay **a lo sumo un descuadre abierto por clave** (un índice único lo garantiza). Una revisión posterior actualiza las
+cifras y suma una revisión (`checkCount`); si el saldo ya cuadra, cierra el descuadre como "Se corrigió solo". Un descuadre
+**descartado** no se reabre mientras las cifras sean las mismas; con cifras distintas se abre uno nuevo. Uno **resuelto** o "Se corrigió
+solo" que vuelve a ocurrir abre un descuadre nuevo. Si el descuadre es del total del producto, no se abre cuando el mismo producto ya
+tiene descuadres por posición (el total sería ruido).
+
+Cómo se ven y se resuelven:
+- `GET /api/v1/inventory/discrepancies?status=&warehousePublicIds=&productPublicIds=&categoryIds=&binIds=&kinds=&from=&to=&skip=&take=` —
+  paginado (`take` ≤ 200, 50 por defecto; los abiertos primero). `status` acepta `OPEN`, `RESOLVED`, `DISMISSED` y `SELF_CORRECTED`;
+  `kinds`, `BALANCE` (saldo por posición) y `PRODUCT_TOTAL` (total del producto); `from` y `to`, días locales de detección. La respuesta
+  trae `total` y `openCount` (pendientes con los mismos filtros salvo el estatus). Cada fila: producto, almacén, posición, lote, `ledgerQty`
+  (lo que da el Kárdex), `balanceQty` (el saldo), `difference` (**saldo − Kárdex**; positiva = el saldo dice más de lo que dan los
+  movimientos), estatus, origen, cuándo se detectó, cuántas veces se revisó, y si está cerrado, quién, cuándo, la nota y "corregido de → a".
+- `GET /api/v1/inventory/discrepancies/{publicId}` — la ficha: el descuadre, lo reservado hoy, los últimos 20 movimientos de esa clave y el
+  historial de estatus.
+- `POST /api/v1/inventory/discrepancies/{publicId}/resolve` — `{ "action": "REBUILD_BALANCE", "notes": "Corregido tras la restauración",
+  "rowVersion": "<el de la ficha>" }` o `{ "action": "DISMISS", "notes": "Conteo físico correcto; el saldo se ajustará en el cierre",
+  "rowVersion": "…" }`. `notes` es obligatoria para descartar (hasta 500 caracteres); `rowVersion` es opcional pero protege contra un cambio
+  simultáneo.
 
 ### Validaciones
 
@@ -413,7 +551,7 @@ Cómo se usa:
 | Motivo reservado al sistema (`RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`) | `El motivo {código} lo asigna el sistema.` | 400 |
 | Ajuste sin nota, o con solo espacios (ajuste del 2026-09-30; el error va en `errors.notes`) | `Escriba una nota que explique el ajuste.` | 400 |
 | Nota del ajuste o de la transferencia de más de 300 caracteres (`errors.notes`) | `Las notas admiten como máximo 300 caracteres.` | 400 |
-| Motivo desconocido | `Motivo de ajuste desconocido: 'X'.` | 400 |
+| Motivo desconocido (también en el filtro `reasons` del Kárdex) | `Motivo de ajuste desconocido: 'X'.` | 400 |
 | Producto controlado por lote sin lote | `El producto se controla por lote: indique el lote.` (o, en el ajuste, `El producto {sku} se controla por lote; indique el lote.`) | 400 |
 | Producto sin lote/serie con lote indicado | `El producto no se controla por lote ni por serie: no indique lote.` | 400 |
 | Producto con serie: cantidad no entera | `En productos con serie la cantidad debe ser entera.` | 400 |
@@ -430,8 +568,53 @@ Cómo se usa:
 | Serie no disponible en la posición | `La serie {s} no está disponible en {bin}.` | 409 |
 | Serie ya en inventario | `La serie {s} ya está en inventario.` | 409 |
 | Serie dada de baja | `La serie {s} fue dada de baja; no vuelve al inventario.` | 409 |
-| `desde` posterior a `hasta` (Kárdex) | `La fecha 'desde' no puede ser posterior a la fecha 'hasta'.` | 400 |
+| `desde` posterior a `hasta` (Kárdex y descuadres) | `La fecha 'desde' no puede ser posterior a la fecha 'hasta'.` | 400 |
+| Tipo de movimiento desconocido en `types` | `Tipo de movimiento desconocido: 'X'.` | 400 |
+| `direction` distinto de `IN` y `OUT` (Kárdex y resumen; `errors.direction`) | `La dirección debe ser IN (entradas) u OUT (salidas).` | 400 |
+| Dueño (`ownerClientPublicIds`) que no existe o es de otra compañía | `Cliente no encontrado.` | 404 |
+| Detalle de un movimiento que no existe o es de otra compañía | `Movimiento no encontrado.` | 404 |
 | Lote/producto de otro tenant o de otro dueño (con `InventoryScope`) | `Lote no encontrado.` / `Producto no encontrado.` | 404 |
+| "Ejecutar conciliación" con más de 200 productos (`errors.productPublicIds`) | `La conciliación manual admite como máximo 200 productos a la vez.` | 400 |
+| "Ejecutar conciliación" con un producto que no existe | `Producto no encontrado.` | 404 |
+| Filtro `kinds` de descuadres desconocido (`errors.kinds`) | `Tipo de descuadre desconocido: 'X'.` | 400 |
+| Descuadre que no existe o es de otra compañía | `Descuadre no encontrado.` | 404 |
+| Resolver sin acción o con otra distinta de las dos (`errors.action`) | `Indique la acción: REBUILD_BALANCE (corregir el saldo) o DISMISS (descartar).` | 400 |
+| Descartar sin nota (`errors.notes`) | `Escriba una nota que explique por qué se descarta el descuadre.` | 400 |
+| Nota de resolución de más de 500 caracteres (`errors.notes`) | `La nota admite como máximo 500 caracteres.` | 400 |
+| `rowVersion` que no es base64 | `rowVersion inválido: se espera el valor base64 devuelto por la ficha.` | 400 |
+| `rowVersion` que ya no es el vigente | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Resolver un descuadre ya cerrado (Resuelto, Descartado o Se corrigió solo) | `El descuadre ya está cerrado; solo se consulta.` | 422 |
+| Corregir el saldo de un descuadre del total del producto | `Este descuadre es del total del producto; no se corrige por posición. Corrija los descuadres por posición o descártelo con una nota.` | 422 |
+| Corregir cuando el Kárdex da menos que lo reservado | `El Kárdex da {ledger} para {sku} en {bin}, menos que lo reservado ({reserved}); libere la reserva antes de corregir el saldo.` | 409 |
+| Corregir cuando el Kárdex da un saldo negativo | `El Kárdex da un saldo negativo ({ledger}) para {sku} en {bin}; revise los movimientos antes de corregir el saldo.` | 409 |
+| Dos revisiones abrieron el mismo descuadre a la vez | `La conciliación chocó con otra revisión simultánea; intente de nuevo.` | 409 |
+
+Cuando un `400` trae un solo error, el mismo mensaje también viaja en `detail`, además de en `errors`.
+
+Mensajes que solo se ven en la pantalla del ajuste y de la transferencia (no hay HTTP): `Elija si el ajuste sube o baja el
+inventario.`, `La cantidad debe ser mayor que cero.`, `No puede bajar más de lo disponible en la posición ({qty}).`, `No puede transferir
+más de lo disponible en la posición ({qty}).`, `Seleccione el lote.`, `Elija el ítem a transferir.` y `Elija al menos una serie.`; y, al
+corregir un descuadre que ya cuadraba, el aviso `El saldo ya cuadraba; el descuadre se cerró solo.`
+
+### Estatus y transiciones del descuadre
+
+`InventoryDiscrepancyStatus`: **Pendiente** (`OPEN`, inicial) → **Resuelto** (`RESOLVED`), **Descartado** (`DISMISSED`) o **Se corrigió
+solo** (`SELF_CORRECTED`); los tres últimos son terminales. Todas las transiciones pasan por `StatusService.TransitionAsync` y quedan en el
+historial (`/api/v1/status/history/INVENTORY_DISCREPANCY/{id}`); el alta y los cambios de estatus también quedan en la auditoría.
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (nuevo) → Pendiente | El sistema (revisión automática, migración) o quien ejecuta la conciliación (`inventory.adjust`) | La revisión lo **confirma bajo bloqueo**; no hay otro abierto de la misma clave; no hay uno descartado con las mismas cifras | Se guarda con las cifras del Kárdex y del saldo, el origen y el movimiento que lo destapó; el historial dice "Kárdex {l}, saldo {b}."; aparece en "Necesita tu atención" |
+| Pendiente → Resuelto | `inventory.adjust`, acción `REBUILD_BALANCE` | Es un descuadre por posición; `rowVersion` vigente; el Kárdex no da negativo ni menos que lo reservado | El saldo toma lo que da el Kárdex, **sin escribir un movimiento**; se guardan "corregido de → a", quién, cuándo y la nota; sale de "Necesita tu atención"; la pantalla ofrece "Crear conteo de esa posición" |
+| Pendiente → Descartado | `inventory.adjust`, acción `DISMISS` | Nota obligatoria de hasta 500 caracteres; `rowVersion` vigente | No mueve inventario; no se reabre mientras las cifras sean las mismas |
+| Pendiente → Se corrigió solo | El sistema (una revisión encuentra el saldo cuadrado) o `inventory.adjust` al pedir "corregir" cuando ya cuadraba (responde 200) | — | Se cierra sin tocar el saldo. El historial dice "La revisión encontró el saldo cuadrado con el Kárdex." o, al corregir, la nota escrita o "El saldo ya cuadraba con el Kárdex al corregir." |
+
+Qué queda bloqueado en cada estatus:
+
+| Estatus | Se puede | No se puede |
+|---|---|---|
+| Pendiente | Corregir el saldo (solo por posición), descartar, dejar que otra revisión actualice las cifras o lo cierre solo | Corregir el total del producto (422); resolver con Kárdex negativo o menor que lo reservado (409) |
+| Resuelto, Descartado, Se corrigió solo | Consultar la ficha y el historial | Resolver otra vez (422 "El descuadre ya está cerrado; solo se consulta."). Si el problema reaparece, se abre un descuadre nuevo (salvo el descartado con las mismas cifras) |
 
 ### Notas de lectura
 
@@ -441,6 +624,10 @@ Cómo se usa:
 - La genealogía de un lote arma sus destinos (orden, cliente, consignatario) leyendo el `Ref` de cada movimiento;
   la conciliación reconstruye `StockBalance` sumando el lado "To" y restando el lado "From" de cada fila del
   ledger (por clave) y, por producto, comparando la suma de `Quantity` sin `TRANSFER` contra `QtyOnHand`.
+- **"Ajustes de inventario" salió del menú.** La pantalla antigua `/warehouse/inventory-adjustments` no mostraba ajustes: mostraba las
+  órdenes de compra recibidas de forma incompleta. Desde el Lote 14 esa dirección lleva a Compras, y los faltantes se resuelven en la
+  pestaña **Faltantes** de la ficha de cada orden de compra (sección 8). Los ajustes de inventario están ahora en **Transferencias y
+  ajustes** y en el Kárdex.
 
 ---
 
@@ -753,25 +940,75 @@ aparece como error) o si el disponible ya no está bajo el mínimo.
 ## 6. Conteo cíclico (modo informado)
 
 Qué hace: toma una foto del sistema (saldo en mano por posición/producto/lote), captura lo contado (cantidad o
-números de serie) y, al reconciliar, ajusta contra el **saldo actual bloqueado** (no contra la foto): si el saldo
+números de serie) y, al **confirmar**, ajusta contra el **saldo actual bloqueado** (no contra la foto): si el saldo
 se movió desde que se tomó la foto, la línea queda marcada `systemQtyChanged` para revisión, pero el ajuste sigue
-siendo correcto porque se calcula sobre el saldo real en ese instante.
+siendo correcto porque se calcula sobre el saldo real en ese instante. Desde el Lote 14:
 
-Quién puede: `inventory.view` (solo la lista); `warehouse.count` (ficha, alta, captura, agregar línea, terminar,
-refrescar, **reconciliar** y eliminar — el Operador de almacén ya tiene este permiso). Módulo **WMS_LOTSERIAL**.
+- **Confirmar es un solo paso.** "Confirmar conteo y ajustar" lleva un conteo **Pendiente** (o **Contado**) directo a su estatus final:
+  **Concordancia** si no hubo nada que ajustar, o **Diferencia** si se asentó al menos un movimiento.
+- **"Conteo de lo cambiado".** Crea de una vez un conteo por cada posición que tuvo movimientos en una ventana de tiempo.
+- La lista de conteos trae **el total** (ya no se corta en 200) y cada conteo dice su posición, su zona, su origen y a quién está asignado.
+
+Quién puede (módulo **WMS_LOTSERIAL**):
+
+| Acción | Permiso |
+|---|---|
+| Ver la lista y la ficha (a ciegas sin `warehouse.count`, ver el Lote 8A más abajo) | `inventory.view` |
+| Alta manual, captura, agregar lo encontrado y terminar (conteo a ciegas de la app) | `warehouse.count.capture` (lo tiene implícito quien tiene `warehouse.count`) |
+| **Confirmar** (reconciliar), refrescar la foto, eliminar, y **"Conteo de lo cambiado"** (vista previa y alta) | `warehouse.count` |
+| Asignar el conteo a un usuario (`POST /api/v1/warehouse-tasks/{taskId}/assign`) | `warehouse.manage` |
+
+"Lo cambiado" pide `warehouse.count` y no `warehouse.count.capture` porque crea muchos conteos de una vez. La web pide además
+`admin.users` para listar a quién asignar.
 
 Cómo se usa:
-- `GET /api/v1/cycle-counts?warehousePublicIds=&status=&from=&to=&binIds=&productPublicIds=&categoryIds=&search=`.
+- `GET /api/v1/cycle-counts?warehousePublicIds=&status=&from=&to=&binIds=&productPublicIds=&categoryIds=&search=` — los 200 más
+  recientes (se conserva por compatibilidad; **`from` y `to` son días locales de Puerto Rico** desde el Lote 14).
+- `GET /api/v1/cycle-counts/page?…&zoneIds=&origins=&skip=&take=` — **la página con el total**: mismos filtros, más `zoneIds` (alguna
+  línea en esas zonas) y `origins` (`MANUAL` "Selección", `CHANGES` "Lo cambiado"; `MANUAL` incluye los conteos anteriores al Lote 14, que
+  no tenían origen). `take` de 1 a 200 (50 por defecto; fuera de rango se ajusta, no da error). Los más recientes primero. `status` acepta `OPEN`, `COUNTED`, `RECONCILED` y `RECONCILED_VARIANCE`, uno o
+  varios. Cada fila trae `binCount` (posiciones distintas) y, si el conteo es de **una** posición, `binCode` y `zoneCode`; `originCode` y
+  `origin`; la ventana `changesFromUtc` y `changesToUtc` (solo "lo cambiado"); `taskId` (la tarea COUNT, para asignarla) y
+  `assignedToName`. Respuesta: `{ total, skip, take, items }`.
 - `POST /api/v1/cycle-counts` — `{ "warehousePublicId": "...", "zoneIds": [...], "binIds": [...] }` (todo
-  opcional: sin filtros toma todo el saldo en mano del almacén). Máximo 1000 líneas.
+  opcional: sin filtros toma todo el saldo en mano del almacén). Máximo 1000 líneas. Origen `MANUAL`.
 - `GET /api/v1/cycle-counts/{id}` — ficha en modo informado (foto, contado, diferencia informativa, series
-  esperadas/contadas, saldo actual).
+  esperadas/contadas, saldo actual). Cada línea trae ahora `barcode` (el código de barras del producto, que el escáner de la web usa para
+  llegar a la línea; no revela lo esperado, así que también llega a ciegas).
 - `PUT /api/v1/cycle-counts/{id}/lines` — captura por línea (`countedQty` en NONE/LOT, `serialNumbers` en SERIAL).
 - `POST /api/v1/cycle-counts/{id}/lines` — línea agregada a mano (lo encontrado sin foto previa).
-- `POST /api/v1/cycle-counts/{id}/finish` — `OPEN → COUNTED`, exige todas las líneas capturadas.
+- `POST /api/v1/cycle-counts/{id}/finish` — `OPEN → COUNTED`, exige todas las líneas capturadas (lo usa la app de almacén a ciegas).
 - `POST /api/v1/cycle-counts/{id}/refresh` — re-fotografía las líneas con foto vieja y borra su captura.
-- `POST /api/v1/cycle-counts/{id}/reconcile` — asienta los ajustes y pasa a `RECONCILED`.
+- `POST /api/v1/cycle-counts/{id}/reconcile` — **"Confirmar conteo y ajustar"**: desde `OPEN` o `COUNTED`, asienta los ajustes y pasa a
+  `RECONCILED_VARIANCE` ("Diferencia") o `RECONCILED` ("Concordancia").
 - `DELETE /api/v1/cycle-counts/{id}` — solo `OPEN`. Cancela su tarea COUNT (`CANCELLED`, con fecha de cierre: deja de sumar antigüedad y el aparato la borra en su siguiente sincronización).
+
+### Conteo de lo cambiado
+
+Crea **un conteo Pendiente por cada posición** del almacén con movimientos en una ventana de tiempo, cada uno con su tarea COUNT y con
+origen `CHANGES` ("Lo cambiado").
+
+- `GET /api/v1/cycle-counts/changes-preview?warehousePublicId=&fromUtc=&toUtc=&zoneIds=&includeEmpty=` — vista previa: lo mismo que haría el
+  alta, **sin escribir nada**.
+- `POST /api/v1/cycle-counts/from-changes` — `{ "warehousePublicId": "...", "fromUtc": "2026-09-30T04:00:00Z", "toUtc": null,
+  "zoneIds": [ … ], "includeEmpty": true }`. Todo es opcional: sin almacén se usa el único activo; sin fechas, la ventana por defecto; sin
+  zonas, todo el almacén; `includeEmpty` es `true` por defecto.
+
+Reglas (decisiones del dueño D2, D3 y D4):
+
+| Regla | Detalle |
+|---|---|
+| Ventana por defecto | Desde el `changesToUtc` del último "lo cambiado" **de ese almacén**; **la primera vez, desde las 00:00 de hoy en hora de Puerto Rico**; hasta ahora. Las fechas se pueden cambiar antes de crear. "Hasta" no pasa de ahora y el rango no pasa de **31 días** (si la última generación es más vieja, la ventana empieza 31 días atrás) |
+| Qué movimientos cuentan | Los que tocan el almacén, de cualquiera de los dos lados, **sin los que salen de un conteo** (un conteo no genera otro conteo) |
+| Qué se cuenta en una posición | **Todo lo que hay en ella** (saldo mayor que cero) y, con `includeEmpty`, las claves que se movieron en la ventana y hoy están en cero (`SystemQty` 0, para confirmar que de verdad está vacía) |
+| Qué posiciones se saltan | Las **inactivas** y las que ya tienen un conteo **Pendiente o Contado**. La vista previa dice cuántas de cada tipo, y cuántas no tienen nada que contar |
+| Tope | **200 posiciones por vez.** Con más, no se crea nada y se piden fechas o zonas más cortas |
+| Todo o nada | Todo se crea en **una sola transacción**: si algo falla, no queda ningún conteo a medias. Medido en la demo: 120 posiciones en 1,5 segundos |
+
+La vista previa devuelve `fromUtc`, `toUtc`, `movements`, `positions` (los conteos que se crearían), `positionsWithOpenCount`,
+`positionsInactive`, `positionsEmpty`, `lines`, `maxPositions`, `lastChangesToUtc` (la generación anterior; nulo la primera vez) y
+**`problem`**: el mensaje exacto con el que el alta respondería 400 (nulo si se puede crear). El alta devuelve `{ window, counts }`, la
+ventana usada y los conteos creados.
 
 ### Validaciones
 
@@ -779,48 +1016,88 @@ Cómo se usa:
 |---|---|---|
 | Más de 1000 líneas seleccionadas | `El conteo admite como máximo 1000 líneas; acote los filtros.` | 400 |
 | Filtros sin inventario en mano | `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` | 400 |
-| Conteo ya reconciliado (editar) | `El conteo ya fue reconciliado; solo se consulta.` | 422 |
+| Conteo ya confirmado (Concordancia o Diferencia): editar, capturar, terminar, refrescar, agregar una línea, confirmar otra vez o eliminar | `El conteo ya fue reconciliado; solo se consulta.` | 422 |
+| Terminar un conteo que ya está Contado | `El conteo ya se terminó; puede corregir la captura o reconciliarlo.` | 422 |
+| Conteo sin líneas (terminar o confirmar) | `El conteo no tiene líneas.` | 422 |
 | Producto con serie: cantidad suelta en vez de series | `En productos con serie se capturan los números de serie, no la cantidad.` | 400 |
 | Producto sin serie con series capturadas | `El producto {sku} no se controla por serie; no capture números de serie.` | 400 |
 | Línea repetida (posición, producto, lote) | `Esa posición, producto y lote ya están en el conteo.` | 409 |
 | Cantidad contada negativa | `La cantidad contada no puede ser negativa.` | 400 |
-| Terminar sin todas las líneas capturadas | `Faltan {n} línea(s) por contar.` | 422 |
-| Reconciliar con lo contado < lo reservado | `El conteo de {sku} en {bin} ({contado}) es menor que lo reservado ({reservado}); libere la reserva antes de reconciliar.` (sin escribir nada) | 409 |
-| Segunda reconciliación | `El conteo ya fue reconciliado; solo se consulta.` | 422 |
-| Eliminar un conteo ya terminado/reconciliado | `Solo se elimina un conteo abierto; este ya se terminó de contar.` | 422 |
-| Almacén inactivo | `El almacén está inactivo.` | 422 |
+| Terminar o confirmar sin todas las líneas capturadas | `Faltan {n} línea(s) por contar.` | 422 |
+| Confirmar con lo contado < lo reservado | `El conteo de {sku} en {bin} ({contado}) es menor que lo reservado ({reservado}); libere la reserva antes de reconciliar.` (sin escribir nada) | 409 |
+| `rowVersion` que ya no es el vigente | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Eliminar un conteo ya Contado | `Solo se elimina un conteo abierto; este ya se terminó de contar.` | 422 |
+| Almacén inactivo (alta y "lo cambiado") | `El almacén está inactivo.` | 422 |
+| Con más de un almacén activo, sin indicar cuál | `Indique el almacén: la compañía tiene más de uno.` | 400 |
+| Zona o posición que no es del almacén | `Zona no encontrada.` / `Posición no encontrada.` | 404 |
 | Serie capturada en dos líneas del mismo conteo | `La serie {s} está capturada en más de una línea del conteo.` | 409 |
 | Completar la tarea `COUNT` desde la cola | `Las tareas de conteo se completan desde Conteo cíclico.` | 422 |
+| "Lo cambiado": `desde` posterior a `hasta` (`errors.fromUtc`) | `La fecha 'desde' no puede ser posterior a la fecha 'hasta'.` | 400 |
+| "Lo cambiado": rango de más de 31 días (`errors.fromUtc`) | `El rango de "lo cambiado" admite como máximo 31 días.` | 400 |
+| "Lo cambiado": ninguna posición activa con movimientos (`errors.filters`) | `No hubo movimientos en {almacén} entre {desde} y {hasta}; no hay posiciones que contar.` (fechas y horas locales, `dd/MM/aaaa HH:mm`) | 400 |
+| "Lo cambiado": todas las posiciones ya tienen un conteo Pendiente o Contado (`errors.filters`) | `Las {n} posiciones con cambios ya tienen un conteo pendiente.` | 400 |
+| "Lo cambiado": más de 200 posiciones (`errors.filters`) | `Hay {n} posiciones con cambios; se generan como máximo 200 a la vez. Acote el rango de fechas o las zonas.` | 400 |
+
+En "lo cambiado", si las posiciones que quedan no tienen nada que contar, el alta responde con el mismo mensaje de "Los filtros no
+seleccionan inventario en mano…" (`errors.filters`, 400).
+
+Mensajes que solo se ven en la pantalla (no hay HTTP): `Ese código no está en este conteo. Use "Agregar lo encontrado" si el producto
+está en la posición.`, `{n} líneas coinciden: elija la posición y el lote.`, `Hay cantidades que no se pudieron guardar; corríjalas antes de
+confirmar.`, `Elija el almacén.` (en "Conteo de lo cambiado"), `El conteo ya fue confirmado; solo se consulta.` y `La web no confirma
+conteos a ciegas.` (las razones por las que el botón **Confirmar conteo y ajustar** está deshabilitado, junto con `Faltan {n} línea(s) por
+contar.` y `El conteo no tiene líneas.`).
 
 ### Estatus y transiciones
 
-`CycleCountStatus`: **OPEN** (inicial, admite captura) → **COUNTED** (terminar) → **RECONCILED** (terminal). Al
-reconciliar: por línea, `ADJUSTMENT COUNT_VARIANCE` = contado − saldo en mano actual bloqueado (`ReconciledSystemQty`
-guarda ese saldo; `SystemQtyChanged = true` si es distinto de la foto original); en productos con serie, las
-esperadas y no contadas se dan de baja, las contadas y desconocidas o fuera de inventario entran de alta, y las
-contadas que el sistema ya tiene en otra posición se transfieren. La tarea `COUNT` de la cola pasa a `DONE` en la
-misma transacción. Eliminar (`DELETE`, solo `OPEN`) cancela su tarea `COUNT`.
+`CycleCountStatus`: **Pendiente** (`OPEN`, inicial) → **Contado** (`COUNTED`, solo cuando se cuenta a ciegas) → **Concordancia**
+(`RECONCILED`) o **Diferencia** (`RECONCILED_VARIANCE`), los dos terminales. Desde Pendiente también se llega directo a Concordancia o
+Diferencia (D8). Las etiquetas "Pendiente" y "Concordancia" reemplazan a "Abierto" y "Reconciliado" de antes; los conteos ya cerrados
+con algún ajuste pasaron a **Diferencia** (con una fila de historial "Lote 14: conteo con diferencia.").
+
+- **Concordancia**: al confirmar no se asentó ningún movimiento (lo contado coincide con el saldo actual en todas las líneas).
+- **Diferencia**: al confirmar se asentó **al menos un movimiento** (un ajuste `COUNT_VARIANCE` o, en productos con serie, una baja, un alta
+  o una transferencia). No significa lo mismo que una línea con varianza contra la foto: si el saldo cambió desde la foto y lo contado
+  coincide con el saldo actual, no hay movimiento y el conteo queda en Concordancia.
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (nuevo) → Pendiente | `warehouse.count.capture` (alta manual) o `warehouse.count` ("lo cambiado") | Almacén activo; a lo sumo 1000 líneas por conteo; en "lo cambiado", hasta 200 posiciones | Se toma la foto de cada línea; se crea una tarea COUNT por conteo; el origen queda en `MANUAL` o `CHANGES` |
+| Pendiente → Contado | `warehouse.count.capture` (`POST /finish`; la app a ciegas) | Todas las líneas capturadas y al menos una línea | Solo cambia el estatus; la web no usa este paso |
+| Pendiente o Contado → Concordancia | `warehouse.count` (`POST /reconcile`) | Todas las líneas contadas; lo contado no puede ser menor que lo reservado; una serie no puede estar en dos líneas; `rowVersion` vigente | No se asienta ningún movimiento; se guardan el saldo al confirmar por línea, la fecha y el usuario; la tarea COUNT pasa a `DONE` |
+| Pendiente o Contado → Diferencia | `warehouse.count` (`POST /reconcile`) | Las mismas | Se asientan los ajustes `COUNT_VARIANCE` (contado − saldo actual) ligados al conteo, con su movimiento en el Kárdex; cada línea queda con su ajuste; la tarea COUNT pasa a `DONE`; el indicador "Conteos con diferencia" y el evento de Actividad `COUNT_RECONCILED` lo toman |
+
+Qué queda bloqueado en cada estatus:
+
+| Estatus | Se puede | No se puede |
+|---|---|---|
+| Pendiente | Capturar, agregar lo encontrado, refrescar la foto, terminar, confirmar, eliminar, asignar | — |
+| Contado | Capturar, agregar lo encontrado, refrescar, confirmar | Terminar otra vez (422 "El conteo ya se terminó; puede corregir la captura o reconciliarlo.") y eliminar (422) |
+| Concordancia, Diferencia | Consultar y ver el historial | Cualquier cambio (422 "El conteo ya fue reconciliado; solo se consulta.") |
+
+Mientras un conteo está Pendiente o Contado, **su posición está ocupada**: "lo cambiado" la salta. Eliminar (`DELETE`, solo `OPEN`) cancela
+su tarea `COUNT`.
 
 ### Lote 8A — conteo a ciegas (app de almacén)
 
-El almacenista cuenta **sin ver lo esperado** y la reconciliación se hace en la web con `warehouse.count`.
+El almacenista cuenta **sin ver lo esperado** y la confirmación se hace en la web con `warehouse.count`.
 
 - Permiso nuevo `warehouse.count.capture` (categoría WAREHOUSE, "Capturar conteo (a ciegas)"): alta
   (`POST /api/v1/cycle-counts`), captura por línea (`PUT .../lines`), captura en lote (`PUT .../lines/batch`),
   agregar lo encontrado (`POST .../lines`) y terminar (`POST .../finish`). Quien tiene `warehouse.count` lo tiene
   implícito (los roles propios que ya contaban no pierden nada); el Operador de almacén lo trae en su plantilla.
-- Refrescar, **reconciliar** y eliminar siguen exigiendo `warehouse.count` (sin él: 403 `Falta el permiso ...`).
+- Refrescar, **confirmar** y eliminar siguen exigiendo `warehouse.count` (sin él: 403 `Falta el permiso ...`).
 - Ficha y respuestas a ciegas: quien no tiene `warehouse.count` recibe `isBlind = true` y las cantidades esperadas
   de las líneas en `null` (`systemQty`, `varianceQty`, `currentQty`, `reconciledSystemQty`, `adjustedQty`;
   `expectedSerials` vacío), tanto en `GET /api/v1/cycle-counts/{id}` como en la respuesta de alta, captura y
   terminar. `onlyVariance` se ignora a ciegas.
 - Solo lectura (`inventory.view` sin `warehouse.count.capture`) ve la ficha a ciegas pero no captura (403).
 - A ciegas, el encabezado tampoco revela lo esperado: `count.varianceLines` y `count.netVariance` llegan en `null` en la
-  ficha, en las respuestas de alta, captura, captura en lote y terminar, y en la lista `GET /api/v1/cycle-counts`
-  (con lo contado permitirían deducir lo esperado). Con `warehouse.count` nunca son `null`.
-- En la web (Almacén → Conteos cíclicos) esto cambia lo que ven los roles sin `warehouse.count` (Solo lectura,
+  ficha, en las respuestas de alta, captura, captura en lote y terminar, y en la lista `GET /api/v1/cycle-counts` y
+  `GET /api/v1/cycle-counts/page` (con lo contado permitirían deducir lo esperado). Con `warehouse.count` nunca son `null`.
+- En la web (Almacén → Conteo cíclico) esto cambia lo que ven los roles sin `warehouse.count` (Solo lectura,
   Facturación): la columna "Diferencia neta" ya no se muestra, porque el API ya no la envía. Antes veían la diferencia
-  real. En la ficha, un valor `null` se pinta como "—", nunca como 0.
+  real. En la ficha, un valor `null` se pinta como "—", nunca como 0. **La web no confirma conteos a ciegas**: el botón queda
+  deshabilitado con "La web no confirma conteos a ciegas.".
 - Sincronización del aparato (`/api/v1/sync/*`, módulo WMS_LOTSERIAL, `inventory.view`): `GET /api/v1/sync/purchase-orders`
   exige además el módulo **PURCHASING** y `purchasing.view`, igual que `/api/v1/purchase-orders` (sin el permiso 403;
   con el módulo apagado 403 `El módulo 'PURCHASING' no está habilitado para esta compañía.`).
@@ -931,8 +1208,10 @@ eliminada; solo se consulta.`) y solo aparece en la lista con `includeDeleted`. 
 ## 8. Compras: proveedores, órdenes de compra y faltantes
 
 Qué hace: mantiene proveedores, órdenes de compra (con costo congelado por línea) y, tras cada recepción, permite
-resolver el faltante pendiente de una línea (cerrar, reordenar o hacer un ajuste manual de inventario). Es la
-pantalla "Ajustes de inventario" del maestro para el faltante de compras.
+resolver el faltante pendiente de una línea (cerrar, reordenar o hacer un ajuste manual de inventario). Desde el Lote 14 los
+faltantes se resuelven **solo desde la pestaña Faltantes de la ficha de la orden de compra**: la pantalla "Ajustes de inventario"
+(`/warehouse/inventory-adjustments`, que mostraba las compras con recibo parcial) salió del menú y esa dirección lleva a Compras. Los
+ajustes de inventario en sí están en la sección 3 (Transferencias y ajustes).
 
 Quién puede: `purchasing.view` (listar, ficha, faltantes); `purchasing.manage` (alta, edición, enviar, cancelar,
 eliminar de la orden de compra, y proveedores); `inventory.adjust` (resolver el faltante de una línea — `REORDER`
@@ -1104,11 +1383,11 @@ inventario) o **CANCELLED** (terminal, libera la reserva; si ya tenía algo conf
 |---|---|---|
 | `inventory.view` | WAREHOUSE | Ver almacenes, productos, inventario, recibos, tareas, conteos, recolecciones, citas y planes de cruce de muelle |
 | `inventory.manage` | WAREHOUSE | Gestionar productos y categorías |
-| `inventory.adjust` | WAREHOUSE | Ajustar/transferir inventario, conciliar, resolver faltantes de compra |
+| `inventory.adjust` | WAREHOUSE | Ajustar/transferir inventario, conciliar ("Ejecutar conciliación", estado de la revisión automática), resolver descuadres, resolver faltantes de compra |
 | `warehouse.manage` | WAREHOUSE | Gestionar almacenes, zonas, posiciones, muelles; asignar/cancelar tareas |
 | `warehouse.receive` | WAREHOUSE | Recibir mercancía (ASN y recibos); completar tareas `PUTAWAY` |
 | `warehouse.pick` | WAREHOUSE | Recolectar y empacar; completar tareas `REPLENISH`; correr el reabasto |
-| `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluida la reconciliación |
+| `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluidas la confirmación ("Confirmar conteo y ajustar") y "Conteo de lo cambiado" |
 | `warehouse.count.capture` | WAREHOUSE | Lote 8A: contar a ciegas (alta, captura, lo encontrado y terminar) sin ver lo esperado ni reconciliar; implícito en `warehouse.count` |
 | `warehouse.crossdock` | WAREHOUSE | Citas y planes de cruce de muelle; completar tareas `CROSSDOCK` |
 | `purchasing.view` | PURCHASING | Ver proveedores y órdenes de compra |
@@ -1120,6 +1399,11 @@ otros tres permisos `WAREHOUSE` nuevos (`inventory.manage`, `inventory.adjust`, 
 el administrador del tenant por defecto.
 
 Módulos: **WMS_LOTSERIAL** y **PURCHASING** vienen encendidos por defecto; **CROSSDOCK** apagado (demo).
+
+Lote 14: un permiso nuevo, `pulse.attention` (categoría PULSE), para ver "Necesita tu atención" en el Pulso (capítulo 07, sección 4);
+la plantilla del Operador de almacén, Facturación, Solo lectura y el administrador lo traen, y una sola vez se propagó a los roles
+de compañía que ya tenían `inventory.view`. Los descuadres los ve `inventory.view` y los resuelve `inventory.adjust`; "lo cambiado" pide
+`warehouse.count`. `GET /api/v1/warehouses/bins/search` pide `inventory.view`. El total es de 66 permisos.
 
 Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
 /api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.

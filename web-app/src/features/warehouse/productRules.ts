@@ -95,3 +95,29 @@ export function adjustQuantitySchema(t: Translate) {
       else if (decimals(v) > 3) ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityDecimals') })
     })
 }
+
+/**
+ * Lote 14 (D11) — dirección del ajuste ("Subir"/"Bajar"): obligatoria, con el mensaje de pantalla 'Elija si el ajuste sube
+ * o baja el inventario.'. Valor del formulario: 'up' | 'down' | '' (sin elegir).
+ */
+export function adjustDirectionSchema(t: Translate) {
+  return z.string().refine((v) => v === 'up' || v === 'down', t('warehouse.inventory.adjustModal.errors.directionRequired'))
+}
+
+/**
+ * Lote 14 (D11) — cantidad del ajuste en positivo (la pantalla pone el signo según Subir/Bajar): obligatoria, mayor que
+ * cero ('La cantidad debe ser mayor que cero.') y a lo sumo 3 decimales. Vacío (null) = "Se esperaba un número.".
+ */
+export function adjustMagnitudeSchema(t: Translate) {
+  return z
+    .number(t('warehouse.inventory.adjustModal.errors.quantityRequired'))
+    .nullable()
+    .superRefine((v, ctx) => {
+      if (v === null) {
+        ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityRequired') })
+        return
+      }
+      if (v <= 0) ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityPositive') })
+      else if (decimals(v) > 3) ctx.addIssue({ code: 'custom', message: t('warehouse.inventory.adjustModal.errors.quantityDecimals') })
+    })
+}

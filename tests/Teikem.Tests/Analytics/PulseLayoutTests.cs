@@ -163,8 +163,12 @@ public class PulseLayoutTests
         Assert.Equal(new[] { PulsePanels.Warehouse }, (await x.PulseAsync()).Panels.Select(p => p.Key));
 
         // Registro del plan §2.3.
-        Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50) },
+        // Lote 14 (D6): + ATTENTION ("Necesita tu atención", orden 5: el primero, debajo de la franja del Lote 15), sin datos ni módulo.
+        Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50),
+                ("ATTENTION", "pulse.attention", 5) },
             PulsePanels.All.Select(p => (p.Key, p.Permission, p.DefaultSortOrder)));
+        Assert.Empty(PulsePanels.Find(PulsePanels.Attention)!.DataPermissions);
+        Assert.Null(PulsePanels.Find(PulsePanels.Attention)!.Module);
         Assert.Equal(new[] { PermissionCatalog.InventoryView }, PulsePanels.Find("warehouse")!.DataPermissions);
         Assert.Equal(new[] { PermissionCatalog.AnalyticsView }, PulsePanels.Find(PulsePanels.Activity)!.DataPermissions);
         Assert.Equal(ModuleKeys.WmsLotSerial, PulsePanels.Find(PulsePanels.Warehouse)!.Module);
@@ -403,12 +407,15 @@ public class PulseLayoutTests
         // Plantillas del plan §2.1.
         var t = PermissionCatalog.RoleTemplates;
         string[] Pulse(string role) => t[role].Where(c => c.StartsWith("pulse.", StringComparison.Ordinal)).OrderBy(c => c, StringComparer.Ordinal).ToArray();
-        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators", "pulse.organize_company", "pulse.warehouse" }, Pulse("TenantAdmin"));
-        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators", "pulse.warehouse" }, Pulse("WarehouseOperator"));
-        foreach (var role in new[] { "Dispatcher", "Billing", "ReadOnly" })
-            Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators" }, Pulse(role));
+        // Lote 14 (D6): pulse.attention para quien ve inventario (TenantAdmin por "todos", Operador, Facturación y Solo lectura).
+        Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators", "pulse.organize_company", "pulse.warehouse" }, Pulse("TenantAdmin"));
+        Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators", "pulse.warehouse" }, Pulse("WarehouseOperator"));
+        foreach (var role in new[] { "Billing", "ReadOnly" })
+            Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators" }, Pulse(role));
+        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators" }, Pulse("Dispatcher"));
+        Assert.All(t.Where(kv => kv.Value.Contains(PermissionCatalog.PulseAttention)), kv => Assert.Contains(PermissionCatalog.InventoryView, kv.Value));
         Assert.Empty(Pulse("Driver"));
-        Assert.Equal(65, PermissionCatalog.All.Count);
+        Assert.Equal(66, PermissionCatalog.All.Count);
         Assert.All(PermissionCatalog.All.Where(p => p.Code.StartsWith("pulse.", StringComparison.Ordinal)), p => Assert.Equal("PULSE", p.Category));
 
         // PermissionSeeder real sobre InMemory: plantillas y un rol clonado de un tenant sin los pulse.* (versión anterior).
@@ -444,10 +451,36 @@ public class PulseLayoutTests
         string[] PulseOf(int? tenantId, string name) => roles.Single(r => r.TenantId == tenantId && r.Name == name).Permissions
             .Select(rp => codes[rp.PermissionId]).Where(c => c.StartsWith("pulse.", StringComparison.Ordinal)).OrderBy(c => c, StringComparer.Ordinal).ToArray();
         foreach (var name in t.Keys) Assert.Equal(Pulse(name), PulseOf(null, name));
-        Assert.Equal(new[] { "pulse.activity", "pulse.charts", "pulse.indicators", "pulse.warehouse" }, PulseOf(1, "WarehouseOperator"));   // propagado
+        Assert.Equal(new[] { "pulse.activity", "pulse.attention", "pulse.charts", "pulse.indicators", "pulse.warehouse" }, PulseOf(1, "WarehouseOperator"));   // propagado
         Assert.Empty(PulseOf(1, "Almacén propio"));   // un rol propio no es plantilla: no se toca
         var pulsePerm = Assert.Single(await db.Permissions.AsNoTracking().Where(p => p.Code == PermissionCatalog.PulseOrganizeCompany).ToListAsync());
         Assert.Equal(categories.Single(c => c.InternalCode == "PULSE").LookupCodeId, pulsePerm.CategoryLookupId);
+    }
+
+    // ================================================================ (9) Lote 14
+
+    [Fact]
+    public async Task Case9_attention_panel_goes_first_with_only_its_permission_and_without_module()
+    {
+        await using var x = await Fx.CreateAsync();
+
+        // Sin pulse.attention no aparece.
+        x.As(Me, AllPulse);
+        Assert.DoesNotContain((await x.PulseAsync()).Panels, p => p.Key == PulsePanels.Attention);
+
+        // Con él va primero (orden 5, antes de Indicadores 20): justo debajo del encabezado.
+        x.As(Me, AllPulse.Append(PermissionCatalog.PulseAttention).ToArray());
+        Assert.Equal(new[] { "ATTENTION:5:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
+            (await x.PulseAsync()).Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
+
+        // Sin permiso de datos ni módulo en el panel: solo pulse.attention y ningún módulo encendido basta para verlo.
+        x.F.SetModules();
+        x.As(Me, PermissionCatalog.PulseAttention);
+        Assert.Equal(new[] { PulsePanels.Attention }, (await x.PulseAsync()).Panels.Select(p => p.Key));
+        // Se puede ordenar y ocultar como cualquier panel.
+        var mine = await x.SaveAsync(AnalyticsService.ScopeMine, panels: new[] { new PulseLayoutPanel("attention", 70, false) });
+        Assert.Equal("ATTENTION:70:user", $"{mine.Panels[0].Key}:{mine.Panels[0].SortOrder}:{mine.Panels[0].Source}");
+        Assert.False(mine.Panels[0].IsVisible);
     }
 
     private static Role MakeRole(int? tenantId, string name, IEnumerable<string> codes, IReadOnlyList<Permission> perms)

@@ -1530,6 +1530,35 @@
         }
       }
     },
+    "/api/v1/analytics/attention": {
+      "get": {
+        "tags": [
+          "Attention"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttentionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/audit/changes": {
       "get": {
         "tags": [
@@ -5699,6 +5728,275 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CycleCountDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/page": {
+      "get": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "warehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "zoneIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "productPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "categoryIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "origins",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/changes-preview": {
+      "get": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "warehousePublicId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "fromUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toUtc",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "zoneIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "includeEmpty",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountChangesPreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountChangesPreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountChangesPreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/from-changes": {
+      "post": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleCountFromChangesRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleCountFromChangesRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CycleCountFromChangesRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountBatchResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountBatchResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountBatchResultDto"
                 }
               }
             }
@@ -10029,6 +10327,72 @@
               "format": "int32",
               "default": 200
             }
+          },
+          {
+            "name": "ownerClientPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "includeOwn",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "reasons",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromWarehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "toWarehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "manualOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -10048,6 +10412,304 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/KardexPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transactions/summary": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "types",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "warehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "productPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "categoryIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "lotNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serialNumber",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refEntity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "refId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "brands",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "ownerClientPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "reasons",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromWarehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "toWarehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "includeOwn",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "manualOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/transactions/{id}": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KardexDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/owners": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryOwnerDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryOwnerDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InventoryOwnerDto"
+                  }
                 }
               }
             }
@@ -10269,6 +10931,311 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReconciliationDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/reconciliation/run": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRunRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRunRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRunDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRunDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationRunDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/reconciliation/status": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/discrepancies": {
+      "get": {
+        "tags": [
+          "InventoryDiscrepancies"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "warehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "productPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "categoryIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "kinds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/discrepancies/{publicId}": {
+      "get": {
+        "tags": [
+          "InventoryDiscrepancies"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/discrepancies/{publicId}/resolve": {
+      "post": {
+        "tags": [
+          "InventoryDiscrepancies"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscrepancyResolveRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscrepancyResolveRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscrepancyResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryDiscrepancyDetailDto"
                 }
               }
             }
@@ -20272,6 +21239,80 @@
         }
       }
     },
+    "/api/v1/warehouses/bins/search": {
+      "get": {
+        "tags": [
+          "Warehouses"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "warehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BinSearchItemDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BinSearchItemDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BinSearchItemDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/warehouses/{publicId}/bins/capacity": {
       "post": {
         "tags": [
@@ -21835,6 +22876,104 @@
         },
         "additionalProperties": false
       },
+      "AttentionDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttentionItemDto"
+            },
+            "nullable": true
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttentionGroupDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttentionGroupDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "module": {
+            "type": "string",
+            "nullable": true
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "route": {
+            "type": "string",
+            "nullable": true
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AttentionItemDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "module": {
+            "type": "string",
+            "nullable": true
+          },
+          "tone": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "route": {
+            "type": "string",
+            "nullable": true
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "sinceUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "AuditLogDto": {
         "type": "object",
         "properties": {
@@ -22105,6 +23244,35 @@
           "billSpecialServices": {
             "type": "boolean",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "BinSearchItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "isActive": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -23983,6 +25151,81 @@
         },
         "additionalProperties": false
       },
+      "CycleCountBatchResultDto": {
+        "type": "object",
+        "properties": {
+          "window": {
+            "$ref": "#/components/schemas/CycleCountChangesPreviewDto"
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CycleCountDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountChangesPreviewDto": {
+        "type": "object",
+        "properties": {
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "movements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "positions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "positionsWithOpenCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "positionsInactive": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxPositions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "positionsEmpty": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastChangesToUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CycleCountCreateRequest": {
         "type": "object",
         "properties": {
@@ -24105,6 +25348,82 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "binCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "originCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "taskId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "assignedToName": {
+            "type": "string",
+            "nullable": true
+          },
+          "origin": {
+            "type": "string",
+            "nullable": true
+          },
+          "changesFromUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "changesToUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "assignedToUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountFromChangesRequest": {
+        "type": "object",
+        "properties": {
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "zoneIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "includeEmpty": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -24210,6 +25529,35 @@
           "adjustmentTxnId": {
             "type": "integer",
             "format": "int64",
+            "nullable": true
+          },
+          "barcode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountPageDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CycleCountDto"
+            },
             "nullable": true
           }
         },
@@ -24619,6 +25967,24 @@
             "format": "uuid"
           },
           "deviceSecret": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DiscrepancyResolveRequest": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "rowVersion": {
             "type": "string",
             "nullable": true
           }
@@ -26849,6 +28215,296 @@
         },
         "additionalProperties": false
       },
+      "InventoryDiscrepancyDetailDto": {
+        "type": "object",
+        "properties": {
+          "discrepancy": {
+            "$ref": "#/components/schemas/InventoryDiscrepancyDto"
+          },
+          "currentReserved": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "recentMovements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KardexRowDto"
+            },
+            "nullable": true
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusHistoryDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InventoryDiscrepancyDto": {
+        "type": "object",
+        "properties": {
+          "publicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kindCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "warehouseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "binId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "ledgerQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "balanceQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "difference": {
+            "type": "number",
+            "format": "double"
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "triggerCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "trigger": {
+            "type": "string",
+            "nullable": true
+          },
+          "detectedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastCheckedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "checkCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "resolvedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolutionNotes": {
+            "type": "string",
+            "nullable": true
+          },
+          "correctedFromQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "correctedToQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "lastTxnId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InventoryDiscrepancyPageDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InventoryDiscrepancyDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InventoryOwnerDto": {
+        "type": "object",
+        "properties": {
+          "clientPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "isOwn": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KardexDetailDto": {
+        "type": "object",
+        "properties": {
+          "transaction": {
+            "$ref": "#/components/schemas/KardexRowDto"
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoryName": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotExpiryDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "document": {
+            "$ref": "#/components/schemas/KardexDocumentDto"
+          },
+          "related": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KardexRowDto"
+            },
+            "nullable": true
+          },
+          "relatedTruncated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "KardexDocumentDto": {
+        "type": "object",
+        "properties": {
+          "entityCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "entityLabel": {
+            "type": "string",
+            "nullable": true
+          },
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "publicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "partyName": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "parent": {
+            "$ref": "#/components/schemas/KardexDocumentDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "KardexPageDto": {
         "type": "object",
         "properties": {
@@ -26974,6 +28630,44 @@
           "userName": {
             "type": "string",
             "nullable": true
+          },
+          "ownerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoryName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "KardexSummaryDto": {
+        "type": "object",
+        "properties": {
+          "movements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "outCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "internalCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -31577,6 +33271,94 @@
           "balanceQty": {
             "type": "number",
             "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconciliationRunDto": {
+        "type": "object",
+        "properties": {
+          "checkedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "productsChecked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "balancesChecked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "opened": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stillOpen": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "selfCorrected": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mismatches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconciliationRowDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconciliationRunRequest": {
+        "type": "object",
+        "properties": {
+          "productPublicIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconciliationStatusDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "consuming": {
+            "type": "boolean"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "processed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dropped": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastProcessedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "additionalProperties": false

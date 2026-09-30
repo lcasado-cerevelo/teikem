@@ -164,6 +164,39 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         return new WarehouseBinPageDto(total, skip, take, await BinDtosAsync(page, ct));
     }
 
+    /// <summary>Tope de resultados de la búsqueda de posiciones entre almacenes (Lote 14).</summary>
+    public const int MaxBinSearch = 50;
+
+    /// <summary>
+    /// Lote 14 — búsqueda de posiciones ENTRE almacenes para los filtros Posición del Kárdex y del Conteo: el código de la
+    /// posición o de su zona contiene el texto (vacío = las primeras por almacén y código), acotada opcionalmente a almacenes;
+    /// solo activas salvo includeInactive (el Kárdex puede filtrar posiciones ya dadas de baja). take en 1..50 (por defecto 20).
+    /// La posición y la zona (sin TenantId) se alcanzan por su almacén filtrado por tenant; un almacén de otro tenant no aporta nada.
+    /// </summary>
+    public async Task<IReadOnlyList<BinSearchItemDto>> SearchBinsAsync(string? search, Guid[]? warehousePublicIds, bool includeInactive,
+        int take, CancellationToken ct)
+    {
+        take = take <= 0 ? 20 : Math.Min(take, MaxBinSearch);
+        var q = from b in db.WarehouseBins.AsNoTracking()
+                join w in db.Warehouses.AsNoTracking() on b.WarehouseId equals w.WarehouseId
+                join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                select new { Bin = b, WarehousePublicId = w.PublicId, WarehouseCode = w.Code, ZoneCode = z.Code };
+        if (!includeInactive) q = q.Where(x => x.Bin.IsActive);
+        if (warehousePublicIds is { Length: > 0 })
+        {
+            var pubs = warehousePublicIds.Distinct().ToList();
+            q = q.Where(x => pubs.Contains(x.WarehousePublicId));
+        }
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            q = q.Where(x => x.Bin.Code.Contains(s) || x.ZoneCode.Contains(s));
+        }
+        var rows = await q.OrderBy(x => x.WarehouseCode).ThenBy(x => x.Bin.Code).ThenBy(x => x.Bin.WarehouseBinId).Take(take).ToListAsync(ct);
+        return rows.Select(x => new BinSearchItemDto(x.Bin.WarehouseBinId, x.Bin.Code, x.ZoneCode, x.WarehousePublicId, x.WarehouseCode, x.Bin.IsActive))
+            .ToList();
+    }
+
     /// <summary>Fila del listado de posiciones: la posición, su zona y su existencia (member-init: se puede seguir filtrando en SQL).</summary>
     public sealed class BinRow
     {

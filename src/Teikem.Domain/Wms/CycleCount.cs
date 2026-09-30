@@ -6,6 +6,8 @@ namespace Teikem.Domain.Wms;
 /// <summary>
 /// Lote 6 — Conteo cíclico CC-##### en modo informado (R16, D22): OPEN → COUNTED → RECONCILED. Un conteo reconciliado queda
 /// congelado (ya está en el ledger).
+/// Lote 14 (D7): el final es RECONCILED 'Concordancia' o RECONCILED_VARIANCE 'Diferencia'. OriginLookupId = CycleCountOrigin
+/// (MANUAL | CHANGES); ChangesFromUtc/ChangesToUtc = ventana de movimientos de "lo cambiado" [desde, hasta) (solo CHANGES).
 /// </summary>
 [AuditEntity(Constants.EntityTypes.CycleCount)]
 public class CycleCount : ITenantScoped, ISoftDeletable, IHasStatus
@@ -21,6 +23,12 @@ public class CycleCount : ITenantScoped, ISoftDeletable, IHasStatus
     public int? ReconciledBy { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>Lote 14: origen del conteo (LookupCode CycleCountOrigin). NULL solo en filas anteriores al seed del lote.</summary>
+    public int? OriginLookupId { get; set; }
+    /// <summary>Lote 14: inicio (inclusivo) de la ventana de movimientos de "lo cambiado".</summary>
+    public DateTime? ChangesFromUtc { get; set; }
+    /// <summary>Lote 14: fin (exclusivo) de la ventana; la siguiente generación del almacén arranca aquí por defecto.</summary>
+    public DateTime? ChangesToUtc { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<CycleCountLine> Lines { get; set; } = new List<CycleCountLine>();

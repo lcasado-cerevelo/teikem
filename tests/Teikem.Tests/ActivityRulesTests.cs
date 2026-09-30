@@ -110,6 +110,7 @@ public sealed class ActivityRulesTests
     [InlineData(EntityTypes.Asn, AsnStatuses.Received, null, null)]
     [InlineData(EntityTypes.CycleCount, CycleCountStatuses.Counted, null, ActivityEvents.CountFinished)]
     [InlineData(EntityTypes.CycleCount, CycleCountStatuses.Reconciled, null, ActivityEvents.CountReconciled)]
+    [InlineData(EntityTypes.CycleCount, CycleCountStatuses.ReconciledVariance, null, ActivityEvents.CountReconciled)]   // Lote 14 (D7)
     [InlineData(EntityTypes.PickBatch, PickBatchStatuses.Collected, null, ActivityEvents.PickCollected)]
     [InlineData(EntityTypes.PickBatch, PickBatchStatuses.Packed, null, ActivityEvents.PickPacked)]
     [InlineData(EntityTypes.PickBatch, PickBatchStatuses.Cancelled, null, ActivityEvents.PickCancelled)]
@@ -744,7 +745,7 @@ public sealed class ActivityRulesTests
         var cc = new Teikem.Domain.Wms.CycleCount
         {
             TenantId = tenantId, WarehouseId = w1.WarehouseId, Number = "CC-00088",
-            StatusCodeId = f.StatusId(StatusDomains.CycleCountStatus, CycleCountStatuses.Reconciled), CreatedAtUtc = DateTime.UtcNow,
+            StatusCodeId = f.StatusId(StatusDomains.CycleCountStatus, CycleCountStatuses.ReconciledVariance), CreatedAtUtc = DateTime.UtcNow,   // Lote 14: 'Diferencia'
         };
         var batch = new Teikem.Domain.Wms.PickBatch
         {
@@ -768,7 +769,7 @@ public sealed class ActivityRulesTests
         var at = DateTime.UtcNow.AddMinutes(-5);
         History(f, EntityTypes.Asn, asn.AsnId, StatusDomains.AsnStatus, AsnStatuses.Cancelled, at);
         History(f, EntityTypes.CycleCount, cc.CycleCountId, StatusDomains.CycleCountStatus, CycleCountStatuses.Counted, at.AddMinutes(-1));
-        History(f, EntityTypes.CycleCount, cc.CycleCountId, StatusDomains.CycleCountStatus, CycleCountStatuses.Reconciled, at);
+        History(f, EntityTypes.CycleCount, cc.CycleCountId, StatusDomains.CycleCountStatus, CycleCountStatuses.ReconciledVariance, at);   // Lote 14 (D7)
         History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, at.AddMinutes(-2));
         History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, at.AddMinutes(-1));
         History(f, EntityTypes.PickBatch, batch.PickBatchId, StatusDomains.PickBatchStatus, PickBatchStatuses.Cancelled, at);

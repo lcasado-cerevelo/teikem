@@ -184,6 +184,8 @@ public sealed class CycleCountConfiguration : IEntityTypeConfiguration<CycleCoun
         b.Property(c => c.RowVersion).IsRowVersion();
 
         b.HasIndex(c => new { c.TenantId, c.Number }).IsUnique().HasDatabaseName("UQ_CycleCount_Number");
+        // Lote 14: ventana por defecto de "lo cambiado" (último ChangesToUtc del almacén con origen CHANGES).
+        b.HasIndex(c => new { c.TenantId, c.WarehouseId, c.OriginLookupId, c.ChangesToUtc }).HasDatabaseName("IX_CycleCount_Origin");
 
         b.HasOne(c => c.Status).WithMany().HasForeignKey(c => c.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Warehouse>().WithMany().HasForeignKey(c => c.WarehouseId).OnDelete(DeleteBehavior.NoAction);
@@ -203,6 +205,8 @@ public sealed class CycleCountLineConfiguration : IEntityTypeConfiguration<Cycle
         b.Property(l => l.ReconciledSystemQty).HasColumnType("decimal(16,3)");
 
         b.HasIndex(l => new { l.CycleCountId, l.WarehouseBinId, l.ProductId, l.LotId }).IsUnique().HasFilter(null).HasDatabaseName("UQ_CycleCountLine");
+        // Lote 14: posiciones con un conteo abierto ("lo cambiado" no las repite).
+        b.HasIndex(l => l.WarehouseBinId).IncludeProperties(l => l.CycleCountId).HasDatabaseName("IX_CycleCountLine_Bin");
 
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.WarehouseBinId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Product>().WithMany().HasForeignKey(l => l.ProductId).OnDelete(DeleteBehavior.NoAction);
@@ -298,5 +302,40 @@ public sealed class CrossDockAllocationConfiguration : IEntityTypeConfiguration<
         b.HasOne<ReceiptLine>().WithMany().HasForeignKey(a => a.ReceiptLineId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Teikem.Domain.Orders.TransportOrder>().WithMany().HasForeignKey(a => a.TransportOrderId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<WarehouseTask>().WithMany().HasForeignKey(a => a.WarehouseTaskId).OnDelete(DeleteBehavior.NoAction);
+    }
+}
+
+/// <summary>
+/// Lote 14 (P1) — descuadre Kárdex ↔ saldo (CAPA 14). Un solo abierto por clave: UX_InvDiscrepancy_OpenKey filtrado por
+/// ClosedAtUtc NULL (con varias instancias del API, la base es la última línea). Las FKs compuestas del SQL (producto, almacén,
+/// posición, lote y conteo contra su tenant o su padre) se mapean simples, como en el resto del WMS.
+/// </summary>
+public sealed class InventoryDiscrepancyConfiguration : IEntityTypeConfiguration<InventoryDiscrepancy>
+{
+    public void Configure(EntityTypeBuilder<InventoryDiscrepancy> b)
+    {
+        b.ToTable("InventoryDiscrepancy");
+        b.HasKey(d => d.InventoryDiscrepancyId);
+        b.Property(d => d.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
+        b.Property(d => d.LedgerQty).HasColumnType("decimal(16,3)");
+        b.Property(d => d.BalanceQty).HasColumnType("decimal(16,3)");
+        b.Property(d => d.CorrectedFromQty).HasColumnType("decimal(16,3)");
+        b.Property(d => d.CorrectedToQty).HasColumnType("decimal(16,3)");
+        b.Property(d => d.ResolutionNotes).HasMaxLength(500);
+        b.Property(d => d.RowVersion).IsRowVersion();
+
+        b.HasIndex(d => d.PublicId).IsUnique().HasDatabaseName("UQ_InvDiscrepancy_PublicId");
+        b.HasIndex(d => new { d.TenantId, d.KindLookupId, d.ProductId, d.WarehouseId, d.WarehouseBinId, d.LotId })
+            .IsUnique().HasFilter("[ClosedAtUtc] IS NULL").HasDatabaseName("UX_InvDiscrepancy_OpenKey");
+        b.HasIndex(d => new { d.TenantId, d.ClosedAtUtc, d.DetectedAtUtc }).HasDatabaseName("IX_InvDiscrepancy_Tenant_Open");
+        b.HasIndex(d => d.ProductId).HasDatabaseName("IX_InvDiscrepancy_Product");
+
+        b.HasOne(d => d.Status).WithMany().HasForeignKey(d => d.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Product>().WithMany().HasForeignKey(d => d.ProductId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<Warehouse>().WithMany().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(d => d.WarehouseBinId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<InventoryLot>().WithMany().HasForeignKey(d => d.LotId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<InventoryTransaction>().WithMany().HasForeignKey(d => d.LastTxnId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<CycleCount>().WithMany().HasForeignKey(d => d.CycleCountId).OnDelete(DeleteBehavior.NoAction);
     }
 }

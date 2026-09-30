@@ -27,19 +27,71 @@ public sealed record BalancePageDto(int Total, int Skip, int Take, decimal Total
 /// <summary>
 /// Filtros del Kárdex. Lote 12: Brands (marca del producto igual a alguna, sin distinguir mayúsculas) y Name (el nombre del
 /// producto contiene el texto, sin distinguir mayúsculas), para que el Reporte de ajustes use los filtros de Productos.
+/// Lote 14 (al final, con valor por defecto): From/To son días LOCALES de la compañía (hora de Puerto Rico); dueño
+/// (OwnerClientPublicIds + IncludeOwn = productos propios), motivos de ajuste (Reasons), dirección IN/OUT con la perspectiva
+/// de SignedQuantity, almacén de origen y de destino (cada uno contra su lado) y ManualOnly (movimientos sin documento).
 /// </summary>
 public sealed record KardexQuery(DateOnly? From = null, DateOnly? To = null, string[]? Types = null, Guid[]? WarehousePublicIds = null,
     int[]? BinIds = null, Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, string? LotNumber = null, string? SerialNumber = null,
     string? RefEntity = null, int? RefId = null, string? Search = null, int Skip = 0, int Take = 200, string[]? Brands = null,
-    string? Name = null);
+    string? Name = null, Guid[]? OwnerClientPublicIds = null, bool IncludeOwn = false, string[]? Reasons = null, string? Direction = null,
+    Guid[]? FromWarehousePublicIds = null, Guid[]? ToWarehousePublicIds = null, bool ManualOnly = false);
 
-/// <summary>Fila del Kárdex. Quantity = valor del ledger CON signo; SignedQuantity = según la perspectiva del filtro.</summary>
+/// <summary>
+/// Fila del Kárdex. Quantity = valor del ledger CON signo; SignedQuantity = según la perspectiva del filtro. Lote 14:
+/// OwnerName (cliente dueño o 'Propio') y CategoryName del producto.
+/// </summary>
 public sealed record KardexRowDto(long Id, DateTime CreatedAtUtc, string TypeCode, string Type, Guid ProductPublicId, string Sku,
     string ProductName, decimal Quantity, decimal SignedQuantity, string? FromWarehouseCode, string? FromBinCode, string? ToWarehouseCode,
     string? ToBinCode, string Position, string? LotNumber, string? SerialNumber, string? RefEntityCode, int? RefId, string? RefLabel,
-    string? ReasonCode, string? Reason, string? Notes, int? UserId, string? UserName);
+    string? ReasonCode, string? Reason, string? Notes, int? UserId, string? UserName, string? OwnerName = null, string? CategoryName = null);
 
 public sealed record KardexPageDto(int Total, int Skip, int Take, IReadOnlyList<KardexRowDto> Items);
+
+/// <summary>
+/// Lote 14 (D13) — resumen del Kárdex con los mismos filtros de la lista: movimientos, entradas (número y unidades), salidas
+/// (número y unidades) e internos (transferencias sin filtro de ubicación o con los dos lados dentro), con la perspectiva de
+/// SignedQuantity. En la pestaña Saldos, "En mano" y "Disponible" salen de BalancePageDto (TotalOnHand, TotalAvailable).
+/// </summary>
+public sealed record KardexSummaryDto(int Movements, int InCount, decimal InQty, int OutCount, decimal OutQty, int InternalCount);
+
+/// <summary>
+/// Lote 14 — documento de origen de un movimiento para abrirlo desde el detalle: EntityCode (EntityType), su etiqueta, id
+/// interno, PublicId (recibo, recolección, orden de compra, orden de transporte y producto; el conteo se abre por id), número,
+/// estatus, fecha, parte (cliente o proveedor), Reference (dato secundario: orden de la recolección, tipo de tarea, etc.) y
+/// Parent (documento padre de una tarea de almacén).
+/// </summary>
+public sealed record KardexDocumentDto(string EntityCode, string EntityLabel, int Id, Guid? PublicId, string? Number, string? StatusCode,
+    string? Status, DateTime? DateUtc, string? PartyName, string? Reference = null, KardexDocumentDto? Parent = null);
+
+/// <summary>
+/// Lote 14 — detalle de un movimiento: la fila, dueño, categoría, vencimiento del lote, documento de origen y los movimientos
+/// relacionados (del mismo documento; sin documento, los del mismo asiento), con tope de 200 (RelatedTruncated).
+/// </summary>
+public sealed record KardexDetailDto(KardexRowDto Transaction, string? OwnerName, string? CategoryName, DateOnly? LotExpiryDate,
+    KardexDocumentDto? Document, IReadOnlyList<KardexRowDto> Related, bool RelatedTruncated);
+
+/// <summary>Lote 14 — dueño del inventario para el filtro: cliente (PublicId y nombre) o "Propio" (IsOwn, sin cliente).</summary>
+public sealed record InventoryOwnerDto(Guid? ClientPublicId, string Name, bool IsOwn);
+
+/// <summary>Lote 14 — "Ejecutar conciliación": productos elegidos (≤ 200) o, vacío, todo el tenant.</summary>
+public sealed record ReconciliationRunRequest(Guid[]? ProductPublicIds = null);
+
+/// <summary>
+/// Lote 14 — resultado de una conciliación que PERSISTE descuadres: productos y saldos revisados, abiertos nuevos, abiertos que
+/// siguen descuadrados, cerrados solos y las filas descuadradas (mismo formato que GET /inventory/reconciliation).
+/// </summary>
+public sealed record ReconciliationRunDto(DateTime CheckedAtUtc, int ProductsChecked, int BalancesChecked, int Opened, int StillOpen,
+    int SelfCorrected, IReadOnlyList<ReconciliationRowDto> Mismatches);
+
+/// <summary>
+/// Lote 14 (P2, D14) — estado de la revisión automática en segundo plano para la compañía: encendida (configuración), con
+/// consumidor activo, productos pendientes (en cola o esperando en el worker; 0 = al día), productos revisados, avisos
+/// descartados por cola llena, hora de la última revisión, último error y productos cuya revisión falló. Contadores en
+/// memoria desde el arranque del servidor.
+/// </summary>
+public sealed record ReconciliationStatusDto(bool Enabled, bool Consuming, int Pending, long Processed, long Dropped,
+    DateTime? LastProcessedAtUtc, string? LastError, long Failed = 0);
 
 /// <summary>Ajuste manual ±: Quantity CON signo (+ entra a la posición, − sale); motivo del catálogo AdjustmentReason.</summary>
 public sealed record AdjustmentRequest(Guid? ProductPublicId, Guid? WarehousePublicId, int? BinId, decimal? Quantity, string? Reason,

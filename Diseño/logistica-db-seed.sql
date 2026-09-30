@@ -126,7 +126,13 @@ GO
     -- Lote 4 — Flota, choferes y mantenimiento (viaje pagado al chofer)
     ('DriverTripStatus',2,'Estatus de viaje de chofer','Driver trip status'),
     -- Lote 6 — Inventario y almacén (recolección y empaque ad hoc)
-    ('PickBatchStatus',2,'Estatus de recolección','Pick batch status')
+    ('PickBatchStatus',2,'Estatus de recolección','Pick batch status'),
+    -- Lote 14 — conciliación Kárdex ↔ saldo: estatus, tipo y origen del descuadre
+    ('InventoryDiscrepancyStatus',2,'Estatus de descuadre','Discrepancy status'),
+    ('InventoryDiscrepancyKind',1,'Tipo de descuadre','Discrepancy kind'),
+    ('ReconciliationTrigger',1,'Origen de la conciliación','Reconciliation trigger'),
+    -- Lote 14 — origen del conteo cíclico (selección o "lo cambiado")
+    ('CycleCountOrigin',1,'Origen del conteo','Count origin')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -319,7 +325,15 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('PaymentTerm','CHEQUE','Cheque','Check',5),('PaymentTerm','CASH','Efectivo','Cash',6),('PaymentTerm','ACH','Transferencia ACH','ACH transfer',7),
 ('PaymentTerm','NET20','20 días','Net 20',8),('PaymentTerm','NET45','45 días','Net 45',9),('PaymentTerm','CONSIGNMENT','Consignación','Consignment',10),
 ('PaymentTerm','PK_BY_REP','Cobra el representante','Paid via rep',11),
-('AdjustmentReason','OPENING_BALANCE','Saldo inicial (migración)','Opening balance (migration)',10);
+('AdjustmentReason','OPENING_BALANCE','Saldo inicial (migración)','Opening balance (migration)',10),
+-- Lote 14 — conciliación Kárdex ↔ saldo (D5, D14): descuadre auditable, tipo (por posición o total del producto) y origen de
+-- la revisión (SCHEDULED queda reservado: el barrido programado es de un lote posterior)
+('EntityType','INVENTORY_DISCREPANCY','Descuadre de inventario','Inventory discrepancy',82),
+('InventoryDiscrepancyKind','BALANCE','Saldo por posición','Bin balance',1),('InventoryDiscrepancyKind','PRODUCT_TOTAL','Total del producto','Product total',2),
+('ReconciliationTrigger','EVENT','Automática (movimiento)','Automatic (movement)',1),('ReconciliationTrigger','MANUAL','Manual','Manual',2),
+('ReconciliationTrigger','SCHEDULED','Programada','Scheduled',3),('ReconciliationTrigger','MIGRATION','Migración','Migration',4),
+-- Lote 14 (D2, D3) — origen del conteo cíclico: selección (alta normal, web o app) o "lo cambiado" (uno por posición)
+('CycleCountOrigin','MANUAL','Selección','Selection',1),('CycleCountOrigin','CHANGES','Lo cambiado','Changed positions',2);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -432,7 +446,9 @@ INSERT INTO #S VALUES
 ('PickWaveStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('PickWaveStatus','PICKING','En picking','Picking',@PIPE,2,'#F59E0B',0),('PickWaveStatus','PACKED','Empacada','Packed',@PIPE,3,'#10B981',0),('PickWaveStatus','SHIPPED','Despachada','Shipped',@TERM,4,'#059669',0),
 ('PickTaskStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('PickTaskStatus','PICKED','Pickeada','Picked',@TERM,2,'#059669',0),('PickTaskStatus','SHORT','Faltante','Short',@LAT,3,'#EF4444',0),
 ('CartonStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('CartonStatus','CLOSED','Cerrada','Closed',@PIPE,2,'#10B981',0),('CartonStatus','SHIPPED','Despachada','Shipped',@TERM,3,'#059669',0),
-('CycleCountStatus','OPEN','Abierto','Open',@PIPE,1,'#9CA3AF',1),('CycleCountStatus','COUNTED','Contado','Counted',@PIPE,2,'#F59E0B',0),('CycleCountStatus','RECONCILED','Reconciliado','Reconciled',@TERM,3,'#059669',0),
+-- Lote 14 (D7): Pendiente → Contado (solo a ciegas) → Concordancia | Diferencia (terminales)
+('CycleCountStatus','OPEN','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('CycleCountStatus','COUNTED','Contado','Counted',@PIPE,2,'#F59E0B',0),('CycleCountStatus','RECONCILED','Concordancia','Matched',@TERM,3,'#059669',0),
+('CycleCountStatus','RECONCILED_VARIANCE','Diferencia','Variance',@TERM,4,'#F59E0B',0),
 ('DockStatus','FREE','Libre','Free',@PIPE,1,'#059669',1),('DockStatus','OCCUPIED','Ocupado','Occupied',@LAT,2,'#F59E0B',0),('DockStatus','MAINTENANCE','Mant.','Maintenance',@LAT,3,'#6B7280',0),
 ('AppointmentStatus','SCHEDULED','Agendada','Scheduled',@PIPE,1,'#9CA3AF',1),('AppointmentStatus','ARRIVED','Llegó','Arrived',@PIPE,2,'#10B981',0),('AppointmentStatus','COMPLETED','Completada','Completed',@TERM,3,'#059669',0),('AppointmentStatus','NO_SHOW','No llegó','No show',@LAT,4,'#EF4444',0),
 ('CrossDockStatus','OPEN','Abierto','Open',@PIPE,1,'#9CA3AF',1),('CrossDockStatus','ALLOCATED','Asignado','Allocated',@PIPE,2,'#F59E0B',0),('CrossDockStatus','COMPLETED','Completado','Completed',@TERM,3,'#059669',0),
@@ -468,7 +484,13 @@ INSERT INTO #S VALUES
 ('WarehouseTaskStatus','CANCELLED','Cancelada','Cancelled',@TERM,4,'#6B7280',0),
 ('AppointmentStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0),
 ('AllocationStatus','CANCELLED','Cancelada','Cancelled',@TERM,3,'#6B7280',0),
-('SerialStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,4,'#EF4444',0);
+('SerialStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,4,'#EF4444',0),
+-- Lote 14 (D5) — descuadre Kárdex ↔ saldo: Pendiente (inicial) → Resuelto | Descartado | Se corrigió solo (terminales; los
+-- que no son el siguiente por orden entran sin regla lateral: sin reglas, StatusService los permite)
+('InventoryDiscrepancyStatus','OPEN','Pendiente','Open',@PIPE,1,'#EF4444',1),
+('InventoryDiscrepancyStatus','RESOLVED','Resuelto','Resolved',@TERM,2,'#059669',0),
+('InventoryDiscrepancyStatus','DISMISSED','Descartado','Dismissed',@TERM,3,'#6B7280',0),
+('InventoryDiscrepancyStatus','SELF_CORRECTED','Se corrigió solo','Self-corrected',@TERM,4,'#0EA5E9',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -519,6 +541,45 @@ BEGIN
 
     UPDATE dbo.StatusCode SET IsActive = 0, IsInitial = 0 WHERE StatusCodeId = @RcOpen;
 END
+
+-- Lote 14 (D7): en BD ya sembradas, OPEN y RECONCILED del conteo toman las etiquetas nuevas ('Pendiente' y 'Concordancia'; el
+-- MERGE solo inserta). Idempotente.
+UPDATE dbo.StatusCode
+SET LabelJson = CASE InternalCode WHEN 'OPEN' THEN N'{"es":"Pendiente","en":"Pending"}' ELSE N'{"es":"Concordancia","en":"Matched"}' END
+WHERE Entity = 'CycleCountStatus' AND InternalCode IN ('OPEN','RECONCILED')
+  AND LabelJson <> CASE InternalCode WHEN 'OPEN' THEN N'{"es":"Pendiente","en":"Pending"}' ELSE N'{"es":"Concordancia","en":"Matched"}' END;
+
+-- Lote 14 (D7): los conteos ya reconciliados con alguna línea que asentó un ajuste (AdjustmentTxnId) pasan a
+-- RECONCILED_VARIANCE 'Diferencia', con historial. Idempotente: sin conteos RECONCILED con ajuste no inserta nada.
+DECLARE @CcReconciled INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'CycleCountStatus' AND InternalCode = 'RECONCILED');
+DECLARE @CcVariance   INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'CycleCountStatus' AND InternalCode = 'RECONCILED_VARIANCE');
+DECLARE @CcEntity     INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'CYCLE_COUNT');
+IF @CcReconciled IS NOT NULL AND @CcVariance IS NOT NULL AND @CcEntity IS NOT NULL
+BEGIN
+    INSERT INTO dbo.EntityStatusHistory (TenantId, EntityTypeLookupId, EntityId, FromStatusCodeId, ToStatusCodeId, Comment, ChangedAtUtc, ChangedBy)
+    SELECT c.TenantId, @CcEntity, c.CycleCountId, @CcReconciled, @CcVariance, N'Lote 14: conteo con diferencia.', SYSUTCDATETIME(), NULL
+    FROM dbo.CycleCount c
+    WHERE c.StatusCodeId = @CcReconciled
+      AND EXISTS (SELECT 1 FROM dbo.CycleCountLine l WHERE l.CycleCountId = c.CycleCountId AND l.AdjustmentTxnId IS NOT NULL);
+
+    UPDATE c SET StatusCodeId = @CcVariance
+    FROM dbo.CycleCount c
+    WHERE c.StatusCodeId = @CcReconciled
+      AND EXISTS (SELECT 1 FROM dbo.CycleCountLine l WHERE l.CycleCountId = c.CycleCountId AND l.AdjustmentTxnId IS NOT NULL);
+END
+
+-- Lote 14 (D2): los conteos anteriores al lote se crearon por selección: origen MANUAL. Idempotente.
+DECLARE @CcManual INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'CycleCountOrigin' AND InternalCode = 'MANUAL');
+IF @CcManual IS NOT NULL
+    UPDATE dbo.CycleCount SET OriginLookupId = @CcManual WHERE OriginLookupId IS NULL;
+
+-- Lote 14 (D7): el indicador de sistema 'Conteos con diferencia' de las compañías ya creadas pasa a contar el estatus
+-- RECONCILED_VARIANCE (SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter). Solo se reemplaza el filtro original exacto
+-- (no se pisa uno personalizado). Idempotente.
+UPDATE dbo.IndicatorDefinition
+SET FilterJson = N'{"and":[{"field":"StatusCode","op":"eq","value":"RECONCILED_VARIANCE"}]}', UpdatedAtUtc = SYSUTCDATETIME()
+WHERE IsSystem = 1 AND Name = N'Conteos con diferencia'
+  AND FilterJson = N'{"and":[{"field":"StatusCode","op":"eq","value":"RECONCILED"},{"field":"HasVariance","op":"isTrue"}]}';
 GO
 
 /* -------------------------------------------------------------------------
@@ -649,6 +710,7 @@ GO
        ASN: CANCELLED desde EXPECTED.
        RECEIPT (Lote 13): DISCREPANCY desde RECEIVING; RECEIVED_VARIANCE desde RECEIVING, DISCREPANCY y EXPECTED;
        PUTAWAY desde RECEIVED_VARIANCE (desde RECEIVED es la siguiente etapa y no necesita regla).
+       CYCLE_COUNT (Lote 14): RECONCILED_VARIANCE desde OPEN y COUNTED.
        PURCHASE_ORDER: SIN regla a propósito (D47). StatusService permite un lateral o terminal sin reglas desde cualquier
        etapa, así que CANCELLED se permite desde DRAFT, SENT y PARTIAL (RECEIVED es terminal y no admite más transiciones);
        el servicio exige además que no haya un recibo OPEN y deja el comentario en el historial.
@@ -680,6 +742,10 @@ USING (
                                                    AND frm.Entity='ReceiptStatus'       AND frm.InternalCode IN ('RECEIVING','DISCREPANCY','EXPECTED'))
         OR (et.InternalCode='RECEIPT'              AND lat.Entity='ReceiptStatus'       AND lat.InternalCode='PUTAWAY'
                                                    AND frm.Entity='ReceiptStatus'       AND frm.InternalCode='RECEIVED_VARIANCE')
+        -- Lote 14 (CYCLE_COUNT, D7/D8): 'Diferencia' desde Contado (a ciegas) y desde Pendiente ("Confirmar conteo y ajustar"
+        -- en un paso). 'Concordancia' no lleva regla: desde COUNTED es la siguiente etapa y desde OPEN, sin reglas, se permite.
+        OR (et.InternalCode='CYCLE_COUNT'          AND lat.Entity='CycleCountStatus'    AND lat.InternalCode='RECONCILED_VARIANCE'
+                                                   AND frm.Entity='CycleCountStatus'    AND frm.InternalCode IN ('OPEN','COUNTED'))
       )
 ) AS s
 ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId
@@ -764,12 +830,18 @@ INSERT INTO #P VALUES
 ('pulse.charts','PULSE','Ver gráficos en el Pulso','See charts on the Pulse'),
 ('pulse.warehouse','PULSE','Ver el panel Almacén del Pulso','See the Warehouse panel'),
 ('pulse.activity','PULSE','Ver Actividad reciente en el Pulso','See Recent activity'),
-('pulse.organize_company','PULSE','Organizar el Pulso de la compañía','Organize the company Pulse');
+('pulse.organize_company','PULSE','Organizar el Pulso de la compañía','Organize the company Pulse'),
+-- Lote 14 — "Necesita tu atención" (D6): la ve quien ve inventario; TenantAdmin la recibe por "todos"
+('pulse.attention','PULSE','Ver la sección Necesita tu atención del Pulso','See the Needs your attention section');
 
 -- Lote F8a: ¿esta corrida introduce los permisos pulse.*? (se usa en 5b para completar los roles de tenant ya clonados)
 IF OBJECT_ID('tempdb..#F8aPulseIsNew') IS NOT NULL DROP TABLE #F8aPulseIsNew;
 SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'pulse.indicators') THEN 0 ELSE 1 END AS BIT) AS IsNew
 INTO #F8aPulseIsNew;
+-- Lote 14: ¿esta corrida introduce pulse.attention? (se usa en 5b2 para completar los roles de tenant ya clonados)
+IF OBJECT_ID('tempdb..#L14AttentionIsNew') IS NOT NULL DROP TABLE #L14AttentionIsNew;
+SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'pulse.attention') THEN 0 ELSE 1 END AS BIT) AS IsNew
+INTO #L14AttentionIsNew;
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -814,14 +886,16 @@ INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),
 ('Billing','orders.credit_override'),   -- Lote 3
 ('Billing','driverpay.view'),   -- Lote 4
 ('Billing','inventory.view'),   -- Lote 6
-('Billing','pulse.indicators'),('Billing','pulse.charts'),('Billing','pulse.activity');   -- Lote F8a
+('Billing','pulse.indicators'),('Billing','pulse.charts'),('Billing','pulse.activity'),   -- Lote F8a
+('Billing','pulse.attention');   -- Lote 14 (D6)
 -- WarehouseOperator
 INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
 ('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan'),   -- Lote 5
 ('WarehouseOperator','inventory.view'),   -- Lote 6
 ('WarehouseOperator','warehouse.count.capture'),   -- Lote 8A
 ('WarehouseOperator','analytics.view'),   -- Lote F8a: para ver Actividad reciente en su Pulso (decisión de Luis)
-('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity');   -- Lote F8a
+('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity'),   -- Lote F8a
+('WarehouseOperator','pulse.attention');   -- Lote 14 (D6)
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
@@ -830,7 +904,8 @@ INSERT INTO #RP VALUES ('ReadOnly','orders.view'),('ReadOnly','cod.view'),
 ('ReadOnly','fleet.view'),   -- Lote 4
 ('ReadOnly','trips.view'),   -- Lote 5
 ('ReadOnly','inventory.view'),   -- Lote 6
-('ReadOnly','pulse.indicators'),('ReadOnly','pulse.charts'),('ReadOnly','pulse.activity');   -- Lote F8a
+('ReadOnly','pulse.indicators'),('ReadOnly','pulse.charts'),('ReadOnly','pulse.activity'),   -- Lote F8a
+('ReadOnly','pulse.attention');   -- Lote 14 (D6)
 
 MERGE dbo.RolePermission AS t
 USING (
@@ -880,20 +955,41 @@ END
 GO
 
 /* -------------------------------------------------------------------------
+   5b2) Lote 14 — pulse.attention ("Necesita tu atención", D6) a los roles de tenant ya clonados
+   Hallazgo 23: PermissionSeeder no propaga un código nuevo a los roles ya clonados (este seed espeja las plantillas antes
+   que él), así que se completa aquí UNA sola vez: solo en la corrida que crea pulse.attention (#L14AttentionIsNew). Regla
+   de D6: la ve quien ve inventario → todo rol de tenant activo que tenga inventory.view (clones de TenantAdmin,
+   WarehouseOperator, Billing y ReadOnly, y roles propios). Solo agrega. En BD limpia no hay roles de tenant: no inserta nada.
+   ------------------------------------------------------------------------- */
+IF EXISTS (SELECT 1 FROM #L14AttentionIsNew WHERE IsNew = 1)
+BEGIN
+    INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+    SELECT r.RoleId, pa.PermissionId
+    FROM dbo.Role r
+    JOIN dbo.Permission pa ON pa.Code = 'pulse.attention'
+    WHERE r.TenantId IS NOT NULL AND r.IsActive = 1
+      AND EXISTS (SELECT 1 FROM dbo.RolePermission q JOIN dbo.Permission iv ON iv.PermissionId = q.PermissionId
+                  WHERE q.RoleId = r.RoleId AND iv.Code = 'inventory.view')
+      AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission e WHERE e.RoleId = r.RoleId AND e.PermissionId = pa.PermissionId);
+END
+GO
+
+/* -------------------------------------------------------------------------
    5c) Lote F8a — diagnóstico de PIN sin cobertura (solo lectura, no escribe nada)
    Hallazgo M1 (docs/frontend/loteF8a-hallazgos-plan.md): este lote le agrega 5 permisos a la plantilla de Operador de
    almacén (analytics.view + los 4 pulse.*). Si el PIN de un operador lo asignó alguien (UserPin.UpdatedBy) que no sea
    admin de plataforma y que ya no cubra alguno de esos 5, ese PIN queda sin servir en el próximo login o refresh del
    aparato (PinService.AssignerStillCoversAsync). Aquí se avisa por PRINT (visible en el log de `db-init`) para que se
    reasigne antes de que el operador se tope con el bloqueo; no se toca ningún dato. Corre siempre, no solo cuando se
-   introducen los pulse.*, por si se clona un rol después con este hueco.
+   introducen los pulse.*, por si se clona un rol después con este hueco. Lote 14: también avisa por pulse.attention (5b2 se
+   lo da a todo rol con inventory.view; quien asignó el PIN con inventory.view solo como permiso individual no lo tendría).
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#F8aPinGap') IS NOT NULL DROP TABLE #F8aPinGap;
 SELECT up.UserId, up.UpdatedBy AS AssignerId, p.Code
 INTO #F8aPinGap
 FROM dbo.UserPin up
 JOIN dbo.AspNetUsers a ON a.Id = up.UpdatedBy
-CROSS JOIN (VALUES ('analytics.view'),('pulse.indicators'),('pulse.charts'),('pulse.warehouse'),('pulse.activity')) AS c(Code)
+CROSS JOIN (VALUES ('analytics.view'),('pulse.indicators'),('pulse.charts'),('pulse.warehouse'),('pulse.activity'),('pulse.attention')) AS c(Code)
 JOIN dbo.Permission p ON p.Code = c.Code
 WHERE up.UpdatedBy IS NOT NULL AND up.UpdatedBy <> up.UserId AND a.IsPlatformAdmin = 0
   AND EXISTS (
@@ -43784,5 +43880,5 @@ JOIN dbo.LookupCode c ON c.Entity = 'Country' AND c.InternalCode = v.Country
 WHERE NOT EXISTS (SELECT 1 FROM dbo.PostalLocality p WHERE p.CountryLookupId = c.LookupCodeId AND p.PostalCode = v.PostalCode AND p.City = v.City);
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (65), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (66), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

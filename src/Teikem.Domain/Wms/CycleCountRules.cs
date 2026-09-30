@@ -120,6 +120,13 @@ public static class CycleCountRules
     /// <summary>Lo contado no puede quedar por debajo de lo reservado (el ajuste dejaría reservado &gt; en mano).</summary>
     public static bool CountBelowReserved(decimal counted, decimal reserved) => counted < reserved;
 
+    /// <summary>
+    /// Lote 14 (D7): estatus final al reconciliar: RECONCILED_VARIANCE 'Diferencia' si se asentó algún movimiento (ajuste o, en
+    /// serie, alta, baja o transferencia); RECONCILED 'Concordancia' si no.
+    /// </summary>
+    public static string ReconcileTarget(int postings)
+        => postings > 0 ? CycleCountStatuses.ReconciledVariance : CycleCountStatuses.Reconciled;
+
     /// <summary>Líneas sin capturar (CountedQty null).</summary>
     public static int PendingLines(IEnumerable<decimal?> counted) => counted.Count(c => c is null);
 

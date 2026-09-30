@@ -89,6 +89,8 @@ export type { QBoxProps } from './QBox'
 export { SearchMultiSelect, SearchSelect } from './SearchSelect'
 export type { SearchMultiSelectProps, SearchSelectProps } from './SearchSelect'
 export { Spinner } from './Spinner'
+export { SummaryBar } from './SummaryBar'
+export type { SummaryBarProps, SummaryItem, SummaryTone } from './SummaryBar'
 export { SplitPane } from './SplitPane'
 export type { SplitPaneProps } from './SplitPane'
 export {

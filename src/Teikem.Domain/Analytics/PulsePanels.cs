@@ -13,6 +13,10 @@ public sealed record PulsePanelDef(string Key, string Permission, string[] DataP
 /// Lote F8a (P1) — registro de paneles del Pulso del día (loteF8-plan.md §2.3). Un panel entra en el Pulso de un usuario solo si
 /// tiene su permiso, todos sus permisos de datos y su módulo está encendido. Reservados, no declarados hasta su lote:
 /// ORDERS_RIVER (10, F3), COD_RIVER (11, 7C), DECISIONS (15, F3/F5) y RADAR (60, F3).
+/// Lote 14 (D6): ATTENTION ("Necesita tu atención") con orden 5, el más bajo de los paneles: queda justo debajo del
+/// encabezado y de la franja que el Lote 15 pondrá con orden negativo (por eso no es negativo) y antes de ORDERS_RIVER (10).
+/// No lleva permiso de datos ni módulo: cada fila decide el suyo (IAttentionItemProvider); se usa esta clave y no la
+/// reservada DECISIONS porque el dueño la llama "Necesita tu atención" (Operación y COD podrán sumar filas con sus proveedores).
 /// Receta para un panel nuevo: una constante aquí, una fila en PermissionCatalog.All (+ plantillas), una línea en el seed y
 /// una entrada en el registro del frontend.
 /// </summary>
@@ -22,6 +26,7 @@ public static class PulsePanels
     public const string Charts = "CHARTS";
     public const string Warehouse = "WAREHOUSE";
     public const string Activity = "ACTIVITY";
+    public const string Attention = "ATTENTION";
 
     public static readonly IReadOnlyList<PulsePanelDef> All = new List<PulsePanelDef>
     {
@@ -29,6 +34,7 @@ public static class PulsePanels
         new(Charts, PermissionCatalog.PulseCharts, Array.Empty<string>(), ModuleKeys.Analytics, 30),
         new(Warehouse, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, 40),
         new(Activity, PermissionCatalog.PulseActivity, new[] { PermissionCatalog.AnalyticsView }, ModuleKeys.Analytics, 50),
+        new(Attention, PermissionCatalog.PulseAttention, Array.Empty<string>(), null, 5),
     };
 
     /// <summary>Panel por clave (sin distinguir mayúsculas); null si no está en el registro.</summary>

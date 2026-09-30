@@ -54,7 +54,7 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
         if (req.LotId is not null && req.Lot is not null) errors["lot"] = new[] { AdjustmentRules.LotAmbiguous };
         if (errors.Count > 0) throw new ValidationException(errors);
 
-        var keys = new List<LedgerKey>();
+        var keys = new List<BalanceKey>();
         var ids = await db.RunInTransactionAsync(async ct2 =>
         {
             keys.Clear();
@@ -84,14 +84,14 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
                     var (serialId, serialLot) = SerialLotFor(serialLots, serial, lotId);
                     postings.Add(Adjustment(product.ProductId, 1m, posting.IsEntry, warehouse.WarehouseId, bin.WarehouseBinId, serialLot,
                         serialId, serial, reasonCode!, notes));
-                    keys.Add(new LedgerKey(product.ProductId, warehouse.WarehouseId, bin.WarehouseBinId, serialLot));
+                    keys.Add(new BalanceKey(product.ProductId, warehouse.WarehouseId, bin.WarehouseBinId, serialLot));
                 }
             }
             else
             {
                 postings.Add(Adjustment(product.ProductId, posting.Magnitude, posting.IsEntry, warehouse.WarehouseId, bin.WarehouseBinId, lotId,
                     null, null, reasonCode!, notes));
-                keys.Add(new LedgerKey(product.ProductId, warehouse.WarehouseId, bin.WarehouseBinId, lotId));
+                keys.Add(new BalanceKey(product.ProductId, warehouse.WarehouseId, bin.WarehouseBinId, lotId));
             }
             return await PostAsync(postings, ct2);
         }, ct);
@@ -123,7 +123,7 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
         if (errors.Count > 0) throw new ValidationException(errors);
 
         var magnitude = req.Quantity!.Value;
-        var keys = new List<LedgerKey>();
+        var keys = new List<BalanceKey>();
         var ids = await db.RunInTransactionAsync(async ct2 =>
         {
             keys.Clear();
@@ -148,8 +148,8 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
                 postings.Add(new InventoryPosting(InventoryTxnTypes.Transfer, product.ProductId, qty, LotId: lot, SerialId: serialId,
                     SerialNumber: serialNumber, FromWarehouseId: fromWarehouse.WarehouseId, FromBinId: fromBin.WarehouseBinId,
                     ToWarehouseId: toWarehouse.WarehouseId, ToBinId: toBin.WarehouseBinId, Notes: notes));
-                keys.Add(new LedgerKey(product.ProductId, fromWarehouse.WarehouseId, fromBin.WarehouseBinId, lot));
-                keys.Add(new LedgerKey(product.ProductId, toWarehouse.WarehouseId, toBin.WarehouseBinId, lot));
+                keys.Add(new BalanceKey(product.ProductId, fromWarehouse.WarehouseId, fromBin.WarehouseBinId, lot));
+                keys.Add(new BalanceKey(product.ProductId, toWarehouse.WarehouseId, toBin.WarehouseBinId, lot));
             }
             if (serials.Count > 0)
                 foreach (var serial in serials)

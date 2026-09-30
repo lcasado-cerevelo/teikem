@@ -4,7 +4,7 @@ import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
 import { translate } from '../kernel/i18n/i18n'
 import { NAV_GROUPS, navSubtitleKey, navTitleKey, routeAllowed, visibleNav } from './navigation'
-import { appRoutes, legacyInventorySearch, legacyReceiptSearch, type AppRoute } from './routes'
+import { appRoutes, legacyCountSearch, legacyInventorySearch, legacyReceiptSearch, type AppRoute } from './routes'
 
 const ALL_MODULES = new Set<string>(Object.values(ModuleKeys))
 const ALL_PERMS = new Set(appRoutes.flatMap((r) => (r.perm ? r.perm.split('|') : [])))
@@ -61,7 +61,7 @@ describe('menú completo (routes.tsx)', () => {
       'Compras',
       'Recibo',
       'Recolección y empaque',
-      'Ajustes de inventario',
+      'Transferencias y ajustes',
       'Conteo cíclico',
       'Cruce de muelle',
       'Kárdex de movimientos',
@@ -117,18 +117,24 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/').pending).toBeUndefined()
   })
 
-  it("'Ajustes de inventario' (Fase 7) es pantalla real, con el acceso de Compras; Lote 13: Recibo 60 → Recolección y empaque 70 → Ajustes 80 → Conteo 90", () => {
-    const adj = byPath('/warehouse/inventory-adjustments')
-    expect(adj).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING', nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 80 } })
-    expect(adj.pending).toBeUndefined()
+  it("Lote 14 (D1): 'Transferencias y ajustes' va justo después de Recolección y empaque (Recibo 60 → Recolección 70 → Transferencias y ajustes 80 → Conteo 90); la vieja 'Ajustes de inventario' salió del menú y redirige a Compras", () => {
+    const ta = byPath('/warehouse/transfers-adjustments')
+    expect(ta).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL', nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 } })
+    expect(ta.pending).toBeUndefined()
     expect(byPath('/warehouse/receipts').nav).toMatchObject({ order: 60 })
     expect(byPath('/warehouse/pick-batches').nav).toMatchObject({ key: 'pickBatches', order: 70 })
     expect(byPath('/warehouse/cycle-counts').nav).toMatchObject({ order: 90 })
     const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items.map((r) => r.path)
     expect(warehouse.indexOf('/warehouse/pick-batches')).toBe(warehouse.indexOf('/warehouse/receipts') + 1)
-    expect(warehouse.indexOf('/warehouse/inventory-adjustments')).toBe(warehouse.indexOf('/warehouse/pick-batches') + 1)
-    expect(routeAllowed(adj, new Set(['purchasing.view']), new Set(['PURCHASING']))).toBe(true)
-    expect(routeAllowed(adj, new Set(['inventory.view']), new Set(['PURCHASING', 'WMS_LOTSERIAL']))).toBe(false)
+    expect(warehouse.indexOf('/warehouse/transfers-adjustments')).toBe(warehouse.indexOf('/warehouse/pick-batches') + 1)
+    expect(routeAllowed(ta, new Set(['inventory.view']), new Set(['WMS_LOTSERIAL']))).toBe(true)
+    expect(routeAllowed(ta, new Set(['purchasing.view']), new Set(['PURCHASING']))).toBe(false)
+    expect(translate('en', navTitleKey('transfersAdjustments'))).toBe('Transfers & adjustments')
+    // la dirección vieja existe (enlaces guardados), sin ítem, guarda ni módulo propios: redirige a Compras
+    const old = byPath('/warehouse/inventory-adjustments')
+    expect(old.nav).toBeUndefined()
+    expect(old.perm).toBeUndefined()
+    expect(old.module).toBeUndefined()
   })
 
   it("Fase 8: 'Productos e inventario' es un solo ítem (3.º) y 'Kárdex de movimientos' el último de Almacén; 'Inventario' ya no es ítem", () => {
@@ -141,7 +147,7 @@ describe('menú completo (routes.tsx)', () => {
       '/warehouse/purchase-orders',
       '/warehouse/receipts',
       '/warehouse/pick-batches',
-      '/warehouse/inventory-adjustments',
+      '/warehouse/transfers-adjustments',
       '/warehouse/cycle-counts',
       '/warehouse/cross-dock-plans',
       '/warehouse/kardex',
@@ -174,6 +180,19 @@ describe('menú completo (routes.tsx)', () => {
     expect(map('x=1')).toBe('x=1')
   })
 
+  it('Lote 14 (P8): legacyCountSearch: /warehouse/cycle-counts/:id → ?count=<id> primero; los demás parámetros se quedan', () => {
+    const map = (q: string, id?: string) => legacyCountSearch(new URLSearchParams(q), { id }).toString()
+    expect(map('', '27')).toBe('count=27')
+    expect(map('count=3&x=1', '27')).toBe('count=27&x=1')
+    expect(map('x=1')).toBe('x=1')
+    // la ficha vieja del conteo es una redirección sin ítem, guarda ni módulo propios (la guarda es la de la lista)
+    const old = byPath('/warehouse/cycle-counts/:id')
+    expect(old.nav).toBeUndefined()
+    expect(old.perm).toBeUndefined()
+    expect(old.module).toBeUndefined()
+    expect(byPath('/warehouse/cycle-counts')).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL', nav: { key: 'cycleCounts', order: 90 } })
+  })
+
   it('la ficha vieja del recibo es una redirección sin ítem, guarda ni módulo propios (la guarda es la de la lista)', () => {
     const old = byPath('/warehouse/receipts/:publicId')
     expect(old.nav).toBeUndefined()
@@ -204,6 +223,7 @@ describe('menú completo (routes.tsx)', () => {
           '/warehouse/products',
           '/warehouse/receipts',
           '/warehouse/pick-batches',
+          '/warehouse/transfers-adjustments',
           '/warehouse/cycle-counts',
           '/warehouse/kardex',
         ],

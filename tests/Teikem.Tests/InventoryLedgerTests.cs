@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Wms;
 using Xunit;
 
@@ -272,16 +274,20 @@ public class InventoryLedgerTests
         await w.F.PostAsync(Issue(w, w.PN, w.B1, 3m));
         await w.F.PostAsync(new InventoryPosting(InventoryTxnTypes.Transfer, w.PN.ProductId, 2m, FromWarehouseId: w.W.WarehouseId,
             FromBinId: w.B1.WarehouseBinId, ToWarehouseId: w.W.WarehouseId, ToBinId: w.B2.WarehouseBinId));
-        Assert.Empty(await w.F.Ledger.ReconcileAsync(null, default));
+        // Lote 14: la conciliación de lectura pasó del ledger a InventoryReconciler (misma regla que TraceabilityService).
+        var reconciler = new InventoryReconciler(w.F.Db, w.F.Lookups,
+            new InventoryReadService(w.F.Db, w.F.Tenant, w.F.Lookups, TenantClock.Default));
+        Assert.Empty((await reconciler.ComputeAsync(null, default)).Mismatches);
 
         // Descuadre forzado (escritura directa en la prueba, nunca en src/).
         var b = await w.F.Db.StockBalances.SingleAsync(x => x.ProductId == w.PN.ProductId && x.WarehouseBinId == w.B2.WarehouseBinId);
         b.QtyOnHand = 5m;
         await w.F.Db.SaveChangesAsync();
         w.F.Db.ChangeTracker.Clear();
-        var rows = await w.F.Ledger.ReconcileAsync(w.PN.ProductId, default);
+        var rows = (await reconciler.ComputeAsync(new[] { w.PN.ProductId }, default)).Mismatches;
         Assert.Contains(rows, r => !r.ProductTotal && r.Key.BinId == w.B2.WarehouseBinId && r.LedgerQty == 2m && r.BalanceQty == 5m);
-        Assert.Contains(rows, r => r.ProductTotal && r.LedgerQty == 7m && r.BalanceQty == 10m);
+        // Con una clave descuadrada, el total del producto (7 contra 10) no se repite como otra fila (regla de TraceabilityService).
+        Assert.DoesNotContain(rows, r => r.ProductTotal);
     }
 
     [Fact]

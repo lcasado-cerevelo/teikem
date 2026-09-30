@@ -37,8 +37,15 @@ public sealed record InventoryPosting(
 public sealed record StockReservation(int ProductId, int WarehouseId, int BinId, int? LotId, decimal Quantity,
     IReadOnlyList<string>? SerialNumbers = null);
 
-/// <summary>Descuadre ledger ↔ saldo (InventoryLedger.ReconcileAsync). Key.WarehouseId = 0 en la fila por producto.</summary>
-public sealed record ReconciliationRow(BalanceKey Key, decimal LedgerQty, decimal BalanceQty, bool ProductTotal);
+/// <summary>
+/// Lote 14: resultado de InventoryLedger.RebuildBalanceAsync (en mano antes y después y lo reservado). Before == After = el
+/// saldo ya cuadraba con el Kárdex y no se escribió nada. (Reemplaza a ReconciliationRow: la conciliación de lectura pasó a
+/// InventoryReconciler con ReconciliationMismatch.)
+/// </summary>
+public sealed record BalanceRebuildResult(decimal Before, decimal After, decimal Reserved)
+{
+    public bool Changed => Before != After;
+}
 
 /// <summary>Alta de una tarea de almacén (WarehouseTaskWriter.CreateAsync): nace PENDING con historial null → PENDING.</summary>
 public sealed record WarehouseTaskSpec(

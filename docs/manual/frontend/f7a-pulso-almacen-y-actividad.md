@@ -3,7 +3,8 @@
 Capítulo del manual de pantallas del Lote F7A (frontend), sobre la pantalla de inicio **Pulso del día** (`/`), ya
 descrita en el capítulo F1. Este lote agrega un filtro al panel "Almacén" (Lote F6) y un panel nuevo, "Actividad
 reciente". Ninguna pantalla tiene ruta propia: las dos viven debajo de los indicadores y gráficos de Pulso.
-Capturas en `img/f7a-*.png`.
+Capturas en `img/f7a-*.png`. El Lote 14 agrega el panel **Necesita tu atención** (arriba de todo, captura `img/l14-pulso-atencion.png`) y cambia la cifra de
+**Conteos abiertos** del panel Almacén (ver las dos secciones nuevas, antes de "Actividad reciente").
 
 ## Pulso del día: panel "Almacén" con filtro
 
@@ -19,7 +20,7 @@ un producto puntual está bajo su mínimo, sin ir a la pantalla de Inventario.
 
 Una fila de filtros y, debajo, seis tarjetas: **En mano**, **Disponible** (con "Reservado: en mano − disponible"),
 **Bajo mínimo**, **Recibos abiertos**, **Tareas pendientes** (con el desglose por tipo: Putaway, Reabasto, Conteo,
-Cruce de muelle) y **Conteos abiertos**. Las tres últimas llevan la marca **almacén**: solo reciben el filtro de
+Cruce de muelle) y **Conteos abiertos** (Pendientes y Contados; ver "Conteos abiertos" más abajo). Las tres últimas llevan la marca **almacén**: solo reciben el filtro de
 almacén, nunca el de categoría o producto (el texto de la cabecera del panel lo aclara, y pasar el mouse o el foco
 sobre la marca muestra "Solo aplica el filtro de almacén (no el de categoría o producto)."). Estas tarjetas no
 tienen el botón "Rango" de las demás: son saldo actual, no de un período.
@@ -66,6 +67,51 @@ encendido; sin alguno de los dos, Pulso se ve igual que en F1, sin este panel y 
 cambiar de compañía a una sin permiso), muestra "—" en esa tarjeta en vez de sacarlo de la pantalla de inicio. Si no
 puede consultar productos (sin `inventory.view` en una compañía secundaria, caso raro), la sección "Productos" del
 control muestra "Su usuario no puede consultar productos." en vez de la lista.
+
+## Pulso del día: panel "Necesita tu atención"
+
+**Para qué sirve.** Es lo primero que se ve en el Pulso: lista lo que **necesita que alguien lo revise**. Hoy trae un solo tipo de aviso, el
+**descuadre Kárdex ↔ saldo** (el saldo de una posición no coincide con lo que suman los movimientos; ver el capítulo
+[06, sección 3.3](../06-inventario-y-almacen.md)). Sin nada pendiente, dice que todo está en orden.
+
+**Cómo se llega.** Aparece automáticamente en la parte de arriba de Pulso (`/`), antes de "Tus indicadores".
+
+**Qué se ve.**
+
+![Pulso del día con el panel Necesita tu atención arriba, en estado "Todo en orden: No hay nada pendiente de revisar.", y debajo Tus indicadores](img/l14-pulso-atencion.png)
+
+- **Cabecera:** "Necesita tu atención" y, si hay pendientes, "{N} pendientes" (o "1 pendiente"); el ícono de alerta se enciende.
+- **Una fila por descuadre pendiente** (los **5 más antiguos**): el título "Descuadre en {SKU}" (o "Descuadre en el total de {SKU}"), el producto y
+  dónde (almacén · posición · lote, o "todas las posiciones" en un descuadre del total), las cifras **Kárdex**, **Saldo** y **Diferencia** (saldo −
+  Kárdex, con signo y en rojo), "desde {hora}" y el botón **Revisar**.
+- **Revisar** abre el Kárdex de movimientos en la pestaña **Conciliación** con ese descuadre abierto (`/warehouse/kardex?tab=reconciliation&discrepancy=…`),
+  donde se corrige el saldo o se descarta con una nota.
+- **Ver todos ({N})** (pie del panel, con los pendientes): abre la lista completa de descuadres Pendientes.
+- **Todo en orden** ("No hay nada pendiente de revisar."): no hay descuadres pendientes que usted pueda ver.
+
+> **Captura pendiente:** el panel con una fila de descuadre pendiente (la captura de arriba es el estado "Todo en orden"; un descuadre real exige
+> tocar los saldos directamente en la base de datos, así que no se genera en el recorrido automático).
+
+**Se actualiza solo.** El panel se vuelve a consultar cada vez que se abre el Pulso. La revisión que abre los descuadres corre sola, unos segundos
+después de cada movimiento; al resolver un descuadre, la fila desaparece.
+
+**Organizar.** Como los demás paneles, se puede mover y ocultar desde **Organizar mi Pulso** y **Organizar el de la compañía** (capítulo
+[F8a](f8a-menu-sistema-analisis-y-marca.md)).
+
+**Permiso.** Se pinta solo con **`pulse.attention`**; cada tipo de aviso pide además el suyo: los descuadres, `inventory.view` con el módulo
+**Almacén y lote/serie** (`WMS_LOTSERIAL`) encendido. Lo que usted no puede ver no suma. Sin `pulse.attention` (o si el servidor responde 403) el
+panel no se pinta y Pulso se ve como antes. Lo traen el Admin de compañía, el Operador de almacén, Facturación y Solo lectura. **Corregir** y
+**Descartar** exigen además `inventory.adjust`.
+
+**Mensajes que puede ver.** "Todo en orden" / "No hay nada pendiente de revisar." (sin pendientes). Mientras carga, un indicador de carga; si
+la consulta falla por otra razón, el mensaje del error dentro del panel.
+
+## "Conteos abiertos" en el panel Almacén
+
+La tarjeta **Conteos abiertos** (arriba, en "Pulso del día: panel «Almacén» con filtro") cuenta ahora los conteos cíclicos **Pendientes y
+Contados** con su **total real** (antes contaba una lista cortada en 200 y solo los "Abiertos"; con «Conteo de lo cambiado», que crea uno por
+posición, la cifra se habría quedado en 200). Los conteos en Concordancia o Diferencia ya no cuentan. Sigue recibiendo solo el filtro de
+almacén.
 
 ## Pulso del día: panel "Actividad reciente"
 

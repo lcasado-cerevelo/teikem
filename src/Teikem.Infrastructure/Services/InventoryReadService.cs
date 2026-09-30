@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Clients;
 using Teikem.Domain.Common;
@@ -23,8 +24,11 @@ namespace Teikem.Infrastructure.Services;
 /// - Kárdex: Quantity = la cantidad del ledger CON signo (D3, L331); SignedQuantity = perspectiva del filtro de ubicación
 ///   (KardexRules.SignedQuantity). Fechas en UTC: desde inclusivo, hasta EXCLUSIVO (+1 día). Orden CreatedAtUtc desc, Id desc.
 ///   Origen legible (RefLabel), motivo y usuario se resuelven por lotes de consultas (sin N+1).
+/// - Lote 14: las fechas del Kárdex son días LOCALES de la compañía (ITenantClock, hora de Puerto Rico); una sola consulta
+///   (BuildKardexQueryAsync) sirve a la lista, al resumen y a la exportación; filtros de dueño, motivo, dirección, almacén de
+///   origen y de destino y "solo manuales"; la fila trae dueño y categoría; detalle por id con su documento de origen.
 /// </summary>
-public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock clock)
 {
     // ================================================================ saldos
 
@@ -92,7 +96,7 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     /// Saldos de las claves indicadas (producto, almacén, posición, lote), en el orden de las claves; una clave sin fila de
     /// saldo se omite. Lo usa el resultado de ajustes y transferencias.
     /// </summary>
-    public async Task<IReadOnlyList<BalanceDto>> BalancesForKeysAsync(IEnumerable<LedgerKey> keys, CancellationToken ct)
+    public async Task<IReadOnlyList<BalanceDto>> BalancesForKeysAsync(IEnumerable<BalanceKey> keys, CancellationToken ct)
     {
         var wanted = keys.Distinct().ToList();
         if (wanted.Count == 0) return Array.Empty<BalanceDto>();
@@ -101,7 +105,7 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
         var candidates = await db.Set<StockBalance>().AsNoTracking()
             .Where(b => productIds.Contains(b.ProductId) && warehouseIds.Contains(b.WarehouseId))
             .ToListAsync(ct);
-        var byKey = candidates.GroupBy(b => new LedgerKey(b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId))
+        var byKey = candidates.GroupBy(b => new BalanceKey(b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId))
             .ToDictionary(g => g.Key, g => g.First());
         var rows = wanted.Where(byKey.ContainsKey).Select(k => byKey[k]).ToList();
         return await ToBalanceDtosAsync(rows, ct);
@@ -153,14 +157,89 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     {
         q ??= new KardexQuery();
         scope ??= InventoryScope.Any;
-        if (KardexRules.IsRangeInverted(q.From, q.To)) throw new ValidationException("to", KardexRules.RangeInverted);
         var (skip, take) = KardexRules.Page(q.Skip, q.Take, InventoryRules.MaxPageSize);
-        var (fromUtc, toUtc) = KardexRules.UtcRange(q.From, q.To);
+        var (query, filter) = await BuildKardexQueryAsync(q, scope, ct);
+
+        var total = await query.CountAsync(ct);
+        var page = await query.OrderByDescending(t => t.CreatedAtUtc).ThenByDescending(t => t.InventoryTransactionId)
+            .Skip(skip).Take(take).ToListAsync(ct);
+        var items = await ToKardexRowsAsync(page, filter, ct);
+        return new KardexPageDto(total, skip, take, items);
+    }
+
+    /// <summary>
+    /// Lote 14 (D13) — resumen del Kárdex con los MISMOS filtros de la lista (sin paginar): una consulta agrupada por tipo y
+    /// lados (origen y destino) con Σ Quantity y número de movimientos; la perspectiva (entrada, salida o interna) la aplica
+    /// KardexRules.Summarize con la regla de SignedQuantity. El agrupado evita subconsultas dentro de los agregados (SQL Server
+    /// no las admite) y deja la regla en un solo lugar.
+    /// </summary>
+    public async Task<KardexSummaryDto> KardexSummaryAsync(KardexQuery q, InventoryScope scope, CancellationToken ct)
+    {
+        q ??= new KardexQuery();
+        scope ??= InventoryScope.Any;
+        var (query, filter) = await BuildKardexQueryAsync(q, scope, ct);
+        var groups = await SummaryGroupsQuery(query).ToListAsync(ct);
+        var codes = new Dictionary<int, string>();
+        foreach (var id in groups.Select(g => g.TxnTypeLookupId).Distinct())
+            codes[id] = (await lookups.GetAsync(id, ct))?.InternalCode ?? string.Empty;
+        var s = KardexRules.Summarize(groups.Select(g => new KardexSummaryGroup(codes[g.TxnTypeLookupId], g.FromWarehouseId, g.FromBinId,
+            g.ToWarehouseId, g.ToBinId, g.Quantity, g.Count)), filter);
+        return new KardexSummaryDto(s.Movements, s.InCount, s.InQty, s.OutCount, s.OutQty, s.InternalCount);
+    }
+
+    /// <summary>
+    /// Grupos del resumen: por tipo y lados (origen y destino) con Σ Quantity CON signo y número de movimientos. Público y
+    /// estático para probar su traducción a SQL Server sin BD (ToQueryString).
+    /// </summary>
+    public static IQueryable<KardexGroupRow> SummaryGroupsQuery(IQueryable<InventoryTransaction> query)
+        => query.GroupBy(t => new { t.TxnTypeLookupId, t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId })
+            .Select(g => new KardexGroupRow
+            {
+                TxnTypeLookupId = g.Key.TxnTypeLookupId, FromWarehouseId = g.Key.FromWarehouseId, FromBinId = g.Key.FromBinId,
+                ToWarehouseId = g.Key.ToWarehouseId, ToBinId = g.Key.ToBinId, Quantity = g.Sum(t => t.Quantity), Count = g.Count(),
+            });
+
+    /// <summary>Fila agrupada del resumen del Kárdex (member-init: traducible por EF).</summary>
+    public sealed class KardexGroupRow
+    {
+        public int TxnTypeLookupId { get; init; }
+        public int? FromWarehouseId { get; init; }
+        public int? FromBinId { get; init; }
+        public int? ToWarehouseId { get; init; }
+        public int? ToBinId { get; init; }
+        public decimal Quantity { get; init; }
+        public int Count { get; init; }
+    }
+
+    /// <summary>
+    /// Lote 14 — consulta del Kárdex compartida por la lista, el resumen y la exportación (el reporte usa la lista). Valida y
+    /// arma TODOS los filtros y devuelve la consulta sin ordenar ni paginar y la perspectiva de SignedQuantity.
+    /// - Fechas: días LOCALES de la compañía (ITenantClock, hora de Puerto Rico): desde inclusivo, hasta inclusivo por día.
+    /// - Ubicación (almacenes y posiciones): el movimiento aparece si su origen o su destino cae en el filtro (almacén Y
+    ///   posición cuando se indican ambos); la misma definición da la perspectiva.
+    /// - Dirección IN/OUT con la perspectiva: sin filtro de ubicación IN = cantidad &gt; 0 salvo TRANSFER, OUT = cantidad &lt; 0;
+    ///   con filtro, IN = entra al filtro sin salir de él y OUT = sale sin entrar (lo interno no es ni lo uno ni lo otro).
+    /// - Dueño: clientes por PublicId (uno ajeno o inexistente → 404 'Cliente no encontrado.') y/o IncludeOwn (productos propios).
+    /// - Motivos del catálogo AdjustmentReason (400 'Motivo de ajuste desconocido: 'X'.'), almacén de origen y de destino (cada
+    ///   uno contra su lado) y ManualOnly (sin documento de referencia).
+    /// </summary>
+    public async Task<(IQueryable<InventoryTransaction> Query, KardexLocationFilter Filter)> BuildKardexQueryAsync(KardexQuery q,
+        InventoryScope scope, CancellationToken ct)
+    {
+        if (KardexRules.IsRangeInverted(q.From, q.To)) throw new ValidationException("to", KardexRules.RangeInverted);
+        var (direction, directionError) = KardexRules.NormalizeDirection(q.Direction);
+        if (directionError is not null) throw new ValidationException("direction", directionError);
+        var (fromUtc, toUtc) = clock.UtcRange(q.From, q.To);
 
         var query = db.Set<InventoryTransaction>().AsNoTracking().AsQueryable();
 
         var productIds = await FilteredProductIdsAsync(scope, q.ProductPublicIds, q.CategoryIds, ct, q.Brands, q.Name);
         if (productIds is not null) query = query.Where(t => productIds.Contains(t.ProductId));
+        if (q.OwnerClientPublicIds is { Length: > 0 } || q.IncludeOwn)
+        {
+            var ownerProducts = await OwnerProductIdsAsync(q.OwnerClientPublicIds, q.IncludeOwn, ct);
+            query = query.Where(t => ownerProducts.Contains(t.ProductId));
+        }
         if (fromUtc is DateTime f) query = query.Where(t => t.CreatedAtUtc >= f);
         if (toUtc is DateTime to) query = query.Where(t => t.CreatedAtUtc < to);
 
@@ -175,24 +254,68 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             }
             query = query.Where(t => typeIds.Contains(t.TxnTypeLookupId));
         }
+        if (q.Reasons is { Length: > 0 })
+        {
+            var reasonIds = new List<int?>();
+            foreach (var code in SplitCodes(q.Reasons))
+            {
+                var id = await lookups.TryGetIdAsync(LookupDomains.AdjustmentReason, code, ct)
+                         ?? throw new ValidationException("reasons", AdjustmentRules.UnknownReason(code));
+                reasonIds.Add(id);
+            }
+            query = query.Where(t => reasonIds.Contains(t.ReasonLookupId));
+        }
 
-        // Filtro de ubicación: el movimiento aparece si su origen o su destino cae en el filtro (almacén Y posición cuando
-        // se indican ambos). La misma definición da la perspectiva de SignedQuantity.
+        // Filtro de ubicación y perspectiva.
         List<int?>? whIds = null;
         List<int?>? binIds = null;
         if (q.WarehousePublicIds is { Length: > 0 })
             whIds = (await WarehouseIdsAsync(q.WarehousePublicIds, ct)).Select(i => (int?)i).ToList();
         if (q.BinIds is { Length: > 0 }) binIds = q.BinIds.Select(i => (int?)i).Distinct().ToList();
+        Expression<Func<InventoryTransaction, bool>>? fromIn = null, toIn = null;
         if (whIds is not null && binIds is not null)
-            query = query.Where(t => (whIds.Contains(t.FromWarehouseId) && binIds.Contains(t.FromBinId))
-                                     || (whIds.Contains(t.ToWarehouseId) && binIds.Contains(t.ToBinId)));
+        {
+            fromIn = t => whIds.Contains(t.FromWarehouseId) && binIds.Contains(t.FromBinId);
+            toIn = t => whIds.Contains(t.ToWarehouseId) && binIds.Contains(t.ToBinId);
+        }
         else if (whIds is not null)
-            query = query.Where(t => whIds.Contains(t.FromWarehouseId) || whIds.Contains(t.ToWarehouseId));
+        {
+            fromIn = t => whIds.Contains(t.FromWarehouseId);
+            toIn = t => whIds.Contains(t.ToWarehouseId);
+        }
         else if (binIds is not null)
-            query = query.Where(t => binIds.Contains(t.FromBinId) || binIds.Contains(t.ToBinId));
+        {
+            fromIn = t => binIds.Contains(t.FromBinId);
+            toIn = t => binIds.Contains(t.ToBinId);
+        }
+        if (fromIn is not null && toIn is not null) query = query.Where(Expr.Or(fromIn, toIn));
         var filter = new KardexLocationFilter(
             whIds?.Where(i => i.HasValue).Select(i => i!.Value).ToHashSet(),
             binIds?.Where(i => i.HasValue).Select(i => i!.Value).ToHashSet());
+
+        if (direction is not null)
+        {
+            if (fromIn is not null && toIn is not null)
+                query = query.Where(direction == KardexRules.DirectionIn ? Expr.And(toIn, Expr.Not(fromIn)) : Expr.And(fromIn, Expr.Not(toIn)));
+            else if (direction == KardexRules.DirectionIn)
+            {
+                var transferId = await lookups.TryGetIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Transfer, ct) ?? -1;
+                query = query.Where(t => t.Quantity > 0 && t.TxnTypeLookupId != transferId);
+            }
+            else query = query.Where(t => t.Quantity < 0);
+        }
+
+        if (q.FromWarehousePublicIds is { Length: > 0 })
+        {
+            var fromWh = (await WarehouseIdsAsync(q.FromWarehousePublicIds, ct)).Select(i => (int?)i).ToList();
+            query = query.Where(t => fromWh.Contains(t.FromWarehouseId));
+        }
+        if (q.ToWarehousePublicIds is { Length: > 0 })
+        {
+            var toWh = (await WarehouseIdsAsync(q.ToWarehousePublicIds, ct)).Select(i => (int?)i).ToList();
+            query = query.Where(t => toWh.Contains(t.ToWarehouseId));
+        }
+        if (q.ManualOnly) query = query.Where(t => t.RefEntityLookupId == null);
 
         if (!string.IsNullOrWhiteSpace(q.LotNumber))
         {
@@ -223,12 +346,238 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
             query = query.Where(t => bySku.Contains(t.ProductId) || byLot.Contains(t.LotId) || bySerial.Contains(t.SerialId)
                                      || (t.Notes != null && t.Notes.Contains(s)));
         }
+        return (query, filter);
+    }
 
-        var total = await query.CountAsync(ct);
-        var page = await query.OrderByDescending(t => t.CreatedAtUtc).ThenByDescending(t => t.InventoryTransactionId)
-            .Skip(skip).Take(take).ToListAsync(ct);
-        var items = await ToKardexRowsAsync(page, filter, ct);
-        return new KardexPageDto(total, skip, take, items);
+    /// <summary>
+    /// Productos de los dueños pedidos (subconsulta): clientes por PublicId bajo el filtro de tenant (uno que no aparece → 404
+    /// 'Cliente no encontrado.') y, con includeOwn, también los propios (Product.ClientId NULL).
+    /// </summary>
+    private async Task<IQueryable<int>> OwnerProductIdsAsync(Guid[]? ownerClientPublicIds, bool includeOwn, CancellationToken ct)
+    {
+        var ownerIds = new List<int?>();
+        if (ownerClientPublicIds is { Length: > 0 })
+        {
+            var pubs = ownerClientPublicIds.Distinct().ToList();
+            ownerIds = await db.Set<Client>().AsNoTracking().Where(c => pubs.Contains(c.PublicId)).Select(c => (int?)c.ClientId).ToListAsync(ct);
+            if (ownerIds.Count != pubs.Count) throw new NotFoundException("Cliente");
+        }
+        var products = db.Set<Product>().AsNoTracking();
+        return includeOwn
+            ? products.Where(p => p.ClientId == null || ownerIds.Contains(p.ClientId)).Select(p => p.ProductId)
+            : products.Where(p => ownerIds.Contains(p.ClientId)).Select(p => p.ProductId);
+    }
+
+    /// <summary>
+    /// Lote 14 — dueños del inventario para el filtro Dueño: "Propio" (sin cliente; solo sin scope de dueño) y los clientes
+    /// distintos que son dueños de algún producto del tenant, por nombre.
+    /// </summary>
+    public async Task<IReadOnlyList<InventoryOwnerDto>> OwnersAsync(InventoryScope scope, CancellationToken ct)
+    {
+        scope ??= InventoryScope.Any;
+        var ownerIds = ScopedProducts(scope).Where(p => p.ClientId != null).Select(p => p.ClientId!.Value).Distinct();
+        var clients = await db.Set<Client>().AsNoTracking().Where(c => ownerIds.Contains(c.ClientId))
+            .OrderBy(c => c.Name).ThenBy(c => c.ClientId)
+            .Select(c => new InventoryOwnerDto(c.PublicId, c.Name, false))
+            .ToListAsync(ct);
+        var result = new List<InventoryOwnerDto>(clients.Count + 1);
+        if (scope.OwnerClientId is null) result.Add(new InventoryOwnerDto(null, KardexRules.OwnLabel, true));
+        result.AddRange(clients);
+        return result;
+    }
+
+    // ================================================================ detalle de un movimiento (Lote 14)
+
+    /// <summary>Tope de movimientos relacionados del detalle.</summary>
+    public const int MaxRelatedMovements = 200;
+
+    /// <summary>
+    /// Lote 14 — detalle de un movimiento para abrir su documento: la fila (con dueño y categoría), el vencimiento del lote, el
+    /// documento de origen resuelto por tipo (con PublicId para abrirlo; la tarea de almacén trae su documento padre) y los
+    /// movimientos relacionados: los de la misma referencia (IX_InvTxn_Ref) o, sin referencia, los del mismo asiento (el ledger
+    /// usa un solo instante por asiento: mismo CreatedAtUtc, usuario y producto). Tope 200 (RelatedTruncated).
+    /// Otro tenant o, con scope de dueño, un producto ajeno → 404 'Movimiento no encontrado.' sin oráculo.
+    /// </summary>
+    public async Task<KardexDetailDto> TransactionDetailAsync(long id, InventoryScope scope, CancellationToken ct)
+    {
+        scope ??= InventoryScope.Any;
+        var scopedProducts = ScopedProducts(scope).Select(p => p.ProductId);
+        var txn = await db.Set<InventoryTransaction>().AsNoTracking()
+                      .Where(t => t.InventoryTransactionId == id && scopedProducts.Contains(t.ProductId))
+                      .FirstOrDefaultAsync(ct)
+                  ?? throw new NotFoundException("Movimiento");
+        var row = (await ToKardexRowsAsync(new[] { txn }, KardexLocationFilter.None, ct))[0];
+        DateOnly? expiry = txn.LotId is int lid ? (await LotInfoAsync(new[] { lid }, ct)).GetValueOrDefault(lid)?.Expiry : null;
+        var document = row.RefEntityCode is string refCode && txn.RefId is int refId ? await DocumentAsync(refCode, refId, true, ct) : null;
+
+        var related = db.Set<InventoryTransaction>().AsNoTracking().Where(t => scopedProducts.Contains(t.ProductId));
+        if (txn.RefEntityLookupId is int re && txn.RefId is int rid)
+            related = related.Where(t => t.RefEntityLookupId == re && t.RefId == rid);
+        else
+        {
+            var (at, by, pid) = (txn.CreatedAtUtc, txn.CreatedBy, txn.ProductId);
+            related = related.Where(t => t.RefEntityLookupId == null && t.CreatedAtUtc == at && t.CreatedBy == by && t.ProductId == pid);
+        }
+        var relatedRows = await related.OrderBy(t => t.CreatedAtUtc).ThenBy(t => t.InventoryTransactionId)
+            .Take(MaxRelatedMovements + 1).ToListAsync(ct);
+        var truncated = relatedRows.Count > MaxRelatedMovements;
+        if (truncated) relatedRows = relatedRows.Take(MaxRelatedMovements).ToList();
+        var relatedDtos = await ToKardexRowsAsync(relatedRows, KardexLocationFilter.None, ct);
+        return new KardexDetailDto(row, row.OwnerName, row.CategoryName, expiry, document, relatedDtos, truncated);
+    }
+
+    /// <summary>
+    /// Documento de origen por EntityType: RECEIPT (número, estatus, fecha de confirmación o de alta, proveedor de la orden de
+    /// compra o cliente del aviso, referencia), PICK_BATCH (número, estatus, fecha, orden y su cliente), CYCLE_COUNT (número,
+    /// estatus; se abre por id), PURCHASE_ORDER (número, estatus, fecha, proveedor), TRANSPORT_ORDER, WAREHOUSE_TASK (tipo de
+    /// tarea y su documento padre), PRODUCT (reabasto: el producto), CROSSDOCK_ALLOCATION y CROSSDOCK_PLAN (plan XD-#####).
+    /// Todos los encabezados llevan filtro de tenant; un documento que no aparece se devuelve solo con su etiqueta legible.
+    /// </summary>
+    private async Task<KardexDocumentDto> DocumentAsync(string code, int id, bool withParent, CancellationToken ct)
+    {
+        var entity = code.ToUpperInvariant();
+        var label = await EntityLabelAsync(entity, ct);
+        KardexDocumentDto Missing() => new(entity, label, id, null, KardexRules.RefLabel(entity, id, null, tenant.Lang), null, null, null, null);
+
+        switch (entity)
+        {
+            case EntityTypes.Receipt:
+            {
+                var r = await db.Set<ReceiptHeader>().AsNoTracking().Where(x => x.ReceiptHeaderId == id)
+                    .Select(x => new { x.PublicId, x.Number, x.StatusCodeId, x.ReceivedAtUtc, x.CreatedAtUtc, x.AsnId, x.Reference })
+                    .FirstOrDefaultAsync(ct);
+                if (r is null) return Missing();
+                string? party = null;
+                var reference = r.Reference;
+                if (r.AsnId is int asnId)
+                {
+                    var asn = await db.Set<Asn>().AsNoTracking().Where(a => a.AsnId == asnId)
+                        .Select(a => new { a.ClientId, a.PurchaseOrderId, a.Reference }).FirstOrDefaultAsync(ct);
+                    if (asn?.PurchaseOrderId is int poId)
+                        party = await (from po in db.Set<PurchaseOrder>().AsNoTracking()
+                                       join s in db.Set<Supplier>().AsNoTracking() on po.SupplierId equals s.SupplierId
+                                       where po.PurchaseOrderId == poId
+                                       select s.Name).FirstOrDefaultAsync(ct);
+                    else if (asn?.ClientId is int cid) party = (await ClientNamesAsync(new[] { cid }, ct)).GetValueOrDefault(cid);
+                    reference ??= asn?.Reference;
+                }
+                var (sc, sl) = await StatusOfAsync(r.StatusCodeId, ct);
+                return new KardexDocumentDto(entity, label, id, r.PublicId, r.Number, sc, sl, r.ReceivedAtUtc ?? r.CreatedAtUtc, party, reference);
+            }
+            case EntityTypes.PickBatch:
+            {
+                var b = await db.Set<PickBatch>().AsNoTracking().Where(x => x.PickBatchId == id)
+                    .Select(x => new { x.PublicId, x.Number, x.StatusCodeId, x.CollectedAtUtc, x.TransportOrderId, x.ClientInvoiceNumber })
+                    .FirstOrDefaultAsync(ct);
+                if (b is null) return Missing();
+                string? party = null, orderNumber = null;
+                if (b.TransportOrderId is int oid)
+                {
+                    var o = await db.TransportOrders.AsNoTracking().Where(x => x.TransportOrderId == oid)
+                        .Select(x => new { x.OrderNumber, x.ClientId }).FirstOrDefaultAsync(ct);
+                    if (o is not null)
+                    {
+                        orderNumber = o.OrderNumber;
+                        party = (await ClientNamesAsync(new[] { o.ClientId }, ct)).GetValueOrDefault(o.ClientId);
+                    }
+                }
+                var (sc, sl) = await StatusOfAsync(b.StatusCodeId, ct);
+                return new KardexDocumentDto(entity, label, id, b.PublicId, b.Number, sc, sl, b.CollectedAtUtc, party, orderNumber ?? b.ClientInvoiceNumber);
+            }
+            case EntityTypes.CycleCount:
+            {
+                var c = await db.Set<CycleCount>().AsNoTracking().Where(x => x.CycleCountId == id)
+                    .Select(x => new { x.Number, x.StatusCodeId, x.ReconciledAtUtc, x.CreatedAtUtc, x.WarehouseId }).FirstOrDefaultAsync(ct);
+                if (c is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(c.StatusCodeId, ct);
+                var wh = (await WarehouseInfoAsync(new[] { c.WarehouseId }, ct)).GetValueOrDefault(c.WarehouseId)?.Code;
+                return new KardexDocumentDto(entity, label, id, null, c.Number, sc, sl, c.ReconciledAtUtc ?? c.CreatedAtUtc, null, wh);
+            }
+            case EntityTypes.PurchaseOrder:
+            {
+                var po = await (from x in db.Set<PurchaseOrder>().AsNoTracking()
+                                join s in db.Set<Supplier>().AsNoTracking() on x.SupplierId equals s.SupplierId
+                                where x.PurchaseOrderId == id
+                                select new { x.PublicId, x.Number, x.StatusCodeId, x.OrderDate, SupplierName = s.Name })
+                    .FirstOrDefaultAsync(ct);
+                if (po is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(po.StatusCodeId, ct);
+                return new KardexDocumentDto(entity, label, id, po.PublicId, po.Number, sc, sl,
+                    po.OrderDate.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc), po.SupplierName);
+            }
+            case EntityTypes.TransportOrder:
+            {
+                var o = await db.TransportOrders.AsNoTracking().Where(x => x.TransportOrderId == id)
+                    .Select(x => new { x.PublicId, x.OrderNumber, x.StatusCodeId, x.CreatedAtUtc, x.ClientId }).FirstOrDefaultAsync(ct);
+                if (o is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(o.StatusCodeId, ct);
+                var party = (await ClientNamesAsync(new[] { o.ClientId }, ct)).GetValueOrDefault(o.ClientId);
+                return new KardexDocumentDto(entity, label, id, o.PublicId, o.OrderNumber, sc, sl, o.CreatedAtUtc, party);
+            }
+            case EntityTypes.WarehouseTask:
+            {
+                var t = await db.Set<WarehouseTask>().AsNoTracking().Where(x => x.WarehouseTaskId == id)
+                    .Select(x => new { x.TaskTypeLookupId, x.StatusCodeId, x.CreatedAtUtc, x.CompletedAtUtc, x.RefEntityLookupId, x.RefId })
+                    .FirstOrDefaultAsync(ct);
+                if (t is null) return Missing();
+                var type = await lookups.GetAsync(t.TaskTypeLookupId, ct);
+                var typeLabel = type is null ? null : MultilingualText.Resolve(type.LabelJson, tenant.Lang);
+                var (sc, sl) = await StatusOfAsync(t.StatusCodeId, ct);
+                KardexDocumentDto? parent = null;
+                if (withParent && t.RefEntityLookupId is int pre && t.RefId is int prid && await lookups.GetAsync(pre, ct) is { } parentType)
+                    parent = await DocumentAsync(parentType.InternalCode, prid, false, ct);
+                return new KardexDocumentDto(entity, label, id, null, KardexRules.RefLabel(entity, id, null, tenant.Lang), sc, sl,
+                    t.CompletedAtUtc ?? t.CreatedAtUtc, null, typeLabel, parent);
+            }
+            case EntityTypes.Product:
+            {
+                var p = await db.Set<Product>().AsNoTracking().Where(x => x.ProductId == id)
+                    .Select(x => new { x.PublicId, x.Sku, x.Name }).FirstOrDefaultAsync(ct);
+                if (p is null) return Missing();
+                return new KardexDocumentDto(entity, label, id, p.PublicId, p.Sku, null, null, null, p.Name);
+            }
+            case EntityTypes.CrossDockAllocation:
+            {
+                // La asignación (sin TenantId) se alcanza por su plan filtrado.
+                var a = await (from x in db.Set<CrossDockAllocation>().AsNoTracking()
+                               join pl in db.Set<CrossDockPlan>().AsNoTracking() on x.CrossDockPlanId equals pl.CrossDockPlanId
+                               where x.CrossDockAllocationId == id
+                               select new { pl.Number, x.StatusCodeId, x.CreatedAtUtc, x.TransportOrderId }).FirstOrDefaultAsync(ct);
+                if (a is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(a.StatusCodeId, ct);
+                var o = await db.TransportOrders.AsNoTracking().Where(x => x.TransportOrderId == a.TransportOrderId)
+                    .Select(x => new { x.OrderNumber, x.ClientId }).FirstOrDefaultAsync(ct);
+                var party = o is null ? null : (await ClientNamesAsync(new[] { o.ClientId }, ct)).GetValueOrDefault(o.ClientId);
+                return new KardexDocumentDto(entity, label, id, null, a.Number, sc, sl, a.CreatedAtUtc, party, o?.OrderNumber);
+            }
+            case EntityTypes.CrossDockPlan:
+            {
+                var pl = await db.Set<CrossDockPlan>().AsNoTracking().Where(x => x.CrossDockPlanId == id)
+                    .Select(x => new { x.Number, x.StatusCodeId, x.CreatedAtUtc, x.CompletedAtUtc }).FirstOrDefaultAsync(ct);
+                if (pl is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(pl.StatusCodeId, ct);
+                return new KardexDocumentDto(entity, label, id, null, pl.Number, sc, sl, pl.CompletedAtUtc ?? pl.CreatedAtUtc, null);
+            }
+            default:
+                return Missing();
+        }
+    }
+
+    /// <summary>Etiqueta del EntityType en el idioma del usuario (respaldo: el código).</summary>
+    private async Task<string> EntityLabelAsync(string code, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(LookupDomains.EntityType, code, ct);
+        var lc = id is int i ? await lookups.GetAsync(i, ct) : null;
+        return lc is null ? code : MultilingualText.Resolve(lc.LabelJson, tenant.Lang);
+    }
+
+    /// <summary>Código y etiqueta del estatus (con la etiqueta propia de la compañía si la personalizó).</summary>
+    private async Task<(string? Code, string? Label)> StatusOfAsync(int statusCodeId, CancellationToken ct)
+    {
+        var st = await db.StatusCodes.AsNoTracking().FirstOrDefaultAsync(s => s.StatusCodeId == statusCodeId, ct);
+        if (st is null) return (null, null);
+        var ov = await db.StatusCodeOverrides.AsNoTracking().FirstOrDefaultAsync(o => o.StatusCodeId == statusCodeId, ct);
+        return (st.InternalCode, MultilingualText.Resolve(MultilingualText.Merge(st.LabelJson, ov?.CustomLabelJson), tenant.Lang));
     }
 
     /// <summary>Movimientos por id (en el orden de los ids), sin filtro de ubicación. Resultado de ajustes y transferencias.</summary>
@@ -280,7 +629,10 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 t.SerialId is int sid ? refs.Serials.GetValueOrDefault(sid) : null,
                 refCode, t.RefId, KardexRules.RefLabel(refCode, t.RefId, refNumber, tenant.Lang),
                 reasonCode, reason, t.Notes,
-                t.CreatedBy, t.CreatedBy is int uid ? refs.Users.GetValueOrDefault(uid) : null));
+                t.CreatedBy, t.CreatedBy is int uid ? refs.Users.GetValueOrDefault(uid) : null,
+                // Lote 14: dueño ('Propio' sin cliente) y categoría del producto.
+                p is null ? null : KardexRules.OwnerLabel(p.ClientId is int oid ? refs.Owners.GetValueOrDefault(oid) : null),
+                p?.CategoryId is int cid ? refs.Categories.GetValueOrDefault(cid) : null));
         }
         return result;
     }
@@ -318,7 +670,11 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 .Select(u => new { u.Id, Name = u.FullName ?? u.Email ?? u.UserName ?? "" })
                 .ToDictionaryAsync(u => u.Id, u => u.Name, ct);
 
-        return new KardexRefs(products, warehouses, bins, lots, serials, codes, labels, refNumbers, users);
+        // Lote 14: dueño y categoría de la fila.
+        var categories = await CategoryNamesAsync(products.Values.Where(p => p.CategoryId.HasValue).Select(p => p.CategoryId!.Value), ct);
+        var owners = await ClientNamesAsync(products.Values.Where(p => p.ClientId.HasValue).Select(p => p.ClientId!.Value), ct);
+
+        return new KardexRefs(products, warehouses, bins, lots, serials, codes, labels, refNumbers, users, categories, owners);
     }
 
     /// <summary>
@@ -541,5 +897,26 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     internal sealed record KardexRefs(Dictionary<int, ProductInfo> Products, Dictionary<int, WarehouseInfo> Warehouses,
         Dictionary<int, BinInfo> Bins, Dictionary<int, LotInfo> Lots, Dictionary<int, string> Serials,
         Dictionary<int, string> Codes, Dictionary<int, string> Labels, Dictionary<string, Dictionary<int, string>> RefNumbers,
-        Dictionary<int, string> Users);
+        Dictionary<int, string> Users, Dictionary<int, string> Categories, Dictionary<int, string> Owners);
+
+    /// <summary>Composición de predicados (Lote 14: dirección con la perspectiva del filtro de ubicación), traducible por EF.</summary>
+    private static class Expr
+    {
+        public static Expression<Func<T, bool>> And<T>(Expression<Func<T, bool>> a, Expression<Func<T, bool>> b)
+            => Expression.Lambda<Func<T, bool>>(Expression.AndAlso(a.Body, Rebind(b, a.Parameters[0])), a.Parameters);
+
+        public static Expression<Func<T, bool>> Or<T>(Expression<Func<T, bool>> a, Expression<Func<T, bool>> b)
+            => Expression.Lambda<Func<T, bool>>(Expression.OrElse(a.Body, Rebind(b, a.Parameters[0])), a.Parameters);
+
+        public static Expression<Func<T, bool>> Not<T>(Expression<Func<T, bool>> a)
+            => Expression.Lambda<Func<T, bool>>(Expression.Not(a.Body), a.Parameters);
+
+        private static Expression Rebind<T>(Expression<Func<T, bool>> e, ParameterExpression to)
+            => new Replace(e.Parameters[0], to).Visit(e.Body);
+
+        private sealed class Replace(ParameterExpression from, ParameterExpression to) : ExpressionVisitor
+        {
+            protected override Expression VisitParameter(ParameterExpression node) => node == from ? to : base.VisitParameter(node);
+        }
+    }
 }

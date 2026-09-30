@@ -85,6 +85,16 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
 
     private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 
+    /// <summary>
+    /// Lote 14 — búsqueda de posiciones ENTRE almacenes (filtros Posición del Kárdex y del Conteo): ?search contiene en el código
+    /// de la posición o de su zona, ?warehousePublicIds acota, ?includeInactive incluye las dadas de baja; take ≤ 50 (20 por
+    /// defecto), por almacén y código. Cada fila: id, código, zona y almacén.
+    /// </summary>
+    [HttpGet("bins/search"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<BinSearchItemDto>> SearchBins([FromQuery] string? search, [FromQuery] Guid[]? warehousePublicIds,
+        [FromQuery] bool includeInactive, CancellationToken ct, [FromQuery] int take = 20)
+        => layout.SearchBinsAsync(search, NullIfEmpty(warehousePublicIds), includeInactive, take, ct);
+
     /// <summary>Alta de posición: código explícito o compuesto pasillo-rack-nivel-posición, único por almacén (409).</summary>
     [HttpPost("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseBinDto> CreateBin(Guid publicId, [FromBody] WarehouseBinRequest req, CancellationToken ct)

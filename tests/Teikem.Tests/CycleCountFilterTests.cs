@@ -11,7 +11,7 @@ namespace Teikem.Tests;
 
 /// <summary>
 /// Lote 6 (P6; maestro L553) — los filtros de Inventario se replican en Conteo cíclico: almacén (selección múltiple),
-/// posición, producto y categoría (con subcategorías), más Desde/Hasta en UTC en la lista, y en la ficha los de línea
+/// posición, producto y categoría (con subcategorías), más Desde/Hasta (Lote 14: días locales de Puerto Rico) en la lista, y en la ficha los de línea
 /// (posición, producto, categoría, solo con diferencia y solo pendientes). InMemory con WmsFixture y el ledger real.
 /// </summary>
 public sealed class CycleCountFilterTests
@@ -21,7 +21,11 @@ public sealed class CycleCountFilterTests
 
     private static async Task<World> SeedAsync()
     {
-        var f = await WmsFixture.CreateAsync(s => s.AddSingleton<CycleCountService>());
+        var f = await WmsFixture.CreateAsync(s =>
+        {
+            s.AddSingleton<Teikem.Infrastructure.Abstractions.ITenantClock>(Teikem.Infrastructure.Abstractions.TenantClock.Default);   // Lote 14
+            s.AddSingleton<CycleCountService>();
+        });
         var root = new ProductCategory { TenantId = WmsFixture.TenantId, Name = "Medidores", IsActive = true };
         f.Db.Set<ProductCategory>().Add(root);
         await f.Db.SaveChangesAsync();
@@ -49,8 +53,8 @@ public sealed class CycleCountFilterTests
         var svc = f.Get<CycleCountService>();
         var cc1 = await svc.CreateAsync(new CycleCountCreateRequest(w1.PublicId), default);
         var cc2 = await svc.CreateAsync(new CycleCountCreateRequest(w2.PublicId), default);
-        // CC2 se dio de alta el 1 de septiembre a las 23:59:59 UTC.
-        (await f.Db.Set<CycleCount>().SingleAsync(c => c.CycleCountId == cc2.Count.Id)).CreatedAtUtc = new DateTime(2026, 9, 1, 23, 59, 59, DateTimeKind.Utc);
+        // CC2 se dio de alta el 2 de septiembre a las 02:00 UTC = 1 de septiembre a las 22:00 en Puerto Rico (Lote 14: días locales).
+        (await f.Db.Set<CycleCount>().SingleAsync(c => c.CycleCountId == cc2.Count.Id)).CreatedAtUtc = new DateTime(2026, 9, 2, 2, 0, 0, DateTimeKind.Utc);
         await f.Db.SaveChangesAsync();
         f.Db.ChangeTracker.Clear();
         return new World(f, w1, w2, bin1, bin2, pa, pb, root, cc1, cc2);

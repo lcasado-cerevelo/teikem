@@ -7,6 +7,7 @@ import type { KardexRowDto, ProductListItemDto } from './api'
 import {
   adjustmentLocation,
   adjustmentTotals,
+  adjustmentsReportKardexQuery,
   buildAdjustmentsReport,
   buildInventoryReport,
   groupInventoryByCategory,
@@ -154,5 +155,35 @@ describe('Reporte de ajustes', () => {
     expect(spec.sections[0].rows).toHaveLength(1)
     expect(spec.summary?.[0].value).toBe('1')
     expect(spec.notices).toContain('Saldos iniciales de la migración excluidos: 1 (no son ajustes de la operación).')
+  })
+})
+
+// Lote 14 (hallazgo 22): el Reporte de ajustes acepta los filtros de 'Transferencias y ajustes' ya armados.
+describe('Reporte de ajustes con la consulta de Transferencias y ajustes', () => {
+  const adjustments = {
+    kardexQuery: { types: ['TRANSFER'], from: '2026-09-01', includeOwn: true, reasons: ['DAMAGE'], direction: 'OUT', skip: 25, take: 25 },
+    filterLabels: [
+      { label: 'Tipo de movimiento', value: 'Ajuste' },
+      { label: 'Motivo', value: 'Daño' },
+    ],
+  }
+
+  it('la consulta explícita manda (siempre tipo ADJUSTMENT, sin página); sin ella, la de Productos e inventario', () => {
+    expect(adjustmentsReportKardexQuery({ filters: EMPTY_PRODUCT_FILTERS, adjustments })).toEqual({
+      types: ['ADJUSTMENT'],
+      from: '2026-09-01',
+      includeOwn: true,
+      reasons: ['DAMAGE'],
+      direction: 'OUT',
+      skip: undefined,
+      take: undefined,
+    })
+    expect(adjustmentsReportKardexQuery({ filters: EMPTY_PRODUCT_FILTERS })).toMatchObject({ types: ['ADJUSTMENT'] })
+  })
+
+  it('los "Filtros aplicados" son los de la pantalla y no avisa del KPI', () => {
+    const spec = buildAdjustmentsReport([K({ signedQuantity: -1 })], false, ctx({ adjustments, filters: { ...EMPTY_PRODUCT_FILTERS, kpi: 'serial' } }))
+    expect(spec.filters).toEqual(adjustments.filterLabels)
+    expect(spec.notices ?? []).toEqual([])
   })
 })

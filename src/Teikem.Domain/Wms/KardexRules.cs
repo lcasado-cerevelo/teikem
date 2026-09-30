@@ -226,17 +226,68 @@ public static class KardexRules
 
     /// <summary>
     /// Saldo reconstruido por clave (producto, almacén, posición, lote) desde el ledger: el lado To suma |Q| y el lado From
-    /// resta |Q| (una TRANSFER mueve |Q| de From a To). Entrada: sumas ya agrupadas por lado.
+    /// resta |Q| (una TRANSFER mueve |Q| de From a To). Entrada: sumas ya agrupadas por lado. Lote 14: la clave es BalanceKey
+    /// (la misma del saldo y del orden de bloqueo; el antiguo LedgerKey era un duplicado y se retiró).
     /// </summary>
-    public static Dictionary<LedgerKey, decimal> Rebuild(IEnumerable<(LedgerKey Key, decimal Magnitude)> toSides,
-        IEnumerable<(LedgerKey Key, decimal Magnitude)> fromSides)
+    public static Dictionary<BalanceKey, decimal> Rebuild(IEnumerable<(BalanceKey Key, decimal Magnitude)> toSides,
+        IEnumerable<(BalanceKey Key, decimal Magnitude)> fromSides)
     {
-        var map = new Dictionary<LedgerKey, decimal>();
+        var map = new Dictionary<BalanceKey, decimal>();
         foreach (var (k, m) in toSides) map[k] = map.GetValueOrDefault(k) + Math.Abs(m);
         foreach (var (k, m) in fromSides) map[k] = map.GetValueOrDefault(k) - Math.Abs(m);
         return map;
     }
+
+    // ---------------------------------------------------------------- Lote 14: dirección y resumen
+
+    /// <summary>Dirección de entrada (signo + según la perspectiva del filtro).</summary>
+    public const string DirectionIn = "IN";
+    /// <summary>Dirección de salida (signo − según la perspectiva del filtro).</summary>
+    public const string DirectionOut = "OUT";
+    public const string DirectionInvalid = "La dirección debe ser IN (entradas) u OUT (salidas).";
+
+    /// <summary>Dirección normalizada (IN u OUT, sin distinguir mayúsculas); vacía = sin filtro; otra → error.</summary>
+    public static (string? Direction, string? Error) NormalizeDirection(string? direction)
+    {
+        if (string.IsNullOrWhiteSpace(direction)) return (null, null);
+        var code = direction.Trim().ToUpperInvariant();
+        return code is DirectionIn or DirectionOut ? (code, null) : (null, DirectionInvalid);
+    }
+
+    /// <summary>
+    /// Dirección de un movimiento con la MISMA regla que SignedQuantity: &gt; 0 entrada, &lt; 0 salida y 0 interna (NULL). Sin
+    /// filtro de ubicación una transferencia es interna; con filtro, sale, entra o es interna según qué lados caen dentro.
+    /// </summary>
+    public static string? DirectionOf(decimal signedQuantity) => signedQuantity > 0 ? DirectionIn : signedQuantity < 0 ? DirectionOut : null;
+
+    /// <summary>
+    /// Resumen del Kárdex (espejo puro del que arma el servicio): movimientos, entradas (número y unidades), salidas (número y
+    /// unidades) e internos, con la perspectiva de SignedQuantity. Entrada: grupos (tipo, lados From y To, Σ Quantity con
+    /// signo, número de movimientos). Dentro de un grupo el signo es uniforme (CK_InvTxn_Direction: + si hay destino, − si
+    /// solo hay origen), así que la regla por fila vale para la suma del grupo.
+    /// </summary>
+    public static KardexSummary Summarize(IEnumerable<KardexSummaryGroup> groups, KardexLocationFilter? filter)
+    {
+        int movements = 0, inCount = 0, outCount = 0, internalCount = 0;
+        decimal inQty = 0m, outQty = 0m;
+        foreach (var g in groups)
+        {
+            movements += g.Count;
+            var signed = SignedQuantity(g.Quantity, g.TypeCode, g.FromWarehouseId, g.FromBinId, g.ToWarehouseId, g.ToBinId, filter);
+            switch (DirectionOf(signed))
+            {
+                case DirectionIn: inCount += g.Count; inQty += Math.Abs(signed); break;
+                case DirectionOut: outCount += g.Count; outQty += Math.Abs(signed); break;
+                default: internalCount += g.Count; break;
+            }
+        }
+        return new KardexSummary(movements, inCount, inQty, outCount, outQty, internalCount);
+    }
 }
 
-/// <summary>Clave de saldo reconstruido desde el ledger (misma clave que UQ_StockBalance).</summary>
-public readonly record struct LedgerKey(int ProductId, int WarehouseId, int? BinId, int? LotId);
+/// <summary>Grupo de movimientos del Kárdex para el resumen: tipo, lados y Σ Quantity CON signo del ledger.</summary>
+public sealed record KardexSummaryGroup(string TypeCode, int? FromWarehouseId, int? FromBinId, int? ToWarehouseId, int? ToBinId,
+    decimal Quantity, int Count);
+
+/// <summary>Resumen del Kárdex (Lote 14, D13): movimientos, entradas, salidas e internos con la perspectiva del filtro.</summary>
+public sealed record KardexSummary(int Movements, int InCount, decimal InQty, int OutCount, decimal OutQty, int InternalCount);

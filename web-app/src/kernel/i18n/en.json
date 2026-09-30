@@ -157,10 +157,6 @@
       "title": "Receiving",
       "subtitle": "ASN, dock and verification of inbound"
     },
-    "inventoryAdjustments": {
-      "title": "Inventory adjustments",
-      "subtitle": "partial receipts and corrections against the ledger"
-    },
     "cycleCounts": {
       "title": "Cycle count",
       "subtitle": "variance and adjustment against the ledger"
@@ -280,6 +276,10 @@
     "portalProfile": {
       "title": "Profile",
       "subtitle": "your account information"
+    },
+    "transfersAdjustments": {
+      "title": "Transfers & adjustments",
+      "subtitle": "move stock between bins and correct quantities with a reason"
     }
   },
   "status": {
@@ -604,7 +604,8 @@
       "showInPulseCompany": "…in the company's",
       "panels": {
         "INDICATORS": "Your indicators",
-        "CHARTS": "Your charts"
+        "CHARTS": "Your charts",
+        "ATTENTION": "Needs your attention"
       },
       "organizeMine": "Organize my Pulse",
       "organizeCompany": "Organize the company's",
@@ -681,6 +682,30 @@
       },
       "cardMode": "Date range for {name}",
       "lockedHint": "Only its creator or someone allowed to change dates can change the range."
+    },
+    "attention": {
+      "pending": "{count} pending",
+      "pendingOne": "1 pending",
+      "listLabel": "Oldest pending items",
+      "review": "Review",
+      "since": "since {when}",
+      "viewAll": "View all ({count})",
+      "viewAllGroup": "View all: {group} ({count})",
+      "allClear": "All in order",
+      "allClearBody": "Nothing pending to review.",
+      "items": {
+        "INVENTORY_DISCREPANCY": {
+          "title": "Discrepancy in {sku}",
+          "titleTotal": "Discrepancy in the total of {sku}",
+          "group": "Inventory discrepancies",
+          "allBins": "all positions",
+          "lot": "lot {lot}",
+          "ledger": "Ledger",
+          "balance": "Balance",
+          "difference": "Difference",
+          "reviewLabel": "Review the discrepancy of {sku} ({where})"
+        }
+      }
     },
     "activity": {
       "title": "Recent activity",
@@ -1452,7 +1477,9 @@
           "available": "Available",
           "cost": "Cost value",
           "sale": "Sale value",
-          "updated": "Updated"
+          "updated": "Updated",
+          "owner": "Owner",
+          "category": "Category"
         },
         "filters": {
           "warehouse": "Warehouse",
@@ -1547,7 +1574,10 @@
           "reason": "Reason",
           "notes": "Notes",
           "lotNumber": "Lot",
-          "serialNumbers": "Serial numbers (one per line)"
+          "serialNumbers": "Serial numbers (one per line)",
+          "direction": "Adjustment type",
+          "lot": "Lot",
+          "serialsOut": "Serials going out"
         },
         "errors": {
           "productRequired": "Select a product.",
@@ -1558,8 +1588,24 @@
           "quantityZero": "The adjustment quantity cannot be zero.",
           "quantityDecimals": "The quantity allows at most 3 decimals.",
           "lotNumberRequired": "Enter the lot number.",
-          "serialNumbersRequired": "Enter at least one serial number."
-        }
+          "serialNumbersRequired": "Enter at least one serial number.",
+          "directionRequired": "Choose whether the adjustment increases or decreases stock.",
+          "quantityRequired": "Enter the adjustment quantity.",
+          "quantityPositive": "The quantity must be greater than zero.",
+          "exceedsAvailable": "You cannot decrease more than what is available in the bin ({qty}).",
+          "lotRequired": "Choose the lot."
+        },
+        "up": "Increase",
+        "down": "Decrease",
+        "submit": "Apply adjustment",
+        "savedQty": "Adjustment recorded ({qty}).",
+        "availableInBin": "Available in the bin: {qty}",
+        "serialCount": "{count} serials",
+        "reasonPlaceholder": "Search a reason…",
+        "lotPlaceholder": "Choose the lot…",
+        "lotAvailable": "available {qty}",
+        "lotExpiry": "expires {date}",
+        "serialsPlaceholder": "Choose the serials…"
       },
       "transferModal": {
         "title": "Inventory transfer",
@@ -1571,7 +1617,9 @@
           "toWarehouse": "Destination warehouse",
           "toBin": "Destination bin",
           "quantity": "Quantity",
-          "notes": "Notes"
+          "notes": "Notes",
+          "item": "Item",
+          "serials": "Serials"
         },
         "errors": {
           "productRequired": "Select a product.",
@@ -1581,7 +1629,74 @@
           "toBinRequired": "Select the destination bin.",
           "quantityInvalid": "Expected a number.",
           "quantityPositive": "The quantity must be greater than zero.",
-          "samePosition": "The source and destination cannot be the same bin."
+          "samePosition": "The source and destination cannot be the same bin.",
+          "itemRequired": "Choose the item to transfer.",
+          "serialsRequired": "Choose at least one serial.",
+          "exceedsAvailable": "You cannot transfer more than what is available in the bin ({qty})."
+        },
+        "submit": "Transfer",
+        "lot": "Lot {lot}",
+        "available": "available {qty}",
+        "availableHelp": "Available in the bin: {qty}",
+        "itemHelp": "Choose the source bin first.",
+        "itemPlaceholder": "Search by SKU, name or lot…"
+      },
+      "summary": {
+        "label": "Movement summary",
+        "movements": "Movements",
+        "inCount": "In (moves)",
+        "inQty": "In (units)",
+        "outCount": "Out (moves)",
+        "outQty": "Out (units)",
+        "internal": "Internal",
+        "internalHint": "Transfers that stay within the filtered warehouses or bins.",
+        "onHand": "On hand",
+        "available": "Available"
+      },
+      "filters": {
+        "label": "Ledger filters",
+        "range": "Date",
+        "type": "Type",
+        "warehouse": "Warehouse",
+        "bin": "Bin",
+        "product": "Product",
+        "category": "Category",
+        "owner": "Owner",
+        "reason": "Reason",
+        "direction": "Direction",
+        "directionIn": "In",
+        "directionOut": "Out",
+        "lot": "Lot",
+        "serial": "Serial",
+        "manualOnly": "Manual only",
+        "includeZero": "Include zero",
+        "onlyAvailable": "Only with available",
+        "status": "Status",
+        "ref": "Document: {entity} #{id}",
+        "refTitle": "Movements of a source document",
+        "refRemove": "Remove the document filter",
+        "names": {
+          "range": "Date",
+          "types": "Type",
+          "warehouses": "Warehouse",
+          "bins": "Bin",
+          "products": "Product",
+          "categories": "Category",
+          "owners": "Owner",
+          "reasons": "Reason",
+          "direction": "Direction",
+          "manualOnly": "Manual only",
+          "lot": "Lot",
+          "serial": "Serial",
+          "search": "Search",
+          "includeZero": "Include zero",
+          "onlyAvailable": "Only with available",
+          "status": "Status"
+        },
+        "notApplied": {
+          "kardex": "Not applied to the ledger: {filters}.",
+          "balances": "Not applied to Balances (they only change the movement summary): {filters}.",
+          "reconciliation": "Not applied to Reconciliation: {filters}."
         }
       }
     },
@@ -1726,34 +1841,6 @@
           "serialsRequired": "Product {sku} is serial-tracked; enter the serial numbers.",
           "serialCountMismatch": "{count} serial(s) entered for a quantity of {qty}; they must match."
         }
-      }
-    },
-    "inventoryAdjustments": {
-      "intro": "Purchase orders received with a shortage. For each short product you can close the gap (accept it as final), reorder it with the same supplier, or apply a manual adjustment with a reason — every resolution is recorded.",
-      "listTitle": "Purchases with partial receipt",
-      "short": "{qty} short",
-      "lines": "{count} line(s)",
-      "emptyList": "No pending partial receipts",
-      "selectPrompt": "Select a purchase",
-      "reorderNote": "Reordering creates a new draft PO with the same supplier for the missing quantity, visible in Purchasing.",
-      "tableLabel": "Short lines of the purchase",
-      "columns": {
-        "shortage": "Short",
-        "resolve": "Resolve"
-      },
-      "actions": {
-        "close": "Close",
-        "reorder": "Reorder",
-        "manual": "Manual adj."
-      },
-      "qtyPlaceholder": "Qty",
-      "reasonPlaceholder": "Reason",
-      "qtyAria": "Adjustment quantity for {sku}",
-      "reasonAria": "Adjustment reason for {sku}",
-      "toast": {
-        "closed": "Shortage closed: {sku}",
-        "reordered": "Reorder created: {number}",
-        "adjusted": "Adjustment applied: +{qty} {sku}"
       }
     },
     "tasks": {
@@ -2366,32 +2453,45 @@
     },
     "cycleCounts": {
       "title": "Cycle count",
-      "subtitle": "Snapshot of on-hand stock, capture of what was counted and reconciliation against current stock.",
-      "tabCounts": "Counts",
-      "tabTasks": "Count tasks",
-      "tasksTitle": "Count tasks",
+      "subtitle": "Variance and adjustment against the ledger: count bin by bin and confirm in one step.",
+      "modeTag": "Mode: informed",
+      "intro": "Informed count: the counter sees the expected quantity. Variance is computed on the fly and, on confirm, the difference is written as an adjustment to the Movement ledger; nothing is adjusted outside it.",
+      "splitLabel": "Resize the count list and the selected count",
       "new": "New count",
+      "newChanges": "Count what changed",
       "create": "Create count",
       "created": "Count {number} created with {count} line(s).",
-      "createHelp": "Without zones or bins the whole on-hand stock of the warehouse is taken (at most 1000 lines).",
-      "count": "{count} count(s)",
-      "open": "Open",
+      "createHelp": "Without zones or bins the whole on-hand balance of the warehouse is taken (up to 1000 lines).",
       "searchPlaceholder": "Number, SKU or product",
       "notFound": "Count not found.",
-      "back": "Back to Cycle count",
+      "deleteTitle": "Delete count",
+      "deleteBody": "Delete pending count {number}? Its count task is cancelled and the deletion is audited.",
+      "deleteConfirm": "Delete",
+      "deleted": "Count {number} deleted.",
       "columns": {
         "number": "Number",
-        "warehouse": "Warehouse",
         "status": "Status",
+        "origin": "Origin",
+        "warehouse": "Warehouse",
+        "bin": "Bin",
+        "zone": "Zone",
+        "lines": "Lines",
         "progress": "Counted",
         "netVariance": "Net variance",
-        "createdAt": "Created"
+        "assignedTo": "Assigned to",
+        "createdAt": "Created",
+        "reconciledAt": "Confirmed"
       },
       "filters": {
-        "warehouses": "Warehouses",
+        "aria": "Count filters",
+        "warehouses": "Warehouse",
+        "zones": "Zone",
+        "bins": "Bin",
+        "product": "Product",
         "status": "Status",
+        "origin": "Origin",
         "created": "Created",
-        "product": "Product"
+        "search": "Search"
       },
       "fields": {
         "warehouse": "Warehouse",
@@ -2399,68 +2499,282 @@
         "allZones": "All zones",
         "bins": "Bins",
         "allBins": "All bins",
-        "binsTruncated": "Only the first {count} bins are listed: pick zones to narrow the list."
+        "binsTruncated": "Only the first {count} bins are listed: choose zones to narrow the list."
       },
       "errors": {
         "binRequired": "Enter the bin.",
         "countedRequired": "Enter the counted quantity.",
-        "lotAmbiguous": "Enter the lot by id or by number, not both."
+        "lotAmbiguous": "Give the lot by its id or by its number, not both."
+      },
+      "list": {
+        "title": "Count tasks",
+        "aria": "Counts",
+        "empty": "No counts match these filters.",
+        "positions": "{n} bins",
+        "noBins": "No bins",
+        "zone": "Zone {zone}",
+        "lines": "{n} line(s)",
+        "assigned": "Assigned to {name}",
+        "unassigned": "Unassigned",
+        "assign": "Assign count {number}",
+        "delete": "Delete count {number}",
+        "exportName": "Cycle counts"
       },
       "detail": {
+        "select": "Select a count task",
+        "title": "Count",
         "progress": "{counted} of {total} lines counted",
-        "summary": "Summary",
-        "varianceLines": "Lines with variance",
-        "reconciledAt": "Reconciled",
-        "staleNote": "Some lines changed since the snapshot. 'Refresh snapshot' takes them again and clears their capture.",
-        "lines": "Lines",
-        "noLines": "No lines match these filters.",
-        "onlyPending": "Only pending",
-        "onlyVariance": "Only with variance",
+        "window": "Movements from {from} to {to}",
+        "lines": "Count lines",
+        "noLines": "The count has no lines.",
+        "sku": "SKU",
         "product": "Product",
         "bin": "Bin",
         "lot": "Lot",
-        "systemQty": "Snapshot",
-        "countedQty": "Counted",
+        "expected": "Expected",
+        "counted": "Counted",
         "variance": "Variance",
-        "currentQty": "Current stock",
         "adjusted": "Adjusted",
         "pending": "Pending",
+        "countedOf": "Counted for line {n} ({sku})",
+        "serialsBtn": "Serials ({n})",
+        "serialsOf": "Counted serials for line {n}",
+        "saving": "Saving…",
         "stale": "Old snapshot",
-        "staleHelp": "The stock changed since the snapshot was taken.",
-        "changed": "Stock changed",
-        "changedHelp": "At reconciliation the stock differed from the snapshot; the adjustment used the real stock.",
-        "capture": "Capture",
-        "captureTitle": "Count {product}",
-        "captured": "Capture saved.",
-        "where": "Bin {bin} · lot {lot}",
-        "countedHelp": "Empty clears the capture (the line becomes pending).",
-        "serials": "Counted serials",
-        "expectedSerials": "Expected ({count}): {list}",
-        "nothingFoundLabel": "No serials",
-        "nothingFound": "None found (counted 0)",
-        "addLine": "Add line",
+        "staleHelp": "The balance changed since the snapshot was taken.",
+        "staleNote": "Some lines changed since the snapshot. 'Refresh snapshot' takes them again and clears their capture.",
+        "changed": "Balance changed",
+        "changedHelp": "When confirmed the balance differed from the snapshot; the adjustment used the real balance.",
+        "blindNote": "Your user lacks the informed-count permission: expected quantities are hidden and counting is done in the warehouse app.",
+        "addLine": "Add what was found",
+        "addLineHelp": "A product that is in the bin but not in the count: it is added with the counted quantity.",
         "lineAdded": "Line added.",
         "existingLot": "Existing lot",
         "newLot": "or lot number",
         "refresh": "Refresh snapshot",
         "refreshed": "Snapshot refreshed.",
-        "finish": "Finish count",
-        "finishTitle": "Finish count",
-        "finishBody": "Count {number} moves to COUNTED. All lines must be captured.",
-        "finished": "Count finished.",
-        "reconcile": "Reconcile",
-        "reconcileTitle": "Reconcile count",
-        "reconcileBody": "The adjustments of count {number} are posted against current stock. Afterwards it is read-only.",
-        "reconciled": "Count reconciled.",
-        "delete": "Delete",
-        "deleteTitle": "Delete count",
-        "deleteBody": "Delete open count {number}? Its count task is cancelled.",
-        "deleted": "Count {number} deleted."
+        "history": "History",
+        "historyTitle": "History of count {number}",
+        "confirm": "Confirm count & adjust",
+        "confirmNote": "On confirm, each line with variance generates an adjustment linked to this count ({number}).",
+        "confirmTitle": "Confirm count & adjust",
+        "confirmBody": "The adjustments of count {number} are posted to the ledger against the current balance ({n} line(s) with variance). Afterwards it is read-only.",
+        "confirmedMatch": "Count {number}: {status}, no adjustments.",
+        "confirmedVariance": "Count {number}: {status}, {n} adjustment(s) in the ledger.",
+        "unsaved": "Some quantities could not be saved; fix them before confirming.",
+        "closedNote": "Count closed. Adjustments are already in the Movement ledger.",
+        "seeAdjustments": "See the adjustments in the ledger",
+        "blockers": {
+          "pending": "{n} line(s) left to count.",
+          "noLines": "The count has no lines.",
+          "closed": "The count was already confirmed; it is read-only.",
+          "blind": "The web does not confirm blind counts."
+        }
+      },
+      "scan": {
+        "label": "Scan or search product",
+        "placeholder": "SKU, barcode, lot or serial",
+        "help": "Scan or type the code and press Enter: it goes to the line and asks for the quantity.",
+        "notFound": "That code is not in this count. Use \"Add what was found\" if the product is in the bin.",
+        "many": "{n} lines match: choose the bin and lot."
+      },
+      "qty": {
+        "title": "Count {product}",
+        "where": "Bin {bin} · lot {lot}",
+        "expected": "Expected: {qty}",
+        "counted": "Counted quantity",
+        "countedHelp": "Enter saves. Empty clears the capture (the line goes back to pending).",
+        "serials": "Counted serials",
+        "expectedSerials": "Expected ({count}): {list}",
+        "nothingFound": "None found (counted 0)",
+        "saved": "Capture saved."
+      },
+      "changes": {
+        "title": "Count what changed",
+        "intro": "Creates a Pending count for each bin with movements in the window (except adjustments coming from a count), with everything in it. Up to 200 bins at a time.",
+        "warehouse": "Warehouse",
+        "warehouseRequired": "Choose the warehouse.",
+        "from": "From",
+        "to": "To",
+        "timeHelp": "Puerto Rico time. By default, from the last time it was generated in this warehouse (the first time, from the start of the day) until now.",
+        "resetWindow": "Back to the default window",
+        "zones": "Zones",
+        "includeEmpty": "Include empty bins",
+        "includeEmptyHelp": "Bins that were left at 0 are counted too, to confirm they are really empty.",
+        "previewTitle": "Preview",
+        "loading": "Calculating…",
+        "window": "Window: {from} → {to}",
+        "last": "Last generated in this warehouse: {date}.",
+        "firstTime": "First time in this warehouse: from the start of the day.",
+        "movements": "{n} movement(s) in the window",
+        "positions": "{n} count(s) will be created, one per bin, with {lines} line(s)",
+        "withOpen": "{n} bin(s) already have a pending count (skipped)",
+        "inactive": "{n} inactive bin(s) (skipped)",
+        "empty": "{n} bin(s) with nothing to count (skipped)",
+        "max": "Up to {max} bins at a time.",
+        "create": "Create {n} count(s)",
+        "createNone": "Create counts",
+        "created": "{n} count(s) of what changed were created."
       }
     },
     "productFilter": {
       "placeholder": "Search by SKU or name…",
       "remove": "Remove {sku}"
+    },
+    "kardexView": {
+      "columns": {
+        "date": "Date",
+        "time": "Time",
+        "type": "Type",
+        "sku": "SKU",
+        "product": "Product",
+        "owner": "Owner",
+        "category": "Category",
+        "quantity": "Quantity",
+        "position": "Warehouse/Bin",
+        "from": "From",
+        "to": "To",
+        "lotSerial": "Lot/Serial",
+        "reason": "Reason",
+        "notes": "Note",
+        "origin": "Movement source",
+        "ref": "Source",
+        "user": "User"
+      },
+      "origin": {
+        "manual": "Manual",
+        "count": "Count",
+        "task": "Putaway or replenishment",
+        "replenish": "Replenishment",
+        "receipt": "Receipt",
+        "pick": "Pick batch",
+        "purchase": "Purchase",
+        "crossdock": "Cross-dock",
+        "order": "Order",
+        "other": "Other document"
+      }
+    },
+    "kardexDetail": {
+      "title": "Movement #{id}",
+      "close": "Close",
+      "when": "Date and time",
+      "user": "User",
+      "system": "System",
+      "type": "Type",
+      "sku": "SKU",
+      "product": "Product",
+      "owner": "Owner",
+      "category": "Category",
+      "quantity": "Quantity",
+      "fromTo": "From → to",
+      "lot": "Lot",
+      "lotSerial": "Lot/Serial",
+      "expires": "expires {date}",
+      "serial": "Serial",
+      "reason": "Reason",
+      "origin": "Source",
+      "notes": "Note",
+      "document": "Source document",
+      "parentDocument": "Task document",
+      "noDocument": "Manual movement (no document)",
+      "open": "Open",
+      "related": "Related movements ({count})",
+      "relatedLabel": "Related movements",
+      "relatedTruncated": "Showing the first 200 related movements."
+    },
+    "binFilter": {
+      "placeholder": "Bin code…",
+      "noAccess": "Your user cannot view bins",
+      "none": "No bins",
+      "inactive": "Inactive",
+      "remove": "Remove {bin}"
+    },
+    "discrepancies": {
+      "title": "Ledger ↔ balance discrepancies",
+      "subtitle": "The ledger rules: a discrepancy is fixed by setting the balance to what the ledger says, or dismissed with a note.",
+      "summaryLabel": "Discrepancy summary",
+      "summary": {
+        "open": "Open",
+        "shown": "In the list"
+      },
+      "run": "Run reconciliation",
+      "runHint": "Checks balances against the ledger now (the filtered products, or all).",
+      "runDone": "Reconciliation finished.",
+      "runResult": "Reconciliation of {date}: {products} products and {balances} balances checked · {opened} new discrepancies · {stillOpen} still open · {selfCorrected} corrected themselves.",
+      "auto": {
+        "off": "Automatic check off",
+        "pending": "Automatic check: {count} queued",
+        "upToDate": "Automatic check: up to date"
+      },
+      "empty": "No open discrepancies",
+      "emptyBody": "The ledger and the balances match with these filters.",
+      "productTotal": "Product total",
+      "columns": {
+        "detected": "Detected",
+        "sku": "SKU",
+        "product": "Product",
+        "where": "Warehouse/Bin",
+        "lot": "Lot",
+        "ledgerQty": "Ledger",
+        "balanceQty": "Balance",
+        "difference": "Difference",
+        "kind": "Kind",
+        "status": "Status",
+        "trigger": "Detected by"
+      },
+      "rebuild": "Fix the balance from the ledger",
+      "dismiss": "Dismiss",
+      "rebuilt": "Balance fixed from the ledger.",
+      "dismissed": "Discrepancy dismissed.",
+      "selfCorrected": "The balance already matched; the discrepancy closed itself.",
+      "createCount": "Create a count for that bin",
+      "countCreated": "Count {number} created.",
+      "openCount": "Open count {number}",
+      "errors": {
+        "dismissNotes": "Write a note explaining why the discrepancy is dismissed.",
+        "notesMax": "The note allows at most 500 characters."
+      },
+      "detail": {
+        "title": "Discrepancy · {sku}",
+        "reserved": "Reserved today",
+        "lastChecked": "Last check",
+        "checks": "{date} ({count} checks)",
+        "differenceHelp": "Balance − ledger",
+        "ledgerRules": "A discrepancy is not a physical difference on the shelf (a count solves that): the balance does not match the sum of the movements. Fixing sets the balance to the ledger without creating a movement; an adjustment or a count does not fix it because they move both by the same amount.",
+        "closedAt": "Closed",
+        "resolvedBy": "Resolved by",
+        "corrected": "Balance fixed",
+        "notes": "Resolution note",
+        "notesLabel": "Note (required to dismiss)",
+        "notesPlaceholder": "Why it is fixed or dismissed",
+        "totalHelp": "This discrepancy is for the product total: fix the per-bin discrepancies, or dismiss it with a note.",
+        "countOffer": "The balance now matches the ledger. To verify what is physically in the bin, create a count.",
+        "movements": "Latest movements of the bin",
+        "history": "History"
+      }
+    },
+    "transfersAdjustments": {
+      "tabAdjustments": "Adjustments",
+      "tabTransfers": "Transfers",
+      "newAdjustment": "Adjust",
+      "newTransfer": "Transfer",
+      "emptyAdjustments": "No adjustments with these filters.",
+      "emptyTransfers": "No transfers with these filters.",
+      "filters": {
+        "label": "Movement filters",
+        "range": "Date",
+        "warehouse": "Warehouse",
+        "fromWarehouse": "Source warehouse",
+        "toWarehouse": "Destination warehouse",
+        "product": "Product",
+        "owner": "Owner",
+        "direction": "Adjustment type",
+        "up": "Increase",
+        "down": "Decrease",
+        "reason": "Reason",
+        "manualOnly": "Manual only",
+        "yes": "Yes"
+      }
     }
   },
   "system": {

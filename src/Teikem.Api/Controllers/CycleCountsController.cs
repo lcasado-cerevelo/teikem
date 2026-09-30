@@ -27,8 +27,8 @@ namespace Teikem.Api.Controllers;
 public sealed class CycleCountsController(CycleCountService counts, PermissionService permissions) : ControllerBase
 {
     /// <summary>
-    /// Conteos activos (los 200 más recientes) con filtros: warehousePublicIds (selección múltiple, maestro L553), status (OPEN, COUNTED, RECONCILED), from/to
-    /// (fecha de alta en UTC, 'hasta' inclusive), binIds, productPublicIds, categoryIds (con subcategorías) y search
+    /// Conteos activos (los 200 más recientes) con filtros: warehousePublicIds (selección múltiple, maestro L553), status (OPEN, COUNTED, RECONCILED,
+    /// RECONCILED_VARIANCE), from/to (fecha de alta en días locales de la compañía, 'hasta' inclusive), binIds, productPublicIds, categoryIds (con subcategorías) y search
     /// (número del conteo, SKU o nombre de producto). Conteo a ciegas (Lote 8A): sin warehouse.count, varianceLines y
     /// netVariance llegan null.
     /// </summary>
@@ -39,6 +39,45 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
         => await counts.ListAsync(new CycleCountQuery(warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null, status is { Length: > 0 } ? status : null, from, to,
             binIds is { Length: > 0 } ? binIds : null, productPublicIds is { Length: > 0 } ? productPublicIds : null,
             categoryIds is { Length: > 0 } ? categoryIds : null, search), await IsBlindAsync(ct), ct);
+
+    /// <summary>
+    /// Lote 14 (hallazgo 14) — página de conteos con el total: mismos filtros que la lista (from/to en días locales de la
+    /// compañía), más zoneIds (alguna línea en esas zonas), origins (MANUAL, CHANGES) y skip/take (take 1..200, por defecto
+    /// 50). Cada fila trae binCount (y binCode/zoneCode si es de una posición), originCode/origin y su ventana, taskId de la
+    /// tarea COUNT (para asignarla con POST /warehouse-tasks/{taskId}/assign) y assignedToName. Status acepta OPEN, COUNTED,
+    /// RECONCILED y RECONCILED_VARIANCE. A ciegas sin warehouse.count (varianceLines y netVariance en null).
+    /// </summary>
+    [HttpGet("page"), RequirePermission(PermissionCatalog.InventoryView)]
+    public async Task<CycleCountPageDto> Page([FromQuery] Guid[]? warehousePublicIds, [FromQuery] string[]? status,
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] int[]? binIds, [FromQuery] int[]? zoneIds,
+        [FromQuery] Guid[]? productPublicIds, [FromQuery] int[]? categoryIds, [FromQuery] string[]? origins, [FromQuery] string? search,
+        [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+        => await counts.ListPageAsync(new CycleCountQuery(warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null,
+            status is { Length: > 0 } ? status : null, from, to, binIds is { Length: > 0 } ? binIds : null,
+            productPublicIds is { Length: > 0 } ? productPublicIds : null, categoryIds is { Length: > 0 } ? categoryIds : null, search,
+            zoneIds is { Length: > 0 } ? zoneIds : null, origins is { Length: > 0 } ? origins : null, skip, take), await IsBlindAsync(ct), ct);
+
+    /// <summary>
+    /// Lote 14 (D2, D3, D4) — vista previa de "Conteo de lo cambiado" (warehouse.count): ventana efectiva (por defecto desde la
+    /// última generación del almacén o, la primera vez, desde las 00:00 de hoy en hora de Puerto Rico), movimientos, conteos
+    /// que se crearían (uno por posición), posiciones saltadas (con conteo pendiente, inactivas, vacías) y problem = el 400 que
+    /// daría el alta. fromUtc &gt; toUtc o más de 31 días → 400; almacén inactivo → 422; zona de otro almacén → 404.
+    /// </summary>
+    [HttpGet("changes-preview"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<CycleCountChangesPreviewDto> ChangesPreview([FromQuery] Guid? warehousePublicId, [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc, [FromQuery] int[]? zoneIds, [FromQuery] bool includeEmpty = true, CancellationToken ct = default)
+        => counts.PreviewChangesAsync(new CycleCountFromChangesRequest(warehousePublicId, fromUtc, toUtc,
+            zoneIds is { Length: > 0 } ? zoneIds : null, includeEmpty), ct);
+
+    /// <summary>
+    /// Lote 14 (D2, D3, D4) — "Conteo de lo cambiado" (warehouse.count): un conteo Pendiente por posición con movimientos en la
+    /// ventana (sin los de un conteo), con todo lo que tiene y las claves que quedaron en 0 (includeEmpty), cada uno con su
+    /// tarea COUNT; salta posiciones inactivas o con un conteo pendiente; tope 200. Todo o nada. 400 'filters' si no hay
+    /// posiciones que contar, si todas tienen conteo pendiente o si son más de 200.
+    /// </summary>
+    [HttpPost("from-changes"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<CycleCountBatchResultDto> FromChanges([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CycleCountFromChangesRequest? req, CancellationToken ct)
+        => counts.CreateFromChangesAsync(req, ct);
 
     /// <summary>
     /// Ficha en modo informado (con warehouse.count): foto (systemQty), contado, diferencia contra la foto, series esperadas
@@ -98,9 +137,10 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     public Task<CycleCountDetailDto> Refresh(int id, CancellationToken ct) => counts.RefreshAsync(id, ct);
 
     /// <summary>
-    /// Reconciliar (D22): ajusta CONTADO − SALDO ACTUAL por línea (ADJUSTMENT COUNT_VARIANCE; en serie bajas, altas y
-    /// TRANSFER), marca systemQtyChanged si el saldo se movió desde la foto, pasa a RECONCILED y cierra la tarea COUNT.
-    /// Contado menor que lo reservado → 409 sin cambios; segunda reconciliación → 422.
+    /// Reconciliar (D22) — "Confirmar conteo y ajustar" (Lote 14, D8): desde Pendiente o Contado, en un paso. Ajusta
+    /// CONTADO − SALDO ACTUAL por línea (ADJUSTMENT COUNT_VARIANCE; en serie bajas, altas y TRANSFER), marca systemQtyChanged
+    /// si el saldo se movió desde la foto, pasa a RECONCILED_VARIANCE 'Diferencia' (si asentó algún movimiento) o RECONCILED
+    /// 'Concordancia' y cierra la tarea COUNT. Contado menor que lo reservado → 409 sin cambios; segunda reconciliación → 422.
     /// </summary>
     [HttpPost("{id:int}/reconcile"), RequirePermission(PermissionCatalog.WarehouseCount)]
     public Task<CycleCountDetailDto> Reconcile(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CountReconcileRequest? req, CancellationToken ct)

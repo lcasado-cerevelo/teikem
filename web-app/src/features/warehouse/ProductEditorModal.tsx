@@ -11,7 +11,9 @@
 // - Alta: POST /api/v1/products; edición: PATCH /api/v1/products/{publicId} con rowVersion (`inventory.manage`).
 // - "Ajustar inventario" (`inventory.adjust`): oculto tras "Añadir ajuste" (Lote 12). Al abrirlo: Cantidad (+/-), Motivo
 //   (con buscador, sin los motivos reservados al sistema), Almacén y Posición (por defecto los del producto) y Nota
-//   obligatoria (va en `notes`). Misma mutación que InventoryAdjustModal (POST /inventory/adjustments) con el producto fijo.
+//   obligatoria (va en `notes`). Lote 14 (D11): "Subir"/"Bajar" + cantidad positiva y motivos según la dirección, con las
+//   mismas piezas que InventoryAdjustModal (`useAdjustmentForm` + `AdjustmentFields`, POST /inventory/adjustments) y el
+//   producto fijo.
 //   Al aplicar, el Total se refresca y el bloque se vuelve a ocultar limpio; si el API lo rechaza (409 insufficient_stock:
 //   dejaría el inventario negativo) el mensaje del servidor queda dentro del bloque, que sigue abierto.
 // - "Ver lotes" / "Ver series" llevan a la vista de solo lectura de la ficha (`/warehouse/products/{id}?tab=lots|serials`).
@@ -24,14 +26,12 @@ import { useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { CustomFieldsForm, useSaveCustomFields } from '../../kernel/custom-fields'
 import { useLang, useT } from '../../kernel/i18n'
-import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Spinner, TextArea, TextInput, toast } from '../../kernel/ui'
+import { ClientPickerInput, ComboSelectInput, Field, Form, Modal, NumberInput, Spinner, TextInput, toast } from '../../kernel/ui'
 import { IconCheck } from '../../kernel/ui/icons'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 import { SessionContext } from '../../app/session'
-import { selectableAdjustmentReasons } from './adjustmentReasons'
 import {
   useCreateProduct,
-  useInventoryAdjustment,
   useProduct,
   useProductBrands,
   useProductCategories,
@@ -41,14 +41,13 @@ import {
   type ProductDetailDto,
   type WarehouseBinDto,
 } from './api'
-import { formatNumber, parseSerials } from './lineRules'
+import { useAdjustmentForm, useSubmitAdjustment } from './adjustmentForm'
+import { AdjustmentFields } from './InventoryAdjustModal'
+import { formatNumber } from './lineRules'
 import { BinPickerInput, WarehousePickerInput } from './pickers'
 import {
-  ADJUST_NOTES_MAX,
   BRAND_MAX,
   MODEL_MAX,
-  adjustNotesSchema,
-  adjustQuantitySchema,
   brandModelSchema,
   moneySchema,
   volumeM3Schema,
@@ -576,63 +575,24 @@ function AdjustForm({
   const t = useT()
   const lang = useLang()
   const product = detail.product!
-  const adjust = useInventoryAdjustment()
-  const reasonsQ = useLookups('AdjustmentReason')
-  const reasonOptions = useMemo(() => selectableAdjustmentReasons(reasonsQ.data ?? []).map((r) => ({ value: r.code, label: r.label })), [reasonsQ.data])
-  const tracking = product.trackingTypeCode ?? ''
-
-  const schema = useMemo(
-    () =>
-      z.object({
-        quantity: adjustQuantitySchema(t),
-        reason: z.string().min(1, t('warehouse.inventory.adjustModal.errors.reasonRequired')),
-        warehousePublicId: z
-          .string()
-          .nullable()
-          .refine((v) => Boolean(v), t('warehouse.inventory.adjustModal.errors.warehouseRequired')),
-        binId: z.string().min(1, t('warehouse.inventory.adjustModal.errors.binRequired')),
-        lotNumber: z.string(),
-        serialNumbers: z.string(),
-        notes: adjustNotesSchema(t),
-      }),
-    [t],
-  )
-  const form = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      quantity: null as number | null,
-      reason: '',
-      // por defecto, el almacén y la posición por defecto del producto (los guardados, no los que se estén editando)
-      warehousePublicId: detail.preferredWarehousePublicId ?? null,
-      binId: detail.preferredBinId != null ? String(detail.preferredBinId) : '',
-      lotNumber: '',
-      serialNumbers: '',
-      notes: '',
-    },
+  // Lote 14 (D11): las mismas piezas que el modal de ajuste (Subir/Bajar + cantidad positiva, motivos según la dirección),
+  // con el producto fijo y, por defecto, el almacén y la posición por defecto del producto (los guardados).
+  const state = useAdjustmentForm({
+    fixedProduct: product,
+    initial: { warehousePublicId: detail.preferredWarehousePublicId ?? null, binId: detail.preferredBinId ?? null },
   })
-  const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
-  const submitting = form.formState.isSubmitting
+  const submit = useSubmitAdjustment()
+  const submitting = state.form.formState.isSubmitting
 
   return (
     <Form
-      form={form}
+      form={state.form}
       className="pe-adjust"
       onSubmit={async (v) => {
         setBusy(true)
         try {
-          const serials = parseSerials(v.serialNumbers)
           // 409 insufficient_stock (dejaría el inventario negativo): `Form` pone el mensaje del servidor arriba de este bloque
-          await adjust.mutateAsync({
-            productPublicId: product.publicId,
-            warehousePublicId: v.warehousePublicId,
-            binId: Number(v.binId),
-            quantity: v.quantity,
-            reason: v.reason,
-            notes: v.notes,
-            lot: tracking === 'LOT' && v.lotNumber.trim() ? { number: v.lotNumber.trim() } : undefined,
-            serialNumbers: tracking === 'SERIAL' && serials.length > 0 ? serials : undefined,
-          })
-          const q = v.quantity ?? 0
+          const q = await submit(v, state.tracking)
           toast.success(t('warehouse.products.editor.adjustApplied', { qty: `${q > 0 ? '+' : ''}${formatNumber(q, lang)}`, sku: product.sku ?? '' }))
           // la mutación ya refrescó la ficha (Total); el modal sigue abierto y el bloque se oculta limpio
           onDone()
@@ -642,35 +602,7 @@ function AdjustForm({
       }}
     >
       <h3 className="pe-section">{t('warehouse.products.editor.adjustTitle')}</h3>
-      <div className="r2">
-        <Field name="quantity" label={t('warehouse.products.editor.adjustDelta')} required>
-          <NumberInput className="mono" step="0.001" />
-        </Field>
-        <Field name="reason" label={t('warehouse.products.editor.adjustReason')} required>
-          <ComboSelectInput options={reasonOptions} loading={reasonsQ.isLoading} />
-        </Field>
-      </div>
-      <div className="r2">
-        <Field name="warehousePublicId" label={t('warehouse.inventory.adjustModal.fields.warehouse')} required>
-          <WarehousePickerInput />
-        </Field>
-        <Field name="binId" label={t('warehouse.inventory.adjustModal.fields.bin')} required>
-          <BinPickerInput warehousePublicId={warehousePublicId} />
-        </Field>
-      </div>
-      {tracking === 'LOT' && (
-        <Field name="lotNumber" label={t('warehouse.inventory.adjustModal.fields.lotNumber')}>
-          <TextInput maxLength={60} />
-        </Field>
-      )}
-      {tracking === 'SERIAL' && (
-        <Field name="serialNumbers" label={t('warehouse.inventory.adjustModal.fields.serialNumbers')}>
-          <TextArea rows={3} />
-        </Field>
-      )}
-      <Field name="notes" label={t('warehouse.products.editor.adjustNotes')} required>
-        <TextArea rows={2} maxLength={ADJUST_NOTES_MAX} placeholder={t('warehouse.products.editor.adjustNotesPlaceholder')} />
-      </Field>
+      <AdjustmentFields state={state} idPrefix="pe-adj" />
       <div className="pe-adjust-actions">
         <button type="button" className="btn sm" onClick={onDone} disabled={submitting}>
           {t('warehouse.products.editor.cancelAdjust')}

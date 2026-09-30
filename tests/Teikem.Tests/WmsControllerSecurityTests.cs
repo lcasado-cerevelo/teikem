@@ -24,6 +24,7 @@ public class WmsControllerSecurityTests
         [typeof(ProductCategoriesController)] = ModuleKeys.WmsLotSerial,
         [typeof(ProductsController)] = ModuleKeys.WmsLotSerial,
         [typeof(InventoryController)] = ModuleKeys.WmsLotSerial,
+        [typeof(InventoryDiscrepanciesController)] = ModuleKeys.WmsLotSerial,   // Lote 14
         [typeof(ReceiptsController)] = ModuleKeys.WmsLotSerial,
         [typeof(AsnsController)] = ModuleKeys.WmsLotSerial,
         [typeof(WarehouseTasksController)] = ModuleKeys.WmsLotSerial,
@@ -49,6 +50,7 @@ public class WmsControllerSecurityTests
         [(typeof(WarehousesController), nameof(WarehousesController.DeactivateZone))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.ReactivateZone))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Bins))] = PermissionCatalog.InventoryView,
+        [(typeof(WarehousesController), nameof(WarehousesController.SearchBins))] = PermissionCatalog.InventoryView,   // Lote 14
         [(typeof(WarehousesController), nameof(WarehousesController.CreateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage,   // Lote 11: cupo en bloque
@@ -85,6 +87,16 @@ public class WmsControllerSecurityTests
         [(typeof(InventoryController), nameof(InventoryController.Genealogy))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.SerialTrace))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.Reconciliation))] = PermissionCatalog.InventoryAdjust,
+        // Lote 14 (P0/P1): resumen y detalle del Kárdex y dueños con inventory.view; conciliación que guarda descuadres con inventory.adjust.
+        [(typeof(InventoryController), nameof(InventoryController.TransactionsSummary))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryController), nameof(InventoryController.Transaction))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryController), nameof(InventoryController.Owners))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryController), nameof(InventoryController.RunReconciliation))] = PermissionCatalog.InventoryAdjust,
+        // Lote 14 (P2, D14): estado de la revisión en segundo plano, con inventory.adjust como la conciliación.
+        [(typeof(InventoryController), nameof(InventoryController.ReconciliationStatus))] = PermissionCatalog.InventoryAdjust,
+        [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.List))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Get))] = PermissionCatalog.InventoryView,
+        [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Resolve))] = PermissionCatalog.InventoryAdjust,
 
         [(typeof(ReceiptsController), nameof(ReceiptsController.List))] = PermissionCatalog.InventoryView,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Get))] = PermissionCatalog.InventoryView,
@@ -120,6 +132,9 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Refresh))] = PermissionCatalog.WarehouseCount,
         [(typeof(CycleCountsController), nameof(CycleCountsController.Reconcile))] = PermissionCatalog.WarehouseCount,
         [(typeof(CycleCountsController), nameof(CycleCountsController.Delete))] = PermissionCatalog.WarehouseCount,
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Page))] = PermissionCatalog.InventoryView,   // Lote 14: a ciegas sin warehouse.count
+        [(typeof(CycleCountsController), nameof(CycleCountsController.ChangesPreview))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
+        [(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
 
         [(typeof(PickBatchesController), nameof(PickBatchesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Get))] = PermissionCatalog.InventoryView,
@@ -230,7 +245,16 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))]);
         // Lote 13: + PATCH /receipts/{publicId} (warehouse.receive, como el resto de la captura del recibo).
         Assert.Equal(PermissionCatalog.WarehouseReceive, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.UpdateHeader))]);
-        Assert.Equal(108, Expected.Count);
+        // Lote 14 (D5): los descuadres los ve quien ve inventario y los resuelve quien puede ajustar; + búsqueda de posiciones.
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Get))]);
+        Assert.Equal(PermissionCatalog.InventoryAdjust, Expected[(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Resolve))]);
+        Assert.Equal(PermissionCatalog.InventoryAdjust, Expected[(typeof(InventoryController), nameof(InventoryController.ReconciliationStatus))]);
+        // Lote 14 (P4): lista paginada con inventory.view (a ciegas sin warehouse.count); "lo cambiado" crea muchos conteos de una
+        // vez: vista previa y alta con warehouse.count (D3), no con warehouse.count.capture.
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Page))]);
+        Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ChangesPreview))]);
+        Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))]);
+        Assert.Equal(120, Expected.Count);
     }
 
     [Fact]

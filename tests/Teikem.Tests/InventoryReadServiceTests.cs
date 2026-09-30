@@ -196,7 +196,7 @@ public class InventoryReadServiceTests
         var w = await SeedAsync();
         var reads = w.F.Get<InventoryReadService>();
 
-        // 'hasta' es inclusivo por día: el 2026-09-20 incluye todo ese día UTC.
+        // 'hasta' es inclusivo por día: el 2026-09-20 incluye todo ese día LOCAL (Lote 14: hora de Puerto Rico).
         var day = await reads.KardexAsync(new KardexQuery(From: new DateOnly(2026, 9, 20), To: new DateOnly(2026, 9, 20)), InventoryScope.Any, default);
         Assert.Equal(4, day.Total);
         var issues = await reads.KardexAsync(new KardexQuery(Types: new[] { "issue" }), InventoryScope.Any, default);
@@ -463,7 +463,10 @@ internal sealed class InventoryServiceFixture
         services.AddSingleton<IMemoryCache>(new MemoryCache(new MemoryCacheOptions()));
         // PermissionService solo lo usa GetHistoryAsync (no se usa aquí).
         services.AddSingleton(sp => new StatusService(db, tenant, lookups, sp.GetServices<IStatusTransitionEffect>(), null!));
+        services.AddSingleton<IInventoryChangeSink, InventoryChangeSink>();   // Lote 14 (P2): bandeja de cambios del ledger
         services.AddSingleton<InventoryLedger>();
+        services.AddSingleton<Teikem.Infrastructure.Abstractions.ITenantClock>(Teikem.Infrastructure.Abstractions.TenantClock.Default);   // Lote 14
+        services.AddSingleton<InventoryReconciler>();   // Lote 14: TraceabilityService delega la conciliación
         services.AddSingleton<InventoryReadService>();
         services.AddSingleton<InventoryAdjustmentService>();
         services.AddSingleton<TraceabilityService>();

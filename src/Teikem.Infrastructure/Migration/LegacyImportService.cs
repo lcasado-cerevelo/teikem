@@ -719,7 +719,8 @@ public sealed class LegacyImportService(
     WarehouseLayoutService layout,
     InventoryLedger ledger,
     IConfiguration config,
-    ILogger<LegacyImportService> logger)
+    ILogger<LegacyImportService> logger,
+    InventoryReconciliationService reconciliation)
 {
     public const int PostingBatchSize = 200;
 
@@ -1512,16 +1513,25 @@ public sealed class LegacyImportService(
         }
     }
 
+    /// <summary>
+    /// Cierre de la carga: conciliación Kárdex ↔ saldo de toda la compañía. Lote 14: pasa por InventoryReconciliationService
+    /// (origen MIGRATION), así que cada descuadre además queda guardado como descuadre pendiente para resolverlo en la pantalla.
+    /// </summary>
     private async Task ReconcileAsync(RunState s, LegacyImportReport report, CancellationToken ct)
     {
-        var rows = await ledger.ReconcileAsync(null, ct);
-        if (rows.Count == 0) { report.AddInfo("Conciliación", "Sin diferencias (mismatches: [])."); return; }
-        var skus = await db.Products.AsNoTracking().Select(p => new { p.ProductId, p.Sku }).ToDictionaryAsync(p => p.ProductId, p => p.Sku, ct);
-        foreach (var r in rows)
+        ReconciliationRunDto result;
+        try { result = await reconciliation.SweepAsync(ReconciliationTriggers.Migration, ct); }
+        catch (TeikemException ex)
         {
-            var sku = skus.GetValueOrDefault(r.Key.ProductId) ?? r.Key.ProductId.ToString(CultureInfo.InvariantCulture);
-            var where = r.ProductTotal ? sku : $"{sku}, almacén {r.Key.WarehouseId}, posición {r.Key.BinId?.ToString(CultureInfo.InvariantCulture) ?? "—"}";
-            report.Reject(LegacyImportEntities.Reconciliation, sku, LegacyImportPlanner.ReconciliationMismatch(where, r.LedgerQty, r.BalanceQty), severe: true);
+            report.Reject(LegacyImportEntities.Reconciliation, "—", Describe(ex), severe: true);
+            return;
+        }
+        finally { db.ChangeTracker.Clear(); }
+        if (result.Mismatches.Count == 0) { report.AddInfo("Conciliación", "Sin diferencias (mismatches: [])."); return; }
+        foreach (var r in result.Mismatches)
+        {
+            var where = r.WarehouseCode == TraceabilityService.ProductTotalMarker ? r.Sku : $"{r.Sku}, almacén {r.WarehouseCode}, posición {r.BinCode ?? "—"}";
+            report.Reject(LegacyImportEntities.Reconciliation, r.Sku, LegacyImportPlanner.ReconciliationMismatch(where, r.LedgerQty, r.BalanceQty), severe: true);
         }
     }
 

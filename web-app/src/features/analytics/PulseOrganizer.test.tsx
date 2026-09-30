@@ -261,6 +261,26 @@ describe('PulseOrganizer', () => {
     }
   })
 
+  it('Lote 14: "Necesita tu atención" (ATTENTION, orden 5) se ofrece primero, se oculta y se mueve como los demás', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderOrganizer('mine', {
+      ...PULSE,
+      panels: [...PULSE.panels!, { key: 'ATTENTION', sortOrder: 5, isVisible: true, source: 'default' }],
+    })
+    const panels = screen.getByRole('list', { name: 'Paneles del Pulso' })
+    expect(rowNames(panels)).toEqual(['Necesita tu atención', 'Tus indicadores', 'Tus gráficos', 'Almacén', 'Actividad reciente'])
+    await user.click(screen.getByRole('button', { name: 'Ocultar Necesita tu atención' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar Necesita tu atención' }))
+    expect(rowNames(panels)).toEqual(['Tus indicadores', 'Necesita tu atención', 'Tus gráficos', 'Almacén', 'Actividad reciente'])
+    await user.click(screen.getByRole('button', { name: 'Listo' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const body = mock.writes[0].body as { panels: { key: string; sortOrder: number; isVisible: boolean }[] }
+    expect(body.panels.slice(0, 2)).toEqual([
+      { key: 'INDICATORS', sortOrder: 0, isVisible: true },
+      { key: 'ATTENTION', sortOrder: 10, isVisible: false },
+    ])
+  })
+
   it('"Cancelar" descarta los cambios sin llamar al API', async () => {
     const user = userEvent.setup()
     const { onClose } = renderOrganizer('mine')

@@ -81,11 +81,19 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     public const string ReceiptMovementsFilterV1 = "{\"and\":[{\"field\":\"TxnTypeCode\",\"op\":\"eq\",\"value\":\"RECEIPT\"}]}";
 
     /// <summary>
-    /// Lote 7A: conteos reconciliados con diferencia ('Conteos con diferencia'). HasVariance de CycleCountDataSource = alguna
-    /// línea contada con diferencia contra el saldo asentado; no se usa NetVariance ≠ 0 porque sobrantes y faltantes de un
-    /// mismo conteo pueden compensarse y el conteo sí tuvo diferencia.
+    /// Lote 14 (D7): conteos cerrados con diferencia ('Conteos con diferencia') = estatus RECONCILED_VARIANCE 'Diferencia' (alguna
+    /// línea asentó un ajuste; los históricos se reetiquetaron en el seed). No se usa NetVariance ≠ 0 porque sobrantes y
+    /// faltantes de un mismo conteo pueden compensarse y el conteo sí tuvo diferencia.
     /// </summary>
     public const string ReconciledCountsWithVarianceFilter =
+        "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"RECONCILED_VARIANCE\"}]}";
+
+    /// <summary>
+    /// Lote 7A: primera versión (RECONCILED + HasVariance de CycleCountDataSource); desde el Lote 14 esos conteos son
+    /// RECONCILED_VARIANCE y el filtro viejo no contaría ninguno. Se corrige al resembrar (y en el seed SQL para las compañías
+    /// ya creadas).
+    /// </summary>
+    public const string ReconciledCountsWithVarianceFilterV1 =
         "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"RECONCILED\"},{\"field\":\"HasVariance\",\"op\":\"isTrue\"}]}";
 
     public const string ReceivedUnitsIndicatorName = "Unidades recibidas";
@@ -287,6 +295,13 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             .Where(i => i.TenantId == tenantId && i.IsSystem && i.Name == ReceivedUnitsIndicatorName && i.FilterJson == ReceiptMovementsFilterV1)
             .ToListAsync(ct);
         foreach (var ind in receivedIndicator) ind.FilterJson = ReceiptMovementsFilter;
+
+        // Lote 14 (D7): 'Conteos con diferencia' pasa de RECONCILED + HasVariance a RECONCILED_VARIANCE. Solo el filtro original
+        // exacto del indicador de sistema (no se pisa uno personalizado).
+        var varianceIndicator = await db.IndicatorDefinitions
+            .Where(i => i.TenantId == tenantId && i.IsSystem && i.Name == CountsWithVarianceIndicatorName && i.FilterJson == ReconciledCountsWithVarianceFilterV1)
+            .ToListAsync(ct);
+        foreach (var ind in varianceIndicator) ind.FilterJson = ReconciledCountsWithVarianceFilter;
 
         // ---- Gráficos ----
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);

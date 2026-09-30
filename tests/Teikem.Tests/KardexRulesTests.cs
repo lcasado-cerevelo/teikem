@@ -213,9 +213,9 @@ public class KardexRulesTests
     {
         // RECEIPT +10 a (P1, W1, B1, lote NULL); ISSUE −3 desde ahí; TRANSFER +2 de B1 a B2; ADJUSTMENT −1 desde B2;
         // RECEIPT +4 a (P1, W1, B1, lote 7): el lote distingue la clave.
-        var k1 = new LedgerKey(1, W1, B1, null);
-        var k2 = new LedgerKey(1, W1, B2, null);
-        var k3 = new LedgerKey(1, W1, B1, 7);
+        var k1 = new BalanceKey(1, W1, B1, null);
+        var k2 = new BalanceKey(1, W1, B2, null);
+        var k3 = new BalanceKey(1, W1, B1, 7);
         var to = new[] { (k1, 10m), (k2, 2m), (k3, 4m) };
         var from = new[] { (k1, -3m), (k1, 2m), (k2, -1m) };
         var map = KardexRules.Rebuild(to, from);

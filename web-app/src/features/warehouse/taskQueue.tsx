@@ -2,7 +2,7 @@
 // La maqueta no tiene "Tareas de almacén": cada tipo se trabaja en la pantalla a la que pertenece —
 //   PUTAWAY (acomodo)      → Recibo (pestaña 'Acomodo pendiente' y la ficha del recibo),
 //   REPLENISH (reabasto)   → Recolección y empaque (pestaña 'Reabasto', con 'Correr reabasto'),
-//   COUNT (conteo)         → Conteo cíclico (pestaña 'Tareas de conteo'; se completan desde la ficha del conteo),
+//   COUNT (conteo)         → Conteo cíclico (Lote 14: sin pestaña; se asigna con el ícono de la lista y se cierra al confirmar),
 //   CROSSDOCK (cruce)      → Cruce de muelle (pestaña 'Tareas de cruce'; completar = mover la asignación).
 // PICK, PACK y LOAD existen en el catálogo pero el API no tiene handler para ellos (D41): no nacen tareas de esos tipos.
 // Permisos: lectura inventory.view + WMS_LOTSERIAL (la cola exige ese módulo). Asignar/cancelar: warehouse.manage. Iniciar y

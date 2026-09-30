@@ -90,7 +90,9 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
         ? { to: `/warehouse/receipts?receipt=${encodeURIComponent(e.publicId)}`, perm: 'inventory.view', module: wms }
         : null
     case 'CYCLE_COUNT':
-      return byId('/warehouse/cycle-counts', 'warehouse.count', wms)
+      // Lote 14: el conteo se abre en la lista de dos paneles, elegido con `?count=` (la ficha propia ya no existe); la lista
+      // se lee con inventory.view (sin warehouse.count, el conteo se ve a ciegas y sin captura)
+      return e.entityId != null && e.entityId > 0 ? { to: `/warehouse/cycle-counts?count=${e.entityId}`, perm: 'inventory.view', module: wms } : null
     case 'PICK_BATCH':
       return byPublicId('/warehouse/pick-batches')
     case 'PURCHASE_ORDER':

@@ -231,7 +231,7 @@ public static class ActivityRules
             EntityTypes.CycleCount => to switch
             {
                 CycleCountStatuses.Counted => ActivityEvents.CountFinished,
-                CycleCountStatuses.Reconciled => ActivityEvents.CountReconciled,
+                CycleCountStatuses.Reconciled or CycleCountStatuses.ReconciledVariance => ActivityEvents.CountReconciled,   // Lote 14 (D7)
                 _ => null,
             },
             EntityTypes.PickBatch => to switch

@@ -51,6 +51,8 @@ internal sealed class WmsFixture : IAsyncDisposable
     public TripTestLookups Lookups { get; }
     public T Get<T>() where T : notnull => Services.GetRequiredService<T>();
     public InventoryLedger Ledger => Get<InventoryLedger>();
+    /// <summary>Lote 14 (P2): bandeja de cambios de inventario que anota InventoryLedger.PostAsync.</summary>
+    public InventoryChangeSink Changes => Get<InventoryChangeSink>();
     public WarehouseTaskWriter TaskWriter => Get<WarehouseTaskWriter>();
 
     public int LookupId(string domain, string code) => _lookupIds[domain + "|" + code];
@@ -80,6 +82,10 @@ internal sealed class WmsFixture : IAsyncDisposable
         services.AddSingleton<ModuleService>();
         services.AddSingleton(sp => new StatusService(db, tenant, lookups, sp.GetServices<IStatusTransitionEffect>(), sp.GetRequiredService<PermissionService>()));
         services.AddSingleton<INumberSequenceService, InMemoryNumberSequence>();
+        // Lote 14 (P2): la bandeja de cambios de la petición; InMemory no dispara el interceptor de transacción, así que lo anotado
+        // se queda aquí para que las pruebas lo lean (Changes).
+        services.AddSingleton<InventoryChangeSink>();
+        services.AddSingleton<IInventoryChangeSink>(sp => sp.GetRequiredService<InventoryChangeSink>());
         services.AddSingleton<InventoryLedger>();
         services.AddSingleton<WarehouseTaskWriter>();
         services.AddSingleton<PutawaySuggester>();
@@ -164,6 +170,11 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in new[] { DockDirections.Inbound, DockDirections.Outbound }) L(LookupDomains.DockDirection, c);
         foreach (var c in new[] { ShortageActions.Close, ShortageActions.Reorder, ShortageActions.ManualAdjustment }) L(LookupDomains.ShortageAction, c);
         L(LookupDomains.EntityType, EntityTypes.ProductCategory);   // Lote 8A: sincronización de categorías (al final: ids previos intactos)
+        // Lote 14: descuadres Kárdex ↔ saldo (al final: ids previos intactos).
+        L(LookupDomains.EntityType, EntityTypes.InventoryDiscrepancy);
+        foreach (var c in new[] { DiscrepancyKinds.Balance, DiscrepancyKinds.ProductTotal }) L(LookupDomains.InventoryDiscrepancyKind, c);
+        foreach (var c in new[] { ReconciliationTriggers.Event, ReconciliationTriggers.Manual, ReconciliationTriggers.Scheduled, ReconciliationTriggers.Migration })
+            L(LookupDomains.ReconciliationTrigger, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -228,6 +239,13 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving, pipe, 2);
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.Discrepancy, lat, 3);
         S(StatusDomains.ReceiptStatus, ReceiptStatuses.ReceivedWithVariance, lat, 5);
+        // Lote 14 (D5): descuadre Kárdex ↔ saldo, como logistica-db-seed.sql (al final: ids previos intactos).
+        S(StatusDomains.InventoryDiscrepancyStatus, InventoryDiscrepancyStatuses.Open, pipe, 1, true);
+        S(StatusDomains.InventoryDiscrepancyStatus, InventoryDiscrepancyStatuses.Resolved, term, 2);
+        S(StatusDomains.InventoryDiscrepancyStatus, InventoryDiscrepancyStatuses.Dismissed, term, 3);
+        S(StatusDomains.InventoryDiscrepancyStatus, InventoryDiscrepancyStatuses.SelfCorrected, term, 4);
+        // Lote 14 (D7): conteo cerrado con diferencia (al final: ids previos intactos).
+        S(StatusDomains.CycleCountStatus, CycleCountStatuses.ReconciledVariance, term, 4);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

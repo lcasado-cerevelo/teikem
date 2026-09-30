@@ -126,7 +126,8 @@ para verse aquí todos los días.
 
 **Cómo se llega.** Dirección `/`, entrada "Pulso del día" del grupo Operación (siempre visible en el menú).
 
-**Qué se ve.** Un saludo con su nombre, una sección "Indicadores" (tarjetas con un número: cambios registrados, accesos
+**Qué se ve.** Un saludo con su nombre, el panel **Necesita tu atención** (desde el Lote 14, si tiene el permiso `pulse.attention`; ver
+[F7A](f7a-pulso-almacen-y-actividad.md#pulso-del-día-panel-necesita-tu-atención)), una sección "Indicadores" (tarjetas con un número: cambios registrados, accesos
 fallidos, usuarios activos, clientes activos, órdenes en curso, COD por cobrar, etc., según lo que tenga marcado su
 compañía) y una sección "Gráficos" (barra, dona o línea).
 

@@ -1,5 +1,6 @@
-// Resolver el faltante de una línea de compra (`POST /purchase-orders/{publicId}/lines/{lineId}/resolve`). Lo comparten la
-// pestaña Faltantes de la ficha de la orden y la pantalla 'Ajustes de inventario' (maqueta `ajustesAlmacen()`).
+// Resolver el faltante de una línea de compra (`POST /purchase-orders/{publicId}/lines/{lineId}/resolve`). Lo usa la
+// pestaña Faltantes de la ficha de la orden (Lote 14, D1: la pantalla 'Ajustes de inventario' salió del menú y su dirección
+// lleva a Compras; los faltantes se resuelven solo desde cada orden).
 // Permisos: inventory.adjust (quien lo abre); REORDER exige además purchasing.manage y MANUAL_ADJUSTMENT el módulo
 // WMS_LOTSERIAL: solo entonces se consultan posiciones —al abrir el BinPicker— y el seguimiento del producto, sin sacar
 // al usuario ante un 403. Cerrar y Reordenar mandan la cantidad pendiente que se ve en pantalla: si otro usuario resolvió

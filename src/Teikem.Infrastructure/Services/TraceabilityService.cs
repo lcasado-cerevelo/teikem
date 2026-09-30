@@ -6,6 +6,7 @@ using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Wms;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -21,9 +22,11 @@ namespace Teikem.Infrastructure.Services;
 ///   tenant). El controlador exige inventory.view, el mismo permiso de lectura que INVENTORY_SERIAL.
 /// - Conciliación: reconstruye cada saldo desde el ledger (To suma |Q|, From resta |Q|) y lo compara con StockBalance
 ///   por clave; además compara por producto Σ Quantity sin TRANSFER contra Σ QtyOnHand (lectura literal de L331).
-///   Solo lectura: nunca corrige nada.
+///   Solo lectura: nunca corrige nada. Lote 14: el cálculo se extrajo a InventoryReconciler (mismo resultado); los
+///   descuadres persistidos y su resolución están en InventoryReconciliationService.
 /// </summary>
-public sealed class TraceabilityService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, InventoryReadService reads)
+public sealed class TraceabilityService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, InventoryReadService reads,
+    InventoryReconciler reconciler)
 {
     /// <summary>Tope de movimientos que devuelve la genealogía (los totales se calculan sobre TODOS en SQL).</summary>
     public const int MaxGenealogyMovements = 1000;
@@ -231,73 +234,9 @@ public sealed class TraceabilityService(TeikemDbContext db, ITenantContext tenan
         if (productPublicId is Guid pid)
             productId = (await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == pid, ct) ?? throw new NotFoundException("Producto")).ProductId;
 
-        var txns = db.Set<InventoryTransaction>().AsNoTracking().AsQueryable();
-        var balancesQuery = db.Set<StockBalance>().AsNoTracking().AsQueryable();
-        if (productId is int only)
-        {
-            txns = txns.Where(t => t.ProductId == only);
-            balancesQuery = balancesQuery.Where(b => b.ProductId == only);
-        }
-
-        var toSides = await txns.Where(t => t.ToWarehouseId != null)
-            .GroupBy(t => new { t.ProductId, t.ToWarehouseId, t.ToBinId, t.LotId })
-            .Select(g => new { g.Key.ProductId, g.Key.ToWarehouseId, g.Key.ToBinId, g.Key.LotId, Qty = g.Sum(t => Math.Abs(t.Quantity)) })
-            .ToListAsync(ct);
-        var fromSides = await txns.Where(t => t.FromWarehouseId != null)
-            .GroupBy(t => new { t.ProductId, t.FromWarehouseId, t.FromBinId, t.LotId })
-            .Select(g => new { g.Key.ProductId, g.Key.FromWarehouseId, g.Key.FromBinId, g.Key.LotId, Qty = g.Sum(t => Math.Abs(t.Quantity)) })
-            .ToListAsync(ct);
-        var rebuilt = KardexRules.Rebuild(
-            toSides.Select(x => (new LedgerKey(x.ProductId, x.ToWarehouseId!.Value, x.ToBinId, x.LotId), x.Qty)),
-            fromSides.Select(x => (new LedgerKey(x.ProductId, x.FromWarehouseId!.Value, x.FromBinId, x.LotId), x.Qty)));
-
-        var transferId = await lookups.TryGetIdAsync(LookupDomains.InventoryTxnType, InventoryTxnTypes.Transfer, ct) ?? -1;
-        var netByProduct = await txns.Where(t => t.TxnTypeLookupId != transferId)
-            .GroupBy(t => t.ProductId)
-            .Select(g => new { ProductId = g.Key, Net = g.Sum(t => t.Quantity) })
-            .ToDictionaryAsync(x => x.ProductId, x => x.Net, ct);
-
-        var balances = await balancesQuery
-            .Select(b => new { b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId, b.QtyOnHand })
-            .ToListAsync(ct);
-        var balanceByKey = balances.GroupBy(b => new LedgerKey(b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId))
-            .ToDictionary(g => g.Key, g => g.Sum(b => b.QtyOnHand));
-
-        var mismatches = new List<(LedgerKey Key, decimal Ledger, decimal Balance, bool ProductTotal)>();
-        foreach (var key in rebuilt.Keys.Union(balanceByKey.Keys))
-        {
-            var ledgerQty = rebuilt.GetValueOrDefault(key);
-            var balanceQty = balanceByKey.GetValueOrDefault(key);
-            if (ledgerQty != balanceQty) mismatches.Add((key, ledgerQty, balanceQty, false));
-        }
-        var productsWithKeyMismatch = mismatches.Select(m => m.Key.ProductId).ToHashSet();
-        var onHandByProduct = balances.GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Sum(b => b.QtyOnHand));
-        foreach (var p in netByProduct.Keys.Union(onHandByProduct.Keys))
-        {
-            if (productsWithKeyMismatch.Contains(p)) continue;
-            var net = netByProduct.GetValueOrDefault(p);
-            var onHand = onHandByProduct.GetValueOrDefault(p);
-            if (net != onHand) mismatches.Add((new LedgerKey(p, 0, null, null), net, onHand, true));
-        }
-
-        var rows = new List<ReconciliationRowDto>(mismatches.Count);
-        if (mismatches.Count > 0)
-        {
-            var products = await reads.ProductInfoAsync(mismatches.Select(m => m.Key.ProductId).Distinct().ToList(), ct);
-            var warehouses = await reads.WarehouseInfoAsync(mismatches.Where(m => !m.ProductTotal).Select(m => m.Key.WarehouseId), ct);
-            var bins = await reads.BinInfoAsync(mismatches.Where(m => m.Key.BinId.HasValue).Select(m => m.Key.BinId!.Value), ct);
-            var lots = await reads.LotInfoAsync(mismatches.Where(m => m.Key.LotId.HasValue).Select(m => m.Key.LotId!.Value), ct);
-            foreach (var m in mismatches.OrderBy(m => m.Key.ProductId).ThenBy(m => m.ProductTotal).ThenBy(m => m.Key.WarehouseId)
-                         .ThenBy(m => m.Key.BinId).ThenBy(m => m.Key.LotId))
-            {
-                var p = products.GetValueOrDefault(m.Key.ProductId);
-                rows.Add(new ReconciliationRowDto(p?.PublicId ?? Guid.Empty, p?.Sku ?? string.Empty,
-                    m.ProductTotal ? ProductTotalMarker : warehouses.GetValueOrDefault(m.Key.WarehouseId)?.Code ?? string.Empty,
-                    m.Key.BinId is int b ? bins.GetValueOrDefault(b)?.Code : null,
-                    m.Key.LotId is int l ? lots.GetValueOrDefault(l)?.Number : null,
-                    m.Ledger, m.Balance));
-            }
-        }
-        return new ReconciliationDto(DateTime.UtcNow, balances.Count, rows);
+        // Lote 14: la comparación vive en InventoryReconciler (mismo resultado; ReconciliationRules.Compare es la regla pura).
+        var result = await reconciler.ComputeAsync(productId is int only ? new[] { only } : null, ct);
+        var rows = await reconciler.ToRowsAsync(result.Mismatches, ct);
+        return new ReconciliationDto(DateTime.UtcNow, result.BalancesChecked, rows);
     }
 }

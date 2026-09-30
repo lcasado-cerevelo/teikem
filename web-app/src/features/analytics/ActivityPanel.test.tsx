@@ -87,7 +87,8 @@ describe('activity (lógica pura)', () => {
     const to = (entityType: string, over: Partial<ActivityEventDto> = {}) => activityLink(event({ entityType, publicId: pid, entityId: 27, ...over }))?.to
     // Lote 13: el recibo se elige en la lista (maestro-detalle) con ?receipt=
     expect(to('RECEIPT')).toBe(`/warehouse/receipts?receipt=${pid}`)
-    expect(to('CYCLE_COUNT', { publicId: null })).toBe('/warehouse/cycle-counts/27')
+    // Lote 14: el conteo se elige en la lista de dos paneles con ?count=
+    expect(to('CYCLE_COUNT', { publicId: null })).toBe('/warehouse/cycle-counts?count=27')
     expect(to('PICK_BATCH')).toBe(`/warehouse/pick-batches/${pid}`)
     expect(to('PURCHASE_ORDER')).toBe(`/warehouse/purchase-orders/${pid}`)
     // tareas: a la cola de la pantalla de su tipo (acomodo → Recibo, reabasto → Recolección); cancelada no dice el tipo
@@ -113,7 +114,7 @@ describe('activity (lógica pura)', () => {
     })
     // guarda de la ruta destino (como routes.tsx)
     expect(activityLink(event({ entityType: 'PURCHASE_ORDER' }))).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING' })
-    expect(activityLink(event({ entityType: 'CYCLE_COUNT' }))).toMatchObject({ perm: 'warehouse.count', module: 'WMS_LOTSERIAL' })
+    expect(activityLink(event({ entityType: 'CYCLE_COUNT' }))).toMatchObject({ perm: 'inventory.view', module: 'WMS_LOTSERIAL' })
   })
 
   it('tono del chip por familia de evento', () => {

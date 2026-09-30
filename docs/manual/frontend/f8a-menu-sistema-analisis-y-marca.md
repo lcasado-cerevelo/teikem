@@ -58,6 +58,9 @@ Volver al de la compañía"** junto al título — este orden es solo suyo y se 
 
 ![Pulso ya organizado: sin el panel Almacén, con el chip "Pulso personal"](img/f8a-pulso-personal.png)
 
+Desde el Lote 14 el organizador también lista el panel **Necesita tu atención** (permiso `pulse.attention`): se puede mover y ocultar como los
+demás paneles.
+
 **"Volver al de la compañía"** (el enlace del chip): pide confirmar — "Se borran su orden y sus ocultos del Pulso y
 verá el de la compañía. Sus rangos de fecha se conservan." — y descarta su Pulso personal entero.
 

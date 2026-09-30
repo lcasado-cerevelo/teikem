@@ -39,7 +39,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
     {
         (EntityTypes.Receipt, StatusDomains.ReceiptStatus, new[] { ReceiptStatuses.Received, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway }),
         (EntityTypes.Asn, StatusDomains.AsnStatus, new[] { AsnStatuses.Cancelled }),
-        (EntityTypes.CycleCount, StatusDomains.CycleCountStatus, new[] { CycleCountStatuses.Counted, CycleCountStatuses.Reconciled }),
+        (EntityTypes.CycleCount, StatusDomains.CycleCountStatus, new[] { CycleCountStatuses.Counted, CycleCountStatuses.Reconciled, CycleCountStatuses.ReconciledVariance }),
         (EntityTypes.PickBatch, StatusDomains.PickBatchStatus, new[] { PickBatchStatuses.Collected, PickBatchStatuses.Packed, PickBatchStatuses.Cancelled }),
         (EntityTypes.PurchaseOrder, StatusDomains.PurchaseOrderStatus, new[] { PurchaseOrderStatuses.Sent, PurchaseOrderStatuses.Received, PurchaseOrderStatuses.Cancelled }),
         (EntityTypes.CrossDockPlan, StatusDomains.CrossDockStatus, new[] { CrossDockStatuses.Completed }),
@@ -234,7 +234,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         await warehouses.LoadAsync(docs.Select(d => d.WarehouseId), ct);
 
         var map = docs.ToDictionary(d => d.CycleCountId);
-        foreach (var group in hits.GroupBy(h => h.ToStatus.ToUpperInvariant() == CycleCountStatuses.Reconciled))
+        foreach (var group in hits.GroupBy(h => CycleCountStatuses.IsReconciled(h.ToStatus.ToUpperInvariant())))
         {
             var reconciled = group.Key;
             Emit(ctx, group, map, d =>

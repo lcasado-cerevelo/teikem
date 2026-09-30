@@ -61,6 +61,10 @@ export type WarehouseTaskDto = Schemas['WarehouseTaskDto']
 export type PutawaySuggestionDto = Schemas['PutawaySuggestionDto']
 export type CycleCountDto = Schemas['CycleCountDto']
 export type CycleCountDetailDto = Schemas['CycleCountDetailDto']
+export type CycleCountLineDto = Schemas['CycleCountLineDto']
+export type CycleCountPageDto = Schemas['CycleCountPageDto']
+export type CycleCountChangesPreviewDto = Schemas['CycleCountChangesPreviewDto']
+export type CycleCountFromChangesRequest = Schemas['CycleCountFromChangesRequest']
 export type PickBatchDto = Schemas['PickBatchDto']
 export type SupplierDto = Schemas['SupplierDto']
 export type PurchaseOrderDto = Schemas['PurchaseOrderDto']
@@ -109,6 +113,14 @@ export const warehouseKeys = {
   balances: ['/api/v1/inventory/balances'],
   transactions: ['/api/v1/inventory/transactions'],
   reconciliation: ['/api/v1/inventory/reconciliation'],
+  // Lote 14: resumen y detalle del Kárdex, dueños, posiciones entre almacenes, descuadres y estado de la conciliación
+  transactionSummary: ['/api/v1/inventory/transactions/summary'],
+  transaction: ['/api/v1/inventory/transactions/{id}'],
+  owners: ['/api/v1/inventory/owners'],
+  binSearch: ['/api/v1/warehouses/bins/search'],
+  discrepancies: ['/api/v1/inventory/discrepancies'],
+  discrepancy: ['/api/v1/inventory/discrepancies/{publicId}'],
+  reconciliationStatus: ['/api/v1/inventory/reconciliation/status'],
   genealogy: ['/api/v1/inventory/lots/{lotId}/genealogy'],
   serialTrace: ['/api/v1/inventory/serials/trace'],
   asns: ['/api/v1/asns'],
@@ -118,6 +130,9 @@ export const warehouseKeys = {
   putawaySuggestions: ['/api/v1/warehouse-tasks/putaway-suggestions'],
   cycleCounts: ['/api/v1/cycle-counts'],
   cycleCount: ['/api/v1/cycle-counts/{id}'],
+  // Lote 14: lista paginada con el total y vista previa de "lo cambiado"
+  cycleCountsPage: ['/api/v1/cycle-counts/page'],
+  changesPreview: ['/api/v1/cycle-counts/changes-preview'],
   pickBatches: ['/api/v1/pick-batches'],
   pickBatch: ['/api/v1/pick-batches/{publicId}'],
   suppliers: ['/api/v1/suppliers'],
@@ -142,7 +157,23 @@ function invalidate(qc: QueryClient, ...names: KeyName[]) {
 }
 
 /** Consultas que cambian cuando se mueve inventario (saldos, Kárdex, existencias en productos/almacenes/posiciones). */
-const STOCK: KeyName[] = ['balances', 'transactions', 'reconciliation', 'products', 'product', 'warehouses', 'warehouse', 'bins', 'productLots', 'productSerials']
+const STOCK: KeyName[] = [
+  'balances',
+  'transactions',
+  'reconciliation',
+  'products',
+  'product',
+  'warehouses',
+  'warehouse',
+  'bins',
+  'productLots',
+  'productSerials',
+  // Lote 14: el resumen del Kárdex y los descuadres (la revisión automática puede abrir o cerrar uno tras el movimiento)
+  'transactionSummary',
+  'discrepancies',
+  'discrepancy',
+  'reconciliationStatus',
+]
 
 // =====================================================================================================================
 // Almacenes, zonas, posiciones y muelles
@@ -559,6 +590,120 @@ export function useInventoryTransfer() {
   })
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Lote 14: resumen y detalle del Kárdex, dueños, búsqueda de posiciones, conciliación y descuadres
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type KardexSummaryDto = Schemas['KardexSummaryDto']
+export type KardexDetailDto = Schemas['KardexDetailDto']
+export type KardexDocumentDto = Schemas['KardexDocumentDto']
+export type InventoryOwnerDto = Schemas['InventoryOwnerDto']
+export type BinSearchItemDto = Schemas['BinSearchItemDto']
+export type InventoryDiscrepancyDto = Schemas['InventoryDiscrepancyDto']
+export type InventoryDiscrepancyDetailDto = Schemas['InventoryDiscrepancyDetailDto']
+export type ReconciliationRunDto = Schemas['ReconciliationRunDto']
+export type ReconciliationStatusDto = Schemas['ReconciliationStatusDto']
+
+/** `GET /api/v1/inventory/transactions/summary` (mismos filtros que la lista, sin skip/take): movimientos, entradas y salidas. */
+export function useKardexSummary(query: GetQuery<'/api/v1/inventory/transactions/summary'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.transactionSummary[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/transactions/summary', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/inventory/transactions/{id}`: detalle de un movimiento (documento de origen y relacionados; 404 'Movimiento no encontrado.'). */
+export function useInventoryTransaction(id: number | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.transaction[0], { id }],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/transactions/{id}', { params: { path: { id: id ?? 0 } } })),
+    enabled: id != null && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/inventory/owners`: dueños del inventario ("Propio" primero con `isOwn`, luego los clientes dueños). */
+export function useInventoryOwners(options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.owners[0]],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/owners')),
+    enabled: options?.enabled ?? true,
+    staleTime: 60_000,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/warehouses/bins/search?search=&warehousePublicIds=&take=` (posiciones entre almacenes; take ≤ 50). */
+export function useBinSearch(query: GetQuery<'/api/v1/warehouses/bins/search'>, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.binSearch[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/warehouses/bins/search', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/inventory/discrepancies` (paginado; `openCount` = pendientes con los mismos filtros, sin el de estatus). */
+export function useInventoryDiscrepancies(query: GetQuery<'/api/v1/inventory/discrepancies'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.discrepancies[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/discrepancies', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** `GET /api/v1/inventory/discrepancies/{publicId}`: el descuadre, lo reservado, los últimos movimientos y el historial. */
+export function useInventoryDiscrepancy(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.discrepancy[0], { publicId }],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/discrepancies/{publicId}', { params: { path: { publicId: publicId ?? '' } } })),
+    enabled: Boolean(publicId) && (options?.enabled ?? true),
+    meta: meta(options),
+  })
+}
+
+/** `POST /api/v1/inventory/discrepancies/{publicId}/resolve` (`inventory.adjust`): REBUILD_BALANCE o DISMISS (nota obligatoria). */
+export function useResolveDiscrepancy() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { publicId: string; body: Schemas['DiscrepancyResolveRequest'] }) =>
+      unwrap(api.POST('/api/v1/inventory/discrepancies/{publicId}/resolve', { params: { path: { publicId: v.publicId } }, body: v.body })),
+    onSuccess: (data, v) => {
+      qc.setQueryData([warehouseKeys.discrepancy[0], { publicId: v.publicId }], data)
+      return invalidate(qc, ...STOCK)
+    },
+  })
+}
+
+/** `POST /api/v1/inventory/reconciliation/run` (`inventory.adjust`): conciliación manual (todo el tenant o hasta 200 productos). */
+export function useRunReconciliation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Schemas['ReconciliationRunRequest']) => unwrap(api.POST('/api/v1/inventory/reconciliation/run', { body })),
+    onSuccess: () => invalidate(qc, 'discrepancies', 'discrepancy', 'reconciliation', 'reconciliationStatus'),
+  })
+}
+
+/** `GET /api/v1/inventory/reconciliation/status` (`inventory.adjust`): revisión automática (pendientes, procesados, último error). */
+export function useReconciliationStatus(options?: WarehouseQueryOptions & { refetchInterval?: number | false }) {
+  return useQuery({
+    queryKey: [warehouseKeys.reconciliationStatus[0]],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/reconciliation/status')),
+    enabled: options?.enabled ?? true,
+    refetchInterval: options?.refetchInterval ?? false,
+    meta: meta(options),
+  })
+}
+
+export const exportInventoryDiscrepancies = (query: GetQuery<'/api/v1/inventory/discrepancies'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/inventory/discrepancies', { params: { query: { ...query, skip, take } } })))
+
 // =====================================================================================================================
 // Recepción: avisos de llegada (ASN) y recibos
 // =====================================================================================================================
@@ -744,10 +889,11 @@ export function useWarehouseTaskAction() {
     },
     // La ficha del recibo pinta sus tareas de acomodo (y pasa a PUTAWAY al completar la última) y la del plan de cruce sus
     // asignaciones (completar la tarea CROSSDOCK = mover la asignación): se invalidan junto con la cola.
+    // Lote 14 (D10): la lista de conteos muestra a quién está asignada la tarea COUNT de cada conteo.
     onSuccess: (_data, v) =>
       v.action === 'complete'
-        ? invalidate(qc, 'tasks', 'putawaySuggestions', 'receipt', 'receipts', 'crossDockPlan', 'crossDockPlans', ...STOCK)
-        : invalidate(qc, 'tasks', 'receipt'),
+        ? invalidate(qc, 'tasks', 'putawaySuggestions', 'receipt', 'receipts', 'crossDockPlan', 'crossDockPlans', 'cycleCountsPage', ...STOCK)
+        : invalidate(qc, 'tasks', 'receipt', 'cycleCountsPage'),
   })
 }
 
@@ -786,12 +932,59 @@ export function useCycleCount(id: number | null | undefined, query: GetQuery<'/a
   })
 }
 
+/** Consultas del conteo que cambian con cualquier escritura sobre un conteo (lista, página, ficha, vista previa, cola). */
+const COUNTS: KeyName[] = ['cycleCounts', 'cycleCountsPage', 'cycleCount', 'changesPreview', 'tasks']
+
+/**
+ * Lote 14 (hallazgo 14) — `GET /api/v1/cycle-counts/page` (inventory.view): página de conteos con el total (take 1..200,
+ * por defecto 50). Filtros: almacenes, zonas, posiciones, productos, categorías, estatus, orígenes (MANUAL/CHANGES), fechas
+ * de alta en días locales y `search`. Cada fila trae su posición o `binCount`, el origen, `taskId` y el asignado.
+ */
+export function useCycleCountsPage(query: GetQuery<'/api/v1/cycle-counts/page'> = {}, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.cycleCountsPage[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts/page', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** Exportar la lista de conteos: todo lo filtrado (de a 200, hasta 10 000). */
+export const exportCycleCounts = (query: GetQuery<'/api/v1/cycle-counts/page'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/cycle-counts/page', { params: { query: { ...query, skip, take } } })))
+
+/**
+ * Lote 14 (D2–D4) — `GET /api/v1/cycle-counts/changes-preview` (warehouse.count): ventana efectiva, movimientos, posiciones
+ * que se contarían (vacías incluidas), saltadas y `problem` (el 400 que daría el alta). 400 si el rango está invertido o
+ * pasa de 31 días; 422 almacén inactivo; 404 zona. Sin reintentos: un 400 es la respuesta.
+ */
+export function useChangesPreview(query: GetQuery<'/api/v1/cycle-counts/changes-preview'>, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.changesPreview[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts/changes-preview', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Lote 14 — `POST /api/v1/cycle-counts/from-changes` (warehouse.count): un conteo Pendiente por posición cambiada (tope 200). */
+export function useCreateCountsFromChanges() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CycleCountFromChangesRequest) => unwrap(api.POST('/api/v1/cycle-counts/from-changes', { body })),
+    onSuccess: () => invalidate(qc, ...COUNTS),
+  })
+}
+
 /** `POST /api/v1/cycle-counts` (`warehouse.count`; máx. 1000 líneas). */
 export function useCreateCycleCount() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Schemas['CycleCountCreateRequest']) => unwrap(api.POST('/api/v1/cycle-counts', { body })),
-    onSuccess: () => invalidate(qc, 'cycleCounts', 'tasks'),
+    onSuccess: () => invalidate(qc, ...COUNTS),
   })
 }
 
@@ -824,8 +1017,13 @@ export function useCycleCountAction() {
           return null
       }
     },
-    onSuccess: (_data, v) =>
-      v.action === 'reconcile' ? invalidate(qc, 'cycleCounts', 'cycleCount', 'tasks', ...STOCK) : invalidate(qc, 'cycleCounts', 'cycleCount', 'tasks'),
+    // Lote 14: la ficha que devuelve la escritura queda en caché (la del panel del conteo, sin filtros de líneas) para que
+    // la siguiente captura en la fila use su rowVersion al día; luego se invalida todo lo del conteo.
+    onSuccess: (data, v) => {
+      if (data) qc.setQueryData([warehouseKeys.cycleCount[0], { id: v.id }], data)
+      if (v.action === 'delete') qc.removeQueries({ queryKey: [warehouseKeys.cycleCount[0], { id: v.id }] })
+      return v.action === 'reconcile' ? invalidate(qc, ...COUNTS, ...STOCK) : invalidate(qc, ...COUNTS)
+    },
   })
 }
 

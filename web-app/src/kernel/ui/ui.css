@@ -29,6 +29,13 @@
    el texto envuelve (también los encabezados), los números no; si no cabe, la tabla se compacta (.densetbl). */
 .dt-scroll{width:100%;min-width:0}
 .dt .lst th{overflow-wrap:anywhere;hyphens:auto}
+/* códigos (SKU, posición, número de documento) sin espacios: se parten solo si no caben, para que uno muy largo no ensanche
+   su columna y apriete las demás (con break-word su ancho mínimo sería el código entero) */
+.dt .lst td .ref{overflow-wrap:anywhere}
+/* desde 1200 px los encabezados solo se parten entre palabras ("CANTIDAD", no "CANTI/DAD"); más angosto siguen pudiendo
+   partirse en cualquier punto para que la tabla encoja sin scroll horizontal (medido: el Kárdex de 16 columnas cabe justo a
+   1200 px y se desborda a 1120 si no puede partirlos) */
+@media(min-width:1200px){.dt .lst th{overflow-wrap:normal;hyphens:manual}}
 /* Entre el modo tarjetas (720 px) y el escritorio amplio, toda tabla del kit reduce su padding para caber */
 @media(min-width:721px) and (max-width:1100px){.dt .lst td,.dt .lst th{padding:7px 4px}}
 .lst.densetbl{font-size:12px}
@@ -178,3 +185,18 @@
 /* el lockup nunca pasa el ancho de su contenedor; ambas variantes (clara y -inv) son transparentes */
 .brand-lockup{display:block;max-width:100%;height:auto}
 .brand-mark{display:block;flex:none;max-width:100%;height:auto}
+
+/* ===== SummaryBar (Lote 14: franja .burst de la maqueta) ===== */
+/* cifras en fila con raya vertical entre ellas (borde izquierdo de cada una salvo la primera); envuelve a 360 px */
+.burst{display:flex;flex-wrap:wrap;align-items:stretch;gap:10px 0;background:linear-gradient(100deg,var(--panel-2),var(--panel));border:1px solid var(--line);border-radius:13px;padding:12px 6px;margin-bottom:14px;min-width:0}
+.burst .t{display:flex;flex-direction:column;padding:0 14px;min-width:0;border-left:1px solid var(--line)}
+.burst .t:first-child{border-left:none}
+.burst .t small{color:var(--faint);font-size:10px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;white-space:nowrap}
+.burst .t b{font-family:var(--mono);font-size:21px;font-weight:700;line-height:1.15;white-space:nowrap}
+.burst .t.in b{color:var(--flow-2)}
+.burst .t.out b{color:var(--danger)}
+.burst .t.money b{color:var(--money-2)}
+.burst .t.muted b{color:var(--muted)}
+.burst.loading .t b{opacity:.45}
+.burst .leg{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 12px;color:var(--muted);font-size:12px}
+@media(max-width:480px){.burst .t{flex:1 1 45%;border-left:none;padding:0 10px}.burst .t b{font-size:18px}.burst .leg{margin-left:0}}

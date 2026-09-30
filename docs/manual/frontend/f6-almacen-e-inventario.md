@@ -16,6 +16,12 @@ empaque** (dos paneles con barra arrastrable); sus capturas son las que regener�
 la pestaña Avisos de llegada y el modal Nuevo aviso (se marcan en el texto). El Lote 13 también ajustó, por decisión del dueño del
 producto del 2026-09-30, la ficha de la **orden de compra** (proveedor y almacén editables en Borrador), la nota obligatoria de todo
 ajuste manual, el indicador **Unidades totales** y los predeterminados de la compañía al **Empacar**.
+En el Lote 14 se agregó **Transferencias y ajustes** (Subir/Bajar, con el Reporte de ajustes), se reescribió **Kárdex de movimientos** (antes
+«Inventario»: filtros compartidos por Kárdex, Saldos y Conciliación, resumen, detalle del movimiento y descuadres con su conciliación
+automática) y **Conteo cíclico** (dos paneles, «Conteo de lo cambiado» y confirmar en un solo paso). **Ajustes de inventario** salió del menú
+(sus faltantes de compra se resuelven en la ficha de la orden de compra). Sus capturas son las `l14-*.png` que genera el recorrido
+`lote14.spec.ts`; las `f6-inventario-*` se regeneraron. «Necesita tu atención» en el Pulso está en el capítulo
+[F7A](f7a-pulso-almacen-y-actividad.md#pulso-del-día-panel-necesita-tu-atención).
 
 ## Todas las tablas: pie, filas por página y Exportar (Lote 11)
 
@@ -509,62 +515,185 @@ producto ya tiene movimientos."** (409). Dar de baja bloqueado con inventario en
 puede exceder 150 caracteres."; más de 5 niveles o nombre repetido en el mismo nivel: rechazado por el servidor (409);
 baja bloqueada con productos o subcategorías activas (409).
 
-## Inventario: saldos, Kárdex, ajustes, transferencias, genealogía, rastro de serie y conciliación
+## Transferencias y ajustes
 
-**Para qué sirve.** Consulta el inventario disponible en cada posición, su historial de movimientos (Kárdex), permite
-corregirlo (ajuste, transferencia) y compara el Kárdex contra los saldos (conciliación). No tiene estatus propio: es
-un libro de movimientos, no una entidad con ciclo de vida.
+**Para qué sirve.** Es donde se corrige el inventario a mano y se consulta lo que se ha corregido: **Ajustes** (subir o bajar la cantidad de
+una posición, con motivo y nota) y **Transferencias** (mover inventario de una posición a otra, del mismo almacén o de otro). Muestra
+**todos** los ajustes y transferencias, también los que genera el sistema (conteo, recibo, acomodo, reabasto), con filtros para acotar. Es
+la pantalla que reemplazó a "Ajustes de inventario" en el menú.
 
-**Cómo se llega.** Menú **Almacén › Inventario**, dirección `/warehouse/inventory`, con pestañas **Saldos**,
-**Kárdex** y **Conciliación**.
+**Cómo se llega.** Menú **Almacén › Transferencias y ajustes** (justo después de Recolección y empaque), dirección
+`/warehouse/transfers-adjustments`. Dos pestañas: **Ajustes** (la de entrada) y **Transferencias** (`?tab=transfers`).
 
-**Qué se ve (Saldos).**
+**Qué se ve (Ajustes).**
 
-![Saldos de inventario tras un ajuste](img/f6-inventario-saldos.png)
+![Transferencias y ajustes, pestaña Ajustes: filtros, resumen de movimientos y la lista de ajustes con Fecha, Hora, SKU, Producto, Dueño, Almacén/Posición, Cantidad con signo, Motivo, Nota, Origen del movimiento y Usuario](img/l14-ajustes-lista.png)
 
-Columnas: almacén, posición, zona, SKU, producto, lote, vencimiento, en mano, reservado, disponible, valor costo,
-valor venta y actualizado. Filtros: almacén, producto (buscador), categoría, lote, "Incluir en cero", "Solo con
-disponible" y buscador libre. Cada fila puede abrir **Genealogía** (si tiene lote) o **Rastro de serie**.
+- **Cabecera:** **Reporte de ajustes** (PDF con los filtros de la pestaña), **Ajustar** y **Transferir** (estos dos, solo con `inventory.adjust`).
+- **Filtros** (todos van al servidor y regresan a la página 1): **Fecha** (desde y hasta), **Almacén**, **Producto** (buscador por SKU o nombre;
+  la selección queda como una píldora que se quita con ✕), **Dueño** ("Propio" o un cliente), **Tipo de ajuste** (Todos, Subir o Bajar),
+  **Motivo**, **Solo manuales** y **Limpiar**.
+- **Resumen** (franja de números, con los mismos filtros): **Movimientos**, **Entradas (mov.)**, **Entradas (uds)**, **Salidas (mov.)** y
+  **Salidas (uds)**.
+- **Tabla "Ajustes":** Fecha, Hora, SKU, Producto, Dueño, Almacén/Posición, Lote/Serie, Cantidad (con signo y color: azul entra, rojo sale),
+  Motivo, Nota, Origen del movimiento (Manual, Conteo, Recibo, etc.) y Usuario. Un clic en una fila abre el **detalle del movimiento**
+  (ver "Kárdex de movimientos"). Pie con filas por página y **Exportar**.
+
+**Qué se ve (Transferencias).**
+
+![Transferencias y ajustes, pestaña Transferencias: filtros con Almacén de origen y Almacén de destino, resumen con Internos y la lista con Origen, Destino, Lote/Serie y Cantidad](img/l14-transferencias-lista.png)
+
+Filtros: **Fecha**, **Almacén de origen**, **Almacén de destino**, **Producto**, **Dueño** y **Solo manuales**. El resumen agrega **Internos**
+(transferencias que no salen de los almacenes o posiciones filtrados; sin filtro de almacén, toda transferencia es interna). Tabla:
+Fecha, Hora, SKU, Producto, **Origen** y **Destino** (almacén/posición), Lote/Serie, Cantidad (sin signo: una transferencia no suma ni
+resta), Origen del movimiento (Manual, Acomodo o reabasto, Conteo…), Nota y Usuario. No hay filtro de Motivo: las transferencias no llevan
+motivo.
 
 **Qué hace cada botón.**
-- **Ajustar** (cabecera): producto, almacén, posición, cantidad (puede ser negativa), motivo, notas, y lote/series si
-  el producto los usa.
-- **Transferir** (cabecera): producto, posición de origen y destino (con sus almacenes si es entre almacenes distintos)
-  y cantidad.
 
-![Ajuste de inventario: +10 con motivo Encontrado](img/f6-inventario-ajuste.png)
+- **Ajustar** abre el modal **Ajuste de inventario**:
 
-**Qué se ve (Kárdex).**
+  ![Modal Ajuste de inventario: Tipo de ajuste con Subir y Bajar, Producto, Almacén, Posición, Cantidad con la pista Disponible en la posición, Motivo y Notas, y los botones Cancelar y Aplicar ajuste](img/l14-ajuste-modal.png)
 
-![Kárdex filtrado por el producto ajustado](img/f6-inventario-kardex.png)
+  1. **Tipo de ajuste** (obligatorio): **Subir** entra inventario; **Bajar** lo saca. La cantidad se escribe siempre en positivo; la pantalla
+     pone el signo.
+  2. **Producto**, **Almacén** y **Posición**. Debajo de la cantidad aparece **"Disponible en la posición: N"**.
+  3. **Cantidad** (mayor que cero, hasta 3 decimales; al **bajar** no puede pasar de lo disponible).
+  4. **Motivo**, con buscador. Depende de la dirección: **Encontrado** solo al subir; **Daño**, **Pérdida** y **Vencido** solo al bajar; los demás
+     en las dos. Si cambia de dirección y el motivo elegido ya no vale, se quita.
+  5. **Notas** (obligatorias, hasta 300 caracteres).
+  6. Si el producto se controla por **lote**: al subir, el número de lote; al bajar, se elige uno de los lotes que hay en la
+     posición (con lo disponible y su vencimiento). Si se controla por **serie**: al subir, se escriben las series (una por línea); al bajar,
+     se eligen las series que salen (la cantidad es el número de series).
+  7. **Aplicar ajuste** guarda y avisa **"Ajuste registrado ({qty})."**; el Kárdex y los saldos se refrescan solos.
 
-Columnas: fecha, tipo, SKU, producto, almacén, posición, cantidad (con signo) y referencia/motivo. Filtros: rango de
-fecha, tipo de movimiento, almacén, producto, lote, serie y buscador libre. Cada fila puede abrir **Rastro de serie**.
+  El mismo modal se usa en el Kárdex y, con el producto ya fijo, en la ficha del producto (**Añadir ajuste**).
 
-**Qué se ve (Conciliación).**
+- **Transferir** abre **Transferencia de inventario**, en este orden: **Almacén de origen** → **Posición de origen** → **Ítem** (lista de lo que hay
+  en esa posición: producto y lote, con lo disponible; se busca por SKU, nombre o lote) → **Series** (solo si el producto las lleva) →
+  **Almacén de destino** (por defecto el de origen) → **Posición de destino** → **Cantidad** (con el tope de lo disponible; en productos con
+  serie es el número de series elegidas) → **Notas** (opcionales). **Transferir** guarda y avisa "Transferencia registrada.".
 
-![Conciliación: producto opcional y botón Ejecutar](img/f6-inventario-conciliacion.png)
+- **Reporte de ajustes** genera un PDF de los ajustes con **los mismos filtros** que tiene en pantalla (fechas, dueño, tipo, motivo, almacén,
+  producto), no solo con los de Productos.
 
-Un producto opcional (buscador) y el botón **Ejecutar**: muestra cuándo se ejecutó, cuántos saldos se revisaron y una
-tabla de diferencias (Kárdex vs. saldo); sin diferencias, "El inventario concilia".
+**Permiso.** `inventory.view` y el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`) para entrar; **`inventory.adjust`** para Ajustar y
+Transferir. Sin `inventory.adjust` los botones no aparecen.
 
-**Permiso.** `inventory.view` (saldos, Kárdex, genealogía, rastro de serie, conciliación de solo lectura);
-**`inventory.adjust`** para ajustar, transferir y ejecutar la conciliación. Módulo `WMS_LOTSERIAL`.
+**Validaciones y mensajes.** Los del formulario (sin código HTTP) son: "Elija si el ajuste sube o baja el inventario.", "Seleccione un
+producto.", "Seleccione un almacén.", "Seleccione una posición.", "Seleccione un motivo.", "Indique la cantidad del ajuste.", "La cantidad
+debe ser mayor que cero.", "La cantidad admite como máximo 3 decimales.", "No puede bajar más de lo disponible en la posición ({qty}).",
+"Indique el número de lote." (al subir), "Seleccione el lote." (al bajar), "Indique al menos un número de serie.", en la transferencia "Elija el
+ítem a transferir.", "Elija al menos una serie.", "No puede transferir más de lo disponible en la posición ({qty}).", "El origen y el destino
+no pueden ser la misma posición.", y la nota obligatoria del ajuste ("Escriba una nota que explique el ajuste."). Los del servidor (409
+"Inventario insuficiente de {sku} en {bin}: disponible {x}, solicitado {y}." y demás) aparecen arriba del formulario. Todos están en el
+manual 06, sección 3, y en el [FAQ](../faq.md#lote-14--transferencias-y-ajustes-conteo-cíclico-kárdex-conciliación-y-necesita-tu-atención-lote-4-del-plan-de-cambios).
+
+## Kárdex de movimientos: Kárdex, Saldos y Conciliación
+
+**Para qué sirve.** Consulta el inventario disponible en cada posición (**Saldos**), su historial de movimientos (**Kárdex**) y compara el Kárdex
+contra los saldos (**Conciliación**). No tiene estatus propio: es un libro de movimientos. Los ajustes y transferencias se hacen desde
+**Ajustar** y **Transferir** (también aquí, en la cabecera).
+
+**Cómo se llega.** Menú **Almacén › Kárdex de movimientos**, dirección `/warehouse/kardex` (la dirección antigua `/warehouse/inventory`
+lleva ahí). Pestañas **Kárdex** (la de entrada), **Saldos** (`?tab=balances`) y **Conciliación** (`?tab=reconciliation`).
+
+### Filtros compartidos y resumen
+
+**Los filtros son los mismos en las tres pestañas y se conservan al cambiar de pestaña.** Cada pestaña aplica solo algunos; los que no
+aplica se ven **atenuados** y una nota bajo la barra los nombra ("No aplican a Saldos (solo cambian el resumen de movimientos): …").
+
+![Kárdex: barra de filtros compartida (Fecha, Tipo, Almacén, Posición, Producto, Categoría, Dueño, Motivo, Dirección, Lote, Serie y Solo manuales), resumen con Movimientos, Entradas, Salidas e Internos y la tabla con Dueño y Categoría](img/l14-kardex-resumen.png)
+
+| Filtro | Kárdex | Saldos | Conciliación |
+|---|---|---|---|
+| **Fecha** (desde y hasta; días de Puerto Rico) | Sí | Solo el resumen | Sí (fecha de detección) |
+| **Tipo** | Sí | Solo el resumen | No |
+| **Almacén**, **Posición** (busca en todos los almacenes por código, zona o almacén), **Producto**, **Categoría** | Sí | Sí | Sí |
+| **Dueño** ("Propio" o un cliente), **Motivo**, **Dirección** (Entradas o Salidas), **Solo manuales** | Sí | Solo el resumen | No |
+| **Lote** | Sí | Sí | No |
+| **Serie** | Sí | Solo el resumen | No |
+| **Incluir en cero**, **Solo con disponible** | — | Sí | — |
+| **Estatus** (de los descuadres; por defecto **Pendiente**) | — | — | Sí |
+
+**Resumen.** Franja de números con **los mismos filtros** de la tabla: **Movimientos**, **Entradas (mov.)**, **Entradas (uds)**, **Salidas (mov.)**,
+**Salidas (uds)** e **Internos**. En **Saldos** se agregan **En mano** y **Disponible**. En **Conciliación** la franja muestra **Pendientes**,
+**En la lista** y, a la derecha, el estado de la revisión automática.
+
+**Documento de origen.** Si llega desde un enlace con un documento (`?refEntity=` y `?refId=`, por ejemplo desde un conteo cerrado) aparece
+una píldora "Documento: … #…" con una ✕ para quitarla.
+
+### Kárdex
+
+Columnas: **Fecha**, **Hora**, **Tipo** (chip de color: Recibo, Despacho, Transferencia, Ajuste, Cruce de muelle), **SKU**, **Producto**, **Dueño**,
+**Categoría**, **Cantidad** (con signo y color), **Almacén/Posición** (las transferencias muestran origen → destino), **Lote/Serie**, **Motivo**,
+**Origen** (Manual, Conteo, Recibo…) y **Usuario**; más un buscador libre. Un clic en una fila abre el **detalle del movimiento**
+(`?txn=<id>`).
+
+### Detalle de un movimiento
+
+![Detalle del movimiento #1658: fecha y hora, usuario, tipo Transferencia, producto, dueño Propio, cantidad 3, de → a, origen Manual, nota, Documento de origen "Movimiento manual (sin documento)" y Movimientos relacionados (1)](img/l14-movimiento-detalle.png)
+
+Modal de solo lectura con: **Fecha y hora**, **Usuario** ("Sistema" si lo hizo el sistema), **Tipo**, **Producto** (SKU en enlace y nombre), **Dueño**,
+**Categoría**, **Cantidad**, **De → a**, **Lote** (con "vence …"), **Serie**, **Motivo**, **Origen** y **Nota**. Debajo, el **Documento de origen**:
+su número, su estatus, la fecha y la parte (cliente o proveedor) y un botón **Abrir** que lleva al recibo, la recolección, el conteo, la orden de
+compra, la orden o el producto; el botón **solo aparece si usted tiene el permiso y el módulo de esa pantalla**. Una tarea de almacén no
+tiene pantalla propia: muestra también el **Documento de la tarea** (su documento padre) con su Abrir. Un movimiento hecho a mano dice
+"Movimiento manual (sin documento)". Al final, **Movimientos relacionados (N)**: los del mismo documento o, si no tiene, los del mismo asiento
+(hasta 200; si hay más, avisa "Se muestran los primeros 200 movimientos relacionados."). El modal no incrusta el cuerpo del documento: para
+verlo, **Abrir**.
+
+### Saldos
+
+![Saldos con el mismo resumen y dos cifras más: En mano y Disponible](img/f6-inventario-saldos.png)
+
+Columnas: almacén, posición, zona, SKU, producto, **dueño**, **categoría**, lote, vencimiento, en mano, reservado, disponible, valor costo, valor
+venta y actualizado. Cada fila puede abrir **Genealogía** (si tiene lote) o **Rastro de serie**. Saldos no filtra por Dueño (el filtro solo
+cambia el resumen de movimientos).
+
+### Conciliación
+
+![Conciliación: filtros compartidos con los que no aplican atenuados y Estatus en Pendiente, franja con Pendientes y En la lista, estado de la revisión automática y el botón Ejecutar conciliación](img/l14-conciliacion.png)
+
+Lista los **descuadres Kárdex ↔ saldo**: el saldo de una posición (o de todo un producto) no coincide con lo que suman los movimientos. No es una
+diferencia física en el estante. Vea el manual 06, sección 3.3, y el FAQ del Lote 14.
+
+- **Franja:** **Pendientes** y **En la lista** y, a la derecha, **Revisión automática: al día**, **N en cola** o **apagada**.
+- **Ejecutar conciliación** (`inventory.adjust`): revisa ahora los saldos contra el Kárdex, **de los productos del filtro Producto o, si no hay
+  ninguno, de todos**, y guarda los descuadres. Avisa "Conciliación ejecutada." y escribe el resultado: "Conciliación del {fecha}: {n}
+  productos y {n} saldos revisados · {n} descuadres nuevos · {n} siguen pendientes · {n} se corrigieron solos.".
+- **Tabla "Descuadres Kárdex ↔ saldo":** Detectado, SKU, Producto, Almacén/Posición ("Total del producto" si el descuadre es del total), Lote,
+  **Kárdex**, **Saldo**, **Diferencia** (saldo − Kárdex, con signo y color), Tipo y Estatus (chip Pendiente, Resuelto, Descartado o Se corrigió
+  solo). Sin descuadres: "Sin descuadres pendientes" / "El Kárdex y los saldos cuadran con estos filtros." Cada fila pendiente trae los íconos
+  **Corregir el saldo según el Kárdex** (solo en los de tipo saldo por posición) y **Descartar** (con `inventory.adjust`); un clic en la fila,
+  o cualquiera de los dos íconos, abre el detalle.
+- **Detalle del descuadre** (modal "Descuadre · {sku}"): la **Diferencia** grande con el chip de estatus; producto, dónde, lote, tipo, Kárdex, saldo,
+  **Reservado hoy**, quién lo detectó (Automática, Manual, Migración), cuándo y cuántas revisiones; una nota que recuerda que un descuadre no es
+  una diferencia física y que un ajuste o un conteo no lo arreglan; si está cerrado, quién lo cerró, cuándo, "de → a" y su nota; una **Nota
+  (obligatoria para descartar)** con los botones **Corregir el saldo según el Kárdex** y **Descartar** (solo si está Pendiente y usted tiene
+  `inventory.adjust`); los **últimos movimientos de la posición** (un clic abre el detalle del movimiento) y el **historial**.
+  - **Corregir el saldo según el Kárdex** pone el saldo igual a lo que dan los movimientos, **sin crear un movimiento**. Avisa "Saldo corregido
+    según el Kárdex."; si ya cuadraba, "El saldo ya cuadraba; el descuadre se cerró solo.".
+  - **Descartar** exige la nota ("Escriba una nota que explique por qué se descarta el descuadre.") y avisa "Descuadre descartado.".
+  - Un descuadre del **total del producto** no tiene botón de corregir: se resuelve corrigiendo los de posición, o se descarta con nota.
+  - Tras corregir uno de posición, la pantalla ofrece **Crear conteo de esa posición** (con `warehouse.count.capture`): crea un conteo Pendiente
+    y ofrece **Abrir conteo {número}**.
+
+**Permiso.** `inventory.view` (Kárdex, Saldos, Conciliación de solo lectura, detalles, genealogía y rastro de serie); **`inventory.adjust`** para
+Ajustar, Transferir, **Ejecutar conciliación**, Corregir y Descartar; **`warehouse.count.capture`** para "Crear conteo de esa posición".
+Módulo `WMS_LOTSERIAL`.
 
 **Validaciones y mensajes.**
 
 | Campo | Regla | Mensaje |
 |---|---|---|
-| Producto/Almacén/Posición (ajuste) | obligatorios | "Seleccione un producto." / "Seleccione un almacén." / "Seleccione una posición." |
-| Motivo (ajuste) | obligatorio | "Seleccione un motivo." |
-| Cantidad (ajuste) | ≠ 0 | "La cantidad del ajuste no puede ser cero." |
-| Cantidad (ajuste/transferencia) | ≤ 3 decimales | "La cantidad admite como máximo 3 decimales." |
-| Lote (ajuste, producto por lote) | obligatorio | "Indique el número de lote." |
-| Series (ajuste, producto por serie) | al menos una | "Indique al menos un número de serie." |
-| Posiciones (transferencia) | origen ≠ destino | "El origen y el destino no pueden ser la misma posición." |
-| Cantidad (transferencia) | > 0 | "La cantidad debe ser mayor que cero." |
-| Ambos (falta de existencia) | — | 409 "Inventario insuficiente de {sku} en {bin}: disponible {x}, solicitado {y}." |
 | Rango del Kárdex | desde ≤ hasta | "La fecha 'desde' no puede ser posterior a la fecha 'hasta'." |
+| Nota al descartar | obligatoria, hasta 500 caracteres | "Escriba una nota que explique por qué se descarta el descuadre." / "La nota admite como máximo 500 caracteres." |
+| Corregir con reserva mayor que el Kárdex | 409 | "El Kárdex da {ledger} para {sku} en {bin}, menos que lo reservado ({reserved}); libere la reserva antes de corregir el saldo." |
+| Corregir con Kárdex negativo | 409 | "El Kárdex da un saldo negativo ({ledger}) para {sku} en {bin}; revise los movimientos antes de corregir el saldo." |
+| Resolver uno ya cerrado | 422 | "El descuadre ya está cerrado; solo se consulta." |
+| Corregir el total del producto | 422 | "Este descuadre es del total del producto; no se corrige por posición. Corrija los descuadres por posición o descártelo con una nota." |
+| Dos revisiones a la vez | 409 | "La conciliación chocó con otra revisión simultánea; intente de nuevo." |
 
 ## Recepción: recibos y avisos de llegada
 
@@ -768,7 +897,7 @@ todas las tareas juntas: cada tipo se trabaja en la pantalla a la que pertenece.
 |---|---|---|
 | **Acomodo** (Putaway) | **Recibo › Acomodo pendiente**, y el panel "Tareas de acomodo" del detalle de un recibo confirmado | Asignar, iniciar, completar y cancelar |
 | **Reabasto** | **Recolección y empaque › Reabasto** (`?tab=replenish`), con el botón **Correr reabasto** | Asignar, iniciar, completar y cancelar |
-| **Conteo** | **Conteo cíclico › Tareas de conteo** | Asignar e iniciar; se completan reconciliando el conteo |
+| **Conteo** | **Conteo cíclico › lista de conteos** (la pestaña "Tareas de conteo" se quitó en el Lote 14) | Asignar con el ícono de la fila; la tarea se completa al **confirmar** el conteo |
 | **Cruce de muelle** | **Cruce de muelle › Tareas de cruce** | Asignar e iniciar; se completan moviendo la asignación desde el plan |
 
 La dirección antigua `/warehouse/tasks` lleva a **Recibo › Acomodo pendiente** (por ahí no se llega a las tareas de reabasto).
@@ -809,7 +938,7 @@ pestaña Acomodo pendiente.
 
 **Permiso.** `inventory.view` (ver las tareas); **`warehouse.manage`** (asignar, cancelar); **Iniciar** y **Completar** exigen el
 permiso del tipo de tarea: `warehouse.receive` (Acomodo), `warehouse.pick` (Reabasto y el botón Correr reabasto), `warehouse.count`
-(Conteo) o `warehouse.crossdock` (Cruce de muelle). Módulo `WMS_LOTSERIAL`.
+(Conteo: desde el Lote 14 la web solo asigna la tarea, con `warehouse.manage`, y la completa al confirmar el conteo) o `warehouse.crossdock` (Cruce de muelle). Módulo `WMS_LOTSERIAL`.
 
 **Estatus y transiciones.** Pendiente → En curso (**Iniciar**) → Terminada (**Completar**); Cancelada es lateral desde
 Pendiente o En curso, solo para Acomodo y Reabasto. Sin transición manual de pipeline.
@@ -827,45 +956,110 @@ Pendiente o En curso, solo para Acomodo y Reabasto. Sin transición manual de pi
 
 ## Conteo cíclico
 
-**Para qué sirve.** Toma una "foto" del saldo en mano de un almacén (o de sus zonas/posiciones), permite capturar lo
-contado y reconciliar el ajuste contra el saldo actual.
+**Para qué sirve.** Toma una "foto" del saldo en mano de una posición, permite capturar lo contado y **confirmar el ajuste en un solo paso**
+contra el saldo actual. Desde el Lote 14 la pantalla es de **dos paneles**: la lista de conteos a la izquierda y el conteo elegido a la
+derecha; ya no hay ficha aparte ni pestaña "Tareas de conteo".
 
-**Cómo se llega.** Menú **Almacén › Conteo cíclico**, dirección `/warehouse/cycle-counts`; ficha en
-`/warehouse/cycle-counts/:id`.
+**Cómo se llega.** Menú **Almacén › Conteo cíclico**, dirección `/warehouse/cycle-counts`. El conteo elegido va en `?count=<id>` (las
+direcciones viejas `/warehouse/cycle-counts/:id` redirigen ahí).
 
-**Qué se ve (lista).** Columnas: número, almacén, estatus, contadas (progreso), diferencia neta y creado.
+**Qué se ve.**
 
-**Qué hace cada botón.**
-- **Nuevo conteo**: almacén y, opcionalmente, zonas o posiciones (sin filtros toma todo el saldo en mano del almacén,
-  máximo 1000 líneas).
+![Conteo cíclico en dos paneles: filtros arriba, a la izquierda la lista "Tareas de conteo" con posición, estatus, zona, líneas, etiqueta Lo cambiado y los íconos Asignar y Eliminar, y a la derecha el conteo elegido con su cabecera, el escáner y la tabla de líneas](img/l14-conteo-dos-paneles.png)
 
-**Qué se ve (ficha).** Barra de estatus (Abierto — Contado — Reconciliado), resumen (progreso, líneas con diferencia,
-diferencia neta), y la tabla de líneas con **Capturar** (cantidad contada o series, según el seguimiento del
-producto).
+- **Cabecera:** la marca **Modo: informado**, y (con `warehouse.count`) **Conteo de lo cambiado** y **Nuevo conteo**. Debajo, una nota: quien
+  cuenta ve la cantidad esperada, la varianza se calcula al vuelo y, al confirmar, la diferencia queda como ajuste en el Kárdex.
+- **Filtros** (todos van al servidor): **Almacén**, **Zona** (las de los almacenes elegidos), **Posición** (busca en todos los almacenes),
+  **Producto**, **Estatus**, **Origen** (Selección o Lo cambiado), **Creado** (desde y hasta, días de Puerto Rico) y **Buscar** (número, SKU o
+  producto), más **Limpiar**. La lista de la izquierda no tiene buscador propio: se filtra con estos.
+- **Dos paneles con barra arrastrable** (34 % / 66 %; se recuerda en el navegador; Enter o doble clic en la barra la devuelve). Bajo 900 px,
+  uno debajo del otro.
 
-**Qué hace cada botón (ficha).**
-- **Agregar línea**: agrega una posición/producto a mano.
-- **Refrescar foto**: solo aparece si hay líneas con "Foto vieja" (el saldo cambió desde que se tomó la foto); las
-  vuelve a fotografiar y borra su captura.
-- **Terminar conteo**: pasa de Abierto a Contado; exige que todas las líneas estén capturadas.
-- **Reconciliar**: pasa de Contado a Reconciliado; asienta los ajustes contra el saldo actual.
-- **Eliminar**: solo con el conteo Abierto (cancela también su tarea de conteo).
+### Lista de conteos (panel izquierdo, "Tareas de conteo")
 
-**Permiso.** `inventory.view` (solo listar); **`warehouse.count`** para todo lo demás: ver la ficha, capturar,
-refrescar, terminar, reconciliar y eliminar. Módulo `WMS_LOTSERIAL`.
+Un conteo por fila: la **posición** (o "N posiciones") con el **chip de estatus** (Pendiente, Contado, Concordancia o Diferencia, con el color del
+catálogo); debajo, "CC-00155 · Zona PCK · 27 línea(s) · fecha"; la etiqueta **Lo cambiado** si nació de "lo cambiado"; y **Sin asignar** o
+"Asignado a {nombre}". Un clic elige el conteo. A la derecha de cada fila hay dos íconos:
 
-**Estatus y transiciones.** Abierto → Contado (**Terminar conteo**) → Reconciliado (**Reconciliar**, terminal); sin
-transición manual de pipeline (los dos pasos son botones propios, no la barra de pipeline).
+| Ícono | Acción | Cuándo | Permiso |
+|---|---|---|---|
+| Persona con "+" | **Asignar** el conteo a un usuario (asigna su tarea de conteo) | Conteos abiertos (Pendiente o Contado) | `warehouse.manage` (y `admin.users` para listar a quién) |
+| Papelera | **Eliminar** el conteo (pide confirmar: "¿Eliminar el conteo pendiente {número}? Su tarea de conteo se cancela y la baja queda en la auditoría.") | Solo **Pendiente** | `warehouse.count` |
+
+Pie de la lista: rango, filas por página (50 por defecto) y **Exportar** (todo lo que cumple los filtros).
+
+### Conteo elegido (panel derecho)
+
+- **Título y botones:** "Conteo · {posición}" con el número (CC-…); **Historial** (los cambios de estatus); **Refrescar foto** (solo si hay
+  líneas cuyo saldo cambió desde la foto: las vuelve a fotografiar y borra su captura) y **Agregar lo encontrado** (un producto que está en la
+  posición pero no en el conteo). Estos dos, solo con `warehouse.count` y con el conteo abierto.
+- **Cabecera del conteo:** chip de estatus, etiqueta de origen, almacén, zona, "N de M líneas contadas", fecha, a quién está asignado y, en los
+  de "lo cambiado", **"Movimientos del {desde} al {hasta}"**.
+- **Escáner** ("Escanear o buscar producto"): escriba o escanee un **SKU, código de barras, lote o serie** y pulse Enter: lleva a la línea y
+  abre **Contar {producto}** para escribir la cantidad (Enter guarda; vacío borra la captura). Si el código coincide con varias líneas,
+  pide elegir la posición y el lote; si no está en el conteo, avisa.
+- **Tabla de líneas** con **todas** las líneas desde el inicio: SKU, Producto, (Posición si hay varias), (Lote), **Esperado** (con la marca
+  "Foto vieja" si el saldo cambió), **Contado** (**se edita en la propia fila**: al salir del campo o con Enter se guarda y pasa a la
+  siguiente; en productos con serie el botón "Series (n)" abre el conteo de series) y **Varianza** (contado − esperado, con color). En un conteo
+  cerrado se agrega **Ajustado** (lo que se asentó en el Kárdex) y la marca "Saldo cambió" en las líneas cuyo saldo se movió desde la foto.
+- **Confirmar conteo y ajustar** (`warehouse.count`): debajo de la tabla, con la nota "Al confirmar, cada línea con varianza genera un ajuste
+  enlazado a este conteo ({número}).". Pide confirmar ("Se asientan en el Kárdex los ajustes del conteo {número} contra el saldo actual ({n}
+  línea(s) con varianza). Después solo se consulta.") y lleva el conteo de **Pendiente** (o **Contado**) **directo** a su estatus final:
+  **Concordancia** si no hubo nada que ajustar ("Conteo {número}: Concordancia, sin ajustes.") o **Diferencia** si se asentó al menos un
+  movimiento ("Conteo {número}: Diferencia, {n} ajuste(s) en el Kárdex."). Antes de confirmar, la pantalla guarda lo tecleado. El botón
+  está apagado, con el motivo debajo, si faltan líneas por contar, si no hay líneas, si el conteo ya se confirmó o si es un conteo a ciegas.
+- **Conteo cerrado:** el aviso "Conteo cerrado. Los ajustes ya están en el Kárdex de movimientos." con el enlace **Ver los ajustes en el
+  Kárdex** (abre el Kárdex filtrado por ese conteo).
+- **Sin `warehouse.count`** la pantalla es de **solo lectura a ciegas**: no se ven las cantidades esperadas, la varianza ni se captura ("Su
+  usuario no tiene el permiso de conteo informado: las cantidades esperadas no se muestran y la captura se hace en la app de almacén."). La
+  web **no confirma conteos a ciegas**.
+
+### Nuevo conteo y Conteo de lo cambiado
+
+- **Nuevo conteo** (origen "Selección"): almacén y, opcionalmente, zonas o posiciones (sin filtros toma todo el saldo en
+  mano del almacén, máximo 1000 líneas). Al crear, la lista vuelve a la página 1 y queda elegido el primer conteo creado.
+- **Conteo de lo cambiado** crea **un conteo Pendiente por cada posición** con movimientos en una ventana de tiempo:
+
+  ![Modal Conteo de lo cambiado: almacén, desde y hasta ya llenos con la hora de Puerto Rico, zonas, Incluir posiciones vacías y la vista previa con la ventana, la última generación en este almacén, 16 movimientos y "Se crearán 3 conteo(s), uno por posición, con 55 línea(s)"](img/l14-conteo-cambiado-modal.png)
+
+  1. **Almacén** (con más de uno, hay que elegir).
+  2. **Desde** y **Hasta**, ya llenos con la ventana por defecto —desde la **última vez que se generó "lo cambiado" en ese almacén** (la primera vez,
+     desde el inicio del día) hasta ahora—, en **hora de Puerto Rico**. Se pueden cambiar; el rango no pasa de 31 días. **Volver a la ventana
+     por defecto** los restablece.
+  3. **Zonas** (opcional) e **Incluir posiciones vacías** (activo por defecto: las posiciones que quedaron en 0 también se cuentan, para
+     confirmar que de verdad están vacías).
+  4. La **Vista previa** se calcula sola al cambiar cualquier dato: la ventana, la última generación ("Primera vez en este almacén: desde el
+     inicio del día." si no hay), "{n} movimiento(s) en la ventana", **"Se crearán {n} conteo(s), uno por posición, con {lines} línea(s)"**, y
+     cuántas posiciones se saltan por tener un conteo pendiente, por estar inactivas o por no tener nada que contar; y "Máximo 200
+     posiciones por vez.". Si algo impide crear, la vista previa dice el mensaje exacto y **Crear** queda apagado.
+  5. **Crear {n} conteo(s)** crea todos o ninguno y avisa "Se crearon {n} conteo(s) de lo cambiado.".
+
+  Los movimientos que salen de un conteo no cuentan (un conteo no genera otro), y las posiciones inactivas o que ya tienen un conteo Pendiente o
+  Contado se saltan.
+
+**Permiso.** `inventory.view` (ver la lista y los conteos, a ciegas sin `warehouse.count`); **`warehouse.count`** para Nuevo conteo, Conteo de lo
+cambiado, capturar, Agregar lo encontrado, Refrescar foto, **Confirmar** y Eliminar; **`warehouse.manage`** para Asignar. Módulo `WMS_LOTSERIAL`.
+
+**Estatus y transiciones.** **Pendiente** → (**Contado**, solo a ciegas, desde la app) → **Concordancia** o **Diferencia** (terminales). La web lleva
+de Pendiente directo a Concordancia o Diferencia con **Confirmar conteo y ajustar**. **Diferencia** significa que al confirmar se asentó al menos un
+movimiento en el Kárdex; **Concordancia**, que no hubo nada que ajustar. Un conteo cerrado solo se consulta.
 
 **Validaciones y mensajes.**
 
 | Mensaje | Cuándo aparece |
 |---|---|
 | "El conteo admite como máximo 1000 líneas; acote los filtros." | Al crear un conteo sin zonas/posiciones sobre un almacén muy grande |
+| "Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano." | Filtros sin inventario, o en "lo cambiado" cuando no queda nada que contar |
 | "Indique la posición." / "Indique la cantidad contada." | Al agregar/capturar una línea |
 | "Indique el lote por su id o por su número, no ambos." | Ambigüedad de lote al agregar una línea manual |
-| "Faltan {n} línea(s) por contar." | Al **Terminar conteo** con líneas sin capturar |
-| 409 (lo contado es menor que lo reservado) | Al **Reconciliar** |
+| "Faltan {n} línea(s) por contar." | Motivo bajo el botón **Confirmar** apagado (y respuesta 422 del API) |
+| "El conteo no tiene líneas." / "El conteo ya fue confirmado; solo se consulta." / "La web no confirma conteos a ciegas." | Otros motivos del botón **Confirmar** apagado |
+| "Ese código no está en este conteo. Use \"Agregar lo encontrado\" si el producto está en la posición." | Escáner sin coincidencia |
+| "{n} líneas coinciden: elija la posición y el lote." | Escáner con varias coincidencias |
+| "Hay cantidades que no se pudieron guardar; corríjalas antes de confirmar." | Al confirmar con una fila que falló al guardar |
+| 409 (lo contado es menor que lo reservado) | Al **Confirmar** |
+| "Elija el almacén." | En "Conteo de lo cambiado" con más de un almacén |
+| "No hubo movimientos en {almacén} entre {desde} y {hasta}; no hay posiciones que contar." / "Las {n} posiciones con cambios ya tienen un conteo pendiente." / "Hay {n} posiciones con cambios; se generan como máximo 200 a la vez. Acote el rango de fechas o las zonas." / "El rango de \"lo cambiado\" admite como máximo 31 días." / "La fecha 'desde' no puede ser posterior a la fecha 'hasta'." | En la vista previa y al crear "lo cambiado" |
 
 ## Recolección y empaque
 
@@ -1290,3 +1484,27 @@ alcance, escriba el cupo, revise «Se aplicará a N posiciones» y aplique.
 
 **¿Por qué no puedo cambiar el proveedor ni el almacén de una orden de compra?** Solo se cambian mientras la orden está en
 **Borrador**. Una vez enviada quedan fijos: cancele la orden y cree otra con los datos correctos.
+
+**¿Dónde quedó «Ajustes de inventario»?** Salió del menú (Lote 14). Esa pantalla mostraba compras recibidas de forma incompleta, no ajustes. Los
+faltantes se resuelven en la ficha de cada orden de compra, pestaña **Faltantes**; los ajustes de inventario, en **Transferencias y ajustes** y en
+el Kárdex. La dirección vieja lleva a Compras.
+
+**¿Por qué el ajuste pide «Subir» o «Bajar» en vez de un número con signo?** Porque así lo decidió el dueño (Lote 14): la cantidad se escribe en
+positivo y la dirección dice si suma o resta; además, los motivos cambian según la dirección (Encontrado solo al subir; Daño, Pérdida y Vencido solo
+al bajar). El API sigue recibiendo la cantidad con signo.
+
+**¿Por qué algunos filtros del Kárdex se ven atenuados?** Las tres pestañas comparten los filtros, pero cada una aplica solo algunos; los que no
+aplica se atenúan y una nota bajo la barra los nombra. No se pierden: valen al volver a la pestaña donde aplican.
+
+**¿Cómo veo qué documento originó un movimiento?** Haga clic en la fila del Kárdex (o de Ajustes o Transferencias): el detalle muestra el
+**Documento de origen** con su estatus y un botón **Abrir** (aparece solo si usted tiene el permiso y el módulo de esa pantalla), y los movimientos
+relacionados.
+
+**¿Cómo confirmo un conteo?** Cuente las líneas (escriba el SKU o el código de barras en el escáner y pulse Enter, o escriba la cantidad en la
+propia fila) y pulse **Confirmar conteo y ajustar**; queda en **Concordancia** o **Diferencia**. Ya no hay «Terminar conteo» ni «Reconciliar».
+
+**¿Cómo asigno un conteo?** Con el ícono de persona con «+» en la fila de la lista de conteos (necesita `warehouse.manage`; para elegir a quién,
+también `admin.users`).
+
+**¿Qué hago con un descuadre?** Vea Kárdex de movimientos › Conciliación. Corregir el saldo según el Kárdex o descartar con una nota; un ajuste o un
+conteo no lo arreglan (manual 06, sección 3.3).

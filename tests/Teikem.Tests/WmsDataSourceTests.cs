@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
 using Teikem.Infrastructure.Services;
 using Teikem.Infrastructure.Wms;
@@ -63,7 +64,7 @@ public sealed class WmsDataSourceTests
     {
         var x = await SeedAsync();
         await using var f = x.F;
-        var rows = await new StockBalanceDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups)).LoadAsync(new DataQuery(), default);
+        var rows = await new StockBalanceDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups, TenantClock.Default)).LoadAsync(new DataQuery(), default);
 
         Assert.All(rows, r => Assert.Equal(x.Pn.ProductId, r["ProductId"]));   // sin PZ (en cero) ni el otro tenant
         Assert.Equal(2, rows.Count);
@@ -96,7 +97,7 @@ public sealed class WmsDataSourceTests
     {
         var x = await SeedAsync();
         await using var f = x.F;
-        var rows = await new InventoryTransactionDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups)).LoadAsync(new DataQuery(), default);
+        var rows = await new InventoryTransactionDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups, TenantClock.Default)).LoadAsync(new DataQuery(), default);
         var pn = rows.Where(r => (int)r["ProductId"]! == x.Pn.ProductId).ToList();
 
         Assert.Equal(6, rows.Count);   // 4 de PN + 2 de PZ; nada del otro tenant
@@ -129,7 +130,7 @@ public sealed class WmsDataSourceTests
             ReasonCode: AdjustmentReasons.Damage));
         await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Issue, p.ProductId, 4m, FromWarehouseId: w.WarehouseId, FromBinId: bin.WarehouseBinId));
 
-        var rows = await new InventoryTransactionDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups)).LoadAsync(new DataQuery(), default);
+        var rows = await new InventoryTransactionDataSource(f.Db, new InventoryReadService(f.Db, f.Tenant, f.Lookups, TenantClock.Default)).LoadAsync(new DataQuery(), default);
         Assert.Equal(4, rows.Count);
         decimal Sum(string filter)
         {

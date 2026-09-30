@@ -9,8 +9,9 @@
 // Los armadores (`buildInventoryReport`, `buildAdjustmentsReport`) son puros y se prueban sin DOM ni API.
 import { parseApiDate } from '../../kernel/api/dates'
 import { downloadReportPdf, type ReportSpec, type ReportValue } from '../../kernel/ui/reportPdf'
-import { exportInventoryTransactions, exportProducts, type KardexRowDto, type ProductListItemDto } from './api'
+import { exportInventoryTransactions, exportProducts, type GetQuery, type KardexRowDto, type ProductListItemDto } from './api'
 import {
+  ADJUSTMENT_TXN_TYPE,
   adjustmentsKardexQuery,
   describeProductFilters,
   productListQuery,
@@ -31,6 +32,18 @@ export interface ProductReportContext {
   generatedAt?: Date
   filters: ProductFilterState
   names: ProductFilterNames
+  /**
+   * Lote 14 (hallazgo 22) — Reporte de ajustes con los filtros de otra pantalla (Transferencias y ajustes): la consulta del
+   * Kárdex ya armada (fechas, dueño, dirección, motivo…) y sus "Filtros aplicados" ya traducidos. Con ella se ignoran
+   * `filters`/`names` (y el aviso del KPI) en ese reporte.
+   */
+  adjustments?: AdjustmentsReportQuery
+}
+
+/** Consulta explícita del Reporte de ajustes: la del Kárdex (se fuerza `types=[ADJUSTMENT]`) y los filtros legibles. */
+export interface AdjustmentsReportQuery {
+  kardexQuery: GetQuery<'/api/v1/inventory/transactions'>
+  filterLabels: { label: string; value: string }[]
 }
 
 const R = 'warehouse.products.reports'
@@ -210,7 +223,7 @@ export function buildAdjustmentsReport(allRows: readonly KardexRowDto[], truncat
   const notices: string[] = []
   if (truncated) notices.push(t(`${R}.truncatedAdjustments`, { count: formatNumber(allRows.length, lang) }))
   if (openingBalances > 0) notices.push(t(`${R}.openingBalancesExcluded`, { count: formatNumber(openingBalances, lang) }))
-  if (ctx.filters.kpi) notices.push(t(`${R}.kpiNotApplied`, { view: t(`warehouse.products.kpis.view.${ctx.filters.kpi}`) }))
+  if (ctx.filters.kpi && !ctx.adjustments) notices.push(t(`${R}.kpiNotApplied`, { view: t(`warehouse.products.kpis.view.${ctx.filters.kpi}`) }))
 
   const productCell = (r: KardexRowDto) => {
     const extra = [
@@ -227,7 +240,7 @@ export function buildAdjustmentsReport(allRows: readonly KardexRowDto[], truncat
     user: ctx.user,
     generatedAt: ctx.generatedAt,
     locale: lang,
-    filters: describeProductFilters(ctx.filters, ctx.names, t, 'adjustments'),
+    filters: ctx.adjustments ? ctx.adjustments.filterLabels : describeProductFilters(ctx.filters, ctx.names, t, 'adjustments'),
     columns: [
       { header: t(`${R}.columns.date`), noWrap: true },
       { header: t(`${R}.columns.sku`) },
@@ -271,6 +284,13 @@ export function buildAdjustmentsReport(allRows: readonly KardexRowDto[], truncat
   }
 }
 
+/** Consulta del Kárdex del Reporte de ajustes: la explícita (Lote 14, siempre con tipo ADJUSTMENT) o la trasladada de los
+ *  filtros de Productos e inventario. */
+export function adjustmentsReportKardexQuery(ctx: Pick<ProductReportContext, 'filters' | 'adjustments'>): GetQuery<'/api/v1/inventory/transactions'> {
+  if (ctx.adjustments) return { ...ctx.adjustments.kardexQuery, types: [ADJUSTMENT_TXN_TYPE], skip: undefined, take: undefined }
+  return adjustmentsKardexQuery(ctx.filters)
+}
+
 // ---------------------------------------------------------------------------------------------------------------------
 // Generación (lee el API y descarga el PDF)
 // ---------------------------------------------------------------------------------------------------------------------
@@ -283,6 +303,6 @@ export async function generateInventoryReport(ctx: ProductReportContext): Promis
 
 /** Reporte de ajustes con los filtros de la tabla trasladados al Kárdex: lee todos los ajustes y descarga el PDF. */
 export async function generateAdjustmentsReport(ctx: ProductReportContext): Promise<void> {
-  const { items, truncated } = await exportInventoryTransactions(adjustmentsKardexQuery(ctx.filters))
+  const { items, truncated } = await exportInventoryTransactions(adjustmentsReportKardexQuery(ctx))
   await downloadReportPdf(buildAdjustmentsReport(items, truncated, { ...ctx, generatedAt: ctx.generatedAt ?? new Date() }))
 }

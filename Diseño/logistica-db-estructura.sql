@@ -2171,6 +2171,12 @@ CREATE TABLE dbo.CartonLine (
 );
 GO
 
+-- Lote 14 (D2, D3): OriginLookupId = origen del conteo (CycleCountOrigin: MANUAL selección | CHANGES lo cambiado);
+-- ChangesFromUtc/ChangesToUtc = ventana [desde, hasta) de movimientos de "lo cambiado" (la siguiente generación del almacén
+-- arranca en el último ChangesToUtc: IX_CycleCount_Origin). Guardado (IF OBJECT_ID / COL_LENGTH) para agregar las columnas a
+-- una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.CycleCount') IS NULL
+BEGIN
 CREATE TABLE dbo.CycleCount (
     CycleCountId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
@@ -2183,10 +2189,34 @@ CREATE TABLE dbo.CycleCount (
     ReconciledAtUtc DATETIME2 NULL,                                           -- Lote 6
     ReconciledBy INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
     RowVersion   ROWVERSION,                                                  -- Lote 6
+    OriginLookupId INT NULL,                                                  -- Lote 14: Entity='CycleCountOrigin'
+    ChangesFromUtc DATETIME2 NULL,                                            -- Lote 14: lo cambiado, desde (inclusivo)
+    ChangesToUtc DATETIME2 NULL,                                              -- Lote 14: lo cambiado, hasta (exclusivo)
     CONSTRAINT UQ_CycleCount_Number UNIQUE (TenantId, Number),
     CONSTRAINT UQ_CycleCount_IdTenant UNIQUE (CycleCountId, TenantId),                                                     -- Lote 6
-    CONSTRAINT FK_CycleCount_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId)  -- Lote 6
+    CONSTRAINT FK_CycleCount_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId), -- Lote 6
+    CONSTRAINT FK_CycleCount_Origin FOREIGN KEY (OriginLookupId) REFERENCES dbo.LookupCode(LookupCodeId),                  -- Lote 14
+    CONSTRAINT CK_CycleCount_Changes CHECK (ChangesFromUtc IS NULL OR ChangesToUtc IS NULL OR ChangesFromUtc <= ChangesToUtc) -- Lote 14
 );
+END
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.CycleCount', 'OriginLookupId') IS NULL
+        ALTER TABLE dbo.CycleCount ADD OriginLookupId INT NULL;
+    IF COL_LENGTH('dbo.CycleCount', 'ChangesFromUtc') IS NULL
+        ALTER TABLE dbo.CycleCount ADD ChangesFromUtc DATETIME2 NULL;
+    IF COL_LENGTH('dbo.CycleCount', 'ChangesToUtc') IS NULL
+        ALTER TABLE dbo.CycleCount ADD ChangesToUtc DATETIME2 NULL;
+END
+GO
+
+-- Lote 14: FK y CHECK de las columnas nuevas en su propio lote (las columnas ya existen al compilarlo); solo si faltan.
+IF OBJECT_ID('dbo.FK_CycleCount_Origin', 'F') IS NULL
+    ALTER TABLE dbo.CycleCount ADD CONSTRAINT FK_CycleCount_Origin FOREIGN KEY (OriginLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+IF OBJECT_ID('dbo.CK_CycleCount_Changes', 'C') IS NULL
+    ALTER TABLE dbo.CycleCount ADD CONSTRAINT CK_CycleCount_Changes CHECK (ChangesFromUtc IS NULL OR ChangesToUtc IS NULL OR ChangesFromUtc <= ChangesToUtc);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CycleCount_Origin' AND object_id = OBJECT_ID('dbo.CycleCount'))
+    CREATE INDEX IX_CycleCount_Origin ON dbo.CycleCount(TenantId, WarehouseId, OriginLookupId, ChangesToUtc);
 GO
 
 -- Lote 6 (D22): SystemQty = foto al crear; VarianceQty es informativa (contra la foto). ReconciledSystemQty = saldo en mano
@@ -2207,6 +2237,11 @@ CREATE TABLE dbo.CycleCountLine (
     CONSTRAINT UQ_CycleCountLine UNIQUE (CycleCountId, WarehouseBinId, ProductId, LotId),                            -- Lote 6
     CONSTRAINT CK_CycleCountLine_Qty CHECK (SystemQty >= 0 AND (CountedQty IS NULL OR CountedQty >= 0) AND (ReconciledSystemQty IS NULL OR ReconciledSystemQty >= 0))  -- Lote 6
 );
+GO
+
+-- Lote 14: posiciones con un conteo abierto ("lo cambiado" no repite una posición con conteo Pendiente o Contado).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_CycleCountLine_Bin' AND object_id = OBJECT_ID('dbo.CycleCountLine'))
+    CREATE INDEX IX_CycleCountLine_Bin ON dbo.CycleCountLine(WarehouseBinId) INCLUDE (CycleCountId);
 GO
 
 -- Lote 6 (D43): recolección y empaque ad hoc. Number = EMP-##### del contador PACKBATCH (D10): al empacar es el PackBatchNumber
@@ -2256,6 +2291,54 @@ CREATE TABLE dbo.PickBatchLine (
     CONSTRAINT CK_PickBatchLine CHECK (Quantity > 0 AND (UnitCost IS NULL OR UnitCost >= 0) AND (SerialId IS NULL OR Quantity = 1))
 );
 CREATE INDEX IX_PickBatchLine_Batch ON dbo.PickBatchLine(PickBatchId);
+GO
+
+-- Lote 14 (D5): descuadre Kárdex ↔ saldo detectado por la conciliación. Kind BALANCE = una clave (producto, almacén, posición,
+-- lote); PRODUCT_TOTAL = el total del producto (sin almacén: SQL Server no revisa una FK compuesta con alguna columna NULL).
+-- LedgerQty y BalanceQty son las cifras de la última revisión (la diferencia se calcula en código). OPEN → RESOLVED (el saldo
+-- tomó lo que da el Kárdex: CorrectedFrom/To) | DISMISSED (con nota) | SELF_CORRECTED. Un solo abierto por clave
+-- (UX_InvDiscrepancy_OpenKey, filtrado: con varias instancias del API la base es la última línea). Guardado (IF OBJECT_ID)
+-- para agregarla a una base ya creada.
+IF OBJECT_ID('dbo.InventoryDiscrepancy') IS NULL
+BEGIN
+CREATE TABLE dbo.InventoryDiscrepancy (
+    InventoryDiscrepancyId INT IDENTITY(1,1) PRIMARY KEY,
+    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    KindLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),        -- Entity='InventoryDiscrepancyKind'
+    TriggerLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),     -- Entity='ReconciliationTrigger'
+    ProductId    INT NOT NULL,
+    WarehouseId  INT NULL,
+    WarehouseBinId INT NULL,
+    LotId        INT NULL,
+    LedgerQty    DECIMAL(16,3) NOT NULL,
+    BalanceQty   DECIMAL(16,3) NOT NULL,
+    DetectedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    LastCheckedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CheckCount   INT NOT NULL DEFAULT 1,
+    LastTxnId    BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),        -- Entity='InventoryDiscrepancyStatus'
+    ClosedAtUtc  DATETIME2 NULL,
+    ResolvedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    ResolutionNotes NVARCHAR(500) NULL,
+    CorrectedFromQty DECIMAL(16,3) NULL,
+    CorrectedToQty DECIMAL(16,3) NULL,
+    CycleCountId INT NULL,
+    RowVersion   ROWVERSION,
+    CONSTRAINT UQ_InvDiscrepancy_PublicId UNIQUE (PublicId),
+    CONSTRAINT FK_InvDiscrepancy_Product FOREIGN KEY (ProductId, TenantId) REFERENCES dbo.Product(ProductId, TenantId),
+    CONSTRAINT FK_InvDiscrepancy_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),
+    CONSTRAINT FK_InvDiscrepancy_Bin FOREIGN KEY (WarehouseBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId),
+    CONSTRAINT FK_InvDiscrepancy_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),
+    CONSTRAINT FK_InvDiscrepancy_CycleCount FOREIGN KEY (CycleCountId, TenantId) REFERENCES dbo.CycleCount(CycleCountId, TenantId),
+    CONSTRAINT CK_InvDiscrepancy_Closed CHECK (ResolvedBy IS NULL OR ClosedAtUtc IS NOT NULL),
+    CONSTRAINT CK_InvDiscrepancy_Corrected CHECK (CorrectedToQty IS NULL OR CorrectedToQty >= 0)
+);
+CREATE UNIQUE INDEX UX_InvDiscrepancy_OpenKey ON dbo.InventoryDiscrepancy(TenantId, KindLookupId, ProductId, WarehouseId, WarehouseBinId, LotId)
+    WHERE ClosedAtUtc IS NULL;
+CREATE INDEX IX_InvDiscrepancy_Tenant_Open ON dbo.InventoryDiscrepancy(TenantId, ClosedAtUtc, DetectedAtUtc);
+CREATE INDEX IX_InvDiscrepancy_Product ON dbo.InventoryDiscrepancy(ProductId);
+END
 GO
 
 /* =========================================================================

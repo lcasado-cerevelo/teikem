@@ -20,8 +20,13 @@ namespace Teikem.Infrastructure.Wms;
 ///   cantidad y baja reservado y en mano juntos (cross-dock). Si no alcanza → 409 insufficient_stock, sin escribir nada.
 /// - Última línea en SQL: CK_StockBalance_Qty (547 → 409 insufficient_stock), CK_InvTxn_Quantity y CK_InvTxn_Direction.
 /// - Exige transacción (RunInTransactionAsync) con proveedor relacional; con InMemory valida todo antes de tocar el tracker.
+/// - Lote 14: la conciliación (lectura) vive en InventoryReconciler; aquí queda la única corrección de un descuadre,
+///   RebuildBalanceAsync (el saldo toma lo que da el Kárdex, sin escribir movimiento).
+/// - Lote 14 (P2, D14): al final de PostAsync anota los productos y el mayor movimiento en IInventoryChangeSink; la revisión en
+///   segundo plano los recibe solo con el commit real de la transacción (InventoryChangeCommitInterceptor).
 /// </summary>
-public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses)
+public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses,
+    IInventoryChangeSink changes)
 {
     public const string ProductOfPostingNotFound = "Producto no encontrado.";
     public const string SerialNotOfProduct = "La serie no pertenece al producto.";
@@ -217,7 +222,12 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
 
         // 9. Guardado con traducción de la última línea en SQL.
         await SaveAsync(ct);
-        return rows.Select(r => r.InventoryTransactionId).ToList();
+
+        // 10. Lote 14 (D14): se anota en la bandeja de la petición qué productos cambiaron; sale a la revisión en segundo plano
+        //     solo si la transacción se confirma (InventoryChangeCommitInterceptor).
+        var ids = rows.Select(r => r.InventoryTransactionId).ToList();
+        changes.Record(tenantId, productIds, ids.Count == 0 ? null : ids.Max());
+        return ids;
     }
 
     // ================================================================ reservas (no escriben movimiento)
@@ -298,43 +308,53 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         await SaveAsync(ct);
     }
 
-    // ================================================================ conciliación
+    // ================================================================ reconstrucción del saldo (Lote 14, D5)
 
     /// <summary>
-    /// Reconstruye los saldos desde el ledger (InventoryRules.Rebuild) y los compara con StockBalance por clave; y por producto
-    /// Σ Quantity sin TRANSFER (NetByProduct) contra Σ QtyOnHand. Devuelve los descuadres (vacío = el invariante se cumple).
+    /// Lote 14 (D5) — "Corregir el saldo según el Kárdex": el saldo de la clave toma lo que dan sus movimientos. Es la única
+    /// corrección de un descuadre Kárdex ↔ saldo (un ajuste o un conteo mueven los dos por igual y no lo arreglan).
+    /// - Exige transacción; asegura la fila (upsert con UPDLOCK + HOLDLOCK) y la bloquea, y SOLO ENTONCES suma el Kárdex de la
+    ///   clave (To +|Q|, From −|Q|): con la clave bloqueada ningún movimiento de esa clave puede intercalarse.
+    /// - Kárdex negativo o menor que lo reservado → 409 sin escribir nada (CK_StockBalance_Qty lo rechazaría igual).
+    /// - No escribe InventoryTransaction: el Kárdex manda; cambia QtyOnHand y UpdatedAtUtc (lo reservado no se toca).
+    /// Devuelve el en mano antes y después (iguales = ya cuadraba) y lo reservado.
     /// </summary>
-    public async Task<IReadOnlyList<ReconciliationRow>> ReconcileAsync(int? productId, CancellationToken ct)
+    public async Task<BalanceRebuildResult> RebuildBalanceAsync(BalanceKey key, CancellationToken ct)
     {
-        var typeNames = (await lookups.GetDomainAsync(LookupDomains.InventoryTxnType, ct)).ToDictionary(l => l.LookupCodeId, l => l.InternalCode);
-        var txq = db.InventoryTransactions.AsNoTracking();
-        var bq = db.StockBalances.AsNoTracking();
-        if (productId is int pid) { txq = txq.Where(t => t.ProductId == pid); bq = bq.Where(b => b.ProductId == pid); }
-        var raw = await txq.Select(t => new { t.TxnTypeLookupId, t.ProductId, t.LotId, t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId, t.Quantity })
-            .ToListAsync(ct);
-        var ledger = raw.Select(t => new LedgerRow(typeNames.GetValueOrDefault(t.TxnTypeLookupId) ?? string.Empty, t.ProductId, t.LotId,
-            t.FromWarehouseId, t.FromBinId, t.ToWarehouseId, t.ToBinId, t.Quantity)).ToList();
-        var balances = await bq.Select(b => new { b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId, b.QtyOnHand }).ToListAsync(ct);
+        InventoryQueries.RequireTransaction(db, nameof(RebuildBalanceAsync));
+        var tenantId = RequireTenant();
+        await db.UpsertBalanceAsync(key, ct);
+        var balance = await db.LockBalanceAsync(key, ct);
 
-        var rebuilt = InventoryRules.Rebuild(ledger);
-        var byKey = balances.GroupBy(b => new BalanceKey(b.ProductId, b.WarehouseId, b.WarehouseBinId, b.LotId))
-            .ToDictionary(g => g.Key, g => g.Sum(b => b.QtyOnHand));
-        var result = new List<ReconciliationRow>();
-        foreach (var k in rebuilt.Keys.Union(byKey.Keys).OrderBy(k => k))
+        var (p, w, b, l) = (key.ProductId, key.WarehouseId, key.BinId, key.LotId);
+        var inbound = await db.InventoryTransactions.AsNoTracking()
+            .Where(t => t.ProductId == p && t.ToWarehouseId == w && t.ToBinId == b && t.LotId == l)
+            .SumAsync(t => Math.Abs(t.Quantity), ct);
+        var outbound = await db.InventoryTransactions.AsNoTracking()
+            .Where(t => t.ProductId == p && t.FromWarehouseId == w && t.FromBinId == b && t.LotId == l)
+            .SumAsync(t => Math.Abs(t.Quantity), ct);
+        var ledgerQty = inbound - outbound;
+
+        var before = balance?.QtyOnHand ?? 0m;
+        var reserved = balance?.QtyReserved ?? 0m;
+        if (ledgerQty == before) return new BalanceRebuildResult(before, before, reserved);
+
+        var sku = (await SkusAsync(new[] { p }, ct)).GetValueOrDefault(p) ?? string.Empty;
+        var where = b is int binId
+            ? (await BinCodesAsync(new int?[] { binId }, ct)).GetValueOrDefault(binId) ?? string.Empty
+            : await db.Warehouses.AsNoTracking().Where(x => x.WarehouseId == w).Select(x => x.Code).FirstOrDefaultAsync(ct) ?? string.Empty;
+        var error = ReconciliationRules.RebuildCheck(ledgerQty, reserved, sku, where);
+        if (error is not null) throw new ConflictException(error);
+
+        if (balance is null)
         {
-            var l = rebuilt.GetValueOrDefault(k);
-            var b = byKey.GetValueOrDefault(k);
-            if (l != b) result.Add(new ReconciliationRow(k, l, b, false));
+            balance = new StockBalance { TenantId = tenantId, ProductId = p, WarehouseId = w, WarehouseBinId = b, LotId = l };
+            db.StockBalances.Add(balance);
         }
-        var net = InventoryRules.NetByProduct(ledger);
-        var onHand = balances.GroupBy(b => b.ProductId).ToDictionary(g => g.Key, g => g.Sum(b => b.QtyOnHand));
-        foreach (var p in net.Keys.Union(onHand.Keys).OrderBy(p => p))
-        {
-            var l = net.GetValueOrDefault(p);
-            var b = onHand.GetValueOrDefault(p);
-            if (l != b) result.Add(new ReconciliationRow(new BalanceKey(p, 0, null, null), l, b, true));
-        }
-        return result;
+        balance.QtyOnHand = ledgerQty;
+        balance.UpdatedAtUtc = DateTime.UtcNow;
+        await SaveAsync(ct);
+        return new BalanceRebuildResult(before, ledgerQty, reserved);
     }
 
     // ================================================================ series

@@ -157,10 +157,6 @@
       "title": "Recibo",
       "subtitle": "ASN, muelle y verificación de lo que entra"
     },
-    "inventoryAdjustments": {
-      "title": "Ajustes de inventario",
-      "subtitle": "recibos parciales y correcciones contra el ledger"
-    },
     "cycleCounts": {
       "title": "Conteo cíclico",
       "subtitle": "varianza y ajuste contra el ledger"
@@ -280,6 +276,10 @@
     "portalProfile": {
       "title": "Perfil",
       "subtitle": "información de tu cuenta"
+    },
+    "transfersAdjustments": {
+      "title": "Transferencias y ajustes",
+      "subtitle": "mueve inventario entre posiciones y corrige cantidades con motivo"
     }
   },
   "status": {
@@ -604,7 +604,8 @@
       "showInPulseCompany": "…en el de la compañía",
       "panels": {
         "INDICATORS": "Tus indicadores",
-        "CHARTS": "Tus gráficos"
+        "CHARTS": "Tus gráficos",
+        "ATTENTION": "Necesita tu atención"
       },
       "organizeMine": "Organizar mi Pulso",
       "organizeCompany": "Organizar el de la compañía",
@@ -681,6 +682,30 @@
       },
       "cardMode": "Rango de fecha de {name}",
       "lockedHint": "Solo quien lo creó o quien tiene permiso para cambiar fechas puede cambiar el rango."
+    },
+    "attention": {
+      "pending": "{count} pendientes",
+      "pendingOne": "1 pendiente",
+      "listLabel": "Pendientes más antiguos",
+      "review": "Revisar",
+      "since": "desde {when}",
+      "viewAll": "Ver todos ({count})",
+      "viewAllGroup": "Ver todos: {group} ({count})",
+      "allClear": "Todo en orden",
+      "allClearBody": "No hay nada pendiente de revisar.",
+      "items": {
+        "INVENTORY_DISCREPANCY": {
+          "title": "Descuadre en {sku}",
+          "titleTotal": "Descuadre en el total de {sku}",
+          "group": "Descuadres de inventario",
+          "allBins": "todas las posiciones",
+          "lot": "lote {lot}",
+          "ledger": "Kárdex",
+          "balance": "Saldo",
+          "difference": "Diferencia",
+          "reviewLabel": "Revisar el descuadre de {sku} ({where})"
+        }
+      }
     },
     "activity": {
       "title": "Actividad reciente",
@@ -1452,7 +1477,9 @@
           "available": "Disponible",
           "cost": "Valor costo",
           "sale": "Valor venta",
-          "updated": "Actualizado"
+          "updated": "Actualizado",
+          "owner": "Dueño",
+          "category": "Categoría"
         },
         "filters": {
           "warehouse": "Almacén",
@@ -1547,7 +1574,10 @@
           "reason": "Motivo",
           "notes": "Notas",
           "lotNumber": "Lote",
-          "serialNumbers": "Números de serie (uno por línea)"
+          "serialNumbers": "Números de serie (uno por línea)",
+          "direction": "Tipo de ajuste",
+          "lot": "Lote",
+          "serialsOut": "Series que salen"
         },
         "errors": {
           "productRequired": "Seleccione un producto.",
@@ -1558,8 +1588,24 @@
           "quantityZero": "La cantidad del ajuste no puede ser cero.",
           "quantityDecimals": "La cantidad admite como máximo 3 decimales.",
           "lotNumberRequired": "Indique el número de lote.",
-          "serialNumbersRequired": "Indique al menos un número de serie."
-        }
+          "serialNumbersRequired": "Indique al menos un número de serie.",
+          "directionRequired": "Elija si el ajuste sube o baja el inventario.",
+          "quantityRequired": "Indique la cantidad del ajuste.",
+          "quantityPositive": "La cantidad debe ser mayor que cero.",
+          "exceedsAvailable": "No puede bajar más de lo disponible en la posición ({qty}).",
+          "lotRequired": "Seleccione el lote."
+        },
+        "up": "Subir",
+        "down": "Bajar",
+        "submit": "Aplicar ajuste",
+        "savedQty": "Ajuste registrado ({qty}).",
+        "availableInBin": "Disponible en la posición: {qty}",
+        "serialCount": "{count} series",
+        "reasonPlaceholder": "Busque un motivo…",
+        "lotPlaceholder": "Elija el lote…",
+        "lotAvailable": "disponible {qty}",
+        "lotExpiry": "vence {date}",
+        "serialsPlaceholder": "Elija las series…"
       },
       "transferModal": {
         "title": "Transferencia de inventario",
@@ -1571,7 +1617,9 @@
           "toWarehouse": "Almacén de destino",
           "toBin": "Posición de destino",
           "quantity": "Cantidad",
-          "notes": "Notas"
+          "notes": "Notas",
+          "item": "Ítem",
+          "serials": "Series"
         },
         "errors": {
           "productRequired": "Seleccione un producto.",
@@ -1581,7 +1629,74 @@
           "toBinRequired": "Seleccione la posición de destino.",
           "quantityInvalid": "Se esperaba un número.",
           "quantityPositive": "La cantidad debe ser mayor que cero.",
-          "samePosition": "El origen y el destino no pueden ser la misma posición."
+          "samePosition": "El origen y el destino no pueden ser la misma posición.",
+          "itemRequired": "Elija el ítem a transferir.",
+          "serialsRequired": "Elija al menos una serie.",
+          "exceedsAvailable": "No puede transferir más de lo disponible en la posición ({qty})."
+        },
+        "submit": "Transferir",
+        "lot": "Lote {lot}",
+        "available": "disponible {qty}",
+        "availableHelp": "Disponible en la posición: {qty}",
+        "itemHelp": "Elija primero la posición de origen.",
+        "itemPlaceholder": "Busque por SKU, nombre o lote…"
+      },
+      "summary": {
+        "label": "Resumen de movimientos",
+        "movements": "Movimientos",
+        "inCount": "Entradas (mov.)",
+        "inQty": "Entradas (uds)",
+        "outCount": "Salidas (mov.)",
+        "outQty": "Salidas (uds)",
+        "internal": "Internos",
+        "internalHint": "Transferencias que no salen de los almacenes o posiciones filtrados.",
+        "onHand": "En mano",
+        "available": "Disponible"
+      },
+      "filters": {
+        "label": "Filtros del Kárdex",
+        "range": "Fecha",
+        "type": "Tipo",
+        "warehouse": "Almacén",
+        "bin": "Posición",
+        "product": "Producto",
+        "category": "Categoría",
+        "owner": "Dueño",
+        "reason": "Motivo",
+        "direction": "Dirección",
+        "directionIn": "Entradas",
+        "directionOut": "Salidas",
+        "lot": "Lote",
+        "serial": "Serie",
+        "manualOnly": "Solo manuales",
+        "includeZero": "Incluir en cero",
+        "onlyAvailable": "Solo con disponible",
+        "status": "Estatus",
+        "ref": "Documento: {entity} #{id}",
+        "refTitle": "Movimientos de un documento de origen",
+        "refRemove": "Quitar el filtro de documento",
+        "names": {
+          "range": "Fecha",
+          "types": "Tipo",
+          "warehouses": "Almacén",
+          "bins": "Posición",
+          "products": "Producto",
+          "categories": "Categoría",
+          "owners": "Dueño",
+          "reasons": "Motivo",
+          "direction": "Dirección",
+          "manualOnly": "Solo manuales",
+          "lot": "Lote",
+          "serial": "Serie",
+          "search": "Buscar",
+          "includeZero": "Incluir en cero",
+          "onlyAvailable": "Solo con disponible",
+          "status": "Estatus"
+        },
+        "notApplied": {
+          "kardex": "No aplican al Kárdex: {filters}.",
+          "balances": "No aplican a Saldos (solo cambian el resumen de movimientos): {filters}.",
+          "reconciliation": "No aplican a Conciliación: {filters}."
         }
       }
     },
@@ -1726,34 +1841,6 @@
           "serialsRequired": "El producto {sku} se controla por serie; capture los números de serie.",
           "serialCountMismatch": "Se capturaron {count} serie(s) para una cantidad de {qty}; deben coincidir."
         }
-      }
-    },
-    "inventoryAdjustments": {
-      "intro": "Órdenes de compra recibidas parcialmente. Para cada producto corto puedes cerrar el faltante (aceptarlo como final), reordenarlo con el mismo proveedor, o hacer un ajuste manual con motivo — cada resolución queda registrada.",
-      "listTitle": "Compras con recibo parcial",
-      "short": "{qty} corto",
-      "lines": "{count} línea(s)",
-      "emptyList": "Sin recibos parciales pendientes",
-      "selectPrompt": "Selecciona una compra",
-      "reorderNote": "Reordenar crea un borrador de PO nuevo con el mismo proveedor por la cantidad faltante, visible en Compras.",
-      "tableLabel": "Líneas en faltante de la compra",
-      "columns": {
-        "shortage": "Faltante",
-        "resolve": "Resolver"
-      },
-      "actions": {
-        "close": "Cerrar",
-        "reorder": "Reordenar",
-        "manual": "Ajuste manual"
-      },
-      "qtyPlaceholder": "Cant.",
-      "reasonPlaceholder": "Motivo",
-      "qtyAria": "Cantidad del ajuste de {sku}",
-      "reasonAria": "Motivo del ajuste de {sku}",
-      "toast": {
-        "closed": "Faltante cerrado: {sku}",
-        "reordered": "Reorden creada: {number}",
-        "adjusted": "Ajuste aplicado: +{qty} {sku}"
       }
     },
     "tasks": {
@@ -2366,32 +2453,45 @@
     },
     "cycleCounts": {
       "title": "Conteo cíclico",
-      "subtitle": "Foto del saldo en mano, captura de lo contado y reconciliación contra el saldo actual.",
-      "tabCounts": "Conteos",
-      "tabTasks": "Tareas de conteo",
-      "tasksTitle": "Tareas de conteo",
+      "subtitle": "Varianza y ajuste contra el Kárdex: cuenta posición por posición y confirma en un paso.",
+      "modeTag": "Modo: informado",
+      "intro": "Conteo informado: quien cuenta ve la cantidad esperada. La varianza se calcula al vuelo y, al confirmar, la diferencia se registra como ajuste en el Kárdex de movimientos; nada se ajusta fuera de él.",
+      "splitLabel": "Cambiar el ancho de la lista de conteos y del conteo elegido",
       "new": "Nuevo conteo",
+      "newChanges": "Conteo de lo cambiado",
       "create": "Crear conteo",
       "created": "Conteo {number} creado con {count} línea(s).",
       "createHelp": "Sin zonas ni posiciones se toma todo el saldo en mano del almacén (máximo 1000 líneas).",
-      "count": "{count} conteo(s)",
-      "open": "Abrir",
       "searchPlaceholder": "Número, SKU o producto",
       "notFound": "Conteo no encontrado.",
-      "back": "Volver a Conteo cíclico",
+      "deleteTitle": "Eliminar conteo",
+      "deleteBody": "¿Eliminar el conteo pendiente {number}? Su tarea de conteo se cancela y la baja queda en la auditoría.",
+      "deleteConfirm": "Eliminar",
+      "deleted": "Conteo {number} eliminado.",
       "columns": {
         "number": "Número",
-        "warehouse": "Almacén",
         "status": "Estatus",
+        "origin": "Origen",
+        "warehouse": "Almacén",
+        "bin": "Posición",
+        "zone": "Zona",
+        "lines": "Líneas",
         "progress": "Contadas",
         "netVariance": "Diferencia neta",
-        "createdAt": "Creado"
+        "assignedTo": "Asignado a",
+        "createdAt": "Creado",
+        "reconciledAt": "Confirmado"
       },
       "filters": {
-        "warehouses": "Almacenes",
+        "aria": "Filtros de conteos",
+        "warehouses": "Almacén",
+        "zones": "Zona",
+        "bins": "Posición",
+        "product": "Producto",
         "status": "Estatus",
+        "origin": "Origen",
         "created": "Creado",
-        "product": "Producto"
+        "search": "Buscar"
       },
       "fields": {
         "warehouse": "Almacén",
@@ -2406,61 +2506,275 @@
         "countedRequired": "Indique la cantidad contada.",
         "lotAmbiguous": "Indique el lote por su id o por su número, no ambos."
       },
+      "list": {
+        "title": "Tareas de conteo",
+        "aria": "Conteos",
+        "empty": "No hay conteos con estos filtros.",
+        "positions": "{n} posiciones",
+        "noBins": "Sin posiciones",
+        "zone": "Zona {zone}",
+        "lines": "{n} línea(s)",
+        "assigned": "Asignado a {name}",
+        "unassigned": "Sin asignar",
+        "assign": "Asignar el conteo {number}",
+        "delete": "Eliminar el conteo {number}",
+        "exportName": "Conteos cíclicos"
+      },
       "detail": {
+        "select": "Selecciona una tarea de conteo",
+        "title": "Conteo",
         "progress": "{counted} de {total} líneas contadas",
-        "summary": "Resumen",
-        "varianceLines": "Líneas con diferencia",
-        "reconciledAt": "Reconciliado",
-        "staleNote": "Hay líneas cuyo saldo cambió desde la foto. 'Refrescar foto' las vuelve a fotografiar y borra su captura.",
-        "lines": "Líneas",
-        "noLines": "No hay líneas con estos filtros.",
-        "onlyPending": "Solo pendientes",
-        "onlyVariance": "Solo con diferencia",
+        "window": "Movimientos del {from} al {to}",
+        "lines": "Líneas del conteo",
+        "noLines": "El conteo no tiene líneas.",
+        "sku": "SKU",
         "product": "Producto",
         "bin": "Posición",
         "lot": "Lote",
-        "systemQty": "Foto",
-        "countedQty": "Contado",
-        "variance": "Diferencia",
-        "currentQty": "Saldo actual",
+        "expected": "Esperado",
+        "counted": "Contado",
+        "variance": "Varianza",
         "adjusted": "Ajustado",
         "pending": "Pendiente",
+        "countedOf": "Contado de la línea {n} ({sku})",
+        "serialsBtn": "Series ({n})",
+        "serialsOf": "Series contadas de la línea {n}",
+        "saving": "Guardando…",
         "stale": "Foto vieja",
         "staleHelp": "El saldo cambió desde que se tomó la foto.",
+        "staleNote": "Hay líneas cuyo saldo cambió desde la foto. 'Refrescar foto' las vuelve a fotografiar y borra su captura.",
         "changed": "Saldo cambió",
-        "changedHelp": "Al reconciliar el saldo era distinto de la foto; el ajuste se calculó sobre el saldo real.",
-        "capture": "Capturar",
-        "captureTitle": "Contar {product}",
-        "captured": "Captura guardada.",
-        "where": "Posición {bin} · lote {lot}",
-        "countedHelp": "Vacío borra la captura (la línea vuelve a pendiente).",
-        "serials": "Series contadas",
-        "expectedSerials": "Esperadas ({count}): {list}",
-        "nothingFoundLabel": "Sin series",
-        "nothingFound": "No se encontró ninguna (contado 0)",
-        "addLine": "Agregar línea",
+        "changedHelp": "Al confirmar el saldo era distinto de la foto; el ajuste se calculó sobre el saldo real.",
+        "blindNote": "Su usuario no tiene el permiso de conteo informado: las cantidades esperadas no se muestran y la captura se hace en la app de almacén.",
+        "addLine": "Agregar lo encontrado",
+        "addLineHelp": "Un producto que está en la posición pero no en el conteo: se agrega con lo contado.",
         "lineAdded": "Línea agregada.",
         "existingLot": "Lote existente",
         "newLot": "o número de lote",
         "refresh": "Refrescar foto",
         "refreshed": "Foto actualizada.",
-        "finish": "Terminar conteo",
-        "finishTitle": "Terminar conteo",
-        "finishBody": "El conteo {number} pasa a COUNTED. Todas las líneas deben estar capturadas.",
-        "finished": "Conteo terminado.",
-        "reconcile": "Reconciliar",
-        "reconcileTitle": "Reconciliar conteo",
-        "reconcileBody": "Se asientan los ajustes del conteo {number} contra el saldo actual. Después solo se consulta.",
-        "reconciled": "Conteo reconciliado.",
-        "delete": "Eliminar",
-        "deleteTitle": "Eliminar conteo",
-        "deleteBody": "¿Eliminar el conteo abierto {number}? Su tarea de conteo se cancela.",
-        "deleted": "Conteo {number} eliminado."
+        "history": "Historial",
+        "historyTitle": "Historial del conteo {number}",
+        "confirm": "Confirmar conteo y ajustar",
+        "confirmNote": "Al confirmar, cada línea con varianza genera un ajuste enlazado a este conteo ({number}).",
+        "confirmTitle": "Confirmar conteo y ajustar",
+        "confirmBody": "Se asientan en el Kárdex los ajustes del conteo {number} contra el saldo actual ({n} línea(s) con varianza). Después solo se consulta.",
+        "confirmedMatch": "Conteo {number}: {status}, sin ajustes.",
+        "confirmedVariance": "Conteo {number}: {status}, {n} ajuste(s) en el Kárdex.",
+        "unsaved": "Hay cantidades que no se pudieron guardar; corríjalas antes de confirmar.",
+        "closedNote": "Conteo cerrado. Los ajustes ya están en el Kárdex de movimientos.",
+        "seeAdjustments": "Ver los ajustes en el Kárdex",
+        "blockers": {
+          "pending": "Faltan {n} línea(s) por contar.",
+          "noLines": "El conteo no tiene líneas.",
+          "closed": "El conteo ya fue confirmado; solo se consulta.",
+          "blind": "La web no confirma conteos a ciegas."
+        }
+      },
+      "scan": {
+        "label": "Escanear o buscar producto",
+        "placeholder": "SKU, código de barras, lote o serie",
+        "help": "Escanee o escriba el código y pulse Enter: lleva a la línea y pide la cantidad.",
+        "notFound": "Ese código no está en este conteo. Use \"Agregar lo encontrado\" si el producto está en la posición.",
+        "many": "{n} líneas coinciden: elija la posición y el lote."
+      },
+      "qty": {
+        "title": "Contar {product}",
+        "where": "Posición {bin} · lote {lot}",
+        "expected": "Esperado: {qty}",
+        "counted": "Cantidad contada",
+        "countedHelp": "Enter guarda. Vacío borra la captura (la línea vuelve a pendiente).",
+        "serials": "Series contadas",
+        "expectedSerials": "Esperadas ({count}): {list}",
+        "nothingFound": "No se encontró ninguna (contado 0)",
+        "saved": "Captura guardada."
+      },
+      "changes": {
+        "title": "Conteo de lo cambiado",
+        "intro": "Crea un conteo Pendiente por cada posición con movimientos en la ventana (sin los ajustes que salen de un conteo), con todo lo que hay en ella. Hasta 200 posiciones por vez.",
+        "warehouse": "Almacén",
+        "warehouseRequired": "Elija el almacén.",
+        "from": "Desde",
+        "to": "Hasta",
+        "timeHelp": "Hora de Puerto Rico. Por defecto, desde la última vez que se generó en este almacén (la primera vez, desde el inicio del día) hasta ahora.",
+        "resetWindow": "Volver a la ventana por defecto",
+        "zones": "Zonas",
+        "includeEmpty": "Incluir posiciones vacías",
+        "includeEmptyHelp": "Las posiciones que quedaron en 0 también se cuentan, para confirmar que de verdad están vacías.",
+        "previewTitle": "Vista previa",
+        "loading": "Calculando…",
+        "window": "Ventana: {from} → {to}",
+        "last": "Última generación en este almacén: {date}.",
+        "firstTime": "Primera vez en este almacén: desde el inicio del día.",
+        "movements": "{n} movimiento(s) en la ventana",
+        "positions": "Se crearán {n} conteo(s), uno por posición, con {lines} línea(s)",
+        "withOpen": "{n} posición(es) ya tienen un conteo pendiente (se saltan)",
+        "inactive": "{n} posición(es) inactiva(s) (se saltan)",
+        "empty": "{n} posición(es) sin nada que contar (se saltan)",
+        "max": "Máximo {max} posiciones por vez.",
+        "create": "Crear {n} conteo(s)",
+        "createNone": "Crear conteos",
+        "created": "Se crearon {n} conteo(s) de lo cambiado."
       }
     },
     "productFilter": {
       "placeholder": "Buscar por SKU o nombre…",
       "remove": "Quitar {sku}"
+    },
+    "kardexView": {
+      "columns": {
+        "date": "Fecha",
+        "time": "Hora",
+        "type": "Tipo",
+        "sku": "SKU",
+        "product": "Producto",
+        "owner": "Dueño",
+        "category": "Categoría",
+        "quantity": "Cantidad",
+        "position": "Almacén/Posición",
+        "from": "Origen",
+        "to": "Destino",
+        "lotSerial": "Lote/Serie",
+        "reason": "Motivo",
+        "notes": "Nota",
+        "origin": "Origen del movimiento",
+        "ref": "Origen",
+        "user": "Usuario"
+      },
+      "origin": {
+        "manual": "Manual",
+        "count": "Conteo",
+        "task": "Acomodo o reabasto",
+        "replenish": "Reabasto",
+        "receipt": "Recibo",
+        "pick": "Recolección",
+        "purchase": "Compra",
+        "crossdock": "Cruce de muelle",
+        "order": "Orden",
+        "other": "Otro documento"
+      }
+    },
+    "kardexDetail": {
+      "title": "Movimiento #{id}",
+      "close": "Cerrar",
+      "when": "Fecha y hora",
+      "user": "Usuario",
+      "system": "Sistema",
+      "type": "Tipo",
+      "sku": "SKU",
+      "product": "Producto",
+      "owner": "Dueño",
+      "category": "Categoría",
+      "quantity": "Cantidad",
+      "fromTo": "De → a",
+      "lot": "Lote",
+      "lotSerial": "Lote/Serie",
+      "expires": "vence {date}",
+      "serial": "Serie",
+      "reason": "Motivo",
+      "origin": "Origen",
+      "notes": "Nota",
+      "document": "Documento de origen",
+      "parentDocument": "Documento de la tarea",
+      "noDocument": "Movimiento manual (sin documento)",
+      "open": "Abrir",
+      "related": "Movimientos relacionados ({count})",
+      "relatedLabel": "Movimientos relacionados",
+      "relatedTruncated": "Se muestran los primeros 200 movimientos relacionados."
+    },
+    "binFilter": {
+      "placeholder": "Código de posición…",
+      "noAccess": "Su usuario no puede consultar posiciones",
+      "none": "Sin posiciones",
+      "inactive": "Inactiva",
+      "remove": "Quitar {bin}"
+    },
+    "discrepancies": {
+      "title": "Descuadres Kárdex ↔ saldo",
+      "subtitle": "El Kárdex manda: un descuadre se corrige llevando el saldo a lo que da el Kárdex, o se descarta con una nota.",
+      "summaryLabel": "Resumen de descuadres",
+      "summary": {
+        "open": "Pendientes",
+        "shown": "En la lista"
+      },
+      "run": "Ejecutar conciliación",
+      "runHint": "Revisa ahora los saldos contra el Kárdex (los productos del filtro, o todos).",
+      "runDone": "Conciliación ejecutada.",
+      "runResult": "Conciliación del {date}: {products} productos y {balances} saldos revisados · {opened} descuadres nuevos · {stillOpen} siguen pendientes · {selfCorrected} se corrigieron solos.",
+      "auto": {
+        "off": "Revisión automática apagada",
+        "pending": "Revisión automática: {count} en cola",
+        "upToDate": "Revisión automática: al día"
+      },
+      "empty": "Sin descuadres pendientes",
+      "emptyBody": "El Kárdex y los saldos cuadran con estos filtros.",
+      "productTotal": "Total del producto",
+      "columns": {
+        "detected": "Detectado",
+        "sku": "SKU",
+        "product": "Producto",
+        "where": "Almacén/Posición",
+        "lot": "Lote",
+        "ledgerQty": "Kárdex",
+        "balanceQty": "Saldo",
+        "difference": "Diferencia",
+        "kind": "Tipo",
+        "status": "Estatus",
+        "trigger": "Detectado por"
+      },
+      "rebuild": "Corregir el saldo según el Kárdex",
+      "dismiss": "Descartar",
+      "rebuilt": "Saldo corregido según el Kárdex.",
+      "dismissed": "Descuadre descartado.",
+      "selfCorrected": "El saldo ya cuadraba; el descuadre se cerró solo.",
+      "createCount": "Crear conteo de esa posición",
+      "countCreated": "Conteo {number} creado.",
+      "openCount": "Abrir conteo {number}",
+      "errors": {
+        "dismissNotes": "Escriba una nota que explique por qué se descarta el descuadre.",
+        "notesMax": "La nota admite como máximo 500 caracteres."
+      },
+      "detail": {
+        "title": "Descuadre · {sku}",
+        "reserved": "Reservado hoy",
+        "lastChecked": "Última revisión",
+        "checks": "{date} ({count} revisiones)",
+        "differenceHelp": "Saldo − Kárdex",
+        "ledgerRules": "Un descuadre no es una diferencia física en el estante (eso lo resuelve un conteo): el saldo no coincide con la suma de los movimientos. Corregir pone el saldo igual al Kárdex sin crear un movimiento; un ajuste o un conteo no lo arreglan porque mueven las dos cosas por igual.",
+        "closedAt": "Cerrado",
+        "resolvedBy": "Resuelto por",
+        "corrected": "Saldo corregido",
+        "notes": "Nota de resolución",
+        "notesLabel": "Nota (obligatoria para descartar)",
+        "notesPlaceholder": "Por qué se corrige o se descarta",
+        "totalHelp": "Este descuadre es del total del producto: se corrige resolviendo los descuadres por posición, o se descarta con una nota.",
+        "countOffer": "El saldo ya coincide con el Kárdex. Para verificar lo que hay físicamente en la posición, cree un conteo.",
+        "movements": "Últimos movimientos de la posición",
+        "history": "Historial"
+      }
+    },
+    "transfersAdjustments": {
+      "tabAdjustments": "Ajustes",
+      "tabTransfers": "Transferencias",
+      "newAdjustment": "Ajustar",
+      "newTransfer": "Transferir",
+      "emptyAdjustments": "No hay ajustes con estos filtros.",
+      "emptyTransfers": "No hay transferencias con estos filtros.",
+      "filters": {
+        "label": "Filtros de movimientos",
+        "range": "Fecha",
+        "warehouse": "Almacén",
+        "fromWarehouse": "Almacén de origen",
+        "toWarehouse": "Almacén de destino",
+        "product": "Producto",
+        "owner": "Dueño",
+        "direction": "Tipo de ajuste",
+        "up": "Subir",
+        "down": "Bajar",
+        "reason": "Motivo",
+        "manualOnly": "Solo manuales",
+        "yes": "Sí"
+      }
     }
   },
   "system": {

@@ -47,6 +47,7 @@ const LOOKUPS: Record<string, { code: string; label: string; sortOrder: number }
   AdjustmentReason: [
     { code: 'FOUND', label: 'Encontrado', sortOrder: 1 },
     { code: 'COUNT_VARIANCE', label: 'Diferencia de conteo', sortOrder: 2 },
+    { code: 'DAMAGE', label: 'Daño', sortOrder: 3 },
   ],
 }
 
@@ -140,12 +141,13 @@ beforeEach(() => {
   mock.adjustFails = false
 })
 
-/** Abre el bloque de ajuste y llena Cantidad y Motivo (combobox con buscador). */
+/** Abre el bloque de ajuste, elige "Bajar" (Lote 14, D11) y llena Cantidad (positiva) y Motivo (Daño, con el buscador). */
 async function fillAdjust(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement, qty: string) {
   await user.click(await within(dialog).findByRole('button', { name: /Añadir ajuste/ }))
-  await user.type(await within(dialog).findByLabelText(/^Cantidad \(\+\/-\)/), qty)
-  await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'encon')
-  await user.click(await within(dialog).findByRole('option', { name: 'Encontrado' }))
+  await user.click(await within(dialog).findByRole('radio', { name: /Bajar/ }))
+  await user.type(await within(dialog).findByLabelText(/^Cantidad/), qty)
+  await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'dañ')
+  await user.click(await within(dialog).findByRole('option', { name: 'Daño' }))
 }
 
 describe('ProductEditorModal', () => {
@@ -221,7 +223,7 @@ describe('ProductEditorModal', () => {
     expect(within(dialog).getByRole('link', { name: 'Ver series' })).toHaveAttribute('href', `/warehouse/products/${PID}?tab=serials`)
   })
 
-  it('ajuste oculto tras "Añadir ajuste"; motivo con buscador sin los reservados; nota obligatoria sin llamar al API', async () => {
+  it('ajuste oculto tras "Añadir ajuste"; Subir/Bajar con motivos según la dirección, sin los reservados; nota obligatoria sin llamar al API', async () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'NONE' })} onClose={() => {}} />, [
       'inventory.view',
@@ -230,7 +232,7 @@ describe('ProductEditorModal', () => {
     ])
     const dialog = await findDialog('Editar producto')
     expect(await within(dialog).findByRole('button', { name: /Añadir ajuste/ })).toBeInTheDocument()
-    expect(within(dialog).queryByLabelText(/^Cantidad \(\+\/-\)/)).toBeNull()
+    expect(within(dialog).queryByLabelText(/^Cantidad/)).toBeNull()
     expect(within(dialog).queryByRole('button', { name: /Aplicar ajuste/ })).toBeNull()
 
     await user.click(within(dialog).getByRole('button', { name: /Añadir ajuste/ }))
@@ -238,9 +240,15 @@ describe('ProductEditorModal', () => {
     await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'diferencia')
     expect(await within(dialog).findByText('Sin coincidencias')).toBeInTheDocument()
     await user.clear(within(dialog).getByRole('combobox', { name: /^Motivo/ }))
+    // al bajar no se ofrece Encontrado (D11)
+    await user.click(within(dialog).getByRole('radio', { name: /Bajar/ }))
+    await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'encon')
+    expect(await within(dialog).findByText('Sin coincidencias')).toBeInTheDocument()
+    await user.clear(within(dialog).getByRole('combobox', { name: /^Motivo/ }))
+    await user.click(within(dialog).getByRole('radio', { name: /Subir/ }))
     await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'encon')
     await user.click(await within(dialog).findByRole('option', { name: 'Encontrado' }))
-    await user.type(within(dialog).getByLabelText(/^Cantidad \(\+\/-\)/), '-2')
+    await user.type(within(dialog).getByLabelText(/^Cantidad/), '2')
     await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
     expect(await within(dialog).findByText('Escriba una nota que explique el ajuste.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
@@ -248,7 +256,8 @@ describe('ProductEditorModal', () => {
     // Cancelar ajuste lo cierra; al volver a abrirlo está limpio
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar ajuste' }))
     await user.click(await within(dialog).findByRole('button', { name: /Añadir ajuste/ }))
-    expect(within(dialog).getByLabelText(/^Cantidad \(\+\/-\)/)).toHaveValue(null)
+    expect(within(dialog).getByLabelText(/^Cantidad/)).toHaveValue(null)
+    expect(within(dialog).getByRole('radio', { name: /Subir/ })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('Aplicar ajuste: POST con la nota, el producto fijo y la posición por defecto; refresca el Total y oculta el bloque', async () => {
@@ -259,13 +268,13 @@ describe('ProductEditorModal', () => {
       'inventory.adjust',
     ])
     const dialog = await findDialog('Editar producto')
-    await fillAdjust(user, dialog, '-2')
+    await fillAdjust(user, dialog, '2')
     await user.type(within(dialog).getByLabelText(/^Nota/), 'Caja dañada en muelle')
     await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
     const post = mock.calls.find((c) => c.method === 'POST')!
     expect(post.url.pathname).toBe('/api/v1/inventory/adjustments')
-    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'FOUND', notes: 'Caja dañada en muelle' })
+    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'DAMAGE', notes: 'Caja dañada en muelle' })
     // el Total del modal pasa a lo que dice la ficha refrescada y el bloque vuelve a quedar oculto
     await waitFor(() => expect(within(dialog).getByLabelText('Total (usa Ajustar abajo)')).toHaveValue('10'))
     expect(await within(dialog).findByRole('button', { name: /Añadir ajuste/ })).toBeInTheDocument()
@@ -282,7 +291,7 @@ describe('ProductEditorModal', () => {
       'inventory.adjust',
     ])
     const dialog = await findDialog('Editar producto')
-    await fillAdjust(user, dialog, '-20')
+    await fillAdjust(user, dialog, '20')
     await user.type(within(dialog).getByLabelText(/^Nota/), 'Merma')
     await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
     const block = dialog.querySelector('form.pe-adjust') as HTMLElement

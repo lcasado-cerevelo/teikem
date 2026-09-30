@@ -28,6 +28,8 @@ public sealed class WmsDeactivationGuardTests
             s.AddSingleton<ProductService>();
             s.AddSingleton<WarehouseService>();
             s.AddSingleton<CycleCountService>();
+            s.AddSingleton<Teikem.Infrastructure.Abstractions.ITenantClock>(Teikem.Infrastructure.Abstractions.TenantClock.Default);   // Lote 14
+            s.AddSingleton<InventoryReconciler>();   // Lote 14: TraceabilityService delega la conciliación
             s.AddSingleton<InventoryReadService>();
         });
         var w = await f.AddWarehouseAsync("W2");

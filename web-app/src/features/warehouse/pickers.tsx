@@ -19,6 +19,7 @@ import { useT } from '../../kernel/i18n/useT'
 import { Chip } from '../../kernel/ui/Chip'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { IconClose } from '../../kernel/ui/icons'
+import { SearchSelect } from '../../kernel/ui/SearchSelect'
 import { useDismiss } from '../../kernel/ui/useDismiss'
 import '../../kernel/ui/ui.css'
 import './warehouse.css'
@@ -26,19 +27,25 @@ import { isAccessDenied } from './accessDenied'
 import {
   binLabel,
   productLabel,
+  useInventoryOwners,
   useWarehouse,
   useWarehouseZones,
   useWarehouses,
   warehouseKeys,
   warehouseLabel,
+  type BinSearchItemDto,
   type GetQuery,
+  type InventoryOwnerDto,
   type ProductListItemDto,
   type WarehouseBinDto,
   type WarehouseDto,
 } from './api'
+import { binFilterLabel, OWN_OWNER, type BinFilterItem } from './kardexView'
 import { exactCodeMatch, filterWarehouses, orderBins } from './pickerMatch'
 
 const NO_WAREHOUSES: WarehouseDto[] = []
+const NO_OWNERS: InventoryOwnerDto[] = []
+const NO_BINS: BinSearchItemDto[] = []
 
 // =====================================================================================================================
 // WarehousePicker
@@ -854,4 +861,212 @@ export function ProductPickerInput({ onPicked, ...props }: ProductPickerInputPro
       aria-describedby={info.describedBy}
     />
   )
+}
+
+// =====================================================================================================================
+// Lote 14 — BinMultiFilter: filtro "Posición" de listas (Kárdex, Saldos, Conciliación, Conteo) que busca ENTRE almacenes
+// =====================================================================================================================
+
+export interface BinMultiFilterProps {
+  label: string
+  value: BinFilterItem[]
+  onChange: (value: BinFilterItem[]) => void
+  /** Acota la búsqueda a esos almacenes (vacío = todos). */
+  warehousePublicIds?: readonly string[]
+  /** Deja elegir posiciones dadas de baja (historial del Kárdex). */
+  includeInactive?: boolean
+}
+
+/**
+ * Combobox con buscador sobre `GET /api/v1/warehouses/bins/search?search=&warehousePublicIds=&take=50` (250 ms entre
+ * teclas; opciones "Código · Zona · Almacén"); cada posición elegida queda como píldora con ✕. Enter con el código exacto la
+ * elige (lector de código de barras; si la búsqueda aún no llega, se elige al llegar). Vacío = todas. 403: aviso sin sacar
+ * de la pantalla.
+ */
+export function BinMultiFilter({ label, value, onChange, warehousePublicIds, includeInactive }: BinMultiFilterProps) {
+  const t = useT()
+  const inputId = useId()
+  const listId = `${inputId}-list`
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [search, setSearch] = useState('')
+  const [active, setActive] = useState(0)
+  const qc = useQueryClient()
+  const enterSeq = useRef(0)
+  const dismiss = useCallback(() => setOpen(false), [])
+  useDismiss(boxRef, open, dismiss)
+
+  useEffect(() => {
+    const h = setTimeout(() => setSearch(text.trim()), 250)
+    return () => clearTimeout(h)
+  }, [text])
+
+  const searchQuery = (q: string) => {
+    const query: GetQuery<'/api/v1/warehouses/bins/search'> = {
+      search: q || undefined,
+      warehousePublicIds: warehousePublicIds && warehousePublicIds.length > 0 ? [...warehousePublicIds] : undefined,
+      includeInactive: includeInactive || undefined,
+      take: MAX_SHOWN,
+    }
+    return {
+      queryKey: [warehouseKeys.binSearch[0], query] as const,
+      queryFn: () => unwrap(api.GET('/api/v1/warehouses/bins/search', { params: { query } })),
+      meta: { handleAccessDenied: false },
+    }
+  }
+  const list = useQuery({ ...searchQuery(search), enabled: open, placeholderData: keepPreviousData })
+  const chosen = useMemo(() => new Set(value.map((v) => v.id)), [value])
+  const options = useMemo(() => {
+    const items = (list.data ?? NO_BINS).filter((b) => b.id != null && !chosen.has(b.id))
+    const exact = exactCodeMatch(items, text)
+    return exact ? [exact, ...items.filter((b) => b !== exact)] : items
+  }, [list.data, chosen, text])
+
+  const choose = (b: BinSearchItemDto) => {
+    enterSeq.current++
+    setText('')
+    setActive(0)
+    if (b.id == null || value.some((v) => v.id === b.id)) return
+    onChange([...value, { id: b.id, label: binFilterLabel(b) }])
+  }
+
+  /** Enter del lector antes de la pausa de 250 ms: se busca ya ese texto y, al llegar, se elige el código exacto (o el único). */
+  const enterNow = (q: string) => {
+    setSearch(q)
+    const seq = ++enterSeq.current
+    qc.fetchQuery(searchQuery(q))
+      .then((items) => {
+        if (seq !== enterSeq.current) return
+        const rows = items.filter((b) => b.id != null && !chosen.has(b.id))
+        const b = exactCodeMatch(rows, q) ?? (rows.length === 1 ? rows[0] : undefined)
+        if (b) choose(b)
+      })
+      .catch(() => undefined) // el aviso (sin acceso, error) lo pinta la lista
+  }
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (!open) setOpen(true)
+      else setActive((i) => Math.min(i + 1, options.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActive((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      const typed = text.trim()
+      if (typed && (typed !== search || list.isPlaceholderData || !list.isSuccess)) {
+        enterNow(typed)
+        return
+      }
+      const b = exactCodeMatch(options, text) ?? (open ? options[active] : undefined)
+      if (b) choose(b)
+    } else if (e.key === 'Escape' && open) {
+      e.stopPropagation()
+      setOpen(false)
+    }
+  }
+
+  let status: string | null = null
+  if (list.isLoading) status = t('common.loading')
+  else if (isAccessDenied(list.error)) status = t('warehouse.binFilter.noAccess')
+  else if (list.error) status = t('errors.generic')
+  else if (options.length === 0) status = t('warehouse.binFilter.none')
+
+  return (
+    <div className="f">
+      <label htmlFor={inputId}>{label}</label>
+      <div ref={boxRef} className={open ? 'msel cpick open' : 'msel cpick'}>
+        <div className="cpin">
+          <input
+            id={inputId}
+            type="text"
+            role="combobox"
+            autoComplete="off"
+            aria-autocomplete="list"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={open && !status && options[active] ? `${listId}-${active}` : undefined}
+            placeholder={t('warehouse.binFilter.placeholder')}
+            value={text}
+            onFocus={() => {
+              setActive(0)
+              setOpen(true)
+            }}
+            onChange={(e) => {
+              setText(e.target.value)
+              setActive(0)
+              setOpen(true)
+            }}
+            onKeyDown={onKeyDown}
+          />
+        </div>
+        {open && (
+          <div className="mp">
+            <div className="milist" id={listId} role="listbox" aria-label={label}>
+              {status && <div className="mnone">{status}</div>}
+              {!status &&
+                options.map((b, i) => (
+                  <div
+                    key={b.id}
+                    id={`${listId}-${i}`}
+                    role="option"
+                    aria-selected={false}
+                    className={i === active ? 'mi on' : 'mi'}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => choose(b)}
+                  >
+                    <span>
+                      <span className="code">{b.code}</span>
+                      {b.zoneCode ? ` · ${b.zoneCode}` : ''} · {b.warehouseCode}
+                    </span>
+                    {b.isActive === false && <Chip tone="fail">{t('warehouse.binFilter.inactive')}</Chip>}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
+      {value.length > 0 && (
+        <div className="pfilter-chips">
+          {value.map((v) => (
+            <Chip key={v.id} title={v.label}>
+              <span className="pfilter-text">{v.label}</span>
+              <button
+                type="button"
+                className="iconbtn"
+                aria-label={t('warehouse.binFilter.remove', { bin: v.label })}
+                onClick={() => onChange(value.filter((x) => x.id !== v.id))}
+              >
+                <IconClose />
+              </button>
+            </Chip>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =====================================================================================================================
+// Lote 14 — OwnerFilter: filtro "Dueño" (Propio y clientes dueños de inventario, `GET /api/v1/inventory/owners`)
+// =====================================================================================================================
+
+export interface OwnerFilterProps {
+  label: string
+  /** `OWN_OWNER` ('OWN') = Propio; el resto, clientPublicId. Vacío = todos. */
+  value: string[]
+  onChange: (value: string[]) => void
+}
+
+/** `SearchSelect` sobre `useInventoryOwners` ("Propio" primero). La consulta la arma `ownerQuery` de `kardexView.ts`. */
+export function OwnerFilter({ label, value, onChange }: OwnerFilterProps) {
+  const { data = NO_OWNERS } = useInventoryOwners({ handleAccessDenied: false })
+  const options = useMemo(
+    () => data.map((o) => ({ value: o.isOwn ? OWN_OWNER : (o.clientPublicId ?? ''), label: o.name ?? '' })).filter((o) => o.value),
+    [data],
+  )
+  return <SearchSelect label={label} options={options} value={value} onChange={onChange} />
 }

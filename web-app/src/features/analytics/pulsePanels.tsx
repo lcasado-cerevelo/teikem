@@ -5,6 +5,7 @@
 // Un panel nuevo (F3, F5, 7C): su clave en `PULSE_PANEL_KEYS` (pulseLayout.ts), su entrada aquí y su título en i18n.
 import type { ReactNode } from 'react'
 import { ActivityPanel } from './ActivityPanel'
+import { AttentionPanel } from './AttentionPanel'
 import { ChartsGrid, IndicatorsRiver } from './PulseSections'
 import type { ChartDatum, Indicator, PulseDto, PulsePanelKey } from './pulseLayout'
 import { WarehousePulsePanel } from './WarehousePulsePanel'
@@ -56,5 +57,13 @@ export const PULSE_PANELS: Record<PulsePanelKey, PulsePanelEntry> = {
     titleKey: 'analytics.activity.title',
     hasContent: always,
     render: () => <ActivityPanel />,
+  },
+  // Lote 14 (D6): "Necesita tu atención" (pulse.attention; orden 5 del dominio). Siempre se pinta: sin pendientes dice
+  // "Todo en orden".
+  ATTENTION: {
+    key: 'ATTENTION',
+    titleKey: 'analytics.pulse.panels.ATTENTION',
+    hasContent: always,
+    render: () => <AttentionPanel />,
   },
 }

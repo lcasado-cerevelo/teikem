@@ -70,6 +70,24 @@ export function useResetMyLayout() {
   })
 }
 
+export const ATTENTION_QUERY_KEY = ['/api/v1/analytics/attention'] as const
+
+/**
+ * Lote 14 (D6) — `GET /api/v1/analytics/attention` (`pulse.attention`): panel "Necesita tu atención" del Pulso →
+ * `AttentionDto { total, items (los 5 más antiguos), groups (total y ruta de "Ver todos" por tipo) }`. El servidor suma solo
+ * lo que el usuario puede ver (módulo + permiso de cada tipo). Pantalla de inicio: un 403 no redirige (el panel no se
+ * pinta). `staleTime: 0`: la conciliación corre en segundo plano, así que al volver al Pulso siempre se vuelve a preguntar.
+ */
+export function useAttention(enabled = true) {
+  return useQuery({
+    queryKey: ATTENTION_QUERY_KEY,
+    queryFn: () => unwrap(api.GET('/api/v1/analytics/attention')),
+    enabled,
+    staleTime: 0,
+    meta: { handleAccessDenied: false },
+  })
+}
+
 /**
  * Mi rango de fecha para un indicador o gráfico (`PUT /api/v1/analytics/{indicators|charts}/{id}/my-date-range`):
  * preferencia por usuario (no edita la definición; basta `analytics.view`). Al guardar se recalcula Pulso.
@@ -253,6 +271,9 @@ export interface WarehousePulseFilter {
 
 export const NO_WAREHOUSE_FILTER: WarehousePulseFilter = { warehousePublicId: null, item: null }
 
+/** Estatus de un conteo abierto (Lote 14, D7): Pendiente y Contado (a ciegas); Concordancia y Diferencia ya cerraron. */
+export const OPEN_COUNT_STATUSES = ['OPEN', 'COUNTED'] as const
+
 /** Productos que se revisan para decidir si EL producto elegido está bajo mínimo (búsqueda por su SKU). */
 const BELOW_MIN_PRODUCT_TAKE = 100
 
@@ -267,7 +288,8 @@ const BELOW_MIN_PRODUCT_TAKE = 100
  * - `openReceipts`: `GET /api/v1/receipts?phase=OPEN&take=1[&warehousePublicId=]` → `total`.
  * - `pendingTasks`: `GET /api/v1/warehouse-tasks?includeClosed=false&take=1[&warehousePublicId=]` → `total`; `tasksByType`:
  *   lo mismo con `types=<tipo>` por cada tipo de `PULSE_TASK_TYPES` (en ese orden).
- * - `openCounts`: `GET /api/v1/cycle-counts?status=OPEN[&warehousePublicIds=]` → largo del arreglo.
+ * - `openCounts`: `GET /api/v1/cycle-counts/page?status=OPEN&status=COUNTED&take=1[&warehousePublicIds=]` → `total`
+ *   (Lote 14: antes contaba el arreglo de `GET /cycle-counts`, que se corta en 200).
  */
 export function useWarehousePulse(enabled: boolean, filter: WarehousePulseFilter = NO_WAREHOUSE_FILTER, productSku?: string | null) {
   const wh = filter.warehousePublicId
@@ -328,11 +350,12 @@ export function useWarehousePulse(enabled: boolean, filter: WarehousePulseFilter
     }),
   })
 
-  const countsQuery: GetQuery<'/api/v1/cycle-counts'> = { status: ['OPEN'] }
+  // Lote 14 (hallazgo 14): la lista completa se corta en 200; la página trae el total real. Abiertos = Pendiente y Contado.
+  const countsQuery: GetQuery<'/api/v1/cycle-counts/page'> = { status: [...OPEN_COUNT_STATUSES], take: 1 }
   if (wh) countsQuery.warehousePublicIds = [wh]
   const openCounts = useQuery({
-    queryKey: ['/api/v1/cycle-counts', countsQuery],
-    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts', { params: { query: countsQuery } })),
+    queryKey: ['/api/v1/cycle-counts/page', countsQuery],
+    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts/page', { params: { query: countsQuery } })),
     enabled,
     meta: NO_REDIRECT,
   })

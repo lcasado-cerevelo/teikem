@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Teikem.Domain.Identity;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Analytics;
@@ -33,6 +34,9 @@ public static class DependencyInjection
         services.AddSingleton<ILookupCache, LookupCache>();
         services.AddScoped<ISecurityEventWriter, SecurityEventWriter>();
         services.AddScoped<AuditSaveChangesInterceptor>();
+        // Lote 14 (P2, D14): bandeja de cambios de inventario de la petición → cola en memoria SOLO en el commit real.
+        services.AddScoped<IInventoryChangeSink, InventoryChangeSink>();
+        services.AddScoped<InventoryChangeCommitInterceptor>();
 
         services.AddDbContext<TeikemDbContext>((sp, options) =>
         {
@@ -41,7 +45,7 @@ public static class DependencyInjection
                 sql.EnableRetryOnFailure(3);
                 sql.CommandTimeout(60);
             });
-            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>(), sp.GetRequiredService<InventoryChangeCommitInterceptor>());
             // Los filtros de tenant sobre catálogos/definiciones son intencionales: la fila requerida siempre es visible
             // (global o del mismo tenant), así que esta advertencia de EF no aplica.
             options.ConfigureWarnings(w => w.Ignore(CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning));
@@ -188,6 +192,17 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, WarehouseTaskStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, DockAppointmentStatusEffect>();
 
+        // Lote 14 — punto único de "hoy" en hora de la compañía (Puerto Rico por defecto) y conciliación Kárdex ↔ saldo con
+        // descuadres (P1, síncrona; la revisión en segundo plano de P2 llamará a InventoryReconciliationService.CheckProductsAsync).
+        services.AddSingleton<ITenantClock>(TenantClock.Default);
+        services.AddScoped<InventoryReconciler>();
+        services.AddScoped<InventoryReconciliationService>();
+        // P2 (D14): revisión en segundo plano segundos después de cada movimiento. Cola en memoria acotada (singleton) y un
+        // BackgroundService que la consume; solo arranca con app.Run() (los comandos de consola no encolan nada).
+        services.Configure<InventoryReconciliationOptions>(config.GetSection(InventoryReconciliationOptions.Section));
+        services.AddSingleton(sp => new InventoryReconciliationQueue(sp.GetRequiredService<IOptions<InventoryReconciliationOptions>>().Value));
+        services.AddHostedService<InventoryReconciliationWorker>();
+
         // Lote 8A — app de almacén: aparatos de confianza, PIN por usuario (login por aparato en AuthService) y
         // sincronización por diferencia. La idempotencia (Idempotency-Key) es un middleware del API sin servicio propio.
         services.AddScoped<DeviceService>();
@@ -254,6 +269,9 @@ public static class DependencyInjection
         // Lote 7A — "Actividad reciente": un proveedor de eventos por BusinessModule (colección, igual que IDataSource) y el feed.
         services.AddScoped<IActivityEventProvider, WarehouseActivityProvider>();
         services.AddScoped<ActivityFeedService>();
+        // Lote 14 (D6) — "Necesita tu atención": un proveedor de filas por tipo de aviso (colección) y el servicio del panel.
+        services.AddScoped<IAttentionItemProvider, InventoryDiscrepancyAttentionProvider>();
+        services.AddScoped<AttentionFeedService>();
         services.AddScoped<IOwnedEntityResolver, WarehouseOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, WarehouseDockOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, ProductOwnedEntityResolver>();
@@ -277,6 +295,9 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.ProductCategory));
         // Lote 8A: USER_DEVICE (aparato de almacén) existe solo para auditoría; sin campos personalizados → siempre 404.
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.UserDevice));
+        // Lote 14: descuadres Kárdex ↔ saldo (fuente con DateField DetectedAtUtc); sin escritura de dueño → resolver cerrado.
+        services.AddScoped<IDataSource, InventoryDiscrepancyDataSource>();
+        services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.InventoryDiscrepancy));
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();

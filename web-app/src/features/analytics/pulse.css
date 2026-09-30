@@ -107,6 +107,37 @@
 .pulse .node.sat.money{border-color:var(--money-line)}
 .pulse .node.sat.money .ph svg{color:var(--money)}
 
+/* ---- "Necesita tu atención" (Lote 14, D6): .inbox/.work de la maqueta (teikem-mockups.html:164-174). La fila envuelve a
+   360 px: "Revisar" baja bajo el texto, alineado con él; las cifras envuelven por pieza. ---- */
+.pulse .inbox{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;min-width:0}
+.pulse .inbox .ih{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line-2);font-weight:600;flex-wrap:wrap}
+.pulse .inbox .ih h2{margin:0;font-size:14px;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.pulse .inbox .ih-ic{display:inline-flex;color:var(--muted)}
+.pulse .inbox .ih-ic.on{color:var(--danger)}
+.pulse .inbox .ih-ic svg{width:16px;height:16px}
+.pulse .inbox .ih .ct{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);font-weight:500;white-space:nowrap}
+.pulse .inbox-list{list-style:none;margin:0;padding:0}
+.pulse .inbox-msg{margin:0;padding:13px 16px;color:var(--danger);font-size:13px}
+.pulse .work{display:flex;align-items:center;gap:14px;padding:13px 16px;border-bottom:1px solid var(--line-2);min-width:0}
+.pulse .work:last-child{border-bottom:none}
+.pulse .inbox-list .work:hover{background:var(--panel-2)}
+.pulse .work .ico{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;flex:none}
+.pulse .work .ico svg{width:17px;height:17px}
+.pulse .work .tx{flex:1;min-width:0}
+.pulse .work .tx b{font-weight:600;font-size:13.5px;overflow-wrap:anywhere}
+.pulse .work .tx p{margin:2px 0 0;color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.pulse .work .figs{display:flex;flex-wrap:wrap;gap:2px 12px}
+.pulse .work .fig{white-space:nowrap}
+.pulse .work .fig strong{font-family:var(--mono);font-weight:600;color:var(--text)}
+.pulse .work .fig.em strong{color:var(--danger)}
+.pulse .work>.btn{flex:none;white-space:nowrap}
+.pulse .tone-danger .ico{background:var(--dangerbg);color:var(--danger)}
+.pulse .tone-warn .ico{background:var(--warnbg);color:var(--warn)}
+.pulse .tone-flow .ico{background:var(--flow-bg);color:var(--flow-2)}
+.pulse .tone-ok .ico{background:var(--okbg);color:var(--ok)}
+.pulse .inbox-ft{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:10px 16px;border-top:1px solid var(--line-2)}
+@media(max-width:480px){.pulse .work{flex-wrap:wrap;gap:10px 12px;padding:12px}.pulse .work .tx{flex:1 1 calc(100% - 46px)}.pulse .work>.btn{margin-left:46px}.pulse .inbox .ih,.pulse .inbox-ft{padding-left:12px;padding-right:12px}}
+
 @media(prefers-reduced-motion:reduce){.pulse .pipe::after{animation:none}.pulse .node:hover{transform:none}}
 /* bajo 980 px el río envuelve sin tuberías (tres por fila); a 480 px, una columna */
 @media(max-width:980px){.pulse .pipe,.pulse .river-fork{display:none}.pulse .river{gap:10px}.pulse .node{flex:1 1 30%}}

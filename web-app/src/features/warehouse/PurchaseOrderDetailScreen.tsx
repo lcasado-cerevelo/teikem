@@ -1,6 +1,6 @@
 // Pantalla D (Lote F6) — Compras: ficha de la orden de compra. `/warehouse/purchase-orders/:publicId`.
 // Lectura: purchasing.view + PURCHASING (por la ruta). Edición/enviar/cancelar/eliminar: purchasing.manage.
-// Resolver un faltante: inventory.adjust, con `ResolveShortageModal` (compartido con 'Ajustes de inventario'; REORDER exige
+// Resolver un faltante: inventory.adjust, con `ResolveShortageModal` (Lote 14: el único lugar donde se resuelven los faltantes; REORDER exige
 // además purchasing.manage y MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL).
 // Lote 2: la edición exige al menos una línea con cantidad > 0. Proveedor y almacén (decisión del 2026-09-30): editables solo
 // mientras la orden está en Borrador (DRAFT) y se puede editar —Proveedor con buscador sobre los activos, Almacén con el mismo

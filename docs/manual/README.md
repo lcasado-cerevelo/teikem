@@ -58,13 +58,21 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    posición de recepción por defecto), esperado en ciegos y devoluciones (entra al inventario lo recibido), filtros de la lista
    (`variance`, `phase`) y de los avisos de llegada, dónde se trabaja cada tipo de tarea, y la recolección y el empaque con su
    tabla de transiciones, validaciones y predeterminados de la compañía.
+   Lote 14 (secciones 3, 6 y un aviso en la 8): **Kárdex** con filtros nuevos (dueño, motivo, dirección, almacén de origen y de destino, "solo
+   manuales"), **resumen** de entradas y salidas, **detalle de un movimiento** con su documento de origen y días locales de Puerto Rico;
+   **ajustes Subir/Bajar** con motivos por dirección y transferencias con lote y serie; **conciliación automática** en segundo plano y
+   **descuadres** Kárdex ↔ saldo (estatus Pendiente, Resuelto, Descartado y Se corrigió solo, sus transiciones, lo que bloquea cada uno y los
+   mensajes); **conteo cíclico** con estatus Pendiente, Contado, Concordancia y Diferencia, confirmación en un solo paso, lista con total,
+   asignación y **"Conteo de lo cambiado"** (ventana, tope de 200 posiciones y sus mensajes). La pantalla "Ajustes de inventario" (faltantes
+   de compra) salió del menú: los faltantes se resuelven en la ficha de la orden de compra.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
    recibidas, Conteos con diferencia, Movimientos de inventario por tipo). Operación (7B) y Contabilidad (7C)
    agregan su propia pestaña más adelante. Lote F8a (sección 3): **Pulso del día: paneles, permisos y orden** —
    permisos `pulse.*` por panel, registro de paneles, qué indicadores y gráficos ve cada usuario (fuente legible y
-   módulo encendido) y orden/ocultos en dos niveles (compañía y usuario).
+   módulo encendido) y orden/ocultos en dos niveles (compañía y usuario). Lote 14 (sección 4): el panel **Necesita tu atención**
+   (`pulse.attention`, los 5 descuadres más antiguos, "Todo en orden") y la cifra de **Conteos abiertos** con el total real.
 8. [8A — Backend de la app de almacén](08-aparatos-y-sincronizacion.md): idempotencia de escrituras
    (`Idempotency-Key`), aparatos de confianza (alta con código de registro, enroll y heartbeat anónimos,
    desactivar/reactivar), PIN por usuario y login por aparato (bloqueo por intentos), sincronización por
@@ -108,10 +116,14 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    única), **Recolección y empaque** en dos paneles con barra arrastrable (captura de varias líneas, Empacar y Eliminar en la fila,
    detalle en un modal) y los ajustes del 2026-09-30 (proveedor y almacén de la orden en Borrador, nota obligatoria en todo ajuste
    manual, "Unidades totales" y predeterminados al empacar). Capturas nuevas de esas pantallas; pendiente la de Avisos de llegada.
+   Lote 14: **Transferencias y ajustes** (pestañas Ajustes y Transferencias, modal Subir/Bajar, Reporte de ajustes), **Kárdex de movimientos**
+   (filtros compartidos, resumen, detalle del movimiento y Conciliación con descuadres) y **Conteo cíclico** en dos paneles (escáner, cantidad
+   en la fila, Confirmar conteo y ajustar y Conteo de lo cambiado); "Ajustes de inventario" salió del menú. Capturas `l14-*`.
 3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
-   y enlaces a la ficha de cada evento).
+   y enlaces a la ficha de cada evento). Lote 14: panel **Necesita tu atención** (descuadres pendientes, Revisar, Ver todos, "Todo en
+   orden") y **Conteos abiertos** con el total real.
 4. [F8a — Menú completo, marca, Pulso por paneles, Sistema y Análisis](frontend/f8a-menu-sistema-analisis-y-marca.md):
    los 7 grupos del menú de la maqueta y la pantalla "pendiente", la marca Teikem, paleta de comandos, Pulso del día
    organizado en dos niveles ("Organizar mi Pulso" / "Organizar el de la compañía"), Indicadores y Gráficos, Roles y
@@ -128,4 +140,9 @@ reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (sal
 posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado
 editable, del esperado en ciegos, de los filtros de recibos y avisos, los mensajes que solo se ven en las pantallas de Recibo y de
 Recolección y empaque, y las preguntas sobre Discrepancia, qué entra al inventario con una diferencia, cómo editar el encabezado, la
-barra 60/40, dónde quedó la cola de acomodo y por qué "Unidades totales" cuenta solo productos activos.
+barra 60/40, dónde quedó la cola de acomodo y por qué "Unidades totales" cuenta solo productos activos. La sección "Lote 14" recoge los mensajes del Kárdex (dirección, dueño, detalle
+del movimiento), de los descuadres (acción, nota, ya cerrado, total del producto, Kárdex negativo o menor que lo reservado, revisión
+simultánea), de "Conteo de lo cambiado" (31 días, sin movimientos, conteos pendientes, más de 200 posiciones), de los estatus del conteo y del
+permiso `pulse.attention`; los mensajes que solo se ven en pantalla (ajuste Subir/Bajar, escáner del conteo, botón Confirmar apagado,
+revisión automática); y las preguntas sobre qué es un descuadre y por qué un ajuste no lo arregla, qué cuenta "lo cambiado", por qué un
+conteo dice Diferencia, dónde quedó "Ajustes de inventario" y por qué no se ve "Necesita tu atención".

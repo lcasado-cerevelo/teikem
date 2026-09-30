@@ -87,6 +87,46 @@ public static class LookupDomains
     public const string UiTheme = "UiTheme";
     /// <summary>Dirección del mensaje registrado en IntegrationMessageLog (la idempotencia del API escribe INBOUND).</summary>
     public const string MessageDirection = "MessageDirection";
+    // Lote 14 — conciliación Kárdex ↔ saldo con tabla de descuadres
+    /// <summary>Tipo de descuadre (InventoryDiscrepancy.KindLookupId): BALANCE | PRODUCT_TOTAL.</summary>
+    public const string InventoryDiscrepancyKind = "InventoryDiscrepancyKind";
+    /// <summary>Origen de la revisión que detectó el descuadre (InventoryDiscrepancy.TriggerLookupId).</summary>
+    public const string ReconciliationTrigger = "ReconciliationTrigger";
+    /// <summary>Origen del conteo cíclico (CycleCount.OriginLookupId): MANUAL (selección) | CHANGES (lo cambiado).</summary>
+    public const string CycleCountOrigin = "CycleCountOrigin";
+}
+
+/// <summary>
+/// Lote 14: valores de LookupCode 'CycleCountOrigin'. MANUAL = alta por selección (web o app, por posición); CHANGES = "Conteo
+/// de lo cambiado" (un conteo por posición con movimientos en una ventana; guarda la ventana en ChangesFromUtc/ChangesToUtc).
+/// Los conteos anteriores al Lote 14 se marcan MANUAL en el seed.
+/// </summary>
+public static class CycleCountOrigins
+{
+    public const string Manual = "MANUAL";
+    public const string Changes = "CHANGES";
+}
+
+/// <summary>Lote 14: valores de LookupCode 'InventoryDiscrepancyKind'.</summary>
+public static class DiscrepancyKinds
+{
+    /// <summary>Saldo de una clave (producto, almacén, posición, lote) distinto de lo que da el Kárdex.</summary>
+    public const string Balance = "BALANCE";
+    /// <summary>Total del producto (Σ movimientos sin transferencias ≠ Σ en mano).</summary>
+    public const string ProductTotal = "PRODUCT_TOTAL";
+}
+
+/// <summary>
+/// Lote 14: valores de LookupCode 'ReconciliationTrigger'. EVENT = revisión automática tras un movimiento (P2); MANUAL =
+/// "Ejecutar conciliación"; SCHEDULED = barrido programado (reservado: el motor programado queda fuera del lote);
+/// MIGRATION = cierre de import-legacy.
+/// </summary>
+public static class ReconciliationTriggers
+{
+    public const string Event = "EVENT";
+    public const string Manual = "MANUAL";
+    public const string Scheduled = "SCHEDULED";
+    public const string Migration = "MIGRATION";
 }
 
 /// <summary>Lote 8A: valores de LookupCode 'UiTheme' (tema del aparato de almacén).</summary>
@@ -142,6 +182,9 @@ public static class StatusDomains
     public const string AppointmentStatus = "AppointmentStatus";
     public const string CrossDockStatus = "CrossDockStatus";
     public const string AllocationStatus = "AllocationStatus";
+    // Lote 14
+    /// <summary>Descuadre Kárdex ↔ saldo: OPEN (inicial) → RESOLVED | DISMISSED | SELF_CORRECTED (terminales).</summary>
+    public const string InventoryDiscrepancyStatus = "InventoryDiscrepancyStatus";
 }
 
 public static class StageKinds
@@ -450,6 +493,8 @@ public static class EntityTypes
     public const string UserDevice = "USER_DEVICE";
     // Lote F8a (P1): orden y visibilidad de los paneles del Pulso del día (nivel compañía y por usuario), auditado.
     public const string PulsePanelSetting = "PULSE_PANEL_SETTING";
+    // Lote 14: descuadre Kárdex ↔ saldo (conciliación), con historial de estatus y bitácora.
+    public const string InventoryDiscrepancy = "INVENTORY_DISCREPANCY";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -776,12 +821,27 @@ public static class WarehouseTaskStatuses
     public const string Cancelled = "CANCELLED";
 }
 
-/// <summary>Dominio CycleCountStatus: OPEN (inicial) → COUNTED → RECONCILED (terminal).</summary>
+/// <summary>
+/// Dominio CycleCountStatus. Lote 14 (D7): OPEN 'Pendiente' (inicial) → COUNTED 'Contado' (solo cuando se termina de contar a
+/// ciegas, app de almacén) → RECONCILED 'Concordancia' (terminal: no se asentó ningún ajuste) o RECONCILED_VARIANCE
+/// 'Diferencia' (terminal: alguna línea asentó un movimiento). "Confirmar conteo y ajustar" (D8) pasa en un paso desde OPEN
+/// (o desde COUNTED) al terminal que corresponda. Los dos terminales son "reconciliado": usar IsReconciled en las guardas.
+/// </summary>
 public static class CycleCountStatuses
 {
     public const string Open = "OPEN";
     public const string Counted = "COUNTED";
     public const string Reconciled = "RECONCILED";
+    public const string ReconciledVariance = "RECONCILED_VARIANCE";
+
+    /// <summary>Estatus abiertos (el conteo se captura, se confirma o se elimina; ocupan su posición para "lo cambiado").</summary>
+    public static readonly string[] OpenCodes = { Open, Counted };
+
+    /// <summary>Estatus finales (ya asentado en el Kárdex; solo se consulta).</summary>
+    public static readonly string[] ClosedCodes = { Reconciled, ReconciledVariance };
+
+    /// <summary>¿El conteo ya se reconcilió (Concordancia o Diferencia)?</summary>
+    public static bool IsReconciled(string? code) => code is Reconciled or ReconciledVariance;
 }
 
 /// <summary>Dominio PickBatchStatus (D20): COLLECTED (inicial) → PACKED; CANCELLED terminal (eliminar con reversa).</summary>
@@ -829,6 +889,18 @@ public static class AllocationStatuses
     public const string Planned = "PLANNED";
     public const string Moved = "MOVED";
     public const string Cancelled = "CANCELLED";
+}
+
+/// <summary>
+/// Lote 14 (D5): dominio InventoryDiscrepancyStatus. OPEN (Pendiente, inicial) → RESOLVED (se corrigió el saldo según el
+/// Kárdex) | DISMISSED (descartado con nota) | SELF_CORRECTED (volvió a cuadrar solo). Los tres cierres son terminales.
+/// </summary>
+public static class InventoryDiscrepancyStatuses
+{
+    public const string Open = "OPEN";
+    public const string Resolved = "RESOLVED";
+    public const string Dismissed = "DISMISSED";
+    public const string SelfCorrected = "SELF_CORRECTED";
 }
 
 /// <summary>LookupDomains.ZoneType. STAGING (Lote 6, D21) es la zona de recepción.</summary>

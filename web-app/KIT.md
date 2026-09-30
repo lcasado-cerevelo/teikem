@@ -96,10 +96,15 @@ pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System,
   `receipt` primero, los demás parámetros se quedan). Enlaces nuevos a un recibo: directo a `?receipt=` (así lo genera la
   Actividad reciente).
   `{ path: '/warehouse/receipts/:publicId', element: redirectWithParams('/warehouse/receipts', legacyReceiptSearch) },`
+  Lote 14 (P8): igual `/warehouse/cycle-counts/:id` → `/warehouse/cycle-counts?count=<id>` (`legacyCountSearch`); la ficha
+  propia del conteo se borró y los enlaces (Kárdex, Actividad reciente, descuadres) van directo a `?count=`.
 - Pestañas enlazables: una lista con `Tabs` cuya pestaña deba poder abrirse desde un enlace la guarda en `?tab=` con
   `useSearchParams` (la primera pestaña = sin parámetro; valor desconocido = la primera), como `AccountPage`, Recibo
-  (`asns|putaway`), Recolección (`replenish`), Conteo cíclico (`tasks`), Cruce de muelle (`appointments|tasks`), Productos e
-  inventario (`categories`) y Kárdex de movimientos (`balances|reconciliation`).
+  (`asns|putaway`), Recolección (`replenish`), Cruce de muelle (`appointments|tasks`), Productos e
+  inventario (`categories`), Transferencias y ajustes (`transfers`, Lote 14) y Kárdex de movimientos
+  (`balances|reconciliation`).
+- Lote 14 (D1): `/warehouse/inventory-adjustments` (la vieja 'Ajustes de inventario', faltantes de compra) salió del menú y es
+  `redirectTo('/warehouse/purchase-orders')`: los faltantes se resuelven solo desde la pestaña Faltantes de cada orden.
 - `<Placeholder navKey="audit" icon? brand? />`: `icon` = ícono del grupo (lo pone `pending`); `brand` = marca pequeña de Teikem
   arriba del aviso (por defecto `<BrandMark size={40} alt="" />`; `brand={null}` la quita).
 
@@ -186,10 +191,13 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
   izquierda: botón por fila, con chip de origen y contador opcional `.cnt`) — patrón de "Catálogos de valores" (F8a P6) y
   cualquier pantalla con una lista de la izquierda y el detalle a la derecha; bajo 720 px usa un `<select>` en vez de `.domlist`.
   `.unrow` (fila de lista de la maqueta: ancho completo, borde inferior, `.meta` en tono tenue; como `<button className="unrow">`
-  es una fila elegible sin estilo nativo y `.unrow.on` = la elegida, fondo `--flow-bg`) — lista de compras de 'Ajustes de
-  inventario'. `.adj-cols` (`warehouse.css`): maestro-detalle de esa pantalla, 300 px + resto como la maqueta, una columna
-  bajo 720 px con la lista arriba (alto máx. 240 px). `.rcp-cols` (Lote 13, `warehouse.css`): el de Recibo, 340 px + resto
+  es una fila elegible sin estilo nativo y `.unrow.on` = la elegida, fondo `--flow-bg`) — lista maestra de Recibo.
+  `.rcp-cols` (Lote 13, `warehouse.css`): el de Recibo, 340 px + resto
   (`.cols 340px 1fr` de la maqueta), una columna bajo 720 px con la lista arriba (alto máx. 260 px).
+  Lote 14 (`warehouse.css`): `.qty-in`/`.qty-out`/`.qty-zero` (cantidad que entra, sale o neutra), `.seg.adj-dir` (Subir/Bajar),
+  `.filters > .f-na` (filtro que la pestaña no aplica: atenuado, `display: contents`; `.f-na.empty` = sin valor, se oculta
+  bajo 720 px) + `.filters-note` (ayuda bajo la barra),
+  `.kx-facts` (rejilla `dl` de datos de solo lectura que envuelve a 360 px), `.kx-doc` (recuadro del documento de origen).
 
 ## Datos comunes (`src/kernel/catalogs`, `src/kernel/custom-fields`, `src/kernel/dsl`)
 - `useLookups(domain, { includeDisabled?, enabled? })` → `useQuery` con `LookupOption[]` (`{ code, label, description, sortOrder,
@@ -241,7 +249,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | Componente | Props | Uso |
 |---|---|---|
 | `Panel` | `title?`, `icon?` (ícono antes del título), `badge?: string \| number` (contador a la derecha, misma línea), `subtitle?` (solo texto descriptivo, en su propia línea; un conteo va en `badge`), `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra ni recorte: los desplegables salen) con cabecera `.ph2` de una sola línea (ícono + título `h2` + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales son `Modal`/`ConfirmDialog` (`.scrim > .pal`, radio 15 px con sombra); nunca uses `.pal` para contenido en pantalla. `<Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? rows.length : undefined}>` |
-| Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Ajustes de inventario → `IconPencil` (su nota y su vacío; sus paneles usan `IconCart` como la maqueta), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
+| Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Transferencias y ajustes → `IconPencil` (Lote 14: el lugar y el ícono de la vieja 'Ajustes de inventario'), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
 | `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`), `forceCards?` (Lote 13: tarjetas aunque la ventana sea ancha —tabla dentro de un panel angosto de `SplitPane`, decidido con `useElementWidth`—; el pie no cambia) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'`, `exportValue?(row)` (valor exportado explícito), `exportable?` (false = no se exporta: casillas, columnas solo visuales) | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`). Exportación: `exportValue`, si no el texto de `cell` ("—" = vacío; un número formateado igual a `sortValue` sale como número), si la celda no tiene texto (`StatusChip`, ícono) `sortValue` |
 | `fetchAllPages(fetchPage, { pageSize?, max? })` (`kernel/api/fetchAllPages`) | `fetchPage(skip, take) → Promise<{ items, total }>` | recorre `skip/take` de a `EXPORT_PAGE_SIZE` = 200 hasta el `total` o `EXPORT_MAX_ROWS` = 10 000 y devuelve `{ items, truncated }`: es lo que recibe `exportRows` (DataTable avisa con un toast si `truncated`). `exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/x', { params: { query: { ...query, skip, take } } })))}` |
@@ -270,6 +278,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `useMediaQuery(q)`, `CARDS_QUERY` | | `true` mientras se cumpla la media query (`'(max-width: 720px)'` = modo tarjetas) |
 | `useElementWidth(ref)` (Lote 13) | `ref: RefObject<Element \| null>` → `number` | ancho en px (entero) del elemento, al día con `ResizeObserver`; 0 sin medir (jsdom). La ref apunta a un elemento que se monta con el componente (no condicional). Para decidir por el ancho de un PANEL y no de la ventana: `const ref = useRef<HTMLDivElement>(null); const w = useElementWidth(ref)` → `<div ref={ref}><DataTable forceCards={w > 0 && w < 640} … /></div>` |
 | `SplitPane` (Lote 13) | `storageKey` (estable; se guarda en localStorage `teikem.split.<storageKey>`), `defaultRatio?` (0.6), `minRatio?`/`maxRatio?` (0.35 / 0.75), `minPx?: [A, B]` ([420, 320]), `stackBelow?` (900: ventana ≤ ese ancho = una columna), `label?` (nombre accesible de la barra; por defecto `ui.split.resize` "Cambiar el ancho de los paneles"), `className?`, `children: [A, B]` | dos paneles lado a lado (grid `minmax(0, A) 10px minmax(0, 1fr)`, sin `overflow:hidden`: los desplegables salen) con una barra `role="separator"` (`aria-orientation="vertical"`, `aria-valuenow`/`min`/`max` en % del panel A, foco visible). Arrastre con Pointer Events + `setPointerCapture` (también con el dedo: `touch-action:none`), ←/→ 5 %, Home/End a los límites, Enter o doble clic = `defaultRatio` (quita lo guardado). Guarda al soltar y con cada tecla (localStorage en try/catch: si falla o lo guardado no es un número entre 0 y 1, vale el por defecto). La proporción se acota a `minRatio`/`maxRatio` y a que cada panel conserve `minPx`. Una sola columna sin barra (primero A, luego B) con la ventana ≤ `stackBelow` o si el contenedor no alcanza para `minPx[0] + minPx[1]` + la barra. Los hijos no se vuelven a montar al apilarse (el borrador de un formulario sobrevive). Puras en `splitRatio.ts`: `clampSplitRatio(r, anchoÚtil, minPx, min, max)`, `splitBounds`, `readSplitRatio(raw, def)`, `ratioFromPointer`, `splitStorageKey`. `<SplitPane storageKey="pickBatches"><CollectPanel /><PickBatchesPanel /></SplitPane>` |
+| `SummaryBar` (Lote 14) | `items: SummaryItem[]` (`{ key?, label, value, tone?: 'in' \| 'out' \| 'money' \| 'muted', title? }`), `label?` (nombre accesible del grupo), `loading?` (cifras atenuadas y `aria-busy`), `aside?` (leyenda o aviso a la derecha) | franja `.burst` de la maqueta (`ledger()`): etiqueta pequeña en mayúsculas y el número en monoespaciada, separadas por una raya vertical; `in` = color de flujo, `out` = peligro. Envuelve en renglones a 360 px (dos por renglón bajo 480 px). La usan el Kárdex (Movimientos · Entradas/Salidas en movimientos y unidades · Internos; en Saldos además En mano y Disponible), Transferencias y ajustes y los descuadres. `<SummaryBar label={t('…label')} items={[{ label: 'Movimientos', value: 126 }, { label: 'Entradas (uds)', value: '+132', tone: 'in' }]} />` |
 | `ListPager<T>` (Lote 13) | `page` (base 1), `pageSize`, `total` (0 = no se pinta), `onPage?` (‹ › si hay más de una página), `onPageSize?` (selector "Filas por página" 10/25/50/100 + el tamaño actual), `showRange?` (true), `exportColumns?: DataColumn<T>[]` + `exportRows?()` (Exportar Excel/CSV/PDF con las reglas de exportación de `DataTable`; toast si viene `truncated`), `exportFileName?` (por defecto el título del `Panel`), `onExport?(format)` + `exportCount?` (exportación propia) | el pie de `DataTable` (mismas clases `.dt-pager` y textos `ui.table.*`; `DataTable` lo usa para su propio pie) para listas que no son `DataTable`, p. ej. la lista maestra `.unrow` de Recibo paginada en el servidor. `PAGE_SIZE_OPTIONS`, `pageSizeOptions(size)` en `pageSize.ts`. `<ListPager page={page} pageSize={size} total={data?.total ?? 0} onPage={setPage} onPageSize={(n) => { setSize(n); setPage(1) }} exportColumns={cols} exportRows={() => exportReceipts(query)} />` |
 
 **Orden y paginación de `DataTable`**
@@ -284,8 +293,8 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
   vuelve a la página 1). Pasa `rows` memorizadas (`useMemo`): una lista nueva vuelve a la página 1. Exporta todas las filas
   cargadas en el orden actual, no solo la página visible.
 - `pagination={false}` (todas las filas, sin rango ni selector; Exportar sigue si `exportable`) solo cuando paginar esconde o
-  rompe algo: filas con controles editables y estado propio (p. ej. la captura por línea de Ajustes de inventario: al cambiar
-  de página se perdería lo escrito), o tablas con su propia carga incremental ("Ver más" de la Actividad reciente). Agrega
+  rompe algo: filas con controles editables y estado propio (p. ej. la rejilla de captura de Recibo o de Recolección: al
+  cambiar de página se perdería lo escrito), o tablas con su propia carga incremental ("Ver más" de la Actividad reciente). Agrega
   `exportable={false}` en tablas de apoyo dentro de un `Modal` donde el archivo no tenga sentido. Si no, deja la paginación.
 - Servidor (endpoints con `skip/take` y `total`): controla `sort`/`onSort`, `page`/`onPage` y el tamaño (`pageSize` +
   `onPageSize`, que vuelve a la página 1), pasa `total`, y pon todo en la clave de la consulta (`placeholderData:
@@ -313,14 +322,24 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   producto), `useProductLots/Serials`, `useProductCategories`,
   `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
   `useReceipts`, `useReceipt` (Lote 13: `useCreateReceipt`, `useUpdateReceiptHeader` —PATCH del encabezado—,
-  `useSaveReceiptLine` y `useConfirmReceipt` dejan en caché la ficha que devuelve el API e invalidan la lista), `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
+  `useSaveReceiptLine` y `useConfirmReceipt` dejan en caché la ficha que devuelve el API e invalidan la lista), `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)` (Lote 14: las escrituras de
+  `useCycleCountAction` dejan en caché la ficha devuelta bajo `[…, { id }]`), `useCycleCountsPage(query)` (Lote 14:
+  `GET /cycle-counts/page`, con `total`), `useChangesPreview(query)` y `useCreateCountsFromChanges()` ("lo cambiado"),
+  `exportCycleCounts(query)`,
   `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
   `usePurchaseOrderShortageLines`, `useDockAppointments`, `useCrossDockPlans`, `useCrossDockPlan`, `useCrossDockCandidates`,
   `useOrdersReadonly`, `useOrderReadonly`, `useOrderLookup`). `query` es el tipo del esquema (`GetQuery<'/api/v1/…'>`); el último
   argumento `{ enabled?, handleAccessDenied? }`. Las listas paginadas usan `keepPreviousData`. Escrituras: `useCreateX`/`useUpdateX`
   o un hook de acciones con unión discriminada por `action` (`useSaveWarehouseZone`, `useWarehouseTaskAction`, `useCycleCountAction`,
   `usePurchaseOrderAction`, `useCrossDockAction`…); cada una invalida por prefijo su lista, su ficha y, si mueve inventario,
-  saldos/Kárdex/existencias (`warehouseKeys` tiene los prefijos). `warehouseLabel` ("Code · Name"), `binLabel` ("Código · Zona")
+  saldos/Kárdex/existencias (`warehouseKeys` tiene los prefijos; Lote 14: también el resumen del Kárdex, los descuadres y el
+  estado de la conciliación). Lote 14: `useKardexSummary(query)` (`GET /inventory/transactions/summary`, mismos filtros que la
+  lista → `{ movements, inCount, inQty, outCount, outQty, internalCount }`), `useInventoryTransaction(id)` (detalle, 404
+  'Movimiento no encontrado.'), `useInventoryOwners()` ("Propio" con `isOwn` + clientes dueños), `useBinSearch(query)`
+  (posiciones entre almacenes), `useInventoryDiscrepancies(query)` (paginado, `openCount`), `useInventoryDiscrepancy(publicId)`,
+  `useResolveDiscrepancy()` → `mutateAsync({ publicId, body: { action: 'REBUILD_BALANCE' | 'DISMISS', notes, rowVersion } })`,
+  `useRunReconciliation()` (`POST /inventory/reconciliation/run`, `{ productPublicIds? }` ≤ 200), `useReconciliationStatus({
+  refetchInterval? })` y `exportInventoryDiscrepancies(query)`. `warehouseLabel` ("Code · Name"), `binLabel` ("Código · Zona")
   y `productLabel` ("SKU · Nombre").
 - `pickers.tsx`: todos son combobox como `ClientPicker` (↑/↓/Enter/Escape, ✕ para quitar, clic para reabrir) y se pueden llenar
   con un **lector de código de barras**: el código completo + Enter elige la opción cuyo código es exactamente ese (sin
@@ -359,7 +378,21 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   busca en el API por SKU o nombre y pinta una píldora por producto elegido (recortada con elipsis: un SKU de 60 caracteres no
   desborda a 360 px). En listas de historial (Kárdex, Recibos, Recolecciones) va con `includeInactive` para poder filtrar
   productos dados de baja.
+  Lote 14: `BinMultiFilter` (`label`, `value: BinFilterItem[]` —`{ id, label }` de `kardexView.ts`—, `onChange`,
+  `warehousePublicIds?` —acota la búsqueda—, `includeInactive?`): filtro "Posición" que busca ENTRE almacenes
+  (`GET /api/v1/warehouses/bins/search?search=&warehousePublicIds=&take=50`, 250 ms entre teclas, opciones "Código · Zona ·
+  Almacén", marca "Inactiva"); una píldora por posición con ✕; Enter con el código exacto la elige aunque la búsqueda no haya
+  llegado (lector de código de barras). `OwnerFilter` (`label`, `value: string[]`, `onChange`): "Dueño" (`SearchSelect` sobre
+  `useInventoryOwners`: "Propio" = `OWN_OWNER` ('OWN'), los clientes por `clientPublicId`); la consulta la arma `ownerQuery`
+  (`ownerClientPublicIds` + `includeOwn`).
+  ```tsx
+  <BinMultiFilter label={t('…bin')} value={bins} onChange={setBins} warehousePublicIds={warehouses} includeInactive />
+  <OwnerFilter label={t('…owner')} value={owners} onChange={setOwners} />
+  const q = { ...ownerQuery(owners), binIds: bins.map((b) => b.id) }
+  ```
   `isAccessDenied(error)` (`accessDenied.ts`) para avisar junto a un campo cuando una consulta secundaria da 403.
+  `problemText(err)` (`problemText.ts`, Lote 14): texto de un error del API para mostrarlo tal cual fuera de un `Form` (los
+  mensajes por campo de un 400 o el título de un 404/409/422).
 - Ubicaciones (`/warehouse/locations`, `LocationsScreen`; maqueta `ubicaciones()`): almacén arriba (`?warehouse=<publicId>`;
   sin él, el primero activo), "Asignar cupo" (`BinCapacityModal`) y "Nueva posición" (ambos `warehouse.manage`); río con un recuadro por zona (`.river`/`.node`/`.pipe` de
   `analytics/pulse.css` dentro de un contenedor `.pulse`) con lo ocupado vs. la capacidad de la zona (`capacityQty` y
@@ -445,7 +478,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   sugerencias (`<datalist>` de `useProductBrands`) y Modelo texto libre (máx. 100 cada uno; en PATCH solo se mandan si cambiaron: `''`
   = quitar). El Total sale de `useProduct` (se refresca solo tras un ajuste). Al editar, interruptor "Producto activo"
   (deactivate/reactivate al guardar; bloqueado con saldo en mano, con la nota de la maqueta), bloque "Ajustar inventario"
-  (`inventory.adjust`; Lote 12: oculto tras "Añadir ajuste"; al abrirlo Cantidad, Motivo con buscador sin los reservados al sistema,
+  (`inventory.adjust`; Lote 12: oculto tras "Añadir ajuste"; Lote 14: las mismas piezas del modal de ajuste —`useAdjustmentForm`
+  con `fixedProduct` + `AdjustmentFields`: Subir/Bajar, cantidad positiva y motivos según la dirección—; al abrirlo Cantidad, Motivo con buscador sin los reservados al sistema,
   Almacén · Posición —por defecto los del producto— y Nota obligatoria que va en `notes`; "Aplicar ajuste" con el producto fijo
   refresca el Total y vuelve a ocultar el bloque limpio; un 409 `insufficient_stock` queda en el aviso del propio bloque, que sigue
   abierto; "Cancelar ajuste" lo cierra) y "Ver lotes"/"Ver series" (según el rastreo) → `/warehouse/products/{publicId}?tab=lots|serials`.
@@ -459,8 +493,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   <ProductEditorByIdModal publicId={editingPublicId} onClose={() => setEditingPublicId(null)} />
   ```
 - `ResolveShortageModal` (`ResolveShortageModal.tsx`): resolver el faltante de una línea de compra (CLOSE, REORDER,
-  MANUAL_ADJUSTMENT) con `useResolveShortage`; lo comparten la pestaña Faltantes de la ficha de la orden y 'Ajustes de
-  inventario'. Props `open`, `onClose`, `po` (mínimo `{ publicId, warehousePublicId, rowVersion? }`: lo cumplen
+  MANUAL_ADJUSTMENT) con `useResolveShortage`; lo usa la pestaña Faltantes de la ficha de la orden (Lote 14: el único lugar
+  donde se resuelven los faltantes). Props `open`, `onClose`, `po` (mínimo `{ publicId, warehousePublicId, rowVersion? }`: lo cumplen
   `PurchaseOrderDto` y `PoShortageSummaryDto`), `line: ShortageLineDto | null`, `initialAction?` (por defecto CLOSE),
   `initial?: { quantity?, notes? }` (precarga desde la fila), `onResolved?(result)` (con él, quien lo abre pone su aviso; sin
   él, 'Faltante resuelto.'). Pinta arriba "SKU · Producto — Faltante: N". REORDER solo con `purchasing.manage`;
@@ -473,12 +507,48 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   <ResolveShortageModal open onClose={() => setResolving(null)} po={summary} line={line} initialAction="MANUAL_ADJUSTMENT"
     initial={{ quantity: 1, notes: 'Apareció en muelle' }} onResolved={(r) => toast.success(…)} />
   ```
-- Ajustes de inventario (`/warehouse/inventory-adjustments`, `InventoryAdjustmentsScreen`; maqueta `ajustesAlmacen()`;
-  purchasing.view + PURCHASING): maestro-detalle `.adj-cols`. Izquierda, `usePurchaseOrderShortages()` (compras con recibo
-  parcial: `.unrow` con número, chip `fail` "N corto", proveedor y "N línea(s)"); derecha, `usePurchaseOrderShortageLines` de
-  la elegida (una sola consulta; se muestran solo las de pendiente > 0) con SKU, Producto, Ordenado, Recibido, Faltante y
-  Resolver (Cerrar `inventory.adjust`; Reordenar + `purchasing.manage`; Cant. + Motivo + Ajuste manual + WMS_LOTSERIAL: cada
-  botón abre `ResolveShortageModal` con su acción). La elegida va en `?po=<publicId>` (sin él o si ya no está, la primera).
+- Ajuste y transferencia de inventario (Lote 14, D11 y hallazgo 3). Los usan 'Transferencias y ajustes', el Kárdex y (el
+  ajuste) la ficha del producto:
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `InventoryAdjustModal` | `open`, `onClose`, `initial?: AdjustInitial` (`{ productPublicId?, warehousePublicId?, binId?, direction?: 'up' \| 'down' }`) | "Ajuste de inventario": **Subir / Bajar** (`AdjustDirectionInput`, radios `.seg.adj-dir`; obligatorio: 'Elija si el ajuste sube o baja el inventario.') + cantidad POSITIVA ('La cantidad debe ser mayor que cero.'); la pantalla pone el signo (el API sigue recibiendo `quantity` con signo). Motivo con buscador (`ComboSelectInput`) según la dirección (`reasonsForDirection`: Encontrado solo al subir; Daño, Pérdida y Vencido solo al bajar; nunca los del sistema); al cambiar de dirección se quita un motivo que ya no vale. Pista "Disponible en la posición: N" y, al bajar, 'No puede bajar más de lo disponible en la posición ({qty}).'. LOT: al subir, número de lote; al bajar, lote con saldo en la posición (`lotId`). SERIAL: al subir, series nuevas; al bajar, series disponibles en la posición (`SerialsPickInput`); la cantidad es el número de series. Nota obligatoria (`adjustNotesSchema`). Se monta limpio al abrir. |
+  | `useAdjustmentForm({ initial?, fixedProduct? })` + `<AdjustmentFields state />` (`adjustmentForm.ts`, `InventoryAdjustModal.tsx`) | `state = { form, tracking, direction, available, balances, serials, picked… }`; `useSubmitAdjustment()` → `(values, tracking) => cantidad con signo` | los campos del ajuste dentro de cualquier `<Form form={state.form}>`; con `fixedProduct` no se elige producto (bloque "Ajustar inventario" de `ProductEditorModal`). El esquema (`adjustFormSchema(t, lang, { tracking, direction, available })`) se arma con lo que avisan los controles (`onPicked`). |
+  | `InventoryTransferModal` | `open`, `onClose` | "Transferencia de inventario" en el orden **origen → ítem → destino**: almacén y posición de origen (`onlyWithStock`) → ítem (`ComboSelect` sobre los saldos disponibles de esa posición: producto + lote, "disponible N") → series si es SERIAL (las disponibles en la posición; cantidad = número de series) → almacén de destino (arranca en el de origen) y posición → cantidad (tope: lo disponible del ítem, 'No puede transferir más de lo disponible en la posición ({qty}).') → notas. Manda `lotId` y `serialNumbers`. |
+  Lógica pura: `adjustmentReasons.ts` (`reasonsForDirection`, `reasonAllowed`, `signedAdjustQuantity`, `UP_ONLY_REASONS`,
+  `DOWN_ONLY_REASONS`), `movementForms.ts` (`adjustmentBody`, `availableAt`, `lotOptions`, `transferItemOptions`,
+  `transferItemKey`/`parseTransferItemKey`, `serialsAt`) y `productRules.ts` (`adjustDirectionSchema`, `adjustMagnitudeSchema`).
+  ```tsx
+  <Can perm="inventory.adjust"><button className="btn" onClick={() => setAdjusting(true)}>{t('…adjust')}</button></Can>
+  <InventoryAdjustModal open={adjusting} onClose={() => setAdjusting(false)} initial={{ warehousePublicId, binId }} />
+  <InventoryTransferModal open={transferring} onClose={() => setTransferring(false)} />
+  ```
+- `KardexTransactionModal` (Lote 14; `txnId: number | null`, `onClose`): detalle de SOLO LECTURA de un movimiento
+  (`GET /inventory/transactions/{id}`): fecha y hora, usuario ("Sistema" sin usuario), tipo en chip de color, producto, dueño,
+  categoría, cantidad con signo y color (una transferencia interna, sin signo), de → a, lote (vence), serie, motivo, origen y
+  nota; "Documento de origen" (número, estatus, fecha, parte, referencia; la tarea de almacén con su documento padre) con
+  "Abrir" solo si el usuario tiene el permiso y el módulo de esa pantalla (`documentLink`: recibo `?receipt=`, recolección,
+  conteo `?count=`, compra, orden, producto, plan de cruce); "Movimientos relacionados" (mismo documento o mismo asiento, tope
+  200, `exportable={false}`, el propio resaltado). El 404 'Movimiento no encontrado.' se muestra tal cual.
+  `<KardexTransactionModal txnId={txnId} onClose={() => setTxnId(null)} />`
+- `kardexView.ts` (Lote 14, puro): `InventoryFilterState` (filtros compartidos del Kárdex) con `EMPTY_INVENTORY_FILTERS`,
+  `kardexQuery`/`summaryQuery`/`balancesQuery`/`discrepancyQuery`, `TAB_FILTERS`/`filterApplies`/`inactiveFilters`,
+  `filtersFromUrl`, `tabFromParam`, `txnParam`, `ownerQuery`, `rangeInverted`; y cómo se pinta un movimiento: `txnTypeTone`
+  (RECEIPT `deliv`, ISSUE `route`, TRANSFER `disp`, ADJUSTMENT `fail`, CROSSDOCK `cod`), `movementQtyView`, `formatSignedQty`,
+  `qtyClass`, `splitDateTime` (fecha y hora por separado), `lotSerialText`, `fromToText`, `movementOrigin` (manual, conteo,
+  acomodo o reabasto…), `documentLink`, `binFilterLabel`, `summaryItems` (cifras de `SummaryBar`). `kardexColumns.tsx`:
+  `useKardexColumns(ids)` con las columnas de un Kárdex (`date`, `time`, `type`, `sku`, `product`, `owner`, `category`,
+  `qty`, `amount`, `position`, `from`, `to`, `lotSerial`, `reason`, `notes`, `origin`, `ref`, `user`; `KARDEX_COLUMNS` = las
+  del Kárdex). `const columns = useKardexColumns(['date', 'time', 'type', 'sku', 'qty', 'position'])`
+- Transferencias y ajustes (`/warehouse/transfers-adjustments`, `TransfersAdjustmentsScreen`; Lote 14; inventory.view +
+  WMS_LOTSERIAL; en el menú después de Recolección y empaque): pestañas Ajustes (sin parámetro) y Transferencias
+  (`?tab=transfers`), cada una con sus propios filtros (se conservan al cambiar de pestaña; lógica en `movementFilters.ts`:
+  `adjustmentsQuery`, `transfersQuery`, `describeMovementFilters`) y la lista paginada en el servidor del Kárdex con TODOS los
+  movimientos de su tipo, también los del sistema (D12), con "Solo manuales" (`manualOnly`). Ajustes: Fecha, Almacén, Producto,
+  Dueño, Tipo de ajuste (Subir/Bajar → `direction` IN/OUT), Motivo; columnas Fecha, Hora, SKU, Producto, Dueño,
+  Almacén/Posición, Lote/Serie, Cantidad ±, Motivo, Nota, Origen del movimiento y Usuario. Transferencias: Fecha, Almacén de
+  origen/destino (`fromWarehousePublicIds`/`toWarehousePublicIds`), Producto, Dueño; columnas con Origen y Destino. Resumen
+  (`SummaryBar`) con los mismos filtros; "Reporte de ajustes" con los filtros de la pestaña Ajustes; "Ajustar" y "Transferir"
+  (`inventory.adjust`); clic en una fila = `KardexTransactionModal`. Sin `QBox`.
 - Recibo (`/warehouse/receipts`, `ReceiptListScreen`; maqueta `recibo()`, Lote 13): maestro-detalle `.rcp-cols`. Estatus
   (colores del catálogo con `StatusChip`): Esperado → Recibiendo ⇄ Discrepancia → Completado / Completado con diferencia →
   Acomodado; los cambia el servidor (`isOpen` = los tres primeros). Pestañas `?tab=asns|putaway`; el recibo elegido va en
@@ -503,11 +573,34 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   <ReceiptLinesEditor receipt={receipt} state={lines} />
   <button className="btn flow block" disabled={confirmBlockers(lines.rows, isOpen, manual) !== null}>…</button>
   ```
+- Conteo cíclico (`/warehouse/cycle-counts`, `CycleCountListScreen`; maqueta `conteo()`, Lote 14 P8, D2-D4 y D7-D10): filtros
+  arriba y DOS paneles en `SplitPane storageKey="cycle-counts"` (34/66; bajo 900 px apilados). El conteo elegido va en
+  `?count=<id>` (sin él, el primero de la lista). Estatus (colores del catálogo `CycleCountStatus`): Pendiente → Contado
+  (solo a ciegas, desde la app) → Concordancia / Diferencia. "Conteo de lo cambiado" y "Nuevo conteo" con `warehouse.count`.
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `CycleCountFilterBar` | `value: CountFilterState`, `onChange`, `q`, `onQ` | Almacén, Zona (de los almacenes elegidos), Posición (`BinMultiFilter`), Producto, Estatus, Origen, Creado (días locales) y Buscar; todo al API |
+  | `CountTaskList` | `items`, `total`, `selectedId`, `onSelect(id)`, `onDeleted?(id)`, `page`/`pageSize`/`onPage`/`onPageSize`, `exportRows` | filas `.unrow` (posición o "N posiciones" + `StatusChip`; "CC-… · Zona · N líneas · fecha"; origen y asignado) con íconos Asignar (`warehouse.manage`, abiertos, `taskId`) y Eliminar (Pendiente, `warehouse.count`, `ConfirmDialog`); sin `QBox`; `ListPager` con Exportar |
+  | `CountDetailPanel` | `id: number \| null` | el conteo elegido: cabecera (estatus, origen, ventana de lo cambiado, asignado), Historial, "Refrescar foto", "Agregar lo encontrado", `CountScanBox`, rejilla con TODAS las líneas (Esperado, Contado editable en la fila, Varianza, Ajustado al cerrar) y "Confirmar conteo y ajustar" (un paso, `POST /reconcile`; deshabilitado con 'Faltan {n} línea(s) por contar.'). A ciegas: solo lectura |
+  | `CountScanBox` | `lines`, `onPick(match)`, `disabled?` | combobox sobre las líneas; Enter con SKU, código de barras, lote o serie exactos (`matchCountLine`) elige la línea; varias → se elige; ninguna → 'Ese código no está en este conteo…' |
+  | `CountQtyModal` / `AddFoundLineModal` (`CountLineModals.tsx`) | `line`, `scannedSerial?`, `isBlind?`, `onSave(body)`, `onClose` / `detail`, `onClose` | cantidad (foco puesto, Enter guarda) o series de una línea; línea nueva (lo encontrado) |
+  | `CreateCountModal` / `ChangedCountModal` | `onClose`, `onCreated?` / `onClose`, `initialWarehousePublicId?`, `onCreated?(counts)` | alta manual (almacén, zonas, posiciones) / "lo cambiado": almacén (de solo lectura si hay uno), Desde/Hasta en hora de Puerto Rico (por defecto la ventana del servidor; tocadas se mandan en UTC), zonas, "Incluir posiciones vacías", vista previa en vivo y su `problem` tal cual (sin crear) |
+  | `useCountDrafts(detail)` | → `{ drafts, errors, saving, input, save, capture, flush, rowVersion }` | captura en la fila: texto por línea, guardado al salir o con Enter en FILA ÚNICA con el rowVersion más reciente; `flush()` antes de confirmar |
+  Lógica pura en `countView.ts`: `CountFilterState`/`EMPTY_COUNT_FILTERS`, `countFilterQuery`, `countListQuery`, `countParam`,
+  `selectedCountId`, `countWhere`, `isCountClosed`/`isCountEditable`, `matchCountLine`, `scanOptions`, `lineVariance`,
+  `pendingLines`, `confirmBlocker`, `TENANT_TIME_ZONE` ('America/Puerto_Rico', espejo de `TenantClock`), `zonedInputFromUtc`,
+  `utcFromZonedInput`. Estilos `.cc-*` en `warehouse.css`.
+  ```tsx
+  <SplitPane storageKey="cycle-counts" defaultRatio={0.34} minPx={[300, 480]}>
+    <CountTaskList items={items} total={total} selectedId={id} onSelect={select} … /><CountDetailPanel id={id} />
+  </SplitPane>
+  ```
 - Tareas de almacén (sin pantalla ni ítem de menú: la maqueta no los tiene). Cada tipo vive en la pantalla de su flujo:
   PUTAWAY → Recibo: pestaña 'Acomodo pendiente' (`?tab=putaway`, Lote 13: lista de recibos con acomodo por cerrar y las
   tareas del elegido a la derecha) y 'Tareas de acomodo' debajo del detalle de un recibo confirmado (`ReceiptPutawayTasks`);
-  REPLENISH → Recolección y empaque, pestaña 'Reabasto' (`?tab=replenish`, con 'Correr reabasto'); COUNT → Conteo cíclico,
-  pestaña 'Tareas de conteo' (se completan desde la ficha del conteo); CROSSDOCK → Cruce de muelle, pestaña 'Tareas de
+  REPLENISH → Recolección y empaque, pestaña 'Reabasto' (`?tab=replenish`, con 'Correr reabasto'); COUNT → Conteo cíclico
+  (Lote 14, D10: sin pestaña propia; se asigna con el ícono de la lista —`AssignTaskModal` con `{ id: taskId,
+  assignedToUserId }`— y se cierra al confirmar el conteo); CROSSDOCK → Cruce de muelle, pestaña 'Tareas de
   cruce' (solo con WMS_LOTSERIAL, 403 sin sacar de la pantalla). PICK/PACK/LOAD no tienen handler en el API (D41).
   | Pieza | Props / firma | Uso |
   |---|---|---|
@@ -558,20 +651,44 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
     ```tsx
     <AdjustmentsReportButton filters={{ ...EMPTY_PRODUCT_FILTERS, warehouses: [warehousePublicId] }} />
     ```
+    Lote 14 (hallazgo 22): `<AdjustmentsReportButton query={{ kardexQuery, filterLabels }} />` = con la consulta del Kárdex ya
+    armada (fechas, dueño, dirección, motivo, "Solo manuales"…; se fuerza `types=[ADJUSTMENT]` y se quita la página:
+    `adjustmentsReportKardexQuery`) y sus "Filtros aplicados" ya traducidos; manda sobre `filters` (sin aviso de KPI). Así lo
+    usa 'Transferencias y ajustes' con `adjustmentsQuery(f)` y `describeMovementFilters(f, names, t)`.
 - Kárdex de movimientos (`/warehouse/kardex`, `InventoryScreen`; maqueta `ledger()`): pestañas Kárdex (primera, sin
-  parámetro), Saldos (`?tab=balances`) y Conciliación (`?tab=reconciliation`), con Ajustar/Transferir en la cabecera. Lee la
-  URL al montar: `warehousePublicIds=<publicId>` y `product=<publicId>` filtran Saldos o Kárdex (el SKU de cada producto se
-  resuelve con su ficha, `useProductsByPublicId`; si la ficha no se puede leer la píldora dice 'Producto no disponible');
-  `categoryIds=<id>` filtra Saldos y `types=<InternalCode>` el Kárdex (todos repetibles o separados por comas). Esos filtros
-  son solo de la pestaña con que se abrió: al cambiar de pestaña se descartan y la URL queda solo con la pestaña. Es lo que
-  usan los enlaces de Pulso (`?tab=balances&categoryIds=…` y `?product=…`, con el almacén elegido para que el destino cuadre
-  con la cifra) y los reportes de Productos e inventario. `/warehouse/inventory` redirige aquí (`legacyInventorySearch`). No
-  hay parámetro de búsqueda: la búsqueda del Kárdex no compara el documento de origen, así que Actividad reciente no enlaza
-  movimientos al Kárdex.
+  parámetro), Saldos (`?tab=balances`) y Conciliación (`?tab=reconciliation`), con Ajustar/Transferir en la cabecera (modales
+  del Lote 14). **Lote 14 (hallazgo 6): los tres tabs COMPARTEN los filtros** (`InventoryFilterState` en la pantalla,
+  `InventoryFilterBar.tsx`): Fecha, Tipo, Almacén, Posición (`BinMultiFilter`), Producto (con dados de baja), Categoría, Dueño,
+  Motivo, Dirección (entradas/salidas), Lote, Serie y "Solo manuales"; más "Incluir en cero"/"Solo con disponible" en Saldos y
+  Estatus (por defecto Pendiente) en Conciliación. Cambiar de pestaña NO descarta nada; un filtro que la pestaña no aplica
+  (`TAB_FILTERS`: Saldos no filtra por fechas, tipo, dueño, motivo, dirección ni "Solo manuales"; Conciliación, solo almacén,
+  posición, producto, categoría, fechas y estatus) se atenúa y, si tiene valor, se nombra en la ayuda bajo la barra. Arriba de
+  Kárdex y Saldos, `SummaryBar` con `GET /inventory/transactions/summary` y los MISMOS filtros (en Saldos además En mano y
+  Disponible del `BalancePageDto`, D13). Columnas del Kárdex (`KARDEX_COLUMNS`): Fecha, Hora, Tipo, SKU, Producto, Dueño,
+  Categoría, Cantidad, Almacén/Posición, Lote/Serie, Motivo, Origen y Usuario; clic en una fila = `KardexTransactionModal`.
+  Conciliación = `DiscrepanciesPanel` (descuadres paginados, "Ejecutar conciliación" —los productos del filtro o todos— y
+  "Revisión automática: al día / N en cola") + `DiscrepancyModal` (datos, reservado, últimos movimientos e historial;
+  "Corregir el saldo según el Kárdex" solo en descuadres por posición y "Descartar" con nota obligatoria, `inventory.adjust`;
+  tras corregir, "Crear conteo de esa posición" con `POST /cycle-counts` y `binIds`, `warehouse.count.capture`; los mensajes
+  del API tal cual).
+  **Contrato de la URL** (se lee UNA vez al montar; los filtros valen para las tres pestañas): `tab`, `warehousePublicIds`,
+  `product` (publicId; el SKU se resuelve con su ficha, `useProductsByPublicId`; si no se puede leer, 'Producto no
+  disponible'), `categoryIds`, `types`, `reasons`, `direction` (IN/OUT), `manualOnly=true`, `from`/`to` (YYYY-MM-DD),
+  `refEntity`+`refId` (documento de origen: píldora "Documento: CYCLE_COUNT #3" que se puede quitar), `status` (descuadres),
+  `txn=<id>` (abre el detalle de un movimiento; se pone y se quita al abrir/cerrar) y `discrepancy=<publicId>` (abre un
+  descuadre; sin `tab` implica Conciliación: así llega el "Revisar" de "Necesita tu atención"). Al cambiar de pestaña la URL
+  queda solo con la pestaña (los filtros se quedan en pantalla). Lo usan los enlaces de Pulso (`?tab=balances&categoryIds=…`,
+  `?product=…`), los reportes de Productos e inventario (`?types=ADJUSTMENT`), el conteo cerrado (`?refEntity=CYCLE_COUNT&refId=`)
+  y el Pulso (`?tab=reconciliation&discrepancy=`). `/warehouse/inventory` redirige aquí (`legacyInventorySearch`).
+  ```tsx
+  <Link to={`/warehouse/kardex?tab=reconciliation&discrepancy=${publicId}`}>{t('…review')}</Link>
+  <Link to={`/warehouse/kardex?refEntity=CYCLE_COUNT&refId=${count.id}`}>{t('…seeAdjustments')}</Link>
+  ```
 - `productRules.ts`: esquemas zod de peso (`weightKgSchema`), volumen (`volumeM3Schema`) y costo/precio (`moneySchema(t, 'cost' |
   'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06, y la cantidad de un ajuste manual
-  (`adjustQuantitySchema(t)`: obligatoria, ≠ 0, ≤ 3 decimales; la usan `InventoryAdjustModal` y el bloque de ajuste de
-  `ProductEditorModal`); Lote 12: `brandModelSchema(t, 'brand' | 'model')` (opcional, recortado, ≤ 100, mensaje del API) y
+  (`adjustQuantitySchema(t)`: obligatoria, ≠ 0, ≤ 3 decimales, con signo; desde el Lote 14 los ajustes usan Subir/Bajar con
+  `adjustDirectionSchema(t)` —'Elija si el ajuste sube o baja el inventario.'— y `adjustMagnitudeSchema(t)` —positiva: 'La
+  cantidad debe ser mayor que cero.'—); Lote 12: `brandModelSchema(t, 'brand' | 'model')` (opcional, recortado, ≤ 100, mensaje del API) y
   `adjustNotesSchema(t)` (nota obligatoria de TODO ajuste manual, ≤ 300, mensajes exactos del API —400 en `errors.notes`—: la
   usan el bloque de ajuste de `ProductEditorModal`, `InventoryAdjustModal` del Kárdex y la acción MANUAL_ADJUSTMENT de
   `ResolveShortageModal`); pruebas en `productRules.test.ts`.
@@ -636,7 +753,8 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   ocultos, `isVisible=false`, para el modo Organizar). La pantalla pinta EXACTAMENTE `shownPanels(panels)` (orden `sortOrder`, sin
   ocultos ni claves desconocidas) con el registro; nunca monta un panel a mano ni vuelve a mirar permisos del panel.
 - Registro `PULSE_PANELS` (`pulsePanels.tsx`): `{ key, titleKey, render(ctx), hasContent(ctx), items? }` para `INDICATORS`
-  (río, `PulseSections.tsx`), `CHARTS` (grilla), `WAREHOUSE` (`WarehousePulsePanel`) y `ACTIVITY` (`ActivityPanel`).
+  (río, `PulseSections.tsx`), `CHARTS` (grilla), `WAREHOUSE` (`WarehousePulsePanel`), `ACTIVITY` (`ActivityPanel`) y
+  `ATTENTION` (Lote 14, `AttentionPanel`: "Necesita tu atención", `pulse.attention`, orden 5).
   `ctx = { pulse, indicators, charts }` con los elementos ya visibles y ordenados (`shownItems`). Un panel nuevo = su clave en
   `PULSE_PANEL_KEYS` (`pulseLayout.ts`, espejo de `PulsePanels` del dominio) + su entrada aquí + su título en i18n:
   ```tsx
@@ -649,6 +767,16 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   ```tsx
   const save = useSaveLayout('mine')
   await save.mutateAsync(buildLayoutRequest(state))   // todos los paneles y elementos, orden = índice × 10
+  ```
+- "Necesita tu atención" (Lote 14, D6): `useAttention()` = `GET /analytics/attention` (`staleTime: 0`, 403 sin redirigir: el
+  panel no se pinta) → `{ total, items (5 más antiguos), groups }`. Cada ítem trae `code`, `tone`, `params` (cadenas), `route` +
+  `query` ("Revisar") y `sinceUtc`; cada grupo, su `total`, `route` + `query` ("Ver todos (N)"). Sin pendientes: "Todo en orden".
+  El texto de un tipo nuevo de aviso = `analytics.attention.items.<code>.*` en i18n + su rama en `attentionRowText`
+  (`attention.ts`, pura: `attentionHref`, `attentionToneClass`, `formatSigned`); uno desconocido se pinta con su código.
+  Estilos `.inbox`/`.work.tone-*` de la maqueta en `pulse.css` ("Revisar" baja bajo el texto a 480 px).
+  ```tsx
+  const text = attentionRowText(item, t, lang)        // { title, detail, figures, since, reviewLabel }
+  <Link className="btn sm" to={attentionHref(item.route, item.query)!} aria-label={text.reviewLabel}>{t('analytics.attention.review')}</Link>
   ```
 - `<PulseOrganizer scope pulse onClose />`: modo Organizar (copia local; ▲ ▼, ojo "Ocultar/Mostrar", asa con ↑/↓ y arrastre
   HTML5 nativo con ratón —con `(pointer: coarse)` solo botones—; "Listo" = un solo PUT y toast "Pulso guardado"; error → `title`

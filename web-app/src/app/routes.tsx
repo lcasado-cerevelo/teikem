@@ -91,6 +91,21 @@ export function legacyReceiptSearch(search: URLSearchParams, params: Readonly<Pa
 }
 
 /**
+ * Lote 14 (P8): `/warehouse/cycle-counts/:id` (ficha propia del conteo, borrada) → `/warehouse/cycle-counts?count=<id>` (el
+ * conteo elegido en el panel derecho de la lista). `count` va primero; los demás parámetros se conservan (un `count` anterior
+ * lo reemplaza el de la ruta). Sin `id`, la consulta queda igual.
+ */
+export function legacyCountSearch(search: URLSearchParams, params: Readonly<Params<string>>): URLSearchParams {
+  const id = params.id
+  if (!id) return new URLSearchParams(search)
+  const next = new URLSearchParams({ count: id })
+  search.forEach((value, key) => {
+    if (key !== 'count') next.append(key, value)
+  })
+  return next
+}
+
+/**
  * `/warehouse/inventory` (antes 'Inventario', con Saldos como primera pestaña) → `/warehouse/kardex` (Kárdex primero):
  * sin `tab` era Saldos (`tab=balances`); `tab=kardex` pasa a no llevar parámetro. Los filtros se conservan.
  */
@@ -138,8 +153,8 @@ export const appRoutes: readonly AppRoute[] = [
   // Lote F6 — Almacén e inventario (manual 06). Lecturas con inventory.view + WMS_LOTSERIAL; compras con
   // purchasing.view + PURCHASING; citas y planes de cruce de muelle con inventory.view + CROSSDOCK (las acciones exigen
   // warehouse.crossdock dentro de la pantalla). Orden de la maqueta: Almacenes, Ubicaciones, Productos e inventario,
-  // Compras (y Proveedores), Recibo, Recolección y empaque, Ajustes de inventario (Lote 13: Recolección sube antes de
-  // Ajustes), Conteo cíclico, Cruce de muelle, Kárdex de movimientos. Las tareas de almacén viven en la pantalla de su tipo (features/warehouse/taskQueue.tsx).
+  // Compras (y Proveedores), Recibo, Recolección y empaque, Transferencias y ajustes (Lote 14: en el lugar de la vieja
+  // 'Ajustes de inventario', que salió del menú), Conteo cíclico, Cruce de muelle, Kárdex de movimientos. Las tareas de almacén viven en la pantalla de su tipo (features/warehouse/taskQueue.tsx).
   {
     path: '/warehouse/warehouses',
     element: lazy(() => import('../features/warehouse/WarehouseListScreen')),
@@ -223,16 +238,21 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
   },
-  // Ajustes de inventario (maqueta ajustesAlmacen()): faltantes de compra, maestro-detalle por orden; mismo acceso que Compras
-  // (resolver exige inventory.adjust dentro de la pantalla).
+  // Lote 14 (D1): 'Transferencias y ajustes' ocupa el lugar de la vieja 'Ajustes de inventario' (faltantes de compra), justo
+  // después de Recolección y empaque. Pestañas Ajustes (sin parámetro) y Transferencias (?tab=transfers); ajustar y
+  // transferir exigen inventory.adjust dentro de la pantalla.
   {
-    path: '/warehouse/inventory-adjustments',
-    element: lazy(() => import('../features/warehouse/InventoryAdjustmentsScreen')),
-    perm: 'purchasing.view',
-    module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 80 },
+    path: '/warehouse/transfers-adjustments',
+    element: lazy(() => import('../features/warehouse/TransfersAdjustmentsScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'transfersAdjustments', order: 80 },
   },
-  // Conteo cíclico: incluye la pestaña 'Tareas de conteo' (tareas COUNT).
+  // Lote 14 (D1-C): la pantalla de faltantes de compra salió del menú; los faltantes se resuelven desde la ficha de cada orden
+  // de compra (pestaña Faltantes). Su dirección lleva a Compras.
+  { path: '/warehouse/inventory-adjustments', element: redirectTo('/warehouse/purchase-orders') },
+  // Conteo cíclico (Lote 14, D9/D10): dos paneles, la lista de conteos y el conteo elegido (?count=<id>); la asignación va
+  // con un ícono en la lista (ya no hay pestaña 'Tareas de conteo').
   {
     path: '/warehouse/cycle-counts',
     element: lazy(() => import('../features/warehouse/CycleCountListScreen')),
@@ -240,13 +260,8 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'cycleCounts', order: 90 },
   },
-  {
-    // la ficha del conteo (GET /cycle-counts/{id}) exige warehouse.count; la lista solo inventory.view
-    path: '/warehouse/cycle-counts/:id',
-    element: lazy(() => import('../features/warehouse/CycleCountDetailScreen')),
-    perm: 'warehouse.count',
-    module: ModuleKeys.WmsLotSerial,
-  },
+  // Lote 14: la ficha propia del conteo ya no existe; su dirección lleva al conteo elegido en la lista (?count=).
+  { path: '/warehouse/cycle-counts/:id', element: redirectWithParams('/warehouse/cycle-counts', legacyCountSearch) },
   // Cruce de muelle: incluye las pestañas 'Citas de muelle' y 'Tareas de cruce' (tareas CROSSDOCK).
   {
     path: '/warehouse/cross-dock-plans',

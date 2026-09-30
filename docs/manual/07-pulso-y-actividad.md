@@ -1,9 +1,9 @@
-# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén; Lote F8a: paneles, permisos y orden)
+# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén; Lote F8a: paneles, permisos y orden; Lote 14: Necesita tu atención)
 
 Este capítulo describe la parte de **Almacén** de "Actividad reciente" (el panel de eventos recientes del Pulso del
 día), los indicadores/gráfico de Almacén que se agregan al Pulso en el Lote 7A y, desde el Lote F8a, **cómo se arma el
 Pulso de cada usuario**: paneles con su propio permiso, qué indicadores y gráficos puede leer cada quien, y el orden en dos
-niveles (compañía y usuario) — sección 3. Operación (7B) y Contabilidad (7C)
+niveles (compañía y usuario) — sección 3; y, desde el Lote 14, el panel **Necesita tu atención** (sección 4). Operación (7B) y Contabilidad (7C)
 agregan su propia pestaña de Actividad reciente y sus propios indicadores más adelante, sobre la misma
 infraestructura. Los mensajes están verificados contra el código (`src/Teikem.Infrastructure/Services/Activity/
 ActivityRules.cs`, `src/Teikem.Infrastructure/Services/Activity/WarehouseActivityProvider.cs`,
@@ -61,7 +61,7 @@ Cómo se usa:
 | `REPLENISH_DONE` | Reabasto completado | No | Sí | Tarea de almacén tipo `REPLENISH` pasa a `DONE` |
 | `TASK_CANCELLED` | Tarea cancelada | No | Sí | Cualquier tarea de almacén pasa a `CANCELLED` |
 | `COUNT_FINISHED` | Conteo terminado | No | Sí | Conteo cíclico pasa a `COUNTED` |
-| `COUNT_RECONCILED` | Conteo reconciliado | Sí | Sí | Conteo cíclico pasa a `RECONCILED` |
+| `COUNT_RECONCILED` | Conteo reconciliado | Sí | Sí | Conteo cíclico pasa a `RECONCILED` (Concordancia) o `RECONCILED_VARIANCE` (Diferencia, desde el Lote 14) |
 | `COUNT_VARIANCE` | Diferencia de conteo aplicada | Sí | Sí | Ajuste de ledger con motivo `COUNT_VARIANCE` sobre el conteo |
 | `INVENTORY_ADJUSTED` | Ajuste de inventario | Sí | Sí | Ajuste de ledger con motivo manual (DAMAGE, LOSS, FOUND, EXPIRED, OTHER) o cualquier otro sin documento de origen |
 | `INVENTORY_TRANSFERRED` | Transferencia entre almacenes | No | Sí | Transferencia entre dos almacenes distintos |
@@ -107,9 +107,10 @@ la organización (`ShowInPulse = true`), en el módulo `WAREHOUSE`:
   motivo `RECEIPT_VARIANCE`, de los últimos 7 días. Es el neto de ambos, no solo lo esperado en el recibo: un recibo
   con 10 unidades esperadas y 8 recibidas suma 8, no 10 (una línea de recepción por lo esperado más un ajuste por la
   diferencia; ver la FAQ).
-- **Conteos con diferencia** — cantidad de conteos cíclicos reconciliados (`RECONCILED`) en los últimos 30 días con
-  al menos una línea con diferencia o con un ajuste de inventario enlazado (aunque sobrantes y faltantes del mismo
-  conteo se compensen en el total neto).
+- **Conteos con diferencia** — cantidad de conteos cíclicos en estatus **Diferencia** (`RECONCILED_VARIANCE`) en los últimos 30 días.
+  Desde el Lote 14 el filtro del indicador es `StatusCode eq RECONCILED_VARIANCE` (antes era `RECONCILED` con "tiene diferencia"): un
+  conteo queda en Diferencia cuando al confirmarlo se asentó al menos un movimiento (capítulo 06, sección 6). El seed corrige el filtro
+  en las compañías ya creadas, solo si tenían el filtro anterior exacto (uno personalizado no se toca).
 - **Productos bajo mínimo** y **Productos activos** — ya existían desde el Lote 6 (mismo filtro que la vista
   "Inventario bajo mínimo"); no se duplican en este lote.
 - **Movimientos de inventario por tipo** (gráfico de barras) — suma con signo de la cantidad de los movimientos de
@@ -147,11 +148,12 @@ orden y los ocultos se guardan en dos niveles: **el de la compañía** (lo ve to
 | `pulse.warehouse` | Ver el panel Almacén del Pulso / See the Warehouse panel | Panel Almacén. Datos: `inventory.view`; módulo `WMS_LOTSERIAL` |
 | `pulse.activity` | Ver Actividad reciente en el Pulso / See Recent activity | Panel Actividad reciente. Datos: `analytics.view`; módulo `ANALYTICS` |
 | `pulse.organize_company` | Organizar el Pulso de la compañía / Organize the company Pulse | "Organizar el de la compañía" (`PUT …/layout?scope=company`) |
+| `pulse.attention` (Lote 14) | Ver la sección Necesita tu atención del Pulso / See the Needs your attention section | Panel Necesita tu atención (sección 4). Sin permiso de datos ni módulo en el panel: cada tipo de aviso decide el suyo |
 
 Organizar **mi** Pulso no exige permiso (son preferencias propias). No existe `pulse.view`: la pantalla de inicio siempre
 existe; si el usuario no tiene ningún panel, ve la bienvenida.
 
-Plantillas de rol: **Admin de compañía** (TenantAdmin) los 5; **Operador de almacén** `pulse.warehouse`,
+Plantillas de rol: **Admin de compañía** (TenantAdmin) todos (los 5 de F8a y `pulse.attention`); **Operador de almacén** `pulse.warehouse`,
 `pulse.indicators`, `pulse.charts`, `pulse.activity`; **Despachador**, **Facturación** y **Solo lectura**
 `pulse.indicators`, `pulse.charts`, `pulse.activity`; **Chofer** ninguno. Ojo: el Operador de almacén tiene
 `pulse.activity` pero no `analytics.view` (dato del panel), así que **no ve Actividad reciente** hasta que se le dé
@@ -168,11 +170,13 @@ se hace una sola vez, en la actualización que crea los permisos; después, lo q
 |---|---|---|---|---|
 | `INDICATORS` ("Tus indicadores") | `pulse.indicators` | (por elemento) | `ANALYTICS` | 20 |
 | `CHARTS` ("Tus gráficos") | `pulse.charts` | (por elemento) | `ANALYTICS` | 30 |
+| `ATTENTION` (Necesita tu atención, Lote 14) | `pulse.attention` | (por tipo de aviso) | (por tipo de aviso) | 5 |
 | `WAREHOUSE` (Almacén) | `pulse.warehouse` | `inventory.view` | `WMS_LOTSERIAL` | 40 |
 | `ACTIVITY` (Actividad reciente) | `pulse.activity` | `analytics.view` | `ANALYTICS` | 50 |
 
 Reservados para lotes futuros (no aparecen todavía): `ORDERS_RIVER` (10, "Paquetes en la calle"), `COD_RIVER` (11,
-"Dinero COD de regreso"), `DECISIONS` (15, "Necesita tu decisión") y `RADAR` (60). Con el módulo `ANALYTICS` apagado el
+"Dinero COD de regreso"), `DECISIONS` (15, "Necesita tu decisión") y `RADAR` (60). El panel `ATTENTION` (Lote 14) no reemplaza a
+`DECISIONS`: usa su propia clave porque el dueño lo llama "Necesita tu atención"; con orden 5 queda arriba de todos los demás. Con el módulo `ANALYTICS` apagado el
 Pulso solo puede mostrar el panel Almacén.
 
 ### Qué indicadores y gráficos ve cada usuario
@@ -249,6 +253,71 @@ baja); el orden de compañía de un indicador o gráfico queda como cambio de su
 - **Reordenar el inicio para todos**: quien tiene `pulse.organize_company` usa "Organizar el de la compañía"; lo ven
   todos los que no tengan un Pulso propio. Quien ya organizó el suyo sigue viendo el suyo hasta que pulse "Volver al de la
   compañía".
+
+---
+
+## 4. Necesita tu atención (Lote 14)
+
+Qué hace: es el panel de arriba del Pulso del día. Lista lo que **necesita que una persona lo revise**. Hoy tiene un solo tipo de aviso:
+un **descuadre Kárdex ↔ saldo** pendiente (capítulo 06, sección 3.3). Cada fila dice "Descuadre en {sku}" (o "en el total de {sku}"), el
+producto, dónde (almacén, posición y lote, o "todas las posiciones"), las cifras **Kárdex**, **Saldo** y **Diferencia** (saldo − Kárdex,
+con signo) y desde cuándo está pendiente, y trae el botón **Revisar**. Muestra los **5 más antiguos**; **Ver todos (N)** lleva a la lista
+completa. Sin nada pendiente dice **"Todo en orden"** ("No hay nada pendiente de revisar."). No hay una tabla de avisos: cada tipo calcula
+sus pendientes al leer, así que un descuadre resuelto desaparece del panel al instante. Más adelante se le podrán sumar avisos de
+Operación y de COD con sus propios proveedores.
+
+Quién puede: el permiso **`pulse.attention`** (categoría PULSE) abre el panel. Además, **cada tipo de aviso pide el suyo**: los
+descuadres, `inventory.view` con el módulo **WMS_LOTSERIAL** encendido. Lo que la persona no puede ver, no suma (no da 403: el panel es la
+suma de lo que ve). Plantillas de rol: Admin de compañía, Operador de almacén, Facturación y Solo lectura lo traen; Despachador y Chofer, no.
+Al actualizar la plataforma, todo rol de compañía que ya tenía `inventory.view` recibió `pulse.attention` **una sola vez**; lo que un
+administrador quite después no vuelve. Como los demás paneles, se puede **ocultar y mover** desde "Organizar mi Pulso" y "Organizar el de
+la compañía" (sección 3).
+
+Cómo se usa: `GET /api/v1/analytics/attention` (permiso `pulse.attention`; sin módulo en la política). Respuesta:
+
+```
+{ "total": 7,
+  "items": [ { "code": "INVENTORY_DISCREPANCY", "module": "WAREHOUSE", "tone": "danger", "count": 1,
+               "params": { "publicId": "…", "kind": "BALANCE", "sku": "PROD-100", "productName": "…", "warehouse": "ALM-01",
+                           "bin": "A01-R01-N1-P01", "lot": "", "where": "A01-R01-N1-P01", "ledgerQty": "10",
+                           "balanceQty": "11", "difference": "1", "detectedAtUtc": "2026-09-30T13:41:02Z", "checkCount": "1" },
+               "route": "/warehouse/kardex", "query": { "tab": "reconciliation", "discrepancy": "…" },
+               "sinceUtc": "2026-09-30T13:41:02Z" } ],
+  "groups": [ { "code": "INVENTORY_DISCREPANCY", "module": "WAREHOUSE", "total": 7, "route": "/warehouse/kardex",
+                "query": { "tab": "reconciliation", "status": "OPEN" } } ] }
+```
+
+`total` es la suma de pendientes de todos los tipos que la persona puede ver ("Ver todos (N)"); `items`, los 5 más antiguos; `groups`, el
+total y la ruta de "Ver todos" por tipo. Los números van como cadenas con punto decimal y las fechas en ISO 8601 UTC; la web arma el texto
+con el idioma de la persona. "Revisar" abre el Kárdex en la pestaña **Conciliación** con ese descuadre abierto
+(`/warehouse/kardex?tab=reconciliation&discrepancy=<publicId>`).
+
+### Conteos abiertos (panel Almacén)
+
+La tarjeta **Conteos abiertos** del panel Almacén (capítulo F7A) cuenta ahora los conteos cíclicos **Pendientes y Contados** con el
+**total real**: usa `GET /api/v1/cycle-counts/page?status=OPEN&status=COUNTED&take=1` y lee `total`. Antes contaba el largo de la lista
+de `GET /api/v1/cycle-counts`, que se corta en 200, así que con muchos conteos ("lo cambiado" crea uno por posición) la cifra se
+quedaba en 200. Los conteos Concordancia y Diferencia ya no cuentan como abiertos.
+
+### Validaciones
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `GET /api/v1/analytics/attention` sin el permiso `pulse.attention` | `Falta el permiso 'pulse.attention'.` | 403 |
+| Sin sesión | (sin cuerpo de la aplicación) | 401 |
+
+No hay otra validación: el panel es de solo lectura. Un tipo de aviso cuyo módulo está apagado o cuyo permiso falta simplemente no aparece.
+
+### Casos frecuentes
+
+- **No veo "Necesita tu atención".** Le falta `pulse.attention` (pídalo a su administrador) o el administrador ocultó el panel en el Pulso
+  de la compañía o en el suyo ("Organizar"). Si tiene el panel pero no `inventory.view`, o el módulo WMS_LOTSERIAL está apagado, el panel
+  aparece siempre en "Todo en orden": los descuadres no suman.
+- **Dice "Todo en orden" pero sé que hay un descuadre.** La revisión automática tarda unos segundos después de cada movimiento; el panel
+  se vuelve a pedir cada vez que se abre el Pulso. Si el descuadre se provocó directamente en la base de datos, pulse **Ejecutar
+  conciliación** en Kárdex › Conciliación.
+- **El operador no puede resolver un descuadre.** Ve la fila y **Revisar**, pero **Corregir** y **Descartar** exigen `inventory.adjust`,
+  que el Operador de almacén no trae en su plantilla.
 
 ---
 

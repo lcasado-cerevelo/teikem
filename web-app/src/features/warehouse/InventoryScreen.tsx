@@ -1,100 +1,65 @@
-// Pantalla C (Lote F6) — Kárdex de movimientos (maqueta `ledger()`, ítem propio del menú desde la Fase 8): Kárdex, saldos,
-// ajustes, transferencias, genealogía, rastro de serie y conciliación. `/warehouse/kardex` con pestañas Kárdex (la primera,
-// sin parámetro) / Saldos (`?tab=balances`) / Conciliación (`?tab=reconciliation`); la vista por producto (disponible,
-// reservado, total) es 'Productos e inventario'. `/warehouse/inventory` (dirección anterior) redirige aquí conservando la
-// consulta. Sin StatusPipeline: el ledger no tiene estatus de entidad, solo mensajes de validación.
-// Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta). Ajuste/transferencia/ejecutar conciliación:
-// inventory.adjust.
-// Parámetros de URL (Lote F7A, enlaces de Pulso y botones de reporte de 'Productos e inventario'): `tab` elige la pestaña;
-// `warehousePublicIds=<publicId>` filtra por almacén y `product=<publicId>` por producto (Saldos o Kárdex);
-// `categoryIds=<id>` filtra Saldos por categoría y `types=<InternalCode de InventoryTxnType>` el Kárdex por tipo (todos
-// repetibles o separados por comas). Solo se leen al montar y solo los recibe la pestaña abierta: al cambiar de pestaña se
-// descartan (la URL queda solo con la pestaña) y después los filtros son de la pantalla.
-import { useEffect, useMemo, useState } from 'react'
+// Pantalla C (Lote F6; Lote 14 P7) — Kárdex de movimientos (maqueta `ledger()`, ítem propio del menú desde la Fase 8):
+// `/warehouse/kardex` con pestañas Kárdex (la primera, sin parámetro) / Saldos (`?tab=balances`) / Conciliación
+// (`?tab=reconciliation`). `/warehouse/inventory` (dirección anterior) redirige aquí conservando la consulta.
+// Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta). Ajustar / Transferir / Ejecutar conciliación / resolver un
+// descuadre: inventory.adjust.
+// Lote 14:
+// - Los tres tabs COMPARTEN los filtros (hallazgo 6): el estado vive aquí (`InventoryFilterState`, `kardexView.ts`) y cambiar
+//   de pestaña no descarta nada; un filtro que la pestaña no aplica se atenúa (`InventoryFilterBar`).
+// - Resumen arriba (`SummaryBar`, `GET /inventory/transactions/summary` con los MISMOS filtros): Movimientos · Entradas (mov.)
+//   · Entradas (uds) · Salidas (mov.) · Salidas (uds) · Internos; en Saldos además En mano y Disponible (D13, del
+//   `BalancePageDto`).
+// - Kárdex: columnas Fecha, Hora, Tipo (chip de color), SKU, Producto, Dueño, Categoría, Cantidad (color por signo),
+//   Almacén/Posición, Lote/Serie, Motivo, Origen y Usuario; clic en la fila → `KardexTransactionModal` (`?txn=<id>`).
+// - Conciliación: descuadres (`DiscrepanciesPanel`) y su detalle (`?discrepancy=<publicId>` → `DiscrepancyModal`).
+// Contrato de la URL (se lee UNA vez al montar; los filtros valen para las tres pestañas): `tab`, `warehousePublicIds`,
+// `product` (publicId), `categoryIds`, `types`, `reasons`, `direction` (IN/OUT), `manualOnly=true`, `from`/`to`
+// (YYYY-MM-DD), `refEntity` + `refId` (documento de origen, p. ej. los ajustes de un conteo), `status` (descuadres),
+// `txn=<id>` (abre el detalle de un movimiento) y `discrepancy=<publicId>` (abre un descuadre; implica la pestaña
+// Conciliación si no se indica otra). Al cambiar de pestaña la URL queda solo con la pestaña; los filtros se quedan.
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
-import { parseApiDate } from '../../kernel/api/dates'
 import type { components } from '../../kernel/api/schema'
-import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import {
-  Chip,
-  DataTable,
-  EMPTY_RANGE,
-  DateRangeFilter,
-  EmptyState,
-  Filters,
-  Modal,
-  Panel,
-  QBox,
-  SearchSelect,
-  Spinner,
-  Tabs,
-  type DataColumn,
-  type DateRange,
-  type RowAction,
-} from '../../kernel/ui'
+import { DataTable, EmptyState, Modal, Panel, QBox, Spinner, SummaryBar, Tabs, type DataColumn, type RowAction } from '../../kernel/ui'
+import { IconDoc, IconLayers } from '../../kernel/ui/screenIcons'
 import {
   exportInventoryBalances,
   exportInventoryTransactions,
-  useInventoryBalances,
-  useInventoryReconciliation,
-  useInventoryTransactions,
-  useLotGenealogy,
   productLabel,
+  useInventoryBalances,
+  useInventoryTransactions,
+  useKardexSummary,
+  useLotGenealogy,
   useProductsByPublicId,
-  useProductCategories,
   useSerialTrace,
-  useWarehouses,
-  warehouseLabel,
   type BalanceDto,
+  type KardexRowDto,
 } from './api'
+import { DiscrepanciesPanel } from './DiscrepanciesPanel'
+import { DiscrepancyModal } from './DiscrepancyModal'
 import { InventoryAdjustModal } from './InventoryAdjustModal'
+import { InventoryFilterBar } from './InventoryFilterBar'
 import { InventoryTransferModal } from './InventoryTransferModal'
-import { ProductMultiFilter, ProductPicker, type ProductFilterItem } from './pickers'
-import { IconDoc, IconLayers } from '../../kernel/ui/screenIcons'
+import { KardexTransactionModal } from './KardexTransactionModal'
+import { useKardexColumns, KARDEX_COLUMNS } from './kardexColumns'
+import {
+  balancesQuery,
+  filtersFromUrl,
+  kardexQuery,
+  rangeInverted,
+  summaryQuery,
+  tabFromParam,
+  summaryItems,
+  txnParam,
+  type InventoryFilterState,
+  type InventoryTab,
+} from './kardexView'
+import { formatDate, formatDateTime } from './lineRules'
+import type { ProductFilterItem } from './pickers'
 
-type KardexRowDto = components['schemas']['KardexRowDto']
-type ReconciliationRowDto = components['schemas']['ReconciliationRowDto']
-
-type TabKey = 'kardex' | 'balances' | 'reconciliation'
 const PAGE_SIZE = 25
-
-/** Pestaña de `?tab=`: la primera (Kárdex) va sin parámetro; valor desconocido = la primera. */
-function tabFromParam(value: string | null): TabKey {
-  return value === 'balances' || value === 'reconciliation' ? value : 'kardex'
-}
-
-/** Filtros iniciales que llegan en la URL (enlaces de Pulso y reportes de 'Productos e inventario'). */
-interface InitialFilters {
-  warehousePublicIds: string[]
-  products: ProductFilterItem[]
-  categoryIds: string[]
-  types: string[]
-}
-
-/** Sin filtros iniciales: lo que recibe una pestaña a la que se llega cambiando de pestaña. */
-const NO_INITIAL_FILTERS: InitialFilters = { warehousePublicIds: [], products: [], categoryIds: [], types: [] }
-
-/** Valores de un parámetro repetible o separado por comas, sin vacíos ni duplicados. */
-function listParam(params: URLSearchParams, name: string): string[] {
-  const values = params
-    .getAll(name)
-    .flatMap((v) => v.split(','))
-    .map((v) => v.trim())
-    .filter(Boolean)
-  return [...new Set(values)]
-}
-
-/** Lee `warehousePublicIds`, `product`, `categoryIds` y `types` de la URL. Un producto llega solo con su publicId: su SKU se resuelve después. */
-function initialFiltersFromUrl(params: URLSearchParams): InitialFilters {
-  return {
-    warehousePublicIds: listParam(params, 'warehousePublicIds'),
-    products: listParam(params, 'product').map((publicId) => ({ publicId, sku: '', label: '' })),
-    categoryIds: listParam(params, 'categoryIds').filter((v) => /^\d+$/.test(v)),
-    types: listParam(params, 'types'),
-  }
-}
 
 /**
  * Productos del filtro para pintar: los que llegaron por URL sin SKU (pueden ser varios) toman "SKU · Nombre" de su ficha
@@ -114,96 +79,23 @@ function useResolvedProducts(products: ProductFilterItem[]): ProductFilterItem[]
   })
 }
 
-function formatDate(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium' }).format(date)
-}
-
-function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
-}
-
-/** Filtro booleano (fuera de un <Form>: no usa react-hook-form), como en ProductListScreen. */
-function ToggleFilter({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="f">
-      <label className="sw">
-        <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className="tk" aria-hidden="true" />
-        <span>{label}</span>
-      </label>
-    </div>
-  )
-}
-
-/**
- * Columnas de un Kárdex (compartidas por la pestaña y los modales de genealogía / rastro de serie).
- * En la pestaña Kárdex la lista viene paginada del servidor (skip/take) y el endpoint no acepta orden: el orden por
- * encabezado solo reacomoda la página visible (pendiente un parámetro de orden en el endpoint).
- */
-function useKardexColumns(): DataColumn<KardexRowDto>[] {
+/** Resumen de movimientos con los filtros compartidos (Kárdex y Saldos). */
+function KardexSummaryBar({ filters, balances }: { filters: InventoryFilterState; balances?: { onHand: number | null; available: number | null } }) {
   const t = useT()
   const lang = useLang()
-  return useMemo(
-    (): DataColumn<KardexRowDto>[] => [
-      {
-        id: 'date',
-        header: t('warehouse.inventory.kardex.columns.date'),
-        cell: (r) => formatDateTime(r.createdAtUtc, lang),
-        sortValue: (r) => r.createdAtUtc,
-        card: 'title',
-      },
-      { id: 'type', header: t('warehouse.inventory.kardex.columns.type'), cell: (r) => <Chip>{r.type ?? r.typeCode}</Chip>, sortValue: (r) => r.type ?? r.typeCode },
-      { id: 'sku', header: t('warehouse.inventory.kardex.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span>, sortValue: (r) => r.sku },
-      { id: 'product', header: t('warehouse.inventory.kardex.columns.product'), cell: (r) => r.productName, sortValue: (r) => r.productName },
-      {
-        id: 'warehouse',
-        header: t('warehouse.inventory.kardex.columns.warehouse'),
-        cell: (r) => [r.fromWarehouseCode, r.toWarehouseCode].filter(Boolean).join(' → ') || r.fromWarehouseCode || r.toWarehouseCode || '',
-        sortValue: (r) => r.fromWarehouseCode ?? r.toWarehouseCode,
-      },
-      {
-        id: 'bin',
-        header: t('warehouse.inventory.kardex.columns.bin'),
-        cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || r.fromBinCode || r.toBinCode || '',
-        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
-      },
-      {
-        id: 'quantity',
-        header: t('warehouse.inventory.kardex.columns.quantity'),
-        cell: (r) => {
-          const q = r.signedQuantity ?? r.quantity ?? 0
-          return <span className="ref">{q > 0 ? `+${q}` : q}</span>
-        },
-        sortValue: (r) => r.signedQuantity ?? r.quantity,
-        align: 'end',
-      },
-      {
-        id: 'reason',
-        header: t('warehouse.inventory.kardex.columns.reason'),
-        cell: (r) => (
-          <span title={r.notes ?? undefined}>{r.reason ?? r.reasonCode ?? ''}</span>
-        ),
-        sortValue: (r) => r.reason ?? r.reasonCode,
-      },
-      { id: 'ref', header: t('warehouse.inventory.kardex.columns.ref'), cell: (r) => r.refLabel ?? '', sortValue: (r) => r.refLabel },
-    ],
-    [t, lang],
-  )
+  const inverted = rangeInverted(filters.range)
+  const query = useMemo(() => summaryQuery(filters), [filters])
+  const { data, isFetching } = useKardexSummary(query, { enabled: !inverted, handleAccessDenied: false })
+  return <SummaryBar label={t('warehouse.inventory.summary.label')} loading={isFetching && !data} items={summaryItems(inverted ? undefined : data, t, lang, balances)} />
 }
 
 // =====================================================================================================================
 // Modal de genealogía de lote (se abre desde una fila de Saldos con lotId)
 // =====================================================================================================================
-function GenealogyModal({ lotId, onClose }: { lotId: number | null; onClose: () => void }) {
+function GenealogyModal({ lotId, onClose, onOpenTxn }: { lotId: number | null; onClose: () => void; onOpenTxn: (id: number) => void }) {
   const t = useT()
   const lang = useLang()
-  const kardexColumns = useKardexColumns()
+  const kardexColumns = useKardexColumns(['date', 'time', 'type', 'sku', 'qty', 'position', 'lotSerial', 'ref'])
   const { data, isLoading, error } = useLotGenealogy(lotId)
 
   const destinationColumns = useMemo<DataColumn<components['schemas']['GenealogyDestinationDto']>[]>(
@@ -263,6 +155,7 @@ function GenealogyModal({ lotId, onClose }: { lotId: number | null; onClose: () 
             rows={data.movements ?? []}
             rowKey={(m) => m.id ?? 0}
             pageSize={10}
+            onRowClick={(m) => m.id != null && onOpenTxn(m.id)}
             dense
           />
           <h3>{t('warehouse.inventory.genealogy.destinations')}</h3>
@@ -291,14 +184,16 @@ function SerialTraceModal({
   productPublicId,
   initialSerialNumber,
   onClose,
+  onOpenTxn,
 }: {
   productPublicId: string | null
   initialSerialNumber: string
   onClose: () => void
+  onOpenTxn: (id: number) => void
 }) {
   const t = useT()
   const lang = useLang()
-  const kardexColumns = useKardexColumns()
+  const kardexColumns = useKardexColumns(['date', 'time', 'type', 'qty', 'position', 'lotSerial', 'ref', 'user'])
   // Montado solo mientras hay una petición abierta (ver `key` en InventoryScreen): el estado inicial ya trae el
   // número de serie de la fila que abrió el modal, sin necesidad de sincronizarlo con un efecto.
   const [serialNumber, setSerialNumber] = useState(initialSerialNumber)
@@ -346,6 +241,7 @@ function SerialTraceModal({
               rows={data.movements ?? []}
               rowKey={(m) => m.id ?? 0}
               pageSize={10}
+              onRowClick={(m) => m.id != null && onOpenTxn(m.id)}
               dense
             />
             <h3>{t('warehouse.inventory.serialTrace.statusHistory')}</h3>
@@ -370,68 +266,31 @@ function SerialTraceModal({
 // =====================================================================================================================
 // Pestaña Saldos
 // =====================================================================================================================
+interface PageProps {
+  filters: InventoryFilterState
+  page: number
+  pageSize: number
+  onPage: (page: number) => void
+  onPageSize: (size: number) => void
+  text: string
+  onText: (text: string) => void
+}
+
 function BalancesTab({
-  initial,
+  filters,
+  page,
+  pageSize,
+  onPage,
+  onPageSize,
+  text,
+  onText,
   onGenealogy,
   onSerialTrace,
-}: {
-  initial: InitialFilters
-  onGenealogy: (lotId: number) => void
-  onSerialTrace: (productPublicId: string) => void
-}) {
+}: PageProps & { onGenealogy: (lotId: number) => void; onSerialTrace: (productPublicId: string) => void }) {
   const t = useT()
   const lang = useLang()
-  const [text, setText] = useState('')
-  const [search, setSearch] = useState('')
-  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>(initial.warehousePublicIds)
-  const [products, setProducts] = useState<ProductFilterItem[]>(initial.products)
-  const [categoryIds, setCategoryIds] = useState<string[]>(initial.categoryIds)
-  const [lotNumber, setLotNumber] = useState('')
-  const [includeZero, setIncludeZero] = useState(false)
-  const [onlyAvailable, setOnlyAvailable] = useState(false)
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(PAGE_SIZE)
-
-  // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
-  function withPageReset<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setPage(1)
-      setter(v)
-    }
-  }
-
-  useEffect(() => {
-    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
-    const next = text.trim()
-    if (next === search) return
-    const h = setTimeout(() => {
-      setSearch(next)
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text, search])
-
-  const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
-  const shownProducts = useResolvedProducts(products)
-  const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
-  const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
-  const { data: categories = [] } = useProductCategories()
-  const categoryOptions = useMemo(() => categories.map((c) => ({ value: String(c.id), label: c.name ?? '' })), [categories])
-
-  const query = useMemo(
-    () => ({
-      warehousePublicIds: warehousePublicIds.length > 0 ? warehousePublicIds : undefined,
-      productPublicIds: productPublicIds.length > 0 ? productPublicIds : undefined,
-      categoryIds: categoryIds.length > 0 ? categoryIds.map(Number) : undefined,
-      lotNumber: lotNumber || undefined,
-      includeZero: includeZero || undefined,
-      onlyAvailable: onlyAvailable || undefined,
-      search: search || undefined,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    [warehousePublicIds, productPublicIds, categoryIds, lotNumber, includeZero, onlyAvailable, search, page, pageSize],
-  )
+  const base = useMemo(() => balancesQuery(filters), [filters])
+  const query = useMemo(() => ({ ...base, skip: (page - 1) * pageSize, take: pageSize }), [base, page, pageSize])
   const { data, isLoading, error } = useInventoryBalances(query)
 
   const columns = useMemo<DataColumn<BalanceDto>[]>(
@@ -442,6 +301,8 @@ function BalancesTab({
       { id: 'zone', header: t('warehouse.inventory.balances.columns.zone'), cell: (b) => b.zoneCode ?? '', sortValue: (b) => b.zoneCode, card: 'hidden' },
       { id: 'sku', header: t('warehouse.inventory.balances.columns.sku'), cell: (b) => <span className="ref">{b.sku}</span>, sortValue: (b) => b.sku, card: 'title' },
       { id: 'product', header: t('warehouse.inventory.balances.columns.product'), cell: (b) => b.productName, sortValue: (b) => b.productName },
+      { id: 'owner', header: t('warehouse.inventory.balances.columns.owner'), cell: (b) => b.ownerName ?? '', sortValue: (b) => b.ownerName, card: 'hidden' },
+      { id: 'category', header: t('warehouse.inventory.balances.columns.category'), cell: (b) => b.categoryName ?? '', sortValue: (b) => b.categoryName, card: 'hidden' },
       { id: 'lot', header: t('warehouse.inventory.balances.columns.lot'), cell: (b) => b.lotNumber ?? '', sortValue: (b) => b.lotNumber },
       { id: 'expiry', header: t('warehouse.inventory.balances.columns.expiry'), cell: (b) => formatDate(b.expiryDate, lang), sortValue: (b) => b.expiryDate },
       { id: 'onHand', header: t('warehouse.inventory.balances.columns.onHand'), cell: (b) => b.qtyOnHand, sortValue: (b) => b.qtyOnHand, align: 'end' },
@@ -479,43 +340,14 @@ function BalancesTab({
     [t, onGenealogy, onSerialTrace],
   )
 
+  const totals = { onHand: data ? (data.totalOnHand ?? 0) : null, available: data ? (data.totalAvailable ?? 0) : null }
+
   return (
     <>
-      <Filters
-        onClear={() => {
-          setPage(1)
-          setWarehousePublicIds([])
-          setProducts([])
-          setCategoryIds([])
-          setLotNumber('')
-          setIncludeZero(false)
-          setOnlyAvailable(false)
-        }}
-      >
-        <SearchSelect
-          label={t('warehouse.inventory.balances.filters.warehouse')}
-          options={warehouseOptions}
-          value={warehousePublicIds}
-          onChange={withPageReset(setWarehousePublicIds)}
-        />
-        <ProductMultiFilter label={t('warehouse.inventory.balances.filters.product')} value={shownProducts} onChange={withPageReset(setProducts)} />
-        <SearchSelect
-          label={t('warehouse.inventory.balances.filters.category')}
-          options={categoryOptions}
-          value={categoryIds}
-          onChange={withPageReset(setCategoryIds)}
-        />
-        <div className="f">
-          <label htmlFor="balances-lot">{t('warehouse.inventory.balances.filters.lotNumber')}</label>
-          <input id="balances-lot" type="text" value={lotNumber} onChange={(e) => withPageReset(setLotNumber)(e.target.value)} maxLength={60} />
-        </div>
-        <ToggleFilter label={t('warehouse.inventory.balances.filters.includeZero')} checked={includeZero} onChange={withPageReset(setIncludeZero)} />
-        <ToggleFilter label={t('warehouse.inventory.balances.filters.onlyAvailable')} checked={onlyAvailable} onChange={withPageReset(setOnlyAvailable)} />
-      </Filters>
-
+      <KardexSummaryBar filters={filters} balances={totals} />
       <Panel flush icon={<IconLayers />} title={t('warehouse.inventory.tabBalances')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
-          <QBox value={text} onChange={setText} />
+          <QBox value={text} onChange={onText} />
         </div>
         {error ? (
           <p className="pb ferr" role="alert">
@@ -531,12 +363,9 @@ function BalancesTab({
             page={page}
             pageSize={pageSize}
             total={data?.total ?? 0}
-            onPage={setPage}
-            onPageSize={(size) => {
-              setPageSize(size)
-              setPage(1)
-            }}
-            exportRows={() => exportInventoryBalances(query)}
+            onPage={onPage}
+            onPageSize={onPageSize}
+            exportRows={() => exportInventoryBalances(base)}
             rowActions={actions}
           />
         )}
@@ -549,69 +378,22 @@ function BalancesTab({
 // Pestaña Kárdex
 // =====================================================================================================================
 function KardexTab({
-  initial,
+  filters,
+  page,
+  pageSize,
+  onPage,
+  onPageSize,
+  text,
+  onText,
   onSerialTrace,
-}: {
-  initial: InitialFilters
-  onSerialTrace: (productPublicId: string, serialNumber: string) => void
-}) {
+  onOpenTxn,
+}: PageProps & { onSerialTrace: (productPublicId: string, serialNumber: string) => void; onOpenTxn: (id: number) => void }) {
   const t = useT()
-  const columns = useKardexColumns()
-  const [text, setText] = useState('')
-  const [search, setSearch] = useState('')
-  const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
-  const [types, setTypes] = useState<string[]>(initial.types)
-  const [warehousePublicIds, setWarehousePublicIds] = useState<string[]>(initial.warehousePublicIds)
-  const [products, setProducts] = useState<ProductFilterItem[]>(initial.products)
-  const [lotNumber, setLotNumber] = useState('')
-  const [serialNumber, setSerialNumber] = useState('')
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(PAGE_SIZE)
-
-  // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
-  function withPageReset<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setPage(1)
-      setter(v)
-    }
-  }
-
-  useEffect(() => {
-    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
-    const next = text.trim()
-    if (next === search) return
-    const h = setTimeout(() => {
-      setSearch(next)
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text, search])
-
-  const productPublicIds = useMemo(() => products.map((p) => p.publicId), [products])
-  const shownProducts = useResolvedProducts(products)
-  const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
-  const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
-  const { data: txnTypes = [] } = useLookups('InventoryTxnType')
-  const typeOptions = useMemo(() => txnTypes.map((o) => ({ value: o.code, label: o.label })), [txnTypes])
-
-  const rangeInvalid = Boolean(range.from && range.to && range.from > range.to)
-
-  const query = useMemo(
-    () => ({
-      from: range.from || undefined,
-      to: range.to || undefined,
-      types: types.length > 0 ? types : undefined,
-      warehousePublicIds: warehousePublicIds.length > 0 ? warehousePublicIds : undefined,
-      productPublicIds: productPublicIds.length > 0 ? productPublicIds : undefined,
-      lotNumber: lotNumber || undefined,
-      serialNumber: serialNumber || undefined,
-      search: search || undefined,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    [range, types, warehousePublicIds, productPublicIds, lotNumber, serialNumber, search, page, pageSize],
-  )
-  const { data, isLoading, error } = useInventoryTransactions(query, { enabled: !rangeInvalid })
+  const columns = useKardexColumns(KARDEX_COLUMNS)
+  const inverted = rangeInverted(filters.range)
+  const base = useMemo(() => kardexQuery(filters), [filters])
+  const query = useMemo(() => ({ ...base, skip: (page - 1) * pageSize, take: pageSize }), [base, page, pageSize])
+  const { data, isLoading, error } = useInventoryTransactions(query, { enabled: !inverted })
 
   const actions = useMemo<RowAction<KardexRowDto>[]>(
     () => [
@@ -628,41 +410,12 @@ function KardexTab({
 
   return (
     <>
-      <Filters
-        onClear={() => {
-          setPage(1)
-          setRange(EMPTY_RANGE)
-          setTypes([])
-          setWarehousePublicIds([])
-          setProducts([])
-          setLotNumber('')
-          setSerialNumber('')
-        }}
-      >
-        <DateRangeFilter label={t('warehouse.inventory.kardex.filters.range')} value={range} onChange={withPageReset(setRange)} />
-        <SearchSelect label={t('warehouse.inventory.kardex.filters.type')} options={typeOptions} value={types} onChange={withPageReset(setTypes)} />
-        <SearchSelect
-          label={t('warehouse.inventory.kardex.filters.warehouse')}
-          options={warehouseOptions}
-          value={warehousePublicIds}
-          onChange={withPageReset(setWarehousePublicIds)}
-        />
-        <ProductMultiFilter label={t('warehouse.inventory.kardex.filters.product')} value={shownProducts} onChange={withPageReset(setProducts)} includeInactive />
-        <div className="f">
-          <label htmlFor="kardex-lot">{t('warehouse.inventory.kardex.filters.lotNumber')}</label>
-          <input id="kardex-lot" type="text" value={lotNumber} onChange={(e) => withPageReset(setLotNumber)(e.target.value)} maxLength={60} />
-        </div>
-        <div className="f">
-          <label htmlFor="kardex-serial">{t('warehouse.inventory.kardex.filters.serialNumber')}</label>
-          <input id="kardex-serial" type="text" value={serialNumber} onChange={(e) => withPageReset(setSerialNumber)(e.target.value)} maxLength={60} />
-        </div>
-      </Filters>
-
+      <KardexSummaryBar filters={filters} />
       <Panel flush icon={<IconDoc />} title={t('warehouse.inventory.tabKardex')} badge={data ? (data.total ?? 0) : undefined}>
         <div className="qrow">
-          <QBox value={text} onChange={setText} />
+          <QBox value={text} onChange={onText} />
         </div>
-        {rangeInvalid ? (
+        {inverted ? (
           <p className="pb ferr" role="alert">
             {t('warehouse.inventory.kardex.errors.fromAfterTo')}
           </p>
@@ -680,86 +433,15 @@ function KardexTab({
             page={page}
             pageSize={pageSize}
             total={data?.total ?? 0}
-            onPage={setPage}
-            onPageSize={(size) => {
-              setPageSize(size)
-              setPage(1)
-            }}
-            exportRows={() => exportInventoryTransactions(query)}
+            onPage={onPage}
+            onPageSize={onPageSize}
+            exportRows={() => exportInventoryTransactions(base)}
             rowActions={actions}
+            onRowClick={(r) => r.id != null && onOpenTxn(r.id)}
           />
         )}
       </Panel>
     </>
-  )
-}
-
-// =====================================================================================================================
-// Pestaña Conciliación
-// =====================================================================================================================
-function ReconciliationTab() {
-  const t = useT()
-  const lang = useLang()
-  const [productPublicId, setProductPublicId] = useState<string | null>(null)
-  const { data, isLoading, error, refetch, isFetched } = useInventoryReconciliation(
-    { productPublicId: productPublicId ?? undefined },
-    { enabled: false },
-  )
-
-  const mismatchColumns = useMemo<DataColumn<ReconciliationRowDto>[]>(
-    () => [
-      { id: 'sku', header: t('warehouse.inventory.reconciliation.columns.sku'), cell: (r) => <span className="ref">{r.sku}</span>, sortValue: (r) => r.sku, card: 'title' },
-      { id: 'warehouse', header: t('warehouse.inventory.reconciliation.columns.warehouse'), cell: (r) => r.warehouseCode ?? '', sortValue: (r) => r.warehouseCode },
-      { id: 'bin', header: t('warehouse.inventory.reconciliation.columns.bin'), cell: (r) => r.binCode ?? '', sortValue: (r) => r.binCode },
-      { id: 'lot', header: t('warehouse.inventory.reconciliation.columns.lot'), cell: (r) => r.lotNumber ?? '', sortValue: (r) => r.lotNumber },
-      { id: 'ledger', header: t('warehouse.inventory.reconciliation.columns.ledgerQty'), cell: (r) => r.ledgerQty, sortValue: (r) => r.ledgerQty, align: 'end' },
-      { id: 'balance', header: t('warehouse.inventory.reconciliation.columns.balanceQty'), cell: (r) => r.balanceQty, sortValue: (r) => r.balanceQty, align: 'end' },
-    ],
-    [t],
-  )
-
-  return (
-    <Panel icon={<IconDoc />} title={t('warehouse.inventory.tabReconciliation')} subtitle={t('warehouse.inventory.reconciliation.subtitle')}>
-      <div className="r2">
-        <div className="f">
-          <label>{t('warehouse.inventory.reconciliation.product')}</label>
-          <ProductPicker value={productPublicId} onChange={(publicId) => setProductPublicId(publicId)} />
-        </div>
-        <Can perm="inventory.adjust">
-          <div className="f">
-            <label>&nbsp;</label>
-            <button type="button" className="btn flow" onClick={() => refetch()} disabled={isLoading}>
-              {isLoading ? t('common.loading') : t('warehouse.inventory.reconciliation.run')}
-            </button>
-          </div>
-        </Can>
-      </div>
-      {error && (
-        <p className="ferr" role="alert">
-          {error.message}
-        </p>
-      )}
-      {data && (
-        <>
-          <p>
-            {t('warehouse.inventory.reconciliation.checkedAt')}: {formatDateTime(data.checkedAtUtc, lang)} ·{' '}
-            {t('warehouse.inventory.reconciliation.balancesChecked', { count: data.balancesChecked ?? 0 })}
-          </p>
-          {(data.mismatches ?? []).length > 0 ? (
-            <DataTable
-              label={t('warehouse.inventory.tabReconciliation')}
-              columns={mismatchColumns}
-              rows={data.mismatches ?? []}
-              rowKey={(r) => `${r.productPublicId ?? ''}-${r.binCode ?? ''}-${r.lotNumber ?? ''}`}
-              pageSize={25}
-            />
-          ) : (
-            <EmptyState title={t('warehouse.inventory.reconciliation.ok')} />
-          )}
-        </>
-      )}
-      {!data && !error && isFetched && !isLoading && <EmptyState title={t('warehouse.inventory.reconciliation.ok')} />}
-    </Panel>
   )
 }
 
@@ -769,22 +451,74 @@ function ReconciliationTab() {
 export default function InventoryScreen() {
   const t = useT()
   const [params, setParams] = useSearchParams()
-  // La pestaña va en la URL (`?tab=balances|reconciliation`; el Kárdex, la primera, sin parámetro) para poder enlazarla.
-  const tab = tabFromParam(params.get('tab'))
-  // Solo al montar: los enlaces de Pulso y los reportes abren la pestaña y los filtros indicados en la URL. Esos filtros son
-  // de la pestaña con que se abrió: al cambiar de pestaña se descartan (la otra no los hereda y al volver no reaparecen).
-  const [initial, setInitial] = useState(() => ({ tab, filters: initialFiltersFromUrl(params) }))
-  const initialFor = (key: TabKey) => (initial.tab === key ? initial.filters : NO_INITIAL_FILTERS)
+  // `?discrepancy=` sin pestaña abre Conciliación (el "Revisar" de "Necesita tu atención" ya manda tab=reconciliation)
+  const tab = params.get('discrepancy') && !params.get('tab') ? 'reconciliation' : tabFromParam(params.get('tab'))
+  // Solo al montar: la URL inicial trae filtros para las TRES pestañas (enlaces de Pulso, reportes, conteo, atención).
+  const [filters, setFilters] = useState<InventoryFilterState>(() => filtersFromUrl(params))
+  const [text, setText] = useState(filters.search)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const txnId = txnParam(params)
+  const discrepancy = params.get('discrepancy')
 
-  function changeTab(next: TabKey) {
+  // el buscador va al API con una pausa de 250 ms; solo un texto distinto al aplicado vuelve a la página 1
+  useEffect(() => {
+    const next = text.trim()
+    if (next === filters.search) return
+    const h = setTimeout(() => {
+      setFilters((f) => ({ ...f, search: next }))
+      setPage(1)
+    }, 250)
+    return () => clearTimeout(h)
+  }, [text, filters.search])
+
+  const changeFilters = useCallback((patch: Partial<InventoryFilterState>) => {
+    setFilters((f) => ({ ...f, ...patch }))
+    setPage(1)
+  }, [])
+  const shownProducts = useResolvedProducts(filters.products)
+
+  function changeTab(next: InventoryTab) {
     if (next === tab) return
-    setInitial({ tab: next, filters: NO_INITIAL_FILTERS })
+    setPage(1)
     setParams(next === 'kardex' ? {} : { tab: next }, { replace: true })
   }
+
+  /** Abre o cierra un parámetro de detalle (`txn`, `discrepancy`) sin tocar el resto de la URL. */
+  const setDetailParam = useCallback(
+    (name: 'txn' | 'discrepancy', value: string | null) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          if (value) next.set(name, value)
+          else next.delete(name)
+          if (name === 'discrepancy' && value && !next.get('tab')) next.set('tab', 'reconciliation')
+          return next
+        },
+        { replace: true },
+      )
+    },
+    [setParams],
+  )
+  const openTxn = useCallback((id: number) => setDetailParam('txn', String(id)), [setDetailParam])
+
   const [adjusting, setAdjusting] = useState(false)
   const [transferring, setTransferring] = useState(false)
   const [genealogyLotId, setGenealogyLotId] = useState<number | null>(null)
   const [serialTrace, setSerialTrace] = useState<{ productPublicId: string; serialNumber: string } | null>(null)
+
+  const pageProps: PageProps = {
+    filters,
+    page,
+    pageSize,
+    onPage: setPage,
+    onPageSize: (size) => {
+      setPageSize(size)
+      setPage(1)
+    },
+    text,
+    onText: setText,
+  }
 
   return (
     <div className="wrap">
@@ -806,7 +540,7 @@ export default function InventoryScreen() {
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <Tabs<TabKey>
+        <Tabs<InventoryTab>
           label={t('warehouse.inventory.title')}
           value={tab}
           onChange={changeTab}
@@ -818,32 +552,47 @@ export default function InventoryScreen() {
         />
       </div>
 
+      <InventoryFilterBar tab={tab} value={filters} onChange={changeFilters} shownProducts={shownProducts} />
+
       {tab === 'kardex' && (
         <KardexTab
-          initial={initialFor('kardex')}
+          {...pageProps}
           onSerialTrace={(productPublicId, serialNumber) => setSerialTrace({ productPublicId, serialNumber })}
+          onOpenTxn={openTxn}
         />
       )}
       {tab === 'balances' && (
         <BalancesTab
-          initial={initialFor('balances')}
+          {...pageProps}
           onGenealogy={setGenealogyLotId}
           onSerialTrace={(productPublicId) => setSerialTrace({ productPublicId, serialNumber: '' })}
         />
       )}
-      {tab === 'reconciliation' && <ReconciliationTab />}
+      {tab === 'reconciliation' && (
+        <DiscrepanciesPanel
+          filters={filters}
+          page={page}
+          pageSize={pageSize}
+          onPage={pageProps.onPage}
+          onPageSize={pageProps.onPageSize}
+          onOpen={(publicId) => setDetailParam('discrepancy', publicId)}
+        />
+      )}
 
       <InventoryAdjustModal open={adjusting} onClose={() => setAdjusting(false)} />
       <InventoryTransferModal open={transferring} onClose={() => setTransferring(false)} />
-      <GenealogyModal lotId={genealogyLotId} onClose={() => setGenealogyLotId(null)} />
+      <GenealogyModal lotId={genealogyLotId} onClose={() => setGenealogyLotId(null)} onOpenTxn={openTxn} />
       {serialTrace && (
         <SerialTraceModal
           key={`${serialTrace.productPublicId}-${serialTrace.serialNumber}`}
           productPublicId={serialTrace.productPublicId}
           initialSerialNumber={serialTrace.serialNumber}
           onClose={() => setSerialTrace(null)}
+          onOpenTxn={openTxn}
         />
       )}
+      <DiscrepancyModal publicId={discrepancy} onClose={() => setDetailParam('discrepancy', null)} onOpenTxn={openTxn} />
+      <KardexTransactionModal txnId={txnId} onClose={() => setDetailParam('txn', null)} />
     </div>
   )
 }

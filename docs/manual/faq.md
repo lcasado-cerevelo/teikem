@@ -1510,6 +1510,9 @@ tarea nueva automáticamente.
 
 ### Conteo cíclico
 
+> Lote 14: "reconciliar" es ahora **Confirmar conteo y ajustar** (`POST …/reconcile`, en un paso desde Pendiente o Contado) y el estatus
+> final es Concordancia o Diferencia; el mensaje 409 de abajo no cambió.
+
 **¿Qué significa "El conteo de {sku} en {bin} ({contado}) es menor que lo reservado ({reservado}); libere la
 reserva antes de reconciliar."? (409)**
 Al reconciliar, lo contado no puede quedar por debajo de lo que ya está reservado en esa posición (por ejemplo,
@@ -2138,6 +2141,12 @@ El nombre de una categoría de producto es obligatorio y tiene un máximo de 150
 
 ### Inventario: saldos, Kárdex, ajustes, transferencias y conciliación
 
+> Desde el Lote 14 la pantalla se llama **Kárdex de movimientos** (`/warehouse/kardex`), los ajustes y transferencias tienen su pantalla
+> **Transferencias y ajustes**, el ajuste se captura con **Subir/Bajar** y una cantidad positiva, y la conciliación guarda descuadres. Los
+> mensajes nuevos y las preguntas están en la sección «Lote 14» de más abajo. "La cantidad del ajuste no puede ser cero." y "Indique la
+> cantidad del ajuste (número, positivo para sumar o negativo para restar)." ya no salen en el modal de ajuste: ahora salen "Elija si el
+> ajuste sube o baja el inventario.", "Indique la cantidad del ajuste." y "La cantidad debe ser mayor que cero.".
+
 **¿Qué significa "La fecha 'desde' no puede ser posterior a la fecha 'hasta'."?**
 En el filtro de rango del Kárdex, la fecha "Desde" quedó después de "Hasta". Corrige el orden de las fechas.
 
@@ -2204,6 +2213,10 @@ a mano.
 
 ### Conteo cíclico
 
+> Desde el Lote 14 el conteo se trabaja en dos paneles, se confirma en un solo paso (**Confirmar conteo y ajustar**) y sus estatus son
+> Pendiente, Contado, Concordancia y Diferencia. Ya no existen los botones **Terminar conteo** y **Reconciliar** ni la pestaña **Tareas de
+> conteo** en la web. Vea la sección «Lote 14» de más abajo.
+
 **¿Qué significa "El conteo admite como máximo 1000 líneas; acote los filtros."?**
 Un conteo cíclico sin zonas ni posiciones toma todo el saldo en mano del almacén; si supera 1000 líneas, hay que
 acotarlo eligiendo zonas o posiciones específicas antes de crearlo.
@@ -2216,7 +2229,7 @@ Al agregar una línea de conteo con lote, hay que elegir un lote existente **o**
 dos cosas a la vez.
 
 **¿Qué significa "Faltan {n} línea(s) por contar."?**
-"Terminar conteo" exige que todas las líneas ya tengan una captura (cantidad o series); revisa cuáles faltan en la
+(Desde el Lote 14 el botón se llama **Confirmar conteo y ajustar**, y sale como motivo bajo el botón apagado.) "Terminar conteo" exigía que todas las líneas ya tengan una captura (cantidad o series); revisa cuáles faltan en la
 tabla (las que dicen "Pendiente").
 
 ### Recolección y empaque
@@ -2663,7 +2676,8 @@ La nota del ajuste tiene más de 300 caracteres. Acórtela.
 **¿Qué significa "Indique la cantidad del ajuste (número, positivo para sumar o negativo para restar)."? (pantalla)**
 En "Añadir ajuste" la cantidad está vacía o no es un número. Escriba un número: positivo para sumar al inventario, negativo
 para restar (no puede ser cero). Este texto reemplaza a "Se esperaba un número." en los ajustes; también lo ve quien ajusta
-desde la pantalla Ajustes de inventario, porque comparten la regla.
+desde la pantalla Ajustes de inventario, porque comparten la regla. (Lote 14: esa pantalla salió del menú y el modal de ajuste ya no muestra este
+texto; ver la sección «Lote 14».)
 
 **¿Qué significa "Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}." dentro del ajuste? (409)**
 Restar esa cantidad dejaría el inventario de la posición en negativo. El mensaje aparece dentro del bloque de ajuste, que
@@ -3047,3 +3061,291 @@ detalle. Empacar exige `warehouse.pick` y `orders.create`, y solo aparece en rec
 **¿Por qué "Unidades totales" solo cuenta productos activos?** Desde el ajuste del 2026-09-30 la cifra suma la existencia en mano de los
 productos **activos** y, al hacer clic, la tabla muestra los activos con existencia en mano mayor que cero; así la cifra y la tabla
 coinciden. (Por el API: `GET /api/v1/inventory/balances?activeProductsOnly=true`.)
+
+## Lote 14 — Transferencias y ajustes, Conteo cíclico, Kárdex, conciliación y "Necesita tu atención" (Lote 4 del plan de cambios)
+
+Capítulos: [06 — Inventario y almacén, secciones 3 y 6](06-inventario-y-almacen.md), [07 — Pulso del día, sección 4](07-pulso-y-actividad.md) y
+[F6 — Almacén e inventario (pantallas)](frontend/f6-almacen-e-inventario.md). Los mensajes del API traen el código HTTP indicado; los que se
+ven solo en pantalla van agrupados más abajo ("Mensajes que solo ve en la pantalla…"). Este lote cubre el Kárdex (filtros compartidos,
+resumen y detalle), Transferencias y ajustes (Subir/Bajar), la conciliación automática con descuadres, el Conteo cíclico en dos paneles con
+"lo cambiado" y los estatus Pendiente / Contado / Concordancia / Diferencia, y "Necesita tu atención" en el Pulso.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "Movimiento no encontrado."? (404)**
+El detalle de un movimiento (`GET /api/v1/inventory/transactions/{id}` o el enlace `?txn=` del Kárdex) pidió un número que no existe o que
+es de otra compañía. Vuelva al Kárdex y abra el movimiento desde la lista.
+
+**¿Qué significa "Cliente no encontrado."? (404)**
+El filtro de dueño del Kárdex (`ownerClientPublicIds`) trae un cliente que no existe o es de otra compañía. Elija el dueño desde la lista
+del filtro (`GET /api/v1/inventory/owners`); "Propio" no lleva cliente (`includeOwn=true`).
+
+**¿Qué significa "La dirección debe ser IN (entradas) u OUT (salidas)."? (400)**
+El filtro `direction` del Kárdex (o de su resumen) trae otro valor. Use `IN` para entradas u `OUT` para salidas (sin distinguir
+mayúsculas), o quite el filtro. El error viene en `errors.direction`.
+
+**¿Qué significa "Motivo de ajuste desconocido: 'X'." en el Kárdex? (400)**
+El filtro `reasons` trae un código que no está en el catálogo de motivos de ajuste. Use los códigos del catálogo (`DAMAGE`, `LOSS`, `FOUND`,
+`EXPIRED`, `PO_SHORTAGE`, `OTHER`, o los que agregue su compañía). Es el mismo mensaje que al capturar un ajuste con un motivo inexistente.
+
+**¿Qué significa "La conciliación manual admite como máximo 200 productos a la vez."? (400)**
+`POST /api/v1/inventory/reconciliation/run` recibió más de 200 productos en `productPublicIds`. Mande menos, o no mande ninguno para revisar
+**todos** los productos de la compañía. El error viene en `errors.productPublicIds`.
+
+**¿Qué significa "Descuadre no encontrado."? (404)**
+El descuadre no existe o es de otra compañía (no se distingue). Vuelva a la lista de Kárdex › Conciliación: si otro usuario lo cerró, ya no
+está entre los Pendientes; cambie el filtro de estatus para verlo.
+
+**¿Qué significa "Tipo de descuadre desconocido: 'X'."? (400)**
+El filtro `kinds` de `GET /api/v1/inventory/discrepancies` trae un tipo que no existe. Los tipos son `BALANCE` (saldo por posición) y
+`PRODUCT_TOTAL` (total del producto).
+
+**¿Qué significa "Indique la acción: REBUILD_BALANCE (corregir el saldo) o DISMISS (descartar)."? (400)**
+`POST …/discrepancies/{publicId}/resolve` llegó sin `action` o con otra distinta. Mande `REBUILD_BALANCE` para corregir el saldo según el
+Kárdex o `DISMISS` para descartar. En la pantalla, los botones "Corregir el saldo según el Kárdex" y "Descartar" ya mandan la acción.
+
+**¿Qué significa "Escriba una nota que explique por qué se descarta el descuadre."? (400, también en pantalla)**
+Descartar exige una nota: quien lo lea después debe saber por qué se dejó así. Escriba el motivo (hasta 500 caracteres) y vuelva a pulsar
+**Descartar**. Corregir el saldo no la exige. El error viene en `errors.notes`.
+
+**¿Qué significa "La nota admite como máximo 500 caracteres."? (400, también en pantalla)**
+La nota de resolución de un descuadre pasa de 500 caracteres. Acórtela.
+
+**¿Qué significa "El descuadre ya está cerrado; solo se consulta."? (422)**
+Ya se resolvió, se descartó o se cerró solo (otra persona o una revisión automática lo cerró antes). Un descuadre cerrado no se vuelve a
+resolver. Si el problema reaparece, la revisión abre uno nuevo; si quiere revisar el saldo ahora, pulse **Ejecutar conciliación**.
+
+**¿Qué significa "Este descuadre es del total del producto; no se corrige por posición. Corrija los descuadres por posición o descártelo con una nota."? (422)**
+El descuadre no es de una posición sino de la **suma de todo el producto**: no hay una posición cuyo saldo corregir. Corrija primero los
+descuadres por posición de ese producto (si los hay; un descuadre del total solo se abre cuando ninguna posición del producto está
+descuadrada) o descarte este con una nota que explique la causa.
+
+**¿Qué significa "El Kárdex da {ledger} para {sku} en {bin}, menos que lo reservado ({reserved}); libere la reserva antes de corregir el saldo."? (409)**
+Para corregir, el saldo tomaría lo que suman los movimientos, pero ese número es menor que lo que ya está **reservado** en la posición
+(por ejemplo, para una recolección o un cruce de muelle): el saldo no puede quedar por debajo de lo reservado. Libere esa reserva
+(cancele o complete lo que la usa) y vuelva a intentar. No se cambió nada.
+
+**¿Qué significa "El Kárdex da un saldo negativo ({ledger}) para {sku} en {bin}; revise los movimientos antes de corregir el saldo."? (409)**
+La suma de los movimientos de esa clave es negativa: hay más salidas que entradas, lo que no puede ser un saldo. Corregir el saldo lo
+copiaría del Kárdex y sería un error. Revise los movimientos de esa posición (el detalle del descuadre muestra los últimos 20); si el
+Kárdex está mal, hace falta una revisión de soporte. También puede descartar el descuadre con una nota.
+
+**¿Qué significa "La conciliación chocó con otra revisión simultánea; intente de nuevo."? (409)**
+Dos revisiones (por ejemplo, la automática y su botón **Ejecutar conciliación**) intentaron abrir el mismo descuadre al mismo tiempo; solo
+puede haber uno abierto por clave. No pasó nada malo: espere unos segundos y vuelva a ejecutar.
+
+**¿Qué significa "rowVersion inválido: se espera el valor base64 devuelto por la ficha."? (400)**
+El `rowVersion` que mandó al resolver un descuadre o al confirmar un conteo no es el texto que devuelve la ficha. Mande el valor tal cual
+lo recibió, o no lo mande (sin él no hay control de cambios simultáneos).
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo." al resolver un descuadre o confirmar un conteo? (409)**
+El `rowVersion` es de una lectura vieja: alguien más (o la revisión automática, que actualiza las cifras del descuadre) cambió el registro
+después. Recargue la ficha y repita la acción con el `rowVersion` nuevo.
+
+**¿Qué significa "El rango de "lo cambiado" admite como máximo 31 días."? (400)**
+En "Conteo de lo cambiado", entre "desde" y "hasta" hay más de 31 días. Acorte el rango. Si no cambió las fechas y este mensaje sale, la
+última generación de este almacén fue hace más de 31 días: la ventana por defecto se acota sola a 31 días atrás, así que el mensaje solo
+sale con fechas escritas a mano. El error viene en `errors.fromUtc`.
+
+**¿Qué significa "La fecha 'desde' no puede ser posterior a la fecha 'hasta'." en "lo cambiado"? (400)**
+La ventana de "Conteo de lo cambiado" tiene el "desde" después del "hasta". Corrija el orden. El mismo mensaje sale en el Kárdex y en la
+lista de descuadres.
+
+**¿Qué significa "No hubo movimientos en {almacén} entre {desde} y {hasta}; no hay posiciones que contar."? (400)**
+En esa ventana (fechas y horas de Puerto Rico) el almacén no tuvo movimientos en posiciones activas, sin contar los que salen de un
+conteo. Amplíe la ventana (hasta 31 días), quite el filtro de zonas o espere a que haya movimiento. En la pantalla, la vista previa lo dice
+antes de crear y el botón queda apagado.
+
+**¿Qué significa "Las {n} posiciones con cambios ya tienen un conteo pendiente."? (400)**
+Todas las posiciones con movimientos en la ventana ya tienen un conteo **Pendiente o Contado**. No se crean conteos repetidos: confirme
+o elimine los que hay, o elija otra ventana.
+
+**¿Qué significa "Hay {n} posiciones con cambios; se generan como máximo 200 a la vez. Acote el rango de fechas o las zonas."? (400)**
+"Lo cambiado" genera hasta 200 conteos por vez y esa ventana tiene más posiciones. **No se creó ninguno.** Acorte el rango de fechas o
+elija zonas, y repita: como la ventana por defecto arranca desde la última generación, puede ir generando por partes.
+
+**¿Qué significa "Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano."? (400)**
+Además del alta normal, ahora sale en "lo cambiado" cuando las posiciones de la ventana no tienen nada que contar (por ejemplo, con
+"Incluir posiciones vacías" apagado y todas quedaron en cero). Encienda **Incluir posiciones vacías** o amplíe la ventana.
+
+**¿Qué significa "El conteo ya fue reconciliado; solo se consulta." ahora que hay Concordancia y Diferencia? (422)**
+Vale para los **dos** estatus finales. Un conteo Concordancia o Diferencia ya asentó sus ajustes en el Kárdex y no se edita, no se captura,
+no se vuelve a confirmar y no se elimina. Si contó mal, haga un ajuste manual o un conteo nuevo de la posición.
+
+**¿Qué significa "El conteo ya se terminó; puede corregir la captura o reconciliarlo."? (422)**
+Se pidió **terminar** (`POST …/finish`) un conteo que ya está **Contado** (lo hace la app de almacén a ciegas). En la web no hay ese paso:
+use **Confirmar conteo y ajustar**.
+
+**¿Qué significa "El conteo no tiene líneas."? (422)**
+Se intentó terminar o confirmar un conteo sin líneas. Agregue lo encontrado o elimine el conteo si sobra.
+
+**¿Qué significa "Solo se elimina un conteo abierto; este ya se terminó de contar."? (422)**
+Solo un conteo **Pendiente** se elimina. Uno **Contado** ya se terminó de contar; confírmelo. Uno **Concordancia** o **Diferencia** responde
+"El conteo ya fue reconciliado; solo se consulta.".
+
+**¿Qué significa "Falta el permiso 'pulse.attention'."? (403)**
+`GET /api/v1/analytics/attention` la pide. Pídale a su administrador el permiso "Ver la sección Necesita tu atención del Pulso".
+
+**¿Qué significa "Indique el almacén: la compañía tiene más de uno." / "El almacén está inactivo." en el conteo? (400 / 422)**
+Vale para el alta de un conteo y para "lo cambiado": con más de un almacén activo hay que elegir cuál; uno dado de baja no admite conteos.
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**¿Qué significa "Elija si el ajuste sube o baja el inventario."?**
+En el modal de ajuste falta **Tipo de ajuste**: elija **Subir** (entra inventario) o **Bajar** (sale). Es obligatorio; el signo lo pone la pantalla.
+
+**¿Qué significa "La cantidad debe ser mayor que cero." en el ajuste?**
+La cantidad del ajuste se escribe **siempre en positivo**; la dirección (Subir o Bajar) dice si suma o resta. Escriba un número mayor que cero.
+
+**¿Qué significa "No puede bajar más de lo disponible en la posición ({qty})." / "No puede transferir más de lo disponible en la posición ({qty})."?**
+La cantidad pasa de lo que hay disponible (en mano menos reservado) en esa posición, que la pantalla muestra debajo como "Disponible en la
+posición: N". Escriba una cantidad menor o igual. Si el producto es por lote, el tope es el del lote elegido.
+
+**¿Qué significa "Seleccione el lote."?**
+Al **bajar** un producto por lote hay que elegir cuál lote de los que hay en la posición sale. (Al **subir**, se escribe el número de lote:
+"Indique el número de lote.").
+
+**¿Qué significa "Elija el ítem a transferir." / "Elija al menos una serie."?**
+En "Transferir", después de la posición de origen se elige el **ítem** (producto y lote de lo que hay ahí). Si el producto se controla por
+serie, hay que marcar al menos una serie; la cantidad es el número de series marcadas.
+
+**¿Qué significa "El saldo ya cuadraba; el descuadre se cerró solo."?**
+Aviso, no error: usted pidió corregir, pero cuando el sistema lo revisó el saldo ya coincidía con el Kárdex (una revisión o un movimiento
+lo arregló antes). El descuadre quedó en **Se corrigió solo** y no se tocó nada.
+
+**¿Qué significa "Ese código no está en este conteo. Use "Agregar lo encontrado" si el producto está en la posición."?**
+El escáner del conteo busca por **SKU, código de barras, lote o serie exactos** entre las líneas de **este** conteo. Si el producto está en
+la posición pero no en el conteo, pulse **Agregar lo encontrado**.
+
+**¿Qué significa "{n} líneas coinciden: elija la posición y el lote."?**
+El código coincide con varias líneas del conteo (el mismo producto en varias posiciones o lotes). Elija cuál en la lista que se abre.
+
+**¿Qué significa "Hay cantidades que no se pudieron guardar; corríjalas antes de confirmar."?**
+Al pulsar **Confirmar conteo y ajustar** la pantalla guarda primero lo tecleado, y alguna fila falló (aparece marcada). Corrija esa
+cantidad y confirme otra vez.
+
+**¿Por qué el botón "Confirmar conteo y ajustar" está apagado?**
+Debajo dice el motivo: `Faltan {n} línea(s) por contar.`, `El conteo no tiene líneas.`, `El conteo ya fue confirmado; solo se consulta.`
+o `La web no confirma conteos a ciegas.` (su usuario no tiene `warehouse.count`, o el conteo es de la app a ciegas).
+
+**¿Qué significa "Elija el almacén." en "Conteo de lo cambiado"?**
+Con más de un almacén activo hay que elegir cuál antes de crear los conteos.
+
+**¿Qué significa "Revisión automática: al día" / "Revisión automática: {count} en cola" / "Revisión automática apagada"?**
+Está en Kárdex › Conciliación. **Al día**: no hay productos esperando revisión. **N en cola**: N productos se revisarán en unos segundos.
+**Apagada**: el servidor la tiene desactivada (`Inventory:Reconciliation:Enabled`); solo funciona el botón **Ejecutar conciliación**.
+
+**¿Qué significa "No aplican al Kárdex: …" / "No aplican a Saldos (solo cambian el resumen de movimientos): …" / "No aplican a Conciliación: …"?**
+Los filtros del Kárdex son los mismos en las tres pestañas y se conservan al cambiar de pestaña, pero cada una aplica solo algunos. Los que no
+aplica se ven atenuados y esta nota los nombra: siguen puestos, y volverán a valer al regresar a la pestaña donde sí aplican. En Saldos, los de
+movimientos (fechas, tipo, dueño, motivo, dirección, "Solo manuales") solo cambian el **resumen**.
+
+**¿Qué significa "Su usuario no puede consultar posiciones"?**
+El filtro **Posición** busca en `GET /api/v1/warehouses/bins/search`, que exige `inventory.view`. Sin ese permiso el filtro se ve pero no lista.
+
+### Preguntas frecuentes
+
+**¿Qué es un descuadre y por qué no lo arregla un ajuste?**
+Un descuadre es que el **saldo** de una posición no coincide con lo que suman los **movimientos** del Kárdex. **No es una diferencia física en
+el estante** (eso lo resuelve un conteo). Cada movimiento escribe el saldo y el Kárdex juntos, así que casi nunca ocurre: viene de un arreglo
+hecho directo en la base de datos, de una restauración, de la migración o de un error. Un ajuste o un conteo mueven el saldo **y** el
+Kárdex en la misma cantidad, así que la diferencia sigue igual. Se corrige con **Corregir el saldo según el Kárdex** (el saldo toma lo que
+dan los movimientos, sin crear un movimiento nuevo) o se descarta con una nota.
+
+**¿Cuándo aparece un descuadre y cuánto tarda?**
+Unos segundos después de cada movimiento del producto (la revisión corre sola en segundo plano), o al pulsar **Ejecutar conciliación**
+(revisa los productos del filtro o todos), o al final de una migración. Si el servidor se reinicia mientras hay revisiones en cola, se pierden;
+el siguiente movimiento de ese producto o **Ejecutar conciliación** las cubren.
+
+**¿Un descuadre que descarté puede volver?**
+Solo si las cifras cambian: mientras el Kárdex y el saldo tengan los mismos números que cuando lo descartó, no se reabre. Si cambian, se abre
+uno nuevo. Un descuadre resuelto o "Se corrigió solo" que vuelve a ocurrir también abre uno nuevo.
+
+**¿Qué significan los cuatro estatus de un descuadre?**
+**Pendiente**: hay que revisarlo. **Resuelto**: alguien corrigió el saldo según el Kárdex. **Descartado**: alguien decidió dejarlo, con una
+nota. **Se corrigió solo**: una revisión lo encontró cuadrado (o al corregir ya cuadraba). Los tres últimos son finales.
+
+**¿Qué hago si el descuadre es del "total del producto"?**
+Corrija primero los descuadres por posición de ese producto; si no hay ninguno y el total sigue mal, descarte con una nota que explique la
+causa y avise a soporte. "Corregir" no está disponible para este tipo.
+
+**Corregí un descuadre: ¿cómo verifico lo que hay en el estante?**
+Después de corregir, la ficha ofrece **Crear conteo de esa posición** (necesita `warehouse.count.capture`): crea un conteo Pendiente de esa
+posición. El saldo ya coincide con el Kárdex, pero eso no prueba que coincida con lo físico; el conteo sí.
+
+**¿Qué cuenta "Conteo de lo cambiado"?**
+Un conteo **por cada posición** que tuvo movimientos en una ventana: por defecto desde la última vez que se generó en ese almacén (la primera
+vez, desde las 00:00 de hoy en hora de Puerto Rico) hasta ahora; puede cambiar las fechas (hasta 31 días). Cada conteo trae **todo lo que hay
+en la posición** y, con "Incluir posiciones vacías", también lo que quedó en cero. **No cuentan** los movimientos que salen de otro conteo, ni
+las posiciones inactivas ni las que ya tienen un conteo Pendiente o Contado (se saltan; la vista previa dice cuántas). Hasta 200 posiciones
+por vez y todo o nada.
+
+**Generé "lo cambiado" dos veces seguidas: ¿se duplican los conteos?**
+No: la segunda vez la ventana arranca donde terminó la primera y, además, una posición con un conteo Pendiente o Contado se salta.
+
+**¿Por qué mi conteo dice "Diferencia"? ¿Y por qué "Concordancia"?**
+**Diferencia** significa que al confirmar el sistema **asentó al menos un movimiento** (un ajuste `COUNT_VARIANCE` en el Kárdex o, en productos
+con serie, una baja, un alta o una transferencia): lo contado no coincidía con el saldo actual. **Concordancia**: no hubo nada que ajustar. Ojo:
+se compara con el saldo **actual**, no con la foto: si el saldo cambió después de tomar la foto y usted contó lo que había, queda en
+Concordancia aunque la línea diga que el saldo cambió. Los conteos ya cerrados con ajuste antes del Lote 14 pasaron a Diferencia.
+
+**¿Por qué "Abierto" y "Reconciliado" ahora dicen "Pendiente" y "Concordancia"?**
+Se renombraron por decisión del dueño. Los códigos no cambiaron (`OPEN` y `RECONCILED`) y se agregó `RECONCILED_VARIANCE` ("Diferencia"). Un
+filtro del API con `status=RECONCILED` ya no incluye los conteos con Diferencia: pida los dos.
+
+**¿Qué pasó con el paso "Terminar conteo"?**
+En la web ya no existe: **Confirmar conteo y ajustar** lleva el conteo de Pendiente a Concordancia o Diferencia en un solo paso. El estatus
+**Contado** queda solo para el conteo a ciegas de la app de almacén (que termina de contar y deja la confirmación a la web).
+
+**¿Dónde quedó la pestaña "Tareas de conteo" y cómo asigno un conteo?**
+Se quitó. Cada conteo de la lista de la izquierda tiene un ícono **Asignar** (persona con "+", necesita `warehouse.manage`) que muestra a
+quién está asignado, y un ícono **Eliminar** (papelera; solo conteos Pendientes, necesita `warehouse.count`). Para elegir a quién, su usuario
+también necesita `admin.users`; sin él sale "Su usuario no puede consultar el listado de usuarios.".
+
+**¿Dónde quedó "Ajustes de inventario"?**
+Salió del menú (decisión del dueño). Esa pantalla no mostraba ajustes: mostraba las **compras recibidas de forma incompleta**. Sus faltantes se
+resuelven ahora **desde la ficha de cada orden de compra, pestaña Faltantes** (Compras), y la dirección `/warehouse/inventory-adjustments`
+lleva a Compras. Los ajustes de inventario están en **Transferencias y ajustes** (menú Almacén, después de Recolección y empaque) y en el Kárdex.
+
+**¿Por qué no puedo elegir "Encontrado" al bajar (o "Daño" al subir)?**
+Los motivos dependen de la dirección: **Encontrado** solo al subir; **Daño**, **Pérdida** y **Vencido** solo al bajar; los demás valen en las
+dos. Es una regla de la pantalla; cambie la dirección para ver el motivo.
+
+**¿Por qué las fechas del Kárdex cambiaron?**
+Los filtros "Desde" y "Hasta" son ahora **días de Puerto Rico** (medianoche local), no días UTC. Una integración que mandaba `from` y `to`
+pensando en UTC verá movimientos de la noche del día anterior o del siguiente en los bordes. Lo mismo vale para la lista de descuadres y la
+de conteos.
+
+**¿Qué muestra el resumen de arriba del Kárdex y de Saldos?**
+Con **los mismos filtros** de la tabla: Movimientos, Entradas (cuántos movimientos y cuántas unidades), Salidas e Internos (transferencias
+que no salen de los almacenes o posiciones filtrados). En **Saldos** se agregan **En mano** y **Disponible**. Saldos no filtra por Dueño (el
+API de saldos no lo tiene); el filtro de dueño solo cambia el resumen de movimientos.
+
+**¿Qué muestra el detalle de un movimiento?**
+Haga clic en una fila del Kárdex, de Ajustes o de Transferencias: fecha y hora, usuario, tipo, producto, dueño, categoría, cantidad, de → a,
+lote, serie, motivo, origen y nota; el **documento de origen** con su estatus y un botón **Abrir** (solo si usted tiene el permiso y el módulo
+de esa pantalla; una tarea de almacén abre el documento de su padre); y los **movimientos relacionados** (los del mismo documento o, si no
+tiene, los del mismo asiento; hasta 200).
+
+**¿Qué significa "Solo manuales"?**
+Movimientos sin documento de referencia: los que alguien hizo a mano (ajustes y transferencias desde las pantallas). Sin el filtro, las
+pestañas listan **todos** los movimientos, incluidos los que genera el sistema (conteo, recibo, acomodo, reabasto).
+
+**¿Por qué no veo "Necesita tu atención"?**
+Porque su usuario no tiene el permiso `pulse.attention`, o porque ese panel se ocultó en su Pulso o en el de la compañía ("Organizar mi Pulso").
+Si el panel se ve y dice "Todo en orden", no hay descuadres pendientes **que usted pueda ver** (necesita `inventory.view` y el módulo de
+almacén encendido). El panel muestra los 5 descuadres más antiguos; **Ver todos (N)** abre la lista completa en Kárdex › Conciliación.
+
+**¿Por qué "Conteos abiertos" del Pulso cambió de cifra?**
+Ahora cuenta el total real de conteos **Pendientes y Contados** (antes contaba una lista cortada en 200 y solo los "Abiertos"). Los
+Concordancia y Diferencia ya no cuentan.
+
+**Escaneé un código y el conteo no lo encuentra: ¿qué hago?**
+El escáner busca el código exacto (SKU, código de barras, lote o serie) entre las líneas del conteo. Si el producto no está en la lista de esa
+posición, pulse **Agregar lo encontrado**. Un lector que teclea el código y pulsa Enter se comporta igual que escribirlo a mano.
+
+**¿Puedo confirmar un conteo sin contar todas las líneas?**
+No: `Faltan {n} línea(s) por contar.` Una línea con 0 contado es una captura válida (cuente cero); una línea vacía no.
+
+**¿Se puede contar a ciegas desde la web?**
+No. El conteo a ciegas es de la app de almacén; la web muestra lo esperado y el botón de confirmar avisa "La web no confirma conteos a ciegas.".

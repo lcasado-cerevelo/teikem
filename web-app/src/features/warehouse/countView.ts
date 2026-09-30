@@ -1,0 +1,274 @@
+// Lote 14 (P8) — lógica pura de "Conteo cíclico" en dos paneles (maqueta `conteo()`, Cambios.pdf pp. 14-15, decisiones D2-D4 y
+// D7-D10): filtros de la lista y su consulta a `GET /cycle-counts/page`, el conteo elegido en la URL (`?count=<id>`, también
+// la redirección de la ficha vieja `/warehouse/cycle-counts/:id`), cómo se describe un conteo en la lista, qué líneas coinciden
+// con lo escaneado (SKU, código de barras, lote o serie), la cantidad tecleada en la fila, lo que impide "Confirmar conteo y
+// ajustar" y la ventana de "lo cambiado" en hora de la compañía (Puerto Rico).
+import { normalizeQ } from '../../kernel/ui/matchesQ'
+import type { DateRange } from '../../kernel/ui/dateRange'
+import type { ComboOption } from '../../kernel/ui/comboMatch'
+import type { CycleCountDto, CycleCountLineDto, GetQuery } from './api'
+import type { BinFilterItem } from './kardexView'
+import type { ProductFilterItem } from './pickers'
+import { parseQtyText } from './receiptLineEdit'
+
+export const COUNT_STATUS_DOMAIN = 'CycleCountStatus'
+export const COUNT_ORIGIN_DOMAIN = 'CycleCountOrigin'
+export const COUNT_ENTITY_TYPE = 'CYCLE_COUNT'
+
+/**
+ * Zona horaria de la compañía para "hoy" y la ventana de "lo cambiado": espejo de `TenantClock` del backend (Puerto Rico
+ * por defecto; el día de la compañía empieza a medianoche local). Un solo punto, para configurarlo por compañía más adelante.
+ */
+export const TENANT_TIME_ZONE = 'America/Puerto_Rico'
+
+/** Estatus finales del conteo (D7): Concordancia (sin ajustes) y Diferencia (asentó algún ajuste). */
+export const CLOSED_COUNT_STATUSES: readonly string[] = ['RECONCILED', 'RECONCILED_VARIANCE']
+
+export function isCountClosed(statusCode: string | null | undefined): boolean {
+  return CLOSED_COUNT_STATUSES.includes(statusCode ?? '')
+}
+
+/** Pendiente o Contado (este solo llega de la app, a ciegas): se captura y se confirma. */
+export function isCountEditable(statusCode: string | null | undefined): boolean {
+  return Boolean(statusCode) && !isCountClosed(statusCode)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Filtros de la lista (todos van al API)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export interface CountFilterState {
+  warehousePublicIds: string[]
+  /** ids de zona como texto (de los almacenes elegidos). */
+  zoneIds: string[]
+  bins: BinFilterItem[]
+  products: ProductFilterItem[]
+  /** OPEN, COUNTED, RECONCILED, RECONCILED_VARIANCE. */
+  status: string[]
+  /** MANUAL (Selección) o CHANGES (Lo cambiado). */
+  origins: string[]
+  /** Fecha de alta en días locales de la compañía ('YYYY-MM-DD'). */
+  created: DateRange
+  /** Número del conteo, SKU o nombre de producto (con pausa). */
+  search: string
+}
+
+export const EMPTY_COUNT_FILTERS: CountFilterState = {
+  warehousePublicIds: [],
+  zoneIds: [],
+  bins: [],
+  products: [],
+  status: [],
+  origins: [],
+  created: { from: '', to: '' },
+  search: '',
+}
+
+const some = <T>(xs: readonly T[]): T[] | undefined => (xs.length > 0 ? [...xs] : undefined)
+
+/** Consulta de la lista SIN página (la usa también Exportar). */
+export function countFilterQuery(f: CountFilterState): GetQuery<'/api/v1/cycle-counts/page'> {
+  return {
+    warehousePublicIds: some(f.warehousePublicIds),
+    zoneIds: some(f.zoneIds.map(Number).filter((n) => Number.isInteger(n) && n > 0)),
+    binIds: some(f.bins.map((b) => b.id)),
+    productPublicIds: some(f.products.map((p) => p.publicId)),
+    status: some(f.status),
+    origins: some(f.origins),
+    from: f.created.from || undefined,
+    to: f.created.to || undefined,
+    search: f.search.trim() || undefined,
+  }
+}
+
+export function countListQuery(f: CountFilterState, page: number, pageSize: number): GetQuery<'/api/v1/cycle-counts/page'> {
+  return { ...countFilterQuery(f), skip: (Math.max(1, page) - 1) * pageSize, take: pageSize }
+}
+
+/** Una zona que ya no pertenece a los almacenes elegidos se descarta del filtro. */
+export function keepZones(zoneIds: readonly string[], available: readonly string[]): string[] {
+  const set = new Set(available)
+  return zoneIds.filter((z) => set.has(z))
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Conteo elegido en la URL (la ficha vieja `/warehouse/cycle-counts/:id` redirige aquí: `legacyCountSearch` de routes.tsx)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** `?count=<id>` → id entero positivo o null. */
+export function countParam(params: URLSearchParams): number | null {
+  const raw = params.get('count')
+  if (!raw || !/^\d+$/.test(raw.trim())) return null
+  const n = Number(raw)
+  return Number.isSafeInteger(n) && n > 0 ? n : null
+}
+
+/** El elegido: el de la URL (aunque la página no lo traiga, p. ej. desde el Kárdex) o, sin él, el primero de la lista. */
+export function selectedCountId(items: readonly Pick<CycleCountDto, 'id'>[], param: number | null): number | null {
+  if (param != null) return param
+  return items[0]?.id ?? null
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Cómo se describe un conteo en la lista (maqueta: posición grande + chip; "CC-… · Zona A · 3 productos")
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type CountWhere = { kind: 'bin'; code: string; zone: string | null } | { kind: 'many'; bins: number } | { kind: 'none' }
+
+export function countWhere(c: Pick<CycleCountDto, 'binCode' | 'zoneCode' | 'binCount'>): CountWhere {
+  if (c.binCode) return { kind: 'bin', code: c.binCode, zone: c.zoneCode ?? null }
+  const n = c.binCount ?? 0
+  return n > 0 ? { kind: 'many', bins: n } : { kind: 'none' }
+}
+
+/** Tono del origen: "Lo cambiado" se marca (etiqueta de flujo); "Selección" va neutra. */
+export function isChangesOrigin(c: Pick<CycleCountDto, 'originCode'>): boolean {
+  return (c.originCode ?? '').toUpperCase() === 'CHANGES'
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Escáner: qué líneas coinciden con un código (D9: lleva a la línea y pide la cantidad)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type CountMatchBy = 'sku' | 'barcode' | 'lot' | 'serial'
+
+export interface CountLineMatch {
+  line: CycleCountLineDto
+  by: CountMatchBy
+  /** Serie escaneada (solo `by: 'serial'`), para agregarla a lo contado. */
+  serial?: string
+}
+
+const fold = (s: string | null | undefined) => normalizeQ((s ?? '').trim())
+
+/**
+ * Líneas cuyo SKU, código de barras, lote o serie (esperada o ya contada) es EXACTAMENTE el código (sin mayúsculas ni
+ * acentos). Una línea aparece una sola vez (primer criterio que coincide, en ese orden). Vacío = ninguna.
+ */
+export function matchCountLine(lines: readonly CycleCountLineDto[], code: string): CountLineMatch[] {
+  const q = fold(code)
+  if (!q) return []
+  const out: CountLineMatch[] = []
+  for (const line of lines) {
+    if (fold(line.sku) === q) out.push({ line, by: 'sku' })
+    else if (line.barcode && fold(line.barcode) === q) out.push({ line, by: 'barcode' })
+    else if (line.lotNumber && fold(line.lotNumber) === q) out.push({ line, by: 'lot' })
+    else {
+      const serial = [...(line.expectedSerials ?? []), ...(line.countedSerials ?? [])].find((s) => fold(s) === q)
+      if (serial) out.push({ line, by: 'serial', serial })
+    }
+  }
+  return out
+}
+
+/** Opciones del buscador de líneas: "SKU · Producto", con posición, lote y código de barras en la pista (también se buscan). */
+export function scanOptions(lines: readonly CycleCountLineDto[]): ComboOption[] {
+  return lines.map((l) => ({
+    value: String(l.id ?? 0),
+    label: [l.sku, l.productName].filter(Boolean).join(' · '),
+    hint: [l.binCode, l.lotNumber, l.barcode].filter(Boolean).join(' · ') || undefined,
+  }))
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Cantidad contada en la fila
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Texto de la cantidad guardada ('' = sin capturar). */
+export function countedText(n: number | null | undefined): string {
+  return n == null ? '' : String(n)
+}
+
+/** Lo tecleado: número (coma o punto), null si está vacío, NaN si no es un número. */
+export function parseCounted(text: string): number | null {
+  return parseQtyText(text)
+}
+
+/** Diferencia de una línea contra lo esperado (la foto): con lo tecleado si es un número; si no, la del servidor. */
+export function lineVariance(line: Pick<CycleCountLineDto, 'systemQty' | 'countedQty' | 'varianceQty'>, draft?: string): number | null {
+  if (draft !== undefined) {
+    const n = parseCounted(draft)
+    if (n === null || Number.isNaN(n) || line.systemQty == null) return null
+    return Math.round((n - line.systemQty) * 1000) / 1000
+  }
+  if (line.varianceQty != null) return line.varianceQty
+  if (line.countedQty == null || line.systemQty == null) return null
+  return Math.round((line.countedQty - line.systemQty) * 1000) / 1000
+}
+
+/** Líneas sin contar, tomando lo tecleado (un número válido cuenta como contado). */
+export function pendingLines(lines: readonly Pick<CycleCountLineDto, 'id' | 'countedQty'>[], drafts: ReadonlyMap<number, string>): number {
+  let n = 0
+  for (const l of lines) {
+    const draft = drafts.get(l.id ?? 0)
+    if (draft !== undefined) {
+      const v = parseCounted(draft)
+      if (v === null || Number.isNaN(v)) n++
+    } else if (l.countedQty == null) n++
+  }
+  return n
+}
+
+export type ConfirmBlocker = { key: 'noLines' } | { key: 'pending'; params: { n: number } } | { key: 'closed' } | { key: 'blind' }
+
+/**
+ * Qué impide "Confirmar conteo y ajustar" (D8, un paso desde Pendiente o Contado): conteo cerrado, a ciegas (la web no
+ * confirma sin ver lo esperado), sin líneas o con líneas sin contar ('Faltan {n} línea(s) por contar.', el mismo 422 del API).
+ */
+export function confirmBlocker(args: {
+  statusCode: string | null | undefined
+  isBlind: boolean
+  lines: readonly Pick<CycleCountLineDto, 'id' | 'countedQty'>[]
+  drafts: ReadonlyMap<number, string>
+}): ConfirmBlocker | null {
+  if (!isCountEditable(args.statusCode)) return { key: 'closed' }
+  if (args.isBlind) return { key: 'blind' }
+  if (args.lines.length === 0) return { key: 'noLines' }
+  const n = pendingLines(args.lines, args.drafts)
+  return n > 0 ? { key: 'pending', params: { n } } : null
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Ventana de "lo cambiado" en hora de la compañía (inputs datetime-local 'YYYY-MM-DDTHH:mm')
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Desplazamiento (ms) de la zona respecto de UTC en ese instante (negativo al oeste). */
+function zoneOffsetMs(utcMs: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(new Date(utcMs))
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
+  return asUtc - Math.floor(utcMs / 1000) * 1000
+}
+
+const pad = (n: number) => String(n).padStart(2, '0')
+
+/** Instante UTC del API → 'YYYY-MM-DDTHH:mm' en la zona de la compañía ('' si no se puede leer). */
+export function zonedInputFromUtc(iso: string | null | undefined, timeZone = TENANT_TIME_ZONE): string {
+  if (!iso) return ''
+  const s = iso.trim()
+  const ms = new Date(/(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(s) || !s.includes('T') ? s : `${s}Z`).getTime()
+  if (Number.isNaN(ms)) return ''
+  const local = new Date(ms + zoneOffsetMs(ms, timeZone))
+  return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`
+}
+
+/** 'YYYY-MM-DDTHH:mm' en la zona de la compañía → ISO UTC ('…Z'), o null si está vacío o no es válido. */
+export function utcFromZonedInput(text: string, timeZone = TENANT_TIME_ZONE): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(text.trim())
+  if (!m) return null
+  const guess = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] ?? 0))
+  if (Number.isNaN(guess)) return null
+  // se corrige con el desplazamiento del instante resultante (cambio de horario, si la zona lo tuviera)
+  let utc = guess - zoneOffsetMs(guess, timeZone)
+  utc = guess - zoneOffsetMs(utc, timeZone)
+  return new Date(utc).toISOString()
+}

@@ -652,6 +652,7 @@ internal sealed class ReceivingFixture : IAsyncDisposable
         services.AddSingleton<ModuleService>();
         services.AddSingleton(sp => new StatusService(db, tenant, lookups, sp.GetServices<IStatusTransitionEffect>(), sp.GetRequiredService<PermissionService>()));
         services.AddSingleton<INumberSequenceService, InMemoryNumberSequence>();
+        services.AddSingleton<IInventoryChangeSink, InventoryChangeSink>();   // Lote 14 (P2): bandeja de cambios del ledger
         services.AddSingleton<InventoryLedger>();
         services.AddSingleton<WarehouseTaskWriter>();
         services.AddSingleton<PutawaySuggester>();

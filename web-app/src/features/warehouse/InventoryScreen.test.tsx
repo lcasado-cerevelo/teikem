@@ -11,14 +11,18 @@ import { AccessProvider } from '../../kernel/access'
 import { setLang } from '../../kernel/i18n/i18n'
 import InventoryScreen from './InventoryScreen'
 
-type Handler = (url: URL) => unknown
-const mock = vi.hoisted(() => ({ requests: [] as URL[], handler: null as unknown }))
+type Handler = (url: URL, method?: string) => unknown
+const mock = vi.hoisted(() => ({ requests: [] as URL[], posts: [] as { url: URL; body: unknown }[], handler: null as unknown, discStatus: 'OPEN' }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
     const url = new URL(req.url)
     mock.requests.push(url)
-    const body = (mock.handler as Handler)(url)
+    if (req.method !== 'GET') {
+      const text = await req.text()
+      mock.posts.push({ url, body: text ? JSON.parse(text) : null })
+    }
+    const body = (mock.handler as Handler)(url, req.method)
     return body instanceof Response ? body : new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
   return { ...actual, api: actual.createApiClient({ baseUrl: 'http://api.test', fetch }) }
@@ -57,8 +61,61 @@ function page<T>(url: URL, make: (i: number) => T) {
   return { total: TOTAL, skip, take, items: Array.from({ length: n }, (_, k) => make(skip + k + 1)) }
 }
 
-function route(url: URL): unknown {
+const DISC = 'dddddddd-0000-0000-0000-000000000001'
+function discrepancy(status = mock.discStatus) {
+  return {
+    publicId: DISC,
+    kindCode: 'BALANCE',
+    kind: 'Saldo por posición',
+    productPublicId: PRODUCT.publicId,
+    sku: 'TORN-01',
+    productName: 'Tornillo',
+    warehousePublicId: WH,
+    warehouseCode: 'ALM-01',
+    binId: 10,
+    binCode: 'A-01',
+    ledgerQty: 4,
+    balanceQty: 5,
+    difference: 1,
+    statusCode: status,
+    status: status === 'OPEN' ? 'Pendiente' : 'Resuelto',
+    triggerCode: 'EVENT',
+    trigger: 'Automática (movimiento)',
+    detectedAtUtc: '2026-09-30T10:00:00',
+    lastCheckedAtUtc: '2026-09-30T10:00:05',
+    checkCount: 2,
+    rowVersion: 'AAAA',
+    correctedFromQty: status === 'RESOLVED' ? 5 : null,
+    correctedToQty: status === 'RESOLVED' ? 4 : null,
+  }
+}
+
+function route(url: URL, method = 'GET'): unknown {
   const p = url.pathname
+  if (p === '/api/v1/inventory/transactions/summary') return { movements: 7, inCount: 5, inQty: 12, outCount: 2, outQty: 3, internalCount: 1 }
+  if (p === '/api/v1/inventory/transactions/1')
+    return {
+      transaction: { ...movement(1), refEntityCode: 'RECEIPT', refId: 318, refLabel: 'Recibo REC-000318', userName: 'María R.' },
+      ownerName: 'Propio',
+      categoryName: 'Ferretería',
+      document: { entityCode: 'RECEIPT', entityLabel: 'Recibo', id: 318, publicId: 'eeeeeeee-0000-0000-0000-000000000001', number: 'REC-000318', status: 'Completado', partyName: 'Proveedor X' },
+      related: [movement(1), { ...movement(2), id: 2 }],
+      relatedTruncated: false,
+    }
+  if (p === '/api/v1/inventory/owners') return [{ name: 'Propio', isOwn: true }, { clientPublicId: 'cccccccc-0000-0000-0000-000000000001', name: 'Cliente A', isOwn: false }]
+  if (p === '/api/v1/inventory/discrepancies') return { total: 1, skip: 0, take: 25, openCount: mock.discStatus === 'OPEN' ? 1 : 0, items: [discrepancy()] }
+  if (p === `/api/v1/inventory/discrepancies/${DISC}`) return { discrepancy: discrepancy(), currentReserved: 0, recentMovements: [movement(1)], history: [] }
+  if (p === `/api/v1/inventory/discrepancies/${DISC}/resolve` && method === 'POST') {
+    mock.discStatus = 'RESOLVED'
+    return { discrepancy: discrepancy('RESOLVED'), currentReserved: 0, recentMovements: [], history: [] }
+  }
+  if (p === '/api/v1/inventory/reconciliation/status') return { enabled: true, consuming: true, pending: 0, processed: 3, dropped: 0 }
+  if (p === '/api/v1/status/InventoryDiscrepancyStatus')
+    return [
+      { code: 'OPEN', label: 'Pendiente', color: '#EF4444', stageKind: 'PIPELINE', isInitial: true, isEnabled: true, sortOrder: 1 },
+      { code: 'RESOLVED', label: 'Resuelto', color: '#059669', stageKind: 'TERMINAL', isInitial: false, isEnabled: true, sortOrder: 2 },
+    ]
+  if (p === '/api/v1/warehouses/bins/search') return [{ id: 10, code: 'A-01', zoneCode: 'PCK', warehousePublicId: WH, warehouseCode: 'ALM-01', isActive: true }]
   if (p === '/api/v1/inventory/balances') return page(url, balance)
   if (p === '/api/v1/inventory/transactions') return page(url, movement)
   if (p === '/api/v1/products') return { total: 1, skip: 0, take: 50, items: [PRODUCT] }
@@ -76,12 +133,12 @@ function LocationProbe() {
   return <output data-testid="location">{location.pathname + location.search}</output>
 }
 
-function wrap(ui: ReactNode, url = '/warehouse/kardex') {
+function wrap(ui: ReactNode, url = '/warehouse/kardex', permissions = ['inventory.view']) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <MemoryRouter initialEntries={[url]}>
       <QueryClientProvider client={client}>
-        <AccessProvider permissions={['inventory.view']} modules={['WMS_LOTSERIAL']}>
+        <AccessProvider permissions={permissions} modules={['WMS_LOTSERIAL']}>
           {ui}
           <LocationProbe />
         </AccessProvider>
@@ -114,6 +171,8 @@ async function pickProduct(user: ReturnType<typeof userEvent.setup>) {
 beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.requests = []
+  mock.posts = []
+  mock.discStatus = 'OPEN'
   mock.handler = route
 })
 
@@ -128,8 +187,8 @@ describe('InventoryScreen · Saldos', () => {
     await pickProduct(user)
     await waitLast(PATH, (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
     expect(last(PATH).searchParams.get('skip')).toBe('0')
-    // Saldos solo busca productos activos
-    expect(last('/api/v1/products').searchParams.get('activeOnly')).toBe('true')
+    // Lote 14: el filtro Producto es compartido por las tres pestañas y admite dados de baja (historial del Kárdex)
+    expect(last('/api/v1/products').searchParams.get('activeOnly')).not.toBe('true')
   })
 
   it('escribir en el buscador vuelve a la página 1 y manda search', async () => {
@@ -278,22 +337,35 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     expect(screen.queryByText('…')).toBeNull()
   })
 
-  it('los filtros de la URL son de la pestaña abierta: al cambiar de pestaña no pasan a la otra ni reaparecen al volver', async () => {
+  it('Lote 14 (hallazgo 6): los filtros son de la pantalla y los comparten las tres pestañas; sobreviven al cambio de pestaña', async () => {
     const user = userEvent.setup()
     wrap(<InventoryScreen />, `/warehouse/kardex?product=${PRODUCT.publicId}&warehousePublicIds=${WH}`)
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
     await user.click(screen.getByRole('tab', { name: 'Saldos' }))
-    await waitLast('/api/v1/inventory/balances', (u) => u.searchParams.get('skip') === '0')
-    const balances = last('/api/v1/inventory/balances').searchParams
-    expect(balances.has('productPublicIds')).toBe(false)
-    expect(balances.has('warehousePublicIds')).toBe(false)
+    await waitLast(
+      '/api/v1/inventory/balances',
+      (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId) && u.searchParams.getAll('warehousePublicIds').includes(WH),
+    )
+    // la URL queda solo con la pestaña; los filtros siguen en pantalla
+    expect(screen.getByTestId('location')).toHaveTextContent(/^\/warehouse\/kardex\?tab=balances$/)
+    expect(await screen.findByRole('button', { name: 'Quitar TORN-01' }, { timeout: 4000 })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: 'Conciliación' }))
+    await waitLast('/api/v1/inventory/discrepancies', (u) => u.searchParams.getAll('productPublicIds').includes(PRODUCT.publicId))
+    expect(last('/api/v1/inventory/discrepancies').searchParams.getAll('status')).toEqual(['OPEN'])
     const before = mock.requests.length
     await user.click(screen.getByRole('tab', { name: 'Kárdex' }))
     await waitFor(() => expect(mock.requests.slice(before).some((u) => u.pathname === '/api/v1/inventory/transactions')).toBe(true), { timeout: 4000 })
-    const kardex = last('/api/v1/inventory/transactions').searchParams
-    expect(kardex.has('productPublicIds')).toBe(false)
-    expect(kardex.has('warehousePublicIds')).toBe(false)
-    expect(screen.queryByRole('button', { name: 'Quitar TORN-01' })).toBeNull()
+    expect(last('/api/v1/inventory/transactions').searchParams.getAll('productPublicIds')).toEqual([PRODUCT.publicId])
+  })
+
+  it('un filtro que la pestaña no aplica se atenúa y se nombra en la ayuda (Saldos no filtra por tipo)', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, '/warehouse/kardex?types=ADJUSTMENT')
+    await user.click(await screen.findByRole('tab', { name: 'Saldos' }))
+    expect(await screen.findByText(/No aplican a Saldos.*Tipo/)).toBeInTheDocument()
+    await waitLast('/api/v1/inventory/balances', (u) => !u.searchParams.has('types'))
+    // el resumen de movimientos sí lleva el tipo (D13)
+    await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.getAll('types').includes('ADJUSTMENT'))
   })
 
   it('?ref= ya no se usa: el Kárdex no manda búsqueda (el API no compara el documento de origen)', async () => {
@@ -301,5 +373,106 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
     expect(last('/api/v1/inventory/transactions').searchParams.has('search')).toBe(false)
     expect(screen.getByRole('searchbox')).toHaveValue('')
+  })
+})
+
+describe('InventoryScreen · Lote 14 (resumen, filtros nuevos, detalle y descuadres)', () => {
+  it('resumen del Kárdex con los mismos filtros; en Saldos además En mano y Disponible (D13)', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />)
+    const summary = await screen.findByRole('group', { name: 'Resumen de movimientos' })
+    expect(await within(summary).findByText('+12')).toBeInTheDocument()
+    expect(within(summary).getByText('−3')).toBeInTheDocument()
+    expect(within(summary).queryByText('En mano')).toBeNull()
+    await user.click(screen.getByRole('tab', { name: 'Saldos' }))
+    const balances = await screen.findByRole('group', { name: 'Resumen de movimientos' })
+    expect(await within(balances).findByText('En mano')).toBeInTheDocument()
+    expect(within(balances).getByText('Disponible')).toBeInTheDocument()
+  })
+
+  it('columnas Dueño y Categoría; clic en una fila abre el detalle (?txn=) con el documento y los relacionados', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />)
+    expect(await screen.findByRole('columnheader', { name: 'Dueño' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Categoría' })).toBeInTheDocument()
+    await screen.findByText('Conteo físico 1', {}, { timeout: 4000 })
+    const firstRow = screen.getAllByRole('row')[1]
+    await user.click(within(firstRow).getAllByRole('cell')[3])
+    expect(screen.getByTestId('location')).toHaveTextContent('txn=1')
+    const dialog = await screen.findByRole('dialog', { name: 'Movimiento #1' })
+    expect(await within(dialog).findByText('REC-000318')).toBeInTheDocument()
+    expect(within(dialog).getByText('María R.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Ferretería')).toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'Abrir' })).toHaveAttribute('href', '/warehouse/receipts?receipt=eeeeeeee-0000-0000-0000-000000000001')
+    expect(within(dialog).getByText('Movimientos relacionados (2)')).toBeInTheDocument()
+  })
+
+  it('filtros nuevos al API: Posición (binIds), Dueño Propio (includeOwn), Dirección y Solo manuales', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />)
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
+    await user.type(screen.getByRole('combobox', { name: 'Posición' }), 'A-0')
+    await user.click(await screen.findByRole('option', { name: /A-01 · PCK · ALM-01/ }, { timeout: 4000 }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.getAll('binIds').includes('10'))
+    await user.click(within(screen.getByRole('group', { name: 'Filtros del Kárdex' })).getByRole('button', { name: /^Dueño/ }))
+    await user.click(await screen.findByRole('option', { name: /Propio/ }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('includeOwn') === 'true')
+    await user.selectOptions(screen.getByLabelText('Dirección'), 'OUT')
+    await user.click(screen.getByRole('switch', { name: 'Solo manuales' }))
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('direction') === 'OUT' && u.searchParams.get('manualOnly') === 'true')
+    await waitLast('/api/v1/inventory/transactions/summary', (u) => u.searchParams.get('manualOnly') === 'true' && u.searchParams.getAll('binIds').includes('10'))
+  })
+
+  it('?refEntity=CYCLE_COUNT&refId=3 filtra el Kárdex por su documento (píldora que se puede quitar)', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, '/warehouse/kardex?refEntity=CYCLE_COUNT&refId=3')
+    await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('refEntity') === 'CYCLE_COUNT' && u.searchParams.get('refId') === '3')
+    await user.click(await screen.findByRole('button', { name: 'Quitar el filtro de documento' }))
+    await waitLast('/api/v1/inventory/transactions', (u) => !u.searchParams.has('refEntity'))
+  })
+
+  it('Conciliación: ?discrepancy= abre el detalle; Descartar exige nota; Corregir → Resuelto con de → a y oferta de conteo', async () => {
+    const user = userEvent.setup()
+    wrap(<InventoryScreen />, `/warehouse/kardex?tab=reconciliation&discrepancy=${DISC}`, ['inventory.view', 'inventory.adjust', 'warehouse.count.capture'])
+    expect(await screen.findByText('Revisión automática: al día')).toBeInTheDocument()
+    const dialog = await screen.findByRole('dialog', { name: 'Descuadre · TORN-01' })
+    await user.click(await within(dialog).findByRole('button', { name: 'Descartar' }))
+    expect(await within(dialog).findByText('Escriba una nota que explique por qué se descarta el descuadre.')).toBeInTheDocument()
+    expect(mock.posts).toHaveLength(0)
+    await user.type(within(dialog).getByLabelText(/^Nota/), 'Arreglo en base')
+    await user.click(within(dialog).getByRole('button', { name: 'Corregir el saldo según el Kárdex' }))
+    await waitFor(() => expect(mock.posts).toHaveLength(1))
+    expect(mock.posts[0].url.pathname).toBe(`/api/v1/inventory/discrepancies/${DISC}/resolve`)
+    expect(mock.posts[0].body).toEqual({ action: 'REBUILD_BALANCE', notes: 'Arreglo en base', rowVersion: 'AAAA' })
+    expect(await within(dialog).findByRole('button', { name: 'Crear conteo de esa posición' })).toBeInTheDocument()
+    expect(within(dialog).getByText('5 → 4')).toBeInTheDocument()
+  })
+
+  it('Conciliación: el error del API se muestra tal cual y "Ejecutar conciliación" manda los productos del filtro', async () => {
+    const user = userEvent.setup()
+    mock.handler = (url: URL, method?: string) => {
+      if (url.pathname.endsWith('/resolve'))
+        return new Response(JSON.stringify({ title: 'El descuadre ya está cerrado; solo se consulta.', status: 422, code: 'status_rule' }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/problem+json' },
+        })
+      if (url.pathname === '/api/v1/inventory/reconciliation/run')
+        return { checkedAtUtc: '2026-09-30T12:00:00', productsChecked: 1, balancesChecked: 3, opened: 0, stillOpen: 1, selfCorrected: 0, mismatches: [] }
+      return route(url, method)
+    }
+    wrap(<InventoryScreen />, `/warehouse/kardex?tab=reconciliation&product=${PRODUCT.publicId}`, ['inventory.view', 'inventory.adjust'])
+    await screen.findByText('Tornillo', {}, { timeout: 4000 })
+    const row = screen.getAllByRole('row').find((r) => within(r).queryByText('TORN-01'))!
+    await user.click(within(row).getByRole('button', { name: 'Descartar' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Descuadre · TORN-01' })
+    await user.type(await within(dialog).findByLabelText(/^Nota/), 'x')
+    await user.click(within(dialog).getByRole('button', { name: 'Descartar' }))
+    expect(await within(dialog).findByText('El descuadre ya está cerrado; solo se consulta.')).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    await user.click(screen.getByRole('button', { name: 'Ejecutar conciliación' }))
+    await waitFor(() => expect(mock.posts.some((p) => p.url.pathname === '/api/v1/inventory/reconciliation/run')).toBe(true))
+    expect(mock.posts.find((p) => p.url.pathname === '/api/v1/inventory/reconciliation/run')!.body).toEqual({ productPublicIds: [PRODUCT.publicId] })
+    expect(await screen.findByText(/1 productos y 3 saldos revisados/)).toBeInTheDocument()
   })
 })

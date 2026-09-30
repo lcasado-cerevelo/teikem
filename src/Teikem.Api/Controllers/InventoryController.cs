@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Contracts;
@@ -22,7 +23,8 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/inventory")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class InventoryController(InventoryReadService reads, InventoryAdjustmentService adjustments, TraceabilityService trace)
+public sealed class InventoryController(InventoryReadService reads, InventoryAdjustmentService adjustments, TraceabilityService trace,
+    InventoryReconciliationService reconciliation)
     : ControllerBase
 {
     /// <summary>
@@ -44,16 +46,55 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     /// transferencia vale 0). Filtros: from/to (UTC), types, almacenes, posiciones, productos, categorías, lote, serie,
     /// refEntity + refId (documento de origen) y buscador. Lote 12: brands (marca del producto igual, sin distinguir
     /// mayúsculas) y name (el nombre del producto contiene el texto): los filtros de Productos para el Reporte de ajustes.
+    /// Lote 14: from/to son días LOCALES de la compañía (hora de Puerto Rico); filtros nuevos: ownerClientPublicIds e
+    /// includeOwn (dueño; cliente inexistente → 404 'Cliente no encontrado.'), reasons (motivos de ajuste; desconocido → 400),
+    /// direction IN/OUT con la perspectiva de signedQuantity (otro → 400 'La dirección debe ser IN (entradas) u OUT (salidas).'),
+    /// fromWarehousePublicIds y toWarehousePublicIds (cada uno contra su lado) y manualOnly (sin documento de referencia). La
+    /// fila trae ownerName y categoryName.
     /// </summary>
     [HttpGet("transactions"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<KardexPageDto> Transactions([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string[]? types,
         [FromQuery] Guid[]? warehousePublicIds, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] int[]? categoryIds, [FromQuery] string? lotNumber, [FromQuery] string? serialNumber,
         [FromQuery] string? refEntity, [FromQuery] int? refId, [FromQuery] string? search, [FromQuery] string[]? brands,
-        [FromQuery] string? name, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 200)
+        [FromQuery] string? name, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 200,
+        [FromQuery] Guid[]? ownerClientPublicIds = null, [FromQuery] bool includeOwn = false, [FromQuery] string[]? reasons = null,
+        [FromQuery] string? direction = null, [FromQuery] Guid[]? fromWarehousePublicIds = null, [FromQuery] Guid[]? toWarehousePublicIds = null,
+        [FromQuery] bool manualOnly = false)
         => reads.KardexAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
             NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, skip, take,
-            NullIfEmpty(brands), name), InventoryScope.Any, ct);
+            NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
+            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly), InventoryScope.Any, ct);
+
+    /// <summary>
+    /// Lote 14 (D13) — resumen del Kárdex con LOS MISMOS filtros de la lista (sin skip/take): movimientos, entradas (número y
+    /// unidades), salidas (número y unidades) e internos, con la perspectiva de signedQuantity (sin filtro de ubicación una
+    /// transferencia es interna). En Saldos, "En mano" y "Disponible" salen de GET /inventory/balances (totalOnHand, totalAvailable).
+    /// </summary>
+    [HttpGet("transactions/summary"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<KardexSummaryDto> TransactionsSummary([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string[]? types,
+        [FromQuery] Guid[]? warehousePublicIds, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
+        [FromQuery] int[]? categoryIds, [FromQuery] string? lotNumber, [FromQuery] string? serialNumber,
+        [FromQuery] string? refEntity, [FromQuery] int? refId, [FromQuery] string? search, [FromQuery] string[]? brands,
+        [FromQuery] string? name, [FromQuery] Guid[]? ownerClientPublicIds, [FromQuery] string[]? reasons, [FromQuery] string? direction,
+        [FromQuery] Guid[]? fromWarehousePublicIds, [FromQuery] Guid[]? toWarehousePublicIds, CancellationToken ct,
+        [FromQuery] bool includeOwn = false, [FromQuery] bool manualOnly = false)
+        => reads.KardexSummaryAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
+            NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, 0, 0,
+            NullIfEmpty(brands), name, NullIfEmpty(ownerClientPublicIds), includeOwn, NullIfEmpty(reasons), direction,
+            NullIfEmpty(fromWarehousePublicIds), NullIfEmpty(toWarehousePublicIds), manualOnly), InventoryScope.Any, ct);
+
+    /// <summary>
+    /// Lote 14 — detalle de un movimiento: la fila con dueño y categoría, vencimiento del lote, documento de origen (con su
+    /// PublicId para abrir recibos, recolecciones, órdenes de compra y órdenes; el conteo por id; la tarea con su documento
+    /// padre) y los movimientos relacionados (misma referencia o mismo asiento; tope 200). 404 'Movimiento no encontrado.'.
+    /// </summary>
+    [HttpGet("transactions/{id:long}"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<KardexDetailDto> Transaction(long id, CancellationToken ct) => reads.TransactionDetailAsync(id, InventoryScope.Any, ct);
+
+    /// <summary>Lote 14 — dueños del inventario para el filtro: "Propio" (isOwn) y los clientes dueños de algún producto.</summary>
+    [HttpGet("owners"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<InventoryOwnerDto>> Owners(CancellationToken ct) => reads.OwnersAsync(InventoryScope.Any, ct);
 
     /// <summary>
     /// Ajuste manual: quantity con signo (&gt; 0 entra a la posición, &lt; 0 sale; 0 → 400) y motivo del catálogo
@@ -84,6 +125,24 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     [HttpGet("reconciliation"), RequirePermission(PermissionCatalog.InventoryAdjust)]
     public Task<ReconciliationDto> Reconciliation([FromQuery] Guid? productPublicId, CancellationToken ct)
         => trace.ReconcileAsync(productPublicId, ct);
+
+    /// <summary>
+    /// Lote 14 — "Ejecutar conciliación": revisa los productos indicados (≤ 200; más → 400 'La conciliación manual admite como
+    /// máximo 200 productos a la vez.') o todo el tenant y GUARDA los descuadres (origen MANUAL): abre los nuevos, actualiza los
+    /// abiertos y cierra solos los que ya cuadran. Devuelve cuántos y las filas descuadradas.
+    /// </summary>
+    [HttpPost("reconciliation/run"), RequirePermission(PermissionCatalog.InventoryAdjust)]
+    public Task<ReconciliationRunDto> RunReconciliation([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReconciliationRunRequest? req,
+        CancellationToken ct)
+        => reconciliation.RunAsync(req, ct);
+
+    /// <summary>
+    /// Lote 14 (D14) — estado de la revisión automática en segundo plano (segundos después de cada movimiento) para la compañía:
+    /// encendida, consumiendo, pendientes (0 = al día), revisados, descartados por cola llena, última revisión y último error.
+    /// Contadores en memoria desde que arrancó el servidor.
+    /// </summary>
+    [HttpGet("reconciliation/status"), RequirePermission(PermissionCatalog.InventoryAdjust)]
+    public ReconciliationStatusDto ReconciliationStatus() => reconciliation.Status();
 
     private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 }

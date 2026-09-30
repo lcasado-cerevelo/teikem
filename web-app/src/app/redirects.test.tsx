@@ -1,4 +1,5 @@
-// Redirecciones de direcciones viejas (routes.tsx): Lote 13, la ficha del recibo pasa a ser el elegido de la lista.
+// Redirecciones de direcciones viejas (routes.tsx): Lote 13, la ficha del recibo pasa a ser el elegido de la lista; Lote 14,
+// la del conteo cíclico también (?count=).
 import { render, screen } from '@testing-library/react'
 import type { ComponentType } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
@@ -43,6 +44,21 @@ describe('redirecciones', () => {
       return next
     })
     expect(renderAt('/viejo/42?a=b#sec', '/viejo/:id', Redirect)).toBe('/destino?a=b&id=42#sec')
+  })
+
+  it('Lote 14 (D1): /warehouse/inventory-adjustments (faltantes de compra, fuera del menú) → /warehouse/purchase-orders', () => {
+    const route = appRoutes.find((r) => r.path === '/warehouse/inventory-adjustments')!
+    expect(renderAt('/warehouse/inventory-adjustments?po=ABC', route.path, route.element)).toBe('/warehouse/purchase-orders')
+  })
+
+  it('Lote 14 (P8): /warehouse/cycle-counts/:id (ficha vieja, borrada) → /warehouse/cycle-counts?count=<id> conservando los demás parámetros', () => {
+    const route = appRoutes.find((r) => r.path === '/warehouse/cycle-counts/:id')!
+    expect(renderAt('/warehouse/cycle-counts/27?count=3&x=1#l', route.path, route.element)).toBe('/warehouse/cycle-counts?count=27&x=1#l')
+  })
+
+  it('/warehouse/cycle-counts/:id sin consulta', () => {
+    const route = appRoutes.find((r) => r.path === '/warehouse/cycle-counts/:id')!
+    expect(renderAt('/warehouse/cycle-counts/27', route.path, route.element)).toBe('/warehouse/cycle-counts?count=27')
   })
 
   it('redirectWithParams sin consulta resultante: solo la ruta', () => {

@@ -345,7 +345,7 @@ public class AnalyticsSeedFieldsTests
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
         var db = InMemoryDb(tenant);
         var lookups = new FakeLookups();
-        var reads = new Teikem.Infrastructure.Services.InventoryReadService(db, tenant, lookups);
+        var reads = new Teikem.Infrastructure.Services.InventoryReadService(db, tenant, lookups, TenantClock.Default);
         return key switch
         {
             EntityTypes.Warehouse => new WarehouseDataSource(db, tenant),
@@ -513,7 +513,7 @@ public class AnalyticsSeedFieldsTests
         Assert.Equal(EntityTypes.CycleCount, counts.DataSourceKey);
         Assert.Null(counts.FieldKey);
         Assert.Equal(AggregateFns.Count, lookups.CodeOf(counts.AggregateFnLookupId));
-        Assert.Contains("\"value\":\"" + CycleCountStatuses.Reconciled + "\"", counts.FilterJson);
+        Assert.Contains("\"value\":\"" + CycleCountStatuses.ReconciledVariance + "\"", counts.FilterJson);   // Lote 14 (D7)
         Assert.Equal(DateRangeModes.Last30, lookups.CodeOf(counts.DateRangeModeLookupId!.Value));
 
         // 'Productos bajo mínimo' ya existía (Lote 6) con el mismo filtro que la vista 'Inventario bajo mínimo'; 'Productos
@@ -607,7 +607,8 @@ public class AnalyticsSeedFieldsTests
         using var db = InMemoryDb(tenant);
         db.StatusCodes.AddRange(
             new StatusCode { StatusCodeId = 1, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.Open, LabelJson = "{\"es\":\"Abierto\"}" },
-            new StatusCode { StatusCodeId = 2, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.Reconciled, LabelJson = "{\"es\":\"Reconciliado\",\"en\":\"Reconciled\"}" });
+            new StatusCode { StatusCodeId = 2, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.Reconciled, LabelJson = "{\"es\":\"Concordancia\",\"en\":\"Matched\"}" },
+            new StatusCode { StatusCodeId = 3, Entity = StatusDomains.CycleCountStatus, InternalCode = CycleCountStatuses.ReconciledVariance, LabelJson = "{\"es\":\"Diferencia\",\"en\":\"Variance\"}" });
         db.Warehouses.Add(new Teikem.Domain.Wms.Warehouse { WarehouseId = 5, TenantId = TenantId, Code = "WH1", Name = "Central", StatusCodeId = 1, IsActive = true });
         var reconciledAt = new DateTime(2026, 9, 20, 15, 0, 0, DateTimeKind.Utc);
         Teikem.Domain.Wms.CycleCount Cc(int id, int status, DateTime? reconciled, bool active = true, int tenantId = TenantId) => new()
@@ -616,12 +617,12 @@ public class AnalyticsSeedFieldsTests
             CreatedAtUtc = reconciledAt.AddDays(-1), ReconciledAtUtc = reconciled, IsActive = active,
         };
         db.CycleCounts.AddRange(
-            Cc(1, 2, reconciledAt),                   // reconciliado, +2 y −2: neta 0 pero con diferencia
-            Cc(2, 2, reconciledAt),                   // reconciliado; la foto difería pero el saldo asentado cuadró: sin diferencia
+            Cc(1, 3, reconciledAt),                   // Diferencia, +2 y −2: neta 0 pero con diferencia
+            Cc(2, 2, reconciledAt),                   // Concordancia; la foto difería pero el saldo asentado cuadró: sin diferencia
             Cc(3, 1, null),                           // abierto con captura distinta a la foto
-            Cc(4, 2, reconciledAt, active: false),    // eliminado: no aparece
-            Cc(5, 2, reconciledAt, tenantId: 2),      // otro tenant
-            Cc(6, 2, reconciledAt));                  // reconciliado; cuadra pero con ajuste enlazado (sustitución de serie)
+            Cc(4, 3, reconciledAt, active: false),    // eliminado: no aparece
+            Cc(5, 3, reconciledAt, tenantId: 2),      // otro tenant
+            Cc(6, 3, reconciledAt));                  // Diferencia; cuadra pero con ajuste enlazado (sustitución de serie)
         Teikem.Domain.Wms.CycleCountLine L(int id, int cc, decimal system, decimal? counted, decimal? reconciled = null, long? adj = null) => new()
         {
             CycleCountLineId = id, CycleCountId = cc, WarehouseBinId = 1, ProductId = id, SystemQty = system, CountedQty = counted,
@@ -639,8 +640,9 @@ public class AnalyticsSeedFieldsTests
         var rows = (await source.LoadAsync(new DataQuery(), default)).ToDictionary(r => (int)r["Id"]!);
         Assert.Equal(new[] { 1, 2, 3, 6 }, rows.Keys.OrderBy(k => k));
 
-        Assert.Equal(CycleCountStatuses.Reconciled, rows[1]["StatusCode"]);
-        Assert.Equal("Reconciliado", rows[1]["Status"]);
+        Assert.Equal(CycleCountStatuses.ReconciledVariance, rows[1]["StatusCode"]);
+        Assert.Equal("Diferencia", rows[1]["Status"]);
+        Assert.Equal(CycleCountStatuses.Reconciled, rows[2]["StatusCode"]);
         Assert.Equal("WH1", rows[1]["WarehouseCode"]);
         Assert.Equal(3, rows[1]["LineCount"]);
         Assert.Equal(2, rows[1]["VarianceLines"]);
@@ -664,8 +666,39 @@ public class AnalyticsSeedFieldsTests
         Assert.Equal(new[] { 1, 2, 6 }, ranged.Select(r => (int)r["Id"]!).OrderBy(i => i));
         Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = reconciledAt.AddSeconds(1) }, default));
 
-        // El filtro sembrado de 'Conteos con diferencia' selecciona los conteos 1 y 6.
+        // El filtro sembrado de 'Conteos con diferencia' (Lote 14: estatus Diferencia) selecciona los conteos 1 y 6.
         Assert.Equal(new[] { 1, 6 }, rows.Values.Where(r => Teikem.Infrastructure.Dsl.RuleEvaluator.Matches(r, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter))
             .Select(r => (int)r["Id"]!).OrderBy(i => i));
+    }
+
+    [Fact]
+    public async Task Lote14_counts_with_variance_v1_filter_is_corrected_once_and_custom_filter_is_kept()
+    {
+        // Compañía sembrada con el filtro del Lote 7A (RECONCILED + HasVariance): el seeder lo pasa a RECONCILED_VARIANCE; un
+        // filtro personalizado se respeta.
+        const string custom = "{\"and\":[{\"field\":\"HasVariance\",\"op\":\"isTrue\"}]}";
+        foreach (var (initial, expected) in new[]
+                 {
+                     (SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilterV1, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter),
+                     (custom, custom),
+                 })
+        {
+            var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+            var lookups = new FakeLookups();
+            using var db = InMemoryDb(tenant);
+            db.IndicatorDefinitions.Add(new Teikem.Domain.Analytics.IndicatorDefinition
+            {
+                TenantId = TenantId, Name = SystemAnalyticsSeeder.CountsWithVarianceIndicatorName, IsSystem = true,
+                DataSourceKey = EntityTypes.CycleCount, FilterJson = initial,
+            });
+            await db.SaveChangesAsync();
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+            var counts = Assert.Single(await db.IndicatorDefinitions.AsNoTracking()
+                .Where(i => i.Name == SystemAnalyticsSeeder.CountsWithVarianceIndicatorName).ToListAsync());
+            Assert.Equal(expected, counts.FilterJson);
+        }
+        Assert.Equal("{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"RECONCILED_VARIANCE\"}]}", SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter);
     }
 }

@@ -397,7 +397,7 @@ function warehouseHandler(path: string, _method: string, url: URL): unknown {
     const type = url.searchParams.get('types')
     return { total: type ? TASKS_BY_TYPE[type] : 7, skip: 0, take: 1, items: [] }
   }
-  if (path === '/api/v1/cycle-counts') return [{ id: 1 }, { id: 2 }]
+  if (path === '/api/v1/cycle-counts/page') return { total: 2, skip: 0, take: 1, items: [] }
   return []
 }
 
@@ -430,7 +430,8 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     expect(mock.urls).toContain('/api/v1/receipts?phase=OPEN&take=1')
     expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1')
     expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1&types=PUTAWAY')
-    expect(mock.urls).toContain('/api/v1/cycle-counts?status=OPEN')
+    // Lote 14 (hallazgo 14): total de la página con los estatus abiertos (Pendiente y Contado), no el largo de una lista cortada en 200
+    expect(mock.urls).toContain('/api/v1/cycle-counts/page?status=OPEN&status=COUNTED&take=1')
     expect(mock.urls.some((u) => /from|to=|fromUtc|toUtc/.test(u) && !u.includes('analytics'))).toBe(false)
     // Recibos abiertos abre el río (clases de la maqueta); las tarjetas restantes, una columna a 360 px: la columna
     // mínima nunca excede el ancho del panel

@@ -161,6 +161,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<CycleCountLine> CycleCountLines => Set<CycleCountLine>();
     public DbSet<PickBatch> PickBatches => Set<PickBatch>();
     public DbSet<PickBatchLine> PickBatchLines => Set<PickBatchLine>();
+    public DbSet<InventoryDiscrepancy> InventoryDiscrepancies => Set<InventoryDiscrepancy>();   // Lote 14: descuadres Kárdex ↔ saldo
     public DbSet<DockAppointment> DockAppointments => Set<DockAppointment>();
     public DbSet<CrossDockPlan> CrossDockPlans => Set<CrossDockPlan>();
     public DbSet<CrossDockAllocation> CrossDockAllocations => Set<CrossDockAllocation>();

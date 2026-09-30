@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Prueba de humo de los Lotes 1 a 8A contra un API levantado (default http://localhost:5000).
 # Requiere: curl, jq. Uso: scripts/smoke.sh [base_url]
-# Opcional: SMOKE_SQL="sqlcmd … -d <bd> -b -h -1 -Q" habilita los pasos que insertan datos por SQL (pings del monitor, Lote 5).
+# Opcional: SMOKE_SQL="sqlcmd … -d <bd> -b -h -1 -Q" habilita los pasos que insertan datos por SQL (pings del monitor, Lote 5;
+# descuadre real Kárdex ↔ saldo, Lote 14).
 set -euo pipefail
 BASE="${1:-http://localhost:5000}"
 EMAIL="${TEIKEM_ADMIN_EMAIL:-teikem+admin@cerevelo.com}"
@@ -2230,7 +2231,7 @@ trip "$TR1" | jq -e --arg o "$UNA" '.lastRunUnassigned[0].orderPublicId==$o and 
 expect 200 "$(req GET "/api/v1/orders/$UNA")" | jq -e '.status=="CONFIRMED" and .assignedTripCode==null' >/dev/null || fail "la que no cupo vuelve a sin asignar"
 expect 200 "$(req GET "/api/v1/status/history/ROUTE/$V1ROUTE")" | jq -e '.[-1].toCode=="ARCHIVED"' >/dev/null || fail "la versión 1 queda archivada"
 if [[ -n "${SMOKE_SQL:-}" ]]; then   # la v1 archivada conserva sus 3 paradas: la que no cupo se libera de la v2, no de la v1
-  N1=$($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.RouteStop WHERE RouteId = $V1ROUTE;" | tr -d '[:space:]')
+  N1=$($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.RouteStop WHERE RouteId = $V1ROUTE;" | tr -d '[:space:]')
   [[ "$N1" == "3" ]] || fail "la versión 1 archivada debe conservar sus 3 paradas: $N1"
 fi
 runs "$TR1" | jq -e 'length==1 and .[0].statusCode=="OK" and .[0].routeVersion==2 and .[0].engineCode=="HEURISTIC"' >/dev/null || fail "corridas de optimización"
@@ -2475,7 +2476,7 @@ MONS=$(expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY&search=$TR1_CODE
 # gana el último desde ActualStartUtc y los anteriores a la salida no cuentan; después un ping con TripId gana al respaldo.
 PINGS="omitidos (sin SMOKE_SQL)"
 if [[ -n "${SMOKE_SQL:-}" ]]; then
-  ping_sql() { $SMOKE_SQL "SET NOCOUNT ON; INSERT dbo.DriverLocationPing (TenantId, DriverId, TripId, GeoPoint, CapturedAtUtc) SELECT TenantId, DriverId, $1, geography::Point($2, $3, 4326), $4 FROM dbo.Trip WHERE TripId = $TR1_ID;" >/dev/null; }
+  ping_sql() { $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; INSERT dbo.DriverLocationPing (TenantId, DriverId, TripId, GeoPoint, CapturedAtUtc) SELECT TenantId, DriverId, $1, geography::Point($2, $3, 4326), $4 FROM dbo.Trip WHERE TripId = $TR1_ID;" >/dev/null; }
   mon1() { expect 200 "$(req GET "/api/v1/trips/monitor?date=$TODAY")"; }
   WP0=$(echo "$MON" | jq .totals.tripsWithoutPing)
   ping_sql NULL 18.10 -66.10 "DATEADD(minute, -5, ActualStartUtc)"
@@ -3187,7 +3188,7 @@ CL1=$(echo "$CC7" | jq -r --arg s "PCC1$TS" '.lines[] | select(.sku==$s) | .id')
 expect 200 "$(req PUT "/api/v1/cycle-counts/$CC7ID/lines" "{\"lines\":[{\"lineId\":$CL1,\"countedQty\":6},{\"lineId\":$CL2,\"countedQty\":4}]}" "$TWH6")" >/dev/null
 expect 200 "$(collect "$W6P" "$PCC1" 1)" >/dev/null
 REC7=$(expect 200 "$(req POST "/api/v1/cycle-counts/$CC7ID/reconcile" '{}' "$TWH6")")
-echo "$REC7" | jq -e --argjson a "$CL1" --argjson b "$CL2" '.count.statusCode=="RECONCILED"
+echo "$REC7" | jq -e --argjson a "$CL1" --argjson b "$CL2" '.count.statusCode=="RECONCILED_VARIANCE"
   and any(.lines[]; .id==$a and .systemQtyChanged==true and .reconciledSystemQty==4 and .adjustedQty==2 and .adjustmentTxnId!=null)
   and any(.lines[]; .id==$b and .systemQtyChanged==false and .reconciledSystemQty==5 and .adjustedQty==-1 and .adjustmentTxnId!=null)' >/dev/null || fail "conciliación contra el saldo actual: $(echo "$REC7" | jq -c '[.lines[] | {sku,systemQty,countedQty,reconciledSystemQty,systemQtyChanged,adjustedQty}]')"
 kardex "refEntity=CYCLE_COUNT&refId=$CC7ID" | jq -e '.total==2 and all(.items[]; .typeCode=="ADJUSTMENT" and .reasonCode=="COUNT_VARIANCE") and ([.items[].quantity] | sort)==[-1,2]' >/dev/null || fail "ADJUSTMENT COUNT_VARIANCE +2 y −1"
@@ -3384,6 +3385,177 @@ activity "module=WAREHOUSE&onlyMandatory=true" | jq -e --arg w "$W9P" 'any(.[]; 
 ok "almacén vacío W9$TS se da de baja (ACTIVE→INACTIVE terminal, isActive=false); segunda baja 422 'El almacén está dado de baja; solo se consulta.'; oculto por defecto y visible con includeInactive; WAREHOUSE_DEACTIVATED obligatorio en Actividad reciente"
 
 # ============================================================================================================
+# Lote 14 — Kárdex (filtros nuevos, resumen, detalle con documento), descuadres Kárdex ↔ saldo (conciliación manual y en
+# segundo plano), "Necesita tu atención" y conteo cíclico (página con total, "lo cambiado", confirmar en un paso, estatus
+# Pendiente/Concordancia/Diferencia). Usa los datos del Lote 6 (W6/W7, PN, PT, P3 del cliente C6, recibo R6) y un producto
+# propio P14 en R-01 (zona RSV). El descuadre REAL exige tocar dbo.StockBalance por SQL: solo con SMOKE_SQL.
+# ============================================================================================================
+TD14=$(login "$DISPATCH_EMAIL" "$PASS")   # despachador: sin inventory.view ni pulse.attention
+ksum() { expect 200 "$(req GET "/api/v1/inventory/transactions/summary?$1")"; }
+
+step "Kárdex (Lote 14): dirección, solo manuales, motivos, dueño, origen y destino; resumen coherente con la lista; detalle con su documento"
+# Resumen de PN = la lista (una página): movimientos, entradas, salidas e internos con la misma perspectiva que signedQuantity.
+KPN=$(kardex "productPublicIds=$PN&take=200"); NPN=$(echo "$KPN" | jq .total)
+[[ $NPN -ge 1 && $NPN -le 200 ]] || fail "PN con $NPN movimientos: el resumen no se puede cotejar con una sola página"
+SPN=$(ksum "productPublicIds=$PN")
+echo "$KPN" | jq -e --argjson s "$SPN" '[.items[].signedQuantity] as $q
+  | $s.movements==.total and $s.inCount==([$q[] | select(. > 0)] | length) and $s.outCount==([$q[] | select(. < 0)] | length)
+  and $s.internalCount==([$q[] | select(. == 0)] | length) and ($s.inQty - $s.outQty)==($q | add)' >/dev/null || fail "resumen de PN distinto de la lista: $SPN"
+# Dirección: IN = entradas y OUT = salidas (sin distinguir mayúsculas), en la lista y en el resumen; otro valor → 400.
+kardex "productPublicIds=$PN&direction=IN&take=200" | jq -e --argjson s "$SPN" '.total==$s.inCount and .total>=1 and all(.items[]; .signedQuantity>0)' >/dev/null || fail "Kárdex direction=IN"
+kardex "productPublicIds=$PN&direction=out&take=200" | jq -e --argjson s "$SPN" '.total==$s.outCount and .total>=1 and all(.items[]; .signedQuantity<0)' >/dev/null || fail "Kárdex direction=out"
+ksum "productPublicIds=$PN&direction=IN" | jq -e --argjson s "$SPN" '.movements==$s.inCount and .inQty==$s.inQty and .outCount==0' >/dev/null || fail "resumen con direction=IN"
+expect 400 "$(req GET '/api/v1/inventory/transactions?direction=X')" | jq -e --arg m "La dirección debe ser IN (entradas) u OUT (salidas)." "$HASM" >/dev/null || fail "direction=X en el Kárdex → 400"
+expect 400 "$(req GET '/api/v1/inventory/transactions/summary?direction=X')" | jq -e --arg m "La dirección debe ser IN (entradas) u OUT (salidas)." "$HASM" >/dev/null || fail "direction=X en el resumen → 400"
+# Solo manuales = sin documento de referencia (los ajustes +10 FOUND y −2 DAMAGE de PN).
+kardex "productPublicIds=$PN&manualOnly=true&take=200" | jq -e --argjson n "$(echo "$KPN" | jq '[.items[] | select(.refEntityCode==null)] | length')" '.total==$n and .total>=2 and all(.items[]; .refEntityCode==null)' >/dev/null || fail "Kárdex manualOnly"
+# Motivos (uno o varios); desconocido → 400 con el mensaje de AdjustmentRules.
+kardex "productPublicIds=$PN&reasons=DAMAGE" | jq -e '.total==1 and .items[0].reasonCode=="DAMAGE" and .items[0].quantity==-2' >/dev/null || fail "Kárdex reasons=DAMAGE"
+kardex "productPublicIds=$PN&reasons=FOUND&reasons=DAMAGE" | jq -e '.total==2 and all(.items[]; .reasonCode=="FOUND" or .reasonCode=="DAMAGE")' >/dev/null || fail "Kárdex reasons=FOUND|DAMAGE"
+expect 400 "$(req GET '/api/v1/inventory/transactions?reasons=NOPE')" | jq -e --arg m "Motivo de ajuste desconocido: 'NOPE'." "$HASM" >/dev/null || fail "motivo desconocido en el Kárdex → 400"
+# Dueño: el cliente C6 (P3 entró por su aviso de llegada), "Propio" (includeOwn) y un cliente que no existe → 404.
+kardex "ownerClientPublicIds=$C6P&take=200" | jq -e --arg s "P3$TS" --arg o "Empaque $TS" '.total>=1 and any(.items[]; .sku==$s) and all(.items[]; .ownerName==$o)' >/dev/null || fail "Kárdex por dueño (cliente C6)"
+kardex "ownerClientPublicIds=$C6P&productPublicIds=$PN" | jq -e '.total==0' >/dev/null || fail "Kárdex por dueño C6 trae un producto propio"
+kardex "includeOwn=true&productPublicIds=$PN&take=200" | jq -e --argjson n "$NPN" '.total==$n and all(.items[]; .ownerName=="Propio")' >/dev/null || fail "Kárdex includeOwn (Propio)"
+ksum "ownerClientPublicIds=$C6P&productPublicIds=$P3" | jq -e --argjson n "$(kardex "productPublicIds=$P3" | jq .total)" '.movements==$n and .movements>=1' >/dev/null || fail "resumen por dueño"
+expect 404 "$(req GET "/api/v1/inventory/transactions?ownerClientPublicIds=$(randuuid)")" | jq -e --arg m "Cliente no encontrado." "$HASM" >/dev/null || fail "dueño inexistente → 404"
+# Origen y destino: la transferencia W6 → W7 de PT (Lote 6); al revés no hay nada. Resumen con y sin perspectiva de almacén.
+kardex "productPublicIds=$PT&fromWarehousePublicIds=$W6P&toWarehousePublicIds=$W7P" | jq -e '.total==1 and .items[0].typeCode=="TRANSFER" and .items[0].quantity==2' >/dev/null || fail "Kárdex origen W6 y destino W7"
+kardex "productPublicIds=$PT&fromWarehousePublicIds=$W7P&toWarehousePublicIds=$W6P" | jq -e '.total==0' >/dev/null || fail "Kárdex origen W7 y destino W6"
+ksum "productPublicIds=$PT" | jq -e '.movements==2 and .inCount==1 and .inQty==3 and .outCount==0 and .internalCount==1' >/dev/null || fail "resumen de PT sin filtro (transferencia interna)"
+ksum "productPublicIds=$PT&warehousePublicIds=$W6P" | jq -e '.movements==2 and .inCount==1 and .inQty==3 and .outCount==1 and .outQty==2 and .internalCount==0' >/dev/null || fail "resumen de PT desde W6 (la transferencia sale)"
+# Detalle: el RECEIPT del recibo R6 abre su documento (PublicId) y se incluye en los relacionados; la tarea trae su recibo
+# padre; un ajuste manual no tiene documento; inexistente y de otro tenant → 404.
+TX6=$(kardex "refEntity=RECEIPT&refId=$R6ID" | jq -r '.items[0].id')
+expect 200 "$(req GET "/api/v1/inventory/transactions/$TX6")" | jq -e --arg r "$R6P" --argjson rid "$R6ID" --argjson t "$TX6" '.transaction.id==$t and .document.entityCode=="RECEIPT" and .document.publicId==$r and .document.id==$rid and any(.related[]; .id==$t) and (.relatedTruncated|not) and .ownerName=="Propio"' >/dev/null || fail "detalle del RECEIPT de R6"
+TXW=$(kardex "refEntity=WAREHOUSE_TASK&productPublicIds=$PN" | jq -r '.items[0].id')
+expect 200 "$(req GET "/api/v1/inventory/transactions/$TXW")" | jq -e --arg a "$R6P" --arg b "$R13P" '.document.entityCode=="WAREHOUSE_TASK" and .document.parent.entityCode=="RECEIPT" and (.document.parent.publicId==$a or .document.parent.publicId==$b)' >/dev/null || fail "detalle de un TRANSFER de tarea con su recibo padre"
+TXM=$(kardex "productPublicIds=$PN&reasons=DAMAGE" | jq -r '.items[0].id')
+expect 200 "$(req GET "/api/v1/inventory/transactions/$TXM")" | jq -e --argjson t "$TXM" '.document==null and any(.related[]; .id==$t) and .transaction.reasonCode=="DAMAGE"' >/dev/null || fail "detalle de un ajuste manual (sin documento)"
+expect 404 "$(req GET /api/v1/inventory/transactions/999999999999)" | jq -e --arg m "Movimiento no encontrado." "$HASM" >/dev/null || fail "movimiento inexistente → 404"
+expect 404 "$(req GET "/api/v1/inventory/transactions/$TX6" '' "$T3A")" | jq -e --arg m "Movimiento no encontrado." "$HASM" >/dev/null || fail "movimiento de otro tenant → 404"
+# Dueños para el filtro ("Propio" primero) y búsqueda de posiciones entre almacenes.
+expect 200 "$(req GET /api/v1/inventory/owners)" | jq -e --arg c "$C6P" --arg n "Empaque $TS" '.[0].isOwn and .[0].name=="Propio" and .[0].clientPublicId==null and any(.[]; .clientPublicId==$c and .name==$n and (.isOwn|not))' >/dev/null || fail "dueños del inventario"
+expect 200 "$(req GET "/api/v1/warehouses/bins/search?search=P-01&warehousePublicIds=$W6P&warehousePublicIds=$W7P")" | jq -e --arg a "W6$TS" --arg b "W7$TS" '([.[].warehouseCode] | unique)==([$a,$b] | sort) and all(.[]; (.code | contains("P-01")) and .isActive)' >/dev/null || fail "búsqueda de posiciones en W6 y W7"
+expect 403 "$(req GET '/api/v1/warehouses/bins/search?search=P-01' '' "$TD14")" >/dev/null   # sin inventory.view
+ok "resumen de PN = lista ($NPN movimientos: entradas, salidas, internos y neto); direction IN/out en lista y resumen, X → 400; manualOnly; reasons (uno y varios, desconocido 400); dueño C6, Propio e inexistente 404; origen W6 → destino W7 (y al revés vacío); resumen de PT con y sin perspectiva de almacén; detalle del RECEIPT con documento y relacionados, de una tarea con su recibo padre, de un ajuste manual sin documento; 404 'Movimiento no encontrado.' (inexistente y de otro tenant); dueños con Propio; posiciones de W6 y W7 (sin inventory.view 403)"
+
+step "descuadres y conciliación (Lote 14): revisión automática, ejecutar, lista, 400/403/404 y descuadre real (con SMOKE_SQL)"
+recstatus() { expect 200 "$(req GET /api/v1/inventory/reconciliation/status)"; }
+P14=$(prod "{\"sku\":\"P14$TS\",\"name\":\"Descuadre 14 $TS\",\"purchaseCost\":1}")
+ST14=$(recstatus); PROC14=$(echo "$ST14" | jq .processed)
+echo "$ST14" | jq -e '(.enabled|type)=="boolean" and (.consuming|type)=="boolean" and (.pending|type)=="number" and (.processed|type)=="number" and (.dropped|type)=="number"' >/dev/null || fail "estado de la revisión automática: $ST14"
+expect 200 "$(adjust "$P14" "$W6P" "$B_RSV" 2 FOUND)" >/dev/null
+WORKER14=$(echo "$ST14" | jq -r '.enabled and .consuming')
+if [[ "$WORKER14" == true ]]; then   # el ajuste encola la revisión del producto: se espera a que la cola quede al día (≤ 30 s)
+  for i in $(seq 1 60); do STN=$(recstatus); [[ $(echo "$STN" | jq --argjson p "$PROC14" '.pending==0 and .processed>$p') == true ]] && break; sleep 0.5; done
+  echo "$STN" | jq -e --argjson p "$PROC14" '.pending==0 and .processed>$p' >/dev/null || fail "la revisión automática no procesó el ajuste de P14: $STN (antes processed=$PROC14)"
+fi
+expect 403 "$(req GET /api/v1/inventory/reconciliation/status '' "$TWH6")" >/dev/null   # sin inventory.adjust
+# Ejecutar conciliación (MANUAL): por productos y de todo el tenant, sin descuadres; más de 200 productos → 400; sin inventory.adjust → 403.
+expect 200 "$(req POST /api/v1/inventory/reconciliation/run "$(jq -cn --arg a "$PN" --arg b "$PT" --arg c "$P14" '{productPublicIds:[$a,$b,$c]}')")" | jq -e '.productsChecked==3 and .balancesChecked>=3 and .opened==0 and .stillOpen==0 and .mismatches==[]' >/dev/null || fail "conciliación manual de PN, PT y P14"
+expect 200 "$(req POST /api/v1/inventory/reconciliation/run '{}')" | jq -e '.productsChecked>=3 and .opened==0 and .mismatches==[]' >/dev/null || fail "conciliación manual de todo el tenant"
+expect 400 "$(req POST /api/v1/inventory/reconciliation/run "$(jq -cn '{productPublicIds:[range(201) | "00000000-0000-4000-8000-" + (("00000000000" + tostring) | .[-12:])]}')")" | jq -e --arg m "La conciliación manual admite como máximo 200 productos a la vez." "$HASM" >/dev/null || fail "conciliación de 201 productos → 400"
+expect 403 "$(req POST /api/v1/inventory/reconciliation/run '{}' "$TREAD6")" >/dev/null
+# Lista: la ve quien ve inventario (inventory.view); el despachador no; tipo desconocido → 400.
+expect 200 "$(req GET "/api/v1/inventory/discrepancies?productPublicIds=$P14")" | jq -e '.total==0 and .openCount==0 and .items==[]' >/dev/null || fail "P14 sin descuadres"
+expect 200 "$(req GET '/api/v1/inventory/discrepancies?status=OPEN&take=1' '' "$TREAD6")" | jq -e '(.total|type)=="number" and (.openCount|type)=="number" and (.items|length)<=1' >/dev/null || fail "lista de descuadres con inventory.view"
+expect 403 "$(req GET /api/v1/inventory/discrepancies '' "$TD14")" >/dev/null
+expect 400 "$(req GET '/api/v1/inventory/discrepancies?kinds=FOO')" | jq -e --arg m "Tipo de descuadre desconocido: 'FOO'." "$HASM" >/dev/null || fail "tipo de descuadre desconocido → 400"
+# Resolver: la forma se valida primero (400), luego la existencia (404); sin inventory.adjust → 403.
+NOD=$(randuuid)
+expect 404 "$(req GET "/api/v1/inventory/discrepancies/$NOD")" | jq -e --arg m "Descuadre no encontrado." "$HASM" >/dev/null || fail "descuadre inexistente → 404"
+expect 404 "$(req POST "/api/v1/inventory/discrepancies/$NOD/resolve" '{"action":"DISMISS","notes":"humo"}')" | jq -e --arg m "Descuadre no encontrado." "$HASM" >/dev/null || fail "resolver un descuadre inexistente → 404"
+expect 400 "$(req POST "/api/v1/inventory/discrepancies/$NOD/resolve" '{}')" | jq -e --arg m "Indique la acción: REBUILD_BALANCE (corregir el saldo) o DISMISS (descartar)." "$HASM" >/dev/null || fail "resolver sin acción → 400"
+expect 400 "$(req POST "/api/v1/inventory/discrepancies/$NOD/resolve" '{"action":"DISMISS"}')" | jq -e --arg m "Escriba una nota que explique por qué se descarta el descuadre." "$HASM" >/dev/null || fail "descartar sin nota → 400"
+expect 400 "$(req POST "/api/v1/inventory/discrepancies/$NOD/resolve" "$(jq -cn --arg n "$(printf 'n%.0s' {1..501})" '{action:"REBUILD_BALANCE",notes:$n}')")" | jq -e --arg m "La nota admite como máximo 500 caracteres." "$HASM" >/dev/null || fail "nota de 501 → 400"
+expect 403 "$(req POST "/api/v1/inventory/discrepancies/$NOD/resolve" '{"action":"DISMISS","notes":"humo"}' "$TREAD6")" >/dev/null
+REAL14="omitido (sin SMOKE_SQL: provocarlo exige tocar dbo.StockBalance por SQL)"
+if [[ -n "${SMOKE_SQL:-}" ]]; then
+  # Descuadre real: el saldo de P14 en R-01 sube 1 por SQL (sin movimiento) y un ajuste +1 dispara la revisión: Kárdex 3, saldo 4.
+  SB14=$(expect 200 "$(req GET "/api/v1/inventory/balances?warehousePublicIds=$W6P&binIds=$B_RSV&productPublicIds=$P14")" | jq -r '.items[0].id')
+  [[ "$SB14" =~ ^[0-9]+$ ]] || fail "saldo de P14 en R-01"
+  $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; UPDATE dbo.StockBalance SET QtyOnHand = QtyOnHand + 1 WHERE StockBalanceId = $SB14;" >/dev/null
+  expect 200 "$(adjust "$P14" "$W6P" "$B_RSV" 1 FOUND)" >/dev/null
+  if [[ "$WORKER14" == true ]]; then   # EVENT: lo abre la revisión automática (debounce + espera mínima entre revisiones; ≤ 30 s)
+    TRG14=EVENT
+    for i in $(seq 1 60); do D14=$(expect 200 "$(req GET "/api/v1/inventory/discrepancies?status=OPEN&productPublicIds=$P14")"); [[ $(echo "$D14" | jq .total) -ge 1 ]] && break; sleep 0.5; done
+  else                                 # sin revisión en segundo plano: lo abre la conciliación manual
+    TRG14=MANUAL
+    expect 200 "$(req POST /api/v1/inventory/reconciliation/run "$(jq -cn --arg p "$P14" '{productPublicIds:[$p]}')")" | jq -e '.opened==1' >/dev/null || fail "la conciliación manual no abrió el descuadre de P14"
+    D14=$(expect 200 "$(req GET "/api/v1/inventory/discrepancies?status=OPEN&productPublicIds=$P14")")
+  fi
+  echo "$D14" | jq -e --arg s "P14$TS" --arg t "$TRG14" '.total==1 and .openCount==1 and (.items[0] | .kindCode=="BALANCE" and .sku==$s and .binCode=="R-01" and .ledgerQty==3 and .balanceQty==4 and (.balanceQty - .ledgerQty)==1 and .difference==1 and .triggerCode==$t and .statusCode=="OPEN" and .closedAtUtc==null)' >/dev/null || fail "descuadre abierto de P14 ($TRG14): $(echo "$D14" | jq -c '[.items[] | {kindCode,binCode,ledgerQty,balanceQty,difference,triggerCode,statusCode}]')"
+  DP14=$(echo "$D14" | jq -r '.items[0].publicId')
+  expect 200 "$(req GET "/api/v1/inventory/discrepancies/$DP14" '' "$TREAD6")" | jq -e --arg d "$DP14" '.discrepancy.publicId==$d and any(.history[]; .toCode=="OPEN") and (.recentMovements|length)>=2' >/dev/null || fail "ficha del descuadre con inventory.view"
+  # "Necesita tu atención": el descuadre suma en su grupo y, si está entre los 5 más antiguos, trae su "Revisar".
+  expect 200 "$(req GET /api/v1/analytics/attention)" | jq -e --arg d "$DP14" '.total>=1 and any(.groups[]; .code=="INVENTORY_DISCREPANCY" and .total>=1) and (any(.items[]; .code=="INVENTORY_DISCREPANCY" and .params.publicId==$d and .query.discrepancy==$d) or .total>5)' >/dev/null || fail "el descuadre de P14 no aparece en 'Necesita tu atención'"
+  expect 403 "$(req POST "/api/v1/inventory/discrepancies/$DP14/resolve" '{"action":"REBUILD_BALANCE"}' "$TREAD6")" >/dev/null
+  expect 400 "$(req POST "/api/v1/inventory/discrepancies/$DP14/resolve" '{"action":"DISMISS","notes":"  "}')" | jq -e --arg m "Escriba una nota que explique por qué se descarta el descuadre." "$HASM" >/dev/null || fail "descartar el descuadre real sin nota → 400"
+  RV14=$(expect 200 "$(req GET "/api/v1/inventory/discrepancies/$DP14")" | jq -r .discrepancy.rowVersion)
+  expect 200 "$(req POST "/api/v1/inventory/discrepancies/$DP14/resolve" "$(jq -cn --arg v "$RV14" '{action:"REBUILD_BALANCE",notes:"Humo Lote 14",rowVersion:$v}')")" | jq -e '.discrepancy.statusCode=="RESOLVED" and .discrepancy.correctedFromQty==4 and .discrepancy.correctedToQty==3 and .discrepancy.correctedToQty==.discrepancy.ledgerQty and .discrepancy.closedAtUtc!=null and any(.history[]; .toCode=="RESOLVED")' >/dev/null || fail "corregir el saldo según el Kárdex"
+  [[ $(onhand "$W6P" "$B_RSV" "$P14") == 3 ]] || fail "el saldo de P14 no tomó lo que da el Kárdex (3)"
+  expect 200 "$(req GET "/api/v1/inventory/reconciliation?productPublicId=$P14")" | jq -e '.mismatches==[]' >/dev/null || fail "P14 sigue descuadrado tras corregir"
+  RV14=$(expect 200 "$(req GET "/api/v1/inventory/discrepancies/$DP14")" | jq -r .discrepancy.rowVersion)
+  expect 422 "$(req POST "/api/v1/inventory/discrepancies/$DP14/resolve" "$(jq -cn --arg v "$RV14" '{action:"DISMISS",notes:"otra vez",rowVersion:$v}')")" | jq -e --arg m "El descuadre ya está cerrado; solo se consulta." "$HASM" >/dev/null || fail "resolver un descuadre cerrado → 422"
+  expect 200 "$(req GET "/api/v1/inventory/discrepancies?status=RESOLVED&productPublicIds=$P14")" | jq -e '.total==1 and .openCount==0' >/dev/null || fail "P14: un descuadre RESOLVED y ninguno abierto"
+  REAL14="saldo +1 por SQL → OPEN ($TRG14, Kárdex 3 / saldo 4 / diferencia 1) en la lista y en 'Necesita tu atención'; descartar sin nota 400; sin inventory.adjust 403; REBUILD_BALANCE → RESOLVED 4 → 3 sin descuadre; resolver otra vez 422"
+fi
+ok "revisión automática ($([[ "$WORKER14" == true ]] && echo 'al día tras el ajuste, processed subió' || echo 'apagada')); conciliación manual por productos y de todo el tenant sin descuadres (201 productos 400, sin inventory.adjust 403); lista con inventory.view (despachador 403, tipo desconocido 400); 404 'Descuadre no encontrado.'; resolver sin acción / sin nota / nota de 501 → 400 con sus mensajes; sin inventory.adjust 403; descuadre real: $REAL14"
+
+step "Necesita tu atención (Lote 14): total, 5 más antiguos, grupos y permiso pulse.attention"
+AT14=$(expect 200 "$(req GET /api/v1/analytics/attention)")
+echo "$AT14" | jq -e '(.total|type)=="number" and .total>=0 and (.items|type)=="array" and (.items|length)<=5 and (.items|length)<=.total and (.groups|type)=="array" and ([.groups[].total] | add // 0)==.total' >/dev/null || fail "'Necesita tu atención': $(echo "$AT14" | jq -c '{total, items: (.items|length), groups}')"
+expect 200 "$(req GET /api/v1/analytics/attention '' "$TREAD6")" | jq -e '(.total|type)=="number"' >/dev/null || fail "Solo lectura (con pulse.attention) no ve 'Necesita tu atención'"
+expect 403 "$(req GET /api/v1/analytics/attention '' "$TD14")" >/dev/null   # el despachador no tiene pulse.attention
+ok "total numérico ($(echo "$AT14" | jq .total)), a lo sumo 5 ítems, grupos que suman el total; Solo lectura 200 y despachador sin pulse.attention 403 (el panel ATTENTION del Pulso del admin lo cubre el paso del Lote F8a)"
+
+step "conteo cíclico (Lote 14): página con total, 'lo cambiado' (vista previa, alta, repetido y > 31 días), confirmar en un paso y estatus del catálogo"
+expect 200 "$(req GET /api/v1/status/CycleCountStatus)" | jq -e 'any(.[]; .code=="OPEN" and .label=="Pendiente" and .isInitial) and any(.[]; .code=="RECONCILED" and .label=="Concordancia") and any(.[]; .code=="RECONCILED_VARIANCE" and .label=="Diferencia" and .stageKind=="TERMINAL")' >/dev/null || fail "estatus del conteo Pendiente / Concordancia / Diferencia"
+expect 200 "$(req GET /api/v1/catalogs/CycleCountOrigin)" | jq -e 'any(.[]; .code=="MANUAL") and any(.[]; .code=="CHANGES")' >/dev/null || fail "catálogo CycleCountOrigin (MANUAL y CHANGES)"
+# Ventana explícita que cubre todo el humo (W6 se creó en esta corrida): así la repetición usa la misma ventana.
+F14=$(date -u -d '12 hours ago' +%FT%TZ); F40=$(date -u -d '40 days ago' +%FT%TZ)
+FCB=$(jq -cn --arg w "$W6P" --arg f "$F14" --argjson z "$ZRSV" '{warehousePublicId:$w,fromUtc:$f,zoneIds:[$z]}')
+expect 200 "$(req GET "/api/v1/cycle-counts/changes-preview?warehousePublicId=$W6P&fromUtc=$F14")" | jq -e --arg w "$W6P" '.warehousePublicId==$w and .movements>=1 and .positions>=1 and .problem==null and .maxPositions==200' >/dev/null || fail "vista previa de lo cambiado en W6"
+expect 200 "$(req GET "/api/v1/cycle-counts/changes-preview?warehousePublicId=$W6P&fromUtc=$F14&zoneIds=$ZRSV")" | jq -e '.positions==1 and .positionsWithOpenCount==0 and .problem==null' >/dev/null || fail "vista previa de lo cambiado en la zona RSV"
+expect 403 "$(req GET "/api/v1/cycle-counts/changes-preview?warehousePublicId=$W6P" '' "$TREAD6")" >/dev/null   # sin warehouse.count
+FC14=$(expect 200 "$(req POST /api/v1/cycle-counts/from-changes "$FCB")")
+echo "$FC14" | jq -e '.window.positions==1 and (.counts | length)==1 and (.counts[0] | .originCode=="CHANGES" and .statusCode=="OPEN" and .binCount==1 and .binCode=="R-01" and .zoneCode=="RSV" and .taskId!=null and .changesFromUtc!=null and .changesToUtc!=null)' >/dev/null || fail "conteo de lo cambiado en R-01: $(echo "$FC14" | jq -c '[.counts[] | {originCode,statusCode,binCount,binCode,zoneCode,taskId}]')"
+CC14=$(echo "$FC14" | jq -r '.counts[0].id'); CT14=$(echo "$FC14" | jq -r '.counts[0].taskId')
+tasksof "$W6P" COUNT | jq -e --argjson c "$CC14" --argjson t "$CT14" 'any(.items[]; .id==$t and .refEntityCode=="CYCLE_COUNT" and .refId==$c)' >/dev/null || fail "tarea COUNT del conteo de lo cambiado"
+M1CH="Las 1 posiciones con cambios ya tienen un conteo pendiente."
+expect 400 "$(req POST /api/v1/cycle-counts/from-changes "$FCB")" | jq -e --arg m "$M1CH" "$HASM" >/dev/null || fail "lo cambiado repetido → 400"
+expect 200 "$(req GET "/api/v1/cycle-counts/changes-preview?warehousePublicId=$W6P&fromUtc=$F14&zoneIds=$ZRSV")" | jq -e --arg m "$M1CH" '.positions==0 and .positionsWithOpenCount==1 and .problem==$m' >/dev/null || fail "vista previa con la posición ya en conteo"
+expect 400 "$(req POST /api/v1/cycle-counts/from-changes "$(jq -cn --arg w "$W6P" --arg f "$F40" '{warehousePublicId:$w,fromUtc:$f}')")" | jq -e --arg m 'El rango de "lo cambiado" admite como máximo 31 días.' "$HASM" >/dev/null || fail "lo cambiado de 40 días → 400"
+expect 400 "$(req GET "/api/v1/cycle-counts/changes-preview?warehousePublicId=$W6P&fromUtc=$F40")" | jq -e --arg m 'El rango de "lo cambiado" admite como máximo 31 días.' "$HASM" >/dev/null || fail "vista previa de 40 días → 400"
+# Página con total: por origen, zona y estatus; a ciegas para Solo lectura.
+expect 200 "$(req GET "/api/v1/cycle-counts/page?warehousePublicIds=$W6P&origins=CHANGES&take=1")" | jq -e --argjson c "$CC14" '.total==1 and .take==1 and (.items|length)==1 and .items[0].id==$c and .items[0].origin!=null' >/dev/null || fail "página de conteos por origen CHANGES"
+expect 200 "$(req GET "/api/v1/cycle-counts/page?warehousePublicIds=$W6P&origins=MANUAL&take=200")" | jq -e --argjson a "$CC7ID" --argjson c "$CC14" 'any(.items[]; .id==$a and .originCode=="MANUAL") and all(.items[]; .id!=$c)' >/dev/null || fail "página de conteos por origen MANUAL"
+expect 200 "$(req GET "/api/v1/cycle-counts/page?warehousePublicIds=$W6P&zoneIds=$ZRSV&status=OPEN&status=COUNTED&take=1")" | jq -e --argjson c "$CC14" '.total==1 and .items[0].id==$c' >/dev/null || fail "página de conteos por zona y estatus"
+expect 200 "$(req GET "/api/v1/cycle-counts/page?warehousePublicIds=$W6P&take=200" '' "$TREAD6")" | jq -e '.total>=2 and (.items|length)==.total and all(.items[]; .varianceLines==null and .netVariance==null)' >/dev/null || fail "página de conteos a ciegas para Solo lectura"
+# Confirmar en un paso desde Pendiente: todo igual salvo P14 (+1) → Diferencia con un solo ajuste COUNT_VARIANCE.
+CD14=$(expect 200 "$(req GET "/api/v1/cycle-counts/$CC14")")
+echo "$CD14" | jq -e --arg s "P14$TS" --argjson q "$(onhand "$W6P" "$B_RSV" "$P14")" 'any(.lines[]; .sku==$s and .systemQty==$q) and all(.lines[]; .trackingTypeCode!="SERIAL")' >/dev/null || fail "líneas del conteo de R-01"
+CAP14=$(echo "$CD14" | jq -c --arg s "P14$TS" '{lines:[.lines[] | {lineId:.id, countedQty:(if .sku==$s then .systemQty + 1 else .systemQty end)}]}')
+expect 200 "$(req PUT "/api/v1/cycle-counts/$CC14/lines" "$CAP14")" | jq -e '.count.statusCode=="OPEN" and .count.countedLines==.count.lineCount' >/dev/null || fail "captura del conteo de lo cambiado"
+REC14=$(expect 200 "$(req POST "/api/v1/cycle-counts/$CC14/reconcile" '{}')")
+echo "$REC14" | jq -e --arg s "P14$TS" '.count.statusCode=="RECONCILED_VARIANCE" and .count.status=="Diferencia" and any(.lines[]; .sku==$s and .adjustedQty==1 and .adjustmentTxnId!=null) and ([.lines[] | select((.adjustedQty // 0) != 0)] | length)==1' >/dev/null || fail "confirmar en un paso con diferencia: $(echo "$REC14" | jq -c '{s:.count.statusCode, l:[.lines[] | {sku,systemQty,countedQty,adjustedQty}]}')"
+expect 200 "$(req GET "/api/v1/status/history/CYCLE_COUNT/$CC14")" | jq -e '.[-1].toCode=="RECONCILED_VARIANCE" and all(.[]; .toCode!="COUNTED")' >/dev/null || fail "historial del conteo: de Pendiente a Diferencia sin pasar por Contado"
+KCC14=$(kardex "refEntity=CYCLE_COUNT&refId=$CC14")
+echo "$KCC14" | jq -e '.total==1 and .items[0].quantity==1 and .items[0].reasonCode=="COUNT_VARIANCE"' >/dev/null || fail "ajuste COUNT_VARIANCE +1 del conteo de lo cambiado: $(echo "$KCC14" | jq -c '[.items[] | {quantity,reasonCode}]')"
+TXC=$(echo "$KCC14" | jq -r '.items[0].id')
+expect 200 "$(req GET "/api/v1/inventory/transactions/$TXC")" | jq -e --argjson c "$CC14" '.document.entityCode=="CYCLE_COUNT" and .document.id==$c and .document.statusCode=="RECONCILED_VARIANCE"' >/dev/null || fail "detalle del ajuste del conteo con su documento"
+expect 200 "$(req GET "/api/v1/warehouse-tasks?warehousePublicId=$W6P&types=COUNT&includeClosed=true&take=200")" | jq -e --argjson t "$CT14" 'any(.items[]; .id==$t and .statusCode=="DONE")' >/dev/null || fail "tarea COUNT del conteo de lo cambiado DONE"
+# Sin diferencia → Concordancia (conteo manual de P-02, en un paso desde Pendiente).
+CCM14=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B_PCK2]}")"); CCM14ID=$(echo "$CCM14" | jq -r .count.id)
+echo "$CCM14" | jq -e '.count.originCode=="MANUAL" and (.lines|length)>=1' >/dev/null || fail "conteo manual de P-02"
+expect 200 "$(req PUT "/api/v1/cycle-counts/$CCM14ID/lines" "$(echo "$CCM14" | jq -c '{lines:[.lines[] | {lineId:.id, countedQty:.systemQty}]}')")" >/dev/null
+expect 200 "$(req POST "/api/v1/cycle-counts/$CCM14ID/reconcile" '{}')" | jq -e '.count.statusCode=="RECONCILED" and .count.status=="Concordancia" and all(.lines[]; (.adjustedQty // 0)==0)' >/dev/null || fail "confirmar en un paso sin diferencia → Concordancia"
+kardex "refEntity=CYCLE_COUNT&refId=$CCM14ID" | jq -e '.total==0' >/dev/null || fail "Concordancia sin movimientos"
+expect 200 "$(req GET "/api/v1/inventory/reconciliation?productPublicId=$P14")" | jq -e '.mismatches==[]' >/dev/null || fail "P14 descuadrado tras el conteo"
+ok "estatus Pendiente/Concordancia/Diferencia (terminal) y origen MANUAL/CHANGES; vista previa de W6 y de RSV (sin warehouse.count 403); lo cambiado en RSV → 1 conteo CHANGES de R-01 con tarea COUNT; repetido 400 '$M1CH' (y la vista previa lo anticipa); > 31 días 400 (alta y vista previa); página por origen, zona y estatus con total, a ciegas para Solo lectura; confirmar en un paso desde Pendiente: +1 en P14 → Diferencia (COUNT_VARIANCE +1 con su documento, sin pasar por Contado, tarea DONE) y P-02 sin diferencia → Concordancia sin movimientos"
+
+# ============================================================================================================
 # Lote 8A — aparatos y sincronización (app de almacén): aparato de confianza, PIN, login por aparato, idempotencia,
 # sincronización por diferencia, código escaneado, recibo en una llamada, conteo a ciegas en lote y aparato desactivado.
 # ============================================================================================================
@@ -3425,7 +3597,7 @@ DX=$(expect 200 "$(idem POST /api/v1/devices "$KDX" "$BDX" "$TOKEN")") || fail "
 echo "$DX" | jq -e '.enrollCode|length==8' >/dev/null || fail "alta de aparato con Idempotency-Key sin código de registro"
 expect 409 "$(idem POST /api/v1/devices "$KDX" "$BDX" "$TOKEN")" | jq -e --arg m "Ya existe un aparato con ese código." "$HASM" >/dev/null || fail "/devices no debe pasar por la idempotencia (hubo Replay)"
 replayed && fail "/devices respondió con Idempotent-Replayed"
-[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KDX';" | tr -d '[:space:]') == 0 ]] || fail "la respuesta con credenciales quedó en IntegrationMessageLog"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KDX';" | tr -d '[:space:]') == 0 ]] || fail "la respuesta con credenciales quedó en IntegrationMessageLog"
 expect 200 "$(req POST "/api/v1/devices/$(echo "$DX" | jq -r .device.publicId)/deactivate" '{}')" >/dev/null
 ENR=$(expect 200 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$ENROLL\",\"model\":\"MC3300\",\"appVersion\":\"1.0.0\"}")")
 echo "$ENR" | jq -e --arg d "$DEVP" --arg w "$W6P" '.devicePublicId==$d and .defaultWarehousePublicId==$w and .theme=="LIGHT" and (.tenantName|type=="string")' >/dev/null || fail "enroll devuelve el aparato con su almacén y tema: $ENR"
@@ -3444,9 +3616,9 @@ expect 401 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C1\"}")" | jq
 # Código vencido (hash correcto, fecha pasada) → 401 sin oráculo; se restaura la vigencia y el mismo código registra (el 401
 # se debió a la fecha, no al hash).
 if [[ -n "${SMOKE_SQL:-}" ]]; then
-  $SMOKE_SQL "SET NOCOUNT ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(minute,-1,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
+  $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(minute,-1,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
   expect 401 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C2\"}")" | jq -e --arg m "El código de registro no es válido o venció." "$HASM" >/dev/null || fail "código de registro vencido → 401"
-  $SMOKE_SQL "SET NOCOUNT ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(hour,24,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
+  $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; UPDATE dbo.UserDevice SET EnrollCodeExpiresUtc = DATEADD(hour,24,SYSUTCDATETIME()) WHERE PublicId = '$D2';" >/dev/null
 fi
 expect 200 "$(anon POST /api/v1/devices/enroll "{\"enrollCode\":\"$C2\"}")" | jq -e --arg d "$D2" '.devicePublicId==$d' >/dev/null || fail "el código regenerado no registra el aparato"
 # PIN del admin desde Mi cuenta: exige la contraseña actual (incorrecta → 400 en errors.currentPassword).
@@ -3640,7 +3812,7 @@ for i in 1 2 3 4 5 6; do
 done
 rm -rf "$TMPU"
 if [[ -n "${SMOKE_SQL:-}" ]]; then
-  [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.UserPin WHERE TenantId = $ME_TID AND UserId = $UWH6;" | tr -dc '0-9') == 1 ]] || fail "PIN en paralelo dejó más de una fila UserPin"
+  [[ $($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.UserPin WHERE TenantId = $ME_TID AND UserId = $UWH6;" | tr -dc '0-9') == 1 ]] || fail "PIN en paralelo dejó más de una fila UserPin"
 fi
 ok2xx "$(req DELETE "/api/v1/users/$UWH6/pin")" "quitar el PIN tras la carrera"
 expect 200 "$(req GET /api/v1/users)" | jq -e --argjson u "$UWH6" 'any(.[]; .id==$u and .hasPin==false)' >/dev/null || fail "hasPin=false tras quitar el PIN"
@@ -3757,7 +3929,7 @@ if [[ -n "${SMOKE_SQL:-}" ]]; then
   R8X=$(expect 200 "$(idem POST /api/v1/receipts "$KEY8" "$BODY8")")
   replayed && fail "una clave de más de 7 días se trató como repetición"
   [[ $(echo "$R8X" | jq -r .header.number) != "$N8" ]] || fail "la clave vencida devolvió el recibo guardado"
-  [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KIF' AND UserId=$ME8;" | tr -d '[:space:]') == 0 ]] || fail "el registro de idempotencia vencido no se borró al insertar"
+  [[ $($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KIF' AND UserId=$ME8;" | tr -d '[:space:]') == 0 ]] || fail "el registro de idempotencia vencido no se borró al insertar"
   for RX in "$R8X" "$RIF"; do expect 204 "$(req DELETE "/api/v1/receipts/$(echo "$RX" | jq -r .header.publicId)")" >/dev/null; done
   IDEM8="clave en vuelo 409, clave de más de 7 días se vuelve a ejecutar y los vencidos se borran al insertar"
 fi
@@ -3771,7 +3943,7 @@ TRC8=$(login "recibos8$TS@teikem.local" "$PASS"); URC8=$(expect 200 "$(req GET /
 KRL="smoke-$TS-release"; BRL=$(jq -cn --arg o "$PO8RP" --argjson s "$B_STG" '{purchaseOrderPublicId:$o,stagingBinId:$s}')
 expect 403 "$(idem POST /api/v1/receipts "$KRL" "$BRL" "$TRC8")" | denied purchasing.receive || fail "recibo contra OC sin purchasing.receive con clave → 403"
 replayed && fail "el 403 con clave no debe marcarse como repetido"
-[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KRL' AND UserId=$URC8;" | tr -d '[:space:]') == 0 ]] || fail "el 403 dejó la clave de idempotencia registrada"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.IntegrationMessageLog WHERE IdempotencyKey='$KRL' AND UserId=$URC8;" | tr -d '[:space:]') == 0 ]] || fail "el 403 dejó la clave de idempotencia registrada"
 TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
 expect 200 "$(req PUT "/api/v1/roles/$ROL8R" "{\"name\":\"Recibos sin compras $TS\",\"permissions\":[\"inventory.view\",\"purchasing.view\",\"warehouse.receive\",\"purchasing.receive\"]}")" >/dev/null || fail "conceder purchasing.receive al rol"
 RRL=$(expect 200 "$(idem POST /api/v1/receipts "$KRL" "$BRL" "$TRC8")") || fail "tras el 403 la misma clave no se liberó (el reintento no se ejecutó)"
@@ -3929,7 +4101,7 @@ DRT_PIN=$(echo "$DL8" | jq -r .refreshToken)
 # por la desactivación del aparato, la reutilización del refresh web ni el vencimiento.
 pinrm8() { expect 200 "$(req GET "/api/v1/audit/security-events?eventType=TOKEN_REVOKED&userId=$ME8&take=1000")" | jq '[.items[] | select((.detailJson // "") | (fromjson? // {}) | (.reason=="pin_removed" and .count >= 1))] | length'; }
 DRT_PIN_H=$(printf '%s' "$DRT_PIN" | sha256sum | cut -d' ' -f1)
-rtrevoked8() { $SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.RefreshToken WHERE TokenHash='$DRT_PIN_H' AND UserDeviceId IS NOT NULL AND RevokedAtUtc IS NOT NULL;" | tr -d '[:space:]'; }
+rtrevoked8() { $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.RefreshToken WHERE TokenHash='$DRT_PIN_H' AND UserDeviceId IS NOT NULL AND RevokedAtUtc IS NOT NULL;" | tr -d '[:space:]'; }
 [[ -z "${SMOKE_SQL:-}" ]] || [[ $(rtrevoked8) == 0 ]] || fail "la sesión del aparato DRT_PIN ya estaba revocada antes de quitar el PIN"
 PRM8=$(pinrm8)
 expect 204 "$(req DELETE /api/v1/me/pin)" >/dev/null
@@ -3952,7 +4124,7 @@ expect 200 "$(req GET '/api/v1/sync/products?take=1' '' "$DT")" >/dev/null
 # SMOKE_SQL, la fila de DRT_DEV viva antes de desactivar y revocada después.
 devrevoked8() { expect 200 "$(req GET "/api/v1/audit/security-events?eventType=TOKEN_REVOKED&userId=$ME8&take=1000")" | jq --arg r "$1" --argjson min "$2" '[.items[] | select((.detailJson // "") | (fromjson? // {}) | (.reason==$r and .count >= $min))] | length'; }
 DRT_DEV_H=$(printf '%s' "$DRT_DEV" | sha256sum | cut -d' ' -f1)
-drtrevoked8() { $SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.RefreshToken WHERE TokenHash='$DRT_DEV_H' AND RevokedAtUtc IS NOT NULL;" | tr -d '[:space:]'; }
+drtrevoked8() { $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.RefreshToken WHERE TokenHash='$DRT_DEV_H' AND RevokedAtUtc IS NOT NULL;" | tr -d '[:space:]'; }
 [[ -z "${SMOKE_SQL:-}" ]] || [[ $(drtrevoked8) == 0 ]] || fail "la sesión del aparato DRT_DEV ya estaba revocada antes de desactivarlo"
 DOFF8=$(devrevoked8 device_deactivated 1)
 ok2xx "$(req POST "/api/v1/devices/$DEVP/deactivate" '{}')" "desactivar el aparato"
@@ -3981,7 +4153,7 @@ TOKEN=$(login "$EMAIL" "$PASS")
 TDF8=$(login "$DISPATCH_EMAIL" "$PASS")
 expect 204 "$(req DELETE /api/v1/analytics/pulse/layout/mine)" >/dev/null
 PF8=$(expect 200 "$(req GET /api/v1/analytics/pulse)")
-echo "$PF8" | jq -e '(.panels | map(.key) | sort) == ["ACTIVITY","CHARTS","INDICATORS","WAREHOUSE"] and .canOrganizeCompany and (.hasPersonalLayout|not) and all(.panels[]; .source != "user") and all(.indicators[]; .source == "company")' >/dev/null || fail "Pulso del admin (4 paneles, sin orden propio): $(echo "$PF8" | jq -c '{panels,hasPersonalLayout,canOrganizeCompany}')"
+echo "$PF8" | jq -e '(.panels | map(.key) | sort) == ["ACTIVITY","ATTENTION","CHARTS","INDICATORS","WAREHOUSE"] and .canOrganizeCompany and (.hasPersonalLayout|not) and all(.panels[]; .source != "user") and all(.indicators[]; .source == "company")' >/dev/null || fail "Pulso del admin (5 paneles con ATTENTION del Lote 14, sin orden propio): $(echo "$PF8" | jq -c '{panels,hasPersonalLayout,canOrganizeCompany}')"
 INDF8=$(echo "$PF8" | jq -r '[.indicators[] | select(.isVisible)] | last | .id')
 [[ "$INDF8" =~ ^[0-9]+$ ]] || fail "el Pulso del admin no trae indicadores visibles"
 # mine: Actividad arriba, Gráficos oculto y el último indicador visible al principio.
@@ -4011,7 +4183,7 @@ echo "$PDF8" | jq -e '(.panels | map(.key)) == ["ACTIVITY","CHARTS","INDICATORS"
 expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=company' '{"panels":[{"key":"INDICATORS","sortOrder":20,"isVisible":true},{"key":"CHARTS","sortOrder":30,"isVisible":true},{"key":"WAREHOUSE","sortOrder":40,"isVisible":true},{"key":"ACTIVITY","sortOrder":50,"isVisible":true}]}')" >/dev/null
 expect 200 "$(req GET /api/v1/analytics/pulse '' "$TDF8")" | jq -e '(.panels | map(.key)) == ["INDICATORS","CHARTS","ACTIVITY"]' >/dev/null || fail "orden de la compañía restaurado"
 expect 200 "$(req GET '/api/v1/audit/changes?entityType=PULSE_PANEL_SETTING&take=50')" | jq -e '.total >= 4' >/dev/null || fail "AuditLog de PULSE_PANEL_SETTING"
-ok "4 paneles del admin; mine (Actividad arriba, Gráficos oculto, indicador $INDF8 primero, idempotente, hasPersonalLayout); 400 con los mensajes exactos (scope, panel desconocido, tipo), 404 (gráfico inexistente, panel Almacén para el despachador); DELETE mine vuelve al de la compañía; company sin pulse.organize_company 403; el orden de la compañía le aplica al despachador (sin Almacén) y se restaura; AuditLog PULSE_PANEL_SETTING"
+ok "5 paneles del admin (con ATTENTION, Lote 14); mine (Actividad arriba, Gráficos oculto, indicador $INDF8 primero, idempotente, hasPersonalLayout); 400 con los mensajes exactos (scope, panel desconocido, tipo), 404 (gráfico inexistente, panel Almacén para el despachador); DELETE mine vuelve al de la compañía; company sin pulse.organize_company 403; el orden de la compañía le aplica al despachador (sin Almacén) y se restaura; AuditLog PULSE_PANEL_SETTING"
 
 step "MFA por usuario (Lote F8a): exigirlo a una persona sin tocar la política de la compañía, y resetearlo"
 # Tenant.MfaRequired del tenant demo está en falso (DemoTenantSeeder lo apaga para no romper el resto del smoke con
@@ -4106,7 +4278,7 @@ grep -q '| Productos | 6 | 5 | 0 | 1 | 0 |' "$MIG_MD" || fail "resumen de produc
 grep -q 'no se carga saldo inicial' "$MIG_MD" || fail "el reporte no informa la existencia negativa de la muestra"
 [[ $(find "$MIG_OUT" -maxdepth 1 -name 'reporte-muestra-*.csv' -newer "$MIG_MARK" | wc -l) -ge 6 ]] || fail "faltan los CSV del reporte"
 # Con SMOKE_SQL se comprueba que la simulación no aprovisionó la compañía de prueba.
-[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SELECT COUNT(*) FROM dbo.Tenant WHERE Name = N'Compañía de prueba (migración)';" | tr -dc '0-9') == 0 ]] || fail "el dry-run aprovisionó la compañía de prueba"
+[[ -z "${SMOKE_SQL:-}" ]] || [[ $($SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SELECT COUNT(*) FROM dbo.Tenant WHERE Name = N'Compañía de prueba (migración)';" | tr -dc '0-9') == 0 ]] || fail "el dry-run aprovisionó la compañía de prueba"
 # Uso incorrecto → código 2 con el mensaje de uso.
 set +e
 MIG_USAGE=$(cd "$ROOT" && "${MIG_CMD[@]}" -- import-legacy 2>&1); MIG_RC=$?

@@ -16,6 +16,8 @@ public sealed class ProductAvailabilityTests
     private static Task<WmsFixture> CreateAsync() => WmsFixture.CreateAsync(s =>
     {
         s.AddSingleton<ProductService>();
+        s.AddSingleton<Teikem.Infrastructure.Abstractions.ITenantClock>(Teikem.Infrastructure.Abstractions.TenantClock.Default);   // Lote 14
+        s.AddSingleton<InventoryReconciler>();   // Lote 14: TraceabilityService delega la conciliación
         s.AddSingleton<InventoryReadService>();
     });
 
