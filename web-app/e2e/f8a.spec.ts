@@ -143,7 +143,7 @@ async function maybeReauth(page: Page, password: string) {
     .then(() => true)
     .catch(() => false)
   if (appeared) {
-    await reauthDialog.getByLabel('Contraseña').fill(password)
+    await reauthDialog.getByLabel('Contraseña', { exact: true }).fill(password)
     await reauthDialog.getByRole('button', { name: 'Confirmar' }).click()
   }
 }
@@ -160,6 +160,18 @@ function pulseSection(page: Page, title: string | RegExp): Locator {
 /** Fila de una tabla (DataTable) que contiene ese texto. */
 function rowWith(page: Page, text: string): Locator {
   return page.getByRole('row').filter({ hasText: text })
+}
+
+/**
+ * Celda de la fila en la columna con ese encabezado (la tabla de usuarios tiene chips 'Sí/No' en MFA y en 'PIN app':
+ * se mira la columna por su posición en el encabezado).
+ */
+async function cellInColumn(page: Page, row: Locator, header: string): Promise<Locator> {
+  // textContent (no innerText: el encabezado va en mayúsculas por CSS); el orden activo agrega ▲/▼
+  const headers = await page.getByRole('columnheader').allTextContents()
+  const idx = headers.findIndex((h) => h.replace(/[▲▼]/g, '').trim() === header)
+  expect(idx).toBeGreaterThanOrEqual(0)
+  return row.getByRole('cell').nth(idx)
 }
 
 test.describe('Lote F8a — escritorio', () => {
@@ -374,7 +386,8 @@ test.describe('Lote F8a — escritorio', () => {
     // AAL2: si la sesión no reautenticó hace poco, aparece el modal de confirmar identidad
     await maybeReauth(page, ADMIN.password)
     await expect(pinDialog).toHaveCount(0)
-    await expect(row.locator('.chip', { hasText: 'Sí' })).toBeVisible()
+    const pinCell = await cellInColumn(page, row, 'PIN app')
+    await expect(pinCell.locator('.chip')).toHaveText('Sí')
     await shot(page, 'usuarios-pin-asignado')
 
     await row.getByRole('button', { name: 'Restablecer PIN' }).click()
@@ -395,7 +408,7 @@ test.describe('Lote F8a — escritorio', () => {
     await resetDialog2.getByRole('button', { name: 'Quitar PIN' }).click()
     await page.getByRole('button', { name: 'Confirmar' }).click()
     await expect(resetDialog2).toHaveCount(0)
-    await expect(row.locator('.chip', { hasText: 'No' })).toBeVisible()
+    await expect(pinCell.locator('.chip')).toHaveText('No')
 
     // suspender: ya no puede entrar (el switch es controlado por el estado del servidor: .click(), no .uncheck(),
     // para no pelear con la verificación propia de uncheck() mientras la mutación todavía está en vuelo)

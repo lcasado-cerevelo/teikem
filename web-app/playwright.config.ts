@@ -18,8 +18,12 @@ export default defineConfig({
     timeout: 60_000,
   },
   projects: [
-    { name: 'escritorio', use: { ...devices['Desktop Chrome'] } },
+    { name: 'escritorio', testIgnore: /f8a\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
     { name: 'movil', use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    // El recorrido de escritorio de F8a reorganiza el Pulso personal del admin y el de toda la compañía (oculta el panel
+    // Almacén unos segundos): corre después de los demás para no chocar con los recorridos que leen ese Pulso cuando hay
+    // varios workers en paralelo.
+    { name: 'escritorio-f8a', testMatch: /f8a\.spec\.ts/, dependencies: ['escritorio', 'movil'], use: { ...devices['Desktop Chrome'] } },
   ],
 })

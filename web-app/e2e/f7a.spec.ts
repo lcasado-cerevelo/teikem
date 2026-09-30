@@ -12,7 +12,7 @@ import type { components } from '../src/kernel/api/schema'
 
 type AuthResultDto = components['schemas']['AuthResultDto']
 type WarehouseDto = components['schemas']['WarehouseDto']
-type WarehouseBinDto = components['schemas']['WarehouseBinDto']
+type WarehouseBinListResult = components['schemas']['WarehouseBinPageDto']
 type ProductCategoryDto = components['schemas']['ProductCategoryDto']
 type ProductDetailDto = components['schemas']['ProductDetailDto']
 type PickBatchDto = components['schemas']['PickBatchDto']
@@ -90,9 +90,13 @@ async function prepareData(request: APIRequestContext, variant = '') {
   const alm01 = ((await whRes.json()) as WarehouseDto[]).find((w) => w.code === 'ALM-01')
   expect(alm01?.publicId).toBeTruthy()
   data.warehousePublicId = alm01?.publicId ?? ''
-  const binRes = await request.get(`${API_URL}/api/v1/warehouses/${data.warehousePublicId}/bins`, { headers: auth() })
+  // listado paginado desde el Lote 11: { total, skip, take, items }; basta la primera posición activa
+  const binRes = await request.get(`${API_URL}/api/v1/warehouses/${data.warehousePublicId}/bins`, {
+    headers: auth(),
+    params: { includeInactive: false, take: 1 },
+  })
   expect(binRes.ok()).toBeTruthy()
-  const bin = ((await binRes.json()) as WarehouseBinDto[]).find((b) => b.isActive !== false)
+  const bin = ((await binRes.json()) as WarehouseBinListResult).items?.find((b) => b.isActive !== false)
   expect(bin?.id).toBeTruthy()
   data.binId = bin?.id ?? 0
 
@@ -136,7 +140,7 @@ async function cleanupData(request: APIRequestContext) {
 async function login(page: Page, user: { email: string; password: string }) {
   await page.goto('/login')
   await page.getByLabel('Correo electrónico').fill(user.email)
-  await page.getByLabel('Contraseña').fill(user.password)
+  await page.getByLabel('Contraseña', { exact: true }).fill(user.password)
   await page.getByRole('button', { name: 'Entrar' }).click()
   // Si el usuario pertenece a varias compañías, se elige la predeterminada.
   await page.waitForURL((url) => url.pathname !== '/login')

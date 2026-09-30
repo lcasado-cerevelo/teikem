@@ -76,7 +76,7 @@ async function ensureChartInPulse(request: APIRequestContext): Promise<void> {
 async function login(page: Page, user: { email: string; password: string }) {
   await page.goto('/login')
   await page.getByLabel('Correo electrónico').fill(user.email)
-  await page.getByLabel('Contraseña').fill(user.password)
+  await page.getByLabel('Contraseña', { exact: true }).fill(user.password)
   await page.getByRole('button', { name: 'Entrar' }).click()
   // Si el usuario pertenece a varias compañías, se elige la predeterminada.
   await page.waitForURL((url) => url.pathname !== '/login')
@@ -272,11 +272,21 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await page.locator('.drawer-scrim').click({ position: { x: 340, y: 400 } })
     await expect(rail).not.toBeInViewport()
 
-    // Tarjetas apiladas: todas en una sola columna (mismo borde izquierdo)
+    // Tarjetas apiladas: cada río (los indicadores y, dentro de su panel con relleno, el del Almacén) en una sola
+    // columna: mismo borde izquierdo dentro de cada río y cada tarjeta debajo de la anterior
     const cards = page.locator('.river > .node')
     await expect(cards.first()).toBeVisible()
-    const lefts = await cards.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)))
-    expect(new Set(lefts).size).toBe(1)
+    const columns = await page.locator('.river').evaluateAll((rivers) =>
+      rivers.map((river) => {
+        const boxes = Array.from(river.querySelectorAll(':scope > .node')).map((el) => el.getBoundingClientRect())
+        return {
+          lefts: new Set(boxes.map((r) => Math.round(r.left))).size,
+          stacked: boxes.every((r, i) => i === 0 || r.top >= boxes[i - 1].bottom - 1),
+        }
+      }),
+    )
+    expect(columns.length).toBeGreaterThan(0)
+    for (const c of columns) expect(c).toEqual({ lefts: 1, stacked: true })
     await expect(page.locator('.pulse-charts > *').first()).toBeVisible()
     await expectNoHorizontalScroll(page)
     await shot(page, 'pulso-movil')
@@ -298,7 +308,7 @@ test.describe('Lote F1 — móvil (360 px)', () => {
 
     // Selección de compañía (si el admin tiene varias membresías) y cabecera con el selector de compañía
     await page.getByLabel('Correo electrónico').fill(ADMIN.email)
-    await page.getByLabel('Contraseña').fill(ADMIN.password)
+    await page.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password)
     await page.getByRole('button', { name: 'Entrar' }).click()
     await page.waitForURL((url) => url.pathname !== '/login')
     if (new URL(page.url()).pathname === '/select-tenant') {

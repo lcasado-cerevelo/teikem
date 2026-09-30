@@ -56,7 +56,7 @@ async function apiToken(request: APIRequestContext): Promise<string> {
 async function login(page: Page) {
   await page.goto('/login')
   await page.getByLabel('Correo electrónico').fill(ADMIN.email)
-  await page.getByLabel('Contraseña').fill(ADMIN.password)
+  await page.getByLabel('Contraseña', { exact: true }).fill(ADMIN.password)
   await page.getByRole('button', { name: 'Entrar' }).click()
   // Si el usuario pertenece a varias compañías, se elige la predeterminada.
   await page.waitForURL((url) => url.pathname !== '/login')
@@ -240,7 +240,8 @@ test.describe('Lote F6 — escritorio', () => {
     const bin = dialog.getByRole('combobox', { name: /^Posición/ })
     await expect(bin).toBeEnabled()
     await bin.click()
-    await dialog.getByRole('option').first().click()
+    // opciones del listbox del BinPicker (llegan del API tras la pausa de 250 ms), no las del <select> Motivo
+    await dialog.getByRole('listbox').getByRole('option').first().click()
     await expect(bin).not.toHaveValue('')
     await dialog.getByLabel(/^Cantidad/).fill('10')
     await dialog.getByLabel(/^Motivo/).selectOption('FOUND')
@@ -402,6 +403,11 @@ test.describe('Lote F6 — escritorio', () => {
     await client.click()
     await client.fill(clientCode)
     await dialog.getByRole('option', { name: new RegExp(clientCode) }).first().click()
+    // tipo de servicio y de paquete explícitos: el valor vacío usa el predeterminado de la compañía, que solo existe si se
+    // configuró (lo hace scripts/smoke.sh; una base recién inicializada no lo trae y el API responde 'El tipo de servicio es
+    // obligatorio.' / 'El tipo de paquete es obligatorio.')
+    await dialog.getByLabel(/^Tipo de servicio/).selectOption('STANDARD')
+    await dialog.getByLabel(/^Tipo de paquete/).selectOption('BOX')
     await dialog.getByLabel(/^Consignatario(?! del)/).selectOption('new')
     await dialog.getByLabel(/^Nombre/).fill(`Consignatario e2e ${STAMP}`)
     await dialog.getByLabel(/^Dirección \(línea 1\)/).fill('Calle Luna 12')
@@ -428,7 +434,9 @@ test.describe('Lote F6 — escritorio', () => {
     // la búsqueda libre cubre número, factura, lote de empaque y consignatario: se busca por la recolección (EMP-#####),
     // que queda como lote de empaque de la orden; se espera a que la lista ya venga filtrada (una sola orden)
     await page.getByRole('searchbox').fill(batchNumber)
-    await expect(page.getByText(/^1 órden/)).toBeVisible()
+    // el conteo va en el pie de la tabla ("1–1 de 1") y la tabla trae el encabezado + una sola fila
+    await expect(page.getByText('1–1 de 1', { exact: true })).toBeVisible()
+    await expect(page.getByRole('table', { name: 'Órdenes' }).getByRole('row')).toHaveCount(2)
     const row = page.getByRole('row').filter({ hasText: CLIENT }).filter({ hasText: orderNumber })
     await expect(row).toHaveCount(1)
     // solo lectura: sin 'Nuevo'
@@ -448,36 +456,59 @@ test.describe('Lote F6 — móvil (360 px)', () => {
   test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
   test('10. Almacenes, Productos e inventario y Kárdex de movimientos sin scroll horizontal y con las tablas como tarjetas', async ({ page, request }) => {
-    await login(page)
-    expect(page.viewportSize()?.width).toBe(360)
-    for (const [path, heading] of [
-      ['/warehouse/warehouses', 'Almacenes'],
-      ['/warehouse/products', 'Productos e inventario'],
-      ['/warehouse/kardex?tab=balances', 'Kárdex de movimientos'],
-    ] as const) {
-      await page.goto(path)
-      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
-      // bajo 720 px DataTable pinta tarjetas (lista), no una tabla
-      const cards = page.locator('ul.dt-cards')
-      await expect(cards.first()).toBeVisible()
-      await expect(page.locator('.dt table.lst')).toHaveCount(0)
-      await expectNoHorizontalScroll(page)
-    }
-    // Saldos → Kárdex (otra tabla paginada con más columnas)
-    await page.getByRole('tab', { name: 'Kárdex' }).click()
-    await expect(page.locator('ul.dt-cards').first()).toBeVisible()
-    await expectNoHorizontalScroll(page)
-
-    // Filtro Producto con un SKU de 60 caracteres sin espacios (el máximo): la píldora se recorta y no desborda
+    // Producto con un SKU de 60 caracteres sin espacios (el máximo) y +1 en ALM-01: así Saldos tiene al menos una fila
+    // aunque la base no tenga existencias (la lista no incluye saldos en cero). Se deshace al final.
     const longSku = `LARGO-${STAMP}-`.padEnd(60, 'X')
-    const token = await apiToken(request)
+    const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+    const whRes = await request.get(`${API_URL}/api/v1/warehouses`, { headers })
+    expect(whRes.ok()).toBeTruthy()
+    const warehousePublicId = ((await whRes.json()) as { code?: string; publicId?: string }[]).find((w) => w.code === 'ALM-01')?.publicId ?? ''
+    expect(warehousePublicId).toBeTruthy()
+    const binRes = await request.get(`${API_URL}/api/v1/warehouses/${warehousePublicId}/bins`, { headers, params: { includeInactive: false, take: 1 } })
+    expect(binRes.ok()).toBeTruthy()
+    const binId = ((await binRes.json()) as { items?: { id?: number }[] }).items?.[0]?.id ?? 0
+    expect(binId).toBeTruthy()
     const created = await request.post(`${API_URL}/api/v1/products`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       data: { sku: longSku, name: `SKU largo e2e ${STAMP}`, trackingType: 'NONE' },
     })
     expect(created.ok()).toBeTruthy()
-    await pickProduct(page, 'Producto', longSku)
-    await expect(page.getByRole('button', { name: `Quitar ${longSku}` })).toBeVisible()
-    await expectNoHorizontalScroll(page)
+    const productPublicId = ((await created.json()) as { product?: { publicId?: string } }).product?.publicId ?? ''
+    const adjust = (quantity: number, reason: string) =>
+      request.post(`${API_URL}/api/v1/inventory/adjustments`, {
+        headers,
+        data: { productPublicId, warehousePublicId, binId, quantity, reason, notes: `Recorrido e2e F6 móvil ${STAMP}` },
+      })
+    expect((await adjust(1, 'FOUND')).ok()).toBeTruthy()
+
+    try {
+      await login(page)
+      expect(page.viewportSize()?.width).toBe(360)
+      for (const [path, heading] of [
+        ['/warehouse/warehouses', 'Almacenes'],
+        ['/warehouse/products', 'Productos e inventario'],
+        ['/warehouse/kardex?tab=balances', 'Kárdex de movimientos'],
+      ] as const) {
+        await page.goto(path)
+        await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
+        // bajo 720 px DataTable pinta tarjetas (lista), no una tabla
+        const cards = page.locator('ul.dt-cards')
+        await expect(cards.first()).toBeVisible()
+        await expect(page.locator('.dt table.lst')).toHaveCount(0)
+        await expectNoHorizontalScroll(page)
+      }
+      // Saldos → Kárdex (otra tabla paginada con más columnas)
+      await page.getByRole('tab', { name: 'Kárdex' }).click()
+      await expect(page.locator('ul.dt-cards').first()).toBeVisible()
+      await expectNoHorizontalScroll(page)
+
+      // Filtro Producto con el SKU de 60 caracteres: la píldora se recorta y no desborda
+      await pickProduct(page, 'Producto', longSku)
+      await expect(page.getByRole('button', { name: `Quitar ${longSku}` })).toBeVisible()
+      await expectNoHorizontalScroll(page)
+    } finally {
+      await adjust(-1, 'LOSS')
+      await request.post(`${API_URL}/api/v1/products/${productPublicId}/deactivate`, { headers })
+    }
   })
 })

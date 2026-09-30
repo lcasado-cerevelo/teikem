@@ -74,7 +74,7 @@ un catálogo. Las reglas y los mensajes del servidor están en el
 
 ### Lista de almacenes
 
-> **Captura pendiente:** lista de almacenes con la tabla a la izquierda y el panel "Zonas de este almacén" a la derecha.
+![Almacenes: tabla a la izquierda y panel "Zonas de este almacén" a la derecha](img/f6-almacenes.png)
 
 Debajo del título ("Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones") hay dos
 zonas: la **tabla** y, a su derecha (420 px; bajo 720 px de ancho queda debajo de la tabla), el **panel del almacén
@@ -125,7 +125,7 @@ Al guardar aparece "Almacén creado.".
 Encabezado con código, nombre y ciudad, la barra de estatus (Activo → Inactivo, con **Avanzar a Inactivo**, definitivo)
 y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Muelles**.
 
-> **Captura pendiente:** ficha del almacén, pestaña Datos con el combobox de ciudad.
+![Ficha del almacén, pestaña Datos](img/f6-almacen-ficha.png)
 
 **Datos.** Código (solo lectura: "El código del almacén no se puede cambiar."), Nombre, Dirección, **Ciudad o código
 postal** (el mismo combobox de la alta; muestra `Ciudad · ZIP` con lo guardado, aunque el almacén se haya creado antes
@@ -134,7 +134,7 @@ del catálogo), y Estado y País de solo lectura. **Guardar** solo se activa si 
 
 **Zonas.**
 
-> **Captura pendiente:** pestaña Zonas con filtros, columnas Ocupadas y Estatus, e íconos de acción.
+![Pestaña Zonas: filtros, columnas Ocupadas y Estatus, baja con ícono](img/f6-almacen-zonas.png)
 
 - Filtros: **Código**, **Nombre**, **Tipo** (selección múltiple con buscador; filtran en la pantalla) e **Incluir
   inactivas**.
@@ -152,7 +152,7 @@ Avisos: "Zona creada." / "Cambios guardados.".
 
 **Posiciones.**
 
-> **Captura pendiente:** pestaña Posiciones con filtros, columnas Cupo y Ocupación, y el pie con "Filas por página".
+![Pestaña Posiciones: filtros, columnas Cupo y Ocupación](img/f6-almacen-posiciones.png)
 
 - Esta pestaña **pagina en el servidor** (25 por defecto): añadir, editar o dar de baja una posición ya no espera a
   cargar todo el almacén. Abrir o cerrar un formulario no vuelve a consultar.
