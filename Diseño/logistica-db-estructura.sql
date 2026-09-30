@@ -724,9 +724,21 @@ CREATE TABLE dbo.ChartDefinition (
     CreatedBy       INT NULL REFERENCES dbo.AspNetUsers(Id),
     UpdatedAtUtc    DATETIME2 NULL, UpdatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),
     RowVersion      ROWVERSION,
+    SeedKey         NVARCHAR(40) NULL,                                        -- Lote 15: clave de siembra (ChartSeedKeys)
     CONSTRAINT UQ_ChartDefinition UNIQUE (TenantId, Name)
 );
 CREATE INDEX IX_ChartDefinition_Tenant ON dbo.ChartDefinition(TenantId) WHERE IsActive = 1;
+GO
+
+-- Lote 15 (D9, D14): SeedKey identifica los gráficos de la compañía que siembra la plataforma (INVENTORY_VALUE,
+-- MOVEMENTS_BY_TYPE) sin depender del nombre, y deja constancia de la siembra: la fila sigue aunque se borre (IsActive = 0),
+-- así que un gráfico renombrado o borrado no vuelve a crearse. Única por compañía cuando no es NULL. Guardado (COL_LENGTH /
+-- sys.indexes) para una base ya creada; el índice en su propio lote (la columna ya existe al compilarlo).
+IF COL_LENGTH('dbo.ChartDefinition', 'SeedKey') IS NULL
+    ALTER TABLE dbo.ChartDefinition ADD SeedKey NVARCHAR(40) NULL;
+GO
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ_ChartDefinition_SeedKey' AND object_id = OBJECT_ID('dbo.ChartDefinition'))
+    CREATE UNIQUE INDEX UQ_ChartDefinition_SeedKey ON dbo.ChartDefinition(TenantId, SeedKey) WHERE SeedKey IS NOT NULL;
 GO
 CREATE TABLE dbo.ChartShare (
     ChartShareId INT IDENTITY(1,1) PRIMARY KEY,

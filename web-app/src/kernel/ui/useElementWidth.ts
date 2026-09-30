@@ -22,3 +22,30 @@ export function useElementWidth(ref: RefObject<Element | null>): number {
 
   return width
 }
+
+/**
+ * Lote 15 — alto en px (entero, `getBoundingClientRect().height`) de `element`, al día con `ResizeObserver`; 0 sin elemento o
+ * sin medir (jsdom). Recibe el ELEMENTO (callback ref guardada en un estado), no una ref: así sirve para uno que se monta
+ * después o que cambia (p. ej. la franja fija del Pulso, que solo existe cuando es la primera sección). Para el
+ * desplazamiento de filas fijas: `const [el, setEl] = useState<HTMLDivElement | null>(null); const h = useElementHeight(el)`
+ * → `<div ref={setEl}>…</div>` y `style={{ '--alto': `${h}px` }}`.
+ */
+export function useElementHeight(element: Element | null): number {
+  // el alto medido va con SU elemento: otro elemento (o ninguno) no hereda el alto anterior
+  const [measured, setMeasured] = useState<{ element: Element; height: number } | null>(null)
+
+  useLayoutEffect(() => {
+    if (!element) return
+    const measure = () => {
+      const height = Math.round(element.getBoundingClientRect().height)
+      setMeasured((prev) => (prev?.element === element && prev.height === height ? prev : { element, height }))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(element)
+    return () => ro.disconnect()
+  }, [element])
+
+  return element && measured?.element === element ? measured.height : 0
+}

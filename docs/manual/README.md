@@ -73,6 +73,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    permisos `pulse.*` por panel, registro de paneles, qué indicadores y gráficos ve cada usuario (fuente legible y
    módulo encendido) y orden/ocultos en dos niveles (compañía y usuario). Lote 14 (sección 4): el panel **Necesita tu atención**
    (`pulse.attention`, los 5 descuadres más antiguos, "Todo en orden") y la cifra de **Conteos abiertos** con el total real.
+   Lote 15 (sección 5): la franja **Almacén hoy** (recibido, salida y conteos con diferencia de hoy y de los últimos 7 días en hora de Puerto
+   Rico, bajo mínimo de ahora; `GET /inventory/pulse/days`, panel `WAREHOUSE_DAY`), las **filas fijas**, los indicadores en una **fila por módulo**,
+   los gráficos **siempre dibujados** (con "Otras" pasado el 8.º grupo), los **2 gráficos de almacén de la compañía** (editables por
+   `analytics.manage`, no vuelven si se borran), el indicador "Descuadres pendientes" y los **días de Puerto Rico** en todos los rangos.
 8. [8A — Backend de la app de almacén](08-aparatos-y-sincronizacion.md): idempotencia de escrituras
    (`Idempotency-Key`), aparatos de confianza (alta con código de registro, enroll y heartbeat anónimos,
    desactivar/reactivar), PIN por usuario y login por aparato (bloqueo por intentos), sincronización por
@@ -123,7 +127,8 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
    y enlaces a la ficha de cada evento). Lote 14: panel **Necesita tu atención** (descuadres pendientes, Revisar, Ver todos, "Todo en
-   orden") y **Conteos abiertos** con el total real.
+   orden") y **Conteos abiertos** con el total real. Lote 15: la franja **Almacén hoy** (tarjetas, barritas, tooltip, clic al detalle, almacén
+   compartido), las **filas fijas**, indicadores por módulo, gráficos siempre dibujados y gráficos "De la compañía". Capturas `l15-*`.
 4. [F8a — Menú completo, marca, Pulso por paneles, Sistema y Análisis](frontend/f8a-menu-sistema-analisis-y-marca.md):
    los 7 grupos del menú de la maqueta y la pantalla "pendiente", la marca Teikem, paleta de comandos, Pulso del día
    organizado en dos niveles ("Organizar mi Pulso" / "Organizar el de la compañía"), Indicadores y Gráficos, Roles y
@@ -145,4 +150,7 @@ del movimiento), de los descuadres (acción, nota, ya cerrado, total del product
 simultánea), de "Conteo de lo cambiado" (31 días, sin movimientos, conteos pendientes, más de 200 posiciones), de los estatus del conteo y del
 permiso `pulse.attention`; los mensajes que solo se ven en pantalla (ajuste Subir/Bajar, escáner del conteo, botón Confirmar apagado,
 revisión automática); y las preguntas sobre qué es un descuadre y por qué un ajuste no lo arregla, qué cuenta "lo cambiado", por qué un
-conteo dice Diferencia, dónde quedó "Ajustes de inventario" y por qué no se ve "Necesita tu atención".
+conteo dice Diferencia, dónde quedó "Ajustes de inventario" y por qué no se ve "Necesita tu atención". La sección "Lote 15" recoge el mensaje nuevo (`Los días deben estar entre 1 y 14.`), los que solo se ven en pantalla
+(confirmación de borrar un gráfico de la compañía, gráficos sin datos, "…" y "—") y las preguntas sobre por qué el Kárdex suma distinto que las
+tarjetas de la franja, por qué aparece "Otras", por qué un indicador de "últimos 7 días" dio distinto (días de Puerto Rico), cómo quitar la
+franja fija, si vuelve un gráfico de la compañía borrado, por qué la salida de un día sale negativa y por qué no se ve la franja.

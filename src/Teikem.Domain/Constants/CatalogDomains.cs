@@ -381,6 +381,18 @@ public static class ChartTypes
     public const string Donut = "DONUT";
 }
 
+/// <summary>
+/// Lote 15 (D9, D14): claves de siembra (ChartDefinition.SeedKey) de los gráficos de la compañía que trae la plataforma. No son
+/// de sistema: son de la compañía, sin dueño, y los edita o borra quien tenga analytics.manage; si se borran no vuelven.
+/// </summary>
+public static class ChartSeedKeys
+{
+    /// <summary>"Valor de inventario por categoría" (dona con el total; 7 categorías mayores + "Otras").</summary>
+    public const string InventoryValue = "INVENTORY_VALUE";
+    /// <summary>"Movimientos de inventario por tipo" (barras en unidades positivas; últimos 7 días, rango editable).</summary>
+    public const string MovementsByType = "MOVEMENTS_BY_TYPE";
+}
+
 public static class AggregateFns
 {
     public const string Count = "COUNT";

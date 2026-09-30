@@ -8,6 +8,7 @@ import { ActivityPanel } from './ActivityPanel'
 import { AttentionPanel } from './AttentionPanel'
 import { ChartsGrid, IndicatorsRiver } from './PulseSections'
 import type { ChartDatum, Indicator, PulseDto, PulsePanelKey } from './pulseLayout'
+import { WarehouseDayBand } from './WarehouseDayBand'
 import { WarehousePulsePanel } from './WarehousePulsePanel'
 
 /** Lo que recibe el `render` de cada panel: el Pulso completo y los elementos visibles ya ordenados. */
@@ -27,6 +28,11 @@ export interface PulsePanelEntry {
   items?: 'indicators' | 'charts'
   /** true si con este contexto el panel tiene algo que mostrar (los de F7A siempre; los de elementos, si hay alguno). */
   hasContent: (ctx: PulsePanelContext) => boolean
+  /**
+   * Lote 15 (D6): franja de números que puede quedar FIJA al desplazarse. Solo se fija si es la primera sección pintada
+   * (justo debajo de la fecha) y no se está organizando; nunca un panel alto (Actividad reciente, gráficos).
+   */
+  pinnable?: boolean
 }
 
 const always = () => true
@@ -66,4 +72,19 @@ export const PULSE_PANELS: Record<PulsePanelKey, PulsePanelEntry> = {
     hasContent: always,
     render: () => <AttentionPanel />,
   },
+  // Lote 15 (P4, D1–D6): franja "Almacén hoy" (pulse.warehouse + inventory.view + WMS_LOTSERIAL; orden −10 del dominio, la
+  // fila siguiente a la fecha). Siempre se pinta (sin movimiento, ceros y barritas vacías) y es fijable.
+  WAREHOUSE_DAY: {
+    key: 'WAREHOUSE_DAY',
+    titleKey: 'analytics.pulse.panels.WAREHOUSE_DAY',
+    hasContent: always,
+    pinnable: true,
+    render: () => <WarehouseDayBand />,
+  },
+}
+
+/** Clave del panel que queda fijo bajo la fecha (D6): la primera sección pintada si es fijable y no se organiza; si no, null. */
+export function pinnedPanelKey(sections: readonly { key: PulsePanelKey }[], organizing: boolean): PulsePanelKey | null {
+  const first = sections[0]
+  return !organizing && first && PULSE_PANELS[first.key].pinnable ? first.key : null
 }

@@ -24,9 +24,22 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
 public sealed class InventoryController(InventoryReadService reads, InventoryAdjustmentService adjustments, TraceabilityService trace,
-    InventoryReconciliationService reconciliation)
+    InventoryReconciliationService reconciliation, WarehousePulseService pulse)
     : ControllerBase
 {
+    /// <summary>
+    /// Lote 15 — franja "Almacén hoy" del Pulso del día: los últimos <c>days</c> días LOCALES de la compañía incluido hoy (hora de
+    /// Puerto Rico; por defecto 7, D1) con, por día, unidades recibidas (recepción + diferencias de recepción), unidades de salida
+    /// (recolección + cruce de muelle − recolecciones eliminadas ese día) y conteos cerrados en Diferencia; los números de hoy y
+    /// los totales; "Productos bajo mínimo" en este momento (el mismo cálculo de GET /products?belowMin=true) y el tono naranja
+    /// (D3). warehousePublicIds vacío = todos; uno desconocido da cifras en cero. days fuera de 1–14 → 400
+    /// 'Los días deben estar entre 1 y 14.'. Son datos del Kárdex: inventory.view (el panel del Pulso pide además pulse.warehouse).
+    /// </summary>
+    [HttpGet("pulse/days"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<WarehousePulseDaysDto> PulseDays([FromQuery] Guid[]? warehousePublicIds, CancellationToken ct,
+        [FromQuery] int days = Teikem.Domain.Wms.WarehousePulseRules.DefaultDays)
+        => pulse.DaysAsync(new WarehousePulseQuery(NullIfEmpty(warehousePublicIds), days), ct);
+
     /// <summary>
     /// Saldos paginados (take ≤ 200) con filtros múltiples: almacenes, posiciones, productos, categorías (con sus
     /// subcategorías), número de lote, includeZero (también saldos en cero), onlyAvailable (disponible &gt; 0) y buscador

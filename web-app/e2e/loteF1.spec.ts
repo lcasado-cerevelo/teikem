@@ -273,10 +273,11 @@ test.describe('Lote F1 — móvil (360 px)', () => {
     await expect(rail).not.toBeInViewport()
 
     // Tarjetas apiladas: cada río (los indicadores y, dentro de su panel con relleno, el del Almacén) en una sola
-    // columna: mismo borde izquierdo dentro de cada río y cada tarjeta debajo de la anterior
-    const cards = page.locator('.river > .node')
+    // columna: mismo borde izquierdo dentro de cada río y cada tarjeta debajo de la anterior. Excepción del Lote 15 (D7): la
+    // franja "Almacén hoy" (.wh-river) va compacta 2×2 en celular.
+    const cards = page.locator('.river:not(.wh-river) > .node')
     await expect(cards.first()).toBeVisible()
-    const columns = await page.locator('.river').evaluateAll((rivers) =>
+    const columns = await page.locator('.river:not(.wh-river)').evaluateAll((rivers) =>
       rivers.map((river) => {
         const boxes = Array.from(river.querySelectorAll(':scope > .node')).map((el) => el.getBoundingClientRect())
         return {

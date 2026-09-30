@@ -49,7 +49,7 @@ public sealed class FleetDocumentDataSource(TeikemDbContext db, ILookupCache loo
     {
         if (q.Ids is not null) return new List<DataRow>();
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = ClientDataSourceHelpers.Today();   // Lote 15: día local de la compañía
         var rows = await db.LoadFleetDocumentsAsync(today, new FleetDocumentScope(IncludeVehicles: true, IncludeDrivers: true, OnlyActiveOwners: true), ct);
 
         var selected = rows

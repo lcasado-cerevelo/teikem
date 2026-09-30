@@ -2,17 +2,22 @@
 // configuración que se está editando, sin guardar). No hay un endpoint de vista previa de gráficos: se usa el de la
 // vista previa del constructor de vistas (`POST /api/v1/analytics/reports/{fuente}/preview`, `analytics.view`), que
 // corre el mismo motor (`AnalyticsEngine`) con filtro, agrupación y agregado ad hoc, y aquí se replica lo que
-// `AnalyticsEngine.EvaluateChartAsync` hace encima (orden, top 8 / últimos 30, agrupación por día):
-// - Agrupar por un campo que NO es fecha: el servidor agrupa y agrega (`groupJson`), y ordena y recorta con `sortJson`
-//   + `take` (barra/dona: mayor valor primero, 8; línea: los 30 últimos por el valor del campo). Exacto.
-// - Agrupar por el campo de fecha (tipo Date de la fuente): el motor de gráficos agrupa por DÍA y el de vistas por el
-//   valor exacto (marca de tiempo), así que se piden las filas sin agrupar (hasta 5 000) y se agrupan y agregan aquí.
-//   Si la fuente trae más filas, la vista previa se calcula con las primeras 5 000 (`truncated`).
+// `AnalyticsEngine.EvaluateChartAsync` hace encima (orden, top 8 con "Otras" / últimos 30, agrupación por día local):
+// - Agrupar por un campo que NO es fecha: el servidor agrupa y agrega (`groupJson`) y ordena con `sortJson` (barra/dona:
+//   mayor valor primero; línea: los 30 últimos por el valor del campo). Barra/dona con SUM o COUNT piden TODOS los grupos
+//   (hasta 5 000) para juntar el resto en "Otras" aquí; con AVG/MIN/MAX, los 8 mayores (`take`). Exacto.
+// - Agrupar por el campo de fecha (tipo Date de la fuente): el motor de gráficos agrupa por DÍA LOCAL de la compañía
+//   (Lote 15: hora de Puerto Rico, `localDayOf`) y el de vistas por el valor exacto (marca de tiempo), así que se piden
+//   las filas sin agrupar (hasta 5 000) y se agrupan y agregan aquí. Si la fuente trae más filas, la vista previa se
+//   calcula con las primeras 5 000 (`truncated`).
+// - "Otras" (Lote 15, D11, `AnalyticsEngine.FoldOthers`): en barra, dona o pastel con SUM o COUNT, con más de 8 grupos se
+//   muestran los 7 mayores y "Otras" (clave `$others`) con la suma exacta del resto.
 // - Rango de fecha: los modos relativos van en `?dateRangeMode=`; el endpoint no recibe Desde/Hasta, así que un rango
 //   CUSTOM se manda como `ALL` más dos condiciones en el filtro sobre el campo de fecha (`gte` Desde, `lt` Hasta + 1
 //   día: el mismo límite exclusivo que `DateRangeResolver`). Sin modo elegido se usa LAST7 (el que aplica el servidor).
 // Sin React: se prueba sola.
 import type { components } from '../../kernel/api/schema'
+import { localDayOf } from '../../kernel/api/tenantZone'
 import type { ChartVisualPoint } from './ChartVisual'
 import type { DataSource } from './definitions'
 
@@ -25,6 +30,8 @@ export const PREVIEW_RAW_TAKE = 5000
 export const PREVIEW_TOP_N = 8
 /** Línea: los últimos N puntos en orden. */
 export const PREVIEW_LINE_POINTS = 30
+/** Clave del punto "Otras" (`AnalyticsEngine.OthersKey`). */
+export const OTHERS_KEY = '$others'
 
 export interface ChartPreviewInput {
   source: DataSource | null | undefined
@@ -51,6 +58,8 @@ export interface ChartPreviewRequest {
   field: string | null
   /** Clave de la columna agregada en las filas agrupadas (`AnalyticsEngine.AggKey`). */
   aggKey: string
+  /** true = barra/dona con SUM o COUNT: se junta el resto en "Otras" (se piden todos los grupos). */
+  foldOthers: boolean
 }
 
 /** Día siguiente a 'YYYY-MM-DD' (límite exclusivo del rango CUSTOM). */
@@ -111,7 +120,8 @@ export function planChartPreview(input: ChartPreviewInput): ChartPreviewRequest 
   const line = (input.chartType || '').toUpperCase() === 'LINE'
   const byDay = isDateField(source, input.groupByField)
   const aggKey = previewAggKey(fn, field)
-  const base = { baseEntityType: source.key, byDay, line, groupByField: input.groupByField, aggregateFn: fn, field, aggKey }
+  const foldOthers = !line && (fn === 'SUM' || fn === 'COUNT')
+  const base = { baseEntityType: source.key, byDay, line, groupByField: input.groupByField, aggregateFn: fn, field, aggKey, foldOthers }
 
   if (byDay) {
     return {
@@ -122,7 +132,7 @@ export function planChartPreview(input: ChartPreviewInput): ChartPreviewRequest 
   }
   return {
     ...base,
-    query: { dateRangeMode, take: line ? PREVIEW_LINE_POINTS : PREVIEW_TOP_N },
+    query: { dateRangeMode, take: line ? PREVIEW_LINE_POINTS : foldOthers ? PREVIEW_RAW_TAKE : PREVIEW_TOP_N },
     body: {
       columns: [input.groupByField],
       filterJson,
@@ -177,11 +187,15 @@ export function aggregateValues(rows: readonly Record<string, unknown>[], fn: st
   }
 }
 
-/** Día 'YYYY-MM-DD' de un valor de fecha del API (sin zona = UTC, como el motor), o null. */
-function dayOf(v: unknown): string | null {
-  if (typeof v !== 'string') return null
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(v)
-  return m ? m[1] : null
+/**
+ * `AnalyticsEngine.FoldOthers`: de mayor a menor (orden estable); con más de `topN` puntos, los `topN − 1` mayores y al final
+ * "Otras" (`OTHERS_KEY`) con la suma del resto; con `topN` o menos, sin cambios.
+ */
+export function foldOthers(points: readonly { label: string; value: number }[], topN: number, othersLabel: string): ChartVisualPoint[] {
+  const ordered = [...points].sort((a, b) => b.value - a.value).map(({ label, value }) => ({ label, value }))
+  if (topN < 2 || ordered.length <= topN) return ordered.slice(0, Math.max(topN, 0))
+  const rest = ordered.slice(topN - 1).reduce((sum, p) => sum + p.value, 0)
+  return [...ordered.slice(0, topN - 1), { label: othersLabel, key: OTHERS_KEY, value: rest }]
 }
 
 export interface ChartPreviewResult {
@@ -190,19 +204,26 @@ export interface ChartPreviewResult {
   truncated: boolean
 }
 
-/** Puntos del gráfico a partir de la respuesta de la vista previa, con el mismo orden y recorte que el motor. */
-export function chartPreviewPoints(result: ReportRunResultDto | null | undefined, req: ChartPreviewRequest): ChartPreviewResult {
+/**
+ * Puntos del gráfico a partir de la respuesta de la vista previa, con el mismo orden y recorte que el motor.
+ * `othersLabel`: etiqueta del grupo "Otras" en el idioma de la interfaz (el motor usa la del idioma del usuario).
+ */
+export function chartPreviewPoints(result: ReportRunResultDto | null | undefined, req: ChartPreviewRequest, othersLabel = 'Otras'): ChartPreviewResult {
   const rows = (result?.rows ?? []) as Record<string, unknown>[]
+  const total = result?.total ?? rows.length
+  const truncated = total > rows.length
   if (!req.byDay) {
     const points = rows.map((r) => ({ label: groupLabel(cell(r, req.groupByField)), value: toNumber(cell(r, req.aggKey)) ?? 0 }))
     // Línea: el servidor devolvió los 30 últimos de mayor a menor; se ponen en orden cronológico/ascendente.
-    return { points: req.line ? points.reverse() : points, truncated: false }
+    if (req.line) return { points: points.reverse(), truncated: false }
+    if (!req.foldOthers) return { points, truncated: false }
+    return { points: foldOthers(points, PREVIEW_TOP_N, othersLabel), truncated }
   }
 
-  // Agrupar por día en el cliente (orden de aparición, como `GroupBy` de LINQ).
+  // Agrupar por día LOCAL en el cliente (orden de aparición, como `GroupBy` de LINQ; `GroupKey` del motor).
   const groups = new Map<string, { day: string | null; rows: Record<string, unknown>[] }>()
   for (const r of rows) {
-    const day = dayOf(cell(r, req.groupByField))
+    const day = localDayOf(cell(r, req.groupByField))
     const key = day ?? '—'
     const g = groups.get(key)
     if (g) g.rows.push(r)
@@ -213,9 +234,10 @@ export function chartPreviewPoints(result: ReportRunResultDto | null | undefined
     // Sin fecha primero (el comparador del motor pone null antes), luego por día; los últimos 30.
     points = points.sort((a, b) => (a.day == null ? (b.day == null ? 0 : -1) : b.day == null ? 1 : a.day < b.day ? -1 : a.day > b.day ? 1 : 0))
     points = points.slice(Math.max(0, points.length - PREVIEW_LINE_POINTS))
+  } else if (req.foldOthers) {
+    return { points: foldOthers(points, PREVIEW_TOP_N, othersLabel), truncated }
   } else {
     points = points.sort((a, b) => b.value - a.value).slice(0, PREVIEW_TOP_N)
   }
-  const total = result?.total ?? rows.length
-  return { points: points.map(({ label, value }) => ({ label, value })), truncated: total > rows.length }
+  return { points: points.map(({ label, value }) => ({ label, value })), truncated }
 }

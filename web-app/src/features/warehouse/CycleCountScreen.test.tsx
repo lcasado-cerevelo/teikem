@@ -240,6 +240,16 @@ describe('Conteo cíclico en dos paneles', () => {
     expect(within(panel).queryByRole('textbox', { name: /Contado de la línea/ })).toBeNull()
   })
 
+  it('Lote 15: ?status=RECONCILED_VARIANCE&warehousePublicIds= (franja "Almacén hoy") abre filtrado por Diferencia y almacén', async () => {
+    wrap(COUNTER, `/warehouse/cycle-counts?status=RECONCILED_VARIANCE&warehousePublicIds=${WH}`)
+    await waitFor(() => expect(calls('GET', '/api/v1/cycle-counts/page').length).toBeGreaterThan(0))
+    const first = calls('GET', '/api/v1/cycle-counts/page')[0].url.searchParams
+    expect(first.getAll('status')).toEqual(['RECONCILED_VARIANCE'])
+    expect(first.getAll('warehousePublicIds')).toEqual([WH])
+    // la barra de filtros muestra lo elegido
+    expect(await screen.findByRole('button', { name: /^Estatus/ })).toHaveTextContent('Diferencia')
+  })
+
   it('captura en la fila: Enter guarda (PUT /lines con el rowVersion) y pasa a la línea siguiente; un texto que no es número se avisa sin guardar', async () => {
     const user = userEvent.setup()
     wrap(COUNTER)

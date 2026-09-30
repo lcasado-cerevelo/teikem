@@ -1,7 +1,7 @@
 // Fase 10b — vista previa del editor de gráficos: petición al endpoint de vista previa de vistas y réplica de
-// `AnalyticsEngine.EvaluateChartAsync` (top 8 / últimos 30, agrupación por día, rango personalizado como filtro).
+// `AnalyticsEngine.EvaluateChartAsync` (top 8 con "Otras" / últimos 30, agrupación por día local, rango personalizado como filtro).
 import { describe, expect, it } from 'vitest'
-import { aggregateValues, chartPreviewPoints, nextDay, planChartPreview, withDateBounds, type ChartPreviewInput } from './chartPreview'
+import { aggregateValues, chartPreviewPoints, foldOthers, nextDay, OTHERS_KEY, planChartPreview, withDateBounds, type ChartPreviewInput } from './chartPreview'
 import type { DataSource } from './definitions'
 
 const SOURCE: DataSource = {
@@ -39,15 +39,24 @@ describe('planChartPreview', () => {
     expect(planChartPreview(input({ dateRangeMode: 'CUSTOM', dateFrom: '2026-09-10', dateTo: '2026-09-01' }))).toBeNull()
   })
 
-  it('barra sobre un campo de texto: agrupa en el servidor, ordena por el agregado y trae 8', () => {
+  it('barra sobre un campo de texto con SUM: agrupa en el servidor, ordena por el agregado y trae TODOS los grupos (para "Otras")', () => {
     const req = planChartPreview(input({ aggregateFn: 'SUM', field: 'CodAmount' }))
     expect(req).not.toBeNull()
     expect(req?.baseEntityType).toBe('TRANSPORT_ORDER')
     expect(req?.byDay).toBe(false)
-    expect(req?.query).toEqual({ dateRangeMode: 'LAST30', take: 8 })
+    expect(req?.foldOthers).toBe(true)
+    expect(req?.query).toEqual({ dateRangeMode: 'LAST30', take: 5000 })
     expect(JSON.parse(req?.body.groupJson ?? '')).toEqual({ by: ['Status'], aggregates: [{ fn: 'SUM', field: 'CodAmount' }] })
     expect(JSON.parse(req?.body.sortJson ?? '')).toEqual([{ field: 'sum_CodAmount', dir: 'desc' }])
     expect(req?.body.columns).toEqual(['Status'])
+  })
+
+  it('con AVG/MIN/MAX no hay "Otras": los 8 mayores (take 8); en línea tampoco', () => {
+    const avg = planChartPreview(input({ aggregateFn: 'AVG', field: 'CodAmount', chartType: 'DONUT' }))
+    expect(avg?.foldOthers).toBe(false)
+    expect(avg?.query.take).toBe(8)
+    expect(planChartPreview(input({ chartType: 'LINE' }))?.foldOthers).toBe(false)
+    expect(planChartPreview(input({ chartType: 'DONUT' }))?.foldOthers).toBe(true)
   })
 
   it('COUNT no manda campo (clave count_rows); sin modo elegido usa LAST7', () => {
@@ -137,31 +146,86 @@ describe('chartPreviewPoints', () => {
     expect(res.points.map((p) => p.label)).toEqual(['A', 'B', 'C'])
   })
 
-  it('por día: agrupa por fecha UTC, agrega, ordena de mayor a menor y avisa si se truncó', () => {
-    const req = planChartPreview(input({ groupByField: 'CreatedAt', aggregateFn: 'SUM', field: 'CodAmount' }))!
+  it('por día LOCAL de Puerto Rico (Lote 15): agrupa, agrega, ordena de mayor a menor y avisa si se truncó', () => {
+    const req = planChartPreview(input({ groupByField: 'CreatedAt', aggregateFn: 'AVG', field: 'CodAmount' }))!
     const rows = [
+      // instantes UTC sin zona (como el API): 08:00Z y 23:30Z del 1 son el 1 en PR; 01:00Z del 2 es el 1 a las 21:00 en PR
       { CreatedAt: '2026-09-01T08:00:00', CodAmount: 10 },
       { CreatedAt: '2026-09-01T23:30:00', CodAmount: 5 },
-      { CreatedAt: '2026-09-02T01:00:00', CodAmount: 40 },
+      { CreatedAt: '2026-09-02T01:00:00', CodAmount: 45 },
+      // 04:00Z del 2 ya es el 2 en PR
+      { CreatedAt: '2026-09-02T04:00:00Z', CodAmount: 40 },
       { CreatedAt: null, CodAmount: 1 },
     ]
     const res = chartPreviewPoints({ rows, total: 9000 }, req)
     expect(res.points).toEqual([
       { label: '2026-09-02', value: 40 },
-      { label: '2026-09-01', value: 15 },
+      { label: '2026-09-01', value: 20 },
       { label: '—', value: 1 },
     ])
     expect(res.truncated).toBe(true)
   })
 
-  it('por día en línea: sin fecha primero, luego cronológico', () => {
+  it('por día: un día de calendario (DateOnly del API, "2026-09-30") se agrupa tal cual, sin correrlo', () => {
     const req = planChartPreview(input({ groupByField: 'CreatedAt', chartType: 'LINE' }))!
-    const rows = [{ CreatedAt: '2026-09-03T00:00:00' }, { CreatedAt: '2026-09-01T00:00:00' }, { CreatedAt: null }, { CreatedAt: '2026-09-01T10:00:00' }]
-    const res = chartPreviewPoints({ rows, total: 4 }, req)
+    const res = chartPreviewPoints({ rows: [{ CreatedAt: '2026-09-30' }, { CreatedAt: '2026-09-30' }, { CreatedAt: '2026-09-29' }], total: 3 }, req)
+    expect(res.points).toEqual([
+      { label: '2026-09-29', value: 1 },
+      { label: '2026-09-30', value: 2 },
+    ])
+  })
+
+  it('por día en línea: sin fecha primero, luego cronológico (días locales)', () => {
+    const req = planChartPreview(input({ groupByField: 'CreatedAt', chartType: 'LINE' }))!
+    const rows = [{ CreatedAt: '2026-09-03T04:00:00' }, { CreatedAt: '2026-09-01T04:00:00' }, { CreatedAt: null }, { CreatedAt: '2026-09-01T10:00:00' }, { CreatedAt: '2026-09-01T03:59:00' }]
+    const res = chartPreviewPoints({ rows, total: 5 }, req)
     expect(res.points).toEqual([
       { label: '—', value: 1 },
+      { label: '2026-08-31', value: 1 },
       { label: '2026-09-01', value: 2 },
       { label: '2026-09-03', value: 1 },
     ])
+  })
+
+  it('"Otras" (D11): con más de 8 grupos, los 7 mayores y "Otras" con la suma exacta del resto (agrupado en el servidor)', () => {
+    const req = planChartPreview(input({ aggregateFn: 'SUM', field: 'CodAmount', chartType: 'DONUT' }))!
+    // el servidor devuelve TODOS los grupos, de mayor a menor
+    const rows = [90, 80, 70, 60, 50, 40, 30, 20, 10, 5].map((v, i) => ({ Status: `S${i + 1}`, sum_CodAmount: v }))
+    const res = chartPreviewPoints({ rows, total: 10 }, req, 'Others')
+    expect(res.points).toEqual([
+      { label: 'S1', value: 90 },
+      { label: 'S2', value: 80 },
+      { label: 'S3', value: 70 },
+      { label: 'S4', value: 60 },
+      { label: 'S5', value: 50 },
+      { label: 'S6', value: 40 },
+      { label: 'S7', value: 30 },
+      { label: 'Others', key: OTHERS_KEY, value: 35 },
+    ])
+    // la suma de los puntos es el total
+    expect(res.points.reduce((s, p) => s + (p.value ?? 0), 0)).toBe(455)
+    expect(res.truncated).toBe(false)
+  })
+
+  it('"Otras": con 8 grupos o menos, sin cambios; por día también se junta; etiqueta por defecto "Otras"', () => {
+    const req = planChartPreview(input({ aggregateFn: 'COUNT' }))!
+    const eight = Array.from({ length: 8 }, (_, i) => ({ Status: `S${i}`, count_rows: 8 - i }))
+    expect(chartPreviewPoints({ rows: eight, total: 8 }, req).points).toHaveLength(8)
+    const byDay = planChartPreview(input({ groupByField: 'CreatedAt', aggregateFn: 'COUNT' }))!
+    const rows = Array.from({ length: 9 }, (_, i) => ({ CreatedAt: `2026-09-0${i + 1}T12:00:00` }))
+    const res = chartPreviewPoints({ rows, total: 9 }, byDay)
+    expect(res.points).toHaveLength(8)
+    expect(res.points[7]).toEqual({ label: 'Otras', key: OTHERS_KEY, value: 2 })
+  })
+
+  it('foldOthers replica FoldOthers del motor', () => {
+    expect(foldOthers([{ label: 'a', value: 1 }, { label: 'b', value: 3 }], 8, 'Otras')).toEqual([
+      { label: 'b', value: 3 },
+      { label: 'a', value: 1 },
+    ])
+    const nine = Array.from({ length: 9 }, (_, i) => ({ label: `L${i}`, value: i + 1 }))
+    const folded = foldOthers(nine, 8, 'Otras')
+    expect(folded.map((p) => p.label)).toEqual(['L8', 'L7', 'L6', 'L5', 'L4', 'L3', 'L2', 'Otras'])
+    expect(folded[7].value).toBe(3)
   })
 })

@@ -197,6 +197,8 @@ public static class DependencyInjection
         services.AddSingleton<ITenantClock>(TenantClock.Default);
         services.AddScoped<InventoryReconciler>();
         services.AddScoped<InventoryReconciliationService>();
+        // Lote 15 — franja "Almacén hoy" del Pulso (días locales con el mismo ITenantClock).
+        services.AddScoped<WarehousePulseService>();
         // P2 (D14): revisión en segundo plano segundos después de cada movimiento. Cola en memoria acotada (singleton) y un
         // BackgroundService que la consume; solo arranca con app.Run() (los comandos de consola no encolan nada).
         services.Configure<InventoryReconciliationOptions>(config.GetSection(InventoryReconciliationOptions.Section));

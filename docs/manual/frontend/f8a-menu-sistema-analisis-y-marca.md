@@ -61,6 +61,10 @@ Volver al de la compañía"** junto al título — este orden es solo suyo y se 
 Desde el Lote 14 el organizador también lista el panel **Necesita tu atención** (permiso `pulse.attention`): se puede mover y ocultar como los
 demás paneles.
 
+Desde el Lote 15 también lista el panel **Almacén hoy** (la franja; primero por defecto) con una nota que explica que la franja que quede justo
+debajo de la fecha se queda fija al desplazarse y que, si se oculta o se baja, solo queda fija la fecha. Los **indicadores** se listan por fila de
+módulo (Operación, Almacén, Contabilidad) y solo se mueven dentro de su fila; al guardar, el orden se guarda por fila. Ver [F7A](f7a-pulso-almacen-y-actividad.md).
+
 **"Volver al de la compañía"** (el enlace del chip): pide confirmar — "Se borran su orden y sus ocultos del Pulso y
 verá el de la compañía. Sus rangos de fecha se conservan." — y descarta su Pulso personal entero.
 
@@ -94,6 +98,10 @@ orden en el Pulso de la compañía; los gráficos agregan agrupar por y el tipo 
 
 **Mensajes que puede ver.**
 
+- **Chip "De la compañía"** (Lote 15) junto al nombre de un gráfico sin dueño que no es de sistema (los dos de almacén: "Valor de inventario por
+  categoría" y "Movimientos de inventario por tipo"): con `analytics.manage` se editan y eliminan. Al eliminar uno, la confirmación dice
+  "¿Eliminar el gráfico {nombre}? Es de la compañía: una vez eliminado no se vuelve a crear." Los gráficos siempre se dibujan (sin lista con pocos
+  puntos) y, con más de 8 grupos, el último punto es "Otras". Capturas en [F7A](f7a-pulso-almacen-y-actividad.md).
 - **"El nombre es obligatorio."** al guardar sin nombre.
 - **"Ya existe el indicador '{nombre}'."** / **"Ya existe el gráfico '{nombre}'."** (409): el nombre debe ser único
   entre los activos.

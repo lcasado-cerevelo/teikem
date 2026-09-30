@@ -19,7 +19,11 @@ internal static class ClientDataSourceHelpers
 {
     public const int MaxRows = 20000;
 
-    public static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    /// <summary>
+    /// "Hoy" de las fuentes (contrato vigente, días para vencer, documentos por vencer). Lote 15: día LOCAL de la compañía (hora
+    /// de Puerto Rico, el reloj por defecto del Lote 14), no el día UTC.
+    /// </summary>
+    public static DateOnly Today() => Abstractions.TenantClock.Default.Today;
 
     public static Task<Dictionary<int, StatusCode>> StatusMapAsync(TeikemDbContext db, string domain, CancellationToken ct)
         => db.StatusCodes.AsNoTracking().Where(s => s.Entity == domain).ToDictionaryAsync(s => s.StatusCodeId, ct);
@@ -204,17 +208,12 @@ public sealed class ContractDataSource(TeikemDbContext db, ILookupCache lookups,
             var wanted = q.Ids.ToList();
             query = query.Where(c => wanted.Contains(c.ContractId));
         }
-        // Rango de fecha sobre StartDate (DATE): desde inclusivo, hasta exclusivo (el resolutor de rangos entrega "mañana 00:00")
-        if (q.FromUtc.HasValue)
-        {
-            var from = DateOnly.FromDateTime(q.FromUtc.Value);
+        // Rango de fecha sobre StartDate (DATE): desde inclusivo, hasta exclusivo. Lote 15: el motor pasa el rango en días LOCALES
+        // (FromDay/ToDayExclusive); sin ellos se deriva de FromUtc/ToUtc como antes.
+        if ((q.FromDay ?? (q.FromUtc.HasValue ? DateOnly.FromDateTime(q.FromUtc.Value) : (DateOnly?)null)) is DateOnly from)
             query = query.Where(c => c.StartDate >= from);
-        }
-        if (q.ToUtc.HasValue)
-        {
-            var to = DateOnly.FromDateTime(q.ToUtc.Value);
+        if ((q.ToDayExclusive ?? (q.ToUtc.HasValue ? DateOnly.FromDateTime(q.ToUtc.Value) : (DateOnly?)null)) is DateOnly to)
             query = query.Where(c => c.StartDate < to);
-        }
         var contracts = await query.OrderByDescending(c => c.StartDate).ThenByDescending(c => c.ContractId)
             .Take(ClientDataSourceHelpers.MaxRows).ToListAsync(ct);
         if (contracts.Count == 0) return new List<DataRow>();

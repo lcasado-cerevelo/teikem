@@ -17,6 +17,11 @@ public sealed record PulsePanelDef(string Key, string Permission, string[] DataP
 /// encabezado y de la franja que el Lote 15 pondrá con orden negativo (por eso no es negativo) y antes de ORDERS_RIVER (10).
 /// No lleva permiso de datos ni módulo: cada fila decide el suyo (IAttentionItemProvider); se usa esta clave y no la
 /// reservada DECISIONS porque el dueño la llama "Necesita tu atención" (Operación y COD podrán sumar filas con sus proveedores).
+/// Lote 15 (D1, D6): WAREHOUSE_DAY (franja "Almacén hoy") con orden −10, el primero: justo debajo de la fecha y antes de
+/// ATTENTION, también en los Pulsos ya organizados (Organizar guarda índice × 10 desde 0; un panel sin fila propia usa su orden
+/// por defecto, así que solo un orden negativo lo deja arriba). Reusa pulse.warehouse, inventory.view y WMS_LOTSERIAL (los
+/// mismos del panel Almacén): no hay permiso nuevo. Orden final por defecto: WAREHOUSE_DAY, ATTENTION, INDICATORS, CHARTS,
+/// WAREHOUSE, ACTIVITY.
 /// Receta para un panel nuevo: una constante aquí, una fila en PermissionCatalog.All (+ plantillas), una línea en el seed y
 /// una entrada en el registro del frontend.
 /// </summary>
@@ -27,6 +32,7 @@ public static class PulsePanels
     public const string Warehouse = "WAREHOUSE";
     public const string Activity = "ACTIVITY";
     public const string Attention = "ATTENTION";
+    public const string WarehouseDay = "WAREHOUSE_DAY";
 
     public static readonly IReadOnlyList<PulsePanelDef> All = new List<PulsePanelDef>
     {
@@ -35,6 +41,7 @@ public static class PulsePanels
         new(Warehouse, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, 40),
         new(Activity, PermissionCatalog.PulseActivity, new[] { PermissionCatalog.AnalyticsView }, ModuleKeys.Analytics, 50),
         new(Attention, PermissionCatalog.PulseAttention, Array.Empty<string>(), null, 5),
+        new(WarehouseDay, PermissionCatalog.PulseWarehouse, new[] { PermissionCatalog.InventoryView }, ModuleKeys.WmsLotSerial, -10),
     };
 
     /// <summary>Panel por clave (sin distinguir mayúsculas); null si no está en el registro.</summary>

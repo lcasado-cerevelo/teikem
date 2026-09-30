@@ -15,6 +15,7 @@ import {
   writeWarehouseFilter,
 } from './api'
 import Pulse from './Pulse'
+import { getStoredWarehouseFilter, setStoredWarehouseFilter } from './warehouseFilterStore'
 
 // Cliente de la app sobre un fetch simulado (misma política que el real).
 type Handler = (path: string, url: URL) => Response | unknown
@@ -150,6 +151,26 @@ describe('selección guardada del filtro (lógica pura)', () => {
     expect(window.localStorage.getItem(KEY)).toBeNull()
   })
 
+  it('Lote 15: almacén compartido — misma referencia mientras no cambie, lee lo escrito por otro y recuerda en memoria si no se puede escribir', () => {
+    const a = getStoredWarehouseFilter(KEY)
+    expect(a).toEqual(NO_WAREHOUSE_FILTER)
+    expect(getStoredWarehouseFilter(KEY)).toBe(a)
+    // otro (otra pestaña, otra prueba) escribe en localStorage: se lee lo nuevo
+    window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: WH1.publicId, item: null }))
+    const b = getStoredWarehouseFilter(KEY)
+    expect(b).toEqual({ warehousePublicId: WH1.publicId, item: null })
+    expect(getStoredWarehouseFilter(KEY)).toBe(b)
+    // cuota llena: no se escribe, pero la selección vale en la sesión
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('QuotaExceededError')
+    })
+    const next = { warehousePublicId: WH2.publicId!, item: null }
+    setStoredWarehouseFilter(KEY, next)
+    expect(getStoredWarehouseFilter(KEY)).toBe(next)
+    setItem.mockRestore()
+    expect(getStoredWarehouseFilter(null)).toBe(NO_WAREHOUSE_FILTER)
+  })
+
   it('descarta lo que ya no existe solo cuando llegan los catálogos', () => {
     const saved = { warehousePublicId: 'gone', item: { kind: 'category' as const, id: 99 } }
     expect(sanitizeWarehouseFilter(saved, {})).toBe(saved)
@@ -277,6 +298,47 @@ describe('Pulse — panel Almacén con filtro (Lote F7A)', () => {
     expect(lastUrl('/api/v1/cycle-counts/page')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
     await waitFor(async () => expect(within(await tile('Tareas pendientes')).getByText('23')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('1')).toBeInTheDocument())
+  })
+
+  it('Lote 15 (D5): la franja "Almacén hoy" y el panel Almacén comparten el almacén (cambiar uno cambia el otro) y conservan la categoría', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem(KEY, JSON.stringify({ warehousePublicId: null, item: { kind: 'category', id: 2 } }))
+    mock.handler = (path: string, url: URL) => {
+      if (path === '/api/v1/analytics/pulse')
+        return {
+          panels: [
+            { key: 'WAREHOUSE_DAY', sortOrder: -10, isVisible: true, source: 'default' },
+            { key: 'WAREHOUSE', sortOrder: 40, isVisible: true, source: 'default' },
+          ],
+          indicators: [],
+          charts: [],
+        }
+      if (path === '/api/v1/inventory/pulse/days')
+        return { today: '2026-09-30', days: [{ date: '2026-09-30', receivedUnits: url.searchParams.get('warehousePublicIds') ? 4 : 9 }], receivedToday: url.searchParams.get('warehousePublicIds') ? 4 : 9 }
+      return handler(path, url)
+    }
+    const { container } = renderPulse()
+    const bandSelect = await screen.findByRole('combobox', { name: 'Almacén de la franja Almacén hoy' })
+    const panelSelect = screen.getByRole('combobox', { name: 'Almacén' })
+    await waitFor(() => expect(within(bandSelect).getByRole('option', { name: 'ALM-02' })).toBeInTheDocument())
+    const received = () => container.querySelector('[data-card="received"] .big')
+    await waitFor(() => expect(received()).toHaveTextContent('9'))
+
+    // en la franja → el panel Almacén cambia solo; se recuerda con la categoría que ya tenía el panel
+    await user.selectOptions(bandSelect, WH2.publicId)
+    await waitFor(() => expect(panelSelect).toHaveValue(WH2.publicId))
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ warehousePublicId: WH2.publicId, item: { kind: 'category', id: 2 } })
+    await waitFor(() => expect(received()).toHaveTextContent('4'))
+    expect(lastUrl('/api/v1/inventory/pulse/days')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId])
+    await waitFor(() => expect(lastUrl('/api/v1/inventory/balances')!.searchParams.getAll('warehousePublicIds')).toEqual([WH2.publicId]))
+    // los enlaces de la franja llevan el almacén
+    expect(container.querySelector('[data-card="belowMin"] a')).toHaveAttribute('href', `/warehouse/products?kpi=low&warehousePublicIds=${WH2.publicId}`)
+
+    // en el panel → la franja cambia sola
+    await user.selectOptions(panelSelect, '')
+    await waitFor(() => expect(bandSelect).toHaveValue(''))
+    await waitFor(() => expect(received()).toHaveTextContent('9'))
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual({ warehousePublicId: null, item: { kind: 'category', id: 2 } })
   })
 
   it('lo guardado que ya no existe (almacén dado de baja, producto 404) se limpia sin error', async () => {

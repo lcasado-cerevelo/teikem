@@ -238,11 +238,46 @@ describe('Pulse — paneles del API', () => {
     expect(screen.queryByText('Oculto')).not.toBeInTheDocument()
     const links = screen.getAllByRole('link').filter((a) => a.getAttribute('href') === '/analytics/indicators')
     expect(links.map((a) => a.textContent)).toEqual([expect.stringContaining('Órdenes'), expect.stringContaining('Ventas')])
-    // subtítulo: el rango (etiqueta del catálogo) o, sin rango, el módulo
+    // subtítulo: el rango (etiqueta del catálogo); sin rango, nada (Lote 15: el módulo ya lo dice la línea)
     expect(await screen.findByText('Últimos 90 días')).toBeInTheDocument()
-    expect(within(links[0]).getByText('Almacén')).toBeInTheDocument()
+    expect(within(links[0]).queryByText('Almacén')).not.toBeInTheDocument()
+    expect(links[0].querySelector('.sub')).toBeNull()
     expect(links[0].closest('.node')).toHaveClass('flow')
     expect(links[1].closest('.node')).toHaveClass('money')
+  })
+
+  it('Lote 15 (D8): una línea por módulo en el orden del menú, con su etiqueta h3; dentro, el orden de siempre', async () => {
+    mock.handler = () =>
+      pulse({
+        indicators: [
+          { id: 1, name: 'COD por cobrar', value: 5, isMoney: true, isVisible: true, sortOrder: 0, businessModule: 'ACCOUNTING' },
+          { id: 2, name: 'Unidades recibidas', value: 12, isVisible: true, sortOrder: 10, businessModule: 'WAREHOUSE' },
+          { id: 3, name: 'Órdenes abiertas', value: 3, isVisible: true, sortOrder: 20, businessModule: 'OPERATIONS' },
+          { id: 4, name: 'Bajo mínimo', value: 1, isVisible: true, sortOrder: 30, businessModule: 'WAREHOUSE' },
+          { id: 5, name: 'Usuarios activos', value: 9, isVisible: true, sortOrder: 40 },
+        ],
+      })
+    const { container } = renderPulse()
+    expect(await screen.findByText('COD por cobrar')).toBeInTheDocument()
+    // "Tus indicadores" sigue siendo el h2 de la sección; las líneas son h3 (nunca h2 "Almacén", hallazgo 13)
+    const section = screen.getByRole('heading', { level: 2, name: 'Tus indicadores' }).closest('section') as HTMLElement
+    expect(within(section).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Operación', 'Almacén', 'Contabilidad'])
+    expect(within(section).queryByRole('heading', { level: 2, name: 'Almacén' })).not.toBeInTheDocument()
+    const lines = Array.from(container.querySelectorAll('.pulse-line'))
+    expect(lines.map((l) => l.getAttribute('data-line'))).toEqual(['ops', 'warehouse', 'money'])
+    const names = (el: Element) => Array.from(el.querySelectorAll('.node .ph span')).map((s) => s.textContent)
+    expect(names(lines[0])).toEqual(['Órdenes abiertas', 'Usuarios activos'])
+    expect(names(lines[1])).toEqual(['Unidades recibidas', 'Bajo mínimo'])
+    expect(names(lines[2])).toEqual(['COD por cobrar'])
+    // cada línea es su propio río
+    expect(lines.every((l) => l.querySelector(':scope > .river') != null)).toBe(true)
+  })
+
+  it('Lote 15 (D8): sin indicadores de Contabilidad no hay línea Contabilidad', async () => {
+    mock.handler = () => pulse({ indicators: [{ id: 2, name: 'Unidades recibidas', value: 12, isVisible: true, businessModule: 'WAREHOUSE' }] })
+    renderPulse()
+    expect(await screen.findByText('Unidades recibidas')).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Almacén'])
   })
 
   it('sin analytics.view el nodo no es enlace (Indicadores le daría "Sin permiso") y no hay "Rango"', async () => {
@@ -253,23 +288,31 @@ describe('Pulse — paneles del API', () => {
     expect(screen.queryByRole('button', { name: /Cambiar mi rango/ })).not.toBeInTheDocument()
   })
 
-  it('gráficos: con ≤ 3 puntos, lista "etiqueta · valor"; con más, el gráfico; grilla de una columna a 360 px', async () => {
+  it('gráficos (Lote 15): SIEMPRE el gráfico, también con 1–3 puntos (nunca la lista); sin puntos, el aviso; 2 por fila como mucho', async () => {
     mock.handler = () =>
       pulse({
         charts: [
           { id: 3, name: 'Pocos', chartType: 'BAR', isMoney: true, isVisible: true, sortOrder: 0, points: [{ label: 'Lun', value: 3 }, { label: 'Mar', value: 4.5 }] },
           { id: 4, name: 'Muchos', chartType: 'DONUT', isVisible: true, sortOrder: 10, points: [1, 2, 3, 4].map((v) => ({ label: `P${v}`, value: v })) },
           { id: 5, name: 'Vacío', chartType: 'LINE', isVisible: true, sortOrder: 20, points: [] },
+          { id: 6, name: 'Un día', chartType: 'LINE', isVisible: true, sortOrder: 30, points: [{ label: '2026-09-30', value: 7 }] },
         ],
       })
-    renderPulse()
-    const list = await screen.findByRole('list', { name: 'Pocos' })
-    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Lun · $3.00', 'Mar · $4.50'])
-    expect(screen.queryByRole('list', { name: 'Muchos' })).not.toBeInTheDocument()
+    const { container } = renderPulse()
+    // ChartVisual: envoltorio role="img" con los valores (el gráfico, no una lista)
+    const pocos = await screen.findByRole('img', { name: 'Pocos. Lun: $3.00; Mar: $4.50' })
+    expect(pocos).toHaveAttribute('data-chart-kind', 'bar')
+    expect(pocos).toHaveAttribute('data-points', '2')
+    expect(screen.getByRole('img', { name: /^Muchos\./ })).toHaveAttribute('data-chart-kind', 'donut')
+    expect(screen.getByRole('img', { name: 'Un día. miércoles, 30 de septiembre de 2026: 7' })).toHaveAttribute('data-chart-kind', 'line')
+    expect(screen.queryByRole('list', { name: 'Pocos' })).not.toBeInTheDocument()
+    expect(container.querySelector('.pulse-pts')).toBeNull()
     expect(screen.getByText('Este gráfico no tiene datos en el rango configurado.')).toBeInTheDocument()
     const grid = screen.getByRole('heading', { name: 'Tus gráficos' }).nextElementSibling as HTMLElement
     expect(grid).toHaveClass('pulse-charts')
-    expect(grid.querySelectorAll('.pulse-chart')).toHaveLength(3)
+    expect(grid.querySelectorAll('.pulse-chart')).toHaveLength(4)
+    // nunca más de 2 por fila (cada columna mide al menos la mitad menos el hueco); una columna en celular (min 100%)
+    expect(grid.style.gridTemplateColumns).toBe('repeat(auto-fill, minmax(min(100%, max(380px, calc(50% - 8px))), 1fr))')
   })
 
   it('rango CUSTOM: muestra el Hasta que eligió el usuario (no el límite exclusivo del servidor)', async () => {
@@ -463,5 +506,155 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     await waitFor(async () => expect(within(await tile('Recibos abiertos')).getByText('—')).toBeInTheDocument())
     await waitFor(async () => expect(within(await tile('Conteos abiertos')).getByText('2')).toBeInTheDocument())
     expect(onAccessDenied).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Lote 15 (P4, P6): franja "Almacén hoy" (WAREHOUSE_DAY) y filas fijas.
+// ---------------------------------------------------------------------------------------------------------------------
+const DAY_DATES = ['2026-09-24', '2026-09-25', '2026-09-26', '2026-09-27', '2026-09-28', '2026-09-29', '2026-09-30']
+const DAYS_DTO = {
+  timeZone: 'America/Puerto_Rico',
+  today: '2026-09-30',
+  fromUtc: '2026-09-24T04:00:00Z',
+  toUtc: '2026-10-01T04:00:00Z',
+  days: DAY_DATES.map((date, i) => ({ date, receivedUnits: i === 6 ? 12 : i, outboundUnits: i === 6 ? 5 : 0, countsWithVariance: i === 6 ? 1 : 0 })),
+  receivedToday: 12,
+  receivedTotal: 1234,
+  outboundToday: 5,
+  outboundTotal: 5,
+  countsWithVarianceToday: 1,
+  countsWithVarianceTotal: 1,
+  belowMinProducts: 3,
+  countsAlert: true,
+  belowMinAlert: true,
+}
+let dayPulse: PulseDto = pulse()
+
+function dayHandler(path: string): unknown {
+  if (path === '/api/v1/analytics/pulse') return dayPulse
+  if (path === '/api/v1/inventory/pulse/days') return DAYS_DTO
+  return []
+}
+
+const withIndicator = (panels: PulsePanelDto[]) => pulse({ panels, indicators: [{ id: 1, name: 'Ventas', value: 10, isVisible: true }] })
+
+describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
+  const card = (container: HTMLElement, key: string) => container.querySelector(`[data-card="${key}"]`) as HTMLElement
+  beforeEach(() => {
+    window.localStorage.clear()
+    dayPulse = withIndicator([panel('WAREHOUSE_DAY', -10), panel('INDICATORS', 20)])
+  })
+
+  it('4 tarjetas: número de HOY, total de 7 días, 7 barritas (bajo mínimo sin gráfico), naranja y enlaces al detalle', async () => {
+    mock.handler = dayHandler
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    // título que no es "Almacén" a secas (los recorridos buscan ese h2 del panel Almacén)
+    const heading = await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
+    // "· últimos 7 días" se oculta en celular por CSS (jsdom aplica la regla sin evaluar la media query): se mira el texto
+    expect(heading).toHaveTextContent('Almacén hoy · últimos 7 días')
+    expect(screen.queryByRole('heading', { level: 2, name: 'Almacén' })).not.toBeInTheDocument()
+    const band = heading.closest('section') as HTMLElement
+    await waitFor(() => expect(within(card(container, 'received')).getByText('12')).toBeInTheDocument())
+    expect(Array.from(band.querySelectorAll('[data-card]')).map((n) => n.getAttribute('data-card'))).toEqual([
+      'received',
+      'outbound',
+      'countsVariance',
+      'belowMin',
+    ])
+    expect(within(card(container, 'received')).getByText('Unidades recibidas')).toBeInTheDocument()
+    expect(within(card(container, 'received')).getByText('7 días: 1,234')).toBeInTheDocument()
+    expect(within(card(container, 'outbound')).getByText('5', { selector: '.big' })).toBeInTheDocument()
+    expect(within(card(container, 'countsVariance')).getByText('Conteos con diferencia')).toBeInTheDocument()
+    expect(within(card(container, 'belowMin')).getByText('3', { selector: '.big' })).toBeInTheDocument()
+    expect(within(card(container, 'belowMin')).getByText('en este momento')).toBeInTheDocument()
+    // 7 barritas por tarjeta (ChartVisual mini, con la fecha y la cantidad en su etiqueta accesible); bajo mínimo sin gráfico
+    for (const key of ['received', 'outbound', 'countsVariance']) {
+      const chart = within(card(container, key)).getByRole('img')
+      expect(chart).toHaveAttribute('data-points', '7')
+      expect(chart).toHaveClass('pulse-chartbox', 'mini')
+    }
+    expect(within(card(container, 'received')).getByRole('img')).toHaveAccessibleName(/^Unidades recibidas\. .*miércoles, 30 de septiembre de 2026: 12$/)
+    expect(within(card(container, 'belowMin')).queryByRole('img')).toBeNull()
+    // naranja (D3): conteos con diferencia hoy y productos bajo mínimo; recibido y salida, violeta
+    expect(card(container, 'countsVariance')).toHaveClass('node', 'wh', 'alert')
+    expect(card(container, 'belowMin')).toHaveClass('alert')
+    expect(card(container, 'received')).not.toHaveClass('alert')
+    expect(within(card(container, 'countsVariance')).getByText('Hoy hubo conteos con diferencia.')).toHaveClass('sr-only')
+    // clic (D4): el detalle filtrado con los 7 días (todos los almacenes: sin warehousePublicIds)
+    const hrefs = Array.from(band.querySelectorAll('[data-card] a')).map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual([
+      '/warehouse/kardex?types=RECEIPT&from=2026-09-24&to=2026-09-30',
+      '/warehouse/kardex?types=ISSUE&types=CROSSDOCK&from=2026-09-24&to=2026-09-30',
+      '/warehouse/cycle-counts?status=RECONCILED_VARIANCE',
+      '/warehouse/products?kpi=low',
+    ])
+    expect(mock.urls).toContain('/api/v1/inventory/pulse/days?days=7')
+  })
+
+  it('sin tono naranja cuando el servidor no lo pide', async () => {
+    mock.handler = (path: string) => (path === '/api/v1/inventory/pulse/days' ? { ...DAYS_DTO, countsAlert: false, belowMinAlert: false } : dayHandler(path))
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    await waitFor(() => expect(within(card(container, 'received')).getByText('12')).toBeInTheDocument())
+    expect(container.querySelectorAll('[data-card].alert')).toHaveLength(0)
+  })
+
+  it('un 403 de la franja no saca del Pulso: "—" en las tarjetas y sin barritas', async () => {
+    mock.handler = (path: string) =>
+      path === '/api/v1/inventory/pulse/days'
+        ? new Response(JSON.stringify({ status: 403, code: 'forbidden', title: 'Sin permiso.' }), {
+            status: 403,
+            headers: { 'Content-Type': 'application/problem+json' },
+          })
+        : dayHandler(path)
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    await waitFor(() => expect(within(card(container, 'received')).getByText('—')).toBeInTheDocument())
+    expect(container.querySelectorAll('[data-card] [role="img"]')).toHaveLength(0)
+    expect(onAccessDenied).not.toHaveBeenCalled()
+  })
+
+  it('filas fijas (D6): la franja justo debajo de la fecha queda fija con la fila de la fecha; solo en .pulse-home', async () => {
+    mock.handler = dayHandler
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
+    expect(container.querySelector('.wrap.pulse')).toHaveClass('pulse-home')
+    expect(container.querySelector('[data-panel="WAREHOUSE_DAY"]')).toHaveAttribute('data-pinned')
+    expect(container.querySelector('[data-panel="INDICATORS"]')).not.toHaveAttribute('data-pinned')
+    // la fila de la fecha (h1 + Organizar) es la fija; el saludo y el chip van aparte y se desplazan
+    const head = screen.getByRole('heading', { level: 1 }).parentElement as HTMLElement
+    expect(head).toHaveClass('pulse-pin-head', 'pinned')
+    expect(within(head).getByRole('button', { name: 'Organizar mi Pulso' })).toBeInTheDocument()
+    expect(within(head).queryByText('Pulso de la compañía')).toBeNull()
+    expect(container.querySelector('.pulse-greet')).toHaveTextContent('Pulso de la compañía')
+  })
+
+  it('franja más abajo: no se fija ninguna sección (solo la fecha)', async () => {
+    dayPulse = withIndicator([panel('INDICATORS', 0), panel('WAREHOUSE_DAY', 10)])
+    mock.handler = dayHandler
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
+    expect(paintedPanels(container)).toEqual(['INDICATORS', 'WAREHOUSE_DAY'])
+    expect(container.querySelector('[data-pinned]')).toBeNull()
+    expect(container.querySelector('.pulse-pin-head')).toHaveClass('pinned')
+  })
+
+  it('franja oculta con Organizar: tampoco', async () => {
+    dayPulse = withIndicator([panel('WAREHOUSE_DAY', -10, false), panel('INDICATORS', 20)])
+    mock.handler = dayHandler
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    expect(await screen.findByText('Ventas')).toBeInTheDocument()
+    expect(paintedPanels(container)).toEqual(['INDICATORS'])
+    expect(container.querySelector('[data-pinned]')).toBeNull()
+  })
+
+  it('organizando: la .orgbar es la fija (ni la franja ni la fecha) y la ayuda explica qué queda fijo', async () => {
+    mock.handler = dayHandler
+    const user = userEvent.setup()
+    const { container } = renderPulse(WAREHOUSE_ACCESS)
+    await user.click(await screen.findByRole('button', { name: 'Organizar mi Pulso' }))
+    expect(screen.getByText(/La franja que quede justo debajo de la fecha se queda fija/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ocultar Almacén hoy' })).toBeInTheDocument()
+    expect(container.querySelector('[data-pinned]')).toBeNull()
+    expect(container.querySelector('.pulse-pin-head')).not.toHaveClass('pinned')
   })
 })

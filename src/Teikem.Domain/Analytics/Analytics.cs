@@ -109,6 +109,12 @@ public class ChartDefinition : AnalyticsDefinitionBase
     public string GroupByField { get; set; } = string.Empty;
     /// <summary>Entity='ReportChartType': BAR / DONUT / LINE.</summary>
     public int ChartTypeLookupId { get; set; }
+    /// <summary>
+    /// Lote 15 (D9, D14): clave de siembra de los gráficos de la compañía que trae la plataforma (<c>ChartSeedKeys</c>), NULL en el
+    /// resto. Identifica al gráfico sembrado sin depender de su nombre (se puede renombrar) y marca que ya se sembró: la fila
+    /// sigue existiendo aunque se borre (soft delete), así que un gráfico borrado no vuelve. Única por compañía.
+    /// </summary>
+    [NotAudited] public string? SeedKey { get; set; }
     public ICollection<ChartShare> Shares { get; set; } = new List<ChartShare>();
 }
 

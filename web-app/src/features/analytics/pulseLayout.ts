@@ -12,8 +12,9 @@ export type ChartDatum = components['schemas']['ChartDataDto']
 /** Alcance de un orden guardado: el mío (sin permiso) o el de la compañía (`pulse.organize_company`). */
 export type PulseScope = 'mine' | 'company'
 
-/** Paneles que este frontend sabe pintar (registro `PulsePanels` del dominio). Uno nuevo = una clave aquí y en `pulsePanels.tsx`. */
-export const PULSE_PANEL_KEYS = ['INDICATORS', 'CHARTS', 'WAREHOUSE', 'ACTIVITY', 'ATTENTION'] as const
+/** Paneles que este frontend sabe pintar (registro `PulsePanels` del dominio). Uno nuevo = una clave aquí y en `pulsePanels.tsx`.
+ *  Lote 15: WAREHOUSE_DAY (franja "Almacén hoy", orden −10 del dominio: la fila siguiente a la fecha). */
+export const PULSE_PANEL_KEYS = ['INDICATORS', 'CHARTS', 'WAREHOUSE', 'ACTIVITY', 'ATTENTION', 'WAREHOUSE_DAY'] as const
 export type PulsePanelKey = (typeof PULSE_PANEL_KEYS)[number]
 
 export function isKnownPanel(key: string | null | undefined): key is PulsePanelKey {
@@ -76,13 +77,17 @@ function toItem(i: Indicator | ChartDatum): OrganizerItem | null {
   return { id: i.id, name: i.name ?? '', isMoney: i.isMoney ?? false, businessModule: i.businessModule ?? null, isVisible: i.isVisible !== false }
 }
 
-/** Estado inicial del modo Organizar a partir del Pulso cargado (incluye los ocultos, en su sitio). */
+/**
+ * Estado inicial del modo Organizar a partir del Pulso cargado (incluye los ocultos, en su sitio). Los indicadores van
+ * agrupados por línea (Lote 15, D8: Operación, Almacén, Contabilidad) y, dentro de cada una, en su orden: así los ve la
+ * pantalla y así se ordenan (solo dentro de su línea, ver `sameLine`).
+ */
 export function initOrganizer(pulse: PulseDto): OrganizerState {
   return {
     panels: sortPanels(pulse.panels)
       .filter((p) => isKnownPanel(p.key))
       .map((p) => ({ key: p.key as PulsePanelKey, isVisible: p.isVisible !== false })),
-    indicators: sortItems(pulse.indicators).flatMap((i) => toItem(i) ?? []),
+    indicators: indicatorLines(sortItems(pulse.indicators).flatMap((i) => toItem(i) ?? [])).flatMap((l) => l.items),
     charts: sortItems(pulse.charts).flatMap((c) => toItem(c) ?? []),
   }
 }
@@ -96,9 +101,21 @@ export function moveInList<T>(list: readonly T[], from: number, to: number): T[]
   return next
 }
 
-/** Mueve un panel o elemento dentro de su lista. */
+/**
+ * true si las posiciones `a` y `b` de la lista se pueden intercambiar: siempre en paneles y gráficos; en indicadores, solo
+ * dentro de la misma línea de módulo (Lote 15, D8: "Organizar ordena dentro de su fila").
+ */
+export function sameLine(state: OrganizerState, list: OrganizerList, a: number, b: number): boolean {
+  if (list !== 'indicators') return true
+  const x = state.indicators[a]
+  const y = state.indicators[b]
+  return x != null && y != null && moduleGroup(x.businessModule) === moduleGroup(y.businessModule)
+}
+
+/** Mueve un panel o elemento dentro de su lista (un indicador, solo dentro de su línea; si no, sin cambios). */
 export function moveEntry(state: OrganizerState, list: OrganizerList, from: number, to: number): OrganizerState {
   if (list === 'panels') return { ...state, panels: moveInList(state.panels, from, to) }
+  if (!sameLine(state, list, from, to)) return state
   return { ...state, [list]: moveInList(state[list], from, to) }
 }
 
@@ -134,4 +151,22 @@ export function moduleGroup(businessModule: string | null | undefined): ModuleGr
     default:
       return 'ops'
   }
+}
+
+/** Orden de las líneas de indicadores: el del menú (Lote 15, D8). */
+export const INDICATOR_LINE_ORDER: readonly ModuleGroup[] = ['ops', 'warehouse', 'money']
+
+export interface IndicatorLine<T> {
+  group: ModuleGroup
+  items: T[]
+}
+
+/**
+ * "Tus indicadores" en una línea por módulo (Lote 15, D8): en el orden del menú (Operación, Almacén, Contabilidad), solo las
+ * líneas con algún elemento, y dentro de cada una el orden recibido (el de siempre). Sin módulo o con uno desconocido = Operación.
+ */
+export function indicatorLines<T extends { businessModule?: string | null }>(items: readonly T[]): IndicatorLine<T>[] {
+  return INDICATOR_LINE_ORDER.map((group) => ({ group, items: items.filter((i) => moduleGroup(i.businessModule) === group) })).filter(
+    (l) => l.items.length > 0,
+  )
 }

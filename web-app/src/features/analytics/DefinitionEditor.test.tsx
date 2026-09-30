@@ -216,7 +216,8 @@ describe('DefinitionEditor', () => {
     await user.selectOptions(screen.getByLabelText(/Agrupar por/), 'status')
 
     // La vista previa consulta el endpoint de vista previa con la agrupación y el cálculo del formulario.
-    expect(await screen.findByText('OPEN')).toBeInTheDocument()
+    // Lote 15: siempre el gráfico (también con pocos puntos); sus valores van en la etiqueta accesible.
+    expect(await screen.findByRole('img', { name: /OPEN: / })).toBeInTheDocument()
     const preview = mock.writes.find((w) => w.path === '/api/v1/analytics/reports/ORDERS/preview')
     const previewBody = preview?.body as { groupJson?: string } | undefined
     expect(JSON.parse(previewBody?.groupJson ?? '""')).toEqual({ by: ['status'], aggregates: [{ fn: 'COUNT', field: null }] })

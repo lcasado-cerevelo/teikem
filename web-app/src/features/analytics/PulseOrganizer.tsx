@@ -14,9 +14,11 @@ import { IconEye, IconEyeOff, IconGrip } from './pulseIcons'
 import { PULSE_PANELS } from './pulsePanels'
 import {
   buildLayoutRequest,
+  indicatorLines,
   initOrganizer,
   moduleGroup,
   moveEntry,
+  sameLine,
   toggleEntry,
   type OrganizerItem,
   type OrganizerList,
@@ -70,8 +72,10 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
   }
 
   const lengthOf = (list: OrganizerList) => state[list].length
+  // Lote 15 (D8): un indicador solo se mueve dentro de su línea de módulo.
+  const canMove = (list: OrganizerList, from: number, to: number) => to >= 0 && to < lengthOf(list) && from !== to && sameLine(state, list, from, to)
   const move = (list: OrganizerList, from: number, to: number, focus?: { id: string; control: Control }) => {
-    if (to < 0 || to >= lengthOf(list) || from === to) return
+    if (!canMove(list, from, to)) return
     setState((s) => moveEntry(s, list, from, to))
     if (focus) pendingFocus.current = focus
   }
@@ -115,7 +119,7 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
       setArmed(null)
     },
     onDragOver: (e: DragEvent<HTMLLIElement>) => {
-      if (drag.current?.list !== list) return
+      if (drag.current?.list !== list || !sameLine(state, list, drag.current.index, index)) return
       e.preventDefault()
       e.stopPropagation()
       e.dataTransfer.dropEffect = 'move'
@@ -144,7 +148,6 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
     children?: ReactNode
   }) => {
     const { list, index, id, name, sub, isVisible, children } = args
-    const count = lengthOf(list)
     const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault()
@@ -181,7 +184,7 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
               ref={register(id, 'up')}
               aria-label={t('analytics.pulse.organizer.moveUp', { name })}
               title={t('analytics.pulse.organizer.moveUp', { name })}
-              disabled={busy || index === 0}
+              disabled={busy || !canMove(list, index, index - 1)}
               onClick={() => move(list, index, index - 1, { id, control: 'up' })}
             >
               ▲
@@ -192,7 +195,7 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
               ref={register(id, 'down')}
               aria-label={t('analytics.pulse.organizer.moveDown', { name })}
               title={t('analytics.pulse.organizer.moveDown', { name })}
-              disabled={busy || index === count - 1}
+              disabled={busy || !canMove(list, index, index + 1)}
               onClick={() => move(list, index, index + 1, { id, control: 'down' })}
             >
               ▼
@@ -214,23 +217,46 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
     )
   }
 
-  const itemsList = (list: 'indicators' | 'charts', items: OrganizerItem[], panelName: string) =>
-    items.length === 0 ? (
-      <p className="orgempty">{t('analytics.pulse.organizer.noItems')}</p>
-    ) : (
-      <ol className="orgitems" aria-label={t('analytics.pulse.organizer.itemsLabel', { name: panelName })}>
-        {items.map((it, i) =>
-          row({
-            list,
-            index: i,
-            id: `${list}:${it.id}`,
-            name: it.name,
-            sub: t(`nav.groups.${moduleGroup(it.businessModule)}`),
-            isVisible: it.isVisible,
-          }),
-        )}
-      </ol>
+  const itemRow = (list: 'indicators' | 'charts', it: OrganizerItem, index: number, withModule: boolean) =>
+    row({
+      list,
+      index,
+      id: `${list}:${it.id}`,
+      name: it.name,
+      sub: withModule ? t(`nav.groups.${moduleGroup(it.businessModule)}`) : undefined,
+      isVisible: it.isVisible,
+    })
+
+  const itemsList = (list: 'indicators' | 'charts', items: OrganizerItem[], panelName: string) => {
+    if (items.length === 0) return <p className="orgempty">{t('analytics.pulse.organizer.noItems')}</p>
+    if (list === 'charts')
+      return (
+        <ol className="orgitems" aria-label={t('analytics.pulse.organizer.itemsLabel', { name: panelName })}>
+          {items.map((it, i) => itemRow(list, it, i, true))}
+        </ol>
+      )
+    // Lote 15 (D8): los indicadores, una lista por línea de módulo (como en el Pulso); se ordenan dentro de su línea. El
+    // estado ya viene agrupado por línea (`initOrganizer`), así que el índice de cada uno es su posición en la lista plana.
+    let offset = 0
+    return (
+      <div className="orglines">
+        <p className="orghint">{t('analytics.pulse.organizer.linesHint')}</p>
+        {indicatorLines(items).map((line) => {
+          const start = offset
+          offset += line.items.length
+          const lineName = t(`nav.groups.${line.group}`)
+          return (
+            <div key={line.group} className="orgline" data-line={line.group}>
+              <h3 className="orgline-h">{lineName}</h3>
+              <ol className="orgitems" aria-label={t('analytics.pulse.organizer.lineLabel', { name: panelName, line: lineName })}>
+                {line.items.map((it, i) => itemRow(list, it, start + i, false))}
+              </ol>
+            </div>
+          )
+        })}
+      </div>
     )
+  }
 
   return (
     <div className="pulse-org">
@@ -249,6 +275,8 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
         </div>
       </div>
       {scope === 'company' && pulse.hasPersonalLayout && <p className="note orgnote">{t('analytics.pulse.organizer.personalNote')}</p>}
+      {/* Lote 15 (D6): con una franja fijable, se explica qué queda fijo según dónde quede */}
+      {state.panels.some((p) => PULSE_PANELS[p.key].pinnable) && <p className="pulse-muted orgnote">{t('analytics.pulse.organizer.pinHint')}</p>}
       <ol className="orglist" aria-label={t('analytics.pulse.organizer.panelsLabel')}>
         {state.panels.map((p, i) => {
           const entry = PULSE_PANELS[p.key]

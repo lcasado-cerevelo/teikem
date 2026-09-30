@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Dsl;
@@ -39,15 +40,29 @@ public sealed record ChartPoint(string Label, object? Key, decimal Value);
 /// combina fuentes secundarias muchos-a-uno, mezcla campos personalizados, aplica el DSL de filtros,
 /// agrupa/agrega y ordena. Gráficos e Indicadores no calculan nada distinto: solo presentan distinto.
 /// Evaluación en memoria por diseño en el Lote 1 (las fuentes pre-filtran por fecha); se baja a SQL cuando el volumen lo pida.
+/// Lote 15 ("hoy" en hora de Puerto Rico): el rango llega en instantes UTC de medianoches LOCALES y el motor lo pasa también
+/// en días locales (DataQuery.FromDay/ToDayExclusive) para las fuentes de días de calendario; agrupar por un campo de fecha
+/// agrupa por el día LOCAL del instante (ITenantClock); un día de calendario (DateOnly) se agrupa tal cual.
 /// </summary>
-public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContext db, ITenantContext tenant)
+public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContext db, ITenantContext tenant, ITenantClock? clock = null)
 {
     public const string CustomFieldPrefix = "cf.";
+
+    /// <summary>Reloj de la compañía (el registrado en DI; sin él, el de Puerto Rico por defecto).</summary>
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
+    /// <summary>Consulta a la fuente con el rango en instantes UTC y en días locales.</summary>
+    private DataQuery RangeQuery(DateTime? fromUtc, DateTime? toUtc) => new()
+    {
+        FromUtc = fromUtc, ToUtc = toUtc,
+        FromDay = fromUtc is DateTime f ? _clock.DayOf(f) : null,
+        ToDayExclusive = toUtc is DateTime t ? _clock.DayOf(t) : null,
+    };
 
     public async Task<ReportResult> RunReportAsync(ReportSpec spec, CancellationToken ct)
     {
         var source = registry.Get(spec.SourceKey);
-        var rows = await source.LoadAsync(new DataQuery { FromUtc = spec.FromUtc, ToUtc = spec.ToUtc }, ct);
+        var rows = await source.LoadAsync(RangeQuery(spec.FromUtc, spec.ToUtc), ct);
         await MergeCustomFieldsAsync(source, rows, ct);
         var columnsMeta = new List<ReportColumn>();
         var lang = tenant.Lang;
@@ -128,37 +143,76 @@ public sealed class AnalyticsEngine(IDataSourceRegistry registry, TeikemDbContex
     public async Task<decimal?> EvaluateIndicatorAsync(string sourceKey, string fn, string? field, string? filterJson, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct)
     {
         var source = registry.Get(sourceKey);
-        var rows = await source.LoadAsync(new DataQuery { FromUtc = fromUtc, ToUtc = toUtc }, ct);
+        var rows = await source.LoadAsync(RangeQuery(fromUtc, toUtc), ct);
         await MergeCustomFieldsAsync(source, rows, ct);
         var filter = RuleEvaluator.CompileFilter(filterJson);
         return Aggregate(rows.Where(r => filter(r)), new AggregateSpec(fn, field));
     }
 
-    /// <summary>Módulo I: agrupar por un campo y agregar; barra/dona = top N por magnitud, línea = cronológico (últimos 30 puntos).</summary>
-    public async Task<IReadOnlyList<ChartPoint>> EvaluateChartAsync(string sourceKey, string groupBy, string fn, string? field, string? filterJson, string chartType, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct, int topN = 8)
+    /// <summary>Etiqueta por defecto del grupo que junta el resto (la de cada usuario la pasa AnalyticsService según su idioma).</summary>
+    public const string OthersLabelEs = "Otras";
+    public const string OthersLabelEn = "Others";
+    /// <summary>Clave del punto "Otras" (la web lo distingue de una categoría real).</summary>
+    public const string OthersKey = "$others";
+
+    /// <summary>
+    /// Módulo I: agrupar por un campo y agregar; barra/dona = top N por valor, línea = cronológico (últimos 30 puntos).
+    /// Lote 15 (D11): en barras, dona y pastel con SUM o COUNT, si hay más de <paramref name="topN"/> grupos se muestran los
+    /// topN − 1 mayores y "Otras" con la suma exacta del resto (<see cref="FoldOthers"/>): la dona no miente sobre las
+    /// proporciones y la suma de los puntos es el total. Con AVG/MIN/MAX sumar el resto no tiene sentido: siguen los topN mayores.
+    /// </summary>
+    public async Task<IReadOnlyList<ChartPoint>> EvaluateChartAsync(string sourceKey, string groupBy, string fn, string? field, string? filterJson, string chartType, DateTime? fromUtc, DateTime? toUtc, CancellationToken ct, int topN = 8,
+        string? othersLabel = null)
     {
         var source = registry.Get(sourceKey);
-        var rows = await source.LoadAsync(new DataQuery { FromUtc = fromUtc, ToUtc = toUtc }, ct);
+        var rows = await source.LoadAsync(RangeQuery(fromUtc, toUtc), ct);
         await MergeCustomFieldsAsync(source, rows, ct);
         var filter = RuleEvaluator.CompileFilter(filterJson);
         var isDateGroup = source.Fields.FirstOrDefault(f => f.Key.Equals(groupBy, StringComparison.OrdinalIgnoreCase))?.Type == DataFieldType.Date;
 
         var points = rows.Where(r => filter(r))
-            .GroupBy(r => GroupKey(r.GetValueOrDefault(groupBy), isDateGroup))
+            .GroupBy(r => GroupKey(r.GetValueOrDefault(groupBy), isDateGroup, _clock.Zone))
             .Select(g => new ChartPoint(g.Key.Label, g.Key.Key, Aggregate(g, new AggregateSpec(fn, field)) ?? 0m))
             .ToList();
 
-        return chartType.ToUpperInvariant() == ChartTypes.Line
-            ? points.OrderBy(p => p.Key, ValueComparer.Instance).TakeLast(30).ToList()
+        var type = chartType.ToUpperInvariant();
+        if (type == ChartTypes.Line) return points.OrderBy(p => p.Key, ValueComparer.Instance).TakeLast(30).ToList();
+        var fold = type is ChartTypes.Bar or ChartTypes.Donut or ChartTypes.Pie
+                   && fn.ToUpperInvariant() is AggregateFns.Sum or AggregateFns.Count;
+        return fold
+            ? FoldOthers(points, topN, othersLabel ?? OthersLabelEs)
             : points.OrderByDescending(p => p.Value).Take(topN).ToList();
     }
 
-    private static (string Label, object? Key) GroupKey(object? v, bool isDate)
+    /// <summary>
+    /// Lote 15 (D11): los puntos de mayor a menor; con más de <paramref name="topN"/>, los topN − 1 mayores y al final un punto
+    /// "Otras" (clave <see cref="OthersKey"/>) con la suma del resto. Con topN o menos puntos, sin cambios (sin "Otras").
+    /// </summary>
+    public static IReadOnlyList<ChartPoint> FoldOthers(IEnumerable<ChartPoint> points, int topN, string othersLabel)
+    {
+        var ordered = points.OrderByDescending(p => p.Value).ToList();
+        if (topN < 2 || ordered.Count <= topN) return ordered.Take(Math.Max(topN, 0)).ToList();
+        var result = ordered.Take(topN - 1).ToList();
+        result.Add(new ChartPoint(othersLabel, OthersKey, ordered.Skip(topN - 1).Sum(p => p.Value)));
+        return result;
+    }
+
+    /// <summary>
+    /// Clave de agrupación. Fecha: un instante (DateTime, de la base = UTC) se agrupa por su día LOCAL en la zona de la compañía
+    /// (Lote 15); un día de calendario (DateOnly) tal cual. Etiqueta yyyy-MM-dd y clave = medianoche del día (para ordenar).
+    /// </summary>
+    public static (string Label, object? Key) GroupKey(object? v, bool isDate, TimeZoneInfo zone)
     {
         if (isDate)
         {
-            var d = RuleEvaluator.ToDate(v);
-            return d.HasValue ? (d.Value.ToString("yyyy-MM-dd"), d.Value.Date) : ("—", null);
+            DateOnly? day = v switch
+            {
+                DateOnly d => d,
+                DateTime dt => LocalDay.DayOf(dt, zone),
+                DateTimeOffset dto => LocalDay.DayOf(dto.UtcDateTime, zone),
+                _ => RuleEvaluator.ToDate(v) is DateTime parsed ? DateOnly.FromDateTime(parsed) : null,
+            };
+            return day is DateOnly x ? (x.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), x.ToDateTime(TimeOnly.MinValue)) : ("—", null);
         }
         var text = RuleEvaluator.ToText(v);
         return (string.IsNullOrEmpty(text) ? "—" : text, v);

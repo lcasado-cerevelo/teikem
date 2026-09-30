@@ -1,7 +1,7 @@
 // Lote F8a (P3) — agrupación por módulo y permisos de "Nuevo gráfico" en la pantalla de Gráficos (mismo patrón que
 // `IndicatorsPage.test.tsx`).
 import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -191,6 +191,34 @@ describe('ChartsPage', () => {
     await waitFor(() =>
       expect(invalidateSpy.mock.calls.some((c) => JSON.stringify(c[0]?.queryKey) === JSON.stringify(['/api/v1/analytics/pulse']))).toBe(true),
     )
+  })
+
+  it('Lote 15: gráfico de la compañía (sin dueño, no de sistema): chip "De la compañía", Editar/Eliminar con canEdit y aviso de que no vuelve', async () => {
+    mock.handler = baseHandler([
+      chart({ id: 1, name: 'Valor de inventario por categoría', chartType: 'DONUT', isSystem: false, ownerUserId: null, canEdit: true }),
+      chart({ id: 2, name: 'Mío', isSystem: false, ownerUserId: 7, ownerName: 'Ana', canEdit: true }),
+      chart({ id: 3, name: 'De fábrica', isSystem: true }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    const title = await screen.findByRole('heading', { name: /Valor de inventario por categoría/ })
+    expect(within(title).getByText('De la compañía')).toBeInTheDocument()
+    expect(screen.getAllByText('De la compañía')).toHaveLength(1)
+    expect(within(screen.getByRole('heading', { name: /De fábrica/ })).getByText('Por defecto')).toBeInTheDocument()
+    const card = title.closest('section') as HTMLElement
+    expect(within(card).getByRole('button', { name: 'Editar' })).toBeInTheDocument()
+    await user.click(within(card).getByRole('button', { name: 'Eliminar' }))
+    expect(
+      await screen.findByText('¿Eliminar el gráfico Valor de inventario por categoría? Es de la compañía: una vez eliminado no se vuelve a crear.'),
+    ).toBeInTheDocument()
+  })
+
+  it('Lote 15: sin analytics.manage (canEdit false) el gráfico de la compañía no ofrece Editar ni Eliminar', async () => {
+    mock.handler = baseHandler([chart({ id: 1, name: 'Valor de inventario por categoría', isSystem: false, ownerUserId: null, canEdit: false })])
+    renderPage(VIEW_ONLY)
+    expect(await screen.findByText('De la compañía')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Eliminar' })).not.toBeInTheDocument()
   })
 
   it('Fase 10b: un solo switch de Pulso aunque pueda editar el gráfico, y sin botón "Rango"', async () => {

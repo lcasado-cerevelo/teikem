@@ -15,7 +15,9 @@ namespace Teikem.Infrastructure.Seeding;
 /// indicadores de despacho sobre TRANSPORT_ORDER; el Lote 6 agrega Inventario y almacén (STOCK_BALANCE, PRODUCT,
 /// INVENTORY_TRANSACTION, RECEIPT, WAREHOUSE_TASK) en el módulo WAREHOUSE; el Lote 7A agrega los indicadores y el gráfico
 /// de almacén del Pulso (INVENTORY_TRANSACTION, CYCLE_COUNT); cada lote de negocio agrega los suyos.
-/// Idempotente por nombre.
+/// Idempotente por nombre. Lote 15: los 2 gráficos de almacén del Pulso son DE LA COMPAÑÍA (no de sistema, sin dueño) y además
+/// idempotentes por clave de siembra (ChartDefinition.SeedKey): ni renombrados ni borrados se vuelven a crear; se agrega el
+/// indicador 'Descuadres pendientes' (apagado en el Pulso).
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
 {
@@ -99,6 +101,24 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
     public const string ReceivedUnitsIndicatorName = "Unidades recibidas";
     public const string CountsWithVarianceIndicatorName = "Conteos con diferencia";
     public const string MovementsByTypeChartName = "Movimientos de inventario por tipo";
+
+    /// <summary>Lote 15 (D9): nombre del gráfico de valor de inventario (se conserva al convertirlo).</summary>
+    public const string InventoryValueChartName = "Valor de inventario por categoría";
+
+    /// <summary>Lote 15 (D12): descripción del gráfico de movimientos en unidades positivas (la anterior hablaba de cantidad con signo).</summary>
+    public const string MovementsByTypeChartDescriptionEs = "Unidades movidas en el período por tipo de movimiento (siempre en positivo)";
+    public const string MovementsByTypeChartDescriptionEn = "Units moved in the period by movement type (always positive)";
+
+    /// <summary>Lote 15 (D16): indicador 'Descuadres pendientes' (apagado en el Pulso: "Necesita tu atención" ya los muestra).</summary>
+    public const string PendingDiscrepanciesIndicatorName = "Descuadres pendientes";
+    public const string PendingDiscrepanciesFilter = "{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"OPEN\"}]}";
+
+    /// <summary>Lote 15 (D13): orden de los 2 gráficos de la compañía en "Tus gráficos" (primera fila: valor a la izquierda).</summary>
+    public const int InventoryValueChartSortOrder = 1;
+    public const int MovementsByTypeChartSortOrder = 2;
+    /// <summary>Órdenes con los que se sembraron de sistema (Lote 6 y 7A): solo se mueven a 1 y 2 si siguen ahí.</summary>
+    public const int InventoryValueChartSortOrderV1 = 90;
+    public const int MovementsByTypeChartSortOrderV1 = 96;
 
     /// <summary>Lote 6 (bitácora del maestro L887, que amplía la L874): 'Movimientos por tipo y producto', agrupada por tipo y
     /// SKU (dos campos de agrupación) con conteo, suma de cantidad (con signo del ledger) y fila de totales.</summary>
@@ -268,6 +288,10 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             EntityTypes.InventoryTransaction, "Quantity", sum, ReceiptMovementsFilter, last7, true, 97, module: wh);
         Indicator(CountsWithVarianceIndicatorName, "Conteos cíclicos reconciliados en el período con alguna diferencia", "Cycle counts reconciled in the period with a variance",
             EntityTypes.CycleCount, null, count, ReconciledCountsWithVarianceFilter, last30, true, 98, module: wh);
+        // Lote 15 (D16): descuadres Kárdex ↔ saldo abiertos (fuente INVENTORY_DISCREPANCY del Lote 14). Estado actual: rango ALL (la
+        // fuente tiene DateField y con null el motor aplicaría LAST7). Apagado en el Pulso ("Necesita tu atención" ya los muestra).
+        Indicator(PendingDiscrepanciesIndicatorName, "Descuadres entre el Kárdex y el saldo pendientes de revisar", "Ledger vs. balance discrepancies pending review",
+            EntityTypes.InventoryDiscrepancy, null, count, PendingDiscrepanciesFilter, all, false, 99, module: wh);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
@@ -304,16 +328,50 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         foreach (var ind in varianceIndicator) ind.FilterJson = ReconciledCountsWithVarianceFilter;
 
         // ---- Gráficos ----
+        // Lote 15 (D9, D13): los 2 gráficos de almacén de fábrica ("Valor de inventario por categoría" y "Movimientos de inventario
+        // por tipo") dejan de ser de sistema: pasan a ser DE LA COMPAÑÍA (sin dueño, editables con analytics.manage) con su clave
+        // de siembra. Se convierte solo la fila de sistema que sigue exactamente como se sembró y solo si la compañía aún no tiene
+        // esa clave (activa o borrada: si se borra, no vuelve). Mismo criterio que el bloque "Lote 15" de logistica-db-seed.sql,
+        // que convierte las compañías ya creadas en cada db-init. Van a la primera fila de "Tus gráficos" (1 y 2) solo si su orden
+        // sigue en el de fábrica y la compañía no organizó sus gráficos (Organizar guarda índice × 10 desde 0).
+        var companyOrganized = await db.ChartDefinitions.AnyAsync(c => c.TenantId == tenantId && c.IsActive && c.SortOrder == 0, ct);
+        var seededKeys = await db.ChartDefinitions.Where(c => c.TenantId == tenantId && c.SeedKey != null).Select(c => c.SeedKey!).ToListAsync(ct);
+        async Task ConvertAsync(string seedKey, string name, string source, string groupBy, string field, int sortV1, int sortNew, int newType,
+            string? newField, string? es, string? en)
+        {
+            if (seededKeys.Contains(seedKey)) return;
+            var legacy = await db.ChartDefinitions
+                .Where(c => c.TenantId == tenantId && c.IsSystem && c.SeedKey == null && c.Name == name && c.DataSourceKey == source
+                            && c.GroupByField == groupBy && c.FieldKey == field && c.ChartTypeLookupId == bar)
+                .FirstOrDefaultAsync(ct);
+            if (legacy is null) return;
+            legacy.IsSystem = false;
+            legacy.OwnerUserId = null;
+            legacy.SeedKey = seedKey;
+            legacy.ChartTypeLookupId = newType;
+            if (newField is not null) legacy.FieldKey = newField;
+            if (es is not null) legacy.DescriptionJson = MultilingualText.Build(es, en ?? es);
+            if (legacy.SortOrder == sortV1 && !companyOrganized) legacy.SortOrder = sortNew;
+            seededKeys.Add(seedKey);
+        }
+        await ConvertAsync(ChartSeedKeys.InventoryValue, InventoryValueChartName, EntityTypes.StockBalance, "Category", "CostValue",
+            InventoryValueChartSortOrderV1, InventoryValueChartSortOrder, donut, null, null, null);
+        await ConvertAsync(ChartSeedKeys.MovementsByType, MovementsByTypeChartName, EntityTypes.InventoryTransaction, "TxnType", "Quantity",
+            MovementsByTypeChartSortOrderV1, MovementsByTypeChartSortOrder, bar, "Units", MovementsByTypeChartDescriptionEs, MovementsByTypeChartDescriptionEn);
+
         var existingCharts = await db.ChartDefinitions.Where(c => c.TenantId == tenantId).Select(c => c.Name).ToListAsync(ct);
         // Lote 6: el helper gana campo, función, dinero y módulo opcionales (los gráficos anteriores siguen con COUNT en Operación).
+        // Lote 15: gana isSystem y seedKey (gráfico de la compañía): con clave no se crea si la clave ya existe (activa o borrada).
         void Chart(string name, string es, string en, string source, string groupBy, int type, string? filter, int? range, bool pulse, int sort,
-            string? field = null, int? fn = null, bool isMoney = false, int? module = null)
+            string? field = null, int? fn = null, bool isMoney = false, int? module = null, bool isSystem = true, string? seedKey = null)
         {
             if (existingCharts.Contains(name)) return;
+            if (seedKey is not null && seededKeys.Contains(seedKey)) return;
             db.ChartDefinitions.Add(new ChartDefinition
             {
                 TenantId = tenantId, Name = name, DescriptionJson = MultilingualText.Build(es, en), DataSourceKey = source, GroupByField = groupBy, FieldKey = field,
-                AggregateFnLookupId = fn ?? count, ChartTypeLookupId = type, FilterJson = filter, BusinessModuleLookupId = module ?? ops, IsMoney = isMoney, IsSystem = true,
+                AggregateFnLookupId = fn ?? count, ChartTypeLookupId = type, FilterJson = filter, BusinessModuleLookupId = module ?? ops, IsMoney = isMoney, IsSystem = isSystem,
+                OwnerUserId = null, SeedKey = seedKey,
                 VisibilityLookupId = visTenant, DateRangeModeLookupId = range, ShowInPulse = pulse, SortOrder = sort,
             });
         }
@@ -328,8 +386,10 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // Lote 5 — Rutas (por fecha de la ruta, PlanDate)
         Chart("Rutas por estatus", "Distribución de las rutas de los últimos 7 días por estatus", "Trips of the last 7 days by status", EntityTypes.Trip, "Status", donut, null, last7, true, 80);
         // Lote 6 — Inventario y almacén (módulo WAREHOUSE)
-        Chart("Valor de inventario por categoría", "Existencia valorada a costo por categoría", "Stock cost value by category", EntityTypes.StockBalance, "Category", bar, null, null, true, 90,
-            field: "CostValue", fn: sum, isMoney: true, module: wh);
+        // Lote 15 (D9–D11, D13, D14): de la compañía (sin dueño), DONA con el total al centro, por categoría del producto (7 mayores +
+        // "Otras" en el motor), primera fila de "Tus gráficos" a la izquierda. Estado actual: sin rango.
+        Chart(InventoryValueChartName, "Existencia valorada a costo por categoría", "Stock cost value by category", EntityTypes.StockBalance, "Category", donut, null, null, true,
+            InventoryValueChartSortOrder, field: "CostValue", fn: sum, isMoney: true, module: wh, isSystem: false, seedKey: ChartSeedKeys.InventoryValue);
         Chart("Disponible por categoría", "Unidades disponibles por categoría", "Available units by category", EntityTypes.StockBalance, "Category", bar, null, null, false, 91,
             field: "QtyAvailable", fn: sum, module: wh);
         Chart("Movimientos por tipo", "Movimientos de inventario de los últimos 30 días por tipo", "Inventory movements of the last 30 days by type", EntityTypes.InventoryTransaction, "TxnType", donut, null, last30, true, 92,
@@ -341,9 +401,12 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart("Movimientos por día", "Tendencia diaria de movimientos de inventario", "Daily trend of inventory movements", EntityTypes.InventoryTransaction, "Date", line, null, last30, true, 95,
             module: wh);
 
-        // Lote 7A — gráfico de barras del Pulso de almacén: suma de cantidad (con signo del ledger: el despacho resta) por tipo.
-        Chart(MovementsByTypeChartName, "Cantidad movida en los últimos 7 días por tipo de movimiento", "Quantity moved in the last 7 days by movement type",
-            EntityTypes.InventoryTransaction, "TxnType", bar, null, last7, true, 96, field: "Quantity", fn: sum, module: wh);
+        // Lote 7A — gráfico de barras del Pulso de almacén por tipo. Lote 15 (D9, D12–D14): de la compañía (sin dueño), en UNIDADES
+        // POSITIVAS (campo Units = |Quantity|: el despacho ya no sale negativo), últimos 7 días (cada usuario lo cambia con "Rango"),
+        // primera fila de "Tus gráficos" a la derecha.
+        Chart(MovementsByTypeChartName, MovementsByTypeChartDescriptionEs, MovementsByTypeChartDescriptionEn,
+            EntityTypes.InventoryTransaction, "TxnType", bar, null, last7, true, MovementsByTypeChartSortOrder, field: "Units", fn: sum, module: wh,
+            isSystem: false, seedKey: ChartSeedKeys.MovementsByType);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

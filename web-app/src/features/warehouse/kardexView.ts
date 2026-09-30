@@ -422,12 +422,15 @@ export function summaryItems(
   balances?: { onHand: number | null; available: number | null },
 ): SummaryItem[] {
   const n = (v: number | undefined) => (s ? formatNumber(v ?? 0, lang) : '—')
+  // con signo y color solo si hay unidades: en cero se muestra "0" neutro (no "+0" ni "−0" en rojo)
+  const signed = (v: number | undefined, sign: '+' | '−') =>
+    !s ? '—' : (v ?? 0) === 0 ? formatNumber(0, lang) : `${sign}${formatNumber(v ?? 0, lang)}`
   const items: SummaryItem[] = [
     { key: 'movements', label: t('warehouse.inventory.summary.movements'), value: n(s?.movements) },
     { key: 'inCount', label: t('warehouse.inventory.summary.inCount'), value: n(s?.inCount) },
-    { key: 'inQty', label: t('warehouse.inventory.summary.inQty'), value: s ? `+${formatNumber(s.inQty ?? 0, lang)}` : '—', tone: 'in' },
+    { key: 'inQty', label: t('warehouse.inventory.summary.inQty'), value: signed(s?.inQty, '+'), tone: s?.inQty ? 'in' : undefined },
     { key: 'outCount', label: t('warehouse.inventory.summary.outCount'), value: n(s?.outCount) },
-    { key: 'outQty', label: t('warehouse.inventory.summary.outQty'), value: s ? `−${formatNumber(s.outQty ?? 0, lang)}` : '—', tone: 'out' },
+    { key: 'outQty', label: t('warehouse.inventory.summary.outQty'), value: signed(s?.outQty, '−'), tone: s?.outQty ? 'out' : undefined },
     { key: 'internal', label: t('warehouse.inventory.summary.internal'), value: n(s?.internalCount), title: t('warehouse.inventory.summary.internalHint') },
   ]
   if (balances) {

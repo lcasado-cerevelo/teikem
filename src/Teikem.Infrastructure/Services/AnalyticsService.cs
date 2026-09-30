@@ -13,10 +13,13 @@ namespace Teikem.Infrastructure.Services;
 
 /// <summary>
 /// Módulos G/H/I: Vistas, Indicadores y Gráficos. Reglas compartidas:
-///  - IsSystem: nadie edita ni elimina. Usuario: solo el dueño (OwnerUserId) edita/elimina.
+///  - IsSystem: nadie edita ni elimina. Usuario: solo el dueño (OwnerUserId) edita/elimina. Lote 15: de la compañía (no de
+///    sistema y sin dueño, p. ej. los 2 gráficos de almacén sembrados) lo edita/elimina quien tenga analytics.manage.
+///  - Lote 15 (D11): barras y donas con SUM/COUNT juntan el resto en "Otras"/"Others" (idioma del usuario) pasado el 8.º grupo.
 ///  - Visibilidad: TENANT / PRIVATE / SHARED (ReportShare/IndicatorShare/ChartShare por rol o usuario). De sistema = todos.
 ///  - Rango de fecha y "mostrar en Pulso" son preferencias POR USUARIO (UserAnalyticsPreference) con el valor de la
-///    definición como default; cambiar el default de una definición ajena/de sistema exige `analytics.dates`.
+///    definición como default; cambiar el default de una definición ajena/de sistema exige `analytics.dates`. Lote 15: los días
+///    del rango son LOCALES de la compañía (ITenantClock, hora de Puerto Rico), convertidos a instantes UTC para la consulta.
 ///  - Lote F8a (regla de lectura, loteF8-plan.md §2.2): un indicador o gráfico se lista, se lee y entra al Pulso solo si,
 ///    además de la visibilidad, el usuario puede leer su fuente de datos (EntityType → PermissionCatalog.DataSourceReadPermission)
 ///    y su módulo de negocio está encendido (PulsePanels.TenantModulesFor). Lo que no puede leer responde 404.
@@ -25,8 +28,11 @@ namespace Teikem.Infrastructure.Services;
 ///    (PulsePanelSetting propio + UserAnalyticsPreference.PulseSortOrder/ShowInPulse).
 /// </summary>
 public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IDataSourceRegistry registry, AnalyticsEngine engine, PermissionService permissions,
-    ModuleService modules)
+    ModuleService modules, ITenantClock? clock = null)
 {
+    /// <summary>Lote 15: reloj de la compañía; los rangos (LAST7, LAST30, THIS_MONTH, CUSTOM) son días LOCALES (hora de Puerto Rico).</summary>
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     // Mensajes exactos del plan (loteF8-plan.md, P1).
     public const string InvalidScopeMessage = "Alcance inválido: use mine o company.";
     public const string InvalidKindMessage = "Tipo inválido: use indicator o chart.";
@@ -69,16 +75,26 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     private bool CanEdit(bool isSystem, int? ownerUserId) => !isSystem && ownerUserId.HasValue && ownerUserId == tenant.UserId;
 
     /// <summary>
-    /// Igual que <see cref="CanEdit"/> (dueño, no de sistema), pero exige además que el dueño tenga HOY
-    /// analytics.manage — la regla exacta que ya aplica el `[RequirePermission]` de PUT/DELETE en el controlador.
-    /// Sin esto, el DTO diría `canEdit: true` a un dueño al que le quitaron el permiso, y el frontend mostraría
+    /// Lote 15 (D9, D14) — elemento DE LA COMPAÑÍA: no es de sistema y no tiene dueño (hoy, los 2 gráficos de almacén que siembra
+    /// la plataforma). Lo edita o elimina quien tenga analytics.manage (el `[RequirePermission]` de PUT/DELETE ya lo exige), no
+    /// una persona. Aplica igual a vistas, indicadores y gráficos (comparten la regla).
+    /// </summary>
+    public static bool IsCompanyOwned(bool isSystem, int? ownerUserId) => !isSystem && ownerUserId is null;
+
+    /// <summary>
+    /// Igual que <see cref="CanEdit"/> (dueño, no de sistema) o de la compañía (<see cref="IsCompanyOwned"/>), pero exige además
+    /// que el usuario tenga HOY analytics.manage — la regla exacta que ya aplica el `[RequirePermission]` de PUT/DELETE en el
+    /// controlador. Sin esto, el DTO diría `canEdit: true` a un dueño al que le quitaron el permiso, y el frontend mostraría
     /// Editar/Eliminar/el switch de compañía aunque el servidor respondiera 403 al usarlos.
     /// </summary>
     private async Task<bool> CanEditWithManageAsync(bool isSystem, int? ownerUserId, CancellationToken ct)
-        => CanEdit(isSystem, ownerUserId) && await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct);
+        => (CanEdit(isSystem, ownerUserId) || IsCompanyOwned(isSystem, ownerUserId)) && await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct);
 
+    /// <summary>Rango por defecto: el dueño, quien puede editar un elemento de la compañía o quien tenga analytics.dates.</summary>
     private async Task<bool> CanChangeDateAsync(bool isSystem, int? ownerUserId, CancellationToken ct)
-        => CanEdit(isSystem, ownerUserId) || await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsDates, ct);
+        => CanEdit(isSystem, ownerUserId)
+           || (IsCompanyOwned(isSystem, ownerUserId) && await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsManage, ct))
+           || await permissions.HasPermissionAsync(PermissionCatalog.AnalyticsDates, ct);
 
     private async Task<HashSet<int>> MyRoleIdsAsync(CancellationToken ct)
         => (await db.AppUserRoles.AsNoTracking().Where(ur => ur.UserId == tenant.UserId).Select(ur => ur.RoleId).ToListAsync(ct)).ToHashSet();
@@ -233,7 +249,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     {
         var r = await LoadReportAsync(id, ct);
         var source = registry.Get(r.BaseEntityType!.InternalCode);
-        var (from, to) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(run.DateRangeMode ?? DateRangeModes.All, run.DateFrom, run.DateTo);
+        var (from, to) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(run.DateRangeMode ?? DateRangeModes.All, run.DateFrom, run.DateTo, _clock);
         var (by, aggs, totals) = AnalyticsEngine.ParseGroup(r.GroupJson);
         var spec = new ReportSpec
         {
@@ -251,7 +267,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
         var source = registry.Get(baseEntityType);
         await EnsureSourceReadableAsync(source, ct);
         ValidateReportSpec(source, req);
-        var (from, to) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(run.DateRangeMode ?? DateRangeModes.All, run.DateFrom, run.DateTo);
+        var (from, to) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(run.DateRangeMode ?? DateRangeModes.All, run.DateFrom, run.DateTo, _clock);
         var (by, aggs, totals) = AnalyticsEngine.ParseGroup(req.GroupJson);
         var res = await engine.RunReportAsync(new ReportSpec
         {
@@ -310,6 +326,8 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     private void EnsureEditable(bool isSystem, int? ownerUserId, bool sharedWithEdit)
     {
         if (isSystem) throw new ForbiddenException("Los elementos por default de la plataforma no se editan ni se eliminan.");
+        // Lote 15 (D14): el de la compañía lo edita quien tenga analytics.manage (lo exige el [RequirePermission] del controlador).
+        if (IsCompanyOwned(isSystem, ownerUserId)) return;
         if (!CanEdit(isSystem, ownerUserId) && !sharedWithEdit && !tenant.IsPlatformAdmin) throw new ForbiddenException("Solo el dueño puede editar o eliminar este elemento.");
     }
 
@@ -472,7 +490,7 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     {
         var source = registry.Get(i.DataSourceKey);
         var (mode, from, to, _) = await EffectiveAsync(i, pref, ct);
-        var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to);
+        var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to, _clock);
         decimal? value = null;
         if (compute)
         {
@@ -612,13 +630,14 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
     {
         var source = registry.Get(c.DataSourceKey);
         var (mode, from, to, _) = await EffectiveAsync(c, pref, ct);
-        var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to);
+        var (fromUtc, toUtc) = source.DateField is null ? ((DateTime?)null, (DateTime?)null) : DateRangeResolver.Resolve(mode, from, to, _clock);
         var type = (await lookups.GetAsync(c.ChartTypeLookupId, ct))?.InternalCode ?? ChartTypes.Bar;
         IReadOnlyList<ChartPoint> points = Array.Empty<ChartPoint>();
         if (compute)
         {
             var fn = (await lookups.GetAsync(c.AggregateFnLookupId, ct))?.InternalCode ?? AggregateFns.Count;
-            points = await engine.EvaluateChartAsync(c.DataSourceKey, c.GroupByField, fn, c.FieldKey, c.FilterJson, type, fromUtc, toUtc, ct);
+            points = await engine.EvaluateChartAsync(c.DataSourceKey, c.GroupByField, fn, c.FieldKey, c.FilterJson, type, fromUtc, toUtc, ct,
+                othersLabel: tenant.Lang == "en" ? AnalyticsEngine.OthersLabelEn : AnalyticsEngine.OthersLabelEs);
         }
         var (visible, sort, origin) = PulsePanels.ResolveItem(pref?.PulseSortOrder, pref?.ShowInPulse, c.SortOrder, c.ShowInPulse);
         var module = (await lookups.GetAsync(c.BusinessModuleLookupId, ct))?.InternalCode ?? "";

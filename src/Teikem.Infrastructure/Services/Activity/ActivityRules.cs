@@ -30,12 +30,6 @@ public static class ActivityRules
     public const string InvalidWindow = "La ventana debe ser 24h, 48h o today.";
     public static string ModuleForbidden(string module) => $"No tiene permiso para ver la actividad del módulo {module}.";
 
-    /// <summary>
-    /// Zona del tenant para la ventana 'today'. El tenant todavía no guarda zona horaria (no hay columna): se usa UTC, igual
-    /// que DateRangeResolver de los indicadores. Cuando exista la columna, el servicio pasa la zona y esta regla no cambia.
-    /// </summary>
-    public static TimeZoneInfo TenantZone => TimeZoneInfo.Utc;
-
     /// <summary>Orden de las pestañas (maestro: Almacén, Operación, Contabilidad).</summary>
     private static readonly string[] ModuleOrder = { BusinessModules.Warehouse, BusinessModules.Operations, BusinessModules.Accounting };
 
@@ -51,7 +45,8 @@ public static class ActivityRules
 
     /// <summary>
     /// Ventana → instante UTC desde el que se leen eventos: 24h (default, también con null o vacío), 48h o 'today' (desde la
-    /// medianoche de hoy en la zona indicada; UTC si no se indica). Cualquier otro valor → 400 InvalidWindow.
+    /// medianoche de hoy en la zona indicada; UTC si no se indica). Cualquier otro valor → 400 InvalidWindow. Lote 15: el
+    /// servicio pasa la zona de la compañía (ITenantClock, hora de Puerto Rico); ya no hay una zona UTC propia de Actividad.
     /// </summary>
     public static DateTime FromUtc(string? window, DateTime nowUtc, TimeZoneInfo? zone = null)
     {

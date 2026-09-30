@@ -16,6 +16,15 @@ export type DataField = components['schemas']['DataFieldDto']
 /** Código del modo de rango personalizado (DateRangeModes.Custom del dominio); igual que `format.ts`. */
 export const CUSTOM_RANGE = 'CUSTOM'
 
+/**
+ * Gráfico "de la compañía" (Lote 15, D9/D14): no es de sistema y no tiene dueño (p. ej. "Valor de inventario por categoría"
+ * y "Movimientos de inventario por tipo", sembrados en cada compañía). Lo editan o eliminan quienes tienen `analytics.manage`
+ * (el API lo dice en `canEdit`); si se elimina, no vuelve.
+ */
+export function isCompanyChart(chart: Pick<AnalyticsDefinition, 'isSystem' | 'ownerUserId'>): boolean {
+  return !chart.isSystem && chart.ownerUserId == null
+}
+
 // --------------------------------------------------------------------------------------------------------------
 // Agrupación por módulo de negocio (businessModule): orden de la maqueta (Operación → Almacén → Contabilidad),
 // cualquier código que este frontend no reconozca va al final, en orden alfabético (no debería pasar: BusinessModule

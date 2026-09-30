@@ -1,15 +1,15 @@
-# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén; Lote F8a: paneles, permisos y orden; Lote 14: Necesita tu atención)
+# Capítulo 07 — Pulso del día y Actividad reciente (Lote 7A: Almacén; Lote F8a: paneles, permisos y orden; Lote 14: Necesita tu atención; Lote 15: Pulso del día)
 
 Este capítulo describe la parte de **Almacén** de "Actividad reciente" (el panel de eventos recientes del Pulso del
 día), los indicadores/gráfico de Almacén que se agregan al Pulso en el Lote 7A y, desde el Lote F8a, **cómo se arma el
 Pulso de cada usuario**: paneles con su propio permiso, qué indicadores y gráficos puede leer cada quien, y el orden en dos
-niveles (compañía y usuario) — sección 3; y, desde el Lote 14, el panel **Necesita tu atención** (sección 4). Operación (7B) y Contabilidad (7C)
+niveles (compañía y usuario) — sección 3; desde el Lote 14, el panel **Necesita tu atención** (sección 4); y, desde el Lote 15, la franja **Almacén hoy**, las filas fijas, los indicadores por fila, los gráficos siempre dibujados, los 2 gráficos de la compañía y los **días de Puerto Rico** (sección 5). Operación (7B) y Contabilidad (7C)
 agregan su propia pestaña de Actividad reciente y sus propios indicadores más adelante, sobre la misma
 infraestructura. Los mensajes están verificados contra el código (`src/Teikem.Infrastructure/Services/Activity/
 ActivityRules.cs`, `src/Teikem.Infrastructure/Services/Activity/WarehouseActivityProvider.cs`,
 `src/Teikem.Infrastructure/Services/ActivityFeedService.cs`, `src/Teikem.Api/Controllers/ActivityController.cs`,
 `src/Teikem.Infrastructure/Services/ProductService.cs`, `src/Teikem.Infrastructure/Seeding/
-SystemAnalyticsSeeder.cs`). Las preguntas y respuestas de cada mensaje están en [faq.md](faq.md). El Pulso del día en
+SystemAnalyticsSeeder.cs`, y desde el Lote 15 `src/Teikem.Infrastructure/Services/WarehousePulseService.cs`, `src/Teikem.Domain/Wms/WarehousePulseRules.cs`, `src/Teikem.Infrastructure/Services/AnalyticsService.cs` y `src/Teikem.Infrastructure/Analytics/AnalyticsEngine.cs`). Las preguntas y respuestas de cada mensaje están en [faq.md](faq.md). El Pulso del día en
 sí (indicadores, gráficos, mi rango de fecha) se describe en el capítulo
 [F1 — frontend](frontend/f1-nucleo-y-mi-cuenta.md); este capítulo es la parte de backend que ese panel consume.
 
@@ -40,8 +40,8 @@ Cómo se usa:
 - `module` — pestaña a leer (por ahora solo `WAREHOUSE`); si se omite, se usa el primer módulo visible para el
   usuario. Si el usuario no ve ningún módulo, la respuesta es `{ "total": 0, "visibleModules": [], "items": [] }`
   (200, no 403).
-- `window` — `24h` (por defecto), `48h` o `today` (desde la medianoche de **hoy en UTC**: el tenant todavía no
-  guarda su zona horaria, ver decisión #8 de `docs/lote7A-decisiones.md`).
+- `window` — `24h` (por defecto), `48h` o `today` (desde la medianoche de **hoy en hora de Puerto Rico**, 04:00 UTC; desde el
+  Lote 15. Antes era la medianoche UTC. La compañía todavía no guarda su zona: es la de Puerto Rico para todas).
 - `onlyMandatory` — `true` deja solo los eventos obligatorios del catálogo (o del override del tenant, sección 3).
 - `skip`/`take` — paginación; `take` por defecto y máximo 50 ("Ver más" pide la siguiente página con `skip`).
 - `GET /api/v1/products?belowMin=true` (mismo endpoint de siempre, con el filtro nuevo) — solo productos activos con
@@ -113,8 +113,10 @@ la organización (`ShowInPulse = true`), en el módulo `WAREHOUSE`:
   en las compañías ya creadas, solo si tenían el filtro anterior exacto (uno personalizado no se toca).
 - **Productos bajo mínimo** y **Productos activos** — ya existían desde el Lote 6 (mismo filtro que la vista
   "Inventario bajo mínimo"); no se duplican en este lote.
-- **Movimientos de inventario por tipo** (gráfico de barras) — suma con signo de la cantidad de los movimientos de
-  inventario de los últimos 7 días, agrupada por tipo de movimiento (recepción, despacho, ajuste, transferencia).
+- **Movimientos de inventario por tipo** (gráfico de barras) — desde el Lote 15 mide **unidades movidas en positivo** (campo
+  `Units`, el valor absoluto de la cantidad; antes sumaba la cantidad con signo y el despacho salía negativo) de los
+  últimos 7 días, agrupada por tipo de movimiento (recepción, despacho, ajuste, transferencia, cruce de muelle). Ya no es de
+  sistema: es un **gráfico de la compañía** que se edita (sección 5.5).
 
 Quién puede: se ven en el Pulso del día con la misma regla que cualquier indicador/gráfico (sección 3): el permiso del
 panel (`pulse.indicators` / `pulse.charts`) y, **desde el Lote F8a**, poder leer su fuente de datos — todas son de
@@ -153,7 +155,7 @@ orden y los ocultos se guardan en dos niveles: **el de la compañía** (lo ve to
 Organizar **mi** Pulso no exige permiso (son preferencias propias). No existe `pulse.view`: la pantalla de inicio siempre
 existe; si el usuario no tiene ningún panel, ve la bienvenida.
 
-Plantillas de rol: **Admin de compañía** (TenantAdmin) todos (los 5 de F8a y `pulse.attention`); **Operador de almacén** `pulse.warehouse`,
+Plantillas de rol: **Admin de compañía** (TenantAdmin) todos (los 5 de F8a y `pulse.attention`; la franja "Almacén hoy" usa `pulse.warehouse`, no hay permiso nuevo); **Operador de almacén** `pulse.warehouse`,
 `pulse.indicators`, `pulse.charts`, `pulse.activity`; **Despachador**, **Facturación** y **Solo lectura**
 `pulse.indicators`, `pulse.charts`, `pulse.activity`; **Chofer** ninguno. Ojo: el Operador de almacén tiene
 `pulse.activity` pero no `analytics.view` (dato del panel), así que **no ve Actividad reciente** hasta que se le dé
@@ -171,13 +173,14 @@ se hace una sola vez, en la actualización que crea los permisos; después, lo q
 | `INDICATORS` ("Tus indicadores") | `pulse.indicators` | (por elemento) | `ANALYTICS` | 20 |
 | `CHARTS` ("Tus gráficos") | `pulse.charts` | (por elemento) | `ANALYTICS` | 30 |
 | `ATTENTION` (Necesita tu atención, Lote 14) | `pulse.attention` | (por tipo de aviso) | (por tipo de aviso) | 5 |
+| `WAREHOUSE_DAY` (Almacén hoy, Lote 15) | `pulse.warehouse` | `inventory.view` | `WMS_LOTSERIAL` | −10 |
 | `WAREHOUSE` (Almacén) | `pulse.warehouse` | `inventory.view` | `WMS_LOTSERIAL` | 40 |
 | `ACTIVITY` (Actividad reciente) | `pulse.activity` | `analytics.view` | `ANALYTICS` | 50 |
 
 Reservados para lotes futuros (no aparecen todavía): `ORDERS_RIVER` (10, "Paquetes en la calle"), `COD_RIVER` (11,
 "Dinero COD de regreso"), `DECISIONS` (15, "Necesita tu decisión") y `RADAR` (60). El panel `ATTENTION` (Lote 14) no reemplaza a
-`DECISIONS`: usa su propia clave porque el dueño lo llama "Necesita tu atención"; con orden 5 queda arriba de todos los demás. Con el módulo `ANALYTICS` apagado el
-Pulso solo puede mostrar el panel Almacén.
+`DECISIONS`: usa su propia clave porque el dueño lo llama "Necesita tu atención"; con orden 5 queda arriba de los indicadores y gráficos. Desde el Lote 15, `WAREHOUSE_DAY` (la franja "Almacén hoy", orden −10) va **primero**, incluso en los Pulsos ya organizados (Organizar guarda el orden como índice × 10 desde 0, así que solo un orden negativo lo deja arriba). Orden por defecto: `WAREHOUSE_DAY`, `ATTENTION`, `INDICATORS`, `CHARTS`, `WAREHOUSE`, `ACTIVITY`. Con el módulo `ANALYTICS` apagado el
+Pulso solo puede mostrar los paneles de Almacén (la franja y el panel Almacén).
 
 ### Qué indicadores y gráficos ve cada usuario
 
@@ -321,7 +324,210 @@ No hay otra validación: el panel es de solo lectura. Un tipo de aviso cuyo mód
 
 ---
 
+## 5. Pulso del día (Lote 15)
+
+Este lote reordena el Pulso: pone arriba una franja de números de Almacén, deja fijas las filas de arriba al desplazarse, agrupa los
+indicadores en una fila por módulo, dibuja **siempre** los gráficos como gráfico y convierte dos gráficos de Almacén en gráficos de la
+compañía que se pueden editar. Además, **todo el análisis pasa a contar los días en hora de Puerto Rico** (sección 5.6). Las pantallas
+están en [F7A — Pulso: Almacén hoy](frontend/f7a-pulso-almacen-y-actividad.md).
+
+### 5.1 Franja "Almacén hoy · últimos 7 días"
+
+Qué hace: es la fila de cuatro tarjetas que va justo debajo de la fecha. Muestra lo que pasó **hoy** en el almacén y cómo vienen los
+últimos 7 días (hoy incluido). Es el panel `WAREHOUSE_DAY`, con orden −10: siempre queda primero, también en los Pulsos que alguien ya
+organizó.
+
+Quién puede: el permiso **`pulse.warehouse`** con **`inventory.view`** y el módulo **`WMS_LOTSERIAL`** encendido (los mismos del panel
+Almacén; no hay permiso nuevo). Lo traen el Admin de compañía y el Operador de almacén. El endpoint que la alimenta pide `inventory.view`.
+
+Cómo se usa: en la pantalla de inicio no hay nada que configurar. Por API:
+`GET /api/v1/inventory/pulse/days?warehousePublicIds=<guid>&days=7` (`warehousePublicIds` se puede repetir; sin él son todos los almacenes;
+`days` es de 1 a 14 y por defecto 7; la pantalla siempre pide 7). Respuesta abreviada:
+
+```
+{ "timeZone": "America/Puerto_Rico", "today": "2026-09-30",
+  "fromUtc": "2026-09-24T04:00:00Z", "toUtc": "2026-10-01T04:00:00Z",
+  "days": [ { "date": "2026-09-24", "receivedUnits": 0, "receivedMovements": 0, "outboundUnits": 0,
+              "outboundMovements": 0, "countsWithVariance": 0 },
+            … 7 filas, de la más vieja a hoy … ],
+  "receivedToday": 12, "receivedTotal": 72, "outboundToday": 5, "outboundTotal": 11,
+  "countsWithVarianceToday": 1, "countsWithVarianceTotal": 3, "belowMinProducts": 1,
+  "countsAlert": true, "belowMinAlert": true }
+```
+
+Siempre vienen tantas filas como `days`: un día sin movimiento trae ceros.
+
+**Qué cuenta cada tarjeta**
+
+| Tarjeta | Número grande | Texto pequeño | Barritas | Qué cuenta | Naranja |
+|---|---|---|---|---|---|
+| Unidades recibidas | Lo de hoy | "7 días: N" | 7 | Recepciones (`RECEIPT`) más los ajustes por diferencia de recibo (`RECEIPT_VARIANCE`): lo que **de verdad llegó**. Si se esperaban 10 y llegaron 8, cuenta 8 | Nunca |
+| Unidades de salida | Lo de hoy | "7 días: N" | 7 | Recolección (`ISSUE`) más cruce de muelle (`CROSSDOCK`). **Eliminar una recolección resta** esas unidades el día en que se elimina. No cuenta daños, pérdidas, vencidos, conteos ni transferencias | Nunca |
+| Conteos con diferencia | Los conteos cíclicos cerrados hoy en estatus **Diferencia** | "7 días: N" | 7 | Conteos activos en `RECONCILED_VARIANCE`, por el día en que se cerraron | Si hoy hubo alguno |
+| Productos bajo mínimo | Los que están bajo su mínimo **ahora** | "en este momento" | Ninguna | La misma consulta que el panel Almacén (`GET /products?belowMin=true`): la cifra es idéntica | Si hay alguno |
+
+- El inventario baja al **recolectar**, no al despachar el camión: por eso "salida" cuenta recolecciones (capítulo 06, sección 7).
+- Las barritas son 7, una por día, la de la derecha es **hoy** y crece durante el día. Un día sin movimiento es una barrita vacía (una
+  línea). Pasar el mouse sobre una barrita muestra la fecha completa y la cantidad ("Hoy, miércoles, 30 de septiembre de 2026 · Unidades: 72").
+  Las barritas solo muestran: no se hace clic en ellas.
+- Los 7 días son **días de Puerto Rico**: cada uno empieza a las 00:00 de Puerto Rico (04:00 UTC). Un recibo hecho a las 23:59 de Puerto Rico
+  cuenta en ese día, no en el siguiente.
+- La tarjeta pasa a **naranja** (borde y número, y la barrita de hoy en Conteos) según las banderas `countsAlert` y `belowMinAlert` que
+  manda el servidor. La franja es violeta el resto del tiempo.
+- La salida de un día puede salir **negativa** si ese día solo se eliminaron recolecciones (la reversa resta).
+- Mientras carga, cada número dice "…". Si la consulta falla (por ejemplo, un 403 al cambiar de compañía), dice "—" y no saca al
+  usuario del Pulso. La franja se vuelve a pedir cada 5 minutos, para que cambie de día a medianoche, y se refresca sola al hacer
+  movimientos de inventario en la sesión.
+
+**A dónde lleva el clic** (toda la tarjeta es un enlace; con un almacén elegido se agrega `warehousePublicIds`)
+
+| Tarjeta | Pantalla | Filtros que lleva |
+|---|---|---|
+| Unidades recibidas | Kárdex de movimientos (`/warehouse/kardex`) | Tipo Recepción, y Desde y Hasta = los 7 días (de hace 6 días a hoy) |
+| Unidades de salida | Kárdex de movimientos | Tipos Despacho y Cruce de muelle, y los 7 días |
+| Conteos con diferencia | Conteo cíclico (`/warehouse/cycle-counts`) | Estatus Diferencia (sin fechas: ver FAQ) |
+| Productos bajo mínimo | Productos e inventario (`/warehouse/products`) | Recuadro "Bajo mínimo" marcado |
+
+Conteo cíclico y Productos e inventario leen esos filtros de la dirección una vez, al abrirse. Ojo con la suma del Kárdex: ver la FAQ.
+
+**Almacén de la franja.** Un selector chico junto al título ("Todos los almacenes" o el **código** del almacén; el nombre aparece al pasar
+el mouse). Es el **mismo** almacén del panel "Almacén" de más abajo: cambiarlo en uno lo cambia en el otro, y se recuerda por usuario en
+ese navegador. Las cuatro tarjetas se calculan con él.
+
+**Validaciones**
+
+| Campo / caso | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| `days` | Entero de 1 a 14 | `Los días deben estar entre 1 y 14.` (viene en `errors.days`) | 400 |
+| Sin `inventory.view` | Lo rechaza la política del controlador | (sin cuerpo de la aplicación) | 403 |
+| Módulo `WMS_LOTSERIAL` apagado | El módulo de la clase | `El módulo 'WMS_LOTSERIAL' no está habilitado para esta compañía.` | 403 |
+| Sin sesión | — | (sin cuerpo de la aplicación) | 401 |
+| `warehousePublicIds` con un almacén que no existe o es de otra compañía | No es error: da todo en cero (nunca cae en "todos") | — | 200 |
+
+**Estatus y transiciones.** La franja no tiene estatus propios ni cambia ningún estatus: solo lee. Qué mueve cada tarjeta:
+
+| Tarjeta | Lo que la mueve | Quién | Qué valida | Efecto | Qué bloquea |
+|---|---|---|---|---|---|
+| Unidades recibidas | Confirmar un recibo (capítulo 06, sección 4) | Quien confirma el recibo | Lo del recibo | Un movimiento `RECEIPT` (y un ajuste `RECEIPT_VARIANCE` si hay diferencia) | Nada |
+| Unidades de salida | Crear una recolección o un cruce de muelle; eliminar una recolección resta | Quien recolecta o elimina | Lo de la recolección | Un movimiento `ISSUE` o `CROSSDOCK`; al eliminar, un ajuste `PICK_BATCH_REVERSAL` | Nada |
+| Conteos con diferencia | Confirmar un conteo cíclico que asienta algún movimiento: Pendiente o Contado → **Diferencia** (capítulo 06, sección 6) | Quien tenga `warehouse.count` | Lo del conteo | Estatus `RECONCILED_VARIANCE` con su fecha de cierre | Un conteo Diferencia ya no se edita |
+| Productos bajo mínimo | Cualquier movimiento que cambie lo disponible, o cambiar el mínimo de un producto | Según la acción | — | — | Nada |
+
+### 5.2 Filas fijas al desplazarse
+
+Qué hace: al bajar por el Pulso, quedan **fijas arriba** la fila de la fecha (con los botones "Organizar mi Pulso" y "Organizar el de la
+compañía") y, justo debajo, la franja "Almacén hoy". El saludo ("Bienvenido…") y el chip "Pulso de la compañía" se desplazan, y "Necesita
+tu atención" y todo lo demás pasan por debajo. Solo pasa en la pantalla de inicio; Indicadores y Gráficos no cambian.
+
+Cuándo deja de estar fija la franja:
+
+| Situación | Qué queda fijo |
+|---|---|
+| Lo normal (la franja es el primer panel) | La fecha y la franja |
+| Con **Organizar** se oculta la franja o se baja de lugar (otro panel queda primero) | Solo la fecha |
+| Se está organizando (modo Organizar abierto) | Nada de esto: la barra de Organizar ya es fija |
+| Cualquier otro panel que quede primero (Actividad reciente, gráficos…) | Solo la fecha: solo puede quedar fija una franja de números, nunca un panel alto |
+| Celular (menos de 720 px de ancho) | La fecha y la franja, compactas: 4 cuadros en 2×2 con el número y las barritas, sin el texto pequeño ni "· últimos 7 días" |
+| Celular acostado (menos de 560 px de alto) | Solo la fecha |
+| Ancho de 720 a 980 px | La franja va 2×2 sin tuberías (con el texto pequeño) |
+
+Desde Organizar se explica con la nota "La franja que quede justo debajo de la fecha se queda fija al desplazarse; si la oculta o la baja,
+solo queda fija la fecha." Para quitar la franja fija: ocúltela o bájela con **Organizar mi Pulso** (solo para usted) o **Organizar el de
+la compañía** (para todos los que no tengan un Pulso propio, permiso `pulse.organize_company`).
+
+### 5.3 Indicadores en una fila por módulo
+
+"Tus indicadores" muestra ahora **una fila por módulo de negocio**, cada una con su etiqueta, en el orden del menú: **Operación**,
+**Almacén** y **Contabilidad** (esta solo si hay algún indicador de ese módulo, por ejemplo "COD por cobrar"). Dentro de cada fila el orden
+es el de siempre. "Cambios registrados", "Accesos fallidos" y "Usuarios activos" están marcados como Operación y salen en esa fila. La
+etiqueta pequeña de cada tarjeta muestra solo el rango ("Últimos 7 días"), porque el módulo ya lo dice la fila.
+
+En **Organizar** los indicadores se listan por fila y **solo se mueven dentro de su fila** (con la nota "Los indicadores se muestran en
+una línea por módulo; aquí se ordenan dentro de su línea."). Al guardar, el orden se guarda por fila.
+
+### 5.4 Los gráficos siempre se dibujan (y "Otras")
+
+- **Siempre gráfico.** Antes, un gráfico con 3 puntos o menos se mostraba como una lista de "etiqueta · valor". Ahora **siempre** es un
+  gráfico, tenga los puntos que tenga: una dona de una sola rebanada, una barra sola y una línea de un solo día se dibujan (la línea con 12
+  puntos o menos pinta cada punto). Solo un gráfico **sin ningún punto** muestra el aviso: "Este gráfico no tiene datos en el rango
+  configurado." en el Pulso, y "Este gráfico no tiene datos con los filtros y el rango actuales." en Análisis → Gráficos.
+- **Tooltip y accesibilidad.** Al pasar el mouse se ve el valor y, si el gráfico agrupa por día, la fecha completa ("miércoles, 30 de
+  septiembre de 2026"; el eje la muestra corta, "30 sep"). Cada gráfico lleva su descripción con los valores para lectores de pantalla.
+- **Dona.** Lleva el total al centro; si el total es largo, en forma compacta ("$1.2M").
+- **2 por fila.** En "Tus gráficos" nunca hay más de 2 gráficos por fila (en celular, uno debajo del otro). Análisis → Gráficos no cambia.
+- **"Otras".** En barras, dona y pastel que **suman o cuentan** (SUM o COUNT), si hay más de 8 grupos se muestran los **7 mayores** y un
+  último punto **"Otras"** (en inglés "Others") con la suma exacta del resto; la suma de los puntos es el total. Con promedio, mínimo o
+  máximo no se junta nada: siguen los 8 mayores. **Ojo:** esto también cambia las barras que ya existían con más de 8 grupos (por ejemplo
+  "Cambios por usuario"): antes mostraban los 8 mayores. La vista previa del editor de gráficos hace el mismo cálculo.
+
+### 5.5 Los 2 gráficos de almacén de la compañía
+
+Qué hace: dos gráficos que ya existían de fábrica ("Valor de inventario por categoría" y "Movimientos de inventario por tipo") dejan de
+ser de sistema y pasan a ser **gráficos de la compañía**: sin dueño, editables y borrables por quien tenga el permiso, y sembrados en
+**todas** las compañías (también en las ya creadas, con la actualización de la base).
+
+| | Valor de inventario por categoría | Movimientos de inventario por tipo |
+|---|---|---|
+| Tipo | Dona con el total en el centro | Barras verticales |
+| Fuente | `STOCK_BALANCE` | `INVENTORY_TRANSACTION` |
+| Medida | Suma de `CostValue` ("Valor a costo": existencia en mano por costo de compra), en dinero | Suma de **`Units`** (unidades movidas, siempre positivas) |
+| Agrupa por | Categoría del producto: 7 mayores más "Otras" | Tipo de movimiento (Recepción, Despacho, Transferencia, Ajuste, Cruce de muelle) |
+| Período | Ninguno: es la foto de ahora (sin botón "Rango") | Últimos 7 días; cada usuario lo cambia con **Rango** (no hay opción de 5 días) |
+| Módulo y visibilidad | Almacén, toda la compañía | Almacén, toda la compañía |
+| Posición en "Tus gráficos" | Primera fila, a la izquierda (orden 1) | Primera fila, a la derecha (orden 2) |
+
+- **Quién los edita o los borra:** quien tenga el permiso `analytics.manage` ("Crear vistas, indicadores y gráficos"; hoy el administrador
+  de la compañía). En Análisis → Gráficos llevan el chip **"De la compañía"** y, con el permiso, los botones Editar y Eliminar. Quien tenga
+  `analytics.dates` también cambia su rango por defecto.
+- **Si se borran, no vuelven.** Al eliminar uno, la pantalla avisa: "¿Eliminar el gráfico {nombre}? Es de la compañía: una vez eliminado no
+  se vuelve a crear." Ni renombrarlo ni borrarlo lo recrea en una actualización futura. Ocultarlos (con Organizar o con "Mostrar en Pulso")
+  los deja ocultos como a cualquier otro.
+- **Posición.** En una compañía que **ya organizó** sus gráficos (algún gráfico activo con orden 0) se respeta su orden y no se mueven a la
+  primera fila.
+- **Compañías ya creadas.** Solo se convierte el gráfico de fábrica que sigue **exactamente** como se sembró (mismo nombre, fuente, campo y
+  tipo). Uno que la compañía ya tocó no se modifica.
+- **Los otros gráficos repetidos no se tocan** ("Movimientos por tipo" en dona de 30 días queda como estaba).
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Editar o borrar (`PUT` o `DELETE /api/v1/analytics/charts/{id}`) sin `analytics.manage` | (sin cuerpo de la aplicación: lo rechaza la política del controlador) | 403 |
+| Editar o borrar un gráfico **de sistema** | `Los elementos por default de la plataforma no se editan ni se eliminan.` | 403 |
+| Editar o borrar un gráfico que **tiene otro dueño** | `Solo el dueño puede editar o eliminar este elemento.` | 403 |
+| Tipo de gráfico distinto de barra, dona o línea (el pastel `PIE` no está habilitado) | `Tipo de gráfico: BAR, DONUT o LINE.` (campo `chartType`) | 400 |
+| Crear un gráfico con un nombre que ya usa uno activo | `Ya existe el gráfico '{nombre}'.` | 409 |
+| Un gráfico que el usuario no ve o no puede leer | `Gráfico '{id}' no encontrado.` | 404 |
+
+### 5.6 "Hoy" y los días, en hora de Puerto Rico
+
+Desde el Lote 15, todo lo que depende del día usa la hora de Puerto Rico (UTC−4, sin horario de verano), no el día UTC. El día empieza a las
+00:00 de Puerto Rico (04:00 UTC). **Qué cambió de comportamiento:**
+
+| Dónde | Qué pasa ahora |
+|---|---|
+| Rangos de indicadores, gráficos, vistas y exportaciones (**Últimos 7 días, Últimos 30 días, Mes actual y Rango personalizado**) | Son días de Puerto Rico. "Últimos 7 días" = hoy y los 6 anteriores, desde las 00:00 locales del primer día hasta las 00:00 locales de mañana. Un movimiento de las 20:00 a las 24:00 de Puerto Rico cuenta en su día local (antes contaba en el día siguiente) |
+| Gráficos agrupados por fecha | Un punto por día de Puerto Rico. En "Movimientos por día", la etiqueta es `2026-09-30` |
+| Campo `Date` de la fuente de movimientos | Es el día de Puerto Rico y sale como `"2026-09-30"` (antes `"2026-09-30T00:00:00"` en UTC) |
+| Rutas y contratos | Su día de calendario se compara con el rango local |
+| Vencimientos (documentos de flota, choferes, contratos vigentes) | "Hoy" es el de Puerto Rico |
+| Actividad reciente, ventana **Hoy** | Desde las 00:00 de Puerto Rico |
+| Franja "Almacén hoy" | Sus 7 días son los mismos días locales, así que la suma de la franja coincide con el indicador "últimos 7 días" y con un gráfico por día |
+
+**Sigue en UTC (fuera de este lote):** la validación de mínimo y máximo de fechas de los campos personalizados, el "hoy" de la ficha de
+cliente y de los documentos y tarifas del chofer. Un dato de esas pantallas puede diferir en horas de un indicador o gráfico. La zona por
+compañía queda para un lote posterior (hoy es la de Puerto Rico para todas).
+
+### 5.7 Indicador "Descuadres pendientes"
+
+Cuenta los descuadres Kárdex ↔ saldo en estatus **Pendiente** (`OPEN`, capítulo 06, sección 3.3), en Almacén, sin rango de fecha (es el
+estado de ahora). Es un indicador de sistema y **viene apagado en el Pulso**, porque "Necesita tu atención" (sección 4) ya los muestra.
+Aparece en Análisis → Indicadores; se puede encender con "Mostrar en Pulso del día". Lo ve quien puede leer la fuente de datos
+(`inventory.view` con `WMS_LOTSERIAL`).
+
+---
+
 ## Preguntas frecuentes de este capítulo
+
+Las del Lote 15 (franja "Almacén hoy", filas fijas, gráficos de la compañía, "Otras" y días de Puerto Rico) están en [faq.md](faq.md), sección "Lote 15".
 
 Ver [faq.md](faq.md), sección "Lote 7A — Pulso de almacén y Actividad reciente", para el detalle de cada mensaje
 (qué significa y qué hacer), incluidos por qué un ajuste `FOUND` aparece dos veces, qué pasa al renombrar o

@@ -263,6 +263,12 @@ describe('ProductListScreen · Productos e inventario', () => {
     await waitFor(() => expect(lastListQuery().get('belowMin')).toBe('true'))
   })
 
+  it('Lote 15: ?kpi=low&warehousePublicIds= (franja "Almacén hoy" del Pulso) abre con Bajo mínimo y el almacén elegidos', async () => {
+    wrap(`/warehouse/products?kpi=low&warehousePublicIds=${WH}`)
+    await waitFor(() => expect(lastListQuery().get('belowMin')).toBe('true'))
+    expect(lastListQuery().getAll('warehousePublicIds')).toEqual([WH])
+  })
+
   it('filtros al API y a la página 1: Almacén (varios), SKU, Nombre, Categoría y Marca', async () => {
     const user = userEvent.setup()
     wrap()

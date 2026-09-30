@@ -1,6 +1,8 @@
 // Lote F8a (P3) — Gráficos (`/analytics/charts`, `analytics.view` + ANALYTICS): visualizaciones sobre una fuente de
 // datos, agrupadas por módulo de negocio, con el mismo editor que Indicadores (agrega "Agrupar por" y "Tipo").
 // Fase 10b: la tarjeta lleva el rango en línea y un solo switch de Pulso (ver `ChartCard`).
+// Lote 15: chip "De la compañía" en los gráficos sin dueño que no son de sistema (Editar/Eliminar según `canEdit`, es decir
+// `analytics.manage`); al eliminar uno se avisa que no vuelve.
 import { useMemo, useState } from 'react'
 import { Can } from '../../kernel/access'
 import { ApiError, applyProblemDetails } from '../../kernel/api/problem'
@@ -16,7 +18,7 @@ import { toast } from '../../kernel/ui/toast'
 import { useChartData, useCharts, useDeleteChart, useSetMyDateRange, useSetMyPulse, type AnalyticsDefinition } from './api'
 import { ChartVisual } from './ChartVisual'
 import { DefinitionEditor } from './DefinitionEditor'
-import { CUSTOM_RANGE, effectiveRangeCaption, groupDefinitions, visibilityBadgeKey } from './definitions'
+import { CUSTOM_RANGE, effectiveRangeCaption, groupDefinitions, isCompanyChart, visibilityBadgeKey } from './definitions'
 import { formatYmd } from './format'
 import { MODULE_GROUP_ICON } from './moduleIcons'
 import './pulse.css'
@@ -73,7 +75,7 @@ export default function ChartsPage() {
         open={toDelete != null}
         tone="danger"
         title={t('analytics.charts.deleteTitle')}
-        message={t('analytics.charts.deleteBody', { name: toDelete?.name ?? '' })}
+        message={t(toDelete && isCompanyChart(toDelete) ? 'analytics.charts.deleteCompanyBody' : 'analytics.charts.deleteBody', { name: toDelete?.name ?? '' })}
         onConfirm={async () => {
           if (toDelete?.id == null) return
           await del.mutateAsync(toDelete.id)
@@ -115,6 +117,7 @@ function ChartCard({ chart, onEdit, onDelete }: { chart: AnalyticsDefinition; on
       title={
         <>
           {chart.name} {chart.isSystem && <Chip tone="cap">{t('analytics.charts.systemBadge')}</Chip>}
+          {isCompanyChart(chart) && <Chip tone="cap">{t('analytics.charts.companyBadge')}</Chip>}
         </>
       }
     >

@@ -129,7 +129,10 @@ public sealed class ChartDefinitionConfiguration : IEntityTypeConfiguration<Char
         b.Property(c => c.DateFrom).HasColumnType("date");
         b.Property(c => c.DateTo).HasColumnType("date");
         b.Property(c => c.RowVersion).IsRowVersion();
+        // Lote 15: clave de siembra (UQ_ChartDefinition_SeedKey filtrado: única por compañía cuando no es NULL).
+        b.Property(c => c.SeedKey).HasMaxLength(40);
         b.HasIndex(c => new { c.TenantId, c.Name }).IsUnique();
+        b.HasIndex(c => new { c.TenantId, c.SeedKey }).IsUnique().HasFilter("[SeedKey] IS NOT NULL").HasDatabaseName("UQ_ChartDefinition_SeedKey");
         b.HasMany(c => c.Shares).WithOne(s => s.Chart).HasForeignKey(s => s.ChartDefinitionId);
     }
 }

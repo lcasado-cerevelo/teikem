@@ -7456,6 +7456,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/pulse/days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicIds?: string[];
+                    days?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehousePulseDaysDto"];
+                        "application/json": components["schemas"]["WarehousePulseDaysDto"];
+                        "text/json": components["schemas"]["WarehousePulseDaysDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/balances": {
         parameters: {
             query?: never;
@@ -21186,6 +21226,46 @@ export interface components {
             rowVersion?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        WarehousePulseDayDto: {
+            /** Format: date */
+            date?: string;
+            /** Format: double */
+            receivedUnits?: number;
+            /** Format: int32 */
+            receivedMovements?: number;
+            /** Format: double */
+            outboundUnits?: number;
+            /** Format: int32 */
+            outboundMovements?: number;
+            /** Format: int32 */
+            countsWithVariance?: number;
+        };
+        WarehousePulseDaysDto: {
+            timeZone?: string | null;
+            /** Format: date */
+            today?: string;
+            /** Format: date-time */
+            fromUtc?: string;
+            /** Format: date-time */
+            toUtc?: string;
+            days?: components["schemas"]["WarehousePulseDayDto"][] | null;
+            /** Format: double */
+            receivedToday?: number;
+            /** Format: double */
+            receivedTotal?: number;
+            /** Format: double */
+            outboundToday?: number;
+            /** Format: double */
+            outboundTotal?: number;
+            /** Format: int32 */
+            countsWithVarianceToday?: number;
+            /** Format: int32 */
+            countsWithVarianceTotal?: number;
+            /** Format: int32 */
+            belowMinProducts?: number;
+            countsAlert?: boolean;
+            belowMinAlert?: boolean;
         };
         WarehouseTaskDto: {
             /** Format: int32 */

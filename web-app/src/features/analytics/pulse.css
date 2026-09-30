@@ -1,13 +1,13 @@
 /* Pulso del día (Lote F8a, P2): cabecera, río de indicadores y grilla de gráficos a la maqueta (Diseño/teikem-mockups.html:
    .streamlabel, .river, .node, .pipe), y el modo Organizar. Todo bajo .pulse para no chocar con otras pantallas. */
 
-/* ---- cabecera ---- */
-.pulse .pulse-head{align-items:flex-start}
-.pulse .pulse-title{min-width:0;flex:1 1 260px}
-.pulse .pulse-title h1{font-size:23px;letter-spacing:-.01em}
+/* ---- cabecera (Lote 15: fila de la fecha con "Organizar" + saludo con el chip, que se desplaza) ---- */
+.pulse .pulse-head{align-items:center;margin-bottom:0}
+.pulse .pulse-head h1{font-size:23px;letter-spacing:-.01em;min-width:0;flex:1 1 260px}
+.pulse .pulse-greet{margin-bottom:20px}
+.pulse .pulse-greet p{margin:3px 0 0;color:var(--muted);font-size:13px}
 .pulse .pulse-mode{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12.5px;color:var(--muted)}
 .pulse .pulse-link{border:none;background:none;padding:0;color:var(--flow-2);font-size:12.5px;font-weight:600;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
-.pulse .pulse-head .act{align-self:flex-start}
 .pulse .pulse-sec+.pulse-sec{margin-top:20px}
 .pulse .pulse-muted{color:var(--muted);font-size:13px;margin:0}
 
@@ -45,14 +45,19 @@
 @keyframes pulseFlowR{to{transform:translateX(16px)}}
 @keyframes pulseFlowL{to{transform:translateX(-16px)}}
 
-/* ---- grilla de gráficos: altura mínima común; una columna a 360 px ---- */
+/* ---- líneas de "Tus indicadores" (Lote 15, D8): una por módulo, con su etiqueta h3 (tono del módulo en el ícono) ---- */
+.pulse .pulse-line+.pulse-line{margin-top:12px}
+.pulse .streamlabel.line{font-size:10.5px;margin:2px 2px 8px}
+.pulse .streamlabel.flow svg{color:var(--flow-2)}
+.pulse .streamlabel.wh svg{color:var(--violet)}
+.pulse .streamlabel.money svg{color:var(--money-2)}
+
+/* ---- grilla de gráficos: 2 por fila como mucho (columnas en línea: PULSE_CHART_COLUMNS); una columna en celular ---- */
 .pulse .pulse-charts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr));gap:16px;align-items:start}
 .pulse .pulse-chart{min-height:300px}
-.pulse .pulse-chartbox{width:100%;height:240px}
-.pulse .pulse-pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:14px}
-.pulse .pulse-pts li{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 4px;min-width:0;padding:8px 10px;border:1px solid var(--line-2);border-radius:9px}
-.pulse .pulse-pts .lbl{color:var(--muted);overflow-wrap:anywhere;min-width:0}
-.pulse .pulse-pts b{font-family:var(--mono)}
+/* dibujo de ChartVisual: tarjeta 240 px; mini (barritas de una tarjeta) 44 px */
+.pulse .pulse-chartbox{width:100%;height:240px;min-width:0}
+.pulse .pulse-chartbox.mini{height:44px}
 
 /* ---- modo Organizar ---- */
 .pulse .orgbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--flow-line);border-radius:var(--radius);padding:11px 14px;margin-bottom:14px;box-shadow:0 12px 30px -18px rgba(0,0,0,.55)}
@@ -80,6 +85,9 @@
 .pulse .orgacts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .pulse .orgacts .btn svg{width:14px;height:14px}
 .pulse .orgempty{margin:0;padding:0 12px 12px;color:var(--muted);font-size:12.5px}
+/* Lote 15 (D8): indicadores del modo Organizar en una lista por línea de módulo */
+.pulse .orghint{margin:0;padding:0 12px 8px;color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.pulse .orgline-h{margin:0;padding:4px 12px 6px;font-size:10.5px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
 
 /* ---- Indicadores y Gráficos (Lote F8a, P3): grupos por módulo de negocio y texto de tarjeta ---- */
 .pulse .def-group+.def-group{margin-top:16px}
@@ -141,4 +149,62 @@
 @media(prefers-reduced-motion:reduce){.pulse .pipe::after{animation:none}.pulse .node:hover{transform:none}}
 /* bajo 980 px el río envuelve sin tuberías (tres por fila); a 480 px, una columna */
 @media(max-width:980px){.pulse .pipe,.pulse .river-fork{display:none}.pulse .river{gap:10px}.pulse .node{flex:1 1 30%}}
-@media(max-width:480px){.pulse .node{flex:1 1 100%}.pulse .pulse-title h1{font-size:20px}.pulse .orgbar .acts{width:100%}.pulse .orgbar .acts .btn{flex:1}}
+@media(max-width:480px){.pulse .node{flex:1 1 100%}.pulse .pulse-head h1{font-size:20px}.pulse .orgbar .acts{width:100%}.pulse .orgbar .acts .btn{flex:1}}
+
+/* ---- Lote 15 (P4, D3): franja "Almacén hoy" — tarjetas unidas por tubería, en violeta; naranja (borde y número) la que
+   pide atención. La tarjeta entera es el enlace (::after de .node-link); las barritas quedan encima (z-index) para que su
+   tooltip salga con el ratón y no navegan (D4). ---- */
+.pulse .wh-band-h{display:flex;align-items:center;gap:6px 12px;min-width:0}
+.pulse .wh-band-h .streamlabel{flex:1 1 auto;min-width:0}
+.pulse .streamlabel.wh{color:var(--violet)}
+.pulse .wh-band-sel{flex:none;max-width:48%;min-width:0;margin:6px 0 10px}
+.pulse .wh-band-sel select{max-width:100%;font-size:12px;font-weight:600;padding:4px 8px 4px 27px;border-radius:7px;background-color:var(--bg-2);border:1px solid var(--line);color:var(--text);text-overflow:ellipsis}
+.pulse .wh-river{flex-wrap:nowrap}
+.pulse .node.wh{padding-bottom:10px}
+.pulse .node.wh:hover{border-color:color-mix(in srgb,var(--violet) 55%,transparent)}
+.pulse .node.wh .ph svg{color:var(--violet)}
+.pulse .node.wh .big{color:var(--violet)}
+.pulse .node.wh .node-link:focus-visible::after{outline-color:var(--violet)}
+.pulse .node.wh.alert{border-color:var(--money);box-shadow:0 0 0 1px var(--money-line)}
+.pulse .node.wh.alert .big,.pulse .node.wh.alert .ph svg{color:var(--money-2)}
+.pulse .node .wh-mini{position:relative;z-index:1;margin-top:auto;padding-top:8px}
+.pulse .pipe.wh::after{background:repeating-linear-gradient(90deg,var(--violet) 0 8px,transparent 8px 16px)}
+/* bajo 980 px, 2×2 sin tuberías (también a 480 px: nunca una columna) */
+@media(max-width:980px){.pulse .wh-river{flex-wrap:wrap}.pulse .wh-river .node{flex:1 1 calc(50% - 5px)}}
+/* celular (D7): compacta — número y barritas, sin el texto pequeño ni "· últimos 7 días" */
+@media(max-width:720px){
+  .pulse .wh-river{gap:8px}
+  .pulse .wh-river .node{padding:7px 10px;flex-basis:calc(50% - 4px)}
+  .pulse .node.wh .ph{font-size:11px}
+  .pulse .node.wh .big{font-size:19px;margin-top:2px}
+  .pulse .node.wh .sub,.pulse .wh-band-days{display:none}
+  .pulse .node .wh-mini{padding-top:3px}
+  .pulse .node .wh-mini .pulse-chartbox.mini{height:24px}
+  .pulse .wh-band-h .streamlabel,.pulse .wh-band-sel{margin-top:0;margin-bottom:6px}
+  .pulse-home .pulse-sec[data-pinned]{padding-bottom:8px}
+}
+
+/* ---- Lote 15 (P6, D6/D7): filas fijas, SOLO en "Pulso del día" (.pulse-home). Queda fija la fila de la fecha (con los
+   botones de organizar: clase .pinned, que falta al organizar porque la .orgbar ya es fija) y, justo debajo, la primera
+   sección si es fijable ([data-pinned], la franja). Fondo opaco = el mismo fondo de la app (fijo al viewport, así no se nota
+   el corte); ::before tapa la tira del relleno superior de .stage. --pulse-head-h y --pulse-pin-h los mide Pulse.tsx. ---- */
+.pulse-home .pulse-pin-head.pinned{position:sticky;top:0;z-index:16;background:var(--app-bg);background-attachment:fixed;padding:6px 0 8px}
+.pulse-home .pulse-pin-head.pinned::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:18px;background:var(--app-bg);background-attachment:fixed}
+.pulse-home .pulse-sec[data-pinned]{position:sticky;top:var(--pulse-head-h,0px);z-index:15;background:var(--app-bg);background-attachment:fixed;padding-bottom:12px}
+.pulse-home .pulse-sec[data-pinned]+.pulse-sec{margin-top:8px}
+/* lo que se desplaza no queda tapado al recibir el foco ni con scrollIntoView (+ 26 px: el relleno superior de .stage, 18 px, y aire) */
+.pulse-home .pulse-sec:not([data-pinned]) *,.pulse-home .pulse-greet *{scroll-margin-top:calc(var(--pulse-pin-h,0px) + 26px)}
+/* celular acostado (alto bajo): solo la fecha queda fija (D7) */
+@media(max-height:560px){
+  .pulse-home .pulse-sec[data-pinned]{position:static;padding-bottom:0}
+  .pulse-home .pulse-sec[data-pinned]+.pulse-sec{margin-top:20px}
+  .pulse-home .pulse-sec *,.pulse-home .pulse-greet *{scroll-margin-top:calc(var(--pulse-head-h,0px) + 26px)}
+}
+/* celular: la fila de la fecha más baja (título y botones pequeños en un renglón que envuelve) */
+@media(max-width:720px){
+  .pulse-home .pulse-pin-head{gap:6px 8px}
+  .pulse-home .pulse-pin-head h1{flex-basis:100%}
+  .pulse-home .pulse-pin-head .act{margin-left:0;gap:6px}
+  .pulse-home .pulse-pin-head .act .btn{padding:5px 9px;font-size:12px}
+}
+@media(max-width:980px){.pulse-home .pulse-pin-head.pinned::before{height:14px}}

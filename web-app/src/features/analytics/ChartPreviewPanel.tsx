@@ -27,7 +27,8 @@ export function ChartPreview({ isMoney, name, ...input }: ChartPreviewProps) {
   const debouncedKey = useDebounced(planKey, 400)
   const req = useMemo(() => (debouncedKey ? (JSON.parse(debouncedKey) as ChartPreviewRequest) : null), [debouncedKey])
   const preview = useChartPreview(req)
-  const result = useMemo(() => (req && preview.data ? chartPreviewPoints(preview.data, req) : null), [req, preview.data])
+  const othersLabel = t('analytics.charts.others')
+  const result = useMemo(() => (req && preview.data ? chartPreviewPoints(preview.data, req, othersLabel) : null), [req, preview.data, othersLabel])
 
   let body: ReactNode
   if (!plan) body = <p className="pulse-muted">{t('analytics.charts.previewIncomplete')}</p>
@@ -37,7 +38,7 @@ export function ChartPreview({ isMoney, name, ...input }: ChartPreviewProps) {
   else
     body = (
       <>
-        {/* El tipo sale de la petición ya consultada (línea = puntos en orden, no top 8) para que forma y datos cuadren. */}
+        {/* El tipo sale de la petición ya consultada (línea = puntos en orden, no top 8 con "Otras") para que forma y datos cuadren. */}
         <ChartVisual chartType={req?.line ? 'LINE' : input.chartType === 'LINE' ? 'BAR' : input.chartType} points={result.points} isMoney={isMoney} name={name} />
         {result.truncated && <p className="help">{t('analytics.charts.previewTruncated')}</p>}
       </>

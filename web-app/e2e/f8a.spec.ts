@@ -298,7 +298,7 @@ test.describe('Lote F8a — escritorio', () => {
     // por si una corrida anterior de la prueba 6 dejó el panel Almacén oculto para toda la compañía: mostrarlo
     if ((await pulseSection(page, 'Almacén').count()) === 0) {
       await page.getByRole('button', { name: 'Organizar el de la compañía' }).click()
-      await page.getByRole('button', { name: /^Mostrar Almacén/ }).click()
+      await page.getByRole('button', { name: 'Mostrar Almacén', exact: true }).click()
       await page.getByRole('button', { name: 'Listo' }).click()
     }
     await expect(pulseSection(page, 'Almacén')).toBeVisible()
@@ -309,7 +309,7 @@ test.describe('Lote F8a — escritorio', () => {
 
     await page.getByRole('button', { name: 'Organizar mi Pulso' }).click()
     await page.getByRole('button', { name: /^Subir Actividad reciente/ }).click()
-    await page.getByRole('button', { name: /^Ocultar Almacén/ }).click()
+    await page.getByRole('button', { name: 'Ocultar Almacén', exact: true }).click()
     await shot(page, 'organizar-mi-pulso')
     await page.getByRole('button', { name: 'Listo' }).click()
     await expect(page.getByText('Pulso guardado')).toBeVisible()
@@ -343,12 +343,12 @@ test.describe('Lote F8a — escritorio', () => {
     // por si una corrida anterior dejó el panel Almacén oculto para la compañía: mostrarlo antes de empezar
     if ((await pulseSection(page, 'Almacén').count()) === 0) {
       await page.getByRole('button', { name: 'Organizar el de la compañía' }).click()
-      await page.getByRole('button', { name: /^Mostrar Almacén/ }).click()
+      await page.getByRole('button', { name: 'Mostrar Almacén', exact: true }).click()
       await page.getByRole('button', { name: 'Listo' }).click()
       await expect(pulseSection(page, 'Almacén')).toBeVisible()
     }
     await page.getByRole('button', { name: 'Organizar el de la compañía' }).click()
-    await page.getByRole('button', { name: /^Ocultar Almacén/ }).click()
+    await page.getByRole('button', { name: 'Ocultar Almacén', exact: true }).click()
     await shot(page, 'organizar-compania')
     await page.getByRole('button', { name: 'Listo' }).click()
     await expect(page.getByText('Pulso guardado')).toBeVisible()
@@ -361,7 +361,7 @@ test.describe('Lote F8a — escritorio', () => {
 
     // se restaura (no dejar el panel Almacén oculto para el resto de la compañía)
     await page.getByRole('button', { name: 'Organizar el de la compañía' }).click()
-    await page.getByRole('button', { name: /^Mostrar Almacén/ }).click()
+    await page.getByRole('button', { name: 'Mostrar Almacén', exact: true }).click()
     await page.getByRole('button', { name: 'Listo' }).click()
     await expect(pulseSection(page, 'Almacén')).toBeVisible()
   })

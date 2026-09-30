@@ -5,7 +5,14 @@
 // (`canOrganizeCompany`), y bajo el título si el usuario ve su Pulso personal (con "Volver al de la compañía") o el de la
 // compañía. El modo Organizar (`PulseOrganizer`) reemplaza las secciones mientras está abierto.
 // Historia: P3 (indicadores y gráficos con "Rango"), F6 (panel Almacén), F7A (filtro del panel Almacén y Actividad reciente).
-import { useMemo, useState, type ReactNode } from 'react'
+// Lote 15 (P6, D6/D7): filas fijas SOLO aquí (clase propia `.pulse-home`; `.wrap.pulse` la usan también Indicadores y
+// Gráficos). La cabecera se parte en dos: la fila de la fecha con "Organizar" (`.pulse-pin-head`, fija) y el saludo con el
+// chip (`.pulse-greet`, se desplaza). La primera sección pintada queda fija justo debajo si su entrada es `pinnable` (la
+// franja "Almacén hoy") y no se está organizando (`data-pinned`, `pinnedPanelKey`); si se oculta o se baja, solo queda la
+// fecha. Los altos se miden (`useElementHeight`) y van en `--pulse-head-h` (desplazamiento de la franja) y `--pulse-pin-h`
+// (`scroll-margin-top` de lo que se desplaza, para que el foco no quede tapado). Celular: franja compacta 2×2; acostado
+// (alto bajo) solo la fecha (pulse.css).
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../app/session'
 import { ModuleKeys, useCan, useModule } from '../../kernel/access'
@@ -16,10 +23,11 @@ import { ConfirmDialog } from '../../kernel/ui/ConfirmDialog'
 import { EmptyState } from '../../kernel/ui/EmptyState'
 import { Spinner } from '../../kernel/ui/Spinner'
 import { toast } from '../../kernel/ui/toast'
+import { useElementHeight } from '../../kernel/ui/useElementWidth'
 import { usePulse, usePulseCompany, useResetMyLayout } from './api'
 import { pulseDateTitle } from './format'
 import { PulseOrganizer } from './PulseOrganizer'
-import { PULSE_PANELS, type PulsePanelContext } from './pulsePanels'
+import { pinnedPanelKey, PULSE_PANELS, type PulsePanelContext } from './pulsePanels'
 import { isKnownPanel, shownItems, shownPanels, type PulseScope } from './pulseLayout'
 import { INDICATORS_ROUTE } from './PulseSections'
 import './pulse.css'
@@ -47,12 +55,35 @@ export default function Pulse() {
   const hasPanels = (data?.panels ?? []).some((p) => isKnownPanel(p.key))
   const sections = ctx ? shownPanels(data?.panels).filter((p) => PULSE_PANELS[p.key].hasContent(ctx)) : []
 
+  const pinned = pinnedPanelKey(sections, organizing != null || !data || !hasPanels)
+  const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null)
+  const [bandEl, setBandEl] = useState<HTMLDivElement | null>(null)
+  const headH = useElementHeight(headEl)
+  const bandH = useElementHeight(pinned ? bandEl : null)
+  const pinVars = { '--pulse-head-h': `${headH}px`, '--pulse-pin-h': `${headH + bandH}px` } as CSSProperties
+
+  const showControls = Boolean(data && hasPanels && !organizing)
   const head = (
-    <div className="head pulse-head">
-      <div className="pulse-title">
+    <>
+      {/* fila fija (D6): la fecha y los botones de organizar; sin controles (organizando) no se fija: la .orgbar ya lo es */}
+      <div className={showControls ? 'head pulse-head pulse-pin-head pinned' : 'head pulse-head pulse-pin-head'} ref={setHeadEl}>
         <h1>{pulseDateTitle(new Date(), lang)}</h1>
+        {showControls && data && (
+          <div className="act">
+            <button type="button" className="btn" onClick={() => setOrganizing('mine')}>
+              {t('analytics.pulse.organizeMine')}
+            </button>
+            {data.canOrganizeCompany && (
+              <button type="button" className="btn" onClick={() => setOrganizing('company')}>
+                {t('analytics.pulse.organizeCompany')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      <div className="pulse-greet">
         <p>{t('analytics.pulse.subtitle', { name })}</p>
-        {data && hasPanels && !organizing && (
+        {showControls && data && (
           <div className="pulse-mode">
             {data.hasPersonalLayout ? (
               <>
@@ -68,19 +99,7 @@ export default function Pulse() {
           </div>
         )}
       </div>
-      {data && hasPanels && !organizing && (
-        <div className="act">
-          <button type="button" className="btn" onClick={() => setOrganizing('mine')}>
-            {t('analytics.pulse.organizeMine')}
-          </button>
-          {data.canOrganizeCompany && (
-            <button type="button" className="btn" onClick={() => setOrganizing('company')}>
-              {t('analytics.pulse.organizeCompany')}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+    </>
   )
 
   let body: ReactNode
@@ -112,13 +131,19 @@ export default function Pulse() {
     )
   else
     body = sections.map((p) => (
-      <div key={p.key} className="pulse-sec" data-panel={p.key}>
+      <div
+        key={p.key}
+        className="pulse-sec"
+        data-panel={p.key}
+        data-pinned={p.key === pinned ? '' : undefined}
+        ref={p.key === pinned ? setBandEl : undefined}
+      >
         {PULSE_PANELS[p.key].render(ctx)}
       </div>
     ))
 
   return (
-    <div className="wrap pulse">
+    <div className="wrap pulse pulse-home" style={pinVars}>
       {head}
       {body}
       <ConfirmDialog

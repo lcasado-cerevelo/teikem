@@ -7,7 +7,7 @@ import { normalizeQ } from '../../kernel/ui/matchesQ'
 import type { DateRange } from '../../kernel/ui/dateRange'
 import type { ComboOption } from '../../kernel/ui/comboMatch'
 import type { CycleCountDto, CycleCountLineDto, GetQuery } from './api'
-import type { BinFilterItem } from './kardexView'
+import { listParam, type BinFilterItem } from './kardexView'
 import type { ProductFilterItem } from './pickers'
 import { parseQtyText } from './receiptLineEdit'
 
@@ -15,11 +15,8 @@ export const COUNT_STATUS_DOMAIN = 'CycleCountStatus'
 export const COUNT_ORIGIN_DOMAIN = 'CycleCountOrigin'
 export const COUNT_ENTITY_TYPE = 'CYCLE_COUNT'
 
-/**
- * Zona horaria de la compañía para "hoy" y la ventana de "lo cambiado": espejo de `TenantClock` del backend (Puerto Rico
- * por defecto; el día de la compañía empieza a medianoche local). Un solo punto, para configurarlo por compañía más adelante.
- */
-export const TENANT_TIME_ZONE = 'America/Puerto_Rico'
+// La zona horaria de la compañía ("hoy" y la ventana de "lo cambiado") vive en `src/kernel/api/tenantZone.ts` (Lote 15:
+// un solo punto para toda la web): `TENANT_TIME_ZONE`, `zonedInputFromUtc`, `utcFromZonedInput`.
 
 /** Estatus finales del conteo (D7): Concordancia (sin ajustes) y Diferencia (asentó algún ajuste). */
 export const CLOSED_COUNT_STATUSES: readonly string[] = ['RECONCILED', 'RECONCILED_VARIANCE']
@@ -78,6 +75,27 @@ export function countFilterQuery(f: CountFilterState): GetQuery<'/api/v1/cycle-c
     from: f.created.from || undefined,
     to: f.created.to || undefined,
     search: f.search.trim() || undefined,
+  }
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+/** Códigos de catálogo de la URL en mayúsculas y sin duplicados. */
+const upperList = (params: URLSearchParams, name: string) => [...new Set(listParam(params, name).map((v) => v.toUpperCase()))]
+
+/**
+ * Lote 15 — filtros iniciales de la URL (se leen UNA vez al montar; contrato de enlaces: la franja "Almacén hoy" del Pulso
+ * manda `?status=RECONCILED_VARIANCE&warehousePublicIds=`): `warehousePublicIds`, `status`, `origins` (repetibles o separados
+ * por comas) y `from`/`to` (alta, 'YYYY-MM-DD'). Lo demás, vacío. `?count=` sigue siendo el conteo elegido.
+ */
+export function countFiltersFromUrl(params: URLSearchParams): CountFilterState {
+  const from = params.get('from') ?? ''
+  const to = params.get('to') ?? ''
+  return {
+    ...EMPTY_COUNT_FILTERS,
+    warehousePublicIds: listParam(params, 'warehousePublicIds'),
+    status: upperList(params, 'status'),
+    origins: upperList(params, 'origins'),
+    created: { from: DAY.test(from) ? from : '', to: DAY.test(to) ? to : '' },
   }
 }
 
@@ -226,49 +244,4 @@ export function confirmBlocker(args: {
   if (args.lines.length === 0) return { key: 'noLines' }
   const n = pendingLines(args.lines, args.drafts)
   return n > 0 ? { key: 'pending', params: { n } } : null
-}
-
-// ---------------------------------------------------------------------------------------------------------------------
-// Ventana de "lo cambiado" en hora de la compañía (inputs datetime-local 'YYYY-MM-DDTHH:mm')
-// ---------------------------------------------------------------------------------------------------------------------
-
-/** Desplazamiento (ms) de la zona respecto de UTC en ese instante (negativo al oeste). */
-function zoneOffsetMs(utcMs: number, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    hourCycle: 'h23',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  }).formatToParts(new Date(utcMs))
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
-  const asUtc = Date.UTC(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), get('second'))
-  return asUtc - Math.floor(utcMs / 1000) * 1000
-}
-
-const pad = (n: number) => String(n).padStart(2, '0')
-
-/** Instante UTC del API → 'YYYY-MM-DDTHH:mm' en la zona de la compañía ('' si no se puede leer). */
-export function zonedInputFromUtc(iso: string | null | undefined, timeZone = TENANT_TIME_ZONE): string {
-  if (!iso) return ''
-  const s = iso.trim()
-  const ms = new Date(/(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(s) || !s.includes('T') ? s : `${s}Z`).getTime()
-  if (Number.isNaN(ms)) return ''
-  const local = new Date(ms + zoneOffsetMs(ms, timeZone))
-  return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`
-}
-
-/** 'YYYY-MM-DDTHH:mm' en la zona de la compañía → ISO UTC ('…Z'), o null si está vacío o no es válido. */
-export function utcFromZonedInput(text: string, timeZone = TENANT_TIME_ZONE): string | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(text.trim())
-  if (!m) return null
-  const guess = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6] ?? 0))
-  if (Number.isNaN(guess)) return null
-  // se corrige con el desplazamiento del instante resultante (cambio de horario, si la zona lo tuviera)
-  let utc = guess - zoneOffsetMs(guess, timeZone)
-  utc = guess - zoneOffsetMs(utc, timeZone)
-  return new Date(utc).toISOString()
 }

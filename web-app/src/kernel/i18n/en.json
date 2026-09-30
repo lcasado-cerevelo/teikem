@@ -605,7 +605,25 @@
       "panels": {
         "INDICATORS": "Your indicators",
         "CHARTS": "Your charts",
-        "ATTENTION": "Needs your attention"
+        "ATTENTION": "Needs your attention",
+        "WAREHOUSE_DAY": "Warehouse today"
+      },
+      "day": {
+        "lastDays": "last {days} days",
+        "received": "Units received",
+        "outbound": "Units out",
+        "countsVariance": "Counts with variance",
+        "belowMin": "Products below minimum",
+        "totalSub": "{days} days: {total}",
+        "nowSub": "right now",
+        "unitUnits": "Units",
+        "unitCounts": "Counts",
+        "tooltipToday": "Today, {date}",
+        "alertCounts": "There were counts with variance today.",
+        "alertBelowMin": "There are products below their minimum.",
+        "warehouse": "Warehouse of the Warehouse today band",
+        "allWarehouses": "All warehouses",
+        "cards": "Warehouse today: received, out, counts with variance and below minimum"
       },
       "organizeMine": "Organize my Pulse",
       "organizeCompany": "Organize the company's",
@@ -633,7 +651,10 @@
         "show": "Show",
         "hideFor": "Hide {name}",
         "showFor": "Show {name}",
-        "hidden": "Hidden"
+        "hidden": "Hidden",
+        "linesHint": "Indicators are shown in one row per module; here they are ordered within their row.",
+        "lineLabel": "Items of {name}: {line}",
+        "pinHint": "The band right below the date stays pinned while scrolling; if you hide it or move it down, only the date stays pinned."
       },
       "warehouse": {
         "title": "Warehouse",
@@ -807,7 +828,12 @@
       "deleteBody": "Delete chart {name}?",
       "previewTitle": "Preview",
       "previewIncomplete": "Choose the data source, the group-by field and the calculation to see the chart.",
-      "previewTruncated": "Preview computed with the first 5,000 records of the source."
+      "previewTruncated": "Preview computed with the first 5,000 records of the source.",
+      "companyBadge": "Company",
+      "deleteCompanyBody": "Delete chart {name}? It belongs to the company: once deleted it is not created again.",
+      "others": "Others",
+      "value": "Value",
+      "ariaLabel": "{name}. {values}"
     },
     "editor": {
       "descriptionEs": "Description (Spanish)",

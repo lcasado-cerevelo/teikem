@@ -131,6 +131,11 @@ para verse aquí todos los días.
 fallidos, usuarios activos, clientes activos, órdenes en curso, COD por cobrar, etc., según lo que tenga marcado su
 compañía) y una sección "Gráficos" (barra, dona o línea).
 
+**Lote 15:** arriba de todo va la franja **Almacén hoy** (si tiene `pulse.warehouse` e `inventory.view`) y la fecha y esa franja quedan fijas al
+desplazarse; los indicadores se agrupan en una **fila por módulo** (Operación, Almacén, Contabilidad); y los gráficos se dibujan **siempre** como
+gráfico (ya no hay lista cuando tienen pocos puntos), con 2 por fila como máximo. Detalle y capturas en
+[F7A](f7a-pulso-almacen-y-actividad.md#pulso-del-día-franja-almacén-hoy--últimos-7-días-lote-15). Las capturas de esta sección se regeneraron.
+
 ![Gráficos de Pulso: dona, línea de eventos y más donas](img/f1-pulso-graficos.png)
 
 En un teléfono, las tarjetas se apilan en una sola columna, una debajo de otra.

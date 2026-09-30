@@ -605,7 +605,25 @@
       "panels": {
         "INDICATORS": "Tus indicadores",
         "CHARTS": "Tus gráficos",
-        "ATTENTION": "Necesita tu atención"
+        "ATTENTION": "Necesita tu atención",
+        "WAREHOUSE_DAY": "Almacén hoy"
+      },
+      "day": {
+        "lastDays": "últimos {days} días",
+        "received": "Unidades recibidas",
+        "outbound": "Unidades de salida",
+        "countsVariance": "Conteos con diferencia",
+        "belowMin": "Productos bajo mínimo",
+        "totalSub": "{days} días: {total}",
+        "nowSub": "en este momento",
+        "unitUnits": "Unidades",
+        "unitCounts": "Conteos",
+        "tooltipToday": "Hoy, {date}",
+        "alertCounts": "Hoy hubo conteos con diferencia.",
+        "alertBelowMin": "Hay productos bajo su mínimo.",
+        "warehouse": "Almacén de la franja Almacén hoy",
+        "allWarehouses": "Todos los almacenes",
+        "cards": "Almacén hoy: recibido, salida, conteos con diferencia y bajo mínimo"
       },
       "organizeMine": "Organizar mi Pulso",
       "organizeCompany": "Organizar el de la compañía",
@@ -633,7 +651,10 @@
         "show": "Mostrar",
         "hideFor": "Ocultar {name}",
         "showFor": "Mostrar {name}",
-        "hidden": "Oculto"
+        "hidden": "Oculto",
+        "linesHint": "Los indicadores se muestran en una línea por módulo; aquí se ordenan dentro de su línea.",
+        "lineLabel": "Elementos de {name}: {line}",
+        "pinHint": "La franja que quede justo debajo de la fecha se queda fija al desplazarse; si la oculta o la baja, solo queda fija la fecha."
       },
       "warehouse": {
         "title": "Almacén",
@@ -807,7 +828,12 @@
       "deleteBody": "¿Eliminar el gráfico {name}?",
       "previewTitle": "Vista previa",
       "previewIncomplete": "Elija la fuente de datos, el campo para agrupar y el cálculo para ver el gráfico.",
-      "previewTruncated": "Vista previa calculada con los primeros 5,000 registros de la fuente."
+      "previewTruncated": "Vista previa calculada con los primeros 5,000 registros de la fuente.",
+      "companyBadge": "De la compañía",
+      "deleteCompanyBody": "¿Eliminar el gráfico {name}? Es de la compañía: una vez eliminado no se vuelve a crear.",
+      "others": "Otras",
+      "value": "Valor",
+      "ariaLabel": "{name}. {values}"
     },
     "editor": {
       "descriptionEs": "Descripción (español)",

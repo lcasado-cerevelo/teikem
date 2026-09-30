@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 
@@ -12,14 +13,19 @@ namespace Teikem.Infrastructure.Analytics;
 /// 'Movimientos registrados' y los gráficos por tipo, usuario y día.
 /// - Quantity = la cantidad del ledger CON signo (D3, L331: despacho negativo, recepción positiva; TRANSFER positiva con
 ///   origen y destino). SignedQuantity = la perspectiva sin filtro de ubicación (TRANSFER = 0): sumarla da el cambio neto de
-///   existencia. Date = día UTC del movimiento (para agrupar por día).
+///   existencia. Units (Lote 15, D12) = |Quantity|: unidades movidas siempre en positivo (el gráfico 'Movimientos de inventario
+///   por tipo' suma Units, así el despacho no sale negativo). Date = día LOCAL del movimiento (Lote 15: hora de Puerto Rico con
+///   ITenantClock; antes era el día UTC), como DateOnly: agrupar por Date da un punto por día local.
 /// - AsNoTracking bajo el filtro de tenant (InventoryTransaction es ITenantScoped), rango q.FromUtc (inclusivo) / q.ToUtc
 ///   (exclusivo) sobre CreatedAtUtc, respeto de q.Ids y tope de ClientDataSourceHelpers.MaxRows (los más recientes).
 /// - Producto, ubicaciones, lote, serie, motivo, origen legible y usuario se resuelven por lotes con InventoryReadService.
 /// - Nombres de campo estables: los usa SystemAnalyticsSeeder (AnalyticsSeedFieldsTests lo verifica).
 /// </summary>
-public sealed class InventoryTransactionDataSource(TeikemDbContext db, InventoryReadService reads) : IDataSource
+public sealed class InventoryTransactionDataSource(TeikemDbContext db, InventoryReadService reads, ITenantClock? clock = null) : IDataSource
 {
+    /// <summary>Reloj de la compañía (Lote 15: el campo Date es el día LOCAL del movimiento).</summary>
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public string Key => EntityTypes.InventoryTransaction;
     public string LabelEs => "Movimientos de inventario";
     public string LabelEn => "Inventory transactions";
@@ -43,6 +49,8 @@ public sealed class InventoryTransactionDataSource(TeikemDbContext db, Inventory
         new DataField("Category", "Categoría", "Category", DataFieldType.Text),
         new DataField("Quantity", "Cantidad", "Quantity", DataFieldType.Number),
         new DataField("SignedQuantity", "Cambio neto", "Net change", DataFieldType.Number),
+        // Lote 15 (D12): cantidad sin signo, para 'Movimientos de inventario por tipo' en unidades positivas.
+        new DataField("Units", "Unidades movidas", "Units moved", DataFieldType.Number),
         new DataField("FromWarehouse", "Almacén origen", "From warehouse", DataFieldType.Text),
         new DataField("FromBin", "Posición origen", "From bin", DataFieldType.Text),
         new DataField("ToWarehouse", "Almacén destino", "To warehouse", DataFieldType.Text),
@@ -93,7 +101,7 @@ public sealed class InventoryTransactionDataSource(TeikemDbContext db, Inventory
             {
                 ["Id"] = t.InventoryTransactionId,
                 ["CreatedAtUtc"] = t.CreatedAtUtc,
-                ["Date"] = t.CreatedAtUtc.Date,
+                ["Date"] = _clock.DayOf(t.CreatedAtUtc),   // Lote 15: día local (hora de Puerto Rico), no el día UTC
                 ["TxnType"] = k.Type,
                 ["TxnTypeCode"] = k.TypeCode,
                 ["ProductId"] = t.ProductId,
@@ -102,6 +110,7 @@ public sealed class InventoryTransactionDataSource(TeikemDbContext db, Inventory
                 ["Category"] = p?.CategoryId is int cid ? categories.GetValueOrDefault(cid) : null,
                 ["Quantity"] = t.Quantity,
                 ["SignedQuantity"] = k.SignedQuantity,
+                ["Units"] = Math.Abs(t.Quantity),
                 ["FromWarehouse"] = k.FromWarehouseCode,
                 ["FromBin"] = k.FromBinCode,
                 ["ToWarehouse"] = k.ToWarehouseCode,

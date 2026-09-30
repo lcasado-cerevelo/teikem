@@ -3556,6 +3556,90 @@ expect 200 "$(req GET "/api/v1/inventory/reconciliation?productPublicId=$P14")" 
 ok "estatus Pendiente/Concordancia/Diferencia (terminal) y origen MANUAL/CHANGES; vista previa de W6 y de RSV (sin warehouse.count 403); lo cambiado en RSV → 1 conteo CHANGES de R-01 con tarea COUNT; repetido 400 '$M1CH' (y la vista previa lo anticipa); > 31 días 400 (alta y vista previa); página por origen, zona y estatus con total, a ciegas para Solo lectura; confirmar en un paso desde Pendiente: +1 en P14 → Diferencia (COUNT_VARIANCE +1 con su documento, sin pasar por Contado, tarea DONE) y P-02 sin diferencia → Concordancia sin movimientos"
 
 # ============================================================================================================
+# Lote 15 — Pulso del día: franja "Almacén hoy" (GET /inventory/pulse/days: 7 días LOCALES de Puerto Rico con hoy; recibido,
+# salida y conteos con diferencia por día; bajo mínimo de ahora), panel WAREHOUSE_DAY y los 2 gráficos de almacén DE LA
+# COMPAÑÍA (dona de valor por categoría con "Otras" y barras de movimientos en unidades positivas) + 'Descuadres pendientes'.
+# Usa W6/W7 y P14 del Lote 14 (R-01). Mover un movimiento de día exige tocar dbo.InventoryTransaction: solo con SMOKE_SQL.
+# ============================================================================================================
+step "franja 'Almacén hoy' (Lote 15): 7 días locales, recibido/salida/conteos de hoy por almacén, 400/403, panel del Pulso y gráficos de la compañía"
+pday() { expect 200 "$(req GET "/api/v1/inventory/pulse/days?$1" '' "${2:-$TOKEN}")"; }
+d15() { jq -n --argjson a "$1" --argjson b "$2" "\$a.$3 - \$b.$3"; }   # diferencia de un campo entre dos respuestas
+TODAYPR=$(date -u -d '4 hours ago' +%F)   # Puerto Rico es UTC−4 todo el año (sin horario de verano)
+YESTPR=$(date -u -d '28 hours ago' +%F)
+PD15=$(pday "")
+echo "$PD15" | jq -e --arg t "$TODAYPR" '.timeZone=="America/Puerto_Rico" and .today==$t and (.days|length)==7 and .days[-1].date==$t
+  and ([.days[].date | . + "T00:00:00Z" | fromdateiso8601] as $d | all(range(1;7); $d[.] - $d[. - 1] == 86400))
+  and all(.days[]; .receivedMovements>=0 and .outboundMovements>=0 and .countsWithVariance>=0)
+  and .receivedToday==.days[-1].receivedUnits and .outboundToday==.days[-1].outboundUnits and .countsWithVarianceToday==.days[-1].countsWithVariance
+  and .countsWithVarianceTotal==([.days[].countsWithVariance]|add) and .belowMinProducts>=0
+  and .countsAlert==(.countsWithVarianceToday>0) and .belowMinAlert==(.belowMinProducts>0)' >/dev/null || fail "franja de todos los almacenes: $(echo "$PD15" | jq -c '{timeZone,today,days:[.days[].date],countsWithVarianceToday,belowMinProducts}')"
+for d in 0 15; do
+  expect 400 "$(req GET "/api/v1/inventory/pulse/days?days=$d")" | jq -e --arg m "Los días deben estar entre 1 y 14." "$HASM" >/dev/null || fail "days=$d → 400"
+done
+pday "days=14" | jq -e --arg t "$TODAYPR" '(.days|length)==14 and .days[-1].date==$t' >/dev/null || fail "days=14"
+# Recibo a ciegas de 3 unidades de P14 en W6: lo recibido de hoy sube exactamente 3 (W7 no cambia).
+B15=$(pday "warehousePublicIds=$W6P"); B15W7=$(pday "warehousePublicIds=$W7P")
+R15=$(expect 200 "$(blind "$W6P" "$B_STG" "$P14" 3)"); R15ID=$(echo "$R15" | jq -r .header.id)
+expect 200 "$(confirmr "$R15")" >/dev/null
+A15=$(pday "warehousePublicIds=$W6P")
+[[ $(d15 "$A15" "$B15" receivedToday) == 3 && $(d15 "$A15" "$B15" receivedTotal) == 3 ]] || fail "recibo de 3 en W6: hoy $(d15 "$A15" "$B15" receivedToday)"
+# Recolección de 1: la salida de hoy sube 1; eliminarla la devuelve al punto de partida (neto).
+PB15=$(expect 200 "$(collect "$W6P" "$P14" 1)")
+C15=$(pday "warehousePublicIds=$W6P")
+[[ $(d15 "$C15" "$A15" outboundToday) == 1 ]] || fail "recolección de 1 en W6: salida de hoy $(d15 "$C15" "$A15" outboundToday)"
+expect 204 "$(req DELETE "/api/v1/pick-batches/$(echo "$PB15" | jq -r .publicId)" '{}')" >/dev/null
+D15=$(pday "warehousePublicIds=$W6P")
+[[ $(d15 "$D15" "$A15" outboundToday) == 0 ]] || fail "eliminar la recolección no devolvió la salida al punto de partida: $(d15 "$D15" "$A15" outboundToday)"
+# Conteo de R-01 con +1 en P14 → Diferencia: los conteos con diferencia de hoy suben 1 en W6 (y se pinta en naranja).
+CC15=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B_RSV]}")"); CC15ID=$(echo "$CC15" | jq -r .count.id)
+expect 200 "$(req PUT "/api/v1/cycle-counts/$CC15ID/lines" "$(echo "$CC15" | jq -c --arg s "P14$TS" '{lines:[.lines[] | {lineId:.id, countedQty:(if .sku==$s then .systemQty + 1 else .systemQty end)}]}')")" >/dev/null
+expect 200 "$(req POST "/api/v1/cycle-counts/$CC15ID/reconcile" '{}')" | jq -e '.count.statusCode=="RECONCILED_VARIANCE"' >/dev/null || fail "conteo de R-01 con +1 no quedó en Diferencia"
+E15=$(pday "warehousePublicIds=$W6P")
+[[ $(d15 "$E15" "$D15" countsWithVarianceToday) == 1 ]] || fail "conteo con diferencia de hoy en W6: $(d15 "$E15" "$D15" countsWithVarianceToday)"
+echo "$E15" | jq -e '.countsAlert' >/dev/null || fail "franja sin el tono naranja de conteos con diferencia"
+pday "warehousePublicIds=$W7P" | jq -e --argjson b "$B15W7" '.receivedTotal==$b.receivedTotal and .outboundTotal==$b.outboundTotal and .countsWithVarianceTotal==$b.countsWithVarianceTotal' >/dev/null || fail "W7 cambió con los movimientos de W6"
+# Almacén desconocido → todo en cero (nunca "todos"); sin inventory.view → 403.
+pday "warehousePublicIds=$(randuuid)" | jq -e '(.days|length)==7 and all(.days[]; .receivedUnits==0 and .outboundUnits==0 and .countsWithVariance==0) and .belowMinProducts==0 and (.countsAlert|not)' >/dev/null || fail "almacén desconocido no da cero"
+expect 403 "$(req GET /api/v1/inventory/pulse/days '' "$TD14")" >/dev/null
+# Panel WAREHOUSE_DAY: primero (−10) para el admin; el despachador (sin pulse.warehouse ni inventory.view) no lo tiene.
+expect 204 "$(req DELETE /api/v1/analytics/pulse/layout/mine)" >/dev/null
+expect 200 "$(req GET /api/v1/analytics/pulse)" | jq -e '.panels[0].key=="WAREHOUSE_DAY" and .panels[0].sortOrder==-10 and .panels[0].isVisible' >/dev/null || fail "WAREHOUSE_DAY no es el primer panel del admin"
+expect 200 "$(req GET /api/v1/analytics/pulse '' "$TD14")" | jq -e 'all(.panels[]; .key!="WAREHOUSE_DAY")' >/dev/null || fail "el despachador ve la franja"
+# Los 2 gráficos de almacén: de la compañía (sin dueño), editables por el admin; dona de valor y barras en unidades positivas.
+CH15=$(expect 200 "$(req GET /api/v1/analytics/charts)")
+VAL15=$(echo "$CH15" | jq -c '[.[] | select(.name=="Valor de inventario por categoría")][0]')
+MOV15=$(echo "$CH15" | jq -c '[.[] | select(.name=="Movimientos de inventario por tipo")][0]')
+echo "$VAL15" | jq -e '.isSystem==false and .ownerUserId==null and .canEdit and .chartType=="DONUT" and .field=="CostValue" and .aggregateFn=="SUM"' >/dev/null || fail "gráfico de valor: $VAL15"
+echo "$MOV15" | jq -e '.isSystem==false and .ownerUserId==null and .canEdit and .chartType=="BAR" and .field=="Units" and .aggregateFn=="SUM"' >/dev/null || fail "gráfico de movimientos: $MOV15"
+MOVID=$(echo "$MOV15" | jq -r .id); VALID=$(echo "$VAL15" | jq -r .id)
+expect 200 "$(req GET "/api/v1/analytics/charts/$MOVID/data")" | jq -e 'all(.points[]; .value>=0) and any(.points[]; .label=="Recepción" and .value>=3)' >/dev/null || fail "movimientos por tipo en unidades positivas"
+VSUM15=$(expect 200 "$(req GET "/api/v1/analytics/charts/$VALID/data")" | jq '[.points[].value] | add // 0')
+VIND15=$(indval "Valor de inventario a costo")
+jq -n --argjson a "$VSUM15" --argjson b "${VIND15:-0}" '($a - $b) | (if . < 0 then -. else . end) <= 0.05' | grep -q true || fail "la dona (con 'Otras') suma $VSUM15 y el indicador 'Valor de inventario a costo' $VIND15"
+# PUT: renombrar y restaurar con analytics.manage (200); Solo lectura sin analytics.manage → 403.
+chartbody() { echo "$1" | jq -c --arg n "$2" '{name:$n, descriptions, dataSource, groupByField, field, aggregateFn, chartType, filterJson, businessModule, isMoney, visibility, dateRangeMode, dateFrom, dateTo, showInPulse, sortOrder}'; }
+expect 200 "$(req PUT "/api/v1/analytics/charts/$VALID" "$(chartbody "$VAL15" "Valor de inventario (humo $TS)")")" | jq -e --arg n "Valor de inventario (humo $TS)" '.name==$n and .isSystem==false and .ownerUserId==null and .chartType=="DONUT"' >/dev/null || fail "renombrar el gráfico de la compañía"
+expect 200 "$(req PUT "/api/v1/analytics/charts/$VALID" "$(chartbody "$VAL15" "Valor de inventario por categoría")")" | jq -e '.name=="Valor de inventario por categoría"' >/dev/null || fail "restaurar el nombre del gráfico"
+expect 403 "$(req PUT "/api/v1/analytics/charts/$VALID" "$(chartbody "$VAL15" "X")" "$TREAD6")" >/dev/null
+# D16: 'Descuadres pendientes' en Indicadores, apagado en el Pulso.
+expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -e 'any(.[]; .name=="Descuadres pendientes" and .dataSource=="INVENTORY_DISCREPANCY" and .showInPulse==false and .isSystem)' >/dev/null || fail "indicador 'Descuadres pendientes'"
+SQL15="omitido (sin SMOKE_SQL: mover un movimiento de día exige tocar dbo.InventoryTransaction)"
+if [[ -n "${SMOKE_SQL:-}" ]]; then
+  # El RECEIPT de R15 pasa a las 23:59 de AYER en Puerto Rico (hoy 03:59Z): hoy baja 3 y ayer sube 3 (con días UTC fallaría).
+  MV15="UPDATE dbo.InventoryTransaction SET CreatedAtUtc = '%s' WHERE RefId = $R15ID AND RefEntityLookupId = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RECEIPT') AND TxnTypeLookupId = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'InventoryTxnType' AND InternalCode = 'RECEIPT');"
+  F15=$(pday "warehousePublicIds=$W6P")
+  $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; $(printf "$MV15" "${TODAYPR}T03:59:00")" >/dev/null
+  G15=$(pday "warehousePublicIds=$W6P")
+  [[ $(d15 "$G15" "$F15" receivedToday) == -3 && $(d15 "$G15" "$F15" 'days[-2].receivedUnits') == 3 ]] || fail "el recibo a las 23:59 de ayer (hora de PR) no pasó a ayer: hoy $(d15 "$G15" "$F15" receivedToday)"
+  echo "$G15" | jq -e --arg y "$YESTPR" '.days[-2].date==$y' >/dev/null || fail "el penúltimo día no es ayer ($YESTPR)"
+  # De vuelta a HOY a las 00:01 locales (04:01Z): vuelve al punto de partida.
+  $SMOKE_SQL "SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; $(printf "$MV15" "${TODAYPR}T04:01:00")" >/dev/null
+  [[ $(d15 "$(pday "warehousePublicIds=$W6P")" "$F15" receivedToday) == 0 ]] || fail "el recibo a las 00:01 de hoy no volvió a hoy"
+  SQL15="RECEIPT a las 23:59 de ayer (PR) → hoy −3 y ayer +3; a las 00:01 de hoy → de vuelta"
+fi
+ok "franja de 7 días locales (PR, hoy $TODAYPR, fechas seguidas), days 0/15 → 400 'Los días deben estar entre 1 y 14.' y 14 → 14; W6: recibo +3, recolección +1 y eliminarla lo devuelve, conteo con +1 → Diferencia (+1, naranja); W7 sin cambio; almacén desconocido en cero; despachador 403; WAREHOUSE_DAY primero (−10) para el admin y ausente para el despachador; gráficos de la compañía (dona CostValue, barras Units ≥ 0 con Recepción ≥ 3; la dona suma $VSUM15 = 'Valor de inventario a costo'); PUT renombrar/restaurar 200 y sin analytics.manage 403; 'Descuadres pendientes' apagado en el Pulso; con SQL: $SQL15"
+
+# ============================================================================================================
 # Lote 8A — aparatos y sincronización (app de almacén): aparato de confianza, PIN, login por aparato, idempotencia,
 # sincronización por diferencia, código escaneado, recibo en una llamada, conteo a ciegas en lote y aparato desactivado.
 # ============================================================================================================
@@ -4153,12 +4237,12 @@ TOKEN=$(login "$EMAIL" "$PASS")
 TDF8=$(login "$DISPATCH_EMAIL" "$PASS")
 expect 204 "$(req DELETE /api/v1/analytics/pulse/layout/mine)" >/dev/null
 PF8=$(expect 200 "$(req GET /api/v1/analytics/pulse)")
-echo "$PF8" | jq -e '(.panels | map(.key) | sort) == ["ACTIVITY","ATTENTION","CHARTS","INDICATORS","WAREHOUSE"] and .canOrganizeCompany and (.hasPersonalLayout|not) and all(.panels[]; .source != "user") and all(.indicators[]; .source == "company")' >/dev/null || fail "Pulso del admin (5 paneles con ATTENTION del Lote 14, sin orden propio): $(echo "$PF8" | jq -c '{panels,hasPersonalLayout,canOrganizeCompany}')"
+echo "$PF8" | jq -e '(.panels | map(.key) | sort) == ["ACTIVITY","ATTENTION","CHARTS","INDICATORS","WAREHOUSE","WAREHOUSE_DAY"] and .panels[0].key=="WAREHOUSE_DAY" and .panels[0].sortOrder==-10 and .canOrganizeCompany and (.hasPersonalLayout|not) and all(.panels[]; .source != "user") and all(.indicators[]; .source == "company")' >/dev/null || fail "Pulso del admin (6 paneles con ATTENTION del Lote 14 y WAREHOUSE_DAY del Lote 15 primero, sin orden propio): $(echo "$PF8" | jq -c '{panels,hasPersonalLayout,canOrganizeCompany}')"
 INDF8=$(echo "$PF8" | jq -r '[.indicators[] | select(.isVisible)] | last | .id')
 [[ "$INDF8" =~ ^[0-9]+$ ]] || fail "el Pulso del admin no trae indicadores visibles"
 # mine: Actividad arriba, Gráficos oculto y el último indicador visible al principio.
 BF8=$(jq -cn --argjson id "$INDF8" '{items:[{kind:"indicator",id:$id,sortOrder:-100,isVisible:true}],panels:[{key:"ACTIVITY",sortOrder:1,isVisible:true},{key:"charts",sortOrder:2,isVisible:false}]}')
-MINEF8='.panels[0].key=="ACTIVITY" and .panels[0].source=="user" and .panels[1].key=="CHARTS" and (.panels[1].isVisible|not) and .indicators[0].id==$id and .indicators[0].source=="user" and .indicators[0].sortOrder==-100 and .hasPersonalLayout'
+MINEF8='.panels[0].key=="WAREHOUSE_DAY" and .panels[1].key=="ACTIVITY" and .panels[1].source=="user" and .panels[2].key=="CHARTS" and (.panels[2].isVisible|not) and .indicators[0].id==$id and .indicators[0].source=="user" and .indicators[0].sortOrder==-100 and .hasPersonalLayout'
 expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=mine' "$BF8")" | jq -e --argjson id "$INDF8" "$MINEF8" >/dev/null || fail "PUT layout?scope=mine"
 expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=mine' "$BF8")" >/dev/null   # idempotente
 expect 200 "$(req GET /api/v1/analytics/pulse)" | jq -e --argjson id "$INDF8" "$MINEF8" >/dev/null || fail "GET pulse no conserva mi orden (hasPersonalLayout)"
@@ -4176,14 +4260,14 @@ expect 200 "$(req GET /api/v1/analytics/pulse)" | jq -e '(.hasPersonalLayout|not
 # company: sin pulse.organize_company → 403; con él (admin) el orden aplica a quien no tiene uno propio (despachador).
 expect 403 "$(req PUT '/api/v1/analytics/pulse/layout?scope=company' '{"panels":[{"key":"ACTIVITY","sortOrder":5,"isVisible":true}]}' "$TDF8")" >/dev/null || fail "despachador organiza el Pulso de la compañía"
 expect 204 "$(req DELETE /api/v1/analytics/pulse/layout/mine '' "$TDF8")" >/dev/null   # el despachador sin orden propio
-expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=company' '{"panels":[{"key":"ACTIVITY","sortOrder":5,"isVisible":true},{"key":"CHARTS","sortOrder":6,"isVisible":true},{"key":"INDICATORS","sortOrder":7,"isVisible":true},{"key":"WAREHOUSE","sortOrder":8,"isVisible":true}]}')" | jq -e '.panels[0].key=="ACTIVITY" and .panels[0].source=="company"' >/dev/null || fail "PUT layout?scope=company"
+expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=company' '{"panels":[{"key":"ACTIVITY","sortOrder":5,"isVisible":true},{"key":"CHARTS","sortOrder":6,"isVisible":true},{"key":"INDICATORS","sortOrder":7,"isVisible":true},{"key":"WAREHOUSE","sortOrder":8,"isVisible":true}]}')" | jq -e '.panels[0].key=="WAREHOUSE_DAY" and .panels[1].key=="ACTIVITY" and .panels[1].source=="company"' >/dev/null || fail "PUT layout?scope=company"
 PDF8=$(expect 200 "$(req GET /api/v1/analytics/pulse '' "$TDF8")")
 echo "$PDF8" | jq -e '(.panels | map(.key)) == ["ACTIVITY","CHARTS","INDICATORS"] and all(.panels[]; .source=="company") and (.canOrganizeCompany|not) and (.hasPersonalLayout|not)' >/dev/null || fail "el orden de la compañía no le aplica al despachador: $(echo "$PDF8" | jq -c '.panels')"
 # Se deja el orden de la compañía igual al registro (20/30/40/50, visibles) y queda en la bitácora (PULSE_PANEL_SETTING).
 expect 200 "$(req PUT '/api/v1/analytics/pulse/layout?scope=company' '{"panels":[{"key":"INDICATORS","sortOrder":20,"isVisible":true},{"key":"CHARTS","sortOrder":30,"isVisible":true},{"key":"WAREHOUSE","sortOrder":40,"isVisible":true},{"key":"ACTIVITY","sortOrder":50,"isVisible":true}]}')" >/dev/null
 expect 200 "$(req GET /api/v1/analytics/pulse '' "$TDF8")" | jq -e '(.panels | map(.key)) == ["INDICATORS","CHARTS","ACTIVITY"]' >/dev/null || fail "orden de la compañía restaurado"
 expect 200 "$(req GET '/api/v1/audit/changes?entityType=PULSE_PANEL_SETTING&take=50')" | jq -e '.total >= 4' >/dev/null || fail "AuditLog de PULSE_PANEL_SETTING"
-ok "5 paneles del admin (con ATTENTION, Lote 14); mine (Actividad arriba, Gráficos oculto, indicador $INDF8 primero, idempotente, hasPersonalLayout); 400 con los mensajes exactos (scope, panel desconocido, tipo), 404 (gráfico inexistente, panel Almacén para el despachador); DELETE mine vuelve al de la compañía; company sin pulse.organize_company 403; el orden de la compañía le aplica al despachador (sin Almacén) y se restaura; AuditLog PULSE_PANEL_SETTING"
+ok "6 paneles del admin (con ATTENTION del Lote 14 y WAREHOUSE_DAY del Lote 15, primero con −10); mine (Actividad arriba, Gráficos oculto, indicador $INDF8 primero, idempotente, hasPersonalLayout); 400 con los mensajes exactos (scope, panel desconocido, tipo), 404 (gráfico inexistente, panel Almacén para el despachador); DELETE mine vuelve al de la compañía; company sin pulse.organize_company 403; el orden de la compañía le aplica al despachador (sin Almacén) y se restaura; AuditLog PULSE_PANEL_SETTING"
 
 step "MFA por usuario (Lote F8a): exigirlo a una persona sin tocar la política de la compañía, y resetearlo"
 # Tenant.MfaRequired del tenant demo está en falso (DemoTenantSeeder lo apaga para no romper el resto del smoke con

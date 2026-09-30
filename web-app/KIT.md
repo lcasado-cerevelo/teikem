@@ -37,6 +37,15 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
   debe sacar al usuario de la pantalla: `useQuery({ ..., meta: { handleAccessDenied: false } })`. Las mutaciones no se interceptan.
 - **Fechas del API**: el backend manda las marcas UTC sin zona (`"2026-09-27T14:00:00.123"`) y `new Date()` las leería como hora
   local. Léelas siempre con `parseApiDate(iso)` (`src/kernel/api/dates.ts`: sin zona = UTC, como la DSL) antes de formatear.
+- **Hora de la compañía** (un solo punto para toda la web, espejo de `TenantClock`/`LocalDay`): `src/kernel/api/tenantZone.ts`.
+  `TENANT_TIME_ZONE` ('America/Puerto_Rico'); `localDayOf(value)` → 'YYYY-MM-DD' del día LOCAL de un instante del API (un día
+  de calendario 'YYYY-MM-DD' queda igual; no fecha → null), como `AnalyticsEngine.GroupKey`; `tenantToday()` ("hoy" local);
+  `zonedInputFromUtc(iso)` / `utcFromZonedInput('YYYY-MM-DDTHH:mm')` para inputs `datetime-local` en hora de la compañía.
+  ```ts
+  const day = localDayOf('2026-09-30T03:59:00')   // '2026-09-29' (23:59 en Puerto Rico)
+  const today = tenantToday()                    // 'YYYY-MM-DD' de hoy en Puerto Rico
+  const input = zonedInputFromUtc(dto.fromUtc)   // '2026-09-30T00:00'
+  ```
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
 ## Shell (`src/app`)
@@ -276,6 +285,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `ClientPicker` | `value` (publicId \| null), `onChange(publicId, client)`, `includeInactive?` (por defecto false), `placeholder?`, `disabled?`, `invalid?`, `aria-label?` | combobox con buscador: `GET /api/v1/clients?search=&includeInactive=` (250 ms entre teclas; mantiene los resultados anteriores mientras busca), opciones "Code · Name" (marca "Inactivo"), teclado ↑/↓/Enter/Escape. Con un valor inicial pide `GET /api/v1/clients/{publicId}` para mostrar la etiqueta. Sin `clients.read`: "Su usuario no puede consultar clientes" (no saca de la pantalla) |
 | `CategoryProductPicker` | `value: CategoryProductValue` (`{kind:'category', id}` \| `{kind:'product', publicId}` \| `null` = todos), `onChange(value, detail?)` (`detail.category`/`detail.product` = fila elegida), `categories` (árbol completo: `useProductCategories().data`), `categoriesLoading?`, `label?` (por defecto "Categoría o producto"), `id?`, `disabled?` | un solo combobox con buscador y dos secciones: 'Categorías' (árbol con sangría por nivel y "N productos" contando sus subcategorías —`categoryProductTotals`, como filtra el API—; el texto filtra por nombre o ruta) y 'Productos' (`GET /api/v1/products?search=&activeOnly=true&take=20`, 250 ms entre teclas, "SKU · Nombre"; sin texto no consulta). El valor se ve como píldora ("Categoría"/"Producto" + ruta o "SKU · Nombre", con elipsis) con ✕ para quitarlo; un producto que llega de fuera pide `GET /api/v1/products/{publicId}` para su etiqueta. Teclado ↑/↓ (recorre ambas secciones), Enter, Escape (cierra y devuelve el foco). A ≤ 480 px ocupa todo el ancho; por encima, su desplegable mide 340 px anclado a la izquierda, así que dale un contenedor de al menos 340 px (p. ej. `flex: 1 1 340px`) si un ancestro recorta con `overflow: hidden` (`.pal`). 403 de productos: aviso en su sección. Lógica pura en `categoryTree.ts`: `categoryTree(cats)` (aplanado padre→hijos con `level`; padre ausente = raíz), `filterCategoryTree`, `categoryLabel`, `isCategoryProductValue` (validar lo leído de localStorage), `sameCategoryProduct`, `categoryProductTotals(cats)` (id → productos del subárbol; `productCount` del DTO son solo los directos) |
 | `useMediaQuery(q)`, `CARDS_QUERY` | | `true` mientras se cumpla la media query (`'(max-width: 720px)'` = modo tarjetas) |
+| `useElementHeight(element)` (Lote 15) | `element: Element \| null` → `number` | alto en px (entero) del ELEMENTO (no de una ref: sirve para uno que se monta después o cambia), al día con `ResizeObserver`; 0 sin elemento o sin medir (jsdom). Para desplazar filas fijas: `const [el, setEl] = useState<HTMLDivElement \| null>(null); const h = useElementHeight(el)` → `<div ref={setEl}>…</div>` y `style={{ '--alto': `${h}px` } as CSSProperties}` |
 | `useElementWidth(ref)` (Lote 13) | `ref: RefObject<Element \| null>` → `number` | ancho en px (entero) del elemento, al día con `ResizeObserver`; 0 sin medir (jsdom). La ref apunta a un elemento que se monta con el componente (no condicional). Para decidir por el ancho de un PANEL y no de la ventana: `const ref = useRef<HTMLDivElement>(null); const w = useElementWidth(ref)` → `<div ref={ref}><DataTable forceCards={w > 0 && w < 640} … /></div>` |
 | `SplitPane` (Lote 13) | `storageKey` (estable; se guarda en localStorage `teikem.split.<storageKey>`), `defaultRatio?` (0.6), `minRatio?`/`maxRatio?` (0.35 / 0.75), `minPx?: [A, B]` ([420, 320]), `stackBelow?` (900: ventana ≤ ese ancho = una columna), `label?` (nombre accesible de la barra; por defecto `ui.split.resize` "Cambiar el ancho de los paneles"), `className?`, `children: [A, B]` | dos paneles lado a lado (grid `minmax(0, A) 10px minmax(0, 1fr)`, sin `overflow:hidden`: los desplegables salen) con una barra `role="separator"` (`aria-orientation="vertical"`, `aria-valuenow`/`min`/`max` en % del panel A, foco visible). Arrastre con Pointer Events + `setPointerCapture` (también con el dedo: `touch-action:none`), ←/→ 5 %, Home/End a los límites, Enter o doble clic = `defaultRatio` (quita lo guardado). Guarda al soltar y con cada tecla (localStorage en try/catch: si falla o lo guardado no es un número entre 0 y 1, vale el por defecto). La proporción se acota a `minRatio`/`maxRatio` y a que cada panel conserve `minPx`. Una sola columna sin barra (primero A, luego B) con la ventana ≤ `stackBelow` o si el contenedor no alcanza para `minPx[0] + minPx[1]` + la barra. Los hijos no se vuelven a montar al apilarse (el borrador de un formulario sobrevive). Puras en `splitRatio.ts`: `clampSplitRatio(r, anchoÚtil, minPx, min, max)`, `splitBounds`, `readSplitRatio(raw, def)`, `ratioFromPointer`, `splitStorageKey`. `<SplitPane storageKey="pickBatches"><CollectPanel /><PickBatchesPanel /></SplitPane>` |
 | `SummaryBar` (Lote 14) | `items: SummaryItem[]` (`{ key?, label, value, tone?: 'in' \| 'out' \| 'money' \| 'muted', title? }`), `label?` (nombre accesible del grupo), `loading?` (cifras atenuadas y `aria-busy`), `aside?` (leyenda o aviso a la derecha) | franja `.burst` de la maqueta (`ledger()`): etiqueta pequeña en mayúsculas y el número en monoespaciada, separadas por una raya vertical; `in` = color de flujo, `out` = peligro. Envuelve en renglones a 360 px (dos por renglón bajo 480 px). La usan el Kárdex (Movimientos · Entradas/Salidas en movimientos y unidades · Internos; en Saldos además En mano y Disponible), Transferencias y ajustes y los descuadres. `<SummaryBar label={t('…label')} items={[{ label: 'Movimientos', value: 126 }, { label: 'Entradas (uds)', value: '+132', tone: 'in' }]} />` |
@@ -575,7 +585,9 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   ```
 - Conteo cíclico (`/warehouse/cycle-counts`, `CycleCountListScreen`; maqueta `conteo()`, Lote 14 P8, D2-D4 y D7-D10): filtros
   arriba y DOS paneles en `SplitPane storageKey="cycle-counts"` (34/66; bajo 900 px apilados). El conteo elegido va en
-  `?count=<id>` (sin él, el primero de la lista). Estatus (colores del catálogo `CycleCountStatus`): Pendiente → Contado
+  `?count=<id>` (sin él, el primero de la lista). Filtros iniciales de la URL, leídos una vez al montar (Lote 15,
+  `countFiltersFromUrl`): `warehousePublicIds`, `status`, `origins` (repetibles o con comas) y `from`/`to` (alta, 'YYYY-MM-DD');
+  la franja "Almacén hoy" del Pulso manda `?status=RECONCILED_VARIANCE&warehousePublicIds=`. Estatus (colores del catálogo `CycleCountStatus`): Pendiente → Contado
   (solo a ciegas, desde la app) → Concordancia / Diferencia. "Conteo de lo cambiado" y "Nuevo conteo" con `warehouse.count`.
   | Pieza | Props / firma | Uso |
   |---|---|---|
@@ -586,10 +598,10 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   | `CountQtyModal` / `AddFoundLineModal` (`CountLineModals.tsx`) | `line`, `scannedSerial?`, `isBlind?`, `onSave(body)`, `onClose` / `detail`, `onClose` | cantidad (foco puesto, Enter guarda) o series de una línea; línea nueva (lo encontrado) |
   | `CreateCountModal` / `ChangedCountModal` | `onClose`, `onCreated?` / `onClose`, `initialWarehousePublicId?`, `onCreated?(counts)` | alta manual (almacén, zonas, posiciones) / "lo cambiado": almacén (de solo lectura si hay uno), Desde/Hasta en hora de Puerto Rico (por defecto la ventana del servidor; tocadas se mandan en UTC), zonas, "Incluir posiciones vacías", vista previa en vivo y su `problem` tal cual (sin crear) |
   | `useCountDrafts(detail)` | → `{ drafts, errors, saving, input, save, capture, flush, rowVersion }` | captura en la fila: texto por línea, guardado al salir o con Enter en FILA ÚNICA con el rowVersion más reciente; `flush()` antes de confirmar |
-  Lógica pura en `countView.ts`: `CountFilterState`/`EMPTY_COUNT_FILTERS`, `countFilterQuery`, `countListQuery`, `countParam`,
+  Lógica pura en `countView.ts`: `CountFilterState`/`EMPTY_COUNT_FILTERS`, `countFilterQuery`, `countListQuery`, `countParam`, `countFiltersFromUrl`,
   `selectedCountId`, `countWhere`, `isCountClosed`/`isCountEditable`, `matchCountLine`, `scanOptions`, `lineVariance`,
-  `pendingLines`, `confirmBlocker`, `TENANT_TIME_ZONE` ('America/Puerto_Rico', espejo de `TenantClock`), `zonedInputFromUtc`,
-  `utcFromZonedInput`. Estilos `.cc-*` en `warehouse.css`.
+  `pendingLines`, `confirmBlocker`. La hora de la compañía (`TENANT_TIME_ZONE`, `zonedInputFromUtc`, `utcFromZonedInput`) vive
+  desde el Lote 15 en `src/kernel/api/tenantZone.ts` (ver "Hora de la compañía"). Estilos `.cc-*` en `warehouse.css`.
   ```tsx
   <SplitPane storageKey="cycle-counts" defaultRatio={0.34} minPx={[300, 480]}>
     <CountTaskList items={items} total={total} selectedId={id} onSelect={select} … /><CountDetailPanel id={id} />
@@ -622,7 +634,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   (`.inv-kpi`, `aria-pressed`, activo `.on`) que filtra la tabla con `?kpi=active|available|low|serial` (activos; Unidades
   totales = activos con existencia EN MANO > 0 = `activeOnly`+`onlyOnHand` —decisión del 2026-09-30; su vista es "Activos con
   existencia" y su aviso (`title`) dice que la cifra suma también la existencia de los inactivos, porque sale de
-  `/inventory/balances`—; `belowMin`; `serialOnly`); otro clic o "Limpiar" lo quita. El KPI viaja al Reporte de inventario con
+  `/inventory/balances`—; `belowMin`; `serialOnly`); otro clic o "Limpiar" lo quita. Lote 15: `?warehousePublicIds=` (repetible)
+  elige los almacenes al abrir (una vez; lo manda la franja "Almacén hoy" con `?kpi=low`). El KPI viaja al Reporte de inventario con
   `productListQuery` (mismo filtro que la tabla). Bajo mínimo va en
   naranja (`.money`: número y borde al pasar el mouse) solo si es > 0; Con número de serie, solo si hay productos SERIAL con series
   incompletas, con "N sin series completas". Filtros encima del panel, todos al API y a la página 1: Almacén (`SearchSelect` →
@@ -752,9 +765,10 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   canOrganizeCompany }` solo con los paneles cuyo permiso `pulse.*`, permisos de datos y módulo tiene el usuario (incluidos los
   ocultos, `isVisible=false`, para el modo Organizar). La pantalla pinta EXACTAMENTE `shownPanels(panels)` (orden `sortOrder`, sin
   ocultos ni claves desconocidas) con el registro; nunca monta un panel a mano ni vuelve a mirar permisos del panel.
-- Registro `PULSE_PANELS` (`pulsePanels.tsx`): `{ key, titleKey, render(ctx), hasContent(ctx), items? }` para `INDICATORS`
-  (río, `PulseSections.tsx`), `CHARTS` (grilla), `WAREHOUSE` (`WarehousePulsePanel`), `ACTIVITY` (`ActivityPanel`) y
-  `ATTENTION` (Lote 14, `AttentionPanel`: "Necesita tu atención", `pulse.attention`, orden 5).
+- Registro `PULSE_PANELS` (`pulsePanels.tsx`): `{ key, titleKey, render(ctx), hasContent(ctx), items?, pinnable? }` para `INDICATORS`
+  (río, `PulseSections.tsx`), `CHARTS` (grilla), `WAREHOUSE` (`WarehousePulsePanel`), `ACTIVITY` (`ActivityPanel`),
+  `ATTENTION` (Lote 14, `AttentionPanel`: "Necesita tu atención", `pulse.attention`, orden 5) y `WAREHOUSE_DAY` (Lote 15,
+  `WarehouseDayBand`: franja "Almacén hoy", `pulse.warehouse` + `inventory.view` + WMS_LOTSERIAL, orden −10, `pinnable`).
   `ctx = { pulse, indicators, charts }` con los elementos ya visibles y ordenados (`shownItems`). Un panel nuevo = su clave en
   `PULSE_PANEL_KEYS` (`pulseLayout.ts`, espejo de `PulsePanels` del dominio) + su entrada aquí + su título en i18n:
   ```tsx
@@ -780,11 +794,79 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   ```
 - `<PulseOrganizer scope pulse onClose />`: modo Organizar (copia local; ▲ ▼, ojo "Ocultar/Mostrar", asa con ↑/↓ y arrastre
   HTML5 nativo con ratón —con `(pointer: coarse)` solo botones—; "Listo" = un solo PUT y toast "Pulso guardado"; error → `title`
-  del ProblemDetails en el toast). Lógica pura en `pulseLayout.ts`: `sortPanels`, `sortItems`, `shownPanels`, `shownItems`,
-  `initOrganizer`, `moveEntry`, `toggleEntry`, `buildLayoutRequest`, `moduleGroup` (BusinessModule → grupo del menú e ícono).
-- Estilos propios en `pulse.css`, todos bajo `.pulse` (`.streamlabel`, `.river`, `.node.flow|.money`, `.node .spark` —barra de
-  segmentos `<i style={{ height: '40%' }} />` del color del nodo—, `.pipe`, `.pulse-charts`,
-  `.orgbar`, `.orgrow`…): río que envuelve bajo 980 px y una columna a 480 px; grilla `minmax(min(100%, 380px), 1fr)`.
+  del ProblemDetails en el toast). Los indicadores se ofrecen en una lista por línea de módulo (h3 + ayuda
+  `organizer.linesHint`) y solo se mueven dentro de su línea. Lógica pura en `pulseLayout.ts`: `sortPanels`, `sortItems`,
+  `shownPanels`, `shownItems`, `initOrganizer` (indicadores ya agrupados por línea), `moveEntry` (no cruza de línea),
+  `sameLine`, `toggleEntry`, `buildLayoutRequest`, `moduleGroup` (BusinessModule → grupo del menú e ícono).
+- **Indicadores por línea** (Lote 15, D8): `indicatorLines(items)` → `[{ group: 'ops' | 'warehouse' | 'money', items }]` en el
+  orden del menú (`INDICATOR_LINE_ORDER`: Operación, Almacén, Contabilidad), solo las líneas con algo y dentro el orden recibido.
+  `IndicatorsRiver` conserva el h2 "Tus indicadores" y pinta un `div.pulse-line` por línea con su `StreamLabel level={3}`
+  (nunca un h2 "Almacén": los recorridos buscan la sección con h2 "Almacén" del panel Almacén) y su `.river`; el nodo ya no
+  repite el módulo (solo el rango).
+  ```tsx
+  {indicatorLines(indicators).map((l) => (
+    <div key={l.group} className="pulse-line"><StreamLabel icon={<Icon />} level={3} tone="wh">{t(`nav.groups.${l.group}`)}</StreamLabel>…</div>
+  ))}
+  ```
+  `StreamLabel` props: `icon`, `children`, `id?`, `level?: 2 | 3` (2 por defecto), `tone?: 'flow' | 'wh' | 'money'` (color del ícono).
+- **`<ChartVisual chartType points isMoney name? emptyText? size? unit? tooltipLabel? />`** (`ChartVisual.tsx`): el ÚNICO
+  dibujo de gráficos (Pulso, Análisis → Gráficos, vista previa del editor). **Siempre gráfico** (Lote 15: no hay respaldo a lista
+  con pocos puntos); sin puntos, `emptyText` (por defecto `analytics.charts.noData`). Barra, línea (puntos visibles con ≤ 12
+  puntos: un solo día se ve), dona (total al centro, compacto si es largo: `donutCenter`) y pastel (una rebanada sola sin hueco).
+  Tooltip con la fecha larga si la etiqueta es un día 'YYYY-MM-DD' (eje en corto) y el valor formateado; `unit` = nombre de la
+  serie en el tooltip. `size="mini"`: sin ejes, rejilla ni leyenda, 44 px de alto por CSS, `minPointSize` 2 (un día en 0 se ve).
+  Cada punto `{ label, key?, value, color? }` puede traer su color. Envoltorio `div.pulse-chartbox[role=img]` con
+  `aria-label` "{nombre}. {etiqueta}: {valor}; …" y `data-chart-kind`/`data-points` para pruebas.
+  ```tsx
+  <ChartVisual chartType={chart.chartType} points={chart.points} isMoney={chart.isMoney ?? false} name={chart.name} />
+  <ChartVisual chartType="BAR" size="mini" points={days.map((d) => ({ label: d.date, value: d.units }))} isMoney={false} unit={t('…')} />
+  ```
+- "Tus gráficos": como mucho **2 por fila** (`PULSE_CHART_COLUMNS` en línea sobre `.pulse-charts`:
+  `minmax(min(100%, max(380px, calc(50% - 8px))), 1fr)`), una columna por debajo de 776 px; Análisis → Gráficos conserva su grilla.
+- **Franja "Almacén hoy"** (Lote 15, D1–D5; `WarehouseDayBand.tsx`, sin props): h2 "Almacén hoy · últimos 7 días" (nunca
+  "Almacén" a secas: los recorridos buscan ese h2 del panel Almacén) con el selector de almacén, y 4 `.node.wh` unidas por
+  `.pipe.wh` (violeta): Unidades recibidas, Unidades de salida, Conteos con diferencia (número = HOY, texto "7 días: N",
+  `ChartVisual size="mini"` con 7 barritas —la última es hoy; tooltip "Hoy, …"/fecha larga y cantidad—) y Productos bajo mínimo
+  (al final, "en este momento", sin gráfico). Naranja (`.node.wh.alert`: borde y número) según `countsAlert`/`belowMinAlert` del
+  API. La tarjeta es un enlace (`.node-link`) al detalle filtrado; las barritas quedan encima (`.wh-mini`, z-index) y solo
+  muestran. Datos: `useWarehousePulseDays(warehousePublicId)` = `GET /inventory/pulse/days?days=7[&warehousePublicIds=]`
+  (`WAREHOUSE_DAY_DAYS` = 7 fijo; 403 sin redirigir → "—"; `staleTime` 60 s, se repite cada 5 min; lo invalidan las mutaciones
+  de inventario: `warehouseKeys.pulseDays` en `STOCK`). Lógica pura en `warehouseDay.ts`: `warehouseDayCards(dto, wh)` →
+  `[{ key, today, total, points, alert, href }]`, `warehouseDayHref(key, {from,to}, wh)` (Kárdex `types=RECEIPT` o
+  `types=ISSUE&types=CROSSDOCK` con `from`/`to`; Conteo `status=RECONCILED_VARIANCE`; Productos `kpi=low`; todos con
+  `warehousePublicIds` si hay almacén) y `warehouseDayRange(dto)`.
+  ```tsx
+  const cards = warehouseDayCards(useWarehousePulseDays(wh).data, wh)
+  <Link className="node-link" to={cards[0].href}>…</Link>
+  ```
+- **Almacén compartido** (D5): `useWarehouseFilter()` (panel Almacén y franja) lee y cambia UN valor por compañía y usuario con
+  `useStoredWarehouseFilter(key)` (`warehouseFilterStore.ts`: localStorage `teikem.pulse.warehouseFilter.{tenant}.{user}` +
+  `useSyncExternalStore`; misma referencia mientras no cambie; si no se puede escribir, vale en la sesión). Cambiar el almacén en
+  uno lo cambia en el otro; la franja solo toca `warehousePublicId` (conserva la categoría o el producto del panel).
+  ```tsx
+  const { filter, setFilter } = useWarehouseFilter()
+  setFilter({ ...filter, warehousePublicId: e.target.value || null })
+  ```
+- **Filas fijas** (D6/D7, solo en "Pulso del día": raíz `wrap pulse pulse-home`; Indicadores y Gráficos usan `.wrap.pulse` sin
+  filas fijas): la cabecera se parte en `.pulse-pin-head` (h1 con la fecha + botones "Organizar"; fija con `.pinned`, que falta
+  al organizar porque la `.orgbar` ya es fija) y `.pulse-greet` (saludo y chip, se desplaza). La primera sección pintada queda
+  fija justo debajo (`data-pinned`) solo si su entrada es `pinnable` y no se organiza (`pinnedPanelKey(sections, organizing)`);
+  oculta o más abajo, solo queda la fecha. Altos medidos con `useElementHeight` en `--pulse-head-h` (desplazamiento de la franja)
+  y `--pulse-pin-h` (`scroll-margin-top` de lo que se desplaza: el foco no queda tapado). Fondo = `var(--app-bg)` fijo al
+  viewport (opaco, sin corte). Celular (≤ 720 px): franja compacta 2×2 (número y barritas, sin texto pequeño ni "· últimos 7
+  días"); alto ≤ 560 px (acostado): solo la fecha. Un panel nuevo que sea una franja de números: `pinnable: true`; nunca un
+  panel alto.
+- Gráficos "de la compañía" (Lote 15, D9/D14): `isCompanyChart(dto)` (`definitions.ts`: no es de sistema y no tiene dueño) →
+  chip `analytics.charts.companyBadge` en Análisis → Gráficos; Editar/Eliminar salen con `canEdit` del API (`analytics.manage`)
+  y la confirmación avisa que, borrado, no vuelve (`deleteCompanyBody`).
+- Vista previa del editor (`chartPreview.ts`) replica el motor del Lote 15: barra/dona con SUM o COUNT piden todos los grupos
+  y juntan el resto en "Otras" (`foldOthers`: con más de 8, los 7 mayores + "Otras", clave `OTHERS_KEY` = '$others'; la
+  etiqueta la pasa la pantalla con `analytics.charts.others`); agrupar por fecha usa el día LOCAL (`localDayOf`).
+- Estilos propios en `pulse.css`, todos bajo `.pulse` (`.streamlabel` —`.line` para el h3 de línea, tonos `.flow|.wh|.money`—,
+  `.pulse-line`, `.river`, `.node.flow|.money`, `.node .spark` —barra de segmentos `<i style={{ height: '40%' }} />` del color
+  del nodo—, `.pipe`, `.pulse-charts`, `.pulse-chartbox(.mini)`, `.orgbar`, `.orgrow`, `.orghint`, `.orgline-h`, la franja
+  `.wh-band`/`.wh-river`/`.node.wh(.alert)`/`.pipe.wh`/`.wh-mini` y las filas fijas bajo `.pulse-home`): río que envuelve bajo
+  980 px y una columna a 480 px (la franja, 2×2).
 - Indicadores y Gráficos (Fase 10): el editor (`DefinitionEditor`) comparte en "Compartido" con usuarios (`admin.users`) y
   con roles (`useRoles()` de `features/system/api`); cada `ShareDto` lleva `userId` o `roleId`. Solo en gráficos: sin
   selector de módulo (sale de la fuente) y con `<ChartPreview …valores del formulario isMoney />` (`ChartPreviewPanel.tsx`):

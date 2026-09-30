@@ -150,28 +150,37 @@ public class PulseLayoutTests
 
         x.As(Me, PermissionCatalog.PulseWarehouse);
         Assert.DoesNotContain((await x.PulseAsync()).Panels, p => p.Key == PulsePanels.Warehouse);
+        Assert.DoesNotContain((await x.PulseAsync()).Panels, p => p.Key == PulsePanels.WarehouseDay);   // Lote 15: la franja tampoco
 
+        // Lote 15: con pulse.warehouse + inventory.view también la franja "Almacén hoy" (WAREHOUSE_DAY, orden −10, la primera).
         x.As(Me, PermissionCatalog.PulseWarehouse, PermissionCatalog.InventoryView);
-        var panel = Assert.Single((await x.PulseAsync()).Panels);
-        Assert.Equal(new PulsePanelDto(PulsePanels.Warehouse, true, 40, PulseSources.Default), panel);
+        Assert.Equal(new[]
+            {
+                new PulsePanelDto(PulsePanels.WarehouseDay, true, -10, PulseSources.Default),
+                new PulsePanelDto(PulsePanels.Warehouse, true, 40, PulseSources.Default),
+            },
+            (await x.PulseAsync()).Panels);
 
         // Con WMS_LOTSERIAL apagado tampoco; sin ANALYTICS queda solo WAREHOUSE aunque tenga todo lo demás.
         x.F.SetModules(ModuleKeys.Analytics, ModuleKeys.LtlGround);
         Assert.Empty((await x.PulseAsync()).Panels);
         x.F.SetModules(ModuleKeys.WmsLotSerial, ModuleKeys.LtlGround);
         x.As(Me, AllPulse);
-        Assert.Equal(new[] { PulsePanels.Warehouse }, (await x.PulseAsync()).Panels.Select(p => p.Key));
+        Assert.Equal(new[] { PulsePanels.WarehouseDay, PulsePanels.Warehouse }, (await x.PulseAsync()).Panels.Select(p => p.Key));
 
         // Registro del plan §2.3.
         // Lote 14 (D6): + ATTENTION ("Necesita tu atención", orden 5: el primero, debajo de la franja del Lote 15), sin datos ni módulo.
         Assert.Equal(new[] { ("INDICATORS", "pulse.indicators", 20), ("CHARTS", "pulse.charts", 30), ("WAREHOUSE", "pulse.warehouse", 40), ("ACTIVITY", "pulse.activity", 50),
-                ("ATTENTION", "pulse.attention", 5) },
+                ("ATTENTION", "pulse.attention", 5), ("WAREHOUSE_DAY", "pulse.warehouse", -10) },
             PulsePanels.All.Select(p => (p.Key, p.Permission, p.DefaultSortOrder)));
         Assert.Empty(PulsePanels.Find(PulsePanels.Attention)!.DataPermissions);
         Assert.Null(PulsePanels.Find(PulsePanels.Attention)!.Module);
         Assert.Equal(new[] { PermissionCatalog.InventoryView }, PulsePanels.Find("warehouse")!.DataPermissions);
         Assert.Equal(new[] { PermissionCatalog.AnalyticsView }, PulsePanels.Find(PulsePanels.Activity)!.DataPermissions);
         Assert.Equal(ModuleKeys.WmsLotSerial, PulsePanels.Find(PulsePanels.Warehouse)!.Module);
+        // Lote 15: la franja reusa el permiso, los datos y el módulo del panel Almacén (sin permiso nuevo).
+        Assert.Equal(new[] { PermissionCatalog.InventoryView }, PulsePanels.Find("warehouse_day")!.DataPermissions);
+        Assert.Equal(ModuleKeys.WmsLotSerial, PulsePanels.Find(PulsePanels.WarehouseDay)!.Module);
     }
 
     // ================================================================ (2)
@@ -227,7 +236,7 @@ public class PulseLayoutTests
         x.As(Me, AllPulse.Append(PermissionCatalog.PulseOrganizeCompany).ToArray());
 
         var pulse = await x.PulseAsync();
-        Assert.Equal(new[] { "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
+        Assert.Equal(new[] { "WAREHOUSE_DAY:-10:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
             pulse.Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
         Assert.Equal(("company", 50, true), (pulse.Indicators[0].Source, pulse.Indicators[0].SortOrder, pulse.Indicators[0].IsVisible));
         Assert.False(pulse.HasPersonalLayout);
@@ -236,7 +245,8 @@ public class PulseLayoutTests
         // Compañía: Actividad arriba y el indicador oculto (se escribe la definición).
         pulse = await x.SaveAsync(AnalyticsService.ScopeCompany,
             new[] { new PulseLayoutItem("indicator", ind, 70, false) }, new[] { new PulseLayoutPanel("ACTIVITY", 5, true) });
-        Assert.Equal("ACTIVITY:5:company", $"{pulse.Panels[0].Key}:{pulse.Panels[0].SortOrder}:{pulse.Panels[0].Source}");
+        // Lote 15: la franja (−10, sin fila de compañía) sigue primero; Actividad queda justo debajo.
+        Assert.Equal("ACTIVITY:5:company", $"{pulse.Panels[1].Key}:{pulse.Panels[1].SortOrder}:{pulse.Panels[1].Source}");
         var item = Assert.Single(pulse.Indicators);
         Assert.Equal(("company", 70, false, (decimal?)null), (item.Source, item.SortOrder, item.IsVisible, item.Value));   // oculto: sin calcular
         Assert.False(pulse.HasPersonalLayout);
@@ -244,15 +254,15 @@ public class PulseLayoutTests
         // Otro usuario (sin fila propia) ve el de la compañía.
         x.As(Other, AllPulse);
         pulse = await x.PulseAsync();
-        Assert.Equal(("ACTIVITY", "company"), (pulse.Panels[0].Key, pulse.Panels[0].Source));
+        Assert.Equal(("ACTIVITY", "company"), (pulse.Panels[1].Key, pulse.Panels[1].Source));
         Assert.False(pulse.CanOrganizeCompany);
 
         // Usuario: su fila pisa la de la compañía (panel e indicador); los demás paneles siguen en default.
         pulse = await x.SaveAsync(AnalyticsService.ScopeMine,
             new[] { new PulseLayoutItem("INDICATOR", ind, 1, true) }, new[] { new PulseLayoutPanel("activity", 90, false) });
-        Assert.Equal(new[] { "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:90:user" },
+        Assert.Equal(new[] { "WAREHOUSE_DAY:-10:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:90:user" },
             pulse.Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
-        Assert.False(pulse.Panels[3].IsVisible);
+        Assert.False(pulse.Panels[4].IsVisible);
         item = Assert.Single(pulse.Indicators);
         Assert.Equal(("user", 1, true, (decimal?)3m), (item.Source, item.SortOrder, item.IsVisible, item.Value));
         Assert.True(pulse.HasPersonalLayout);
@@ -260,7 +270,7 @@ public class PulseLayoutTests
         // El primero sigue viendo el de la compañía; la fila de compañía no cambió.
         x.As(Me, AllPulse);
         pulse = await x.PulseAsync();
-        Assert.Equal("ACTIVITY:5:company", $"{pulse.Panels[0].Key}:{pulse.Panels[0].SortOrder}:{pulse.Panels[0].Source}");
+        Assert.Equal("ACTIVITY:5:company", $"{pulse.Panels[1].Key}:{pulse.Panels[1].SortOrder}:{pulse.Panels[1].Source}");
         Assert.Equal(("company", false), (pulse.Indicators[0].Source, pulse.Indicators[0].IsVisible));
 
         // Resolución pura.
@@ -470,7 +480,7 @@ public class PulseLayoutTests
 
         // Con él va primero (orden 5, antes de Indicadores 20): justo debajo del encabezado.
         x.As(Me, AllPulse.Append(PermissionCatalog.PulseAttention).ToArray());
-        Assert.Equal(new[] { "ATTENTION:5:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
+        Assert.Equal(new[] { "WAREHOUSE_DAY:-10:default", "ATTENTION:5:default", "INDICATORS:20:default", "CHARTS:30:default", "WAREHOUSE:40:default", "ACTIVITY:50:default" },
             (await x.PulseAsync()).Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
 
         // Sin permiso de datos ni módulo en el panel: solo pulse.attention y ningún módulo encendido basta para verlo.
@@ -481,6 +491,37 @@ public class PulseLayoutTests
         var mine = await x.SaveAsync(AnalyticsService.ScopeMine, panels: new[] { new PulseLayoutPanel("attention", 70, false) });
         Assert.Equal("ATTENTION:70:user", $"{mine.Panels[0].Key}:{mine.Panels[0].SortOrder}:{mine.Panels[0].Source}");
         Assert.False(mine.Panels[0].IsVisible);
+    }
+
+    // ================================================================ (10) Lote 15
+
+    [Fact]
+    public async Task Case10_warehouse_day_band_goes_first_even_in_an_already_organized_pulse()
+    {
+        await using var x = await Fx.CreateAsync();
+        var perms = AllPulse.Append(PermissionCatalog.PulseAttention).Append(PermissionCatalog.PulseOrganizeCompany).ToArray();
+        x.As(Me, perms);
+
+        // Compañía organizada ANTES del lote (Organizar guarda índice × 10 desde 0): la franja no tiene fila y usa su −10.
+        var organized = await x.SaveAsync(AnalyticsService.ScopeCompany, panels: new[]
+        {
+            new PulseLayoutPanel("ATTENTION", 0, true), new PulseLayoutPanel("INDICATORS", 10, true), new PulseLayoutPanel("CHARTS", 20, true),
+            new PulseLayoutPanel("WAREHOUSE", 30, true), new PulseLayoutPanel("ACTIVITY", 40, true),
+        });
+        Assert.Equal(new[] { "WAREHOUSE_DAY:-10:default", "ATTENTION:0:company", "INDICATORS:10:company", "CHARTS:20:company", "WAREHOUSE:30:company", "ACTIVITY:40:company" },
+            organized.Panels.Select(p => $"{p.Key}:{p.SortOrder}:{p.Source}"));
+
+        // Un Pulso personal ya organizado tampoco la deja abajo; se puede ocultar y mover como cualquier panel.
+        var mine = await x.SaveAsync(AnalyticsService.ScopeMine, panels: new[] { new PulseLayoutPanel("ACTIVITY", 0, true), new PulseLayoutPanel("CHARTS", 10, true) });
+        Assert.Equal(PulsePanels.WarehouseDay, mine.Panels[0].Key);
+        mine = await x.SaveAsync(AnalyticsService.ScopeMine, panels: new[] { new PulseLayoutPanel("warehouse_day", 60, false) });
+        Assert.Equal(("WAREHOUSE_DAY", 60, false, "user"),
+            mine.Panels.Where(p => p.Key == PulsePanels.WarehouseDay).Select(p => (p.Key, p.SortOrder, p.IsVisible, p.Source)).Single());
+
+        // Sin pulse.warehouse no ve ni la franja ni el panel Almacén (404 al ordenarla: no se revela).
+        x.As(Other, PermissionCatalog.PulseIndicators, PermissionCatalog.InventoryView, PermissionCatalog.AnalyticsView);
+        Assert.DoesNotContain((await x.PulseAsync()).Panels, p => p.Key == PulsePanels.WarehouseDay || p.Key == PulsePanels.Warehouse);
+        await Assert.ThrowsAsync<NotFoundException>(() => x.SaveAsync(AnalyticsService.ScopeMine, panels: new[] { new PulseLayoutPanel("WAREHOUSE_DAY", 1, true) }));
     }
 
     private static Role MakeRole(int? tenantId, string name, IEnumerable<string> codes, IReadOnlyList<Permission> perms)

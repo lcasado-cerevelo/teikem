@@ -37,8 +37,9 @@ public sealed class ActivityRulesTests
     public void Today_starts_at_midnight_of_the_tenant_zone()
     {
         Assert.Equal(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now));
-        Assert.Equal(new DateTime(2026, 9, 27, 0, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, ActivityRules.TenantZone));
-        // La zona UTC−4 solo prueba la regla: hoy el servicio pasa TenantZone (= UTC) porque Tenant no guarda zona (decisión 8).
+        // Lote 15: el servicio pasa la zona de la compañía (ITenantClock, hora de Puerto Rico): medianoche local = 04:00 UTC.
+        Assert.Equal(new DateTime(2026, 9, 27, 4, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, Teikem.Domain.Common.LocalDay.DefaultZone));
+        Assert.Equal(new DateTime(2026, 9, 27, 4, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, Teikem.Infrastructure.Abstractions.TenantClock.Default.Zone));
         // UTC−4 (Puerto Rico): a las 15:30 UTC son las 11:30 locales; la medianoche local es 04:00 UTC.
         var pr = TimeZoneInfo.CreateCustomTimeZone("UTC-4", TimeSpan.FromHours(-4), "UTC-4", "UTC-4");
         Assert.Equal(new DateTime(2026, 9, 27, 4, 0, 0, DateTimeKind.Utc), ActivityRules.FromUtc("today", Now, pr));

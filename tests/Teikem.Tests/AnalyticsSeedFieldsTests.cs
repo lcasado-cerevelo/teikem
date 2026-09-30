@@ -330,6 +330,11 @@ public class AnalyticsSeedFieldsTests
         Assert.Single(await source.LoadAsync(new DataQuery { FromUtc = new DateTime(2026, 9, 26), ToUtc = new DateTime(2026, 9, 27) }, default));
         Assert.Empty(await source.LoadAsync(new DataQuery { FromUtc = new DateTime(2026, 9, 27), ToUtc = new DateTime(2026, 9, 28) }, default));
         Assert.Empty(await source.LoadAsync(new DataQuery { Ids = new[] { 200 } }, default));
+        // Lote 15: el motor pasa el rango también en días LOCALES (FromDay / ToDayExclusive); una ruta del 26 entra con el día 26
+        // aunque el instante UTC del rango sea las 04:00Z (medianoche de Puerto Rico).
+        Assert.Single(await source.LoadAsync(new DataQuery { FromUtc = new DateTime(2026, 9, 26, 4, 0, 0), ToUtc = new DateTime(2026, 9, 27, 4, 0, 0),
+            FromDay = new DateOnly(2026, 9, 26), ToDayExclusive = new DateOnly(2026, 9, 27) }, default));
+        Assert.Empty(await source.LoadAsync(new DataQuery { FromDay = new DateOnly(2026, 9, 27), ToDayExclusive = new DateOnly(2026, 9, 28) }, default));
     }
 
     // ================================================================ Lote 6 — Inventario y almacén
@@ -467,7 +472,7 @@ public class AnalyticsSeedFieldsTests
             [EntityTypes.StockBalance] = (null, new[] { "Id", "WarehouseId", "WarehouseCode", "ZoneCode", "ZoneType", "BinCode", "ProductId", "Sku", "ProductName", "Category", "OwnerName",
                 "IsOwn", "LotNumber", "ExpiryDate", "DaysToExpiry", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "UpdatedAtUtc" }, new[] { "CostValue", "SaleValue" }),
             [EntityTypes.InventoryTransaction] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Date", "TxnType", "TxnTypeCode", "ProductId", "Sku", "ProductName", "Category",
-                "Quantity", "SignedQuantity", "FromWarehouse", "FromBin", "ToWarehouse", "ToBin", "Position", "LotNumber", "SerialNumber", "RefEntity", "RefId", "RefLabel",
+                "Quantity", "SignedQuantity", "Units", "FromWarehouse", "FromBin", "ToWarehouse", "ToBin", "Position", "LotNumber", "SerialNumber", "RefEntity", "RefId", "RefLabel",
                 "Reason", "ReasonCode", "UserName" }, Array.Empty<string>()),
             [EntityTypes.Receipt] = ("ReceivedAtUtc", new[] { "Id", "PublicId", "Number", "Type", "TypeCode", "Origin", "WarehouseCode", "SupplierName", "ClientName",
                 "PurchaseOrderNumber", "Carrier", "Reference", "Status", "StatusCode", "LineCount", "ExpectedQty", "ReceivedQty", "VarianceQty", "HasVariance", "ReceivedCost", "CreatedAtUtc",
@@ -528,16 +533,18 @@ public class AnalyticsSeedFieldsTests
         Assert.Equal("Movimientos de inventario por tipo", chart.Name);
         Assert.Equal(EntityTypes.InventoryTransaction, chart.DataSourceKey);
         Assert.Equal("TxnType", chart.GroupByField);
-        Assert.Equal("Quantity", chart.FieldKey);
+        Assert.Equal("Units", chart.FieldKey);   // Lote 15 (D12): unidades en positivo (antes Quantity con signo)
         Assert.Equal(AggregateFns.Sum, lookups.CodeOf(chart.AggregateFnLookupId));
         Assert.Equal(ChartTypes.Bar, lookups.CodeOf(chart.ChartTypeLookupId));
         Assert.Equal(DateRangeModes.Last7, lookups.CodeOf(chart.DateRangeModeLookupId!.Value));
         Assert.False(chart.IsMoney);
 
-        // Todos: sistema, en Pulso, módulo WAREHOUSE y visibles a toda la organización.
+        // Todos: en Pulso, módulo WAREHOUSE y visibles a toda la organización; los indicadores de sistema y el gráfico (Lote 15)
+        // de la compañía, sin dueño.
         foreach (var d in new Teikem.Domain.Analytics.AnalyticsDefinitionBase[] { received, counts, below, chart })
         {
-            Assert.True(d.IsSystem);
+            Assert.Equal(d != chart, d.IsSystem);
+            Assert.Null(d.OwnerUserId);
             Assert.True(d.ShowInPulse);
             Assert.Equal(BusinessModules.Warehouse, lookups.CodeOf(d.BusinessModuleLookupId));
             Assert.Equal(ReportVisibilities.Tenant, lookups.CodeOf(d.VisibilityLookupId));
@@ -669,6 +676,138 @@ public class AnalyticsSeedFieldsTests
         // El filtro sembrado de 'Conteos con diferencia' (Lote 14: estatus Diferencia) selecciona los conteos 1 y 6.
         Assert.Equal(new[] { 1, 6 }, rows.Values.Where(r => Teikem.Infrastructure.Dsl.RuleEvaluator.Matches(r, SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter))
             .Select(r => (int)r["Id"]!).OrderBy(i => i));
+    }
+
+    // ================================================================ Lote 15 — Pulso del día
+
+    [Fact]
+    public async Task Lote15_the_two_warehouse_charts_are_seeded_as_company_charts_in_the_first_row()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        var value = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.SeedKey == ChartSeedKeys.InventoryValue);
+        Assert.Equal((SystemAnalyticsSeeder.InventoryValueChartName, EntityTypes.StockBalance, "Category", "CostValue"), (value.Name, value.DataSourceKey, value.GroupByField, value.FieldKey));
+        Assert.Equal((ChartTypes.Donut, AggregateFns.Sum), (lookups.CodeOf(value.ChartTypeLookupId), lookups.CodeOf(value.AggregateFnLookupId)));   // D10: dona (no PIE)
+        Assert.True(value.IsMoney);
+        Assert.Null(value.DateRangeModeLookupId);   // foto de ahora: sin rango
+        Assert.Equal(1, value.SortOrder);
+
+        var moves = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.SeedKey == ChartSeedKeys.MovementsByType);
+        Assert.Equal((SystemAnalyticsSeeder.MovementsByTypeChartName, EntityTypes.InventoryTransaction, "TxnType", "Units"), (moves.Name, moves.DataSourceKey, moves.GroupByField, moves.FieldKey));
+        Assert.Equal((ChartTypes.Bar, AggregateFns.Sum, DateRangeModes.Last7),
+            (lookups.CodeOf(moves.ChartTypeLookupId), lookups.CodeOf(moves.AggregateFnLookupId), lookups.CodeOf(moves.DateRangeModeLookupId!.Value)));
+        Assert.Equal(2, moves.SortOrder);
+        Assert.Contains("positivo", moves.DescriptionJson);
+
+        foreach (var c in new[] { value, moves })
+        {
+            Assert.False(c.IsSystem);            // de la compañía: editable con analytics.manage
+            Assert.Null(c.OwnerUserId);
+            Assert.True(c.IsActive && c.ShowInPulse);
+            Assert.Equal(BusinessModules.Warehouse, lookups.CodeOf(c.BusinessModuleLookupId));
+            Assert.Equal(ReportVisibilities.Tenant, lookups.CodeOf(c.VisibilityLookupId));
+        }
+        // Van antes que cualquier otro gráfico sembrado (el primero de fábrica tiene orden 10).
+        Assert.True(await db.ChartDefinitions.Where(c => c.SeedKey == null).AllAsync(c => c.SortOrder > 2));
+        // "Movimientos por tipo" (dona de 30 días) se queda como está (D15).
+        Assert.True((await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == "Movimientos por tipo")).IsSystem);
+    }
+
+    [Fact]
+    public async Task Lote15_renamed_or_deleted_company_charts_are_not_seeded_again()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        // Se renombra el de valor y se borra (soft delete) el de movimientos.
+        var value = await db.ChartDefinitions.SingleAsync(c => c.SeedKey == ChartSeedKeys.InventoryValue);
+        value.Name = "Mi valor de inventario";
+        var moves = await db.ChartDefinitions.SingleAsync(c => c.SeedKey == ChartSeedKeys.MovementsByType);
+        moves.IsActive = false;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.SeedKey == ChartSeedKeys.InventoryValue));
+        Assert.False(await db.ChartDefinitions.AnyAsync(c => c.Name == SystemAnalyticsSeeder.InventoryValueChartName));   // no reaparece
+        Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.SeedKey == ChartSeedKeys.MovementsByType));
+        Assert.False(await db.ChartDefinitions.AnyAsync(c => c.SeedKey == ChartSeedKeys.MovementsByType && c.IsActive));   // borrado: no vuelve
+        Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.Name == SystemAnalyticsSeeder.MovementsByTypeChartName));
+    }
+
+    [Fact]
+    public async Task Lote15_existing_system_charts_are_converted_once_keeping_an_organized_order()
+    {
+        foreach (var organized in new[] { false, true })
+        {
+            var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+            var lookups = new FakeLookups();
+            using var db = InMemoryDb(tenant);
+            var bar = await lookups.GetIdAsync(LookupDomains.ReportChartType, ChartTypes.Bar);
+            var last30 = await lookups.GetIdAsync(LookupDomains.DateRangeMode, DateRangeModes.Last30);
+            Teikem.Domain.Analytics.ChartDefinition Old(string name, string source, string groupBy, string field, int sort, int? range) => new()
+            {
+                TenantId = TenantId, Name = name, DataSourceKey = source, GroupByField = groupBy, FieldKey = field, ChartTypeLookupId = bar, IsSystem = true,
+                SortOrder = sort, DateRangeModeLookupId = range, ShowInPulse = true,
+                DescriptionJson = "{\"es\":\"vieja\",\"en\":\"old\"}",
+            };
+            // Compañía sembrada antes del lote (sistema, barras, Quantity con signo). La compañía cambió el rango a 30 días.
+            db.ChartDefinitions.AddRange(
+                Old(SystemAnalyticsSeeder.InventoryValueChartName, EntityTypes.StockBalance, "Category", "CostValue", organized ? 30 : 90, null),
+                Old(SystemAnalyticsSeeder.MovementsByTypeChartName, EntityTypes.InventoryTransaction, "TxnType", "Quantity", organized ? 90 : 96, last30));
+            if (organized)   // Organizar guardó índice × 10 desde 0
+                db.ChartDefinitions.Add(Old("Cambios por acción", EntityTypes.AuditLog, "Action", "x", 0, null));
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+            await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+            var value = Assert.Single(await db.ChartDefinitions.AsNoTracking().Where(c => c.Name == SystemAnalyticsSeeder.InventoryValueChartName).ToListAsync());
+            Assert.Equal((false, (int?)null, ChartSeedKeys.InventoryValue, ChartTypes.Donut, "CostValue"),
+                (value.IsSystem, value.OwnerUserId, value.SeedKey, lookups.CodeOf(value.ChartTypeLookupId), value.FieldKey));
+            Assert.Equal(organized ? 30 : 1, value.SortOrder);
+            var moves = Assert.Single(await db.ChartDefinitions.AsNoTracking().Where(c => c.Name == SystemAnalyticsSeeder.MovementsByTypeChartName).ToListAsync());
+            Assert.Equal((false, (int?)null, ChartSeedKeys.MovementsByType, ChartTypes.Bar, "Units"),
+                (moves.IsSystem, moves.OwnerUserId, moves.SeedKey, lookups.CodeOf(moves.ChartTypeLookupId), moves.FieldKey));
+            Assert.Equal(organized ? 90 : 2, moves.SortOrder);
+            Assert.Equal(DateRangeModes.Last30, lookups.CodeOf(moves.DateRangeModeLookupId!.Value));   // el rango de la compañía se conserva
+            Assert.Contains("positivo", moves.DescriptionJson);
+            Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.SeedKey == ChartSeedKeys.MovementsByType));
+        }
+    }
+
+    [Fact]
+    public async Task Lote15_pending_discrepancies_indicator_is_seeded_off_the_pulse()
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        var d = Assert.Single(await db.IndicatorDefinitions.AsNoTracking().Where(i => i.Name == "Descuadres pendientes").ToListAsync());
+        Assert.Equal((EntityTypes.InventoryDiscrepancy, (string?)null, AggregateFns.Count), (d.DataSourceKey, d.FieldKey, lookups.CodeOf(d.AggregateFnLookupId)));
+        Assert.Equal(SystemAnalyticsSeeder.PendingDiscrepanciesFilter, d.FilterJson);
+        Assert.Equal(DateRangeModes.All, lookups.CodeOf(d.DateRangeModeLookupId!.Value));   // estado actual (la fuente tiene DateField)
+        Assert.False(d.ShowInPulse);   // D16: "Necesita tu atención" ya los muestra
+        Assert.True(d.IsSystem);
+        Assert.Equal(BusinessModules.Warehouse, lookups.CodeOf(d.BusinessModuleLookupId));
+
+        // Sus campos existen en la fuente INVENTORY_DISCREPANCY.
+        var t2 = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var db2 = InMemoryDb(t2);
+        var source = new InventoryDiscrepancyDataSource(db2, t2, new FakeLookups(),
+            new Teikem.Infrastructure.Services.InventoryReadService(db2, t2, new FakeLookups(), TenantClock.Default));
+        Assert.Equal("DetectedAtUtc", source.DateField);
+        foreach (var f in JsonFields(d.FilterJson)) Assert.Contains(source.Fields, x => x.Key == f);
     }
 
     [Fact]

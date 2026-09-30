@@ -3349,3 +3349,148 @@ No: `Faltan {n} línea(s) por contar.` Una línea con 0 contado es una captura v
 
 **¿Se puede contar a ciegas desde la web?**
 No. El conteo a ciegas es de la app de almacén; la web muestra lo esperado y el botón de confirmar avisa "La web no confirma conteos a ciegas.".
+
+## Lote 15 — Pulso del día: franja "Almacén hoy", gráficos de la compañía, filas fijas y días de Puerto Rico (Lote 5 del plan de cambios)
+
+Capítulos: [07 — Pulso del día, sección 5](07-pulso-y-actividad.md) y [F7A — Pulso: Almacén hoy (pantallas)](frontend/f7a-pulso-almacen-y-actividad.md). Los
+mensajes del API traen el código HTTP indicado; los que se ven solo en pantalla van agrupados más abajo. Este lote cubre la franja "Almacén
+hoy", las filas fijas del Pulso, los indicadores en una fila por módulo, los gráficos siempre dibujados, los 2 gráficos de almacén de la
+compañía, "Otras" y los días de Puerto Rico en todo el análisis.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "Los días deben estar entre 1 y 14."? (400)**
+`GET /api/v1/inventory/pulse/days` recibió un `days` que no está entre 1 y 14 (por ejemplo `days=0` o `days=15`). Mande un número de 1 a 14 o
+no lo mande (por defecto son 7). La pantalla del Pulso siempre pide 7, así que este mensaje solo lo ve quien llama al API a mano o una
+integración. El error viene en `errors.days`.
+
+**¿Qué significa "Los elementos por default de la plataforma no se editan ni se eliminan." con un gráfico de almacén? (403)**
+Los dos gráficos "Valor de inventario por categoría" y "Movimientos de inventario por tipo" **ya no son de sistema** desde el Lote 15. Si
+aún ve este mensaje con uno de ellos, la base de datos de su compañía no se actualizó (el `db-init` no corrió): pida a soporte que la
+actualice. Con cualquier otro gráfico de sistema el mensaje sigue siendo correcto: no se editan ni se borran; para cambiarlo, cree uno propio.
+
+**¿Qué significa "Solo el dueño puede editar o eliminar este elemento." con un gráfico? (403)**
+El gráfico es de una persona (privado o compartido) y solo su dueño lo edita o lo borra. Los gráficos **de la compañía** (sin dueño, como los
+dos de almacén) no dan este mensaje: los edita quien tenga `analytics.manage`. Si no tiene ese permiso, el servidor responde 403 sin
+mensaje: pídalo a su administrador ("Crear vistas, indicadores y gráficos").
+
+**¿Qué significa "Tipo de gráfico: BAR, DONUT o LINE."? (400)**
+Se intentó guardar un gráfico con otro tipo. Solo hay barras, dona y línea; el pastel (`PIE`) no está habilitado (el dueño eligió la dona para
+el valor de inventario). Elija uno de los tres. El error viene en `errors.chartType`.
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**¿Qué significa "¿Eliminar el gráfico {nombre}? Es de la compañía: una vez eliminado no se vuelve a crear."?**
+Es la confirmación al eliminar uno de los gráficos de la compañía (los dos de almacén). Confirme solo si está seguro: no se vuelve a sembrar
+en actualizaciones futuras (ver "Borré el gráfico de la compañía, ¿vuelve?"). Con un gráfico que no es de la compañía la confirmación es
+solo "¿Eliminar el gráfico {nombre}?".
+
+**¿Qué significa "Este gráfico no tiene datos en el rango configurado." (Pulso) o "Este gráfico no tiene datos con los filtros y el rango actuales." (Análisis → Gráficos)?**
+El gráfico no tiene ningún punto: la fuente no trae filas con ese rango de fecha y esos filtros. Cambie el rango con **Rango** (o el rango por
+defecto, si tiene permiso) o revise el filtro. Ya no se muestra una lista cuando hay pocos puntos: con uno, dos o tres puntos se dibuja el
+gráfico; solo sin puntos sale este aviso.
+
+**¿Qué significa "…" o "—" en un número de la franja "Almacén hoy"?**
+"…" es que todavía está cargando. "—" es que la consulta falló (por ejemplo, un 403 al cambiar de compañía a una sin permiso); el resto del
+Pulso sigue funcionando. Recargue la página o vuelva a entrar a la compañía.
+
+**¿Qué significa el texto oculto "Hoy hubo conteos con diferencia." / "Hay productos bajo su mínimo."?**
+Es lo que lee un lector de pantalla en la tarjeta que se ve en **naranja** (borde y número): "Conteos con diferencia" si hoy se cerró algún
+conteo en Diferencia, "Productos bajo mínimo" si hay algún producto bajo su mínimo.
+
+### Preguntas frecuentes
+
+**¿Por qué el Kárdex de "Salida" (o de "Recibidas") suma distinto que la tarjeta?**
+La tarjeta es un **neto** y el Kárdex filtra por **tipo de movimiento**:
+- **Unidades de salida:** la tarjeta suma recolección y cruce de muelle y **resta las recolecciones que se eliminaron** ese día. En el Kárdex una
+  recolección eliminada es un ajuste de entrada (motivo "Reversa de recolección") y el enlace filtra solo los tipos Despacho y Cruce de
+  muelle, así que el Kárdex puede sumar **más** que la tarjeta.
+- **Unidades recibidas:** la tarjeta suma las recepciones **más los ajustes por diferencia de recibo** (lo que de verdad llegó: si se esperaban
+  10 y llegaron 8, cuenta 8). El enlace filtra solo el tipo Recepción; las diferencias salen en el Kárdex como ajustes aparte, así que puede
+  sumar más o menos que la tarjeta. Para ver todo, quite el filtro de tipo y agregue el de Ajuste.
+
+**¿Por qué la franja dice 12 y el indicador "Unidades recibidas" dice otro número?**
+El **número grande** de la franja es lo de **hoy**. Lo que se compara con el indicador de "últimos 7 días" es el texto pequeño "7 días: N": los
+dos cuentan los mismos días de Puerto Rico y las mismas unidades, y coinciden. Los indicadores "Conteos con diferencia" (30 días) y
+"Productos bajo mínimo" del panel de indicadores tienen su propio período; no se ocultaron (decisión del dueño).
+
+**¿Por qué cambió mi gráfico con muchas barras y ahora dice "Otras"?**
+Desde el Lote 15, en barras, dona y pastel que **suman o cuentan**, si hay **más de 8 grupos** se muestran los 7 mayores y un último punto
+**"Otras"** con la suma del resto, para que el total sea exacto y la dona no engañe sobre las proporciones. También cambió en barras
+que ya existían con más de 8 grupos (por ejemplo "Cambios por usuario": antes mostraba solo los 8 mayores). Con promedio, mínimo o máximo no
+se junta nada. Si necesita ver un grupo que quedó dentro de "Otras", abra el gráfico en Análisis → Gráficos y filtre.
+
+**¿Por qué un indicador o gráfico de "últimos 7 días" dio distinto que antes?**
+Porque los rangos ahora son **días de Puerto Rico**, no días UTC. "Últimos 7 días" es hoy y los 6 anteriores, desde las 00:00 de Puerto Rico
+(04:00 UTC). Un movimiento hecho entre las 20:00 y las 24:00 de Puerto Rico ahora cuenta en su día (antes contaba en el día siguiente, en UTC),
+y "hoy" cambia a la medianoche de Puerto Rico, no a las 20:00. Vale también para "Últimos 30 días", "Mes actual", el rango personalizado, los
+gráficos agrupados por fecha, las exportaciones y la ventana "Hoy" de Actividad reciente. Los totales de un rango largo casi no cambian; los
+de un solo día pueden cambiar. Siguen en UTC la validación de mínimo y máximo de fechas de los campos personalizados y el "hoy" de la ficha de
+cliente y de los documentos y tarifas del chofer.
+
+**¿Cómo quito la franja fija (o dejo solo la fecha fija)?**
+Con **Organizar mi Pulso** (solo para usted) o **Organizar el de la compañía** (para todos los que no tengan un Pulso propio; permiso
+`pulse.organize_company`): oculte "Almacén hoy" o bájela debajo de otro panel. Queda fija solo la fecha. En un celular acostado también queda
+fija solo la fecha. Si quiere volver a lo anterior, muéstrela y suba la franja al primer lugar, o use "Volver al de la compañía".
+
+**Borré el gráfico de la compañía, ¿vuelve? ¿Cómo lo recupero?**
+**No vuelve**: es la regla del dueño. Ni renombrarlo ni borrarlo lo recrea una actualización posterior. Para tenerlo otra vez, cree uno a mano en
+Análisis → Gráficos → Nuevo gráfico: "Valor de inventario por categoría" = fuente Inventario (saldos), agrupar por Categoría, suma de
+"Valor a costo", tipo Dona, en dinero; "Movimientos de inventario por tipo" = fuente Movimientos de inventario, agrupar por Tipo, suma de
+"Unidades movidas", tipo Barras, últimos 7 días. Use un nombre distinto del borrado (el nombre de uno borrado sigue reservado en la base; no
+se probó qué responde el API si se repite). Un gráfico **renombrado** o **oculto** sigue existiendo: búsquelo por su nuevo nombre o muéstrelo con
+Organizar.
+
+**¿Quién puede editar o borrar los dos gráficos de almacén?**
+Quien tenga el permiso `analytics.manage` ("Crear vistas, indicadores y gráficos"; hoy el administrador de la compañía). Aparecen en Análisis →
+Gráficos con el chip "De la compañía" y los botones Editar y Eliminar. Quien tenga `analytics.dates` cambia su rango por defecto.
+
+**¿Por qué mis dos gráficos de almacén no están en la primera fila?**
+Se mueven a la primera fila (valor a la izquierda, movimientos a la derecha) solo si conservan el orden con que venían de fábrica **y** la
+compañía nunca organizó sus gráficos. Si algún gráfico activo de la compañía tiene orden 0, se toma como que ya se organizó y se respeta el
+orden que hay. Ajústelo con Organizar.
+
+**¿Por qué el gráfico de movimientos por tipo ya no muestra el despacho en negativo?**
+Ahora mide **unidades movidas** (siempre en positivo): el despacho es una barra más. Para ver el signo, cree un gráfico con el campo
+"Cantidad" (con signo).
+
+**¿Por qué las tarjetas "Conteos con diferencia" o "Productos bajo mínimo" están en naranja?**
+Es la señal de atención: "Conteos con diferencia" si **hoy** se cerró algún conteo en Diferencia (y la barrita de hoy también va naranja);
+"Productos bajo mínimo" si hay algún producto bajo su mínimo en este momento. Sin nada que atender van en violeta.
+
+**Toco "Conteos con diferencia" y la lista trae más conteos que el número. ¿Por qué?**
+El número cuenta los conteos cerrados **en Diferencia hoy** (y el texto pequeño, en los 7 días); el enlace abre el Conteo cíclico con el
+estatus Diferencia, **sin fechas** (el filtro de fechas de esa lista es el de alta del conteo, no el de cierre, y dejaría fuera un conteo
+creado antes y cerrado en la ventana). Verá también los conteos en Diferencia más antiguos.
+
+**¿Por qué la salida de un día sale negativa?**
+La reversa de eliminar una recolección **resta** el día en que se elimina. Si ese día no hubo salidas y se eliminó una recolección de otro día,
+el neto es negativo. No es un error de datos.
+
+**¿Por qué no veo la franja "Almacén hoy"?**
+Porque su usuario no tiene `pulse.warehouse` con `inventory.view`, o el módulo de almacén (`WMS_LOTSERIAL`) está apagado en la compañía, o
+alguien ocultó el panel en su Pulso o en el de la compañía ("Organizar"). Es el mismo permiso del panel "Almacén": si ve uno, debería ver el otro.
+
+**Cambié el almacén de la franja y cambió también el del panel "Almacén". ¿Es un error?**
+No: es el **mismo** almacén en los dos, y se recuerda por usuario en ese navegador. Cambiarlo en uno lo cambia en el otro; los enlaces de las
+tarjetas llevan el almacén elegido.
+
+**¿Cuándo cambia la franja de día?**
+A la medianoche de Puerto Rico (04:00 UTC). La franja se vuelve a pedir cada 5 minutos, así que con la pantalla abierta el cambio de día
+puede tardar hasta ese tiempo en verse; al recargar es inmediato.
+
+**¿Por qué en mi Pulso no aparece la fila "Contabilidad"?**
+"Tus indicadores" muestra una fila por módulo (Operación, Almacén, Contabilidad) y solo las que tienen algún indicador visible. Hoy solo "COD
+por cobrar" es de Contabilidad; si ese indicador está oculto o su módulo apagado, la fila no sale.
+
+**¿Por qué no puedo mover un indicador a otra fila?**
+En **Organizar**, los indicadores se ordenan solo **dentro de su fila** de módulo (los botones ▲ y ▼ se apagan en los bordes de la fila). El
+módulo de un indicador se cambia editándolo en Análisis → Indicadores.
+
+**¿Qué es "Descuadres pendientes" y por qué no está en mi Pulso?**
+Es un indicador nuevo (Análisis → Indicadores) que cuenta los descuadres Kárdex ↔ saldo en estatus Pendiente. Viene **apagado en el Pulso**
+porque el panel "Necesita tu atención" ya los muestra; se enciende con "Mostrar en Pulso del día".
+
+**¿Por qué mis gráficos con un solo punto ahora se ven y antes eran una lista?**
+Regla del dueño: los gráficos **siempre** se dibujan como gráfico. Una dona con una sola rebanada, una barra sola o una línea de un solo día
+se ven (la línea pinta cada punto cuando hay 12 o menos). Nunca hay más de 2 gráficos por fila en "Tus gráficos".

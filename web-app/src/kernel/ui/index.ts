@@ -112,4 +112,4 @@ export { getTheme, initTheme, setTheme, THEME_STORAGE_KEY, useTheme } from './th
 export type { Theme } from './theme'
 export { toast } from './toast'
 export { CARDS_QUERY, useMediaQuery } from './useMediaQuery'
-export { useElementWidth } from './useElementWidth'
+export { useElementHeight, useElementWidth } from './useElementWidth'

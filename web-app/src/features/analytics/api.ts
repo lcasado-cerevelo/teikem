@@ -3,15 +3,15 @@
 // Lote F6: tarjetas de almacén calculadas en cliente (saldo actual, sin rango de fecha) sobre los endpoints del módulo.
 // Lote F7A: esas tarjetas aceptan el filtro de almacén y de categoría o producto (`WarehousePulseFilter`).
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useSession } from '../../app/session'
 import { api, unwrap } from '../../kernel/api/client'
 import { ApiError } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
-import { isCategoryProductValue, type CategoryProductValue } from '../../kernel/ui/categoryTree'
 import { useProduct, useProductCategories, useWarehouses, type GetQuery } from '../warehouse/api'
 import type { ChartPreviewRequest } from './chartPreview'
 import type { PulseLayoutRequest, PulseScope } from './pulseLayout'
+import { NO_WAREHOUSE_FILTER, useStoredWarehouseFilter, warehouseFilterStorageKey, type WarehousePulseFilter } from './warehouseFilterStore'
 
 export type DateRangeRequest = components['schemas']['DateRangeRequest']
 /** Tipo de tarjeta de Pulso: indicador o gráfico. */
@@ -263,14 +263,6 @@ export type PulseTaskType = (typeof PULSE_TASK_TYPES)[number]
 
 const NO_REDIRECT = { handleAccessDenied: false } as const
 
-/** Filtro del panel 'Almacén' (Lote F7A): almacén (null = todos) y categoría o producto (null = todos). */
-export interface WarehousePulseFilter {
-  warehousePublicId: string | null
-  item: CategoryProductValue
-}
-
-export const NO_WAREHOUSE_FILTER: WarehousePulseFilter = { warehousePublicId: null, item: null }
-
 /** Estatus de un conteo abierto (Lote 14, D7): Pendiente y Contado (a ciegas); Concordancia y Diferencia ya cerraron. */
 export const OPEN_COUNT_STATUSES = ['OPEN', 'COUNTED'] as const
 
@@ -364,42 +356,17 @@ export function useWarehousePulse(enabled: boolean, filter: WarehousePulseFilter
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Última selección del filtro del panel 'Almacén' (Lote F7A): localStorage con clave por compañía y usuario. Lectura
-// tolerante: un valor corrupto, de otra forma o un localStorage inaccesible equivalen a "sin filtro".
+// Última selección del filtro del panel 'Almacén' (Lote F7A), compartida con la franja "Almacén hoy" (Lote 15, D5): vive en
+// `warehouseFilterStore.ts` (localStorage por compañía y usuario + useSyncExternalStore); aquí se reexporta.
 // ---------------------------------------------------------------------------------------------------------------------
 
-/** Clave de localStorage de la selección; null si aún no se conoce la compañía o el usuario (no se guarda nada). */
-export function warehouseFilterStorageKey(tenantId: number | null | undefined, userId: number | null | undefined): string | null {
-  if (tenantId == null || userId == null) return null
-  return `teikem.pulse.warehouseFilter.${tenantId}.${userId}`
-}
-
-/** Selección guardada (o sin filtro si no hay, está corrupta o no se puede leer). */
-export function readWarehouseFilter(key: string | null): WarehousePulseFilter {
-  if (!key) return NO_WAREHOUSE_FILTER
-  try {
-    const raw = window.localStorage.getItem(key)
-    if (!raw) return NO_WAREHOUSE_FILTER
-    const parsed = JSON.parse(raw) as Record<string, unknown> | null
-    if (!parsed || typeof parsed !== 'object') return NO_WAREHOUSE_FILTER
-    const wh = typeof parsed.warehousePublicId === 'string' && parsed.warehousePublicId ? parsed.warehousePublicId : null
-    const item = isCategoryProductValue(parsed.item ?? null) ? ((parsed.item ?? null) as CategoryProductValue) : null
-    return { warehousePublicId: wh, item }
-  } catch {
-    return NO_WAREHOUSE_FILTER
-  }
-}
-
-/** Guarda la selección; sin filtro borra la entrada. Errores de almacenamiento (cuota, modo privado) se ignoran. */
-export function writeWarehouseFilter(key: string | null, filter: WarehousePulseFilter): void {
-  if (!key) return
-  try {
-    if (!filter.warehousePublicId && !filter.item) window.localStorage.removeItem(key)
-    else window.localStorage.setItem(key, JSON.stringify(filter))
-  } catch {
-    // sin persistencia: el filtro sigue funcionando en la sesión
-  }
-}
+export {
+  NO_WAREHOUSE_FILTER,
+  readWarehouseFilter,
+  warehouseFilterStorageKey,
+  writeWarehouseFilter,
+  type WarehousePulseFilter,
+} from './warehouseFilterStore'
 
 /** Datos contra los que se valida la selección guardada (undefined = aún no llegan: no se limpia nada). */
 export interface WarehouseFilterCatalogs {
@@ -429,13 +396,15 @@ export function sanitizeWarehouseFilter(filter: WarehousePulseFilter, catalogs: 
  * Estado del filtro del panel 'Almacén' con persistencia por compañía y usuario, y los datos que el panel reutiliza:
  * almacenes activos, árbol de categorías, la categoría elegida y la ficha del producto elegido. Lo guardado que ya no
  * existe se descarta al llegar los catálogos (se deriva al pintar y se borra de localStorage), sin mostrar error.
+ * Lote 15 (D5): la selección es COMPARTIDA (`useStoredWarehouseFilter`): el panel "Almacén" y la franja "Almacén hoy" leen y
+ * cambian el mismo valor; cambiarlo en uno lo cambia en el otro. Las consultas de catálogos son las mismas claves (una sola
+ * petición aunque dos componentes usen el hook).
  */
 export function useWarehouseFilter() {
   const { me, tenantId } = useSession()
   const storageKey = warehouseFilterStorageKey(tenantId, me?.userId)
-  const [state, setState] = useState(() => ({ key: storageKey, filter: readWarehouseFilter(storageKey) }))
-  // Otra compañía u otro usuario sin desmontar: se usa la selección guardada con esa clave.
-  const saved = useMemo(() => (state.key === storageKey ? state.filter : readWarehouseFilter(storageKey)), [state, storageKey])
+  // Otra compañía u otro usuario sin desmontar: la clave cambia y se lee la selección guardada con esa clave.
+  const [saved, setSaved] = useStoredWarehouseFilter(storageKey)
 
   const warehouses = useWarehouses({ includeInactive: false }, NO_REDIRECT)
   const categories = useProductCategories({ includeInactive: false }, NO_REDIRECT)
@@ -449,29 +418,51 @@ export function useWarehouseFilter() {
     [saved, warehouses.data, categories.data, productGone],
   )
 
-  // Lo descartado deja de recordarse (localStorage es externo: se sincroniza en un efecto).
+  // Lo descartado deja de recordarse (el almacén es externo: se sincroniza en un efecto; sanitizar lo ya limpio devuelve
+  // el mismo objeto, así que no hay ciclo).
   useEffect(() => {
-    if (filter !== saved) writeWarehouseFilter(storageKey, filter)
-  }, [filter, saved, storageKey])
-
-  const setFilter = useCallback(
-    (next: WarehousePulseFilter) => {
-      setState({ key: storageKey, filter: next })
-      writeWarehouseFilter(storageKey, next)
-    },
-    [storageKey],
-  )
+    if (filter !== saved) setSaved(filter)
+  }, [filter, saved, setSaved])
 
   const item = filter.item
   const category = item?.kind === 'category' ? categories.data?.find((c) => c.id === item.id) : undefined
 
   return {
     filter,
-    setFilter,
+    setFilter: setSaved,
     warehouses,
     categories,
     category,
     product: item?.kind === 'product' ? product.data?.product : undefined,
     productError: product.isError,
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Lote 15 — franja "Almacén hoy" del Pulso (D1–D5).
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Días de la franja (D1, decisión del dueño: fijo en 7, incluido hoy; sin selector). */
+export const WAREHOUSE_DAY_DAYS = 7
+
+export type WarehousePulseDays = components['schemas']['WarehousePulseDaysDto']
+
+/**
+ * `GET /api/v1/inventory/pulse/days?days=7[&warehousePublicIds=]` (inventory.view + WMS_LOTSERIAL): los 7 días LOCALES de la
+ * compañía incluido hoy, con unidades recibidas, de salida y conteos con diferencia por día, los números de hoy, los totales,
+ * "Productos bajo mínimo" de ahora y el tono naranja (lo decide el servidor). Pantalla de inicio: un 403 no redirige (la
+ * tarjeta muestra '—'). `staleTime` 60 s y se vuelve a pedir cada 5 minutos (cambia de día a medianoche); las mutaciones
+ * que mueven inventario la invalidan (`warehouseKeys.pulseDays` en STOCK).
+ */
+export function useWarehousePulseDays(warehousePublicId: string | null, enabled = true) {
+  const query: GetQuery<'/api/v1/inventory/pulse/days'> = { days: WAREHOUSE_DAY_DAYS }
+  if (warehousePublicId) query.warehousePublicIds = [warehousePublicId]
+  return useQuery({
+    queryKey: ['/api/v1/inventory/pulse/days', query],
+    queryFn: () => unwrap(api.GET('/api/v1/inventory/pulse/days', { params: { query } })),
+    enabled,
+    staleTime: 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+    meta: NO_REDIRECT,
+  })
 }

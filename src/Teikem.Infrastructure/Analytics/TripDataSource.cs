@@ -81,18 +81,17 @@ public sealed class TripDataSource(TeikemDbContext db, ITenantContext tenant) : 
             var wanted = q.Ids.ToList();
             query = query.Where(t => wanted.Contains(t.TripId));
         }
-        // Rango sobre PlanDate (DATE): desde inclusivo, hasta exclusivo (el resolutor de rangos entrega "mañana 00:00").
-        if (q.FromUtc.HasValue)
-        {
-            var from = DateOnly.FromDateTime(q.FromUtc.Value);
+        // Rango sobre PlanDate (DATE): desde inclusivo, hasta exclusivo. Lote 15: el motor pasa el rango en días LOCALES
+        // (FromDay/ToDayExclusive); sin ellos (consulta armada a mano) se deriva de FromUtc/ToUtc como antes.
+        if ((q.FromDay ?? (q.FromUtc.HasValue ? DateOnly.FromDateTime(q.FromUtc.Value) : (DateOnly?)null)) is DateOnly from)
             query = query.Where(t => t.PlanDate >= from);
-        }
-        if (q.ToUtc.HasValue)
+        DateOnly? toDay = q.ToDayExclusive;
+        if (toDay is null && q.ToUtc.HasValue)
         {
-            var to = DateOnly.FromDateTime(q.ToUtc.Value);
-            if (q.ToUtc.Value.TimeOfDay != TimeSpan.Zero) to = to.AddDays(1); // un "hasta" con hora incluye ese día
-            query = query.Where(t => t.PlanDate < to);
+            toDay = DateOnly.FromDateTime(q.ToUtc.Value);
+            if (q.ToUtc.Value.TimeOfDay != TimeSpan.Zero) toDay = toDay.Value.AddDays(1); // un "hasta" con hora incluye ese día
         }
+        if (toDay is DateOnly to) query = query.Where(t => t.PlanDate < to);
 
         var trips = await query.OrderByDescending(t => t.PlanDate).ThenByDescending(t => t.TripId)
             .Take(ClientDataSourceHelpers.MaxRows).ToListAsync(ct);

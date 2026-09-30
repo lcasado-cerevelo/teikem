@@ -62,3 +62,30 @@ export function formatYmd(ymd: string, lang: string): string {
   if (!ymd) return '…'
   return new Date(`${ymd}T00:00:00Z`).toLocaleDateString(lang, { timeZone: 'UTC' })
 }
+
+// Lote 15 — textos del dibujo de gráficos (ChartVisual): fechas del eje y del tooltip, y el total del centro de la dona.
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/
+
+/** true si la etiqueta es un día 'YYYY-MM-DD' (agrupar por fecha: el motor ya lo da en el día local de la compañía). */
+export function isDayLabel(label: string): boolean {
+  return YMD.test(label)
+}
+
+/** Día 'YYYY-MM-DD' en corto para el eje ("30 sep" / "Sep 30"); sin corrimiento por la zona del navegador. */
+export function shortDay(ymd: string, lang: string): string {
+  return new Date(`${ymd}T00:00:00Z`).toLocaleDateString(lang, { timeZone: 'UTC', day: 'numeric', month: 'short' })
+}
+
+/** Día 'YYYY-MM-DD' en largo para el tooltip ("miércoles, 30 de septiembre de 2026"). */
+export function longDay(ymd: string, lang: string): string {
+  return new Date(`${ymd}T00:00:00Z`).toLocaleDateString(lang, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+/** Total del centro de la dona: completo si cabe; si es largo, compacto ("$1.2M"). */
+export function donutCenter(total: number, isMoney: boolean): string {
+  const full = formatValue(total, isMoney)
+  if (full.length <= 10) return full
+  const compact = total.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })
+  return isMoney ? `$${compact}` : compact
+}

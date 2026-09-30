@@ -94,6 +94,8 @@ public class WmsControllerSecurityTests
         [(typeof(InventoryController), nameof(InventoryController.RunReconciliation))] = PermissionCatalog.InventoryAdjust,
         // Lote 14 (P2, D14): estado de la revisión en segundo plano, con inventory.adjust como la conciliación.
         [(typeof(InventoryController), nameof(InventoryController.ReconciliationStatus))] = PermissionCatalog.InventoryAdjust,
+        // Lote 15: franja "Almacén hoy" del Pulso con inventory.view (son datos del Kárdex; el panel pide además pulse.warehouse).
+        [(typeof(InventoryController), nameof(InventoryController.PulseDays))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Get))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryDiscrepanciesController), nameof(InventoryDiscrepanciesController.Resolve))] = PermissionCatalog.InventoryAdjust,
@@ -254,7 +256,9 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Page))]);
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ChangesPreview))]);
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))]);
-        Assert.Equal(120, Expected.Count);
+        // Lote 15: + GET /inventory/pulse/days (franja "Almacén hoy") con inventory.view.
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(InventoryController), nameof(InventoryController.PulseDays))]);
+        Assert.Equal(121, Expected.Count);
     }
 
     [Fact]

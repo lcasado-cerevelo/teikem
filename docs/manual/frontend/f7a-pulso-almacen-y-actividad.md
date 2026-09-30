@@ -4,7 +4,120 @@ Capítulo del manual de pantallas del Lote F7A (frontend), sobre la pantalla de 
 descrita en el capítulo F1. Este lote agrega un filtro al panel "Almacén" (Lote F6) y un panel nuevo, "Actividad
 reciente". Ninguna pantalla tiene ruta propia: las dos viven debajo de los indicadores y gráficos de Pulso.
 Capturas en `img/f7a-*.png`. El Lote 14 agrega el panel **Necesita tu atención** (arriba de todo, captura `img/l14-pulso-atencion.png`) y cambia la cifra de
-**Conteos abiertos** del panel Almacén (ver las dos secciones nuevas, antes de "Actividad reciente").
+**Conteos abiertos** del panel Almacén (ver las dos secciones nuevas, antes de "Actividad reciente"). El **Lote 15** agrega la franja **Almacén hoy** (arriba de todo), las filas fijas, los indicadores por módulo, los gráficos siempre dibujados y los gráficos "De la compañía" (secciones nuevas al principio; capturas `img/l15-*.png`).
+
+## Pulso del día: franja "Almacén hoy · últimos 7 días" (Lote 15)
+
+**Para qué sirve.** Es lo primero que se ve bajo la fecha: cuatro números de Almacén con lo de **hoy** y cómo vienen los últimos 7 días,
+sin entrar a ninguna pantalla. Cada tarjeta es un enlace al detalle. Qué cuenta cada una, con sus reglas, está en el capítulo
+[07, sección 5.1](../07-pulso-y-actividad.md).
+
+**Cómo se llega.** Aparece sola arriba del Pulso (`/`), debajo de la fecha y de los botones "Organizar". No se pide nada aparte. Los números
+de las capturas son los de la demo del día en que se tomaron (por eso cambian de una captura a otra).
+
+**Qué se ve.**
+
+![Pulso con la franja Almacén hoy: 4 tarjetas, las tres primeras con 7 barritas, y debajo Necesita tu atención y Tus indicadores](img/l15-pulso-franja.png)
+
+- **Título:** "ALMACÉN HOY · ÚLTIMOS 7 DÍAS", con el ícono de almacén, en violeta. A la derecha, un selector de almacén ("Todos los
+  almacenes" o el código del almacén).
+- **Cuatro tarjetas unidas por una tubería punteada violeta:** **Unidades recibidas**, **Unidades de salida**, **Conteos con diferencia** y
+  **Productos bajo mínimo**.
+- **En cada una de las tres primeras:** el **número grande de hoy** (violeta), el texto pequeño **"7 días: N"** con el total de la semana y
+  **7 barritas**, una por día. La de la derecha es **hoy** y es la que crece durante el día; un día sin movimiento es una línea (barrita
+  vacía). En la captura, los seis días anteriores están vacíos y solo hoy tiene barra.
+- **Productos bajo mínimo:** el número de **ahora**, "en este momento" y **sin barritas**.
+- **Naranja** (borde y número): "Conteos con diferencia" si hoy hubo alguno (su barrita de hoy también es naranja) y "Productos bajo
+  mínimo" si hay alguno. En la captura ambas están en naranja.
+- **Al pasar el mouse por una barrita** sale el detalle del día con la fecha larga y la cantidad; en la de hoy empieza con "Hoy":
+
+  ![Tooltip de una barrita: "Hoy, miércoles, 30 de septiembre de 2026 · Unidades: 72"](img/l15-pulso-franja-tooltip.png)
+
+  Las barritas solo muestran: hacer clic en la tarjeta (no en la barrita) lleva al detalle.
+
+**A dónde lleva el clic en una tarjeta.** Siempre con el almacén elegido y, en el Kárdex, con los 7 días:
+
+- **Unidades recibidas** → Kárdex de movimientos con el tipo **Recepción** y las fechas de los 7 días.
+
+  ![Kárdex abierto desde Unidades recibidas: tipo Recepción, del 24/09/2026 al 30/09/2026 y el resumen de entradas](img/l15-franja-kardex-recibidas.png)
+
+- **Unidades de salida** → Kárdex con los tipos **Despacho** y **Cruce de muelle** y los 7 días.
+- **Conteos con diferencia** → Conteo cíclico con el estatus **Diferencia** ya elegido (sin fechas). La lista trae los conteos en Diferencia y
+  el primero abierto a la derecha.
+
+  ![Conteo cíclico abierto desde Conteos con diferencia: filtro Estatus Diferencia y la lista de conteos](img/l15-franja-conteo-diferencia.png)
+
+- **Productos bajo mínimo** → Productos e inventario con el recuadro **Bajo mínimo** marcado (en naranja) y la tabla de esos productos.
+
+  ![Productos e inventario abierto desde Productos bajo mínimo: recuadro Bajo mínimo marcado y dos productos en la tabla](img/l15-franja-productos-bajo-minimo.png)
+
+> **Ojo con la suma del Kárdex.** El Kárdex filtra por tipo de movimiento y la tarjeta es un neto (las recolecciones eliminadas restan en
+> "Unidades de salida", y las diferencias de recibo suman en "Unidades recibidas"), así que la suma que ve en el Kárdex puede no coincidir
+> con la tarjeta. Ver la FAQ.
+
+**El almacén.** El selector de la franja es el **mismo** del panel "Almacén" de más abajo: cambiarlo en uno cambia el otro, y se recuerda por
+usuario en ese navegador. Los enlaces de las tarjetas llevan el almacén elegido (Kárdex, Conteo cíclico y Productos e inventario lo leen de la
+dirección al abrirse).
+
+**Mensajes que puede ver.** "…" en cada número mientras carga; "—" si la consulta falla (por ejemplo, un 403 al cambiar de compañía),
+sin sacarlo del Pulso. No hay mensajes de error propios.
+
+**Permiso.** Se pinta con `pulse.warehouse`, `inventory.view` y el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`) encendido. Se puede ocultar
+o mover con Organizar (ver más abajo).
+
+## Pulso del día: filas fijas al desplazarse (Lote 15)
+
+Al bajar por el Pulso quedan **fijas arriba** la fila de la fecha (con "Organizar mi Pulso" y "Organizar el de la compañía") y, justo debajo,
+la franja "Almacén hoy". El saludo ("Bienvenido… Así viene el día en su compañía.") y el chip "Pulso de la compañía" se van con el desplazamiento,
+igual que "Necesita tu atención" y todo lo demás, que pasan por debajo.
+
+![Pulso desplazado hacia abajo: la fecha y la franja quedan arriba, y debajo pasa la tabla de Actividad reciente](img/l15-pulso-fijas.png)
+
+- Si con **Organizar** oculta la franja o la baja de lugar, deja de estar fija y **solo queda fija la fecha**.
+- Mientras organiza, no hay filas fijas: la barra de Organizar (con "Listo") ya se queda arriba.
+- Solo una franja de números puede quedar fija; nunca un panel alto como Actividad reciente o los gráficos.
+- Con el teclado, el foco no queda tapado por las filas fijas: la pantalla deja un margen al desplazarse a lo que recibe el foco.
+- Solo pasa en la pantalla de inicio: Análisis → Indicadores y Gráficos no cambian.
+
+## Pulso del día: indicadores en una fila por módulo (Lote 15)
+
+"Tus indicadores" se muestra ahora **por módulo**: una fila con su etiqueta (**Operación**, **Almacén** y, si hay indicadores, **Contabilidad**,
+en ese orden, el del menú). Cada indicador conserva su rango ("Últimos 7 días") y su botón **Rango**; el módulo ya no se repite en la
+tarjeta.
+
+![Tus indicadores con la fila Operación (varias tarjetas) y la fila Almacén](img/l15-pulso-indicadores.png)
+
+En **Organizar** los indicadores se ordenan solo dentro de su fila (con la ayuda "Los indicadores se muestran en una línea por módulo; aquí se
+ordenan dentro de su línea.").
+
+## Pulso del día: "Tus gráficos" siempre como gráfico (Lote 15)
+
+Todos los gráficos de "Tus gráficos" se dibujan como gráfico, aunque tengan uno, dos o tres puntos (antes se mostraba una lista). Hay **como
+máximo 2 por fila** (en el celular, uno debajo del otro). Los dos primeros son los de almacén: **"Valor de inventario por categoría"**, una dona con
+el total en el centro, a la izquierda, y **"Movimientos de inventario por tipo"**, barras de unidades en positivo de los últimos 7 días, a la
+derecha.
+
+![Tus gráficos: la dona de valor de inventario con el total al centro y las barras de movimientos por tipo, en la primera fila](img/l15-pulso-graficos.png)
+
+En la captura se ve arriba la franja, luego las dos filas de indicadores de Almacén y Contabilidad, y abajo los gráficos. La dona de la demo tiene
+una sola categoría con valor (por eso una sola rebanada, dibujada igual, con "$16.00" al centro). Si una dona o unas barras tienen más de 8 grupos,
+el último punto es **"Otras"**, que junta el resto.
+
+## Análisis → Gráficos: los gráficos "De la compañía" (Lote 15)
+
+Los dos gráficos de almacén ya no son de fábrica: en Análisis → Gráficos llevan el chip **"De la compañía"** junto al nombre, se pueden editar y
+eliminar (con `analytics.manage`) y se pueden mostrar u ocultar en el Pulso como cualquier otro.
+
+![Análisis → Gráficos: "Valor de inventario por categoría" con el chip De la compañía y el interruptor Mostrar en Pulso del día](img/l15-graficos-de-la-compania.png)
+
+Al **Eliminar** uno de la compañía, la confirmación avisa: "¿Eliminar el gráfico {nombre}? Es de la compañía: una vez eliminado no se vuelve a
+crear." Quien no tiene `analytics.manage` no ve Editar ni Eliminar.
+
+## Pulso del día: organizar con la franja (Lote 15)
+
+Desde **Organizar mi Pulso** y **Organizar el de la compañía** el panel "Almacén hoy" aparece en la lista de paneles: se mueve, se oculta y se
+muestra como los demás. Bajo el título hay una nota: "La franja que quede justo debajo de la fecha se queda fija al desplazarse; si la oculta o la
+baja, solo queda fija la fecha." Sin ningún cambio, la franja va primera. Ver el capítulo [F8a](f8a-menu-sistema-analisis-y-marca.md).
 
 ## Pulso del día: panel "Almacén" con filtro
 
@@ -70,11 +183,11 @@ control muestra "Su usuario no puede consultar productos." en vez de la lista.
 
 ## Pulso del día: panel "Necesita tu atención"
 
-**Para qué sirve.** Es lo primero que se ve en el Pulso: lista lo que **necesita que alguien lo revise**. Hoy trae un solo tipo de aviso, el
+**Para qué sirve.** Es lo primero que se ve en el Pulso después de la franja "Almacén hoy" (Lote 15): lista lo que **necesita que alguien lo revise**. Hoy trae un solo tipo de aviso, el
 **descuadre Kárdex ↔ saldo** (el saldo de una posición no coincide con lo que suman los movimientos; ver el capítulo
 [06, sección 3.3](../06-inventario-y-almacen.md)). Sin nada pendiente, dice que todo está en orden.
 
-**Cómo se llega.** Aparece automáticamente en la parte de arriba de Pulso (`/`), antes de "Tus indicadores".
+**Cómo se llega.** Aparece automáticamente en la parte de arriba de Pulso (`/`), debajo de la franja "Almacén hoy" y antes de "Tus indicadores". Se desplaza con el resto (no es fija).
 
 **Qué se ve.**
 
@@ -169,11 +282,15 @@ directamente no aparece.
 
 ## En el celular (360 px)
 
-Las tarjetas del panel Almacén se apilan en una sola columna y la tabla de Actividad reciente se ve como una lista
+La franja **Almacén hoy** se compacta: **cuatro cuadros en 2×2** con el número y las barritas, sin el texto pequeño ("7 días: N") ni "· últimos 7 días" en el título, y sigue fija bajo la fecha al desplazarse; con el celular acostado (poco alto) solo queda fija la fecha. Los gráficos de "Tus gráficos" quedan uno debajo del otro. Las tarjetas del panel Almacén se apilan en una sola columna y la tabla de Actividad reciente se ve como una lista
 de tarjetas (una por evento), sin perder ninguna columna ni desbordar la pantalla; el control "Categoría o producto"
 ocupa todo el ancho y su lista, al abrirse, también cabe sin desbordar.
 
 ![Pulso en un celular: panel Almacén y Actividad reciente en tarjetas](img/f7a-pulso-movil.png)
+
+![Franja Almacén hoy en un celular: 4 cuadros en 2×2 con número y barritas, dos en naranja, y debajo Necesita tu atención](img/l15-pulso-franja-movil.png)
+
+En la captura, la fecha y los botones de Organizar van en dos renglones, y la franja ocupa dos filas de dos cuadros: "Conteos con diferencia" y "Productos bajo mínimo" van en naranja. Sin scroll horizontal.
 
 ## Preguntas frecuentes de este capítulo
 
@@ -200,3 +317,14 @@ con ese interruptor.
 **Busqué algo en el buscador de Actividad reciente y no encontré un evento que sé que pasó, ¿por qué?** El buscador
 solo revisa lo que ya está cargado en pantalla (según la ventana de tiempo y la pestaña elegidas); si el evento pasó
 fuera de esa ventana, cambie a "48 h" o cargue más con "Ver más" antes de buscar.
+
+**¿Por qué el Kárdex que abro desde "Unidades de salida" suma distinto que la tarjeta?** Porque la tarjeta es un neto y el Kárdex filtra por
+tipo: las recolecciones eliminadas restan en la tarjeta, pero en el Kárdex son un ajuste que el filtro (Despacho y Cruce de muelle) no incluye.
+Igual con "Unidades recibidas": las diferencias de recibo suman en la tarjeta y salen aparte en el Kárdex. Ver la [FAQ del Lote 15](../faq.md).
+
+**Toco "Conteos con diferencia" y veo más conteos que el número, ¿por qué?** El enlace abre el Conteo cíclico con el estatus Diferencia y sin
+fechas; el número cuenta solo los cerrados hoy (y "7 días: N", los de la semana).
+
+**¿Cómo quito la franja fija?** Con Organizar (mío o de la compañía): oculte "Almacén hoy" o bájela. Queda fija solo la fecha.
+
+**Cambié el almacén de la franja y cambió el del panel "Almacén".** Es lo esperado: los dos comparten el mismo almacén.

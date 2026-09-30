@@ -121,6 +121,8 @@ export const warehouseKeys = {
   discrepancies: ['/api/v1/inventory/discrepancies'],
   discrepancy: ['/api/v1/inventory/discrepancies/{publicId}'],
   reconciliationStatus: ['/api/v1/inventory/reconciliation/status'],
+  // Lote 15: franja "Almacén hoy" del Pulso (recibido, salida y conteos con diferencia por día)
+  pulseDays: ['/api/v1/inventory/pulse/days'],
   genealogy: ['/api/v1/inventory/lots/{lotId}/genealogy'],
   serialTrace: ['/api/v1/inventory/serials/trace'],
   asns: ['/api/v1/asns'],
@@ -173,6 +175,8 @@ const STOCK: KeyName[] = [
   'discrepancies',
   'discrepancy',
   'reconciliationStatus',
+  // Lote 15: la franja "Almacén hoy" del Pulso cuenta recepciones, salidas y conteos cerrados
+  'pulseDays',
 ]
 
 // =====================================================================================================================

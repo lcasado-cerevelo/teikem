@@ -583,6 +583,96 @@ WHERE IsSystem = 1 AND Name = N'Conteos con diferencia'
 GO
 
 /* -------------------------------------------------------------------------
+   Lote 15 — Pulso del día: gráficos de almacén de la compañía y 'Descuadres pendientes' en las compañías YA CREADAS
+   (incluidas las migradas: Advance Depot y Advance Solutions). Mismo criterio que SystemAnalyticsSeeder (que siembra las
+   compañías nuevas y la demo). Idempotente; al ser SQL no deja AuditLog (como el bloque 5b).
+   - D9/D10/D12/D14: "Valor de inventario por categoría" (barras de sistema) pasa a DONA y "Movimientos de inventario por tipo"
+     (suma CON signo de Quantity) pasa a unidades positivas (campo Units); ambos dejan de ser de sistema y quedan DE LA
+     COMPAÑÍA (IsSystem = 0, sin dueño: los edita o borra quien tenga analytics.manage) con su SeedKey. Solo se convierte la
+     fila de sistema que sigue exactamente como se sembró, y solo si la compañía no tiene ya esa SeedKey. El rango que la
+     compañía haya puesto se conserva.
+   - D13: primera fila de "Tus gráficos" (orden 1 y 2) solo si el orden sigue en el de fábrica (90 y 96) y la compañía no
+     organizó sus gráficos (Organizar guarda índice × 10 desde 0: algún gráfico activo con orden 0).
+   - D14: si se borran NO vuelven: la fila borrada (IsActive = 0) conserva su SeedKey y el nombre, y ambos bloquean el INSERT.
+   - Las compañías sin esos gráficos (anteriores al Lote 6) los reciben ya como de la compañía.
+   - D16: indicador de sistema 'Descuadres pendientes' (fuente INVENTORY_DISCREPANCY, estatus OPEN, rango ALL), apagado en el
+     Pulso; por nombre (uno de sistema no se renombra ni se borra).
+   Solo compañías con contenido de análisis sembrado (algún gráfico o indicador de sistema).
+   ------------------------------------------------------------------------- */
+DECLARE @L15Bar    INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReportChartType' AND InternalCode = 'BAR');
+DECLARE @L15Donut  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReportChartType' AND InternalCode = 'DONUT');
+DECLARE @L15Sum    INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'AggregateFn' AND InternalCode = 'SUM');
+DECLARE @L15Count  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'AggregateFn' AND InternalCode = 'COUNT');
+DECLARE @L15Wh     INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'BusinessModule' AND InternalCode = 'WAREHOUSE');
+DECLARE @L15Tenant INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReportVisibility' AND InternalCode = 'TENANT');
+DECLARE @L15Last7  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'DateRangeMode' AND InternalCode = 'LAST7');
+DECLARE @L15All    INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'DateRangeMode' AND InternalCode = 'ALL');
+IF @L15Bar IS NOT NULL AND @L15Donut IS NOT NULL AND @L15Sum IS NOT NULL AND @L15Count IS NOT NULL AND @L15Wh IS NOT NULL
+   AND @L15Tenant IS NOT NULL AND @L15Last7 IS NOT NULL AND @L15All IS NOT NULL
+BEGIN
+    -- 1) Conversión de "Valor de inventario por categoría" (barras de sistema → dona de la compañía).
+    UPDATE c
+    SET IsSystem = 0, OwnerUserId = NULL, SeedKey = N'INVENTORY_VALUE', ChartTypeLookupId = @L15Donut,
+        SortOrder = CASE WHEN c.SortOrder = 90
+                          AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition o WHERE o.TenantId = c.TenantId AND o.IsActive = 1 AND o.SortOrder = 0)
+                         THEN 1 ELSE c.SortOrder END,
+        UpdatedAtUtc = SYSUTCDATETIME()
+    FROM dbo.ChartDefinition c
+    WHERE c.IsSystem = 1 AND c.SeedKey IS NULL AND c.Name = N'Valor de inventario por categoría'
+      AND c.DataSourceKey = 'STOCK_BALANCE' AND c.GroupByField = 'Category' AND c.FieldKey = 'CostValue' AND c.ChartTypeLookupId = @L15Bar
+      AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition k WHERE k.TenantId = c.TenantId AND k.SeedKey = N'INVENTORY_VALUE');
+
+    -- 2) Conversión de "Movimientos de inventario por tipo" (suma con signo → unidades positivas, de la compañía).
+    UPDATE c
+    SET IsSystem = 0, OwnerUserId = NULL, SeedKey = N'MOVEMENTS_BY_TYPE', FieldKey = 'Units',
+        DescriptionJson = N'{"es":"Unidades movidas en el período por tipo de movimiento (siempre en positivo)","en":"Units moved in the period by movement type (always positive)"}',
+        SortOrder = CASE WHEN c.SortOrder = 96
+                          AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition o WHERE o.TenantId = c.TenantId AND o.IsActive = 1 AND o.SortOrder = 0)
+                         THEN 2 ELSE c.SortOrder END,
+        UpdatedAtUtc = SYSUTCDATETIME()
+    FROM dbo.ChartDefinition c
+    WHERE c.IsSystem = 1 AND c.SeedKey IS NULL AND c.Name = N'Movimientos de inventario por tipo'
+      AND c.DataSourceKey = 'INVENTORY_TRANSACTION' AND c.GroupByField = 'TxnType' AND c.FieldKey = 'Quantity' AND c.ChartTypeLookupId = @L15Bar
+      AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition k WHERE k.TenantId = c.TenantId AND k.SeedKey = N'MOVEMENTS_BY_TYPE');
+
+    -- 3) Compañías que no los tienen (ni la SeedKey ni el nombre, activos o borrados): se crean ya como de la compañía.
+    INSERT INTO dbo.ChartDefinition (TenantId, Name, DescriptionJson, DataSourceKey, GroupByField, FieldKey, AggregateFnLookupId, ChartTypeLookupId,
+        FilterJson, BusinessModuleLookupId, IsMoney, IsSystem, OwnerUserId, VisibilityLookupId, DateRangeModeLookupId, ShowInPulse, SortOrder, IsActive, SeedKey)
+    SELECT t.TenantId, N'Valor de inventario por categoría', N'{"es":"Existencia valorada a costo por categoría","en":"Stock cost value by category"}',
+        'STOCK_BALANCE', 'Category', 'CostValue', @L15Sum, @L15Donut, NULL, @L15Wh, 1, 0, NULL, @L15Tenant, NULL, 1,
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.ChartDefinition o WHERE o.TenantId = t.TenantId AND o.IsActive = 1 AND o.SortOrder = 0) THEN 90 ELSE 1 END,
+        1, N'INVENTORY_VALUE'
+    FROM dbo.Tenant t
+    WHERE EXISTS (SELECT 1 FROM dbo.ChartDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition k WHERE k.TenantId = t.TenantId
+                      AND (k.SeedKey = N'INVENTORY_VALUE' OR k.Name = N'Valor de inventario por categoría'));
+
+    INSERT INTO dbo.ChartDefinition (TenantId, Name, DescriptionJson, DataSourceKey, GroupByField, FieldKey, AggregateFnLookupId, ChartTypeLookupId,
+        FilterJson, BusinessModuleLookupId, IsMoney, IsSystem, OwnerUserId, VisibilityLookupId, DateRangeModeLookupId, ShowInPulse, SortOrder, IsActive, SeedKey)
+    SELECT t.TenantId, N'Movimientos de inventario por tipo',
+        N'{"es":"Unidades movidas en el período por tipo de movimiento (siempre en positivo)","en":"Units moved in the period by movement type (always positive)"}',
+        'INVENTORY_TRANSACTION', 'TxnType', 'Units', @L15Sum, @L15Bar, NULL, @L15Wh, 0, 0, NULL, @L15Tenant, @L15Last7, 1,
+        CASE WHEN EXISTS (SELECT 1 FROM dbo.ChartDefinition o WHERE o.TenantId = t.TenantId AND o.IsActive = 1 AND o.SortOrder = 0) THEN 96 ELSE 2 END,
+        1, N'MOVEMENTS_BY_TYPE'
+    FROM dbo.Tenant t
+    WHERE EXISTS (SELECT 1 FROM dbo.ChartDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition k WHERE k.TenantId = t.TenantId
+                      AND (k.SeedKey = N'MOVEMENTS_BY_TYPE' OR k.Name = N'Movimientos de inventario por tipo'));
+
+    -- 4) D16: 'Descuadres pendientes' (sistema, apagado en el Pulso, orden 99, módulo Almacén).
+    INSERT INTO dbo.IndicatorDefinition (TenantId, Name, DescriptionJson, DataSourceKey, FieldKey, AggregateFnLookupId, FilterJson,
+        BusinessModuleLookupId, IsMoney, IsSystem, OwnerUserId, VisibilityLookupId, DateRangeModeLookupId, ShowInPulse, SortOrder, IsActive)
+    SELECT t.TenantId, N'Descuadres pendientes',
+        N'{"es":"Descuadres entre el Kárdex y el saldo pendientes de revisar","en":"Ledger vs. balance discrepancies pending review"}',
+        'INVENTORY_DISCREPANCY', NULL, @L15Count, N'{"and":[{"field":"StatusCode","op":"eq","value":"OPEN"}]}',
+        @L15Wh, 0, 1, NULL, @L15Tenant, @L15All, 0, 99, 1
+    FROM dbo.Tenant t
+    WHERE EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition i WHERE i.TenantId = t.TenantId AND i.Name = N'Descuadres pendientes');
+END
+GO
+
+/* -------------------------------------------------------------------------
    3B) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 2
        EDIT_CONTRACT no permitido en contratos EXPIRED/CANCELLED (el tenant lo
        puede cambiar desde /status/capabilities/CONTRACT).

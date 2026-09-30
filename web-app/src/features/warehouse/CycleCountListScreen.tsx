@@ -6,6 +6,7 @@
 //   del otro): a la izquierda la lista de conteos paginada con el total (`CountTaskList`: estatus con su color, posición o
 //   zona, origen, asignado; íconos Asignar y Eliminar), a la derecha el conteo elegido (`CountDetailPanel`: todas las
 //   líneas con lo esperado, captura en la fila, escáner y "Confirmar conteo y ajustar" en un paso).
+// - Filtros iniciales de la URL (Lote 15, `countFiltersFromUrl`): `warehousePublicIds`, `status`, `origins`, `from`/`to`.
 // - El elegido va en `?count=<id>` (sin él, el primero de la lista; lo usan el Kárdex, la Actividad reciente y la ficha vieja
 //   `/warehouse/cycle-counts/:id`, que redirige aquí). Ya no hay pestaña 'Tareas de conteo' (D10: se asigna desde la lista).
 // - Cabecera: "Conteo de lo cambiado" (`ChangedCountModal`) y "Nuevo conteo" (`CreateCountModal`), ambos warehouse.count;
@@ -20,7 +21,7 @@ import { exportCycleCounts, useCycleCountsPage, type CycleCountDto } from './api
 import { ChangedCountModal } from './ChangedCountModal'
 import { CountDetailPanel } from './CountDetailPanel'
 import { CountTaskList } from './CountTaskList'
-import { countFilterQuery, countListQuery, countParam, EMPTY_COUNT_FILTERS, selectedCountId, type CountFilterState } from './countView'
+import { countFilterQuery, countFiltersFromUrl, countListQuery, countParam, selectedCountId, type CountFilterState } from './countView'
 import { CreateCountModal } from './CreateCountModal'
 import { CycleCountFilterBar } from './CycleCountFilterBar'
 import { useDebounced } from './lineRules'
@@ -33,7 +34,8 @@ export default function CycleCountListScreen() {
   const t = useT()
   const [params, setParams] = useSearchParams()
   const countId = countParam(params)
-  const [filters, setFiltersState] = useState<CountFilterState>(EMPTY_COUNT_FILTERS)
+  // Lote 15: filtros iniciales de la URL (una vez al montar; la franja "Almacén hoy" del Pulso manda estatus y almacén)
+  const [filters, setFiltersState] = useState<CountFilterState>(() => countFiltersFromUrl(params))
   const [q, setQState] = useState('')
   const search = useDebounced(q.trim())
   const [page, setPage] = useState(1)

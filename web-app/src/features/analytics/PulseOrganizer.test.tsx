@@ -8,6 +8,7 @@ import { dismissToast, getToast } from '../../kernel/ui/toastStore'
 import { PulseOrganizer } from './PulseOrganizer'
 import {
   buildLayoutRequest,
+  indicatorLines,
   initOrganizer,
   moveEntry,
   moveInList,
@@ -45,7 +46,7 @@ const PULSE: PulseDto = {
   ],
   indicators: [
     { id: 7, name: 'Órdenes', sortOrder: 10, isVisible: false, businessModule: 'OPERATIONS' },
-    { id: 5, name: 'Ventas', sortOrder: 0, isVisible: true, isMoney: true, businessModule: 'ACCOUNTING' },
+    { id: 5, name: 'Ventas', sortOrder: 0, isVisible: true, isMoney: true, businessModule: 'OPERATIONS' },
   ],
   charts: [{ id: 9, name: 'Recibos por día', sortOrder: 0, isVisible: true, businessModule: 'WAREHOUSE' }],
   hasPersonalLayout: false,
@@ -131,7 +132,7 @@ describe('PulseOrganizer', () => {
     // el foco se queda en el botón del panel movido
     expect(screen.getByRole('button', { name: 'Bajar Tus indicadores' })).toHaveFocus()
     // el oculto se queda en su sitio, atenuado, con "Mostrar"
-    const items = screen.getByRole('list', { name: 'Elementos de Tus indicadores' })
+    const items = screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' })
     expect(rowNames(items)).toEqual(['Ventas', 'Órdenes'])
     expect(screen.getByRole('button', { name: 'Mostrar Ventas' }).closest('li')).toHaveClass('off')
     expect(mock.writes).toEqual([])
@@ -231,7 +232,7 @@ describe('PulseOrganizer', () => {
     fireEvent.dragStart(rowOf('Órdenes'), { dataTransfer })
     fireEvent.dragOver(rowOf('Ventas'), { dataTransfer })
     fireEvent.drop(rowOf('Ventas'), { dataTransfer })
-    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores' }))).toEqual(['Órdenes', 'Ventas'])
+    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' }))).toEqual(['Órdenes', 'Ventas'])
 
     await user.click(screen.getByRole('button', { name: 'Listo' }))
     await waitFor(() => expect(onClose).toHaveBeenCalled())
@@ -279,6 +280,107 @@ describe('PulseOrganizer', () => {
       { key: 'INDICATORS', sortOrder: 0, isVisible: true },
       { key: 'ATTENTION', sortOrder: 10, isVisible: false },
     ])
+  })
+
+  it('Lote 15: "Almacén hoy" (WAREHOUSE_DAY, orden −10) va primero, se baja y se oculta; con él, la ayuda de las filas fijas', async () => {
+    const user = userEvent.setup()
+    const { onClose } = renderOrganizer('mine', {
+      ...PULSE,
+      panels: [...PULSE.panels!, { key: 'WAREHOUSE_DAY', sortOrder: -10, isVisible: true, source: 'default' }],
+    })
+    const panels = screen.getByRole('list', { name: 'Paneles del Pulso' })
+    expect(rowNames(panels)).toEqual(['Almacén hoy', 'Tus indicadores', 'Tus gráficos', 'Almacén', 'Actividad reciente'])
+    expect(screen.getByText(/La franja que quede justo debajo de la fecha se queda fija al desplazarse/)).toBeInTheDocument()
+    // "Ocultar Almacén" (panel Almacén) y "Ocultar Almacén hoy" son botones distintos
+    expect(screen.getByRole('button', { name: 'Ocultar Almacén' })).not.toBe(screen.getByRole('button', { name: 'Ocultar Almacén hoy' }))
+    await user.click(screen.getByRole('button', { name: 'Bajar Almacén hoy' }))
+    await user.click(screen.getByRole('button', { name: 'Ocultar Almacén hoy' }))
+    await user.click(screen.getByRole('button', { name: 'Listo' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const body = mock.writes[0].body as { panels: { key: string; sortOrder: number; isVisible: boolean }[] }
+    expect(body.panels.slice(0, 2)).toEqual([
+      { key: 'INDICATORS', sortOrder: 0, isVisible: true },
+      { key: 'WAREHOUSE_DAY', sortOrder: 10, isVisible: false },
+    ])
+  })
+
+  it('Lote 15: sin franja fijable no hay ayuda de filas fijas', () => {
+    renderOrganizer('mine')
+    expect(screen.queryByText(/se queda fija al desplazarse/)).not.toBeInTheDocument()
+  })
+
+  it('Lote 15 (D8): indicadores en una lista por línea (Operación, Almacén, Contabilidad), con ayuda; se ordenan solo dentro de su línea', async () => {
+    const user = userEvent.setup()
+    const pulse: PulseDto = {
+      ...PULSE,
+      indicators: [
+        { id: 1, name: 'COD por cobrar', sortOrder: 0, isVisible: true, isMoney: true, businessModule: 'ACCOUNTING' },
+        { id: 2, name: 'Recibidas', sortOrder: 10, isVisible: true, businessModule: 'WAREHOUSE' },
+        { id: 3, name: 'Órdenes', sortOrder: 20, isVisible: true, businessModule: 'OPERATIONS' },
+        { id: 4, name: 'Bajo mínimo', sortOrder: 30, isVisible: true, businessModule: 'WAREHOUSE' },
+      ],
+    }
+    const { onClose } = renderOrganizer('mine', pulse)
+    expect(screen.getByText('Los indicadores se muestran en una línea por módulo; aquí se ordenan dentro de su línea.')).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Operación', 'Almacén', 'Contabilidad'])
+    const wh = screen.getByRole('list', { name: 'Elementos de Tus indicadores: Almacén' })
+    expect(rowNames(wh)).toEqual(['Recibidas', 'Bajo mínimo'])
+    expect(rowNames(screen.getByRole('list', { name: 'Elementos de Tus indicadores: Operación' }))).toEqual(['Órdenes'])
+    // el primero y el último de cada línea no salen de ella
+    expect(screen.getByRole('button', { name: 'Subir Recibidas' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Bajar Órdenes' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Bajar Bajo mínimo' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Subir COD por cobrar' })).toBeDisabled()
+    // ni con el teclado ni arrastrando se cruza de línea
+    screen.getByRole('button', { name: 'Mover Órdenes' }).focus()
+    await user.keyboard('{ArrowDown}')
+    const dataTransfer = { setData: vi.fn(), setDragImage: vi.fn(), effectAllowed: '', dropEffect: '' }
+    const rowOf = (name: string) => screen.getByRole('button', { name: `Mover ${name}` }).closest('li') as HTMLElement
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Mover COD por cobrar' }))
+    fireEvent.dragStart(rowOf('COD por cobrar'), { dataTransfer })
+    fireEvent.dragOver(rowOf('Recibidas'), { dataTransfer })
+    expect(rowOf('Recibidas')).not.toHaveClass('over')
+    fireEvent.drop(rowOf('Recibidas'), { dataTransfer })
+    fireEvent.dragEnd(rowOf('COD por cobrar'), { dataTransfer })
+    // dentro de su línea sí
+    await user.click(screen.getByRole('button', { name: 'Bajar Recibidas' }))
+    expect(rowNames(wh)).toEqual(['Bajo mínimo', 'Recibidas'])
+
+    await user.click(screen.getByRole('button', { name: 'Listo' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const body = mock.writes[0].body as { items: { kind: string; id: number; sortOrder: number }[] }
+    // se guarda en el orden de la pantalla: línea por línea
+    expect(body.items.filter((i) => i.kind === 'indicator').map((i) => [i.id, i.sortOrder])).toEqual([
+      [3, 0],
+      [4, 10],
+      [2, 20],
+      [1, 30],
+    ])
+  })
+
+  it('Lote 15 (D8): lógica pura — indicatorLines en el orden del menú y moveEntry no cruza de línea', () => {
+    expect(
+      indicatorLines([
+        { id: 1, businessModule: 'ACCOUNTING' },
+        { id: 2, businessModule: 'WAREHOUSE' },
+        { id: 3, businessModule: null },
+        { id: 4, businessModule: 'WAREHOUSE' },
+      ]).map((l) => [l.group, l.items.map((i) => i.id)]),
+    ).toEqual([
+      ['ops', [3]],
+      ['warehouse', [2, 4]],
+      ['money', [1]],
+    ])
+    expect(indicatorLines([])).toEqual([])
+    const s = initOrganizer({
+      ...PULSE,
+      indicators: [
+        { id: 1, name: 'A', sortOrder: 0, businessModule: 'WAREHOUSE' },
+        { id: 2, name: 'B', sortOrder: 10, businessModule: 'OPERATIONS' },
+      ],
+    })
+    expect(s.indicators.map((i) => i.id)).toEqual([2, 1])
+    expect(moveEntry(s, 'indicators', 0, 1)).toBe(s)
   })
 
   it('"Cancelar" descarta los cambios sin llamar al API', async () => {

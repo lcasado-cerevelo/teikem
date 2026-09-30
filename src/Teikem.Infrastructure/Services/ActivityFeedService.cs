@@ -23,13 +23,17 @@ public sealed class ActivityFeedService(
     ITenantContext tenant,
     PermissionService permissions,
     ModuleService modules,
-    ISecurityEventWriter security)
+    ISecurityEventWriter security,
+    ITenantClock? clock = null)
 {
+    /// <summary>Lote 15: la ventana 'today' empieza a la medianoche LOCAL de la compañía (hora de Puerto Rico, ITenantClock).</summary>
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public async Task<ActivityPageDto> GetAsync(ActivityQuery query, CancellationToken ct)
     {
         query ??= new ActivityQuery();
         var (skip, take) = ActivityRules.Page(query.Skip, query.Take);
-        var fromUtc = ActivityRules.FromUtc(query.Window, DateTime.UtcNow, ActivityRules.TenantZone);
+        var fromUtc = ActivityRules.FromUtc(query.Window, _clock.UtcNow, _clock.Zone);
         var tenantId = tenant.TenantId ?? throw new ForbiddenException("No hay tenant activo en la sesión.");
 
         var enabled = await modules.GetEnabledKeysAsync(tenantId, ct);

@@ -32,6 +32,7 @@ import {
 } from './api'
 import { TextFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
+import { listParam } from './kardexView'
 import { formatNumber, useDebounced } from './lineRules'
 import { ProductMultiFilter, type ProductFilterItem } from './pickers'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
@@ -161,7 +162,8 @@ function ProductsTab() {
   const t = useT()
   const lang = useLang()
   const [params, setParams] = useSearchParams()
-  const [warehouses, setWarehouses] = useState<string[]>([])
+  // Lote 15: almacenes iniciales de la URL (`?warehousePublicIds=`, una vez al montar; la franja "Almacén hoy" del Pulso)
+  const [warehouses, setWarehouses] = useState<string[]>(() => listParam(params, 'warehousePublicIds'))
   const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [nameText, setNameText] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])

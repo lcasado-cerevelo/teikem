@@ -10052,6 +10052,57 @@
         }
       }
     },
+    "/api/v1/inventory/pulse/days": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "parameters": [
+          {
+            "name": "warehousePublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehousePulseDaysDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehousePulseDaysDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehousePulseDaysDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inventory/balances": {
       "get": {
         "tags": [
@@ -37640,6 +37691,99 @@
           }
         },
         "additionalProperties": { }
+      },
+      "WarehousePulseDayDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "receivedUnits": {
+            "type": "number",
+            "format": "double"
+          },
+          "receivedMovements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "outboundUnits": {
+            "type": "number",
+            "format": "double"
+          },
+          "outboundMovements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countsWithVariance": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarehousePulseDaysDto": {
+        "type": "object",
+        "properties": {
+          "timeZone": {
+            "type": "string",
+            "nullable": true
+          },
+          "today": {
+            "type": "string",
+            "format": "date"
+          },
+          "fromUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "toUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WarehousePulseDayDto"
+            },
+            "nullable": true
+          },
+          "receivedToday": {
+            "type": "number",
+            "format": "double"
+          },
+          "receivedTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "outboundToday": {
+            "type": "number",
+            "format": "double"
+          },
+          "outboundTotal": {
+            "type": "number",
+            "format": "double"
+          },
+          "countsWithVarianceToday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countsWithVarianceTotal": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "belowMinProducts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "countsAlert": {
+            "type": "boolean"
+          },
+          "belowMinAlert": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "WarehouseTaskDto": {
         "type": "object",

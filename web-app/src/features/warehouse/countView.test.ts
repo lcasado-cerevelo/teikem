@@ -4,6 +4,7 @@ import type { CycleCountLineDto } from './api'
 import {
   confirmBlocker,
   countFilterQuery,
+  countFiltersFromUrl,
   countListQuery,
   countParam,
   countWhere,
@@ -16,8 +17,6 @@ import {
   pendingLines,
   scanOptions,
   selectedCountId,
-  utcFromZonedInput,
-  zonedInputFromUtc,
 } from './countView'
 
 const LINES: CycleCountLineDto[] = [
@@ -119,15 +118,22 @@ describe('countView', () => {
     expect(confirmBlocker({ statusCode: 'RECONCILED', isBlind: false, lines: LINES, drafts })).toEqual({ key: 'closed' })
     expect(confirmBlocker({ statusCode: 'OPEN', isBlind: true, lines: LINES, drafts })).toEqual({ key: 'blind' })
   })
-
-  it('ventana de lo cambiado en hora de Puerto Rico (UTC−4): ida y vuelta', () => {
-    expect(zonedInputFromUtc('2026-09-30T04:00:00Z')).toBe('2026-09-30T00:00')
-    // sin zona = UTC (como el API)
-    expect(zonedInputFromUtc('2026-09-30T03:59:00')).toBe('2026-09-29T23:59')
-    expect(zonedInputFromUtc(null)).toBe('')
-    expect(utcFromZonedInput('2026-09-30T00:00')).toBe('2026-09-30T04:00:00.000Z')
-    expect(utcFromZonedInput('2026-01-15T20:30')).toBe('2026-01-16T00:30:00.000Z')
-    expect(utcFromZonedInput('')).toBeNull()
-    expect(utcFromZonedInput('30/09/2026')).toBeNull()
+  it('Lote 15: filtros iniciales de la URL (enlace de la franja "Almacén hoy": estatus Diferencia y almacén)', () => {
+    expect(countFiltersFromUrl(new URLSearchParams('status=RECONCILED_VARIANCE&warehousePublicIds=wh-1'))).toEqual({
+      ...EMPTY_COUNT_FILTERS,
+      status: ['RECONCILED_VARIANCE'],
+      warehousePublicIds: ['wh-1'],
+    })
+    // repetibles o separados por comas, sin duplicados; fechas solo 'YYYY-MM-DD'; ?count= no es un filtro
+    expect(countFiltersFromUrl(new URLSearchParams('status=open,counted&status=OPEN&origins=changes&from=2026-09-24&to=30/09&count=4'))).toEqual({
+      ...EMPTY_COUNT_FILTERS,
+      status: ['OPEN', 'COUNTED'],
+      origins: ['CHANGES'],
+      created: { from: '2026-09-24', to: '' },
+    })
+    expect(countFiltersFromUrl(new URLSearchParams(''))).toEqual(EMPTY_COUNT_FILTERS)
   })
+
+  // La ventana de lo cambiado en hora de Puerto Rico (zonedInputFromUtc/utcFromZonedInput) se prueba en
+  // src/kernel/api/tenantZone.test.ts (Lote 15: un solo punto de zona para toda la web).
 })
