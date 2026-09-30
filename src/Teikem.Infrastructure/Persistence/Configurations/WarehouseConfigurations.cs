@@ -60,6 +60,7 @@ public sealed class WarehouseBinConfiguration : IEntityTypeConfiguration<Warehou
         b.Property(x => x.Level).HasMaxLength(20);
         b.Property(x => x.Position).HasMaxLength(20);
         b.Property(x => x.MaxWeightKg).HasColumnType("decimal(12,3)");
+        b.Property(x => x.MaxCapacityQty).HasColumnType("int");
 
         b.HasIndex(x => new { x.WarehouseZoneId, x.Code }).IsUnique().HasDatabaseName("UQ_WarehouseBin");
         // Código de posición único por almacén (D18).

@@ -29,7 +29,7 @@ import {
   type DataColumn,
   type DateRange,
 } from '../../kernel/ui'
-import { useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, type PurchaseOrderDto } from './api'
+import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, type PurchaseOrderDto } from './api'
 import { ProductPickerInput, WarehousePicker, WarehousePickerInput } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
 
@@ -215,6 +215,7 @@ export default function PurchaseOrderListScreen() {
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -249,10 +250,10 @@ export default function PurchaseOrderListScreen() {
       from: range.from || undefined,
       to: range.to || undefined,
       search: search || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [statusFilter, supplierId, warehousePublicId, range, search, page],
+    [statusFilter, supplierId, warehousePublicId, range, search, page, pageSize],
   )
   const { data, isLoading, error } = usePurchaseOrders(query)
 
@@ -341,9 +342,14 @@ export default function PurchaseOrderListScreen() {
             rowKey={(p) => p.publicId ?? String(p.id)}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportPurchaseOrders(query)}
             onRowClick={(p) => navigate(`/warehouse/purchase-orders/${p.publicId}`)}
           />
         )}

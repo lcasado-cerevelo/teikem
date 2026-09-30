@@ -5,8 +5,9 @@
 //   tener pocos almacenes), filtrada EN EL CLIENTE por código o nombre. Opciones "Code · Name"; el valor es el publicId.
 // - ProductPicker: GET /api/v1/products?search=&activeOnly=true, 250 ms entre teclas, opciones "SKU · Nombre"; el valor es
 //   el publicId.
-// - BinPicker: GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false, 250 ms entre teclas (el API compara
-//   código de posición y de zona), opciones "Código · Zona"; el valor es el id de la posición.
+// - BinPicker: GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false&take=50 (listado paginado desde el
+//   Lote 1), 250 ms entre teclas (el API compara código de posición, zona, pasillo, rack, nivel y posición), opciones
+//   "Código · Zona"; el valor es el id de la posición. Las sugeridas y la posición ya elegida se piden por id (`binIds`).
 // Cada uno tiene su variante `...Input` para usarse dentro de un <Field name="…"> del kit (react-hook-form).
 // Si el usuario no puede consultar almacenes/productos/posiciones (403 forbidden/module_disabled) se muestra un aviso y NO
 // se le saca de la pantalla (`handleAccessDenied: false`).
@@ -26,9 +27,11 @@ import {
   binLabel,
   productLabel,
   useWarehouse,
+  useWarehouseZones,
   useWarehouses,
   warehouseKeys,
   warehouseLabel,
+  type GetQuery,
   type ProductListItemDto,
   type WarehouseBinDto,
   type WarehouseDto,
@@ -238,7 +241,8 @@ export interface BinPickerProps {
   value: number | null | undefined
   /** Recibe también la fila de la lista; null al quitar o si el valor llegó de fuera. */
   onChange: (binId: number | null, bin: WarehouseBinDto | null) => void
-  /** Solo posiciones de zonas de estos tipos (p. ej. STAGING/CROSSDOCK para la recepción); se filtra en el cliente. */
+  /** Solo posiciones de zonas de estos tipos (p. ej. STAGING/CROSSDOCK para la recepción): se piden al API las zonas del
+   *  almacén y se filtra por sus ids (`zoneIds`); además se filtra en el cliente. */
   zoneTypeCodes?: readonly string[]
   /** Solo posiciones con existencias (`onlyWithStock=true`), p. ej. la recolección. */
   onlyWithStock?: boolean
@@ -255,7 +259,8 @@ export interface BinPickerProps {
   onBlur?: () => void
 }
 
-type BinQuery = { publicId: string | null | undefined; search?: string; includeInactive?: boolean; onlyWithStock?: boolean }
+/** Clave de consulta de BinPicker: misma forma `{ publicId, ...query }` que `useWarehouseBins` (comparte caché e invalidación). */
+type BinQuery = { publicId: string | null | undefined } & GetQuery<'/api/v1/warehouses/{publicId}/bins'>
 
 export function BinPicker({
   warehousePublicId,
@@ -315,29 +320,49 @@ export function BinPicker({
     if (value != null) onChange(null, null)
   }, [warehousePublicId, value, onChange])
 
-  /** Consulta de la lista para un texto (misma clave que useWarehouseBins de api.ts: comparte caché e invalidación). */
-  const listQuery = (s: string) => {
-    const q: BinQuery = { publicId: warehousePublicId, search: s || undefined, includeInactive: false, onlyWithStock: onlyWithStock || undefined }
+  // El listado llega paginado (Lote 1): se piden a lo más MAX_SHOWN filas por búsqueda. El API no filtra por tipo de zona,
+  // así que `zoneTypeCodes` se traduce a los ids de las zonas de esos tipos (filtrar solo en el cliente una página podía
+  // dejar la lista vacía en un almacén grande). Si las zonas no se pueden leer, queda el filtro en el cliente de `shape`.
+  const zonesQ = useWarehouseZones(warehousePublicId, { includeInactive: true }, { enabled: Boolean(zoneTypeCodes) && !noWarehouse, handleAccessDenied: false })
+  const typedZoneIds = zoneTypeCodes && zonesQ.data
+    ? zonesQ.data.filter((z) => z.id != null && zoneTypeCodes.includes(z.zoneTypeCode ?? '')).map((z) => z.id as number)
+    : undefined
+  const zonesPending = Boolean(zoneTypeCodes) && zonesQ.isLoading
+  /** Ninguna zona del almacén es de los tipos pedidos: no hay nada que ofrecer (y `zoneIds` vacío sería "todas"). */
+  const noTypedZone = typedZoneIds !== undefined && typedZoneIds.length === 0
+  const baseQuery: GetQuery<'/api/v1/warehouses/{publicId}/bins'> = {
+    includeInactive: false,
+    onlyWithStock: onlyWithStock || undefined,
+    zoneIds: typedZoneIds && typedZoneIds.length > 0 ? typedZoneIds : undefined,
+    take: MAX_SHOWN,
+  }
+  /** Consulta de posiciones (misma clave que useWarehouseBins de api.ts: comparte caché e invalidación). */
+  const binsQuery = (query: GetQuery<'/api/v1/warehouses/{publicId}/bins'>) => {
+    const key: BinQuery = { publicId: warehousePublicId, ...query }
     return {
-      queryKey: [warehouseKeys.bins[0], q],
-      queryFn: () =>
-        unwrap(
-          api.GET('/api/v1/warehouses/{publicId}/bins', {
-            params: { path: { publicId: warehousePublicId ?? '' }, query: { search: q.search, includeInactive: false, onlyWithStock: q.onlyWithStock } },
-          }),
-        ),
+      queryKey: [warehouseKeys.bins[0], key],
+      queryFn: () => unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId ?? '' }, query } })),
       meta: { handleAccessDenied: false },
     }
   }
+  const listQuery = (s: string) => binsQuery({ ...baseQuery, search: s || undefined })
   const qc = useQueryClient()
+  const canList = open && !off && !zonesPending && !noTypedZone
   const list = useQuery({
     ...listQuery(search),
-    enabled: open && !off,
+    enabled: canList,
     // mientras llega la nueva búsqueda se ven los resultados anteriores, solo si son del mismo almacén
     placeholderData: (prev, prevQuery) => ((prevQuery?.queryKey[1] as BinQuery | undefined)?.publicId === warehousePublicId ? prev : undefined),
   })
 
   const suggested = useMemo(() => (suggestedBinIds ?? []).filter((b): b is number => b != null), [suggestedBinIds])
+  // Las sugeridas se piden aparte por id (con el mismo texto y filtros): con la lista paginada podían no venir en la
+  // primera página y dejar de ofrecerse primero.
+  const suggestedList = useQuery({
+    ...binsQuery({ ...baseQuery, search: search || undefined, binIds: suggested }),
+    enabled: canList && suggested.length > 0,
+    placeholderData: (prev, prevQuery) => ((prevQuery?.queryKey[1] as BinQuery | undefined)?.publicId === warehousePublicId ? prev : undefined),
+  })
   /** Filas que se ofrecen: activas, del tipo de zona pedido, ordenadas (exacta, sugeridas, resto) y recortadas. */
   const shape = (rows: readonly WarehouseBinDto[], q: string) =>
     orderBins(
@@ -345,21 +370,23 @@ export function BinPicker({
       q,
       suggested,
     ).slice(0, MAX_SHOWN)
-  const options = shape(list.data ?? [], text)
+  const rows = useMemo(() => {
+    const extra = suggested.length > 0 ? (suggestedList.data?.items ?? []) : []
+    const seen = new Set(extra.map((b) => b.id))
+    return [...extra, ...(list.data?.items ?? []).filter((b) => !seen.has(b.id))]
+  }, [suggested, suggestedList.data, list.data])
+  const options = noTypedZone ? [] : shape(rows, text)
   // los resultados corresponden al texto escrito (no son los de la búsqueda anterior)
   const fresh = search === text.trim() && list.isSuccess && !list.isPlaceholderData
 
-  // valor que llega de fuera (formulario de edición, posición dada de baja): se busca en la lista completa del almacén,
-  // con inactivas, para mostrar "Código · Zona" (el API no tiene ficha de una sola posición)
-  const known = picked && picked.id === value ? picked : value != null ? (list.data ?? []).find((b) => b.id === value) : undefined
-  const lookupQuery: BinQuery = { publicId: warehousePublicId, includeInactive: true }
+  // valor que llega de fuera (formulario de edición, posición dada de baja): se pide esa posición por id (`binIds`), con
+  // inactivas, para mostrar "Código · Zona" (el API no tiene ficha de una sola posición)
+  const known = picked && picked.id === value ? picked : value != null ? rows.find((b) => b.id === value) : undefined
   const lookup = useQuery({
-    queryKey: [warehouseKeys.bins[0], lookupQuery],
-    queryFn: () => unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId ?? '' }, query: { includeInactive: true } } })),
+    ...binsQuery({ binIds: value != null ? [value] : undefined, includeInactive: true, take: 1 }),
     enabled: value != null && !known && !noWarehouse,
-    meta: { handleAccessDenied: false },
   })
-  const found = known ?? (value != null ? lookup.data?.find((b) => b.id === value) : undefined)
+  const found = known ?? (value != null ? lookup.data?.items?.find((b) => b.id === value) : undefined)
   let selectedLabel = ''
   if (value != null) selectedLabel = found ? binLabel(found) : lookup.isLoading ? t('common.loading') : `#${value}`
 
@@ -389,10 +416,11 @@ export function BinPicker({
   const enterNow = (q: string) => {
     setSearch(q)
     const seq = ++enterSeq.current
+    if (noTypedZone) return
     qc.fetchQuery(listQuery(q))
-      .then((rows) => {
+      .then((page) => {
         if (seq !== enterSeq.current) return
-        const opts = shape(rows, q)
+        const opts = shape(page.items ?? [], q)
         const b = exactCodeMatch(opts, q) ?? (opts.length === 1 ? opts[0] : undefined)
         if (b) choose(b)
       })
@@ -425,7 +453,7 @@ export function BinPicker({
   }
 
   let status: string | null = null
-  if (list.isLoading) status = t('common.loading')
+  if (list.isLoading || zonesPending) status = t('common.loading')
   else if (isAccessDenied(list.error)) status = t('ui.binPicker.noAccess')
   else if (list.error) status = t('errors.generic')
   else if (options.length === 0) status = t('ui.binPicker.none')

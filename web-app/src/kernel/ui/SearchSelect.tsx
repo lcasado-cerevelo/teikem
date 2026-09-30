@@ -108,9 +108,10 @@ export function SearchMultiSelect({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
       >
+        {/* la flecha va a la izquierda, antes del resumen (igual que los <select> nativos del kit, ver base.css) */}
+        <IconChevronDown />
         <span className="sum">{summary}</span>
         {value.length > 0 && <span className="cnt">{value.length}</span>}
-        <IconChevronDown />
       </button>
       {open && !disabled && (
         <div className="mp">

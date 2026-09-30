@@ -9723,6 +9723,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/postal-localities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["PostalLocalityDto"][];
+                        "application/json": components["schemas"]["PostalLocalityDto"][];
+                        "text/json": components["schemas"]["PostalLocalityDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/product-categories": {
         parameters: {
             query?: never;
@@ -14631,6 +14671,16 @@ export interface paths {
                     search?: string;
                     includeInactive?: boolean;
                     onlyWithStock?: boolean;
+                    zoneIds?: number[];
+                    aisle?: string;
+                    rack?: string;
+                    level?: string;
+                    position?: string;
+                    productPublicIds?: string[];
+                    occupancy?: string[];
+                    binIds?: number[];
+                    skip?: number;
+                    take?: number;
                 };
                 header?: never;
                 path: {
@@ -14646,9 +14696,9 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "text/plain": components["schemas"]["WarehouseBinDto"][];
-                        "application/json": components["schemas"]["WarehouseBinDto"][];
-                        "text/json": components["schemas"]["WarehouseBinDto"][];
+                        "text/plain": components["schemas"]["WarehouseBinPageDto"];
+                        "application/json": components["schemas"]["WarehouseBinPageDto"];
+                        "text/json": components["schemas"]["WarehouseBinPageDto"];
                     };
                 };
             };
@@ -18191,6 +18241,16 @@ export interface components {
             /** Format: int32 */
             clientsCount?: number;
         };
+        PostalLocalityDto: {
+            /** Format: int32 */
+            id?: number;
+            city?: string | null;
+            postalCode?: string | null;
+            state?: string | null;
+            countryCode?: string | null;
+            country?: string | null;
+            municipality?: string | null;
+        };
         ProductCategoryDto: {
             /** Format: int32 */
             id?: number;
@@ -19981,6 +20041,22 @@ export interface components {
             qtyOnHand?: number;
             /** Format: int32 */
             productCount?: number;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
+            occupancy?: string | null;
+            /** Format: uuid */
+            singleProductPublicId?: string | null;
+            singleProductSku?: string | null;
+            singleProductName?: string | null;
+        };
+        WarehouseBinPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["WarehouseBinDto"][] | null;
         };
         WarehouseBinPatchRequest: {
             aisle?: string | null;
@@ -19990,6 +20066,9 @@ export interface components {
             /** Format: double */
             maxWeightKg?: number | null;
             clearMaxWeight?: boolean | null;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
+            clearMaxCapacity?: boolean | null;
         } & {
             [key: string]: unknown;
         };
@@ -20003,6 +20082,8 @@ export interface components {
             position?: string | null;
             /** Format: double */
             maxWeightKg?: number | null;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
         };
         WarehouseCreateRequest: {
             code?: string | null;
@@ -20070,6 +20151,7 @@ export interface components {
             /** Format: double */
             qtyOnHand?: number;
             rowVersion?: string | null;
+            zoneTypeCodes?: string[] | null;
         };
         WarehousePatchRequest: {
             name?: string | null;
@@ -20142,10 +20224,21 @@ export interface components {
             isActive?: boolean;
             /** Format: int32 */
             binCount?: number;
+            /** Format: int32 */
+            occupiedBinCount?: number;
+            /** Format: int64 */
+            capacityQty?: number;
+            /** Format: double */
+            qtyOnHandInCapacityBins?: number;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: int32 */
+            binsWithoutCapacity?: number;
         };
         WarehouseZonePatchRequest: {
             name?: string | null;
             zoneType?: string | null;
+            code?: string | null;
         } & {
             [key: string]: unknown;
         };

@@ -31,6 +31,22 @@ public sealed class LookupCodeConfiguration : IEntityTypeConfiguration<LookupCod
     }
 }
 
+/// <summary>Lote 1 (cambios de Almacén) — dbo.PostalLocality (catálogo global ciudad ↔ código postal), 1:1 con el SQL de estructura.</summary>
+public sealed class PostalLocalityConfiguration : IEntityTypeConfiguration<PostalLocality>
+{
+    public void Configure(EntityTypeBuilder<PostalLocality> b)
+    {
+        b.ToTable("PostalLocality");
+        b.HasKey(p => p.PostalLocalityId);
+        b.Property(p => p.City).HasMaxLength(100).IsRequired();
+        b.Property(p => p.PostalCode).HasMaxLength(10).IsRequired();
+        b.Property(p => p.State).HasMaxLength(100);
+        b.Property(p => p.Municipality).HasMaxLength(100);
+        b.HasIndex(p => new { p.CountryLookupId, p.PostalCode, p.City }).IsUnique().HasDatabaseName("UQ_PostalLocality");
+        b.HasOne<LookupCode>().WithMany().HasForeignKey(p => p.CountryLookupId);
+    }
+}
+
 public sealed class LookupCodeOverrideConfiguration : IEntityTypeConfiguration<LookupCodeOverride>
 {
     public void Configure(EntityTypeBuilder<LookupCodeOverride> b)

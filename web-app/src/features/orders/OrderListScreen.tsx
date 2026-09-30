@@ -17,7 +17,7 @@ import {
   type DataColumn,
   type DateRange,
 } from '../../kernel/ui'
-import { useOrdersReadonly, type OrderListItemDto } from '../warehouse/api'
+import { exportOrders, useOrdersReadonly, type OrderListItemDto } from '../warehouse/api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 
 const PAGE_SIZE = 25
@@ -49,6 +49,7 @@ export default function OrderListScreen() {
   const [text, setText] = useState('')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   useEffect(() => {
     const h = setTimeout(() => {
@@ -78,10 +79,10 @@ export default function OrderListScreen() {
       from: range.from || undefined,
       to: exclusiveTo(range.to),
       search: search || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [clientId, status, range, search, page],
+    [clientId, status, range, search, page, pageSize],
   )
   const { data, isLoading, error } = useOrdersReadonly(query)
 
@@ -163,9 +164,14 @@ export default function OrderListScreen() {
             rowKey={(o) => o.publicId ?? String(o.id)}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportOrders(query)}
             onRowClick={(o) => navigate(`/orders/${o.publicId}`)}
           />
         )}

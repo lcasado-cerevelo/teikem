@@ -16,7 +16,7 @@ import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { DataTable, Filters, Modal, Panel, SearchSelect, toast, type DataColumn } from '../../kernel/ui'
-import { productLabel, useRunReplenishment, useWarehouseTasks, type WarehouseTaskDto } from './api'
+import { exportWarehouseTasks, productLabel, useRunReplenishment, useWarehouseTasks, type WarehouseTaskDto } from './api'
 import { formatDateTime, formatNumber } from './lineRules'
 import { WarehousePicker } from './pickers'
 import { useTaskRowActions, type WarehouseTaskType } from './taskActions'
@@ -133,6 +133,7 @@ export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: T
   const [assignedToMe, setAssignedToMe] = useState(false)
   const [includeClosed, setIncludeClosed] = useState(false)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const { rowActions, dialogs } = useTaskRowActions()
 
   const { data: statusOptions = [] } = useStatuses(STATUS_DOMAIN)
@@ -152,10 +153,10 @@ export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: T
       status: statusFilter.length > 0 ? statusFilter : undefined,
       assignedToMe: assignedToMe || undefined,
       includeClosed: includeClosed || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [warehousePublicId, typesKey, statusFilter, assignedToMe, includeClosed, page],
+    [warehousePublicId, typesKey, statusFilter, assignedToMe, includeClosed, page, pageSize],
   )
   const { data, isLoading, error } = useWarehouseTasks(query, { handleAccessDenied })
 
@@ -255,9 +256,14 @@ export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: T
             rowKey={(r) => r.id ?? 0}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportWarehouseTasks(query)}
             rowActions={rowActions}
           />
         )}

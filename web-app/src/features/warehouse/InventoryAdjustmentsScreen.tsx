@@ -183,6 +183,7 @@ export default function InventoryAdjustmentsScreen() {
       cols.push({
         id: 'resolve',
         header: t('warehouse.inventoryAdjustments.columns.resolve'),
+        exportable: false,
         // la clave incluye el pendiente: tras un ajuste parcial la captura de la fila vuelve a quedar vacía
         cell: (l) => (
           <ResolveCell
@@ -286,6 +287,8 @@ export default function InventoryAdjustmentsScreen() {
                   rowKey={(l) => l.purchaseOrderLineId ?? 0}
                   defaultSort={{ id: 'sku', desc: false }}
                   loading={linesQ.isLoading}
+                  // cada fila lleva su captura (cantidad/motivo): paginar desmontaría lo escrito en las filas ocultas
+                  pagination={false}
                 />
               </div>
             )}

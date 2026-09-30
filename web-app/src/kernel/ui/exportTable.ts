@@ -1,0 +1,262 @@
+// Exportación de tablas del kit a CSV, Excel (.xlsx) y PDF, 100 % en el cliente, sobre las filas que la tabla tiene
+// cargadas. Las funciones de armado (buildExportData, toCsv, exportFileName…) son puras y se prueban sin DOM; las de
+// descarga cargan SheetJS / jsPDF bajo demanda (import dinámico) para no inflar el paquete inicial.
+import { isValidElement, type ReactNode } from 'react'
+
+export type ExportFormat = 'xlsx' | 'csv' | 'pdf'
+export const EXPORT_FORMATS: readonly ExportFormat[] = ['xlsx', 'csv', 'pdf']
+
+/** Valor de una celda exportada: texto, número (Excel lo trata como número) o vacío. */
+export type ExportCell = string | number | null
+/** Lo que puede devolver `sortValue`/`exportValue` de una columna. */
+export type ExportRawValue = string | number | boolean | Date | null | undefined
+
+/** Lo que la exportación necesita de una columna (`DataColumn<T>` lo cumple tal cual). */
+export interface ExportableColumn<T> {
+  header: string
+  cell: (row: T) => ReactNode
+  sortValue?: (row: T) => ExportRawValue
+  /** Valor exportado explícito; gana sobre el texto de la celda y sobre `sortValue`. */
+  exportValue?: (row: T) => ExportRawValue
+  /** false = la columna no se exporta (casillas de selección, columnas solo visuales). */
+  exportable?: boolean
+  align?: 'start' | 'end'
+}
+
+export interface ExportData {
+  headers: string[]
+  /** true = columna numérica (alineada a la derecha en el PDF). */
+  numeric: boolean[]
+  rows: ExportCell[][]
+}
+
+export interface ExportOptions {
+  /** Idioma de la interfaz (para leer números formateados y fechas). */
+  locale?: string
+  /** Texto de los booleanos. */
+  yes?: string
+  no?: string
+}
+
+/** Marcadores que las pantallas pintan para "sin dato": se exportan como celda vacía. */
+const EMPTY_MARKS = new Set(['—', '–', '-'])
+
+/**
+ * Texto plano de un ReactNode: cadenas y números tal cual, elementos por sus `children` (separando bloques con un
+ * espacio). Un componente sin `children` (p. ej. `<StatusChip label=…/>`) no aporta texto: ahí decide `sortValue`.
+ */
+export function nodeToText(node: ReactNode): string {
+  const parts: string[] = []
+  const walk = (n: ReactNode): void => {
+    if (n === null || n === undefined || typeof n === 'boolean') return
+    if (typeof n === 'string' || typeof n === 'number' || typeof n === 'bigint') {
+      parts.push(String(n))
+      return
+    }
+    if (Array.isArray(n)) {
+      n.forEach(walk)
+      return
+    }
+    if (isValidElement<{ children?: ReactNode }>(n)) {
+      parts.push(' ')
+      walk(n.props.children)
+      parts.push(' ')
+    }
+  }
+  walk(node)
+  return parts.join('').replace(/\s+/g, ' ').trim()
+}
+
+/** Lee un número formateado en `locale` ("12.345,5" en es, "12,345.5" en en, "+5"); null si no es un número. */
+export function parseLocaleNumber(text: string, locale?: string): number | null {
+  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6)
+  const group = parts.find((p) => p.type === 'group')?.value ?? ','
+  const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.'
+  let s = text.replace(/[\s  ]/g, '').split(group).join('')
+  if (decimal !== '.') s = s.split(decimal).join('.')
+  s = s.replace(/^\+/, '').replace(/^−/, '-')
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return null
+  return Number(s)
+}
+
+function normalizeRaw(v: ExportRawValue, opts: ExportOptions): ExportCell {
+  if (v === null || v === undefined || v === '') return null
+  if (typeof v === 'boolean') return v ? (opts.yes ?? 'true') : (opts.no ?? 'false')
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toLocaleString(opts.locale)
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null
+  return v
+}
+
+/**
+ * Valor exportable de una celda, en este orden:
+ * 1. `exportValue(row)` si la columna lo define;
+ * 2. lo que se ve: el texto de `cell(row)` ("—" = vacío). Si `sortValue` es un número y el texto es ese mismo número
+ *    formateado ("1.234", "+5"), se exporta el número (Excel puede sumarlo);
+ * 3. si la celda no tiene texto (un componente sin children, un ícono), `sortValue(row)`.
+ */
+export function exportCellValue<T>(col: ExportableColumn<T>, row: T, opts: ExportOptions = {}): ExportCell {
+  if (col.exportValue) return normalizeRaw(col.exportValue(row), opts)
+  const node = col.cell(row)
+  if (typeof node === 'number') return Number.isFinite(node) ? node : null
+  const text = nodeToText(node)
+  const sortRaw = col.sortValue?.(row)
+  if (text) {
+    if (EMPTY_MARKS.has(text)) return null
+    if (typeof sortRaw === 'number' && Number.isFinite(sortRaw)) {
+      const parsed = parseLocaleNumber(text, opts.locale)
+      if (parsed !== null && Math.abs(parsed - sortRaw) < 1e-9) return sortRaw
+    }
+    return text
+  }
+  return normalizeRaw(sortRaw, opts)
+}
+
+/** Encabezados y filas planas de la tabla (sin las columnas `exportable: false` ni columnas sin encabezado ni datos). */
+export function buildExportData<T>(
+  columns: readonly ExportableColumn<T>[],
+  rows: readonly T[],
+  opts: ExportOptions = {},
+): ExportData {
+  const cols = columns.filter((c) => c.exportable !== false)
+  const matrix = rows.map((row) => cols.map((c) => exportCellValue(c, row, opts)))
+  // una columna sin encabezado y sin ningún dato (casilla de selección, ícono) no aporta nada al archivo
+  const keep = cols.map((c, i) => c.header.trim() !== '' || matrix.some((r) => r[i] !== null))
+  return {
+    headers: cols.filter((_, i) => keep[i]).map((c) => c.header),
+    numeric: cols.filter((_, i) => keep[i]).map((c) => c.align === 'end'),
+    rows: matrix.map((r) => r.filter((_, i) => keep[i])),
+  }
+}
+
+/** Una celda CSV (RFC 4180): entre comillas si trae separador, comillas o saltos de línea; comillas duplicadas. */
+export function csvCell(value: ExportCell): string {
+  if (value === null) return ''
+  if (typeof value === 'number') return String(value)
+  let s = value
+  // inyección de fórmulas: un texto que empieza con = + - @ (y no es un número) se abre como fórmula en Excel
+  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?\d[\d.,]*$/.test(s)) s = `'${s}`
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/** CSV con coma como separador y CRLF entre filas (sin BOM: lo agrega la descarga para que Excel lea UTF-8). */
+export function toCsv(data: ExportData): string {
+  return [data.headers, ...data.rows].map((r) => r.map(csvCell).join(',')).join('\r\n')
+}
+
+/** Nombre de archivo: base sin acentos ni símbolos + fecha local, p. ej. `almacenes-2026-09-29.xlsx`. */
+export function exportFileName(base: string | null | undefined, ext: ExportFormat, date: Date = new Date()): string {
+  const slug = (base ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  return `${slug || 'export'}-${day}.${ext}`
+}
+
+/** Las fuentes estándar de jsPDF solo cubren Latin-1: reemplaza lo demás por su equivalente más cercano. */
+export function pdfSafeText(s: string): string {
+  return s
+    .replace(/[‒-―−]/g, '-')
+    .replace(/→/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/…/g, '...')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/•/g, '·')
+    .replace(/[ -   ]/g, ' ')
+    .replace(/[▲▼]/g, '')
+    // fuera de Latin-1 (U+0000–U+00FF): el rango empieza a propósito en el carácter de control 0
+    // oxlint-disable-next-line no-control-regex
+    .replace(/[^\u0000-ÿ]/g, '?')
+}
+
+/** Nombre de hoja válido para Excel: sin `[]:*?/\` y hasta 31 caracteres. */
+export function sheetName(title: string | null | undefined): string {
+  const clean = (title ?? '').replace(/[[\]:*?/\\]/g, ' ').trim().slice(0, 31)
+  return clean || 'Sheet1'
+}
+
+function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // se libera después de que el navegador tome el enlace
+  setTimeout(() => URL.revokeObjectURL(url), 0)
+}
+
+export function downloadCsv(data: ExportData, fileName: string): void {
+  // BOM: sin él Excel abre el CSV como ANSI y rompe acentos y eñes
+  downloadBlob(new Blob(['﻿', toCsv(data)], { type: 'text/csv;charset=utf-8' }), fileName)
+}
+
+export async function downloadXlsx(data: ExportData, fileName: string, title?: string | null): Promise<void> {
+  const XLSX = await import('xlsx')
+  const aoa: ExportCell[][] = [data.headers, ...data.rows]
+  const ws = XLSX.utils.aoa_to_sheet(aoa)
+  // ancho de columna aproximado al contenido más largo (tope 60 caracteres)
+  ws['!cols'] = data.headers.map((_, i) => ({
+    wch: Math.min(60, Math.max(8, ...aoa.map((r) => String(r[i] ?? '').length + 2))),
+  }))
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, sheetName(title))
+  XLSX.writeFile(wb, fileName, { compression: true })
+}
+
+export async function downloadPdf(data: ExportData, fileName: string, title?: string | null): Promise<void> {
+  const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
+  // más de 5 columnas: horizontal
+  const doc = new jsPDF({ orientation: data.headers.length > 5 ? 'landscape' : 'portrait', unit: 'pt', format: 'a4', compress: true })
+  const margin = 32
+  let startY = margin
+  if (title) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(13)
+    doc.text(pdfSafeText(title), margin, margin + 6)
+    startY = margin + 18
+  }
+  const columnStyles: Record<number, { halign: 'right' }> = {}
+  data.numeric.forEach((n, i) => {
+    if (n) columnStyles[i] = { halign: 'right' }
+  })
+  autoTable(doc, {
+    head: [data.headers.map(pdfSafeText)],
+    body: data.rows.map((r) => r.map((v) => (v === null ? '' : typeof v === 'number' ? String(v) : pdfSafeText(v)))),
+    startY,
+    margin: { left: margin, right: margin, top: margin, bottom: margin },
+    styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
+    headStyles: { fillColor: [38, 50, 72], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [245, 247, 250] },
+    columnStyles,
+    didDrawPage: () => {
+      const page = doc.getNumberOfPages()
+      const { width, height } = doc.internal.pageSize
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text(String(page), width - margin, height - margin / 2, { align: 'right' })
+    },
+  })
+  doc.save(fileName)
+}
+
+/** Arma y descarga el archivo en el formato pedido. `title` da nombre al archivo, a la hoja y al encabezado del PDF. */
+export async function exportTable<T>(
+  format: ExportFormat,
+  columns: readonly ExportableColumn<T>[],
+  rows: readonly T[],
+  opts: ExportOptions & { title?: string | null; date?: Date } = {},
+): Promise<void> {
+  const data = buildExportData(columns, rows, opts)
+  const fileName = exportFileName(opts.title, format, opts.date)
+  if (format === 'csv') downloadCsv(data, fileName)
+  else if (format === 'xlsx') await downloadXlsx(data, fileName, opts.title)
+  else await downloadPdf(data, fileName, opts.title)
+}

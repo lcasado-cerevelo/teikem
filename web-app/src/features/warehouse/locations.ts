@@ -1,123 +1,149 @@
-// Lógica pura de la pantalla Ubicaciones (`LocationsScreen`, maqueta `ubicaciones()`): ocupación por zona, productos por
-// posición (desde los saldos del almacén), estado de la posición y filtros Zona / Tipo / Producto / Estado.
-// La posición no tiene capacidad registrada en el esquema (`WarehouseBin` solo tiene `MaxWeightKg`), así que el estado es
-// 'Vacía' u 'Ocupada' (la maqueta distingue 'Parcial' y 'Llena' con la capacidad) y la barra de ocupación de la fila es
-// relativa a la posición con más unidades del almacén.
-import type { BalanceDto, WarehouseBinDto, WarehouseZoneDto } from './api'
-import { productLabel } from './api'
+// Lógica pura de la pantalla Ubicaciones (`LocationsScreen`, maqueta `ubicaciones()`), Lote 1 (1.2 y 1.3).
+// - Recuadros del río (uno por zona): ocupado vs. capacidad real de la zona, con los totales que ya calcula el API en
+//   `WarehouseZoneDto`: capacidad = `capacityQty` (Σ cupo de sus posiciones activas con cupo), ocupado =
+//   `qtyOnHandInCapacityBins` (existencia en esas mismas posiciones). Las posiciones sin cupo configurado no entran al
+//   porcentaje (se avisan aparte con `binsWithoutCapacity`); si ninguna tiene cupo se muestra la existencia total sin
+//   porcentaje. Nunca se inventa un porcentaje.
+// - Estatus de una posición (`occupancy` del API): Vacía / Parcial / Llena / Sin cupo, con la misma regla que
+//   `WarehouseRules.Occupancy` del servidor (réplica solo como respaldo si el DTO no la trae).
+// - Filtros: todos van al servidor (`zoneIds`, `productPublicIds`, `occupancy`); el filtro Tipo (de zona) no existe en el
+//   API y se traduce a los ids de las zonas de ese tipo, cruzados con el filtro Zona.
+import type { GetQuery, WarehouseBinDto, WarehouseZoneDto } from './api'
 
-export type BinState = 'EMPTY' | 'OCCUPIED'
-export const BIN_STATES: readonly BinState[] = ['EMPTY', 'OCCUPIED']
+export type BinOccupancy = 'EMPTY' | 'PARTIAL' | 'FULL' | 'NO_CAPACITY'
+/** Estatus de posición, en el orden del filtro (códigos de `BinOccupancies` del dominio). */
+export const BIN_OCCUPANCIES: readonly BinOccupancy[] = ['EMPTY', 'PARTIAL', 'FULL', 'NO_CAPACITY']
 
-/** Producto guardado en una posición (sin repetir aunque tenga varios lotes). */
-export interface BinProduct {
-  publicId: string
-  sku: string
-  name: string
+/** Tono del chip de cada estatus (vacía gris, parcial verde, llena roja como la maqueta, sin cupo en alerta). */
+export const OCCUPANCY_TONE: Record<BinOccupancy, 'cap' | 'disp' | 'fail' | 'warn'> = {
+  EMPTY: 'cap',
+  PARTIAL: 'disp',
+  FULL: 'fail',
+  NO_CAPACITY: 'warn',
 }
 
-/** Fila de la tabla de Ubicaciones. */
-export interface LocationRow {
-  bin: WarehouseBinDto
-  /** Nombre de la zona (o su código si no se encontró). */
-  zoneName: string
-  zoneTypeCode: string
-  products: BinProduct[]
-  state: BinState
-  /** 0..100: unidades de la posición respecto a la posición con más unidades del almacén. */
-  fill: number
+function isOccupancy(v: string | null | undefined): v is BinOccupancy {
+  return (BIN_OCCUPANCIES as readonly string[]).includes(v ?? '')
 }
 
-/** Ocupación de una zona para el río: posiciones con existencias / posiciones activas. */
-export interface ZoneOccupancy {
+/**
+ * Estatus de una posición: el que manda el API (`occupancy`); si no llega, la misma regla del servidor: sin existencia =
+ * EMPTY; con existencia y sin cupo = NO_CAPACITY; existencia ≥ cupo = FULL; si no, PARTIAL.
+ */
+export function binOccupancy(bin: Pick<WarehouseBinDto, 'occupancy' | 'qtyOnHand' | 'maxCapacityQty'>): BinOccupancy {
+  if (isOccupancy(bin.occupancy)) return bin.occupancy
+  const qty = bin.qtyOnHand ?? 0
+  if (qty <= 0) return 'EMPTY'
+  if (bin.maxCapacityQty == null) return 'NO_CAPACITY'
+  return qty >= bin.maxCapacityQty ? 'FULL' : 'PARTIAL'
+}
+
+/** Porcentaje entero de ocupación de una posición respecto a su cupo; null sin cupo (no hay porcentaje que mostrar).
+ *  Puede pasar de 100 si la existencia excede el cupo (la barra se recorta, el texto dice el valor real). */
+export function binFillPct(qtyOnHand: number | null | undefined, maxCapacityQty: number | null | undefined): number | null {
+  if (maxCapacityQty == null || maxCapacityQty <= 0) return null
+  return Math.round((100 * Math.max(0, qtyOnHand ?? 0)) / maxCapacityQty)
+}
+
+/** Qué mostrar en la columna Producto: nada, el nombre (un solo producto) o "N productos". */
+export type BinProductCell = { kind: 'none' } | { kind: 'one'; name: string; sku: string } | { kind: 'many'; count: number }
+
+export function binProductCell(bin: Pick<WarehouseBinDto, 'productCount' | 'singleProductName' | 'singleProductSku'>): BinProductCell {
+  const count = bin.productCount ?? 0
+  if (count <= 0) return { kind: 'none' }
+  if (count === 1) {
+    const sku = bin.singleProductSku ?? ''
+    return { kind: 'one', name: bin.singleProductName || sku, sku }
+  }
+  return { kind: 'many', count }
+}
+
+/**
+ * Recuadro de zona del río. `mode`:
+ * - `capacity`: al menos una posición con cupo → `occupied / capacity` y `pct` (las sin cupo se avisan con `binsWithoutCapacity`);
+ * - `noCapacity`: tiene posiciones pero ninguna con cupo → solo la existencia total (`qtyOnHand`), `pct` null;
+ * - `noBins`: la zona no tiene posiciones activas.
+ */
+export interface ZoneCapacity {
   zone: WarehouseZoneDto
-  used: number
-  total: number
-  /** Porcentaje entero (0 si la zona no tiene posiciones). */
-  pct: number
+  mode: 'capacity' | 'noCapacity' | 'noBins'
+  capacity: number
+  occupied: number
+  /** Porcentaje entero ocupado/capacidad (puede pasar de 100); null sin capacidad. */
+  pct: number | null
+  binsWithoutCapacity: number
+  qtyOnHand: number
+  binCount: number
+}
+
+export function zoneCapacity(zone: WarehouseZoneDto): ZoneCapacity {
+  const capacity = zone.capacityQty ?? 0
+  const occupied = zone.qtyOnHandInCapacityBins ?? 0
+  const binCount = zone.binCount ?? 0
+  const mode: ZoneCapacity['mode'] = binCount <= 0 ? 'noBins' : capacity > 0 ? 'capacity' : 'noCapacity'
+  return {
+    zone,
+    mode,
+    capacity,
+    occupied,
+    pct: mode === 'capacity' ? Math.round((100 * occupied) / capacity) : null,
+    binsWithoutCapacity: zone.binsWithoutCapacity ?? 0,
+    qtyOnHand: zone.qtyOnHand ?? 0,
+    binCount,
+  }
+}
+
+/** Un recuadro por zona, en el orden recibido. */
+export function zoneCapacities(zones: readonly WarehouseZoneDto[]): ZoneCapacity[] {
+  return zones.map(zoneCapacity)
+}
+
+/** Clic en un recuadro: si esa zona ya es la única elegida, se quita el filtro; si no, queda solo esa zona. */
+export function toggleZoneSelection(current: readonly string[], zoneId: string): string[] {
+  return current.length === 1 && current[0] === zoneId ? [] : [zoneId]
+}
+
+/** Zonas de la URL (`?zone=3&zone=5` o `?zone=3,5`): solo ids enteros positivos, sin repetir. */
+export function parseZoneParam(values: readonly string[]): string[] {
+  const out: string[] = []
+  for (const v of values.flatMap((x) => x.split(','))) {
+    const s = v.trim()
+    if (/^[1-9]\d*$/.test(s) && !out.includes(s)) out.push(s)
+  }
+  return out
 }
 
 export interface LocationFilters {
-  /** Ids de zona como texto (vacío = todas). */
+  /** Ids de zona como texto (vacío = todas); es lo que va en `?zone=`. */
   zoneIds: readonly string[]
   /** Códigos de tipo de zona (vacío = todos). */
   zoneTypes: readonly string[]
-  /** publicIds de producto (vacío = todos): la posición debe tener al menos uno. */
-  products: readonly string[]
-  /** Estados (vacío = todos). */
-  states: readonly string[]
+  /** publicIds de producto (vacío = todos): la posición debe tener existencia de al menos uno. */
+  productPublicIds: readonly string[]
+  /** Estatus (vacío = todos). */
+  occupancy: readonly string[]
 }
 
-export const EMPTY_LOCATION_FILTERS: LocationFilters = { zoneIds: [], zoneTypes: [], products: [], states: [] }
+export const EMPTY_LOCATION_FILTERS: LocationFilters = { zoneIds: [], zoneTypes: [], productPublicIds: [], occupancy: [] }
 
-/** Estado de una posición según sus unidades en mano. */
-export function binState(qtyOnHand: number | null | undefined): BinState {
-  return (qtyOnHand ?? 0) > 0 ? 'OCCUPIED' : 'EMPTY'
-}
+export type BinListQuery = GetQuery<'/api/v1/warehouses/{publicId}/bins'>
 
-/** Productos por posición a partir de las líneas de saldo (solo con unidades en mano), ordenados por SKU. */
-export function productsByBin(lines: readonly BalanceDto[]): Map<number, BinProduct[]> {
-  const map = new Map<number, BinProduct[]>()
-  for (const l of lines) {
-    if (l.binId == null || (l.qtyOnHand ?? 0) <= 0 || !l.productPublicId) continue
-    const list = map.get(l.binId) ?? []
-    if (!list.some((p) => p.publicId === l.productPublicId)) {
-      list.push({ publicId: l.productPublicId, sku: l.sku ?? '', name: l.productName ?? l.sku ?? '' })
-      map.set(l.binId, list)
-    }
+/**
+ * Consulta del listado (sin `skip`/`take`) a partir de los filtros. Tipo se traduce a las zonas de ese tipo y se cruza
+ * con Zona. `impossible` = la combinación no deja ninguna zona (p. ej. Zona A + un tipo que A no tiene): la pantalla no
+ * consulta y muestra la tabla vacía (el API leería `zoneIds` vacío como "todas").
+ */
+export function buildBinListQuery(f: LocationFilters, zones: readonly WarehouseZoneDto[]): { query: BinListQuery; impossible: boolean } {
+  let zoneIds: number[] | undefined = f.zoneIds.length > 0 ? f.zoneIds.map(Number) : undefined
+  if (f.zoneTypes.length > 0) {
+    const typed = zones.filter((z) => z.id != null && f.zoneTypes.includes(z.zoneTypeCode ?? '')).map((z) => z.id as number)
+    zoneIds = zoneIds ? zoneIds.filter((id) => typed.includes(id)) : typed
   }
-  for (const list of map.values()) list.sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true }))
-  return map
-}
-
-/** Opciones del filtro Producto: los productos que hay en el almacén ("SKU · Nombre"), ordenados por SKU. */
-export function productOptions(byBin: ReadonlyMap<number, readonly BinProduct[]>): { value: string; label: string }[] {
-  const seen = new Map<string, BinProduct>()
-  for (const list of byBin.values()) for (const p of list) if (!seen.has(p.publicId)) seen.set(p.publicId, p)
-  return [...seen.values()]
-    .sort((a, b) => a.sku.localeCompare(b.sku, undefined, { numeric: true }))
-    .map((p) => ({ value: p.publicId, label: productLabel(p) }))
-}
-
-/** Un nodo por zona (en el orden recibido) con sus posiciones activas ocupadas y totales. */
-export function zoneOccupancy(zones: readonly WarehouseZoneDto[], bins: readonly WarehouseBinDto[]): ZoneOccupancy[] {
-  return zones.map((zone) => {
-    const inZone = bins.filter((b) => b.zoneId === zone.id && b.isActive !== false)
-    const used = inZone.filter((b) => binState(b.qtyOnHand) === 'OCCUPIED').length
-    const total = inZone.length
-    return { zone, used, total, pct: total > 0 ? Math.round((100 * used) / total) : 0 }
-  })
-}
-
-/** Filas de la tabla: cada posición con su zona, productos, estado y barra relativa. */
-export function buildLocationRows(
-  bins: readonly WarehouseBinDto[],
-  zones: readonly WarehouseZoneDto[],
-  byBin: ReadonlyMap<number, readonly BinProduct[]>,
-): LocationRow[] {
-  const zoneById = new Map(zones.map((z) => [z.id, z]))
-  const maxQty = bins.reduce((m, b) => Math.max(m, b.qtyOnHand ?? 0), 0)
-  return bins.map((bin) => {
-    const zone = zoneById.get(bin.zoneId)
-    const qty = bin.qtyOnHand ?? 0
-    return {
-      bin,
-      zoneName: zone?.name || bin.zoneCode || '',
-      zoneTypeCode: bin.zoneTypeCode ?? zone?.zoneTypeCode ?? '',
-      products: [...(bin.id != null ? (byBin.get(bin.id) ?? []) : [])],
-      state: binState(qty),
-      fill: qty > 0 && maxQty > 0 ? Math.max(1, Math.min(100, Math.round((100 * qty) / maxQty))) : 0,
-    }
-  })
-}
-
-/** Aplica los filtros Zona, Tipo, Producto y Estado (cada uno vacío = sin filtro). */
-export function filterLocationRows(rows: readonly LocationRow[], f: LocationFilters): LocationRow[] {
-  return rows.filter(
-    (r) =>
-      (f.zoneIds.length === 0 || f.zoneIds.includes(String(r.bin.zoneId))) &&
-      (f.zoneTypes.length === 0 || f.zoneTypes.includes(r.zoneTypeCode)) &&
-      (f.products.length === 0 || r.products.some((p) => f.products.includes(p.publicId))) &&
-      (f.states.length === 0 || f.states.includes(r.state)),
-  )
+  const query: BinListQuery = {
+    includeInactive: false,
+    zoneIds: zoneIds && zoneIds.length > 0 ? zoneIds : undefined,
+    productPublicIds: f.productPublicIds.length > 0 ? [...f.productPublicIds] : undefined,
+    occupancy: f.occupancy.length > 0 ? [...f.occupancy] : undefined,
+  }
+  return { query, impossible: zoneIds !== undefined && zoneIds.length === 0 }
 }

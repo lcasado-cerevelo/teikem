@@ -164,7 +164,11 @@ test.describe('Lote F6 — escritorio', () => {
     const row = page.getByRole('row').filter({ hasText: 'ALM-01' })
     await expect(row.getByText('Almacén principal')).toBeVisible()
     await shot(page, 'almacenes')
+    // Lote 11: la lista es maestro-detalle — el clic elige el almacén (panel "Zonas de este almacén") y el lápiz abre la ficha
     await row.getByText('ALM-01', { exact: true }).click()
+    await expect(page).toHaveURL(/\/warehouse\/warehouses\?warehouse=/)
+    await expect(page.getByText('Zonas de este almacén')).toBeVisible()
+    await page.getByRole('button', { name: 'Editar almacén' }).click()
     await expect(page).toHaveURL(/\/warehouse\/warehouses\/[0-9a-f-]+$/)
     await shot(page, 'almacen-ficha')
     await page.getByRole('tab', { name: 'Zonas' }).click()

@@ -331,7 +331,21 @@
       "range": "{from}–{to} de {total}",
       "pageOf": "Página {page} de {pages}",
       "prev": "Página anterior",
-      "next": "Página siguiente"
+      "next": "Página siguiente",
+      "pageSize": "Filas por página",
+      "export": {
+        "button": "Exportar",
+        "menu": "Formato de exportación",
+        "xlsx": "Excel (.xlsx)",
+        "csv": "CSV (.csv)",
+        "pdf": "PDF (.pdf)",
+        "rows": "Filas: {count}",
+        "truncated": "Se exportaron las primeras {count} filas (límite de exportación). Afine los filtros para exportar el resto.",
+        "working": "Exportando…",
+        "error": "No se pudo generar el archivo. Intente de nuevo.",
+        "yes": "Sí",
+        "no": "No"
+      }
     },
     "filters": {
       "label": "Filtros",
@@ -354,6 +368,10 @@
     },
     "form": {
       "save": "Guardar"
+    },
+    "comboSelect": {
+      "placeholder": "Seleccione…",
+      "clear": "Quitar"
     },
     "clientPicker": {
       "placeholder": "Buscar cliente por código o nombre…",
@@ -858,7 +876,7 @@
   "warehouse": {
     "list": {
       "title": "Almacenes",
-      "subtitle": "Almacenes de la compañía, sus zonas, posiciones y muelles.",
+      "subtitle": "Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones",
       "count": "{count} almacenes",
       "new": "Nuevo almacén",
       "code": "Código",
@@ -875,11 +893,34 @@
       "line1": "Dirección",
       "country": "País",
       "created": "Almacén creado.",
+      "address": "Dirección",
+      "addressPlaceholder": "Dirección, ciudad, estado o código postal",
+      "zoneType": "Tipo",
+      "active": "Activo",
+      "activeHelp": "Todo almacén nuevo nace activo; se da de baja desde su ficha.",
+      "editWarehouse": "Editar almacén",
+      "openWarehouse": "Abrir la ficha del almacén",
+      "zonesTitle": "Zonas de este almacén",
+      "noZonesYet": "Todavía no tiene zonas — cree la primera",
+      "selectWarehouse": "Seleccione un almacén de la lista",
+      "zoneUsage": "{used}/{total} posiciones",
+      "editZone": "Editar la zona {code}",
+      "deleteZone": "Dar de baja la zona {code}",
+      "zoneHasBins": "No se puede dar de baja: esta zona tiene posiciones creadas",
       "errors": {
         "codeRequired": "El código es obligatorio.",
         "codePattern": "El código solo admite letras, números, guion y guion bajo (máximo 30).",
         "nameRequired": "El nombre es obligatorio."
       }
+    },
+    "postalPicker": {
+      "label": "Ciudad o código postal",
+      "help": "Busque por ciudad, municipio o código postal; al elegir se llenan Ciudad, Código postal, Estado y País.",
+      "placeholder": "Buscar ciudad o código postal…",
+      "none": "No hay ciudades ni códigos postales que coincidan.",
+      "noAccess": "Su usuario no puede consultar el catálogo de ciudades.",
+      "clear": "Quitar ciudad y código postal",
+      "derivedHelp": "Se llena según la ciudad elegida."
     },
     "locations": {
       "title": "Ubicaciones",
@@ -888,31 +929,42 @@
       "noWarehouses": "No hay almacenes activos.",
       "noZones": "Este almacén todavía no tiene zonas",
       "noBins": "Este almacén todavía no tiene posiciones.",
-      "usedPct": "ocupadas · {pct}%",
-      "zoneAria": "Zona {zone}: {used} de {total} posiciones ocupadas ({pct}%)",
+      "noMatch": "Ninguna posición coincide con los filtros.",
+      "usedPct": "ocupado · {pct}%",
+      "noCapacity": "unidades · sin cupo configurado",
+      "noBinsInZone": "sin posiciones",
+      "binsWithoutCapacityOne": "1 posición sin cupo",
+      "binsWithoutCapacity": "{count} posiciones sin cupo",
+      "zoneAriaCapacity": "Zona {zone}: {occupied} de {capacity} unidades de cupo ocupadas ({pct}%)",
+      "zoneAriaNoCapacity": "Zona {zone}: {qty} unidades, sin cupo configurado",
+      "zoneAriaNoBins": "Zona {zone}: sin posiciones",
+      "zoneFilterHint": "Clic para ver solo esta zona en la tabla; otro clic quita el filtro",
       "riverAria": "Ocupación por zona",
       "tableLabel": "Posiciones",
-      "fillAria": "{pct}% respecto a la posición con más unidades",
-      "fillHint": "Unidades respecto a la posición con más unidades del almacén (las posiciones no tienen capacidad registrada).",
-      "truncated": "Solo se leyeron {count} líneas de saldo: la columna Producto y su filtro pueden estar incompletos.",
-      "stockError": "No se pudieron leer los productos de las posiciones.",
+      "fillAria": "{pct}% del cupo",
+      "products": "{count} productos",
       "columns": {
         "bin": "Posición",
         "zone": "Zona",
         "qty": "Cantidad",
         "product": "Producto",
+        "capacity": "Cupo",
         "occupancy": "Ocupación",
-        "state": "Estado"
+        "status": "Estatus"
       },
       "filters": {
+        "bin": "Posición",
+        "binPlaceholder": "Código, pasillo, rack…",
         "zone": "Zona",
         "type": "Tipo",
         "product": "Producto",
-        "state": "Estado"
+        "status": "Estatus"
       },
-      "states": {
+      "occupancy": {
         "EMPTY": "Vacía",
-        "OCCUPIED": "Ocupada"
+        "PARTIAL": "Parcial",
+        "FULL": "Llena",
+        "NO_CAPACITY": "Ocupada sin cupo"
       }
     },
     "detail": {
@@ -945,7 +997,6 @@
       "active": "Activo",
       "inactive": "Inactivo",
       "includeInactive": "Incluir inactivas",
-      "codeHelp": "El código de la zona no se puede cambiar.",
       "edit": "Editar",
       "deactivate": "Dar de baja",
       "reactivate": "Reactivar",
@@ -957,9 +1008,16 @@
       "saved": "Cambios guardados.",
       "deactivated": "Zona dada de baja.",
       "reactivated": "Zona reactivada.",
+      "newPlus": "+ Nueva zona",
+      "editTitle": "Editar zona",
+      "occupied": "Ocupadas",
+      "status": "Estatus",
+      "codeEditHelp": "Único en el almacén. Cambiarlo no mueve sus posiciones ni sus existencias.",
+      "typePlaceholder": "Buscar tipo…",
       "errors": {
         "codeRequired": "El código es obligatorio.",
-        "nameRequired": "El nombre es obligatorio."
+        "nameRequired": "El nombre es obligatorio.",
+        "codePattern": "El código solo admite letras, números, guion y guion bajo (máximo 30)."
       }
     },
     "bins": {
@@ -993,11 +1051,28 @@
       "saved": "Cambios guardados.",
       "deactivated": "Posición dada de baja.",
       "reactivated": "Posición reactivada.",
+      "capacity": "Cupo",
+      "occupancy": "Ocupación",
+      "occupancyStates": {
+        "EMPTY": "Vacía",
+        "PARTIAL": "Parcial",
+        "FULL": "Llena",
+        "NO_CAPACITY": "Ocupada sin cupo"
+      },
+      "product": "Producto",
+      "productsCount": "{count} productos",
+      "status": "Estatus",
+      "maxCapacity": "Cupo máximo",
+      "maxCapacityHelp": "Unidades que caben; vacío = sin cupo.",
+      "zonePlaceholder": "Buscar zona…",
       "errors": {
         "zoneRequired": "Seleccione la zona.",
         "codeOrLocation": "Indique el código de la posición o su pasillo/rack/nivel/posición.",
         "maxWeightPositive": "El peso máximo debe ser mayor que cero.",
-        "maxWeightDecimals": "El peso máximo admite hasta 3 decimales."
+        "maxWeightDecimals": "El peso máximo admite hasta 3 decimales.",
+        "maxCapacityPositive": "El cupo máximo de la posición debe ser mayor que cero.",
+        "maxCapacityInteger": "El cupo máximo debe ser un número entero.",
+        "maxCapacityTooLarge": "El cupo máximo es demasiado grande."
       }
     },
     "docks": {
@@ -2066,7 +2141,8 @@
         "zones": "Zonas",
         "allZones": "Todas las zonas",
         "bins": "Posiciones",
-        "allBins": "Todas las posiciones"
+        "allBins": "Todas las posiciones",
+        "binsTruncated": "Solo se listan las primeras {count} posiciones: elija zonas para acotar la lista."
       },
       "errors": {
         "binRequired": "Indique la posición.",

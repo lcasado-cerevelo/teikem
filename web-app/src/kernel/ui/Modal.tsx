@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useT } from '../i18n/useT'
 import { IconClose } from './icons'
+import { PanelTitleContext } from './panelContext'
 import './ui.css'
 
 export interface ModalProps {
@@ -75,7 +76,10 @@ export function Modal({ open, title, onClose, footer, size = 'md', dismissible =
             <IconClose />
           </button>
         </header>
-        <div className="pb">{children}</div>
+        <div className="pb">
+          {/* el portal hereda el contexto del Panel que abre el modal: aquí manda el título del modal */}
+          <PanelTitleContext.Provider value={typeof title === 'string' ? title : null}>{children}</PanelTitleContext.Provider>
+        </div>
         {footer != null && <footer className="ft kit-ft">{footer}</footer>}
       </div>
     </div>,

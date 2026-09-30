@@ -16,7 +16,10 @@ export interface FiltersProps {
   label?: string
 }
 
-/** Fila de filtros estructurados (`.filters`): 8 columnas en escritorio, 4 bajo 1100 px, 2 bajo 720 px, 1 bajo 480 px. */
+/**
+ * Fila de filtros estructurados (`.filters`, flex que envuelve): cada filtro parte de 140 px y crece hasta repartirse el
+ * ancho del panel, sin columnas vacías; uno por renglón a 480 px o menos. "Limpiar" usa solo el ancho de su contenido.
+ */
 export function Filters({ children, onClear, label }: FiltersProps) {
   const t = useT()
   return (
@@ -68,7 +71,7 @@ export interface DateRangeFilterProps {
   onChange: (value: DateRange) => void
 }
 
-/** Rango de fechas (desde/hasta, inclusivo). Ocupa dos columnas de la fila de filtros (una a 480 px). */
+/** Rango de fechas (desde/hasta, inclusivo). Ocupa el doble que un filtro normal (`.span2`; todo el renglón a 480 px). */
 export function DateRangeFilter({ label, value, onChange }: DateRangeFilterProps) {
   const t = useT()
   const id = useId()

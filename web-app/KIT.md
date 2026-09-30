@@ -171,7 +171,11 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
 - `base.css`: clases de la maqueta: `.head`, `.btn(.flow/.money/.sm/.block)`, `.panel .ph2 (.r = contador) .pb` (panel de
   contenido en pantalla: lo pinta `Panel`), `.pal .pi .pb .ft` (solo modales y la paleta de comandos, dentro de `.scrim.on`), `.chip` + `.s-cap/.s-wh/.s-disp/.s-route/.s-deliv/.s-cod/.s-fail/.s-warn`,
   `.lst` (tabla), `.f` + `.ferr` + `.r2/.r3` (formularios), `.sw` (toggle), `.filters`, `.seg`, `.msel`, `.qrow .qbox`, `.empty`,
-  `.note`, `.tag`, `.toast`, `.spin`. Breakpoints: 900 px (cajón), 720 px (tablas a tarjetas, filtros en 2 columnas), 480 px (una columna).
+  `.note`, `.tag`, `.toast`, `.spin`. Breakpoints: 900 px (cajón), 720 px (tablas a tarjetas), 480 px (una columna; un filtro
+  por renglón). `.filters` es flex que envuelve (cada `.f` desde 140 px, crece; `.span2` el doble): sin columnas vacías.
+  Todo `<select>` de una opción (sin `multiple`/`size`) pierde la flecha nativa y lleva un chevron SVG a la IZQUIERDA
+  (`--select-chev`, 9 px del borde, `padding-left:29px`), igual que `SearchSelect`/`CategoryProductPicker`. Un `<select>`
+  con estilo en línea no debe usar el shorthand `background` (borra el chevron) ni fijar el padding izquierdo por debajo de 29 px.
   `.md` (maestro-detalle a dos columnas, 280 px + resto; una columna bajo 720 px) + `.domlist`/`.domit(.on)` (lista de la
   izquierda: botón por fila, con chip de origen y contador opcional `.cnt`) — patrón de "Catálogos de valores" (F8a P6) y
   cualquier pantalla con una lista de la izquierda y el detalle a la derecha; bajo 720 px usa un `<select>` en vez de `.domlist`.
@@ -222,14 +226,16 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 |---|---|---|
 | `Panel` | `title?`, `icon?` (ícono antes del título), `badge?: string \| number` (contador a la derecha, misma línea), `subtitle?` (solo texto descriptivo, en su propia línea; un conteo va en `badge`), `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra ni recorte: los desplegables salen) con cabecera `.ph2` de una sola línea (ícono + título `h2` + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales son `Modal`/`ConfirmDialog` (`.scrim > .pal`, radio 15 px con sombra); nunca uses `.pal` para contenido en pantalla. `<Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? rows.length : undefined}>` |
 | Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Ajustes de inventario → `IconPencil` (su nota y su vacío; sus paneles usan `IconCart` como la maqueta), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
-| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?` | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no; entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
-| `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'` | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`) |
+| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
+| `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'`, `exportValue?(row)` (valor exportado explícito), `exportable?` (false = no se exporta: casillas, columnas solo visuales) | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`). Exportación: `exportValue`, si no el texto de `cell` ("—" = vacío; un número formateado igual a `sortValue` sale como número), si la celda no tiene texto (`StatusChip`, ícono) `sortValue` |
+| `fetchAllPages(fetchPage, { pageSize?, max? })` (`kernel/api/fetchAllPages`) | `fetchPage(skip, take) → Promise<{ items, total }>` | recorre `skip/take` de a `EXPORT_PAGE_SIZE` = 200 hasta el `total` o `EXPORT_MAX_ROWS` = 10 000 y devuelve `{ items, truncated }`: es lo que recibe `exportRows` (DataTable avisa con un toast si `truncated`). `exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/x', { params: { query: { ...query, skip, take } } })))}` |
 | `RowAction<T>` | `key`, `label`, `onClick(row)`, `perm?` (guarda de permiso: sin él no se pinta), `visible?(row)` (guarda de estatus/`capabilities`), `disabled?(row)`, `tone?: 'flow' \| 'danger'`, `icon?` (de `kernel/ui/actionIcons`) | acciones por fila. Con `icon`, el botón es solo ícono (28×28, `.rowbtn`, como en la maqueta) y `label` pasa a ser su `aria-label`/`title`; sin `icon`, es el botón de texto de siempre. Toda acción de fila nueva lleva `icon` — solo se deja sin él cuando de verdad no hay un ícono claro para esa acción |
-| `Filters` | `children`, `onClear?` (botón "Limpiar"), `label?` | fila `.filters` (8 → 4 → 2 → 1 columnas); "Limpiar" (`.filters-clear`) ocupa solo el ancho de su contenido |
+| `Filters` | `children`, `onClear?` (botón "Limpiar"), `label?` | fila `.filters` (flex que envuelve: los filtros se reparten todo el ancho del panel, sin huecos; uno por renglón a 480 px); "Limpiar" (`.filters-clear`) ocupa solo el ancho de su contenido |
 | `SelectFilter` | `label`, `value` (`''` = todos), `onChange`, `options: {value,label}[]`, `allLabel?` (`null` = sin opción "Todos") | filtro de selección única |
-| `DateRangeFilter` | `label`, `value: {from,to}` ('YYYY-MM-DD' o ''), `onChange` | rango de fechas (ocupa 2 columnas); filtrar lo cargado con `inDateRange(iso, range)`; `EMPTY_RANGE` |
-| `SearchSelect` | `label`, `options`, `value: string[]` (vacío = todos), `onChange`, `placeholder?` | selección múltiple con buscador (`.msel`), botones Todos/Ninguno; cierra con Escape o clic fuera |
+| `DateRangeFilter` | `label`, `value: {from,to}` ('YYYY-MM-DD' o ''), `onChange` | rango de fechas (ocupa el doble que un filtro normal); filtrar lo cargado con `inDateRange(iso, range)`; `EMPTY_RANGE` |
+| `SearchSelect` | `label`, `options`, `value: string[]` (vacío = todos), `onChange`, `placeholder?` | selección múltiple con buscador (`.msel`), botones Todos/Ninguno; cierra con Escape o clic fuera. La flecha va a la izquierda del resumen (también en `CategoryProductPicker`) |
 | `SearchMultiSelect` | `options`, `value`, `onChange`, `placeholder?`, `id?` (del botón, para `<label htmlFor>`), `labelledBy?`, `disabled?`, `invalid?`, `describedBy?`, `onBlur?`, `buttonRef?` | el mismo control sin etiqueta propia, para un `.f` que ya tiene su `<label>` (formularios, campo personalizado MULTISELECT). Toda selección múltiple usa este control o `SearchSelect`, nunca una lista cruda de casillas |
+| `ComboSelect` | `options: ComboOption[]` (`{ value, label, hint? }`; `hint` = texto tenue que también se busca), `value` (`''`/null = ninguno), `onChange(value, option)` (`''`, null al quitar), `placeholder?`, `clearable?` (por defecto true: ✕), `loading?`, `disabled?`, `invalid?`, `required?`, `id?`, `aria-*`, `onBlur?` | selección ÚNICA con buscador sobre una lista local (catálogos, zonas…): combobox como `ClientPicker` (↑/↓/Enter/Escape, clic para reabrir) que filtra con `matchesQ` (etiqueta, valor o `hint`); Enter con el texto igual al valor o a la etiqueta de una opción la elige (lector de código de barras; `exactComboMatch` en `comboMatch.ts`). Úsalo en vez de un `<select>` cuando la lista es larga o se busca. En un `Field`: `ComboSelectInput` (`options`, `placeholder?`, `loading?`, `onPicked?(option)`; valor del formulario = `value`, `''` = ninguno). `<Field name="zoneType" label={t('…type')}><ComboSelectInput options={types} /></Field>` |
 | `QBox` + `matchesQ(q, ...texts)` | `value`, `onChange`, `placeholder?` | buscador libre sobre lo que se muestra: cada palabra de `q` debe aparecer en algún texto, sin mayúsculas ni acentos. Se aplica DESPUÉS de los filtros |
 | `Chip` | `tone?: 'neutral'\|'cap'\|'wh'\|'disp'\|'route'\|'deliv'\|'cod'\|'fail'\|'warn'`, `color?` (hex del catálogo), `title?`, `children` | píldora que nunca envuelve. Para estatus usa `StatusChip` (catálogo del tenant) |
 | `Modal` | `open`, `title`, `onClose`, `footer?`, `size?: 'sm'\|'md'\|'lg'`, `dismissible?` (false mientras guarda) | portal en `<body>`, `.scrim > .pal` con el padding del shell; Escape/clic fuera cierran; foco al primer control y vuelta al cerrar |
@@ -249,15 +255,32 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 - Toda columna que muestre un dato lleva `sortValue` (o `sortable` con orden del servidor); solo se quedan sin orden las
   columnas sin dato propio (acciones, casillas de selección). Columna compuesta ("Cliente · Ciudad") → el campo principal;
   chip de estatus → la etiqueta (`status ?? statusCode`), nunca el color.
+- **Pie de toda tabla** (con filas): rango y total ("1–25 de 551", también con una sola página), selector "Filas por página"
+  (10/25/50/100; el `pageSize` inicial se agrega si no es uno de ellos), botón Exportar (Excel/CSV/PDF, nota "Filas: N" con lo
+  que saldrá en el archivo) y ‹ › solo si hay más de una página. Envuelve en renglones a 360 px (sin scroll horizontal).
 - Lista completa (la mayoría de endpoints de catálogo): no pases `onSort` ni `onPage`; DataTable ordena con `sortValue` (orden
-  natural: `A-2` antes que `A-10`) y pagina con `pageSize`. Pasa `rows` memorizadas (`useMemo`): una lista nueva vuelve a la página 1.
-- Servidor (endpoints con `skip/take` y `total`, p. ej. auditoría): controla `sort`/`onSort` y `page`/`onPage`, pasa `total`, y pon
-  ambos en la clave de la consulta (`placeholderData: keepPreviousData` evita el parpadeo). `onSort` recibe `{ id, desc }` (id de la columna).
+  natural: `A-2` antes que `A-10`) y **pagina sola** (tamaño inicial `pageSize ?? 25`, cambiable con el selector; al cambiarlo
+  vuelve a la página 1). Pasa `rows` memorizadas (`useMemo`): una lista nueva vuelve a la página 1. Exporta todas las filas
+  cargadas en el orden actual, no solo la página visible.
+- `pagination={false}` (todas las filas, sin rango ni selector; Exportar sigue si `exportable`) solo cuando paginar esconde o
+  rompe algo: filas con controles editables y estado propio (p. ej. la captura por línea de Ajustes de inventario: al cambiar
+  de página se perdería lo escrito), o tablas con su propia carga incremental ("Ver más" de la Actividad reciente). Agrega
+  `exportable={false}` en tablas de apoyo dentro de un `Modal` donde el archivo no tenga sentido. Si no, deja la paginación.
+- Servidor (endpoints con `skip/take` y `total`): controla `sort`/`onSort`, `page`/`onPage` y el tamaño (`pageSize` +
+  `onPageSize`, que vuelve a la página 1), pasa `total`, y pon todo en la clave de la consulta (`placeholderData:
+  keepPreviousData` evita el parpadeo). `onSort` recibe `{ id, desc }` (id de la columna). Sin `onPageSize` no hay selector.
+  Pasa `exportRows` para que Exportar saque **todo lo filtrado** (no solo la página que llegó): el mismo `query` con
+  `fetchAllPages`; si el orden es local (sin `onSort`), DataTable reordena lo exportado como la tabla. En el almacén ya
+  existen `exportProducts(query)`, `exportInventoryBalances`, `exportInventoryTransactions`, `exportReceipts`,
+  `exportWarehouseTasks`, `exportPickBatches`, `exportPurchaseOrders` y `exportOrders` (`features/warehouse/api.ts`).
   ```tsx
   const [page, setPage] = useState(1)
-  const query = { skip: (page - 1) * 25, take: 25 }
+  const [pageSize, setPageSize] = useState(25)
+  const query = useMemo(() => ({ ...filtros, skip: (page - 1) * pageSize, take: pageSize }), [filtros, page, pageSize])
   const { data } = useQuery({ queryKey: ['/api/v1/audit/changes', query], queryFn: () => unwrap(api.GET('/api/v1/audit/changes', { params: { query } })), placeholderData: keepPreviousData })
-  <DataTable columns={cols} rows={data?.items ?? NO_ROWS} rowKey={(r) => r.id!} page={page} pageSize={25} total={data?.total ?? 0} onPage={setPage} />
+  <DataTable columns={cols} rows={data?.items ?? NO_ROWS} rowKey={(r) => r.id!} page={page} pageSize={pageSize} total={data?.total ?? 0}
+    onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1) }}
+    exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/audit/changes', { params: { query: { ...query, skip, take } } })))} />
   ```
 
 ## Almacén (`src/features/warehouse`, Lote F6)
@@ -266,8 +289,7 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   `useWarehouseZones/Bins/Docks(publicId, query?)`, `useProducts`, `useProduct`, `useProductInventoryKpis()` (KPIs de
   'Productos e inventario': `{ activeSkus, totalUnits, belowMin, serial }`, ver abajo), `useSerialProductCount()` (productos
   activos con rastreo SERIAL: lee todas las páginas de 200, hasta 25; `{ count, truncated }`), `useProductLots/Serials`, `useProductCategories`,
-  `useInventoryBalances`, `useWarehouseStockLines(publicId)` (todas las líneas de saldo de un almacén, páginas de 200 hasta
-  5 000; `{ items, total, truncated }`), `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
+  `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
   `useReceipts`, `useReceipt`, `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
   `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
   `usePurchaseOrderShortageLines`, `useDockAppointments`, `useCrossDockPlans`, `useCrossDockPlan`, `useCrossDockCandidates`,
@@ -287,14 +309,20 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   - `ProductPicker` (`GET /api/v1/products?search=&activeOnly=true`, 250 ms entre teclas, "SKU · Nombre", marca el dueño
     cliente; `ownOnly?`, `ownerClientPublicId?`, `warehousePublicId?`, `onlyAvailable?`, `includeInactive?` (omite `activeOnly`
     y marca "Inactivo"); `onChange(publicId, fila)` con `trackingTypeCode`).
-  - `BinPicker` (posiciones de un almacén: `GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false`, 250 ms
-    entre teclas —el API compara código de posición y de zona—, "Código · Zona"). Props: `warehousePublicId` (vacío =
-    deshabilitado con "Elija primero un almacén"; al cambiarlo quita el valor con `onChange(null, null)`), `value` (id de la
-    posición, `number | null`), `onChange(binId, fila)`, `zoneTypeCodes?` (filtro en cliente, p. ej. `['STAGING','CROSSDOCK']`),
-    `onlyWithStock?`, `suggestedBinIds?` (van primero con la marca "Sugerida"), `placeholder?` (p. ej. "Staging por defecto"
-    cuando vacío = lo decide el servidor), `disabled?`, `invalid?`, `required?`, `aria-*`, `onBlur?`. Si el lector manda Enter
-    antes de la pausa de 250 ms, busca de inmediato y elige al llegar la respuesta (código exacto, o el único resultado). Un
-    valor fuera de la lista (posición dada de baja) se muestra buscando en la lista del almacén con `includeInactive=true`.
+  - `BinPicker` (posiciones de un almacén: `GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false&take=50`
+    —listado paginado desde el Lote 1—, 250 ms entre teclas —el API compara código de posición, zona, pasillo, rack, nivel y
+    posición—, "Código · Zona"). Props: `warehousePublicId` (vacío = deshabilitado con "Elija primero un almacén"; al
+    cambiarlo quita el valor con `onChange(null, null)`), `value` (id de la posición, `number | null`), `onChange(binId, fila)`,
+    `zoneTypeCodes?` (p. ej. `['STAGING','CROSSDOCK']`: pide las zonas del almacén y manda sus ids como `zoneIds`; ninguna zona
+    de esos tipos = sin opciones), `onlyWithStock?`, `suggestedBinIds?` (se piden aparte con `binIds` —mismo texto y filtros—
+    y van primero con la marca "Sugerida"), `placeholder?` (p. ej. "Staging por defecto" cuando vacío = lo decide el
+    servidor), `disabled?`, `invalid?`, `required?`, `aria-*`, `onBlur?`. Si el lector manda Enter antes de la pausa de
+    250 ms, busca de inmediato y elige al llegar la respuesta (código exacto, o el único resultado). Un valor que no está en
+    la lista (posición dada de baja, o fuera de la primera página) se muestra pidiéndolo por id (`binIds=<id>`,
+    `includeInactive=true`, `take=1`).
+    Listado paginado `{ total, skip, take, items }` (take por defecto 100, máx. 200): quien necesite TODAS las posiciones (el
+    selector de posiciones del alta de un conteo) las lee con `fetchAllPages` y filtros de servidor (`zoneIds`); nunca asumas
+    que una sola llamada trae el almacén completo.
   Dentro de un `Field`: `WarehousePickerInput` (valor publicId o null), `ProductPickerInput` (`onPicked?(fila)` para condicionar
   lote/series) y `BinPickerInput` (mismas props que `BinPicker` salvo value/onChange, + `onPicked?(fila)`; el valor del
   formulario es el id **como texto** —`''` = ninguna—, igual que un `Select`: el request hace `Number(v.binId)`):
@@ -310,19 +338,61 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   productos dados de baja.
   `isAccessDenied(error)` (`accessDenied.ts`) para avisar junto a un campo cuando una consulta secundaria da 403.
 - Ubicaciones (`/warehouse/locations`, `LocationsScreen`; maqueta `ubicaciones()`): almacén arriba (`?warehouse=<publicId>`;
-  sin él, el primero activo) y "Nueva posición" (`warehouse.manage`), río de ocupación por zona (`.river`/`.node`/`.pipe` de
-  `analytics/pulse.css` dentro de un contenedor `.pulse`; cada nodo con su barra `.spark` de 7 segmentos al % ocupado), filtros Zona/Tipo/Producto/Estado (`SearchSelect`, en cliente) y tabla Posición, Zona, Cantidad,
-  Producto, Ocupación, Estado (orden local en todas; Producto ordena por el primero que se muestra). Lógica pura en `locations.ts` (`zoneOccupancy`,
-  `productsByBin`, `buildLocationRows`, `filterLocationRows`). Las posiciones no tienen capacidad en el esquema: el estado
-  es Vacía/Ocupada y la barra de Ocupación es relativa a la posición con más unidades del almacén.
+  sin él, el primero activo) y "Nueva posición" (`warehouse.manage`); río con un recuadro por zona (`.river`/`.node`/`.pipe` de
+  `analytics/pulse.css` dentro de un contenedor `.pulse`) con lo ocupado vs. la capacidad de la zona (`capacityQty` y
+  `qtyOnHandInCapacityBins` de `WarehouseZoneDto`: Σ cupo de sus posiciones y su existencia), "N posiciones sin cupo" si hay
+  posiciones sin cupo y, si ninguna tiene cupo, la existencia total "sin cupo configurado" (nunca un % inventado). Cada
+  recuadro es un botón (`.loc-node`, `aria-pressed`, activo `.on`) que filtra la tabla por su zona: `?zone=<id>` (lo lee
+  también el filtro Zona; otro clic o "Limpiar" lo quita). Sin barras de 7 días (no hay historial diario). Filtros al
+  servidor: Zona (`zoneIds`), Tipo (→ ids de las zonas de ese tipo), Producto (`ProductMultiFilter` → `productPublicIds`) y
+  Estatus (`occupancy`: EMPTY/PARTIAL/FULL/NO_CAPACITY); tabla paginada en el servidor (Exportar = todo lo filtrado con
+  `fetchAllPages`) con Posición, Zona, Cantidad, Producto (nombre si hay uno, "N productos" si varios), Cupo, Ocupación
+  (barra con el % real si hay cupo) y Estatus (Vacía/Parcial/Llena/Sin cupo). Lógica pura en `locations.ts`
+  (`zoneCapacities`, `binOccupancy`, `binFillPct`, `binProductCell`, `toggleZoneSelection`, `parseZoneParam`,
+  `buildBinListQuery`).
 - `BinModal` (`BinModal.tsx`): alta/edición de una posición, compartido por la ficha del almacén (pestaña Posiciones) y
-  Ubicaciones. Props `publicId` (almacén), `zones` (las del almacén), `bin` (`null` = alta), `open`, `onClose`; guarda con
-  `useSaveWarehouseBin` (invalida posiciones, zonas y almacenes). Muéstralo dentro de `<Can perm="warehouse.manage">`.
-  `ReadOnlyField` (mismo archivo) = campo inmutable (código, zona) de los modales de la ficha.
+  Ubicaciones. Props `publicId` (almacén), `zones` (las del almacén; el alta ofrece solo las activas, en un `ComboSelect` con
+  buscador "Código · Nombre" y el tipo como `hint`: `zoneOptions` de `warehouseFilters.ts`), `bin` (`null` = alta), `open`,
+  `onClose`; guarda con `useSaveWarehouseBin` (invalida posiciones, zonas y almacenes). "Cupo máximo" (`maxCapacityQty`,
+  entero > 0, opcional; en edición, vaciarlo manda `clearMaxCapacity`). Muéstralo dentro de `<Can perm="warehouse.manage">`.
+  `ReadOnlyField` (mismo archivo) = campo inmutable o derivado (código, zona, estado, país), con su `<label htmlFor>`.
   ```tsx
   <Can perm="warehouse.manage"><button className="btn flow" onClick={() => setOpen(true)}>{t('warehouse.bins.new')}</button></Can>
   <BinModal publicId={warehousePublicId} zones={zones} bin={null} open={open} onClose={() => setOpen(false)} />
   ```
+- `ZoneModal` (`ZoneModal.tsx`, Lote 1): alta/edición de una zona (`publicId`, `zone` —null = alta—, `open`, `onClose`), la
+  comparten la lista de almacenes y la pestaña Zonas de la ficha. Código editable también al editar (obligatorio, formato de
+  código; el 409 'Ya existe una zona con ese código en el almacén.' se pone bajo el campo), Nombre y Tipo (`ComboSelectInput`
+  sobre `useLookups('ZoneType')`; en edición, quitarlo manda `zoneType: ''` = sin tipo).
+  `<ZoneModal publicId={w.publicId} zone={editing} open={editing !== null} onClose={() => setEditing(null)} />`
+- `PostalLocalityPicker` (`PostalLocalityPicker.tsx`, Lote 1): Ciudad y código postal del almacén en UN combobox sobre
+  `usePostalLocalities(search)` (`GET /api/v1/postal-localities?search=&take=30`: catálogo USPS de EE. UU. y PR —PR primero—
+  por ciudad postal, municipio o prefijo de ZIP; 250 ms entre teclas; 403 = aviso sin sacar de la pantalla); opciones
+  `localityOptionLabel` ("00952 · SABANA SECA (Toa Baja), PR": municipio solo si difiere de la ciudad postal; fuera de PR
+  " · País": "10001 · NEW YORK, NY · Estados Unidos"); Enter con un ZIP completo lo elige. El campo muestra "Ciudad · ZIP" con
+  lo guardado (aunque no venga del catálogo). Props `city`, `postalCode`, `onChange(localidad | null)`, `placeholder?`,
+  `disabled?`, `invalid?`, `aria-*`. En un formulario: `<Field name="city">` + `PostalLocalityPickerInput` (`fields?` = nombres
+  de `postalCode`/`state`/`country` si no son esos): al elegir pone Ciudad = `localityCity` (el municipio con acentos, o la
+  ciudad postal) y llena ZIP, Estado y País (`countryCode` del lookup `Country`) con `setValue`; ✕ vacía ciudad, ZIP y
+  estado. `DerivedLocalityFields` pinta Estado y País (etiqueta del catálogo) de solo lectura.
+  ```tsx
+  <Field name="city" label={t('warehouse.postalPicker.label')}><PostalLocalityPickerInput /></Field>
+  <DerivedLocalityFields />
+  ```
+- Almacenes (`/warehouse/warehouses`, `WarehouseListScreen`; maqueta `almacenes()`, Lote 1): filtros arriba en el cliente
+  (Código, Nombre, Tipo de zona —`zoneTypeCodes`—, Estatus como `SearchSelect`; Dirección como texto sobre dirección, ciudad,
+  estado y ZIP: `filterWarehouseRows` en `warehouseFilters.ts`), sin `QBox`; maestro-detalle `.whs-cols` (`warehouse.css`:
+  tabla + panel de 300–420 px; una columna bajo 720 px): tabla Código, Nombre, Dirección, Zonas, Estatus y el elegido
+  (`?warehouse=<publicId>`, por defecto el primero por código; fila `.sel`) con dirección, estatus, lápiz (abre la ficha) y
+  "Zonas de este almacén" (fila `.unrow` por zona activa: el cuerpo abre `ZoneModal`; papelera = baja, con `aria-disabled` y
+  el motivo en el tooltip si la zona tiene posiciones). Alta con `PostalLocalityPickerInput` y la casilla "Activo" informativa.
+- Ficha del almacén (`WarehouseDetailScreen`, Lote 1): Datos con `PostalLocalityPickerInput` + `DerivedLocalityFields`; Zonas con
+  filtros Código/Nombre/Tipo en el cliente + "Incluir inactivas", clic en la fila = `ZoneModal`, baja/reactivación como íconos
+  (`IconPower`/`IconRotateCcw`); Posiciones paginada en el servidor (`binsQuery` de `warehouseFilters.ts`: Código → `search`,
+  Zona → `zoneIds`, Pasillo/Rack/Nivel/Posición con 300 ms de pausa, "Incluir inactivas", "Solo con existencia"; Exportar =
+  `exportWarehouseBins(publicId, query)`), columnas Cupo y Ocupación, clic en la fila = `BinModal`. Controles sueltos de
+  filtro en `filterControls.tsx`: `TextFilter` (`label`, `value`, `onChange`, `placeholder?`) y `ToggleFilter` (`label`,
+  `checked`, `onChange`).
 - `ProductEditorModal` (`ProductEditorModal.tsx`, maqueta `renderProductModalHtml`): el ÚNICO alta/edición de producto (no hay
   pestaña "Datos"). Props `open`, `product: ProductDetailDto | null` (`null` = "Nuevo producto"), `onClose`, `onCreated?(publicId)`.
   Campos en el orden de la maqueta (SKU —bloqueado al editar— · Unidad, Nombre, Categoría · Rastreo, Dueño del inventario, Costo de

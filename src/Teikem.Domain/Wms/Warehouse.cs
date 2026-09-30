@@ -64,6 +64,11 @@ public class WarehouseBin
     public string? Level { get; set; }
     public string? Position { get; set; }
     public decimal? MaxWeightKg { get; set; }
+    /// <summary>
+    /// Cupo máximo de la posición en unidades de producto (null = sin configurar). La capacidad de una zona NO se guarda: es
+    /// la suma del cupo de sus posiciones activas con cupo (CK_WarehouseBin_MaxCapacityQty: null o &gt; 0).
+    /// </summary>
+    public int? MaxCapacityQty { get; set; }
     public bool IsActive { get; set; } = true;
 
     public WarehouseZone? Zone { get; set; }

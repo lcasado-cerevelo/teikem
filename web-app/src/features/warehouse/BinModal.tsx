@@ -1,26 +1,36 @@
 // Modal de alta/edición de una posición (`warehouse.manage`): POST /warehouses/{publicId}/bins y PATCH .../bins/{binId}.
 // Lo comparten la ficha del almacén (pestaña Posiciones) y Ubicaciones (botón "Nueva posición", maqueta `openBinModal()`).
+// Lote 1 (cambios de Almacén): la Zona del alta es un combobox con buscador (`ComboSelectInput`: código, nombre o tipo) y
+// hay "Cupo máximo" (unidades, entero > 0, opcional); en edición, vaciarlo manda `clearMaxCapacity` (quitar el cupo).
 // `ReadOnlyField` es el campo inmutable (código, zona) que también usan los demás modales de la ficha del almacén.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { useId, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, Modal, NumberInput, Select, TextInput, toast } from '../../kernel/ui'
+import { ComboSelectInput, Field, Form, Modal, NumberInput, TextInput, toast } from '../../kernel/ui'
 import { useSaveWarehouseBin, type WarehouseBinDto, type WarehouseZoneDto } from './api'
+import { zoneOptions } from './warehouseFilters'
 
-/** Texto disabled fuera del formulario, para un campo inmutable (code, zone). */
+/** Texto disabled fuera del formulario, para un campo inmutable (code, zone) o derivado (estado, país). */
 export function ReadOnlyField({ label, value, help }: { label: string; value: string; help?: string }) {
+  const id = useId()
   return (
     <div className="f">
-      <label>{label}</label>
-      <input value={value} disabled readOnly />
-      {help && <p className="help">{help}</p>}
+      <label htmlFor={id}>{label}</label>
+      <input id={id} value={value} disabled readOnly aria-describedby={help ? `${id}-help` : undefined} />
+      {help && (
+        <p id={`${id}-help`} className="help">
+          {help}
+        </p>
+      )}
     </div>
   )
 }
 
 const MAX_WEIGHT_DECIMALS = 1000
+/** Tope de `MaxCapacityQty` (INT del esquema). */
+const MAX_CAPACITY = 2_147_483_647
 
 export interface BinModalProps {
   /** publicId del almacén dueño de la posición. */
@@ -37,6 +47,7 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
   const t = useT()
   const save = useSaveWarehouseBin()
   const isEdit = bin !== null
+  const options = useMemo(() => zoneOptions(zones), [zones])
 
   const schema = useMemo(
     () =>
@@ -53,6 +64,13 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
             .nullable()
             .refine((v) => v == null || v > 0, t('warehouse.bins.errors.maxWeightPositive'))
             .refine((v) => v == null || Number.isInteger(Math.round(v * MAX_WEIGHT_DECIMALS)), t('warehouse.bins.errors.maxWeightDecimals')),
+          maxCapacityQty: z
+            .number()
+            .nullable()
+            .refine((v) => v == null || !Number.isNaN(v), t('warehouse.bins.errors.maxCapacityInteger'))
+            .refine((v) => v == null || Number.isNaN(v) || Number.isInteger(v), t('warehouse.bins.errors.maxCapacityInteger'))
+            .refine((v) => v == null || Number.isNaN(v) || v > 0, t('warehouse.bins.errors.maxCapacityPositive'))
+            .refine((v) => v == null || Number.isNaN(v) || v <= MAX_CAPACITY, t('warehouse.bins.errors.maxCapacityTooLarge')),
         })
         .refine(
           (v) => isEdit || v.code.trim() !== '' || [v.aisle, v.rack, v.level, v.position].some((x) => x.trim() !== ''),
@@ -60,9 +78,8 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
         ),
     [t, isEdit],
   )
-  const form = useForm({
-    resolver: zodResolver(schema),
-    values: {
+  const values = useMemo(
+    () => ({
       zoneId: bin?.zoneId != null ? String(bin.zoneId) : '',
       code: bin?.code ?? '',
       aisle: bin?.aisle ?? '',
@@ -70,8 +87,11 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
       level: bin?.level ?? '',
       position: bin?.position ?? '',
       maxWeightKg: bin?.maxWeightKg ?? null,
-    },
-  })
+      maxCapacityQty: bin?.maxCapacityQty ?? null,
+    }),
+    [bin],
+  )
+  const form = useForm({ resolver: zodResolver(schema), values })
   const formId = 'warehouse-bin-save'
 
   const close = () => {
@@ -111,6 +131,11 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
                 level: v.level,
                 position: v.position,
                 ...(v.maxWeightKg != null ? { maxWeightKg: v.maxWeightKg } : bin.maxWeightKg != null ? { clearMaxWeight: true } : {}),
+                ...(v.maxCapacityQty != null
+                  ? { maxCapacityQty: v.maxCapacityQty }
+                  : bin.maxCapacityQty != null
+                    ? { clearMaxCapacity: true }
+                    : {}),
               },
             })
             toast.success(t('warehouse.bins.saved'))
@@ -126,6 +151,7 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
                 level: v.level || null,
                 position: v.position || null,
                 maxWeightKg: v.maxWeightKg,
+                maxCapacityQty: v.maxCapacityQty,
               },
             })
             toast.success(t('warehouse.bins.created'))
@@ -141,7 +167,7 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
         ) : (
           <div className="r2">
             <Field name="zoneId" label={t('warehouse.bins.zone')} required>
-              <Select options={zones.map((z) => ({ value: String(z.id), label: z.code ?? '' }))} placeholder="" />
+              <ComboSelectInput options={options} placeholder={t('warehouse.bins.zonePlaceholder')} />
             </Field>
             <Field name="code" label={t('warehouse.bins.code')}>
               <TextInput />
@@ -159,9 +185,12 @@ export function BinModal({ publicId, zones, bin, open, onClose }: BinModalProps)
             <TextInput />
           </Field>
         </div>
-        <div className="r2">
+        <div className="r3">
           <Field name="position" label={t('warehouse.bins.position')}>
             <TextInput />
+          </Field>
+          <Field name="maxCapacityQty" label={t('warehouse.bins.maxCapacity')} help={t('warehouse.bins.maxCapacityHelp')}>
+            <NumberInput min={1} step="1" inputMode="numeric" />
           </Field>
           <Field name="maxWeightKg" label={t('warehouse.bins.maxWeight')}>
             <NumberInput min={0} step="0.001" />

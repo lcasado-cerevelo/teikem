@@ -1396,8 +1396,9 @@ El código de almacén es único por compañía. Elige otro código; el existent
 dado de baja.
 
 **¿Qué significa "El código del almacén no se puede cambiar."? (400)**
-El código de un almacén (o de una zona o un muelle) es inmutable una vez creado. Si lo escribiste mal, da de baja
-el almacén y crea uno nuevo con el código correcto (solo si sigue vacío).
+El código de un almacén (o de un muelle: `El código del muelle no se puede cambiar.`) es inmutable una vez creado. Si lo
+escribiste mal, da de baja el almacén y crea uno nuevo con el código correcto (solo si sigue vacío). El código de una
+**zona** sí se puede editar desde el Lote 11 (ver la sección "Lote 11" al final).
 
 **¿Qué significa "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja."? (409)**
 La baja de un almacén es **definitiva**: solo procede si no tiene saldo (en mano ni reservado) y no tiene recibos,
@@ -2449,3 +2450,157 @@ WMS heredado."*, sin importar a qué servidor apunte la cadena de conexión.
 Corra `dotnet run --project src/Teikem.Api -- db-init` sobre esa base (es aditivo: no borra nada) para que se
 apliquen los catálogos nuevos del Lote 10 (los términos de pago de QuickBooks y el motivo `OPENING_BALANCE`), y vuelva
 a correr el dry-run.
+
+## Lote 11 — Cambios de Almacén, tanda 1 (cupo de posición, ocupación, zonas, posiciones, ubicaciones, ciudades y exportación)
+
+Capítulos: [06 — Inventario y almacén, sección 1](06-inventario-y-almacen.md#1-almacenes-y-ubicaciones) y
+[F6 — Almacén e inventario](frontend/f6-almacen-e-inventario.md). Cierre y decisiones: `docs/lote11-decisiones.md`.
+Los mensajes marcados "pantalla" los muestra la interfaz antes de llamar al servidor; los demás los manda el API (con el
+código HTTP indicado).
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "El cupo máximo de la posición debe ser mayor que cero."? (400, también en pantalla)**
+Escribió `0` o un número negativo en "Cupo máximo" al crear o editar una posición. El cupo son las unidades que caben en
+la posición y, si lo indica, debe ser un entero mayor que cero. Si la posición no tiene un límite, deje el campo vacío
+(vacío = sin cupo). Por el API el error viene en `errors.maxCapacityQty`.
+
+**¿Qué significa "El cupo máximo debe ser un número entero."? (pantalla)**
+Escribió decimales o un texto en "Cupo máximo". Use un número entero (por ejemplo `25`).
+
+**¿Qué significa "El cupo máximo es demasiado grande."? (pantalla)**
+El cupo pasa de 2.147.483.647, el máximo que admite el sistema. Escriba una cantidad realista o deje el campo vacío.
+
+**¿Qué significa "Estado de ocupación desconocido: 'X'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY."? (400)**
+Solo el API: la consulta de posiciones (`GET /api/v1/warehouses/{publicId}/bins`) recibió en `occupancy` un valor que no
+existe. Los valores válidos son `EMPTY` (vacía), `PARTIAL` (parcial), `FULL` (llena) y `NO_CAPACITY` (ocupada sin cupo);
+se pueden mandar varios repitiendo el parámetro. La pantalla nunca lo produce: sus filtros usan esos cuatro valores.
+
+**¿Qué significa "La zona no se puede mover a otro almacén."? (400)**
+Solo el API: el `PATCH` de una zona trajo `warehouseId`. El código, el nombre y el tipo de una zona se editan, pero la zona
+pertenece al almacén donde nació. Si necesita la misma zona en otro almacén, créela allá.
+
+**¿Qué significa "Ya existe una zona con ese código en el almacén."? (409)**
+Otra zona del mismo almacén ya usa ese código. Desde el Lote 11 también aparece al **editar** el código de una zona: en la
+pantalla el mensaje sale debajo del campo Código y el formulario sigue abierto; elija un código distinto. El mismo código sí
+puede existir en almacenes diferentes.
+
+**Ya no aparece "El código de la zona no se puede cambiar.", ¿qué pasó?**
+Se retiró a propósito: el código de una zona ahora se puede editar (Almacenes → clic en la zona, o Ficha › Zonas). Cambiarlo
+no mueve las posiciones ni las existencias de la zona. Si un manual o una captura vieja lo menciona, ya no aplica. Lo que
+sigue fijo es el almacén de la zona, y el código y la zona de una **posición**.
+
+**¿Qué significa "El código es obligatorio." al editar una zona? (400 / pantalla)**
+Vació el campo Código de la zona. Al editar, el código es obligatorio como al crear: déjelo con su valor actual o escriba
+otro (letras, números, guion y guion bajo, máximo 30; si no cumple sale `El código solo admite letras, números, guion y
+guion bajo (máximo 30).`).
+
+**¿Qué significa "Zona no encontrada." al listar posiciones? (404)**
+El filtro `zoneId` del listado de posiciones apunta a una zona que no es del almacén consultado (o no existe). Elija una
+zona del propio almacén. (`zoneIds`, en plural, no da este error: un id ajeno simplemente no devuelve posiciones.)
+
+**¿Qué significa "No hay ciudades ni códigos postales que coincidan."? (pantalla)**
+En el selector "Ciudad o código postal" no hay ninguna localidad del catálogo con lo que escribió. Pruebe con menos letras,
+con el nombre del municipio o con los primeros dígitos del código postal. La búsqueda no distingue mayúsculas ni acentos.
+
+**¿Qué significa "Su usuario no puede consultar el catálogo de ciudades."? (pantalla)**
+El servidor negó la consulta del catálogo de localidades a esa sesión. El catálogo solo pide una sesión iniciada, así que lo
+normal es una sesión vencida: vuelva a iniciar sesión. Si persiste, avise a soporte.
+
+**¿Qué significa "Ninguna posición coincide con los filtros."? (pantalla, Ubicaciones)**
+Los filtros combinados no dejan ninguna posición (por ejemplo, la zona A con un tipo de zona que la zona A no tiene). Quite
+algún filtro o use **Limpiar**.
+
+**¿Qué significa "No se pudo generar el archivo. Intente de nuevo."? (pantalla)**
+Falló la generación del Excel, CSV o PDF, o alguna de las lecturas de la consulta completa de una lista del servidor.
+Vuelva a intentar; si la lista es muy grande, afine los filtros. Si sigue, avise a soporte con el nombre de la pantalla y
+el formato.
+
+**¿Qué significa "Se exportaron las primeras {count} filas (límite de exportación). Afine los filtros para exportar el resto."? (aviso)**
+La consulta tiene más de 10.000 filas y el archivo lleva solo las primeras 10.000. Filtre por almacén, fecha o estatus y
+exporte por partes.
+
+**¿Qué significa "Solo se listan las primeras {count} posiciones: elija zonas para acotar la lista."? (pantalla, Nuevo conteo cíclico)**
+El almacén tiene más posiciones de las que el selector puede cargar (10.000). Elija primero una o varias zonas y vuelva a
+abrir la lista de posiciones.
+
+### Preguntas frecuentes
+
+**¿Por qué la ocupación dice "sin cupo configurado"?**
+En Ubicaciones, el recuadro de una zona dice "unidades · sin cupo configurado" cuando **ninguna** de sus posiciones activas
+tiene "Cupo máximo": la ocupación se calcula contra la suma de los cupos y sin cupos no hay contra qué comparar (por eso
+solo muestra las unidades que hay). Escriba el cupo de las posiciones (Ficha del almacén › Posiciones, o "Nueva
+posición"). En una posición suelta, "Ocupada sin cupo" significa lo mismo: tiene existencia pero no cupo.
+
+**¿Por qué el recuadro de una zona dice "N posiciones sin cupo"?**
+Porque esa zona mezcla posiciones con cupo y sin cupo. El porcentaje solo cuenta las que tienen cupo (suma de cupos contra
+lo que hay en esas mismas posiciones); las demás se avisan aparte para que no falseen el número.
+
+**¿Cómo se calcula "Vacía", "Parcial" y "Llena" en una posición?**
+Se compara la existencia **en mano** (incluye lo reservado) con el cupo: sin existencia es Vacía; con existencia y menos que
+el cupo, Parcial; con existencia igual o mayor que el cupo, Llena; con existencia y sin cupo, Ocupada sin cupo. Si la
+existencia pasa del cupo, el porcentaje puede pasar de 100 %.
+
+**¿Cómo exporto una tabla y qué exporta?**
+Use el botón **Exportar** del pie de la tabla y elija Excel (.xlsx), CSV (.csv) o PDF (.pdf). Exporta **todas las filas que
+cumplen los filtros de la pantalla**, no solo la página que ve, con las columnas visibles (sin la de acciones) y el mismo
+texto que muestra la pantalla; en las listas que vienen del servidor lee todo el resultado, hasta 10.000 filas. El archivo se
+llama como la tabla más la fecha (por ejemplo `almacenes-2026-09-29.xlsx`) y se genera en su navegador.
+
+**En el CSV algunos textos empiezan con un apóstrofo, ¿es un error?**
+No. Es una protección: si un texto empieza con `=`, `+`, `-` o `@`, Excel lo podría tomar por una fórmula, así que el CSV lo
+guarda con un apóstrofo delante. Los números no se tocan.
+
+**En el PDF salen signos de interrogación (?) en lugar de un símbolo.**
+El PDF usa letra estándar que solo cubre caracteres latinos: tildes y eñes salen bien; otros símbolos (por ejemplo, letras de
+otros alfabetos) se sustituyen. El Excel y el CSV sí los conservan.
+
+**¿Por qué mi ciudad sale en mayúsculas?**
+Porque la ciudad viene del catálogo postal de USPS. Fuera de Puerto Rico se guarda el nombre postal oficial, que está en
+mayúsculas y sin acentos (`NEW YORK`). En Puerto Rico se guarda el **municipio** con su escritura normal (`Toa Baja`), aunque
+la lista de opciones muestre el nombre postal en mayúsculas y el municipio entre paréntesis (`00952 · SABANA SECA (Toa Baja), PR`).
+Desde la pantalla la ciudad se elige del catálogo, no se escribe a mano.
+
+**No encuentro mi ciudad o mi código postal en el selector.**
+El catálogo tiene 42.522 códigos postales de Estados Unidos, sus territorios y Puerto Rico. Busque por el municipio o por los
+primeros dígitos del código postal. Si de verdad no existe, avise a soporte: el catálogo se carga desde el seed y un
+cambio directo en la tabla puede tardar hasta una hora en verse.
+
+**¿Por qué no puedo escribir el Estado ni el País de un almacén?**
+Porque se llenan solos con la ciudad o código postal que elija (aparecen deshabilitados: "Se llena según la ciudad
+elegida."). Si no elige ninguna localidad, el país queda en Puerto Rico. Un almacén cuya dirección no está en el catálogo no
+puede capturar su estado desde la pantalla.
+
+**¿Por qué no puedo cambiar el código ni la zona de una posición?**
+Es una regla del sistema: el código y la zona de una posición quedan fijos desde el alta y el mensaje es `El código y la zona
+de la posición no se pueden cambiar.` (400). Sí puede editar pasillo, rack, nivel, posición, cupo y peso máximo (cambiar las
+partes **no** recalcula el código). Si necesita otro código u otra zona, cree una posición nueva y dé de baja la anterior
+(solo procede si no tiene inventario ni tareas abiertas).
+
+**¿Puedo cambiar el código de una zona? ¿Se pierden sus posiciones?**
+Sí, y no se pierde nada: las posiciones y las existencias siguen ligadas a la zona. Solo el código nuevo debe ser distinto del
+de las demás zonas del almacén. Los códigos de las posiciones no cambian.
+
+**¿Por qué la papelera de una zona está deshabilitada?**
+En "Zonas de este almacén" (lista de Almacenes) la papelera se deshabilita cuando la zona tiene posiciones activas; el
+mensaje al pasar el cursor es "No se puede dar de baja: esta zona tiene posiciones creadas". Dé de baja o mueva primero sus
+posiciones. El servidor aplica la misma regla: `La zona tiene posiciones activas; desactívelas primero.` (409).
+
+**¿Por qué el filtro "Código" de Posiciones (o "Posición" de Ubicaciones) también encuentra por pasillo, rack o zona?**
+Porque ese cuadro busca el texto dentro del código, del código de la zona, del pasillo, del rack, del nivel y de la
+posición (antes solo miraba código y zona, y no se podía buscar por lo que la tabla llama "ubicación"). Para afinar use los
+filtros Pasillo, Rack, Nivel y Posición de la ficha.
+
+**Ordené por una columna y no quedó todo el resultado ordenado.**
+En las listas paginadas por el servidor (Posiciones, Ubicaciones, Productos, Inventario, Recibos, etc.) el orden por columna
+se aplica solo a las filas de la página que está viendo. Para ver todo en orden, exporte la tabla y ordénela en Excel, o use
+los filtros para reducir el resultado a una sola página.
+
+**¿Por qué ya no veo "Mostrar" (solo activos / incluir inactivos) en Almacenes?**
+La lista de almacenes ahora trae todos y se filtra con **Estatus** (junto a Código, Nombre, Dirección y Tipo). Los inactivos
+se ven atenuados. Para ver solo los activos, elija "Activo" en el filtro Estatus.
+
+**La app de almacén ya instalada no encuentra la posición que escaneo (Acomodar, Despacho, Conteo).**
+Es esperable con la versión anterior de la app: el listado de posiciones del servidor cambió de formato (ahora viene
+paginado) y la app vieja no lo entiende. Instale la versión nueva de la app. Esta conclusión sale de comparar el código de
+las dos versiones; no se probó en un aparato.

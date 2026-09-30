@@ -41,6 +41,9 @@
 .lst th .sortbtn{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;display:inline-flex;align-items:center;gap:2px;cursor:pointer;text-align:inherit}
 .lst th .sortbtn:hover{color:var(--flow-2)}
 .lst th.n .sortbtn{justify-content:flex-end}
+/* Lote 1 (Almacén): el encabezado de una columna numérica usa la letra de los demás encabezados (base.css le ponía la
+   monoespaciada de las cifras y se veía de otro tamaño); las celdas numéricas siguen en monoespaciada. */
+.dt .lst th.n{font-family:inherit}
 .lst tr.click{cursor:pointer}
 /* fila atenuada (rowClassName 'dim'): registro inactivo, como la maqueta (opacity .55) */
 .lst tr.dim,.dt-card.dim{opacity:.55}
@@ -70,15 +73,30 @@
 .dt-sortbar select{flex:1 1 140px;min-width:0;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:6px 8px;color:var(--text);font-size:12.5px}
 .dt-pager{display:flex;align-items:center;gap:8px 12px;justify-content:space-between;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--line-2);font-size:12px;color:var(--muted)}
 .dt-pager .pg{display:flex;align-items:center;gap:6px}
+/* "Filas por página": texto + select compacto (el chevron izquierdo lo pone base.css; solo color de fondo, no shorthand) */
+.dt-size{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.dt-size select{background-color:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding-top:4px;padding-bottom:4px;padding-right:8px;color:var(--text);font-size:12px}
+.dt-size select:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.dt-range{white-space:nowrap}
+/* Exportar (ExportMenu): a la derecha del pie, antes de la paginación; el menú abre hacia arriba (el pie es lo último
+   de la tabla) con el mismo aspecto que el menú de idioma (.langdd .menu de base.css) */
+.dt-export{position:relative;margin-left:auto;flex:none}
+.dt-export-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 40px -12px rgba(0,0,0,.5);padding:5px;min-width:170px;z-index:40}
+.dt-export-menu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;text-align:left;color:var(--text)}
+.dt-export-menu button:hover,.dt-export-menu button:focus-visible{background:var(--panel-2)}
+.dt-export-note{padding:6px 10px 3px;margin-top:3px;border-top:1px solid var(--line-2);font-size:11.5px;color:var(--faint);white-space:nowrap}
 .dt-loading{display:flex;justify-content:center;padding:18px}
 
 /* ===== Filtros ===== */
-.filters .f.span2{grid-column:span 2}
-/* 'Limpiar' usa el ancho de su contenido (no se estira a la columna) y se alinea con el borde inferior de los controles */
-.filters .filters-clear{justify-self:start;align-self:end;width:auto}
+/* .span2 (rango de fechas): el doble de base y de crecimiento que un filtro normal (2 × 140 px + el gap) */
+.filters>.f.span2{flex:2 1 289px}
+/* 'Limpiar' usa el ancho de su contenido (no crece) y se alinea con el borde inferior de los controles */
+.filters .filters-clear{flex:none;align-self:flex-end;width:auto}
 .drange{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px}
 .filters .msel>button{padding:7px 9px}
 .msel>button .sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* flecha a la izquierda (primer hijo del botón), mismo tamaño y tono que la de los <select> nativos (base.css) */
+.msel>button>svg{width:14px;height:14px;color:var(--muted)}
 .msel .mi.on{background:var(--flow-bg)}
 .msel .mi .sub{color:var(--faint);font-size:11.5px}
 
@@ -103,7 +121,9 @@
 .cpick{position:relative;min-width:0}
 .cpick .cpin{display:flex;align-items:center;gap:6px}
 .cpick .cpin input{flex:1;min-width:0}
-.cpick .mp{width:100%;max-width:none;min-width:0}
+/* .msel.cpick (no solo .cpick): debe ganarle a `.msel .mp` de base.css (230-300 px), que se carga después — la lista mide
+   lo mismo que el campo */
+.msel.cpick .mp,.cpick .mp{width:100%;max-width:none;min-width:0}
 .cpick .mi .code{font-family:var(--mono);color:var(--flow-2)}
 
 /* ===== Spinner ===== */
@@ -111,7 +131,7 @@
 .spin-wrap.block{display:flex;justify-content:center;padding:24px}
 
 @media(max-width:480px){
-  .filters .f.span2{grid-column:auto}
+  .filters>.f.span2{flex-basis:100%}
   .dt-card dl{grid-template-columns:minmax(0,1fr)}
   .dt-card dt{padding-top:4px}
 }
@@ -121,7 +141,7 @@
 .cpp .cpp-box{display:flex;align-items:center;gap:4px;background:var(--bg-2);border:1px solid var(--line);border-radius:9px;padding:2px 4px 2px 0;min-width:0;max-width:100%}
 .cpp .cpp-box:hover{border-color:var(--flow-line)}
 .cpp .cpp-trigger{flex:1;display:flex;align-items:center;gap:8px;min-width:0;background:transparent;border:none;color:var(--text);font-size:12.5px;padding:5px 4px 5px 9px;text-align:left;cursor:pointer}
-.cpp .cpp-trigger svg{width:14px;height:14px;flex:none;color:var(--muted);margin-left:auto}
+.cpp .cpp-trigger svg{width:14px;height:14px;flex:none;color:var(--muted)}
 .cpp .cpp-lbl{color:var(--faint);font-size:11px;flex:none}
 .cpp .cpp-val{display:flex;align-items:center;gap:6px;min-width:0;font-weight:600}
 .cpp .cpp-val .tag{flex:none}

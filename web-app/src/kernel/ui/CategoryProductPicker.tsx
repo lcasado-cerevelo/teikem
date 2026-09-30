@@ -239,6 +239,8 @@ export function CategoryProductPicker({ value, onChange, categories, categoriesL
           onClick={() => (open ? setOpen(false) : openList())}
           onKeyDown={onTriggerKeyDown}
         >
+          {/* flecha a la izquierda, como el resto de desplegables del kit */}
+          <IconChevronDown />
           <span className="cpp-lbl">{caption}</span>
           {valueKind ? (
             <span className="cpp-val">
@@ -248,7 +250,6 @@ export function CategoryProductPicker({ value, onChange, categories, categoriesL
           ) : (
             <span className="cpp-ph">{t('ui.categoryProductPicker.all')}</span>
           )}
-          <IconChevronDown />
         </button>
         {value && !disabled && (
           <button type="button" className="iconbtn cpp-x" aria-label={t('ui.categoryProductPicker.clear')} title={t('ui.categoryProductPicker.clear')} onClick={clear}>

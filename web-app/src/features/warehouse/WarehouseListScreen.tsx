@@ -1,25 +1,61 @@
-// Lote F6 — Pantalla A: lista de almacenes (GET /api/v1/warehouses?includeInactive=). Alta con warehouse.manage.
+// Lote F6 — Pantalla A: lista de almacenes (GET /api/v1/warehouses?includeInactive=true). Alta con warehouse.manage.
+// Lote 1 (cambios de Almacén), maqueta `almacenes()`:
+// - Maestro-detalle: a la izquierda la tabla (Código, Nombre, Dirección, Zonas, Estatus); a la derecha (420 px; una
+//   columna bajo 720 px) el almacén elegido: cabecera con nombre y código, dirección, estatus y botón editar (abre la ficha),
+//   y "Zonas de este almacén" con "+ Nueva zona" y una fila por zona activa (código · nombre · tipo, "ocupadas/total
+//   posiciones", papelera = dar de baja, deshabilitada si la zona tiene posiciones). Clic en una zona abre `ZoneModal`.
+//   La selección va en la URL (`?warehouse=<publicId>`); sin ella (o si ya no existe), el primero por código.
+// - Filtros encima (en el cliente: la lista es corta): Código, Nombre, Tipo (tipo de zona, `zoneTypeCodes`) y Estatus
+//   como `SearchSelect`; Dirección como texto (dirección, ciudad, estado y código postal). Sin buscador dentro de la tabla.
+// - Alta: Ciudad o código postal en un combobox (`PostalLocalityPickerInput`) que llena Ciudad, ZIP, Estado y País (País
+//   y Estado de solo lectura); casilla "Activo" marcada e informativa (todo almacén nace activo).
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
-import { Can } from '../../kernel/access'
-import { StatusChip, useLookups } from '../../kernel/catalogs'
+import { Can, useCan } from '../../kernel/access'
+import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { DataTable, type DataColumn, Field, Filters, Form, matchesQ, Modal, Panel, QBox, Select, SelectFilter, TextInput, toast } from '../../kernel/ui'
-import { useCreateWarehouse, useWarehouses, type WarehouseDto } from './api'
+import {
+  CARDS_QUERY,
+  ConfirmDialog,
+  DataTable,
+  type DataColumn,
+  EmptyState,
+  Field,
+  Filters,
+  Form,
+  IconEdit,
+  IconGrid,
+  IconTrash,
+  Modal,
+  Panel,
+  SearchSelect,
+  Spinner,
+  TextInput,
+  toast,
+  useMediaQuery,
+} from '../../kernel/ui'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
+import { useCreateWarehouse, useSaveWarehouseZone, useWarehouseZones, useWarehouses, type WarehouseDto, type WarehouseZoneDto } from './api'
+import { TextFilter } from './filterControls'
+import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
+import { distinctOptions, EMPTY_WAREHOUSE_FILTERS, filterWarehouseRows, warehouseAddress, type WarehouseListFilters } from './warehouseFilters'
+import { ZoneModal } from './ZoneModal'
+import './warehouse.css'
 
 /** Dominio de estatus del almacén (CatalogDomains.WarehouseStatus). */
 const STATUS_DOMAIN = 'WarehouseStatus'
 /** Código solo permite letras, números, guion y guion bajo (WarehouseCreateRequest.Code, máx. 30). */
 const CODE_PATTERN = /^[A-Za-z0-9_-]+$/
+const NO_WAREHOUSES: WarehouseDto[] = []
+const NO_ZONES: WarehouseZoneDto[] = []
+const byCode = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
 
 function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const create = useCreateWarehouse()
-  const { data: countries = [] } = useLookups('Country')
   const schema = useMemo(
     () =>
       z.object({
@@ -32,13 +68,16 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
         name: z.string().trim().min(1, t('warehouse.list.errors.nameRequired')),
         line1: z.string().trim(),
         city: z.string().trim(),
+        postalCode: z.string().trim(),
+        state: z.string().trim(),
         country: z.string().trim(),
       }),
     [t],
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { code: '', name: '', line1: '', city: '', country: 'PR' },
+    // sin localidad elegida el país es Puerto Rico (WarehouseRules.DefaultCountry)
+    defaultValues: { code: '', name: '', line1: '', city: '', postalCode: '', state: '', country: 'PR' },
   })
   const formId = 'warehouse-create'
 
@@ -73,6 +112,8 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
             name: v.name,
             line1: v.line1 || null,
             city: v.city || null,
+            postalCode: v.postalCode || null,
+            state: v.state || null,
             country: v.country || null,
           })
           toast.success(t('warehouse.list.created'))
@@ -90,48 +131,198 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
         <Field name="line1" label={t('warehouse.list.line1')}>
           <TextInput />
         </Field>
-        <div className="r2">
-          <Field name="city" label={t('warehouse.list.city')}>
-            <TextInput />
-          </Field>
-          <Field name="country" label={t('warehouse.list.country')}>
-            <Select options={countries.map((c) => ({ value: c.code, label: c.label }))} placeholder="" />
-          </Field>
+        <Field name="city" label={t('warehouse.postalPicker.label')} help={t('warehouse.postalPicker.help')}>
+          <PostalLocalityPickerInput />
+        </Field>
+        <DerivedLocalityFields />
+        <div className="f">
+          <label className="sw">
+            <input type="checkbox" role="switch" checked disabled readOnly aria-describedby="warehouse-create-active-help" />
+            <span className="tk" aria-hidden="true" />
+            <span>{t('warehouse.list.active')}</span>
+          </label>
+          <p id="warehouse-create-active-help" className="help">
+            {t('warehouse.list.activeHelp')}
+          </p>
         </div>
       </Form>
     </Modal>
   )
 }
 
-export default function WarehouseListScreen() {
+/** Panel derecho: el almacén elegido y sus zonas activas. */
+function WarehouseSidePanel({ warehouse }: { warehouse: WarehouseDto }) {
   const t = useT()
   const navigate = useNavigate()
-  const [show, setShow] = useState<'active' | 'all'>('active')
-  const [q, setQ] = useState('')
-  const [creating, setCreating] = useState(false)
+  const canManage = useCan('warehouse.manage')
+  const publicId = warehouse.publicId ?? ''
+  const { data: zones = NO_ZONES, isLoading } = useWarehouseZones(publicId, { includeInactive: false })
+  const save = useSaveWarehouseZone()
+  const [editing, setEditing] = useState<WarehouseZoneDto | null | 'new'>(null)
+  const [deleting, setDeleting] = useState<WarehouseZoneDto | null>(null)
+  const address = warehouseAddress(warehouse)
+  const sortedZones = useMemo(() => [...zones].sort((a, b) => byCode.compare(a.code ?? '', b.code ?? '')), [zones])
 
-  const { data, isLoading, error } = useWarehouses({ includeInactive: show === 'all' })
+  return (
+    <Panel
+      icon={<IconWarehouse />}
+      title={warehouse.name ?? warehouse.code ?? ''}
+      badge={warehouse.code ?? undefined}
+      actions={
+        <button
+          type="button"
+          className="rowbtn"
+          aria-label={canManage ? t('warehouse.list.editWarehouse') : t('warehouse.list.openWarehouse')}
+          title={canManage ? t('warehouse.list.editWarehouse') : t('warehouse.list.openWarehouse')}
+          onClick={() => navigate(`/warehouse/warehouses/${publicId}`)}
+        >
+          <IconEdit />
+        </button>
+      }
+    >
+      <div className="whs-side">
+        <div className="whs-addr">{address || '—'}</div>
+        <StatusChip domain={STATUS_DOMAIN} code={warehouse.statusCode} label={warehouse.status} />
 
-  const rows = useMemo(() => (data ?? []).filter((w) => w.code || w.name), [data])
-  const filtered = useMemo(
-    () => rows.filter((w) => matchesQ(q, w.code, w.name, w.city)),
-    [rows, q],
+        <div className="whs-zones-h">
+          <b>{t('warehouse.list.zonesTitle')}</b>
+          <Can perm="warehouse.manage">
+            <button type="button" className="btn sm flow" disabled={warehouse.isActive === false} onClick={() => setEditing('new')}>
+              {t('warehouse.zones.newPlus')}
+            </button>
+          </Can>
+        </div>
+        {isLoading ? (
+          <Spinner block />
+        ) : sortedZones.length === 0 ? (
+          <EmptyState icon={<IconGrid />} title={t('warehouse.list.noZonesYet')} />
+        ) : (
+          <ul className="whs-zones" aria-label={t('warehouse.list.zonesTitle')}>
+            {sortedZones.map((z) => {
+              const hasBins = (z.binCount ?? 0) > 0
+              const main = (
+                <>
+                  <span className="whs-zone-top">
+                    <span className="ref">{z.code}</span>
+                    <b className="whs-zone-name">{z.name}</b>
+                    {z.zoneType && <span className="tag">{z.zoneType}</span>}
+                  </span>
+                  <span className="meta">{t('warehouse.list.zoneUsage', { used: z.occupiedBinCount ?? 0, total: z.binCount ?? 0 })}</span>
+                </>
+              )
+              return (
+                <li key={z.id} className="unrow whs-zone">
+                  {canManage ? (
+                    <button type="button" className="whs-zone-main" aria-label={t('warehouse.list.editZone', { code: z.code ?? '' })} onClick={() => setEditing(z)}>
+                      {main}
+                    </button>
+                  ) : (
+                    <div className="whs-zone-main">{main}</div>
+                  )}
+                  <Can perm="warehouse.manage">
+                    {/* aria-disabled (no `disabled`) para que el motivo siga visible en el tooltip y el botón se pueda enfocar */}
+                    <button
+                      type="button"
+                      className={hasBins ? 'rowbtn danger muted' : 'rowbtn danger'}
+                      aria-disabled={hasBins || undefined}
+                      aria-label={hasBins ? t('warehouse.list.zoneHasBins') : t('warehouse.list.deleteZone', { code: z.code ?? '' })}
+                      title={hasBins ? t('warehouse.list.zoneHasBins') : t('warehouse.zones.deactivate')}
+                      onClick={() => {
+                        if (!hasBins) setDeleting(z)
+                      }}
+                    >
+                      <IconTrash />
+                    </button>
+                  </Can>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <ZoneModal publicId={publicId} zone={editing === 'new' || editing === null ? null : editing} open={editing !== null} onClose={() => setEditing(null)} />
+      <ConfirmDialog
+        open={deleting !== null}
+        tone="danger"
+        title={t('warehouse.zones.deactivateTitle')}
+        message={t('warehouse.zones.deactivateBody', { code: deleting?.code ?? '' })}
+        confirmLabel={t('warehouse.zones.deactivate')}
+        onConfirm={async () => {
+          if (!deleting) return
+          await save.mutateAsync({ publicId, action: 'deactivate', zoneId: deleting.id ?? 0 })
+          toast.success(t('warehouse.zones.deactivated'))
+        }}
+        onClose={() => setDeleting(null)}
+      />
+    </Panel>
   )
+}
+
+export default function WarehouseListScreen() {
+  const t = useT()
+  const [params, setParams] = useSearchParams()
+  const [filters, setFilters] = useState<WarehouseListFilters>(EMPTY_WAREHOUSE_FILTERS)
+  const [creating, setCreating] = useState(false)
+  const cards = useMediaQuery(CARDS_QUERY)
+  const sideRef = useRef<HTMLDivElement>(null)
+
+  const { data = NO_WAREHOUSES, isLoading, error } = useWarehouses({ includeInactive: true })
+  const { data: zoneTypes = [] } = useLookups('ZoneType')
+  const { data: statuses = [] } = useStatuses(STATUS_DOMAIN)
+
+  const rows = useMemo(() => data.filter((w) => w.code || w.name), [data])
+  const filtered = useMemo(() => filterWarehouseRows(rows, filters), [rows, filters])
+
+  const codeOptions = useMemo(() => distinctOptions(rows.map((w) => w.code)), [rows])
+  const nameOptions = useMemo(() => distinctOptions(rows.map((w) => w.name)), [rows])
+  // tipos de zona presentes en los almacenes, con la etiqueta del catálogo
+  const typeOptions = useMemo(() => {
+    const present = new Set(rows.flatMap((w) => w.zoneTypeCodes ?? []))
+    return [...present].map((code) => ({ value: code, label: zoneTypes.find((z) => z.code === code)?.label ?? code }))
+  }, [rows, zoneTypes])
+  const statusOptions = useMemo(() => {
+    const opts = statuses.map((s) => ({ value: s.code, label: s.label }))
+    // un estatus que el catálogo ya no ofrece pero algún almacén conserva
+    for (const w of rows) if (w.statusCode && !opts.some((o) => o.value === w.statusCode)) opts.push({ value: w.statusCode, label: w.status ?? w.statusCode })
+    return opts
+  }, [statuses, rows])
+
+  // elegido: el de la URL si existe; si no, el primero (por código) de lo filtrado
+  const selectedId = params.get('warehouse')
+  const selected = useMemo(() => {
+    const fromUrl = selectedId ? rows.find((w) => w.publicId === selectedId) : undefined
+    if (fromUrl) return fromUrl
+    return [...filtered].sort((a, b) => byCode.compare(a.code ?? '', b.code ?? ''))[0]
+  }, [rows, filtered, selectedId])
+
+  const select = (w: WarehouseDto) => {
+    const next = new URLSearchParams(params)
+    next.set('warehouse', w.publicId ?? '')
+    setParams(next, { replace: true })
+    // bajo 720 px el panel queda debajo de la lista: se lleva a la vista
+    if (cards) sideRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }
+
+  const setFilter = <K extends keyof WarehouseListFilters>(key: K, value: WarehouseListFilters[K]) => setFilters((f) => ({ ...f, [key]: value }))
 
   const columns = useMemo<DataColumn<WarehouseDto>[]>(
     () => [
       { id: 'code', header: t('warehouse.list.code'), cell: (w) => <span className="ref">{w.code}</span>, sortValue: (w) => w.code, card: 'title' },
       { id: 'name', header: t('warehouse.list.name'), cell: (w) => w.name, sortValue: (w) => w.name },
-      { id: 'city', header: t('warehouse.list.city'), cell: (w) => w.city, sortValue: (w) => w.city },
-      { id: 'zoneCount', header: t('warehouse.list.zones'), cell: (w) => w.zoneCount, sortValue: (w) => w.zoneCount, align: 'end' },
-      { id: 'binCount', header: t('warehouse.list.bins'), cell: (w) => w.binCount, sortValue: (w) => w.binCount, align: 'end' },
-      { id: 'dockCount', header: t('warehouse.list.docks'), cell: (w) => w.dockCount, sortValue: (w) => w.dockCount, align: 'end' },
-      { id: 'qtyOnHand', header: t('warehouse.list.onHand'), cell: (w) => w.qtyOnHand, sortValue: (w) => w.qtyOnHand, align: 'end' },
+      {
+        id: 'address',
+        header: t('warehouse.list.address'),
+        cell: (w) => <span className="whs-muted">{warehouseAddress(w) || '—'}</span>,
+        sortValue: (w) => warehouseAddress(w),
+        exportValue: (w) => warehouseAddress(w),
+      },
+      { id: 'zoneCount', header: t('warehouse.list.zones'), cell: (w) => w.zoneCount ?? 0, sortValue: (w) => w.zoneCount, align: 'end' },
       {
         id: 'status',
         header: t('warehouse.list.status'),
         cell: (w) => <StatusChip domain={STATUS_DOMAIN} code={w.statusCode} label={w.status} />,
-        sortValue: (w) => w.status,
+        sortValue: (w) => w.status ?? w.statusCode,
       },
     ],
     [t],
@@ -153,45 +344,44 @@ export default function WarehouseListScreen() {
         </div>
       </div>
 
-      <Filters
-        onClear={() => {
-          setShow('active')
-          setQ('')
-        }}
-      >
-        <SelectFilter
-          label={t('warehouse.list.show')}
-          value={show}
-          allLabel={null}
-          onChange={(v) => setShow(v === 'all' ? 'all' : 'active')}
-          options={[
-            { value: 'active', label: t('warehouse.list.onlyActive') },
-            { value: 'all', label: t('warehouse.list.includeInactive') },
-          ]}
-        />
+      <Filters onClear={() => setFilters(EMPTY_WAREHOUSE_FILTERS)}>
+        <SearchSelect label={t('warehouse.list.code')} options={codeOptions} value={filters.codes} onChange={(v) => setFilter('codes', v)} />
+        <SearchSelect label={t('warehouse.list.name')} options={nameOptions} value={filters.names} onChange={(v) => setFilter('names', v)} />
+        <TextFilter label={t('warehouse.list.address')} value={filters.address} onChange={(v) => setFilter('address', v)} placeholder={t('warehouse.list.addressPlaceholder')} />
+        <SearchSelect label={t('warehouse.list.zoneType')} options={typeOptions} value={filters.zoneTypes} onChange={(v) => setFilter('zoneTypes', v)} />
+        <SearchSelect label={t('warehouse.list.status')} options={statusOptions} value={filters.statuses} onChange={(v) => setFilter('statuses', v)} />
       </Filters>
 
-      <Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? filtered.length : undefined}>
-        <div className="qrow">
-          <QBox value={q} onChange={setQ} />
+      <div className="whs-cols">
+        <Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={isLoading ? undefined : filtered.length}>
+          {error ? (
+            <p className="pb ferr" role="alert">
+              {error.message}
+            </p>
+          ) : (
+            <DataTable
+              label={t('warehouse.list.title')}
+              columns={columns}
+              rows={filtered}
+              rowKey={(w) => w.publicId ?? String(w.id)}
+              defaultSort={{ id: 'code', desc: false }}
+              pageSize={25}
+              loading={isLoading}
+              onRowClick={select}
+              rowClassName={(w) => (w.publicId === selected?.publicId ? 'sel' : w.isActive === false ? 'dim' : undefined)}
+            />
+          )}
+        </Panel>
+        <div ref={sideRef} className="whs-side-wrap">
+          {selected ? (
+            <WarehouseSidePanel key={selected.publicId} warehouse={selected} />
+          ) : (
+            <Panel>
+              <EmptyState icon={<IconWarehouse />} title={isLoading ? t('common.loading') : t('warehouse.list.selectWarehouse')} />
+            </Panel>
+          )}
         </div>
-        {error ? (
-          <p className="pb ferr" role="alert">
-            {error.message}
-          </p>
-        ) : (
-          <DataTable
-            label={t('warehouse.list.title')}
-            columns={columns}
-            rows={filtered}
-            rowKey={(w) => w.publicId ?? String(w.id)}
-            defaultSort={{ id: 'code', desc: false }}
-            pageSize={25}
-            loading={isLoading}
-            onRowClick={(w) => navigate(`/warehouse/warehouses/${w.publicId}`)}
-          />
-        )}
-      </Panel>
+      </div>
 
       <CreateWarehouseModal open={creating} onClose={() => setCreating(false)} />
     </div>

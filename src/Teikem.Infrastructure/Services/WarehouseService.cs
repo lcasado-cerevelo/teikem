@@ -58,17 +58,13 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         // Hijas SIEMPRE a través del almacén ya resuelto bajo el filtro de tenant (zona y muelle no llevan TenantId).
         var zones = await db.WarehouseZones.AsNoTracking().Where(z => z.WarehouseId == w.WarehouseId)
             .OrderBy(z => z.Code).ToListAsync(ct);
-        var binCounts = await db.WarehouseBins.AsNoTracking()
-            .Where(b => b.WarehouseId == w.WarehouseId && b.IsActive)
-            .GroupBy(b => b.WarehouseZoneId)
-            .Select(g => new { ZoneId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.ZoneId, x => x.Count, ct);
+        // Ocupación de todas las zonas en UNA consulta agrupada (mismo cálculo que el listado de zonas).
+        var zoneStats = await WarehouseLayoutService.ZoneStatsAsync(db, w.WarehouseId, null, ct);
         var zoneDtos = new List<WarehouseZoneDto>(zones.Count);
         foreach (var z in zones)
         {
             var type = z.ZoneTypeLookupId is int tid ? await lookups.GetAsync(tid, ct) : null;
-            zoneDtos.Add(new WarehouseZoneDto(z.WarehouseZoneId, z.Code, z.Name, type?.InternalCode,
-                type is null ? null : MultilingualText.Resolve(type.LabelJson, tenant.Lang), z.IsActive, binCounts.GetValueOrDefault(z.WarehouseZoneId)));
+            zoneDtos.Add(WarehouseLayoutService.ZoneDto(z, type, tenant.Lang, zoneStats.GetValueOrDefault(z.WarehouseZoneId)));
         }
 
         var docks = await db.WarehouseDocks.AsNoTracking().Where(d => d.WarehouseId == w.WarehouseId)
@@ -277,9 +273,13 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
 
     // ---------------------------------------------------------------- helpers
 
-    private sealed record Counts(Dictionary<int, int> Zones, Dictionary<int, int> Bins, Dictionary<int, int> Docks, Dictionary<int, decimal> OnHand);
+    private sealed record Counts(Dictionary<int, int> Zones, Dictionary<int, int> Bins, Dictionary<int, int> Docks, Dictionary<int, decimal> OnHand,
+        Dictionary<int, IReadOnlyList<string>> ZoneTypes);
 
-    /// <summary>Zonas, posiciones y muelles ACTIVOS y existencia en mano por almacén: cuatro consultas agrupadas (sin N+1).</summary>
+    /// <summary>
+    /// Zonas, posiciones y muelles ACTIVOS, existencia en mano y tipos de zona (distintos, de las zonas activas) por almacén:
+    /// cinco consultas agrupadas para toda la lista (sin N+1); los códigos de tipo salen de ILookupCache.
+    /// </summary>
     private async Task<Counts> CountsAsync(List<int> ids, CancellationToken ct)
     {
         var zones = await db.WarehouseZones.AsNoTracking().Where(z => ids.Contains(z.WarehouseId) && z.IsActive)
@@ -290,7 +290,22 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
             .GroupBy(d => d.WarehouseId).Select(g => new { g.Key, C = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.C, ct);
         var onHand = await db.StockBalances.AsNoTracking().Where(s => ids.Contains(s.WarehouseId))
             .GroupBy(s => s.WarehouseId).Select(g => new { g.Key, Q = g.Sum(s => s.QtyOnHand) }).ToDictionaryAsync(x => x.Key, x => x.Q, ct);
-        return new Counts(zones, bins, docks, onHand);
+
+        // Lote 1 (cambios de Almacén): filtro "Tipo" de la lista = tipos de zona de las zonas activas del almacén.
+        var zoneTypePairs = await db.WarehouseZones.AsNoTracking()
+            .Where(z => ids.Contains(z.WarehouseId) && z.IsActive && z.ZoneTypeLookupId != null)
+            .Select(z => new { z.WarehouseId, TypeId = z.ZoneTypeLookupId!.Value })
+            .Distinct()
+            .ToListAsync(ct);
+        var zoneTypes = new Dictionary<int, IReadOnlyList<string>>();
+        foreach (var g in zoneTypePairs.GroupBy(p => p.WarehouseId))
+        {
+            var codes = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var p in g)
+                if ((await lookups.GetAsync(p.TypeId, ct))?.InternalCode is string code) codes.Add(code);
+            zoneTypes[g.Key] = codes.ToList();
+        }
+        return new Counts(zones, bins, docks, onHand, zoneTypes);
     }
 
     private async Task<WarehouseDto> ToDtoAsync(Warehouse w, Counts counts, Dictionary<int, StatusInfo> statusMap, CancellationToken ct)
@@ -300,7 +315,8 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         return new WarehouseDto(w.WarehouseId, w.PublicId, w.Code, w.Name, w.Line1, w.City, w.State, w.PostalCode,
             country?.InternalCode ?? "", s?.Code ?? "", s?.Label ?? "", w.IsActive,
             counts.Zones.GetValueOrDefault(w.WarehouseId), counts.Bins.GetValueOrDefault(w.WarehouseId), counts.Docks.GetValueOrDefault(w.WarehouseId),
-            counts.OnHand.GetValueOrDefault(w.WarehouseId), Convert.ToBase64String(w.RowVersion ?? Array.Empty<byte>()));
+            counts.OnHand.GetValueOrDefault(w.WarehouseId), Convert.ToBase64String(w.RowVersion ?? Array.Empty<byte>()),
+            counts.ZoneTypes.GetValueOrDefault(w.WarehouseId) ?? Array.Empty<string>());
     }
 
     private async Task<int?> CountryIdAsync(string? country, IDictionary<string, string[]> errors, CancellationToken ct)

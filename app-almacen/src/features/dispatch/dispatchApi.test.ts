@@ -37,9 +37,14 @@ describe('fetchConsigneesForClient', () => {
 const LINE_A: PickLine = { productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'B-1' }
 const LINE_B: PickLine = { productPublicId: 'p2', sku: 'B', productName: 'B', quantity: 1, fromBinCode: 'B-2' }
 
+/** Listado paginado de posiciones (Lote 1): sobre { total, skip, take, items }. */
+function binPage(items: { id: number; code: string }[]) {
+  return ok({ total: items.length, skip: 0, take: 200, items })
+}
+
 describe('resolveBinCodes', () => {
   it('resuelve un código por posición distinta y arma las líneas con el binId real', async () => {
-    getMock.mockResolvedValueOnce(ok([{ id: 10, code: 'B-1' }])).mockResolvedValueOnce(ok([{ id: 20, code: 'B-2' }]))
+    getMock.mockResolvedValueOnce(binPage([{ id: 10, code: 'B-1' }])).mockResolvedValueOnce(binPage([{ id: 20, code: 'B-2' }]))
     const result = await resolveBinCodes('wh-1', [LINE_A, LINE_B])
     expect(result.notFound).toEqual([])
     expect(result.lines).toEqual([
@@ -50,14 +55,15 @@ describe('resolveBinCodes', () => {
   })
 
   it('un código repetido solo se resuelve una vez', async () => {
-    getMock.mockResolvedValueOnce(ok([{ id: 10, code: 'B-1' }]))
+    getMock.mockResolvedValueOnce(binPage([{ id: 10, code: 'B-1' }]))
     const result = await resolveBinCodes('wh-1', [LINE_A, { ...LINE_A, productPublicId: 'p3' }])
     expect(getMock).toHaveBeenCalledTimes(1)
+    expect(result.lines).toHaveLength(2)
     expect(result.lines.every((l) => l.fromBinId === 10)).toBe(true)
   })
 
   it('un código que no existe se reporta en notFound y no arma líneas', async () => {
-    getMock.mockResolvedValueOnce(ok([]))
+    getMock.mockResolvedValueOnce(binPage([]))
     const result = await resolveBinCodes('wh-1', [LINE_A])
     expect(result.notFound).toEqual(['B-1'])
     expect(result.lines).toEqual([])

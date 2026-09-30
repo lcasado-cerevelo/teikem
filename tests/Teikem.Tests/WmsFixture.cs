@@ -156,6 +156,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in new[] { DockTypes.Inbound, DockTypes.Outbound, DockTypes.Both }) L(LookupDomains.DockType, c);
         L(LookupDomains.UnitOfMeasure, "UN");
         L(LookupDomains.Country, "PR");
+        L(LookupDomains.Country, "US");
         L(LookupDomains.Capability, Capabilities.EditPurchaseOrder);
         // Pruebas de servicio (al final: no cambia los ids anteriores).
         L(LookupDomains.EntityType, EntityTypes.ReceiptLine);
@@ -269,12 +270,14 @@ internal sealed class WmsFixture : IAsyncDisposable
         return z;
     }
 
-    public async Task<WarehouseBin> AddBinAsync(WarehouseZone z, string code, bool isActive = true, decimal? maxWeightKg = null)
+    /// <summary>Posición de la zona; cupo y partes opcionales (Lote 1 de cambios de Almacén: ocupación y búsqueda por partes).</summary>
+    public async Task<WarehouseBin> AddBinAsync(WarehouseZone z, string code, bool isActive = true, decimal? maxWeightKg = null,
+        int? maxCapacityQty = null, string? aisle = null, string? rack = null, string? level = null, string? position = null)
     {
         var b = new WarehouseBin
         {
             WarehouseBinId = _nextId++, WarehouseZoneId = z.WarehouseZoneId, WarehouseId = z.WarehouseId, Code = code, IsActive = isActive,
-            MaxWeightKg = maxWeightKg,
+            MaxWeightKg = maxWeightKg, MaxCapacityQty = maxCapacityQty, Aisle = aisle, Rack = rack, Level = level, Position = position,
         };
         Db.WarehouseBins.Add(b);
         await SaveAsync();

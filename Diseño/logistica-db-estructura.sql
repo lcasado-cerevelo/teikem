@@ -297,6 +297,28 @@ ALTER TABLE dbo.Tenant ADD CONSTRAINT FK_Tenant_DefaultPackageType
     FOREIGN KEY (DefaultPackageTypeLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
 GO
 
+-- Lote 1 de cambios de Almacén: catálogo GLOBAL de referencia ciudad <-> código postal (sin TenantId, como los catálogos
+-- globales). Lo siembra logistica-db-seed.sql (catálogo USPS: 42.522 ZIP de EE. UU., sus territorios y Puerto Rico); el API solo lo lee
+-- (GET /api/v1/postal-localities) y el formulario de almacén copia ciudad, estado, código postal y país a las columnas de
+-- texto de Warehouse. Un municipio tiene varios ZIP y un ZIP puede cubrir más de una localidad: único (País, ZIP, Ciudad).
+-- Guardado (IF OBJECT_ID) para crearse en una base ya existente sin tocar nada más.
+IF OBJECT_ID('dbo.PostalLocality') IS NULL
+BEGIN
+    CREATE TABLE dbo.PostalLocality (
+        PostalLocalityId INT IDENTITY(1,1) PRIMARY KEY,
+        City            NVARCHAR(100) NOT NULL,
+        PostalCode      NVARCHAR(10)  NOT NULL,
+        State           NVARCHAR(100) NULL,
+        Municipality    NVARCHAR(100) NULL,  -- solo Puerto Rico: municipio del ZIP (la ciudad postal puede ser un barrio: 00952 SABANA SECA → Toa Baja)
+        CountryLookupId INT NOT NULL CONSTRAINT FK_PostalLocality_Country REFERENCES dbo.LookupCode(LookupCodeId),  -- Entity='Country'
+        IsActive        BIT NOT NULL CONSTRAINT DF_PostalLocality_IsActive DEFAULT 1,
+        CONSTRAINT UQ_PostalLocality UNIQUE (CountryLookupId, PostalCode, City)
+    );
+END
+ELSE IF COL_LENGTH('dbo.PostalLocality', 'Municipality') IS NULL
+    ALTER TABLE dbo.PostalLocality ADD Municipality NVARCHAR(100) NULL;
+GO
+
 /* =========================================================================
    CAPA 2 — SEGURIDAD (RBAC, MFA, SESIONES)
    ========================================================================= */
@@ -1071,19 +1093,38 @@ GO
 
 -- Lote 6 (D18): la posición lleva WarehouseId (FK compuesta con su zona) y su código es único por almacén. Sin TenantId:
 -- se alcanza SOLO a través de su almacén filtrado.
-CREATE TABLE dbo.WarehouseBin (
-    WarehouseBinId INT IDENTITY(1,1) PRIMARY KEY,
-    WarehouseZoneId INT NOT NULL,
-    WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),        -- Lote 6
-    Code         NVARCHAR(40) NOT NULL,
-    Aisle NVARCHAR(20) NULL, Rack NVARCHAR(20) NULL, Level NVARCHAR(20) NULL, Position NVARCHAR(20) NULL,
-    MaxWeightKg  DECIMAL(12,3) NULL, IsActive BIT NOT NULL DEFAULT 1,
-    CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code),
-    CONSTRAINT FK_WarehouseBin_Zone FOREIGN KEY (WarehouseZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId),  -- Lote 6
-    CONSTRAINT UQ_WarehouseBin_IdWh UNIQUE (WarehouseBinId, WarehouseId),   -- Lote 6: destino de las FKs (Posición, Almacén)
-    CONSTRAINT UQ_WarehouseBin_WhCode UNIQUE (WarehouseId, Code),           -- Lote 6: código único por almacén
-    CONSTRAINT CK_WarehouseBin_MaxWeight CHECK (MaxWeightKg IS NULL OR MaxWeightKg > 0)  -- Lote 6
-);
+-- Lote 1 de cambios de Almacén: MaxCapacityQty = cupo máximo de la posición en unidades de producto (NULL = sin configurar).
+-- La capacidad de una zona NO se guarda: se calcula sumando el cupo de sus posiciones activas. Guardado (IF OBJECT_ID /
+-- COL_LENGTH) para agregar la columna y su CHECK a una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.WarehouseBin') IS NULL
+BEGIN
+    CREATE TABLE dbo.WarehouseBin (
+        WarehouseBinId INT IDENTITY(1,1) PRIMARY KEY,
+        WarehouseZoneId INT NOT NULL,
+        WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),        -- Lote 6
+        Code         NVARCHAR(40) NOT NULL,
+        Aisle NVARCHAR(20) NULL, Rack NVARCHAR(20) NULL, Level NVARCHAR(20) NULL, Position NVARCHAR(20) NULL,
+        MaxWeightKg  DECIMAL(12,3) NULL, IsActive BIT NOT NULL DEFAULT 1,
+        MaxCapacityQty INT NULL,                                                -- Lote 1 de cambios de Almacén
+        CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code),
+        CONSTRAINT FK_WarehouseBin_Zone FOREIGN KEY (WarehouseZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId),  -- Lote 6
+        CONSTRAINT UQ_WarehouseBin_IdWh UNIQUE (WarehouseBinId, WarehouseId),   -- Lote 6: destino de las FKs (Posición, Almacén)
+        CONSTRAINT UQ_WarehouseBin_WhCode UNIQUE (WarehouseId, Code),           -- Lote 6: código único por almacén
+        CONSTRAINT CK_WarehouseBin_MaxWeight CHECK (MaxWeightKg IS NULL OR MaxWeightKg > 0),  -- Lote 6
+        CONSTRAINT CK_WarehouseBin_MaxCapacityQty CHECK (MaxCapacityQty IS NULL OR MaxCapacityQty > 0)  -- Lote 1 de cambios de Almacén
+    );
+END
+ELSE IF COL_LENGTH('dbo.WarehouseBin', 'MaxCapacityQty') IS NULL
+BEGIN
+    ALTER TABLE dbo.WarehouseBin ADD MaxCapacityQty INT NULL;
+END
+GO
+
+-- El CHECK del cupo en su propio lote (la columna ya existe al compilarlo); solo si todavía no está.
+IF OBJECT_ID('dbo.CK_WarehouseBin_MaxCapacityQty', 'C') IS NULL
+BEGIN
+    ALTER TABLE dbo.WarehouseBin ADD CONSTRAINT CK_WarehouseBin_MaxCapacityQty CHECK (MaxCapacityQty IS NULL OR MaxCapacityQty > 0);
+END
 GO
 
 CREATE TABLE dbo.WarehouseDock (

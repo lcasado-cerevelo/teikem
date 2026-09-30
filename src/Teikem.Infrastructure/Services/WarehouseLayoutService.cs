@@ -15,8 +15,11 @@ namespace Teikem.Infrastructure.Services;
 /// Lote 6 (P1) — jerarquía física del almacén (R2, R3): zonas tipadas, posiciones pasillo-rack-nivel-posición y muelles con
 /// estatus. Toda hija (sin TenantId) se resuelve SIEMPRE a través de su almacén ya filtrado por tenant (WmsResolve): una
 /// zona, posición o muelle de otro almacén u otro tenant es 404, sin oráculo.
-/// - Zonas: código único por almacén e inmutable; tipo por catálogo ZoneType ('Tipo de zona desconocido: 'X'.'); baja
-///   solo sin posiciones activas (409).
+/// - Zonas: código único por almacén (409), editable desde el Lote 1 de cambios de Almacén; tipo por catálogo ZoneType
+///   ('Tipo de zona desconocido: 'X'.'); baja solo sin posiciones activas (409). El listado trae la ocupación de cada zona
+///   (capacidad = Σ cupo de sus posiciones activas; no se guarda).
+/// - Posiciones con cupo máximo opcional en unidades (MaxCapacityQty &gt; 0); listado paginado en el servidor con estado de
+///   ocupación EMPTY/PARTIAL/FULL/NO_CAPACITY (WarehouseRules.Occupancy).
 /// - Posiciones: código explícito o compuesto ('A01-R02-N3-P04'), único POR ALMACÉN (UQ_WarehouseBin_WhCode; 409);
 ///   WarehouseId sale de la zona; código y zona inmutables. Baja, en orden: bloqueo del almacén, rango de saldos de la
 ///   posición (HOLDLOCK), 409 con inventario (en mano o reservado) o con tareas abiertas que la usan, y solo entonces
@@ -31,15 +34,20 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
 
     // ================================================================ zonas
 
+    /// <summary>
+    /// Zonas del almacén con su ocupación (Lote 1 de cambios de Almacén): posiciones activas y ocupadas, capacidad = Σ cupo de
+    /// sus posiciones activas con cupo (no se guarda), existencia en esas posiciones, existencia total y posiciones sin cupo.
+    /// Las cifras de TODAS las zonas salen de UNA consulta agrupada (ZoneStatsQuery).
+    /// </summary>
     public async Task<IReadOnlyList<WarehouseZoneDto>> ListZonesAsync(Guid warehousePublicId, bool includeInactive, CancellationToken ct)
     {
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
         var q = db.WarehouseZones.AsNoTracking().Where(z => z.WarehouseId == w.WarehouseId);
         if (!includeInactive) q = q.Where(z => z.IsActive);
         var zones = await q.OrderBy(z => z.Code).ToListAsync(ct);
-        var binCounts = await ActiveBinCountsAsync(w.WarehouseId, ct);
+        var stats = await ZoneStatsAsync(db, w.WarehouseId, null, ct);
         var list = new List<WarehouseZoneDto>(zones.Count);
-        foreach (var z in zones) list.Add(await ZoneDtoAsync(z, binCounts.GetValueOrDefault(z.WarehouseZoneId), ct));
+        foreach (var z in zones) list.Add(await ZoneDtoAsync(z, stats.GetValueOrDefault(z.WarehouseZoneId), ct));
         return list;
     }
 
@@ -60,14 +68,25 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var zone = new WarehouseZone { WarehouseId = w.WarehouseId, Code = code!, Name = name!, ZoneTypeLookupId = typeId, IsActive = true };
         db.WarehouseZones.Add(zone);
         await db.SaveGuardedAsync(WarehouseRules.DuplicateZoneMessage, ct); // UQ_WarehouseZone (WarehouseId, Code)
-        return await ZoneDtoAsync(zone, 0, ct);
+        return await ZoneDtoAsync(zone, null, ct);
     }
 
-    /// <summary>PATCH de zona: nombre y tipo ("" quita el tipo). 'code' en el cuerpo → 400.</summary>
+    /// <summary>
+    /// PATCH de zona: código, nombre y tipo ("" quita el tipo). Lote 1 (cambios de Almacén): el código se edita — sigue siendo
+    /// obligatorio y con el mismo formato (400) y único en el almacén (409 'Ya existe una zona con ese código en el almacén.').
+    /// Las posiciones y los saldos apuntan a la zona por id, así que renombrarla no toca nada más. 'warehouseId' → 400.
+    /// </summary>
     public async Task<WarehouseZoneDto> UpdateZoneAsync(Guid warehousePublicId, int zoneId, WarehouseZonePatchRequest req, CancellationToken ct)
     {
-        RejectImmutable(req.Extra, WarehouseRules.ZoneCodeImmutableMessage, "code", "warehouseId");
+        RejectImmutable(req.Extra, WarehouseRules.ZoneWarehouseImmutableMessage, "warehouseId");
         var errors = new Dictionary<string, string[]>();
+        string? code = null;
+        if (req.Code is not null)
+        {
+            var (normalized, codeError) = WarehouseRules.NormalizeCode(req.Code);
+            if (codeError is not null) errors["code"] = new[] { codeError };
+            code = normalized;
+        }
         string? name = req.Name is null ? null : RequiredText(req.Name, "name", "El nombre", WarehouseRules.ZoneNameMaxLength, errors);
         var typeId = await LookupIdAsync(LookupDomains.ZoneType, req.ZoneType, "zoneType", WarehouseRules.UnknownZoneType, errors, ct);
         if (errors.Count > 0) throw new ValidationException(errors);
@@ -75,10 +94,18 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
         EnsureWarehouseActive(w);
         var zone = await ResolveZoneAsync(w, zoneId, track: true, ct);
+        if (code is not null && !string.Equals(code, zone.Code, StringComparison.Ordinal))
+        {
+            // Unicidad (WarehouseId, Code) dentro del almacén (ya resuelto bajo el filtro de tenant); UQ_WarehouseZone es la
+            // segunda barrera ante una carrera (SaveGuardedAsync la traduce al mismo 409).
+            if (await db.WarehouseZones.AnyAsync(z => z.WarehouseId == w.WarehouseId && z.Code == code && z.WarehouseZoneId != zone.WarehouseZoneId, ct))
+                throw new ConflictException(WarehouseRules.DuplicateZoneMessage);
+            zone.Code = code;
+        }
         if (req.Name is not null) zone.Name = name!;
         if (req.ZoneType is not null) zone.ZoneTypeLookupId = typeId;
         await db.SaveGuardedAsync(WarehouseRules.DuplicateZoneMessage, ct);
-        return await ZoneDtoAsync(zone, (await ActiveBinCountsAsync(w.WarehouseId, ct)).GetValueOrDefault(zone.WarehouseZoneId), ct);
+        return await ZoneDtoAsync(zone, (await ZoneStatsAsync(db, w.WarehouseId, zone.WarehouseZoneId, ct)).GetValueOrDefault(zone.WarehouseZoneId), ct);
     }
 
     /// <summary>Baja/reactivación de zona. Desactivar con posiciones activas → 409 'La zona tiene posiciones activas; desactívelas primero.'</summary>
@@ -101,43 +128,150 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         }, ct);
 
         var fresh = await ResolveZoneAsync(w, zoneId, track: false, ct);
-        return await ZoneDtoAsync(fresh, (await ActiveBinCountsAsync(w.WarehouseId, ct)).GetValueOrDefault(fresh.WarehouseZoneId), ct);
+        return await ZoneDtoAsync(fresh, (await ZoneStatsAsync(db, w.WarehouseId, fresh.WarehouseZoneId, ct)).GetValueOrDefault(fresh.WarehouseZoneId), ct);
     }
 
     // ================================================================ posiciones
 
     /// <summary>
-    /// Posiciones del almacén (filtro por zona, búsqueda por código, inactivas opcionales, solo con existencia). Existencia y
-    /// número de productos por posición en UNA consulta agrupada (sin N+1).
+    /// Posiciones del almacén, paginadas en el servidor (Lote 1 de cambios de Almacén). Filtrado, orden (código) y paginación
+    /// en SQL con BinRowsQuery: búsqueda libre en código, zona, pasillo, rack, nivel y posición; zona(s); partes (contiene);
+    /// productos con existencia en la posición; estado de ocupación; inactivas opcionales; solo con existencia. Existencia,
+    /// productos distintos y el producto único de cada posición salen en la misma consulta (LEFT JOIN a la existencia
+    /// agrupada por posición, sin N+1); el SKU y nombre de esos productos únicos, en UNA consulta más para toda la página.
+    /// - zoneId de otro almacén → 404; occupancy desconocido → 400 UnknownOccupancy.
     /// </summary>
-    public async Task<IReadOnlyList<WarehouseBinDto>> ListBinsAsync(Guid warehousePublicId, WarehouseBinQuery query, CancellationToken ct)
+    public async Task<WarehouseBinPageDto> ListBinsAsync(Guid warehousePublicId, WarehouseBinQuery query, CancellationToken ct)
     {
         query ??= new WarehouseBinQuery();
+        var (occupancy, occupancyError) = WarehouseRules.ParseOccupancy(query.Occupancy);
+        if (occupancyError is not null) throw new ValidationException("occupancy", occupancyError);
+        var (skip, take) = WarehouseRules.BinPage(query.Skip, query.Take);
+
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
         if (query.ZoneId is int zid) await ResolveZoneAsync(w, zid, track: false, ct); // 404 si la zona no es de este almacén
 
+        List<int>? productIds = null;
+        if (query.ProductPublicIds is { Length: > 0 } productPublicIds)
+            productIds = await db.Set<Product>().AsNoTracking()
+                .Where(p => productPublicIds.Contains(p.PublicId))
+                .Select(p => p.ProductId)
+                .ToListAsync(ct);
+
+        var q = BinRowsQuery(db, w.WarehouseId, query, productIds, occupancy);
+        var total = await q.CountAsync(ct);
+        var page = await q.OrderBy(x => x.Bin.Code).ThenBy(x => x.Bin.WarehouseBinId).Skip(skip).Take(take).ToListAsync(ct);
+        return new WarehouseBinPageDto(total, skip, take, await BinDtosAsync(page, ct));
+    }
+
+    /// <summary>Fila del listado de posiciones: la posición, su zona y su existencia (member-init: se puede seguir filtrando en SQL).</summary>
+    public sealed class BinRow
+    {
+        public WarehouseBin Bin { get; init; } = null!;
+        public string ZoneCode { get; init; } = string.Empty;
+        public int? ZoneTypeLookupId { get; init; }
+        public decimal? CapacityQty { get; init; }
+        public decimal OnHand { get; init; }
+        public int ProductCount { get; init; }
+        /// <summary>Menor ProductId con existencia: cuando ProductCount = 1 es EL producto de la posición.</summary>
+        public int? AnyProductId { get; init; }
+    }
+
+    /// <summary>
+    /// Consulta (sin ordenar ni paginar) de las posiciones del almacén con sus filtros. Público y estático para probar su
+    /// traducción a SQL Server sin BD (ToQueryString). productIds ya resueltos desde PublicId (null = sin filtro); occupancy ya
+    /// validado (null = sin filtro). La existencia cuenta solo saldos con en mano ≠ 0 (CK_StockBalance_Qty: nunca negativos).
+    /// </summary>
+    public static IQueryable<BinRow> BinRowsQuery(TeikemDbContext db, int warehouseId, WarehouseBinQuery query,
+        IReadOnlyCollection<int>? productIds, IReadOnlySet<string>? occupancy)
+    {
+        var stock = db.StockBalances.AsNoTracking().Where(s => s.WarehouseId == warehouseId && s.WarehouseBinId != null && s.QtyOnHand != 0);
+        // Existencia agrupada por posición (tabla derivada) unida por LEFT JOIN: la existencia se calcula una vez por posición
+        // y el filtro de ocupación y la proyección la reutilizan como columna.
+        var binStock = stock
+            .GroupBy(s => s.WarehouseBinId)
+            .Select(g => new
+            {
+                BinId = g.Key,
+                OnHand = g.Sum(s => s.QtyOnHand),
+                Products = g.Select(s => s.ProductId).Distinct().Count(),
+                MinProductId = g.Min(s => s.ProductId),
+            });
         var q = from b in db.WarehouseBins.AsNoTracking()
                 join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
-                where b.WarehouseId == w.WarehouseId
-                select new { Bin = b, ZoneCode = z.Code, z.ZoneTypeLookupId };
+                join st in binStock on (int?)b.WarehouseBinId equals st.BinId into sj
+                from st in sj.DefaultIfEmpty()
+                where b.WarehouseId == warehouseId
+                select new BinRow
+                {
+                    Bin = b,
+                    ZoneCode = z.Code,
+                    ZoneTypeLookupId = z.ZoneTypeLookupId,
+                    CapacityQty = b.MaxCapacityQty,
+                    OnHand = (decimal?)st!.OnHand ?? 0m,
+                    ProductCount = (int?)st!.Products ?? 0,
+                    AnyProductId = (int?)st!.MinProductId,
+                };
+
         if (!query.IncludeInactive) q = q.Where(x => x.Bin.IsActive);
         if (query.ZoneId is int zoneId) q = q.Where(x => x.Bin.WarehouseZoneId == zoneId);
-        var rows = await q.OrderBy(x => x.Bin.Code).ToListAsync(ct);
+        if (query.ZoneIds is { Length: > 0 } zoneIds) q = q.Where(x => zoneIds.Contains(x.Bin.WarehouseZoneId));
+        if (query.BinIds is { Length: > 0 } binIds) q = q.Where(x => binIds.Contains(x.Bin.WarehouseBinId));
 
-        var stock = await BinStockAsync(w.WarehouseId, ct);
-        var search = string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim();
+        // Códigos y partes se guardan en mayúsculas (WarehouseRules): el término se compara en mayúsculas.
+        if (SearchTerm(query.Search) is string s)
+            q = q.Where(x => x.Bin.Code.Contains(s) || x.ZoneCode.Contains(s)
+                             || (x.Bin.Aisle != null && x.Bin.Aisle.Contains(s)) || (x.Bin.Rack != null && x.Bin.Rack.Contains(s))
+                             || (x.Bin.Level != null && x.Bin.Level.Contains(s)) || (x.Bin.Position != null && x.Bin.Position.Contains(s)));
+        if (SearchTerm(query.Aisle) is string aisle) q = q.Where(x => x.Bin.Aisle != null && x.Bin.Aisle.Contains(aisle));
+        if (SearchTerm(query.Rack) is string rack) q = q.Where(x => x.Bin.Rack != null && x.Bin.Rack.Contains(rack));
+        if (SearchTerm(query.Level) is string level) q = q.Where(x => x.Bin.Level != null && x.Bin.Level.Contains(level));
+        if (SearchTerm(query.Position) is string position) q = q.Where(x => x.Bin.Position != null && x.Bin.Position.Contains(position));
+
+        if (productIds is not null)
+        {
+            var ids = productIds.ToList();
+            q = q.Where(x => stock.Any(s => s.WarehouseBinId == x.Bin.WarehouseBinId && ids.Contains(s.ProductId)));
+        }
+        if (query.OnlyWithStock) q = q.Where(x => x.OnHand > 0);
+
+        if (occupancy is not null)
+        {
+            // Mismo criterio que WarehouseRules.Occupancy (la prueba de ocupación lo compara fila por fila).
+            var empty = occupancy.Contains(BinOccupancies.Empty);
+            var partial = occupancy.Contains(BinOccupancies.Partial);
+            var full = occupancy.Contains(BinOccupancies.Full);
+            var noCapacity = occupancy.Contains(BinOccupancies.NoCapacity);
+            q = q.Where(x => (empty && x.OnHand <= 0)
+                             || (partial && x.OnHand > 0 && x.CapacityQty != null && x.OnHand < x.CapacityQty)
+                             || (full && x.OnHand > 0 && x.CapacityQty != null && x.OnHand >= x.CapacityQty)
+                             || (noCapacity && x.OnHand > 0 && x.CapacityQty == null));
+        }
+        return q;
+    }
+
+    private static string? SearchTerm(string? raw) => string.IsNullOrWhiteSpace(raw) ? null : raw.Trim().ToUpperInvariant();
+
+    /// <summary>DTOs de una página de posiciones: SKU y nombre de los productos únicos en UNA consulta (sin N+1).</summary>
+    private async Task<IReadOnlyList<WarehouseBinDto>> BinDtosAsync(IReadOnlyList<BinRow> rows, CancellationToken ct)
+    {
+        var singleIds = rows.Where(r => r.ProductCount == 1 && r.AnyProductId is not null).Select(r => r.AnyProductId!.Value).Distinct().ToList();
+        var products = singleIds.Count == 0
+            ? new Dictionary<int, (Guid PublicId, string Sku, string Name)>()
+            : (await db.Set<Product>().AsNoTracking()
+                .Where(p => singleIds.Contains(p.ProductId))
+                .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.Name })
+                .ToListAsync(ct))
+              .ToDictionary(p => p.ProductId, p => (p.PublicId, p.Sku, p.Name));
+
         var list = new List<WarehouseBinDto>(rows.Count);
         foreach (var r in rows)
         {
-            var s = stock.GetValueOrDefault(r.Bin.WarehouseBinId);
-            if (query.OnlyWithStock && (s is null || s.OnHand == 0)) continue;
-            if (search is not null
-                && !r.Bin.Code.Contains(search, StringComparison.OrdinalIgnoreCase)
-                && !r.ZoneCode.Contains(search, StringComparison.OrdinalIgnoreCase))
-                continue;
+            (Guid PublicId, string Sku, string Name)? single = r.ProductCount == 1 && r.AnyProductId is int pid && products.TryGetValue(pid, out var p) ? p : null;
             list.Add(new WarehouseBinDto(r.Bin.WarehouseBinId, r.Bin.WarehouseZoneId, r.ZoneCode, await LookupCodeAsync(r.ZoneTypeLookupId, ct),
                 r.Bin.Code, r.Bin.Aisle, r.Bin.Rack, r.Bin.Level, r.Bin.Position, r.Bin.MaxWeightKg, r.Bin.IsActive,
-                s?.OnHand ?? 0, s?.Products ?? 0));
+                r.OnHand, r.ProductCount, r.Bin.MaxCapacityQty, WarehouseRules.Occupancy(r.OnHand, r.Bin.MaxCapacityQty),
+                single?.PublicId, single?.Sku, single?.Name));
         }
         return list;
     }
@@ -153,6 +287,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var (code, codeError) = WarehouseRules.ResolveBinCode(req.Code, req.Aisle, req.Rack, req.Level, req.Position);
         if (codeError is not null) errors["code"] = new[] { codeError };
         if (WarehouseRules.ValidateMaxWeight(req.MaxWeightKg) is string weightError) errors["maxWeightKg"] = new[] { weightError };
+        if (WarehouseRules.ValidateMaxCapacity(req.MaxCapacityQty) is string capacityError) errors["maxCapacityQty"] = new[] { capacityError };
         if (errors.Count > 0) throw new ValidationException(errors);
 
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
@@ -167,17 +302,19 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
             WarehouseZoneId = zone.WarehouseZoneId, WarehouseId = zone.WarehouseId, Code = code!,
             Aisle = WarehouseRules.NormalizeBinPart(req.Aisle).Part, Rack = WarehouseRules.NormalizeBinPart(req.Rack).Part,
             Level = WarehouseRules.NormalizeBinPart(req.Level).Part, Position = WarehouseRules.NormalizeBinPart(req.Position).Part,
-            MaxWeightKg = req.MaxWeightKg, IsActive = true,
+            MaxWeightKg = req.MaxWeightKg, MaxCapacityQty = req.MaxCapacityQty, IsActive = true,
         };
         db.WarehouseBins.Add(bin);
         await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct); // UQ_WarehouseBin_WhCode es la segunda barrera
         return new WarehouseBinDto(bin.WarehouseBinId, zone.WarehouseZoneId, zone.Code, await LookupCodeAsync(zone.ZoneTypeLookupId, ct),
-            bin.Code, bin.Aisle, bin.Rack, bin.Level, bin.Position, bin.MaxWeightKg, bin.IsActive, 0, 0);
+            bin.Code, bin.Aisle, bin.Rack, bin.Level, bin.Position, bin.MaxWeightKg, bin.IsActive, 0, 0, bin.MaxCapacityQty,
+            WarehouseRules.Occupancy(0, bin.MaxCapacityQty), null, null, null);
     }
 
     /// <summary>
-    /// PATCH de posición: partes (null = sin cambio, "" = quitar) y capacidad (clearMaxWeight = sin límite). Código y zona son
-    /// inmutables: 'code', 'zoneId' o 'warehouseZoneId' en el cuerpo → 400.
+    /// PATCH de posición: partes (null = sin cambio, "" = quitar), capacidad de peso (clearMaxWeight = sin límite) y cupo máximo
+    /// en unidades (clearMaxCapacity = sin configurar; si llega, &gt; 0 → si no, 400). Código y zona son inmutables: 'code',
+    /// 'zoneId' o 'warehouseZoneId' en el cuerpo → 400.
     /// </summary>
     public async Task<WarehouseBinDto> UpdateBinAsync(Guid warehousePublicId, int binId, WarehouseBinPatchRequest req, CancellationToken ct)
     {
@@ -188,6 +325,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var level = Part(req.Level, "level", errors);
         var position = Part(req.Position, "position", errors);
         if (req.ClearMaxWeight != true && WarehouseRules.ValidateMaxWeight(req.MaxWeightKg) is string weightError) errors["maxWeightKg"] = new[] { weightError };
+        if (req.ClearMaxCapacity != true && WarehouseRules.ValidateMaxCapacity(req.MaxCapacityQty) is string capacityError) errors["maxCapacityQty"] = new[] { capacityError };
         if (errors.Count > 0) throw new ValidationException(errors);
 
         var w = await ResolveWarehouseAsync(warehousePublicId, ct);
@@ -199,6 +337,8 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         if (req.Position is not null) bin.Position = position;
         if (req.ClearMaxWeight == true) bin.MaxWeightKg = null;
         else if (req.MaxWeightKg.HasValue) bin.MaxWeightKg = req.MaxWeightKg;
+        if (req.ClearMaxCapacity == true) bin.MaxCapacityQty = null;
+        else if (req.MaxCapacityQty.HasValue) bin.MaxCapacityQty = req.MaxCapacityQty;
         await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct);
         return await BinDtoAsync(w.WarehouseId, bin.WarehouseBinId, ct);
     }
@@ -414,47 +554,71 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
 
     private async Task<LookupCode?> LookupAsync(int? id, CancellationToken ct) => id is int v ? await lookups.GetAsync(v, ct) : null;
 
-    private async Task<WarehouseZoneDto> ZoneDtoAsync(WarehouseZone z, int binCount, CancellationToken ct)
+    private async Task<WarehouseZoneDto> ZoneDtoAsync(WarehouseZone z, ZoneStats? stats, CancellationToken ct)
+        => ZoneDto(z, await LookupAsync(z.ZoneTypeLookupId, ct), tenant.Lang, stats);
+
+    /// <summary>DTO de zona con su ocupación (sin estadísticas = zona sin posiciones: todo en cero). Lo comparte WarehouseService.</summary>
+    public static WarehouseZoneDto ZoneDto(WarehouseZone z, LookupCode? type, string lang, ZoneStats? stats)
     {
-        var type = await LookupAsync(z.ZoneTypeLookupId, ct);
+        var s = stats ?? ZoneStats.Empty;
         return new WarehouseZoneDto(z.WarehouseZoneId, z.Code, z.Name, type?.InternalCode,
-            type is null ? null : MultilingualText.Resolve(type.LabelJson, tenant.Lang), z.IsActive, binCount);
+            type is null ? null : MultilingualText.Resolve(type.LabelJson, lang), z.IsActive, s.ActiveBins,
+            s.OccupiedBins, s.CapacityQty, s.OnHandInCapacityBins, s.OnHand, s.BinsWithoutCapacity);
     }
 
-    private async Task<Dictionary<int, int>> ActiveBinCountsAsync(int warehouseId, CancellationToken ct)
-        => await db.WarehouseBins.AsNoTracking()
-            .Where(b => b.WarehouseId == warehouseId && b.IsActive)
-            .GroupBy(b => b.WarehouseZoneId)
-            .Select(g => new { ZoneId = g.Key, Count = g.Count() })
-            .ToDictionaryAsync(x => x.ZoneId, x => x.Count, ct);
-
-    private sealed record BinStock(decimal OnHand, int Products);
-
-    /// <summary>Existencia en mano y productos distintos con existencia por posición del almacén (una consulta agrupada).</summary>
-    private async Task<Dictionary<int, BinStock>> BinStockAsync(int warehouseId, CancellationToken ct)
+    /// <summary>
+    /// Ocupación de una zona (Lote 1 de cambios de Almacén). La capacidad de zona NO se guarda: es la suma del cupo de sus
+    /// posiciones ACTIVAS con cupo; las posiciones sin cupo se cuentan aparte y quedan fuera del porcentaje. OnHand = existencia
+    /// de todas las posiciones de la zona.
+    /// </summary>
+    public sealed class ZoneStats
     {
-        var rows = await db.StockBalances.AsNoTracking()
-            .Where(s => s.WarehouseId == warehouseId && s.WarehouseBinId != null && s.QtyOnHand != 0)
-            .Select(s => new { BinId = s.WarehouseBinId!.Value, s.ProductId, s.QtyOnHand })
-            .ToListAsync(ct);
-        return rows.GroupBy(r => r.BinId)
-            .ToDictionary(g => g.Key, g => new BinStock(g.Sum(r => r.QtyOnHand), g.Select(r => r.ProductId).Distinct().Count()));
+        public static readonly ZoneStats Empty = new();
+        public int ZoneId { get; init; }
+        public int ActiveBins { get; init; }
+        public int OccupiedBins { get; init; }
+        public long CapacityQty { get; init; }
+        public decimal OnHandInCapacityBins { get; init; }
+        public decimal OnHand { get; init; }
+        public int BinsWithoutCapacity { get; init; }
     }
+
+    /// <summary>
+    /// UNA consulta agrupada con la ocupación de las zonas del almacén (o de una zona): posiciones LEFT JOIN existencia agrupada
+    /// por posición, agrupado por zona. Público y estático para probar su traducción a SQL Server sin BD (ToQueryString).
+    /// </summary>
+    public static IQueryable<ZoneStats> ZoneStatsQuery(TeikemDbContext db, int warehouseId, int? zoneId)
+    {
+        var binStock = db.StockBalances.AsNoTracking()
+            .Where(s => s.WarehouseId == warehouseId && s.WarehouseBinId != null)
+            .GroupBy(s => s.WarehouseBinId)
+            .Select(g => new { BinId = g.Key, OnHand = g.Sum(s => s.QtyOnHand) });
+        var bins = from b in db.WarehouseBins.AsNoTracking()
+                   where b.WarehouseId == warehouseId && (zoneId == null || b.WarehouseZoneId == zoneId)
+                   join st in binStock on (int?)b.WarehouseBinId equals st.BinId into sj
+                   from st in sj.DefaultIfEmpty()
+                   select new { b.WarehouseZoneId, b.IsActive, b.MaxCapacityQty, OnHand = (decimal?)st!.OnHand ?? 0m };
+        return bins.GroupBy(x => x.WarehouseZoneId).Select(g => new ZoneStats
+        {
+            ZoneId = g.Key,
+            ActiveBins = g.Count(x => x.IsActive),
+            OccupiedBins = g.Count(x => x.IsActive && x.OnHand > 0),
+            CapacityQty = g.Sum(x => x.IsActive && x.MaxCapacityQty != null ? (long)x.MaxCapacityQty.Value : 0L),
+            OnHandInCapacityBins = g.Sum(x => x.IsActive && x.MaxCapacityQty != null ? x.OnHand : 0m),
+            OnHand = g.Sum(x => x.OnHand),
+            BinsWithoutCapacity = g.Count(x => x.IsActive && x.MaxCapacityQty == null),
+        });
+    }
+
+    /// <summary>Ocupación por zona (ZoneStatsQuery) indexada por WarehouseZoneId. Zonas sin posiciones no aparecen (→ Empty).</summary>
+    public static async Task<Dictionary<int, ZoneStats>> ZoneStatsAsync(TeikemDbContext db, int warehouseId, int? zoneId, CancellationToken ct)
+        => await ZoneStatsQuery(db, warehouseId, zoneId).ToDictionaryAsync(s => s.ZoneId, ct);
 
     private async Task<WarehouseBinDto> BinDtoAsync(int warehouseId, int binId, CancellationToken ct)
     {
-        var r = await (from b in db.WarehouseBins.AsNoTracking()
-                       join z in db.WarehouseZones.AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
-                       where b.WarehouseId == warehouseId && b.WarehouseBinId == binId
-                       select new { Bin = b, ZoneCode = z.Code, z.ZoneTypeLookupId })
+        var row = await BinRowsQuery(db, warehouseId, new WarehouseBinQuery(IncludeInactive: true, BinIds: new[] { binId }), null, null)
             .FirstAsync(ct);
-        var stock = await db.StockBalances.AsNoTracking()
-            .Where(s => s.WarehouseId == warehouseId && s.WarehouseBinId == binId && s.QtyOnHand != 0)
-            .Select(s => new { s.ProductId, s.QtyOnHand })
-            .ToListAsync(ct);
-        return new WarehouseBinDto(r.Bin.WarehouseBinId, r.Bin.WarehouseZoneId, r.ZoneCode, await LookupCodeAsync(r.ZoneTypeLookupId, ct),
-            r.Bin.Code, r.Bin.Aisle, r.Bin.Rack, r.Bin.Level, r.Bin.Position, r.Bin.MaxWeightKg, r.Bin.IsActive,
-            stock.Sum(s => s.QtyOnHand), stock.Select(s => s.ProductId).Distinct().Count());
+        return (await BinDtosAsync(new[] { row }, ct))[0];
     }
 
     private async Task<WarehouseDockDto> DockDtoAsync(Warehouse w, int dockId, CancellationToken ct)

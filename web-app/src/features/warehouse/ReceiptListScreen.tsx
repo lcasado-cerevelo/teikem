@@ -40,6 +40,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import {
+  exportReceipts,
   useAsns,
   useCreateReceipt,
   usePurchaseOrders,
@@ -626,6 +627,7 @@ function ReceiptsTab() {
   const [variance, setVariance] = useState('')
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const search = useDebounced(q.trim())
 
   const { data: statuses = [] } = useStatuses(STATUS_DOMAIN)
@@ -650,10 +652,10 @@ function ReceiptsTab() {
       productPublicIds: products.length > 0 ? products.map((p) => p.publicId) : undefined,
       hasVariance: variance === '' ? undefined : variance === 'yes',
       search: search || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [warehousePublicId, status, types, range, products, variance, search, page],
+    [warehousePublicId, status, types, range, products, variance, search, page, pageSize],
   )
   const { data, isLoading, error } = useReceipts(query)
 
@@ -737,9 +739,14 @@ function ReceiptsTab() {
             rowKey={(r) => r.publicId ?? String(r.id)}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportReceipts(query)}
             onRowClick={(r) => navigate(`/warehouse/receipts/${r.publicId}`)}
             rowActions={[{ key: 'open', label: t('warehouse.receipts.open'), onClick: (r) => navigate(`/warehouse/receipts/${r.publicId}`) }]}
           />

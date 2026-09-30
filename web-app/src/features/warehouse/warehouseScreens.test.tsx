@@ -53,19 +53,30 @@ const BLIND_COUNT = {
   createdAtUtc: '2026-01-01T00:00:00Z',
 }
 
+// Zona A sin cupo configurado en ninguna posición (como Advance Depot hoy); zona B con cupo.
+const ZONES = [
+  { id: 1, code: 'A', name: 'Zona A', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 2, occupiedBinCount: 1, capacityQty: 0, qtyOnHandInCapacityBins: 0, qtyOnHand: 5, binsWithoutCapacity: 2 },
+  { id: 2, code: 'B', name: 'Zona B', zoneTypeCode: 'PICKING', zoneType: 'Picking', isActive: true, binCount: 1, occupiedBinCount: 1, capacityQty: 100, qtyOnHandInCapacityBins: 40, qtyOnHand: 40, binsWithoutCapacity: 0 },
+]
+const BINS = [
+  { id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', qtyOnHand: 5, productCount: 1, singleProductSku: 'TORN-01', singleProductName: 'Tornillo', occupancy: 'NO_CAPACITY', isActive: true },
+  { id: 11, code: 'A-02', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true },
+  { id: 20, code: 'B-01', zoneId: 2, zoneCode: 'B', qtyOnHand: 40, productCount: 2, maxCapacityQty: 100, occupancy: 'PARTIAL', isActive: true },
+]
+
 function route(url: URL): unknown {
   const p = url.pathname
   if (p === '/api/v1/cycle-counts') return [BLIND_COUNT]
   if (p === '/api/v1/cycle-counts/1') return { count: BLIND_COUNT, isBlind: true, lines: [] }
   if (p === '/api/v1/warehouse-tasks') return { total: TASKS.length, skip: 0, take: 25, items: TASKS }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
-  if (p === `/api/v1/warehouses/${WH}/zones`)
-    return [{ id: 1, code: 'A', name: 'Zona A', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 2 }]
-  if (p === `/api/v1/warehouses/${WH}/bins`)
-    return [
-      { id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', qtyOnHand: 5, productCount: 1, isActive: true },
-      { id: 11, code: 'A-02', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, isActive: true },
-    ]
+  if (p === `/api/v1/warehouses/${WH}/zones`) return ZONES
+  if (p === `/api/v1/warehouses/${WH}/bins`) {
+    // listado paginado (Lote 1) con el filtro zoneIds del servidor
+    const zoneIds = url.searchParams.getAll('zoneIds').map(Number)
+    const items = zoneIds.length > 0 ? BINS.filter((b) => zoneIds.includes(b.zoneId)) : BINS
+    return { total: items.length, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 100), items }
+  }
   if (p === '/api/v1/inventory/balances') return { total: 0, skip: 0, take: 200, items: [] }
   if (p === '/api/v1/dock-appointments') return []
   if (p === '/api/v1/cross-dock-plans') return []
@@ -101,27 +112,84 @@ beforeEach(() => {
 describe('Ubicaciones (maqueta ubicaciones())', () => {
   const path = `/warehouse/locations?warehouse=${WH}`
 
-  it('cada nodo de zona lleva la barra .spark: 7 segmentos a la altura del % ocupado', async () => {
+  const binRequests = () => mock.requests.filter((u) => u.pathname === `/api/v1/warehouses/${WH}/bins`)
+
+  it('recuadro de zona: ocupado/capacidad con % real; sin cupo, la existencia sin porcentaje; sin barras de 7 días', async () => {
     wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
-    const node = await screen.findByRole('group', { name: /Zona A/ })
-    const segments = node.querySelectorAll('.spark i')
-    expect(segments).toHaveLength(7)
-    // 1 de 2 posiciones con existencias = 50 %
-    segments.forEach((s) => expect((s as HTMLElement).style.height).toBe('50%'))
+    const withCapacity = await screen.findByRole('button', { name: /^Zona Zona B: 40 de 100 unidades de cupo ocupadas \(40%\)/ })
+    expect(withCapacity).toHaveTextContent('40/100')
+    expect(withCapacity).toHaveTextContent('ocupado · 40%')
+    const noCapacity = screen.getByRole('button', { name: /^Zona Zona A: 5 unidades, sin cupo configurado/ })
+    expect(noCapacity).toHaveTextContent('unidades · sin cupo configurado')
+    expect(noCapacity).not.toHaveTextContent('%')
+    expect(document.querySelector('.locations .spark')).toBeNull()
+  })
+
+  it('clic en un recuadro filtra la tabla por esa zona (zoneIds al servidor); otro clic quita el filtro', async () => {
+    const user = userEvent.setup()
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByText('A-01')
+    const zoneB = screen.getByRole('button', { name: /^Zona Zona B/ })
+    expect(zoneB).toHaveAttribute('aria-pressed', 'false')
+    await user.click(zoneB)
+    await waitFor(() => expect(screen.queryByText('A-01')).toBeNull())
+    expect(screen.getByText('B-01')).toBeInTheDocument()
+    expect(zoneB).toHaveAttribute('aria-pressed', 'true')
+    expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual(['2'])
+    await user.click(zoneB)
+    await screen.findByText('A-01')
+    expect(zoneB).toHaveAttribute('aria-pressed', 'false')
+    expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual([])
+  })
+
+  it('tabla paginada en el servidor con Cupo y Estatus (Vacía / Parcial / Ocupada sin cupo), producto o "N productos", sin buscador', async () => {
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], `${path}&zone=1`, '/warehouse/locations')
+    await screen.findByText('A-01')
+    // ?zone=1 llega al servidor y resalta su recuadro
+    expect(binRequests()[0].searchParams.getAll('zoneIds')).toEqual(['1'])
+    expect(binRequests()[0].searchParams.get('skip')).toBe('0')
+    expect(binRequests()[0].searchParams.get('take')).toBe('25')
+    expect(screen.getByRole('button', { name: /^Zona Zona A/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('columnheader', { name: /Estatus/ })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: /Cupo/ })).toBeInTheDocument()
+    expect(screen.getByText('Tornillo')).toBeInTheDocument()
+    expect(screen.getByText('Ocupada sin cupo')).toBeInTheDocument()
+    expect(screen.getByText('Vacía')).toBeInTheDocument()
+    // sin buscador dentro de la tabla: el único campo de texto es el filtro "Posición" de arriba
+    expect(screen.getAllByRole('searchbox')).toEqual([screen.getByRole('searchbox', { name: 'Posición' })])
+  })
+
+  it('el filtro "Posición" manda el texto al servidor (search) y vuelve a la página 1', async () => {
+    const user = userEvent.setup()
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await screen.findByText('A-01')
+    await user.type(screen.getByRole('searchbox', { name: 'Posición' }), 'B-0')
+    await waitFor(() => expect(binRequests().at(-1)?.searchParams.get('search')).toBe('B-0'))
+    expect(binRequests().at(-1)?.searchParams.get('skip')).toBe('0')
+  })
+
+  it('posición con cupo: barra con el % real y estatus Parcial; varios productos = "N productos"', async () => {
+    wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], `${path}&zone=2`, '/warehouse/locations')
+    await screen.findByText('B-01')
+    expect(screen.getByRole('img', { name: '40% del cupo' })).toBeInTheDocument()
+    expect(screen.getByText('Parcial')).toBeInTheDocument()
+    expect(screen.getByText('2 productos')).toBeInTheDocument()
   })
 
   it("'Nueva posición' solo con warehouse.manage, y abre el modal de alta con las zonas del almacén elegido", async () => {
     const user = userEvent.setup()
     const readOnly = wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
-    await screen.findByRole('group', { name: /Zona A/ })
+    await screen.findByRole('button', { name: /^Zona Zona A/ })
     expect(screen.queryByRole('button', { name: 'Nueva posición' })).toBeNull()
     readOnly.unmount()
 
     wrap(<LocationsScreen />, ['inventory.view', 'warehouse.manage'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
-    await screen.findByRole('group', { name: /Zona A/ })
+    await screen.findByRole('button', { name: /^Zona Zona A/ })
     await user.click(screen.getByRole('button', { name: 'Nueva posición' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nueva posición' })
-    expect(within(dialog).getByRole('option', { name: 'A' })).toBeInTheDocument()
+    // la zona es un combobox con buscador (BinModal, Lote 1): sus opciones son las zonas del almacén elegido
+    await user.click(within(dialog).getByRole('combobox', { name: /Zona/ }))
+    expect(await screen.findByRole('option', { name: /A · Zona A/ })).toBeInTheDocument()
   })
 })
 
@@ -201,6 +269,21 @@ describe('CycleCountListScreen', () => {
     wrap(<CycleCountListScreen />, ['inventory.view'], ['WMS_LOTSERIAL'])
     await screen.findAllByText('CC-00001')
     expect(screen.queryByText('Diferencia neta')).toBeNull()
+  })
+
+  it('alta: el selector de posiciones lee todas las páginas del listado paginado (activas, take=200)', async () => {
+    const user = userEvent.setup()
+    wrap(<CycleCountListScreen />, ['inventory.view', 'warehouse.count'], ['WMS_LOTSERIAL'])
+    await user.click(await screen.findByRole('button', { name: 'Nuevo conteo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Nuevo conteo' })
+    await user.type(within(dialog).getByRole('combobox', { name: /Almacén/ }), 'ALM-01{Enter}')
+    await waitFor(() => expect(mock.requests.some((u) => u.pathname === `/api/v1/warehouses/${WH}/bins`)).toBe(true))
+    const req = mock.requests.find((u) => u.pathname === `/api/v1/warehouses/${WH}/bins`)!
+    expect(req.searchParams.get('skip')).toBe('0')
+    expect(req.searchParams.get('take')).toBe('200')
+    expect(req.searchParams.get('includeInactive')).toBe('false')
+    await user.click(within(dialog).getByRole('button', { name: /Posiciones/ }))
+    expect(await screen.findByText('B-01 · B')).toBeInTheDocument()
   })
 
   it("con warehouse.count y netVariance null la celda es '—', nunca '0'", async () => {

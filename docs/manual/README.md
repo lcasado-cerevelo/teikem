@@ -45,6 +45,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    modo informado; recolección y empaque ad hoc (Pick & Pack); compras mínimas (proveedores, órdenes de compra y
    resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
    módulos.
+   Lote 11 (sección 1, Almacenes y ubicaciones): **cupo máximo** de la posición y su **estado de ocupación**
+   (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
+   posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades
+   postales** (42.522 ZIP de EE. UU. y Puerto Rico) para llenar ciudad, estado, código postal y país.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
@@ -80,6 +84,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    transferencias, genealogía, rastro de serie y conciliación), recepción (recibos y avisos de llegada), tareas de
    almacén, conteo cíclico, recolección y empaque, proveedores, órdenes de compra, citas de muelle, cruce de muelle
    (planes) y consulta de órdenes de transporte de solo lectura.
+   Lote 11: pie común de todas las tablas (rango, "Filas por página" y **Exportar** a Excel, CSV y PDF), lista de
+   Almacenes en maestro-detalle con "Zonas de este almacén", ficha con Zonas y Posiciones filtrables (cupo y
+   ocupación) y la pantalla **Ubicaciones** (recuadros de ocupación por zona). Capturas pendientes.
 3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
@@ -92,4 +99,6 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 
 ## Preguntas frecuentes
 
-Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote.
+Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, catálogo de
+ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar tablas, ciudades en mayúsculas y por qué el
+código y la zona de una posición no cambian.

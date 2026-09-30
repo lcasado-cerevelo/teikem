@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex, ajustes,
 transferencias, genealogía, rastro de serie y conciliación), Recepción (avisos de llegada y recibos, incluida la
@@ -7,6 +7,8 @@ Recolección y empaque ad hoc, Compras mínimas (proveedores, órdenes de compra
 y planes, en modo demo). Cada sección indica **qué hace**, **quién puede**, **cómo se usa**, las **validaciones**
 con el mensaje exacto y el código HTTP, y los **estatus** con sus transiciones y efectos. Los mensajes están
 verificados contra el código (`src/Teikem.Domain/Wms/*.cs`, `src/Teikem.Infrastructure/Wms/*.cs`,
+`src/Teikem.Domain/Catalogs/PostalLocality.cs`, `src/Teikem.Infrastructure/Services/PostalLocalityService.cs`,
+`src/Teikem.Api/Controllers/PostalLocalitiesController.cs`,
 `src/Teikem.Infrastructure/Services/{Warehouse,WarehouseLayout,Product,ProductCategory,InventoryRead,
 InventoryAdjustment,Traceability,Asn,Receipt,WarehouseTask,Replenishment,CycleCount,PickBatch,Supplier,
 PurchaseOrder,PurchaseOrderReceiving,PurchaseShortage,DockAppointment,CrossDock}Service.cs`,
@@ -54,44 +56,144 @@ Convenciones del capítulo:
 Qué hace: mantiene el almacén y su jerarquía física — zonas tipadas, posiciones (pasillo-rack-nivel-posición) y
 muelles. El almacén nace **ACTIVE** y su baja es **definitiva** (estatus terminal): solo procede vacío y sin
 documentos abiertos. Con un único almacén activo, las demás pantallas lo usan por defecto; con más de uno, hay que
-indicarlo.
+indicarlo. Desde el Lote 11 (cambios de Almacén, tanda 1) además: cada posición puede tener un **cupo máximo** en
+unidades y, con él, un estado de **ocupación**; cada zona muestra su ocupación (calculada, no guardada); el **código de
+una zona se puede editar**; el listado de posiciones es **paginado** y se busca por código, zona, pasillo, rack, nivel o
+posición; y hay un **catálogo de localidades postales** para llenar la ciudad, el estado, el código postal y el país
+del almacén.
 
 Quién puede: `inventory.view` (listar y consultar almacenes, zonas, posiciones y muelles); `warehouse.manage`
 (alta, edición, baja/reactivación de almacén, zonas, posiciones y muelles, y el estatus manual del muelle). Módulo
-**WMS_LOTSERIAL**.
+**WMS_LOTSERIAL**. El catálogo de localidades postales (`GET /api/v1/postal-localities`) solo pide una sesión
+iniciada: no exige permiso ni módulo.
 
 Cómo se usa:
 - `GET /api/v1/warehouses?includeInactive=` — por defecto solo los activos, con conteos de zonas/posiciones/
-  muelles y existencia.
-- `POST /api/v1/warehouses` — `{ "code": "ALM-02", "name": "Almacén secundario", "line1": "...", "city": "..." }`.
-  El país por defecto es `PR`.
+  muelles, existencia y `zoneTypeCodes` (códigos de tipo de zona **distintos** de sus zonas activas, ordenados; una zona
+  sin tipo no aporta código).
+- `POST /api/v1/warehouses` — `{ "code": "ALM-02", "name": "Almacén secundario", "line1": "...", "city": "Toa Baja",
+  "state": "PR", "postalCode": "00949", "country": "PR" }`. El país por defecto es `PR`. La ciudad, el estado y el
+  código postal son texto libre para el API: el catálogo de localidades es una ayuda de captura de la pantalla, no una
+  validación.
 - `GET /api/v1/warehouses/{publicId}`, `PATCH /api/v1/warehouses/{publicId}` (edición en línea; `null` = sin
   cambio; `rowVersion` opcional).
 - `POST /api/v1/warehouses/{publicId}/deactivate` — baja definitiva.
-- Zonas: `GET/POST /api/v1/warehouses/{publicId}/zones`, `PATCH .../zones/{zoneId}`, `POST .../zones/{zoneId}/
-  deactivate|reactivate`.
-- Posiciones: `GET/POST /api/v1/warehouses/{publicId}/bins` (`?zoneId=&search=&includeInactive=&onlyWithStock=`),
-  `PATCH .../bins/{binId}`, `POST .../bins/{binId}/deactivate|reactivate`.
+- Zonas: `GET/POST /api/v1/warehouses/{publicId}/zones` (`GET ?includeInactive=`), `PATCH .../zones/{zoneId}`
+  (`{ "code": "PCK-2", "name": "Picking 2", "zoneType": "PICKING" }`; todo opcional, `null` = sin cambio,
+  `"zoneType": ""` quita el tipo), `POST .../zones/{zoneId}/deactivate|reactivate`.
+- Posiciones: `GET/POST /api/v1/warehouses/{publicId}/bins` (filtros en la sección 1.2),
+  `PATCH .../bins/{binId}` (`{ "aisle": "A9", "maxCapacityQty": 40 }`; `"clearMaxCapacity": true` quita el cupo),
+  `POST .../bins/{binId}/deactivate|reactivate`.
 - Muelles: `GET/POST /api/v1/warehouses/{publicId}/docks`, `PATCH .../docks/{dockId}`, `POST .../docks/{dockId}/
   status` (estatus manual), `POST .../docks/{dockId}/deactivate|reactivate`.
+- Localidades postales: `GET /api/v1/postal-localities?search=&take=` (sección 1.3).
+
+### 1.1 Zonas: código editable y ocupación
+
+**Código editable.** `PATCH .../zones/{zoneId}` acepta `code`. Se recorta y se guarda en mayúsculas, con las mismas
+reglas que al crear (letras, números, guion y guion bajo; máximo 30) y sigue siendo **único dentro del almacén**. Las
+posiciones y los saldos apuntan a la zona por su id, así que cambiar el código no mueve posiciones ni existencias. Lo
+que no se puede cambiar es el almacén de la zona: mandar `warehouseId` en el `PATCH` responde 400. El mensaje
+`El código de la zona no se puede cambiar.` **ya no existe**. Mandar el mismo código que ya tiene la zona no cambia
+nada. Editar una zona de un almacén dado de baja responde 422 (`El almacén está dado de baja; solo se consulta.`).
+
+**Ocupación de la zona.** `GET .../zones` (y la ficha del almacén, `GET .../{publicId}`) devuelve por zona cifras
+calculadas en una sola consulta; la capacidad de la zona **no se guarda**:
+
+| Campo | Qué es |
+|---|---|
+| `binCount` | Posiciones **activas** de la zona |
+| `occupiedBinCount` | Posiciones activas con existencia en mano mayor que cero |
+| `capacityQty` | Suma del cupo de las posiciones activas **que tienen cupo** |
+| `qtyOnHandInCapacityBins` | Existencia en mano de esas mismas posiciones (el numerador del porcentaje) |
+| `qtyOnHand` | Existencia en mano de **todas** las posiciones de la zona |
+| `binsWithoutCapacity` | Posiciones activas sin cupo configurado (quedan fuera del porcentaje) |
+
+Porcentaje de ocupación de la zona = `qtyOnHandInCapacityBins / capacityQty`. Con `capacityQty = 0` no hay porcentaje: la
+pantalla muestra la existencia total y "sin cupo configurado". La existencia usada es la **en mano** (incluye lo
+reservado).
+
+### 1.2 Posiciones: cupo máximo, ocupación y listado paginado
+
+**Cupo máximo.** `maxCapacityQty` es un entero mayor que cero (unidades de producto que caben en la posición) o vacío
+(`null` = sin cupo configurado). Se envía al crear (`POST .../bins`) y al editar (`PATCH .../bins/{binId}`); en el
+`PATCH`, `null` deja el cupo como está y `"clearMaxCapacity": true` lo quita (si vienen los dos, gana quitar). En la base
+lo protege `CK_WarehouseBin_MaxCapacityQty` (nulo o mayor que cero).
+
+**Estado de ocupación** (`occupancy`). Es un cálculo, no un estatus guardado: no está en un catálogo ni tiene
+transiciones. Compara la existencia en mano de la posición con su cupo:
+
+| Código | Etiqueta en pantalla | Cuándo |
+|---|---|---|
+| `EMPTY` | Vacía | Existencia en mano igual a cero |
+| `PARTIAL` | Parcial | Hay existencia y es menor que el cupo |
+| `FULL` | Llena | Hay existencia y es igual o mayor que el cupo |
+| `NO_CAPACITY` | Ocupada sin cupo | Hay existencia y la posición no tiene cupo |
+
+**Listado** — `GET /api/v1/warehouses/{publicId}/bins` responde `{ "total": 3029, "skip": 0, "take": 100, "items": [...] }`
+(antes del Lote 11 era un arreglo). `skip` mínimo 0; `take` por defecto 100, máximo 200 (0 o menos = 100; más de 200 =
+200). Siempre ordena por código y, a igual código, por id. Filtros (todos opcionales, se combinan con "y"):
+
+| Parámetro | Qué hace |
+|---|---|
+| `search` | Texto que **contiene** el código, el código de la zona, el pasillo, el rack, el nivel o la posición (sin distinguir mayúsculas). Antes solo miraba código y zona |
+| `zoneId` | Una zona; si no es de este almacén responde 404 |
+| `zoneIds` | Varias zonas (repetir el parámetro); un id ajeno simplemente no devuelve posiciones |
+| `aisle`, `rack`, `level`, `position` | Cada parte **contiene** el texto |
+| `productPublicIds` | Posiciones con existencia de alguno de esos productos |
+| `occupancy` | Uno o varios de `EMPTY`, `PARTIAL`, `FULL`, `NO_CAPACITY` (repetir el parámetro o separarlos por comas) |
+| `binIds` | Solo esas posiciones |
+| `includeInactive` | Incluye las dadas de baja (por defecto no) |
+| `onlyWithStock` | Solo con existencia en mano mayor que cero |
+
+Ejemplo: `GET /api/v1/warehouses/{publicId}/bins?search=01-A&occupancy=PARTIAL&occupancy=FULL&skip=0&take=50`.
+
+Cada posición trae `maxCapacityQty`, `occupancy`, `qtyOnHand`, `productCount` y, cuando `productCount` es exactamente 1,
+`singleProductPublicId`, `singleProductSku` y `singleProductName`.
+
+### 1.3 Catálogo de localidades postales
+
+`GET /api/v1/postal-localities?search=toa%20baja&take=30` devuelve un arreglo de
+`{ id, city, postalCode, state, countryCode, country, municipality }`. Solo lectura, global (no depende de la compañía).
+
+- **Contenido.** 42.522 códigos postales del catálogo USPS: 42.346 de Estados Unidos y sus territorios (`countryCode`
+  `US`) y 176 de Puerto Rico (`PR`). `city` es el nombre postal oficial del ZIP, en mayúsculas y sin acentos
+  (`SABANA SECA`, `NEW YORK`). Solo en Puerto Rico viene `municipality` (con acentos): 00952 es `SABANA SECA` del
+  municipio `Toa Baja`; 00631 es `CASTANER` del municipio `Lares`. `country` es el nombre del país en el idioma del usuario.
+- **Búsqueda.** El texto se compara sin mayúsculas ni acentos (`mayaguez` encuentra `Mayagüez`). Si solo trae dígitos
+  (y guion) se busca por **prefijo de código postal** (`0094` → 00949, 00950…). Si trae letras se busca en la ciudad
+  postal **y** en el municipio: primero las que empiezan por el texto, luego las que tienen una palabra que empieza por
+  él, luego las que lo contienen. A igual coincidencia, Puerto Rico va primero. Sin `search` devuelve las primeras por
+  ciudad.
+- **Tamaño.** `take` por defecto 20, máximo 100; la pantalla pide 30.
+- **Memoria.** El catálogo se guarda en memoria del API una hora: un cambio directo en la tabla puede tardar hasta una
+  hora en verse.
+- **Cómo lo usa la pantalla.** Al elegir una localidad, el formulario del almacén guarda `city` (el **municipio** si lo
+  hay —Puerto Rico—, si no la ciudad postal USPS), `postalCode`, `state` y `country`. El almacén guarda texto: no hay
+  llave hacia la tabla de localidades.
 
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
-| `code` vacío | `El código es obligatorio.` | 400 |
+| `code` vacío (alta de almacén, zona o muelle; también `PATCH` de zona con `"code": ""`) | `El código es obligatorio.` | 400 |
 | `code` inválido o > 30 | `El código solo admite letras, números, guion y guion bajo (máximo 30).` | 400 |
 | `name` vacío | `El nombre es obligatorio.` | 400 |
 | Código de almacén repetido | `Ya existe un almacén con ese código.` | 409 |
-| Código de zona repetido en el almacén | `Ya existe una zona con ese código en el almacén.` | 409 |
+| Código de zona repetido en el almacén (al crear **o al editar el código**) | `Ya existe una zona con ese código en el almacén.` | 409 |
 | Código de posición repetido en el almacén | `Ya existe una posición con ese código en el almacén.` | 409 |
 | Código de muelle repetido en el almacén | `Ya existe un muelle con ese código en el almacén.` | 409 |
-| `PATCH` con `code` (almacén/zona/muelle) | `El código del almacén no se puede cambiar.` / `El código de la zona no se puede cambiar.` / `El código del muelle no se puede cambiar.` | 400 |
+| `PATCH` de almacén con `code` | `El código del almacén no se puede cambiar.` | 400 |
+| `PATCH` de muelle con `code` | `El código del muelle no se puede cambiar.` | 400 |
+| `PATCH` de zona con `warehouseId` | `La zona no se puede mover a otro almacén.` | 400 |
 | `PATCH` de posición con `code` o `zoneId` | `El código y la zona de la posición no se pueden cambiar.` | 400 |
 | Posición sin código ni partes | `Indique el código de la posición o su pasillo/rack/nivel/posición.` | 400 |
 | Parte de posición inválida o > 20 | `Pasillo, rack, nivel y posición solo admiten letras, números, guion y guion bajo (máximo 20 cada uno).` | 400 |
 | Código de posición > 40 o inválido | `El código de la posición solo admite letras, números, guion y guion bajo (máximo 40).` | 400 |
 | Sin zona al crear posición | `Indique la zona de la posición.` | 400 |
+| `maxCapacityQty` ≤ 0 (alta o edición de posición; el error va en `errors.maxCapacityQty`) | `El cupo máximo de la posición debe ser mayor que cero.` | 400 |
+| `occupancy` desconocido en el listado de posiciones (el error va en `errors.occupancy`) | `Estado de ocupación desconocido: 'X'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY.` | 400 |
+| `zoneId` del listado que no es de este almacén | `Zona no encontrada.` | 404 |
 | `zoneType` desconocido | `Tipo de zona desconocido: 'X'.` | 400 |
 | `dockType` vacío/desconocido | `Indique el tipo de muelle (INBOUND, OUTBOUND o BOTH).` / `Tipo de muelle desconocido: 'X'.` | 400 |
 | Estatus de muelle no manual | `Estatus de muelle no permitido: 'X'. Use FREE, OCCUPIED o MAINTENANCE.` | 400 |
@@ -110,6 +212,9 @@ Cómo se usa:
 | Operación sin `warehousePublicId` con más de un almacén activo | `Indique el almacén: la compañía tiene más de uno.` | 400 |
 | Sin ningún almacén activo | `La compañía no tiene almacenes activos.` | 422 |
 
+Un `maxCapacityQty` mayor que 2.147.483.647 (el máximo de un entero de 32 bits) lo rechaza la pantalla; enviado
+directo al API no se probó qué respuesta da.
+
 ### Estatus y transiciones
 
 `WarehouseStatus`: **ACTIVE** (inicial) → **INACTIVE** (terminal, baja definitiva). No hay vuelta atrás: un
@@ -120,6 +225,12 @@ los fija a mano). La llegada de una cita de muelle (estatus `ARRIVED`) también 
 efecto `DockAppointmentStatusEffect`, sección 9); cerrarla (`COMPLETED`, `NO_SHOW` o `CANCELLED`) lo libera
 (`OCCUPIED→FREE`) solo si no queda otra cita `ARRIVED` en ese muelle. `MAINTENANCE` nunca lo toca el efecto
 automático: solo el jefe de almacén a mano.
+
+Zonas y posiciones: activa ↔ inactiva (`IsActive`, sin dominio de estatus propio). Se dan de baja con `warehouse.manage`;
+la zona solo sin posiciones activas y la posición solo sin inventario ni tareas abiertas (ver la tabla de arriba). La
+**ocupación** de una posición (`EMPTY`, `PARTIAL`, `FULL`, `NO_CAPACITY`) no es un estatus: cambia sola cuando cambia la
+existencia o el cupo, no tiene transiciones ni efectos, y no bloquea ninguna acción (la baja de la posición depende de
+que tenga inventario, no de su ocupación).
 
 ---
 
@@ -702,3 +813,7 @@ otros tres permisos `WAREHOUSE` nuevos (`inventory.manage`, `inventory.adjust`, 
 el administrador del tenant por defecto.
 
 Módulos: **WMS_LOTSERIAL** y **PURCHASING** vienen encendidos por defecto; **CROSSDOCK** apagado (demo).
+
+Excepción (Lote 11): `GET /api/v1/postal-localities` (catálogo de ciudades y códigos postales) no pide permiso ni módulo, solo una
+sesión iniciada. La pantalla solo lo consulta cuando alguien con `warehouse.manage` abre el selector de ciudad al crear o
+editar un almacén.

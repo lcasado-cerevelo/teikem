@@ -2641,7 +2641,7 @@ expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==9' >/
 DEMO=$(expect 200 "$(req GET /api/v1/warehouses)" | jq -r '[.[] | select(.code=="ALM-01" and .statusCode=="ACTIVE")][0].publicId')
 [[ "$DEMO" =~ ^[0-9a-f-]{36}$ ]] || fail "almacén demo ALM-01 ACTIVE (D49)"
 expect 200 "$(req GET "/api/v1/warehouses/$DEMO")" | jq -e '([.zones[].code] | sort)==["PCK","QUA","RSV","STG"] and (.zones[] | select(.code=="STG") | .zoneTypeCode=="STAGING") and ([.docks[] | select(.statusCode=="FREE") | .code] | sort)==["D1","D2"]' >/dev/null || fail "zonas y muelles de ALM-01"
-expect 200 "$(req GET "/api/v1/warehouses/$DEMO/bins?search=STG-01")" | jq -e 'any(.[]; .code=="STG-01")' >/dev/null || fail "posición STG-01 de ALM-01"
+expect 200 "$(req GET "/api/v1/warehouses/$DEMO/bins?search=STG-01")" | jq -e 'any(.items[]; .code=="STG-01")' >/dev/null || fail "posición STG-01 de ALM-01"
 ok "4 permisos nuevos, SerialStatus con SHIPPED lateral y SCRAPPED terminal, 9 motivos de ajuste; ALM-01 ACTIVE con STG/PCK/RSV/QUA, STG-01 y muelles D1/D2 FREE"
 
 step "almacenes y ubicaciones (Lote 6): alta, zonas, posiciones, muelles y PATCH persistido"
@@ -2657,15 +2657,25 @@ DK=$(expect 200 "$(req POST "/api/v1/warehouses/$W6P/docks" '{"code":"D1","dockT
 # PATCH persistido (WmsResolve con track:true): se relee con GET.
 expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"name":"Reserva alta"}')" >/dev/null
 expect 200 "$(req GET "/api/v1/warehouses/$W6P/zones")" | jq -e --argjson z "$ZRSV" 'any(.[]; .id==$z and .name=="Reserva alta")' >/dev/null || fail "PATCH de zona no persistido"
-expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/bins/$B_RSV" '{"aisle":"A9","maxWeightKg":500}')" >/dev/null
-expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins")" | jq -e --argjson b "$B_RSV" 'any(.[]; .id==$b and .aisle=="A9" and .maxWeightKg==500)' >/dev/null || fail "PATCH de posición no persistido"
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/bins/$B_RSV" '{"aisle":"A9","maxWeightKg":500,"maxCapacityQty":40}')" >/dev/null
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins")" | jq -e --argjson b "$B_RSV" 'any(.items[]; .id==$b and .aisle=="A9" and .maxWeightKg==500 and .maxCapacityQty==40 and .occupancy=="EMPTY")' >/dev/null || fail "PATCH de posición no persistido"
+# Lote 1 de cambios de Almacén: listado paginado ({ total, items }), búsqueda por pasillo, filtro de ocupación y cupo > 0.
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?search=a9&take=1")" | jq -e --argjson b "$B_RSV" '.total==1 and .take==1 and .items[0].id==$b' >/dev/null || fail "búsqueda de posiciones por pasillo"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?occupancy=EMPTY&occupancy=FULL")" | jq -e '.total==4' >/dev/null || fail "filtro de ocupación de posiciones"
+expect 400 "$(req GET "/api/v1/warehouses/$W6P/bins?occupancy=HALF")" | jq -e --arg m "Estado de ocupación desconocido: 'HALF'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY." "$HASM" >/dev/null || fail "ocupación desconocida 400"
+expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/bins/$B_RSV" '{"maxCapacityQty":0}')" | jq -e --arg m "El cupo máximo de la posición debe ser mayor que cero." "$HASM" >/dev/null || fail "cupo 0 → 400"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/zones")" | jq -e --argjson z "$ZRSV" 'any(.[]; .id==$z and .binCount==1 and .capacityQty==40 and .binsWithoutCapacity==0)' >/dev/null || fail "ocupación de la zona RSV"
 expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/docks/$DK" '{"dockType":"INBOUND"}')" >/dev/null
 expect 200 "$(req GET "/api/v1/warehouses/$W6P/docks")" | jq -e --argjson d "$DK" 'any(.[]; .id==$d and .dockTypeCode=="INBOUND")' >/dev/null || fail "PATCH de muelle no persistido"
 expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/docks/$DK" '{"dockType":"BOTH"}')" >/dev/null
 expect 400 "$(req POST /api/v1/inventory/adjustments '{"quantity":1,"reason":"FOUND"}')" >/dev/null
 # Campos fijos en PATCH (llegan por [JsonExtensionData]) → 400 con el mensaje de la entidad.
 expect 400 "$(req PATCH "/api/v1/warehouses/$W6P" '{"code":"OTRO"}')" | jq -e --arg m "El código del almacén no se puede cambiar." "$HASM" >/dev/null || fail "código del almacén fijo"
-expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"X"}')" | jq -e --arg m "El código de la zona no se puede cambiar." "$HASM" >/dev/null || fail "código de zona fijo"
+# Lote 1 de cambios de Almacén: el código de la zona se edita (único en el almacén → 409); su almacén no (400).
+expect 409 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"PCK"}')" | jq -e '.title=="Ya existe una zona con ese código en el almacén."' >/dev/null || fail "código de zona repetido 409"
+expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"warehouseId":1}')" | jq -e --arg m "La zona no se puede mover a otro almacén." "$HASM" >/dev/null || fail "almacén de la zona fijo"
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"rsv-2"}')" | jq -e '.code=="RSV-2"' >/dev/null || fail "código de zona editable"
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P/zones/$ZRSV" '{"code":"RSV"}')" | jq -e '.code=="RSV"' >/dev/null || fail "código de zona de vuelta a RSV"
 expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/bins/$B_RSV" "{\"zoneId\":$ZPCK}")" | jq -e --arg m "El código y la zona de la posición no se pueden cambiar." "$HASM" >/dev/null || fail "zona de la posición fija"
 expect 400 "$(req PATCH "/api/v1/warehouses/$W6P/docks/$DK" '{"code":"D9"}')" | jq -e --arg m "El código del muelle no se puede cambiar." "$HASM" >/dev/null || fail "código del muelle fijo"
 # Una zona con posiciones activas no se desactiva (409); el muelle cambia de estatus a mano con historial (maestro L317).
@@ -2673,7 +2683,9 @@ expect 409 "$(req POST "/api/v1/warehouses/$W6P/zones/$ZRSV/deactivate" '{}')" |
 expect 200 "$(req POST "/api/v1/warehouses/$W6P/docks/$DK/status" '{"status":"MAINTENANCE","comment":"Rampa en reparación"}')" | jq -e '.statusCode=="MAINTENANCE"' >/dev/null || fail "muelle en MAINTENANCE"
 expect 400 "$(req POST "/api/v1/warehouses/$W6P/docks/$DK/status" '{"status":"FOO"}')" >/dev/null
 expect 200 "$(req POST "/api/v1/warehouses/$W6P/docks/$DK/status" '{"status":"FREE"}')" | jq -e '.statusCode=="FREE"' >/dev/null || fail "muelle de vuelta a FREE"
-ok "W6$TS con STG/PCK/RSV, posición repetida en el almacén 409, muelle D1; PATCH de zona, posición y muelle persistidos (releídos con GET); PATCH de código de almacén, zona, muelle y zona de la posición 400; zona con posiciones activas 409; muelle MAINTENANCE → FREE a mano (estatus desconocido 400)"
+expect 200 "$(req GET "/api/v1/postal-localities?search=toa%20baja")" | jq -e 'any(.[]; .postalCode=="00949" and .municipality=="Toa Baja" and .countryCode=="PR") and any(.[]; .postalCode=="00952" and .city=="SABANA SECA")' >/dev/null || fail "localidad postal Toa Baja 00949"
+expect 200 "$(req GET "/api/v1/postal-localities?search=mayaguez")" | jq -e 'length>0 and all(.[]; .municipality=="Mayagüez")' >/dev/null || fail "búsqueda de ciudad sin acentos"
+ok "W6$TS con STG/PCK/RSV, posición repetida en el almacén 409, muelle D1; PATCH de zona, posición (con cupo) y muelle persistidos (releídos con GET); posiciones paginadas con búsqueda por pasillo y filtro de ocupación (desconocida 400, cupo 0 400); ocupación de zona; código de zona editable (repetido 409) y su almacén fijo 400; PATCH de código de almacén, muelle y zona de la posición 400; zona con posiciones activas 409; muelle MAINTENANCE → FREE a mano (estatus desconocido 400); localidades postales por ciudad sin acentos"
 
 step "productos, ajustes y 547 → 409 (Lote 6)"
 prod() { expect 200 "$(req POST /api/v1/products "$1")" | jq -r .product.publicId; }

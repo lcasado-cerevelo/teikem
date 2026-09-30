@@ -29,6 +29,7 @@ import {
 } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import {
+  exportProducts,
   SERIAL_COUNT_MAX_PAGES,
   SERIAL_COUNT_PAGE,
   useProductCategories,
@@ -133,6 +134,7 @@ function ProductsTab() {
   const [categoryIds, setCategoryIds] = useState<string[]>([])
   const [state, setState] = useState<StateFilter>('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
 
@@ -181,10 +183,10 @@ function ProductsTab() {
       warehousePublicId: warehousePublicId || undefined,
       activeOnly: state === 'active' || undefined,
       belowMin: state === 'low' || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [search, categoryIds, warehousePublicId, state, page],
+    [search, categoryIds, warehousePublicId, state, page, pageSize],
   )
   const { data, isLoading, error } = useProducts(query)
 
@@ -305,9 +307,14 @@ function ProductsTab() {
             rowKey={(p) => p.publicId ?? String(p.id)}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportProducts(query)}
             onRowClick={(p) => setEditingPublicId(p.publicId ?? null)}
             rowClassName={(p) => (p.isActive === false ? 'dim' : undefined)}
           />

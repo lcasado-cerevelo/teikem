@@ -253,7 +253,17 @@ function ProductEditorForm({
   })
 
   const preferredWarehousePublicId = useWatch({ control: form.control, name: 'preferredWarehousePublicId' })
-  const { data: bins = [] } = useWarehouseBins(preferredWarehousePublicId, {}, { enabled: Boolean(preferredWarehousePublicId), handleAccessDenied: false })
+  const preferredBinId = useWatch({ control: form.control, name: 'preferredBinId' })
+  // Solo hace falta el tipo de zona de la posición por defecto ya guardada (la elegida en el picker llega en `pickedBin`):
+  // se pide esa posición por id; el listado del almacén llega paginado y ya no trae todas.
+  const preferredBinNumber = preferredBinId ? Number(preferredBinId) : NaN
+  const hasPreferredBin = Boolean(preferredWarehousePublicId) && Number.isInteger(preferredBinNumber) && !(pickedBin && pickedBin.id === preferredBinNumber)
+  const { data: preferredBinPage } = useWarehouseBins(
+    preferredWarehousePublicId,
+    { binIds: hasPreferredBin ? [preferredBinNumber] : undefined, includeInactive: true, take: 1 },
+    { enabled: hasPreferredBin, handleAccessDenied: false },
+  )
+  const bins = preferredBinPage?.items ?? []
   const errors = form.formState.errors
   const moreHasError = MORE_FIELDS.some((k) => k in errors)
   const submitting = form.formState.isSubmitting || busy

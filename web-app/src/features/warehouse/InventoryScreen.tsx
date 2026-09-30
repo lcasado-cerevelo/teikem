@@ -35,6 +35,8 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import {
+  exportInventoryBalances,
+  exportInventoryTransactions,
   useInventoryBalances,
   useInventoryReconciliation,
   useInventoryTransactions,
@@ -388,6 +390,7 @@ function BalancesTab({
   const [includeZero, setIncludeZero] = useState(false)
   const [onlyAvailable, setOnlyAvailable] = useState(false)
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
   function withPageReset<T>(setter: (v: T) => void) {
@@ -424,10 +427,10 @@ function BalancesTab({
       includeZero: includeZero || undefined,
       onlyAvailable: onlyAvailable || undefined,
       search: search || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [warehousePublicIds, productPublicIds, categoryIds, lotNumber, includeZero, onlyAvailable, search, page],
+    [warehousePublicIds, productPublicIds, categoryIds, lotNumber, includeZero, onlyAvailable, search, page, pageSize],
   )
   const { data, isLoading, error } = useInventoryBalances(query)
 
@@ -526,9 +529,14 @@ function BalancesTab({
             rowKey={(b) => b.id ?? 0}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportInventoryBalances(query)}
             rowActions={actions}
           />
         )}
@@ -558,6 +566,7 @@ function KardexTab({
   const [lotNumber, setLotNumber] = useState('')
   const [serialNumber, setSerialNumber] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Paginación del servidor: todo cambio de filtro o del buscador vuelve a la página 1.
   function withPageReset<T>(setter: (v: T) => void) {
@@ -597,10 +606,10 @@ function KardexTab({
       lotNumber: lotNumber || undefined,
       serialNumber: serialNumber || undefined,
       search: search || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [range, types, warehousePublicIds, productPublicIds, lotNumber, serialNumber, search, page],
+    [range, types, warehousePublicIds, productPublicIds, lotNumber, serialNumber, search, page, pageSize],
   )
   const { data, isLoading, error } = useInventoryTransactions(query, { enabled: !rangeInvalid })
 
@@ -669,9 +678,14 @@ function KardexTab({
             rowKey={(r) => r.id ?? 0}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportInventoryTransactions(query)}
             rowActions={actions}
           />
         )}

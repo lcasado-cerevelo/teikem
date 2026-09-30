@@ -67,6 +67,7 @@ public static class DependencyInjection
 
         // Servicios transversales
         services.AddScoped<LookupService>();
+        services.AddScoped<PostalLocalityService>();       // Lote 1 (cambios de Almacén): catálogo global ciudad ↔ código postal
         services.AddScoped<StatusService>();
         services.AddScoped<ContactPointService>();
         services.AddScoped<PermissionService>();

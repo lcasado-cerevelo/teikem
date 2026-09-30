@@ -13012,6 +13012,62 @@
         }
       }
     },
+    "/api/v1/postal-localities": {
+      "get": {
+        "tags": [
+          "PostalLocalities"
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostalLocalityDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostalLocalityDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PostalLocalityDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/product-categories": {
       "get": {
         "tags": [
@@ -19790,6 +19846,95 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "zoneIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "aisle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "rack",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "position",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "productPublicIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "occupancy",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "binIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100
+            }
           }
         ],
         "responses": {
@@ -19798,26 +19943,17 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WarehouseBinDto"
-                  }
+                  "$ref": "#/components/schemas/WarehouseBinPageDto"
                 }
               },
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WarehouseBinDto"
-                  }
+                  "$ref": "#/components/schemas/WarehouseBinPageDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/WarehouseBinDto"
-                  }
+                  "$ref": "#/components/schemas/WarehouseBinPageDto"
                 }
               }
             }
@@ -29388,6 +29524,40 @@
         },
         "additionalProperties": false
       },
+      "PostalLocalityDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "postalCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "countryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "country": {
+            "type": "string",
+            "nullable": true
+          },
+          "municipality": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ProductCategoryDto": {
         "type": "object",
         "properties": {
@@ -34768,6 +34938,53 @@
           "productCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "occupancy": {
+            "type": "string",
+            "nullable": true
+          },
+          "singleProductPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "singleProductSku": {
+            "type": "string",
+            "nullable": true
+          },
+          "singleProductName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarehouseBinPageDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WarehouseBinDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -34797,6 +35014,15 @@
             "nullable": true
           },
           "clearMaxWeight": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearMaxCapacity": {
             "type": "boolean",
             "nullable": true
           }
@@ -34834,6 +35060,11 @@
           "maxWeightKg": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -35054,6 +35285,13 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "zoneTypeCodes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -35267,6 +35505,26 @@
           "binCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "occupiedBinCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "capacityQty": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "qtyOnHandInCapacityBins": {
+            "type": "number",
+            "format": "double"
+          },
+          "qtyOnHand": {
+            "type": "number",
+            "format": "double"
+          },
+          "binsWithoutCapacity": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -35279,6 +35537,10 @@
             "nullable": true
           },
           "zoneType": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
             "type": "string",
             "nullable": true
           }

@@ -69,11 +69,21 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
 
     // ---------------------------------------------------------------- posiciones
 
-    /// <summary>Posiciones del almacén: ?zoneId, ?search (código), ?includeInactive, ?onlyWithStock.</summary>
+    /// <summary>
+    /// Posiciones del almacén, paginadas en el servidor ({ total, skip, take, items }; take ≤ 200, por defecto 100), por código.
+    /// Filtros: ?search (contiene en código, zona, pasillo, rack, nivel o posición), ?zoneId (404 si no es del almacén),
+    /// ?zoneIds (varias), ?aisle, ?rack, ?level, ?position (contiene), ?productPublicIds (con existencia de esos productos),
+    /// ?occupancy (EMPTY, PARTIAL, FULL, NO_CAPACITY; varias, 400 si otro), ?binIds, ?includeInactive, ?onlyWithStock.
+    /// </summary>
     [HttpGet("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.InventoryView)]
-    public Task<IReadOnlyList<WarehouseBinDto>> Bins(Guid publicId, [FromQuery] int? zoneId, [FromQuery] string? search,
-        [FromQuery] bool includeInactive, [FromQuery] bool onlyWithStock, CancellationToken ct)
-        => layout.ListBinsAsync(publicId, new WarehouseBinQuery(zoneId, search, includeInactive, onlyWithStock), ct);
+    public Task<WarehouseBinPageDto> Bins(Guid publicId, [FromQuery] int? zoneId, [FromQuery] string? search,
+        [FromQuery] bool includeInactive, [FromQuery] bool onlyWithStock, [FromQuery] int[]? zoneIds, [FromQuery] string? aisle,
+        [FromQuery] string? rack, [FromQuery] string? level, [FromQuery] string? position, [FromQuery] Guid[]? productPublicIds,
+        [FromQuery] string[]? occupancy, [FromQuery] int[]? binIds, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 100)
+        => layout.ListBinsAsync(publicId, new WarehouseBinQuery(zoneId, search, includeInactive, onlyWithStock, NullIfEmpty(zoneIds), aisle, rack,
+            level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), skip, take), ct);
+
+    private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 
     /// <summary>Alta de posición: código explícito o compuesto pasillo-rack-nivel-posición, único por almacén (409).</summary>
     [HttpPost("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.WarehouseManage)]

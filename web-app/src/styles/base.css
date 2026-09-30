@@ -206,8 +206,14 @@ h1,h2,h3{letter-spacing:-.01em}
 .sw .tk::after{content:"";position:absolute;width:18px;height:18px;border-radius:50%;background:#cfd6e0;top:2px;left:2px;transition:.15s}
 .sw input:checked+.tk{background:var(--ok)}.sw input:checked+.tk::after{left:18px;background:#fff}
 .sw input:focus-visible+.tk{outline:2px solid var(--flow);outline-offset:2px}
-.filters{display:grid;grid-template-columns:repeat(8,minmax(0,1fr)) auto;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;align-items:end}
+/* Fila de filtros: flex que envuelve en vez de un grid de columnas fijas, para no dejar huecos. Cada filtro parte de
+   140 px y crece (flex-grow) hasta repartirse el ancho del panel: con pocos filtros ocupan todo el ancho, con muchos
+   envuelven y el último renglón también se estira. "Limpiar" (.filters-clear) usa solo el ancho de su contenido.
+   Se eligió flex y no grid auto-fit porque con auto-fit el botón "Limpiar" ocupaba una pista 1fr entera (hueco a su
+   derecha) y un .span2 forzaba una pista implícita (desborde) cuando solo cabía una columna. */
+.filters{display:flex;flex-wrap:wrap;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;align-items:flex-end}
 .filters .f{margin:0}
+.filters>.f{flex:1 1 140px;min-width:0}
 .filters .f input,.filters .f select{padding:7px 9px;font-size:12.5px}
 .seg{display:inline-flex;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding:2px;max-width:100%;overflow-x:auto}
 .seg button{border:none;background:transparent;border-radius:6px;padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:5px;white-space:nowrap}
@@ -231,6 +237,17 @@ h1,h2,h3{letter-spacing:-.01em}
 .msel .mf{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line-2)}
 .msel .mf button{flex:1;border:none;background:var(--panel-2);border-radius:7px;padding:6px;font-size:11px;font-weight:600;color:var(--muted)}
 .msel .mf button:hover{background:var(--raise);color:var(--text)}
+
+/* ===== <select> nativo: flecha a la IZQUIERDA, como SearchSelect/CategoryProductPicker =====
+   Sin la flecha del navegador (appearance:none): chevron SVG (el mismo trazo que IconChevronDown, en --muted de cada
+   tema; un data-URI no puede leer variables CSS, por eso hay una versión por tema) a 9 px del borde, y el texto
+   empieza después (padding-left). El padding derecho queda el de cada regla (.f, .tenant, .dt-sortbar…).
+   Especificidad (0,2,1) a propósito: gana a `.f select`, `.tenant select`, `.dt-sortbar select` (que usan el shorthand
+   `background`, que borraría la imagen) y, por ir después, a `.filters .f select`. Un select con estilo en línea
+   (`background`/`padding`) pisa esta regla: debe usar `backgroundColor` y dejar el padding izquierdo. */
+:root{--select-chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238C97AD' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+[data-theme="light"]{--select-chev:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B6880' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")}
+select:not([multiple]):not([size]){-webkit-appearance:none;appearance:none;background-image:var(--select-chev);background-repeat:no-repeat;background-position:9px 50%;background-size:14px 14px;padding-left:29px;text-overflow:ellipsis}
 
 /* ===== qbox: búsqueda libre dentro de una sección/panel ===== */
 .qrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px 0}
@@ -291,7 +308,7 @@ button.unrow:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
 
 /* ===== RESPONSIVE ===== */
 /* cabecera: bajo 1100 px se oculta la palabra "en vivo" (queda el punto y la hora) */
-@media(max-width:1100px){.filters{grid-template-columns:repeat(4,minmax(0,1fr))}.bar{gap:10px}.live .lbl{display:none}}
+@media(max-width:1100px){.bar{gap:10px}.live .lbl{display:none}}
 /* Bajo 900 px la barra lateral es un cajón que se abre con el botón de menú. */
 @media(max-width:900px){
   .app,.app.col{grid-template-columns:minmax(0,1fr)}
@@ -319,7 +336,6 @@ button.unrow:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
   .scrim.cmdp{padding:0;align-items:stretch}
   .scrim.cmdp .pal{width:100%;max-width:none;height:100dvh;max-height:none;border-radius:0;border:none}
   .cmdp .pl{max-height:none}
-  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
   .r3{grid-template-columns:1fr 1fr}
   .who{padding-left:8px}
   .qbox{max-width:none}
@@ -332,7 +348,9 @@ button.unrow:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
   .bar .iconbtn{width:30px}
   .theme-seg button{padding:4px 5px}
   .who{padding-left:0;border-left:none}
-  .r2,.r3,.filters{grid-template-columns:minmax(0,1fr)}
+  .r2,.r3{grid-template-columns:minmax(0,1fr)}
+  /* a 480 px o menos, un filtro por renglón (como antes); "Limpiar" queda en su propio renglón a la izquierda */
+  .filters>.f{flex-basis:100%}
   .langdd>button .lbl{display:none}
   .head h1{font-size:19px}
   .auth-card{padding:22px 16px}

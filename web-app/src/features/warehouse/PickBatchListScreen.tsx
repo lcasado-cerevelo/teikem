@@ -31,7 +31,7 @@ import {
   type DataColumn,
   type DateRange,
 } from '../../kernel/ui'
-import { useCreatePickBatch, usePickBatches, useProductLots, type PickBatchDto } from './api'
+import { exportPickBatches, useCreatePickBatch, usePickBatches, useProductLots, type PickBatchDto } from './api'
 import {
   firstOtherOwner,
   formatDateTime,
@@ -267,6 +267,7 @@ function PickBatchesTab() {
   const [includeDeleted, setIncludeDeleted] = useState(false)
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const search = useDebounced(q.trim())
   const order = useDebounced(orderNumber.trim())
   const invoice = useDebounced(invoiceNumber.trim())
@@ -291,10 +292,10 @@ function PickBatchesTab() {
       invoiceNumber: invoice || undefined,
       search: search || undefined,
       includeDeleted: includeDeleted || undefined,
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
-    [range, products, status, order, invoice, search, includeDeleted, page],
+    [range, products, status, order, invoice, search, includeDeleted, page, pageSize],
   )
   const { data, isLoading, error } = usePickBatches(query)
 
@@ -375,9 +376,14 @@ function PickBatchesTab() {
             rowKey={(b) => b.publicId ?? String(b.id)}
             loading={isLoading}
             page={page}
-            pageSize={PAGE_SIZE}
+            pageSize={pageSize}
             total={data?.total ?? 0}
             onPage={setPage}
+            onPageSize={(size) => {
+              setPageSize(size)
+              setPage(1)
+            }}
+            exportRows={() => exportPickBatches(query)}
             onRowClick={(b) => navigate(`/warehouse/pick-batches/${b.publicId}`)}
             rowActions={[{ key: 'open', label: t('warehouse.pickBatches.open'), onClick: (b) => navigate(`/warehouse/pick-batches/${b.publicId}`) }]}
           />

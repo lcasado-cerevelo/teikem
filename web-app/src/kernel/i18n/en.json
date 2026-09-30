@@ -331,7 +331,21 @@
       "range": "{from}–{to} of {total}",
       "pageOf": "Page {page} of {pages}",
       "prev": "Previous page",
-      "next": "Next page"
+      "next": "Next page",
+      "pageSize": "Rows per page",
+      "export": {
+        "button": "Export",
+        "menu": "Export format",
+        "xlsx": "Excel (.xlsx)",
+        "csv": "CSV (.csv)",
+        "pdf": "PDF (.pdf)",
+        "rows": "Rows: {count}",
+        "truncated": "Only the first {count} rows were exported (export limit). Narrow the filters to export the rest.",
+        "working": "Exporting…",
+        "error": "The file could not be generated. Please try again.",
+        "yes": "Yes",
+        "no": "No"
+      }
     },
     "filters": {
       "label": "Filters",
@@ -354,6 +368,10 @@
     },
     "form": {
       "save": "Save"
+    },
+    "comboSelect": {
+      "placeholder": "Select…",
+      "clear": "Remove"
     },
     "clientPicker": {
       "placeholder": "Search client by code or name…",
@@ -858,7 +876,7 @@
   "warehouse": {
     "list": {
       "title": "Warehouses",
-      "subtitle": "Company warehouses, their zones, bins and docks.",
+      "subtitle": "Create and manage your warehouses — each with its own zones and slots",
       "count": "{count} warehouses",
       "new": "New warehouse",
       "code": "Code",
@@ -875,11 +893,34 @@
       "line1": "Address",
       "country": "Country",
       "created": "Warehouse created.",
+      "address": "Address",
+      "addressPlaceholder": "Address, city, state or ZIP code",
+      "zoneType": "Type",
+      "active": "Active",
+      "activeHelp": "Every new warehouse starts active; deactivate it from its record.",
+      "editWarehouse": "Edit warehouse",
+      "openWarehouse": "Open the warehouse record",
+      "zonesTitle": "Zones in this warehouse",
+      "noZonesYet": "No zones yet — create the first one",
+      "selectWarehouse": "Select a warehouse from the list",
+      "zoneUsage": "{used}/{total} slots",
+      "editZone": "Edit zone {code}",
+      "deleteZone": "Deactivate zone {code}",
+      "zoneHasBins": "Can’t deactivate: this zone has slots created",
       "errors": {
         "codeRequired": "Code is required.",
         "codePattern": "Code only allows letters, numbers, hyphen and underscore (max 30).",
         "nameRequired": "Name is required."
       }
+    },
+    "postalPicker": {
+      "label": "City or ZIP code",
+      "help": "Search by city, municipality or ZIP code; picking one fills City, ZIP code, State and Country.",
+      "placeholder": "Search city or ZIP code…",
+      "none": "No cities or ZIP codes match.",
+      "noAccess": "Your user cannot view the city catalog.",
+      "clear": "Remove city and ZIP code",
+      "derivedHelp": "Filled from the chosen city."
     },
     "locations": {
       "title": "Locations",
@@ -888,31 +929,42 @@
       "noWarehouses": "There are no active warehouses.",
       "noZones": "This warehouse has no zones yet",
       "noBins": "This warehouse has no slots yet.",
+      "noMatch": "No slot matches the filters.",
       "usedPct": "used · {pct}%",
-      "zoneAria": "Zone {zone}: {used} of {total} slots used ({pct}%)",
+      "noCapacity": "units · no capacity set",
+      "noBinsInZone": "no slots",
+      "binsWithoutCapacityOne": "1 slot without capacity",
+      "binsWithoutCapacity": "{count} slots without capacity",
+      "zoneAriaCapacity": "Zone {zone}: {occupied} of {capacity} capacity units used ({pct}%)",
+      "zoneAriaNoCapacity": "Zone {zone}: {qty} units, no capacity set",
+      "zoneAriaNoBins": "Zone {zone}: no slots",
+      "zoneFilterHint": "Click to show only this zone in the table; click again to clear the filter",
       "riverAria": "Occupancy by zone",
       "tableLabel": "Slots",
-      "fillAria": "{pct}% of the slot with the most units",
-      "fillHint": "Units relative to the slot with the most units in the warehouse (slots have no recorded capacity).",
-      "truncated": "Only {count} stock lines were read: the Product column and its filter may be incomplete.",
-      "stockError": "The products in the slots could not be read.",
+      "fillAria": "{pct}% of capacity",
+      "products": "{count} products",
       "columns": {
         "bin": "Slot",
         "zone": "Zone",
         "qty": "Quantity",
         "product": "Product",
+        "capacity": "Capacity",
         "occupancy": "Occupancy",
-        "state": "Status"
+        "status": "Status"
       },
       "filters": {
+        "bin": "Slot",
+        "binPlaceholder": "Code, aisle, rack…",
         "zone": "Zone",
         "type": "Type",
         "product": "Product",
-        "state": "Status"
+        "status": "Status"
       },
-      "states": {
+      "occupancy": {
         "EMPTY": "Empty",
-        "OCCUPIED": "Used"
+        "PARTIAL": "Partial",
+        "FULL": "Full",
+        "NO_CAPACITY": "In use, no capacity"
       }
     },
     "detail": {
@@ -945,7 +997,6 @@
       "active": "Active",
       "inactive": "Inactive",
       "includeInactive": "Include inactive",
-      "codeHelp": "The zone code cannot be changed.",
       "edit": "Edit",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate",
@@ -957,9 +1008,16 @@
       "saved": "Changes saved.",
       "deactivated": "Zone deactivated.",
       "reactivated": "Zone reactivated.",
+      "newPlus": "+ New zone",
+      "editTitle": "Edit zone",
+      "occupied": "Occupied",
+      "status": "Status",
+      "codeEditHelp": "Unique in the warehouse. Changing it does not move its bins or stock.",
+      "typePlaceholder": "Search type…",
       "errors": {
         "codeRequired": "Code is required.",
-        "nameRequired": "Name is required."
+        "nameRequired": "Name is required.",
+        "codePattern": "Code only allows letters, numbers, hyphen and underscore (max 30)."
       }
     },
     "bins": {
@@ -993,11 +1051,28 @@
       "saved": "Changes saved.",
       "deactivated": "Bin deactivated.",
       "reactivated": "Bin reactivated.",
+      "capacity": "Capacity",
+      "occupancy": "Occupancy",
+      "occupancyStates": {
+        "EMPTY": "Empty",
+        "PARTIAL": "Partial",
+        "FULL": "Full",
+        "NO_CAPACITY": "In use, no capacity"
+      },
+      "product": "Product",
+      "productsCount": "{count} products",
+      "status": "Status",
+      "maxCapacity": "Max capacity",
+      "maxCapacityHelp": "Units that fit; empty = no capacity.",
+      "zonePlaceholder": "Search zone…",
       "errors": {
         "zoneRequired": "Select the zone.",
         "codeOrLocation": "Enter the bin's code or its aisle/rack/level/position.",
         "maxWeightPositive": "Max weight must be greater than zero.",
-        "maxWeightDecimals": "Max weight allows up to 3 decimals."
+        "maxWeightDecimals": "Max weight allows up to 3 decimals.",
+        "maxCapacityPositive": "The bin's max capacity must be greater than zero.",
+        "maxCapacityInteger": "Max capacity must be a whole number.",
+        "maxCapacityTooLarge": "Max capacity is too large."
       }
     },
     "docks": {
@@ -2066,7 +2141,8 @@
         "zones": "Zones",
         "allZones": "All zones",
         "bins": "Bins",
-        "allBins": "All bins"
+        "allBins": "All bins",
+        "binsTruncated": "Only the first {count} bins are listed: pick zones to narrow the list."
       },
       "errors": {
         "binRequired": "Enter the bin.",

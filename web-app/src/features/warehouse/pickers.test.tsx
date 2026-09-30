@@ -212,11 +212,28 @@ const BINS = [
 ]
 const OLD_BIN = { id: 99, zoneId: 2, zoneCode: 'ALM', zoneTypeCode: 'STORAGE', code: 'Z-99', isActive: false }
 
+const BIN_ZONES = [
+  { id: 1, code: 'STG', zoneTypeCode: 'STAGING', isActive: true },
+  { id: 2, code: 'ALM', zoneTypeCode: 'STORAGE', isActive: true },
+]
+
+/** Listado paginado de posiciones (Lote 1): search, zoneIds, binIds, includeInactive y take como el API. */
 function binRoute(url: URL): unknown {
+  if (url.pathname === `/api/v1/warehouses/${WH}/zones`) return BIN_ZONES
   if (url.pathname === `/api/v1/warehouses/${WH}/bins`) {
-    const search = (url.searchParams.get('search') ?? '').toLowerCase()
-    const all = url.searchParams.get('includeInactive') === 'true' ? [...BINS, OLD_BIN] : BINS
-    return all.filter((b) => `${b.code} ${b.zoneCode}`.toLowerCase().includes(search))
+    const q = url.searchParams
+    const search = (q.get('search') ?? '').toLowerCase()
+    const zoneIds = q.getAll('zoneIds').map(Number)
+    const binIds = q.getAll('binIds').map(Number)
+    const all = q.get('includeInactive') === 'true' ? [...BINS, OLD_BIN] : BINS
+    const hits = all.filter(
+      (b) =>
+        `${b.code} ${b.zoneCode}`.toLowerCase().includes(search) &&
+        (zoneIds.length === 0 || zoneIds.includes(b.zoneId)) &&
+        (binIds.length === 0 || binIds.includes(b.id)),
+    )
+    const take = Number(q.get('take') ?? 100)
+    return { total: hits.length, skip: 0, take, items: hits.slice(0, take) }
   }
   return route(url)
 }
@@ -281,30 +298,49 @@ describe('BinPicker', () => {
     expect(box).toHaveAttribute('aria-expanded', 'false')
   })
 
-  it('zoneTypeCodes filtra en el cliente (p. ej. solo staging) y onlyWithStock se envía al API', async () => {
+  it('pide una página acotada (take=50) del listado paginado', async () => {
+    const user = userEvent.setup()
+    wrap(<BinHarness onChange={vi.fn()} />)
+    await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+    await screen.findByRole('option', { name: 'REC-01 · STG' })
+    expect(binRequests().every((u) => u.searchParams.get('take') === '50')).toBe(true)
+  })
+
+  it('zoneTypeCodes va al API como las zonas de esos tipos (zoneIds) y onlyWithStock se envía al API', async () => {
     const user = userEvent.setup()
     wrap(<BinHarness onChange={vi.fn()} zoneTypeCodes={['STAGING']} onlyWithStock />)
     await user.click(screen.getByRole('combobox', { name: 'Posición' }))
     await screen.findByRole('option', { name: 'REC-01 · STG' })
     expect(screen.getAllByRole('option')).toHaveLength(1)
     expect(binRequests().at(-1)?.searchParams.get('onlyWithStock')).toBe('true')
+    expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual(['1'])
   })
 
-  it('las sugeridas van primero con la marca "Sugerida"', async () => {
+  it('zoneTypeCodes sin ninguna zona de esos tipos: sin opciones y sin consultar posiciones', async () => {
+    const user = userEvent.setup()
+    wrap(<BinHarness onChange={vi.fn()} zoneTypeCodes={['CROSSDOCK']} />)
+    await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+    expect(await screen.findByText('No hay posiciones que coincidan.')).toBeInTheDocument()
+    expect(binRequests()).toHaveLength(0)
+  })
+
+  it('las sugeridas van primero con la marca "Sugerida" (se piden por id aunque no vengan en la página)', async () => {
     const user = userEvent.setup()
     wrap(<BinHarness onChange={vi.fn()} suggestedBinIds={[12, null]} />)
     await user.click(screen.getByRole('combobox', { name: 'Posición' }))
     await screen.findByRole('option', { name: /A-01-01/ })
+    await waitFor(() => expect(screen.getAllByRole('option')[0]).toHaveTextContent('Sugerida'))
     const options = screen.getAllByRole('option')
     expect(options[0]).toHaveTextContent('A-01-02 · ALM')
-    expect(options[0]).toHaveTextContent('Sugerida')
     expect(options[1]).not.toHaveTextContent('Sugerida')
+    expect(binRequests().some((u) => u.searchParams.getAll('binIds').join() === '12')).toBe(true)
   })
 
-  it('un valor inactivo (registro histórico) se muestra con su código buscando con includeInactive=true', async () => {
+  it('un valor inactivo (registro histórico) se muestra con su código pidiéndolo por id con includeInactive=true', async () => {
     wrap(<BinHarness onChange={vi.fn()} initial={OLD_BIN.id} />)
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Posición' })).toHaveValue('Z-99 · ALM'))
-    expect(binRequests().some((u) => u.searchParams.get('includeInactive') === 'true')).toBe(true)
+    const lookup = binRequests().find((u) => u.searchParams.get('includeInactive') === 'true')
+    expect(lookup?.searchParams.getAll('binIds')).toEqual(['99'])
   })
 
   it('al cambiar de almacén quita la posición elegida', async () => {

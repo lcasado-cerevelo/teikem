@@ -191,7 +191,8 @@ export function ActivityPanel() {
       />
       <select
         className="btn sm"
-        style={{ padding: '6px 8px', maxWidth: '100%' }}
+        // padding izquierdo de 29 px: deja lugar al chevron de la izquierda de los <select> del kit (base.css)
+        style={{ padding: '6px 8px 6px 29px', maxWidth: '100%' }}
         aria-label={t('analytics.activity.windowLabel')}
         value={win}
         onChange={(e) => setWin(e.target.value as ActivityWindow)}
@@ -247,6 +248,8 @@ export function ActivityPanel() {
         label={t('analytics.activity.tableLabel')}
         // sin coincidencias del buscador: el vacío genérico de la tabla ('Sin resultados')
         empty={rows.length > 0 ? undefined : <EmptyState title={t('analytics.activity.empty')} />}
+        // paginación propia ("Ver más" y total en el pie del panel): paginar aquí volvería a la página 1 en cada carga
+        pagination={false}
       />
     </Panel>
   )

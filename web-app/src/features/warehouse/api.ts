@@ -5,6 +5,7 @@
 // `purchasing.view` + PURCHASING; citas y cruce de muelle: `inventory.view` + CROSSDOCK; órdenes: `orders.view` + LTL_GROUND).
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
+import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import type { components, paths } from '../../kernel/api/schema'
 
 type Schemas = components['schemas']
@@ -495,36 +496,6 @@ export function useInventoryBalances(query: GetQuery<'/api/v1/inventory/balances
     queryFn: () => unwrap(api.GET('/api/v1/inventory/balances', { params: { query } })),
     enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
-    meta: meta(options),
-  })
-}
-
-/** Páginas de 200 (el tope del API) y máximo de páginas que lee `useWarehouseStockLines`. */
-export const STOCK_LINES_PAGE = 200
-export const STOCK_LINES_MAX_PAGES = 25
-
-/**
- * Todas las líneas de saldo en mano de un almacén (`GET /api/v1/inventory/balances?warehousePublicIds=` página por página,
- * hasta `STOCK_LINES_MAX_PAGES` × 200 líneas). Sirve para saber qué productos hay en cada posición (Ubicaciones).
- * `truncated` = el almacén tiene más líneas de las que se leyeron. Se invalida con el prefijo de saldos.
- */
-export function useWarehouseStockLines(publicId: string | null | undefined, options?: WarehouseQueryOptions) {
-  return useQuery({
-    queryKey: [warehouseKeys.balances[0], { warehousePublicIds: [publicId], allPages: true }],
-    queryFn: async () => {
-      const items: BalanceDto[] = []
-      let total = 0
-      for (let page = 0; page < STOCK_LINES_MAX_PAGES; page++) {
-        const query = { warehousePublicIds: [publicId ?? ''], skip: page * STOCK_LINES_PAGE, take: STOCK_LINES_PAGE }
-        const data = await unwrap(api.GET('/api/v1/inventory/balances', { params: { query } }))
-        const pageItems = data.items ?? []
-        items.push(...pageItems)
-        total = data.total ?? items.length
-        if (pageItems.length < STOCK_LINES_PAGE || items.length >= total) break
-      }
-      return { items, total, truncated: items.length < total }
-    },
-    enabled: Boolean(publicId) && (options?.enabled ?? true),
     meta: meta(options),
   })
 }
@@ -1152,3 +1123,63 @@ export function useOrderLookup(code: string | null | undefined, options?: Wareho
     meta: meta(options),
   })
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Exportación de las listas paginadas por el servidor (`DataTable.exportRows`): todas las filas con los filtros de la
+// pantalla (su mismo `query`, reemplazando `skip`/`take`), de a 200 hasta 10 000 (`fetchAllPages`).
+// ---------------------------------------------------------------------------------------------------------------------
+export const exportProducts = (query: GetQuery<'/api/v1/products'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/products', { params: { query: { ...query, skip, take } } })))
+
+export const exportInventoryBalances = (query: GetQuery<'/api/v1/inventory/balances'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/inventory/balances', { params: { query: { ...query, skip, take } } })))
+
+export const exportInventoryTransactions = (query: GetQuery<'/api/v1/inventory/transactions'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/inventory/transactions', { params: { query: { ...query, skip, take } } })))
+
+export const exportReceipts = (query: GetQuery<'/api/v1/receipts'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/receipts', { params: { query: { ...query, skip, take } } })))
+
+export const exportWarehouseTasks = (query: GetQuery<'/api/v1/warehouse-tasks'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/warehouse-tasks', { params: { query: { ...query, skip, take } } })))
+
+export const exportPickBatches = (query: GetQuery<'/api/v1/pick-batches'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/pick-batches', { params: { query: { ...query, skip, take } } })))
+
+export const exportPurchaseOrders = (query: GetQuery<'/api/v1/purchase-orders'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/purchase-orders', { params: { query: { ...query, skip, take } } })))
+
+export const exportOrders = (query: GetQuery<'/api/v1/orders'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/orders', { params: { query: { ...query, skip, take } } })))
+
+// =====================================================================================================================
+// Lote 1 (cambios de Almacén): localidades postales (Ciudad/ZIP del almacén) y exportación de posiciones
+// =====================================================================================================================
+
+export type PostalLocalityDto = Schemas['PostalLocalityDto']
+
+/** Resultados por búsqueda de `usePostalLocalities` (el API da 20 por defecto, máximo 100). */
+export const POSTAL_LOCALITIES_TAKE = 30
+
+/**
+ * `GET /api/v1/postal-localities?search=&take=` (catálogo global de ciudades y códigos postales; cualquier usuario autenticado):
+ * busca por ciudad (sin acentos) o por prefijo de código postal. Caché de 10 min (el catálogo casi no cambia) y
+ * `keepPreviousData` para que la lista no parpadee entre teclas. Un 403 no saca de la pantalla.
+ */
+export function usePostalLocalities(search: string, options?: WarehouseQueryOptions) {
+  const query = { search: search.trim() || undefined, take: POSTAL_LOCALITIES_TAKE }
+  return useQuery({
+    queryKey: ['/api/v1/postal-localities', query],
+    queryFn: () => unwrap(api.GET('/api/v1/postal-localities', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    staleTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/** Exportación de la pestaña Posiciones: todas las posiciones del almacén con los filtros de la pantalla (de a 200). */
+export const exportWarehouseBins = (publicId: string, query: GetQuery<'/api/v1/warehouses/{publicId}/bins'>) =>
+  fetchAllPages((skip, take) =>
+    unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId }, query: { ...query, skip, take } } })),
+  )

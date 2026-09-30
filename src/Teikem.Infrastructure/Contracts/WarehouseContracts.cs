@@ -21,35 +21,64 @@ public sealed record WarehousePatchRequest(string? Name = null, string? Line1 = 
 
 public sealed record WarehouseDeactivateRequest(string? Comment = null, string? RowVersion = null);
 
+/// <summary>
+/// Almacén. ZoneTypeCodes (Lote 1 de cambios de Almacén) = códigos de tipo de zona DISTINTOS de sus zonas activas, ordenados, para
+/// el filtro "Tipo" de la lista (zonas sin tipo no aportan código).
+/// </summary>
 public sealed record WarehouseDto(int Id, Guid PublicId, string Code, string Name, string? Line1, string? City, string? State,
     string? PostalCode, string CountryCode, string StatusCode, string Status, bool IsActive, int ZoneCount, int BinCount, int DockCount,
-    decimal QtyOnHand, string RowVersion);
+    decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes);
 
 public sealed record WarehouseZoneRequest(string? Code, string? Name, string? ZoneType = null);
 
-public sealed record WarehouseZonePatchRequest(string? Name = null, string? ZoneType = null)
+/// <summary>PATCH de la zona: código (Lote 1 de cambios: editable, único por almacén → 409), nombre y tipo ("" quita el tipo).</summary>
+public sealed record WarehouseZonePatchRequest(string? Name = null, string? ZoneType = null, string? Code = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }
 }
 
-public sealed record WarehouseZoneDto(int Id, string Code, string Name, string? ZoneTypeCode, string? ZoneType, bool IsActive, int BinCount);
+/// <summary>
+/// Zona con su ocupación (Lote 1 de cambios de Almacén; la capacidad de zona NO se guarda, se suma de sus posiciones):
+/// BinCount = posiciones activas; OccupiedBinCount = activas con existencia; CapacityQty = Σ cupo de las activas con cupo;
+/// QtyOnHandInCapacityBins = existencia en esas mismas posiciones (numerador del % de ocupación); QtyOnHand = existencia total
+/// de la zona; BinsWithoutCapacity = activas sin cupo configurado (quedan fuera del %).
+/// </summary>
+public sealed record WarehouseZoneDto(int Id, string Code, string Name, string? ZoneTypeCode, string? ZoneType, bool IsActive, int BinCount,
+    int OccupiedBinCount, long CapacityQty, decimal QtyOnHandInCapacityBins, decimal QtyOnHand, int BinsWithoutCapacity);
 
+/// <summary>Alta de posición. MaxCapacityQty = cupo máximo en unidades de producto (null = sin configurar; si llega, &gt; 0).</summary>
 public sealed record WarehouseBinRequest(int? ZoneId, string? Code = null, string? Aisle = null, string? Rack = null, string? Level = null,
-    string? Position = null, decimal? MaxWeightKg = null);
+    string? Position = null, decimal? MaxWeightKg = null, int? MaxCapacityQty = null);
 
-/// <summary>PATCH de la posición: código y zona inmutables.</summary>
+/// <summary>PATCH de la posición: código y zona inmutables. ClearMaxCapacity = quitar el cupo (queda sin configurar).</summary>
 public sealed record WarehouseBinPatchRequest(string? Aisle = null, string? Rack = null, string? Level = null, string? Position = null,
-    decimal? MaxWeightKg = null, bool? ClearMaxWeight = null)
+    decimal? MaxWeightKg = null, bool? ClearMaxWeight = null, int? MaxCapacityQty = null, bool? ClearMaxCapacity = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }
 }
 
-public sealed record WarehouseBinQuery(int? ZoneId = null, string? Search = null, bool IncludeInactive = false, bool OnlyWithStock = false);
+/// <summary>
+/// Filtros del listado paginado de posiciones (filtrado, orden por código y paginación en SQL). Search = contiene en código,
+/// código de zona, pasillo, rack, nivel o posición. ZoneId (una, 404 si no es del almacén) y ZoneIds (varias); Aisle/Rack/Level/
+/// Position = contiene; ProductPublicIds = posiciones con existencia de alguno de esos productos; Occupancy = uno o varios de
+/// EMPTY, PARTIAL, FULL, NO_CAPACITY (BinOccupancies); BinIds = solo esas posiciones (resolver ids ya elegidos).
+/// </summary>
+public sealed record WarehouseBinQuery(int? ZoneId = null, string? Search = null, bool IncludeInactive = false, bool OnlyWithStock = false,
+    int[]? ZoneIds = null, string? Aisle = null, string? Rack = null, string? Level = null, string? Position = null,
+    Guid[]? ProductPublicIds = null, string[]? Occupancy = null, int[]? BinIds = null, int Skip = 0, int Take = 100);
 
+/// <summary>
+/// Posición. QtyOnHand y ProductCount = existencia en mano y productos distintos con existencia; Occupancy = EMPTY, PARTIAL,
+/// FULL o NO_CAPACITY (WarehouseRules.Occupancy); cuando ProductCount es exactamente 1, SingleProduct* identifica ese producto.
+/// </summary>
 public sealed record WarehouseBinDto(int Id, int ZoneId, string ZoneCode, string? ZoneTypeCode, string Code, string? Aisle, string? Rack,
-    string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount);
+    string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount, int? MaxCapacityQty,
+    string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName);
+
+/// <summary>Página del listado de posiciones (mismo sobre que productos, recibos y tareas).</summary>
+public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items);
 
 public sealed record WarehouseDockRequest(string? Code, string? DockType);
 

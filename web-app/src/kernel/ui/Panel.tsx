@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { PanelTitleContext } from './panelContext'
 import './ui.css'
 
 export interface PanelProps {
@@ -38,7 +39,10 @@ export function Panel({ title, icon, badge, subtitle, actions, footer, flush, cl
           {subtitle != null && <p className="kit-sub">{subtitle}</p>}
         </header>
       )}
-      <div className={flush ? 'pb flush' : 'pb'}>{children}</div>
+      <div className={flush ? 'pb flush' : 'pb'}>
+        {/* el título en texto llega a las tablas del cuerpo (nombre del archivo exportado) */}
+        <PanelTitleContext.Provider value={typeof title === 'string' ? title : null}>{children}</PanelTitleContext.Provider>
+      </div>
       {footer != null && <footer className="ft kit-ft">{footer}</footer>}
     </section>
   )

@@ -24,3 +24,10 @@ public sealed record StatusLateralEntryUpsert(string LateralStatusCode, string F
 public sealed record StatusHistoryDto(long Id, string? FromCode, string? FromLabel, string ToCode, string ToLabel, string? Comment, DateTime ChangedAtUtc, int? ChangedBy, string? ChangedByName);
 
 public sealed record PipelineValidationResult(bool IsValid, IReadOnlyList<string> Errors, IReadOnlyList<string> Warnings);
+
+/// <summary>
+/// Lote 1 (cambios de Almacén) — localidad postal del catálogo global (GET /api/v1/postal-localities): ciudad, código postal,
+/// estado y país (código y nombre en el idioma del usuario). City es el nombre postal USPS (mayúsculas); en Puerto Rico,
+/// Municipality es el municipio (con acentos). El formulario de almacén llena City (municipio si lo hay), State, PostalCode y Country.
+/// </summary>
+public sealed record PostalLocalityDto(int Id, string City, string PostalCode, string? State, string CountryCode, string Country, string? Municipality);

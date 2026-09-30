@@ -1,96 +1,113 @@
-// Lógica pura de Ubicaciones: ocupación por zona, productos por posición, filas y filtros.
+// Lógica pura de Ubicaciones (Lote 1): recuadros de zona con capacidad real, estatus y ocupación de posición, columna
+// Producto, selección de zona por clic y consulta del listado paginado.
 import { describe, expect, it } from 'vitest'
-import type { BalanceDto, WarehouseBinDto, WarehouseZoneDto } from './api'
+import type { WarehouseZoneDto } from './api'
 import {
   EMPTY_LOCATION_FILTERS,
-  binState,
-  buildLocationRows,
-  filterLocationRows,
-  productOptions,
-  productsByBin,
-  zoneOccupancy,
+  binFillPct,
+  binOccupancy,
+  binProductCell,
+  buildBinListQuery,
+  parseZoneParam,
+  toggleZoneSelection,
+  zoneCapacities,
 } from './locations'
 
 const ZONES: WarehouseZoneDto[] = [
-  { id: 1, code: 'A', name: 'Almacenaje', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 3 },
-  { id: 2, code: 'S', name: 'Staging', zoneTypeCode: 'STAGING', zoneType: 'Staging', isActive: true, binCount: 1 },
-  { id: 3, code: 'V', name: 'Vacía', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 0 },
+  // con cupo en todas sus posiciones
+  { id: 1, code: 'A', name: 'Almacenaje', zoneTypeCode: 'STORAGE', binCount: 3, occupiedBinCount: 2, capacityQty: 300, qtyOnHandInCapacityBins: 120, qtyOnHand: 120, binsWithoutCapacity: 0 },
+  // cupo solo en parte: 2 posiciones sin cupo (su existencia no entra al porcentaje)
+  { id: 2, code: 'P', name: 'Picking', zoneTypeCode: 'PICKING', binCount: 4, occupiedBinCount: 3, capacityQty: 50, qtyOnHandInCapacityBins: 50, qtyOnHand: 80, binsWithoutCapacity: 2 },
+  // ninguna posición con cupo (hoy, Advance Depot)
+  { id: 3, code: 'S', name: 'Staging', zoneTypeCode: 'STAGING', binCount: 5, occupiedBinCount: 1, capacityQty: 0, qtyOnHandInCapacityBins: 0, qtyOnHand: 1234.5, binsWithoutCapacity: 5 },
+  // sin posiciones
+  { id: 4, code: 'V', name: 'Vacía', zoneTypeCode: 'STORAGE', binCount: 0, occupiedBinCount: 0, capacityQty: 0, qtyOnHandInCapacityBins: 0, qtyOnHand: 0, binsWithoutCapacity: 0 },
 ]
 
-const BINS: WarehouseBinDto[] = [
-  { id: 10, zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', code: 'A-10', isActive: true, qtyOnHand: 40, productCount: 2 },
-  { id: 11, zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', code: 'A-2', isActive: true, qtyOnHand: 0, productCount: 0 },
-  { id: 12, zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', code: 'A-3', isActive: true, qtyOnHand: 10, productCount: 1 },
-  { id: 20, zoneId: 2, zoneCode: 'S', zoneTypeCode: 'STAGING', code: 'S-1', isActive: true, qtyOnHand: 0, productCount: 0 },
-]
-
-const LINES: BalanceDto[] = [
-  { binId: 10, productPublicId: 'p-2', sku: 'SKU-10', productName: 'Tornillo', qtyOnHand: 25 },
-  { binId: 10, productPublicId: 'p-1', sku: 'SKU-2', productName: 'Tuerca', qtyOnHand: 5 },
-  // otro lote del mismo producto: no se repite
-  { binId: 10, productPublicId: 'p-1', sku: 'SKU-2', productName: 'Tuerca', qtyOnHand: 10 },
-  { binId: 12, productPublicId: 'p-1', sku: 'SKU-2', productName: 'Tuerca', qtyOnHand: 10 },
-  // sin posición o sin unidades: no cuentan
-  { binId: null, productPublicId: 'p-3', sku: 'SKU-3', productName: 'Arandela', qtyOnHand: 3 },
-  { binId: 11, productPublicId: 'p-3', sku: 'SKU-3', productName: 'Arandela', qtyOnHand: 0 },
-]
-
-describe('binState', () => {
-  it('vacía sin unidades, ocupada con unidades', () => {
-    expect(binState(0)).toBe('EMPTY')
-    expect(binState(null)).toBe('EMPTY')
-    expect(binState(0.5)).toBe('OCCUPIED')
-  })
-})
-
-describe('productsByBin / productOptions', () => {
-  it('un producto por posición aunque tenga varios lotes, en orden natural de SKU; ignora líneas sin posición o en cero', () => {
-    const map = productsByBin(LINES)
-    expect(map.get(10)?.map((p) => p.sku)).toEqual(['SKU-2', 'SKU-10'])
-    expect(map.get(12)?.map((p) => p.publicId)).toEqual(['p-1'])
-    expect(map.has(11)).toBe(false)
-    expect(productOptions(map)).toEqual([
-      { value: 'p-1', label: 'SKU-2 · Tuerca' },
-      { value: 'p-2', label: 'SKU-10 · Tornillo' },
-    ])
-  })
-})
-
-describe('zoneOccupancy', () => {
-  it('ocupadas / activas por zona, con porcentaje entero y 0 % en una zona sin posiciones', () => {
-    const occ = zoneOccupancy(ZONES, [...BINS, { id: 13, zoneId: 1, code: 'A-4', isActive: false, qtyOnHand: 5 }])
-    expect(occ.map((o) => [o.zone.code, o.used, o.total, o.pct])).toEqual([
-      ['A', 2, 3, 67],
-      ['S', 0, 1, 0],
-      ['V', 0, 0, 0],
-    ])
-  })
-})
-
-describe('buildLocationRows / filterLocationRows', () => {
-  const rows = buildLocationRows(BINS, ZONES, productsByBin(LINES))
-
-  it('zona por nombre, estado y barra relativa a la posición con más unidades', () => {
-    expect(rows.map((r) => [r.bin.code, r.zoneName, r.state, r.fill])).toEqual([
-      ['A-10', 'Almacenaje', 'OCCUPIED', 100],
-      ['A-2', 'Almacenaje', 'EMPTY', 0],
-      ['A-3', 'Almacenaje', 'OCCUPIED', 25],
-      ['S-1', 'Staging', 'EMPTY', 0],
+describe('zoneCapacities (recuadros del río)', () => {
+  it('ocupado / capacidad de la zona con % real; sin cupo, la existencia total sin porcentaje', () => {
+    expect(zoneCapacities(ZONES).map((z) => [z.zone.code, z.mode, z.occupied, z.capacity, z.pct, z.binsWithoutCapacity, z.qtyOnHand])).toEqual([
+      ['A', 'capacity', 120, 300, 40, 0, 120],
+      ['P', 'capacity', 50, 50, 100, 2, 80],
+      ['S', 'noCapacity', 0, 0, null, 5, 1234.5],
+      ['V', 'noBins', 0, 0, null, 0, 0],
     ])
   })
 
-  it('sin filtros devuelve todo; cada filtro vacío no filtra', () => {
-    expect(filterLocationRows(rows, EMPTY_LOCATION_FILTERS)).toHaveLength(4)
+  it('nunca inventa un porcentaje: sin cupo pct es null aunque haya existencia', () => {
+    const [z] = zoneCapacities([{ id: 9, code: 'X', binCount: 2, qtyOnHand: 10 }])
+    expect(z.mode).toBe('noCapacity')
+    expect(z.pct).toBeNull()
+  })
+})
+
+describe('binOccupancy / binFillPct', () => {
+  it('usa el estatus del API cuando llega', () => {
+    expect(binOccupancy({ occupancy: 'FULL', qtyOnHand: 0, maxCapacityQty: null })).toBe('FULL')
   })
 
-  it('Zona, Tipo, Producto y Estado se combinan', () => {
-    const codes = (f: Partial<typeof EMPTY_LOCATION_FILTERS>) =>
-      filterLocationRows(rows, { ...EMPTY_LOCATION_FILTERS, ...f }).map((r) => r.bin.code)
-    expect(codes({ zoneIds: ['2'] })).toEqual(['S-1'])
-    expect(codes({ zoneTypes: ['STORAGE'] })).toEqual(['A-10', 'A-2', 'A-3'])
-    expect(codes({ products: ['p-2'] })).toEqual(['A-10'])
-    expect(codes({ products: ['p-1', 'p-2'] })).toEqual(['A-10', 'A-3'])
-    expect(codes({ states: ['EMPTY'] })).toEqual(['A-2', 'S-1'])
-    expect(codes({ zoneIds: ['1'], states: ['EMPTY'] })).toEqual(['A-2'])
+  it('sin estatus del API aplica la regla del servidor: Vacía / Sin cupo / Llena / Parcial', () => {
+    expect(binOccupancy({ qtyOnHand: 0, maxCapacityQty: 10 })).toBe('EMPTY')
+    expect(binOccupancy({ qtyOnHand: 3, maxCapacityQty: null })).toBe('NO_CAPACITY')
+    expect(binOccupancy({ qtyOnHand: 10, maxCapacityQty: 10 })).toBe('FULL')
+    expect(binOccupancy({ qtyOnHand: 12, maxCapacityQty: 10 })).toBe('FULL')
+    expect(binOccupancy({ qtyOnHand: 4, maxCapacityQty: 10 })).toBe('PARTIAL')
+    expect(binOccupancy({ occupancy: 'RARO', qtyOnHand: 4, maxCapacityQty: 10 })).toBe('PARTIAL')
+  })
+
+  it('porcentaje real respecto al cupo (puede pasar de 100); sin cupo, null', () => {
+    expect(binFillPct(25, 100)).toBe(25)
+    expect(binFillPct(0, 100)).toBe(0)
+    expect(binFillPct(150, 100)).toBe(150)
+    expect(binFillPct(5, null)).toBeNull()
+    expect(binFillPct(5, 0)).toBeNull()
+  })
+})
+
+describe('binProductCell', () => {
+  it('nada, el nombre del único producto o "N productos"', () => {
+    expect(binProductCell({ productCount: 0 })).toEqual({ kind: 'none' })
+    expect(binProductCell({ productCount: 1, singleProductSku: 'TORN-01', singleProductName: 'Tornillo' })).toEqual({ kind: 'one', name: 'Tornillo', sku: 'TORN-01' })
+    expect(binProductCell({ productCount: 1, singleProductSku: 'TORN-01', singleProductName: null })).toEqual({ kind: 'one', name: 'TORN-01', sku: 'TORN-01' })
+    expect(binProductCell({ productCount: 3 })).toEqual({ kind: 'many', count: 3 })
+  })
+})
+
+describe('selección de zona (recuadro + ?zone=)', () => {
+  it('clic en un recuadro deja solo esa zona; otro clic en la misma quita el filtro', () => {
+    expect(toggleZoneSelection([], '2')).toEqual(['2'])
+    expect(toggleZoneSelection(['2'], '2')).toEqual([])
+    expect(toggleZoneSelection(['1', '2'], '2')).toEqual(['2'])
+    expect(toggleZoneSelection(['1'], '2')).toEqual(['2'])
+  })
+
+  it('?zone= acepta repetido o separado por comas; descarta lo que no es un id', () => {
+    expect(parseZoneParam(['3', '5,3', 'x', '0', ' 7 '])).toEqual(['3', '5', '7'])
+    expect(parseZoneParam([])).toEqual([])
+  })
+})
+
+describe('buildBinListQuery', () => {
+  it('sin filtros: solo activas', () => {
+    expect(buildBinListQuery(EMPTY_LOCATION_FILTERS, ZONES)).toEqual({
+      query: { includeInactive: false, zoneIds: undefined, productPublicIds: undefined, occupancy: undefined },
+      impossible: false,
+    })
+  })
+
+  it('Zona, Producto y Estatus van al servidor', () => {
+    const { query } = buildBinListQuery({ zoneIds: ['2'], zoneTypes: [], productPublicIds: ['p-1'], occupancy: ['FULL', 'NO_CAPACITY'] }, ZONES)
+    expect(query).toEqual({ includeInactive: false, zoneIds: [2], productPublicIds: ['p-1'], occupancy: ['FULL', 'NO_CAPACITY'] })
+  })
+
+  it('Tipo se traduce a las zonas de ese tipo y se cruza con Zona', () => {
+    expect(buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneTypes: ['STORAGE'] }, ZONES).query.zoneIds).toEqual([1, 4])
+    expect(buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneIds: ['1', '3'], zoneTypes: ['STORAGE'] }, ZONES).query.zoneIds).toEqual([1])
+  })
+
+  it('una combinación sin zonas posibles no consulta (zoneIds vacío sería "todas")', () => {
+    const r = buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneIds: ['3'], zoneTypes: ['STORAGE'] }, ZONES)
+    expect(r.impossible).toBe(true)
+    expect(buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, zoneTypes: ['CROSSDOCK'] }, ZONES).impossible).toBe(true)
   })
 })

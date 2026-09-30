@@ -49,12 +49,19 @@ const LOOKUPS: Record<string, { code: string; label: string; sortOrder: number }
   ],
 }
 
+const BINS = [{ id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', isActive: true }]
+
 function route(method: string, url: URL): unknown {
   const p = url.pathname
   if (p.startsWith('/api/v1/catalogs/')) return LOOKUPS[p.slice('/api/v1/catalogs/'.length)] ?? []
   if (p === '/api/v1/product-categories') return [{ id: 3, name: 'Médico', path: 'Médico', isActive: true, productCount: 1 }]
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
-  if (p === `/api/v1/warehouses/${WH}/bins`) return [{ id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', isActive: true }]
+  if (p === `/api/v1/warehouses/${WH}/bins`) {
+    // listado paginado (Lote 1); el modal pide la posición por defecto por id (binIds)
+    const ids = url.searchParams.getAll('binIds').map(Number)
+    const items = BINS.filter((x) => ids.length === 0 || ids.includes(x.id))
+    return { total: items.length, skip: 0, take: 100, items }
+  }
   if (p === '/api/v1/inventory/adjustments' && method === 'POST') return { transactions: [], balances: [] }
   return new Response(JSON.stringify({ title: 'Sin acceso', code: 'forbidden' }), { status: 403 })
 }
@@ -209,6 +216,21 @@ describe('ProductEditorModal', () => {
     // el modal sigue abierto y la cantidad vuelve a vacío
     await waitFor(() => expect(qty).toHaveValue(null))
     expect(screen.getByRole('dialog', { name: 'Editar producto' })).toBeInTheDocument()
+  })
+
+  it('mínimo de picking con la posición por defecto fuera de una zona PICKING: aviso bajo Posición y sin guardar', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={{ ...detail({ trackingTypeCode: 'NONE' }), minPickQty: 2 }} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const dialog = await findDialog('Editar producto')
+    await within(dialog).findByLabelText(/^Nombre/)
+    // la posición por defecto se pide por id (el listado paginado ya no trae todas)
+    await waitFor(() =>
+      expect(mock.calls.some((c) => c.url.pathname.endsWith('/bins') && c.url.searchParams.getAll('binIds').join() === '10')).toBe(true),
+    )
+    await user.type(within(dialog).getByLabelText(/^Nombre/), ' X')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    expect(await within(dialog).findByText('El mínimo de picking requiere una posición preferida en una zona PICKING.')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
   })
 
   it('sin inventory.manage: solo lectura con "Cerrar"', async () => {

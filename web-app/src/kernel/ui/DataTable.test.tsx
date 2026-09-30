@@ -5,6 +5,14 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../access/AccessProvider'
 import { setLang } from '../i18n/i18n'
 import { DataTable, type DataColumn, type RowAction, type SortState } from './DataTable'
+import { exportTable } from './exportTable'
+import { toast } from './toast'
+
+// la descarga real (SheetJS/jsPDF/Blob) no corre en jsdom: se verifica qué filas recibe
+vi.mock('./exportTable', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./exportTable')>()),
+  exportTable: vi.fn(() => Promise.resolve()),
+}))
 
 interface Row {
   id: number
@@ -277,5 +285,158 @@ describe('DataTable', () => {
     second.unmount()
     render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} dense />)
     expect(screen.getByRole('table')).toHaveClass('densetbl')
+  })
+})
+
+/** 30 filas: A-01 … A-30 (cantidad = número de fila). */
+const MANY: Row[] = Array.from({ length: 30 }, (_, i) => ({
+  id: i + 1,
+  code: `A-${String(i + 1).padStart(2, '0')}`,
+  qty: i + 1,
+  active: true,
+}))
+
+/** Abre el menú Exportar y elige CSV. */
+async function exportCsv(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Exportar' }))
+  await user.click(screen.getByRole('menuitem', { name: 'CSV (.csv)' }))
+}
+
+describe('DataTable: pie (rango, filas por página, exportar)', () => {
+  it('con una sola página muestra igual el rango/total y el selector, sin botones de página', () => {
+    render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} />)
+    expect(screen.getByText('1–5 de 5')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Filas por página' })).toHaveValue('25')
+    expect(screen.getByRole('button', { name: 'Exportar' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Página siguiente' })).toBeNull()
+  })
+
+  it('paginación local por defecto (25) y el selector cambia el tamaño volviendo a la página 1', async () => {
+    const user = userEvent.setup()
+    render(<DataTable columns={COLUMNS} rows={MANY} rowKey={(r) => r.id} />)
+    expect(codes()).toHaveLength(25)
+    expect(screen.getByText('1–25 de 30')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Página siguiente' }))
+    expect(codes()).toEqual(['A-26', 'A-27', 'A-28', 'A-29', 'A-30'])
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filas por página' }), '10')
+    expect(codes()).toHaveLength(10)
+    expect(codes()[0]).toBe('A-01')
+    expect(screen.getByText('1–10 de 30')).toBeInTheDocument()
+    expect(screen.getByText('Página 1 de 3')).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filas por página' }), '50')
+    expect(codes()).toHaveLength(30)
+    expect(screen.queryByRole('button', { name: 'Página siguiente' })).toBeNull()
+  })
+
+  it('un pageSize inicial fuera de las opciones se agrega al selector', () => {
+    render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} pageSize={2} />)
+    const select = screen.getByRole('combobox', { name: 'Filas por página' })
+    expect(select).toHaveValue('2')
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['2', '10', '25', '50', '100'])
+  })
+
+  it('paginación del servidor: el selector avisa con onPageSize; sin onPageSize no se muestra', async () => {
+    const user = userEvent.setup()
+    const onPageSize = vi.fn()
+    const { unmount } = render(
+      <DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} page={1} pageSize={25} total={551} onPage={vi.fn()} onPageSize={onPageSize} />,
+    )
+    expect(screen.getByText('1–25 de 551')).toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filas por página' }), '100')
+    expect(onPageSize).toHaveBeenCalledWith(100)
+    // la pantalla es dueña del tamaño: sin nuevo pageSize, las filas no cambian
+    expect(codes()).toHaveLength(5)
+    unmount()
+
+    render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} page={1} pageSize={25} total={551} onPage={vi.fn()} />)
+    expect(screen.getByText('1–25 de 551')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Filas por página' })).toBeNull()
+  })
+
+  it('pagination={false} muestra todas las filas sin rango ni selector', () => {
+    render(<DataTable columns={COLUMNS} rows={MANY} rowKey={(r) => r.id} pagination={false} />)
+    expect(codes()).toHaveLength(30)
+    expect(screen.queryByText(/de 30/)).toBeNull()
+    expect(screen.queryByRole('combobox', { name: 'Filas por página' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Página siguiente' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Exportar' })).toBeInTheDocument()
+  })
+
+  it('pagination={false} y exportable={false}: sin pie', () => {
+    const { container } = render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} pagination={false} exportable={false} />)
+    expect(container.querySelector('.dt-pager')).toBeNull()
+  })
+
+  it('sin exportRows exporta todas las filas cargadas en el orden actual (no solo la página)', async () => {
+    const user = userEvent.setup()
+    vi.mocked(exportTable).mockClear()
+    render(<DataTable columns={COLUMNS} rows={MANY} rowKey={(r) => r.id} pageSize={10} defaultSort={{ id: 'qty', desc: true }} />)
+    await user.click(screen.getByRole('button', { name: 'Exportar' }))
+    expect(screen.getByText('Filas: 30')).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'CSV (.csv)' }))
+    expect(exportTable).toHaveBeenCalledTimes(1)
+    const [format, , rows] = vi.mocked(exportTable).mock.calls[0]
+    expect(format).toBe('csv')
+    expect(rows).toHaveLength(30)
+    expect((rows as Row[])[0].code).toBe('A-30')
+  })
+
+  it('con exportRows exporta lo que devuelve (reordenado si el orden es local) y la nota muestra el total', async () => {
+    const user = userEvent.setup()
+    vi.mocked(exportTable).mockClear()
+    const exportRows = vi.fn(() => Promise.resolve({ items: ROWS, truncated: false }))
+    render(
+      <DataTable
+        columns={COLUMNS}
+        rows={ROWS.slice(0, 2)}
+        rowKey={(r) => r.id}
+        page={1}
+        pageSize={2}
+        total={551}
+        onPage={vi.fn()}
+        defaultSort={{ id: 'code', desc: false }}
+        exportRows={exportRows}
+      />,
+    )
+    await user.click(screen.getByRole('button', { name: 'Exportar' }))
+    expect(screen.getByText('Filas: 551')).toBeInTheDocument()
+    await user.click(screen.getByRole('menuitem', { name: 'CSV (.csv)' }))
+    expect(exportRows).toHaveBeenCalledTimes(1)
+    const rows = vi.mocked(exportTable).mock.calls[0][2] as Row[]
+    expect(rows.map((r) => r.code)).toEqual(['A-2', 'A-10', 'B-02', 'C-01', 'D-07'])
+  })
+
+  it('exportRows truncado avisa con un toast; un arreglo simple también se acepta', async () => {
+    const user = userEvent.setup()
+    vi.mocked(exportTable).mockClear()
+    const info = vi.spyOn(toast, 'info').mockImplementation(() => {})
+    try {
+      const { unmount } = render(
+        <DataTable
+          columns={COLUMNS}
+          rows={ROWS}
+          rowKey={(r) => r.id}
+          page={1}
+          total={20000}
+          onPage={vi.fn()}
+          exportRows={() => Promise.resolve({ items: MANY, truncated: true })}
+        />,
+      )
+      await exportCsv(user)
+      expect(info).toHaveBeenCalledWith(expect.stringContaining('30'))
+      expect(vi.mocked(exportTable).mock.calls[0][2]).toHaveLength(30)
+      unmount()
+
+      info.mockClear()
+      render(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} exportRows={() => Promise.resolve(MANY)} />)
+      await exportCsv(user)
+      expect(info).not.toHaveBeenCalled()
+      expect(vi.mocked(exportTable).mock.calls[1][2]).toHaveLength(30)
+    } finally {
+      info.mockRestore()
+    }
   })
 })

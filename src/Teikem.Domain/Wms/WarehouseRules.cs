@@ -50,7 +50,11 @@ public static class WarehouseRules
     public const string BinCodeInvalidMessage = "El código de la posición solo admite letras, números, guion y guion bajo (máximo 40).";
     public const string BinPartInvalidMessage = "Pasillo, rack, nivel y posición solo admiten letras, números, guion y guion bajo (máximo 20 cada uno).";
     public const string WarehouseCodeImmutableMessage = "El código del almacén no se puede cambiar.";
-    public const string ZoneCodeImmutableMessage = "El código de la zona no se puede cambiar.";
+    /// <summary>
+    /// Lote 1 (cambios de Almacén): el código de la zona ya se edita (se retiró 'El código de la zona no se puede cambiar.');
+    /// lo que no cambia es su almacén ('warehouseId' en el PATCH → 400).
+    /// </summary>
+    public const string ZoneWarehouseImmutableMessage = "La zona no se puede mover a otro almacén.";
     public const string BinCodeImmutableMessage = "El código y la zona de la posición no se pueden cambiar.";
     public const string DockCodeImmutableMessage = "El código del muelle no se puede cambiar.";
     public const string ZoneRequiredMessage = "Indique la zona de la posición.";
@@ -66,6 +70,7 @@ public static class WarehouseRules
     public const string DockHasAppointments = "El muelle tiene citas agendadas o en curso.";
     public const string MaxWeight = "La capacidad de peso debe ser mayor que cero.";
     public const string MaxWeightPrecision = "La capacidad de peso admite como máximo 9 enteros y 3 decimales.";
+    public const string MaxCapacityQtyMessage = "El cupo máximo de la posición debe ser mayor que cero.";
     public const string WarehouseInactiveMessage = "El almacén está dado de baja; solo se consulta.";
     public const string ZoneInactiveMessage = "La zona está inactiva; reactívela primero.";
     public const string DockInactiveMessage = "El muelle está inactivo; reactívelo primero.";
@@ -166,6 +171,58 @@ public static class WarehouseRules
         return null;
     }
 
+    /// <summary>Cupo máximo de la posición (unidades de producto): null = sin configurar; si llega, &gt; 0 (400 MaxCapacityQtyMessage).</summary>
+    public static string? ValidateMaxCapacity(int? maxCapacityQty)
+        => maxCapacityQty is int q && q <= 0 ? MaxCapacityQtyMessage : null;
+
+    // ---------------------------------------------------------------- ocupación de posiciones (Lote 1 de cambios de Almacén)
+
+    /// <summary>Tamaño de página por defecto y máximo del listado de posiciones de un almacén.</summary>
+    public const int BinDefaultPageSize = 100;
+    public const int BinMaxPageSize = 200;
+
+    /// <summary>(skip, take) acotados: skip ≥ 0; take ≤ 0 → BinDefaultPageSize; take &gt; BinMaxPageSize → BinMaxPageSize.</summary>
+    public static (int Skip, int Take) BinPage(int skip, int take)
+        => (Math.Max(0, skip), take <= 0 ? BinDefaultPageSize : Math.Min(take, BinMaxPageSize));
+
+    /// <summary>
+    /// Estado de ocupación de una posición según su existencia en mano y su cupo (el mismo criterio que el filtro 'occupancy' del
+    /// listado aplica en SQL):
+    /// EMPTY = sin existencia; NO_CAPACITY = con existencia y sin cupo configurado; FULL = existencia ≥ cupo;
+    /// PARTIAL = 0 &lt; existencia &lt; cupo.
+    /// </summary>
+    public static string Occupancy(decimal qtyOnHand, int? maxCapacityQty)
+    {
+        if (qtyOnHand <= 0) return BinOccupancies.Empty;
+        if (maxCapacityQty is not int cap) return BinOccupancies.NoCapacity;
+        return qtyOnHand >= cap ? BinOccupancies.Full : BinOccupancies.Partial;
+    }
+
+    /// <summary>400 'Estado de ocupación desconocido: '{x}'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY.'</summary>
+    public static string UnknownOccupancy(string? code) => $"Estado de ocupación desconocido: '{code}'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY.";
+
+    /// <summary>
+    /// Filtro 'occupancy' del listado: códigos recortados y en mayúsculas, sin vacíos ni repetidos. Sin valores → (null, null)
+    /// (sin filtro); un código desconocido → (null, UnknownOccupancy(código)).
+    /// </summary>
+    public static (IReadOnlySet<string>? Codes, string? Error) ParseOccupancy(IEnumerable<string?>? raw)
+    {
+        if (raw is null) return (null, null);
+        var set = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var r in raw)
+        {
+            if (string.IsNullOrWhiteSpace(r)) continue;
+            // Admite también la forma separada por comas (?occupancy=EMPTY,FULL).
+            foreach (var part in r.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var code = part.ToUpperInvariant();
+                if (!BinOccupancies.All.Contains(code)) return (null, UnknownOccupancy(part));
+                set.Add(code);
+            }
+        }
+        return set.Count == 0 ? (null, null) : (set, null);
+    }
+
     private static bool IsCodeText(string s)
     {
         foreach (var c in s)
@@ -202,4 +259,18 @@ public static class WarehouseRules
     }
 
     private static string Qty(decimal q) => q.ToString("0.###", CultureInfo.InvariantCulture);
+}
+
+/// <summary>
+/// Lote 1 (cambios de Almacén) — estados de ocupación de una posición. Son un CÁLCULO (existencia vs. cupo), no un valor
+/// guardado ni un catálogo: por eso no viven en LookupCode.
+/// </summary>
+public static class BinOccupancies
+{
+    public const string Empty = "EMPTY";
+    public const string Partial = "PARTIAL";
+    public const string Full = "FULL";
+    public const string NoCapacity = "NO_CAPACITY";
+
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal) { Empty, Partial, Full, NoCapacity };
 }

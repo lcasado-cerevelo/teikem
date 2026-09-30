@@ -1,9 +1,10 @@
 // Pieza "Conteo cíclico" (Lote F6) — lista de conteos. `/warehouse/cycle-counts`.
 // Lectura de la lista: inventory.view + WMS_LOTSERIAL (por la ruta). La ficha, el alta y todo el conteo (captura, terminar,
 // refrescar, reconciliar, eliminar): warehouse.count. Sin filtros el conteo toma todo el saldo en mano del almacén
-// (máx. 1000 líneas). Manual 06 §6. Pestaña 'Tareas de conteo' (?tab=tasks): cola de tareas COUNT (asignar con
+// (máx. 1000 líneas); el selector de posiciones del alta lee todas las páginas del listado paginado (Lote 1). Manual 06 §6. Pestaña 'Tareas de conteo' (?tab=tasks): cola de tareas COUNT (asignar con
 // warehouse.manage, iniciar con warehouse.count; se completan desde la ficha del conteo); ver taskQueue.tsx.
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useController, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -31,7 +32,9 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { useFieldInfo } from '../../kernel/ui/formContext'
-import { useCreateCycleCount, useCycleCounts, useWarehouseBins, useWarehouseZones, useWarehouses, warehouseLabel, type CycleCountDto } from './api'
+import { api, unwrap } from '../../kernel/api/client'
+import { fetchAllPages } from '../../kernel/api/fetchAllPages'
+import { useCreateCycleCount, useCycleCounts, useWarehouseZones, useWarehouses, warehouseKeys, warehouseLabel, type CycleCountDto } from './api'
 import { formatDateTime, formatNumber, useDebounced } from './lineRules'
 import { ProductPicker, WarehousePickerInput } from './pickers'
 import { TaskQueue } from './taskQueue'
@@ -81,14 +84,29 @@ function CreateCountModal({ onClose }: { onClose: () => void }) {
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const zoneIds = useWatch({ control: form.control, name: 'zoneIds' })
   const zones = useWarehouseZones(warehousePublicId, {}, { handleAccessDenied: false })
-  const bins = useWarehouseBins(warehousePublicId, {}, { handleAccessDenied: false })
+  // El listado de posiciones llega paginado (Lote 1): el selector necesita todas las activas del almacén (o de las zonas
+  // elegidas, filtro que ya va al servidor), así que se leen todas las páginas con `fetchAllPages` (de 200 en 200, hasta
+  // 10 000; si se corta se avisa bajo el campo). Misma raíz de clave que useWarehouseBins: se invalida con las posiciones.
+  const binsQuery = useMemo(
+    () => ({ includeInactive: false, zoneIds: zoneIds.length > 0 ? zoneIds.map(Number) : undefined }),
+    [zoneIds],
+  )
+  const bins = useQuery({
+    queryKey: [warehouseKeys.bins[0], { publicId: warehousePublicId, ...binsQuery, all: true }],
+    queryFn: () =>
+      fetchAllPages((skip, take) =>
+        unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId ?? '' }, query: { ...binsQuery, skip, take } } })),
+      ),
+    enabled: Boolean(warehousePublicId),
+    meta: { handleAccessDenied: false },
+  })
   const zoneOptions = useMemo(
     () => (zones.data ?? []).filter((zone) => zone.isActive !== false).map((zone) => ({ value: String(zone.id), label: [zone.code, zone.name].filter(Boolean).join(' · ') })),
     [zones.data],
   )
   const binOptions = useMemo(
     () =>
-      (bins.data ?? [])
+      (bins.data?.items ?? [])
         .filter((b) => b.isActive !== false && (zoneIds.length === 0 || zoneIds.includes(String(b.zoneId))))
         .map((b) => ({ value: String(b.id), label: [b.code, b.zoneCode].filter(Boolean).join(' · ') })),
     [bins.data, zoneIds],
@@ -137,6 +155,7 @@ function CreateCountModal({ onClose }: { onClose: () => void }) {
             <MultiSelectInput options={binOptions} placeholder={t('warehouse.cycleCounts.fields.allBins')} disabled={!warehousePublicId} />
           </Field>
         </div>
+        {bins.data?.truncated && <p className="note">{t('warehouse.cycleCounts.fields.binsTruncated', { count: bins.data.items.length })}</p>}
         <p className="note">{t('warehouse.cycleCounts.createHelp')}</p>
       </Form>
     </Modal>

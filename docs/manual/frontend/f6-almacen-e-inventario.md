@@ -3,7 +3,49 @@
 Capítulo del manual de pantallas para el módulo de almacén (manual funcional 06) y para la consulta de solo lectura de
 órdenes de transporte que lo acompaña. Todas las pantallas viven bajo el grupo **Almacén** del menú lateral, salvo
 "Órdenes" que está en **Operación** y el panel "Almacén" de Pulso, que se ve en la pantalla de inicio. Direcciones tal
-como aparecen en el navegador; capturas en `img/f6-*.png`.
+como aparecen en el navegador; capturas en `img/f6-*.png`. Las secciones **Almacenes** y **Ubicaciones** y el
+pie común de las tablas se reescribieron en el Lote 11: sus capturas están pendientes (se marcan en el texto) y las
+imágenes antiguas de la lista, las zonas y las posiciones del almacén se retiraron por no corresponder a la pantalla actual.
+
+## Todas las tablas: pie, filas por página y Exportar (Lote 11)
+
+Aplica a todas las tablas de la aplicación que usan el componente estándar, no solo a Almacén.
+
+> **Captura pendiente:** pie de tabla con el rango, "Filas por página" y el menú Exportar abierto.
+
+**El pie de la tabla.** Mientras la tabla tenga filas, debajo de ella aparece siempre una barra con:
+- El rango y el total: `1–25 de 552`.
+- **Filas por página**: 10, 25, 50 o 100 (si la pantalla arrancó con otro tamaño, ese tamaño también aparece en la lista).
+  Por defecto son 25. En las listas que vienen paginadas del servidor (Órdenes, Inventario —Saldos y Kárdex—,
+  Recolección y empaque, Órdenes de compra, Recibos, Productos, Tareas de almacén, la pestaña Posiciones de la ficha del
+  almacén y Ubicaciones) cambiar el tamaño vuelve a pedir los datos y regresa a la página 1. En las demás la lista ya
+  está cargada y el cambio es inmediato.
+- El botón **Exportar**.
+- Los botones **‹** y **›** con `Página X de Y` (solo si hay más de una página).
+
+Si la tabla no tiene filas se ve el mensaje de vacío (por defecto "Sin resultados") y no hay pie. Algunas tablas de apoyo no paginan y muestran todas sus
+filas (las líneas con campos para capturar, y el panel "Actividad reciente", que tiene su propio "Ver más").
+
+**Ordenar.** Un clic en el encabezado ordena por esa columna. En una lista paginada por el servidor ordena **solo las
+filas de la página que está viendo**, no todo el resultado.
+
+**Exportar.** El menú ofrece **Excel (.xlsx)**, **CSV (.csv)** y **PDF (.pdf)** y muestra cuántas filas saldrán
+(`Filas: 552`). El archivo se genera en su navegador y se descarga solo; no se envía nada a otro lado.
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Qué filas salen? | En una tabla ya cargada, **todas** las filas con los filtros activos, en el orden que ve (no solo la página). En una lista paginada por el servidor, **todas las filas de la consulta actual**, con los mismos filtros: la pantalla lee el resultado completo de a 200 filas; si ordenó por una columna, el archivo sale en ese orden. |
+| ¿Hay un tope? | Sí: 10.000 filas. Si la consulta tiene más, el archivo lleva las primeras 10.000 y aparece el aviso "Se exportaron las primeras {count} filas (límite de exportación). Afine los filtros para exportar el resto." |
+| ¿Qué columnas salen? | Las que ve, con el mismo texto que muestra la pantalla (la columna de acciones y las casillas de selección no). Un "—" sale como celda vacía. Los números salen como número en Excel (se pueden sumar). Sí/No para los valores verdadero/falso. |
+| ¿Cómo se llama el archivo? | Como la tabla o, si no tiene nombre, el título de su panel, en minúsculas y sin acentos, más la fecha de hoy: `almacenes-2026-09-29.xlsx`. |
+| CSV | Separado por comas, codificación UTF-8 con marca de orden de bytes (Excel lo abre bien con tildes y eñes). Un texto que empieza por `=`, `+`, `-` o `@` sale con un apóstrofo delante para que Excel no lo tome por fórmula. |
+| PDF | Hoja A4, vertical (horizontal si la tabla tiene más de 5 columnas), con el título arriba y el número de página abajo. Solo admite caracteres latinos: tildes y eñes salen bien; otros símbolos salen como `?`. |
+
+Si algo falla al generar el archivo aparece el aviso "No se pudo generar el archivo. Intente de nuevo." Mientras se
+prepara, el botón dice "Exportando…".
+
+**Desplegables y filtros.** La flecha de todos los desplegables está ahora a la **izquierda**, y los filtros ocupan todo
+el ancho del panel (envuelven a otro renglón en pantallas angostas) sin dejar huecos.
 
 ## Panel "Almacén" en Pulso del día
 
@@ -23,69 +65,201 @@ encendido; sin alguno de los dos, Pulso se ve igual que en F1 (sin este panel, s
 ## Almacenes: zonas, posiciones y muelles
 
 **Para qué sirve.** Administra los almacenes de la compañía y, dentro de cada uno, sus zonas, posiciones (bins) y
-muelles.
+muelles. (Reescrito en el Lote 11: lista en maestro-detalle, ficha con filtros y ocupación, ciudad y código postal desde
+un catálogo. Las reglas y los mensajes del servidor están en el
+[capítulo 06, sección 1](../06-inventario-y-almacen.md#1-almacenes-y-ubicaciones).)
 
 **Cómo se llega.** Menú **Almacén › Almacenes**, dirección `/warehouse/warehouses`; la ficha en
 `/warehouse/warehouses/:publicId`.
 
-**Qué se ve (lista).**
+### Lista de almacenes
 
-![Lista de almacenes](img/f6-almacenes.png)
+> **Captura pendiente:** lista de almacenes con la tabla a la izquierda y el panel "Zonas de este almacén" a la derecha.
 
-Columnas: código, nombre, ciudad, zonas, posiciones, muelles, en mano y estatus. Filtro "Mostrar" (todos/solo activos/
-incluir inactivos) y buscador libre sobre código/nombre/ciudad.
+Debajo del título ("Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones") hay dos
+zonas: la **tabla** y, a su derecha (420 px; bajo 720 px de ancho queda debajo de la tabla), el **panel del almacén
+elegido**.
 
-**Qué hace cada botón (lista).**
-- **Nuevo almacén**: abre un formulario con código (obligatorio, solo letras/números/guion/guion bajo, máximo 30),
-  nombre (obligatorio), dirección, ciudad y país.
+**Filtros** (arriba, con el botón **Limpiar**; filtran en la pantalla, sin volver a pedir datos):
+- **Código** y **Nombre**: desplegables de selección múltiple con buscador.
+- **Dirección**: texto libre. Cada palabra debe aparecer en la dirección, la ciudad, el estado o el código postal (sin
+  distinguir mayúsculas ni acentos).
+- **Tipo**: tipos de zona; queda el almacén que tenga **alguna zona activa** de esos tipos.
+- **Estatus**: selección múltiple (Activo, Inactivo).
+No hay buscador dentro de la tabla ni el selector "Mostrar": los almacenes inactivos se ven siempre, atenuados.
 
-**Qué se ve (ficha, pestaña Posiciones de ejemplo).**
+**La tabla.** Columnas: Código, Nombre, Dirección, Zonas y Estatus (el estatus se llamaba "Estado"). Ordena por Código por
+defecto. Un clic en la fila **elige** el almacén y lo muestra en el panel derecho; la elección queda en la dirección
+(`?warehouse=…`), así que se puede copiar el enlace. Sin elección, se muestra el primero por código. El pie es el común
+de todas las tablas (arriba, "Todas las tablas").
 
-![Ficha de almacén, pestaña Posiciones](img/f6-almacen-posiciones.png)
+**El panel derecho.** Muestra el nombre y el código del almacén, su dirección y su estatus, y el bloque **Zonas de
+este almacén**:
+- El ícono del lápiz abre la **ficha** del almacén ("Editar almacén" con `warehouse.manage`; "Abrir la ficha del
+  almacén" sin él).
+- **+ Nueva zona** (con `warehouse.manage`; deshabilitado si el almacén está dado de baja) abre el formulario de zona.
+- Una fila por **zona activa**: código, nombre, tipo y `ocupadas/total posiciones` (posiciones activas con existencia entre
+  posiciones activas). Con `warehouse.manage`, un clic en la fila abre el formulario para editarla.
+- La **papelera** de cada fila da de baja la zona (pide confirmación: "La zona {code} quedará inactiva."; aviso "Zona dada de
+  baja."). Si la zona tiene posiciones activas la papelera está deshabilitada y el aviso al pasar el cursor dice "No se
+  puede dar de baja: esta zona tiene posiciones creadas".
+- Sin zonas: "Todavía no tiene zonas — cree la primera". Sin almacén elegido: "Seleccione un almacén de la lista".
 
-Encabezado con código y nombre, el estatus (Activo/Inactivo) como una barra de pasos con el botón **Avanzar a
-Inactivo**, y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Muelles**.
+**Nuevo almacén** (botón de la cabecera, con `warehouse.manage`).
 
-- **Datos**: dirección, ciudad, estado/provincia, código postal y país; el código no se puede cambiar (nota debajo del
-  campo).
-- **Zonas**: código, nombre, tipo, cuántas posiciones tiene y si está activa; **Nueva zona**, **Editar**, **Dar de
-  baja**/**Reactivar** por fila.
+> **Captura pendiente:** formulario "Nuevo almacén" con el combobox "Ciudad o código postal" abierto.
 
-  ![Ficha de almacén, pestaña Zonas](img/f6-almacen-zonas.png)
-- **Posiciones**: código, zona, pasillo/rack/nivel/posición, peso máximo, en mano, productos y estatus; filtros por
-  zona, buscador, "Incluir inactivas" y "Solo con existencias"; **Nueva posición**, **Editar**,
-  **Dar de baja**/**Reactivar**.
-- **Muelles**: código, tipo (Inbound/Outbound/Both), estatus y activo; **Nuevo muelle**, **Editar**,
-  **Cambiar estatus** (abre el mismo control de pipeline: Libre ↔ Ocupado ↔ Mantenimiento), **Dar de baja**/
+| Campo | Cómo funciona |
+|---|---|
+| Código | Obligatorio; letras, números, guion y guion bajo, máximo 30. No se puede cambiar después |
+| Nombre | Obligatorio |
+| Dirección | Texto libre |
+| Ciudad o código postal | Un solo campo con buscador: escriba una ciudad, un municipio o los primeros dígitos de un código postal (espera 250 ms entre teclas, ↑ ↓ Enter para elegir, Esc cierra la lista, la ✕ "Quitar ciudad y código postal" vacía el campo). Cada opción se ve como `ZIP · CIUDAD POSTAL (Municipio), Estado` y, fuera de Puerto Rico, termina con el país. Al elegir una opción se llenan **Ciudad, Código postal, Estado y País** |
+| Estado y País | Solo lectura: se llenan con la localidad elegida ("Se llena según la ciudad elegida."). Si no elige ninguna, el país queda en Puerto Rico y el estado vacío |
+| Activo | Casilla marcada y sin poder cambiarse: todo almacén nace activo ("Todo almacén nuevo nace activo; se da de baja desde su ficha.") |
+
+Al guardar aparece "Almacén creado.".
+
+### Ficha del almacén
+
+Encabezado con código, nombre y ciudad, la barra de estatus (Activo → Inactivo, con **Avanzar a Inactivo**, definitivo)
+y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Muelles**.
+
+> **Captura pendiente:** ficha del almacén, pestaña Datos con el combobox de ciudad.
+
+**Datos.** Código (solo lectura: "El código del almacén no se puede cambiar."), Nombre, Dirección, **Ciudad o código
+postal** (el mismo combobox de la alta; muestra `Ciudad · ZIP` con lo guardado, aunque el almacén se haya creado antes
+del catálogo), y Estado y País de solo lectura. **Guardar** solo se activa si hubo cambios y solo lo ve quien tiene
+`warehouse.manage`; aviso "Cambios guardados.". Sin `warehouse.manage` el formulario se ve deshabilitado.
+
+**Zonas.**
+
+> **Captura pendiente:** pestaña Zonas con filtros, columnas Ocupadas y Estatus, e íconos de acción.
+
+- Filtros: **Código**, **Nombre**, **Tipo** (selección múltiple con buscador; filtran en la pantalla) e **Incluir
+  inactivas**.
+- Columnas: Código, Nombre, Tipo, Posiciones (activas), **Ocupadas** (activas con existencia) y **Estatus** (Activo /
+  Inactivo).
+- **+ Nueva zona** en la cabecera del panel. Un **clic en la fila** abre el formulario de edición (ya no hay botón
+  "Editar"). Por fila, un ícono: **Dar de baja** (el servidor la rechaza con 409 si la zona aún tiene posiciones activas) o **Reactivar**, con confirmación.
+- Sin `warehouse.manage` las filas no se pueden abrir y no hay íconos.
+
+**Formulario de zona** ("Nueva zona" / "Editar zona"): **Código** (obligatorio; **se puede editar**: "Único en el almacén.
+Cambiarlo no mueve sus posiciones ni sus existencias."), **Nombre** (obligatorio) y **Tipo** (desplegable con buscador
+sobre los tipos de zona; se puede dejar vacío). Si el código ya lo usa otra zona del almacén, el mensaje del servidor
+"Ya existe una zona con ese código en el almacén." aparece **debajo del campo Código** y el formulario se queda abierto.
+Avisos: "Zona creada." / "Cambios guardados.".
+
+**Posiciones.**
+
+> **Captura pendiente:** pestaña Posiciones con filtros, columnas Cupo y Ocupación, y el pie con "Filas por página".
+
+- Esta pestaña **pagina en el servidor** (25 por defecto): añadir, editar o dar de baja una posición ya no espera a
+  cargar todo el almacén. Abrir o cerrar un formulario no vuelve a consultar.
+- Filtros (van al servidor; los de texto esperan un instante después de la última tecla): **Código** (busca también por
+  pasillo, rack, nivel y posición, y por el código de la zona), **Zona** (selección múltiple con buscador), **Pasillo**,
+  **Rack**, **Nivel**, **Posición**, **Incluir inactivas** y **Solo con existencias**. El contador del panel es el total
+  que cumple los filtros.
+- Columnas: Código, Zona, Pasillo/rack/nivel/posición, **Cupo**, En mano, **Ocupación**, Producto, Peso máximo (kg) y
+  Estatus. **Ocupación** es un chip —Vacía, Parcial, Llena u Ocupada sin cupo— y, si la posición tiene cupo y existencia,
+  el porcentaje (`40 %`). **Producto** muestra el SKU si hay uno solo (el nombre sale al pasar el cursor), "N productos" si
+  hay varios y "—" si no hay.
+- **Nueva posición** en la cabecera. Un clic en la fila abre el formulario de edición. Por fila: **Dar de baja** /
   **Reactivar**.
+- **Exportar** saca **todas** las posiciones que cumplen los filtros, no solo la página.
+
+**Formulario de posición** ("Nueva posición" / "Editar"):
+- Alta: **Zona** (desplegable con buscador por código, nombre o tipo; obligatoria), **Código** (opcional si escribe alguna
+  parte), Pasillo, Rack, Nivel, Posición, **Cupo máximo** y Peso máximo (kg).
+- Edición: el **código y la zona no cambian** (se muestran deshabilitados: "El código y la zona de la posición no se pueden
+  cambiar."). Pasillo, rack, nivel, posición, cupo y peso sí, pero cambiar las partes **no recalcula** el código.
+- **Cupo máximo**: unidades de producto que caben ("Unidades que caben; vacío = sin cupo."). Entero mayor que cero. Al editar,
+  dejarlo vacío quita el cupo.
+
+**Muelles.** Sin cambios respecto al Lote F6: código, tipo (Inbound/Outbound/Both), estatus y activo; **Nuevo muelle**,
+**Editar**, **Cambiar estatus** (Libre ↔ Ocupado ↔ Mantenimiento) y **Dar de baja**/**Reactivar**.
 
 ![Ficha de almacén, pestaña Muelles con Cambiar estatus](img/f6-almacen-muelles.png)
 
-**Permiso.** `inventory.view` (ver el almacén y sus tres pestañas de detalle); **`warehouse.manage`** para crear/
-editar/dar de baja/reactivar el almacén, sus zonas, posiciones y muelles, y para el estatus manual del muelle. Módulo
+### Ubicaciones
+
+**Para qué sirve.** Vista de un almacén completo: cuánto de su capacidad está ocupada en cada zona y dónde está cada cosa,
+posición por posición. Es de solo lectura (salvo **Nueva posición**).
+
+**Cómo se llega.** Menú **Almacén › Ubicaciones**, dirección `/warehouse/locations`. El almacén y la zona elegidos van en
+la dirección (`?warehouse=…&zone=…`).
+
+> **Captura pendiente:** pantalla Ubicaciones con los recuadros por zona, los filtros y la tabla de posiciones.
+
+**Arriba a la derecha:** el selector de **almacén** (sin elegir, el primero activo; cambiar de almacén borra los filtros) y
+**Nueva posición** (con `warehouse.manage`, el mismo formulario de la ficha).
+
+**Los recuadros por zona.** Uno por zona activa, unidos por una tubería:
+- Con cupo: `ocupado/capacidad` (por ejemplo `10/25`), el texto `ocupado · 40%` y una barra. La capacidad es la suma del cupo
+  de las posiciones de la zona; lo ocupado, lo que hay en esas mismas posiciones. Si la zona tiene posiciones **sin cupo**,
+  el recuadro lo avisa ("1 posición sin cupo" / "N posiciones sin cupo") y esas posiciones **no cuentan** en el porcentaje.
+- Zona con posiciones pero ninguna con cupo: la existencia total y "unidades · sin cupo configurado" (no hay porcentaje).
+- Zona sin posiciones: `0` y "sin posiciones".
+- Un **clic en un recuadro** filtra la tabla por esa zona; otro clic en el mismo la quita ("Clic para ver solo esta zona
+  en la tabla; otro clic quita el filtro").
+Sin zonas, la pantalla dice "Este almacén todavía no tiene zonas".
+
+**Filtros:** **Posición** (texto: busca en código, pasillo, rack, nivel y posición; espera un instante tras la última
+tecla), **Zona**, **Tipo** (tipo de zona: equivale a elegir todas las zonas de ese tipo), **Producto** (posiciones con
+existencia de alguno de esos productos) y **Estatus** (Vacía, Parcial, Llena, Ocupada sin cupo). Todos van al servidor y el
+botón **Limpiar** los quita. Si la combinación no deja ninguna zona (por ejemplo, una zona y un tipo que no coinciden) la
+tabla queda vacía: "Ninguna posición coincide con los filtros.".
+
+**La tabla.** Columnas: Posición, Zona, Cantidad, Producto (el nombre si es uno solo; "N productos" si hay varios), **Cupo**,
+**Ocupación** (barra y porcentaje; "—" si la posición no tiene cupo) y **Estatus** (Vacía / Parcial / Llena / Ocupada sin
+cupo). Solo muestra posiciones activas y no tiene acciones por fila. Pagina en el servidor con el pie común; **Exportar**
+saca todas las que cumplen los filtros. Sin posiciones: "Este almacén todavía no tiene posiciones.". Sin almacenes
+activos: "No hay almacenes activos.".
+
+**Qué no hay todavía.** Las barras de ocupación de los últimos 7 días que muestra la maqueta no están: dependen de un
+historial diario que aún no existe (ver `docs/lote11-decisiones.md`).
+
+### Permisos y módulo
+
+`inventory.view` (ver Almacenes, la ficha, Ubicaciones y el catálogo de ciudades); **`warehouse.manage`** para crear y
+editar el almacén, sus zonas, posiciones y muelles, dar de baja y reactivar, y el estatus manual del muelle. Módulo
 **Almacén y lote/serie** (`WMS_LOTSERIAL`).
 
-**Estatus y transiciones.**
+### Estatus y transiciones
 
 | Entidad | De → a | Quién | Qué valida / dispara | Bloquea |
 |---|---|---|---|---|
-| Almacén | Activo → Inactivo (terminal) | `warehouse.manage` | — | 409 "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja." |
-| Zona | Activa → Inactiva | `warehouse.manage` (Dar de baja/Reactivar) | — | 409 si tiene posiciones activas |
-| Posición | Activa → Inactiva | `warehouse.manage` | — | 409 con inventario o tareas abiertas |
+| Almacén | Activo → Inactivo (terminal) | `warehouse.manage` (barra de estatus de la ficha) | Inventario y documentos abiertos | 409 "El almacén {code} tiene inventario o documentos abiertos; no se puede dar de baja." Ya inactivo: solo se consulta (nada se edita; 422 "El almacén está dado de baja; solo se consulta.") |
+| Zona | Activa → Inactiva | `warehouse.manage` (ícono Dar de baja en la ficha o papelera en el panel de la lista) | Posiciones activas | 409 "La zona tiene posiciones activas; desactívelas primero." (la papelera de la lista ya viene deshabilitada) |
+| Zona | Inactiva → Activa | `warehouse.manage` (ícono Reactivar) | — | — |
+| Posición | Activa → Inactiva / Inactiva → Activa | `warehouse.manage` (íconos de la pestaña Posiciones) | Inventario y tareas abiertas | 409 "La posición {code} tiene inventario; no se puede desactivar." / 409 "La posición tiene tareas de almacén abiertas; complételas o cancélelas antes de desactivarla." |
 | Muelle (estatus operativo) | Libre ↔ Ocupado ↔ Mantenimiento (laterales) | `warehouse.manage` | — | — |
-| Muelle (activo) | Activo → Inactivo | `warehouse.manage` | — | 409 con citas vigentes |
+| Muelle (activo) | Activo → Inactivo | `warehouse.manage` | Citas vigentes | 409 "El muelle tiene citas agendadas o en curso." |
 
-**Validaciones y mensajes.**
+La **ocupación** de una posición (Vacía, Parcial, Llena, Ocupada sin cupo) y la de una zona no son estatus: se calculan
+solas comparando la existencia en mano con el cupo, no tienen transiciones y no bloquean ninguna acción.
 
-| Campo | Regla | Mensaje |
-|---|---|---|
-| Código (almacén) | obligatorio | "El código es obligatorio." |
-| Código (almacén) | solo letras/números/guion/guion bajo, máx. 30 | "El código solo admite letras, números, guion y guion bajo (máximo 30)." |
-| Nombre (almacén) | obligatorio | "El nombre es obligatorio." |
-| Código o pasillo/rack/nivel/posición | uno de los dos | "Indique el código de la posición o su pasillo/rack/nivel/posición." |
-| Peso máximo (posición) | > 0 | "El peso máximo debe ser mayor que cero." |
-| Peso máximo (posición) | ≤ 3 decimales | "El peso máximo admite hasta 3 decimales." |
-| Código (zona/muelle) | obligatorio | "El código es obligatorio." |
+### Validaciones y mensajes
+
+| Campo | Regla | Mensaje | Dónde |
+|---|---|---|---|
+| Código (almacén, zona) | obligatorio | "El código es obligatorio." | Pantalla (y 400 del servidor) |
+| Código (almacén, zona) | letras, números, guion y guion bajo, máx. 30 | "El código solo admite letras, números, guion y guion bajo (máximo 30)." | Pantalla (y 400) |
+| Código de zona | único en el almacén (al crear y al editar) | "Ya existe una zona con ese código en el almacén." | Servidor, 409, bajo el campo Código |
+| Código de almacén | único en la compañía | "Ya existe un almacén con ese código." | Servidor, 409 |
+| Nombre (almacén, zona) | obligatorio | "El nombre es obligatorio." | Pantalla (y 400) |
+| Zona (alta de posición) | obligatoria | "Seleccione la zona." | Pantalla |
+| Código o pasillo/rack/nivel/posición | uno de los dos | "Indique el código de la posición o su pasillo/rack/nivel/posición." | Pantalla (y 400) |
+| Código de posición ya usado | único en el almacén | "Ya existe una posición con ese código en el almacén." | Servidor, 409 |
+| Cupo máximo | mayor que cero | "El cupo máximo de la posición debe ser mayor que cero." | Pantalla (y 400) |
+| Cupo máximo | número entero | "El cupo máximo debe ser un número entero." | Pantalla |
+| Cupo máximo | hasta 2.147.483.647 | "El cupo máximo es demasiado grande." | Pantalla |
+| Peso máximo (posición) | > 0 | "El peso máximo debe ser mayor que cero." | Pantalla |
+| Peso máximo (posición) | ≤ 3 decimales | "El peso máximo admite hasta 3 decimales." | Pantalla |
+| Código (muelle) | obligatorio | "El código es obligatorio." | Pantalla |
+| Ciudad o código postal | el servidor niega la consulta del catálogo | "Su usuario no puede consultar el catálogo de ciudades." | Lista del combobox |
+| Ciudad o código postal | sin coincidencias | "No hay ciudades ni códigos postales que coincidan." | Lista del combobox |
+| Filtros de Ubicaciones | combinación sin resultados | "Ninguna posición coincide con los filtros." | Tabla |
 
 ## Productos y categorías
 
@@ -615,3 +789,23 @@ administrador que lo encienda en Configuración si su compañía lo necesita.
 
 **¿Qué significa el chip "Bajo mínimo" en Productos?** Que el disponible de ese producto está por debajo del "Mínimo
 de inventario" configurado en su ficha; no bloquea nada, es solo una señal para reabastecer.
+
+**¿Por qué la ocupación de una zona dice "unidades · sin cupo configurado"?** Porque ninguna de sus posiciones activas tiene
+"Cupo máximo". La ocupación se calcula contra la suma del cupo de las posiciones; sin cupo no hay porcentaje. Abra la
+zona en Ubicaciones o en la pestaña Posiciones de la ficha y escriba el cupo de cada posición.
+
+**¿Por qué el recuadro de una zona dice "N posiciones sin cupo"?** Porque la zona mezcla posiciones con cupo y sin cupo. El
+porcentaje se calcula solo con las que tienen cupo; las otras se avisan aparte para que no falseen el número.
+
+**¿Cómo exporto una tabla y qué exporta?** Con el botón **Exportar** del pie de la tabla: elija Excel, CSV o PDF. Sale todo lo
+que cumple los filtros de la pantalla (no solo la página que está viendo), hasta 10.000 filas.
+
+**¿Por qué mi ciudad sale en mayúsculas?** Porque la ciudad viene del catálogo postal. Fuera de Puerto Rico es el nombre
+postal oficial (`NEW YORK`); en Puerto Rico se guarda el municipio con su escritura normal (`Toa Baja`). No se puede
+escribir a mano desde la pantalla.
+
+**¿Por qué no puedo cambiar el código ni la zona de una posición?** Es una regla del sistema: el código y la zona de
+una posición quedan fijos desde el alta ("El código y la zona de la posición no se pueden cambiar."). Lo que sí puede cambiar
+es el pasillo, rack, nivel, posición, el cupo y el peso máximo (el código no se recalcula). Si necesita otro código u otra
+zona, cree una posición nueva y dé de baja la anterior (solo procede sin inventario ni tareas abiertas). El **código de una
+zona**, en cambio, sí se puede editar.

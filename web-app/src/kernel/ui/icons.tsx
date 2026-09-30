@@ -60,6 +60,17 @@ export function IconChevronDown() {
   )
 }
 
+/** Descargar (exportar tabla). */
+export function IconDownload() {
+  return (
+    <Svg>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </Svg>
+  )
+}
+
 export function IconEye() {
   return (
     <Svg>

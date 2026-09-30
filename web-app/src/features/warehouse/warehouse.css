@@ -9,14 +9,26 @@
 .locations .head .act{flex:1 1 260px;justify-content:flex-end;min-width:0}
 .locations .loc-wh{flex:0 1 320px;min-width:0}
 .locations .loc-river{margin-bottom:16px}
+/* una zona por recuadro: base más angosta y tubos cortos para que un almacén típico (6-7 zonas) quepa en una sola fila
+   en escritorio, como en la maqueta; con más zonas, envuelve */
+.locations .loc-river .node{flex-basis:120px}
+.locations .loc-river .pipe{width:16px}
 .locations .node .ph .loc-tag{margin-left:auto;flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .locations .node .big .loc-of{font-size:14px;color:var(--faint)}
+/* Lote 1: cada recuadro es un botón que filtra la tabla por su zona (sin estilo nativo); el activo, con el borde y el fondo
+   de flujo; foco visible. Sus hijos son <span> (contenido válido de un botón) que el flex del nodo vuelve bloques. */
+.locations .loc-node{font:inherit;color:inherit;text-align:left;cursor:pointer;appearance:none}
+.locations .loc-node.on{border-color:var(--flow);background:var(--flow-bg)}
+.locations .loc-node:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.locations .loc-node .loc-node-bar{margin-top:9px;min-width:0}
+.locations .loc-node .loc-warn{color:var(--warn)}
 .locations .loc-none{color:var(--faint)}
-.locations .loc-prod{display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:100%}
 .locations .loc-prod-name{min-width:0;overflow-wrap:anywhere}
-.locations .loc-prod .tag{flex:none}
-.locations .loc-bar{height:6px;border-radius:4px;background:var(--bg-2);overflow:hidden;min-width:60px;width:100%}
+.locations .loc-bar{display:block;height:6px;border-radius:4px;background:var(--bg-2);overflow:hidden;min-width:60px;width:100%}
 .locations .loc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--flow),var(--flow-2))}
+.locations .loc-fill{display:flex;align-items:center;gap:8px;min-width:0}
+.locations .loc-fill .loc-bar{flex:1 1 60px}
+.locations .loc-fill .loc-pct{flex:none;font-size:12px;color:var(--muted)}
 @media(max-width:480px){.locations .loc-wh{flex:1 1 100%}}
 
 /* Ajustes de inventario (maqueta `ajustesAlmacen()`): maestro-detalle a dos columnas (lista de compras de 300 px + líneas
@@ -45,6 +57,40 @@
   .adj-cols .adj-list{max-height:240px}
   .adj-cols .adj-lines{max-height:none}
 }
+
+/* Almacenes (maqueta `almacenes()`, Lote 1 de cambios de Almacén): maestro-detalle con la tabla a la izquierda y el panel
+   del almacén elegido a la derecha (420 px; se encoge hasta 300 px si no cabe); una columna bajo 720 px con el panel
+   debajo. La fila elegida lleva el fondo `--flow-bg` de la maqueta. Cada zona es una fila `.unrow`: el cuerpo es un botón
+   (abre el modal) y la papelera otro al lado (no se anidan botones); la papelera `.muted` es la baja no permitida. */
+.whs-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,420px);gap:16px;align-items:start}
+.whs-cols>*{min-width:0}
+.whs-cols .lst tr.sel td{background:var(--flow-bg)}
+.whs-cols .dt-card.sel{background:var(--flow-bg);border-color:var(--flow-line)}
+.whs-muted{color:var(--muted);font-size:12.5px}
+.whs-side{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0}
+.whs-side>.chip{margin-bottom:4px}
+.whs-addr{color:var(--muted);font-size:12.5px;overflow-wrap:anywhere}
+.whs-zones-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;border-top:1px solid var(--line-2);margin-top:8px;padding-top:12px}
+.whs-zones-h b{font-size:13px}
+.whs-zones-h .btn{margin-left:auto}
+.whs-side .empty,.whs-side .spin-wrap{align-self:stretch}
+.whs-zones{list-style:none;margin:0;padding:0;width:100%}
+.whs-zone{padding:0}
+.whs-zone-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;padding:9px 4px;text-align:left;background:none;border:0;color:var(--text);font:inherit;font-size:12.5px}
+button.whs-zone-main{cursor:pointer;border-radius:8px}
+button.whs-zone-main:hover{background:var(--panel-2)}
+button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:-2px}
+.whs-zone-top{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.whs-zone-top .whs-zone-name{font-size:13px;min-width:0;overflow-wrap:anywhere}
+.whs-zone-top .tag{margin-left:auto;flex:none}
+.whs-zone .rowbtn:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.whs-zone .rowbtn.muted{opacity:.4;cursor:not-allowed}
+.whs-zone .rowbtn.muted:hover{background:transparent;color:var(--faint)}
+@media(max-width:720px){.whs-cols{grid-template-columns:minmax(0,1fr)}}
+
+/* Ficha del almacén, pestaña Posiciones: chip de ocupación con el % del cupo al lado (sin envolver). */
+.whs-occ{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.whs-pct{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 
 /* Contexto de solo lectura del modal de resolución de faltantes (SKU · Producto — Faltante). */
 .rsm-context{margin:0 0 14px}

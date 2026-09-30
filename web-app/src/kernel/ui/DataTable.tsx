@@ -1,5 +1,7 @@
 // Tabla estándar del kit sobre TanStack Table v9 (headless): orden por columna con flecha, paginación del servidor
-// (o local si la lista llega completa), tarjetas bajo 720 px y acciones por fila con guardas de permiso/estatus.
+// (o local por defecto si la lista llega completa), pie con rango/total, "Filas por página" y Exportar, tarjetas bajo
+// 720 px, acciones por fila con guardas de permiso/estatus y exportación a Excel/CSV/PDF en el cliente (`exportTable.ts`):
+// las filas cargadas o, con `exportRows`, todas las de la consulta del servidor.
 import {
   createPaginatedRowModel,
   createSortedRowModel,
@@ -16,10 +18,15 @@ import {
   type Updater,
 } from '@tanstack/react-table'
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
-import { useT } from '../i18n/useT'
+import { useLang, useT } from '../i18n/useT'
 import { EmptyState } from './EmptyState'
+import { ExportMenu } from './ExportMenu'
+import { exportTable, type ExportFormat } from './exportTable'
+import { usePanelTitle } from './panelContext'
 import { Spinner } from './Spinner'
+import { toast } from './toast'
 import { CARDS_QUERY, useMediaQuery } from './useMediaQuery'
 import './ui.css'
 
@@ -48,6 +55,11 @@ export interface DataColumn<T> {
   align?: 'start' | 'end'
   /** En tarjeta: 'title' la usa como título; 'hidden' no la muestra. Por defecto la primera columna es el título. */
   card?: 'title' | 'hidden'
+  /** Valor exportado (Excel/CSV/PDF). Sin él se exporta el texto que muestra `cell`; si la celda no tiene texto
+   *  (un componente sin children, p. ej. `StatusChip`), `sortValue`. */
+  exportValue?: (row: T) => SortValue
+  /** false = la columna no se exporta (casillas de selección, columnas solo visuales). */
+  exportable?: boolean
 }
 
 export interface SortState {
@@ -83,10 +95,17 @@ export interface DataTableProps<T extends RowData> {
   defaultSort?: SortState | null
   /** Página actual (base 1). Con `onPage` la paginación es del servidor y `total` es obligatorio. */
   page?: number
+  /** Filas por página. Servidor: el tamaño que pidió la pantalla. Local: el tamaño inicial (por defecto 25). */
   pageSize?: number
   /** Total de filas del servidor (paginación del servidor). */
   total?: number
   onPage?: (page: number) => void
+  /** Paginación del servidor: el usuario cambió "Filas por página" (la pantalla guarda el tamaño y vuelve a la página 1).
+   *  Sin ella, con `onPage`, el selector no se muestra. */
+  onPageSize?: (size: number) => void
+  /** false = sin paginación local: todas las filas, sin rango ni "Filas por página" (tablas de apoyo en modales, líneas
+   *  con controles editables). Por defecto true. No afecta a la paginación del servidor (`onPage`). */
+  pagination?: boolean
   rowActions?: readonly RowAction<T>[]
   /** Clic en la fila (p. ej. abrir el detalle). También con Enter. */
   onRowClick?: (row: T) => void
@@ -100,10 +119,22 @@ export interface DataTableProps<T extends RowData> {
   /** Tabla compacta (`.densetbl`: menos padding y tipografía) para tablas con muchas columnas. Por defecto se activa sola
    *  desde `DENSE_COLUMNS` columnas (contando la de acciones). Nunca hay scrollbar horizontal propio: la tabla encoge. */
   dense?: boolean
+  /** Botón "Exportar" (Excel/CSV/PDF) en el pie. Por defecto true; false en tablas de modales o de apoyo. Exporta las filas
+   *  cargadas en el orden actual (todas en paginación local; con `onPage`, solo la página que llegó, salvo `exportRows`). */
+  exportable?: boolean
+  /** Filas a exportar en lugar de las cargadas: con paginación del servidor, todas las de la consulta actual (mismos
+   *  filtros y orden). Acepta el resultado de `fetchAllPages` (si viene `truncated`, avisa con un toast). */
+  exportRows?: () => Promise<readonly T[] | FetchAllResult<T>>
+  /** Base del nombre del archivo exportado (y título de la hoja/PDF). Por defecto `label`, luego el título del `Panel`. */
+  exportFileName?: string
 }
 
 /** A partir de cuántas columnas la tabla pasa sola a la variante compacta. */
 export const DENSE_COLUMNS = 8
+
+/** Tamaño de página por defecto y opciones del selector "Filas por página". */
+export const DEFAULT_PAGE_SIZE = 25
+const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50, 100]
 
 const EMPTY_ROWS: never[] = []
 
@@ -128,6 +159,21 @@ function compareValues(x: string | number, y: string | number): number {
   return collator.compare(String(x), String(y))
 }
 
+/** Orden local de filas fuera del modelo de la tabla (exportación con `exportRows`): mismo criterio, vacíos al final. */
+function sortRows<T>(rows: readonly T[], col: DataColumn<T> | undefined, desc: boolean): readonly T[] {
+  const get = col?.sortValue
+  if (!get) return rows
+  return rows
+    .map((row) => ({ row, v: toComparable(get(row)) }))
+    .sort((a, b) => {
+      if (a.v === null) return b.v === null ? 0 : 1
+      if (b.v === null) return -1
+      const c = compareValues(a.v, b.v)
+      return desc ? -c : c
+    })
+    .map((x) => x.row)
+}
+
 function useAllowed(): (perm: RowAction<unknown>['perm']) => boolean {
   const { permissions } = useAccess()
   return (perm) => {
@@ -139,15 +185,19 @@ function useAllowed(): (perm: RowAction<unknown>['perm']) => boolean {
 
 /**
  * `<DataTable columns={cols} rows={items} rowKey={(r) => r.publicId!} sort={sort} onSort={setSort}
- *   page={page} pageSize={25} total={data.total} onPage={setPage} rowActions={actions} />`
+ *   page={page} pageSize={size} total={data.total} onPage={setPage} onPageSize={(n) => { setSize(n); setPage(1) }}
+ *   exportRows={() => fetchAllPages((skip, take) => …)} rowActions={actions} />`
  * Pasa `rows` memorizadas (useMemo o el `data` de la consulta): un arreglo nuevo en cada render reinicia la página local.
  */
 export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const { columns, rows, rowKey, onSort, onPage, rowActions, onRowClick, rowClassName, loading, label } = props
   const dense = props.dense ?? columns.length + (rowActions?.length ? 1 : 0) >= DENSE_COLUMNS
   const t = useT()
+  const lang = useLang()
   const cards = useMediaQuery(CARDS_QUERY)
   const allowed = useAllowed()
+  const panelTitle = usePanelTitle()
+  const exportable = props.exportable ?? true
 
   // ----- orden: del servidor (controlado con onSort) o local -----
   const [localSort, setLocalSort] = useState<SortState | null>(props.defaultSort ?? null)
@@ -155,9 +205,11 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const sort = serverSort ? (props.sort ?? null) : localSort
   const sorting = useMemo<SortingState>(() => (sort ? [{ id: sort.id, desc: sort.desc }] : []), [sort])
 
-  // ----- paginación: del servidor (onPage + total) o local (pageSize) o ninguna -----
+  // ----- paginación: del servidor (onPage + total), local (por defecto) o ninguna (pagination={false}) -----
   const serverPaging = onPage !== undefined
-  const pageSize = props.pageSize ?? (serverPaging ? 25 : Math.max(rows.length, 1))
+  const localPaging = !serverPaging && (props.pagination ?? true)
+  const [localSize, setLocalSize] = useState(props.pageSize ?? DEFAULT_PAGE_SIZE)
+  const pageSize = serverPaging ? (props.pageSize ?? DEFAULT_PAGE_SIZE) : localPaging ? localSize : Math.max(rows.length, 1)
   const [localPage, setLocalPage] = useState(1)
   const [prevRows, setPrevRows] = useState(rows)
   if (!serverPaging && rows !== prevRows) {
@@ -220,6 +272,21 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)
+  const paged = pageCount > 1
+  const showRange = serverPaging || localPaging
+  const sizeSelectable = serverPaging ? props.onPageSize !== undefined : localPaging
+  // el tamaño actual siempre está entre las opciones (p. ej. una tabla que arranca en 5)
+  const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize) ? PAGE_SIZE_OPTIONS : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
+  const changePageSize = (size: number) => {
+    if (serverPaging) {
+      props.onPageSize?.(size)
+    } else {
+      setLocalSize(size)
+      setLocalPage(1)
+    }
+  }
+  // cuántas filas saldrán en el archivo (nota del menú Exportar)
+  const exportCount = props.exportRows || !serverPaging ? total : rows.length
 
   const actionsFor = (row: T) =>
     (rowActions ?? []).filter((a) => allowed(a.perm) && (a.visible ? a.visible(row) : true))
@@ -267,6 +334,28 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
 
   const rowKeyDown = (row: T) => (e: KeyboardEvent) => {
     if (onRowClick && e.key === 'Enter' && e.target === e.currentTarget) onRowClick(row)
+  }
+
+  // exporta todo lo cargado (no solo la página visible) en el orden actual; con `exportRows`, lo que devuelva (todas las
+  // filas de la consulta del servidor), reordenado como la tabla si el orden es local
+  const runExport = async (format: ExportFormat) => {
+    let list: readonly T[]
+    if (props.exportRows) {
+      const result = await props.exportRows()
+      const items: readonly T[] = 'items' in result ? result.items : result
+      if ('truncated' in result && result.truncated) {
+        toast.info(t('ui.table.export.truncated', { count: items.length.toLocaleString(lang) }))
+      }
+      list = !serverSort && sort ? sortRows(items, columns.find((c) => c.id === sort.id), sort.desc) : items
+    } else {
+      list = table.getPrePaginatedRowModel().rows.map((r) => r.original)
+    }
+    await exportTable(format, columns, list, {
+      locale: lang,
+      yes: t('ui.table.export.yes'),
+      no: t('ui.table.export.no'),
+      title: props.exportFileName ?? label ?? panelTitle,
+    })
   }
 
   const sortableCols = columns.filter((c) => c.sortValue || c.sortable)
@@ -413,31 +502,46 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   return (
     <div className="dt">
       {body}
-      {rows.length > 0 && pageCount > 1 && (
-        <nav className="dt-pager" aria-label={t('ui.table.pagination')}>
-          <span>{t('ui.table.range', { from, to, total })}</span>
-          <span className="pg">
-            <button
-              type="button"
-              className="btn sm"
-              disabled={!table.getCanPreviousPage()}
-              onClick={() => table.previousPage()}
-              aria-label={t('ui.table.prev')}
-            >
-              ‹
-            </button>
-            <span aria-current="page">{t('ui.table.pageOf', { page, pages: pageCount })}</span>
-            <button
-              type="button"
-              className="btn sm"
-              disabled={!table.getCanNextPage()}
-              onClick={() => table.nextPage()}
-              aria-label={t('ui.table.next')}
-            >
-              ›
-            </button>
-          </span>
-        </nav>
+      {rows.length > 0 && (showRange || exportable) && (
+        <div className="dt-pager">
+          {showRange && <span className="dt-range">{t('ui.table.range', { from, to, total })}</span>}
+          {sizeSelectable && (
+            <label className="dt-size">
+              <span>{t('ui.table.pageSize')}</span>
+              <select value={pageSize} onChange={(e) => changePageSize(Number(e.target.value))}>
+                {sizeOptions.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {exportable && <ExportMenu onExport={runExport} count={exportCount} />}
+          {paged && (
+            <nav className="pg" aria-label={t('ui.table.pagination')}>
+              <button
+                type="button"
+                className="btn sm"
+                disabled={!table.getCanPreviousPage()}
+                onClick={() => table.previousPage()}
+                aria-label={t('ui.table.prev')}
+              >
+                ‹
+              </button>
+              <span aria-current="page">{t('ui.table.pageOf', { page, pages: pageCount })}</span>
+              <button
+                type="button"
+                className="btn sm"
+                disabled={!table.getCanNextPage()}
+                onClick={() => table.nextPage()}
+                aria-label={t('ui.table.next')}
+              >
+                ›
+              </button>
+            </nav>
+          )}
+        </div>
       )}
     </div>
   )

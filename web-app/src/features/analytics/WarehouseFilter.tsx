@@ -4,9 +4,11 @@
 import { useId, type CSSProperties } from 'react'
 import { useT } from '../../kernel/i18n/useT'
 import { CategoryProductPicker } from '../../kernel/ui/CategoryProductPicker'
+import { IconChevronDown } from '../../kernel/ui/icons'
 import type { CategoryProductValue } from '../../kernel/ui/categoryTree'
 import { useProductCategories, useWarehouses, warehouseLabel } from '../warehouse/api'
 import type { WarehousePulseFilter } from './api'
+import './pulse.css'
 
 // Una fila que envuelve: en escritorio los dos controles lado a lado (con tope de ancho); a 360 px no caben juntos y cada
 // uno pasa a su renglón ocupando todo el ancho (flex-grow), sin media queries.
@@ -59,6 +61,11 @@ export function WarehouseFilter({ filter, onChange, warehouses, categories }: Wa
   return (
     <div role="group" aria-label={t('analytics.pulse.warehouse.filters')} style={ROW}>
       <label htmlFor={selectId} style={WH_BOX}>
+        {/* flecha a la izquierda de la caja, como en el CategoryProductPicker vecino; el select no pinta la suya
+            (su `background` en línea anula el chevron de fondo de base.css) */}
+        <span className="wh-filter-chev" aria-hidden="true">
+          <IconChevronDown />
+        </span>
         <span style={WH_CAPTION}>{t('analytics.pulse.warehouse.warehouseFilter')}</span>
         <select
           id={selectId}

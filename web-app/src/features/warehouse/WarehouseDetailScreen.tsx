@@ -1,5 +1,14 @@
 // Lote F6 — Pantalla A: ficha de almacén (zonas, posiciones y muelles). Lecturas con inventory.view; alta/edición/baja
 // de almacén, zonas, posiciones y muelles (y estatus manual del muelle) con warehouse.manage.
+// Lote 1 (cambios de Almacén):
+// - Datos: Ciudad y código postal en UN combobox (`PostalLocalityPickerInput`, catálogo de localidades); Estado y País se
+//   derivan de la localidad elegida y son de solo lectura.
+// - Zonas: filtros Código, Nombre, Tipo (`SearchSelect`, en el cliente) + "Incluir inactivas"; clic en la fila abre
+//   `ZoneModal` (código editable); baja/reactivación como ícono; columna Estatus y ocupación (ocupadas / posiciones).
+// - Posiciones: paginación del servidor (`GET .../bins` devuelve `{ total, skip, take, items }`), filtros Código (`search`),
+//   Zona (`zoneIds`), Pasillo, Rack, Nivel, Posición, "Incluir inactivas" y "Solo con existencia", todos al API (los de
+//   texto con 300 ms de pausa); Exportar saca todo lo filtrado (`exportWarehouseBins`). Columnas Cupo y Ocupación; clic en
+//   la fila abre `BinModal`; baja/reactivación como ícono. Abrir o cerrar un modal no cambia la consulta (no recarga).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -8,7 +17,7 @@ import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusPipeline, useLookups } from '../../kernel/catalogs'
-import { useT } from '../../kernel/i18n'
+import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
   ConfirmDialog,
@@ -19,17 +28,20 @@ import {
   Field,
   Filters,
   Form,
+  IconPower,
+  IconRotateCcw,
   Modal,
   Panel,
-  QBox,
+  SearchSelect,
   Select,
-  SelectFilter,
   Spinner,
   Tabs,
   TextInput,
   toast,
+  type ChipTone,
 } from '../../kernel/ui'
 import {
+  exportWarehouseBins,
   useDeactivateWarehouse,
   useSaveWarehouseBin,
   useSaveWarehouseDock,
@@ -46,6 +58,12 @@ import {
 } from './api'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
 import { BinModal, ReadOnlyField } from './BinModal'
+import { TextFilter, ToggleFilter } from './filterControls'
+import { formatNumber, useDebounced } from './lineRules'
+import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
+import { binsQuery, distinctOptions, EMPTY_BIN_TEXT, type BinTextFilters } from './warehouseFilters'
+import { ZoneModal } from './ZoneModal'
+import './warehouse.css'
 
 type TabKey = 'profile' | 'zones' | 'bins' | 'docks'
 
@@ -55,17 +73,16 @@ const WAREHOUSE_ENTITY_TYPE = 'WAREHOUSE'
 const DOCK_STATUS_DOMAIN = 'DockStatus'
 const DOCK_ENTITY_TYPE = 'WAREHOUSE_DOCK'
 
-/** Interruptor simple (fuera de un `Form`), para filtros booleanos como `includeInactive`/`onlyWithStock`. */
-function ToggleFilter({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="f">
-      <label className="sw">
-        <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className="tk" aria-hidden="true" />
-        <span>{label}</span>
-      </label>
-    </div>
-  )
+/** Estado de ocupación de una posición (BinOccupancies del dominio) → tono del chip. */
+const OCCUPANCY_TONE: Record<string, ChipTone> = { EMPTY: 'neutral', PARTIAL: 'route', FULL: 'fail', NO_CAPACITY: 'wh' }
+
+const NO_BINS: WarehouseBinDto[] = []
+const NO_ZONES: WarehouseZoneDto[] = []
+
+/** Chip Activo/Inactivo de la columna Estatus (zonas, posiciones). */
+function ActiveChip({ active }: { active: boolean | undefined }) {
+  const t = useT()
+  return <Chip tone={active ? 'deliv' : 'warn'}>{active ? t('warehouse.zones.active') : t('warehouse.zones.inactive')}</Chip>
 }
 
 // =====================================================================================================================
@@ -77,7 +94,6 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
   const publicId = w.publicId ?? ''
   const canEdit = useCan('warehouse.manage')
   const update = useUpdateWarehouse()
-  const { data: countries = [] } = useLookups('Country')
 
   const schema = useMemo(
     () =>
@@ -91,17 +107,18 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
       }),
     [t],
   )
-  const form = useForm({
-    resolver: zodResolver(schema),
-    values: {
+  const values = useMemo(
+    () => ({
       name: w.name ?? '',
       line1: w.line1 ?? '',
       city: w.city ?? '',
       state: w.state ?? '',
       postalCode: w.postalCode ?? '',
       country: w.countryCode ?? '',
-    },
-  })
+    }),
+    [w.name, w.line1, w.city, w.state, w.postalCode, w.countryCode],
+  )
+  const form = useForm({ resolver: zodResolver(schema), values })
 
   return (
     <Form
@@ -132,20 +149,10 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
         <Field name="line1" label={t('warehouse.detail.line1')}>
           <TextInput />
         </Field>
-        <div className="r3">
-          <Field name="city" label={t('warehouse.detail.city')}>
-            <TextInput />
-          </Field>
-          <Field name="state" label={t('warehouse.detail.state')}>
-            <TextInput />
-          </Field>
-          <Field name="postalCode" label={t('warehouse.detail.postalCode')}>
-            <TextInput />
-          </Field>
-        </div>
-        <Field name="country" label={t('warehouse.detail.country')}>
-          <Select options={countries.map((c) => ({ value: c.code, label: c.label }))} placeholder="" />
+        <Field name="city" label={t('warehouse.postalPicker.label')} help={t('warehouse.postalPicker.help')}>
+          <PostalLocalityPickerInput disabled={!canEdit} />
         </Field>
+        <DerivedLocalityFields />
       </fieldset>
       <Can perm="warehouse.manage">
         <div className="form-acts">
@@ -161,111 +168,46 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
 // =====================================================================================================================
 // Pestaña Zonas
 // =====================================================================================================================
-function ZoneModal({
-  publicId,
-  zone,
-  open,
-  onClose,
-}: {
-  publicId: string
-  zone: WarehouseZoneDto | null
-  open: boolean
-  onClose: () => void
-}) {
-  const t = useT()
-  const save = useSaveWarehouseZone()
-  const { data: zoneTypes = [] } = useLookups('ZoneType')
-  const isEdit = zone !== null
-
-  const schema = useMemo(
-    () =>
-      z.object({
-        code: isEdit ? z.string() : z.string().trim().min(1, t('warehouse.zones.errors.codeRequired')),
-        name: z.string().trim().min(1, t('warehouse.zones.errors.nameRequired')),
-        zoneType: z.string(),
-      }),
-    [t, isEdit],
-  )
-  const form = useForm({
-    resolver: zodResolver(schema),
-    values: { code: zone?.code ?? '', name: zone?.name ?? '', zoneType: zone?.zoneTypeCode ?? '' },
-  })
-  const formId = 'warehouse-zone-save'
-
-  const close = () => {
-    form.reset()
-    onClose()
-  }
-
-  return (
-    <Modal
-      open={open}
-      title={isEdit ? t('warehouse.zones.edit') : t('warehouse.zones.new')}
-      onClose={close}
-      dismissible={!form.formState.isSubmitting}
-      footer={
-        <>
-          <button type="button" className="btn" onClick={close}>
-            {t('common.cancel')}
-          </button>
-          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
-          </button>
-        </>
-      }
-    >
-      <Form
-        id={formId}
-        form={form}
-        onSubmit={async (v) => {
-          if (isEdit && zone) {
-            await save.mutateAsync({ publicId, action: 'update', zoneId: zone.id ?? 0, body: { name: v.name, zoneType: v.zoneType || null } })
-            toast.success(t('warehouse.zones.saved'))
-          } else {
-            await save.mutateAsync({ publicId, action: 'create', body: { code: v.code, name: v.name, zoneType: v.zoneType || null } })
-            toast.success(t('warehouse.zones.created'))
-          }
-          close()
-        }}
-      >
-        {isEdit ? (
-          <ReadOnlyField label={t('warehouse.zones.code')} value={zone?.code ?? ''} help={t('warehouse.zones.codeHelp')} />
-        ) : (
-          <Field name="code" label={t('warehouse.zones.code')} required>
-            <TextInput />
-          </Field>
-        )}
-        <Field name="name" label={t('warehouse.zones.name')} required>
-          <TextInput />
-        </Field>
-        <Field name="zoneType" label={t('warehouse.zones.type')}>
-          <Select options={zoneTypes.map((z2) => ({ value: z2.code, label: z2.label }))} placeholder="" />
-        </Field>
-      </Form>
-    </Modal>
-  )
-}
-
 function ZonesTab({ publicId }: { publicId: string }) {
   const t = useT()
   const canManage = useCan('warehouse.manage')
   const [includeInactive, setIncludeInactive] = useState(false)
-  const { data, isLoading } = useWarehouseZones(publicId, { includeInactive })
+  const [codes, setCodes] = useState<string[]>([])
+  const [names, setNames] = useState<string[]>([])
+  const [types, setTypes] = useState<string[]>([])
+  const { data = NO_ZONES, isLoading } = useWarehouseZones(publicId, { includeInactive })
+  const { data: zoneTypes = [] } = useLookups('ZoneType')
   const save = useSaveWarehouseZone()
   const [editing, setEditing] = useState<WarehouseZoneDto | null | 'new'>(null)
   const [confirmAction, setConfirmAction] = useState<{ zone: WarehouseZoneDto; action: 'deactivate' | 'reactivate' } | null>(null)
+
+  const codeOptions = useMemo(() => distinctOptions(data.map((z) => z.code)), [data])
+  const nameOptions = useMemo(() => distinctOptions(data.map((z) => z.name)), [data])
+  const typeOptions = useMemo(() => zoneTypes.map((z) => ({ value: z.code, label: z.label })), [zoneTypes])
+
+  const rows = useMemo(
+    () =>
+      data.filter(
+        (z) =>
+          (codes.length === 0 || codes.includes(z.code ?? '')) &&
+          (names.length === 0 || names.includes(z.name ?? '')) &&
+          (types.length === 0 || types.includes(z.zoneTypeCode ?? '')),
+      ),
+    [data, codes, names, types],
+  )
 
   const columns = useMemo<DataColumn<WarehouseZoneDto>[]>(
     () => [
       { id: 'code', header: t('warehouse.zones.code'), cell: (z) => <span className="ref">{z.code}</span>, sortValue: (z) => z.code, card: 'title' },
       { id: 'name', header: t('warehouse.zones.name'), cell: (z) => z.name, sortValue: (z) => z.name },
-      { id: 'type', header: t('warehouse.zones.type'), cell: (z) => z.zoneType, sortValue: (z) => z.zoneType },
-      { id: 'bins', header: t('warehouse.zones.bins'), cell: (z) => z.binCount, sortValue: (z) => z.binCount, align: 'end' },
+      { id: 'type', header: t('warehouse.zones.type'), cell: (z) => z.zoneType ?? '—', sortValue: (z) => z.zoneType },
+      { id: 'bins', header: t('warehouse.zones.bins'), cell: (z) => z.binCount ?? 0, sortValue: (z) => z.binCount, align: 'end' },
+      { id: 'occupied', header: t('warehouse.zones.occupied'), cell: (z) => z.occupiedBinCount ?? 0, sortValue: (z) => z.occupiedBinCount, align: 'end' },
       {
-        id: 'active',
-        header: t('warehouse.zones.active'),
-        cell: (z) => <Chip tone={z.isActive ? 'deliv' : 'warn'}>{z.isActive ? t('warehouse.zones.active') : t('warehouse.zones.inactive')}</Chip>,
-        sortValue: (z) => z.isActive,
+        id: 'status',
+        header: t('warehouse.zones.status'),
+        cell: (z) => <ActiveChip active={z.isActive} />,
+        sortValue: (z) => (z.isActive ? t('warehouse.zones.active') : t('warehouse.zones.inactive')),
       },
     ],
     [t],
@@ -273,7 +215,6 @@ function ZonesTab({ publicId }: { publicId: string }) {
 
   const actions = useMemo<RowAction<WarehouseZoneDto>[]>(
     () => [
-      { key: 'edit', label: t('warehouse.zones.edit'), perm: 'warehouse.manage', onClick: (z) => setEditing(z) },
       {
         key: 'deactivate',
         label: t('warehouse.zones.deactivate'),
@@ -281,6 +222,7 @@ function ZonesTab({ publicId }: { publicId: string }) {
         visible: (z) => z.isActive === true,
         onClick: (z) => setConfirmAction({ zone: z, action: 'deactivate' }),
         tone: 'danger',
+        icon: <IconPower />,
       },
       {
         key: 'reactivate',
@@ -288,6 +230,7 @@ function ZonesTab({ publicId }: { publicId: string }) {
         perm: 'warehouse.manage',
         visible: (z) => z.isActive !== true,
         onClick: (z) => setConfirmAction({ zone: z, action: 'reactivate' }),
+        icon: <IconRotateCcw />,
       },
     ],
     [t],
@@ -295,30 +238,42 @@ function ZonesTab({ publicId }: { publicId: string }) {
 
   return (
     <>
-      <div className="head">
-        <div>
-          <p>{t('warehouse.zones.count', { count: data?.length ?? 0 })}</p>
-        </div>
-        <div className="act">
-          <Can perm="warehouse.manage">
-            <button type="button" className="btn flow" onClick={() => setEditing('new')}>
-              {t('warehouse.zones.new')}
-            </button>
-          </Can>
-        </div>
-      </div>
-      <Filters onClear={() => setIncludeInactive(false)}>
+      <Filters
+        onClear={() => {
+          setCodes([])
+          setNames([])
+          setTypes([])
+          setIncludeInactive(false)
+        }}
+      >
+        <SearchSelect label={t('warehouse.zones.code')} options={codeOptions} value={codes} onChange={setCodes} />
+        <SearchSelect label={t('warehouse.zones.name')} options={nameOptions} value={names} onChange={setNames} />
+        <SearchSelect label={t('warehouse.zones.type')} options={typeOptions} value={types} onChange={setTypes} />
         <ToggleFilter label={t('warehouse.zones.includeInactive')} checked={includeInactive} onChange={setIncludeInactive} />
       </Filters>
-      <Panel flush>
+      <Panel
+        flush
+        icon={<IconWarehouse />}
+        title={t('warehouse.zones.title')}
+        badge={isLoading ? undefined : rows.length}
+        actions={
+          <Can perm="warehouse.manage">
+            <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>
+              {t('warehouse.zones.newPlus')}
+            </button>
+          </Can>
+        }
+      >
         <DataTable
           label={t('warehouse.zones.title')}
           columns={columns}
-          rows={data ?? []}
+          rows={rows}
           rowKey={(z) => z.id ?? 0}
           defaultSort={{ id: 'code', desc: false }}
           loading={isLoading}
           rowActions={canManage ? actions : []}
+          onRowClick={canManage ? (z) => setEditing(z) : undefined}
+          rowClassName={(z) => (z.isActive ? undefined : 'dim')}
         />
       </Panel>
 
@@ -346,18 +301,40 @@ function ZonesTab({ publicId }: { publicId: string }) {
 // =====================================================================================================================
 // Pestaña Posiciones
 // =====================================================================================================================
+
+const BIN_PAGE_SIZE = 25
+
 function BinsTab({ publicId, zones }: { publicId: string; zones: readonly WarehouseZoneDto[] }) {
   const t = useT()
+  const lang = useLang()
   const canManage = useCan('warehouse.manage')
-  const [zoneId, setZoneId] = useState('')
-  const [search, setSearch] = useState('')
+  const [text, setText] = useState<BinTextFilters>(EMPTY_BIN_TEXT)
+  const [zoneIds, setZoneIds] = useState<string[]>([])
   const [includeInactive, setIncludeInactive] = useState(false)
   const [onlyWithStock, setOnlyWithStock] = useState(false)
-  const query = { zoneId: zoneId ? Number(zoneId) : undefined, search: search || undefined, includeInactive, onlyWithStock }
-  const { data, isLoading } = useWarehouseBins(publicId, query)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(BIN_PAGE_SIZE)
+  // los textos van al API con una pausa (el objeto `text` solo cambia al teclear: identidad estable entre renders)
+  const debouncedText = useDebounced(text)
+
+  const filterQuery = useMemo(
+    () => binsQuery(debouncedText, zoneIds, includeInactive, onlyWithStock),
+    [debouncedText, zoneIds, includeInactive, onlyWithStock],
+  )
+  const query = useMemo(() => ({ ...filterQuery, skip: (page - 1) * pageSize, take: pageSize }), [filterQuery, page, pageSize])
+  const { data, isLoading, isFetching } = useWarehouseBins(publicId, query)
+  const rows = data?.items ?? NO_BINS
   const save = useSaveWarehouseBin()
   const [editing, setEditing] = useState<WarehouseBinDto | null | 'new'>(null)
   const [confirmAction, setConfirmAction] = useState<{ bin: WarehouseBinDto; action: 'deactivate' | 'reactivate' } | null>(null)
+
+  const zoneOptions = useMemo(() => zones.map((z) => ({ value: String(z.id), label: [z.code, z.name].filter(Boolean).join(' · ') })), [zones])
+  const activeZones = useMemo(() => zones.filter((z) => z.isActive !== false), [zones])
+
+  const setTextField = (key: keyof BinTextFilters) => (v: string) => {
+    setText((prev) => ({ ...prev, [key]: v }))
+    setPage(1)
+  }
 
   const columns = useMemo<DataColumn<WarehouseBinDto>[]>(
     () => [
@@ -366,25 +343,59 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
       {
         id: 'location',
         header: t('warehouse.bins.location'),
-        cell: (b) => [b.aisle, b.rack, b.level, b.position].filter(Boolean).join(' / '),
+        cell: (b) => [b.aisle, b.rack, b.level, b.position].filter(Boolean).join(' / ') || '—',
         sortValue: (b) => [b.aisle, b.rack, b.level, b.position].filter(Boolean).join(' / '),
       },
-      { id: 'maxWeight', header: t('warehouse.bins.maxWeight'), cell: (b) => b.maxWeightKg ?? '—', sortValue: (b) => b.maxWeightKg, align: 'end' },
-      { id: 'onHand', header: t('warehouse.bins.onHand'), cell: (b) => b.qtyOnHand, sortValue: (b) => b.qtyOnHand, align: 'end' },
-      { id: 'products', header: t('warehouse.bins.products'), cell: (b) => b.productCount, sortValue: (b) => b.productCount, align: 'end' },
       {
-        id: 'active',
-        header: t('warehouse.bins.active'),
-        cell: (b) => <Chip tone={b.isActive ? 'deliv' : 'warn'}>{b.isActive ? t('warehouse.bins.active') : t('warehouse.bins.inactive')}</Chip>,
-        sortValue: (b) => b.isActive,
+        id: 'capacity',
+        header: t('warehouse.bins.capacity'),
+        cell: (b) => (b.maxCapacityQty != null ? formatNumber(b.maxCapacityQty, lang) : '—'),
+        sortValue: (b) => b.maxCapacityQty,
+        align: 'end',
+      },
+      { id: 'onHand', header: t('warehouse.bins.onHand'), cell: (b) => formatNumber(b.qtyOnHand ?? 0, lang), sortValue: (b) => b.qtyOnHand, align: 'end' },
+      {
+        id: 'occupancy',
+        header: t('warehouse.bins.occupancy'),
+        cell: (b) => {
+          const code = b.occupancy ?? 'EMPTY'
+          const pct = b.maxCapacityQty ? Math.round((100 * (b.qtyOnHand ?? 0)) / b.maxCapacityQty) : null
+          return (
+            <span className="whs-occ">
+              <Chip tone={OCCUPANCY_TONE[code] ?? 'neutral'}>{t(`warehouse.bins.occupancyStates.${code}`)}</Chip>
+              {pct != null && code !== 'EMPTY' && <span className="whs-pct">{pct} %</span>}
+            </span>
+          )
+        },
+        sortValue: (b) => (b.maxCapacityQty ? (b.qtyOnHand ?? 0) / b.maxCapacityQty : b.qtyOnHand ? -1 : -2),
+        exportValue: (b) => t(`warehouse.bins.occupancyStates.${b.occupancy ?? 'EMPTY'}`),
+      },
+      {
+        id: 'product',
+        header: t('warehouse.bins.product'),
+        cell: (b) =>
+          b.singleProductSku ? (
+            <span title={b.singleProductName ?? undefined}>{b.singleProductSku}</span>
+          ) : (b.productCount ?? 0) > 1 ? (
+            t('warehouse.bins.productsCount', { count: b.productCount ?? 0 })
+          ) : (
+            '—'
+          ),
+        sortValue: (b) => b.singleProductSku ?? ((b.productCount ?? 0) > 1 ? `~${b.productCount}` : null),
+      },
+      { id: 'maxWeight', header: t('warehouse.bins.maxWeight'), cell: (b) => (b.maxWeightKg != null ? formatNumber(b.maxWeightKg, lang) : '—'), sortValue: (b) => b.maxWeightKg, align: 'end' },
+      {
+        id: 'status',
+        header: t('warehouse.bins.status'),
+        cell: (b) => <ActiveChip active={b.isActive} />,
+        sortValue: (b) => (b.isActive ? t('warehouse.zones.active') : t('warehouse.zones.inactive')),
       },
     ],
-    [t],
+    [t, lang],
   )
 
   const actions = useMemo<RowAction<WarehouseBinDto>[]>(
     () => [
-      { key: 'edit', label: t('warehouse.bins.edit'), perm: 'warehouse.manage', onClick: (b) => setEditing(b) },
       {
         key: 'deactivate',
         label: t('warehouse.bins.deactivate'),
@@ -392,6 +403,7 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
         visible: (b) => b.isActive === true,
         onClick: (b) => setConfirmAction({ bin: b, action: 'deactivate' }),
         tone: 'danger',
+        icon: <IconPower />,
       },
       {
         key: 'reactivate',
@@ -399,6 +411,7 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
         perm: 'warehouse.manage',
         visible: (b) => b.isActive !== true,
         onClick: (b) => setConfirmAction({ bin: b, action: 'reactivate' }),
+        icon: <IconRotateCcw />,
       },
     ],
     [t],
@@ -406,52 +419,81 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
 
   return (
     <>
-      <div className="head">
-        <div>
-          <p>{t('warehouse.bins.count', { count: data?.length ?? 0 })}</p>
-        </div>
-        <div className="act">
+      <Filters
+        onClear={() => {
+          setText(EMPTY_BIN_TEXT)
+          setZoneIds([])
+          setIncludeInactive(false)
+          setOnlyWithStock(false)
+          setPage(1)
+        }}
+      >
+        <TextFilter label={t('warehouse.bins.code')} value={text.code} onChange={setTextField('code')} />
+        <SearchSelect
+          label={t('warehouse.bins.zone')}
+          options={zoneOptions}
+          value={zoneIds}
+          onChange={(v) => {
+            setZoneIds(v)
+            setPage(1)
+          }}
+        />
+        <TextFilter label={t('warehouse.bins.aisle')} value={text.aisle} onChange={setTextField('aisle')} />
+        <TextFilter label={t('warehouse.bins.rack')} value={text.rack} onChange={setTextField('rack')} />
+        <TextFilter label={t('warehouse.bins.level')} value={text.level} onChange={setTextField('level')} />
+        <TextFilter label={t('warehouse.bins.position')} value={text.position} onChange={setTextField('position')} />
+        <ToggleFilter
+          label={t('warehouse.bins.includeInactive')}
+          checked={includeInactive}
+          onChange={(v) => {
+            setIncludeInactive(v)
+            setPage(1)
+          }}
+        />
+        <ToggleFilter
+          label={t('warehouse.bins.onlyWithStock')}
+          checked={onlyWithStock}
+          onChange={(v) => {
+            setOnlyWithStock(v)
+            setPage(1)
+          }}
+        />
+      </Filters>
+      <Panel
+        flush
+        icon={<IconWarehouse />}
+        title={t('warehouse.bins.title')}
+        badge={data ? formatNumber(data.total ?? 0, lang) : undefined}
+        actions={
           <Can perm="warehouse.manage">
-            <button type="button" className="btn flow" onClick={() => setEditing('new')}>
+            <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>
               {t('warehouse.bins.new')}
             </button>
           </Can>
-        </div>
-      </div>
-      <Filters
-        onClear={() => {
-          setZoneId('')
-          setSearch('')
-          setIncludeInactive(false)
-          setOnlyWithStock(false)
-        }}
+        }
       >
-        <SelectFilter
-          label={t('warehouse.bins.zone')}
-          value={zoneId}
-          onChange={setZoneId}
-          allLabel={t('warehouse.bins.allZones')}
-          options={zones.map((z) => ({ value: String(z.id), label: z.code ?? '' }))}
-        />
-        <ToggleFilter label={t('warehouse.bins.includeInactive')} checked={includeInactive} onChange={setIncludeInactive} />
-        <ToggleFilter label={t('warehouse.bins.onlyWithStock')} checked={onlyWithStock} onChange={setOnlyWithStock} />
-      </Filters>
-      <Panel flush>
-        <div className="qrow">
-          <QBox value={search} onChange={setSearch} />
-        </div>
         <DataTable
           label={t('warehouse.bins.title')}
           columns={columns}
-          rows={data ?? []}
+          rows={rows}
           rowKey={(b) => b.id ?? 0}
-          defaultSort={{ id: 'code', desc: false }}
-          loading={isLoading}
+          page={page}
+          pageSize={pageSize}
+          total={data?.total ?? 0}
+          onPage={setPage}
+          onPageSize={(n) => {
+            setPageSize(n)
+            setPage(1)
+          }}
+          exportRows={() => exportWarehouseBins(publicId, filterQuery)}
+          loading={isLoading || (isFetching && rows.length === 0)}
           rowActions={canManage ? actions : []}
+          onRowClick={canManage ? (b) => setEditing(b) : undefined}
+          rowClassName={(b) => (b.isActive ? undefined : 'dim')}
         />
       </Panel>
 
-      <BinModal publicId={publicId} zones={zones} bin={editing === 'new' || editing === null ? null : editing} open={editing !== null} onClose={() => setEditing(null)} />
+      <BinModal publicId={publicId} zones={activeZones} bin={editing === 'new' || editing === null ? null : editing} open={editing !== null} onClose={() => setEditing(null)} />
 
       <ConfirmDialog
         open={confirmAction !== null}
@@ -680,6 +722,7 @@ function DocksTab({ publicId }: { publicId: string }) {
     </>
   )
 }
+
 
 // =====================================================================================================================
 // Pantalla
