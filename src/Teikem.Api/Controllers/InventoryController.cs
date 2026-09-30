@@ -42,17 +42,18 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     /// Kárdex paginado (más recientes primero). quantity = la del ledger con signo (recepción +, despacho −);
     /// signedQuantity = perspectiva del filtro de almacenes/posiciones (salida −, entrada +, interna 0; sin filtro, una
     /// transferencia vale 0). Filtros: from/to (UTC), types, almacenes, posiciones, productos, categorías, lote, serie,
-    /// refEntity + refId (documento de origen) y buscador.
+    /// refEntity + refId (documento de origen) y buscador. Lote 12: brands (marca del producto igual, sin distinguir
+    /// mayúsculas) y name (el nombre del producto contiene el texto): los filtros de Productos para el Reporte de ajustes.
     /// </summary>
     [HttpGet("transactions"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<KardexPageDto> Transactions([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string[]? types,
         [FromQuery] Guid[]? warehousePublicIds, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] int[]? categoryIds, [FromQuery] string? lotNumber, [FromQuery] string? serialNumber,
-        [FromQuery] string? refEntity, [FromQuery] int? refId, [FromQuery] string? search, CancellationToken ct,
-        [FromQuery] int skip = 0, [FromQuery] int take = 200)
+        [FromQuery] string? refEntity, [FromQuery] int? refId, [FromQuery] string? search, [FromQuery] string[]? brands,
+        [FromQuery] string? name, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 200)
         => reads.KardexAsync(new KardexQuery(from, to, NullIfEmpty(types), NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds),
-            NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, skip, take),
-            InventoryScope.Any, ct);
+            NullIfEmpty(productPublicIds), NullIfEmpty(categoryIds), lotNumber, serialNumber, refEntity, refId, search, skip, take,
+            NullIfEmpty(brands), name), InventoryScope.Any, ct);
 
     /// <summary>
     /// Ajuste manual: quantity con signo (&gt; 0 entra a la posición, &lt; 0 sale; 0 → 400) y motivo del catálogo

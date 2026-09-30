@@ -142,26 +142,27 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
   },
-  // Compras (maqueta: 'Compras'); Proveedores no está en la maqueta y va justo después.
+  // Proveedores no está en la maqueta: va antes de Compras (Lote 2).
+  {
+    path: '/warehouse/suppliers',
+    element: lazy(() => import('../features/warehouse/SupplierListScreen')),
+    perm: 'purchasing.view',
+    module: ModuleKeys.Purchasing,
+    nav: { group: 'warehouse', key: 'suppliers', order: 40 },
+  },
+  // Compras (maqueta: 'Compras').
   {
     path: '/warehouse/purchase-orders',
     element: lazy(() => import('../features/warehouse/PurchaseOrderListScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'purchaseOrders', order: 40 },
+    nav: { group: 'warehouse', key: 'purchaseOrders', order: 50 },
   },
   {
     path: '/warehouse/purchase-orders/:publicId',
     element: lazy(() => import('../features/warehouse/PurchaseOrderDetailScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-  },
-  {
-    path: '/warehouse/suppliers',
-    element: lazy(() => import('../features/warehouse/SupplierListScreen')),
-    perm: 'purchasing.view',
-    module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'suppliers', order: 50 },
   },
   // Recibo: incluye la pestaña 'Acomodo pendiente' (tareas PUTAWAY; antes 'Tareas de almacén', que no está en la maqueta).
   {

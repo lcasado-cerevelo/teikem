@@ -49,7 +49,8 @@ Si los archivos están en otra carpeta, edite las rutas de `sources` (pueden ser
    ```
 
 El importador solo ejecuta `SELECT` parametrizados por `@warehouseId` sobre `dbo.Item`, `dbo.Location`,
-`dbo.Inventory` (`OnHandQuantity <> 0`) y `dbo.ItemUPC`. **Nunca escribe en MSWM** y solo lee el almacén configurado
+`dbo.Inventory` (`OnHandQuantity <> 0`) y `dbo.ItemUPC`, más el historial por posición para estimar el cupo
+(`dbo.Inventory`, `dbo.Inventory_Old`, `dbo.CycleCountInventory`, `dbo.CycleCountHistory` y `dbo.PutAwayHistory`, sumados por foto). **Nunca escribe en MSWM** y solo lee el almacén configurado
 (`Main`): `TrussPR` no se migra.
 
 ## Antes de la carga
@@ -167,6 +168,8 @@ En `report.outputDir` o, si no se indica, en la carpeta del primer archivo fuent
   descripción, productos adicionales), el conteo de posiciones por zona en el encabezado y el saldo inicial por SKU y
   posición.
 - Un CSV por sección: `-resumen`, `-rechazos`, `-advertencias`, `-mapeos`, `-saldo-inicial`.
+- Solo si hubo cupos estimados (almacén que viene de MSWM): `-cupos` (posición, zona, pasillo, máximo histórico, cupo,
+  origen y resultado) y la sección **Cupos de posición estimados** del `.md`.
 
 La muestra sintética escribe en `TestResults/migracion/` (ignorado por git).
 
@@ -179,6 +182,12 @@ La muestra sintética escribe en `TestResults/migracion/` (ignorado por git).
 - Posiciones del WMS: `01-a-24` → `01-A-24` (pasillo 01, nivel A, posición 24); si dos ids coinciden al pasarlos a
   mayúsculas se conserva el primero. `W1`, `Z1`, `01` y `R-1` no se migran; una posición sin zona destino se omite.
 - Código de barras: el primer UPC del WMS; si el mismo UPC está en varios productos, no se asigna a ninguno.
+- Cupo de posición (solo almacenes de MSWM): el mayor total histórico de la posición en `Inventory`, `Inventory_Old`,
+  `CycleCountInventory`, `CycleCountHistory` y `PutAwayHistory` (acomodos por día), redondeado hacia arriba a la decena
+  (origen `HISTORIAL`); sin historial, la mediana de su pasillo (`PASILLO`), de su zona (`ZONA`) o del almacén (`ALMACEN`);
+  la mediana de un pasillo o de una zona solo cuenta si sale de al menos 5 posiciones con historial.
+  Una posición nueva nace con su cupo; una existente con cupo nunca se pisa; una existente sin cupo solo se llena con
+  `--update`. Detalle y resultado de la validación contra MSWM en la sección 7 del plan.
 - Solutions: el saldo inicial es la *Quantity On Hand* de QuickBooks en la posición `GENERAL`; las existencias negativas
   no se cargan y se informan. Las cajas `101010`, `121212` y `979` solo existen en Depot.
 - Clientes de prueba descartados: `1`, `Alec` (Solutions) y `prueba2` (Depot).

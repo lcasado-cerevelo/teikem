@@ -92,6 +92,33 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .whs-occ{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .whs-pct{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
 
+/* Lote 11 — modal "Asignar cupo" (BinCapacityModal): dos grupos (Alcance, Acción) sin borde de fieldset, casillas que
+   envuelven a 360 px (etiquetas largas), acción como dos radios con foco visible y la vista previa como nota (ámbar con 0
+   coincidencias, roja si no se pudo calcular). */
+.bcap-intro{margin:0 0 14px;color:var(--muted);font-size:12.5px}
+.bcap-set{border:0;padding:0;margin:0 0 12px;min-width:0}
+.bcap-set legend{padding:0;margin:0 0 9px;font-size:12px;font-weight:700;color:var(--text)}
+/* en una columna (≤ 480 px) el espacio entre campos lo da el margen de .f, igual dentro y entre las filas .r2 */
+.bcap-set .r2{row-gap:0}
+.bcap-switches{display:flex;flex-wrap:wrap;gap:10px 22px;margin-bottom:4px}
+.bcap-switch{min-width:0;max-width:100%}
+.bcap-switch .sw{white-space:normal;align-items:flex-start;line-height:1.35}
+.bcap-switch .sw .tk{margin-top:-1px}
+.bcap-switch .sw input:disabled{cursor:not-allowed}
+.bcap-switch .sw:has(input:disabled){opacity:.55}
+.bcap-switch .help{margin:4px 0 0 47px}
+.bcap-mode{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px}
+.bcap-radio{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;cursor:pointer}
+.bcap-radio input{margin:0;width:16px;height:16px;accent-color:var(--flow);cursor:pointer}
+.bcap-radio input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.bcap-qty{max-width:260px}
+.bcap-preview{margin:4px 0 0;font-weight:600;color:var(--text)}
+.bcap-preview.warn{color:var(--warn);border-color:var(--warn)}
+.bcap-preview.bad{color:var(--danger);border-color:var(--danger)}
+.bcap-errs{margin:6px 0 0;padding-left:18px;font-weight:500}
+.bcap-confirm{margin:0 0 8px}
+@media(max-width:480px){.bcap-qty{max-width:none}}
+
 /* Contexto de solo lectura del modal de resolución de faltantes (SKU · Producto — Faltante). */
 .rsm-context{margin:0 0 14px}
 
@@ -113,6 +140,10 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .pe-section{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 8px}
 .pe-adjust{border-top:1px solid var(--line-2);margin-top:14px;padding-top:14px}
 .pe-adjust .pe-apply{justify-content:center}
+/* Lote 12: el bloque de ajuste empieza cerrado ("Añadir ajuste"); abierto, sus botones van a la derecha y envuelven a 360 px */
+.pe-adjust.pe-adjust-closed{padding-top:12px}
+.pe-adjust-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-top:10px}
+.pe-adjust-actions .btn{min-width:0}
 .pe-trace{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-top:1px solid var(--line-2);margin-top:14px;padding-top:14px}
 .pe-trace .pe-section{flex:1 1 100%;margin:0}
 
@@ -122,3 +153,15 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .inv-own{color:var(--faint)}
 /* a ≤ 480 px los cuatro KPIs van de dos en dos (Pulso los pone a lo ancho): cifras cortas, menos alto que apilarlos */
 @media(max-width:480px){.pulse .river.inv-river .node{flex:1 1 calc(50% - 5px)}}
+/* Lote 12: cada KPI es un botón que filtra la tabla (`?kpi=`): sin estilo nativo, foco visible; el activo con borde y fondo
+   de flujo (naranja si el KPI está en alerta). El tono naranja (.money: número y borde al pasar el mouse) solo cuando hay
+   algo que atender (Bajo mínimo > 0 o productos con series incompletas). */
+.pulse .inv-kpi{font:inherit;color:inherit;text-align:left;cursor:pointer;appearance:none}
+.pulse .inv-kpi:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.pulse .node.inv-kpi.on{border-color:var(--flow);background:var(--flow-bg);box-shadow:0 0 0 1px var(--flow)}
+.pulse .node.inv-kpi.money.on{border-color:var(--money);background:var(--money-bg);box-shadow:0 0 0 1px var(--money)}
+.pulse .inv-kpi .sub.inv-alert{color:var(--money-2)}
+/* Marca (con el modelo tenue debajo) en la tabla de productos */
+.inv-brand{display:flex;flex-direction:column;min-width:0}
+.inv-brand .inv-model{font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.inv-head-act .btn[aria-busy="true"]{opacity:.7;cursor:progress}

@@ -1,24 +1,29 @@
 // Pantalla D (Lote F6) — Compras: proveedores. `/warehouse/suppliers`. Lectura: purchasing.view + PURCHASING (por la
 // ruta). Alta/edición/baja/reactivación: purchasing.manage. Nombre único entre los activos (409 del servidor).
+// Lote 2: filtros de texto (Nombre, Contacto, Teléfono, Correo) en el cliente, clic en la fila abre el proveedor, baja/reactivación
+// como ícono, estatus con el chip de Almacenes, teléfono con máscara (xxx)xxx-xxxx y término de pago con buscador.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import {
   Chip,
+  ComboSelectInput,
   ConfirmDialog,
   DataTable,
   Field,
   Filters,
   Form,
+  isValidPhone,
   matchesQ,
   Modal,
+  normalizeStoredPhone,
   Panel,
-  QBox,
-  Select,
+  phoneDigits,
+  PhoneInput,
   SelectFilter,
   TextArea,
   TextInput,
@@ -27,11 +32,32 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { useSaveSupplier, useSuppliers, type SupplierDto } from './api'
+import { IconPower, IconRotateCcw } from '../../kernel/ui/actionIcons'
 import { IconLayers } from '../../kernel/ui/screenIcons'
+import { TextFilter } from './filterControls'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 type ModalState = 'create' | SupplierDto | null
+
+// Colores del estatus de Almacenes (semilla de WarehouseStatus), para que el chip se vea igual.
+const ACTIVE_COLOR = '#059669'
+const INACTIVE_COLOR = '#6B7280'
+
+interface SupplierFilters {
+  name: string
+  contact: string
+  phone: string
+  email: string
+}
+const EMPTY_FILTERS: SupplierFilters = { name: '', contact: '', phone: '', email: '' }
+
+/** Teléfono: coincide por dígitos (cualquier formato guardado) o por el texto tal cual. */
+function matchesPhone(q: string, phone: string | null | undefined): boolean {
+  const qd = phoneDigits(q)
+  if (qd && phoneDigits(phone ?? '').includes(qd)) return true
+  return matchesQ(q, phone)
+}
 
 // ---- Modal de alta/edición ----
 function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: () => void; supplier: SupplierDto | null }) {
@@ -39,13 +65,14 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
   const save = useSaveSupplier()
   const { data: paymentTerms = [] } = useLookups('PaymentTerm')
   const editing = supplier !== null
+  const paymentTermOptions = useMemo(() => paymentTerms.map((o) => ({ value: o.code, label: o.label })), [paymentTerms])
 
   const schema = useMemo(
     () =>
       z.object({
         name: z.string().trim().min(1, t('warehouse.suppliers.errors.nameRequired')),
         contactName: z.string().trim(),
-        phone: z.string().trim(),
+        phone: z.string().trim().refine(isValidPhone, t('warehouse.suppliers.errors.phoneInvalid')),
         email: z
           .string()
           .trim()
@@ -60,7 +87,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
     values: {
       name: supplier?.name ?? '',
       contactName: supplier?.contactName ?? '',
-      phone: supplier?.phone ?? '',
+      phone: normalizeStoredPhone(supplier?.phone),
       email: supplier?.email ?? '',
       paymentTerm: supplier?.paymentTermCode ?? '',
       notes: supplier?.notes ?? '',
@@ -135,7 +162,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
             <TextInput maxLength={150} />
           </Field>
           <Field name="phone" label={t('warehouse.suppliers.fields.phone')}>
-            <TextInput maxLength={40} />
+            <PhoneInput />
           </Field>
         </div>
         <div className="r2">
@@ -143,7 +170,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
             <TextInput type="email" maxLength={150} />
           </Field>
           <Field name="paymentTerm" label={t('warehouse.suppliers.fields.paymentTerm')}>
-            <Select options={paymentTerms.map((o) => ({ value: o.code, label: o.label }))} placeholder={t('warehouse.suppliers.fields.none')} />
+            <ComboSelectInput options={paymentTermOptions} placeholder={t('warehouse.suppliers.fields.paymentTermSearch')} />
           </Field>
         </div>
         <Field name="notes" label={t('warehouse.suppliers.fields.notes')}>
@@ -158,26 +185,40 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
 export default function SupplierListScreen() {
   const t = useT()
   const [show, setShow] = useState<'active' | 'all'>('active')
-  const [q, setQ] = useState('')
+  const [filters, setFilters] = useState(EMPTY_FILTERS)
+  const canManage = useCan('purchasing.manage')
   const [modal, setModal] = useState<ModalState>(null)
   const [confirm, setConfirm] = useState<{ supplier: SupplierDto; active: boolean } | null>(null)
   const save = useSaveSupplier()
 
   const { data = [], isLoading, error } = useSuppliers({ includeInactive: show === 'all' })
-  const rows = useMemo(() => data.filter((s) => matchesQ(q, s.name, s.contactName, s.email)), [data, q])
+  const rows = useMemo(
+    () =>
+      data.filter(
+        (s) =>
+          matchesQ(filters.name, s.name) &&
+          matchesQ(filters.contact, s.contactName) &&
+          matchesQ(filters.email, s.email) &&
+          matchesPhone(filters.phone, s.phone),
+      ),
+    [data, filters],
+  )
+  const setFilter = (key: keyof SupplierFilters, value: string) => setFilters((f) => ({ ...f, [key]: value }))
 
   const columns = useMemo<DataColumn<SupplierDto>[]>(
     () => [
       { id: 'name', header: t('warehouse.suppliers.fields.name'), cell: (s) => s.name, sortValue: (s) => s.name, card: 'title' },
       { id: 'contact', header: t('warehouse.suppliers.fields.contactName'), cell: (s) => s.contactName ?? '', card: 'hidden', sortValue: (s) => s.contactName },
+      { id: 'phone', header: t('warehouse.suppliers.fields.phone'), cell: (s) => normalizeStoredPhone(s.phone), sortValue: (s) => s.phone, card: 'hidden' },
       { id: 'email', header: t('warehouse.suppliers.fields.email'), cell: (s) => s.email ?? '', sortValue: (s) => s.email },
       {
         id: 'active',
         header: t('warehouse.list.status'),
         cell: (s) => (
-          <Chip tone={s.isActive ? 'neutral' : 'fail'}>{s.isActive ? t('warehouse.suppliers.active') : t('warehouse.suppliers.inactive')}</Chip>
+          // Mismo chip que el estatus de Almacenes (WarehouseStatus: ACTIVE verde, INACTIVE gris).
+          <Chip color={s.isActive ? ACTIVE_COLOR : INACTIVE_COLOR}>{s.isActive ? t('warehouse.suppliers.active') : t('warehouse.suppliers.inactive')}</Chip>
         ),
-        sortValue: (s) => s.isActive,
+        sortValue: (s) => (s.isActive ? t('warehouse.suppliers.active') : t('warehouse.suppliers.inactive')),
       },
     ],
     [t],
@@ -185,13 +226,13 @@ export default function SupplierListScreen() {
 
   const actions = useMemo<RowAction<SupplierDto>[]>(
     () => [
-      { key: 'edit', label: t('warehouse.suppliers.edit'), perm: 'purchasing.manage', onClick: (s) => setModal(s) },
       {
         key: 'deactivate',
         label: t('warehouse.suppliers.deactivate'),
         perm: 'purchasing.manage',
         visible: (s) => s.isActive === true,
         tone: 'danger',
+        icon: <IconPower />,
         onClick: (s) => setConfirm({ supplier: s, active: false }),
       },
       {
@@ -199,6 +240,7 @@ export default function SupplierListScreen() {
         label: t('warehouse.suppliers.reactivate'),
         perm: 'purchasing.manage',
         visible: (s) => s.isActive === false,
+        icon: <IconRotateCcw />,
         onClick: (s) => setConfirm({ supplier: s, active: true }),
       },
     ],
@@ -224,9 +266,13 @@ export default function SupplierListScreen() {
       <Filters
         onClear={() => {
           setShow('active')
-          setQ('')
+          setFilters(EMPTY_FILTERS)
         }}
       >
+        <TextFilter label={t('warehouse.suppliers.fields.name')} value={filters.name} onChange={(v) => setFilter('name', v)} />
+        <TextFilter label={t('warehouse.suppliers.fields.contactName')} value={filters.contact} onChange={(v) => setFilter('contact', v)} />
+        <TextFilter label={t('warehouse.suppliers.fields.phone')} value={filters.phone} onChange={(v) => setFilter('phone', v)} />
+        <TextFilter label={t('warehouse.suppliers.fields.email')} value={filters.email} onChange={(v) => setFilter('email', v)} />
         <SelectFilter
           label={t('warehouse.list.show')}
           value={show}
@@ -240,9 +286,6 @@ export default function SupplierListScreen() {
       </Filters>
 
       <Panel flush icon={<IconLayers />} title={t('warehouse.suppliers.title')} badge={rows.length}>
-        <div className="qrow">
-          <QBox value={q} onChange={setQ} />
-        </div>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}
@@ -257,6 +300,8 @@ export default function SupplierListScreen() {
             pageSize={25}
             loading={isLoading}
             rowActions={actions}
+            onRowClick={canManage ? (s) => setModal(s) : undefined}
+            rowClassName={(s) => (s.isActive === false ? 'dim' : undefined)}
           />
         )}
       </Panel>

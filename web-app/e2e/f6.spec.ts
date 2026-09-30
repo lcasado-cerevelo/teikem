@@ -198,18 +198,20 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'producto-nuevo-error')
 
     await sku.fill(SKU)
-    await expect(dialog.getByLabel('Rastreo')).toHaveValue('NONE')
+    // Rastreo es un desplegable con buscador (Lote 12): muestra la etiqueta del catálogo
+    await expect(dialog.getByRole('combobox', { name: 'Rastreo' })).toHaveValue('Ninguno')
     await dialog.getByRole('button', { name: 'Guardar' }).click()
     await expectToast(page, 'Producto creado.')
     // modal único de la maqueta: tras el alta se queda en la lista
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page).toHaveURL(/\/warehouse\/products$/)
 
-    await page.getByRole('searchbox').fill(SKU)
+    // Lote 12: sin buscador en la tabla; el filtro Nombre (contiene) va al API
+    await page.getByRole('searchbox', { name: 'Nombre' }).fill(PRODUCT_NAME)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
-    // columnas de la maqueta: SKU, Producto, Categoría, Dueño, Disponible, Reservado, Total, Rastreo, Estado
-    await expect(row.getByRole('cell').nth(6)).toHaveText('0')
+    // columnas: SKU, Producto, Categoría, Marca, Dueño, Disponible, Reservado, Total, Rastreo, Estado
+    await expect(row.getByRole('cell').nth(7)).toHaveText('0')
     await shot(page, 'productos')
     // clic en la fila = "Editar producto" (SKU bloqueado, Total en solo lectura)
     await row.click()
@@ -219,7 +221,7 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'producto-ficha')
     await edit.getByRole('button', { name: 'Cancelar' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await page.getByRole('searchbox').fill('')
+    await page.getByRole('searchbox', { name: 'Nombre' }).fill('')
     await page.getByRole('tab', { name: 'Categorías' }).click()
     await shot(page, 'categorias')
   })
@@ -287,7 +289,9 @@ test.describe('Lote F6 — escritorio', () => {
     await page.goto('/warehouse/purchase-orders')
     await page.getByRole('button', { name: 'Nueva orden de compra' }).click()
     dialog = page.getByRole('dialog')
-    await dialog.getByLabel(/^Proveedor/).selectOption({ label: SUPPLIER })
+    // Lote 12: el proveedor es un combobox con buscador (ComboSelectInput), no un <select>
+    await dialog.getByRole('combobox', { name: /^Proveedor/ }).fill(SUPPLIER)
+    await page.getByRole('option', { name: SUPPLIER }).click()
     await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
     await pickProduct(dialog, /Producto/, SKU)
     await dialog.getByLabel(/^Cantidad ordenada/).fill('5')

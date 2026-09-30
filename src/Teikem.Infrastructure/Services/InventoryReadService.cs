@@ -157,7 +157,7 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
 
         var query = db.Set<InventoryTransaction>().AsNoTracking().AsQueryable();
 
-        var productIds = await FilteredProductIdsAsync(scope, q.ProductPublicIds, q.CategoryIds, ct);
+        var productIds = await FilteredProductIdsAsync(scope, q.ProductPublicIds, q.CategoryIds, ct, q.Brands, q.Name);
         if (productIds is not null) query = query.Where(t => productIds.Contains(t.ProductId));
         if (fromUtc is DateTime f) query = query.Where(t => t.CreatedAtUtc >= f);
         if (toUtc is DateTime to) query = query.Where(t => t.CreatedAtUtc < to);
@@ -358,10 +358,12 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
     // ================================================================ filtros compartidos
 
     /// <summary>
-    /// Subconsulta de ids de producto según el scope (dueño), los PublicId y las categorías (con sus subcategorías).
-    /// NULL = sin filtro de producto (scope Any, sin productos ni categorías).
+    /// Subconsulta de ids de producto según el scope (dueño), los PublicId y las categorías (con sus subcategorías). Lote 12:
+    /// brands (marca igual a alguna) y name (el nombre contiene), ambos sin distinguir mayúsculas.
+    /// NULL = sin filtro de producto (scope Any, sin productos, categorías, marcas ni nombre).
     /// </summary>
-    internal async Task<IQueryable<int>?> FilteredProductIdsAsync(InventoryScope scope, Guid[]? productPublicIds, int[]? categoryIds, CancellationToken ct)
+    internal async Task<IQueryable<int>?> FilteredProductIdsAsync(InventoryScope scope, Guid[]? productPublicIds, int[]? categoryIds, CancellationToken ct,
+        string[]? brands = null, string? name = null)
     {
         var any = false;
         var products = db.Set<Product>().AsNoTracking().AsQueryable();
@@ -379,6 +381,17 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 .ToDictionaryAsync(c => c.ProductCategoryId, c => c.ParentId, ct);
             var wanted = KardexRules.WithDescendants(categoryIds, parents).Select(i => (int?)i).ToList();
             products = products.Where(p => wanted.Contains(p.ProductCategoryId));
+            any = true;
+        }
+        if (ProductRules.NormalizeTextFilter(brands) is { } wantedBrands)
+        {
+            products = products.Where(p => p.Brand != null && wantedBrands.Contains(p.Brand.ToLower()));
+            any = true;
+        }
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            var n = name.Trim().ToLowerInvariant();
+            products = products.Where(p => p.Name.ToLower().Contains(n));
             any = true;
         }
         return any ? products.Select(p => p.ProductId) : null;

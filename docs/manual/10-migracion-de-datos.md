@@ -85,6 +85,38 @@ dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.depot
 dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.solutions.json
 ```
 
+## 4. Cupo estimado de las posiciones (Advance Depot)
+
+Qué hace: al migrar un almacén que viene del WMS MSWM (Advance Depot), cada posición recibe un **cupo máximo** (unidades
+de producto, el mismo campo "Cupo máximo" de la ficha del almacén) estimado a partir de su historial en el WMS. Advance
+Solutions no tiene WMS: sus posiciones no reciben cupo.
+
+- **Historial que se mira** (solo el almacén configurado, `Main`): el inventario actual (`Inventory`), el inventario
+  anterior (`Inventory_Old`), los conteos cíclicos (`CycleCountInventory`, lo contado por solicitud), el historial de
+  conteo (`CycleCountHistory`, la cantidad resultante por solicitud) y los acomodos (`PutAwayHistory`, lo acomodado
+  hacia la posición sumado por día). En cada "foto" se suma todo lo que había en la posición.
+- **Posición con historial** (origen `HISTORIAL`): el mayor total de sus fotos, redondeado **hacia arriba a la decena**
+  (mínimo 10). Ejemplo: 1.212 unidades → cupo 1.220; 3 unidades → 10.
+- **Posición sin historial**: la **mediana** de los cupos con historial de su mismo **pasillo** (`PASILLO`; el pasillo es
+  el primer número del código, `01-A-24` → `01`); si el pasillo no tiene suficientes, la de su **zona** (`ZONA`); si
+  tampoco, la del **almacén** (`ALMACEN`). La mediana también se redondea hacia arriba a la decena. **Una mediana de
+  pasillo o de zona solo se usa si sale de al menos 5 posiciones con historial**; con menos datos se pasa al nivel
+  siguiente (con dos datos, 30 y 264.600, la "mediana" era 132.320, que no representa a nadie). Las posiciones especiales
+  sin pasillo (`PISO`, `R1`…) van directo a su zona.
+- **Nunca se pisa un cupo existente.** Una posición que se crea en la corrida nace con su cupo. Una que ya existía y
+  tiene cupo (capturado a mano o de una carga anterior) lo conserva siempre. Una que ya existía **sin** cupo solo se
+  llena con `--update`; sin `--update` no se toca. `--dry-run` calcula y reporta sin escribir.
+- **Reporte**: un CSV más, `{prefijo}-{fecha}-cupos.csv` (posición, zona, pasillo, máximo histórico, cupo, origen y
+  resultado: *Asignado al crear la posición*, *Se asignaría al crear la posición*, *Asignado (--update: la posición no
+  tenía cupo)*, *Se conserva el cupo actual (N)*, *Sin cambio: la posición ya existía sin cupo (use --update para
+  llenarlo)*), y en el `.md` la sección **Cupos de posición estimados** con cuántas posiciones salieron de cada origen
+  (y su cupo mínimo, mediana y máximo).
+- **Resultado real en Advance Depot** (corrida del 2026-09-30, 3.886 posiciones): `HISTORIAL` 2.709 (cupo de 10 a 264.600,
+  mediana 50), `PASILLO` 645 (10 a 120, mediana 20), `ZONA` 528 (50) y `ALMACEN` 4 (50). Es una estimación: por ejemplo, la
+  posición `CARTONES` sale con 264.600 por su historial y las posiciones de preparación (`R1`, `S1`) también reciben cupo;
+  conviene revisarlos.
+- Para corregir cupos después de la carga, use la asignación en bloque del almacén (capítulo 6, "Cupo en bloque").
+
 ### Validaciones y mensajes exactos
 
 | Caso | Mensaje exacto | Código de salida |
@@ -98,6 +130,7 @@ dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.solut
 | `db-reset --yes` contra un servidor que no es local, sin `--allow-remote` | `La cadena de conexión no apunta a un servidor local; use --allow-remote si de verdad quiere borrar esa base.` | 2 |
 | `db-reset --yes` contra una base que empieza por `MSWM` | `db-reset no toca la base del WMS heredado.` | 2 |
 | `db-reset` con sintaxis distinta a `--yes [--allow-remote]` | `Uso: dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]` | 2 |
+| Advertencia (no detiene la carga): ninguna posición del almacén del WMS tiene historial | `Ninguna posición de {almacén} tiene historial de existencias en el WMS; las posiciones quedan sin cupo.` | 0 |
 
 ## Preguntas frecuentes
 

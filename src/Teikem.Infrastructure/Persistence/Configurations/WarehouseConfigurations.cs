@@ -116,6 +116,8 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         b.Property(p => p.MinQty).HasColumnType("decimal(16,3)");
         b.Property(p => p.MinPickQty).HasColumnType("decimal(16,3)");
         b.Property(p => p.MaxPickQty).HasColumnType("decimal(16,3)");
+        b.Property(p => p.Brand).HasMaxLength(100);   // Lote 12
+        b.Property(p => p.Model).HasMaxLength(100);   // Lote 12
         b.Property(p => p.RowVersion).IsRowVersion();
 
         // SKU único por dueño (ClientId NULL = propio): sin el filtro 'IS NOT NULL' que EF agregaría.

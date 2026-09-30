@@ -2,6 +2,7 @@
 // Lectura: purchasing.view + PURCHASING (por la ruta). Edición/enviar/cancelar/eliminar: purchasing.manage.
 // Resolver un faltante: inventory.adjust, con `ResolveShortageModal` (compartido con 'Ajustes de inventario'; REORDER exige
 // además purchasing.manage y MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL).
+// Lote 2: la edición exige al menos una línea con cantidad > 0; proveedor y almacén son inmutables tras el alta (solo lectura).
 // Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
@@ -109,6 +110,7 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
           .array(lineSchema)
           .min(1, t('warehouse.purchaseOrders.errors.linesRequired'))
           .max(200, t('warehouse.purchaseOrders.errors.tooManyLines'))
+          .refine((lines) => lines.some((l) => (l.qtyOrdered ?? 0) > 0), t('warehouse.purchaseOrders.errors.linesQtyRequired'))
           .superRefine((lines, ctx) => {
             const seen = new Set<string>()
             lines.forEach((l, i) => {
@@ -139,6 +141,8 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
     },
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
+  const linesErrors = form.formState.errors.lines
+  const linesError = linesErrors?.message ?? linesErrors?.root?.message
   const emptyLine: LineFormValues = { productPublicId: '', sku: '', productName: '', qtyReceived: 0, qtyOrdered: null, unitCost: null }
 
   return (
@@ -179,6 +183,11 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
         </Field>
 
         <p className="help">{t('warehouse.purchaseOrders.fields.lines')}</p>
+        {linesError && (
+          <p className="ferr" role="alert">
+            {linesError}
+          </p>
+        )}
         {fields.map((f, i) => {
           const locked = f.qtyReceived > 0
           return (

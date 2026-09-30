@@ -1,37 +1,27 @@
-// Productos e inventario (Fase 8, maqueta `inventario()`): `/warehouse/products`, un solo ítem de menú que reúne el catálogo
-// y sus existencias por producto. Pestañas Productos (sin parámetro) y Categorías (`?tab=categories`).
-// - Cabecera: "Reporte de inventario" (→ Kárdex de movimientos, pestaña Saldos, con el almacén y las categorías filtrados
-//   aquí), "Reporte de ajustes" (→ Kárdex filtrado por el tipo ADJUSTMENT y el almacén) y "Nuevo producto" (inventory.manage).
-// - Río de KPIs de todo el catálogo (`useProductInventoryKpis`): SKUs activos, Unidades totales, Bajo mínimo y Con número de serie.
-// - Filtros Almacén, Categoría y Estado (van al API) + buscador libre (`search` del API: SKU, nombre, código de barras o dueño).
-// - Tabla SKU, Producto, Categoría, Dueño, Disponible, Reservado, Total, Rastreo, Estado. Disponible/Reservado/Total vienen
-//   en la propia lista paginada (`ProductListItemDto.qtyAvailable/qtyReserved/qtyOnHand`, del almacén filtrado o de todos):
-//   no hace falta cruzar con Saldos. Clic en una fila = "Editar producto" (ProductEditorModal, Fase 5).
+// Productos e inventario (Fase 8, maqueta `inventario()`; Lote 12): `/warehouse/products`, un solo ítem de menú que reúne el
+// catálogo y sus existencias por producto. Pestañas Productos (sin parámetro) y Categorías (`?tab=categories`).
+// - Cabecera: "Reporte de inventario" y "Reporte de ajustes" (PDF generado en el cliente con los filtros de la tabla:
+//   InventoryReportButtons / inventoryReports.ts) y "Nuevo producto" (inventory.manage).
+// - Río de KPIs de todo el catálogo (`useProductInventoryKpis`, todos con take=1): SKUs activos, Unidades totales, Bajo mínimo
+//   y Con número de serie. Cada KPI es un botón que filtra la tabla (`?kpi=active|available|low|serial`; otro clic lo quita):
+//   activos; activos con disponible > 0; bajo mínimo; rastreo SERIAL o con series. Bajo mínimo va en naranja solo si es > 0;
+//   Con número de serie, si hay productos SERIAL con series incompletas (`serialMissing`), con "N sin series completas".
+// - Filtros encima del panel, todos al API: Almacén (varios: acotan las cantidades de cada fila a esos almacenes, no quitan
+//   productos), SKU (`ProductMultiFilter` → productPublicIds), Nombre (contiene), Categoría y Marca (GET /products/brands).
+//   Sin buscador dentro de la tabla. Lógica pura de los filtros en productFilters.ts.
+// - Tabla paginada en el servidor: SKU, Producto, Categoría, Marca (con el modelo debajo), Dueño, Disponible, Reservado,
+//   Total, Rastreo, Estado. Exportar = todo lo filtrado. Clic en una fila = "Editar producto" (ProductEditorModal).
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useMemo, useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import {
-  Chip,
-  DataTable,
-  Filters,
-  IconBox,
-  IconLayers,
-  IconTag,
-  Panel,
-  QBox,
-  SearchSelect,
-  SelectFilter,
-  Tabs,
-  type DataColumn,
-} from '../../kernel/ui'
+import { Chip, DataTable, Filters, IconBox, IconLayers, IconTag, Panel, SearchSelect, Tabs, type DataColumn } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import {
   exportProducts,
-  SERIAL_COUNT_MAX_PAGES,
-  SERIAL_COUNT_PAGE,
+  useProductBrands,
   useProductCategories,
   useProductInventoryKpis,
   useProducts,
@@ -39,21 +29,20 @@ import {
   warehouseLabel,
   type ProductListItemDto,
 } from './api'
-import { formatValue } from '../analytics/format'
-import { formatNumber } from './lineRules'
+import { TextFilter } from './filterControls'
+import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
+import { formatNumber, useDebounced } from './lineRules'
+import { ProductMultiFilter, type ProductFilterItem } from './pickers'
 import { ProductCategoriesPanel } from './ProductCategoriesPanel'
 import { ProductEditorByIdModal, ProductEditorModal } from './ProductEditorModal'
+import { parseKpiParam, productListQuery, toggleKpi, type ProductFilterState, type ProductKpi } from './productFilters'
 import '../analytics/pulse.css'
 import './warehouse.css'
 
 type ListTab = 'products' | 'categories'
 
-/** Filtro Estado: '' = todos (activos e inactivos, como la maqueta), solo activos o bajo mínimo (`belowMin` del API). */
-type StateFilter = '' | 'active' | 'low'
-
 const PAGE_SIZE = 25
-/** InternalCode del tipo de movimiento 'Ajuste' (catálogo InventoryTxnType) para el "Reporte de ajustes". */
-const ADJUSTMENT_TXN_TYPE = 'ADJUSTMENT'
+const NO_ROWS: ProductListItemDto[] = []
 
 /** Estado de la fila como la maqueta: inactivo manda; si no, bajo mínimo u OK. */
 function productState(p: ProductListItemDto): 'inactive' | 'low' | 'ok' {
@@ -63,31 +52,60 @@ function productState(p: ProductListItemDto): 'inactive' | 'low' | 'ok' {
 
 const STATE_TONE = { inactive: 'cap', low: 'fail', ok: 'deliv' } as const
 
-/** Nodo del río de KPIs (`.node` de la maqueta; `money` = tono naranja de alerta, `.node.m`). */
-function KpiNode({ tone, icon, label, value, sub }: { tone: 'flow' | 'money'; icon: ReactNode; label: string; value: string; sub?: string }) {
+/** Nodo del río de KPIs (`.node` de la maqueta) como botón que filtra la tabla; `money` = tono naranja de alerta. */
+function KpiNode({
+  tone,
+  icon,
+  label,
+  value,
+  sub,
+  subAlert,
+  active,
+  hint,
+  onToggle,
+}: {
+  tone: 'flow' | 'money'
+  icon: ReactNode
+  label: string
+  value: string
+  sub?: string
+  subAlert?: boolean
+  active: boolean
+  hint: string
+  onToggle: () => void
+}) {
   return (
-    <div className={`node ${tone}`} role="group" aria-label={`${label}: ${value}`}>
-      <div className="ph">
+    <button
+      type="button"
+      className={`node ${tone} inv-kpi${active ? ' on' : ''}`}
+      aria-pressed={active}
+      aria-label={[`${label}: ${value}`, sub].filter(Boolean).join('. ')}
+      title={hint}
+      onClick={onToggle}
+    >
+      <span className="ph">
         {icon}
         <span>{label}</span>
-      </div>
-      <div className="big">{value}</div>
-      {sub && <div className="sub">{sub}</div>}
-    </div>
+      </span>
+      <span className="big">{value}</span>
+      {sub && <span className={subAlert ? 'sub inv-alert' : 'sub'}>{sub}</span>}
+    </button>
   )
 }
 
-/** Río con los cuatro KPIs de la maqueta, de todo el catálogo (no siguen los filtros de la tabla). Cifras como el río de Pulso. */
-function InventoryKpis() {
+/** Río con los cuatro KPIs de la maqueta, de todo el catálogo (no siguen los filtros de la tabla); cada uno filtra la tabla. */
+function InventoryKpis({ kpi, onToggle }: { kpi: ProductKpi | null; onToggle: (k: ProductKpi) => void }) {
   const t = useT()
-  const { activeSkus, totalUnits, belowMin, serial } = useProductInventoryKpis()
+  const lang = useLang()
+  const { activeSkus, totalUnits, belowMin, serial, serialMissing } = useProductInventoryKpis()
+  // separador de miles del idioma de la interfaz (367.329 en español), igual que la tabla y los reportes
   const show = (n: number | null | undefined, loading: boolean, failed: boolean) => {
-    if (n != null) return formatValue(n, false)
-    return loading ? '…' : failed ? '—' : formatValue(0, false)
+    if (n != null) return formatNumber(n, lang)
+    return loading ? '…' : failed ? '—' : formatNumber(0, lang)
   }
-  const serialValue = serial.data
-    ? `${formatValue(serial.data.count, false)}${serial.data.truncated ? '+' : ''}`
-    : show(undefined, serial.isLoading, serial.isError)
+  const belowMinCount = belowMin.data?.total ?? 0
+  const missing = serialMissing.data?.total ?? 0
+  const hint = (key: string) => t('warehouse.products.kpis.filterHint', { view: t(`warehouse.products.kpis.view.${key}`) })
   return (
     <div className="pulse">
       <div className="river inv-river" role="group" aria-label={t('warehouse.products.kpis.aria')}>
@@ -96,6 +114,9 @@ function InventoryKpis() {
           icon={<IconLayers />}
           label={t('warehouse.products.kpis.activeSkus')}
           value={show(activeSkus.data?.total, activeSkus.isLoading, activeSkus.isError)}
+          active={kpi === 'active'}
+          hint={hint('active')}
+          onToggle={() => onToggle('active')}
         />
         <div className="pipe" aria-hidden="true" />
         <KpiNode
@@ -103,21 +124,31 @@ function InventoryKpis() {
           icon={<IconBox />}
           label={t('warehouse.products.kpis.totalUnits')}
           value={show(totalUnits.data?.totalOnHand, totalUnits.isLoading, totalUnits.isError)}
+          active={kpi === 'available'}
+          hint={hint('available')}
+          onToggle={() => onToggle('available')}
         />
         <div className="pipe" aria-hidden="true" />
         <KpiNode
-          tone="money"
+          tone={belowMinCount > 0 ? 'money' : 'flow'}
           icon={<IconAlert />}
           label={t('warehouse.products.kpis.belowMin')}
           value={show(belowMin.data?.total, belowMin.isLoading, belowMin.isError)}
+          active={kpi === 'low'}
+          hint={hint('low')}
+          onToggle={() => onToggle('low')}
         />
         <div className="pipe" aria-hidden="true" />
         <KpiNode
-          tone="flow"
+          tone={missing > 0 ? 'money' : 'flow'}
           icon={<IconTag />}
           label={t('warehouse.products.kpis.serial')}
-          value={serialValue}
-          sub={serial.data?.truncated ? t('warehouse.products.kpis.truncated', { count: formatValue(SERIAL_COUNT_PAGE * SERIAL_COUNT_MAX_PAGES, false) }) : undefined}
+          value={show(serial.data?.total, serial.isLoading, serial.isError)}
+          sub={missing > 0 ? t('warehouse.products.kpis.serialMissing', { count: formatNumber(missing, lang) }) : undefined}
+          subAlert
+          active={kpi === 'serial'}
+          hint={hint('serial')}
+          onToggle={() => onToggle('serial')}
         />
       </div>
     </div>
@@ -128,47 +159,48 @@ function InventoryKpis() {
 function ProductsTab() {
   const t = useT()
   const lang = useLang()
-  const [text, setText] = useState('')
-  const [search, setSearch] = useState('')
-  const [warehousePublicId, setWarehousePublicId] = useState('')
+  const [params, setParams] = useSearchParams()
+  const [warehouses, setWarehouses] = useState<string[]>([])
+  const [products, setProducts] = useState<ProductFilterItem[]>([])
+  const [nameText, setNameText] = useState('')
   const [categoryIds, setCategoryIds] = useState<string[]>([])
-  const [state, setState] = useState<StateFilter>('')
+  const [brands, setBrands] = useState<string[]>([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
   const [editingPublicId, setEditingPublicId] = useState<string | null>(null)
+  // Nombre va al API con una pausa (no una consulta por tecla)
+  const name = useDebounced(nameText.trim(), 300)
 
-  // El buscador libre de este listado va al API (paginación de servidor): pausa de 250 ms, como ProductPicker.
-  // Cada filtro nuevo vuelve a la primera página (se hace en el propio setter, no en un efecto).
-  useEffect(() => {
-    // solo un texto distinto al aplicado vuelve a la página 1 (al montar no hay cambio: no se pisa la página elegida)
-    const next = text.trim()
-    if (next === search) return
-    const h = setTimeout(() => {
-      setSearch(next)
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text, search])
-
-  function withPageReset<T>(setter: (v: T) => void) {
-    return (v: T) => {
-      setPage(1)
-      setter(v)
-    }
+  // KPI elegido: vive en la URL (?kpi=) para poder enlazarlo; otro clic en el mismo lo quita
+  const kpi = parseKpiParam(params.get('kpi'))
+  const setKpi = (next: ProductKpi | null) => {
+    setParams(
+      (prev) => {
+        const q = new URLSearchParams(prev)
+        if (next) q.set('kpi', next)
+        else q.delete('kpi')
+        return q
+      },
+      { replace: true },
+    )
+    setPage(1)
   }
 
-  const { data: warehouses = [] } = useWarehouses({ includeInactive: false })
-  const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
+  /** Cambia un filtro y vuelve a la página 1. */
+  const withPageReset =
+    <V,>(set: (v: V) => void) =>
+    (v: V) => {
+      set(v)
+      setPage(1)
+    }
+
+  const { data: warehouseList = [] } = useWarehouses({ includeInactive: false })
+  const warehouseOptions = useMemo(() => warehouseList.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouseList])
   const { data: categories = [] } = useProductCategories()
-  const categoryOptions = useMemo(() => categories.map((c) => ({ value: String(c.id), label: c.name ?? '' })), [categories])
-  const stateOptions = useMemo(
-    () => [
-      { value: 'active', label: t('warehouse.products.filters.stateActive') },
-      { value: 'low', label: t('warehouse.products.filters.stateLow') },
-    ],
-    [t],
-  )
+  const categoryOptions = useMemo(() => categories.map((c) => ({ value: String(c.id), label: c.path || c.name || '' })), [categories])
+  const { data: brandList = [] } = useProductBrands()
+  const brandOptions = useMemo(() => brandList.map((b) => ({ value: b, label: b })), [brandList])
   // Etiquetas de Rastreo del catálogo del tenant (NONE/LOT/SERIAL → 'Ninguno'/'Lote'/'Serie'); sin catálogo, el código.
   const { data: trackingTypes = [] } = useLookups('TrackingType', { includeDisabled: true })
   const trackingLabel = useMemo(() => {
@@ -176,18 +208,13 @@ function ProductsTab() {
     return (code: string | null | undefined) => (code ? (labels.get(code) ?? code) : '')
   }, [trackingTypes])
 
-  const query = useMemo(
-    () => ({
-      search: search || undefined,
-      categoryIds: categoryIds.length > 0 ? categoryIds.map(Number) : undefined,
-      warehousePublicId: warehousePublicId || undefined,
-      activeOnly: state === 'active' || undefined,
-      belowMin: state === 'low' || undefined,
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    }),
-    [search, categoryIds, warehousePublicId, state, page, pageSize],
+  // Un solo estado de filtros para la tabla, su Exportar y los dos reportes PDF
+  const filters = useMemo<ProductFilterState>(
+    () => ({ warehouses, products, name, categoryIds, brands, kpi }),
+    [warehouses, products, name, categoryIds, brands, kpi],
   )
+  const baseQuery = useMemo(() => productListQuery(filters), [filters])
+  const query = useMemo(() => ({ ...baseQuery, skip: (page - 1) * pageSize, take: pageSize }), [baseQuery, page, pageSize])
   const { data, isLoading, error } = useProducts(query)
 
   const columns = useMemo<DataColumn<ProductListItemDto>[]>(() => {
@@ -197,6 +224,22 @@ function ProductsTab() {
       { id: 'sku', header: t('warehouse.products.columns.sku'), cell: (p) => <span className="ref">{p.sku}</span>, sortValue: (p) => p.sku, card: 'title' },
       { id: 'name', header: t('warehouse.products.columns.product'), cell: (p) => p.name, sortValue: (p) => p.name },
       { id: 'category', header: t('warehouse.products.columns.category'), cell: (p) => p.categoryName ?? '', sortValue: (p) => p.categoryName },
+      {
+        id: 'brand',
+        header: t('warehouse.products.columns.brand'),
+        // el modelo va tenue debajo de la marca (no cabe una columna más sin apretar la tabla)
+        cell: (p) =>
+          p.brand || p.model ? (
+            <span className="inv-brand" title={[p.brand, p.model].filter(Boolean).join(' · ')}>
+              <span>{p.brand ?? ''}</span>
+              {p.model && <span className="inv-model">{p.model}</span>}
+            </span>
+          ) : (
+            ''
+          ),
+        sortValue: (p) => p.brand ?? undefined,
+        exportValue: (p) => [p.brand, p.model].filter(Boolean).join(' · '),
+      },
       {
         id: 'owner',
         header: t('warehouse.products.columns.owner'),
@@ -230,19 +273,6 @@ function ProductsTab() {
     ]
   }, [t, lang, trackingLabel])
 
-  // Reportes de la maqueta = vistas en pantalla del Kárdex de movimientos con los filtros de aquí (no hay PDF en el API).
-  const invReportTo = useMemo(() => {
-    const q = new URLSearchParams({ tab: 'balances' })
-    if (warehousePublicId) q.set('warehousePublicIds', warehousePublicId)
-    if (categoryIds.length > 0) q.set('categoryIds', categoryIds.join(','))
-    return `/warehouse/kardex?${q.toString()}`
-  }, [warehousePublicId, categoryIds])
-  const adjReportTo = useMemo(() => {
-    const q = new URLSearchParams({ types: ADJUSTMENT_TXN_TYPE })
-    if (warehousePublicId) q.set('warehousePublicIds', warehousePublicId)
-    return `/warehouse/kardex?${q.toString()}`
-  }, [warehousePublicId])
-
   return (
     <>
       <div className="head">
@@ -250,13 +280,9 @@ function ProductsTab() {
           <h1>{t('warehouse.products.title')}</h1>
           <p>{t('warehouse.products.subtitle')}</p>
         </div>
-        <div className="act">
-          <Link className="btn" to={invReportTo} title={t('warehouse.products.invReportHint')}>
-            {t('warehouse.products.invReport')}
-          </Link>
-          <Link className="btn" to={adjReportTo} title={t('warehouse.products.adjReportHint')}>
-            {t('warehouse.products.adjReport')}
-          </Link>
+        <div className="act inv-head-act">
+          <InventoryReportButton filters={filters} />
+          <AdjustmentsReportButton filters={filters} />
           <Can perm="inventory.manage">
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.products.new')}
@@ -265,36 +291,31 @@ function ProductsTab() {
         </div>
       </div>
 
-      <InventoryKpis />
+      <InventoryKpis kpi={kpi} onToggle={(k) => setKpi(toggleKpi(kpi, k))} />
 
       <Filters
         onClear={() => {
-          setPage(1)
-          setText('')
-          setWarehousePublicId('')
+          setWarehouses([])
+          setProducts([])
+          setNameText('')
           setCategoryIds([])
-          setState('')
+          setBrands([])
+          setKpi(null)
         }}
       >
-        <SelectFilter
-          label={t('warehouse.products.filters.warehouse')}
-          value={warehousePublicId}
-          onChange={withPageReset(setWarehousePublicId)}
-          options={warehouseOptions}
+        <SearchSelect label={t('warehouse.products.filters.warehouse')} options={warehouseOptions} value={warehouses} onChange={withPageReset(setWarehouses)} />
+        <ProductMultiFilter label={t('warehouse.products.filters.sku')} value={products} onChange={withPageReset(setProducts)} includeInactive />
+        <TextFilter
+          label={t('warehouse.products.filters.name')}
+          value={nameText}
+          onChange={withPageReset(setNameText)}
+          placeholder={t('warehouse.products.filters.namePlaceholder')}
         />
         <SearchSelect label={t('warehouse.products.filters.category')} options={categoryOptions} value={categoryIds} onChange={withPageReset(setCategoryIds)} />
-        <SelectFilter
-          label={t('warehouse.products.filters.state')}
-          value={state}
-          onChange={(v) => withPageReset(setState)(v as StateFilter)}
-          options={stateOptions}
-        />
+        <SearchSelect label={t('warehouse.products.filters.brand')} options={brandOptions} value={brands} onChange={withPageReset(setBrands)} />
       </Filters>
 
       <Panel flush icon={<IconLayers />} title={t('warehouse.products.title')} badge={data ? (data.total ?? 0) : undefined}>
-        <div className="qrow">
-          <QBox value={text} onChange={setText} />
-        </div>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}
@@ -303,7 +324,7 @@ function ProductsTab() {
           <DataTable
             label={t('warehouse.products.title')}
             columns={columns}
-            rows={data?.items ?? []}
+            rows={data?.items ?? NO_ROWS}
             rowKey={(p) => p.publicId ?? String(p.id)}
             loading={isLoading}
             page={page}
@@ -314,7 +335,7 @@ function ProductsTab() {
               setPageSize(size)
               setPage(1)
             }}
-            exportRows={() => exportProducts(query)}
+            exportRows={() => exportProducts(baseQuery)}
             onRowClick={(p) => setEditingPublicId(p.publicId ?? null)}
             rowClassName={(p) => (p.isActive === false ? 'dim' : undefined)}
           />

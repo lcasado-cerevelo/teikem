@@ -7350,6 +7350,8 @@ export interface paths {
                     refEntity?: string;
                     refId?: number;
                     search?: string;
+                    brands?: string[];
+                    name?: string;
                     skip?: number;
                     take?: number;
                 };
@@ -9969,10 +9971,16 @@ export interface paths {
                     activeOnly?: boolean;
                     warehousePublicId?: string;
                     onlyAvailable?: boolean;
+                    warehousePublicIds?: string[];
+                    productPublicIds?: string[];
+                    name?: string;
+                    brands?: string[];
                     skip?: number;
                     take?: number;
                     selectorOrder?: boolean;
                     belowMin?: boolean;
+                    serialOnly?: boolean;
+                    serialMissing?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -10022,6 +10030,45 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/products/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string[];
+                        "application/json": string[];
+                        "text/json": string[];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10427,6 +10474,8 @@ export interface paths {
                     from?: string;
                     to?: string;
                     search?: string;
+                    supplierIds?: number[];
+                    warehousePublicIds?: string[];
                     skip?: number;
                     take?: number;
                 };
@@ -14740,6 +14789,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouses/{publicId}/bins/capacity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["WarehouseBinCapacityRequest"];
+                    "text/json": components["schemas"]["WarehouseBinCapacityRequest"];
+                    "application/*+json": components["schemas"]["WarehouseBinCapacityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseBinCapacityResultDto"];
+                        "application/json": components["schemas"]["WarehouseBinCapacityResultDto"];
+                        "text/json": components["schemas"]["WarehouseBinCapacityResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouses/{publicId}/bins/{binId}": {
         parameters: {
             query?: never;
@@ -18301,6 +18395,8 @@ export interface components {
             minPickQty?: number | null;
             /** Format: double */
             maxPickQty?: number | null;
+            brand?: string | null;
+            model?: string | null;
         };
         ProductDetailDto: {
             product?: components["schemas"]["ProductListItemDto"];
@@ -18352,6 +18448,8 @@ export interface components {
             minQty?: number | null;
             isBelowMin?: boolean;
             isActive?: boolean;
+            brand?: string | null;
+            model?: string | null;
         };
         ProductPageDto: {
             /** Format: int32 */
@@ -18394,6 +18492,8 @@ export interface components {
             /** Format: double */
             maxPickQty?: number | null;
             rowVersion?: string | null;
+            brand?: string | null;
+            model?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -20021,6 +20121,27 @@ export interface components {
             rowVersion?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        WarehouseBinCapacityRequest: {
+            zoneIds?: number[] | null;
+            aisle?: string | null;
+            rack?: string | null;
+            level?: string | null;
+            position?: string | null;
+            search?: string | null;
+            binIds?: number[] | null;
+            includeInactive?: boolean;
+            onlyWithoutCapacity?: boolean;
+            allBins?: boolean;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
+            clear?: boolean;
+        };
+        WarehouseBinCapacityResultDto: {
+            /** Format: int32 */
+            matched?: number;
+            /** Format: int32 */
+            changed?: number;
         };
         WarehouseBinDto: {
             /** Format: int32 */

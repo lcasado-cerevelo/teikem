@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex, ajustes,
 transferencias, genealogía, rastro de serie y conciliación), Recepción (avisos de llegada y recibos, incluida la
@@ -151,6 +151,38 @@ Ejemplo: `GET /api/v1/warehouses/{publicId}/bins?search=01-A&occupancy=PARTIAL&o
 Cada posición trae `maxCapacityQty`, `occupancy`, `qtyOnHand`, `productCount` y, cuando `productCount` es exactamente 1,
 `singleProductPublicId`, `singleProductSku` y `singleProductName`.
 
+**Cupo en bloque** — `POST /api/v1/warehouses/{publicId}/bins/capacity` (permiso `warehouse.manage`, módulo
+`WMS_LOTSERIAL`, igual que editar una posición). Fija o quita el cupo de **todas** las posiciones del almacén que cumplen
+los filtros (sin paginar), en una sola transacción: o cambian todas o ninguna. Cuerpo:
+
+| Campo | Qué hace |
+|---|---|
+| `zoneIds`, `aisle`, `rack`, `level`, `position`, `search`, `binIds`, `includeInactive` | Los mismos filtros del listado, con el mismo significado (las partes y `search` "contienen"; sin `includeInactive` quedan fuera las dadas de baja; un id de zona o de posición de otro almacén no coincide con nada) |
+| `onlyWithoutCapacity` | Solo las posiciones que hoy no tienen cupo: no pisa ningún cupo ya capturado |
+| `allBins` | Obligatorio (`true`) cuando no se envía ningún filtro de posiciones: evita cambiar todo el almacén por accidente |
+| `maxCapacityQty` | Cupo a fijar (entero mayor que cero) |
+| `clear` | `true` = quitar el cupo (quedan "sin cupo") |
+
+Exactamente uno de `maxCapacityQty` o `clear: true`. Responde `{ "matched": 12, "changed": 9 }`: cuántas posiciones
+cumplen los filtros y cuántas cambiaron de verdad (las que ya tenían ese cupo no se tocan). Cada posición cambiada queda
+en la bitácora de auditoría como un cambio de almacén, igual que al editarla una por una. **Para saber de antemano
+cuántas se afectarán**, pida el listado con los mismos filtros y `take=1`: su `total` es exactamente `matched`
+(`GET .../bins?zoneIds=3&aisle=01&take=1`). Ejemplos: `{ "zoneIds": [3], "aisle": "01", "maxCapacityQty": 40 }`;
+`{ "allBins": true, "onlyWithoutCapacity": true, "maxCapacityQty": 50 }`; `{ "binIds": [101, 102], "clear": true }`.
+Almacén de otra compañía → 404; almacén dado de baja → 422 `El almacén está dado de baja; solo se consulta.`
+
+El cuerpo se valida **antes** de buscar el almacén: un cuerpo inválido responde 400 aunque el almacén no exista o esté dado
+de baja. Si hay varios errores a la vez (por ejemplo, sin valor y sin filtros), el 400 los trae todos, cada uno en su campo.
+Los mensajes están en la tabla de validaciones de este capítulo. En la pantalla, el botón **Asignar cupo** de Posiciones y de
+la pestaña Posiciones de la ficha del almacén arma este mismo cuerpo (ver el manual de pantallas, sección Posiciones).
+
+**Cupo estimado desde la migración (Lote 12).** Las posiciones de Advance Depot llegan de la migración con un cupo estimado
+del historial del WMS anterior: el mayor total que tuvo cada posición, redondeado hacia arriba a la decena (mínimo 10); sin
+historial, la mediana de su pasillo, zona o almacén (solo si esa mediana sale de al menos 5 posiciones con historial).
+Advance Solutions no recibe cupo. La migración nunca pisa un cupo ya capturado. Es una **estimación**: corríjala con el cupo
+en bloque o editando la posición. La regla completa, el reporte `-cupos.csv` y el comportamiento de `--update` están en el
+[capítulo 10, sección 4](10-migracion-de-datos.md).
+
 ### 1.3 Catálogo de localidades postales
 
 `GET /api/v1/postal-localities?search=toa%20baja&take=30` devuelve un arreglo de
@@ -191,7 +223,10 @@ Cada posición trae `maxCapacityQty`, `occupancy`, `qtyOnHand`, `productCount` y
 | Parte de posición inválida o > 20 | `Pasillo, rack, nivel y posición solo admiten letras, números, guion y guion bajo (máximo 20 cada uno).` | 400 |
 | Código de posición > 40 o inválido | `El código de la posición solo admite letras, números, guion y guion bajo (máximo 40).` | 400 |
 | Sin zona al crear posición | `Indique la zona de la posición.` | 400 |
-| `maxCapacityQty` ≤ 0 (alta o edición de posición; el error va en `errors.maxCapacityQty`) | `El cupo máximo de la posición debe ser mayor que cero.` | 400 |
+| `maxCapacityQty` ≤ 0 (alta o edición de posición, o cupo en bloque; el error va en `errors.maxCapacityQty`) | `El cupo máximo de la posición debe ser mayor que cero.` | 400 |
+| Cupo en bloque sin `maxCapacityQty` ni `clear: true` (`errors.maxCapacityQty`) | `Indique el cupo máximo (maxCapacityQty) o clear: true para quitarlo.` | 400 |
+| Cupo en bloque con `maxCapacityQty` y `clear: true` a la vez (`errors.clear`) | `Indique el cupo máximo o clear: true, no ambos.` | 400 |
+| Cupo en bloque sin ningún filtro de posiciones y sin `allBins: true` (`errors.allBins`) | `Indique al menos un filtro de posiciones (zoneIds, aisle, rack, level, position, search o binIds) o allBins: true para aplicarlo a todo el almacén.` | 400 |
 | `occupancy` desconocido en el listado de posiciones (el error va en `errors.occupancy`) | `Estado de ocupación desconocido: 'X'. Use EMPTY, PARTIAL, FULL o NO_CAPACITY.` | 400 |
 | `zoneId` del listado que no es de este almacén | `Zona no encontrada.` | 404 |
 | `zoneType` desconocido | `Tipo de zona desconocido: 'X'.` | 400 |
@@ -245,13 +280,44 @@ reactivación de producto y de categoría). Módulo **WMS_LOTSERIAL**.
 
 Cómo se usa:
 - `GET /api/v1/products?search=&categoryIds=&ownerClientPublicId=&ownOnly=&activeOnly=&warehousePublicId=&
-  onlyAvailable=&skip=&take=` (`take` ≤ 200).
-- `POST /api/v1/products` — `{ "sku": "PN", "name": "Producto normal", "trackingType": "NONE", "purchaseCost": 12.3456 }`.
+  onlyAvailable=&skip=&take=` (`take` ≤ 200). Lote 12 agrega `warehousePublicIds`, `productPublicIds`, `name`, `brands`,
+  `serialOnly` y `serialMissing` (ver "Marca, modelo y filtros de la lista", abajo).
+- `GET /api/v1/products/brands?search=` (Lote 12, `inventory.view`) — marcas distintas de la compañía, para el filtro Marca.
+- `POST /api/v1/products` — `{ "sku": "PN", "name": "Producto normal", "trackingType": "NONE", "purchaseCost": 12.3456,
+  "brand": "Acme", "model": "X-200" }` (`brand` y `model` son opcionales).
 - `GET /api/v1/products/{publicId}`, `PATCH /api/v1/products/{publicId}`.
 - `GET /api/v1/products/{publicId}/lots`, `GET /api/v1/products/{publicId}/serials?status=&search=`.
 - `POST /api/v1/products/{publicId}/deactivate|reactivate`.
 - `GET/POST /api/v1/product-categories`, `PATCH /api/v1/product-categories/{id}` (mover/renombrar), `POST .../{id}/
   deactivate|reactivate`.
+
+### Marca, modelo y filtros de la lista (Lote 12)
+
+**Marca y modelo.** Dos campos de texto libre del producto, opcionales, de hasta 100 caracteres cada uno. Se recortan los
+espacios de los extremos y un valor vacío se guarda como "sin valor". No hay catálogo de marcas: la marca es el texto que
+se escribe, y `GET /api/v1/products/brands` devuelve las que ya usan los productos de la compañía (activos e inactivos),
+sin repetir aunque difieran en mayúsculas, ordenadas sin distinguir mayúsculas y hasta 500. `?search=` filtra las marcas que
+contienen el texto. Cada fila de la lista y la ficha traen `brand` y `model`.
+- Alta (`POST`): `brand` y `model` son opcionales.
+- Edición (`PATCH`): `brand` o `model` ausente o `null` = **sin cambio**; `""` (o solo espacios) = **quitarlo**; cualquier
+  otro texto lo reemplaza. Se auditan como cualquier otro campo del producto.
+
+**Filtros de `GET /api/v1/products`.** Todos son opcionales y se combinan con "y":
+
+| Parámetro | Qué hace |
+|---|---|
+| `warehousePublicIds` (varios) y `warehousePublicId` | Se juntan sin repetir. **Acotan las cantidades** (en mano, reservado, disponible, bajo mínimo y series) de cada fila a esos almacenes; **no quitan productos** de la lista. La excepción es `onlyAvailable=true`, que sí deja fuera a los productos sin disponible en esos almacenes. Si alguno no es de su compañía o no existe, responde 404 `Almacén no encontrado.` |
+| `productPublicIds` (varios) | Solo esos productos (el filtro "SKU" de la pantalla) |
+| `name` | El nombre del producto **contiene** el texto, sin distinguir mayúsculas |
+| `brands` (varios) | La marca es **igual** a alguna de las indicadas, sin distinguir mayúsculas |
+| `categoryIds` | Sin cambio: incluye las subcategorías |
+| `serialOnly=true` | Productos con rastreo por serie **o** que ya tienen números de serie registrados |
+| `serialMissing=true` | Productos **activos** con rastreo por serie cuya existencia en mano es **mayor** que la cantidad de sus series `AVAILABLE` o `RESERVED` (les faltan series por capturar). Con almacenes indicados, ambas cantidades se miden en esos almacenes. La pantalla lo cuenta con `take=1` y lee `total` |
+| `activeOnly`, `onlyAvailable`, `belowMin` | Sin cambio. `onlyAvailable` no cuenta la existencia en zonas de cuarentena ni de cruce de muelle |
+
+`GET /api/v1/inventory/transactions` (Kárdex) acepta además `brands` y `name` con el mismo significado; se combinan con
+`productPublicIds` y `categoryIds`. El Reporte de ajustes de la pantalla Productos e inventario los usa para respetar los
+filtros de la tabla.
 
 ### Validaciones
 
@@ -263,6 +329,9 @@ Cómo se usa:
 | `PATCH` con `sku` | `El SKU del producto no se puede cambiar.` | 400 |
 | `name` vacío / > 200 | `El nombre del producto es obligatorio.` / `El nombre no puede exceder 200 caracteres.` | 400 |
 | `barcode` > 60 | `El código de barras no puede exceder 60 caracteres.` | 400 |
+| `brand` > 100 caracteres, ya recortada (alta o edición; el error va en `errors.brand`) | `La marca no puede exceder 100 caracteres.` | 400 |
+| `model` > 100 caracteres, ya recortado (alta o edición; el error va en `errors.model`) | `El modelo no puede exceder 100 caracteres.` | 400 |
+| `warehousePublicId` o algún `warehousePublicIds` de la lista de productos que no existe o es de otra compañía | `Almacén no encontrado.` | 404 |
 | SKU repetido para el mismo dueño | `Ya existe un producto con ese SKU para ese dueño.` | 409 |
 | Código de barras repetido (producto activo) | `Ya existe un producto activo con ese código de barras.` | 409 |
 | Costo/precio negativo | `El costo y el precio no pueden ser negativos.` | 400 |
@@ -312,7 +381,8 @@ Cómo se usa:
 - `GET /api/v1/inventory/balances?warehousePublicIds=&binIds=&productPublicIds=&categoryIds=&lotNumber=&
   includeZero=&onlyAvailable=&search=&skip=&take=` (`take` ≤ 200).
 - `GET /api/v1/inventory/transactions?from=&to=&types=&warehousePublicIds=&binIds=&productPublicIds=&
-  categoryIds=&lotNumber=&serialNumber=&refEntity=&refId=&search=`.
+  categoryIds=&lotNumber=&serialNumber=&refEntity=&refId=&search=&brands=&name=` (`brands` y `name`, desde el Lote 12: marca
+  igual a alguna y nombre del producto que contiene el texto; ver la sección 2).
 - `POST /api/v1/inventory/adjustments` — `{ "productPublicId": "...", "warehousePublicId": "...", "binId": 5,
   "quantity": -2, "reason": "DAMAGE" }` (positivo entra, negativo sale).
 - `POST /api/v1/inventory/transfers` — `{ "productPublicId": "...", "fromBinId": 5, "toBinId": 8, "quantity": 3 }`
@@ -662,9 +732,14 @@ exige **además** `purchasing.manage`; `MANUAL_ADJUSTMENT` exige **además** el 
 
 Cómo se usa:
 - `GET/POST /api/v1/suppliers`, `PATCH /api/v1/suppliers/{id}`, `POST .../{id}/deactivate|reactivate`.
-- `GET /api/v1/purchase-orders?status=&supplierId=&warehousePublicId=&from=&to=&search=`.
-- `POST /api/v1/purchase-orders` — `{ "supplierId": 1, "lines": [{ "productPublicId": "...", "qtyOrdered": 10,
-  "unitCost": 2.5 }] }`. Nace `DRAFT`.
+- `GET /api/v1/purchase-orders?status=&supplierId=&warehousePublicId=&supplierIds=&warehousePublicIds=&from=&to=&search=`.
+  Lote 12: `supplierIds` y `warehousePublicIds` aceptan varios valores y se juntan con los singulares sin repetir; la orden
+  aparece si su proveedor es **cualquiera** de los indicados y su almacén es **cualquiera** de los indicados (los filtros
+  distintos se combinan con "y"). Un id que no existe no da error: simplemente no coincide con ninguna orden.
+- `POST /api/v1/purchase-orders` — `{ "supplierId": 1, "warehousePublicId": "...", "lines": [{ "productPublicId": "...",
+  "qtyOrdered": 10, "unitCost": 2.5 }] }`. Nace `DRAFT`. Al menos una línea con cantidad mayor que cero. El almacén es
+  **opcional en el API** solo si la compañía tiene un único almacén activo (se usa ése); con más de uno hay que indicarlo. La
+  pantalla siempre lo pide.
 - `PATCH /api/v1/purchase-orders/{publicId}` (fecha esperada, notas, reemplazo de líneas; controlado por la
   capacidad `EDIT_PURCHASE_ORDER`).
 - `POST /api/v1/purchase-orders/{publicId}/send` — `DRAFT → SENT`.
@@ -682,8 +757,15 @@ Cómo se usa:
 | Nombre de proveedor repetido (activo) | `Ya existe un proveedor activo con ese nombre.` | 409 |
 | Nombre de proveedor vacío | `El nombre del proveedor es obligatorio.` | 400 |
 | Correo de proveedor inválido | `El correo electrónico no es válido.` | 400 |
+| Teléfono de proveedor de más de 40 caracteres (`errors.phone`) | `El teléfono admite como máximo 40 caracteres.` | 400 |
 | Proveedor de otro tenant o inexistente | `Proveedor no encontrado.` | 404 |
-| Sin líneas / más de 200 | `La orden de compra debe tener al menos una línea.` / `La orden de compra admite como máximo 200 líneas.` | 400 |
+| Sin líneas / más de 200 (alta y edición) | `La orden de compra debe tener al menos una línea.` / `La orden de compra admite como máximo 200 líneas.` | 400 |
+| Alta sin proveedor (`errors.supplierId`) | `Indique el proveedor.` | 400 |
+| Proveedor dado de baja | `El proveedor está dado de baja; no admite órdenes de compra nuevas.` | 422 |
+| Almacén omitido y la compañía tiene más de un almacén activo (`errors.warehousePublicId`) | `Indique el almacén: la compañía tiene más de uno.` | 400 |
+| Almacén omitido y la compañía no tiene almacenes activos | `La compañía no tiene almacenes activos.` | 422 |
+| Almacén de la orden dado de baja | `El almacén está dado de baja; no admite órdenes de compra nuevas.` | 422 |
+| `PATCH` con `supplierId` o `warehousePublicId` (también `number`, `orderDate`, `currency`, `status`, `statusCode`) | `El campo supplierId de la orden de compra no se puede cambiar.` (con el nombre del campo enviado) | 400 |
 | Producto de un cliente en la orden | `La orden de compra solo admite productos propios; {sku} pertenece a un cliente.` | 400 |
 | Producto repetido en la orden | `El producto {sku} está repetido en la orden de compra.` | 400 |
 | Producto inactivo en la orden | `El producto {sku} está inactivo; no admite órdenes de compra.` | 400 |
@@ -710,6 +792,11 @@ Cómo se usa:
 | Resolver faltante de una PO cancelada | `La orden de compra está cancelada; su faltante ya no se resuelve.` | 422 |
 | Resolver faltante sin recepciones confirmadas | `La orden de compra todavía no tiene recepciones confirmadas.` | 422 |
 | Orden de compra de otro tenant o inexistente | `Orden de compra` (404 genérico) | 404 |
+
+**Lote 12 — proveedor y almacén de una orden.** Se eligen al crear la orden y **no cambian**: el `PATCH` los rechaza y la
+ficha los muestra de solo lectura. Si se equivocó de proveedor o de almacén, cancele la orden y cree otra. La máscara del
+teléfono del proveedor `(xxx)xxx-xxxx` es de la pantalla: el API guarda el texto que recibe (hasta 40 caracteres) y la
+pantalla lo manda ya con la máscara.
 
 ### Estatus y transiciones
 
@@ -813,6 +900,9 @@ otros tres permisos `WAREHOUSE` nuevos (`inventory.manage`, `inventory.adjust`, 
 el administrador del tenant por defecto.
 
 Módulos: **WMS_LOTSERIAL** y **PURCHASING** vienen encendidos por defecto; **CROSSDOCK** apagado (demo).
+
+Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
+/api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.
 
 Excepción (Lote 11): `GET /api/v1/postal-localities` (catálogo de ciudades y códigos postales) no pide permiso ni módulo, solo una
 sesión iniciada. La pantalla solo lo consulta cuando alguien con `warehouse.manage` abre el selector de ciudad al crear o

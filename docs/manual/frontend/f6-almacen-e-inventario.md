@@ -3,9 +3,13 @@
 Capítulo del manual de pantallas para el módulo de almacén (manual funcional 06) y para la consulta de solo lectura de
 órdenes de transporte que lo acompaña. Todas las pantallas viven bajo el grupo **Almacén** del menú lateral, salvo
 "Órdenes" que está en **Operación** y el panel "Almacén" de Pulso, que se ve en la pantalla de inicio. Direcciones tal
-como aparecen en el navegador; capturas en `img/f6-*.png`. Las secciones **Almacenes** y **Ubicaciones** y el
-pie común de las tablas se reescribieron en el Lote 11: sus capturas están pendientes (se marcan en el texto) y las
-imágenes antiguas de la lista, las zonas y las posiciones del almacén se retiraron por no corresponder a la pantalla actual.
+como aparecen en el navegador; capturas en `img/f6-*.png`. Las secciones **Almacenes** y **Posiciones** (antes
+«Ubicaciones») y el pie común de las tablas se reescribieron en el Lote 11: sus capturas están pendientes (se marcan en el
+texto) y las imágenes antiguas de la lista, las zonas y las posiciones del almacén se retiraron por no corresponder a la
+pantalla actual. En el Lote 12 se reescribieron **Productos e inventario**, **Proveedores** y **Órdenes de compra**
+(Compras) y se agregó el botón **Asignar cupo** a Posiciones. Las capturas de Productos, Proveedores y Órdenes de compra son
+las que regeneró el recorrido `f6.spec.ts` con la pantalla nueva (datos de prueba de ese recorrido); siguen pendientes las de
+Posiciones con **Asignar cupo**, el bloque **Añadir ajuste** y los PDF (se marcan en el texto).
 
 ## Todas las tablas: pie, filas por página y Exportar (Lote 11)
 
@@ -18,7 +22,7 @@ Aplica a todas las tablas de la aplicación que usan el componente estándar, no
 - **Filas por página**: 10, 25, 50 o 100 (si la pantalla arrancó con otro tamaño, ese tamaño también aparece en la lista).
   Por defecto son 25. En las listas que vienen paginadas del servidor (Órdenes, Inventario —Saldos y Kárdex—,
   Recolección y empaque, Órdenes de compra, Recibos, Productos, Tareas de almacén, la pestaña Posiciones de la ficha del
-  almacén y Ubicaciones) cambiar el tamaño vuelve a pedir los datos y regresa a la página 1. En las demás la lista ya
+  almacén y Posiciones) cambiar el tamaño vuelve a pedir los datos y regresa a la página 1. En las demás la lista ya
   está cargada y el cambio es inmediato.
 - El botón **Exportar**.
 - Los botones **‹** y **›** con `Página X de Y` (solo si hay más de una página).
@@ -164,8 +168,10 @@ Avisos: "Zona creada." / "Cambios guardados.".
   Estatus. **Ocupación** es un chip —Vacía, Parcial, Llena u Ocupada sin cupo— y, si la posición tiene cupo y existencia,
   el porcentaje (`40 %`). **Producto** muestra el SKU si hay uno solo (el nombre sale al pasar el cursor), "N productos" si
   hay varios y "—" si no hay.
-- **Nueva posición** en la cabecera. Un clic en la fila abre el formulario de edición. Por fila: **Dar de baja** /
-  **Reactivar**.
+- **Asignar cupo** y **Nueva posición** en la cabecera (con `warehouse.manage`). **Asignar cupo** fija o quita el cupo de
+  muchas posiciones a la vez y arranca con la Zona, el Pasillo, el Rack, el Nivel y la Posición que tenga puestos en los
+  filtros de esta pestaña (el filtro Código no se traslada); ver "Asignar cupo" en la sección Posiciones, más abajo. Un clic
+  en la fila abre el formulario de edición. Por fila: **Dar de baja** / **Reactivar**.
 - **Exportar** saca **todas** las posiciones que cumplen los filtros, no solo la página.
 
 **Formulario de posición** ("Nueva posición" / "Editar"):
@@ -181,18 +187,20 @@ Avisos: "Zona creada." / "Cambios guardados.".
 
 ![Ficha de almacén, pestaña Muelles con Cambiar estatus](img/f6-almacen-muelles.png)
 
-### Ubicaciones
+### Posiciones (antes «Ubicaciones»)
 
 **Para qué sirve.** Vista de un almacén completo: cuánto de su capacidad está ocupada en cada zona y dónde está cada cosa,
-posición por posición. Es de solo lectura (salvo **Nueva posición**).
+posición por posición. Desde el Lote 12 el ítem del menú se llama **Posiciones** (antes «Ubicaciones»; en inglés, «Bins») y
+permite editar una posición con un clic en su fila y asignar cupo en bloque. La dirección no cambió.
 
-**Cómo se llega.** Menú **Almacén › Ubicaciones**, dirección `/warehouse/locations`. El almacén y la zona elegidos van en
+**Cómo se llega.** Menú **Almacén › Posiciones**, dirección `/warehouse/locations`. El almacén y la zona elegidos van en
 la dirección (`?warehouse=…&zone=…`).
 
-> **Captura pendiente:** pantalla Ubicaciones con los recuadros por zona, los filtros y la tabla de posiciones.
+> **Captura pendiente:** pantalla Posiciones con los recuadros por zona, los filtros, la tabla de posiciones y el botón
+> **Asignar cupo**.
 
-**Arriba a la derecha:** el selector de **almacén** (sin elegir, el primero activo; cambiar de almacén borra los filtros) y
-**Nueva posición** (con `warehouse.manage`, el mismo formulario de la ficha).
+**Arriba a la derecha:** el selector de **almacén** (sin elegir, el primero activo; cambiar de almacén borra los filtros),
+**Asignar cupo** y **Nueva posición** (los dos con `warehouse.manage`; **Nueva posición** abre el mismo formulario de la ficha).
 
 **Los recuadros por zona.** Uno por zona activa, unidos por una tubería:
 - Con cupo: `ocupado/capacidad` (por ejemplo `10/25`), el texto `ocupado · 40%` y una barra. La capacidad es la suma del cupo
@@ -212,17 +220,63 @@ tabla queda vacía: "Ninguna posición coincide con los filtros.".
 
 **La tabla.** Columnas: Posición, Zona, Cantidad, Producto (el nombre si es uno solo; "N productos" si hay varios), **Cupo**,
 **Ocupación** (barra y porcentaje; "—" si la posición no tiene cupo) y **Estatus** (Vacía / Parcial / Llena / Ocupada sin
-cupo). Solo muestra posiciones activas y no tiene acciones por fila. Pagina en el servidor con el pie común; **Exportar**
+cupo). Solo muestra posiciones activas. Con `warehouse.manage`, un **clic en la fila** abre el formulario de edición de la
+posición (el mismo de la ficha del almacén: el código y la zona no cambian; sí el pasillo, rack, nivel, posición, cupo y peso
+máximo); al guardar se refrescan la tabla y los recuadros. Sin ese permiso las filas no se abren. La tabla no tiene íconos de
+baja: dar de baja o reactivar una posición se hace en la pestaña Posiciones de la ficha del almacén. Pagina en el servidor con el pie común; **Exportar**
 saca todas las que cumplen los filtros. Sin posiciones: "Este almacén todavía no tiene posiciones.". Sin almacenes
 activos: "No hay almacenes activos.".
 
 **Qué no hay todavía.** Las barras de ocupación de los últimos 7 días que muestra la maqueta no están: dependen de un
 historial diario que aún no existe (ver `docs/lote11-decisiones.md`).
 
+#### Asignar cupo (cupo máximo de muchas posiciones a la vez)
+
+**Para qué sirve.** Poner o quitar el cupo máximo (unidades) de todas las posiciones que cumplan un alcance, en un solo paso
+y sin editarlas una por una. Sirve, por ejemplo, para corregir el cupo que estimó la migración (ver la pregunta frecuente
+«¿De dónde salió el cupo de mis posiciones?» en el FAQ). Quién puede: `warehouse.manage`, módulo `WMS_LOTSERIAL`. Sin ese
+permiso el botón no aparece. Se llega desde **Asignar cupo** en Posiciones y en la pestaña Posiciones de la ficha del almacén.
+Aplica siempre solo a posiciones **activas**. Llama a `POST /api/v1/warehouses/{publicId}/bins/capacity` (capítulo 06 del
+manual funcional).
+
+> **Captura pendiente:** el modal «Asignar cupo a posiciones» con alcance, acción y vista previa.
+> **Captura pendiente:** el aviso de confirmación con más de 100 posiciones.
+
+**El modal.** Título «Asignar cupo a posiciones». Tiene dos grupos:
+- **Alcance:** **Zona** (varias, con buscador; sin elegir dice «Cualquier zona»), **Pasillo**, **Rack**, **Nivel** y
+  **Posición** (texto: contiene), el interruptor **Solo posiciones sin cupo** (no pisa ningún cupo ya capturado) y, solo
+  mientras no haya ningún filtro puesto, el interruptor **Todo el almacén**. Desde Posiciones el modal arranca con la zona
+  de `?zone=`; desde la ficha, con los filtros de la pestaña.
+- **Acción:** un botón de opción, **Cupo máximo** (con el campo «Cupo máximo (unidades)», entero mayor que cero) o **Quitar
+  cupo**. Al elegir Quitar cupo, «Solo posiciones sin cupo» se deshabilita («No aplica al quitar el cupo.»).
+
+**La vista previa.** Debajo del modal, una línea dice a cuántas posiciones se aplicará, con una pausa breve tras el último
+cambio: «Calculando posiciones…», «Se aplicará a 1 posición.», «Se aplicará a {count} posiciones.». Si no hay ningún filtro
+ni «Todo el almacén»: «Elija al menos un filtro (zona, pasillo, rack, nivel o posición) o marque «Todo el almacén».». Si nada
+coincide: «Ninguna posición coincide con el alcance: no hay nada que aplicar.». El botón de aplicar (**Asignar cupo** o
+**Quitar cupo**) queda deshabilitado mientras no hay alcance, se está calculando, no hay posiciones o el cálculo falló.
+Con «Solo posiciones sin cupo» y filtros de texto (pasillo, rack, nivel o posición) el conteo exacto solo se hace si hay
+hasta 1.000 posiciones; con más, la vista previa dice «Se aplicará a como máximo {count} posiciones (se omiten las que ya
+tienen cupo).» y la cifra es un tope.
+
+**Al aplicar.**
+1. Si son más de 100 posiciones, o se marcó «Todo el almacén», pide confirmación («Confirmar cupo en bloque»): «Se asignará un
+   cupo máximo de {qty} unidades a {count} posiciones.» o «Se quitará el cupo máximo de {count} posiciones.», más «El cambio
+   afecta a todo el almacén.» cuando corresponde y «Las posiciones que ya tengan ese valor no cambian.». Con conteo
+   aproximado, el {count} dice «hasta N».
+2. Aplica y cierra el modal con el aviso «Cupo aplicado a {changed} de {matched} posiciones» (o «Cupo quitado a {changed} de
+   {matched} posiciones»; en singular, «de 1 posición»). `matched` son las que cumplían el alcance y `changed` las que de verdad
+   cambiaron: las que ya tenían ese cupo no cuentan como cambiadas.
+3. Las tablas y los recuadros de ocupación se refrescan solos.
+4. Si el servidor rechaza la petición, el mensaje queda en el modal (recuadro rojo arriba) y el modal sigue abierto; el error
+   del cupo se muestra también bajo el campo. Los mensajes del servidor están en el capítulo 06 del manual funcional.
+
+**Qué bloquea.** Con el almacén dado de baja, el servidor responde 422 «El almacén está dado de baja; solo se consulta.».
+
 ### Permisos y módulo
 
-`inventory.view` (ver Almacenes, la ficha, Ubicaciones y el catálogo de ciudades); **`warehouse.manage`** para crear y
-editar el almacén, sus zonas, posiciones y muelles, dar de baja y reactivar, y el estatus manual del muelle. Módulo
+`inventory.view` (ver Almacenes, la ficha, Posiciones y el catálogo de ciudades); **`warehouse.manage`** para crear y
+editar el almacén, sus zonas, posiciones y muelles, asignar cupo en bloque, dar de baja y reactivar, y el estatus manual del muelle. Módulo
 **Almacén y lote/serie** (`WMS_LOTSERIAL`).
 
 ### Estatus y transiciones
@@ -259,37 +313,154 @@ solas comparando la existencia en mano con el cupo, no tienen transiciones y no 
 | Código (muelle) | obligatorio | "El código es obligatorio." | Pantalla |
 | Ciudad o código postal | el servidor niega la consulta del catálogo | "Su usuario no puede consultar el catálogo de ciudades." | Lista del combobox |
 | Ciudad o código postal | sin coincidencias | "No hay ciudades ni códigos postales que coincidan." | Lista del combobox |
-| Filtros de Ubicaciones | combinación sin resultados | "Ninguna posición coincide con los filtros." | Tabla |
+| Filtros de Posiciones | combinación sin resultados | "Ninguna posición coincide con los filtros." | Tabla |
+| Asignar cupo: Cupo máximo | vacío | "Indique el cupo máximo." | Pantalla |
+| Asignar cupo: Cupo máximo | número entero | "El cupo máximo debe ser un número entero." | Pantalla |
+| Asignar cupo: Cupo máximo | mayor que cero | "El cupo máximo de la posición debe ser mayor que cero." | Pantalla (y 400 del servidor) |
+| Asignar cupo: Cupo máximo | hasta 2.147.483.647 | "El cupo máximo es demasiado grande." | Pantalla |
+| Asignar cupo: alcance | algún filtro o «Todo el almacén» | "Elija al menos un filtro (zona, pasillo, rack, nivel o posición) o marque «Todo el almacén»." | Pantalla (vista previa; el botón queda deshabilitado) |
+| Asignar cupo: alcance | al menos una posición | "Ninguna posición coincide con el alcance: no hay nada que aplicar." | Pantalla (vista previa) |
+| Asignar cupo: vista previa | el conteo se pudo calcular | "No se pudo calcular a cuántas posiciones se aplicará: {mensaje}" | Pantalla (vista previa) |
+| Asignar cupo: almacén | debe estar activo | "El almacén está dado de baja; solo se consulta." | Servidor, 422, en el recuadro del modal |
 
 ## Productos y categorías
 
 **Para qué sirve.** Es el maestro de artículos (SKU): costo, precio, mínimos, categoría, quién es el dueño (propio o
 de un cliente) y cómo se rastrea (sin seguimiento, por lote o por serie).
 
-**Cómo se llega.** Menú **Almacén › Productos**, dirección `/warehouse/products` (con la subpestaña **Categorías**
-en la misma pantalla); ficha en `/warehouse/products/:publicId`.
+**Cómo se llega.** Menú **Almacén › Productos e inventario**, dirección `/warehouse/products` (con la subpestaña
+**Categorías** en la misma pantalla). Un clic en una fila abre el producto en un modal; la ficha con las pestañas Lotes y
+Series sigue en `/warehouse/products/:publicId` (se llega desde el modal con «Ver lotes» / «Ver series»).
 
-**Qué se ve (lista).**
+![Productos e inventario: indicadores, filtros y tabla](img/f6-productos.png)
 
-![Lista de productos](img/f6-productos.png)
+![Alta de producto con Marca y Modelo: el SKU vacío marca 'El SKU es obligatorio.'](img/f6-producto-nuevo-error.png)
 
-Columnas: SKU, nombre, categoría, dueño ("Propio" o el nombre del cliente), seguimiento, en mano, disponible (con un
-chip "Bajo mínimo" si aplica) y estatus. Filtros: categoría, dueño (buscador de cliente), almacén, "Solo propios",
-"Solo activos", "Con disponible", y buscador libre.
+![Editar producto: campos y desplegable de Unidad con buscador](img/f6-producto-ficha.png)
+
+> **Captura pendiente:** el bloque «Añadir ajuste» abierto dentro del modal de producto.
+
+**Los indicadores (KPIs) son botones.** Arriba hay cuatro tarjetas: **SKUs activos**, **Unidades totales**, **Bajo mínimo** y
+**Con número de serie**. Sus cifras son de todo el catálogo (no cambian al usar los filtros) y usan el separador de miles del
+idioma (367.329 en español). Cada tarjeta filtra la tabla al hacer clic; otro clic en la misma quita el filtro. El filtro
+elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o volver atrás con el navegador.
+
+| Tarjeta | Qué cuenta | Filtro que aplica a la tabla | `?kpi=` |
+|---|---|---|---|
+| SKUs activos | Productos activos | Solo activos | `active` |
+| Unidades totales | Existencia en mano de todos los saldos | Activos con disponible mayor que cero (no cuenta la existencia en cuarentena ni cruce de muelle) | `available` |
+| Bajo mínimo | Productos activos con mínimo cuyo disponible es menor | Bajo mínimo | `low` |
+| Con número de serie | Productos activos con rastreo por serie o con series registradas | Rastreo por serie o con series registradas (incluye los inactivos que las tengan) | `serial` |
+
+**Cuándo una tarjeta se pone naranja.** Solo cuando hay algo que atender: **Bajo mínimo** cuando su cifra es mayor que cero, y
+**Con número de serie** cuando hay productos con serie cuyas series capturadas son menos que su existencia; en ese caso
+muestra debajo «N sin series completas». Sin pendientes, ambas se ven con el color normal. **SKUs activos** y **Unidades
+totales** nunca son naranja.
+
+**Filtros** (van al servidor; **Limpiar** los quita todos, incluido el indicador elegido):
+- **Almacén** (varios, con buscador): limita las **cantidades** de cada fila (Disponible, Reservado, Total) a esos almacenes.
+  No quita productos de la lista: un producto sin existencia en ese almacén sigue apareciendo con ceros.
+- **SKU** (varios, con buscador; incluye productos inactivos).
+- **Nombre** (texto: el nombre **contiene** lo escrito, sin distinguir mayúsculas; espera un instante tras la última tecla).
+- **Categoría** (varias; incluye las subcategorías).
+- **Marca** (varias, con buscador; ofrece las marcas que ya usan los productos de la compañía).
+
+Ya no existe el filtro **Estado** (lo reemplazan los indicadores) ni el buscador libre dentro de la tabla: para buscar por
+texto use **Nombre** o **SKU**.
+
+**Qué se ve (lista).** Columnas: SKU, Producto, Categoría, **Marca** (el **Modelo** aparece debajo, en tono tenue; no tiene
+columna propia), Dueño ("Propio" o el nombre del cliente), Disponible, Reservado, Total, Rastreo y **Estatus** (chip: OK,
+Bajo mínimo o Inactivo; las filas inactivas se ven atenuadas). Pagina en el servidor con el pie común; un clic en el
+encabezado ordena solo la página visible. **Exportar** saca todo lo que cumple los filtros; en el archivo, la columna Marca
+lleva «Marca · Modelo».
 
 **Qué hace cada botón.**
-- **Nuevo producto**: SKU, nombre, código de barras, tipo de seguimiento, costo, precio, peso, volumen, mínimo de
-  inventario y dueño; si su compañía tiene campos personalizados para productos, aparecen al final del formulario.
+- **Reporte de inventario** y **Reporte de ajustes**: generan un PDF con los filtros de la tabla (ver "Reportes en PDF").
+- **Nuevo producto** (`inventory.manage`): abre el modal vacío.
+- **Clic en una fila**: abre el modal de edición (sin `inventory.manage` se abre como «Ver datos del producto», de solo lectura).
 
-![Alta de producto: SKU vacío marca 'El SKU es obligatorio.'](img/f6-producto-nuevo-error.png)
+**El modal de producto** (alta y edición). Campos en este orden: **SKU** (obligatorio al crear; al editar no se puede cambiar) y
+**Unidad** (desplegable con buscador); **Nombre**; **Marca** y **Modelo**; **Categoría** (desplegable con buscador; se busca
+por cualquier nivel de la ruta «Raíz / Hija») y **Rastreo** (desplegable con buscador); **Dueño del inventario**; **Costo de
+compra** y **Precio de venta**; **Almacén por defecto** y **Posición por defecto**; **Total** (solo lectura: se cambia con un
+ajuste) y **Punto de reorden**; al editar, el interruptor **Producto activo** (bloqueado mientras el producto tenga
+inventario) y, plegado en «Más datos del producto», código de barras, peso, volumen, mínimo y máximo de picking y los campos
+personalizados. Con movimientos, Unidad, Rastreo y Dueño quedan bloqueados.
+- **Marca** es texto libre con sugerencias: al escribir ofrece las marcas ya usadas en la compañía, pero se puede escribir una
+  nueva. **Modelo** es texto libre. Ambos son opcionales, de hasta 100 caracteres; los espacios de los extremos se recortan.
+  Al editar, borrar el contenido quita la marca o el modelo.
 
-**Qué se ve (ficha).**
+**Añadir ajuste** (solo al editar y con `inventory.adjust`). El bloque de ajuste está **oculto** hasta pulsar **+ Añadir
+ajuste**. Al abrirlo muestra: **Cantidad (+/-)** (positivo suma, negativo resta), **Motivo** (desplegable con buscador, sin los
+motivos que asigna el sistema), **Almacén** y **Posición** (por defecto, los del producto), Lote o Series si el rastreo lo
+pide, y **Nota** (obligatoria, hasta 300 caracteres; «Por qué se ajusta (obligatoria)»). Botones **Cancelar ajuste** (cierra
+el bloque sin cambios) y **Aplicar ajuste**. Al aplicar, aparece «Ajuste aplicado: {cantidad} {sku}», el **Total** del modal se
+actualiza y el bloque vuelve a ocultarse vacío; el modal sigue abierto. Si el ajuste dejaría el inventario en negativo, el
+servidor lo rechaza (409, «Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.») y el mensaje
+aparece **dentro del bloque**, que sigue abierto para corregirlo. La nota es obligatoria **en la pantalla**; el API la deja
+opcional para otros flujos. Los mensajes del bloque comparten texto con la pantalla Ajustes de inventario.
 
-![Ficha de producto, pestaña Datos](img/f6-producto-ficha.png)
+### Reportes en PDF (Productos e inventario)
 
-Tres pestañas: **Datos** (todos los campos de arriba más mínimo/máximo de picking, almacén y posición preferidos),
-**Lotes** (número de lote, vencimiento, activo) y **Series** (número de serie, estatus, posición). El SKU no se puede
-cambiar (nota debajo del campo); **Dar de baja**/**Reactivar** en la cabecera.
+Los dos botones de la cabecera generan un PDF en su navegador (no se envía nada a otro lado) con **los filtros que tenga la
+tabla en ese momento**. Mientras se genera, el botón dice «Generando…»; si falla: «No se pudo generar el reporte. Intente de
+nuevo.». Los PDF admiten solo caracteres latinos (tildes y eñes salen bien; otros símbolos salen como `?`). Ambos son
+horizontales y traen: encabezado con el logo de Teikem, la compañía, el título, la fecha y hora y el usuario que lo generó; el
+recuadro **Filtros aplicados** (o «Sin filtros: incluye todos los registros de la compañía.»); tarjetas de resumen; la tabla con
+el encabezado repetido en cada página y filas alternadas; y el pie «Generado con Teikem · compañía» con «Página X de Y».
+
+> **Captura pendiente:** primera página del Reporte de inventario.
+> **Captura pendiente:** primera página del Reporte de ajustes.
+
+**Reporte de inventario.** Foto del inventario al momento, agrupada por categoría (con la cantidad de productos de cada una)
+y con un subtotal por categoría y un total general.
+- Columnas: SKU, Producto, Categoría, Marca, Disponible, Reservado, Total, Costo unitario y Valor. Resumen: Productos,
+  Unidades en mano, Disponible y Valor del inventario.
+- **Solo lista productos con existencia** (en mano distinta de cero). Los que están en 0 no salen y un aviso dice cuántos
+  quedaron fuera: «Productos sin existencia (en mano 0) no incluidos: {count}.».
+- **Valor = Total × costo de compra** registrado en el producto. El sistema no guarda costo promedio ni costo por lote (el
+  reporte lo dice). Un producto con existencia pero sin costo muestra «—» en el costo y en el valor, no suma en los totales y
+  se avisa: «Productos con existencia sin costo de compra: {count}. Su valor aparece como «—» y no se suma en los totales.».
+  Si ningún producto tiene costo, el valor total del resumen también es «—».
+- Con un filtro de Almacén, las cantidades son solo de esos almacenes (el filtro lo aclara).
+- Lee hasta 10.000 productos; con más, avisa: «El reporte incluye solo los primeros {count} productos (límite de lectura).
+  Afine los filtros para ver el resto.».
+
+**Reporte de ajustes.** Movimientos de tipo **Ajuste** del Kárdex, del más reciente al más antiguo, de los productos que
+cumplen los filtros de la tabla (Almacén, SKU, Nombre, Categoría y Marca). **No tiene rango de fechas:** incluye todo el
+historial de ajustes que cumpla los filtros.
+- Columnas: Fecha y hora, SKU, Producto (con el lote o la serie, si tiene), Almacén / Posición, Cantidad (±), Motivo, Nota y
+  Usuario. Resumen: Ajustes, Entradas, Salidas y Neto; al final de la tabla, las filas de Entradas, Salidas y Neto.
+- **Excluye los saldos iniciales de la migración** (motivo OPENING_BALANCE), porque se registraron como ajustes pero no son
+  ajustes de la operación. Un aviso dice cuántos quedaron fuera: «Saldos iniciales de la migración excluidos: {count} (no son
+  ajustes de la operación).».
+- Si hay un indicador elegido (activos, con disponible, bajo mínimo, con serie), no se aplica a los movimientos; el reporte lo
+  avisa: «La vista «{vista}» depende del estado actual del producto y no aplica a los movimientos: se incluyen los ajustes de
+  los productos que cumplen los demás filtros.».
+- Lee hasta 10.000 movimientos; con más: «El reporte incluye solo los {count} ajustes más recientes (límite de lectura). Afine
+  los filtros para ver el resto.».
+- Sin ajustes: «No hay ajustes para los filtros elegidos.».
+
+El nombre del archivo lleva el título, la compañía y la fecha (por ejemplo `reporte-de-inventario-advance-depot-2026-09-30.pdf`).
+
+**Validaciones y mensajes (marca, modelo y ajuste del modal).**
+
+| Campo | Regla | Mensaje | Dónde |
+|---|---|---|---|
+| Marca | máx. 100 caracteres | "La marca no puede exceder 100 caracteres." | Pantalla (el campo ya no deja escribir más) y 400 |
+| Modelo | máx. 100 caracteres | "El modelo no puede exceder 100 caracteres." | Pantalla (el campo ya no deja escribir más) y 400 |
+| Ajuste: Cantidad | vacía o no numérica | "Indique la cantidad del ajuste (número, positivo para sumar o negativo para restar)." | Pantalla |
+| Ajuste: Cantidad | distinta de cero | "La cantidad del ajuste no puede ser cero." | Pantalla (y 400) |
+| Ajuste: Cantidad | hasta 3 decimales | "La cantidad admite como máximo 3 decimales." | Pantalla (y 400) |
+| Ajuste: Motivo | obligatorio | "Seleccione un motivo." | Pantalla |
+| Ajuste: Almacén | obligatorio | "Seleccione un almacén." | Pantalla |
+| Ajuste: Posición | obligatoria | "Seleccione una posición." | Pantalla |
+| Ajuste: Nota | obligatoria | "Escriba una nota que explique el ajuste." | Pantalla |
+| Ajuste: Nota | máx. 300 caracteres | "Las notas admiten como máximo 300 caracteres." | Pantalla (y 400) |
+| Ajuste: saldo | no dejar el inventario en negativo | "Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}." | Servidor, 409, dentro del bloque |
+
+**Qué se ve (ficha).** La ficha completa (`/warehouse/products/:publicId`) conserva las pestañas **Datos**, **Lotes** y
+**Series**; hoy se llega a Lotes y Series desde el modal.
 
 **Subpestaña Categorías** (en la misma pantalla de Productos, pestaña "Categorías"):
 
@@ -590,26 +761,44 @@ transición manual de pipeline.
 
 **Para qué sirve.** Directorio de proveedores para las órdenes de compra: contacto, término de pago y estatus.
 
-**Cómo se llega.** Menú **Almacén › Proveedores**, dirección `/warehouse/suppliers`.
+**Cómo se llega.** Menú **Almacén › Proveedores**, dirección `/warehouse/suppliers`. Desde el Lote 12 este ítem va **antes**
+de «Compras» en el menú.
 
-**Qué se ve.**
+![Lista de proveedores: filtros, columna Teléfono, chip de estatus e ícono de baja](img/f6-proveedores.png)
 
-![Lista de proveedores](img/f6-proveedores.png)
+**Qué se ve.** Filtros (en la pantalla, sin consultar al servidor): **Nombre**, **Contacto**, **Teléfono**, **Correo** y
+**Mostrar** («Solo activos», por defecto, o «Incluir inactivos»). El de Teléfono compara **por dígitos**: escribir `787` o
+`5551234` encuentra `(787)555-1234` sea cual sea el formato guardado. **Limpiar** los quita. No hay buscador dentro de la
+tabla. Columnas: Nombre, Contacto, **Teléfono**, Correo y **Estatus** (chip verde «Activo» o gris «Inactivo», con los mismos
+colores que Almacenes); se ordena por nombre; los proveedores inactivos se ven atenuados. Tabla de 25 filas por página.
 
-Columnas: nombre, contacto, correo y estatus. Filtro "Mostrar" (solo activos/incluir inactivos).
+**Qué hace cada botón.**
+- **Nuevo proveedor** (`purchasing.manage`).
+- **Clic en una fila**: abre el proveedor para editarlo (solo con `purchasing.manage`; sin ese permiso las filas no se abren).
+  Ya no hay botón «Editar» en la fila.
+- **Ícono de baja** al final de cada fila activa (tooltip «Dar de baja»; confirmación «El proveedor {nombre} quedará
+  inactivo.») y **ícono de reactivar** en las inactivas (tooltip «Reactivar»; «El proveedor {nombre} volverá a estar
+  disponible.»). Solo con `purchasing.manage`. Avisos: «Proveedor dado de baja.» / «Proveedor reactivado.».
 
-**Qué hace cada botón.** **Nuevo proveedor** (nombre, contacto, teléfono, correo, término de pago, notas), **Editar**,
-**Dar de baja**/**Reactivar**.
+**El modal** («Nuevo proveedor» / «Editar»): **Nombre** (obligatorio), **Contacto**, **Teléfono**, **Correo electrónico**,
+**Término de pago** (desplegable con buscador, «Buscar término de pago…») y **Notas**. Avisos: «Proveedor creado.» /
+«Cambios guardados.».
+- **Teléfono con máscara.** Escriba solo los dígitos: el campo pone `(xxx)xxx-xxxx` mientras escribe (hasta 10 dígitos). El
+  teléfono se guarda con la máscara, por ejemplo `(787)555-1234`. Puede dejarse vacío. Un proveedor guardado antes con otro
+  formato se muestra con la máscara si tiene exactamente 10 dígitos; si no, se muestra tal cual y hay que corregirlo para
+  poder guardar (la pantalla exige 10 dígitos o vacío).
 
 **Permiso.** `purchasing.view` (ver la lista); **`purchasing.manage`** para crear/editar/dar de baja/reactivar. Módulo
 **Compras** (`PURCHASING`).
 
 **Validaciones y mensajes.**
 
-| Campo | Regla | Mensaje |
-|---|---|---|
-| Nombre | obligatorio y único entre proveedores activos | "El nombre del proveedor es obligatorio." / "Ya existe un proveedor activo con ese nombre." |
-| Correo electrónico | formato válido | "El correo electrónico no es válido." |
+| Campo | Regla | Mensaje | Dónde |
+|---|---|---|---|
+| Nombre | obligatorio | "El nombre del proveedor es obligatorio." | Pantalla (y 400) |
+| Nombre | único entre proveedores activos | "Ya existe un proveedor activo con ese nombre." | Servidor, 409 |
+| Teléfono | vacío o exactamente 10 dígitos | "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx." | Pantalla |
+| Correo electrónico | formato válido | "El correo electrónico no es válido." | Pantalla (y 400) |
 
 ## Órdenes de compra
 
@@ -623,12 +812,16 @@ resuelve lo que quedó faltante.
 
 ![Lista de órdenes de compra, todas Enviadas](img/f6-ordenes-compra.png)
 
-Columnas: número, proveedor, almacén, estatus, fecha esperada y fecha. Filtros: estatus, proveedor, almacén, rango de
-fecha y buscador.
+Columnas: número, proveedor, almacén, estatus, fecha esperada y fecha. Filtros (Lote 12): **Estatus**, **Proveedor** y
+**Almacén**, los tres de selección **múltiple con buscador** (la orden aparece si su proveedor o almacén es cualquiera de los
+elegidos), y **Fecha** (rango). **Limpiar** los quita. Ya no hay buscador dentro de la tabla.
 
 **Qué hace cada botón.**
-- **Nueva orden de compra**: proveedor, almacén y líneas (producto —solo productos propios—, cantidad ordenada,
-  costo unitario); nace en Borrador.
+- **Nueva orden de compra**: **Proveedor** (desplegable con buscador, «Buscar proveedor…»; obligatorio), **Almacén**
+  (obligatorio **en la pantalla**), fecha esperada, notas y las líneas (**Producto** con buscador —solo productos propios—,
+  **Cantidad ordenada**, **Costo unitario**); nace en Borrador. Debe haber **al menos una línea con cantidad ordenada mayor
+  que cero**; el aviso aparece sobre las líneas. (En el API el almacén es opcional cuando la compañía tiene un solo almacén
+  activo; la pantalla siempre lo pide.)
 
   ![Nueva orden de compra con una línea](img/f6-orden-compra-nueva.png)
 
@@ -637,7 +830,10 @@ fecha y buscador.
 **Qué se ve (ficha).** Barra de estatus con botones **Avanzar a Enviada** y **Avanzar a Cancelada** (los únicos
 manuales; Recibida parcial/Recibida los pone el sistema al confirmar un recibo); pestañas **Líneas** (editable solo
 en Borrador; una línea con recepciones muestra la nota "Esta línea ya tiene recepciones: no se elimina, no baja de lo
-recibido y su costo no cambia.") y **Faltantes** (líneas pendientes con **Resolver**).
+recibido y su costo no cambia.") y **Faltantes** (líneas pendientes con **Resolver**). El **proveedor** y el **almacén** se
+muestran de solo lectura: se eligen al crear la orden y no se pueden cambiar (el servidor rechaza cambiarlos con 400 "El campo
+supplierId de la orden de compra no se puede cambiar."). Si se equivocó, cancele la orden y cree otra. Al guardar las líneas
+se aplica la misma regla del alta: al menos una línea con cantidad ordenada mayor que cero.
 
 **Qué hace cada botón (ficha).**
 - **Eliminar** (cabecera, solo si el servidor permite `canDelete`: sin recepciones ni recibo abierto).
@@ -662,6 +858,8 @@ eliminar la orden, y proveedores); **`inventory.adjust`** para resolver un falta
 | Campo | Regla | Mensaje |
 |---|---|---|
 | Proveedor | obligatorio | "Indique el proveedor." |
+| Almacén | obligatorio en la pantalla (el API lo acepta vacío solo con un único almacén activo) | "Indique el almacén." |
+| Líneas | al menos una con cantidad ordenada > 0 (alta y edición de líneas) | "Agregue al menos una línea con cantidad ordenada mayor que cero." |
 | Producto (línea) | obligatorio, solo propio | "Indique el producto." / "La orden de compra solo admite productos propios; {sku} pertenece a un cliente." |
 | Cantidad ordenada | > 0, ≤ 3 decimales | "La cantidad ordenada debe ser mayor que cero." / "La cantidad admite como máximo 3 decimales." |
 | Costo unitario | ≥ 0, ≤ 4 decimales | "El costo unitario no puede ser negativo." / "El costo unitario admite como máximo 4 decimales." |
@@ -792,7 +990,8 @@ de inventario" configurado en su ficha; no bloquea nada, es solo una señal para
 
 **¿Por qué la ocupación de una zona dice "unidades · sin cupo configurado"?** Porque ninguna de sus posiciones activas tiene
 "Cupo máximo". La ocupación se calcula contra la suma del cupo de las posiciones; sin cupo no hay porcentaje. Abra la
-zona en Ubicaciones o en la pestaña Posiciones de la ficha y escriba el cupo de cada posición.
+zona en Posiciones o en la pestaña Posiciones de la ficha y escriba el cupo de cada posición, o use **Asignar cupo** para
+ponerlo a muchas a la vez.
 
 **¿Por qué el recuadro de una zona dice "N posiciones sin cupo"?** Porque la zona mezcla posiciones con cupo y sin cupo. El
 porcentaje se calcula solo con las que tienen cupo; las otras se avisan aparte para que no falseen el número.
@@ -809,3 +1008,26 @@ una posición quedan fijos desde el alta ("El código y la zona de la posición 
 es el pasillo, rack, nivel, posición, el cupo y el peso máximo (el código no se recalcula). Si necesita otro código u otra
 zona, cree una posición nueva y dé de baja la anterior (solo procede sin inventario ni tareas abiertas). El **código de una
 zona**, en cambio, sí se puede editar.
+
+**¿Adónde se fue «Ubicaciones»?** Se llama **Posiciones** desde el Lote 12 (mismo lugar del menú, misma dirección
+`/warehouse/locations`). En inglés es «Bins».
+
+**¿Por qué el reporte de inventario no lista productos con 0?** Porque es una foto de lo que hay: solo entran los productos
+con existencia en mano distinta de cero. El aviso del reporte dice cuántos quedaron fuera. Para ver también los de cero use
+la tabla de la pantalla o **Exportar**.
+
+**¿Por qué el reporte de ajustes no trae los saldos iniciales de la migración?** Porque se registraron como ajustes (motivo
+OPENING_BALANCE) pero no son ajustes de la operación. El aviso del reporte dice cuántos se excluyeron; siguen en el Kárdex.
+
+**¿Por qué el valor del inventario sale «—»?** Porque el producto no tiene **Costo de compra**. El valor es Total × costo de
+compra; sin costo no se calcula ni se suma. Capture el costo en el producto y vuelva a generar el reporte.
+
+**¿Por qué, con un filtro de Almacén en Productos, siguen saliendo productos sin existencia?** Porque el filtro de Almacén
+acota las **cantidades** de cada fila a ese almacén, no quita productos. Para ver solo los que tienen disponible, use el
+indicador «Unidades totales».
+
+**¿Cómo corrijo el cupo de muchas posiciones a la vez?** Con **Asignar cupo** en Posiciones (ver esa sección): elija el
+alcance, escriba el cupo, revise «Se aplicará a N posiciones» y aplique.
+
+**¿Por qué no puedo cambiar el proveedor ni el almacén de una orden de compra ya creada?** Porque se eligen al crearla y no
+cambian. Cancele la orden y cree otra con los datos correctos.

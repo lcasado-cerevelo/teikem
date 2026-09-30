@@ -380,7 +380,7 @@ public class LegacyImportReadersTests
     [Fact]
     public void Mswm_queries_are_select_only_and_filtered_by_warehouse()
     {
-        Assert.Equal(4, MswmReader.AllQueries.Count);
+        Assert.Equal(9, MswmReader.AllQueries.Count);   // Lote 11: + 5 del historial por posición (cupos)
         foreach (var sql in MswmReader.AllQueries)
         {
             Assert.StartsWith("SELECT ", sql);
@@ -393,6 +393,14 @@ public class LegacyImportReadersTests
         Assert.Contains("FROM dbo.Inventory ", MswmReader.InventorySql);
         Assert.Contains("OnHandQuantity <> 0", MswmReader.InventorySql);
         Assert.Contains("FROM dbo.ItemUPC ", MswmReader.UpcsSql);
+        Assert.Contains("FROM dbo.Inventory_Old ", MswmReader.InventoryOldPhotoSql);
+        Assert.Contains("FROM dbo.CycleCountInventory ", MswmReader.CycleCountPhotoSql);
+        Assert.Contains("GROUP BY Request, Iteration, LocationId", MswmReader.CycleCountPhotoSql);
+        Assert.Contains("FROM dbo.CycleCountHistory ", MswmReader.CycleCountHistoryPhotoSql);
+        Assert.Contains("OnHandQuantity + AdjustmentQuantity", MswmReader.CycleCountHistoryPhotoSql);
+        Assert.Contains("FROM dbo.PutAwayHistory ", MswmReader.PutAwayPhotoSql);
+        Assert.Contains("CAST(TransDate AS date)", MswmReader.PutAwayPhotoSql);
+        Assert.All(MswmReader.BinHistoryQueries, q => Assert.Contains("HAVING SUM(", q.Sql));
         Assert.Equal(120, MswmReader.CommandTimeoutSeconds);
     }
 

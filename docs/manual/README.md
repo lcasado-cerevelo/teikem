@@ -49,6 +49,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
    posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades
    postales** (42.522 ZIP de EE. UU. y Puerto Rico) para llenar ciudad, estado, código postal y país.
+   Lote 12 (secciones 1.2, 2 y 8): **marca y modelo** del producto, filtros nuevos de la lista de productos (varios
+   almacenes, SKU, nombre, marcas, "con serie" y "series incompletas") y endpoint de marcas, filtros de Kárdex por marca y
+   nombre, filtros múltiples de órdenes de compra, **asignación de cupo en bloque** de posiciones y resumen del **cupo
+   estimado** que trae la migración de Advance Depot.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
@@ -68,7 +72,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    permiso), Consultar (con caché para responder sin señal) y Sincronización (pendientes, con error, reintentar).
 10. [10 — Migración de datos heredados](10-migracion-de-datos.md): comando de línea de comandos para aprovisionar
     una compañía desde QuickBooks Desktop y el WMS heredado MSWM, simulación (`--dry-run`), refresco de maestros sin
-    tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`).
+    tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`). Lote 12
+    (sección 4): **cupo estimado de las posiciones** de Advance Depot desde el historial del WMS anterior (regla, reporte
+    `-cupos.csv` y comportamiento de `--update`).
 
 ## Manual de pantallas (frontend web)
 
@@ -87,6 +93,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    Lote 11: pie común de todas las tablas (rango, "Filas por página" y **Exportar** a Excel, CSV y PDF), lista de
    Almacenes en maestro-detalle con "Zonas de este almacén", ficha con Zonas y Posiciones filtrables (cupo y
    ocupación) y la pantalla **Ubicaciones** (recuadros de ocupación por zona). Capturas pendientes.
+   Lote 12: la pantalla se llama ahora **Posiciones** (clic en la fila para editar, botón **Asignar cupo**), **Productos e
+   inventario** (indicadores clicables, filtros, marca y modelo, bloque "Añadir ajuste" con nota obligatoria y reportes PDF
+   de inventario y de ajustes), **Proveedores** (antes de Compras, filtros, teléfono con máscara, baja con ícono) y
+   **Compras** (filtros múltiples, alta con almacén obligatorio y reglas de líneas). Capturas pendientes.
 3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
@@ -101,4 +111,7 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 
 Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, catálogo de
 ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar tablas, ciudades en mayúsculas y por qué el
-código y la zona de una posición no cambian.
+código y la zona de una posición no cambian. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
+nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
+reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
+posiciones y cómo corregirlo en bloque.

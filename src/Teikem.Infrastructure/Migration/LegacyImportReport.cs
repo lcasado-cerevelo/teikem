@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Teikem.Domain.Migration;
 
 namespace Teikem.Infrastructure.Migration;
 
@@ -33,6 +34,12 @@ public sealed record LegacyReportUpdate(string Entity, string Key, string Field,
 public sealed record LegacyReportBalance(string Sku, string Bin, decimal Quantity);
 
 /// <summary>
+/// Lote 11: cupo estimado de una posición del WMS (CSV -cupos): posición, zona, pasillo, máximo histórico (null = sin
+/// historial), cupo, origen (HISTORIAL, PASILLO, ZONA, ALMACEN) y qué hizo el importador con él.
+/// </summary>
+public sealed record LegacyReportCapacity(string Bin, string Zone, string? Aisle, decimal? HistoricalMax, int Capacity, string Origin, string Result);
+
+/// <summary>
 /// Lote 10 (P2): acumulador del reporte del importador. Secciones: Resumen (totales por entidad), Rechazos,
 /// Advertencias, Mapeos y SaldoInicial. <see cref="WriteAsync"/> escribe un .md en español con la marca
 /// 'SIMULACIÓN (dry-run)' o 'CARGA REAL' en el título y un CSV por sección.
@@ -48,6 +55,7 @@ public sealed class LegacyImportReport
     private readonly List<LegacyReportMapping> _mapeos = new();
     private readonly List<LegacyReportBalance> _saldoInicial = new();
     private readonly List<LegacyReportUpdate> _actualizaciones = new();
+    private readonly List<LegacyReportCapacity> _cupos = new();
     private readonly List<KeyValuePair<string, string>> _info = new();
 
     public LegacyImportReport() { }
@@ -70,6 +78,8 @@ public sealed class LegacyImportReport
     public IReadOnlyList<LegacyReportMapping> Mapeos => _mapeos;
     public IReadOnlyList<LegacyReportBalance> SaldoInicial => _saldoInicial;
     public IReadOnlyList<LegacyReportUpdate> Actualizaciones => _actualizaciones;
+    /// <summary>Lote 11: cupo estimado de cada posición del WMS y qué se hizo con él (vacío sin MSWM).</summary>
+    public IReadOnlyList<LegacyReportCapacity> Cupos => _cupos;
     /// <summary>true cuando el reporte corresponde a una corrida con --update.</summary>
     public bool UpdateMode { get; set; }
 
@@ -112,6 +122,10 @@ public sealed class LegacyImportReport
     public void AddUpdate(string entity, string key, string field, string? from, string? to) => _actualizaciones.Add(new LegacyReportUpdate(entity, key, field, from, to));
 
     public void AddInfo(string label, string value) => _info.Add(new(label, value));
+
+    /// <summary>Anota el cupo estimado de una posición y el resultado (asignado, se asignaría, se conserva…).</summary>
+    public void AddCapacity(BinCapacityEstimate e, string result)
+        => _cupos.Add(new LegacyReportCapacity(e.Code, e.ZoneCode, e.Aisle, e.HistoricalMax, e.Capacity, e.Origin, result));
 
     // ---------------------------------------------------------------- render
 
@@ -180,6 +194,8 @@ public sealed class LegacyImportReport
         }
         sb.AppendLine();
 
+        if (_cupos.Count > 0) RenderCapacities(sb);
+
         var units = _saldoInicial.Sum(b => b.Quantity);
         sb.AppendLine($"## Saldo inicial ({_saldoInicial.Count} asientos, {Qty(units)} unidades)").AppendLine();
         if (_saldoInicial.Count == 0) sb.AppendLine("Sin saldo inicial.");
@@ -192,10 +208,36 @@ public sealed class LegacyImportReport
         return sb.ToString();
     }
 
-    /// <summary>CSV (RFC-4180) de cada sección: nombre de archivo sufijo → contenido.</summary>
+    /// <summary>
+    /// Lote 11: resumen de los cupos estimados — por origen (posiciones, cupo mínimo, mediana y máximo) y por resultado. El
+    /// detalle por posición va en el CSV -cupos.
+    /// </summary>
+    private void RenderCapacities(StringBuilder sb)
+    {
+        sb.AppendLine($"## Cupos de posición estimados ({_cupos.Count} posiciones)").AppendLine();
+        sb.AppendLine("Cupo = máximo histórico de la posición en el WMS redondeado hacia arriba a la decena (HISTORIAL); sin historial, "
+                      + "la mediana de su pasillo (PASILLO), de su zona (ZONA) o del almacén (ALMACEN). Detalle por posición en el CSV `-cupos`.")
+          .AppendLine();
+        sb.AppendLine("| Origen | Posiciones | Cupo mínimo | Mediana | Cupo máximo |").AppendLine("|---|---:|---:|---:|---:|");
+        foreach (var origin in BinCapacityOrigins.All.Concat(_cupos.Select(c => c.Origin)).Distinct(StringComparer.Ordinal))
+        {
+            var caps = _cupos.Where(c => c.Origin == origin).Select(c => c.Capacity).OrderBy(c => c).ToList();
+            if (caps.Count == 0) { sb.AppendLine($"| {Md(origin)} | 0 | — | — | — |"); continue; }
+            sb.AppendLine($"| {Md(origin)} | {I(caps.Count)} | {I(caps[0])} | {I(BinCapacityRules.Median(caps)!.Value)} | {I(caps[^1])} |");
+        }
+        var all = _cupos.Select(c => c.Capacity).OrderBy(c => c).ToList();
+        sb.AppendLine($"| **Total** | **{I(all.Count)}** | {I(all[0])} | {I(BinCapacityRules.Median(all)!.Value)} | {I(all[^1])} |").AppendLine();
+
+        sb.AppendLine("| Resultado | Posiciones |").AppendLine("|---|---:|");
+        foreach (var g in _cupos.GroupBy(c => c.Result).OrderByDescending(g => g.Count()))
+            sb.AppendLine($"| {Md(g.Key)} | {I(g.Count())} |");
+        sb.AppendLine();
+    }
+
+    /// <summary>CSV (RFC-4180) de cada sección: nombre de archivo sufijo → contenido. El de cupos solo si hay cupos estimados.</summary>
     public IReadOnlyList<(string Suffix, string Content)> RenderCsv()
     {
-        return new List<(string, string)>
+        var list = new List<(string, string)>
         {
             ("resumen", Csv(new[] { "Entidad", "Leidos", "Creados", "YaExistian", "Omitidos", "Rechazados", "Esperados", "Actualizados" },
                 _resumen.Select(t => new[]
@@ -214,6 +256,13 @@ public sealed class LegacyImportReport
             ("actualizaciones", Csv(new[] { "Entidad", "Clave", "Campo", "Antes", "Despues" },
                 _actualizaciones.Select(u => new[] { u.Entity, u.Key, u.Field, u.From ?? string.Empty, u.To ?? string.Empty }))),
         };
+        if (_cupos.Count > 0)
+            list.Add(("cupos", Csv(new[] { "Posicion", "Zona", "Pasillo", "MaximoHistorico", "Cupo", "Origen", "Resultado" },
+                _cupos.Select(c => new[]
+                {
+                    c.Bin, c.Zone, c.Aisle ?? string.Empty, c.HistoricalMax is { } m ? Qty(m) : string.Empty, I(c.Capacity), c.Origin, c.Result,
+                }))));
+        return list;
     }
 
     /// <summary>

@@ -90,6 +90,16 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     public Task<WarehouseBinDto> CreateBin(Guid publicId, [FromBody] WarehouseBinRequest req, CancellationToken ct)
         => layout.CreateBinAsync(publicId, req, ct);
 
+    /// <summary>
+    /// Lote 11 — cupo máximo en bloque: { maxCapacityQty } o { clear: true } (exactamente uno) sobre TODAS las posiciones que
+    /// cumplen los filtros (zoneIds, aisle, rack, level, position, search, binIds, includeInactive, onlyWithoutCapacity), en una
+    /// transacción. Sin filtros de posiciones exige allBins: true. Devuelve { matched, changed }. Para saber de antemano cuántas
+    /// se afectarán: GET .../bins?take=1 con los mismos filtros (Total).
+    /// </summary>
+    [HttpPost("{publicId:guid}/bins/capacity"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<WarehouseBinCapacityResultDto> SetBinsCapacity(Guid publicId, [FromBody] WarehouseBinCapacityRequest req, CancellationToken ct)
+        => layout.SetBinsCapacityAsync(publicId, req, ct);
+
     [HttpPatch("{publicId:guid}/bins/{binId:int}"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseBinDto> UpdateBin(Guid publicId, int binId, [FromBody] WarehouseBinPatchRequest req, CancellationToken ct)
         => layout.UpdateBinAsync(publicId, binId, req, ct);

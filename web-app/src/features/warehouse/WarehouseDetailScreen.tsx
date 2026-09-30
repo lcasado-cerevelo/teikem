@@ -9,6 +9,8 @@
 //   Zona (`zoneIds`), Pasillo, Rack, Nivel, Posición, "Incluir inactivas" y "Solo con existencia", todos al API (los de
 //   texto con 300 ms de pausa); Exportar saca todo lo filtrado (`exportWarehouseBins`). Columnas Cupo y Ocupación; clic en
 //   la fila abre `BinModal`; baja/reactivación como ícono. Abrir o cerrar un modal no cambia la consulta (no recarga).
+// Lote 11: "Asignar cupo" (warehouse.manage) junto a "Nueva posición" abre `BinCapacityModal` (cupo máximo en bloque) con
+//   la Zona y los textos de Pasillo/Rack/Nivel/Posición del filtro de la pestaña ya puestos.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -57,6 +59,7 @@ import {
   type WarehouseZoneDto,
 } from './api'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
+import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal, ReadOnlyField } from './BinModal'
 import { TextFilter, ToggleFilter } from './filterControls'
 import { formatNumber, useDebounced } from './lineRules'
@@ -327,6 +330,7 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
   const save = useSaveWarehouseBin()
   const [editing, setEditing] = useState<WarehouseBinDto | null | 'new'>(null)
   const [confirmAction, setConfirmAction] = useState<{ bin: WarehouseBinDto; action: 'deactivate' | 'reactivate' } | null>(null)
+  const [settingCapacity, setSettingCapacity] = useState(false)
 
   const zoneOptions = useMemo(() => zones.map((z) => ({ value: String(z.id), label: [z.code, z.name].filter(Boolean).join(' · ') })), [zones])
   const activeZones = useMemo(() => zones.filter((z) => z.isActive !== false), [zones])
@@ -466,6 +470,9 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
         badge={data ? formatNumber(data.total ?? 0, lang) : undefined}
         actions={
           <Can perm="warehouse.manage">
+            <button type="button" className="btn sm" onClick={() => setSettingCapacity(true)}>
+              {t('warehouse.binCapacity.open')}
+            </button>
             <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>
               {t('warehouse.bins.new')}
             </button>
@@ -494,6 +501,14 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
       </Panel>
 
       <BinModal publicId={publicId} zones={activeZones} bin={editing === 'new' || editing === null ? null : editing} open={editing !== null} onClose={() => setEditing(null)} />
+
+      {/* cupo en bloque: arranca con la Zona y los textos de ubicación del filtro de la pestaña (el Código no aplica) */}
+      <BinCapacityModal
+        publicId={publicId}
+        open={settingCapacity}
+        onClose={() => setSettingCapacity(false)}
+        initial={{ zoneIds, aisle: text.aisle, rack: text.rack, level: text.level, position: text.position }}
+      />
 
       <ConfirmDialog
         open={confirmAction !== null}

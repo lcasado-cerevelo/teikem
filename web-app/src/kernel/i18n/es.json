@@ -142,8 +142,8 @@
       "subtitle": "alta y mantenimiento de tus almacenes"
     },
     "locations": {
-      "title": "Ubicaciones",
-      "subtitle": "pasillo · rack · bin, por zona"
+      "title": "Posiciones",
+      "subtitle": "pasillo · rack · posición, por zona"
     },
     "products": {
       "title": "Productos e inventario",
@@ -418,6 +418,16 @@
       "clear": "Quitar categoría o producto",
       "kindCategory": "Categoría",
       "kindProduct": "Producto"
+    },
+    "report": {
+      "tagline": "Inteligencia de Entregas",
+      "generatedAt": "Generado el {date}",
+      "generatedBy": "por {user}",
+      "filtersTitle": "Filtros aplicados",
+      "noFilters": "Sin filtros: incluye todos los registros de la compañía.",
+      "page": "Página {page} de {pages}",
+      "footer": "Generado con Teikem",
+      "empty": "No hay registros que cumplan los filtros."
     }
   },
   "examples": {
@@ -923,7 +933,7 @@
       "derivedHelp": "Se llena según la ciudad elegida."
     },
     "locations": {
-      "title": "Ubicaciones",
+      "title": "Posiciones",
       "subtitle": "Jerarquía del almacén: zona · pasillo · rack · posición, con su ocupación",
       "warehouse": "Almacén",
       "noWarehouses": "No hay almacenes activos.",
@@ -1075,6 +1085,54 @@
         "maxCapacityTooLarge": "El cupo máximo es demasiado grande."
       }
     },
+    "binCapacity": {
+      "open": "Asignar cupo",
+      "title": "Asignar cupo a posiciones",
+      "intro": "Fija o quita el cupo máximo (unidades) de todas las posiciones activas que cumplan el alcance.",
+      "scope": "Alcance",
+      "zone": "Zona",
+      "anyZone": "Cualquier zona",
+      "aisle": "Pasillo",
+      "rack": "Rack",
+      "level": "Nivel",
+      "position": "Posición",
+      "containsPlaceholder": "Contiene…",
+      "onlyWithoutCapacity": "Solo posiciones sin cupo",
+      "onlyWithoutCapacityClear": "No aplica al quitar el cupo.",
+      "allBins": "Todo el almacén",
+      "action": "Acción",
+      "modeSet": "Cupo máximo",
+      "modeClear": "Quitar cupo",
+      "qty": "Cupo máximo (unidades)",
+      "qtyHelp": "Número entero mayor que cero. Las posiciones que ya tienen ese cupo no cambian.",
+      "applySet": "Asignar cupo",
+      "applyClear": "Quitar cupo",
+      "preview": {
+        "pending": "Calculando posiciones…",
+        "needScope": "Elija al menos un filtro (zona, pasillo, rack, nivel o posición) o marque «Todo el almacén».",
+        "none": "Ninguna posición coincide con el alcance: no hay nada que aplicar.",
+        "one": "Se aplicará a 1 posición.",
+        "many": "Se aplicará a {count} posiciones.",
+        "upTo": "Se aplicará a como máximo {count} posiciones (se omiten las que ya tienen cupo).",
+        "error": "No se pudo calcular a cuántas posiciones se aplicará: {message}"
+      },
+      "confirmTitle": "Confirmar cupo en bloque",
+      "confirmSet": "Se asignará un cupo máximo de {qty} unidades a {count} posiciones.",
+      "confirmClear": "Se quitará el cupo máximo de {count} posiciones.",
+      "confirmAll": "El cambio afecta a todo el almacén.",
+      "confirmUnchanged": "Las posiciones que ya tengan ese valor no cambian.",
+      "upToCount": "hasta {count}",
+      "appliedSet": "Cupo aplicado a {changed} de {matched} posiciones",
+      "appliedSetOne": "Cupo aplicado a {changed} de 1 posición",
+      "appliedClear": "Cupo quitado a {changed} de {matched} posiciones",
+      "appliedClearOne": "Cupo quitado a {changed} de 1 posición",
+      "errors": {
+        "required": "Indique el cupo máximo.",
+        "integer": "El cupo máximo debe ser un número entero.",
+        "positive": "El cupo máximo de la posición debe ser mayor que cero.",
+        "tooLarge": "El cupo máximo es demasiado grande."
+      }
+    },
     "docks": {
       "title": "Muelles",
       "count": "{count} muelles",
@@ -1107,27 +1165,35 @@
       "subtitle": "Catálogo con existencias disponibles, reservadas y rastreo por lote/serie",
       "tabProducts": "Productos",
       "invReport": "Reporte de inventario",
-      "invReportHint": "Saldos por almacén, posición y lote (Kárdex de movimientos → Saldos), con el almacén y las categorías filtrados aquí.",
+      "invReportHint": "PDF con todos los productos que cumplen los filtros de la tabla: disponible, reservado, total, costo y valor, por categoría.",
       "adjReport": "Reporte de ajustes",
-      "adjReportHint": "Movimientos de tipo Ajuste en el Kárdex de movimientos, con el almacén filtrado aquí.",
+      "adjReportHint": "PDF con los ajustes de inventario de los productos que cumplen los filtros de la tabla.",
       "kpis": {
         "aria": "Resumen del catálogo",
         "activeSkus": "SKUs activos",
         "totalUnits": "Unidades totales",
         "belowMin": "Bajo mínimo",
         "serial": "Con número de serie",
-        "truncated": "Contados en los primeros {count} productos activos."
+        "serialMissing": "{count} sin series completas",
+        "filterHint": "Filtrar la tabla: {view}. Otro clic quita el filtro.",
+        "view": {
+          "active": "Solo activos",
+          "available": "Activos con disponible",
+          "low": "Bajo mínimo",
+          "serial": "Con número de serie"
+        }
       },
       "columns": {
         "sku": "SKU",
         "product": "Producto",
         "category": "Categoría",
+        "brand": "Marca",
         "owner": "Dueño",
         "available": "Disponible",
         "reserved": "Reservado",
         "total": "Total",
         "tracking": "Rastreo",
-        "state": "Estado"
+        "state": "Estatus"
       },
       "states": {
         "ok": "OK",
@@ -1185,7 +1251,14 @@
         "adjustApplied": "Ajuste aplicado: {qty} {sku}",
         "traceTitle": "Lotes y series",
         "viewLots": "Ver lotes",
-        "viewSerials": "Ver series"
+        "viewSerials": "Ver series",
+        "brand": "Marca",
+        "brandPlaceholder": "Escriba o elija una marca",
+        "model": "Modelo",
+        "addAdjust": "Añadir ajuste",
+        "cancelAdjust": "Cancelar ajuste",
+        "adjustNotes": "Nota",
+        "adjustNotesPlaceholder": "Por qué se ajusta (obligatoria)"
       },
       "fields": {
         "sku": "SKU",
@@ -1219,7 +1292,71 @@
         "onlyAvailable": "Con disponible",
         "state": "Estado",
         "stateActive": "Activos",
-        "stateLow": "Bajo mínimo"
+        "stateLow": "Bajo mínimo",
+        "sku": "SKU",
+        "name": "Nombre",
+        "namePlaceholder": "Contiene…",
+        "brand": "Marca"
+      },
+      "reports": {
+        "working": "Generando…",
+        "error": "No se pudo generar el reporte. Intente de nuevo.",
+        "inventoryTitle": "Reporte de inventario",
+        "inventorySubtitle": "Inventario al momento, agrupado por categoría: disponible, reservado, total, costo unitario y valor.",
+        "adjustmentsTitle": "Reporte de ajustes",
+        "adjustmentsSubtitle": "Ajustes de inventario (movimientos de tipo Ajuste), del más reciente al más antiguo.",
+        "noCategory": "Sin categoría",
+        "subtotal": "Subtotal {name}",
+        "grandTotal": "Total general",
+        "totalIn": "Entradas",
+        "totalOut": "Salidas",
+        "totalNet": "Neto",
+        "truncated": "El reporte incluye solo los primeros {count} productos (límite de lectura). Afine los filtros para ver el resto.",
+        "withoutStock": "Productos sin existencia (en mano 0) no incluidos: {count}.",
+        "openingBalancesExcluded": "Saldos iniciales de la migración excluidos: {count} (no son ajustes de la operación).",
+        "truncatedAdjustments": "El reporte incluye solo los {count} ajustes más recientes (límite de lectura). Afine los filtros para ver el resto.",
+        "withoutCost": "Productos con existencia sin costo de compra: {count}. Su valor aparece como «—» y no se suma en los totales.",
+        "valuationNote": "Valor = Total × costo de compra registrado en el producto. El sistema no guarda costo promedio ni costo por lote.",
+        "kpiNotApplied": "La vista «{view}» depende del estado actual del producto y no aplica a los movimientos: se incluyen los ajustes de los productos que cumplen los demás filtros.",
+        "emptyInventory": "Ningún producto cumple los filtros.",
+        "emptyAdjustments": "No hay ajustes para los filtros elegidos.",
+        "lot": "Lote {lot}",
+        "serial": "Serie {serial}",
+        "columns": {
+          "sku": "SKU",
+          "product": "Producto",
+          "category": "Categoría",
+          "brand": "Marca",
+          "available": "Disponible",
+          "reserved": "Reservado",
+          "total": "Total",
+          "unitCost": "Costo unitario",
+          "value": "Valor",
+          "date": "Fecha y hora",
+          "location": "Almacén / Posición",
+          "quantity": "Cantidad (±)",
+          "reason": "Motivo",
+          "notes": "Nota",
+          "user": "Usuario"
+        },
+        "summary": {
+          "products": "Productos",
+          "onHand": "Unidades en mano",
+          "available": "Disponible",
+          "value": "Valor del inventario",
+          "movements": "Ajustes",
+          "in": "Entradas",
+          "out": "Salidas",
+          "net": "Neto"
+        },
+        "filters": {
+          "type": "Tipo de movimiento",
+          "typeAdjustment": "Ajuste",
+          "warehouseScope": "(las cantidades son solo de estos almacenes)",
+          "contains": "contiene «{text}»",
+          "withSubcategories": "(incluye subcategorías)",
+          "view": "Vista"
+        }
       },
       "lots": {
         "lotNumber": "Lote",
@@ -1247,6 +1384,10 @@
         "moneyTooLarge": "El costo o el precio excede el máximo permitido.",
         "minNegative": "Los mínimos no pueden ser negativos.",
         "maxPickLtMin": "El máximo de la posición de picking debe ser mayor o igual al mínimo.",
+        "brandMax": "La marca no puede exceder 100 caracteres.",
+        "modelMax": "El modelo no puede exceder 100 caracteres.",
+        "adjustNotesRequired": "Escriba una nota que explique el ajuste.",
+        "adjustNotesMax": "Las notas admiten como máximo 300 caracteres.",
         "pickZoneRequired": "El mínimo de picking requiere una posición preferida en una zona PICKING.",
         "measuresNegative": "El peso y el volumen no pueden ser negativos.",
         "weightInvalid": "El peso admite como máximo 3 decimales y debe ser menor que 1,000,000,000.",
@@ -1409,7 +1550,7 @@
           "warehouseRequired": "Seleccione un almacén.",
           "binRequired": "Seleccione una posición.",
           "reasonRequired": "Seleccione un motivo.",
-          "quantityInvalid": "Se esperaba un número.",
+          "quantityInvalid": "Indique la cantidad del ajuste (número, positivo para sumar o negativo para restar).",
           "quantityZero": "La cantidad del ajuste no puede ser cero.",
           "quantityDecimals": "La cantidad admite como máximo 3 decimales.",
           "lotNumberRequired": "Indique el número de lote.",
@@ -1465,10 +1606,12 @@
         "email": "Correo electrónico",
         "paymentTerm": "Término de pago",
         "notes": "Notas",
+        "paymentTermSearch": "Buscar término de pago…",
         "none": "Ninguno"
       },
       "errors": {
         "nameRequired": "El nombre del proveedor es obligatorio.",
+        "phoneInvalid": "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx.",
         "emailInvalid": "El correo electrónico no es válido."
       }
     },
@@ -1513,10 +1656,13 @@
         "product": "Producto",
         "qtyOrdered": "Cantidad ordenada",
         "unitCost": "Costo unitario",
+        "supplierSearch": "Buscar proveedor…",
         "addLine": "Agregar línea",
         "removeLine": "Quitar línea"
       },
       "errors": {
+        "warehouseRequired": "Indique el almacén.",
+        "linesQtyRequired": "Agregue al menos una línea con cantidad ordenada mayor que cero.",
         "supplierRequired": "Indique el proveedor.",
         "productRequired": "Indique el producto.",
         "qtyInvalid": "Se esperaba un número.",

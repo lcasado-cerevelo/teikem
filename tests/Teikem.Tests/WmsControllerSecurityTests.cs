@@ -51,6 +51,7 @@ public class WmsControllerSecurityTests
         [(typeof(WarehousesController), nameof(WarehousesController.Bins))] = PermissionCatalog.InventoryView,
         [(typeof(WarehousesController), nameof(WarehousesController.CreateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage,   // Lote 11: cupo en bloque
         [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Docks))] = PermissionCatalog.InventoryView,
@@ -67,6 +68,7 @@ public class WmsControllerSecurityTests
         [(typeof(ProductCategoriesController), nameof(ProductCategoriesController.Reactivate))] = PermissionCatalog.InventoryManage,
 
         [(typeof(ProductsController), nameof(ProductsController.List))] = PermissionCatalog.InventoryView,
+        [(typeof(ProductsController), nameof(ProductsController.Brands))] = PermissionCatalog.InventoryView,   // Lote 12
         [(typeof(ProductsController), nameof(ProductsController.Get))] = PermissionCatalog.InventoryView,
         [(typeof(ProductsController), nameof(ProductsController.ByBarcode))] = PermissionCatalog.InventoryView,   // Lote 8A
         [(typeof(ProductsController), nameof(ProductsController.Lots))] = PermissionCatalog.InventoryView,
@@ -221,7 +223,11 @@ public class WmsControllerSecurityTests
         Assert.Contains(PermissionCatalog.WarehouseCountCapture, PermissionCatalog.Implied[PermissionCatalog.WarehouseCount]);
         // Lote 8A: recolectar y empacar en una llamada tiene su propia ruta y su propio tipo de respuesta.
         Assert.Equal(PermissionCatalog.WarehousePick, Expected[(typeof(PickBatchesController), nameof(PickBatchesController.CollectAndPack))]);
-        Assert.Equal(105, Expected.Count);
+        // Lote 12: + GET /products/brands (inventory.view).
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(ProductsController), nameof(ProductsController.Brands))]);
+        // Lote 11 (cupo de posiciones): + POST /warehouses/{id}/bins/capacity (warehouse.manage, como editar una posición).
+        Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))]);
+        Assert.Equal(107, Expected.Count);
     }
 
     [Fact]

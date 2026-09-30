@@ -1157,6 +1157,10 @@ GO
 -- Lote 6: ClientId = DUEÑO DEL INVENTARIO (cliente 3PL de dbo.Client; NULL = propio del tenant), distinto de TenantId (el
 -- dueño de los datos). FKs compuestas (Id, TenantId) contra Client, ProductCategory y Warehouse; la posición preferida con
 -- (Posición, Almacén). Seguimiento, UoM y dueño son inmutables tras el primer movimiento (regla de servicio, D25).
+-- Lote 12 (Lote 2 del plan de cambios): Brand y Model = marca y modelo en texto libre (recortados; vacío = NULL). Guardado
+-- (IF OBJECT_ID / COL_LENGTH) para agregar las columnas a una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.Product') IS NULL
+BEGIN
 CREATE TABLE dbo.Product (
     ProductId    INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
@@ -1175,6 +1179,8 @@ CREATE TABLE dbo.Product (
     MinQty       DECIMAL(16,3) NULL,   -- Lote 6 (D23): mínimo del disponible total ('Inventario bajo mínimo')
     MinPickQty   DECIMAL(16,3) NULL,   -- Lote 6 (D23): reabasto de la posición preferida en PICKING
     MaxPickQty   DECIMAL(16,3) NULL,   -- Lote 6 (D23)
+    Brand        NVARCHAR(100) NULL,   -- Lote 12: marca (texto libre)
+    Model        NVARCHAR(100) NULL,   -- Lote 12: modelo (texto libre)
     CONSTRAINT UQ_Product_Sku UNIQUE (TenantId, ClientId, Sku),
     CONSTRAINT UQ_Product_IdTenant UNIQUE (ProductId, TenantId),                                                              -- Lote 6
     CONSTRAINT FK_Product_Client FOREIGN KEY (ClientId, TenantId) REFERENCES dbo.Client(ClientId, TenantId),                  -- Lote 6
@@ -1187,8 +1193,19 @@ CREATE TABLE dbo.Product (
         AND (MinPickQty IS NULL OR MaxPickQty IS NULL OR MaxPickQty >= MinPickQty)),                                          -- Lote 6
     CONSTRAINT CK_Product_PrefBin CHECK (PreferredBinId IS NULL OR PreferredWarehouseId IS NOT NULL)                          -- Lote 6
 );
--- Lote 6: código de barras único entre los productos activos del tenant.
-CREATE UNIQUE INDEX UX_Product_Barcode ON dbo.Product(TenantId, Barcode) WHERE Barcode IS NOT NULL AND IsActive = 1;
+END
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.Product', 'Brand') IS NULL
+        ALTER TABLE dbo.Product ADD Brand NVARCHAR(100) NULL;
+    IF COL_LENGTH('dbo.Product', 'Model') IS NULL
+        ALTER TABLE dbo.Product ADD Model NVARCHAR(100) NULL;
+END
+GO
+
+-- Lote 6: código de barras único entre los productos activos del tenant (en su propio lote, solo si todavía no está).
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_Product_Barcode' AND object_id = OBJECT_ID('dbo.Product'))
+    CREATE UNIQUE INDEX UX_Product_Barcode ON dbo.Product(TenantId, Barcode) WHERE Barcode IS NOT NULL AND IsActive = 1;
 GO
 
 -- Lote 6: sin TenantId propio; hereda la tenencia de Product por FK (se alcanza SOLO a través del producto filtrado).

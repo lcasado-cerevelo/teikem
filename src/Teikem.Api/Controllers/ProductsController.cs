@@ -26,14 +26,28 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     /// producto (maestro L1207): mercancía de clientes primero (el de más inventario en mano antes) y suministros propios al
     /// final; sin él, por SKU (pantalla Productos e inventario). belowMin=true (Lote 7A) = solo productos bajo mínimo (mismo
     /// cálculo que isBelowMin; con warehousePublicId, el disponible de ese almacén): el Pulso los cuenta con take=1 y total.
+    /// Lote 12: warehousePublicIds (varios, combinados con warehousePublicId; acotan totales y cálculos, no la lista),
+    /// productPublicIds (selección de SKU), name (contiene, sin distinguir mayúsculas), brands (marca igual, sin distinguir
+    /// mayúsculas), serialOnly (rastreo SERIAL o con series registradas) y serialMissing (activos SERIAL con existencia mayor
+    /// que sus series en stock: el KPI 'series por capturar' se lee con take=1 y total).
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductPageDto> List([FromQuery] string? search, [FromQuery] int[]? categoryIds, [FromQuery] Guid? ownerClientPublicId,
         [FromQuery] bool? ownOnly, [FromQuery] bool activeOnly, [FromQuery] Guid? warehousePublicId, [FromQuery] bool onlyAvailable,
+        [FromQuery] Guid[]? warehousePublicIds, [FromQuery] Guid[]? productPublicIds, [FromQuery] string? name, [FromQuery] string[]? brands,
         [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, [FromQuery] bool belowMin = false,
-        CancellationToken ct = default)
-        => products.ListAsync(new ProductListQuery(search, categoryIds is { Length: > 0 } ? categoryIds : null, ownerClientPublicId, ownOnly,
-            activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin), InventoryScope.Any, ct);
+        [FromQuery] bool serialOnly = false, [FromQuery] bool serialMissing = false, CancellationToken ct = default)
+        => products.ListAsync(new ProductListQuery(search, NullIfEmpty(categoryIds), ownerClientPublicId, ownOnly,
+            activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin, NullIfEmpty(warehousePublicIds),
+            NullIfEmpty(productPublicIds), name, NullIfEmpty(brands), serialOnly, serialMissing), InventoryScope.Any, ct);
+
+    /// <summary>
+    /// Lote 12 — marcas distintas de los productos del tenant (para el filtro Marca), ordenadas y sin repetir sin distinguir
+    /// mayúsculas; search = la marca contiene el texto. Mismo permiso que la lista de productos.
+    /// </summary>
+    [HttpGet("brands"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<string>> Brands([FromQuery] string? search, CancellationToken ct)
+        => products.ListBrandsAsync(search, InventoryScope.Any, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductDetailDto> Get(Guid publicId, CancellationToken ct) => products.GetAsync(publicId, InventoryScope.Any, ct);
@@ -69,4 +83,6 @@ public sealed class ProductsController(ProductService products) : ControllerBase
 
     [HttpPost("{publicId:guid}/reactivate"), RequirePermission(PermissionCatalog.InventoryManage)]
     public Task<ProductDetailDto> Reactivate(Guid publicId, CancellationToken ct) => products.ReactivateAsync(publicId, ct);
+
+    private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 }

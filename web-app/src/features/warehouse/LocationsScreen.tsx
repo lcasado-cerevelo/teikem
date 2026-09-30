@@ -10,9 +10,11 @@
 //   Cupo, Ocupación y Estatus (Vacía / Parcial / Llena / Sin cupo, `occupancy` del API). Filtros al servidor: Zona
 //   (`zoneIds`), Tipo (se traduce a las zonas de ese tipo), Producto (`productPublicIds`) y Estatus (`occupancy`).
 //   Exportar saca todo lo filtrado (`fetchAllPages`). Lógica pura en `locations.ts`.
+// - Lote 11: "Asignar cupo" (warehouse.manage) junto a "Nueva posición" abre `BinCapacityModal` (cupo máximo en bloque)
+//   sobre el almacén elegido, con la zona de `?zone=` ya puesta; al aplicar se refrescan la tabla y los recuadros.
 import { useId, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { api, unwrap } from '../../kernel/api/client'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useLang, useT } from '../../kernel/i18n'
@@ -29,6 +31,7 @@ import {
   type DataColumn,
 } from '../../kernel/ui'
 import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
+import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal } from './BinModal'
 import { formatNumber, useDebounced } from './lineRules'
 import {
@@ -145,6 +148,9 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
   const [zoneTypes, setZoneTypes] = useState<string[]>([])
   const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [occupancy, setOccupancy] = useState<string[]>([])
+  // clic en la fila = editar la posición (mismo BinModal que la pestaña Posiciones de la ficha); solo con warehouse.manage
+  const canManage = useCan('warehouse.manage')
+  const [editing, setEditing] = useState<WarehouseBinDto | null>(null)
   // Posición: texto al servidor (`search`: código, pasillo, rack, nivel o posición), con retardo para no consultar por tecla
   const [code, setCode] = useState('')
   const codeId = useId()
@@ -350,6 +356,7 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
       <Panel flush icon={<IconGrid />} title={t('warehouse.locations.columns.bin')} badge={!impossible && binsQ.isLoading ? undefined : total}>
         <DataTable
           label={t('warehouse.locations.tableLabel')}
+          onRowClick={canManage ? (b) => setEditing(b) : undefined}
           columns={columns}
           rows={rows}
           rowKey={(b) => b.id ?? 0}
@@ -366,6 +373,7 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
           empty={<EmptyState icon={<IconGrid />} title={filtered ? t('warehouse.locations.noMatch') : t('warehouse.locations.noBins')} />}
         />
       </Panel>
+      <BinModal publicId={warehousePublicId} zones={zones} bin={editing} open={editing !== null} onClose={() => setEditing(null)} />
     </>
   )
 }
@@ -385,6 +393,7 @@ export default function LocationsScreen() {
   const pickerId = useId()
   const [params, setParams] = useSearchParams()
   const [creatingBin, setCreatingBin] = useState(false)
+  const [settingCapacity, setSettingCapacity] = useState(false)
 
   // Almacén: el de la URL o, sin él, el primero activo (como la maqueta).
   const warehouses = useWarehouses({ includeInactive: false })
@@ -433,6 +442,9 @@ export default function LocationsScreen() {
           </div>
           {warehousePublicId && (
             <Can perm="warehouse.manage">
+              <button type="button" className="btn" onClick={() => setSettingCapacity(true)}>
+                {t('warehouse.binCapacity.open')}
+              </button>
               <button type="button" className="btn flow" onClick={() => setCreatingBin(true)} disabled={zonesQ.isLoading}>
                 {t('warehouse.bins.new')}
               </button>
@@ -444,6 +456,15 @@ export default function LocationsScreen() {
       {/* mismo modal que la pestaña Posiciones de la ficha del almacén, sobre el almacén elegido arriba */}
       {warehousePublicId && (
         <BinModal publicId={warehousePublicId} zones={zones} bin={null} open={creatingBin} onClose={() => setCreatingBin(false)} />
+      )}
+      {/* cupo en bloque sobre el almacén elegido; la zona del filtro (`?zone=`) llega ya puesta */}
+      {warehousePublicId && (
+        <BinCapacityModal
+          publicId={warehousePublicId}
+          open={settingCapacity}
+          onClose={() => setSettingCapacity(false)}
+          initial={{ zoneIds: parseZoneParam(params.getAll('zone')) }}
+        />
       )}
     </div>
   )

@@ -43,6 +43,10 @@ public class Product : ITenantScoped, ISoftDeletable
     public decimal? MinQty { get; set; }
     public decimal? MinPickQty { get; set; }
     public decimal? MaxPickQty { get; set; }
+    /// <summary>Lote 12: marca en texto libre (NVARCHAR(100), recortada; vacía = NULL). Se audita como cualquier campo.</summary>
+    public string? Brand { get; set; }
+    /// <summary>Lote 12: modelo en texto libre (NVARCHAR(100), recortado; vacío = NULL).</summary>
+    public string? Model { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 }

@@ -109,7 +109,7 @@ beforeEach(() => {
   mock.handler = route
 })
 
-describe('Ubicaciones (maqueta ubicaciones())', () => {
+describe('Posiciones (antes Ubicaciones; maqueta ubicaciones())', () => {
   const path = `/warehouse/locations?warehouse=${WH}`
 
   const binRequests = () => mock.requests.filter((u) => u.pathname === `/api/v1/warehouses/${WH}/bins`)
@@ -190,6 +190,21 @@ describe('Ubicaciones (maqueta ubicaciones())', () => {
     // la zona es un combobox con buscador (BinModal, Lote 1): sus opciones son las zonas del almacén elegido
     await user.click(within(dialog).getByRole('combobox', { name: /Zona/ }))
     expect(await screen.findByRole('option', { name: /A · Zona A/ })).toBeInTheDocument()
+  })
+
+  it('clic en la fila abre la edición de esa posición (solo con warehouse.manage)', async () => {
+    const user = userEvent.setup()
+    const readOnly = wrap(<LocationsScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await user.click(await screen.findByText('A-01'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    readOnly.unmount()
+
+    wrap(<LocationsScreen />, ['inventory.view', 'warehouse.manage'], ['WMS_LOTSERIAL'], path, '/warehouse/locations')
+    await user.click(await screen.findByText('A-01'))
+    const dialog = await screen.findByRole('dialog')
+    // el código se muestra de solo lectura (campo con su valor) en la edición
+    expect(within(dialog).queryByDisplayValue('A-01') ?? within(dialog).queryByText('A-01')).not.toBeNull()
+    expect(within(dialog).getByLabelText(/Cupo máximo/)).toBeInTheDocument()
   })
 })
 

@@ -65,6 +65,9 @@ public class LegacyImportServiceTests
         Assert.Equal(2.50m, sam1.PurchaseCost);
         Assert.Equal(4.00m, sam1.SalePrice);
         Assert.Equal("MUESTRA", sam1.Category);
+        // Lote 12: la marca de QuickBooks (columna Brand) pasa al producto; vacía → null
+        Assert.Equal("MARCA DEMO", sam1.Brand);
+        Assert.Contains(plan.Products, p => p.Brand is null);
         Assert.Equal("CARTONES", plan.Products.Single(p => p.Sku == "CAJ-100").Category);
         Assert.Equal("Mascarilla quirúrgica, caja de 50 (muestra)", plan.Products.Single(p => p.Sku == "SAM002").Name);
         Assert.All(plan.Products, p => Assert.False(p.DeactivateAtEnd));

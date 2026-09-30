@@ -1,7 +1,7 @@
 // Reglas de captura del producto (réplica de ProductRules del dominio) que usa el modal único de alta y edición
 // (ProductEditorModal). Los mensajes son los exactos del manual 06 (claves `warehouse.products.errors.*`).
 // También la cantidad de un ajuste manual (AdjustmentRules.ToPosting), compartida por InventoryAdjustModal y el bloque
-// "Ajustar inventario" del modal de producto.
+// "Ajustar inventario" del modal de producto. Lote 12: Marca y Modelo (máx. 100) y la nota obligatoria del ajuste del modal.
 import { z } from 'zod'
 import type { TParams } from '../../kernel/i18n'
 
@@ -46,6 +46,33 @@ export function moneySchema(t: Translate, field: 'cost' | 'price') {
     .refine((v) => decimals(v) <= 4, t(field === 'cost' ? 'warehouse.products.errors.costDecimals' : 'warehouse.products.errors.priceDecimals'))
     .refine((v) => v < MONEY_MAX_EXCLUSIVE, t('warehouse.products.errors.moneyTooLarge'))
     .nullable()
+}
+
+/** Largo máximo de Marca y Modelo (Lote 12, `ProductRules.BrandMaxLength`/`ModelMaxLength`, NVARCHAR(100)). */
+export const BRAND_MAX = 100
+export const MODEL_MAX = 100
+
+/** Marca o modelo: texto libre opcional (recortado), máximo 100, con el mensaje exacto del API (400 `errors.brand|model`). */
+export function brandModelSchema(t: Translate, field: 'brand' | 'model') {
+  return z
+    .string()
+    .trim()
+    .max(field === 'brand' ? BRAND_MAX : MODEL_MAX, t(field === 'brand' ? 'warehouse.products.errors.brandMax' : 'warehouse.products.errors.modelMax'))
+}
+
+/** Máximo de la nota de un ajuste (`AdjustmentRules.MaxNotesLength`, NVARCHAR(300)). */
+export const ADJUST_NOTES_MAX = 300
+
+/**
+ * Nota del ajuste del modal de producto (Lote 12): obligatoria en la interfaz (el API la deja opcional para no romper otros
+ * flujos) y de hasta 300 caracteres (mensaje exacto del API: 'Las notas admiten como máximo 300 caracteres.').
+ */
+export function adjustNotesSchema(t: Translate) {
+  return z
+    .string()
+    .trim()
+    .min(1, t('warehouse.products.errors.adjustNotesRequired'))
+    .max(ADJUST_NOTES_MAX, t('warehouse.products.errors.adjustNotesMax'))
 }
 
 /**

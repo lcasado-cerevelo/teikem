@@ -254,3 +254,75 @@ históricas, 763 salones), que pertenece a Advance Logistics como cliente 3PL. E
 | Almacenes / zonas / posiciones | 1 / 6 / 3,887 | 1 / 1 / 1 |
 | Asientos de saldo inicial (`InventoryTransaction`) | 1,310 (75 SKU, 367,329 u.) | 32 (36 SKU con existencia menos las 3 cajas y el negativo) |
 | Conciliación | `mismatches: []` | `mismatches: []` |
+
+---
+
+## 7. Cupo máximo de las posiciones de Depot (decisión del dueño, 2026-09-30)
+
+Decisión: llenar el cupo máximo (`WarehouseBin.MaxCapacityQty`, unidades de producto; ver `docs/lote11-decisiones.md`) de
+las posiciones de Advance Depot **estimándolo desde el historial de MSWM**, y dejar una herramienta para corregirlo en
+bloque (`POST /api/v1/warehouses/{publicId}/bins/capacity`, capítulo 6 del manual).
+
+**Por qué no se usan los campos de capacidad del WMS.** `Location.PalletCapacity` no sirve: 2.193 posiciones tienen el
+valor por defecto 50 con existencias de hasta 1.212 unidades y el resto vale 0. `Item.FullPalletQty` y `Item.Cube` están
+vacíos.
+
+**Fuentes (solo lectura, almacén `Main`)** — `MswmReader.BinHistoryQueries`, una fila por "foto" y posición, ya sumada en
+SQL y solo con totales > 0:
+
+| Tabla | Foto | Cantidad |
+|---|---|---|
+| `Inventory` | una (el inventario actual) | `SUM(OnHandQuantity)` por `LocationId` |
+| `Inventory_Old` | una (el inventario anterior) | `SUM(OnHandQuantity)` por `LocationId` |
+| `CycleCountInventory` | una por `Request` + `Iteration` | `SUM(CountQuantity)` por `LocationId` |
+| `CycleCountHistory` | una por `Request` | `SUM(OnHandQuantity + AdjustmentQuantity)` por `LocationIdCounted` (o `LocationId` si viene vacío); sin filas revertidas. En MSWM `LocationId` viene vacío y `OnHandQuantity` es siempre 0: lo contado está en `AdjustmentQuantity` |
+| `PutAwayHistory` | una por día (`CAST(TransDate AS date)`) | `SUM(Quantity)` hacia `LocationTo` |
+
+**Regla** (pura, `Teikem.Domain.Migration.BinCapacityRules`, pruebas en `BinCapacityTests`):
+
+1. Máximo histórico de una posición = el mayor total > 0 entre todas sus fotos (los ids del WMS se normalizan con
+   `LegacyImportRules.ParseBinCode`, así `01-a-24` y `01-A-24` son la misma posición).
+2. Con historial → cupo = máximo histórico redondeado **hacia arriba a la decena**, mínimo 10. Origen `HISTORIAL`.
+3. Sin historial → mediana de los cupos `HISTORIAL` de su **pasillo** (`PASILLO`); si el pasillo no tiene ninguno, de su
+   **zona** (`ZONA`); si tampoco, del **almacén** (`ALMACEN`). Mediana con cantidad par = promedio de los dos centrales;
+   siempre redondeada hacia arriba a la decena. Los cupos heredados no alimentan otras medianas. **Una mediana de pasillo o
+   de zona solo se usa si tiene al menos 5 cupos con historial** (`BinCapacityRules.MinSamples`); con menos se pasa al
+   nivel siguiente — agregado tras la validación de abajo: con dos datos (30 y 264.600) la "mediana" de la zona PISO era
+   132.320, que no representa a nadie. El pasillo es el que el
+   importador ya deriva del `LocationId` (`NN-L-NN` → `NN`); las posiciones especiales (PISO, R1, S1…) no tienen pasillo y
+   van directo a su zona.
+4. Solo para almacenes que vienen de MSWM (`sources.mswm` y sin `warehouse.singleBin`): Advance Solutions no aplica.
+5. Escritura: una posición nueva nace con su cupo (`CreateBinAsync` con `MaxCapacityQty`); una existente con cupo lo
+   conserva siempre; una existente sin cupo solo se llena con `--update` (con la asignación en bloque y
+   `onlyWithoutCapacity: true`, que dentro de su transacción vuelve a excluir las que ya tengan cupo). `--dry-run`
+   calcula y reporta sin escribir.
+6. Reporte: CSV `reporte-depot-{fecha}-cupos.csv` (posición, zona, pasillo, máximo histórico, cupo, origen, resultado) y
+   sección "Cupos de posición estimados" en el `.md` (posiciones, mínimo, mediana y máximo por origen; conteo por
+   resultado).
+
+**Resultado al validar contra la base MSWM real (2026-09-30, lectura, plan puro sin escribir en Teikem; ANTES de la regla
+de los 5 datos — la distribución final queda en el reporte `reporte-depot-*-cupos.csv` de la importación):** 3.886
+posiciones del plan, 8.243 fotos (Inventory 1.239, Inventory_Old 1.668, CycleCountInventory 1.153, CycleCountHistory
+1.127, PutAwayHistory 3.056).
+
+| Origen | Posiciones | Cupo mínimo | Mediana | Cupo máximo |
+|---|---:|---:|---:|---:|
+| HISTORIAL | 2.709 | 10 | 50 | 264.600 (`CARTONES`) |
+| PASILLO | 717 | 10 | 10 | 120 |
+| ZONA | 459 | 50 | 50 | 132.320 |
+| ALMACEN | 1 (`S1`) | 50 | 50 | 50 |
+| **Total** | **3.886** | 10 | 50 | 264.600 |
+
+Cobertura con historial: pasillos 01–24 entre 76 % y 95 % de sus posiciones; 25–30 entre 5 % y 37 %; 31–36 ninguna (sus
+456 posiciones toman la mediana de la zona PCK, 50).
+
+**A revisar con el dueño:**
+
+- **Zona PISO (resuelto con la regla de los 5 datos: `FLOOR` y las demás de piso toman la mediana del almacén):** solo `CARTONES` (264.593 u., cupo 264.600) y `PISO` (cupo 30) tienen historial; la mediana de esos dos
+  cupos es su promedio,
+  así que `FLOOR`, `MATTRESS-PISO-DEPOT` y `15006-MATTRESS-PISO` reciben **132.320**. Es un artefacto de la mediana con dos
+  valores muy distintos: conviene corregirlos a mano o quitarles el cupo (`{ "binIds": [...], "clear": true }`).
+- **Pasillos 25–30 con poco historial:** su mediana (10) se aplica a las demás posiciones del pasillo (p. ej. en el 28 solo
+  4 de 76 tienen historial).
+- **Posiciones de preparación:** `R1` (recepción, zona STG) sale con 410 por historial y `S1` (embarque, SHP) con 50 del
+  almacén. Si no se quiere cupo en zonas de preparación, quitarlo en bloque por zona.

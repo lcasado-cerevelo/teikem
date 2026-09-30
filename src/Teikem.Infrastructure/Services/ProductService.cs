@@ -79,9 +79,56 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             query = query.Where(p => p.Sku.Contains(s) || p.Name.Contains(s) || (p.Barcode != null && p.Barcode.Contains(s))
                                      || clients.Any(c => c.ClientId == p.ClientId && c.Name.Contains(s)));
         }
+        // Lote 12: selección de SKU, nombre (contiene) y marcas (igualdad), estos dos sin distinguir mayúsculas.
+        if (q.ProductPublicIds is { Length: > 0 })
+        {
+            var pubs = q.ProductPublicIds.Distinct().ToList();
+            query = query.Where(p => pubs.Contains(p.PublicId));
+        }
+        if (!string.IsNullOrWhiteSpace(q.Name))
+        {
+            var n = q.Name.Trim().ToLowerInvariant();
+            query = query.Where(p => p.Name.ToLower().Contains(n));
+        }
+        if (ProductRules.NormalizeTextFilter(q.Brands) is { } brands)
+            query = query.Where(p => p.Brand != null && brands.Contains(p.Brand.ToLower()));
 
-        int? warehouseId = null;
-        if (q.WarehousePublicId is Guid whPublicId) warehouseId = (await ResolveWarehouseAsync(whPublicId, ct)).WarehouseId;
+        // Almacenes: el singular (compatibilidad) y la lista se combinan; acotan totales y cálculos, no la lista.
+        var warehouseIds = await ResolveWarehouseIdsAsync(q.WarehousePublicId, q.WarehousePublicIds, ct);
+
+        if (q.SerialOnly || q.SerialMissing)
+        {
+            var serialTrackingId = await lookups.TryGetIdAsync(LookupDomains.TrackingType, TrackingTypes.Serial, ct);
+            var serials = db.Set<InventorySerial>().AsNoTracking();
+            if (q.SerialOnly)
+            {
+                // Lote 12: rastreo SERIAL o con números de serie registrados (la serie se alcanza por su producto filtrado).
+                query = serialTrackingId is int sid
+                    ? query.Where(p => p.TrackingTypeLookupId == sid || serials.Any(s => s.ProductId == p.ProductId))
+                    : query.Where(p => serials.Any(s => s.ProductId == p.ProductId));
+            }
+            if (q.SerialMissing)
+            {
+                // Lote 12 (KPI 'series por capturar'): activos SERIAL con existencia en mano mayor que sus series en stock
+                // (AVAILABLE o RESERVED; en los almacenes indicados si los hay). Misma regla que ProductRules.IsSerialMissing.
+                if (serialTrackingId is not int sid) query = query.Where(p => false);
+                else
+                {
+                    var inStock = new List<int?>
+                    {
+                        await db.StatusIdAsync(StatusDomains.SerialStatus, SerialStatuses.Available, ct),
+                        await db.StatusIdAsync(StatusDomains.SerialStatus, SerialStatuses.Reserved, ct),
+                    };
+                    var serialsInStock = serials.Where(s => inStock.Contains(s.StatusCodeId));
+                    if (warehouseIds is not null)
+                        serialsInStock = serialsInStock.Where(s => s.CurrentWarehouseId != null && warehouseIds.Contains(s.CurrentWarehouseId.Value));
+                    var onHand = StockIn(warehouseIds);
+                    query = query.Where(p => p.IsActive && p.TrackingTypeLookupId == sid
+                                             && (onHand.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)b.QtyOnHand) ?? 0m)
+                                                > serialsInStock.Count(s => s.ProductId == p.ProductId));
+                }
+            }
+        }
 
         if (q.OnlyAvailable)
         {
@@ -94,17 +141,16 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                                join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                                where z.ZoneTypeLookupId != null && excludedTypeIds.Contains(z.ZoneTypeLookupId.Value)
                                select b.WarehouseBinId;
-            var balances = db.Set<StockBalance>().AsNoTracking()
-                .Where(b => (warehouseId == null || b.WarehouseId == warehouseId)
-                            && (b.WarehouseBinId == null || !excludedBins.Contains(b.WarehouseBinId.Value)));
+            var balances = StockIn(warehouseIds)
+                .Where(b => b.WarehouseBinId == null || !excludedBins.Contains(b.WarehouseBinId.Value));
             query = query.Where(p => balances.Where(b => b.ProductId == p.ProductId).Sum(b => b.QtyOnHand - b.QtyReserved) > 0);
         }
 
         if (q.BelowMin)
         {
             // Lote 7A: bajo mínimo con el mismo cálculo que ProductRules.IsBelowMin de la lista (activo, con mínimo y disponible
-            // = en mano − reservado de todas las posiciones, o del almacén indicado, menor que el mínimo; sin saldo = 0).
-            var stock = db.Set<StockBalance>().AsNoTracking().Where(b => warehouseId == null || b.WarehouseId == warehouseId);
+            // = en mano − reservado de todas las posiciones, o de los almacenes indicados, menor que el mínimo; sin saldo = 0).
+            var stock = StockIn(warehouseIds);
             query = query.Where(p => p.IsActive && p.MinQty != null
                                      && (stock.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) < p.MinQty);
         }
@@ -136,8 +182,25 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         }
         var page = await ordered.ThenBy(p => p.ProductId).Skip(skip).Take(take).ToListAsync(ct);
 
-        var items = await ToItemsAsync(page, warehouseId, ct);
+        var items = await ToItemsAsync(page, warehouseIds, ct);
         return new ProductPageDto(total, skip, take, items);
+    }
+
+    /// <summary>
+    /// Lote 12 — marcas distintas de los productos del tenant (activos e inactivos, dentro del scope) para el filtro Marca:
+    /// search = la marca contiene el texto (sin distinguir mayúsculas). Sin repetir sin distinguir mayúsculas, ordenadas y
+    /// acotadas a ProductRules.MaxBrandRows.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> ListBrandsAsync(string? search, InventoryScope scope, CancellationToken ct)
+    {
+        var query = Scoped(scope ?? InventoryScope.Any).AsNoTracking().Where(p => p.Brand != null && p.Brand != "");
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim().ToLowerInvariant();
+            query = query.Where(p => p.Brand!.ToLower().Contains(s));
+        }
+        var brands = await query.Select(p => p.Brand).Distinct().ToListAsync(ct);
+        return ProductRules.DistinctBrands(brands);
     }
 
     // ================================================================ ficha, lotes y series
@@ -272,6 +335,10 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
         if (nameError is not null) errors["name"] = new[] { nameError };
         var (barcode, barcodeError) = ProductRules.NormalizeBarcode(req.Barcode);
         if (barcodeError is not null) errors["barcode"] = new[] { barcodeError };
+        var (brand, brandError) = ProductRules.NormalizeBrand(req.Brand);
+        if (brandError is not null) errors["brand"] = new[] { brandError };
+        var (model, modelError) = ProductRules.NormalizeModel(req.Model);
+        if (modelError is not null) errors["model"] = new[] { modelError };
         if (ProductRules.Money(req.PurchaseCost, "costo") is string costError) errors["purchaseCost"] = new[] { costError };
         if (ProductRules.Money(req.SalePrice, "precio") is string priceError) errors["salePrice"] = new[] { priceError };
         foreach (var (field, message) in ProductRules.ValidateMeasures(req.WeightKg, req.VolumeM3)) errors[field] = new[] { message };
@@ -322,6 +389,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             MinQty = minQty,
             MinPickQty = minPick,
             MaxPickQty = maxPick,
+            Brand = brand,
+            Model = model,
             IsActive = true,
         };
         db.Set<Product>().Add(product);
@@ -360,6 +429,21 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             var (b, barcodeError) = ProductRules.NormalizeBarcode(req.Barcode);
             if (barcodeError is not null) errors["barcode"] = new[] { barcodeError };
             barcode = b;
+        }
+        // Lote 12: marca y modelo; null = sin cambio, "" = quitarlos.
+        string? brand = null;
+        if (req.Brand is not null)
+        {
+            var (normalizedBrand, brandError) = ProductRules.NormalizeBrand(req.Brand);
+            if (brandError is not null) errors["brand"] = new[] { brandError };
+            brand = normalizedBrand;
+        }
+        string? model = null;
+        if (req.Model is not null)
+        {
+            var (normalizedModel, modelError) = ProductRules.NormalizeModel(req.Model);
+            if (modelError is not null) errors["model"] = new[] { modelError };
+            model = normalizedModel;
         }
         if (ProductRules.Money(req.PurchaseCost, "costo") is string costError) errors["purchaseCost"] = new[] { costError };
         if (ProductRules.Money(req.SalePrice, "precio") is string priceError) errors["salePrice"] = new[] { priceError };
@@ -450,6 +534,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             product.Barcode = barcodeTarget;
             if (req.PurchaseCost.HasValue) product.PurchaseCost = req.PurchaseCost;
             if (req.SalePrice.HasValue) product.SalePrice = req.SalePrice;
+            if (req.Brand is not null) product.Brand = brand;
+            if (req.Model is not null) product.Model = model;
             product.PreferredWarehouseId = prefWh;
             product.PreferredBinId = prefBin;
             product.MinQty = minQty;
@@ -571,14 +657,14 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             p.MinPickQty, p.MaxPickQty, hasMovements, Convert.ToBase64String(p.RowVersion ?? Array.Empty<byte>()));
     }
 
-    /// <summary>Filas de la lista con totales agrupados en UNA consulta (sin N+1); en un almacén si warehouseId.</summary>
-    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, int? warehouseId, CancellationToken ct)
+    /// <summary>Filas de la lista con totales agrupados en UNA consulta (sin N+1); en esos almacenes si warehouseIds.</summary>
+    private async Task<IReadOnlyList<ProductListItemDto>> ToItemsAsync(IReadOnlyList<Product> products, IReadOnlyList<int>? warehouseIds, CancellationToken ct)
     {
         if (products.Count == 0) return Array.Empty<ProductListItemDto>();
         var ids = products.Select(p => p.ProductId).ToList();
 
-        var totals = (await db.Set<StockBalance>().AsNoTracking()
-                .Where(b => ids.Contains(b.ProductId) && (warehouseId == null || b.WarehouseId == warehouseId))
+        var totals = (await StockIn(warehouseIds)
+                .Where(b => ids.Contains(b.ProductId))
                 .GroupBy(b => b.ProductId)
                 .Select(g => new { ProductId = g.Key, OnHand = g.Sum(b => b.QtyOnHand), Reserved = g.Sum(b => b.QtyReserved) })
                 .ToListAsync(ct))
@@ -608,7 +694,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                 owner?.PublicId, ProductRules.OwnerLabel(owner?.Name), p.ClientId is null,
                 await CodeAsync(p.BaseUomLookupId, ct), await CodeAsync(p.TrackingTypeLookupId, ct),
                 p.Barcode, p.PurchaseCost, p.SalePrice,
-                t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive));
+                t.OnHand, t.Reserved, available, p.MinQty, ProductRules.IsBelowMin(p.MinQty, available, p.IsActive), p.IsActive,
+                p.Brand, p.Model));
         }
         return items;
     }
@@ -631,6 +718,28 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     private async Task<Warehouse> ResolveWarehouseAsync(Guid publicId, CancellationToken ct)
         => await db.Set<Warehouse>().AsNoTracking().FirstOrDefaultAsync(w => w.PublicId == publicId, ct)
            ?? throw new NotFoundException("Almacén");
+
+    /// <summary>
+    /// Lote 12 — almacenes del filtro de la lista: el singular (compatibilidad) y la lista combinados, sin repetir. Null = sin
+    /// filtro. Cualquiera que no sea del tenant → 404 'Almacén no encontrado.' (igual que el singular).
+    /// </summary>
+    private async Task<List<int>?> ResolveWarehouseIdsAsync(Guid? single, Guid[]? many, CancellationToken ct)
+    {
+        var pubs = (many ?? Array.Empty<Guid>()).Concat(single is Guid g ? new[] { g } : Array.Empty<Guid>()).Distinct().ToList();
+        if (pubs.Count == 0) return null;
+        var ids = await db.Set<Warehouse>().AsNoTracking().Where(w => pubs.Contains(w.PublicId)).Select(w => w.WarehouseId).ToListAsync(ct);
+        if (ids.Count != pubs.Count) throw new NotFoundException("Almacén");
+        return ids;
+    }
+
+    /// <summary>Saldos del tenant, acotados a los almacenes indicados (null = todos).</summary>
+    private IQueryable<StockBalance> StockIn(IReadOnlyList<int>? warehouseIds)
+    {
+        var stock = db.Set<StockBalance>().AsNoTracking();
+        if (warehouseIds is null) return stock;
+        var ids = warehouseIds.ToList();
+        return stock.Where(b => ids.Contains(b.WarehouseId));
+    }
 
     /// <summary>Categoría activa del tenant o 404 'Categoría no encontrada.' / 400 'La categoría está inactiva.'</summary>
     private async Task<ProductCategory> ResolveActiveCategoryAsync(int categoryId, CancellationToken ct)

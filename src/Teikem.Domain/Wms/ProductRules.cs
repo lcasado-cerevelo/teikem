@@ -17,6 +17,11 @@ public static class ProductRules
     public const int NameMaxLength = 200;
     public const int BarcodeMaxLength = 60;
     public const int CategoryNameMaxLength = 150;
+    /// <summary>Lote 12: largo máximo de la marca y del modelo (NVARCHAR(100)).</summary>
+    public const int BrandMaxLength = 100;
+    public const int ModelMaxLength = 100;
+    /// <summary>Lote 12: tope de marcas distintas que devuelve el endpoint del filtro.</summary>
+    public const int MaxBrandRows = 500;
     /// <summary>Profundidad máxima del árbol de categorías (una categoría raíz es el nivel 1).</summary>
     public const int MaxCategoryDepth = 5;
     /// <summary>Tope de filas por página (D38).</summary>
@@ -33,6 +38,8 @@ public static class ProductRules
     public const string NameRequired = "El nombre del producto es obligatorio.";
     public static string NameTooLong => $"El nombre no puede exceder {NameMaxLength} caracteres.";
     public static string BarcodeTooLong => $"El código de barras no puede exceder {BarcodeMaxLength} caracteres.";
+    public static string BrandTooLong => $"La marca no puede exceder {BrandMaxLength} caracteres.";
+    public static string ModelTooLong => $"El modelo no puede exceder {ModelMaxLength} caracteres.";
 
     public const string SkuTaken = "Ya existe un producto con ese SKU para ese dueño.";
     public const string BarcodeTaken = "Ya existe un producto activo con ese código de barras.";
@@ -105,6 +112,51 @@ public static class ProductRules
         if (code.Length > BarcodeMaxLength) return (null, BarcodeTooLong);
         return (code, null);
     }
+
+    /// <summary>Lote 12 — marca opcional en texto libre: recortada; vacía → null; más larga que BrandMaxLength → BrandTooLong.</summary>
+    public static (string? Brand, string? Error) NormalizeBrand(string? raw) => NormalizeFreeText(raw, BrandMaxLength, BrandTooLong);
+
+    /// <summary>Lote 12 — modelo opcional en texto libre: recortado; vacío → null; más largo que ModelMaxLength → ModelTooLong.</summary>
+    public static (string? Model, string? Error) NormalizeModel(string? raw) => NormalizeFreeText(raw, ModelMaxLength, ModelTooLong);
+
+    private static (string? Value, string? Error) NormalizeFreeText(string? raw, int maxLength, string tooLong)
+    {
+        var value = raw?.Trim();
+        if (string.IsNullOrEmpty(value)) return (null, null);
+        if (value.Length > maxLength) return (null, tooLong);
+        return (value, null);
+    }
+
+    /// <summary>
+    /// Lote 12 — valores de un filtro de texto múltiple (marcas): recortados, sin vacíos y sin repetir (sin distinguir
+    /// mayúsculas), en minúsculas invariantes para compararlos con LOWER(columna). Null o vacío → null (sin filtro).
+    /// </summary>
+    public static List<string>? NormalizeTextFilter(IEnumerable<string?>? values)
+    {
+        var list = (values ?? Array.Empty<string?>())
+            .Where(v => !string.IsNullOrWhiteSpace(v)).Select(v => v!.Trim().ToLowerInvariant()).Distinct().ToList();
+        return list.Count == 0 ? null : list;
+    }
+
+    /// <summary>
+    /// Lote 12 — marcas distintas para el filtro: sin vacíos, sin repetir sin distinguir mayúsculas (gana la primera grafía
+    /// en orden ordinal, estable), ordenadas sin distinguir mayúsculas y acotadas a MaxBrandRows.
+    /// </summary>
+    public static IReadOnlyList<string> DistinctBrands(IEnumerable<string?> brands)
+        => (brands ?? Array.Empty<string?>())
+            .Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b!.Trim())
+            .OrderBy(b => b, StringComparer.Ordinal)
+            .GroupBy(b => b, StringComparer.OrdinalIgnoreCase).Select(g => g.First())
+            .OrderBy(b => b, StringComparer.OrdinalIgnoreCase).ThenBy(b => b, StringComparer.Ordinal)
+            .Take(MaxBrandRows)
+            .ToList();
+
+    /// <summary>
+    /// Lote 12 — ¿al producto SERIAL le faltan series por capturar? Sí si está activo, se controla por serie y su existencia
+    /// en mano es mayor que la cantidad de series en stock (AVAILABLE o RESERVED). Misma regla que el filtro serialMissing.
+    /// </summary>
+    public static bool IsSerialMissing(bool isActive, bool isSerial, decimal onHand, int serialsInStock)
+        => isActive && isSerial && onHand > serialsInStock;
 
     // ---------------------------------------------------------------- números
 

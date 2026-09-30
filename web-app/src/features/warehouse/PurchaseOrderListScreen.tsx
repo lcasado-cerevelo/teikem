@@ -1,7 +1,9 @@
 // Pantalla D (Lote F6) — Compras: órdenes de compra. `/warehouse/purchase-orders`. Lectura: purchasing.view +
 // PURCHASING (por la ruta). Alta: purchasing.manage. Nace DRAFT con número PO-#####.
+// Lote 2: sin buscador dentro de la tabla; filtros Estatus/Proveedor/Almacén con multiselección y buscador (SearchSelect); en el alta, Proveedor y Producto con buscador, Almacén obligatorio y al menos una
+// línea con cantidad > 0.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
@@ -14,23 +16,21 @@ import {
   DateInput,
   DateRangeFilter,
   EMPTY_RANGE,
+  ComboSelectInput,
   Field,
   Filters,
   Form,
   Modal,
   NumberInput,
   Panel,
-  QBox,
-  Select,
-  SelectFilter,
   SearchSelect,
   TextArea,
   toast,
   type DataColumn,
   type DateRange,
 } from '../../kernel/ui'
-import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, type PurchaseOrderDto } from './api'
-import { ProductPickerInput, WarehousePicker, WarehousePickerInput } from './pickers'
+import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
+import { ProductPickerInput, WarehousePickerInput } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
 
 const PAGE_SIZE = 25
@@ -89,13 +89,14 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
     () =>
       z.object({
         supplierId: z.string().min(1, t('warehouse.purchaseOrders.errors.supplierRequired')),
-        warehousePublicId: z.string().nullable(),
+        warehousePublicId: z.string().nullable().refine((v) => Boolean(v), t('warehouse.purchaseOrders.errors.warehouseRequired')),
         expectedDate: z.string(),
         notes: z.string(),
         lines: z
           .array(lineSchema)
           .min(1, t('warehouse.purchaseOrders.errors.linesRequired'))
           .max(200, t('warehouse.purchaseOrders.errors.tooManyLines'))
+          .refine((lines) => lines.some((l) => (l.qtyOrdered ?? 0) > 0), t('warehouse.purchaseOrders.errors.linesQtyRequired'))
           .superRefine((lines, ctx) => {
             const seen = new Set<string>()
             lines.forEach((l, i) => {
@@ -117,6 +118,8 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
   })
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
   const formId = 'purchase-order-create'
+  const linesErrors = form.formState.errors.lines
+  const linesError = linesErrors?.message ?? linesErrors?.root?.message
 
   const close = () => {
     form.reset({ supplierId: '', warehousePublicId: null, expectedDate: '', notes: '', lines: [emptyLine] })
@@ -159,9 +162,9 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
       >
         <div className="r2">
           <Field name="supplierId" label={t('warehouse.purchaseOrders.fields.supplier')} required>
-            <Select options={supplierOptions} placeholder={t('warehouse.suppliers.fields.none')} />
+            <ComboSelectInput options={supplierOptions} placeholder={t('warehouse.purchaseOrders.fields.supplierSearch')} />
           </Field>
-          <Field name="warehousePublicId" label={t('warehouse.purchaseOrders.fields.warehouse')}>
+          <Field name="warehousePublicId" label={t('warehouse.purchaseOrders.fields.warehouse')} required>
             <WarehousePickerInput />
           </Field>
         </div>
@@ -175,6 +178,11 @@ function CreatePurchaseOrderModal({ open, onClose }: { open: boolean; onClose: (
         </Field>
 
         <p className="help">{t('warehouse.purchaseOrders.fields.lines')}</p>
+        {linesError && (
+          <p className="ferr" role="alert">
+            {linesError}
+          </p>
+        )}
         {fields.map((f, i) => (
           <div key={f.id} style={{ padding: 12, marginBottom: 10, border: '1px solid var(--line)', borderRadius: 9 }}>
             <div className="r3">
@@ -209,27 +217,19 @@ export default function PurchaseOrderListScreen() {
   const lang = useLang()
   const navigate = useNavigate()
   const [statusFilter, setStatusFilter] = useState<string[]>([])
-  const [supplierId, setSupplierId] = useState('')
-  const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
+  const [supplierIds, setSupplierIds] = useState<string[]>([])
+  const [warehouseIds, setWarehouseIds] = useState<string[]>([])
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE)
-  const [text, setText] = useState('')
-  const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
-
-  useEffect(() => {
-    const h = setTimeout(() => {
-      setSearch(text.trim())
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text])
 
   const { data: poStatuses = [] } = useStatuses(STATUS_DOMAIN)
   const statusOptions = useMemo(() => poStatuses.map((s) => ({ value: s.code, label: s.label })), [poStatuses])
   const { data: suppliers = [] } = useSuppliers({ includeInactive: true })
   const supplierOptions = useMemo(() => suppliers.map((s) => ({ value: String(s.id), label: s.name ?? '' })), [suppliers])
+  const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
+  const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
 
   function withPageReset<T>(setter: (v: T) => void) {
     return (v: T) => {
@@ -238,22 +238,21 @@ export default function PurchaseOrderListScreen() {
     }
   }
   const changeStatus = withPageReset(setStatusFilter)
-  const changeSupplier = withPageReset(setSupplierId)
-  const changeWarehouse = withPageReset(setWarehousePublicId)
+  const changeSupplier = withPageReset(setSupplierIds)
+  const changeWarehouse = withPageReset(setWarehouseIds)
   const changeRange = withPageReset(setRange)
 
   const query = useMemo(
     () => ({
       status: statusFilter.length > 0 ? statusFilter : undefined,
-      supplierId: supplierId ? Number(supplierId) : undefined,
-      warehousePublicId: warehousePublicId || undefined,
+      supplierIds: supplierIds.length > 0 ? supplierIds.map(Number) : undefined,
+      warehousePublicIds: warehouseIds.length > 0 ? warehouseIds : undefined,
       from: range.from || undefined,
       to: range.to || undefined,
-      search: search || undefined,
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    [statusFilter, supplierId, warehousePublicId, range, search, page, pageSize],
+    [statusFilter, supplierIds, warehouseIds, range, page, pageSize],
   )
   const { data, isLoading, error } = usePurchaseOrders(query)
 
@@ -305,31 +304,18 @@ export default function PurchaseOrderListScreen() {
       <Filters
         onClear={() => {
           setStatusFilter([])
-          setSupplierId('')
-          setWarehousePublicId(null)
+          setSupplierIds([])
+          setWarehouseIds([])
           setRange(EMPTY_RANGE)
-          setText('')
         }}
       >
         <SearchSelect label={t('warehouse.purchaseOrders.filters.status')} options={statusOptions} value={statusFilter} onChange={changeStatus} />
-        <SelectFilter
-          label={t('warehouse.purchaseOrders.filters.supplier')}
-          value={supplierId}
-          onChange={changeSupplier}
-          options={supplierOptions}
-          allLabel={t('warehouse.purchaseOrders.filters.anySupplier')}
-        />
-        <div className="f">
-          <label>{t('warehouse.purchaseOrders.filters.warehouse')}</label>
-          <WarehousePicker value={warehousePublicId} onChange={changeWarehouse} placeholder={t('warehouse.purchaseOrders.filters.anyWarehouse')} />
-        </div>
+        <SearchSelect label={t('warehouse.purchaseOrders.filters.supplier')} options={supplierOptions} value={supplierIds} onChange={changeSupplier} />
+        <SearchSelect label={t('warehouse.purchaseOrders.filters.warehouse')} options={warehouseOptions} value={warehouseIds} onChange={changeWarehouse} />
         <DateRangeFilter label={t('warehouse.purchaseOrders.filters.range')} value={range} onChange={changeRange} />
       </Filters>
 
       <Panel flush icon={<IconCart />} title={t('warehouse.purchaseOrders.title')} badge={data ? (data.total ?? 0) : undefined}>
-        <div className="qrow">
-          <QBox value={text} onChange={setText} />
-        </div>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}

@@ -24,9 +24,14 @@ public sealed record BalanceDto(int Id, Guid WarehousePublicId, string Warehouse
 
 public sealed record BalancePageDto(int Total, int Skip, int Take, decimal TotalOnHand, decimal TotalAvailable, IReadOnlyList<BalanceDto> Items);
 
+/// <summary>
+/// Filtros del Kárdex. Lote 12: Brands (marca del producto igual a alguna, sin distinguir mayúsculas) y Name (el nombre del
+/// producto contiene el texto, sin distinguir mayúsculas), para que el Reporte de ajustes use los filtros de Productos.
+/// </summary>
 public sealed record KardexQuery(DateOnly? From = null, DateOnly? To = null, string[]? Types = null, Guid[]? WarehousePublicIds = null,
     int[]? BinIds = null, Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, string? LotNumber = null, string? SerialNumber = null,
-    string? RefEntity = null, int? RefId = null, string? Search = null, int Skip = 0, int Take = 200);
+    string? RefEntity = null, int? RefId = null, string? Search = null, int Skip = 0, int Take = 200, string[]? Brands = null,
+    string? Name = null);
 
 /// <summary>Fila del Kárdex. Quantity = valor del ledger CON signo; SignedQuantity = según la perspectiva del filtro.</summary>
 public sealed record KardexRowDto(long Id, DateTime CreatedAtUtc, string TypeCode, string Type, Guid ProductPublicId, string Sku,

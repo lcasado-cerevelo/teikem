@@ -29,8 +29,12 @@ public sealed record PurchaseOrderPatchRequest(DateOnly? ExpectedDate = null, st
 
 public sealed record PurchaseOrderStatusRequest(string? Comment = null, string? RowVersion = null);
 
+/// <summary>
+/// Filtros de la lista de órdenes de compra. Lote 12: SupplierIds y WarehousePublicIds (varios) se combinan con los
+/// singulares (compatibilidad): la orden aparece si su proveedor / almacén es cualquiera de los indicados.
+/// </summary>
 public sealed record PurchaseOrderQuery(string[]? Status = null, int? SupplierId = null, Guid? WarehousePublicId = null, DateOnly? From = null,
-    DateOnly? To = null, string? Search = null, int Skip = 0, int Take = 100);
+    DateOnly? To = null, string? Search = null, int Skip = 0, int Take = 100, int[]? SupplierIds = null, Guid[]? WarehousePublicIds = null);
 
 public sealed record PurchaseOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered, decimal QtyReceived,
     decimal QtyResolved, decimal QtyPending, decimal UnitCost, decimal LineTotal);

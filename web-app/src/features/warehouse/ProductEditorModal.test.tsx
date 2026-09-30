@@ -1,6 +1,7 @@
-// Modal único de producto (Fase 5, maqueta `renderProductModalHtml`): orden de campos, alta sin bloque de ajuste,
-// edición con SKU bloqueado, interruptor "Producto activo" bloqueado con saldo, "Aplicar ajuste" con el producto fijo y
-// acceso a Lotes/Series. Sobre un fetch simulado.
+// Modal único de producto (Fase 5, maqueta `renderProductModalHtml`; Lote 12): orden de campos (con Marca y Modelo),
+// desplegables con buscador, alta sin bloque de ajuste, edición con SKU bloqueado, interruptor "Producto activo" bloqueado
+// con saldo, bloque de ajuste oculto tras "Añadir ajuste" (nota obligatoria, se oculta y refresca el Total al aplicar, el
+// 409 del servidor queda dentro del bloque) y acceso a Lotes/Series. Sobre un fetch simulado.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -17,7 +18,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[] }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -62,7 +63,18 @@ function route(method: string, url: URL): unknown {
     const items = BINS.filter((x) => ids.length === 0 || ids.includes(x.id))
     return { total: items.length, skip: 0, take: 100, items }
   }
-  if (p === '/api/v1/inventory/adjustments' && method === 'POST') return { transactions: [], balances: [] }
+  if (p === '/api/v1/products/brands') return ['Abbott', 'Roche']
+  if (p === `/api/v1/products/${PID}` && method === 'GET') return { ...detail({ trackingTypeCode: 'NONE' }), product: { ...detail().product, trackingTypeCode: 'NONE', qtyOnHand: mock.onHand } }
+  if (p === '/api/v1/products' && method === 'POST') return { product: { id: 99, publicId: PID } }
+  if (p === '/api/v1/inventory/adjustments' && method === 'POST') {
+    if (mock.adjustFails)
+      return new Response(
+        JSON.stringify({ title: 'Inventario insuficiente de GLU-100 en A-01: disponible 12, solicitado 20.', status: 409, code: 'insufficient_stock' }),
+        { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+      )
+    mock.onHand -= 2
+    return { transactions: [], balances: [] }
+  }
   return new Response(JSON.stringify({ title: 'Sin acceso', code: 'forbidden' }), { status: 403 })
 }
 
@@ -124,7 +136,17 @@ function findDialog(name: string): Promise<HTMLElement> {
 beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
+  mock.onHand = 12
+  mock.adjustFails = false
 })
+
+/** Abre el bloque de ajuste y llena Cantidad y Motivo (combobox con buscador). */
+async function fillAdjust(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement, qty: string) {
+  await user.click(await within(dialog).findByRole('button', { name: /Añadir ajuste/ }))
+  await user.type(await within(dialog).findByLabelText(/^Cantidad \(\+\/-\)/), qty)
+  await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'encon')
+  await user.click(await within(dialog).findByRole('option', { name: 'Encontrado' }))
+}
 
 describe('ProductEditorModal', () => {
   it('alta: campos en el orden de la maqueta, Rastreo "Ninguno" y Unidad por defecto, sin interruptor ni ajuste', async () => {
@@ -135,6 +157,8 @@ describe('ProductEditorModal', () => {
       'SKU',
       'Unidad',
       'Nombre',
+      'Marca',
+      'Modelo',
       'Categoría',
       'Rastreo',
       'Dueño del inventario',
@@ -145,10 +169,13 @@ describe('ProductEditorModal', () => {
       'Total (se ajusta al editar)',
       'Punto de reorden',
     ])
-    expect(within(dialog).getByLabelText('Rastreo')).toHaveValue('NONE')
-    expect(within(dialog).getByLabelText('Unidad')).toHaveValue('UN')
+    // desplegables con buscador: muestran la etiqueta del catálogo
+    expect(within(dialog).getByRole('combobox', { name: 'Rastreo' })).toHaveValue('Ninguno')
+    expect(within(dialog).getByRole('combobox', { name: 'Unidad' })).toHaveValue('Unidad')
+    expect(within(dialog).getByRole('combobox', { name: 'Categoría' })).toHaveValue('')
     expect(within(dialog).queryByRole('switch')).toBeNull()
     expect(within(dialog).queryByRole('button', { name: /Aplicar ajuste/ })).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: /Añadir ajuste/ })).toBeNull()
     expect(within(dialog).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeInTheDocument()
   })
@@ -182,6 +209,7 @@ describe('ProductEditorModal', () => {
   })
 
   it('edición sin saldo: el interruptor se puede apagar; serie: Ver lotes y Ver series', async () => {
+    mock.onHand = 0
     wrap(<ProductEditorModal open product={detail({ qtyOnHand: 0, trackingTypeCode: 'SERIAL' })} onClose={() => {}} />, [
       'inventory.view',
       'inventory.manage',
@@ -193,7 +221,7 @@ describe('ProductEditorModal', () => {
     expect(within(dialog).getByRole('link', { name: 'Ver series' })).toHaveAttribute('href', `/warehouse/products/${PID}?tab=serials`)
   })
 
-  it('Aplicar ajuste: POST /inventory/adjustments con el producto fijo y el almacén y la posición por defecto', async () => {
+  it('ajuste oculto tras "Añadir ajuste"; motivo con buscador sin los reservados; nota obligatoria sin llamar al API', async () => {
     const user = userEvent.setup()
     wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'NONE' })} onClose={() => {}} />, [
       'inventory.view',
@@ -201,21 +229,94 @@ describe('ProductEditorModal', () => {
       'inventory.adjust',
     ])
     const dialog = await findDialog('Editar producto')
-    const qty = await within(dialog).findByLabelText(/^Cantidad \(\+\/-\)/)
-    await user.type(qty, '-2')
-    const reason = within(dialog).getByLabelText(/^Motivo/)
+    expect(await within(dialog).findByRole('button', { name: /Añadir ajuste/ })).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText(/^Cantidad \(\+\/-\)/)).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: /Aplicar ajuste/ })).toBeNull()
+
+    await user.click(within(dialog).getByRole('button', { name: /Añadir ajuste/ }))
     // los motivos reservados al sistema no se ofrecen
-    await waitFor(() => expect(within(reason).getByRole('option', { name: 'Encontrado' })).toBeInTheDocument())
-    expect(within(reason).queryByRole('option', { name: 'Diferencia de conteo' })).toBeNull()
-    await user.selectOptions(reason, 'FOUND')
+    await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'diferencia')
+    expect(await within(dialog).findByText('Sin coincidencias')).toBeInTheDocument()
+    await user.clear(within(dialog).getByRole('combobox', { name: /^Motivo/ }))
+    await user.type(within(dialog).getByRole('combobox', { name: /^Motivo/ }), 'encon')
+    await user.click(await within(dialog).findByRole('option', { name: 'Encontrado' }))
+    await user.type(within(dialog).getByLabelText(/^Cantidad \(\+\/-\)/), '-2')
+    await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
+    expect(await within(dialog).findByText('Escriba una nota que explique el ajuste.')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
+
+    // Cancelar ajuste lo cierra; al volver a abrirlo está limpio
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar ajuste' }))
+    await user.click(await within(dialog).findByRole('button', { name: /Añadir ajuste/ }))
+    expect(within(dialog).getByLabelText(/^Cantidad \(\+\/-\)/)).toHaveValue(null)
+  })
+
+  it('Aplicar ajuste: POST con la nota, el producto fijo y la posición por defecto; refresca el Total y oculta el bloque', async () => {
+    const user = userEvent.setup()
+    wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'NONE' })} onClose={() => {}} />, [
+      'inventory.view',
+      'inventory.manage',
+      'inventory.adjust',
+    ])
+    const dialog = await findDialog('Editar producto')
+    await fillAdjust(user, dialog, '-2')
+    await user.type(within(dialog).getByLabelText(/^Nota/), 'Caja dañada en muelle')
     await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
     const post = mock.calls.find((c) => c.method === 'POST')!
     expect(post.url.pathname).toBe('/api/v1/inventory/adjustments')
-    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'FOUND' })
-    // el modal sigue abierto y la cantidad vuelve a vacío
-    await waitFor(() => expect(qty).toHaveValue(null))
+    expect(post.body).toEqual({ productPublicId: PID, warehousePublicId: WH, binId: 10, quantity: -2, reason: 'FOUND', notes: 'Caja dañada en muelle' })
+    // el Total del modal pasa a lo que dice la ficha refrescada y el bloque vuelve a quedar oculto
+    await waitFor(() => expect(within(dialog).getByLabelText('Total (usa Ajustar abajo)')).toHaveValue('10'))
+    expect(await within(dialog).findByRole('button', { name: /Añadir ajuste/ })).toBeInTheDocument()
+    expect(within(dialog).queryByLabelText(/^Nota/)).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Editar producto' })).toBeInTheDocument()
+  })
+
+  it('409 insufficient_stock: el mensaje del servidor queda dentro del bloque y el bloque sigue abierto', async () => {
+    const user = userEvent.setup()
+    mock.adjustFails = true
+    wrap(<ProductEditorModal open product={detail({ trackingTypeCode: 'NONE' })} onClose={() => {}} />, [
+      'inventory.view',
+      'inventory.manage',
+      'inventory.adjust',
+    ])
+    const dialog = await findDialog('Editar producto')
+    await fillAdjust(user, dialog, '-20')
+    await user.type(within(dialog).getByLabelText(/^Nota/), 'Merma')
+    await user.click(within(dialog).getByRole('button', { name: /Aplicar ajuste/ }))
+    const block = dialog.querySelector('form.pe-adjust') as HTMLElement
+    expect(await within(block).findByRole('alert')).toHaveTextContent('Inventario insuficiente de GLU-100 en A-01: disponible 12, solicitado 20.')
+    expect(within(dialog).getByLabelText(/^Nota/)).toHaveValue('Merma')
+    expect(within(dialog).getByLabelText('Total (usa Ajustar abajo)')).toHaveValue('12')
+  })
+
+  it('alta con Marca y Modelo; edición: quitar la marca manda "" (PATCH) y el modelo sin cambio va null', async () => {
+    const user = userEvent.setup()
+    const { unmount } = wrap(<ProductEditorModal open product={null} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    let dialog = await findDialog('Nuevo producto')
+    await user.type(await within(dialog).findByLabelText(/^SKU/), 'NEW-1')
+    await user.type(within(dialog).getByLabelText(/^Nombre/), 'Producto nuevo')
+    // sugerencias de marcas existentes (datalist), pero se puede escribir una nueva
+    const brand = within(dialog).getByLabelText('Marca')
+    await waitFor(() => expect(document.getElementById(brand.getAttribute('list')!)?.querySelectorAll('option')).toHaveLength(2))
+    await user.type(brand, 'Marca Nueva')
+    await user.type(within(dialog).getByLabelText('Modelo'), 'X-200')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST')).toBe(true))
+    expect(mock.calls.find((c) => c.method === 'POST')!.body).toMatchObject({ sku: 'NEW-1', brand: 'Marca Nueva', model: 'X-200' })
+    unmount()
+
+    mock.calls = []
+    wrap(<ProductEditorModal open product={detail({ brand: 'Abbott', model: 'Lite' })} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    dialog = await findDialog('Editar producto')
+    expect(await within(dialog).findByLabelText('Marca')).toHaveValue('Abbott')
+    await user.clear(within(dialog).getByLabelText('Marca'))
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(true))
+    const patch = mock.calls.find((c) => c.method === 'PATCH')!.body as Record<string, unknown>
+    expect(patch.brand).toBe('')
+    expect(patch.model).toBeNull()
   })
 
   it('mínimo de picking con la posición por defecto fuera de una zona PICKING: aviso bajo Posición y sin guardar', async () => {

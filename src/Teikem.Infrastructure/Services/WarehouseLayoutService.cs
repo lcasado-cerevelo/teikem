@@ -344,6 +344,55 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     }
 
     /// <summary>
+    /// Lote 11 — cupo máximo en bloque: fija (MaxCapacityQty &gt; 0) o quita (Clear) el cupo de TODAS las posiciones del almacén
+    /// que cumplen los filtros, sin paginar y en una transacción; devuelve cuántas cumplen y cuántas cambiaron.
+    /// - Los filtros son los del listado y se aplican con la MISMA consulta (BinRowsQuery con un WarehouseBinQuery), así que
+    ///   GET .../bins?take=1 con los mismos filtros devuelve en Total exactamente las posiciones que se afectarán.
+    ///   OnlyWithoutCapacity además deja fuera las que ya tienen cupo.
+    /// - 400: ninguno o ambos de maxCapacityQty/clear, cupo ≤ 0 (el mismo mensaje del PATCH), sin filtros de posiciones y sin
+    ///   allBins: true. Almacén de otro tenant → 404; dado de baja → 422.
+    /// - Se cargan y modifican las posiciones con seguimiento (no ExecuteUpdate) para que el interceptor audite CADA posición
+    ///   cambiada, igual que el PATCH individual. Las que ya tienen ese valor no se tocan (no cuentan como cambiadas).
+    /// </summary>
+    public async Task<WarehouseBinCapacityResultDto> SetBinsCapacityAsync(Guid warehousePublicId, WarehouseBinCapacityRequest req, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(req);
+        var hasFilter = WarehouseRules.HasBinFilter(req.ZoneIds, req.Aisle, req.Rack, req.Level, req.Position, req.Search, req.BinIds);
+        var errors = WarehouseRules.ValidateBulkCapacity(hasFilter, req.AllBins, req.MaxCapacityQty, req.Clear);
+        if (errors.Count > 0) throw new ValidationException(errors);
+        int? target = req.Clear ? null : req.MaxCapacityQty;
+
+        var w = await ResolveWarehouseAsync(warehousePublicId, ct);
+        EnsureWarehouseActive(w);
+        var query = new WarehouseBinQuery(Search: req.Search, IncludeInactive: req.IncludeInactive, ZoneIds: req.ZoneIds is { Length: > 0 } z ? z : null,
+            Aisle: req.Aisle, Rack: req.Rack, Level: req.Level, Position: req.Position, BinIds: req.BinIds is { Length: > 0 } b ? b : null);
+
+        return await db.RunInTransactionAsync(async ct2 =>
+        {
+            var rows = BinRowsQuery(db, w.WarehouseId, query, null, null);
+            if (req.OnlyWithoutCapacity) rows = rows.Where(x => x.Bin.MaxCapacityQty == null);
+            var ids = await rows.Select(x => x.Bin.WarehouseBinId).ToListAsync(ct2);
+            if (ids.Count == 0) return new WarehouseBinCapacityResultDto(0, 0);
+
+            var changed = 0;
+            foreach (var chunk in ids.Chunk(BulkCapacityChunk))
+            {
+                var bins = await db.WarehouseBins.Where(x => x.WarehouseId == w.WarehouseId && chunk.Contains(x.WarehouseBinId)).ToListAsync(ct2);
+                foreach (var bin in bins.Where(x => x.MaxCapacityQty != target))
+                {
+                    bin.MaxCapacityQty = target;
+                    changed++;
+                }
+            }
+            if (changed > 0) await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct2);
+            return new WarehouseBinCapacityResultDto(ids.Count, changed);
+        }, ct);
+    }
+
+    /// <summary>Posiciones que se cargan por consulta en la asignación en bloque (acota la lista de ids de cada IN).</summary>
+    public const int BulkCapacityChunk = 1000;
+
+    /// <summary>
     /// Baja/reactivación de posición.
     /// - Desactivar, en orden: bloqueo del almacén, rango de saldos de la posición (HOLDLOCK), 409 'La posición {code} tiene
     ///   inventario; no se puede desactivar.' si hay en mano o reservado ≠ 0, 409 si alguna tarea abierta la usa (origen o

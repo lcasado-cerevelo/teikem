@@ -27,13 +27,15 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     /// <summary>
     /// Lista paginada (take ≤ 200), más recientes primero. Filtros: status (DRAFT, SENT, PARTIAL, RECEIVED, CANCELLED),
     /// supplierId, warehousePublicId, from/to (fecha de la orden) y search (número, proveedor, notas, SKU o producto).
+    /// Lote 12: supplierIds y warehousePublicIds (varios), combinados con los singulares.
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.PurchasingView)]
     public Task<PurchaseOrderPageDto> List([FromQuery] string[]? status, [FromQuery] int? supplierId, [FromQuery] Guid? warehousePublicId,
-        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string? search, [FromQuery] int skip = 0, [FromQuery] int take = 100,
-        CancellationToken ct = default)
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] string? search, [FromQuery] int[]? supplierIds,
+        [FromQuery] Guid[]? warehousePublicIds, [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
         => purchaseOrders.ListAsync(new PurchaseOrderQuery(status is { Length: > 0 } ? status : null, supplierId, warehousePublicId, from, to,
-            search, skip, take), ct);
+            search, skip, take, supplierIds is { Length: > 0 } ? supplierIds : null,
+            warehousePublicIds is { Length: > 0 } ? warehousePublicIds : null), ct);
 
     /// <summary>
     /// Órdenes activas no canceladas con recibo confirmado y cantidades pendientes (faltante y su costo) y el almacén de la

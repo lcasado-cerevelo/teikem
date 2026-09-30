@@ -80,6 +80,19 @@ public sealed record WarehouseBinDto(int Id, int ZoneId, string ZoneCode, string
 /// <summary>Página del listado de posiciones (mismo sobre que productos, recibos y tareas).</summary>
 public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items);
 
+/// <summary>
+/// Lote 11 — asignación del cupo máximo en bloque (POST /warehouses/{publicId}/bins/capacity). Filtros = los mismos del listado
+/// de posiciones con el mismo significado (ZoneIds, Aisle/Rack/Level/Position y Search "contiene", BinIds, IncludeInactive);
+/// OnlyWithoutCapacity = solo las posiciones que hoy no tienen cupo (no pisa ninguno ya capturado). Sin ningún filtro de
+/// posiciones se exige AllBins = true (todo el almacén). Exactamente uno de MaxCapacityQty (&gt; 0) o Clear = true (quitar el cupo).
+/// </summary>
+public sealed record WarehouseBinCapacityRequest(int[]? ZoneIds = null, string? Aisle = null, string? Rack = null, string? Level = null,
+    string? Position = null, string? Search = null, int[]? BinIds = null, bool IncludeInactive = false, bool OnlyWithoutCapacity = false,
+    bool AllBins = false, int? MaxCapacityQty = null, bool Clear = false);
+
+/// <summary>Resultado de la asignación en bloque: posiciones que cumplen los filtros y cuántas cambiaron de cupo.</summary>
+public sealed record WarehouseBinCapacityResultDto(int Matched, int Changed);
+
 public sealed record WarehouseDockRequest(string? Code, string? DockType);
 
 public sealed record WarehouseDockPatchRequest(string? DockType = null)

@@ -3,10 +3,20 @@
 // invalida la lista de su entidad (prefijo `[ruta]`) y, si cambia saldos, las consultas de inventario que dependen de ellos.
 // Permisos y módulos (los aplica el API; aquí solo se documentan): lecturas con `inventory.view` + WMS_LOTSERIAL (compras:
 // `purchasing.view` + PURCHASING; citas y cruce de muelle: `inventory.view` + CROSSDOCK; órdenes: `orders.view` + LTL_GROUND).
+// Lote 11: cupo máximo en bloque (`useSetBinsCapacity`) y su vista previa (`useBinCapacityPreview`), al final del archivo.
 import { keepPreviousData, useMutation, useQueries, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import type { components, paths } from '../../kernel/api/schema'
+import {
+  BIN_CAPACITY_EXACT_LIMIT,
+  capacityPreviewQuery,
+  hasTextFilter,
+  scopeReady,
+  zonesWithoutCapacity,
+  type BinCapacityRequest,
+  type BinCapacityScope,
+} from './binCapacity'
 
 type Schemas = components['schemas']
 
@@ -40,6 +50,7 @@ export type SerialDto = Schemas['SerialDto']
 export type BalanceDto = Schemas['BalanceDto']
 export type BalancePageDto = Schemas['BalancePageDto']
 export type KardexPageDto = Schemas['KardexPageDto']
+export type KardexRowDto = Schemas['KardexRowDto']
 export type ReconciliationDto = Schemas['ReconciliationDto']
 export type GenealogyDto = Schemas['GenealogyDto']
 export type SerialTraceDto = Schemas['SerialTraceDto']
@@ -93,6 +104,7 @@ export const warehouseKeys = {
   product: ['/api/v1/products/{publicId}'],
   productLots: ['/api/v1/products/{publicId}/lots'],
   productSerials: ['/api/v1/products/{publicId}/serials'],
+  productBrands: ['/api/v1/products/brands'],
   productCategories: ['/api/v1/product-categories'],
   balances: ['/api/v1/inventory/balances'],
   transactions: ['/api/v1/inventory/transactions'],
@@ -324,52 +336,38 @@ export function useProducts(query: GetQuery<'/api/v1/products'> = {}, options?: 
   })
 }
 
-/** Páginas de 200 (tope del API) y máximo de páginas que lee el conteo de productos con serie (5 000 productos). */
-export const SERIAL_COUNT_PAGE = 200
-export const SERIAL_COUNT_MAX_PAGES = 25
-
 /**
- * Productos activos con rastreo por serie (`trackingTypeCode === 'SERIAL'`). El API no filtra la lista por rastreo, así que
- * se leen todas las páginas de `GET /api/v1/products?activeOnly=true` (200 por página, hasta `SERIAL_COUNT_MAX_PAGES`) y se
- * cuentan en el cliente: el conteo es exacto salvo `truncated` (más productos de los leídos). Pendiente de backend: un
- * filtro `trackingType` en la lista para pedirlo con `take=1` como los demás KPIs.
- */
-export function useSerialProductCount(options?: WarehouseQueryOptions) {
-  return useQuery({
-    queryKey: [warehouseKeys.products[0], { activeOnly: true, allPages: true, count: 'SERIAL' }],
-    queryFn: async () => {
-      let count = 0
-      let read = 0
-      let total = 0
-      for (let page = 0; page < SERIAL_COUNT_MAX_PAGES; page++) {
-        const query = { activeOnly: true, skip: page * SERIAL_COUNT_PAGE, take: SERIAL_COUNT_PAGE }
-        const data = await unwrap(api.GET('/api/v1/products', { params: { query } }))
-        const items = data.items ?? []
-        count += items.filter((p) => p.trackingTypeCode === 'SERIAL').length
-        read += items.length
-        total = data.total ?? read
-        if (items.length < SERIAL_COUNT_PAGE || read >= total) break
-      }
-      return { count, truncated: read < total }
-    },
-    enabled: options?.enabled ?? true,
-    meta: meta(options),
-  })
-}
-
-/**
- * KPIs de 'Productos e inventario' (maqueta `inventario()`), de todo el catálogo (no siguen los filtros de la tabla):
+ * KPIs de 'Productos e inventario' (maqueta `inventario()`), de todo el catálogo (no siguen los filtros de la tabla), todos
+ * con `take=1` (solo interesa el `total` o la suma del servidor):
  * - `activeSkus`: `GET /products?activeOnly=true&take=1` → `total`.
  * - `totalUnits`: `GET /inventory/balances?includeZero=false&take=1` → `totalOnHand` (suma de todo, no solo la página).
  * - `belowMin`: `GET /products?belowMin=true&take=1` → `total` (activo, con mínimo y disponible < mínimo).
- * - `serial`: `useSerialProductCount` (`{ count, truncated }`).
+ * - `serial`: `GET /products?serialOnly=true&activeOnly=true&take=1` → `total` (Lote 12: rastreo SERIAL o con series).
+ * - `serialMissing`: `GET /products?serialMissing=true&take=1` → `total` (activos SERIAL con existencia mayor que sus series
+ *   en stock: el KPI se pinta en naranja si es > 0).
  */
 export function useProductInventoryKpis(options?: WarehouseQueryOptions) {
   const activeSkus = useProducts({ activeOnly: true, take: 1 }, options)
   const totalUnits = useInventoryBalances({ includeZero: false, take: 1 }, options)
   const belowMin = useProducts({ belowMin: true, take: 1 }, options)
-  const serial = useSerialProductCount(options)
-  return { activeSkus, totalUnits, belowMin, serial }
+  const serial = useProducts({ activeOnly: true, serialOnly: true, take: 1 }, options)
+  const serialMissing = useProducts({ serialMissing: true, take: 1 }, options)
+  return { activeSkus, totalUnits, belowMin, serial, serialMissing }
+}
+
+/**
+ * `GET /api/v1/products/brands?search=` (Lote 12): marcas distintas del tenant (activos e inactivos, ordenadas, hasta 500) para
+ * el filtro Marca y las sugerencias del campo Marca del modal. Caché de 1 min; un 403 no saca de la pantalla.
+ */
+export function useProductBrands(search = '', options?: WarehouseQueryOptions) {
+  const query = { search: search.trim() || undefined }
+  return useQuery({
+    queryKey: [warehouseKeys.productBrands[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/products/brands', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    staleTime: 60 * 1000,
+    meta: { handleAccessDenied: false },
+  })
 }
 
 /** `GET /api/v1/products/{publicId}` (ficha: `ProductDetailDto`, datos de lista en `product`). */
@@ -424,7 +422,7 @@ export function useCreateProduct() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Schemas['ProductCreateRequest']) => unwrap(api.POST('/api/v1/products', { body })),
-    onSuccess: () => invalidate(qc, 'products'),
+    onSuccess: () => invalidate(qc, 'products', 'productBrands'),
   })
 }
 
@@ -434,7 +432,7 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['ProductPatchRequest'] }) =>
       unwrap(api.PATCH('/api/v1/products/{publicId}', { params: { path: { publicId } }, body })),
-    onSuccess: () => invalidate(qc, 'products', 'product', 'balances'),
+    onSuccess: () => invalidate(qc, 'products', 'product', 'balances', 'productBrands'),
   })
 }
 
@@ -1183,3 +1181,72 @@ export const exportWarehouseBins = (publicId: string, query: GetQuery<'/api/v1/w
   fetchAllPages((skip, take) =>
     unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId }, query: { ...query, skip, take } } })),
   )
+
+// =====================================================================================================================
+// Lote 11: cupo máximo en bloque ("Asignar cupo", BinCapacityModal)
+// =====================================================================================================================
+
+/**
+ * `POST /api/v1/warehouses/{publicId}/bins/capacity` (`warehouse.manage`): fija (`maxCapacityQty`) o quita (`clear`) el
+ * cupo de todas las posiciones que cumplen los filtros → `{ matched, changed }`. Invalida por prefijo posiciones, zonas
+ * (los recuadros de ocupación de Posiciones) y almacenes, como `useSaveWarehouseBin`.
+ */
+export function useSetBinsCapacity() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: BinCapacityRequest }) =>
+      unwrap(api.POST('/api/v1/warehouses/{publicId}/bins/capacity', { params: { path: { publicId } }, body })),
+    onSuccess: () => invalidate(qc, 'bins', 'zones', 'warehouse', 'warehouses'),
+  })
+}
+
+/** Resultado de la vista previa: `count` null = sin alcance o sin dato todavía; `exact` false = `count` es un tope. */
+export interface BinCapacityPreview {
+  count: number | null
+  exact: boolean
+  loading: boolean
+  error: Error | null
+}
+
+/**
+ * Vista previa de "Asignar cupo": cuántas posiciones cambiaría el POST con este alcance (`binCapacity.ts`).
+ * - Sin "Solo posiciones sin cupo": `GET .../bins?take=1` con los mismos filtros → `total` (= `matched`).
+ * - Con ella y sin filtros de texto: Σ `binsWithoutCapacity` de las zonas elegidas (o de todas), sin consultar posiciones.
+ * - Con ella y con texto: el GET no tiene ese filtro; si el total es ≤ `BIN_CAPACITY_EXACT_LIMIT` se recorren las
+ *   posiciones (de a 200) y se cuentan las que no tienen cupo; si no, el total se da como tope (`exact: false`).
+ * La clave cuelga del prefijo de posiciones (se invalida con ellas) y lleva `capacityPreview` para no mezclarse con el
+ * caché de las páginas del listado (aquí se guarda `{ count, exact }`, no una página).
+ */
+export function useBinCapacityPreview(
+  publicId: string,
+  scope: BinCapacityScope,
+  zones: readonly WarehouseZoneDto[],
+  zonesLoading: boolean,
+): BinCapacityPreview {
+  const ready = Boolean(publicId) && scopeReady(scope)
+  const byZones = scope.onlyWithoutCapacity && !hasTextFilter(scope)
+  const query = capacityPreviewQuery(scope)
+  const q = useQuery({
+    queryKey: [warehouseKeys.bins[0], { publicId, capacityPreview: true, onlyWithoutCapacity: scope.onlyWithoutCapacity, ...query }],
+    queryFn: async () => {
+      const path = { publicId }
+      const page = await unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path, query } }))
+      const total = page.total ?? 0
+      if (!scope.onlyWithoutCapacity || total === 0) return { count: total, exact: true }
+      if (total > BIN_CAPACITY_EXACT_LIMIT) return { count: total, exact: false }
+      const all = await fetchAllPages((skip, take) =>
+        unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path, query: { ...query, skip, take } } })),
+      )
+      return { count: all.items.filter((b) => b.maxCapacityQty == null).length, exact: true }
+    },
+    enabled: ready && !byZones,
+    meta: { handleAccessDenied: false },
+  })
+  if (!ready) return { count: null, exact: true, loading: false, error: null }
+  if (byZones) {
+    return zonesLoading
+      ? { count: null, exact: true, loading: true, error: null }
+      : { count: zonesWithoutCapacity(zones, scope.zoneIds), exact: true, loading: false, error: null }
+  }
+  return { count: q.data?.count ?? null, exact: q.data?.exact ?? true, loading: q.isFetching, error: q.error }
+}

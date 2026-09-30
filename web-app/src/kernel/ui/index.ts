@@ -42,6 +42,8 @@ export type { FieldProps, FormProps, SelectOption, SelectProps, TextInputProps, 
 export { matchesQ, normalizeQ } from './matchesQ'
 export { Modal } from './Modal'
 export type { ModalProps } from './Modal'
+export { PhoneInput } from './PhoneInput'
+export { formatPhone, isValidPhone, normalizeStoredPhone, phoneDigits } from './phone'
 export { Panel } from './Panel'
 export type { PanelProps } from './Panel'
 export { QBox } from './QBox'

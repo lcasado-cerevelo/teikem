@@ -175,6 +175,33 @@ public static class WarehouseRules
     public static string? ValidateMaxCapacity(int? maxCapacityQty)
         => maxCapacityQty is int q && q <= 0 ? MaxCapacityQtyMessage : null;
 
+    // ---------------------------------------------------------------- cupo en bloque (Lote 11)
+
+    public const string BulkCapacityValueRequired = "Indique el cupo máximo (maxCapacityQty) o clear: true para quitarlo.";
+    public const string BulkCapacityValueAndClear = "Indique el cupo máximo o clear: true, no ambos.";
+    public const string BulkCapacityFilterRequired =
+        "Indique al menos un filtro de posiciones (zoneIds, aisle, rack, level, position, search o binIds) o allBins: true para aplicarlo a todo el almacén.";
+
+    /// <summary>¿La asignación en bloque trae algún filtro de posiciones? (zonas, pasillo, rack, nivel, posición, búsqueda o ids).</summary>
+    public static bool HasBinFilter(int[]? zoneIds, string? aisle, string? rack, string? level, string? position, string? search, int[]? binIds)
+        => zoneIds is { Length: > 0 } || binIds is { Length: > 0 }
+           || new[] { aisle, rack, level, position, search }.Any(t => !string.IsNullOrWhiteSpace(t));
+
+    /// <summary>
+    /// Validación de la asignación de cupo en bloque, errores por campo (400): exactamente uno de maxCapacityQty (&gt; 0,
+    /// MaxCapacityQtyMessage) o clear; sin filtros de posiciones exige allBins = true (no se aplica a todo el almacén por
+    /// accidente). Vacío = válido.
+    /// </summary>
+    public static IDictionary<string, string[]> ValidateBulkCapacity(bool hasFilter, bool allBins, int? maxCapacityQty, bool clear)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (clear && maxCapacityQty is not null) errors["clear"] = new[] { BulkCapacityValueAndClear };
+        else if (!clear && maxCapacityQty is null) errors["maxCapacityQty"] = new[] { BulkCapacityValueRequired };
+        else if (ValidateMaxCapacity(maxCapacityQty) is string capacityError) errors["maxCapacityQty"] = new[] { capacityError };
+        if (!hasFilter && !allBins) errors["allBins"] = new[] { BulkCapacityFilterRequired };
+        return errors;
+    }
+
     // ---------------------------------------------------------------- ocupación de posiciones (Lote 1 de cambios de Almacén)
 
     /// <summary>Tamaño de página por defecto y máximo del listado de posiciones de un almacén.</summary>

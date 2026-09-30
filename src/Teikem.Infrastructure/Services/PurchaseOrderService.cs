@@ -58,9 +58,14 @@ public sealed class PurchaseOrderService(
                 .Select(s => s.StatusCodeId).ToListAsync(ct);
             query = query.Where(p => ids.Contains(p.StatusCodeId));
         }
-        if (q.SupplierId is int supplierId) query = query.Where(p => p.SupplierId == supplierId);
-        if (q.WarehousePublicId is Guid wh)
-            query = query.Where(p => db.Set<Warehouse>().Any(w => w.WarehouseId == p.WarehouseId && w.PublicId == wh));
+        // Lote 12: proveedores y almacenes múltiples, combinados con los singulares (compatibilidad).
+        var supplierIds = (q.SupplierIds ?? Array.Empty<int>()).Concat(q.SupplierId is int supplierId ? new[] { supplierId } : Array.Empty<int>())
+            .Distinct().ToList();
+        if (supplierIds.Count > 0) query = query.Where(p => supplierIds.Contains(p.SupplierId));
+        var warehousePublicIds = (q.WarehousePublicIds ?? Array.Empty<Guid>()).Concat(q.WarehousePublicId is Guid wh ? new[] { wh } : Array.Empty<Guid>())
+            .Distinct().ToList();
+        if (warehousePublicIds.Count > 0)
+            query = query.Where(p => db.Set<Warehouse>().Any(w => w.WarehouseId == p.WarehouseId && warehousePublicIds.Contains(w.PublicId)));
         if (q.From is DateOnly from) query = query.Where(p => p.OrderDate >= from);
         if (q.To is DateOnly to) query = query.Where(p => p.OrderDate <= to);
         if (!string.IsNullOrWhiteSpace(q.Search))

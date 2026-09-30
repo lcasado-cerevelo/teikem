@@ -142,7 +142,7 @@
       "subtitle": "create and manage your warehouses"
     },
     "locations": {
-      "title": "Locations",
+      "title": "Bins",
       "subtitle": "aisle · rack · bin, by zone"
     },
     "products": {
@@ -418,6 +418,16 @@
       "clear": "Remove category or product",
       "kindCategory": "Category",
       "kindProduct": "Product"
+    },
+    "report": {
+      "tagline": "Delivery Intelligence",
+      "generatedAt": "Generated on {date}",
+      "generatedBy": "by {user}",
+      "filtersTitle": "Applied filters",
+      "noFilters": "No filters: includes every record of the company.",
+      "page": "Page {page} of {pages}",
+      "footer": "Generated with Teikem",
+      "empty": "No records match the filters."
     }
   },
   "examples": {
@@ -923,7 +933,7 @@
       "derivedHelp": "Filled from the chosen city."
     },
     "locations": {
-      "title": "Locations",
+      "title": "Bins",
       "subtitle": "Warehouse hierarchy: zone · aisle · rack · slot, with occupancy",
       "warehouse": "Warehouse",
       "noWarehouses": "There are no active warehouses.",
@@ -1075,6 +1085,54 @@
         "maxCapacityTooLarge": "Max capacity is too large."
       }
     },
+    "binCapacity": {
+      "open": "Set capacity",
+      "title": "Set bin capacity",
+      "intro": "Sets or clears the max capacity (units) of every active bin within the scope.",
+      "scope": "Scope",
+      "zone": "Zone",
+      "anyZone": "Any zone",
+      "aisle": "Aisle",
+      "rack": "Rack",
+      "level": "Level",
+      "position": "Position",
+      "containsPlaceholder": "Contains…",
+      "onlyWithoutCapacity": "Only bins without capacity",
+      "onlyWithoutCapacityClear": "Does not apply when clearing the capacity.",
+      "allBins": "Whole warehouse",
+      "action": "Action",
+      "modeSet": "Max capacity",
+      "modeClear": "Clear capacity",
+      "qty": "Max capacity (units)",
+      "qtyHelp": "Whole number greater than zero. Bins that already have that capacity do not change.",
+      "applySet": "Set capacity",
+      "applyClear": "Clear capacity",
+      "preview": {
+        "pending": "Counting bins…",
+        "needScope": "Choose at least one filter (zone, aisle, rack, level or position) or tick “Whole warehouse”.",
+        "none": "No bin matches the scope: nothing to apply.",
+        "one": "Will apply to 1 bin.",
+        "many": "Will apply to {count} bins.",
+        "upTo": "Will apply to at most {count} bins (those that already have a capacity are skipped).",
+        "error": "Could not count the affected bins: {message}"
+      },
+      "confirmTitle": "Confirm bulk capacity",
+      "confirmSet": "A max capacity of {qty} units will be set on {count} bins.",
+      "confirmClear": "The max capacity of {count} bins will be cleared.",
+      "confirmAll": "The change affects the whole warehouse.",
+      "confirmUnchanged": "Bins that already have that value do not change.",
+      "upToCount": "up to {count}",
+      "appliedSet": "Capacity set on {changed} of {matched} bins",
+      "appliedSetOne": "Capacity set on {changed} of 1 bin",
+      "appliedClear": "Capacity cleared on {changed} of {matched} bins",
+      "appliedClearOne": "Capacity cleared on {changed} of 1 bin",
+      "errors": {
+        "required": "Enter the max capacity.",
+        "integer": "Max capacity must be a whole number.",
+        "positive": "The bin's max capacity must be greater than zero.",
+        "tooLarge": "Max capacity is too large."
+      }
+    },
     "docks": {
       "title": "Docks",
       "count": "{count} docks",
@@ -1107,21 +1165,29 @@
       "subtitle": "Catalog with available, reserved stock, and lot/serial tracking",
       "tabProducts": "Products",
       "invReport": "Inventory report",
-      "invReportHint": "Balances by warehouse, slot and lot (Movement ledger → Balances), with the warehouse and categories filtered here.",
+      "invReportHint": "PDF with every product matching the table filters: available, reserved, total, cost and value, by category.",
       "adjReport": "Adjustment report",
-      "adjReportHint": "Adjustment movements in the Movement ledger, with the warehouse filtered here.",
+      "adjReportHint": "PDF with the inventory adjustments of the products matching the table filters.",
       "kpis": {
         "aria": "Catalog summary",
         "activeSkus": "Active SKUs",
         "totalUnits": "Total units",
         "belowMin": "Low stock",
         "serial": "Serial-tracked",
-        "truncated": "Counted over the first {count} active products."
+        "serialMissing": "{count} with incomplete serials",
+        "filterHint": "Filter the table: {view}. Click again to clear.",
+        "view": {
+          "active": "Active only",
+          "available": "Active with availability",
+          "low": "Low stock",
+          "serial": "Serial-tracked"
+        }
       },
       "columns": {
         "sku": "SKU",
         "product": "Product",
         "category": "Category",
+        "brand": "Brand",
         "owner": "Owner",
         "available": "Available",
         "reserved": "Reserved",
@@ -1185,7 +1251,14 @@
         "adjustApplied": "Adjustment applied: {qty} {sku}",
         "traceTitle": "Lots and serials",
         "viewLots": "View lots",
-        "viewSerials": "View serials"
+        "viewSerials": "View serials",
+        "brand": "Brand",
+        "brandPlaceholder": "Type or pick a brand",
+        "model": "Model",
+        "addAdjust": "Add adjustment",
+        "cancelAdjust": "Cancel adjustment",
+        "adjustNotes": "Note",
+        "adjustNotesPlaceholder": "Why the adjustment (required)"
       },
       "fields": {
         "sku": "SKU",
@@ -1219,7 +1292,71 @@
         "onlyAvailable": "With availability",
         "state": "Status",
         "stateActive": "Active",
-        "stateLow": "Low stock"
+        "stateLow": "Low stock",
+        "sku": "SKU",
+        "name": "Name",
+        "namePlaceholder": "Contains…",
+        "brand": "Brand"
+      },
+      "reports": {
+        "working": "Generating…",
+        "error": "The report could not be generated. Try again.",
+        "inventoryTitle": "Inventory report",
+        "inventorySubtitle": "Inventory as of now, grouped by category: available, reserved, total, unit cost and value.",
+        "adjustmentsTitle": "Adjustment report",
+        "adjustmentsSubtitle": "Inventory adjustments (Adjustment movements), newest first.",
+        "noCategory": "No category",
+        "subtotal": "Subtotal {name}",
+        "grandTotal": "Grand total",
+        "totalIn": "In",
+        "totalOut": "Out",
+        "totalNet": "Net",
+        "truncated": "The report includes only the first {count} products (read limit). Narrow the filters to see the rest.",
+        "withoutStock": "Products without stock (0 on hand) not included: {count}.",
+        "openingBalancesExcluded": "Migration opening balances excluded: {count} (they are not operational adjustments).",
+        "truncatedAdjustments": "The report includes only the {count} most recent adjustments (read limit). Narrow the filters to see the rest.",
+        "withoutCost": "Products with stock and no purchase cost: {count}. Their value shows as «—» and is not added to the totals.",
+        "valuationNote": "Value = Total × purchase cost recorded on the product. The system does not keep average or per-lot cost.",
+        "kpiNotApplied": "The «{view}» view depends on the product's current state and does not apply to movements: adjustments of the products matching the other filters are included.",
+        "emptyInventory": "No product matches the filters.",
+        "emptyAdjustments": "There are no adjustments for the chosen filters.",
+        "lot": "Lot {lot}",
+        "serial": "Serial {serial}",
+        "columns": {
+          "sku": "SKU",
+          "product": "Product",
+          "category": "Category",
+          "brand": "Brand",
+          "available": "Available",
+          "reserved": "Reserved",
+          "total": "Total",
+          "unitCost": "Unit cost",
+          "value": "Value",
+          "date": "Date and time",
+          "location": "Warehouse / Slot",
+          "quantity": "Quantity (±)",
+          "reason": "Reason",
+          "notes": "Note",
+          "user": "User"
+        },
+        "summary": {
+          "products": "Products",
+          "onHand": "Units on hand",
+          "available": "Available",
+          "value": "Inventory value",
+          "movements": "Adjustments",
+          "in": "In",
+          "out": "Out",
+          "net": "Net"
+        },
+        "filters": {
+          "type": "Movement type",
+          "typeAdjustment": "Adjustment",
+          "warehouseScope": "(quantities are from these warehouses only)",
+          "contains": "contains «{text}»",
+          "withSubcategories": "(includes subcategories)",
+          "view": "View"
+        }
       },
       "lots": {
         "lotNumber": "Lot",
@@ -1247,6 +1384,10 @@
         "moneyTooLarge": "Cost or price exceeds the maximum allowed.",
         "minNegative": "Minimums cannot be negative.",
         "maxPickLtMin": "The pick bin maximum must be greater than or equal to the minimum.",
+        "brandMax": "Brand cannot exceed 100 characters.",
+        "modelMax": "Model cannot exceed 100 characters.",
+        "adjustNotesRequired": "Write a note explaining the adjustment.",
+        "adjustNotesMax": "Notes admit at most 300 characters.",
         "pickZoneRequired": "A minimum pick quantity requires a preferred bin in a PICKING zone.",
         "measuresNegative": "Weight and volume cannot be negative.",
         "weightInvalid": "Weight admits at most 3 decimals and must be less than 1,000,000,000.",
@@ -1409,7 +1550,7 @@
           "warehouseRequired": "Select a warehouse.",
           "binRequired": "Select a bin.",
           "reasonRequired": "Select a reason.",
-          "quantityInvalid": "Expected a number.",
+          "quantityInvalid": "Enter the adjustment quantity (a number, positive to add or negative to subtract).",
           "quantityZero": "The adjustment quantity cannot be zero.",
           "quantityDecimals": "The quantity allows at most 3 decimals.",
           "lotNumberRequired": "Enter the lot number.",
@@ -1465,10 +1606,12 @@
         "email": "Email",
         "paymentTerm": "Payment term",
         "notes": "Notes",
+        "paymentTermSearch": "Search payment term…",
         "none": "None"
       },
       "errors": {
         "nameRequired": "The supplier name is required.",
+        "phoneInvalid": "The phone must have 10 digits: (xxx)xxx-xxxx.",
         "emailInvalid": "The email address is not valid."
       }
     },
@@ -1513,10 +1656,13 @@
         "product": "Product",
         "qtyOrdered": "Ordered quantity",
         "unitCost": "Unit cost",
+        "supplierSearch": "Search supplier…",
         "addLine": "Add line",
         "removeLine": "Remove line"
       },
       "errors": {
+        "warehouseRequired": "Choose the warehouse.",
+        "linesQtyRequired": "Add at least one line with an ordered quantity greater than zero.",
         "supplierRequired": "Enter the supplier.",
         "productRequired": "Enter the product.",
         "qtyInvalid": "Expected a number.",

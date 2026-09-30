@@ -229,6 +229,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'`, `exportValue?(row)` (valor exportado explícito), `exportable?` (false = no se exporta: casillas, columnas solo visuales) | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`). Exportación: `exportValue`, si no el texto de `cell` ("—" = vacío; un número formateado igual a `sortValue` sale como número), si la celda no tiene texto (`StatusChip`, ícono) `sortValue` |
 | `fetchAllPages(fetchPage, { pageSize?, max? })` (`kernel/api/fetchAllPages`) | `fetchPage(skip, take) → Promise<{ items, total }>` | recorre `skip/take` de a `EXPORT_PAGE_SIZE` = 200 hasta el `total` o `EXPORT_MAX_ROWS` = 10 000 y devuelve `{ items, truncated }`: es lo que recibe `exportRows` (DataTable avisa con un toast si `truncated`). `exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/x', { params: { query: { ...query, skip, take } } })))}` |
+| `reportPdf.ts` (Lote 12; importar de `kernel/ui/reportPdf`, no está en el barril) | `downloadReportPdf(spec)`, `renderReportPdf(spec, { logo?, compress? })` → `jsPDF` en memoria; `ReportSpec` = `{ title, subtitle?, company?, user?, generatedAt?, locale, filters: {label,value}[], columns: {header, format?}[], sections: {title?, rows, subtotal?}[], totals?, summary?: {label,value,tone?}[], notices?, emptyText?, orientation? }`; `format` = `text` \| `quantity` \| `signed` \| `money` \| `unitCost` | PDF "de presentación" en el cliente (jsPDF + autotable con import dinámico): banda azul marino con el símbolo de Teikem (SVG de `public/brand/` rasterizado a PNG; si no se puede, solo texto), lema, compañía y fecha; título, "Generado el … por …", recuadro "Filtros aplicados" (vacío = "Sin filtros"), tarjetas de resumen y avisos; tabla con encabezado oscuro repetido por página, cebra, números a la derecha con separadores del idioma, fila de grupo por sección, subtotal (la etiqueta —primer valor— se funde con los vacíos que la siguen) y total general en azul marino; pie "Generado con Teikem · compañía" y "Página X de Y"; banda delgada en las páginas siguientes. Horizontal con más de 6 columnas. Textos del kit en `ui.report.*`; todo pasa por `pdfSafeText`. Lógica pura: `formatReportValue`, `buildReportBody`, `reportOrientation`, `reportFileName` (`reporte-de-inventario-advance-depot-2026-09-30.pdf`). `await downloadReportPdf({ title, company, user, locale: lang, filters, columns, sections, totals })` |
 | `RowAction<T>` | `key`, `label`, `onClick(row)`, `perm?` (guarda de permiso: sin él no se pinta), `visible?(row)` (guarda de estatus/`capabilities`), `disabled?(row)`, `tone?: 'flow' \| 'danger'`, `icon?` (de `kernel/ui/actionIcons`) | acciones por fila. Con `icon`, el botón es solo ícono (28×28, `.rowbtn`, como en la maqueta) y `label` pasa a ser su `aria-label`/`title`; sin `icon`, es el botón de texto de siempre. Toda acción de fila nueva lleva `icon` — solo se deja sin él cuando de verdad no hay un ícono claro para esa acción |
 | `Filters` | `children`, `onClear?` (botón "Limpiar"), `label?` | fila `.filters` (flex que envuelve: los filtros se reparten todo el ancho del panel, sin huecos; uno por renglón a 480 px); "Limpiar" (`.filters-clear`) ocupa solo el ancho de su contenido |
 | `SelectFilter` | `label`, `value` (`''` = todos), `onChange`, `options: {value,label}[]`, `allLabel?` (`null` = sin opción "Todos") | filtro de selección única |
@@ -243,6 +244,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `Form` | `form` (de `useForm({ resolver: zodResolver(schema) })`), `onSubmit(values)` (async), `onError?(problem)`, `id?` (para `<button type="submit" form={id}>` en el pie del Modal) | si `onSubmit` lanza, `applyProblemDetails(err, form)` pone cada error bajo su `Field`; el título y los errores sin campo van en un aviso arriba del formulario |
 | `Field` | `name` (camelCase, como el DTO), `label`, `required?` (asterisco; la regla va en zod), `help?`, `children` (un control) | etiqueta + control + ayuda + error (`.ferr`, `aria-invalid`, `aria-describedby`) |
 | Controles de `Field` | `TextInput` (`type?`), `NumberInput` (valor `number \| null`; vacío = null → `z.number().nullable()`), `Select` (`options`, `placeholder?`; valor string, '' = sin elegir), `DateInput` ('YYYY-MM-DD'), `Toggle` (`text?`; boolean), `TextArea` (`rows?`), `ClientPickerInput` (`includeInactive?`; valor publicId o null) | se registran solos en el formulario con el `name` del `Field`; aceptan los atributos nativos (`maxLength`, `min`, `placeholder`…) |
+| `PhoneInput` + `formatPhone`/`isValidPhone`/`normalizeStoredPhone`/`phoneDigits` (`phone.ts`) | `placeholder?` | teléfono con máscara `(xxx)xxx-xxxx` mientras se escribe, dentro de un `Field` (valor con máscara; vacío = ''). Valida con `isValidPhone` (vacío o 10 dígitos) en el esquema zod; al editar un valor viejo, `normalizeStoredPhone` lo muestra con máscara solo si tiene 10 dígitos |
 | `Tabs<K>` | `tabs: {key,label}[]`, `value`, `onChange`, `label?` | pestañas de una ficha (`.seg`, `role="tablist"`) |
 | `EmptyState` | `title`, `body?`, `icon?`, `action?` | sin datos / sin resultados |
 | `Spinner` | `label?`, `block?` (centrado) | carga (`role="status"`) |
@@ -287,8 +289,9 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, del cruce de muelle y la consulta de órdenes.
 - `api.ts`: un hook por lectura con clave `[ruta, params]` (`useWarehouses(query?)`, `useWarehouse(publicId)`,
   `useWarehouseZones/Bins/Docks(publicId, query?)`, `useProducts`, `useProduct`, `useProductInventoryKpis()` (KPIs de
-  'Productos e inventario': `{ activeSkus, totalUnits, belowMin, serial }`, ver abajo), `useSerialProductCount()` (productos
-  activos con rastreo SERIAL: lee todas las páginas de 200, hasta 25; `{ count, truncated }`), `useProductLots/Serials`, `useProductCategories`,
+  'Productos e inventario': `{ activeSkus, totalUnits, belowMin, serial, serialMissing }`, todos con `take=1`, ver abajo),
+  `useProductBrands(search?)` (Lote 12: `GET /products/brands` → `string[]` de marcas del tenant; lo invalidan alta y edición de
+  producto), `useProductLots/Serials`, `useProductCategories`,
   `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
   `useReceipts`, `useReceipt`, `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
   `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
@@ -338,7 +341,7 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   productos dados de baja.
   `isAccessDenied(error)` (`accessDenied.ts`) para avisar junto a un campo cuando una consulta secundaria da 403.
 - Ubicaciones (`/warehouse/locations`, `LocationsScreen`; maqueta `ubicaciones()`): almacén arriba (`?warehouse=<publicId>`;
-  sin él, el primero activo) y "Nueva posición" (`warehouse.manage`); río con un recuadro por zona (`.river`/`.node`/`.pipe` de
+  sin él, el primero activo), "Asignar cupo" (`BinCapacityModal`) y "Nueva posición" (ambos `warehouse.manage`); río con un recuadro por zona (`.river`/`.node`/`.pipe` de
   `analytics/pulse.css` dentro de un contenedor `.pulse`) con lo ocupado vs. la capacidad de la zona (`capacityQty` y
   `qtyOnHandInCapacityBins` de `WarehouseZoneDto`: Σ cupo de sus posiciones y su existencia), "N posiciones sin cupo" si hay
   posiciones sin cupo y, si ninguna tiene cupo, la existencia total "sin cupo configurado" (nunca un % inventado). Cada
@@ -360,6 +363,26 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   <Can perm="warehouse.manage"><button className="btn flow" onClick={() => setOpen(true)}>{t('warehouse.bins.new')}</button></Can>
   <BinModal publicId={warehousePublicId} zones={zones} bin={null} open={open} onClose={() => setOpen(false)} />
   ```
+- `BinCapacityModal` (`BinCapacityModal.tsx`, Lote 11): "Asignar cupo", cupo máximo EN BLOQUE (`POST /warehouses/{publicId}/bins/
+  capacity`, `warehouse.manage`). Props `publicId` (almacén), `open`, `onClose`, `initial?: BinCapacityInitial` (`zoneIds`,
+  `aisle`, `rack`, `level`, `position` ya elegidos en la pantalla; se leen al abrir y las zonas ajenas se descartan). Pide sus
+  propias zonas activas. Alcance: Zona (`SearchSelect`), Pasillo/Rack/Nivel/Posición ("contiene"), "Solo posiciones sin cupo"
+  (`onlyWithoutCapacity`; deshabilitada al quitar) y "Todo el almacén" (solo visible sin filtros → `allBins: true`); siempre
+  solo activas. Acción por radio, exactamente una: "Cupo máximo" (entero > 0 → `maxCapacityQty`) o "Quitar cupo" (`clear`).
+  Vista previa en vivo (300 ms) "Se aplicará a N posiciones" con `useBinCapacityPreview` (0 → aplicar deshabilitado); más de
+  100 posiciones o "Todo el almacén" → `ConfirmDialog`. Al aplicar, toast "Cupo aplicado a {changed} de {matched} posiciones" y
+  cierra; los errores del API quedan en el modal (título arriba, el de `maxCapacityQty` bajo el campo). Lo usan Posiciones
+  (zona de `?zone=`) y la pestaña Posiciones de la ficha (Zona + textos de ubicación del filtro). Muéstralo dentro de `<Can>`:
+  ```tsx
+  <Can perm="warehouse.manage"><button className="btn" onClick={() => setOpen(true)}>{t('warehouse.binCapacity.open')}</button></Can>
+  <BinCapacityModal publicId={warehousePublicId} open={open} onClose={() => setOpen(false)} initial={{ zoneIds: ['3'] }} />
+  ```
+  Hooks (`api.ts`): `useSetBinsCapacity()` → `mutateAsync({ publicId, body })` → `{ matched, changed }` (invalida posiciones,
+  zonas y almacenes); `useBinCapacityPreview(publicId, scope, zones, zonesLoading)` → `{ count, exact, loading, error }`: `GET
+  .../bins?take=1` con los mismos filtros (`total` = `matched`); como el GET no tiene `onlyWithoutCapacity`, con esa casilla y
+  sin texto suma `binsWithoutCapacity` de las zonas, y con texto cuenta las posiciones sin cupo del listado si son ≤ 1000
+  (si no, `exact: false` = el total es un tope, "como máximo N"). Lógica pura en `binCapacity.ts` (`capacityPreviewQuery`,
+  `capacityRequestBody`, `scopeReady`, `sendsAllBins`, `parseCapacityQty`, `needsCapacityConfirmation`, `zonesWithoutCapacity`).
 - `ZoneModal` (`ZoneModal.tsx`, Lote 1): alta/edición de una zona (`publicId`, `zone` —null = alta—, `open`, `onClose`), la
   comparten la lista de almacenes y la pestaña Zonas de la ficha. Código editable también al editar (obligatorio, formato de
   código; el 409 'Ya existe una zona con ese código en el almacén.' se pone bajo el campo), Nombre y Tipo (`ComboSelectInput`
@@ -390,16 +413,22 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   filtros Código/Nombre/Tipo en el cliente + "Incluir inactivas", clic en la fila = `ZoneModal`, baja/reactivación como íconos
   (`IconPower`/`IconRotateCcw`); Posiciones paginada en el servidor (`binsQuery` de `warehouseFilters.ts`: Código → `search`,
   Zona → `zoneIds`, Pasillo/Rack/Nivel/Posición con 300 ms de pausa, "Incluir inactivas", "Solo con existencia"; Exportar =
-  `exportWarehouseBins(publicId, query)`), columnas Cupo y Ocupación, clic en la fila = `BinModal`. Controles sueltos de
+  `exportWarehouseBins(publicId, query)`), columnas Cupo y Ocupación, clic en la fila = `BinModal`, "Asignar cupo"
+  (`BinCapacityModal` con la Zona y los textos de ubicación del filtro). Controles sueltos de
   filtro en `filterControls.tsx`: `TextFilter` (`label`, `value`, `onChange`, `placeholder?`) y `ToggleFilter` (`label`,
   `checked`, `onChange`).
 - `ProductEditorModal` (`ProductEditorModal.tsx`, maqueta `renderProductModalHtml`): el ÚNICO alta/edición de producto (no hay
   pestaña "Datos"). Props `open`, `product: ProductDetailDto | null` (`null` = "Nuevo producto"), `onClose`, `onCreated?(publicId)`.
-  Campos en el orden de la maqueta (SKU —bloqueado al editar— · Unidad, Nombre, Categoría · Rastreo, Dueño del inventario, Costo de
-  compra · Precio de venta, Almacén · Posición por defecto, Total —solo lectura, "usa Ajustar abajo"— · Punto de reorden); al editar,
-  interruptor "Producto activo" (deactivate/reactivate al guardar; bloqueado con saldo en mano, con la nota de la maqueta), bloque
-  "Ajustar inventario" (`inventory.adjust`; `useInventoryAdjustment` con el producto fijo, almacén y posición por defecto del producto,
-  el modal sigue abierto) y "Ver lotes"/"Ver series" (según el rastreo) → `/warehouse/products/{publicId}?tab=lots|serials`.
+  Campos en el orden de la maqueta (SKU —bloqueado al editar— · Unidad, Nombre, Marca · Modelo (Lote 12), Categoría · Rastreo, Dueño
+  del inventario, Costo de compra · Precio de venta, Almacén · Posición por defecto, Total —solo lectura, "usa Ajustar abajo"— · Punto
+  de reorden). Unidad, Categoría (etiqueta = ruta "Raíz / Hija") y Rastreo son `ComboSelectInput`; Marca es texto libre con
+  sugerencias (`<datalist>` de `useProductBrands`) y Modelo texto libre (máx. 100 cada uno; en PATCH solo se mandan si cambiaron: `''`
+  = quitar). El Total sale de `useProduct` (se refresca solo tras un ajuste). Al editar, interruptor "Producto activo"
+  (deactivate/reactivate al guardar; bloqueado con saldo en mano, con la nota de la maqueta), bloque "Ajustar inventario"
+  (`inventory.adjust`; Lote 12: oculto tras "Añadir ajuste"; al abrirlo Cantidad, Motivo con buscador sin los reservados al sistema,
+  Almacén · Posición —por defecto los del producto— y Nota obligatoria que va en `notes`; "Aplicar ajuste" con el producto fijo
+  refresca el Total y vuelve a ocultar el bloque limpio; un 409 `insufficient_stock` queda en el aviso del propio bloque, que sigue
+  abierto; "Cancelar ajuste" lo cierra) y "Ver lotes"/"Ver series" (según el rastreo) → `/warehouse/products/{publicId}?tab=lots|serials`.
   Código de barras, peso, volumen, mínimo/máximo de picking y campos personalizados van plegados en "Más datos del producto" (se
   abre solo si alguno trae error). Sin `inventory.manage` es de solo lectura ("Ver datos del producto", botón "Cerrar").
   `ProductEditorByIdModal` (`publicId: string | null`, `onClose`) pide la ficha y abre el mismo modal (clic en una fila de Productos).
@@ -445,17 +474,40 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   <DataTable columns={cols} rows={receipt.putawayTasks ?? []} rowKey={(r) => r.id ?? 0} rowActions={rowActions} />{dialogs}
   ```
   `useWarehouseTaskAction` invalida la cola, la ficha del recibo y, al completar, recibos, planes de cruce y el inventario.
-- Productos e inventario (`/warehouse/products`, `ProductListScreen`; maqueta `inventario()`, Fase 8): un solo ítem de menú.
-  Cabecera con "Reporte de inventario" (enlace a Kárdex → Saldos con el almacén y las categorías filtrados), "Reporte de
-  ajustes" (enlace al Kárdex con `types=ADJUSTMENT` y el almacén) y "Nuevo producto" (`inventory.manage`); río de KPIs de todo
-  el catálogo (`useProductInventoryKpis`: SKUs activos = `products?activeOnly=true&take=1` → `total`; Unidades totales =
-  `inventory/balances?includeZero=false&take=1` → `totalOnHand`; Bajo mínimo = `products?belowMin=true&take=1` → `total`; Con
-  número de serie = `useSerialProductCount`, "N+" si se truncó); filtros Almacén (`warehousePublicId`: las cantidades de cada
-  fila pasan a ser las de ese almacén), Categoría y Estado (Todos —activos e inactivos, como la maqueta—, Activos, Bajo mínimo)
-  + `QBox` (va al API como `search`); tabla SKU, Producto, Categoría, Dueño ("Propio" tenue), Disponible, Reservado ('—' en
-  cero), Total, Rastreo (etiqueta del catálogo `TrackingType`), Estado (Inactivo / Bajo mínimo / OK; fila inactiva atenuada).
-  Disponible/Reservado/Total vienen en la lista paginada (`qtyAvailable/qtyReserved/qtyOnHand`). Clic = `ProductEditorByIdModal`.
-  Pestaña Categorías en `?tab=categories`.
+- Productos e inventario (`/warehouse/products`, `ProductListScreen`; maqueta `inventario()`, Fase 8, Lote 12): un solo ítem de
+  menú. Cabecera con "Reporte de inventario" y "Reporte de ajustes" (PDF, ver abajo) y "Nuevo producto" (`inventory.manage`). Río de
+  KPIs de todo el catálogo (`useProductInventoryKpis`, todos `take=1`: SKUs activos = `products?activeOnly=true` → `total`;
+  Unidades totales = `inventory/balances?includeZero=false` → `totalOnHand`; Bajo mínimo = `products?belowMin=true`; Con número de
+  serie = `products?activeOnly=true&serialOnly=true`, y `products?serialMissing=true` para el aviso). Cada KPI es un botón
+  (`.inv-kpi`, `aria-pressed`, activo `.on`) que filtra la tabla con `?kpi=active|available|low|serial` (activos; activos con
+  disponible > 0 = `activeOnly`+`onlyAvailable`; `belowMin`; `serialOnly`); otro clic o "Limpiar" lo quita. Bajo mínimo va en
+  naranja (`.money`: número y borde al pasar el mouse) solo si es > 0; Con número de serie, solo si hay productos SERIAL con series
+  incompletas, con "N sin series completas". Filtros encima del panel, todos al API y a la página 1: Almacén (`SearchSelect` →
+  `warehousePublicIds`: acotan las cantidades de cada fila a esos almacenes, no quitan productos), SKU (`ProductMultiFilter` con
+  inactivos → `productPublicIds`), Nombre (`TextFilter`, 300 ms → `name`), Categoría (`categoryIds`, con subcategorías) y Marca
+  (`SearchSelect` sobre `useProductBrands` → `brands`); sin `QBox`. Tabla paginada en el servidor: SKU, Producto, Categoría, Marca
+  (modelo tenue debajo; exporta "Marca · Modelo"), Dueño ("Propio" tenue), Disponible, Reservado ('—' en cero), Total, Rastreo
+  (etiqueta de `TrackingType`), Estado (Inactivo / Bajo mínimo / OK; fila inactiva atenuada). Exportar = todo lo filtrado. Clic =
+  `ProductEditorByIdModal`. Pestaña Categorías en `?tab=categories`.
+  - `productFilters.ts` (puro): `ProductFilterState` (`warehouses`, `products`, `name`, `categoryIds`, `brands`, `kpi`),
+    `EMPTY_PRODUCT_FILTERS`, `productListQuery(f)` (tabla, Exportar y Reporte de inventario), `adjustmentsKardexQuery(f)`
+    (`types=[ADJUSTMENT]` + almacenes, productos, categorías, marcas y nombre; el KPI no aplica a movimientos), `kpiQuery`,
+    `parseKpiParam`, `toggleKpi`, `describeProductFilters(f, names, t, 'inventory' | 'adjustments')` ("Filtros aplicados" con
+    nombres; un id sin nombre se muestra tal cual).
+  - `inventoryReports.ts`: `generateInventoryReport(ctx)` (todos los productos con `productListQuery` de a 200 hasta 10 000,
+    agrupados por categoría con subtotal de unidades y valor, total general; Valor = Total × costo de compra —sin costo, '—' y
+    aviso—; nota de que no hay costo promedio ni por lote; aviso si se truncó) y `generateAdjustmentsReport(ctx)` (movimientos
+    ADJUSTMENT del Kárdex con los filtros trasladados, del más reciente al más antiguo: Fecha y hora, SKU, Producto —con lote o
+    serie debajo—, Almacén / Posición —destino si entra, origen si sale—, Cantidad ±, Motivo, Nota, Usuario; entradas, salidas y
+    neto; aviso si hay KPI elegido o si se truncó). `ctx` = `{ t, lang, company, user, filters, names }`. Armadores puros:
+    `buildInventoryReport`, `buildAdjustmentsReport`, `groupInventoryByCategory`, `inventoryValue`, `adjustmentLocation`,
+    `adjustmentTotals`.
+  - `InventoryReportButtons.tsx`: `<InventoryReportButton filters className? />` y `<AdjustmentsReportButton filters className? />`
+    (resuelven nombres de almacenes/categorías, compañía y usuario; "Generando…" mientras tanto; error → toast). Para repetir el
+    reporte de ajustes en otra pantalla:
+    ```tsx
+    <AdjustmentsReportButton filters={{ ...EMPTY_PRODUCT_FILTERS, warehouses: [warehousePublicId] }} />
+    ```
 - Kárdex de movimientos (`/warehouse/kardex`, `InventoryScreen`; maqueta `ledger()`): pestañas Kárdex (primera, sin
   parámetro), Saldos (`?tab=balances`) y Conciliación (`?tab=reconciliation`), con Ajustar/Transferir en la cabecera. Lee la
   URL al montar: `warehousePublicIds=<publicId>` y `product=<publicId>` filtran Saldos o Kárdex (el SKU de cada producto se
@@ -469,7 +521,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
 - `productRules.ts`: esquemas zod de peso (`weightKgSchema`), volumen (`volumeM3Schema`) y costo/precio (`moneySchema(t, 'cost' |
   'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06, y la cantidad de un ajuste manual
   (`adjustQuantitySchema(t)`: obligatoria, ≠ 0, ≤ 3 decimales; la usan `InventoryAdjustModal` y el bloque de ajuste de
-  `ProductEditorModal`); pruebas en `productRules.test.ts`.
+  `ProductEditorModal`); Lote 12: `brandModelSchema(t, 'brand' | 'model')` (opcional, recortado, ≤ 100, mensaje del API) y
+  `adjustNotesSchema(t)` (nota obligatoria del ajuste del modal, ≤ 300); pruebas en `productRules.test.ts`.
 - Orden de las listas paginadas del almacén (Saldos, Kárdex, Productos, Órdenes, Órdenes de compra, Recibos, Recolecciones,
   colas de tareas): sus endpoints solo aceptan `skip/take`, sin parámetro de orden. Llegan en el orden del servidor y, como
   toda tabla de la app, sus columnas llevan `sortValue` (Fase 11: toda columna con dato se ordena por clic en el encabezado);

@@ -2604,3 +2604,156 @@ se ven atenuados. Para ver solo los activos, elija "Activo" en el filtro Estatus
 Es esperable con la versión anterior de la app: el listado de posiciones del servidor cambió de formato (ahora viene
 paginado) y la app vieja no lo entiende. Instale la versión nueva de la app. Esta conclusión sale de comparar el código de
 las dos versiones; no se probó en un aparato.
+
+## Lote 12 — Cambios de Almacén, tanda 2 (marca y modelo, filtros de Productos y Compras, reportes PDF, Proveedores, Posiciones, cupo en bloque y cupo estimado)
+
+Capítulos: [06 — Inventario y almacén, secciones 1.2, 2 y 8](06-inventario-y-almacen.md),
+[10 — Migración de datos, sección 4](10-migracion-de-datos.md) y
+[F6 — Almacén e inventario](frontend/f6-almacen-e-inventario.md). Cierre y decisiones: `docs/lote12-decisiones.md`.
+Los mensajes marcados "pantalla" los muestra la interfaz antes de llamar al servidor; los demás los manda el API (con el
+código HTTP indicado). Los mensajes del cupo en bloque se documentaron primero como "Lote 11 (complemento)"; pertenecen a
+este cierre.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "Indique el cupo máximo (maxCapacityQty) o clear: true para quitarlo."? (400)**
+Pidió el cupo en bloque (`POST /api/v1/warehouses/{id}/bins/capacity`) sin decir qué hacer. Envíe `maxCapacityQty` con el
+cupo (entero mayor que cero) o `clear: true` para dejar las posiciones sin cupo. El error viene en `errors.maxCapacityQty`.
+
+**¿Qué significa "Indique el cupo máximo o clear: true, no ambos."? (400)**
+El cuerpo trae un cupo y además `clear: true`. Son opuestos: deje solo uno. El error viene en `errors.clear`.
+
+**¿Qué significa "Indique al menos un filtro de posiciones (zoneIds, aisle, rack, level, position, search o binIds) o allBins: true para aplicarlo a todo el almacén."? (400)**
+El cupo en bloque no trae ningún filtro de posiciones, así que se aplicaría a **todo** el almacén. Para evitar hacerlo por
+accidente se exige confirmarlo con `allBins: true`; si no era esa la idea, agregue zonas, pasillo, rack, nivel, posición,
+búsqueda o ids de posición. El error viene en `errors.allBins`.
+
+**¿Qué significa "Ninguna posición de ALM-DEPOT tiene historial de existencias en el WMS; las posiciones quedan sin cupo."? (advertencia de `import-legacy`)**
+El importador no encontró ninguna existencia histórica de ese almacén en MSWM (inventario, conteos ni acomodos), así que no
+hay de dónde estimar el cupo. La carga sigue normal y las posiciones quedan "sin cupo". Revise que `sources.mswm.warehouseId`
+sea el almacén correcto; si lo es, asigne los cupos con el cupo en bloque.
+
+**¿Qué significa "La marca no puede exceder 100 caracteres."? (400, también en pantalla)**
+La marca del producto tiene más de 100 caracteres (sin contar los espacios de los extremos). Acórtela. En la pantalla el
+campo ya no deja escribir más de 100; el mensaje sale sobre todo al llamar al API directamente (`errors.brand`).
+
+**¿Qué significa "El modelo no puede exceder 100 caracteres."? (400, también en pantalla)**
+Lo mismo para el modelo del producto (`errors.model`).
+
+**¿Qué significa "Almacén no encontrado." al listar productos? (404)**
+Uno de los almacenes del filtro (`warehousePublicId` o `warehousePublicIds`) no existe o es de otra compañía. Quite ese
+almacén del filtro o vuelva a elegirlo de la lista.
+
+**¿Qué significa "Escriba una nota que explique el ajuste."? (pantalla)**
+En el bloque "Añadir ajuste" del producto la nota es obligatoria. Escriba por qué se ajusta el inventario (hasta 300
+caracteres). El API no la exige, pero la pantalla sí para que cada ajuste quede explicado.
+
+**¿Qué significa "Las notas admiten como máximo 300 caracteres."? (400, también en pantalla)**
+La nota del ajuste tiene más de 300 caracteres. Acórtela.
+
+**¿Qué significa "Indique la cantidad del ajuste (número, positivo para sumar o negativo para restar)."? (pantalla)**
+En "Añadir ajuste" la cantidad está vacía o no es un número. Escriba un número: positivo para sumar al inventario, negativo
+para restar (no puede ser cero). Este texto reemplaza a "Se esperaba un número." en los ajustes; también lo ve quien ajusta
+desde la pantalla Ajustes de inventario, porque comparten la regla.
+
+**¿Qué significa "Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}." dentro del ajuste? (409)**
+Restar esa cantidad dejaría el inventario de la posición en negativo. El mensaje aparece dentro del bloque de ajuste, que
+sigue abierto. Corrija la cantidad (no puede restar más de lo disponible en esa posición) o elija otra posición.
+
+**¿Qué significa "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx."? (pantalla)**
+El teléfono del proveedor tiene menos de 10 dígitos. Escriba los 10 (el campo pone la máscara solo) o déjelo vacío. Un
+proveedor cargado antes con otro formato tiene que corregirse para poder guardar.
+
+**¿Qué significa "Indique el almacén." al crear una orden de compra? (pantalla)**
+El modal de la orden exige el almacén aunque el API lo acepte vacío cuando la compañía tiene uno solo. Elíjalo de la lista.
+Si el API responde "Indique el almacén: la compañía tiene más de uno." (400) es la misma regla para quien llama sin almacén.
+
+**¿Qué significa "Agregue al menos una línea con cantidad ordenada mayor que cero."? (pantalla)**
+Todas las líneas de la orden tienen la cantidad vacía o en cero. Capture al menos una con cantidad mayor que cero, o quite las
+líneas sobrantes. Vale al crear la orden y al guardar cambios en sus líneas. El API responde "La orden de compra debe tener al
+menos una línea." o "La cantidad ordenada debe ser mayor que cero." (400).
+
+**¿Qué significa "Indique el cupo máximo." / "Elija al menos un filtro (zona, pasillo, rack, nivel o posición) o marque «Todo el almacén»." en Asignar cupo? (pantalla)**
+En el modal **Asignar cupo**, el primer mensaje sale si eligió "Cupo máximo" y dejó el campo vacío: escriba el cupo, o elija
+"Quitar cupo". El segundo aparece en la vista previa cuando no hay ningún filtro puesto: agregue una zona, pasillo, rack,
+nivel o posición, o marque "Todo el almacén" si de verdad quiere cambiar todo el almacén. Mientras falte alguno de los dos, el
+botón de aplicar está deshabilitado.
+
+**¿Qué significa "Ninguna posición coincide con el alcance: no hay nada que aplicar."? (pantalla)**
+Los filtros del modal Asignar cupo no encuentran ninguna posición **activa** (o, con "Solo posiciones sin cupo", todas ya
+tienen cupo). Cambie los filtros. No se cambia nada mientras esté en cero.
+
+**¿Qué significa "No se pudo calcular a cuántas posiciones se aplicará: …"? (pantalla)**
+La vista previa del modal Asignar cupo no pudo consultar el servidor (el texto que sigue es el motivo, por ejemplo un permiso
+o una desconexión). El botón de aplicar queda deshabilitado; cierre el modal y vuelva a abrirlo, o revise su conexión y su
+permiso `warehouse.manage`.
+
+**¿Qué significa "No se pudo generar el reporte. Intente de nuevo."? (aviso de pantalla)**
+El navegador no pudo leer los datos o armar el PDF de Reporte de inventario / Reporte de ajustes. Intente de nuevo; si sigue,
+afine los filtros (menos productos) y revise su conexión.
+
+**¿Qué significan los avisos de los reportes PDF?**
+Salen en el recuadro de avisos de la primera página: "Productos sin existencia (en mano 0) no incluidos: N." (el reporte de
+inventario no lista productos en cero); "Productos con existencia sin costo de compra: N. Su valor aparece como «—» y no se
+suma en los totales." (falta el costo de compra en esos productos); "Saldos iniciales de la migración excluidos: N (no son
+ajustes de la operación)." (el reporte de ajustes no cuenta el saldo inicial cargado por la migración); "La vista «…» depende
+del estado actual del producto y no aplica a los movimientos…" (hay un indicador elegido y no filtra ajustes); "El reporte
+incluye solo los primeros N productos / los N ajustes más recientes (límite de lectura). Afine los filtros para ver el resto."
+(hay más de 10.000 filas: acote con los filtros). No son errores: son datos del reporte.
+
+### Preguntas frecuentes
+
+**¿Cómo corrijo el cupo de muchas posiciones a la vez (o pongo el mismo cupo a muchas)?**
+En Posiciones, o en la pestaña Posiciones de la ficha del almacén, use el botón **Asignar cupo** (necesita `warehouse.manage`): elija
+el alcance, escriba el cupo o elija "Quitar cupo", revise "Se aplicará a N posiciones" y aplique. Por el API es
+`POST /api/v1/warehouses/{id}/bins/capacity` y los mismos filtros del listado de posiciones, por ejemplo
+`{ "zoneIds": [3], "aisle": "01", "maxCapacityQty": 40 }`. Aplica a todas las que cumplen (no solo a una página) y responde
+cuántas cumplían (`matched`) y cuántas cambiaron (`changed`). Para ver antes cuántas serán, pida el listado con esos filtros
+y `take=1` y mire `total`. Necesita el permiso `warehouse.manage`.
+
+**¿Cómo lleno solo las posiciones que no tienen cupo, sin tocar las que ya capturé?**
+Agregue `onlyWithoutCapacity: true`. Por ejemplo `{ "allBins": true, "onlyWithoutCapacity": true, "maxCapacityQty": 50 }`
+llena todas las posiciones activas del almacén que están sin cupo y deja intactas las demás.
+
+**¿De dónde salió el cupo de mis posiciones?**
+Lo estimó la migración desde el historial del WMS anterior: el mayor total que tuvo cada posición (inventario actual y
+anterior, conteos y acomodos por día) redondeado hacia arriba a la decena. Las posiciones sin historial toman la mediana de
+su pasillo, o si no de su zona, o si no del almacén; esa mediana solo se usa si sale de al menos 5 posiciones con historial
+(con menos se pasa al siguiente nivel). Advance Solutions no tiene cupo estimado: sus posiciones quedan "sin cupo". El detalle, con el origen de cada cupo (`HISTORIAL`, `PASILLO`, `ZONA`,
+`ALMACEN`), está en el CSV `-cupos` del reporte de la migración. Es una estimación: corríjala con el cupo en bloque o
+editando la posición.
+
+**¿La migración con `--update` me borra los cupos que corregí?**
+No. `--update` solo llena el cupo de las posiciones que **no** tienen; una posición con cupo (capturado a mano o de una
+carga anterior) lo conserva siempre y el CSV lo dice: "Se conserva el cupo actual (N)".
+
+**¿Por qué el reporte de inventario no lista productos con 0?** Porque es una foto de lo que hay: solo entran los productos
+con existencia en mano distinta de cero, y un aviso dice cuántos quedaron fuera. Si necesita también los de cero, use
+**Exportar** de la tabla.
+
+**¿Por qué el reporte de ajustes no trae los saldos iniciales de la migración?** Porque la migración los registró como
+ajustes (motivo `OPENING_BALANCE`) pero no son ajustes de la operación; el reporte los excluye y avisa cuántos son
+("Saldos iniciales de la migración excluidos: N"). Siguen visibles en el Kárdex de inventario.
+
+**¿Por qué el valor del inventario sale «—»?** Porque el producto no tiene **Costo de compra**. El valor es Total × costo de
+compra; sin costo no se calcula y no entra en los totales (el reporte avisa cuántos productos están así). Capture el costo en
+el producto y genere el reporte otra vez. El sistema no guarda costo promedio ni costo por lote.
+
+**¿Por qué no puedo cambiar el proveedor o el almacén de una orden ya creada?** Porque se eligen al crear la orden y no
+cambian (la ficha los muestra de solo lectura y el API responde 400 "El campo supplierId de la orden de compra no se puede
+cambiar."). Si se equivocó, cancele la orden y cree otra.
+
+**¿Por qué, con un filtro de Almacén en Productos, siguen saliendo productos sin existencia?** El filtro acota las cantidades
+de cada fila a ese almacén, no quita productos. Para quedarse con los que tienen disponible use el indicador "Unidades
+totales" (activos con disponible).
+
+**¿Por qué el filtro "Estado" y el buscador de la tabla de Productos ya no están?** Los indicadores de arriba (SKUs activos,
+Unidades totales, Bajo mínimo, Con número de serie) reemplazan al filtro Estado, y para buscar por texto están los filtros
+Nombre y SKU.
+
+**¿Adónde se fue "Ubicaciones"?** Se llama **Posiciones** desde el Lote 12 (mismo lugar del menú y misma dirección
+`/warehouse/locations`).
+
+**¿Por qué "Con número de serie" o "Bajo mínimo" está en naranja?** Porque hay algo que atender: productos bajo su mínimo o
+productos con serie cuyas series capturadas son menos que su existencia ("N sin series completas"). Sin pendientes, el
+indicador se ve con el color normal. Un clic en el indicador filtra la tabla para verlos.

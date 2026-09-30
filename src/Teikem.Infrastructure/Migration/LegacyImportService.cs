@@ -49,7 +49,8 @@ public sealed record LegacyImportSources(
     IReadOnlyList<WmsItem> WmsItems,
     IReadOnlyList<WmsLocation> WmsLocations,
     IReadOnlyList<WmsInventoryRow> WmsInventory,
-    IReadOnlyList<WmsUpc> WmsUpcs)
+    IReadOnlyList<WmsUpc> WmsUpcs,
+    IReadOnlyList<WmsBinQuantity>? WmsBinHistory = null)
 {
     /// <summary>Solo QuickBooks (sin WMS).</summary>
     public static LegacyImportSources FromQuickBooks(IReadOnlyList<QbItem> items, IReadOnlyList<QbCustomer> customers,
@@ -69,6 +70,8 @@ public sealed class PlannedProduct
     public required string Key { get; init; }
     public required string Name { get; init; }
     public string? Category { get; init; }
+    /// <summary>Marca de QuickBooks (columna Brand), recortada; null si viene vacía.</summary>
+    public string? Brand { get; init; }
     public string? Barcode { get; set; }
     public decimal? PurchaseCost { get; init; }
     public decimal? SalePrice { get; init; }
@@ -96,6 +99,8 @@ public sealed class LegacyImportPlan
     public PlannedWarehouse? Warehouse { get; set; }
     public List<PlannedZone> Zones { get; } = new();
     public List<PlannedBin> Bins { get; } = new();
+    /// <summary>Lote 11: cupo estimado de las posiciones que vienen del WMS (vacío sin MSWM o sin historial).</summary>
+    public List<BinCapacityEstimate> Capacities { get; } = new();
     public List<PlannedBalance> Balances { get; } = new();
     public List<PlannedSupplier> Suppliers { get; } = new();
     public List<PlannedClient> Clients { get; } = new();
@@ -154,6 +159,27 @@ public static class LegacyImportPlanner
     public static string MswmConnectionMissing(string name) => $"Falta la cadena de conexión ConnectionStrings:{name}.";
     public const string AdminEmailRequired = "company.adminEmail es obligatorio para aprovisionar la compañía.";
     public static string DbUnavailable(string detail) => $"No se pudo consultar la base de Teikem ({detail}); la simulación supone que la compañía es nueva.";
+    public static string CapacityWithoutHistory(string warehouse)
+        => $"Ninguna posición de {warehouse} tiene historial de existencias en el WMS; las posiciones quedan sin cupo.";
+
+    // Lote 11: columna Resultado del CSV de cupos.
+    public const string CapacityAssigned = "Asignado al crear la posición";
+    public const string CapacityWouldAssign = "Se asignaría al crear la posición";
+    public const string CapacityFilled = "Asignado (--update: la posición no tenía cupo)";
+    public const string CapacityWouldFill = "Se asignaría (--update: la posición no tenía cupo)";
+    public const string CapacitySkippedWithoutUpdate = "Sin cambio: la posición ya existía sin cupo (use --update para llenarlo)";
+    public const string CapacityNotApplied = "No se asignó: la posición no se creó o la escritura fue rechazada (ver rechazos)";
+    public static string CapacityKept(int current) => $"Se conserva el cupo actual ({current.ToString(CultureInfo.InvariantCulture)})";
+
+    /// <summary>Texto de la columna Resultado según la decisión (BinCapacityRules.Decide) y el modo.</summary>
+    public static string CapacityResult(BinCapacityAction action, int? current, bool dryRun) => action switch
+    {
+        BinCapacityAction.AssignOnCreate => dryRun ? CapacityWouldAssign : CapacityAssigned,
+        BinCapacityAction.FillExisting => dryRun ? CapacityWouldFill : CapacityFilled,
+        BinCapacityAction.KeepExisting => CapacityKept(current ?? 0),
+        _ => CapacitySkippedWithoutUpdate,
+    };
+
     public static string ReconciliationMismatch(string where, decimal ledgerQty, decimal balanceQty)
         => $"Descuadre en {where}: ledger {ProductRules.FormatQty(ledgerQty)}, saldo {ProductRules.FormatQty(balanceQty)}.";
 
@@ -281,6 +307,7 @@ public static class LegacyImportPlanner
             var product = new PlannedProduct
             {
                 Sku = sku, Key = key, Name = name, Category = category,
+                Brand = string.IsNullOrWhiteSpace(item.Brand) ? null : item.Brand.Trim() is var b && b.Length > 100 ? b[..100] : item.Brand.Trim(),
                 PurchaseCost = Positive(LegacyImportRules.ParseQuickBooksNumber(item.Cost)),
                 SalePrice = Positive(LegacyImportRules.ParseQuickBooksNumber(item.Price)),
                 IsActiveInSource = item.IsActive,
@@ -437,6 +464,23 @@ public static class LegacyImportPlanner
             plan.Bins.Add(new PlannedBin(code!, zoneCode, parts.Aisle, parts.Level, parts.Position, id));
         }
         foreach (var g in plan.Bins.GroupBy(b => b.ZoneCode)) report.AddInfo($"Posiciones en zona {g.Key}", g.Count().ToString(CultureInfo.InvariantCulture));
+        PlanCapacities(plan.Warehouse!.Code, src, report, plan);
+    }
+
+    /// <summary>
+    /// Lote 11: cupo estimado de las posiciones que vienen del WMS (BinCapacityRules) a partir del historial de existencias
+    /// por posición. Solo si se leyó MSWM (WmsBinHistory != null): Advance Solutions (sin WMS) no estima nada. Sin ninguna
+    /// posición con historial, se advierte y las posiciones quedan sin cupo.
+    /// </summary>
+    private static void PlanCapacities(string warehouseCode, LegacyImportSources src, LegacyImportReport report, LegacyImportPlan plan)
+    {
+        if (src.WmsBinHistory is null || plan.Bins.Count == 0) return;
+        var historical = BinCapacityRules.HistoricalMaxByCode(src.WmsBinHistory.Select(h => (h.LocationId, h.Quantity)));
+        var estimates = BinCapacityRules.Estimate(plan.Bins.Select(b => new BinCapacityInput(b.Code, b.ZoneCode, b.Aisle)).ToList(), historical);
+        if (estimates.Count == 0) { report.Warn(LegacyImportEntities.Bins, warehouseCode, CapacityWithoutHistory(warehouseCode)); return; }
+        plan.Capacities.AddRange(estimates);
+        report.AddInfo("Cupos estimados", string.Join(", ", BinCapacityOrigins.All.Select(o =>
+            $"{o} {estimates.Count(e => e.Origin == o).ToString(CultureInfo.InvariantCulture)}")));
     }
 
     // ---------------------------------------------------------------- saldo inicial
@@ -776,6 +820,7 @@ public sealed class LegacyImportService(
         IReadOnlyList<WmsLocation> wmsLocations = Array.Empty<WmsLocation>();
         IReadOnlyList<WmsInventoryRow> wmsInventory = Array.Empty<WmsInventoryRow>();
         IReadOnlyList<WmsUpc> wmsUpcs = Array.Empty<WmsUpc>();
+        IReadOnlyList<WmsBinQuantity>? wmsBinHistory = null;
         if (cfg.Sources.Mswm is { } m && !string.IsNullOrWhiteSpace(m.ConnectionStringName) && !string.IsNullOrWhiteSpace(m.WarehouseId))
         {
             var cs = config.GetConnectionString(m.ConnectionStringName.Trim());
@@ -787,9 +832,16 @@ public sealed class LegacyImportService(
             wmsLocations = await reader.ReadLocationsAsync(warehouseId, ct);
             wmsInventory = await reader.ReadInventoryAsync(warehouseId, ct);
             wmsUpcs = await reader.ReadUpcsAsync(warehouseId, ct);
+            // Lote 11: historial de existencias por posición para estimar el cupo (solo si el almacén viene de MSWM).
+            if (cfg.Warehouse.SingleBin is null && !string.IsNullOrWhiteSpace(cfg.Warehouse.Code))
+            {
+                wmsBinHistory = await reader.ReadBinHistoryAsync(warehouseId, ct);
+                report.AddInfo("Historial por posición (MSWM)", string.Join(", ", wmsBinHistory.GroupBy(h => h.Source)
+                    .Select(g => $"{g.Key} {g.Count().ToString(CultureInfo.InvariantCulture)} fotos")));
+            }
             report.AddInfo("WMS (MSWM)", $"almacén {warehouseId}: {wmsItems.Count} ítems, {wmsLocations.Count} posiciones, {wmsInventory.Count} filas de inventario, {wmsUpcs.Count} UPC");
         }
-        return new LegacyImportSources(items, extra, customers, vendors, wmsItems, wmsLocations, wmsInventory, wmsUpcs);
+        return new LegacyImportSources(items, extra, customers, vendors, wmsItems, wmsLocations, wmsInventory, wmsUpcs, wmsBinHistory);
     }
 
     // ================================================================ compañía
@@ -927,26 +979,80 @@ public sealed class LegacyImportService(
         // Posiciones por código (consulta directa de lectura: una sola para las ~3.900 de Depot).
         const string B = LegacyImportEntities.Bins;
         var bins = s.Warehouse is { } wh2 && s.ReadDb
-            ? await db.WarehouseBins.AsNoTracking().Where(b => b.WarehouseId == wh2.Id).Select(b => new { b.WarehouseBinId, b.Code })
-                .ToDictionaryAsync(b => b.Code, b => b.WarehouseBinId, StringComparer.OrdinalIgnoreCase, ct)
-            : new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            ? await db.WarehouseBins.AsNoTracking().Where(b => b.WarehouseId == wh2.Id).Select(b => new { b.WarehouseBinId, b.Code, b.MaxCapacityQty })
+                .ToDictionaryAsync(b => b.Code, b => (Id: b.WarehouseBinId, Capacity: b.MaxCapacityQty), StringComparer.OrdinalIgnoreCase, ct)
+            : new Dictionary<string, (int Id, int? Capacity)>(StringComparer.OrdinalIgnoreCase);
+        // Lote 11: cupo estimado por código (solo posiciones del WMS). Nueva → nace con él; existente con cupo → se conserva;
+        // existente sin cupo → se llena solo con --update (BinCapacityRules.Decide).
+        var capacities = plan.Capacities.ToDictionary(c => c.Code, StringComparer.Ordinal);
+        var toFill = new List<(BinCapacityEstimate Estimate, int BinId)>();
         var done = 0;
         foreach (var b in plan.Bins)
         {
-            if (bins.TryGetValue(b.Code, out var binId)) { report.CountExisting(B); s.BinIds[b.Code] = binId; continue; }
+            var estimate = capacities.GetValueOrDefault(b.Code);
+            if (bins.TryGetValue(b.Code, out var existingBin))
+            {
+                report.CountExisting(B);
+                s.BinIds[b.Code] = existingBin.Id;
+                if (estimate is null) continue;
+                var action = BinCapacityRules.Decide(binExists: true, existingBin.Capacity, s.Update);
+                if (action == BinCapacityAction.FillExisting) toFill.Add((estimate, existingBin.Id));
+                else report.AddCapacity(estimate, LegacyImportPlanner.CapacityResult(action, existingBin.Capacity, s.DryRun));
+                continue;
+            }
             var zoneId = s.ZoneIds.TryGetValue(b.ZoneCode, out var zid) ? zid : (int?)null;
             if (zoneId is null && !s.ZonesWouldExist.Contains(b.ZoneCode))
             {
                 report.Reject(B, b.Code, LegacyImportPlanner.ZoneMissing(b.ZoneCode, b.Code));
+                if (estimate is not null) report.AddCapacity(estimate, LegacyImportPlanner.CapacityNotApplied);
                 continue;
             }
-            if (s.DryRun) { report.CountCreated(B); s.BinsWouldExist.Add(b.Code); continue; }
+            if (s.DryRun)
+            {
+                report.CountCreated(B);
+                s.BinsWouldExist.Add(b.Code);
+                if (estimate is not null) report.AddCapacity(estimate, LegacyImportPlanner.CapacityWouldAssign);
+                continue;
+            }
             var dto = await TryAsync(report, B, b.Code, () => layout.CreateBinAsync(s.Warehouse!.Value.PublicId,
-                new WarehouseBinRequest(zoneId, b.Code, b.Aisle, null, b.Level, b.Position), ct));
-            if (dto is null) continue;
+                new WarehouseBinRequest(zoneId, b.Code, b.Aisle, null, b.Level, b.Position, MaxCapacityQty: estimate?.Capacity), ct));
+            if (dto is null)
+            {
+                if (estimate is not null) report.AddCapacity(estimate, LegacyImportPlanner.CapacityNotApplied);
+                continue;
+            }
             report.CountCreated(B);
             s.BinIds[b.Code] = dto.Id;
+            if (estimate is not null) report.AddCapacity(estimate, LegacyImportPlanner.CapacityAssigned);
             if (++done % 500 == 0) logger.LogInformation("Posiciones creadas: {Count} de {Total}.", done, plan.Bins.Count);
+        }
+        await FillCapacitiesAsync(toFill, s, report, ct);
+    }
+
+    /// <summary>
+    /// Lote 11, modo --update: llena el cupo de las posiciones existentes que no lo tienen, con la asignación en bloque del
+    /// almacén (WarehouseLayoutService.SetBinsCapacityAsync, una llamada por valor de cupo) y onlyWithoutCapacity = true: dentro
+    /// de su transacción solo toca las que SIGUEN sin cupo, así que nunca pisa uno capturado a mano entretanto. Cada posición
+    /// cambiada queda en la bitácora de auditoría (interceptor). En dry-run solo reporta.
+    /// </summary>
+    private async Task FillCapacitiesAsync(List<(BinCapacityEstimate Estimate, int BinId)> toFill, RunState s, LegacyImportReport report, CancellationToken ct)
+    {
+        if (toFill.Count == 0) return;
+        const string B = LegacyImportEntities.Bins;
+        if (s.DryRun || s.Warehouse is not { } wh)
+        {
+            foreach (var (e, _) in toFill) report.AddCapacity(e, LegacyImportPlanner.CapacityWouldFill);
+            report.CountUpdated(B, toFill.Count);
+            return;
+        }
+        foreach (var group in toFill.GroupBy(x => x.Estimate.Capacity).OrderBy(g => g.Key))
+        {
+            var rows = group.ToList();
+            var result = await TryAsync(report, B, $"cupo {group.Key.ToString(CultureInfo.InvariantCulture)} ({rows.Count} posiciones)",
+                () => layout.SetBinsCapacityAsync(wh.PublicId, new WarehouseBinCapacityRequest(BinIds: rows.Select(r => r.BinId).ToArray(),
+                    IncludeInactive: true, OnlyWithoutCapacity: true, MaxCapacityQty: group.Key), ct));
+            foreach (var (e, _) in rows) report.AddCapacity(e, result is null ? LegacyImportPlanner.CapacityNotApplied : LegacyImportPlanner.CapacityFilled);
+            if (result is not null) report.CountUpdated(B, result.Changed);
         }
     }
 
@@ -1036,7 +1142,7 @@ public sealed class LegacyImportService(
             var categoryId = p.Category is not null && s.CategoryIds.TryGetValue(p.Category, out var cid) ? cid : null;
             var dto = await TryAsync(report, E, p.Sku, () => products.CreateAsync(new ProductCreateRequest(
                 Sku: p.Sku, Name: p.Name, CategoryId: categoryId, BaseUom: cfg.Products.BaseUom, TrackingType: cfg.Products.TrackingType,
-                Barcode: barcode, PurchaseCost: p.PurchaseCost, SalePrice: p.SalePrice), ct));
+                Barcode: barcode, PurchaseCost: p.PurchaseCost, SalePrice: p.SalePrice, Brand: p.Brand), ct));
             if (dto is null) continue;
             report.CountCreated(E);
             s.ProductIds[p.Key] = (dto.Product.Id, dto.Product.PublicId);
