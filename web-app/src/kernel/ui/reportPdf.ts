@@ -12,7 +12,7 @@
 // reportFileName); `renderReportPdf` arma el documento en memoria y `downloadReportPdf` lo descarga.
 // Las fuentes estándar de jsPDF solo cubren Latin-1: todo texto pasa por `pdfSafeText`.
 import type { jsPDF } from 'jspdf'
-import { t as translate } from '../i18n'
+import { numberLocale, t as translate, TENANT_CURRENCY } from '../i18n'
 import { BRAND_SYMBOL_SRC } from './brandAssets'
 import { exportFileName, pdfSafeText } from './exportTable'
 
@@ -91,8 +91,9 @@ export function isNumericFormat(format: ReportFormat | undefined): boolean {
 const NUMBER_OPTIONS: Record<Exclude<ReportFormat, 'text'>, Intl.NumberFormatOptions> = {
   quantity: { maximumFractionDigits: 3, useGrouping: 'always' },
   signed: { maximumFractionDigits: 3, signDisplay: 'exceptZero', useGrouping: 'always' },
-  money: { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' },
-  unitCost: { minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: 'always' },
+  // dinero con signo de dólar (pedido del dueño): "$1,234.50"
+  money: { style: 'currency', currency: TENANT_CURRENCY, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' },
+  unitCost: { style: 'currency', currency: TENANT_CURRENCY, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: 'always' },
 }
 
 /** Texto de una celda: números con los separadores del idioma según el formato; texto tal cual; vacío = ''. */
@@ -101,7 +102,7 @@ export function formatReportValue(value: ReportValue, format: ReportFormat | und
   if (typeof value === 'string') return value
   if (!Number.isFinite(value)) return ''
   if (!format || format === 'text') return String(value)
-  return new Intl.NumberFormat(locale, NUMBER_OPTIONS[format]).format(value)
+  return new Intl.NumberFormat(numberLocale(locale), NUMBER_OPTIONS[format]).format(value)
 }
 
 /** Orientación: la pedida o, si no, horizontal con más de 6 columnas. */

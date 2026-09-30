@@ -8,6 +8,7 @@
 //   del más reciente al más antiguo, con entradas, salidas y neto.
 // Los armadores (`buildInventoryReport`, `buildAdjustmentsReport`) son puros y se prueban sin DOM ni API.
 import { parseApiDate } from '../../kernel/api/dates'
+import { numberLocale } from '../../kernel/i18n'
 import { downloadReportPdf, type ReportSpec, type ReportValue } from '../../kernel/ui/reportPdf'
 import { exportInventoryTransactions, exportProducts, type GetQuery, type KardexRowDto, type ProductListItemDto } from './api'
 import {
@@ -52,7 +53,7 @@ export const OPENING_BALANCE_REASON = 'OPENING_BALANCE'
 
 /** Cifras del resumen y los avisos: con separador de miles siempre, como las columnas del reporte. */
 function formatNumber(n: number, lang: string, opts: Intl.NumberFormatOptions = { maximumFractionDigits: 3 }): string {
-  return new Intl.NumberFormat(lang, { useGrouping: 'always', ...opts }).format(n)
+  return new Intl.NumberFormat(numberLocale(lang), { useGrouping: 'always', ...opts }).format(n)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

@@ -7,9 +7,13 @@
 //   en 0 y se recalcula al teclear el esperado (`onExpectedInput`).
 // - `linePayload` arma el POST (fila nueva) o el PUT con solo lo que cambió; `confirmBlockers` dice por qué no se puede
 //   confirmar. Mensajes: claves i18n (`warehouse.lineRules.*` / `warehouse.receipts.*`) o el texto exacto del servidor.
+// - Lote 16 (recibo directo a posición): cada fila lleva su posición destino (`targetBinId`, se guarda al elegirla: va en el
+//   POST de una fila nueva o en el PUT con `targetBinId`/`clearTargetBin`); `missingTargets` cuenta las líneas que la
+//   necesitan y no la tienen y `confirmBlockers(…, direct)` bloquea con 'noTarget'.
 // Pruebas en receiptLineEdit.test.ts.
 import type { components } from '../../kernel/api/schema'
 import { decimalsOf, QTY_LIMIT } from './lineRules'
+import { needsTarget } from './receivingMode'
 
 type Schemas = components['schemas']
 type LineDto = Schemas['ReceiptLineDto']
@@ -17,7 +21,7 @@ type LineDto = Schemas['ReceiptLineDto']
 /** Máximo de líneas de un recibo (ReceiptRules.MaxLines). */
 export const MAX_RECEIPT_LINES = 200
 
-export type RowField = 'product' | 'expected' | 'received' | 'row'
+export type RowField = 'product' | 'expected' | 'received' | 'target' | 'row'
 /** Errores de una fila por campo: texto ya traducido (o el del servidor). */
 export type RowErrors = Partial<Record<RowField, string>>
 
@@ -39,8 +43,14 @@ export interface LineRow {
   lotNumber: string | null
   serialCount: number
   allocatedToCrossDock: number
+  /** Lote 16: posición destino (recibo directo). `targetFreeQty` = espacio libre que informó el servidor (null = sin cupo o
+   *  aún sin guardar). */
+  targetBinId: number | null
+  targetBinCode: string | null
+  targetZoneTypeCode: string | null
+  targetFreeQty: number | null
   /** Lo guardado en el servidor (null = fila nueva). */
-  original: { productPublicId: string | null; expected: number | null; received: number | null } | null
+  original: { productPublicId: string | null; expected: number | null; received: number | null; targetBinId: number | null } | null
   errors: RowErrors
   saving: boolean
 }
@@ -85,6 +95,10 @@ export function emptyRow(key: string): LineRow {
     lotNumber: null,
     serialCount: 0,
     allocatedToCrossDock: 0,
+    targetBinId: null,
+    targetBinCode: null,
+    targetZoneTypeCode: null,
+    targetFreeQty: null,
     original: null,
     errors: {},
     saving: false,
@@ -108,9 +122,25 @@ export function rowFromLine(line: LineDto, key = `line-${line.id ?? 0}`): LineRo
     lotNumber: line.lotNumber ?? null,
     serialCount: line.serialNumbers?.length ?? 0,
     allocatedToCrossDock: line.allocatedToCrossDock ?? 0,
-    original: { productPublicId: line.productPublicId ?? null, expected: line.expectedQty ?? null, received: line.receivedQty ?? 0 },
+    ...targetFromLine(line),
+    original: {
+      productPublicId: line.productPublicId ?? null,
+      expected: line.expectedQty ?? null,
+      received: line.receivedQty ?? 0,
+      targetBinId: line.targetBinId ?? null,
+    },
     errors: {},
     saving: false,
+  }
+}
+
+/** Campos de la posición destino tal como los devolvió el servidor. */
+function targetFromLine(line: LineDto): Pick<LineRow, 'targetBinId' | 'targetBinCode' | 'targetZoneTypeCode' | 'targetFreeQty'> {
+  return {
+    targetBinId: line.targetBinId ?? null,
+    targetBinCode: line.targetBinCode ?? null,
+    targetZoneTypeCode: line.targetZoneTypeCode ?? null,
+    targetFreeQty: line.targetFreeQty ?? null,
   }
 }
 
@@ -132,6 +162,8 @@ export interface RowsMode {
   manual: boolean
   /** Abierto y con warehouse.receive. */
   editable: boolean
+  /** Lote 16: el recibo entra directo a posición (columna "Posición destino"). */
+  direct?: boolean
 }
 
 /** Filas iniciales de un recibo: sus líneas (por id) y, si se capturan a mano, una fila vacía al final. */
@@ -182,6 +214,21 @@ export function onProductPicked(
   }
 }
 
+/** Lote 16: se elige (o se quita) la posición destino de la fila. El espacio libre lo vuelve a informar el servidor al guardar. */
+export function onTargetPicked(
+  row: LineRow,
+  bin: { id?: number | null; code?: string | null; zoneTypeCode?: string | null } | null,
+): LineRow {
+  return {
+    ...row,
+    targetBinId: bin?.id ?? null,
+    targetBinCode: bin?.code ?? null,
+    targetZoneTypeCode: bin?.zoneTypeCode ?? null,
+    targetFreeQty: null,
+    errors: withoutErrors(row.errors, 'target', 'row'),
+  }
+}
+
 function sameQty(text: string, saved: number | null): boolean {
   const n = parseQtyText(text)
   if (Number.isNaN(n)) return false
@@ -195,7 +242,8 @@ export function isDirty(row: LineRow, manual = true): boolean {
   return (
     row.productPublicId !== row.original.productPublicId ||
     (manual && !sameQty(row.expected, row.original.expected)) ||
-    !sameQty(row.received, row.original.received)
+    !sameQty(row.received, row.original.received) ||
+    row.targetBinId !== row.original.targetBinId
   )
 }
 
@@ -255,6 +303,7 @@ export function linePayload(row: LineRow, manual: boolean): LinePayload {
     if (Object.keys(issues).length > 0) return { kind: 'invalid', issues }
     const body: Schemas['ReceiptLineRequest'] = { productPublicId: row.productPublicId, receivedQty: received }
     if (manual && expected !== null) body.expectedQty = expected
+    if (row.targetBinId !== null) body.targetBinId = row.targetBinId
     return { kind: 'add', body }
   }
 
@@ -273,6 +322,10 @@ export function linePayload(row: LineRow, manual: boolean): LinePayload {
     else body.expectedQty = expected
   }
   if (manual && row.asnLineId === null && row.productPublicId !== row.original.productPublicId) body.productPublicId = row.productPublicId
+  if (row.targetBinId !== row.original.targetBinId) {
+    if (row.targetBinId === null) body.clearTargetBin = true
+    else body.targetBinId = row.targetBinId
+  }
   return Object.keys(body).length === 0 ? { kind: 'none' } : { kind: 'update', lineId: row.lineId, body }
 }
 
@@ -293,7 +346,10 @@ export function newLineFrom(lines: readonly LineDto[] | null | undefined, knownI
 export function mergeSaved(current: LineRow, sent: LineRow, line: LineDto): LineRow {
   const fresh = rowFromLine(line, current.key)
   const untouched =
-    current.expected === sent.expected && current.received === sent.received && current.productPublicId === sent.productPublicId
+    current.expected === sent.expected &&
+    current.received === sent.received &&
+    current.productPublicId === sent.productPublicId &&
+    current.targetBinId === sent.targetBinId
   if (untouched) return fresh
   return { ...current, lineId: fresh.lineId, asnLineId: fresh.asnLineId, original: fresh.original, saving: false, errors: {} }
 }
@@ -325,12 +381,15 @@ export function reconcileRows(
     if (!line) continue
     seen.add(r.lineId)
     if (r.saving || isDirty(r, mode.manual)) {
+      // Lote 16: si el destino no se tocó en la fila, manda el del servidor ("Usar posiciones sugeridas", otra pantalla)
+      const targetKept = r.saving || r.original === null || r.targetBinId !== r.original.targetBinId
       saved.push({
         ...r,
         asnLineId: line.asnLineId ?? null,
         lotNumber: line.lotNumber ?? null,
         serialCount: line.serialNumbers?.length ?? 0,
         allocatedToCrossDock: line.allocatedToCrossDock ?? 0,
+        ...(targetKept || !r.original ? {} : { ...targetFromLine(line), original: { ...r.original, targetBinId: line.targetBinId ?? null } }),
       })
     } else {
       saved.push({ ...rowFromLine(line, r.key), errors: r.errors })
@@ -353,22 +412,48 @@ export function rowErrorsFromProblem(problem: { title: string; errors: Record<st
     if (!msg) continue
     const k = raw.replace(/^\$\./, '').replace(/^line\./i, '').toLowerCase()
     const field: RowField =
-      k === 'receivedqty' ? 'received' : k === 'expectedqty' ? 'expected' : k === 'productpublicid' ? 'product' : 'row'
+      k === 'receivedqty'
+        ? 'received'
+        : k === 'expectedqty'
+          ? 'expected'
+          : k === 'productpublicid'
+            ? 'product'
+            : k === 'targetbinid' || k === 'targetbincode' || k === 'cleartargetbin'
+              ? 'target'
+              : 'row'
     out[field] = out[field] ? `${out[field]} ${msg}` : msg
   }
   if (Object.keys(out).length === 0) out.row = problem.title
   return out
 }
 
-export type ConfirmBlocker = 'confirmed' | 'noLines' | 'saving' | 'unsaved' | 'errors'
+/** Lote 16: ¿la fila (guardada) necesita posición destino para confirmar un recibo directo? Ver `needsTarget`. */
+export function rowNeedsTarget(row: LineRow): boolean {
+  if (row.lineId === null) return false
+  const received = parseQtyText(row.received)
+  return needsTarget({
+    received: received === null || Number.isNaN(received) ? null : received,
+    trackingTypeCode: row.trackingTypeCode,
+    lotNumber: row.lotNumber,
+    allocatedToCrossDock: row.allocatedToCrossDock,
+  })
+}
+
+/** Lote 16: líneas guardadas que necesitan posición destino y no la tienen ("Falta la posición destino en {n} línea(s)."). */
+export function missingTargets(rows: readonly LineRow[]): number {
+  return rows.filter((r) => rowNeedsTarget(r) && r.targetBinId === null).length
+}
+
+export type ConfirmBlocker = 'confirmed' | 'noLines' | 'saving' | 'unsaved' | 'errors' | 'noTarget'
 
 /** Por qué no se puede confirmar todavía (null = se puede): confirmado, sin líneas guardadas, guardando, filas sin guardar
- *  o con error. */
-export function confirmBlockers(rows: readonly LineRow[], isOpen: boolean, manual = true): ConfirmBlocker | null {
+ *  o con error y, en un recibo directo (Lote 16), líneas sin posición destino. */
+export function confirmBlockers(rows: readonly LineRow[], isOpen: boolean, manual = true, direct = false): ConfirmBlocker | null {
   if (!isOpen) return 'confirmed'
   if (rows.some((r) => r.saving)) return 'saving'
   if (rows.some((r) => isDirty(r, manual))) return 'unsaved'
   if (!rows.some((r) => r.lineId !== null)) return 'noLines'
   if (rows.some((r) => Object.keys(r.errors).length > 0)) return 'errors'
+  if (direct && missingTargets(rows) > 0) return 'noTarget'
   return null
 }

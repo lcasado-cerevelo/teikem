@@ -2,7 +2,8 @@
 // InventoryAdjustModal (Transferencias y ajustes y Kárdex) y el bloque "Ajustar inventario" de la ficha del producto
 // (ProductEditorModal, con el producto fijo). `useAdjustmentForm` guarda en estado lo que decide las reglas (dirección,
 // producto y su rastreo, posición y lote: lo avisan los controles con `onPicked`), consulta lo disponible del producto en la
-// posición y las series disponibles (al bajar un SERIAL), y arma el esquema con esas reglas (`adjustFormSchema`). El cuerpo
+// posición y las series disponibles (al bajar un SERIAL), las posiciones donde se puede BAJAR el producto (solo las que
+// tienen disponible de él en el almacén: `downBins`, para el selector de posición), y arma el esquema con esas reglas (`adjustFormSchema`). El cuerpo
 // del API (cantidad con signo) lo arma `adjustmentBody` de `movementForms.ts`.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
@@ -21,7 +22,7 @@ import {
   type WarehouseBinDto,
 } from './api'
 import { formatNumber, parseSerials } from './lineRules'
-import { adjustmentBody, availableAt, serialsAt, type AdjustFormValues } from './movementForms'
+import { adjustmentBody, availableAt, downBinOptions, serialsAt, type AdjustFormValues, type BinStock } from './movementForms'
 import { adjustDirectionSchema, adjustNotesSchema, decimals } from './productRules'
 
 type Translate = (key: string, params?: TParams) => string
@@ -126,6 +127,11 @@ export interface AdjustmentFormState extends AdjustRules {
   balances: readonly BalanceDto[]
   /** Series disponibles en la posición (solo al bajar un SERIAL). */
   serials: string[]
+  /** Al BAJAR con producto: posiciones del almacén donde el producto tiene disponible (por código), las únicas que ofrece el
+   *  selector de posición. `undefined` = no aplica (subir, sin dirección o saldos ilegibles: se ofrecen todas). */
+  downBins: BinStock[] | undefined
+  /** `downBins` se está cargando. */
+  downBinsLoading: boolean
   fixedProduct: ProductListItemDto | null
   picked: AdjustPickHandlers
 }
@@ -162,6 +168,23 @@ export function useAdjustmentForm(opts: { initial?: AdjustInitial; fixedProduct?
   })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
 
+  // al bajar: solo las posiciones donde el producto tiene disponible en el almacén
+  const down = direction === 'down'
+  const whBalancesQ = useInventoryBalances(
+    {
+      warehousePublicIds: warehousePublicId ? [warehousePublicId] : undefined,
+      productPublicIds: product.publicId ? [product.publicId] : undefined,
+      onlyAvailable: true,
+      take: 200,
+    },
+    { enabled: down && Boolean(warehousePublicId && product.publicId), handleAccessDenied: false },
+  )
+  const whBalances = down && warehousePublicId && product.publicId && !whBalancesQ.isPlaceholderData ? whBalancesQ.data?.items : undefined
+  // si los saldos no se pueden leer (sin inventory.view, error) se ofrecen todas las posiciones: el servidor valida igual
+  const downOn = down && !whBalancesQ.isError
+  const downBins = useMemo(() => (downOn ? downBinOptions(whBalances ?? NO_BALANCES) : undefined), [downOn, whBalances])
+  const downBinsLoading = downOn && Boolean(warehousePublicId && product.publicId) && (whBalancesQ.isLoading || whBalancesQ.isPlaceholderData)
+
   const picked: AdjustPickHandlers = {
     direction: setDirection,
     product: (p) => {
@@ -175,7 +198,7 @@ export function useAdjustmentForm(opts: { initial?: AdjustInitial; fixedProduct?
     lot: (o) => setLotId(o?.value ? Number(o.value) : null),
   }
 
-  return { form, tracking, direction, available, warehousePublicId, balances, serials, fixedProduct, picked }
+  return { form, tracking, direction, available, warehousePublicId, balances, serials, downBins, downBinsLoading, fixedProduct, picked }
 }
 
 /** Envía el ajuste (cuerpo con signo). Devuelve la cantidad con signo aplicada. */

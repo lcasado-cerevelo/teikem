@@ -49,6 +49,7 @@ describe('auth del aparato', () => {
       tenantName: 'Teikem Demo',
       defaultWarehousePublicId: 'wh-1',
       theme: 'light',
+      defaultWarehouseReceivingMode: null,
     })
   })
 
@@ -85,6 +86,34 @@ describe('auth del aparato', () => {
     const result = await sendHeartbeat()
     expect(result).toEqual({ isActive: false })
     expect(getSessionState().device).toBeNull()
+  })
+
+  it('enrollDevice guarda el modo de recepción del almacén por defecto (Lote 16)', async () => {
+    handlers['/api/v1/devices/enroll'] = () =>
+      jsonResponse(200, { devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null, defaultWarehouseReceivingMode: 'DIRECT' })
+    await enrollDevice('ABC12345')
+    expect(getSessionState().device?.defaultWarehouseReceivingMode).toBe('DIRECT')
+  })
+
+  it('sendHeartbeat actualiza almacén y modo de recepción; sin cambios no reescribe la identidad (Lote 16)', async () => {
+    handlers['/api/v1/devices/enroll'] = () =>
+      jsonResponse(200, { devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
+    await enrollDevice('ABC12345')
+    expect(getSessionState().device?.defaultWarehouseReceivingMode).toBeNull()
+
+    handlers['/api/v1/devices/heartbeat'] = () =>
+      jsonResponse(200, { isActive: true, defaultWarehousePublicId: 'wh-2', defaultWarehouseReceivingMode: 'DIRECT', serverTimeUtc: '2026-01-01T00:00:00Z' })
+    await sendHeartbeat()
+    expect(getSessionState().device).toMatchObject({ defaultWarehousePublicId: 'wh-2', defaultWarehouseReceivingMode: 'DIRECT' })
+
+    const before = getSessionState().device
+    await sendHeartbeat()
+    expect(getSessionState().device).toBe(before)
+
+    handlers['/api/v1/devices/heartbeat'] = () =>
+      jsonResponse(200, { isActive: true, defaultWarehousePublicId: 'wh-2', defaultWarehouseReceivingMode: 'PUTAWAY', serverTimeUtc: '2026-01-01T00:01:00Z' })
+    await sendHeartbeat()
+    expect(getSessionState().device?.defaultWarehouseReceivingMode).toBe('PUTAWAY')
   })
 
   it('sendHeartbeat sin red no desactiva el aparato (sigue trabajando sin señal)', async () => {

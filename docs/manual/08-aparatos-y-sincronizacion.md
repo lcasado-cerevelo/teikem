@@ -145,7 +145,8 @@ normaliza a minúsculas y sin la barra final antes de contar: `/Enroll/` y `/enr
 Cómo se usa:
 - `POST /api/v1/devices/enroll` — `{ "enrollCode": "AB12CD34", "model": "Zebra TC21", "appVersion": "1.0.0" }`.
   Devuelve, **una sola vez**, `deviceSecret` (la app lo guarda cifrado en el aparato; sin él no vuelve a entrar) y
-  el `defaultWarehousePublicId`/`theme` con los que arrancar. Instalar de nuevo con un código válido revoca las
+  el `defaultWarehousePublicId`/`theme` con los que arrancar y, desde el Lote 16, `defaultWarehouseReceivingMode` (el modo de recepción del almacén por defecto, `PUTAWAY` o
+  `DIRECT`; `null` si el aparato no tiene almacén por defecto). Instalar de nuevo con un código válido revoca las
   sesiones que el aparato tuviera abiertas y fija de nuevo el sello de sesiones del aparato (como desactivar o
   reactivar): un access token con `did` emitido antes de esta reinstalación deja de servir aunque el aparato siga
   activo. Registrar y desactivar corren en una sola transacción. Dos registros a la vez con el mismo código
@@ -154,7 +155,7 @@ Cómo se usa:
   gana lo registra con éxito (`API_CREDENTIAL` / `SUCCESS`, `action = device_enrolled`).
 - `POST /api/v1/devices/heartbeat` — `{ "devicePublicId": "...", "deviceSecret": "...", "appVersion": "1.0.1" }`.
   Actualiza "visto por última vez" y la versión de la app; responde `{ isActive, defaultWarehousePublicId, theme,
-  serverTimeUtc }`. Un aparato desactivado (o cuya compañía perdió el módulo) recibe `isActive: false` **sin
+  serverTimeUtc, defaultWarehouseReceivingMode }` (este último, del Lote 16, como en el registro). Un aparato desactivado (o cuya compañía perdió el módulo) recibe `isActive: false` **sin
   error**, para que la propia app bloquee la entrada.
 
 ### Validaciones

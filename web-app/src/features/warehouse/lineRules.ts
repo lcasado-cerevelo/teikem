@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import { parseApiDate } from '../../kernel/api/dates'
 import { ApiError } from '../../kernel/api/problem'
+import { formatMoney, formatQuantity } from '../../kernel/i18n'
 
 export type TrackingCode = 'NONE' | 'LOT' | 'SERIAL' | string
 
@@ -264,9 +265,16 @@ export function lineErrorsByIndex(err: unknown): Record<number, string[]> {
   return out
 }
 
+/** Cantidad con coma de miles (formato de Puerto Rico; ver kernel/i18n/numberFormat). */
 export function formatNumber(n: number | null | undefined, lang: string): string {
   if (n == null) return ''
-  return new Intl.NumberFormat(lang, { maximumFractionDigits: 3 }).format(n)
+  return formatQuantity(n, lang)
+}
+
+/** Dinero con signo de dólar: "$1,234.50" (vacío si no hay valor). */
+export function formatMoneyValue(n: number | null | undefined, lang: string, opts?: { unitPrice?: boolean; currency?: string | null }): string {
+  if (n == null) return ''
+  return formatMoney(n, lang, opts)
 }
 
 export function formatDateTime(iso: string | null | undefined, lang: string): string {

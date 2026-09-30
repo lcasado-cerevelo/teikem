@@ -111,6 +111,21 @@ describe('InventoryTransferModal', () => {
     expect(within(dialog).getByRole('combobox', { name: /^Ítem/ })).toBeDisabled()
   })
 
+  it('la posición de origen solo ofrece posiciones con existencias (onlyWithStock) y el ítem sale de sus saldos; el destino, todas', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const dialog = await screen.findByRole('dialog', { name: 'Transferencia de inventario' })
+    const binCalls = () => mock.calls.filter((c) => c.url.pathname === `/api/v1/warehouses/${WH}/bins` && c.url.searchParams.getAll('binIds').length === 0)
+    await pickOriginAndItem(user, dialog, /GLU-STR · Tiras · Lote L-2408/)
+    expect(binCalls().length).toBeGreaterThan(0)
+    expect(binCalls().every((c) => c.url.searchParams.get('onlyWithStock') === 'true')).toBe(true)
+    // los ítems se piden con los saldos disponibles de ESA posición
+    expect(mock.calls.some((c) => c.url.pathname === '/api/v1/inventory/balances' && c.url.searchParams.getAll('binIds').join() === '10' && c.url.searchParams.get('onlyAvailable') === 'true')).toBe(true)
+    const before = binCalls().length
+    await pickDestination(user, dialog, /A-02/)
+    expect(binCalls().slice(before).some((c) => c.url.searchParams.get('onlyWithStock') === null)).toBe(true)
+  })
+
   it('producto LOT: el ítem trae el lote (lotId); el destino arranca en el almacén de origen', async () => {
     const user = userEvent.setup()
     wrap()

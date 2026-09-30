@@ -4,13 +4,13 @@
 // obligatorio), referencia con enlace a la ficha, detalle y quién. 'Ver más' pide la siguiente página (skip) y acumula.
 // Buscador libre (QBox) sobre las filas ya cargadas, aplicado después de los filtros (pestaña, ventana, obligatorios).
 // Lo monta Pulse solo con `analytics.view` y el módulo ANALYTICS; si el usuario no ve ningún módulo el panel no se pinta.
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useAccess } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { parseApiDate } from '../../kernel/api/dates'
 import { useLang, useT } from '../../kernel/i18n/useT'
-import { Chip, DataTable, EmptyState, matchesQ, Panel, QBox, Spinner, Tabs, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, EmptyState, FilterScope, matchesQ, Panel, QBox, Spinner, Tabs, useRegisterFilter, type DataColumn } from '../../kernel/ui'
 import {
   ACTIVITY_WINDOWS,
   activityLink,
@@ -24,6 +24,7 @@ import {
   type ActivityWindow,
 } from './activity'
 import { IconClock } from '../../kernel/ui/screenIcons'
+import { numberLocale } from '../../kernel/i18n'
 
 /** Fila de la tabla: el evento del API con una clave estable (su posición en lo acumulado). */
 type ActivityRow = ActivityEventDto & { rowId: string }
@@ -57,7 +58,17 @@ const FOOTER: CSSProperties = {
 /** Códigos de error con los que el panel simplemente no se pinta (el usuario no puede ver la actividad). */
 const HIDDEN_ON = new Set(['forbidden', 'module_disabled'])
 
+/** Panel con su propio ámbito de filtros: la exportación de la tabla lleva sus controles (módulo, ventana, "Solo
+ *  obligatorios", buscador) y no los de otros paneles del Pulso. */
 export function ActivityPanel() {
+  return (
+    <FilterScope>
+      <ActivityPanelBody />
+    </FilterScope>
+  )
+}
+
+function ActivityPanelBody() {
   const t = useT()
   const lang = useLang()
   const { permissions, modules } = useAccess()
@@ -65,6 +76,8 @@ export function ActivityPanel() {
   const [win, setWin] = useState<ActivityWindow>('24h')
   const [onlyMandatory, setOnlyMandatory] = useState(false)
   const [q, setQ] = useState('')
+  const windowRef = useRef<HTMLSelectElement>(null)
+  const mandatoryRef = useRef<HTMLLabelElement>(null)
 
   // Sin pestaña elegida no se manda `module`: el servidor lee el primer módulo visible.
   const filters = useMemo<ActivityFilters>(
@@ -157,6 +170,12 @@ export function ActivityPanel() {
   const title = t('analytics.activity.title')
   const subtitle = t('analytics.activity.subtitle')
 
+  // línea de filtros de la exportación: la pestaña (módulo), la ventana de tiempo y "Solo obligatorios"
+  const shownModule: ActivityModule | undefined = module && tabs.includes(module) ? module : tabs[0]
+  useRegisterFilter(t('analytics.activity.moduleFilter'), shownModule ? t(`analytics.activity.modules.${shownModule}`) : null, windowRef)
+  useRegisterFilter(t('analytics.activity.windowLabel'), t(`analytics.activity.windows.${win}`), windowRef)
+  useRegisterFilter(t('analytics.activity.onlyMandatory'), onlyMandatory ? '' : null, mandatoryRef)
+
   // Primera carga: todavía no se sabe qué módulos ve el usuario.
   if (query.isPending) {
     return (
@@ -179,7 +198,7 @@ export function ActivityPanel() {
 
   // El servidor no devolvió ninguna pestaña (sin permiso de ningún módulo o módulos apagados): sin panel.
   if (tabs.length === 0) return null
-  const active: ActivityModule = module && tabs.includes(module) ? module : tabs[0]
+  const active: ActivityModule = shownModule ?? tabs[0]
 
   const controls = (
     <>
@@ -190,6 +209,7 @@ export function ActivityPanel() {
         label={t('analytics.activity.tabsLabel')}
       />
       <select
+        ref={windowRef}
         className="btn sm"
         // padding izquierdo de 29 px: deja lugar al chevron de la izquierda de los <select> del kit (base.css)
         style={{ padding: '6px 8px 6px 29px', maxWidth: '100%' }}
@@ -203,7 +223,7 @@ export function ActivityPanel() {
           </option>
         ))}
       </select>
-      <label className="sw">
+      <label className="sw" ref={mandatoryRef}>
         <input type="checkbox" role="switch" checked={onlyMandatory} onChange={(e) => setOnlyMandatory(e.target.checked)} />
         <span className="tk" aria-hidden="true" />
         <span>{t('analytics.activity.onlyMandatory')}</span>
@@ -217,7 +237,7 @@ export function ActivityPanel() {
         <span>
           {total > 0 &&
             t(total === 1 ? 'analytics.activity.footerOne' : 'analytics.activity.footer', {
-              count: total.toLocaleString(lang),
+              count: total.toLocaleString(numberLocale(lang)),
               window: t(`analytics.activity.windowFooter.${win}`),
             })}
           {problem && (

@@ -4,6 +4,7 @@
 // capturadas (el servidor lo fija igual si llegan series sin cantidad). Lo abre el ícono de la fila en `ReceiptLinesEditor`
 // solo para productos LOT o SERIAL. Validación en el cliente con `receiptLineIssues` (mensajes exactos del manual 06); el
 // error `line` del servidor (sin campo) va bajo el campo que lo causa.
+// Lote 16: en un recibo directo a posición no se pide la posición de recepción (la línea entra a su posición destino).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -14,11 +15,12 @@ import { DateInput, Field, Form, Modal, TextArea, TextInput, toast } from '../..
 import { productLabel, useSaveReceiptLine, type ReceiptDetailDto } from './api'
 import { formatNumber, parseSerials, receiptLineIssues, remapProblemFields } from './lineRules'
 import { BinPickerInput } from './pickers'
+import { isDirectMode, RECEIVING_ZONE_TYPES } from './receivingMode'
 
 type LineDto = components['schemas']['ReceiptLineDto']
 
 /** Tipos de zona donde se recibe (posición de recepción de la línea). */
-const RECEIVING_ZONES = ['STAGING', 'CROSSDOCK'] as const
+const RECEIVING_ZONES = RECEIVING_ZONE_TYPES
 
 /**
  * El error `line` del servidor (ValidateCapture) no nombra campo: se pone bajo el que lo causa según el seguimiento
@@ -44,6 +46,7 @@ export function ReceiptLineCaptureModal({ receipt, line, onClose, onSaved }: Rec
   const publicId = header.publicId ?? ''
   const tracking = line.trackingTypeCode ?? 'NONE'
   const sku = line.sku ?? ''
+  const direct = isDirectMode(header.receivingModeCode)
 
   const schema = useMemo(
     () =>
@@ -110,7 +113,7 @@ export function ReceiptLineCaptureModal({ receipt, line, onClose, onSaved }: Rec
           const serials = parseSerials(v.serialNumbers)
           const lotNumber = v.lot.trim()
           const lot = lotNumber ? { number: lotNumber, manufactureDate: v.lotManufactureDate || null, expiryDate: v.lotExpiryDate || null } : undefined
-          const stagingBinId = v.stagingBinId ? Number(v.stagingBinId) : null
+          const stagingBinId = v.stagingBinId && !direct ? Number(v.stagingBinId) : null
           let dto: ReceiptDetailDto
           try {
             dto = await save.mutateAsync({
@@ -123,7 +126,7 @@ export function ReceiptLineCaptureModal({ receipt, line, onClose, onSaved }: Rec
                 lot,
                 clearLot: !lotNumber && line.lotId != null ? true : null,
                 serialNumbers: tracking === 'SERIAL' ? serials : null,
-                stagingBinId: stagingBinId !== (line.stagingBinId ?? null) ? stagingBinId : null,
+                stagingBinId: !direct && stagingBinId !== (line.stagingBinId ?? null) ? stagingBinId : null,
               },
             })
           } catch (err) {
@@ -164,9 +167,11 @@ export function ReceiptLineCaptureModal({ receipt, line, onClose, onSaved }: Rec
             <TextArea rows={5} />
           </Field>
         )}
-        <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')}>
-          <BinPickerInput warehousePublicId={header.warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
-        </Field>
+        {!direct && (
+          <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')}>
+            <BinPickerInput warehousePublicId={header.warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
+          </Field>
+        )}
       </Form>
     </Modal>
   )

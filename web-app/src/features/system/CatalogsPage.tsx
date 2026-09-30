@@ -13,6 +13,7 @@ import {
   DataTable,
   EmptyState,
   Field,
+  FilterScope,
   Form,
   IconEdit,
   IconPower,
@@ -505,56 +506,59 @@ export default function CatalogsPage() {
       </div>
 
       <div className="md">
-        <Panel flush icon={cards ? undefined : <IconGear />} title={cards ? undefined : t('system.catalogs.lists')}>
-          {cards ? (
-            <div className="pb">
-              <div className="f">
-                <label htmlFor="catalog-domain-select">{t('system.catalogs.list')}</label>
-                <select
-                  id="catalog-domain-select"
-                  value={effectiveKey ?? ''}
-                  onChange={(e) => setSelectedKey(e.target.value || null)}
-                >
-                  {(domains ?? []).map((d) => (
-                    <option key={d.domainKey} value={d.domainKey ?? ''}>
-                      {d.label} {d.isSystem ? '' : `(${t('system.catalogs.own')})`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Can perm={ADMIN_CATALOGS}>
-                <button type="button" className="btn sm" onClick={() => setCreatingList(true)}>
-                  + {t('system.catalogs.newList')}
-                </button>
-              </Can>
-            </div>
-          ) : (
-            <>
-              <div className="qrow tight">
-                <QBox value={domainQ} onChange={setDomainQ} placeholder={t('system.catalogs.searchList')} />
-              </div>
-              <div className="domlist">
-                {domainsLoading && <Spinner label={t('common.loading')} />}
-                {filteredDomains.map((d) => (
-                  <button
-                    key={d.domainKey}
-                    type="button"
-                    className={d.domainKey === effectiveKey ? 'domit on' : 'domit'}
-                    onClick={() => setSelectedKey(d.domainKey ?? null)}
+        {/* ámbito propio: el buscador de listas no filtra la tabla de valores (su exportación va sin línea de filtros) */}
+        <FilterScope>
+          <Panel flush icon={cards ? undefined : <IconGear />} title={cards ? undefined : t('system.catalogs.lists')}>
+            {cards ? (
+              <div className="pb">
+                <div className="f">
+                  <label htmlFor="catalog-domain-select">{t('system.catalogs.list')}</label>
+                  <select
+                    id="catalog-domain-select"
+                    value={effectiveKey ?? ''}
+                    onChange={(e) => setSelectedKey(e.target.value || null)}
                   >
-                    <Chip tone={d.isSystem ? 'cap' : 'wh'}>{d.isSystem ? t('system.catalogs.system') : t('system.catalogs.own')}</Chip>
-                    <span>{d.label}</span>
-                  </button>
-                ))}
+                    {(domains ?? []).map((d) => (
+                      <option key={d.domainKey} value={d.domainKey ?? ''}>
+                        {d.label} {d.isSystem ? '' : `(${t('system.catalogs.own')})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <Can perm={ADMIN_CATALOGS}>
-                  <button type="button" className="domit" onClick={() => setCreatingList(true)}>
+                  <button type="button" className="btn sm" onClick={() => setCreatingList(true)}>
                     + {t('system.catalogs.newList')}
                   </button>
                 </Can>
               </div>
-            </>
-          )}
-        </Panel>
+            ) : (
+              <>
+                <div className="qrow tight">
+                  <QBox value={domainQ} onChange={setDomainQ} placeholder={t('system.catalogs.searchList')} />
+                </div>
+                <div className="domlist">
+                  {domainsLoading && <Spinner label={t('common.loading')} />}
+                  {filteredDomains.map((d) => (
+                    <button
+                      key={d.domainKey}
+                      type="button"
+                      className={d.domainKey === effectiveKey ? 'domit on' : 'domit'}
+                      onClick={() => setSelectedKey(d.domainKey ?? null)}
+                    >
+                      <Chip tone={d.isSystem ? 'cap' : 'wh'}>{d.isSystem ? t('system.catalogs.system') : t('system.catalogs.own')}</Chip>
+                      <span>{d.label}</span>
+                    </button>
+                  ))}
+                  <Can perm={ADMIN_CATALOGS}>
+                    <button type="button" className="domit" onClick={() => setCreatingList(true)}>
+                      + {t('system.catalogs.newList')}
+                    </button>
+                  </Can>
+                </div>
+              </>
+            )}
+          </Panel>
+        </FilterScope>
 
         <Panel
           flush

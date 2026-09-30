@@ -109,6 +109,8 @@ public class WmsControllerSecurityTests
         [(typeof(ReceiptsController), nameof(ReceiptsController.RemoveLine))] = PermissionCatalog.WarehouseReceive,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Confirm))] = PermissionCatalog.WarehouseReceive,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Delete))] = PermissionCatalog.WarehouseReceive,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.TargetSuggestions))] = PermissionCatalog.InventoryView,   // Lote 16
+        [(typeof(ReceiptsController), nameof(ReceiptsController.ApplySuggestedTargets))] = PermissionCatalog.WarehouseReceive,   // Lote 16
 
         [(typeof(AsnsController), nameof(AsnsController.List))] = PermissionCatalog.InventoryView,
         [(typeof(AsnsController), nameof(AsnsController.Get))] = PermissionCatalog.InventoryView,
@@ -258,7 +260,10 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))]);
         // Lote 15: + GET /inventory/pulse/days (franja "Almacén hoy") con inventory.view.
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(InventoryController), nameof(InventoryController.PulseDays))]);
-        Assert.Equal(121, Expected.Count);
+        // Lote 16: + sugerencias de posición destino (inventory.view) y "Usar posiciones sugeridas" (warehouse.receive).
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.TargetSuggestions))]);
+        Assert.Equal(PermissionCatalog.WarehouseReceive, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.ApplySuggestedTargets))]);
+        Assert.Equal(123, Expected.Count);
     }
 
     [Fact]

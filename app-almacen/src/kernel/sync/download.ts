@@ -3,7 +3,9 @@
 // servidor), se sigue `nextCursor` hasta que llega null. `take` fijo en 500 (el máximo que acepta el API).
 // Solo los recursos que usa Recibir en esta entrega: productos, órdenes de compra y avisos (con sus líneas). Almacenes,
 // tareas y categorías se agregan con Acomodar/Conteo (próxima entrega); las tablas locales ya existen (schema.ts).
+// Lote 16: también las posiciones del almacén del aparato (GET /sync/bins, tabla `bin`), para el recibo directo a posición.
 import { api, unwrap } from '../api/client'
+import { getSessionState } from '../auth/session'
 import { getDb, type SQLiteDatabase } from '../db/database'
 
 const TAKE = 500
@@ -257,7 +259,71 @@ export async function downloadAsns(): Promise<DownloadResult> {
   )
 }
 
-/** Corre los tres recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). */
+function applyBins(db: SQLiteDatabase, items: Array<{
+  id?: number
+  code?: string | null
+  warehousePublicId?: string
+  zoneId?: number
+  zoneCode?: string | null
+  zoneName?: string | null
+  zoneTypeCode?: string | null
+  aisle?: string | null
+  rack?: string | null
+  level?: string | null
+  position?: string | null
+  isActive?: boolean
+}>): void {
+  // A diferencia de productos, la posición inactiva se GUARDA con is_active = 0 (no se borra): así Recibir distingue
+  // "no existe en este almacén" de "está desactivada" sin señal (receiveLogic.validateTargetBin).
+  for (const b of items) {
+    if (b.id == null) continue
+    db.runSync(
+      `INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, zone_type_code, aisle, rack, level, position, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET code = excluded.code, warehouse_public_id = excluded.warehouse_public_id,
+         zone_id = excluded.zone_id, zone_code = excluded.zone_code, zone_name = excluded.zone_name,
+         zone_type_code = excluded.zone_type_code, aisle = excluded.aisle, rack = excluded.rack, level = excluded.level,
+         position = excluded.position, is_active = excluded.is_active`,
+      [
+        b.id,
+        b.code ?? '',
+        b.warehousePublicId ?? '',
+        b.zoneId ?? null,
+        b.zoneCode ?? null,
+        b.zoneName ?? null,
+        b.zoneTypeCode ?? null,
+        b.aisle ?? null,
+        b.rack ?? null,
+        b.level ?? null,
+        b.position ?? null,
+        b.isActive === false ? 0 : 1,
+      ],
+    )
+  }
+}
+
+/** Lote 16: posiciones (con el tipo de su zona) del almacén del aparato, para validar sin señal la posición destino del
+ *  recibo directo. Marca de agua propia por almacén (`bins:{almacén}`): si cambia el almacén por defecto, el nuevo baja
+ *  completo la primera vez. */
+export async function downloadBins(warehousePublicId: string): Promise<DownloadResult> {
+  const result = await runDiffDownload(
+    `bins:${warehousePublicId}`,
+    async (since, cursor) => {
+      const page = await unwrap(
+        api.GET('/api/v1/sync/bins', { params: { query: { warehousePublicId, since, cursor, take: TAKE } } }),
+      )
+      return { items: page.items ?? [], nextCursor: page.nextCursor ?? null, serverTimeUtc: page.serverTimeUtc ?? new Date().toISOString() }
+    },
+    applyBins,
+  )
+  return { ...result, resource: 'bins' }
+}
+
+/** Corre los recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). Las posiciones solo
+ *  si el aparato tiene almacén por defecto (Lote 16). */
 export async function downloadForReceiving(): Promise<DownloadResult[]> {
-  return [await downloadProducts(), await downloadPurchaseOrders(), await downloadAsns()]
+  const results = [await downloadProducts(), await downloadPurchaseOrders(), await downloadAsns()]
+  const warehousePublicId = getSessionState().device?.defaultWarehousePublicId
+  if (warehousePublicId) results.push(await downloadBins(warehousePublicId))
+  return results
 }

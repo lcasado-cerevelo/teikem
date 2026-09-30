@@ -1,10 +1,10 @@
 // Pantalla E (Lote F6) — Consulta de órdenes (solo lectura). `/orders`, grupo Operación. Lectura: orders.view + LTL_GROUND
 // (aplicado por la ruta). Este lote no da de alta ni edita órdenes: sin botón 'Nuevo' ni acciones de fila.
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { parseApiDate } from '../../kernel/api/dates'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
-import { useLang, useT } from '../../kernel/i18n'
+import { formatMoney, useLang, useT } from '../../kernel/i18n'
 import {
   ClientPicker,
   DataTable,
@@ -41,6 +41,7 @@ function exclusiveTo(day: string): string | undefined {
 
 export default function OrderListScreen() {
   const t = useT()
+  const clientFieldId = useId()
   const lang = useLang()
   const navigate = useNavigate()
   const [clientId, setClientId] = useState<string | null>(null)
@@ -105,7 +106,7 @@ export default function OrderListScreen() {
         sortValue: (o) => o.statusLabel ?? o.status,
       },
       { id: 'pieces', header: t('orders.list.columns.pieces'), cell: (o) => o.totalPieces, sortValue: (o) => o.totalPieces, align: 'end' },
-      { id: 'cod', header: t('orders.list.columns.cod'), cell: (o) => (o.codAmount != null ? o.codAmount.toFixed(2) : '—'), sortValue: (o) => o.codAmount, align: 'end' },
+      { id: 'cod', header: t('orders.list.columns.cod'), cell: (o) => (o.codAmount != null ? formatMoney(o.codAmount, lang) : '—'), exportValue: (o) => o.codAmount, sortValue: (o) => o.codAmount, align: 'end' },
       {
         id: 'createdAt',
         header: t('orders.list.columns.createdAt'),
@@ -135,8 +136,8 @@ export default function OrderListScreen() {
         }}
       >
         <div className="f">
-          <label>{t('orders.list.filters.client')}</label>
-          <ClientPicker value={clientId} onChange={changeClient} includeInactive />
+          <label htmlFor={clientFieldId}>{t('orders.list.filters.client')}</label>
+          <ClientPicker id={clientFieldId} value={clientId} onChange={changeClient} includeInactive filterLabel={t('orders.list.filters.client')} />
         </div>
         <SelectFilter
           label={t('orders.list.filters.status')}

@@ -10,13 +10,14 @@
 // warehouse.count, CROSSDOCK → warehouse.crossdock); Completar solo cuando `completableFromQueue`. Correr reabasto:
 // warehouse.pick. Cancelar solo PUTAWAY y REPLENISH (WarehouseTaskRules.CancelableFromQueue). Acciones y diálogos por fila:
 // taskActions.tsx (`useTaskRowActions`).
-import { useMemo, useState, type ReactNode } from 'react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { Can } from '../../kernel/access'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { DataTable, Filters, Modal, Panel, SearchSelect, toast, type DataColumn } from '../../kernel/ui'
 import { exportWarehouseTasks, productLabel, useRunReplenishment, useWarehouseTasks, type WarehouseTaskDto } from './api'
+import { ToggleFilter } from './filterControls'
 import { formatDateTime, formatNumber } from './lineRules'
 import { WarehousePicker } from './pickers'
 import { useTaskRowActions, type WarehouseTaskType } from './taskActions'
@@ -25,18 +26,6 @@ const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'WarehouseTaskStatus'
 const NO_ROWS: never[] = []
 
-/** Filtro booleano fuera de un <Form> (como en InventoryScreen). */
-function ToggleFilter({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="f">
-      <label className="sw">
-        <input type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-        <span className="tk" aria-hidden="true" />
-        <span>{label}</span>
-      </label>
-    </div>
-  )
-}
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Correr reabasto (warehouse.pick): botón + diálogo
@@ -127,6 +116,7 @@ export interface TaskQueueProps {
  */
 export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: TaskQueueProps) {
   const t = useT()
+  const warehouseId = useId()
   const lang = useLang()
   const [warehousePublicId, setWarehousePublicId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string[]>([])
@@ -235,8 +225,14 @@ export function TaskQueue({ types, title, icon, actions, handleAccessDenied }: T
         }}
       >
         <div className="f">
-          <label>{t('warehouse.tasks.filters.warehouse')}</label>
-          <WarehousePicker value={warehousePublicId} onChange={withPageReset(setWarehousePublicId)} placeholder={t('warehouse.tasks.filters.anyWarehouse')} />
+          <label htmlFor={warehouseId}>{t('warehouse.tasks.filters.warehouse')}</label>
+          <WarehousePicker
+            id={warehouseId}
+            value={warehousePublicId}
+            onChange={withPageReset(setWarehousePublicId)}
+            placeholder={t('warehouse.tasks.filters.anyWarehouse')}
+            filterLabel={t('warehouse.tasks.filters.warehouse')}
+          />
         </div>
         <SearchSelect label={t('warehouse.tasks.filters.status')} options={statusSelectOptions} value={statusFilter} onChange={withPageReset(setStatusFilter)} />
         <ToggleFilter label={t('warehouse.tasks.filters.assignedToMe')} checked={assignedToMe} onChange={withPageReset(setAssignedToMe)} />

@@ -61,4 +61,37 @@ public sealed class PutawaySuggesterTests
         Assert.Equal(PutawayRules.ReserveEmpty, suggestions[0].ReasonCode);
         Assert.DoesNotContain(suggestions, s => s.ReasonCode == PutawayRules.PickingFast);
     }
+
+    [Fact]
+    public async Task Unit_capacity_counts_all_products_in_the_bin_and_the_claimed_quantity()
+    {
+        // Lote 16: R-01 con cupo 10 y 6 unidades de OTRO producto; R-02 sin cupo. 5 unidades no caben en R-01 (6 + 5 > 10).
+        await using var f = await WmsFixture.CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var rsv = await f.AddZoneAsync(w, "RSV", ZoneTypes.Reserve);
+        var r1 = await f.AddBinAsync(rsv, "R-01", maxCapacityQty: 10);
+        var r2 = await f.AddBinAsync(rsv, "R-02");
+        var q = await f.AddBinAsync(await f.AddZoneAsync(w, "QUA", ZoneTypes.Quarantine), "Q-01");
+        var other = await f.AddProductAsync("PO");
+        var p = await f.AddProductAsync("PN");
+        await f.PostAsync(new InventoryPosting(InventoryTxnTypes.Receipt, other.ProductId, 6m, ToWarehouseId: w.WarehouseId, ToBinId: r1.WarehouseBinId));
+        var suggester = f.Get<PutawaySuggester>();
+
+        var five = await suggester.SuggestAsync(w.WarehouseId, p.ProductId, null, 5m, null, 5, default);
+        Assert.Equal(new[] { "R-02" }, five.Select(s => s.BinCode));
+        var four = await suggester.SuggestAsync(w.WarehouseId, p.ProductId, null, 4m, null, 5, default);
+        Assert.Equal(new[] { "R-02", "R-01" }, four.Select(s => s.BinCode));   // R-02 vacía antes que R-01 con espacio
+        var r1Suggestion = four.Single(s => s.BinCode == "R-01");
+        Assert.Equal((10, 6m, true), (r1Suggestion.MaxCapacityQty!.Value, r1Suggestion.BinQty, r1Suggestion.Fits));
+
+        // Lo reservado por otras líneas cuenta como ocupado; las que no caben, a pedido, al final con Fits = false.
+        var claimed = await suggester.SuggestAsync(new PutawaySuggestionOptions(w.WarehouseId, p.ProductId, null, 4m, null, 5,
+            new Dictionary<int, decimal> { [r1.WarehouseBinId] = 1m }, IncludeOverCapacity: true), default);
+        Assert.Equal(new[] { ("R-02", true), ("R-01", false) }, claimed.Select(s => (s.BinCode, s.Fits)));
+        // Devolución: la cuarentena primero (D6).
+        var ret = await suggester.SuggestAsync(new PutawaySuggestionOptions(w.WarehouseId, p.ProductId, null, 1m, null, 5, PreferQuarantine: true), default);
+        Assert.Equal(q.WarehouseBinId, ret[0].BinId);
+        Assert.Equal(PutawayRules.QuarantineReturn, ret[0].ReasonCode);
+        _ = r2;
+    }
 }

@@ -1070,6 +1070,12 @@ GO
 /* =========================================================================
    CAPA 7 — ALMACENES (ESTRUCTURA FÍSICA)
    ========================================================================= */
+-- Lote 16 (recibo directo a posición): ReceivingModeLookupId = modo de recepción (LookupCode 'ReceivingMode': PUTAWAY |
+-- DIRECT; NULL = PUTAWAY, el seed rellena los existentes) y DefaultReceivingBinId = posición de recepción por defecto (D12;
+-- zona STAGING o CROSSDOCK del mismo almacén: FK compuesta FK_Warehouse_DefaultReceivingBin, creada tras WarehouseBin).
+-- Guardado (IF OBJECT_ID / COL_LENGTH) para agregar las columnas a una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.Warehouse') IS NULL
+BEGIN
 CREATE TABLE dbo.Warehouse (
     WarehouseId  INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
@@ -1082,14 +1088,36 @@ CREATE TABLE dbo.Warehouse (
     GeoPoint     GEOGRAPHY NULL,
     StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='WarehouseStatus'
     IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
+    ReceivingModeLookupId INT NULL,                                          -- Lote 16: Entity='ReceivingMode' (NULL = PUTAWAY)
+    DefaultReceivingBinId INT NULL,                                          -- Lote 16 (D12): posición de recepción por defecto
     CONSTRAINT UQ_Warehouse_Code UNIQUE (TenantId, Code),
     CONSTRAINT UQ_Warehouse_IdTenant UNIQUE (WarehouseId, TenantId)          -- Lote 6: destino de las FKs compuestas (Id, TenantId)
 );
+END
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.Warehouse', 'ReceivingModeLookupId') IS NULL
+        ALTER TABLE dbo.Warehouse ADD ReceivingModeLookupId INT NULL;
+    IF COL_LENGTH('dbo.Warehouse', 'DefaultReceivingBinId') IS NULL
+        ALTER TABLE dbo.Warehouse ADD DefaultReceivingBinId INT NULL;
+END
+GO
+
+-- Lote 16: la FK del modo de recepción en su propio lote (la columna ya existe al compilarlo); solo si todavía no está.
+IF OBJECT_ID('dbo.FK_Warehouse_ReceivingMode', 'F') IS NULL
+BEGIN
+    ALTER TABLE dbo.Warehouse ADD CONSTRAINT FK_Warehouse_ReceivingMode
+        FOREIGN KEY (ReceivingModeLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+END
 GO
 
 -- Lote 8A: FK diferida del almacén por defecto del aparato (capa 2); compuesta con TenantId (mismo tenant garantizado).
+-- Lote 16: guardada (el bloque de Warehouse ya lo está).
+IF OBJECT_ID('dbo.FK_UserDevice_DefaultWarehouse', 'F') IS NULL
+BEGIN
 ALTER TABLE dbo.UserDevice ADD CONSTRAINT FK_UserDevice_DefaultWarehouse
     FOREIGN KEY (DefaultWarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId);
+END
 GO
 
 CREATE TABLE dbo.WarehouseZone (
@@ -1136,6 +1164,15 @@ GO
 IF OBJECT_ID('dbo.CK_WarehouseBin_MaxCapacityQty', 'C') IS NULL
 BEGIN
     ALTER TABLE dbo.WarehouseBin ADD CONSTRAINT CK_WarehouseBin_MaxCapacityQty CHECK (MaxCapacityQty IS NULL OR MaxCapacityQty > 0);
+END
+GO
+
+-- Lote 16 (D12): la posición de recepción por defecto es del mismo almacén (FK compuesta contra UQ_WarehouseBin_IdWh); en su
+-- propio lote, tras WarehouseBin, y solo si todavía no está.
+IF OBJECT_ID('dbo.FK_Warehouse_DefaultReceivingBin', 'F') IS NULL
+BEGIN
+    ALTER TABLE dbo.Warehouse ADD CONSTRAINT FK_Warehouse_DefaultReceivingBin
+        FOREIGN KEY (DefaultReceivingBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId);
 END
 GO
 
@@ -2057,6 +2094,7 @@ CREATE TABLE dbo.ReceiptHeader (
     DefaultStagingBinId INT NULL,                                             -- Lote 13: posición de recepción por defecto
     Carrier      NVARCHAR(80) NULL,                                           -- Lote 13: transporte
     Reference    NVARCHAR(80) NULL,                                           -- Lote 13: referencia
+    ReceivingModeLookupId INT NULL,                                           -- Lote 16: copia del modo (Entity='ReceivingMode'; NULL = PUTAWAY)
     CONSTRAINT UQ_Receipt_Number UNIQUE (TenantId, Number),
     CONSTRAINT UQ_Receipt_IdTenant UNIQUE (ReceiptHeaderId, TenantId),                                                     -- Lote 6
     CONSTRAINT FK_Receipt_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),   -- Lote 6
@@ -2075,6 +2113,8 @@ BEGIN
         ALTER TABLE dbo.ReceiptHeader ADD Carrier NVARCHAR(80) NULL;
     IF COL_LENGTH('dbo.ReceiptHeader', 'Reference') IS NULL
         ALTER TABLE dbo.ReceiptHeader ADD Reference NVARCHAR(80) NULL;
+    IF COL_LENGTH('dbo.ReceiptHeader', 'ReceivingModeLookupId') IS NULL          -- Lote 16
+        ALTER TABLE dbo.ReceiptHeader ADD ReceivingModeLookupId INT NULL;
 END
 GO
 
@@ -2086,7 +2126,19 @@ BEGIN
 END
 GO
 
+-- Lote 16: la FK del modo de recepción del recibo en su propio lote; solo si todavía no está.
+IF OBJECT_ID('dbo.FK_Receipt_ReceivingMode', 'F') IS NULL
+BEGIN
+    ALTER TABLE dbo.ReceiptHeader ADD CONSTRAINT FK_Receipt_ReceivingMode
+        FOREIGN KEY (ReceivingModeLookupId) REFERENCES dbo.LookupCode(LookupCodeId);
+END
+GO
+
 -- Lote 6: ReceivedQty arranca igual a ExpectedQty (R8); AdjustmentTxnId enlaza el ADJUSTMENT RECEIPT_VARIANCE (D4).
+-- Lote 16: TargetBinId = posición destino de la línea (de guardado; el servicio garantiza que sea del almacén del recibo).
+-- Guardado (IF OBJECT_ID / COL_LENGTH) para agregar la columna a una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.ReceiptLine') IS NULL
+BEGIN
 CREATE TABLE dbo.ReceiptLine (
     ReceiptLineId INT IDENTITY(1,1) PRIMARY KEY,
     ReceiptHeaderId INT NOT NULL REFERENCES dbo.ReceiptHeader(ReceiptHeaderId),
@@ -2099,11 +2151,26 @@ CREATE TABLE dbo.ReceiptLine (
     ExpectedQty  DECIMAL(16,3) NULL,                                                              -- Lote 6
     SerialNumbersJson NVARCHAR(MAX) NULL,                                                         -- Lote 6
     AdjustmentTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),      -- Lote 6
+    TargetBinId  INT NULL,                                                                        -- Lote 16: posición destino
     CONSTRAINT FK_ReceiptLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),               -- Lote 6
     CONSTRAINT FK_ReceiptLine_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),   -- Lote 6
     CONSTRAINT CK_ReceiptLine_Qty CHECK (ReceivedQty >= 0 AND (ExpectedQty IS NULL OR ExpectedQty >= 0))                       -- Lote 6
 );
 CREATE INDEX IX_ReceiptLine_Header ON dbo.ReceiptLine(ReceiptHeaderId);   -- Lote 6
+END
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.ReceiptLine', 'TargetBinId') IS NULL
+        ALTER TABLE dbo.ReceiptLine ADD TargetBinId INT NULL;
+END
+GO
+
+-- Lote 16: la FK de la posición destino en su propio lote; solo si todavía no está.
+IF OBJECT_ID('dbo.FK_ReceiptLine_TargetBin', 'F') IS NULL
+BEGIN
+    ALTER TABLE dbo.ReceiptLine ADD CONSTRAINT FK_ReceiptLine_TargetBin
+        FOREIGN KEY (TargetBinId) REFERENCES dbo.WarehouseBin(WarehouseBinId);
+END
 GO
 
 -- Lote 6 (D19): WarehouseTaskId pasa a INT (historial de estatus, resolvers y RefId son int).

@@ -47,8 +47,24 @@ export type { DataColumn, DataTableProps, RowAction, SortState, SortValue } from
 export { EMPTY_RANGE, inDateRange } from './dateRange'
 export type { DateRange } from './dateRange'
 export { EmptyState } from './EmptyState'
+export { exportChildren } from './exportChildren'
+export type { ExportChildren, ExportChildrenSpec } from './exportChildren'
 export type { EmptyStateProps } from './EmptyState'
 export { DateRangeFilter, Filters, SelectFilter } from './Filters'
+export { ExportCompanyProvider, FilterScope } from './FilterScope'
+export type { FilterScopeProps } from './FilterScope'
+export { useExportHeading, useRegisterFilter } from './filterScopeContext'
+export type { ExportHeading } from './filterScopeContext'
+export {
+  createFilterRegistry,
+  dateRangeFilterText,
+  filterItemText,
+  filtersSentence,
+  formatFilterDate,
+  joinFilterValues,
+  textFilterValue,
+} from './filterRegistry'
+export type { AppliedFilter, FilterRegistry, FilterSnapshot } from './filterRegistry'
 export type { DateRangeFilterProps, FilterOption, FiltersProps, SelectFilterProps } from './Filters'
 export { DateInput, Field, Form, NumberInput, Select, TextArea, TextInput, Toggle } from './Form'
 export type { FieldProps, FormProps, SelectOption, SelectProps, TextInputProps, ToggleProps } from './Form'

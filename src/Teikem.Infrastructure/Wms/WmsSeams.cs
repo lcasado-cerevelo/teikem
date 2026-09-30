@@ -62,9 +62,24 @@ public sealed record WarehouseTaskSpec(
     int Priority = 100,
     int? AssignedToUserId = null);
 
-/// <summary>Posición sugerida para un putaway (PutawaySuggester), con la rotación con que se calculó (D24).</summary>
+/// <summary>
+/// Posición sugerida para un putaway (PutawaySuggester), con la rotación con que se calculó (D24). Lote 16: cupo en
+/// unidades de la posición (null = sin cupo), unidades en mano de todos los productos en ella (BinQty, sin lo reservado por
+/// otras líneas) y Fits (false solo si se pidieron también las que exceden el cupo).
+/// </summary>
 public sealed record PutawaySuggestion(int BinId, string BinCode, string ZoneCode, string? ZoneTypeCode, string ReasonCode, string Reason,
-    string RotationClass);
+    string RotationClass, int? MaxCapacityQty = null, decimal BinQty = 0m, bool Fits = true);
+
+/// <summary>
+/// Lote 16 — pedido de sugerencias con cupo: ClaimedQtyByBin = unidades ya destinadas a cada posición por otras líneas del
+/// mismo recibo (cuentan como ocupadas); PreferQuarantine = devolución (la cuarentena primero, D6); IncludeOverCapacity = las
+/// que no caben también, al final y con Fits = false (la sugerencia de posición destino las muestra con aviso, D4);
+/// ClaimedSameProductByBin = la parte de lo reservado que es del MISMO producto (cuenta para "Consolidar con el mismo
+/// producto": dos líneas del mismo producto en un recibo van a la misma posición si cabe).
+/// </summary>
+public sealed record PutawaySuggestionOptions(int WarehouseId, int ProductId, int? LotId, decimal Quantity, int? ExcludeBinId, int Take,
+    IReadOnlyDictionary<int, decimal>? ClaimedQtyByBin = null, bool PreferQuarantine = false, bool IncludeOverCapacity = false,
+    IReadOnlyDictionary<int, decimal>? ClaimedSameProductByBin = null);
 
 /// <summary>
 /// Handler de un tipo de tarea de la cola unificada (D41). Cada tipo declara su permiso y si se completa desde la cola.

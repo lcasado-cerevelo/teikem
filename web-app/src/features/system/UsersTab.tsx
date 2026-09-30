@@ -4,7 +4,7 @@
 // `creating` y el modal de alta se abre aquí. Sobre la maqueta se conservan multi-rol (modal de selección múltiple),
 // MFA, último acceso, PIN y las acciones de seguridad por fila: son funcionalidad real, no decoración.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useSession } from '../../app/session'
@@ -33,6 +33,7 @@ import {
   Toggle,
   matchesQ,
   toast,
+  useRegisterFilter,
   type DataColumn,
   type RowAction,
 } from '../../kernel/ui'
@@ -409,6 +410,9 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
 
   const [q, setQ] = useState('')
   const [includeSuspended, setIncludeSuspended] = useState(false)
+  // "Incluir suspendidos" encendido va en la línea de filtros de la exportación
+  const suspendedRef = useRef<HTMLLabelElement>(null)
+  useRegisterFilter(t('system.users.users.includeSuspended'), includeSuspended ? '' : null, suspendedRef)
   const [editing, setEditing] = useState<UserSummaryDto | null>(null)
   const [rolesFor, setRolesFor] = useState<UserSummaryDto | null>(null)
   const [permsFor, setPermsFor] = useState<UserSummaryDto | null>(null)
@@ -598,7 +602,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       <Panel flush icon={<IconUsers />} title={t('system.users.users.title')} badge={rows.length}>
         <div className="qrow">
           <QBox value={q} onChange={setQ} placeholder={t('system.users.users.searchPlaceholder')} />
-          <label className="sw">
+          <label className="sw" ref={suspendedRef}>
             <input type="checkbox" checked={includeSuspended} onChange={(e) => setIncludeSuspended(e.target.checked)} />
             <span className="tk" />
             {t('system.users.users.includeSuspended')}

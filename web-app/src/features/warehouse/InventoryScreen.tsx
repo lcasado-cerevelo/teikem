@@ -56,7 +56,7 @@ import {
   type InventoryFilterState,
   type InventoryTab,
 } from './kardexView'
-import { formatDate, formatDateTime } from './lineRules'
+import { formatDate, formatDateTime, formatMoneyValue } from './lineRules'
 import type { ProductFilterItem } from './pickers'
 
 const PAGE_SIZE = 25
@@ -308,8 +308,8 @@ function BalancesTab({
       { id: 'onHand', header: t('warehouse.inventory.balances.columns.onHand'), cell: (b) => b.qtyOnHand, sortValue: (b) => b.qtyOnHand, align: 'end' },
       { id: 'reserved', header: t('warehouse.inventory.balances.columns.reserved'), cell: (b) => b.qtyReserved, sortValue: (b) => b.qtyReserved, align: 'end' },
       { id: 'available', header: t('warehouse.inventory.balances.columns.available'), cell: (b) => b.qtyAvailable, sortValue: (b) => b.qtyAvailable, align: 'end' },
-      { id: 'cost', header: t('warehouse.inventory.balances.columns.cost'), cell: (b) => b.costValue ?? '', sortValue: (b) => b.costValue, align: 'end', card: 'hidden' },
-      { id: 'sale', header: t('warehouse.inventory.balances.columns.sale'), cell: (b) => b.saleValue ?? '', sortValue: (b) => b.saleValue, align: 'end', card: 'hidden' },
+      { id: 'cost', header: t('warehouse.inventory.balances.columns.cost'), cell: (b) => formatMoneyValue(b.costValue, lang), exportValue: (b) => b.costValue, sortValue: (b) => b.costValue, align: 'end', card: 'hidden' },
+      { id: 'sale', header: t('warehouse.inventory.balances.columns.sale'), cell: (b) => formatMoneyValue(b.saleValue, lang), exportValue: (b) => b.saleValue, sortValue: (b) => b.saleValue, align: 'end', card: 'hidden' },
       {
         id: 'updated',
         header: t('warehouse.inventory.balances.columns.updated'),

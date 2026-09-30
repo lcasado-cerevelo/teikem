@@ -466,7 +466,8 @@ public class AnalyticsSeedFieldsTests
     {
         var expected = new Dictionary<string, (string? DateField, string[] Fields, string[] Money)>
         {
-            [EntityTypes.Warehouse] = (null, new[] { "Id", "PublicId", "Code", "Name", "City", "Status", "StatusCode", "IsActive", "ZoneCount", "BinCount", "ActiveBinCount", "DockCount", "QtyOnHand" }, Array.Empty<string>()),
+            [EntityTypes.Warehouse] = (null, new[] { "Id", "PublicId", "Code", "Name", "City", "Status", "StatusCode", "IsActive", "ZoneCount", "BinCount", "ActiveBinCount", "DockCount", "QtyOnHand",
+                "ReceivingMode", "ReceivingModeCode" }, Array.Empty<string>()),   // Lote 16
             [EntityTypes.Product] = (null, new[] { "Id", "PublicId", "Sku", "Name", "CategoryId", "Category", "OwnerClientId", "OwnerName", "IsOwn", "BaseUom", "TrackingType", "Barcode",
                 "PurchaseCost", "SalePrice", "QtyOnHand", "QtyReserved", "QtyAvailable", "CostValue", "SaleValue", "MinQty", "IsBelowMin", "IsActive" }, new[] { "PurchaseCost", "SalePrice", "CostValue", "SaleValue" }),
             [EntityTypes.StockBalance] = (null, new[] { "Id", "WarehouseId", "WarehouseCode", "ZoneCode", "ZoneType", "BinCode", "ProductId", "Sku", "ProductName", "Category", "OwnerName",
@@ -476,7 +477,7 @@ public class AnalyticsSeedFieldsTests
                 "Reason", "ReasonCode", "UserName" }, Array.Empty<string>()),
             [EntityTypes.Receipt] = ("ReceivedAtUtc", new[] { "Id", "PublicId", "Number", "Type", "TypeCode", "Origin", "WarehouseCode", "SupplierName", "ClientName",
                 "PurchaseOrderNumber", "Carrier", "Reference", "Status", "StatusCode", "LineCount", "ExpectedQty", "ReceivedQty", "VarianceQty", "HasVariance", "ReceivedCost", "CreatedAtUtc",
-                "ReceivedAtUtc" }, new[] { "ReceivedCost" }),
+                "ReceivedAtUtc", "ReceivingMode", "ReceivingModeCode" }, new[] { "ReceivedCost" }),
             [EntityTypes.WarehouseTask] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Type", "TypeCode", "Status", "StatusCode", "Priority", "WarehouseCode", "Sku",
                 "Quantity", "FromBin", "ToBin", "AssignedTo", "CompletedAtUtc", "AgeHours", "RefLabel" }, Array.Empty<string>()),
             [EntityTypes.PickBatch] = ("CollectedAtUtc", new[] { "Id", "PublicId", "Number", "CollectedAtUtc", "Status", "StatusCode", "WarehouseCode", "LineCount", "TotalQty",

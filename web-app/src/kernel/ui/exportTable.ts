@@ -1,13 +1,96 @@
 // Exportación de tablas del kit a CSV, Excel (.xlsx) y PDF, 100 % en el cliente, sobre las filas que la tabla tiene
 // cargadas. Las funciones de armado (buildExportData, toCsv, exportFileName…) son puras y se prueban sin DOM; las de
 // descarga cargan SheetJS / jsPDF bajo demanda (import dinámico) para no inflar el paquete inicial.
+import type { jsPDF } from 'jspdf'
 import { isValidElement, type ReactNode } from 'react'
+import { parseApiDate } from '../api/dates'
+import { TENANT_TIME_ZONE } from '../api/tenantZone'
+import { t as translate } from '../i18n/i18n'
+import type { ExportChildren } from './exportChildren'
 
 export type ExportFormat = 'xlsx' | 'csv' | 'pdf'
 export const EXPORT_FORMATS: readonly ExportFormat[] = ['xlsx', 'csv', 'pdf']
 
-/** Valor de una celda exportada: texto, número (Excel lo trata como número) o vacío. */
-export type ExportCell = string | number | null
+/**
+ * Fecha exportada (pedido del dueño: Excel y CSV deben leerla como FECHA, no como texto). `withTime` = fecha y hora (se
+ * muestra en la hora de la compañía, Puerto Rico); sin hora = día de calendario.
+ */
+export interface ExportDate {
+  kind: 'date'
+  value: Date
+  withTime: boolean
+}
+
+/** Valor de una celda exportada: texto, número (Excel lo trata como número), fecha o vacío. */
+export type ExportCell = string | number | ExportDate | null
+
+export function isExportDate(v: unknown): v is ExportDate {
+  return typeof v === 'object' && v !== null && (v as ExportDate).kind === 'date'
+}
+
+// fecha ISO del API: "2026-09-30", "2026-09-30T14:03:00(.123)(Z|±hh:mm)"
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[zZ]|[+-]\d{2}:?\d{2})?$/
+
+/** Una fecha (Date o cadena ISO del API) como celda de fecha; null si no lo es. */
+export function toExportDate(v: unknown): ExportDate | null {
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : { kind: 'date', value: v, withTime: true }
+  if (typeof v !== 'string') return null
+  const s = v.trim()
+  if (ISO_DATE.test(s)) {
+    const [y, m, d] = s.split('-').map(Number)
+    return { kind: 'date', value: new Date(y, m - 1, d), withTime: false }
+  }
+  if (ISO_DATE_TIME.test(s)) {
+    const date = parseApiDate(s.replace(' ', 'T'))
+    return Number.isNaN(date.getTime()) ? null : { kind: 'date', value: date, withTime: true }
+  }
+  return null
+}
+
+/** Año, mes, día, hora, minuto y segundo de la fecha: con hora, en la zona de la compañía; sin hora, tal cual. */
+function dateParts(d: ExportDate): [number, number, number, number, number, number] {
+  if (!d.withTime) return [d.value.getFullYear(), d.value.getMonth() + 1, d.value.getDate(), 0, 0, 0]
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TENANT_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d.value)
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0)
+  return [get('year'), get('month'), get('day'), get('hour'), get('minute'), get('second')]
+}
+
+/** Texto estándar que Excel y cualquier programa leen como fecha: "2026-09-30" o "2026-09-30 14:03:00". */
+export function exportDateIso(d: ExportDate): string {
+  const [y, m, day, h, mi, sec] = dateParts(d)
+  const p = (n: number) => String(n).padStart(2, '0')
+  const date = `${y}-${p(m)}-${p(day)}`
+  return d.withTime ? `${date} ${p(h)}:${p(mi)}:${p(sec)}` : date
+}
+
+/** Número de serie de Excel (días desde 1899-12-30, con la hora como fracción del día). */
+export function excelDateSerial(d: ExportDate): number {
+  const [y, m, day, h, mi, sec] = dateParts(d)
+  return (Date.UTC(y, m - 1, day, h, mi, sec) - Date.UTC(1899, 11, 30)) / 86_400_000
+}
+
+/** Formato de número de Excel para la celda: fecha o fecha y hora. */
+export function excelDateFormat(d: ExportDate): string {
+  return d.withTime ? 'yyyy-mm-dd hh:mm' : 'yyyy-mm-dd'
+}
+
+/** Texto legible de la fecha para el PDF, en el idioma de la interfaz ("30 sept 2026, 14:03"). */
+export function exportDateText(d: ExportDate, locale?: string): string {
+  return new Intl.DateTimeFormat(
+    locale,
+    d.withTime ? { dateStyle: 'medium', timeStyle: 'short', timeZone: TENANT_TIME_ZONE } : { dateStyle: 'medium' },
+  ).format(d.value)
+}
 /** Lo que puede devolver `sortValue`/`exportValue` de una columna. */
 export type ExportRawValue = string | number | boolean | Date | null | undefined
 
@@ -21,12 +104,16 @@ export interface ExportableColumn<T> {
   /** false = la columna no se exporta (casillas de selección, columnas solo visuales). */
   exportable?: boolean
   align?: 'start' | 'end'
+  /** true = número con signo (+5 / -3) en el PDF agrupado (`exportChildren`); Excel/CSV lo guardan como número. */
+  signed?: boolean
 }
 
 export interface ExportData {
   headers: string[]
   /** true = columna numérica (alineada a la derecha en el PDF). */
   numeric: boolean[]
+  /** true = número con signo (lo usa el PDF agrupado; opcional). */
+  signed?: boolean[]
   rows: ExportCell[][]
 }
 
@@ -82,8 +169,10 @@ export function parseLocaleNumber(text: string, locale?: string): number | null 
 function normalizeRaw(v: ExportRawValue, opts: ExportOptions): ExportCell {
   if (v === null || v === undefined || v === '') return null
   if (typeof v === 'boolean') return v ? (opts.yes ?? 'true') : (opts.no ?? 'false')
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v.toLocaleString(opts.locale)
+  const date = toExportDate(v)
+  if (date) return date
   if (typeof v === 'number') return Number.isFinite(v) ? v : null
+  if (v instanceof Date) return null // fecha inválida (las válidas ya salieron como fecha)
   return v
 }
 
@@ -100,6 +189,9 @@ export function exportCellValue<T>(col: ExportableColumn<T>, row: T, opts: Expor
   if (typeof node === 'number') return Number.isFinite(node) ? node : null
   const text = nodeToText(node)
   const sortRaw = col.sortValue?.(row)
+  // columna de fecha: su valor de orden es la fecha (Date o ISO del API) → se exporta como FECHA, no como el texto pintado
+  const sortDate = toExportDate(sortRaw)
+  if (sortDate && text && !EMPTY_MARKS.has(text)) return sortDate
   if (text) {
     if (EMPTY_MARKS.has(text)) return null
     if (typeof sortRaw === 'number' && Number.isFinite(sortRaw)) {
@@ -124,6 +216,7 @@ export function buildExportData<T>(
   return {
     headers: cols.filter((_, i) => keep[i]).map((c) => c.header),
     numeric: cols.filter((_, i) => keep[i]).map((c) => c.align === 'end'),
+    signed: cols.filter((_, i) => keep[i]).map((c) => c.signed === true),
     rows: matrix.map((r) => r.filter((_, i) => keep[i])),
   }
 }
@@ -132,6 +225,7 @@ export function buildExportData<T>(
 export function csvCell(value: ExportCell): string {
   if (value === null) return ''
   if (typeof value === 'number') return String(value)
+  if (isExportDate(value)) return exportDateIso(value)
   let s = value
   // inyección de fórmulas: un texto que empieza con = + - @ (y no es un número) se abre como fórmula en Excel
   if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?\d[\d.,]*$/.test(s)) s = `'${s}`
@@ -198,38 +292,155 @@ export function downloadCsv(data: ExportData, fileName: string): void {
   downloadBlob(new Blob(['﻿', toCsv(data)], { type: 'text/csv;charset=utf-8' }), fileName)
 }
 
-export async function downloadXlsx(data: ExportData, fileName: string, title?: string | null): Promise<void> {
-  const XLSX = await import('xlsx')
-  const aoa: ExportCell[][] = [data.headers, ...data.rows]
-  const ws = XLSX.utils.aoa_to_sheet(aoa)
-  // ancho de columna aproximado al contenido más largo (tope 60 caracteres)
-  ws['!cols'] = data.headers.map((_, i) => ({
-    wch: Math.min(60, Math.max(8, ...aoa.map((r) => String(r[i] ?? '').length + 2))),
-  }))
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, sheetName(title))
-  XLSX.writeFile(wb, fileName, { compression: true })
+// ---------------------------------------------------------------------------------------------------------------------
+// Encabezado de los archivos (PDF y Excel; el CSV no lleva): compañía → título → "Generado el …" → oración de filtros
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Lo que va arriba de la tabla en un PDF o Excel exportado (textos ya traducidos). */
+export interface ExportHeadingSpec {
+  /** Compañía activa (la pone el shell con `me.tenantName`; `useExportHeading`). */
+  company?: string | null
+  title?: string | null
+  /** Fecha de generación (por defecto ahora). */
+  generatedAt?: Date
+  /** Oración de filtros ("Filtros: …" / "Sin filtros"); null = sin línea (tabla sin barra o en un modal). */
+  filters?: string | null
+  locale?: string
 }
 
-export async function downloadPdf(data: ExportData, fileName: string, title?: string | null): Promise<void> {
-  const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
-  // más de 5 columnas: horizontal
-  const doc = new jsPDF({ orientation: data.headers.length > 5 ? 'landscape' : 'portrait', unit: 'pt', format: 'a4', compress: true })
-  const margin = 32
-  let startY = margin
-  if (title) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.text(pdfSafeText(title), margin, margin + 6)
-    startY = margin + 18
+export type ExportHeadingKind = 'company' | 'title' | 'generated' | 'filters'
+
+/** "Generado el 30 de septiembre de 2026, 10:15 a. m." en el idioma de la interfaz. */
+export function exportGeneratedText(date: Date, locale?: string): string {
+  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(date)
+  return translate('ui.report.generatedAt', { date: when })
+}
+
+/** Renglones del encabezado en orden (sin los vacíos): compañía, título, "Generado el …" y filtros. */
+export function exportHeadingLines(spec: ExportHeadingSpec): { kind: ExportHeadingKind; text: string }[] {
+  const lines: { kind: ExportHeadingKind; text: string }[] = []
+  const company = spec.company?.trim()
+  const title = spec.title?.trim()
+  const filters = spec.filters?.trim()
+  if (company) lines.push({ kind: 'company', text: company })
+  if (title) lines.push({ kind: 'title', text: title })
+  lines.push({ kind: 'generated', text: exportGeneratedText(spec.generatedAt ?? new Date(), spec.locale) })
+  if (filters) lines.push({ kind: 'filters', text: filters })
+  return lines
+}
+
+type Rgb = [number, number, number]
+const PDF_INK: Rgb = [24, 33, 54]
+const PDF_MUTED: Rgb = [91, 104, 128]
+
+/**
+ * Dibuja el encabezado en la página actual desde `y` (compañía en negrita 10, título en negrita 13, fecha y filtros con
+ * la misma letra, 8 gris; los filtros largos parten renglón al ancho `maxWidth`) y devuelve la `y` donde empieza la
+ * tabla. Lo comparten el PDF de `DataTable` y el agrupado (`exportGrouped.ts`).
+ */
+export function drawPdfHeading(doc: jsPDF, spec: ExportHeadingSpec, x: number, y: number, maxWidth: number): number {
+  let cy = y
+  for (const line of exportHeadingLines(spec)) {
+    const text = pdfSafeText(line.text)
+    if (line.kind === 'company') {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...PDF_MUTED)
+      doc.text(text, x, cy + 8)
+      cy += 14
+    } else if (line.kind === 'title') {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(13)
+      doc.setTextColor(...PDF_INK)
+      doc.text(text, x, cy + 10)
+      cy += 17
+    } else {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...PDF_MUTED)
+      const wrapped = doc.splitTextToSize(text, maxWidth) as string[]
+      doc.text(wrapped, x, cy + 7)
+      cy += 10 * wrapped.length + 1
+    }
   }
+  doc.setTextColor(0, 0, 0)
+  return cy + 6
+}
+
+/** Filas de la hoja de Excel: el encabezado (un renglón por línea), una fila en blanco y la tabla. `headerRow` = índice
+ *  (base 0) de la fila de encabezados de la tabla. */
+export function xlsxSheetRows(data: ExportData, heading: ExportHeadingSpec): { rows: ExportCell[][]; headerRow: number } {
+  const top: ExportCell[][] = exportHeadingLines(heading).map((l) => [l.text])
+  top.push([])
+  return { rows: [...top, data.headers, ...data.rows], headerRow: top.length }
+}
+
+/** Arma el libro de Excel en memoria (hoja con el encabezado, una fila en blanco y la tabla); no descarga. */
+export function buildXlsxWorkbook(XLSX: typeof import('xlsx'), data: ExportData, heading: ExportHeadingSpec) {
+  const { rows, headerRow } = xlsxSheetRows(data, heading)
+  // las fechas van como número de serie de Excel con formato de fecha: Excel las lee como FECHA (ordenar, filtrar, restar)
+  const dates: { r: number; c: number; z: string }[] = []
+  const plain = rows.map((r, ri) =>
+    r.map((v, ci) => {
+      if (!isExportDate(v)) return v
+      dates.push({ r: ri, c: ci, z: excelDateFormat(v) })
+      return excelDateSerial(v)
+    }),
+  )
+  const ws = XLSX.utils.aoa_to_sheet(plain)
+  for (const d of dates) {
+    const cell = ws[XLSX.utils.encode_cell({ r: d.r, c: d.c })]
+    if (cell) {
+      cell.t = 'n'
+      cell.z = d.z
+    }
+  }
+  // ancho de columna aproximado al contenido más largo de la TABLA (tope 60 caracteres): el encabezado no ensancha la A
+  const table = rows.slice(headerRow)
+  ws['!cols'] = data.headers.map((_, i) => ({
+    wch: Math.min(60, Math.max(8, ...table.map((r) => (isExportDate(r[i]) ? 18 : String(r[i] ?? '').length + 2)))),
+  }))
+  // SheetJS (edición comunidad) no escribe estilos ni paneles inmovilizados: los encabezados no van en negrita ni se
+  // congelan; el autofiltro sí se escribe y marca la fila de encabezados (flechas de filtro de Excel)
+  if (data.headers.length > 0) {
+    ws['!autofilter'] = {
+      ref: XLSX.utils.encode_range({ s: { r: headerRow, c: 0 }, e: { r: headerRow + data.rows.length, c: data.headers.length - 1 } }),
+    }
+  }
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, sheetName(heading.title))
+  return wb
+}
+
+export async function downloadXlsx(data: ExportData, fileName: string, heading: ExportHeadingSpec = {}): Promise<void> {
+  const XLSX = await import('xlsx')
+  XLSX.writeFile(buildXlsxWorkbook(XLSX, data, heading), fileName, { compression: true })
+}
+
+export interface RenderTablePdfOptions extends ExportHeadingSpec {
+  /** false = sin comprimir (pruebas: el texto queda legible en el PDF). Por defecto true. */
+  compress?: boolean
+}
+
+/** Arma el PDF de la tabla en memoria (A4; horizontal con más de 5 columnas): encabezado y tabla; no descarga. */
+export async function renderTablePdf(data: ExportData, options: RenderTablePdfOptions = {}): Promise<jsPDF> {
+  const [{ jsPDF: JsPdf }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
+  // más de 5 columnas: horizontal
+  const doc = new JsPdf({
+    orientation: data.headers.length > 5 ? 'landscape' : 'portrait',
+    unit: 'pt',
+    format: 'a4',
+    compress: options.compress ?? true,
+  })
+  const margin = 32
+  const startY = drawPdfHeading(doc, options, margin, margin - 6, doc.internal.pageSize.getWidth() - margin * 2)
   const columnStyles: Record<number, { halign: 'right' }> = {}
   data.numeric.forEach((n, i) => {
     if (n) columnStyles[i] = { halign: 'right' }
   })
   autoTable(doc, {
     head: [data.headers.map(pdfSafeText)],
-    body: data.rows.map((r) => r.map((v) => (v === null ? '' : typeof v === 'number' ? String(v) : pdfSafeText(v)))),
+    body: data.rows.map((r) => r.map((v) => (v === null ? '' : typeof v === 'number' ? String(v) : isExportDate(v) ? pdfSafeText(exportDateText(v, options.locale)) : pdfSafeText(v)))),
     startY,
     margin: { left: margin, right: margin, top: margin, bottom: margin },
     styles: { font: 'helvetica', fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
@@ -244,19 +455,52 @@ export async function downloadPdf(data: ExportData, fileName: string, title?: st
       doc.text(String(page), width - margin, height - margin / 2, { align: 'right' })
     },
   })
+  return doc
+}
+
+export async function downloadPdf(data: ExportData, fileName: string, heading: ExportHeadingSpec = {}): Promise<void> {
+  const doc = await renderTablePdf(data, heading)
   doc.save(fileName)
 }
 
-/** Arma y descarga el archivo en el formato pedido. `title` da nombre al archivo, a la hoja y al encabezado del PDF. */
+/** Opciones de `exportTable`: formato de valores + título, fecha, compañía y oración de filtros (PDF y Excel). */
+export interface ExportTableOptions extends ExportOptions {
+  /** Nombre del archivo, de la hoja y título del PDF/Excel. */
+  title?: string | null
+  date?: Date
+  /** Compañía activa (arriba del título). */
+  company?: string | null
+  /** Oración de filtros bajo "Generado el …" (null = sin línea). */
+  filters?: string | null
+}
+
+/** Encabezado de PDF/Excel a partir de las opciones de `exportTable`. */
+export function headingFromOptions(opts: ExportTableOptions): ExportHeadingSpec {
+  return { company: opts.company, title: opts.title, generatedAt: opts.date, filters: opts.filters, locale: opts.locale }
+}
+
+/**
+ * Arma y descarga el archivo en el formato pedido. `title` da nombre al archivo, a la hoja y al encabezado del PDF.
+ * PDF y Excel llevan arriba la compañía, el título, "Generado el …" y la oración de filtros (`company`/`filters`: los
+ * arma `useExportHeading` en `DataTable`/`ListPager`); el CSV lleva solo la tabla.
+ * Con `children` (filas hijas, `exportChildren` de exportGrouped.ts) la exportación es agrupada: Excel/CSV con una fila
+ * por hija repitiendo la madre y PDF con un bloque por madre (banda + tablita de hijas).
+ */
 export async function exportTable<T>(
   format: ExportFormat,
   columns: readonly ExportableColumn<T>[],
   rows: readonly T[],
-  opts: ExportOptions & { title?: string | null; date?: Date } = {},
+  opts: ExportTableOptions & { children?: ExportChildren<T> } = {},
 ): Promise<void> {
+  if (opts.children) {
+    const { exportGroupedTable } = await import('./exportGrouped')
+    await exportGroupedTable(format, columns, rows, opts.children, opts)
+    return
+  }
   const data = buildExportData(columns, rows, opts)
   const fileName = exportFileName(opts.title, format, opts.date)
   if (format === 'csv') downloadCsv(data, fileName)
-  else if (format === 'xlsx') await downloadXlsx(data, fileName, opts.title)
-  else await downloadPdf(data, fileName, opts.title)
+  else if (format === 'xlsx') await downloadXlsx(data, fileName, headingFromOptions(opts))
+  else await downloadPdf(data, fileName, headingFromOptions(opts))
 }
+

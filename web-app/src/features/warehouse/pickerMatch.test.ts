@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { exactCodeMatch, filterWarehouses, foldText, orderBins } from './pickerMatch'
+import { exactCodeMatch, filterBinOptions, filterWarehouses, foldText, orderBins } from './pickerMatch'
 
 const WAREHOUSES = [
   { code: 'ALM-010', name: 'Anexo' },
@@ -49,5 +49,19 @@ describe('orderBins', () => {
 
   it('la coincidencia exacta por código gana a las sugeridas', () => {
     expect(orderBins(BINS, 'a-01', [4]).map((b) => b.id)).toEqual([1, 4, 2, 3])
+  })
+})
+
+describe('filterBinOptions', () => {
+  const items = [
+    { id: 1, code: 'PISO', zoneCode: 'Piso' },
+    { id: 2, code: 'B-02', zoneCode: 'Reserva' },
+    { id: 3, code: 'A-01', zoneCode: null },
+  ]
+  it('subcadena en código o zona, sin mayúsculas ni acentos, en el orden de la lista; vacío = todas', () => {
+    expect(filterBinOptions(items, '').map((b) => b.id)).toEqual([1, 2, 3])
+    expect(filterBinOptions(items, ' RESERVA ').map((b) => b.id)).toEqual([2])
+    expect(filterBinOptions(items, '0').map((b) => b.id)).toEqual([2, 3])
+    expect(filterBinOptions(items, 'zz')).toEqual([])
   })
 })

@@ -1,6 +1,8 @@
 import { __resetAllForTests } from 'expo-sqlite'
+import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { api } from '../api/client'
+import { __resetSessionForTests, getSessionState, saveDeviceIdentity } from '../auth/session'
 import { __resetDbForTests } from '../db/database'
 import { __resetSyncEngineForTests, getLastSync, runSync } from './engine'
 import { enqueue } from './outbox'
@@ -21,6 +23,8 @@ beforeEach(() => {
   __resetAllForTests()
   __resetDbForTests()
   __resetSyncEngineForTests()
+  __resetSecureStoreForTests()
+  __resetSessionForTests()
   getMock.mockReset().mockImplementation(() => emptyPage())
   postMock.mockReset()
 })
@@ -59,5 +63,23 @@ describe('runSync', () => {
     expect(second).toBe(first)
     resolvePost({ data: {}, response: new Response(null, { status: 200 }) })
     await first
+  })
+
+  it('con aparato registrado: heartbeat (trae el modo de recepción) y luego baja también las posiciones de su almacén (Lote 16)', async () => {
+    await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
+    postMock.mockImplementation((path: string) =>
+      Promise.resolve(
+        path === '/api/v1/devices/heartbeat'
+          ? { data: { isActive: true, defaultWarehousePublicId: 'wh-1', defaultWarehouseReceivingMode: 'DIRECT' }, response: new Response(null, { status: 200 }) }
+          : { data: {}, response: new Response(null, { status: 200 }) },
+      ),
+    )
+
+    const summary = await runSync()
+
+    expect(postMock).toHaveBeenCalledWith('/api/v1/devices/heartbeat', expect.anything())
+    expect(getSessionState().device?.defaultWarehouseReceivingMode).toBe('DIRECT')
+    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
+    expect(getMock).toHaveBeenCalledWith('/api/v1/sync/bins', expect.objectContaining({ params: { query: expect.objectContaining({ warehousePublicId: 'wh-1' }) } }))
   })
 })

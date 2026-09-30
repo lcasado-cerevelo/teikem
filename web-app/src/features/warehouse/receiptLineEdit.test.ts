@@ -1,6 +1,6 @@
 // Lote 13 — rejilla de líneas del recibo: copia recibido → esperado mientras se teclea (solo sin documento y si el esperado
 // estaba vacío o en 0), fila vacía al final, qué se manda al API por fila, puesta al día con el servidor y motivos para no
-// confirmar.
+// confirmar. Lote 16: posición destino de un recibo directo (se manda al guardar, bloqueo 'noTarget').
 import { describe, expect, it } from 'vitest'
 import type { components } from '../../kernel/api/schema'
 import {
@@ -11,14 +11,17 @@ import {
   isEmptyRow,
   linePayload,
   mergeSaved,
+  missingTargets,
   newLineFrom,
   onExpectedInput,
   onProductPicked,
   onReceivedInput,
+  onTargetPicked,
   parseQtyText,
   reconcileRows,
   rowErrorsFromProblem,
   rowFromLine,
+  rowNeedsTarget,
   rowsFromDetail,
   rowVariance,
   MAX_RECEIPT_LINES,
@@ -214,5 +217,87 @@ describe('confirmBlockers', () => {
   it('con documento un esperado distinto no cuenta como "sin guardar"', () => {
     const doc = { ...rowFromLine(line({ asnLineId: 3, expectedQty: 5, receivedQty: 5 })), expected: '6' }
     expect(confirmBlockers([doc], true, false)).toBeNull()
+  })
+})
+
+describe('Lote 16: posición destino (recibo directo a posición)', () => {
+  const BIN = { id: 40, code: 'RSV-A-01', zoneTypeCode: 'RESERVE' }
+
+  it('la fila toma el destino del servidor (código, tipo de zona y espacio libre) y lo guarda como original', () => {
+    const r = rowFromLine(line({ targetBinId: 40, targetBinCode: 'RSV-A-01', targetZoneTypeCode: 'RESERVE', targetFreeQty: 3 }))
+    expect(r).toMatchObject({ targetBinId: 40, targetBinCode: 'RSV-A-01', targetZoneTypeCode: 'RESERVE', targetFreeQty: 3 })
+    expect(r.original?.targetBinId).toBe(40)
+    expect(isDirty(r)).toBe(false)
+  })
+
+  it('elegir el destino ensucia la fila y el PUT manda targetBinId; quitarlo manda clearTargetBin', () => {
+    const saved = rowFromLine(line())
+    const picked = onTargetPicked({ ...saved, errors: { target: 'x', row: 'y' } }, BIN)
+    expect(picked).toMatchObject({ targetBinId: 40, targetBinCode: 'RSV-A-01', targetFreeQty: null, errors: {} })
+    expect(isDirty(picked)).toBe(true)
+    expect(linePayload(picked, true)).toEqual({ kind: 'update', lineId: 1, body: { targetBinId: 40 } })
+
+    const withTarget = rowFromLine(line({ targetBinId: 40, targetBinCode: 'RSV-A-01' }))
+    expect(linePayload(onTargetPicked(withTarget, null), true)).toEqual({ kind: 'update', lineId: 1, body: { clearTargetBin: true } })
+  })
+
+  it('fila nueva: el destino elegido va en su POST cuando está completa', () => {
+    let r = onProductPicked(emptyRow('n'), PRODUCT)
+    r = onTargetPicked(r, BIN)
+    expect(linePayload(r, true)).toEqual({ kind: 'incomplete' })
+    r = onReceivedInput(r, '8')
+    expect(linePayload(r, true)).toEqual({ kind: 'add', body: { productPublicId: 'P2', receivedQty: 8, expectedQty: 8, targetBinId: 40 } })
+  })
+
+  it('mergeSaved: si se cambió el destino mientras viajaba, se conserva lo elegido (queda sin guardar)', () => {
+    const saved = rowFromLine(line())
+    const sent = onTargetPicked(saved, BIN)
+    const current = onTargetPicked(sent, { id: 41, code: 'RSV-A-02' })
+    const merged = mergeSaved(current, sent, line({ targetBinId: 40, targetBinCode: 'RSV-A-01' }))
+    expect(merged.targetBinId).toBe(41)
+    expect(merged.original?.targetBinId).toBe(40)
+    expect(isDirty(merged)).toBe(true)
+    // sin cambios mientras viajaba: queda como la devolvió el servidor
+    expect(mergeSaved(sent, sent, line({ targetBinId: 40, targetBinCode: 'RSV-A-01', targetFreeQty: 2 })).targetFreeQty).toBe(2)
+  })
+
+  it('reconcileRows: una fila con cantidad tecleada recibe el destino que puso el servidor ("Usar posiciones sugeridas")', () => {
+    const typing = onReceivedInput(rowFromLine(line()), '9')
+    const [out] = reconcileRows([typing], [line({ targetBinId: 40, targetBinCode: 'RSV-A-01', targetFreeQty: 1 })], { manual: false, editable: true }, key)
+    expect(out).toMatchObject({ received: '9', targetBinId: 40, targetBinCode: 'RSV-A-01', targetFreeQty: 1 })
+    expect(out.original?.targetBinId).toBe(40)
+    // si el destino se estaba cambiando en la fila, se conserva el de la fila
+    const changing = onTargetPicked(rowFromLine(line()), { id: 41, code: 'RSV-A-02' })
+    const [kept] = reconcileRows([changing], [line({ targetBinId: 40, targetBinCode: 'RSV-A-01' })], { manual: false, editable: true }, key)
+    expect(kept.targetBinId).toBe(41)
+  })
+
+  it('errores del API de la posición destino van bajo su campo', () => {
+    expect(
+      rowErrorsFromProblem({ title: 'x', errors: { targetBinId: ['La posición X-01 está en una zona CROSSDOCK; la posición destino debe ser de guardado.'] } }),
+    ).toEqual({ target: 'La posición X-01 está en una zona CROSSDOCK; la posición destino debe ser de guardado.' })
+    expect(rowErrorsFromProblem({ title: 'x', errors: { 'line.targetBinCode': ['La posición ZZ no existe en el almacén del recibo.'] } })).toEqual({
+      target: 'La posición ZZ no existe en el almacén del recibo.',
+    })
+  })
+
+  it('qué líneas necesitan destino: recibido > 0, salvo lote sin lote o con cruce de muelle; las nuevas no cuentan', () => {
+    expect(rowNeedsTarget(rowFromLine(line({ receivedQty: 5 })))).toBe(true)
+    expect(rowNeedsTarget(rowFromLine(line({ receivedQty: 0 })))).toBe(false)
+    expect(rowNeedsTarget(rowFromLine(line({ trackingTypeCode: 'LOT', lotNumber: null })))).toBe(false)
+    expect(rowNeedsTarget(rowFromLine(line({ trackingTypeCode: 'LOT', lotNumber: 'L-1' })))).toBe(true)
+    expect(rowNeedsTarget(rowFromLine(line({ allocatedToCrossDock: 2 })))).toBe(false)
+    expect(rowNeedsTarget(onReceivedInput(onProductPicked(emptyRow('n'), PRODUCT), '3'))).toBe(false)
+    const rows = [rowFromLine(line({ id: 1 })), rowFromLine(line({ id: 2, targetBinId: 40 })), rowFromLine(line({ id: 3, receivedQty: 0 }))]
+    expect(missingTargets(rows)).toBe(1)
+  })
+
+  it("confirmBlockers: en directo, sin destino → 'noTarget' (después de los demás motivos); con acomodo no aplica", () => {
+    const noTarget = rowFromLine(line())
+    expect(confirmBlockers([noTarget], true, true, true)).toBe('noTarget')
+    expect(confirmBlockers([noTarget], true, true, false)).toBeNull()
+    expect(confirmBlockers([{ ...noTarget, errors: { row: 'x' } }], true, true, true)).toBe('errors')
+    expect(confirmBlockers([rowFromLine(line({ targetBinId: 40 }))], true, true, true)).toBeNull()
+    expect(confirmBlockers([noTarget], false, true, true)).toBe('confirmed')
   })
 })

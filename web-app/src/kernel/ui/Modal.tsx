@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useT } from '../i18n/useT'
 import { IconClose } from './icons'
+import { FilterScope } from './FilterScope'
 import { PanelTitleContext } from './panelContext'
 import './ui.css'
 
@@ -78,7 +79,11 @@ export function Modal({ open, title, onClose, footer, size = 'md', dismissible =
         </header>
         <div className="pb">
           {/* el portal hereda el contexto del Panel que abre el modal: aquí manda el título del modal */}
-          <PanelTitleContext.Provider value={typeof title === 'string' ? title : null}>{children}</PanelTitleContext.Provider>
+          {/* ni los filtros de la pantalla llegan al modal (sus tablas no llevan la línea de filtros) ni los de adentro se
+              anotan en la pantalla */}
+          <PanelTitleContext.Provider value={typeof title === 'string' ? title : null}>
+            <FilterScope off>{children}</FilterScope>
+          </PanelTitleContext.Provider>
         </div>
         {footer != null && <footer className="ft kit-ft">{footer}</footer>}
       </div>

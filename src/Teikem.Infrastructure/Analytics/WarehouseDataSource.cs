@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
 
@@ -14,6 +16,8 @@ namespace Teikem.Infrastructure.Analytics;
 /// - Conteos y existencias en consultas agrupadas (sin N+1). Las hijas (zona, posición, muelle) se alcanzan por los ids
 ///   de almacenes ya filtrados.
 /// - Nombres de campo estables: SystemAnalyticsSeeder y AnalyticsSeedFieldsTests los usan.
+/// - Lote 16: ReceivingModeCode (PUTAWAY | DIRECT; NULL en la base = PUTAWAY) y su etiqueta ReceivingMode (catálogo
+///   'ReceivingMode', en una consulta).
 /// </summary>
 public sealed class WarehouseDataSource(TeikemDbContext db, ITenantContext tenant) : IDataSource
 {
@@ -40,6 +44,8 @@ public sealed class WarehouseDataSource(TeikemDbContext db, ITenantContext tenan
         new DataField("ActiveBinCount", "Posiciones activas", "Active bins", DataFieldType.Number),
         new DataField("DockCount", "Muelles", "Docks", DataFieldType.Number),
         new DataField("QtyOnHand", "Existencia en mano", "Quantity on hand", DataFieldType.Number),
+        new DataField("ReceivingMode", "Modo de recepción", "Receiving mode", DataFieldType.Text),              // Lote 16
+        new DataField("ReceivingModeCode", "Código de modo de recepción", "Receiving mode code", DataFieldType.Text),   // Lote 16
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = Array.Empty<DataRelation>();
@@ -68,6 +74,7 @@ public sealed class WarehouseDataSource(TeikemDbContext db, ITenantContext tenan
             .GroupBy(s => s.WarehouseId).Select(g => new { g.Key, Q = g.Sum(s => s.QtyOnHand) }).ToDictionaryAsync(x => x.Key, x => x.Q, ct);
         var statusMap = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.WarehouseStatus, ct);
         var lang = tenant.Lang;
+        var modes = await ReceivingModeLabelsAsync(db, lang, ct);
 
         var rows = new List<DataRow>(warehouses.Count);
         foreach (var w in warehouses)
@@ -88,8 +95,29 @@ public sealed class WarehouseDataSource(TeikemDbContext db, ITenantContext tenan
                 ["ActiveBinCount"] = b?.Active ?? 0,
                 ["DockCount"] = docks.GetValueOrDefault(w.WarehouseId),
                 ["QtyOnHand"] = onHand.GetValueOrDefault(w.WarehouseId),
+                ["ReceivingMode"] = ReceivingModeLabel(modes, w.ReceivingModeLookupId),
+                ["ReceivingModeCode"] = ReceivingModeCode(modes, w.ReceivingModeLookupId),
             });
         }
         return rows;
+    }
+
+    // ---------------------------------------------------------------- Lote 16: modo de recepción (compartido con ReceiptDataSource)
+
+    /// <summary>Catálogo 'ReceivingMode' (código y etiqueta en el idioma del usuario) por LookupCodeId, en una consulta.</summary>
+    internal static async Task<Dictionary<int, (string Code, string Label)>> ReceivingModeLabelsAsync(TeikemDbContext db, string? lang, CancellationToken ct)
+        => (await db.LookupCodes.AsNoTracking().Where(l => l.Entity == LookupDomains.ReceivingMode)
+                .Select(l => new { l.LookupCodeId, l.InternalCode, l.LabelJson }).ToListAsync(ct))
+            .ToDictionary(l => l.LookupCodeId, l => (l.InternalCode, MultilingualText.Resolve(l.LabelJson, lang)));
+
+    /// <summary>Código del modo (NULL o desconocido = PUTAWAY).</summary>
+    internal static string ReceivingModeCode(IReadOnlyDictionary<int, (string Code, string Label)> modes, int? lookupId)
+        => ReceivingModeRules.Normalize(lookupId is int id && modes.TryGetValue(id, out var m) ? m.Code : null);
+
+    /// <summary>Etiqueta del modo (la de PUTAWAY si es NULL; el código si el catálogo no lo tiene).</summary>
+    internal static string ReceivingModeLabel(IReadOnlyDictionary<int, (string Code, string Label)> modes, int? lookupId)
+    {
+        var code = ReceivingModeCode(modes, lookupId);
+        return modes.Values.Where(m => m.Code == code).Select(m => m.Label).FirstOrDefault() ?? code;
     }
 }

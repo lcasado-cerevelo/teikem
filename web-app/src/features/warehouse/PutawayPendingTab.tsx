@@ -3,14 +3,17 @@
 // que Recibos (Estatus limitado a esos dos) y el mismo maestro-detalle; a la derecha, las tareas de acomodo del recibo
 // elegido (`?receipt=`) con asignar, iniciar, completar y cancelar (`ReceiptPutawayTasks`). Al cerrar la última tarea el
 // recibo pasa a Acomodado y sale de la lista. Doble clic: el encabezado (solo lectura: ya está confirmado).
+// Lote 16: si el almacén filtrado recibe directo a posición, un aviso explica que aquí solo aparecen recibos anteriores al
+// cambio o con cruce de muelle (los directos no generan tareas).
 import { useMemo } from 'react'
 import { useT } from '../../kernel/i18n'
-import { EmptyState, IconCheckin, Panel, Spinner } from '../../kernel/ui'
-import { useReceipt, type ReceiptListItemDto } from './api'
+import { EmptyState, FilterScope, IconCheckin, Panel, Spinner } from '../../kernel/ui'
+import { useReceipt, useWarehouses, type ReceiptListItemDto } from './api'
 import { ReceiptFilterBar } from './ReceiptFilterBar'
 import { ReceiptMasterList } from './ReceiptMasterList'
 import { PUTAWAY_PENDING_STATUSES, selectedReceiptId } from './receiptFilters'
 import { ReceiptPutawayTasks } from './ReceiptPutawayTasks'
+import { isDirectMode } from './receivingMode'
 import { useReceiptList } from './useReceiptList'
 
 const NO_ITEMS: ReceiptListItemDto[] = []
@@ -29,6 +32,10 @@ export function PutawayPendingTab({ selectedParam, onSelect, onOpenHeader }: Put
   const selected = selectedReceiptId(items, selectedParam)
   const detail = useReceipt(selected)
   const statusCodes = useMemo(() => [...PUTAWAY_PENDING_STATUSES], [])
+  // misma consulta que el WarehousePicker del filtro (comparte caché)
+  const warehouses = useWarehouses({ includeInactive: false }, { enabled: Boolean(l.filters.warehousePublicId), handleAccessDenied: false })
+  const filteredWarehouse = l.filters.warehousePublicId ? warehouses.data?.find((w) => w.publicId === l.filters.warehousePublicId) : undefined
+  const directWarehouse = filteredWarehouse && isDirectMode(filteredWarehouse.receivingModeCode) ? filteredWarehouse : null
 
   let right
   if (!selected)
@@ -69,6 +76,11 @@ export function PutawayPendingTab({ selectedParam, onSelect, onOpenHeader }: Put
   return (
     <>
       <ReceiptFilterBar value={l.filters} onChange={l.setFilters} statusCodes={statusCodes} />
+      {directWarehouse && (
+        <p className="note rcp-direct-info" role="status">
+          {t('warehouse.receipts.putawayTab.directInfo', { code: directWarehouse.code ?? '' })}
+        </p>
+      )}
       <div className="rcp-cols">
         <ReceiptMasterList
           title={t('warehouse.receipts.putawayTab.listTitle')}
@@ -87,7 +99,10 @@ export function PutawayPendingTab({ selectedParam, onSelect, onOpenHeader }: Put
           onPageSize={l.setPageSize}
           exportRows={l.exportRows}
         />
-        <div className="rcp-side">{right}</div>
+        {/* ámbito propio: las tareas del recibo elegido no dependen de los filtros de la lista */}
+        <div className="rcp-side">
+          <FilterScope>{right}</FilterScope>
+        </div>
       </div>
     </>
   )

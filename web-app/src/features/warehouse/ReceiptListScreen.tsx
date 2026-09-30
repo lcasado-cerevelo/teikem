@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
-import { IconCheckin, Panel, Tabs } from '../../kernel/ui'
+import { FilterScope, IconCheckin, Panel, Tabs } from '../../kernel/ui'
 import { useReceipt, type AsnDto, type ReceiptDetailDto, type ReceiptListItemDto } from './api'
 import { AsnsTab } from './AsnsTab'
 import { PutawayPendingTab } from './PutawayPendingTab'
@@ -99,7 +99,10 @@ function ReceiptsTab({
         />
         <div className="rcp-side">
           {selected ? (
-            <ReceiptDetailPanel publicId={selected} onEditHeader={() => onOpenHeader(selected)} />
+            // ámbito propio: las tablas del detalle (tareas de acomodo) no dependen de los filtros de la lista
+            <FilterScope>
+              <ReceiptDetailPanel publicId={selected} onEditHeader={() => onOpenHeader(selected)} />
+            </FilterScope>
           ) : (
             <Panel flush>
               <div className="empty rcp-empty lg">

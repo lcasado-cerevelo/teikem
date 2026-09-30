@@ -1,6 +1,8 @@
-import { useId, type ReactNode } from 'react'
-import { useT } from '../i18n/useT'
+import { useId, useRef, type ReactNode } from 'react'
+import { useLang, useT } from '../i18n/useT'
 import type { DateRange } from './dateRange'
+import { dateRangeFilterText, joinFilterValues } from './filterRegistry'
+import { useRegisterFilter } from './filterScopeContext'
 import './ui.css'
 
 export interface FilterOption {
@@ -44,12 +46,15 @@ export interface SelectFilterProps {
   allLabel?: string | null
 }
 
-/** Filtro de selección única. `value === ''` significa "todos". */
+/** Filtro de selección única. `value === ''` significa "todos". Con valor, se anota en el ámbito (`FilterScope`) con la
+ *  etiqueta de la opción (línea de filtros de las exportaciones). */
 export function SelectFilter({ label, value, onChange, options, allLabel }: SelectFilterProps) {
   const t = useT()
   const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  useRegisterFilter(label, value === '' ? null : joinFilterValues([options.find((o) => o.value === value)?.label ?? value], t), ref)
   return (
-    <div className="f">
+    <div className="f" ref={ref}>
       <label htmlFor={id}>{label}</label>
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)}>
         {allLabel !== null && <option value="">{allLabel ?? t('ui.filters.all')}</option>}
@@ -74,9 +79,13 @@ export interface DateRangeFilterProps {
 /** Rango de fechas (desde/hasta, inclusivo). Ocupa el doble que un filtro normal (`.span2`; todo el renglón a 480 px). */
 export function DateRangeFilter({ label, value, onChange }: DateRangeFilterProps) {
   const t = useT()
+  const lang = useLang()
   const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  // en el ámbito: "del 01/09/2026 al 30/09/2026" / "desde …" / "hasta …"
+  useRegisterFilter(label, dateRangeFilterText(value, lang, t), ref)
   return (
-    <div className="f span2" role="group" aria-labelledby={`${id}-l`}>
+    <div className="f span2" role="group" aria-labelledby={`${id}-l`} ref={ref}>
       <label id={`${id}-l`} htmlFor={`${id}-from`}>
         {label}
       </label>

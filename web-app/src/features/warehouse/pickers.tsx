@@ -8,6 +8,8 @@
 // - BinPicker: GET /api/v1/warehouses/{publicId}/bins?search=&includeInactive=false&take=50 (listado paginado desde el
 //   Lote 1), 250 ms entre teclas (el API compara código de posición, zona, pasillo, rack, nivel y posición), opciones
 //   "Código · Zona"; el valor es el id de la posición. Las sugeridas y la posición ya elegida se piden por id (`binIds`).
+//   Con `options` (lista dada, p. ej. las posiciones con disponible de un producto) no consulta el listado: filtra esa lista
+//   en el cliente, muestra la pista de cada una ("Código · Zona · 2 disp.") y quita sola una posición que ya no está en ella.
 // Cada uno tiene su variante `...Input` para usarse dentro de un <Field name="…"> del kit (react-hook-form).
 // Si el usuario no puede consultar almacenes/productos/posiciones (403 forbidden/module_disabled) se muestra un aviso y NO
 // se le saca de la pantalla (`handleAccessDenied: false`).
@@ -20,6 +22,8 @@ import { Chip } from '../../kernel/ui/Chip'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { IconClose } from '../../kernel/ui/icons'
 import { SearchSelect } from '../../kernel/ui/SearchSelect'
+import { joinFilterValues } from '../../kernel/ui/filterRegistry'
+import { useRegisterFilter } from '../../kernel/ui/filterScopeContext'
 import { useDismiss } from '../../kernel/ui/useDismiss'
 import '../../kernel/ui/ui.css'
 import './warehouse.css'
@@ -41,7 +45,7 @@ import {
   type WarehouseDto,
 } from './api'
 import { binFilterLabel, OWN_OWNER, type BinFilterItem } from './kardexView'
-import { exactCodeMatch, filterWarehouses, orderBins } from './pickerMatch'
+import { exactCodeMatch, filterBinOptions, filterWarehouses, orderBins } from './pickerMatch'
 
 const NO_WAREHOUSES: WarehouseDto[] = []
 const NO_OWNERS: InventoryOwnerDto[] = []
@@ -65,6 +69,9 @@ export interface WarehousePickerProps {
   'aria-label'?: string
   'aria-describedby'?: string
   onBlur?: () => void
+  /** Usado como filtro de una lista: con almacén elegido se anota en el ámbito de filtros con esta etiqueta (línea
+   *  "Filtros: …" de las exportaciones). Sin él (formularios) no se anota. */
+  filterLabel?: string
 }
 
 /**
@@ -72,7 +79,7 @@ export interface WarehousePickerProps {
  * igual al código de un almacén lo elige directamente (lector de código de barras). Un valor que ya no está en la lista
  * (almacén dado de baja) se conserva con su etiqueta (pide su ficha) para no perder el dato de un registro histórico.
  */
-export function WarehousePicker({ value, onChange, placeholder, id, disabled, invalid, required, onBlur, ...aria }: WarehousePickerProps) {
+export function WarehousePicker({ value, onChange, placeholder, id, disabled, invalid, required, onBlur, filterLabel, ...aria }: WarehousePickerProps) {
   const t = useT()
   const autoId = useId()
   const inputId = id ?? autoId
@@ -101,6 +108,9 @@ export function WarehousePicker({ value, onChange, placeholder, id, disabled, in
   if (current) selectedLabel = warehouseLabel(current)
   else if (value && isLoading) selectedLabel = t('common.loading')
   else if (value) selectedLabel = warehouseLabel(missingDetail.data?.warehouse) || (missingDetail.isLoading ? t('common.loading') : value)
+
+  // como filtro: "Almacén ALM-DEPOT · Depósito" en la línea de filtros de las exportaciones
+  useRegisterFilter(filterLabel ?? '', value ? joinFilterValues([selectedLabel || value], t) : null, boxRef, filterLabel !== undefined)
 
   const options = useMemo(() => filterWarehouses(data, text), [data, text])
   const listStatus = status ?? (options.length === 0 ? t('ui.warehousePicker.noMatch') : null)
@@ -251,10 +261,21 @@ export interface BinPickerProps {
   /** Solo posiciones de zonas de estos tipos (p. ej. STAGING/CROSSDOCK para la recepción): se piden al API las zonas del
    *  almacén y se filtra por sus ids (`zoneIds`); además se filtra en el cliente. */
   zoneTypeCodes?: readonly string[]
+  /** Lote 16: sin las posiciones de zonas de estos tipos (p. ej. STAGING/CROSSDOCK para la posición destino de un recibo
+   *  directo): se piden las zonas del almacén y se mandan como `zoneIds` las de los DEMÁS tipos (las zonas sin tipo
+   *  cuentan como permitidas); además se filtra en el cliente. Se combina con `zoneTypeCodes`. */
+  excludeZoneTypeCodes?: readonly string[]
   /** Solo posiciones con existencias (`onlyWithStock=true`), p. ej. la recolección. */
   onlyWithStock?: boolean
   /** Posiciones sugeridas (p. ej. acomodo): van primero, en este orden, con la marca "Sugerida". */
   suggestedBinIds?: readonly (number | null | undefined)[]
+  /** Lista de opciones DADA (p. ej. las posiciones donde un producto tiene disponible): no se consulta el listado del API,
+   *  se filtra en el cliente por código o zona y se ofrece en este orden (la de código exacto y las sugeridas primero),
+   *  con su `hint` ("Código · Zona · 2 disp."). Un valor elegido que no está en la lista ya no aplica y se quita solo
+   *  (`onChange(null, null)`), salvo mientras `optionsLoading`. Sin `options` = listado del API (comportamiento normal). */
+  options?: readonly BinPickerOption[]
+  /** La lista `options` se está cargando: muestra "Cargando…" y no quita el valor elegido. */
+  optionsLoading?: boolean
   id?: string
   /** Texto cuando no hay posición elegida (p. ej. "Staging por defecto" si vacío = lo decide el servidor). */
   placeholder?: string
@@ -266,6 +287,19 @@ export interface BinPickerProps {
   onBlur?: () => void
 }
 
+/** Opción dada de BinPicker (prop `options`). */
+export interface BinPickerOption {
+  id: number
+  code?: string | null
+  zoneCode?: string | null
+  zoneTypeCode?: string | null
+  /** Texto tras "Código · Zona" (p. ej. "2 disp."). */
+  hint?: string
+}
+
+type BinRow = WarehouseBinDto & { hint?: string }
+const NO_BIN_ROWS: BinRow[] = []
+
 /** Clave de consulta de BinPicker: misma forma `{ publicId, ...query }` que `useWarehouseBins` (comparte caché e invalidación). */
 type BinQuery = { publicId: string | null | undefined } & GetQuery<'/api/v1/warehouses/{publicId}/bins'>
 
@@ -274,8 +308,11 @@ export function BinPicker({
   value,
   onChange,
   zoneTypeCodes,
+  excludeZoneTypeCodes,
   onlyWithStock,
   suggestedBinIds,
+  options: givenOptions,
+  optionsLoading,
   id,
   placeholder,
   disabled,
@@ -298,6 +335,12 @@ export function BinPicker({
   useDismiss(boxRef, open, dismiss)
   const noWarehouse = !warehousePublicId
   const off = Boolean(disabled) || noWarehouse
+  /** Lista dada (`options`): no se consulta el listado del API. */
+  const given = givenOptions !== undefined
+  const givenRows = useMemo<BinRow[]>(
+    () => givenOptions?.map((o) => ({ id: o.id, code: o.code, zoneCode: o.zoneCode, zoneTypeCode: o.zoneTypeCode, isActive: true, hint: o.hint })) ?? NO_BIN_ROWS,
+    [givenOptions],
+  )
 
   // búsqueda con pausa de 250 ms entre teclas
   useEffect(() => {
@@ -327,14 +370,27 @@ export function BinPicker({
     if (value != null) onChange(null, null)
   }, [warehousePublicId, value, onChange])
 
+  // con lista dada: una posición elegida que ya no está en ella (otro producto u otro lote) ya no aplica
+  useEffect(() => {
+    if (!given || optionsLoading || value == null) return
+    if (givenRows.some((b) => b.id === value)) return
+    enterSeq.current++
+    onChange(null, null)
+  }, [given, optionsLoading, value, givenRows, onChange])
+
   // El listado llega paginado (Lote 1): se piden a lo más MAX_SHOWN filas por búsqueda. El API no filtra por tipo de zona,
   // así que `zoneTypeCodes` se traduce a los ids de las zonas de esos tipos (filtrar solo en el cliente una página podía
   // dejar la lista vacía en un almacén grande). Si las zonas no se pueden leer, queda el filtro en el cliente de `shape`.
-  const zonesQ = useWarehouseZones(warehousePublicId, { includeInactive: true }, { enabled: Boolean(zoneTypeCodes) && !noWarehouse, handleAccessDenied: false })
-  const typedZoneIds = zoneTypeCodes && zonesQ.data
-    ? zonesQ.data.filter((z) => z.id != null && zoneTypeCodes.includes(z.zoneTypeCode ?? '')).map((z) => z.id as number)
-    : undefined
-  const zonesPending = Boolean(zoneTypeCodes) && zonesQ.isLoading
+  // Lote 16: `excludeZoneTypeCodes` también se traduce a ids (las zonas de los demás tipos).
+  const byZoneType = Boolean(zoneTypeCodes) || Boolean(excludeZoneTypeCodes?.length)
+  const zoneTypeAllowed = (code: string | null | undefined) =>
+    (!zoneTypeCodes || zoneTypeCodes.includes(code ?? '')) && !(excludeZoneTypeCodes ?? []).includes(code ?? '')
+  const zonesQ = useWarehouseZones(warehousePublicId, { includeInactive: true }, { enabled: byZoneType && !noWarehouse && !given, handleAccessDenied: false })
+  const allowedZones = byZoneType && zonesQ.data ? zonesQ.data.filter((z) => z.id != null && zoneTypeAllowed(z.zoneTypeCode)) : undefined
+  // solo exclusión y ninguna zona excluida en el almacén: sin `zoneIds` (todas), para no mandar la lista completa
+  const typedZoneIds =
+    allowedZones && (zoneTypeCodes || allowedZones.length < (zonesQ.data?.length ?? 0)) ? allowedZones.map((z) => z.id as number) : undefined
+  const zonesPending = byZoneType && !given && zonesQ.isLoading
   /** Ninguna zona del almacén es de los tipos pedidos: no hay nada que ofrecer (y `zoneIds` vacío sería "todas"). */
   const noTypedZone = typedZoneIds !== undefined && typedZoneIds.length === 0
   const baseQuery: GetQuery<'/api/v1/warehouses/{publicId}/bins'> = {
@@ -354,7 +410,7 @@ export function BinPicker({
   }
   const listQuery = (s: string) => binsQuery({ ...baseQuery, search: s || undefined })
   const qc = useQueryClient()
-  const canList = open && !off && !zonesPending && !noTypedZone
+  const canList = open && !off && !zonesPending && !noTypedZone && !given
   const list = useQuery({
     ...listQuery(search),
     enabled: canList,
@@ -371,27 +427,30 @@ export function BinPicker({
     placeholderData: (prev, prevQuery) => ((prevQuery?.queryKey[1] as BinQuery | undefined)?.publicId === warehousePublicId ? prev : undefined),
   })
   /** Filas que se ofrecen: activas, del tipo de zona pedido, ordenadas (exacta, sugeridas, resto) y recortadas. */
-  const shape = (rows: readonly WarehouseBinDto[], q: string) =>
+  const shape = (rows: readonly BinRow[], q: string) =>
     orderBins(
-      rows.filter((b) => b.isActive !== false && (!zoneTypeCodes || zoneTypeCodes.includes(b.zoneTypeCode ?? ''))),
+      rows.filter((b) => b.isActive !== false && zoneTypeAllowed(b.zoneTypeCode)),
       q,
       suggested,
     ).slice(0, MAX_SHOWN)
-  const rows = useMemo(() => {
+  const rows = useMemo<BinRow[]>(() => {
+    if (given) return givenRows
     const extra = suggested.length > 0 ? (suggestedList.data?.items ?? []) : []
     const seen = new Set(extra.map((b) => b.id))
     return [...extra, ...(list.data?.items ?? []).filter((b) => !seen.has(b.id))]
-  }, [suggested, suggestedList.data, list.data])
-  const options = noTypedZone ? [] : shape(rows, text)
+  }, [given, givenRows, suggested, suggestedList.data, list.data])
+  // lista dada: se filtra en el cliente con el texto tal cual (sin pausa)
+  const options = given ? shape(filterBinOptions(rows, text), text) : noTypedZone ? [] : shape(rows, text)
   // los resultados corresponden al texto escrito (no son los de la búsqueda anterior)
-  const fresh = search === text.trim() && list.isSuccess && !list.isPlaceholderData
+  const fresh = given || (search === text.trim() && list.isSuccess && !list.isPlaceholderData)
 
   // valor que llega de fuera (formulario de edición, posición dada de baja): se pide esa posición por id (`binIds`), con
   // inactivas, para mostrar "Código · Zona" (el API no tiene ficha de una sola posición)
   const known = picked && picked.id === value ? picked : value != null ? rows.find((b) => b.id === value) : undefined
   const lookup = useQuery({
     ...binsQuery({ binIds: value != null ? [value] : undefined, includeInactive: true, take: 1 }),
-    enabled: value != null && !known && !noWarehouse,
+    // con lista dada solo mientras carga (luego un valor fuera de ella se quita)
+    enabled: value != null && !known && !noWarehouse && (!given || Boolean(optionsLoading)),
   })
   const found = known ?? (value != null ? lookup.data?.items?.find((b) => b.id === value) : undefined)
   let selectedLabel = ''
@@ -460,7 +519,8 @@ export function BinPicker({
   }
 
   let status: string | null = null
-  if (list.isLoading || zonesPending) status = t('common.loading')
+  if (given ? optionsLoading : list.isLoading || zonesPending) status = t('common.loading')
+  else if (given) status = options.length === 0 ? t('ui.binPicker.none') : null
   else if (isAccessDenied(list.error)) status = t('ui.binPicker.noAccess')
   else if (list.error) status = t('errors.generic')
   else if (options.length === 0) status = t('ui.binPicker.none')
@@ -524,6 +584,7 @@ export function BinPicker({
                   <span>
                     <span className="code">{b.code}</span>
                     {b.zoneCode ? ` · ${b.zoneCode}` : ''}
+                    {b.hint ? ` · ${b.hint}` : ''}
                   </span>
                   {b.id != null && suggestedSet.has(b.id) && <Chip tone="route">{t('ui.binPicker.suggested')}</Chip>}
                 </div>
@@ -539,8 +600,12 @@ export interface BinPickerInputProps {
   /** publicId del almacén (normalmente otro campo del formulario, leído con `useWatch`). */
   warehousePublicId: string | null | undefined
   zoneTypeCodes?: readonly string[]
+  excludeZoneTypeCodes?: readonly string[]
   onlyWithStock?: boolean
   suggestedBinIds?: readonly (number | null | undefined)[]
+  /** Lista de opciones dada (ver `BinPickerProps.options`). */
+  options?: readonly BinPickerOption[]
+  optionsLoading?: boolean
   placeholder?: string
   disabled?: boolean
   /** Aviso con la fila elegida (null al quitar). */
@@ -795,8 +860,11 @@ export interface ProductMultiFilterProps {
 export function ProductMultiFilter({ label, value, onChange, includeInactive }: ProductMultiFilterProps) {
   const t = useT()
   const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  // en el ámbito de filtros: los SKU elegidos (como sus píldoras)
+  useRegisterFilter(label, joinFilterValues(value.map((v) => v.sku || v.label), t), ref)
   return (
-    <div className="f">
+    <div className="f" ref={ref}>
       <label htmlFor={id}>{label}</label>
       <ProductPicker
         id={id}
@@ -896,6 +964,8 @@ export function BinMultiFilter({ label, value, onChange, warehousePublicIds, inc
   const enterSeq = useRef(0)
   const dismiss = useCallback(() => setOpen(false), [])
   useDismiss(boxRef, open, dismiss)
+  // en el ámbito de filtros: las posiciones elegidas (como sus píldoras)
+  useRegisterFilter(label, joinFilterValues(value.map((v) => v.label), t), boxRef)
 
   useEffect(() => {
     const h = setTimeout(() => setSearch(text.trim()), 250)

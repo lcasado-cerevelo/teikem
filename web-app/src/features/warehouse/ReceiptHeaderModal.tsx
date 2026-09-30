@@ -10,6 +10,9 @@
 //   caché al enviar (cambia con cada línea guardada). Confirmado o sin permiso: solo lectura.
 // - "Borrar recibo" (warehouse.receive, si `canDelete`: abierto y sin cruce de muelle) con confirmación.
 // Errores del API bajo su campo (`type` → Origen); el título arriba del formulario. Manual 06 §4.
+// Lote 16: "Modo de recepción" (Con acomodo / Directo a posición; D1): en el alta, por defecto el del almacén elegido (se
+// manda solo si hay uno); en la edición, el del recibo, y solo se cambia mientras está abierto. En directo se oculta
+// "Posición de recepción" (cada línea lleva su posición destino).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -17,6 +20,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { ModuleKeys, useCan, useModule } from '../../kernel/access'
 import type { components } from '../../kernel/api/schema'
+import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { ComboSelectInput, ConfirmDialog, Field, Form, Modal, Select, Spinner, TextInput, toast, type ComboOption } from '../../kernel/ui'
 import {
@@ -27,6 +31,7 @@ import {
   useReceipt,
   useUpdateReceiptHeader,
   useWarehouseDocks,
+  useWarehouses,
   warehouseKeys,
   type ReceiptDetailDto,
 } from './api'
@@ -34,12 +39,21 @@ import { ReadOnlyField } from './BinModal'
 import { formatDate, remapProblemFields } from './lineRules'
 import { BinPickerInput, WarehousePickerInput } from './pickers'
 import { hasDocument, receiptOrigin, receiptOriginText } from './receiptFilters'
+import {
+  isDirectMode,
+  normalizeReceivingMode,
+  RECEIVING_MODE_DOMAIN,
+  RECEIVING_ZONE_TYPES,
+  receivingModeChanged,
+  receivingModeLabel,
+} from './receivingMode'
+import { useReceivingModeOptions } from './useReceivingModeOptions'
 
 type Schemas = components['schemas']
 type Source = 'BLIND' | 'RETURN' | 'ASN' | 'PO'
 
 /** Tipos de zona donde se recibe (posición de recepción del encabezado). */
-const RECEIVING_ZONES = ['STAGING', 'CROSSDOCK'] as const
+const RECEIVING_ZONES = RECEIVING_ZONE_TYPES
 const TEXT_MAX = 80
 
 export interface ReceiptHeaderModalProps {
@@ -109,6 +123,7 @@ function HeaderForm({
           asnId: z.string(),
           purchaseOrderPublicId: z.string(),
           stagingBinId: z.string(),
+          receivingMode: z.string(),
           dockId: z.string(),
           carrier: z.string().max(TEXT_MAX, t('warehouse.receipts.errors.carrierMax')),
           reference: z.string().max(TEXT_MAX, t('warehouse.receipts.errors.referenceMax')),
@@ -130,6 +145,8 @@ function HeaderForm({
       asnId: preset ? String(preset.asnId) : '',
       purchaseOrderPublicId: '',
       stagingBinId: h?.defaultStagingBinId != null ? String(h.defaultStagingBinId) : '',
+      // alta: '' = el del almacén (se pone al elegirlo)
+      receivingMode: editing ? normalizeReceivingMode(h?.receivingModeCode) : '',
       dockId: h?.dockId != null ? String(h.dockId) : '',
       carrier: h?.carrier ?? '',
       reference: h?.reference ?? '',
@@ -137,6 +154,19 @@ function HeaderForm({
   })
   const source = useWatch({ control: form.control, name: 'source' }) as Source
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
+  const modeValue = useWatch({ control: form.control, name: 'receivingMode' })
+
+  // Lote 16: modo del almacén elegido (misma consulta que WarehousePicker: comparte caché)
+  const { data: modeLookups = [] } = useLookups(RECEIVING_MODE_DOMAIN)
+  const warehouses = useWarehouses({ includeInactive: false }, { enabled: !editing, handleAccessDenied: false })
+  const warehouseMode = warehouses.data?.find((w) => w.publicId === warehousePublicId)?.receivingModeCode ?? null
+  const modeOptions = useReceivingModeOptions()
+  // alta: el modo sigue al del almacén mientras el usuario no lo haya elegido a mano
+  useEffect(() => {
+    if (editing || form.getFieldState('receivingMode').isDirty) return
+    form.setValue('receivingMode', warehousePublicId && warehouseMode ? normalizeReceivingMode(warehouseMode) : '')
+  }, [editing, form, warehousePublicId, warehouseMode])
+  const direct = isDirectMode(modeValue || warehouseMode)
 
   // al cambiar de almacén el muelle y el documento ya no aplican (la posición la quita el propio BinPicker)
   const lastWarehouse = useRef(warehousePublicId)
@@ -240,9 +270,12 @@ function HeaderForm({
           <ReadOnlyField label={t('warehouse.receipts.fields.warehouse')} value={h.warehouseCode ?? ''} />
         </div>
         <div className="r2">
-          <ReadOnlyField label={t('warehouse.receipts.fields.stagingBin')} value={h.defaultStagingBinCode ?? '—'} />
+          <ReadOnlyField label={t('warehouse.receipts.header.mode')} value={h.receivingMode ?? receivingModeLabel(h.receivingModeCode, modeLookups)} />
           <ReadOnlyField label={t('warehouse.receipts.header.dock')} value={h.dockCode ?? '—'} />
         </div>
+        {(!isDirectMode(h.receivingModeCode) || h.defaultStagingBinCode) && (
+          <ReadOnlyField label={t('warehouse.receipts.fields.stagingBin')} value={h.defaultStagingBinCode ?? '—'} />
+        )}
         <div className="r2">
           <ReadOnlyField label={t('warehouse.receipts.header.carrier')} value={h.carrier ?? '—'} />
           <ReadOnlyField label={t('warehouse.receipts.header.reference')} value={h.reference ?? '—'} />
@@ -277,7 +310,8 @@ function HeaderForm({
         onSubmit={async (v) => {
           const carrier = v.carrier.trim()
           const reference = v.reference.trim()
-          const stagingBinId = v.stagingBinId ? Number(v.stagingBinId) : null
+          // en directo la posición de recepción no se pide (el campo está oculto)
+          const stagingBinId = v.stagingBinId && !direct ? Number(v.stagingBinId) : null
           const dockId = v.dockId ? Number(v.dockId) : null
           try {
             if (!editing) {
@@ -291,6 +325,7 @@ function HeaderForm({
                 dockId,
                 carrier: carrier || null,
                 reference: reference || null,
+                receivingMode: v.receivingMode || null,
               }
               const created = await create.mutateAsync(body)
               toast.success(t('warehouse.receipts.created', { number: created.header?.number ?? '' }))
@@ -302,7 +337,8 @@ function HeaderForm({
             const body: Schemas['ReceiptHeaderUpdateRequest'] = {}
             if (sourceEditable && v.source !== initialSource) body.type = v.source
             if (warehouseEditable && v.warehousePublicId && v.warehousePublicId !== h?.warehousePublicId) body.warehousePublicId = v.warehousePublicId
-            if (stagingBinId !== (h?.defaultStagingBinId ?? null)) {
+            if (receivingModeChanged(h?.receivingModeCode, v.receivingMode)) body.receivingMode = normalizeReceivingMode(v.receivingMode)
+            if (!direct && stagingBinId !== (h?.defaultStagingBinId ?? null)) {
               if (stagingBinId === null) body.clearStagingBin = true
               else body.stagingBinId = stagingBinId
             }
@@ -369,13 +405,18 @@ function HeaderForm({
           </Field>
         )}
         <div className="r2">
-          <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')} help={t('warehouse.receipts.fields.stagingBinHelp')}>
-            <BinPickerInput warehousePublicId={warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
+          <Field name="receivingMode" label={t('warehouse.receipts.header.mode')} help={t('warehouse.receipts.header.modeHelp')}>
+            <Select options={modeOptions} placeholder={editing ? undefined : t('warehouse.receipts.header.modeByWarehouse')} />
           </Field>
           <Field name="dockId" label={t('warehouse.receipts.header.dock')}>
             <ComboSelectInput options={dockOptions} loading={docks.isLoading} disabled={!warehousePublicId} placeholder={t('warehouse.receipts.header.noDock')} />
           </Field>
         </div>
+        {!direct && (
+          <Field name="stagingBinId" label={t('warehouse.receipts.fields.stagingBin')} help={t('warehouse.receipts.fields.stagingBinHelp')}>
+            <BinPickerInput warehousePublicId={warehousePublicId} zoneTypeCodes={RECEIVING_ZONES} placeholder={t('warehouse.receipts.defaultStaging')} />
+          </Field>
+        )}
         <div className="r2">
           <Field name="carrier" label={t('warehouse.receipts.header.carrier')}>
             <TextInput maxLength={TEXT_MAX} autoComplete="off" />

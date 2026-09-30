@@ -13,7 +13,7 @@ import { useLang, useT } from '../../kernel/i18n'
 import { Chip, DataTable, Panel, type DataColumn } from '../../kernel/ui'
 import { IconBasket } from '../../kernel/ui/screenIcons'
 import { productLabel, type PickBatchDto } from './api'
-import { formatDateTime, formatNumber } from './lineRules'
+import { formatDateTime, formatMoneyValue, formatNumber } from './lineRules'
 import { PICK_BATCH_STATUS_DOMAIN, usePickBatchCanDelete } from './pickBatchView'
 import './warehouse.css'
 
@@ -87,7 +87,7 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
       { id: 'bin', header: t('warehouse.pickBatches.detail.bin'), cell: (l) => l.binCode ?? '—', sortValue: (l) => l.binCode },
       { id: 'lot', header: t('warehouse.pickBatches.detail.lot'), cell: (l) => l.lotNumber ?? '—', sortValue: (l) => l.lotNumber },
       { id: 'serial', header: t('warehouse.pickBatches.detail.serial'), cell: (l) => l.serialNumber ?? '—', sortValue: (l) => l.serialNumber },
-      { id: 'cost', header: t('warehouse.pickBatches.detail.unitCost'), cell: (l) => (l.unitCost != null ? formatNumber(l.unitCost, lang) : '—'), align: 'end', card: 'hidden', sortValue: (l) => l.unitCost },
+      { id: 'cost', header: t('warehouse.pickBatches.detail.unitCost'), cell: (l) => (l.unitCost != null ? formatMoneyValue(l.unitCost, lang, { unitPrice: true }) : '—'), exportValue: (l) => l.unitCost, align: 'end', card: 'hidden', sortValue: (l) => l.unitCost },
       {
         id: 'reversed',
         header: t('warehouse.pickBatches.detail.reversal'),
@@ -143,7 +143,7 @@ export function PickBatchDetailBody({ batch, variant = 'screen' }: PickBatchDeta
           </div>
           <div className="f">
             <span className="collect-lbl">{t('warehouse.pickBatches.detail.totalCost')}</span>
-            <p>{batch.totalCost != null ? formatNumber(batch.totalCost, lang) : '—'}</p>
+            <p>{batch.totalCost != null ? formatMoneyValue(batch.totalCost, lang) : '—'}</p>
           </div>
         </div>
       </Section>

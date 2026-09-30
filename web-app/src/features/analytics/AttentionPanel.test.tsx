@@ -156,7 +156,7 @@ describe('AttentionPanel en el Pulso', () => {
     expect(rows[0]).toHaveClass('work', 'tone-danger')
     expect(within(rows[0]).getByText('Descuadre en L14-105022')).toBeInTheDocument()
     expect(within(rows[0]).getByText('Guantes de nitrilo · ALM-01 · A-01-02 · lote LT-7')).toBeInTheDocument()
-    expect(rows[0].querySelector('.figs')?.textContent).toMatch(/^Kárdex 1200Saldo 1201,5Diferencia \+1,5desde /)
+    expect(rows[0].querySelector('.figs')?.textContent).toMatch(/^Kárdex 1,200Saldo 1,201\.5Diferencia \+1\.5desde /)
     // del total del producto: sin posición
     expect(within(rows[1]).getByText('Descuadre en el total de SKU-9')).toBeInTheDocument()
     expect(within(rows[1]).getByText('Cajas · todas las posiciones')).toBeInTheDocument()
@@ -232,7 +232,7 @@ describe('attention.ts (lógica pura)', () => {
     expect(attentionToneClass('danger')).toBe('tone-danger')
     expect(attentionToneClass('warn')).toBe('tone-warn')
     expect(attentionToneClass('info')).toBe('tone-flow')
-    expect(formatQty('1234.5', 'es')).toBe('1234,5')
+    expect(formatQty('1234.5', 'es')).toBe('1,234.5')
     expect(formatQty('1234.5', 'en')).toBe('1,234.5')
     expect(formatSigned('2', 'en')).toBe('+2')
     expect(formatSigned('-0.25', 'en')).toBe('−0.25')

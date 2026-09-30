@@ -3,7 +3,7 @@
 // (Recibir, Despacho, Conteo): kernel/warehouse/productLookup.ts.
 import { getDb } from '../../kernel/db/database'
 import { findProductByCode, type LocalProduct, type TrackingType } from '../../kernel/warehouse/productLookup'
-import type { DraftLine } from './receiveLogic'
+import { parseReceivingMode, type DocLine, type DraftLine, type LocalBin, type ReceivingMode } from './receiveLogic'
 
 export { findProductByCode }
 export type { LocalProduct, TrackingType }
@@ -37,6 +37,9 @@ export interface OpenReceipt {
   warehousePublicId: string
   doc: LocalDoc | null
   lines: DraftLine[]
+  /** Lote 16: modo con que se abrió (copia del modo del almacén del aparato en ese momento); null = abierto con una app
+   *  anterior al lote, se manda sin modo y entra "con acomodo" (D9-A). */
+  receivingMode: ReceivingMode | null
 }
 
 /** Crea el recibo local (blind si doc es null) y devuelve su id. Solo uno a la vez por aparato (pantalla 3 no permite
@@ -45,22 +48,24 @@ export interface OpenReceipt {
  *  puede empezar otro; solo se libera confirmándolo o cancelándolo (discardLocalReceipt). Cerrar y volver a abrir la
  *  app no lo pierde: sigue guardado y se retoma tal cual (getOpenReceipt), así que esta función nunca hace falta
  *  llamarla "para reemplazar" uno en curso — es un error del código que la llama, no un caso normal de uso. */
-export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | null): number {
+export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | null, receivingMode: ReceivingMode | null = null): number {
   const db = getDb()
   if (getOpenReceipt() !== null) {
     throw new Error('Ya hay un recibo en curso; hay que confirmarlo o cancelarlo antes de empezar otro.')
   }
   const info = db.runSync(
-    'INSERT INTO local_receipt (warehouse_public_id, purchase_order_public_id, asn_id, doc_label, created_at_utc) VALUES (?, ?, ?, ?, ?)',
-    [warehousePublicId, doc?.purchaseOrderPublicId ?? null, doc?.asnId ?? null, doc?.label ?? null, new Date().toISOString()],
+    `INSERT INTO local_receipt (warehouse_public_id, purchase_order_public_id, asn_id, doc_label, created_at_utc, receiving_mode)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [warehousePublicId, doc?.purchaseOrderPublicId ?? null, doc?.asnId ?? null, doc?.label ?? null, new Date().toISOString(), receivingMode],
   )
   return info.lastInsertRowId
 }
 
 export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
   getDb().runSync(
-    `INSERT INTO local_receipt_line (receipt_id, product_public_id, sku, product_name, tracking_type_code, received_qty, lot_number, expiry_date, serial_numbers)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO local_receipt_line (receipt_id, product_public_id, sku, product_name, tracking_type_code, received_qty, lot_number, expiry_date,
+                                     serial_numbers, target_bin_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       receiptId,
       line.productPublicId,
@@ -71,6 +76,7 @@ export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
       line.lotNumber,
       line.expiryDate,
       line.serialNumbers ? JSON.stringify(line.serialNumbers) : null,
+      line.targetBinCode,
     ],
   )
 }
@@ -92,7 +98,8 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
     purchase_order_public_id: string | null
     asn_id: number | null
     doc_label: string | null
-  }>('SELECT id, warehouse_public_id, purchase_order_public_id, asn_id, doc_label FROM local_receipt LIMIT 1')
+    receiving_mode: string | null
+  }>('SELECT id, warehouse_public_id, purchase_order_public_id, asn_id, doc_label, receiving_mode FROM local_receipt LIMIT 1')
   if (!header) return null
   const lineRows = db
     .getAllSync<{
@@ -105,6 +112,7 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       lot_number: string | null
       expiry_date: string | null
       serial_numbers: string | null
+      target_bin_code: string | null
     }>('SELECT * FROM local_receipt_line WHERE receipt_id = ? ORDER BY id', [header.id])
     .map((r) => ({
       id: r.id,
@@ -116,6 +124,7 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       lotNumber: r.lot_number,
       expiryDate: r.expiry_date,
       serialNumbers: r.serial_numbers ? (JSON.parse(r.serial_numbers) as string[]) : null,
+      targetBinCode: r.target_bin_code,
     }))
   const doc =
     header.purchase_order_public_id || header.asn_id
@@ -126,7 +135,14 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
           label: header.doc_label ?? '',
         }
       : null
-  return { id: header.id, warehousePublicId: header.warehouse_public_id, doc, lines: lineRows, lineRows }
+  return {
+    id: header.id,
+    warehousePublicId: header.warehouse_public_id,
+    doc,
+    lines: lineRows,
+    lineRows,
+    receivingMode: parseReceivingMode(header.receiving_mode),
+  }
 }
 
 /** El recibo confirmado se manda a la cola (kernel/sync/outbox.ts); ya no hace falta en la forma normalizada. */
@@ -134,4 +150,49 @@ export function discardLocalReceipt(): void {
   const db = getDb()
   db.runSync('DELETE FROM local_receipt_line WHERE receipt_id IN (SELECT id FROM local_receipt)')
   db.runSync('DELETE FROM local_receipt')
+}
+
+// ------------------------------------------------------------------ Lote 16: posiciones y líneas del documento
+
+/** Posiciones locales del almacén cuyo código coincide (sin distinguir mayúsculas) con lo escaneado, activas o no, con
+ *  el tipo de su zona. La decisión (existe / activa / zona de guardado) la toma receiveLogic.validateTargetBin. */
+export function findLocalBinsByCode(warehousePublicId: string, code: string): LocalBin[] {
+  const wanted = code.trim()
+  if (!wanted) return []
+  return getDb()
+    .getAllSync<{ code: string; zone_type_code: string | null; is_active: number }>(
+      'SELECT code, zone_type_code, is_active FROM bin WHERE warehouse_public_id = ? AND code = ? COLLATE NOCASE',
+      [warehousePublicId, wanted],
+    )
+    .map((b) => ({ code: b.code, zoneTypeCode: b.zone_type_code, isActive: b.is_active === 1 }))
+}
+
+/** Cuántas posiciones del almacén tiene el aparato (0 = todavía no se bajaron: hace falta sincronizar con señal). */
+export function countLocalBins(warehousePublicId: string): number {
+  return (
+    getDb().getFirstSync<{ n: number }>('SELECT COUNT(*) AS n FROM bin WHERE warehouse_public_id = ?', [warehousePublicId])?.n ?? 0
+  )
+}
+
+/** Líneas del documento del recibo tal como las tiene el aparato (para receiveLogic.findTargetConflict): las del aviso con
+ *  su lote; las de la orden de compra con algo pendiente (el aviso del servidor nace de lo pendiente), sin lote. */
+export function getDocLines(doc: LocalDoc | null): DocLine[] {
+  if (!doc) return []
+  const db = getDb()
+  if (doc.asnId != null) {
+    return db
+      .getAllSync<{ product_public_id: string; lot_number: string | null }>(
+        'SELECT product_public_id, lot_number FROM asn_line WHERE asn_id = ? ORDER BY id',
+        [doc.asnId],
+      )
+      .map((l) => ({ productPublicId: l.product_public_id, lotNumber: l.lot_number }))
+  }
+  if (!doc.purchaseOrderPublicId) return []
+  return db
+    .getAllSync<{ product_public_id: string }>(
+      `SELECT l.product_public_id FROM purchase_order_line l JOIN purchase_order po ON po.id = l.purchase_order_id
+       WHERE po.public_id = ? AND l.qty_pending > 0 ORDER BY l.id`,
+      [doc.purchaseOrderPublicId],
+    )
+    .map((l) => ({ productPublicId: l.product_public_id, lotNumber: null }))
 }

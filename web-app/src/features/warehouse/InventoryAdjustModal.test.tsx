@@ -42,26 +42,31 @@ const REASONS = [
   { code: 'OTHER', label: 'Otro', sortOrder: 9 },
 ]
 
+// B-09 no tiene existencias del producto: al bajar no se ofrece
+const BINS = [
+  { id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', isActive: true },
+  { id: 11, code: 'B-09', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', isActive: true },
+  { id: 12, code: 'C-02', zoneId: 2, zoneCode: 'C', zoneTypeCode: 'RESERVE', isActive: true },
+]
+const BALANCES = [
+  { id: 3, binId: 12, binCode: 'C-02', zoneCode: 'C', zoneTypeCode: 'RESERVE', productPublicId: PID, lotId: 7, lotNumber: 'L-7', qtyOnHand: 4, qtyReserved: 0, qtyAvailable: 4 },
+  { id: 1, binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'STORAGE', productPublicId: PID, lotId: 7, lotNumber: 'L-7', qtyOnHand: 3, qtyReserved: 0, qtyAvailable: 3 },
+  { id: 2, binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'STORAGE', productPublicId: PID, lotId: 8, lotNumber: 'L-8', qtyOnHand: 2, qtyReserved: 0, qtyAvailable: 2 },
+]
+
 function route(method: string, url: URL): unknown {
   const p = url.pathname
   if (p === '/api/v1/catalogs/AdjustmentReason') return REASONS
   if (p === '/api/v1/products') return { total: 1, skip: 0, take: 20, items: [product()] }
   if (p === `/api/v1/products/${PID}`) return { product: product() }
   if (p === '/api/v1/warehouses') return [{ id: 1, publicId: WH, code: 'ALM-01', name: 'Almacén principal', isActive: true }]
-  if (p === `/api/v1/warehouses/${WH}/bins`)
-    return { total: 1, skip: 0, take: 50, items: [{ id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', zoneTypeCode: 'STORAGE', isActive: true }] }
-  if (p === '/api/v1/inventory/balances')
-    return {
-      total: 2,
-      skip: 0,
-      take: 200,
-      totalOnHand: 5,
-      totalAvailable: 5,
-      items: [
-        { id: 1, binId: 10, productPublicId: PID, lotId: 7, lotNumber: 'L-7', qtyOnHand: 3, qtyReserved: 0, qtyAvailable: 3 },
-        { id: 2, binId: 10, productPublicId: PID, lotId: 8, lotNumber: 'L-8', qtyOnHand: 2, qtyReserved: 0, qtyAvailable: 2 },
-      ],
-    }
+  if (p === `/api/v1/warehouses/${WH}/bins`) return { total: BINS.length, skip: 0, take: 50, items: BINS }
+  if (p === '/api/v1/inventory/balances') {
+    // saldos del producto: por posición (binIds) o de todo el almacén (posiciones donde se puede bajar)
+    const ids = url.searchParams.getAll('binIds').map(Number)
+    const items = BALANCES.filter((b) => ids.length === 0 || ids.includes(b.binId))
+    return { total: items.length, skip: 0, take: 200, items }
+  }
   if (method === 'POST' && p === '/api/v1/inventory/adjustments') return mock.adjust ? mock.adjust() : { transactions: [], balances: [] }
   return []
 }
@@ -195,6 +200,42 @@ describe('InventoryAdjustModal · Subir/Bajar (D11)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Aplicar ajuste' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
     expect(posts()[0].body).toMatchObject({ quantity: -1, reason: 'EXPIRED', lotId: 8 })
+  })
+
+  it('Bajar: sin producto la posición está deshabilitada; con producto solo ofrece donde hay disponible, con su disponible y por código', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const dialog = await screen.findByRole('dialog', { name: 'Ajuste de inventario' })
+    await user.click(within(dialog).getByRole('radio', { name: /Bajar/ }))
+    await user.click(within(dialog).getByRole('combobox', { name: /^Almacén/ }))
+    await user.click(await screen.findByRole('option', { name: 'ALM-01 · Almacén principal' }))
+    const bin = within(dialog).getByRole('combobox', { name: /^Posición/ })
+    expect(bin).toBeDisabled()
+    expect(bin).toHaveAttribute('placeholder', 'Elija primero un producto')
+    await user.type(within(dialog).getByRole('combobox', { name: /^Producto/ }), 'torn')
+    await user.click(await screen.findByRole('option', { name: /TORN-01 · Tornillo/ }))
+    await waitFor(() => expect(bin).toBeEnabled())
+    await user.click(bin)
+    await waitFor(() => expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['A-01 · A · 5 disp.', 'C-02 · C · 4 disp.']))
+    expect(screen.queryByRole('option', { name: /B-09/ })).toBeNull()
+  })
+
+  it('Subir ofrece todas las posiciones; al pasar a Bajar se quita una posición sin disponible del producto', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const dialog = await screen.findByRole('dialog', { name: 'Ajuste de inventario' })
+    await user.click(within(dialog).getByRole('radio', { name: /Subir/ }))
+    await user.type(within(dialog).getByRole('combobox', { name: /^Producto/ }), 'torn')
+    await user.click(await screen.findByRole('option', { name: /TORN-01 · Tornillo/ }))
+    await user.click(within(dialog).getByRole('combobox', { name: /^Almacén/ }))
+    await user.click(await screen.findByRole('option', { name: 'ALM-01 · Almacén principal' }))
+    const bin = within(dialog).getByRole('combobox', { name: /^Posición/ })
+    await user.click(bin)
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(3))
+    await user.click(screen.getByRole('option', { name: /B-09/ }))
+    expect(bin).toHaveValue('B-09 · A')
+    await user.click(within(dialog).getByRole('radio', { name: /Bajar/ }))
+    await waitFor(() => expect(bin).toHaveValue(''))
   })
 
   it('la nota es obligatoria (también si solo trae espacios) y el 400 del API en errors.notes queda bajo el campo', async () => {

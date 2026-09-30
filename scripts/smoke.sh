@@ -3640,6 +3640,77 @@ fi
 ok "franja de 7 días locales (PR, hoy $TODAYPR, fechas seguidas), days 0/15 → 400 'Los días deben estar entre 1 y 14.' y 14 → 14; W6: recibo +3, recolección +1 y eliminarla lo devuelve, conteo con +1 → Diferencia (+1, naranja); W7 sin cambio; almacén desconocido en cero; despachador 403; WAREHOUSE_DAY primero (−10) para el admin y ausente para el despachador; gráficos de la compañía (dona CostValue, barras Units ≥ 0 con Recepción ≥ 3; la dona suma $VSUM15 = 'Valor de inventario a costo'); PUT renombrar/restaurar 200 y sin analytics.manage 403; 'Descuadres pendientes' apagado en el Pulso; con SQL: $SQL15"
 
 # ============================================================================================================
+# Lote 16 — Recibo directo a posición: almacén W16 DIRECT sin zona STAGING (zonas RSV, QUA y XD de cruce; R-01 con cupo 5,
+# R-02, Q-01, X-01). Recibo ciego sin posición de recepción, destino obligatorio al confirmar, sugerencias con cupo,
+# confirmar asienta RECEIPT en la posición final sin tareas (Completado → Acomodado con historial), alta atómica con
+# targetBinCode, copia del modo en el recibo y compatibilidad de la app anterior en W6, modo en el encabezado y seguridad.
+# ============================================================================================================
+step "recibo directo a posición (Lote 16): W16 sin STAGING, destino obligatorio, sugerencias con cupo, confirmar sin tareas, app anterior y seguridad"
+W16=$(expect 200 "$(req POST /api/v1/warehouses "{\"code\":\"W16$TS\",\"name\":\"Directo $TS\",\"receivingMode\":\"DIRECT\"}")"); W16P=$(wpid "$W16")
+echo "$W16" | jq -e '.warehouse.receivingModeCode=="DIRECT" and .warehouse.receivingMode=="Directo a posición" and .warehouse.defaultReceivingBinId==null' >/dev/null || fail "alta de W16 directo: $(echo "$W16" | jq -c .warehouse)"
+z16() { expect 200 "$(req POST "/api/v1/warehouses/$W16P/zones" "{\"code\":\"$1\",\"name\":\"Zona $1\",\"zoneType\":\"$2\"}")" | jq -r .id; }
+b16() { expect 200 "$(req POST "/api/v1/warehouses/$W16P/bins" "{\"zoneId\":$1,\"code\":\"$2\"${3:+,\"maxCapacityQty\":$3}}")" | jq -r .id; }
+Z16R=$(z16 RSV RESERVE); Z16Q=$(z16 QUA QUARANTINE); Z16X=$(z16 XD CROSSDOCK)
+B16R1=$(b16 "$Z16R" R-01 5); B16R2=$(b16 "$Z16R" R-02); B16Q=$(b16 "$Z16Q" Q-01); B16X=$(b16 "$Z16X" X-01)
+M16U="Modo de recepción desconocido: 'HALF'. Use PUTAWAY o DIRECT."
+expect 400 "$(req PATCH "/api/v1/warehouses/$W16P" '{"receivingMode":"HALF"}')" | jq -e --arg m "$M16U" "$HASM" >/dev/null || fail "PATCH receivingMode HALF → 400"
+expect 400 "$(req POST /api/v1/warehouses "{\"code\":\"W16B$TS\",\"name\":\"X\",\"receivingMode\":\"HALF\"}")" | jq -e --arg m "$M16U" "$HASM" >/dev/null || fail "alta con receivingMode HALF → 400"
+P16=$(prod "{\"sku\":\"P16$TS\",\"name\":\"Directo 16 $TS\",\"purchaseCost\":1}")
+# Recibo ciego sin posición de recepción: nace EXPECTED y DIRECT (el almacén no tiene STAGING).
+R16=$(expect 200 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W16P\",\"type\":\"BLIND\"}")"); R16P=$(echo "$R16" | jq -r .header.publicId); R16ID=$(echo "$R16" | jq -r .header.id)
+echo "$R16" | jq -e '.header.statusCode=="EXPECTED" and .header.receivingModeCode=="DIRECT" and .header.defaultStagingBinId==null' >/dev/null || fail "recibo directo sin STAGING: $(echo "$R16" | jq -c .header)"
+R16=$(expect 200 "$(req POST "/api/v1/receipts/$R16P/lines" "{\"productPublicId\":\"$P16\",\"receivedQty\":8}")"); L16=$(echo "$R16" | jq -r '.lines[0].id')
+echo "$R16" | jq -e '.lines[0].stagingBinId==null and .lines[0].targetBinId==null' >/dev/null || fail "línea directa sin posiciones"
+# Sin destino no confirma (400 por línea); X-01 (cruce) → 400 de zona; una posición de W6 → 404.
+expect 400 "$(req POST "/api/v1/receipts/$R16P/confirm" '{}')" | jq -e --arg m "Indique la posición destino de P16$TS: el recibo entra directo a posición." '.errors["lines[0].targetBinId"][0]==$m' >/dev/null || fail "confirmar sin destino → 400"
+expect 400 "$(req PUT "/api/v1/receipts/$R16P/lines/$L16" "{\"targetBinId\":$B16X}")" | jq -e --arg m "La posición X-01 está en una zona CROSSDOCK; la posición destino debe ser de guardado." "$HASM" >/dev/null || fail "destino en cruce de muelle → 400"
+expect 404 "$(req PUT "/api/v1/receipts/$R16P/lines/$L16" "{\"targetBinId\":$B_RSV}")" | jq -e --arg m "Posición no encontrada." "$HASM" >/dev/null || fail "destino de otro almacén → 404"
+# Sugerencias: R-01 (cupo 5) no cabe con 8 (al final, fits=false); la primera que cabe es R-02; ni X-01 ni cuarentena.
+SG16=$(expect 200 "$(req GET "/api/v1/receipts/$R16P/lines/$L16/target-suggestions?take=5")")
+echo "$SG16" | jq -e '(map(select(.binCode=="R-01"))[0] | .fits==false and .maxCapacityQty==5 and .freeQty==5) and (map(select(.fits))[0].binCode=="R-02") and all(.[]; .binCode!="X-01" and .binCode!="Q-01")' >/dev/null || fail "sugerencias con cupo: $SG16"
+# Destino R-01: espacio libre 5 (excede, solo aviso) y se confirma igual (D4).
+expect 200 "$(req PUT "/api/v1/receipts/$R16P/lines/$L16" "{\"targetBinId\":$B16R1}")" | jq -e '.lines[0].targetBinCode=="R-01" and .lines[0].targetZoneTypeCode=="RESERVE" and .lines[0].targetFreeQty==5' >/dev/null || fail "destino R-01 con targetFreeQty 5"
+B16=$(pday "warehousePublicIds=$W16P")
+expect 200 "$(req POST "/api/v1/receipts/$R16P/confirm" '{}')" | jq -e '.header.statusCode=="PUTAWAY" and .header.pendingPutawayCount==0 and (.putawayTasks|length)==0' >/dev/null || fail "confirmar directo → Acomodado sin tareas"
+expect 200 "$(req GET "/api/v1/status/history/RECEIPT/$R16ID")" | jq -e 'map(.toCode)==["EXPECTED","RECEIVING","RECEIVED","PUTAWAY"]' >/dev/null || fail "historial del recibo directo: $(req GET "/api/v1/status/history/RECEIPT/$R16ID" | sed '$d' | jq -c 'map(.toCode)')"
+kardex "refEntity=RECEIPT&refId=$R16ID" | jq -e '.total==1 and .items[0].typeCode=="RECEIPT" and .items[0].quantity==8 and .items[0].toBinCode=="R-01"' >/dev/null || fail "Kárdex: RECEIPT +8 a R-01"
+[[ $(onhand "$W16P" "$B16R1" "$P16") == 8 ]] || fail "existencia de P16 en R-01"
+[[ $(d15 "$(pday "warehousePublicIds=$W16P")" "$B16" receivedToday) == 8 ]] || fail "franja: lo recibido hoy en W16 no sube 8"
+# D13: Actividad reciente muestra un solo evento para el recibo directo sin tareas ("confirmado", sin "acomodado").
+activity "module=WAREHOUSE" | jq -e --arg r "$R16P" '[.[] | select(.publicId==$r) | .code] == ["RECEIPT_CONFIRMED"]' >/dev/null || fail "Actividad del recibo directo: $(activity "module=WAREHOUSE" | jq -c --arg r "$R16P" '[.[] | select(.publicId==$r) | .code]')"
+# Alta atómica (app nueva) con targetBinCode: Q-01 → 200 directo a cuarentena; ZZ → 400.
+expect 200 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W16P\",\"type\":\"RETURN\",\"confirm\":true,\"lines\":[{\"productPublicId\":\"$P16\",\"receivedQty\":1,\"targetBinCode\":\"Q-01\"}]}")" | jq -e '.header.statusCode=="PUTAWAY" and .header.receivingModeCode=="DIRECT" and .lines[0].targetBinCode=="Q-01"' >/dev/null || fail "confirm con targetBinCode Q-01"
+expect 400 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W16P\",\"type\":\"BLIND\",\"confirm\":true,\"lines\":[{\"productPublicId\":\"$P16\",\"receivedQty\":1,\"targetBinCode\":\"ZZ\"}]}")" | jq -e --arg m "La posición ZZ no existe en el almacén del recibo." "$HASM" >/dev/null || fail "targetBinCode ZZ → 400"
+# Encabezado: modo solo de este recibo (DIRECT/PUTAWAY; desconocido 400; a PUTAWAY sin STAGING → 422).
+R16B=$(expect 200 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W16P\",\"type\":\"BLIND\"}")"); R16BP=$(echo "$R16B" | jq -r .header.publicId)
+expect 400 "$(req PATCH "/api/v1/receipts/$R16BP" '{"receivingMode":"HALF"}')" | jq -e --arg m "$M16U" "$HASM" >/dev/null || fail "PATCH del recibo con modo HALF → 400"
+expect 422 "$(req PATCH "/api/v1/receipts/$R16BP" '{"receivingMode":"PUTAWAY"}')" | jq -e --arg m "El almacén no tiene una posición de recepción (zona STAGING); indíquela." "$HASM" >/dev/null || fail "a PUTAWAY sin STAGING → 422"
+expect 204 "$(req DELETE "/api/v1/receipts/$R16BP")" >/dev/null
+# W6 (con STAGING): pasa a DIRECT; un recibo abierto en DIRECT conserva su modo al volver W6 a PUTAWAY (D2); la app anterior
+# (confirm sin modo ni destinos) en un almacén directo recibe con acomodo (D9); el encabezado cambia el modo del recibo.
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P" '{"receivingMode":"DIRECT"}')" | jq -e '.warehouse.receivingModeCode=="DIRECT"' >/dev/null || fail "W6 a DIRECT"
+OLD16=$(expect 200 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W6P\",\"type\":\"BLIND\",\"confirm\":true,\"lines\":[{\"productPublicId\":\"$P16\",\"receivedQty\":1}]}")")
+echo "$OLD16" | jq -e '.header.receivingModeCode=="PUTAWAY" and .header.statusCode=="RECEIVED" and (.putawayTasks|length)==1' >/dev/null || fail "app anterior en almacén directo → con acomodo: $(echo "$OLD16" | jq -c '{m:.header.receivingModeCode,s:.header.statusCode,t:(.putawayTasks|length)}')"
+expect 200 "$(req POST "/api/v1/warehouse-tasks/$(echo "$OLD16" | jq -r '.putawayTasks[0].id')/complete" '{}')" | jq -e '.statusCode=="DONE"' >/dev/null || fail "completar el acomodo del recibo de la app anterior"
+C16=$(expect 200 "$(req POST /api/v1/receipts "{\"warehousePublicId\":\"$W6P\",\"type\":\"BLIND\"}")"); C16P=$(echo "$C16" | jq -r .header.publicId)
+echo "$C16" | jq -e '.header.receivingModeCode=="DIRECT"' >/dev/null || fail "recibo nuevo en W6 directo"
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P" '{"receivingMode":"PUTAWAY"}')" | jq -e '.warehouse.receivingModeCode=="PUTAWAY"' >/dev/null || fail "W6 de vuelta a PUTAWAY"
+expect 200 "$(req GET "/api/v1/receipts/$C16P")" | jq -e '.header.receivingModeCode=="DIRECT"' >/dev/null || fail "el recibo abierto no conservó su modo (D2)"
+expect 200 "$(req PATCH "/api/v1/receipts/$C16P" '{"receivingMode":"PUTAWAY"}')" | jq -e '.header.receivingModeCode=="PUTAWAY"' >/dev/null || fail "PATCH del recibo a PUTAWAY"
+expect 200 "$(req PATCH "/api/v1/receipts/$C16P" '{"receivingMode":"DIRECT"}')" | jq -e '.header.receivingModeCode=="DIRECT"' >/dev/null || fail "PATCH del recibo a DIRECT"
+expect 204 "$(req DELETE "/api/v1/receipts/$C16P")" >/dev/null
+# Posición de recepción por defecto (D12) en W6: STG-01; una de reserva → 400; y el acomodo dirigido trae cupo y espacio libre.
+expect 200 "$(req PATCH "/api/v1/warehouses/$W6P" "{\"defaultReceivingBinId\":$B_STG}")" | jq -e '.warehouse.defaultReceivingBinCode=="STG-01"' >/dev/null || fail "posición de recepción por defecto STG-01"
+expect 400 "$(req PATCH "/api/v1/warehouses/$W6P" "{\"defaultReceivingBinId\":$B_RSV}")" | jq -e --arg m "La posición de recepción debe estar en una zona STAGING o CROSSDOCK." "$HASM" >/dev/null || fail "posición por defecto de reserva → 400"
+expect 200 "$(req GET "/api/v1/warehouse-tasks/putaway-suggestions?productPublicId=$P16&warehousePublicId=$W16P&quantity=1")" | jq -e 'all(.[]; .binCode!="R-01")' >/dev/null || fail "R-01 lleno (8 de 5) sugerido para acomodo"
+expect 200 "$(req GET "/api/v1/warehouse-tasks/putaway-suggestions?productPublicId=$P16&warehousePublicId=$W16P&quantity=1")" | jq -e 'any(.[]; .binCode=="R-02" and .maxCapacityQty==null and .freeQty==null)' >/dev/null || fail "acomodo dirigido con cupo y espacio libre"
+# Seguridad: Solo lectura no cambia el modo del almacén (warehouse.manage); el despachador no ve sugerencias (inventory.view).
+expect 403 "$(req PATCH "/api/v1/warehouses/$W16P" '{"receivingMode":"PUTAWAY"}' "$TREAD6")" >/dev/null
+expect 403 "$(req GET "/api/v1/receipts/$R16P/lines/$L16/target-suggestions" '' "$TD14")" >/dev/null
+expect 403 "$(req POST "/api/v1/receipts/$R16P/targets/suggest" '{}' "$TREAD6")" >/dev/null
+ok "W16 DIRECT sin STAGING (HALF → 400 '$M16U'); recibo ciego EXPECTED DIRECT sin posición de recepción; sin destino → 400 por línea; X-01 → 400 de zona; posición de W6 → 404; sugerencias con R-01 (cupo 5) fits=false y R-02 primero; R-01 con targetFreeQty 5; confirmar → Acomodado sin tareas con historial EXPECTED→RECEIVING→RECEIVED→PUTAWAY, Kárdex RECEIPT +8 en R-01, existencia 8, franja +8 y un solo evento RECEIPT_CONFIRMED en Actividad (D13); confirm con targetBinCode Q-01 → 200 y ZZ → 400; modo del recibo HALF 400 y a PUTAWAY sin STAGING 422; en W6: app anterior → con acomodo (D9), recibo abierto conserva DIRECT (D2) y PATCH del modo; posición de recepción por defecto STG-01 (reserva 400); acomodo dirigido con cupo; 403 de Solo lectura y despachador"
+
+# ============================================================================================================
 # Lote 8A — aparatos y sincronización (app de almacén): aparato de confianza, PIN, login por aparato, idempotencia,
 # sincronización por diferencia, código escaneado, recibo en una llamada, conteo a ciegas en lote y aparato desactivado.
 # ============================================================================================================

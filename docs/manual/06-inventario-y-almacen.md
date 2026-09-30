@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
@@ -49,6 +49,10 @@ Convenciones del capítulo:
 - "Dueño del producto" (`Product.ClientId`, un cliente 3PL o `NULL` = propio del tenant) es un concepto distinto
   del tenant (`TenantId`, quién es dueño de los **datos**). "Recibo" es `ReceiptHeader`/`ReceiptLine`; "Ubicación" o
   "Posición" es `WarehouseBin`.
+- **Formato de los números (Lote 16).** En la pantalla, las cantidades y el dinero llevan **coma de miles y punto decimal** (formato de Puerto
+  Rico): `61,023` y `1,250.5`; el dinero lleva `$` (`$1,234.50`). Antes, en español, una cifra como `61.023` se leía como un decimal y las de 4 dígitos
+  no llevaban separador. Es solo de presentación: el API sigue devolviendo números JSON (`61023`, `1250.5`) y los acepta igual. Las exportaciones a
+  Excel conservan el número como número.
 
 ---
 
@@ -61,7 +65,8 @@ indicarlo. Desde el Lote 11 (cambios de Almacén, tanda 1) además: cada posici�
 unidades y, con él, un estado de **ocupación**; cada zona muestra su ocupación (calculada, no guardada); el **código de
 una zona se puede editar**; el listado de posiciones es **paginado** y se busca por código, zona, pasillo, rack, nivel o
 posición; y hay un **catálogo de localidades postales** para llenar la ciudad, el estado, el código postal y el país
-del almacén.
+del almacén. Desde el Lote 16, cada almacén tiene además un **modo de recepción** (con acomodo o directo a posición) y una **posición de recepción
+por defecto** (sección 1.4); el recibo directo se describe en la sección 4.1.
 
 Quién puede: `inventory.view` (listar y consultar almacenes, zonas, posiciones y muelles); `warehouse.manage`
 (alta, edición, baja/reactivación de almacén, zonas, posiciones y muelles, y el estatus manual del muelle). Módulo
@@ -205,6 +210,41 @@ en bloque o editando la posición. La regla completa, el reporte `-cupos.csv` y 
   hay —Puerto Rico—, si no la ciudad postal USPS), `postalCode`, `state` y `country`. El almacén guarda texto: no hay
   llave hacia la tabla de localidades.
 
+### 1.4 Modo de recepción y posición de recepción por defecto (Lote 16)
+
+Qué hace: decide **adónde entra la mercancía** cuando se confirma un recibo del almacén.
+
+| Código | Etiqueta | Dónde entra la mercancía al confirmar | Tareas de acomodo |
+|---|---|---|---|
+| `PUTAWAY` | Con acomodo | En la **posición de recepción** (zona `STAGING`) | Una por línea; se acomoda después |
+| `DIRECT` | Directo a posición | En la **posición destino de cada línea** | Ninguna |
+
+El modo por defecto es `PUTAWAY` (un almacén sin valor se trata así). **Advance Solutions** (`ALM-SOL`), que solo tiene la posición `GENERAL` y
+ninguna zona de recepción, se migró en `DIRECT`; **Advance Depot** (`ALM-DEPOT`) y la demo (`ALM-01`), en `PUTAWAY`. El modo del almacén es el de los
+recibos **nuevos**: cada recibo guarda el modo con que se abrió (sección 4.1). **Cambiarlo no toca los recibos abiertos ni los acomodos pendientes**: los
+recibos que ya estaban abiertos siguen como se abrieron y las tareas de acomodo siguen su curso.
+
+**Posición de recepción por defecto.** Una posición de una zona `STAGING` o `CROSSDOCK` del almacén. La usan los recibos **con acomodo** (cuando el
+encabezado no indica otra) y las líneas con cruce de muelle de un recibo directo (sección 4.1). Si el almacén no tiene una, o la que tiene dejó de ser válida
+(se dio de baja la posición o su zona), vale **la primera posición activa de una zona `STAGING`**, ordenando por código de zona y de posición. Se fija
+después de crear el almacén (al crearlo aún no hay posiciones) y se puede quitar. En Advance Depot es `R1` (zona `STG`), no la primera por código de zona
+(`S1` de "Embarque", que era lo que elegía el sistema antes del Lote 16).
+
+Quién puede: `warehouse.manage` (fijar el modo y la posición por defecto); `inventory.view` (leerlos). Módulo **WMS_LOTSERIAL**.
+
+Cómo se usa:
+- Alta: `POST /api/v1/warehouses` con `"receivingMode": "DIRECT"`. Sin `receivingMode` queda `PUTAWAY`.
+- Edición: `PATCH /api/v1/warehouses/{publicId}` con `{ "receivingMode": "DIRECT", "defaultReceivingBinId": 12, "rowVersion": "…" }`. `receivingMode`
+  ausente o `null` = sin cambio (vale `PUTAWAY` o `DIRECT`, sin distinguir mayúsculas). `"clearDefaultReceivingBin": true` quita la posición por defecto.
+- Lectura: `GET /api/v1/warehouses` y `GET /api/v1/warehouses/{publicId}` traen `receivingModeCode` (`PUTAWAY` o `DIRECT`), `receivingMode` (la etiqueta
+  en el idioma del usuario), `defaultReceivingBinId` y `defaultReceivingBinCode` (`null` = la primera `STAGING`).
+- Aparatos: el registro y el heartbeat del aparato traen `defaultWarehouseReceivingMode` (el modo del almacén por defecto del aparato; capítulo 9, sección 4).
+- Migración (`import-legacy`): las claves `warehouse.receivingMode` (`PUTAWAY` o `DIRECT`) y `warehouse.defaultReceivingBin` (código de una posición de recepción del
+  almacén) **solo se aplican al crear el almacén**: `--update` no las pisa.
+- Análisis: las fuentes de almacenes y de recibos exponen los campos "Modo de recepción" (`ReceivingMode`) y "Código de modo de recepción" (`ReceivingModeCode`).
+
+Pantalla: ficha del almacén → **Datos** → sección **Recepción** ([F6 — Almacenes](frontend/f6-almacen-e-inventario.md#ficha-del-almacén)).
+
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
@@ -247,6 +287,10 @@ en bloque o editando la posición. La regla completa, el reporte `-cupos.csv` y 
 | Zona/posición/muelle de otro almacén (o de otro tenant) | `Zona no encontrada.` / `Posición no encontrada.` / `Muelle no encontrado.` | 404 |
 | Operación sin `warehousePublicId` con más de un almacén activo | `Indique el almacén: la compañía tiene más de uno.` | 400 |
 | Sin ningún almacén activo | `La compañía no tiene almacenes activos.` | 422 |
+| `receivingMode` desconocido (alta o `PATCH` de almacén; el error va en `errors.receivingMode`) | `Modo de recepción desconocido: 'X'. Use PUTAWAY o DIRECT.` | 400 |
+| `defaultReceivingBinId` de otro almacén o inexistente | `Posición no encontrada.` | 404 |
+| `defaultReceivingBinId` en una zona que no es `STAGING` ni `CROSSDOCK` (el error va en `errors.defaultReceivingBinId`) | `La posición de recepción debe estar en una zona STAGING o CROSSDOCK.` | 400 |
+| `defaultReceivingBinId` de una posición desactivada | `La posición de recepción está desactivada.` | 422 |
 
 Un `maxCapacityQty` mayor que 2.147.483.647 (el máximo de un entero de 32 bits) lo rechaza la pantalla; enviado
 directo al API no se probó qué respuesta da.
@@ -709,6 +753,9 @@ Cómo se usa:
   referencia contiene el texto, sin distinguir mayúsculas) y `expectedFrom`/`expectedTo` (llegada esperada, ambos
   extremos incluidos; un aviso sin fecha no entra en el rango). Sigue devolviendo hasta 200 avisos (la app móvil los
   descarga así).
+- Lote 16 (recibo directo a posición): `receivingMode` en el alta y en el `PATCH` del recibo; `targetBinId` o `targetBinCode` en cada línea;
+  `GET /api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions`; `POST /api/v1/receipts/{publicId}/targets/suggest`; y `includeLines=true` en la
+  lista. Todo en la sección 4.1.
 
 ### Validaciones
 
@@ -717,7 +764,7 @@ Cómo se usa:
 | Tipo desconocido | `Tipo de recepción desconocido: 'X'. Use ASN, BLIND o RETURN.` | 400 |
 | Tipo `ASN` sin `asnId` ni `purchaseOrderPublicId` | `Un recibo con aviso de llegada se crea indicando el aviso (asnId) o la orden de compra (purchaseOrderPublicId).` | 400 |
 | `asnId` y `purchaseOrderPublicId` a la vez | `Indique el aviso de llegada o la orden de compra, no ambos.` | 400 |
-| Sin posición de recepción (sin zona `STAGING`) | `El almacén no tiene una posición de recepción (zona STAGING); indíquela.` | 422 |
+| Sin posición de recepción (sin zona `STAGING`; **no aplica a un recibo directo**, sección 4.1) | `El almacén no tiene una posición de recepción (zona STAGING); indíquela.` | 422 |
 | Posición de recepción fuera de zona STAGING/CROSSDOCK | `La posición de recepción debe estar en una zona STAGING o CROSSDOCK.` | 400 |
 | Almacén del ASN/PO distinto del indicado | `El aviso de llegada es de otro almacén.` / `La orden de compra es de otro almacén.` | 400 |
 | ASN no `EXPECTED` | `El aviso de llegada no está pendiente de recibir.` | 422 |
@@ -810,7 +857,7 @@ Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/hi
 | Discrepancia → **Completado con diferencia** | igual | igual | Ver "Efectos de confirmar". |
 | Completado → **Acomodado** | el sistema (efecto de las tareas) | La última `PUTAWAY` del recibo llega a `DONE` o `CANCELLED` y no queda otra abierta. Iniciar y completar exigen `warehouse.receive`; asignar y cancelar, `warehouse.manage`. | — |
 | Completado con diferencia → **Acomodado** | el sistema | igual | — |
-| Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de muelle o se recibió 0. | — |
+| Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de muelle, se recibió 0 o el recibo es **directo a posición** (sección 4.1). | — |
 | Esperado, Recibiendo o Discrepancia → baja (`DELETE`) | `warehouse.receive` | Recibo abierto (si no, 422) y sin cruce de muelle asignado (409). | Baja lógica (el recibo deja de listarse, las líneas se conservan). Un aviso nacido de una orden de compra se cancela; el de un cliente vuelve a quedar pendiente. |
 
 **Efectos de confirmar** (una sola transacción):
@@ -818,7 +865,8 @@ Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/hi
   ajuste del sistema no pide nota). En ciegos y devoluciones, un solo `RECEIPT` por lo **recibido**: la diferencia solo marca el
   estatus y `adjustmentTxnId` queda vacío.
 - La orden de compra avanza a `PARTIAL` o `RECEIVED`; el aviso pasa a `RECEIVED`.
-- Se reparte el cruce de muelle asignado y se crean las `PUTAWAY` del remanente con una posición sugerida.
+- Se reparte el cruce de muelle asignado y se crean las `PUTAWAY` del remanente con una posición sugerida. En un recibo **directo** no hay `PUTAWAY`: la
+  mercancía entra a la posición destino de cada línea (sección 4.1).
 - El recibo guarda la fecha y el usuario de confirmación (`receivedAtUtc`, `receivedBy`) y Actividad reciente registra
   `RECEIPT_CONFIRMED` (tanto para Completado como para Completado con diferencia).
 - El destino es **Completado con diferencia** si alguna línea tiene diferencia y ese estatus está encendido para la compañía; si no,
@@ -867,6 +915,126 @@ Casos frecuentes (Lote 13):
 - *Corregir el transporte o la referencia*: `PATCH /api/v1/receipts/{publicId}` con el `rowVersion` de la ficha; mientras el recibo
   esté abierto se puede repetir las veces que haga falta.
 
+### 4.1 Recibo directo a posición (Lote 16)
+
+Qué hace: en un recibo **directo a posición** la mercancía **no pasa por la posición de recepción**. Cada línea que recibe algo lleva su **posición destino** y,
+al confirmar, entra ahí (Kárdex `RECEIPT` a esa posición; con aviso u orden de compra y diferencia, también el ajuste `RECEIPT_VARIANCE` en esa misma
+posición), **sin tareas de acomodo**. El recibo pasa de Completado a **Acomodado** en el mismo momento. Un almacén sin zona `STAGING` (Advance Solutions)
+puede recibir así. El modo del almacén y la posición de recepción por defecto están en la sección 1.4.
+
+**El recibo guarda el modo con que se abrió.** La lista y la ficha traen `receivingModeCode` (`PUTAWAY` o `DIRECT`) y `receivingMode` (la etiqueta). Cambiar el
+modo del almacén **no cambia los recibos ya abiertos**. Mientras el recibo está abierto (Esperado, Recibiendo o Discrepancia), quien puede recibir
+(`warehouse.receive`) cambia el modo **solo de ese recibo**.
+
+Quién puede: `warehouse.receive` (modo del recibo, posición destino de cada línea, "Usar posiciones sugeridas" y confirmar); `inventory.view` (ver las
+sugerencias de una línea). Módulo **WMS_LOTSERIAL**. Recibir contra una orden de compra exige además `purchasing.receive` y el módulo **PURCHASING**.
+
+Cómo se usa:
+- **Abrir un recibo directo.** `POST /api/v1/receipts` con `receivingMode` (`PUTAWAY` o `DIRECT`, sin distinguir mayúsculas). Sin él, el recibo toma el modo del
+  almacén. En directo **no se pide** la posición de recepción.
+  ```json
+  { "warehousePublicId": "…", "type": "BLIND", "receivingMode": "DIRECT",
+    "lines": [ { "productPublicId": "…", "receivedQty": 8, "targetBinCode": "R-02" } ] }
+  ```
+- **Posición destino de una línea.** Por id (`targetBinId`) o por código (`targetBinCode`, el que escanea la app; se compara sin distinguir mayúsculas), **no ambos**.
+  Va en `lines[]` del alta, en `POST …/lines` y en `PUT …/lines/{lineId}` (con `targetBinId`; `"clearTargetBin": true` la quita).
+- **Cambiar el modo de un recibo abierto.** `PATCH /api/v1/receipts/{publicId}` con `{ "receivingMode": "PUTAWAY", "rowVersion": "…" }`. Pasar a "Con acomodo"
+  exige una posición de recepción (la del encabezado o la del almacén). Si el recibo ya tenía destinos por línea, la tarea de acomodo de cada línea va a su destino.
+- **Sugerencias de una línea.** `GET /api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions?take=3` (`take` de 1 a 10; por defecto 5; uno mayor se
+  toma como 10). Responde un arreglo:
+  ```json
+  [ { "binId": 41, "binCode": "R-02", "zoneCode": "RSV", "zoneTypeCode": "RESERVE", "reasonCode": "RESERVE_EMPTY",
+      "reason": "Reserva vacía", "maxCapacityQty": 40, "qtyOnHand": 0, "claimedQty": 0, "freeQty": 40, "fits": true } ]
+  ```
+- **Usar posiciones sugeridas.** `POST /api/v1/receipts/{publicId}/targets/suggest` con `{ "rowVersion": "…" }` (opcional). Responde `{ "receipt": {…}, "assigned": 2,
+  "withoutSuggestion": 1 }`: asigna la primera sugerida **donde cabe** a cada línea sin destino que lo necesita. **Nada se llena solo**: solo cuando se pide.
+- **Confirmar.** `POST /api/v1/receipts/{publicId}/confirm`, igual que siempre.
+- **Lista con líneas.** `GET /api/v1/receipts?includeLines=true` trae en `lines` las líneas de cada recibo de la página (las mismas de la ficha), en una sola
+  consulta; sin el parámetro, `lines` es `null`. Lo usa la exportación de Recibos (manual de pantallas).
+
+Campos y reglas:
+
+| Campo | Regla |
+|---|---|
+| `receivingMode` (alta y `PATCH` del recibo) | `PUTAWAY` o `DIRECT`. Vacío o ausente = el del almacén (en el `PATCH`, sin cambio) |
+| `targetBinId` / `targetBinCode` (línea) | Posición **del almacén del recibo**, **de guardado** (no `STAGING` ni `CROSSDOCK`; la **cuarentena sí**), activa y con su zona activa |
+| `clearTargetBin` (`PUT` de la línea) | `true` quita el destino |
+| Destino obligatorio | Al confirmar, en cada línea que recibe algo (recibido mayor que 0). No lo pide un producto **por lote sin lote** (no mueve inventario) ni una línea con cruce de muelle asignado |
+| Cantidad de la línea | Una línea entra **entera a una sola posición**. Para repartirla, se transfiere después (sección 3.2) |
+
+**Sugerencias y cupo.**
+- La sugerencia es el acomodo dirigido de siempre: posición preferida del producto, mismo lote, mismo producto, picking vacía si el producto rota mucho (por las
+  salidas de los últimos 30 días), reserva vacía y reserva con espacio. Razones: `PREFERRED`, `CONSOLIDATE_LOT`, `CONSOLIDATE`, `PICKING_FAST`, `RESERVE_EMPTY`,
+  `RESERVE` (y, en devoluciones, `QUARANTINE_RETURN`). La cantidad es la recibida de la línea (si es 0, la esperada; si no, 1).
+- **El cupo cuenta unidades.** Espacio libre = `cupo − existencia de la posición (todos los productos) − lo que otras líneas del mismo recibo ya destinan a esa posición`,
+  nunca negativo; sin cupo configurado, `freeQty` es `null` y nunca excede. `fits` dice si la cantidad de la línea cabe. Las que caben van **primero**; las que
+  exceden, al final con `fits: false`. La consolidación también mira las otras líneas del mismo producto en el recibo.
+- **El cupo solo avisa** (D4). Se puede elegir una posición donde no cabe todo: la ficha de la línea trae `targetFreeQty` (el espacio libre; solo con el recibo
+  abierto y un destino con cupo; no descuenta la propia línea) y la pantalla muestra "Excede el cupo de {bin}: caben {free}". No bloquea guardar ni confirmar; lo que sobre
+  se transfiere después. Dos recibos abiertos a la vez no se ven entre sí: ambos pueden pasar el mismo cupo.
+- "Usar posiciones sugeridas" **solo asigna donde cabe**. Una línea sin ninguna posición donde quepa queda sin destino y se cuenta en `withoutSuggestion`.
+- **Desde el Lote 16, el acomodo dirigido de las tareas de siempre también respeta el cupo en unidades**: salta la posición donde la cantidad no cabe. Las posiciones de Advance
+  Depot tienen cupos estimados (sección 1.2), así que las sugerencias de acomodo pueden cambiar.
+
+**Devoluciones y cuarentena.** En un recibo de **devolución**, la primera sugerida es una posición de **cuarentena** si existe (`QUARANTINE_RETURN`, "Cuarentena (devolución)").
+En los demás recibos la cuarentena no se sugiere, pero se puede elegir a mano.
+
+**Cruce de muelle.** Una línea con cruce de muelle asignado **entra a la posición de recepción** como siempre y no exige destino; su remanente genera una tarea de
+acomodo hacia su posición destino (o la sugerida). El recibo queda **Completado** hasta cerrar esa tarea (sección 9).
+
+**Recibos de la app anterior.** La app nueva escanea la posición destino de cada línea (capítulo 9, sección 4). Un recibo de una app anterior, enviado de una vez (`confirm: true`)
+sin `receivingMode` y sin ninguna posición destino en un almacén **directo**, se recibe **"Con acomodo"** (con tareas) y no se pierde.
+
+### Validaciones (recibo directo)
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| `receivingMode` desconocido (alta o `PATCH` del recibo; `errors.receivingMode`) | `Modo de recepción desconocido: 'X'. Use PUTAWAY o DIRECT.` | 400 |
+| Confirmar un recibo directo con una línea que recibe algo y no tiene destino (`errors["lines[i].targetBinId"]`; `i` es la posición de la línea, desde 0) | `Indique la posición destino de {sku}: el recibo entra directo a posición.` | 400 |
+| Posición destino en una zona de recepción o de cruce de muelle (al guardar la línea o al confirmar) | `La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado.` | 400 |
+| `targetBinCode` que no existe en el almacén del recibo (`errors.targetBinCode`; en el alta, `errors["lines[i].targetBinCode"]`) | `La posición {code} no existe en el almacén del recibo.` | 400 |
+| `targetBinId` y `targetBinCode` a la vez (`errors.targetBinId`) | `Indique la posición destino por id o por código, no ambos.` | 400 |
+| `targetBinId` de otro almacén, de otra compañía o inexistente | `Posición no encontrada.` | 404 |
+| Posición destino desactivada (al guardar la línea o al confirmar) | `La posición destino {code} está desactivada.` | 422 |
+| Zona de la posición destino inactiva (al guardar la línea o al confirmar) | `La zona de la posición destino {code} está inactiva.` | 422 |
+| Alta atómica con aviso u orden de compra: el mismo producto con dos destinos distintos (`errors["lines[i].targetBinCode"]`) | `Ya se capturó {sku} con destino {code}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.` | 400 |
+| `PATCH` del recibo a `PUTAWAY` sin posición de recepción (el almacén no tiene zona `STAGING` y el encabezado no la indica) | `El almacén no tiene una posición de recepción (zona STAGING); indíquela.` | 422 |
+| Guardar una línea, cambiar el modo o "Usar posiciones sugeridas" en un recibo ya confirmado | `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
+| "Usar posiciones sugeridas" con un `rowVersion` viejo | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Sugerencias de una línea que no es de este recibo | `Línea del recibo no encontrada.` | 404 |
+
+Las claves de los errores de una línea siguen la forma de la solicitud: `targetBinId` o `targetBinCode` en el `PUT`, `line.…` al agregar una línea y `lines[i].…`
+en el alta o al confirmar. Los demás mensajes de recibo (lote, series, cantidades) son los de la tabla de la sección 4.
+
+### Estatus y transiciones (recibo directo)
+
+Los estatus son los seis de la sección 4: **no hay estatus nuevos**. Lo que cambia es el final.
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (alta) → **Esperado** o **Recibiendo** / **Discrepancia** | `warehouse.receive` | Almacén activo. **No** exige posición de recepción. Si el alta trae destinos, las reglas de la tabla de arriba | Crea el encabezado con el modo con que se abrió; igual que con acomodo |
+| Esperado → **Recibiendo** ↔ **Discrepancia** | `warehouse.receive` | Cada línea guardada (el destino no cambia el estatus) | — |
+| Recibiendo → **Completado** → **Acomodado** (un solo `confirm`) | `warehouse.receive` | Destino en cada línea que recibe algo (400 por línea); destino y zona activos (422); seguimiento de lote y serie | `RECEIPT` a cada destino; ninguna tarea; el historial deja **Recibiendo → Completado → Acomodado** (D7); Actividad reciente registra un solo "Recibo … confirmado" (D13) |
+| Discrepancia → **Completado con diferencia** → **Acomodado** | `warehouse.receive` | Igual | Igual, más el ajuste `RECEIPT_VARIANCE` en el destino si hay aviso u orden de compra. Usa la entrada lateral sembrada `RECEIVED_VARIANCE → PUTAWAY`; si la compañía la quitó, el motor de estatus rechaza el paso (no se probó) |
+| Recibiendo o Discrepancia → **Completado** o **Completado con diferencia** (**se queda ahí**) | el sistema | Alguna línea tiene cruce de muelle asignado | Esa línea entra a la posición de recepción. Si queda remanente (lo recibido menos lo asignado al cruce), se crea una tarea de acomodo hacia su destino y el recibo **se queda** ahí hasta cerrarla; si todo fue al cruce, pasa a Acomodado en el mismo momento |
+
+Qué queda bloqueado en cada estatus (recibo directo):
+
+| Estatus | Se puede | Queda bloqueado |
+|---|---|---|
+| Esperado, Recibiendo, Discrepancia | Fijar, cambiar o quitar el destino de cada línea; "Usar posiciones sugeridas"; cambiar el modo **de este recibo**; confirmar | Confirmar sin destino en una línea que recibe algo: `400` con el mensaje de la tabla |
+| Completado, Completado con diferencia (solo si hubo cruce de muelle) | Consultar y trabajar las tareas del remanente | Destino, modo, "Usar posiciones sugeridas", alta y baja de líneas: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
+| Acomodado | Consultar | Igual que el anterior |
+
+Casos frecuentes (Lote 16):
+- *Quiero que un almacén reciba directo*: cambie su **Modo de recepción** (sección 1.4). Los recibos nuevos nacen directos; los abiertos conservan su modo.
+- *Un recibo abierto debe acomodarse después*: cambie **solo ese recibo** a "Con acomodo" antes de confirmar (`PATCH` del recibo). Se crean las tareas de acomodo, hacia el destino de cada
+  línea si lo tiene.
+- *Llegó más de lo que cabe en la posición*: elija la posición igual (la pantalla avisa, no bloquea) y transfiera lo que sobre después (sección 3.2), o reparta la mercancía en dos líneas del
+  mismo producto si el recibo es ciego o de devolución.
+- *Una línea no tiene posición sugerida*: ninguna posición de guardado tiene espacio. Elija una a mano.
+- *Un recibo directo no aparece en "Acomodo pendiente"*: es lo esperado; ahí solo aparecen los recibos anteriores al cambio de modo y los que tuvieron cruce de muelle (sección 5).
+
 ---
 
 ## 5. Tareas de almacén: cola unificada, putaway dirigido y reabasto
@@ -900,6 +1068,12 @@ pertenece: `PUTAWAY` en Recibo (pestaña "Acomodo pendiente" y el detalle del re
 (pestaña "Reabasto"), `COUNT` en Conteo cíclico y `CROSSDOCK` en Cruce de muelle. En todas, las acciones de cada fila son íconos
 con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de arriba no cambian. Ver
 [F6 — Tareas de almacén](frontend/f6-almacen-e-inventario.md#tareas-de-almacén).
+
+**Acomodo pendiente en los almacenes directos (Lote 16).** Un recibo **directo a posición** (sección 4.1) no genera tareas `PUTAWAY`: la mercancía entra a su posición destino al
+confirmar y el recibo pasa a Acomodado. Por eso, en un almacén directo, la pestaña "Acomodo pendiente" solo muestra (a) los recibos **anteriores al cambio de modo** que seguían con tareas,
+(b) los recibos abiertos que se pasaron a "Con acomodo" y (c) los que tuvieron **cruce de muelle**. Las tareas que ya existían **siguen** su curso. `GET /api/v1/warehouse-tasks/putaway-suggestions`
+respeta ahora el **cupo en unidades** de la posición (salta donde no cabe) y trae `maxCapacityQty` y `freeQty` (`cupo − existencia`; `null` sin cupo). La pantalla avisa cuando el almacén filtrado es
+directo.
 
 ### Validaciones
 
@@ -1144,6 +1318,9 @@ Cómo se usa:
   distinguir mayúsculas (el filtro "No. de orden" sugiere números con `GET /api/v1/pick-batches?orderNumber=<texto>&take=20`). Cada
   fila trae `canPack` y `canDelete`; la pantalla ofrece Empacar y Eliminar solo cuando son verdaderos (y con `orders.cancel`, para
   eliminar una empacada).
+- Lote 16 (selector de Posición de la captura): con un producto elegido, la lista ofrece **solo las posiciones donde ese producto tiene existencia disponible** (y, si se eligió lote, solo
+  las de ese lote), cada una con lo disponible (`P-01 · PCK · 9 disp.`), en el mismo orden FEFO que usa el servidor al recolectar; la primera va marcada "Sugerida". Sin producto, el campo está
+  apagado. Es una ayuda de pantalla: el API no cambió y sigue aceptando cualquier posición (si no alcanza, responde `Inventario insuficiente…`, 409).
 
 ### Validaciones
 
@@ -1321,6 +1498,12 @@ Qué hace: agenda citas de muelle (llegada/salida) y arma planes de cruce de mue
 
 Este módulo es una **demostración funcional**: viene **apagado** por defecto para el tenant.
 
+**Recibos directos (Lote 16).** La asignación contra un recibo **ya confirmado** (el modo "b" de las asignaciones) depende del acomodo pendiente: reduce la tarea `PUTAWAY` que queda por hacer. Un recibo
+**directo** confirmado no tiene tareas de acomodo (la mercancía ya está en su posición destino), así que **no admite** asignaciones de cruce de muelle después de confirmar. Por el código, el servidor
+responde 422 `El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente).` si la línea no tiene posición de recepción, o 409 `La cantidad excede lo disponible para cruce de muelle (0).`
+(no se probó en un recibo real). Para cruzar mercancía en un almacén directo, asigne el cruce **mientras el recibo está abierto** (el modo "a" de las asignaciones): la línea con cruce entra a la posición de recepción, no exige destino y su remanente genera la
+tarea de acomodo hacia su destino (sección 4.1).
+
 Quién puede: `inventory.view` (listar y consultar); `warehouse.crossdock` (agendar/reprogramar/cambiar estatus de
 citas; crear plan, asignar, cancelar asignación, mover, completar). Módulo **CROSSDOCK** (apagado por defecto).
 
@@ -1404,6 +1587,10 @@ Lote 14: un permiso nuevo, `pulse.attention` (categoría PULSE), para ver "Neces
 la plantilla del Operador de almacén, Facturación, Solo lectura y el administrador lo traen, y una sola vez se propagó a los roles
 de compañía que ya tenían `inventory.view`. Los descuadres los ve `inventory.view` y los resuelve `inventory.adjust`; "lo cambiado" pide
 `warehouse.count`. `GET /api/v1/warehouses/bins/search` pide `inventory.view`. El total es de 66 permisos.
+
+Lote 16: no hay permisos ni módulos nuevos (el total de permisos no cambia). `GET /api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions` pide `inventory.view`; `POST
+/api/v1/receipts/{publicId}/targets/suggest`, `warehouse.receive`; el modo de recepción del almacén y su posición por defecto, `warehouse.manage`; el modo del recibo y el
+destino de cada línea, `warehouse.receive`. La prueba de seguridad de controladores pasa de 121 a 123 acciones.
 
 Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
 /api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.

@@ -78,6 +78,13 @@ const BATCHES = [
   }),
 ]
 
+// saldos disponibles (orden del API a propósito distinto del FEFO: RESERVE antes que PICKING)
+const BALANCES = [
+  { binId: 12, binCode: 'B-03', zoneCode: 'R', zoneTypeCode: 'RESERVE', productPublicId: P1, qtyAvailable: 2, lotId: null, expiryDate: null },
+  { binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'PICKING', productPublicId: P1, qtyAvailable: 8, lotId: null, expiryDate: null },
+  { binId: 13, binCode: 'C-07', zoneCode: 'C', zoneTypeCode: 'PICKING', productPublicId: P2, qtyAvailable: 3, lotId: null, expiryDate: null },
+]
+
 function route(method: string, url: URL): [number, unknown] {
   const p = url.pathname
   if (p === '/api/v1/pick-batches' && method === 'POST') {
@@ -99,7 +106,7 @@ function route(method: string, url: URL): [number, unknown] {
   if (p.startsWith('/api/v1/products/')) return [200, { product: PRODUCTS.find((x) => p.endsWith(x.publicId)) }]
   if (p === '/api/v1/inventory/balances') {
     const pid = url.searchParams.get('productPublicIds')
-    const items = pid === P1 ? [{ binId: 10, binCode: 'A-01', zoneTypeCode: 'PICKING', productPublicId: P1, qtyAvailable: 8, lotId: null, expiryDate: null }] : []
+    const items = BALANCES.filter((b) => b.productPublicId === pid)
     return [200, { total: items.length, skip: 0, take: 200, items }]
   }
   if (p === '/api/v1/warehouse-tasks')
@@ -138,6 +145,10 @@ async function pickProduct(user: ReturnType<typeof userEvent.setup>, n: number, 
   await user.click(screen.getByRole('combobox', { name: `Producto de la línea ${n}` }))
   await user.click(await screen.findByRole('option', { name }))
 }
+
+/** Lista desplegada de un selector de posición (la del combobox, no otras de la pantalla). */
+const binList = (bin: HTMLElement) => document.getElementById(bin.getAttribute('aria-controls') ?? '') as HTMLElement
+const binOptions = (bin: HTMLElement) => within(binList(bin)).getAllByRole('option').map((o) => o.textContent)
 
 beforeAll(() => setLang('es'))
 beforeEach(() => {
@@ -181,7 +192,7 @@ describe('Panel "Recolección"', () => {
     // al elegir producto en la última fila aparece otra vacía; la cantidad arranca en 1
     expect(await screen.findByRole('combobox', { name: 'Producto de la línea 2' })).toBeInTheDocument()
     expect(screen.getByLabelText('Cantidad de la línea 1')).toHaveValue(1)
-    expect(await screen.findByText('8 disp.')).toBeInTheDocument()
+    expect(await screen.findByText('10 disp.')).toBeInTheDocument()
     expect(await screen.findByText('FEFO: A-01')).toBeInTheDocument()
     await user.clear(screen.getByLabelText('Cantidad de la línea 1'))
     await user.type(screen.getByLabelText('Cantidad de la línea 1'), '3')
@@ -222,6 +233,47 @@ describe('Panel "Recolección"', () => {
     expect(msg).toHaveAttribute('role', 'alert')
     // la línea sigue ahí para corregirla
     expect(screen.getByRole('combobox', { name: 'Producto de la línea 1' })).toHaveValue('A-1 · Tornillo')
+  })
+})
+
+describe('Panel "Recolección" · selector de posición', () => {
+  it('sin producto está deshabilitado; con producto solo sus posiciones con disponible, en orden FEFO y la primera Sugerida', async () => {
+    const user = userEvent.setup()
+    wrap(['inventory.view', 'warehouse.pick'])
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Almacén/ })).toHaveValue('ALM-01 · Almacén principal'))
+    const bin = screen.getByRole('combobox', { name: 'Posición de la línea 1' })
+    expect(bin).toBeDisabled()
+    expect(bin).toHaveAttribute('placeholder', 'Elija primero un producto')
+
+    await pickProduct(user, 1, /A-1 · Tornillo/)
+    await waitFor(() => expect(bin).toBeEnabled())
+    expect(bin).toHaveAttribute('placeholder', 'Automático (FEFO)')
+    await user.click(bin)
+    await waitFor(() => expect(binOptions(bin)).toEqual(['A-01 · A · 8 disp.Sugerida', 'B-03 · R · 2 disp.']))
+    // no se consulta el listado de posiciones del almacén (traía las de cualquier producto)
+    expect(mock.calls.some((c) => c.url.pathname === `/api/v1/warehouses/${WH}/bins` && c.url.searchParams.get('onlyWithStock') === 'true')).toBe(false)
+  })
+
+  it('al cambiar de producto, una posición que ya no aplica se quita; la línea nueva también queda deshabilitada', async () => {
+    const user = userEvent.setup()
+    wrap(['inventory.view', 'warehouse.pick'])
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Almacén/ })).toHaveValue('ALM-01 · Almacén principal'))
+    await pickProduct(user, 1, /A-1 · Tornillo/)
+    const bin = screen.getByRole('combobox', { name: 'Posición de la línea 1' })
+    await waitFor(() => expect(bin).toBeEnabled())
+    await user.click(bin)
+    await user.click(await within(binList(bin)).findByRole('option', { name: /B-03/ }))
+    expect(bin).toHaveValue('B-03 · R')
+    expect(screen.getByRole('combobox', { name: 'Posición de la línea 2' })).toBeDisabled()
+
+    await pickProduct(user, 1, /B-2 · Tuerca/)
+    await waitFor(() => expect(bin).toHaveValue(''))
+    await user.click(bin)
+    await waitFor(() => expect(binOptions(bin)).toEqual(['C-07 · C · 3 disp.Sugerida']))
+    await user.click(within(binList(bin)).getByRole('option', { name: /C-07/ }))
+    await user.click(screen.getByRole('button', { name: 'Recolectar (bajar de inventario)' }))
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0].body).toMatchObject({ lines: [{ productPublicId: P2, binId: 13 }] })
   })
 })
 

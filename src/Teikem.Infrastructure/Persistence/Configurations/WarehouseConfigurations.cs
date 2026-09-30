@@ -27,6 +27,12 @@ public sealed class WarehouseConfiguration : IEntityTypeConfiguration<Warehouse>
 
         b.HasIndex(w => new { w.TenantId, w.Code }).IsUnique().HasDatabaseName("UQ_Warehouse_Code");
 
+        // Lote 16: ReceivingModeLookupId (FK_Warehouse_ReceivingMode → LookupCode) y DefaultReceivingBinId
+        // (FK_Warehouse_DefaultReceivingBin, compuesta con WarehouseId) viven en SQL; en EF quedan como columnas simples, sin
+        // relación: una relación Warehouse → WarehouseBin cerraría un ciclo con WarehouseBin → Warehouse al insertar ambos.
+        b.Property(w => w.ReceivingModeLookupId);
+        b.Property(w => w.DefaultReceivingBinId);
+
         b.HasOne(w => w.Status).WithMany().HasForeignKey(w => w.StatusCodeId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(w => w.Zones).WithOne(z => z.Warehouse).HasForeignKey(z => z.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(w => w.Docks).WithOne().HasForeignKey(d => d.WarehouseId).OnDelete(DeleteBehavior.NoAction);

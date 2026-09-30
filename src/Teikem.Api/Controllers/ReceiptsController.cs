@@ -26,15 +26,17 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// RECEIVED_VARIANCE, PUTAWAY), types (ASN, BLIND, RETURN), from/to (fecha de alta en UTC, 'hasta' inclusive),
     /// productPublicIds, hasVariance, search (número, transporte, referencia del recibo o del aviso, cliente, orden de compra
     /// o proveedor) y, Lote 13, variance (SHORT, OVER, NONE; varias con O) y phase (OPEN, PENDING_PUTAWAY, DONE).
+    /// includeLines = true (exportación de la lista con sus líneas): cada recibo de la página trae en lines TODAS sus líneas
+    /// (las mismas de la ficha), leídas en lote para la página completa; por defecto false (lines = null).
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ReceiptPageDto> List([FromQuery] Guid? warehousePublicId, [FromQuery] string[]? status, [FromQuery] string[]? types,
         [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, [FromQuery] Guid[]? productPublicIds, [FromQuery] bool? hasVariance,
         [FromQuery] string? search, [FromQuery] string[]? variance, [FromQuery] string? phase,
-        [FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
+        [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool includeLines = false, CancellationToken ct = default)
         => receipts.ListAsync(new ReceiptQuery(warehousePublicId, status is { Length: > 0 } ? status : null, types is { Length: > 0 } ? types : null,
             from, to, productPublicIds is { Length: > 0 } ? productPublicIds : null, hasVariance, search, skip, take,
-            variance is { Length: > 0 } ? variance : null, phase), ct);
+            variance is { Length: > 0 } ? variance : null, phase, includeLines), ct);
 
     /// <summary>Ficha del recibo: encabezado, líneas (esperado, recibido, diferencia, lote, series, costo de PO, cruce de muelle) y sus PUTAWAY.</summary>
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
@@ -53,6 +55,10 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// Idempotency-Key (el reintento devuelve el mismo REC). Contra aviso u orden de compra, lines se aplica sobre las líneas
     /// del documento (lo escaneado manda; lo no mencionado queda en 0; un producto fuera del documento entra como línea
     /// extra); sin lines se recibe lo esperado.
+    /// Lote 16: receivingMode (PUTAWAY | DIRECT; sin él, el del almacén) y, por línea, targetBinId o targetBinCode (posición
+    /// destino). Un recibo directo no exige posición de recepción; al confirmar cada línea entra a su destino sin tareas y el
+    /// recibo pasa a Acomodado en el mismo momento. Con confirm = true, sin modo y sin destinos, un almacén directo recibe con
+    /// acomodo (app anterior, D9).
     /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> Create([FromBody] ReceiptCreateRequest req, CancellationToken ct) => receipts.CreateAsync(req, ct);
@@ -61,6 +67,7 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// Lote 13 — edita el encabezado de un recibo abierto (confirmado → 422; rowVersion distinto → 409): type BLIND ↔ RETURN
     /// (solo sin aviso ni orden de compra), warehousePublicId (solo sin documento y sin líneas; limpia posición y muelle),
     /// stagingBinId / clearStagingBin, dockId / clearDock, carrier y reference ('' = borrar; máximo 80). null = no cambiar.
+    /// Lote 16: receivingMode cambia el modo SOLO de este recibo (pasar a PUTAWAY sin posición de recepción → 422).
     /// </summary>
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> UpdateHeader(Guid publicId, [FromBody] ReceiptHeaderUpdateRequest req, CancellationToken ct)
@@ -70,6 +77,7 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// Captura de una línea (solo abiertos): cantidad recibida, lote (clearLot lo quita), series y posición de recepción.
     /// Lote 13: productPublicId (solo líneas sin línea del aviso) y expectedQty / clearExpected (solo ciegos y devoluciones).
     /// Sincroniza el estatus: RECEIVING si lo recibido cuadra con lo esperado, DISCREPANCY si no.
+    /// Lote 16: targetBinId fija la posición destino (de guardado, del almacén, activa) y clearTargetBin la quita.
     /// </summary>
     [HttpPut("{publicId:guid}/lines/{lineId:int}"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> UpdateLine(Guid publicId, int lineId, [FromBody] ReceiptLineUpdateRequest req, CancellationToken ct)
@@ -93,11 +101,33 @@ public sealed class ReceiptsController(ReceiptService receipts) : ControllerBase
     /// PARTIAL/RECEIVED, aviso a RECEIVED, reparto de cruce de muelle y PUTAWAY por el remanente. Segunda confirmación → 422.
     /// Lote 13: destino RECEIVED, o RECEIVED_VARIANCE si alguna línea tiene diferencia (en ciegos y devoluciones la
     /// diferencia solo marca el estatus: en el Kárdex entra lo recibido).
+    /// Lote 16: en un recibo directo cada línea que recibe algo exige su posición destino (400 lines[i].targetBinId) y entra
+    /// ahí (RECEIPT y RECEIPT_VARIANCE en esa posición) sin tareas; el recibo pasa a PUTAWAY en la misma transacción. Una
+    /// línea con cruce de muelle asignado entra a la de recepción y su remanente genera la tarea hacia su destino (D11).
     /// </summary>
     [HttpPost("{publicId:guid}/confirm"), RequirePermission(PermissionCatalog.WarehouseReceive)]
     public Task<ReceiptDetailDto> Confirm(Guid publicId, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReceiptConfirmRequest? req,
         CancellationToken ct)
         => receipts.ConfirmAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 16 — posiciones destino sugeridas para una línea (take 1..10; por defecto 5): el acomodo dirigido (en devoluciones
+    /// la cuarentena primero) con cupo, existencia, lo ya destinado por otras líneas del recibo, espacio libre y fits. Las que
+    /// caben primero; las que exceden el cupo al final (fits = false). Línea de otro recibo → 404.
+    /// </summary>
+    [HttpGet("{publicId:guid}/lines/{lineId:int}/target-suggestions"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<ReceiptTargetSuggestionDto>> TargetSuggestions(Guid publicId, int lineId, [FromQuery] int? take, CancellationToken ct)
+        => receipts.SuggestTargetsAsync(publicId, lineId, take, ct);
+
+    /// <summary>
+    /// Lote 16 — "Usar posiciones sugeridas" (solo abiertos; rowVersion distinto → 409): a cada línea sin posición destino que
+    /// recibe algo le asigna la primera sugerida donde cabe (en orden de línea, acumulando). Devuelve el recibo, cuántas se
+    /// asignaron y cuántas quedaron sin sugerencia. Nada se llena solo: solo al pedirlo (D3).
+    /// </summary>
+    [HttpPost("{publicId:guid}/targets/suggest"), RequirePermission(PermissionCatalog.WarehouseReceive)]
+    public Task<ReceiptApplySuggestionsResultDto> ApplySuggestedTargets(Guid publicId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] ReceiptApplySuggestionsRequest? req, CancellationToken ct)
+        => receipts.ApplySuggestedTargetsAsync(publicId, req, ct);
 
     /// <summary>Baja de un recibo abierto (EXPECTED, RECEIVING o DISCREPANCY) sin cruce de muelle (204). Su aviso de PO se cancela; el de cliente queda pendiente.</summary>
     [HttpDelete("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseReceive)]

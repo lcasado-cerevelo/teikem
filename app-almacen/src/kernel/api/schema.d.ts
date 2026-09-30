@@ -11426,6 +11426,7 @@ export interface paths {
                     phase?: string;
                     skip?: number;
                     take?: number;
+                    includeLines?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -11718,6 +11719,93 @@ export interface paths {
                         "text/plain": components["schemas"]["ReceiptDetailDto"];
                         "application/json": components["schemas"]["ReceiptDetailDto"];
                         "text/json": components["schemas"]["ReceiptDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    take?: number;
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptTargetSuggestionDto"][];
+                        "application/json": components["schemas"]["ReceiptTargetSuggestionDto"][];
+                        "text/json": components["schemas"]["ReceiptTargetSuggestionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/receipts/{publicId}/targets/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptApplySuggestionsRequest"];
+                    "text/json": components["schemas"]["ReceiptApplySuggestionsRequest"];
+                    "application/*+json": components["schemas"]["ReceiptApplySuggestionsRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptApplySuggestionsResultDto"];
+                        "application/json": components["schemas"]["ReceiptApplySuggestionsResultDto"];
+                        "text/json": components["schemas"]["ReceiptApplySuggestionsResultDto"];
                     };
                 };
             };
@@ -17315,6 +17403,7 @@ export interface components {
             /** Format: uuid */
             defaultWarehousePublicId?: string | null;
             theme?: string | null;
+            defaultWarehouseReceivingMode?: string | null;
         };
         DeviceHeartbeatDto: {
             isActive?: boolean;
@@ -17323,6 +17412,7 @@ export interface components {
             theme?: string | null;
             /** Format: date-time */
             serverTimeUtc?: string;
+            defaultWarehouseReceivingMode?: string | null;
         };
         DeviceLoginRequest: {
             /** Format: uuid */
@@ -19507,6 +19597,10 @@ export interface components {
             reasonCode?: string | null;
             reason?: string | null;
             rotationClass?: string | null;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
+            /** Format: double */
+            freeQty?: number | null;
         };
         QuoteLineDto: {
             serviceType?: string | null;
@@ -19622,6 +19716,16 @@ export interface components {
             /** Format: date-time */
             aal2VerifiedAtUtc?: string;
         };
+        ReceiptApplySuggestionsRequest: {
+            rowVersion?: string | null;
+        };
+        ReceiptApplySuggestionsResultDto: {
+            receipt?: components["schemas"]["ReceiptDetailDto"];
+            /** Format: int32 */
+            assigned?: number;
+            /** Format: int32 */
+            withoutSuggestion?: number;
+        };
         ReceiptConfirmRequest: {
             comment?: string | null;
             rowVersion?: string | null;
@@ -19642,6 +19746,7 @@ export interface components {
             confirm?: boolean;
             carrier?: string | null;
             reference?: string | null;
+            receivingMode?: string | null;
         };
         ReceiptDetailDto: {
             header?: components["schemas"]["ReceiptListItemDto"];
@@ -19663,6 +19768,7 @@ export interface components {
             carrier?: string | null;
             reference?: string | null;
             rowVersion?: string | null;
+            receivingMode?: string | null;
         };
         ReceiptLineDto: {
             /** Format: int32 */
@@ -19695,6 +19801,12 @@ export interface components {
             unitCost?: number | null;
             /** Format: double */
             allocatedToCrossDock?: number;
+            /** Format: int32 */
+            targetBinId?: number | null;
+            targetBinCode?: string | null;
+            targetZoneTypeCode?: string | null;
+            /** Format: double */
+            targetFreeQty?: number | null;
         };
         ReceiptLineRequest: {
             /** Format: uuid */
@@ -19707,6 +19819,9 @@ export interface components {
             stagingBinId?: number | null;
             /** Format: double */
             expectedQty?: number | null;
+            /** Format: int32 */
+            targetBinId?: number | null;
+            targetBinCode?: string | null;
         };
         ReceiptLineUpdateRequest: {
             /** Format: double */
@@ -19721,6 +19836,9 @@ export interface components {
             /** Format: double */
             expectedQty?: number | null;
             clearExpected?: boolean | null;
+            /** Format: int32 */
+            targetBinId?: number | null;
+            clearTargetBin?: boolean | null;
         };
         ReceiptListItemDto: {
             /** Format: int32 */
@@ -19764,6 +19882,9 @@ export interface components {
             isOpen?: boolean;
             /** Format: int32 */
             pendingPutawayCount?: number;
+            lines?: components["schemas"]["ReceiptLineDto"][] | null;
+            receivingModeCode?: string | null;
+            receivingMode?: string | null;
         };
         ReceiptPageDto: {
             /** Format: int32 */
@@ -19773,6 +19894,24 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["ReceiptListItemDto"][] | null;
+        };
+        ReceiptTargetSuggestionDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            zoneTypeCode?: string | null;
+            reasonCode?: string | null;
+            reason?: string | null;
+            /** Format: int32 */
+            maxCapacityQty?: number | null;
+            /** Format: double */
+            qtyOnHand?: number;
+            /** Format: double */
+            claimedQty?: number;
+            /** Format: double */
+            freeQty?: number | null;
+            fits?: boolean;
         };
         ReconciliationDto: {
             /** Format: date-time */
@@ -21156,6 +21295,7 @@ export interface components {
             state?: string | null;
             postalCode?: string | null;
             country?: string | null;
+            receivingMode?: string | null;
         };
         WarehouseDeactivateRequest: {
             comment?: string | null;
@@ -21215,6 +21355,11 @@ export interface components {
             qtyOnHand?: number;
             rowVersion?: string | null;
             zoneTypeCodes?: string[] | null;
+            receivingModeCode?: string | null;
+            receivingMode?: string | null;
+            /** Format: int32 */
+            defaultReceivingBinId?: number | null;
+            defaultReceivingBinCode?: string | null;
         };
         WarehousePatchRequest: {
             name?: string | null;
@@ -21224,6 +21369,10 @@ export interface components {
             postalCode?: string | null;
             country?: string | null;
             rowVersion?: string | null;
+            receivingMode?: string | null;
+            /** Format: int32 */
+            defaultReceivingBinId?: number | null;
+            clearDefaultReceivingBin?: boolean | null;
         } & {
             [key: string]: unknown;
         };

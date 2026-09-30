@@ -5,6 +5,8 @@
 // usuario no puede leer (403).
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useT } from '../../kernel/i18n'
+import { textFilterValue } from '../../kernel/ui/filterRegistry'
+import { useRegisterFilter } from '../../kernel/ui/filterScopeContext'
 import { IconClose } from '../../kernel/ui/icons'
 import { useDismiss } from '../../kernel/ui/useDismiss'
 import { usePickBatches } from './api'
@@ -26,6 +28,8 @@ export function OrderNumberFilter({ label, value, onChange }: OrderNumberFilterP
   const [search, setSearch] = useState(value.trim())
   const dismiss = useCallback(() => setOpen(false), [])
   useDismiss(boxRef, open, dismiss)
+  // en el ámbito de filtros (línea "Filtros: …" de las exportaciones)
+  useRegisterFilter(label, textFilterValue(value), boxRef)
 
   useEffect(() => {
     const h = setTimeout(() => setSearch(value.trim()), 250)

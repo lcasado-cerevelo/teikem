@@ -6,6 +6,7 @@
 import { z } from 'zod'
 import type { components } from '../../kernel/api/schema'
 import { firstOtherOwner, parseSerials, pickDuplicateAcrossLines, pickLineIssues, remapProblemFields, type LineIssue } from './lineRules'
+import { binStockOptions, type BinStock } from './movementForms'
 
 type Schemas = components['schemas']
 type BalanceDto = Schemas['BalanceDto']
@@ -250,6 +251,14 @@ export function fefoBinSuggestions(balances: readonly BalanceDto[], lotId?: numb
     out.push(id)
   }
   return out
+}
+
+/**
+ * Posiciones que ofrece el selector "Posición" de una línea: solo donde el producto (y el lote, si se eligió) tiene
+ * disponible recolectable, una por posición con su disponible, en el orden FEFO del servidor (la primera es la sugerida).
+ */
+export function fefoBinOptions(balances: readonly BalanceDto[], lotId?: number | null): BinStock[] {
+  return binStockOptions(fefoCandidates(balances, lotId))
 }
 
 /** Disponible recolectable (suma de los saldos elegibles). */

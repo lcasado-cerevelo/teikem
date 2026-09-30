@@ -20,10 +20,13 @@ import {
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
+import { formatQuantity, numberLocale } from '../i18n/numberFormat'
 import { useLang, useT } from '../i18n/useT'
 import { EmptyState } from './EmptyState'
+import type { ExportChildren } from './exportChildren'
 import { ListPager } from './ListPager'
 import { exportTable, type ExportFormat } from './exportTable'
+import { useExportHeading } from './filterScopeContext'
 import { usePanelTitle } from './panelContext'
 import { Spinner } from './Spinner'
 import { toast } from './toast'
@@ -60,6 +63,8 @@ export interface DataColumn<T> {
   exportValue?: (row: T) => SortValue
   /** false = la columna no se exporta (casillas de selección, columnas solo visuales). */
   exportable?: boolean
+  /** true = número con signo (+5 / -3) en el PDF agrupado (`exportChildren`). */
+  signed?: boolean
 }
 
 export interface SortState {
@@ -127,6 +132,9 @@ export interface DataTableProps<T extends RowData> {
   exportRows?: () => Promise<readonly T[] | FetchAllResult<T>>
   /** Base del nombre del archivo exportado (y título de la hoja/PDF). Por defecto `label`, luego el título del `Panel`. */
   exportFileName?: string
+  /** Exportación agrupada (opcional): filas hijas de cada fila (`exportChildren({ children, columns, emptyText })` de
+   *  `exportGrouped.ts`). Excel/CSV = una fila por hija repitiendo la fila; PDF = un bloque por fila con sus hijas. */
+  exportChildren?: ExportChildren<T>
   /** true = tarjetas aunque la ventana sea ancha (p. ej. la tabla vive en un panel angosto de `SplitPane`: decídelo con
    *  `useElementWidth`). Sin él (o false), tarjetas solo bajo 720 px de ventana. El pie no cambia. */
   forceCards?: boolean
@@ -137,6 +145,11 @@ export const DENSE_COLUMNS = 8
 
 /** Tamaño de página por defecto (las opciones de "Filas por página" están en `ListPager`, que pinta el pie). */
 export const DEFAULT_PAGE_SIZE = 25
+
+/** Una celda que devuelve un número crudo se pinta con coma de miles ("1,250"); lo demás, tal cual. */
+function displayCell(v: ReactNode, lang: string): ReactNode {
+  return typeof v === 'number' && Number.isFinite(v) ? formatQuantity(v, lang) : v
+}
 
 const EMPTY_ROWS: never[] = []
 
@@ -200,6 +213,8 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const cards = props.forceCards === true || cardsByViewport
   const allowed = useAllowed()
   const panelTitle = usePanelTitle()
+  // compañía activa y oración de filtros del ámbito (FilterScope), leídas al exportar
+  const exportHeading = useExportHeading()
   const exportable = props.exportable ?? true
 
   // ----- orden: del servidor (controlado con onSort) o local -----
@@ -234,12 +249,12 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
           // vacíos → undefined: sortUndefined 'last' los deja al final en ambos sentidos
           accessorFn: (row: T) => (col.sortValue ? (toComparable(col.sortValue(row)) ?? undefined) : undefined),
           sortUndefined: 'last' as const,
-          cell: (ctx) => col.cell(ctx.row.original),
+          cell: (ctx) => displayCell(col.cell(ctx.row.original), lang),
           enableSorting: Boolean(col.sortValue) || Boolean(col.sortable),
           sortFn,
         }
       }),
-    [columns],
+    [columns, lang],
   )
 
   const data = (rows.length ? rows : EMPTY_ROWS) as T[]
@@ -344,17 +359,19 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
       const result = await props.exportRows()
       const items: readonly T[] = 'items' in result ? result.items : result
       if ('truncated' in result && result.truncated) {
-        toast.info(t('ui.table.export.truncated', { count: items.length.toLocaleString(lang) }))
+        toast.info(t('ui.table.export.truncated', { count: items.length }))
       }
       list = !serverSort && sort ? sortRows(items, columns.find((c) => c.id === sort.id), sort.desc) : items
     } else {
       list = table.getPrePaginatedRowModel().rows.map((r) => r.original)
     }
     await exportTable(format, columns, list, {
-      locale: lang,
+      locale: numberLocale(lang),
       yes: t('ui.table.export.yes'),
       no: t('ui.table.export.no'),
       title: props.exportFileName ?? label ?? panelTitle,
+      ...exportHeading(),
+      children: props.exportChildren,
     })
   }
 
@@ -413,14 +430,14 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
                 onClick={onRowClick ? () => onRowClick(r) : undefined}
                 onKeyDown={rowKeyDown(r)}
               >
-                {titleCol && <div className="ttl">{titleCol.cell(r)}</div>}
+                {titleCol && <div className="ttl">{displayCell(titleCol.cell(r), lang)}</div>}
                 <dl>
                   {columns
                     .filter((c) => c !== titleCol && c.card !== 'hidden')
                     .map((c) => (
                       <div key={c.id} style={{ display: 'contents' }}>
                         <dt>{c.header}</dt>
-                        <dd>{c.cell(r)}</dd>
+                        <dd>{displayCell(c.cell(r), lang)}</dd>
                       </div>
                     ))}
                 </dl>

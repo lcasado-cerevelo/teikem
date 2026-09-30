@@ -21,6 +21,7 @@ export async function enrollDevice(enrollCode: string): Promise<void> {
     tenantName: enrolled.tenantName ?? '',
     defaultWarehousePublicId: enrolled.defaultWarehousePublicId ?? null,
     theme: enrolled.theme ?? null,
+    defaultWarehouseReceivingMode: enrolled.defaultWarehouseReceivingMode ?? null,
   })
 }
 
@@ -51,7 +52,9 @@ export async function loginWithPin(devicePublicId: string, deviceSecret: string,
   })
 }
 
-/** Aviso periódico de vida (docs/mobile/app-almacen-plan.md §1): actualiza el almacén y tema por defecto guardados. */
+/** Aviso periódico de vida (docs/mobile/app-almacen-plan.md §1): actualiza el almacén, el tema y (Lote 16) el modo de
+ *  recepción del almacén por defecto guardados. Lo llama el motor de sincronización en cada pasada con señal
+ *  (kernel/sync/engine.ts); solo reescribe la identidad si algo cambió. */
 export async function sendHeartbeat(): Promise<{ isActive: boolean }> {
   const device = getSessionState().device
   if (!device) return { isActive: false }
@@ -65,10 +68,18 @@ export async function sendHeartbeat(): Promise<{ isActive: boolean }> {
       await clearDeviceIdentity()
       return { isActive: false }
     }
-    await updateDeviceIdentity({
+    const next = {
       defaultWarehousePublicId: beat.defaultWarehousePublicId ?? device.defaultWarehousePublicId,
       theme: beat.theme ?? device.theme,
-    })
+      defaultWarehouseReceivingMode: beat.defaultWarehouseReceivingMode ?? device.defaultWarehouseReceivingMode ?? null,
+    }
+    if (
+      next.defaultWarehousePublicId !== device.defaultWarehousePublicId ||
+      next.theme !== device.theme ||
+      next.defaultWarehouseReceivingMode !== (device.defaultWarehouseReceivingMode ?? null)
+    ) {
+      await updateDeviceIdentity(next)
+    }
     return { isActive: true }
   } catch {
     // Sin red: el aparato sigue activo hasta que se demuestre lo contrario (no bloquea el trabajo sin señal).

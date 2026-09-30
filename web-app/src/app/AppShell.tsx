@@ -9,6 +9,7 @@ import { applyProblemDetails } from '../kernel/api/problem'
 import { useLang, useT } from '../kernel/i18n/useT'
 import { BrandLockup, BrandMark } from '../kernel/ui/Brand'
 import { CommandPalette } from '../kernel/ui/CommandPalette'
+import { ExportCompanyProvider, FilterScope } from '../kernel/ui/FilterScope'
 import {
   closeCommandPalette,
   openCommandPalette,
@@ -300,9 +301,14 @@ export function AppShell() {
         </header>
         <main className="stage">
           <div className="wrap">
-            <Suspense fallback={<Splash />}>
-              <Outlet />
-            </Suspense>
+            {/* exportaciones de tablas: compañía activa arriba del título y la oración de los filtros de la pantalla */}
+            <ExportCompanyProvider company={me?.tenantName}>
+              <FilterScope>
+                <Suspense fallback={<Splash />}>
+                  <Outlet />
+                </Suspense>
+              </FilterScope>
+            </ExportCompanyProvider>
           </div>
         </main>
       </div>

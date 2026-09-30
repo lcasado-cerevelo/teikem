@@ -7,12 +7,19 @@ namespace Teikem.Infrastructure.Contracts;
 // lleva TenantId: el almacén se identifica por PublicId en la URL; zonas, posiciones y muelles por id int SIEMPRE resuelto a
 // través de su almacén filtrado (WmsResolve).
 
+/// <summary>Lote 16: ReceivingMode = modo de recepción (PUTAWAY | DIRECT; sin él, PUTAWAY; desconocido → 400).</summary>
 public sealed record WarehouseCreateRequest(string? Code, string? Name, string? Line1 = null, string? City = null, string? State = null,
-    string? PostalCode = null, string? Country = null);
+    string? PostalCode = null, string? Country = null, string? ReceivingMode = null);
 
-/// <summary>PATCH del almacén: el código es inmutable ('code' en Extra → 400).</summary>
+/// <summary>
+/// PATCH del almacén: el código es inmutable ('code' en Extra → 400). Lote 16: ReceivingMode (null = sin cambio; PUTAWAY |
+/// DIRECT; desconocido → 400; no toca los recibos abiertos, D2) y posición de recepción por defecto (D12):
+/// DefaultReceivingBinId (del almacén → si no 404; zona STAGING o CROSSDOCK → si no 400; activa → si no 422) o
+/// ClearDefaultReceivingBin = true para quitarla.
+/// </summary>
 public sealed record WarehousePatchRequest(string? Name = null, string? Line1 = null, string? City = null, string? State = null,
-    string? PostalCode = null, string? Country = null, string? RowVersion = null)
+    string? PostalCode = null, string? Country = null, string? RowVersion = null, string? ReceivingMode = null, int? DefaultReceivingBinId = null,
+    bool? ClearDefaultReceivingBin = null)
 {
     /// <summary>Llaves del JSON que no corresponden a ninguna propiedad (el servicio rechaza las prohibidas con 400).</summary>
     [JsonExtensionData]
@@ -24,10 +31,13 @@ public sealed record WarehouseDeactivateRequest(string? Comment = null, string? 
 /// <summary>
 /// Almacén. ZoneTypeCodes (Lote 1 de cambios de Almacén) = códigos de tipo de zona DISTINTOS de sus zonas activas, ordenados, para
 /// el filtro "Tipo" de la lista (zonas sin tipo no aportan código).
+/// Lote 16: ReceivingModeCode (PUTAWAY | DIRECT) con su etiqueta, y la posición de recepción por defecto (D12; null = la
+/// primera STAGING del almacén).
 /// </summary>
 public sealed record WarehouseDto(int Id, Guid PublicId, string Code, string Name, string? Line1, string? City, string? State,
     string? PostalCode, string CountryCode, string StatusCode, string Status, bool IsActive, int ZoneCount, int BinCount, int DockCount,
-    decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes);
+    decimal QtyOnHand, string RowVersion, IReadOnlyList<string> ZoneTypeCodes, string ReceivingModeCode = "PUTAWAY", string? ReceivingMode = null,
+    int? DefaultReceivingBinId = null, string? DefaultReceivingBinCode = null);
 
 public sealed record WarehouseZoneRequest(string? Code, string? Name, string? ZoneType = null);
 

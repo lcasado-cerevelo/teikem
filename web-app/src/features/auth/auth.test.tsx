@@ -98,7 +98,8 @@ describe('Login (AuthResultDto)', () => {
   it('ok: entra al destino pedido (next)', async () => {
     await renderAppAt('/login?next=%2F')
     await submitLogin()
-    expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
+    // primera entrada al Pulso del archivo: carga diferida del módulo (Recharts, franja, filas fijas) → más de 1 s en frío
+    expect(await screen.findByText('Bienvenido, Ana Admin', undefined, { timeout: 10_000 })).toBeInTheDocument()
     expect(loginBodies[0]).toMatchObject({ email: 'admin@teikem.local', tenantId: null })
   })
 

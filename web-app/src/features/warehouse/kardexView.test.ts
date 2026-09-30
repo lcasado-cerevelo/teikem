@@ -178,7 +178,7 @@ describe('cómo se pinta un movimiento', () => {
 
   it('cantidad con signo y color', () => {
     expect(formatSignedQty(2, 'es')).toBe('+2')
-    expect(formatSignedQty(-1500, 'es')).toBe('−1500')
+    expect(formatSignedQty(-1500, 'es')).toBe('−1,500')
     expect(formatSignedQty(0, 'es')).toBe('0')
     expect(qtyClass(3)).toBe('qty-in')
     expect(qtyClass(-3)).toBe('qty-out')

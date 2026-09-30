@@ -242,3 +242,12 @@ Los reportes recibidos no cubren lo siguiente; nada de esto se probó al escribi
 - **Cambios a la app móvil** más allá de regenerar `schema.d.ts`.
 - **Ocultar automáticamente los indicadores y la dona repetidos** (D15: no se toca nada).
 - **Corrida del CI** con este código: se confirma al hacer push.
+
+## Pendiente anotado para un lote futuro (decisión del dueño, 2026-09-30)
+
+- **Método de rotación configurable (FIFO / FEFO) por compañía**, con posible excepción por producto o categoría. Hoy la
+  asignación de inventario está fija en FEFO (`StockAllocator.cs`, `PickBatchRules.cs`, `ReplenishmentRules.cs` y las
+  sugerencias de la web): vencimiento ascendente, sin fecha al final, luego tipo de zona y código de posición. Para productos sin
+  vencimiento eso **no es FIFO**: no se ordena por fecha de entrada. Falta decidir dónde se configura, qué métodos se ofrecen,
+  qué fecha manda en FIFO cuando el producto no tiene lote (derivarla del Kárdex o guardar una fecha de primera entrada por
+  saldo) y qué método tienen por defecto las compañías existentes. El dueño lo dejó para después; no está diseñado.

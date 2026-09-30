@@ -121,6 +121,8 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
             {
                 PublicId = Guid.NewGuid(), TenantId = tenantId, Code = DemoWarehouseCode, Name = DemoWarehouseName, City = "San Juan",
                 CountryLookupId = await lookups.GetIdAsync(LookupDomains.Country, "PR", ct), StatusCodeId = active.StatusCodeId, IsActive = true,
+                // Lote 16 (D8): la demo recibe con acomodo (posición de recepción STG-01 + tareas).
+                ReceivingModeLookupId = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, ReceivingModes.Putaway, ct),
             };
             db.Warehouses.Add(warehouse);
             await db.SaveChangesAsync(ct);

@@ -82,7 +82,9 @@ public sealed class PlannedProduct
     public bool DeactivateAtEnd { get; set; }
 }
 
-public sealed record PlannedWarehouse(string Code, string Name, string? Line1, string? City, string? State, string? PostalCode, string Country);
+/// <summary>Lote 16: ReceivingMode (PUTAWAY | DIRECT) y DefaultReceivingBin (código) solo se aplican al crear el almacén.</summary>
+public sealed record PlannedWarehouse(string Code, string Name, string? Line1, string? City, string? State, string? PostalCode, string Country,
+    string? ReceivingMode = null, string? DefaultReceivingBin = null);
 public sealed record PlannedZone(string Code, string Name, string? ZoneType);
 public sealed record PlannedBin(string Code, string ZoneCode, string? Aisle, string? Level, string? Position, string SourceId);
 public sealed record PlannedBalance(string Sku, string Key, string BinCode, decimal Quantity);
@@ -412,8 +414,11 @@ public static class LegacyImportPlanner
         var w = cfg.Warehouse;
         if (string.IsNullOrWhiteSpace(w.Code)) return;
         plan.Warehouse = new PlannedWarehouse(w.Code.Trim().ToUpperInvariant(), Blank(w.Name) ?? w.Code.Trim(), Blank(w.Line1), Blank(w.City),
-            Blank(w.State), Blank(w.PostalCode), Blank(w.Country) ?? "PR");
+            Blank(w.State), Blank(w.PostalCode), Blank(w.Country) ?? "PR", ReceivingModeRules.ParseMode(w.ReceivingMode).Mode,
+            Blank(w.DefaultReceivingBin)?.ToUpperInvariant());
         report.CountRead(LegacyImportEntities.Warehouse);
+        if (plan.Warehouse.ReceivingMode is { } mode) report.AddInfo("Modo de recepción", mode);
+        if (plan.Warehouse.DefaultReceivingBin is { } defaultBin) report.AddInfo("Posición de recepción por defecto", defaultBin);
 
         var zoneConfigs = w.SingleBin?.Zone is { } single ? new List<LegacyZoneConfig> { single } : w.Zones;
         foreach (var z in zoneConfigs)
@@ -743,6 +748,8 @@ public sealed class LegacyImportService(
         public bool CompanyAlreadyExisted { get; init; }
         public Dictionary<string, int?> CategoryIds { get; } = new(StringComparer.OrdinalIgnoreCase);
         public (int Id, Guid PublicId)? Warehouse { get; set; }
+        /// <summary>Lote 16: el almacén se creó en esta corrida (modo y posición de recepción por defecto solo al crear).</summary>
+        public bool WarehouseCreated { get; set; }
         public bool WarehouseWouldExist { get; set; }
         public Dictionary<string, int> ZoneIds { get; } = new(StringComparer.Ordinal);
         public HashSet<string> ZonesWouldExist { get; } = new(StringComparer.Ordinal);
@@ -955,10 +962,11 @@ public sealed class LegacyImportService(
         else
         {
             var dto = await TryAsync(report, E, w.Code, () => warehouses.CreateAsync(
-                new WarehouseCreateRequest(w.Code, w.Name, w.Line1, w.City, w.State, w.PostalCode, w.Country), ct));
+                new WarehouseCreateRequest(w.Code, w.Name, w.Line1, w.City, w.State, w.PostalCode, w.Country, w.ReceivingMode), ct));
             if (dto is null) return;
             report.CountCreated(E);
             s.Warehouse = (dto.Warehouse.Id, dto.Warehouse.PublicId);
+            s.WarehouseCreated = true;
         }
 
         // Zonas por código.
@@ -1028,6 +1036,25 @@ public sealed class LegacyImportService(
             if (++done % 500 == 0) logger.LogInformation("Posiciones creadas: {Count} de {Total}.", done, plan.Bins.Count);
         }
         await FillCapacitiesAsync(toFill, s, report, ct);
+        await SetDefaultReceivingBinAsync(w, s, report, ct);
+    }
+
+    /// <summary>
+    /// Lote 16 (D12): posición de recepción por defecto del almacén recién creado en esta corrida (--update no la pisa en uno
+    /// existente). Se fija con el PATCH del almacén, que exige que sea del almacén, de zona STAGING o CROSSDOCK y activa; una
+    /// posición que no existe o no es de recepción queda como rechazo del almacén.
+    /// </summary>
+    private async Task SetDefaultReceivingBinAsync(PlannedWarehouse w, RunState s, LegacyImportReport report, CancellationToken ct)
+    {
+        if (w.DefaultReceivingBin is not { } code || s.DryRun || !s.WarehouseCreated || s.Warehouse is not { } wh) return;
+        const string E = LegacyImportEntities.Warehouse;
+        if (!s.BinIds.TryGetValue(code, out var binId))
+        {
+            report.Reject(E, w.Code, $"La posición de recepción por defecto {code} no existe en el almacén.");
+            return;
+        }
+        var dto = await TryAsync(report, E, w.Code, () => warehouses.UpdateAsync(wh.PublicId, new WarehousePatchRequest(DefaultReceivingBinId: binId), ct));
+        if (dto is not null) report.AddInfo("Posición de recepción por defecto", $"{code} asignada");
     }
 
     /// <summary>

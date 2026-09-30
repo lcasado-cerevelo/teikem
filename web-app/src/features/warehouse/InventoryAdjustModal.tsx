@@ -4,7 +4,9 @@
 // subir; Daño, Pérdida y Vencido solo al bajar). Pista "Disponible en la posición: N" (saldos de la posición) y, al bajar,
 // tope 'No puede bajar más de lo disponible en la posición ({qty}).'. Rastreo: LOT al subir = número de lote (nuevo o
 // existente), al bajar = lote con saldo en la posición; SERIAL al subir = series nuevas, al bajar = series disponibles en la
-// posición (la cantidad = número de series). Nota obligatoria (`adjustNotesSchema`, mensaje exacto del API).
+// posición (la cantidad = número de series). Posición: al subir, cualquiera del almacén; al BAJAR, solo las posiciones donde
+// el producto tiene disponible (cada una con su disponible, por código; deshabilitada sin producto; una que ya no aplica al
+// cambiar producto, almacén o dirección se quita sola). Nota obligatoria (`adjustNotesSchema`, mensaje exacto del API).
 // 409 insufficient_stock: el título del servidor ya trae el mensaje exacto y `Form` lo muestra arriba solo.
 // `AdjustmentFields` (con `useAdjustmentForm` de adjustmentForm.ts) lo comparten este modal (Transferencias y ajustes y
 // Kárdex) y el bloque "Ajustar inventario" de la ficha del producto (ProductEditorModal), que fija el producto.
@@ -18,7 +20,7 @@ import { useAdjustmentForm, useSubmitAdjustment, type AdjustInitial, type Adjust
 import { reasonAllowed, reasonsForDirection, type AdjustDirection } from './adjustmentReasons'
 import { formatDate, formatNumber } from './lineRules'
 import { adjustMagnitude, lotOptions, type AdjustFormValues } from './movementForms'
-import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
+import { BinPickerInput, ProductPickerInput, WarehousePickerInput, type BinPickerOption } from './pickers'
 import { ADJUST_NOTES_MAX } from './productRules'
 
 /**
@@ -28,7 +30,8 @@ import { ADJUST_NOTES_MAX } from './productRules'
 export function AdjustmentFields({ state, idPrefix = 'adj' }: { state: AdjustmentFormState; idPrefix?: string }) {
   const t = useT()
   const lang = useLang()
-  const { form, tracking, direction, warehousePublicId, balances, available, serials, fixedProduct, picked } = state
+  const { form, tracking, direction, warehousePublicId, balances, available, serials, downBins, downBinsLoading, fixedProduct, picked } = state
+  const productPublicId = useWatch({ control: form.control, name: 'productPublicId' })
   const reasonsQ = useLookups('AdjustmentReason')
   const reasonOptions = useMemo(
     () => reasonsForDirection(reasonsQ.data ?? [], direction as AdjustDirection | '').map((r) => ({ value: r.code, label: r.label })),
@@ -43,6 +46,19 @@ export function AdjustmentFields({ state, idPrefix = 'adj' }: { state: Adjustmen
       ),
     [balances, t, lang],
   )
+  // al bajar: solo donde hay disponible del producto, con su disponible
+  const binOptions = useMemo<BinPickerOption[] | undefined>(
+    () =>
+      downBins?.map((b) => ({
+        id: b.binId,
+        code: b.binCode,
+        zoneCode: b.zoneCode,
+        zoneTypeCode: b.zoneTypeCode,
+        hint: t('ui.binPicker.available', { qty: formatNumber(b.qtyAvailable, lang) }),
+      })),
+    [downBins, t, lang],
+  )
+  const noProductToLower = direction === 'down' && !productPublicId
   const values = useWatch({ control: form.control }) as AdjustFormValues
   const serialCount = tracking === 'SERIAL' ? adjustMagnitude({ ...values, serials: values.serials ?? [] }, tracking) : 0
   const availableHelp = available != null ? t('warehouse.inventory.adjustModal.availableInBin', { qty: formatNumber(available, lang) }) : undefined
@@ -81,6 +97,10 @@ export function AdjustmentFields({ state, idPrefix = 'adj' }: { state: Adjustmen
         <Field name="binId" label={t('warehouse.inventory.adjustModal.fields.bin')} required help={tracking === 'SERIAL' ? availableHelp : undefined}>
           <BinPickerInput
             warehousePublicId={warehousePublicId}
+            options={binOptions}
+            optionsLoading={downBinsLoading}
+            disabled={noProductToLower}
+            placeholder={noProductToLower ? t('ui.binPicker.pickProductFirst') : undefined}
             onPicked={(b) => {
               picked.bin(b)
               form.setValue('lotId', '')

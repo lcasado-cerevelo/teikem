@@ -223,6 +223,22 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .rcp-confirm{padding:14px 16px 16px}
 .rcp-confirm .btn{justify-content:center}
 .rcp-confirm .help{margin:6px 0 0}
+/* Lote 16: recibo directo a posición — columna "Posición destino", pista de la sugerida, aviso de cupo y acciones */
+.rcp-target{min-width:140px}
+.rcp-direct .rcp-prod{min-width:140px}
+/* el campo de un selector en la rejilla no impone su ancho intrínseco (~170 px): manda el min-width de la celda */
+.rcp-lines .cpick .cpin input{width:100%}
+.dt-card .rcp-target{min-width:0;width:100%}
+.rcp-hint{font-size:11.5px;overflow-wrap:anywhere}
+/* el aviso de cupo es un chip, pero en una celda angosta (tarjeta a 360 px) parte renglón en vez de desbordar */
+.rcp-over{white-space:normal;max-width:100%;align-self:flex-start;line-height:1.35;padding:3px 9px}
+.rcp-direct-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 16px 0}
+.rcp-direct-acts .help{margin:0}
+.rcp-title-chips{display:inline-flex;flex-wrap:wrap;gap:6px;vertical-align:middle}
+.rcp-direct-info{margin:0 0 14px;overflow-wrap:anywhere}
+/* ficha del almacén: sección "Recepción" */
+.whs-receiving{border:0;border-top:1px solid var(--line-2);margin:8px 0 0;padding:12px 0 0;min-width:0}
+.whs-receiving legend{padding:0;font-weight:700;font-size:13px;margin-bottom:8px}
 /* modales del encabezado y de lote/series */
 .rcp-modal-note{margin:0 0 12px}
 .rcp-capture-note{margin:0 0 12px}

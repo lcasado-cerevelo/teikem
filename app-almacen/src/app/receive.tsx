@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -13,41 +13,73 @@ import { colors, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import {
   addLocalReceiptLine,
+  countLocalBins,
   discardLocalReceipt,
   findDocByCode,
+  findLocalBinsByCode,
   findProductByCode,
+  getDocLines,
   getOpenReceipt,
   removeLocalReceiptLine,
   startLocalReceipt,
 } from '../features/receive/localLookup'
+import { fetchTargetSuggestion } from '../features/receive/receiveApi'
 import {
   addSerial,
   buildLine,
   buildReceiptBody,
   canAddLine,
+  draftQuantity,
+  findTargetConflict,
   type LineDraft,
+  linesMissingTarget,
   newLineDraft,
+  parseReceivingMode,
   removeSerial,
   requiresLot,
   requiresSerials,
+  validateTargetBin,
 } from '../features/receive/receiveLogic'
 
 /** Pantalla 3 (docs/mobile/app-almacen-plan.md §2): escanea una orden/aviso o recibo ciego → escanea producto →
- *  cantidad/lote/series → siguiente; Confirmar cierra el recibo y lo manda a la cola de salida. */
+ *  cantidad/lote/series → siguiente; Confirmar cierra el recibo y lo manda a la cola de salida.
+ *  Lote 16: si el recibo se abrió en modo "Directo a posición" (el del almacén del aparato al empezarlo), tras la cantidad
+ *  viene el paso "Escanea la posición destino" (validada contra las posiciones locales, con la pista "Sugerida: …" si hay
+ *  señal); la línea se agrega al escanear una posición válida y se muestra con "→ {posición}". Con acomodo, igual que antes. */
 export default function ReceiveScreen() {
   const { t } = useT()
   const router = useRouter()
   const { device } = useSession()
   const warehousePublicId = device?.defaultWarehousePublicId ?? null
+  const deviceMode = parseReceivingMode(device?.defaultWarehouseReceivingMode)
   const [tick, setTick] = useState(0)
   const [docError, setDocError] = useState<string | null>(null)
   const [productError, setProductError] = useState<string | null>(null)
   const [draft, setDraft] = useState<LineDraft | null>(null)
+  // Lote 16: paso de posición destino del borrador (solo recibo directo), su error y la pista del servidor.
+  const [askTarget, setAskTarget] = useState(false)
+  const [targetError, setTargetError] = useState<string | null>(null)
+  const [suggestion, setSuggestion] = useState<string | null>(null)
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const openReceipt = useMemo(() => getOpenReceipt(), [tick])
   const refresh = () => setTick((n) => n + 1)
+  const direct = openReceipt?.receivingMode === 'DIRECT'
+
+  // Pista "Sugerida: {bin}" al entrar al paso de destino (una sola, take=1). Sin señal no aparece; no se llena nada solo.
+  const suggestProduct = draft && askTarget ? draft.productPublicId : null
+  const suggestQty = draft && askTarget ? draftQuantity(draft) : 0
+  useEffect(() => {
+    if (!suggestProduct || !warehousePublicId) return undefined
+    let alive = true
+    void fetchTargetSuggestion(suggestProduct, warehousePublicId, suggestQty).then((bin) => {
+      if (alive) setSuggestion(bin)
+    })
+    return () => {
+      alive = false
+    }
+  }, [suggestProduct, suggestQty, warehousePublicId])
 
   if (!warehousePublicId) {
     return (
@@ -58,7 +90,7 @@ export default function ReceiveScreen() {
   }
 
   function startBlind() {
-    startLocalReceipt(warehousePublicId!, null)
+    startLocalReceipt(warehousePublicId!, null, deviceMode)
     setDocError(null)
     refresh()
   }
@@ -70,7 +102,7 @@ export default function ReceiveScreen() {
       vibrateError()
       return
     }
-    startLocalReceipt(warehousePublicId!, doc)
+    startLocalReceipt(warehousePublicId!, doc, deviceMode)
     setDocError(null)
     vibrateOk()
     refresh()
@@ -88,10 +120,53 @@ export default function ReceiveScreen() {
     vibrateOk()
   }
 
+  function closeDraft() {
+    setDraft(null)
+    setAskTarget(false)
+    setTargetError(null)
+    setSuggestion(null)
+  }
+
   function addCurrentLine() {
     if (!draft || !openReceipt || !canAddLine(draft)) return
+    if (direct) {
+      // Recibo directo: la cantidad está lista; falta dónde queda la mercancía.
+      setTargetError(null)
+      setSuggestion(null)
+      setAskTarget(true)
+      return
+    }
     addLocalReceiptLine(openReceipt.id, buildLine(draft))
-    setDraft(null)
+    closeDraft()
+    vibrateOk()
+    refresh()
+  }
+
+  /** Lote 16: la posición destino escaneada. Valida sin señal contra las posiciones locales y, en recibos con aviso u
+   *  orden de compra, que el mismo producto no quede con dos destinos (H11); si todo cuadra agrega la línea. */
+  function scanTarget(code: string) {
+    if (!draft || !openReceipt) return
+    const fail = (message: string) => {
+      setTargetError(message)
+      vibrateError()
+    }
+    if (countLocalBins(openReceipt.warehousePublicId) === 0) return fail(t('receive.targetNoBins'))
+    const check = validateTargetBin(code, findLocalBinsByCode(openReceipt.warehousePublicId, code))
+    if (!check.ok) {
+      const key =
+        check.reason === 'notStorage' ? 'receive.targetNotStorage' : check.reason === 'inactive' ? 'receive.targetInactive' : 'receive.targetNotFound'
+      return fail(t(key))
+    }
+    const withTarget = { ...draft, targetBinCode: check.code }
+    if (!canAddLine(withTarget, true)) return
+    const line = buildLine(withTarget)
+    if (openReceipt.doc) {
+      const lines = [...openReceipt.lines, line]
+      const conflict = findTargetConflict(getDocLines(openReceipt.doc), lines)
+      if (conflict && conflict.index === lines.length - 1) return fail(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
+    }
+    addLocalReceiptLine(openReceipt.id, line)
+    closeDraft()
     vibrateOk()
     refresh()
   }
@@ -104,7 +179,7 @@ export default function ReceiveScreen() {
         style: 'destructive',
         onPress: () => {
           discardLocalReceipt()
-          setDraft(null)
+          closeDraft()
           setProductError(null)
           refresh()
         },
@@ -114,7 +189,16 @@ export default function ReceiveScreen() {
 
   function confirmReceipt() {
     if (!openReceipt || openReceipt.lines.length === 0) return
-    const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines)
+    if (direct && openReceipt.doc) {
+      // H11: el servidor rechazaría el recibo completo y un envío rechazado en la cola ya no se edita; se avisa aquí.
+      const conflict = findTargetConflict(getDocLines(openReceipt.doc), openReceipt.lines)
+      if (conflict) {
+        vibrateError()
+        Alert.alert(t('receive.targetConflictTitle'), t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
+        return
+      }
+    }
+    const body = buildReceiptBody(openReceipt.warehousePublicId, openReceipt.doc, openReceipt.lines, openReceipt.receivingMode)
     enqueue({ kind: 'receipt', body })
     discardLocalReceipt()
     void runSync()
@@ -134,6 +218,30 @@ export default function ReceiveScreen() {
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
         <Text style={styles.help}>{t('receive.startBlindHelp')}</Text>
+      </ScrollView>
+    )
+  }
+
+  // Paso 3b (Lote 16, solo recibo directo): la posición destino de la línea. Un solo campo de captura en pantalla (el
+  // lector escribe en todos los ScanField montados), por eso es un paso aparte y no un campo más del paso 3.
+  if (draft && askTarget) {
+    return (
+      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>{draft.productName}</Text>
+        <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
+        {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
+        <ScanField label={t('receive.scanTargetLabel')} error={targetError} onSubmit={scanTarget} />
+        <View style={styles.row}>
+          <BigButton
+            label={t('common.back')}
+            variant="secondary"
+            onPress={() => {
+              setAskTarget(false)
+              setTargetError(null)
+            }}
+          />
+          <BigButton label={t('common.cancel')} variant="danger" onPress={closeDraft} />
+        </View>
       </ScrollView>
     )
   }
@@ -198,8 +306,8 @@ export default function ReceiveScreen() {
         ) : null}
 
         <View style={styles.row}>
-          <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setDraft(null)} />
-          <BigButton label={t('receive.addLine')} onPress={addCurrentLine} disabled={!canAddLine(draft)} />
+          <BigButton label={t('common.cancel')} variant="secondary" onPress={closeDraft} />
+          <BigButton label={t(direct ? 'common.next' : 'receive.addLine')} onPress={addCurrentLine} disabled={!canAddLine(draft)} />
         </View>
       </ScrollView>
     )
@@ -223,7 +331,9 @@ export default function ReceiveScreen() {
         items={openReceipt.lines.map((l, i) => ({
           id: openReceipt.lineRows[i].id,
           title: t('receive.lineQty', { qty: l.receivedQty, sku: l.sku }),
-          subtitle: l.lotNumber ?? undefined,
+          subtitle:
+            [l.lotNumber, l.targetBinCode ? t('receive.lineTarget', { bin: l.targetBinCode }) : null].filter(Boolean).join(' · ') ||
+            undefined,
         }))}
         onRemove={(id) => {
           removeLocalReceiptLine(Number(id))
@@ -232,8 +342,12 @@ export default function ReceiveScreen() {
         removeLabel={t('common.remove')}
         emptyLabel={t('receive.linesTitle')}
       />
-      <BigButton label={t('receive.confirmReceipt')} onPress={confirmReceipt} disabled={openReceipt.lines.length === 0} />
-      <Text style={styles.help}>{t('receive.confirmHelp')}</Text>
+      <BigButton
+        label={t('receive.confirmReceipt')}
+        onPress={confirmReceipt}
+        disabled={openReceipt.lines.length === 0 || (direct && linesMissingTarget(openReceipt.lines) > 0)}
+      />
+      <Text style={styles.help}>{t(direct ? 'receive.confirmHelpDirect' : 'receive.confirmHelp')}</Text>
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
     </ScrollView>
   )
@@ -244,6 +358,7 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 20, fontWeight: '700' },
   label: { color: colors.text, fontSize: 16, fontWeight: '600' },
   help: { color: colors.muted, fontSize: 13 },
+  hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
   error: { color: colors.error, fontSize: 15 },
   field: { gap: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },

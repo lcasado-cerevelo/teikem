@@ -135,6 +135,24 @@ Solutions no tiene WMS: sus posiciones no reciben cupo.
 | `db-reset --yes` contra una base que empieza por `MSWM` | `db-reset no toca la base del WMS heredado.` | 2 |
 | `db-reset` con sintaxis distinta a `--yes [--allow-remote]` | `Uso: dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]` | 2 |
 | Advertencia (no detiene la carga): ninguna posición del almacén del WMS tiene historial | `Ninguna posición de {almacén} tiene historial de existencias en el WMS; las posiciones quedan sin cupo.` | 0 |
+| `warehouse.receivingMode` distinto de `PUTAWAY` y `DIRECT` (Lote 16) | `warehouse.receivingMode debe ser PUTAWAY o DIRECT.` | 1 |
+| `warehouse.defaultReceivingBin` que no es el código de una posición creada para el almacén (Lote 16) | `La posición de recepción por defecto {code} no existe en el almacén.` (rechazo del almacén en el reporte; la posición por defecto no se fija) | — |
+
+## 5. Modo de recepción y posición de recepción por defecto del almacén (Lote 16)
+
+Qué hace: la configuración del almacén (`warehouse`) acepta dos claves opcionales que fijan cómo recibe mercancía el almacén (detalle en el
+[capítulo 6, sección 1.4](06-inventario-y-almacen.md#14-modo-de-recepción-y-posición-de-recepción-por-defecto-lote-16)):
+
+| Clave | Valores | Qué hace |
+|---|---|---|
+| `warehouse.receivingMode` | `PUTAWAY` (con acomodo) o `DIRECT` (directo a posición). Sin la clave, `PUTAWAY` | Modo de recepción del almacén. **Advance Solutions usa `DIRECT`** (solo tiene la posición `GENERAL`, sin zona de recepción) |
+| `warehouse.defaultReceivingBin` | Código de una posición de una zona `STAGING` o `CROSSDOCK` del almacén | Posición de recepción por defecto. **Advance Depot usa `R1`** (zona `STG`), no la primera por código de zona (`S1` de "Embarque") |
+
+- **Solo al crear el almacén.** Las dos claves se aplican cuando la corrida crea el almacén. **`--update` no las pisa** en un almacén que ya existe: allí se cambian en Almacenes → Datos → Recepción.
+- La posición por defecto se fija después de crear las posiciones del almacén. Si el código no existe o no es de una zona de recepción o de cruce, el almacén queda rechazado en el reporte con el mensaje de la tabla de mensajes (sección 4) y la posición por defecto no se fija.
+- El reporte de la corrida informa "Modo de recepción" y "Posición de recepción por defecto" cuando se configuran. En `--dry-run` solo se informa; no se escribe nada.
+- Ejemplos: `docs/migracion/import.solutions.json` (`"receivingMode": "DIRECT"`) y `docs/migracion/import.depot.json` (`"defaultReceivingBin": "R1"`).
+- Mensajes exactos: `warehouse.receivingMode debe ser PUTAWAY o DIRECT.` (error de configuración, código de salida 1) y `La posición de recepción por defecto {code} no existe en el almacén.` (rechazo del almacén); ver la tabla de la sección 4.
 
 ## Preguntas frecuentes
 

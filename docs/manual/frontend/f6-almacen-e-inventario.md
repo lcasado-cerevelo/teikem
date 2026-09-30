@@ -22,6 +22,10 @@ automática) y **Conteo cíclico** (dos paneles, «Conteo de lo cambiado» y con
 (sus faltantes de compra se resuelven en la ficha de la orden de compra). Sus capturas son las `l14-*.png` que genera el recorrido
 `lote14.spec.ts`; las `f6-inventario-*` se regeneraron. «Necesita tu atención» en el Pulso está en el capítulo
 [F7A](f7a-pulso-almacen-y-actividad.md#pulso-del-día-panel-necesita-tu-atención).
+En el Lote 16 se agregó el **modo de recepción** del almacén (ficha → Datos → Recepción y columna en la lista), el **recibo directo a posición** (columna
+Posición destino, posiciones sugeridas, aviso de cupo), el aviso de **Acomodo pendiente** en almacenes directos, el **selector de Posición de Recolección** (solo donde hay
+existencia) y, en "Todas las tablas", el **encabezado y los filtros de las exportaciones**, las **fechas como fecha** y el **formato de los números** (coma de miles). Sus capturas son las
+`l16-*.png` (las genera el recorrido `lote16.spec.ts`).
 
 ## Todas las tablas: pie, filas por página y Exportar (Lote 11)
 
@@ -55,10 +59,33 @@ filas de la página que está viendo**, no todo el resultado.
 | ¿Qué columnas salen? | Las que ve, con el mismo texto que muestra la pantalla (la columna de acciones y las casillas de selección no). Un "—" sale como celda vacía. Los números salen como número en Excel (se pueden sumar). Sí/No para los valores verdadero/falso. |
 | ¿Cómo se llama el archivo? | Como la tabla o, si no tiene nombre, el título de su panel, en minúsculas y sin acentos, más la fecha de hoy: `almacenes-2026-09-29.xlsx`. |
 | CSV | Separado por comas, codificación UTF-8 con marca de orden de bytes (Excel lo abre bien con tildes y eñes). Un texto que empieza por `=`, `+`, `-` o `@` sale con un apóstrofo delante para que Excel no lo tome por fórmula. |
-| PDF | Hoja A4, vertical (horizontal si la tabla tiene más de 5 columnas), con el título arriba y el número de página abajo. Solo admite caracteres latinos: tildes y eñes salen bien; otros símbolos salen como `?`. |
+| PDF | Hoja A4, vertical (horizontal si la tabla tiene más de 5 columnas), con la compañía, el título, «Generado el …» y la línea de filtros arriba (ver "Exportar: compañía, filtros, fechas y números") y el número de página abajo. Solo admite caracteres latinos: tildes y eñes salen bien; otros símbolos salen como `?`. La lista de Recibos, que exporta cada recibo con sus líneas, sale en carta horizontal. |
 
 Si algo falla al generar el archivo aparece el aviso "No se pudo generar el archivo. Intente de nuevo." Mientras se
 prepara, el botón dice "Exportando…".
+
+### Exportar: compañía, filtros, fechas y números (Lote 16)
+
+Pedidos del dueño del producto (2026-09-30). Aplican a todas las tablas con el botón **Exportar**.
+
+- **Encabezado.** Todo **PDF** y todo **Excel** llevan arriba, en este orden: la **compañía** (la compañía con la que entró), el **título** de la tabla, **«Generado el …»** (fecha y hora de
+  la exportación, en el idioma de la pantalla) y la línea de **filtros**. En Excel, cada renglón va en su fila (columna A), luego una **fila en blanco** y la tabla con **autofiltro** (las flechas de filtro
+  de Excel). La biblioteca que genera los Excel (edición comunitaria de SheetJS) **no escribe negrita ni paneles inmovilizados**: los encabezados no van en negrita ni se congelan. El **CSV no cambia**:
+  lleva solo la tabla.
+- **La línea de filtros.** Dice qué filtros estaban **elegidos** al exportar, en el orden en que aparecen en la pantalla: `Filtros: Almacén ALM-01 (Almacén principal) · Estatus Recibiendo · Creado del 01/09/2026 al 30/09/2026`.
+  Un valor con código y nombre se escribe `Código (Nombre)`; una selección de más de 4 valores dice `A, B, C, D y 3 más`; un rango dice `del 01/09/2026 al 30/09/2026`, `desde 01/09/2026` o
+  `hasta 30/09/2026` (en inglés, mes/día); el buscador libre dice `Buscar "texto"`. Si la pantalla tiene barra de filtros y **no hay ninguno elegido**, dice **«Sin filtros»**. Las tablas que **no tienen barra de filtros**
+  y las que están **dentro de una ventana (modal)** no llevan esa línea. Los reportes de marca en PDF (Productos e inventario) conservan su propio recuadro «Filtros aplicados».
+- **Fechas como fecha.** En **Excel**, las columnas de fecha son fechas de verdad (número de serie con formato `aaaa-mm-dd`, o `aaaa-mm-dd hh:mm` si tienen hora): se ordenan, filtran y restan. En **CSV** salen como
+  `2026-09-30` o `2026-09-30 14:03:00`. Las horas son de **Puerto Rico**, no las del equipo. El **PDF** muestra la fecha como texto legible. El Kárdex exporta **Fecha** con fecha y hora y ya no exporta la columna **Hora**;
+  Conteos y Descuadres exportan la fecha real.
+- **Recibos con sus líneas.** La exportación de **Recibos** (y de **Acomodo pendiente**) trae cada recibo **con sus líneas**. En **Excel y CSV**, una fila **por línea** repitiendo los datos del recibo (Número,
+  Estatus, Tipo, Origen, Documento, Remitente, Almacén, Transporte, Referencia, Llegada esperada, Creado, Confirmado y Diferencia del recibo) y, de la línea, SKU, Producto, Esperado, Recibido, Diferencia y Lote/Serie; un
+  recibo sin líneas ocupa una fila con las columnas de línea vacías. En **PDF**, un bloque por recibo con una banda (número y estatus como título y el resto de los datos) y la tablita de sus líneas ("Sin líneas" si no tiene).
+  Ya no sale la columna "Líneas" (se ven las líneas). El archivo se llama `recibos-2026-09-30.xlsx`.
+- **Números y dinero en pantalla y en PDF.** Las cantidades llevan **coma de miles y punto decimal** (`61,023`; `1,250.5`) en español y en inglés, y el dinero lleva **`$`** (`$1,234.50`): Saldos (costo y valor),
+  Recolección (costo unitario y total), Órdenes (COD y cotizado) y los PDF de reportes. Antes, en español, `61.023` se leía como decimal. Los números de documento e identificadores no llevan coma. En **Excel**, el número
+  sigue siendo número (no texto): el formato lo da Excel según su configuración.
 
 **Desplegables y filtros.** La flecha de todos los desplegables está ahora a la **izquierda**, y los filtros ocupan todo
 el ancho del panel (envuelven a otro renglón en pantallas angostas) sin dejar huecos.
@@ -104,7 +131,7 @@ elegido**.
 - **Estatus**: selección múltiple (Activo, Inactivo).
 No hay buscador dentro de la tabla ni el selector "Mostrar": los almacenes inactivos se ven siempre, atenuados.
 
-**La tabla.** Columnas: Código, Nombre, Dirección, Zonas y Estatus (el estatus se llamaba "Estado"). Ordena por Código por
+**La tabla.** Columnas: Código, Nombre, Dirección, Zonas, **Recepción** (Lote 16: un chip con el modo del almacén, **Con acomodo** o **Directo a posición**) y Estatus (el estatus se llamaba "Estado"). Ordena por Código por
 defecto. Un clic en la fila **elige** el almacén y lo muestra en el panel derecho; la elección queda en la dirección
 (`?warehouse=…`), así que se puede copiar el enlace. Sin elección, se muestra el primero por código. El pie es el común
 de todas las tablas (arriba, "Todas las tablas").
@@ -132,6 +159,7 @@ este almacén**:
 | Dirección | Texto libre |
 | Ciudad o código postal | Un solo campo con buscador: escriba una ciudad, un municipio o los primeros dígitos de un código postal (espera 250 ms entre teclas, ↑ ↓ Enter para elegir, Esc cierra la lista, la ✕ "Quitar ciudad y código postal" vacía el campo). Cada opción se ve como `ZIP · CIUDAD POSTAL (Municipio), Estado` y, fuera de Puerto Rico, termina con el país. Al elegir una opción se llenan **Ciudad, Código postal, Estado y País** |
 | Estado y País | Solo lectura: se llenan con la localidad elegida ("Se llena según la ciudad elegida."). Si no elige ninguna, el país queda en Puerto Rico y el estado vacío |
+| Modo de recepción (Lote 16) | **Con acomodo** (por defecto) o **Directo a posición**. La posición de recepción por defecto no se pide aquí (al crear el almacén aún no tiene posiciones): se fija después en la ficha |
 | Activo | Casilla marcada y sin poder cambiarse: todo almacén nace activo ("Todo almacén nuevo nace activo; se da de baja desde su ficha.") |
 
 Al guardar aparece "Almacén creado.".
@@ -147,6 +175,21 @@ y cuatro pestañas: **Datos**, **Zonas**, **Posiciones**, **Muelles**.
 postal** (el mismo combobox de la alta; muestra `Ciudad · ZIP` con lo guardado, aunque el almacén se haya creado antes
 del catálogo), y Estado y País de solo lectura. **Guardar** solo se activa si hubo cambios y solo lo ve quien tiene
 `warehouse.manage`; aviso "Cambios guardados.". Sin `warehouse.manage` el formulario se ve deshabilitado.
+
+**Recepción (Lote 16).** Al final de Datos hay un grupo **Recepción** con dos campos, que solo cambia quien tiene `warehouse.manage`:
+
+| Campo | Cómo funciona |
+|---|---|
+| **Modo de recepción** | **Con acomodo** o **Directo a posición**. Ayuda: "Con acomodo: entra a la posición de recepción y se crean tareas de acomodo. Directo a posición: cada línea lleva su posición y entra ahí al confirmar, sin tareas." |
+| **Posición de recepción por defecto** | Selector de las posiciones de zonas `STAGING` o `CROSSDOCK` del almacén. Vacío dice "La primera de recepción" (la primera posición de una zona `STAGING`). Ayuda: "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de muelle." Vaciarla la quita |
+
+Al guardar con **otro modo** aparece la confirmación **«¿Cambiar el modo de recepción?»**: "Los recibos nuevos de {código} entrarán {con acomodo | directo a posición}. Los {n} recibos abiertos conservan su modo y los
+{m} recibos con acomodo pendiente siguen igual." (botón **Cambiar el modo**; mientras se cuentan los recibos aparece "…"). Cambiar el modo **no toca** los recibos abiertos ni los acomodos pendientes. Las reglas y los
+mensajes del servidor están en el [manual 06, sección 1.4](../06-inventario-y-almacen.md#14-modo-de-recepción-y-posición-de-recepción-por-defecto-lote-16).
+
+![Ficha de ALM-01, pestaña Datos: al final, el grupo Recepción con "Modo de recepción" (Con acomodo) y "Posición de recepción por defecto" (La primera de recepción), cada uno con su ayuda](img/l16-almacen-recepcion.png)
+
+![Confirmación «¿Cambiar el modo de recepción?»: "Los recibos nuevos de ALM-01 entrarán directo a posición. Los 4 recibos abiertos conservan su modo y los 4 recibos con acomodo pendiente siguen igual.", con Cancelar y Cambiar el modo](img/l16-almacen-recepcion-dialogo.png)
 
 **Zonas.**
 
@@ -557,7 +600,10 @@ motivo.
 
   1. **Tipo de ajuste** (obligatorio): **Subir** entra inventario; **Bajar** lo saca. La cantidad se escribe siempre en positivo; la pantalla
      pone el signo.
-  2. **Producto**, **Almacén** y **Posición**. Debajo de la cantidad aparece **"Disponible en la posición: N"**.
+  2. **Producto**, **Almacén** y **Posición**. Debajo de la cantidad aparece **"Disponible en la posición: N"**. Al **subir** se
+     puede elegir cualquier posición del almacén; al **bajar**, la lista ofrece solo las posiciones donde el producto tiene
+     disponible, cada una con su cantidad ("A-01 · A · 5 disp."), y el campo está apagado hasta elegir el producto ("Elija primero
+     un producto"). Si cambia a Bajar, o cambia el producto o el almacén, y la posición elegida ya no tiene de ese producto, se quita.
   3. **Cantidad** (mayor que cero, hasta 3 decimales; al **bajar** no puede pasar de lo disponible).
   4. **Motivo**, con buscador. Depende de la dirección: **Encontrado** solo al subir; **Daño**, **Pérdida** y **Vencido** solo al bajar; los demás
      en las dos. Si cambia de dirección y el motivo elegido ya no vale, se quita.
@@ -733,7 +779,7 @@ proveedor"; también busca en el transporte y la referencia). Cada recibo muestr
 
 Los más recientes van primero. El pie de la lista trae el rango, **Filas por página**, ‹ ›, y **Exportar** (todo lo que cumple los
 filtros, no solo la página; ver "Todas las tablas"). **Un clic** elige el recibo; **doble clic** abre su encabezado en un modal (el
-mismo del lápiz del detalle).
+mismo del lápiz del detalle). Un recibo **directo a posición** lleva la etiqueta **Directo** junto a su origen. **Exportar** saca cada recibo **con sus líneas** (ver "Exportar: compañía, filtros, fechas y números").
 
 **El detalle (derecha).**
 
@@ -789,6 +835,39 @@ dice por qué:
 
 Si el servidor rechaza la confirmación con errores por línea (por ejemplo, falta el lote), el mensaje sale en la fila de esa línea.
 
+### Recibo directo a posición (Lote 16)
+
+**Para qué sirve.** En un almacén con modo **Directo a posición** (ficha del almacén → Datos → Recepción) el recibo **no pasa por la posición de recepción**: cada línea lleva la **posición donde se guarda** y, al confirmar, la
+mercancía entra ahí, **sin tareas de acomodo**. Las reglas, los mensajes y los estatus están en el [manual 06, sección 4.1](../06-inventario-y-almacen.md#41-recibo-directo-a-posición-lote-16).
+
+**Cómo se ve.**
+- **Modo del recibo.** El encabezado lleva **Modo de recepción** ("Por defecto, el del almacén; solo se cambia mientras el recibo está abierto."). Al crear un recibo sigue al del almacén elegido mientras usted no elija otro (el
+  campo dice "El del almacén"). En un recibo directo **se oculta la Posición de recepción** del encabezado y del modal **Lote y series**: la mercancía no pasa por ahí.
+- **Chips.** El detalle lleva el chip **Directo a posición** junto al estatus; la lista, la etiqueta **Directo**.
+- **Columna "Posición destino".** La rejilla de líneas agrega una columna con un selector ("Elija dónde se guarda…"). **No ofrece posiciones de recepción ni de cruce de muelle** (la cuarentena sí) y pone primero las
+  **sugeridas**. **Se guarda al elegir**, como el resto de la fila. Bajo el selector, si la posición elegida no es la sugerida, aparece la pista **«Sugerida: {posición} · {motivo}»** (por ejemplo, "Sugerida: R-02 · Reserva vacía").
+  En un panel angosto (bajo 760 px) cada línea se ve como tarjeta.
+- **Aviso de cupo.** Si lo recibido es más que el espacio libre de la posición elegida aparece un chip naranja **«Excede el cupo de {posición}: caben {n}»**. **No bloquea**: se puede guardar y confirmar. El espacio libre es
+  el cupo menos la existencia de la posición y menos lo que otras líneas del mismo recibo ya destinan a ella; sin cupo configurado no hay aviso.
+- **Usar posiciones sugeridas.** Un botón bajo la tabla (con `warehouse.receive`, con el recibo abierto y alguna línea por asignar) asigna a cada línea que recibe algo y no tiene posición la **primera sugerida donde cabe**. Avisa
+  **«Se asignó posición a {n} línea(s); {m} sin sugerencia.»**: elija a mano las {m}. **Nada se llena solo**: solo al pulsarlo.
+- **Confirmar.** El botón se apaga con el motivo **«Falta la posición destino en {n} línea(s).»** mientras alguna línea que recibe algo no tenga destino. La confirmación dice: "Se confirma el recibo {número} completo: cada línea
+  entra a su posición destino, sin tareas de acomodo. Ya no se podrá modificar." Después el recibo queda **Acomodado** (pasa por Completado en el mismo momento, y el historial deja los dos pasos) y no hay tareas de acomodo que trabajar.
+  No pide destino un producto por lote sin lote ni una línea con cruce de muelle asignado.
+- **Devoluciones.** En un recibo de devolución, la primera sugerida es una posición de **cuarentena** ("Cuarentena (devolución)") si el almacén tiene una.
+
+![Recibo REC-00034, Recibiendo y Directo a posición: dos líneas (5 y 3 unidades) con la columna Posición destino vacía ("Elija dónde se guarda…") y la pista "Sugerida: B01-R01-N1-P04 · Reserva vacía", el botón Usar posiciones sugeridas y Confirmar recibo apagado con "Falta la posición destino en 2 línea(s)."](img/l16-recibo-directo.png)
+
+![El mismo recibo después de Usar posiciones sugeridas: cada línea con su posición destino (B01-R01-N1-P04 · RSV y B01-R01-N1-P01 · RSV) y Confirmar recibo activo](img/l16-recibo-directo-sugeridas.png)
+
+![Recibo REC-00035: una línea de 8 unidades con su posición destino elegida, la pista "Sugerida: B01-R01-N1-P04 · Reserva vacía" y el aviso naranja "Excede el cupo de …: caben 5"; Confirmar recibo sigue activo](img/l16-recibo-directo-cupo.png)
+
+![REC-00034 ya confirmado: estatus Acomodado con el chip Directo a posición, las líneas con su posición destino (Q-01 y B01-R01-N1-P01), Confirmar recibo apagado con "El recibo ya está confirmado." y ninguna tarea de acomodo](img/l16-recibo-acomodado.png)
+
+| Motivo que se ve bajo **Confirmar recibo** (recibo directo) | Qué hacer |
+|---|---|
+| "Falta la posición destino en {n} línea(s)." | Elija la posición de cada línea que recibe algo, o pulse **Usar posiciones sugeridas**. |
+
 ### Encabezado del recibo (modal)
 
 **Nuevo recibo** (cabecera de la pantalla, `warehouse.receive`) y el **doble clic** o el **lápiz** de un recibo abren el mismo modal.
@@ -800,7 +879,8 @@ Si el servidor rechaza la confirmación con errores por línea (por ejemplo, fal
 | **Origen** | Ciego, Devolución, Contra aviso de llegada o Contra orden de compra (esta última solo si tiene `purchasing.receive` y el módulo Compras encendido). Al editar, Ciego ↔ Devolución solo en recibos sin documento. |
 | **Almacén** (obligatorio) | Al editar, solo cambia en un recibo sin documento y sin líneas. |
 | **Aviso de llegada** / **Orden de compra** | Solo al crear con ese origen: avisos pendientes (sin recibo) u órdenes Enviadas o Recibidas parcial **del almacén elegido**. Con **Recibir** desde un aviso, el origen, el almacén y el aviso ya vienen elegidos. |
-| **Posición de recepción** | Zona STAGING o CROSSDOCK. Vacío: la primera posición de una zona STAGING. Queda como la posición por defecto de las líneas. |
+| **Modo de recepción** (Lote 16) | **Con acomodo** o **Directo a posición**. Al crear, sigue al del almacén elegido ("El del almacén"); al editar, muestra el del recibo y se cambia solo mientras está abierto. |
+| **Posición de recepción** | Zona STAGING o CROSSDOCK. Vacío: la posición por defecto del almacén o, si no tiene, la primera posición de una zona STAGING. Queda como la posición por defecto de las líneas. **No se pide en un recibo directo.** |
 | **Muelle** | Opcional; los muelles del almacén. |
 | **Transporte** y **Referencia** | Texto libre, hasta 80 caracteres. |
 
@@ -840,6 +920,11 @@ mismos filtros y la misma lista que la pestaña Recibos (aquí el filtro Estatus
 acomodo del recibo elegido**, con las acciones de cada fila (ver la captura y las acciones en "Tareas de almacén", más abajo). Al cerrar la **última** tarea, el recibo pasa
 a **Acomodado** y sale de esta lista. Doble clic en un recibo abre su encabezado (solo lectura: ya está confirmado).
 
+**Acomodo pendiente en un almacén directo (Lote 16).** Si el filtro **Almacén** es un almacén **directo a posición**, aparece el aviso **«{código} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o
+con cruce de muelle.»** Los recibos directos no generan tareas de acomodo, así que no figuran aquí; quedan Acomodados al confirmar. Siguen apareciendo los recibos que ya tenían tareas cuando cambió el modo.
+
+![Acomodo pendiente filtrado por ALM-01: el aviso "ALM-01 recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle." sobre la lista de recibos con acomodo pendiente y las tareas del recibo elegido](img/l16-acomodo-pendiente-aviso.png)
+
 **Permiso.** `inventory.view` (todo el módulo en solo lectura); **`warehouse.receive`** para crear, editar el encabezado, capturar
 líneas, confirmar, borrar y administrar avisos, e iniciar y completar las tareas de acomodo; **`warehouse.manage`** para asignarlas y
 cancelarlas. Recibir contra orden de compra exige además `purchasing.receive` + módulo Compras. Módulo `WMS_LOTSERIAL`.
@@ -854,6 +939,7 @@ cancelarlas. Recibir contra orden de compra exige además `purchasing.receive` +
 | Recibiendo → **Completado** | `warehouse.receive` | **Confirmar recibo**, sin diferencia | Cambiar el encabezado, las líneas, confirmar y borrar |
 | Discrepancia → **Completado con diferencia** | `warehouse.receive` | **Confirmar recibo**, con diferencia | Igual que Completado |
 | Completado o Completado con diferencia → **Acomodado** | el sistema | Se cierra la última tarea de acomodo (o no hubo nada que acomodar) | — |
+| Recibiendo o Discrepancia → **Acomodado** (recibo **directo**, Lote 16) | `warehouse.receive` | **Confirmar recibo**, con posición destino en cada línea que recibe algo | Completado o Completado con diferencia y **Acomodado** en el mismo momento; el historial deja los dos pasos; sin tareas |
 
 Contra aviso u orden de compra el recibo **nace en Recibiendo**. Un recibo **nunca vuelve a Esperado**: si se borran todas sus
 líneas queda en Recibiendo, y para deshacerlo se borra el recibo. El detalle técnico (efectos en el Kárdex, orden de compra y cruce de
@@ -880,6 +966,9 @@ muelle) está en el manual 06, sección 4.
 | Aviso: líneas | máx. 200 | "El aviso de llegada admite como máximo 200 líneas." |
 | Recibo no encontrado | el enlace apunta a un recibo que ya no existe | "Recibo no encontrado." |
 | Confirmar / borrar / editar un recibo confirmado | el servidor lo rechaza (422) | "El recibo {n} ya fue confirmado; no se puede modificar." |
+| Recibo directo: confirmar con una línea sin destino | el servidor lo rechaza (400) | "Indique la posición destino de {sku}: el recibo entra directo a posición." (bajo la fila de esa línea) |
+| Recibo directo: posición destino de recepción o de cruce | el servidor lo rechaza (400) | "La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado." |
+| Recibo directo: posición o zona desactivada | el servidor lo rechaza (422) | "La posición destino {code} está desactivada." / "La zona de la posición destino {code} está inactiva." |
 
 Los demás mensajes del servidor (cambio de tipo con documento, almacén con líneas, esperado en un recibo con documento, cruce de
 muelle asignado, etc.) salen tal cual en el formulario o bajo el campo de la fila; están todos en el manual 06, sección 4, y en el
@@ -1101,8 +1190,12 @@ Con `warehouse.pick` la pantalla tiene **dos paneles lado a lado**: **Recolecci�
   - **Producto**: buscador por SKU o nombre del almacén elegido; solo aparecen productos con existencia disponible y del mismo dueño
     que las demás líneas. Bajo el campo se ve la existencia ("15 disp.").
   - **Cantidad**: al elegir el producto queda en 1. En un producto por serie debe coincidir con el número de series.
-  - **Posición**: vacía significa "Automático (FEFO)": el sistema elige. Las posiciones con existencia de ese producto van primero,
-    y bajo el campo se anuncia cuál usaría el sistema ("FEFO: A01-R01-N1-P01"). Es solo una pista.
+  - **Posición**: vacía significa "Automático (FEFO)": el sistema elige. Mientras no haya producto el campo está apagado ("Elija
+    primero un producto"). Con producto, la lista ofrece **solo las posiciones donde ese producto tiene existencia disponible** (y,
+    si eligió lote, solo las de ese lote), cada una con lo disponible ("A01-R01-N1-P01 · PICK · 12 disp."), en el mismo orden en que
+    el sistema las usaría (vence primero; luego picking, reserva…; luego código); la primera va marcada **Sugerida** y bajo el
+    campo se anuncia ("FEFO: A01-R01-N1-P01"). Si cambia el producto o el lote y la posición elegida ya no tiene de ese producto,
+    se quita sola.
   - **Lote**: solo si alguna línea es de un producto por lote o por serie; vacío es "Automático (FEFO)". Ofrece los lotes con
     existencia.
   - **Series**: solo para productos por serie. El botón **Series (n)** abre "Series de la línea n · SKU": una serie por renglón (o
@@ -1434,6 +1527,22 @@ reabasto en Recolección y empaque › Reabasto, el conteo en Conteo cíclico y 
 del recibo). Si el recibo ya está confirmado se abre en solo lectura.
 
 **¿Cómo vuelvo la barra de Recolección y empaque a 60/40?** Enfoque la barra y pulse Enter, o haga doble clic en ella.
+
+**¿Cómo pongo un almacén en directo?** En **Almacenes**, abra el almacén, pestaña **Datos**, grupo **Recepción**: cambie el **Modo de recepción** a "Directo a posición", guarde y confirme. Los recibos **nuevos** nacen
+directos; los abiertos conservan su modo y las tareas de acomodo pendientes siguen.
+
+**¿Por qué mi recibo directo no me deja confirmar?** Porque falta la posición destino en alguna línea que recibe algo ("Falta la posición destino en {n} línea(s)."). Elíjala en la columna **Posición destino** o pulse **Usar posiciones
+sugeridas**.
+
+**¿Puedo pasarme del cupo de una posición?** Sí: el chip naranja **«Excede el cupo de {posición}: caben {n}»** solo avisa. Guarde y confirme igual, y transfiera el sobrante después.
+
+**¿Por qué no veo las posiciones de recepción en "Posición destino"?** Porque en un recibo directo la mercancía se guarda, no se recibe en recepción: el selector no ofrece posiciones de recepción (`STAGING`) ni de cruce de muelle
+(`CROSSDOCK`). La cuarentena sí se ofrece.
+
+**¿Por qué el selector de Posición en Recolección y empaque solo muestra algunas posiciones?** Porque solo ofrece las posiciones donde el producto elegido tiene existencia disponible (con su cantidad), en el orden en que el sistema
+las usaría. Sin producto, el campo está apagado.
+
+**¿Por qué los números tienen coma?** Formato de Puerto Rico: coma para los miles y punto para los decimales (`61,023`). Ver "Exportar: compañía, filtros, fechas y números".
 
 **¿Por qué "Cruce de muelle" no aparece en mi menú?** El módulo `CROSSDOCK` viene apagado por defecto; pida a un
 administrador que lo encienda en Configuración si su compañía lo necesita.

@@ -19,6 +19,7 @@ namespace Teikem.Infrastructure.Analytics;
 /// - ExpectedQty/VarianceQty/HasVariance con ReceiptRules (un ciego espera lo recibido; una línea extra de ASN espera 0).
 /// - ReceivedCost = Σ recibido × UnitCost de la línea de PO (costo congelado, D35), Round4; NULL si el recibo no es de PO.
 /// - Nombres de campo estables: los usa SystemAnalyticsSeeder (AnalyticsSeedFieldsTests lo verifica).
+/// - Lote 16: ReceivingModeCode (PUTAWAY | DIRECT: el modo con que se abrió el recibo; NULL = PUTAWAY) y su etiqueta.
 /// </summary>
 public sealed class ReceiptDataSource(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups) : IDataSource
 {
@@ -55,6 +56,8 @@ public sealed class ReceiptDataSource(TeikemDbContext db, ITenantContext tenant,
         new DataField("ReceivedCost", "Costo recibido", "Received cost", DataFieldType.Number, IsMoney: true),
         new DataField("CreatedAtUtc", "Creado el", "Created at", DataFieldType.Date),
         new DataField("ReceivedAtUtc", "Confirmado el", "Received at", DataFieldType.Date),
+        new DataField("ReceivingMode", "Modo de recepción", "Receiving mode", DataFieldType.Text),              // Lote 16
+        new DataField("ReceivingModeCode", "Código de modo de recepción", "Receiving mode code", DataFieldType.Text),   // Lote 16
     };
 
     public IReadOnlyList<DataRelation> Relations { get; } = Array.Empty<DataRelation>();
@@ -110,6 +113,7 @@ public sealed class ReceiptDataSource(TeikemDbContext db, ITenantContext tenant,
         var linesByReceipt = lines.GroupBy(l => l.ReceiptHeaderId).ToDictionary(g => g.Key, g => g.ToList());
         var statusMap = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.ReceiptStatus, ct);
         var lang = tenant.Lang;
+        var modes = await WarehouseDataSource.ReceivingModeLabelsAsync(db, lang, ct);
 
         var rows = new List<DataRow>(receipts.Count);
         foreach (var r in receipts)
@@ -149,6 +153,8 @@ public sealed class ReceiptDataSource(TeikemDbContext db, ITenantContext tenant,
                 ["ReceivedCost"] = cost,
                 ["CreatedAtUtc"] = r.CreatedAtUtc,
                 ["ReceivedAtUtc"] = r.ReceivedAtUtc,
+                ["ReceivingMode"] = WarehouseDataSource.ReceivingModeLabel(modes, r.ReceivingModeLookupId),
+                ["ReceivingModeCode"] = WarehouseDataSource.ReceivingModeCode(modes, r.ReceivingModeLookupId),
             });
         }
         return rows;

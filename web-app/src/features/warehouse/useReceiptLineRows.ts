@@ -4,6 +4,8 @@
 // Enter o al elegir producto; los guardados van en FILA ÚNICA (uno tras otro, en el orden en que se pidieron) para que el
 // alta de una fila sepa cuál es su línea nueva y el estatus del recibo se sincronice en orden. La ficha que devuelve cada
 // escritura queda en caché (`useSaveReceiptLine`) e invalida la lista. Lógica pura en receiptLineEdit.ts.
+// Lote 16: `pickTarget` pone la posición destino de una fila (recibo directo) y la guarda de una vez (PUT con `targetBinId`
+// o `clearTargetBin`; en una fila nueva va en su POST cuando esté completa).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import type { components } from '../../kernel/api/schema'
@@ -17,6 +19,7 @@ import {
   onExpectedInput,
   onProductPicked,
   onReceivedInput,
+  onTargetPicked,
   reconcileRows,
   rowErrorsFromProblem,
   rowFromLine,
@@ -29,6 +32,7 @@ import {
 
 type LineDto = components['schemas']['ReceiptLineDto']
 type PickedProduct = { publicId?: string | null; sku?: string | null; name?: string | null; trackingTypeCode?: string | null } | null
+type PickedBin = { id?: number | null; code?: string | null; zoneTypeCode?: string | null } | null
 
 // claves locales de las filas nuevas (estables: el foco no se pierde al guardarse la fila)
 let keySeq = 0
@@ -41,6 +45,8 @@ export interface ReceiptLineRowsState {
   input: (key: string, field: 'expected' | 'received', text: string) => void
   /** Se elige el producto de una fila (sin documento): si ya hay recibido, se guarda. */
   pickProduct: (key: string, product: PickedProduct) => void
+  /** Lote 16: se elige (o se quita) la posición destino de una fila: se guarda al elegir. */
+  pickTarget: (key: string, bin: PickedBin) => void
   /** Guarda la fila si tiene algo que guardar (en la fila única de guardados). */
   save: (key: string) => Promise<void>
   /** Quita una fila: la nueva sin guardar, en el cliente; la guardada, con `DELETE` (lanza el error del servidor). */
@@ -78,6 +84,7 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
 
   // la ficha del servidor cambió (guardado, otra consulta, confirmación): se pone al día sin pisar lo tecleado
   const { manual, editable } = mode
+  const direct = mode.direct === true
   useEffect(() => {
     commit((prev) => reconcileRows(prev, receipt.lines, { manual, editable }, newKey))
   }, [receipt.lines, manual, editable, commit])
@@ -141,6 +148,14 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
     [save, trailing, update],
   )
 
+  const pickTarget = useCallback(
+    (key: string, bin: PickedBin) => {
+      update(key, (r) => onTargetPicked(r, bin))
+      void save(key)
+    },
+    [save, update],
+  )
+
   const remove = useCallback(
     async (key: string) => {
       const row = rowsRef.current.find((r) => r.key === key)
@@ -180,7 +195,7 @@ export function useReceiptLineRows(receipt: ReceiptDetailDto, mode: RowsMode): R
   )
 
   return useMemo(
-    () => ({ rows, mode: { manual, editable }, input, pickProduct, save, remove, applyLine, setLineErrors }),
-    [rows, manual, editable, input, pickProduct, save, remove, applyLine, setLineErrors],
+    () => ({ rows, mode: { manual, editable, direct }, input, pickProduct, pickTarget, save, remove, applyLine, setLineErrors }),
+    [rows, manual, editable, direct, input, pickProduct, pickTarget, save, remove, applyLine, setLineErrors],
   )
 }

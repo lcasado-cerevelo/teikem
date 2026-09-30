@@ -60,7 +60,8 @@ export function useKardexColumns(ids: readonly KardexColumnId[] = KARDEX_COLUMNS
         id: 'date',
         header: t(`${C}.date`),
         cell: (r) => <span className="mono">{splitDateTime(r.createdAtUtc, lang).date}</span>,
-        exportValue: (r) => splitDateTime(r.createdAtUtc, lang).date,
+        // Excel/CSV: la fecha y hora reales en una sola celda de FECHA (la columna Hora no se exporta)
+        exportValue: (r) => r.createdAtUtc,
         sortValue: (r) => r.createdAtUtc,
         card: 'title',
       },
@@ -68,7 +69,7 @@ export function useKardexColumns(ids: readonly KardexColumnId[] = KARDEX_COLUMNS
         id: 'time',
         header: t(`${C}.time`),
         cell: (r) => <span className="mono">{splitDateTime(r.createdAtUtc, lang).time}</span>,
-        exportValue: (r) => splitDateTime(r.createdAtUtc, lang).time,
+        exportable: false,
         sortValue: (r) => r.createdAtUtc,
       },
       type: {

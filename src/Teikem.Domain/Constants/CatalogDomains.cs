@@ -94,6 +94,21 @@ public static class LookupDomains
     public const string ReconciliationTrigger = "ReconciliationTrigger";
     /// <summary>Origen del conteo cíclico (CycleCount.OriginLookupId): MANUAL (selección) | CHANGES (lo cambiado).</summary>
     public const string CycleCountOrigin = "CycleCountOrigin";
+    // Lote 16 — recibo directo a posición
+    /// <summary>Modo de recepción del almacén y del recibo (Warehouse/ReceiptHeader.ReceivingModeLookupId): PUTAWAY | DIRECT.</summary>
+    public const string ReceivingMode = "ReceivingMode";
+}
+
+/// <summary>
+/// Lote 16: valores de LookupCode 'ReceivingMode'. PUTAWAY (Con acomodo) = la mercancía entra a la posición de recepción y
+/// se crean tareas de acomodo; DIRECT (Directo a posición) = cada línea lleva su posición destino y entra ahí al confirmar,
+/// sin tareas. NULL en la base = PUTAWAY (el seed rellena los almacenes y recibos existentes).
+/// </summary>
+public static class ReceivingModes
+{
+    public const string Putaway = "PUTAWAY";
+    public const string Direct = "DIRECT";
+    public static readonly string[] All = { Putaway, Direct };
 }
 
 /// <summary>

@@ -2,7 +2,7 @@
 // pausa, va al API como `search`), página y filas por página (paginación del servidor). Cualquier cambio de filtro o de
 // búsqueda vuelve a la página 1. La consulta sale de `receiptListQuery` (receiptFilters.ts).
 import { useCallback, useMemo, useState } from 'react'
-import { exportReceipts, useReceipts } from './api'
+import { exportReceiptsWithLines, useReceipts } from './api'
 import { useDebounced } from './lineRules'
 import { EMPTY_RECEIPT_FILTERS, receiptListQuery, type ReceiptFilterState, type ReceiptPhase } from './receiptFilters'
 
@@ -30,7 +30,8 @@ export function useReceiptList(phase?: ReceiptPhase) {
 
   const query = useMemo(() => receiptListQuery(filters, { phase, search, page, pageSize }), [filters, phase, search, page, pageSize])
   const list = useReceipts(query)
-  const exportRows = useCallback(() => exportReceipts(query), [query])
+  // exportación agrupada: cada recibo con sus líneas (mismos filtros; Excel/CSV una fila por línea, PDF un bloque por recibo)
+  const exportRows = useCallback(() => exportReceiptsWithLines(query), [query])
 
   return { filters, setFilters, q, setQ, page, setPage, pageSize, setPageSize, query, list, exportRows }
 }

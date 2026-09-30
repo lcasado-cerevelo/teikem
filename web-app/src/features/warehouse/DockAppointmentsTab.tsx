@@ -395,7 +395,12 @@ export function DockAppointmentsTab() {
       >
         <div className="f">
           <label>{t('warehouse.dockAppointments.filters.warehouse')}</label>
-          <WarehousePicker value={warehousePublicId} onChange={setWarehousePublicId} placeholder={t('warehouse.dockAppointments.filters.anyWarehouse')} />
+          <WarehousePicker
+            value={warehousePublicId}
+            onChange={setWarehousePublicId}
+            placeholder={t('warehouse.dockAppointments.filters.anyWarehouse')}
+            filterLabel={t('warehouse.dockAppointments.filters.warehouse')}
+          />
         </div>
         <SelectFilter
           label={t('warehouse.dockAppointments.filters.dock')}

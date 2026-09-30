@@ -132,7 +132,9 @@ GO
     ('InventoryDiscrepancyKind',1,'Tipo de descuadre','Discrepancy kind'),
     ('ReconciliationTrigger',1,'Origen de la conciliación','Reconciliation trigger'),
     -- Lote 14 — origen del conteo cíclico (selección o "lo cambiado")
-    ('CycleCountOrigin',1,'Origen del conteo','Count origin')
+    ('CycleCountOrigin',1,'Origen del conteo','Count origin'),
+    -- Lote 16 — recibo directo a posición: modo de recepción del almacén y del recibo
+    ('ReceivingMode',1,'Modo de recepción','Receiving mode')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -333,7 +335,9 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('ReconciliationTrigger','EVENT','Automática (movimiento)','Automatic (movement)',1),('ReconciliationTrigger','MANUAL','Manual','Manual',2),
 ('ReconciliationTrigger','SCHEDULED','Programada','Scheduled',3),('ReconciliationTrigger','MIGRATION','Migración','Migration',4),
 -- Lote 14 (D2, D3) — origen del conteo cíclico: selección (alta normal, web o app) o "lo cambiado" (uno por posición)
-('CycleCountOrigin','MANUAL','Selección','Selection',1),('CycleCountOrigin','CHANGES','Lo cambiado','Changed positions',2);
+('CycleCountOrigin','MANUAL','Selección','Selection',1),('CycleCountOrigin','CHANGES','Lo cambiado','Changed positions',2),
+-- Lote 16 — modo de recepción (almacén y recibo): con acomodo (posición de recepción + tareas) o directo a la posición destino
+('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1),('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -669,6 +673,20 @@ BEGIN
     FROM dbo.Tenant t
     WHERE EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
       AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition i WHERE i.TenantId = t.TenantId AND i.Name = N'Descuadres pendientes');
+END
+GO
+
+/* -------------------------------------------------------------------------
+   Lote 16 — Recibo directo a posición: los almacenes y los recibos que no tienen modo de recepción quedan "Con acomodo"
+   (PUTAWAY), el comportamiento de siempre (D2: los recibos conservan el modo con que se abrieron; D8: Depot y la demo con
+   acomodo). El modo de Advance Solutions (DIRECT) sale de la configuración de migración, no de aquí. Idempotente: solo
+   toca filas con el modo NULL.
+   ------------------------------------------------------------------------- */
+DECLARE @L16Putaway INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReceivingMode' AND InternalCode = 'PUTAWAY');
+IF @L16Putaway IS NOT NULL
+BEGIN
+    UPDATE dbo.Warehouse SET ReceivingModeLookupId = @L16Putaway WHERE ReceivingModeLookupId IS NULL;
+    UPDATE dbo.ReceiptHeader SET ReceivingModeLookupId = @L16Putaway WHERE ReceivingModeLookupId IS NULL;
 END
 GO
 

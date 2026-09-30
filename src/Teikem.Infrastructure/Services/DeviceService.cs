@@ -6,6 +6,7 @@ using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Entities;
 using Teikem.Domain.Security;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -275,8 +276,8 @@ public sealed class DeviceService(
         await security.WriteAsync(SecurityEventTypes.ApiCredential, SecurityOutcomes.Success, null, device.TenantId, new { action = "device_enrolled", device = device.Code }, ct);
 
         var tenantName = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.TenantId == device.TenantId).Select(t => t.Name).FirstAsync(ct);
-        var (warehousePublicId, theme) = await PreferencesAsync(device, ct);
-        return new DeviceEnrolledDto(device.PublicId, secret, tenantName, warehousePublicId, theme);
+        var (warehousePublicId, theme, receivingMode) = await PreferencesAsync(device, ct);
+        return new DeviceEnrolledDto(device.PublicId, secret, tenantName, warehousePublicId, theme, receivingMode);
     }
 
     /// <summary>
@@ -317,8 +318,8 @@ public sealed class DeviceService(
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);
         var usable = device.IsActive && await TenantUsableAsync(device.TenantId, ct);
         await TouchAsync(device, null, req.AppVersion, ct);
-        var (warehousePublicId, theme) = await PreferencesAsync(device, ct);
-        return new DeviceHeartbeatDto(usable, warehousePublicId, theme, DateTime.UtcNow);
+        var (warehousePublicId, theme, receivingMode) = await PreferencesAsync(device, ct);
+        return new DeviceHeartbeatDto(usable, warehousePublicId, theme, DateTime.UtcNow, receivingMode);
     }
 
     // ---------------------------------------------------------------- costuras para AuthService
@@ -499,13 +500,21 @@ public sealed class DeviceService(
         return w.WarehouseId;
     }
 
-    private async Task<(Guid? WarehousePublicId, string? Theme)> PreferencesAsync(UserDevice device, CancellationToken ct)
+    /// <summary>
+    /// Almacén por defecto, tema y (Lote 16) modo de recepción del almacén por defecto: PUTAWAY | DIRECT (NULL en la base =
+    /// PUTAWAY); null si el aparato no tiene almacén por defecto.
+    /// </summary>
+    private async Task<(Guid? WarehousePublicId, string? Theme, string? ReceivingMode)> PreferencesAsync(UserDevice device, CancellationToken ct)
     {
-        Guid? warehouse = device.DefaultWarehouseId is int wid
-            ? await db.Warehouses.AsNoTracking().IgnoreQueryFilters().Where(w => w.WarehouseId == wid && w.TenantId == device.TenantId).Select(w => (Guid?)w.PublicId).FirstOrDefaultAsync(ct)
+        var warehouse = device.DefaultWarehouseId is int wid
+            ? await db.Warehouses.AsNoTracking().IgnoreQueryFilters().Where(w => w.WarehouseId == wid && w.TenantId == device.TenantId)
+                .Select(w => new { w.PublicId, w.ReceivingModeLookupId }).FirstOrDefaultAsync(ct)
             : null;
         var theme = device.ThemeLookupId is int tid ? (await lookups.GetAsync(tid, ct))?.InternalCode : null;
-        return (warehouse, theme ?? DefaultTheme);
+        string? mode = null;
+        if (warehouse is not null)
+            mode = ReceivingModeRules.Normalize(warehouse.ReceivingModeLookupId is int mid ? (await lookups.GetAsync(mid, ct))?.InternalCode : null);
+        return (warehouse?.PublicId, theme ?? DefaultTheme, mode);
     }
 
     private async Task<IReadOnlyList<DeviceDto>> ToDtosAsync(IReadOnlyCollection<UserDevice> rows, CancellationToken ct)

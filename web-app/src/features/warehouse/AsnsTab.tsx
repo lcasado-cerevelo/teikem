@@ -139,11 +139,24 @@ export function AsnsTab({ onReceive }: { onReceive: (asn: AsnDto) => void }) {
       >
         <div className="f">
           <label htmlFor={whId}>{t('warehouse.asns.filters.warehouse')}</label>
-          <WarehousePicker id={whId} value={warehousePublicId} onChange={(v) => setWarehousePublicId(v)} placeholder={t('warehouse.asns.filters.anyWarehouse')} />
+          <WarehousePicker
+            id={whId}
+            value={warehousePublicId}
+            onChange={(v) => setWarehousePublicId(v)}
+            placeholder={t('warehouse.asns.filters.anyWarehouse')}
+            filterLabel={t('warehouse.asns.filters.warehouse')}
+          />
         </div>
         <div className="f">
           <label htmlFor={clientId}>{t('warehouse.asns.filters.client')}</label>
-          <ClientPicker id={clientId} value={clientPublicId} onChange={(v) => setClientPublicId(v)} includeInactive placeholder={t('warehouse.asns.filters.anyClient')} />
+          <ClientPicker
+            id={clientId}
+            value={clientPublicId}
+            onChange={(v) => setClientPublicId(v)}
+            includeInactive
+            placeholder={t('warehouse.asns.filters.anyClient')}
+            filterLabel={t('warehouse.asns.filters.client')}
+          />
         </div>
         <TextFilter label={t('warehouse.asns.filters.reference')} value={reference} onChange={setReference} />
         <DateRangeFilter label={t('warehouse.asns.filters.expected')} value={expected} onChange={setExpected} />

@@ -352,7 +352,16 @@
       "clear": "Limpiar",
       "all": "Todos",
       "from": "Desde",
-      "to": "Hasta"
+      "to": "Hasta",
+      "applied": {
+        "prefix": "Filtros:",
+        "none": "Sin filtros",
+        "search": "Buscar",
+        "between": "del {from} al {to}",
+        "since": "desde {from}",
+        "until": "hasta {to}",
+        "more": "{list} y {count} más"
+      }
     },
     "searchSelect": {
       "selected": "{count} elegidos",
@@ -393,7 +402,9 @@
       "none": "No hay posiciones que coincidan.",
       "noAccess": "Su usuario no puede consultar posiciones.",
       "clear": "Quitar posición",
-      "suggested": "Sugerida"
+      "suggested": "Sugerida",
+      "pickProductFirst": "Elija primero un producto",
+      "available": "{qty} disp."
     },
     "productPicker": {
       "placeholder": "Buscar producto por SKU o nombre…",
@@ -732,6 +743,7 @@
       "title": "Actividad reciente",
       "subtitle": "Lo que pasó en su compañía. Cada pestaña es un módulo de negocio; solo aparecen los que usted puede ver.",
       "tabsLabel": "Módulos de la actividad",
+      "moduleFilter": "Módulo",
       "modules": {
         "WAREHOUSE": "Almacén",
         "OPERATIONS": "Operación",
@@ -975,7 +987,8 @@
         "codeRequired": "El código es obligatorio.",
         "codePattern": "El código solo admite letras, números, guion y guion bajo (máximo 30).",
         "nameRequired": "El nombre es obligatorio."
-      }
+      },
+      "receiving": "Recepción"
     },
     "postalPicker": {
       "label": "Ciudad o código postal",
@@ -1048,7 +1061,16 @@
       "postalCode": "Código postal",
       "country": "País",
       "saved": "Cambios guardados.",
-      "deactivate": "Dar de baja"
+      "deactivate": "Dar de baja",
+      "receiving": "Recepción",
+      "receivingMode": "Modo de recepción",
+      "receivingModeHelp": "Con acomodo: entra a la posición de recepción y se crean tareas de acomodo. Directo a posición: cada línea lleva su posición y entra ahí al confirmar, sin tareas.",
+      "receivingChangeTitle": "¿Cambiar el modo de recepción?",
+      "receivingChangeBody": "Los recibos nuevos de {code} entrarán {mode}. Los {open} recibos abiertos conservan su modo y los {pending} recibos con acomodo pendiente siguen igual.",
+      "receivingChangeConfirm": "Cambiar el modo",
+      "defaultReceivingBin": "Posición de recepción por defecto",
+      "defaultReceivingBinHelp": "Zona STAGING o CROSSDOCK de este almacén. Vacío: la primera posición de recepción. Se usa en los recibos con acomodo y en las líneas con cruce de muelle.",
+      "defaultReceivingBinNone": "La primera de recepción"
     },
     "zones": {
       "title": "Zonas",
@@ -2209,8 +2231,12 @@
           "noLines": "Agregue al menos una línea para confirmar.",
           "saving": "Guardando líneas…",
           "unsaved": "Hay líneas sin guardar: salga del campo o pulse Enter para guardarlas.",
-          "errors": "Corrija las líneas marcadas antes de confirmar."
-        }
+          "errors": "Corrija las líneas marcadas antes de confirmar.",
+          "noTarget": "Falta la posición destino en {n} línea(s)."
+        },
+        "useSuggested": "Usar posiciones sugeridas",
+        "suggestedApplied": "Se asignó posición a {n} línea(s); {m} sin sugerencia.",
+        "confirmBodyDirect": "Se confirma el recibo {number} completo: cada línea entra a su posición destino, sin tareas de acomodo. Ya no se podrá modificar."
       },
       "originLong": {
         "PO": "Orden de compra",
@@ -2235,9 +2261,19 @@
           "reference": "Referencia",
           "expectedDate": "Llegada esperada",
           "createdAt": "Creado",
-          "lines": "Líneas",
-          "variance": "Diferencia"
-        }
+          "receivedAt": "Confirmado",
+          "varianceTotal": "Diferencia del recibo"
+        },
+        "exportLines": {
+          "sku": "SKU",
+          "product": "Producto",
+          "expected": "Esperado",
+          "received": "Recibido",
+          "variance": "Diferencia",
+          "lotSerial": "Lote/Serie",
+          "noLines": "Sin líneas"
+        },
+        "direct": "Directo"
       },
       "lines": {
         "title": "Líneas del recibo",
@@ -2253,7 +2289,12 @@
         "lotSerial": "Lote y series",
         "remove": "Quitar línea",
         "saving": "Guardando…",
-        "newRow": "Línea nueva"
+        "newRow": "Línea nueva",
+        "target": "Posición destino",
+        "targetOf": "Posición destino de la línea {n}",
+        "targetSuggested": "Sugerida: {bin} · {reason}",
+        "targetPlaceholder": "Elija dónde se guarda…",
+        "overCapacity": "Excede el cupo de {bin}: caben {free}"
       },
       "header": {
         "newTitle": "Nuevo recibo",
@@ -2272,7 +2313,10 @@
         "delete": "Borrar recibo",
         "deleteTitle": "Borrar recibo",
         "deleteBody": "¿Borrar el recibo {number}? Si nació de un aviso de cliente, el aviso vuelve a quedar pendiente; si nació de una orden de compra, la orden podrá recibirse de nuevo.",
-        "deleted": "Recibo {number} borrado."
+        "deleted": "Recibo {number} borrado.",
+        "mode": "Modo de recepción",
+        "modeHelp": "Por defecto, el del almacén; solo se cambia mientras el recibo está abierto.",
+        "modeByWarehouse": "El del almacén"
       },
       "capture": {
         "title": "Lote y series · {product}",
@@ -2283,7 +2327,11 @@
         "listTitle": "Recibos con acomodo pendiente",
         "tasksTitle": "Tareas de acomodo",
         "select": "Selecciona un recibo para ver sus tareas de acomodo",
-        "noTasks": "Este recibo no tiene tareas de acomodo."
+        "noTasks": "Este recibo no tiene tareas de acomodo.",
+        "directInfo": "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle."
+      },
+      "chip": {
+        "direct": "Directo a posición"
       }
     },
     "asns": {
@@ -2801,6 +2849,10 @@
         "manualOnly": "Solo manuales",
         "yes": "Sí"
       }
+    },
+    "receivingModes": {
+      "PUTAWAY": "Con acomodo",
+      "DIRECT": "Directo a posición"
     }
   },
   "system": {

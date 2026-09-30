@@ -24,5 +24,9 @@ public sealed record ReplenishmentRunRequest(Guid? WarehousePublicId = null);
 public sealed record ReplenishmentResultDto(int ProductsEvaluated, int TasksCreated, int SkippedWithOpenTask, int SkippedNoReserve,
     IReadOnlyList<WarehouseTaskDto> Tasks);
 
+/// <summary>
+/// Posición sugerida para guardar. Lote 16: el acomodo dirigido respeta el cupo en unidades (salta las posiciones donde
+/// no cabe); MaxCapacityQty = cupo de la posición y FreeQty = espacio libre (cupo − existencia; null sin cupo).
+/// </summary>
 public sealed record PutawaySuggestionDto(int BinId, string BinCode, string ZoneCode, string? ZoneTypeCode, string ReasonCode, string Reason,
-    string RotationClass);
+    string RotationClass, int? MaxCapacityQty = null, decimal? FreeQty = null);

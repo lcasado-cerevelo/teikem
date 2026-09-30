@@ -5,18 +5,24 @@
 // con otro texto en ciegos: decisión 3) y el botón ancho "Confirmar recibo" (warehouse.receive; con confirmación;
 // deshabilitado sin líneas, con filas sin guardar o con error, o si ya está confirmado, con el motivo debajo). Confirmado,
 // el panel "Tareas de acomodo" (`ReceiptPutawayTasks`). Lectura: inventory.view + WMS_LOTSERIAL (por la ruta).
+// Lote 16, recibo DIRECTO A POSICIÓN (modo del encabezado): chip "Directo a posición" junto al estatus, columna "Posición
+// destino" en la rejilla, botón "Usar posiciones sugeridas" (warehouse.receive; abierto y con líneas sin destino: `POST
+// /receipts/{id}/targets/suggest`, D3 — nada se llena solo) y "Confirmar recibo" bloqueado con "Falta la posición destino en
+// {n} línea(s).". Al confirmar entra cada línea a su posición, sin tareas (Completado → Acomodado en el mismo momento).
 import { useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { Can, useCan } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import { ConfirmDialog, EmptyState, IconCheck, IconClock, IconDoc, IconEdit, Modal, Panel, Spinner, toast } from '../../kernel/ui'
+import { Chip, ConfirmDialog, EmptyState, IconCheck, IconClock, IconDoc, IconEdit, Modal, Panel, Spinner, toast } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
-import { useConfirmReceipt, useReceipt, warehouseKeys, type ReceiptDetailDto } from './api'
+import { useApplyReceiptTargetSuggestions, useConfirmReceipt, useReceipt, warehouseKeys, type ReceiptDetailDto } from './api'
 import { formatDate, formatDateTime, lineErrorsByIndex } from './lineRules'
+import { problemText } from './problemText'
 import { hasDocument, RECEIPT_STATUS_DOMAIN, receiptOriginText } from './receiptFilters'
-import { confirmBlockers, rowVariance } from './receiptLineEdit'
+import { confirmBlockers, missingTargets, rowVariance } from './receiptLineEdit'
+import { isDirectMode } from './receivingMode'
 import { ReceiptLinesEditor } from './ReceiptLinesEditor'
 import { ReceiptPutawayTasks } from './ReceiptPutawayTasks'
 import { useReceiptLineRows } from './useReceiptLineRows'
@@ -57,14 +63,18 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
   const hintId = useId()
   const canReceive = useCan('warehouse.receive')
   const confirm = useConfirmReceipt()
+  const applySuggested = useApplyReceiptTargetSuggestions()
   const [confirming, setConfirming] = useState(false)
   const [history, setHistory] = useState(false)
   const header = receipt.header ?? {}
   const publicId = header.publicId ?? ''
   const isOpen = header.isOpen === true
   const manual = !hasDocument(header.origin)
-  const lines = useReceiptLineRows(receipt, { manual, editable: isOpen && canReceive })
-  const blocker = confirmBlockers(lines.rows, isOpen, manual)
+  const direct = isDirectMode(header.receivingModeCode)
+  const lines = useReceiptLineRows(receipt, { manual, editable: isOpen && canReceive, direct })
+  const blocker = confirmBlockers(lines.rows, isOpen, manual, direct)
+  const missing = direct ? missingTargets(lines.rows) : 0
+  const anySaving = lines.rows.some((r) => r.saving)
   const anyVariance = lines.rows.some((r) => (rowVariance(r, manual) ?? 0) !== 0)
   const tasks = receipt.putawayTasks ?? []
 
@@ -89,7 +99,10 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
         title={
           <>
             {t('warehouse.receipts.detail.title')} · <span className="ref">{header.number}</span>
-            <StatusChip domain={RECEIPT_STATUS_DOMAIN} code={header.statusCode} label={header.status} />
+            <span className="rcp-title-chips">
+              <StatusChip domain={RECEIPT_STATUS_DOMAIN} code={header.statusCode} label={header.status} />
+              {direct && <Chip tone="route">{t('warehouse.receipts.chip.direct')}</Chip>}
+            </span>
           </>
         }
         actions={
@@ -123,6 +136,31 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
 
         <ReceiptLinesEditor receipt={receipt} state={lines} />
 
+        {direct && isOpen && missing > 0 && (
+          <Can perm="warehouse.receive">
+            <div className="rcp-direct-acts">
+              <button
+                type="button"
+                className="btn sm"
+                disabled={applySuggested.isPending || anySaving}
+                onClick={async () => {
+                  // rowVersion de la caché al enviar (cambia con cada línea guardada)
+                  const cached = qc.getQueryData<ReceiptDetailDto>([warehouseKeys.receipt[0], publicId])
+                  try {
+                    const res = await applySuggested.mutateAsync({ publicId, body: { rowVersion: cached?.rowVersion ?? receipt.rowVersion ?? null } })
+                    toast.success(t('warehouse.receipts.detail.suggestedApplied', { n: res.assigned ?? 0, m: res.withoutSuggestion ?? 0 }))
+                  } catch (err) {
+                    if (err instanceof ApiError && err.code === 'conflict') void qc.invalidateQueries({ queryKey: [warehouseKeys.receipt[0], publicId] })
+                    toast.error(problemText(err))
+                  }
+                }}
+              >
+                {applySuggested.isPending ? t('common.loading') : t('warehouse.receipts.detail.useSuggested')}
+              </button>
+            </div>
+          </Can>
+        )}
+
         {isOpen && canReceive && <div className="note rcp-note">{t('warehouse.receipts.detail.scanHint')}</div>}
         {isOpen && anyVariance && (
           <div className="note rcp-note rcp-note-money" role="status">
@@ -143,7 +181,7 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
             </button>
             {blocker && (
               <p className="help" id={hintId}>
-                {t(`warehouse.receipts.detail.blockers.${blocker}`)}
+                {t(`warehouse.receipts.detail.blockers.${blocker}`, { n: missing })}
               </p>
             )}
           </div>
@@ -159,7 +197,7 @@ function ReceiptDetailBody({ receipt, onEditHeader }: { receipt: ReceiptDetailDt
       <ConfirmDialog
         open={confirming}
         title={t('warehouse.receipts.detail.confirmTitle')}
-        message={t('warehouse.receipts.detail.confirmBody', { number: header.number ?? '' })}
+        message={t(direct ? 'warehouse.receipts.detail.confirmBodyDirect' : 'warehouse.receipts.detail.confirmBody', { number: header.number ?? '' })}
         confirmLabel={t('warehouse.receipts.detail.confirm')}
         onConfirm={async () => {
           // rowVersion de la caché al enviar: cambia con cada línea guardada

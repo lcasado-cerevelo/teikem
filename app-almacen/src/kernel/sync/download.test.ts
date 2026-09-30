@@ -2,7 +2,10 @@ import { __resetAllForTests } from 'expo-sqlite'
 
 import { api } from '../api/client'
 import { __resetDbForTests, getDb } from '../db/database'
-import { downloadAsns, downloadProducts, downloadPurchaseOrders } from './download'
+import { __resetSecureStoreForTests } from 'expo-secure-store'
+
+import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
+import { downloadAsns, downloadBins, downloadForReceiving, downloadProducts, downloadPurchaseOrders } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -14,6 +17,8 @@ const getMock = api.GET as jest.Mock
 beforeEach(() => {
   __resetAllForTests()
   __resetDbForTests()
+  __resetSecureStoreForTests()
+  __resetSessionForTests()
   getMock.mockReset()
 })
 
@@ -143,5 +148,53 @@ describe('downloadAsns', () => {
     const rows = getDb().getAllSync<{ reference: string }>('SELECT reference FROM asn')
     expect(rows).toEqual([{ reference: 'ASN-1' }])
     expect(getDb().getAllSync('SELECT * FROM asn_line WHERE asn_id = 5')).toHaveLength(1)
+  })
+})
+
+describe('downloadBins (Lote 16)', () => {
+  it('pide las posiciones del almacén indicado, guarda el tipo de zona y conserva las inactivas con is_active = 0', async () => {
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, code: 'RSV-A-01', warehousePublicId: 'wh-1', zoneId: 5, zoneCode: 'RSV', zoneName: 'Reserva', zoneTypeCode: 'RESERVE', isActive: true },
+          { id: 2, code: 'STG-01', warehousePublicId: 'wh-1', zoneId: 6, zoneCode: 'STG', zoneName: 'Recepción', zoneTypeCode: 'STAGING', isActive: true },
+        ],
+        null,
+        '2026-01-01T00:00:00.000Z',
+      ),
+    )
+    const result = await downloadBins('wh-1')
+    expect(result).toEqual({ resource: 'bins', pages: 1, items: 2 })
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/sync/bins')
+    expect(getMock.mock.calls[0][1].params.query).toMatchObject({ warehousePublicId: 'wh-1', take: 500 })
+    expect(getDb().getAllSync('SELECT code, zone_type_code, is_active FROM bin ORDER BY id')).toEqual([
+      { code: 'RSV-A-01', zone_type_code: 'RESERVE', is_active: 1 },
+      { code: 'STG-01', zone_type_code: 'STAGING', is_active: 1 },
+    ])
+
+    getMock.mockResolvedValueOnce(page([{ id: 1, code: 'RSV-A-01', warehousePublicId: 'wh-1', zoneTypeCode: 'RESERVE', isActive: false }], null, '2026-01-01T00:10:00.000Z'))
+    await downloadBins('wh-1')
+    expect(getDb().getFirstSync('SELECT is_active FROM bin WHERE id = 1')).toEqual({ is_active: 0 })
+  })
+
+  it('la marca de agua es por almacén: otro almacén baja completo (sin since)', async () => {
+    getMock.mockResolvedValueOnce(page([], null, '2026-01-01T00:10:00.000Z'))
+    await downloadBins('wh-1')
+    getMock.mockResolvedValueOnce(page([], null, '2026-01-01T00:20:00.000Z'))
+    await downloadBins('wh-2')
+    expect(getMock.mock.calls[1][1].params.query.since).toBeUndefined()
+    getMock.mockResolvedValueOnce(page([], null, '2026-01-01T00:30:00.000Z'))
+    await downloadBins('wh-1')
+    expect(getMock.mock.calls[2][1].params.query.since).toBe('2026-01-01T00:05:00.000Z')
+  })
+})
+
+describe('downloadForReceiving', () => {
+  it('sin almacén por defecto no baja posiciones; con él, las baja al final', async () => {
+    getMock.mockImplementation(() => Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')))
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns'])
+
+    await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
   })
 })

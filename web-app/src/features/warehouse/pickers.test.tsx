@@ -316,6 +316,24 @@ describe('BinPicker', () => {
     expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual(['1'])
   })
 
+  it('Lote 16: excludeZoneTypeCodes manda las zonas de los DEMÁS tipos (zoneIds) y no ofrece las excluidas', async () => {
+    const user = userEvent.setup()
+    wrap(<BinHarness onChange={vi.fn()} excludeZoneTypeCodes={['STAGING', 'CROSSDOCK']} />)
+    await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+    await screen.findByRole('option', { name: 'A-01-01 · ALM' })
+    expect(screen.queryByRole('option', { name: /REC-01/ })).toBeNull()
+    expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual(['2'])
+  })
+
+  it('Lote 16: excludeZoneTypeCodes sin ninguna zona de esos tipos en el almacén: sin zoneIds (todas)', async () => {
+    const user = userEvent.setup()
+    wrap(<BinHarness onChange={vi.fn()} excludeZoneTypeCodes={['CROSSDOCK']} />)
+    await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+    await screen.findByRole('option', { name: 'REC-01 · STG' })
+    expect(screen.getAllByRole('option')).toHaveLength(4)
+    expect(binRequests().at(-1)?.searchParams.getAll('zoneIds')).toEqual([])
+  })
+
   it('zoneTypeCodes sin ninguna zona de esos tipos: sin opciones y sin consultar posiciones', async () => {
     const user = userEvent.setup()
     wrap(<BinHarness onChange={vi.fn()} zoneTypeCodes={['CROSSDOCK']} />)
@@ -391,6 +409,63 @@ describe('BinPicker', () => {
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Posición' })).toHaveValue('REC-01 · STG'))
     await user.click(screen.getByRole('button', { name: 'Enviar' }))
     await waitFor(() => expect(submitted).toEqual({ binId: '10' }))
+  })
+
+  describe('con lista dada (options)', () => {
+    const GIVEN = [
+      { id: 21, code: 'PISO', zoneCode: 'PISO', zoneTypeCode: 'PICKING', hint: '2 disp.' },
+      { id: 22, code: 'B-02', zoneCode: 'RES', zoneTypeCode: 'RESERVE', hint: '5 disp.' },
+    ]
+
+    it('ofrece solo esas posiciones, en su orden, con su pista y la sugerida marcada; no consulta el listado', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      wrap(<BinHarness onChange={onChange} options={GIVEN} suggestedBinIds={[21]} />)
+      await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+      const opts = await screen.findAllByRole('option')
+      expect(opts.map((o) => o.textContent)).toEqual(['PISO · PISO · 2 disp.Sugerida', 'B-02 · RES · 5 disp.'])
+      expect(binRequests()).toHaveLength(0)
+      // filtra en el cliente por código o zona
+      await user.type(screen.getByRole('combobox', { name: 'Posición' }), 'res')
+      expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['B-02 · RES · 5 disp.'])
+      await user.click(screen.getByRole('option'))
+      expect(onChange).toHaveBeenLastCalledWith(22)
+      expect(binRequests()).toHaveLength(0)
+    })
+
+    it('Enter con el código exacto la elige sin esperar al API (lector de código de barras)', async () => {
+      const user = userEvent.setup()
+      const onChange = vi.fn()
+      wrap(<BinHarness onChange={onChange} options={GIVEN} />)
+      await user.type(screen.getByRole('combobox', { name: 'Posición' }), 'b-02{Enter}')
+      expect(onChange).toHaveBeenLastCalledWith(22)
+    })
+
+    it('un valor que ya no está en la lista se quita; mientras carga se conserva', async () => {
+      const onChange = vi.fn()
+      const { rerender } = wrap(<BinHarness onChange={onChange} initial={22} options={[]} optionsLoading />)
+      expect(onChange).not.toHaveBeenCalled()
+      const client = new QueryClient()
+      rerender(
+        <QueryClientProvider client={client}>
+          <BinHarness onChange={onChange} initial={22} options={GIVEN} />
+        </QueryClientProvider>,
+      )
+      expect(onChange).not.toHaveBeenCalled()
+      rerender(
+        <QueryClientProvider client={client}>
+          <BinHarness onChange={onChange} initial={22} options={GIVEN.slice(0, 1)} />
+        </QueryClientProvider>,
+      )
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith(null))
+    })
+
+    it('lista vacía: "No hay posiciones que coincidan."', async () => {
+      const user = userEvent.setup()
+      wrap(<BinHarness onChange={vi.fn()} options={[]} />)
+      await user.click(screen.getByRole('combobox', { name: 'Posición' }))
+      expect(await screen.findByText('No hay posiciones que coincidan.')).toBeInTheDocument()
+    })
   })
 })
 

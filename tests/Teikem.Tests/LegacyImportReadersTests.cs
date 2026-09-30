@@ -326,6 +326,8 @@ public class LegacyImportReadersTests
         "Con openingBalances.source=mswm se requiere sources.mswm.connectionStringName y sources.mswm.warehouseId.")]
     [InlineData("""{ "company": { "name": "X" }, "sources": { "products": "a.csv", "mswm": { "connectionStringName": "LegacyMswm" } }, "openingBalances": { "source": "mswm" } }""",
         "Con openingBalances.source=mswm se requiere sources.mswm.connectionStringName y sources.mswm.warehouseId.")]
+    [InlineData("""{ "company": { "name": "X" }, "sources": { "products": "a.csv" }, "warehouse": { "code": "W", "receivingMode": "HALF" } }""",
+        "warehouse.receivingMode debe ser PUTAWAY o DIRECT.")]   // Lote 16
     public void Config_validation_messages_are_exact(string json, string message)
     {
         var ex = Assert.Throws<ValidationException>(() => LegacyImportConfig.Parse(json, TempDir(), checkFiles: false));

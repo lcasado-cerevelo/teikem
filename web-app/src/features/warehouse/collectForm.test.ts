@@ -12,6 +12,7 @@ import {
   compactPickLines,
   EMPTY_COLLECT_LINE,
   fefoAvailable,
+  fefoBinOptions,
   fefoBinSuggestions,
   fefoCandidates,
   isBlankLine,
@@ -144,6 +145,13 @@ describe('FEFO sugerido (PickBatchRules.Eligible)', () => {
     expect(fefoAvailable(balances)).toBe(30)
     expect(fefoAvailable(balances, 22)).toBe(5)
     expect(fefoBinSuggestions([])).toEqual([])
+  })
+
+  it('opciones del selector "Posición": una por posición con su disponible (suma de lotes), en orden FEFO; con lote, solo ese lote', () => {
+    expect(fefoBinOptions(balances).map((b) => `${b.binCode}:${b.qtyAvailable}`)).toEqual(['P-01:10', 'P-02:5', 'P-09:5', 'R-01:5', 'S-01:5'])
+    expect(fefoBinOptions(balances, 23).map((b) => `${b.binId}:${b.qtyAvailable}`)).toEqual(['3:5'])
+    expect(fefoBinOptions(balances, 99)).toEqual([])
+    expect(fefoBinOptions([])).toEqual([])
   })
 
   it('código de posición en orden ordinal (como StringComparer.Ordinal): mayúsculas antes que minúsculas', () => {

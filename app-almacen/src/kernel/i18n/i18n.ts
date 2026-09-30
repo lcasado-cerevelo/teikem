@@ -4,6 +4,7 @@
 import { getKv, KvKeys, setKv } from '../db/kv'
 import en from './en.json'
 import es from './es.json'
+import { formatQuantity, RAW_NUMBER_PARAMS } from './numberFormat'
 
 export type Lang = 'es' | 'en'
 export const LANGS: readonly Lang[] = ['es', 'en']
@@ -62,8 +63,13 @@ export function translate(lang: Lang, key: string, params?: TParams): string {
     }
     text = key
   }
-  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m))
+  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? paramText(name, params[name]) : m))
   return text
+}
+
+/** Un número en un texto lleva coma de miles ("1,250 unidades"), salvo que el parámetro sea un identificador. */
+function paramText(name: string, value: TParams[string]): string {
+  return typeof value === 'number' && !RAW_NUMBER_PARAMS.has(name) ? formatQuantity(value) : String(value)
 }
 
 /** Traducción con el idioma actual. Fuera de React (kernel); en componentes usa useT(). */

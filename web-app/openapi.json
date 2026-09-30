@@ -15743,6 +15743,14 @@
               "format": "int32",
               "default": 100
             }
+          },
+          {
+            "name": "includeLines",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -16159,6 +16167,131 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions": {
+      "get": {
+        "tags": [
+          "Receipts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptTargetSuggestionDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptTargetSuggestionDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceiptTargetSuggestionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/receipts/{publicId}/targets/suggest": {
+      "post": {
+        "tags": [
+          "Receipts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptApplySuggestionsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptApplySuggestionsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptApplySuggestionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptApplySuggestionsResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptApplySuggestionsResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptApplySuggestionsResultDto"
                 }
               }
             }
@@ -25918,6 +26051,10 @@
           "theme": {
             "type": "string",
             "nullable": true
+          },
+          "defaultWarehouseReceivingMode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -25940,6 +26077,10 @@
           "serverTimeUtc": {
             "type": "string",
             "format": "date-time"
+          },
+          "defaultWarehouseReceivingMode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -32472,6 +32613,16 @@
           "rotationClass": {
             "type": "string",
             "nullable": true
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "freeQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -32816,6 +32967,33 @@
         },
         "additionalProperties": false
       },
+      "ReceiptApplySuggestionsRequest": {
+        "type": "object",
+        "properties": {
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptApplySuggestionsResultDto": {
+        "type": "object",
+        "properties": {
+          "receipt": {
+            "$ref": "#/components/schemas/ReceiptDetailDto"
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "withoutSuggestion": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "ReceiptConfirmRequest": {
         "type": "object",
         "properties": {
@@ -32877,6 +33055,10 @@
             "nullable": true
           },
           "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivingMode": {
             "type": "string",
             "nullable": true
           }
@@ -32952,6 +33134,10 @@
             "nullable": true
           },
           "rowVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivingMode": {
             "type": "string",
             "nullable": true
           }
@@ -33042,6 +33228,24 @@
           "allocatedToCrossDock": {
             "type": "number",
             "format": "double"
+          },
+          "targetBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "targetBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetZoneTypeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "targetFreeQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -33077,6 +33281,15 @@
           "expectedQty": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "targetBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "targetBinCode": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -33120,6 +33333,15 @@
             "nullable": true
           },
           "clearExpected": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "targetBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearTargetBin": {
             "type": "boolean",
             "nullable": true
           }
@@ -33242,6 +33464,21 @@
           "pendingPutawayCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReceiptLineDto"
+            },
+            "nullable": true
+          },
+          "receivingModeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivingMode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -33267,6 +33504,57 @@
               "$ref": "#/components/schemas/ReceiptListItemDto"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptTargetSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "binId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneTypeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "reasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "maxCapacityQty": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "qtyOnHand": {
+            "type": "number",
+            "format": "double"
+          },
+          "claimedQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "freeQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "fits": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -37462,6 +37750,10 @@
           "country": {
             "type": "string",
             "nullable": true
+          },
+          "receivingMode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37654,6 +37946,23 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "receivingModeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivingMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultReceivingBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "defaultReceivingBinCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37687,6 +37996,19 @@
           },
           "rowVersion": {
             "type": "string",
+            "nullable": true
+          },
+          "receivingMode": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultReceivingBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearDefaultReceivingBin": {
+            "type": "boolean",
             "nullable": true
           }
         },

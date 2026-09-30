@@ -710,6 +710,8 @@ internal sealed class ReceivingFixture : IAsyncDisposable
             L(LookupDomains.WarehouseTaskType, c);
         var uom = L(LookupDomains.UnitOfMeasure, "UN");
         var country = L(LookupDomains.Country, "PR");
+        // Lote 16: modo de recepción (al final: ids previos intactos).
+        foreach (var c in ReceivingModes.All) L(LookupDomains.ReceivingMode, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

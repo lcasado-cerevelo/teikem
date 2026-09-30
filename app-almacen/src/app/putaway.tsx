@@ -11,6 +11,7 @@ import { colors, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { completeTask, fetchOpenPutawayTasks, fetchPutawaySuggestions, findBinByCode, startTask, type PutawaySuggestion } from '../features/putaway/putawayApi'
 import { sortTasksMineFirst, type PutawayTask } from '../features/putaway/putawayLogic'
+import { formatQuantity } from '../kernel/i18n/numberFormat'
 
 /** Pantalla 4 (docs/mobile/app-almacen-plan.md §2): lista de tareas PUTAWAY (mías primero), escanear la posición
  *  destino y completar. Necesita señal (docs/lote8A-app-decisiones.md, segunda entrega): la tarea es de todo el
@@ -134,7 +135,7 @@ export default function PutawayScreen() {
                 <Text style={styles.rowTitle}>{item.sku}</Text>
                 <Text style={styles.help}>{item.productName}</Text>
               </View>
-              <Text style={styles.rowQty}>{item.quantity ?? ''}</Text>
+              <Text style={styles.rowQty}>{item.quantity != null ? formatQuantity(item.quantity) : ''}</Text>
             </Pressable>
           )}
         />

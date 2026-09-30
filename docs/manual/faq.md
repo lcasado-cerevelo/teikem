@@ -3494,3 +3494,200 @@ porque el panel "Necesita tu atención" ya los muestra; se enciende con "Mostrar
 **¿Por qué mis gráficos con un solo punto ahora se ven y antes eran una lista?**
 Regla del dueño: los gráficos **siempre** se dibujan como gráfico. Una dona con una sola rebanada, una barra sola o una línea de un solo día
 se ven (la línea pinta cada punto cuando hay 12 o menos). Nunca hay más de 2 gráficos por fila en "Tus gráficos".
+
+## Lote 16 — Recibo directo a posición (pedido nuevo del dueño del 2026-09-30, fuera del plan de cambios), sugerencia con cupo, app con posición destino y trabajo adicional del día
+
+Capítulos: [06 — Inventario y almacén, secciones 1.4, 4.1, 5 y 9](06-inventario-y-almacen.md), [09 — App de almacén, secciones 4 y 9](09-app-almacen.md) y
+[F6 — Almacén e inventario (pantallas)](frontend/f6-almacen-e-inventario.md). Los mensajes del API traen el código HTTP indicado; los que se ven solo en pantalla o en la app van agrupados
+más abajo. Este lote cubre el **modo de recepción** del almacén (con acomodo o directo a posición), la **posición destino** de cada línea, las sugerencias con cupo, la **posición de recepción por
+defecto**, la app con el paso de posición destino y, el mismo día, el selector de posiciones de Recolección, el formato de números, exportar Recibos con sus líneas, el encabezado y los
+filtros de las exportaciones y las fechas como fecha en Excel y CSV.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "Modo de recepción desconocido: 'X'. Use PUTAWAY o DIRECT."? (400)**
+Se mandó un `receivingMode` que no es `PUTAWAY` (Con acomodo) ni `DIRECT` (Directo a posición) al crear o editar un almacén, al crear un recibo o al editar su encabezado. Mande uno de los dos
+(no distingue mayúsculas) o no mande el campo. El error viene en `errors.receivingMode`. La pantalla usa un desplegable, así que solo lo ve quien llama al API.
+
+**¿Qué significa "Indique la posición destino de {sku}: el recibo entra directo a posición."? (400)**
+Se intentó **confirmar** un recibo directo y la línea de ese producto recibió algo (mayor que 0) pero no tiene posición destino. Indique dónde se guarda: elija la posición en la columna
+"Posición destino" (o use "Usar posiciones sugeridas") y confirme de nuevo. No lo pide un producto por lote sin lote, ni una línea con cruce de muelle. En una solicitud, el error viene en
+`errors["lines[i].targetBinId"]`, donde `i` es la posición de la línea (desde 0).
+
+**¿Qué significa "La posición {code} está en una zona {zoneType}; la posición destino debe ser de guardado."? (400)**
+La posición elegida como destino está en una zona de **recepción** (`STAGING`) o de **cruce de muelle** (`CROSSDOCK`). La mercancía de un recibo directo debe quedar donde se guarda: elija una
+posición de otra zona (picking, reserva, refrigerado o cuarentena). El selector de la pantalla ya no las ofrece. Si una posición de guardado se movió después a una zona así, el mismo mensaje sale
+al confirmar.
+
+**¿Qué significa "La posición {code} no existe en el almacén del recibo."? (400)**
+Se mandó un `targetBinCode` que no coincide con ninguna posición del almacén del recibo (la app lo manda al confirmar; en la web no se escribe el código a mano). Revise el código (mayúsculas
+y minúsculas valen igual) y que la posición sea **de ese almacén**. El error viene en `errors.targetBinCode` (en el alta, `errors["lines[i].targetBinCode"]`).
+
+**¿Qué significa "Indique la posición destino por id o por código, no ambos."? (400)**
+La línea trae `targetBinId` **y** `targetBinCode`. Mande solo uno. El error viene en `errors.targetBinId`.
+
+**¿Qué significa "Posición no encontrada." al elegir el destino o la posición por defecto? (404)**
+El id de la posición no existe, es de otro almacén o es de otra compañía. La posición destino y la posición de recepción por defecto **tienen que ser del almacén del recibo (o del almacén que se edita)**.
+Vuelva a elegirla de la lista.
+
+**¿Qué significa "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición."? (400)**
+En un recibo **con aviso de llegada o con orden de compra**, cada línea del documento entra a **una sola** posición. El mismo producto llegó con dos posiciones distintas (por ejemplo, desde la app).
+Deje todo el producto en una posición (y transfiera después la parte que deba ir a otra) o, si la mercancía se recibe en dos posiciones, use un recibo **ciego** o de devolución, donde sí se pueden poner dos
+líneas del mismo producto. La app lo avisa **antes** de enviar (ver más abajo). El error viene en `errors["lines[i].targetBinCode"]`.
+
+**¿Qué significa "La posición destino {code} está desactivada." o "La zona de la posición destino {code} está inactiva."? (422)**
+La posición (o su zona) se dio de baja después de elegirla, o se intentó elegir una desactivada. Reactívela en Almacenes → Posiciones o elija otra. Se revisa al guardar la línea y otra vez **al confirmar**: un
+recibo abierto con un destino dado de baja no se puede confirmar hasta corregirlo.
+
+**¿Qué significa "El almacén no tiene una posición de recepción (zona STAGING); indíquela." al pasar un recibo a "Con acomodo"? (422)**
+Es el mismo mensaje de siempre. Ahora sale también cuando se cambia un recibo **directo** abierto a "Con acomodo" y el almacén no tiene zona `STAGING` ni una posición de recepción por defecto, y el
+encabezado no indica una. Cree una zona de recepción con una posición, fije la **Posición de recepción por defecto** del almacén, o deje el recibo en directo.
+
+**¿Qué significa "La posición de recepción debe estar en una zona STAGING o CROSSDOCK." o "La posición de recepción está desactivada." al guardar un almacén? (400 / 422)**
+Son los mismos mensajes de la posición de recepción de un recibo, ahora también para la **Posición de recepción por defecto** del almacén (Almacenes → Datos → Recepción). Elija una posición activa de una zona de
+recepción o de cruce de muelle del mismo almacén. El error viene en `errors.defaultReceivingBinId`.
+
+**¿Qué significa "El recibo {n} ya fue confirmado; no se puede modificar." al usar "Usar posiciones sugeridas" o cambiar el modo? (422)**
+Es el mensaje de siempre (recibo ya confirmado), ahora también para el destino de las líneas, el modo del recibo y "Usar posiciones sugeridas": solo se hacen con el recibo abierto (Esperado, Recibiendo o Discrepancia).
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo." al usar "Usar posiciones sugeridas"? (409)**
+Alguien guardó el recibo mientras usted tenía la pantalla abierta. La pantalla vuelve a cargar el recibo: revise lo que cambió y pulse el botón otra vez.
+
+**¿Qué significa "La cantidad excede lo disponible para cruce de muelle (0)." (409) o "El recibo de la línea no admite asignaciones (eliminado o sin putaway pendiente)." (422) en un recibo directo ya confirmado?**
+Un recibo directo confirmado no tiene acomodo pendiente (la mercancía ya está en su posición destino), y el cruce de muelle sobre un recibo confirmado se hace contra el acomodo pendiente. Asigne el cruce
+**mientras el recibo está abierto**. (Por el código; no se probó en un recibo real.)
+
+**¿Qué significa "warehouse.receivingMode debe ser PUTAWAY o DIRECT." (código de salida 1) o "La posición de recepción por defecto {code} no existe en el almacén." (rechazo del almacén en el reporte) en `import-legacy`?**
+El primero es un error de la configuración: `warehouse.receivingMode` solo admite `PUTAWAY` o `DIRECT`. El segundo es que `warehouse.defaultReceivingBin` no coincide con ninguna posición creada para el almacén (o no
+es de una zona de recepción o de cruce): corrija el código y repita. Las dos claves solo se aplican **al crear el almacén**: `--update` no las pisa; en un almacén que ya existe se cambian en Almacenes → Datos.
+
+### Mensajes que solo ve en la pantalla o en la app (sin código HTTP)
+
+**¿Qué significa "Falta la posición destino en {n} línea(s)."?**
+Está bajo el botón **Confirmar recibo** (apagado) de un recibo directo: hay {n} líneas que reciben algo y no tienen posición destino. Elija la posición de cada una o pulse **Usar posiciones sugeridas**.
+
+**¿Qué significa "Excede el cupo de {bin}: caben {free}"?**
+Es un **aviso naranja**, no un error: lo recibido en esa línea es más que el espacio libre de la posición (`cupo − existencia − lo que otras líneas del recibo ya destinan`). Se puede guardar y confirmar igual.
+Ver "¿Puedo pasarme del cupo?".
+
+**¿Qué significa "Sugerida: {bin} · {motivo}" bajo la posición destino?**
+Es la primera posición que el sistema recomienda para esa línea y por qué ("Consolidar con el mismo producto", "Reserva vacía", "Cuarentena (devolución)", etc.). Es solo una pista: no se llena sola. Aparece solo si la
+posición elegida no es esa.
+
+**¿Qué significa "Se asignó posición a {n} línea(s); {m} sin sugerencia."?**
+Es el aviso de **Usar posiciones sugeridas**: {n} líneas recibieron su posición sugerida y {m} no tenían ninguna posición de guardado donde cupieran. Elija a mano las {m}.
+
+**¿Qué significa "Elija primero un producto" en la posición de Recolección y empaque?**
+El selector de Posición solo ofrece las posiciones donde el producto tiene existencia disponible, así que necesita saber el producto. Elíjalo y aparecerán.
+
+**¿Qué significa "{code} recibe directo a posición: aquí solo aparecen recibos anteriores al cambio o con cruce de muelle."?**
+Es un aviso en **Recibo → Acomodo pendiente** cuando filtra por un almacén directo. Los recibos directos no generan tareas de acomodo, así que no aparecen aquí. Ver "¿Por qué un recibo directo no aparece en Acomodo pendiente?".
+
+**¿Qué significa "¿Cambiar el modo de recepción?"?**
+Es la confirmación al guardar un cambio de modo en la ficha del almacén. Dice cuántos recibos abiertos y cuántos con acomodo pendiente hay: **conservan su modo**; solo los recibos **nuevos** siguen el modo nuevo.
+
+**En la app: "La posición no existe en este almacén.", "Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.", "Esa posición está desactivada; escanea otra."**
+La app validó la posición escaneada **sin señal**, contra las posiciones que tiene guardadas del almacén. Escanee la posición donde de verdad se deja la mercancía. Si acaba de crearse una posición y la app aún no
+la tiene, sincronice con señal ("Sincronizar ahora") y escanee de nuevo.
+
+**En la app: "El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo."**
+El aparato no ha descargado las posiciones del almacén por defecto (la primera vez bajan todas, en Advance Depot unas 3.886). Con señal, pulse "Sincronizar ahora" y vuelva a escanear.
+
+**En la app: "No se puede enviar así" / "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición."**
+Es el mismo caso del 400 de arriba, detectado **antes de enviar**. Ver "¿Por qué la pistola no me deja enviar?".
+
+### Preguntas frecuentes
+
+**¿Cómo pongo un almacén en directo?**
+Con `warehouse.manage`: Almacenes → elija el almacén → **Datos** → sección **Recepción** → **Modo de recepción** = "Directo a posición" → **Guardar** y confirme. (También se puede al crear el almacén, o con `PATCH` de
+`receivingMode`.) Desde ese momento los recibos **nuevos** nacen directos: cada línea lleva su posición destino y no hay tareas de acomodo. Para volver, cambie el modo a "Con acomodo". El modo de un almacén
+sin zona de recepción (como Advance Solutions) debe seguir siendo directo, o los recibos con acomodo darán "El almacén no tiene una posición de recepción (zona STAGING); indíquela.".
+
+**¿Qué pasa con los recibos abiertos cuando cambio el modo del almacén?**
+**Nada:** cada recibo conserva el modo con que se abrió, y las tareas de acomodo pendientes siguen su curso (hay que acomodarlas). Solo los recibos nuevos siguen el modo nuevo. Si quiere que **un** recibo abierto
+cambie, edite su encabezado (lápiz) y cambie su "Modo de recepción" antes de confirmarlo.
+
+**¿Puedo pasarme del cupo?**
+Sí. El cupo de la posición **solo avisa**: la línea se marca con "Excede el cupo de {bin}: caben {free}" en naranja y se puede guardar y confirmar igual. Lo que no cabe queda físicamente en esa posición; transfiera
+el sobrante a otra después (Transferencias y ajustes). Los recibos abiertos a la vez no se ven entre sí, así que dos recibos pueden pasar el mismo cupo. "Usar posiciones sugeridas", en cambio, **solo asigna donde cabe**.
+
+**¿Por qué mi recibo directo no pide la posición de recepción?**
+Porque la mercancía no pasa por ahí: entra directo a la posición destino de cada línea. Un almacén sin zona `STAGING` puede recibir así. La posición de recepción por defecto del almacén solo la usan los recibos con
+acomodo y las líneas con cruce de muelle.
+
+**¿Por qué un recibo directo no aparece en Acomodo pendiente?**
+Porque no genera tareas: al confirmar, cada línea queda en su posición y el recibo pasa a **Acomodado** en el mismo momento (el historial deja Recibiendo → Completado → Acomodado). En un almacén directo, Acomodo
+pendiente solo muestra recibos anteriores al cambio de modo, los que se pasaron a "Con acomodo" y los que tuvieron cruce de muelle.
+
+**¿Por qué el Kárdex no muestra un movimiento de acomodo después de un recibo directo?**
+Porque no hubo: la entrada (`RECEIPT`) ya se asentó en la posición final. En un recibo con acomodo hay una entrada a la posición de recepción y luego una transferencia a la posición final.
+
+**¿Por qué Actividad reciente muestra un solo evento en un recibo directo?**
+Porque el recibo se confirma y queda Acomodado en el mismo instante. Solo se muestra "Recibo … confirmado" (el evento de "acomodado" se omite si no hubo tareas). Con cruce de muelle o con acomodo, salen los dos.
+
+**¿Por qué no me sugiere ninguna posición?**
+Ninguna posición de guardado activa tiene espacio para esa cantidad (cupo en unidades), o el producto no tiene dónde consolidar y el almacén no tiene reservas ni picking. El sistema **nunca** sugiere recepción ni
+cruce de muelle, y sugiere la **cuarentena** solo en devoluciones. Elija una a mano; se le avisa si no cabe. Desde este lote el cupo en unidades también se respeta en las **tareas de acomodo** de siempre: una
+posición llena ya no se sugiere para acomodar.
+
+**¿Por qué en una devolución la primera sugerida es la cuarentena?**
+Es una decisión del dueño (D6): la mercancía devuelta se revisa antes de volver a vender. La primera sugerida es una posición de cuarentena, si el almacén tiene una. Puede elegir otra.
+
+**¿Qué es la "Posición de recepción por defecto" y por qué Depot usa R1?**
+Es la posición de recepción que usan los recibos con acomodo (y las líneas con cruce de muelle) cuando el encabezado no indica otra. Sin ella, el sistema toma la primera posición de una zona `STAGING` por código de zona;
+en Advance Depot eso daba `S1` de "Embarque". Por decisión del dueño, en Depot es `R1` (zona `STG`). Se cambia en Almacenes → Datos → Recepción (con "La primera de recepción" se vuelve a la regla automática).
+
+**¿Puedo repartir una línea en varias posiciones?**
+No: una línea entra entera a **una** posición. Si llegó más de lo que cabe, reciba igual y transfiera el sobrante después. En un recibo **ciego o de devolución** puede poner dos líneas del mismo producto, cada una con
+su posición. En un recibo con aviso u orden de compra, el mismo producto con dos posiciones da 400 (ver arriba).
+
+**¿Por qué mi recibo de la app entró "Con acomodo" en un almacén directo?**
+Porque se empezó con una app **anterior** a este lote (no manda posiciones ni modo). El servidor no lo pierde: lo recibe con acomodo y crea tareas. Actualice la app de los aparatos para que escaneen la posición destino.
+
+**¿Por qué la pistola no me deja enviar?**
+Hay tres causas en un almacén directo: (1) **Confirmar recibo** está apagado porque alguna línea no tiene posición destino (las líneas se agregan al escanear una posición válida); (2) sale "No se puede enviar así": el mismo
+producto de un aviso u orden de compra quedaría en dos posiciones; deje todas sus líneas en una posición (quite una línea y vuelva a agregarla), y (3) "El aparato todavía no tiene las posiciones de este almacén": sincronice
+con señal. Un recibo que el servidor rechaza después, ya en la cola, **no se puede editar**: por eso la app lo impide antes.
+
+**¿Por qué la pista "Sugerida" no aparece en la pistola?**
+Necesita señal. Sin señal la captura sigue igual: escanee la posición donde deja la mercancía. La pista sale de las sugerencias de acomodo del servidor (la primera para ese producto y cantidad) y no descuenta lo que otras líneas del
+mismo recibo ya ocupan.
+
+**¿Por qué el selector de Posición de Recolección y empaque solo muestra algunas posiciones?**
+Desde el ajuste del 2026-09-30 solo ofrece las posiciones **donde el producto tiene existencia disponible**, con su cantidad ("P-01 · PCK · 9 disp."), en el orden FEFO del sistema (la primera va marcada "Sugerida").
+Si elige un lote, solo las posiciones de ese lote. Sin producto el campo está apagado.
+
+**¿Por qué los números ahora llevan coma?**
+Porque así se escriben en Puerto Rico: coma para los miles y punto para los decimales (`61,023`; `1,250.5`). Antes, en español, el sistema escribía `61.023` (punto de miles) y una cifra de cuatro dígitos como `1250` sin
+separador, y se confundían con decimales. El cambio es solo de presentación: los datos no cambiaron. El dinero lleva `$` y dos decimales (`$1,234.50`). Vale en la web y en la app; los números de documento y los identificadores no llevan coma. Es el mismo formato en inglés.
+
+**¿Por qué el PDF o el Excel traen la compañía y una línea de "Filtros:"?**
+Desde este lote, todo PDF de tabla y todo Excel llevan arriba la **compañía**, el título, "Generado el …" y una línea con los **filtros que tenía la pantalla** ("Filtros: Almacén ALM-01 (Almacén principal) ·
+Estatus Recibiendo · Creado del 01/09/2026 al 30/09/2026"), para saber de dónde salió el archivo. El CSV no cambia.
+
+**¿Por qué el PDF dice "Sin filtros"?**
+Porque la pantalla tiene barra de filtros y no había ninguno elegido cuando exportó: el archivo trae **todo** lo que había. La línea de filtros solo nombra los que estén **elegidos** al exportar: para dejar constancia de un filtro, elíjalo antes de exportar. Las tablas que
+no tienen barra de filtros, y las que están dentro de una ventana (modal), no llevan esa línea.
+
+**¿Cómo abro las fechas del Excel?**
+Son **fechas de verdad**, no texto: se pueden ordenar, filtrar por fecha y restar. En Excel llevan el formato `aaaa-mm-dd` (o `aaaa-mm-dd hh:mm` si tienen hora, en hora de Puerto Rico). Si una celda muestra un número
+como `46295`, dé a la columna el formato de fecha. En el **CSV**, la fecha sale como `2026-09-30` o `2026-09-30 14:03:00`: Excel la lee como fecha según su configuración regional; si no lo hace, abra el archivo con
+Datos → Desde texto/CSV y marque esa columna como fecha. El PDF muestra la fecha como texto legible.
+
+**¿Por qué el Kárdex ya no exporta la columna Hora?**
+Porque la columna **Fecha** del archivo ahora lleva la fecha **y la hora** del movimiento. Conteos y Descuadres exportan la fecha real.
+
+**¿Por qué el Excel de Recibos tiene una fila por línea y ya no trae la columna "Líneas"?**
+Porque la exportación de Recibos (y de Acomodo pendiente) ahora trae **cada recibo con sus líneas**: en Excel y CSV, una fila por línea repitiendo los datos del recibo (un recibo sin líneas ocupa una fila con las columnas de
+línea vacías); en PDF, un bloque por recibo con la tablita de sus líneas ("Sin líneas" si no tiene). Como se ven las líneas, el conteo ya no hace falta.
+
+**¿Por qué los encabezados del Excel no van en negrita ni quedan fijos al desplazarse?**
+Es un límite de la biblioteca que genera los archivos (edición comunitaria de SheetJS): no escribe negrita ni paneles inmovilizados. La fila de encabezados lleva **autofiltro** (las flechas de filtro de Excel) para
+ordenarla y filtrarla.
+
+**¿Por qué el PDF de Recibos sale horizontal en tamaño carta y los demás en A4?**
+Los PDF agrupados (recibo con sus líneas) usan hoja carta horizontal; las demás tablas, A4 vertical (horizontal con más de 5 columnas).
+
+**¿Cómo vuelvo un almacén de "Directo a posición" a "Con acomodo"?**
+Igual que al revés: Almacenes → Datos → Recepción → Modo de recepción = "Con acomodo". Necesita una posición de recepción (la del almacén o la primera zona `STAGING`) para recibir con acomodo. Los recibos directos
+abiertos siguen directos.

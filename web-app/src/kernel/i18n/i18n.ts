@@ -2,6 +2,7 @@
 // de aquí para la cabecera Accept-Language, y los componentes se suscriben con useT()/useLang().
 import en from './en.json'
 import es from './es.json'
+import { formatQuantity } from './numberFormat'
 
 export type Lang = 'es' | 'en'
 export const LANGS: readonly Lang[] = ['es', 'en']
@@ -83,8 +84,17 @@ export function translate(lang: Lang, key: string, params?: TParams): string {
     }
     text = key
   }
-  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? String(params[name]) : m))
+  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? paramText(name, params[name], lang) : m))
   return text
+}
+
+/** Parámetros que son identificadores (número de documento, id, código): se pintan tal cual, sin coma de miles. */
+const RAW_NUMBER_PARAMS = new Set(['id', 'number', 'code', 'order', 'ref', 'serial', 'lot', 'sku'])
+
+/** Un número en un texto lleva coma de miles ("1,250 pendientes"), salvo que el parámetro sea un identificador. */
+function paramText(name: string, value: TParams[string], lang: Lang): string {
+  if (typeof value === 'number' && Number.isFinite(value) && !RAW_NUMBER_PARAMS.has(name)) return formatQuantity(value, lang)
+  return String(value)
 }
 
 /** Traducción con el idioma actual. Para fuera de React (mensajes del kernel); en componentes usa useT(). */

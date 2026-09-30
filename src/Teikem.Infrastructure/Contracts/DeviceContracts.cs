@@ -38,8 +38,12 @@ public sealed record DevicePatchRequest(string? Name, Guid? DefaultWarehousePubl
 /// </summary>
 public sealed record DeviceEnrollRequest(string? EnrollCode, string? Model, string? AppVersion);
 
-/// <summary>Aparato registrado: su PublicId y su secreto (se muestra UNA sola vez; el aparato lo guarda cifrado), compañía, almacén y tema.</summary>
-public sealed record DeviceEnrolledDto(Guid DevicePublicId, string DeviceSecret, string TenantName, Guid? DefaultWarehousePublicId, string? Theme);
+/// <summary>
+/// Aparato registrado: su PublicId y su secreto (se muestra UNA sola vez; el aparato lo guarda cifrado), compañía, almacén y
+/// tema. Lote 16: DefaultWarehouseReceivingMode = modo de recepción del almacén por defecto (PUTAWAY | DIRECT; null sin almacén).
+/// </summary>
+public sealed record DeviceEnrolledDto(Guid DevicePublicId, string DeviceSecret, string TenantName, Guid? DefaultWarehousePublicId, string? Theme,
+    string? DefaultWarehouseReceivingMode = null);
 
 /// <summary>Lista de usuarios que pueden entrar en el aparato (anónimo: se autentica con aparato + secreto).</summary>
 public sealed record DeviceUsersRequest(Guid DevicePublicId, string? DeviceSecret);
@@ -62,5 +66,9 @@ public sealed record PinStatusDto(bool HasPin, DateTime? LockedUntilUtc, DateTim
 /// <summary>Latido del aparato (anónimo): aparato + secreto y versión de la app.</summary>
 public sealed record HeartbeatRequest(Guid DevicePublicId, string? DeviceSecret, string? AppVersion);
 
-/// <summary>Respuesta del heartbeat: el aparato desactivado recibe IsActive = false (la app bloquea la entrada).</summary>
-public sealed record DeviceHeartbeatDto(bool IsActive, Guid? DefaultWarehousePublicId, string? Theme, DateTime ServerTimeUtc);
+/// <summary>
+/// Respuesta del heartbeat: el aparato desactivado recibe IsActive = false (la app bloquea la entrada). Lote 16:
+/// DefaultWarehouseReceivingMode = modo de recepción del almacén por defecto (PUTAWAY | DIRECT; null sin almacén).
+/// </summary>
+public sealed record DeviceHeartbeatDto(bool IsActive, Guid? DefaultWarehousePublicId, string? Theme, DateTime ServerTimeUtc,
+    string? DefaultWarehouseReceivingMode = null);

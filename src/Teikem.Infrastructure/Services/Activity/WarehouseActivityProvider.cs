@@ -175,7 +175,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
         if (hits.Count == 0) return;
         var ids = hits.Select(h => h.EntityId).Distinct().ToList();
         var docs = await db.Set<ReceiptHeader>().AsNoTracking().Where(r => ids.Contains(r.ReceiptHeaderId))
-            .Select(r => new { r.ReceiptHeaderId, r.PublicId, r.Number, r.WarehouseId, r.AsnId }).ToListAsync(ct);
+            .Select(r => new { r.ReceiptHeaderId, r.PublicId, r.Number, r.WarehouseId, r.AsnId, r.ReceivingModeLookupId }).ToListAsync(ct);
         // ReceiptLine no lleva TenantId: se alcanza por su recibo filtrado.
         var lines = await (from l in db.Set<ReceiptLine>().AsNoTracking()
                            join r in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals r.ReceiptHeaderId
@@ -188,6 +188,25 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
             : await db.Set<Asn>().AsNoTracking().Where(a => asnIds.Contains(a.AsnId)).ToDictionaryAsync(a => a.AsnId, a => a.ClientId, ct);
         var clients = await ClientNamesAsync(asnClients.Values, ct);
         await warehouses.LoadAsync(docs.Select(d => d.WarehouseId), ct);
+
+        // Lote 16 (D13): un recibo directo sin tareas de acomodo pasa a Acomodado en el mismo instante en que se confirma: un
+        // solo evento ("confirmado"); se omite el de "acomodado". Con tareas (cruce de muelle, o recibo con acomodo) sí se emite.
+        var putawayHits = hits.Where(h => string.Equals(h.ToStatus, ReceiptStatuses.Putaway, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (putawayHits.Count > 0 && await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, ReceivingModes.Direct, ct) is int directId)
+        {
+            var putawayIds = putawayHits.Select(h => h.EntityId).Distinct().ToList();
+            var directIds = docs.Where(d => d.ReceivingModeLookupId == directId && putawayIds.Contains(d.ReceiptHeaderId)).Select(d => d.ReceiptHeaderId).ToList();
+            if (directIds.Count > 0)
+            {
+                var receiptTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.Receipt, ct) ?? -1;
+                var putawayTypeId = await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct) ?? -1;
+                var withTasks = (await db.Set<WarehouseTask>().AsNoTracking()
+                        .Where(t => t.RefEntityLookupId == receiptTypeId && t.TaskTypeLookupId == putawayTypeId && t.RefId != null && directIds.Contains(t.RefId.Value))
+                        .Select(t => t.RefId!.Value).Distinct().ToListAsync(ct)).ToHashSet();
+                var skip = directIds.Where(id => !withTasks.Contains(id)).ToHashSet();
+                hits = hits.Where(h => !(skip.Contains(h.EntityId) && string.Equals(h.ToStatus, ReceiptStatuses.Putaway, StringComparison.OrdinalIgnoreCase))).ToList();
+            }
+        }
 
         Emit(ctx, hits, docs.ToDictionary(d => d.ReceiptHeaderId), d =>
         {

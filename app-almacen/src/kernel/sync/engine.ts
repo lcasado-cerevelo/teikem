@@ -4,6 +4,7 @@
 // respaldo de 60 s ya cubre "se recuperó la señal" con un minuto de margen como mucho.
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 
+import { sendHeartbeat } from '../auth/deviceAuth'
 import { downloadForReceiving, type DownloadResult } from './download'
 import { countPending, runOutbox, subscribeOutbox, type RunOutboxResult } from './outbox'
 
@@ -44,7 +45,12 @@ async function runOnce(): Promise<SyncSummary> {
   let error: string | null = null
   try {
     outbox = await runOutbox()
-    if (!outbox.stoppedForNetwork) download = await downloadForReceiving()
+    if (!outbox.stoppedForNetwork) {
+      // Lote 16: el heartbeat va antes de bajar: trae el almacén por defecto y su modo de recepción (directo o con
+      // acomodo), y la bajada de posiciones usa ese almacén. Hasta este lote no lo llamaba nadie.
+      await sendHeartbeat()
+      download = await downloadForReceiving()
+    }
   } catch (err) {
     error = err instanceof Error ? err.message : String(err)
   }

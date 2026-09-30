@@ -46,6 +46,7 @@ import {
   zoneCapacities,
   type ZoneCapacity,
 } from './locations'
+import { TextFilter } from './filterControls'
 import { ProductMultiFilter, WarehousePicker, type ProductFilterItem } from './pickers'
 import '../analytics/pulse.css'
 import './warehouse.css'
@@ -153,7 +154,6 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
   const [editing, setEditing] = useState<WarehouseBinDto | null>(null)
   // Posición: texto al servidor (`search`: código, pasillo, rack, nivel o posición), con retardo para no consultar por tecla
   const [code, setCode] = useState('')
-  const codeId = useId()
   const search = useDebounced(code.trim(), 300)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -334,19 +334,15 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
       </div>
 
       <Filters onClear={clearAll}>
-        <div className="f">
-          <label htmlFor={codeId}>{t('warehouse.locations.filters.bin')}</label>
-          <input
-            id={codeId}
-            type="search"
-            value={code}
-            placeholder={t('warehouse.locations.filters.binPlaceholder')}
-            onChange={(e) => {
-              setCode(e.target.value)
-              setPage(1)
-            }}
-          />
-        </div>
+        <TextFilter
+          label={t('warehouse.locations.filters.bin')}
+          value={code}
+          placeholder={t('warehouse.locations.filters.binPlaceholder')}
+          onChange={(v) => {
+            setCode(v)
+            setPage(1)
+          }}
+        />
         <SearchSelect label={t('warehouse.locations.filters.zone')} options={zoneOptions} value={zoneIds} onChange={setZoneIds} />
         <SearchSelect label={t('warehouse.locations.filters.type')} options={typeOptions} value={zoneTypes} onChange={withPageReset(setZoneTypes)} />
         <ProductMultiFilter label={t('warehouse.locations.filters.product')} value={products} onChange={withPageReset(setProducts)} />
@@ -438,7 +434,13 @@ export default function LocationsScreen() {
             <label htmlFor={pickerId} className="sr-only">
               {t('warehouse.locations.warehouse')}
             </label>
-            <WarehousePicker id={pickerId} value={warehousePublicId} onChange={(id) => selectWarehouse(id)} placeholder={null} />
+            <WarehousePicker
+              id={pickerId}
+              value={warehousePublicId}
+              onChange={(id) => selectWarehouse(id)}
+              placeholder={null}
+              filterLabel={t('warehouse.locations.warehouse')}
+            />
           </div>
           {warehousePublicId && (
             <Can perm="warehouse.manage">

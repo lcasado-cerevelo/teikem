@@ -9,12 +9,16 @@ pantallas reales de la app.
 
 Decisiones de cada entrega, con más detalle técnico: `docs/lote8A-app-decisiones.md`.
 
+Lote 16: **Recibir en un almacén "Directo a posición"** (sección 4: paso "Escanea la posición destino"), descarga de las **posiciones** del almacén y **heartbeat**
+en cada pasada de sincronización (sección 9). Los números de la app llevan **coma de miles y punto decimal** (`61,023`; `1,250.5`), como en la web, sin depender de los datos de
+idioma del aparato.
+
 ---
 
 ## 1. Cómo funciona sin señal
 
-La app guarda una copia local de lo que necesita para trabajar (productos, órdenes de compra, avisos de llegada) y
-se pone al día sola cada 60 segundos y al abrir (sincronización por diferencia, capítulo 8A §4). Cada pantalla se
+La app guarda una copia local de lo que necesita para trabajar (productos, órdenes de compra, avisos de llegada y, desde el Lote 16, las posiciones del
+almacén del aparato) y se pone al día sola cada 60 segundos y al abrir (sincronización por diferencia, capítulo 8A §4). Cada pantalla se
 comporta de una de estas dos maneras, nunca mezclada:
 
 - **Documento propio del aparato** (Recibir, Despacho al recolectar, Conteo al capturar lo encontrado): se captura
@@ -113,7 +117,8 @@ Cómo se usa:
 2. Se escanea cada producto (por código de barras o SKU, de lo ya sincronizado); según cómo se rastree
    (`trackingTypeCode`) pide cantidad, o lote (con vencimiento opcional), o números de serie uno por uno.
 3. "Agregar" suma la línea a lo capturado; se puede quitar una línea ya agregada.
-4. "Confirmar recibo" cierra el recibo (crea las tareas de acomodo del lado del servidor) y vuelve a Inicio.
+4. "Confirmar recibo" cierra el recibo y vuelve a Inicio. En un almacén **con acomodo** el servidor crea las tareas de acomodo; en uno **directo a posición**
+   cada línea queda en su posición destino y no hay tareas (ver "Recibir en un almacén directo a posición", abajo).
    "Cancelar recibo" (con confirmación) descarta todo lo capturado sin mandar nada.
 
 ### Campos y validaciones
@@ -127,6 +132,47 @@ Cómo se usa:
 | Ya hay un recibo en curso en este aparato (intento de empezar otro) | `Ya hay un recibo en curso; hay que confirmarlo o cancelarlo antes de empezar otro.` | Local (`startLocalReceipt` lanza; la pantalla siempre retoma el abierto, nunca llega a mostrarlo) |
 | Confirmar sin señal | Se guarda igual, se manda solo cuando haya conexión (`errors.network`) | Cola de salida |
 | El servidor rechaza el recibo al confirmarlo (dato inválido, orden ya cerrada, etc.) | El mensaje exacto que el servidor devuelva, ver [06 §4](06-inventario-y-almacen.md#4-recepción-avisos-de-llegada-asn-y-recibos) | API, vía cola |
+
+### Recibir en un almacén directo a posición (Lote 16)
+
+Qué hace: si el almacén del aparato recibe **directo a posición** ([06 §1.4](06-inventario-y-almacen.md#14-modo-de-recepción-y-posición-de-recepción-por-defecto-lote-16)),
+cada línea lleva la **posición donde se deja la mercancía** y, al confirmar, el servidor la asienta ahí, sin tareas de acomodo
+([06 §4.1](06-inventario-y-almacen.md#41-recibo-directo-a-posición-lote-16)). El aparato sabe el modo del almacén porque el registro y el heartbeat lo traen
+(`defaultWarehouseReceivingMode`). **El recibo guarda el modo que tenía el almacén cuando se empezó**: si el modo cambia a mitad de la captura, ese recibo sigue como empezó. Un
+aparato que todavía no conoce el modo (no ha sincronizado desde que se actualizó la app) trabaja como antes: **con acomodo**.
+
+Quién puede: `inventory.view`; la pista "Sugerida" también usa las sugerencias de acomodo del servidor. El permiso para recibir (`warehouse.receive`) lo revisa el servidor al confirmar.
+
+Cómo se usa (en un almacén directo):
+1. Se escanea el producto y se captura la cantidad, el lote o las series, como siempre. El botón pasa a **Siguiente** (en lugar de "Agregar").
+2. Aparece el paso **Escanea la posición destino**, con el nombre del producto y la cantidad. Se escanea (o se escribe) la posición donde se deja la mercancía.
+3. Si hay señal, arriba del campo aparece la pista **Sugerida: {posición}** (la primera sugerida por el servidor para ese producto y esa cantidad). **Nada se llena solo**: hay que escanear la
+   posición, sea la sugerida o no. Sin señal, la pista no aparece y la captura sigue igual.
+4. La app **valida sin señal** la posición contra las posiciones que tiene guardadas del almacén: que exista, que esté activa y que no sea de recepción (`STAGING`) ni de cruce de muelle
+   (`CROSSDOCK`). La **cuarentena sí** vale. Si es válida, la línea se agrega y se ve con **→ {posición}** (por ejemplo, `8 SKU-1` con `LOTE-A · → R-02`).
+5. **Volver** regresa a la cantidad; **Cancelar** descarta la línea que se estaba capturando.
+6. **Confirmar recibo** se apaga mientras alguna línea no tenga posición destino. Bajo el botón dice: "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo."
+
+**Dos destinos para el mismo producto (H11).** En un recibo **con aviso de llegada o con orden de compra**, cada línea del documento entra a **una sola** posición: el servidor rechazaría el recibo completo si el
+mismo producto llega con dos posiciones distintas, y un envío rechazado en la cola **ya no se puede editar**. Por eso la app lo **bloquea antes**: al escanear la segunda posición (la línea no se agrega y sale el mensaje) y otra vez
+al tocar "Confirmar recibo". Para dejar el mismo producto en dos posiciones, el recibo debe ser **ciego** o de **devolución** (o se transfiere la parte sobrante después).
+
+Campos y validaciones (recibo directo):
+
+| Campo / caso | Mensaje exacto | Origen |
+|---|---|---|
+| Etiqueta del campo del paso de destino | `Escanea la posición destino` | Local |
+| Pista con señal | `Sugerida: {bin}` | API (`GET /api/v1/warehouse-tasks/putaway-suggestions`, una sola sugerencia) |
+| Línea ya agregada | `→ {bin}` | Local |
+| La posición no existe en el almacén del aparato | `La posición no existe en este almacén.` | Local (posiciones descargadas) |
+| La posición es de recepción o de cruce de muelle | `Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.` | Local |
+| La posición está desactivada | `Esa posición está desactivada; escanea otra.` | Local |
+| El aparato no tiene ninguna posición de este almacén guardada | `El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.` | Local |
+| Mismo producto con dos destinos en un recibo con aviso u orden de compra (título del aviso al confirmar: `No se puede enviar así`) | `Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.` | Local (repite la regla del servidor) |
+| Ayuda bajo "Confirmar recibo" | `Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.` | Local |
+| El servidor rechaza el recibo al confirmarlo (posición dada de baja entre tanto, etc.) | El mensaje exacto del servidor: [06 §4.1](06-inventario-y-almacen.md#41-recibo-directo-a-posición-lote-16) | API, vía cola |
+
+**Recibos abiertos antes de actualizar la app.** Un recibo que se empezó con la app anterior se manda sin modo y sin posiciones. El servidor, en un almacén directo, lo recibe **"Con acomodo"** (con tareas de acomodo): no se pierde.
 
 ### Estatus y casos frecuentes
 
@@ -310,6 +356,11 @@ Cómo se usa: cada fila "con error" muestra el tipo de operación y el mensaje q
 Las pendientes no tienen esas acciones: se mandan solas cuando haya señal (cada 60 segundos, o al tocar
 "Sincronizar ahora").
 
+**Qué pasa en cada pasada con señal (Lote 16).** En orden: (1) se manda la cola de salida; (2) si hubo señal, se manda el **heartbeat** (aviso de vida, capítulo 8A §2.2), que actualiza el
+almacén por defecto, el tema y el **modo de recepción** del almacén del aparato; si el servidor responde que el aparato está desactivado, se borra la identidad del aparato (hay que registrarlo de nuevo); (3) se bajan productos, órdenes de compra, avisos de llegada y **las posiciones del almacén por defecto** del aparato. Antes del Lote 16 el heartbeat no lo llamaba nadie.
+Las posiciones sirven para validar sin señal la posición destino del recibo directo: la primera vez baja la lista completa (en Advance Depot, unas 3.886 posiciones, en 8 páginas) y después solo los cambios;
+las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
+
 ### Casos frecuentes
 
 Una operación queda "con error" cuando el servidor la rechazó por una razón que reintentarla igual no arregla
@@ -323,7 +374,7 @@ posición ya no tiene ese producto"), reintentar va a fallar otra vez con el mis
 
 | Permiso | Qué habilita en la app |
 |---|---|
-| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir, Acomodar (listar/completar tareas), Conteo (ver, no reconciliar), Consultar |
+| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar), Consultar |
 | `purchasing.receive` + módulo **PURCHASING** | Recibir contra una orden de compra (sin esto, solo recibo ciego funciona) |
 | `warehouse.pick` | Recolectar y empacar en Despacho |
 | `locations.read` | Buscar los consignatarios de un cliente al empacar un despacho |

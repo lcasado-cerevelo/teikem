@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Exceptions;
 
 namespace Teikem.Infrastructure.Migration;
@@ -156,6 +157,10 @@ public sealed class LegacyImportConfig
         if (OpeningBalances.Source is not (SourceMswm or SourceQuickBooks or SourceNone))
             throw new ValidationException("openingBalances.source debe ser mswm, quickbooks o none.");
 
+        // Lote 16: modo de recepción del almacén (opcional; PUTAWAY o DIRECT).
+        if (ReceivingModeRules.ParseMode(Warehouse.ReceivingMode).Error is not null)
+            throw new ValidationException("warehouse.receivingMode debe ser PUTAWAY o DIRECT.");
+
         if (OpeningBalances.Source == SourceMswm
             && (string.IsNullOrWhiteSpace(Sources.Mswm?.ConnectionStringName) || string.IsNullOrWhiteSpace(Sources.Mswm?.WarehouseId)))
             throw new ValidationException(
@@ -239,6 +244,13 @@ public sealed class LegacyWarehouseConfig
     public List<LegacyZoneConfig> Zones { get; set; } = new();
     public List<string> SkipLocationIds { get; set; } = new();
     public LegacySingleBinConfig? SingleBin { get; set; }
+    /// <summary>Lote 16 (D8): modo de recepción PUTAWAY | DIRECT (opcional; sin él, PUTAWAY). Solo al crear el almacén: --update no lo pisa.</summary>
+    public string? ReceivingMode { get; set; }
+    /// <summary>
+    /// Lote 16 (D12): código de la posición de recepción por defecto (de una zona STAGING o CROSSDOCK de este almacén). Solo al
+    /// crear el almacén (después de crear sus posiciones); --update no la pisa.
+    /// </summary>
+    public string? DefaultReceivingBin { get; set; }
 }
 
 /// <summary>Zona destino y cómo se le asignan las posiciones del WMS (por descripción o por id exacto).</summary>

@@ -12,6 +12,7 @@ import type { SummaryItem } from '../../kernel/ui/SummaryBar'
 import type { GetQuery, KardexDocumentDto, KardexRowDto, KardexSummaryDto } from './api'
 import { formatNumber } from './lineRules'
 import type { ProductFilterItem } from './pickers'
+import { numberLocale } from '../../kernel/i18n'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Estado de filtros compartido
@@ -305,7 +306,7 @@ export function qtyClass(q: number | null | undefined): 'qty-in' | 'qty-out' | '
 /** Cantidad con signo explícito ("+2", "−3", "0") con los separadores del idioma. */
 export function formatSignedQty(q: number | null | undefined, lang: string): string {
   const n = q ?? 0
-  const text = new Intl.NumberFormat(lang, { maximumFractionDigits: 3 }).format(Math.abs(n))
+  const text = new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(Math.abs(n))
   if (n > 0) return `+${text}`
   if (n < 0) return `−${text}`
   return text
@@ -454,7 +455,7 @@ export function movementQtyView(
   const signed = r.signedQuantity ?? r.quantity ?? 0
   if (signed === 0 && (r.quantity ?? 0) !== 0) {
     const q = Math.abs(r.quantity ?? 0)
-    return { text: new Intl.NumberFormat(lang, { maximumFractionDigits: 3 }).format(q), className: 'qty-zero', value: q }
+    return { text: new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(q), className: 'qty-zero', value: q }
   }
   return { text: formatSignedQty(signed, lang), className: qtyClass(signed), value: signed }
 }

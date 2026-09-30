@@ -14,6 +14,8 @@ import {
 import {
   adjustmentBody,
   availableAt,
+  binStockOptions,
+  downBinOptions,
   lotOptions,
   parseTransferItemKey,
   serialsAt,
@@ -129,6 +131,22 @@ describe('modales: disponible, lotes, ítems de la posición y series', () => {
   it('availableAt suma lo disponible (o el del lote)', () => {
     expect(availableAt(balances)).toBe(8)
     expect(availableAt(balances, 7)).toBe(3)
+  })
+
+  it('binStockOptions: una por posición con disponible > 0 (suma de lotes), en el orden de los saldos; downBinOptions por código', () => {
+    const rows: BalanceDto[] = [
+      { binId: 30, binCode: 'C-01', zoneCode: 'Q', zoneTypeCode: 'QUARANTINE', lotId: 1, qtyAvailable: 2 },
+      { binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'PICKING', lotId: 1, qtyAvailable: 3 },
+      { binId: 30, binCode: 'C-01', zoneCode: 'Q', zoneTypeCode: 'QUARANTINE', lotId: 2, qtyAvailable: 4 },
+      { binId: 20, binCode: 'B-01', zoneCode: 'B', qtyAvailable: 0 },
+      { binId: null, binCode: null, qtyAvailable: 9 },
+    ]
+    expect(binStockOptions(rows)).toEqual([
+      { binId: 30, binCode: 'C-01', zoneCode: 'Q', zoneTypeCode: 'QUARANTINE', qtyAvailable: 6 },
+      { binId: 10, binCode: 'A-01', zoneCode: 'A', zoneTypeCode: 'PICKING', qtyAvailable: 3 },
+    ])
+    // al bajar se puede de cualquier zona (también cuarentena), ordenado por código
+    expect(downBinOptions(rows).map((b) => `${b.binCode}:${b.qtyAvailable}`)).toEqual(['A-01:3', 'C-01:6'])
   })
 
   it('lotOptions: solo lotes con disponible', () => {

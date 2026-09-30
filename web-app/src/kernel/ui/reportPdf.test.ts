@@ -20,10 +20,10 @@ const COLUMNS: ReportColumn[] = [{ header: 'SKU' }, { header: 'Producto' }, { he
 describe('reportPdf · lógica pura', () => {
   it('formatReportValue: separadores del idioma por formato; texto tal cual; vacío = ""', () => {
     expect(formatReportValue(1234567.5, 'quantity', 'en')).toBe('1,234,567.5')
-    expect(formatReportValue(1234567.5, 'quantity', 'es')).toBe('1.234.567,5')
-    expect(formatReportValue(12.5, 'money', 'en')).toBe('12.50')
-    expect(formatReportValue(0.12345, 'unitCost', 'en')).toBe('0.1235')
-    expect(formatReportValue(3, 'unitCost', 'en')).toBe('3.00')
+    expect(formatReportValue(1234567.5, 'quantity', 'es')).toBe('1,234,567.5')
+    expect(formatReportValue(12.5, 'money', 'en')).toBe('$12.50')
+    expect(formatReportValue(0.12345, 'unitCost', 'en')).toBe('$0.1235')
+    expect(formatReportValue(3, 'unitCost', 'en')).toBe('$3.00')
     expect(formatReportValue(5, 'signed', 'en')).toBe('+5')
     expect(formatReportValue(-2, 'signed', 'en')).toBe('-2')
     expect(formatReportValue(0, 'signed', 'en')).toBe('0')
@@ -50,13 +50,13 @@ describe('reportPdf · lógica pura', () => {
     expect(rows[0].cells).toEqual([{ text: 'Médico (2)', colSpan: 4, align: 'left' }])
     expect(rows[1].index).toBe(0)
     expect(rows[2].index).toBe(1)
-    expect(rows[1].cells.map((c) => c.text)).toEqual(['A-1', 'Uno', '1,000', '12.50'])
+    expect(rows[1].cells.map((c) => c.text)).toEqual(['A-1', 'Uno', '1,000', '$12.50'])
     expect(rows[1].cells.map((c) => c.align)).toEqual(['left', 'left', 'right', 'right'])
     expect(rows[2].cells[3].text).toBe('—')
     expect(rows[3].cells).toEqual([
       { text: 'Subtotal Médico', colSpan: 2, align: 'left' },
       { text: '1,002', colSpan: 1, align: 'right' },
-      { text: '12.50', colSpan: 1, align: 'right' },
+      { text: '$12.50', colSpan: 1, align: 'right' },
     ])
     expect(rows[4].cells[0]).toEqual({ text: 'Total general', colSpan: 2, align: 'left' })
   })

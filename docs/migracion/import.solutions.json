@@ -53,6 +53,8 @@
     "city": "Caguas",
     "state": "PR",
     "country": "PR",
+    // Lote 16 (D8): Solutions no tiene zona de recepción: recibe directo a posición (solo al crear el almacén).
+    "receivingMode": "DIRECT",
     "singleBin": {
       "zone": { "code": "GEN", "name": "General", "zoneType": "RESERVE" },
       "bin": "GENERAL"

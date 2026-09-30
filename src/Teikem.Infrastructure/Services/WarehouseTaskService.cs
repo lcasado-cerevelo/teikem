@@ -339,8 +339,10 @@ public sealed class WarehouseTaskService(
         created.AssignedToUserId = task.AssignedToUserId;
     }
 
+    /// <summary>Lote 16: con el cupo de la posición y su espacio libre (cupo − existencia; null sin cupo).</summary>
     private static PutawaySuggestionDto ToDto(PutawaySuggestion s)
-        => new(s.BinId, s.BinCode, s.ZoneCode, s.ZoneTypeCode, s.ReasonCode, s.Reason, s.RotationClass);
+        => new(s.BinId, s.BinCode, s.ZoneCode, s.ZoneTypeCode, s.ReasonCode, s.Reason, s.RotationClass,
+            s.MaxCapacityQty, ReceivingModeRules.FreeQty(s.MaxCapacityQty, s.BinQty, 0m));
 }
 
 /// <summary>Lote 6 (P5) — alta de tareas vía WarehouseTaskWriter (única vía de creación), devolviendo la entidad tracked.</summary>

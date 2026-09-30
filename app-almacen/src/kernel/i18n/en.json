@@ -91,7 +91,17 @@
     "removeLineConfirm": "Remove this line?",
     "cancelReceipt": "Cancel receipt",
     "cancelConfirmTitle": "Cancel this receipt?",
-    "cancelConfirmBody": "Everything captured is lost. This can't be undone."
+    "cancelConfirmBody": "Everything captured is lost. This can't be undone.",
+    "scanTargetLabel": "Scan the destination bin",
+    "targetHint": "Suggested: {bin}",
+    "lineTarget": "→ {bin}",
+    "targetNotFound": "That bin doesn't exist in this warehouse.",
+    "targetNotStorage": "That bin is for receiving or cross-docking; scan where the goods are stored.",
+    "targetInactive": "That bin is inactive; scan another one.",
+    "targetNoBins": "This device doesn't have this warehouse's bins yet. Sync with a signal and try again.",
+    "targetConflictTitle": "Can't send it like this",
+    "targetConflict": "{sku} was already captured with destination {bin}; on a receipt with an ASN or purchase order each line goes to a single bin.",
+    "confirmHelpDirect": "Closes the receipt and leaves each line in its destination bin, with no putaway tasks."
   },
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",

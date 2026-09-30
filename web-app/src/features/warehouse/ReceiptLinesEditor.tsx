@@ -6,26 +6,32 @@
 // - Guardado por fila al salir del campo, con Enter o al elegir producto (si ya hay recibido); la ficha devuelta queda en
 //   caché e invalida la lista (`useReceiptLineRows`). Errores del servidor bajo el campo de su fila.
 // - Productos LOT/SERIAL: ícono "Lote y series" (`ReceiptLineCaptureModal`); en SERIAL lo recibido son las series.
+// - Lote 16, recibo DIRECTO A POSICIÓN: columna "Posición destino" (`BinPicker` controlado sin zonas de recepción ni de
+//   cruce, con las sugeridas de `target-suggestions` primero) que se guarda al elegir; debajo la pista "Sugerida: {bin} ·
+//   {motivo}" (si la elegida no es esa) y el aviso naranja "Excede el cupo de {bin}: caben {free}" (D4: no bloquea).
 // Confirmado o sin warehouse.receive: todo de solo lectura. `DataTable` con `pagination={false}` (las filas llevan lo
 // tecleado: paginar lo desmontaría) y `exportable={false}` (rejilla de captura, excepción documentada en KIT.md); tarjetas
-// bajo 720 px o si el panel mide menos de 600 px.
+// bajo 720 px o si el panel mide menos de 600 px (760 px en un recibo directo).
 // Las columnas NO dependen de las filas (DataTable pinta cada celda como un componente con la función de la columna: si
 // cambiara en cada tecla, el campo se volvería a montar y perdería el foco): las celdas leen el estado de un contexto.
 import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
+import { formatQuantity } from '../../kernel/i18n/numberFormat'
 import { ConfirmDialog, DataTable, EmptyState, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
-import { productLabel, type ReceiptDetailDto } from './api'
+import { productLabel, useReceiptTargetSuggestions, type ReceiptDetailDto } from './api'
 import { formatNumber } from './lineRules'
-import { ProductPicker } from './pickers'
+import { BinPicker, ProductPicker } from './pickers'
 import { ReceiptLineCaptureModal } from './ReceiptLineCaptureModal'
-import { isEmptyRow, parseQtyText, rowVariance, type LineRow } from './receiptLineEdit'
+import { isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
+import { exceedsCapacity, TARGET_EXCLUDED_ZONE_TYPES, topSuggestion } from './receivingMode'
 import type { ReceiptLineRowsState } from './useReceiptLineRows'
 
 type LineDto = components['schemas']['ReceiptLineDto']
 
 interface EditorContextValue {
   state: ReceiptLineRowsState
+  receipt: ReceiptDetailDto
   /** Número de fila (1…n) para las etiquetas accesibles. */
   position: ReadonlyMap<string, number>
 }
@@ -118,6 +124,72 @@ function ProductCell({ row, editable }: { row: LineRow; editable: boolean }) {
   )
 }
 
+/** Lote 16: aviso naranja de cupo excedido (D4: se puede confirmar igual). */
+function OverCapacity({ row }: { row: LineRow }) {
+  const t = useT()
+  const lang = useLang()
+  const received = parseQtyText(row.received)
+  if (!row.targetBinCode || row.targetFreeQty == null || !exceedsCapacity(row.targetFreeQty, received)) return null
+  return (
+    <span className="chip s-cod rcp-over" role="status">
+      {t('warehouse.receipts.lines.overCapacity', { bin: row.targetBinCode, free: formatQuantity(row.targetFreeQty, lang) })}
+    </span>
+  )
+}
+
+/** Lote 16: posición destino de la fila (recibo directo). Editable: selector que guarda al elegir, con la pista de la
+ *  sugerida; si no, el código. */
+function TargetCell({ row }: { row: LineRow }) {
+  const t = useT()
+  const { state, position, receipt } = useEditor()
+  const header = receipt.header ?? {}
+  const editable = state.mode.editable
+  // solo se piden sugerencias para las líneas guardadas que reciben algo (las que necesitan destino)
+  const need = rowNeedsTarget(row)
+  const suggestions = useReceiptTargetSuggestions(header.publicId, row.lineId, 3, { enabled: editable && need, handleAccessDenied: false })
+  const top = need ? topSuggestion(suggestions.data) : null
+  const suggestedIds = useMemo(() => (suggestions.data ?? []).map((s) => s.binId), [suggestions.data])
+
+  if (!editable) {
+    return (
+      <span className="rcp-cell">
+        <span className={row.targetBinCode ? 'ref' : 'rcp-faint'}>{row.targetBinCode ?? '—'}</span>
+        <OverCapacity row={row} />
+      </span>
+    )
+  }
+  if (isEmptyRow(row)) return <span className="rcp-faint">—</span>
+  const error = row.errors.target
+  return (
+    <span className="rcp-cell rcp-target">
+      <BinPicker
+        warehousePublicId={header.warehousePublicId}
+        value={row.targetBinId}
+        onChange={(_id, bin) => state.pickTarget(row.key, bin ? { id: bin.id, code: bin.code, zoneTypeCode: bin.zoneTypeCode } : null)}
+        excludeZoneTypeCodes={TARGET_EXCLUDED_ZONE_TYPES}
+        suggestedBinIds={suggestedIds}
+        placeholder={t('warehouse.receipts.lines.targetPlaceholder')}
+        aria-label={t('warehouse.receipts.lines.targetOf', { n: position.get(row.key) ?? 0 })}
+        invalid={Boolean(error)}
+        disabled={row.saving}
+      />
+      {top && top.binId !== row.targetBinId && (
+        <span className="rcp-faint rcp-hint">{t('warehouse.receipts.lines.targetSuggested', { bin: top.binCode ?? '', reason: top.reason ?? '' })}</span>
+      )}
+      <OverCapacity row={row} />
+      {error && (
+        <span className="ferr" role="alert">
+          {error}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Ancho del panel (px) bajo el cual la rejilla pasa a tarjetas; en directo, más (la columna de destino). */
+const CARDS_BELOW = 600
+const DIRECT_CARDS_BELOW = 760
+
 export interface ReceiptLinesEditorProps {
   receipt: ReceiptDetailDto
   state: ReceiptLineRowsState
@@ -128,13 +200,14 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
   const lang = useLang()
   const { rows, mode } = state
   const { manual, editable } = mode
+  const direct = mode.direct === true
   const boxRef = useRef<HTMLDivElement>(null)
   const width = useElementWidth(boxRef)
   const [capturing, setCapturing] = useState<LineDto | null>(null)
   const [removing, setRemoving] = useState<LineRow | null>(null)
 
   const position = useMemo(() => new Map(rows.map((r, i) => [r.key, i + 1])), [rows])
-  const ctx = useMemo<EditorContextValue>(() => ({ state, position }), [state, position])
+  const ctx = useMemo<EditorContextValue>(() => ({ state, receipt, position }), [state, receipt, position])
 
   // estables mientras se teclea (solo cambian con el idioma o el modo)
   const columns = useMemo<DataColumn<LineRow>[]>(
@@ -179,8 +252,19 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         },
         sortValue: (r) => rowVariance(r, manual) ?? undefined,
       },
+      // Lote 16: solo en recibos directos
+      ...(direct
+        ? [
+            {
+              id: 'target',
+              header: t('warehouse.receipts.lines.target'),
+              cell: (r: LineRow) => <TargetCell row={r} />,
+              sortValue: (r: LineRow) => r.targetBinCode || undefined,
+            } satisfies DataColumn<LineRow>,
+          ]
+        : []),
     ],
-    [t, lang, editable, manual],
+    [t, lang, editable, manual, direct],
   )
 
   const rowActions = useMemo<RowAction<LineRow>[]>(
@@ -213,7 +297,7 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
   )
 
   return (
-    <div ref={boxRef} className="rcp-lines">
+    <div ref={boxRef} className={direct ? 'rcp-lines rcp-direct' : 'rcp-lines'}>
       <EditorContext.Provider value={ctx}>
         <DataTable
           label={t('warehouse.receipts.lines.title')}
@@ -224,7 +308,8 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
           rowClassName={(r) => (r.saving ? 'rcp-saving' : undefined)}
           pagination={false}
           exportable={false}
-          forceCards={width > 0 && width < 600}
+          // en directo la columna "Posición destino" pide más ancho: tarjetas antes (sin desbordar el panel)
+          forceCards={width > 0 && width < (direct ? DIRECT_CARDS_BELOW : CARDS_BELOW)}
           empty={<EmptyState title={t('warehouse.receipts.detail.noLines')} />}
         />
       </EditorContext.Provider>

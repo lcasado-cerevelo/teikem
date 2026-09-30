@@ -10,7 +10,7 @@ describe('batchProductsText', () => {
       { sku: 'B-2', quantity: 1.5 },
       { sku: 'A-1', quantity: 1 },
     ]
-    expect(batchProductsText({ lines }, 'es')).toBe('A-1 ×3, B-2 ×1,5')
+    expect(batchProductsText({ lines }, 'es')).toBe('A-1 ×3, B-2 ×1.5')
     expect(batchProductsText({ lines: null }, 'es')).toBe('')
   })
 })

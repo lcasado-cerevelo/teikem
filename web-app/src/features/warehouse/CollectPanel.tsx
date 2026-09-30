@@ -3,8 +3,10 @@
 // Almacén arriba (si la compañía tiene un solo almacén activo, ya elegido) y una rejilla de líneas en `DataTable`
 // (`pagination={false}` y `exportable={false}`: filas con controles editables; tarjetas si el panel mide menos de 560 px):
 // Producto (`ProductPickerInput` del almacén con existencia disponible y del mismo dueño que las demás filas; pista "N disp."),
-// Cantidad, Posición (`BinPickerInput` con existencia; las posiciones FEFO del producto van primero y la primera se anuncia
-// como "FEFO: …"; vacía = el servidor elige por FEFO), Lote (solo LOT/SERIAL) y Series (solo SERIAL: botón "Series (n)" que
+// Cantidad, Posición (`BinPickerInput` con `options`: SOLO las posiciones donde el producto —y el lote, si se eligió— tiene
+// disponible recolectable, cada una con su disponible, en el orden FEFO del servidor; la primera va "Sugerida" y se anuncia
+// como "FEFO: …"; deshabilitada sin producto; al cambiar producto o lote una posición que ya no aplica se quita sola;
+// vacía = el servidor elige por FEFO), Lote (solo LOT/SERIAL) y Series (solo SERIAL: botón "Series (n)" que
 // abre un modal), papelera. Al elegir producto en la última fila se agrega otra vacía (hasta 100 líneas); "Añadir línea"
 // también agrega una. "Recolectar (bajar de inventario)" graba TODO en un solo POST /api/v1/pick-batches (sin las filas
 // vacías; los errores del servidor vuelven a su fila) y "Limpiar" deja una fila vacía. Al grabar: toast, líneas limpias
@@ -35,7 +37,7 @@ import {
   collectSchema,
   EMPTY_COLLECT_LINE,
   fefoAvailable,
-  fefoBinSuggestions,
+  fefoBinOptions,
   fefoCandidates,
   isBlankLine,
   MAX_PICK_LINES,
@@ -47,7 +49,7 @@ import {
   type CollectLine,
 } from './collectForm'
 import { formatNumber, parseSerials, type LineIssue } from './lineRules'
-import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
+import { BinPickerInput, ProductPickerInput, WarehousePickerInput, type BinPickerOption } from './pickers'
 import './warehouse.css'
 
 /** Bajo este ancho del panel la rejilla pasa a tarjetas. */
@@ -58,6 +60,8 @@ interface GridRow {
   key: string
   index: number
 }
+
+const NO_BIN_OPTIONS: BinPickerOption[] = []
 
 const isLotTracked = (code: string | null | undefined) => code === 'LOT' || code === 'SERIAL'
 
@@ -72,8 +76,10 @@ function useLineStock(warehousePublicId: string | null, productPublicId: string 
     },
     { enabled: Boolean(warehousePublicId && productPublicId), handleAccessDenied: false },
   )
+  const on = Boolean(warehousePublicId && productPublicId)
   // mientras llega la del producto nuevo, keepPreviousData mostraría la del anterior: se ignora
-  return q.isPlaceholderData || !warehousePublicId || !productPublicId ? undefined : q.data?.items ?? undefined
+  const items = q.isPlaceholderData || !on ? undefined : q.data?.items ?? undefined
+  return { items, loading: on && (q.isLoading || q.isPlaceholderData), failed: on && q.isError }
 }
 
 // =====================================================================================================================
@@ -85,7 +91,7 @@ function ProductCell({ index, warehousePublicId, onPicked }: { index: number; wa
   const lines = useWatch({ name: 'lines' }) as CollectLine[] | undefined
   const line = lines?.[index]
   const owner = ownerFilterFor(lines ?? [], index)
-  const stock = useLineStock(warehousePublicId, line?.productPublicId ?? null)
+  const { items: stock } = useLineStock(warehousePublicId, line?.productPublicId ?? null)
   const available = line?.productPublicId ? (stock ? fefoAvailable(stock) : line.available) : null
   return (
     <Field
@@ -119,18 +125,42 @@ function QuantityCell({ index }: { index: number }) {
 
 function BinCell({ index, warehousePublicId }: { index: number; warehousePublicId: string | null }) {
   const t = useT()
+  const lang = useLang()
   const productPublicId = useWatch({ name: `lines.${index}.productPublicId` }) as string | null
   const lotId = useWatch({ name: `lines.${index}.lotId` }) as string
   const binId = useWatch({ name: `lines.${index}.binId` }) as string
-  const stock = useLineStock(warehousePublicId, productPublicId)
+  const { items: stock, loading, failed } = useLineStock(warehousePublicId, productPublicId)
   const lot = lotId ? Number(lotId) : null
-  const suggested = useMemo(() => (stock ? fefoBinSuggestions(stock, lot) : []), [stock, lot])
-  const first = stock && !binId ? fefoCandidates(stock, lot)[0] : undefined
+  // solo donde hay disponible del producto (y del lote), en orden FEFO; sin producto, ninguna
+  const options = useMemo<BinPickerOption[]>(
+    () =>
+      stock && productPublicId
+        ? fefoBinOptions(stock, lot).map((b) => ({
+            id: b.binId,
+            code: b.binCode,
+            zoneCode: b.zoneCode,
+            zoneTypeCode: b.zoneTypeCode,
+            hint: t('ui.binPicker.available', { qty: formatNumber(b.qtyAvailable, lang) }),
+          }))
+        : NO_BIN_OPTIONS,
+    [stock, productPublicId, lot, t, lang],
+  )
+  const suggested = useMemo(() => (options.length > 0 ? [options[0].id] : []), [options])
+  const first = stock && productPublicId && !binId ? fefoCandidates(stock, lot)[0] : undefined
   const hint = first ? t('warehouse.pickBatches.collectPanel.fefoHint', { bin: [first.binCode, first.lotNumber].filter(Boolean).join(' · ') }) : undefined
   return (
     <Field name={`lines.${index}.binId`} label={t('warehouse.pickBatches.collectPanel.lineBin', { n: index + 1 })} hideLabel help={hint}>
-      {/* vacío = el servidor elige por FEFO; solo posiciones con existencias; al cambiar de almacén se quita sola */}
-      <BinPickerInput warehousePublicId={warehousePublicId} onlyWithStock suggestedBinIds={suggested} placeholder={t('warehouse.pickBatches.fefo')} />
+      {/* vacío = el servidor elige por FEFO; al cambiar de almacén, producto o lote una posición que ya no aplica se quita sola */}
+      <BinPickerInput
+        warehousePublicId={warehousePublicId}
+        // saldos ilegibles (sin inventory.view, error): todas las posiciones con existencias, como antes; el servidor valida
+        options={failed ? undefined : options}
+        onlyWithStock
+        optionsLoading={loading}
+        suggestedBinIds={suggested}
+        disabled={!productPublicId}
+        placeholder={productPublicId ? t('warehouse.pickBatches.fefo') : t('ui.binPicker.pickProductFirst')}
+      />
     </Field>
   )
 }

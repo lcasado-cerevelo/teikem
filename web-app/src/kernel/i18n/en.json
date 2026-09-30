@@ -352,7 +352,16 @@
       "clear": "Clear",
       "all": "All",
       "from": "From",
-      "to": "To"
+      "to": "To",
+      "applied": {
+        "prefix": "Filters:",
+        "none": "No filters",
+        "search": "Search",
+        "between": "from {from} to {to}",
+        "since": "from {from}",
+        "until": "through {to}",
+        "more": "{list} and {count} more"
+      }
     },
     "searchSelect": {
       "selected": "{count} selected",
@@ -393,7 +402,9 @@
       "none": "No bins match.",
       "noAccess": "Your user cannot view bins.",
       "clear": "Remove bin",
-      "suggested": "Suggested"
+      "suggested": "Suggested",
+      "pickProductFirst": "Choose a product first",
+      "available": "{qty} avail."
     },
     "productPicker": {
       "placeholder": "Search product by SKU or name…",
@@ -732,6 +743,7 @@
       "title": "Recent activity",
       "subtitle": "What happened in your company. Each tab is a business module; only the ones you can see appear.",
       "tabsLabel": "Activity modules",
+      "moduleFilter": "Module",
       "modules": {
         "WAREHOUSE": "Warehouse",
         "OPERATIONS": "Operations",
@@ -975,7 +987,8 @@
         "codeRequired": "Code is required.",
         "codePattern": "Code only allows letters, numbers, hyphen and underscore (max 30).",
         "nameRequired": "Name is required."
-      }
+      },
+      "receiving": "Receiving"
     },
     "postalPicker": {
       "label": "City or ZIP code",
@@ -1048,7 +1061,16 @@
       "postalCode": "Postal code",
       "country": "Country",
       "saved": "Changes saved.",
-      "deactivate": "Deactivate"
+      "deactivate": "Deactivate",
+      "receiving": "Receiving",
+      "receivingMode": "Receiving mode",
+      "receivingModeHelp": "With put-away: goods go to the receiving bin and put-away tasks are created. Direct to bin: each line carries its bin and goes there on confirmation, with no tasks.",
+      "receivingChangeTitle": "Change the receiving mode?",
+      "receivingChangeBody": "New receipts at {code} will come in {mode}. The {open} open receipts keep their mode and the {pending} receipts with pending put-away stay as they are.",
+      "receivingChangeConfirm": "Change mode",
+      "defaultReceivingBin": "Default receiving bin",
+      "defaultReceivingBinHelp": "A STAGING or CROSSDOCK zone bin of this warehouse. Empty: the first receiving bin. Used by put-away receipts and by cross-docked lines.",
+      "defaultReceivingBinNone": "The first receiving bin"
     },
     "zones": {
       "title": "Zones",
@@ -2209,8 +2231,12 @@
           "noLines": "Add at least one line to confirm.",
           "saving": "Saving lines…",
           "unsaved": "Some lines are not saved: leave the field or press Enter to save them.",
-          "errors": "Fix the marked lines before confirming."
-        }
+          "errors": "Fix the marked lines before confirming.",
+          "noTarget": "The target bin is missing on {n} line(s)."
+        },
+        "useSuggested": "Use suggested bins",
+        "suggestedApplied": "A bin was assigned to {n} line(s); {m} without a suggestion.",
+        "confirmBodyDirect": "Receipt {number} is confirmed in full: each line goes to its target bin, with no put-away tasks. It can no longer be changed."
       },
       "originLong": {
         "PO": "Purchase order",
@@ -2235,9 +2261,19 @@
           "reference": "Reference",
           "expectedDate": "Expected arrival",
           "createdAt": "Created",
-          "lines": "Lines",
-          "variance": "Variance"
-        }
+          "receivedAt": "Confirmed",
+          "varianceTotal": "Receipt variance"
+        },
+        "exportLines": {
+          "sku": "SKU",
+          "product": "Product",
+          "expected": "Expected",
+          "received": "Received",
+          "variance": "Variance",
+          "lotSerial": "Lot/Serial",
+          "noLines": "No lines"
+        },
+        "direct": "Direct"
       },
       "lines": {
         "title": "Receipt lines",
@@ -2253,7 +2289,12 @@
         "lotSerial": "Lot and serials",
         "remove": "Remove line",
         "saving": "Saving…",
-        "newRow": "New line"
+        "newRow": "New line",
+        "target": "Target bin",
+        "targetOf": "Target bin of line {n}",
+        "targetSuggested": "Suggested: {bin} · {reason}",
+        "targetPlaceholder": "Choose where it is stored…",
+        "overCapacity": "Exceeds the capacity of {bin}: {free} fit"
       },
       "header": {
         "newTitle": "New receipt",
@@ -2272,7 +2313,10 @@
         "delete": "Delete receipt",
         "deleteTitle": "Delete receipt",
         "deleteBody": "Delete receipt {number}? If it came from a client notice, the notice becomes pending again; if it came from a purchase order, the order can be received again.",
-        "deleted": "Receipt {number} deleted."
+        "deleted": "Receipt {number} deleted.",
+        "mode": "Receiving mode",
+        "modeHelp": "Defaults to the warehouse's; it can only change while the receipt is open.",
+        "modeByWarehouse": "The warehouse's"
       },
       "capture": {
         "title": "Lot and serials · {product}",
@@ -2283,7 +2327,11 @@
         "listTitle": "Receipts pending put-away",
         "tasksTitle": "Put-away tasks",
         "select": "Select a receipt to see its put-away tasks",
-        "noTasks": "This receipt has no put-away tasks."
+        "noTasks": "This receipt has no put-away tasks.",
+        "directInfo": "{code} receives direct to bin: only receipts from before the change or with cross-docking appear here."
+      },
+      "chip": {
+        "direct": "Direct to bin"
       }
     },
     "asns": {
@@ -2801,6 +2849,10 @@
         "manualOnly": "Manual only",
         "yes": "Yes"
       }
+    },
+    "receivingModes": {
+      "PUTAWAY": "With put-away",
+      "DIRECT": "Direct to bin"
     }
   },
   "system": {

@@ -16,7 +16,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
-import { SplitPane } from '../../kernel/ui'
+import { FilterScope, SplitPane } from '../../kernel/ui'
 import { exportCycleCounts, useCycleCountsPage, type CycleCountDto } from './api'
 import { ChangedCountModal } from './ChangedCountModal'
 import { CountDetailPanel } from './CountDetailPanel'
@@ -128,7 +128,10 @@ export default function CycleCountListScreen() {
           }}
           exportRows={() => exportCycleCounts(countFilterQuery(effective))}
         />
-        <CountDetailPanel id={selected} />
+        {/* ámbito propio: las líneas del conteo elegido no dependen de los filtros de la lista (sin línea de filtros) */}
+        <FilterScope>
+          <CountDetailPanel id={selected} />
+        </FilterScope>
       </SplitPane>
 
       {creating === 'manual' && <CreateCountModal onClose={() => setCreating(null)} onCreated={(c) => onCreated(c.count?.id)} />}

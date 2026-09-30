@@ -9,6 +9,8 @@
 //   como `SearchSelect`; Dirección como texto (dirección, ciudad, estado y código postal). Sin buscador dentro de la tabla.
 // - Alta: Ciudad o código postal en un combobox (`PostalLocalityPickerInput`) que llena Ciudad, ZIP, Estado y País (País
 //   y Estado de solo lectura); casilla "Activo" marcada e informativa (todo almacén nace activo).
+// - Lote 16: columna "Recepción" (Con acomodo / Directo a posición) y "Modo de recepción" en el alta (por defecto Con
+//   acomodo); la posición de recepción por defecto se elige después en la ficha (al crear aún no hay posiciones).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -19,6 +21,7 @@ import { StatusChip, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import {
   CARDS_QUERY,
+  Chip,
   ConfirmDialog,
   DataTable,
   type DataColumn,
@@ -32,6 +35,7 @@ import {
   Modal,
   Panel,
   SearchSelect,
+  Select,
   Spinner,
   TextInput,
   toast,
@@ -41,6 +45,8 @@ import { IconWarehouse } from '../../kernel/ui/screenIcons'
 import { useCreateWarehouse, useSaveWarehouseZone, useWarehouseZones, useWarehouses, type WarehouseDto, type WarehouseZoneDto } from './api'
 import { TextFilter } from './filterControls'
 import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
+import { isDirectMode, RECEIVING_MODES, receivingModeLabel } from './receivingMode'
+import { useReceivingModeOptions } from './useReceivingModeOptions'
 import { distinctOptions, EMPTY_WAREHOUSE_FILTERS, filterWarehouseRows, warehouseAddress, type WarehouseListFilters } from './warehouseFilters'
 import { ZoneModal } from './ZoneModal'
 import './warehouse.css'
@@ -56,6 +62,7 @@ const byCode = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base'
 function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT()
   const create = useCreateWarehouse()
+  const modeOptions = useReceivingModeOptions()
   const schema = useMemo(
     () =>
       z.object({
@@ -71,13 +78,14 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
         postalCode: z.string().trim(),
         state: z.string().trim(),
         country: z.string().trim(),
+        receivingMode: z.string(),
       }),
     [t],
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    // sin localidad elegida el país es Puerto Rico (WarehouseRules.DefaultCountry)
-    defaultValues: { code: '', name: '', line1: '', city: '', postalCode: '', state: '', country: 'PR' },
+    // sin localidad elegida el país es Puerto Rico (WarehouseRules.DefaultCountry); el modo, Con acomodo
+    defaultValues: { code: '', name: '', line1: '', city: '', postalCode: '', state: '', country: 'PR', receivingMode: RECEIVING_MODES.putaway as string },
   })
   const formId = 'warehouse-create'
 
@@ -115,6 +123,7 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
             postalCode: v.postalCode || null,
             state: v.state || null,
             country: v.country || null,
+            receivingMode: v.receivingMode || null,
           })
           toast.success(t('warehouse.list.created'))
           close()
@@ -135,6 +144,9 @@ function CreateWarehouseModal({ open, onClose }: { open: boolean; onClose: () =>
           <PostalLocalityPickerInput />
         </Field>
         <DerivedLocalityFields />
+        <Field name="receivingMode" label={t('warehouse.detail.receivingMode')} help={t('warehouse.detail.receivingModeHelp')}>
+          <Select options={modeOptions} />
+        </Field>
         <div className="f">
           <label className="sw">
             <input type="checkbox" role="switch" checked disabled readOnly aria-describedby="warehouse-create-active-help" />
@@ -270,6 +282,7 @@ export default function WarehouseListScreen() {
   const { data = NO_WAREHOUSES, isLoading, error } = useWarehouses({ includeInactive: true })
   const { data: zoneTypes = [] } = useLookups('ZoneType')
   const { data: statuses = [] } = useStatuses(STATUS_DOMAIN)
+  const modeOptions = useReceivingModeOptions()
 
   const rows = useMemo(() => data.filter((w) => w.code || w.name), [data])
   const filtered = useMemo(() => filterWarehouseRows(rows, filters), [rows, filters])
@@ -319,13 +332,24 @@ export default function WarehouseListScreen() {
       },
       { id: 'zoneCount', header: t('warehouse.list.zones'), cell: (w) => w.zoneCount ?? 0, sortValue: (w) => w.zoneCount, align: 'end' },
       {
+        // Lote 16: modo de recepción del almacén
+        id: 'receiving',
+        header: t('warehouse.list.receiving'),
+        cell: (w) => (
+          <Chip tone={isDirectMode(w.receivingModeCode) ? 'route' : 'neutral'}>
+            {w.receivingMode ?? receivingModeLabel(w.receivingModeCode, modeOptions.map((o) => ({ code: o.value, label: o.label })))}
+          </Chip>
+        ),
+        sortValue: (w) => w.receivingMode ?? w.receivingModeCode ?? undefined,
+      },
+      {
         id: 'status',
         header: t('warehouse.list.status'),
         cell: (w) => <StatusChip domain={STATUS_DOMAIN} code={w.statusCode} label={w.status} />,
         sortValue: (w) => w.status ?? w.statusCode,
       },
     ],
-    [t],
+    [t, modeOptions],
   )
 
   return (

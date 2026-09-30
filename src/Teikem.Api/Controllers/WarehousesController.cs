@@ -27,14 +27,21 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     public Task<IReadOnlyList<WarehouseDto>> List([FromQuery] bool includeInactive, CancellationToken ct)
         => warehouses.ListAsync(includeInactive, ct);
 
-    /// <summary>Alta: código único e inmutable; país por defecto 'PR'; nace ACTIVE con historial.</summary>
+    /// <summary>
+    /// Alta: código único e inmutable; país por defecto 'PR'; nace ACTIVE con historial. Lote 16: receivingMode (PUTAWAY |
+    /// DIRECT; sin él, PUTAWAY; desconocido → 400).
+    /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseDetailDto> Create([FromBody] WarehouseCreateRequest req, CancellationToken ct) => warehouses.CreateAsync(req, ct);
 
     [HttpGet("{publicId:guid}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<WarehouseDetailDto> Get(Guid publicId, CancellationToken ct) => warehouses.GetAsync(publicId, ct);
 
-    /// <summary>Edición en línea: null = sin cambio, "" = quitar; rowVersion opcional (409 si cambió). code → 400.</summary>
+    /// <summary>
+    /// Edición en línea: null = sin cambio, "" = quitar; rowVersion opcional (409 si cambió). code → 400. Lote 16:
+    /// receivingMode (PUTAWAY | DIRECT; no toca los recibos abiertos) y posición de recepción por defecto
+    /// (defaultReceivingBinId: del almacén 404, zona STAGING o CROSSDOCK 400, activa 422; clearDefaultReceivingBin la quita).
+    /// </summary>
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseDetailDto> Update(Guid publicId, [FromBody] WarehousePatchRequest req, CancellationToken ct)
         => warehouses.UpdateAsync(publicId, req, ct);

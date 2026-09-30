@@ -76,6 +76,28 @@ public class DeviceServiceTests
         return (created, enrolled);
     }
 
+    [Fact]
+    public async Task Enroll_reports_the_receiving_mode_of_the_default_warehouse()
+    {
+        // Lote 16: el registro (y el heartbeat, por la misma costura PreferencesAsync) trae el modo del almacén por defecto.
+        await using var f = await FixtureAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var row = await f.Db.Warehouses.SingleAsync(x => x.WarehouseId == w.WarehouseId);
+        row.ReceivingModeLookupId = f.LookupId(LookupDomains.ReceivingMode, ReceivingModes.Direct);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var withWarehouse = await f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest("AP-16", null, null, w.PublicId, null), default);
+        f.Db.ChangeTracker.Clear();
+        var enrolled = await f.Get<DeviceService>().EnrollAsync(new DeviceEnrollRequest(withWarehouse.EnrollCode, "TC52", "1.0.0"), default);
+        Assert.Equal(w.PublicId, enrolled.DefaultWarehousePublicId);
+        Assert.Equal(ReceivingModes.Direct, enrolled.DefaultWarehouseReceivingMode);
+
+        f.Db.ChangeTracker.Clear();
+        var (_, noWarehouse) = await EnrolledDeviceAsync(f, "AP-17");
+        Assert.Null(noWarehouse.DefaultWarehouseReceivingMode);
+    }
+
     /// <summary>SecurityEvent escritos por el servicio (tipo, resultado, compañía y detalle serializado).</summary>
     private sealed class RecordingSecurityEventWriter : ISecurityEventWriter
     {

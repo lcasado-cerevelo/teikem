@@ -24,6 +24,13 @@ public class Warehouse : ITenantScoped, ISoftDeletable, IHasStatus
     public int StatusCodeId { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>Lote 16: modo de recepción (LookupCode 'ReceivingMode': PUTAWAY | DIRECT); NULL = PUTAWAY.</summary>
+    public int? ReceivingModeLookupId { get; set; }
+    /// <summary>
+    /// Lote 16 (D12): posición de recepción por defecto del almacén (zona STAGING o CROSSDOCK, del mismo almacén por la FK
+    /// compuesta FK_Warehouse_DefaultReceivingBin). NULL = la primera STAGING por código de zona y de posición.
+    /// </summary>
+    public int? DefaultReceivingBinId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<WarehouseZone> Zones { get; set; } = new List<WarehouseZone>();

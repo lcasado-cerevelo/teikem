@@ -154,7 +154,15 @@ public sealed class ReceiptService(
         var page = await query.OrderByDescending(r => r.CreatedAtUtc).ThenByDescending(r => r.ReceiptHeaderId)
             .Skip(skip).Take(take).ToListAsync(ct);
         var items = await HeadersAsync(page, ct);
-        return new ReceiptPageDto(total, skip, take, page.Select(r => items[r.ReceiptHeaderId]).ToList());
+        if (!q.IncludeLines)
+            return new ReceiptPageDto(total, skip, take, page.Select(r => items[r.ReceiptHeaderId]).ToList());
+
+        // Exportación con líneas: las de TODOS los recibos de la página en un solo lote de consultas (sin N+1).
+        var lines = await LinesAsync(page, items, ct);
+        return new ReceiptPageDto(total, skip, take, page.Select(r => items[r.ReceiptHeaderId] with
+        {
+            Lines = lines.ByReceipt.GetValueOrDefault(r.ReceiptHeaderId) ?? (IReadOnlyList<ReceiptLineDto>)Array.Empty<ReceiptLineDto>(),
+        }).ToList());
     }
 
     // ================================================================ ficha
@@ -164,48 +172,12 @@ public sealed class ReceiptService(
         var r = await db.Set<ReceiptHeader>().AsNoTracking().FirstOrDefaultAsync(x => x.PublicId == publicId && x.IsActive, ct)
                 ?? throw new NotFoundException("Recibo");
         var header = (await HeadersAsync(new List<ReceiptHeader> { r }, ct))[r.ReceiptHeaderId];
-        var expects = ReceiptRules.ExpectsQuantities(header.TypeCode);
-
-        var lines = await (from l in db.Set<ReceiptLine>().AsNoTracking()
-                           join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
-                           where l.ReceiptHeaderId == r.ReceiptHeaderId
-                           orderby l.ReceiptLineId
-                           select new { Line = l, p.PublicId, p.Sku, p.Name, p.TrackingTypeLookupId }).ToListAsync(ct);
-        var lineIds = lines.Select(x => x.Line.ReceiptLineId).ToList();
-        var tracking = await ReceivingSupport.TrackingCodesAsync(db, lines.Select(x => x.TrackingTypeLookupId), ct);
-
-        var lotIds = lines.Where(x => x.Line.LotId != null).Select(x => x.Line.LotId!.Value).Distinct().ToList();
-        var lots = await (from lot in db.Set<InventoryLot>().AsNoTracking()
-                          join p in db.Set<Product>().AsNoTracking() on lot.ProductId equals p.ProductId
-                          where lotIds.Contains(lot.LotId)
-                          select new { lot.LotId, lot.LotNumber, lot.ExpiryDate }).ToDictionaryAsync(x => x.LotId, ct);
-        var binIds = lines.Where(x => x.Line.StagingBinId != null).Select(x => x.Line.StagingBinId!.Value).Distinct().ToList();
-        var bins = await db.Set<WarehouseBin>().AsNoTracking().Where(b => b.WarehouseId == r.WarehouseId && binIds.Contains(b.WarehouseBinId))
-            .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct);
-        var asnLineIds = lines.Where(x => x.Line.AsnLineId != null).Select(x => x.Line.AsnLineId!.Value).ToList();
-        var unitCosts = r.AsnId is int asnId
-            ? await (from al in db.Set<AsnLine>().AsNoTracking()
-                     join pl in db.Set<PurchaseOrderLine>().AsNoTracking() on al.PurchaseOrderLineId equals pl.PurchaseOrderLineId
-                     where al.AsnId == asnId && asnLineIds.Contains(al.AsnLineId)
-                     select new { al.AsnLineId, pl.UnitCost }).ToDictionaryAsync(x => x.AsnLineId, x => x.UnitCost, ct)
-            : new Dictionary<int, decimal>();
-        var crossDock = await CrossDockByLineAsync(lineIds, ct);
-
-        var lineDtos = lines.Select(x =>
-        {
-            var l = x.Line;
-            var lot = l.LotId is int lid ? lots.GetValueOrDefault(lid) : null;
-            return new ReceiptLineDto(l.ReceiptLineId, l.AsnLineId, x.PublicId, x.Sku, x.Name,
-                tracking.GetValueOrDefault(x.TrackingTypeLookupId, TrackingTypes.None), l.ExpectedQty, l.ReceivedQty,
-                ReceiptRules.LineVariance(expects, l.ExpectedQty, l.ReceivedQty), l.LotId, lot?.LotNumber, lot?.ExpiryDate,
-                ParseSerials(l.SerialNumbersJson), l.StagingBinId, l.StagingBinId is int b ? bins.GetValueOrDefault(b) : null,
-                l.AdjustmentTxnId, l.AsnLineId is int al && unitCosts.TryGetValue(al, out var cost) ? cost : null,
-                crossDock.GetValueOrDefault(l.ReceiptLineId));
-        }).ToList();
+        var lines = await LinesAsync(new List<ReceiptHeader> { r }, new Dictionary<int, ReceiptListItemDto> { [r.ReceiptHeaderId] = header }, ct);
+        var lineDtos = lines.ByReceipt.GetValueOrDefault(r.ReceiptHeaderId) ?? new List<ReceiptLineDto>();
 
         var tasks = await PutawayTasksAsync(r, header, ct);
         // Lote 13: se puede borrar mientras está abierto y sin asignaciones de cruce de muelle (mismas reglas que DeleteAsync).
-        var canDelete = header.IsOpen && crossDock.Count == 0;
+        var canDelete = header.IsOpen && lines.CrossDock.Count == 0;
         return new ReceiptDetailDto(header, lineDtos, tasks, Convert.ToBase64String(r.RowVersion ?? Array.Empty<byte>()), canDelete);
     }
 
@@ -278,12 +250,16 @@ public sealed class ReceiptService(
         if (carrierError is not null) textErrors["carrier"] = new[] { carrierError };
         var (reference, referenceError) = ReceiptRules.CreateText(req.Reference, ReceiptRules.ReferenceTooLong);
         if (referenceError is not null) textErrors["reference"] = new[] { referenceError };
+        // Lote 16: modo del recibo (sin él, el del almacén; D9 lo resuelve CreateMode dentro de la transacción).
+        var (requestedMode, modeError) = ReceivingModeRules.ParseMode(req.ReceivingMode);
+        if (modeError is not null) textErrors["receivingMode"] = new[] { modeError };
         if (textErrors.Count > 0) throw new ValidationException(textErrors);
 
         // Ciego/devolución: almacén indicado o el único activo; el tope de líneas se valida antes de abrir la transacción.
         // Lote 13: sin líneas se crea solo el encabezado (nace EXPECTED); las líneas son obligatorias solo con Confirm.
         Warehouse? manualWarehouse = null;
         var requestLines = req.Lines ?? Array.Empty<ReceiptLineRequest>();
+        var anyTarget = requestLines.Any(l => l is not null && (l.TargetBinId is not null || !string.IsNullOrWhiteSpace(l.TargetBinCode)));
         if (typeCode != ReceiptTypes.Asn)
         {
             manualWarehouse = requested ?? await ReceivingSupport.ResolveWarehouseOrDefaultAsync(db, null, ct);
@@ -354,13 +330,20 @@ public sealed class ReceiptService(
                 if (errors.Count > 0) throw new ValidationException(errors);
             }
 
-            // Posición de recepción por defecto (la de la solicitud o la primera STAGING del almacén) para las líneas que no la
-            // traen. Lote 13: la de la solicitud queda además en el encabezado (DefaultStagingBinId); sin ella se sigue exigiendo
-            // que el almacén tenga una zona STAGING (422 NoStagingBin), aunque el recibo nazca sin líneas.
+            // Lote 16: modo con que nace el recibo (copia: cambiar el del almacén después no lo toca, D2).
+            var mode = ReceivingModeRules.CreateMode(requestedMode, await LookupCodeOfAsync(warehouse.ReceivingModeLookupId, ct2), req.Confirm, anyTarget);
+            var modeId = await ModeIdAsync(mode, ct2);
+
+            // Posición de recepción por defecto (la de la solicitud o la del almacén) para las líneas que no la traen. Lote 13:
+            // la de la solicitud queda además en el encabezado (DefaultStagingBinId); sin ella se sigue exigiendo que el almacén
+            // tenga una zona STAGING (422 NoStagingBin), aunque el recibo nazca sin líneas. Lote 16: en un recibo directo no se
+            // exige (la mercancía entra a su posición destino); si existe, queda para las líneas con cruce de muelle (D11).
             int? headerStagingId = req.StagingBinId is int sb
                 ? (await ReceivingSupport.ResolveStagingBinAsync(db, warehouse.WarehouseId, sb, "stagingBinId", ct2)).BinId
                 : null;
-            var stagingId = headerStagingId ?? await ReceivingSupport.DefaultStagingBinAsync(db, warehouse.WarehouseId, ct2);
+            var stagingId = headerStagingId ?? (ReceivingModeRules.IsDirect(mode)
+                ? await ReceivingSupport.TryDefaultStagingBinAsync(db, warehouse.WarehouseId, ct2)
+                : await ReceivingSupport.DefaultStagingBinAsync(db, warehouse.WarehouseId, ct2));
             foreach (var l in lines) l.StagingBinId ??= stagingId;
 
             if (req.DockId is int dockId) await EnsureDockAsync(warehouse.WarehouseId, dockId, ct2);
@@ -370,7 +353,7 @@ public sealed class ReceiptService(
             var receipt = new ReceiptHeader
             {
                 PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = warehouse.WarehouseId, AsnId = asn?.AsnId, DockId = req.DockId,
-                DefaultStagingBinId = headerStagingId, Carrier = carrier, Reference = reference,
+                DefaultStagingBinId = headerStagingId, Carrier = carrier, Reference = reference, ReceivingModeLookupId = modeId,
                 ReceiptTypeLookupId = typeLookupId, Number = NumberFormat.Resolve(NumberPattern, seq),
                 StatusCodeId = initial.StatusCodeId, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -443,7 +426,11 @@ public sealed class ReceiptService(
             if (carrierError is not null) errors["carrier"] = new[] { carrierError };
             var (referenceChanged, reference, referenceError) = ReceiptRules.PatchText(req.Reference, ReceiptRules.ReferenceTooLong);
             if (referenceError is not null) errors["reference"] = new[] { referenceError };
+            // Lote 16 (D1): modo SOLO de este recibo abierto (el del almacén no cambia).
+            var (newMode, modeError) = ReceivingModeRules.ParseMode(req.ReceivingMode);
+            if (modeError is not null) errors["receivingMode"] = new[] { modeError };
             if (errors.Count > 0) throw new ValidationException(errors);
+            var effectiveMode = newMode ?? await ReceiptModeAsync(r, ct2);
 
             if (warehouseChanged)
             {
@@ -451,8 +438,9 @@ public sealed class ReceiptService(
                 r.WarehouseId = requested.WarehouseId;
                 r.DefaultStagingBinId = null;
                 r.DockId = null;
-                // El almacén nuevo debe poder recibir (misma regla que el alta).
-                if (req.StagingBinId is null) await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
+                // El almacén nuevo debe poder recibir (misma regla que el alta). Lote 16: en directo no exige STAGING.
+                if (req.StagingBinId is null && !ReceivingModeRules.IsDirect(effectiveMode))
+                    await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
             }
             if (newTypeId is int typeId) r.ReceiptTypeLookupId = typeId;
             if (req.ClearStagingBin == true) r.DefaultStagingBinId = null;
@@ -466,6 +454,13 @@ public sealed class ReceiptService(
             }
             if (carrierChanged) r.Carrier = carrier;
             if (referenceChanged) r.Reference = reference;
+            if (newMode is not null)
+            {
+                // Pasar a "Con acomodo" exige una posición de recepción: la del encabezado o la del almacén (422 NoStagingBin).
+                if (!ReceivingModeRules.IsDirect(newMode) && r.DefaultStagingBinId is null)
+                    await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
+                r.ReceivingModeLookupId = await ModeIdAsync(newMode, ct2);
+            }
             await SaveReceiptAsync(ct2);
         }, ct);
         return await GetAsync(publicId, ct);
@@ -564,8 +559,16 @@ public sealed class ReceiptService(
             }
             if (req.StagingBinId is int sb && errors.Count == 0)
                 line.StagingBinId = (await ReceivingSupport.ResolveStagingBinAsync(db, r.WarehouseId, sb, "stagingBinId", ct2)).BinId;
+            // Lote 16: posición destino (ClearTargetBin la quita; TargetBinId la fija con las reglas de ResolveTargetBinAsync).
+            var targetId = req.ClearTargetBin == true ? null : line.TargetBinId;
+            if (req.TargetBinId is int tb && errors.Count == 0)
+            {
+                var target = await ResolveTargetBinAsync(r.WarehouseId, tb, null, "targetBinId", "targetBinCode", errors, ct2);
+                if (target is not null) targetId = target.BinId;
+            }
             if (errors.Count > 0) throw new ValidationException(errors);
 
+            line.TargetBinId = targetId;
             line.ProductId = product.ProductId;
             line.ExpectedQty = expected;
             line.ReceivedQty = received;
@@ -598,7 +601,10 @@ public sealed class ReceiptService(
             var line = await BuildLineAsync(r.WarehouseId, req, "line", owner, ownerClientId, r.AsnId is null, errors, ct2);
             if (errors.Count > 0 || line is null) throw new ValidationException(errors);
             line.ReceiptHeaderId = r.ReceiptHeaderId;
-            line.StagingBinId ??= r.DefaultStagingBinId ?? await DefaultLineStagingAsync(r, ct2);
+            // Lote 16: en un recibo directo la posición de recepción no se exige (solo sirve para el cruce de muelle, D11).
+            line.StagingBinId ??= r.DefaultStagingBinId ?? (ReceivingModeRules.IsDirect(await ReceiptModeAsync(r, ct2))
+                ? await DefaultLineStagingOrNullAsync(r, ct2)
+                : await DefaultLineStagingAsync(r, ct2));
             db.Set<ReceiptLine>().Add(line);
             await SaveReceiptAsync(ct2);
             await SyncOpenStatusAsync(r, ct2);
@@ -669,7 +675,19 @@ public sealed class ReceiptService(
             var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
             var tracking = await ReceivingSupport.TrackingCodesAsync(db, products.Values.Select(p => p.TrackingTypeLookupId), ct2);
 
-            // 4. Seguimiento de cada línea (400 con Errors por línea, sin escribir nada).
+            // Lote 16: modo del recibo. En directo, las líneas con cruce de muelle asignado entran a la posición de recepción
+            // (D11); las demás, a su posición destino, que se revalida aquí (zona de guardado y activa).
+            var direct = ReceivingModeRules.IsDirect(await ReceiptModeAsync(r, ct2));
+            var plannedCrossDock = direct
+                ? await CrossDockByLineAsync(lines.Select(l => l.ReceiptLineId).ToList(), ct2)
+                : new Dictionary<int, decimal>();
+            var targets = direct
+                ? await TargetBinsAsync(r.WarehouseId, lines.Where(l => l.TargetBinId != null).Select(l => l.TargetBinId!.Value), ct2)
+                : new Dictionary<int, TargetBinInfo>();
+            bool EntersTarget(ReceiptLine l) => direct && !plannedCrossDock.ContainsKey(l.ReceiptLineId);
+
+            // 4. Seguimiento de cada línea (400 con Errors por línea, sin escribir nada). Lote 16: en directo, también la
+            // posición destino de cada línea que recibe algo (junto a los errores de seguimiento).
             var errors = new Dictionary<string, string[]>();
             var serialsByLine = new Dictionary<int, IReadOnlyList<string>>();
             for (var i = 0; i < lines.Count; i++)
@@ -678,10 +696,28 @@ public sealed class ReceiptService(
                 var p = products[l.ProductId];
                 var serials = ParseSerials(l.SerialNumbersJson);
                 serialsByLine[l.ReceiptLineId] = serials;
-                var te = ReceiptRules.ValidateTracking(tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None), p.Sku, l.ReceivedQty, l.LotId is not null, serials.Count);
+                var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
+                var te = ReceiptRules.ValidateTracking(code, p.Sku, l.ReceivedQty, l.LotId is not null, serials.Count);
                 if (te is not null) errors[$"lines[{i}]"] = new[] { te };
+                if (!EntersTarget(l)) continue;
+                if (l.TargetBinId is int tb && targets.TryGetValue(tb, out var target))
+                {
+                    var ze = ReceivingModeRules.ValidateTargetZone(target.Code, target.ZoneTypeCode);
+                    if (ze is not null) errors[$"lines[{i}].targetBinId"] = new[] { ze };
+                }
+                else if (ReceivingModeRules.NeedsTarget(code, l.ReceivedQty, l.LotId is not null))
+                {
+                    errors[$"lines[{i}].targetBinId"] = new[] { ReceivingModeRules.TargetRequired(p.Sku) };
+                }
             }
             if (errors.Count > 0) throw new ValidationException(errors);
+            // Lote 16: posición destino dada de baja (o su zona) después de elegirla → 422 al confirmar.
+            foreach (var l in lines.Where(EntersTarget))
+            {
+                if (l.TargetBinId is not int tb || !targets.TryGetValue(tb, out var target)) continue;
+                if (!target.IsActive) throw new StatusRuleException(ReceivingModeRules.TargetBinInactive(target.Code));
+                if (!target.ZoneActive) throw new StatusRuleException(ReceivingModeRules.TargetZoneInactive(target.Code));
+            }
 
             // 7 (antes de asentar). PO: lo recibido por línea de PO (las líneas extra no cuentan contra la PO); P8 bloquea la PO
             // y la avanza a PARTIAL/RECEIVED. Va ANTES del ledger para respetar el orden de bloqueo único del lote
@@ -702,7 +738,11 @@ public sealed class ReceiptService(
             }
 
             // 5. Asientos en MAGNITUD (el ledger pone el signo), To/From la posición de recepción, Ref RECEIPT + id.
+            // Lote 16: en directo, To/From la posición destino (RECEIPT y RECEIPT_VARIANCE ahí mismo, sin tareas); una línea
+            // con cruce de muelle asignado entra a la de recepción como siempre (D11).
             int? defaultStaging = null;
+            int? optionalStaging = null;
+            var optionalStagingResolved = false;
             var postings = new List<InventoryPosting>();
             var owners = new List<(ReceiptLine Line, PlannedReceiptPosting Planned)>();
             foreach (var l in lines)
@@ -711,17 +751,39 @@ public sealed class ReceiptService(
                 var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
                 // LOT recibido en 0 sin lote: no mueve inventario (la varianza queda visible en la línea).
                 if (code == TrackingTypes.Lot && l.LotId is null) continue;
-                if (l.StagingBinId is null)
+                int? bin;
+                if (EntersTarget(l))
                 {
-                    defaultStaging ??= await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
-                    l.StagingBinId = defaultStaging;
+                    bin = ReceivingModeRules.PostingBin(ReceivingModes.Direct, false, l.TargetBinId, l.StagingBinId);
+                    if (bin is null)
+                    {
+                        // Sin destino solo llega una línea que no recibió nada: el par RECEIPT/ajuste de su faltante (neto 0) se
+                        // asienta en la posición de recepción si el almacén tiene una; si no, se omite (la diferencia sigue
+                        // visible en la línea y en la orden de compra).
+                        if (!optionalStagingResolved)
+                        {
+                            optionalStaging = await ReceivingSupport.TryDefaultStagingBinAsync(db, r.WarehouseId, ct2);
+                            optionalStagingResolved = true;
+                        }
+                        bin = l.StagingBinId ?? optionalStaging;
+                        if (bin is null) continue;
+                    }
+                }
+                else
+                {
+                    if (l.StagingBinId is null)
+                    {
+                        defaultStaging ??= await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
+                        l.StagingBinId = defaultStaging;
+                    }
+                    bin = l.StagingBinId;
                 }
                 foreach (var planned in ReceiptPostingRules.Plan(expects, l.ExpectedQty, l.ReceivedQty, code, serialsByLine[l.ReceiptLineId]))
                 {
                     postings.Add(new InventoryPosting(planned.TxnType, l.ProductId, planned.Quantity,
                         LotId: l.LotId, SerialNumber: planned.SerialNumber,
-                        FromWarehouseId: planned.Inbound ? null : r.WarehouseId, FromBinId: planned.Inbound ? null : l.StagingBinId,
-                        ToWarehouseId: planned.Inbound ? r.WarehouseId : null, ToBinId: planned.Inbound ? l.StagingBinId : null,
+                        FromWarehouseId: planned.Inbound ? null : r.WarehouseId, FromBinId: planned.Inbound ? null : bin,
+                        ToWarehouseId: planned.Inbound ? r.WarehouseId : null, ToBinId: planned.Inbound ? bin : null,
                         RefEntityType: EntityTypes.Receipt, RefId: r.ReceiptHeaderId, ReasonCode: planned.ReasonCode));
                     owners.Add((l, planned));
                 }
@@ -762,21 +824,25 @@ public sealed class ReceiptService(
                 foreach (var (lineId, qty) in taken) crossDock[lineId] = crossDock.GetValueOrDefault(lineId) + qty;
             }
 
-            // 11. PUTAWAY por el remanente con la posición sugerida (preferida, consolidar, rotación, reserva).
+            // 11. PUTAWAY por el remanente hacia la posición destino de la línea (Lote 16) o, sin ella, la sugerida
+            // (preferida, consolidar, rotación, reserva). En directo solo las líneas con cruce de muelle (D11): las demás ya
+            // quedaron en su posición destino.
             var created = 0;
             foreach (var l in lines)
             {
+                if (EntersTarget(l)) continue;
                 var remaining = l.ReceivedQty - crossDock.GetValueOrDefault(l.ReceiptLineId);
                 if (remaining <= 0m) continue;
                 var p = products[l.ProductId];
                 if (tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None) == TrackingTypes.Lot && l.LotId is null) continue;
-                var toBin = await SuggestAsync(r.WarehouseId, l.ProductId, l.LotId, remaining, l.StagingBinId, ct2);
+                var toBin = l.TargetBinId ?? await SuggestAsync(r.WarehouseId, l.ProductId, l.LotId, remaining, l.StagingBinId, ct2);
                 await CreatePutawayAsync(r, l, remaining, toBin, ct2);
                 created++;
             }
 
-            // 12. Sin ninguna PUTAWAY (todo a cruce de muelle o recibido 0) → PUTAWAY directo (desde RECEIVED es la siguiente
-            // etapa; desde RECEIVED_VARIANCE, la entrada lateral sembrada).
+            // 12. Sin ninguna PUTAWAY (todo a cruce de muelle, recibido 0 o, Lote 16, recibo directo) → PUTAWAY en la misma
+            // transacción (desde RECEIVED es la siguiente etapa; desde RECEIVED_VARIANCE, la entrada lateral sembrada; D7:
+            // historial con los dos pasos).
             if (created == 0)
             {
                 var done = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, ReceiptStatuses.Putaway, null, ct2);
@@ -785,6 +851,94 @@ public sealed class ReceiptService(
             await SaveReceiptAsync(ct2);
         }, ct);
     }
+
+    // ================================================================ Lote 16: posición destino sugerida
+
+    /// <summary>
+    /// Posiciones destino sugeridas para una línea (take 1..10; por defecto 5): el acomodo dirigido (preferida, mismo lote,
+    /// mismo producto, picking vacía si rota mucho, reserva vacía, reserva con espacio; en devoluciones la cuarentena primero,
+    /// D6) con la cantidad de la línea (lo recibido; si es 0, lo esperado; si no, 1) y el cupo descontando lo que otras líneas
+    /// del recibo abierto ya destinan a cada posición. Las que caben primero; las que exceden el cupo al final con Fits =
+    /// false (D4: se puede exceder con aviso). Línea de otro recibo → 404.
+    /// </summary>
+    public async Task<IReadOnlyList<ReceiptTargetSuggestionDto>> SuggestTargetsAsync(Guid publicId, int lineId, int? take, CancellationToken ct)
+    {
+        var r = await ResolveAsync(publicId, ct);
+        var line = await db.Set<ReceiptLine>().AsNoTracking().FirstOrDefaultAsync(l => l.ReceiptLineId == lineId && l.ReceiptHeaderId == r.ReceiptHeaderId, ct)
+                   ?? throw new NotFoundException(ReceiptRules.LineNotFoundWhat, feminine: true);
+        var n = take is int t && t > 0 ? Math.Min(t, ReceivingModeRules.MaxSuggestions) : ReceivingModeRules.DefaultSuggestions;
+        var open = ReceiptStatusRules.IsOpen(await StatusCodeOfAsync(r.StatusCodeId, ct));
+        var claimed = open
+            ? await ClaimedByBinAsync(r.ReceiptHeaderId, lineId, null, ct)
+            : new Dictionary<int, decimal>();
+        var claimedSame = open
+            ? await ClaimedByBinAsync(r.ReceiptHeaderId, lineId, line.ProductId, ct)
+            : new Dictionary<int, decimal>();
+        var qty = line.ReceivedQty > 0m ? line.ReceivedQty : line.ExpectedQty is decimal e && e > 0m ? e : 1m;
+        var isReturn = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct))?.InternalCode == ReceiptTypes.Return;
+        var suggestions = await suggester.SuggestAsync(new PutawaySuggestionOptions(r.WarehouseId, line.ProductId, line.LotId, qty, null, n,
+            claimed, PreferQuarantine: isReturn, IncludeOverCapacity: true, ClaimedSameProductByBin: claimedSame), ct);
+        return suggestions.Select(s =>
+        {
+            var c = claimed.GetValueOrDefault(s.BinId);
+            return new ReceiptTargetSuggestionDto(s.BinId, s.BinCode, s.ZoneCode, s.ZoneTypeCode, s.ReasonCode, s.Reason, s.MaxCapacityQty,
+                s.BinQty, c, ReceivingModeRules.FreeQty(s.MaxCapacityQty, s.BinQty, c), s.Fits);
+        }).ToList();
+    }
+
+    /// <summary>
+    /// "Usar posiciones sugeridas" (D3: nada se llena solo, solo al pedirlo): con el recibo abierto bloqueado (y rowVersion,
+    /// 409), a cada línea sin destino que lo necesita (recibe algo), en orden de id, le asigna la primera sugerida DONDE CABE,
+    /// acumulando lo asignado para las siguientes. Devuelve el recibo, las asignadas y las que quedaron sin sugerencia.
+    /// </summary>
+    public async Task<ReceiptApplySuggestionsResultDto> ApplySuggestedTargetsAsync(Guid publicId, ReceiptApplySuggestionsRequest? req, CancellationToken ct)
+    {
+        var current = await ResolveAsync(publicId, ct);
+        var (assigned, without) = await db.RunInTransactionAsync(async ct2 =>
+        {
+            var r = await LockOpenAsync(current.ReceiptHeaderId, ct2);
+            PurchasingSupport.EnsureRowVersion(r.RowVersion, req?.RowVersion, DbExtensions.ConcurrencyMessage);
+            var isReturn = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct2))?.InternalCode == ReceiptTypes.Return;
+            var lines = await db.Set<ReceiptLine>().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId).OrderBy(l => l.ReceiptLineId).ToListAsync(ct2);
+            var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+            var trackingByProduct = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId))
+                .ToDictionaryAsync(p => p.ProductId, p => p.TrackingTypeLookupId, ct2);
+            var tracking = await ReceivingSupport.TrackingCodesAsync(db, trackingByProduct.Values, ct2);
+            var claimed = lines.Where(l => l.TargetBinId != null).GroupBy(l => l.TargetBinId!.Value)
+                .ToDictionary(g => g.Key, g => g.Sum(l => l.ReceivedQty));
+            var claimedByProduct = lines.Where(l => l.TargetBinId != null).GroupBy(l => (l.ProductId, Bin: l.TargetBinId!.Value))
+                .ToDictionary(g => g.Key, g => g.Sum(l => l.ReceivedQty));
+            int a = 0, w = 0;
+            foreach (var l in lines)
+            {
+                if (l.TargetBinId is not null) continue;
+                var code = tracking.GetValueOrDefault(trackingByProduct.GetValueOrDefault(l.ProductId), TrackingTypes.None);
+                if (!ReceivingModeRules.NeedsTarget(code, l.ReceivedQty, l.LotId is not null)) continue;
+                var sameProduct = claimedByProduct.Where(x => x.Key.ProductId == l.ProductId).ToDictionary(x => x.Key.Bin, x => x.Value);
+                var s = await suggester.SuggestAsync(new PutawaySuggestionOptions(r.WarehouseId, l.ProductId, l.LotId, l.ReceivedQty, null, 1,
+                    claimed, PreferQuarantine: isReturn, ClaimedSameProductByBin: sameProduct), ct2);
+                if (s.Count == 0) { w++; continue; }
+                l.TargetBinId = s[0].BinId;
+                claimed[s[0].BinId] = claimed.GetValueOrDefault(s[0].BinId) + l.ReceivedQty;
+                claimedByProduct[(l.ProductId, s[0].BinId)] = claimedByProduct.GetValueOrDefault((l.ProductId, s[0].BinId)) + l.ReceivedQty;
+                a++;
+            }
+            await SaveReceiptAsync(ct2);
+            return (a, w);
+        }, ct);
+        return new ReceiptApplySuggestionsResultDto(await GetAsync(publicId, ct), assigned, without);
+    }
+
+    /// <summary>
+    /// Lo recibido en las OTRAS líneas del recibo por posición destino (cuenta como ocupado al sugerir); con productId, solo
+    /// las de ese producto (cuentan para consolidar con el mismo producto).
+    /// </summary>
+    private async Task<Dictionary<int, decimal>> ClaimedByBinAsync(int receiptHeaderId, int exceptLineId, int? productId, CancellationToken ct)
+        => (await db.Set<ReceiptLine>().AsNoTracking()
+                .Where(l => l.ReceiptHeaderId == receiptHeaderId && l.ReceiptLineId != exceptLineId && l.TargetBinId != null
+                            && (productId == null || l.ProductId == productId))
+                .Select(l => new { Bin = l.TargetBinId!.Value, l.ReceivedQty }).ToListAsync(ct))
+            .GroupBy(x => x.Bin).ToDictionary(g => g.Key, g => g.Sum(x => x.ReceivedQty));
 
     // ================================================================ baja
 
@@ -961,12 +1115,23 @@ public sealed class ReceiptService(
                 match.LotId = built.LotId ?? match.LotId;
                 match.SerialNumbersJson = built.SerialNumbersJson;
                 match.StagingBinId = built.StagingBinId ?? match.StagingBinId;
+                match.TargetBinId = built.TargetBinId ?? match.TargetBinId;   // Lote 16: la posición destino escaneada
                 applied.Add(match);
                 continue;
             }
 
             var same = fromAsn.FirstOrDefault(c => applied.Contains(c) && c.ProductId == built.ProductId && (built.LotId is null || c.LotId == built.LotId));
             if (same is null) { extras.Add(built); continue; }
+            // Lote 16 (H11): la línea del documento entra a UNA sola posición; el mismo producto con otro destino → 400.
+            if (built.TargetBinId is int bt && same.TargetBinId is int st && bt != st)
+            {
+                var sku = await db.Set<Product>().AsNoTracking().Where(p => p.ProductId == built.ProductId).Select(p => p.Sku).FirstAsync(ct);
+                var binCode = await db.Set<WarehouseBin>().AsNoTracking().Where(b => b.WarehouseBinId == st && b.WarehouseId == warehouseId)
+                    .Select(b => b.Code).FirstOrDefaultAsync(ct) ?? st.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                errors[key + ".targetBinCode"] = new[] { ReceivingModeRules.SameProductOtherTarget(sku, binCode) };
+                continue;
+            }
+            same.TargetBinId ??= built.TargetBinId;
             var (serials, se) = ReceiptRules.NormalizeSerials(ParseSerials(same.SerialNumbersJson).Concat(ParseSerials(built.SerialNumbersJson)));
             if (se is not null) { errors[key + ".serialNumbers"] = new[] { se }; continue; }
             same.ReceivedQty += built.ReceivedQty;
@@ -1020,11 +1185,107 @@ public sealed class ReceiptService(
         int? stagingId = null;
         if (l.StagingBinId is int sb) stagingId = (await ReceivingSupport.ResolveStagingBinAsync(db, warehouseId, sb, key + ".stagingBinId", ct)).BinId;
 
+        // Lote 16: posición destino por id o por código escaneado.
+        var target = await ResolveTargetBinAsync(warehouseId, l.TargetBinId, l.TargetBinCode, key + ".targetBinId", key + ".targetBinCode", errors, ct);
+        if (target is null && (l.TargetBinId is not null || !string.IsNullOrWhiteSpace(l.TargetBinCode))) return null;
+
         return new ReceiptLine
         {
             ProductId = product.ProductId, LotId = lotId, ReceivedQty = qty.Value, ExpectedQty = l.ExpectedQty, StagingBinId = stagingId,
-            SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json),
+            SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json), TargetBinId = target?.BinId,
         };
+    }
+
+    /// <summary>
+    /// Lote 16 — posición destino de una línea, por id o por código (no ambos → 400 en idField), SIEMPRE del almacén del
+    /// recibo: id de otro almacén o tenant → 404 'Posición no encontrada.'; código inexistente → 400 en codeField; zona
+    /// STAGING o CROSSDOCK → 400 (D5); posición o zona desactivada → 422. Los 400 van a errors (y devuelve null); sin id ni
+    /// código devuelve null sin error.
+    /// </summary>
+    private async Task<TargetBinInfo?> ResolveTargetBinAsync(int warehouseId, int? id, string? code, string idField, string codeField,
+        Dictionary<string, string[]> errors, CancellationToken ct)
+    {
+        var hasCode = !string.IsNullOrWhiteSpace(code);
+        if (id is null && !hasCode) return null;
+        if (id is not null && hasCode) { errors[idField] = new[] { ReceivingModeRules.TargetIdAndCode }; return null; }
+        var trimmed = code?.Trim() ?? string.Empty;
+        var upper = trimmed.ToUpperInvariant();
+        var found = id is int binId
+            ? await TargetBinsQuery(warehouseId, b => b.WarehouseBinId == binId).FirstOrDefaultAsync(ct)
+            : await TargetBinsQuery(warehouseId, b => b.Code == trimmed || b.Code == upper).FirstOrDefaultAsync(ct);
+        if (found is null)
+        {
+            if (id is not null) throw new NotFoundException("Posición", feminine: true);
+            errors[codeField] = new[] { ReceivingModeRules.TargetCodeNotFound(trimmed) };
+            return null;
+        }
+        var target = found with { ZoneTypeCode = await ZoneTypeCodeAsync(found.ZoneTypeLookupId, ct) };
+        var zoneError = ReceivingModeRules.ValidateTargetZone(target.Code, target.ZoneTypeCode);
+        if (zoneError is not null) { errors[id is not null ? idField : codeField] = new[] { zoneError }; return null; }
+        if (!target.IsActive) throw new StatusRuleException(ReceivingModeRules.TargetBinInactive(target.Code));
+        if (!target.ZoneActive) throw new StatusRuleException(ReceivingModeRules.TargetZoneInactive(target.Code));
+        return target;
+    }
+
+    /// <summary>Lote 16: posición destino con su zona (tipo, activa) y su cupo.</summary>
+    private sealed record TargetBinInfo(int BinId, string Code, bool IsActive, bool ZoneActive, int? ZoneTypeLookupId, int? MaxCapacityQty,
+        string? ZoneTypeCode = null);
+
+    /// <summary>
+    /// Posiciones del almacén (hijas sin TenantId, alcanzadas por su almacén filtrado) con su zona. El filtro va sobre la
+    /// posición ANTES de proyectar (EF no traduce un Where sobre un record construido por su constructor).
+    /// </summary>
+    private IQueryable<TargetBinInfo> TargetBinsQuery(int warehouseId, System.Linq.Expressions.Expression<Func<WarehouseBin, bool>> filter)
+        => from b in db.Set<WarehouseBin>().AsNoTracking().Where(filter)
+           join w in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals w.WarehouseId
+           join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+           where b.WarehouseId == warehouseId
+           select new TargetBinInfo(b.WarehouseBinId, b.Code, b.IsActive, z.IsActive, z.ZoneTypeLookupId, b.MaxCapacityQty, null);
+
+    /// <summary>Lote 16: posiciones destino por id (solo las del almacén), con el código de tipo de zona resuelto.</summary>
+    private async Task<Dictionary<int, TargetBinInfo>> TargetBinsAsync(int warehouseId, IEnumerable<int> binIds, CancellationToken ct)
+    {
+        var ids = binIds.Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<int, TargetBinInfo>();
+        var rows = await TargetBinsQuery(warehouseId, b => ids.Contains(b.WarehouseBinId)).ToListAsync(ct);
+        var result = new Dictionary<int, TargetBinInfo>();
+        foreach (var b in rows) result[b.BinId] = b with { ZoneTypeCode = await ZoneTypeCodeAsync(b.ZoneTypeLookupId, ct) };
+        return result;
+    }
+
+    private async Task<string?> ZoneTypeCodeAsync(int? zoneTypeLookupId, CancellationToken ct)
+        => zoneTypeLookupId is int zt ? (await lookups.GetAsync(zt, ct))?.InternalCode : null;
+
+    // ---------------------------------------------------------------- Lote 16: modo de recepción
+
+    private async Task<string?> LookupCodeOfAsync(int? lookupId, CancellationToken ct)
+        => lookupId is int id ? (await lookups.GetAsync(id, ct))?.InternalCode : null;
+
+    /// <summary>Modo efectivo del recibo: su copia; sin ella (recibos anteriores al lote sin seed), el del almacén; si no, PUTAWAY.</summary>
+    private async Task<string> ReceiptModeAsync(ReceiptHeader r, CancellationToken ct)
+    {
+        var own = await LookupCodeOfAsync(r.ReceivingModeLookupId, ct);
+        if (own is not null) return ReceivingModeRules.Normalize(own);
+        var warehouseModeId = await db.Set<Warehouse>().AsNoTracking().Where(w => w.WarehouseId == r.WarehouseId)
+            .Select(w => w.ReceivingModeLookupId).FirstOrDefaultAsync(ct);
+        return ReceivingModeRules.Effective(null, await LookupCodeOfAsync(warehouseModeId, ct));
+    }
+
+    /// <summary>Id del catálogo del modo (null si el catálogo no tiene PUTAWAY: NULL en la base = PUTAWAY).</summary>
+    private async Task<int?> ModeIdAsync(string mode, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, mode, ct);
+        if (id is null && mode == ReceivingModes.Direct)
+            throw new InvalidOperationException("El catálogo ReceivingMode no tiene DIRECT (logistica-db-seed.sql).");
+        return id;
+    }
+
+    /// <summary>Etiqueta del modo en el idioma del usuario (el código si el catálogo no lo tiene).</summary>
+    private async Task<string> ModeLabelAsync(string mode, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, mode, ct);
+        var l = id is int x ? await lookups.GetAsync(x, ct) : null;
+        return l is null ? mode : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
     }
 
     /// <summary>Posición de recepción para una línea agregada: la de otra línea del recibo o la STAGING por defecto del almacén.</summary>
@@ -1032,6 +1293,12 @@ public sealed class ReceiptService(
         => await db.Set<ReceiptLine>().AsNoTracking().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId && l.StagingBinId != null)
                .OrderBy(l => l.ReceiptLineId).Select(l => l.StagingBinId).FirstOrDefaultAsync(ct)
            ?? await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct);
+
+    /// <summary>Lote 16: como DefaultLineStagingAsync, pero null si el almacén no tiene posición de recepción (recibo directo).</summary>
+    private async Task<int?> DefaultLineStagingOrNullAsync(ReceiptHeader r, CancellationToken ct)
+        => await db.Set<ReceiptLine>().AsNoTracking().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId && l.StagingBinId != null)
+               .OrderBy(l => l.ReceiptLineId).Select(l => l.StagingBinId).FirstOrDefaultAsync(ct)
+           ?? await ReceivingSupport.TryDefaultStagingBinAsync(db, r.WarehouseId, ct);
 
     /// <summary>Cantidad destinada a cruce de muelle por línea (asignaciones no canceladas: la confirmada si ya se repartió, si no la asignada).</summary>
     private async Task<Dictionary<int, decimal>> CrossDockByLineAsync(List<int> lineIds, CancellationToken ct)
@@ -1086,7 +1353,7 @@ public sealed class ReceiptService(
         var dockIds = rows.Where(r => r.DockId != null).Select(r => r.DockId!.Value).Distinct().ToList();
 
         var warehouses = await db.Set<Warehouse>().AsNoTracking().Where(w => whIds.Contains(w.WarehouseId))
-            .Select(w => new { w.WarehouseId, w.PublicId, w.Code }).ToDictionaryAsync(w => w.WarehouseId, ct);
+            .Select(w => new { w.WarehouseId, w.PublicId, w.Code, w.ReceivingModeLookupId }).ToDictionaryAsync(w => w.WarehouseId, ct);
         var docks = await db.Set<WarehouseDock>().AsNoTracking().Where(d => dockIds.Contains(d.WarehouseDockId) && whIds.Contains(d.WarehouseId))
             .ToDictionaryAsync(d => d.WarehouseDockId, d => d.Code, ct);
         var asnsInfo = await (from a in db.Set<Asn>().AsNoTracking()
@@ -1116,6 +1383,8 @@ public sealed class ReceiptService(
             : await db.Set<WarehouseBin>().AsNoTracking().Where(b => stagingIds.Contains(b.WarehouseBinId) && whIds.Contains(b.WarehouseId))
                 .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct);
         var pendingPutaway = await PendingPutawayCountsAsync(ids, ct);
+        // Lote 16: etiqueta del modo por código (dos a lo sumo), resuelta una vez para la página.
+        var modeLabels = new Dictionary<string, string>();
 
         foreach (var r in rows)
         {
@@ -1132,6 +1401,9 @@ public sealed class ReceiptService(
             var hasVariance = lines.Any(l => ReceiptRules.HasVariance(expects, l.ExpectedQty, l.ReceivedQty));
             var w = warehouses.GetValueOrDefault(r.WarehouseId);
             var s = statusMap.GetValueOrDefault(r.StatusCodeId);
+            var mode = ReceivingModeRules.Effective(await LookupCodeOfAsync(r.ReceivingModeLookupId, ct),
+                await LookupCodeOfAsync(w?.ReceivingModeLookupId, ct));
+            if (!modeLabels.TryGetValue(mode, out var modeLabel)) modeLabels[mode] = modeLabel = await ModeLabelAsync(mode, ct);
             result[r.ReceiptHeaderId] = new ReceiptListItemDto(r.ReceiptHeaderId, r.PublicId, r.Number, typeCode,
                 type is null ? typeCode : MultilingualText.Resolve(type.LabelJson, tenant.Lang), origin, originRef, sender,
                 w?.PublicId ?? Guid.Empty, w?.Code ?? "", r.DockId is int d ? docks.GetValueOrDefault(d) : null,
@@ -1139,9 +1411,110 @@ public sealed class ReceiptService(
                 r.CreatedAtUtc, r.ReceivedAtUtc,
                 r.Carrier, r.Reference, a?.ExpectedDate, r.DefaultStagingBinId,
                 r.DefaultStagingBinId is int sb ? stagingBins.GetValueOrDefault(sb) : null, r.DockId,
-                ReceiptStatusRules.IsOpen(s?.Code), pendingPutaway.GetValueOrDefault(r.ReceiptHeaderId));
+                ReceiptStatusRules.IsOpen(s?.Code), pendingPutaway.GetValueOrDefault(r.ReceiptHeaderId), null, mode, modeLabel);
         }
         return result;
+    }
+
+    /// <summary>Líneas armadas por recibo y cantidad a cruce de muelle por línea (solo líneas que tienen asignaciones).</summary>
+    private sealed record LineBatch(Dictionary<int, List<ReceiptLineDto>> ByReceipt, Dictionary<int, decimal> CrossDock);
+
+    /// <summary>
+    /// Líneas de los recibos dados (la ficha: uno; la lista con includeLines: la página completa) con producto, rastreo, lote,
+    /// series, posición de recepción, costo de la orden de compra y cruce de muelle, en un número fijo de consultas sin
+    /// importar cuántos recibos o líneas haya. Los recibos ya vienen filtrados por tenant; las líneas (sin TenantId) se leen
+    /// SOLO por esos recibos, y la posición y el costo se aceptan solo si son del almacén y del aviso de su recibo.
+    /// </summary>
+    private async Task<LineBatch> LinesAsync(List<ReceiptHeader> rows, IReadOnlyDictionary<int, ReceiptListItemDto> headers, CancellationToken ct)
+    {
+        var byReceipt = new Dictionary<int, List<ReceiptLineDto>>();
+        if (rows.Count == 0) return new LineBatch(byReceipt, new Dictionary<int, decimal>());
+        var receiptIds = rows.Select(r => r.ReceiptHeaderId).ToList();
+        var whIds = rows.Select(r => r.WarehouseId).Distinct().ToList();
+        var asnIds = rows.Where(r => r.AsnId != null).Select(r => r.AsnId!.Value).Distinct().ToList();
+
+        var lines = await (from l in db.Set<ReceiptLine>().AsNoTracking()
+                           join p in db.Set<Product>().AsNoTracking() on l.ProductId equals p.ProductId
+                           where receiptIds.Contains(l.ReceiptHeaderId)
+                           orderby l.ReceiptHeaderId, l.ReceiptLineId
+                           select new { Line = l, p.PublicId, p.Sku, p.Name, p.TrackingTypeLookupId }).ToListAsync(ct);
+        var lineIds = lines.Select(x => x.Line.ReceiptLineId).ToList();
+        var tracking = await ReceivingSupport.TrackingCodesAsync(db, lines.Select(x => x.TrackingTypeLookupId), ct);
+
+        var lotIds = lines.Where(x => x.Line.LotId != null).Select(x => x.Line.LotId!.Value).Distinct().ToList();
+        var lots = lotIds.Count == 0
+            ? new Dictionary<int, (string LotNumber, DateOnly? ExpiryDate)>()
+            : (await (from lot in db.Set<InventoryLot>().AsNoTracking()
+                      join p in db.Set<Product>().AsNoTracking() on lot.ProductId equals p.ProductId
+                      where lotIds.Contains(lot.LotId)
+                      select new { lot.LotId, lot.LotNumber, lot.ExpiryDate }).ToListAsync(ct))
+                .ToDictionary(x => x.LotId, x => (x.LotNumber, x.ExpiryDate));
+        // Lote 16: también las posiciones destino (con tipo de zona y cupo).
+        var binIds = lines.SelectMany(x => new[] { x.Line.StagingBinId, x.Line.TargetBinId }).Where(b => b != null).Select(b => b!.Value).Distinct().ToList();
+        var binRows = await (from b in db.Set<WarehouseBin>().AsNoTracking()
+                     join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                     where whIds.Contains(b.WarehouseId) && binIds.Contains(b.WarehouseBinId)
+                     select new { b.WarehouseBinId, b.WarehouseId, b.Code, b.MaxCapacityQty, z.ZoneTypeLookupId }).ToListAsync(ct);
+        var bins = binRows.ToDictionary(b => b.WarehouseBinId, b => (b.WarehouseId, b.Code));
+        var targetInfo = new Dictionary<int, (string? ZoneTypeCode, int? MaxCapacityQty)>();
+        foreach (var b in binRows) targetInfo[b.WarehouseBinId] = (await ZoneTypeCodeAsync(b.ZoneTypeLookupId, ct), b.MaxCapacityQty);
+        // Espacio libre del destino (solo recibos abiertos y destinos con cupo): existencia de la posición (todos los productos)
+        // y lo recibido por línea hacia ella en cada recibo (para descontar lo de las OTRAS líneas).
+        var openIds = rows.Where(r => headers[r.ReceiptHeaderId].IsOpen).Select(r => r.ReceiptHeaderId).ToHashSet();
+        var capTargets = lines.Where(x => openIds.Contains(x.Line.ReceiptHeaderId) && x.Line.TargetBinId is int t
+                                          && targetInfo.TryGetValue(t, out var ti) && ti.MaxCapacityQty is not null)
+            .Select(x => x.Line.TargetBinId!.Value).Distinct().ToList();
+        var binOnHand = capTargets.Count == 0
+            ? new Dictionary<int, decimal>()
+            : (await db.Set<StockBalance>().AsNoTracking()
+                .Where(sb => whIds.Contains(sb.WarehouseId) && sb.WarehouseBinId != null && capTargets.Contains(sb.WarehouseBinId.Value))
+                .Select(sb => new { Bin = sb.WarehouseBinId!.Value, sb.QtyOnHand }).ToListAsync(ct))
+                .GroupBy(x => x.Bin).ToDictionary(g => g.Key, g => g.Sum(x => x.QtyOnHand));
+        var receiptBinQty = lines.Where(x => x.Line.TargetBinId != null)
+            .GroupBy(x => (x.Line.ReceiptHeaderId, Bin: x.Line.TargetBinId!.Value))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Line.ReceivedQty));
+        var asnLineIds = lines.Where(x => x.Line.AsnLineId != null).Select(x => x.Line.AsnLineId!.Value).ToList();
+        var unitCosts = asnIds.Count == 0 || asnLineIds.Count == 0
+            ? new Dictionary<int, (int AsnId, decimal UnitCost)>()
+            : (await (from al in db.Set<AsnLine>().AsNoTracking()
+                      join pl in db.Set<PurchaseOrderLine>().AsNoTracking() on al.PurchaseOrderLineId equals pl.PurchaseOrderLineId
+                      where asnIds.Contains(al.AsnId) && asnLineIds.Contains(al.AsnLineId)
+                      select new { al.AsnLineId, al.AsnId, pl.UnitCost }).ToListAsync(ct))
+                .ToDictionary(x => x.AsnLineId, x => (x.AsnId, x.UnitCost));
+        var crossDock = await CrossDockByLineAsync(lineIds, ct);
+
+        var receipts = rows.ToDictionary(r => r.ReceiptHeaderId);
+        foreach (var x in lines)
+        {
+            var l = x.Line;
+            var r = receipts[l.ReceiptHeaderId];
+            var expects = ReceiptRules.ExpectsQuantities(headers[l.ReceiptHeaderId].TypeCode);
+            var lot = l.LotId is int lid && lots.TryGetValue(lid, out var lv) ? lv : ((string LotNumber, DateOnly? ExpiryDate)?)null;
+            var binCode = l.StagingBinId is int b && bins.TryGetValue(b, out var bin) && bin.WarehouseId == r.WarehouseId ? bin.Code : null;
+            // Lote 16: posición destino (del almacén del recibo) y su espacio libre si el recibo está abierto.
+            int? targetId = null;
+            string? targetCode = null, targetZoneType = null;
+            decimal? targetFree = null;
+            if (l.TargetBinId is int tb && bins.TryGetValue(tb, out var tbin) && tbin.WarehouseId == r.WarehouseId)
+            {
+                targetId = tb;
+                targetCode = tbin.Code;
+                var info = targetInfo.GetValueOrDefault(tb);
+                targetZoneType = info.ZoneTypeCode;
+                if (openIds.Contains(r.ReceiptHeaderId) && info.MaxCapacityQty is not null)
+                    targetFree = ReceivingModeRules.FreeQty(info.MaxCapacityQty, binOnHand.GetValueOrDefault(tb),
+                        receiptBinQty.GetValueOrDefault((r.ReceiptHeaderId, tb)) - l.ReceivedQty);
+            }
+            decimal? unitCost = l.AsnLineId is int al && unitCosts.TryGetValue(al, out var cost) && cost.AsnId == r.AsnId ? cost.UnitCost : null;
+            var dto = new ReceiptLineDto(l.ReceiptLineId, l.AsnLineId, x.PublicId, x.Sku, x.Name,
+                tracking.GetValueOrDefault(x.TrackingTypeLookupId, TrackingTypes.None), l.ExpectedQty, l.ReceivedQty,
+                ReceiptRules.LineVariance(expects, l.ExpectedQty, l.ReceivedQty), l.LotId, lot?.LotNumber, lot?.ExpiryDate,
+                ParseSerials(l.SerialNumbersJson), l.StagingBinId, binCode, l.AdjustmentTxnId, unitCost,
+                crossDock.GetValueOrDefault(l.ReceiptLineId), targetId, targetCode, targetZoneType, targetFree);
+            if (!byReceipt.TryGetValue(l.ReceiptHeaderId, out var list)) byReceipt[l.ReceiptHeaderId] = list = new List<ReceiptLineDto>();
+            list.Add(dto);
+        }
+        return new LineBatch(byReceipt, crossDock);
     }
 
     /// <summary>Lote 13: tareas PUTAWAY abiertas (PENDING o IN_PROGRESS) por recibo, en una consulta agrupada.</summary>

@@ -1,6 +1,8 @@
 import { useCallback, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { useT } from '../i18n/useT'
 import type { FilterOption } from './Filters'
+import { joinFilterValues } from './filterRegistry'
+import { useRegisterFilter } from './filterScopeContext'
 import { IconChevronDown, IconSearch } from './icons'
 import { matchesQ } from './matchesQ'
 import { useDismiss } from './useDismiss'
@@ -18,9 +20,13 @@ export interface SearchSelectProps {
 
 /** Selección múltiple con buscador (`.msel`), para filtros con muchas opciones (clientes, bodegas, estatus). */
 export function SearchSelect({ label, options, value, onChange, placeholder }: SearchSelectProps) {
+  const t = useT()
   const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  // en el ámbito (línea de filtros de las exportaciones): las etiquetas de lo elegido
+  useRegisterFilter(label, joinFilterValues(value.map((v) => options.find((o) => o.value === v)?.label ?? v), t), ref)
   return (
-    <div className="f">
+    <div className="f" ref={ref}>
       <label id={`${id}-l`} htmlFor={`${id}-b`}>
         {label}
       </label>

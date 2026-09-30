@@ -64,6 +64,11 @@ public class ReceiptHeader : ITenantScoped, ISoftDeletable, IHasStatus
     [NotAudited] public DateTime CreatedAtUtc { get; set; }
     public int? CreatedBy { get; set; }
     [NotAudited] public byte[]? RowVersion { get; set; }
+    /// <summary>
+    /// Lote 16: copia del modo de recepción con que se abrió el recibo (LookupCode 'ReceivingMode'); cambiar el del almacén
+    /// no lo toca (D2). NULL = PUTAWAY.
+    /// </summary>
+    public int? ReceivingModeLookupId { get; set; }
 
     public StatusCode? Status { get; set; }
     public ICollection<ReceiptLine> Lines { get; set; } = new List<ReceiptLine>();
@@ -87,4 +92,9 @@ public class ReceiptLine
     public string? SerialNumbersJson { get; set; }
     public int? StagingBinId { get; set; }
     public long? AdjustmentTxnId { get; set; }
+    /// <summary>
+    /// Lote 16: posición destino de la línea (de guardado: nunca STAGING ni CROSSDOCK; mismo almacén, lo garantiza el
+    /// servicio). En un recibo directo la línea entra ahí al confirmar; en uno con acomodo es el destino de su tarea.
+    /// </summary>
+    public int? TargetBinId { get; set; }
 }

@@ -5,13 +5,13 @@
 // "Incluir en cero" y "Solo con disponible" en Saldos y Estatus en Conciliación. Un filtro que la pestaña no aplica
 // (`TAB_FILTERS`) se atenúa y, si tiene valor, se nombra en la ayuda bajo la barra. El documento de origen que llega en la
 // URL (`refEntity`/`refId`) se muestra como píldora que se puede quitar.
-import { useId, useMemo, type ReactNode } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import { useLookups, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Chip, DateRangeFilter, Filters, SearchSelect, SelectFilter } from '../../kernel/ui'
+import { Chip, DateRangeFilter, Filters, FilterScope, SearchSelect, SelectFilter, useRegisterFilter } from '../../kernel/ui'
 import { IconClose } from '../../kernel/ui/icons'
 import { useProductCategories, useWarehouses, warehouseLabel } from './api'
-import { ToggleFilter } from './filterControls'
+import { TextFilter, ToggleFilter } from './filterControls'
 import {
   DEFAULT_DISCREPANCY_STATUS,
   EMPTY_INVENTORY_FILTERS,
@@ -38,8 +38,7 @@ const F = 'warehouse.inventory.filters'
 
 export function InventoryFilterBar({ tab, value, onChange, shownProducts }: InventoryFilterBarProps) {
   const t = useT()
-  const lotId = useId()
-  const serialId = useId()
+  const refChip = useRef<HTMLDivElement>(null)
   const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
   const warehouseOptions = useMemo(() => warehouses.map((w) => ({ value: w.publicId ?? '', label: warehouseLabel(w) })), [warehouses])
   const { data: categories = [] } = useProductCategories({}, { handleAccessDenied: false })
@@ -53,15 +52,19 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
 
   const unused = inactiveFilters(tab, value)
   /** Envuelve un filtro que la pestaña no aplica (atenuado; sigue editable porque el estado es compartido). Sin valor, en el
-   *  celular se oculta (`.f-na.empty`) para no alargar la barra. */
+   *  celular se oculta (`.f-na.empty`) para no alargar la barra. No va en la línea de filtros de las exportaciones
+   *  (`FilterScope off`): no acota lo que muestra la pestaña. */
   const wrap = (key: InventoryFilterKey, node: ReactNode) =>
     filterApplies(tab, key) ? (
       node
     ) : (
       <div className={unused.includes(key) ? 'f-na' : 'f-na empty'} key={key}>
-        {node}
+        <FilterScope off>{node}</FilterScope>
       </div>
     )
+  // el documento de origen (píldora) también acota las pestañas: va en la línea de filtros de las exportaciones
+  const hasRef = Boolean(value.refEntity) && value.refId != null
+  useRegisterFilter(hasRef ? t(`${F}.ref`, { entity: value.refEntity, id: value.refId ?? '' }) : '', hasRef ? '' : null, refChip)
   const filterName = (key: InventoryFilterKey) => t(`${F}.names.${key}`)
 
   return (
@@ -112,17 +115,11 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
         )}
         {wrap(
           'lot',
-          <div className="f">
-            <label htmlFor={lotId}>{t(`${F}.lot`)}</label>
-            <input id={lotId} type="text" value={value.lotNumber} maxLength={60} onChange={(e) => onChange({ lotNumber: e.target.value })} />
-          </div>,
+          <TextFilter type="text" label={t(`${F}.lot`)} value={value.lotNumber} maxLength={60} onChange={(lotNumber) => onChange({ lotNumber })} />,
         )}
         {wrap(
           'serial',
-          <div className="f">
-            <label htmlFor={serialId}>{t(`${F}.serial`)}</label>
-            <input id={serialId} type="text" value={value.serialNumber} maxLength={80} onChange={(e) => onChange({ serialNumber: e.target.value })} />
-          </div>,
+          <TextFilter type="text" label={t(`${F}.serial`)} value={value.serialNumber} maxLength={80} onChange={(serialNumber) => onChange({ serialNumber })} />
         )}
         {wrap('manualOnly', <ToggleFilter label={t(`${F}.manualOnly`)} checked={value.manualOnly} onChange={(manualOnly) => onChange({ manualOnly })} />)}
         {tab === 'balances' && (
@@ -141,7 +138,7 @@ export function InventoryFilterBar({ tab, value, onChange, shownProducts }: Inve
         )}
       </Filters>
       {value.refEntity && value.refId != null && (
-        <div className="pfilter-chips filters-note">
+        <div className="pfilter-chips filters-note" ref={refChip}>
           <Chip tone="wh" title={t(`${F}.refTitle`)}>
             <span className="pfilter-text">{t(`${F}.ref`, { entity: value.refEntity, id: value.refId })}</span>
             <button type="button" className="iconbtn" aria-label={t(`${F}.refRemove`)} onClick={() => onChange({ refEntity: '', refId: null })}>

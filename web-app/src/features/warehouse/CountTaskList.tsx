@@ -75,8 +75,8 @@ export function CountTaskList(props: CountTaskListProps) {
           ]
         : []),
       { id: 'assignedTo', header: t('warehouse.cycleCounts.columns.assignedTo'), cell: (c) => c.assignedToName ?? '' },
-      { id: 'createdAt', header: t('warehouse.cycleCounts.columns.createdAt'), cell: (c) => formatDateTime(c.createdAtUtc, lang) },
-      { id: 'reconciledAt', header: t('warehouse.cycleCounts.columns.reconciledAt'), cell: (c) => formatDateTime(c.reconciledAtUtc, lang) },
+      { id: 'createdAt', header: t('warehouse.cycleCounts.columns.createdAt'), cell: (c) => formatDateTime(c.createdAtUtc, lang), exportValue: (c) => c.createdAtUtc },
+      { id: 'reconciledAt', header: t('warehouse.cycleCounts.columns.reconciledAt'), cell: (c) => formatDateTime(c.reconciledAtUtc, lang), exportValue: (c) => c.reconciledAtUtc },
     ],
     [t, lang, canCount, whereText],
   )

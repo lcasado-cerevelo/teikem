@@ -347,20 +347,39 @@ internal static class ReceivingSupport
         return bin;
     }
 
-    /// <summary>Posición de recepción por defecto: la primera activa (por código de zona y de posición) de una zona STAGING activa; si no hay → 422 NoStagingBin.</summary>
+    /// <summary>
+    /// Posición de recepción por defecto: la del almacén (Lote 16, D12: DefaultReceivingBinId, si sigue activa, con su zona
+    /// activa y de tipo STAGING o CROSSDOCK); si no, la primera activa (por código de zona y de posición) de una zona STAGING
+    /// activa; si no hay → 422 NoStagingBin.
+    /// </summary>
     public static async Task<int> DefaultStagingBinAsync(TeikemDbContext db, int warehouseId, CancellationToken ct)
+        => await TryDefaultStagingBinAsync(db, warehouseId, ct) ?? throw new StatusRuleException(ReceiptRules.NoStagingBin);
+
+    /// <summary>Lote 16: como DefaultStagingBinAsync, pero null si el almacén no tiene posición de recepción (recibo directo).</summary>
+    public static async Task<int?> TryDefaultStagingBinAsync(TeikemDbContext db, int warehouseId, CancellationToken ct)
     {
-        var stagingIds = await db.LookupCodes.AsNoTracking()
-            .Where(l => l.Entity == LookupDomains.ZoneType && l.InternalCode == ZoneTypes.Staging)
-            .Select(l => l.LookupCodeId).ToListAsync(ct);
-        var binId = await (from b in db.Set<WarehouseBin>().AsNoTracking()
-                           join w in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals w.WarehouseId
-                           join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
-                           where b.WarehouseId == warehouseId && b.IsActive && z.IsActive
-                                 && z.ZoneTypeLookupId != null && stagingIds.Contains(z.ZoneTypeLookupId.Value)
-                           orderby z.Code, b.Code
-                           select (int?)b.WarehouseBinId).FirstOrDefaultAsync(ct);
-        return binId ?? throw new StatusRuleException(ReceiptRules.NoStagingBin);
+        var receivingTypeIds = await db.LookupCodes.AsNoTracking()
+            .Where(l => l.Entity == LookupDomains.ZoneType && (l.InternalCode == ZoneTypes.Staging || l.InternalCode == ZoneTypes.CrossDock))
+            .Select(l => new { l.LookupCodeId, l.InternalCode }).ToListAsync(ct);
+        var stagingIds = receivingTypeIds.Where(l => l.InternalCode == ZoneTypes.Staging).Select(l => l.LookupCodeId).ToList();
+        var allowedIds = receivingTypeIds.Select(l => l.LookupCodeId).ToList();
+
+        // D12: la posición de recepción por defecto del almacén, si sigue siendo válida.
+        var preferred = await (from w in db.Set<Warehouse>().AsNoTracking()
+                               join b in db.Set<WarehouseBin>().AsNoTracking() on w.DefaultReceivingBinId equals (int?)b.WarehouseBinId
+                               join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                               where w.WarehouseId == warehouseId && b.WarehouseId == warehouseId && b.IsActive && z.IsActive
+                                     && z.ZoneTypeLookupId != null && allowedIds.Contains(z.ZoneTypeLookupId.Value)
+                               select (int?)b.WarehouseBinId).FirstOrDefaultAsync(ct);
+        if (preferred is not null) return preferred;
+
+        return await (from b in db.Set<WarehouseBin>().AsNoTracking()
+                      join w in db.Set<Warehouse>().AsNoTracking() on b.WarehouseId equals w.WarehouseId
+                      join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                      where b.WarehouseId == warehouseId && b.IsActive && z.IsActive
+                            && z.ZoneTypeLookupId != null && stagingIds.Contains(z.ZoneTypeLookupId.Value)
+                      orderby z.Code, b.Code
+                      select (int?)b.WarehouseBinId).FirstOrDefaultAsync(ct);
     }
 
     // ---------------------------------------------------------------- adaptadores a las costuras de P0 (InventoryQueries)

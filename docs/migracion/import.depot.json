@@ -54,7 +54,9 @@
       { "code": "STG", "name": "Recepción", "zoneType": "STAGING", "matchLocationIds": ["R1"] },
       { "code": "SHP", "name": "Embarque", "zoneType": "STAGING", "matchLocationIds": ["S1"] }
     ],
-    "skipLocationIds": ["W1", "Z1", "01", "R-1"]
+    "skipLocationIds": ["W1", "Z1", "01", "R-1"],
+    // Lote 16 (D12): la posición de recepción por defecto es R1 (zona STG), no S1 de Embarque (solo al crear el almacén).
+    "defaultReceivingBin": "R1"
   },
   "openingBalances": {
     "source": "mswm",

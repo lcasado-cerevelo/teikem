@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { setLang } from '../i18n/i18n'
 import type { DataColumn } from './DataTable'
+import { exportChildren } from './exportChildren'
 import { exportTable } from './exportTable'
+import { SearchSelect } from './SearchSelect'
+import { ExportCompanyProvider, FilterScope } from './FilterScope'
 import { ListPager } from './ListPager'
 import { pageSizeOptions } from './pageSize'
 import { Panel } from './Panel'
@@ -84,7 +87,7 @@ describe('ListPager', () => {
     expect(format).toBe('csv')
     expect(cols).toBe(COLS)
     expect(rows).toEqual([{ number: 'REC-1' }, { number: 'REC-2' }])
-    expect(opts).toMatchObject({ locale: 'es', title: 'Recibos' })
+    expect(opts).toMatchObject({ locale: 'es-PR', title: 'Recibos' })
   })
 
   it('exportRows truncado avisa con un toast; exportFileName manda sobre el título del Panel', async () => {
@@ -113,6 +116,26 @@ describe('ListPager', () => {
     }
   })
 
+  it('exportChildren (exportación agrupada) viaja a exportTable como children; sin él, children queda sin definir', async () => {
+    const user = userEvent.setup()
+    vi.mocked(exportTable).mockClear()
+    const children = exportChildren<Receipt & { lines?: string[] }, string>({
+      children: (r) => r.lines,
+      columns: [{ header: 'Línea', cell: (l) => l }],
+      emptyText: 'Sin líneas',
+    })
+    const rows = () => Promise.resolve([{ number: 'REC-1', lines: ['A'] }])
+    const { rerender } = render(<ListPager page={1} pageSize={25} total={1} exportColumns={COLS} exportRows={rows} exportChildren={children} />)
+    await user.click(screen.getByRole('button', { name: 'Exportar' }))
+    await user.click(screen.getByRole('menuitem', { name: 'PDF (.pdf)' }))
+    expect(vi.mocked(exportTable).mock.calls[0][3]).toMatchObject({ children })
+
+    rerender(<ListPager page={1} pageSize={25} total={1} exportColumns={COLS} exportRows={rows} />)
+    await user.click(screen.getByRole('button', { name: 'Exportar' }))
+    await user.click(screen.getByRole('menuitem', { name: 'CSV (.csv)' }))
+    expect(vi.mocked(exportTable).mock.calls[1][3]?.children).toBeUndefined()
+  })
+
   it('onExport propio (el que usa DataTable) en vez de columnas y filas, con su propia nota', async () => {
     const user = userEvent.setup()
     const onExport = vi.fn()
@@ -122,5 +145,23 @@ describe('ListPager', () => {
     expect(screen.getByText('Filas: 25')).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'PDF (.pdf)' }))
     expect(onExport).toHaveBeenCalledWith('pdf')
+  })
+  it('Exportar lleva la compañía activa y la oración de los filtros del ámbito (lista maestra de Recibo)', async () => {
+    const user = userEvent.setup()
+    vi.mocked(exportTable).mockClear()
+    const rows = () => Promise.resolve([{ number: 'REC-1' }])
+    render(
+      <ExportCompanyProvider company="Advance Logistics">
+        <FilterScope>
+          <SearchSelect label="Estatus" options={[{ value: 'OPEN', label: 'Recibiendo' }]} value={['OPEN']} onChange={() => {}} />
+          <Panel title="Recibos">
+            <ListPager page={1} pageSize={25} total={1} exportColumns={COLS} exportRows={rows} />
+          </Panel>
+        </FilterScope>
+      </ExportCompanyProvider>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Exportar' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Excel (.xlsx)' }))
+    expect(vi.mocked(exportTable).mock.calls[0][3]).toMatchObject({ title: 'Recibos', company: 'Advance Logistics', filters: 'Filtros: Estatus Recibiendo' })
   })
 })

@@ -201,7 +201,7 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(serial).toHaveClass('money')
     expect(within(serial).getByText('1 sin series completas')).toBeInTheDocument()
     expect(within(river).getByRole('button', { name: 'SKUs activos: 250' })).toHaveClass('flow')
-    expect(within(river).getByRole('button', { name: 'Unidades totales: 1250' })).toHaveClass('flow')
+    expect(within(river).getByRole('button', { name: 'Unidades totales: 1,250' })).toHaveClass('flow')
     // la cifra suma solo productos activos (coincide con el filtro del KPI)
     expect(mock.requests.some((u) => u.pathname === '/api/v1/inventory/balances' && u.searchParams.get('activeProductsOnly') === 'true')).toBe(true)
     expect(within(river).getByRole('button', { name: 'Bajo mínimo: 2' })).toHaveClass('money')

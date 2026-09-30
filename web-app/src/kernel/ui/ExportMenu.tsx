@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
-import { useLang, useT } from '../i18n/useT'
+import { useT } from '../i18n/useT'
 import { EXPORT_FORMATS, type ExportFormat } from './exportTable'
 import { IconDownload } from './icons'
 import { toast } from './toast'
@@ -16,7 +16,6 @@ export interface ExportMenuProps {
 /** Botón "Exportar" del pie de `DataTable` con su menú Excel / CSV / PDF (abre hacia arriba). */
 export function ExportMenu({ onExport, count }: ExportMenuProps) {
   const t = useT()
-  const lang = useLang()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -85,7 +84,7 @@ export function ExportMenu({ onExport, count }: ExportMenuProps) {
             </button>
           ))}
           <div className="dt-export-note" role="none">
-            {t('ui.table.export.rows', { count: count.toLocaleString(lang) })}
+            {t('ui.table.export.rows', { count })}
           </div>
         </div>
       )}

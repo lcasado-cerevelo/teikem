@@ -12,6 +12,46 @@ export function availableAt(balances: readonly BalanceDto[], lotId?: number | nu
   return balances.filter((b) => lotId == null || b.lotId === lotId).reduce((acc, b) => acc + (b.qtyAvailable ?? 0), 0)
 }
 
+/** Una posición con disponible de un producto (opción del selector de posición al recolectar o al bajar). */
+export interface BinStock {
+  binId: number
+  binCode: string | null
+  zoneCode: string | null
+  zoneTypeCode: string | null
+  /** Suma de lo disponible de los saldos de esa posición (todos sus lotes, o los ya filtrados). */
+  qtyAvailable: number
+}
+
+/**
+ * Posiciones con disponible > 0 a partir de saldos (de un producto), una por posición, sumando sus lotes y en el ORDEN DE
+ * LOS SALDOS (primera aparición): quien llama los ordena antes (FEFO al recolectar, por código al bajar).
+ */
+export function binStockOptions(balances: readonly BalanceDto[]): BinStock[] {
+  const out: BinStock[] = []
+  const byBin = new Map<number, BinStock>()
+  for (const b of balances) {
+    const qty = b.qtyAvailable ?? 0
+    if (b.binId == null || qty <= 0) continue
+    const cur = byBin.get(b.binId)
+    if (cur) {
+      cur.qtyAvailable += qty
+      continue
+    }
+    const row: BinStock = { binId: b.binId, binCode: b.binCode ?? null, zoneCode: b.zoneCode ?? null, zoneTypeCode: b.zoneTypeCode ?? null, qtyAvailable: qty }
+    byBin.set(b.binId, row)
+    out.push(row)
+  }
+  return out
+}
+
+/** Comparación ordinal (como StringComparer.Ordinal). */
+const ordinal = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0)
+
+/** Posiciones donde se puede BAJAR el producto (ajuste): con disponible > 0, de cualquier zona, por código de posición. */
+export function downBinOptions(balances: readonly BalanceDto[]): BinStock[] {
+  return binStockOptions(balances).sort((a, b) => ordinal(a.binCode ?? '', b.binCode ?? '') || a.binId - b.binId)
+}
+
 /** Lotes con disponible > 0 en la posición (opciones del lote al bajar): valor = lotId, pista = disponible y vencimiento. */
 export function lotOptions(balances: readonly BalanceDto[], availableText: (qty: number, expiry: string | null | undefined) => string) {
   return balances

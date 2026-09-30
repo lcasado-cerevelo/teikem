@@ -175,6 +175,8 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in new[] { DiscrepancyKinds.Balance, DiscrepancyKinds.ProductTotal }) L(LookupDomains.InventoryDiscrepancyKind, c);
         foreach (var c in new[] { ReconciliationTriggers.Event, ReconciliationTriggers.Manual, ReconciliationTriggers.Scheduled, ReconciliationTriggers.Migration })
             L(LookupDomains.ReconciliationTrigger, c);
+        // Lote 16: modo de recepción (al final: ids previos intactos).
+        foreach (var c in ReceivingModes.All) L(LookupDomains.ReceivingMode, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

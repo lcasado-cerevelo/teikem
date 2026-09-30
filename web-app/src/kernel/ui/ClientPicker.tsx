@@ -8,6 +8,8 @@ import { ApiError } from '../api/problem'
 import type { components } from '../api/schema'
 import { useT } from '../i18n/useT'
 import { Chip } from './Chip'
+import { joinFilterValues } from './filterRegistry'
+import { useRegisterFilter } from './filterScopeContext'
 import { useFieldInfo } from './formContext'
 import { IconClose } from './icons'
 import { useDismiss } from './useDismiss'
@@ -38,6 +40,9 @@ export interface ClientPickerProps {
   'aria-label'?: string
   'aria-describedby'?: string
   onBlur?: () => void
+  /** Usado como filtro de una lista: con cliente elegido se anota en el ámbito de filtros (`FilterScope`) con esta
+   *  etiqueta (línea "Filtros: …" de las exportaciones). Sin él (formularios) no se anota. */
+  filterLabel?: string
 }
 
 export function ClientPicker({
@@ -50,6 +55,7 @@ export function ClientPicker({
   invalid,
   required,
   onBlur,
+  filterLabel,
   ...aria
 }: ClientPickerProps) {
   const t = useT()
@@ -89,6 +95,7 @@ export function ClientPicker({
     meta: { handleAccessDenied: false },
   })
   const selectedLabel = known ? clientLabel(known) : value ? clientLabel(detail.data) : ''
+  useRegisterFilter(filterLabel ?? '', value ? joinFilterValues([selectedLabel || value], t) : null, boxRef, filterLabel !== undefined)
 
   const options = (list.data ?? []).slice(0, MAX_SHOWN)
 

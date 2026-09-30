@@ -2,11 +2,14 @@
 // no son `DataTable` (p. ej. una lista maestra `.unrow` paginada en el servidor). `DataTable` pinta su pie con este mismo
 // componente, así que los dos se ven y se comportan igual.
 import type { FetchAllResult } from '../api/fetchAllPages'
+import { numberLocale } from '../i18n/numberFormat'
 import { useLang, useT } from '../i18n/useT'
 import type { DataColumn } from './DataTable'
 import { ExportMenu } from './ExportMenu'
+import type { ExportChildren } from './exportChildren'
 import { exportTable, type ExportFormat } from './exportTable'
 import { pageSizeOptions } from './pageSize'
+import { useExportHeading } from './filterScopeContext'
 import { usePanelTitle } from './panelContext'
 import { toast } from './toast'
 import './ui.css'
@@ -30,6 +33,10 @@ export interface ListPagerProps<T> {
   exportRows?: () => Promise<readonly T[] | FetchAllResult<T>>
   /** Base del nombre del archivo (y título de la hoja/PDF). Por defecto el título del `Panel`. */
   exportFileName?: string
+  /** Exportación agrupada (opcional; solo con `exportColumns` + `exportRows`): filas hijas de cada fila, armadas con
+   *  `exportChildren({ children, columns, emptyText, titleColumns })` de `exportGrouped.ts`. Excel/CSV = una fila por hija
+   *  repitiendo la fila madre; PDF (carta horizontal) = un bloque por fila con su banda y la tablita de sus hijas. */
+  exportChildren?: ExportChildren<T>
   /** Exportación propia (en vez de `exportColumns` + `exportRows`); la usa `DataTable`. */
   onExport?: (format: ExportFormat) => void | Promise<void>
   /** Filas que saldrán en el archivo (nota del menú). Por defecto `total`. */
@@ -50,12 +57,15 @@ export function ListPager<T>({
   exportColumns,
   exportRows,
   exportFileName,
+  exportChildren,
   onExport,
   exportCount,
 }: ListPagerProps<T>) {
   const t = useT()
   const lang = useLang()
   const panelTitle = usePanelTitle()
+  // compañía activa y oración de filtros del ámbito (FilterScope), leídas al exportar
+  const exportHeading = useExportHeading()
   if (!(total > 0)) return null
 
   const size = Math.max(1, pageSize)
@@ -70,13 +80,15 @@ export function ListPager<T>({
           const result = await exportRows()
           const items: readonly T[] = 'items' in result ? result.items : result
           if ('truncated' in result && result.truncated) {
-            toast.info(t('ui.table.export.truncated', { count: items.length.toLocaleString(lang) }))
+            toast.info(t('ui.table.export.truncated', { count: items.length }))
           }
           await exportTable(format, exportColumns, items, {
-            locale: lang,
+            locale: numberLocale(lang),
             yes: t('ui.table.export.yes'),
             no: t('ui.table.export.no'),
             title: exportFileName ?? panelTitle,
+            ...exportHeading(),
+            children: exportChildren,
           })
         }
       : undefined

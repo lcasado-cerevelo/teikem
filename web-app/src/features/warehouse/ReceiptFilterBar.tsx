@@ -45,6 +45,7 @@ export function ReceiptFilterBar({ value, onChange, statusCodes }: ReceiptFilter
           value={value.warehousePublicId}
           onChange={(v) => set('warehousePublicId', v)}
           placeholder={t('warehouse.receipts.filters.anyWarehouse')}
+          filterLabel={t('warehouse.receipts.filters.warehouse')}
         />
       </div>
       <SearchSelect label={t('warehouse.receipts.filters.status')} options={statusOptions} value={value.status} onChange={(v) => set('status', v)} />

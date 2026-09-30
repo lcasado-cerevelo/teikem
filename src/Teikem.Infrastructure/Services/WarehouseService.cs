@@ -99,7 +99,11 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         var state = Text(req.State, "state", "El estado", WarehouseRules.StateMaxLength, errors);
         var postal = Text(req.PostalCode, "postalCode", "El código postal", WarehouseRules.PostalCodeMaxLength, errors);
         var countryId = await CountryIdAsync(string.IsNullOrWhiteSpace(req.Country) ? WarehouseRules.DefaultCountry : req.Country, errors, ct);
+        // Lote 16: modo de recepción (sin él, PUTAWAY; desconocido → 400).
+        var (mode, modeError) = ReceivingModeRules.ParseMode(req.ReceivingMode);
+        if (modeError is not null) errors["receivingMode"] = new[] { modeError };
         if (errors.Count > 0) throw new ValidationException(errors);
+        var modeId = await ModeIdAsync(mode ?? ReceivingModes.Putaway, ct);
 
         // UQ_Warehouse_Code (TenantId, Code) sin filtro: el código de un almacén dado de baja tampoco se reutiliza.
         if (await db.Warehouses.AnyAsync(w => w.Code == code, ct)) throw new ConflictException(WarehouseRules.DuplicateWarehouseMessage);
@@ -110,7 +114,7 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
             var w = new Warehouse
             {
                 TenantId = tenantId, Code = code!, Name = name!, Line1 = line1, City = city, State = state, PostalCode = postal,
-                CountryLookupId = countryId!.Value, StatusCodeId = initial.StatusCodeId, IsActive = true,
+                CountryLookupId = countryId!.Value, StatusCodeId = initial.StatusCodeId, IsActive = true, ReceivingModeLookupId = modeId,
             };
             db.Warehouses.Add(w);
             await db.SaveGuardedAsync(WarehouseRules.DuplicateWarehouseMessage, ct2);
@@ -152,6 +156,9 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         var postal = Text(req.PostalCode, "postalCode", "El código postal", WarehouseRules.PostalCodeMaxLength, errors);
         int? countryId = null;
         if (!string.IsNullOrWhiteSpace(req.Country)) countryId = await CountryIdAsync(req.Country, errors, ct);
+        // Lote 16: modo de recepción (null = sin cambio; desconocido → 400). No toca los recibos abiertos (D2).
+        var (mode, modeError) = ReceivingModeRules.ParseMode(req.ReceivingMode);
+        if (modeError is not null) errors["receivingMode"] = new[] { modeError };
         if (errors.Count > 0) throw new ValidationException(errors);
 
         var w = await ResolveWarehouseAsync(publicId, track: true, ct);
@@ -164,6 +171,12 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
         if (req.State is not null) w.State = state;
         if (req.PostalCode is not null) w.PostalCode = postal;
         if (countryId is int cid) w.CountryLookupId = cid;
+        if (mode is not null) w.ReceivingModeLookupId = await ModeIdAsync(mode, ct);
+        // Lote 16 (D12): posición de recepción por defecto del almacén: del almacén (404), zona STAGING o CROSSDOCK (400) y
+        // activa (422), con los mismos mensajes que la posición de recepción de un recibo; ClearDefaultReceivingBin la quita.
+        if (req.ClearDefaultReceivingBin == true) w.DefaultReceivingBinId = null;
+        if (req.DefaultReceivingBinId is int binId)
+            w.DefaultReceivingBinId = (await ReceivingSupport.ResolveStagingBinAsync(db, w.WarehouseId, binId, "defaultReceivingBinId", ct)).BinId;
 
         await db.SaveGuardedAsync(WarehouseRules.DuplicateWarehouseMessage, ct);
         return await GetAsync(publicId, ct);
@@ -274,7 +287,7 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
     // ---------------------------------------------------------------- helpers
 
     private sealed record Counts(Dictionary<int, int> Zones, Dictionary<int, int> Bins, Dictionary<int, int> Docks, Dictionary<int, decimal> OnHand,
-        Dictionary<int, IReadOnlyList<string>> ZoneTypes);
+        Dictionary<int, IReadOnlyList<string>> ZoneTypes, Dictionary<int, string> DefaultReceivingBins);
 
     /// <summary>
     /// Zonas, posiciones y muelles ACTIVOS, existencia en mano y tipos de zona (distintos, de las zonas activas) por almacén:
@@ -305,18 +318,49 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
                 if ((await lookups.GetAsync(p.TypeId, ct))?.InternalCode is string code) codes.Add(code);
             zoneTypes[g.Key] = codes.ToList();
         }
-        return new Counts(zones, bins, docks, onHand, zoneTypes);
+
+        // Lote 16 (D12): código de la posición de recepción por defecto (hija del mismo almacén), en una sola consulta.
+        var defaultBins = await (from w in db.Warehouses.AsNoTracking()
+                                 join b in db.WarehouseBins.AsNoTracking() on w.DefaultReceivingBinId equals (int?)b.WarehouseBinId
+                                 where ids.Contains(w.WarehouseId) && b.WarehouseId == w.WarehouseId
+                                 select new { w.WarehouseId, b.Code }).ToDictionaryAsync(x => x.WarehouseId, x => x.Code, ct);
+        return new Counts(zones, bins, docks, onHand, zoneTypes, defaultBins);
     }
 
     private async Task<WarehouseDto> ToDtoAsync(Warehouse w, Counts counts, Dictionary<int, StatusInfo> statusMap, CancellationToken ct)
     {
         var country = await lookups.GetAsync(w.CountryLookupId, ct);
         var s = statusMap.GetValueOrDefault(w.StatusCodeId);
+        // Lote 16: modo de recepción (NULL = PUTAWAY) con su etiqueta del catálogo.
+        var modeLookup = w.ReceivingModeLookupId is int mid ? await lookups.GetAsync(mid, ct) : null;
+        var modeCode = ReceivingModeRules.Normalize(modeLookup?.InternalCode);
+        var modeLabel = modeLookup is not null && modeLookup.InternalCode == modeCode
+            ? MultilingualText.Resolve(modeLookup.LabelJson, tenant.Lang)
+            : await ModeLabelAsync(modeCode, ct);
+        var defaultBinCode = w.DefaultReceivingBinId is not null ? counts.DefaultReceivingBins.GetValueOrDefault(w.WarehouseId) : null;
         return new WarehouseDto(w.WarehouseId, w.PublicId, w.Code, w.Name, w.Line1, w.City, w.State, w.PostalCode,
             country?.InternalCode ?? "", s?.Code ?? "", s?.Label ?? "", w.IsActive,
             counts.Zones.GetValueOrDefault(w.WarehouseId), counts.Bins.GetValueOrDefault(w.WarehouseId), counts.Docks.GetValueOrDefault(w.WarehouseId),
             counts.OnHand.GetValueOrDefault(w.WarehouseId), Convert.ToBase64String(w.RowVersion ?? Array.Empty<byte>()),
-            counts.ZoneTypes.GetValueOrDefault(w.WarehouseId) ?? Array.Empty<string>());
+            counts.ZoneTypes.GetValueOrDefault(w.WarehouseId) ?? Array.Empty<string>(),
+            modeCode, modeLabel, defaultBinCode is null ? null : w.DefaultReceivingBinId, defaultBinCode);
+    }
+
+    /// <summary>Etiqueta del modo de recepción en el idioma del usuario (el código si el catálogo no lo tiene).</summary>
+    private async Task<string> ModeLabelAsync(string modeCode, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, modeCode, ct);
+        var l = id is int x ? await lookups.GetAsync(x, ct) : null;
+        return l is null ? modeCode : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
+    }
+
+    /// <summary>Lote 16: id del catálogo del modo (null si el catálogo no lo tiene: NULL en la base = PUTAWAY).</summary>
+    private async Task<int?> ModeIdAsync(string modeCode, CancellationToken ct)
+    {
+        var id = await lookups.TryGetIdAsync(LookupDomains.ReceivingMode, modeCode, ct);
+        if (id is null && modeCode == ReceivingModes.Direct)
+            throw new InvalidOperationException("El catálogo ReceivingMode no tiene DIRECT (logistica-db-seed.sql).");
+        return id;
     }
 
     private async Task<int?> CountryIdAsync(string? country, IDictionary<string, string[]> errors, CancellationToken ct)

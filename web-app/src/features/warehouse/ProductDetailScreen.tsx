@@ -9,7 +9,7 @@ import { useCan } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Chip, DataTable, EmptyState, Filters, Panel, QBox, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, EmptyState, Filters, Panel, QBox, SelectFilter, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
 import { useProduct, useProductLots, useProductSerials, type LotDto, type SerialDto } from './api'
 import { ProductEditorModal } from './ProductEditorModal'
 import { IconLayers } from '../../kernel/ui/screenIcons'
@@ -72,17 +72,12 @@ function SerialsTab({ publicId }: { publicId: string }) {
   return (
     <>
       <Filters onClear={() => setStatus('')}>
-        <div className="f">
-          <label htmlFor="product-serial-status">{t('warehouse.products.serials.status')}</label>
-          <select id="product-serial-status" value={status} onChange={(e) => setStatus(e.target.value)}>
-            <option value="">{t('ui.filters.all')}</option>
-            {statuses.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <SelectFilter
+          label={t('warehouse.products.serials.status')}
+          value={status}
+          onChange={setStatus}
+          options={statuses.map((s) => ({ value: s.code, label: s.label }))}
+        />
       </Filters>
       <div className="qrow">
         <QBox value={q} onChange={setQ} />

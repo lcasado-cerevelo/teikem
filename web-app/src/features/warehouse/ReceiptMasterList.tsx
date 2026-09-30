@@ -4,15 +4,19 @@
 // Devolución) con el documento · referencia. La elegida va con fondo de flujo (`.on`). Clic = elegir (`?receipt=`);
 // DOBLE CLIC = modal del encabezado (el mismo del lápiz del detalle, que es la vía accesible con teclado). Buscador libre
 // (`QBox`, va al API) arriba y el pie de lista del kit (`ListPager`: rango, filas por página, ‹ › y Exportar todo lo
-// filtrado) abajo: la paginación es del servidor.
+// filtrado) abajo: la paginación es del servidor. Exportar saca cada recibo CON SUS LÍNEAS (`receiptExport.ts`: Excel/CSV
+// una fila por línea; PDF un bloque por recibo); la usan Recibos y 'Acomodo pendiente'. Lote 16: etiqueta "Directo" en
+// los recibos directos a posición.
 import { useMemo } from 'react'
 import type { FetchAllResult } from '../../kernel/api/fetchAllPages'
 import { StatusChip } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import { IconCheckin, ListPager, Panel, QBox, Spinner, type DataColumn } from '../../kernel/ui'
+import { IconCheckin, ListPager, Panel, QBox, Spinner } from '../../kernel/ui'
 import type { ReceiptListItemDto } from './api'
-import { formatDate, formatDateTime, formatNumber } from './lineRules'
+import { formatDate } from './lineRules'
+import { receiptExportChildren, receiptExportColumns } from './receiptExport'
 import { RECEIPT_STATUS_DOMAIN, receiptOrigin, receiptSender } from './receiptFilters'
+import { isDirectMode } from './receivingMode'
 
 export interface ReceiptMasterListProps {
   title: string
@@ -38,25 +42,9 @@ export function ReceiptMasterList(props: ReceiptMasterListProps) {
   const t = useT()
   const lang = useLang()
 
-  // columnas del archivo exportado (la lista no es una tabla)
-  const exportColumns = useMemo<DataColumn<ReceiptListItemDto>[]>(
-    () => [
-      { id: 'number', header: t('warehouse.receipts.list.columns.number'), cell: (r) => r.number ?? '' },
-      { id: 'status', header: t('warehouse.receipts.list.columns.status'), cell: (r) => r.status ?? r.statusCode ?? '' },
-      { id: 'type', header: t('warehouse.receipts.list.columns.type'), cell: (r) => r.type ?? r.typeCode ?? '' },
-      { id: 'origin', header: t('warehouse.receipts.list.columns.origin'), cell: (r) => t(`warehouse.receipts.originLong.${receiptOrigin(r.origin)}`) },
-      { id: 'originRef', header: t('warehouse.receipts.list.columns.originRef'), cell: (r) => r.originRef ?? '' },
-      { id: 'sender', header: t('warehouse.receipts.list.columns.sender'), cell: (r) => r.senderName ?? '' },
-      { id: 'warehouse', header: t('warehouse.receipts.list.columns.warehouse'), cell: (r) => r.warehouseCode ?? '' },
-      { id: 'carrier', header: t('warehouse.receipts.list.columns.carrier'), cell: (r) => r.carrier ?? '' },
-      { id: 'reference', header: t('warehouse.receipts.list.columns.reference'), cell: (r) => r.reference ?? '' },
-      { id: 'expectedDate', header: t('warehouse.receipts.list.columns.expectedDate'), cell: (r) => formatDate(r.expectedDate, lang), exportValue: (r) => r.expectedDate ?? null },
-      { id: 'createdAt', header: t('warehouse.receipts.list.columns.createdAt'), cell: (r) => formatDateTime(r.createdAtUtc, lang) },
-      { id: 'lines', header: t('warehouse.receipts.list.columns.lines'), cell: (r) => formatNumber(r.lineCount, lang), exportValue: (r) => r.lineCount ?? 0 },
-      { id: 'variance', header: t('warehouse.receipts.list.columns.variance'), cell: (r) => formatNumber(r.varianceQty, lang), exportValue: (r) => r.varianceQty ?? 0 },
-    ],
-    [t, lang],
-  )
+  // columnas del archivo exportado (la lista no es una tabla) y sus líneas: exportación agrupada (receiptExport.ts)
+  const exportColumns = useMemo(() => receiptExportColumns(t, lang), [t, lang])
+  const exportLines = useMemo(() => receiptExportChildren(t, lang), [t, lang])
 
   let body
   if (loading && items.length === 0) body = <Spinner block />
@@ -102,6 +90,15 @@ export function ReceiptMasterList(props: ReceiptMasterListProps) {
               {r.originRef && <span className="ref rcp-doc">{r.originRef}</span>}
               {r.reference && <span> · {r.reference}</span>}
               {(r.pendingPutawayCount ?? 0) > 0 && <span> · {t('warehouse.receipts.list.pendingPutaway', { count: r.pendingPutawayCount ?? 0 })}</span>}
+              {/* Lote 16: recibo directo a posición */}
+              {isDirectMode(r.receivingModeCode) && (
+                <>
+                  {' '}
+                  <span className="tag" title={t('warehouse.receipts.chip.direct')}>
+                    {t('warehouse.receipts.list.direct')}
+                  </span>
+                </>
+              )}
             </span>
           </span>
         </button>
@@ -124,6 +121,7 @@ export function ReceiptMasterList(props: ReceiptMasterListProps) {
         onPageSize={props.onPageSize}
         exportColumns={exportColumns}
         exportRows={props.exportRows}
+        exportChildren={exportLines}
         exportFileName={t('warehouse.receipts.list.exportName')}
       />
     </Panel>

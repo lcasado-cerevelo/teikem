@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom'
 import { parseApiDate } from '../../kernel/api/dates'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusHistory } from '../../kernel/catalogs'
-import { useLang, useT } from '../../kernel/i18n'
+import { formatMoney, useLang, useT } from '../../kernel/i18n'
 import { DataTable, EmptyState, Panel, Spinner, type DataColumn } from '../../kernel/ui'
 import { useOrderReadonly, type OrderDetailDto } from '../warehouse/api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
@@ -23,9 +23,9 @@ function formatDateTime(iso: string | null | undefined, lang: string): string {
   return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
-function money(v: number | null | undefined, currency: string | null | undefined): string {
+function money(v: number | null | undefined, currency: string | null | undefined, lang: string): string {
   if (v == null) return '—'
-  return `${v.toFixed(2)} ${currency ?? ''}`.trim()
+  return formatMoney(v, lang, { currency })
 }
 
 function StopCard({ title, stop, lang }: { title: string; stop: Stop | undefined; lang: string }) {
@@ -114,12 +114,12 @@ export default function OrderDetailScreen() {
         <div className="r3">
           <div className="f">
             <label>{t('orders.detail.fields.quotedAmount')}</label>
-            <p>{money(order.quotedAmount, order.currency)}</p>
+            <p>{money(order.quotedAmount, order.currency, lang)}</p>
           </div>
           <div className="f">
             <label>{t('orders.detail.fields.codAmount')}</label>
             <p>
-              {money(order.codAmount, order.currency)} {order.codStatusLabel ? `(${order.codStatusLabel})` : ''}
+              {money(order.codAmount, order.currency, lang)} {order.codStatusLabel ? `(${order.codStatusLabel})` : ''}
             </p>
           </div>
           <div className="f">

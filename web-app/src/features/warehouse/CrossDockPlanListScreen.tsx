@@ -144,7 +144,12 @@ function PlansTab() {
       >
         <div className="f">
           <label>{t('warehouse.crossDockPlans.filters.warehouse')}</label>
-          <WarehousePicker value={warehousePublicId} onChange={setWarehousePublicId} placeholder={t('warehouse.crossDockPlans.filters.anyWarehouse')} />
+          <WarehousePicker
+            value={warehousePublicId}
+            onChange={setWarehousePublicId}
+            placeholder={t('warehouse.crossDockPlans.filters.anyWarehouse')}
+            filterLabel={t('warehouse.crossDockPlans.filters.warehouse')}
+          />
         </div>
         <SearchSelect
           label={t('warehouse.crossDockPlans.filters.status')}

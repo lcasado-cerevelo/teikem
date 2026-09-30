@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { formatQuantity } from '../i18n/numberFormat'
+import { useLang } from '../i18n/useT'
 import { PanelTitleContext } from './panelContext'
 import './ui.css'
 
@@ -27,6 +29,7 @@ export interface PanelProps {
  * `Modal` (`.scrim > .pal`, radio 15 px con sombra).
  */
 export function Panel({ title, icon, badge, subtitle, actions, footer, flush, className, children }: PanelProps) {
+  const lang = useLang()
   const hasHead = title != null || icon != null || badge != null || actions != null
   return (
     <section className={['panel kit-panel', className].filter(Boolean).join(' ')}>
@@ -34,7 +37,7 @@ export function Panel({ title, icon, badge, subtitle, actions, footer, flush, cl
         <header className="ph2 kit-ph2">
           {icon != null && <span className="kit-ic">{icon}</span>}
           {title != null && <h2 className="kit-ph2-title">{title}</h2>}
-          {badge != null && <span className="r">{badge}</span>}
+          {badge != null && <span className="r">{typeof badge === 'number' ? formatQuantity(badge, lang) : badge}</span>}
           {actions != null && <div className="kit-acts">{actions}</div>}
           {subtitle != null && <p className="kit-sub">{subtitle}</p>}
         </header>

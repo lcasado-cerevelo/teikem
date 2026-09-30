@@ -65,6 +65,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    mensajes); **conteo cíclico** con estatus Pendiente, Contado, Concordancia y Diferencia, confirmación en un solo paso, lista con total,
    asignación y **"Conteo de lo cambiado"** (ventana, tope de 200 posiciones y sus mensajes). La pantalla "Ajustes de inventario" (faltantes
    de compra) salió del menú: los faltantes se resuelven en la ficha de la orden de compra.
+   Lote 16 (secciones 1.4, 4.1, 5, 7 y 9): **modo de recepción del almacén** (con acomodo o directo a posición) y **posición de recepción por defecto**; **recibo directo a posición**
+   (posición destino por línea, sugerencias con cupo, "Usar posiciones sugeridas", cuarentena en devoluciones, cupo que solo avisa, Completado → Acomodado en el mismo momento, sin tareas) con sus
+   validaciones, estatus y lo que bloquea; el acomodo pendiente en almacenes directos; el selector de posiciones de Recolección (solo donde hay existencia); el cruce de muelle que no aplica a
+   recibos directos ya confirmados; y el formato de los números (coma de miles y `$`).
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
@@ -87,6 +91,8 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    aparato y entrar con PIN, cómo funciona sin señal (documentos propios del aparato vs. recursos compartidos, un
    documento a la vez), Inicio, Recibir, Acomodar, Despacho (solo clientes 3PL por ahora), Conteo (a ciegas según
    permiso), Consultar (con caché para responder sin señal) y Sincronización (pendientes, con error, reintentar).
+   Lote 16: Recibir en un almacén **directo a posición** (paso "Escanea la posición destino", validación sin señal, bloqueo por dos destinos del mismo producto), descarga de las posiciones del
+   almacén y heartbeat en cada pasada de sincronización.
 10. [10 — Migración de datos heredados](10-migracion-de-datos.md): comando de línea de comandos para aprovisionar
     una compañía desde QuickBooks Desktop y el WMS heredado MSWM, simulación (`--dry-run`), refresco de maestros sin
     tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`). Lote 12
@@ -123,6 +129,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    Lote 14: **Transferencias y ajustes** (pestañas Ajustes y Transferencias, modal Subir/Bajar, Reporte de ajustes), **Kárdex de movimientos**
    (filtros compartidos, resumen, detalle del movimiento y Conciliación con descuadres) y **Conteo cíclico** en dos paneles (escáner, cantidad
    en la fila, Confirmar conteo y ajustar y Conteo de lo cambiado); "Ajustes de inventario" salió del menú. Capturas `l14-*`.
+   Lote 16: **modo de recepción** en la ficha del almacén (Datos → Recepción) y en la lista, **recibo directo a posición** (columna Posición destino, "Sugerida", aviso de cupo, "Usar
+   posiciones sugeridas"), aviso en Acomodo pendiente, selector de Posición de Recolección y, en "Todas las tablas", **encabezado y filtros de las exportaciones**, fechas como fecha y formato
+   de números. Capturas `l16-*`.
 3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
@@ -153,4 +162,7 @@ revisión automática); y las preguntas sobre qué es un descuadre y por qué un
 conteo dice Diferencia, dónde quedó "Ajustes de inventario" y por qué no se ve "Necesita tu atención". La sección "Lote 15" recoge el mensaje nuevo (`Los días deben estar entre 1 y 14.`), los que solo se ven en pantalla
 (confirmación de borrar un gráfico de la compañía, gráficos sin datos, "…" y "—") y las preguntas sobre por qué el Kárdex suma distinto que las
 tarjetas de la franja, por qué aparece "Otras", por qué un indicador de "últimos 7 días" dio distinto (días de Puerto Rico), cómo quitar la
-franja fija, si vuelve un gráfico de la compañía borrado, por qué la salida de un día sale negativa y por qué no se ve la franja.
+franja fija, si vuelve un gráfico de la compañía borrado, por qué la salida de un día sale negativa y por qué no se ve la franja. La sección "Lote 16" recoge los mensajes del recibo directo (modo de recepción desconocido, falta la posición destino, zona de recepción
+o de cruce, posición que no existe, id y código a la vez, mismo producto con dos destinos, posición o zona desactivada, modo de la configuración de migración), los que solo se ven en pantalla y en la app
+(falta la posición destino, excede el cupo, sugerida, posiciones del aparato) y las preguntas sobre cómo poner un almacén en directo, qué pasa con los recibos abiertos, si se puede pasar del cupo, por
+qué la pistola no deja enviar, por qué los números llevan coma, por qué el PDF dice "Sin filtros" y cómo abrir las fechas del Excel.

@@ -135,6 +135,8 @@ public sealed class ReceiptHeaderConfiguration : IEntityTypeConfiguration<Receip
         // Lote 13: FK_Receipt_StagingBin es compuesta en SQL (DefaultStagingBinId, WarehouseId) → UQ_WarehouseBin_IdWh; en EF
         // basta la simple (como FK_Receipt_Dock): el servicio valida que la posición sea del almacén del recibo.
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(r => r.DefaultStagingBinId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 16: copia del modo de recepción (FK_Receipt_ReceivingMode → LookupCode, en SQL; columna simple en EF).
+        b.Property(r => r.ReceivingModeLookupId);
         b.HasMany(r => r.Lines).WithOne().HasForeignKey(l => l.ReceiptHeaderId).OnDelete(DeleteBehavior.NoAction);
     }
 }
@@ -155,6 +157,8 @@ public sealed class ReceiptLineConfiguration : IEntityTypeConfiguration<ReceiptL
         b.HasOne<InventoryLot>().WithMany().HasForeignKey(l => l.LotId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<InventorySerial>().WithMany().HasForeignKey(l => l.SerialId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.StagingBinId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 16: posición destino (FK_ReceiptLine_TargetBin); el servicio garantiza que sea del almacén del recibo.
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(l => l.TargetBinId).OnDelete(DeleteBehavior.NoAction);
     }
 }
 

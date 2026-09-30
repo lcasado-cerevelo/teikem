@@ -9,6 +9,9 @@ export interface DeviceIdentity {
   tenantName: string
   defaultWarehousePublicId: string | null
   theme: string | null
+  /** Lote 16: modo de recepción del almacén por defecto ('PUTAWAY' | 'DIRECT'), del registro y de cada heartbeat.
+   *  Opcional: un aparato registrado antes del lote no lo tiene guardado hasta su siguiente heartbeat. */
+  defaultWarehouseReceivingMode?: string | null
 }
 
 export interface UserSession {

@@ -35,6 +35,16 @@ export function orderBins<T extends { id?: number; code?: string | null }>(items
   return exactFirst([...suggested, ...rest], text)
 }
 
+/**
+ * Posiciones de una lista dada (BinPicker con `options`) cuyo código o zona contiene `text` (subcadena, sin mayúsculas ni
+ * acentos), en el orden de la lista. Texto vacío = todas.
+ */
+export function filterBinOptions<T extends { code?: string | null; zoneCode?: string | null }>(items: readonly T[], text: string): T[] {
+  const q = foldText(text.trim())
+  if (!q) return [...items]
+  return items.filter((b) => foldText(b.code).includes(q) || foldText(b.zoneCode).includes(q))
+}
+
 function exactFirst<T extends { code?: string | null }>(items: T[], text: string): T[] {
   const exact = exactCodeMatch(items, text)
   if (!exact) return items

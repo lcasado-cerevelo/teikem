@@ -115,6 +115,34 @@ public class WmsCatalogTests
     }
 
     [Fact]
+    public void Lote16_receiving_mode_catalog_backfill_and_guarded_schema()
+    {
+        var seed = Seed.Value.Replace("\r\n", "\n");
+        var sql = Structure.Value.Replace("\r\n", "\n");
+        Assert.Equal("ReceivingMode", LookupDomains.ReceivingMode);
+        Assert.Contains("('ReceivingMode',1,'Modo de recepción','Receiving mode')", seed);
+        Assert.Contains("('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1)", seed);
+        Assert.Contains("('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2)", seed);
+        Assert.All(ReceivingModes.All, m => Assert.True(SeedHas(LookupDomains.ReceivingMode, m), m));
+        // Relleno idempotente: almacenes y recibos sin modo quedan con acomodo (solo los NULL).
+        Assert.Contains("UPDATE dbo.Warehouse SET ReceivingModeLookupId = @L16Putaway WHERE ReceivingModeLookupId IS NULL;", seed);
+        Assert.Contains("UPDATE dbo.ReceiptHeader SET ReceivingModeLookupId = @L16Putaway WHERE ReceivingModeLookupId IS NULL;", seed);
+        // Estructura con guardas: Warehouse y ReceiptLine pasan a IF OBJECT_ID … ELSE COL_LENGTH; FKs en lotes propios.
+        Assert.Contains("IF OBJECT_ID('dbo.Warehouse') IS NULL", sql);
+        Assert.Contains("IF COL_LENGTH('dbo.Warehouse', 'ReceivingModeLookupId') IS NULL", sql);
+        Assert.Contains("IF COL_LENGTH('dbo.Warehouse', 'DefaultReceivingBinId') IS NULL", sql);
+        Assert.Contains("IF COL_LENGTH('dbo.ReceiptHeader', 'ReceivingModeLookupId') IS NULL", sql);
+        Assert.Contains("IF OBJECT_ID('dbo.ReceiptLine') IS NULL", sql);
+        Assert.Contains("IF COL_LENGTH('dbo.ReceiptLine', 'TargetBinId') IS NULL", sql);
+        foreach (var fk in new[] { "FK_Warehouse_ReceivingMode", "FK_Warehouse_DefaultReceivingBin", "FK_Receipt_ReceivingMode", "FK_ReceiptLine_TargetBin", "FK_UserDevice_DefaultWarehouse" })
+            Assert.Contains($"IF OBJECT_ID('dbo.{fk}', 'F') IS NULL", sql);
+        Assert.Contains("FOREIGN KEY (DefaultReceivingBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId)", sql);
+        // La FK compuesta de la posición por defecto va DESPUÉS de crear WarehouseBin (orden por capas).
+        Assert.True(sql.IndexOf("CREATE TABLE dbo.WarehouseBin (", StringComparison.Ordinal)
+                    < sql.IndexOf("ADD CONSTRAINT FK_Warehouse_DefaultReceivingBin", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Lookup_domains_and_codes_match_the_seed()
     {
         Assert.True(SeedHas(LookupDomains.ZoneType, ZoneTypes.Staging));

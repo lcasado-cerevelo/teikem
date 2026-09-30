@@ -91,7 +91,17 @@
     "removeLineConfirm": "¿Quitar esta línea?",
     "cancelReceipt": "Cancelar recibo",
     "cancelConfirmTitle": "¿Cancelar este recibo?",
-    "cancelConfirmBody": "Se pierde todo lo capturado. No se puede deshacer."
+    "cancelConfirmBody": "Se pierde todo lo capturado. No se puede deshacer.",
+    "scanTargetLabel": "Escanea la posición destino",
+    "targetHint": "Sugerida: {bin}",
+    "lineTarget": "→ {bin}",
+    "targetNotFound": "La posición no existe en este almacén.",
+    "targetNotStorage": "Esa posición es de recepción o de cruce de muelle; escanea dónde se guarda.",
+    "targetInactive": "Esa posición está desactivada; escanea otra.",
+    "targetNoBins": "El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.",
+    "targetConflictTitle": "No se puede enviar así",
+    "targetConflict": "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.",
+    "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo."
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",

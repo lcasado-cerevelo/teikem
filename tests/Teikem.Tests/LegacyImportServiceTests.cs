@@ -468,6 +468,9 @@ public class LegacyImportServiceTests
         Assert.Equal(new[] { "S1" }, cfg.Warehouse.Zones[5].MatchLocationIds);
         Assert.Equal(new[] { "W1", "Z1", "01", "R-1" }, cfg.Warehouse.SkipLocationIds);
         Assert.Null(cfg.Warehouse.SingleBin);
+        // Lote 16 (D8, D12): Depot recibe con acomodo (sin modo = PUTAWAY) y su posición de recepción por defecto es R1 (zona STG).
+        Assert.Null(cfg.Warehouse.ReceivingMode);
+        Assert.Equal("R1", cfg.Warehouse.DefaultReceivingBin);
         Assert.Equal((LegacyImportConfig.SourceMswm, "OPENING_BALANCE", "Migración WMS MSWM 2026-09-28"),
             (cfg.OpeningBalances.Source, cfg.OpeningBalances.Reason, cfg.OpeningBalances.Notes));
     }
@@ -492,6 +495,9 @@ public class LegacyImportServiceTests
         Assert.Equal(("ALM-SOL", "Almacén Solutions", "Caguas"), (cfg.Warehouse.Code, cfg.Warehouse.Name, cfg.Warehouse.City));
         Assert.Equal(("GEN", "General", "RESERVE", "GENERAL"),
             (cfg.Warehouse.SingleBin!.Zone!.Code, cfg.Warehouse.SingleBin.Zone.Name, cfg.Warehouse.SingleBin.Zone.ZoneType, cfg.Warehouse.SingleBin.Bin));
+        // Lote 16 (D8): Solutions no tiene zona de recepción: directo a posición.
+        Assert.Equal("DIRECT", cfg.Warehouse.ReceivingMode);
+        Assert.Null(cfg.Warehouse.DefaultReceivingBin);
         Assert.Equal((LegacyImportConfig.SourceQuickBooks, "Saldo inicial QuickBooks 2026-09-28"), (cfg.OpeningBalances.Source, cfg.OpeningBalances.Notes));
     }
 

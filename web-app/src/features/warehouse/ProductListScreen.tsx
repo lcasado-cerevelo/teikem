@@ -13,12 +13,12 @@
 // - Tabla paginada en el servidor: SKU, Producto, Categoría, Marca (con el modelo debajo), Dueño, Disponible, Reservado,
 //   Total, Rastreo, Estado. Exportar = todo lo filtrado. Clic en una fila = "Editar producto" (ProductEditorModal).
 // Lectura: inventory.view + WMS_LOTSERIAL (aplicado por la ruta).
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
-import { Chip, DataTable, Filters, IconBox, IconLayers, IconTag, Panel, SearchSelect, Tabs, type DataColumn } from '../../kernel/ui'
+import { Chip, DataTable, Filters, IconBox, IconLayers, IconTag, Panel, SearchSelect, Tabs, useRegisterFilter, type DataColumn } from '../../kernel/ui'
 import { IconAlert } from '../../kernel/ui/icons'
 import {
   exportProducts,
@@ -108,9 +108,12 @@ function InventoryKpis({ kpi, onToggle }: { kpi: ProductKpi | null; onToggle: (k
   const belowMinCount = belowMin.data?.total ?? 0
   const missing = serialMissing.data?.total ?? 0
   const hint = (key: string) => t('warehouse.products.kpis.filterHint', { view: t(`warehouse.products.kpis.view.${key}`) })
+  // el KPI elegido filtra la tabla: va en la línea de filtros de las exportaciones ("Vista Activos con existencia")
+  const riverRef = useRef<HTMLDivElement>(null)
+  useRegisterFilter(t('warehouse.products.reports.filters.view'), kpi ? t(`warehouse.products.kpis.view.${kpi}`) : null, riverRef)
   return (
     <div className="pulse">
-      <div className="river inv-river" role="group" aria-label={t('warehouse.products.kpis.aria')}>
+      <div className="river inv-river" role="group" aria-label={t('warehouse.products.kpis.aria')} ref={riverRef}>
         <KpiNode
           tone="flow"
           icon={<IconLayers />}

@@ -12,6 +12,7 @@ import { Spinner } from '../../kernel/ui/Spinner'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
 import { useAttention } from './api'
 import { attentionGroupLabel, attentionHref, attentionRowText, attentionToneClass, type AttentionItemDto } from './attention'
+import { numberLocale } from '../../kernel/i18n'
 
 /** Códigos de error con los que el panel simplemente no se pinta (el usuario no puede ver los avisos). */
 const HIDDEN_ON = new Set(['forbidden', 'module_disabled'])
@@ -96,8 +97,8 @@ export function AttentionPanel() {
         {groups.map((g) => (
           <Link key={g.code ?? g.route} className="btn sm" to={attentionHref(g.route, g.query) ?? '/'}>
             {groups.length === 1
-              ? t('analytics.attention.viewAll', { count: (g.total ?? 0).toLocaleString(lang) })
-              : t('analytics.attention.viewAllGroup', { group: attentionGroupLabel(g, t), count: (g.total ?? 0).toLocaleString(lang) })}
+              ? t('analytics.attention.viewAll', { count: (g.total ?? 0).toLocaleString(numberLocale(lang)) })
+              : t('analytics.attention.viewAllGroup', { group: attentionGroupLabel(g, t), count: (g.total ?? 0).toLocaleString(numberLocale(lang)) })}
           </Link>
         ))}
       </div>
@@ -112,7 +113,7 @@ export function AttentionPanel() {
         <h2 id={titleId}>{t('analytics.pulse.panels.ATTENTION')}</h2>
         {query.data && total > 0 && (
           <span className="ct">
-            {total === 1 ? t('analytics.attention.pendingOne') : t('analytics.attention.pending', { count: total.toLocaleString(lang) })}
+            {total === 1 ? t('analytics.attention.pendingOne') : t('analytics.attention.pending', { count: total.toLocaleString(numberLocale(lang)) })}
           </span>
         )}
       </div>

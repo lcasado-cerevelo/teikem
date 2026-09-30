@@ -11,6 +11,10 @@
 //   la fila abre `BinModal`; baja/reactivación como ícono. Abrir o cerrar un modal no cambia la consulta (no recarga).
 // Lote 11: "Asignar cupo" (warehouse.manage) junto a "Nueva posición" abre `BinCapacityModal` (cupo máximo en bloque) con
 //   la Zona y los textos de Pasillo/Rack/Nivel/Posición del filtro de la pestaña ya puestos.
+// Lote 16: Datos → sección "Recepción": "Modo de recepción" (Con acomodo / Directo a posición, catálogo `ReceivingMode`) y
+//   "Posición de recepción por defecto" (D12: posiciones STAGING/CROSSDOCK del almacén; vaciarla manda
+//   `clearDefaultReceivingBin`). Cambiar el modo pide confirmación con cuántos recibos abiertos y con acomodo pendiente
+//   tiene el almacén (D2: conservan su modo; los acomodos siguen).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -20,6 +24,7 @@ import { Can, useCan } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusPipeline, useLookups } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
+import { formatQuantity } from '../../kernel/i18n/numberFormat'
 import {
   Chip,
   ConfirmDialog,
@@ -45,6 +50,7 @@ import {
 import {
   exportWarehouseBins,
   useDeactivateWarehouse,
+  useReceipts,
   useSaveWarehouseBin,
   useSaveWarehouseDock,
   useSaveWarehouseZone,
@@ -63,8 +69,18 @@ import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal, ReadOnlyField } from './BinModal'
 import { TextFilter, ToggleFilter } from './filterControls'
 import { formatNumber, useDebounced } from './lineRules'
+import { BinPickerInput } from './pickers'
 import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
 import { binsQuery, distinctOptions, EMPTY_BIN_TEXT, type BinTextFilters } from './warehouseFilters'
+import {
+  inSentence,
+  normalizeReceivingMode,
+  RECEIVING_ZONE_TYPES,
+  receivingModeChanged,
+  receivingModeLabel,
+  warehouseReceivingPatch,
+} from './receivingMode'
+import { useReceivingModeOptions } from './useReceivingModeOptions'
 import { ZoneModal } from './ZoneModal'
 import './warehouse.css'
 
@@ -93,10 +109,12 @@ function ActiveChip({ active }: { active: boolean | undefined }) {
 // =====================================================================================================================
 function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
   const t = useT()
+  const lang = useLang()
   const w = detail.warehouse ?? {}
   const publicId = w.publicId ?? ''
   const canEdit = useCan('warehouse.manage')
   const update = useUpdateWarehouse()
+  const modeOptions = useReceivingModeOptions()
 
   const schema = useMemo(
     () =>
@@ -107,6 +125,8 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
         state: z.string().trim(),
         postalCode: z.string().trim(),
         country: z.string().trim(),
+        receivingMode: z.string(),
+        defaultReceivingBinId: z.string(),
       }),
     [t],
   )
@@ -118,53 +138,106 @@ function ProfileTab({ detail }: { detail: WarehouseDetailDto }) {
       state: w.state ?? '',
       postalCode: w.postalCode ?? '',
       country: w.countryCode ?? '',
+      receivingMode: normalizeReceivingMode(w.receivingModeCode),
+      defaultReceivingBinId: w.defaultReceivingBinId != null ? String(w.defaultReceivingBinId) : '',
     }),
-    [w.name, w.line1, w.city, w.state, w.postalCode, w.countryCode],
+    [w.name, w.line1, w.city, w.state, w.postalCode, w.countryCode, w.receivingModeCode, w.defaultReceivingBinId],
   )
   const form = useForm({ resolver: zodResolver(schema), values })
+  type Values = z.infer<typeof schema>
+
+  // Cambio de modo pendiente de confirmar, con los conteos del almacén (solo mientras el diálogo está abierto)
+  const [pendingMode, setPendingMode] = useState<Values | null>(null)
+  const counts = { enabled: pendingMode !== null, handleAccessDenied: false }
+  const openQ = useReceipts({ warehousePublicId: publicId, phase: 'OPEN', take: 1 }, counts)
+  const putawayQ = useReceipts({ warehousePublicId: publicId, phase: 'PENDING_PUTAWAY', take: 1 }, counts)
+  const countText = (n: number | undefined) => (n == null ? '…' : formatQuantity(n, lang))
+
+  const save = async (v: Values) => {
+    await update.mutateAsync({
+      publicId,
+      body: {
+        name: v.name,
+        line1: v.line1,
+        city: v.city,
+        state: v.state,
+        postalCode: v.postalCode,
+        country: v.country,
+        ...warehouseReceivingPatch(w, v),
+        rowVersion: w.rowVersion ?? null,
+      },
+    })
+    toast.success(t('warehouse.detail.saved'))
+  }
 
   return (
-    <Form
-      form={form}
-      onSubmit={async (v) => {
-        await update.mutateAsync({
-          publicId,
-          body: {
-            name: v.name,
-            line1: v.line1,
-            city: v.city,
-            state: v.state,
-            postalCode: v.postalCode,
-            country: v.country,
-            rowVersion: w.rowVersion ?? null,
-          },
-        })
-        toast.success(t('warehouse.detail.saved'))
-      }}
-    >
-      <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <div className="r2">
-          <ReadOnlyField label={t('warehouse.detail.code')} value={w.code ?? ''} help={t('warehouse.detail.codeHelp')} />
-          <Field name="name" label={t('warehouse.detail.name')} required>
+    <>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          // D2: cambiar el modo no toca los recibos abiertos ni los acomodos pendientes; se confirma con sus conteos
+          if (receivingModeChanged(w.receivingModeCode, v.receivingMode)) {
+            setPendingMode(v)
+            return
+          }
+          await save(v)
+        }}
+      >
+        <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <div className="r2">
+            <ReadOnlyField label={t('warehouse.detail.code')} value={w.code ?? ''} help={t('warehouse.detail.codeHelp')} />
+            <Field name="name" label={t('warehouse.detail.name')} required>
+              <TextInput />
+            </Field>
+          </div>
+          <Field name="line1" label={t('warehouse.detail.line1')}>
             <TextInput />
           </Field>
-        </div>
-        <Field name="line1" label={t('warehouse.detail.line1')}>
-          <TextInput />
-        </Field>
-        <Field name="city" label={t('warehouse.postalPicker.label')} help={t('warehouse.postalPicker.help')}>
-          <PostalLocalityPickerInput disabled={!canEdit} />
-        </Field>
-        <DerivedLocalityFields />
-      </fieldset>
-      <Can perm="warehouse.manage">
-        <div className="form-acts">
-          <button type="submit" className="btn flow" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
-            {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
-          </button>
-        </div>
-      </Can>
-    </Form>
+          <Field name="city" label={t('warehouse.postalPicker.label')} help={t('warehouse.postalPicker.help')}>
+            <PostalLocalityPickerInput disabled={!canEdit} />
+          </Field>
+          <DerivedLocalityFields />
+          <fieldset className="whs-receiving">
+            <legend>{t('warehouse.detail.receiving')}</legend>
+            <div className="r2">
+              <Field name="receivingMode" label={t('warehouse.detail.receivingMode')} help={t('warehouse.detail.receivingModeHelp')}>
+                <Select options={modeOptions} />
+              </Field>
+              <Field name="defaultReceivingBinId" label={t('warehouse.detail.defaultReceivingBin')} help={t('warehouse.detail.defaultReceivingBinHelp')}>
+                <BinPickerInput
+                  warehousePublicId={publicId}
+                  zoneTypeCodes={RECEIVING_ZONE_TYPES}
+                  placeholder={t('warehouse.detail.defaultReceivingBinNone')}
+                  disabled={!canEdit}
+                />
+              </Field>
+            </div>
+          </fieldset>
+        </fieldset>
+        <Can perm="warehouse.manage">
+          <div className="form-acts">
+            <button type="submit" className="btn flow" disabled={form.formState.isSubmitting || !form.formState.isDirty}>
+              {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
+            </button>
+          </div>
+        </Can>
+      </Form>
+      <ConfirmDialog
+        open={pendingMode !== null}
+        title={t('warehouse.detail.receivingChangeTitle')}
+        message={t('warehouse.detail.receivingChangeBody', {
+          code: w.code ?? '',
+          mode: inSentence(receivingModeLabel(pendingMode?.receivingMode, modeOptions.map((o) => ({ code: o.value, label: o.label })))),
+          open: countText(openQ.data?.total),
+          pending: countText(putawayQ.data?.total),
+        })}
+        confirmLabel={t('warehouse.detail.receivingChangeConfirm')}
+        onConfirm={async () => {
+          if (pendingMode) await save(pendingMode)
+        }}
+        onClose={() => setPendingMode(null)}
+      />
+    </>
   )
 }
 

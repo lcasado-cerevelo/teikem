@@ -57,6 +57,7 @@ export type SerialTraceDto = Schemas['SerialTraceDto']
 export type AsnDto = Schemas['AsnDto']
 export type ReceiptListItemDto = Schemas['ReceiptListItemDto']
 export type ReceiptDetailDto = Schemas['ReceiptDetailDto']
+export type ReceiptTargetSuggestionDto = Schemas['ReceiptTargetSuggestionDto']
 export type WarehouseTaskDto = Schemas['WarehouseTaskDto']
 export type PutawaySuggestionDto = Schemas['PutawaySuggestionDto']
 export type CycleCountDto = Schemas['CycleCountDto']
@@ -128,6 +129,8 @@ export const warehouseKeys = {
   asns: ['/api/v1/asns'],
   receipts: ['/api/v1/receipts'],
   receipt: ['/api/v1/receipts/{publicId}'],
+  // Lote 16: posiciones destino sugeridas de una línea de un recibo directo
+  receiptTargetSuggestions: ['/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions'],
   tasks: ['/api/v1/warehouse-tasks'],
   putawaySuggestions: ['/api/v1/warehouse-tasks/putaway-suggestions'],
   cycleCounts: ['/api/v1/cycle-counts'],
@@ -783,7 +786,7 @@ export function useUpdateReceiptHeader() {
       unwrap(api.PATCH('/api/v1/receipts/{publicId}', { params: { path: { publicId } }, body })),
     onSuccess: (dto) => {
       cacheReceipt(qc, dto)
-      return invalidate(qc, 'receipts', 'receipt', 'dockAppointments')
+      return invalidate(qc, 'receipts', 'receipt', 'dockAppointments', 'receiptTargetSuggestions')
     },
   })
 }
@@ -812,7 +815,44 @@ export function useSaveReceiptLine() {
     },
     onSuccess: (dto) => {
       cacheReceipt(qc, dto)
-      return invalidate(qc, 'receipts')
+      // Lote 16: lo recibido y los destinos de las líneas cambian las sugerencias (cupo reservado por otras líneas)
+      return invalidate(qc, 'receipts', 'receiptTargetSuggestions')
+    },
+  })
+}
+
+/** Lote 16 — `GET /api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions?take=` (inventory.view): posiciones destino
+ *  sugeridas para una línea de un recibo directo (las que caben primero; las que exceden el cupo al final con `fits=false`). */
+export function useReceiptTargetSuggestions(
+  publicId: string | null | undefined,
+  lineId: number | null | undefined,
+  take = 3,
+  options?: WarehouseQueryOptions,
+) {
+  return useQuery({
+    queryKey: [warehouseKeys.receiptTargetSuggestions[0], { publicId, lineId, take }],
+    queryFn: () =>
+      unwrap(
+        api.GET('/api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions', {
+          params: { path: { publicId: publicId ?? '', lineId: lineId ?? 0 }, query: { take } },
+        }),
+      ),
+    enabled: Boolean(publicId) && lineId != null && (options?.enabled ?? true),
+    staleTime: 30_000,
+    meta: meta(options),
+  })
+}
+
+/** Lote 16 — "Usar posiciones sugeridas": `POST /api/v1/receipts/{publicId}/targets/suggest` (warehouse.receive, con el
+ *  `rowVersion` de la caché). La ficha devuelta queda en caché; devuelve `{ receipt, assigned, withoutSuggestion }`. */
+export function useApplyReceiptTargetSuggestions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['ReceiptApplySuggestionsRequest'] }) =>
+      unwrap(api.POST('/api/v1/receipts/{publicId}/targets/suggest', { params: { path: { publicId } }, body })),
+    onSuccess: (res) => {
+      if (res.receipt) cacheReceipt(qc, res.receipt)
+      return invalidate(qc, 'receipts', 'receiptTargetSuggestions')
     },
   })
 }
@@ -1372,6 +1412,11 @@ export const exportInventoryTransactions = (query: GetQuery<'/api/v1/inventory/t
 
 export const exportReceipts = (query: GetQuery<'/api/v1/receipts'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/receipts', { params: { query: { ...query, skip, take } } })))
+
+/** Recibos con sus líneas (`includeLines=true`: cada recibo de la página trae `lines`, leídas en lote por el API) para la
+ *  exportación agrupada de Recibo y 'Acomodo pendiente'. */
+export const exportReceiptsWithLines = (query: GetQuery<'/api/v1/receipts'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/receipts', { params: { query: { ...query, includeLines: true, skip, take } } })))
 
 export const exportWarehouseTasks = (query: GetQuery<'/api/v1/warehouse-tasks'>) =>
   fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/warehouse-tasks', { params: { query: { ...query, skip, take } } })))

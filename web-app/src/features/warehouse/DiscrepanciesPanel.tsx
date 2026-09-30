@@ -53,7 +53,7 @@ export function DiscrepanciesPanel({ filters, page, pageSize, onPage, onPageSize
         id: 'detected',
         header: t('warehouse.discrepancies.columns.detected'),
         cell: (d) => <span className="mono">{formatDateTime(d.detectedAtUtc, lang)}</span>,
-        exportValue: (d) => formatDateTime(d.detectedAtUtc, lang),
+        exportValue: (d) => d.detectedAtUtc,
         sortValue: (d) => d.detectedAtUtc,
       },
       { id: 'sku', header: t('warehouse.discrepancies.columns.sku'), cell: (d) => <span className="ref">{d.sku}</span>, exportValue: (d) => d.sku ?? '', sortValue: (d) => d.sku, card: 'title' },
