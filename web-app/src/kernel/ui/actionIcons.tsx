@@ -82,6 +82,45 @@ export function IconShield() {
   )
 }
 
+/** Asignar a un usuario (persona con +). */
+export function IconUserPlus() {
+  return (
+    <Svg>
+      <circle cx="9" cy="7" r="4" />
+      <path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2M19 8v6M16 11h6" />
+    </Svg>
+  )
+}
+
+/** Iniciar (reproducir). */
+export function IconPlay() {
+  return (
+    <Svg>
+      <path d="m7 4 13 8-13 8Z" />
+    </Svg>
+  )
+}
+
+/** Completar (círculo con palomita). */
+export function IconCheckCircle() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12 3 3 5-6" />
+    </Svg>
+  )
+}
+
+/** Cancelar (círculo con equis). */
+export function IconXCircle() {
+  return (
+    <Svg>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m15 9-6 6M9 9l6 6" />
+    </Svg>
+  )
+}
+
 /** Cerrar sesiones. */
 export function IconLogOut() {
   return (

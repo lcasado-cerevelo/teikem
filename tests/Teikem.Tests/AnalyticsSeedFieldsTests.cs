@@ -470,7 +470,7 @@ public class AnalyticsSeedFieldsTests
                 "Quantity", "SignedQuantity", "FromWarehouse", "FromBin", "ToWarehouse", "ToBin", "Position", "LotNumber", "SerialNumber", "RefEntity", "RefId", "RefLabel",
                 "Reason", "ReasonCode", "UserName" }, Array.Empty<string>()),
             [EntityTypes.Receipt] = ("ReceivedAtUtc", new[] { "Id", "PublicId", "Number", "Type", "TypeCode", "Origin", "WarehouseCode", "SupplierName", "ClientName",
-                "PurchaseOrderNumber", "Status", "StatusCode", "LineCount", "ExpectedQty", "ReceivedQty", "VarianceQty", "HasVariance", "ReceivedCost", "CreatedAtUtc",
+                "PurchaseOrderNumber", "Carrier", "Reference", "Status", "StatusCode", "LineCount", "ExpectedQty", "ReceivedQty", "VarianceQty", "HasVariance", "ReceivedCost", "CreatedAtUtc",
                 "ReceivedAtUtc" }, new[] { "ReceivedCost" }),
             [EntityTypes.WarehouseTask] = ("CreatedAtUtc", new[] { "Id", "CreatedAtUtc", "Type", "TypeCode", "Status", "StatusCode", "Priority", "WarehouseCode", "Sku",
                 "Quantity", "FromBin", "ToBin", "AssignedTo", "CompletedAtUtc", "AgeHours", "RefLabel" }, Array.Empty<string>()),

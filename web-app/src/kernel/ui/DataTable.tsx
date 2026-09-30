@@ -22,7 +22,7 @@ import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
 import { useLang, useT } from '../i18n/useT'
 import { EmptyState } from './EmptyState'
-import { ExportMenu } from './ExportMenu'
+import { ListPager } from './ListPager'
 import { exportTable, type ExportFormat } from './exportTable'
 import { usePanelTitle } from './panelContext'
 import { Spinner } from './Spinner'
@@ -127,14 +127,16 @@ export interface DataTableProps<T extends RowData> {
   exportRows?: () => Promise<readonly T[] | FetchAllResult<T>>
   /** Base del nombre del archivo exportado (y título de la hoja/PDF). Por defecto `label`, luego el título del `Panel`. */
   exportFileName?: string
+  /** true = tarjetas aunque la ventana sea ancha (p. ej. la tabla vive en un panel angosto de `SplitPane`: decídelo con
+   *  `useElementWidth`). Sin él (o false), tarjetas solo bajo 720 px de ventana. El pie no cambia. */
+  forceCards?: boolean
 }
 
 /** A partir de cuántas columnas la tabla pasa sola a la variante compacta. */
 export const DENSE_COLUMNS = 8
 
-/** Tamaño de página por defecto y opciones del selector "Filas por página". */
+/** Tamaño de página por defecto (las opciones de "Filas por página" están en `ListPager`, que pinta el pie). */
 export const DEFAULT_PAGE_SIZE = 25
-const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50, 100]
 
 const EMPTY_ROWS: never[] = []
 
@@ -194,7 +196,8 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const dense = props.dense ?? columns.length + (rowActions?.length ? 1 : 0) >= DENSE_COLUMNS
   const t = useT()
   const lang = useLang()
-  const cards = useMediaQuery(CARDS_QUERY)
+  const cardsByViewport = useMediaQuery(CARDS_QUERY)
+  const cards = props.forceCards === true || cardsByViewport
   const allowed = useAllowed()
   const panelTitle = usePanelTitle()
   const exportable = props.exportable ?? true
@@ -270,13 +273,10 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
   const visibleRows = table.getRowModel().rows
   const total = serverPaging ? (props.total ?? rows.length) : rows.length
   const pageCount = Math.max(1, Math.ceil(total / pageSize))
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1
-  const to = Math.min(page * pageSize, total)
   const paged = pageCount > 1
   const showRange = serverPaging || localPaging
   const sizeSelectable = serverPaging ? props.onPageSize !== undefined : localPaging
-  // el tamaño actual siempre está entre las opciones (p. ej. una tabla que arranca en 5)
-  const sizeOptions = PAGE_SIZE_OPTIONS.includes(pageSize) ? PAGE_SIZE_OPTIONS : [...PAGE_SIZE_OPTIONS, pageSize].sort((a, b) => a - b)
+  const goToPage = (next: number) => table.setPageIndex(next - 1)
   const changePageSize = (size: number) => {
     if (serverPaging) {
       props.onPageSize?.(size)
@@ -503,45 +503,16 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
     <div className="dt">
       {body}
       {rows.length > 0 && (showRange || exportable) && (
-        <div className="dt-pager">
-          {showRange && <span className="dt-range">{t('ui.table.range', { from, to, total })}</span>}
-          {sizeSelectable && (
-            <label className="dt-size">
-              <span>{t('ui.table.pageSize')}</span>
-              <select value={pageSize} onChange={(e) => changePageSize(Number(e.target.value))}>
-                {sizeOptions.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          {exportable && <ExportMenu onExport={runExport} count={exportCount} />}
-          {paged && (
-            <nav className="pg" aria-label={t('ui.table.pagination')}>
-              <button
-                type="button"
-                className="btn sm"
-                disabled={!table.getCanPreviousPage()}
-                onClick={() => table.previousPage()}
-                aria-label={t('ui.table.prev')}
-              >
-                ‹
-              </button>
-              <span aria-current="page">{t('ui.table.pageOf', { page, pages: pageCount })}</span>
-              <button
-                type="button"
-                className="btn sm"
-                disabled={!table.getCanNextPage()}
-                onClick={() => table.nextPage()}
-                aria-label={t('ui.table.next')}
-              >
-                ›
-              </button>
-            </nav>
-          )}
-        </div>
+        <ListPager<T>
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          showRange={showRange}
+          onPage={paged ? goToPage : undefined}
+          onPageSize={sizeSelectable ? changePageSize : undefined}
+          onExport={exportable ? runExport : undefined}
+          exportCount={exportCount}
+        />
       )}
     </div>
   )

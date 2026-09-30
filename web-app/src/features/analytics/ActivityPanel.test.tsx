@@ -85,7 +85,8 @@ describe('activity (lógica pura)', () => {
   it('enlace de la referencia según el tipo de entidad', () => {
     const pid = '22222222-2222-2222-2222-222222222222'
     const to = (entityType: string, over: Partial<ActivityEventDto> = {}) => activityLink(event({ entityType, publicId: pid, entityId: 27, ...over }))?.to
-    expect(to('RECEIPT')).toBe(`/warehouse/receipts/${pid}`)
+    // Lote 13: el recibo se elige en la lista (maestro-detalle) con ?receipt=
+    expect(to('RECEIPT')).toBe(`/warehouse/receipts?receipt=${pid}`)
     expect(to('CYCLE_COUNT', { publicId: null })).toBe('/warehouse/cycle-counts/27')
     expect(to('PICK_BATCH')).toBe(`/warehouse/pick-batches/${pid}`)
     expect(to('PURCHASE_ORDER')).toBe(`/warehouse/purchase-orders/${pid}`)
@@ -223,7 +224,7 @@ describe('ActivityPanel', () => {
       ],
     })
     renderPanel()
-    expect(await screen.findByRole('link', { name: 'REC-000318' })).toHaveAttribute('href', '/warehouse/receipts/11111111-1111-1111-1111-111111111111')
+    expect(await screen.findByRole('link', { name: 'REC-000318' })).toHaveAttribute('href', '/warehouse/receipts?receipt=11111111-1111-1111-1111-111111111111')
     expect(screen.getByRole('link', { name: 'EMP-00112' })).toHaveAttribute('href', '/warehouse/pick-batches/33333333-3333-3333-3333-333333333333')
     // sin pantalla: texto sin enlace; sin usuario: 'Sistema'
     expect(screen.getByText('ASN #4').closest('a')).toBeNull()

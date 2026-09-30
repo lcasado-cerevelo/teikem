@@ -27,6 +27,10 @@ dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]
   proveedores → productos → campos personalizados → clientes con consignatarios y contactos → saldo inicial
   (`ADJUSTMENT` con motivo `OPENING_BALANCE`) → baja de los productos que en QuickBooks están inactivos → conciliación
   del inventario.
+- Del producto de QuickBooks se importa también la **marca** (columna `Brand`): pasa a la marca del producto (hasta 100
+  caracteres; vacía = sin marca). `--update` no cambia la marca de productos que ya existen. En Depot solo 25 ítems traen marca y 24
+  son de la categoría "SOLUTIONS", que la configuración de Depot excluye; queda 1 producto con marca. Modelo no viene de la
+  migración.
 - Es **idempotente**: se puede repetir. La compañía se busca por nombre, la categoría por nombre, el producto por
   SKU, el proveedor por nombre, el cliente por su "Código QuickBooks", la posición por código; lo que ya existe se
   cuenta como "Ya existían" y no se toca. El saldo inicial no se repite si ya hay un asiento `OPENING_BALANCE` hacia

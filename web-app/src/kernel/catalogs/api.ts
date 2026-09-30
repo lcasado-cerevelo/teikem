@@ -1,7 +1,7 @@
 // Lecturas de catálogos y estatus (TanStack Query sobre el cliente generado).
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
-import { toLookupOption, toStatusOption, type LookupOption, type StatusOption } from './types'
+import { toLookupOption, toStatusOption, type LookupOption, type StatusOption, type TenantSettingsDto } from './types'
 
 /** Los catálogos cambian poco: se reusan 10 minutos (cambiar de idioma invalida y vuelve a pedir). */
 export const CATALOG_STALE_MS = 10 * 60_000
@@ -12,6 +12,7 @@ export const catalogKeys = {
   validate: (domain: string) => ['/api/v1/status/{entity}/validate', { domain }] as const,
   lateralEntries: (entityType: string) => ['/api/v1/status/lateral-entries/{entityType}', { entityType }] as const,
   history: (entityType: string, entityId: number) => ['/api/v1/status/history/{entityType}/{entityId}', { entityType, entityId }] as const,
+  tenantSettings: ['/api/v1/tenant/settings'] as const,
 }
 
 export interface CatalogQueryOptions {
@@ -89,6 +90,21 @@ export function useStatusHistory(entityType: string | null | undefined, entityId
         }),
       ),
     enabled: !!entityType && typeof entityId === 'number' && entityId > 0 && enabled,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/**
+ * Configuración de la compañía activa (`GET /api/v1/tenant/settings`: solo exige sesión, sin permiso ni módulo), p. ej. los
+ * predeterminados `defaultServiceType`/`defaultPackageType` (código o null) que el API usa al crear una orden sin ese dato.
+ * Caché de 10 min como los catálogos (cambiar de compañía limpia la caché); un 403 no saca de la pantalla.
+ */
+export function useTenantSettings(enabled = true) {
+  return useQuery({
+    queryKey: catalogKeys.tenantSettings,
+    queryFn: (): Promise<TenantSettingsDto> => unwrap(api.GET('/api/v1/tenant/settings')),
+    enabled,
+    staleTime: CATALOG_STALE_MS,
     meta: { handleAccessDenied: false },
   })
 }

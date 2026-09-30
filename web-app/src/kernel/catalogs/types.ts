@@ -6,6 +6,7 @@ export type StatusDto = components['schemas']['StatusDto']
 export type StatusHistoryDto = components['schemas']['StatusHistoryDto']
 export type StatusLateralEntryDto = components['schemas']['StatusLateralEntryDto']
 export type PipelineValidationResult = components['schemas']['PipelineValidationResult']
+export type TenantSettingsDto = components['schemas']['TenantSettingsDto']
 
 /** Clasificación de una etapa (StageKinds del dominio). */
 export const StageKinds = { Pipeline: 'PIPELINE', Lateral: 'LATERAL', Terminal: 'TERMINAL' } as const
@@ -59,6 +60,16 @@ export function toStatusOption(dto: StatusDto): StatusOption {
     sortOrder: dto.sortOrder ?? 0,
     icon: dto.icon ?? null,
   }
+}
+
+/**
+ * Etiqueta de un código de catálogo entre las opciones cargadas (sin distinguir mayúsculas); si no está (valor deshabilitado
+ * o catálogo aún sin cargar) devuelve el código tal cual. Sin código → null. P. ej. el predeterminado de la compañía:
+ * `lookupLabelOrCode(settings?.defaultServiceType, serviceTypes)` → 'Estándar'.
+ */
+export function lookupLabelOrCode(code: string | null | undefined, options: readonly LookupOption[]): string | null {
+  if (!code) return null
+  return options.find((o) => sameCode(o.code, code))?.label || code
 }
 
 export function sameCode(a: string | null | undefined, b: string | null | undefined): boolean {

@@ -38,8 +38,10 @@ public class AsnLine
 }
 
 /// <summary>
-/// Recibo REC-#####: OPEN → RECEIVED (confirmación completa, D5) → PUTAWAY. ReceivedAtUtc = fecha de confirmación (insumo de
-/// Contabilización de compras, Lote 10). Un recibo confirmado queda congelado: ya está en el ledger.
+/// Recibo REC-#####: EXPECTED → RECEIVING ↔ DISCREPANCY → RECEIVED / RECEIVED_VARIANCE (confirmación completa, D5) → PUTAWAY
+/// (Lote 13). ReceivedAtUtc = fecha de confirmación (insumo de Contabilización de compras, Lote 10). Un recibo confirmado
+/// queda congelado: ya está en el ledger. Lote 13: posición de recepción por defecto (DefaultStagingBinId, del mismo almacén
+/// por la FK compuesta), transporte (Carrier) y referencia (Reference) del encabezado.
 /// </summary>
 [AuditEntity(Constants.EntityTypes.Receipt)]
 public class ReceiptHeader : ITenantScoped, ISoftDeletable, IHasStatus
@@ -50,6 +52,9 @@ public class ReceiptHeader : ITenantScoped, ISoftDeletable, IHasStatus
     public int WarehouseId { get; set; }
     public int? AsnId { get; set; }
     public int? DockId { get; set; }
+    public int? DefaultStagingBinId { get; set; }
+    public string? Carrier { get; set; }
+    public string? Reference { get; set; }
     public int ReceiptTypeLookupId { get; set; }
     public string Number { get; set; } = string.Empty;
     public int StatusCodeId { get; set; }

@@ -1474,7 +1474,7 @@ explícitamente si ya existe.
 
 **¿Qué significa "El aviso de llegada ya tiene un recibo abierto o confirmado."? (409)**
 Un mismo aviso de llegada (ASN) admite un solo recibo activo a la vez. Si el recibo anterior se equivocó,
-elimínalo (solo si sigue `OPEN`) antes de crear uno nuevo contra el mismo aviso.
+elimínalo (solo si sigue abierto: Esperado, Recibiendo o Discrepancia) antes de crear uno nuevo contra el mismo aviso.
 
 **¿Qué significa "La orden de compra debe estar enviada o recibida parcial para recibir contra ella."? (422)**
 Solo se recibe contra una PO en `SENT` o `PARTIAL`. Una `DRAFT` primero se debe enviar (`POST .../send`); una
@@ -1568,7 +1568,7 @@ Una orden `RECEIVED` es terminal: ya se recibió todo lo pedido (o se resolvió 
 cancelar; si algo llegó mal, corrígelo con un ajuste de inventario.
 
 **¿Qué significa "La orden de compra tiene un recibo abierto; confírmelo o elimínelo antes de cancelar."? (409)**
-No se puede cancelar una orden de compra mientras tiene un recibo `OPEN` (una recepción a medio capturar) contra
+No se puede cancelar una orden de compra mientras tiene un recibo abierto (Esperado, Recibiendo o Discrepancia: una recepción a medio capturar) contra
 ella. Confirma ese recibo o elimínalo primero.
 
 **¿Qué significa "Una orden de compra con recepciones no se elimina; cancélela."? (409)**
@@ -2162,6 +2162,9 @@ En "Transferir", la posición de origen y la de destino tienen que ser distintas
 
 ### Recepción (recibos y avisos de llegada)
 
+> Desde el Lote 13 la pantalla es un maestro-detalle con pestañas (Recibos, Avisos de llegada, Acomodo pendiente). Los mensajes nuevos y
+> las preguntas de uso están en la sección «Lote 13» de más abajo.
+
 **¿Qué significa "Elija el almacén." / "Elija el aviso de llegada." / "Elija la orden de compra." / "Indique el
 producto."?**
 Campos obligatorios al crear un recibo o una línea: según lo que elegiste en "Recibir" (Ciego, Devolución, contra
@@ -2183,6 +2186,8 @@ que dar el lote, o exactamente tantas series como la cantidad recibida/contada/r
 Escribiste el mismo número de serie más de una vez en la misma línea; cada serie debe aparecer una sola vez.
 
 ### Tareas de almacén
+
+> Desde el Lote 13 no hay una cola única: el acomodo está en Recibo › Acomodo pendiente y las acciones de cada fila son íconos (ver «Lote 13»).
 
 **¿Qué significa "Su usuario no puede consultar el listado de usuarios."?**
 Al intentar **Asignar** una tarea, su cuenta no tiene permiso para ver la lista de usuarios de la compañía; pida a
@@ -2215,6 +2220,8 @@ dos cosas a la vez.
 tabla (las que dicen "Pendiente").
 
 ### Recolección y empaque
+
+> Desde el Lote 13 la captura está en el panel «Recolección» de la misma pantalla (rejilla de varias líneas) y Empacar y Eliminar son íconos de la fila (ver «Lote 13»).
 
 **¿Qué significa "Indique al menos una línea a recolectar." / "La recolección admite como máximo 100 líneas."?**
 Al crear una recolección hace falta al menos una línea, y como máximo 100.
@@ -2644,9 +2651,11 @@ Lo mismo para el modelo del producto (`errors.model`).
 Uno de los almacenes del filtro (`warehousePublicId` o `warehousePublicIds`) no existe o es de otra compañía. Quite ese
 almacén del filtro o vuelva a elegirlo de la lista.
 
-**¿Qué significa "Escriba una nota que explique el ajuste."? (pantalla)**
-En el bloque "Añadir ajuste" del producto la nota es obligatoria. Escriba por qué se ajusta el inventario (hasta 300
-caracteres). El API no la exige, pero la pantalla sí para que cada ajuste quede explicado.
+**¿Qué significa "Escriba una nota que explique el ajuste."? (400, también en pantalla)**
+La nota del ajuste manual es obligatoria. Escriba por qué se ajusta el inventario (hasta 300 caracteres; solo espacios no
+cuenta). Desde el ajuste del 2026-09-30 también la exige el API (`POST /api/v1/inventory/adjustments` responde 400 con el
+error en `errors.notes`), así que aplica a todas las pantallas, a la app móvil y a las integraciones. Los ajustes que hace el
+sistema solo (diferencias de recibo o de conteo, reversas de recolección, saldo inicial de la migración) no la piden.
 
 **¿Qué significa "Las notas admiten como máximo 300 caracteres."? (400, también en pantalla)**
 La nota del ajuste tiene más de 300 caracteres. Acórtela.
@@ -2739,13 +2748,15 @@ ajustes (motivo `OPENING_BALANCE`) pero no son ajustes de la operación; el repo
 compra; sin costo no se calcula y no entra en los totales (el reporte avisa cuántos productos están así). Capture el costo en
 el producto y genere el reporte otra vez. El sistema no guarda costo promedio ni costo por lote.
 
-**¿Por qué no puedo cambiar el proveedor o el almacén de una orden ya creada?** Porque se eligen al crear la orden y no
-cambian (la ficha los muestra de solo lectura y el API responde 400 "El campo supplierId de la orden de compra no se puede
-cambiar."). Si se equivocó, cancele la orden y cree otra.
+**¿Por qué no puedo cambiar el proveedor o el almacén de una orden ya creada?** Desde el ajuste del 2026-09-30 **sí se
+pueden cambiar mientras la orden está en Borrador**. Una vez enviada quedan fijos (el API responde 409 "El proveedor y el
+almacén solo se cambian mientras la orden de compra está en borrador."). Si la orden ya se envió y se equivocó, cancélela y
+cree otra.
 
 **¿Por qué, con un filtro de Almacén en Productos, siguen saliendo productos sin existencia?** El filtro acota las cantidades
-de cada fila a ese almacén, no quita productos. Para quedarse con los que tienen disponible use el indicador "Unidades
-totales" (activos con disponible).
+de cada fila a ese almacén, no quita productos. Para quedarse con los que tienen existencia use el indicador "Unidades
+totales": desde el ajuste del 2026-09-30 muestra los productos **activos con existencia en mano** mayor que cero (en el API,
+`activeOnly=true&onlyOnHand=true`), que es lo que suma su cifra.
 
 **¿Por qué el filtro "Estado" y el buscador de la tabla de Productos ya no están?** Los indicadores de arriba (SKUs activos,
 Unidades totales, Bajo mínimo, Con número de serie) reemplazan al filtro Estado, y para buscar por texto están los filtros
@@ -2757,3 +2768,282 @@ Nombre y SKU.
 **¿Por qué "Con número de serie" o "Bajo mínimo" está en naranja?** Porque hay algo que atender: productos bajo su mínimo o
 productos con serie cuyas series capturadas son menos que su existencia ("N sin series completas"). Sin pendientes, el
 indicador se ve con el color normal. Un clic en el indicador filtra la tabla para verlos.
+
+### Ajustes decididos tras el cierre (2026-09-30)
+
+**¿Qué significa "El proveedor y el almacén solo se cambian mientras la orden de compra está en borrador."? (409)**
+Intentó cambiar el proveedor o el almacén de una orden que ya no está en Borrador (enviada, recibida parcial o completa, o
+cancelada). Desde Enviada quedan fijos. Si hay que corregirlos, cancele la orden y cree otra con los datos correctos. Mandar
+el **mismo** proveedor o almacén que ya tiene la orden no da este error (no es un cambio).
+
+**¿Qué significa "El campo number de la orden de compra no se puede cambiar."? (400)**
+El `PATCH` de la orden trae un campo que nunca cambia: `number`, `orderDate`, `currency`, `status` o `statusCode` (el
+mensaje dice cuál). Quítelo del cuerpo. `supplierId` y `warehousePublicId` ya no dan este error: se cambian en Borrador.
+
+**¿Qué significa "El proveedor está dado de baja; no admite órdenes de compra nuevas." / "El almacén está dado de baja; no admite órdenes de compra nuevas." al editar una orden? (422)**
+Eligió, para una orden en Borrador, un proveedor o un almacén que está dado de baja. Elija uno activo o reactive el que
+quería.
+
+**¿Qué significa "Proveedor no encontrado." / "Almacén no encontrado." al editar una orden? (404)**
+El proveedor o el almacén indicado no existe o es de otra compañía. Vuelva a elegirlo de la lista.
+
+**¿Puedo cambiar el proveedor o el almacén de una orden en Borrador?** Sí. En la ficha de la orden (o por el API, `PATCH
+/api/v1/purchase-orders/{publicId}` con `supplierId` y/o `warehousePublicId`) mientras la orden está en Borrador. Las líneas
+no cambian. Queda en la auditoría de la orden.
+
+**¿Por qué un ajuste manual pide nota y el del conteo o el del recibo no?** Porque la nota explica un ajuste que decide una
+persona. Los ajustes que hace el sistema ya dicen de dónde vienen (el conteo, el recibo, la recolección eliminada o la
+migración, con su referencia en el Kárdex) y no la piden. **Sí** la pide la resolución de un faltante de compra con "Ajuste
+manual" (es un ajuste manual de inventario): sin nota, 400 en `errors.notes`. Cerrar y Reordenar un faltante no mueven inventario y la
+dejan opcional.
+
+**¿Qué productos muestra el indicador "Unidades totales"?** Los productos **activos con existencia en mano mayor que cero**,
+contando todas sus posiciones (también cuarentena, cruce de muelle y lo reservado). Por el API es `GET /api/v1/products?
+activeOnly=true&onlyOnHand=true`; con almacenes en el filtro, la existencia se mide en esos almacenes. No es lo mismo que
+`onlyAvailable` (disponible para recolectar: sin cuarentena ni cruce de muelle y restando lo reservado).
+
+**¿Por qué al empacar a veces no aparece "Predeterminado de la compañía"?** Porque su compañía no tiene tipo de servicio (o
+tipo de paquete) predeterminado. Entonces hay que elegirlo en el formulario; si se envía vacío, el API responde 400 "El tipo
+de servicio es obligatorio." o "El tipo de paquete es obligatorio.". Los predeterminados los configura quien administra la
+compañía (`PUT /api/v1/tenant/settings`, `defaultServiceType` y `defaultPackageType`, permiso `admin.tenant`) y cualquier
+usuario con sesión los lee en `GET /api/v1/tenant/settings` (código o `null`).
+
+## Lote 13 — Recibo (Lote 3 del plan de cambios): ciclo de estatus, encabezado editable, esperado en ciegos y filtros
+
+Capítulos: [06 — Inventario y almacén, secciones 4, 5 y 7](06-inventario-y-almacen.md) y
+[F6 — Almacén e inventario (pantallas)](frontend/f6-almacen-e-inventario.md). Los mensajes del API traen el código HTTP indicado; los
+que se ven solo en pantalla van agrupados más abajo ("Mensajes que solo ve en la pantalla…"). Este lote cubre también Recolección y
+empaque (dos paneles, barra arrastrable) y los ajustes del 2026-09-30 al Lote 12 (nota obligatoria, "Unidades totales", proveedor y
+almacén de la orden en Borrador, predeterminados al empacar).
+
+### Mensajes de error nuevos o cambiados
+
+**Antes `POST /api/v1/receipts` ciego sin líneas respondía 400 "Indique al menos una línea."; ¿ya no?**
+Ya no. Un recibo ciego o de devolución sin `lines` (y sin `confirm`) crea **solo el encabezado** y queda en **Esperado**; las
+líneas se agregan después con `POST /api/v1/receipts/{publicId}/lines`. Si una integración dependía del 400 para detectar un
+recibo vacío, revísela: ahora recibe 200 con el recibo creado. Si lo creó por error, bórrelo (`DELETE`, 204).
+
+**¿Qué significa "Indique al menos una línea."? (400)**
+Solo sale ahora con `confirm: true` (recibo en una llamada, la cola del aparato) en un ciego o devolución sin `lines`: no se
+puede confirmar un recibo vacío. Mande las líneas escaneadas o quite `confirm` para crear solo el encabezado.
+
+**¿Qué significa "La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento."? (400)**
+Mandó `expectedQty` (o `clearExpected`) en un recibo contra un aviso de llegada o una orden de compra. Ahí lo esperado es lo
+del documento y no se toca: capture solo lo recibido. El error viene en `errors.expectedQty` (captura de línea),
+`errors["line.expectedQty"]` (línea extra) o `errors["lines[i].expectedQty"]` (alta con líneas).
+
+**¿Qué significa "La cantidad esperada no puede ser negativa."? (400)**
+La cantidad esperada de una línea de un ciego o devolución es menor que cero. Use 0 (no se esperaba nada) o un número
+positivo; con más de 3 decimales sale "La cantidad admite como máximo 3 decimales." y en productos por serie debe ser entera.
+
+**¿Qué significa "El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar."? (400)**
+Intentó cambiar el producto (`productPublicId`) de una línea que viene del documento. Si llegó otra cosa, capture 0 en esa
+línea y agregue una línea extra con el producto que llegó.
+
+**¿Qué significa "La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto."? (409)**
+La línea ya está asignada a una orden en un plan de cruce de muelle. Cancele esas asignaciones en el plan y vuelva a cambiar el
+producto.
+
+**¿Qué significa "El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar."? (400)**
+El `PATCH` trae `type` distinto en un recibo con documento (su tipo es ASN). Solo los recibos sin documento cambian entre
+ciego (`BLIND`) y devolución (`RETURN`).
+
+**¿Qué significa "El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas."? (400)**
+El almacén de un recibo con documento lo fija el documento, y el de uno con líneas ya tiene mercancía capturada en sus
+posiciones. Si se equivocó de almacén, borre las líneas (o el recibo) y vuelva a empezar en el almacén correcto.
+
+**¿Qué significa "El transporte admite como máximo 80 caracteres."? (400)** — y **"La referencia admite como máximo 80 caracteres."? (400)**
+El transporte o la referencia del encabezado (alta o `PATCH`) pasan de 80 caracteres (sin contar los espacios de los
+extremos). Acórtelos. Para borrarlos mande `""`.
+
+**¿Qué significa "El recibo REC-… ya fue confirmado; no se puede modificar."? (422)**
+Además de las líneas, ahora también el `PATCH` del encabezado lo responde: un recibo Completado, Completado con diferencia o
+Acomodado ya está en el Kárdex y queda congelado.
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo."? (409, en el `PATCH` del recibo)**
+El `rowVersion` que mandó es de una lectura vieja: alguien (o usted mismo, al guardar una línea) cambió el recibo después.
+Vuelva a leer la ficha y mande el `rowVersion` nuevo.
+
+**¿Qué significa "Muelle no encontrado."? (404)**
+El muelle del alta o del `PATCH` no es del almacén del recibo (o no existe). Elija un muelle de ese almacén.
+
+**¿Qué significa "Diferencia desconocida: 'X'. Use SHORT, OVER o NONE."? (400)**
+El filtro `variance` de `GET /api/v1/receipts` trae un valor que no existe. Use `SHORT` (faltante), `OVER` (sobrante) o
+`NONE` (sin diferencia); se puede repetir el parámetro para combinarlos.
+
+**¿Qué significa "Fase desconocida: 'X'. Use OPEN, PENDING_PUTAWAY o DONE."? (400)**
+El filtro `phase` de `GET /api/v1/receipts` trae un valor que no existe. Use `OPEN` (abiertos), `PENDING_PUTAWAY`
+(confirmados con acomodo pendiente) o `DONE` (acomodados).
+
+**¿Qué significa "El recibo no tiene líneas; agregue al menos una antes de confirmar."? (422)**
+Intentó confirmar un recibo sin líneas. Ahora es posible tener uno así: un ciego o devolución nace solo con el encabezado (Esperado), y
+un recibo al que se le borraron todas las líneas queda en Recibiendo con 0 líneas. Agregue al menos una línea y confirme; si el
+recibo se creó por error, bórrelo. En la pantalla, el botón **Confirmar recibo** ni siquiera se habilita y dice "Agregue al menos una
+línea para confirmar.".
+
+**¿Qué significa "Escriba una nota que explique el ajuste."? (400)**
+Vea la pregunta del Lote 12. Desde el 2026-09-30 aplica a **todo ajuste manual**: el modal de producto, el botón Ajustar del Kárdex,
+`POST /api/v1/inventory/adjustments` y también **Resolver** un faltante de compra con "Ajuste manual". Escriba por qué se ajusta el
+inventario (hasta 300 caracteres). Cerrar y Reordenar un faltante no mueven inventario y dejan la nota opcional.
+
+**¿Qué significa "El tipo de servicio es obligatorio." / "El tipo de paquete es obligatorio."? (400) — y en pantalla "Elija el tipo de servicio." / "Elija el tipo de paquete."**
+Al **Empacar** una recolección, su compañía no tiene un tipo de servicio (o de paquete) predeterminado, así que hay que elegirlo. Si el
+predeterminado existe, la pantalla ofrece "Predeterminado de la compañía ({etiqueta})" y no lo pide. Quien administra la compañía puede
+configurarlos (Configuración de la compañía).
+
+**¿Qué significa "Posición no encontrada."? (404), "La posición de recepción debe estar en una zona STAGING o CROSSDOCK." (400) y "La posición de recepción está desactivada." (422)?**
+La posición de recepción que eligió en el encabezado del recibo (o en una línea) no es del almacén del recibo, no está en una zona
+STAGING o CROSSDOCK, o está desactivada. Elija otra, o déjela vacía para que use la primera posición de una zona STAGING. Si cambió el
+almacén de un recibo, la posición anterior se limpia sola.
+
+**¿Qué significa "Almacén no encontrado." al editar el encabezado de un recibo? (404)**
+El almacén indicado no existe o es de otra compañía. Vuelva a elegirlo de la lista.
+
+**¿Qué significa "Línea del recibo no encontrada." / "Producto no encontrado." al capturar una línea? (404)**
+La línea no pertenece a ese recibo (por ejemplo, otra persona la quitó) o el producto elegido no existe o es de otra compañía. Recargue
+el recibo y vuelva a elegir el producto.
+
+**¿Qué significa "rowVersion inválido: se espera el valor base64 devuelto por la ficha."? (400)**
+Una integración mandó `rowVersion` con un valor que no es el que devolvió la ficha del recibo. Use exactamente el `rowVersion` de la
+última lectura o no lo mande.
+
+**¿Qué significa "El aviso de llegada tiene un recibo abierto; elimínelo antes de cancelar."? (409)**
+El aviso ya tiene un recibo (Esperado, Recibiendo o Discrepancia). Bórrelo desde Recibo y después cancele el aviso.
+
+**Mensajes que solo ve en la pantalla de Recibo**
+
+**¿Qué significa "Agregue al menos una línea para confirmar."?**
+Está bajo el botón **Confirmar recibo** apagado: el recibo no tiene líneas guardadas. Capture una línea (producto y recibido).
+
+**¿Qué significa "Hay líneas sin guardar: salga del campo o pulse Enter para guardarlas."?**
+Escribió algo en una fila y todavía no se guardó (la fila se guarda al salir del campo o con Enter). Salga del campo o pulse Enter; si
+el botón sigue apagado, revise que la fila tenga producto y cantidad recibida.
+
+**¿Qué significa "Corrija las líneas marcadas antes de confirmar."?**
+Alguna fila tiene un error (el mensaje está bajo su campo, por ejemplo "Indique la cantidad recibida." o un error del servidor). Corríjalo
+y el botón se habilita.
+
+**¿Qué significa "Guardando líneas…" bajo el botón Confirmar recibo?**
+Hay una fila guardándose; espere un momento y el botón se habilita.
+
+**¿Qué significa "El recibo ya está confirmado." / "El recibo ya está confirmado: su encabezado no se puede cambiar."?**
+El recibo está Completado, Completado con diferencia o Acomodado: ya está en el inventario y no se modifica ni se vuelve a confirmar. El
+encabezado se abre en solo lectura. Si algo salió mal, corríjalo con un ajuste de inventario.
+
+**¿Qué significa "Escriba un número."?**
+Una cantidad de la tabla de líneas tiene texto que no es un número. Use dígitos, con coma o punto para los decimales.
+
+**¿Qué significa "Con aviso de llegada u orden de compra, el origen, el almacén y lo esperado vienen del documento."? / "El almacén solo se cambia en un recibo sin documento y sin líneas."?**
+Son avisos del modal del encabezado: en un recibo con documento no se cambian el origen ni el almacén, y en un ciego o devolución el
+almacén solo se cambia mientras no tenga líneas. Si se equivocó de almacén, borre las líneas (o el recibo) y vuelva a empezar.
+
+**¿Qué significa "Elija primero el almacén."? / "Su usuario no puede consultar órdenes de compra."?**
+Al crear un recibo contra un aviso o una orden de compra, la lista depende del almacén: elíjalo primero. Si además su usuario no tiene
+permiso para ver órdenes de compra (`purchasing.view`) o el módulo Compras está apagado, no puede elegir una; pida el permiso o
+reciba contra un aviso o en ciego.
+
+**¿Qué significa "No hay recibos con estos filtros." / "Selecciona un recibo de la lista" / "Este recibo no tiene tareas de acomodo."?**
+Son avisos de estado vacío: los filtros no dejaron ningún recibo, no hay ningún recibo elegido a la derecha, o el recibo elegido en
+Acomodo pendiente no tiene tareas. Quite filtros o elija otro recibo.
+
+**¿Qué significa "Recibo no encontrado." en la pantalla?**
+El enlace (`?receipt=…`) apunta a un recibo que ya no existe (se borró) o que es de otra compañía. Elija uno de la lista.
+
+**Mensajes que solo ve en Recolección y empaque**
+
+**¿Qué significa "Máximo 100 líneas por recolección."?**
+La rejilla llegó al tope de 100 líneas y **Añadir línea** se apagó. Recolecte lo capturado y haga otra recolección con el resto.
+
+**¿Qué significa "Elija primero el almacén." en Recolección?**
+El buscador de producto depende del almacén de la recolección. Elija el almacén en el panel Recolección y después los productos.
+
+**¿Qué significa "Escriba para ver las órdenes" / "Ninguna orden con ese número." / "No se pudieron consultar las órdenes."?**
+Es el filtro **No. de orden** de la lista: al escribir ofrece números de orden existentes. "Ninguna orden con ese número." es que no hay
+coincidencias; "No se pudieron consultar las órdenes." es que no se pudo pedir la lista de sugerencias (por ejemplo, por falta de
+permiso o de conexión). Puede escribir el número y aplicar el filtro de todos modos.
+
+**¿Qué significa "Recolección no encontrada."?**
+El detalle se pidió de una recolección que ya no existe o es de otra compañía. Cierre el detalle y elija otra de la lista.
+
+### Preguntas frecuentes
+
+**¿Qué pasó con el estatus `OPEN` del recibo?** Se retiró. Ahora un recibo abierto está en **Esperado** (solo encabezado),
+**Recibiendo** (todo cuadra) o **Discrepancia** (alguna línea difiere); confirmado, en **Completado** o **Completado con
+diferencia**; y al cerrar el acomodo, en **Acomodado**. Al actualizar la base, los recibos que estaban en `OPEN` pasaron a
+Recibiendo (con líneas) o Esperado (sin líneas) con la nota "Lote 13: nuevo ciclo de estatus del recibo." en su historial.
+Un filtro `status=OPEN` ya no trae nada: use `phase=OPEN`.
+
+**¿Por qué mi recibo pasó solo de Recibiendo a Discrepancia?** Porque al guardar una línea lo recibido quedó distinto de lo
+esperado. Cuando la corrige para que cuadre, vuelve solo a Recibiendo. Cada paso queda en el historial.
+
+**Borré todas las líneas y el recibo no volvió a Esperado.** Es a propósito: un recibo nunca regresa a Esperado. Queda en
+Recibiendo con 0 líneas; "Confirmar" responde 422 "El recibo no tiene líneas; agregue al menos una antes de confirmar."
+
+**En un recibo ciego capturé lo esperado y confirmé con diferencia: ¿se hizo un ajuste?** No. En ciegos y devoluciones al
+Kárdex entra **lo recibido** (un solo movimiento de recepción) y el recibo queda "Completado con diferencia" para que se vea.
+Solo en recibos con aviso u orden de compra la diferencia se asienta como ajuste (`RECEIPT_VARIANCE`).
+
+**¿Cómo veo los recibos que falta acomodar?** `GET /api/v1/receipts?phase=PENDING_PUTAWAY` (Completados y Completados con
+diferencia); cada fila trae `pendingPutawayCount` con sus tareas de acomodo abiertas. Al cerrar la última pasan a Acomodado.
+
+**La compañía apagó el estatus Discrepancia (o Completado con diferencia): ¿qué pasa?** El recibo se salta ese estatus: una
+diferencia deja el recibo en Recibiendo y la confirmación lo lleva a Completado. Si apaga Recibiendo, el recibo se queda en
+Esperado hasta confirmarse.
+
+**¿Puedo buscar avisos por referencia o por fecha de llegada?** Sí: `GET /api/v1/asns?reference=…&expectedFrom=…&expectedTo=…`
+(referencia sin distinguir mayúsculas; fechas inclusive; un aviso sin fecha no entra en un rango).
+
+**¿Por qué mi recibo dice "Discrepancia"?** Porque alguna línea tiene lo recibido distinto de lo esperado. Contra un aviso de llegada o
+una orden de compra, lo esperado es el del documento; en un recibo ciego o de devolución, es lo que usted escribió en **Esperado** (si
+no escribió nada, no hay diferencia). Es solo una señal: no bloquea nada. Si fue un error de captura, corrija la cantidad y el recibo
+vuelve solo a "Recibiendo"; si la diferencia es real, confirme y quedará "Completado con diferencia".
+
+**Recibí menos de lo esperado: ¿qué entra al inventario?** Siempre **lo recibido**. Con aviso u orden de compra, el Kárdex registra la
+recepción por lo esperado y un ajuste (`RECEIPT_VARIANCE`) por la diferencia, así que el neto es lo recibido, y el faltante de la orden
+se resuelve después en Compras. En un ciego o devolución entra directamente lo recibido, sin ajuste; la diferencia solo queda marcada
+en el estatus "Completado con diferencia".
+
+**¿Cómo edito el encabezado de un recibo (transporte, referencia, posición, muelle)?** Con doble clic en el recibo de la lista o con el
+lápiz del detalle. Se puede mientras el recibo esté abierto (Esperado, Recibiendo o Discrepancia); confirmado, se abre en solo lectura.
+El tipo (Ciego ↔ Devolución) solo cambia si no tiene aviso ni orden de compra, y el almacén solo si además no tiene líneas.
+
+**¿Por qué no hay "Añadir ítem" en un recibo contra una orden de compra o un aviso?** Porque ahí lo esperado es el del documento y no se
+toca desde la web: solo se captura lo recibido (0 si no llegó). Un producto que llegó y no venía en el documento se registra por la app
+de almacén o por el API (`POST /api/v1/receipts/{publicId}/lines`), como línea extra.
+
+**En un ciego, lo esperado se copió solo y después ya no lo hizo. ¿Por qué?** Mientras usted teclea lo recibido en una fila nueva, la
+pantalla copia el valor a **Esperado** para que la diferencia sea 0. Ya guardada la fila, lo esperado queda con ese valor y cambiar lo
+recibido no lo mueve: se ve la diferencia. Si quiere que vuelva a coincidir, cambie también lo esperado.
+
+**¿Por qué mi recibo nuevo aparece primero aunque tengo filtros que lo excluirían?** Porque al crearlo la pantalla lo deja primero y
+elegido para que capture las líneas. Al cambiar cualquier filtro o el buscador, la lista vuelve a mostrar solo lo que cumple.
+
+**¿Cómo encuentro los recibos con faltante?** En Recibo, filtro **Diferencia → Faltante** (o **Sobrante**, **Sin diferencia**). Para los
+que todavía se pueden corregir, agregue el filtro de Estatus **Discrepancia**.
+
+**¿Dónde quedó la cola de acomodo?** En **Recibo › Acomodo pendiente**: una lista de los recibos Completados o Completados con
+diferencia que aún tienen tareas, y a la derecha las tareas del recibo elegido (asignar, iniciar, completar, cancelar, como íconos). La
+dirección antigua `/warehouse/tasks` lleva ahí. Las tareas de reabasto están en Recolección y empaque › Reabasto.
+
+**¿Por qué el botón "Confirmar recibo" está apagado?** Debajo dice el motivo: ya está confirmado, no tiene líneas, hay líneas guardándose o
+sin guardar, o alguna fila tiene un error. Vea los mensajes de arriba.
+
+**¿Cómo vuelvo la barra de Recolección y empaque a 60/40?** Enfóquela (Tab) y pulse **Enter**, o haga **doble clic** en la barra. Con el
+teclado, ← y → la mueven de 5 % en 5 %, e Inicio y Fin la llevan a los extremos. La posición se recuerda en su navegador.
+
+**No veo la barra: los paneles están uno debajo del otro.** Es a propósito: con la ventana de 900 px o menos (celular), o cuando no cabe
+el ancho mínimo de los dos paneles, se apilan (primero Recolección y abajo la lista) y no hay barra. Al ensanchar la ventana vuelve.
+
+**No veo el panel "Recolección", solo la lista.** Su usuario no tiene el permiso `warehouse.pick`; sin él la lista ocupa todo el ancho y
+no puede recolectar, empacar ni eliminar.
+
+**Abrí el detalle de una recolección y tenía líneas capturadas: ¿las perdí?** No. El detalle se abre en un modal encima de la pantalla y
+el panel Recolección conserva lo capturado.
+
+**¿Dónde están Empacar y Eliminar?** Como íconos al final de la fila de cada recolección (caja y papelera), y también como botones en el
+detalle. Empacar exige `warehouse.pick` y `orders.create`, y solo aparece en recolecciones que se pueden empacar; Eliminar exige
+`warehouse.pick` (y `orders.cancel` si ya está empacada).
+
+**¿Por qué "Unidades totales" solo cuenta productos activos?** Desde el ajuste del 2026-09-30 la cifra suma la existencia en mano de los
+productos **activos** y, al hacer clic, la tabla muestra los activos con existencia en mano mayor que cero; así la cifra y la tabla
+coinciden. (Por el API: `GET /api/v1/inventory/balances?activeProductsOnly=true`.)

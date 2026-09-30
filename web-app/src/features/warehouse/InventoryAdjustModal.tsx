@@ -1,6 +1,8 @@
 // Pantalla C (Lote F6) — Modal de ajuste de inventario. `inventory.adjust`.
 // POST /api/v1/inventory/adjustments. 409 insufficient_stock: el título del servidor ya trae el mensaje exacto
 // ("Inventario insuficiente de {sku} en {bin}: disponible {x}, solicitado {y}.") y `Form` lo muestra arriba solo.
+// Nota obligatoria (decisión del 2026-09-30, "todo ajuste manual exige nota"): misma regla y mensaje que el bloque de ajuste
+// de ProductEditorModal (`adjustNotesSchema`); el 400 del API en `errors.notes` queda bajo el campo Notas.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -11,7 +13,7 @@ import { Field, Form, Modal, NumberInput, Select, TextArea, TextInput, toast } f
 import { selectableAdjustmentReasons } from './adjustmentReasons'
 import { useInventoryAdjustment, type ProductListItemDto } from './api'
 import { BinPickerInput, ProductPickerInput, WarehousePickerInput } from './pickers'
-import { adjustQuantitySchema } from './productRules'
+import { ADJUST_NOTES_MAX, adjustNotesSchema, adjustQuantitySchema } from './productRules'
 
 export interface InventoryAdjustModalProps {
   open: boolean
@@ -36,7 +38,7 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
         binId: z.string().min(1, t('warehouse.inventory.adjustModal.errors.binRequired')),
         quantity: adjustQuantitySchema(t),
         reason: z.string().min(1, t('warehouse.inventory.adjustModal.errors.reasonRequired')),
-        notes: z.string(),
+        notes: adjustNotesSchema(t),
         lotNumber: z.string(),
         serialNumbers: z.string(),
       }),
@@ -103,7 +105,7 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
             binId: Number(v.binId),
             quantity: v.quantity,
             reason: v.reason,
-            notes: v.notes || null,
+            notes: v.notes,
             lot: trackingType === 'LOT' && v.lotNumber ? { number: v.lotNumber } : undefined,
             serialNumbers: trackingType === 'SERIAL' && serialNumbers.length > 0 ? serialNumbers : undefined,
           })
@@ -140,8 +142,8 @@ export function InventoryAdjustModal({ open, onClose }: InventoryAdjustModalProp
             <TextArea rows={4} />
           </Field>
         )}
-        <Field name="notes" label={t('warehouse.inventory.adjustModal.fields.notes')}>
-          <TextArea rows={2} />
+        <Field name="notes" label={t('warehouse.inventory.adjustModal.fields.notes')} required>
+          <TextArea rows={2} maxLength={ADJUST_NOTES_MAX} placeholder={t('warehouse.products.editor.adjustNotesPlaceholder')} />
         </Field>
       </Form>
     </Modal>

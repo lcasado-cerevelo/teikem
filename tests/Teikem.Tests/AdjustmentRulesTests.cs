@@ -152,4 +152,31 @@ public class AdjustmentRulesTests
         Assert.Equal("hola", AdjustmentRules.NormalizeNotes(" hola ").Notes);
         Assert.Equal("Las notas admiten como máximo 300 caracteres.", AdjustmentRules.NormalizeNotes(new string('n', 301)).Error);
     }
+
+    [Fact]
+    public void Required_notes_reject_empty_and_keep_the_length_limit()
+    {
+        // Ajuste del 2026-09-30: nota obligatoria en el ajuste manual, con el texto de la pantalla.
+        Assert.Equal("Escriba una nota que explique el ajuste.", AdjustmentRules.NotesRequired);
+        foreach (var empty in new[] { null, "", "   " })
+            Assert.Equal(((string?)null, (string?)AdjustmentRules.NotesRequired), AdjustmentRules.NormalizeNotes(empty, required: true));
+        Assert.Equal(("hola", (string?)null), AdjustmentRules.NormalizeNotes(" hola ", required: true));
+        Assert.Equal(AdjustmentRules.NotesTooLong, AdjustmentRules.NormalizeNotes(new string('n', 301), required: true).Error);
+        Assert.Equal(((string?)null, (string?)null), AdjustmentRules.NormalizeNotes(null, required: false));
+    }
+
+    [Fact]
+    public void Only_system_reasons_skip_the_required_note()
+    {
+        foreach (var manual in new[] { AdjustmentReasons.Damage, AdjustmentReasons.Loss, AdjustmentReasons.Found, AdjustmentReasons.Expired,
+                     AdjustmentReasons.PoShortage, AdjustmentReasons.Other, "found", " OTHER ", "MOTIVO_PROPIO", null, "" })
+            Assert.True(AdjustmentRules.RequiresNotes(manual), manual ?? "(null)");
+        foreach (var system in AdjustmentReasons.SystemAssigned)
+        {
+            Assert.False(AdjustmentRules.RequiresNotes(system), system);
+            Assert.False(AdjustmentRules.RequiresNotes(system.ToLowerInvariant()), system);
+        }
+        // La lista de motivos de sistema de la regla es la del catálogo de constantes.
+        Assert.Equal(AdjustmentReasons.SystemAssigned.OrderBy(c => c), AdjustmentRules.SystemReasons.OrderBy(c => c));
+    }
 }

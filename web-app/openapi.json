@@ -1346,6 +1346,29 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "reference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "expectedFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "expectedTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {
@@ -9826,6 +9849,14 @@
               "format": "int32",
               "default": 200
             }
+          },
+          {
+            "name": "activeProductsOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -13466,6 +13497,14 @@
               "type": "boolean",
               "default": false
             }
+          },
+          {
+            "name": "onlyOnHand",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -14653,6 +14692,23 @@
             }
           },
           {
+            "name": "variance",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "phase",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
             "name": "skip",
             "in": "query",
             "schema": {
@@ -14757,6 +14813,63 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptDetailDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Receipts"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptHeaderUpdateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptHeaderUpdateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiptHeaderUpdateRequest"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -30556,6 +30669,16 @@
           "rowVersion": {
             "type": "string",
             "nullable": true
+          },
+          "supplierId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
           }
         },
         "additionalProperties": { }
@@ -31003,6 +31126,14 @@
           },
           "confirm": {
             "type": "boolean"
+          },
+          "carrier": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -31025,6 +31156,54 @@
             "items": {
               "$ref": "#/components/schemas/WarehouseTaskDto"
             },
+            "nullable": true
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "canDelete": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReceiptHeaderUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "dockId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearDock": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "stagingBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "clearStagingBin": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "carrier": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
             "nullable": true
           },
           "rowVersion": {
@@ -31149,6 +31328,11 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "expectedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -31178,6 +31362,20 @@
           "stagingBinId": {
             "type": "integer",
             "format": "int32",
+            "nullable": true
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "expectedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "clearExpected": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -31265,6 +31463,40 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "carrier": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "expectedDate": {
+            "type": "string",
+            "format": "date",
+            "nullable": true
+          },
+          "defaultStagingBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "defaultStagingBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "dockId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "isOpen": {
+            "type": "boolean"
+          },
+          "pendingPutawayCount": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false

@@ -5,7 +5,7 @@
 // pantalla aún no existe se declara con `pending({...})` (pantalla `Placeholder` con su título y subtítulo): al llegar
 // la pantalla real se cambia `pending({ ... })` por `{ ..., element: lazy(...) }` sin tocar ruta, permiso, módulo ni orden.
 import { lazy, type ComponentType } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, useLocation, useParams, type Params } from 'react-router-dom'
 import { ForbiddenScreen, ModuleOffScreen } from '../kernel/access/AccessScreens'
 import { ModuleKeys } from '../kernel/access/modules'
 import { NAV_GROUPS, type NavEntry } from './navigation'
@@ -57,6 +57,40 @@ export function redirectKeepingQuery(pathname: string, mapSearch?: (params: URLS
 }
 
 /**
+ * Como `redirectKeepingQuery`, pero la consulta nueva se arma también con los parámetros de la RUTA anterior
+ * (`:publicId`…): `mapSearch(consulta, parámetros)` es lógica pura. Para fichas que dejaron de ser pantalla propia y
+ * ahora se eligen en una lista con un parámetro (p. ej. `/warehouse/receipts/:publicId` → `/warehouse/receipts?receipt=`).
+ * Conserva el `#hash`.
+ */
+export function redirectWithParams(
+  pathname: string,
+  mapSearch: (search: URLSearchParams, params: Readonly<Params<string>>) => URLSearchParams,
+): ComponentType {
+  function Redirect() {
+    const params = useParams()
+    const { search, hash } = useLocation()
+    const query = mapSearch(new URLSearchParams(search), params).toString()
+    return <Navigate to={`${pathname}${query ? `?${query}` : ''}${hash}`} replace />
+  }
+  return Redirect
+}
+
+/**
+ * Lote 13: `/warehouse/receipts/:publicId` (ficha propia del recibo) → `/warehouse/receipts?receipt=<publicId>` (el recibo
+ * elegido en el maestro-detalle de la lista). `receipt` va primero; los demás parámetros se conservan (un `receipt`
+ * anterior lo reemplaza el de la ruta). Sin `publicId`, la consulta queda igual.
+ */
+export function legacyReceiptSearch(search: URLSearchParams, params: Readonly<Params<string>>): URLSearchParams {
+  const publicId = params.publicId
+  if (!publicId) return new URLSearchParams(search)
+  const next = new URLSearchParams({ receipt: publicId })
+  search.forEach((value, key) => {
+    if (key !== 'receipt') next.append(key, value)
+  })
+  return next
+}
+
+/**
  * `/warehouse/inventory` (antes 'Inventario', con Saldos como primera pestaña) → `/warehouse/kardex` (Kárdex primero):
  * sin `tab` era Saldos (`tab=balances`); `tab=kardex` pasa a no llevar parámetro. Los filtros se conservan.
  */
@@ -104,8 +138,8 @@ export const appRoutes: readonly AppRoute[] = [
   // Lote F6 — Almacén e inventario (manual 06). Lecturas con inventory.view + WMS_LOTSERIAL; compras con
   // purchasing.view + PURCHASING; citas y planes de cruce de muelle con inventory.view + CROSSDOCK (las acciones exigen
   // warehouse.crossdock dentro de la pantalla). Orden de la maqueta: Almacenes, Ubicaciones, Productos e inventario,
-  // Compras (y Proveedores), Recibo, Ajustes de inventario, Recolección y empaque, Conteo cíclico, Cruce de muelle,
-  // Kárdex de movimientos. Las tareas de almacén viven en la pantalla de su tipo (features/warehouse/taskQueue.tsx).
+  // Compras (y Proveedores), Recibo, Recolección y empaque, Ajustes de inventario (Lote 13: Recolección sube antes de
+  // Ajustes), Conteo cíclico, Cruce de muelle, Kárdex de movimientos. Las tareas de almacén viven en la pantalla de su tipo (features/warehouse/taskQueue.tsx).
   {
     path: '/warehouse/warehouses',
     element: lazy(() => import('../features/warehouse/WarehouseListScreen')),
@@ -172,9 +206,20 @@ export const appRoutes: readonly AppRoute[] = [
     module: ModuleKeys.WmsLotSerial,
     nav: { group: 'warehouse', key: 'receipts', order: 60 },
   },
+  // Lote 13: la ficha propia del recibo ya no existe; su dirección lleva al recibo elegido en la lista (?receipt=).
+  { path: '/warehouse/receipts/:publicId', element: redirectWithParams('/warehouse/receipts', legacyReceiptSearch) },
+  // Recolección y empaque: incluye la pestaña 'Reabasto' (tareas REPLENISH y 'Correr reabasto'). Lote 13: va justo
+  // después de Recibo (antes de Ajustes de inventario).
   {
-    path: '/warehouse/receipts/:publicId',
-    element: lazy(() => import('../features/warehouse/ReceiptDetailScreen')),
+    path: '/warehouse/pick-batches',
+    element: lazy(() => import('../features/warehouse/PickBatchListScreen')),
+    perm: 'inventory.view',
+    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'pickBatches', order: 70 },
+  },
+  {
+    path: '/warehouse/pick-batches/:publicId',
+    element: lazy(() => import('../features/warehouse/PickBatchDetailScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
   },
@@ -185,21 +230,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/warehouse/InventoryAdjustmentsScreen')),
     perm: 'purchasing.view',
     module: ModuleKeys.Purchasing,
-    nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 70 },
-  },
-  // Recolección y empaque: incluye la pestaña 'Reabasto' (tareas REPLENISH y 'Correr reabasto').
-  {
-    path: '/warehouse/pick-batches',
-    element: lazy(() => import('../features/warehouse/PickBatchListScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'pickBatches', order: 80 },
-  },
-  {
-    path: '/warehouse/pick-batches/:publicId',
-    element: lazy(() => import('../features/warehouse/PickBatchDetailScreen')),
-    perm: 'inventory.view',
-    module: ModuleKeys.WmsLotSerial,
+    nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 80 },
   },
   // Conteo cíclico: incluye la pestaña 'Tareas de conteo' (tareas COUNT).
   {

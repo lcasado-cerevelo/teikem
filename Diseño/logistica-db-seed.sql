@@ -424,7 +424,10 @@ INSERT INTO #S VALUES
 ('OptimizationRunStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('OptimizationRunStatus','OK','OK','OK',@TERM,2,'#059669',0),('OptimizationRunStatus','ERROR','Error','Error',@TERM,3,'#EF4444',0),
 ('WorkOrderStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('WorkOrderStatus','IN_PROGRESS','En proceso','In progress',@PIPE,2,'#F59E0B',0),('WorkOrderStatus','CLOSED','Cerrada','Closed',@TERM,3,'#059669',0),('WorkOrderStatus','CANCELLED','Cancelada','Cancelled',@TERM,4,'#6B7280',0),
 ('AsnStatus','EXPECTED','Esperada','Expected',@PIPE,1,'#9CA3AF',1),('AsnStatus','RECEIVED','Recibida','Received',@TERM,2,'#059669',0),('AsnStatus','CANCELLED','Cancelada','Cancelled',@TERM,3,'#6B7280',0),
-('ReceiptStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('ReceiptStatus','RECEIVED','Recibida','Received',@PIPE,2,'#10B981',0),('ReceiptStatus','PUTAWAY','En putaway','Putaway',@TERM,3,'#059669',0),
+-- Lote 13: ciclo del recibo Esperado → Recibiendo ↔ Discrepancia → Completado / Completado con diferencia → Acomodado (OPEN se retiró)
+('ReceiptStatus','EXPECTED','Esperado','Expected',@PIPE,1,'#9CA3AF',1),('ReceiptStatus','RECEIVING','Recibiendo','Receiving',@PIPE,2,'#3B82F6',0),
+('ReceiptStatus','DISCREPANCY','Discrepancia','Discrepancy',@LAT,3,'#EF4444',0),('ReceiptStatus','RECEIVED','Completado','Completed',@PIPE,4,'#10B981',0),
+('ReceiptStatus','RECEIVED_VARIANCE','Completado con diferencia','Completed with variance',@LAT,5,'#F59E0B',0),('ReceiptStatus','PUTAWAY','Acomodado','Put away',@TERM,6,'#059669',0),
 ('WarehouseTaskStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('WarehouseTaskStatus','IN_PROGRESS','En proceso','In progress',@PIPE,2,'#F59E0B',0),('WarehouseTaskStatus','DONE','Completada','Done',@TERM,3,'#059669',0),
 ('PickWaveStatus','OPEN','Abierta','Open',@PIPE,1,'#9CA3AF',1),('PickWaveStatus','PICKING','En picking','Picking',@PIPE,2,'#F59E0B',0),('PickWaveStatus','PACKED','Empacada','Packed',@PIPE,3,'#10B981',0),('PickWaveStatus','SHIPPED','Despachada','Shipped',@TERM,4,'#059669',0),
 ('PickTaskStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),('PickTaskStatus','PICKED','Pickeada','Picked',@TERM,2,'#059669',0),('PickTaskStatus','SHORT','Faltante','Short',@LAT,3,'#EF4444',0),
@@ -483,6 +486,39 @@ WHERE Entity = 'PortalUserStatus' AND InternalCode IN ('INVITED','ACTIVE','SUSPE
 -- y queda con historial: reversas de recolección y devoluciones). Idempotente.
 UPDATE dbo.StatusCode SET StageKindLookupId = @LAT
 WHERE Entity = 'SerialStatus' AND InternalCode IN ('RESERVED','SHIPPED') AND StageKindLookupId <> @LAT;
+
+-- Lote 13: en BD ya sembradas, RECEIVED y PUTAWAY del recibo toman etiqueta, orden y color nuevos (el MERGE solo inserta).
+-- Idempotente.
+UPDATE dbo.StatusCode
+SET LabelJson = CASE InternalCode WHEN 'RECEIVED' THEN N'{"es":"Completado","en":"Completed"}' ELSE N'{"es":"Acomodado","en":"Put away"}' END,
+    SortOrder = CASE InternalCode WHEN 'RECEIVED' THEN 4 ELSE 6 END,
+    ColorHex  = CASE InternalCode WHEN 'RECEIVED' THEN '#10B981' ELSE '#059669' END
+WHERE Entity = 'ReceiptStatus' AND InternalCode IN ('RECEIVED','PUTAWAY');
+
+-- Lote 13: los recibos que quedaron en OPEN pasan a RECEIVING (con líneas) o EXPECTED (sin líneas), con historial; después
+-- OPEN se retira (IsActive = 0, IsInitial = 0) para que EXPECTED sea la única etapa inicial. Idempotente: sin recibos OPEN
+-- no inserta nada y el UPDATE de OPEN vuelve a dejar los mismos valores.
+DECLARE @RcOpen INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'ReceiptStatus' AND InternalCode = 'OPEN');
+IF @RcOpen IS NOT NULL
+BEGIN
+    DECLARE @RcExpected  INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'ReceiptStatus' AND InternalCode = 'EXPECTED');
+    DECLARE @RcReceiving INT = (SELECT StatusCodeId FROM dbo.StatusCode WHERE Entity = 'ReceiptStatus' AND InternalCode = 'RECEIVING');
+    DECLARE @RcEntity    INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RECEIPT');
+
+    INSERT INTO dbo.EntityStatusHistory (TenantId, EntityTypeLookupId, EntityId, FromStatusCodeId, ToStatusCodeId, Comment, ChangedAtUtc, ChangedBy)
+    SELECT r.TenantId, @RcEntity, r.ReceiptHeaderId, @RcOpen,
+           CASE WHEN EXISTS (SELECT 1 FROM dbo.ReceiptLine l WHERE l.ReceiptHeaderId = r.ReceiptHeaderId) THEN @RcReceiving ELSE @RcExpected END,
+           N'Lote 13: nuevo ciclo de estatus del recibo.', SYSUTCDATETIME(), NULL
+    FROM dbo.ReceiptHeader r
+    WHERE r.StatusCodeId = @RcOpen;
+
+    UPDATE r
+    SET StatusCodeId = CASE WHEN EXISTS (SELECT 1 FROM dbo.ReceiptLine l WHERE l.ReceiptHeaderId = r.ReceiptHeaderId) THEN @RcReceiving ELSE @RcExpected END
+    FROM dbo.ReceiptHeader r
+    WHERE r.StatusCodeId = @RcOpen;
+
+    UPDATE dbo.StatusCode SET IsActive = 0, IsInitial = 0 WHERE StatusCodeId = @RcOpen;
+END
 GO
 
 /* -------------------------------------------------------------------------
@@ -611,6 +647,8 @@ GO
        DOCK_APPOINTMENT: NO_SHOW y CANCELLED desde SCHEDULED.
        CROSSDOCK_ALLOCATION: CANCELLED desde PLANNED.
        ASN: CANCELLED desde EXPECTED.
+       RECEIPT (Lote 13): DISCREPANCY desde RECEIVING; RECEIVED_VARIANCE desde RECEIVING, DISCREPANCY y EXPECTED;
+       PUTAWAY desde RECEIVED_VARIANCE (desde RECEIVED es la siguiente etapa y no necesita regla).
        PURCHASE_ORDER: SIN regla a propósito (D47). StatusService permite un lateral o terminal sin reglas desde cualquier
        etapa, así que CANCELLED se permite desde DRAFT, SENT y PARTIAL (RECEIVED es terminal y no admite más transiciones);
        el servicio exige además que no haya un recibo OPEN y deja el comentario en el historial.
@@ -634,6 +672,14 @@ USING (
                                                    AND frm.Entity='AllocationStatus'    AND frm.InternalCode='PLANNED')
         OR (et.InternalCode='ASN'                  AND lat.Entity='AsnStatus'           AND lat.InternalCode='CANCELLED'
                                                    AND frm.Entity='AsnStatus'           AND frm.InternalCode='EXPECTED')
+        -- Lote 13 (RECEIPT): DISCREPANCY desde RECEIVING; RECEIVED_VARIANCE desde RECEIVING, DISCREPANCY y EXPECTED (este
+        -- último solo se usa si la compañía apaga RECEIVING); PUTAWAY (terminal) desde RECEIVED_VARIANCE.
+        OR (et.InternalCode='RECEIPT'              AND lat.Entity='ReceiptStatus'       AND lat.InternalCode='DISCREPANCY'
+                                                   AND frm.Entity='ReceiptStatus'       AND frm.InternalCode='RECEIVING')
+        OR (et.InternalCode='RECEIPT'              AND lat.Entity='ReceiptStatus'       AND lat.InternalCode='RECEIVED_VARIANCE'
+                                                   AND frm.Entity='ReceiptStatus'       AND frm.InternalCode IN ('RECEIVING','DISCREPANCY','EXPECTED'))
+        OR (et.InternalCode='RECEIPT'              AND lat.Entity='ReceiptStatus'       AND lat.InternalCode='PUTAWAY'
+                                                   AND frm.Entity='ReceiptStatus'       AND frm.InternalCode='RECEIVED_VARIANCE')
       )
 ) AS s
 ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId

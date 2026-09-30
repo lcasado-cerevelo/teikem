@@ -348,7 +348,8 @@ export function useProducts(query: GetQuery<'/api/v1/products'> = {}, options?: 
  */
 export function useProductInventoryKpis(options?: WarehouseQueryOptions) {
   const activeSkus = useProducts({ activeOnly: true, take: 1 }, options)
-  const totalUnits = useInventoryBalances({ includeZero: false, take: 1 }, options)
+  // solo productos activos: la cifra coincide con lo que muestra la tabla al tocar el KPI (activos con existencia en mano)
+  const totalUnits = useInventoryBalances({ includeZero: false, activeProductsOnly: true, take: 1 }, options)
   const belowMin = useProducts({ belowMin: true, take: 1 }, options)
   const serial = useProducts({ activeOnly: true, serialOnly: true, take: 1 }, options)
   const serialMissing = useProducts({ serialMissing: true, take: 1 }, options)
@@ -605,16 +606,41 @@ export function useReceipt(publicId: string | null | undefined, options?: Wareho
   })
 }
 
-/** `POST /api/v1/receipts` (`warehouse.receive`; contra PO además `purchasing.receive`). */
+/** Pone en caché la ficha que devolvió una escritura del recibo (el detalle se pinta sin volver a pedirla). */
+function cacheReceipt(qc: QueryClient, dto: ReceiptDetailDto) {
+  const publicId = dto.header?.publicId
+  if (publicId) qc.setQueryData([warehouseKeys.receipt[0], publicId], dto)
+}
+
+/** `POST /api/v1/receipts` (`warehouse.receive`; contra PO además `purchasing.receive`). Lote 13: sin líneas y sin
+ *  `confirm` crea solo el encabezado (Esperado); la ficha devuelta queda en caché. */
 export function useCreateReceipt() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: Schemas['ReceiptCreateRequest']) => unwrap(api.POST('/api/v1/receipts', { body })),
-    onSuccess: () => invalidate(qc, 'receipts', 'asns', 'purchaseOrders', 'purchaseOrder'),
+    onSuccess: (dto) => {
+      cacheReceipt(qc, dto)
+      return invalidate(qc, 'receipts', 'asns', 'purchaseOrders', 'purchaseOrder')
+    },
   })
 }
 
-/** Líneas del recibo abierto: agregar, capturar (`PUT`) y quitar (`warehouse.receive`). */
+/** Lote 13 — `PATCH /api/v1/receipts/{publicId}` (encabezado de un recibo abierto, `warehouse.receive`): la ficha devuelta
+ *  queda en caché e invalida la lista y la ficha. El `rowVersion` se toma de la caché al enviar (cambia con cada línea). */
+export function useUpdateReceiptHeader() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['ReceiptHeaderUpdateRequest'] }) =>
+      unwrap(api.PATCH('/api/v1/receipts/{publicId}', { params: { path: { publicId } }, body })),
+    onSuccess: (dto) => {
+      cacheReceipt(qc, dto)
+      return invalidate(qc, 'receipts', 'receipt', 'dockAppointments')
+    },
+  })
+}
+
+/** Líneas del recibo abierto: agregar, capturar (`PUT`) y quitar (`warehouse.receive`). Lote 13: la ficha devuelta queda
+ *  en caché (la rejilla no espera otra consulta) y se invalida la lista (estatus y diferencia de la fila). */
 export function useSaveReceiptLine() {
   const qc = useQueryClient()
   return useMutation({
@@ -635,29 +661,36 @@ export function useSaveReceiptLine() {
           return unwrap(api.DELETE('/api/v1/receipts/{publicId}/lines/{lineId}', { params: { path: { publicId: v.publicId, lineId: v.lineId } } }))
       }
     },
-    onSuccess: () => invalidate(qc, 'receipt', 'receipts'),
+    onSuccess: (dto) => {
+      cacheReceipt(qc, dto)
+      return invalidate(qc, 'receipts')
+    },
   })
 }
 
-/** `POST /api/v1/receipts/{publicId}/confirm` (OPEN → RECEIVED: mueve inventario y genera tareas PUTAWAY). */
+/** `POST /api/v1/receipts/{publicId}/confirm` (Recibiendo/Discrepancia → Completado o Completado con diferencia: mueve
+ *  inventario y genera tareas PUTAWAY). */
 export function useConfirmReceipt() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ publicId, body = {} }: { publicId: string; body?: Schemas['ReceiptConfirmRequest'] }) =>
       unwrap(api.POST('/api/v1/receipts/{publicId}/confirm', { params: { path: { publicId } }, body })),
-    onSuccess: () =>
-      invalidate(qc, 'receipts', 'receipt', 'asns', 'tasks', 'purchaseOrders', 'purchaseOrder', 'purchaseOrderShortages', 'purchaseOrderShortageLines', 'crossDockCandidates', ...STOCK),
+    onSuccess: (dto) => {
+      cacheReceipt(qc, dto)
+      return invalidate(qc, 'receipts', 'receipt', 'asns', 'tasks', 'purchaseOrders', 'purchaseOrder', 'purchaseOrderShortages', 'purchaseOrderShortageLines', 'crossDockCandidates', ...STOCK)
+    },
   })
 }
 
-/** `DELETE /api/v1/receipts/{publicId}` (solo OPEN sin cruce de muelle asignado). */
+/** `DELETE /api/v1/receipts/{publicId}` (abierto —Esperado, Recibiendo o Discrepancia— sin cruce de muelle asignado). */
 export function useDeleteReceipt() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (publicId: string) => {
       await unwrap(api.DELETE('/api/v1/receipts/{publicId}', { params: { path: { publicId } } }))
     },
-    onSuccess: () => invalidate(qc, 'receipts', 'receipt', 'asns', 'purchaseOrders', 'purchaseOrder'),
+    // la ficha borrada no se invalida (se volvería a pedir mientras se pinta y daría 404): la pantalla deja de elegirla
+    onSuccess: () => invalidate(qc, 'receipts', 'asns', 'purchaseOrders', 'purchaseOrder'),
   })
 }
 

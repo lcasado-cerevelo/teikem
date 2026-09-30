@@ -32,7 +32,8 @@ req()  { # method path [json] [token]
     args+=(--data-binary "@$bodyfile")
   fi
   curl "${args[@]}" -w '\n%{http_code}'
-  [[ -n "$bodyfile" ]] && rm -f "$bodyfile"
+  # con if (no `[[ ]] && rm`): sin cuerpo, req() debe terminar en 0 para que `VAR=$(req GET …)` no corte el script (set -e)
+  if [[ -n "$bodyfile" ]]; then rm -f "$bodyfile"; fi
 }
 expect() { # expected_code response
   local code; code=$(echo "$2" | tail -n1); local body; body=$(echo "$2" | sed '$d')
@@ -2614,7 +2615,7 @@ wpid() { echo "$1" | jq -r .warehouse.publicId; }
 kardex() { expect 200 "$(req GET "/api/v1/inventory/transactions?$1")"; }
 onhand() { expect 200 "$(req GET "/api/v1/inventory/balances?warehousePublicIds=$1&binIds=$2&productPublicIds=$3&includeZero=true")" | jq '([.items[].qtyOnHand] | add // 0) + 0'; }
 reserved() { expect 200 "$(req GET "/api/v1/inventory/balances?warehousePublicIds=$1&binIds=$2&productPublicIds=$3&includeZero=true")" | jq '([.items[].qtyReserved] | add // 0) + 0'; }
-adjust() { req POST /api/v1/inventory/adjustments "$(jq -cn --arg p "$1" --arg w "$2" --argjson b "$3" --argjson q "$4" --arg r "$5" '{productPublicId:$p,warehousePublicId:$w,binId:$b,quantity:$q,reason:$r}')" "${6:-$TOKEN}"; }
+adjust() { req POST /api/v1/inventory/adjustments "$(jq -cn --arg p "$1" --arg w "$2" --argjson b "$3" --argjson q "$4" --arg r "$5" '{productPublicId:$p,warehousePublicId:$w,binId:$b,quantity:$q,reason:$r,notes:"humo"}')" "${6:-$TOKEN}"; }
 collect() { req POST /api/v1/pick-batches "$(jq -cn --arg w "$1" --arg p "$2" --argjson q "$3" '{warehousePublicId:$w,lines:[{productPublicId:$p,quantity:$q}]}')" "${4:-$TOKEN}"; }
 blind() { req POST /api/v1/receipts "$(jq -cn --arg w "$1" --argjson s "$2" --arg p "$3" --argjson q "$4" '{warehousePublicId:$w,type:"BLIND",stagingBinId:$s,lines:[{productPublicId:$p,receivedQty:$q}]}')" "${5:-$TOKEN}"; }
 tasksof() { expect 200 "$(req GET "/api/v1/warehouse-tasks?warehousePublicId=$1&types=$2&take=200")"; }
@@ -2637,7 +2638,7 @@ step "catálogos, permisos y almacén demo (Lote 6)"
 ME6=$(expect 200 "$(req GET /api/v1/me)")
 echo "$ME6" | jq -e '[.permissions[]] as $p | all(["inventory.view","inventory.manage","inventory.adjust","warehouse.manage"][]; . as $x | $p | index($x))' >/dev/null || fail "el admin sin los 4 permisos nuevos"
 expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="SCRAPPED" and .stageKind=="TERMINAL") and any(.[]; .code=="SHIPPED" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus (D16)"
-expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==9' >/dev/null || fail "AdjustmentReason (9)"
+expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==10 and any(.[]; .code=="OPENING_BALANCE")' >/dev/null || fail "AdjustmentReason (10, con OPENING_BALANCE del Lote 10)"
 DEMO=$(expect 200 "$(req GET /api/v1/warehouses)" | jq -r '[.[] | select(.code=="ALM-01" and .statusCode=="ACTIVE")][0].publicId')
 [[ "$DEMO" =~ ^[0-9a-f-]{36}$ ]] || fail "almacén demo ALM-01 ACTIVE (D49)"
 expect 200 "$(req GET "/api/v1/warehouses/$DEMO")" | jq -e '([.zones[].code] | sort)==["PCK","QUA","RSV","STG"] and (.zones[] | select(.code=="STG") | .zoneTypeCode=="STAGING") and ([.docks[] | select(.statusCode=="FREE") | .code] | sort)==["D1","D2"]' >/dev/null || fail "zonas y muelles de ALM-01"
@@ -2721,6 +2722,8 @@ expect 409 "$(req POST /api/v1/products "{\"sku\":\"PB2$TS\",\"name\":\"Barras 2
 expect 400 "$(req POST /api/v1/products "{\"sku\":\"PM$TS\",\"name\":\"Otro almacén $TS\",\"preferredWarehousePublicId\":\"$DEMO\",\"preferredBinId\":$B_PCK}")" | jq -e '.errors.preferredBinId[0]=="La posición preferida debe pertenecer al almacén preferido."' >/dev/null || fail "posición preferida de otro almacén → 400"
 expect 400 "$(adjust "$PN" "$W6P" "$B_PCK" 3 "")" >/dev/null                                  # motivo obligatorio
 expect 400 "$(adjust "$PN" "$W6P" "$B_PCK" 3 RECEIPT_VARIANCE)" >/dev/null                    # lo asigna el sistema
+# Ajuste del 2026-09-30: la nota del ajuste manual es obligatoria también en el API (400 en errors.notes).
+expect 400 "$(req POST /api/v1/inventory/adjustments "$(jq -cn --arg p "$PN" --arg w "$W6P" --argjson b "$B_PCK" '{productPublicId:$p,warehousePublicId:$w,binId:$b,quantity:1,reason:"FOUND",notes:"   "}')")" | jq -e '.errors.notes[0]=="Escriba una nota que explique el ajuste."' >/dev/null || fail "ajuste sin nota → 400 errors.notes"
 expect 200 "$(adjust "$PN" "$W6P" "$B_PCK" 10 FOUND)" | jq -e '.transactions[0].quantity==10 and .transactions[0].typeCode=="ADJUSTMENT"' >/dev/null || fail "ajuste +10"
 expect 200 "$(adjust "$PN" "$W6P" "$B_PCK" -2 DAMAGE)" | jq -e '.transactions[0].quantity==-2' >/dev/null || fail "ajuste −2 con signo"
 expect 409 "$(adjust "$PN" "$W6P" "$B_PCK" -1000 LOSS)" | jq -e --arg m "Inventario insuficiente de PN$TS en P-01: disponible 8, solicitado 1000." '.code=="insufficient_stock" and (.title==$m or any((.errors // {})[][]; .==$m))' >/dev/null || fail "−1000 → 409 insufficient_stock"
@@ -2936,7 +2939,7 @@ expect 204 "$(req DELETE "/api/v1/pick-batches/$(echo "$PBS" | jq -r .publicId)"
 [[ $(serialst "S2$TS") == AVAILABLE ]] || fail "S2 no volvió a AVAILABLE al eliminar la recolección"
 expect 200 "$(req GET "/api/v1/inventory/serials/trace?productPublicId=$PS&serialNumber=S2$TS")" | jq -e '[.statusHistory[].toCode] as $h | ($h | index("SHIPPED")) != null and $h[-1]=="AVAILABLE" and (.movements | length)==3' >/dev/null || fail "rastro de S2"
 # Baja de serie: ajuste −1 DAMAGE con S1 → SCRAPPED; volver a entrarla → 409.
-serialadj() { req POST /api/v1/inventory/adjustments "$(jq -cn --arg p "$PS" --arg w "$W6P" --argjson b "$B_STG" --argjson q "$1" --arg r "$2" --arg s "$3" '{productPublicId:$p,warehousePublicId:$w,binId:$b,quantity:$q,reason:$r,serialNumbers:[$s]}')"; }
+serialadj() { req POST /api/v1/inventory/adjustments "$(jq -cn --arg p "$PS" --arg w "$W6P" --argjson b "$B_STG" --argjson q "$1" --arg r "$2" --arg s "$3" '{productPublicId:$p,warehousePublicId:$w,binId:$b,quantity:$q,reason:$r,serialNumbers:[$s],notes:"humo"}')"; }
 expect 200 "$(serialadj -1 DAMAGE "S1$TS")" | jq -e '.transactions[0].quantity==-1' >/dev/null || fail "baja de serie"
 [[ $(serialst "S1$TS") == SCRAPPED ]] || fail "S1 SCRAPPED"
 expect 409 "$(serialadj 1 FOUND "S1$TS")" >/dev/null
@@ -2982,6 +2985,58 @@ expect 200 "$(req GET "/api/v1/products?selectorOrder=true&activeOnly=true&searc
 expect 200 "$(req GET "/api/v1/products?activeOnly=true&search=$TS&take=200")" | jq -e '[.items[].sku] == ([.items[].sku] | sort)' >/dev/null || fail "la pantalla de productos ordena por SKU"
 ok "ASN de cliente con producto ajeno 400; segundo recibo sobre el mismo ASN 409; borrar el recibo deja el ASN EXPECTED y el reintento entra; confirmado → ASN RECEIVED (y el recibo congelado: PUT de línea y DELETE 422); cancelar ASN con recibo abierto 409, sin él CANCELLED, ya cancelado o recibido 422; selectores con la mercancía de clientes primero y propios al final; la pantalla por SKU"
 
+step "recibo con ciclo de estatus (Lote 13): Esperado → Recibiendo ↔ Discrepancia → Completado con diferencia → Acomodado"
+# Ciego solo con encabezado: nace EXPECTED (antes daba 400 'Indique al menos una línea.'); guarda posición, transporte y referencia.
+R13=$(expect 200 "$(req POST /api/v1/receipts "$(jq -cn --arg w "$W6P" --argjson s "$B_STG" --arg r "BL-$TS" '{warehousePublicId:$w,type:"BLIND",stagingBinId:$s,carrier:" DHL ",reference:$r}')")")
+R13P=$(echo "$R13" | jq -r .header.publicId); R13ID=$(echo "$R13" | jq -r .header.id); R13N=$(echo "$R13" | jq -r .header.number)
+echo "$R13" | jq -e --argjson s "$B_STG" --arg r "BL-$TS" '.header.statusCode=="EXPECTED" and .header.isOpen and .canDelete and (.lines|length)==0 and .header.defaultStagingBinId==$s and .header.carrier=="DHL" and .header.reference==$r' >/dev/null || fail "recibo ciego solo con encabezado: $(echo "$R13" | jq -c .header)"
+# Línea con esperado 5 y recibido 3 → DISCREPANCY (toma la posición del encabezado).
+R13=$(expect 200 "$(req POST "/api/v1/receipts/$R13P/lines" "$(jq -cn --arg p "$PN" '{productPublicId:$p,receivedQty:3,expectedQty:5}')")")
+echo "$R13" | jq -e --argjson s "$B_STG" '.header.statusCode=="DISCREPANCY" and .lines[0].expectedQty==5 and .lines[0].varianceQty==-2 and .lines[0].stagingBinId==$s' >/dev/null || fail "línea con diferencia → DISCREPANCY: $(echo "$R13" | jq -c '[.header.statusCode, .lines]')"
+R13L=$(echo "$R13" | jq -r '.lines[0].id')
+# PUT igual → RECEIVING; distinto otra vez → DISCREPANCY.
+expect 200 "$(req PUT "/api/v1/receipts/$R13P/lines/$R13L" '{"receivedQty":5}')" | jq -e '.header.statusCode=="RECEIVING" and .lines[0].varianceQty==0' >/dev/null || fail "PUT igual a lo esperado → RECEIVING"
+expect 200 "$(req PUT "/api/v1/receipts/$R13P/lines/$R13L" '{"receivedQty":4}')" | jq -e '.header.statusCode=="DISCREPANCY"' >/dev/null || fail "PUT distinto → DISCREPANCY"
+expect 400 "$(req PUT "/api/v1/receipts/$R13P/lines/$R13L" '{"expectedQty":-1}')" | jq -e --arg m "La cantidad esperada no puede ser negativa." "$HASM" >/dev/null || fail "esperado negativo → 400"
+# Filtros de la lista: fase y diferencia (varias con O); valores desconocidos → 400.
+expect 200 "$(req GET "/api/v1/receipts?phase=OPEN&variance=SHORT&warehousePublicId=$W6P&take=200")" | jq -e --argjson r "$R13ID" 'any(.items[]; .id==$r and .isOpen and .carrier=="DHL")' >/dev/null || fail "phase=OPEN&variance=SHORT no trae el recibo"
+expect 200 "$(req GET "/api/v1/receipts?variance=OVER&variance=NONE&warehousePublicId=$W6P&take=200")" | jq -e --argjson r "$R13ID" 'all(.items[]; .id!=$r)' >/dev/null || fail "variance=OVER|NONE trae un faltante"
+expect 400 "$(req GET '/api/v1/receipts?phase=LATE')" | jq -e --arg m "Fase desconocida: 'LATE'. Use OPEN, PENDING_PUTAWAY o DONE." "$HASM" >/dev/null || fail "fase desconocida → 400"
+expect 400 "$(req GET '/api/v1/receipts?variance=X')" | jq -e --arg m "Diferencia desconocida: 'X'. Use SHORT, OVER o NONE." "$HASM" >/dev/null || fail "diferencia desconocida → 400"
+# PATCH del encabezado: transporte, referencia ('' la borra), muelle y tipo BLIND → RETURN; rowVersion viejo 409; más de 80 → 400.
+RV13=$(expect 200 "$(req GET "/api/v1/receipts/$R13P")" | jq -r .rowVersion)
+expect 200 "$(req PATCH "/api/v1/receipts/$R13P" "$(jq -cn --arg v "$RV13" --argjson d "$DK" '{carrier:"UPS",reference:"",dockId:$d,type:"RETURN",rowVersion:$v}')")" | jq -e --argjson d "$DK" '.header.carrier=="UPS" and .header.reference==null and .header.dockId==$d and .header.typeCode=="RETURN" and .header.statusCode=="DISCREPANCY"' >/dev/null || fail "PATCH del encabezado"
+expect 409 "$(req PATCH "/api/v1/receipts/$R13P" "$(jq -cn --arg v "$RV13" '{carrier:"FedEx",rowVersion:$v}')")" >/dev/null
+expect 400 "$(req PATCH "/api/v1/receipts/$R13P" "$(jq -cn --arg c "$(printf 'c%.0s' {1..81})" '{carrier:$c}')")" | jq -e --arg m "El transporte admite como máximo 80 caracteres." "$HASM" >/dev/null || fail "transporte de 81 → 400"
+expect 400 "$(req PATCH "/api/v1/receipts/$R13P" "{\"warehousePublicId\":\"$DEMO\"}")" | jq -e --arg m "El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas." "$HASM" >/dev/null || fail "cambiar el almacén de un recibo con líneas → 400"
+# Confirmar con diferencia → RECEIVED_VARIANCE; en ciegos y devoluciones entra lo recibido (4) sin ajuste (decisión 3).
+C13=$(expect 200 "$(req POST "/api/v1/receipts/$R13P/confirm" '{}')")
+echo "$C13" | jq -e '.header.statusCode=="RECEIVED_VARIANCE" and (.header.isOpen|not) and (.canDelete|not) and .header.pendingPutawayCount==1 and .lines[0].adjustmentTxnId==null' >/dev/null || fail "confirmar con diferencia: $(echo "$C13" | jq -c .header)"
+kardex "refEntity=RECEIPT&refId=$R13ID" | jq -e '.total==1 and .items[0].quantity==4 and .items[0].typeCode=="RECEIPT"' >/dev/null || fail "recibo con diferencia sin documento: un RECEIPT por lo recibido"
+expect 200 "$(req GET "/api/v1/receipts?phase=PENDING_PUTAWAY&warehousePublicId=$W6P&take=200")" | jq -e --argjson r "$R13ID" 'any(.items[]; .id==$r and .pendingPutawayCount==1)' >/dev/null || fail "phase=PENDING_PUTAWAY no trae el recibo con acomodo pendiente"
+expect 422 "$(req PATCH "/api/v1/receipts/$R13P" '{"carrier":"X"}')" | jq -e --arg m "El recibo $R13N ya fue confirmado; no se puede modificar." "$HASM" >/dev/null || fail "PATCH de un recibo confirmado → 422"
+for T13 in $(echo "$C13" | jq -r '.putawayTasks[].id'); do expect 200 "$(req POST "/api/v1/warehouse-tasks/$T13/complete" '{}')" >/dev/null; done
+expect 200 "$(req GET "/api/v1/receipts/$R13P")" | jq -e '.header.statusCode=="PUTAWAY" and .header.pendingPutawayCount==0' >/dev/null || fail "cerrar la última tarea de un Completado con diferencia → PUTAWAY"
+expect 200 "$(req GET "/api/v1/status/history/RECEIPT/$R13ID")" | jq -e 'map(.toCode)==["EXPECTED","RECEIVING","DISCREPANCY","RECEIVING","DISCREPANCY","RECEIVED_VARIANCE","PUTAWAY"]' >/dev/null || fail "historial del recibo: $(req GET "/api/v1/status/history/RECEIPT/$R13ID" | sed '$d' | jq -c 'map(.toCode)')"
+# Borrar un recibo en EXPECTED → 204; confirm:true sin líneas sigue siendo 400.
+RE13=$(expect 200 "$(req POST /api/v1/receipts "$(jq -cn --arg w "$W6P" '{warehousePublicId:$w}')")" | jq -r .header.publicId)
+expect 204 "$(req DELETE "/api/v1/receipts/$RE13")" >/dev/null
+expect 400 "$(req POST /api/v1/receipts "$(jq -cn --arg w "$W6P" '{warehousePublicId:$w,confirm:true}')")" | jq -e '.errors.lines[0]=="Indique al menos una línea."' >/dev/null || fail "confirm:true sin líneas → 400"
+# Avisos: referencia (sin distinguir mayúsculas) y llegada esperada (inclusive).
+ASN13=$(expect 200 "$(req POST /api/v1/asns "$(jq -cn --arg w "$W6P" --arg c "$C6P" --arg p "$P3" --arg r "L13-$TS" '{warehousePublicId:$w,clientPublicId:$c,reference:$r,expectedDate:"2026-12-15",lines:[{productPublicId:$p,expectedQty:2}]}')")" | jq -r .id)
+expect 200 "$(req GET "/api/v1/asns?reference=l13-$TS&expectedFrom=2026-12-15&expectedTo=2026-12-15")" | jq -e --argjson a "$ASN13" 'length==1 and .[0].id==$a' >/dev/null || fail "avisos por referencia y llegada esperada"
+expect 200 "$(req GET "/api/v1/asns?reference=L13-$TS&expectedFrom=2026-12-16")" | jq -e 'length==0' >/dev/null || fail "avisos con llegada posterior"
+# Contra aviso nace RECEIVING; lo esperado y el producto de la línea del documento no se cambian; el tipo tampoco.
+RA13=$(expect 200 "$(req POST /api/v1/receipts "{\"asnId\":$ASN13,\"stagingBinId\":$B_STG}")"); RA13P=$(echo "$RA13" | jq -r .header.publicId); RA13L=$(echo "$RA13" | jq -r '.lines[0].id')
+echo "$RA13" | jq -e '.header.statusCode=="RECEIVING" and .header.expectedDate=="2026-12-15"' >/dev/null || fail "recibo contra aviso nace RECEIVING: $(echo "$RA13" | jq -c .header)"
+expect 400 "$(req PUT "/api/v1/receipts/$RA13P/lines/$RA13L" '{"expectedQty":1}')" | jq -e --arg m "La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento." "$HASM" >/dev/null || fail "esperado en un recibo con aviso → 400"
+expect 400 "$(req POST "/api/v1/receipts/$RA13P/lines" "$(jq -cn --arg p "$P3" '{productPublicId:$p,receivedQty:1,expectedQty:1}')")" | jq -e '.errors["line.expectedQty"][0]=="La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento."' >/dev/null || fail "línea extra con esperado en un recibo con aviso → 400"
+expect 400 "$(req PUT "/api/v1/receipts/$RA13P/lines/$RA13L" "{\"productPublicId\":\"$PN\"}")" | jq -e --arg m "El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar." "$HASM" >/dev/null || fail "cambiar el producto de una línea del aviso → 400"
+expect 400 "$(req PATCH "/api/v1/receipts/$RA13P" '{"type":"BLIND"}')" | jq -e --arg m "El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar." "$HASM" >/dev/null || fail "cambiar el tipo de un recibo con aviso → 400"
+expect 204 "$(req DELETE "/api/v1/receipts/$RA13P")" >/dev/null
+expect 200 "$(req POST "/api/v1/asns/$ASN13/cancel" '{}')" >/dev/null
+ok "ciego solo con encabezado EXPECTED → línea con diferencia DISCREPANCY → PUT igual RECEIVING → distinto DISCREPANCY (esperado negativo 400); phase/variance y sus 400; PATCH de transporte, referencia, muelle y tipo (rowVersion viejo 409, transporte de 81 400, almacén con líneas 400); confirmado RECEIVED_VARIANCE con RECEIPT por lo recibido y en PENDING_PUTAWAY; PATCH de confirmado 422; última tarea → PUTAWAY con historial completo; borrar un EXPECTED 204; confirm sin líneas 400; avisos por referencia y llegada; contra aviso RECEIVING y esperado/producto/tipo fijos 400"
+
 step "compras y faltantes (Lote 6): cerrar en paralelo, reordenar, ajuste manual y orden cancelada"
 SUP=$(expect 200 "$(req POST /api/v1/suppliers "{\"name\":\"Proveedor $TS\"}")" | jq -r .id)
 expect 409 "$(req POST /api/v1/suppliers "{\"name\":\"Proveedor $TS\"}")" | jq -e '.title=="Ya existe un proveedor activo con ese nombre."' >/dev/null || fail "proveedor repetido → 409"
@@ -3002,11 +3057,14 @@ PO1=$(po "[{\"productPublicId\":\"$PN\",\"qtyOrdered\":10,\"unitCost\":2.5}]"); 
 # Maestro 13B (D46/D47): en DRAFT la orden se edita (200) y, sin recepciones, se elimina (204; un segundo borrado 404).
 PO5=$(po "[{\"productPublicId\":\"$PN\",\"qtyOrdered\":1,\"unitCost\":1}]"); PO5P=$(pid "$PO5")
 expect 200 "$(req PATCH "/api/v1/purchase-orders/$PO5P" "{\"notes\":\"ajuste\",\"lines\":[{\"productPublicId\":\"$PN\",\"qtyOrdered\":3,\"unitCost\":2},{\"productPublicId\":\"$PR\",\"qtyOrdered\":1,\"unitCost\":1}]}")" | jq -e '.statusCode=="DRAFT" and .notes=="ajuste" and (.lines|length)==2 and any(.lines[]; .qtyOrdered==3 and .unitCost==2)' >/dev/null || fail "PATCH en DRAFT 200"
+expect 200 "$(req PATCH "/api/v1/purchase-orders/$PO5P" "{\"supplierId\":$SUPX,\"warehousePublicId\":\"$W6P\"}")" | jq -e --argjson s "$SUPX" --arg w "$W6P" '.statusCode=="DRAFT" and .supplierId==$s and .warehousePublicId==$w' >/dev/null || fail "cambiar proveedor de la OC en DRAFT"
 expect 204 "$(req DELETE "/api/v1/purchase-orders/$PO5P")" >/dev/null
 expect 404 "$(req DELETE "/api/v1/purchase-orders/$PO5P")" >/dev/null
 expect 200 "$(req POST "/api/v1/purchase-orders/$PO1P/send" '{}')" | jq -e '.statusCode=="SENT" and (.canEdit|not)' >/dev/null || fail "enviar PO1"
 expect 422 "$(req PATCH "/api/v1/purchase-orders/$PO1P" '{"notes":"x"}')" >/dev/null   # EDIT_PURCHASE_ORDER negada en SENT
-expect 400 "$(req PATCH "/api/v1/purchase-orders/$PO1P" "{\"supplierId\":$SUP}")" | jq -e --arg m "El campo supplierId de la orden de compra no se puede cambiar." "$HASM" >/dev/null || fail "proveedor de la OC fijo"
+# Ajuste del 2026-09-30: proveedor y almacén solo cambian en DRAFT; en SENT un valor distinto → 409 (antes que la capacidad).
+expect 409 "$(req PATCH "/api/v1/purchase-orders/$PO1P" "{\"supplierId\":$SUPX}")" | jq -e '.title=="El proveedor y el almacén solo se cambian mientras la orden de compra está en borrador."' >/dev/null || fail "proveedor de la OC fijo fuera de borrador"
+expect 400 "$(req PATCH "/api/v1/purchase-orders/$PO1P" '{"number":"PO-X"}')" | jq -e --arg m "El campo number de la orden de compra no se puede cambiar." "$HASM" >/dev/null || fail "número de la OC fijo"
 # Recibir contra una OC exige además purchasing.receive (el controlador solo pide warehouse.receive).
 expect 403 "$(req POST /api/v1/receipts "{\"purchaseOrderPublicId\":\"$PO1P\",\"stagingBinId\":$B_STG}" "$TADJ6")" | denied purchasing.receive || fail "recibo contra PO sin purchasing.receive"
 receivepo "$PO1P" 8 >/dev/null
@@ -3028,10 +3086,12 @@ expect 403 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2A/resolve" '{"ac
 expect 200 "$(req GET "/api/v1/purchase-orders/$PO2P/shortage-lines")" | jq -e --argjson l "$PO2A" 'any(.[]; .purchaseOrderLineId==$l and .qtyPending==2 and (.resolutions | length)==0)' >/dev/null || fail "el REORDER sin permiso dejó efectos"
 expect 200 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2A/resolve" '{"action":"REORDER"}')" | jq -e --argjson s "$SUP" '.reorder.statusCode=="DRAFT" and .reorder.supplierId==$s and .reorder.lines[0].qtyOrdered==2 and .reorder.lines[0].unitCost==2.5' >/dev/null || fail "REORDER"
 expect 403 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV}" "$T2")" >/dev/null   # sin inventory.adjust
-expect 400 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":3,\"binId\":$B_RSV}")" >/dev/null   # excede el pendiente (2)
-expect 200 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV}")" | jq -e '.line.qtyPending==1 and .purchaseOrder.statusCode=="PARTIAL"' >/dev/null || fail "ajuste manual parcial"
+expect 400 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":3,\"binId\":$B_RSV,\"notes\":\"Faltante del humo\"}")" >/dev/null   # excede el pendiente (2)
+# Lote 13: la nota es obligatoria al resolver con ajuste manual (400 errors.notes)
+expect 400 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV}")" | jq -e '.errors.notes[0]=="Escriba una nota que explique el ajuste."' >/dev/null || fail "ajuste manual sin nota"
+expect 200 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV,\"notes\":\"Faltante del humo\"}")" | jq -e '.line.qtyPending==1 and .purchaseOrder.statusCode=="PARTIAL"' >/dev/null || fail "ajuste manual parcial"
 kardex "refEntity=PURCHASE_ORDER&refId=$(echo "$PO2" | jq -r .id)" | jq -e '.total==1 and .items[0].quantity==1 and .items[0].reasonCode=="PO_SHORTAGE"' >/dev/null || fail "ADJUSTMENT +1 con Ref PURCHASE_ORDER"
-expect 200 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV}")" | jq -e '.purchaseOrder.statusCode=="RECEIVED"' >/dev/null || fail "PO2 RECEIVED"
+expect 200 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" "{\"action\":\"MANUAL_ADJUSTMENT\",\"quantity\":1,\"binId\":$B_RSV,\"notes\":\"Faltante del humo\"}")" | jq -e '.purchaseOrder.statusCode=="RECEIVED"' >/dev/null || fail "PO2 RECEIVED"
 expect 409 "$(req POST "/api/v1/purchase-orders/$PO2P/lines/$PO2B/resolve" '{"action":"CLOSE"}')" | jq -e '.title=="La línea ya no tiene faltante pendiente."' >/dev/null || fail "segunda resolución 409"
 PO3=$(po "[{\"productPublicId\":\"$PN\",\"qtyOrdered\":6,\"unitCost\":2.5}]"); PO3P=$(pid "$PO3"); PO3L=$(echo "$PO3" | jq -r '.lines[0].id')
 expect 200 "$(req POST "/api/v1/purchase-orders/$PO3P/send" '{}')" >/dev/null; receivepo "$PO3P" 4 >/dev/null
@@ -3048,13 +3108,17 @@ ok "proveedor repetido 409, dado de baja no admite OC (422) y se reactiva; líne
 
 step "actividad reciente (Lote 7A): recibo confirmado obligatorio, solo obligatorios, belowMin y permiso del módulo"
 activity() { # query [token] → todos los eventos de la ventana (páginas de 50) como un solo arreglo JSON
-  local q=$1 tok=${2:-$TOKEN} skip=0 all='[]' page total
+  # las páginas se acumulan en un archivo (no con --argjson): con una base ya usada el arreglo supera el límite de
+  # argumentos de Windows/Git Bash ("Argument list too long")
+  local q=$1 tok=${2:-$TOKEN} skip=0 page total acc
+  acc=$(mktemp -p "$REQ_TMPDIR")
   while :; do
     page=$(expect 200 "$(req GET "/api/v1/analytics/activity?$q&skip=$skip&take=50" '' "$tok")")
-    all=$(jq -c --argjson a "$all" '$a + .items' <<<"$page"); total=$(jq -r .total <<<"$page")
+    jq -c '.items' <<<"$page" >> "$acc"; total=$(jq -r .total <<<"$page")
     skip=$((skip+50)); [[ $skip -lt $total && $skip -lt 5000 ]] || break
   done
-  echo "$all"
+  jq -cs 'add // []' "$acc"
+  rm -f "$acc"
 }
 EV=$(activity "module=WAREHOUSE")
 # Tareas (maestro, catálogo de Almacén): PUTAWAY completada, reabasto completado y PUTAWAY cancelada desde la cola.
@@ -3166,7 +3230,7 @@ alloca() { req POST "/api/v1/cross-dock-plans/$PLANA/allocations" "{\"receiptLin
 expect 200 "$(alloca "$OA1" 4)" | jq -e 'all(.allocations[]; .confirmedQty==null and .taskId==null)' >/dev/null || fail "asignación sobre recibo abierto sin reserva ni tarea"
 expect 409 "$(alloca "$OA2" 8)" | jq -e '.title | contains("excede lo disponible para cruce de muelle")' >/dev/null || fail "asignar más de lo recibido (Exceeds)"
 expect 200 "$(alloca "$OA2" 6)" >/dev/null
-expect 200 "$(req GET "/api/v1/cross-dock-plans/$PLANA/candidates")" | jq -e --argjson l "$RXAL" 'any(.[]; .receiptLineId==$l and .receiptStatusCode=="OPEN" and .allocatedQty==10 and .allocatable==0) or all(.[]; .receiptLineId!=$l)' >/dev/null || fail "candidatos del plan"
+expect 200 "$(req GET "/api/v1/cross-dock-plans/$PLANA/candidates")" | jq -e --argjson l "$RXAL" 'any(.[]; .receiptLineId==$l and .receiptStatusCode=="RECEIVING" and .allocatedQty==10 and .allocatable==0) or all(.[]; .receiptLineId!=$l)' >/dev/null || fail "candidatos del plan"
 expect 200 "$(req PUT "/api/v1/receipts/$RXAP/lines/$RXAL" '{"receivedQty":8}')" >/dev/null
 expect 200 "$(req POST "/api/v1/receipts/$RXAP/confirm" '{}')" | jq -e '.header.statusCode=="PUTAWAY"' >/dev/null || fail "recibo todo a cruce de muelle directo a PUTAWAY"
 PA=$(expect 200 "$(req GET "/api/v1/cross-dock-plans/$PLANA")")
@@ -3770,11 +3834,12 @@ RNX=$(expect 200 "$(blind "$W6P" "$B_STG" "$PZ" 1)")
 [[ $((10#$(echo "$RNX" | jq -r .header.number | tr -dc '0-9'))) -eq $((10#$(echo "$RAB" | jq -r .header.number | tr -dc '0-9') + 1)) ]] || fail "la desconexión consumió más de un número REC"
 expect 204 "$(req DELETE "/api/v1/receipts/$(echo "$RNX" | jq -r .header.publicId)")" >/dev/null
 for T in $(echo "$RAB" | jq -r '.putawayTasks[].id'); do expect 200 "$(req POST "/api/v1/warehouse-tasks/$T/complete" '{}' "$DT")" >/dev/null; done
-# Contra una orden de compra, en una llamada: lo escaneado (3 de 10) manda sobre lo esperado; la orden queda PARTIAL.
+# Contra una orden de compra, en una llamada: lo escaneado (3 de 10) manda sobre lo esperado; la orden queda PARTIAL y el
+# recibo, con diferencia, en RECEIVED_VARIANCE (Lote 13).
 PO8=$(po "[{\"productPublicId\":\"$PZ\",\"qtyOrdered\":10,\"unitCost\":1}]"); PO8P=$(pid "$PO8")
 expect 200 "$(req POST "/api/v1/purchase-orders/$PO8P/send" '{}')" >/dev/null
 RP8=$(expect 200 "$(idem POST /api/v1/receipts "smoke-$TS-rec-po" "$(jq -cn --arg o "$PO8P" --argjson s "$B_STG" --arg p "$PZ" '{purchaseOrderPublicId:$o,stagingBinId:$s,lines:[{productPublicId:$p,receivedQty:3}],confirm:true}')")")
-echo "$RP8" | jq -e '.header.statusCode=="RECEIVED" and (.lines | length)==1 and .lines[0].expectedQty==10 and .lines[0].receivedQty==3' >/dev/null || fail "recibo contra OC en una llamada con lo escaneado: $(echo "$RP8" | jq -c '[.header.statusCode, [.lines[] | {expectedQty, receivedQty}]]')"
+echo "$RP8" | jq -e '.header.statusCode=="RECEIVED_VARIANCE" and (.lines | length)==1 and .lines[0].expectedQty==10 and .lines[0].receivedQty==3' >/dev/null || fail "recibo contra OC en una llamada con lo escaneado: $(echo "$RP8" | jq -c '[.header.statusCode, [.lines[] | {expectedQty, receivedQty}]]')"
 expect 200 "$(req GET "/api/v1/purchase-orders/$PO8P")" | jq -e '.statusCode=="PARTIAL" and .lines[0].qtyReceived==3' >/dev/null || fail "la OC no quedó PARTIAL con 3 recibidos"
 for T8 in $(echo "$RP8" | jq -r '.putawayTasks[].id'); do expect 200 "$(req POST "/api/v1/warehouse-tasks/$T8/complete" '{}' "$DT")" >/dev/null; done
 # Segunda recepción parcial (PARTIAL→PARTIAL: sin historial de estatus ni auditoría del encabezado): la diferencia desde antes
@@ -3954,6 +4019,9 @@ step "MFA por usuario (Lote F8a): exigirlo a una persona sin tocar la política 
 MFAEMAIL="mfa$TS@teikem.local"; MFAPASS="Smoke_Mfa_2026!"
 MFAU=$(expect 200 "$(req POST /api/v1/users "{\"email\":\"$MFAEMAIL\",\"fullName\":\"MFA Smoke\",\"password\":\"$MFAPASS\"}")")
 MFAID=$(echo "$MFAU" | jq -r .user.id)
+# reautenticación fresca: si el humo tarda más que la ventana AAL2 del tenant (p. ej. en una base local ya usada), la del
+# paso de sesiones ya venció y [RequireAal2] respondería 403 aal2_required
+TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
 expect 200 "$(req PUT "/api/v1/users/$MFAID/mfa" '{"required":true}')" | jq -e '.mfaRequired and (.mfaEnabled|not)' >/dev/null || fail "PUT mfa {required:true}"
 expect 200 "$(anon POST /api/v1/auth/login "{\"email\":\"$MFAEMAIL\",\"password\":\"$MFAPASS\"}")" | jq -e '.status=="mfa_required" and .mfaEnrollmentRequired and (.tokens==null)' >/dev/null || fail "login exige MFA por la membresía"
 expect 204 "$(req DELETE "/api/v1/users/$MFAID/mfa")" >/dev/null   # resetear (usuario que perdió su dispositivo): sin TOTP confirmado, no hay nada que deshacer aquí, pero no falla
@@ -4048,7 +4116,7 @@ echo "$MIG_USAGE" | grep -q 'import-legacy <config.json> \[--dry-run\] \[--updat
 rm -f "$MIG_MARK"
 ok "dry-run con la muestra: código 0, reporte .md (SIMULACIÓN) y CSV generados sin escribir en la base; sintaxis incorrecta → código 2"
 
-step "migración (Lote 10): --update no toca el saldo inicial en dry-run"
+step "migración (Lote 10, D51): --update sobre una compañía nueva sí carga el saldo inicial (dry-run)"
 MIG_UPDATE_MARK="$MIG_OUT/.smoke-update-start"; touch "$MIG_UPDATE_MARK"; sleep 1
 set +e
 MIG_UPDATE_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- import-legacy docs/migracion/sample/import.sample.json --dry-run --update 2>&1); MIG_UPDATE_RC=$?
@@ -4057,9 +4125,12 @@ set -e
 MIG_UPDATE_MD=$(find "$MIG_OUT" -maxdepth 1 -name 'reporte-muestra-*.md' -newer "$MIG_UPDATE_MARK" | head -n1)
 [[ -n "$MIG_UPDATE_MD" ]] || fail "import-legacy --dry-run --update no generó el reporte .md en $MIG_OUT"
 grep -q -- "--update" "$MIG_UPDATE_MD" || fail "el reporte no marca el modo --update: $MIG_UPDATE_MD"
-grep -q 'El saldo inicial no se toca en modo --update' "$MIG_UPDATE_MD" || fail "el reporte no informa que --update no toca el saldo inicial: $MIG_UPDATE_MD"
+# D51: la compañía de la muestra no existe en el humo (solo dry-run), así que --update es su primera carga y trae su saldo
+# inicial igual que sin --update; el aviso 'no se toca' es solo para una compañía que ya existía (LegacyImportServiceTests)
+! grep -q 'El saldo inicial no se toca en modo --update' "$MIG_UPDATE_MD" || fail "--update en la primera carga omitió el saldo inicial (D51): $MIG_UPDATE_MD"
+grep -q '^## Saldo inicial (' "$MIG_UPDATE_MD" || fail "el reporte de --update en la primera carga no trae el saldo inicial: $MIG_UPDATE_MD"
 rm -f "$MIG_UPDATE_MARK"
-ok "dry-run con --update: modo marcado en el título y saldo inicial omitido"
+ok "dry-run con --update: modo marcado en el título y, en la primera carga de la compañía, con su saldo inicial (D51)"
 
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e

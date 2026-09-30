@@ -20,6 +20,8 @@ namespace Teikem.Infrastructure.Services;
 /// - Entrada: producto activo (422 si no) y lote asegurado (EnsureLot: el mismo número con otras fechas → 409). Salida: el
 ///   lote debe existir. Las series de salida o transferencia viajan con su propio lote.
 /// - Transferencia: respeta lo reservado (el ledger no deja sacar más que el disponible = en mano − reservado).
+/// - Nota (ajuste del 2026-09-30): obligatoria en el ajuste manual (AdjustmentRules.RequiresNotes); la transferencia la deja
+///   opcional. Los ajustes del sistema (recibo, conteo, reversa de recolección, saldo inicial) no pasan por este servicio.
 /// </summary>
 public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache lookups, InventoryLedger ledger, InventoryReadService reads)
 {
@@ -42,7 +44,8 @@ public sealed class InventoryAdjustmentService(TeikemDbContext db, ILookupCache 
         var reasonCatalog = (await lookups.GetDomainAsync(LookupDomains.AdjustmentReason, ct)).Where(l => l.IsActive).Select(l => l.InternalCode);
         var (reasonCode, reasonError) = AdjustmentRules.ValidateReason(req.Reason, reasonCatalog);
         if (reasonError is not null) errors["reason"] = new[] { reasonError };
-        var (notes, notesError) = AdjustmentRules.NormalizeNotes(req.Notes);
+        // Ajuste del 2026-09-30: la nota es obligatoria (400 errors.notes) salvo con un motivo de sistema, que ya es 400 en 'reason'.
+        var (notes, notesError) = AdjustmentRules.NormalizeNotes(req.Notes, required: AdjustmentRules.RequiresNotes(req.Reason));
         if (notesError is not null) errors["notes"] = new[] { notesError };
         var (serials, serialError) = AdjustmentRules.NormalizeSerials(req.SerialNumbers);
         if (serialError is not null) errors["serialNumbers"] = new[] { serialError };

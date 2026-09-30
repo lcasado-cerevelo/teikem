@@ -53,6 +53,11 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    almacenes, SKU, nombre, marcas, "con serie" y "series incompletas") y endpoint de marcas, filtros de Kárdex por marca y
    nombre, filtros múltiples de órdenes de compra, **asignación de cupo en bloque** de posiciones y resumen del **cupo
    estimado** que trae la migración de Advance Depot.
+   Lote 13 (secciones 4, 5 y 7): **ciclo de estatus del recibo** (Esperado, Recibiendo, Discrepancia, Completado, Completado con
+   diferencia y Acomodado) con sus transiciones y lo que bloquea cada uno, encabezado del recibo editable (transporte, referencia,
+   posición de recepción por defecto), esperado en ciegos y devoluciones (entra al inventario lo recibido), filtros de la lista
+   (`variance`, `phase`) y de los avisos de llegada, dónde se trabaja cada tipo de tarea, y la recolección y el empaque con su
+   tabla de transiciones, validaciones y predeterminados de la compañía.
 7. [07 — Pulso del día y Actividad reciente (Lote 7A: Almacén)](07-pulso-y-actividad.md): panel de eventos
    recientes de Almacén (catálogo de 23 eventos, obligatorio/opcional, ventana 24h/48h/hoy, filtro por módulo),
    filtro "bajo mínimo" de productos, e indicadores y gráfico nuevos de Almacén en el Pulso del día (Unidades
@@ -75,6 +80,7 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`). Lote 12
     (sección 4): **cupo estimado de las posiciones** de Advance Depot desde el historial del WMS anterior (regla, reporte
     `-cupos.csv` y comportamiento de `--update`).
+    La marca de QuickBooks (columna `Brand`) pasa a la marca del producto (sección 1).
 
 ## Manual de pantallas (frontend web)
 
@@ -97,6 +103,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    inventario** (indicadores clicables, filtros, marca y modelo, bloque "Añadir ajuste" con nota obligatoria y reportes PDF
    de inventario y de ajustes), **Proveedores** (antes de Compras, filtros, teléfono con máscara, baja con ícono) y
    **Compras** (filtros múltiples, alta con almacén obligatorio y reglas de líneas). Capturas pendientes.
+   Lote 13: **Recibo** en una sola pantalla (lista de recibos, detalle con captura de líneas en la tabla, encabezado editable en un
+   modal, pestañas Recibos, Avisos de llegada y Acomodo pendiente), acciones de las tareas de almacén como íconos (ya no hay una cola
+   única), **Recolección y empaque** en dos paneles con barra arrastrable (captura de varias líneas, Empacar y Eliminar en la fila,
+   detalle en un modal) y los ajustes del 2026-09-30 (proveedor y almacén de la orden en Borrador, nota obligatoria en todo ajuste
+   manual, "Unidades totales" y predeterminados al empacar). Capturas nuevas de esas pantallas; pendiente la de Avisos de llegada.
 3. [F7A — Pulso: panel Almacén con filtro y Actividad reciente](frontend/f7a-pulso-almacen-y-actividad.md): filtro de
    almacén y de categoría o producto en el panel "Almacén" de Pulso (con enlaces a Inventario ya filtrado), y panel
    nuevo "Actividad reciente" (pestañas por módulo, ventana de tiempo, interruptor "Solo obligatorios", buscador libre
@@ -114,4 +125,7 @@ ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar t
 código y la zona de una posición no cambian. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
 reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
-posiciones y cómo corregirlo en bloque.
+posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado
+editable, del esperado en ciegos, de los filtros de recibos y avisos, los mensajes que solo se ven en las pantallas de Recibo y de
+Recolección y empaque, y las preguntas sobre Discrepancia, qué entra al inventario con una diferencia, cómo editar el encabezado, la
+barra 60/40, dónde quedó la cola de acomodo y por qué "Unidades totales" cuenta solo productos activos.

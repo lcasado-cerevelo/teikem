@@ -428,6 +428,9 @@
       "page": "Page {page} of {pages}",
       "footer": "Generated with Teikem",
       "empty": "No records match the filters."
+    },
+    "split": {
+      "resize": "Resize panels"
     }
   },
   "examples": {
@@ -1176,9 +1179,10 @@
         "serial": "Serial-tracked",
         "serialMissing": "{count} with incomplete serials",
         "filterHint": "Filter the table: {view}. Click again to clear.",
+        "totalUnitsNote": "The figure adds the on-hand stock of active products.",
         "view": {
           "active": "Active only",
-          "available": "Active with availability",
+          "available": "Active with stock on hand",
           "low": "Low stock",
           "serial": "Serial-tracked"
         }
@@ -1753,9 +1757,6 @@
       }
     },
     "tasks": {
-      "title": "Warehouse tasks",
-      "subtitle": "Unified task queue: receiving, replenishment, counting and cross-dock.",
-      "count": "{count} tasks",
       "unassigned": "Unassigned",
       "started": "Task started.",
       "cancelTitle": "Cancel the task",
@@ -1776,7 +1777,6 @@
       "filters": {
         "warehouse": "Warehouse",
         "anyWarehouse": "Any warehouse",
-        "types": "Type",
         "status": "Status",
         "assignedToMe": "Assigned to me",
         "includeClosed": "Include closed"
@@ -1805,7 +1805,6 @@
         "suggestion": "Suggested bin:",
         "noSuggestion": "There is no suggested bin for this task.",
         "saved": "Task completed.",
-        "suggested": "suggested",
         "anyBin": "Not selected"
       },
       "replenish": {
@@ -1984,23 +1983,16 @@
       "tabReceipts": "Receipts",
       "tabAsns": "Advance shipping notices",
       "tabPutaway": "Pending putaway",
-      "putawayTitle": "Pending putaway",
       "new": "New receipt",
       "create": "Create receipt",
       "created": "Receipt {number} created.",
-      "count": "{count} receipt(s)",
-      "open": "Open",
       "searchPlaceholder": "Number, notice, client, purchase order or supplier",
       "choose": "Select…",
       "defaultStaging": "First bin of a STAGING zone",
       "pickWarehouseFirst": "Choose the warehouse first.",
       "noPoAccess": "Your user cannot view purchase orders.",
-      "linesTitle": "Lines",
-      "addLine": "Add line",
       "removeLine": "Remove line",
-      "fromDocumentNote": "Lines come from the document: received starts equal to expected and is corrected in the receipt before confirming.",
       "notFound": "Receipt not found.",
-      "back": "Back to Receiving",
       "sources": {
         "BLIND": "Blind",
         "RETURN": "Return",
@@ -2019,13 +2011,7 @@
         "SERIAL": "By serial"
       },
       "columns": {
-        "number": "Number",
-        "type": "Type",
-        "warehouse": "Warehouse",
-        "status": "Status",
-        "from": "Origin",
-        "createdAt": "Created",
-        "variance": "Variance"
+        "status": "Status"
       },
       "filters": {
         "warehouse": "Warehouse",
@@ -2035,18 +2021,19 @@
         "created": "Created",
         "product": "Product",
         "variance": "Variance",
-        "withVariance": "With variance",
-        "withoutVariance": "Without variance"
+        "varianceOptions": {
+          "SHORT": "Short",
+          "OVER": "Over",
+          "NONE": "No variance"
+        }
       },
       "fields": {
-        "source": "Receive",
         "warehouse": "Warehouse",
         "asn": "Advance shipping notice",
         "purchaseOrder": "Purchase order",
         "stagingBin": "Receiving bin",
         "stagingBinHelp": "STAGING or CROSSDOCK zone. Empty: the warehouse's first receiving bin.",
         "product": "Product",
-        "receivedQty": "Received quantity",
         "lot": "Lot",
         "manufactureDate": "Manufactured",
         "expiryDate": "Expiry",
@@ -2059,60 +2046,137 @@
         "poRequired": "Choose the purchase order.",
         "productRequired": "Enter the product.",
         "linesRequired": "Enter at least one line.",
-        "tooManyLines": "A receipt allows at most 200 lines."
+        "carrierMax": "The carrier allows at most 80 characters.",
+        "referenceMax": "The reference allows at most 80 characters.",
+        "expectedQtyNegative": "The expected quantity cannot be negative."
       },
       "detail": {
-        "statusHelp": "The status is changed by the system: RECEIVED on confirm and PUTAWAY when the last putaway task is finished.",
-        "summary": "Summary",
         "expected": "Expected",
         "received": "Received",
-        "variance": "Variance",
-        "dock": "Dock",
-        "receivedAt": "Confirmed",
-        "lines": "Lines",
-        "lineCount": "{count} line(s)",
         "noLines": "The receipt has no lines.",
-        "addLine": "Add line",
-        "capture": "Capture",
-        "captureTitle": "Capture {product}",
-        "lineSaved": "Line saved.",
-        "lineAdded": "Line added.",
         "removeLine": "Remove",
         "removeTitle": "Remove line",
         "removeBody": "Remove the {product} line from the receipt?",
         "lineRemoved": "Line removed.",
-        "serialCount": "{count} serial(s)",
         "confirm": "Confirm receipt",
         "confirmTitle": "Confirm receipt",
         "confirmBody": "Receipt {number} is confirmed in full: inventory is posted and putaway tasks are created. It can no longer be changed.",
         "confirmed": "Receipt {number} confirmed.",
-        "delete": "Delete",
-        "deleteTitle": "Delete receipt",
-        "deleteBody": "Delete open receipt {number}? If it came from a client notice, the notice becomes pending again; if it came from a purchase order, its notice is cancelled.",
-        "deleted": "Receipt {number} deleted.",
         "putaway": "Putaway tasks",
         "goTasks": "See all pending putaway",
         "columns": {
           "product": "Product",
-          "tracking": "Tracking",
-          "expected": "Expected",
-          "received": "Received",
-          "variance": "Variance",
-          "lot": "Lot",
-          "serials": "Serials",
-          "staging": "Receiving",
-          "crossDock": "Cross-dock",
           "quantity": "Quantity",
           "bins": "From → to",
           "assignedTo": "Assigned to"
+        },
+        "title": "Receipt detail",
+        "origin": "Origin · {origin}",
+        "originWithRef": "Origin · {origin}: {ref}",
+        "editHeader": "Edit the receipt header",
+        "viewHeader": "View the receipt header",
+        "history": "History",
+        "historyTitle": "Receipt {number} history",
+        "select": "Select a receipt from the list",
+        "scanHint": "Scan or type each line to record what was received",
+        "varianceNote": "What was received differs from what was expected — on confirming, the difference is recorded as an inventory adjustment.",
+        "varianceNoteBlind": "What was received differs from what was expected — on confirming, what was received goes into inventory and the receipt becomes “Completed with variance” (no adjustment).",
+        "meta": {
+          "warehouse": "Warehouse",
+          "staging": "Receiving",
+          "dock": "Dock",
+          "carrier": "Carrier",
+          "reference": "Reference",
+          "expectedDate": "Expected arrival",
+          "createdAt": "Created",
+          "receivedAt": "Confirmed"
+        },
+        "blockers": {
+          "confirmed": "The receipt is already confirmed.",
+          "noLines": "Add at least one line to confirm.",
+          "saving": "Saving lines…",
+          "unsaved": "Some lines are not saved: leave the field or press Enter to save them.",
+          "errors": "Fix the marked lines before confirming."
         }
+      },
+      "originLong": {
+        "PO": "Purchase order",
+        "ASN": "Client",
+        "BLIND": "Blind",
+        "RETURN": "Return"
+      },
+      "list": {
+        "aria": "Receipt list",
+        "empty": "No receipts match these filters.",
+        "pendingPutaway": "{count} to put away",
+        "exportName": "Receipts",
+        "columns": {
+          "number": "Number",
+          "status": "Status",
+          "type": "Type",
+          "origin": "Origin",
+          "originRef": "Document",
+          "sender": "Sender",
+          "warehouse": "Warehouse",
+          "carrier": "Carrier",
+          "reference": "Reference",
+          "expectedDate": "Expected arrival",
+          "createdAt": "Created",
+          "lines": "Lines",
+          "variance": "Variance"
+        }
+      },
+      "lines": {
+        "title": "Receipt lines",
+        "sku": "SKU",
+        "product": "Product",
+        "expected": "Expected",
+        "received": "Received",
+        "diff": "Variance",
+        "productOf": "Product of line {n}",
+        "expectedOf": "Expected of line {n}",
+        "receivedOf": "Received of line {n}",
+        "invalidNumber": "Type a number.",
+        "lotSerial": "Lot and serials",
+        "remove": "Remove line",
+        "saving": "Saving…",
+        "newRow": "New line"
+      },
+      "header": {
+        "newTitle": "New receipt",
+        "editTitle": "Receipt {number} header",
+        "source": "Origin",
+        "carrier": "Carrier",
+        "reference": "Reference",
+        "dock": "Dock",
+        "noDock": "No dock",
+        "readOnlyNote": "The receipt is already confirmed: its header cannot be changed.",
+        "documentNote": "With an advance ship notice or a purchase order, the origin, the warehouse and the expected quantities come from the document.",
+        "warehouseFixedNote": "The warehouse can only be changed on a receipt without a document and without lines.",
+        "save": "Save",
+        "saved": "Receipt {number} header saved.",
+        "close": "Close",
+        "delete": "Delete receipt",
+        "deleteTitle": "Delete receipt",
+        "deleteBody": "Delete receipt {number}? If it came from a client notice, the notice becomes pending again; if it came from a purchase order, the order can be received again.",
+        "deleted": "Receipt {number} deleted."
+      },
+      "capture": {
+        "title": "Lot and serials · {product}",
+        "serialQty": "For a serial-tracked product, the received quantity is the number of serials captured: {count}.",
+        "saved": "Line saved."
+      },
+      "putawayTab": {
+        "listTitle": "Receipts pending put-away",
+        "tasksTitle": "Put-away tasks",
+        "select": "Select a receipt to see its put-away tasks",
+        "noTasks": "This receipt has no put-away tasks."
       }
     },
     "asns": {
       "title": "Advance shipping notices",
       "new": "New notice",
       "created": "Advance shipping notice created.",
-      "count": "{count} notice(s)",
       "receive": "Receive",
       "cancel": "Cancel notice",
       "cancelTitle": "Cancel advance shipping notice",
@@ -2131,14 +2195,32 @@
       "fields": {
         "client": "Owner client",
         "reference": "Reference",
-        "expectedDate": "Expected arrival",
-        "expectedQty": "Expected quantity"
+        "expectedDate": "Expected arrival"
       },
       "errors": {
         "clientRequired": "Enter the client that owns the goods of the notice.",
         "referenceMax": "The reference allows at most 80 characters.",
         "expectedQtyPositive": "The expected quantity must be greater than zero.",
         "tooManyLines": "An advance shipping notice allows at most 200 lines."
+      },
+      "filters": {
+        "warehouse": "Warehouse",
+        "anyWarehouse": "All warehouses",
+        "client": "Owner client",
+        "anyClient": "All clients",
+        "reference": "Reference",
+        "expected": "Expected arrival"
+      },
+      "lines": {
+        "title": "Lines",
+        "product": "Product",
+        "expectedQty": "Expected quantity",
+        "lot": "Lot",
+        "productOf": "Product of line {n}",
+        "qtyOf": "Expected quantity of line {n}",
+        "lotOf": "Lot of line {n}",
+        "add": "Add line",
+        "remove": "Remove line {n}"
       }
     },
     "pickBatches": {
@@ -2147,11 +2229,7 @@
       "tabBatches": "Picks",
       "tabReplenish": "Replenishment",
       "replenishTitle": "Replenishment tasks",
-      "collect": "Pick",
-      "collectTitle": "New pick batch",
       "collected": "Pick batch {number} created.",
-      "count": "{count} pick batch(es)",
-      "open": "Open",
       "own": "Own",
       "deletedChip": "Deleted",
       "searchPlaceholder": "Number, pack, order, invoice, client or SKU",
@@ -2162,19 +2240,18 @@
       "back": "Back to Pick & pack",
       "columns": {
         "number": "Number",
-        "warehouse": "Warehouse",
-        "status": "Status",
         "numbers": "Order and invoice",
-        "client": "Owner",
+        "client": "Client",
         "totalQty": "Quantity",
-        "collectedAt": "Picked"
+        "collectedAt": "Picked",
+        "products": "Products"
       },
       "filters": {
         "collected": "Picked",
         "status": "Status",
         "product": "Product",
-        "orderNumber": "Order number",
-        "invoiceNumber": "Invoice",
+        "orderNumber": "Order no.",
+        "invoiceNumber": "Invoice no.",
         "includeDeleted": "Include deleted"
       },
       "fields": {
@@ -2182,7 +2259,6 @@
         "product": "Product",
         "quantity": "Quantity",
         "bin": "Bin",
-        "fefoHelp": "Optional: empty = FEFO.",
         "lot": "Lot",
         "serials": "Scanned serials"
       },
@@ -2206,7 +2282,8 @@
         "deleteTitle": "Delete pick batch",
         "deleteBody": "Delete pick batch {number}? Inventory goes back to its original bin.",
         "deletePackedBody": "Delete pick batch {number}? Its order {order} is deleted too and inventory goes back to its original bin.",
-        "deleted": "Pick batch {number} deleted."
+        "deleted": "Pick batch {number} deleted.",
+        "close": "Close"
       },
       "pack": {
         "title": "Pack {number}",
@@ -2215,7 +2292,10 @@
         "client": "Order client",
         "ownerHelp": "Must be the client that owns the inventory: {client}.",
         "serviceType": "Service type",
-        "defaultServiceType": "Company default",
+        "defaultServiceType": "Company default ({label})",
+        "chooseServiceType": "Choose the service type",
+        "defaultPackageType": "Company default ({label})",
+        "choosePackageType": "Choose the package type",
         "consignee": "Consignee",
         "consigneeExisting": "From directory",
         "consigneeNew": "New",
@@ -2249,8 +2329,39 @@
           "country": "Use the 2-letter ISO country code.",
           "packagesRequired": "Enter at least one package line.",
           "pieces": "The number of pieces must be at least 1.",
-          "weight": "The weight cannot be negative."
+          "weight": "The weight cannot be negative.",
+          "serviceTypeRequired": "Choose the service type.",
+          "packageTypeRequired": "Choose the package type."
         }
+      },
+      "batchesTitle": "Pick batches",
+      "detailTitle": "Pick batch",
+      "splitLabel": "Resize the Picking and Pick batches panels",
+      "orderFilter": {
+        "placeholder": "Type to see orders",
+        "none": "No order with that number.",
+        "noAccess": "Orders could not be loaded.",
+        "clear": "Clear the order number"
+      },
+      "collectPanel": {
+        "title": "Picking",
+        "linesLabel": "Lines to pick",
+        "lineProduct": "Product of line {n}",
+        "lineQty": "Quantity of line {n}",
+        "lineBin": "Bin of line {n}",
+        "lineLot": "Lot of line {n}",
+        "lineSerials": "Serials of line {n}",
+        "serials": "Serials",
+        "serialsButton": "Serials ({n})",
+        "serialsTitle": "Serials of line {n} · {sku}",
+        "serialsCount": "Captured: {n}.",
+        "available": "{qty} avail.",
+        "fefoHint": "FEFO: {bin}",
+        "removeLine": "Remove line",
+        "addLine": "Add line",
+        "maxLines": "Up to 100 lines per pick batch.",
+        "clear": "Clear",
+        "submit": "Pick (take out of inventory)"
       }
     },
     "cycleCounts": {

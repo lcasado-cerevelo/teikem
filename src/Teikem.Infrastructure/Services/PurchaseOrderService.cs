@@ -38,8 +38,11 @@ public sealed class PurchaseOrderService(
     public const string ConcurrencyMessage = "La orden de compra fue modificada por otro usuario; recargue e intente de nuevo.";
     public const string NumberTakenMessage = "Ya existe una orden de compra con ese número; intente de nuevo.";
 
-    /// <summary>Campos que el PATCH rechaza aunque lleguen en el cuerpo (van a Extra por no estar en el contrato).</summary>
-    private static readonly string[] ImmutableOnPatch = { "number", "supplierId", "warehousePublicId", "orderDate", "currency", "status", "statusCode" };
+    /// <summary>
+    /// Campos que el PATCH rechaza aunque lleguen en el cuerpo (van a Extra por no estar en el contrato). Proveedor y almacén
+    /// salieron de la lista el 2026-09-30: son parte del contrato y se cambian solo en DRAFT.
+    /// </summary>
+    private static readonly string[] ImmutableOnPatch = { "number", "orderDate", "currency", "status", "statusCode" };
 
     // ================================================================ lista y ficha
 
@@ -182,9 +185,14 @@ public sealed class PurchaseOrderService(
     // ================================================================ edición
 
     /// <summary>
-    /// PATCH: fecha esperada, notas ("" las quita) y reemplazo completo de líneas. Exige la capacidad EDIT_PURCHASE_ORDER en
-    /// el estatus actual (422 fuera de DRAFT por defecto). Número, proveedor, almacén, fecha y moneda no cambian (400).
-    /// Con un recibo abierto no se cambian las líneas (409). rowVersion opcional (409 si cambió).
+    /// PATCH: fecha esperada, notas ("" las quita), reemplazo completo de líneas y, solo en DRAFT, proveedor y almacén. Exige
+    /// la capacidad EDIT_PURCHASE_ORDER en el estatus actual (422 fuera de DRAFT por defecto). Número, fecha y moneda no
+    /// cambian (400). Con un recibo abierto no se cambian las líneas (409). rowVersion opcional (409 si cambió).
+    /// Proveedor y almacén (ajuste del 2026-09-30): un valor igual al actual no es un cambio (se acepta en cualquier estatus
+    /// y no se revalida); uno distinto fuera de DRAFT → 409 SupplierWarehouseOnlyDraft, antes de la capacidad. En DRAFT se
+    /// validan como en el alta: almacén ajeno o inexistente 404, proveedor ajeno o inexistente 404, dados de baja 422. En
+    /// DRAFT la orden no tiene avisos ni recibos (se crean al recibir, desde SENT), así que cambiar el almacén no toca nada
+    /// más: las líneas no dependen del almacén.
     /// </summary>
     public async Task<PurchaseOrderDto> UpdateAsync(Guid publicId, PurchaseOrderPatchRequest req, CancellationToken ct)
     {
@@ -205,7 +213,33 @@ public sealed class PurchaseOrderService(
             var po = await PurchasingSupport.LockPurchaseOrderAsync(db, poId, ct2);
             if (!po.IsActive) throw new NotFoundException(PurchaseOrderRules.NotFound, feminine: true);
             PurchasingSupport.EnsureRowVersion(po.RowVersion, req.RowVersion, ConcurrencyMessage);
+
+            // Proveedor y almacén: solo un valor distinto del actual es un cambio, y solo se permite en DRAFT.
+            Warehouse? newWarehouse = null;
+            if (req.WarehousePublicId is Guid warehousePublicId)
+            {
+                var wh = await ResolveWarehouseOrDefaultAsync(warehousePublicId, ct2);   // ajeno o inexistente → 404
+                if (wh.WarehouseId != po.WarehouseId) newWarehouse = wh;
+            }
+            var newSupplierId = req.SupplierId is int requestedSupplier && requestedSupplier != po.SupplierId ? requestedSupplier : (int?)null;
+            if (newWarehouse is not null || newSupplierId is not null)
+            {
+                var code = await PurchasingSupport.StatusCodeOfAsync(db, po.StatusCodeId, ct2);
+                if (code != PurchaseOrderStatuses.Draft) throw new ConflictException(PurchaseOrderRules.SupplierWarehouseOnlyDraft);
+            }
+
             await statuses.EnsureAllowedAsync(EntityTypes.PurchaseOrder, po.StatusCodeId, Capabilities.EditPurchaseOrder, ct2);
+
+            // Mismas validaciones y el mismo orden que el alta (proveedor y luego almacén); se asigna solo si ambos pasan.
+            if (newSupplierId is int supplierId)
+            {
+                var supplier = await db.Set<Supplier>().AsNoTracking().FirstOrDefaultAsync(s => s.SupplierId == supplierId, ct2)
+                               ?? throw new NotFoundException("Proveedor");
+                if (!supplier.IsActive) throw new StatusRuleException(PurchaseOrderRules.SupplierInactive);
+            }
+            if (newWarehouse is { IsActive: false }) throw new StatusRuleException(PurchaseOrderRules.WarehouseInactive);
+            if (newSupplierId is int changedSupplier) po.SupplierId = changedSupplier;
+            if (newWarehouse is not null) po.WarehouseId = newWarehouse.WarehouseId;
 
             if (req.ExpectedDate is DateOnly expected)
             {
@@ -495,20 +529,22 @@ public static class PurchasingSupport
         return rows.GroupBy(r => r.PurchaseOrderLineId).ToDictionary(g => g.Key, g => g.Sum(r => r.Quantity));
     }
 
-    /// <summary>Banderas de recibos por orden: recibo activo OPEN y recibo activo confirmado (RECEIVED o PUTAWAY).</summary>
+    /// <summary>
+    /// Banderas de recibos por orden: recibo activo abierto (EXPECTED, RECEIVING, DISCREPANCY) y recibo activo confirmado
+    /// (RECEIVED, RECEIVED_VARIANCE o PUTAWAY).
+    /// </summary>
     public static async Task<Dictionary<int, ReceiptFlags>> ReceiptFlagsAsync(TeikemDbContext db, IReadOnlyCollection<int> poIds, CancellationToken ct)
     {
         var ids = poIds.ToList();
-        var openId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct);
-        var receivedId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, ct);
-        var putawayId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, ct);
+        var openIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
+        var confirmedIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.ConfirmedCodes.Append(ReceiptStatuses.Putaway), ct);
         var rows = await (from r in db.Set<ReceiptHeader>().AsNoTracking()
                           join a in db.Set<Asn>().AsNoTracking() on r.AsnId equals (int?)a.AsnId
                           where r.IsActive && a.PurchaseOrderId != null && ids.Contains(a.PurchaseOrderId.Value)
                           select new { PurchaseOrderId = a.PurchaseOrderId!.Value, r.StatusCodeId }).ToListAsync(ct);
         return rows.GroupBy(r => r.PurchaseOrderId).ToDictionary(g => g.Key, g => new ReceiptFlags(
-            g.Any(r => r.StatusCodeId == openId),
-            g.Any(r => r.StatusCodeId == receivedId || r.StatusCodeId == putawayId)));
+            g.Any(r => openIds.Contains(r.StatusCodeId)),
+            g.Any(r => confirmedIds.Contains(r.StatusCodeId))));
     }
 
     public static async Task<bool> HasOpenReceiptAsync(TeikemDbContext db, int poId, CancellationToken ct)

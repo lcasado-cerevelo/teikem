@@ -8,7 +8,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useMemo, useState, type ReactNode } from 'react'
 import { applyProblemDetails } from '../../kernel/api/problem'
 import { useT } from '../../kernel/i18n'
-import { ConfirmDialog, toast, type RowAction } from '../../kernel/ui'
+import { ConfirmDialog, IconCheckCircle, IconPlay, IconUserPlus, IconXCircle, toast, type RowAction } from '../../kernel/ui'
 import { useWarehouseTaskAction, type WarehouseTaskDto } from './api'
 import { AssignTaskModal, CompleteTaskModal } from './taskDialogs'
 
@@ -52,6 +52,7 @@ export function useTaskRowActions(): { rowActions: RowAction<WarehouseTaskDto>[]
       {
         key: 'assign',
         label: t('warehouse.tasks.actions.assign'),
+        icon: <IconUserPlus />,
         perm: 'warehouse.manage',
         visible: (r) => !isClosed(r),
         onClick: (r) => setAssignTask(r),
@@ -59,6 +60,7 @@ export function useTaskRowActions(): { rowActions: RowAction<WarehouseTaskDto>[]
       ...entries.map(([typeCode, perm]): RowAction<WarehouseTaskDto> => ({
         key: `start-${typeCode}`,
         label: t('warehouse.tasks.actions.start'),
+        icon: <IconPlay />,
         perm,
         visible: (r) => r.typeCode === typeCode && r.statusCode === 'PENDING',
         onClick: (r) => start(r.id ?? 0),
@@ -67,6 +69,7 @@ export function useTaskRowActions(): { rowActions: RowAction<WarehouseTaskDto>[]
       ...entries.map(([typeCode, perm]): RowAction<WarehouseTaskDto> => ({
         key: `complete-${typeCode}`,
         label: t('warehouse.tasks.actions.complete'),
+        icon: <IconCheckCircle />,
         perm,
         visible: (r) => r.typeCode === typeCode && r.completableFromQueue === true && !isClosed(r),
         onClick: (r) => setCompleteTask(r),
@@ -74,6 +77,7 @@ export function useTaskRowActions(): { rowActions: RowAction<WarehouseTaskDto>[]
       {
         key: 'cancel',
         label: t('warehouse.tasks.actions.cancel'),
+        icon: <IconXCircle />,
         perm: 'warehouse.manage',
         visible: (r) => CANCELLABLE_TYPES.has(r.typeCode ?? '') && !isClosed(r),
         onClick: (r) => setCancelTask(r),

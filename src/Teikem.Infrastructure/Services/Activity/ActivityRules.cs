@@ -223,7 +223,7 @@ public static class ActivityRules
         {
             EntityTypes.Receipt => to switch
             {
-                ReceiptStatuses.Received => ActivityEvents.ReceiptConfirmed,
+                ReceiptStatuses.Received or ReceiptStatuses.ReceivedWithVariance => ActivityEvents.ReceiptConfirmed,   // Lote 13
                 ReceiptStatuses.Putaway => ActivityEvents.ReceiptPutawayDone,
                 _ => null,
             },

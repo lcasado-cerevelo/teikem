@@ -28,7 +28,11 @@ public class WmsCatalogTests
             [StatusDomains.DockStatus] = new[] { DockStatuses.Free, DockStatuses.Occupied, DockStatuses.Maintenance },
             [StatusDomains.SerialStatus] = new[] { SerialStatuses.Available, SerialStatuses.Reserved, SerialStatuses.Shipped, SerialStatuses.Scrapped },
             [StatusDomains.AsnStatus] = new[] { AsnStatuses.Expected, AsnStatuses.Received, AsnStatuses.Cancelled },
-            [StatusDomains.ReceiptStatus] = new[] { ReceiptStatuses.Open, ReceiptStatuses.Received, ReceiptStatuses.Putaway },
+            [StatusDomains.ReceiptStatus] = new[]
+            {
+                ReceiptStatuses.Expected, ReceiptStatuses.Receiving, ReceiptStatuses.Discrepancy, ReceiptStatuses.Received,
+                ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway,
+            },
             [StatusDomains.WarehouseTaskStatus] = new[] { WarehouseTaskStatuses.Pending, WarehouseTaskStatuses.InProgress, WarehouseTaskStatuses.Done, WarehouseTaskStatuses.Cancelled },
             [StatusDomains.CycleCountStatus] = new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted, CycleCountStatuses.Reconciled },
             [StatusDomains.PickBatchStatus] = new[] { PickBatchStatuses.Collected, PickBatchStatuses.Packed, PickBatchStatuses.Cancelled },
@@ -53,6 +57,35 @@ public class WmsCatalogTests
         Assert.Contains("('AppointmentStatus','CANCELLED','Cancelada','Cancelled',@TERM,", Seed.Value);
         Assert.Contains("('AllocationStatus','CANCELLED','Cancelada','Cancelled',@TERM,", Seed.Value);
         Assert.Contains("('PickBatchStatus','COLLECTED','Recolectada','Collected',@PIPE,1,'#F59E0B',1)", Seed.Value);
+    }
+
+    [Fact]
+    public void Lote13_receipt_statuses_lateral_rules_and_retirement_of_open_are_seeded()
+    {
+        var seed = Seed.Value.Replace("\r\n", "\n");
+        // Seis estatus con etiqueta, tipo de etapa, orden y color del plan; EXPECTED es la única etapa inicial.
+        Assert.Contains("('ReceiptStatus','EXPECTED','Esperado','Expected',@PIPE,1,'#9CA3AF',1)", seed);
+        Assert.Contains("('ReceiptStatus','RECEIVING','Recibiendo','Receiving',@PIPE,2,'#3B82F6',0)", seed);
+        Assert.Contains("('ReceiptStatus','DISCREPANCY','Discrepancia','Discrepancy',@LAT,3,'#EF4444',0)", seed);
+        Assert.Contains("('ReceiptStatus','RECEIVED','Completado','Completed',@PIPE,4,'#10B981',0)", seed);
+        Assert.Contains("('ReceiptStatus','RECEIVED_VARIANCE','Completado con diferencia','Completed with variance',@LAT,5,'#F59E0B',0)", seed);
+        Assert.Contains("('ReceiptStatus','PUTAWAY','Acomodado','Put away',@TERM,6,'#059669',0)", seed);
+        Assert.False(SeedHas(StatusDomains.ReceiptStatus, "OPEN"));
+        // Bases ya sembradas: etiquetas nuevas de RECEIVED/PUTAWAY, recibos OPEN migrados con historial y OPEN retirado.
+        Assert.Contains("WHERE Entity = 'ReceiptStatus' AND InternalCode IN ('RECEIVED','PUTAWAY');", seed);
+        Assert.Contains("N'Lote 13: nuevo ciclo de estatus del recibo.'", seed);
+        Assert.Contains("INSERT INTO dbo.EntityStatusHistory (TenantId, EntityTypeLookupId, EntityId, FromStatusCodeId, ToStatusCodeId, Comment, ChangedAtUtc, ChangedBy)", seed);
+        Assert.Contains("UPDATE dbo.StatusCode SET IsActive = 0, IsInitial = 0 WHERE StatusCodeId = @RcOpen;", seed);
+
+        var lateral = Block(seed, "3G) STATUS LATERAL ENTRY");
+        Assert.Contains("lat.InternalCode='DISCREPANCY'", lateral);
+        Assert.Contains("frm.InternalCode='RECEIVING'", lateral);
+        Assert.Contains("lat.InternalCode='RECEIVED_VARIANCE'", lateral);
+        Assert.Contains("frm.InternalCode IN ('RECEIVING','DISCREPANCY','EXPECTED')", lateral);
+        Assert.Contains("lat.InternalCode='PUTAWAY'", lateral);
+        Assert.Contains("frm.InternalCode='RECEIVED_VARIANCE'", lateral);
+        // El fixture InMemory siembra las mismas reglas.
+        Assert.Equal(5, ReceiptStatusSeed.Entries.Length);
     }
 
     [Fact]

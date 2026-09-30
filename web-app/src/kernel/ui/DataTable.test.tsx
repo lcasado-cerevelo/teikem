@@ -204,6 +204,26 @@ describe('DataTable', () => {
     }
   })
 
+  it('forceCards: tarjetas aunque la ventana sea ancha (panel angosto), con el mismo pie; false = tabla', async () => {
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} label="Artículos" pageSize={2} forceCards />,
+    )
+    expect(screen.queryByRole('table')).toBeNull()
+    expect(cardCodes()).toEqual(['B-02', 'A-10'])
+    // el pie no cambia: rango, selector, Exportar y ‹ ›
+    expect(screen.getByText('1–2 de 5')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Filas por página' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exportar' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Página siguiente' }))
+    expect(cardCodes()).toEqual(['A-2', 'C-01'])
+    // "Ordenar por" de las tarjetas
+    expect(screen.getByRole('combobox', { name: 'Ordenar por' })).toBeInTheDocument()
+
+    rerender(<DataTable columns={COLUMNS} rows={ROWS} rowKey={(r) => r.id} label="Artículos" pageSize={2} forceCards={false} />)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+  })
+
   it('en tarjetas ordena con "Ordenar por" y el botón ▲/▼ invierte el sentido (orden local)', async () => {
     const restore = cardsMode()
     try {

@@ -34,9 +34,9 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
     public Task<BalancePageDto> Balances([FromQuery] Guid[]? warehousePublicIds, [FromQuery] int[]? binIds,
         [FromQuery] Guid[]? productPublicIds, [FromQuery] int[]? categoryIds, [FromQuery] string? lotNumber,
         [FromQuery] bool includeZero, [FromQuery] bool onlyAvailable, [FromQuery] string? search, CancellationToken ct,
-        [FromQuery] int skip = 0, [FromQuery] int take = 200)
+        [FromQuery] int skip = 0, [FromQuery] int take = 200, [FromQuery] bool activeProductsOnly = false)
         => reads.BalancesAsync(new BalanceQuery(NullIfEmpty(warehousePublicIds), NullIfEmpty(binIds), NullIfEmpty(productPublicIds),
-            NullIfEmpty(categoryIds), lotNumber, includeZero, onlyAvailable, search, skip, take), InventoryScope.Any, ct);
+            NullIfEmpty(categoryIds), lotNumber, includeZero, onlyAvailable, search, skip, take, activeProductsOnly), InventoryScope.Any, ct);
 
     /// <summary>
     /// Kárdex paginado (más recientes primero). quantity = la del ledger con signo (recepción +, despacho −);
@@ -57,7 +57,8 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
 
     /// <summary>
     /// Ajuste manual: quantity con signo (&gt; 0 entra a la posición, &lt; 0 sale; 0 → 400) y motivo del catálogo
-    /// AdjustmentReason (RECEIPT_VARIANCE, COUNT_VARIANCE y PICK_BATCH_REVERSAL los asigna el sistema → 400).
+    /// AdjustmentReason (RECEIPT_VARIANCE, COUNT_VARIANCE, PICK_BATCH_REVERSAL y OPENING_BALANCE los asigna el sistema → 400).
+    /// notes obligatoria (vacía → 400 errors.notes 'Escriba una nota que explique el ajuste.'; máx. 300).
     /// Salida por encima del disponible → 409 insufficient_stock.
     /// </summary>
     [HttpPost("adjustments"), RequirePermission(PermissionCatalog.InventoryAdjust)]

@@ -20,6 +20,8 @@ const SKU = `PROD-${STAMP}`
 const PRODUCT_NAME = `Producto e2e ${STAMP}`
 const SUPPLIER = `Prov-${STAMP}`
 const CLIENT = `Cliente e2e F6 ${STAMP}`
+/** Número del recibo del paso 7 (lo usa el paso 8; el describe corre en serie). */
+let receiptNumber = ''
 
 // Interfaz en español (el idioma inicial sale del navegador si el usuario no eligió otro).
 test.use({ locale: 'es-PR' })
@@ -91,14 +93,19 @@ async function pickWarehouse(scope: Page | Locator, box: Locator) {
   await expect(box).toHaveValue(WAREHOUSE)
 }
 
+/** Recibo de la lista maestra (botón con su número) de la pestaña visible de Recibo. */
+function receiptItem(page: Page, number: string): Locator {
+  return page.getByRole('group', { name: 'Lista de recibos' }).getByRole('button', { name: new RegExp(`${number}\\b`) })
+}
+
 /**
- * Cola de acomodo (PUTAWAY) de ALM-01: pestaña 'Acomodo pendiente' de Recibo, que reemplaza a 'Tareas de almacén' (el filtro
- * Almacén de la cola es el primer control de 'Filtros').
+ * Pestaña 'Acomodo pendiente' de Recibo (lista de recibos con tareas de acomodo abiertas) con el recibo elegido: sus tareas
+ * de acomodo quedan a la derecha.
  */
-async function openAlm01Tasks(page: Page) {
+async function openPutawayOf(page: Page, number: string) {
   await page.goto('/warehouse/receipts?tab=putaway')
   await expect(page.getByRole('tab', { name: 'Acomodo pendiente' })).toHaveAttribute('aria-selected', 'true')
-  await pickWarehouse(page, page.getByRole('group', { name: 'Filtros' }).getByRole('combobox').first())
+  await receiptItem(page, number).click()
 }
 
 /** Espera el aviso (toast) de éxito con ese texto. */
@@ -304,38 +311,56 @@ test.describe('Lote F6 — escritorio', () => {
 
     const pipeline = page.locator('.stpipe')
     await expect(pipeline.getByText('Borrador').first()).toBeVisible()
+    // en Borrador el proveedor y el almacén se pueden cambiar desde la ficha (combobox); al enviarla pasan a solo lectura
+    await expect(page.getByRole('combobox', { name: /^Proveedor/ })).toHaveValue(SUPPLIER)
     await page.getByRole('button', { name: 'Avanzar a Enviada' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Cambiar estatus' }).click()
     await expect(page.getByRole('button', { name: 'Avanzar a Enviada' })).toHaveCount(0)
     await expect(page.locator('.chip', { hasText: 'Enviada' }).first()).toBeVisible()
+    await expect(page.getByRole('combobox', { name: /^Proveedor/ })).toHaveCount(0)
     await shot(page, 'orden-compra-ficha')
     await page.goto('/warehouse/purchase-orders')
     await expect(page.getByRole('row').filter({ hasText: SUPPLIER }).locator('.chip', { hasText: 'Enviada' })).toBeVisible()
     await shot(page, 'ordenes-compra')
   })
 
-  test('7. recibo ciego de 5 unidades: al confirmarlo sube el saldo y nace una tarea PUTAWAY', async ({ page }) => {
+  test('7. recibo ciego: lo recibido copia lo esperado; al confirmarlo sube el saldo y nace una tarea PUTAWAY', async ({ page }) => {
     await login(page)
     await page.goto('/warehouse/receipts')
     await page.getByRole('button', { name: 'Nuevo recibo' }).click()
-    const dialog = page.getByRole('dialog')
-    await dialog.getByLabel(/^Recibir/).selectOption('BLIND')
+    const dialog = page.getByRole('dialog', { name: 'Nuevo recibo' })
+    // Lote 13: el modal solo lleva el encabezado; las líneas se capturan en el detalle
+    await dialog.getByLabel(/^Origen/).selectOption('BLIND')
     await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
-    await pickProduct(dialog, /Producto/, SKU)
-    await dialog.getByLabel(/^Cantidad recibida/).fill('5')
+    await dialog.getByLabel('Transporte').fill('Camión e2e')
+    await dialog.getByLabel('Referencia').fill(`BOL-${STAMP}`)
     await shot(page, 'recibo-nuevo')
-    await dialog.getByRole('button', { name: /Guardar|Crear recibo/ }).click()
-    await expectToast(page, /Recibo .* creado\./)
-    await expect(page).toHaveURL(/\/warehouse\/receipts\/[0-9a-f-]+$/)
+    await dialog.getByRole('button', { name: 'Crear recibo' }).click()
+    await expectToast(page, /Recibo REC-\d+ creado\./)
+    // maestro-detalle en la misma pantalla: ?receipt= elige el recibo y el detalle queda a la derecha
+    await expect(page).toHaveURL(/\/warehouse\/receipts\?receipt=[0-9a-f-]+/)
+    const detail = page.locator('.rcp-side')
+    receiptNumber = /REC-\d+/.exec((await detail.locator('.ref').first().textContent()) ?? '')?.[0] ?? ''
+    expect(receiptNumber).not.toBe('')
+    await expect(detail.locator('.chip', { hasText: 'Esperado' }).first()).toBeVisible()
 
-    await page.getByRole('button', { name: 'Confirmar recibo' }).click()
+    // recibo ciego: al escribir lo recibido, lo esperado se copia solo y el recibo pasa a Recibiendo
+    await pickProduct(detail, 'Producto de la línea 1', SKU)
+    const received = detail.getByRole('textbox', { name: 'Recibido de la línea 1' })
+    await received.fill('5')
+    await expect(detail.getByRole('textbox', { name: 'Esperado de la línea 1' })).toHaveValue('5')
+    await received.press('Tab')
+    await expect(detail.locator('.chip', { hasText: 'Recibiendo' }).first()).toBeVisible()
+
+    await detail.getByRole('button', { name: 'Confirmar recibo' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Confirmar recibo' }).click()
-    await expectToast(page, /Recibo .* confirmado\./)
-    // Tareas de acomodo del recibo
-    await expect(page.getByText('Tareas de acomodo')).toBeVisible()
+    await expectToast(page, /Recibo REC-\d+ confirmado\./)
+    // sin diferencia: Completado, con su tarea de acomodo debajo de las líneas
+    await expect(detail.locator('.chip', { hasText: /^Completado$/ }).first()).toBeVisible()
+    await expect(detail.getByRole('row').filter({ hasText: SKU }).filter({ hasText: 'Pendiente' })).toHaveCount(1)
     await shot(page, 'recibo-ficha')
     await page.goto('/warehouse/receipts')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Recibo' })).toBeVisible()
     await shot(page, 'recepcion')
 
     await page.goto('/warehouse/kardex?tab=balances')
@@ -344,19 +369,16 @@ test.describe('Lote F6 — escritorio', () => {
     await expect(rows).toHaveCount(2) // la posición del ajuste (10) y la de recepción (5)
     const onHand = await rows.evaluateAll((trs) => trs.map((tr) => Number(tr.querySelectorAll('td')[7]?.textContent ?? 0)))
     expect(onHand.reduce((a, b) => a + b, 0)).toBe(15)
-
-    await openAlm01Tasks(page)
-    // la cola de acomodo solo trae tareas PUTAWAY (sin columna de tipo)
-    await expect(page.getByRole('row').filter({ hasText: SKU })).toHaveCount(1)
   })
 
-  test('8. Recibo → Acomodo pendiente: asignar a mí, iniciar y completar la PUTAWAY en la posición sugerida', async ({ page }) => {
+  test('8. Recibo → Acomodo pendiente: asignar a mí, iniciar y completar la PUTAWAY; el recibo pasa a Acomodado', async ({ page }) => {
     await login(page)
-    await openAlm01Tasks(page)
+    await openPutawayOf(page, receiptNumber)
     const row = page.getByRole('row').filter({ hasText: SKU })
     await expect(row).toHaveCount(1)
     await shot(page, 'tareas')
 
+    // acciones de la tarea como íconos (su nombre accesible es el de la acción)
     await row.getByRole('button', { name: 'Asignar' }).click()
     let dialog = page.getByRole('dialog')
     await dialog.getByLabel('Usuario').selectOption({ label: 'Administrador Advance' })
@@ -378,11 +400,14 @@ test.describe('Lote F6 — escritorio', () => {
     await shot(page, 'tarea-completar')
     await dialog.getByRole('button', { name: /Guardar|Completar/ }).click()
     await expectToast(page, 'Tarea completada.')
-    // cerrada: sale de la cola (que no incluye cerradas)
-    await expect(page.getByRole('row').filter({ hasText: SKU })).toHaveCount(0)
+    // sin tareas abiertas el recibo pasa a Acomodado y sale de 'Acomodo pendiente'
+    await expect(receiptItem(page, receiptNumber)).toHaveCount(0)
+    await page.goto('/warehouse/receipts')
+    await receiptItem(page, receiptNumber).click()
+    await expect(page.locator('.rcp-side .chip', { hasText: 'Acomodado' }).first()).toBeVisible()
   })
 
-  test('9. recolectar 3 unidades (EMP-#####) y empacarlas: la orden creada se ve en Consulta de órdenes', async ({ page, request }) => {
+  test('9. recolectar 3 unidades (EMP-#####) y empacarlas desde la fila: la orden creada se ve en Consulta de órdenes', async ({ page, request }) => {
     // Cliente de la orden del empaque (propio de esta corrida)
     const token = await apiToken(request)
     const created = await request.post(`${API_URL}/api/v1/clients`, { headers: { Authorization: `Bearer ${token}` }, data: { name: CLIENT } })
@@ -391,25 +416,29 @@ test.describe('Lote F6 — escritorio', () => {
 
     await login(page)
     await page.goto('/warehouse/pick-batches')
-    await page.getByRole('button', { name: 'Recolectar' }).click()
-    let dialog = page.getByRole('dialog')
-    await pickWarehouse(dialog, dialog.getByRole('combobox', { name: /^Almacén/ }))
-    await pickProduct(dialog, /Producto/, SKU)
-    await dialog.getByLabel(/^Cantidad/).fill('3')
+    // Lote 13: dos paneles — Recolección (captura en rejilla) a la izquierda, Recolecciones a la derecha
+    await pickWarehouse(page, page.getByRole('combobox', { name: /^Almacén/ }))
+    await pickProduct(page, 'Producto de la línea 1', SKU)
+    await page.getByLabel('Cantidad de la línea 1').fill('3')
     await shot(page, 'recoleccion-nueva')
-    await dialog.getByRole('button', { name: 'Recolectar' }).click()
-    await expectToast(page, /Recolección .* creada\./)
-    await expect(page).toHaveURL(/\/warehouse\/pick-batches\/[0-9a-f-]+$/)
+    await page.getByRole('button', { name: 'Recolectar (bajar de inventario)' }).click()
+    const collectedToast = page.locator('.toast').filter({ hasText: /Recolección EMP-\d{5} creada\./ }).first()
+    await expect(collectedToast).toBeVisible()
+    const batchNumber = /EMP-\d{5}/.exec((await collectedToast.textContent()) ?? '')?.[0] ?? ''
+    expect(batchNumber).not.toBe('')
 
-    await page.getByRole('button', { name: 'Empacar' }).click()
-    dialog = page.getByRole('dialog')
+    // el panel de Recolecciones pasa a tarjetas cuando le queda angosto (forceCards): fila de tabla o tarjeta
+    const batchRow = page.locator('tr, li.dt-card').filter({ hasText: batchNumber })
+    await expect(batchRow).toHaveCount(1)
+    await batchRow.getByRole('button', { name: 'Empacar' }).click()
+    const dialog = page.getByRole('dialog', { name: `Empacar ${batchNumber}` })
     const client = dialog.getByRole('combobox', { name: /Cliente de la orden/ })
     await client.click()
     await client.fill(clientCode)
     await dialog.getByRole('option', { name: new RegExp(clientCode) }).first().click()
-    // tipo de servicio y de paquete explícitos: el valor vacío usa el predeterminado de la compañía, que solo existe si se
-    // configuró (lo hace scripts/smoke.sh; una base recién inicializada no lo trae y el API responde 'El tipo de servicio es
-    // obligatorio.' / 'El tipo de paquete es obligatorio.')
+    // tipo de servicio y de paquete explícitos: "Predeterminado de la compañía (…)" solo se ofrece si la compañía lo configuró
+    // (lo hace scripts/smoke.sh; una base recién inicializada no lo trae y entonces la pantalla exige elegir uno); elegirlos a
+    // mano funciona en ambos casos
     await dialog.getByLabel(/^Tipo de servicio/).selectOption('STANDARD')
     await dialog.getByLabel(/^Tipo de paquete/).selectOption('BOX')
     await dialog.getByLabel(/^Consignatario(?! del)/).selectOption('new')
@@ -419,20 +448,19 @@ test.describe('Lote F6 — escritorio', () => {
     await dialog.getByLabel(/^Piezas/).fill('1')
     await shot(page, 'empacar')
     await dialog.getByRole('button', { name: 'Empacar y crear orden' }).click()
-    await expectToast(page, /Empacada: se creó la orden /)
-    // la recolección (EMP-#####) queda Empacada y enlaza la orden de transporte que se creó
-    const batchHeading = page.getByRole('heading', { level: 1, name: /^EMP-\d{5}/ })
-    await expect(batchHeading).toBeVisible()
-    const batchNumber = /EMP-\d{5}/.exec((await batchHeading.textContent()) ?? '')?.[0] ?? ''
-    await expect(page.locator('.stpipe').getByText('Empacada').first()).toBeVisible()
-    const orderLink = page.getByRole('link', { name: /^[A-Z]+-\d+$/ }).first()
-    await expect(orderLink).toBeVisible()
-    const orderNumber = (await orderLink.textContent())?.trim() ?? ''
+    const packedToast = page.locator('.toast').filter({ hasText: /Empacada: se creó la orden / }).first()
+    await expect(packedToast).toBeVisible()
+    const orderNumber = /orden\s+([A-Z0-9-]+)/.exec((await packedToast.textContent()) ?? '')?.[1] ?? ''
     expect(orderNumber.length).toBeGreaterThan(0)
-    await shot(page, 'recoleccion-ficha')
-    await page.goto('/warehouse/pick-batches')
-    await expect(page.getByRole('row').filter({ hasText: batchNumber })).toHaveCount(1)
+    // la recolección queda Empacada (ya no ofrece Empacar) y su detalle (clic en la fila) enlaza la orden creada
+    await expect(batchRow.locator('.chip', { hasText: 'Empacada' })).toBeVisible()
+    await expect(batchRow.getByRole('button', { name: 'Empacar' })).toHaveCount(0)
     await shot(page, 'recolecciones')
+    await batchRow.getByText(batchNumber, { exact: true }).click()
+    const detailDialog = page.getByRole('dialog')
+    await expect(detailDialog.getByText(orderNumber).first()).toBeVisible()
+    await shot(page, 'recoleccion-ficha')
+    await detailDialog.getByRole('button', { name: 'Cerrar' }).first().click()
 
     await page.goto('/orders')
     // la búsqueda libre cubre número, factura, lote de empaque y consignatario: se busca por la recolección (EMP-#####),

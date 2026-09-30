@@ -85,7 +85,10 @@ export function activityLink(e: ActivityEventDto): ActivityLink | null {
 
   switch ((e.entityType ?? '').toUpperCase()) {
     case 'RECEIPT':
-      return byPublicId('/warehouse/receipts')
+      // Lote 13: el recibo se abre en la lista (maestro-detalle), elegido con `?receipt=`; la ficha propia ya no existe
+      return e.publicId
+        ? { to: `/warehouse/receipts?receipt=${encodeURIComponent(e.publicId)}`, perm: 'inventory.view', module: wms }
+        : null
     case 'CYCLE_COUNT':
       return byId('/warehouse/cycle-counts', 'warehouse.count', wms)
     case 'PICK_BATCH':

@@ -81,15 +81,32 @@ public class WarehouseTaskStatusEffectTests
     }
 
     [Fact]
-    public async Task Receipt_outside_received_is_not_changed()
+    public async Task Last_putaway_of_a_receipt_completed_with_variance_moves_it_to_putaway()
     {
+        // Lote 13: RECEIVED_VARIANCE (lateral) → PUTAWAY por la entrada lateral sembrada.
         await using var f = await Fixture.CreateAsync();
-        var receipt = await f.SeedReceiptAsync(ReceiptStatuses.Open);
+        var receipt = await f.SeedReceiptAsync(ReceiptStatuses.ReceivedWithVariance);
         var task = await f.SeedTaskAsync(WarehouseTaskTypes.Putaway, WarehouseTaskStatuses.InProgress, receipt);
 
         await f.TransitionTaskAsync(task, WarehouseTaskStatuses.Done);
 
-        Assert.Equal(f.Id(StatusDomains.ReceiptStatus, ReceiptStatuses.Open), await f.ReceiptStatusIdAsync(receipt));
+        Assert.Equal(f.Id(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway), await f.ReceiptStatusIdAsync(receipt));
+        Assert.Equal(new[] { ReceiptStatuses.Putaway }, await f.HistoryCodesAsync(EntityTypes.Receipt, receipt));
+    }
+
+    [Theory]
+    [InlineData(ReceiptStatuses.Expected)]
+    [InlineData(ReceiptStatuses.Receiving)]
+    [InlineData(ReceiptStatuses.Discrepancy)]
+    public async Task Receipt_outside_received_is_not_changed(string open)
+    {
+        await using var f = await Fixture.CreateAsync();
+        var receipt = await f.SeedReceiptAsync(open);
+        var task = await f.SeedTaskAsync(WarehouseTaskTypes.Putaway, WarehouseTaskStatuses.InProgress, receipt);
+
+        await f.TransitionTaskAsync(task, WarehouseTaskStatuses.Done);
+
+        Assert.Equal(f.Id(StatusDomains.ReceiptStatus, open), await f.ReceiptStatusIdAsync(receipt));
         Assert.Empty(await f.HistoryCodesAsync(EntityTypes.Receipt, receipt));
     }
 
@@ -177,7 +194,7 @@ public class WarehouseTaskStatusEffectTests
                 return l;
             }
             var pipe = L(LookupDomains.StageKind, StageKinds.Pipeline);
-            L(LookupDomains.StageKind, StageKinds.Lateral);
+            var lat = L(LookupDomains.StageKind, StageKinds.Lateral);
             var term = L(LookupDomains.StageKind, StageKinds.Terminal);
             foreach (var e in new[] { EntityTypes.Warehouse, EntityTypes.Receipt, EntityTypes.WarehouseTask, EntityTypes.Product })
                 L(LookupDomains.EntityType, e);
@@ -198,13 +215,18 @@ public class WarehouseTaskStatusEffectTests
             }
             S(StatusDomains.WarehouseStatus, WarehouseStatuses.Active, pipe, 1, true);
             S(StatusDomains.WarehouseStatus, WarehouseStatuses.Inactive, term, 2);
-            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, pipe, 1, true);
-            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 2);
-            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 3);
+            // Lote 13: los seis estatus del recibo y sus entradas laterales, como logistica-db-seed.sql.
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Expected, pipe, 1, true);
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving, pipe, 2);
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Discrepancy, lat, 3);
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 4);
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.ReceivedWithVariance, lat, 5);
+            S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 6);
             S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, pipe, 1, true);
             S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.InProgress, pipe, 2);
             S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Done, term, 3);
             S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Cancelled, term, 4);
+            ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), Id);
 
             Db.Set<Warehouse>().Add(new Warehouse
             {

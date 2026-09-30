@@ -119,6 +119,8 @@ public sealed class ReceiptHeaderConfiguration : IEntityTypeConfiguration<Receip
         b.HasKey(r => r.ReceiptHeaderId);
         b.Property(r => r.PublicId).HasDefaultValueSql("NEWID()").ValueGeneratedOnAdd();
         b.Property(r => r.Number).HasMaxLength(40).IsRequired();
+        b.Property(r => r.Carrier).HasMaxLength(80);     // Lote 13
+        b.Property(r => r.Reference).HasMaxLength(80);   // Lote 13
         b.Property(r => r.RowVersion).IsRowVersion();
 
         b.HasIndex(r => new { r.TenantId, r.Number }).IsUnique().HasDatabaseName("UQ_Receipt_Number");
@@ -130,6 +132,9 @@ public sealed class ReceiptHeaderConfiguration : IEntityTypeConfiguration<Receip
         b.HasOne<Warehouse>().WithMany().HasForeignKey(r => r.WarehouseId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<Asn>().WithMany().HasForeignKey(r => r.AsnId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<WarehouseDock>().WithMany().HasForeignKey(r => r.DockId).OnDelete(DeleteBehavior.NoAction);
+        // Lote 13: FK_Receipt_StagingBin es compuesta en SQL (DefaultStagingBinId, WarehouseId) → UQ_WarehouseBin_IdWh; en EF
+        // basta la simple (como FK_Receipt_Dock): el servicio valida que la posición sea del almacén del recibo.
+        b.HasOne<WarehouseBin>().WithMany().HasForeignKey(r => r.DefaultStagingBinId).OnDelete(DeleteBehavior.NoAction);
         b.HasMany(r => r.Lines).WithOne().HasForeignKey(l => l.ReceiptHeaderId).OnDelete(DeleteBehavior.NoAction);
     }
 }

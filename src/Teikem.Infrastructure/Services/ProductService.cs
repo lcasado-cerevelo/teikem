@@ -146,6 +146,14 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             query = query.Where(p => balances.Where(b => b.ProductId == p.ProductId).Sum(b => b.QtyOnHand - b.QtyReserved) > 0);
         }
 
+        if (q.OnlyOnHand)
+        {
+            // Ajuste del 2026-09-30 (KPI 'Unidades totales'): existencia en mano > 0 en todas las posiciones (sin excluir zonas:
+            // la cifra del indicador suma todos los saldos), en los almacenes indicados si los hay. Mismo patrón que OnlyAvailable.
+            var onHand = StockIn(warehouseIds);
+            query = query.Where(p => onHand.Where(b => b.ProductId == p.ProductId).Sum(b => b.QtyOnHand) > 0);
+        }
+
         if (q.BelowMin)
         {
             // Lote 7A: bajo mínimo con el mismo cálculo que ProductRules.IsBelowMin de la lista (activo, con mínimo y disponible
@@ -559,7 +567,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     public async Task<ProductDetailDto> DeactivateAsync(Guid publicId, CancellationToken ct)
     {
         var current = await ResolveProductAsync(publicId, InventoryScope.Any, ct);
-        var openReceiptId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct);
+        var openReceiptIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);   // Lote 13: E/R/D
         var openTaskIds = new List<int>
         {
             await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, ct),
@@ -585,7 +593,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             // ReceiptLine no lleva TenantId: se alcanza por su recibo filtrado.
             var inOpenReceipt = await (from l in db.Set<ReceiptLine>().AsNoTracking()
                                        join h in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals h.ReceiptHeaderId
-                                       where l.ProductId == product.ProductId && h.IsActive && h.StatusCodeId == openReceiptId
+                                       where l.ProductId == product.ProductId && h.IsActive && openReceiptIds.Contains(h.StatusCodeId)
                                        select l.ReceiptLineId).AnyAsync(ct2);
             var inOpenTask = await db.Set<WarehouseTask>().AsNoTracking()
                 .AnyAsync(t => t.ProductId == product.ProductId && openTaskIds.Contains(t.StatusCodeId), ct2);

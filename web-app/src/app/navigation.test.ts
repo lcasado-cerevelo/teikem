@@ -4,7 +4,7 @@ import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
 import { translate } from '../kernel/i18n/i18n'
 import { NAV_GROUPS, navSubtitleKey, navTitleKey, routeAllowed, visibleNav } from './navigation'
-import { appRoutes, legacyInventorySearch, type AppRoute } from './routes'
+import { appRoutes, legacyInventorySearch, legacyReceiptSearch, type AppRoute } from './routes'
 
 const ALL_MODULES = new Set<string>(Object.values(ModuleKeys))
 const ALL_PERMS = new Set(appRoutes.flatMap((r) => (r.perm ? r.perm.split('|') : [])))
@@ -60,8 +60,8 @@ describe('menú completo (routes.tsx)', () => {
       'Proveedores',
       'Compras',
       'Recibo',
-      'Ajustes de inventario',
       'Recolección y empaque',
+      'Ajustes de inventario',
       'Conteo cíclico',
       'Cruce de muelle',
       'Kárdex de movimientos',
@@ -117,12 +117,16 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/').pending).toBeUndefined()
   })
 
-  it("'Ajustes de inventario' (Fase 7) es pantalla real, con el acceso de Compras, justo después de Recibo", () => {
+  it("'Ajustes de inventario' (Fase 7) es pantalla real, con el acceso de Compras; Lote 13: Recibo 60 → Recolección y empaque 70 → Ajustes 80 → Conteo 90", () => {
     const adj = byPath('/warehouse/inventory-adjustments')
-    expect(adj).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING', nav: { group: 'warehouse', key: 'inventoryAdjustments' } })
+    expect(adj).toMatchObject({ perm: 'purchasing.view', module: 'PURCHASING', nav: { group: 'warehouse', key: 'inventoryAdjustments', order: 80 } })
     expect(adj.pending).toBeUndefined()
+    expect(byPath('/warehouse/receipts').nav).toMatchObject({ order: 60 })
+    expect(byPath('/warehouse/pick-batches').nav).toMatchObject({ key: 'pickBatches', order: 70 })
+    expect(byPath('/warehouse/cycle-counts').nav).toMatchObject({ order: 90 })
     const warehouse = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES).find((g) => g.key === 'warehouse')!.items.map((r) => r.path)
-    expect(warehouse.indexOf('/warehouse/inventory-adjustments')).toBe(warehouse.indexOf('/warehouse/receipts') + 1)
+    expect(warehouse.indexOf('/warehouse/pick-batches')).toBe(warehouse.indexOf('/warehouse/receipts') + 1)
+    expect(warehouse.indexOf('/warehouse/inventory-adjustments')).toBe(warehouse.indexOf('/warehouse/pick-batches') + 1)
     expect(routeAllowed(adj, new Set(['purchasing.view']), new Set(['PURCHASING']))).toBe(true)
     expect(routeAllowed(adj, new Set(['inventory.view']), new Set(['PURCHASING', 'WMS_LOTSERIAL']))).toBe(false)
   })
@@ -136,8 +140,8 @@ describe('menú completo (routes.tsx)', () => {
       '/warehouse/suppliers',
       '/warehouse/purchase-orders',
       '/warehouse/receipts',
-      '/warehouse/inventory-adjustments',
       '/warehouse/pick-batches',
+      '/warehouse/inventory-adjustments',
       '/warehouse/cycle-counts',
       '/warehouse/cross-dock-plans',
       '/warehouse/kardex',
@@ -158,6 +162,24 @@ describe('menú completo (routes.tsx)', () => {
     expect(map('categoryIds=7&warehousePublicIds=W')).toBe('categoryIds=7&warehousePublicIds=W&tab=balances')
     expect(map('tab=kardex&product=P')).toBe('product=P')
     expect(map('tab=reconciliation')).toBe('tab=reconciliation')
+  })
+
+  it('legacyReceiptSearch: /warehouse/receipts/:publicId → ?receipt=<publicId> primero; los demás parámetros se quedan', () => {
+    const pid = '11111111-1111-1111-1111-111111111111'
+    const map = (q: string, publicId?: string) => legacyReceiptSearch(new URLSearchParams(q), { publicId }).toString()
+    expect(map('', pid)).toBe(`receipt=${pid}`)
+    expect(map('tab=asns&warehouse=W', pid)).toBe(`receipt=${pid}&tab=asns&warehouse=W`)
+    // un ?receipt= viejo lo reemplaza el de la ruta; sin publicId la consulta queda igual
+    expect(map('receipt=OTRO&x=1', pid)).toBe(`receipt=${pid}&x=1`)
+    expect(map('x=1')).toBe('x=1')
+  })
+
+  it('la ficha vieja del recibo es una redirección sin ítem, guarda ni módulo propios (la guarda es la de la lista)', () => {
+    const old = byPath('/warehouse/receipts/:publicId')
+    expect(old.nav).toBeUndefined()
+    expect(old.perm).toBeUndefined()
+    expect(old.module).toBeUndefined()
+    expect(old.pending).toBeUndefined()
   })
 
   it('un ítem pendiente sin su permiso o sin su módulo no aparece; con los dos, sí', () => {

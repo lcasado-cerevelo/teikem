@@ -428,6 +428,9 @@
       "page": "Página {page} de {pages}",
       "footer": "Generado con Teikem",
       "empty": "No hay registros que cumplan los filtros."
+    },
+    "split": {
+      "resize": "Cambiar el ancho de los paneles"
     }
   },
   "examples": {
@@ -1176,9 +1179,10 @@
         "serial": "Con número de serie",
         "serialMissing": "{count} sin series completas",
         "filterHint": "Filtrar la tabla: {view}. Otro clic quita el filtro.",
+        "totalUnitsNote": "La cifra suma la existencia en mano de los productos activos.",
         "view": {
           "active": "Solo activos",
-          "available": "Activos con disponible",
+          "available": "Activos con existencia",
           "low": "Bajo mínimo",
           "serial": "Con número de serie"
         }
@@ -1753,9 +1757,6 @@
       }
     },
     "tasks": {
-      "title": "Tareas de almacén",
-      "subtitle": "Cola unificada de tareas: recepción, reabasto, conteo y cruce de muelle.",
-      "count": "{count} tareas",
       "unassigned": "Sin asignar",
       "started": "Tarea iniciada.",
       "cancelTitle": "Cancelar la tarea",
@@ -1776,7 +1777,6 @@
       "filters": {
         "warehouse": "Almacén",
         "anyWarehouse": "Cualquier almacén",
-        "types": "Tipo",
         "status": "Estatus",
         "assignedToMe": "Asignadas a mí",
         "includeClosed": "Incluir cerradas"
@@ -1805,7 +1805,6 @@
         "suggestion": "Posición sugerida:",
         "noSuggestion": "No hay una posición sugerida para esta tarea.",
         "saved": "Tarea completada.",
-        "suggested": "sugerida",
         "anyBin": "Sin elegir"
       },
       "replenish": {
@@ -1984,23 +1983,16 @@
       "tabReceipts": "Recibos",
       "tabAsns": "Avisos de llegada",
       "tabPutaway": "Acomodo pendiente",
-      "putawayTitle": "Acomodo pendiente",
       "new": "Nuevo recibo",
       "create": "Crear recibo",
       "created": "Recibo {number} creado.",
-      "count": "{count} recibo(s)",
-      "open": "Abrir",
       "searchPlaceholder": "Número, aviso, cliente, orden de compra o proveedor",
       "choose": "Seleccione…",
       "defaultStaging": "Primera posición de una zona STAGING",
       "pickWarehouseFirst": "Elija primero el almacén.",
       "noPoAccess": "Su usuario no puede consultar órdenes de compra.",
-      "linesTitle": "Líneas",
-      "addLine": "Agregar línea",
       "removeLine": "Quitar línea",
-      "fromDocumentNote": "Las líneas se toman del documento: lo recibido arranca igual a lo esperado y se corrige en la ficha antes de confirmar.",
       "notFound": "Recibo no encontrado.",
-      "back": "Volver a Recibo",
       "sources": {
         "BLIND": "Ciego",
         "RETURN": "Devolución",
@@ -2019,13 +2011,7 @@
         "SERIAL": "Por serie"
       },
       "columns": {
-        "number": "Número",
-        "type": "Tipo",
-        "warehouse": "Almacén",
-        "status": "Estatus",
-        "from": "Origen",
-        "createdAt": "Creado",
-        "variance": "Diferencia"
+        "status": "Estatus"
       },
       "filters": {
         "warehouse": "Almacén",
@@ -2035,18 +2021,19 @@
         "created": "Creado",
         "product": "Producto",
         "variance": "Diferencia",
-        "withVariance": "Con diferencia",
-        "withoutVariance": "Sin diferencia"
+        "varianceOptions": {
+          "SHORT": "Faltante",
+          "OVER": "Sobrante",
+          "NONE": "Sin diferencia"
+        }
       },
       "fields": {
-        "source": "Recibir",
         "warehouse": "Almacén",
         "asn": "Aviso de llegada",
         "purchaseOrder": "Orden de compra",
         "stagingBin": "Posición de recepción",
         "stagingBinHelp": "Zona STAGING o CROSSDOCK. Vacío: la primera posición de recepción del almacén.",
         "product": "Producto",
-        "receivedQty": "Cantidad recibida",
         "lot": "Lote",
         "manufactureDate": "Fabricación",
         "expiryDate": "Vencimiento",
@@ -2059,60 +2046,137 @@
         "poRequired": "Elija la orden de compra.",
         "productRequired": "Indique el producto.",
         "linesRequired": "Indique al menos una línea.",
-        "tooManyLines": "El recibo admite como máximo 200 líneas."
+        "carrierMax": "El transporte admite como máximo 80 caracteres.",
+        "referenceMax": "La referencia admite como máximo 80 caracteres.",
+        "expectedQtyNegative": "La cantidad esperada no puede ser negativa."
       },
       "detail": {
-        "statusHelp": "El estatus lo cambia el sistema: RECEIVED al confirmar y PUTAWAY cuando se termina la última tarea de acomodo.",
-        "summary": "Resumen",
         "expected": "Esperado",
         "received": "Recibido",
-        "variance": "Diferencia",
-        "dock": "Muelle",
-        "receivedAt": "Confirmado",
-        "lines": "Líneas",
-        "lineCount": "{count} línea(s)",
         "noLines": "El recibo no tiene líneas.",
-        "addLine": "Agregar línea",
-        "capture": "Capturar",
-        "captureTitle": "Capturar {product}",
-        "lineSaved": "Línea guardada.",
-        "lineAdded": "Línea agregada.",
         "removeLine": "Quitar",
         "removeTitle": "Quitar línea",
         "removeBody": "¿Quitar la línea de {product} del recibo?",
         "lineRemoved": "Línea quitada.",
-        "serialCount": "{count} serie(s)",
         "confirm": "Confirmar recibo",
         "confirmTitle": "Confirmar recibo",
         "confirmBody": "Se confirma el recibo {number} completo: se asienta el inventario y se crean las tareas de acomodo. Ya no se podrá modificar.",
         "confirmed": "Recibo {number} confirmado.",
-        "delete": "Eliminar",
-        "deleteTitle": "Eliminar recibo",
-        "deleteBody": "¿Eliminar el recibo abierto {number}? Si nació de un aviso de cliente, el aviso vuelve a quedar pendiente; si nació de una orden de compra, su aviso se cancela.",
-        "deleted": "Recibo {number} eliminado.",
         "putaway": "Tareas de acomodo",
         "goTasks": "Ver todo el acomodo pendiente",
         "columns": {
           "product": "Producto",
-          "tracking": "Seguimiento",
-          "expected": "Esperado",
-          "received": "Recibido",
-          "variance": "Diferencia",
-          "lot": "Lote",
-          "serials": "Series",
-          "staging": "Recepción",
-          "crossDock": "Cruce de muelle",
           "quantity": "Cantidad",
           "bins": "De → a",
           "assignedTo": "Asignada a"
+        },
+        "title": "Detalle del recibo",
+        "origin": "Origen · {origin}",
+        "originWithRef": "Origen · {origin}: {ref}",
+        "editHeader": "Editar el encabezado del recibo",
+        "viewHeader": "Ver el encabezado del recibo",
+        "history": "Historial",
+        "historyTitle": "Historial del recibo {number}",
+        "select": "Selecciona un recibo de la lista",
+        "scanHint": "Escanea o teclea cada línea para registrar lo recibido",
+        "varianceNote": "Lo recibido difiere de lo esperado — al confirmar, la diferencia queda registrada como ajuste de inventario.",
+        "varianceNoteBlind": "Lo recibido difiere de lo esperado — al confirmar entra al inventario lo recibido y el recibo queda como «Completado con diferencia» (sin ajuste).",
+        "meta": {
+          "warehouse": "Almacén",
+          "staging": "Recepción",
+          "dock": "Muelle",
+          "carrier": "Transporte",
+          "reference": "Referencia",
+          "expectedDate": "Llegada esperada",
+          "createdAt": "Creado",
+          "receivedAt": "Confirmado"
+        },
+        "blockers": {
+          "confirmed": "El recibo ya está confirmado.",
+          "noLines": "Agregue al menos una línea para confirmar.",
+          "saving": "Guardando líneas…",
+          "unsaved": "Hay líneas sin guardar: salga del campo o pulse Enter para guardarlas.",
+          "errors": "Corrija las líneas marcadas antes de confirmar."
         }
+      },
+      "originLong": {
+        "PO": "Orden de compra",
+        "ASN": "Cliente",
+        "BLIND": "Ciego",
+        "RETURN": "Devolución"
+      },
+      "list": {
+        "aria": "Lista de recibos",
+        "empty": "No hay recibos con estos filtros.",
+        "pendingPutaway": "{count} por acomodar",
+        "exportName": "Recibos",
+        "columns": {
+          "number": "Número",
+          "status": "Estatus",
+          "type": "Tipo",
+          "origin": "Origen",
+          "originRef": "Documento",
+          "sender": "Remitente",
+          "warehouse": "Almacén",
+          "carrier": "Transporte",
+          "reference": "Referencia",
+          "expectedDate": "Llegada esperada",
+          "createdAt": "Creado",
+          "lines": "Líneas",
+          "variance": "Diferencia"
+        }
+      },
+      "lines": {
+        "title": "Líneas del recibo",
+        "sku": "SKU",
+        "product": "Producto",
+        "expected": "Esperado",
+        "received": "Recibido",
+        "diff": "Diferencia",
+        "productOf": "Producto de la línea {n}",
+        "expectedOf": "Esperado de la línea {n}",
+        "receivedOf": "Recibido de la línea {n}",
+        "invalidNumber": "Escriba un número.",
+        "lotSerial": "Lote y series",
+        "remove": "Quitar línea",
+        "saving": "Guardando…",
+        "newRow": "Línea nueva"
+      },
+      "header": {
+        "newTitle": "Nuevo recibo",
+        "editTitle": "Encabezado del recibo {number}",
+        "source": "Origen",
+        "carrier": "Transporte",
+        "reference": "Referencia",
+        "dock": "Muelle",
+        "noDock": "Sin muelle",
+        "readOnlyNote": "El recibo ya está confirmado: su encabezado no se puede cambiar.",
+        "documentNote": "Con aviso de llegada u orden de compra, el origen, el almacén y lo esperado vienen del documento.",
+        "warehouseFixedNote": "El almacén solo se cambia en un recibo sin documento y sin líneas.",
+        "save": "Guardar",
+        "saved": "Encabezado del recibo {number} guardado.",
+        "close": "Cerrar",
+        "delete": "Borrar recibo",
+        "deleteTitle": "Borrar recibo",
+        "deleteBody": "¿Borrar el recibo {number}? Si nació de un aviso de cliente, el aviso vuelve a quedar pendiente; si nació de una orden de compra, la orden podrá recibirse de nuevo.",
+        "deleted": "Recibo {number} borrado."
+      },
+      "capture": {
+        "title": "Lote y series · {product}",
+        "serialQty": "En un producto por serie lo recibido es el número de series capturadas: {count}.",
+        "saved": "Línea guardada."
+      },
+      "putawayTab": {
+        "listTitle": "Recibos con acomodo pendiente",
+        "tasksTitle": "Tareas de acomodo",
+        "select": "Selecciona un recibo para ver sus tareas de acomodo",
+        "noTasks": "Este recibo no tiene tareas de acomodo."
       }
     },
     "asns": {
       "title": "Avisos de llegada",
       "new": "Nuevo aviso",
       "created": "Aviso de llegada creado.",
-      "count": "{count} aviso(s)",
       "receive": "Recibir",
       "cancel": "Cancelar aviso",
       "cancelTitle": "Cancelar aviso de llegada",
@@ -2131,14 +2195,32 @@
       "fields": {
         "client": "Cliente dueño",
         "reference": "Referencia",
-        "expectedDate": "Llegada esperada",
-        "expectedQty": "Cantidad esperada"
+        "expectedDate": "Llegada esperada"
       },
       "errors": {
         "clientRequired": "Indique el cliente dueño de la mercancía del aviso de llegada.",
         "referenceMax": "La referencia admite como máximo 80 caracteres.",
         "expectedQtyPositive": "La cantidad esperada debe ser mayor que cero.",
         "tooManyLines": "El aviso de llegada admite como máximo 200 líneas."
+      },
+      "filters": {
+        "warehouse": "Almacén",
+        "anyWarehouse": "Todos los almacenes",
+        "client": "Cliente dueño",
+        "anyClient": "Todos los clientes",
+        "reference": "Referencia",
+        "expected": "Llegada esperada"
+      },
+      "lines": {
+        "title": "Líneas",
+        "product": "Producto",
+        "expectedQty": "Cantidad esperada",
+        "lot": "Lote",
+        "productOf": "Producto de la línea {n}",
+        "qtyOf": "Cantidad esperada de la línea {n}",
+        "lotOf": "Lote de la línea {n}",
+        "add": "Agregar línea",
+        "remove": "Quitar la línea {n}"
       }
     },
     "pickBatches": {
@@ -2147,11 +2229,7 @@
       "tabBatches": "Recolecciones",
       "tabReplenish": "Reabasto",
       "replenishTitle": "Tareas de reabasto",
-      "collect": "Recolectar",
-      "collectTitle": "Nueva recolección",
       "collected": "Recolección {number} creada.",
-      "count": "{count} recolección(es)",
-      "open": "Abrir",
       "own": "Propio",
       "deletedChip": "Eliminada",
       "searchPlaceholder": "Número, empaque, orden, factura, cliente o SKU",
@@ -2162,19 +2240,18 @@
       "back": "Volver a Recolección y empaque",
       "columns": {
         "number": "Número",
-        "warehouse": "Almacén",
-        "status": "Estatus",
         "numbers": "Orden y factura",
-        "client": "Dueño",
+        "client": "Cliente",
         "totalQty": "Cantidad",
-        "collectedAt": "Recolectada"
+        "collectedAt": "Recolectada",
+        "products": "Productos"
       },
       "filters": {
         "collected": "Recolectada",
         "status": "Estatus",
         "product": "Producto",
-        "orderNumber": "Número de orden",
-        "invoiceNumber": "Factura",
+        "orderNumber": "No. de orden",
+        "invoiceNumber": "No. de factura",
         "includeDeleted": "Incluir eliminadas"
       },
       "fields": {
@@ -2182,7 +2259,6 @@
         "product": "Producto",
         "quantity": "Cantidad",
         "bin": "Posición",
-        "fefoHelp": "Opcional: vacío = FEFO.",
         "lot": "Lote",
         "serials": "Series escaneadas"
       },
@@ -2206,7 +2282,8 @@
         "deleteTitle": "Eliminar recolección",
         "deleteBody": "¿Eliminar la recolección {number}? El inventario vuelve a su posición original.",
         "deletePackedBody": "¿Eliminar la recolección {number}? Se borra también su orden {order} y el inventario vuelve a su posición original.",
-        "deleted": "Recolección {number} eliminada."
+        "deleted": "Recolección {number} eliminada.",
+        "close": "Cerrar"
       },
       "pack": {
         "title": "Empacar {number}",
@@ -2215,7 +2292,10 @@
         "client": "Cliente de la orden",
         "ownerHelp": "Debe ser el cliente dueño del inventario: {client}.",
         "serviceType": "Tipo de servicio",
-        "defaultServiceType": "Predeterminado de la compañía",
+        "defaultServiceType": "Predeterminado de la compañía ({label})",
+        "chooseServiceType": "Elija el tipo de servicio",
+        "defaultPackageType": "Predeterminado de la compañía ({label})",
+        "choosePackageType": "Elija el tipo de paquete",
         "consignee": "Consignatario",
         "consigneeExisting": "Del directorio",
         "consigneeNew": "Nuevo",
@@ -2249,8 +2329,39 @@
           "country": "Use el código ISO de 2 letras del país.",
           "packagesRequired": "Indique al menos una línea de paquete.",
           "pieces": "La cantidad de piezas debe ser al menos 1.",
-          "weight": "El peso no puede ser negativo."
+          "weight": "El peso no puede ser negativo.",
+          "serviceTypeRequired": "Elija el tipo de servicio.",
+          "packageTypeRequired": "Elija el tipo de paquete."
         }
+      },
+      "batchesTitle": "Recolecciones",
+      "detailTitle": "Recolección",
+      "splitLabel": "Cambiar el ancho de los paneles Recolección y Recolecciones",
+      "orderFilter": {
+        "placeholder": "Escriba para ver las órdenes",
+        "none": "Ninguna orden con ese número.",
+        "noAccess": "No se pudieron consultar las órdenes.",
+        "clear": "Quitar el número de orden"
+      },
+      "collectPanel": {
+        "title": "Recolección",
+        "linesLabel": "Líneas a recolectar",
+        "lineProduct": "Producto de la línea {n}",
+        "lineQty": "Cantidad de la línea {n}",
+        "lineBin": "Posición de la línea {n}",
+        "lineLot": "Lote de la línea {n}",
+        "lineSerials": "Series de la línea {n}",
+        "serials": "Series",
+        "serialsButton": "Series ({n})",
+        "serialsTitle": "Series de la línea {n} · {sku}",
+        "serialsCount": "Capturadas: {n}.",
+        "available": "{qty} disp.",
+        "fefoHint": "FEFO: {bin}",
+        "removeLine": "Quitar línea",
+        "addLine": "Añadir línea",
+        "maxLines": "Máximo 100 líneas por recolección.",
+        "clear": "Limpiar",
+        "submit": "Recolectar (bajar de inventario)"
       }
     },
     "cycleCounts": {

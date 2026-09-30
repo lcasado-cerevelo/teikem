@@ -10,8 +10,8 @@ namespace Teikem.Infrastructure.Services;
 
 /// <summary>
 /// Lote 6 (P5) — efecto del dominio WarehouseTaskStatus (R10): cuando una PUTAWAY con Ref RECEIPT llega a DONE o CANCELLED
-/// y el recibo ya no tiene otra PUTAWAY abierta (PENDING/IN_PROGRESS), el recibo pasa RECEIVED → PUTAWAY (terminal). Si el
-/// recibo no está en RECEIVED (OPEN, o ya en PUTAWAY) no cambia. Cualquier otro tipo de tarea no tiene efecto.
+/// y el recibo ya no tiene otra PUTAWAY abierta (PENDING/IN_PROGRESS), el recibo pasa RECEIVED o RECEIVED_VARIANCE → PUTAWAY
+/// (terminal). Si el recibo no está confirmado (abierto, o ya en PUTAWAY) no cambia. Cualquier otro tipo de tarea no tiene efecto.
 /// - Corre dentro de StatusService.TransitionAsync, en la transacción del llamador y ANTES de que éste asigne el nuevo
 ///   StatusCodeId de la tarea: por eso la tarea que transiciona se excluye por id. Las demás tareas se leen con tracking
 ///   (valores en memoria) más las recién agregadas del ChangeTracker, así un remanente creado en la misma unidad de trabajo
@@ -60,8 +60,9 @@ public sealed class WarehouseTaskStatusEffect(TeikemDbContext db, IServiceProvid
         // Recibo del mismo almacén, bajo el filtro de tenant (tracked: la instancia ya bloqueada por el llamador).
         var receipt = await db.Set<ReceiptHeader>().FirstOrDefaultAsync(r => r.ReceiptHeaderId == receiptId && r.WarehouseId == task.WarehouseId, ct);
         if (receipt is null) return;
-        var receivedId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, ct);
-        if (receipt.StatusCodeId != receivedId) return;
+        // Lote 13: desde RECEIVED o RECEIVED_VARIANCE (confirmados); abiertos o ya PUTAWAY no cambian.
+        var confirmedIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.ConfirmedCodes, ct);
+        if (!confirmedIds.Contains(receipt.StatusCodeId)) return;
 
         var statuses = services.GetRequiredService<StatusService>();
         var done = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, receipt.ReceiptHeaderId,

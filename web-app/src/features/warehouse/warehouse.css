@@ -165,3 +165,110 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .inv-brand{display:flex;flex-direction:column;min-width:0}
 .inv-brand .inv-model{font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
 .inv-head-act .btn[aria-busy="true"]{opacity:.7;cursor:progress}
+
+/* Lote 13 — Recolección y empaque (maqueta `picking()`): dos paneles en un SplitPane. Izquierda "Recolección" (rejilla de
+   líneas con controles en las celdas: sin margen de .f, alineadas arriba, cantidad de ~80 px), derecha "Recolecciones"
+   (filtros dentro del panel sin su recuadro, número con su chip sin envolver, la recién creada con fondo de flujo). */
+.collect-panel,.collect-list{min-width:0}
+.collect-top{padding:14px 16px 4px}
+.collect-top .collect-note{margin:0 0 6px}
+.collect-grid .lst td{vertical-align:top}
+.collect-grid .f{margin-bottom:0}
+.collect-grid .f .help,.collect-grid .f .ferr{margin-top:4px}
+.collect-grid input.collect-qty{width:80px;max-width:100%}
+.collect-grid .collect-na{color:var(--faint)}
+.collect-grid .collect-serials{white-space:nowrap}
+.collect-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--line-2)}
+.collect-foot-act{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;min-width:0}
+.collect-foot-act .btn{min-width:0}
+.collect-filters .filters{border:0;border-radius:0;background:none;padding:12px 16px 2px;margin:0}
+.collect-num{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.collect-prods{overflow-wrap:anywhere}
+.collect-list .lst tr.collect-new td{background:var(--flow-bg)}
+.collect-list .dt-card.collect-new{background:var(--flow-bg);border-color:var(--flow-line)}
+/* a 360 px los botones del pie van a todo el ancho, uno por renglón */
+@media(max-width:480px){.collect-foot-act{margin-left:0;width:100%}.collect-foot-act .btn{flex:1 1 100%;justify-content:center}}
+
+/* Ficha de la recolección (PickBatchDetailBody): en pantalla, paneles; dentro del modal de la lista, secciones con título. */
+.collect-detail-pipe{margin-bottom:14px}
+.collect-detail>.panel{margin-bottom:14px}
+.collect-lbl{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.collect-detail .f p{margin:0;overflow-wrap:anywhere}
+.collect-sec{margin-top:14px}
+.collect-sec h3{display:flex;align-items:center;gap:8px;font-size:13px;margin:0 0 10px}
+.collect-sec-n{font-size:11.5px;color:var(--faint);font-weight:600}
+.collect-dtitle{display:inline-flex;align-items:center;flex-wrap:wrap;gap:6px;min-width:0}
+.collect-dsub{margin:0 0 10px;color:var(--muted);font-size:12.5px}
+
+/* Lote 13 — Recibo (maqueta `recibo()`): maestro-detalle `.rcp-cols` con la lista de 340 px + el detalle (como `.cols
+   340px 1fr` de la maqueta); bajo 720 px una columna, la lista arriba con menos alto. La lista es de `.unrow` (botones);
+   la elegida con el fondo de flujo. En el detalle, la rejilla de líneas lleva campos en las celdas (cantidad de ~84 px) sin
+   recortar los desplegables del buscador de producto (sin overflow). Nada sale del viewport a 360 px. */
+.rcp .rcp-tabs{margin-bottom:14px}
+.rcp-cols{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}
+.rcp-cols>*{min-width:0}
+.rcp-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.rcp-list{max-height:560px;overflow:auto}
+.rcp-list .unrow{align-items:flex-start}
+.rcp-item{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rcp-top{display:flex;align-items:center;gap:8px;min-width:0}
+.rcp-top .chip{margin-left:auto;flex:none}
+.rcp-from{font-size:12.5px;overflow-wrap:anywhere}
+.rcp-line{overflow-wrap:anywhere}
+.rcp-line .tag{font-size:9.5px}
+.rcp-line .rcp-doc{font-size:11px;margin-left:5px}
+.rcp-empty svg{width:22px;height:22px}
+.rcp-empty p{margin:8px 0 0}
+.rcp-empty.sm{min-height:160px}
+.rcp-empty.lg{min-height:260px}
+/* detalle: origen a la derecha del título, datos del encabezado, notas y botón ancho de la maqueta */
+.rcp-detail{display:flex;flex-direction:column;gap:16px;min-width:0}
+/* tareas de acomodo: los encabezados solo se parten entre palabras ("CANTIDAD", no "CANTI/DAD") */
+.rcp-tasks .lst th{overflow-wrap:normal;hyphens:manual}
+.rcp-origin{font-size:12px;color:var(--muted);font-weight:500;overflow-wrap:anywhere;min-width:0}
+.rcp-meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:12px 16px 4px;font-size:12px}
+.rcp-meta>div{display:flex;gap:6px;min-width:0}
+.rcp-meta dt{color:var(--faint)}
+.rcp-meta dd{margin:0;overflow-wrap:anywhere;min-width:0}
+.rcp-lines{min-width:0}
+.rcp-lines .lst td{vertical-align:top}
+.rcp-cell{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dt .lst td.n .rcp-cell{align-items:flex-end}
+.rcp-prod{min-width:160px}
+.dt-card .rcp-prod{min-width:0}
+.rcp-qty{width:84px;max-width:100%;text-align:right;font-family:var(--mono);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:4px 7px;color:var(--text);font-size:12.5px}
+.rcp-qty:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.rcp-qty[aria-invalid="true"]{border-color:var(--danger)}
+.rcp-cell .ferr{margin:0;white-space:normal;text-align:left}
+.rcp-faint{color:var(--faint)}
+.rcp-diff0{color:var(--muted)}
+.rcp-diff{color:var(--danger)}
+.rcp-lines .lst tr.rcp-saving td,.rcp-lines .dt-card.rcp-saving{opacity:.7}
+.rcp-note{margin:14px 16px 0}
+.rcp-note-money{display:flex;gap:8px;align-items:flex-start;border-color:var(--money-line);color:var(--money-2)}
+.rcp-note-money svg{flex:none;width:15px;height:15px;margin-top:1px}
+.rcp-confirm{padding:14px 16px 16px}
+.rcp-confirm .btn{justify-content:center}
+.rcp-confirm .help{margin:6px 0 0}
+/* modales del encabezado y de lote/series */
+.rcp-modal-note{margin:0 0 12px}
+.rcp-capture-note{margin:0 0 12px}
+.rcp-delete{margin-right:auto}
+/* alta de aviso: líneas en una rejilla (encabezados de columna arriba; a 480 px cada campo con su etiqueta) */
+.rcp-asn-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.rcp-asn-head,.rcp-asn-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr) 28px;gap:8px;align-items:start}
+.rcp-asn-head{font-size:11.5px;font-weight:600;color:var(--muted)}
+.rcp-asn-row .f{margin-bottom:0}
+.rcp-asn-row .rcp-asn-del{margin-top:4px}
+@media(max-width:720px){
+  .rcp-cols{grid-template-columns:minmax(0,1fr)}
+  .rcp-list{max-height:260px}
+}
+@media(max-width:480px){
+  .rcp-asn-head{display:none}
+  .rcp-asn-row{grid-template-columns:minmax(0,1fr) 28px;padding-bottom:8px;border-bottom:1px solid var(--line-2)}
+  .rcp-asn-row .f{grid-column:1}
+  .rcp-asn-row .rcp-asn-del{grid-column:2;grid-row:1}
+  /* sin encabezados de columna, cada campo muestra su etiqueta */
+  .rcp-asn-row .f label.sr-only{position:static;width:auto;height:auto;margin:0 0 5px;clip:auto;overflow:visible;white-space:normal}
+}

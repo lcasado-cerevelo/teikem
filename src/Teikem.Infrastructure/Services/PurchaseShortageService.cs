@@ -48,11 +48,11 @@ public sealed class PurchaseShortageService(
     /// </summary>
     public async Task<IReadOnlyList<PoShortageSummaryDto>> ListWithShortageAsync(CancellationToken ct)
     {
-        var receivedId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, ct);
-        var putawayId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, ct);
+        // Lote 13: confirmado = RECEIVED, RECEIVED_VARIANCE o PUTAWAY.
+        var confirmedIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.ConfirmedCodes.Append(ReceiptStatuses.Putaway), ct);
         var cancelledId = await db.StatusIdAsync(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Cancelled, ct);
 
-        var rows = await PendingLinesQuery(cancelledId, receivedId, putawayId).ToListAsync(ct);
+        var rows = await PendingLinesQuery(cancelledId, confirmedIds).ToListAsync(ct);
         if (rows.Count == 0) return Array.Empty<PoShortageSummaryDto>();
 
         var supplierIds = rows.Select(r => r.SupplierId).Distinct().ToList();
@@ -83,12 +83,12 @@ public sealed class PurchaseShortageService(
         int PurchaseOrderLineId, decimal QtyOrdered, decimal QtyReceived, decimal UnitCost, decimal Resolved);
 
     /// <summary>
-    /// Líneas con faltante pendiente de órdenes activas NO canceladas con algún recibo activo confirmado (RECEIVED o PUTAWAY,
-    /// el mismo criterio que ReceiptFlagsAsync). La consulta parte de la línea pero siempre unida a su orden: la línea no
+    /// Líneas con faltante pendiente de órdenes activas NO canceladas con algún recibo activo confirmado (RECEIVED,
+    /// RECEIVED_VARIANCE o PUTAWAY, el mismo criterio que ReceiptFlagsAsync). La consulta parte de la línea pero siempre unida a su orden: la línea no
     /// tiene TenantId y el filtro de tenant llega por PurchaseOrder. Lo resuelto es una subconsulta correlacionada; no se
     /// agrega (SUM/GroupBy) sobre una expresión que la contenga (SQL Server, error 130): la agrupación se hace en memoria.
     /// </summary>
-    private IQueryable<PendingLineRow> PendingLinesQuery(int cancelledId, int receivedId, int putawayId)
+    private IQueryable<PendingLineRow> PendingLinesQuery(int cancelledId, List<int> confirmedIds)
     {
         var asns = db.Set<Asn>().AsNoTracking();
         var receipts = db.Set<ReceiptHeader>().AsNoTracking();
@@ -98,7 +98,7 @@ public sealed class PurchaseShortageService(
                where p.IsActive && p.StatusCodeId != cancelledId
                      && asns.Any(a => a.PurchaseOrderId == p.PurchaseOrderId
                                       && receipts.Any(r => r.AsnId == a.AsnId && r.IsActive
-                                                           && (r.StatusCodeId == receivedId || r.StatusCodeId == putawayId)))
+                                                           && confirmedIds.Contains(r.StatusCodeId)))
                let resolved = resolutions.Where(r => r.PurchaseOrderLineId == l.PurchaseOrderLineId).Sum(r => (decimal?)r.Quantity) ?? 0m
                where l.QtyOrdered - l.QtyReceived - resolved > 0m
                select new PendingLineRow(p.PurchaseOrderId, p.PublicId, p.Number, p.OrderDate, p.SupplierId, p.WarehouseId,
@@ -132,7 +132,9 @@ public sealed class PurchaseShortageService(
         string? reasonCode = null;
         IReadOnlyList<string> serials = Array.Empty<string>();
         var errors = new Dictionary<string, string[]>();
-        var (notes, notesError) = AdjustmentRules.NormalizeNotes(req.Notes);
+        // el ajuste manual de un faltante es un ajuste manual de inventario: nota obligatoria (decisión del dueño, 2026-09-30);
+        // cerrar y reordenar no mueven inventario y la dejan opcional
+        var (notes, notesError) = AdjustmentRules.NormalizeNotes(req.Notes, required: isManual);
         if (notesError is not null) errors["notes"] = new[] { notesError };
         if (isManual)
         {

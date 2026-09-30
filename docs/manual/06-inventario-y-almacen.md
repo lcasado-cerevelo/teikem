@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex, ajustes,
 transferencias, genealogía, rastro de serie y conciliación), Recepción (avisos de llegada y recibos, incluida la
@@ -281,7 +281,8 @@ reactivación de producto y de categoría). Módulo **WMS_LOTSERIAL**.
 Cómo se usa:
 - `GET /api/v1/products?search=&categoryIds=&ownerClientPublicId=&ownOnly=&activeOnly=&warehousePublicId=&
   onlyAvailable=&skip=&take=` (`take` ≤ 200). Lote 12 agrega `warehousePublicIds`, `productPublicIds`, `name`, `brands`,
-  `serialOnly` y `serialMissing` (ver "Marca, modelo y filtros de la lista", abajo).
+  `serialOnly` y `serialMissing` (ver "Marca, modelo y filtros de la lista", abajo); desde el ajuste del 2026-09-30, también
+  `onlyOnHand`.
 - `GET /api/v1/products/brands?search=` (Lote 12, `inventory.view`) — marcas distintas de la compañía, para el filtro Marca.
 - `POST /api/v1/products` — `{ "sku": "PN", "name": "Producto normal", "trackingType": "NONE", "purchaseCost": 12.3456,
   "brand": "Acme", "model": "X-200" }` (`brand` y `model` son opcionales).
@@ -306,14 +307,15 @@ contienen el texto. Cada fila de la lista y la ficha traen `brand` y `model`.
 
 | Parámetro | Qué hace |
 |---|---|
-| `warehousePublicIds` (varios) y `warehousePublicId` | Se juntan sin repetir. **Acotan las cantidades** (en mano, reservado, disponible, bajo mínimo y series) de cada fila a esos almacenes; **no quitan productos** de la lista. La excepción es `onlyAvailable=true`, que sí deja fuera a los productos sin disponible en esos almacenes. Si alguno no es de su compañía o no existe, responde 404 `Almacén no encontrado.` |
+| `warehousePublicIds` (varios) y `warehousePublicId` | Se juntan sin repetir. **Acotan las cantidades** (en mano, reservado, disponible, bajo mínimo y series) de cada fila a esos almacenes; **no quitan productos** de la lista. Las excepciones son `onlyAvailable=true` y `onlyOnHand=true`, que sí dejan fuera a los productos sin disponible (o sin existencia en mano) en esos almacenes. Si alguno no es de su compañía o no existe, responde 404 `Almacén no encontrado.` |
 | `productPublicIds` (varios) | Solo esos productos (el filtro "SKU" de la pantalla) |
 | `name` | El nombre del producto **contiene** el texto, sin distinguir mayúsculas |
 | `brands` (varios) | La marca es **igual** a alguna de las indicadas, sin distinguir mayúsculas |
 | `categoryIds` | Sin cambio: incluye las subcategorías |
 | `serialOnly=true` | Productos con rastreo por serie **o** que ya tienen números de serie registrados |
 | `serialMissing=true` | Productos **activos** con rastreo por serie cuya existencia en mano es **mayor** que la cantidad de sus series `AVAILABLE` o `RESERVED` (les faltan series por capturar). Con almacenes indicados, ambas cantidades se miden en esos almacenes. La pantalla lo cuenta con `take=1` y lee `total` |
-| `activeOnly`, `onlyAvailable`, `belowMin` | Sin cambio. `onlyAvailable` no cuenta la existencia en zonas de cuarentena ni de cruce de muelle |
+| `onlyOnHand=true` (ajuste del 2026-09-30) | Solo productos con **existencia en mano mayor que cero**: la suma de `QtyOnHand` de todas sus posiciones, **incluidas** cuarentena, cruce de muelle y lo reservado. Con almacenes indicados, la existencia se mide en esos almacenes y, como `onlyAvailable`, **sí quita** de la lista a los productos sin existencia allí. Con `activeOnly=true` da "productos activos con existencia en mano": es lo que muestra la tabla al tocar el indicador "Unidades totales" |
+| `activeOnly`, `onlyAvailable`, `belowMin` | Sin cambio. `onlyAvailable` no cuenta la existencia en zonas de cuarentena ni de cruce de muelle y resta lo reservado; por eso un producto puede aparecer con `onlyOnHand` y no con `onlyAvailable` |
 
 `GET /api/v1/inventory/transactions` (Kárdex) acepta además `brands` y `name` con el mismo significado; se combinan con
 `productPublicIds` y `categoryIds`. El Reporte de ajustes de la pantalla Productos e inventario los usa para respetar los
@@ -384,7 +386,14 @@ Cómo se usa:
   categoryIds=&lotNumber=&serialNumber=&refEntity=&refId=&search=&brands=&name=` (`brands` y `name`, desde el Lote 12: marca
   igual a alguna y nombre del producto que contiene el texto; ver la sección 2).
 - `POST /api/v1/inventory/adjustments` — `{ "productPublicId": "...", "warehousePublicId": "...", "binId": 5,
-  "quantity": -2, "reason": "DAMAGE" }` (positivo entra, negativo sale).
+  "quantity": -2, "reason": "DAMAGE", "notes": "Caja aplastada en el muelle" }` (positivo entra, negativo sale).
+  **La nota es obligatoria** (ajuste del 2026-09-30): el API exige `notes` no vacía (después de quitar espacios), de hasta
+  300 caracteres, para todo motivo que captura una persona (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER` y
+  cualquier motivo que agregue la compañía). Aplica a las pantallas, a la app móvil y a las integraciones. **No la exigen**
+  los ajustes que escribe el sistema, porque no pasan por este endpoint: la diferencia de un recibo (`RECEIPT_VARIANCE`), la
+  de un conteo (`COUNT_VARIANCE`), la reversa al eliminar una recolección (`PICK_BATCH_REVERSAL`) y el saldo inicial de la
+  migración (`OPENING_BALANCE`). Tampoco la exigen la transferencia ni el "ajuste manual" con que se resuelve un faltante de
+  compra (sección 8): ahí la nota sigue siendo opcional, porque el movimiento queda ligado a la orden y a su línea.
 - `POST /api/v1/inventory/transfers` — `{ "productPublicId": "...", "fromBinId": 5, "toBinId": 8, "quantity": 3 }`
   (entre almacenes: agrega `fromWarehousePublicId`/`toWarehousePublicId`).
 - `GET /api/v1/inventory/lots/{lotId}/genealogy`.
@@ -401,7 +410,9 @@ Cómo se usa:
 | Cantidad fuera de rango | `La cantidad excede el máximo permitido.` | 400 |
 | Ajuste sin cantidad / cantidad = 0 | `Indique la cantidad del ajuste.` / `La cantidad del ajuste no puede ser cero.` | 400 |
 | Ajuste sin motivo | `Indique el motivo del ajuste.` | 400 |
-| Motivo reservado al sistema (`RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`) | `El motivo {código} lo asigna el sistema.` | 400 |
+| Motivo reservado al sistema (`RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`) | `El motivo {código} lo asigna el sistema.` | 400 |
+| Ajuste sin nota, o con solo espacios (ajuste del 2026-09-30; el error va en `errors.notes`) | `Escriba una nota que explique el ajuste.` | 400 |
+| Nota del ajuste o de la transferencia de más de 300 caracteres (`errors.notes`) | `Las notas admiten como máximo 300 caracteres.` | 400 |
 | Motivo desconocido | `Motivo de ajuste desconocido: 'X'.` | 400 |
 | Producto controlado por lote sin lote | `El producto se controla por lote: indique el lote.` (o, en el ajuste, `El producto {sku} se controla por lote; indique el lote.`) | 400 |
 | Producto sin lote/serie con lote indicado | `El producto no se controla por lote ni por serie: no indique lote.` | 400 |
@@ -441,26 +452,76 @@ confirmar). Al confirmar, se asienta el ledger (`RECEIPT` por lo esperado + `ADJ
 diferencia), la orden de compra avanza a `PARTIAL`/`RECEIVED`, el cruce de muelle asignado se reparte y se crean
 las tareas `PUTAWAY` del remanente con una posición sugerida.
 
+Lote 13 (Lote 3 del plan de cambios): el recibo tiene un ciclo de seis estatus que muestra en qué va (Esperado,
+Recibiendo, Discrepancia, Completado, Completado con diferencia y Acomodado; ver "Estatus y transiciones"). Un recibo
+ciego o de devolución se puede crear **solo con el encabezado** (sin líneas) y llenarse después; en esos recibos se puede
+capturar también la **cantidad esperada** de cada línea para ver la diferencia. El encabezado lleva además **Transporte**
+(`carrier`), **Referencia** (`reference`) y la **posición de recepción por defecto**, y se edita mientras el recibo está
+abierto (`PATCH`). En ciegos y devoluciones la diferencia es informativa: al Kárdex entra **lo recibido** (un solo
+`RECEIPT`, sin ajuste) y el recibo queda "Completado con diferencia". La pantalla (Recibo en maestro-detalle, con las pestañas
+Recibos, Avisos de llegada y Acomodo pendiente) está descrita en el manual de pantallas:
+[F6 — Recepción](frontend/f6-almacen-e-inventario.md#recepción-recibos-y-avisos-de-llegada).
+
 Quién puede: `inventory.view` (listar y consultar); `warehouse.receive` (alta de ASN y de recibo, captura de
 líneas, confirmar, cancelar/eliminar). Recibir contra una orden de compra exige **además** `purchasing.receive` y
 el módulo **PURCHASING** encendido. Módulo **WMS_LOTSERIAL**.
 
 Cómo se usa:
 - `GET/POST /api/v1/asns`, `POST /api/v1/asns/{id}/cancel`.
-- `GET /api/v1/receipts?warehousePublicId=&status=&types=&from=&to=&productPublicIds=&hasVariance=&search=`.
+- `GET /api/v1/receipts?warehousePublicId=&status=&types=&from=&to=&productPublicIds=&hasVariance=&search=&variance=&phase=`.
+  Lote 13:
+  - `phase` = fase del recibo: `OPEN` (Esperado, Recibiendo o Discrepancia), `PENDING_PUTAWAY` (Completado o
+    Completado con diferencia: confirmados con acomodo por cerrar) o `DONE` (Acomodado). Es la base de la pestaña
+    "Acomodo pendiente".
+  - `variance` (se puede repetir; varias se combinan con "o"): `SHORT` = faltante (alguna línea recibió menos de lo
+    esperado), `OVER` = sobrante (alguna recibió más, o una línea extra de un recibo con aviso u orden de compra recibió
+    algo), `NONE` = sin diferencia (ninguna línea difiere).
+  - `status` admite los seis códigos nuevos (`EXPECTED`, `RECEIVING`, `DISCREPANCY`, `RECEIVED`, `RECEIVED_VARIANCE`,
+    `PUTAWAY`); `OPEN` ya no existe.
+  - `search` busca además en el transporte y la referencia del recibo.
+  - Cada fila trae además `carrier`, `reference`, `expectedDate` (la llegada esperada del aviso; si no tiene, la de la
+    orden de compra), `defaultStagingBinId`/`defaultStagingBinCode`, `dockId`, `isOpen` y `pendingPutawayCount` (tareas
+    de acomodo abiertas). La ficha trae `canDelete` (abierto y sin cruce de muelle asignado).
 - `POST /api/v1/receipts` — contra ASN (`asnId`), contra PO (`purchaseOrderPublicId`), ciego (`type: "BLIND"`,
   por defecto) o de devolución (`type: "RETURN"`), con `stagingBinId` opcional (si no, la primera posición activa
-  de una zona `STAGING` del almacén).
-- `PUT /api/v1/receipts/{publicId}/lines/{lineId}` — captura cantidad recibida, lote y series.
-- `POST/DELETE /api/v1/receipts/{publicId}/lines` (línea extra, solo `OPEN`).
-- `POST /api/v1/receipts/{publicId}/confirm` — confirma el recibo **completo** (no hay confirmación por línea).
+  de una zona `STAGING` del almacén). Lote 13: `stagingBinId` queda como **posición de recepción por defecto** del
+  encabezado (la toman las líneas que se agreguen sin posición); `carrier` y `reference` (hasta 80 caracteres; vacío = sin
+  dato). Un ciego o devolución **sin `lines`** crea solo el encabezado en **Esperado** (antes respondía 400); contra aviso u
+  orden de compra nace en **Recibiendo** (o **Discrepancia** si lo capturado en `lines` difiere de lo esperado). En `lines`
+  de un ciego o devolución se puede mandar `expectedQty`.
+- `PATCH /api/v1/receipts/{publicId}` (Lote 13, `warehouse.receive`) — edita el encabezado de un recibo **abierto**
+  (Esperado, Recibiendo o Discrepancia). `null` o ausente = no cambiar:
+  - `type`: `BLIND` ↔ `RETURN`, solo en recibos sin aviso ni orden de compra;
+  - `warehousePublicId`: solo sin aviso ni orden de compra y **sin líneas**; al cambiarlo se limpian la posición por
+    defecto y el muelle (el almacén nuevo debe estar activo y tener zona `STAGING`, igual que en el alta);
+  - `stagingBinId` (posición `STAGING` o `CROSSDOCK` del almacén del recibo) o `clearStagingBin: true`;
+  - `dockId` (muelle del almacén del recibo) o `clearDock: true`;
+  - `carrier` y `reference`: texto de hasta 80; `""` los borra;
+  - `rowVersion`: el de la ficha; si el recibo cambió desde que se leyó → 409.
+- `PUT /api/v1/receipts/{publicId}/lines/{lineId}` — captura cantidad recibida, lote y series. Lote 13: `expectedQty`
+  (o `clearExpected: true`) solo en ciegos y devoluciones; `productPublicId` cambia el producto de una línea que **no**
+  viene del aviso u orden de compra (mismo dueño que exige el alta de línea; el lote y las series del producto anterior se
+  limpian si no se mandan nuevos).
+- `POST/DELETE /api/v1/receipts/{publicId}/lines` (línea extra, solo recibos abiertos). Lote 13: `expectedQty` solo en
+  ciegos y devoluciones; la línea sin `stagingBinId` toma la posición por defecto del encabezado (si no hay, la de otra
+  línea o la primera `STAGING`).
+- Cada alta, cambio o baja de línea **sincroniza el estatus** abierto: Recibiendo si todo cuadra, Discrepancia si alguna
+  línea tiene diferencia (con historial de cada cambio).
+- `POST /api/v1/receipts/{publicId}/confirm` — confirma el recibo **completo** (no hay confirmación por línea). Lote 13:
+  termina en **Completado** (`RECEIVED`) o, si alguna línea tiene diferencia, en **Completado con diferencia**
+  (`RECEIVED_VARIANCE`); el comentario va en ese último paso del historial.
 - Lote 8A (cola del aparato) — `POST /api/v1/receipts` con `confirm: true` crea, captura y confirma en una sola
   transacción. Contra un aviso (`asnId`) o una orden de compra (`purchaseOrderPublicId`), las `lines` de la solicitud
   se aplican sobre las líneas del documento: **lo escaneado manda** (por producto y, si trae lote, por lote); una línea
   del documento que la solicitud no menciona queda recibida en 0 (faltante visible) y un producto que no está en el
   documento entra como línea extra (no cuenta contra la orden de compra). Sin `lines` se recibe lo esperado, como en el
   alta por pasos. Mismas validaciones y mensajes que la captura por pasos, con la clave `lines[i]`.
-- `DELETE /api/v1/receipts/{publicId}` — solo `OPEN` y sin cruce de muelle asignado.
+- `DELETE /api/v1/receipts/{publicId}` — solo abiertos (Esperado, Recibiendo o Discrepancia) y sin cruce de muelle
+  asignado; es una baja lógica (el recibo deja de listarse, sus líneas se conservan).
+- `GET /api/v1/asns` (Lote 13) — además de `warehousePublicId`, `status`, `clientPublicId` y `search`: `reference` (la
+  referencia contiene el texto, sin distinguir mayúsculas) y `expectedFrom`/`expectedTo` (llegada esperada, ambos
+  extremos incluidos; un aviso sin fecha no entra en el rango). Sigue devolviendo hasta 200 avisos (la app móvil los
+  descarga así).
 
 ### Validaciones
 
@@ -493,7 +554,41 @@ Cómo se usa:
 | Almacén inactivo | `El almacén está dado de baja; no admite recepciones.` | 422 |
 | Producto inactivo | `El producto {sku} está dado de baja; no se puede recibir.` | 422 |
 | Recibo de otro tenant o inexistente | `Recibo no encontrado.` | 404 |
-| Segunda confirmación (recibo ya no `OPEN`) | mismo `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
+| Segunda confirmación (recibo ya confirmado) | mismo `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
+| `confirm: true` en un ciego o devolución sin `lines` (Lote 13: sin `confirm` ya no es error) | `Indique al menos una línea.` | 400 |
+| `expectedQty` en un recibo con aviso u orden de compra (Lote 13) | `La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento.` (clave `expectedQty`, `line.expectedQty` al agregar una línea o `lines[i].expectedQty` en el alta) | 400 |
+| `expectedQty` negativo (Lote 13) | `La cantidad esperada no puede ser negativa.` (más de 3 decimales: `La cantidad admite como máximo 3 decimales.`; demasiado grande: `La cantidad excede el máximo permitido.`; producto por serie: `El producto {sku} se controla por serie: la cantidad debe ser entera.`) | 400 |
+| Cambiar el producto de una línea del aviso u orden de compra (Lote 13) | `El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar.` | 400 |
+| Cambiar el producto de una línea con cruce de muelle asignado (Lote 13) | `La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto.` | 409 |
+| `PATCH` del tipo de un recibo con aviso u orden de compra (Lote 13) | `El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar.` | 400 |
+| `PATCH` del almacén con documento o con líneas (Lote 13) | `El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas.` | 400 |
+| Transporte o referencia de más de 80 caracteres (Lote 13) | `El transporte admite como máximo 80 caracteres.` / `La referencia admite como máximo 80 caracteres.` | 400 |
+| `PATCH` de un recibo confirmado (Lote 13) | `El recibo {n} ya fue confirmado; no se puede modificar.` | 422 |
+| `PATCH` con un `rowVersion` viejo (Lote 13) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Muelle de otro almacén (alta o `PATCH`) | `Muelle no encontrado.` | 404 |
+| Filtro `variance` desconocido (Lote 13) | `Diferencia desconocida: 'X'. Use SHORT, OVER o NONE.` | 400 |
+| Filtro `phase` desconocido (Lote 13) | `Fase desconocida: 'X'. Use OPEN, PENDING_PUTAWAY o DONE.` | 400 |
+| Número de lote vacío / de más de 60 caracteres | `Indique el número de lote.` / `El número de lote admite como máximo 60 caracteres.` | 400 |
+| Vencimiento anterior a la fabricación | `La fecha de vencimiento no puede ser anterior a la de fabricación.` | 400 |
+| Lote que ya existe con otras fechas | `El lote {n} ya existe con otras fechas; corrija las fechas o use otro número de lote.` | 409 |
+| Serie vacía / de más de 80 caracteres / más de 500 por línea | `Los números de serie no pueden estar vacíos.` / `Cada número de serie admite como máximo 80 caracteres.` / `Una línea admite como máximo 500 números de serie.` | 400 |
+| Producto sin serie con series capturadas | `El producto {sku} no se controla por serie; no capture números de serie.` | 400 |
+| Cantidad (recibida o esperada) con más de 3 decimales / demasiado grande | `La cantidad admite como máximo 3 decimales.` / `La cantidad excede el máximo permitido.` | 400 |
+| Confirmar con el seguimiento incompleto de una línea | los mensajes de lote y serie de arriba, en `errors["lines[i]"]` (título `Datos inválidos.`) | 400 |
+| Confirmar con un `rowVersion` viejo | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| `rowVersion` que no es base64 (confirmar o `PATCH`) | `rowVersion inválido: se espera el valor base64 devuelto por la ficha.` | 400 |
+| Línea de otro recibo o inexistente | `Línea del recibo no encontrada.` | 404 |
+| Producto inexistente (línea nueva o cambio de producto) | `Producto no encontrado.` | 404 |
+| Almacén inexistente o de otra compañía (alta o `PATCH`) | `Almacén no encontrado.` | 404 |
+| Ciego o devolución sin `warehousePublicId` con más de un almacén activo / sin almacenes activos | `Indique el almacén: la compañía tiene más de uno.` (400, `errors.warehousePublicId`) / `La compañía no tiene almacenes activos.` (422) | 400 / 422 |
+| Posición de recepción de otro almacén o inexistente (alta, línea o `PATCH`) | `Posición no encontrada.` | 404 |
+| Posición de recepción desactivada | `La posición de recepción está desactivada.` | 422 |
+| Aviso de llegada inexistente | `Aviso de llegada no encontrado.` | 404 |
+| Aviso de llegada sin cliente | `Indique el cliente dueño de la mercancía del aviso de llegada.` | 400 |
+| Aviso de llegada sin líneas / con más de 200 | `Indique al menos una línea.` / `El aviso de llegada admite como máximo 200 líneas.` (`errors.lines`) | 400 |
+| Referencia del aviso de más de 80 caracteres | `La referencia admite como máximo 80 caracteres.` | 400 |
+| Cancelar un aviso que ya no está pendiente | `El aviso de llegada no está pendiente de recibir.` | 422 |
+| Cancelar un aviso que tiene un recibo | `El aviso de llegada tiene un recibo abierto; elimínelo antes de cancelar.` | 409 |
 | Recibir contra PO sin `purchasing.receive` | `Falta el permiso 'purchasing.receive'.` | 403 |
 | Recibir contra PO con módulo PURCHASING apagado | `El módulo 'PURCHASING' no está habilitado para esta compañía.` | 403 |
 
@@ -503,14 +598,87 @@ Cómo se usa:
 `EXPECTED`, solo si no tiene un recibo abierto — si lo tiene, `409` `El aviso de llegada tiene un recibo abierto;
 elimínelo antes de cancelar.`).
 
-`ReceiptStatus`: **OPEN** (inicial, admite captura) → **RECEIVED** (al confirmar: asienta el ledger, avanza la PO
-y el ASN, reparte el cruce de muelle y crea las `PUTAWAY` del remanente) → **PUTAWAY** (terminal: cuando la última
-tarea `PUTAWAY` de ese recibo llega a `DONE`/`CANCELLED` y no queda otra abierta, efecto
-`WarehouseTaskStatusEffect`; si al confirmar no queda ningún remanente para poner en su lugar — todo se fue a
-cruce de muelle o se recibió 0 — el recibo pasa **directo** de `RECEIVED` a `PUTAWAY`).
+`ReceiptStatus` (Lote 13; antes `OPEN` → `RECEIVED` → `PUTAWAY`):
 
-Eliminar un recibo `OPEN` (sin cruce de muelle asignado): si nació de una PO, su ASN se **cancela**; si es de
-cliente, el ASN vuelve a quedar `EXPECTED` (pendiente de recibir de nuevo).
+| Código | Etiqueta | Tipo | Significado |
+|---|---|---|---|
+| `EXPECTED` | Esperado | inicial | Solo encabezado (ciego o devolución sin líneas). |
+| `RECEIVING` | Recibiendo | etapa | Con líneas y todo cuadra (o nada que comparar). |
+| `DISCREPANCY` | Discrepancia | lateral | Alguna línea recibió distinto de lo esperado. |
+| `RECEIVED` | Completado | etapa | Confirmado sin diferencia; acomodo pendiente. |
+| `RECEIVED_VARIANCE` | Completado con diferencia | lateral | Confirmado con diferencia; acomodo pendiente. |
+| `PUTAWAY` | Acomodado | terminal | Se cerró el último acomodo (o no hubo nada que acomodar). |
+
+Transiciones (todas por el motor de estatus, con historial en `/api/v1/status/history/RECEIPT/{id}`; cada paso deja una fila):
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (alta) → **Esperado** | `warehouse.receive` | Ciego o devolución sin `lines` y sin `confirm`. El almacén debe estar activo y tener una zona `STAGING` (o traer `stagingBinId`). | Crea el encabezado con número `REC-#####`, sin líneas. |
+| (alta) → **Recibiendo** | `warehouse.receive`; contra una orden de compra, además `purchasing.receive` y el módulo PURCHASING | Contra aviso: aviso `EXPECTED` y sin recibo. Contra orden: `SENT` o `PARTIAL`, con pendiente y sin recibo abierto. Ciego o devolución con `lines`: todas las líneas cuadran. | Crea una línea por línea del documento (recibido = esperado); una orden de compra genera además su aviso. |
+| (alta) → Recibiendo → **Discrepancia** | igual | `lines` con diferencia: en un ciego, `expectedQty` distinto de lo recibido; con documento, lo escaneado distinto de lo esperado. | Dos pasos en el historial. |
+| Esperado → **Recibiendo** | quien guarda la línea (`warehouse.receive`) | La línea pasa las validaciones de captura. | Con diferencia, Esperado → Recibiendo → **Discrepancia** (dos pasos). |
+| Recibiendo → **Discrepancia** | quien guarda la línea | Alguna línea con recibido distinto de esperado. | — |
+| Discrepancia → **Recibiendo** | quien guarda la línea | Ninguna línea con diferencia. | — |
+| Recibiendo → **Completado** | `warehouse.receive` (`POST .../confirm`) | Recibo abierto (si no, 422); `rowVersion` vigente si se manda (409); al menos una línea (422); seguimiento de cada línea (400 por línea: lote con recibido mayor que 0, series iguales a la cantidad); con orden de compra, que siga recibible. | Ver "Efectos de confirmar". |
+| Discrepancia → **Completado con diferencia** | igual | igual | Ver "Efectos de confirmar". |
+| Completado → **Acomodado** | el sistema (efecto de las tareas) | La última `PUTAWAY` del recibo llega a `DONE` o `CANCELLED` y no queda otra abierta. Iniciar y completar exigen `warehouse.receive`; asignar y cancelar, `warehouse.manage`. | — |
+| Completado con diferencia → **Acomodado** | el sistema | igual | — |
+| Completado o Completado con diferencia → **Acomodado** (directo) | el sistema, al confirmar | Ninguna `PUTAWAY` se creó: todo fue a cruce de muelle o se recibió 0. | — |
+| Esperado, Recibiendo o Discrepancia → baja (`DELETE`) | `warehouse.receive` | Recibo abierto (si no, 422) y sin cruce de muelle asignado (409). | Baja lógica (el recibo deja de listarse, las líneas se conservan). Un aviso nacido de una orden de compra se cancela; el de un cliente vuelve a quedar pendiente. |
+
+**Efectos de confirmar** (una sola transacción):
+- Kárdex: con aviso u orden de compra, `RECEIPT` por lo esperado más `ADJUSTMENT RECEIPT_VARIANCE` por la diferencia (D4; el
+  ajuste del sistema no pide nota). En ciegos y devoluciones, un solo `RECEIPT` por lo **recibido**: la diferencia solo marca el
+  estatus y `adjustmentTxnId` queda vacío.
+- La orden de compra avanza a `PARTIAL` o `RECEIVED`; el aviso pasa a `RECEIVED`.
+- Se reparte el cruce de muelle asignado y se crean las `PUTAWAY` del remanente con una posición sugerida.
+- El recibo guarda la fecha y el usuario de confirmación (`receivedAtUtc`, `receivedBy`) y Actividad reciente registra
+  `RECEIPT_CONFIRMED` (tanto para Completado como para Completado con diferencia).
+- El destino es **Completado con diferencia** si alguna línea tiene diferencia y ese estatus está encendido para la compañía; si no,
+  **Completado**. El comentario del cuerpo va en el último paso del historial.
+
+**Qué se puede hacer en cada estatus:**
+
+| Estatus | Se puede | Queda bloqueado |
+|---|---|---|
+| Esperado | Editar el encabezado (`PATCH`), agregar líneas y borrar el recibo. | Confirmar: sin líneas responde `422` `El recibo no tiene líneas; agregue al menos una antes de confirmar.` |
+| Recibiendo | Todo lo anterior, cambiar o quitar líneas, confirmar y asignar cruce de muelle contra lo recibido de una línea. | — |
+| Discrepancia | Igual que Recibiendo. La diferencia se corrige guardando las líneas o se confirma tal cual. | — |
+| Completado | Consultar, trabajar sus tareas de acomodo y asignar cruce de muelle contra el remanente con acomodo pendiente. | `PATCH`, alta, cambio y baja de líneas, confirmar y `DELETE`: `422` `El recibo {n} ya fue confirmado; no se puede modificar.` |
+| Completado con diferencia | Igual que Completado. | Igual que Completado. |
+| Acomodado | Consultar. | Igual que Completado. |
+
+Un recibo abierto también bloquea acciones de otros documentos: cancelar, eliminar o cambiar las líneas de la orden de compra de la
+que nació (`409` `La orden de compra tiene un recibo abierto; confírmelo o elimínelo antes de cancelar.` / `... elimínelo antes de
+eliminar la orden de compra.` / `... confírmelo o elimínelo antes de cambiar sus líneas.`), cancelar su aviso (`409`), dar de baja
+el producto de una de sus líneas o el almacén.
+
+Por compañía y en bases existentes:
+
+- Entradas laterales sembradas (la compañía las cambia en `/status/lateral-entries/RECEIPT`): Discrepancia desde
+  Recibiendo; Completado con diferencia desde Recibiendo, Discrepancia y Esperado; Acomodado desde Completado con
+  diferencia. Si la compañía **apaga** un estatus: sin Discrepancia la diferencia se queda en Recibiendo; sin Completado
+  con diferencia se confirma como Completado; sin Recibiendo el recibo se queda en Esperado hasta confirmarse.
+- Bases existentes: el seed pasa los recibos que estaban en `OPEN` a Recibiendo (con líneas) o Esperado (sin líneas),
+  con la línea de historial "Lote 13: nuevo ciclo de estatus del recibo.", y retira `OPEN`.
+
+Eliminar un recibo abierto (sin cruce de muelle asignado): si nació de una PO, su ASN se **cancela**; si es de
+cliente, el ASN vuelve a quedar `EXPECTED` (pendiente de recibir de nuevo). Un recibo en Esperado se borra igual.
+
+Casos frecuentes (Lote 13):
+- *Llegó un camión sin aviso*: cree un recibo ciego solo con encabezado (almacén, transporte, referencia), agregue las
+  líneas a medida que cuenta y, si conoce lo esperado (por ejemplo, la factura del proveedor), captúrelo en cada línea
+  para ver la diferencia antes de confirmar.
+- *El recibo quedó en Discrepancia por error de captura*: corrija la cantidad; al cuadrar vuelve solo a Recibiendo.
+- *Buscar recibos con faltante todavía abiertos*: `GET /api/v1/receipts?phase=OPEN&variance=SHORT`.
+- *Buscar lo que falta acomodar*: `GET /api/v1/receipts?phase=PENDING_PUTAWAY`; cada fila trae `pendingPutawayCount`.
+- *Llegó menos de lo que decía la orden de compra*: capture lo recibido en la línea del documento (0 si no llegó); el recibo pasa
+  a Discrepancia y, al confirmar, a Completado con diferencia. El faltante contra la orden se resuelve después en Compras
+  (sección 8), porque el recibo confirmado con diferencia cuenta como recibo confirmado para los faltantes.
+- *Llegó algo que no venía en el aviso ni en la orden*: por la web no se puede agregar la línea; por el API es una línea extra
+  (`POST .../lines`) que entra como ajuste `RECEIPT_VARIANCE` y no cuenta contra la orden.
+- *Corregir el transporte o la referencia*: `PATCH /api/v1/receipts/{publicId}` con el `rowVersion` de la ficha; mientras el recibo
+  esté abierto se puede repetir las veces que haga falta.
 
 ---
 
@@ -540,6 +708,12 @@ Cómo se usa:
 - `POST /api/v1/warehouse-tasks/{id}/cancel` — solo `PUTAWAY`/`REPLENISH`.
 - `POST /api/v1/warehouse-tasks/replenishment/run` — `{ "warehousePublicId": "..." }` (o el único activo).
 
+Lote 13 (pantalla): en la aplicación web ya no hay una cola única de tareas. Cada tipo se trabaja en la pantalla a la que
+pertenece: `PUTAWAY` en Recibo (pestaña "Acomodo pendiente" y el detalle del recibo), `REPLENISH` en Recolección y empaque
+(pestaña "Reabasto"), `COUNT` en Conteo cíclico y `CROSSDOCK` en Cruce de muelle. En todas, las acciones de cada fila son íconos
+con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de arriba no cambian. Ver
+[F6 — Tareas de almacén](frontend/f6-almacen-e-inventario.md#tareas-de-almacén).
+
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
@@ -568,7 +742,7 @@ Cómo se usa:
 `IN_PROGRESS`, solo `PUTAWAY`/`REPLENISH` desde la cola). Completar por menos de lo pedido dentro dado en la tarea
 deja un remanente como **tarea nueva** con el mismo `Ref` (mismo recibo/plan de origen). Efecto
 `WarehouseTaskStatusEffect`: cuando la última `PUTAWAY` con `Ref RECEIPT` de un recibo llega a `DONE` o
-`CANCELLED`, el recibo pasa `RECEIVED → PUTAWAY` (ver sección 4).
+`CANCELLED`, el recibo pasa `RECEIVED` o `RECEIVED_VARIANCE` → `PUTAWAY` (ver sección 4).
 
 Reabasto: idempotente por almacén — una segunda corrida no crea tareas nuevas si ya hay una `REPLENISH` abierta
 hacia la misma posición (`skippedWithOpenTask`), si no hay reserva disponible (`skippedNoReserve` — informativo, no
@@ -672,7 +846,13 @@ Cómo se usa:
   includeDeleted=` (las eliminadas se excluyen por defecto; la búsqueda `search` se aplica al final, sobre lo ya
   filtrado por `orderNumber`/`invoiceNumber`).
 - `POST /api/v1/pick-batches` — `{ "warehousePublicId": "...", "lines": [{ "productPublicId": "...", "quantity": 5 }] }`.
-- `POST /api/v1/pick-batches/{publicId}/pack` — `{ "order": { ... datos de la orden ... } }`.
+- `POST /api/v1/pick-batches/{publicId}/pack` — `{ "order": { ... datos de la orden ... } }`. Sin `serviceType` (o sin
+  `packageType` en un paquete) la orden toma el **predeterminado de la compañía**; si la compañía no lo tiene, 400 `El tipo
+  de servicio es obligatorio.` (`errors.serviceType`) o `El tipo de paquete es obligatorio.` (`errors["packages[i].packageType"]`).
+  Para saber de antemano si hay predeterminados (ajuste del 2026-09-30: la pantalla solo ofrece "Predeterminado de la
+  compañía (…)" cuando existe), lea `GET /api/v1/tenant/settings`: `defaultServiceType` y `defaultPackageType` traen el
+  código o `null`. Ese endpoint solo exige sesión (ningún permiso ni módulo), así que lo lee quien empaca; la etiqueta sale
+  del catálogo (`GET /api/v1/catalogs/ServiceType` y `.../PackageType`).
 - Lote 8A (cola del aparato) — `POST /api/v1/pick-batches/collect-and-pack` — el mismo cuerpo de recolectar más
   `"pack": { "order": { ... } }`: recolecta y empaca en **una** transacción y responde `{ batch, order }`
   (`PickBatchPackResultDto`), con las mismas reglas, permisos y mensajes que los dos pasos. Si el empaque falla (por
@@ -681,6 +861,12 @@ Cómo se usa:
   una llamada use POST /api/v1/pick-batches/collect-and-pack.`; sin `pack` en `collect-and-pack` → 400 `Indique los
   datos de la orden que se crea al empacar.`.
 - `DELETE /api/v1/pick-batches/{publicId}`.
+- Lote 13 (pantalla): la lista y la captura comparten pantalla en dos paneles (ver
+  [F6 — Recolección y empaque](frontend/f6-almacen-e-inventario.md#recolección-y-empaque)). La captura manda **una sola** llamada
+  `POST /api/v1/pick-batches` con todas las líneas (hasta 100). En la lista, `orderNumber` y `invoiceNumber` buscan por contenido, sin
+  distinguir mayúsculas (el filtro "No. de orden" sugiere números con `GET /api/v1/pick-batches?orderNumber=<texto>&take=20`). Cada
+  fila trae `canPack` y `canDelete`; la pantalla ofrece Empacar y Eliminar solo cuando son verdaderos (y con `orders.cancel`, para
+  eliminar una empacada).
 
 ### Validaciones
 
@@ -689,6 +875,10 @@ Cómo se usa:
 | Productos de más de un dueño en una recolección | `Una recolección solo puede tener productos de un mismo dueño.` | 400 |
 | Empaque con entrega especial o chofer | `Un empaque no puede ser una entrega especial ni llevar chofer.` | 400 |
 | Sin líneas | `Indique al menos una línea a recolectar.` | 400 |
+| Línea sin producto | `Indique el producto.` (`errors["lines[i].productPublicId"]`) | 400 |
+| Serie de más de 80 caracteres / más de 500 series en una línea | `Cada número de serie admite como máximo 80 caracteres.` / `Una línea admite como máximo 500 series.` | 400 |
+| Almacén sin indicar con más de uno activo / sin almacenes activos | `Indique el almacén: la compañía tiene más de uno.` (400) / `La compañía no tiene almacenes activos.` (422) | 400 / 422 |
+| Almacén inactivo | `El almacén está inactivo; no se puede recolectar.` | 422 |
 | Más de 100 líneas | `La recolección admite como máximo 100 líneas.` | 400 |
 | Cantidad ≤ 0 / con más de 3 decimales / fuera de rango | `La cantidad debe ser mayor que cero.` / `La cantidad admite como máximo 3 decimales.` / `La cantidad excede el máximo permitido.` | 400 |
 | Producto con serie: cantidad ≠ series escaneadas | `En productos con serie la cantidad debe ser igual al número de series escaneadas.` | 400 |
@@ -705,6 +895,12 @@ Cómo se usa:
 | Eliminar una recolección cuya orden ya avanzó | `La orden de la recolección {n} ya avanzó a '{estatus}'; la recolección ya no se puede eliminar.` | 422 |
 | Eliminar una recolección ya eliminada | `La recolección {n} fue eliminada; solo se consulta.` | 422 |
 | Posición de reversa inactiva (eliminar) | `La posición {bin} de la recolección está inactiva; reactívela para eliminar la recolección y restaurar el inventario.` | 422 |
+| Empacar sin datos de la orden (o `collect-and-pack` sin `pack`) | `Indique los datos de la orden que se crea al empacar.` | 400 |
+| Empacar sin tipo de servicio, en una compañía sin predeterminado | `El tipo de servicio es obligatorio.` (`errors.serviceType`) | 400 |
+| Empacar un paquete sin tipo, en una compañía sin predeterminado | `El tipo de paquete es obligatorio.` (`errors["packages[i].packageType"]`) | 400 |
+| Número de recolección o de orden ya tomado (concurrencia) | `Ya existe una recolección con ese número; intente de nuevo.` / `La orden ya está ligada a otra recolección.` | 409 |
+| Empacar o eliminar con un `rowVersion` viejo | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Empacar o eliminar con un `rowVersion` que no es base64 | `rowVersion inválido: se espera el valor base64 devuelto por la ficha.` | 400 |
 | Empacar/eliminar sin `orders.create`/`orders.cancel` | `Falta el permiso 'orders.create'.` / `Falta el permiso 'orders.cancel'.` | 403 |
 | Borrar desde **Órdenes** una orden nacida de un empaque | `Esta orden nació de la recolección {n}; elimínela desde Recolección y empaque para restaurar el inventario.` | 409 |
 
@@ -716,6 +912,19 @@ PICK_BATCH_REVERSAL` a su posición original y la serie vuelve a `AVAILABLE`). S
 desde `PACKED` solo si su orden sigue **activa** y en la **etapa inicial** (si no, `422` con el mensaje de arriba).
 Cancelar la orden nacida de un empaque **no** restaura el inventario por sí sola (la mercancía regresa con un
 recibo `RETURN` aparte).
+
+Lote 13 — el mismo ciclo, por transición (Empacar y Eliminar son íconos en la fila de la lista, y también botones del detalle):
+
+| De → a | Quién | Qué valida | Efectos |
+|---|---|---|---|
+| (recolectar) → Recolectada | `warehouse.pick` | Almacén activo, un solo dueño, hasta 100 líneas, existencia disponible (409 sin efecto parcial), lote y series según el producto. | Número `EMP-#####`; un `ISSUE` por línea (FEFO si no se indica posición ni lote). |
+| Recolectada → Empacada | `warehouse.pick` + `orders.create` | La recolección sigue Recolectada (422 `La recolección {n} ya fue empacada.`); cliente de la orden = dueño del inventario; datos de la orden; tipo de servicio y de paquete (o el predeterminado de la compañía); `rowVersion` si se manda. | Crea la orden de transporte real con el número de la recolección como número de empaque y copia la factura final. |
+| Recolectada → Cancelada | `warehouse.pick` | Posiciones de reversa activas; `rowVersion` si se manda. | Reversa cada línea con `ADJUSTMENT PICK_BATCH_REVERSAL` a su posición original; la serie vuelve a `AVAILABLE`. |
+| Empacada → Cancelada | `warehouse.pick` + `orders.cancel` | La orden creada sigue activa y en su etapa inicial (422 con el mensaje de arriba). | Borra también la orden y hace la misma reversa. |
+
+Qué bloquea: una recolección Empacada no se vuelve a empacar; una Cancelada solo se consulta (`422` `La recolección {n} fue
+eliminada; solo se consulta.`) y solo aparece en la lista con `includeDeleted`. La lista no ofrece Empacar (`canPack`) ni Eliminar
+(`canDelete`) cuando el servidor los marca como falsos.
 
 ---
 
@@ -741,7 +950,8 @@ Cómo se usa:
   **opcional en el API** solo si la compañía tiene un único almacén activo (se usa ése); con más de uno hay que indicarlo. La
   pantalla siempre lo pide.
 - `PATCH /api/v1/purchase-orders/{publicId}` (fecha esperada, notas, reemplazo de líneas; controlado por la
-  capacidad `EDIT_PURCHASE_ORDER`).
+  capacidad `EDIT_PURCHASE_ORDER`). Desde el ajuste del 2026-09-30 acepta también `supplierId` y `warehousePublicId` (los
+  mismos identificadores del alta), **solo mientras la orden está en `DRAFT`** (ver abajo).
 - `POST /api/v1/purchase-orders/{publicId}/send` — `DRAFT → SENT`.
 - `POST /api/v1/purchase-orders/{publicId}/cancel` — desde `DRAFT`, `SENT` o `PARTIAL`, con comentario.
 - `DELETE /api/v1/purchase-orders/{publicId}` — sin recepciones ni recibo abierto.
@@ -765,7 +975,10 @@ Cómo se usa:
 | Almacén omitido y la compañía tiene más de un almacén activo (`errors.warehousePublicId`) | `Indique el almacén: la compañía tiene más de uno.` | 400 |
 | Almacén omitido y la compañía no tiene almacenes activos | `La compañía no tiene almacenes activos.` | 422 |
 | Almacén de la orden dado de baja | `El almacén está dado de baja; no admite órdenes de compra nuevas.` | 422 |
-| `PATCH` con `supplierId` o `warehousePublicId` (también `number`, `orderDate`, `currency`, `status`, `statusCode`) | `El campo supplierId de la orden de compra no se puede cambiar.` (con el nombre del campo enviado) | 400 |
+| `PATCH` con `number`, `orderDate`, `currency`, `status` o `statusCode` | `El campo number de la orden de compra no se puede cambiar.` (con el nombre del campo enviado) | 400 |
+| `PATCH` con un `supplierId` o `warehousePublicId` **distinto** del actual en una orden que no está en `DRAFT` (ajuste del 2026-09-30; se revisa antes que la capacidad `EDIT_PURCHASE_ORDER`) | `El proveedor y el almacén solo se cambian mientras la orden de compra está en borrador.` | 409 |
+| `PATCH` en `DRAFT` con un proveedor dado de baja / un almacén dado de baja | `El proveedor está dado de baja; no admite órdenes de compra nuevas.` / `El almacén está dado de baja; no admite órdenes de compra nuevas.` | 422 |
+| `PATCH` con un `supplierId` o `warehousePublicId` de otra compañía o inexistente | `Proveedor no encontrado.` / `Almacén no encontrado.` | 404 |
 | Producto de un cliente en la orden | `La orden de compra solo admite productos propios; {sku} pertenece a un cliente.` | 400 |
 | Producto repetido en la orden | `El producto {sku} está repetido en la orden de compra.` | 400 |
 | Producto inactivo en la orden | `El producto {sku} está inactivo; no admite órdenes de compra.` | 400 |
@@ -789,14 +1002,21 @@ Cómo se usa:
 | `CLOSE`/`REORDER` con cantidad distinta del pendiente | `Cerrar y Reordenar resuelven el faltante completo ({pendiente}); para una parte use el ajuste manual.` | 400 |
 | `MANUAL_ADJUSTMENT` sin cantidad / ≤ 0 | `Indique la cantidad del ajuste.` / `La cantidad del ajuste debe ser mayor que cero.` | 400 |
 | `MANUAL_ADJUSTMENT` por encima del pendiente | `La cantidad del ajuste excede el faltante pendiente ({pendiente}).` | 400 |
+| `MANUAL_ADJUSTMENT` sin nota (o solo espacios) | `Escriba una nota que explique el ajuste.` (en `errors.notes`) | 400 |
 | Resolver faltante de una PO cancelada | `La orden de compra está cancelada; su faltante ya no se resuelve.` | 422 |
 | Resolver faltante sin recepciones confirmadas | `La orden de compra todavía no tiene recepciones confirmadas.` | 422 |
 | Orden de compra de otro tenant o inexistente | `Orden de compra` (404 genérico) | 404 |
 
-**Lote 12 — proveedor y almacén de una orden.** Se eligen al crear la orden y **no cambian**: el `PATCH` los rechaza y la
-ficha los muestra de solo lectura. Si se equivocó de proveedor o de almacén, cancele la orden y cree otra. La máscara del
-teléfono del proveedor `(xxx)xxx-xxxx` es de la pantalla: el API guarda el texto que recibe (hasta 40 caracteres) y la
-pantalla lo manda ya con la máscara.
+**Proveedor y almacén de una orden (ajuste del 2026-09-30; antes, en el Lote 12, no cambiaban nunca).** Se eligen al crear
+la orden y **se pueden cambiar mientras está en Borrador (`DRAFT`)** con el `PATCH`: `supplierId` y `warehousePublicId` son
+opcionales (ausentes o `null` = sin cambio) y se validan igual que en el alta (proveedor y almacén activos de su compañía). Un
+valor **igual** al actual no cuenta como cambio: se acepta en cualquier estatus y no se vuelve a validar (así una pantalla
+puede mandar el formulario completo). Desde Enviada (`SENT`) quedan **fijos**: un valor distinto responde 409. Si la orden ya
+se envió y el proveedor o el almacén están mal, cancélela y cree otra. En Borrador la orden todavía no tiene avisos de llegada
+ni recibos (se crean al recibir, desde `SENT`), así que cambiar el almacén no afecta nada más: las líneas no dependen del
+almacén. El cambio queda en la auditoría de la orden (`SupplierId` / `WarehouseId`), y respeta `rowVersion` como el resto del
+`PATCH`. La máscara del teléfono del proveedor `(xxx)xxx-xxxx` es de la pantalla: el API guarda el texto que recibe (hasta 40
+caracteres) y la pantalla lo manda ya con la máscara.
 
 ### Estatus y transiciones
 

@@ -10,6 +10,12 @@ pantalla actual. En el Lote 12 se reescribieron **Productos e inventario**, **Pr
 (Compras) y se agregó el botón **Asignar cupo** a Posiciones. Las capturas de Productos, Proveedores y Órdenes de compra son
 las que regeneró el recorrido `f6.spec.ts` con la pantalla nueva (datos de prueba de ese recorrido); siguen pendientes las de
 Posiciones con **Asignar cupo**, el bloque **Añadir ajuste** y los PDF (se marcan en el texto).
+En el Lote 13 se reescribieron **Recepción** (el menú la llama **Recibo**: maestro-detalle con las pestañas Recibos, Avisos de
+llegada y Acomodo pendiente), **Tareas de almacén** (ya no hay una cola única: cada tipo vive en su pantalla) y **Recolección y
+empaque** (dos paneles con barra arrastrable); sus capturas son las que regeneró el recorrido `f6.spec.ts`. Siguen pendientes las de
+la pestaña Avisos de llegada y el modal Nuevo aviso (se marcan en el texto). El Lote 13 también ajustó, por decisión del dueño del
+producto del 2026-09-30, la ficha de la **orden de compra** (proveedor y almacén editables en Borrador), la nota obligatoria de todo
+ajuste manual, el indicador **Unidades totales** y los predeterminados de la compañía al **Empacar**.
 
 ## Todas las tablas: pie, filas por página y Exportar (Lote 11)
 
@@ -21,7 +27,7 @@ Aplica a todas las tablas de la aplicación que usan el componente estándar, no
 - El rango y el total: `1–25 de 552`.
 - **Filas por página**: 10, 25, 50 o 100 (si la pantalla arrancó con otro tamaño, ese tamaño también aparece en la lista).
   Por defecto son 25. En las listas que vienen paginadas del servidor (Órdenes, Inventario —Saldos y Kárdex—,
-  Recolección y empaque, Órdenes de compra, Recibos, Productos, Tareas de almacén, la pestaña Posiciones de la ficha del
+  Recolección y empaque, Órdenes de compra, Recibos, las colas de tareas, Productos, la pestaña Posiciones de la ficha del
   almacén y Posiciones) cambiar el tamaño vuelve a pedir los datos y regresa a la página 1. En las demás la lista ya
   está cargada y el cambio es inmediato.
 - El botón **Exportar**.
@@ -348,7 +354,7 @@ elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o v
 | Tarjeta | Qué cuenta | Filtro que aplica a la tabla | `?kpi=` |
 |---|---|---|---|
 | SKUs activos | Productos activos | Solo activos | `active` |
-| Unidades totales | Existencia en mano de todos los saldos | Activos con disponible mayor que cero (no cuenta la existencia en cuarentena ni cruce de muelle) | `available` |
+| Unidades totales | Existencia en mano de todos los saldos **de productos activos** (los inactivos no suman) | Activos con existencia en mano mayor que cero (cuenta también la cuarentena y el cruce de muelle, y no resta lo reservado) | `available` |
 | Bajo mínimo | Productos activos con mínimo cuyo disponible es menor | Bajo mínimo | `low` |
 | Con número de serie | Productos activos con rastreo por serie o con series registradas | Rastreo por serie o con series registradas (incluye los inactivos que las tengan) | `serial` |
 
@@ -397,8 +403,10 @@ pide, y **Nota** (obligatoria, hasta 300 caracteres; «Por qué se ajusta (oblig
 el bloque sin cambios) y **Aplicar ajuste**. Al aplicar, aparece «Ajuste aplicado: {cantidad} {sku}», el **Total** del modal se
 actualiza y el bloque vuelve a ocultarse vacío; el modal sigue abierto. Si el ajuste dejaría el inventario en negativo, el
 servidor lo rechaza (409, «Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}.») y el mensaje
-aparece **dentro del bloque**, que sigue abierto para corregirlo. La nota es obligatoria **en la pantalla**; el API la deja
-opcional para otros flujos. Los mensajes del bloque comparten texto con la pantalla Ajustes de inventario.
+aparece **dentro del bloque**, que sigue abierto para corregirlo. La nota es obligatoria **también en el API**
+(`POST /api/v1/inventory/adjustments` responde 400 con el error en `errors.notes`); los ajustes que hace el sistema no la piden. Los
+mensajes del bloque comparten texto con los demás ajustes manuales: el botón **Ajustar** del Kárdex y **Resolver** un faltante con
+"Ajuste manual" (Compras) también exigen la nota.
 
 ### Reportes en PDF (Productos e inventario)
 
@@ -561,92 +569,250 @@ tabla de diferencias (Kárdex vs. saldo); sin diferencias, "El inventario concil
 ## Recepción: recibos y avisos de llegada
 
 **Para qué sirve.** Registra la mercancía que entra al almacén: recibos ciegos (sin documento previo), de devolución,
-contra un aviso de llegada (ASN) de un cliente, o contra una orden de compra propia.
+contra un aviso de llegada (ASN) de un cliente, o contra una orden de compra propia. Desde el Lote 13 todo se hace en **una
+sola pantalla**: la lista de recibos a la izquierda y, a la derecha, el detalle del recibo elegido, con sus líneas, su botón
+**Confirmar recibo** y sus tareas de acomodo. La ficha propia del recibo dejó de existir.
 
-**Cómo se llega.** Menú **Almacén › Recepción**, dirección `/warehouse/receipts` (pestañas **Recibos** y **Avisos de
-llegada**); ficha del recibo en `/warehouse/receipts/:publicId`.
+**Cómo se llega.** Menú **Almacén › Recibo**, dirección `/warehouse/receipts`. Tiene tres pestañas:
 
-**Qué se ve (lista de recibos).**
+| Pestaña | Dirección | Qué muestra |
+|---|---|---|
+| **Recibos** | `/warehouse/receipts` | Los recibos y el detalle del elegido. |
+| **Avisos de llegada** | `/warehouse/receipts?tab=asns` | Los avisos de llegada de los clientes. |
+| **Acomodo pendiente** | `/warehouse/receipts?tab=putaway` | Los recibos confirmados que todavía tienen tareas de acomodo. |
 
-![Lista de recibos](img/f6-recepcion.png)
+El recibo elegido va en la dirección (`?receipt=…`), así que se puede copiar el enlace. La dirección antigua de la ficha
+(`/warehouse/receipts/:publicId`) lleva ahora a la pantalla con ese recibo elegido, y el evento de un recibo en Actividad reciente
+abre el recibo de la misma forma. Al cambiar de pestaña se quita el recibo elegido.
 
-Columnas: número, tipo, almacén, estatus, origen, creado y diferencia (si hay). Filtros: almacén, estatus, tipo, rango
-de creación, producto y "Con/sin diferencia".
+### Pestaña Recibos
 
-**Qué hace cada botón.**
-- **Nuevo recibo**: elige "Recibir" (Ciego, Devolución, contra Aviso de llegada o contra Orden de compra —esta última
-  solo si además tiene `purchasing.receive` y el módulo Compras encendido—), el almacén, la posición de recepción
-  (vacío usa la primera posición de una zona STAGING) y las líneas (producto y cantidad recibida).
+![Pantalla Recibo: filtros arriba; a la izquierda la lista de recibos con su estatus; a la derecha el detalle del recibo REC-00007, Completado, con su tabla de líneas (esperado 5, recibido 5, diferencia 0), el botón Confirmar recibo desactivado y debajo el panel de tareas de acomodo](img/f6-recepcion.png)
 
-![Nuevo recibo ciego con una línea](img/f6-recibo-nuevo.png)
+**Filtros** (arriba; todos van al servidor y vuelven a la página 1; **Limpiar** los quita):
+- **Almacén** (uno, con buscador), **Estatus** y **Tipo** (desplegables con buscador, se puede elegir varios), **Creado** (rango de fechas).
+- **Producto** (varios, con buscador; incluye productos dados de baja, porque es historial).
+- **Diferencia**: **Faltante** (alguna línea recibió menos de lo esperado), **Sobrante** (alguna recibió más) o **Sin diferencia**;
+  se pueden elegir varias.
 
-**Qué se ve (ficha).**
+**La lista (izquierda).** Título "Recibo" con el total. Arriba un buscador libre ("Número, aviso, cliente, orden de compra o
+proveedor"; también busca en el transporte y la referencia). Cada recibo muestra:
+- El número (`REC-00007`) y, a la derecha, su **estatus** en un chip de color.
+- El remitente: el proveedor (orden de compra) o el cliente (aviso); en ciegos y devoluciones, el tipo.
+- Una línea tenue con transporte · fecha (la llegada esperada, o la de alta) · origen (**Orden de compra**, **Cliente**, **Ciego**,
+  **Devolución**) con su documento · referencia · "N por acomodar" si tiene tareas de acomodo abiertas.
 
-![Ficha de un recibo confirmado, con su tarea de acomodo](img/f6-recibo-ficha.png)
+Los más recientes van primero. El pie de la lista trae el rango, **Filas por página**, ‹ ›, y **Exportar** (todo lo que cumple los
+filtros, no solo la página; ver "Todas las tablas"). **Un clic** elige el recibo; **doble clic** abre su encabezado en un modal (el
+mismo del lápiz del detalle).
 
-Barra de estatus (Abierta — Recibida, con "Cierre: En putaway"), resumen (esperado/recibido/diferencia/muelle),
-líneas con lo esperado vs. lo recibido (y **Capturar**/**Quitar línea** mientras está Abierta), y "Tareas de acomodo"
-con acceso directo a Tareas de almacén.
+**El detalle (derecha).**
 
-**Qué hace cada botón (ficha).**
-- **Agregar línea** / **Capturar** / **Quitar línea**: solo con el recibo Abierta.
-- **Confirmar recibo**: asienta el inventario y crea las tareas de acomodo; ya no se puede modificar después.
-- **Eliminar**: solo Abierta y sin cruce de muelle asignado.
+![Detalle de un recibo confirmado: título Detalle del recibo con su estatus Completado, origen Ciego, lápiz de encabezado e ícono de historial, datos del recibo, tabla de líneas y el botón Confirmar recibo desactivado con el aviso El recibo ya está confirmado](img/f6-recibo-ficha.png)
 
-**Permiso.** `inventory.view` (lista y ficha de solo lectura); **`warehouse.receive`** para capturar líneas, agregar/
-quitar, confirmar, eliminar y administrar avisos de llegada (recibir contra orden de compra exige además
-`purchasing.receive` + módulo Compras). Módulo `WMS_LOTSERIAL`.
+- **Título:** "Detalle del recibo · REC-…" con su estatus; a la derecha, el origen ("Origen · Orden de compra: PO-…",
+  "Origen · Cliente: …" u "Origen · Ciego"), el **lápiz** (Editar el encabezado del recibo; si está confirmado, Ver el encabezado del
+  recibo) y el **reloj** (Historial: los cambios de estatus del recibo).
+- **Datos del recibo:** almacén, recepción (la posición por defecto), muelle, transporte, referencia, llegada esperada, creado y
+  confirmado (solo los que tienen dato).
+- **Líneas del recibo:** SKU, Producto, Esperado, Recibido y Diferencia (0 en gris; distinto de 0 en rojo, con signo: `−2`, `+3`).
+- **Confirmar recibo** (botón ancho, `warehouse.receive`) y, si el recibo está confirmado, el panel **Tareas de acomodo**.
 
-**Estatus y transiciones.** El estatus no lo cambia un botón de pipeline: **Abierta → Recibida** al **Confirmar**;
-**→ En putaway (terminal)** lo dispara el sistema cuando se termina la última tarea de acomodo. El texto bajo el
-pipeline lo aclara: "El estatus lo cambia el sistema: RECEIVED al confirmar y PUTAWAY cuando se termina la última
-tarea de acomodo."
+### Captura de las líneas
+
+Las líneas se capturan **directamente en la tabla del detalle**, mientras el recibo está abierto (Esperado, Recibiendo o
+Discrepancia) y usted tiene `warehouse.receive`. Se guarda una fila a la vez, al salir del campo o al pulsar Enter; mientras guarda
+la fila dice "Guardando…". Cada guardado puede cambiar el estatus del recibo (el chip se actualiza solo).
+
+- **Recibo ciego o de devolución.** Cada fila lleva **Producto** (buscador por SKU o nombre), **Esperado**, **Recibido** y una
+  papelera; siempre queda una **fila vacía al final** para seguir capturando (hasta 200 líneas). Al escribir lo **recibido**, lo
+  **esperado se copia solo** mientras esté vacío o en 0; si usted escribe otro esperado (por ejemplo, el de la factura), deja de
+  copiarse. Cantidades con coma o con punto, hasta 3 decimales. La copia es solo de la pantalla: ya guardada la línea con su
+  esperado, cambiar lo recibido no vuelve a moverlo, y la diferencia se ve.
+- **Recibo contra aviso de llegada u orden de compra.** Lo **esperado viene del documento y es de solo lectura**; solo se captura lo
+  **recibido**. **No hay "Añadir ítem"** en la web: una línea que no venía en el documento solo se registra por la app o por el
+  API. Las líneas del documento no se quitan: si no llegó nada, capture 0.
+- **Productos por lote o por serie.** En la fila aparece el ícono **Lote y series**, que abre "Lote y series · {producto}": lote con
+  fabricación y vencimiento, números de serie (uno por renglón) y la posición de recepción de esa línea. En un producto por serie **lo
+  recibido es el número de series capturadas** ("En un producto por serie lo recibido es el número de series capturadas: N.").
+- **Quitar una línea** (papelera, solo líneas que no vienen del documento ni tienen cruce de muelle): pide confirmación ("¿Quitar la
+  línea de {producto} del recibo?") y avisa "Línea quitada.".
+
+Debajo de la tabla, mientras el recibo está abierto, aparecen las notas:
+- "Escanea o teclea cada línea para registrar lo recibido" (para quien puede capturar).
+- Cuando alguna línea difiere, un aviso destacado. En un recibo con documento: "Lo recibido difiere de lo esperado — al confirmar, la
+  diferencia queda registrada como ajuste de inventario." En un ciego o devolución: "Lo recibido difiere de lo esperado — al confirmar
+  entra al inventario lo recibido y el recibo queda como «Completado con diferencia» (sin ajuste)."
+
+### Confirmar el recibo
+
+**Confirmar recibo** abre una confirmación ("Se confirma el recibo {número} completo: se asienta el inventario y se crean las tareas
+de acomodo. Ya no se podrá modificar.") y, al aceptar, avisa "Recibo {número} confirmado.". El botón está **deshabilitado** y debajo
+dice por qué:
+
+| Motivo que se ve debajo del botón | Qué hacer |
+|---|---|
+| "El recibo ya está confirmado." | Nada: un recibo Completado, Completado con diferencia o Acomodado no se vuelve a confirmar. |
+| "Agregue al menos una línea para confirmar." | El recibo no tiene líneas guardadas. Agregue una (o borre el recibo si se creó por error). |
+| "Guardando líneas…" | Espere a que termine el guardado de la fila. |
+| "Hay líneas sin guardar: salga del campo o pulse Enter para guardarlas." | Hay algo tecleado que no se ha guardado; salga del campo o pulse Enter. |
+| "Corrija las líneas marcadas antes de confirmar." | Alguna fila tiene un error (el mensaje sale bajo su campo); corríjalo. |
+
+Si el servidor rechaza la confirmación con errores por línea (por ejemplo, falta el lote), el mensaje sale en la fila de esa línea.
+
+### Encabezado del recibo (modal)
+
+**Nuevo recibo** (cabecera de la pantalla, `warehouse.receive`) y el **doble clic** o el **lápiz** de un recibo abren el mismo modal.
+
+![Modal Nuevo recibo con Origen Ciego, Almacén ALM-01, Posición de recepción vacía (primera posición de una zona STAGING), Muelle sin asignar, Transporte y Referencia llenos y el botón Crear recibo](img/f6-recibo-nuevo.png)
+
+| Campo | Regla |
+|---|---|
+| **Origen** | Ciego, Devolución, Contra aviso de llegada o Contra orden de compra (esta última solo si tiene `purchasing.receive` y el módulo Compras encendido). Al editar, Ciego ↔ Devolución solo en recibos sin documento. |
+| **Almacén** (obligatorio) | Al editar, solo cambia en un recibo sin documento y sin líneas. |
+| **Aviso de llegada** / **Orden de compra** | Solo al crear con ese origen: avisos pendientes (sin recibo) u órdenes Enviadas o Recibidas parcial **del almacén elegido**. Con **Recibir** desde un aviso, el origen, el almacén y el aviso ya vienen elegidos. |
+| **Posición de recepción** | Zona STAGING o CROSSDOCK. Vacío: la primera posición de una zona STAGING. Queda como la posición por defecto de las líneas. |
+| **Muelle** | Opcional; los muelles del almacén. |
+| **Transporte** y **Referencia** | Texto libre, hasta 80 caracteres. |
+
+- **Crear recibo:** avisa "Recibo REC-… creado." y el recibo queda **primero en la lista, elegido y con su detalle listo**, aunque los
+  filtros lo excluyan (hasta que cambie un filtro). Un ciego o devolución nace **Esperado** con la tabla vacía para capturar; contra
+  aviso u orden de compra nace **Recibiendo** con las líneas del documento (recibido igual a lo esperado).
+- **Guardar** (al editar): manda solo lo que cambió y avisa "Encabezado del recibo {número} guardado."; sin cambios, cierra sin
+  llamar al servidor. En un recibo con documento aparece el aviso "Con aviso de llegada u orden de compra, el origen, el almacén y lo
+  esperado vienen del documento."; si el almacén no se puede cambiar, "El almacén solo se cambia en un recibo sin documento y sin
+  líneas.".
+- **Borrar recibo** (rojo; solo abierto y sin cruce de muelle asignado): "¿Borrar el recibo {número}? Si nació de un aviso de cliente,
+  el aviso vuelve a quedar pendiente; si nació de una orden de compra, la orden podrá recibirse de nuevo." Avisa "Recibo {número}
+  borrado.".
+- **Solo lectura:** si el recibo ya está confirmado o usted no tiene `warehouse.receive`, el modal muestra los datos como texto y solo
+  tiene **Cerrar**. Confirmado, dice "El recibo ya está confirmado: su encabezado no se puede cambiar.".
+
+### Pestaña Avisos de llegada
+
+Lista de los avisos (ASN) que los clientes anuncian.
+- **Filtros** (todos al servidor): **Almacén**, **Cliente dueño** (con buscador), **Referencia** (contiene; espera un instante tras
+  la última tecla) y **Llegada esperada** (rango, ambos extremos incluidos; un aviso sin fecha no entra en un rango). Esta pestaña
+  **no tiene buscador libre**.
+- **Tabla** (25 por página, se ordena por encabezado): Aviso (`#id · referencia`), Almacén, Cliente / OC, Llegada esperada, Estatus,
+  Líneas y **Recibo** (enlace al recibo en la pestaña Recibos, si ya tiene uno). El servidor devuelve hasta 200 avisos por consulta.
+- **Nuevo aviso** (`warehouse.receive`): almacén, **Cliente dueño** (obligatorio), Referencia (hasta 80), Llegada esperada y las
+  líneas (Producto del cliente, **Cantidad esperada** mayor que cero y Lote), hasta 200. **Agregar línea** suma otra.
+- **Recibir** (fila de un aviso pendiente y sin recibo): abre **Nuevo recibo** con el aviso y su almacén ya elegidos.
+- **Cancelar aviso** (aviso pendiente): "¿Cancelar el aviso de llegada #{id}? Ya no se podrá recibir contra él." Avisa "Aviso de
+  llegada cancelado.". Si el aviso ya tiene un recibo, el servidor lo rechaza (409): borre primero el recibo.
+
+> **Captura pendiente:** pestaña Avisos de llegada con sus filtros y el modal Nuevo aviso.
+
+### Pestaña Acomodo pendiente
+
+Muestra los recibos **Completados** o **Completados con diferencia** que todavía tienen tareas de acomodo por cerrar. Tiene los
+mismos filtros y la misma lista que la pestaña Recibos (aquí el filtro Estatus solo ofrece esos dos). A la derecha, **las tareas de
+acomodo del recibo elegido**, con las acciones de cada fila (ver la captura y las acciones en "Tareas de almacén", más abajo). Al cerrar la **última** tarea, el recibo pasa
+a **Acomodado** y sale de esta lista. Doble clic en un recibo abre su encabezado (solo lectura: ya está confirmado).
+
+**Permiso.** `inventory.view` (todo el módulo en solo lectura); **`warehouse.receive`** para crear, editar el encabezado, capturar
+líneas, confirmar, borrar y administrar avisos, e iniciar y completar las tareas de acomodo; **`warehouse.manage`** para asignarlas y
+cancelarlas. Recibir contra orden de compra exige además `purchasing.receive` + módulo Compras. Módulo `WMS_LOTSERIAL`.
+
+**Estatus y transiciones.** El estatus **no lo cambia un botón**: lo mueve el sistema según lo que usted captura.
+
+| De → a | Quién | Qué lo dispara | Qué queda bloqueado después |
+|---|---|---|---|
+| (nuevo) → **Esperado** | `warehouse.receive` | Crear un ciego o devolución sin líneas | Confirmar (no hay líneas) |
+| Esperado → **Recibiendo** | `warehouse.receive` | Guardar la primera línea | — |
+| Recibiendo ↔ **Discrepancia** | `warehouse.receive` | Cada línea guardada: si alguna difiere de lo esperado, Discrepancia; si todas cuadran, Recibiendo | — |
+| Recibiendo → **Completado** | `warehouse.receive` | **Confirmar recibo**, sin diferencia | Cambiar el encabezado, las líneas, confirmar y borrar |
+| Discrepancia → **Completado con diferencia** | `warehouse.receive` | **Confirmar recibo**, con diferencia | Igual que Completado |
+| Completado o Completado con diferencia → **Acomodado** | el sistema | Se cierra la última tarea de acomodo (o no hubo nada que acomodar) | — |
+
+Contra aviso u orden de compra el recibo **nace en Recibiendo**. Un recibo **nunca vuelve a Esperado**: si se borran todas sus
+líneas queda en Recibiendo, y para deshacerlo se borra el recibo. El detalle técnico (efectos en el Kárdex, orden de compra y cruce de
+muelle) está en el manual 06, sección 4.
 
 **Validaciones y mensajes.**
 
 | Campo | Regla | Mensaje |
 |---|---|---|
 | Almacén | obligatorio | "Elija el almacén." |
-| Aviso de llegada / Orden de compra | obligatorio según lo elegido en "Recibir" | "Elija el aviso de llegada." / "Elija la orden de compra." |
-| Producto (línea) | obligatorio | "Indique el producto." |
-| Líneas | al menos una | "Indique al menos una línea." |
-| Líneas | máx. 200 | "El recibo admite como máximo 200 líneas." |
+| Aviso de llegada / Orden de compra | obligatorio según el origen | "Elija el aviso de llegada." / "Elija la orden de compra." |
+| Orden de compra (lista) | sin permiso para consultar órdenes | "Su usuario no puede consultar órdenes de compra." |
+| Aviso de llegada / Orden de compra | primero el almacén | "Elija primero el almacén." |
+| Transporte / Referencia | hasta 80 caracteres | "El transporte admite como máximo 80 caracteres." / "La referencia admite como máximo 80 caracteres." |
+| Producto (fila) | obligatorio | "Indique el producto." |
 | Cantidad recibida | obligatoria, no negativa | "Indique la cantidad recibida." / "La cantidad recibida no puede ser negativa." |
+| Cantidad esperada (ciego o devolución) | no negativa | "La cantidad esperada no puede ser negativa." |
+| Cantidad | número, hasta 3 decimales | "Escriba un número." / "La cantidad admite como máximo 3 decimales." / "La cantidad excede el máximo permitido." |
 | Lote (producto por lote) | obligatorio | "El producto {sku} se controla por lote: indique el lote." |
 | Series (producto por serie) | tantas como la cantidad, sin repetir | "El producto {sku} se controla por serie: capture {qty} número(s) de serie (hay {n})." / "El número de serie '{serial}' está repetido." |
+| Líneas del recibo | máx. 200 | "El recibo admite como máximo 200 líneas." |
+| Aviso: cliente | obligatorio | "Indique el cliente dueño de la mercancía del aviso de llegada." |
+| Aviso: cantidad esperada | mayor que cero | "La cantidad esperada debe ser mayor que cero." |
+| Aviso: líneas | máx. 200 | "El aviso de llegada admite como máximo 200 líneas." |
+| Recibo no encontrado | el enlace apunta a un recibo que ya no existe | "Recibo no encontrado." |
+| Confirmar / borrar / editar un recibo confirmado | el servidor lo rechaza (422) | "El recibo {n} ya fue confirmado; no se puede modificar." |
+
+Los demás mensajes del servidor (cambio de tipo con documento, almacén con líneas, esperado en un recibo con documento, cruce de
+muelle asignado, etc.) salen tal cual en el formulario o bajo el campo de la fila; están todos en el manual 06, sección 4, y en el
+[FAQ](../faq.md#lote-13--recibo-lote-3-del-plan-de-cambios-ciclo-de-estatus-encabezado-editable-esperado-en-ciegos-y-filtros).
 
 ## Tareas de almacén
 
-**Para qué sirve.** Una cola única con todo el trabajo físico del almacén: acomodo (putaway) tras un recibo, reabasto
-de posiciones de picking, conteo cíclico y cruce de muelle.
+**Para qué sirve.** Todo el trabajo físico del almacén que el sistema genera: acomodo (putaway) tras un recibo, reabasto de
+posiciones de picking, conteo cíclico y cruce de muelle. **Ya no existe una pantalla ni un ítem de menú "Tareas de almacén"** con
+todas las tareas juntas: cada tipo se trabaja en la pantalla a la que pertenece.
 
-**Cómo se llega.** Menú **Almacén › Tareas de almacén**, dirección `/warehouse/tasks`.
+**Cómo se llega.**
+
+| Tipo de tarea | Dónde se trabaja | Qué se puede hacer ahí |
+|---|---|---|
+| **Acomodo** (Putaway) | **Recibo › Acomodo pendiente**, y el panel "Tareas de acomodo" del detalle de un recibo confirmado | Asignar, iniciar, completar y cancelar |
+| **Reabasto** | **Recolección y empaque › Reabasto** (`?tab=replenish`), con el botón **Correr reabasto** | Asignar, iniciar, completar y cancelar |
+| **Conteo** | **Conteo cíclico › Tareas de conteo** | Asignar e iniciar; se completan reconciliando el conteo |
+| **Cruce de muelle** | **Cruce de muelle › Tareas de cruce** | Asignar e iniciar; se completan moviendo la asignación desde el plan |
+
+La dirección antigua `/warehouse/tasks` lleva a **Recibo › Acomodo pendiente** (por ahí no se llega a las tareas de reabasto).
 
 **Qué se ve.**
 
-![Cola de tareas de almacén, dos tareas de Putaway pendientes](img/f6-tareas.png)
+![Recibo, pestaña Acomodo pendiente: a la izquierda los recibos con acomodo pendiente y a la derecha las tareas de acomodo de REC-00007, con su producto, estatus Pendiente, cantidad, de → a, asignada a y cuatro íconos de acción por fila](img/f6-tareas.png)
 
-Columnas: tipo, estatus, prioridad, almacén, producto, cantidad, posiciones (de → a), referencia, asignado a y
-creada. Filtros: almacén, tipo, estatus, "Asignadas a mí" e "Incluir cerradas".
+La tabla de tareas de acomodo del recibo es compacta: columnas **Producto**, **Estatus**, **Cantidad**, **De → a** (posición de
+recepción → posición destino) y **Asignada a**, más la columna de acciones. Los encabezados solo se parten entre palabras, nunca
+dentro de una. En las colas de Reabasto, Conteo y Cruce de muelle la tabla trae además **Tipo** (si la cola mezcla tipos),
+**Prioridad**, **Almacén**, **Referencia** y **Creada**, y estos filtros: **Almacén**, **Estatus**, **Asignadas a mí** e **Incluir
+cerradas**.
 
-**Qué hace cada botón.**
-- **Correr reabasto** (cabecera): elige el almacén y crea automáticamente las tareas de reabasto que hagan falta.
-- **Asignar** (por fila): elige el usuario (o "Sin asignar").
-- **Iniciar**: pasa la tarea a en curso.
-- **Completar**: pide la posición destino (vacío usa la sugerida), cantidad (vacío completa el total; el remanente
-  queda como tarea nueva) y series si aplica.
+**Qué hace cada acción.** En todas las colas las acciones de una fila son **íconos con tooltip** (el nombre accesible es el de la
+acción):
 
-![Completar una tarea Putaway con la posición sugerida](img/f6-tarea-completar.png)
+| Ícono | Acción | Cuándo aparece | Permiso |
+|---|---|---|---|
+| Persona con "+" | **Asignar** | Tarea abierta | `warehouse.manage` |
+| Triángulo ▶ | **Iniciar** | Tarea Pendiente | El del tipo de tarea (ver abajo) |
+| Círculo con palomita | **Completar** | Tarea abierta que se completa desde la cola | El del tipo de tarea |
+| Círculo con equis (rojo) | **Cancelar** | Tarea abierta de Acomodo o de Reabasto | `warehouse.manage` |
 
-- **Cancelar**: solo para tareas de Putaway o Reabasto.
+- **Asignar** abre "Asignar tarea": elige el usuario (o "Sin asignar"). Avisa "Tarea asignada.".
+- **Iniciar** pasa la tarea a en curso y avisa "Tarea iniciada.".
+- **Completar** abre "Completar tarea": **Posición destino** (vacío usa la sugerida), **Cantidad** (vacío completa el total; el
+  remanente queda como tarea nueva) y **Números de serie** si aplica. Avisa "Tarea completada.".
 
-**Permiso.** `inventory.view` (ver la cola); **`warehouse.manage`** (asignar, cancelar); **Iniciar**/**Completar**
-exige el permiso del tipo de tarea: `warehouse.receive` (Putaway), `warehouse.pick` (Reabasto, y el botón "Correr
-reabasto"), `warehouse.count` (Conteo) o `warehouse.crossdock` (Cruce de muelle) —estas dos últimas normalmente se
-completan desde Conteo cíclico o desde el plan de cruce de muelle, no desde esta cola—. Módulo `WMS_LOTSERIAL`.
+![Completar una tarea de acomodo: el cuadro muestra la posición sugerida con su motivo, la posición destino elegida, la cantidad vacía y el campo de números de serie](img/f6-tarea-completar.png)
 
-**Estatus y transiciones.** Pendiente → En curso (**Iniciar**) → Terminada (**Completar**); Cancelada es lateral
-desde Pendiente/En curso, solo para Putaway y Reabasto.
+- **Cancelar** pide confirmación ("La tarea quedará cancelada y no podrá reanudarse.") y avisa "Tarea cancelada.".
+- **Correr reabasto** (cabecera de Recolección y empaque, pestaña Reabasto): elige el almacén y crea las tareas de reabasto que
+  hagan falta. Avisa "Se crearon {count} tareas de reabasto.".
+
+**Al cerrar la última tarea de acomodo** de un recibo (completada o cancelada), el recibo pasa solo a **Acomodado** y sale de la
+pestaña Acomodo pendiente.
+
+**Permiso.** `inventory.view` (ver las tareas); **`warehouse.manage`** (asignar, cancelar); **Iniciar** y **Completar** exigen el
+permiso del tipo de tarea: `warehouse.receive` (Acomodo), `warehouse.pick` (Reabasto y el botón Correr reabasto), `warehouse.count`
+(Conteo) o `warehouse.crossdock` (Cruce de muelle). Módulo `WMS_LOTSERIAL`.
+
+**Estatus y transiciones.** Pendiente → En curso (**Iniciar**) → Terminada (**Completar**); Cancelada es lateral desde
+Pendiente o En curso, solo para Acomodo y Reabasto. Sin transición manual de pipeline.
 
 **Mensajes que puede ver.**
 
@@ -654,7 +820,9 @@ desde Pendiente/En curso, solo para Putaway y Reabasto.
 |---|---|
 | "Su usuario no puede consultar el listado de usuarios." | Al abrir **Asignar** sin permiso para ver usuarios |
 | "Vacío usa la posición sugerida." / "Vacío completa la cantidad total de la tarea; el remanente queda como tarea nueva." | Ayuda del formulario de **Completar** |
-| "No hay una posición sugerida para esta tarea." | La tarea (normalmente no Putaway) no trae una sugerencia del servidor |
+| "No hay una posición sugerida para esta tarea." | La tarea (normalmente no Acomodo) no trae una sugerencia del servidor |
+| "Este recibo no tiene tareas de acomodo." | Un recibo elegido en Acomodo pendiente sin tareas |
+| "Selecciona un recibo para ver sus tareas de acomodo" | Ningún recibo elegido en Acomodo pendiente |
 | "Se crearon {count} tareas de reabasto." | Al terminar **Correr reabasto** |
 
 ## Conteo cíclico
@@ -701,61 +869,142 @@ transición manual de pipeline (los dos pasos son botones propios, no la barra d
 
 ## Recolección y empaque
 
-**Para qué sirve.** Recolecta inventario (por FEFO automático o eligiendo posición/lote/serie) y lo empaca como una
-orden de transporte nueva, sin pasar por la captura completa de una orden.
+**Para qué sirve.** Recolecta inventario (por FEFO automático o eligiendo posición/lote/serie) y lo empaca como una orden de
+transporte nueva, sin pasar por la captura completa de una orden. Desde el Lote 13 la captura y la lista están en **la misma
+pantalla, en dos paneles**.
 
-**Cómo se llega.** Menú **Almacén › Recolección y empaque**, dirección `/warehouse/pick-batches`; ficha en
-`/warehouse/pick-batches/:publicId`.
+**Cómo se llega.** Menú **Almacén › Recolección y empaque** (va justo después de **Recibo**), dirección `/warehouse/pick-batches`.
+Tiene dos pestañas: **Recolecciones** (la de los dos paneles) y **Reabasto** (`?tab=replenish`, las tareas de reabasto y el botón
+**Correr reabasto**; ver "Tareas de almacén"). La ficha completa de una recolección sigue en `/warehouse/pick-batches/:publicId`,
+pero desde la lista el detalle se abre en un modal.
 
-**Qué se ve (lista).**
+**Qué se ve.**
 
-![Lista de recolecciones, todas empacadas](img/f6-recolecciones.png)
+![Recolección y empaque: a la izquierda el panel Recolección con el almacén, la nota sobre FEFO y una línea vacía con los botones Añadir línea, Limpiar y Recolectar (bajar de inventario); a la derecha el panel Recolecciones con sus filtros y las recolecciones como tarjetas; un aviso confirma que se empacó y se creó la orden ORD-00001](img/f6-recolecciones.png)
 
-Columnas: número, almacén, estatus, orden y factura, dueño, cantidad y recolectada. Filtros: rango de recolección,
-estatus, producto, número de orden, factura e "Incluir eliminadas".
+Con `warehouse.pick` la pantalla tiene **dos paneles lado a lado**: **Recolección** (captura, izquierda) y **Recolecciones**
+(lista, derecha). Sin `warehouse.pick` no hay panel de captura y la lista ocupa todo el ancho.
 
-**Qué hace cada botón.**
-- **Recolectar**: almacén y líneas (producto, cantidad, y opcionalmente posición/lote/series; vacío usa FEFO
-  automático). Una recolección solo admite productos de un mismo dueño.
+**La barra entre los paneles.** Es una barra vertical que se puede mover para dar más espacio a un lado.
+- **Arranca en 60/40** (el panel de captura ocupa el 60 %).
+- **Con el ratón o el dedo:** arrastre la barra. **Con el teclado:** enfoque la barra (Tab) y use **←** y **→** (5 % por pulsación) o
+  **Inicio** y **Fin** (los extremos).
+- **Volver a 60/40:** pulse **Enter** con la barra enfocada, o haga **doble clic** en ella. Eso además olvida la posición guardada.
+- **Se recuerda:** la posición se guarda en el navegador (`teikem.split.pick-batches`), así que al volver a la pantalla o recargar
+  queda donde la dejó. Se guarda **por navegador, no por usuario**: en otro equipo u otro navegador arranca en 60/40, y quien entre con otro usuario en el mismo navegador ve la misma posición.
+- **Límites:** el panel de captura no baja del 35 % ni sube del 75 %, y cada panel conserva un ancho mínimo (420 px la captura,
+  320 px la lista).
+- **En celular** (ventana de 900 px o menos, o cuando el espacio no alcanza para los dos paneles) **uno va debajo del otro**, sin
+  barra: primero la captura y abajo la lista.
 
-  ![Nueva recolección: producto y cantidad, sin posición (FEFO automático)](img/f6-recoleccion-nueva.png)
+### Panel Recolección (captura)
 
-**Qué se ve (ficha).** Barra de estatus (Recolectada — Empacada, con cierre "Eliminada"), resumen (recolectada,
-empacada, orden, factura, cantidad, costo total) y líneas (producto, cantidad, posición, lote/serie, costo unitario,
-reversa).
+![Panel Recolección con una línea capturada: producto elegido con su existencia (15 disp.), cantidad 3 y la posición FEFO sugerida A01-R01-N1-P01, y debajo una fila vacía lista para otro producto](img/f6-recoleccion-nueva.png)
 
-![Ficha de una recolección ya empacada](img/f6-recoleccion-ficha.png)
+- **Almacén** (obligatorio): si la compañía tiene un solo almacén activo, ya viene elegido. Debajo, la nota "Una recolección admite
+  productos de un solo dueño. Sin posición ni lote, el sistema elige por FEFO.".
+- **Rejilla de líneas** (hasta 100). Columnas:
+  - **Producto**: buscador por SKU o nombre del almacén elegido; solo aparecen productos con existencia disponible y del mismo dueño
+    que las demás líneas. Bajo el campo se ve la existencia ("15 disp.").
+  - **Cantidad**: al elegir el producto queda en 1. En un producto por serie debe coincidir con el número de series.
+  - **Posición**: vacía significa "Automático (FEFO)": el sistema elige. Las posiciones con existencia de ese producto van primero,
+    y bajo el campo se anuncia cuál usaría el sistema ("FEFO: A01-R01-N1-P01"). Es solo una pista.
+  - **Lote**: solo si alguna línea es de un producto por lote o por serie; vacío es "Automático (FEFO)". Ofrece los lotes con
+    existencia.
+  - **Series**: solo para productos por serie. El botón **Series (n)** abre "Series de la línea n · SKU": una serie por renglón (o
+    separadas por coma) y "Capturadas: n."; **Listo** las guarda en la línea.
+  - **Papelera**: quita la línea. La fila vacía del final no se quita.
+- **Siempre hay una fila vacía al final**: al elegir el producto de la última fila se agrega otra. **Añadir línea** también agrega
+  una. Al llegar a 100 líneas el botón se apaga y aparece "Máximo 100 líneas por recolección.".
+- **Recolectar (bajar de inventario):** graba **todas** las líneas con datos en una sola operación (las filas vacías se ignoran).
+  Avisa "Recolección EMP-… creada.", deja las líneas vacías (se queda el almacén) y **resalta la recolección nueva** en la lista; no
+  abre su detalle. Si el servidor rechaza una línea (por ejemplo, inventario insuficiente), el mensaje sale en la fila de esa línea.
+- **Limpiar:** vacía las líneas (se queda el almacén).
+- Si el panel queda angosto (menos de 560 px), cada línea se ve como una tarjeta.
 
-**Qué hace cada botón (ficha).**
-- **Empacar**: cliente de la orden (debe ser el dueño del inventario recolectado), tipo de servicio, consignatario
-  (del directorio o uno nuevo), número de orden/factura (vacío: automático) y paquetes.
+### Panel Recolecciones (lista)
 
-![Empacando una recolección: consignatario nuevo y paquete](img/f6-empacar.png)
+- **Filtros** (dentro del panel; todos van al servidor y regresan a la página 1; **Limpiar** los quita): **Recolectada** (rango de
+  fechas), **Estatus**, **Producto** (varios; incluye productos dados de baja), **No. de orden**, **No. de factura** e **Incluir
+  eliminadas** (interruptor). Más un buscador libre ("Número, empaque, orden, factura, cliente o SKU", se aplica después de los
+  filtros).
+  - **No. de orden** es un campo con sugerencias: al escribir, ofrece números de orden existentes ("Escriba para ver las órdenes";
+    si no hay, "Ninguna orden con ese número."; si no se pueden consultar, "No se pudieron consultar las órdenes."). Puede elegir una
+    sugerencia (↑ ↓ Enter) o dejar lo escrito: busca por contenido. La equis ("Quitar el número de orden") lo vacía.
+- **Tabla** (25 por página, con el pie común y **Exportar**): **Número** (con su estatus y, si aplica, el chip "Eliminada"),
+  **Productos** ("SKU ×cantidad"), **Orden y factura**, **Cliente** ("Propio" si el inventario es propio) y **Recolectada**. Si el
+  panel queda angosto (menos de 640 px) las filas se ven como tarjetas, como en la captura de arriba.
+- **Acciones de la fila** (íconos con tooltip):
+  - **Empacar** (caja; `warehouse.pick` + `orders.create`; solo en recolecciones que se pueden empacar): abre "Empacar EMP-…".
+  - **Eliminar** (papelera roja; `warehouse.pick`, y `orders.cancel` si ya está empacada; solo si se puede): pide confirmación —
+    "¿Eliminar la recolección {número}? El inventario vuelve a su posición original." o, si está empacada, "¿Eliminar la recolección
+    {número}? Se borra también su orden {orden} y el inventario vuelve a su posición original."— y avisa "Recolección {número} eliminada.".
+- **Clic en la fila** (o en el número) abre el **detalle en un modal**; así no se pierde lo que tenga capturado en el panel de la
+  izquierda.
 
-- **Eliminar**: si ya está Empacada, exige además `orders.cancel` (borra también la orden que creó); bloqueado si la
-  orden ya avanzó.
+![Detalle de la recolección EMP-00004 en un modal: estatus Empacada, etapas Recolectada y Empacada con el cierre Eliminada, resumen con fechas, orden ORD-00001, factura y cantidad, y la tabla de líneas; pie con Cerrar y Eliminar](img/f6-recoleccion-ficha.png)
 
-**Permiso.** `inventory.view` (listar y ver la ficha); **`warehouse.pick`** para recolectar y eliminar; **Empacar**
-exige además `orders.create`. Módulo `WMS_LOTSERIAL`.
+**El detalle** muestra el cliente dueño, las etapas del estatus (**Recolectada → Empacada**, con el cierre **Eliminada**; solo
+lectura), el **Resumen** (recolectada con fecha y usuario, empacada, orden —con enlace a la orden si tiene `orders.view`— y su
+estatus, factura, cantidad y costo total) y las **Líneas** (producto, cantidad, posición, lote, serie, costo unitario y "Revertida" si
+ya se restauró). El pie trae **Cerrar** y, según corresponda, **Eliminar** y **Empacar**. Mientras el diálogo de Empacar o de Eliminar
+está abierto, el detalle no se cierra con Esc ni con un clic fuera; al eliminar, el detalle se cierra.
 
-**Estatus y transiciones.** Recolectada (inicial) → Empacada (**Empacar**) → Cancelada (lateral, **Eliminar**); sin
-transición manual de pipeline.
+### Empacar
+
+**Empacar** (desde la fila o desde el detalle) abre un formulario con los datos de la orden que nace del empaque.
+
+![Empacar EMP-00004: cliente de la orden, tipo de servicio Estándar, consignatario nuevo con nombre, dirección y ciudad, número de orden y factura vacíos (se generan solos) y el primer paquete con tipo Caja](img/f6-empacar.png)
+
+| Campo | Regla |
+|---|---|
+| **Cliente de la orden** (obligatorio) | Debe ser el cliente dueño del inventario recolectado; si la recolección es de un cliente, el campo lo recuerda: "Debe ser el cliente dueño del inventario: {cliente}.". |
+| **Tipo de servicio** | Ofrece **"Predeterminado de la compañía ({etiqueta})"** solo si la compañía tiene uno. **Si no lo tiene, esa opción no aparece y el campo es obligatorio.** |
+| **Consignatario** (obligatorio) | "Del directorio" (elija uno del cliente) o "Nuevo" (nombre, dirección, ciudad obligatorios; estado, código postal y país opcionales; el país es el código ISO de 2 letras). |
+| **Número de orden** y **Factura del cliente** | Opcionales: vacío, se generan automáticamente. |
+| **Paquetes** (al menos uno) | **Tipo de paquete** (con el mismo "Predeterminado de la compañía" solo si existe; si no, obligatorio), Descripción, **Piezas** (entero, al menos 1) y **Peso (kg)** (no negativo). **Agregar paquete** suma otro. |
+| **Notas** | Opcional. |
+
+**Empacar y crear orden** avisa "Empacada: se creó la orden {orden}." y la recolección pasa a Empacada.
+
+**Permiso.** `inventory.view` (listar y ver el detalle); **`warehouse.pick`** para recolectar, empacar y eliminar; **Empacar**
+exige además `orders.create`; eliminar una recolección **empacada** exige además `orders.cancel`. Módulo `WMS_LOTSERIAL`.
+
+**Estatus y transiciones.** No hay botón de pipeline: cada paso lo hace una acción.
+
+| De → a | Quién | Qué lo dispara | Qué queda bloqueado después |
+|---|---|---|---|
+| (nueva) → **Recolectada** | `warehouse.pick` | **Recolectar (bajar de inventario)** | — |
+| Recolectada → **Empacada** | `warehouse.pick` + `orders.create` | **Empacar** (crea la orden de transporte) | No se vuelve a empacar ("La recolección {n} ya fue empacada.") |
+| Recolectada → **Cancelada** | `warehouse.pick` | **Eliminar** (devuelve el inventario a su posición) | Solo se consulta ("La recolección {n} fue eliminada; solo se consulta.") |
+| Empacada → **Cancelada** | `warehouse.pick` + `orders.cancel` | **Eliminar** (borra también la orden y devuelve el inventario) | Igual que arriba; solo si la orden sigue en su etapa inicial |
 
 **Validaciones y mensajes.**
 
 | Campo | Regla | Mensaje |
 |---|---|---|
-| Líneas | al menos una | "Indique al menos una línea a recolectar." |
+| Almacén | obligatorio | "Elija el almacén." |
+| Líneas | al menos una con datos | "Indique al menos una línea a recolectar." (bajo el producto de la primera fila) |
 | Líneas | máx. 100 | "La recolección admite como máximo 100 líneas." |
+| Producto (línea con datos) | obligatorio | "Indique el producto." |
 | Dueño | un solo dueño por recolección | "Una recolección solo puede tener productos de un mismo dueño." |
-| Cantidad (línea) | > 0 | "La cantidad debe ser mayor que cero." |
-| Series (producto por serie) | tantas como la cantidad | "El producto {sku} tiene serie: escanee las series a recolectar." / "En productos con serie la cantidad debe ser igual al número de series escaneadas." |
+| Cantidad (línea) | > 0, hasta 3 decimales | "La cantidad debe ser mayor que cero." / "La cantidad admite como máximo 3 decimales." |
+| Series (producto por serie) | tantas como la cantidad, sin repetir entre líneas | "El producto {sku} tiene serie: escanee las series a recolectar." / "En productos con serie la cantidad debe ser igual al número de series escaneadas." / "La serie {serial} está repetida en la recolección." |
+| Series (línea) | máx. 500 | "Una línea admite como máximo 500 series." |
+| Lote / serie en un producto que no lo maneja | — | "El producto {sku} no maneja lote." / "El producto {sku} no maneja serie." |
 | Cliente (empacar) | obligatorio | "Indique el cliente de la orden." |
+| Tipo de servicio (empacar, compañía sin predeterminado) | obligatorio | "Elija el tipo de servicio." |
+| Tipo de paquete (empacar, compañía sin predeterminado) | obligatorio | "Elija el tipo de paquete." |
 | Consignatario (empacar) | obligatorio (directorio o nuevo) | "El consignatario es obligatorio: elija uno del directorio o capture uno nuevo." |
 | Nombre / Dirección / Ciudad (consignatario nuevo) | obligatorios | "El nombre del consignatario es obligatorio." / "La dirección (línea 1) del consignatario es obligatoria." / "La ciudad del consignatario es obligatoria." |
 | País (consignatario nuevo) | código ISO de 2 letras | "Use el código ISO de 2 letras del país." |
 | Paquetes | al menos uno | "Indique al menos una línea de paquete." |
 | Piezas (paquete) | ≥ 1 | "La cantidad de piezas debe ser al menos 1." |
+| Peso (paquete) | no negativo | "El peso no puede ser negativo." |
+| Existencia | el servidor la revisa al recolectar | 409 "Inventario insuficiente de {sku} en {posición}: disponible {x}, solicitado {y}." (sin efecto parcial) |
+
+Los demás mensajes del servidor (posición inactiva, zona no recolectable, orden que ya avanzó, etc.) salen en la fila o en el
+diálogo; están en el manual 06, sección 7, y en el [FAQ](../faq.md).
 
 ## Proveedores
 
@@ -830,10 +1079,12 @@ elegidos), y **Fecha** (rango). **Limpiar** los quita. Ya no hay buscador dentro
 **Qué se ve (ficha).** Barra de estatus con botones **Avanzar a Enviada** y **Avanzar a Cancelada** (los únicos
 manuales; Recibida parcial/Recibida los pone el sistema al confirmar un recibo); pestañas **Líneas** (editable solo
 en Borrador; una línea con recepciones muestra la nota "Esta línea ya tiene recepciones: no se elimina, no baja de lo
-recibido y su costo no cambia.") y **Faltantes** (líneas pendientes con **Resolver**). El **proveedor** y el **almacén** se
-muestran de solo lectura: se eligen al crear la orden y no se pueden cambiar (el servidor rechaza cambiarlos con 400 "El campo
-supplierId de la orden de compra no se puede cambiar."). Si se equivocó, cancele la orden y cree otra. Al guardar las líneas
-se aplica la misma regla del alta: al menos una línea con cantidad ordenada mayor que cero.
+recibido y su costo no cambia.") y **Faltantes** (líneas pendientes con **Resolver**). El **proveedor** y el **almacén** son
+campos editables **solo mientras la orden está en Borrador** (proveedor con buscador sobre los activos, almacén con el mismo
+selector del alta; ambos obligatorios) y se guardan junto con las líneas; la pantalla manda solo lo que cambió. Fuera de Borrador se
+muestran de solo lectura (el servidor responde 409 "El proveedor y el almacén solo se cambian mientras la orden de compra está en
+borrador."); si se equivocó y la orden ya se envió, cancélela y cree otra. Al guardar las líneas se aplica la misma regla del alta:
+al menos una línea con cantidad ordenada mayor que cero.
 
 **Qué hace cada botón (ficha).**
 - **Eliminar** (cabecera, solo si el servidor permite `canDelete`: sin recepciones ni recibo abierto).
@@ -978,9 +1229,17 @@ pida a un administrador que revierta el estatus o cancele la orden y cree una nu
 inventario propio; el selector de producto ya viene filtrado a solo propios para que no llegue a intentarlo (el
 servidor lo rechazaría de todos modos con "La orden de compra solo admite productos propios...").
 
-**¿Por qué el recibo no tiene un botón para pasarlo de "Recibida" a "En putaway" a mano?** Porque ese paso lo decide el
-sistema: pasa solo cuando se completa la última tarea de acomodo que generó el recibo. Vaya a "Tareas de almacén"
-para completarlas.
+**¿Por qué el recibo no tiene un botón para pasarlo a "Acomodado" a mano?** Porque ese paso lo decide el sistema: pasa solo cuando
+se completa (o se cancela) la última tarea de acomodo que generó el recibo. Vaya a **Recibo › Acomodo pendiente** para completarlas.
+Igual, "Discrepancia", "Recibiendo" y "Completado" los mueve el sistema según lo que captura y confirma.
+
+**¿Dónde quedó "Tareas de almacén"?** Ya no hay una cola con todas las tareas: el acomodo está en Recibo › Acomodo pendiente, el
+reabasto en Recolección y empaque › Reabasto, el conteo en Conteo cíclico y el cruce en Cruce de muelle.
+
+**¿Cómo abro el encabezado de un recibo?** Con doble clic en el recibo de la lista o con el lápiz del detalle (Editar el encabezado
+del recibo). Si el recibo ya está confirmado se abre en solo lectura.
+
+**¿Cómo vuelvo la barra de Recolección y empaque a 60/40?** Enfoque la barra y pulse Enter, o haga doble clic en ella.
 
 **¿Por qué "Cruce de muelle" no aparece en mi menú?** El módulo `CROSSDOCK` viene apagado por defecto; pida a un
 administrador que lo encienda en Configuración si su compañía lo necesita.
@@ -1023,11 +1282,11 @@ OPENING_BALANCE) pero no son ajustes de la operación. El aviso del reporte dice
 compra; sin costo no se calcula ni se suma. Capture el costo en el producto y vuelva a generar el reporte.
 
 **¿Por qué, con un filtro de Almacén en Productos, siguen saliendo productos sin existencia?** Porque el filtro de Almacén
-acota las **cantidades** de cada fila a ese almacén, no quita productos. Para ver solo los que tienen disponible, use el
+acota las **cantidades** de cada fila a ese almacén, no quita productos. Para ver solo los activos con existencia en mano, use el
 indicador «Unidades totales».
 
 **¿Cómo corrijo el cupo de muchas posiciones a la vez?** Con **Asignar cupo** en Posiciones (ver esa sección): elija el
 alcance, escriba el cupo, revise «Se aplicará a N posiciones» y aplique.
 
-**¿Por qué no puedo cambiar el proveedor ni el almacén de una orden de compra ya creada?** Porque se eligen al crearla y no
-cambian. Cancele la orden y cree otra con los datos correctos.
+**¿Por qué no puedo cambiar el proveedor ni el almacén de una orden de compra?** Solo se cambian mientras la orden está en
+**Borrador**. Una vez enviada quedan fijos: cancele la orden y cree otra con los datos correctos.

@@ -194,9 +194,10 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Cancelled, term, 4);
         S(StatusDomains.ClientStatus, ClientStatuses.Active, pipe, 1, true);
         // Resto de dominios WMS (logistica-db-seed.sql, Lote 6), al final: no cambia los ids anteriores.
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, pipe, 1, true);
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 2);
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 3);
+        // Lote 13: EXPECTED ocupa el lugar de OPEN (ids previos intactos); RECEIVING, DISCREPANCY y RECEIVED_VARIANCE al final.
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Expected, pipe, 1, true);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 4);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 6);
         S(StatusDomains.AsnStatus, AsnStatuses.Expected, pipe, 1, true);
         S(StatusDomains.AsnStatus, AsnStatuses.Received, term, 2);
         S(StatusDomains.AsnStatus, AsnStatuses.Cancelled, term, 3);
@@ -224,6 +225,10 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.PickBatchStatus, PickBatchStatuses.Cancelled, term, 3);
         S(StatusDomains.OrderStatus, OrderStatuses.Draft, pipe, 1, true);
         S(StatusDomains.OrderStatus, OrderStatuses.Confirmed, pipe, 2);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving, pipe, 2);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Discrepancy, lat, 3);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.ReceivedWithVariance, lat, 5);
+        ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.
         var taskType = LookupId(LookupDomains.EntityType, EntityTypes.WarehouseTask);

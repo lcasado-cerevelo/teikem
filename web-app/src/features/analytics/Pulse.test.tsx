@@ -427,7 +427,7 @@ describe('Pulse — panel Almacén (Lote F6)', () => {
     expect(within(within(tasks).getByText('CROSSDOCK').closest('li') as HTMLElement).getByText('0')).toBeInTheDocument()
     // consultas acotadas (take=1: solo los totales) y sin fecha
     expect(mock.urls).toContain('/api/v1/inventory/balances?includeZero=false&take=1')
-    expect(mock.urls).toContain('/api/v1/receipts?status=OPEN&take=1')
+    expect(mock.urls).toContain('/api/v1/receipts?phase=OPEN&take=1')
     expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1')
     expect(mock.urls).toContain('/api/v1/warehouse-tasks?includeClosed=false&take=1&types=PUTAWAY')
     expect(mock.urls).toContain('/api/v1/cycle-counts?status=OPEN')

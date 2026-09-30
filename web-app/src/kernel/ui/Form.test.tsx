@@ -107,4 +107,33 @@ describe('Form + Field', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ creditLimit: null, active: false }))
   })
+
+  it('hideLabel: la etiqueta sigue nombrando el control (.sr-only) y el error se ve bajo el campo', async () => {
+    const qtySchema = z.object({ qty: z.number({ error: 'Indique la cantidad.' }) })
+    function GridCell() {
+      const form = useForm({ resolver: zodResolver(qtySchema), defaultValues: { qty: null as unknown as number } })
+      return (
+        <Form form={form} onSubmit={() => undefined}>
+          <Field name="qty" label="Cantidad de la línea 1" required hideLabel>
+            <NumberInput />
+          </Field>
+          <button type="submit">Guardar</button>
+        </Form>
+      )
+    }
+    const user = userEvent.setup()
+    render(<GridCell />)
+    const input = screen.getByRole('spinbutton', { name: /Cantidad de la línea 1/ })
+    const label = document.querySelector(`label[for="${input.id}"]`)
+    expect(label).toHaveClass('sr-only')
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByText('Indique la cantidad.')).toBeInTheDocument()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('sin hideLabel la etiqueta se ve (sin .sr-only)', () => {
+    render(<ClientForm onSubmit={async () => undefined} />)
+    const input = screen.getByLabelText('Código')
+    expect(document.querySelector(`label[for="${input.id}"]`)).not.toHaveClass('sr-only')
+  })
 })

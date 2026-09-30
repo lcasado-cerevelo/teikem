@@ -109,13 +109,57 @@ public class InventoryAdjustmentServiceTests
         Assert.Equal(0, await TxnCountAsync(w));
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Adjust_without_note_is_400_for_every_manual_reason(string? notes)
+    {
+        // Ajuste del 2026-09-30: la nota es obligatoria también en el API, con el mismo texto que la pantalla.
+        var w = await SeedAsync();
+        var svc = w.F.Get<InventoryAdjustmentService>();
+        foreach (var reason in new[] { "DAMAGE", "LOSS", "FOUND", "EXPIRED", "PO_SHORTAGE", "OTHER" })
+        {
+            var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+                svc.AdjustAsync(Adjust(w, 1m, reason) with { Notes = notes }, default));
+            Assert.Equal(new[] { "Escriba una nota que explique el ajuste." }, ex.Errors!["notes"]);
+            Assert.Equal(400, ex.StatusCode);
+        }
+        Assert.Equal(0, await TxnCountAsync(w));
+
+        // Los errores salen juntos: sin nota y sin cantidad.
+        var both = await Assert.ThrowsAsync<ValidationException>(() =>
+            svc.AdjustAsync(new AdjustmentRequest(w.PN.PublicId, w.W1.PublicId, w.B1.WarehouseBinId, null, "FOUND"), default));
+        Assert.True(both.Errors!.ContainsKey("notes") && both.Errors.ContainsKey("quantity"));
+
+        // Un motivo de sistema es 400 en 'reason' (no se usa en el ajuste manual) y no suma el error de la nota.
+        var system = await Assert.ThrowsAsync<ValidationException>(() =>
+            svc.AdjustAsync(Adjust(w, 1m, "COUNT_VARIANCE") with { Notes = notes }, default));
+        Assert.True(system.Errors!.ContainsKey("reason"));
+        Assert.False(system.Errors.ContainsKey("notes"));
+
+        // Con nota (recortada) el ajuste pasa.
+        var ok = await svc.AdjustAsync(Adjust(w, 1m, "FOUND") with { Notes = "  apareció en el pasillo  " }, default);
+        Assert.Equal("apareció en el pasillo", Assert.Single(ok.Transactions).Notes);
+    }
+
+    [Fact]
+    public async Task Transfer_note_stays_optional()
+    {
+        var w = await SeedAsync();
+        var svc = w.F.Get<InventoryAdjustmentService>();
+        await svc.AdjustAsync(Adjust(w, 2m, "FOUND"), default);
+        var result = await svc.TransferAsync(new TransferRequest(w.PN.PublicId, w.B1.WarehouseBinId, w.B2.WarehouseBinId, 1m, w.W1.PublicId), default);
+        Assert.Null(Assert.Single(result.Transactions).Notes);
+    }
+
     [Fact]
     public async Task Adjust_bin_of_other_warehouse_is_404()
     {
         var w = await SeedAsync();
         var svc = w.F.Get<InventoryAdjustmentService>();
         // Posición de ALM-02 con el almacén ALM-01: se resuelve dentro del almacén → 404 sin oráculo.
-        var req = new AdjustmentRequest(w.PN.PublicId, w.W1.PublicId, w.C1.WarehouseBinId, 1m, "FOUND");
+        var req = new AdjustmentRequest(w.PN.PublicId, w.W1.PublicId, w.C1.WarehouseBinId, 1m, "FOUND", "prueba");
         var ex = await Assert.ThrowsAsync<NotFoundException>(() => svc.AdjustAsync(req, default));
         Assert.Equal("Posición no encontrada.", ex.Message);
     }

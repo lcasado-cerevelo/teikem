@@ -2022,6 +2022,11 @@ GO
 
 -- Lote 6: ReceivedAtUtc = fecha de confirmación del recibo (insumo de Contabilización de compras, Lote 10). Un ASN tiene un
 -- solo recibo activo (UX_Receipt_Asn, D6).
+-- Lote 13 (Lote 3 del plan de cambios): DefaultStagingBinId = posición de recepción por defecto del encabezado (del mismo
+-- almacén: FK compuesta contra UQ_WarehouseBin_IdWh); Carrier = transporte y Reference = referencia libre (recortados;
+-- vacío = NULL). Guardado (IF OBJECT_ID / COL_LENGTH) para agregar las columnas a una base ya creada sin tocar sus datos.
+IF OBJECT_ID('dbo.ReceiptHeader') IS NULL
+BEGIN
 CREATE TABLE dbo.ReceiptHeader (
     ReceiptHeaderId INT IDENTITY(1,1) PRIMARY KEY,
     PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
@@ -2037,14 +2042,36 @@ CREATE TABLE dbo.ReceiptHeader (
     CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),                 -- Lote 6
     CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
     ReceivedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),                     -- Lote 6
+    DefaultStagingBinId INT NULL,                                             -- Lote 13: posición de recepción por defecto
+    Carrier      NVARCHAR(80) NULL,                                           -- Lote 13: transporte
+    Reference    NVARCHAR(80) NULL,                                           -- Lote 13: referencia
     CONSTRAINT UQ_Receipt_Number UNIQUE (TenantId, Number),
     CONSTRAINT UQ_Receipt_IdTenant UNIQUE (ReceiptHeaderId, TenantId),                                                     -- Lote 6
     CONSTRAINT FK_Receipt_Warehouse FOREIGN KEY (WarehouseId, TenantId) REFERENCES dbo.Warehouse(WarehouseId, TenantId),   -- Lote 6
     CONSTRAINT FK_Receipt_Asn FOREIGN KEY (AsnId, TenantId) REFERENCES dbo.Asn(AsnId, TenantId),                           -- Lote 6
-    CONSTRAINT FK_Receipt_Dock FOREIGN KEY (DockId, WarehouseId) REFERENCES dbo.WarehouseDock(WarehouseDockId, WarehouseId) -- Lote 6
+    CONSTRAINT FK_Receipt_Dock FOREIGN KEY (DockId, WarehouseId) REFERENCES dbo.WarehouseDock(WarehouseDockId, WarehouseId), -- Lote 6
+    CONSTRAINT FK_Receipt_StagingBin FOREIGN KEY (DefaultStagingBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId)  -- Lote 13
 );
 CREATE UNIQUE INDEX UX_Receipt_Asn ON dbo.ReceiptHeader(AsnId) WHERE AsnId IS NOT NULL AND IsActive = 1;   -- Lote 6 (D6)
 CREATE INDEX IX_Receipt_Tenant_Status ON dbo.ReceiptHeader(TenantId, StatusCodeId);                         -- Lote 6
+END
+ELSE
+BEGIN
+    IF COL_LENGTH('dbo.ReceiptHeader', 'DefaultStagingBinId') IS NULL
+        ALTER TABLE dbo.ReceiptHeader ADD DefaultStagingBinId INT NULL;
+    IF COL_LENGTH('dbo.ReceiptHeader', 'Carrier') IS NULL
+        ALTER TABLE dbo.ReceiptHeader ADD Carrier NVARCHAR(80) NULL;
+    IF COL_LENGTH('dbo.ReceiptHeader', 'Reference') IS NULL
+        ALTER TABLE dbo.ReceiptHeader ADD Reference NVARCHAR(80) NULL;
+END
+GO
+
+-- Lote 13: la FK de la posición por defecto en su propio lote (la columna ya existe al compilarlo); solo si todavía no está.
+IF OBJECT_ID('dbo.FK_Receipt_StagingBin', 'F') IS NULL
+BEGIN
+    ALTER TABLE dbo.ReceiptHeader ADD CONSTRAINT FK_Receipt_StagingBin
+        FOREIGN KEY (DefaultStagingBinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId);
+END
 GO
 
 -- Lote 6: ReceivedQty arranca igual a ExpectedQty (R8); AdjustmentTxnId enlaza el ADJUSTMENT RECEIPT_VARIANCE (D4).

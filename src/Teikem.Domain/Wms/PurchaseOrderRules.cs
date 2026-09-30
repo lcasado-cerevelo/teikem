@@ -63,6 +63,8 @@ public static class PurchaseOrderRules
     public const string WarehouseInactive = "El almacén está dado de baja; no admite órdenes de compra nuevas.";
     public const string WarehouseRequired = "Indique el almacén: la compañía tiene más de uno.";
     public const string NoActiveWarehouse = "La compañía no tiene almacenes activos.";
+    /// <summary>Ajuste del 2026-09-30: proveedor y almacén solo se cambian en DRAFT (409 en cualquier otro estatus).</summary>
+    public const string SupplierWarehouseOnlyDraft = "El proveedor y el almacén solo se cambian mientras la orden de compra está en borrador.";
 
     public static string OwnProductOnly(string sku) => $"La orden de compra solo admite productos propios; {sku} pertenece a un cliente.";
     public static string ProductInactive(string sku) => $"El producto {sku} está inactivo; no admite órdenes de compra.";

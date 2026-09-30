@@ -102,7 +102,10 @@ public sealed class ActivityRulesTests
     [Theory]
     [InlineData(EntityTypes.Receipt, ReceiptStatuses.Received, null, ActivityEvents.ReceiptConfirmed)]
     [InlineData(EntityTypes.Receipt, ReceiptStatuses.Putaway, null, ActivityEvents.ReceiptPutawayDone)]
-    [InlineData(EntityTypes.Receipt, ReceiptStatuses.Open, null, null)]
+    [InlineData(EntityTypes.Receipt, ReceiptStatuses.ReceivedWithVariance, null, ActivityEvents.ReceiptConfirmed)]   // Lote 13
+    [InlineData(EntityTypes.Receipt, ReceiptStatuses.Expected, null, null)]
+    [InlineData(EntityTypes.Receipt, ReceiptStatuses.Receiving, null, null)]
+    [InlineData(EntityTypes.Receipt, ReceiptStatuses.Discrepancy, null, null)]
     [InlineData(EntityTypes.Asn, AsnStatuses.Cancelled, null, ActivityEvents.AsnCancelled)]
     [InlineData(EntityTypes.Asn, AsnStatuses.Received, null, null)]
     [InlineData(EntityTypes.CycleCount, CycleCountStatuses.Counted, null, ActivityEvents.CountFinished)]

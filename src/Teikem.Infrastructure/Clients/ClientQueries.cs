@@ -76,4 +76,31 @@ public static class ClientQueries
         cache[key] = found.Value;
         return found.Value;
     }
+
+    /// <summary>
+    /// Lote 13 — ids de varios StatusCode del dominio (con la misma caché por request que StatusIdAsync). Un código que no
+    /// existe se omite (a diferencia de StatusIdAsync): sirve para filtros 'estatus en (…)' donde faltar = no coincide.
+    /// </summary>
+    public static async Task<List<int>> StatusIdsAsync(this TeikemDbContext db, string domain, IEnumerable<string> codes, CancellationToken ct)
+    {
+        var cache = StatusIds.GetValue(db, _ => new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase));
+        var result = new List<int>();
+        var missing = new List<string>();
+        foreach (var code in codes.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (cache.TryGetValue(domain + "|" + code, out var id)) result.Add(id);
+            else missing.Add(code);
+        }
+        if (missing.Count == 0) return result;
+        var found = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == domain && missing.Contains(s.InternalCode))
+            .Select(s => new { s.InternalCode, s.StatusCodeId })
+            .ToListAsync(ct);
+        foreach (var f in found)
+        {
+            cache[domain + "|" + f.InternalCode] = f.StatusCodeId;
+            result.Add(f.StatusCodeId);
+        }
+        return result;
+    }
 }

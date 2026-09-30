@@ -37,7 +37,7 @@ describe('productFilters', () => {
     expect(toggleKpi('low', 'low')).toBeNull()
     expect(toggleKpi('low', 'active')).toBe('active')
     expect(kpiQuery('active')).toEqual({ activeOnly: true })
-    expect(kpiQuery('available')).toEqual({ activeOnly: true, onlyAvailable: true })
+    expect(kpiQuery('available')).toEqual({ activeOnly: true, onlyOnHand: true })
     expect(kpiQuery('low')).toEqual({ belowMin: true })
     expect(kpiQuery('serial')).toEqual({ activeOnly: true, serialOnly: true })
     expect(kpiQuery(null)).toEqual({})
@@ -53,7 +53,9 @@ describe('productFilters', () => {
       brands: ['Abbott'],
       belowMin: true,
     })
-    expect(productListQuery({ ...FULL, kpi: 'available' })).toMatchObject({ activeOnly: true, onlyAvailable: true })
+    expect(productListQuery({ ...FULL, kpi: 'available' })).toMatchObject({ activeOnly: true, onlyOnHand: true })
+    // Unidades totales = con existencia en mano, no con disponible (decisión del 2026-09-30)
+    expect(productListQuery({ ...FULL, kpi: 'available' })).not.toHaveProperty('onlyAvailable')
   })
 
   it('adjustmentsKardexQuery: tipo ADJUSTMENT y los mismos filtros, sin el KPI (no aplica a movimientos)', () => {

@@ -90,6 +90,12 @@ pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System,
   ajusta, lógica pura). Hoy `/warehouse/inventory` → `/warehouse/kardex` con `legacyInventorySearch` (sin `tab` era Saldos →
   `tab=balances`; `tab=kardex` → sin parámetro; los filtros se quedan).
   `{ path: '/warehouse/inventory', element: redirectKeepingQuery('/warehouse/kardex', legacyInventorySearch) },`
+- `redirectWithParams(pathname, mapSearch(search, params))` (Lote 13): igual, pero la consulta nueva se arma también con los
+  parámetros de la RUTA vieja (`:publicId`); conserva el `#hash`. Para una ficha que pasó a elegirse en una lista con un
+  parámetro. Hoy `/warehouse/receipts/:publicId` → `/warehouse/receipts?receipt=<publicId>` (`legacyReceiptSearch`:
+  `receipt` primero, los demás parámetros se quedan). Enlaces nuevos a un recibo: directo a `?receipt=` (así lo genera la
+  Actividad reciente).
+  `{ path: '/warehouse/receipts/:publicId', element: redirectWithParams('/warehouse/receipts', legacyReceiptSearch) },`
 - Pestañas enlazables: una lista con `Tabs` cuya pestaña deba poder abrirse desde un enlace la guarda en `?tab=` con
   `useSearchParams` (la primera pestaña = sin parámetro; valor desconocido = la primera), como `AccountPage`, Recibo
   (`asns|putaway`), Recolección (`replenish`), Conteo cíclico (`tasks`), Cruce de muelle (`appointments|tasks`), Productos e
@@ -182,7 +188,8 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
   `.unrow` (fila de lista de la maqueta: ancho completo, borde inferior, `.meta` en tono tenue; como `<button className="unrow">`
   es una fila elegible sin estilo nativo y `.unrow.on` = la elegida, fondo `--flow-bg`) — lista de compras de 'Ajustes de
   inventario'. `.adj-cols` (`warehouse.css`): maestro-detalle de esa pantalla, 300 px + resto como la maqueta, una columna
-  bajo 720 px con la lista arriba (alto máx. 240 px).
+  bajo 720 px con la lista arriba (alto máx. 240 px). `.rcp-cols` (Lote 13, `warehouse.css`): el de Recibo, 340 px + resto
+  (`.cols 340px 1fr` de la maqueta), una columna bajo 720 px con la lista arriba (alto máx. 260 px).
 
 ## Datos comunes (`src/kernel/catalogs`, `src/kernel/custom-fields`, `src/kernel/dsl`)
 - `useLookups(domain, { includeDisabled?, enabled? })` → `useQuery` con `LookupOption[]` (`{ code, label, description, sortOrder,
@@ -192,6 +199,15 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
   sortOrder, icon }`) de `GET /api/v1/status/{entity}`, ordenados. `color` es `#hex` validado o null. `StageKinds` =
   `PIPELINE | LATERAL | TERMINAL`. También: `useStatusHistory(entityType, id)`, `useLateralEntries(entityType)`,
   `usePipelineValidation(domain)`, `catalogKeys` (claves de consulta para invalidar).
+- `useTenantSettings(enabled = true)` → `useQuery` con `TenantSettingsDto` de `GET /api/v1/tenant/settings` (compañía activa; solo
+  exige sesión, sin permiso ni módulo; caché 10 min, 403 sin sacar de la pantalla; clave `catalogKeys.tenantSettings`): p. ej.
+  `defaultServiceType`/`defaultPackageType` (código o null). `lookupLabelOrCode(code, options)` → etiqueta del código entre las
+  opciones de `useLookups` (sin distinguir mayúsculas), el código si no está, null sin código. Lo usa Empacar:
+  ```tsx
+  const { data: settings } = useTenantSettings()
+  const { data: serviceTypes = [] } = useLookups('ServiceType')
+  const defaultService = lookupLabelOrCode(settings?.defaultServiceType, serviceTypes)   // 'Estándar' | 'OLD' | null
+  ```
 - `<StatusChip domain="OrderStatus" code={dto.statusCode} label?={dto.statusLabel} />`: píldora con etiqueta y color del tenant.
 - `<StatusPipeline domain="OrderStatus" entityType="TRANSPORT_ORDER" entityId={id} currentCode={dto.statusCode}
   onTransition={(toCode, comment) => mutation.mutateAsync({ toCode, comment })} disabled={!canChange} />`: etapas del
@@ -226,7 +242,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 |---|---|---|
 | `Panel` | `title?`, `icon?` (ícono antes del título), `badge?: string \| number` (contador a la derecha, misma línea), `subtitle?` (solo texto descriptivo, en su propia línea; un conteo va en `badge`), `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra ni recorte: los desplegables salen) con cabecera `.ph2` de una sola línea (ícono + título `h2` + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales son `Modal`/`ConfirmDialog` (`.scrim > .pal`, radio 15 px con sombra); nunca uses `.pal` para contenido en pantalla. `<Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? rows.length : undefined}>` |
 | Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Ajustes de inventario → `IconPencil` (su nota y su vacío; sus paneles usan `IconCart` como la maqueta), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
-| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
+| `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`), `forceCards?` (Lote 13: tarjetas aunque la ventana sea ancha —tabla dentro de un panel angosto de `SplitPane`, decidido con `useElementWidth`—; el pie no cambia) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'`, `exportValue?(row)` (valor exportado explícito), `exportable?` (false = no se exporta: casillas, columnas solo visuales) | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`). Exportación: `exportValue`, si no el texto de `cell` ("—" = vacío; un número formateado igual a `sortValue` sale como número), si la celda no tiene texto (`StatusChip`, ícono) `sortValue` |
 | `fetchAllPages(fetchPage, { pageSize?, max? })` (`kernel/api/fetchAllPages`) | `fetchPage(skip, take) → Promise<{ items, total }>` | recorre `skip/take` de a `EXPORT_PAGE_SIZE` = 200 hasta el `total` o `EXPORT_MAX_ROWS` = 10 000 y devuelve `{ items, truncated }`: es lo que recibe `exportRows` (DataTable avisa con un toast si `truncated`). `exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/x', { params: { query: { ...query, skip, take } } })))}` |
 | `reportPdf.ts` (Lote 12; importar de `kernel/ui/reportPdf`, no está en el barril) | `downloadReportPdf(spec)`, `renderReportPdf(spec, { logo?, compress? })` → `jsPDF` en memoria; `ReportSpec` = `{ title, subtitle?, company?, user?, generatedAt?, locale, filters: {label,value}[], columns: {header, format?}[], sections: {title?, rows, subtotal?}[], totals?, summary?: {label,value,tone?}[], notices?, emptyText?, orientation? }`; `format` = `text` \| `quantity` \| `signed` \| `money` \| `unitCost` | PDF "de presentación" en el cliente (jsPDF + autotable con import dinámico): banda azul marino con el símbolo de Teikem (SVG de `public/brand/` rasterizado a PNG; si no se puede, solo texto), lema, compañía y fecha; título, "Generado el … por …", recuadro "Filtros aplicados" (vacío = "Sin filtros"), tarjetas de resumen y avisos; tabla con encabezado oscuro repetido por página, cebra, números a la derecha con separadores del idioma, fila de grupo por sección, subtotal (la etiqueta —primer valor— se funde con los vacíos que la siguen) y total general en azul marino; pie "Generado con Teikem · compañía" y "Página X de Y"; banda delgada en las páginas siguientes. Horizontal con más de 6 columnas. Textos del kit en `ui.report.*`; todo pasa por `pdfSafeText`. Lógica pura: `formatReportValue`, `buildReportBody`, `reportOrientation`, `reportFileName` (`reporte-de-inventario-advance-depot-2026-09-30.pdf`). `await downloadReportPdf({ title, company, user, locale: lang, filters, columns, sections, totals })` |
@@ -242,7 +258,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `Modal` | `open`, `title`, `onClose`, `footer?`, `size?: 'sm'\|'md'\|'lg'`, `dismissible?` (false mientras guarda) | portal en `<body>`, `.scrim > .pal` con el padding del shell; Escape/clic fuera cierran; foco al primer control y vuelta al cerrar |
 | `ConfirmDialog` | `open`, `title`, `message`, `confirmLabel?`, `tone?: 'flow'\|'danger'`, `onConfirm()` (async), `onClose` | confirma bajas o acciones con guarda de estatus. Si `onConfirm` lanza (422 `status_rule`, 409…), muestra el mensaje del servidor y no se cierra |
 | `Form` | `form` (de `useForm({ resolver: zodResolver(schema) })`), `onSubmit(values)` (async), `onError?(problem)`, `id?` (para `<button type="submit" form={id}>` en el pie del Modal) | si `onSubmit` lanza, `applyProblemDetails(err, form)` pone cada error bajo su `Field`; el título y los errores sin campo van en un aviso arriba del formulario |
-| `Field` | `name` (camelCase, como el DTO), `label`, `required?` (asterisco; la regla va en zod), `help?`, `children` (un control) | etiqueta + control + ayuda + error (`.ferr`, `aria-invalid`, `aria-describedby`) |
+| `Field` | `name` (camelCase, como el DTO), `label`, `required?` (asterisco; la regla va en zod), `help?`, `hideLabel?` (Lote 13: la etiqueta queda solo para lectores de pantalla, `.sr-only`; el error y la ayuda se ven), `children` (un control) | etiqueta + control + ayuda + error (`.ferr`, `aria-invalid`, `aria-describedby`). `hideLabel` = campo dentro de una celda de una rejilla cuyo encabezado ya dice qué es; la etiqueta sigue siendo única por fila: `<Field name="qty" label={t('…qtyOfLine', { n: i + 1 })} hideLabel><NumberInput /></Field>` |
 | Controles de `Field` | `TextInput` (`type?`), `NumberInput` (valor `number \| null`; vacío = null → `z.number().nullable()`), `Select` (`options`, `placeholder?`; valor string, '' = sin elegir), `DateInput` ('YYYY-MM-DD'), `Toggle` (`text?`; boolean), `TextArea` (`rows?`), `ClientPickerInput` (`includeInactive?`; valor publicId o null) | se registran solos en el formulario con el `name` del `Field`; aceptan los atributos nativos (`maxLength`, `min`, `placeholder`…) |
 | `PhoneInput` + `formatPhone`/`isValidPhone`/`normalizeStoredPhone`/`phoneDigits` (`phone.ts`) | `placeholder?` | teléfono con máscara `(xxx)xxx-xxxx` mientras se escribe, dentro de un `Field` (valor con máscara; vacío = ''). Valida con `isValidPhone` (vacío o 10 dígitos) en el esquema zod; al editar un valor viejo, `normalizeStoredPhone` lo muestra con máscara solo si tiene 10 dígitos |
 | `Tabs<K>` | `tabs: {key,label}[]`, `value`, `onChange`, `label?` | pestañas de una ficha (`.seg`, `role="tablist"`) |
@@ -252,6 +268,9 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `ClientPicker` | `value` (publicId \| null), `onChange(publicId, client)`, `includeInactive?` (por defecto false), `placeholder?`, `disabled?`, `invalid?`, `aria-label?` | combobox con buscador: `GET /api/v1/clients?search=&includeInactive=` (250 ms entre teclas; mantiene los resultados anteriores mientras busca), opciones "Code · Name" (marca "Inactivo"), teclado ↑/↓/Enter/Escape. Con un valor inicial pide `GET /api/v1/clients/{publicId}` para mostrar la etiqueta. Sin `clients.read`: "Su usuario no puede consultar clientes" (no saca de la pantalla) |
 | `CategoryProductPicker` | `value: CategoryProductValue` (`{kind:'category', id}` \| `{kind:'product', publicId}` \| `null` = todos), `onChange(value, detail?)` (`detail.category`/`detail.product` = fila elegida), `categories` (árbol completo: `useProductCategories().data`), `categoriesLoading?`, `label?` (por defecto "Categoría o producto"), `id?`, `disabled?` | un solo combobox con buscador y dos secciones: 'Categorías' (árbol con sangría por nivel y "N productos" contando sus subcategorías —`categoryProductTotals`, como filtra el API—; el texto filtra por nombre o ruta) y 'Productos' (`GET /api/v1/products?search=&activeOnly=true&take=20`, 250 ms entre teclas, "SKU · Nombre"; sin texto no consulta). El valor se ve como píldora ("Categoría"/"Producto" + ruta o "SKU · Nombre", con elipsis) con ✕ para quitarlo; un producto que llega de fuera pide `GET /api/v1/products/{publicId}` para su etiqueta. Teclado ↑/↓ (recorre ambas secciones), Enter, Escape (cierra y devuelve el foco). A ≤ 480 px ocupa todo el ancho; por encima, su desplegable mide 340 px anclado a la izquierda, así que dale un contenedor de al menos 340 px (p. ej. `flex: 1 1 340px`) si un ancestro recorta con `overflow: hidden` (`.pal`). 403 de productos: aviso en su sección. Lógica pura en `categoryTree.ts`: `categoryTree(cats)` (aplanado padre→hijos con `level`; padre ausente = raíz), `filterCategoryTree`, `categoryLabel`, `isCategoryProductValue` (validar lo leído de localStorage), `sameCategoryProduct`, `categoryProductTotals(cats)` (id → productos del subárbol; `productCount` del DTO son solo los directos) |
 | `useMediaQuery(q)`, `CARDS_QUERY` | | `true` mientras se cumpla la media query (`'(max-width: 720px)'` = modo tarjetas) |
+| `useElementWidth(ref)` (Lote 13) | `ref: RefObject<Element \| null>` → `number` | ancho en px (entero) del elemento, al día con `ResizeObserver`; 0 sin medir (jsdom). La ref apunta a un elemento que se monta con el componente (no condicional). Para decidir por el ancho de un PANEL y no de la ventana: `const ref = useRef<HTMLDivElement>(null); const w = useElementWidth(ref)` → `<div ref={ref}><DataTable forceCards={w > 0 && w < 640} … /></div>` |
+| `SplitPane` (Lote 13) | `storageKey` (estable; se guarda en localStorage `teikem.split.<storageKey>`), `defaultRatio?` (0.6), `minRatio?`/`maxRatio?` (0.35 / 0.75), `minPx?: [A, B]` ([420, 320]), `stackBelow?` (900: ventana ≤ ese ancho = una columna), `label?` (nombre accesible de la barra; por defecto `ui.split.resize` "Cambiar el ancho de los paneles"), `className?`, `children: [A, B]` | dos paneles lado a lado (grid `minmax(0, A) 10px minmax(0, 1fr)`, sin `overflow:hidden`: los desplegables salen) con una barra `role="separator"` (`aria-orientation="vertical"`, `aria-valuenow`/`min`/`max` en % del panel A, foco visible). Arrastre con Pointer Events + `setPointerCapture` (también con el dedo: `touch-action:none`), ←/→ 5 %, Home/End a los límites, Enter o doble clic = `defaultRatio` (quita lo guardado). Guarda al soltar y con cada tecla (localStorage en try/catch: si falla o lo guardado no es un número entre 0 y 1, vale el por defecto). La proporción se acota a `minRatio`/`maxRatio` y a que cada panel conserve `minPx`. Una sola columna sin barra (primero A, luego B) con la ventana ≤ `stackBelow` o si el contenedor no alcanza para `minPx[0] + minPx[1]` + la barra. Los hijos no se vuelven a montar al apilarse (el borrador de un formulario sobrevive). Puras en `splitRatio.ts`: `clampSplitRatio(r, anchoÚtil, minPx, min, max)`, `splitBounds`, `readSplitRatio(raw, def)`, `ratioFromPointer`, `splitStorageKey`. `<SplitPane storageKey="pickBatches"><CollectPanel /><PickBatchesPanel /></SplitPane>` |
+| `ListPager<T>` (Lote 13) | `page` (base 1), `pageSize`, `total` (0 = no se pinta), `onPage?` (‹ › si hay más de una página), `onPageSize?` (selector "Filas por página" 10/25/50/100 + el tamaño actual), `showRange?` (true), `exportColumns?: DataColumn<T>[]` + `exportRows?()` (Exportar Excel/CSV/PDF con las reglas de exportación de `DataTable`; toast si viene `truncated`), `exportFileName?` (por defecto el título del `Panel`), `onExport?(format)` + `exportCount?` (exportación propia) | el pie de `DataTable` (mismas clases `.dt-pager` y textos `ui.table.*`; `DataTable` lo usa para su propio pie) para listas que no son `DataTable`, p. ej. la lista maestra `.unrow` de Recibo paginada en el servidor. `PAGE_SIZE_OPTIONS`, `pageSizeOptions(size)` en `pageSize.ts`. `<ListPager page={page} pageSize={size} total={data?.total ?? 0} onPage={setPage} onPageSize={(n) => { setSize(n); setPage(1) }} exportColumns={cols} exportRows={() => exportReceipts(query)} />` |
 
 **Orden y paginación de `DataTable`**
 - Toda columna que muestre un dato lleva `sortValue` (o `sortable` con orden del servidor); solo se quedan sin orden las
@@ -293,7 +312,8 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   `useProductBrands(search?)` (Lote 12: `GET /products/brands` → `string[]` de marcas del tenant; lo invalidan alta y edición de
   producto), `useProductLots/Serials`, `useProductCategories`,
   `useInventoryBalances`, `useInventoryTransactions`, `useInventoryReconciliation`, `useLotGenealogy`, `useSerialTrace`, `useAsns`,
-  `useReceipts`, `useReceipt`, `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
+  `useReceipts`, `useReceipt` (Lote 13: `useCreateReceipt`, `useUpdateReceiptHeader` —PATCH del encabezado—,
+  `useSaveReceiptLine` y `useConfirmReceipt` dejan en caché la ficha que devuelve el API e invalidan la lista), `useWarehouseTasks`, `usePutawaySuggestions`, `useCycleCounts`, `useCycleCount(id, query?)`,
   `usePickBatches`, `usePickBatch`, `useSuppliers`, `usePurchaseOrders`, `usePurchaseOrder`, `usePurchaseOrderShortages`,
   `usePurchaseOrderShortageLines`, `useDockAppointments`, `useCrossDockPlans`, `useCrossDockPlan`, `useCrossDockCandidates`,
   `useOrdersReadonly`, `useOrderReadonly`, `useOrderLookup`). `query` es el tipo del esquema (`GetQuery<'/api/v1/…'>`); el último
@@ -446,7 +466,9 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   él, 'Faltante resuelto.'). Pinta arriba "SKU · Producto — Faltante: N". REORDER solo con `purchasing.manage`;
   MANUAL_ADJUSTMENT solo con WMS_LOTSERIAL (posición con `BinPickerInput` del almacén de la orden, lote o series según el
   producto, que se consulta solo en esa acción). Cerrar/Reordenar mandan `quantity` = el pendiente que se ve: si cambió en el
-  servidor, el 400 ('Cerrar y Reordenar resuelven el faltante completo (N)…') sale en el aviso de arriba del `Form`.
+  servidor, el 400 ('Cerrar y Reordenar resuelven el faltante completo (N)…') sale en el aviso de arriba del `Form`. Notas:
+  obligatorias solo en MANUAL_ADJUSTMENT (`adjustNotesSchema`, asterisco solo con esa acción), opcionales en Cerrar/Reordenar
+  (máx. 300 en todas); el 400 del API en `errors.notes` queda bajo el campo.
   ```tsx
   <ResolveShortageModal open onClose={() => setResolving(null)} po={summary} line={line} initialAction="MANUAL_ADJUSTMENT"
     initial={{ quantity: 1, notes: 'Apareció en muelle' }} onResolved={(r) => toast.success(…)} />
@@ -457,8 +479,33 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   la elegida (una sola consulta; se muestran solo las de pendiente > 0) con SKU, Producto, Ordenado, Recibido, Faltante y
   Resolver (Cerrar `inventory.adjust`; Reordenar + `purchasing.manage`; Cant. + Motivo + Ajuste manual + WMS_LOTSERIAL: cada
   botón abre `ResolveShortageModal` con su acción). La elegida va en `?po=<publicId>` (sin él o si ya no está, la primera).
+- Recibo (`/warehouse/receipts`, `ReceiptListScreen`; maqueta `recibo()`, Lote 13): maestro-detalle `.rcp-cols`. Estatus
+  (colores del catálogo con `StatusChip`): Esperado → Recibiendo ⇄ Discrepancia → Completado / Completado con diferencia →
+  Acomodado; los cambia el servidor (`isOpen` = los tres primeros). Pestañas `?tab=asns|putaway`; el recibo elegido va en
+  `?receipt=<publicId>` (sin él, el primero; al cambiar de pestaña se quita; `/warehouse/receipts/:publicId` redirige aquí).
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `ReceiptFilterBar` (`ReceiptFilterBar.tsx`) | `value: ReceiptFilterState`, `onChange`, `statusCodes?` | Almacén (uno: `WarehousePicker`), Estatus y Tipo (`SearchSelect`), Creado, Producto (`ProductMultiFilter` con inactivos) y Diferencia (Faltante/Sobrante/Sin diferencia → `variance[]`); todo al API. No se llama `ReceiptFilters.tsx`: en Windows se confundiría con `receiptFilters.ts` |
+  | `ReceiptMasterList` | `title`, `items`, `total`, `selectedId`, `onSelect(publicId)`, `onOpen(publicId)` (doble clic), `q`/`onQ` (`QBox` → `search`), `page`/`pageSize`/`onPage`/`onPageSize`, `exportRows` | filas `.unrow` (número + `StatusChip`; remitente o tipo; transporte · llegada esperada o alta · origen · documento · referencia), `ListPager` con Exportar |
+  | `ReceiptDetailPanel` | `publicId`, `onEditHeader()` | "Detalle del recibo · REC-…", "Origen · …", lápiz (modal del encabezado) e Historial; rejilla de líneas, notas y "Confirmar recibo" (deshabilitado con el motivo debajo); confirmado, `ReceiptPutawayTasks` |
+  | `ReceiptLinesEditor` + `useReceiptLineRows(receipt, { manual, editable })` | `receipt`, `state` | con documento lo esperado es de solo lectura y no hay fila para añadir; sin documento producto/esperado/recibido, papelera y siempre una fila vacía al final; guarda por fila (salir del campo, Enter o elegir producto) en fila única; `pagination={false}` y `exportable={false}` (rejilla de captura: excepción a la regla de Exportar); tarjetas si el panel mide < 600 px. Sus columnas no dependen de las filas (las celdas leen un contexto): una columna nueva por tecla volvería a montar el campo y perdería el foco |
+  | `ReceiptHeaderModal` | `publicId` (null = alta), `preset?` (aviso), `onClose`, `onCreated?(dto)`, `onDeleted?(publicId)` | alta, edición (`PATCH`, solo lo que cambió, `rowVersion` de la caché) y "Borrar recibo" (`canDelete`); confirmado o sin `warehouse.receive`: solo lectura |
+  | `ReceiptLineCaptureModal` | `receipt`, `line`, `onClose`, `onSaved?` | lote (fabricación/vencimiento), series (SERIAL: lo recibido = número de series) y posición de la línea |
+  | `ReceiptPutawayTasks` | `tasks`, `title?`, `queueLink?` | tareas PUTAWAY con `useTaskRowActions` |
+  | `AsnsTab` / `AsnCreateModal` | `onReceive(asn)` / `onClose` | filtros Almacén, Cliente dueño, Referencia (300 ms) y Llegada esperada al API, sin `QBox`; alta con las líneas en una rejilla |
+  | `PutawayPendingTab` | `selectedParam`, `onSelect`, `onOpenHeader` | recibos con `phase=PENDING_PUTAWAY` (Estatus limitado a Completado y Completado con diferencia) y sus tareas a la derecha |
+  Lógica pura: `receiptFilters.ts` (`receiptListQuery`, `withPinned` —el recibo recién creado primero aunque los filtros lo
+  excluyan, hasta cambiar un filtro—, `selectedReceiptId`, `hasDocument`, `receiptOriginText`) y `receiptLineEdit.ts` (filas
+  como texto; `onReceivedInput` copia al esperado mientras se teclea si estaba vacío o en 0 y el recibo no tiene documento;
+  `linePayload`, `reconcileRows`, `mergeSaved`, `confirmBlockers`, `rowErrorsFromProblem`).
+  ```tsx
+  const lines = useReceiptLineRows(receipt, { manual: !hasDocument(receipt.header?.origin), editable: isOpen && canReceive })
+  <ReceiptLinesEditor receipt={receipt} state={lines} />
+  <button className="btn flow block" disabled={confirmBlockers(lines.rows, isOpen, manual) !== null}>…</button>
+  ```
 - Tareas de almacén (sin pantalla ni ítem de menú: la maqueta no los tiene). Cada tipo vive en la pantalla de su flujo:
-  PUTAWAY → Recibo, pestaña 'Acomodo pendiente' (`?tab=putaway`) y la tabla 'Tareas de acomodo' de la ficha del recibo;
+  PUTAWAY → Recibo: pestaña 'Acomodo pendiente' (`?tab=putaway`, Lote 13: lista de recibos con acomodo por cerrar y las
+  tareas del elegido a la derecha) y 'Tareas de acomodo' debajo del detalle de un recibo confirmado (`ReceiptPutawayTasks`);
   REPLENISH → Recolección y empaque, pestaña 'Reabasto' (`?tab=replenish`, con 'Correr reabasto'); COUNT → Conteo cíclico,
   pestaña 'Tareas de conteo' (se completan desde la ficha del conteo); CROSSDOCK → Cruce de muelle, pestaña 'Tareas de
   cruce' (solo con WMS_LOTSERIAL, 403 sin sacar de la pantalla). PICK/PACK/LOAD no tienen handler en el API (D41).
@@ -479,8 +526,11 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   KPIs de todo el catálogo (`useProductInventoryKpis`, todos `take=1`: SKUs activos = `products?activeOnly=true` → `total`;
   Unidades totales = `inventory/balances?includeZero=false` → `totalOnHand`; Bajo mínimo = `products?belowMin=true`; Con número de
   serie = `products?activeOnly=true&serialOnly=true`, y `products?serialMissing=true` para el aviso). Cada KPI es un botón
-  (`.inv-kpi`, `aria-pressed`, activo `.on`) que filtra la tabla con `?kpi=active|available|low|serial` (activos; activos con
-  disponible > 0 = `activeOnly`+`onlyAvailable`; `belowMin`; `serialOnly`); otro clic o "Limpiar" lo quita. Bajo mínimo va en
+  (`.inv-kpi`, `aria-pressed`, activo `.on`) que filtra la tabla con `?kpi=active|available|low|serial` (activos; Unidades
+  totales = activos con existencia EN MANO > 0 = `activeOnly`+`onlyOnHand` —decisión del 2026-09-30; su vista es "Activos con
+  existencia" y su aviso (`title`) dice que la cifra suma también la existencia de los inactivos, porque sale de
+  `/inventory/balances`—; `belowMin`; `serialOnly`); otro clic o "Limpiar" lo quita. El KPI viaja al Reporte de inventario con
+  `productListQuery` (mismo filtro que la tabla). Bajo mínimo va en
   naranja (`.money`: número y borde al pasar el mouse) solo si es > 0; Con número de serie, solo si hay productos SERIAL con series
   incompletas, con "N sin series completas". Filtros encima del panel, todos al API y a la página 1: Almacén (`SearchSelect` →
   `warehousePublicIds`: acotan las cantidades de cada fila a esos almacenes, no quitan productos), SKU (`ProductMultiFilter` con
@@ -522,7 +572,52 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   'price')`: mensaje de decimales por campo y tope `< 10¹⁴`) con los mensajes del manual 06, y la cantidad de un ajuste manual
   (`adjustQuantitySchema(t)`: obligatoria, ≠ 0, ≤ 3 decimales; la usan `InventoryAdjustModal` y el bloque de ajuste de
   `ProductEditorModal`); Lote 12: `brandModelSchema(t, 'brand' | 'model')` (opcional, recortado, ≤ 100, mensaje del API) y
-  `adjustNotesSchema(t)` (nota obligatoria del ajuste del modal, ≤ 300); pruebas en `productRules.test.ts`.
+  `adjustNotesSchema(t)` (nota obligatoria de TODO ajuste manual, ≤ 300, mensajes exactos del API —400 en `errors.notes`—: la
+  usan el bloque de ajuste de `ProductEditorModal`, `InventoryAdjustModal` del Kárdex y la acción MANUAL_ADJUSTMENT de
+  `ResolveShortageModal`); pruebas en `productRules.test.ts`.
+- Ficha de la orden de compra (`PurchaseOrderDetailScreen`, decisión del 2026-09-30): Proveedor (`ComboSelectInput` sobre
+  `useSuppliers({ includeInactive: false })`, el actual dado de baja se agrega con la marca "Inactivo") y Almacén
+  (`WarehousePickerInput`) editables y obligatorios solo con la orden en DRAFT y `canEdit`; fuera de DRAFT, de solo lectura. El
+  PATCH lleva solo lo que cambió. Lógica pura en `purchaseOrderEdit.ts`: `isDraftPurchaseOrder`, `supplierOptionsWithCurrent`,
+  `purchaseOrderPartyChanges` y `partyErrorField` (404/422 sin campo → bajo Proveedor o Almacén si cambió uno solo; 409 y
+  los demás, al aviso del `Form`).
+- Empacar (`PackModal.tsx`, Lote 13: archivo propio; `batch` = `publicId`, `number`, `clientName`, `rowVersion`): Tipo de servicio
+  y de paquete ofrecen "Predeterminado de la compañía ({etiqueta})" solo si `useTenantSettings` trae `defaultServiceType`/
+  `defaultPackageType`; si no (o mientras carga), la opción vacía es "Elija el tipo de …" y el campo es obligatorio ('Elija el
+  tipo de servicio.'/'Elija el tipo de paquete.'). Lo abren la acción de fila "Empacar" de la lista y la ficha.
+  `{packing && <PackModal batch={packing} onClose={() => setPacking(null)} />}`
+- Recolección y empaque (`/warehouse/pick-batches`, `PickBatchListScreen`; maqueta `picking()`, Lote 13): pestaña Recolecciones
+  (primera) y Reabasto (`?tab=replenish`, sin cambios). Con `warehouse.pick`, dos paneles en `SplitPane storageKey="pick-batches"`
+  (60/40; bajo 900 px, Recolección arriba y la lista abajo); sin él, solo la lista a todo el ancho.
+  - `CollectPanel` (`onCollected?(batch)`): el antiguo modal "Nueva recolección" llevado a la pantalla. Almacén (preelegido si la
+    compañía tiene uno solo) y rejilla de líneas en `DataTable` (`pagination={false}`, `exportable={false}`, tarjetas con el panel
+    < 560 px; sin orden por columna: es captura): Producto (del almacén, con disponible, del dueño de las otras filas; pista "N
+    disp."), Cantidad, Posición (FEFO primero con `suggestedBinIds`, pista "FEFO: A-01"; vacía = FEFO del servidor), Lote (solo
+    LOT/SERIAL; la columna aparece si alguna fila lo necesita), Series (solo SERIAL: botón "Series (n)" con modal), papelera.
+    Siempre una fila vacía al final (hasta 100 líneas); "Recolectar (bajar de inventario)" = un solo POST sin las filas vacías;
+    "Limpiar" deja una fila vacía (el almacén se queda). Al grabar: toast, líneas limpias y la nueva resaltada en la lista (no navega).
+  - `collectForm.ts` (puro): `CollectLine`, `EMPTY_COLLECT_LINE`, `isBlankLine`, `needsTrailingBlank`, `compactPickLines(lines)` →
+    `{ lines, indexMap }`, `buildCollectBody(values)` → `{ body, indexMap }`, `remapCollectErrors(err, indexMap)` (`lines[k].x` del
+    servidor → `lines.<fila>.x`; `lines[k]` sin campo → la cantidad de la fila), `ownerFilterFor(lines, i)`, `collectSchema(t,
+    issueText)` (con `pickLineIssues`, `pickDuplicateAcrossLines`, `firstOtherOwner`), `fefoCandidates`/`fefoBinSuggestions`/
+    `fefoAvailable(balances, lotId?)` (réplica de `PickBatchRules.Eligible` sobre `useInventoryBalances({ onlyAvailable: true })`).
+    ```tsx
+    const { body, indexMap } = buildCollectBody(values)
+    try { await create.mutateAsync(body) } catch (err) { throw remapCollectErrors(err, indexMap) }
+    ```
+  - `PickBatchesPanel` (`highlight?` = publicId recién creado: fondo de flujo y página 1): filtros dentro del panel (Recolectada,
+    Estatus, Producto, No. de orden, No. de factura, Incluir eliminadas) + `QBox`; tabla de servidor Número (con chip), Productos
+    ("SKU ×cant"), Orden y factura, Cliente, Recolectada (tarjetas con el panel < 640 px); acciones de fila con ícono Empacar
+    (`IconBox`) y Eliminar (`IconTrash`); clic en la fila = `PickBatchDetailModal`.
+  - `OrderNumberFilter` (`label`, `value`, `onChange`): texto libre con sugerencias de números de orden existentes
+    (`GET /pick-batches?orderNumber=&take=20`, 250 ms). `<OrderNumberFilter label={t('…orderNumber')} value={v} onChange={setV} />`
+  - Ficha: `PickBatchDetailBody` (`batch`, `variant?: 'screen' | 'modal'`: etapas, resumen y líneas) + `PickBatchDetailActions`
+    (`batch`, `onPack`, `onDelete`: Eliminar y Empacar con sus guardas), usados por `PickBatchDetailScreen` (la ruta
+    `/warehouse/pick-batches/:publicId` se conserva) y `PickBatchDetailModal` (`publicId | null`, `onClose`; no se cierra mientras
+    Empacar o Eliminar están abiertos encima). `DeletePickBatchDialog` (`batch | null`, `onClose`, `onDeleted?`): confirmación con
+    el aviso de la orden si está empacada; 409 recarga ficha y lista. Puras en `pickBatchView.ts`: `PICK_BATCH_STATUS_DOMAIN`,
+    `canDeletePickBatch`/`usePickBatchCanDelete` (empacada = además orders.cancel), `batchProductsText`, `orderNumberSuggestions`.
+    `<PickBatchDetailModal publicId={detail} onClose={() => setDetail(null)} />`
 - Orden de las listas paginadas del almacén (Saldos, Kárdex, Productos, Órdenes, Órdenes de compra, Recibos, Recolecciones,
   colas de tareas): sus endpoints solo aceptan `skip/take`, sin parámetro de orden. Llegan en el orden del servidor y, como
   toda tabla de la app, sus columnas llevan `sortValue` (Fase 11: toda columna con dato se ordena por clic en el encabezado);

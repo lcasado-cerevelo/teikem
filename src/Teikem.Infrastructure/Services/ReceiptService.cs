@@ -15,7 +15,11 @@ using Teikem.Infrastructure.Wms;
 namespace Teikem.Infrastructure.Services;
 
 /// <summary>
-/// Lote 6 (P4) — Recepción (R7, R8, R9, R10 para crear el putaway, R18). Un recibo nace OPEN con número REC-#####:
+/// Lote 13 — ciclo de estatus: EXPECTED (solo encabezado) → RECEIVING ↔ DISCREPANCY (lo sincroniza SyncOpenStatusAsync con
+/// cada cambio de líneas, siempre por StatusService) → RECEIVED o RECEIVED_VARIANCE al confirmar → PUTAWAY. Encabezado
+/// editable (UpdateHeaderAsync), esperado capturable en ciegos y devoluciones (la diferencia solo marca el estatus: en el
+/// Kárdex entra lo recibido), filtros phase/variance.
+/// Lote 6 (P4) — Recepción (R7, R8, R9, R10 para crear el putaway, R18). Un recibo nace abierto con número REC-#####:
 /// - contra un ASN de cliente (EXPECTED, mismo almacén, bloqueado): una línea por línea del aviso;
 /// - contra una PO (purchasing.receive + módulo PURCHASING): la costura IPurchaseOrderReceiving (P8) bloquea y valida la
 ///   PO y devuelve lo pendiente; se crea un ASN por ese pendiente y el recibo sobre él (una PO admite varias entregas, D6);
@@ -27,7 +31,7 @@ namespace Teikem.Infrastructure.Services;
 ///
 /// Orden de bloqueo (InventoryQueries): ReceiptHeader → Asn → PurchaseOrder → saldos (ledger) → series → NumberSequence.
 /// La creación no bloquea recibo (aún no existe): Asn o PO, y el número REC al final. El contenido de un recibo confirmado
-/// queda congelado (ya está en el ledger): toda edición re-verifica OPEN con el encabezado bloqueado.
+/// queda congelado (ya está en el ledger): toda edición re-verifica que siga abierto con el encabezado bloqueado.
 /// El TenantId sale del principal; el recibo se expone por PublicId y sus líneas (sin TenantId) por id int SIEMPRE dentro
 /// de su recibo (otra línea → 404, sin oráculo).
 /// </summary>
@@ -106,10 +110,39 @@ public sealed class ReceiptService(
                 : query.Where(r => !db.Set<ReceiptLine>().Any(l => l.ReceiptHeaderId == r.ReceiptHeaderId
                     && ((l.ExpectedQty != null && l.ReceivedQty != l.ExpectedQty) || (l.ExpectedQty == null && r.ReceiptTypeLookupId == asnTypeId && l.ReceivedQty != 0))));
         }
+        // Lote 13: fase (OPEN = EXPECTED/RECEIVING/DISCREPANCY; PENDING_PUTAWAY = confirmados; DONE = PUTAWAY).
+        if (!string.IsNullOrWhiteSpace(q.Phase))
+        {
+            var (phaseCodes, phaseError) = ReceiptStatusRules.PhaseCodes(q.Phase);
+            if (phaseError is not null) throw new ValidationException("phase", phaseError);
+            var phaseIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, phaseCodes, ct);
+            query = query.Where(r => phaseIds.Contains(r.StatusCodeId));
+        }
+        // Lote 13: diferencia SHORT (alguna línea recibió menos de lo esperado), OVER (alguna recibió más, o una línea extra
+        // de un recibo ASN recibió algo) o NONE (ninguna línea con diferencia, la negación de hasVariance); varias con O.
+        if (q.Variance is { Length: > 0 })
+        {
+            var (variance, varianceError) = ReceiptStatusRules.ParseVariance(q.Variance);
+            if (varianceError is not null) throw new ValidationException("variance", varianceError);
+            if (variance.Count > 0)
+            {
+                var wantShort = variance.Contains(ReceiptStatusRules.VarianceShort);
+                var wantOver = variance.Contains(ReceiptStatusRules.VarianceOver);
+                var wantNone = variance.Contains(ReceiptStatusRules.VarianceNone);
+                query = query.Where(r =>
+                    (wantShort && db.Set<ReceiptLine>().Any(l => l.ReceiptHeaderId == r.ReceiptHeaderId
+                        && l.ExpectedQty != null && l.ReceivedQty < l.ExpectedQty))
+                    || (wantOver && db.Set<ReceiptLine>().Any(l => l.ReceiptHeaderId == r.ReceiptHeaderId
+                        && ((l.ExpectedQty != null && l.ReceivedQty > l.ExpectedQty) || (l.ExpectedQty == null && r.ReceiptTypeLookupId == asnTypeId && l.ReceivedQty > 0))))
+                    || (wantNone && !db.Set<ReceiptLine>().Any(l => l.ReceiptHeaderId == r.ReceiptHeaderId
+                        && ((l.ExpectedQty != null && l.ReceivedQty != l.ExpectedQty) || (l.ExpectedQty == null && r.ReceiptTypeLookupId == asnTypeId && l.ReceivedQty != 0)))));
+            }
+        }
         if (!string.IsNullOrWhiteSpace(q.Search))
         {
             var s = q.Search.Trim();
             query = query.Where(r => r.Number.Contains(s)
+                || (r.Reference != null && r.Reference.Contains(s)) || (r.Carrier != null && r.Carrier.Contains(s))   // Lote 13
                 || db.Set<Asn>().Any(a => a.AsnId == r.AsnId
                     && ((a.Reference != null && a.Reference.Contains(s))
                         || db.Set<Client>().Any(c => c.ClientId == a.ClientId && c.Name.Contains(s))
@@ -171,13 +204,15 @@ public sealed class ReceiptService(
         }).ToList();
 
         var tasks = await PutawayTasksAsync(r, header, ct);
-        return new ReceiptDetailDto(header, lineDtos, tasks, Convert.ToBase64String(r.RowVersion ?? Array.Empty<byte>()));
+        // Lote 13: se puede borrar mientras está abierto y sin asignaciones de cruce de muelle (mismas reglas que DeleteAsync).
+        var canDelete = header.IsOpen && crossDock.Count == 0;
+        return new ReceiptDetailDto(header, lineDtos, tasks, Convert.ToBase64String(r.RowVersion ?? Array.Empty<byte>()), canDelete);
     }
 
     // ================================================================ alta
 
     /// <summary>
-    /// Alta OPEN (flujo por pasos) o, con Confirm = true (Lote 8A, cola del aparato), alta + captura de las líneas de la
+    /// Alta abierta (flujo por pasos; EXPECTED sin líneas, RECEIVING o DISCREPANCY con líneas) o, con Confirm = true (Lote 8A, cola del aparato), alta + captura de las líneas de la
     /// solicitud + confirmación en UNA transacción: se reutilizan exactamente los mismos pasos (y mensajes) que el alta y la
     /// confirmación por separado; si cualquiera falla no queda nada (ni el número REC se consume). Contra aviso u orden de
     /// compra, las Lines de la solicitud se aplican sobre las líneas del documento (ApplyRequestLinesToAsnAsync); sin Lines
@@ -237,20 +272,30 @@ public sealed class ReceiptService(
             await modules.EnsureEnabledAsync(ModuleKeys.Purchasing, ct);
         }
 
+        // Lote 13: transporte y referencia del encabezado (texto libre, máximo 80; vacío = sin dato).
+        var textErrors = new Dictionary<string, string[]>();
+        var (carrier, carrierError) = ReceiptRules.CreateText(req.Carrier, ReceiptRules.CarrierTooLong);
+        if (carrierError is not null) textErrors["carrier"] = new[] { carrierError };
+        var (reference, referenceError) = ReceiptRules.CreateText(req.Reference, ReceiptRules.ReferenceTooLong);
+        if (referenceError is not null) textErrors["reference"] = new[] { referenceError };
+        if (textErrors.Count > 0) throw new ValidationException(textErrors);
+
         // Ciego/devolución: almacén indicado o el único activo; el tope de líneas se valida antes de abrir la transacción.
+        // Lote 13: sin líneas se crea solo el encabezado (nace EXPECTED); las líneas son obligatorias solo con Confirm.
         Warehouse? manualWarehouse = null;
         var requestLines = req.Lines ?? Array.Empty<ReceiptLineRequest>();
         if (typeCode != ReceiptTypes.Asn)
         {
             manualWarehouse = requested ?? await ReceivingSupport.ResolveWarehouseOrDefaultAsync(db, null, ct);
             if (!manualWarehouse.IsActive) throw new StatusRuleException(ReceiptRules.WarehouseInactive);
-            if (requestLines.Count == 0) throw new ValidationException("lines", ReceiptRules.LinesRequired);
+            if (requestLines.Count == 0 && req.Confirm) throw new ValidationException("lines", ReceiptRules.LinesRequired);
             if (requestLines.Count > ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
         }
 
         await numbers.EnsureAsync(NumberKinds.Receipt, null, ct);
         var initial = await statuses.GetInitialAsync(StatusDomains.ReceiptStatus, ct);
         var expectedAsnId = await db.StatusIdAsync(StatusDomains.AsnStatus, AsnStatuses.Expected, ct);
+        var openReceiptIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
 
         var publicId = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -266,11 +311,11 @@ public sealed class ReceiptService(
                     var po = await purchaseOrders.LockForReceiptAsync(poPublicId, ct2);
                     if (requested is not null && requested.WarehouseId != po.WarehouseId)
                         throw new ValidationException("warehousePublicId", ReceiptRules.PurchaseOrderOtherWarehouse);
-                    // Bajo el bloqueo de la PO: un segundo recibo abierto contaría dos veces el mismo pendiente → 409.
-                    var openId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct2);
+                    // Bajo el bloqueo de la PO: un segundo recibo abierto (EXPECTED, RECEIVING o DISCREPANCY) contaría dos
+                    // veces el mismo pendiente → 409.
                     var poHasOpen = await (from r in db.Set<ReceiptHeader>().AsNoTracking()
                                            join a in db.Set<Asn>().AsNoTracking() on r.AsnId equals a.AsnId
-                                           where a.PurchaseOrderId == po.PurchaseOrderId && r.IsActive && r.StatusCodeId == openId
+                                           where a.PurchaseOrderId == po.PurchaseOrderId && r.IsActive && openReceiptIds.Contains(r.StatusCodeId)
                                            select r.ReceiptHeaderId).AnyAsync(ct2);
                     if (poHasOpen) throw new ConflictException(ReceiptRules.PurchaseOrderHasOpenReceipt);
                     asn = await asns.CreateForPurchaseOrderAsync(po, ct2);
@@ -303,32 +348,29 @@ public sealed class ReceiptService(
                 var errors = new Dictionary<string, string[]>();
                 for (var i = 0; i < requestLines.Count; i++)
                 {
-                    var built = await BuildLineAsync(warehouse.WarehouseId, requestLines[i], $"lines[{i}]", OwnerRule.Any, null, errors, ct2);
+                    var built = await BuildLineAsync(warehouse.WarehouseId, requestLines[i], $"lines[{i}]", OwnerRule.Any, null, true, errors, ct2);
                     if (built is not null) lines.Add(built);
                 }
                 if (errors.Count > 0) throw new ValidationException(errors);
             }
 
-            // Posición de recepción por defecto (la de la solicitud o la primera STAGING del almacén) para las líneas que no la traen.
-            var stagingId = req.StagingBinId is int sb
+            // Posición de recepción por defecto (la de la solicitud o la primera STAGING del almacén) para las líneas que no la
+            // traen. Lote 13: la de la solicitud queda además en el encabezado (DefaultStagingBinId); sin ella se sigue exigiendo
+            // que el almacén tenga una zona STAGING (422 NoStagingBin), aunque el recibo nazca sin líneas.
+            int? headerStagingId = req.StagingBinId is int sb
                 ? (await ReceivingSupport.ResolveStagingBinAsync(db, warehouse.WarehouseId, sb, "stagingBinId", ct2)).BinId
-                : await ReceivingSupport.DefaultStagingBinAsync(db, warehouse.WarehouseId, ct2);
+                : null;
+            var stagingId = headerStagingId ?? await ReceivingSupport.DefaultStagingBinAsync(db, warehouse.WarehouseId, ct2);
             foreach (var l in lines) l.StagingBinId ??= stagingId;
 
-            if (req.DockId is int dockId)
-            {
-                var dockOk = await (from d in db.Set<WarehouseDock>().AsNoTracking()
-                                    join w in db.Set<Warehouse>().AsNoTracking() on d.WarehouseId equals w.WarehouseId
-                                    where d.WarehouseDockId == dockId && d.WarehouseId == warehouse.WarehouseId
-                                    select d.WarehouseDockId).AnyAsync(ct2);
-                if (!dockOk) throw new NotFoundException("Muelle");
-            }
+            if (req.DockId is int dockId) await EnsureDockAsync(warehouse.WarehouseId, dockId, ct2);
 
             // Número REC al final (último bloqueo del orden del lote).
             var seq = await numbers.NextAsync(NumberKinds.Receipt, null, ct2);
             var receipt = new ReceiptHeader
             {
                 PublicId = Guid.NewGuid(), TenantId = tenantId, WarehouseId = warehouse.WarehouseId, AsnId = asn?.AsnId, DockId = req.DockId,
+                DefaultStagingBinId = headerStagingId, Carrier = carrier, Reference = reference,
                 ReceiptTypeLookupId = typeLookupId, Number = NumberFormat.Resolve(NumberPattern, seq),
                 StatusCodeId = initial.StatusCodeId, IsActive = true, CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
@@ -339,18 +381,105 @@ public sealed class ReceiptService(
             var born = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, receipt.ReceiptHeaderId, null, initial.InternalCode, null, ct2);
             receipt.StatusCodeId = born.StatusCodeId;
             await SaveReceiptAsync(ct2);
+            // Lote 13: con líneas pasa a RECEIVING (o DISCREPANCY si lo recibido difiere de lo esperado); sin líneas se queda EXPECTED.
+            await SyncOpenStatusAsync(receipt, ct2);
+            await SaveReceiptAsync(ct2);
             return receipt.PublicId;
         }, ct);
 
         return publicId;
     }
 
-    // ================================================================ edición de líneas (solo OPEN)
+    // ================================================================ encabezado (Lote 13)
 
     /// <summary>
-    /// Captura de una línea del recibo OPEN: cantidad recibida (≥ 0), lote (EnsureLot) o quitarlo, series normalizadas y
+    /// Lote 13 — PATCH del encabezado de un recibo abierto (EXPECTED, RECEIVING o DISCREPANCY; confirmado → 422), con el
+    /// encabezado bloqueado y rowVersion (409). null = no cambiar:
+    /// - Type BLIND ↔ RETURN solo sin aviso ni orden de compra (400 TypeFixedWithDocument);
+    /// - almacén solo sin documento y sin líneas (400 WarehouseFixed); al cambiarlo se limpian posición y muelle y el almacén
+    ///   nuevo debe estar activo (422) y tener zona STAGING si no se indica posición (422 NoStagingBin);
+    /// - posición de recepción por defecto (STAGING o CROSSDOCK del almacén) o ClearStagingBin; muelle del almacén o ClearDock;
+    /// - transporte y referencia: '' = borrar, máximo 80 (400).
+    /// </summary>
+    public async Task<ReceiptDetailDto> UpdateHeaderAsync(Guid publicId, ReceiptHeaderUpdateRequest req, CancellationToken ct)
+    {
+        if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
+        var current = await ResolveAsync(publicId, ct);
+        Warehouse? requested = req.WarehousePublicId is Guid wpid ? await ReceivingSupport.ResolveWarehouseOrDefaultAsync(db, wpid, ct) : null;
+
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            var r = await LockOpenAsync(current.ReceiptHeaderId, ct2);
+            PurchasingSupport.EnsureRowVersion(r.RowVersion, req.RowVersion, DbExtensions.ConcurrencyMessage);
+            var hasDocument = r.AsnId is not null;
+            var errors = new Dictionary<string, string[]>();
+
+            int? newTypeId = null;
+            if (!string.IsNullOrWhiteSpace(req.Type))
+            {
+                var currentType = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct2))?.InternalCode ?? ReceiptTypes.Blind;
+                if (hasDocument)
+                {
+                    if (!string.Equals(req.Type.Trim(), currentType, StringComparison.OrdinalIgnoreCase))
+                        errors["type"] = new[] { ReceiptRules.TypeFixedWithDocument };
+                }
+                else
+                {
+                    var (t, typeError) = ReceiptRules.ParseManualType(req.Type);
+                    if (typeError is not null) errors["type"] = new[] { typeError };
+                    else if (t != currentType) newTypeId = await lookups.GetIdAsync(LookupDomains.ReceiptType, t!, ct2);
+                }
+            }
+
+            var warehouseChanged = false;
+            if (requested is not null && requested.WarehouseId != r.WarehouseId)
+            {
+                var hasLines = await db.Set<ReceiptLine>().AsNoTracking().AnyAsync(l => l.ReceiptHeaderId == r.ReceiptHeaderId, ct2);
+                if (hasDocument || hasLines) errors["warehousePublicId"] = new[] { ReceiptRules.WarehouseFixed };
+                else warehouseChanged = true;
+            }
+
+            var (carrierChanged, carrier, carrierError) = ReceiptRules.PatchText(req.Carrier, ReceiptRules.CarrierTooLong);
+            if (carrierError is not null) errors["carrier"] = new[] { carrierError };
+            var (referenceChanged, reference, referenceError) = ReceiptRules.PatchText(req.Reference, ReceiptRules.ReferenceTooLong);
+            if (referenceError is not null) errors["reference"] = new[] { referenceError };
+            if (errors.Count > 0) throw new ValidationException(errors);
+
+            if (warehouseChanged)
+            {
+                if (!requested!.IsActive) throw new StatusRuleException(ReceiptRules.WarehouseInactive);
+                r.WarehouseId = requested.WarehouseId;
+                r.DefaultStagingBinId = null;
+                r.DockId = null;
+                // El almacén nuevo debe poder recibir (misma regla que el alta).
+                if (req.StagingBinId is null) await ReceivingSupport.DefaultStagingBinAsync(db, r.WarehouseId, ct2);
+            }
+            if (newTypeId is int typeId) r.ReceiptTypeLookupId = typeId;
+            if (req.ClearStagingBin == true) r.DefaultStagingBinId = null;
+            if (req.StagingBinId is int sb)
+                r.DefaultStagingBinId = (await ReceivingSupport.ResolveStagingBinAsync(db, r.WarehouseId, sb, "stagingBinId", ct2)).BinId;
+            if (req.ClearDock == true) r.DockId = null;
+            if (req.DockId is int dockId)
+            {
+                await EnsureDockAsync(r.WarehouseId, dockId, ct2);
+                r.DockId = dockId;
+            }
+            if (carrierChanged) r.Carrier = carrier;
+            if (referenceChanged) r.Reference = reference;
+            await SaveReceiptAsync(ct2);
+        }, ct);
+        return await GetAsync(publicId, ct);
+    }
+
+    // ================================================================ edición de líneas (solo abiertos: EXPECTED, RECEIVING, DISCREPANCY)
+
+    /// <summary>
+    /// Captura de una línea del recibo abierto: cantidad recibida (≥ 0), lote (EnsureLot) o quitarlo, series normalizadas y
     /// posición de recepción. En SERIAL, capturar las series sin cantidad fija la cantidad = número de series. Bajar lo
     /// recibido por debajo de lo asignado a cruce de muelle se permite: el faltante se ve al confirmar (D29).
+    /// Lote 13: cambio de producto (solo en líneas sin línea del aviso; mismo dueño que un alta de línea; con cruce de muelle
+    /// → 409; lote y series se limpian si no vienen) y esperado (ExpectedQty / ClearExpected) solo en recibos ciegos o de
+    /// devolución. Al guardar se sincroniza el estatus abierto (RECEIVING ↔ DISCREPANCY).
     /// </summary>
     public async Task<ReceiptDetailDto> UpdateLineAsync(Guid publicId, int lineId, ReceiptLineUpdateRequest req, CancellationToken ct)
     {
@@ -361,8 +490,38 @@ public sealed class ReceiptService(
             var line = await db.Set<ReceiptLine>().FirstOrDefaultAsync(l => l.ReceiptLineId == lineId && l.ReceiptHeaderId == r.ReceiptHeaderId, ct2)
                        ?? throw new NotFoundException(ReceiptRules.LineNotFoundWhat, feminine: true);
             var product = await db.Set<Product>().AsNoTracking().FirstAsync(p => p.ProductId == line.ProductId, ct2);
-            var trackingCode = await TrackingOfAsync(product, ct2);
+            var hasDocument = r.AsnId is not null;
             var errors = new Dictionary<string, string[]>();
+
+            var productChanged = false;
+            if (req.ProductPublicId is Guid newProductPublicId && newProductPublicId != product.PublicId)
+            {
+                if (line.AsnLineId is not null) throw new ValidationException("productPublicId", ReceiptRules.DocumentLineProductFixed);
+                var next = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == newProductPublicId, ct2)
+                           ?? throw new NotFoundException("Producto");
+                if (!next.IsActive) throw new StatusRuleException(ReceiptRules.ProductInactive(next.Sku));
+                var (owner, ownerClientId) = await OwnerRuleOfAsync(r, ct2);
+                var ownerError = OwnerError(owner, ownerClientId, next);
+                if (ownerError is not null) throw new ValidationException("productPublicId", ownerError);
+                if ((await CrossDockByLineAsync(new List<int> { line.ReceiptLineId }, ct2)).Count > 0)
+                    throw new ConflictException(ReceiptRules.LineHasCrossDockProductChange);
+                product = next;
+                productChanged = true;
+            }
+            var trackingCode = await TrackingOfAsync(product, ct2);
+
+            var expected = line.ExpectedQty;
+            if (req.ExpectedQty is not null || req.ClearExpected == true)
+            {
+                if (hasDocument) errors["expectedQty"] = new[] { ReceiptRules.ExpectedOnlyWithoutDocument };
+                else if (req.ExpectedQty is decimal eq)
+                {
+                    var ee = ReceiptRules.ValidateManualExpectedQty(eq, trackingCode, product.Sku);
+                    if (ee is not null) errors["expectedQty"] = new[] { ee };
+                    else expected = eq;
+                }
+                else expected = null;
+            }
 
             var received = line.ReceivedQty;
             if (req.ReceivedQty is not null)
@@ -372,7 +531,8 @@ public sealed class ReceiptService(
                 else received = req.ReceivedQty.Value;
             }
 
-            var serials = ParseSerials(line.SerialNumbersJson);
+            // Con cambio de producto, el lote y las series del producto anterior no aplican: se limpian si no vienen.
+            var serials = productChanged ? Array.Empty<string>() : ParseSerials(line.SerialNumbersJson);
             if (req.SerialNumbers is not null)
             {
                 var (norm, se) = ReceiptRules.NormalizeSerials(req.SerialNumbers);
@@ -384,7 +544,7 @@ public sealed class ReceiptService(
                 }
             }
 
-            var lotId = line.LotId;
+            var lotId = productChanged ? null : line.LotId;
             if (req.ClearLot == true) lotId = null;
             if (req.Lot is not null)
             {
@@ -406,17 +566,23 @@ public sealed class ReceiptService(
                 line.StagingBinId = (await ReceivingSupport.ResolveStagingBinAsync(db, r.WarehouseId, sb, "stagingBinId", ct2)).BinId;
             if (errors.Count > 0) throw new ValidationException(errors);
 
+            line.ProductId = product.ProductId;
+            line.ExpectedQty = expected;
             line.ReceivedQty = received;
             line.LotId = lotId;
             line.SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json);
+            await SaveReceiptAsync(ct2);
+            await SyncOpenStatusAsync(r, ct2);
             await SaveReceiptAsync(ct2);
         }, ct);
         return await GetAsync(publicId, ct);
     }
 
     /// <summary>
-    /// Línea extra (sin línea del aviso) en un recibo OPEN, hasta 200 líneas. En un recibo contra ASN de cliente el producto
-    /// debe ser de ese cliente (400 OwnerMismatch); contra PO solo productos propios (400 OwnProductsOnly).
+    /// Línea extra (sin línea del aviso) en un recibo abierto, hasta 200 líneas. En un recibo contra ASN de cliente el
+    /// producto debe ser de ese cliente (400 OwnerMismatch); contra PO solo productos propios (400 OwnProductsOnly).
+    /// Lote 13: ExpectedQty solo en recibos ciegos o de devolución (400 'line.expectedQty'); posición de recepción: la de la
+    /// solicitud, si no la del encabezado, si no la de otra línea o la STAGING por defecto. Sincroniza el estatus abierto.
     /// </summary>
     public async Task<ReceiptDetailDto> AddLineAsync(Guid publicId, ReceiptLineRequest req, CancellationToken ct)
     {
@@ -427,26 +593,24 @@ public sealed class ReceiptService(
             var count = await db.Set<ReceiptLine>().CountAsync(l => l.ReceiptHeaderId == r.ReceiptHeaderId, ct2);
             if (count >= ReceiptRules.MaxLines) throw new ValidationException("lines", ReceiptRules.TooManyLines);
 
-            var owner = OwnerRule.Any;
-            int? ownerClientId = null;
-            if (r.AsnId is int asnId)
-            {
-                var asn = await db.Set<Asn>().AsNoTracking().FirstAsync(a => a.AsnId == asnId, ct2);
-                if (asn.PurchaseOrderId is not null) owner = OwnerRule.OwnOnly;
-                else if (asn.ClientId is int cid) { owner = OwnerRule.Client; ownerClientId = cid; }
-            }
+            var (owner, ownerClientId) = await OwnerRuleOfAsync(r, ct2);
             var errors = new Dictionary<string, string[]>();
-            var line = await BuildLineAsync(r.WarehouseId, req, "line", owner, ownerClientId, errors, ct2);
+            var line = await BuildLineAsync(r.WarehouseId, req, "line", owner, ownerClientId, r.AsnId is null, errors, ct2);
             if (errors.Count > 0 || line is null) throw new ValidationException(errors);
             line.ReceiptHeaderId = r.ReceiptHeaderId;
-            line.StagingBinId ??= await DefaultLineStagingAsync(r, ct2);
+            line.StagingBinId ??= r.DefaultStagingBinId ?? await DefaultLineStagingAsync(r, ct2);
             db.Set<ReceiptLine>().Add(line);
+            await SaveReceiptAsync(ct2);
+            await SyncOpenStatusAsync(r, ct2);
             await SaveReceiptAsync(ct2);
         }, ct);
         return await GetAsync(publicId, ct);
     }
 
-    /// <summary>Elimina una línea extra de un recibo OPEN. Las del aviso no se eliminan (409); con cruce de muelle asignado → 409.</summary>
+    /// <summary>
+    /// Elimina una línea extra de un recibo abierto. Las del aviso no se eliminan (409); con cruce de muelle asignado → 409.
+    /// Lote 13: sincroniza el estatus (sin líneas queda en RECEIVING: un recibo no vuelve a EXPECTED).
+    /// </summary>
     public async Task<ReceiptDetailDto> RemoveLineAsync(Guid publicId, int lineId, CancellationToken ct)
     {
         var current = await ResolveAsync(publicId, ct);
@@ -458,8 +622,10 @@ public sealed class ReceiptService(
             if (line.AsnLineId is not null) throw new ConflictException(ReceiptRules.AsnLineNotRemovable);
             if ((await CrossDockByLineAsync(new List<int> { line.ReceiptLineId }, ct2)).Count > 0)
                 throw new ConflictException(ReceiptRules.LineHasCrossDock);
-            // Línea de un recibo OPEN: aún no hay movimiento que la referencie; se retira del documento.
+            // Línea de un recibo abierto: aún no hay movimiento que la referencie; se retira del documento.
             db.Set<ReceiptLine>().Remove(line);
+            await SaveReceiptAsync(ct2);
+            await SyncOpenStatusAsync(r, ct2);
             await SaveReceiptAsync(ct2);
         }, ct);
         return await GetAsync(publicId, ct);
@@ -481,7 +647,8 @@ public sealed class ReceiptService(
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            // 1-2. Encabezado bloqueado y re-verificación: la segunda de dos confirmaciones simultáneas ve RECEIVED → 422.
+            // 1-2. Encabezado bloqueado y re-verificación: la segunda de dos confirmaciones simultáneas ve un estatus
+            // confirmado → 422.
             var r = await LockOpenAsync(current.ReceiptHeaderId, ct2);
             db.ApplyRowVersion(r, req?.RowVersion);
 
@@ -492,6 +659,11 @@ public sealed class ReceiptService(
             if (lines.Count == 0) throw new StatusRuleException(ReceiptRules.NoLinesToConfirm);
             var typeCode = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct2))?.InternalCode ?? ReceiptTypes.Blind;
             var expects = ReceiptRules.ExpectsQuantities(typeCode);
+            // Lote 13: primero el estatus abierto al día (RECEIVING o DISCREPANCY según las líneas), para que el camino a la
+            // confirmación salga de él (DISCREPANCY → RECEIVED_VARIANCE; RECEIVING → RECEIVED).
+            var enabled = await EnabledReceiptStatusesAsync(ct2);
+            await SyncOpenStatusAsync(r, ct2, enabled);
+            var hasVariance = lines.Any(l => ReceiptRules.HasVariance(expects, l.ExpectedQty, l.ReceivedQty));
 
             var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
             var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
@@ -568,9 +740,16 @@ public sealed class ReceiptService(
                 asn.StatusCodeId = asnTo.StatusCodeId;
             }
 
-            // 9. Recibo OPEN → RECEIVED con fecha de confirmación (insumo de la Contabilización de compras, Lote 10).
-            var received = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, ReceiptStatuses.Received, comment, ct2);
-            r.StatusCodeId = received.StatusCodeId;
+            // 9. Recibo abierto → RECEIVED (o RECEIVED_VARIANCE si hay diferencia, Lote 13) con fecha de confirmación (insumo
+            // de la Contabilización de compras, Lote 10). El comentario va en el último paso.
+            var currentCode = await StatusCodeOfAsync(r.StatusCodeId, ct2);
+            var path = ReceiptStatusRules.Path(currentCode, ReceiptStatusRules.ConfirmedTarget(hasVariance, enabled), enabled);
+            for (var i = 0; i < path.Count; i++)
+            {
+                var step = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId,
+                    path[i], i == path.Count - 1 ? comment : null, ct2);
+                r.StatusCodeId = step.StatusCodeId;
+            }
             r.ReceivedAtUtc = DateTime.UtcNow;
             r.ReceivedBy = tenant.UserId;
             await SaveReceiptAsync(ct2);
@@ -596,7 +775,8 @@ public sealed class ReceiptService(
                 created++;
             }
 
-            // 12. Sin ninguna PUTAWAY (todo a cruce de muelle o recibido 0) → RECEIVED → PUTAWAY directo.
+            // 12. Sin ninguna PUTAWAY (todo a cruce de muelle o recibido 0) → PUTAWAY directo (desde RECEIVED es la siguiente
+            // etapa; desde RECEIVED_VARIANCE, la entrada lateral sembrada).
             if (created == 0)
             {
                 var done = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, ReceiptStatuses.Putaway, null, ct2);
@@ -609,7 +789,7 @@ public sealed class ReceiptService(
     // ================================================================ baja
 
     /// <summary>
-    /// Elimina (IsActive = 0) un recibo OPEN sin asignaciones de cruce de muelle. Si su ASN nació de una PO, el ASN se
+    /// Elimina (IsActive = 0) un recibo abierto (EXPECTED, RECEIVING o DISCREPANCY) sin asignaciones de cruce de muelle. Si su ASN nació de una PO, el ASN se
     /// CANCELA (la PO puede recibirse de nuevo por lo pendiente); un ASN de cliente queda EXPECTED para otro recibo.
     /// </summary>
     public async Task DeleteAsync(Guid publicId, CancellationToken ct)
@@ -645,14 +825,74 @@ public sealed class ReceiptService(
         => await db.Set<ReceiptHeader>().AsNoTracking().FirstOrDefaultAsync(r => r.PublicId == publicId && r.IsActive, ct)
            ?? throw new NotFoundException("Recibo");
 
-    /// <summary>Encabezado bloqueado; activo (404 al segundo de dos borrados) y OPEN (422 ReceiptNotOpen).</summary>
+    /// <summary>Encabezado bloqueado; activo (404 al segundo de dos borrados) y abierto: EXPECTED, RECEIVING o DISCREPANCY (422 ReceiptNotOpen).</summary>
     private async Task<ReceiptHeader> LockOpenAsync(int receiptHeaderId, CancellationToken ct)
     {
         var r = await ReceivingSupport.LockReceiptAsync(db, receiptHeaderId, ct);
         if (!r.IsActive) throw new NotFoundException("Recibo");
-        var openId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct);
-        if (r.StatusCodeId != openId) throw new StatusRuleException(ReceiptRules.ReceiptNotOpen(r.Number));
+        var openIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
+        if (!openIds.Contains(r.StatusCodeId)) throw new StatusRuleException(ReceiptRules.ReceiptNotOpen(r.Number));
         return r;
+    }
+
+    // ---------------------------------------------------------------- Lote 13: estatus abiertos sincronizados
+
+    /// <summary>Códigos de estatus del recibo habilitados para la compañía (los apagados se saltan).</summary>
+    private async Task<HashSet<string>> EnabledReceiptStatusesAsync(CancellationToken ct)
+        => (await statuses.GetPipelineAsync(StatusDomains.ReceiptStatus, false, ct))
+            .Select(s => s.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+    private async Task<string> StatusCodeOfAsync(int statusCodeId, CancellationToken ct)
+        => await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == statusCodeId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct)
+           ?? string.Empty;
+
+    /// <summary>
+    /// Lleva un recibo abierto al estatus que le corresponde por sus líneas GUARDADAS (ReceiptStatusRules.OpenTarget:
+    /// EXPECTED sin líneas si ya estaba, RECEIVING, o DISCREPANCY con diferencia), paso a paso con StatusService (historial
+    /// por paso). No guarda: el llamador persiste (los cambios de líneas deben estar guardados antes de llamarla).
+    /// </summary>
+    private async Task SyncOpenStatusAsync(ReceiptHeader r, CancellationToken ct, IReadOnlyCollection<string>? enabled = null)
+    {
+        var currentCode = await StatusCodeOfAsync(r.StatusCodeId, ct);
+        if (!ReceiptStatusRules.IsOpen(currentCode)) return;
+        var typeCode = (await lookups.GetAsync(r.ReceiptTypeLookupId, ct))?.InternalCode ?? ReceiptTypes.Blind;
+        var expects = ReceiptRules.ExpectsQuantities(typeCode);
+        var lines = await db.Set<ReceiptLine>().AsNoTracking().Where(l => l.ReceiptHeaderId == r.ReceiptHeaderId)
+            .Select(l => new { l.ExpectedQty, l.ReceivedQty }).ToListAsync(ct);
+        var hasVariance = lines.Any(l => ReceiptRules.HasVariance(expects, l.ExpectedQty, l.ReceivedQty));
+        enabled ??= await EnabledReceiptStatusesAsync(ct);
+        var target = ReceiptStatusRules.OpenTarget(currentCode, lines.Count, hasVariance, enabled);
+        foreach (var step in ReceiptStatusRules.Path(currentCode, target, enabled))
+        {
+            var to = await statuses.TransitionAsync(StatusDomains.ReceiptStatus, EntityTypes.Receipt, r.ReceiptHeaderId, r.StatusCodeId, step, null, ct);
+            r.StatusCodeId = to.StatusCodeId;
+        }
+    }
+
+    /// <summary>Muelle del almacén del recibo (otro almacén u otro tenant → 404 'Muelle').</summary>
+    private async Task EnsureDockAsync(int warehouseId, int dockId, CancellationToken ct)
+    {
+        var dockOk = await (from d in db.Set<WarehouseDock>().AsNoTracking()
+                            join w in db.Set<Warehouse>().AsNoTracking() on d.WarehouseId equals w.WarehouseId
+                            where d.WarehouseDockId == dockId && d.WarehouseId == warehouseId
+                            select d.WarehouseDockId).AnyAsync(ct);
+        if (!dockOk) throw new NotFoundException("Muelle");
+    }
+
+    /// <summary>Regla de dueño de las líneas extra: aviso de cliente → productos de ese cliente; orden de compra → propios; sin documento → cualquiera.</summary>
+    private async Task<(OwnerRule Owner, int? OwnerClientId)> OwnerRuleOfAsync(ReceiptHeader r, CancellationToken ct)
+    {
+        if (r.AsnId is not int asnId) return (OwnerRule.Any, null);
+        var asn = await db.Set<Asn>().AsNoTracking().FirstAsync(a => a.AsnId == asnId, ct);
+        if (asn.PurchaseOrderId is not null) return (OwnerRule.OwnOnly, null);
+        return asn.ClientId is int cid ? (OwnerRule.Client, cid) : (OwnerRule.Any, null);
+    }
+
+    private static string? OwnerError(OwnerRule owner, int? ownerClientId, Product product)
+    {
+        if (owner == OwnerRule.Client && product.ClientId != ownerClientId) return ReceiptRules.OwnerMismatch(product.Sku);
+        if (owner == OwnerRule.OwnOnly && product.ClientId is not null) return ReceiptRules.OwnProductsOnly(product.Sku);
+        return null;
     }
 
     private async Task<string> TrackingOfAsync(Product product, CancellationToken ct)
@@ -708,7 +948,7 @@ public sealed class ReceiptService(
         for (var i = 0; i < requestLines.Count; i++)
         {
             var key = $"lines[{i}]";
-            var built = await BuildLineAsync(warehouseId, requestLines[i], key, owner, asn.ClientId, errors, ct);
+            var built = await BuildLineAsync(warehouseId, requestLines[i], key, owner, asn.ClientId, false, errors, ct);
             if (built is null) continue;
 
             bool Free(ReceiptLine c) => !applied.Contains(c) && c.ProductId == built.ProductId;
@@ -737,18 +977,28 @@ public sealed class ReceiptService(
         lines.AddRange(extras);
     }
 
-    /// <summary>Línea de la solicitud (ciega, devolución o extra): producto activo, dueño según el origen, cantidad, lote y series.</summary>
+    /// <summary>
+    /// Línea de la solicitud (ciega, devolución o extra): producto activo, dueño según el origen, cantidad, lote y series.
+    /// Lote 13: allowExpected = recibo sin documento (ciego o devolución): admite ExpectedQty (≥ 0, 3 decimales, entera en
+    /// SERIAL); con documento, traerla → 400 '{key}.expectedQty' (lo esperado viene del aviso o de la orden de compra).
+    /// </summary>
     private async Task<ReceiptLine?> BuildLineAsync(int warehouseId, ReceiptLineRequest l, string key, OwnerRule owner, int? ownerClientId,
-        Dictionary<string, string[]> errors, CancellationToken ct)
+        bool allowExpected, Dictionary<string, string[]> errors, CancellationToken ct)
     {
+        if (l.ExpectedQty is not null && !allowExpected) { errors[key + ".expectedQty"] = new[] { ReceiptRules.ExpectedOnlyWithoutDocument }; return null; }
         if (l.ProductPublicId is not Guid pid) { errors[key + ".productPublicId"] = new[] { "Indique el producto." }; return null; }
         var product = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == pid, ct)
                       ?? throw new NotFoundException("Producto");
         // Producto dado de baja: 422 (el estatus del producto no admite recibir), igual que el ledger al asentar.
         if (!product.IsActive) throw new StatusRuleException(ReceiptRules.ProductInactive(product.Sku));
-        if (owner == OwnerRule.Client && product.ClientId != ownerClientId) { errors[key + ".productPublicId"] = new[] { ReceiptRules.OwnerMismatch(product.Sku) }; return null; }
-        if (owner == OwnerRule.OwnOnly && product.ClientId is not null) { errors[key + ".productPublicId"] = new[] { ReceiptRules.OwnProductsOnly(product.Sku) }; return null; }
+        var ownerError = OwnerError(owner, ownerClientId, product);
+        if (ownerError is not null) { errors[key + ".productPublicId"] = new[] { ownerError }; return null; }
         var trackingCode = await TrackingOfAsync(product, ct);
+        if (l.ExpectedQty is decimal expectedQty)
+        {
+            var ee = ReceiptRules.ValidateManualExpectedQty(expectedQty, trackingCode, product.Sku);
+            if (ee is not null) { errors[key + ".expectedQty"] = new[] { ee }; return null; }
+        }
 
         var (serials, se) = ReceiptRules.NormalizeSerials(l.SerialNumbers);
         if (se is not null) { errors[key + ".serialNumbers"] = new[] { se }; return null; }
@@ -772,7 +1022,7 @@ public sealed class ReceiptService(
 
         return new ReceiptLine
         {
-            ProductId = product.ProductId, LotId = lotId, ReceivedQty = qty.Value, ExpectedQty = null, StagingBinId = stagingId,
+            ProductId = product.ProductId, LotId = lotId, ReceivedQty = qty.Value, ExpectedQty = l.ExpectedQty, StagingBinId = stagingId,
             SerialNumbersJson = serials.Count == 0 ? null : JsonSerializer.Serialize(serials, Json),
         };
     }
@@ -853,10 +1103,19 @@ public sealed class ReceiptService(
                                   ClientName = c == null ? null : c.Name,
                                   PoNumber = p == null ? null : p.Number,
                                   SupplierName = s == null ? null : s.Name,
+                                  // Lote 13: llegada esperada = la del aviso; si no, la de la orden de compra.
+                                  ExpectedDate = a.ExpectedDate ?? (p == null ? null : p.ExpectedDate),
                               }).ToDictionaryAsync(x => x.AsnId, ct);
         var lineAgg = await db.Set<ReceiptLine>().AsNoTracking().Where(l => ids.Contains(l.ReceiptHeaderId))
             .Select(l => new { l.ReceiptHeaderId, l.ExpectedQty, l.ReceivedQty }).ToListAsync(ct);
         var statusMap = await ReceivingSupport.StatusMapAsync(db, tenant, StatusDomains.ReceiptStatus, ct);
+        // Lote 13: posición de recepción por defecto (del almacén del recibo) y tareas de acomodo abiertas por recibo.
+        var stagingIds = rows.Where(r => r.DefaultStagingBinId != null).Select(r => r.DefaultStagingBinId!.Value).Distinct().ToList();
+        var stagingBins = stagingIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await db.Set<WarehouseBin>().AsNoTracking().Where(b => stagingIds.Contains(b.WarehouseBinId) && whIds.Contains(b.WarehouseId))
+                .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct);
+        var pendingPutaway = await PendingPutawayCountsAsync(ids, ct);
 
         foreach (var r in rows)
         {
@@ -877,9 +1136,31 @@ public sealed class ReceiptService(
                 type is null ? typeCode : MultilingualText.Resolve(type.LabelJson, tenant.Lang), origin, originRef, sender,
                 w?.PublicId ?? Guid.Empty, w?.Code ?? "", r.DockId is int d ? docks.GetValueOrDefault(d) : null,
                 s?.Code ?? "", s?.Label ?? "", lines.Count, expected, received, received - expected, hasVariance,
-                r.CreatedAtUtc, r.ReceivedAtUtc);
+                r.CreatedAtUtc, r.ReceivedAtUtc,
+                r.Carrier, r.Reference, a?.ExpectedDate, r.DefaultStagingBinId,
+                r.DefaultStagingBinId is int sb ? stagingBins.GetValueOrDefault(sb) : null, r.DockId,
+                ReceiptStatusRules.IsOpen(s?.Code), pendingPutaway.GetValueOrDefault(r.ReceiptHeaderId));
         }
         return result;
+    }
+
+    /// <summary>Lote 13: tareas PUTAWAY abiertas (PENDING o IN_PROGRESS) por recibo, en una consulta agrupada.</summary>
+    private async Task<Dictionary<int, int>> PendingPutawayCountsAsync(List<int> receiptIds, CancellationToken ct)
+    {
+        var receiptTypeId = await lookups.TryGetIdAsync(LookupDomains.EntityType, EntityTypes.Receipt, ct);
+        var putawayId = await lookups.TryGetIdAsync(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway, ct);
+        if (receiptTypeId is null || putawayId is null || receiptIds.Count == 0) return new Dictionary<int, int>();
+        var openTaskIds = await db.StatusIdsAsync(StatusDomains.WarehouseTaskStatus,
+            new[] { WarehouseTaskStatuses.Pending, WarehouseTaskStatuses.InProgress }, ct);
+        var refType = receiptTypeId.Value;
+        var taskType = putawayId.Value;
+        var rows = await db.Set<WarehouseTask>().AsNoTracking()
+            .Where(t => t.RefEntityLookupId == refType && t.TaskTypeLookupId == taskType && t.RefId != null
+                        && receiptIds.Contains(t.RefId.Value) && openTaskIds.Contains(t.StatusCodeId))
+            .GroupBy(t => t.RefId!.Value)
+            .Select(g => new { ReceiptId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        return rows.ToDictionary(x => x.ReceiptId, x => x.Count);
     }
 
     // ---------------------------------------------------------------- tareas de putaway del recibo

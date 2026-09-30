@@ -1012,6 +1012,9 @@ export interface paths {
                     status?: string[];
                     clientPublicId?: string;
                     search?: string;
+                    reference?: string;
+                    expectedFrom?: string;
+                    expectedTo?: string;
                 };
                 header?: never;
                 path?: never;
@@ -7300,6 +7303,7 @@ export interface paths {
                     search?: string;
                     skip?: number;
                     take?: number;
+                    activeProductsOnly?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -9981,6 +9985,7 @@ export interface paths {
                     belowMin?: boolean;
                     serialOnly?: boolean;
                     serialMissing?: boolean;
+                    onlyOnHand?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -10850,6 +10855,8 @@ export interface paths {
                     productPublicIds?: string[];
                     hasVariance?: boolean;
                     search?: string;
+                    variance?: string[];
+                    phase?: string;
                     skip?: number;
                     take?: number;
                 };
@@ -10962,7 +10969,36 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ReceiptHeaderUpdateRequest"];
+                    "text/json": components["schemas"]["ReceiptHeaderUpdateRequest"];
+                    "application/*+json": components["schemas"]["ReceiptHeaderUpdateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReceiptDetailDto"];
+                        "application/json": components["schemas"]["ReceiptDetailDto"];
+                        "text/json": components["schemas"]["ReceiptDetailDto"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/receipts/{publicId}/lines/{lineId}": {
@@ -18618,6 +18654,10 @@ export interface components {
             notes?: string | null;
             lines?: components["schemas"]["PurchaseOrderLineRequest"][] | null;
             rowVersion?: string | null;
+            /** Format: int32 */
+            supplierId?: number | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
         } & {
             [key: string]: unknown;
         };
@@ -18767,11 +18807,28 @@ export interface components {
             stagingBinId?: number | null;
             lines?: components["schemas"]["ReceiptLineRequest"][] | null;
             confirm?: boolean;
+            carrier?: string | null;
+            reference?: string | null;
         };
         ReceiptDetailDto: {
             header?: components["schemas"]["ReceiptListItemDto"];
             lines?: components["schemas"]["ReceiptLineDto"][] | null;
             putawayTasks?: components["schemas"]["WarehouseTaskDto"][] | null;
+            rowVersion?: string | null;
+            canDelete?: boolean;
+        };
+        ReceiptHeaderUpdateRequest: {
+            type?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            /** Format: int32 */
+            dockId?: number | null;
+            clearDock?: boolean | null;
+            /** Format: int32 */
+            stagingBinId?: number | null;
+            clearStagingBin?: boolean | null;
+            carrier?: string | null;
+            reference?: string | null;
             rowVersion?: string | null;
         };
         ReceiptLineDto: {
@@ -18815,6 +18872,8 @@ export interface components {
             serialNumbers?: string[] | null;
             /** Format: int32 */
             stagingBinId?: number | null;
+            /** Format: double */
+            expectedQty?: number | null;
         };
         ReceiptLineUpdateRequest: {
             /** Format: double */
@@ -18824,6 +18883,11 @@ export interface components {
             serialNumbers?: string[] | null;
             /** Format: int32 */
             stagingBinId?: number | null;
+            /** Format: uuid */
+            productPublicId?: string | null;
+            /** Format: double */
+            expectedQty?: number | null;
+            clearExpected?: boolean | null;
         };
         ReceiptListItemDto: {
             /** Format: int32 */
@@ -18855,6 +18919,18 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             receivedAtUtc?: string | null;
+            carrier?: string | null;
+            reference?: string | null;
+            /** Format: date */
+            expectedDate?: string | null;
+            /** Format: int32 */
+            defaultStagingBinId?: number | null;
+            defaultStagingBinCode?: string | null;
+            /** Format: int32 */
+            dockId?: number | null;
+            isOpen?: boolean;
+            /** Format: int32 */
+            pendingPutawayCount?: number;
         };
         ReceiptPageDto: {
             /** Format: int32 */

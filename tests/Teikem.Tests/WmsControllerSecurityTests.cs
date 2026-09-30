@@ -89,6 +89,7 @@ public class WmsControllerSecurityTests
         [(typeof(ReceiptsController), nameof(ReceiptsController.List))] = PermissionCatalog.InventoryView,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Get))] = PermissionCatalog.InventoryView,
         [(typeof(ReceiptsController), nameof(ReceiptsController.Create))] = PermissionCatalog.WarehouseReceive,
+        [(typeof(ReceiptsController), nameof(ReceiptsController.UpdateHeader))] = PermissionCatalog.WarehouseReceive,   // Lote 13
         [(typeof(ReceiptsController), nameof(ReceiptsController.UpdateLine))] = PermissionCatalog.WarehouseReceive,
         [(typeof(ReceiptsController), nameof(ReceiptsController.AddLine))] = PermissionCatalog.WarehouseReceive,
         [(typeof(ReceiptsController), nameof(ReceiptsController.RemoveLine))] = PermissionCatalog.WarehouseReceive,
@@ -227,7 +228,9 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(ProductsController), nameof(ProductsController.Brands))]);
         // Lote 11 (cupo de posiciones): + POST /warehouses/{id}/bins/capacity (warehouse.manage, como editar una posición).
         Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))]);
-        Assert.Equal(107, Expected.Count);
+        // Lote 13: + PATCH /receipts/{publicId} (warehouse.receive, como el resto de la captura del recibo).
+        Assert.Equal(PermissionCatalog.WarehouseReceive, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.UpdateHeader))]);
+        Assert.Equal(108, Expected.Count);
     }
 
     [Fact]

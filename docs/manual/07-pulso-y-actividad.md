@@ -53,7 +53,7 @@ Cómo se usa:
 
 | Código | Etiqueta (es) | Obligatorio | Encendido por defecto | Cuándo se genera |
 |---|---|---|---|---|
-| `RECEIPT_CONFIRMED` | Recibo confirmado | Sí | Sí | Recibo pasa a `RECEIVED` |
+| `RECEIPT_CONFIRMED` | Recibo confirmado | Sí | Sí | Recibo pasa a `RECEIVED` (Completado) o `RECEIVED_VARIANCE` (Completado con diferencia) |
 | `RECEIPT_VARIANCE` | Diferencia en recibo | Sí | Sí | Ajuste de ledger con motivo `RECEIPT_VARIANCE` sobre el recibo |
 | `RECEIPT_PUTAWAY_DONE` | Recibo acomodado | No | Sí | Recibo pasa a `PUTAWAY` |
 | `ASN_CANCELLED` | Aviso de llegada cancelado | No | Sí | Aviso de llegada pasa a `CANCELLED` |

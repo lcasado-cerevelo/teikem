@@ -33,7 +33,8 @@ public sealed class ReceiptServiceTests
         var receipts = f.Get<ReceiptService>();
 
         var created = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId), default);
-        Assert.Equal(ReceiptStatuses.Open, created.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, created.Header.StatusCode);   // Lote 13: contra OC nace RECEIVING
+        Assert.True(created.Header.IsOpen);
         Assert.StartsWith("REC-", created.Header.Number);
         Assert.Equal(ReceiptOrigins.PurchaseOrder, created.Header.Origin);
         var line = Assert.Single(created.Lines);
@@ -42,10 +43,13 @@ public sealed class ReceiptServiceTests
         Assert.Equal(f.StagingBinId, line.StagingBinId);         // primera posición de una zona STAGING
         Assert.Equal(12.5m, line.UnitCost);                      // costo congelado de la línea de PO
 
-        await receipts.UpdateLineAsync(created.Header.PublicId, line.Id, new ReceiptLineUpdateRequest(ReceivedQty: 8m), default);
+        var short8 = await receipts.UpdateLineAsync(created.Header.PublicId, line.Id, new ReceiptLineUpdateRequest(ReceivedQty: 8m), default);
+        Assert.Equal(ReceiptStatuses.Discrepancy, short8.Header.StatusCode);
         var confirmed = await receipts.ConfirmAsync(created.Header.PublicId, new ReceiptConfirmRequest(), default);
 
-        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.ReceivedWithVariance, confirmed.Header.StatusCode);   // Lote 13: con diferencia
+        Assert.False(confirmed.Header.IsOpen);
+        Assert.Equal(1, confirmed.Header.PendingPutawayCount);
         Assert.NotNull(confirmed.Header.ReceivedAtUtc);
         var txns = await f.Db.Set<InventoryTransaction>().AsNoTracking().OrderBy(t => t.InventoryTransactionId).ToListAsync();
         Assert.Equal(2, txns.Count);
@@ -85,7 +89,7 @@ public sealed class ReceiptServiceTests
         var confirmed = await receipts.CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId,
             Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 3m) }, Confirm: true), default);
 
-        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.ReceivedWithVariance, confirmed.Header.StatusCode);   // 3 de 10: con diferencia
         var line = Assert.Single(confirmed.Lines);
         Assert.Equal(10m, line.ExpectedQty);
         Assert.Equal(3m, line.ReceivedQty);
@@ -118,7 +122,7 @@ public sealed class ReceiptServiceTests
         var confirmed = await f.Get<ReceiptService>().CreateAsync(new ReceiptCreateRequest(PurchaseOrderPublicId: f.PoPublicId,
             Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 3m), new ReceiptLineRequest(foreignPublicId, 2m) }, Confirm: true), default);
 
-        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.ReceivedWithVariance, confirmed.Header.StatusCode);
         Assert.Equal(3, confirmed.Lines.Count);
         var scanned = Assert.Single(confirmed.Lines, l => l.ProductPublicId == f.ProductNonePublicId);
         Assert.Equal(3m, scanned.ReceivedQty);
@@ -201,7 +205,7 @@ public sealed class ReceiptServiceTests
                 new ReceiptLineRequest(serialPublicId, 1m, SerialNumbers: new[] { "S2" }),
             }, Confirm: true), default);
 
-        Assert.Equal(ReceiptStatuses.Received, confirmed.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.ReceivedWithVariance, confirmed.Header.StatusCode);   // 2 de 5 y 2 de 3
         Assert.Equal(2, confirmed.Lines.Count);
         Assert.All(confirmed.Lines, l => Assert.NotNull(l.AsnLineId));
         var lot = Assert.Single(confirmed.Lines, l => l.ProductPublicId == lotPublicId);
@@ -717,9 +721,10 @@ internal sealed class ReceivingFixture : IAsyncDisposable
         }
         S(StatusDomains.WarehouseStatus, WarehouseStatuses.Active, pipe, 1, true);
         S(StatusDomains.WarehouseStatus, WarehouseStatuses.Inactive, term, 2);
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, pipe, 1, true);
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 2);
-        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 3);
+        // Lote 13: los seis estatus del recibo (EXPECTED en el lugar de OPEN; los nuevos al final para no mover ids).
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Expected, pipe, 1, true);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, pipe, 4);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, term, 6);
         S(StatusDomains.AsnStatus, AsnStatuses.Expected, pipe, 1, true);
         S(StatusDomains.AsnStatus, AsnStatuses.Received, term, 2);
         S(StatusDomains.AsnStatus, AsnStatuses.Cancelled, term, 3);
@@ -739,6 +744,10 @@ internal sealed class ReceivingFixture : IAsyncDisposable
         S(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Partial, pipe, 3);
         S(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Received, term, 4);
         S(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Cancelled, term, 5);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving, pipe, 2);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.Discrepancy, lat, 3);
+        S(StatusDomains.ReceiptStatus, ReceiptStatuses.ReceivedWithVariance, lat, 5);
+        ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         Db.Tenants.Add(new Tenant { TenantId = TenantId, Name = "Tenant de prueba", IsActive = true });
 

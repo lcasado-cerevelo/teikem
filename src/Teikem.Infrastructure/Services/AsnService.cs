@@ -53,6 +53,15 @@ public sealed class AsnService(TeikemDbContext db, ITenantContext tenant, Status
                                      || db.Set<Client>().Any(c => c.ClientId == a.ClientId && c.Name.Contains(s))
                                      || db.Set<PurchaseOrder>().Any(p => p.PurchaseOrderId == a.PurchaseOrderId && p.Number.Contains(s)));
         }
+        // Lote 13: referencia (contiene) y llegada esperada (inclusive en ambos extremos; sin fecha no coincide).
+        if (!string.IsNullOrWhiteSpace(q.Reference))
+        {
+            // Sin distinguir mayúsculas (igual que en SQL Server con la intercalación por defecto, y también en memoria).
+            var r = q.Reference.Trim().ToLowerInvariant();
+            query = query.Where(a => a.Reference != null && a.Reference.ToLower().Contains(r));
+        }
+        if (q.ExpectedFrom is DateOnly ef) query = query.Where(a => a.ExpectedDate != null && a.ExpectedDate >= ef);
+        if (q.ExpectedTo is DateOnly et) query = query.Where(a => a.ExpectedDate != null && a.ExpectedDate <= et);
 
         var rows = await query.OrderByDescending(a => a.CreatedAtUtc).ThenByDescending(a => a.AsnId)
             .Take(ReceiptRules.MaxPageSize).ToListAsync(ct);

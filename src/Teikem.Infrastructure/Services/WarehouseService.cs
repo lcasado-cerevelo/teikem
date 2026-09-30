@@ -221,7 +221,7 @@ public sealed class WarehouseService(TeikemDbContext db, ITenantContext tenant, 
 
     private async Task<int> OpenReceiptsAsync(int warehouseId, CancellationToken ct)
     {
-        var ids = await StatusIdsAsync(StatusDomains.ReceiptStatus, ct, ReceiptStatuses.Open);
+        var ids = await StatusIdsAsync(StatusDomains.ReceiptStatus, ct, ReceiptStatuses.OpenCodes);   // Lote 13: EXPECTED, RECEIVING, DISCREPANCY
         return await db.ReceiptHeaders.CountAsync(r => r.WarehouseId == warehouseId && r.IsActive && ids.Contains(r.StatusCodeId), ct);
     }
 

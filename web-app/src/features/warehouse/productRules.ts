@@ -1,7 +1,8 @@
 // Reglas de captura del producto (réplica de ProductRules del dominio) que usa el modal único de alta y edición
 // (ProductEditorModal). Los mensajes son los exactos del manual 06 (claves `warehouse.products.errors.*`).
 // También la cantidad de un ajuste manual (AdjustmentRules.ToPosting), compartida por InventoryAdjustModal y el bloque
-// "Ajustar inventario" del modal de producto. Lote 12: Marca y Modelo (máx. 100) y la nota obligatoria del ajuste del modal.
+// "Ajustar inventario" del modal de producto. Lote 12: Marca y Modelo (máx. 100) y la nota obligatoria de todo ajuste manual
+// (`adjustNotesSchema`, la misma en el modal de producto, el del Kárdex y el ajuste manual de un faltante de compra).
 import { z } from 'zod'
 import type { TParams } from '../../kernel/i18n'
 
@@ -64,8 +65,10 @@ export function brandModelSchema(t: Translate, field: 'brand' | 'model') {
 export const ADJUST_NOTES_MAX = 300
 
 /**
- * Nota del ajuste del modal de producto (Lote 12): obligatoria en la interfaz (el API la deja opcional para no romper otros
- * flujos) y de hasta 300 caracteres (mensaje exacto del API: 'Las notas admiten como máximo 300 caracteres.').
+ * Nota de todo ajuste manual de inventario: obligatoria (recortada) y de hasta 300 caracteres, con los mensajes exactos del
+ * API (`AdjustmentRules.NotesRequired` 'Escriba una nota que explique el ajuste.' y 'Las notas admiten como máximo 300
+ * caracteres.', 400 en `errors.notes`). La usan el bloque de ajuste de ProductEditorModal, InventoryAdjustModal (Kárdex) y,
+ * solo para la acción MANUAL_ADJUSTMENT, ResolveShortageModal.
  */
 export function adjustNotesSchema(t: Translate) {
   return z

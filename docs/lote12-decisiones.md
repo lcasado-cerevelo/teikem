@@ -187,3 +187,72 @@ Resultados reportados por quien ejecutó el lote. **No se volvieron a ejecutar a
 - **Capturas de pantalla** nuevas del manual: Posiciones con "Asignar cupo" y su modal, el bloque "Añadir ajuste" abierto y los
   dos PDF (quedan notas "Captura pendiente"). Las de Productos, Proveedores y Órdenes de compra las regenera el recorrido e2e.
 - **Corrida del smoke y del CI** con este código (ver "Qué no se probó").
+
+## Ajustes decididos tras el cierre
+
+Decisiones del dueño del producto del 2026-09-30 (plan, sección "Decisiones del dueño del producto (2026-09-30) — ajustes al
+Lote 2 que entran con el Lote 3"). Esta tanda cubre **solo el backend** (y revisa la app móvil); la pantalla web la ajusta el
+frontend del Lote 13. `web-app/openapi.json` **no** se regeneró aquí: los contratos nuevos (`supplierId`/`warehousePublicId`
+en el `PATCH` de la orden y `onlyOnHand` en `GET /products`) aparecen al regenerarlo. Reemplaza a las decisiones 1 y 9 de
+arriba y precisa la 4.
+
+1. **Proveedor y almacén de la orden de compra, editables solo en Borrador** (reemplaza la decisión 9).
+   `PurchaseOrderPatchRequest` suma `SupplierId` (`int?`) y `WarehousePublicId` (`Guid?`) **al final** (los mismos nombres
+   que el alta; `null` = sin cambio) y salieron de `ImmutableOnPatch` (`number`, `orderDate`, `currency`, `status` y
+   `statusCode` siguen dando 400 `El campo {campo} de la orden de compra no se puede cambiar.`). Reglas, en
+   `PurchaseOrderService.UpdateAsync` dentro de la transacción y con la orden bloqueada:
+   - Un valor **igual** al actual no es un cambio: se acepta en cualquier estatus y no se revalida (una pantalla puede
+     mandar el formulario completo, y una orden en Borrador con un proveedor dado de baja después sigue editándose).
+   - Un valor distinto fuera de `DRAFT` → **409** `El proveedor y el almacén solo se cambian mientras la orden de compra está en
+     borrador.` (`PurchaseOrderRules.SupplierWarehouseOnlyDraft`). Se revisa **antes** que la capacidad
+     `EDIT_PURCHASE_ORDER`, para que la respuesta sea 409 en cualquier estatus (con la siembra, SENT daría 422 si no).
+   - En `DRAFT` se valida como en el alta: proveedor de otra compañía o inexistente 404 `Proveedor no encontrado.`, dado de
+     baja 422 `El proveedor está dado de baja; no admite órdenes de compra nuevas.`; almacén 404 `Almacén no encontrado.` o
+     422 `El almacén está dado de baja; no admite órdenes de compra nuevas.`. Diferencia con el alta: el almacén se resuelve
+     antes que el proveedor (hace falta para saber si cambia), así que con los dos inválidos el 404 del almacén sale primero.
+     Nada se asigna hasta que ambos pasan.
+   - `rowVersion` y la auditoría (`SupplierId`/`WarehouseId` en el `AuditLog` de `PURCHASE_ORDER`) como el resto del `PATCH`.
+   - **Efecto en las líneas: ninguno.** En `DRAFT` la orden no tiene avisos ni recibos (el ASN se crea al recibir, desde
+     `SENT` o `PARTIAL`), las líneas no guardan almacén y el costo congelado no depende del proveedor.
+2. **Nota obligatoria en el ajuste manual, también en el API** (reemplaza la decisión 1). `POST /api/v1/inventory/adjustments`
+   responde 400 con `errors.notes` = `Escriba una nota que explique el ajuste.` (`AdjustmentRules.NotesRequired`, el mismo texto
+   de la pantalla) si la nota falta o queda vacía al recortar. Regla: `AdjustmentRules.RequiresNotes(reason)` = el motivo no es
+   de sistema (también sin motivo o con uno desconocido; sale junto con los demás errores). Con un motivo de sistema el error
+   es el de siempre en `reason` y no se suma el de la nota. Llamadores del ledger con `ADJUSTMENT` revisados, **exentos**
+   porque no pasan por este endpoint y su origen queda en la referencia del movimiento:
+   - Recibo (`ReceiptService`, `RECEIPT_VARIANCE`), conteo (`CycleCountService`, `COUNT_VARIANCE`), eliminar una recolección
+     (`PickBatchService`, `PICK_BATCH_REVERSAL`) y saldo inicial de `import-legacy` (`LegacyImportService`, `OPENING_BALANCE`).
+   - **Resolución de faltante de compra con `MANUAL_ADJUSTMENT`** (`PurchaseShortageService`, motivo `PO_SHORTAGE` por defecto):
+     **la nota también es obligatoria** (es un ajuste manual de inventario, y la decisión del dueño fue "todo ajuste manual
+     exige nota"): sin ella, 400 en `errors.notes` "Escriba una nota que explique el ajuste.". Cerrar y Reordenar no mueven
+     inventario y la dejan opcional. El modal web (`ResolveShortageModal`) la pide obligatoria para esa acción.
+   - La transferencia (`POST /inventory/transfers`) no es un ajuste: nota opcional.
+   - **App móvil (`app-almacen/`)**: no hace ajustes manuales (solo aparece el endpoint en el `schema.d.ts` generado); no hubo
+     cambios. Los recorridos e2e web (`f6.spec.ts`, `f7a.spec.ts`) ya mandaban nota.
+   - **Pendiente del frontend**: el modal de la pantalla Ajustes (`InventoryAdjustModal`) todavía tiene la nota opcional; hasta
+     que se ajuste, un ajuste sin nota desde ahí recibe el 400 en `errors.notes`. **Cerrado en el Lote 13:** el modal ya exige la
+     nota (ver [`lote13-decisiones.md`](lote13-decisiones.md)).
+   - `scripts/smoke.sh`: los helpers `adjust()` y `serialadj()` mandan `notes`, y un paso nuevo comprueba el 400 sin nota.
+3. **KPI "Unidades totales"** (precisa la decisión 4). `GET /api/v1/products` suma `onlyOnHand` (`ProductListQuery.OnlyOnHand`,
+   al final): productos con Σ `QtyOnHand` > 0 en **todas** sus posiciones (sin excluir cuarentena ni cruce de muelle y sin
+   restar lo reservado, porque la cifra del indicador suma todos los saldos), acotado a los almacenes del filtro y, como
+   `onlyAvailable`, quitando de la lista a los que no tienen existencia allí. El indicador debe pedir
+   `activeOnly=true&onlyOnHand=true`. Queda una diferencia que el frontend debe decidir: la **cifra** sale de
+   `GET /inventory/balances` e incluye productos inactivos con existencia; la tabla filtrada (activos) no los muestra.
+   **Cerrado en el Lote 13:** `GET /api/v1/inventory/balances` acepta `activeProductsOnly` y la cifra del indicador suma solo
+   productos activos, así que cifra y tabla coinciden.
+4. **Empacar: predeterminados de la compañía.** No hizo falta endpoint nuevo: `GET /api/v1/tenant/settings` ya devuelve
+   `defaultServiceType` y `defaultPackageType` (código o `null`) y solo exige sesión (`[Authorize]`, sin permiso ni módulo), así
+   que lo lee quien empaca (`warehouse.pick` + `orders.create`). La etiqueta ("Estándar") sale del catálogo que la pantalla de
+   empaque ya carga (`useLookups('ServiceType'|'PackageType')`). Riesgo menor: si el valor predeterminado se deshabilita en el
+   catálogo, la pantalla no encontrará su etiqueta (el API lo sigue usando al crear la orden).
+
+**Cómo se probó:** `dotnet build Teikem.sln` sin errores y `dotnet test Teikem.sln` con **2.483** en verde (antes 2.465).
+Pruebas nuevas: `PurchaseOrderSupplierWarehouseEditTests` (cambio en Borrador sin tocar líneas, validaciones 404/422 sin
+cambios a medias, 409 en SENT/PARTIAL/RECEIVED/CANCELLED, 409 antes que la capacidad y mismos valores aceptados, campos fijos
+restantes), `ProductOnHandFilterTests` (cuarentena, reservado, saldo en cero, inactivo, almacenes y traducción a SQL Server) y
+`TenantDefaultsForPackingTests` (endpoint abierto a cualquier usuario con sesión, códigos o `null`, aislamiento por tenant).
+Ajustadas: `InventoryAdjustmentServiceTests` (nota obligatoria para los seis motivos, errores juntos, motivo de sistema,
+transferencia opcional), `AdjustmentRulesTests` (`NormalizeNotes(required)`, `RequiresNotes`) y `WmsContractsTests` (firmas).
+No se corrieron `scripts/smoke.sh` ni el CI; `bash -n scripts/smoke.sh` pasa.
+

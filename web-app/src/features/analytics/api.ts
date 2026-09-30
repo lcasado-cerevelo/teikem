@@ -264,7 +264,7 @@ const BELOW_MIN_PRODUCT_TAKE = 100
  * - `belowMin`: `GET /api/v1/products?belowMin=true&take=1[&warehousePublicId=][&categoryIds=]` → `total`. Con un producto el
  *   endpoint no filtra por publicId: se busca por su SKU (`productSku`, de la ficha) con `belowMin=true` y se mira si el
  *   producto viene en la respuesta (`productBelowMin`: true/false; undefined mientras no se sepa).
- * - `openReceipts`: `GET /api/v1/receipts?status=OPEN&take=1[&warehousePublicId=]` → `total`.
+ * - `openReceipts`: `GET /api/v1/receipts?phase=OPEN&take=1[&warehousePublicId=]` → `total`.
  * - `pendingTasks`: `GET /api/v1/warehouse-tasks?includeClosed=false&take=1[&warehousePublicId=]` → `total`; `tasksByType`:
  *   lo mismo con `types=<tipo>` por cada tipo de `PULSE_TASK_TYPES` (en ese orden).
  * - `openCounts`: `GET /api/v1/cycle-counts?status=OPEN[&warehousePublicIds=]` → largo del arreglo.
@@ -298,7 +298,7 @@ export function useWarehousePulse(enabled: boolean, filter: WarehousePulseFilter
   const productBelowMin =
     isProduct && belowMin.data ? (belowMin.data.items ?? []).some((p) => p.publicId === item.publicId) : undefined
 
-  const receiptsQuery: GetQuery<'/api/v1/receipts'> = { status: ['OPEN'], take: 1 }
+  const receiptsQuery: GetQuery<'/api/v1/receipts'> = { phase: 'OPEN', take: 1 }
   if (wh) receiptsQuery.warehousePublicId = wh
   const openReceipts = useQuery({
     queryKey: ['/api/v1/receipts', receiptsQuery],

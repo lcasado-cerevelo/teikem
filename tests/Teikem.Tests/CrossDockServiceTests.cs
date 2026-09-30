@@ -361,7 +361,8 @@ public sealed class CrossDockServiceTests
 
         var candidates = await xd.CandidatesAsync(plan.Id, default);
         var openCand = Assert.Single(candidates, c => c.ReceiptLineId == open.Lines[0].Id);
-        Assert.Equal((ReceiptStatuses.Open, 5m, 2m, 3m), (openCand.ReceiptStatusCode, openCand.BaseQty, openCand.AllocatedQty, openCand.Allocatable));
+        // Lote 13: un ciego con líneas y sin esperado nace RECEIVING (abierto: modo (a)).
+        Assert.Equal((ReceiptStatuses.Receiving, 5m, 2m, 3m), (openCand.ReceiptStatusCode, openCand.BaseQty, openCand.AllocatedQty, openCand.Allocatable));
         var confirmedCand = Assert.Single(candidates, c => c.ReceiptLineId == confirmed.Lines[0].Id);
         Assert.Equal((ReceiptStatuses.Received, 4m), (confirmedCand.ReceiptStatusCode, confirmedCand.Allocatable));
         Assert.Equal("STG-01", confirmedCand.StagingBinCode);

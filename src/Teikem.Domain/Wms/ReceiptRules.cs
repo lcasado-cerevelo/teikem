@@ -67,6 +67,53 @@ public static class ReceiptRules
     public const string ReferenceTooLong = "La referencia admite como máximo 80 caracteres.";
     public const string LineNotFoundWhat = "Línea del recibo";
 
+    // ---------------------------------------------------------------- Lote 13: encabezado editable y esperado en ciegos
+
+    public const int CarrierMaxLength = 80;
+    public const string ExpectedOnlyWithoutDocument =
+        "La cantidad esperada solo se captura en recibos ciegos o de devolución; en uno con aviso de llegada u orden de compra viene del documento.";
+    public const string ExpectedQtyNegative = "La cantidad esperada no puede ser negativa.";
+    public const string DocumentLineProductFixed = "El producto de una línea del aviso de llegada o de la orden de compra no se puede cambiar.";
+    public const string LineHasCrossDockProductChange = "La línea tiene asignaciones de cruce de muelle; cancélelas antes de cambiar el producto.";
+    public const string TypeFixedWithDocument = "El tipo de un recibo con aviso de llegada u orden de compra no se puede cambiar.";
+    public const string WarehouseFixed = "El almacén solo se puede cambiar en un recibo sin aviso de llegada ni orden de compra y sin líneas.";
+    public const string CarrierTooLong = "El transporte admite como máximo 80 caracteres.";
+    // La referencia del encabezado usa ReferenceTooLong ("La referencia admite como máximo 80 caracteres.").
+
+    /// <summary>
+    /// Cantidad esperada capturada en un recibo ciego o de devolución: ≥ 0 (0 = no se esperaba nada), a lo más 3 decimales,
+    /// dentro de DECIMAL(16,3) y entera en productos por serie. Devuelve el error o null.
+    /// </summary>
+    public static string? ValidateManualExpectedQty(decimal qty, string trackingCode, string sku)
+    {
+        if (qty < 0m) return ExpectedQtyNegative;
+        var scale = ValidateScale(qty);
+        if (scale is not null) return scale;
+        if (trackingCode == TrackingTypes.Serial && !IsInteger(qty)) return SerialIntegerQty(sku);
+        return null;
+    }
+
+    /// <summary>
+    /// Texto libre del encabezado (transporte, referencia) de un PATCH: null = no cambiar; vacío o solo espacios = borrar
+    /// (queda null); si no, recortado y máximo 80. Devuelve (cambia, valor, error).
+    /// </summary>
+    public static (bool Changed, string? Value, string? Error) PatchText(string? value, string tooLongMessage)
+    {
+        if (value is null) return (false, null, null);
+        var t = value.Trim();
+        if (t.Length == 0) return (true, null, null);
+        if (t.Length > CarrierMaxLength) return (false, null, tooLongMessage);
+        return (true, t, null);
+    }
+
+    /// <summary>Texto libre del alta (transporte, referencia): vacío → null; si no, recortado y máximo 80.</summary>
+    public static (string? Value, string? Error) CreateText(string? value, string tooLongMessage)
+    {
+        var t = value?.Trim();
+        if (string.IsNullOrEmpty(t)) return (null, null);
+        return t.Length > CarrierMaxLength ? (null, tooLongMessage) : (t, null);
+    }
+
     // cantidades
     public const string ReceivedQtyRequired = "Indique la cantidad recibida.";
     public const string ReceivedQtyNegative = "La cantidad recibida no puede ser negativa.";

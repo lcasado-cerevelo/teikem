@@ -202,6 +202,8 @@ describe('ProductListScreen · Productos e inventario', () => {
     expect(within(serial).getByText('1 sin series completas')).toBeInTheDocument()
     expect(within(river).getByRole('button', { name: 'SKUs activos: 250' })).toHaveClass('flow')
     expect(within(river).getByRole('button', { name: 'Unidades totales: 1250' })).toHaveClass('flow')
+    // la cifra suma solo productos activos (coincide con el filtro del KPI)
+    expect(mock.requests.some((u) => u.pathname === '/api/v1/inventory/balances' && u.searchParams.get('activeProductsOnly') === 'true')).toBe(true)
     expect(within(river).getByRole('button', { name: 'Bajo mínimo: 2' })).toHaveClass('money')
     const products = mock.requests.filter((u) => u.pathname === '/api/v1/products').map((u) => u.search)
     expect(products).toContain('?activeOnly=true&take=1')
@@ -230,8 +232,12 @@ describe('ProductListScreen · Productos e inventario', () => {
     await waitFor(() => expect(lastListQuery().get('skip')).toBe('25'))
 
     const units = within(river).getByRole('button', { name: /^Unidades totales/ })
+    // Unidades totales: activos con existencia en mano (onlyOnHand), no "con disponible"; el aviso dice que la cifra suma inactivos
+    expect(units).toHaveAttribute('title', expect.stringContaining('Activos con existencia'))
+    expect(units).toHaveAttribute('title', expect.stringContaining('existencia en mano de los productos activos'))
     await user.click(units)
-    await waitFor(() => expect(lastListQuery().get('onlyAvailable')).toBe('true'))
+    await waitFor(() => expect(lastListQuery().get('onlyOnHand')).toBe('true'))
+    expect(lastListQuery().has('onlyAvailable')).toBe(false)
     expect(lastListQuery().get('activeOnly')).toBe('true')
     expect(lastListQuery().get('skip')).toBe('0')
     expect(units).toHaveAttribute('aria-pressed', 'true')
@@ -239,7 +245,7 @@ describe('ProductListScreen · Productos e inventario', () => {
 
     const active = within(river).getByRole('button', { name: /^SKUs activos/ })
     await user.click(active)
-    await waitFor(() => expect(lastListQuery().has('onlyAvailable')).toBe(false))
+    await waitFor(() => expect(lastListQuery().has('onlyOnHand')).toBe(false))
     expect(lastListQuery().get('activeOnly')).toBe('true')
     expect(units).toHaveAttribute('aria-pressed', 'false')
 
@@ -299,11 +305,13 @@ describe('ProductListScreen · Productos e inventario', () => {
     await waitFor(() => expect(downloadReportPdf).toHaveBeenCalledTimes(1))
     const read = mock.requests.find((u) => u.pathname === '/api/v1/products' && u.searchParams.get('take') === '200')!
     expect(read.searchParams.getAll('warehousePublicIds')).toEqual([WH])
-    expect(read.searchParams.get('onlyAvailable')).toBe('true')
+    expect(read.searchParams.get('onlyOnHand')).toBe('true')
+    expect(read.searchParams.has('onlyAvailable')).toBe(false)
     const spec = vi.mocked(downloadReportPdf).mock.calls[0][0] as ReportSpec
     expect(spec.title).toBe('Reporte de inventario')
     expect(spec.filters.map((f) => f.label)).toEqual(['Almacén', 'Vista'])
     expect(spec.filters[0].value).toContain('ALM-01 · Almacén principal')
+    expect(spec.filters[1].value).toBe('Activos con existencia')
     // el producto sin categoría no tiene existencia: no se lista, solo se cuenta en un aviso
     expect(spec.sections.map((s) => s.title)).toEqual(['Médico (2)'])
     expect(spec.notices).toContain('Productos sin existencia (en mano 0) no incluidos: 1.')

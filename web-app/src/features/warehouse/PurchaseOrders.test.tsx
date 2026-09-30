@@ -1,6 +1,7 @@
 // Lote 2 — Compras: lista sin buscador en la tabla, filtros Proveedor/Almacén de multiselección que viajan como
 // `supplierIds`/`warehousePublicIds` (también a la exportación), alta que exige proveedor, almacén y una línea con cantidad > 0,
-// y la misma exigencia al editar en la ficha. Sobre un fetch simulado.
+// y la misma exigencia al editar en la ficha. Ficha (decisión del 2026-09-30): proveedor y almacén editables solo en
+// Borrador, el PATCH lleva solo lo que cambió y los errores del servidor quedan en su campo o en el aviso. Sobre un fetch simulado.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -16,7 +17,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[] }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], order: null as unknown, patch: null as null | (() => Response) }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -50,7 +51,8 @@ const ORDER = {
 function route({ method, url }: Call): unknown {
   const p = url.pathname
   if (method === 'GET' && p === '/api/v1/purchase-orders') return { total: 1, skip: 0, take: 25, items: [ORDER] }
-  if (method === 'GET' && p === `/api/v1/purchase-orders/${PO}`) return ORDER
+  if (method === 'GET' && p === `/api/v1/purchase-orders/${PO}`) return mock.order ?? ORDER
+  if (method === 'PATCH' && mock.patch) return mock.patch()
   if (method === 'GET' && p === '/api/v1/suppliers')
     return [
       { id: 1, name: 'Acme Corp', isActive: true },
@@ -87,7 +89,13 @@ const listGets = () => mock.calls.filter((c) => c.method === 'GET' && c.url.path
 beforeAll(() => setLang('es'))
 beforeEach(() => {
   mock.calls = []
+  mock.order = null
+  mock.patch = null
 })
+
+const problem = (status: number, title: string, code: string) =>
+  new Response(JSON.stringify({ title, status, code }), { status, headers: { 'Content-Type': 'application/problem+json' } })
+const patchBody = () => mock.calls.find((c) => c.method === 'PATCH')?.body as Record<string, unknown> | undefined
 
 describe('Compras: lista', () => {
   it('sin buscador en la tabla; Proveedor y Almacén son multiselección con buscador y viajan como arreglos', async () => {
@@ -149,5 +157,71 @@ describe('Compras: ficha', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar' }))
     expect(await screen.findByText('Indique el producto.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
+  })
+  it('Borrador: Proveedor (buscador) y Almacén editables; el PATCH lleva solo el proveedor que cambió', async () => {
+    const user = userEvent.setup()
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    const supplier = await screen.findByRole('combobox', { name: /Proveedor/ })
+    await waitFor(() => expect(supplier).toHaveValue('Acme Corp'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /Almacén/ })).toHaveValue('ALM-01 · Principal'))
+    await user.clear(supplier)
+    await user.type(supplier, 'bolt')
+    await user.click(await screen.findByRole('option', { name: /Bolt SA/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(patchBody()).toBeDefined())
+    expect(patchBody()).toMatchObject({ supplierId: 2, rowVersion: 'AA==' })
+    expect(patchBody()).not.toHaveProperty('warehousePublicId')
+  })
+
+  it('Borrador: cambiar solo el almacén manda warehousePublicId; un 422 queda bajo el campo Almacén', async () => {
+    const user = userEvent.setup()
+    mock.patch = () => problem(422, 'El almacén está dado de baja; no admite órdenes de compra nuevas.', 'status_rule')
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    const warehouse = await screen.findByRole('combobox', { name: /Almacén/ })
+    await user.click(warehouse)
+    await user.click(await screen.findByRole('option', { name: /ALM-02/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(patchBody()).toBeDefined())
+    expect(patchBody()).toMatchObject({ warehousePublicId: '22222222-2222-2222-2222-222222222222' })
+    expect(patchBody()).not.toHaveProperty('supplierId')
+    const message = await screen.findByText('El almacén está dado de baja; no admite órdenes de compra nuevas.')
+    expect(message).toHaveClass('ferr')
+    expect(screen.getByRole('combobox', { name: /Almacén/ })).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('409 (la orden ya salió de Borrador) sale en el aviso del formulario', async () => {
+    const user = userEvent.setup()
+    const text = 'El proveedor y el almacén solo se cambian mientras la orden de compra está en borrador.'
+    mock.patch = () => problem(409, text, 'conflict')
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    const supplier = await screen.findByRole('combobox', { name: /Proveedor/ })
+    await waitFor(() => expect(supplier).toHaveValue('Acme Corp'))
+    await user.clear(supplier)
+    await user.type(supplier, 'bolt')
+    await user.click(await screen.findByRole('option', { name: /Bolt SA/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(text)
+    expect(screen.getByRole('combobox', { name: /Proveedor/ })).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('Borrador: proveedor y almacén son obligatorios', async () => {
+    const user = userEvent.setup()
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    const supplier = await screen.findByRole('combobox', { name: /Proveedor/ })
+    await waitFor(() => expect(supplier).toHaveValue('Acme Corp'))
+    await user.click(screen.getByRole('button', { name: 'Quitar' }))
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+    expect(await screen.findByText('Indique el proveedor.')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'PATCH')).toBe(false)
+  })
+
+  it('fuera de Borrador: proveedor y almacén de solo lectura y sin consultar proveedores', async () => {
+    mock.order = { ...ORDER, statusCode: 'SENT', status: 'Enviada' }
+    wrap(<PurchaseOrderDetailScreen />, MANAGE, `/po/${PO}`, '/po/:publicId')
+    await screen.findByLabelText(/Cantidad ordenada/)
+    expect(screen.queryByRole('combobox', { name: /Proveedor/ })).toBeNull()
+    expect(screen.queryByRole('combobox', { name: /Almacén/ })).toBeNull()
+    expect(screen.getByText('ALM-01')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.url.pathname === '/api/v1/suppliers')).toBe(false)
   })
 })

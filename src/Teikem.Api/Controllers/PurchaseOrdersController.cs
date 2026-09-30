@@ -55,7 +55,10 @@ public sealed class PurchaseOrdersController(PurchaseOrderService purchaseOrders
     [HttpPost, RequirePermission(PermissionCatalog.PurchasingManage)]
     public Task<PurchaseOrderDto> Create([FromBody] PurchaseOrderCreateRequest req, CancellationToken ct) => purchaseOrders.CreateAsync(req, ct);
 
-    /// <summary>Edición (fecha esperada, notas y reemplazo de líneas) bajo la capacidad EDIT_PURCHASE_ORDER del estatus actual.</summary>
+    /// <summary>
+    /// Edición (fecha esperada, notas y reemplazo de líneas) bajo la capacidad EDIT_PURCHASE_ORDER del estatus actual.
+    /// supplierId y warehousePublicId solo cambian en DRAFT (409 en otro estatus si el valor es distinto del actual).
+    /// </summary>
     [HttpPatch("{publicId:guid}"), RequirePermission(PermissionCatalog.PurchasingManage)]
     public Task<PurchaseOrderDto> Update(Guid publicId, [FromBody] PurchaseOrderPatchRequest req, CancellationToken ct)
         => purchaseOrders.UpdateAsync(publicId, req, ct);

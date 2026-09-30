@@ -1,7 +1,8 @@
 // Lote 12 — filtros de 'Productos e inventario' (lógica pura). Un solo estado (`ProductFilterState`) alimenta la tabla
 // (`productListQuery` → GET /products), los KPIs clicables (`?kpi=` en la URL) y los dos reportes PDF: el de inventario
 // usa la misma consulta de la tabla; el de ajustes la traslada al Kárdex (`adjustmentsKardexQuery`, tipo ADJUSTMENT).
-// `describeProductFilters` arma el bloque "Filtros aplicados" del PDF con nombres, no ids.
+// `describeProductFilters` arma el bloque "Filtros aplicados" del PDF con nombres, no ids. El KPI viaja al Reporte de
+// inventario por `productListQuery` (mismo filtro que la tabla); al de ajustes no (solo un aviso).
 import type { GetQuery } from './api'
 import type { ProductFilterItem } from './pickers'
 
@@ -42,8 +43,11 @@ export function kpiQuery(kpi: ProductKpi | null): GetQuery<'/api/v1/products'> {
   switch (kpi) {
     case 'active':
       return { activeOnly: true }
+    // Unidades totales (decisión del 2026-09-30): activos con existencia EN MANO > 0 (Σ QtyOnHand de todas sus posiciones,
+    // sin restar lo reservado ni excluir cuarentena), no "con disponible". La cifra del KPI sale de /inventory/balances con
+    // activeProductsOnly: suma solo los productos activos, igual que la tabla.
     case 'available':
-      return { activeOnly: true, onlyAvailable: true }
+      return { activeOnly: true, onlyOnHand: true }
     case 'low':
       return { belowMin: true }
     // igual que su cifra (activos con rastreo SERIAL o series): la tabla y el número coinciden

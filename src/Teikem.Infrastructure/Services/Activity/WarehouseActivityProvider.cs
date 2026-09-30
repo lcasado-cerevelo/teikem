@@ -37,7 +37,7 @@ public sealed class WarehouseActivityProvider(TeikemDbContext db, ILookupCache l
     /// <summary>Transiciones que producen evento: tipo de entidad → (dominio de estatus, estatus destino).</summary>
     private static readonly (string EntityType, string Domain, string[] ToStatuses)[] StatusSources =
     {
-        (EntityTypes.Receipt, StatusDomains.ReceiptStatus, new[] { ReceiptStatuses.Received, ReceiptStatuses.Putaway }),
+        (EntityTypes.Receipt, StatusDomains.ReceiptStatus, new[] { ReceiptStatuses.Received, ReceiptStatuses.ReceivedWithVariance, ReceiptStatuses.Putaway }),
         (EntityTypes.Asn, StatusDomains.AsnStatus, new[] { AsnStatuses.Cancelled }),
         (EntityTypes.CycleCount, StatusDomains.CycleCountStatus, new[] { CycleCountStatuses.Counted, CycleCountStatuses.Reconciled }),
         (EntityTypes.PickBatch, StatusDomains.PickBatchStatus, new[] { PickBatchStatuses.Collected, PickBatchStatuses.Packed, PickBatchStatuses.Cancelled }),

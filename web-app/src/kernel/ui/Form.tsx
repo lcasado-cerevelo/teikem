@@ -90,12 +90,15 @@ export interface FieldProps {
   required?: boolean
   help?: ReactNode
   className?: string
+  /** true = la etiqueta existe para lectores de pantalla (`.sr-only`) pero no se ve: campos dentro de una celda de una
+   *  rejilla cuyo encabezado de columna ya dice qué es. El error y la ayuda se siguen viendo. */
+  hideLabel?: boolean
   /** Un control del kit: TextInput, NumberInput, Select, DateInput, Toggle, TextArea (o ClientPickerInput). */
   children: ReactNode
 }
 
 /** Etiqueta + control + ayuda + error (del esquema o del servidor) bajo el campo. */
-export function Field({ name, label, required = false, help, className, children }: FieldProps) {
+export function Field({ name, label, required = false, help, className, hideLabel = false, children }: FieldProps) {
   const id = useId()
   const registry = useContext(FieldRegistryContext)
   const { formState } = useFormContext()
@@ -122,7 +125,7 @@ export function Field({ name, label, required = false, help, className, children
 
   return (
     <div className={['f', className].filter(Boolean).join(' ')}>
-      <label htmlFor={id}>
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : undefined}>
         {label}
         {required && (
           <span className="req" aria-hidden="true">

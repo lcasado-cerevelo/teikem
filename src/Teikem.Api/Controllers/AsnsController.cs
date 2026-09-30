@@ -19,11 +19,16 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.WmsLotSerial)]
 public sealed class AsnsController(AsnService asns) : ControllerBase
 {
-    /// <summary>Avisos activos (hasta 200, recientes primero) con filtros warehousePublicId, status, clientPublicId y search (referencia, cliente, PO).</summary>
+    /// <summary>
+    /// Avisos activos (hasta 200, recientes primero) con filtros warehousePublicId, status, clientPublicId, search (referencia,
+    /// cliente, PO) y, Lote 13, reference (la referencia contiene el texto) y expectedFrom/expectedTo (llegada esperada, inclusive).
+    /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<IReadOnlyList<AsnDto>> List([FromQuery] Guid? warehousePublicId, [FromQuery] string[]? status, [FromQuery] Guid? clientPublicId,
-        [FromQuery] string? search, CancellationToken ct)
-        => asns.ListAsync(new AsnQuery(warehousePublicId, status is { Length: > 0 } ? status : null, clientPublicId, search), InventoryScope.Any, ct);
+        [FromQuery] string? search, [FromQuery] string? reference, [FromQuery] DateOnly? expectedFrom, [FromQuery] DateOnly? expectedTo,
+        CancellationToken ct)
+        => asns.ListAsync(new AsnQuery(warehousePublicId, status is { Length: > 0 } ? status : null, clientPublicId, search,
+            reference, expectedFrom, expectedTo), InventoryScope.Any, ct);
 
     [HttpGet("{id:int}"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<AsnDto> Get(int id, CancellationToken ct) => asns.GetAsync(id, InventoryScope.Any, ct);

@@ -38,11 +38,14 @@ public sealed record ProductPatchRequest(string? Name = null, Guid? OwnerClientP
 /// de SKU; Name = el nombre contiene el texto (sin distinguir mayúsculas); Brands = marca igual a alguna (sin distinguir
 /// mayúsculas); SerialOnly = rastreo SERIAL o con series registradas; SerialMissing = activos SERIAL con existencia en mano
 /// mayor que sus series en stock (AVAILABLE/RESERVED): el KPI 'series por capturar' lo cuenta con take=1 y total.
+/// OnlyOnHand (ajuste del 2026-09-30, KPI 'Unidades totales') = solo productos con existencia en mano &gt; 0 (Σ QtyOnHand de
+/// todas sus posiciones, incluidas cuarentena y cross-dock; en los almacenes indicados si los hay). Como OnlyAvailable, sí
+/// quita productos de la lista.
 /// </summary>
 public sealed record ProductListQuery(string? Search = null, int[]? CategoryIds = null, Guid? OwnerClientPublicId = null, bool? OwnOnly = null,
     bool ActiveOnly = false, Guid? WarehousePublicId = null, bool OnlyAvailable = false, int Skip = 0, int Take = 100, bool SelectorOrder = false,
     bool BelowMin = false, Guid[]? WarehousePublicIds = null, Guid[]? ProductPublicIds = null, string? Name = null, string[]? Brands = null,
-    bool SerialOnly = false, bool SerialMissing = false);
+    bool SerialOnly = false, bool SerialMissing = false, bool OnlyOnHand = false);
 
 public sealed record ProductListItemDto(int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName,
     Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode,

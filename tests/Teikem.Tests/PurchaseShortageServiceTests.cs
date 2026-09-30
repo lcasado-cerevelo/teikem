@@ -114,9 +114,15 @@ public sealed class PurchaseShortageServiceTests
         Assert.Equal(reorder.Id, reorderRow.ReorderPurchaseOrderId);
         Assert.Empty(await f.TransactionsAsync());
 
+        // (c0) el ajuste manual exige nota (decisión del dueño, 2026-09-30): sin ella, 400 en notes y no se escribe nada
+        var noNotes = await Assert.ThrowsAsync<ValidationException>(() => svc.ResolveAsync(po.Header.PublicId, lineC.PurchaseOrderLineId,
+            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, BinId: bin.WarehouseBinId), default));
+        Assert.Equal(AdjustmentRules.NotesRequired, Assert.Single(noNotes.Errors["notes"]));
+        Assert.Empty(await f.TransactionsAsync());
+
         // (c) MANUAL_ADJUSTMENT de 1: ADJUSTMENT +1, Ref PURCHASE_ORDER, motivo PO_SHORTAGE por defecto; el pendiente queda en 1.
         var manual = await svc.ResolveAsync(po.Header.PublicId, lineC.PurchaseOrderLineId,
-            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, BinId: bin.WarehouseBinId), default);
+            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, Notes: "Faltante encontrado en la zona de recepción", BinId: bin.WarehouseBinId), default);
         var txn = Assert.Single(await f.TransactionsAsync());
         Assert.Equal(f.LookupId(LookupDomains.InventoryTxnType, InventoryTxnTypes.Adjustment), txn.TxnTypeLookupId);
         Assert.Equal(1m, txn.Quantity);
@@ -184,7 +190,7 @@ public sealed class PurchaseShortageServiceTests
         {
             PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, WarehouseId = w.WarehouseId, AsnId = asn.AsnId,
             ReceiptTypeLookupId = f.LookupId(LookupDomains.ReceiptType, ReceiptTypes.Asn), Number = "REC-OPEN-" + po.Number,
-            StatusCodeId = f.StatusId(StatusDomains.ReceiptStatus, ReceiptStatuses.Open), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
+            StatusCodeId = f.StatusId(StatusDomains.ReceiptStatus, ReceiptStatuses.Receiving), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<ReceiptHeader>().Add(r);
         await f.Db.SaveChangesAsync();
@@ -372,7 +378,7 @@ public sealed class PurchaseShortageServiceTests
         var mixed = await AddPurchaseOrderAsync(f, w, supplier, "PO-00020", PurchaseOrderStatuses.Partial,
             (pa, 10m, 8m, 2.5m), (pb, 5m, 3m, 3m), (pc, 4m, 6m, 1.25m), (pd, 3m, 0m, 1.1m));
         await svc.ResolveAsync(mixed.Header.PublicId, mixed.Lines[0].PurchaseOrderLineId,
-            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, BinId: bin.WarehouseBinId), default);
+            new ShortageResolveRequest(ShortageActions.ManualAdjustment, Quantity: 1m, Notes: "Faltante encontrado en la zona de recepción", BinId: bin.WarehouseBinId), default);
         await svc.ResolveAsync(mixed.Header.PublicId, mixed.Lines[1].PurchaseOrderLineId, new ShortageResolveRequest(ShortageActions.Close), default);
         var simple = await AddPurchaseOrderAsync(f, w, supplier, "PO-00021", PurchaseOrderStatuses.Partial, (pa, 7m, 2m, 0.333m));
 

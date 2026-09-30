@@ -2,7 +2,10 @@
 // Lectura: purchasing.view + PURCHASING (por la ruta). Edición/enviar/cancelar/eliminar: purchasing.manage.
 // Resolver un faltante: inventory.adjust, con `ResolveShortageModal` (compartido con 'Ajustes de inventario'; REORDER exige
 // además purchasing.manage y MANUAL_ADJUSTMENT el módulo WMS_LOTSERIAL).
-// Lote 2: la edición exige al menos una línea con cantidad > 0; proveedor y almacén son inmutables tras el alta (solo lectura).
+// Lote 2: la edición exige al menos una línea con cantidad > 0. Proveedor y almacén (decisión del 2026-09-30): editables solo
+// mientras la orden está en Borrador (DRAFT) y se puede editar —Proveedor con buscador sobre los activos, Almacén con el mismo
+// selector del alta, ambos obligatorios—; fuera de DRAFT, de solo lectura. El PATCH lleva solo lo que cambió
+// (`purchaseOrderPartyChanges`); 404/422 de uno de ellos quedan bajo su campo y el 409 en el aviso (purchaseOrderEdit.ts).
 // Pipeline: solo SENT y CANCELLED son manuales; PARTIAL/RECEIVED los pone la confirmación del recibo o la resolución.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
@@ -16,6 +19,7 @@ import { StatusChip, StatusPipeline } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
+  ComboSelectInput,
   ConfirmDialog,
   DataTable,
   DateInput,
@@ -35,11 +39,13 @@ import {
   usePurchaseOrder,
   usePurchaseOrderAction,
   usePurchaseOrderShortageLines,
+  useSuppliers,
   type PurchaseOrderDto,
   type ShortageLineDto,
 } from './api'
 import { decimalsOf } from './lineRules'
-import { ProductPickerInput } from './pickers'
+import { ProductPickerInput, WarehousePickerInput } from './pickers'
+import { isDraftPurchaseOrder, partyErrorField, purchaseOrderPartyChanges, supplierOptionsWithCurrent } from './purchaseOrderEdit'
 import { ResolveShortageModal } from './ResolveShortageModal'
 import { IconCart } from '../../kernel/ui/screenIcons'
 
@@ -74,6 +80,13 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
   const action = usePurchaseOrderAction()
   const canManage = useCan('purchasing.manage')
   const canEdit = canManage && po.canEdit === true
+  // proveedor y almacén: solo en Borrador (fuera de DRAFT, un valor distinto da 409)
+  const canChangeParties = canEdit && isDraftPurchaseOrder(po)
+  const suppliers = useSuppliers({ includeInactive: false }, { enabled: canChangeParties })
+  const supplierOptions = useMemo(
+    () => supplierOptionsWithCurrent(suppliers.data ?? [], { id: po.supplierId, name: po.supplierName }, t('warehouse.suppliers.inactive')),
+    [suppliers.data, po.supplierId, po.supplierName, t],
+  )
   const initialCount = po.lines?.length ?? 0
 
   const lineSchema = useMemo(
@@ -104,6 +117,8 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
   const schema = useMemo(
     () =>
       z.object({
+        supplierId: z.string().min(1, t('warehouse.purchaseOrders.errors.supplierRequired')),
+        warehousePublicId: z.string().nullable().refine((v) => Boolean(v), t('warehouse.purchaseOrders.errors.warehouseRequired')),
         expectedDate: z.string(),
         notes: z.string(),
         lines: z
@@ -128,6 +143,8 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
   const form = useForm({
     resolver: zodResolver(schema),
     values: {
+      supplierId: po.supplierId != null ? String(po.supplierId) : '',
+      warehousePublicId: (po.warehousePublicId ?? null) as string | null,
       expectedDate: po.expectedDate ?? '',
       notes: po.notes ?? '',
       lines: (po.lines ?? []).map((l) => ({
@@ -149,30 +166,54 @@ function LinesTab({ po }: { po: PurchaseOrderDto }) {
     <Form
       form={form}
       onSubmit={async (v) => {
-        await action.mutateAsync({
-          publicId: po.publicId ?? '',
-          action: 'update',
-          body: {
-            expectedDate: v.expectedDate || null,
-            notes: v.notes,
-            lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost })),
-            rowVersion: po.rowVersion ?? null,
-          },
-        })
+        // solo lo que cambió (sin cambio = no se manda, el API lo lee como "no cambiar")
+        const parties = canChangeParties ? purchaseOrderPartyChanges(po, v) : {}
+        try {
+          await action.mutateAsync({
+            publicId: po.publicId ?? '',
+            action: 'update',
+            body: {
+              expectedDate: v.expectedDate || null,
+              notes: v.notes,
+              lines: v.lines.map((l) => ({ productPublicId: l.productPublicId, qtyOrdered: l.qtyOrdered, unitCost: l.unitCost })),
+              rowVersion: po.rowVersion ?? null,
+              ...parties,
+            },
+          })
+        } catch (err) {
+          // 404/422 de proveedor o almacén llegan sin campo: si cambió uno solo, bajo ese campo; si no, al aviso del Form
+          const field = partyErrorField(err, parties)
+          if (field && err instanceof ApiError) {
+            form.setError(field, { message: err.title })
+            return
+          }
+          throw err
+        }
         toast.success(t('warehouse.purchaseOrders.saved'))
       }}
     >
       <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-        <div className="r2">
-          <div className="f">
-            <label>{t('warehouse.purchaseOrders.fields.supplier')}</label>
-            <p>{po.supplierName}</p>
+        {canChangeParties ? (
+          <div className="r2">
+            <Field name="supplierId" label={t('warehouse.purchaseOrders.fields.supplier')} required>
+              <ComboSelectInput options={supplierOptions} loading={suppliers.isLoading} placeholder={t('warehouse.purchaseOrders.fields.supplierSearch')} />
+            </Field>
+            <Field name="warehousePublicId" label={t('warehouse.purchaseOrders.fields.warehouse')} required>
+              <WarehousePickerInput />
+            </Field>
           </div>
-          <div className="f">
-            <label>{t('warehouse.purchaseOrders.fields.warehouse')}</label>
-            <p>{po.warehouseCode}</p>
+        ) : (
+          <div className="r2">
+            <div className="f">
+              <label>{t('warehouse.purchaseOrders.fields.supplier')}</label>
+              <p>{po.supplierName}</p>
+            </div>
+            <div className="f">
+              <label>{t('warehouse.purchaseOrders.fields.warehouse')}</label>
+              <p>{po.warehouseCode}</p>
+            </div>
           </div>
-        </div>
+        )}
         <div className="r2">
           <Field name="expectedDate" label={t('warehouse.purchaseOrders.fields.expectedDate')}>
             <DateInput />

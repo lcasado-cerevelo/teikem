@@ -227,6 +227,45 @@ describe('Ajustes de inventario (maqueta ajustesAlmacen())', () => {
     expect(within(dialog).getByLabelText(/Notas/)).toHaveValue('Apareció en muelle')
   })
 
+  it('Ajuste manual exige la nota (mismo mensaje que todo ajuste); Cerrar la deja opcional', async () => {
+    const user = userEvent.setup()
+    wrap(ALL, ALL_MODULES)
+    await screen.findByText('TORN-01')
+    await user.type(screen.getByLabelText('Cantidad del ajuste de TORN-01'), '1')
+    await user.click(screen.getByRole('button', { name: 'Ajuste manual' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Notas').closest('label')).toHaveTextContent('*')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    expect(await within(dialog).findByText('Escriba una nota que explique el ajuste.')).toBeInTheDocument()
+    expect(mock.requests.some((r) => r.method === 'POST')).toBe(false)
+
+    // al pasar a Cerrar la nota deja de ser obligatoria
+    await user.selectOptions(within(dialog).getByLabelText(/Acción/), 'CLOSE')
+    expect(within(dialog).getByText('Notas').closest('label')).not.toHaveTextContent('*')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST')).toBe(true))
+    expect(mock.requests.find((r) => r.method === 'POST')?.body).toMatchObject({ action: 'CLOSE', notes: null })
+  })
+
+  it('el 400 del API en errors.notes queda bajo el campo Notas del modal', async () => {
+    const user = userEvent.setup()
+    const base = routes()
+    mock.handler = (url: URL, method: string) =>
+      method === 'POST'
+        ? new Response(
+            JSON.stringify({ title: 'Uno o más campos no son válidos.', status: 400, code: 'validation', errors: { notes: ['Escriba una nota que explique el ajuste.'] } }),
+            { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : base(url, method)
+    wrap(['purchasing.view', 'inventory.adjust'], ['PURCHASING'])
+    const table = await screen.findByRole('table')
+    await user.click(within(table).getByRole('button', { name: 'Cerrar' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(within(dialog).getByLabelText(/^Notas/)).toHaveAttribute('aria-invalid', 'true'))
+    expect(within(dialog).getByText('Escriba una nota que explique el ajuste.')).toHaveClass('ferr')
+  })
+
   it('sin compras con faltante: "Sin recibos parciales pendientes" y "Selecciona una compra", sin consultar líneas', async () => {
     mock.handler = routes([])
     wrap(ALL, ALL_MODULES)

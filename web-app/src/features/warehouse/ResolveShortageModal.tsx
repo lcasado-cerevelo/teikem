@@ -6,6 +6,9 @@
 // parte del faltante entretanto, el API responde 400 ('Cerrar y Reordenar resuelven el faltante completo (N)…') y el
 // aviso sale arriba del formulario (el campo Cantidad no se pinta en esas acciones). Sin `rowVersion`: la protección real
 // es el bloqueo de la orden y el pendiente recalculado bajo ese bloqueo.
+// Nota: obligatoria solo en MANUAL_ADJUSTMENT (decisión del 2026-09-30, "todo ajuste manual exige nota": misma regla y mensaje
+// que los demás ajustes, `adjustNotesSchema`); Cerrar y Reordenar no mueven inventario y la dejan opcional (máx. 300 en todas).
+// El 400 del API en `errors.notes` queda bajo el campo.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
@@ -16,6 +19,7 @@ import { DateInput, Field, Form, Modal, NumberInput, Select, TextArea, TextInput
 import { useProduct, useResolveShortage, type ShortageLineDto, type ShortageResolveResultDto } from './api'
 import { decimalsOf, parseSerials } from './lineRules'
 import { BinPickerInput } from './pickers'
+import { ADJUST_NOTES_MAX, adjustNotesSchema } from './productRules'
 import './warehouse.css'
 
 export type ShortageAction = 'CLOSE' | 'REORDER' | 'MANUAL_ADJUSTMENT'
@@ -62,13 +66,19 @@ export function ResolveShortageModal({ open, onClose, po, line, initialAction, i
           quantity: z.number().nullable(),
           reason: z.string(),
           binId: z.string(),
-          notes: z.string(),
+          notes: z.string().trim(),
           lot: z.string(),
           lotExpiry: z.string(),
           serialNumbers: z.string(),
         })
         .superRefine((v, ctx) => {
-          if (v.action !== 'MANUAL_ADJUSTMENT') return
+          // nota: la misma regla que todo ajuste manual (obligatoria); en Cerrar/Reordenar solo el máximo
+          const manual = v.action === 'MANUAL_ADJUSTMENT'
+          if (manual || v.notes.length > ADJUST_NOTES_MAX) {
+            const notes = adjustNotesSchema(t).safeParse(v.notes)
+            if (!notes.success) ctx.addIssue({ code: z.ZodIssueCode.custom, message: notes.error.issues[0].message, path: ['notes'] })
+          }
+          if (!manual) return
           if (v.quantity === null || v.quantity <= 0) {
             ctx.addIssue({ code: z.ZodIssueCode.custom, message: t('warehouse.purchaseOrders.shortages.errors.quantityPositive'), path: ['quantity'] })
           } else {
@@ -233,8 +243,12 @@ export function ResolveShortageModal({ open, onClose, po, line, initialAction, i
             )}
           </>
         )}
-        <Field name="notes" label={t('warehouse.purchaseOrders.shortages.modal.notes')}>
-          <TextArea rows={2} />
+        <Field name="notes" label={t('warehouse.purchaseOrders.shortages.modal.notes')} required={action === 'MANUAL_ADJUSTMENT'}>
+          <TextArea
+            rows={2}
+            maxLength={ADJUST_NOTES_MAX}
+            placeholder={action === 'MANUAL_ADJUSTMENT' ? t('warehouse.products.editor.adjustNotesPlaceholder') : undefined}
+          />
         </Field>
       </Form>
     </Modal>

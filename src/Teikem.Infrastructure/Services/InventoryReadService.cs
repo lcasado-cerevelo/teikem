@@ -38,6 +38,8 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
 
         var productIds = await FilteredProductIdsAsync(scope, q.ProductPublicIds, q.CategoryIds, ct);
         if (productIds is not null) query = query.Where(b => productIds.Contains(b.ProductId));
+        // solo productos activos (KPI "Unidades totales" de Productos e inventario: la cifra coincide con su filtro)
+        if (q.ActiveProductsOnly) query = query.Where(b => db.Set<Product>().Any(p => p.ProductId == b.ProductId && p.IsActive));
 
         if (q.WarehousePublicIds is { Length: > 0 })
         {

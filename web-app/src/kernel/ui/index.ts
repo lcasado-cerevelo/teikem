@@ -1,5 +1,18 @@
 // Kit de componentes (src/kernel/ui). Contrato y props en web-app/KIT.md; patrones completos en ./templates.
-export { IconEdit, IconKey, IconLogOut, IconPower, IconRefreshCw, IconRotateCcw, IconShield, IconTrash } from './actionIcons'
+export {
+  IconCheckCircle,
+  IconEdit,
+  IconKey,
+  IconLogOut,
+  IconPlay,
+  IconPower,
+  IconRefreshCw,
+  IconRotateCcw,
+  IconShield,
+  IconTrash,
+  IconUserPlus,
+  IconXCircle,
+} from './actionIcons'
 export { BrandLockup, BrandMark } from './Brand'
 export type { BrandLockupProps, BrandMarkProps } from './Brand'
 export { BRAND_SYMBOL_SRC, brandLockupSrc } from './brandAssets'
@@ -39,7 +52,10 @@ export { DateRangeFilter, Filters, SelectFilter } from './Filters'
 export type { DateRangeFilterProps, FilterOption, FiltersProps, SelectFilterProps } from './Filters'
 export { DateInput, Field, Form, NumberInput, Select, TextArea, TextInput, Toggle } from './Form'
 export type { FieldProps, FormProps, SelectOption, SelectProps, TextInputProps, ToggleProps } from './Form'
+export { ListPager } from './ListPager'
+export type { ListPagerProps } from './ListPager'
 export { matchesQ, normalizeQ } from './matchesQ'
+export { PAGE_SIZE_OPTIONS, pageSizeOptions } from './pageSize'
 export { Modal } from './Modal'
 export type { ModalProps } from './Modal'
 export { PhoneInput } from './PhoneInput'
@@ -73,6 +89,20 @@ export type { QBoxProps } from './QBox'
 export { SearchMultiSelect, SearchSelect } from './SearchSelect'
 export type { SearchMultiSelectProps, SearchSelectProps } from './SearchSelect'
 export { Spinner } from './Spinner'
+export { SplitPane } from './SplitPane'
+export type { SplitPaneProps } from './SplitPane'
+export {
+  clampSplitRatio,
+  ratioFromPointer,
+  readSplitRatio,
+  splitBounds,
+  splitStorageKey,
+  SPLIT_DEFAULT_RATIO,
+  SPLIT_MAX_RATIO,
+  SPLIT_MIN_PX,
+  SPLIT_MIN_RATIO,
+  SPLIT_STACK_BELOW,
+} from './splitRatio'
 export type { SpinnerProps } from './Spinner'
 export { Tabs } from './Tabs'
 export type { TabItem, TabsProps } from './Tabs'
@@ -80,3 +110,4 @@ export { getTheme, initTheme, setTheme, THEME_STORAGE_KEY, useTheme } from './th
 export type { Theme } from './theme'
 export { toast } from './toast'
 export { CARDS_QUERY, useMediaQuery } from './useMediaQuery'
+export { useElementWidth } from './useElementWidth'

@@ -127,6 +127,22 @@ public class InventoryReadServiceTests
         Assert.Equal(1, (await reads.BalancesAsync(new BalanceQuery(Search: "POWN"), InventoryScope.Any, default)).Total);
     }
 
+    [Fact]
+    public async Task Balances_active_products_only_leaves_out_the_stock_of_inactive_products()
+    {
+        var w = await SeedAsync();
+        var reads = w.F.Get<InventoryReadService>();
+        var own = await w.F.Db.Set<Product>().SingleAsync(p => p.Sku == "POWN");
+        own.IsActive = false;
+        await w.F.Db.SaveChangesAsync();
+
+        var all = await reads.BalancesAsync(new BalanceQuery(), InventoryScope.Any, default);
+        var active = await reads.BalancesAsync(new BalanceQuery(ActiveProductsOnly: true), InventoryScope.Any, default);
+        Assert.Contains(all.Items, b => b.Sku == "POWN");
+        Assert.DoesNotContain(active.Items, b => b.Sku == "POWN");
+        Assert.True(active.TotalOnHand < all.TotalOnHand);
+    }
+
     // ---------------------------------------------------------------- Kárdex
 
     [Fact]

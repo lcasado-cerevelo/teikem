@@ -20,8 +20,13 @@ public sealed record PurchaseOrderLineRequest(Guid? ProductPublicId, decimal? Qt
 public sealed record PurchaseOrderCreateRequest(int? SupplierId, Guid? WarehousePublicId = null, DateOnly? OrderDate = null,
     DateOnly? ExpectedDate = null, string? Currency = null, string? Notes = null, IReadOnlyList<PurchaseOrderLineRequest>? Lines = null);
 
+/// <summary>
+/// PATCH de la orden de compra. SupplierId y WarehousePublicId (ajuste del 2026-09-30, al final: la firma anterior no cambia)
+/// = mismos identificadores que el alta; null = sin cambio. Solo cambian mientras la orden está en DRAFT (409 en otro estatus
+/// si el valor es distinto del actual); se validan como en el alta.
+/// </summary>
 public sealed record PurchaseOrderPatchRequest(DateOnly? ExpectedDate = null, string? Notes = null, IReadOnlyList<PurchaseOrderLineRequest>? Lines = null,
-    string? RowVersion = null)
+    string? RowVersion = null, int? SupplierId = null, Guid? WarehousePublicId = null)
 {
     [JsonExtensionData]
     public IDictionary<string, JsonElement>? Extra { get; set; }

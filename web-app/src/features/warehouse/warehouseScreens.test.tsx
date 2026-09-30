@@ -13,7 +13,6 @@ import CrossDockPlanListScreen from './CrossDockPlanListScreen'
 import CycleCountListScreen from './CycleCountListScreen'
 import { DockAppointmentsTab } from './DockAppointmentsTab'
 import LocationsScreen from './LocationsScreen'
-import PickBatchListScreen from './PickBatchListScreen'
 import PurchaseOrderDetailScreen from './PurchaseOrderDetailScreen'
 import ReceiptListScreen from './ReceiptListScreen'
 import { TaskQueue } from './taskQueue'
@@ -78,6 +77,7 @@ function route(url: URL): unknown {
     return { total: items.length, skip: Number(url.searchParams.get('skip') ?? 0), take: Number(url.searchParams.get('take') ?? 100), items }
   }
   if (p === '/api/v1/inventory/balances') return { total: 0, skip: 0, take: 200, items: [] }
+  if (p === '/api/v1/receipts') return { total: 0, skip: 0, take: 25, items: [] }
   if (p === '/api/v1/dock-appointments') return []
   if (p === '/api/v1/cross-dock-plans') return []
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
@@ -227,21 +227,18 @@ describe('TaskQueue (tareas de almacén dentro de la pantalla de su tipo)', () =
 describe('Tareas y citas dentro de las pantallas de la maqueta (Fase 3)', () => {
   const taskRequests = () => mock.requests.filter((u) => u.pathname === '/api/v1/warehouse-tasks')
 
-  it("Recibo → 'Acomodo pendiente' (?tab=putaway) pide solo tareas PUTAWAY", async () => {
+  // Lote 13 (decisión 5): 'Acomodo pendiente' es la lista de RECIBOS con acomodo por cerrar (phase=PENDING_PUTAWAY); las
+  // tareas de cada uno van a la derecha (más casos en ReceiptScreen.test.tsx).
+  it("Recibo → 'Acomodo pendiente' (?tab=putaway) pide recibos con phase=PENDING_PUTAWAY, no la cola de tareas", async () => {
     wrap(<ReceiptListScreen />, ['inventory.view'], ['WMS_LOTSERIAL'], '/warehouse/receipts?tab=putaway', '/warehouse/receipts')
     expect(await screen.findByRole('tab', { name: 'Acomodo pendiente' })).toHaveAttribute('aria-selected', 'true')
-    await waitFor(() => expect(taskRequests().length).toBeGreaterThan(0))
-    expect(taskRequests().every((u) => u.searchParams.getAll('types').join() === 'PUTAWAY')).toBe(true)
+    const receiptRequests = () => mock.requests.filter((u) => u.pathname === '/api/v1/receipts')
+    await waitFor(() => expect(receiptRequests().length).toBeGreaterThan(0))
+    expect(receiptRequests().every((u) => u.searchParams.get('phase') === 'PENDING_PUTAWAY')).toBe(true)
+    expect(taskRequests()).toHaveLength(0)
   })
 
-  it("Recolección → 'Reabasto' pide solo tareas REPLENISH y ofrece 'Correr reabasto' con warehouse.pick", async () => {
-    const user = userEvent.setup()
-    wrap(<PickBatchListScreen />, ['inventory.view', 'warehouse.pick'], ['WMS_LOTSERIAL'], '/warehouse/pick-batches', '/warehouse/pick-batches')
-    await user.click(await screen.findByRole('tab', { name: 'Reabasto' }))
-    await waitFor(() => expect(taskRequests().length).toBeGreaterThan(0))
-    expect(taskRequests().every((u) => u.searchParams.getAll('types').join() === 'REPLENISH')).toBe(true)
-    expect(screen.getByRole('button', { name: 'Correr reabasto' })).toBeInTheDocument()
-  })
+  // Recolección → 'Reabasto': en PickBatchScreen.test.tsx (Lote 13).
 
   it("Cruce de muelle tiene la pestaña 'Citas de muelle'; 'Tareas de cruce' solo con WMS_LOTSERIAL", async () => {
     const user = userEvent.setup()

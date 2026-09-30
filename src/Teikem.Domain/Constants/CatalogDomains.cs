@@ -745,12 +745,26 @@ public static class AsnStatuses
     public const string Cancelled = "CANCELLED";
 }
 
-/// <summary>Dominio ReceiptStatus: OPEN (inicial) → RECEIVED (confirmado) → PUTAWAY (terminal: último putaway cerrado).</summary>
+/// <summary>
+/// Dominio ReceiptStatus (Lote 13): EXPECTED (inicial, sin líneas) → RECEIVING (capturando) ↔ DISCREPANCY (lateral: lo
+/// recibido difiere de lo esperado) → RECEIVED (Completado) o RECEIVED_VARIANCE (lateral: Completado con diferencia) →
+/// PUTAWAY (terminal: último acomodo cerrado). OPEN (Lote 6) se retiró: sus recibos pasaron a RECEIVING o EXPECTED.
+/// Los tres abiertos los sincroniza el servicio del recibo con cada cambio de líneas (ReceiptStatusRules.OpenTarget).
+/// </summary>
 public static class ReceiptStatuses
 {
-    public const string Open = "OPEN";
+    public const string Expected = "EXPECTED";
+    public const string Receiving = "RECEIVING";
+    public const string Discrepancy = "DISCREPANCY";
     public const string Received = "RECEIVED";
+    public const string ReceivedWithVariance = "RECEIVED_VARIANCE";
     public const string Putaway = "PUTAWAY";
+
+    /// <summary>Estatus abiertos (el recibo aún se edita y se puede borrar).</summary>
+    public static readonly string[] OpenCodes = { Expected, Receiving, Discrepancy };
+
+    /// <summary>Estatus confirmados (ya asentados en el Kárdex) con acomodo por cerrar.</summary>
+    public static readonly string[] ConfirmedCodes = { Received, ReceivedWithVariance };
 }
 
 /// <summary>Dominio WarehouseTaskStatus: PENDING (inicial) → IN_PROGRESS → DONE; CANCELLED terminal (D20).</summary>

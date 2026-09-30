@@ -18,6 +18,8 @@ public sealed record AdjustmentPosting(bool IsEntry, decimal Magnitude, string? 
 ///   los asigna el sistema (recepción, conteo, eliminación de recolección): un usuario no los puede usar.
 /// - Seguimiento: LOT exige lote; NONE no admite lote; SERIAL admite lote opcional y exige tantas series como la cantidad
 ///   (entera). Un producto sin serie no admite series.
+/// - Nota (ajuste del 2026-09-30): obligatoria en el ajuste manual (POST /inventory/adjustments, motivo que no es de sistema);
+///   RequiresNotes decide. Los ajustes que escribe el sistema no pasan por aquí y no la exigen.
 /// Los mensajes son públicos porque el manual y la FAQ los citan.
 /// </summary>
 public static class AdjustmentRules
@@ -39,6 +41,8 @@ public static class AdjustmentRules
     public const string SerialInteger = "En productos con serie la cantidad debe ser entera.";
     public const string SerialsTooMany = "Una línea admite como máximo 500 números de serie.";
     public const string NotesTooLong = "Las notas admiten como máximo 300 caracteres.";
+    /// <summary>Ajuste del 2026-09-30: la nota del ajuste manual es obligatoria también en el API (mismo texto que la pantalla).</summary>
+    public const string NotesRequired = "Escriba una nota que explique el ajuste.";
     public const string LotNumberRequired = "Indique el número de lote.";
     public const string LotNumberTooLong = "El número de lote admite como máximo 60 caracteres.";
     public const string LotDates = "La fecha de fabricación no puede ser posterior al vencimiento.";
@@ -157,12 +161,27 @@ public static class AdjustmentRules
     }
 
     /// <summary>Notas recortadas (NULL si vacías) o NotesTooLong.</summary>
-    public static (string? Notes, string? Error) NormalizeNotes(string? notes)
+    public static (string? Notes, string? Error) NormalizeNotes(string? notes) => NormalizeNotes(notes, required: false);
+
+    /// <summary>
+    /// Notas recortadas o el error: con required = true, vacías (o solo espacios) → NotesRequired; más de 300 → NotesTooLong.
+    /// Con required = false, vacías → NULL sin error (transferencias, resolución de faltantes, ajustes del sistema).
+    /// </summary>
+    public static (string? Notes, string? Error) NormalizeNotes(string? notes, bool required)
     {
         var n = notes?.Trim();
-        if (string.IsNullOrEmpty(n)) return (null, null);
+        if (string.IsNullOrEmpty(n)) return (null, required ? NotesRequired : null);
         return n.Length > MaxNotesLength ? (null, NotesTooLong) : (n, null);
     }
+
+    /// <summary>
+    /// ¿El ajuste exige nota? Sí cuando el motivo NO es de sistema (DAMAGE, LOSS, FOUND, EXPIRED, PO_SHORTAGE, OTHER o
+    /// cualquier motivo que agregue la compañía), y también sin motivo o con uno desconocido (el ajuste lo captura una
+    /// persona). Los motivos de sistema (SystemReasons) no la exigen: los escriben la recepción, el conteo, la eliminación
+    /// de una recolección y la migración, que no pasan por el ajuste manual.
+    /// </summary>
+    public static bool RequiresNotes(string? reasonCode)
+        => string.IsNullOrWhiteSpace(reasonCode) || !SystemReasons.Contains(reasonCode.Trim());
 
     private static string Format(decimal q) => q.ToString("0.###", CultureInfo.InvariantCulture);
 }

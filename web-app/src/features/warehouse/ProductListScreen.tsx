@@ -4,7 +4,8 @@
 //   InventoryReportButtons / inventoryReports.ts) y "Nuevo producto" (inventory.manage).
 // - Río de KPIs de todo el catálogo (`useProductInventoryKpis`, todos con take=1): SKUs activos, Unidades totales, Bajo mínimo
 //   y Con número de serie. Cada KPI es un botón que filtra la tabla (`?kpi=active|available|low|serial`; otro clic lo quita):
-//   activos; activos con disponible > 0; bajo mínimo; rastreo SERIAL o con series. Bajo mínimo va en naranja solo si es > 0;
+//   activos; activos con existencia en mano > 0 (`onlyOnHand`; la cifra suma solo la existencia de los productos
+//   activos, `activeProductsOnly`); bajo mínimo; rastreo SERIAL o con series. Bajo mínimo va en naranja solo si es > 0;
 //   Con número de serie, si hay productos SERIAL con series incompletas (`serialMissing`), con "N sin series completas".
 // - Filtros encima del panel, todos al API: Almacén (varios: acotan las cantidades de cada fila a esos almacenes, no quitan
 //   productos), SKU (`ProductMultiFilter` → productPublicIds), Nombre (contiene), Categoría y Marca (GET /products/brands).
@@ -125,7 +126,7 @@ function InventoryKpis({ kpi, onToggle }: { kpi: ProductKpi | null; onToggle: (k
           label={t('warehouse.products.kpis.totalUnits')}
           value={show(totalUnits.data?.totalOnHand, totalUnits.isLoading, totalUnits.isError)}
           active={kpi === 'available'}
-          hint={hint('available')}
+          hint={`${hint('available')} ${t('warehouse.products.kpis.totalUnitsNote')}`}
           onToggle={() => onToggle('available')}
         />
         <div className="pipe" aria-hidden="true" />

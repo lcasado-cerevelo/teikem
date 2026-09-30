@@ -15,7 +15,7 @@ public sealed record InventoryScope(int? OwnerClientId)
 
 public sealed record BalanceQuery(Guid[]? WarehousePublicIds = null, int[]? BinIds = null, Guid[]? ProductPublicIds = null,
     int[]? CategoryIds = null, string? LotNumber = null, bool IncludeZero = false, bool OnlyAvailable = false, string? Search = null,
-    int Skip = 0, int Take = 200);
+    int Skip = 0, int Take = 200, bool ActiveProductsOnly = false);
 
 public sealed record BalanceDto(int Id, Guid WarehousePublicId, string WarehouseCode, int? BinId, string? BinCode, string? ZoneCode,
     string? ZoneTypeCode, Guid ProductPublicId, string Sku, string ProductName, string? CategoryName, string? OwnerName, bool IsOwn,

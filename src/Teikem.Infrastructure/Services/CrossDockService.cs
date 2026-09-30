@@ -90,17 +90,19 @@ public sealed class CrossDockService(
     }
 
     /// <summary>
-    /// Líneas asignables del almacén del plan (y de su zona de staging, si la tiene): de recibos OPEN (BaseQty = recibido de
-    /// la línea, AllocatableOpen) y RECEIVED/PUTAWAY con putaway pendiente (AllocatableConfirmed). Solo las que tienen
+    /// Líneas asignables del almacén del plan (y de su zona de staging, si la tiene): de recibos abiertos (EXPECTED,
+    /// RECEIVING, DISCREPANCY; BaseQty = recibido de la línea, AllocatableOpen) y confirmados (RECEIVED, RECEIVED_VARIANCE)
+    /// o PUTAWAY con putaway pendiente (AllocatableConfirmed). Solo las que tienen
     /// algo asignable; tope de 500.
     /// </summary>
     public async Task<IReadOnlyList<CrossDockCandidateDto>> CandidatesAsync(int planId, CancellationToken ct)
     {
         var plan = await PlanSnapshotAsync(planId, ct);
-        var openId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Open, ct);
-        var receivedId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Received, ct);
-        var putawayId = await db.StatusIdAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.Putaway, ct);
-        var statusIds = new List<int> { openId, receivedId, putawayId };
+        // Lote 13: abiertos (EXPECTED, RECEIVING, DISCREPANCY) = modo (a); confirmados (RECEIVED, RECEIVED_VARIANCE) o PUTAWAY = modo (b).
+        var openIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);
+        var postedIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus,
+            ReceiptStatuses.ConfirmedCodes.Append(ReceiptStatuses.Putaway), ct);
+        var statusIds = openIds.Concat(postedIds).ToList();
 
         var rowsQuery = from l in db.Set<ReceiptLine>().AsNoTracking()
                         join r in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals r.ReceiptHeaderId
@@ -118,7 +120,7 @@ public sealed class CrossDockService(
 
         var lineIds = rows.Select(x => x.Line.ReceiptLineId).ToList();
         var committed = await CommittedByLineAsync(lineIds, ct);
-        var confirmedReceiptIds = rows.Where(x => x.StatusCodeId != openId).Select(x => x.ReceiptHeaderId).Distinct().ToList();
+        var confirmedReceiptIds = rows.Where(x => !openIds.Contains(x.StatusCodeId)).Select(x => x.ReceiptHeaderId).Distinct().ToList();
         var pending = await PendingPutawayAsync(confirmedReceiptIds, ct);
 
         var productIds = rows.Select(x => x.Line.ProductId).Distinct().ToList();
@@ -136,7 +138,7 @@ public sealed class CrossDockService(
             if (product is null) continue;
             var active = committed.GetValueOrDefault(l.ReceiptLineId);
             decimal allocatable;
-            if (x.StatusCodeId == openId)
+            if (openIds.Contains(x.StatusCodeId))
                 allocatable = CrossDockRules.AllocatableOpen(l.ReceivedQty, active);
             else
             {
@@ -255,14 +257,13 @@ public sealed class CrossDockService(
                 CreatedAtUtc = DateTime.UtcNow, CreatedBy = tenant.UserId,
             };
 
-            if (string.Equals(receiptCode, ReceiptStatuses.Open, StringComparison.OrdinalIgnoreCase))
+            if (ReceiptStatusRules.IsOpen(receiptCode))
             {
                 // Modo (a): contra lo recibido de la línea abierta; se reparte al confirmar el recibo.
                 var allocatable = CrossDockRules.AllocatableOpen(l.ReceivedQty, committed);
                 if (qty > allocatable) throw new ConflictException(CrossDockRules.Exceeds(allocatable));
             }
-            else if (string.Equals(receiptCode, ReceiptStatuses.Received, StringComparison.OrdinalIgnoreCase)
-                     || string.Equals(receiptCode, ReceiptStatuses.Putaway, StringComparison.OrdinalIgnoreCase))
+            else if (ReceiptStatusRules.IsPosted(receiptCode))
             {
                 // Modo (b): contra lo recibido no comprometido, limitado por la PUTAWAY pendiente (que se reduce).
                 if (l.StagingBinId is not int stagingBin) throw new StatusRuleException(CrossDockRules.ReceiptNotAllocatable);
@@ -390,7 +391,7 @@ public sealed class CrossDockService(
         var receipt = await db.Set<ReceiptHeader>().FirstOrDefaultAsync(r => r.ReceiptHeaderId == line.ReceiptHeaderId, ct)
                       ?? throw new NotFoundException("Recibo");
         var receiptCode = await CrossDockSupport.StatusCodeOfAsync(db, receipt.StatusCodeId, ct);
-        if (string.Equals(receiptCode, ReceiptStatuses.Open, StringComparison.OrdinalIgnoreCase) || a.ConfirmedQty is null)
+        if (ReceiptStatusRules.IsOpen(receiptCode) || a.ConfirmedQty is null)
             throw new StatusRuleException(CrossDockRules.ReceiptNotConfirmed);
         var qty = a.ConfirmedQty.Value;
         if (qty <= 0m) throw new StatusRuleException(CrossDockRules.NothingConfirmed);

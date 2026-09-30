@@ -725,7 +725,7 @@ public sealed class SyncRulesTests
         await using var f = await ReceivingFixture.CreateAsync();
         var created = await f.Get<ReceiptService>().CreateAsync(new ReceiptCreateRequest(
             Lines: new[] { new ReceiptLineRequest(f.ProductNonePublicId, 2m) }), default);
-        Assert.Equal(ReceiptStatuses.Open, created.Header.StatusCode);
+        Assert.Equal(ReceiptStatuses.Receiving, created.Header.StatusCode);   // Lote 13: con líneas nace RECEIVING (abierto)
         Assert.Empty(await f.Db.Set<InventoryTransaction>().AsNoTracking().ToListAsync());
     }
 
