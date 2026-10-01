@@ -203,7 +203,7 @@ admin de plataforma fuera del pipeline HTTP, igual que `db-init`.
 | # | Fase | Entregable | Cómo se verifica |
 |---|---|---|---|
 | 0 | **Decisiones del dueño** (sección 5) | Este documento aprobado + `import.depot.json` / `import.solutions.json` | — |
-| 1 | **Preparación de fuentes** | `MSWM` restaurada en el SQL Server local (`sqlcmd -i MSWM.sql`); CSV de Depot; carpeta `F:\TeikemData\` fuera de git | `SELECT COUNT(*)` de `Item`/`Inventory`/`Location` = 810 / 1,477 / 3,988 |
+| 1 | **Preparación de fuentes** | `MSWM` restaurada en el SQL Server local (`sqlcmd -i MSWM.sql`); CSV de Depot; carpeta `F:\Download\TeikemMigracion\` fuera de git | `SELECT COUNT(*)` de `Item`/`Inventory`/`Location` = 810 / 1,477 / 3,988 |
 | 2 | **Seed** | Nuevos `PaymentTerm` y `AdjustmentReason` en el seed; `db-init` en BD existente | CI verde; `GET /catalogs/PaymentTerm` los devuelve |
 | 3 | **Importador** (`Teikem.Infrastructure/Migration`, comando `import-legacy`) | Lectores QB/MSWM, normalizador, mapeos, `--dry-run` con reporte, escritura vía servicios, idempotencia | Pruebas unitarias xunit de: normalización de SKU, parseo de direcciones, mapeo de términos, derivación de zona/pasillo, agrupación de inventario por posición |
 | 4 | **Dry-run Depot y Solutions** | `docs/migracion/reporte-depot.md`, `reporte-solutions.md` con totales y rechazos | Revisión del dueño línea por línea de los rechazos |

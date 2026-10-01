@@ -22,11 +22,14 @@ import {
   getCapturedLines,
   getOpenCount,
   removeLocalCountLine,
+  updateLocalCountLineQty,
   startLocalCount,
   toCapturedEntries,
 } from '../features/count/localCount'
 
 type Draft = { line: ExpectedLine | null; productPublicId: string; sku: string; productName: string; qtyText: string }
+/** Corrección de la cantidad de una línea ya contada (sin volver a escanear). */
+type Edit = { id: number; sku: string; productName: string; systemQty: number | null; qtyText: string }
 
 /** Pantalla 6 (docs/mobile/app-almacen-plan.md §2): escanear la posición reclama el conteo en línea (posición
  *  compartida, igual que Acomodar); de ahí en adelante capturar lo encontrado y terminar van por la cola de salida.
@@ -42,6 +45,7 @@ export default function CountScreen() {
   const [busy, setBusy] = useState(false)
   const [expectedLines, setExpectedLines] = useState<ExpectedLine[] | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [edit, setEdit] = useState<Edit | null>(null)
   const [retryTick, setRetryTick] = useState(0)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
@@ -224,15 +228,75 @@ export default function CountScreen() {
   }
 
   const capturedRows = getCapturedLines(openCount.id)
+
+  // Corrigiendo la cantidad de una línea ya contada: paso aparte (como capturar), así el lector no escribe en el escaneo.
+  if (edit) {
+    const qty = parseQty(edit.qtyText)
+    return (
+      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>{edit.productName}</Text>
+        <Text style={styles.help}>{edit.sku}</Text>
+        {!openCount.isBlind && edit.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: edit.systemQty })}</Text> : null}
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('count.editTitle')}</Text>
+          <TextInput
+            value={edit.qtyText}
+            onChangeText={(v) => setEdit((e) => (e ? { ...e, qtyText: v } : e))}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            accessibilityLabel={t('count.editTitle')}
+            autoFocus
+            selectTextOnFocus
+          />
+        </View>
+        <View style={styles.row}>
+          <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setEdit(null)} />
+          <BigButton
+            label={t('common.save')}
+            disabled={qty === null}
+            onPress={() => {
+              if (qty === null) return
+              updateLocalCountLineQty(edit.id, qty)
+              setEdit(null)
+              refresh()
+            }}
+          />
+        </View>
+      </ScrollView>
+    )
+  }
   const capturedLineIds = new Set(capturedRows.map((r) => r.lineId).filter((id): id is number => id != null))
   const remaining = remainingExpectedLines(expectedLines, capturedLineIds)
 
   // Conteo abierto: escaneando productos y viendo lo ya capturado.
   return (
-    <View style={styles.fill}>
+    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} />
+
+      {/* lo contado y los botones van justo debajo del escaneo (pedido del dueño): con muchas líneas esperadas quedaban
+          al final de la lista y había que desplazarse para terminar o cancelar */}
+      <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
+      <LineList
+        items={capturedRows.map((r) => ({ id: r.id, title: t('count.foundLineTitle', { name: r.productName, qty: r.countedQty }), subtitle: r.sku }))}
+        onRemove={(id) => {
+          removeLocalCountLine(Number(id))
+          refresh()
+        }}
+        removeLabel={t('common.remove')}
+        onEdit={(id) => {
+          const row = capturedRows.find((r) => r.id === Number(id))
+          if (row) setEdit({ id: row.id, sku: row.sku, productName: row.productName, systemQty: row.systemQty, qtyText: String(row.countedQty) })
+        }}
+        editLabel={t('common.edit')}
+        emptyLabel={t('count.emptyExpected')}
+      />
+
+      {busy ? <ActivityIndicator color={colors.brand} /> : null}
+      <BigButton label={t('count.finishBin')} onPress={finishBin} disabled={capturedRows.length === 0 || busy} />
+      <Text style={styles.help}>{t('count.finishHelp')}</Text>
+      <BigButton label={t('count.cancelCount')} variant="danger" onPress={cancelCount} disabled={busy} />
 
       <Text style={styles.label}>{t('count.expectedTitle')}</Text>
       {remaining.length === 0 ? (
@@ -243,23 +307,7 @@ export default function CountScreen() {
           removeLabel={t('common.remove')}
         />
       )}
-
-      <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
-      <LineList
-        items={capturedRows.map((r) => ({ id: r.id, title: t('count.foundLineTitle', { name: r.productName, qty: r.countedQty }), subtitle: r.sku }))}
-        onRemove={(id) => {
-          removeLocalCountLine(Number(id))
-          refresh()
-        }}
-        removeLabel={t('common.remove')}
-        emptyLabel={t('count.emptyExpected')}
-      />
-
-      {busy ? <ActivityIndicator color={colors.brand} /> : null}
-      <BigButton label={t('count.finishBin')} onPress={finishBin} disabled={capturedRows.length === 0 || busy} />
-      <Text style={styles.help}>{t('count.finishHelp')}</Text>
-      <BigButton label={t('count.cancelCount')} variant="danger" onPress={cancelCount} disabled={busy} />
-    </View>
+    </ScrollView>
   )
 }
 

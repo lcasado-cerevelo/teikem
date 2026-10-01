@@ -35,7 +35,10 @@ Cómo se usa: `POST /api/v1/auth/login`
 { "email": "admin@teikem.local", "password": "Teikem_Admin_2026!", "deviceInfo": "smoke" }
 ```
 Respuesta con `status`: `ok` (incluye `tokens`), `mfa_required` (incluye `mfaChallengeToken` como Bearer para
-el paso 2), o `tenant_selection` (incluye `tenants` para elegir con `tenantId`).
+el paso 2). Si el usuario pertenece a varias compañías y no manda `tenantId`, **no se le pregunta** (desde 2026-09-30): entra
+a su compañía predeterminada; si ya no es miembro de ella, a la membresía marcada como predeterminada; si no, a la primera por
+nombre. Luego cambia de compañía con `POST /api/v1/auth/switch-tenant` (el selector de la cabecera). El valor
+`tenant_selection` ya no se emite.
 
 Validaciones:
 

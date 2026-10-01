@@ -12,9 +12,9 @@
     "adminFullName": "Administrador Advance"
   },
   "sources": {
-    "products": "F:/TeikemData/Depot Products.csv",
-    "customers": "F:/TeikemData/Depot Customers.csv",
-    "vendors": "F:/TeikemData/Depot Vendor.csv",
+    "products": "F:/Download/TeikemMigracion/Depot Products.csv",
+    "customers": "F:/Download/TeikemMigracion/Depot Customers.csv",
+    "vendors": "F:/Download/TeikemMigracion/Depot Vendor.csv",
     "mswm": { "connectionStringName": "LegacyMswm", "warehouseId": "Main" }
   },
   "products": {
@@ -61,10 +61,10 @@
   "openingBalances": {
     "source": "mswm",
     "reason": "OPENING_BALANCE",
-    "notes": "Migración WMS MSWM 2026-09-28"
+    "notes": "Migración WMS MSWM 2026-09-30"
   },
   "report": {
-    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/TeikemData), fuera del repositorio.
+    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/Download/TeikemMigracion), fuera del repositorio.
     "prefix": "reporte-depot"
   }
 }

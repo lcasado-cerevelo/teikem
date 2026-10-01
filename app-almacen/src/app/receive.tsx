@@ -230,7 +230,7 @@ export default function ReceiveScreen() {
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
         {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
-        <ScanField label={t('receive.scanTargetLabel')} error={targetError} onSubmit={scanTarget} />
+        <ScanField label={t('receive.scanTargetLabel')} error={targetError} onSubmit={scanTarget} suggestedValue={suggestion} />
         <View style={styles.row}>
           <BigButton
             label={t('common.back')}

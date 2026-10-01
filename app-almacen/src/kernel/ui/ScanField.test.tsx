@@ -2,29 +2,33 @@ import { fireEvent, render } from '@testing-library/react-native'
 
 import { ScanField } from './ScanField'
 
+// En un teléfono sin lector no hay un Enter evidente: "Aceptar" y "Usar {sugerida}" confirman sin teclado físico.
 describe('ScanField', () => {
-  it('al escribir y dar Enter, manda el código recortado y limpia el campo', async () => {
+  it('"Aceptar" toma lo escrito (recortado) como si se hubiera escaneado y limpia el campo', async () => {
     const onSubmit = jest.fn()
-    const { getByLabelText } = await render(<ScanField label="Escanea el producto" onSubmit={onSubmit} />)
-    const input = getByLabelText('Escanea el producto')
-    await fireEvent.changeText(input, '  ABC123  ')
-    await fireEvent(input, 'submitEditing', { nativeEvent: { text: '  ABC123  ' } })
-    expect(onSubmit).toHaveBeenCalledWith('ABC123')
+    const { getByLabelText } = await render(<ScanField label="Escanea la posición destino" onSubmit={onSubmit} />)
+    const input = getByLabelText('Escanea la posición destino')
+    await fireEvent.changeText(input, '  R-01 ')
+    await fireEvent.press(getByLabelText('Aceptar'))
+    expect(onSubmit).toHaveBeenCalledWith('R-01')
+    expect(input.props.value).toBe('')
   })
 
-  it('un código vacío no manda nada', async () => {
+  it('"Aceptar" no hace nada con el campo vacío', async () => {
     const onSubmit = jest.fn()
-    const { getByLabelText } = await render(<ScanField label="Escanea el producto" onSubmit={onSubmit} />)
-    const input = getByLabelText('Escanea el producto')
-    await fireEvent(input, 'submitEditing', { nativeEvent: { text: '   ' } })
+    const { getByLabelText } = await render(<ScanField label="Producto" onSubmit={onSubmit} />)
+    await fireEvent.press(getByLabelText('Aceptar'))
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
-  it('muestra el error en vez de la ayuda cuando hay uno', async () => {
-    const { getByText, queryByText } = await render(
-      <ScanField label="Escanea el producto" help="Código de barras o SKU." error="No hay un producto con ese código." onSubmit={jest.fn()} />,
+  it('con valor sugerido muestra "Usar {valor}" y lo envía sin escribirlo', async () => {
+    const onSubmit = jest.fn()
+    const { getByLabelText, queryByLabelText, rerender } = await render(
+      <ScanField label="Escanea la posición destino" onSubmit={onSubmit} suggestedValue="GENERAL" />,
     )
-    expect(getByText('No hay un producto con ese código.')).toBeTruthy()
-    expect(queryByText('Código de barras o SKU.')).toBeNull()
+    await fireEvent.press(getByLabelText('Usar GENERAL'))
+    expect(onSubmit).toHaveBeenCalledWith('GENERAL')
+    await rerender(<ScanField label="Escanea la posición destino" onSubmit={onSubmit} />)
+    expect(queryByLabelText(/^Usar /)).toBeNull()
   })
 })

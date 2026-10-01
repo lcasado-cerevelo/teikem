@@ -1,6 +1,6 @@
-// Login completo sobre la app montada: las tres ramas de AuthResultDto (ok, mfa_required, tenant_selection),
+// Login completo sobre la app montada: las ramas de AuthResultDto (ok, mfa_required; la compañía nunca se pregunta),
 // error de credenciales bajo el formulario y `next` seguro (sin redirección abierta).
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearTokens, setMfaChallenge } from '../../kernel/auth/tokens'
@@ -130,23 +130,12 @@ describe('Login (AuthResultDto)', () => {
     expect(screen.getByRole('button', { name: 'Comenzar configuración' })).toBeInTheDocument()
   })
 
-  it('tenant_selection: lista las compañías y repite el login con la elegida', async () => {
-    loginReply = (body) =>
-      body.tenantId == null
-        ? json({
-            status: 'tenant_selection',
-            tenants: [
-              { tenantId: 1, name: 'Demo Logística', isDefault: true },
-              { tenantId: 2, name: 'Otra Compañía', isDefault: false },
-            ],
-          })
-        : json({ status: 'ok', tokens: { ...TOKENS, tenantId: body.tenantId } })
+  it('nunca pregunta la compañía: un solo login (sin tenantId) entra directo', async () => {
+    loginReply = () => json({ status: 'ok', tokens: { ...TOKENS, tenantId: 2 } })
     await renderAppAt('/login')
-    const user = await submitLogin()
-    expect(await screen.findByText('Elija la compañía')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Otra Compañía/ }))
+    await submitLogin()
     expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
-    await waitFor(() => expect(loginBodies).toHaveLength(2))
-    expect(loginBodies[1]).toMatchObject({ email: 'admin@teikem.local', password: 'Teikem_Admin_2026!', tenantId: 2 })
+    expect(loginBodies).toHaveLength(1)
+    expect(loginBodies[0]).toMatchObject({ tenantId: null })
   })
 })

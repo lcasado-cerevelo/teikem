@@ -28,7 +28,7 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
         if (IsDeviceSession) throw new ForbiddenException(AuthService.DeviceSessionMfaMessage);
     }
 
-    /// <summary>Paso 1: correo + contraseña (+ tenant opcional). Puede devolver mfa_required o tenant_selection.</summary>
+    /// <summary>Paso 1: correo + contraseña (+ tenant opcional). Puede devolver mfa_required. Sin tenant entra a la compañía predeterminada (o la primera por nombre).</summary>
     [HttpPost("login"), AllowAnonymous]
     public Task<AuthResultDto> Login([FromBody] LoginRequest req, CancellationToken ct) => auth.LoginAsync(req, ct);
 

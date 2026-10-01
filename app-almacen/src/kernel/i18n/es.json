@@ -12,7 +12,8 @@
     "yes": "Sí",
     "no": "No",
     "pending": "pendientes",
-    "warehouse": "Almacén"
+    "warehouse": "Almacén",
+    "edit": "Editar"
   },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
@@ -160,7 +161,8 @@
     "cancelError": "No se pudo cancelar (necesita señal); se puede intentar de nuevo.",
     "confirmedQueued": "Conteo enviado a la cola",
     "expectedQtyLabel": "Esperado: {qty}",
-    "foundLineTitle": "{name} · {qty}"
+    "foundLineTitle": "{name} · {qty}",
+    "editTitle": "Corregir la cantidad contada"
   },
   "lookup": {
     "title": "Consultar",
@@ -192,5 +194,9 @@
     "retry": "Reintentar",
     "retryRow": "Reintentar: {kind}",
     "discard": "Descartar"
+  },
+  "scan": {
+    "accept": "Aceptar",
+    "useSuggested": "Usar {value}"
   }
 }

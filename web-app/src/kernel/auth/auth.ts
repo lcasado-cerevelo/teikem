@@ -11,15 +11,6 @@ export type MfaEnrollResultDto = components['schemas']['MfaEnrollResultDto']
 export type LoginOutcome =
   | { status: 'ok' }
   | { status: 'mfa_required'; enrollmentRequired: boolean }
-  | { status: 'tenant_selection'; tenants: TenantOptionDto[] }
-
-// Credenciales pendientes de la selección de compañía: SOLO en memoria (nunca en storage). Si se recarga la
-// página en /select-tenant, se vuelve al login.
-let pendingSelection: { email: string; password: string; tenants: TenantOptionDto[] } | null = null
-
-export function getPendingTenantSelection(): TenantOptionDto[] | null {
-  return pendingSelection?.tenants ?? null
-}
 
 function deviceInfo(): string | undefined {
   return globalThis.navigator?.userAgent?.slice(0, 200)
@@ -42,29 +33,18 @@ function handleResult(result: AuthResultDto): LoginOutcome {
     setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false })
     return { status: 'mfa_required', enrollmentRequired: result.mfaEnrollmentRequired ?? false }
   }
-  if (result.status === 'tenant_selection') {
-    return { status: 'tenant_selection', tenants: result.tenants ?? [] }
-  }
   storeTokenPair(result.tokens)
   setMfaChallenge(null)
-  pendingSelection = null
   return { status: 'ok' }
 }
 
-/** Paso 1 del login. Lanza ApiError (401 credenciales inválidas, 403 sin compañía activa…). */
-export async function login(email: string, password: string, tenantId?: number): Promise<LoginOutcome> {
+/** Paso 1 del login. Lanza ApiError (401 credenciales inválidas, 403 sin compañía activa…). Nunca pregunta la compañía: el
+ *  API entra a la predeterminada (o la primera por nombre) y se cambia desde el selector de la cabecera. */
+export async function login(email: string, password: string): Promise<LoginOutcome> {
   const result = await unwrap(
-    api.POST('/api/v1/auth/login', { body: { email, password, tenantId: tenantId ?? null, deviceInfo: deviceInfo() } }),
+    api.POST('/api/v1/auth/login', { body: { email, password, tenantId: null, deviceInfo: deviceInfo() } }),
   )
-  const outcome = handleResult(result)
-  pendingSelection = outcome.status === 'tenant_selection' ? { email, password, tenants: outcome.tenants } : null
-  return outcome
-}
-
-/** Selección de compañía tras `tenant_selection`: repite el login con el TenantId elegido. */
-export async function selectTenant(tenantId: number): Promise<LoginOutcome> {
-  if (!pendingSelection) throw new Error('No hay una selección de compañía pendiente.')
-  return login(pendingSelection.email, pendingSelection.password, tenantId)
+  return handleResult(result)
 }
 
 function challengeHeaders(): { Authorization: string } {
@@ -99,7 +79,6 @@ export function cancelMfa(): void {
 /** Cierra la sesión en el servidor (revoca el refresh token) y limpia los tokens locales. Nunca lanza. */
 export async function logout(): Promise<void> {
   const refreshToken = getRefreshToken()
-  pendingSelection = null
   if (refreshToken) {
     try {
       await api.POST('/api/v1/auth/logout', { body: { refreshToken } })

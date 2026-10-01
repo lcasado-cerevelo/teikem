@@ -12,11 +12,11 @@
     "adminFullName": "Administrador Advance"
   },
   "sources": {
-    "products": "F:/TeikemData/Solutions Items.csv",
-    "customers": "F:/TeikemData/Solutions Customers.csv",
-    "vendors": "F:/TeikemData/Solutions Vendors.csv",
+    "products": "F:/Download/TeikemMigracion/Solutions Items.csv",
+    "customers": "F:/Download/TeikemMigracion/Solutions Customers.csv",
+    "vendors": "F:/Download/TeikemMigracion/Solutions Vendors.csv",
     // El SKU 00050-7 (categoría SOLUTIONS de Depot) no está en Solutions Items: se toma de Depot Products.
-    "extraProducts": { "path": "F:/TeikemData/Depot Products.csv", "whereCategory": "SOLUTIONS" }
+    "extraProducts": { "path": "F:/Download/TeikemMigracion/Depot Products.csv", "whereCategory": "SOLUTIONS" }
   },
   "products": {
     "types": ["Inventory Part"],
@@ -63,10 +63,10 @@
   "openingBalances": {
     "source": "quickbooks",
     "reason": "OPENING_BALANCE",
-    "notes": "Saldo inicial QuickBooks 2026-09-28"
+    "notes": "Saldo inicial QuickBooks 2026-09-30"
   },
   "report": {
-    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/TeikemData), fuera del repositorio.
+    // Sin outputDir: el reporte queda junto a los archivos fuente (F:/Download/TeikemMigracion), fuera del repositorio.
     "prefix": "reporte-solutions"
   }
 }

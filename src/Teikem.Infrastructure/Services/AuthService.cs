@@ -103,7 +103,8 @@ public sealed class AuthService(
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode ?? UserKinds.Internal;
         if (kind == UserKinds.Portal) throw new UnauthorizedException("Los usuarios de portal se autentican en el portal de clientes.");
 
-        // Tenant activo: pedido → default → única membresía → selección
+        // Tenant activo: pedido → predeterminado del usuario → membresía marcada como predeterminada → la primera por nombre.
+        // Nunca se pregunta (pedido de Luis, 2026-09-30): se entra directo y la compañía se cambia desde el selector de la cabecera.
         var memberships = await ActiveMembershipsAsync(user, ct);
         int tenantId;
         if (req.TenantId.HasValue)
@@ -111,10 +112,8 @@ public sealed class AuthService(
             if (!memberships.Any(m => m.TenantId == req.TenantId.Value)) throw new ForbiddenException("No pertenece a esa compañía.");
             tenantId = req.TenantId.Value;
         }
-        else if (user.DefaultTenantId.HasValue && memberships.Any(m => m.TenantId == user.DefaultTenantId.Value)) tenantId = user.DefaultTenantId.Value;
-        else if (memberships.Count == 1) tenantId = memberships[0].TenantId;
         else if (memberships.Count == 0) { await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, null, new { reason = "no_membership" }, ct); throw new ForbiddenException("El usuario no tiene ninguna compañía activa."); }
-        else return new AuthResultDto("tenant_selection", null, null, false, memberships);
+        else tenantId = LoginTenantRules.Pick(user.DefaultTenantId, memberships);
 
         var t = await db.Tenants.AsNoTracking().IgnoreQueryFilters().FirstAsync(x => x.TenantId == tenantId, ct);
         if (!t.IsActive) throw new ForbiddenException("La compañía está inactiva.");
@@ -164,6 +163,7 @@ public sealed class AuthService(
         }
         return await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
             .Where(m => m.UserId == user.Id && m.StatusCodeId == active && m.Tenant!.IsActive)
+            .OrderBy(m => m.Tenant!.Name)
             .Select(m => new TenantOptionDto(m.TenantId, m.Tenant!.Name, m.IsDefault)).ToListAsync(ct);
     }
 

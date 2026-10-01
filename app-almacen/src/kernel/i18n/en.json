@@ -12,7 +12,8 @@
     "yes": "Yes",
     "no": "No",
     "pending": "pending",
-    "warehouse": "Warehouse"
+    "warehouse": "Warehouse",
+    "edit": "Edit"
   },
   "errors": {
     "generic": "Something went wrong. Try again.",
@@ -160,7 +161,8 @@
     "cancelError": "Couldn't cancel (needs a signal); you can try again.",
     "confirmedQueued": "Count queued to send",
     "expectedQtyLabel": "Expected: {qty}",
-    "foundLineTitle": "{name} · {qty}"
+    "foundLineTitle": "{name} · {qty}",
+    "editTitle": "Correct the counted quantity"
   },
   "lookup": {
     "title": "Lookup",
@@ -192,5 +194,9 @@
     "retry": "Retry",
     "retryRow": "Retry: {kind}",
     "discard": "Discard"
+  },
+  "scan": {
+    "accept": "OK",
+    "useSuggested": "Use {value}"
   }
 }

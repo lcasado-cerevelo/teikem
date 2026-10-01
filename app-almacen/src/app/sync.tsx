@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native'
 
 import { useT } from '../kernel/i18n/useT'
 import { runSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
@@ -39,7 +39,7 @@ export default function SyncScreen() {
   const lastSyncLabel = lastSync ? new Date(lastSync.ranAtUtc).toLocaleTimeString() : t('sync.never')
 
   return (
-    <View style={styles.fill}>
+    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{t('sync.title')}</Text>
       <Text style={styles.help}>{t('sync.lastSync', { when: lastSyncLabel })}</Text>
       {lastSync?.error ? <Text style={styles.error}>{lastSync.error}</Text> : null}
@@ -75,7 +75,7 @@ export default function SyncScreen() {
           }}
         />
       ))}
-    </View>
+    </ScrollView>
   )
 }
 

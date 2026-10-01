@@ -65,21 +65,12 @@ manda de vuelta a `/login`.
 Si perdió el teléfono con la app: use un código de recuperación (se le mostraron al activar). Si también los perdió, pida a
 un administrador de su compañía que le ayude; no hay una forma de restablecer el MFA usted mismo sin esos códigos.
 
-## Elegir compañía
+## Varias compañías
 
-**Para qué sirve.** Cuando su usuario pertenece a más de una compañía (tenant), esta pantalla deja elegir con cuál trabajar
-en esta sesión.
-
-**Cómo se llega.** Dirección `/select-tenant`, automáticamente después de "Entrar" si el API detecta más de una membresía
-activa. Sin entrada de menú; si la abre directo sin una selección pendiente, lo manda a `/login`.
-
-**Qué se ve.** Un botón por cada compañía a la que pertenece; la marcada "Predeterminada" es la que usa por costumbre.
-"Volver al inicio de sesión" cancela.
-
-**Permiso.** Ninguno.
-
-**Mensajes que puede ver.** El mismo tipo de mensajes de "Credenciales inválidas." si algo falla al repetir el intento con
-la compañía elegida.
+Desde 2026-09-30 **no hay pantalla para elegir compañía** (antes `/select-tenant`). Si su usuario pertenece a varias
+compañías, "Entrar" lo lleva directo a su compañía predeterminada (si no tiene, a la primera por nombre). Para trabajar en
+otra, use el **selector de compañía de la cabecera** (entre el reloj y el tema): solo lista las compañías a las que usted
+tiene acceso. Con una sola compañía, la cabecera muestra su nombre sin selector.
 
 ## Menú y cabecera
 

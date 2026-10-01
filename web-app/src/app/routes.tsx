@@ -121,7 +121,6 @@ export function legacyInventorySearch(params: URLSearchParams): URLSearchParams 
 export const publicRoutes: readonly AppRoute[] = [
   { path: '/login', element: lazy(() => import('../features/auth/LoginPage')) },
   { path: '/mfa', element: lazy(() => import('../features/auth/MfaPage')) },
-  { path: '/select-tenant', element: lazy(() => import('../features/auth/SelectTenantPage')) },
 ]
 
 /** Pantallas internas (dentro del shell, con sesión). */

@@ -32,11 +32,6 @@
       "subtitle": "Entre con su correo y contraseña.",
       "submit": "Entrar"
     },
-    "selectTenant": {
-      "title": "Elija la compañía",
-      "subtitle": "Su usuario pertenece a varias compañías. ¿Con cuál quiere trabajar?",
-      "default": "Predeterminada"
-    },
     "mfa": {
       "title": "Verificación en dos pasos",
       "subtitle": "Escriba el código de 6 dígitos de su app de autenticación o uno de sus códigos de recuperación.",

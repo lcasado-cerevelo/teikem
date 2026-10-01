@@ -22,7 +22,7 @@ dotnet run --project src/Teikem.Api -- import-legacy <config.json> [--dry-run]
 
 ## Los datos reales viven fuera del repositorio
 
-Los CSV de QuickBooks contienen correos y teléfonos de clientes: **no se suben a git**. Viven en `F:\TeikemData\`
+Los CSV de QuickBooks contienen correos y teléfonos de clientes: **no se suben a git**. Viven en `F:\Download\TeikemMigracion\`
 (`Depot Products.csv`, `Depot Customers.csv`, `Depot Vendor.csv`, `Solutions Items.csv`, `Solutions Customers.csv`,
 `Solutions Vendors.csv`). El repositorio solo lleva:
 
@@ -36,7 +36,7 @@ Si los archivos están en otra carpeta, edite las rutas de `sources` (pueden ser
 
 ## Preparar la base MSWM (solo Advance Depot)
 
-1. Restaurar `MSWM` en el SQL Server local, una sola vez: `sqlcmd -S localhost,1433 -E -i F:\TeikemData\MSWM.sql`
+1. Restaurar `MSWM` en el SQL Server local, una sola vez: `sqlcmd -S localhost,1433 -E -i F:\Download\TeikemMigracion\MSWM.sql`
    (el script es UTF-16 y pesa ~400 MB; tarda varios minutos).
 2. Comprobar: `SELECT COUNT(*) FROM MSWM.dbo.Item`, `dbo.Inventory` y `dbo.Location`.
 3. La cadena `ConnectionStrings:LegacyMswm` de `appsettings.json` usa *Integrated Security*
@@ -47,6 +47,9 @@ Si los archivos están en otra carpeta, edite las rutas de `sources` (pueden ser
    ```json
    { "ConnectionStrings": { "LegacyMswm": "Server=localhost,1433;Database=MSWM;User Id=sa;Password=…;TrustServerCertificate=True;Encrypt=False" } }
    ```
+4. Para leer directamente el **MSWM de producción** (sin restaurarlo), defina la variable de entorno de usuario
+   `ConnectionStrings__LegacyMswm` (doble guion bajo); pisa a los `appsettings`. Conviene `ApplicationIntent=ReadOnly`
+   y un usuario de solo lectura. Las terminales y Visual Studio abiertos antes de crearla no la ven: ábralos de nuevo.
 
 El importador solo ejecuta `SELECT` parametrizados por `@warehouseId` sobre `dbo.Item`, `dbo.Location`,
 `dbo.Inventory` (`OnHandQuantity <> 0`) y `dbo.ItemUPC`, más el historial por posición para estimar el cupo
@@ -92,6 +95,9 @@ ese almacén (*"El saldo inicial ya fue cargado en ALM-DEPOT; no se repite."*). 
 con el mensaje exacto y la carga sigue con la siguiente.
 
 ## Recrear la base en blanco y volver a cargar (pedido de Luis, 2026-09-29)
+
+> **Forma recomendada:** `scripts\recrear-base.ps1` hace todo el ciclo (con el MSWM de producción y validaciones previas).
+> Ver [recrear-base.md](recrear-base.md).
 
 La migración no es un trabajo de una sola vez: QuickBooks y el WMS cambian, y a veces conviene empezar de cero en vez de
 apilar cargas. Para eso existe un verbo hermano de `db-init`:
@@ -160,7 +166,7 @@ si agregaron proveedores). No hace falta re-exportar ni volver a montar el WMS p
 ## Dónde queda el reporte
 
 En `report.outputDir` o, si no se indica, en la carpeta del primer archivo fuente (para los JSON reales:
-`F:\TeikemData\`, fuera del repositorio, porque el reporte cita nombres, correos y teléfonos). Archivos:
+`F:\Download\TeikemMigracion\`, fuera del repositorio, porque el reporte cita nombres, correos y teléfonos). Archivos:
 
 - `{prefix}-{yyyyMMdd-HHmm}.md`: título con **SIMULACIÓN (dry-run)** o **CARGA REAL**, tabla de resumen (leídos,
   creados, ya existían, omitidos, rechazados y los totales esperados del plan), rechazos, advertencias, mapeos (SKU

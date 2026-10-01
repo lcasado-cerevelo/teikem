@@ -22,6 +22,10 @@ para personal de la compañía; el portal de clientes llega en un módulo poster
 Pediste iniciar sesión (o cambiar) a un `tenantId` en el que no tienes membresía activa. Revisa con qué
 compañía tienes cuenta, o pide que te agreguen como usuario ahí.
 
+**Pertenezco a varias compañías: ¿por qué no me pregunta a cuál entrar?**
+Desde 2026-09-30 el sistema entra directo a tu compañía predeterminada (o a la primera por nombre). Cambia de compañía con el
+selector de la cabecera, entre el reloj y el tema; solo muestra las compañías a las que tienes acceso.
+
 **¿Qué significa "El usuario no tiene ninguna compañía activa."?**
 Tu usuario existe pero no tiene ninguna membresía activa en ninguna compañía. Pide a un administrador que te
 dé de alta en su tenant o reactive tu membresía.

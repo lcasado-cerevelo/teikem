@@ -161,9 +161,9 @@ título), `<Splash full />` (lockup centrado sobre el indicador) y `Placeholder`
 `apple-touch-icon` 180, `theme-color #0B2C66`, título "Teikem".
 
 ## Autenticación (`src/kernel/auth`)
-- `login(email, password, tenantId?)` → `{ status: 'ok' } | { status: 'mfa_required', enrollmentRequired } |
-  { status: 'tenant_selection', tenants }` (AuthResultDto). `selectTenant(id)` repite el login con la compañía elegida
-  (credenciales solo en memoria). Pantallas: `/login`, `/mfa`, `/select-tenant` (`features/auth`).
+- `login(email, password)` → `{ status: 'ok' } | { status: 'mfa_required', enrollmentRequired }` (AuthResultDto). La
+  compañía nunca se pregunta (2026-09-30): el API entra a la predeterminada (o la primera por nombre) y se cambia con el
+  selector de la cabecera (`switchTenant`). Pantallas: `/login`, `/mfa` (`features/auth`).
 - `verifyMfa(code)` (challenge como Bearer → `/api/v1/auth/mfa/verify`); si el tenant exige MFA y el usuario no lo tiene:
   `enrollMfaWithChallenge()` → `confirmMfaWithChallenge(code)` (códigos de recuperación) → `verifyMfa`.
 - `useReauth()` → `{ reauth(): Promise<boolean> }`: abre el modal (contraseña + código MFA si `me.mfaEnabled`,

@@ -471,7 +471,7 @@ public class LegacyImportServiceTests
         // Lote 16 (D8, D12): Depot recibe con acomodo (sin modo = PUTAWAY) y su posición de recepción por defecto es R1 (zona STG).
         Assert.Null(cfg.Warehouse.ReceivingMode);
         Assert.Equal("R1", cfg.Warehouse.DefaultReceivingBin);
-        Assert.Equal((LegacyImportConfig.SourceMswm, "OPENING_BALANCE", "Migración WMS MSWM 2026-09-28"),
+        Assert.Equal((LegacyImportConfig.SourceMswm, "OPENING_BALANCE", "Migración WMS MSWM 2026-09-30"),
             (cfg.OpeningBalances.Source, cfg.OpeningBalances.Reason, cfg.OpeningBalances.Notes));
     }
 
@@ -498,7 +498,7 @@ public class LegacyImportServiceTests
         // Lote 16 (D8): Solutions no tiene zona de recepción: directo a posición.
         Assert.Equal("DIRECT", cfg.Warehouse.ReceivingMode);
         Assert.Null(cfg.Warehouse.DefaultReceivingBin);
-        Assert.Equal((LegacyImportConfig.SourceQuickBooks, "Saldo inicial QuickBooks 2026-09-28"), (cfg.OpeningBalances.Source, cfg.OpeningBalances.Notes));
+        Assert.Equal((LegacyImportConfig.SourceQuickBooks, "Saldo inicial QuickBooks 2026-09-30"), (cfg.OpeningBalances.Source, cfg.OpeningBalances.Notes));
     }
 
     [Theory]

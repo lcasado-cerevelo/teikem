@@ -32,11 +32,6 @@
       "subtitle": "Use your email and password.",
       "submit": "Sign in"
     },
-    "selectTenant": {
-      "title": "Choose a company",
-      "subtitle": "Your user belongs to several companies. Which one do you want to work with?",
-      "default": "Default"
-    },
     "mfa": {
       "title": "Two-step verification",
       "subtitle": "Enter the 6-digit code from your authenticator app or one of your recovery codes.",

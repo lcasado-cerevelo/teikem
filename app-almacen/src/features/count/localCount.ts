@@ -60,6 +60,11 @@ export function addExtraLine(localCountId: number, product: { publicId: string; 
   )
 }
 
+/** Corrige la cantidad contada de una línea ya capturada (sin volver a escanear). */
+export function updateLocalCountLineQty(id: number, countedQty: number): void {
+  getDb().runSync('UPDATE local_count_line SET counted_qty = ? WHERE id = ?', [countedQty, id])
+}
+
 export function removeLocalCountLine(id: number): void {
   getDb().runSync('DELETE FROM local_count_line WHERE id = ?', [id])
 }

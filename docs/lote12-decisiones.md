@@ -72,7 +72,7 @@ Resultados reportados por quien ejecutó el lote. **No se volvieron a ejecutar a
    dotnet run --project src/Teikem.Api -- import-legacy docs/migracion/import.solutions.json
    ```
    Sin rechazos en Depot ni en Solutions. La corrida de Depot del 2026-09-30 dejó el reporte
-   `F:\TeikemData\reporte-depot-20260930-0051-cupos.csv` (3.887 líneas: encabezado y 3.886 posiciones). Resultado real del cupo
+   `F:\Download\TeikemMigracion\reporte-depot-20260930-0051-cupos.csv` (3.887 líneas: encabezado y 3.886 posiciones). Resultado real del cupo
    estimado (se contó de ese CSV): `HISTORIAL` 2.709 posiciones (cupo de 10 a 264.600, mediana 50), `PASILLO` 645 (10 a 120,
    mediana 20), `ZONA` 528 (50) y `ALMACEN` 4 (50).
 5. En el navegador, con Advance Depot (datos reales):
