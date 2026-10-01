@@ -168,10 +168,11 @@ export default function DispatchScreen() {
         ) : (
           <>
             {/* Sin despacho abierto todavía (draft es null aquí): nada que perder, "Volver" sale directo a Inicio.
-                Pegado al título, no al final: su propio texto de ayuda queda lejos, para que no se lea como si
-                describiera a "Volver". */}
-            <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+                2026-10-01 (Luis): abajo, pegado al borde inferior (`marginTop: auto`). */}
             <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
+            <View style={styles.bottom}>
+              <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
+            </View>
           </>
         )}
       </ScrollView>
@@ -232,6 +233,8 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: 13 },
   error: { color: colors.error, fontSize: 15 },
   field: { gap: spacing.xs },
+  // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
+  bottom: { marginTop: 'auto' },
   row: { flexDirection: 'row', gap: spacing.md },
   input: {
     minHeight: 56,

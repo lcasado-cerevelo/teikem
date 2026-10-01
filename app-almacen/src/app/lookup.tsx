@@ -64,7 +64,6 @@ export default function LookupScreen() {
   return (
     <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{t('lookup.title')}</Text>
-      <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
       <ScanField label={t('lookup.scanLabel')} help={t('lookup.scanHelp')} error={error} onSubmit={scan} />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       {result ? (
@@ -82,6 +81,8 @@ export default function LookupScreen() {
           />
         </>
       ) : null}
+      {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla, también debajo del resultado */}
+      <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
     </ScrollView>
   )
 }

@@ -123,6 +123,10 @@ vez de navegar. Tocar el texto del estado de sincronización lleva a la pantalla
 
 ## 4. Recibir
 
+**Botón "Volver" (2026-10-01).** En las pantallas de inicio de Recibir, Despacho, Conteo y Consultar (cuando todavía no hay un
+documento abierto), "Volver" va **al final de la pantalla**: en Recibir y Despacho pegado al borde inferior (debajo del texto de
+ayuda); en Conteo y Consultar, después de todo lo que haya en pantalla (incluido el resultado de una consulta).
+
 Qué hace: captura un recibo completo (documento o "recibo ciego", sin orden ni aviso) y lo manda al confirmarlo en
 una sola llamada atómica (`POST /api/v1/receipts` con `confirm: true`, capítulo 8A §6 y
 [06 §4](06-inventario-y-almacen.md#4-recepción-avisos-de-llegada-asn-y-recibos)). Funciona sin señal de punta a
@@ -363,6 +367,12 @@ por dos códigos distintos (SKU una vez, código de barras otra) guarda dos entr
 ---
 
 ## 9. Sincronización
+
+**Órdenes de compra sin permiso (2026-10-01).** La bajada de datos para Recibir incluye las órdenes de compra, que exigen
+`purchasing.view` y el módulo Compras. Un usuario sin ese permiso (por ejemplo, el Operador de almacén desde que se le quitaron los
+permisos de compras) recibe 403 en ese recurso: la app **lo salta** (no recibe contra órdenes de compra, sí contra avisos y recibo
+ciego), borra las órdenes que tuviera guardadas y **sigue** con avisos y posiciones. Antes ese 403 abortaba toda la pasada y
+Inicio mostraba "No se pudo sincronizar" siempre. Un error de red o del servidor (500) sí sigue marcando la pasada como fallida.
 
 Qué hace: muestra lo que está en la cola de salida, separado en **pendientes** (se van a mandar solas en la próxima
 pasada) y **con error** (el servidor las rechazó; hay que revisarlas), el resultado de la última pasada, y

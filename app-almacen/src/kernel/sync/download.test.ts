@@ -1,11 +1,11 @@
 import { __resetAllForTests } from 'expo-sqlite'
 
-import { api } from '../api/client'
+import { api, ApiError } from '../api/client'
 import { __resetDbForTests, getDb } from '../db/database'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
-import { downloadAsns, downloadBins, downloadForReceiving, downloadProducts, downloadPurchaseOrders } from './download'
+import { downloadAsns, downloadBins, downloadForReceiving, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -186,6 +186,35 @@ describe('downloadBins (Lote 16)', () => {
     getMock.mockResolvedValueOnce(page([], null, '2026-01-01T00:30:00.000Z'))
     await downloadBins('wh-1')
     expect(getMock.mock.calls[2][1].params.query.since).toBe('2026-01-01T00:05:00.000Z')
+  })
+})
+
+describe('órdenes de compra sin permiso (403)', () => {
+  const forbidden = () => Promise.reject(new ApiError(403, null))
+
+  it('un 403 en órdenes de compra no aborta la pasada: salta ese recurso y baja avisos y posiciones', async () => {
+    await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
+    getMock.mockImplementation((path: string) =>
+      path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
+    )
+    const results = await downloadForReceiving()
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
+    expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
+  })
+
+  it('borra las órdenes que hubiera de antes y su marca, para volver a bajarlas completas si recupera el permiso', async () => {
+    getMock.mockResolvedValueOnce(page([{ id: 7, publicId: 'po7', number: 'PO-7', isActive: true, lines: [] }], null, '2026-01-01T00:00:00.000Z'))
+    await downloadPurchaseOrders()
+    expect(getDb().getAllSync('SELECT id FROM purchase_order')).toHaveLength(1)
+    getMock.mockImplementation(() => forbidden())
+    await downloadPurchaseOrdersIfAllowed()
+    expect(getDb().getAllSync('SELECT id FROM purchase_order')).toHaveLength(0)
+    expect(getDb().getAllSync("SELECT 1 FROM sync_watermark WHERE resource = 'purchaseOrders'")).toHaveLength(0)
+  })
+
+  it('otros errores (red, 500) sí se propagan: la pasada falla como siempre', async () => {
+    getMock.mockImplementation(() => Promise.reject(new ApiError(500, null)))
+    await expect(downloadPurchaseOrdersIfAllowed()).rejects.toMatchObject({ status: 500 })
   })
 })
 

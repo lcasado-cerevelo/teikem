@@ -4,7 +4,7 @@
 // Solo los recursos que usa Recibir en esta entrega: productos, órdenes de compra y avisos (con sus líneas). Almacenes,
 // tareas y categorías se agregan con Acomodar/Conteo (próxima entrega); las tablas locales ya existen (schema.ts).
 // Lote 16: también las posiciones del almacén del aparato (GET /sync/bins, tabla `bin`), para el recibo directo a posición.
-import { api, unwrap } from '../api/client'
+import { api, ApiError, unwrap } from '../api/client'
 import { getSessionState } from '../auth/session'
 import { getDb, type SQLiteDatabase } from '../db/database'
 
@@ -319,10 +319,31 @@ export async function downloadBins(warehousePublicId: string): Promise<DownloadR
   return { ...result, resource: 'bins' }
 }
 
+/**
+ * 2026-10-01: las órdenes de compra exigen `purchasing.view` y el módulo Compras. Un usuario sin ellos (p. ej. el Operador de
+ * almacén desde que Luis le quitó los permisos de compras) recibe 403: eso NO es una falla de sincronización, solo no recibe
+ * contra órdenes de compra. Antes el 403 abortaba toda la pasada ("No se pudo sincronizar") y los avisos y las posiciones, que
+ * van después, nunca bajaban. Se salta el recurso y se borra lo que hubiera de antes (ya no tiene acceso).
+ */
+export async function downloadPurchaseOrdersIfAllowed(): Promise<DownloadResult> {
+  try {
+    return await downloadPurchaseOrders()
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    const db = getDb()
+    db.withTransactionSync(() => {
+      db.runSync('DELETE FROM purchase_order_line')
+      db.runSync('DELETE FROM purchase_order')
+      db.runSync('DELETE FROM sync_watermark WHERE resource = ?', ['purchaseOrders'])
+    })
+    return { resource: 'purchaseOrders', pages: 0, items: 0 }
+  }
+}
+
 /** Corre los recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). Las posiciones solo
  *  si el aparato tiene almacén por defecto (Lote 16). */
 export async function downloadForReceiving(): Promise<DownloadResult[]> {
-  const results = [await downloadProducts(), await downloadPurchaseOrders(), await downloadAsns()]
+  const results = [await downloadProducts(), await downloadPurchaseOrdersIfAllowed(), await downloadAsns()]
   const warehousePublicId = getSessionState().device?.defaultWarehousePublicId
   if (warehousePublicId) results.push(await downloadBins(warehousePublicId))
   return results
