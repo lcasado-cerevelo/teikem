@@ -61,7 +61,8 @@
     "comingSoon": "Available in the next release.",
     "syncStatusPending": "{count} pending to send",
     "syncStatusOk": "All sent",
-    "syncStatusError": "{count} with errors",
+    "syncStatusError": "Could not sync. Tap \"Sync now\".",
+    "syncStatusErrorPending": "{count} pending · could not sync",
     "syncNow": "Sync now",
     "signOut": "Switch user",
     "warehouseLabel": "Warehouse: {name}"

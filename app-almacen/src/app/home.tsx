@@ -9,6 +9,7 @@ import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
 import { useT } from '../kernel/i18n/useT'
 import { runSync, useAutoSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
+import { syncStatusKey } from '../kernel/sync/syncStatus'
 import { BigButton } from '../kernel/ui/BigButton'
 import { colors, spacing } from '../kernel/ui/theme'
 
@@ -46,11 +47,7 @@ export default function HomeScreen() {
     router.push(path)
   }
 
-  const syncLabel = lastSync?.error
-    ? t('home.syncStatusError', { count: pending })
-    : pending > 0
-      ? t('home.syncStatusPending', { count: pending })
-      : t('home.syncStatusOk')
+  const syncLabel = t(syncStatusKey(pending, Boolean(lastSync?.error)), { count: pending })
 
   return (
     <View style={styles.fill}>

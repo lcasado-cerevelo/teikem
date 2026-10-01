@@ -61,7 +61,8 @@
     "comingSoon": "Disponible en la próxima entrega.",
     "syncStatusPending": "{count} pendientes de enviar",
     "syncStatusOk": "Todo enviado",
-    "syncStatusError": "{count} con error",
+    "syncStatusError": "No se pudo sincronizar. Toca \"Sincronizar ahora\".",
+    "syncStatusErrorPending": "{count} pendientes · no se pudo sincronizar",
     "syncNow": "Sincronizar ahora",
     "signOut": "Cambiar de usuario",
     "warehouseLabel": "Almacén: {name}"

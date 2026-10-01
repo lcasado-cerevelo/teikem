@@ -109,7 +109,7 @@ Los mensajes de PIN, bloqueo y permisos están explicados con más detalle (por 
 ## 3. Inicio
 
 Qué hace: menú de 5 acciones (Recibir, Acomodar, Despacho, Conteo, Consultar), el estado de la sincronización
-(pendientes de enviar, todo enviado, o con error), un botón "Sincronizar ahora", y "Cambiar de usuario" (cierra la
+("N pendientes de enviar", "Todo enviado", o, en rojo, que la **última sincronización falló**: "No se pudo sincronizar. Toca 'Sincronizar ahora'." si no hay nada pendiente, o "N pendientes · no se pudo sincronizar"; desde 2026-10-01 ya no dice "0 con error", porque no mide elementos rechazados sino el resultado del último intento), un botón "Sincronizar ahora", y "Cambiar de usuario" (cierra la
 sesión de este usuario en el aparato, sin desregistrarlo).
 
 Quién puede: cualquiera que entró con PIN (§2.2). El menú no filtra por permiso fino: cada pantalla revisa el suyo
