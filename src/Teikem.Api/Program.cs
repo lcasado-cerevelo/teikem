@@ -76,7 +76,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
             var ss = ctx.Principal?.FindFirst(TeikemClaims.SecurityStamp)?.Value;
             if (!int.TryParse(sub, out var userId) || ss is null) { ctx.Fail("token inválido"); return; }
             var cache = ctx.HttpContext.RequestServices.GetRequiredService<IMemoryCache>();
-            var current = await cache.GetOrCreateAsync($"stamp:{userId}", async e =>
+            var current = await cache.GetOrCreateAsync(JwtTokenService.StampCacheKey(userId), async e =>
             {
                 e.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
                 var db = ctx.HttpContext.RequestServices.GetRequiredService<TeikemDbContext>();

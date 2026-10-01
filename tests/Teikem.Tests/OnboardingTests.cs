@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Teikem.Domain.Catalogs;
@@ -103,7 +104,11 @@ public class OnboardingTests
         // Contraseña: no puede ser la que dio el administrador; la nueva rota el sello y trae un challenge nuevo.
         var same = await Assert.ThrowsAsync<ValidationException>(() => auth.SetOnboardingPasswordAsync(1, tid, null, new OnboardingPasswordRequest(AdminGivenPassword), default));
         Assert.Contains(AuthService.SamePasswordMessage, same.Message);
+        // El API tiene el sello viejo en caché (60 s): tras cambiar la contraseña se debe quitar para aceptar el challenge nuevo.
+        var cache = f.Get<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+        cache.Set(JwtTokenService.StampCacheKey(1), "sello-viejo");
         var pwd = await auth.SetOnboardingPasswordAsync(1, tid, null, new OnboardingPasswordRequest("Mi-Clave-Propia-2026"), default);
+        Assert.False(cache.TryGetValue(JwtTokenService.StampCacheKey(1), out _));
         Assert.False(pwd.State.PasswordChangeRequired);
         Assert.NotNull(pwd.MfaChallengeToken);
 

@@ -135,6 +135,9 @@ public sealed partial class AuthService
         user = await OnboardingUserAsync(userId);
         user.MustChangePassword = false;
         await users.UpdateAsync(user);
+        // El sello rotó: se quita el que el API tiene en caché (60 s) para que el challenge nuevo, firmado con el sello nuevo, se
+        // acepte ya en la siguiente petición (antes, "Comenzar configuración" fallaba la primera vez).
+        cache.Remove(JwtTokenService.StampCacheKey(user.Id));
         // Cambio de contraseña: se cierran las sesiones que hubiera (Identity ya rotó el SecurityStamp).
         var open = await db.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == user.Id && t.RevokedAtUtc == null).ToListAsync(ct);
         foreach (var t in open) t.RevokedAtUtc = DateTime.UtcNow;

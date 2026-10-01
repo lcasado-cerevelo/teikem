@@ -59,6 +59,10 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
     }
 
     /// <param name="lifetime">2026-09-30: el primer ingreso (correo, contraseña y MFA) usa una vida más larga (Auth:Onboarding:ChallengeMinutes).</param>
+    /// <summary>Clave de la caché (60 s) con el sello de seguridad vigente del usuario, que valida cada token (Program.cs).
+    /// Quien rota el sello y emite un token nuevo en la misma petición debe quitarla, o el token nuevo se rechaza hasta 60 s.</summary>
+    public static string StampCacheKey(int userId) => $"stamp:{userId}";
+
     public (string Token, DateTime ExpiresAtUtc) CreateMfaChallengeToken(ApplicationUser user, int tenantId, string? deviceInfo, TimeSpan? lifetime = null)
     {
         var claims = new List<Claim>
