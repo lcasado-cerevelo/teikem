@@ -108,7 +108,7 @@ if ($escribirCfg) {
     }
     if ($brevo) { $cfg['Brevo'] = $brevo }
 } else {
-    $cfgActual = Get-Content $cfgArchivo -Raw | ConvertFrom-Json
+    $cfgActual = [IO.File]::ReadAllText($cfgArchivo, [Text.Encoding]::UTF8) | ConvertFrom-Json
     $dominio = $cfgActual.Hosting.Dominio
     if (-not $dominio) { $dominio = Preguntar 'Dominio de la web' 'teikem.advancelogisticspr.com' }
 }
@@ -137,6 +137,31 @@ if ($escribirCfg) {
     $json = $cfg | ConvertTo-Json -Depth 6
     [IO.File]::WriteAllText($cfgArchivo, $json, (New-Object Text.UTF8Encoding $false))
 }
+# Llaves de Data Protection (cifran el secreto del MFA y las invitaciones). Sin una carpeta fija se pierden cada vez que IIS reinicia el
+# sitio y el MFA deja de poder verificarse ("Error interno"). Se protegen con DPAPI de la máquina; solo este sitio y los administradores las leen.
+$llaves = 'C:\ProgramData\Teikem\keys'
+New-Item -ItemType Directory -Force $llaves | Out-Null
+if (-not (Permisos @($llaves, '/inheritance:r', '/grant:r', '*S-1-5-32-544:(OI)(CI)F', '/grant:r', '*S-1-5-18:(OI)(CI)F', '/grant:r', "IIS AppPool\${Sitio}:(OI)(CI)M"))) {
+    Fallar "No pude dar permiso sobre la carpeta de llaves $llaves al grupo de aplicaciones '$Sitio'."
+}
+$jc = [IO.File]::ReadAllText($cfgArchivo, [Text.Encoding]::UTF8) | ConvertFrom-Json
+if (-not $jc.DataProtection) {
+    $jc | Add-Member -NotePropertyName DataProtection -NotePropertyValue ([pscustomobject]@{ KeysPath = $llaves })
+    [IO.File]::WriteAllText($cfgArchivo, ($jc | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))
+}
+
+# Registro de lo que escribe el sitio (errores internos): se activa en web.config (que cada actualización reemplaza) y su carpeta logs\.
+$wc = Join-Path $Carpeta 'web.config'
+if (Test-Path $wc) {
+    $txt = [IO.File]::ReadAllText($wc, [Text.Encoding]::UTF8)
+    if ($txt -match 'stdoutLogEnabled="false"') {
+        [IO.File]::WriteAllText($wc, ($txt -replace 'stdoutLogEnabled="false"', 'stdoutLogEnabled="true"'), (New-Object Text.UTF8Encoding $true))
+    }
+}
+$logs = Join-Path $Carpeta 'logs'
+New-Item -ItemType Directory -Force $logs | Out-Null
+Permisos @($logs, '/grant', "IIS AppPool\${Sitio}:(OI)(CI)M") | Out-Null
+
 # Solo Administradores, SYSTEM y el grupo de aplicaciones leen la configuración (trae la contraseña de la base).
 if (-not (Permisos @($cfgArchivo, '/inheritance:r', '/grant:r', '*S-1-5-32-544:F', '/grant:r', '*S-1-5-18:F', '/grant:r', "IIS AppPool\${Sitio}:R"))) {
     Fallar "No pude restringir los permisos de $cfgArchivo (trae la contraseña de la base). Revise que exista el grupo de aplicaciones '$Sitio'."
@@ -184,7 +209,7 @@ Paso 'Comprobando el API'
 $vivo = $false
 for ($i = 0; $i -lt 20 -and -not $vivo; $i++) { $vivo = Probar-Salud $dominio; if (-not $vivo) { Start-Sleep -Seconds 3 } }
 if ($vivo) { Ok 'El API responde.' } else {
-    Aviso 'El API no respondió. Últimos eventos del módulo de IIS:'
+    Aviso "El API no respondió. Mire también $Carpeta\logs\ (últimas líneas del registro del sitio) y los eventos de IIS:"
     Get-EventLog -LogName Application -Newest 8 -ErrorAction SilentlyContinue | Where-Object { $_.Source -like '*AspNetCore*' -or $_.Source -like '*IIS*' -or $_.Source -like '.NET*' } | ForEach-Object { Write-Host "  $($_.TimeGenerated) $($_.Message.Split("`n")[0])" }
     Fallar 'Revise la cadena de conexión a la base (appsettings.Production.local.json) y que este servidor llegue a ella.'
 }
@@ -204,7 +229,7 @@ if ($tieneHttps) {
 if ($tieneHttps) {
     # Con el certificado puesto: http -> https (el desafío de Let's Encrypt queda exento en el API).
     $archivo = Join-Path $Carpeta 'appsettings.Production.local.json'
-    $j = Get-Content $archivo -Raw | ConvertFrom-Json
+    $j = [IO.File]::ReadAllText($archivo, [Text.Encoding]::UTF8) | ConvertFrom-Json
     if (-not $j.Hosting) { $j | Add-Member -NotePropertyName Hosting -NotePropertyValue ([pscustomobject]@{}) }
     if ($null -eq $j.Hosting.RedirectToHttps) { $j.Hosting | Add-Member -NotePropertyName RedirectToHttps -NotePropertyValue $true } else { $j.Hosting.RedirectToHttps = $true }
     [IO.File]::WriteAllText($archivo, ($j | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))

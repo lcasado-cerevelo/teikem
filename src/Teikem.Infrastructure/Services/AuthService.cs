@@ -659,11 +659,21 @@ public sealed partial class AuthService(
         return await db.UserMfaFactors.AsNoTracking().FirstOrDefaultAsync(f => f.UserId == userId && f.FactorTypeLookupId == typeId && f.IsActive && f.IsConfirmed, ct);
     }
 
+    /// <summary>
+    /// Descifra el secreto TOTP. Si la llave que lo cifró ya no existe (p. ej. se perdió al reiniciar el servidor), devuelve false en vez de
+    /// lanzar: el código de la app no sirve, pero un código de recuperación sí, y un administrador puede reiniciar el MFA.
+    /// </summary>
+    private bool TryUnprotectSecret(byte[] encrypted, out byte[] secret)
+    {
+        try { secret = _protector.Unprotect(encrypted); return true; }
+        catch (System.Security.Cryptography.CryptographicException) { secret = []; return false; }
+    }
+
     private async Task<bool> VerifyCodeAsync(ApplicationUser user, string? code, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(code)) return false;
         var factor = await ConfirmedTotpAsync(user.Id, ct);
-        if (factor?.SecretEnc is not null && TotpService.Verify(_protector.Unprotect(factor.SecretEnc), code)) return true;
+        if (factor?.SecretEnc is not null && TryUnprotectSecret(factor.SecretEnc, out var secret) && TotpService.Verify(secret, code)) return true;
         // Código de recuperación (un solo uso)
         var hash = TotpService.Hash(code.Trim().ToLowerInvariant());
         var rc = await db.MfaRecoveryCodes.FirstOrDefaultAsync(c => c.UserId == user.Id && c.CodeHash == hash && c.UsedAtUtc == null, ct);

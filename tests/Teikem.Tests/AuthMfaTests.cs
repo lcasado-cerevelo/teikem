@@ -182,6 +182,20 @@ public class AuthMfaTests
     }
 
     [Fact]
+    public async Task A_totp_secret_that_cannot_be_decrypted_is_an_invalid_code_not_a_server_error()
+    {
+        // 2026-10-01: la llave que cifró el secreto se perdió (reinicio de IIS sin llaves persistentes): antes era CryptographicException -> 500
+        // "Error interno"; ahora es "Código MFA inválido." (401) y los códigos de recuperación siguen sirviendo.
+        await using var f = await FixtureAsync();
+        f.Db.UserMfaFactors.Add(new UserMfaFactor { UserId = 1, FactorTypeLookupId = MfaFactorTypeTotpId(f), IsActive = true, IsConfirmed = true, SecretEnc = [1, 2, 3] });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var ex = await Assert.ThrowsAsync<UnauthorizedException>(() => f.Get<AuthService>().VerifyMfaAsync(1, WmsFixture.TenantId, null, new MfaVerifyRequest("123456", null), default));
+        Assert.Equal("Código MFA inválido.", ex.Message);
+    }
+
+    [Fact]
     public async Task RegenerateRecoveryCodes_replaces_the_old_ones_and_needs_a_confirmed_totp()
     {
         await using var f = await FixtureAsync();

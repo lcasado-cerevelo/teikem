@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +26,17 @@ public static class DependencyInjection
     public static IServiceCollection AddTeikemInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.AddMemoryCache();
-        services.AddDataProtection();
+        // Data Protection cifra el secreto del MFA y los enlaces de invitación. Sin configuración (desarrollo, pruebas) las llaves viven donde
+        // .NET decida; en un servidor (IIS) se pierden al reiniciar el sitio y NADA cifrado antes se puede volver a leer. Por eso el
+        // instalador define DataProtection:KeysPath (carpeta fija, llaves protegidas con DPAPI de la máquina en Windows).
+        var protection = services.AddDataProtection().SetApplicationName("Teikem");
+        var keysPath = config["DataProtection:KeysPath"];
+        if (!string.IsNullOrWhiteSpace(keysPath))
+        {
+            Directory.CreateDirectory(keysPath);
+            protection.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+            if (OperatingSystem.IsWindows()) protection.ProtectKeysWithDpapi(protectToLocalMachine: true);
+        }
 
         // Contexto de tenant (scoped, lo llena el middleware del API)
         services.AddScoped<TenantContext>();
