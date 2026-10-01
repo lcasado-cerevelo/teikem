@@ -24,8 +24,9 @@ Pedidos directos de Luis después del Lote 16. Commits: `b6ebfb0` (login directo
   orden **correo → contraseña → MFA**, para **usuarios nuevos y existentes**.
 - Administrador de plataforma: no se asigna desde Usuarios (escalada de permisos); queda el de la siembra
   (`Seed:Demo:PlatformAdminEmail`).
-- Rol **Operador de almacén** (2026-10-01): la plantilla toma los permisos que tenía en Advance Logistics (más ajustar y
-  administrar inventario, administrar almacenes y compras; sin conciliar COD) para todas las compañías al recrear. El rol
+- Rol **Operador de almacén** (2026-10-01): la plantilla toma los 18 permisos que tenía en Advance Logistics (más ajustar y
+  administrar inventario y administrar almacenes; sin conciliar COD, sin rutas y sin compras: no recibe contra orden de compra)
+  para todas las compañías al recrear. Los roles son por compañía: editar el de una compañía no cambia las otras. El rol
   propio "Warehouse" de la demo se deja perder. El smoke prueba los 403 de esos permisos con Solo lectura.
 
 ## Cómo se probó

@@ -540,8 +540,8 @@ trae una capacidad propia en este lote, `EDIT_TRIP`, denegada por defecto en `DI
 Todo el módulo vive bajo **LTL_GROUND** (núcleo); las zonas de despacho siguen bajo **CATALOG**, y los servicios de
 este capítulo que tocan chofer o vehículo exigen además **CATALOG** encendido. Plantillas de rol de fábrica:
 **Despachador** (`Dispatcher`) trae `trips.plan`, `trips.dispatch`, `trips.optimize`, `trips.view` y `trips.scan`;
-**Operador de almacén** (`WarehouseOperator`) trae `trips.view` y `trips.scan` (sin `trips.plan` ni
-`trips.dispatch`: no planifica ni despacha, solo consulta y escanea); **Solo lectura** (`ReadOnly`) trae solo
+**Operador de almacén** (`WarehouseOperator`) no trae ningún permiso `trips.*` desde 2026-10-01 (antes traía
+`trips.view` y `trips.scan`; Luis los quitó: el guarda no ve rutas ni escanea salidas); **Solo lectura** (`ReadOnly`) trae solo
 `trips.view`; **Chofer** (`Driver`) no trae ningún permiso `trips.*` (su acceso propio llega con la app del
 chofer, Lote 7).
 

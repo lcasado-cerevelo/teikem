@@ -114,22 +114,22 @@ public class TripCatalogTests
         var t = PermissionCatalog.RoleTemplates;
         Assert.Contains(PermissionCatalog.TripsView, t["Dispatcher"]);
         Assert.Contains(PermissionCatalog.TripsScan, t["Dispatcher"]);
-        Assert.Contains(PermissionCatalog.TripsView, t["WarehouseOperator"]);
-        Assert.Contains(PermissionCatalog.TripsScan, t["WarehouseOperator"]);
-        Assert.DoesNotContain(PermissionCatalog.TripsPlan, t["WarehouseOperator"]);
+        // 2026-10-01 (Luis): el Operador de almacén ya no trae nada de rutas.
+        Assert.DoesNotContain(t["WarehouseOperator"], c => c.StartsWith("trips.", StringComparison.Ordinal));
         Assert.Equal(new[] { "trips.view" }, t["ReadOnly"].Where(c => c.StartsWith("trips.", StringComparison.Ordinal)).ToArray());
         Assert.DoesNotContain(t["Driver"], c => c.StartsWith("trips.", StringComparison.Ordinal));
         Assert.Contains(PermissionCatalog.TripsView, t["TenantAdmin"]);
         Assert.Contains(PermissionCatalog.TripsScan, t["TenantAdmin"]);
 
         // Espejo en #RP del seed.
-        foreach (var (role, code) in new[] { ("Dispatcher", "trips.view"), ("Dispatcher", "trips.scan"), ("WarehouseOperator", "trips.view"),
-                     ("WarehouseOperator", "trips.scan"), ("ReadOnly", "trips.view") })
+        foreach (var (role, code) in new[] { ("Dispatcher", "trips.view"), ("Dispatcher", "trips.scan"), ("ReadOnly", "trips.view") })
             Assert.Contains($"('{role}','{code}')", Seed.Value);
+        Assert.DoesNotContain("('WarehouseOperator','trips.", Seed.Value);
 
         // Propagación a roles clonados.
         var newCodes = new HashSet<string> { "trips.view", "trips.scan" };
-        Assert.Equal(new[] { "trips.view", "trips.scan" }, PermissionCatalog.CodesToPropagate("WarehouseOperator", newCodes, new HashSet<string>()));
+        Assert.Equal(new[] { "trips.view", "trips.scan" }, PermissionCatalog.CodesToPropagate("Dispatcher", newCodes, new HashSet<string>()));
+        Assert.Empty(PermissionCatalog.CodesToPropagate("WarehouseOperator", newCodes, new HashSet<string>()));
         Assert.Equal(new[] { "trips.view" }, PermissionCatalog.CodesToPropagate("ReadOnly", newCodes, new HashSet<string>()));
         Assert.Empty(PermissionCatalog.CodesToPropagate("Driver", newCodes, new HashSet<string>()));
     }

@@ -2045,7 +2045,7 @@ expect 200 "$(req GET /api/v1/me '' "$T2")" | jq -e '.permissions as $p | ["trip
 expect 200 "$(req GET /api/v1/me '' "$TREAD")" | jq -e '(.permissions | index("trips.view")) != null and (.permissions | index("trips.plan")) == null and (.permissions | index("trips.scan")) == null' >/dev/null || fail "Solo lectura: trips.view sí, trips.plan/scan no"
 expect 200 "$(req POST /api/v1/users "{\"email\":\"bodega$TS@teikem.local\",\"fullName\":\"Operador de almacén $TS\",\"password\":\"$PASS\",\"roles\":[\"WarehouseOperator\"]}")" >/dev/null
 TWH=$(login "bodega$TS@teikem.local" "$PASS")
-expect 200 "$(req GET /api/v1/me '' "$TWH")" | jq -e '(.permissions | index("trips.view")) != null and (.permissions | index("trips.scan")) != null and (.permissions | index("trips.plan")) == null' >/dev/null || fail "Operador de almacén: trips.view y trips.scan sin trips.plan"
+expect 200 "$(req GET /api/v1/me '' "$TWH")" | jq -e '([.permissions[] | select(startswith("trips.") or startswith("purchasing."))] | length) == 0' >/dev/null || fail "Operador de almacén (2026-10-01): sin permisos de rutas ni compras"
 for D in TripStatus RouteStatus RouteStopStatus OptimizationRunStatus; do expect 200 "$(req GET "/api/v1/status/$D")" | jq -e 'length >= 3' >/dev/null || fail "pipeline $D"; done
 expect 200 "$(req GET /api/v1/catalogs/OptimizerEngine)" | jq -e 'any(.[]; .code=="HEURISTIC")' >/dev/null || fail "motor HEURISTIC sembrado"
 expect 200 "$(req GET /api/v1/status/capabilities/TRIP)" | jq -e 'any(.[]; .capability=="EDIT_TRIP" and .statusCode=="DISPATCHED" and .isAllowed==false)' >/dev/null || fail "EDIT_TRIP negada en DISPATCHED"
@@ -2313,7 +2313,8 @@ expect 200 "$(scan "$(pb "$ON1")")" | jq -e '.outcome=="FOUND_UNASSIGNED" and .r
 OB5=$(mko "$L2")
 expect 200 "$(scan "$(num "$OB5")")" | jq -e --arg t "$TR2_CODE" '.outcome=="FOUND_ASSIGNED" and .matchedBy=="ORDER_NUMBER" and .tripCode==$t' >/dev/null || fail "por número de orden"
 OZ4=$(mko "$L4")
-expect 200 "$(scan "$(pb "$OZ4")" "$TWH")" | jq -e --arg t "$(trip "$TR4Z" | jq -r .code)" '.outcome=="FOUND_ASSIGNED" and .tripCode==$t' >/dev/null || fail "orden de Z4 → la ruta vacía de 'Planificar el día' (Operador de almacén)"
+expect 200 "$(scan "$(pb "$OZ4")" "$T2")" | jq -e --arg t "$(trip "$TR4Z" | jq -r .code)" '.outcome=="FOUND_ASSIGNED" and .tripCode==$t' >/dev/null || fail "orden de Z4 → la ruta vacía de 'Planificar el día' (despachador)"
+expect 403 "$(scan "$(pb "$OZ4")" "$TWH")" >/dev/null || fail "el Operador de almacén ya no escanea rutas (2026-10-01)"
 expect 400 "$(scan "")" | jq -e --arg m "Escanee o escriba un código." "$HASM" >/dev/null || fail "código vacío"
 expect 403 "$(scan "$(pb "$OA5")" "$TREAD")" >/dev/null
 for i in 0 1 2 3 4 5 6 7; do scan "${OC_PB[$i]}" > "$TMPT/s$i" & done
@@ -2510,7 +2511,7 @@ expect 403 "$(loc5 "$TRP" "$(trip "$TRP" | jq -r '.stops[0].id')" '{"lat":18.4,"
 expect 403 "$(req GET "/api/v1/trips?date=$TODAY" '' "$TBILL")" >/dev/null
 expect 403 "$(req GET "/api/v1/trips?date=$TODAY" '' "$T7")" >/dev/null
 expect 403 "$(tpost '{}' "$TWH")" >/dev/null
-expect 200 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1" '' "$TWH")" >/dev/null
+expect 403 "$(req GET "/api/v1/trips/unassigned-orders?dispatchZoneId=$Z1" '' "$TWH")" >/dev/null   # 2026-10-01: el Operador no ve rutas
 TT2=$(pid "$(expect 200 "$(tpost '{}' "$T2")")"); expect 204 "$(req DELETE "/api/v1/trips/$TT2" '' "$T2")" >/dev/null
 expect 200 "$(req PATCH "/api/v1/trips/$TRP" "{\"vehiclePublicId\":\"$V2\"}" "$T2")" >/dev/null
 expect 200 "$(req POST "/api/v1/trips/$TRP/optimize" '{}' "$T2")" >/dev/null

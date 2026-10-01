@@ -236,9 +236,11 @@ Qué hace: un rol agrupa permisos; asignar el rol a un usuario le da todos esos 
 sistema clonables (`TenantAdmin`, `Dispatcher`, `Billing`, `WarehouseOperator`, `Driver`, `ReadOnly`) que se
 copian al aprovisionar un tenant.
 
-Desde 2026-10-01 la plantilla **Operador de almacén** (`WarehouseOperator`) incluye `inventory.adjust`, `inventory.manage`,
-`warehouse.manage` y `purchasing.manage` (ajustar y administrar inventario, administrar almacenes y compras) y ya **no**
-incluye `cod.reconcile`: así lo tenía configurado Luis en Advance Logistics y así queda para toda compañía nueva o recreada.
+Desde 2026-10-01 la plantilla **Operador de almacén** (`WarehouseOperator`, 18 permisos) incluye `inventory.adjust`,
+`inventory.manage` y `warehouse.manage` (ajustar y administrar inventario, administrar almacenes) y ya **no** incluye
+`cod.reconcile`, ni permisos de rutas (`trips.*`: no ve rutas, el Monitoreo de ruta ni la Estación de escaneo, ni sus indicadores)
+ni de compras (`purchasing.*`: no ve órdenes de compra ni recibe contra ellas; sí recibe sin orden). Así lo dejó Luis en Advance
+Logistics y así queda para toda compañía nueva o recreada.
 Las compañías existentes no cambian solas (la propagación de permisos solo agrega códigos nuevos de la plataforma).
 
 Quién puede: ver roles, cualquier autenticado (`GET /api/v1/roles?includeTemplates=`); crear, `admin.roles`;
