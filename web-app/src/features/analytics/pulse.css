@@ -146,8 +146,9 @@
 .pulse .inbox-ft{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:10px 16px;border-top:1px solid var(--line-2)}
 @media(max-width:480px){.pulse .work{flex-wrap:wrap;gap:10px 12px;padding:12px}.pulse .work .tx{flex:1 1 calc(100% - 46px)}.pulse .work>.btn{margin-left:46px}.pulse .inbox .ih,.pulse .inbox-ft{padding-left:12px;padding-right:12px}}
 
-/* Indicadores: 5 por fila del mismo ancho (4 tubos de 30 px entre ellos); la última fila conserva el ancho (2026-10-01). */
-@media(min-width:981px){.pulse .river.river-5{flex-wrap:nowrap}.pulse .river.river-5 .node{flex:0 0 calc((100% - 120px) / 5)}}
+/* Indicadores: máximo 5 por fila; las tarjetas de cada fila se reparten TODO el ancho a partes iguales (una fila de 2 o de 1 no
+   deja espacio en blanco). 2026-10-01. */
+@media(min-width:981px){.pulse .river.river-5{flex-wrap:nowrap}.pulse .river.river-5 .node{flex:1 1 0}}
 .pulse .river.river-5+.river.river-5{margin-top:10px}
 @media(prefers-reduced-motion:reduce){.pulse .pipe::after{animation:none}.pulse .node:hover{transform:none}}
 /* bajo 980 px el río envuelve sin tuberías (tres por fila); a 480 px, una columna */
