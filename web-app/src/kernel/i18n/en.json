@@ -42,6 +42,8 @@
       "enrollScan": "Add this key to your authenticator app and enter the code it shows.",
       "secretLabel": "Key for manual entry:",
       "openInApp": "Open in authenticator app",
+      "qrHelp": "Scan this code with your authenticator app (Google Authenticator, Microsoft Authenticator…) or type the key below.",
+      "qrAlt": "QR code for the authenticator app",
       "confirm": "Confirm",
       "recoveryTitle": "Save your recovery codes",
       "recoverySubtitle": "Each code works once if you lose your phone. They will not be shown again.",

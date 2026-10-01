@@ -173,6 +173,8 @@ describe('MfaTab', () => {
     await user.click(screen.getByRole('button', { name: 'Activar' }))
     expect(await screen.findByTestId('mfa-secret')).toHaveTextContent(ENROLL.secret)
     expect(screen.getByTestId('mfa-uri')).toHaveTextContent(ENROLL.otpAuthUri)
+    // QR del enlace otpauth (generado en el navegador) para escanear con la app de autenticación
+    expect(screen.getByRole('img', { name: 'Código QR para la app de autenticación' })).toHaveAttribute('src', expect.stringMatching(/^data:image\/svg\+xml/))
 
     await user.type(screen.getByLabelText(/Código de verificación/), '123456')
     await user.click(screen.getByRole('button', { name: 'Confirmar y activar' }))

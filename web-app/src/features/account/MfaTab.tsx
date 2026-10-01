@@ -9,6 +9,7 @@ import { useT } from '../../kernel/i18n/useT'
 import { Chip, Field, Form, Panel, TextInput, toast } from '../../kernel/ui'
 import { useConfirmTotp, useDisableTotp, useEnrollTotp, type MfaEnrollResultDto } from './api'
 import { IconShield } from '../../kernel/ui/actionIcons'
+import { QrCode } from '../../kernel/ui/QrCode'
 
 type Step = { kind: 'idle' } | { kind: 'enrolling'; enroll: MfaEnrollResultDto } | { kind: 'recovery'; codes: string[] }
 
@@ -111,6 +112,12 @@ export function MfaTab() {
     const { secret, otpAuthUri } = step.enroll
     return (
       <Panel icon={<IconShield />} title={t('account.mfa.enrollTitle')} subtitle={t('account.mfa.enrollSubtitle')} className="acct-narrow">
+        {otpAuthUri && (
+          <div className="qr-box">
+            <QrCode value={otpAuthUri} label={t('auth.mfa.qrAlt')} />
+            <p className="subtle">{t('auth.mfa.qrHelp')}</p>
+          </div>
+        )}
         <p className="subtle" style={{ marginBottom: 4 }}>
           {t('account.mfa.secretLabel')}
         </p>

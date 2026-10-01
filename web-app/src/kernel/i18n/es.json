@@ -42,6 +42,8 @@
       "enrollScan": "Agregue esta clave en su app de autenticación y escriba el código que le muestre.",
       "secretLabel": "Clave para ingresar a mano:",
       "openInApp": "Abrir en la app de autenticación",
+      "qrHelp": "Escanee este código con su app de autenticación (Google Authenticator, Microsoft Authenticator…) o escriba la clave de abajo.",
+      "qrAlt": "Código QR para la app de autenticación",
       "confirm": "Confirmar",
       "recoveryTitle": "Guarde sus códigos de recuperación",
       "recoverySubtitle": "Cada código sirve una sola vez si pierde el teléfono. No se volverán a mostrar.",

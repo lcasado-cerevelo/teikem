@@ -10,6 +10,7 @@ import {
 } from '../../kernel/auth/auth'
 import { getMfaChallenge } from '../../kernel/auth/tokens'
 import { useT } from '../../kernel/i18n/useT'
+import { QrCode } from '../../kernel/ui/QrCode'
 import { AuthLayout } from './AuthLayout'
 import { safeNext } from './next'
 
@@ -119,6 +120,12 @@ export default function MfaPage() {
     return (
       <AuthLayout title={t('auth.mfa.enrollTitle')} subtitle={t('auth.mfa.enrollScan')}>
         {alert}
+        {enroll.otpAuthUri && (
+          <div className="qr-box">
+            <QrCode value={enroll.otpAuthUri} label={t('auth.mfa.qrAlt')} />
+            <p className="subtle">{t('auth.mfa.qrHelp')}</p>
+          </div>
+        )}
         <p className="subtle">{t('auth.mfa.secretLabel')}</p>
         <div className="secret" data-testid="mfa-secret">
           {enroll.secret}
