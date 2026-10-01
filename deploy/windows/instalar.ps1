@@ -25,6 +25,14 @@ function Preguntar([string]$texto, [string]$defecto = '') {
     if ($defecto) { $r = Read-Host "$texto [$defecto]"; if ([string]::IsNullOrWhiteSpace($r)) { return $defecto } else { return $r.Trim() } }
     return (Read-Host $texto).Trim()
 }
+# icacls devuelve error (código distinto de 0) si una cuenta no existe; en PowerShell 5.1 la salida de error de un programa nativo
+# abortaría el script, así que se ejecuta aparte y se mira solo el código de salida.
+function Permisos([string[]]$argumentos) {
+    $anterior = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    & icacls @argumentos 2>&1 | Out-Null
+    $ErrorActionPreference = $anterior
+    return ($LASTEXITCODE -eq 0)
+}
 function Texto-Seguro($seguro) { [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro)) }
 
 $origen = Join-Path $PSScriptRoot 'app'
@@ -105,6 +113,14 @@ if ($escribirCfg) {
     if (-not $dominio) { $dominio = Preguntar 'Dominio de la web' 'teikem.advancelogisticspr.com' }
 }
 
+# --------------------------------------------------------------------------------------------------------- grupo de aplicaciones
+Paso 'Grupo de aplicaciones de IIS'
+if (-not (Test-Path "IIS:\AppPools\$Sitio")) { New-WebAppPool -Name $Sitio | Out-Null }
+Set-ItemProperty "IIS:\AppPools\$Sitio" managedRuntimeVersion ''
+Set-ItemProperty "IIS:\AppPools\$Sitio" startMode AlwaysRunning                       # el API tiene procesos en segundo plano
+Set-ItemProperty "IIS:\AppPools\$Sitio" processModel.idleTimeout ([TimeSpan]::Zero)   # que IIS no lo duerma por inactividad
+Ok "Grupo de aplicaciones '$Sitio' listo."
+
 # --------------------------------------------------------------------------------------------------------- copiar archivos
 Paso "Instalando en $Carpeta"
 New-Item -ItemType Directory -Force $Carpeta | Out-Null
@@ -122,15 +138,15 @@ if ($escribirCfg) {
     [IO.File]::WriteAllText($cfgArchivo, $json, (New-Object Text.UTF8Encoding $false))
 }
 # Solo Administradores, SYSTEM y el grupo de aplicaciones leen la configuración (trae la contraseña de la base).
-icacls $cfgArchivo /inheritance:r /grant:r '*S-1-5-32-544:F' '*S-1-5-18:F' "IIS AppPool\${Sitio}:R" 2>&1 | Out-Null
+if (-not (Permisos @($cfgArchivo, '/inheritance:r', '/grant:r', '*S-1-5-32-544:F', '/grant:r', '*S-1-5-18:F', '/grant:r', "IIS AppPool\${Sitio}:R"))) {
+    Fallar "No pude restringir los permisos de $cfgArchivo (trae la contraseña de la base). Revise que exista el grupo de aplicaciones '$Sitio'."
+}
 
 # --------------------------------------------------------------------------------------------------------- IIS
 Paso 'Configurando IIS'
-if (-not (Test-Path "IIS:\AppPools\$Sitio")) { New-WebAppPool -Name $Sitio | Out-Null }
-Set-ItemProperty "IIS:\AppPools\$Sitio" managedRuntimeVersion ''
-Set-ItemProperty "IIS:\AppPools\$Sitio" startMode AlwaysRunning                       # el API tiene procesos en segundo plano
-Set-ItemProperty "IIS:\AppPools\$Sitio" processModel.idleTimeout ([TimeSpan]::Zero)   # que IIS no lo duerma por inactividad
-icacls $Carpeta /grant "IIS AppPool\${Sitio}:(OI)(CI)RX" /T /Q 2>&1 | Out-Null
+if (-not (Permisos @($Carpeta, '/grant', "IIS AppPool\${Sitio}:(OI)(CI)RX", '/T', '/Q'))) {
+    Fallar "No pude dar permiso de lectura a 'IIS AppPool\$Sitio' sobre $Carpeta."
+}
 
 if (-not (Get-Website -Name $Sitio -ErrorAction SilentlyContinue)) {
     New-Website -Name $Sitio -PhysicalPath $Carpeta -ApplicationPool $Sitio -HostHeader $dominio -Port 80 | Out-Null
