@@ -271,6 +271,12 @@ Quién puede: todo este bloque exige `admin.users`; cambiar roles y permisos ext
 
 Cómo se usa:
 - `GET /api/v1/users`, `GET /api/v1/users/{id}`
+- `GET /api/v1/users/assignable-companies` (2026-10-01) → `[{ tenantId, name }]`: otras compañías activas a las que quien crea el
+  usuario puede agregarlo (miembro activo con `admin.users` allí; el administrador de plataforma, todas).
+- `POST /api/v1/users` acepta además `alsoTenantIds: [..]`: agrega a la persona a esas compañías con una membresía
+  (no predeterminada) y los mismos roles **por nombre** que `roles`. Se valida todo antes de crear nada: 403
+  `No puede agregar usuarios a esa compañía.` y 400 `En {compañía} no existen los roles: {roles}.`. La respuesta trae
+  `alsoAddedTo` y `alreadyMemberOf` (nombres; de las que ya era miembro no se toca nada).
 - `POST /api/v1/users` `{ "email": "...", "fullName": "...", "roles": ["Dispatcher"] }` → respuesta incluye
   `temporaryPassword` si no se envió `password`.
   Lote 8A: `/api/v1/users` (y sus subrutas) queda **fuera** de la idempotencia (`Idempotency-Key` se ignora): la

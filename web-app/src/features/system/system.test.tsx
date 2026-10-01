@@ -324,6 +324,48 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     await user.click(screen.getByRole('button', { name: 'Listo' }))
     expect(screen.queryByText('Tq7mPz2Rk')).toBeNull()
   })
+
+  it('"Nuevo usuario": elegir otras compañías manda alsoTenantIds y avisa a cuáles se agregó (2026-10-01)', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/users') return USERS
+      if (method === 'GET' && url.pathname === '/api/v1/roles') return [ROLE]
+      if (method === 'GET' && url.pathname === '/api/v1/permissions') return PERMISSIONS
+      if (method === 'GET' && url.pathname === '/api/v1/users/assignable-companies')
+        return [{ tenantId: 2, name: 'Advance Depot' }, { tenantId: 3, name: 'Advance Solutions' }]
+      if (method === 'POST' && url.pathname === '/api/v1/users')
+        return { user: { ...USERS[0], id: 3, fullName: 'Nueva Persona', email: 'nueva@advance.test' }, temporaryPassword: 'Tq7mPz2Rk', alsoAddedTo: ['Advance Solutions'], alreadyMemberOf: [] }
+      return undefined
+    }) satisfies Handler
+    wrap(<UsersPage />, { permissions: ['admin.users'] })
+
+    await user.click(await screen.findByRole('button', { name: 'Nuevo usuario' }))
+    await user.type(await screen.findByLabelText(/^Correo electrónico/), 'nueva@advance.test')
+    await user.click(await screen.findByLabelText('También agregar a estas compañías'))
+    await user.click(screen.getByLabelText('Advance Solutions'))
+    await user.click(screen.getByLabelText(/^Correo electrónico/))   // clic afuera cierra la lista (Esc cerraría también el modal)
+    await user.click(screen.getByRole('button', { name: 'Guardar' }))
+
+    expect(await screen.findByText('Tq7mPz2Rk')).toBeInTheDocument()
+    expect(screen.getByText('También agregado a: Advance Solutions.')).toBeInTheDocument()
+    const post = mock.calls.find((c) => c.method === 'POST' && c.path === '/api/v1/users')
+    expect(post?.body).toMatchObject({ email: 'nueva@advance.test', alsoTenantIds: [3] })
+  })
+
+  it('"Nuevo usuario": sin otras compañías disponibles no se muestra el selector', async () => {
+    const user = userEvent.setup()
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/users') return USERS
+      if (method === 'GET' && url.pathname === '/api/v1/roles') return [ROLE]
+      if (method === 'GET' && url.pathname === '/api/v1/permissions') return PERMISSIONS
+      if (method === 'GET' && url.pathname === '/api/v1/users/assignable-companies') return []
+      return undefined
+    }) satisfies Handler
+    wrap(<UsersPage />, { permissions: ['admin.users'] })
+    await user.click(await screen.findByRole('button', { name: 'Nuevo usuario' }))
+    await screen.findByLabelText(/^Correo electrónico/)
+    expect(screen.queryByTestId('also-companies')).toBeNull()
+  })
 })
 
 describe('PinModal — coincidencia en cliente y mensaje del API', () => {

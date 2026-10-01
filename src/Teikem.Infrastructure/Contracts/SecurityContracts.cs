@@ -7,11 +7,16 @@ public sealed record RoleUpsertRequest(string Name, IDictionary<string, string>?
 /// <summary>HasPin (Lote 8A): el usuario tiene PIN para los aparatos de almacén en la compañía activa.</summary>
 public sealed record UserSummaryDto(int Id, string? FullName, string? Email, string? UserKind, bool IsActive, string MembershipStatus, bool MfaEnabled, DateTime? LastLoginUtc, IReadOnlyList<string> Roles, IReadOnlyList<string> ExtraPermissions, bool IsPlatformAdmin,
     bool HasPin = false, bool MfaRequired = false);
-public sealed record UserCreateRequest(string Email, string FullName, string? Password, IList<string>? Roles, string? UserKind);
+/// <remarks>2026-10-01: AlsoTenantIds = otras compañías (de GET /users/assignable-companies) a las que se agrega también al usuario,
+/// con los mismos roles por nombre en cada una.</remarks>
+public sealed record UserCreateRequest(string Email, string FullName, string? Password, IList<string>? Roles, string? UserKind, IList<int>? AlsoTenantIds = null);
+/// <summary>Compañía distinta de la activa a la que quien crea el usuario puede agregarlo (administra usuarios allí).</summary>
+public sealed record AssignableCompanyDto(int TenantId, string Name);
 public sealed record UserUpdateRequest(string? FullName, bool? IsActive);
 /// <summary>Respuesta del alta de usuario. `TemporaryPassword` solo viene con valor cuando no se mandó `Password`
 /// (se generó una); se muestra una sola vez — el servidor no la vuelve a devolver en ninguna otra respuesta.</summary>
-public sealed record UserCreateResponseDto(UserSummaryDto User, string? TemporaryPassword);
+/// <remarks>AlsoAddedTo / AlreadyMemberOf: nombres de las compañías extra a las que se agregó y de las que ya era miembro (no se tocan).</remarks>
+public sealed record UserCreateResponseDto(UserSummaryDto User, string? TemporaryPassword, IReadOnlyList<string>? AlsoAddedTo = null, IReadOnlyList<string>? AlreadyMemberOf = null);
 public sealed record UserRolesRequest(IList<string> Roles);
 public sealed record UserExtraPermissionsRequest(IList<string> Permissions);
 public sealed record MembershipStatusRequest(string Status);

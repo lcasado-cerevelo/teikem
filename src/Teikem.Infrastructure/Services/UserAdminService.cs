@@ -39,8 +39,41 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
     public async Task<UserSummaryDto> GetUserAsync(int userId, CancellationToken ct)
         => (await GetUsersAsync(ct)).FirstOrDefault(u => u.Id == userId) ?? throw new NotFoundException("Usuario", userId);
 
+    public const string CompanyNotAssignableMessage = "No puede agregar usuarios a esa compañía.";
+
+    /// <summary>
+    /// 2026-10-01: compañías, distintas de la activa, a las que quien está creando un usuario puede agregarlo: aquellas donde es
+    /// miembro activo con admin.users (el administrador de plataforma: todas las activas). Ordenadas por nombre.
+    /// </summary>
+    public async Task<IReadOnlyList<AssignableCompanyDto>> GetAssignableCompaniesAsync(CancellationToken ct)
+    {
+        var tenantId = ((TenantContext)tenant).RequireTenantId();
+        var actorId = ((TenantContext)tenant).RequireUserId();
+        var active = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive && t.TenantId != tenantId).OrderBy(t => t.Name)
+            .Select(t => new AssignableCompanyDto(t.TenantId, t.Name)).ToListAsync(ct);
+        if (tenant.IsPlatformAdmin) return active;
+        var activeStatusId = await ActiveMembershipStatusIdAsync(ct);
+        var memberOf = await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
+            .Where(m => m.UserId == actorId && m.StatusCodeId == activeStatusId).Select(m => m.TenantId).ToListAsync(ct);
+        var result = new List<AssignableCompanyDto>();
+        foreach (var c in active.Where(c => memberOf.Contains(c.TenantId)))
+            if ((await permissions.GetEffectivePermissionsAsync(actorId, c.TenantId, ct)).Contains(PermissionCatalog.AdminUsers)) result.Add(c);
+        return result;
+    }
+
+    private async Task<int> ActiveMembershipStatusIdAsync(CancellationToken ct)
+        => await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct)
+           ?? throw new NotFoundException($"Estatus {StatusDomains.MembershipStatus}", MembershipStatuses.Active);
+
     /// <summary>Alta por invitación: sin contraseña se genera una temporal (el flujo real manda un enlace de un solo uso).</summary>
     public async Task<(UserSummaryDto User, string? TemporaryPassword)> CreateUserAsync(UserCreateRequest req, CancellationToken ct)
+    {
+        var r = await CreateUserCoreAsync(req, ct);
+        return (r.User, r.TemporaryPassword);
+    }
+
+    /// <summary>Alta con el detalle de las compañías extra (AlsoTenantIds): todo se valida antes de crear nada.</summary>
+    public async Task<UserCreateResponseDto> CreateUserCoreAsync(UserCreateRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (string.IsNullOrWhiteSpace(req.Email)) throw new ValidationException("email", "El correo es obligatorio.");
@@ -48,6 +81,24 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         if (kindCode == UserKinds.Portal) throw new ValidationException("userKind", "Los usuarios de portal se administran desde el expediente del cliente (Lote 2).");
         var kindId = await lookups.GetIdAsync(LookupDomains.UserKind, kindCode, ct);
         var activeId = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.MembershipStatus && s.InternalCode == MembershipStatuses.Active).Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct) ?? throw new NotFoundException($"Estatus {StatusDomains.MembershipStatus}", MembershipStatuses.Active);
+
+        // Compañías extra: se validan TODAS (acceso de quien crea y existencia de los roles por nombre) antes de crear nada.
+        var extraIds = (req.AlsoTenantIds ?? new List<int>()).Where(id => id != tenantId).Distinct().ToList();
+        var extras = new List<(int TenantId, string Name, List<Role> Roles)>();
+        if (extraIds.Count > 0)
+        {
+            var allowed = (await GetAssignableCompaniesAsync(ct)).ToDictionary(c => c.TenantId);
+            var wanted = new HashSet<string>(req.Roles ?? new List<string>(), StringComparer.OrdinalIgnoreCase);
+            foreach (var id in extraIds)
+            {
+                if (!allowed.TryGetValue(id, out var company)) throw new ForbiddenException(CompanyNotAssignableMessage);
+                var roles = wanted.Count == 0 ? new List<Role>()
+                    : await db.AppRoles.IgnoreQueryFilters().Where(r => r.TenantId == id && r.IsActive && wanted.Contains(r.Name)).ToListAsync(ct);
+                var missing = wanted.Except(roles.Select(r => r.Name), StringComparer.OrdinalIgnoreCase).ToList();
+                if (missing.Count > 0) throw new ValidationException("alsoTenantIds", $"En {company.Name} no existen los roles: {string.Join(", ", missing)}.");
+                extras.Add((id, company.Name, roles));
+            }
+        }
 
         var user = await users.FindByEmailAsync(req.Email.Trim());
         string? temp = null;
@@ -73,7 +124,21 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         await db.SaveChangesAsync(ct);
         if (req.Roles is { Count: > 0 }) await SetRolesAsync(user.Id, new UserRolesRequest(req.Roles), ct);
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, tenantId, new { action = "user_created", user = user.Id }, ct);
-        return (await GetUserAsync(user.Id, ct), temp);
+
+        // Compañías extra: misma persona, una membresía (y los mismos roles por nombre) en cada una. Si ya es miembro no se toca.
+        var added = new List<string>();
+        var already = new List<string>();
+        foreach (var (extraId, extraName, extraRoles) in extras)
+        {
+            if (await db.UserTenants.IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id && m.TenantId == extraId, ct)) { already.Add(extraName); continue; }
+            db.UserTenants.Add(new UserTenant { UserId = user.Id, TenantId = extraId, StatusCodeId = activeId, IsDefault = false, InvitedBy = tenant.UserId, JoinedAtUtc = DateTime.UtcNow });
+            foreach (var r in extraRoles) db.AppUserRoles.Add(new UserRole { UserId = user.Id, RoleId = r.RoleId, TenantId = extraId, GrantedBy = tenant.UserId });
+            await db.SaveChangesAsync(ct);
+            permissions.Invalidate(user.Id, extraId);
+            await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, extraId, new { action = "user_created", user = user.Id, from = tenantId, roles = extraRoles.Select(r => r.Name) }, ct);
+            added.Add(extraName);
+        }
+        return new UserCreateResponseDto(await GetUserAsync(user.Id, ct), temp, added, already);
     }
 
     /// <summary>

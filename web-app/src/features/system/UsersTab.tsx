@@ -42,6 +42,7 @@ import { copyCode } from './EnrollCodeModal'
 import { PinModal } from './PinModal'
 import {
   useCloseUserSessions,
+  useAssignableCompanies,
   useCreateUser,
   useResetUserMfa,
   useRoles,
@@ -119,6 +120,10 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
   const t = useT()
   const create = useCreateUser()
   const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  // 2026-10-01: otras compañías a las que se agrega también (mismos roles por nombre en cada una).
+  const { data: companies = [] } = useAssignableCompanies(open)
+  const [alsoCompanies, setAlsoCompanies] = useState<string[]>([])
+  const [addedNote, setAddedNote] = useState<string | null>(null)
   // Se muestra una sola vez, justo después del alta: el servidor no la vuelve a devolver en ninguna otra respuesta.
   const [tempPassword, setTempPassword] = useState<string | null>(null)
   const schema = useMemo(
@@ -138,6 +143,8 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
   const close = () => {
     form.reset()
     setSelectedRoles([])
+    setAlsoCompanies([])
+    setAddedNote(null)
     setTempPassword(null)
     onClose()
   }
@@ -155,6 +162,7 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
           </button>
         }
       >
+        {addedNote && <p className="note">{addedNote}</p>}
         <p className="help">{t('system.users.users.tempPasswordHint')}</p>
         <div className="secret" style={{ fontSize: 22, fontWeight: 700, letterSpacing: '.08em', textAlign: 'center' }}>
           {tempPassword}
@@ -199,10 +207,22 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
             password: v.password || null,
             roles: selectedRoles,
             userKind: 'INTERNAL',
+            alsoTenantIds: alsoCompanies.map(Number),
           })
           toast.success(t('system.users.users.created'))
-          if (res.temporaryPassword) setTempPassword(res.temporaryPassword)
-          else close()
+          const added = res.alsoAddedTo ?? []
+          const already = res.alreadyMemberOf ?? []
+          const note = [
+            added.length ? t('system.users.users.alsoAdded', { companies: added.join(', ') }) : '',
+            already.length ? t('system.users.users.alsoAlready', { companies: already.join(', ') }) : '',
+          ].filter(Boolean).join(' ')
+          if (res.temporaryPassword) {
+            setAddedNote(note || null)
+            setTempPassword(res.temporaryPassword)
+          } else {
+            if (note) toast.info(note)
+            close()
+          }
         }}
       >
         <Field name="userKind" label={t('system.users.users.kind')}>
@@ -222,9 +242,22 @@ function CreateUserModal({ open, roleNames, onClose }: { open: boolean; roleName
               <TextInput type="password" autoComplete="new-password" />
             </Field>
             <div className="f">
-              <label>{t('system.users.roles.title')}</label>
-              <SearchMultiSelect options={roleNames.map((r) => ({ value: r, label: r }))} value={selectedRoles} onChange={setSelectedRoles} />
+              <label id="user-create-roles-lbl" htmlFor="user-create-roles">{t('system.users.roles.title')}</label>
+              <SearchMultiSelect id="user-create-roles" labelledBy="user-create-roles-lbl" options={roleNames.map((r) => ({ value: r, label: r }))} value={selectedRoles} onChange={setSelectedRoles} />
             </div>
+            {companies.length > 0 && (
+              <div className="f" data-testid="also-companies">
+                <label id="user-create-also-lbl" htmlFor="user-create-also">{t('system.users.users.alsoCompanies')}</label>
+                <SearchMultiSelect
+                  id="user-create-also"
+                  labelledBy="user-create-also-lbl"
+                  options={companies.map((c) => ({ value: String(c.tenantId), label: c.name ?? '' }))}
+                  value={alsoCompanies}
+                  onChange={setAlsoCompanies}
+                />
+                <p className="help">{t('system.users.users.alsoCompaniesHelp')}</p>
+              </div>
+            )}
           </>
         )}
       </Form>

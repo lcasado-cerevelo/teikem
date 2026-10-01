@@ -77,6 +77,15 @@ export function useUsers() {
   return useQuery({ queryKey: USERS_KEY, queryFn: () => unwrap(api.GET('/api/v1/users')) })
 }
 
+/** 2026-10-01: otras compañías a las que quien crea el usuario puede agregarlo (`GET /users/assignable-companies`). */
+export function useAssignableCompanies(enabled = true) {
+  return useQuery({
+    queryKey: ['users', 'assignable-companies'],
+    queryFn: () => unwrap(api.GET('/api/v1/users/assignable-companies')),
+    enabled,
+  })
+}
+
 export function useCreateUser() {
   const qc = useQueryClient()
   return useMutation({

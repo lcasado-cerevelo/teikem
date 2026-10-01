@@ -1707,6 +1707,15 @@ El teléfono ya tiene un registro en la compañía de ese código (un teléfono 
 vez en cada una). El código no se gastó. Si quería trabajar en esa compañía, use el registro que ya tiene: en "¿Quién
 eres?" elija esa compañía. Si quería otra compañía, pida el código al administrador de esa otra compañía.
 
+**¿Cómo agrego a una persona a varias compañías al crearla?**
+En Sistema → Roles y usuarios → "Nuevo usuario", marque las compañías en "También agregar a estas compañías" (solo salen aquellas
+donde usted administra usuarios). Recibe los mismos roles, por nombre, en cada una. Si falta un rol en alguna compañía sale
+`En {compañía} no existen los roles: {roles}.` (400) y no se crea en ninguna: cree el rol en esa compañía o cambie los roles.
+
+**¿Qué significa "No puede agregar usuarios a esa compañía." (403)?**
+Usted no administra usuarios (`admin.users`) en esa compañía, o no es miembro activo de ella. Pida a un administrador de esa
+compañía que agregue a la persona desde allá.
+
 **¿Cómo uso el mismo teléfono en dos compañías?**
 En "¿Quién eres?" toque "Registrar otra compañía" y teclee el código que le dio el administrador de la otra compañía
 (Sistema → Aparatos). Desde entonces, al entrar la app pregunta "¿En qué compañía vas a trabajar?".

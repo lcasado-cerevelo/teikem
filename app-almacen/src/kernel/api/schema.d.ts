@@ -14507,6 +14507,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/assignable-companies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["AssignableCompanyDto"][];
+                        "application/json": components["schemas"]["AssignableCompanyDto"][];
+                        "text/json": components["schemas"]["AssignableCompanyDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}/roles": {
         parameters: {
             query?: never;
@@ -16641,6 +16678,11 @@ export interface components {
             /** Format: double */
             expectedQty?: number | null;
             lotNumber?: string | null;
+        };
+        AssignableCompanyDto: {
+            /** Format: int32 */
+            tenantId?: number;
+            name?: string | null;
         };
         AttentionDto: {
             /** Format: int32 */
@@ -21248,10 +21290,13 @@ export interface components {
             password?: string | null;
             roles?: string[] | null;
             userKind?: string | null;
+            alsoTenantIds?: number[] | null;
         };
         UserCreateResponseDto: {
             user?: components["schemas"]["UserSummaryDto"];
             temporaryPassword?: string | null;
+            alsoAddedTo?: string[] | null;
+            alreadyMemberOf?: string[] | null;
         };
         UserExtraPermissionsRequest: {
             permissions?: string[] | null;

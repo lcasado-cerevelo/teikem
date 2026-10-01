@@ -39,17 +39,17 @@ registrados y los PIN. Del MSWM de producción **solo se lee** (la conexión va 
 
 El script, en orden:
 
-| Paso | Qué hace | Si falla |
-|---|---|---|
-| 1 | Conecta al MSWM de producción y muestra cuántos artículos y existencias de `Main` hay | Se detiene **sin borrar nada** |
-| 2 | Comprueba que estén los 6 CSV y muestra su tamaño y fecha | Se detiene sin borrar nada |
-| 3 | Comprueba que el API esté detenido | Se detiene sin borrar nada |
-| 4 | Pide confirmación (`RECREAR`) | Cancela sin borrar nada |
-| 5 | Compila el API | Se detiene sin borrar nada |
-| 6 | `db-reset --yes`: borra la base `Teikem` y la crea con estructura, seed y la demo | Se detiene |
-| 7 | `import-legacy docs/migracion/import.depot.json` | Sigue con Solutions y lo informa al final |
-| 8 | `import-legacy docs/migracion/import.solutions.json` | Lo informa al final |
-| 9 | Resumen: informes generados y bitácora | — |
+| Paso | Qué hace                                                                              | Si falla                                  |
+| ---- | ------------------------------------------------------------------------------------- | ----------------------------------------- |
+| 1    | Conecta al MSWM de producción y muestra cuántos artículos y existencias de `Main` hay | Se detiene **sin borrar nada**            |
+| 2    | Comprueba que estén los 6 CSV y muestra su tamaño y fecha                             | Se detiene sin borrar nada                |
+| 3    | Comprueba que el API esté detenido                                                    | Se detiene sin borrar nada                |
+| 4    | Pide confirmación (`RECREAR`)                                                         | Cancela sin borrar nada                   |
+| 5    | Compila el API                                                                        | Se detiene sin borrar nada                |
+| 6    | `db-reset --yes`: borra la base `Teikem` y la crea con estructura, seed y la demo     | Se detiene                                |
+| 7    | `import-legacy docs/migracion/import.depot.json`                                      | Sigue con Solutions y lo informa al final |
+| 8    | `import-legacy docs/migracion/import.solutions.json`                                  | Lo informa al final                       |
+| 9    | Resumen: informes generados y bitácora                                                | —                                         |
 
 Tarda unos minutos. Al final debe decir **"Listo: base recreada, Depot y Solutions migradas sin rechazos graves."**
 

@@ -46,9 +46,12 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
     [HttpPost, RequirePermission(PermissionCatalog.AdminUsers)]
     public async Task<UserCreateResponseDto> Create([FromBody] UserCreateRequest req, CancellationToken ct)
     {
-        var (user, temp) = await users.CreateUserAsync(req, ct);
-        return new UserCreateResponseDto(user, temp);
+        return await users.CreateUserCoreAsync(req, ct);
     }
+
+    /// <summary>2026-10-01: otras compañías a las que quien crea el usuario puede agregarlo (administra usuarios allí).</summary>
+    [HttpGet("assignable-companies"), RequirePermission(PermissionCatalog.AdminUsers)]
+    public Task<IReadOnlyList<AssignableCompanyDto>> AssignableCompanies(CancellationToken ct) => users.GetAssignableCompaniesAsync(ct);
 
     [HttpPut("{id:int}"), RequirePermission(PermissionCatalog.AdminUsers)]
     public Task<UserSummaryDto> Update(int id, [FromBody] UserUpdateRequest req, CancellationToken ct) => users.UpdateUserAsync(id, req, ct);

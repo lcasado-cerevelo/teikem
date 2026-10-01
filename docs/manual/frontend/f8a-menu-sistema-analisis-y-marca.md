@@ -139,6 +139,15 @@ genera una temporal y la pantalla la muestra **una sola vez**, en un modal que n
 clic afuera — cópiela con el botón antes de pulsar "Listo", porque después no se puede volver a ver (se puede
 cambiar más adelante desde la propia cuenta del usuario).
 
+**"También agregar a estas compañías"** (desde 2026-10-01, en "Nuevo usuario"): lista las otras compañías donde **usted también
+administra usuarios** (el administrador de plataforma ve todas las activas); si no hay ninguna, el campo no aparece. Marque las
+que quiera: la persona entra con el mismo correo y la misma contraseña, y recibe en cada compañía marcada los **mismos roles, por
+nombre**, que escogió arriba. Todo se valida antes de crear nada: si en una compañía no existe alguno de los roles sale
+`En {compañía} no existen los roles: {roles}.` (400) y no se crea el usuario en ninguna; si usted no administra usuarios en una
+compañía, `No puede agregar usuarios a esa compañía.` (403). Si el correo ya pertenece a una de las marcadas, esa compañía no se
+toca y se avisa ("Ya era miembro de: …"). Un solo primer ingreso (correo, contraseña propia y MFA) sirve para todas. Después, los
+roles de cada compañía se ajustan desde su propia pantalla de Usuarios.
+
 **Asignar/Restablecer PIN** (aparece por fila si su usuario no tiene PIN / si ya tiene uno; exige AAL2 al guardar):
 un PIN de 4 a 6 dígitos, dos veces para confirmar.
 
