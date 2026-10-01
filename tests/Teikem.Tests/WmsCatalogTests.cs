@@ -208,11 +208,16 @@ public class WmsCatalogTests
             Assert.Contains(PermissionCatalog.InventoryView, t[role]);
             Assert.Contains($"('{role}','inventory.view')", Seed.Value);
         }
+        // Administrar/ajustar inventario y administrar almacenes: el Admin y (2026-10-01, Luis) el Operador de almacén; nadie más.
         foreach (var code in new[] { PermissionCatalog.InventoryManage, PermissionCatalog.InventoryAdjust, PermissionCatalog.WarehouseManage })
         {
             Assert.Contains(code, t["TenantAdmin"]);
-            Assert.All(t.Where(kv => kv.Key != "TenantAdmin"), kv => Assert.DoesNotContain(code, kv.Value));
+            Assert.Contains(code, t["WarehouseOperator"]);
+            Assert.Contains($"('WarehouseOperator','{code}')", Seed.Value);
+            Assert.All(t.Where(kv => kv.Key is not ("TenantAdmin" or "WarehouseOperator")), kv => Assert.DoesNotContain(code, kv.Value));
         }
+        Assert.DoesNotContain(PermissionCatalog.CodReconcile, t["WarehouseOperator"]);
+        Assert.DoesNotContain("('WarehouseOperator','cod.reconcile')", Seed.Value);
         // El Operador recolecta y reconcilia conteos (D22) pero no empaca (sin orders.create, D27).
         Assert.Contains(PermissionCatalog.WarehouseCount, t["WarehouseOperator"]);
         Assert.DoesNotContain(PermissionCatalog.OrdersCreate, t["WarehouseOperator"]);

@@ -352,7 +352,10 @@ public static class PermissionCatalog
         ["Billing"] = new[] { OrdersView, BillingGenerate, BillingApprove, BillingExport, CodView, CodReconcile, CodRemit, RentalBilling, RentalView, PurchasingView, PurchasingManage, AnalyticsView, ClientsRead, ContractsRead, OrdersCreditOverride, DriverPayView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
             PulseAttention },   // Lote 14 (D6): la ve quien ve inventario
-        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, CodReconcile, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView,
+        // 2026-10-01 (Luis): sin cod.reconcile y con ajustar/administrar inventario, administrar almacenes y compras, como lo
+        // tenía configurado en Advance Logistics antes de recrear la base.
+        ["WarehouseOperator"] = new[] { WarehouseReceive, WarehousePick, WarehouseCount, WarehouseCountCapture, WarehouseCrossdock, RentalView, RentalManage, RentalMaintenance, PurchasingView, PurchasingReceive, TripsView, TripsScan, InventoryView,
+            InventoryAdjust, InventoryManage, WarehouseManage, PurchasingManage,
             // AnalyticsView: decisión de Luis (Lote F8a) — sin él, la política de /analytics/activity bloquea a este
             // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.
             // El filtro por fuente de datos (§2.2) y el de módulo del servicio lo siguen acotando a WAREHOUSE.

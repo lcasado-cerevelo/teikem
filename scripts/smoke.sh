@@ -2811,7 +2811,7 @@ PUTA=$(tasksof "$W6P" PUTAWAY | jq -r --argjson r "$RAID" '[.items[] | select(.r
 UID_T3=$(expect 200 "$(req GET /api/v1/me '' "$T3")" | jq -r .userId); UID_ME=$(expect 200 "$(req GET /api/v1/me)" | jq -r .userId)
 expect 400 "$(req POST "/api/v1/warehouse-tasks/$PUTA/assign" "{\"userId\":$UID_T3}")" | jq -e '.errors.userId[0]=="El usuario no es miembro activo de la compañía."' >/dev/null || fail "asignar a un usuario de otro tenant"
 expect 200 "$(req POST "/api/v1/warehouse-tasks/$PUTA/assign" "{\"userId\":$UID_ME}")" | jq -e --argjson u "$UID_ME" '.assignedToUserId==$u' >/dev/null || fail "asignar a un miembro activo"
-expect 403 "$(req POST "/api/v1/warehouse-tasks/$PUTA/cancel" '{}' "$TWH6")" >/dev/null   # cancelar exige warehouse.manage
+expect 403 "$(req POST "/api/v1/warehouse-tasks/$PUTA/cancel" '{}' "$TREAD6")" >/dev/null   # cancelar exige warehouse.manage (desde 2026-10-01 el Operador lo tiene)
 expect 200 "$(req POST "/api/v1/warehouse-tasks/$PUTA/cancel" '{"comment":"Se guarda en otra corrida"}')" | jq -e '.statusCode=="CANCELLED" and .completedAtUtc!=null' >/dev/null || fail "cancelar la PUTAWAY desde la cola"
 expect 200 "$(req GET "/api/v1/receipts/$RAP")" | jq -e '.header.statusCode=="PUTAWAY"' >/dev/null || fail "cancelar la última PUTAWAY no cerró el recibo"
 ok "doble confirmación: 200 + 422 y un solo RECEIPT; putaway 1 + remanente 2 (destino inexistente 404), el recibo pasa a PUTAWAY solo con la última; TRANSFER con Ref WAREHOUSE_TASK; doble completado 200 + 422; Solo lectura no inicia ni completa la PUTAWAY (403 warehouse.receive + PERMISSION_DENIED); reabasto 6 y segunda corrida skippedWithOpenTask 1; putaway dirigido: la PUTAWAY nace con destino, la de PR sugiere su preferida (PREFERRED + rotationClass) y se completa con '{}'; asignar a otro tenant 400 y a un miembro 200; cancelar la última PUTAWAY cierra el recibo"
@@ -3305,9 +3305,9 @@ ok "agenda: reprogramar sobre otra cita 409, ARRIVED → muelle OCCUPIED, COMPLE
 step "RBAC, módulos, resolvers cerrados y aislamiento (Lote 6)"
 expect 200 "$(req GET "/api/v1/inventory/balances?warehousePublicIds=$W6P" '' "$TREAD6")" >/dev/null
 expect 403 "$(adjust "$PN" "$W6P" "$B_PCK" 1 FOUND "$TREAD6")" >/dev/null
-expect 403 "$(adjust "$PN" "$W6P" "$B_PCK" 1 FOUND "$TWH6")" >/dev/null
+# (2026-10-01: el Operador de almacén ya puede ajustar — inventory.adjust —; el 403 lo prueba Solo lectura arriba)
 expect 200 "$(collect "$W6P" "$PN" 1 "$TWH6")" >/dev/null   # el Operador recolecta (warehouse.pick)
-expect 403 "$(req GET /api/v1/inventory/reconciliation '' "$TWH6")" >/dev/null
+expect 403 "$(req GET /api/v1/inventory/reconciliation '' "$TREAD6")" >/dev/null
 expect 200 "$(req GET '/api/v1/audit/security-events?eventType=PERMISSION_DENIED&take=5')" | jq -e '.total >= 1' >/dev/null || fail "PERMISSION_DENIED"
 expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":false}')" >/dev/null
 M1=$(req GET /api/v1/warehouses); expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}')" >/dev/null
@@ -3451,7 +3451,7 @@ if [[ "$WORKER14" == true ]]; then   # el ajuste encola la revisión del product
   for i in $(seq 1 60); do STN=$(recstatus); [[ $(echo "$STN" | jq --argjson p "$PROC14" '.pending==0 and .processed>$p') == true ]] && break; sleep 0.5; done
   echo "$STN" | jq -e --argjson p "$PROC14" '.pending==0 and .processed>$p' >/dev/null || fail "la revisión automática no procesó el ajuste de P14: $STN (antes processed=$PROC14)"
 fi
-expect 403 "$(req GET /api/v1/inventory/reconciliation/status '' "$TWH6")" >/dev/null   # sin inventory.adjust
+expect 403 "$(req GET /api/v1/inventory/reconciliation/status '' "$TREAD6")" >/dev/null   # sin inventory.adjust
 # Ejecutar conciliación (MANUAL): por productos y de todo el tenant, sin descuadres; más de 200 productos → 400; sin inventory.adjust → 403.
 expect 200 "$(req POST /api/v1/inventory/reconciliation/run "$(jq -cn --arg a "$PN" --arg b "$PT" --arg c "$P14" '{productPublicIds:[$a,$b,$c]}')")" | jq -e '.productsChecked==3 and .balancesChecked>=3 and .opened==0 and .stillOpen==0 and .mismatches==[]' >/dev/null || fail "conciliación manual de PN, PT y P14"
 expect 200 "$(req POST /api/v1/inventory/reconciliation/run '{}')" | jq -e '.productsChecked>=3 and .opened==0 and .mismatches==[]' >/dev/null || fail "conciliación manual de todo el tenant"

@@ -997,13 +997,15 @@ INSERT INTO #RP VALUES ('Billing','orders.view'),('Billing','billing.generate'),
 ('Billing','pulse.indicators'),('Billing','pulse.charts'),('Billing','pulse.activity'),   -- Lote F8a
 ('Billing','pulse.attention');   -- Lote 14 (D6)
 -- WarehouseOperator
-INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','cod.reconcile'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
+INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOperator','warehouse.pick'),('WarehouseOperator','warehouse.count'),('WarehouseOperator','warehouse.crossdock'),('WarehouseOperator','rental.view'),('WarehouseOperator','rental.manage'),('WarehouseOperator','rental.maintenance'),('WarehouseOperator','purchasing.view'),('WarehouseOperator','purchasing.receive'),
 ('WarehouseOperator','trips.view'),('WarehouseOperator','trips.scan'),   -- Lote 5
 ('WarehouseOperator','inventory.view'),   -- Lote 6
 ('WarehouseOperator','warehouse.count.capture'),   -- Lote 8A
 ('WarehouseOperator','analytics.view'),   -- Lote F8a: para ver Actividad reciente en su Pulso (decisión de Luis)
 ('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity'),   -- Lote F8a
-('WarehouseOperator','pulse.attention');   -- Lote 14 (D6)
+('WarehouseOperator','pulse.attention'),   -- Lote 14 (D6)
+-- 2026-10-01 (Luis): como lo tenía configurado en Advance Logistics (sin cod.reconcile, que sale de la lista de arriba).
+('WarehouseOperator','inventory.adjust'),('WarehouseOperator','inventory.manage'),('WarehouseOperator','warehouse.manage'),('WarehouseOperator','purchasing.manage');
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
