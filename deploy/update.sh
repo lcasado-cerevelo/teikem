@@ -3,7 +3,10 @@
 # certificados se conservan).   bash update.sh
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./lib.sh
 [[ -f .env ]] || { echo "No hay deploy/.env: corra primero  bash install.sh" >&2; exit 1; }
+# Las llaves de Brevo se vuelven a tomar de las variables del servidor (si cambiaron, aquí se actualizan).
+if sync_brevo_from_host; then echo "Brevo: llaves tomadas de las variables del servidor."; fi
 DC="docker"
 docker info >/dev/null 2>&1 || DC="sudo docker"
 $DC compose build

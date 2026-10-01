@@ -4,6 +4,7 @@
 #   bash install.sh
 set -euo pipefail
 cd "$(dirname "$0")"
+source ./lib.sh
 
 say()  { printf '\n\033[1;36m== %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m%s\033[0m\n' "$*"; }
@@ -65,11 +66,15 @@ if $write_env; then
   [[ -n "$db_server" && -n "$db_user" && -n "$db_pass" ]] || die "Servidor, usuario y contraseña de la base son obligatorios."
   echo
   echo "Correo (Brevo) para el código de verificación del primer ingreso:"
-  brevo_key_default="${Brevo__ApiKey:-}"; brevo_from_default="${Brevo__FromEmail:-}"
-  if [[ -n "$brevo_key_default" ]]; then echo "  (se encontró Brevo__ApiKey en las variables de este servidor; Enter para usarla)"; fi
-  brevo_key=$(ask "  Brevo API key" "$brevo_key_default")
-  brevo_from=$(ask "  Correo remitente" "$brevo_from_default")
-  [[ -n "$brevo_key" && -n "$brevo_from" ]] || warn "Sin Brevo no se podrá enviar el código del primer ingreso (se puede completar después en deploy/.env)."
+  brevo_key=$(host_var Brevo__ApiKey); brevo_from=$(host_var Brevo__FromEmail)
+  if [[ -n "$brevo_key" && -n "$brevo_from" ]]; then
+    ok "  Se encontraron Brevo__ApiKey y Brevo__FromEmail en las variables de este servidor: se usan (no se piden)."
+  else
+    warn "  No encontré Brevo__ApiKey / Brevo__FromEmail en las variables de este servidor (ni en /etc/environment)."
+    brevo_key=$(ask "  Brevo API key (Enter para dejarlo vacío)" "$brevo_key")
+    brevo_from=$(ask "  Correo remitente" "$brevo_from")
+    [[ -n "$brevo_key" && -n "$brevo_from" ]] || warn "Sin Brevo no se podrá enviar el código del primer ingreso (se puede completar después en deploy/.env)."
+  fi
 
   for v in "$domain" "$acme_email" "$db_server" "$db_name" "$db_user" "$db_pass" "$brevo_key" "$brevo_from"; do check_value "Un valor" "$v"; done
 
@@ -88,6 +93,9 @@ EOF
   chmod 600 .env
   ok "Configuración guardada en deploy/.env (solo la puede leer su usuario)."
 fi
+
+# Si las llaves de Brevo están en las variables del servidor, se copian a deploy/.env (también al conservar la configuración).
+if sync_brevo_from_host; then ok "Brevo: llaves tomadas de las variables del servidor."; fi
 
 # ---------------------------------------------------------------- construir y levantar
 say "Construyendo (la primera vez tarda varios minutos)"

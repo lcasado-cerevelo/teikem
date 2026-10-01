@@ -19,7 +19,7 @@ Una sola dirección para todo: `https://teikem.advancelogisticspr.com` (la web e
 | DNS | Un registro **A** de `teikem.advancelogisticspr.com` hacia la **IP pública** del servidor (sin esto Let's Encrypt no puede emitir el certificado). |
 | Puertos | **80 y 443** abiertos hacia Internet (en AWS: grupo de seguridad de la instancia) y sin otro programa usándolos. |
 | Base de datos | Que el servidor **llegue** al SQL Server (servidor, puerto, usuario y contraseña). Use un usuario propio de Teikem, no `sa`. |
-| Correo | `Brevo__ApiKey` y `Brevo__FromEmail` (para el código de verificación del primer ingreso). |
+| Correo | `Brevo__ApiKey` y `Brevo__FromEmail` como **variables de entorno del servidor** (ver abajo). |
 
 ## 1. Instalar Docker (si no lo tiene)
 
@@ -78,6 +78,16 @@ cd ~/teikem/deploy && bash install.sh
 `install.sh` pregunta: el dominio, el correo para los avisos de Let's Encrypt, los datos de la base (servidor, base, usuario,
 contraseña) y Brevo. Genera la llave que firma las sesiones, guarda todo en `deploy/.env` (solo legible por su usuario),
 construye (la primera vez tarda varios minutos), levanta todo y comprueba que el API responda. Al final le dice qué abrir.
+
+### Las llaves de Brevo (variables del servidor)
+
+Los contenedores **no heredan** las variables del servidor, así que el instalador las copia a `deploy/.env` (solo legible por su
+usuario). Las busca en el entorno de quien corre el script y, si no están ahí, en `/etc/environment`:
+
+- Si encuentra `Brevo__ApiKey` y `Brevo__FromEmail` (y opcionalmente `Brevo__FromName`), **las usa sin preguntar**.
+- `bash update.sh` las vuelve a copiar cada vez: si cambia la llave en el servidor, basta con actualizar.
+- Si las definió solo para otro usuario (por ejemplo `root` o un servicio), no las verá: en ese caso las pide o las puede escribir
+  en `deploy/.env`. Para comprobar qué ve el script: `printenv Brevo__ApiKey Brevo__FromEmail`.
 
 ## 4. Actualizar a una versión nueva
 
