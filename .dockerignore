@@ -1,0 +1,17 @@
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/.vs
+.git
+.github
+app-almacen
+web
+tests
+docs
+Logos
+Logos.zip
+TestResults
+**/.env
+**/playwright-report
+**/test-results

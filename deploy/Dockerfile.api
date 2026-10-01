@@ -1,0 +1,19 @@
+# API de Teikem (ASP.NET Core 8). Contexto de construcción: la raíz del repositorio (ver deploy/docker-compose.yml).
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY src/ src/
+RUN dotnet restore src/Teikem.Api/Teikem.Api.csproj
+RUN dotnet publish src/Teikem.Api/Teikem.Api.csproj -c Release -o /app --no-restore -p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app .
+# Detrás de Caddy: el API solo escucha dentro de la red de Docker (no se publica ningún puerto) y confía en X-Forwarded-*
+# (IP real del cliente para los límites de intentos, y esquema https).
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    ASPNETCORE_FORWARDEDHEADERS_ENABLED=true \
+    DOTNET_gcServer=0
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "Teikem.Api.dll"]

@@ -1,0 +1,31 @@
+# CERTIFICADO DIGITAL (Let's Encrypt, automático): con un dominio en TEIKEM_DOMAIN (deploy/.env, p. ej.
+# teikem.advancelogisticspr.com), Caddy pide solo el certificado a Let's Encrypt, redirige http -> https y lo RENUEVA solo
+# (unos 30 días antes de que venza; los certificados quedan en el volumen caddy_data, que sobrevive a las actualizaciones).
+# Requisitos: el DNS del dominio apunta a este servidor y los puertos 80 y 443 están abiertos. TEIKEM_ACME_EMAIL recibe los
+# avisos de Let's Encrypt si algún día no se pudiera renovar.
+# Para probar por IP sin HTTPS, ponga TEIKEM_DOMAIN=:80 en deploy/.env.
+{
+	email {$TEIKEM_ACME_EMAIL}
+}
+
+{$TEIKEM_DOMAIN} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=15552000"
+
+	# API y comprobación de vida: al contenedor del API (que no se publica fuera de la red de Docker).
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+	handle /health {
+		reverse_proxy api:8080
+	}
+
+	# Todo lo demás: la web (aplicación de una sola página: cualquier ruta cae en index.html).
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		header /assets/* Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+		file_server
+	}
+}

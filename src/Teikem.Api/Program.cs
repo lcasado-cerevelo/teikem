@@ -57,6 +57,10 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
 
 // --- Autenticación JWT (access tokens cortos; el SecurityStamp invalida tokens vivos) ---
 var jwtKey = builder.Configuration["Jwt:SigningKey"] ?? throw new InvalidOperationException("Falta Jwt:SigningKey.");
+// En producción no se arranca con la llave de desarrollo del repositorio (cualquiera podría firmar sesiones): hay que definir
+// Jwt__SigningKey (deploy/install.sh la genera).
+if (builder.Environment.IsProduction() && jwtKey.StartsWith("dev-only", StringComparison.Ordinal))
+    throw new InvalidOperationException("Jwt:SigningKey es la llave de desarrollo; defina Jwt__SigningKey con una llave propia antes de arrancar en Producción.");
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
     o.MapInboundClaims = false;

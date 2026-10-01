@@ -14,11 +14,15 @@ import { colors, spacing } from '../kernel/ui/theme'
  *  app-almacen-plan.md §2). El servidor se configura aquí la primera vez; después se cambia desde Sincronización.
  *  Los dos campos llevan `testID` porque el texto de la etiqueta y el `accessibilityLabel` del campo son iguales
  *  (Maestro, en app-almacen/e2e-maestro, necesita distinguir el campo del texto que solo lo describe). */
+/** Dirección del servidor que trae el APK de fábrica (EXPO_PUBLIC_API_URL al compilar con scripts/construir-apk.ps1): el aparato
+ *  ya la trae escrita; se puede cambiar. Sin ella (desarrollo), el campo arranca vacío. */
+const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_API_URL ?? ''
+
 export default function EnrollScreen() {
   const { t } = useT()
   const router = useRouter()
   const { devices } = useSession()
-  const [serverUrl, setServerUrl] = useState(getApiBaseUrl())
+  const [serverUrl, setServerUrl] = useState(getApiBaseUrl() || DEFAULT_SERVER_URL)
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)

@@ -1,0 +1,4 @@
+# Los scripts del servidor (Linux) siempre con saltos de línea LF, aunque se editen en Windows.
+deploy/*.sh text eol=lf
+deploy/Caddyfile text eol=lf
+deploy/Dockerfile.* text eol=lf

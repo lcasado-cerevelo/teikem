@@ -1,0 +1,13 @@
+# Web de Teikem: se compila con Vite y la sirve Caddy, que también atiende HTTPS (certificado automático) y manda /api al API.
+# Contexto de construcción: la raíz del repositorio (ver deploy/docker-compose.yml).
+FROM node:20-alpine AS build
+WORKDIR /web
+COPY web-app/package.json web-app/package-lock.json ./
+RUN npm ci
+COPY web-app/ ./
+# VITE_API_URL vacío (web-app/.env.production): la web llama a /api en su mismo dominio, sin CORS.
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY deploy/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /web/dist /srv

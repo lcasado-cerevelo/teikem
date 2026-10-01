@@ -1,0 +1,39 @@
+# Teikem en un servidor: API + web con HTTPS. La base de datos NO va aquí (es la que ya existe; ver deploy/.env).
+# Uso normal: bash install.sh (la primera vez) y bash update.sh (cada versión nueva). Ver deploy/README.md.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Cors__Origins__0: "https://${TEIKEM_DOMAIN}"
+      # La siembra de la compañía demo solo corre con el comando db-init; aquí nunca.
+      Seed__Demo__Enabled: "false"
+      Auth__Onboarding__ReturnEmailCodeInResponse: "false"
+    expose:
+      - "8080"
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    environment:
+      TEIKEM_DOMAIN: ${TEIKEM_DOMAIN}
+      TEIKEM_ACME_EMAIL: ${TEIKEM_ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data      # certificados de Let's Encrypt (se renuevan solos): no se pierden al actualizar
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
