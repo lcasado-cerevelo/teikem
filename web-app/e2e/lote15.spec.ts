@@ -132,7 +132,7 @@ test.describe('Lote 15 — escritorio', () => {
     await waitPulse(page)
     const band = page.locator('.wh-band')
     await expect(band.getByRole('heading', { level: 2, name: /^Almacén hoy/ })).toBeVisible()
-    await expect(band.getByRole('heading', { level: 2 })).toContainText('últimos 7 días')
+    await expect(band.getByRole('heading', { level: 2 })).toHaveText(/^Almacén hoy$/)
 
     const cards = band.locator('[data-card]')
     await expect(cards).toHaveCount(4)
