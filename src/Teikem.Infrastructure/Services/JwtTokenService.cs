@@ -58,7 +58,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
         return Create(claims, TimeSpan.FromMinutes(_o.AccessTokenMinutes));
     }
 
-    public (string Token, DateTime ExpiresAtUtc) CreateMfaChallengeToken(ApplicationUser user, int tenantId, string? deviceInfo)
+    /// <param name="lifetime">2026-09-30: el primer ingreso (correo, contraseña y MFA) usa una vida más larga (Auth:Onboarding:ChallengeMinutes).</param>
+    public (string Token, DateTime ExpiresAtUtc) CreateMfaChallengeToken(ApplicationUser user, int tenantId, string? deviceInfo, TimeSpan? lifetime = null)
     {
         var claims = new List<Claim>
         {
@@ -68,7 +69,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options)
             new(TeikemClaims.SecurityStamp, StampHash(user.SecurityStamp)),
         };
         if (!string.IsNullOrEmpty(deviceInfo)) claims.Add(new Claim("device", deviceInfo));
-        return Create(claims, TimeSpan.FromMinutes(_o.MfaChallengeMinutes));
+        return Create(claims, lifetime ?? TimeSpan.FromMinutes(_o.MfaChallengeMinutes));
     }
 
     private (string, DateTime) Create(IEnumerable<Claim> claims, TimeSpan lifetime)

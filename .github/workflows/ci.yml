@@ -33,7 +33,9 @@ jobs:
       - name: Smoke test contra el API
         run: |
           sudo apt-get install -y jq >/dev/null
-          ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          # El smoke y los recorridos crean usuarios y entran con ellos: el primer ingreso obligatorio (2026-09-30) se apaga aquí
+          # (lo cubren OnboardingTests y las pruebas de la web).
+          Auth__Onboarding__Enabled=false ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
           for i in $(seq 1 30); do curl -sf http://localhost:5000/health && break; sleep 2; done
           # SMOKE_SQL: sqlcmd dentro del contenedor de SQL Server para los pasos que necesitan datos sin API todavía
           # (pings del chofer del Lote 7, que el monitor del Lote 5 ya lee). Sin esta variable el smoke omite esos pasos.
@@ -180,7 +182,9 @@ jobs:
       - name: Iniciar API en segundo plano
         run: |
           sudo apt-get install -y jq >/dev/null
-          ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
+          # El smoke y los recorridos crean usuarios y entran con ellos: el primer ingreso obligatorio (2026-09-30) se apaga aquí
+          # (lo cubren OnboardingTests y las pruebas de la web).
+          Auth__Onboarding__Enabled=false ASPNETCORE_URLS=http://localhost:5000 ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/Teikem.Api -c Release --no-build &
           for i in $(seq 1 30); do curl -sf http://localhost:5000/health && break; sleep 2; done
       - name: Crear fixtures para Maestro
         run: |

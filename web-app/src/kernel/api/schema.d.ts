@@ -1442,6 +1442,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OnboardingStateDto"];
+                        "application/json": components["schemas"]["OnboardingStateDto"];
+                        "text/json": components["schemas"]["OnboardingStateDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/onboarding/email/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OnboardingEmailSentDto"];
+                        "application/json": components["schemas"]["OnboardingEmailSentDto"];
+                        "text/json": components["schemas"]["OnboardingEmailSentDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/onboarding/email/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OnboardingCodeRequest"];
+                    "text/json": components["schemas"]["OnboardingCodeRequest"];
+                    "application/*+json": components["schemas"]["OnboardingCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OnboardingStepDto"];
+                        "application/json": components["schemas"]["OnboardingStepDto"];
+                        "text/json": components["schemas"]["OnboardingStepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/onboarding/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["OnboardingPasswordRequest"];
+                    "text/json": components["schemas"]["OnboardingPasswordRequest"];
+                    "application/*+json": components["schemas"]["OnboardingPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["OnboardingStepDto"];
+                        "application/json": components["schemas"]["OnboardingStepDto"];
+                        "text/json": components["schemas"]["OnboardingStepDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/device/users": {
         parameters: {
             query?: never;
@@ -16509,6 +16669,7 @@ export interface components {
             mfaChallengeToken?: string | null;
             mfaEnrollmentRequired?: boolean;
             tenants?: components["schemas"]["TenantOptionDto"][] | null;
+            onboarding?: components["schemas"]["OnboardingStateDto"];
         };
         AvailabilityIssueDto: {
             code?: string | null;
@@ -18715,6 +18876,27 @@ export interface components {
             /** Format: int64 */
             seq?: number;
             value?: string | null;
+        };
+        OnboardingCodeRequest: {
+            code?: string | null;
+        };
+        OnboardingEmailSentDto: {
+            email?: string | null;
+            sent?: boolean;
+            devCode?: string | null;
+        };
+        OnboardingPasswordRequest: {
+            newPassword?: string | null;
+        };
+        OnboardingStateDto: {
+            email?: string | null;
+            emailVerified?: boolean;
+            passwordChangeRequired?: boolean;
+            mfaConfigured?: boolean;
+        };
+        OnboardingStepDto: {
+            state?: components["schemas"]["OnboardingStateDto"];
+            mfaChallengeToken?: string | null;
         };
         OptimizationResultDto: {
             /** Format: int32 */

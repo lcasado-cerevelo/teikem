@@ -66,10 +66,10 @@ public sealed record DeviceTokenState(bool IsActive, DateTime? SessionsNotBefore
 /// claim `did` con el PublicId del aparato y los mismos `tid`/permisos del usuario. Si el aparato se desactiva, el refresh
 /// se rechaza con 401.
 /// </summary>
-public sealed class AuthService(
+public sealed partial class AuthService(
     TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, JwtTokenService jwt, ILookupCache lookups,
     ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
-    DeviceService devices, PinService pins)
+    DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -121,6 +121,15 @@ public sealed class AuthService(
         // MFA: exigido por la compañía entera (Tenant.MfaRequired) o solo por esta membresía (UserTenant.MfaRequired,
         // Lote F8a: un administrador se lo asignó puntualmente a esta persona).
         var totp = await ConfirmedTotpAsync(user.Id, ct);
+
+        // Primer ingreso pendiente (2026-09-30): sin tokens; el challenge sirve para /auth/onboarding/* y para enrolar el MFA.
+        if (OnboardingPending(user, totp is not null))
+        {
+            var (onbChallenge, _) = OnboardingChallenge(user, tenantId, req.DeviceInfo);
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "password", onboarding = "required" }, ct);
+            return new AuthResultDto("onboarding_required", null, onbChallenge, totp is null, null, OnboardingState(user, totp is not null));
+        }
+
         var membershipMfaRequired = !user.IsPlatformAdmin && await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
             .AnyAsync(m => m.UserId == user.Id && m.TenantId == tenantId && m.MfaRequired, ct);
         if (totp is not null || t.MfaRequired || membershipMfaRequired)
@@ -139,6 +148,9 @@ public sealed class AuthService(
     public async Task<AuthResultDto> VerifyMfaAsync(int userId, int tenantId, string? deviceInfo, MfaVerifyRequest req, CancellationToken ct)
     {
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
+        // Primer ingreso: el MFA es el último paso; antes van el correo y la contraseña propia.
+        if (onboarding.Value.Enabled && user.OnboardingRequired && (user.EmailVerifiedUtc is null || user.MustChangePassword))
+            throw new ForbiddenException(OnboardingIncompleteMessage);
         if (!await VerifyCodeAsync(user, req.Code, ct))
         {
             await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Failure, user.Id, tenantId, null, ct);
@@ -146,6 +158,14 @@ public sealed class AuthService(
             throw new UnauthorizedException("Código MFA inválido.");
         }
         await users.ResetAccessFailedCountAsync(user);
+        if (user.OnboardingRequired)
+        {
+            // Correo verificado, contraseña propia y MFA confirmado: primer ingreso completo.
+            user = await users.FindByIdAsync(userId.ToString()) ?? throw new UnauthorizedException();
+            user.OnboardingRequired = false;
+            await users.UpdateAsync(user);
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Success, user.Id, tenantId, new { stage = "onboarding_completed" }, ct);
+        }
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
         var pair = await IssueAsync(user, tenantId, kind, req.DeviceInfo ?? deviceInfo, aal2At: DateTime.UtcNow, ct);
         await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, user.Id, tenantId, null, ct);
@@ -231,6 +251,13 @@ public sealed class AuthService(
         }
 
         await pins.VerifyForLoginAsync(user, tenantId, req.Pin, device.Code, ct);
+
+        // Primer ingreso pendiente: primero en la web (correo, contraseña y MFA); el PIN no lo salta.
+        if (OnboardingPending(user, await ConfirmedTotpAsync(user.Id, ct) is not null))
+        {
+            await security.WriteAsync(SecurityEventTypes.Login, SecurityOutcomes.Blocked, user.Id, tenantId, new { stage = "device", device = device.Code, onboarding = "required" }, ct);
+            throw new ForbiddenException(OnboardingDeviceMessage);
+        }
 
         if (!user.IsPlatformAdmin && !(await permissions.GetEffectivePermissionsAsync(user.Id, tenantId, ct)).Contains(PermissionCatalog.InventoryView))
         {

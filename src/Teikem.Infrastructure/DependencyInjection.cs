@@ -67,6 +67,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordBreachChecker, NoOpPasswordBreachChecker>();
 
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
+        services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
         services.AddSingleton<JwtTokenService>();
 
         // Servicios transversales
@@ -96,6 +97,8 @@ public static class DependencyInjection
         services.AddScoped<IStatusTransitionEffect, ContractStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, PortalUserStatusEffect>();
         services.AddScoped<IInvitationSender, LoggingInvitationSender>();
+        // 2026-09-30: correo transaccional (código de verificación del primer ingreso) por Brevo.
+        services.AddHttpClient<ITransactionalEmailSender, BrevoEmailSender>(c => c.Timeout = TimeSpan.FromSeconds(15));
         // La invitación al portal reutiliza el token DataProtector de Identity: su vida es Portal:InviteHours (48 h por defecto).
         // Nota: afecta a todos los tokens DataProtector de Identity (incluido el futuro reset de contraseña).
         services.Configure<DataProtectionTokenProviderOptions>(o => o.TokenLifespan = TimeSpan.FromHours(Math.Max(1, config.GetValue("Portal:InviteHours", 48))));

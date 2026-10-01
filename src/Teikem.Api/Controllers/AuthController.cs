@@ -37,6 +37,31 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
     public Task<AuthResultDto> VerifyMfa([FromBody] MfaVerifyRequest req, CancellationToken ct)
         => auth.VerifyMfaAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value), User.FindFirst("device")?.Value, req, ct);
 
+    // ---------------- Primer ingreso (2026-09-30): correo → contraseña propia → MFA, con el challenge token del login ----------------
+
+    private int ChallengeUserId => int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value);
+    private int ChallengeTenantId => int.Parse(User.FindFirst(TeikemClaims.TenantId)!.Value);
+
+    /// <summary>Qué falta del primer ingreso.</summary>
+    [HttpGet("onboarding"), Authorize(Policy = Policies.MfaChallenge)]
+    public Task<OnboardingStateDto> Onboarding(CancellationToken ct) => auth.GetOnboardingAsync(ChallengeUserId, ct);
+
+    /// <summary>Paso 1a: manda al correo un código de 6 dígitos. 409 'Su correo ya está verificado.' o
+    /// 'No se pudo enviar el correo. Intente de nuevo en unos minutos.'.</summary>
+    [HttpPost("onboarding/email/send"), Authorize(Policy = Policies.MfaChallenge), EnableRateLimiting(DeviceRateLimits.DeviceAuth)]
+    public Task<OnboardingEmailSentDto> OnboardingSendEmail(CancellationToken ct) => auth.SendOnboardingEmailCodeAsync(ChallengeUserId, ChallengeTenantId, ct);
+
+    /// <summary>Paso 1b: confirma el código. 400 'El código no es válido o venció.'.</summary>
+    [HttpPost("onboarding/email/verify"), Authorize(Policy = Policies.MfaChallenge)]
+    public Task<OnboardingStepDto> OnboardingVerifyEmail([FromBody] OnboardingCodeRequest req, CancellationToken ct)
+        => auth.VerifyOnboardingEmailAsync(ChallengeUserId, ChallengeTenantId, req, ct);
+
+    /// <summary>Paso 2: contraseña propia. 409 'Verifique primero su correo.'; 400 por política, brechas o
+    /// 'La contraseña nueva debe ser distinta de la que le dieron.'. Devuelve un challenge token nuevo (el sello rotó).</summary>
+    [HttpPost("onboarding/password"), Authorize(Policy = Policies.MfaChallenge)]
+    public Task<OnboardingStepDto> OnboardingPassword([FromBody] OnboardingPasswordRequest req, CancellationToken ct)
+        => auth.SetOnboardingPasswordAsync(ChallengeUserId, ChallengeTenantId, User.FindFirst("device")?.Value, req, ct);
+
     // ---------------- Lote 8A: aparatos de confianza (app de almacén) ----------------
 
     /// <summary>

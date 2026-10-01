@@ -39,6 +39,7 @@ export default function LoginPage() {
     try {
       const outcome = await login(email, password)
       if (outcome.status === 'ok') navigate(next, { replace: true })
+      else if (outcome.status === 'onboarding_required') navigate(`/onboarding?next=${encodeURIComponent(next)}`)
       else navigate(`/mfa?next=${encodeURIComponent(next)}`)
     } catch (err) {
       setFormError(applyProblemDetails(err, form).title)

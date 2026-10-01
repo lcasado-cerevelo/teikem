@@ -70,7 +70,11 @@ BEGIN
         IsActive             BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsActive DEFAULT 1,
         CreatedAtUtc         DATETIME2 NOT NULL CONSTRAINT DF_AspNetUsers_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
         LastLoginUtc         DATETIME2 NULL,
-        IsPlatformAdmin      BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsPlatformAdmin DEFAULT 0
+        IsPlatformAdmin      BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsPlatformAdmin DEFAULT 0,
+        -- 2026-09-30: primer ingreso obligatorio (verificar correo → contraseña propia → MFA). 1 = pendiente.
+        OnboardingRequired   BIT NOT NULL CONSTRAINT DF_AspNetUsers_OnboardingRequired DEFAULT 1,
+        MustChangePassword   BIT NOT NULL CONSTRAINT DF_AspNetUsers_MustChangePassword DEFAULT 1,
+        EmailVerifiedUtc     DATETIME2 NULL
     );
     CREATE INDEX EmailIndex ON dbo.AspNetUsers(NormalizedEmail);
     CREATE UNIQUE INDEX UserNameIndex ON dbo.AspNetUsers(NormalizedUserName) WHERE NormalizedUserName IS NOT NULL;
@@ -79,6 +83,15 @@ ELSE IF COL_LENGTH('dbo.AspNetUsers', 'IsPlatformAdmin') IS NULL
 BEGIN
     ALTER TABLE dbo.AspNetUsers ADD IsPlatformAdmin BIT NOT NULL CONSTRAINT DF_AspNetUsers_IsPlatformAdmin DEFAULT 0;
 END
+GO
+-- 2026-09-30: primer ingreso obligatorio. En una base existente, todos los usuarios quedan con el primer ingreso pendiente
+-- (pedido de Luis: nuevos y existentes); los usuarios de prueba de la demo los marca completos el seeder.
+IF COL_LENGTH('dbo.AspNetUsers', 'OnboardingRequired') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD OnboardingRequired BIT NOT NULL CONSTRAINT DF_AspNetUsers_OnboardingRequired DEFAULT 1;
+IF COL_LENGTH('dbo.AspNetUsers', 'MustChangePassword') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD MustChangePassword BIT NOT NULL CONSTRAINT DF_AspNetUsers_MustChangePassword DEFAULT 1;
+IF COL_LENGTH('dbo.AspNetUsers', 'EmailVerifiedUtc') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD EmailVerifiedUtc DATETIME2 NULL;
 GO
 
 IF OBJECT_ID('dbo.AspNetRoleClaims') IS NULL

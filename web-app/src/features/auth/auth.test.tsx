@@ -28,6 +28,7 @@ const json = (body: unknown, status = 200) =>
 let loginReply: LoginReply
 let loginBodies: { email: string; password: string; tenantId: number | null }[]
 let mfaReply: () => Response
+let onboardingReply: (path: string, req: Request) => Response | Promise<Response>
 
 async function renderAppAt(path: string) {
   window.history.pushState({}, '', path)
@@ -61,6 +62,7 @@ describe('Login (AuthResultDto)', () => {
     loginBodies = []
     loginReply = () => json({ status: 'ok', tokens: TOKENS })
     mfaReply = () => json({ title: 'El código no es válido.', status: 401, code: 'unauthorized' }, 401)
+    onboardingReply = () => new Response(null, { status: 404 })
     vi.stubEnv('VITE_API_URL', 'http://api.test')
     vi.stubGlobal(
       'fetch',
@@ -72,6 +74,7 @@ describe('Login (AuthResultDto)', () => {
           return loginReply(body)
         }
         if (path === '/api/v1/auth/mfa/verify') return mfaReply()
+        if (path.startsWith('/api/v1/auth/onboarding')) return onboardingReply(path, req)
         if (path === '/api/v1/me') return json(ME)
         if (path === '/api/v1/analytics/pulse') return json({ indicators: [], charts: [], panels: [] })
         return new Response(null, { status: 404 })
@@ -137,5 +140,43 @@ describe('Login (AuthResultDto)', () => {
     expect(await screen.findByText('Bienvenido, Ana Admin')).toBeInTheDocument()
     expect(loginBodies).toHaveLength(1)
     expect(loginBodies[0]).toMatchObject({ tenantId: null })
+  })
+
+  it('primer ingreso: correo con código → contraseña propia → sigue al MFA (sin sesión hasta terminar)', async () => {
+    const state = { email: 'a***@teikem.local', emailVerified: false, passwordChangeRequired: true, mfaConfigured: false }
+    const calls: string[] = []
+    loginReply = () => json({ status: 'onboarding_required', mfaChallengeToken: 'chal-1', mfaEnrollmentRequired: true, onboarding: state })
+    onboardingReply = async (path, req) => {
+      calls.push(`${path} ${req.headers.get('Authorization')}`)
+      if (path.endsWith('/onboarding')) return json(state)
+      if (path.endsWith('/email/send')) return json({ email: state.email, sent: true, devCode: '123456' })
+      if (path.endsWith('/email/verify')) {
+        const body = (await req.json()) as { code: string }
+        if (body.code !== '123456') return json({ title: 'Datos inválidos.', status: 400, code: 'validation', errors: { code: ['El código no es válido o venció.'] } }, 400)
+        return json({ state: { ...state, emailVerified: true }, mfaChallengeToken: null })
+      }
+      return json({ state: { ...state, emailVerified: true, passwordChangeRequired: false }, mfaChallengeToken: 'chal-2' })
+    }
+    await renderAppAt('/login')
+    const user = await submitLogin()
+
+    expect(await screen.findByText('Verifique su correo')).toBeInTheDocument()
+    expect(screen.getByText('Paso 1 de 3')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Enviar código' }))
+    expect(await screen.findByTestId('onboarding-dev-code')).toHaveTextContent('123456')
+    await user.type(screen.getByLabelText('Código de verificación'), '123456')
+    await user.click(screen.getByRole('button', { name: 'Verificar' }))
+
+    expect(await screen.findByText('Ponga su propia contraseña')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Contraseña nueva'), 'corta')
+    expect(screen.getByText('Use al menos 12 caracteres.')).toBeInTheDocument()
+    await user.clear(screen.getByLabelText('Contraseña nueva'))
+    await user.type(screen.getByLabelText('Contraseña nueva'), 'Mi-Clave-Propia-2026')
+    await user.type(screen.getByLabelText('Repita la contraseña nueva'), 'Mi-Clave-Propia-2026')
+    await user.click(screen.getByRole('button', { name: 'Guardar y seguir' }))
+
+    // Paso 3: la pantalla de MFA enrola con el challenge nuevo que dio el cambio de contraseña.
+    expect(await screen.findByText('Configure la verificación en dos pasos')).toBeInTheDocument()
+    expect(calls.every((c) => c.includes('Bearer chal-1'))).toBe(true)
   })
 })

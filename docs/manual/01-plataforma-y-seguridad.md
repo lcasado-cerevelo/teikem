@@ -40,6 +40,25 @@ a su compañía predeterminada; si ya no es miembro de ella, a la membresía mar
 nombre. Luego cambia de compañía con `POST /api/v1/auth/switch-tenant` (el selector de la cabecera). El valor
 `tenant_selection` ya no se emite.
 
+**Primer ingreso obligatorio (2026-09-30).** Si al usuario le falta el primer ingreso (columna `AspNetUsers.OnboardingRequired`
+y además: correo sin verificar `EmailVerifiedUtc IS NULL`, contraseña del administrador `MustChangePassword = 1` o sin MFA
+confirmado), el login responde `status = "onboarding_required"`, sin `tokens`, con `mfaChallengeToken` (vida
+`Auth:Onboarding:ChallengeMinutes`, 30 min) y `onboarding = { email (enmascarado), emailVerified, passwordChangeRequired,
+mfaConfigured }`. Con ese token como Bearer, en orden:
+
+| Endpoint | Qué hace | Errores |
+|---|---|---|
+| `GET /api/v1/auth/onboarding` | Qué falta | — |
+| `POST /api/v1/auth/onboarding/email/send` | Manda el código de 6 dígitos por Brevo (`Brevo__ApiKey`, `Brevo__FromEmail`; opcional `Brevo__FromName`) | 409 `Su correo ya está verificado.`; 409 `No se pudo enviar el correo. Intente de nuevo en unos minutos.` |
+| `POST /api/v1/auth/onboarding/email/verify` `{ code }` | Confirma el correo (un código malo cuenta para el bloqueo de la cuenta) | 400 `El código no es válido o venció.` |
+| `POST /api/v1/auth/onboarding/password` `{ newPassword }` | Contraseña propia; devuelve un `mfaChallengeToken` nuevo (el sello rotó) | 409 `Verifique primero su correo.`; 409 `Ya cambió su contraseña.`; 400 `La contraseña nueva debe ser distinta de la que le dieron.` y los de la política |
+| `POST /api/v1/auth/mfa/totp/enroll` → `/confirm` → `/mfa/verify` | Configura el MFA y entra; el verify apaga `OnboardingRequired` | 403 `Complete primero la verificación del correo y el cambio de contraseña.` |
+
+El login por PIN de un usuario con el primer ingreso pendiente responde 403 `Complete primero su primer ingreso en la web
+(correo, contraseña y verificación en dos pasos).`. Usuarios nuevos y existentes empiezan pendientes; los de prueba de la demo
+(`Seed:Demo:*Email`) los completa el seeder salvo `Seed:Demo:CompleteOnboarding=false`. `Auth:Onboarding:Enabled=false` lo apaga
+(solo para el smoke/CI); `Auth:Onboarding:ReturnEmailCodeInResponse=true` (Development) devuelve el código en la respuesta.
+
 Validaciones:
 
 | Campo / caso | Regla | Mensaje exacto | HTTP |

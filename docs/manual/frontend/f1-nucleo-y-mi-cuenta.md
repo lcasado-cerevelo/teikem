@@ -72,6 +72,33 @@ compañías, "Entrar" lo lleva directo a su compañía predeterminada (si no tie
 otra, use el **selector de compañía de la cabecera** (entre el reloj y el tema): solo lista las compañías a las que usted
 tiene acceso. Con una sola compañía, la cabecera muestra su nombre sin selector.
 
+## Primer ingreso (correo, contraseña propia y verificación en dos pasos)
+
+**Para qué sirve.** Desde 2026-09-30 todo usuario (nuevo o existente) completa, la primera vez que entra, tres pasos en este
+orden; hasta terminarlos no puede usar nada (ni la web ni la app del almacén con PIN):
+
+1. **Verificar su correo** — "Enviar código" manda un código de 6 dígitos a su correo (se muestra enmascarado, j***@empresa.com);
+   se escribe y "Verificar". "Enviar otro código" manda uno nuevo. El código vence en unos minutos.
+2. **Poner su propia contraseña** — la que le dio el administrador es temporal. Mínimo 12 caracteres, escrita dos veces; no puede
+   ser la misma que le dieron ni una que aparezca en brechas conocidas.
+3. **Configurar la verificación en dos pasos** — sigue en la pantalla de MFA: escanear el código QR (o escribir la clave) en la
+   app de autenticación, confirmar con un código, guardar los códigos de recuperación y entrar.
+
+**Cómo se llega.** Automáticamente después de "Entrar" (dirección `/onboarding`). Si cierra a mitad de camino, al volver a entrar
+sigue donde quedó (lo hecho no se repite). "Volver al inicio de sesión" cancela.
+
+**Permiso.** Ninguno.
+
+**Mensajes que puede ver.**
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Código del correo equivocado o vencido | `El código no es válido o venció.` | 400 |
+| El correo no salió (proveedor caído) | `No se pudo enviar el correo. Intente de nuevo en unos minutos.` | 409 |
+| Contraseña igual a la que le dieron | `La contraseña nueva debe ser distinta de la que le dieron.` | 400 |
+| Contraseña en brechas conocidas | `Esta contraseña aparece en brechas conocidas; elija otra.` | 400 |
+| Contraseña corta / no coinciden (en pantalla) | `Use al menos 12 caracteres.` / `Las dos contraseñas no coinciden.` | — |
+
 ## Menú y cabecera
 
 **Para qué sirve.** Es el marco de toda pantalla ya con la sesión iniciada: el menú lateral para moverse entre pantallas y

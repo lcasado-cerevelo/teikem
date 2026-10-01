@@ -26,6 +26,28 @@ compañía tienes cuenta, o pide que te agreguen como usuario ahí.
 Desde 2026-09-30 el sistema entra directo a tu compañía predeterminada (o a la primera por nombre). Cambia de compañía con el
 selector de la cabecera, entre el reloj y el tema; solo muestra las compañías a las que tienes acceso.
 
+**¿Por qué me pide verificar el correo, cambiar la contraseña y configurar la verificación en dos pasos al entrar?**
+Es el primer ingreso obligatorio (desde 2026-09-30, para todos). La contraseña la dio un administrador: hay que confirmar que el
+correo es suyo, poner una contraseña que solo usted conozca y activar el segundo factor. Se hace una sola vez.
+
+**¿Qué significa "El código no es válido o venció." (400) en el primer ingreso?**
+El código de 6 dígitos del correo está mal escrito o pasaron más de unos minutos. Toque "Enviar otro código" y use el más
+reciente. Varios intentos fallidos bloquean la cuenta 15 minutos, como la contraseña.
+
+**¿Qué significa "No se pudo enviar el correo. Intente de nuevo en unos minutos." (409)?**
+El proveedor de correo (Brevo) no aceptó el envío o no está configurado (`Brevo__ApiKey`, `Brevo__FromEmail`). Si persiste,
+avise a soporte.
+
+**¿Qué significa "La contraseña nueva debe ser distinta de la que le dieron." (400)?**
+Escribió la misma contraseña temporal que le dio el administrador. Elija una nueva.
+
+**¿Qué significa "Verifique primero su correo." (409) o "Complete primero la verificación del correo y el cambio de contraseña." (403)?**
+Los pasos del primer ingreso van en orden: correo → contraseña → verificación en dos pasos. Vuelva a entrar y la pantalla lo
+lleva al paso que falta.
+
+**¿Qué significa "Complete primero su primer ingreso en la web (correo, contraseña y verificación en dos pasos)." (403) en la app del almacén?**
+Ese usuario todavía no terminó su primer ingreso. Que entre una vez a la web, complete los tres pasos y luego use su PIN.
+
 **¿Qué significa "El usuario no tiene ninguna compañía activa."?**
 Tu usuario existe pero no tiene ninguna membresía activa en ninguna compañía. Pide a un administrador que te
 dé de alta en su tenant o reactive tu membresía.

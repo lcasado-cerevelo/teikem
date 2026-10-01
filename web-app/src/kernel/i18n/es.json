@@ -32,6 +32,25 @@
       "subtitle": "Entre con su correo y contraseña.",
       "submit": "Entrar"
     },
+    "onboarding": {
+      "title": "Primer ingreso",
+      "step": "Paso {n} de {total}",
+      "emailTitle": "Verifique su correo",
+      "emailSubtitle": "Le enviaremos un código de 6 dígitos a {email}.",
+      "sendCode": "Enviar código",
+      "codeSent": "Le enviamos un código a {email}. Vence en unos minutos.",
+      "devCode": "Código (solo en desarrollo): {code}",
+      "codeLabel": "Código de verificación",
+      "verify": "Verificar",
+      "resend": "Enviar otro código",
+      "passwordTitle": "Ponga su propia contraseña",
+      "passwordSubtitle": "La contraseña que le dieron es temporal. Elija una nueva que solo usted conozca.",
+      "newPassword": "Contraseña nueva",
+      "confirmPassword": "Repita la contraseña nueva",
+      "passwordShort": "Use al menos {min} caracteres.",
+      "passwordMismatch": "Las dos contraseñas no coinciden.",
+      "savePassword": "Guardar y seguir"
+    },
     "mfa": {
       "title": "Verificación en dos pasos",
       "subtitle": "Escriba el código de 6 dígitos de su app de autenticación o uno de sus códigos de recuperación.",

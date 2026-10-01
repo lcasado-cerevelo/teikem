@@ -32,6 +32,25 @@
       "subtitle": "Use your email and password.",
       "submit": "Sign in"
     },
+    "onboarding": {
+      "title": "First sign-in",
+      "step": "Step {n} of {total}",
+      "emailTitle": "Verify your email",
+      "emailSubtitle": "We will send a 6-digit code to {email}.",
+      "sendCode": "Send code",
+      "codeSent": "We sent a code to {email}. It expires in a few minutes.",
+      "devCode": "Code (development only): {code}",
+      "codeLabel": "Verification code",
+      "verify": "Verify",
+      "resend": "Send another code",
+      "passwordTitle": "Set your own password",
+      "passwordSubtitle": "The password you were given is temporary. Choose a new one only you know.",
+      "newPassword": "New password",
+      "confirmPassword": "Repeat the new password",
+      "passwordShort": "Use at least {min} characters.",
+      "passwordMismatch": "The two passwords do not match.",
+      "savePassword": "Save and continue"
+    },
     "mfa": {
       "title": "Two-step verification",
       "subtitle": "Enter the 6-digit code from your authenticator app or one of your recovery codes.",

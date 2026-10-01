@@ -18,6 +18,13 @@ public class ApplicationUser : IdentityUser<int>, ISoftDeletable
     [NotAudited] public DateTime? LastLoginUtc { get; set; }
     /// <summary>Administrador de Teikem (soporte): opera cualquier tenant; sus acciones quedan atribuidas a él y visibles para el tenant.</summary>
     public bool IsPlatformAdmin { get; set; }
+    /// <summary>2026-09-30: primer ingreso pendiente (verificar correo → contraseña propia → MFA). Hasta completarlo el login no
+    /// emite tokens ni deja entrar con PIN. Lo apaga el último paso (MFA).</summary>
+    public bool OnboardingRequired { get; set; } = true;
+    /// <summary>La contraseña la puso un administrador: el usuario debe poner la suya en el primer ingreso.</summary>
+    public bool MustChangePassword { get; set; } = true;
+    /// <summary>Cuándo el usuario confirmó su correo con el código de 6 dígitos (null = sin verificar).</summary>
+    public DateTime? EmailVerifiedUtc { get; set; }
 
     [SensitiveData] public override string? PasswordHash { get => base.PasswordHash; set => base.PasswordHash = value; }
     [SensitiveData] public override string? SecurityStamp { get => base.SecurityStamp; set => base.SecurityStamp = value; }

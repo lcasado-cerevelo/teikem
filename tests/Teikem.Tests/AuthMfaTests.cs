@@ -39,6 +39,9 @@ public class AuthMfaTests
             s.AddSingleton<IPasswordBreachChecker, NoOpPasswordBreachChecker>();
             s.AddSingleton<DeviceService>();
             s.AddSingleton<PinService>();
+            // Primer ingreso (2026-09-30) apagado aquí: estas pruebas son del login de siempre (OnboardingTests lo prueba encendido).
+            s.AddSingleton<Microsoft.Extensions.Options.IOptions<OnboardingOptions>>(Options.Create(new OnboardingOptions { Enabled = false }));
+            s.AddSingleton<Teikem.Infrastructure.Abstractions.ITransactionalEmailSender, NoEmailSender>();
             s.AddSingleton<AuthService>();
             s.AddSingleton<UserAdminService>();
         });

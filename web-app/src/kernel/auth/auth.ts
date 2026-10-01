@@ -7,10 +7,13 @@ type AuthResultDto = components['schemas']['AuthResultDto']
 type TokenPairDto = components['schemas']['TokenPairDto']
 export type TenantOptionDto = components['schemas']['TenantOptionDto']
 export type MfaEnrollResultDto = components['schemas']['MfaEnrollResultDto']
+export type OnboardingStateDto = components['schemas']['OnboardingStateDto']
+export type OnboardingEmailSentDto = components['schemas']['OnboardingEmailSentDto']
 
 export type LoginOutcome =
   | { status: 'ok' }
   | { status: 'mfa_required'; enrollmentRequired: boolean }
+  | { status: 'onboarding_required'; onboarding: OnboardingStateDto }
 
 function deviceInfo(): string | undefined {
   return globalThis.navigator?.userAgent?.slice(0, 200)
@@ -29,6 +32,11 @@ export function storeTokenPair(pair: TokenPairDto | undefined): void {
 }
 
 function handleResult(result: AuthResultDto): LoginOutcome {
+  // Primer ingreso pendiente (2026-09-30): el challenge sirve para /auth/onboarding/* y para enrolar el MFA al final.
+  if (result.status === 'onboarding_required' && result.mfaChallengeToken && result.onboarding) {
+    setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? true })
+    return { status: 'onboarding_required', onboarding: result.onboarding }
+  }
   if (result.status === 'mfa_required' && result.mfaChallengeToken) {
     setMfaChallenge({ token: result.mfaChallengeToken, enrollmentRequired: result.mfaEnrollmentRequired ?? false })
     return { status: 'mfa_required', enrollmentRequired: result.mfaEnrollmentRequired ?? false }
@@ -70,6 +78,29 @@ export async function enrollMfaWithChallenge(): Promise<MfaEnrollResultDto> {
 export async function confirmMfaWithChallenge(code: string): Promise<string[]> {
   const result = await unwrap(api.POST('/api/v1/auth/mfa/totp/confirm', { body: { code }, headers: challengeHeaders() }))
   return result.recoveryCodes ?? []
+}
+
+/** Primer ingreso: qué falta (correo, contraseña, MFA). */
+export async function getOnboarding(): Promise<OnboardingStateDto> {
+  return unwrap(api.GET('/api/v1/auth/onboarding', { headers: challengeHeaders() }))
+}
+
+/** Primer ingreso, paso 1a: manda al correo un código de 6 dígitos. */
+export async function sendOnboardingEmail(): Promise<OnboardingEmailSentDto> {
+  return unwrap(api.POST('/api/v1/auth/onboarding/email/send', { headers: challengeHeaders() }))
+}
+
+/** Primer ingreso, paso 1b: confirma el código del correo. */
+export async function verifyOnboardingEmail(code: string): Promise<OnboardingStateDto> {
+  const step = await unwrap(api.POST('/api/v1/auth/onboarding/email/verify', { body: { code }, headers: challengeHeaders() }))
+  return step.state
+}
+
+/** Primer ingreso, paso 2: contraseña propia. El sello de seguridad rota: se guarda el challenge nuevo para el MFA. */
+export async function setOnboardingPassword(newPassword: string): Promise<OnboardingStateDto> {
+  const step = await unwrap(api.POST('/api/v1/auth/onboarding/password', { body: { newPassword }, headers: challengeHeaders() }))
+  if (step.mfaChallengeToken) setMfaChallenge({ token: step.mfaChallengeToken, enrollmentRequired: !step.state.mfaConfigured })
+  return step.state
 }
 
 export function cancelMfa(): void {
