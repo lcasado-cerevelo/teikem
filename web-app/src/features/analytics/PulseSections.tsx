@@ -132,6 +132,16 @@ function IndicatorNode({ indicator, canOpen }: { indicator: Indicator; canOpen: 
  * Sección INDICATORS: "Tus indicadores" (h2) con un río por línea de módulo (Lote 15, D8): cada línea lleva su etiqueta h3
  * ("Operación", "Almacén", "Contabilidad") y sus indicadores en el orden de siempre. Sin indicadores visibles no se pinta.
  */
+/** Máximo de tarjetas por fila en cada línea de indicadores (pedido de Luis, 2026-10-01): la sexta pasa a otra fila. */
+export const INDICATORS_PER_ROW = 5
+
+/** Parte una lista en filas de `size` (la última puede quedar más corta). */
+export function chunkRows<T>(items: readonly T[], size = INDICATORS_PER_ROW): T[][] {
+  const rows: T[][] = []
+  for (let i = 0; i < items.length; i += size) rows.push(items.slice(i, i + size))
+  return rows
+}
+
 export function IndicatorsRiver({ indicators }: { indicators: Indicator[] }) {
   const t = useT()
   // El nodo lleva a Indicadores solo si el usuario puede entrar (analytics.view + ANALYTICS); si no, es solo lectura.
@@ -151,11 +161,14 @@ export function IndicatorsRiver({ indicators }: { indicators: Indicator[] }) {
             <StreamLabel icon={<LineIcon />} id={`pulse-line-${line.group}`} level={3} tone={LINE_TONE[line.group]}>
               {t(`nav.groups.${line.group}`)}
             </StreamLabel>
-            <div className="river">
-              {line.items.map((ind, i) => (
-                <IndicatorNodeWithPipe key={ind.id} indicator={ind} first={i === 0} canOpen={canOpen} />
-              ))}
-            </div>
+            {/* hasta 5 por fila; cada fila es su propio río (la línea punteada no cruza de una fila a otra) */}
+            {chunkRows(line.items).map((row, r) => (
+              <div key={r} className="river river-5">
+                {row.map((ind, i) => (
+                  <IndicatorNodeWithPipe key={ind.id} indicator={ind} first={i === 0} canOpen={canOpen} />
+                ))}
+              </div>
+            ))}
           </div>
         )
       })}

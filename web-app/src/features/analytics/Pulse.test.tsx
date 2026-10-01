@@ -273,6 +273,20 @@ describe('Pulse — paneles del API', () => {
     expect(lines.every((l) => l.querySelector(':scope > .river') != null)).toBe(true)
   })
 
+  it('2026-10-01: máximo 5 indicadores por fila; el sexto en adelante pasa a otra fila de la misma línea', async () => {
+    mock.handler = () =>
+      pulse({
+        indicators: Array.from({ length: 7 }, (_, i) => ({ id: 100 + i, name: `Ind ${i + 1}`, value: i, isVisible: true, sortOrder: i, businessModule: 'WAREHOUSE' })),
+      })
+    const { container } = renderPulse()
+    expect(await screen.findByText('Ind 7')).toBeInTheDocument()
+    const line = container.querySelector('.pulse-line[data-line="warehouse"]') as HTMLElement
+    const rows = Array.from(line.querySelectorAll(':scope > .river'))
+    expect(rows.map((r) => r.querySelectorAll('.node').length)).toEqual([5, 2])
+    // la línea punteada no cruza filas: cada fila tiene un tubo menos que tarjetas
+    expect(rows.map((r) => r.querySelectorAll('.pipe').length)).toEqual([4, 1])
+  })
+
   it('Lote 15 (D8): sin indicadores de Contabilidad no hay línea Contabilidad', async () => {
     mock.handler = () => pulse({ indicators: [{ id: 2, name: 'Unidades recibidas', value: 12, isVisible: true, businessModule: 'WAREHOUSE' }] })
     renderPulse()
