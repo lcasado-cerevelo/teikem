@@ -4,7 +4,8 @@ import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { setApiBaseUrl } from '../api/client'
 import { __resetDbForTests } from '../db/database'
 import { enrollDevice, fetchDeviceUsers, loginWithPin, sendHeartbeat } from './deviceAuth'
-import { __resetSessionForTests, getSessionState } from './session'
+import * as SecureStore from 'expo-secure-store'
+import { __resetSessionForTests, clearUserSession, getSessionState, hydrateSession, selectDevice } from './session'
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -50,7 +51,54 @@ describe('auth del aparato', () => {
       defaultWarehousePublicId: 'wh-1',
       theme: 'light',
       defaultWarehouseReceivingMode: null,
+      dbName: 'teikem_almacen_dev1.db',
     })
+  })
+
+  it('varias compañías: el segundo registro se agrega, manda los registros previos y cada uno tiene su base', async () => {
+    const bodies: unknown[] = []
+    let n = 0
+    handlers['/api/v1/devices/enroll'] = (req) => {
+      void req.clone().json().then((b) => bodies.push(b))
+      n += 1
+      return jsonResponse(200, { devicePublicId: `dev-${n}`, deviceSecret: `s-${n}`, tenantName: n === 1 ? 'Advance Depot' : 'Advance Solutions', defaultWarehousePublicId: null, theme: null })
+    }
+    await enrollDevice('AAAA1111')
+    await enrollDevice('BBBB2222')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(bodies[0]).toMatchObject({ registeredDevicePublicIds: null })
+    expect(bodies[1]).toMatchObject({ registeredDevicePublicIds: ['dev-1'] })
+    const st = getSessionState()
+    expect(st.devices.map((d) => d.tenantName)).toEqual(['Advance Depot', 'Advance Solutions'])
+    expect(st.device?.devicePublicId).toBe('dev-2')
+    expect(new Set(st.devices.map((d) => d.dbName)).size).toBe(2)
+
+    // Al salir el usuario, con varias compañías se vuelve a elegir; elegir una cierra la sesión anterior.
+    await clearUserSession()
+    expect(getSessionState().device).toBeNull()
+    await selectDevice('dev-1')
+    expect(getSessionState().device?.tenantName).toBe('Advance Depot')
+    expect(getSessionState().session).toBeNull()
+  })
+
+  it('el servidor rechaza una compañía ya registrada en el teléfono: no se agrega nada', async () => {
+    handlers['/api/v1/devices/enroll'] = () =>
+      jsonResponse(200, { devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'Advance Depot', defaultWarehousePublicId: null, theme: null })
+    await enrollDevice('AAAA1111')
+    handlers['/api/v1/devices/enroll'] = () =>
+      jsonResponse(409, { title: 'Este teléfono ya está registrado en Advance Depot como ZB-01. Pide al administrador un código de otra compañía.', status: 409 })
+    await expect(enrollDevice('CCCC3333')).rejects.toMatchObject({ title: expect.stringContaining('ya está registrado en Advance Depot') })
+    expect(getSessionState().devices).toHaveLength(1)
+  })
+
+  it('instalación de antes (un solo registro): al arrancar pasa a la lista con su base de siempre', async () => {
+    await SecureStore.setItemAsync('teikem.device.identity', JSON.stringify({ devicePublicId: 'old', deviceSecret: 's', tenantName: 'Advance Depot', defaultWarehousePublicId: null, theme: null }))
+    await hydrateSession()
+    const st = getSessionState()
+    expect(st.devices).toHaveLength(1)
+    expect(st.device?.devicePublicId).toBe('old')
+    expect(st.device?.dbName).toBeUndefined()
+    expect(await SecureStore.getItemAsync('teikem.device.identity')).toBeNull()
   })
 
   it('fetchDeviceUsers mapea la lista de usuarios', async () => {

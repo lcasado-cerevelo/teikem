@@ -3,19 +3,27 @@ import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
 import { api, unwrap } from '../api/client'
-import { clearDeviceIdentity, getSessionState, saveDeviceIdentity, saveUserSession, updateDeviceIdentity } from './session'
+import { addDeviceIdentity, clearDeviceIdentity, dbNameFor, getSessionState, saveUserSession, updateDeviceIdentity } from './session'
 
 const APP_VERSION = String(Constants.expoConfig?.version ?? '1.0.0')
 
-/** Registra este aparato con el código de un solo uso que crea el administrador en la web. */
+/** Registra este aparato en una compañía con el código de un solo uso que crea el administrador en la web. Si el teléfono ya
+ *  tiene registros, los manda para que el servidor rechace (409, sin gastar el código) uno de una compañía ya registrada. */
 export async function enrollDevice(enrollCode: string): Promise<void> {
+  const registered = getSessionState().devices.map((d) => d.devicePublicId)
   const enrolled = await unwrap(
     api.POST('/api/v1/devices/enroll', {
-      body: { enrollCode: enrollCode.trim(), model: Platform.OS === 'android' ? 'Android' : Platform.OS, appVersion: APP_VERSION },
+      body: {
+        enrollCode: enrollCode.trim(),
+        model: Platform.OS === 'android' ? 'Android' : Platform.OS,
+        appVersion: APP_VERSION,
+        registeredDevicePublicIds: registered.length > 0 ? registered : null,
+      },
     }),
   )
   if (!enrolled.devicePublicId || !enrolled.deviceSecret) throw new Error('Respuesta de registro incompleta.')
-  await saveDeviceIdentity({
+  await addDeviceIdentity({
+    dbName: dbNameFor(enrolled.devicePublicId),
     devicePublicId: enrolled.devicePublicId,
     deviceSecret: enrolled.deviceSecret,
     tenantName: enrolled.tenantName ?? '',

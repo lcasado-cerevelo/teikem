@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { ApiError, getApiBaseUrl, setApiBaseUrl } from '../kernel/api/client'
 import { enrollDevice } from '../kernel/auth/deviceAuth'
+import { useSession } from '../kernel/auth/useSession'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
 import { BrandLockup } from '../kernel/ui/BrandLockup'
@@ -16,6 +17,7 @@ import { colors, spacing } from '../kernel/ui/theme'
 export default function EnrollScreen() {
   const { t } = useT()
   const router = useRouter()
+  const { devices } = useSession()
   const [serverUrl, setServerUrl] = useState(getApiBaseUrl())
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -85,6 +87,9 @@ export default function EnrollScreen() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <BigButton label={t('enroll.submit')} onPress={submit} loading={busy} disabled={!code.trim()} />
+        {devices.length > 0 ? (
+          <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/login')} />
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   )

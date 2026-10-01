@@ -17394,6 +17394,7 @@ export interface components {
             enrollCode?: string | null;
             model?: string | null;
             appVersion?: string | null;
+            registeredDevicePublicIds?: string[] | null;
         };
         DeviceEnrolledDto: {
             /** Format: uuid */

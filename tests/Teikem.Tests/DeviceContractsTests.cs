@@ -34,7 +34,7 @@ public class DeviceContractsTests
 
     public static readonly TheoryData<Type, string> Signatures = new()
     {
-        { typeof(DeviceEnrollRequest), "string? EnrollCode, string? Model, string? AppVersion" },
+        { typeof(DeviceEnrollRequest), "string? EnrollCode, string? Model, string? AppVersion, IReadOnlyList`1? RegisteredDevicePublicIds" },
         { typeof(DeviceUsersRequest), "Guid DevicePublicId, string? DeviceSecret" },
         { typeof(DeviceLoginRequest), "Guid DevicePublicId, string? DeviceSecret, int UserId, string? Pin" },
         { typeof(PinSetRequest), "string? CurrentPassword, string? Pin" },

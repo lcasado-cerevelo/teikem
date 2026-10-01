@@ -26024,6 +26024,14 @@
           "appVersion": {
             "type": "string",
             "nullable": true
+          },
+          "registeredDevicePublicIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

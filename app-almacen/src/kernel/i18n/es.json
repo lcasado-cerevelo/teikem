@@ -47,7 +47,9 @@
     "submit": "Entrar",
     "loadingUsers": "Cargando usuarios del aparato…",
     "noUsers": "No hay usuarios con acceso a este aparato.",
-    "changeDevice": "Registrar otro aparato"
+    "chooseCompany": "¿En qué compañía vas a trabajar?",
+    "addCompany": "Registrar otra compañía",
+    "changeCompany": "Cambiar de compañía"
   },
   "home": {
     "title": "Teikem Almacén",

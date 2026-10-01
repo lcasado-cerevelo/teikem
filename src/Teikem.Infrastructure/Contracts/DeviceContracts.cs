@@ -36,7 +36,9 @@ public sealed record DevicePatchRequest(string? Name, Guid? DefaultWarehousePubl
 /// estos contratos son anulables a propósito: si faltan, responde el servicio con su mensaje en español (p. ej. 401 'El código
 /// de registro no es válido o venció.'), no el 400 genérico de MVC en inglés.
 /// </summary>
-public sealed record DeviceEnrollRequest(string? EnrollCode, string? Model, string? AppVersion);
+/// <remarks>2026-09-30: RegisteredDevicePublicIds = registros que el teléfono ya tiene (uno por compañía). Si el código es de
+/// una compañía que ya está entre ellos, se rechaza ANTES de consumir el código (409) para que el administrador dé otro.</remarks>
+public sealed record DeviceEnrollRequest(string? EnrollCode, string? Model, string? AppVersion, IReadOnlyList<Guid>? RegisteredDevicePublicIds = null);
 
 /// <summary>
 /// Aparato registrado: su PublicId y su secreto (se muestra UNA sola vez; el aparato lo guarda cifrado), compañía, almacén y

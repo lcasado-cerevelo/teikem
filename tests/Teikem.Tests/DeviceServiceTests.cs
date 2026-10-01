@@ -77,6 +77,26 @@ public class DeviceServiceTests
     }
 
     [Fact]
+    public async Task Enroll_rejects_a_second_registration_of_the_same_phone_in_the_same_company_without_spending_the_code()
+    {
+        // 2026-09-30: un teléfono puede tener registros en varias compañías, pero uno solo por compañía.
+        await using var f = await FixtureAsync();
+        var (_, first) = await EnrolledDeviceAsync(f, "ZB-01");
+        var second = await f.Get<DeviceService>().CreateAsync(new DeviceCreateRequest("ZB-02", null, null, null, null), default);
+        f.Db.ChangeTracker.Clear();
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => f.Get<DeviceService>().EnrollAsync(
+            new DeviceEnrollRequest(second.EnrollCode, "TC52", "1.0.0", [first.DevicePublicId]), default));
+        Assert.StartsWith("Este teléfono ya está registrado en ", ex.Message);
+        Assert.Contains(" como ZB-01. Pide al administrador un código de otra compañía.", ex.Message);
+
+        // El código no se gastó; un registro de otra compañía (desconocido aquí) no estorba.
+        f.Db.ChangeTracker.Clear();
+        var ok = await f.Get<DeviceService>().EnrollAsync(new DeviceEnrollRequest(second.EnrollCode, "TC52", "1.0.0", [Guid.NewGuid()]), default);
+        Assert.NotEqual(first.DevicePublicId, ok.DevicePublicId);
+    }
+
+    [Fact]
     public async Task Enroll_reports_the_receiving_mode_of_the_default_warehouse()
     {
         // Lote 16: el registro (y el heartbeat, por la misma costura PreferencesAsync) trae el modo del almacén por defecto.

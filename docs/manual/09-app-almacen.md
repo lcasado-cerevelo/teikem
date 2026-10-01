@@ -57,6 +57,7 @@ elegir usuario.
 |---|---|---|
 | Dirección del servidor sin `http://` o `https://` | `Escriba una dirección válida, por ejemplo http://192.168.1.20:5000/` | Local (antes de llamar al API) |
 | Código de registro inválido, vencido o de un aparato desactivado | `El código de registro no es válido o venció.` | API, 401 (capítulo 8A §2.2) |
+| El teléfono ya está registrado en la compañía de ese código (el código NO se gasta) | `Este teléfono ya está registrado en {compañía} como {código}. Pide al administrador un código de otra compañía.` | API, 409 |
 | Sin conexión al servidor | `Ocurrió un error. Intente de nuevo.` | Local (`errors.generic`) |
 
 ### 2.2 Elegir usuario y entrar con PIN
@@ -67,8 +68,27 @@ registrado se identifica solo (sin contraseña).
 
 Cómo se usa: la lista de usuarios del aparato se pide sola al entrar a esta pantalla; tocar un nombre lleva al
 teclado numérico del PIN (4 a 6 dígitos). "Entrar" llama a `POST /api/v1/auth/device/login`. Si el PIN es
-incorrecto, se borra el PIN escrito y hay que volver a teclearlo (no vuelve a la lista). "Registrar otro aparato"
-olvida el registro de este aparato y vuelve a la pantalla anterior.
+incorrecto, se borra el PIN escrito y hay que volver a teclearlo (no vuelve a la lista).
+
+### 2.3 Un teléfono en varias compañías (2026-09-30)
+
+Un mismo teléfono puede trabajar en varias compañías (por ejemplo Advance Depot y Advance Solutions), **una vez en cada
+una**:
+
+- **Registrar otra compañía**: en "¿Quién eres?", el botón "Registrar otra compañía" abre la pantalla de registro; se
+  teclea el código que dio el administrador de la otra compañía (Sistema → Aparatos). El registro se **agrega**; los
+  anteriores siguen. "Volver" regresa sin registrar.
+- **Al entrar**: con dos o más registros, primero sale "¿En qué compañía vas a trabajar?" con el nombre de cada compañía;
+  al tocar una salen los usuarios con PIN de esa compañía (su nombre aparece arriba). Con un solo registro no se pregunta.
+- **Cambiar de compañía**: botón "Cambiar de compañía" en "¿Quién eres?". Al salir un usuario ("Salir" en Inicio), el
+  siguiente vuelve a elegir compañía.
+- **Datos separados**: cada compañía tiene su propia base en el teléfono. Lo que quedó sin sincronizar en una compañía
+  (conteos, movimientos) se queda en su base y se envía la próxima vez que alguien entre a esa compañía con señal; se puede
+  cambiar de compañía aunque haya pendientes. La dirección del servidor, el idioma y el tema son del teléfono (comunes).
+- **Repetido**: si el código es de una compañía en la que el teléfono ya está registrado, sale el aviso de la tabla de
+  arriba y el código **no se gasta**; pida un código de otra compañía (o use el registro que ya existe).
+- **Desactivado**: si el administrador desactiva el aparato en una compañía, solo se quita ese registro del teléfono; los
+  de las otras compañías siguen.
 
 ### Validaciones
 

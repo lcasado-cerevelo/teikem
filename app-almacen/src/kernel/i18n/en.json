@@ -47,7 +47,9 @@
     "submit": "Sign in",
     "loadingUsers": "Loading device users…",
     "noUsers": "No users have access to this device.",
-    "changeDevice": "Register another device"
+    "chooseCompany": "Which company are you working for?",
+    "addCompany": "Register another company",
+    "changeCompany": "Change company"
   },
   "home": {
     "title": "Teikem Warehouse",

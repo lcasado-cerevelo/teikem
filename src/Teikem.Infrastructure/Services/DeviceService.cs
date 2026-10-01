@@ -38,6 +38,8 @@ public sealed class DeviceService(
 {
     public const string DuplicateCodeMessage = "Ya existe un aparato con ese código.";
     public const string InvalidEnrollCodeMessage = "El código de registro no es válido o venció.";
+    /// <summary>2026-09-30: el teléfono ya tiene un registro en la compañía de este código ({0} = compañía, {1} = código del aparato).</summary>
+    public const string AlreadyRegisteredMessage = "Este teléfono ya está registrado en {0} como {1}. Pide al administrador un código de otra compañía.";
     public const string InvalidDeviceMessage = "El aparato no está registrado o fue desactivado.";
     public const string CodeRequiredMessage = "El código del aparato es obligatorio.";
     public const string CodeTooLongMessage = "El código del aparato admite hasta 30 caracteres.";
@@ -225,6 +227,21 @@ public sealed class DeviceService(
         {
             await WriteAnonymousFailureAsync(SecurityEventTypes.ApiCredential, device?.TenantId, new { action = "device_enroll" }, ct);
             throw new UnauthorizedException(InvalidEnrollCodeMessage);
+        }
+
+        // Un teléfono puede estar registrado en varias compañías, pero una sola vez en cada una: si ya tiene un registro
+        // vigente en la compañía de este código, se avisa sin consumir el código.
+        if (req.RegisteredDevicePublicIds is { Count: > 0 } registered)
+        {
+            var enrollTenantId = device.TenantId;
+            var existing = await db.Set<UserDevice>().IgnoreQueryFilters().AsNoTracking()
+                .Where(d => registered.Contains(d.PublicId) && d.TenantId == enrollTenantId && d.IsActive && d.SecretHash != null)
+                .Select(d => d.Code).FirstOrDefaultAsync(ct);
+            if (existing is not null)
+            {
+                var companyName = await db.Tenants.IgnoreQueryFilters().AsNoTracking().Where(t => t.TenantId == enrollTenantId).Select(t => t.Name).FirstAsync(ct);
+                throw new ConflictException(string.Format(AlreadyRegisteredMessage, companyName, existing));
+            }
         }
 
         using var _ = ((TenantContext)tenant).AsAnonymous(device.TenantId);

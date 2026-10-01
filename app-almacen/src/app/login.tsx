@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
-import { clearDeviceIdentity } from '../kernel/auth/session'
+import { selectDevice } from '../kernel/auth/session'
 import { type DeviceUser, fetchDeviceUsers, loginWithPin } from '../kernel/auth/deviceAuth'
 import { PIN_MAX_LENGTH, PIN_MIN_LENGTH } from '../kernel/auth/pinRules'
 import { useSession } from '../kernel/auth/useSession'
@@ -14,11 +14,12 @@ import { NumericKeypad, PinDots } from '../kernel/ui/NumericKeypad'
 import { colors, spacing } from '../kernel/ui/theme'
 
 /** Pantalla 1 (parte 2): elegir usuario del aparato y teclear su PIN (docs/mobile/app-almacen-plan.md §2). Sin
- *  contraseña ni MFA en el aparato (decisión ratificada). */
+ *  contraseña ni MFA en el aparato (decisión ratificada). 2026-09-30: si el teléfono está registrado en varias compañías,
+ *  primero se elige la compañía. */
 export default function LoginScreen() {
   const { t } = useT()
   const router = useRouter()
-  const { device } = useSession()
+  const { device, devices } = useSession()
   const [users, setUsers] = useState<DeviceUser[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [selected, setSelected] = useState<DeviceUser | null>(null)
@@ -58,6 +59,32 @@ export default function LoginScreen() {
     }
   }
 
+  if (!device) {
+    return (
+      <View style={styles.fill}>
+        <BrandLockup />
+        <Text style={styles.title}>{t('login.chooseCompany')}</Text>
+        <ScrollView contentContainerStyle={styles.list}>
+          {devices.map((d) => (
+            <Pressable
+              key={d.devicePublicId}
+              accessibilityRole="button"
+              onPress={() => {
+                setUsers(null)
+                setLoadError(null)
+                void selectDevice(d.devicePublicId)
+              }}
+              style={styles.userRow}
+            >
+              <Text style={styles.userName}>{d.tenantName}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        <BigButton label={t('login.addCompany')} variant="secondary" onPress={() => router.push('/enroll')} />
+      </View>
+    )
+  }
+
   if (selected) {
     return (
       <View style={styles.fill}>
@@ -79,6 +106,7 @@ export default function LoginScreen() {
   return (
     <View style={styles.fill}>
       <BrandLockup />
+      {devices.length > 1 ? <Text style={styles.subtitle}>{device.tenantName}</Text> : null}
       <Text style={styles.title}>{t('login.chooseUser')}</Text>
       {users === null && !loadError ? (
         <View style={styles.center}>
@@ -107,13 +135,10 @@ export default function LoginScreen() {
           )}
         />
       )}
-      <BigButton
-        label={t('login.changeDevice')}
-        variant="secondary"
-        onPress={() => {
-          void clearDeviceIdentity().then(() => router.replace('/enroll'))
-        }}
-      />
+      {devices.length > 1 ? (
+        <BigButton label={t('login.changeCompany')} variant="secondary" onPress={() => void selectDevice(null)} />
+      ) : null}
+      <BigButton label={t('login.addCompany')} variant="secondary" onPress={() => router.push('/enroll')} />
     </View>
   )
 }

@@ -1669,6 +1669,15 @@ informes** siguen con la regla anterior.
 
 ## Lote 8A — Backend de la app de almacén: aparatos, PIN, idempotencia, sincronización y operaciones atómicas
 
+**¿Qué significa "Este teléfono ya está registrado en {compañía} como {código}. Pide al administrador un código de otra compañía." (409)?**
+El teléfono ya tiene un registro en la compañía de ese código (un teléfono puede estar en varias compañías, pero una sola
+vez en cada una). El código no se gastó. Si quería trabajar en esa compañía, use el registro que ya tiene: en "¿Quién
+eres?" elija esa compañía. Si quería otra compañía, pida el código al administrador de esa otra compañía.
+
+**¿Cómo uso el mismo teléfono en dos compañías?**
+En "¿Quién eres?" toque "Registrar otra compañía" y teclee el código que le dio el administrador de la otra compañía
+(Sistema → Aparatos). Desde entonces, al entrar la app pregunta "¿En qué compañía vas a trabajar?".
+
 **¿Qué significa "El código de registro no es válido o venció." (401)?**
 El código de 8 caracteres que teclea el aparato es de **un solo uso** y vence en 24 horas; también deja de servir si el
 administrador generó uno nuevo (`POST /api/v1/devices/{id}/enroll-code`) o desactivó el aparato. Pida al administrador
