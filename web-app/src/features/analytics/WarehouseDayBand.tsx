@@ -92,8 +92,8 @@ export function WarehouseDayBand() {
     <section className="wh-band" aria-labelledby={headingId}>
       <div className="wh-band-h">
         <StreamLabel icon={<IconWarehouse />} id={headingId} tone="wh">
+          {/* Solo "Almacén hoy" (pedido de Luis, 2026-09-30): cada tarjeta ya muestra sus 7 días. */}
           {t('analytics.pulse.panels.WAREHOUSE_DAY')}
-          <span className="wh-band-days"> · {t('analytics.pulse.day.lastDays', { days: WAREHOUSE_DAY_DAYS })}</span>
         </StreamLabel>
         <label className="wh-band-sel" htmlFor={selectId}>
           <span className="sr-only">{t('analytics.pulse.day.warehouse')}</span>

@@ -551,8 +551,8 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     // título que no es "Almacén" a secas (los recorridos buscan ese h2 del panel Almacén)
     const heading = await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
-    // "· últimos 7 días" se oculta en celular por CSS (jsdom aplica la regla sin evaluar la media query): se mira el texto
-    expect(heading).toHaveTextContent('Almacén hoy · últimos 7 días')
+    // solo "Almacén hoy": los 7 días los muestra cada tarjeta (pedido de Luis, 2026-09-30)
+    expect(heading).toHaveTextContent(/^Almacén hoy$/)
     expect(screen.queryByRole('heading', { level: 2, name: 'Almacén' })).not.toBeInTheDocument()
     const band = heading.closest('section') as HTMLElement
     await waitFor(() => expect(within(card(container, 'received')).getByText('12')).toBeInTheDocument())

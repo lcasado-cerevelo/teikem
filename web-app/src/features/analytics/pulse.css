@@ -177,7 +177,7 @@
   .pulse .wh-river .node{padding:7px 10px;flex-basis:calc(50% - 4px)}
   .pulse .node.wh .ph{font-size:11px}
   .pulse .node.wh .big{font-size:19px;margin-top:2px}
-  .pulse .node.wh .sub,.pulse .wh-band-days{display:none}
+  .pulse .node.wh .sub{display:none}
   .pulse .node .wh-mini{padding-top:3px}
   .pulse .node .wh-mini .pulse-chartbox.mini{height:24px}
   .pulse .wh-band-h .streamlabel,.pulse .wh-band-sel{margin-top:0;margin-bottom:6px}

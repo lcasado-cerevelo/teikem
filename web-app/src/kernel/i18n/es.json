@@ -617,7 +617,6 @@
         "WAREHOUSE_DAY": "Almacén hoy"
       },
       "day": {
-        "lastDays": "últimos {days} días",
         "received": "Unidades recibidas",
         "outbound": "Unidades de salida",
         "countsVariance": "Conteos con diferencia",

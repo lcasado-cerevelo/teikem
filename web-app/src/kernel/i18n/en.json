@@ -617,7 +617,6 @@
         "WAREHOUSE_DAY": "Warehouse today"
       },
       "day": {
-        "lastDays": "last {days} days",
         "received": "Units received",
         "outbound": "Units out",
         "countsVariance": "Counts with variance",
