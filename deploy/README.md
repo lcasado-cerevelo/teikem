@@ -1,4 +1,7 @@
-# Instalar Teikem en un servidor (API + web con HTTPS) y construir el APK
+# Instalar Teikem en un servidor Linux (Docker) y construir el APK
+
+> **¿Su servidor es Windows Server con IIS?** Use [windows/README.md](windows/README.md) (instalador `instalar.ps1`). Esta guía de Docker
+> es para un servidor Linux.
 
 Un paquete con todo: el API, la web y un servidor (Caddy) que atiende HTTPS con certificado **Let's Encrypt automático**
 (se pide solo y **se renueva solo**). La base de datos no va aquí: se usa la que ya subió.

@@ -157,6 +157,43 @@ if (args.Contains(LegacyImportRunner.Verb, StringComparer.OrdinalIgnoreCase))
 if (app.Configuration.GetValue<bool>("Database:InitOnStartup"))
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();
 
+// --- Despliegue en IIS (2026-10-01): la web compilada va en wwwroot junto al API y el mismo sitio sirve las dos (sin CORS) ---
+// Hosting:RedirectToHttps (lo activa el instalador cuando ya hay certificado): http -> https con 308, salvo el desafío de
+// Let's Encrypt (/.well-known/acme-challenge), que debe responder por http.
+if (app.Configuration.GetValue<bool>("Hosting:RedirectToHttps"))
+{
+    app.Use(async (ctx, next) =>
+    {
+        if (!ctx.Request.IsHttps && !ctx.Request.Path.StartsWithSegments("/.well-known/acme-challenge"))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status308PermanentRedirect;
+            ctx.Response.Headers.Location = $"https://{ctx.Request.Host.Host}{ctx.Request.PathBase}{ctx.Request.Path}{ctx.Request.QueryString}";
+            return;
+        }
+        await next();
+    });
+    app.UseHsts();
+}
+var webRoot = app.Environment.WebRootPath;
+var hasWeb = webRoot is not null && File.Exists(Path.Combine(webRoot, "index.html"));
+var staticOptions = new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        // Los archivos de /assets llevan hash en el nombre (se pueden guardar un año); index.html nunca, para ver las versiones nuevas.
+        var path = ctx.Context.Request.Path;
+        ctx.Context.Response.Headers.CacheControl = path.StartsWithSegments("/assets") ? "public, max-age=31536000, immutable" : "no-cache";
+    },
+};
+if (hasWeb)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles(staticOptions);
+}
+// El enrutamiento va DESPUÉS de los archivos estáticos: con la ruta comodín de la web ya elegida, el middleware de archivos
+// estáticos no sirve nada (todo caía en index.html). Llamarlo aquí evita que WebApplication lo agregue al principio.
+app.UseRouting();
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 if (app.Environment.IsDevelopment())
 {
@@ -172,6 +209,8 @@ app.UseAuthorization();
 app.UseMiddleware<IdempotencyMiddleware>();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow })).AllowAnonymous();
+// La web es una aplicación de una sola página: cualquier ruta que no sea del API cae en index.html.
+if (hasWeb) app.MapFallbackToFile("{*path:regex(^(?!api/|health).*$)}", "index.html", staticOptions);
 
 app.Run();
 

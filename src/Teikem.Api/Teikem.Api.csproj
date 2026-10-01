@@ -3,6 +3,12 @@
     <RootNamespace>Teikem.Api</RootNamespace>
     <UserSecretsId>teikem-api</UserSecretsId>
   </PropertyGroup>
+  <!-- Las configuraciones locales (appsettings.*.local.json: contraseñas de la máquina de quien compila) y la de desarrollo nunca van en
+       lo que se publica; en el servidor, el instalador crea su propio appsettings.Production.local.json. -->
+  <ItemGroup>
+    <Content Update="appsettings.*.local.json" CopyToPublishDirectory="Never" />
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
