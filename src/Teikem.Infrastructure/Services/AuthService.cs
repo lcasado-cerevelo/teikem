@@ -588,6 +588,24 @@ public sealed partial class AuthService(
         return new MfaConfirmResultDto(codes);
     }
 
+    public const string NoMfaForRecoveryCodesMessage = "Active primero la verificación en dos pasos.";
+
+    /// <summary>
+    /// 2026-10-01: el usuario genera códigos de recuperación nuevos (perdió los anteriores o sospecha que alguien los vio). Exige
+    /// MFA confirmado; los anteriores dejan de servir (también los no usados).
+    /// </summary>
+    public async Task<MfaConfirmResultDto> RegenerateRecoveryCodesAsync(CancellationToken ct)
+    {
+        var userId = ((TenantContext)tenant).RequireUserId();
+        if (await ConfirmedTotpAsync(userId, ct) is null) throw new ConflictException(NoMfaForRecoveryCodesMessage);
+        var codes = TotpService.GenerateRecoveryCodes();
+        db.MfaRecoveryCodes.RemoveRange(db.MfaRecoveryCodes.Where(c => c.UserId == userId));
+        foreach (var c in codes) db.MfaRecoveryCodes.Add(new MfaRecoveryCode { UserId = userId, CodeHash = TotpService.Hash(c) });
+        await db.SaveChangesAsync(ct);
+        await security.WriteAsync(SecurityEventTypes.Mfa, SecurityOutcomes.Success, userId, tenant.TenantId, new { action = "recovery_codes_regenerated" }, ct);
+        return new MfaConfirmResultDto(codes);
+    }
+
     public async Task DisableTotpAsync(CancellationToken ct)
     {
         var userId = ((TenantContext)tenant).RequireUserId();
@@ -606,6 +624,21 @@ public sealed partial class AuthService(
         if (!await db.UserTenants.AnyAsync(m => m.UserId == userId && m.TenantId == tenantId, ct)) throw new NotFoundException("Usuario", userId);
         var user = await users.FindByIdAsync(userId.ToString()) ?? throw new NotFoundException("Usuario", userId);
         await DisableTotpCoreAsync(user, ct);
+        // 2026-10-01: aviso al usuario (no da acceso; si no lo pidió él, se entera). Un fallo del correo no deshace el reinicio.
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            var company = await db.Tenants.IgnoreQueryFilters().AsNoTracking().Where(t => t.TenantId == tenantId).Select(t => t.Name).FirstOrDefaultAsync(ct);
+            var html = $"""
+                <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px">
+                  <h2 style="color:#0B2C66">Su verificación en dos pasos fue reiniciada</h2>
+                  <p>Un administrador de {System.Net.WebUtility.HtmlEncode(company ?? "su compañía")} reinició la verificación en dos pasos de su cuenta de Teikem.</p>
+                  <p>La próxima vez que entre, configúrela de nuevo con su app de autenticación.</p>
+                  <p>Si usted no lo pidió, avise de inmediato a su administrador.</p>
+                </div>
+                """;
+            try { await email.SendAsync(user.Email, user.FullName, "Su verificación en dos pasos de Teikem fue reiniciada", html, ct); }
+            catch (Exception ex) when (ex is not OperationCanceledException) { /* el reinicio ya quedó; el log del proveedor registra el fallo */ }
+        }
     }
 
     private async Task DisableTotpCoreAsync(ApplicationUser user, CancellationToken ct)

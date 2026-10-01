@@ -10,6 +10,7 @@ using Teikem.Domain.Identity;
 using Teikem.Domain.Security;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
+using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Persistence;
 using Teikem.Infrastructure.Services;
 using Xunit;
@@ -158,5 +159,32 @@ public class AuthMfaTests
         f.Db.ChangeTracker.Clear();
         Assert.False(await f.Db.Users.AsNoTracking().Where(u => u.Id == 1).Select(u => u.TwoFactorEnabled).SingleAsync());
         Assert.All(await f.Db.UserMfaFactors.AsNoTracking().Where(x => x.UserId == 1).ToListAsync(), x => Assert.False(x.IsConfirmed));
+        // 2026-10-01: el usuario recibe un aviso por correo del reinicio (no da acceso; si no lo pidió, se entera).
+        var mail = Assert.Single(((NoEmailSender)f.Get<Teikem.Infrastructure.Abstractions.ITransactionalEmailSender>()).Sent);
+        Assert.Equal("yo@t.local", mail.To);
+        Assert.Equal("Su verificación en dos pasos de Teikem fue reiniciada", mail.Subject);
+    }
+
+    [Fact]
+    public async Task RegenerateRecoveryCodes_replaces_the_old_ones_and_needs_a_confirmed_totp()
+    {
+        await using var f = await FixtureAsync();
+        var auth = f.Get<AuthService>();
+        // Sin MFA confirmado → 409.
+        var none = await Assert.ThrowsAsync<ConflictException>(() => auth.RegenerateRecoveryCodesAsync(default));
+        Assert.Equal(AuthService.NoMfaForRecoveryCodesMessage, none.Message);
+
+        f.Db.UserMfaFactors.Add(new UserMfaFactor { UserId = 1, FactorTypeLookupId = MfaFactorTypeTotpId(f), IsActive = true, IsConfirmed = true, SecretEnc = [1, 2, 3] });
+        f.Db.MfaRecoveryCodes.Add(new MfaRecoveryCode { UserId = 1, CodeHash = TotpService.Hash("viejo-1") });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var result = await auth.RegenerateRecoveryCodesAsync(default);
+
+        f.Db.ChangeTracker.Clear();
+        var hashes = await f.Db.MfaRecoveryCodes.AsNoTracking().Where(c => c.UserId == 1).Select(c => c.CodeHash).ToListAsync();
+        Assert.Equal(result.RecoveryCodes.Count, hashes.Count);
+        Assert.DoesNotContain(TotpService.Hash("viejo-1"), hashes);
+        Assert.All(result.RecoveryCodes, c => Assert.Contains(TotpService.Hash(c), hashes));
     }
 }

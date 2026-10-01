@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SessionContext, type MeDto, type Session } from '../../app/session'
 import { AccessProvider } from '../../kernel/access'
 import { ReauthContext } from '../../kernel/auth/reauthContext'
+import { recoveryCodesFile } from '../../kernel/ui/RecoveryCodes'
 import { setLang } from '../../kernel/i18n/i18n'
 import AccountPage from './AccountPage'
 import { describeDevice, formatDateTime } from './format'
@@ -198,8 +199,28 @@ describe('MfaTab', () => {
     const codes = await screen.findByTestId('recovery-codes')
     expect(within(codes).getByText('AAAA-1111')).toBeInTheDocument()
     expect(reloadMe).toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'Ya los guardé' }))
+    // "Listo" no se habilita hasta marcar "Ya los guardé…" (2026-10-01); también se pueden descargar.
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Listo' })).toBeDisabled()
+    await user.click(screen.getByRole('checkbox', { name: /Ya los guardé/ }))
+    await user.click(screen.getByRole('button', { name: 'Listo' }))
     expect(screen.queryByTestId('recovery-codes')).toBeNull()
+  })
+
+  it('generar códigos nuevos pide reautenticación, llama POST /mfa/recovery-codes y los muestra', async () => {
+    const user = userEvent.setup()
+    mock.handler = (() => ({ recoveryCodes: ['CCCC-3333', 'DDDD-4444'] })) satisfies Handler
+    wrap(<MfaTab />, { me: { ...ME, mfaEnabled: true } })
+    await user.click(screen.getByRole('button', { name: 'Generar códigos nuevos' }))
+    const codes = await screen.findByTestId('recovery-codes')
+    expect(within(codes).getByText('CCCC-3333')).toBeInTheDocument()
+    expect(mock.calls).toEqual([{ method: 'POST', path: '/api/v1/auth/mfa/recovery-codes', body: undefined }])
+  })
+
+  it('el archivo descargable lleva la cuenta, la fecha y un código por línea', () => {
+    expect(recoveryCodesFile(['A-1', 'B-2'], 'ana@t.local', new Date('2026-10-01T12:00:00Z'))).toBe(
+      ['Teikem — códigos de recuperación (ana@t.local)', 'Generados: 2026-10-01', '', 'A-1', 'B-2', ''].join('\r\n'),
+    )
   })
 
   it('desactivar pide reautenticación; si se cancela no llama al API', async () => {

@@ -570,6 +570,11 @@
       "recoveryTitle": "Save your recovery codes",
       "recoverySubtitle": "Each code works once if you lose your phone. They will not be shown again.",
       "recoveryDone": "I saved them",
+      "download": "Download",
+      "savedCheck": "I saved them somewhere safe, away from this phone.",
+      "recoveryFinish": "Done",
+      "regenerate": "Generate new codes",
+      "regenerated": "New codes generated; the old ones no longer work.",
       "copied": "Copied to clipboard.",
       "copyFailed": "Could not copy; select it and copy it manually.",
       "errors": {

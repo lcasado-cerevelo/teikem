@@ -48,6 +48,17 @@ lleva al paso que falta.
 **¿Qué significa "Complete primero su primer ingreso en la web (correo, contraseña y verificación en dos pasos)." (403) en la app del almacén?**
 Ese usuario todavía no terminó su primer ingreso. Que entre una vez a la web, complete los tres pasos y luego use su PIN.
 
+**Perdí el teléfono de la app de autenticación, ¿cómo entro?**
+Entre con uno de sus códigos de recuperación en lugar del código de 6 dígitos y configure el MFA en el teléfono nuevo desde Mi
+cuenta. Si también perdió los códigos, pida a un administrador de su compañía que le reinicie el MFA (Sistema → Usuarios);
+le llegará un correo de aviso y al entrar lo configura de nuevo.
+
+**¿Qué significa "Active primero la verificación en dos pasos." (409)?**
+Pidió códigos de recuperación nuevos sin tener el MFA activo. Actívelo primero en Mi cuenta.
+
+**Recibí un correo de que mi verificación en dos pasos fue reiniciada y no lo pedí.**
+Avise de inmediato a su administrador y cambie su contraseña: alguien con permiso de administrador reinició su segundo factor.
+
 **¿Qué significa "El usuario no tiene ninguna compañía activa."?**
 Tu usuario existe pero no tiene ninguna membresía activa en ninguna compañía. Pide a un administrador que te
 dé de alta en su tenant o reactive tu membresía.

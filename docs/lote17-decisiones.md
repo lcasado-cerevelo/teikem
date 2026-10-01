@@ -14,6 +14,7 @@ Pedidos directos de Luis después del Lote 16. Commits: `b6ebfb0` (login directo
 | Primer ingreso | Correo con código de 6 dígitos (Brevo) → contraseña propia → MFA; sin tokens ni PIN hasta completarlo | `AuthService.Onboarding.cs`, `BrevoEmailSender`, `OnboardingPage.tsx`, columnas `AspNetUsers.OnboardingRequired/MustChangePassword/EmailVerifiedUtc` |
 | Pulso | El título de la franja dice solo "Almacén hoy" | `WarehouseDayBand.tsx` |
 | Recrear la base | `scripts/recrear-base.ps1` (siempre recrea; lee el MSWM de producción por `ConnectionStrings__LegacyMswm`) | `docs/migracion/recrear-base.md` |
+| Códigos de recuperación | Descargar (.txt), casilla obligatoria "Ya los guardé", "Generar códigos nuevos" en Mi cuenta (`POST /auth/mfa/recovery-codes`, AAL2) y correo de aviso cuando un admin reinicia el MFA | `RecoveryCodes.tsx`, `AuthService.RegenerateRecoveryCodesAsync`, `AdminResetMfaAsync` |
 
 ## Decisiones del dueño (2026-09-30)
 

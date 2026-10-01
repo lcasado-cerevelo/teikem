@@ -11,6 +11,7 @@ import {
 import { getMfaChallenge } from '../../kernel/auth/tokens'
 import { useT } from '../../kernel/i18n/useT'
 import { QrCode } from '../../kernel/ui/QrCode'
+import { RecoveryCodes } from '../../kernel/ui/RecoveryCodes'
 import { AuthLayout } from './AuthLayout'
 import { safeNext } from './next'
 
@@ -32,6 +33,7 @@ export default function MfaPage() {
   const [busy, setBusy] = useState(false)
   const [enroll, setEnroll] = useState<MfaEnrollResultDto | null>(null)
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [saved, setSaved] = useState(false)
 
   if (!challenge && step !== 'recovery') return <Navigate to="/login" replace />
 
@@ -149,25 +151,14 @@ export default function MfaPage() {
   if (step === 'recovery') {
     return (
       <AuthLayout title={t('auth.mfa.recoveryTitle')} subtitle={t('auth.mfa.recoverySubtitle')}>
-        <div className="codes">
-          {recoveryCodes.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="btn block"
-          onClick={() => void navigator.clipboard?.writeText(recoveryCodes.join('\n'))}
-        >
-          {t('common.copy')}
-        </button>
+        <RecoveryCodes codes={recoveryCodes} saved={saved} onSavedChange={setSaved} />
         <p className="subtle" style={{ marginTop: 14 }}>
           {t('auth.mfa.recoveryNext')}
         </p>
         <form onSubmit={onVerify} noValidate>
           {alert}
           {codeField}
-          <button type="submit" className="btn flow block" disabled={busy || !code.trim()}>
+          <button type="submit" className="btn flow block" disabled={busy || !code.trim() || !saved}>
             {t('auth.mfa.verify')}
           </button>
         </form>

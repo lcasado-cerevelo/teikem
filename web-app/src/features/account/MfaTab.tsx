@@ -7,7 +7,8 @@ import { applyProblemDetails } from '../../kernel/api/client'
 import { useReauth } from '../../kernel/auth/reauthContext'
 import { useT } from '../../kernel/i18n/useT'
 import { Chip, Field, Form, Panel, TextInput, toast } from '../../kernel/ui'
-import { useConfirmTotp, useDisableTotp, useEnrollTotp, type MfaEnrollResultDto } from './api'
+import { useConfirmTotp, useDisableTotp, useEnrollTotp, useRegenerateRecoveryCodes, type MfaEnrollResultDto } from './api'
+import { RecoveryCodes } from '../../kernel/ui/RecoveryCodes'
 import { IconShield } from '../../kernel/ui/actionIcons'
 import { QrCode } from '../../kernel/ui/QrCode'
 
@@ -60,12 +61,27 @@ export function MfaTab() {
   const { reauth } = useReauth()
   const enroll = useEnrollTotp()
   const disable = useDisableTotp()
+  const regenerate = useRegenerateRecoveryCodes()
   const [step, setStep] = useState<Step>({ kind: 'idle' })
+  const [saved, setSaved] = useState(false)
   const enabled = me?.mfaEnabled ?? false
 
   const start = async () => {
     try {
       setStep({ kind: 'enrolling', enroll: await enroll.mutateAsync() })
+    } catch (err) {
+      toast.error(applyProblemDetails(err).title)
+    }
+  }
+
+  const newCodes = async () => {
+    // Acción sensible (invalida los códigos anteriores): reautenticación antes, como desactivar.
+    if (!(await reauth())) return
+    try {
+      const codes = await regenerate.mutateAsync()
+      setSaved(false)
+      setStep({ kind: 'recovery', codes })
+      toast.success(t('account.mfa.regenerated'))
     } catch (err) {
       toast.error(applyProblemDetails(err).title)
     }
@@ -84,24 +100,20 @@ export function MfaTab() {
   }
 
   if (step.kind === 'recovery') {
-    const text = step.codes.join('\n')
     return (
       <Panel icon={<IconShield />} title={t('account.mfa.recoveryTitle')} subtitle={t('account.mfa.recoverySubtitle')} className="acct-narrow">
-        <div className="codes" data-testid="recovery-codes">
-          {step.codes.map((c) => (
-            <span key={c}>{c}</span>
-          ))}
-        </div>
+        <RecoveryCodes codes={step.codes} account={me?.email} saved={saved} onSavedChange={setSaved} />
         <div className="form-acts">
           <button
             type="button"
-            className="btn"
-            onClick={() => void copyText(text, t('account.mfa.copied'), t('account.mfa.copyFailed'))}
+            className="btn flow"
+            disabled={!saved}
+            onClick={() => {
+              setSaved(false)
+              setStep({ kind: 'idle' })
+            }}
           >
-            {t('common.copy')}
-          </button>
-          <button type="button" className="btn flow" onClick={() => setStep({ kind: 'idle' })}>
-            {t('account.mfa.recoveryDone')}
+            {t('account.mfa.recoveryFinish')}
           </button>
         </div>
       </Panel>
@@ -169,9 +181,14 @@ export function MfaTab() {
       <p className="note">{enabled ? t('account.mfa.enabledHelp') : t('account.mfa.disabledHelp')}</p>
       <div className="form-acts">
         {enabled ? (
-          <button type="button" className="btn danger" disabled={disable.isPending} onClick={() => void turnOff()}>
-            {t('account.mfa.disable')}
-          </button>
+          <>
+            <button type="button" className="btn" disabled={regenerate.isPending} onClick={() => void newCodes()}>
+              {t('account.mfa.regenerate')}
+            </button>
+            <button type="button" className="btn danger" disabled={disable.isPending} onClick={() => void turnOff()}>
+              {t('account.mfa.disable')}
+            </button>
+          </>
         ) : (
           <button type="button" className="btn flow" disabled={enroll.isPending} onClick={() => void start()}>
             {t('account.mfa.enable')}

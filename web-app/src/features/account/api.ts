@@ -86,6 +86,13 @@ export function useConfirmTotp() {
 }
 
 /** Desactiva el MFA (requiere AAL2: el cliente pide la reautenticación si hace falta). */
+/** 2026-10-01: códigos de recuperación nuevos (los anteriores dejan de servir). Exige reautenticación reciente. */
+export function useRegenerateRecoveryCodes() {
+  return useMutation({
+    mutationFn: async () => (await unwrap(api.POST('/api/v1/auth/mfa/recovery-codes'))).recoveryCodes,
+  })
+}
+
 export function useDisableTotp() {
   return useMutation({
     mutationFn: async () => {

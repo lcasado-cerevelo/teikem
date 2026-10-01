@@ -99,6 +99,19 @@ sigue donde quedó (lo hecho no se repite). "Volver al inicio de sesión" cancel
 | Contraseña en brechas conocidas | `Esta contraseña aparece en brechas conocidas; elija otra.` | 400 |
 | Contraseña corta / no coinciden (en pantalla) | `Use al menos 12 caracteres.` / `Las dos contraseñas no coinciden.` | — |
 
+## Códigos de recuperación (si pierde el teléfono)
+
+Al configurar la verificación en dos pasos (al entrar o en Mi cuenta) se muestran **una sola vez** los códigos de
+recuperación: cada uno sirve una vez en lugar del código de la app. Desde 2026-10-01:
+
+- **Copiar** y **Descargar** (archivo `teikem-codigos-de-recuperacion.txt` con la cuenta, la fecha y un código por línea).
+- Casilla obligatoria **"Ya los guardé en un lugar seguro, fuera de este teléfono."**: sin marcarla no se puede seguir
+  ("Verificar" al entrar, "Listo" en Mi cuenta).
+- **Mi cuenta → Verificación en dos pasos → "Generar códigos nuevos"** (con el MFA activo): pide reautenticación, muestra códigos
+  nuevos y **los anteriores dejan de servir**. Si no tiene el MFA activo: `Active primero la verificación en dos pasos.` (409).
+- Si perdió el teléfono **y** los códigos, un administrador de la compañía le reinicia el MFA; el usuario recibe un correo
+  "Su verificación en dos pasos de Teikem fue reiniciada" (solo aviso: no da acceso) y al entrar lo configura de nuevo.
+
 ## Menú y cabecera
 
 **Para qué sirve.** Es el marco de toda pantalla ya con la sesión iniciada: el menú lateral para moverse entre pantallas y

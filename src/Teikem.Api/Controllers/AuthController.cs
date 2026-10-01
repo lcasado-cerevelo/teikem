@@ -125,6 +125,15 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
         return auth.ConfirmTotpAsync(int.Parse(User.FindFirst(TeikemClaims.Subject)!.Value), req, ct);
     }
 
+    /// <summary>2026-10-01: códigos de recuperación nuevos (los anteriores dejan de servir). Con reautenticación reciente.
+    /// 409 'Active primero la verificación en dos pasos.'.</summary>
+    [HttpPost("mfa/recovery-codes"), Authorize, RequireAal2]
+    public Task<MfaConfirmResultDto> RegenerateRecoveryCodes(CancellationToken ct)
+    {
+        EnsureNotDeviceSession();
+        return auth.RegenerateRecoveryCodesAsync(ct);
+    }
+
     [HttpDelete("mfa/totp"), Authorize, RequireAal2]
     public async Task<IActionResult> DisableTotp(CancellationToken ct) { await auth.DisableTotpAsync(ct); return NoContent(); }
 }

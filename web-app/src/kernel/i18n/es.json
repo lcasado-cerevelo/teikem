@@ -570,6 +570,11 @@
       "recoveryTitle": "Guarde sus códigos de recuperación",
       "recoverySubtitle": "Cada código sirve una sola vez si pierde el teléfono. No se volverán a mostrar.",
       "recoveryDone": "Ya los guardé",
+      "download": "Descargar",
+      "savedCheck": "Ya los guardé en un lugar seguro, fuera de este teléfono.",
+      "recoveryFinish": "Listo",
+      "regenerate": "Generar códigos nuevos",
+      "regenerated": "Códigos nuevos generados; los anteriores ya no sirven.",
       "copied": "Copiado al portapapeles.",
       "copyFailed": "No se pudo copiar; selecciónelo y cópielo a mano.",
       "errors": {
