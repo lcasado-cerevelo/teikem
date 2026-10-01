@@ -55,8 +55,9 @@ mfaConfigured }`. Con ese token como Bearer, en orden:
 | `POST /api/v1/auth/mfa/totp/enroll` → `/confirm` → `/mfa/verify` | Configura el MFA y entra; el verify apaga `OnboardingRequired` | 403 `Complete primero la verificación del correo y el cambio de contraseña.` |
 
 El login por PIN de un usuario con el primer ingreso pendiente responde 403 `Complete primero su primer ingreso en la web
-(correo, contraseña y verificación en dos pasos).`. Usuarios nuevos y existentes empiezan pendientes; los de prueba de la demo
-(`Seed:Demo:*Email`) los completa el seeder salvo `Seed:Demo:CompleteOnboarding=false`. `Auth:Onboarding:Enabled=false` lo apaga
+(correo, contraseña y verificación en dos pasos).`. Usuarios nuevos y existentes empiezan pendientes, incluidos los de la demo y el admin de
+plataforma (2026-10-01: el correo no se da por verificado al crear el usuario); solo `Seed:Demo:CompleteOnboarding=true` (pruebas
+automatizadas locales) los marca completos. `Auth:Onboarding:Enabled=false` lo apaga
 (solo para el smoke/CI); `Auth:Onboarding:ReturnEmailCodeInResponse=true` (Development) devuelve el código en la respuesta.
 
 Validaciones:

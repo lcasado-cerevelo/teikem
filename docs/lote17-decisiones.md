@@ -39,8 +39,10 @@ Pedidos directos de Luis después del Lote 16. Commits: `b6ebfb0` (login directo
 
 ## Decisiones a revisar
 
-1. **Usuarios de prueba de la demo exentos** del primer ingreso (`Seed:Demo:CompleteOnboarding`, por defecto true): incluye
-   `teikem+admin@cerevelo.com`, que también es el admin de Depot y Solutions. En producción poner `false`.
+1. **Nadie queda exento** del primer ingreso (2026-10-01, Luis: "no quiero darlo por sentado"): tampoco los usuarios de la demo
+   ni el admin de plataforma; el correo se crea sin confirmar. `Seed:Demo:CompleteOnboarding=true` solo para correr los recorridos
+   e2e en local; en CI el primer ingreso se apaga con `Auth__Onboarding__Enabled=false`.
+   El admin de plataforma ve en el selector de la cabecera todas las compañías activas aunque sea miembro de una.
 2. **MFA después del primer ingreso**: queda activo porque el usuario ya lo configuró; Mi cuenta todavía permite desactivarlo
    (con reautenticación). Si debe ser imposible desactivarlo, es un cambio aparte.
 3. **Sin límite propio de reenvíos** del código de correo (solo el límite por IP de 60/min de la ruta). Revisar si Brevo cobra

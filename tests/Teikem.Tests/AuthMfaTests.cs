@@ -166,6 +166,22 @@ public class AuthMfaTests
     }
 
     [Fact]
+    public async Task Platform_admin_who_is_member_of_one_company_still_sees_every_active_company_in_me()
+    {
+        // 2026-10-01: el admin de plataforma de la siembra es miembro de la demo; el selector de la cabecera debe ofrecerle todas.
+        await using var f = await FixtureAsync();
+        var me = await f.Db.Users.SingleAsync(u => u.Id == 1);
+        me.IsPlatformAdmin = true;
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var result = await f.Get<UserAdminService>().GetMeAsync(default);
+
+        Assert.Contains(result.Memberships, m => m.TenantId == WmsFixture.TenantId && m.Status == MembershipStatuses.Active);
+        Assert.Contains(result.Memberships, m => m.TenantId == WmsFixture.OtherTenantId && m.Status == "PLATFORM");
+    }
+
+    [Fact]
     public async Task RegenerateRecoveryCodes_replaces_the_old_ones_and_needs_a_confirmed_totp()
     {
         await using var f = await FixtureAsync();

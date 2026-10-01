@@ -81,7 +81,7 @@ public sealed class ProvisioningService(TeikemDbContext db, UserManager<Applicat
         string? temp = null;
         if (user is null)
         {
-            user = new ApplicationUser { UserName = email, Email = email, FullName = fullName, UserKindLookupId = internalKind, DefaultTenantId = t.TenantId, IsActive = true, EmailConfirmed = true };
+            user = new ApplicationUser { UserName = email, Email = email, FullName = fullName, UserKindLookupId = internalKind, DefaultTenantId = t.TenantId, IsActive = true, EmailConfirmed = false };
             temp = string.IsNullOrEmpty(password) ? UserAdminService.GenerateTemporaryPassword() : null;
             var result = await users.CreateAsync(user, password ?? temp!);
             if (!result.Succeeded) throw new ValidationException("adminPassword", string.Join(" ", result.Errors.Select(e => e.Description)));

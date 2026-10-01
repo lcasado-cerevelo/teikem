@@ -100,9 +100,9 @@ public sealed class DemoTenantSeeder(TeikemDbContext db, ITenantContext tenant, 
                 platform = await db.Users.FirstAsync(u => u.Id == created.Id, ct);
             }
             if (!platform.IsPlatformAdmin) { platform.IsPlatformAdmin = true; await db.SaveChangesAsync(ct); }
-            // 2026-09-30: los usuarios de prueba de la demo (los que usan el smoke y los recorridos e2e) entran sin el primer
-            // ingreso obligatorio. Seed:Demo:CompleteOnboarding=false lo deja pendiente también para ellos (producción).
-            if (config.GetValue("Seed:Demo:CompleteOnboarding", true))
+            // 2026-10-01 (Luis: "no quiero darlo por sentado"): los usuarios de la demo también pasan por el primer ingreso. Solo
+            // con Seed:Demo:CompleteOnboarding=true (pruebas automatizadas locales) se marcan completos.
+            if (config.GetValue("Seed:Demo:CompleteOnboarding", false))
             {
                 var fixtureEmails = new[] { adminEmail, despachoEmail, platformEmail }.Select(e => e.ToUpperInvariant()).ToList();
                 var fixtures = await db.Users.Where(u => u.NormalizedEmail != null && fixtureEmails.Contains(u.NormalizedEmail) && u.OnboardingRequired).ToListAsync(ct);

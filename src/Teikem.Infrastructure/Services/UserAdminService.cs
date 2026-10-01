@@ -53,7 +53,7 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         string? temp = null;
         if (user is null)
         {
-            user = new ApplicationUser { UserName = req.Email.Trim(), Email = req.Email.Trim(), FullName = req.FullName?.Trim(), UserKindLookupId = kindId, DefaultTenantId = tenantId, IsActive = true, EmailConfirmed = true };
+            user = new ApplicationUser { UserName = req.Email.Trim(), Email = req.Email.Trim(), FullName = req.FullName?.Trim(), UserKindLookupId = kindId, DefaultTenantId = tenantId, IsActive = true, EmailConfirmed = false };
             temp = string.IsNullOrEmpty(req.Password) ? GenerateTemporaryPassword() : null;
             var result = await users.CreateAsync(user, req.Password ?? temp!);
             if (!result.Succeeded) throw new ValidationException("password", string.Join(" ", result.Errors.Select(e => e.Description)));
@@ -190,8 +190,15 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId, ct) ?? throw new UnauthorizedException();
         var memberships = await db.UserTenants.AsNoTracking().IgnoreQueryFilters().Include(m => m.Tenant).Include(m => m.Status)
             .Where(m => m.UserId == userId).Select(m => new MembershipDto(m.TenantId, m.Tenant!.Name, m.Status!.InternalCode, m.IsDefault)).ToListAsync(ct);
-        if (user.IsPlatformAdmin && memberships.Count == 0)
-            memberships = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive).Select(t => new MembershipDto(t.TenantId, t.Name, "PLATFORM", false)).ToListAsync(ct);
+        // Admin de plataforma: además de sus membresías, todas las demás compañías activas (2026-10-01: el de la siembra es miembro
+        // de la demo y antes solo veía esa; el selector de la cabecera debe dejarle entrar a cualquiera).
+        if (user.IsPlatformAdmin)
+        {
+            var mine = memberships.Select(m => m.TenantId).ToHashSet();
+            var others = await db.Tenants.AsNoTracking().IgnoreQueryFilters().Where(t => t.IsActive && !mine.Contains(t.TenantId))
+                .Select(t => new MembershipDto(t.TenantId, t.Name, "PLATFORM", false)).ToListAsync(ct);
+            memberships = memberships.Concat(others).OrderBy(m => m.TenantName).ToList();
+        }
         var perms = tenant.TenantId is null ? new List<string>() : (await permissions.GetEffectivePermissionsAsync(userId, tenant.TenantId.Value, ct)).OrderBy(p => p).ToList();
         if (user.IsPlatformAdmin) perms = PermissionCatalog.All.Select(p => p.Code).OrderBy(p => p).ToList();
         var enabled = tenant.TenantId is null ? new List<string>() : (await modules.GetEnabledKeysAsync(tenant.TenantId.Value, ct)).OrderBy(k => k).ToList();
