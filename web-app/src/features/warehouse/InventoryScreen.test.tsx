@@ -1,5 +1,5 @@
 // Pruebas de Inventario (Lote F6) sobre un fetch simulado: en Saldos y Kárdex la paginación es del servidor, así que todo
-// cambio de filtro o del buscador vuelve a la página 1 (skip=0); el filtro Producto viaja como productPublicIds; el Kárdex
+// cambio de filtro vuelve a la página 1 (skip=0); el filtro Producto viaja como productPublicIds; el Kárdex
 // muestra la columna Motivo. Sus endpoints no aceptan orden: el orden por encabezado es en el cliente (solo la página visible).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
@@ -191,16 +191,6 @@ describe('InventoryScreen · Saldos', () => {
     expect(last('/api/v1/products').searchParams.get('activeOnly')).not.toBe('true')
   })
 
-  it('escribir en el buscador vuelve a la página 1 y manda search', async () => {
-    const user = userEvent.setup()
-    wrap(<InventoryScreen />, BALANCES_URL)
-    await waitLast(PATH, (u) => u.searchParams.get('skip') === '0')
-    await goToPage2(user, PATH)
-    await user.type(screen.getByRole('searchbox'), 'tornillo')
-    await waitLast(PATH, (u) => u.searchParams.get('search') === 'tornillo')
-    expect(last(PATH).searchParams.get('skip')).toBe('0')
-  })
-
   it('las columnas se ordenan por encabezado (en el cliente, sobre la página visible) sin volver a pedir al API', async () => {
     const user = userEvent.setup()
     wrap(<InventoryScreen />, BALANCES_URL)
@@ -244,15 +234,12 @@ describe('InventoryScreen · Kárdex', () => {
     expect(last('/api/v1/products').searchParams.get('activeOnly')).not.toBe('true')
   })
 
-  it('escribir en el buscador vuelve a la página 1', async () => {
-    const user = userEvent.setup()
+  it('2026-10-01: las tablas ya no traen buscador propio (para eso están los filtros de arriba)', async () => {
     wrap(<InventoryScreen />)
-    await user.click(await screen.findByRole('tab', { name: 'Kárdex' }))
+    await screen.findByRole('tab', { name: 'Kárdex' })
     await waitLast(PATH, (u) => u.searchParams.get('skip') === '0')
-    await goToPage2(user, PATH)
-    await user.type(screen.getByRole('searchbox'), 'ajuste')
-    await waitLast(PATH, (u) => u.searchParams.get('search') === 'ajuste')
-    expect(last(PATH).searchParams.get('skip')).toBe('0')
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(last(PATH).searchParams.has('search')).toBe(false)
   })
 })
 
@@ -372,7 +359,7 @@ describe('InventoryScreen · parámetros de URL (enlaces de Pulso, Lote F7A)', (
     wrap(<InventoryScreen />, '/warehouse/kardex?ref=REC-000318')
     await waitLast('/api/v1/inventory/transactions', (u) => u.searchParams.get('skip') === '0')
     expect(last('/api/v1/inventory/transactions').searchParams.has('search')).toBe(false)
-    expect(screen.getByRole('searchbox')).toHaveValue('')
+    expect(screen.queryByRole('searchbox')).toBeNull()
   })
 })
 

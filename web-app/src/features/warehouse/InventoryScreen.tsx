@@ -17,12 +17,12 @@
 // (YYYY-MM-DD), `refEntity` + `refId` (documento de origen, p. ej. los ajustes de un conteo), `status` (descuadres),
 // `txn=<id>` (abre el detalle de un movimiento) y `discrepancy=<publicId>` (abre un descuadre; implica la pestaña
 // Conciliación si no se indica otra). Al cambiar de pestaña la URL queda solo con la pestaña; los filtros se quedan.
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can } from '../../kernel/access'
 import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
-import { DataTable, EmptyState, Modal, Panel, QBox, Spinner, SummaryBar, Tabs, type DataColumn, type RowAction } from '../../kernel/ui'
+import { DataTable, EmptyState, Modal, Panel, Spinner, SummaryBar, Tabs, type DataColumn, type RowAction } from '../../kernel/ui'
 import { IconDoc, IconLayers } from '../../kernel/ui/screenIcons'
 import {
   exportInventoryBalances,
@@ -272,8 +272,6 @@ interface PageProps {
   pageSize: number
   onPage: (page: number) => void
   onPageSize: (size: number) => void
-  text: string
-  onText: (text: string) => void
 }
 
 function BalancesTab({
@@ -282,8 +280,6 @@ function BalancesTab({
   pageSize,
   onPage,
   onPageSize,
-  text,
-  onText,
   onGenealogy,
   onSerialTrace,
 }: PageProps & { onGenealogy: (lotId: number) => void; onSerialTrace: (productPublicId: string) => void }) {
@@ -346,9 +342,6 @@ function BalancesTab({
     <>
       <KardexSummaryBar filters={filters} balances={totals} />
       <Panel flush icon={<IconLayers />} title={t('warehouse.inventory.tabBalances')} badge={data ? (data.total ?? 0) : undefined}>
-        <div className="qrow">
-          <QBox value={text} onChange={onText} />
-        </div>
         {error ? (
           <p className="pb ferr" role="alert">
             {error.message}
@@ -383,8 +376,6 @@ function KardexTab({
   pageSize,
   onPage,
   onPageSize,
-  text,
-  onText,
   onSerialTrace,
   onOpenTxn,
 }: PageProps & { onSerialTrace: (productPublicId: string, serialNumber: string) => void; onOpenTxn: (id: number) => void }) {
@@ -412,9 +403,6 @@ function KardexTab({
     <>
       <KardexSummaryBar filters={filters} />
       <Panel flush icon={<IconDoc />} title={t('warehouse.inventory.tabKardex')} badge={data ? (data.total ?? 0) : undefined}>
-        <div className="qrow">
-          <QBox value={text} onChange={onText} />
-        </div>
         {inverted ? (
           <p className="pb ferr" role="alert">
             {t('warehouse.inventory.kardex.errors.fromAfterTo')}
@@ -455,22 +443,10 @@ export default function InventoryScreen() {
   const tab = params.get('discrepancy') && !params.get('tab') ? 'reconciliation' : tabFromParam(params.get('tab'))
   // Solo al montar: la URL inicial trae filtros para las TRES pestañas (enlaces de Pulso, reportes, conteo, atención).
   const [filters, setFilters] = useState<InventoryFilterState>(() => filtersFromUrl(params))
-  const [text, setText] = useState(filters.search)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const txnId = txnParam(params)
   const discrepancy = params.get('discrepancy')
-
-  // el buscador va al API con una pausa de 250 ms; solo un texto distinto al aplicado vuelve a la página 1
-  useEffect(() => {
-    const next = text.trim()
-    if (next === filters.search) return
-    const h = setTimeout(() => {
-      setFilters((f) => ({ ...f, search: next }))
-      setPage(1)
-    }, 250)
-    return () => clearTimeout(h)
-  }, [text, filters.search])
 
   const changeFilters = useCallback((patch: Partial<InventoryFilterState>) => {
     setFilters((f) => ({ ...f, ...patch }))
@@ -516,8 +492,6 @@ export default function InventoryScreen() {
       setPageSize(size)
       setPage(1)
     },
-    text,
-    onText: setText,
   }
 
   return (

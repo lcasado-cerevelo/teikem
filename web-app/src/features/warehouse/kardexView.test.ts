@@ -46,7 +46,6 @@ const filters: InventoryFilterState = {
   manualOnly: true,
   lotNumber: ' L-1 ',
   serialNumber: '',
-  search: 'caja',
   includeZero: true,
   onlyAvailable: false,
 }
@@ -68,7 +67,6 @@ describe('consultas desde el estado compartido', () => {
       manualOnly: true,
       lotNumber: 'L-1',
       serialNumber: undefined,
-      search: 'caja',
       refEntity: undefined,
       refId: undefined,
     })
@@ -89,7 +87,6 @@ describe('consultas desde el estado compartido', () => {
       lotNumber: 'L-1',
       includeZero: true,
       onlyAvailable: undefined,
-      search: 'caja',
     })
   })
 

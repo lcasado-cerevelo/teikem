@@ -48,8 +48,6 @@ export interface InventoryFilterState {
   manualOnly: boolean
   lotNumber: string
   serialNumber: string
-  /** Texto libre ya aplicado (QBox con pausa). */
-  search: string
   /** Solo Saldos. */
   includeZero: boolean
   onlyAvailable: boolean
@@ -75,7 +73,6 @@ export const EMPTY_INVENTORY_FILTERS: InventoryFilterState = {
   manualOnly: false,
   lotNumber: '',
   serialNumber: '',
-  search: '',
   includeZero: false,
   onlyAvailable: false,
   refEntity: '',
@@ -97,7 +94,6 @@ export type InventoryFilterKey =
   | 'manualOnly'
   | 'lot'
   | 'serial'
-  | 'search'
   | 'includeZero'
   | 'onlyAvailable'
   | 'status'
@@ -115,7 +111,6 @@ const KARDEX_FILTERS: readonly InventoryFilterKey[] = [
   'manualOnly',
   'lot',
   'serial',
-  'search',
 ]
 
 /**
@@ -125,7 +120,7 @@ const KARDEX_FILTERS: readonly InventoryFilterKey[] = [
  */
 export const TAB_FILTERS: Readonly<Record<InventoryTab, readonly InventoryFilterKey[]>> = {
   kardex: KARDEX_FILTERS,
-  balances: ['warehouses', 'bins', 'products', 'categories', 'lot', 'search', 'includeZero', 'onlyAvailable'],
+  balances: ['warehouses', 'bins', 'products', 'categories', 'lot', 'includeZero', 'onlyAvailable'],
   reconciliation: ['range', 'warehouses', 'bins', 'products', 'categories', 'status'],
 }
 
@@ -148,7 +143,6 @@ export function inactiveFilters(tab: InventoryTab, f: InventoryFilterState): Inv
     ['manualOnly', f.manualOnly],
     ['lot', f.lotNumber.trim() !== ''],
     ['serial', f.serialNumber.trim() !== ''],
-    ['search', f.search.trim() !== ''],
     ['includeZero', f.includeZero],
     ['onlyAvailable', f.onlyAvailable],
   ]
@@ -187,7 +181,6 @@ export function kardexQuery(f: InventoryFilterState): GetQuery<'/api/v1/inventor
     manualOnly: f.manualOnly || undefined,
     lotNumber: f.lotNumber.trim() || undefined,
     serialNumber: f.serialNumber.trim() || undefined,
-    search: f.search.trim() || undefined,
     refEntity: f.refEntity || undefined,
     refId: f.refEntity && f.refId != null ? f.refId : undefined,
   }
@@ -208,7 +201,6 @@ export function balancesQuery(f: InventoryFilterState): GetQuery<'/api/v1/invent
     lotNumber: f.lotNumber.trim() || undefined,
     includeZero: f.includeZero || undefined,
     onlyAvailable: f.onlyAvailable || undefined,
-    search: f.search.trim() || undefined,
   }
 }
 
