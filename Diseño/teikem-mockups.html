@@ -833,7 +833,10 @@ const T={
      reauthLabel:'Ventana de reautenticación (AAL2)',minutesWord:'minutos',
      reauthHint:'Acciones sensibles (aprobar facturación, cambiar permisos, exportar a contabilidad) piden reautenticarse si la última verificación es más vieja que esta ventana.',
      note:'"Actividad" combina, en una sola tabla filtrable, dos bitácoras que en el sistema real son independientes: qué cambió (AuditLog) y quién intentó qué (SecurityEvent) — cada fila conserva su tipo. Las filas de API keys se leen en vivo desde Integraciones: crear o revocar una ahí aparece aquí sin capturarla dos veces.'},
-   tenantset:{tabGeneral:'General',tabRegion:'Región y formatos',tabCalendar:'Calendario',tabModules:'Módulos',tabOps:'Operación',tabBrand:'Marca',
+   tenantset:{recvSumTitle:'Recepción por almacén',recvSumWh:'Almacén',recvSumMode:'Modo de recepción',recvSumBin:'Posición de recepción',recvSumOpen:'Recibos abiertos',recvSumPending:'Acomodos pendientes',
+     recvSumPutaway:'Con acomodo',recvSumDirect:'Directo a posición',recvSumNoBin:'Sin posición de recepción',recvSumOpenWh:'Abrir almacén',
+     recvSumHint:'Solo lectura. El modo se cambia en cada almacén (Almacenes → Recepción), porque la zona de recepción es física. Con acomodo: la mercancía entra a la posición de recepción y luego se acomoda. Directo: quien recibe escoge la posición final y no hay acomodo. Un almacén con acomodo necesita una posición de recepción para poder recibir.',
+     tabGeneral:'General',tabRegion:'Región y formatos',tabCalendar:'Calendario',tabModules:'Módulos',tabOps:'Operación',tabBrand:'Marca',
      profileTitle:'Datos de la compañía',nameLabel:'Nombre',legalLabel:'Razón social',taxLabel:'ID fiscal (EIN)',langLabel:'Idioma por defecto',
      langHint:'Es el idioma con que entra cada usuario nuevo; cada quien lo puede cambiar en su cuenta. No cambia las fechas ni la moneda: eso se define en Región y formatos.',
      profileSaved:'Datos guardados',secLinkTitle:'Seguridad',
@@ -1221,7 +1224,10 @@ const T={
      reauthLabel:'Reauthentication window (AAL2)',minutesWord:'minutes',
      reauthHint:'Sensitive actions (approving billing, changing permissions, exporting to accounting) require reauthentication if the last verification is older than this window.',
      note:'"Activity" combines, in one filterable table, two logs that are independent in the real system: what changed (AuditLog) and who attempted what (SecurityEvent) — each row keeps its type. API key rows are read live from Integrations: creating or revoking one there shows up here without capturing it twice.'},
-   tenantset:{tabGeneral:'General',tabRegion:'Region & formats',tabCalendar:'Calendar',tabModules:'Modules',tabOps:'Operations',tabBrand:'Branding',
+   tenantset:{recvSumTitle:'Receiving by warehouse',recvSumWh:'Warehouse',recvSumMode:'Receiving mode',recvSumBin:'Receiving location',recvSumOpen:'Open receipts',recvSumPending:'Pending putaways',
+     recvSumPutaway:'With putaway',recvSumDirect:'Direct to location',recvSumNoBin:'No receiving location',recvSumOpenWh:'Open warehouse',
+     recvSumHint:'Read-only. The mode is changed in each warehouse (Warehouses → Receiving), because the receiving area is physical. With putaway: goods enter the receiving location and are put away afterwards. Direct: the receiver picks the final location and there is no putaway. A warehouse with putaway needs a receiving location in order to receive.',
+     tabGeneral:'General',tabRegion:'Region & formats',tabCalendar:'Calendar',tabModules:'Modules',tabOps:'Operations',tabBrand:'Branding',
      profileTitle:'Company details',nameLabel:'Name',legalLabel:'Legal name',taxLabel:'Tax ID (EIN)',langLabel:'Default language',
      langHint:'The language each new user starts with; anyone can change it in their account. It does not change dates or currency: that is set in Region & formats.',
      profileSaved:'Details saved',secLinkTitle:'Security',
@@ -5493,7 +5499,7 @@ window.gotoPage=(key,delta)=>{PAGES[key].page += delta; go(CURRENT,true)};
 /* ===== ordenamiento genérico para cualquier tabla ===== */
 let SORTS = {bin:{k:null,dir:1}, cod:{k:null,dir:1}, po:{k:'date',dir:-1}, wh:{k:'code',dir:1}, pack:{k:null,dir:1}, recln:{k:null,dir:1},
  auditact:{k:'at',dir:-1}, auditsess:{k:null,dir:1}, acctpurch:{k:'date',dir:-1}, acctdesp:{k:'date',dir:-1}, shortage:{k:null,dir:1},
- dockappt:{k:'eta',dir:1}, xdockdemand:{k:null,dir:1}, ledger:{k:'date',dir:-1}, fldocs:{k:null,dir:1}, flveh:{k:null,dir:1}, flmaint:{k:null,dir:1}, flwo:{k:null,dir:1}, flfuel:{k:'date',dir:-1}, custfields:{k:null,dir:1}, rolesLst:{k:null,dir:1}, usersLst:{k:null,dir:1}, apikeys:{k:null,dir:1}, tenantmod:{k:null,dir:1}, tenanthol:{k:null,dir:1}};
+ dockappt:{k:'eta',dir:1}, xdockdemand:{k:null,dir:1}, ledger:{k:'date',dir:-1}, fldocs:{k:null,dir:1}, flveh:{k:null,dir:1}, flmaint:{k:null,dir:1}, flwo:{k:null,dir:1}, flfuel:{k:'date',dir:-1}, custfields:{k:null,dir:1}, rolesLst:{k:null,dir:1}, usersLst:{k:null,dir:1}, apikeys:{k:null,dir:1}, tenantmod:{k:null,dir:1}, tenanthol:{k:null,dir:1}, recvsum:{k:null,dir:1}};
 window.toggleSort=(screen,key)=>{const s=SORTS[screen];if(s.k===key)s.dir*=-1;else{s.k=key;s.dir=1}go(CURRENT,true)};
 function applySort(screen,rows,defaultKey){const s=SORTS[screen];const k=s.k||defaultKey;const dir=s.k?s.dir:1;
  return [...rows].sort((a,b)=>{let va=a[k],vb=b[k];if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return (va<vb?-1:va>vb?1:0)*dir})}
@@ -7632,6 +7638,25 @@ function tenantCalendarPanelsHtml(){const x=t('tenantset');const es=LANG==='es';
     <label class="sw" style="gap:6px;margin-bottom:8px"><input id="hol_rec" type="checkbox"><span class="tk"></span>${x.colRecurring}</label>
     <button class="btn flow" onclick="addHoliday()">${ic('plus')} ${x.addHoliday}</button></div></div>
   </div></div>`}
+/* --- Resumen de recibo por almacén (solo lectura) ---
+   Pedido de Luis: con varios almacenes, quien no los conoce necesita ver de un vistazo cuáles reciben con acomodo y cuáles directo a
+   posición. El modo se CAMBIA en cada almacén (Almacenes → Recepción) porque la zona de recepción es física; aquí solo se ve y se
+   salta al almacén. Marca con un aviso el almacén con acomodo que no tiene posición de recepción, que no podría recibir. */
+window.openWhFromSettings=(code)=>{WHSEL=code;go('almacenes')};
+function recvOpenCount(wh,pred){return RECEIPTS.filter(r=>r.wh===wh&&pred(r)).length}
+function tenantRecvSummaryHtml(){const x=t('tenantset');
+ const rows=applySort('recvsum',WAREHOUSES.map(w=>{const direct=w.receivingMode==='DIRECT';
+   const hasRecvBin=BINS.some(b=>{const z=ZONES.find(z2=>z2.code===b.zone);return z&&z.wh===w.code&&z.type==='Recepción'});
+   return {w,code:w.code,name:w.name,mode:direct?1:0,direct,bin:direct?'':(w.defaultRecvBin||''),noBin:!direct&&!(w.defaultRecvBin&&hasRecvBin),
+    open:recvOpenCount(w.code,r=>RECV_OPEN.includes(r.status)),pending:recvOpenCount(w.code,r=>r.status==='putaway')}}),'code');
+ return `<div class="panel" style="margin-top:16px"><div class="ph2">${ic('checkin')} ${x.recvSumTitle} <span class="r">${rows.length}</span></div>
+  <div class="pb" style="padding:0"><div style="overflow:auto"><table class="lst"><thead><tr>${sortTh('recvsum','name',x.recvSumWh)}${sortTh('recvsum','mode',x.recvSumMode)}${sortTh('recvsum','bin',x.recvSumBin)}${sortTh('recvsum','open',x.recvSumOpen,1)}${sortTh('recvsum','pending',x.recvSumPending,1)}<th></th></tr></thead>
+   <tbody>${rows.map(({w,direct,bin,noBin,open,pending})=>`<tr><td><span class="ref">${w.code}</span> ${w.name}${w.active===false?` <span class="chip s-cap" style="margin-left:6px">${t('whs.inactive')}</span>`:''}</td>
+     <td><span class="chip ${direct?'s-deliv':'s-wh'}">${direct?x.recvSumDirect:x.recvSumPutaway}</span></td>
+     <td>${direct?'<span style="color:var(--faint)">\u2014</span>':noBin?`<span class="chip s-fail">${x.recvSumNoBin}</span>`:`<span class="ref">${bin}</span>`}</td>
+     <td class="n mono">${open}</td><td class="n mono">${pending}</td>
+     <td style="width:150px;text-align:right"><button class="btn sm" onclick="openWhFromSettings('${w.code}')">${x.recvSumOpenWh}</button></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="note" style="margin:0;border:none;padding:10px 16px 14px">${x.recvSumHint}</div></div>`}
 function ajustesScreen(){const n=t('nav.ajustes');const x=t('tenantset');
  const tabs=[['general','gear',x.tabGeneral],['region','pin',x.tabRegion],['calendar','clock',x.tabCalendar],['modules','layers',x.tabModules],['ops','route',x.tabOps],['brand','tag',x.tabBrand]];
  let body='';
@@ -7639,7 +7664,7 @@ function ajustesScreen(){const n=t('nav.ajustes');const x=t('tenantset');
  else if(SET_TAB==='region')body=tenantRegionPanelsHtml();
  else if(SET_TAB==='calendar')body=tenantCalendarPanelsHtml();
  else if(SET_TAB==='modules')body=tenantModulesPanelHtml();
- else if(SET_TAB==='ops')body=`<div class="cols" style="grid-template-columns:1fr 1fr;align-items:start">${tenantDefaultsPanelHtml()}${tenantPipelinePanelHtml()}</div>`;
+ else if(SET_TAB==='ops')body=`<div class="cols" style="grid-template-columns:1fr 1fr;align-items:start">${tenantDefaultsPanelHtml()}${tenantPipelinePanelHtml()}</div>${tenantRecvSummaryHtml()}`;
  else body=tenantBrandPanelHtml().replace('margin-top:16px','margin-top:0');
  return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div><div class="act">
    <div class="seg">${tabs.map(([k,i,l])=>`<button class="${SET_TAB===k?'on':''}" onclick="setSetTab('${k}')">${ic(i)} ${l}</button>`).join('')}</div></div></div>

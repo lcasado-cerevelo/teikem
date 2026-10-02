@@ -46,5 +46,22 @@ for(const lang of ['es','en']){E(`LANG='${lang}';applyStatic()`);
  E("go('ubicaciones')");E("go('inventario')");}
 E("setWhRecvMode('WH-01','PUTAWAY')");E("go('almacenes')");
 ok(w.document.getElementById('wrap').innerHTML.includes('S-01'),'modo con acomodo muestra la posición por defecto');
+
+// ---- resumen de recibo por almacén en Ajustes (solo lectura, con enlace)
+E("LANG='es';applyStatic();setWhRecvMode('WH-01','PUTAWAY');setSetTab('ops')");
+let h=w.document.getElementById('wrap').innerHTML;
+ok(/Recepción por almacén/.test(h),'Ajustes → Operación muestra el resumen');
+ok(h.includes('WH-01')&&h.includes('Con acomodo')&&h.includes('S-01'),'resumen: almacén, modo y posición de recepción');
+ok(!/<select[^>]*setWhRecvMode/.test(h),'el resumen es solo lectura (no cambia el modo)');
+E("WAREHOUSES.push({code:'WH-02',name:'Almacén Cataño',address:'',active:true,receivingMode:'DIRECT',defaultRecvBin:null})");
+E("setSetTab('ops')");h=w.document.getElementById('wrap').innerHTML;
+ok(h.includes('WH-02')&&h.includes('Directo a posición'),'varios almacenes: cada uno con su modo');
+E("WAREHOUSES.push({code:'WH-03',name:'Almacén Sin Recepción',address:'',active:true,receivingMode:'PUTAWAY',defaultRecvBin:null})");
+E("setSetTab('ops')");h=w.document.getElementById('wrap').innerHTML;
+ok(h.includes('Sin posición de recepción'),'aviso: con acomodo y sin posición de recepción');
+E("openWhFromSettings('WH-02')");
+ok(E("CURRENT")==='almacenes'&&E("WHSEL")==='WH-02','Abrir almacén lleva al almacén escogido');
+E("LANG='en';applyStatic();setSetTab('ops')");ok(/Receiving by warehouse/.test(w.document.getElementById('wrap').innerHTML),'resumen en inglés');
+E("WAREHOUSES.splice(1,2);LANG='es';applyStatic()");
 ok(errs.length===0,'sin errores: '+errs.join('|'));
 done();
