@@ -173,9 +173,36 @@ CREATE TABLE dbo.Tenant (
     SessionDays     INT NOT NULL DEFAULT 30,          -- vida del refresh token
     DeviceSessionDays INT NOT NULL DEFAULT 30,        -- Lote 8A: vida de la sesión de un aparato de almacén (aparato + PIN)
     BrandingJson    NVARCHAR(MAX) NULL,               -- marca por compañía (tema de color y logos)
+    -- Región y formatos de la compañía (pedido de Luis, 2026-10): zona horaria, moneda y formatos de fecha, hora, números y teléfono.
+    -- RegionCode trae el juego de valores por defecto (solo 'PR' y 'US'); cada columna se puede cambiar por separado. Las fechas se guardan
+    -- en UTC y se muestran en TimeZoneId; "hoy", los días hábiles y el SLA cuentan en esa zona. El idioma de la interfaz es por usuario
+    -- (DefaultLangCode es solo el del usuario nuevo) y no cambia nada de esto. Los defaults reproducen el comportamiento previo (Puerto Rico, USD).
+    RegionCode      CHAR(2)       NOT NULL DEFAULT 'PR',          -- 'PR' | 'US'
+    TimeZoneId      VARCHAR(64)   NOT NULL DEFAULT 'America/Puerto_Rico',   -- nombre IANA; el servicio valida que la plataforma lo conozca
+    CurrencyCode    CHAR(3)       NOT NULL DEFAULT 'USD',         -- moneda base (ISO 4217); un cliente puede tener otra en su contrato
+    CurrencySymbol  NVARCHAR(3)   NOT NULL DEFAULT N'$',
+    CurrencySymbolPosition CHAR(1) NOT NULL DEFAULT 'B',          -- B = antes del monto, A = después
+    CurrencyDecimals TINYINT      NOT NULL DEFAULT 2,
+    DateOrder       CHAR(3)       NOT NULL DEFAULT 'MDY',         -- orden de la fecha: MDY | DMY | YMD
+    DateSeparator   CHAR(1)       NOT NULL DEFAULT '/',           -- '/', '-' o '.'
+    TimeFormat      TINYINT       NOT NULL DEFAULT 12,            -- 12 o 24 horas
+    WeekStartDay    TINYINT       NOT NULL DEFAULT 0,             -- 0 = domingo, 1 = lunes
+    ThousandsSeparator NVARCHAR(1) NOT NULL DEFAULT N',',         -- ',', '.' o espacio
+    DecimalSeparator CHAR(1)      NOT NULL DEFAULT '.',           -- '.' o ','; nunca igual al de miles
+    PhoneCountryCode VARCHAR(5)   NOT NULL DEFAULT '+1',
+    PhoneMask       VARCHAR(30)   NOT NULL DEFAULT '(###) ###-####',   -- cada # es un dígito; el teléfono se guarda solo con dígitos y se muestra con esta máscara
     IsActive        BIT NOT NULL DEFAULT 1,
     CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-    RowVersion      ROWVERSION
+    RowVersion      ROWVERSION,
+    CONSTRAINT CK_Tenant_Region CHECK (RegionCode IN ('PR','US')),
+    CONSTRAINT CK_Tenant_CurrencySymbolPosition CHECK (CurrencySymbolPosition IN ('B','A')),
+    CONSTRAINT CK_Tenant_CurrencyDecimals CHECK (CurrencyDecimals IN (0,2,3)),
+    CONSTRAINT CK_Tenant_DateOrder CHECK (DateOrder IN ('MDY','DMY','YMD')),
+    CONSTRAINT CK_Tenant_DateSeparator CHECK (DateSeparator IN ('/','-','.')),
+    CONSTRAINT CK_Tenant_TimeFormat CHECK (TimeFormat IN (12,24)),
+    CONSTRAINT CK_Tenant_WeekStartDay CHECK (WeekStartDay IN (0,1)),
+    CONSTRAINT CK_Tenant_Separators CHECK (ThousandsSeparator IN (N',',N'.',N' ') AND DecimalSeparator IN ('.',',') AND ThousandsSeparator <> DecimalSeparator),
+    CONSTRAINT CK_Tenant_PhoneMask CHECK (PhoneMask LIKE '%#%')
 );
 GO
 

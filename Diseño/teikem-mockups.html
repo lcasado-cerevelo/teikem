@@ -820,7 +820,7 @@ const T={
      revealTitle:'API key creada',revealHint:'Cópiala ahora — por seguridad, no se puede volver a mostrar completa. Si la pierdes, hay que revocar esta y crear una nueva.',
      copyBtn:'Copiar',copiedMsg:'Copiada al portapapeles',doneBtn:'Listo',revokedMsg:'API key revocada',
      note:'Las plantillas de exportación e importación se administran donde ya existían — Contabilización de compras/despachos, Facturación, Liquidación y Consignatarios — esta pantalla es su registro central. Las API keys dan acceso programático al API con el mismo catálogo de permisos que roles y usuarios.'},
-   audit:{tabActivity:'Actividad',tabSessions:'Sesiones y MFA',exportBtn:'Exportar CSV',
+   audit:{sessionDaysLabel:'Duración de la sesión (días)',deviceDaysLabel:'Duración de la sesión del aparato (días)',sessionDaysHint:'Cuánto dura una sesión sin volver a pedir la contraseña; se renueva mientras se use. Los aparatos de almacén (aparato + PIN) tienen su propia duración. De 1 a 365 días.',tabActivity:'Actividad',tabSessions:'Sesiones y MFA',exportBtn:'Exportar CSV',
      filterAll:'Todo',filterChanges:'Cambios',filterSecurity:'Seguridad',
      colWhen:'Cuándo',colType:'Tipo',colUser:'Usuario',colDetail:'Detalle',
      badgeChange:'Cambio',badgeAlert:'Alerta',badgeEvent:'Evento',
@@ -833,7 +833,28 @@ const T={
      reauthLabel:'Ventana de reautenticación (AAL2)',minutesWord:'minutos',
      reauthHint:'Acciones sensibles (aprobar facturación, cambiar permisos, exportar a contabilidad) piden reautenticarse si la última verificación es más vieja que esta ventana.',
      note:'"Actividad" combina, en una sola tabla filtrable, dos bitácoras que en el sistema real son independientes: qué cambió (AuditLog) y quién intentó qué (SecurityEvent) — cada fila conserva su tipo. Las filas de API keys se leen en vivo desde Integraciones: crear o revocar una ahí aparece aquí sin capturarla dos veces.'},
-   tenantset:{brandTitle:'Colores y logo de la compañía',
+   tenantset:{tabGeneral:'General',tabRegion:'Región y formatos',tabCalendar:'Calendario',tabModules:'Módulos',tabOps:'Operación',tabBrand:'Marca',
+     profileTitle:'Datos de la compañía',nameLabel:'Nombre',legalLabel:'Razón social',taxLabel:'ID fiscal (EIN)',langLabel:'Idioma por defecto',
+     langHint:'Es el idioma con que entra cada usuario nuevo; cada quien lo puede cambiar en su cuenta. No cambia las fechas ni la moneda: eso se define en Región y formatos.',
+     profileSaved:'Datos guardados',secLinkTitle:'Seguridad',
+     secLinkHint:'La política de MFA, la reautenticación y la duración de las sesiones se configuran en Seguridad y auditoría, para no tener los mismos controles en dos pantallas.',secLinkBtn:'Abrir Seguridad y auditoría',
+     regionTitle:'Región',regionHint:'La región carga de una vez la zona horaria, la moneda y todos los formatos. Después puedes cambiar cada uno por separado.',
+     regionCustom:'Personalizada',regionReset:'Restaurar valores de la región',regionApplied:'Región aplicada',
+     tzLabel:'Zona horaria',tzHint:'Define qué día es «hoy», dónde empieza y termina cada día en los filtros, los días hábiles y el SLA, y la hora que se ve en pantalla. Las fechas se guardan en UTC y se muestran en esta zona.',
+     currencyTitle:'Moneda',curLabel:'Moneda base',curHint:'Moneda por defecto de tarifas, facturas y COD. Un cliente puede tener otra en su contrato.',
+     symLabel:'Símbolo',symPosLabel:'Posición del símbolo',symBefore:'Antes del monto ($1,234.50)',symAfter:'Después del monto (1.234,50 $)',decLabel:'Decimales',
+     datetimeTitle:'Fecha y hora',dateFmtLabel:'Orden de la fecha',dateSepLabel:'Separador',timeFmtLabel:'Hora',time12:'12 horas (a. m. / p. m.)',time24:'24 horas',
+     weekStartLabel:'Primer día de la semana',sun:'Domingo',mon:'Lunes',
+     numbersTitle:'Números',thouLabel:'Separador de miles',decSepLabel:'Separador decimal',sepClash:'El separador de miles y el decimal no pueden ser el mismo',
+     phoneTitle:'Teléfono',phoneCcLabel:'Código de país',phoneMaskLabel:'Formato',
+     phoneHint:'Los teléfonos se guardan solo con dígitos y se muestran con este formato. Si un número no tiene la cantidad de dígitos del formato, se deja como se escribió.',
+     previewTitle:'Vista previa',pvToday:'Hoy (zona de la compañía)',pvNowUtc:'Ahora en UTC',pvShort:'Fecha corta',pvDayMonth:'Día y mes',pvLong:'Fecha larga',pvTime:'Hora',
+     pvMoney:'Dinero',pvNeg:'Dinero negativo',pvNum:'Número (3 decimales)',pvPhone:'Teléfono',
+     workdaysTitle:'Días laborables',workdaysHint:'Junto con los feriados define el calendario laboral: los SLA en días hábiles, las fechas límite y las tendencias de «últimos N días hábiles» no cuentan los días no laborables.',
+     needOneWorkDay:'Tiene que haber al menos un día laborable',nextBizDay:'Próximo día hábil',
+     holidaysTitle:'Feriados',colDate:'Fecha',colName:'Nombre',colRecurring:'Cada año',addHoliday:'Agregar feriado',holidayName:'Nombre del feriado',
+     needHolidayName:'Escribe la fecha y el nombre del feriado',holidayAdded:'Feriado agregado',holidayRemoved:'Feriado eliminado',dupHoliday:'Ya hay un feriado en esa fecha',noHolidays:'Sin feriados',
+     brandTitle:'Colores y logo de la compañía',
      brandHint:'Los colores de estado (verde, ámbar, rojo) no se personalizan a propósito: verde igual a bien y rojo igual a mal es una convención que, si se rompe, hace que la interfaz se lea al revés.',
      presetsTitle:'Temas predefinidos',customTitle:'Usar colores propios',
      flowLabel:'Color de operación',flowHint:'Lo que sale a la calle: órdenes, rutas, entregas.',
@@ -873,7 +894,10 @@ const T={
      size_sm:'Pequeño',size_md:'Mediano',size_lg:'Grande'},
    ai:{sub:'Asistente de Teikem',hi:'¡Saludos! Soy Kemi. Estoy pendiente de este módulo — pregúntame o dale a una sugerencia.',ph:'Pregúntale a Kemi…',ans:'En la app real consulto el módulo y te contesto con datos en vivo. Aquí estoy en modo demo 😉',
      sug:{pulso:['¿Cómo va el día vs. ayer?','¿Qué necesita mi decisión?','Resume el COD en circulación'],ordenes:['Busca las de Farmacia Las Marías','¿Cuáles vencen hoy?','Órdenes con COD > $200'],entrada:['Valida los ZIP de hoy','¿Duplicados en invoices?','Crea orden desde un email'],escaneo:['¿Qué falta por escanear de la R-01?','Faltantes por cliente','Cierra la sesión y reporta'],despacho:['Optimiza la ruta 0142','¿Qué chofer tiene espacio?','ETA de todas las rutas'],cod:['¿Cuánto queda sin cuadrar?','Prepara la remesa de Advance','Cheques sin depositar'],default:['¿Qué puedo hacer aquí?','Dame un resumen del día','Llévame a la caja COD']}},
-   whs:{title:'Almacenes',sub:'Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones',
+   whs:{title:'Almacenes',recvTitle:'Recepción',recvMode:'Modo de recepción',recvPutaway:'Con acomodo (pasa por la posición de recepción)',recvDirect:'Directo a posición',
+     recvModeHelp:'Cómo entra la mercancía en este almacén. Con acomodo: se recibe en la posición de recepción y luego se acomoda. Directo: quien recibe escoge la posición final y no hay acomodo. Cada recibo puede cambiar el modo solo para él.',
+     recvDefaultBin:'Posición de recepción por defecto',recvDefaultBinHelp:'Dónde queda la mercancía recibida con acomodo hasta que se acomoda. Solo aplica en modo con acomodo.',
+     recvNoBin:'Sin recepción — crea una zona de tipo Recepción',recvModeChanged:'Modo de recepción actualizado',recvOpenKeep:'recibos abiertos conservan el modo con que se abrieron',sub:'Alta y mantenimiento de tus almacenes — cada uno con sus propias zonas y posiciones',
      code:'Código',name:'Nombre',address:'Dirección',zones:'Zonas',state:'Estado',active:'Activo',inactive:'Inactivo',
      newWh:'Nuevo almacén',modalTitle:'Nuevo almacén',editTitle:'Editar almacén',save:'Guardar',cancel:'Cancelar',created:'almacén creado',updated:'almacén actualizado',
      zonesTitle:'Zonas de este almacén',newZone:'Nueva zona',editZone:'Editar zona',zoneCode:'Código',zoneName:'Nombre',zoneType:'Tipo',zoneCap:'Capacidad (posiciones)',zoneCapUnit:'posiciones',
@@ -895,7 +919,11 @@ const T={
      st_draft:'Borrador',st_sent:'Enviada',st_partial:'Recibida parcial',st_received:'Recibida',st_cancelled:'Cancelada',
      newPO:'Nueva orden de compra',modalTitle:'Nueva orden de compra',editTitle:'Editar orden de compra',warehouse:'Almacén destino',product:'Producto',qty:'Cantidad',unitCost:'Costo unitario',addLine:'+ Añadir línea',save:'Guardar',cancel:'Cancelar',created:'orden de compra creada',updated:'orden de compra actualizada',cannotDelete:'No se puede eliminar: ya se está recibiendo o fue recibida',cannotEdit:'No se puede editar: ya se está recibiendo o fue recibida',
      concept:'Esto es lo que compra Advance para revender (ej. medidores de glucosa) — no confundir con el cargo que un cliente manda a guardarse. Al confirmarla, la orden de compra pasa a Recibo como lo que falta por verificar.'},
-   recep:{title:'Recibo',sub:'Verificación de lo que llega contra la orden que lo esperaba',
+   recep:{title:'Recibo',st_putaway:'Acomodo pendiente',modePutaway:'Con acomodo',modeDirect:'Directo a posición',modeThis:'Modo de este recibo',targetBin:'Posición destino',pickBin:'Escoge…',
+     stagedAt:'Recepción',needTarget:'Escoge la posición destino de cada línea antes de continuar',confirmStage:'Confirmar recibo (queda en recepción)',confirmPutaway:'Confirmar acomodo',putawayDone:'Acomodo confirmado',
+     hintDirect:'Modo directo: escoge la posición final de cada línea; al confirmar, la mercancía entra directo a esa posición y el recibo queda completado.',
+     hintPutaway:'Con acomodo: al confirmar, la mercancía entra a la posición de recepción y el recibo queda con el acomodo pendiente.',
+     hintPutawayPending:'La mercancía ya está en la posición de recepción. Escoge la posición final de cada línea y confirma el acomodo.',sub:'Verificación de lo que llega contra la orden que lo esperaba',
      asn:'Recibo','from':'Origen',expected:'Esperado',carrier:'Transporte',status:'Estado',lines:'Líneas',
      st_expected:'Esperado',st_receiving:'Recibiendo',st_done:'Completado',st_disc:'Con discrepancia',
      detail:'Detalle del recibo',product:'Producto',expectedQty:'Esperado',receivedQty:'Recibido',diff:'Diferencia',confirm:'Confirmar recibo',
@@ -1180,7 +1208,7 @@ const T={
      revealTitle:'API key created',revealHint:'Copy it now — for security, it can\'t be shown in full again. If you lose it, revoke this one and create a new one.',
      copyBtn:'Copy',copiedMsg:'Copied to clipboard',doneBtn:'Done',revokedMsg:'API key revoked',
      note:'Export and import templates are managed where they already lived — Purchase/Dispatch accounting, Billing, Settlement and Consignees — this screen is their central registry. API keys grant programmatic API access using the same permission catalog as roles and users.'},
-   audit:{tabActivity:'Activity',tabSessions:'Sessions & MFA',exportBtn:'Export CSV',
+   audit:{sessionDaysLabel:'Session lifetime (days)',deviceDaysLabel:'Warehouse device session lifetime (days)',sessionDaysHint:'How long a session lasts without asking for the password again; it renews while in use. Warehouse devices (device + PIN) have their own lifetime. 1 to 365 days.',tabActivity:'Activity',tabSessions:'Sessions & MFA',exportBtn:'Export CSV',
      filterAll:'All',filterChanges:'Changes',filterSecurity:'Security',
      colWhen:'When',colType:'Type',colUser:'User',colDetail:'Detail',
      badgeChange:'Change',badgeAlert:'Alert',badgeEvent:'Event',
@@ -1193,7 +1221,28 @@ const T={
      reauthLabel:'Reauthentication window (AAL2)',minutesWord:'minutes',
      reauthHint:'Sensitive actions (approving billing, changing permissions, exporting to accounting) require reauthentication if the last verification is older than this window.',
      note:'"Activity" combines, in one filterable table, two logs that are independent in the real system: what changed (AuditLog) and who attempted what (SecurityEvent) — each row keeps its type. API key rows are read live from Integrations: creating or revoking one there shows up here without capturing it twice.'},
-   tenantset:{brandTitle:'Company colors and logo',
+   tenantset:{tabGeneral:'General',tabRegion:'Region & formats',tabCalendar:'Calendar',tabModules:'Modules',tabOps:'Operations',tabBrand:'Branding',
+     profileTitle:'Company details',nameLabel:'Name',legalLabel:'Legal name',taxLabel:'Tax ID (EIN)',langLabel:'Default language',
+     langHint:'The language each new user starts with; anyone can change it in their account. It does not change dates or currency: that is set in Region & formats.',
+     profileSaved:'Details saved',secLinkTitle:'Security',
+     secLinkHint:'The MFA policy, reauthentication and session lifetime are set in Security & audit, so the same controls are not in two screens.',secLinkBtn:'Open Security & audit',
+     regionTitle:'Region',regionHint:'The region loads the time zone, currency and every format at once. You can then change each one on its own.',
+     regionCustom:'Custom',regionReset:'Restore region values',regionApplied:'Region applied',
+     tzLabel:'Time zone',tzHint:'Defines what day “today” is, where each day starts and ends in filters, business days and SLA, and the time shown on screen. Dates are stored in UTC and shown in this zone.',
+     currencyTitle:'Currency',curLabel:'Base currency',curHint:'Default currency for rates, invoices and COD. A client can have a different one in its contract.',
+     symLabel:'Symbol',symPosLabel:'Symbol position',symBefore:'Before the amount ($1,234.50)',symAfter:'After the amount (1.234,50 $)',decLabel:'Decimals',
+     datetimeTitle:'Date & time',dateFmtLabel:'Date order',dateSepLabel:'Separator',timeFmtLabel:'Time',time12:'12-hour (AM / PM)',time24:'24-hour',
+     weekStartLabel:'First day of the week',sun:'Sunday',mon:'Monday',
+     numbersTitle:'Numbers',thouLabel:'Thousands separator',decSepLabel:'Decimal separator',sepClash:'The thousands and decimal separators cannot be the same',
+     phoneTitle:'Phone',phoneCcLabel:'Country code',phoneMaskLabel:'Format',
+     phoneHint:'Phones are stored as digits only and shown in this format. If a number does not have the digits the format needs, it is left as typed.',
+     previewTitle:'Preview',pvToday:'Today (company zone)',pvNowUtc:'Now in UTC',pvShort:'Short date',pvDayMonth:'Day and month',pvLong:'Long date',pvTime:'Time',
+     pvMoney:'Money',pvNeg:'Negative money',pvNum:'Number (3 decimals)',pvPhone:'Phone',
+     workdaysTitle:'Working days',workdaysHint:'Together with holidays this defines the working calendar: business-day SLAs, deadlines and “last N business days” trends skip non-working days.',
+     needOneWorkDay:'At least one working day is required',nextBizDay:'Next business day',
+     holidaysTitle:'Holidays',colDate:'Date',colName:'Name',colRecurring:'Every year',addHoliday:'Add holiday',holidayName:'Holiday name',
+     needHolidayName:'Enter the holiday date and name',holidayAdded:'Holiday added',holidayRemoved:'Holiday removed',dupHoliday:'There is already a holiday on that date',noHolidays:'No holidays',
+     brandTitle:'Company colors and logo',
      brandHint:'State colors (green, amber, red) are deliberately not customizable: green means good and red means bad is a convention that, once broken, makes the interface read backwards.',
      presetsTitle:'Preset themes',customTitle:'Use my own colors',
      flowLabel:'Operations color',flowHint:'What goes out to the street: orders, routes, deliveries.',
@@ -1233,7 +1282,10 @@ const T={
      size_sm:'Small',size_md:'Medium',size_lg:'Large'},
    ai:{sub:'Teikem assistant',hi:'Hi! I\u2019m Kemi. I\u2019m watching this module — ask me anything or tap a suggestion.',ph:'Ask Kemi…',ans:'In the real app I query the module and answer with live data. Demo mode here 😉',
      sug:{pulso:['How\u2019s today vs. yesterday?','What needs my decision?','Summarize COD in circulation'],ordenes:['Find Farmacia Las Marías orders','Which are due today?','Orders with COD > $200'],entrada:['Validate today\u2019s ZIPs','Duplicate invoices?','Create an order from an email'],escaneo:['What\u2019s missing on R-01?','Missing by client','Close session and report'],despacho:['Optimize route 0142','Which driver has room?','ETA for all routes'],cod:['How much is unreconciled?','Prepare Advance\u2019s remittance','Undeposited checks'],default:['What can I do here?','Give me a day summary','Take me to the COD box']}},
-   whs:{title:'Warehouses',sub:'Create and manage your warehouses \u2014 each with its own zones and slots',
+   whs:{title:'Warehouses',recvTitle:'Receiving',recvMode:'Receiving mode',recvPutaway:'With putaway (goes through the receiving location)',recvDirect:'Direct to location',
+     recvModeHelp:'How goods enter this warehouse. With putaway: received into the receiving location and put away afterwards. Direct: the receiver picks the final location and there is no putaway. Each receipt can change the mode for itself only.',
+     recvDefaultBin:'Default receiving location',recvDefaultBinHelp:'Where goods received with putaway sit until they are put away. Only applies in putaway mode.',
+     recvNoBin:'No receiving area — create a zone of type Receiving',recvModeChanged:'Receiving mode updated',recvOpenKeep:'open receipts keep the mode they were opened with',sub:'Create and manage your warehouses \u2014 each with its own zones and slots',
      code:'Code',name:'Name',address:'Address',zones:'Zones',state:'Status',active:'Active',inactive:'Inactive',
      newWh:'New warehouse',modalTitle:'New warehouse',editTitle:'Edit warehouse',save:'Save',cancel:'Cancel',created:'warehouse created',updated:'warehouse updated',
      zonesTitle:'Zones in this warehouse',newZone:'New zone',editZone:'Edit zone',zoneCode:'Code',zoneName:'Name',zoneType:'Type',zoneCap:'Capacity (slots)',zoneCapUnit:'slots',
@@ -1255,7 +1307,11 @@ const T={
      st_draft:'Draft',st_sent:'Sent',st_partial:'Partially received',st_received:'Received',st_cancelled:'Cancelled',
      newPO:'New purchase order',modalTitle:'New purchase order',editTitle:'Edit purchase order',warehouse:'Destination warehouse',product:'Product',qty:'Quantity',unitCost:'Unit cost',addLine:'+ Add line',save:'Save',cancel:'Cancel',created:'purchase order created',updated:'purchase order updated',cannotDelete:'Can\u2019t delete: already receiving or received',cannotEdit:'Can\u2019t edit: already receiving or received',
      concept:'This is what Advance buys to resell (e.g. glucose meters) — not to be confused with cargo a client sends in for storage. Once confirmed, the PO flows into Receiving as what’s left to verify.'},
-   recep:{title:'Receiving',sub:'Verification of what arrives against the order that expected it',
+   recep:{title:'Receiving',st_putaway:'Putaway pending',modePutaway:'With putaway',modeDirect:'Direct to location',modeThis:'Mode for this receipt',targetBin:'Target location',pickBin:'Pick…',
+     stagedAt:'Receiving',needTarget:'Pick the target location of every line first',confirmStage:'Confirm receipt (stays in receiving)',confirmPutaway:'Confirm putaway',putawayDone:'Putaway confirmed',
+     hintDirect:'Direct mode: pick the final location of each line; on confirm the goods go straight there and the receipt is completed.',
+     hintPutaway:'With putaway: on confirm the goods enter the receiving location and the receipt is left with the putaway pending.',
+     hintPutawayPending:'The goods are already in the receiving location. Pick the final location of each line and confirm the putaway.',sub:'Verification of what arrives against the order that expected it',
      asn:'Receipt','from':'From',expected:'Expected',carrier:'Carrier',status:'Status',lines:'Lines',
      st_expected:'Expected',st_receiving:'Receiving',st_done:'Completed',st_disc:'Discrepancy',
      detail:'Receipt detail',product:'Product',expectedQty:'Expected',receivedQty:'Received',diff:'Diff',confirm:'Confirm receipt',
@@ -1276,9 +1332,9 @@ const T={
 function t(path){let o=T[LANG];for(const k of path.split('.')){o=o&&o[k]} return o==null?path:o}
 
 /* ===== reloj (hasta minutos) ===== */
-function tickClock(){const d=new Date();const loc=LANG==='es'?'es-PR':'en-US';
-  const ds=d.toLocaleDateString(loc,{weekday:'short',day:'numeric',month:'short'});
-  const ts=d.toLocaleTimeString(loc,{hour:'numeric',minute:'2-digit'});
+function tickClock(){const d=new Date();
+  const ds=fmtDateLong(d,{weekday:'short',day:'numeric',month:'short'});
+  const ts=fmtTime(d);
   const el=document.getElementById('clock');if(el)el.textContent=ds+' · '+ts}
 setInterval(tickClock,15000);
 
@@ -1313,7 +1369,7 @@ function renderConsigneeModalHtml(typedName){const e=t('entry');
  <div class="pb">
   <div class="r2"><div class="f"><label>${e.consNumber}</label><input id="cc_number" class="mono" placeholder="${1010+CONS_SEQ-9}"></div><div class="f"><label>${e.consName}</label><input id="cc_name" value="${typedName?typedName.replace(/"/g,'&quot;'):''}"></div></div>
   <div class="f"><label>${e.addr}</label><input id="cc_addr"></div>
-  <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="cc_town">${towns.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${e.phone}</label><input id="cc_phone" class="mono" placeholder="787-000-0000"></div></div>
+  <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="cc_town">${towns.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${e.phone}</label><input id="cc_phone" class="mono" placeholder="${phonePlaceholder()}"></div></div>
  </div>
  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="closeGenModal()">${t('ubic.cancel')}</button><button class="btn sm flow" onclick="saveConsignee()">${ic('check')} ${e.save}</button></div>`}
 window.saveConsignee=()=>{const name=(document.getElementById('cc_name').value||'').trim();if(!name)return;
@@ -1371,9 +1427,61 @@ const routes=['R-01','R-02','R-03','R-04'];
 const stk=['deliv','route','disp','wh','cap','fail','cod'];
 const stcls={deliv:'s-deliv',route:'s-route',disp:'s-disp',wh:'s-wh',cap:'s-cap',fail:'s-fail',cod:'s-cod'};
 const rnd=a=>a[Math.floor(Math.random()*a.length)];
-const money=n=>n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-function isoDaysAgo(n){const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
-const TODAY=isoDaysAgo(0);
+/* ===== Región y formatos de la compañía (Tenant.RegionCode y columnas de formato) =====
+   Pedido de Luis: zona horaria, moneda y formatos (fecha, hora, números, teléfono) dejan de estar escritos a mano
+   y pasan a ser configuración de la compañía, guardada en la base de datos. La REGIÓN trae un juego completo de
+   valores por defecto (solo Puerto Rico y Estados Unidos) y cada valor se puede cambiar por separado en Ajustes →
+   Región y formatos. El IDIOMA de la interfaz sigue siendo por usuario y no cambia nada de esto: el idioma decide
+   en qué idioma salen los nombres de meses y días; la región decide el orden, los separadores, la hora y la moneda.
+   Toda fecha, hora, cantidad de dinero, número y teléfono que se pinte pasa por fmtDate/fmtDayMonth/fmtTime/
+   fmtMoney/money/fmtPhone, y "hoy" sale de todayISO() (zona de la compañía, NO UTC: a las 8 pm en Puerto Rico
+   toISOString() ya devuelve el día siguiente). */
+const REGIONS={
+ PR:{es:'Puerto Rico',en:'Puerto Rico',tz:'America/Puerto_Rico',cur:'USD',sym:'$',symPos:'before',decimals:2,
+  dateFmt:'MDY',dateSep:'/',time:'12',weekStart:0,thou:',',dec:'.',phoneCc:'+1',phoneMask:'(###) ###-####'},
+ US:{es:'Estados Unidos',en:'United States',tz:'America/New_York',cur:'USD',sym:'$',symPos:'before',decimals:2,
+  dateFmt:'MDY',dateSep:'/',time:'12',weekStart:0,thou:',',dec:'.',phoneCc:'+1',phoneMask:'(###) ###-####'}
+};
+const REGION_FIELDS=['tz','cur','sym','symPos','decimals','dateFmt','dateSep','time','weekStart','thou','dec','phoneCc','phoneMask'];
+let TENANT_FMT=Object.assign({region:'PR'},REGIONS.PR); // región escogida + sus valores (editables uno por uno)
+function fmtLocale(){return LANG==='es'?'es-PR':'en-US'}
+function todayParts(d){ // año, mes y día en la zona de la compañía
+ const p=new Intl.DateTimeFormat('en-CA',{timeZone:TENANT_FMT.tz,year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(d||new Date());
+ const g=k=>p.find(x=>x.type===k).value;return {y:g('year'),m:g('month'),d:g('day')}}
+function todayISO(){const p=todayParts();return p.y+'-'+p.m+'-'+p.d}
+function isoDaysAgo(n){const p=todayParts();const d=new Date(Date.UTC(+p.y,+p.m-1,+p.d-n));return d.toISOString().slice(0,10)}
+const TODAY=todayISO();
+/* número con los separadores de la compañía: 1234.5 → "1,234.50" (sin símbolo; el signo $ lo pone fmtMoney) */
+function money(n,dec){const f=TENANT_FMT;const dd=dec===undefined?f.decimals:dec;const neg=n<0;
+ const parts=Math.abs(n).toFixed(dd).split('.');
+ parts[0]=parts[0].replace(/\B(?=(\d{3})+(?!\d))/g,f.thou);
+ return (neg?'-':'')+parts.join(f.dec)}
+/* dinero con símbolo y posición de la compañía; el negativo lleva el signo delante: −$12.00 */
+function fmtMoney(n,dec){const f=TENANT_FMT;const neg=n<0;const body=money(Math.abs(n),dec);
+ return (neg?'\u2212':'')+(f.symPos==='after'?body+'\u00a0'+f.sym:f.sym+body)}
+/* fecha corta completa (2026-10-02 → 10/02/2026 | 02/10/2026 | 2026-10-02 según la compañía) */
+function fmtDate(iso){if(!iso)return '';const [y,m,d]=String(iso).slice(0,10).split('-');const f=TENANT_FMT,sp=f.dateSep;
+ return f.dateFmt==='DMY'?d+sp+m+sp+y:f.dateFmt==='YMD'?y+sp+m+sp+d:m+sp+d+sp+y}
+/* día y mes sin año, en el mismo orden (reemplaza el viejo iso.slice(5), que era MM-DD fijo) */
+function fmtDayMonth(iso){if(!iso)return '';const [,m,d]=String(iso).slice(0,10).split('-');const f=TENANT_FMT,sp=f.dateSep;
+ return f.dateFmt==='DMY'?d+sp+m:f.dateFmt==='YMD'?m+sp+d:m+sp+d}
+/* hora en la zona de la compañía, 12 h o 24 h (acepta un Date; 'HH:MM' de texto se re-escribe) */
+function fmtTime(d){const f=TENANT_FMT;
+ return new Intl.DateTimeFormat(fmtLocale(),{timeZone:f.tz,hour:f.time==='24'?'2-digit':'numeric',minute:'2-digit',hourCycle:f.time==='24'?'h23':'h12'}).format(d||new Date())}
+function fmtTimeStr(hhmm){if(!hhmm)return '';const [h,m]=String(hhmm).split(':').map(Number);const mm=String(m).padStart(2,'0');
+ if(TENANT_FMT.time==='24')return String(h).padStart(2,'0')+':'+mm;
+ const suf=LANG==='es'?(h<12?'a.\u00a0m.':'p.\u00a0m.'):(h<12?'AM':'PM');return ((h%12)||12)+':'+mm+' '+suf}
+/* fecha larga con nombre de día y de mes en el idioma de la interfaz (el orden lo pone el idioma, la zona la compañía) */
+function fmtDateLong(d,opts){return new Intl.DateTimeFormat(fmtLocale(),Object.assign({timeZone:TENANT_FMT.tz},opts||{weekday:'long',day:'numeric',month:'long'})).format(d||new Date())}
+/* teléfono: solo dígitos guardados; se muestra con la máscara de la compañía. Si el número no tiene los dígitos de la máscara se deja como vino */
+function phoneDigitsOnly(v){let d=String(v||'').replace(/\D/g,'');const cc=String(TENANT_FMT.phoneCc||'').replace(/\D/g,'');
+ const need=(TENANT_FMT.phoneMask.match(/#/g)||[]).length;if(cc&&d.length===need+cc.length&&d.startsWith(cc))d=d.slice(cc.length);return d}
+function fmtPhone(v){if(!v)return '';const d=phoneDigitsOnly(v);const mask=TENANT_FMT.phoneMask;const need=(mask.match(/#/g)||[]).length;
+ if(d.length!==need)return String(v);let i=0;return mask.replace(/#/g,()=>d[i++])}
+/* al guardar: un número válido para la máscara de la compañía se guarda solo con dígitos (como E.164 sin el +, en el sistema real); si no calza, se guarda tal cual lo escribió el usuario */
+function phonePlaceholder(){return TENANT_FMT.phoneMask.replace(/#/g,'0')}
+function normPhone(v){v=String(v||'').trim();return v&&isValidPhoneFmt(v)?phoneDigitsOnly(v):v}
+function isValidPhoneFmt(v){const d=String(v||'').replace(/\D/g,'');return d.length===0||phoneDigitsOnly(v).length===(TENANT_FMT.phoneMask.match(/#/g)||[]).length}
 /* ===== numeración: orden (inv), factura (clientInvoice), empaque (pickBatch) y paquete (packageNo) =====
    Cuatro identificadores distintos que conviven en cada orden:
    - inv: número de orden. Lo asigna el cliente al someter (campo "Número de orden" en Entrada) o,
@@ -1655,12 +1763,12 @@ function openOrders(){return ORDERS.filter(o=>o.st!=='deliv')}
 function radarBody(){
  const open=openOrders();const r=t('radar');
  if(RQ){const q=RQ.toLowerCase();const hits=open.filter(o=>o.inv.toLowerCase().includes(q)||o.cons.toLowerCase().includes(q)).slice(0,6);
-  return hits.length?hits.map(o=>`<div class="rrow" ${rowAttrs()}><span class="ref">${o.inv}</span><span>${o.cons}</span><span class="meta">${o.town}</span><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span><span class="cash ${o.cod?'':'z'}" style="margin-left:auto">${o.cod?'$'+money(o.cod):''}</span>${openBtn()}</div>`).join('')
+  return hits.length?hits.map(o=>`<div class="rrow" ${rowAttrs()}><span class="ref">${o.inv}</span><span>${o.cons}</span><span class="meta">${o.town}</span><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span><span class="cash ${o.cod?'':'z'}" style="margin-left:auto">${o.cod?fmtMoney(o.cod):''}</span>${openBtn()}</div>`).join('')
    :`<div class="empty" style="min-height:90px"><div>${r.noresults}</div></div>`}
  const key=RGROUP==='town'?'town':'cons';
  const map={};open.forEach(o=>{map[o[key]]=map[o[key]]||{n:0,cod:0};map[o[key]].n++;map[o[key]].cod+=o.cod});
  const groups=Object.entries(map).sort((a,b)=>b[1].n-a[1].n).slice(0,6);
- return `<div class="gchips" style="padding:12px 16px">${groups.map(([g,v])=>`<button class="gchip" onclick="goOrdersWith('${key}','${g.replace(/'/g,"\\'")}')">${g} <b>${v.n}</b>${v.cod?` <span class="cash" style="font-size:11px">$${money(v.cod)}</span>`:''}</button>`).join('')}</div>`}
+ return `<div class="gchips" style="padding:12px 16px">${groups.map(([g,v])=>`<button class="gchip" onclick="goOrdersWith('${key}','${g.replace(/'/g,"\\'")}')">${g} <b>${v.n}</b>${v.cod?` <span class="cash" style="font-size:11px">${fmtMoney(v.cod)}</span>`:''}</button>`).join('')}</div>`}
 window.goOrdersWith=(key,val)=>{F={from:'',to:'',inv:key==='inv'?val:'',cons:key==='cons'?val:'',client:'',svc:'',pkg:'',town:key==='town'?val:'',zip:'',invoice:'',pack:''};go('ordenes',true)};
 function renderRadar(){const host=document.getElementById('radarbody');if(host)host.innerHTML=radarBody();
  const c=document.getElementById('radarcount');if(c)c.textContent=openOrders().length+' '+t('radar.open')}
@@ -1707,7 +1815,7 @@ function pulseChartsHtml(){
 function home(){
   const flow=t('home.flow'),mny=t('home.money');
   const fbig=['38','214','83','195','66'],mbig=['19,960.55','4,210.00','2,230.00','1,980.00'];
-  const d=new Date();const title=d.toLocaleDateString(LANG==='es'?'es-PR':'en-US',{weekday:'long',day:'numeric',month:'long'});
+  const d=new Date();const title=fmtDateLong(d);
   const fr=flow.map((n,i)=>`${i?'<div class="pipe"></div>':''}<div class="node flow ${i===0?'sel':''}"><div class="ph">${ic(['box','layers','truck','route','pin'][i])} ${n[0]}</div><div class="big">${fbig[i]}</div><div class="sub">${n[1]}</div><div class="spark" title="${t('home.trend')}">${spark(i+2)}</div></div>`).join('');
   const mr=mny.map((m,i)=>`${i?'<div class="pipe m"></div>':''}<div class="node m"><div class="ph">${ic(i===3?'truck':'cash')} ${m[0]}</div><div class="big">$${mbig[i]}</div><div class="sub">${m[1]}</div><div class="spark" title="${t('home.trend')}">${spark(i+5)}</div></div>`).join('');
   return `<div class="daymeta"><h1 style="text-transform:capitalize">${title}</h1><span>${t('home.sub')}</span></div>
@@ -1782,14 +1890,14 @@ function tableHtml(){const rows=filtered();
      return `<tr ${rowAttrs(o.inv)} ${first?'style="border-top:1px solid var(--line-2)"':''}>
       <td>${first?`<span class="ref" style="font-size:11px">${o.pickBatch||'—'}</span>`:''}</td>
       <td>${first?`<span class="ref">${o.inv}</span>`:`<span ${dim} style="font-size:11px">↳</span>`}</td>
-      <td class="mono">${first?o.date.slice(5):''}</td>
+      <td class="mono">${first?fmtDayMonth(o.date):''}</td>
       <td>${first?o.cons:''}</td>
       <td>${first?o.town:''}</td>
       <td class="mono">${first?o.zip:''}</td>
       <td>${first?o.svc:''}</td>
       <td>${g.pkg}${g.descs.length?`<div class="meta" style="font-size:11px">${g.descs.join(' · ')}</div>`:''}</td>
       <td class="n">${g.pcs}</td>
-      <td class="n">${first?`<span class="cash ${o.cod?'':'z'}">${o.cod?'$'+money(o.cod):'—'}</span>`:''}</td>
+      <td class="n">${first?`<span class="cash ${o.cod?'':'z'}">${o.cod?fmtMoney(o.cod):'—'}</span>`:''}</td>
       <td>${first?`<span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span>`:''}</td>
       <td style="width:32px">${first&&o.st==='cap'?`<button class="rowbtn" onclick="event.stopPropagation();deleteOrder('${o.inv}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button>`:''}</td>
       <td style="width:36px">${first?openBtn(o.inv):''}</td></tr>`}).join('')}).join('');
@@ -1877,7 +1985,7 @@ function initQuick(){const body=document.getElementById('bbody');if(!body)return
     ORDERS.unshift({inv,date:TODAY,sender:quickClient,cons:consObj?consObj.name:(document.getElementById('cac-inp-'+rid).value||'\u2014'),town,zip:townZip[town],svc:svcVal,pkg:pkgVal,pcs:1,packages:[{pkg:pkgVal,desc:'',pcs:1}],cod:cd,dr:'\u2014',st:'cap',note:tr.querySelector('.note').value||'',pickBatch:nextEmpaqueNo(),clientInvoice:nextClientInvoiceNo(quickClient)});
     tr.dataset.orderInv=inv;
     tr.classList.add('saved');[...tr.querySelectorAll('input,select,button')].forEach(x=>x.disabled=true);
-    document.getElementById('bcod').textContent='$'+money(tot);document.getElementById('bc').textContent=c;
+    document.getElementById('bcod').textContent=fmtMoney(tot);document.getElementById('bc').textContent=c;
     document.getElementById('bfoot').textContent=c+' '+t('entry.captured')+(document.getElementById('ap').checked?' \u00b7 label \u2713':'');
     renderTable();
     body.appendChild(tr);
@@ -1906,7 +2014,7 @@ window.detailConsSelect=(c)=>{DETAIL_CONS_ID=c?c.id:null;
  document.getElementById('de_addr').value=c?c.address:'';
  document.getElementById('de_town').value=c?c.town:towns[0];
  document.getElementById('de_zip').value=c?(townZip[c.town]||''):'';
- document.getElementById('de_phone').value=c?(c.phone||''):'';
+ document.getElementById('de_phone').value=c?fmtPhone(c.phone||''):'';
  updateDetailTicket()};
 window.detailConsNew=(typed)=>{DETAIL_CONS_ID=null;updateDetailTicket()};
 function updateDetailTicket(){const t2=document.getElementById('dt_cons'),tw=document.getElementById('dt_town'),tp=document.getElementById('dt_pkg'),tc=document.getElementById('dt_cod'),ts=document.getElementById('dt_svc');
@@ -1934,7 +2042,7 @@ function updateDetailTicket(){const t2=document.getElementById('dt_cons'),tw=doc
    const lines=DE_PKGS.filter(p=>p.pkg);
    tp.textContent=lines.length?orderPkgGroups({packages:lines}).map(g=>g.pkg+' \u00d7'+g.pcs).join(' + '):'\u2014';
    const codEl=document.getElementById('de_codamt');
-   tc.textContent='$'+money(codEl?(parseFloat(codEl.value)||0):0);
+   tc.textContent=fmtMoney(codEl?(parseFloat(codEl.value)||0):0);
  }}
 window.saveDetailOrder=()=>{
  const nameEl=document.getElementById('cac-inp-de_cons');const typedName=(nameEl.value||'').trim();
@@ -1943,7 +2051,7 @@ window.saveDetailOrder=()=>{
  const clientEl=document.getElementById('de_client');const clientVal=clientEl?clientEl.value:(ENTRY_SCOPE_CLIENT||'Advance Solutions');
  const number=(document.getElementById('de_number').value||'').trim();
  const address=document.getElementById('de_addr').value||'';const town=document.getElementById('de_town').value;
- const phone=document.getElementById('de_phone').value||'';
+ const phone=normPhone(document.getElementById('de_phone').value);
  let consObj=DETAIL_CONS_ID?CONSIGNEES.find(x=>x.id===DETAIL_CONS_ID):CONSIGNEES.find(x=>x.name.toLowerCase()===typedName.toLowerCase());
  if(!consObj){CONS_SEQ++;consObj={id:'C'+CONS_SEQ,number:number||undefined,name:typedName,address,town,phone,active:true,clientId:ENTRY_SCOPE_CLIENT||null};CONSIGNEES.push(consObj)}
  /* n\u00famero de orden y de factura: ya no se piden en la secci\u00f3n de paquetes (ver renderSec3) \u2014 Teikem
@@ -2057,7 +2165,7 @@ function renderSec3(){const e=t('entry');
  const clientEl=document.getElementById('de_client');const client=clientEl?clientEl.value:senders[0];
  const csvcs=specialServicesFor(client);
  return `<h3><span class="num">03</span> ${e.specialSvc}</h3><p class="d">${e.s3dSpecial}</p>
-  <div class="r2"><div class="f"><label>${t('cols.inv')}</label><input id="de_inv" class="mono"></div><div class="f"><label>${e.specialSvc}</label><select id="de_svcspecial" onchange="updateDetailTicket()">${csvcs.length?csvcs.map(s=>`<option value="${s.label}">${s.label} \u00b7 $${money(s.rate)}</option>`).join(''):`<option value="" disabled selected>${e.noSpecialSvc}</option>`}</select></div></div>
+  <div class="r2"><div class="f"><label>${t('cols.inv')}</label><input id="de_inv" class="mono"></div><div class="f"><label>${e.specialSvc}</label><select id="de_svcspecial" onchange="updateDetailTicket()">${csvcs.length?csvcs.map(s=>`<option value="${s.label}">${s.label} \u00b7 ${fmtMoney(s.rate)}</option>`).join(''):`<option value="" disabled selected>${e.noSpecialSvc}</option>`}</select></div></div>
   <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${e.driver}</label><select id="de_driver" onchange="updateDetailTicket()"><option value="" disabled selected>${e.selectDriver}</option>${DRIVERS.map(d=>`<option value="${d.code}">${d.code} \u00b7 ${d.name}</option>`).join('')}</select></div></div>`}
 function detailEditor(){const e=t('entry');
  return `<div class="detail">
@@ -2070,7 +2178,7 @@ function detailEditor(){const e=t('entry');
    <div class="docsec"><h3><span class="num">02</span> ${e.s2}</h3><p class="d">${e.s2d}</p>
     <div class="r2"><div class="f"><label>${e.name}</label>${cacInput('de_cons','',t('cols.cons'))}</div><div class="f"><label>${e.consNumber}</label><input id="de_number" class="mono"></div></div>
     <div class="f"><label>${e.addr}</label><input id="de_addr" oninput="updateDetailTicket()"></div>
-    <div class="r3" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="de_town" onchange="document.getElementById('de_zip').value=townZip[this.value]||'';updateDetailTicket()">${towns.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${t('cols.zip')}</label><input id="de_zip" class="mono" placeholder="00949"></div><div class="f" style="margin:0"><label>${e.phone}</label><input id="de_phone" class="mono" placeholder="787-000-0000"></div></div></div>
+    <div class="r3" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="de_town" onchange="document.getElementById('de_zip').value=townZip[this.value]||'';updateDetailTicket()">${towns.map(x=>`<option>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${t('cols.zip')}</label><input id="de_zip" class="mono" placeholder="00949"></div><div class="f" style="margin:0"><label>${e.phone}</label><input id="de_phone" class="mono" placeholder="${phonePlaceholder()}"></div></div></div>
    <div class="docsec" style="padding-top:12px;padding-bottom:12px">
     <label class="sw"><input type="checkbox" id="de_special" ${ENTRY_SPECIAL?'checked':''} onchange="toggleSpecialEntry(this.checked)"><span class="tk"></span>${e.special}</label>
     <p class="d" style="margin-top:6px;margin-bottom:0">${e.specialHint}</p></div>
@@ -2175,7 +2283,7 @@ function renderOrderPeekHtml(o,ref){const s=t('scan');
   <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.town')}</span><b>${o.town} \u00b7 ${o.zip}</b></div>
   <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.svc')}</span><b>${o.svc}</b></div>
   <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.pkg')}</span><b>${o.pkg} \u00b7 ${o.pcs}</b></div>
-  <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.cod')}</span><b class="cash ${o.cod?'':'z'}">${o.cod?'$'+money(o.cod):'\u2014'}</b></div>
+  <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.cod')}</span><b class="cash ${o.cod?'':'z'}">${o.cod?fmtMoney(o.cod):'\u2014'}</b></div>
   <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('cols.status')}</span><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span></div>
   ${o.routeId?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('disp.activeroute')}</span><b class="ref">${o.routeId}</b></div>`:''}
  </div>
@@ -2190,7 +2298,7 @@ window.doScan=()=>{const inp=document.getElementById('scanin');const v=(inp.valu
  const fp=PEND.filter(matchSF);
  if(!v){if(fp.length===0)return;
    const item=fp[0];PEND.splice(PEND.indexOf(item),1);
-   item.tm=new Date().toLocaleTimeString(LANG==='es'?'es-PR':'en-US',{hour:'numeric',minute:'2-digit'});
+   item.tm=fmtTime();
    if(SCANMODE==='out'){const order=ORDERS.find(x=>x.inv===item.ref);const zone=item.route&&item.route!=='\u2014'?item.route:null;
      const openRoute=zone?ROUTES_TODAY.find(r=>r.zone===zone&&r.status!=='completed'):null;
      if(order&&openRoute){order.routeId=openRoute.id;openRoute.totalStops++;item.assigned=openRoute.id}}
@@ -2199,7 +2307,7 @@ window.doScan=()=>{const inp=document.getElementById('scanin');const v=(inp.valu
  const hit=fp.find(x=>x.ref===v);
  if(!hit){speak('notfound');inp.focus();return}
  PEND.splice(PEND.indexOf(hit),1);
- hit.tm=new Date().toLocaleTimeString(LANG==='es'?'es-PR':'en-US',{hour:'numeric',minute:'2-digit'});
+ hit.tm=fmtTime();
  if(SCANMODE==='out'){const order=ORDERS.find(x=>x.inv===hit.ref);const zone=hit.route&&hit.route!=='\u2014'?hit.route:null;
    const openRoute=zone?ROUTES_TODAY.find(r=>r.zone===zone&&r.status!=='completed'):null;
    if(order&&openRoute){order.routeId=openRoute.id;openRoute.totalStops++;hit.assigned=openRoute.id}}
@@ -2231,7 +2339,7 @@ function remesaCompute(){const c=document.getElementById('rmClient').value;const
   const sum=rows.reduce((s,r)=>s+r.amount,0);const comm=sum*0.08;const net=sum-comm;return {c,from,to,rows,sum,comm,net}}
 window.updateRemesaPanel=()=>{const r=remesaCompute();
   const s=document.getElementById('rm_sum'),cm=document.getElementById('rm_comm'),n=document.getElementById('rm_net');
-  if(s)s.textContent='$'+money(r.sum);if(cm)cm.textContent='−$'+money(r.comm);if(n)n.textContent='$'+money(r.net)};
+  if(s)s.textContent=fmtMoney(r.sum);if(cm)cm.textContent='\u2212'+fmtMoney(r.comm);if(n)n.textContent=fmtMoney(r.net)};
 window.openRemesaDoc=()=>{const d=remesaCompute();const es=LANG==='es';
   document.getElementById('genModal').style.width='640px';
   document.getElementById('genModal').innerHTML=`<div class="pi" style="justify-content:space-between"><b style="font-size:15px">${ic('doc')} ${es?'Remesa al cliente':'Client remittance'}</b><button class="x" onclick="closeGenModal()" style="border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px">✕</button></div>
@@ -2244,12 +2352,12 @@ window.openRemesaDoc=()=>{const d=remesaCompute();const es=LANG==='es';
        <div style="font-size:11.5px;color:var(--faint);margin-top:4px">${es?'Documento':'Document'} REM-${TODAY.slice(5).replace('-','')} · ${TODAY}</div>
      </div>
      <div style="max-height:240px;overflow:auto"><table class="lst"><thead><tr><th>${t('cols.inv')}</th><th>${es?'Entrega':'Delivered'}</th><th>${es?'Ciudad':'City'}</th><th>${t('cols.driver')}</th><th>${t('cols.method')}</th><th class="n">${t('cols.cod')}</th></tr></thead><tbody>
-       ${d.rows.map(r=>`<tr><td><span class="ref">${r.inv}</span></td><td class="mono">${r.date.slice(5)}</td><td>${r.town}</td><td>${r.driverName}</td><td>${r.method}</td><td class="n cash">$${money(r.amount)}</td></tr>`).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--faint);padding:18px">${es?'Sin cobros cuadrados en el período':'No reconciled collections in period'}</td></tr>`}
+       ${d.rows.map(r=>`<tr><td><span class="ref">${r.inv}</span></td><td class="mono">${fmtDayMonth(r.date)}</td><td>${r.town}</td><td>${r.driverName}</td><td>${r.method}</td><td class="n cash">${fmtMoney(r.amount)}</td></tr>`).join('')||`<tr><td colspan="6" style="text-align:center;color:var(--faint);padding:18px">${es?'Sin cobros cuadrados en el período':'No reconciled collections in period'}</td></tr>`}
      </tbody></table></div>
      <div style="padding:12px 16px;border-top:1px solid var(--line)">
-       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${es?'Cobrado':'Collected'} (${d.rows.length})</span><b class="mono">$${money(d.sum)}</b></div>
-       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.commission')}</span><b class="mono" style="color:var(--danger)">−$${money(d.comm)}</b></div>
-       <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${es?'Neto a remitir':'Net to remit'}</b><b class="mono" style="color:var(--money-2);font-size:16px">$${money(d.net)}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${es?'Cobrado':'Collected'} (${d.rows.length})</span><b class="mono">${fmtMoney(d.sum)}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.commission')}</span><b class="mono" style="color:var(--danger)">−${fmtMoney(d.comm)}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${es?'Neto a remitir':'Net to remit'}</b><b class="mono" style="color:var(--money-2);font-size:16px">${fmtMoney(d.net)}</b></div>
      </div>
    </div>
    <div class="note" style="margin-top:12px">${t('cod.note')}</div>
@@ -2261,7 +2369,7 @@ function codTableHtml(){const es=LANG==='es';
   const codSorted=applySort('cod',codFiltered,'inv');
   return `<div class="panel"><div class="ph2">${ic('cash')} ${t('cod.uncleared')} <span class="r">${codSorted.length}</span></div>
      <div style="overflow:auto;max-height:380px"><table class="lst"><thead><tr>${sortTh('cod','inv',t('cols.inv'))}${sortTh('cod','date',es?'Entrega':'Delivered')}${sortTh('cod','client',t('cols.client'))}${sortTh('cod','town',es?'Ciudad':'City')}<th>${t('cols.method')}</th><th>${t('cols.check')}</th>${sortTh('cod','driverName',t('cols.driver'))}${sortTh('cod','amount',t('cols.cod'),1)}${sortTh('cod','status',t('cols.status'))}<th></th></tr></thead><tbody>
-     ${codSorted.map(r=>`<tr ${rowAttrs()}><td><span class="ref">${r.inv}</span></td><td class="mono">${r.date.slice(5)}</td><td>${r.client}</td><td>${r.town}</td><td>${r.method}</td><td class="mono">${r.check}</td><td>${r.driverName} <span class="dr" style="margin-left:3px">${r.driver}</span></td><td class="n cash">$${money(r.amount)}</td><td><span class="chip ${r.cls}">${t('cod.'+r.status)}</span></td><td style="width:36px">${openBtn()}</td></tr>`).join('')}</tbody></table></div></div>`}
+     ${codSorted.map(r=>`<tr ${rowAttrs()}><td><span class="ref">${r.inv}</span></td><td class="mono">${fmtDayMonth(r.date)}</td><td>${r.client}</td><td>${r.town}</td><td>${r.method}</td><td class="mono">${r.check}</td><td>${r.driverName} <span class="dr" style="margin-left:3px">${r.driver}</span></td><td class="n cash">${fmtMoney(r.amount)}</td><td><span class="chip ${r.cls}">${t('cod.'+r.status)}</span></td><td style="width:36px">${openBtn()}</td></tr>`).join('')}</tbody></table></div></div>`}
 window.renderCodTable=()=>{const h=document.getElementById('codtablehost');if(h)h.innerHTML=codTableHtml()};
 function codbox(){const es=LANG==='es';
   const clientOpts=[...new Set(codRows.map(r=>r.client))];
@@ -2287,9 +2395,9 @@ function codbox(){const es=LANG==='es';
      <div class="f"><label>${t('cols.client')}</label><select id="rmClient" onchange="updateRemesaPanel()">${clientOpts.map(c=>`<option>${c}</option>`).join('')}</select></div>
      <div class="r2"><div class="f"><label>${t('cod.from')}</label><input type="date" id="rmFrom" value="${isoDaysAgo(7)}" onchange="updateRemesaPanel()"></div><div class="f"><label>${t('cod.to')}</label><input type="date" id="rmTo" value="${TODAY}" onchange="updateRemesaPanel()"></div></div>
      <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:13px;margin:4px 0 12px">
-       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.collected')}</span><b class="mono" id="rm_sum">$${money(rmS0)}</b></div>
-       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.commission')}</span><b class="mono" id="rm_comm" style="color:var(--danger)">−$${money(rmCm0)}</b></div>
-       <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('cod.net')}</b><b class="mono" id="rm_net" style="color:var(--money-2);font-size:16px">$${money(rmN0)}</b></div></div>
+       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.collected')}</span><b class="mono" id="rm_sum">${fmtMoney(rmS0)}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('cod.commission')}</span><b class="mono" id="rm_comm" style="color:var(--danger)">−${fmtMoney(rmCm0)}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('cod.net')}</b><b class="mono" id="rm_net" style="color:var(--money-2);font-size:16px">${fmtMoney(rmN0)}</b></div></div>
      <button class="btn money" style="width:100%;justify-content:center" onclick="openRemesaDoc()">${ic('cash')} ${t('cod.gen')}</button>
      <div class="note" style="margin-top:10px">${t('cod.note')}</div></div></div></div>`}
 
@@ -2407,19 +2515,19 @@ window.setBillLineField=(runId,dayIdx,lineIdx,field,val)=>{const run=BILLRUNS.fi
  line[field]=field==='items'?Math.max(0,parseInt(val)||0):(parseFloat(val)||0);
  const lineTotal=line.priceItem+line.priceOver+line.priceCod+(line.priceDispatch||0)+line.priceAdj;
  const setTxt=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt};
- setTxt('blt-'+runId+'-'+dayIdx+'-'+lineIdx,'$'+money(lineTotal));
+ setTxt('blt-'+runId+'-'+dayIdx+'-'+lineIdx,fmtMoney(lineTotal));
  const dt=run.days[dayIdx].lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,disp:s.disp+(l.priceDispatch||0),adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj)}),{items:0,base:0,over:0,codc:0,disp:0,adj:0,total:0});
  setTxt('bds-'+runId+'-'+dayIdx+'-items',dt.items);
- setTxt('bds-'+runId+'-'+dayIdx+'-base','$'+money(dt.base));
- setTxt('bds-'+runId+'-'+dayIdx+'-over','$'+money(dt.over));
- setTxt('bds-'+runId+'-'+dayIdx+'-codc','$'+money(dt.codc));
- setTxt('bds-'+runId+'-'+dayIdx+'-disp','$'+money(dt.disp));
- setTxt('bds-'+runId+'-'+dayIdx+'-adj','$'+money(dt.adj));
- setTxt('bds-'+runId+'-'+dayIdx+'-total','$'+money(dt.total));
- setTxt('billtot-'+runId,'$'+money(billRunTotals(run).total));
+ setTxt('bds-'+runId+'-'+dayIdx+'-base',fmtMoney(dt.base));
+ setTxt('bds-'+runId+'-'+dayIdx+'-over',fmtMoney(dt.over));
+ setTxt('bds-'+runId+'-'+dayIdx+'-codc',fmtMoney(dt.codc));
+ setTxt('bds-'+runId+'-'+dayIdx+'-disp',fmtMoney(dt.disp));
+ setTxt('bds-'+runId+'-'+dayIdx+'-adj',fmtMoney(dt.adj));
+ setTxt('bds-'+runId+'-'+dayIdx+'-total',fmtMoney(dt.total));
+ setTxt('billtot-'+runId,fmtMoney(billRunTotals(run).total));
  const summary=billRunSummary(run);
  const sumEl=document.getElementById('billsum-'+runId);
- if(sumEl)sumEl.innerHTML=summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">$${money(s.amount/s.pieces)}</td><td class="n mono">$${money(s.amount)}</td></tr>`).join('')};
+ if(sumEl)sumEl.innerHTML=summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">${fmtMoney(s.amount/s.pieces)}</td><td class="n mono">${fmtMoney(s.amount)}</td></tr>`).join('')};
 window.generateBillRun=()=>{const client=document.getElementById('nrClient').value;
  const from=document.getElementById('nrFrom').value,to=document.getElementById('nrTo').value;
  if(!client||!from||!to){toast(t('fact.fillFields'));return}
@@ -2467,15 +2575,15 @@ window.openInvoiceDoc=(id)=>{const run=BILLRUNS.find(x=>x.id===id);if(!run)retur
     <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px;letter-spacing:.02em">TEIKEM</b><span class="tag m">${t('fact.st_'+run.status)}</span></div>
     <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">${t('cols.client')}: <b style="color:var(--text)">${run.client}</b></div>
     <div style="font-size:12.5px;color:var(--muted)">${es?'Período':'Period'}: <span class="mono">${run.from}</span> → <span class="mono">${run.to}</span></div>
-    <div style="font-size:11.5px;color:var(--faint);margin-top:4px">${es?'Corrida':'Run'} <span class="ref">${run.id}</span> · ${run.genDate}</div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:4px">${es?'Corrida':'Run'} <span class="ref">${run.id}</span> · ${fmtDate(run.genDate)}</div>
    </div>
    <div style="max-height:220px;overflow:auto"><table class="lst"><thead><tr><th>${t('fact.desc')}</th><th class="n">${t('fact.pieces')}</th><th class="n">${t('fact.rate')}</th><th class="n">${t('fact.amount')}</th></tr></thead><tbody>
-    ${summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">$${money(s.amount/s.pieces)}</td><td class="n mono">$${money(s.amount)}</td></tr>`).join('')}
+    ${summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">${fmtMoney(s.amount/s.pieces)}</td><td class="n mono">${fmtMoney(s.amount)}</td></tr>`).join('')}
    </tbody></table></div>
    <div style="padding:12px 16px;border-top:1px solid var(--line)">
     <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${es?'Piezas totales':'Total pieces'}</span><b class="mono">${summary.reduce((s,r)=>s+r.pieces,0)}</b></div>
-    ${tot.adj?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('fact.adj')}</span><b class="mono" style="color:${tot.adj<0?'var(--danger)':'var(--flow-2)'}">${tot.adj>0?'+':''}$${money(tot.adj)}</b></div>`:''}
-    <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('fact.grandTotal')}</b><b class="mono" style="color:var(--money-2);font-size:16px">$${money(tot.total)}</b></div>
+    ${tot.adj?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">${t('fact.adj')}</span><b class="mono" style="color:${tot.adj<0?'var(--danger)':'var(--flow-2)'}">${tot.adj>0?'+':''}${fmtMoney(tot.adj)}</b></div>`:''}
+    <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('fact.grandTotal')}</b><b class="mono" style="color:var(--money-2);font-size:16px">${fmtMoney(tot.total)}</b></div>
    </div>
   </div>
   <div class="note" style="margin-top:12px">${t('fact.exportNote')}</div>
@@ -2494,22 +2602,22 @@ function renderBillRunDetail(run){const es=LANG==='es';
   <div style="max-height:420px;overflow:auto">
   <table class="lst facttbl" style="font-size:11.5px"><thead><tr><th>${t('cols.inv')}</th><th>${t('cols.cons')}</th><th>${t('fact.city')}</th><th>${t('cols.pkg')}</th><th>${t('cols.svc')}</th><th class="n">${t('cols.cod')}</th><th class="n">${t('fact.pieces')}</th><th class="n">${t('fact.base')}</th><th class="n">${t('fact.extra')}</th><th class="n">${t('fact.codchg')}</th><th class="n">${t('fact.dispatch')}</th><th class="n">${t('fact.adj')}</th><th class="n">${t('fact.total')}</th></tr></thead><tbody>
   ${run.days.map((d,di)=>{const dt=d.lines.reduce((s,l)=>({items:s.items+l.items,base:s.base+l.priceItem,over:s.over+l.priceOver,codc:s.codc+l.priceCod,disp:s.disp+(l.priceDispatch||0),adj:s.adj+l.priceAdj,total:s.total+(l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj)}),{items:0,base:0,over:0,codc:0,disp:0,adj:0,total:0});
-   return `<tr><td colspan="12" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${d.date}</td></tr>
+   return `<tr><td colspan="12" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${fmtDate(d.date)}</td></tr>
    ${d.lines.map((l,li)=>{const lineTotal=l.priceItem+l.priceOver+l.priceCod+(l.priceDispatch||0)+l.priceAdj;
-     const inp=(field,val,w)=>editable?`<input class="mono" style="width:${w}px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${val}" oninput="setBillLineField('${run.id}',${di},${li},'${field}',this.value)">`:`<span class="mono">${field==='items'?val:'$'+money(val)}</span>`;
+     const inp=(field,val,w)=>editable?`<input class="mono" style="width:${w}px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${val}" oninput="setBillLineField('${run.id}',${di},${li},'${field}',this.value)">`:`<span class="mono">${field==='items'?val:fmtMoney(val)}</span>`;
      /* `contLine` = segunda (o siguiente) línea de la MISMA orden, por llevar otro tipo de paquete:
         se subordina visualmente (referencia con ↳, consignatario y ciudad en blanco) para que no
         parezca otra orden. El COD no se repite ahí — se cobró completo en la primera línea. */
-     return `<tr><td>${l.contLine?`<span style="color:var(--faint);font-size:11px">↳ ${l.ref}</span>`:`<span class="ref">${l.ref}</span>`}</td><td>${l.contLine?'':l.cons}</td><td>${l.contLine?'':l.city}</td><td>${l.pkg}${l.pkgDesc?`<div class="meta" style="font-size:10.5px">${l.pkgDesc}</div>`:''}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?'$'+money(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceDispatch',l.priceDispatch||0,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
-   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('fact.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-items">${dt.items}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-base">$${money(dt.base)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-over">$${money(dt.over)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-codc">$${money(dt.codc)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-disp">$${money(dt.disp)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-adj">$${money(dt.adj)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-total">$${money(dt.total)}</td></tr>`}).join('')}
+     return `<tr><td>${l.contLine?`<span style="color:var(--faint);font-size:11px">↳ ${l.ref}</span>`:`<span class="ref">${l.ref}</span>`}</td><td>${l.contLine?'':l.cons}</td><td>${l.contLine?'':l.city}</td><td>${l.pkg}${l.pkgDesc?`<div class="meta" style="font-size:10.5px">${l.pkgDesc}</div>`:''}</td><td>${svcLabel(l.svc)}</td><td class="n mono">${l.cod?fmtMoney(l.cod):'—'}</td><td class="n">${inp('items',l.items,28)}</td><td class="n">${inp('priceItem',l.priceItem,40)}</td><td class="n">${inp('priceOver',l.priceOver,40)}</td><td class="n">${inp('priceCod',l.priceCod,40)}</td><td class="n">${inp('priceDispatch',l.priceDispatch||0,40)}</td><td class="n">${inp('priceAdj',l.priceAdj,40)}</td><td class="n mono" id="blt-${run.id}-${di}-${li}" style="font-weight:700">${fmtMoney(lineTotal)}</td></tr>`}).join('')}
+   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('fact.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-items">${dt.items}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-base">${fmtMoney(dt.base)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-over">${fmtMoney(dt.over)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-codc">${fmtMoney(dt.codc)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-disp">${fmtMoney(dt.disp)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-adj">${fmtMoney(dt.adj)}</td><td class="n mono" style="font-weight:700" id="bds-${run.id}-${di}-total">${fmtMoney(dt.total)}</td></tr>`}).join('')}
   </tbody></table>
   </div>
   <div style="padding:12px 16px;border-top:1px solid var(--line-2)">
     <div class="ph2" style="padding:0 0 8px">${ic('chart')} ${t('fact.summary')}</div>
     <table class="lst"><thead><tr><th>${t('fact.desc')}</th><th class="n">${t('fact.pieces')}</th><th class="n">${t('fact.rate')}</th><th class="n">${t('fact.amount')}</th></tr></thead><tbody id="billsum-${run.id}">
-    ${summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">$${money(s.amount/s.pieces)}</td><td class="n mono">$${money(s.amount)}</td></tr>`).join('')}
+    ${summary.map(s=>`<tr><td>${s.label}</td><td class="n mono">${s.pieces}</td><td class="n mono">${fmtMoney(s.amount/s.pieces)}</td><td class="n mono">${fmtMoney(s.amount)}</td></tr>`).join('')}
     </tbody></table>
-    <div style="display:flex;justify-content:space-between;padding:10px 2px 0;border-top:1px solid var(--line);margin-top:8px"><b>${t('fact.grandTotal')}</b><b class="mono" id="billtot-${run.id}" style="color:var(--money-2);font-size:16px">$${money(tot.total)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 2px 0;border-top:1px solid var(--line);margin-top:8px"><b>${t('fact.grandTotal')}</b><b class="mono" id="billtot-${run.id}" style="color:var(--money-2);font-size:16px">${fmtMoney(tot.total)}</b></div>
   </div>
   <div style="padding:0 16px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:end">
    ${run.status==='generada'?`<button class="btn sm" onclick="markReviewedRun('${run.id}')">${ic('check')} ${t('fact.markReviewed')}</button>`:''}
@@ -2525,7 +2633,7 @@ window.setBillQ=(v)=>{BILLQ=v;go('facturacion',true)};
 function facturacion(){const es=LANG==='es';
  const run=BILLRUNS.find(r=>r.id===BILLSEL)||BILLRUNS[0];
  const stcls3={generada:'s-cap',revisada:'s-disp',aprobada:'s-deliv',exportada:'s-cod'};
- const runsShown=BILLRUNS.filter(r=>{const tt=billRunTotals(r);return matchesQ([r.id,r.client,r.from,r.to,t('fact.st_'+r.status),'$'+money(tt.total)],BILLQ)});
+ const runsShown=BILLRUNS.filter(r=>{const tt=billRunTotals(r);return matchesQ([r.id,r.client,r.from,r.to,t('fact.st_'+r.status),fmtMoney(tt.total)],BILLQ)});
  return `<div class="head"><div><h1>${t('fact.title')}</h1><p>${t('fact.sub')}</p></div></div>
   <div class="note" style="margin-bottom:14px">${ic('doc')} ${t('fact.note')}</div>
   <div class="panel" style="margin-bottom:14px"><div class="ph2">${ic('plus')} ${t('fact.newRun')}</div><div class="pb" style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:end">
@@ -2538,7 +2646,7 @@ function facturacion(){const es=LANG==='es';
    <div class="panel"><div class="ph2">${ic('doc')} ${t('fact.runs')} <span class="r">${runsShown.length}</span></div>
     <div class="qrow">${qbox('billq',BILLQ,t('ui.mselSearch'),"setBillQ(this.value)")}</div>
     <div style="max-height:520px;overflow:auto">${runsShown.map(r=>{const tt=billRunTotals(r);
-      return `<div class="unrow" style="cursor:pointer;${r.id===BILLSEL?'background:var(--flow-bg)':''}" onclick="selectBillRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls3[r.status]}" style="margin-left:auto">${t('fact.st_'+r.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${r.client}</div><div class="meta">${r.from} → ${r.to} · <b class="mono" style="color:var(--text)">$${money(tt.total)}</b></div></div></div>`}).join('')}</div></div>
+      return `<div class="unrow" style="cursor:pointer;${r.id===BILLSEL?'background:var(--flow-bg)':''}" onclick="selectBillRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls3[r.status]}" style="margin-left:auto">${t('fact.st_'+r.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${r.client}</div><div class="meta">${r.from} → ${r.to} · <b class="mono" style="color:var(--text)">${fmtMoney(tt.total)}</b></div></div></div>`}).join('')}</div></div>
    <div class="panel">${run?renderBillRunDetail(run):`<div class="empty" style="min-height:260px"><div>${ic('doc')}<p style="margin-top:8px">${t('fact.selectRun')}</p></div></div>`}</div>
   </div>`}
 
@@ -2810,7 +2918,7 @@ function clientProfileHtml(client){const cl=t('clientes');const p=client.profile
   </div>
   <div class="pb" style="padding-top:0;display:grid;grid-template-columns:1fr 1fr;gap:14px">
    <div><div class="ph2" style="padding:0 0 8px;border:none">${cl.phones}</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${p.phones.map((ph,idx)=>`<div style="display:flex;align-items:center;gap:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding-right:2px"><input class="mono" style="width:128px;border:none;background:transparent;padding:7px 8px;font-size:12.5px;color:var(--text);outline:none" value="${ph.replace(/"/g,'&quot;')}" onchange="setProfilePhone('${cid}',${idx},this.value)"><button class="rowbtn" onclick="removeProfilePhone('${cid}',${idx})" title="${cl.removeItem}">${ic('trash')}</button></div>`).join('')}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${p.phones.map((ph,idx)=>`<div style="display:flex;align-items:center;gap:2px;background:var(--bg-2);border:1px solid var(--line);border-radius:8px;padding-right:2px"><input class="mono" style="width:128px;border:none;background:transparent;padding:7px 8px;font-size:12.5px;color:var(--text);outline:none" value="${fmtPhone(ph).replace(/"/g,'&quot;')}" onchange="setProfilePhone('${cid}',${idx},this.value)"><button class="rowbtn" onclick="removeProfilePhone('${cid}',${idx})" title="${cl.removeItem}">${ic('trash')}</button></div>`).join('')}</div>
     <button class="btn sm" onclick="addProfilePhone('${cid}')">${ic('plus')} ${cl.addPhone}</button>
    </div>
    <div><div class="ph2" style="padding:0 0 8px;border:none">${cl.emails}</div>
@@ -2824,7 +2932,7 @@ function clientProfileHtml(client){const cl=t('clientes');const p=client.profile
    ${p.contacts.length?p.contacts.map((ct,idx)=>`<tr>
      <td><input value="${(ct.name||'').replace(/"/g,'&quot;')}" onchange="setProfileContactField('${cid}',${idx},'name',this.value)"></td>
      <td><input value="${(ct.role||'').replace(/"/g,'&quot;')}" onchange="setProfileContactField('${cid}',${idx},'role',this.value)"></td>
-     <td><input class="mono" value="${(ct.phone||'').replace(/"/g,'&quot;')}" onchange="setProfileContactField('${cid}',${idx},'phone',this.value)"></td>
+     <td><input class="mono" value="${fmtPhone(ct.phone||'').replace(/"/g,'&quot;')}" onchange="setProfileContactField('${cid}',${idx},'phone',this.value)"></td>
      <td><input value="${(ct.email||'').replace(/"/g,'&quot;')}" onchange="setProfileContactField('${cid}',${idx},'email',this.value)"></td>
      <td><button class="rowbtn" onclick="removeProfileContact('${cid}',${idx})" title="${cl.removeItem}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="5" style="color:var(--faint)">${cl.noContacts}</td></tr>`}
    </tbody></table>
@@ -2834,13 +2942,13 @@ function clientProfileHtml(client){const cl=t('clientes');const p=client.profile
 window.setProfileField=(id,field,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile[field]=val;go(CURRENT,true)};
 window.toggleProfilePostalSame=(id,checked)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.postalSame=checked;go(CURRENT,true)};
 window.addProfilePhone=(id)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.phones.push('');go(CURRENT,true)};
-window.setProfilePhone=(id,idx,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.phones[idx]=val;go(CURRENT,true)};
+window.setProfilePhone=(id,idx,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.phones[idx]=normPhone(val);go(CURRENT,true)};
 window.removeProfilePhone=(id,idx)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.phones.splice(idx,1);go(CURRENT,true)};
 window.addProfileEmail=(id)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.emails.push('');go(CURRENT,true)};
 window.setProfileEmail=(id,idx,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.emails[idx]=val;go(CURRENT,true)};
 window.removeProfileEmail=(id,idx)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.emails.splice(idx,1);go(CURRENT,true)};
 window.addProfileContact=(id)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.contacts.push({name:'',role:'',phone:'',email:''});go(CURRENT,true)};
-window.setProfileContactField=(id,idx,field,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.contacts[idx][field]=val;go(CURRENT,true)};
+window.setProfileContactField=(id,idx,field,val)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.contacts[idx][field]=field==='phone'?normPhone(val):val;go(CURRENT,true)};
 window.removeProfileContact=(id,idx)=>{const c=CLIENTS.find(x=>x.id===id);if(!c)return;c.profile.contacts.splice(idx,1);go(CURRENT,true)};
 
 /* ===== alta de nuevo cliente/contrato (identidad = nombre, se fija al crear) ===== */
@@ -3100,7 +3208,7 @@ function consignatariosScreenHtml(fixedClient,showFilter){const cn=t('consign');
       <div class="f" style="margin:0"><label>${cn.name}</label><div>${sel.name}</div></div>
       <div class="f" style="margin:0;grid-column:1/-1"><label>${cn.address}</label><div>${sel.address||'—'}</div></div>
       <div class="f" style="margin:0"><label>${t('cols.town')}</label><div>${sel.town||'—'}</div></div>
-      <div class="f" style="margin:0"><label>${cn.phone}</label><div>${sel.phone||'—'}</div></div>
+      <div class="f" style="margin:0"><label>${cn.phone}</label><div>${fmtPhone(sel.phone)||'—'}</div></div>
       ${fixedClient?'':`<div class="f" style="margin:0;grid-column:1/-1"><label>${cn.scope}</label><div>${consigneeScopeLabel(sel)}</div></div>`}
       <div class="f" style="margin:0;grid-column:1/-1"><label>${cn.status}</label>
        <label class="sw"><input type="checkbox" ${sel.active!==false?'checked':''} onchange="setConsigneeActive('${sel.id}',this.checked)"><span class="tk"></span>${sel.active!==false?cn.active:cn.inactive}</label>
@@ -3123,7 +3231,7 @@ function renderConsigneeAdminModalHtml(c){const cn=t('consign');const lockedClie
  <div class="pb">
   <div class="r2"><div class="f"><label>${cn.number}</label><input id="ca_number" class="mono" value="${c&&c.number?c.number:''}"></div><div class="f"><label>${cn.name}</label><input id="ca_name" value="${c?c.name.replace(/"/g,'&quot;'):''}"></div></div>
   <div class="f"><label>${cn.address}</label><input id="ca_addr" value="${c&&c.address?c.address.replace(/"/g,'&quot;'):''}"></div>
-  <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="ca_town">${towns.map(x=>`<option ${c&&c.town===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${cn.phone}</label><input id="ca_phone" class="mono" placeholder="787-000-0000" value="${c&&c.phone?c.phone:''}"></div></div>
+  <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${t('cols.town')}</label><select id="ca_town">${towns.map(x=>`<option ${c&&c.town===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="f" style="margin:0"><label>${cn.phone}</label><input id="ca_phone" class="mono" placeholder="${phonePlaceholder()}" value="${c&&c.phone?fmtPhone(c.phone):''}"></div></div>
   ${lockedClient?'':`<div class="f" style="margin-top:10px;margin-bottom:0"><label>${cn.scope}</label><select id="ca_client"><option value="">${cn.shared}</option>${CLIENTS.map(cl=>`<option value="${cl.id}" ${c&&c.clientId===cl.id?'selected':''}>${cl.id}</option>`).join('')}</select></div>`}
   <div class="f" style="margin-top:12px;margin-bottom:0"><label>${cn.dupInvTitle}</label>
    <label class="sw"><input type="checkbox" id="ca_dupinv" ${c&&c.allowDupInvoice===true?'checked':''}><span class="tk"></span>${cn.dupInvAllow}</label>
@@ -3135,7 +3243,7 @@ window.saveConsigneeAdmin=()=>{
  const number=(document.getElementById('ca_number').value||'').trim();
  const address=document.getElementById('ca_addr').value||'';
  const town=document.getElementById('ca_town').value;
- const phone=document.getElementById('ca_phone').value||'';
+ const phone=normPhone(document.getElementById('ca_phone').value);
  const clientSel=document.getElementById('ca_client');
  const clientId=CONSADM_SCOPE?CONSADM_SCOPE:(clientSel&&clientSel.value?clientSel.value:null);
  const dupEl=document.getElementById('ca_dupinv');const allowDupInvoice=!!(dupEl&&dupEl.checked);
@@ -3331,7 +3439,7 @@ window.importConsignees=()=>{
   const number=get(r,'number')||undefined;
   const address=get(r,'address');
   const town=get(r,'town')||undefined;
-  const phone=get(r,'phone');
+  const phone=normPhone(get(r,'phone'));
   /* Precedencia del cliente: el dropdown escogido manda como destino por defecto; si la plantilla
      mapea una columna `client` y esa fila trae un nombre que cuadra con un cliente real, esa fila se
      va a ese cliente (permite un archivo mezclado). Una fila con nombre que no cuadra con nadie NO se
@@ -3378,8 +3486,8 @@ function choferes(){const es=LANG==='es';const f=t('entry.f');const dv=t('drv');
     </div>
     <div style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:10px 14px">
      <div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:6px">${t('drv.preview')}${drv?' · '+drv.name:''}</div>
-     ${preview?preview.breakdown.map(b=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span style="color:var(--muted)">${b.label}</span><span class="mono">$${money(b.amount)}</span></div>`).join(''):''}
-     ${preview?`<div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--line)"><b style="font-size:12.5px">Total</b><b class="mono" style="color:var(--money-2)">$${money(previewTotal)}</b></div>`:''}
+     ${preview?preview.breakdown.map(b=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span style="color:var(--muted)">${b.label}</span><span class="mono">${fmtMoney(b.amount)}</span></div>`).join(''):''}
+     ${preview?`<div style="display:flex;justify-content:space-between;padding-top:6px;margin-top:4px;border-top:1px solid var(--line)"><b style="font-size:12.5px">Total</b><b class="mono" style="color:var(--money-2)">${fmtMoney(previewTotal)}</b></div>`:''}
     </div>
   </div></div>
   <div class="cols" style="grid-template-columns:260px 1fr">
@@ -3504,13 +3612,13 @@ window.setSettleAdj=(runId,dayIdx,lineIdx,val)=>{const run=SETTLERUNS.find(r=>r.
  const line=run.days[dayIdx].lines[lineIdx];
  line.adj=parseFloat(val)||0;
  const setTxt=(id,txt)=>{const el=document.getElementById(id);if(el)el.textContent=txt};
- setTxt('slt-'+runId+'-'+dayIdx+'-'+lineIdx,'$'+money(settleLineTotal(line)));
+ setTxt('slt-'+runId+'-'+dayIdx+'-'+lineIdx,fmtMoney(settleLineTotal(line)));
  const dayTotal=run.days[dayIdx].lines.reduce((s,l)=>s+settleLineTotal(l),0);
- setTxt('sds-'+runId+'-'+dayIdx,'$'+money(dayTotal));
+ setTxt('sds-'+runId+'-'+dayIdx,fmtMoney(dayTotal));
  const tot=settleRunTotals(run);
- setTxt('settletot-'+runId,'$'+money(tot.total));
- setTxt('settlesum-entregas-'+runId,'$'+money(tot.subEntrega));
- setTxt('settlesum-viajes-'+runId,'$'+money(tot.subViajes));
+ setTxt('settletot-'+runId,fmtMoney(tot.total));
+ setTxt('settlesum-entregas-'+runId,fmtMoney(tot.subEntrega));
+ setTxt('settlesum-viajes-'+runId,fmtMoney(tot.subViajes));
 };
 window.openSettleDoc=(id)=>{const run=SETTLERUNS.find(x=>x.id===id);if(!run)return;const es=LANG==='es';
  const tot=settleRunTotals(run);const drv=DRIVERS.find(x=>x.code===run.driver);
@@ -3522,15 +3630,15 @@ window.openSettleDoc=(id)=>{const run=SETTLERUNS.find(x=>x.id===id);if(!run)retu
     <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:16px;letter-spacing:.02em">TEIKEM</b><span class="tag m">${t('settle.st_'+run.status)}</span></div>
     <div style="margin-top:8px;font-size:12.5px;color:var(--muted)">${t('drv.driver')}: <b style="color:var(--text)">${drv?drv.name:run.driver}</b> <span class="mono" style="color:var(--faint)">· ${run.driver}</span></div>
     <div style="font-size:12.5px;color:var(--muted)">${es?'Período':'Period'}: <span class="mono">${run.from}</span> → <span class="mono">${run.to}</span></div>
-    <div style="font-size:11.5px;color:var(--faint);margin-top:4px">${es?'Liquidación':'Settlement'} <span class="ref">${run.id}</span> · ${run.genDate}</div>
+    <div style="font-size:11.5px;color:var(--faint);margin-top:4px">${es?'Liquidación':'Settlement'} <span class="ref">${run.id}</span> · ${fmtDate(run.genDate)}</div>
    </div>
    <div style="padding:14px 16px">
-    <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.entregas')} (${tot.entregaCount}, ${tot.attemptsCount} ${t('settle.attempts').toLowerCase()})</span><b class="mono">$${money(tot.subEntrega)}</b></div>
-    <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.viajes')} (${tot.viajesCount})</span><b class="mono">$${money(tot.subViajes)}</b></div>
-    ${tot.adjTot?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.adj')}</span><b class="mono" style="color:${tot.adjTot<0?'var(--danger)':'var(--flow-2)'}">${tot.adjTot>0?'+':''}$${money(tot.adjTot)}</b></div>`:''}
+    <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.entregas')} (${tot.entregaCount}, ${tot.attemptsCount} ${t('settle.attempts').toLowerCase()})</span><b class="mono">${fmtMoney(tot.subEntrega)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.viajes')} (${tot.viajesCount})</span><b class="mono">${fmtMoney(tot.subViajes)}</b></div>
+    ${tot.adjTot?`<div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${t('settle.adj')}</span><b class="mono" style="color:${tot.adjTot<0?'var(--danger)':'var(--flow-2)'}">${tot.adjTot>0?'+':''}${fmtMoney(tot.adjTot)}</b></div>`:''}
    </div>
    <div style="padding:12px 16px;border-top:1px solid var(--line)">
-    <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('settle.net')}</b><b class="mono" style="color:var(--money-2);font-size:16px">$${money(tot.total)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:7px 0 0;margin-top:6px;border-top:1px solid var(--line)"><b>${t('settle.net')}</b><b class="mono" style="color:var(--money-2);font-size:16px">${fmtMoney(tot.total)}</b></div>
    </div>
   </div>
   <div class="note" style="margin-top:12px">${t('settle.exportNote')}</div>
@@ -3550,20 +3658,20 @@ function renderSettleRunDetail(run){const es=LANG==='es';
   <div style="max-height:420px;overflow:auto">
   <table class="lst densetbl" style="font-size:11.5px"><thead><tr><th>${t('cols.inv')}</th><th>${t('settle.type')}</th><th>${t('cols.cons')}</th><th class="n">${t('settle.attempts')}</th><th>${t('settle.detail')}</th><th class="n">${t('settle.adj')}</th><th class="n">${t('settle.total')}</th></tr></thead><tbody>
   ${run.days.map((d,di)=>{const dayTotal=d.lines.reduce((s,l)=>s+settleLineTotal(l),0);
-   return `<tr><td colspan="7" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${d.date}</td></tr>
+   return `<tr><td colspan="7" style="padding:9px 12px;background:var(--bg-2);border-top:1px solid var(--line-2);border-bottom:1px solid var(--line-2);font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">${fmtDate(d.date)}</td></tr>
    ${d.lines.map((l,li)=>{const lineTotal=settleLineTotal(l);
-     const detail=l.type==='viaje'?l.label:l.breakdown.map(b=>b.label+' $'+money(b.amount)).join(' + ');
+     const detail=l.type==='viaje'?l.label:l.breakdown.map(b=>b.label+' '+fmtMoney(b.amount)).join(' + ');
      const consCell=l.type==='viaje'?l.desc:(l.cons+(l.city?(' · '+l.city):''));
-     const attemptsTitle=l.type==='viaje'?'':(l.breakdown.map(b=>b.label+': $'+money(b.amount)).join(' · '));
-     return `<tr><td><span class="ref">${l.ref}</span></td><td><span class="chip ${l.type==='viaje'?'s-cap':'s-disp'}">${l.type==='viaje'?t('settle.t_viaje'):t('settle.t_entrega')}</span></td><td>${consCell}</td><td class="n mono" title="${attemptsTitle}">${l.type==='viaje'?'—':l.attemptsN}</td><td style="font-size:11px;color:var(--muted)">${detail}</td><td class="n">${editable?`<input class="mono" style="width:44px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${l.adj}" oninput="setSettleAdj('${run.id}',${di},${li},this.value)">`:`<span class="mono">$${money(l.adj)}</span>`}</td><td class="n mono" id="slt-${run.id}-${di}-${li}" style="font-weight:700">$${money(lineTotal)}</td></tr>`}).join('')}
-   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('settle.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="sds-${run.id}-${di}">$${money(dayTotal)}</td></tr>`}).join('')}
+     const attemptsTitle=l.type==='viaje'?'':(l.breakdown.map(b=>b.label+': '+fmtMoney(b.amount)).join(' · '));
+     return `<tr><td><span class="ref">${l.ref}</span></td><td><span class="chip ${l.type==='viaje'?'s-cap':'s-disp'}">${l.type==='viaje'?t('settle.t_viaje'):t('settle.t_entrega')}</span></td><td>${consCell}</td><td class="n mono" title="${attemptsTitle}">${l.type==='viaje'?'—':l.attemptsN}</td><td style="font-size:11px;color:var(--muted)">${detail}</td><td class="n">${editable?`<input class="mono" style="width:44px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 3px;color:var(--text)" value="${l.adj}" oninput="setSettleAdj('${run.id}',${di},${li},this.value)">`:`<span class="mono">${fmtMoney(l.adj)}</span>`}</td><td class="n mono" id="slt-${run.id}-${di}-${li}" style="font-weight:700">${fmtMoney(lineTotal)}</td></tr>`}).join('')}
+   <tr style="background:var(--bg-2)"><td colspan="6" style="text-align:right;color:var(--muted);font-size:11.5px;font-weight:700">${t('settle.daySubtotal')}</td><td class="n mono" style="font-weight:700" id="sds-${run.id}-${di}">${fmtMoney(dayTotal)}</td></tr>`}).join('')}
   </tbody></table>
   </div>
   <div style="padding:12px 16px;border-top:1px solid var(--line-2)">
     <div class="ph2" style="padding:0 0 8px">${ic('chart')} ${t('settle.summary')}</div>
-    <div style="display:flex;justify-content:space-between;padding:3px 2px"><span style="color:var(--muted)">${t('settle.entregas')} (${tot.entregaCount}, ${tot.attemptsCount} ${t('settle.attempts').toLowerCase()})</span><b class="mono" id="settlesum-entregas-${run.id}">$${money(tot.subEntrega)}</b></div>
-    <div style="display:flex;justify-content:space-between;padding:3px 2px"><span style="color:var(--muted)">${t('settle.viajes')} (${tot.viajesCount})</span><b class="mono" id="settlesum-viajes-${run.id}">$${money(tot.subViajes)}</b></div>
-    <div style="display:flex;justify-content:space-between;padding:10px 2px 0;border-top:1px solid var(--line);margin-top:8px"><b>${t('settle.grandTotal')}</b><b class="mono" id="settletot-${run.id}" style="color:var(--money-2);font-size:16px">$${money(tot.total)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 2px"><span style="color:var(--muted)">${t('settle.entregas')} (${tot.entregaCount}, ${tot.attemptsCount} ${t('settle.attempts').toLowerCase()})</span><b class="mono" id="settlesum-entregas-${run.id}">${fmtMoney(tot.subEntrega)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:3px 2px"><span style="color:var(--muted)">${t('settle.viajes')} (${tot.viajesCount})</span><b class="mono" id="settlesum-viajes-${run.id}">${fmtMoney(tot.subViajes)}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 2px 0;border-top:1px solid var(--line);margin-top:8px"><b>${t('settle.grandTotal')}</b><b class="mono" id="settletot-${run.id}" style="color:var(--money-2);font-size:16px">${fmtMoney(tot.total)}</b></div>
   </div>
   <div style="padding:0 16px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:end">
    ${run.status==='generada'?`<button class="btn sm" onclick="markReviewedSettle('${run.id}')">${ic('check')} ${t('settle.markReviewed')}</button>`:''}
@@ -3581,7 +3689,7 @@ function liquidacion(){const es=LANG==='es';
  const stcls3={generada:'s-cap',revisada:'s-disp',aprobada:'s-deliv',exportada:'s-cod'};
  const payDrivers=DRIVERS.filter(x=>DRIVER_RATES[x.code]);
  const runsShown=SETTLERUNS.filter(r=>{const tt=settleRunTotals(r);const drv=DRIVERS.find(x=>x.code===r.driver);
-   return matchesQ([r.id,r.driver,drv?drv.name:'',r.from,r.to,t('settle.st_'+r.status),'$'+money(tt.total)],SETTLEQ)});
+   return matchesQ([r.id,r.driver,drv?drv.name:'',r.from,r.to,t('settle.st_'+r.status),fmtMoney(tt.total)],SETTLEQ)});
  return `<div class="head"><div><h1>${t('settle.title')}</h1><p>${t('settle.sub')}</p></div></div>
   <div class="note" style="margin-bottom:14px">${ic('doc')} ${t('settle.note')}</div>
   <div class="panel" style="margin-bottom:14px"><div class="ph2">${ic('plus')} ${t('settle.newRun')}</div><div class="pb" style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;align-items:end">
@@ -3594,7 +3702,7 @@ function liquidacion(){const es=LANG==='es';
    <div class="panel"><div class="ph2">${ic('doc')} ${t('settle.runs')} <span class="r">${runsShown.length}</span></div>
     <div class="qrow">${qbox('settleq',SETTLEQ,t('ui.mselSearch'),"setSettleQ(this.value)")}</div>
     <div style="max-height:520px;overflow:auto">${runsShown.length?runsShown.map(r=>{const tt=settleRunTotals(r);const drv=DRIVERS.find(x=>x.code===r.driver);
-      return `<div class="unrow" style="cursor:pointer;${r.id===SETTLESEL?'background:var(--flow-bg)':''}" onclick="selectSettleRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls3[r.status]}" style="margin-left:auto">${t('settle.st_'+r.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${drv?drv.name:r.driver}</div><div class="meta">${r.from} → ${r.to} · <b class="mono" style="color:var(--text)">$${money(tt.total)}</b></div></div></div>`}).join(''):`<div class="empty" style="min-height:120px"><p>${SETTLERUNS.length?t('ui.mselNone'):(es?'Genera la primera liquidación':'Generate the first settlement')}</p></div>`}</div></div>
+      return `<div class="unrow" style="cursor:pointer;${r.id===SETTLESEL?'background:var(--flow-bg)':''}" onclick="selectSettleRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls3[r.status]}" style="margin-left:auto">${t('settle.st_'+r.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${drv?drv.name:r.driver}</div><div class="meta">${r.from} → ${r.to} · <b class="mono" style="color:var(--text)">${fmtMoney(tt.total)}</b></div></div></div>`}).join(''):`<div class="empty" style="min-height:120px"><p>${SETTLERUNS.length?t('ui.mselNone'):(es?'Genera la primera liquidación':'Generate the first settlement')}</p></div>`}</div></div>
    <div class="panel">${run?renderSettleRunDetail(run):`<div class="empty" style="min-height:260px"><div>${ic('doc')}<p style="margin-top:8px">${t('settle.selectRun')}</p></div></div>`}</div>
   </div>`}
 
@@ -3789,7 +3897,7 @@ function dispatch(){DSEL=0;DSEL_REFS=[];const d=t('disp');
      <div class="ph2">${ic('layers')} ${d.unassigned} <span class="r">${un.length}</span></div>
      <div style="display:flex;align-items:center;gap:8px;padding:8px 13px;border-bottom:1px solid var(--line-2)"><label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer"><input id="selallun" type="checkbox" onchange="toggleAllUnassigned(this)"> ${d.markAll}</label></div>
      <div style="padding:11px 13px;border-bottom:1px solid var(--line-2)"><button class="btn sm flow" id="addbtn" style="width:100%;justify-content:center" onclick="addToRoute()" disabled>${ic('plus')} ${d.addto}</button></div>
-     <div id="unlist" style="flex:1;min-height:0;overflow:auto">${un.length?un.map(o=>`<label class="unrow"><input type="checkbox" data-ref="${o.inv}" onchange="dsel(this)"><span class="ref">${o.inv}</span><div><div style="font-size:12.5px">${o.cons}</div><div class="meta">${o.town} \u00b7 ${o.zip}${o.cod?' \u00b7 <span class=cash style=font-size:11px>$'+money(o.cod)+'</span>':''}</div></div></label>`).join(''):`<div class="empty" style="min-height:120px"><div>${ic('layers')}</div></div>`}</div>
+     <div id="unlist" style="flex:1;min-height:0;overflow:auto">${un.length?un.map(o=>`<label class="unrow"><input type="checkbox" data-ref="${o.inv}" onchange="dsel(this)"><span class="ref">${o.inv}</span><div><div style="font-size:12.5px">${o.cons}</div><div class="meta">${o.town} \u00b7 ${o.zip}${o.cod?' \u00b7 <span class=cash style=font-size:11px>'+fmtMoney(o.cod)+'</span>':''}</div></div></label>`).join(''):`<div class="empty" style="min-height:120px"><div>${ic('layers')}</div></div>`}</div>
    </div>
 
    <div>
@@ -3882,7 +3990,7 @@ function recordDetailPanelHtml(o){const e=t('entry');const r=t('rec');const ed=r
     :`<table class="lst densetbl"><thead><tr><th>${e.pkgtype}</th><th>${e.pkgDesc}</th><th class="n">${e.pieces}</th></tr></thead><tbody>
       ${lines.map(p=>`<tr><td>${p.pkg||'—'}</td><td style="color:var(--muted)">${p.desc||'—'}</td><td class="n mono">${p.pcs}</td></tr>`).join('')}
      </tbody></table>`}
-   <div class="r2" style="margin-top:14px;margin-bottom:0"><div class="f" style="margin:0"><label>${e.codamt}</label>${ed?`<input id="re_cod" class="mono" value="${money(o.cod||0)}">`:ro(o.cod?'$'+money(o.cod):'—')}</div>
+   <div class="r2" style="margin-top:14px;margin-bottom:0"><div class="f" style="margin:0"><label>${e.codamt}</label>${ed?`<input id="re_cod" class="mono" value="${money(o.cod||0)}">`:ro(o.cod?fmtMoney(o.cod):'—')}</div>
     <div class="f" style="margin:0"><label>${e.comment}</label>${ed?`<input id="re_note" value="${(o.note||'').replace(/"/g,'&quot;')}">`:ro(o.note)}</div></div>
   </div></div>`}
 function record(){const o=recordOrder();const r=t('rec');
@@ -3903,7 +4011,7 @@ function record(){const o=recordOrder();const r=t('rec');
      ${evs.map((k,i)=>`<div style="display:flex;gap:13px;padding-bottom:${i<evs.length-1?'16px':'0'}"><div style="display:flex;flex-direction:column;align-items:center"><span style="width:11px;height:11px;border-radius:50%;background:var(--flow);box-shadow:0 0 0 3px var(--flow-bg)"></span>${i<evs.length-1?'<span style="flex:1;width:2px;background:var(--line);margin:3px 0"></span>':''}</div><div style="flex:1"><b style="font-size:13.5px">${t('rec.'+k)}</b><div style="color:var(--muted);font-size:12px;margin-top:2px"><span class="mono">${tm[i]}</span> · ${wh[i]}</div></div></div>`).join('')}</div></div>
    </div>
    <div><div class="panel" style="margin-bottom:16px"><div class="ph2">${ic('cash')} COD</div><div class="pb">
-       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.amount}</span><b class="cash">${o.cod?'$'+money(o.cod):'—'}</b></div>
+       <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.amount}</span><b class="cash">${o.cod?fmtMoney(o.cod):'—'}</b></div>
        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.type}</span><b style="color:${o.st==='deliv'||o.st==='cod'?'var(--text)':'var(--faint)'}">${o.st==='deliv'||o.st==='cod'?'Efectivo':r.pendingType}</b></div>
        <div style="display:flex;justify-content:space-between;padding:4px 0"><span style="color:var(--muted)">${r.state}</span><span class="chip ${stcls[o.st]}">${t('st.'+o.st)}</span></div>
        ${o.cod?`<p class="d" style="margin:8px 0 0">${r.codTypeAtDelivery}</p>`:''}</div></div>
@@ -4749,8 +4857,7 @@ function indicatorIsMoney(ind){return ind.money!==undefined?!!ind.money:defaultM
 function indicatorFmtValue(v,isMoney){
  if(typeof v!=='number'||Number.isNaN(v))return viewFmtCell(v);
  const withDecimals=isMoney||!Number.isInteger(v);
- const formatted=v.toLocaleString('en-US',withDecimals?{minimumFractionDigits:2,maximumFractionDigits:2}:{maximumFractionDigits:0});
- return isMoney?'$'+formatted:formatted}
+ return isMoney?fmtMoney(v):money(v,withDecimals?2:0)}
 function indicatorBadgeHtml(i){const iw=t('indicators');
  if(i.system)return `<span class="chip s-cap" title="${iw.notEditableSystem}" style="font-size:10px">${iw.systemBadge}</span>`;
  if(i.owner!==CURRENT_USER_ID)return `<span class="chip s-cap" title="${iw.notYoursHint}" style="font-size:10px">${iw.createdBy.replace('{name}',userName(i.owner))}</span>`;
@@ -5074,8 +5181,8 @@ function chartLineHtml(ch){const cw=t('charts');
    <polyline points="${pts}" fill="none" stroke="var(--flow-2)" stroke-width="2"/>
    ${dots}
   </svg>
-  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:4px"><span>${String(first.label).slice(5)}</span><span>${String(last.label).slice(5)}</span></div>
-  <div style="text-align:center;margin-top:2px"><b style="font-size:15px">${indicatorFmtValue(last.value,money)}</b> <span style="font-size:11px;color:var(--faint)">(${String(last.label).slice(5)})</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:4px"><span>${fmtDayMonth(String(first.label))}</span><span>${fmtDayMonth(String(last.label))}</span></div>
+  <div style="text-align:center;margin-top:2px"><b style="font-size:15px">${indicatorFmtValue(last.value,money)}</b> <span style="font-size:11px;color:var(--faint)">(${fmtDayMonth(String(last.label))})</span></div>
  </div>`}
 function chartVizHtml(ch){const type=ch.type||'bar';if(type==='donut')return chartDonutHtml(ch);if(type==='line')return chartLineHtml(ch);return chartBarsHtml(ch)}
 function chartBadgeHtml(c){const cw=t('charts');
@@ -5349,13 +5456,20 @@ const PRODUCTS = [
  {sku:'TRS-FOL-500', name:'Papel aluminio para mechas (rollo 500)', cat:'Consumibles', uom:'roll', total:74, reserved:6, track:'none', reorder:30, active:true, purchaseCost:9.60, salePrice:18.00, client:'TRUSS PUERTO RICO'},
  {sku:'TRS-GLV-100', name:'Guantes de tinte (caja 100)', cat:'Consumibles', uom:'box', total:112, reserved:8, track:'none', reorder:40, active:true, purchaseCost:5.40, salePrice:11.00, client:'TRUSS PUERTO RICO'},
 ];
-let WAREHOUSES = [{code:'WH-01', name:'Almacén Toa Baja', address:'Carr. 165 Km 2.1, Toa Baja, PR 00949', active:true}];
+/* Modo de recepción POR ALMACÉN (Warehouse.ReceivingModeLookupId, Lote 16 del sistema real): 'PUTAWAY' = con acomodo (la mercancía
+   entra a la posición de recepción —zona de tipo Recepción/staging— y queda una tarea de acomodo hacia su posición final) o
+   'DIRECT' = directo a posición (quien recibe escoge la posición final por línea y no hay acomodo). Es del almacén y no de la
+   compañía porque la zona de staging es física: un almacén la tiene y otro no. `defaultRecvBin` = posición de recepción por
+   defecto (solo con acomodo). Cada recibo guarda una copia del modo con que se abrió y quien recibe puede cambiarlo solo para ese
+   recibo; cambiar el modo del almacén no toca los recibos ya abiertos. */
+let WAREHOUSES = [{code:'WH-01', name:'Almacén Toa Baja', address:'Carr. 165 Km 2.1, Toa Baja, PR 00949', active:true, receivingMode:'PUTAWAY', defaultRecvBin:'S-01'}];
 let CURRENT_WH = WAREHOUSES[0].code;
 let ZONES = [
  {code:'A', name:'Picking', type:'Picking', bins:24, used:18, wh:'WH-01'},
  {code:'B', name:'Reserva', type:'Reserva', bins:40, used:25, wh:'WH-01'},
  {code:'R', name:'Refrigerado', type:'Refrigerado', bins:8, used:3, wh:'WH-01'},
  {code:'Q', name:'Cuarentena', type:'Cuarentena', bins:6, used:1, wh:'WH-01'},
+ {code:'S', name:'Recepción', type:'Recepción', bins:2, used:0, wh:'WH-01'},
 ];
 const BINS = (function(){const out=[];const fill=[
  ['A','01',[['GLU-100',12]]],['A','02',[['GLU-STR',80]]],['A','03',[['LBL-4X6',6]]],['A','04',[['TRS-TIN-60',180]]],['A','05',[['WCH-STD',3]]],['A','06',[['BOX-4X6',400],['TAPE-CLR',18]]],
@@ -5364,6 +5478,7 @@ const BINS = (function(){const out=[];const fill=[
  ['B','07',[['TRS-TIN-60',240]]],['B','08',[['TRS-FOL-500',74],['TRS-GLV-100',112]]],['B','09',[['TRS-AMP-12',96]]],
  ['R','01',[]],['R','02',[['GLU-STR',20]]],['R','03',[['TRS-KER-1L',64]]],
  ['Q','01',[['WCH-STD',1]]],['Q','02',[]],
+ ['S','01',[]],['S','02',[]],
 ];
  fill.forEach(([z,n,stock])=>{const cap=z==='A'?150:(z==='B'?1200:60);
   out.push({code:z+'-'+n, zone:z, stock:stock.map(([sku,qty])=>({sku,qty})), cap})});
@@ -5378,7 +5493,7 @@ window.gotoPage=(key,delta)=>{PAGES[key].page += delta; go(CURRENT,true)};
 /* ===== ordenamiento genérico para cualquier tabla ===== */
 let SORTS = {bin:{k:null,dir:1}, cod:{k:null,dir:1}, po:{k:'date',dir:-1}, wh:{k:'code',dir:1}, pack:{k:null,dir:1}, recln:{k:null,dir:1},
  auditact:{k:'at',dir:-1}, auditsess:{k:null,dir:1}, acctpurch:{k:'date',dir:-1}, acctdesp:{k:'date',dir:-1}, shortage:{k:null,dir:1},
- dockappt:{k:'eta',dir:1}, xdockdemand:{k:null,dir:1}, ledger:{k:'date',dir:-1}, fldocs:{k:null,dir:1}, flveh:{k:null,dir:1}, flmaint:{k:null,dir:1}, flwo:{k:null,dir:1}, flfuel:{k:'date',dir:-1}, custfields:{k:null,dir:1}, rolesLst:{k:null,dir:1}, usersLst:{k:null,dir:1}, apikeys:{k:null,dir:1}, tenantmod:{k:null,dir:1}};
+ dockappt:{k:'eta',dir:1}, xdockdemand:{k:null,dir:1}, ledger:{k:'date',dir:-1}, fldocs:{k:null,dir:1}, flveh:{k:null,dir:1}, flmaint:{k:null,dir:1}, flwo:{k:null,dir:1}, flfuel:{k:'date',dir:-1}, custfields:{k:null,dir:1}, rolesLst:{k:null,dir:1}, usersLst:{k:null,dir:1}, apikeys:{k:null,dir:1}, tenantmod:{k:null,dir:1}, tenanthol:{k:null,dir:1}};
 window.toggleSort=(screen,key)=>{const s=SORTS[screen];if(s.k===key)s.dir*=-1;else{s.k=key;s.dir=1}go(CURRENT,true)};
 function applySort(screen,rows,defaultKey){const s=SORTS[screen];const k=s.k||defaultKey;const dir=s.k?s.dir:1;
  return [...rows].sort((a,b)=>{let va=a[k],vb=b[k];if(typeof va==='string')va=va.toLowerCase();if(typeof vb==='string')vb=vb.toLowerCase();return (va<vb?-1:va>vb?1:0)*dir})}
@@ -5434,11 +5549,15 @@ window.saveWh=()=>{const editCode=WH_EDIT_CODE;
  else{WAREHOUSES.push({code,name,address,active:true});toast(t('whs.created')+': '+code)}
  closeGenModal();go('almacenes',true)};
 let WHSEL = WAREHOUSES[0] ? WAREHOUSES[0].code : null;
+window.setWhRecvMode=(code,mode)=>{const w=WAREHOUSES.find(x=>x.code===code);if(!w)return;w.receivingMode=mode==='DIRECT'?'DIRECT':'PUTAWAY';
+ const open=RECEIPTS.filter(r=>r.wh===code&&RECV_OPEN.includes(r.status)).length;const x=t('whs');
+ toast(x.recvModeChanged+(open?' \u00b7 '+open+' '+x.recvOpenKeep:''));go('almacenes',true)};
+window.setWhRecvBin=(code,bin)=>{const w=WAREHOUSES.find(x=>x.code===code);if(w&&bin){w.defaultRecvBin=bin;go('almacenes',true)}};
 window.selectWh=(code)=>{WHSEL=code;go('almacenes',true)};
 let ZONE_EDIT_CODE=null;
 window.openZoneModal=(whCode,zoneCode)=>{ZONE_EDIT_CODE=zoneCode||null;const z=zoneCode?ZONES.find(x=>x.code===zoneCode):null;
  document.getElementById('genModal').innerHTML=renderZoneModalHtml(whCode,z);document.getElementById('genScrim').classList.add('on')};
-function renderZoneModalHtml(whCode,z){const x=t('whs');const types=['Picking','Reserva','Refrigerado','Cuarentena'];
+function renderZoneModalHtml(whCode,z){const x=t('whs');const types=['Picking','Reserva','Refrigerado','Cuarentena','Recepción'];
  return `<div class="pi" style="justify-content:space-between"><b style="font-size:15px">${ic('grid')} ${z?x.editZone:x.newZone}</b><button class="x" onclick="closeGenModal()" style="border:none;background:transparent;color:var(--faint);width:28px;height:28px;border-radius:8px">\u2715</button></div>
  <div class="pb">
   <div class="r2"><div class="f"><label>${x.zoneCode}</label><input id="z_code" class="mono" placeholder="C" value="${z?z.code:''}" ${z?'disabled':''} maxlength="3" style="text-transform:uppercase"></div><div class="f"><label>${x.zoneName}</label><input id="z_name" value="${z?z.name:''}"></div></div>
@@ -5490,6 +5609,13 @@ function almacenes(){const x=t('whs');const f=t('entry.f');
     <div class="pb" style="padding-bottom:8px">
      <div style="color:var(--muted);font-size:12.5px;margin-bottom:2px">${sel.address||'\u2014'}</div>
      <span class="chip ${sel.active===false?'s-cap':'s-deliv'}">${sel.active===false?x.inactive:x.active}</span>
+    </div>
+    <div style="border-top:1px solid var(--line-2);padding:12px 16px 14px">
+     <b style="font-size:13px;display:block;margin-bottom:8px">${ic('checkin')} ${x.recvTitle}</b>
+     <div class="f"><label>${x.recvMode}</label><select onchange="setWhRecvMode('${sel.code}',this.value)"><option value="PUTAWAY" ${sel.receivingMode!=='DIRECT'?'selected':''}>${x.recvPutaway}</option><option value="DIRECT" ${sel.receivingMode==='DIRECT'?'selected':''}>${x.recvDirect}</option></select></div>
+     <p class="d" style="margin:0 0 10px">${x.recvModeHelp}</p>
+     ${sel.receivingMode!=='DIRECT'?`<div class="f" style="margin:0"><label>${x.recvDefaultBin}</label><select onchange="setWhRecvBin('${sel.code}',this.value)">${BINS.filter(b=>{const z=ZONES.find(z2=>z2.code===b.zone);return z&&z.wh===sel.code&&z.type==='Recepción'}).map(b=>`<option ${sel.defaultRecvBin===b.code?'selected':''}>${b.code}</option>`).join('')||`<option value="">${x.recvNoBin}</option>`}</select></div>
+     <p class="d" style="margin:6px 0 0">${x.recvDefaultBinHelp}</p>`:''}
     </div>
     <div style="border-top:1px solid var(--line-2);padding:12px 16px 6px;display:flex;align-items:center"><b style="font-size:13px">${x.zonesTitle}</b><button class="btn sm flow" style="margin-left:auto" onclick="openZoneModal('${sel.code}')">${ic('plus')} ${x.newZone}</button></div>
     <div style="padding:0 16px 14px">${selZones.length?selZones.map(z=>{const canDelZ=!BINS.some(b=>b.zone===z.code);
@@ -5550,7 +5676,7 @@ function inventario(){const v=t('inv2');
  return `<div class="head"><div><h1>${v.title}</h1><p>${v.sub}</p></div><div class="act"><button class="btn" onclick="openReportModal('invReport')">${ic('doc')} ${v.invReport}</button><button class="btn" onclick="openReportModal('adjReport')">${ic('doc')} ${v.adjReport}</button><button class="btn flow" onclick="openProductModal()">${ic('plus')} ${v.newProduct}</button></div></div>
   <div class="river" style="margin-bottom:16px">
    <div class="node flow"><div class="ph">${ic('layers')} ${v.totalSkus}</div><div class="big">${PRODUCTS.length}</div></div><div class="pipe"></div>
-   <div class="node flow"><div class="ph">${ic('box')} ${v.totalUnits}</div><div class="big">${totalUnits.toLocaleString()}</div></div><div class="pipe"></div>
+   <div class="node flow"><div class="ph">${ic('box')} ${v.totalUnits}</div><div class="big">${money(totalUnits,0)}</div></div><div class="pipe"></div>
    <div class="node m"><div class="ph">${ic('alert')} ${v.lowCount}</div><div class="big">${lowCount}</div></div><div class="pipe"></div>
    <div class="node flow"><div class="ph">${ic('tag')} ${v.serialCount}</div><div class="big">${serialCount}</div></div>
   </div>
@@ -5727,9 +5853,9 @@ function compras(){const c=t('compras');const f=t('entry.f');
   <div class="panel"><div class="ph2">${ic('cart')} ${c.title} <span class="r">${filtered.length}</span></div>
    <table class="lst"><thead><tr><th style="width:26px"></th>${sortTh('po','id','PO')}${sortTh('po','supplier',c.supplier)}${sortTh('po','date',c.orderDate)}${sortTh('po','expected',c.expected)}<th class="n">${c.lines}</th>${sortTh('po','totalAmt',c.total,1)}${sortTh('po','status',c.status)}<th style="width:36px"></th></tr></thead><tbody>
    ${sortedPOs.map(po=>{const exp=POEXPANDED.has(po.id);const canDel=po.status!=='receiving'&&po.status!=='received';
-     const parent=`<tr style="cursor:pointer" onclick="togglePOExpand('${po.id}')"><td style="color:var(--faint)">${exp?ic('chevD'):ic('chev')}</td><td><span class="ref">${po.id}</span></td><td>${po.supplier}</td><td class="mono">${po.date.slice(5)}</td><td class="mono">${po.expected.slice(5)}</td><td class="n">${po.lines.length}</td><td class="n cash">$${money(total(po.lines))}</td><td><span class="chip ${stcls3[po.status]}">${stlabel3(po.status)}</span></td><td><div style="display:flex;align-items:center;gap:4px;justify-content:flex-end"><button class="rowbtn ${canDel?'':'muted'}" onclick="event.stopPropagation();${canDel?`openPOModal('${po.id}')`:`editBlockedPO('${po.id}')`}" aria-label="${c.editTitle}" title="${canDel?c.editTitle:c.cannotEdit}">${ic('pencil')}</button><button class="rowbtn ${canDel?'':'muted'}" onclick="event.stopPropagation();deletePO('${po.id}')" aria-label="${t('ui.deleted')}" title="${canDel?t('ui.deleted'):c.cannotDelete}">${ic('trash')}</button>${po.status==='draft'?`<button class="btn sm" onclick="event.stopPropagation();sendPO('${po.id}')">${c.st_sent}</button>`:''}</div></td></tr>`;
+     const parent=`<tr style="cursor:pointer" onclick="togglePOExpand('${po.id}')"><td style="color:var(--faint)">${exp?ic('chevD'):ic('chev')}</td><td><span class="ref">${po.id}</span></td><td>${po.supplier}</td><td class="mono">${fmtDayMonth(po.date)}</td><td class="mono">${fmtDayMonth(po.expected)}</td><td class="n">${po.lines.length}</td><td class="n cash">${fmtMoney(total(po.lines))}</td><td><span class="chip ${stcls3[po.status]}">${stlabel3(po.status)}</span></td><td><div style="display:flex;align-items:center;gap:4px;justify-content:flex-end"><button class="rowbtn ${canDel?'':'muted'}" onclick="event.stopPropagation();${canDel?`openPOModal('${po.id}')`:`editBlockedPO('${po.id}')`}" aria-label="${c.editTitle}" title="${canDel?c.editTitle:c.cannotEdit}">${ic('pencil')}</button><button class="rowbtn ${canDel?'':'muted'}" onclick="event.stopPropagation();deletePO('${po.id}')" aria-label="${t('ui.deleted')}" title="${canDel?t('ui.deleted'):c.cannotDelete}">${ic('trash')}</button>${po.status==='draft'?`<button class="btn sm" onclick="event.stopPropagation();sendPO('${po.id}')">${c.st_sent}</button>`:''}</div></td></tr>`;
      const child=exp?`<tr><td></td><td colspan="8" style="padding:0 14px 14px;background:var(--bg-2)"><table class="lst" style="background:transparent"><thead><tr><th>SKU</th><th>${c.product}</th><th class="n">${c.qty}</th><th class="n">${c.unitCost}</th><th class="n">${c.total}</th></tr></thead><tbody>
-       ${po.lines.map(l=>`<tr><td><span class="ref">${l.sku}</span></td><td>${l.name}</td><td class="n mono">${l.qty}</td><td class="n mono">$${money(l.cost)}</td><td class="n cash">$${money(l.qty*l.cost)}</td></tr>`).join('')}
+       ${po.lines.map(l=>`<tr><td><span class="ref">${l.sku}</span></td><td>${l.name}</td><td class="n mono">${l.qty}</td><td class="n mono">${fmtMoney(l.cost)}</td><td class="n cash">${fmtMoney(l.qty*l.cost)}</td></tr>`).join('')}
       </tbody></table></td></tr>`:'';
      return parent+child}).join('')}
    </tbody></table></div>`}
@@ -5744,25 +5870,59 @@ const RECEIPTS = [
  {id:'REC-3310', origin:'client', ref:'AX-48310', from:'AXISCARE HEALTH', expected:isoDaysAgo(-1), carrier:'Vagón 20ft', status:'expected',
    lines:[{sku:'FLT-O2',name:'Filtro para concentrador',exp:40,rec:40},{sku:'BAT-SLA',name:'Batería sellada',exp:15,rec:15}]},
 ];
+RECEIPTS.forEach(r=>{r.wh=WAREHOUSES[0].code;r.mode=WAREHOUSES[0].receivingMode}); // cada recibo guarda el modo con que se abrió
 let RSEL = RECEIPTS[0].id;
+const RECV_OPEN=['expected','receiving','discrepancy']; // un recibo abierto todavía puede cambiar de modo y de cantidades
+const RECV_STATUSES=['expected','receiving','discrepancy','putaway','done'];
+function isConfirmedRec(r){return r.status==='done'||r.status==='putaway'} // el costo y lo recibido cuentan desde que se confirma, haya o no acomodo
+function isRecvBin(b){const z=ZONES.find(z2=>z2.code===b.zone);return !!z&&z.type==='Recepción'}
+function storageBinsOf(whCode){return BINS.filter(b=>{const z=ZONES.find(z2=>z2.code===b.zone);return z&&z.wh===whCode&&z.type!=='Recepción'})}
+function recvBinOf(r){const w=WAREHOUSES.find(x=>x.code===r.wh)||WAREHOUSES[0];const b=BINS.find(x=>x.code===w.defaultRecvBin);return b&&isRecvBin(b)?b.code:(BINS.find(isRecvBin)||{}).code}
+function addToBin(bin,sku,qty){const e=bin.stock.find(x=>x.sku===sku);if(e)e.qty+=qty;else bin.stock.push({sku,qty})}
+function takeFromBin(bin,sku,qty){const e=bin.stock.find(x=>x.sku===sku);if(!e)return;e.qty-=qty;if(e.qty<=0)bin.stock=bin.stock.filter(x=>x!==e)}
+window.setLineTarget=(idx,code)=>{const r=RECEIPTS.find(x=>x.id===RSEL);if(r)r.lines[idx].target=code||null;go('recibo',true)};
+window.setReceiptMode=(mode)=>{const r=RECEIPTS.find(x=>x.id===RSEL);if(!r||!RECV_OPEN.includes(r.status))return;r.mode=mode;go('recibo',true)};
 let RF={from:[],status:[],product:[],dateFrom:'',dateTo:''};
 let RECQ=''; // búsqueda libre en la lista de recibos
 window.setRF=(k,v)=>{RF[k]=v;go('recibo',true)};
 window.setRecQ=(v)=>{RECQ=v;go('recibo',true)};
 window.selectReceipt=id=>{RSEL=id;go('recibo',true)};
 window.setReceivedQty=(idx,val)=>{const r=RECEIPTS.find(x=>x.id===RSEL);if(r)r.lines[idx].rec=parseInt(val)||0};
-window.confirmReceipt=()=>{const r=RECEIPTS.find(x=>x.id===RSEL);if(!r)return;
- r.lines.forEach(l=>{const diff=l.rec-l.exp;if(diff!==0){INV_ADJUSTMENTS.unshift({date:TODAY, sku:l.sku, name:l.name, delta:diff, reason:t('recep.varianceReason')+' '+r.id, source:r.id})}
-   const p=PRODUCTS.find(x=>x.sku===l.sku);if(p)p.total+=l.rec});
- r.status='done';r.doneDate=TODAY;toast(t('recep.confirm')+' '+r.id);go('recibo',true)};
+window.confirmReceipt=()=>{const r=RECEIPTS.find(x=>x.id===RSEL);if(!r)return;const x=t('recep');
+ const direct=r.mode==='DIRECT';
+ if(direct&&r.lines.some(l=>l.rec>0&&!l.target)){toast(x.needTarget);return}
+ const stage=direct?null:recvBinOf(r);
+ r.lines.forEach(l=>{const diff=l.rec-l.exp;if(diff!==0){INV_ADJUSTMENTS.unshift({date:TODAY, sku:l.sku, name:l.name, delta:diff, reason:x.varianceReason+' '+r.id, source:r.id})}
+   const p=PRODUCTS.find(y=>y.sku===l.sku);if(p)p.total+=l.rec;
+   const bin=BINS.find(b=>b.code===(direct?l.target:stage));if(bin&&l.rec>0)addToBin(bin,l.sku,l.rec);
+   if(!direct)l.staged=stage});
+ r.doneDate=TODAY;r.status=direct?'done':'putaway';
+ toast(direct?x.confirm+' '+r.id:x.confirm+' '+r.id+' \u00b7 '+x.stagedAt+': '+stage);go('recibo',true)};
+/* Acomodo (solo recibos "con acomodo"): mueve cada línea de la posición de recepción a su posición final y cierra el recibo */
+window.confirmPutaway=()=>{const r=RECEIPTS.find(y=>y.id===RSEL);if(!r||r.status!=='putaway')return;const x=t('recep');
+ if(r.lines.some(l=>l.rec>0&&!l.target)){toast(x.needTarget);return}
+ r.lines.forEach(l=>{if(l.rec<=0)return;const from=BINS.find(b=>b.code===l.staged);const to=BINS.find(b=>b.code===l.target);
+   if(from)takeFromBin(from,l.sku,l.rec);if(to)addToBin(to,l.sku,l.rec)});
+ r.status='done';toast(x.putawayDone+' '+r.id);go('recibo',true)};
 
+/* celda de la posición destino: directo → se escoge antes de confirmar; con acomodo → la posición de recepción hasta confirmar y, ya recibido, se escoge el destino del acomodo */
+function recvTargetCell(rc,l){const r=t('recep');const open=RECV_OPEN.includes(rc.status);
+ if(rc.status==='done')return `<span class="ref">${l.target||'\u2014'}</span>`;
+ if(rc.mode==='PUTAWAY'&&open)return `<span style="color:var(--muted);font-size:12px">${r.stagedAt}: <span class="ref">${recvBinOf(rc)||'\u2014'}</span></span>`;
+ const bins=storageBinsOf(rc.wh);
+ return `<select style="min-width:110px" onchange="setLineTarget(${l._idx},this.value)"><option value="">${r.pickBin}</option>${bins.map(b=>`<option ${l.target===b.code?'selected':''}>${b.code}</option>`).join('')}</select>`}
+function recvModePanelHtml(rc){const r=t('recep');
+ const text=rc.mode==='DIRECT'?r.hintDirect:rc.status==='putaway'?r.hintPutawayPending:r.hintPutaway;
+ return `<div style="margin:14px 16px 0;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">
+  ${RECV_OPEN.includes(rc.status)?`<div class="f" style="margin:0;min-width:240px"><label>${r.modeThis}</label><select onchange="setReceiptMode(this.value)"><option value="PUTAWAY" ${rc.mode==='PUTAWAY'?'selected':''}>${r.modePutaway}</option><option value="DIRECT" ${rc.mode==='DIRECT'?'selected':''}>${r.modeDirect}</option></select></div>`:''}
+  <p class="d" style="margin:0;flex:1;min-width:220px;align-self:center">${text}</p></div>`}
 function recibo(){const r=t('recep');const f=t('entry.f');
  const list = RECEIPTS.filter(x=>(!RF.from.length||RF.from.includes(x.from))&&(!RF.status.length||RF.status.includes(x.status))
    &&(!RF.product.length||x.lines.some(l=>productMatchesSku(l.sku,RF.product)))
    &&(!RF.dateFrom||x.expected>=RF.dateFrom)&&(!RF.dateTo||x.expected<=RF.dateTo));
  const sel = RECEIPTS.find(x=>x.id===RSEL);
- const stcls2={expected:'s-cap',receiving:'s-disp',done:'s-deliv',discrepancy:'s-fail'};
- const stlabel=st=>({expected:r.st_expected,receiving:r.st_receiving,done:r.st_done,discrepancy:r.st_disc})[st];
+ const stcls2={expected:'s-cap',receiving:'s-disp',putaway:'s-wh',done:'s-deliv',discrepancy:'s-fail'};
+ const stlabel=st=>({expected:r.st_expected,receiving:r.st_receiving,putaway:r.st_putaway,done:r.st_done,discrepancy:r.st_disc})[st];
  const shown = list.filter(x=>matchesQ([x.id,x.from,x.carrier,x.expected,x.ref,x.origin==='po'?r.fromPO:r.fromClient,stlabel(x.status)],RECQ));
  return `<div class="head"><div><h1>${r.title}</h1><p>${r.sub}</p></div></div>
   <div class="note" style="margin-bottom:14px">${ic('checkin')} ${r.concept}</div>
@@ -5771,20 +5931,21 @@ function recibo(){const r=t('recep');const f=t('entry.f');
    <div class="f"><label>${f.to}</label><input type="date" value="${RF.dateTo}" onchange="setRF('dateTo',this.value)"></div>
    <div class="f"><label>${r.from}</label>${msel('rffrom',senders,RF.from,v=>setRF('from',v),t('entry.f.all'))}</div>
    <div class="f"><label>${r.product}</label>${msel('rfprod',productOptions(),RF.product,v=>setRF('product',v),t('entry.f.all'))}</div>
-   <div class="f"><label>${r.status}</label>${msel('rfstatus',['expected','receiving','done','discrepancy'].map(stlabel),RF.status.map(stlabel),v=>setRF('status',v.map(lbl=>['expected','receiving','done','discrepancy'].find(k=>stlabel(k)===lbl))),t('entry.f.all'))}</div>
+   <div class="f"><label>${r.status}</label>${msel('rfstatus',RECV_STATUSES.map(stlabel),RF.status.map(stlabel),v=>setRF('status',v.map(lbl=>RECV_STATUSES.find(k=>stlabel(k)===lbl))),t('entry.f.all'))}</div>
    <button class="btn sm" onclick="RF={from:[],status:[],product:[],dateFrom:'',dateTo:''};go('recibo',true)">${t('entry.f.clear')}</button>
   </div>
   <div class="cols" style="grid-template-columns:340px 1fr">
    <div class="panel"><div class="ph2">${ic('checkin')} ${r.title} <span class="r">${shown.length}</span></div>
     <div class="qrow">${qbox('recq',RECQ,t('ui.mselSearch'),"setRecQ(this.value)")}</div>
-    <div style="max-height:460px;overflow:auto">${shown.map(x=>`<div class="unrow" style="cursor:pointer;${x.id===RSEL?'background:var(--flow-bg)':''}" onclick="selectReceipt('${x.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${x.id}</span><span class="chip ${stcls2[x.status]}" style="margin-left:auto">${stlabel(x.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${x.from}</div><div class="meta">${x.carrier} \u00b7 ${x.expected} \u00b7 <span class="tag${x.origin==='po'?' m':''}" style="font-size:9.5px">${x.origin==='po'?r.fromPO:r.fromClient}</span> <span class="ref" style="font-size:11px">${x.ref}</span></div></div></div>`).join('')}</div></div>
-   <div class="panel">${sel?`<div class="ph2">${ic('doc')} ${r.detail} \u00b7 <span class="ref">${sel.id}</span><span class="r">${r.order} \u00b7 ${sel.origin==='po'?r.fromPO:r.fromClient}: <span class="ref">${sel.ref}</span></span></div>
-    <div style="overflow:auto;max-height:340px"><table class="lst"><thead><tr>${sortTh('recln','sku','SKU')}${sortTh('recln','name',r.product)}${sortTh('recln','exp',r.expectedQty,1)}${sortTh('recln','rec',r.receivedQty,1)}${sortTh('recln','diff',r.diff,1)}</tr></thead><tbody>
-    ${applySort('recln',sel.lines.map((l,i)=>({...l,_idx:i,diff:l.rec-l.exp})),'sku').map(l=>{const diff=l.diff;return `<tr><td><span class="ref">${l.sku}</span></td><td>${l.name}</td><td class="n mono">${l.exp}</td><td class="n"><input class="mono" style="width:70px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:4px 7px;color:var(--text)" value="${l.rec}" ${sel.status==='done'?'disabled':''} oninput="setReceivedQty(${l._idx},this.value)"></td><td class="n mono" style="color:${diff===0?'var(--muted)':'var(--danger)'}">${diff>0?'+':''}${diff}</td></tr>`}).join('')}
+    <div style="max-height:460px;overflow:auto">${shown.map(x=>`<div class="unrow" style="cursor:pointer;${x.id===RSEL?'background:var(--flow-bg)':''}" onclick="selectReceipt('${x.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${x.id}</span><span class="chip ${stcls2[x.status]}" style="margin-left:auto">${stlabel(x.status)}</span></div><div style="font-size:12.5px;margin-top:2px">${x.from}</div><div class="meta">${x.carrier} \u00b7 ${fmtDate(x.expected)} \u00b7 <span class="tag${x.origin==='po'?' m':''}" style="font-size:9.5px">${x.origin==='po'?r.fromPO:r.fromClient}</span> <span class="ref" style="font-size:11px">${x.ref}</span></div></div></div>`).join('')}</div></div>
+   <div class="panel">${sel?`<div class="ph2">${ic('doc')} ${r.detail} \u00b7 <span class="ref">${sel.id}</span> <span class="chip ${sel.mode==='DIRECT'?'s-deliv':'s-wh'}" style="margin-left:8px">${sel.mode==='DIRECT'?r.modeDirect:r.modePutaway}</span><span class="r">${r.order} \u00b7 ${sel.origin==='po'?r.fromPO:r.fromClient}: <span class="ref">${sel.ref}</span></span></div>
+    <div style="overflow:auto;max-height:340px"><table class="lst"><thead><tr>${sortTh('recln','sku','SKU')}${sortTh('recln','name',r.product)}${sortTh('recln','exp',r.expectedQty,1)}${sortTh('recln','rec',r.receivedQty,1)}${sortTh('recln','diff',r.diff,1)}<th>${r.targetBin}</th></tr></thead><tbody>
+    ${applySort('recln',sel.lines.map((l,i)=>({...l,_idx:i,diff:l.rec-l.exp})),'sku').map(l=>{const diff=l.diff;return `<tr><td><span class="ref">${l.sku}</span></td><td>${l.name}</td><td class="n mono">${l.exp}</td><td class="n"><input class="mono" style="width:70px;text-align:right;background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:4px 7px;color:var(--text)" value="${l.rec}" ${sel.status==='done'||sel.status==='putaway'?'disabled':''} oninput="setReceivedQty(${l._idx},this.value)"></td><td class="n mono" style="color:${diff===0?'var(--muted)':'var(--danger)'}">${diff>0?'+':''}${diff}</td><td>${recvTargetCell(sel,l)}</td></tr>`}).join('')}
     </tbody></table></div>
+    ${recvModePanelHtml(sel)}
     <div class="note" style="margin:14px 16px">${r.scanhint}</div>
     ${sel.lines.some(l=>l.rec!==l.exp)?`<div class="note" style="margin:0 16px 14px;border-color:var(--money-line);color:var(--money-2)">${ic('alert')} ${r.varianceNote}</div>`:''}
-    <div style="padding:0 16px 16px"><button class="btn flow" style="width:100%;justify-content:center" ${sel.status==='done'?'disabled':''} onclick="confirmReceipt()">${ic('check')} ${r.confirm}</button></div>`
+    <div style="padding:0 16px 16px">${sel.status==='putaway'?`<button class="btn flow" style="width:100%;justify-content:center" onclick="confirmPutaway()">${ic('check')} ${r.confirmPutaway}</button>`:`<button class="btn flow" style="width:100%;justify-content:center" ${sel.status==='done'?'disabled':''} onclick="confirmReceipt()">${ic('check')} ${sel.mode==='DIRECT'?r.confirm:r.confirmStage}</button>`}</div>`
     :`<div class="empty" style="min-height:260px"><div>${ic('checkin')}<p style="margin-top:8px">${r.select}</p></div></div>`}</div>
   </div>`}
 
@@ -5794,7 +5955,7 @@ function recibo(){const r=t('recep');const f=t('entry.f');
    como final), reordenarlo con el mismo proveedor, o un ajuste manual con motivo (ej. aparece luego
    en un recuento) — que sí escribe al ledger. Cada resolución descuenta del faltante pendiente. */
 function poReceivedTotals(poId){const totals={};
- RECEIPTS.filter(r=>r.origin==='po'&&r.ref===poId&&r.status==='done').forEach(r=>r.lines.forEach(l=>{totals[l.sku]=(totals[l.sku]||0)+l.rec}));
+ RECEIPTS.filter(r=>r.origin==='po'&&r.ref===poId&&isConfirmedRec(r)).forEach(r=>r.lines.forEach(l=>{totals[l.sku]=(totals[l.sku]||0)+l.rec}));
  return totals}
 let PO_ADJUSTMENTS=[];
 function poShortageLines(po){const recv=poReceivedTotals(po.id);
@@ -5802,7 +5963,7 @@ function poShortageLines(po){const recv=poReceivedTotals(po.id);
    const resolved=PO_ADJUSTMENTS.filter(a=>a.poId===po.id&&a.sku===l.sku).reduce((s,a)=>s+a.qty,0);
    const shortage=Math.max(0,l.qty-received-resolved);
    return {sku:l.sku,name:l.name,ordered:l.qty,received,cost:l.cost,shortage}}).filter(l=>l.shortage>0)}
-function posWithShortage(){return PURCHASE_ORDERS.filter(po=>RECEIPTS.some(r=>r.origin==='po'&&r.ref===po.id&&r.status==='done')&&poShortageLines(po).length>0)}
+function posWithShortage(){return PURCHASE_ORDERS.filter(po=>RECEIPTS.some(r=>r.origin==='po'&&r.ref===po.id&&isConfirmedRec(r))&&poShortageLines(po).length>0)}
 let ADJSEL=null;
 window.selectAdjPO=(id)=>{ADJSEL=id;go('ajustealm',true)};
 window.resolveShortageClose=(poId,sku)=>{const po=PURCHASE_ORDERS.find(x=>x.id===poId);const line=po&&po.lines.find(l=>l.sku===sku);if(!line)return;
@@ -5993,7 +6154,7 @@ function picking(){const p=t('pickscr'),f=t('entry.f');
     </div>
     <div class="qrow" style="padding:0 16px 10px">${qbox('pkq-list',PKQ,t('ui.mselSearch'),"setPKQ(this.value)")}</div>
     <div style="max-height:420px;overflow:auto">${shown.length?shown.map(b=>{const del=pickBatchDeletable(b);
-      return `<div class="unrow"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${b.id}</span><span class="chip ${b.status==='packed'?'s-deliv':'s-cap'}" style="margin-left:auto">${pickBatchStatusLabel(b.status)}</span></div><div class="meta">${b.date} \u00b7 ${b.lines.map(l=>l.sku+' \u00d7'+l.qty).join(', ')}${b.status==='packed'?' \u00b7 '+p.orderNo+': '+b.orderInv+' \u00b7 '+p.invoiceLabel+': '+(b.clientInvoice||'\u2014'):''}</div></div>
+      return `<div class="unrow"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${b.id}</span><span class="chip ${b.status==='packed'?'s-deliv':'s-cap'}" style="margin-left:auto">${pickBatchStatusLabel(b.status)}</span></div><div class="meta">${fmtDate(b.date)} \u00b7 ${b.lines.map(l=>l.sku+' \u00d7'+l.qty).join(', ')}${b.status==='packed'?' \u00b7 '+p.orderNo+': '+b.orderInv+' \u00b7 '+p.invoiceLabel+': '+(b.clientInvoice||'\u2014'):''}</div></div>
        <div style="display:flex;gap:6px;align-items:center">${b.status==='collected'?`<button class="btn sm flow" onclick="openPackModal('${b.id}')">${ic('box')} ${p.pack}</button>`:''}${del?`<button class="rowbtn" onclick="deletePickBatch('${b.id}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button>`:''}</div></div>`}).join(''):`<div class="empty" style="min-height:160px"><div>${ic('check')}</div></div>`}</div></div>
   </div>`}
 
@@ -6047,7 +6208,7 @@ window.openAcctExportDoc=(kind,id)=>{const runs=kind==='compras'?ACCTPURCH_RUNS:
  <div class="pb">
   <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${es?'Corrida':'Run'} <span class="ref">${run.id}</span> · ${run.from} → ${run.to} · ${es?'Plantilla':'Template'}: <b style="color:var(--text)">${tpl.name}</b> (${tpl.format})</div>
   <pre style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:11.5px;line-height:1.6;overflow:auto;max-height:260px;white-space:pre">${acctFileText(run.rows,tpl)}</pre>
-  <div style="display:flex;justify-content:space-between;padding:10px 2px 0"><span style="color:var(--muted)">${es?'Total':'Total'}</span><b class="mono" style="color:var(--money-2)">$${money(total)}</b></div>
+  <div style="display:flex;justify-content:space-between;padding:10px 2px 0"><span style="color:var(--muted)">${es?'Total':'Total'}</span><b class="mono" style="color:var(--money-2)">${fmtMoney(total)}</b></div>
  </div>
  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="closeGenModal()">${es?'Cerrar':'Close'}</button><button class="btn sm money" onclick="confirmAcctExport('${kind}','${run.id}')">${ic('print')} ${run.status==='exportada'?(es?'Reexportar':'Re-export'):(es?'Descargar archivo':'Download file')}</button></div>`;
  document.getElementById('genScrim').classList.add('on')};
@@ -6126,14 +6287,14 @@ window.openScopedExportDoc=(scope,id)=>{
  <div class="pb">
   <div style="font-size:12.5px;color:var(--muted);margin-bottom:8px">${es?'Corrida':'Run'} <span class="ref">${run.id}</span> · ${es?'Plantilla':'Template'}: <b style="color:var(--text)">${tpl.name}</b> (${tpl.format})</div>
   <pre style="background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:11.5px;line-height:1.6;overflow:auto;max-height:260px;white-space:pre">${acctFileText(rows,tpl)}</pre>
-  <div style="display:flex;justify-content:space-between;padding:10px 2px 0"><span style="color:var(--muted)">${es?'Total':'Total'}</span><b class="mono" style="color:var(--money-2)">$${money(total)}</b></div>
+  <div style="display:flex;justify-content:space-between;padding:10px 2px 0"><span style="color:var(--muted)">${es?'Total':'Total'}</span><b class="mono" style="color:var(--money-2)">${fmtMoney(total)}</b></div>
  </div>
  <div class="ft" style="justify-content:flex-end;gap:10px"><button class="btn sm" onclick="closeGenModal()">${es?'Cerrar':'Close'}</button><button class="btn sm money" onclick="toast('${es?'Descarga simulada':'Simulated download'}');closeGenModal()">${ic('print')} ${es?'Descargar archivo':'Download file'}</button></div>`;
  document.getElementById('genScrim').classList.add('on')};
 
 /* --- Contabilización de compras (fuente: recepciones confirmadas contra una PO real) --- */
 function acctPurchLines(from,to){const rows=[];
- RECEIPTS.filter(r=>r.origin==='po'&&r.status==='done'&&r.doneDate&&(!from||r.doneDate>=from)&&(!to||r.doneDate<=to)).forEach(r=>{
+ RECEIPTS.filter(r=>r.origin==='po'&&isConfirmedRec(r)&&r.doneDate&&(!from||r.doneDate>=from)&&(!to||r.doneDate<=to)).forEach(r=>{
   const po=PURCHASE_ORDERS.find(x=>x.id===r.ref);
   r.lines.forEach(l=>{if(!l.rec)return;const poLine=po&&po.lines.find(x=>x.sku===l.sku);
    rows.push({date:r.doneDate,ref:r.ref,party:r.from,sku:l.sku,product:l.name,qty:l.rec,unitCost:poLine?poLine.cost:0,
@@ -6165,9 +6326,9 @@ function comprasContabilidad(){const es=LANG==='es';
     <div style="max-height:480px;overflow:auto">${ACCTPURCH_RUNS.length?ACCTPURCH_RUNS.map(r=>`<div class="unrow" style="cursor:pointer;${run&&r.id===run.id?'background:var(--flow-bg)':''}" onclick="selectAcctPurchRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls[r.status]}" style="margin-left:auto">${stlabel(r.status)}</span></div><div class="meta">${r.from} → ${r.to} · ${r.rows.length} ${es?'líneas':'lines'}</div></div></div>`).join(''):`<div class="empty" style="min-height:160px"><div>${ic('cart')}<p style="margin-top:8px">${es?'Sin corridas todavía':'No runs yet'}</p></div></div>`}</div></div>
    <div class="panel">${run?`<div class="ph2">${ic('cart')} <span class="ref">${run.id}</span><span class="r">${run.from} → ${run.to} · <span class="chip ${stcls[run.status]}">${stlabel(run.status)}</span></span></div>
     <div style="overflow:auto;max-height:340px"><table class="lst"><thead><tr>${sortTh('acctpurch','date',es?'Fecha':'Date')}${sortTh('acctpurch','ref',es?'Compra':'Purchase')}${sortTh('acctpurch','party',es?'Proveedor':'Supplier')}${sortTh('acctpurch','sku','SKU')}${sortTh('acctpurch','product',es?'Producto':'Product')}${sortTh('acctpurch','qty',es?'Cant.':'Qty',1)}${sortTh('acctpurch','unitCost',es?'Costo unit.':'Unit cost',1)}<th class="n">${es?'Total':'Total'}</th></tr></thead><tbody>
-     ${applySort('acctpurch',run.rows,'date').map(r=>`<tr><td class="mono">${r.date.slice(5)}</td><td><span class="ref">${r.ref}</span></td><td>${r.party}</td><td><span class="ref">${r.sku}</span></td><td>${r.product}</td><td class="n mono">${r.qty}</td><td class="n mono">$${money(r.unitCost)}</td><td class="n cash">$${money(r.qty*r.unitCost)}</td></tr>`).join('')}
+     ${applySort('acctpurch',run.rows,'date').map(r=>`<tr><td class="mono">${fmtDayMonth(r.date)}</td><td><span class="ref">${r.ref}</span></td><td>${r.party}</td><td><span class="ref">${r.sku}</span></td><td>${r.product}</td><td class="n mono">${r.qty}</td><td class="n mono">${fmtMoney(r.unitCost)}</td><td class="n cash">${fmtMoney(r.qty*r.unitCost)}</td></tr>`).join('')}
     </tbody></table></div>
-    <div style="display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line-2)"><b>${es?'Total':'Total'}</b><b class="mono" style="color:var(--money-2);font-size:15px">$${money(run.rows.reduce((s,r)=>s+r.qty*r.unitCost,0))}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line-2)"><b>${es?'Total':'Total'}</b><b class="mono" style="color:var(--money-2);font-size:15px">${fmtMoney(run.rows.reduce((s,r)=>s+r.qty*r.unitCost,0))}</b></div>
     <div style="padding:0 16px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
      <div class="f" style="margin:0;min-width:220px"><label>${es?'Plantilla de exportación':'Export template'}</label><select onchange="setAcctTpl('compras',this.value)">${ACCT_TEMPLATES.filter(x=>x.scope==='compras').map(x=>`<option value="${x.id}" ${x.id===tpl.id?'selected':''}>${x.name} (${x.format})</option>`).join('')}</select></div>
      <button class="btn sm" onclick="openAcctTplModal('compras')" style="margin-top:18px">${ic('gear')} ${es?'Configurar…':'Configure…'}</button>
@@ -6211,9 +6372,9 @@ function despachoContabilidad(){const es=LANG==='es';
     <div style="max-height:480px;overflow:auto">${ACCTDESP_RUNS.length?ACCTDESP_RUNS.map(r=>`<div class="unrow" style="cursor:pointer;${run&&r.id===run.id?'background:var(--flow-bg)':''}" onclick="selectAcctDespRun('${r.id}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${r.id}</span><span class="chip ${stcls[r.status]}" style="margin-left:auto">${stlabel(r.status)}</span></div><div class="meta">${r.from} → ${r.to} · ${r.rows.length} ${es?'líneas':'lines'}</div></div></div>`).join(''):`<div class="empty" style="min-height:160px"><div>${ic('truck')}<p style="margin-top:8px">${es?'Sin corridas todavía':'No runs yet'}</p></div></div>`}</div></div>
    <div class="panel">${run?`<div class="ph2">${ic('truck')} <span class="ref">${run.id}</span><span class="r">${run.from} → ${run.to} · <span class="chip ${stcls[run.status]}">${stlabel(run.status)}</span></span></div>
     <div style="overflow:auto;max-height:340px"><table class="lst"><thead><tr>${sortTh('acctdesp','date',es?'Fecha':'Date')}${sortTh('acctdesp','ref',es?'Empaque/Orden':'Pack/Order')}${sortTh('acctdesp','party',es?'Cliente':'Client')}${sortTh('acctdesp','sku','SKU')}${sortTh('acctdesp','product',es?'Producto':'Product')}${sortTh('acctdesp','qty',es?'Cant.':'Qty',1)}${sortTh('acctdesp','unitCost',es?'Costo unit.':'Unit cost',1)}<th class="n">${es?'Total':'Total'}</th></tr></thead><tbody>
-     ${applySort('acctdesp',run.rows,'date').map(r=>`<tr><td class="mono">${r.date.slice(5)}</td><td><span class="ref">${r.ref}</span></td><td>${r.party}</td><td><span class="ref">${r.sku}</span></td><td>${r.product}</td><td class="n mono">${r.qty}</td><td class="n mono">$${money(r.unitCost)}</td><td class="n cash">$${money(r.qty*r.unitCost)}</td></tr>`).join('')}
+     ${applySort('acctdesp',run.rows,'date').map(r=>`<tr><td class="mono">${fmtDayMonth(r.date)}</td><td><span class="ref">${r.ref}</span></td><td>${r.party}</td><td><span class="ref">${r.sku}</span></td><td>${r.product}</td><td class="n mono">${r.qty}</td><td class="n mono">${fmtMoney(r.unitCost)}</td><td class="n cash">${fmtMoney(r.qty*r.unitCost)}</td></tr>`).join('')}
     </tbody></table></div>
-    <div style="display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line-2)"><b>${es?'Total':'Total'}</b><b class="mono" style="color:var(--money-2);font-size:15px">$${money(run.rows.reduce((s,r)=>s+r.qty*r.unitCost,0))}</b></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--line-2)"><b>${es?'Total':'Total'}</b><b class="mono" style="color:var(--money-2);font-size:15px">${fmtMoney(run.rows.reduce((s,r)=>s+r.qty*r.unitCost,0))}</b></div>
     <div style="padding:0 16px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
      <div class="f" style="margin:0;min-width:220px"><label>${es?'Plantilla de exportación':'Export template'}</label><select onchange="setAcctTpl('despacho',this.value)">${ACCT_TEMPLATES.filter(x=>x.scope==='despacho').map(x=>`<option value="${x.id}" ${x.id===tpl.id?'selected':''}>${x.name} (${x.format})</option>`).join('')}</select></div>
      <button class="btn sm" onclick="openAcctTplModal('despacho')" style="margin-top:18px">${ic('gear')} ${es?'Configurar…':'Configure…'}</button>
@@ -6292,7 +6453,7 @@ function ledger(){const es=LANG==='es';
    <div style="overflow:auto;max-height:460px"><table class="lst"><thead><tr>
     ${sortTh('ledger','date',es?'Fecha':'Date')}${sortTh('ledger','time',es?'Hora':'Time')}${sortTh('ledger','type',es?'Tipo':'Type')}${sortTh('ledger','sku','SKU')}${sortTh('ledger','name',es?'Producto':'Product')}${sortTh('ledger','qty',es?'Cantidad':'Qty',1)}${sortTh('ledger','bin',es?'Posición':'Bin')}${sortTh('ledger','lot',es?'Lote/Serie':'Lot/Serial')}${sortTh('ledger','ref',es?'Origen':'Source')}${sortTh('ledger','user',es?'Usuario':'User')}
    </tr></thead><tbody>
-   ${applySort('ledger',rows,'date').map(m=>`<tr><td class="mono">${m.date.slice(5)}</td><td class="mono">${m.time}</td><td><span class="chip ${MOV_TYPES[m.type].cls}">${movTypeLabel(m.type)}</span></td><td><span class="ref">${m.sku}</span></td><td>${m.name}</td><td class="n mono" style="color:${m.qty<0?'var(--danger)':'var(--flow-2)'};font-weight:600">${m.qty>0?'+':''}${m.qty}</td><td class="mono">${m.bin}</td><td class="mono">${m.lot}</td><td><span class="ref" style="font-size:11px">${m.ref}</span></td><td style="color:var(--muted);font-size:12px">${m.user}</td></tr>`).join('')}
+   ${applySort('ledger',rows,'date').map(m=>`<tr><td class="mono">${fmtDayMonth(m.date)}</td><td class="mono">${m.time}</td><td><span class="chip ${MOV_TYPES[m.type].cls}">${movTypeLabel(m.type)}</span></td><td><span class="ref">${m.sku}</span></td><td>${m.name}</td><td class="n mono" style="color:${m.qty<0?'var(--danger)':'var(--flow-2)'};font-weight:600">${m.qty>0?'+':''}${m.qty}</td><td class="mono">${m.bin}</td><td class="mono">${m.lot}</td><td><span class="ref" style="font-size:11px">${m.ref}</span></td><td style="color:var(--muted);font-size:12px">${m.user}</td></tr>`).join('')}
    </tbody></table></div>
    ${rows.length?'':`<div class="empty" style="min-height:160px"><div>${ic('doc')}<p style="margin-top:8px">${t('ui.mselNone')}</p></div></div>`}
   </div>`}
@@ -6479,8 +6640,8 @@ window.setVehicleActive=(code,val)=>{const v=FLEET.find(x=>x.code===code);if(v)v
 window.deleteVehicle=(code)=>{FLEET=FLEET.filter(x=>x.code!==code);toast(code+' '+t('ui.deleted'));go('flota',true)};
 function maintStatusOf(m){const v=FLEET.find(x=>x.code===m.vehicle);if(!v)return {status:'ok',nextLabel:'—'};
  if(m.basis==='km'){const next=m.lastOdometer+m.intervalKm;const remaining=next-v.odometer;
-   return {status:remaining<0?'overdue':remaining<=500?'due':'ok', nextLabel:next.toLocaleString()+' km'};
- } else {const next=new Date(m.lastDate+'T00:00:00');next.setDate(next.getDate()+m.intervalDays);const nextStr=next.toISOString().slice(0,10);
+   return {status:remaining<0?'overdue':remaining<=500?'due':'ok', nextLabel:money(next,0)+' km'};
+ } else {const next=new Date(m.lastDate+'T00:00:00Z');next.setUTCDate(next.getUTCDate()+m.intervalDays);const nextStr=next.toISOString().slice(0,10);
    const remaining=daysUntil(nextStr);
    return {status:remaining<0?'overdue':remaining<=14?'due':'ok', nextLabel:nextStr};
  }}
@@ -6513,7 +6674,7 @@ function flota(){const fl=t('flota');
    </div>
    <div class="pb" style="padding-top:10px">
    <table class="lst densetbl"><thead><tr>${sortTh('fldocs','entity',fl.entity)}${sortTh('fldocs','type',fl.docType)}${sortTh('fldocs','expiry',fl.expiry)}${sortTh('fldocs','daysLeft',fl.daysLeft,1)}</tr></thead><tbody>
-   ${docsShown.length?applySort('fldocs',docsShown,'expiry').map(d=>`<tr><td>${d.label} <span class="tag" style="margin-left:4px">${d.entity}</span></td><td>${docTypeLabels[d.type]}</td><td class="mono">${d.expiry}</td><td class="n"><span class="chip ${d.daysLeft<0?'s-fail':d.daysLeft<=14?'s-route':d.daysLeft<=30?'s-cap':'s-deliv'}">${d.daysLeft<0?fl.expired:d.daysLeft+' '+fl.daysLeft.toLowerCase()}</span></td></tr>`).join(''):`<tr><td colspan="4" style="color:var(--faint)">${fl.noDocs}</td></tr>`}
+   ${docsShown.length?applySort('fldocs',docsShown,'expiry').map(d=>`<tr><td>${d.label} <span class="tag" style="margin-left:4px">${d.entity}</span></td><td>${docTypeLabels[d.type]}</td><td class="mono">${fmtDate(d.expiry)}</td><td class="n"><span class="chip ${d.daysLeft<0?'s-fail':d.daysLeft<=14?'s-route':d.daysLeft<=30?'s-cap':'s-deliv'}">${d.daysLeft<0?fl.expired:d.daysLeft+' '+fl.daysLeft.toLowerCase()}</span></td></tr>`).join(''):`<tr><td colspan="4" style="color:var(--faint)">${fl.noDocs}</td></tr>`}
    </tbody></table>
    </div>
   </div>
@@ -6521,7 +6682,7 @@ function flota(){const fl=t('flota');
    <div class="ph2">${ic('truck')} ${fl.vehicles} <span class="r">${vehiclesShown.length}</span></div>
    <div class="qrow">${qbox('flq',FLQ,t('ui.mselSearch'),"setFLQ(this.value)")}</div>
    <div style="overflow:auto"><table class="lst densetbl"><thead><tr>${sortTh('flveh','code',fl.code)}${sortTh('flveh','plate',fl.plate)}${sortTh('flveh','type',fl.type)}${sortTh('flveh','ownership',fl.ownership)}${sortTh('flveh','fuel',fl.fuel)}${sortTh('flveh','odometer',fl.odometer,1)}${sortTh('flveh','baseWh',fl.baseWh)}${sortTh('flveh','maxWeightKg',fl.maxWeight,1)}<th>${fl.active}</th><th style="width:60px"></th></tr></thead><tbody>
-   ${vehiclesShown.length?applySort('flveh',vehiclesShown,'code').map(v=>`<tr><td><span class="ref">${v.code}</span></td><td class="mono">${v.plate}</td><td>${v.type}</td><td>${({propio:fl.own_propio,arrendado:fl.own_arrendado,tercero:fl.own_tercero})[v.ownership]}</td><td>${v.fuel}</td><td class="n mono">${v.odometer.toLocaleString()}</td><td>${(WAREHOUSES.find(w=>w.code===v.baseWh)||{}).name||v.baseWh}</td><td class="n mono">${v.maxWeightKg}</td><td><label class="mi" style="padding:0"><input type="checkbox" ${v.active?'checked':''} onchange="setVehicleActive('${v.code}',this.checked)"></label></td><td><div style="display:flex;gap:4px;justify-content:flex-end"><button class="rowbtn" onclick="openVehicleModal('${v.code}')" aria-label="${fl.editVehicle}" title="${fl.editVehicle}">${ic('pencil')}</button><button class="rowbtn" onclick="deleteVehicle('${v.code}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button></div></td></tr>`).join(''):`<tr><td colspan="10" style="color:var(--faint)">${t('ui.mselNone')}</td></tr>`}
+   ${vehiclesShown.length?applySort('flveh',vehiclesShown,'code').map(v=>`<tr><td><span class="ref">${v.code}</span></td><td class="mono">${v.plate}</td><td>${v.type}</td><td>${({propio:fl.own_propio,arrendado:fl.own_arrendado,tercero:fl.own_tercero})[v.ownership]}</td><td>${v.fuel}</td><td class="n mono">${money(v.odometer,0)}</td><td>${(WAREHOUSES.find(w=>w.code===v.baseWh)||{}).name||v.baseWh}</td><td class="n mono">${v.maxWeightKg}</td><td><label class="mi" style="padding:0"><input type="checkbox" ${v.active?'checked':''} onchange="setVehicleActive('${v.code}',this.checked)"></label></td><td><div style="display:flex;gap:4px;justify-content:flex-end"><button class="rowbtn" onclick="openVehicleModal('${v.code}')" aria-label="${fl.editVehicle}" title="${fl.editVehicle}">${ic('pencil')}</button><button class="rowbtn" onclick="deleteVehicle('${v.code}')" aria-label="${t('ui.deleted')}" title="${t('ui.deleted')}">${ic('trash')}</button></div></td></tr>`).join(''):`<tr><td colspan="10" style="color:var(--faint)">${t('ui.mselNone')}</td></tr>`}
    </tbody></table></div>
   </div>
   <div class="panel" style="margin-bottom:14px">
@@ -6536,7 +6697,7 @@ function flota(){const fl=t('flota');
    <div class="ph2">${ic('clip')} ${fl.woTbl} <span class="r">${WORK_ORDERS.length}</span></div>
    <div style="overflow:auto"><table class="lst densetbl"><thead><tr>${sortTh('flwo','id',fl.woId)}${sortTh('flwo','plate',fl.vehicles)}${sortTh('flwo','kind',fl.kind)}${sortTh('flwo','provider',fl.provider)}${sortTh('flwo','laborCost',fl.laborCost,1)}${sortTh('flwo','partsCost',fl.partsCost,1)}${sortTh('flwo','total',fl.totalCost,1)}${sortTh('flwo','status',fl.status)}</tr></thead><tbody>
    ${applySort('flwo',WORK_ORDERS.map(w=>{const v=FLEET.find(x=>x.code===w.vehicle);return {w,v,plate:v?v.plate:w.vehicle,kind:w.kind,provider:w.provider,laborCost:w.laborCost,partsCost:w.partsCost,total:w.laborCost+w.partsCost,status:w.status,id:w.id}}),'id').map(({w,v,total})=>{
-     return `<tr><td><span class="ref">${w.id}</span></td><td>${v?v.plate:w.vehicle}</td><td>${w.kind==='preventivo'?fl.kind_preventivo:fl.kind_correctivo}</td><td>${w.provider}</td><td class="n mono">$${money(w.laborCost)}</td><td class="n mono">$${money(w.partsCost)}</td><td class="n cash">$${money(total)}</td><td><span class="chip ${w.status==='open'?'s-cap':'s-deliv'}">${w.status==='open'?fl.st_open:fl.st_closed}</span></td></tr>`}).join('')}
+     return `<tr><td><span class="ref">${w.id}</span></td><td>${v?v.plate:w.vehicle}</td><td>${w.kind==='preventivo'?fl.kind_preventivo:fl.kind_correctivo}</td><td>${w.provider}</td><td class="n mono">${fmtMoney(w.laborCost)}</td><td class="n mono">${fmtMoney(w.partsCost)}</td><td class="n cash">${fmtMoney(total)}</td><td><span class="chip ${w.status==='open'?'s-cap':'s-deliv'}">${w.status==='open'?fl.st_open:fl.st_closed}</span></td></tr>`}).join('')}
    </tbody></table></div>
   </div>
   <div class="panel">
@@ -6545,7 +6706,7 @@ function flota(){const fl=t('flota');
    ${applySort('flfuel',[...FUEL_LOG].sort((a,b)=>a.date.localeCompare(b.date)).map((fu,i,arr)=>{const v=FLEET.find(x=>x.code===fu.vehicle);
      const prev=[...arr].slice(0,i).reverse().find(x=>x.vehicle===fu.vehicle);
      const km=prev?fu.odometer-prev.odometer:null;
-     return {fu,v,km,date:fu.date,plate:v?v.plate:fu.vehicle,liters:fu.liters,cost:fu.cost,kml:km!=null?km/fu.liters:null,costKm:km!=null?fu.cost/km:null}}),'date').map(({fu,v,km,kml,costKm})=>`<tr><td class="mono">${fu.date}</td><td>${v?v.plate:fu.vehicle}</td><td class="n mono">${fu.liters}</td><td class="n mono">$${money(fu.cost)}</td><td class="n mono">${km!=null?km.toLocaleString():'—'}</td><td class="n mono">${kml!=null?kml.toFixed(1):'—'}</td><td class="n mono">${costKm!=null?'$'+costKm.toFixed(2):'—'}</td></tr>`).join('')}
+     return {fu,v,km,date:fu.date,plate:v?v.plate:fu.vehicle,liters:fu.liters,cost:fu.cost,kml:km!=null?km/fu.liters:null,costKm:km!=null?fu.cost/km:null}}),'date').map(({fu,v,km,kml,costKm})=>`<tr><td class="mono">${fmtDate(fu.date)}</td><td>${v?v.plate:fu.vehicle}</td><td class="n mono">${fu.liters}</td><td class="n mono">${fmtMoney(fu.cost)}</td><td class="n mono">${km!=null?money(km,0):'—'}</td><td class="n mono">${kml!=null?kml.toFixed(1):'—'}</td><td class="n mono">${costKm!=null?'$'+costKm.toFixed(2):'—'}</td></tr>`).join('')}
    </tbody></table></div>
   </div>`}
 
@@ -6576,7 +6737,7 @@ const PORTAL_TIMELINE=['cap','wh','disp','route','deliv'];
 function portalHome(){const pt=t('portal');
  const client=CLIENTS.find(c=>c.id===PORTAL_CLIENT)||CLIENTS[0];
  const myOrdersAll=ORDERS.filter(o=>o.sender===client.id);
- const myOrders=myOrdersAll.filter(o=>matchesQ([o.inv,o.cons,o.town,o.svc,o.pkg,o.pcs,t('st.'+o.st),o.cod?'$'+money(o.cod):''],PORTALQ));
+ const myOrders=myOrdersAll.filter(o=>matchesQ([o.inv,o.cons,o.town,o.svc,o.pkg,o.pcs,t('st.'+o.st),o.cod?fmtMoney(o.cod):''],PORTALQ));
  const openN=myOrdersAll.filter(o=>o.st!=='deliv').length;
  const transitN=myOrdersAll.filter(o=>o.st==='route').length;
  const weekAgo=isoDaysAgo(7);
@@ -6593,13 +6754,13 @@ function portalHome(){const pt=t('portal');
    <div class="node flow"><div class="ph">${ic('box')} ${pt.openOrders}</div><div class="big">${openN}</div></div><div class="pipe"></div>
    <div class="node m"><div class="ph">${ic('route')} ${pt.inTransit}</div><div class="big">${transitN}</div></div><div class="pipe"></div>
    <div class="node m"><div class="ph">${ic('check')} ${pt.deliveredWeek}</div><div class="big">${deliveredWeekN}</div></div><div class="pipe"></div>
-   <div class="node m"><div class="ph">${ic('cash')} ${pt.balance}</div><div class="big" style="font-size:19px">$${money(Math.max(0,client.creditLimit-spend))}</div></div>
+   <div class="node m"><div class="ph">${ic('cash')} ${pt.balance}</div><div class="big" style="font-size:19px">${fmtMoney(Math.max(0,client.creditLimit-spend))}</div></div>
   </div>
   <div class="cols" style="grid-template-columns:1fr 1fr">
    <div class="panel" style="margin-bottom:14px">
     <div class="ph2">${ic('box')} ${pt.myOrders} <span class="r">${myOrders.length}</span><button class="btn sm flow" style="margin-left:10px" onclick="go('portalEntrada')">${ic('plus')} ${pt.newOrder}</button></div>
     <div class="qrow">${qbox('portalq',PORTALQ,t('ui.mselSearch'),"setPortalQ(this.value)")}</div>
-    <div style="max-height:420px;overflow:auto">${myOrders.length?myOrders.map(o=>`<div class="unrow" style="cursor:pointer;${o.inv===PORTAL_SEL?'background:var(--flow-bg)':''}" onclick="selectPortalOrder('${o.inv}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${o.inv}</span><span class="chip ${stcls[o.st]}" style="margin-left:auto">${t('st.'+o.st)}</span></div><div style="font-size:12.5px;margin-top:2px">${o.cons}</div><div class="meta">${o.town} · ${o.svc} · ${o.pkg}${o.cod?' · COD $'+money(o.cod):''}</div></div></div>`).join(''):`<div class="empty" style="min-height:120px"><p>${pt.noOrders}</p></div>`}</div>
+    <div style="max-height:420px;overflow:auto">${myOrders.length?myOrders.map(o=>`<div class="unrow" style="cursor:pointer;${o.inv===PORTAL_SEL?'background:var(--flow-bg)':''}" onclick="selectPortalOrder('${o.inv}')"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span class="ref">${o.inv}</span><span class="chip ${stcls[o.st]}" style="margin-left:auto">${t('st.'+o.st)}</span></div><div style="font-size:12.5px;margin-top:2px">${o.cons}</div><div class="meta">${o.town} · ${o.svc} · ${o.pkg}${o.cod?' · COD '+fmtMoney(o.cod):''}</div></div></div>`).join(''):`<div class="empty" style="min-height:120px"><p>${pt.noOrders}</p></div>`}</div>
    </div>
    <div class="panel" style="margin-bottom:14px">
     <div class="ph2">${ic('gps')} ${pt.tracking}</div>
@@ -6623,7 +6784,7 @@ function portalHome(){const pt=t('portal');
     <div class="pb" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;padding-top:10px">
      <div><div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">${pt.sla}</div><div style="font-size:20px;font-weight:700;margin-top:4px">${slaPct}%</div></div>
      <div><div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">${pt.volume}</div><div style="font-size:20px;font-weight:700;margin-top:4px">${volN}</div></div>
-     <div><div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">${pt.spend}</div><div style="font-size:20px;font-weight:700;margin-top:4px">$${money(spend)}</div></div>
+     <div><div style="font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em">${pt.spend}</div><div style="font-size:20px;font-weight:700;margin-top:4px">${fmtMoney(spend)}</div></div>
     </div>
    </div>
   </div>
@@ -6986,8 +7147,9 @@ let ACTIVE_SESSIONS=[
 window.revokeSession=(id)=>{const at=t('audit');const s=ACTIVE_SESSIONS.find(x=>x.id===id);if(!s||s.current)return;
  ACTIVE_SESSIONS=ACTIVE_SESSIONS.filter(x=>x.id!==id);toast(at.revokedSessionMsg);go('auditoria',true)};
 window.revokeOtherSessions=()=>{const at=t('audit');ACTIVE_SESSIONS=ACTIVE_SESSIONS.filter(x=>x.current);toast(at.revokedAllMsg);go('auditoria',true)};
-let TENANT_SECURITY={mfaRequired:false, reauthWindowMin:30};
+let TENANT_SECURITY={mfaRequired:false, reauthWindowMin:30, sessionDays:30, deviceSessionDays:30}; // Tenant.MfaRequired / Aal2WindowMinutes / SessionDays / DeviceSessionDays
 window.setTenantMfaRequired=(v)=>{TENANT_SECURITY.mfaRequired=!!v;go('auditoria',true)};
+window.setTenantSessionDays=(k,v)=>{const n=parseInt(v,10);if(n>=1&&n<=365)TENANT_SECURITY[k]=n;go('auditoria',true)};
 window.setTenantReauthWindow=(v)=>{TENANT_SECURITY.reauthWindowMin=+v;go('auditoria',true)};
 function auditoriaSesionesTab(){const at=t('audit');
  const sessRows=applySort('auditsess',ACTIVE_SESSIONS.map(s=>({...s, userLabel:userName(s.userId), lastActiveSort:s.current?(TODAY+' 23:59'):s.lastActive})),'userLabel');
@@ -7012,6 +7174,9 @@ function auditoriaSesionesTab(){const at=t('audit');
      <option value="60" ${TENANT_SECURITY.reauthWindowMin===60?'selected':''}>60 ${at.minutesWord}</option>
     </select></div>
     <p class="d" style="margin:10px 0 0">${at.reauthHint}</p>
+    <div class="r2" style="margin-top:16px"><div class="f" style="margin:0"><label>${at.sessionDaysLabel}</label><input type="number" class="mono" min="1" max="365" value="${TENANT_SECURITY.sessionDays}" onchange="setTenantSessionDays('sessionDays',this.value)"></div>
+     <div class="f" style="margin:0"><label>${at.deviceDaysLabel}</label><input type="number" class="mono" min="1" max="365" value="${TENANT_SECURITY.deviceSessionDays}" onchange="setTenantSessionDays('deviceSessionDays',this.value)"></div></div>
+    <p class="d" style="margin:10px 0 0">${at.sessionDaysHint}</p>
    </div></div>
  </div>`}
 function auditoriaScreen(){const n=t('nav.auditoria');const at=t('audit');
@@ -7344,12 +7509,142 @@ function tenantBrandPanelHtml(){const tset=t('tenantset');const c=brandColors();
    <div class="r2" style="margin-bottom:10px">${brandLogoSlotHtml('logoFull',tset.logoFull)}${brandLogoSlotHtml('logoFullInv',tset.logoFullInv)}</div>
    <div class="r2" style="margin-bottom:0">${brandLogoSlotHtml('logoMini',tset.logoMini)}${brandLogoSlotHtml('logoMiniInv',tset.logoMiniInv)}</div>
   </div></div>`}
-function ajustesScreen(){const n=t('nav.ajustes');
- return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div></div>
-  ${tenantModulesPanelHtml()}
-  <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:16px">${tenantDefaultsPanelHtml()}${tenantPipelinePanelHtml()}</div>
-  ${tenantBrandPanelHtml()}
-  <div class="note" style="margin-top:16px">${t('tenantset').note}</div>`}
+/* ===== Ajustes de la compañía: pestañas =====
+   Pedido de Luis: la pantalla de configuración de la compañía se organiza en pestañas (el mismo patrón `.seg` de Seguridad y
+   auditoría) y suma lo que faltaba: datos de la compañía, REGIÓN Y FORMATOS (zona horaria, moneda, fecha, hora, números,
+   teléfono; ver REGIONS/TENANT_FMT arriba) y CALENDARIO (días laborables y feriados). Los paneles que ya existían (módulos,
+   valores por defecto, pipeline de estatus, marca) se reutilizan tal cual, repartidos en sus pestañas.
+   Qué NO está aquí, a propósito: la política de MFA, la reautenticación y la duración de las sesiones viven en Seguridad y
+   auditoría (una sola pantalla para la seguridad, sin controles duplicados), y el MODO DE RECIBO (con staging o directo a
+   posición) es de cada ALMACÉN, no de la compañía: se cambia en Almacenes. En este mock los ajustes son un solo juego de
+   valores para las dos compañías de la demo; en el sistema real cada compañía guarda los suyos (columnas de Tenant). */
+let SET_TAB='general';
+window.setSetTab=(k)=>{SET_TAB=k;go('ajustes',true)};
+let TENANT_PROFILE={legalName:'Advance Logistics, LLC', taxId:'66-0000000', lang:'es'};
+window.setProfileF=(k,v)=>{TENANT_PROFILE[k]=String(v).trim();toast(t('tenantset').profileSaved);go('ajustes',true)};
+function tenantProfilePanelHtml(){const x=t('tenantset');const tn=TENANTS.find(z=>z.code===CURRENT_TENANT);
+ return `<div class="cols" style="grid-template-columns:1.3fr 1fr;align-items:start">
+  <div class="panel"><div class="ph2">${ic('gear')} ${x.profileTitle}</div><div class="pb">
+   <div class="f"><label>${x.nameLabel}</label><input value="${tn.name}" disabled></div>
+   <div class="r2"><div class="f"><label>${x.legalLabel}</label><input value="${TENANT_PROFILE.legalName.replace(/"/g,'&quot;')}" onchange="setProfileF('legalName',this.value)"></div>
+   <div class="f"><label>${x.taxLabel}</label><input class="mono" value="${TENANT_PROFILE.taxId}" onchange="setProfileF('taxId',this.value)"></div></div>
+   <div class="f" style="max-width:260px"><label>${x.langLabel}</label><select onchange="setProfileF('lang',this.value)"><option value="es" ${TENANT_PROFILE.lang==='es'?'selected':''}>Español</option><option value="en" ${TENANT_PROFILE.lang==='en'?'selected':''}>English</option></select></div>
+   <p class="d" style="margin:0">${x.langHint}</p>
+  </div></div>
+  <div class="panel"><div class="ph2">${ic('shield')} ${x.secLinkTitle}</div><div class="pb">
+   <p class="d" style="margin-top:0">${x.secLinkHint}</p>
+   <button class="btn" onclick="setSecTab('sesiones')">${x.secLinkBtn}</button>
+  </div></div>
+ </div>`}
+/* --- Región y formatos --- */
+const TZ_OPTIONS=[
+ {id:'America/Puerto_Rico',es:'Puerto Rico (AST, UTC−4 todo el año)',en:'Puerto Rico (AST, UTC−4 year-round)'},
+ {id:'America/New_York',es:'Este de EE. UU. (Nueva York)',en:'US Eastern (New York)'},
+ {id:'America/Chicago',es:'Centro de EE. UU. (Chicago)',en:'US Central (Chicago)'},
+ {id:'America/Denver',es:'Montaña de EE. UU. (Denver)',en:'US Mountain (Denver)'},
+ {id:'America/Los_Angeles',es:'Pacífico de EE. UU. (Los Ángeles)',en:'US Pacific (Los Angeles)'},
+ {id:'America/Anchorage',es:'Alaska (Anchorage)',en:'Alaska (Anchorage)'},
+ {id:'Pacific/Honolulu',es:'Hawái (Honolulu)',en:'Hawaii (Honolulu)'}];
+const PHONE_MASKS=['(###) ###-####','###-###-####','###.###.####','### ### ####'];
+function regionIsCustom(){const r=REGIONS[TENANT_FMT.region];return REGION_FIELDS.some(k=>String(TENANT_FMT[k])!==String(r[k]))}
+window.setRegion=(code)=>{const r=REGIONS[code];if(!r)return;TENANT_FMT=Object.assign({region:code},r);toast(t('tenantset').regionApplied);tickClock();go('ajustes',true)};
+window.setFmt=(k,v)=>{const n=Object.assign({},TENANT_FMT);n[k]=(k==='decimals'||k==='weekStart')?+v:v;
+ /* los separadores de miles y de decimales nunca pueden ser el mismo (el servidor lo rechaza con sepClash). En pantalla
+    no se le pide al usuario un paso intermedio: si escoge uno que choca con el otro, el otro se intercambia solo. */
+ if(n.thou===n.dec){if(k==='thou')n.dec=(v===',')?'.':',';else n.thou=(v===',')?'.':','}
+ if(n.thou===n.dec){toast(t('tenantset').sepClash);go('ajustes',true);return}
+ TENANT_FMT=n;tickClock();go('ajustes',true)};
+function fmtSel(k,opts){return `<select onchange="setFmt('${k}',this.value)">${opts.map(([v,l])=>`<option value="${v}" ${String(TENANT_FMT[k])===String(v)?'selected':''}>${l}</option>`).join('')}</select>`}
+function tenantRegionPanelsHtml(){const x=t('tenantset');const es=LANG==='es';const f=TENANT_FMT;
+ const nowUtc=new Date().toISOString().slice(0,16).replace('T',' ')+' UTC';
+ const pv=(l,v)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid var(--line-2)"><span style="color:var(--muted)">${l}</span><b class="mono" style="font-size:12.5px;text-align:right">${v}</b></div>`;
+ return `<div class="panel"><div class="ph2">${ic('pin')} ${x.regionTitle}
+   <span class="r">${regionIsCustom()?`<span class="chip s-cap" style="margin-right:8px">${x.regionCustom}</span><button class="btn sm" onclick="setRegion('${f.region}')">${x.regionReset}</button>`:''}</span></div>
+  <div class="pb"><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">${Object.keys(REGIONS).map(c=>`<button class="btn sm ${f.region===c?'flow':''}" onclick="setRegion('${c}')">${REGIONS[c][es?'es':'en']}</button>`).join('')}</div>
+   <p class="d" style="margin:0">${x.regionHint}</p></div></div>
+  <div class="cols" style="grid-template-columns:1.5fr 1fr;align-items:start;margin-top:16px">
+   <div>
+    <div class="panel"><div class="ph2">${ic('clock')} ${x.tzLabel}</div><div class="pb">
+     <div class="f"><label>${x.tzLabel}</label>${fmtSel('tz',TZ_OPTIONS.map(z=>[z.id,z[es?'es':'en']]))}</div>
+     <p class="d" style="margin:0">${x.tzHint}</p></div></div>
+    <div class="panel" style="margin-top:16px"><div class="ph2">${ic('cash')} ${x.currencyTitle}</div><div class="pb">
+     <div class="r3"><div class="f"><label>${x.curLabel}</label>${fmtSel('cur',[['USD','USD — '+(es?'Dólar estadounidense':'US dollar')]])}</div>
+      <div class="f"><label>${x.symLabel}</label><input class="mono" maxlength="3" value="${f.sym}" onchange="setFmt('sym',this.value||'$')"></div>
+      <div class="f"><label>${x.decLabel}</label>${fmtSel('decimals',[[0,'0'],[2,'2'],[3,'3']])}</div></div>
+     <div class="f" style="max-width:300px;margin-bottom:0"><label>${x.symPosLabel}</label>${fmtSel('symPos',[['before',x.symBefore],['after',x.symAfter]])}</div>
+     <p class="d" style="margin:10px 0 0">${x.curHint}</p></div></div>
+    <div class="panel" style="margin-top:16px"><div class="ph2">${ic('clip')} ${x.datetimeTitle}</div><div class="pb">
+     <div class="r3"><div class="f"><label>${x.dateFmtLabel}</label>${fmtSel('dateFmt',[['MDY',es?'Mes/Día/Año':'Month/Day/Year'],['DMY',es?'Día/Mes/Año':'Day/Month/Year'],['YMD',es?'Año/Mes/Día':'Year/Month/Day']])}</div>
+      <div class="f"><label>${x.dateSepLabel}</label>${fmtSel('dateSep',[['/','/'],['-','-'],['.','.']])}</div>
+      <div class="f"><label>${x.timeFmtLabel}</label>${fmtSel('time',[['12',x.time12],['24',x.time24]])}</div></div>
+     <div class="f" style="max-width:300px;margin-bottom:0"><label>${x.weekStartLabel}</label>${fmtSel('weekStart',[[0,x.sun],[1,x.mon]])}</div></div></div>
+    <div class="cols" style="grid-template-columns:1fr 1fr;margin-top:16px;align-items:start">
+     <div class="panel"><div class="ph2">${ic('grid')} ${x.numbersTitle}</div><div class="pb">
+      <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${x.thouLabel}</label>${fmtSel('thou',[[',',es?'Coma ( , )':'Comma ( , )'],['.',es?'Punto ( . )':'Period ( . )'],[' ',es?'Espacio':'Space']])}</div>
+       <div class="f" style="margin:0"><label>${x.decSepLabel}</label>${fmtSel('dec',[['.',es?'Punto ( . )':'Period ( . )'],[',',es?'Coma ( , )':'Comma ( , )']])}</div></div></div></div>
+     <div class="panel"><div class="ph2">${ic('print')} ${x.phoneTitle}</div><div class="pb">
+      <div class="r2" style="margin-bottom:0"><div class="f" style="margin:0"><label>${x.phoneCcLabel}</label><input class="mono" value="${f.phoneCc}" onchange="setFmt('phoneCc',this.value)"></div>
+       <div class="f" style="margin:0"><label>${x.phoneMaskLabel}</label>${fmtSel('phoneMask',PHONE_MASKS.map(m=>[m,m.replace(/#/g,'0')]))}</div></div>
+      <p class="d" style="margin:10px 0 0">${x.phoneHint}</p></div></div>
+    </div>
+   </div>
+   <div class="panel" style="position:sticky;top:12px"><div class="ph2">${ic('search')} ${x.previewTitle}</div><div class="pb">
+    ${pv(x.pvToday,fmtDate(todayISO()))}${pv(x.pvNowUtc,nowUtc)}${pv(x.pvShort,fmtDate(todayISO()))}${pv(x.pvDayMonth,fmtDayMonth(todayISO()))}
+    ${pv(x.pvLong,fmtDateLong(new Date(),{weekday:'long',day:'numeric',month:'long',year:'numeric'}))}${pv(x.pvTime,fmtTime())}
+    ${pv(x.pvMoney,fmtMoney(1234567.5))}${pv(x.pvNeg,fmtMoney(-12))}${pv(x.pvNum,money(61023.125,3))}${pv(x.pvPhone,fmtPhone('7875550142'))}
+   </div></div>
+  </div>`}
+/* --- Calendario: días laborables y feriados --- */
+let TENANT_CAL={workDays:[1,2,3,4,5],holidays:[
+ {date:'2026-01-01',es:'Año Nuevo',en:"New Year's Day",rec:true},{date:'2026-01-06',es:'Día de Reyes',en:'Three Kings Day',rec:true},
+ {date:'2026-03-22',es:'Abolición de la Esclavitud',en:'Emancipation Day',rec:true},{date:'2026-04-03',es:'Viernes Santo',en:'Good Friday',rec:false},
+ {date:'2026-07-04',es:'Independencia de EE. UU.',en:'Independence Day',rec:true},{date:'2026-07-25',es:'Constitución de Puerto Rico',en:'Constitution Day (PR)',rec:true},
+ {date:'2026-09-07',es:'Día del Trabajo',en:'Labor Day',rec:false},{date:'2026-12-25',es:'Navidad',en:'Christmas Day',rec:true}]};
+function holidayName(h){return LANG==='es'?h.es:h.en}
+function isHoliday(iso){const md=iso.slice(5);return TENANT_CAL.holidays.some(h=>h.date===iso||(h.rec&&h.date.slice(5)===md))}
+function isWorkDay(iso){const [y,m,d]=iso.split('-').map(Number);const dow=new Date(Date.UTC(y,m-1,d)).getUTCDay();return TENANT_CAL.workDays.includes(dow)&&!isHoliday(iso)}
+function nextWorkDay(fromIso){for(let i=1;i<=370;i++){const [y,m,d]=fromIso.split('-').map(Number);const iso=new Date(Date.UTC(y,m-1,d+i)).toISOString().slice(0,10);if(isWorkDay(iso))return iso}return null}
+window.toggleWorkDay=(d)=>{const a=TENANT_CAL.workDays;const i=a.indexOf(d);
+ if(i>=0){if(a.length===1){toast(t('tenantset').needOneWorkDay);go('ajustes',true);return}a.splice(i,1)}else a.push(d);
+ go('ajustes',true)};
+window.addHoliday=()=>{const x=t('tenantset');const date=document.getElementById('hol_date').value;const name=document.getElementById('hol_name').value.trim();const rec=document.getElementById('hol_rec').checked;
+ if(!date||!name){toast(x.needHolidayName);return}
+ if(TENANT_CAL.holidays.some(h=>h.date===date)){toast(x.dupHoliday);return}
+ TENANT_CAL.holidays.push({date,es:name,en:name,rec});toast(x.holidayAdded);go('ajustes',true)};
+window.removeHoliday=(date)=>{TENANT_CAL.holidays=TENANT_CAL.holidays.filter(h=>h.date!==date);toast(t('tenantset').holidayRemoved);go('ajustes',true)};
+function tenantCalendarPanelsHtml(){const x=t('tenantset');const es=LANG==='es';
+ const names=es?['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+ const order=TENANT_FMT.weekStart===1?[1,2,3,4,5,6,0]:[0,1,2,3,4,5,6];
+ const nb=nextWorkDay(todayISO());
+ const hols=applySort('tenanthol',TENANT_CAL.holidays.map(h=>({h,date:h.date,name:holidayName(h),rec:h.rec?1:0})),'date');
+ return `<div class="cols" style="grid-template-columns:1fr 1.4fr;align-items:start">
+  <div class="panel"><div class="ph2">${ic('clock')} ${x.workdaysTitle}</div><div class="pb">
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${order.map(d=>`<label class="sw" style="gap:6px"><input type="checkbox" ${TENANT_CAL.workDays.includes(d)?'checked':''} onchange="toggleWorkDay(${d})"><span class="tk"></span>${names[d]}</label>`).join('')}</div>
+   <p class="d" style="margin:0 0 12px">${x.workdaysHint}</p>
+   <div style="display:flex;justify-content:space-between;padding:8px 0 0;border-top:1px solid var(--line-2)"><span style="color:var(--muted)">${x.nextBizDay}</span><b class="mono">${nb?fmtDate(nb):'—'}</b></div>
+  </div></div>
+  <div class="panel"><div class="ph2">${ic('doc')} ${x.holidaysTitle} <span class="r">${TENANT_CAL.holidays.length}</span></div>
+   <div class="pb" style="padding:0"><table class="lst"><thead><tr>${sortTh('tenanthol','date',x.colDate)}${sortTh('tenanthol','name',x.colName)}${sortTh('tenanthol','rec',x.colRecurring)}<th></th></tr></thead>
+    <tbody>${hols.length?hols.map(({h})=>`<tr><td class="mono">${h.rec?fmtDayMonth(h.date):fmtDate(h.date)}</td><td>${holidayName(h)}</td><td>${h.rec?`<span class="chip s-route">${x.colRecurring}</span>`:''}</td><td style="width:50px;text-align:right"><button class="rowbtn" onclick="removeHoliday('${h.date}')" title="${x.holidayRemoved}">${ic('trash')}</button></td></tr>`).join(''):`<tr><td colspan="4" style="color:var(--faint);padding:14px">${x.noHolidays}</td></tr>`}</tbody></table></div>
+   <div class="pb" style="border-top:1px solid var(--line-2)"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+    <div class="f" style="margin:0"><label>${x.colDate}</label><input id="hol_date" type="date"></div>
+    <div class="f" style="margin:0;flex:1;min-width:160px"><label>${x.holidayName}</label><input id="hol_name"></div>
+    <label class="sw" style="gap:6px;margin-bottom:8px"><input id="hol_rec" type="checkbox"><span class="tk"></span>${x.colRecurring}</label>
+    <button class="btn flow" onclick="addHoliday()">${ic('plus')} ${x.addHoliday}</button></div></div>
+  </div></div>`}
+function ajustesScreen(){const n=t('nav.ajustes');const x=t('tenantset');
+ const tabs=[['general','gear',x.tabGeneral],['region','pin',x.tabRegion],['calendar','clock',x.tabCalendar],['modules','layers',x.tabModules],['ops','route',x.tabOps],['brand','tag',x.tabBrand]];
+ let body='';
+ if(SET_TAB==='general')body=tenantProfilePanelHtml();
+ else if(SET_TAB==='region')body=tenantRegionPanelsHtml();
+ else if(SET_TAB==='calendar')body=tenantCalendarPanelsHtml();
+ else if(SET_TAB==='modules')body=tenantModulesPanelHtml();
+ else if(SET_TAB==='ops')body=`<div class="cols" style="grid-template-columns:1fr 1fr;align-items:start">${tenantDefaultsPanelHtml()}${tenantPipelinePanelHtml()}</div>`;
+ else body=tenantBrandPanelHtml().replace('margin-top:16px','margin-top:0');
+ return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div><div class="act">
+   <div class="seg">${tabs.map(([k,i,l])=>`<button class="${SET_TAB===k?'on':''}" onclick="setSetTab('${k}')">${ic(i)} ${l}</button>`).join('')}</div></div></div>
+  ${body}
+  <div class="note" style="margin-top:16px">${x.note}</div>`}
 
 function stub(v){const n=t('nav.'+v);return `<div class="head"><div><h1>${n[0]}</h1><p>${n[1]}</p></div></div>
   <div class="empty" style="min-height:340px"><div><div class="ic">${ic(ICONOF[v]||'box')}</div><b>${n[0]}</b><p style="margin:6px 0 0;max-width:430px">${t('stub.note')}</p><button class="btn flow" style="margin-top:14px" onclick="openPal()">${t('stub.another')} ${ic('chev')}</button></div></div>`}

@@ -1,0 +1,11 @@
+{
+  "name": "pruebas-mock",
+  "private": true,
+  "description": "Pruebas headless (jsdom) del mock interactivo teikem-mockups.html",
+  "scripts": {
+    "test": "node test_formats.js && node test_receiving.js && node test_all.js"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}
