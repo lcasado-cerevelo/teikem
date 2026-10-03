@@ -181,7 +181,8 @@ expect 200 "$(req GET '/api/v1/audit/activity?kind=security&text=smoke&take=5')"
 
 step "sesiones de toda la compañía (Lote F10)"
 # Segunda sesión del admin: aparece en la lista de la compañía (no actual), se revoca por id y deja de aparecer; la propia → 409.
-# (No se intenta refrescar con el token revocado: AuthService lo trata como reutilización y revocaría TODAS las sesiones del admin.)
+# (Cambio 1, 2026-10-03: refrescar con un token revocado a propósito da 401 y NO revoca las demás sesiones; solo el reuso de un
+# token ya rotado revoca toda la cadena. Se prueba abajo.)
 R3=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"deviceInfo\":\"smoke-f10\"}")")
 T3=$(echo "$R3" | jq -r .tokens.accessToken)
 MY_SID=$(expect 200 "$(req GET /api/v1/audit/sessions)" | jq -r '[.[] | select(.isCurrent)] | if length == 1 then .[0].id else error("actual") end') || fail "una sola sesión actual"
@@ -193,6 +194,30 @@ expect 204 "$(req DELETE "/api/v1/audit/sessions/$SID3")" >/dev/null
 expect 404 "$(req DELETE "/api/v1/audit/sessions/$SID3")" >/dev/null
 expect 200 "$(req GET /api/v1/audit/sessions)" | jq -e --argjson id "$SID3" '[.[] | select(.id == $id)] | length == 0' >/dev/null || fail "la sesión revocada sigue en la lista"
 ok "lista de la compañía con la actual marcada, revocar una (204/404) y 409 de la propia"
+
+step "revocar una sesión cierra solo esa (Cambio 1, 2026-10-03)"
+RF3=$(echo "$R3" | jq -r .tokens.refreshToken)
+R4=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"deviceInfo\":\"smoke-f10-b\"}")")
+RF4=$(echo "$R4" | jq -r .tokens.refreshToken)
+# El aparato revocado intenta renovarse: 401 'Refresh token inválido.' y NO cascada: la otra sesión del admin sigue renovándose.
+expect 401 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RF3\"}" '')" | jq -e '.title == "Refresh token inválido."' >/dev/null || fail "refresh de una sesión revocada → 401 'Refresh token inválido.'"
+expect 401 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RF3\"}" '')" >/dev/null || fail "el segundo intento con el token revocado sigue dando 401"
+R4B=$(expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RF4\"}" '')")
+[[ -n $(echo "$R4B" | jq -r .refreshToken) ]] || fail "revocar una sesión cerró también la otra sesión del admin (cascada)"
+# Cerrar la sesión (logout) y reusar su token: 401 sin cascada.
+RF4B=$(echo "$R4B" | jq -r .refreshToken)
+R5=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"deviceInfo\":\"smoke-f10-c\"}")")
+RF5=$(echo "$R5" | jq -r .tokens.refreshToken)
+expect 204 "$(req POST /api/v1/auth/logout "{\"refreshToken\":\"$RF5\"}" '')" >/dev/null || fail "logout"
+expect 401 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RF5\"}" '')" >/dev/null || fail "refresh tras logout → 401"
+expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RF4B\"}" '')" >/dev/null || fail "el logout de una sesión cerró otra del admin (cascada)"
+# El reuso de un token ya ROTADO sí es posible robo: revoca toda la cadena de la persona (con otro usuario, para no cerrar las del admin).
+RD1=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$DISPATCH_EMAIL\",\"password\":\"$PASS\"}")" | jq -r .tokens.refreshToken)
+RD2=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$DISPATCH_EMAIL\",\"password\":\"$PASS\"}")" | jq -r .tokens.refreshToken)
+expect 200 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RD1\"}" '')" >/dev/null || fail "rotar el refresh del despachador"
+expect 401 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RD1\"}" '')" >/dev/null || fail "reuso de un token rotado → 401"
+expect 401 "$(req POST /api/v1/auth/refresh "{\"refreshToken\":\"$RD2\"}" '')" >/dev/null || fail "reuso de un token rotado debe revocar toda la cadena del usuario"
+ok "token revocado: 401 sin cascada (revocar, logout); token rotado reusado: 401 y cascada"
 
 step "RBAC: despachador sin admin.users → 403 + PERMISSION_DENIED"
 R2=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$DISPATCH_EMAIL\",\"password\":\"$PASS\"}")")
@@ -4668,6 +4693,16 @@ CORR=$(expect 200 "$(req PUT "/api/v1/cycle-counts/$ID21/lines" "{\"lines\":[{\"
 echo "$CORR" | jq -e --argjson b "$LB" '.count.correctedLines==1 and (.lines[]|select(.id==$b)|.countedQty==5 and .capturedQty==3 and .wasCorrected==true and .correctedByName!=null and .correctedAtUtc!=null and .correctedByName!=.capturedByName)' >/dev/null || fail "corrección del supervisor: $(echo "$CORR" | jq -c '[.lines[]|{id,countedQty,capturedQty,wasCorrected,correctedByName}]')"
 [[ $(kardex "refEntity=CYCLE_COUNT&refId=$ID21" | jq .total) == "$TX21" ]] || fail "corregir movió inventario"
 expect 200 "$(req GET "/api/v1/cycle-counts/$ID21" '' "$TCNT21")" | jq -e --argjson b "$LB" '.isBlind==true and (.lines[]|select(.id==$b)|.systemQty==null and .capturedQty==3 and .countedQty==5 and .wasCorrected==true)' >/dev/null || fail "la ficha a ciegas conserva la evidencia sin filtrar lo esperado"
+# 3b. Cambio 2 (2026-10-03): la corrección del supervisor se protege de la recaptura del operario (409, todo o nada).
+M21LOCK="La línea ya fue corregida por el supervisor; no se puede volver a capturar."
+expect 409 "$(req PUT "/api/v1/cycle-counts/$ID21/lines" "{\"lines\":[{\"lineId\":$LB,\"countedQty\":3}]}" "$TCNT21")" | jq -e --arg m "$M21LOCK" '.title==$m' >/dev/null || fail "la recaptura del operario sobre una línea corregida → 409"
+expect 409 "$(req PUT "/api/v1/cycle-counts/$ID21/lines/batch" "{\"lines\":[{\"lineId\":$LA,\"countedQty\":7},{\"lineId\":$LB,\"countedQty\":3}]}" "$TCNT21")" | jq -e --arg m "$M21LOCK" '.title|startswith($m)' >/dev/null || fail "lote con una línea corregida → 409"
+expect 200 "$(req GET "/api/v1/cycle-counts/$ID21" '' "$TCNT21")" | jq -e --argjson a "$LA" --argjson b "$LB" '(.lines[]|select(.id==$a)|.countedQty==8) and (.lines[]|select(.id==$b)|.countedQty==5 and .capturedQty==3 and .wasCorrected==true)' >/dev/null || fail "el lote rechazado guardó algo o pisó la corrección"
+capture21 "$ID21" "{\"lines\":[{\"lineId\":$LB,\"countedQty\":5}]}" >/dev/null   # reenviar el valor vigente no se rechaza
+capture21 "$ID21" "{\"lines\":[{\"lineId\":$LA,\"countedQty\":7}]}" | jq -e --argjson a "$LA" '(.lines[]|select(.id==$a)|.countedQty==7 and .wasCorrected==false)' >/dev/null || fail "el operario recaptura una línea sin corrección"
+capture21 "$ID21" "{\"lines\":[{\"lineId\":$LA,\"countedQty\":8}]}" >/dev/null
+expect 200 "$(req PUT "/api/v1/cycle-counts/$ID21/lines" "{\"lines\":[{\"lineId\":$LB,\"countedQty\":6}]}")" | jq -e --argjson b "$LB" '(.lines[]|select(.id==$b)|.countedQty==6 and .capturedQty==3 and .wasCorrected==true)' >/dev/null || fail "el supervisor vuelve a corregir"
+expect 200 "$(req PUT "/api/v1/cycle-counts/$ID21/lines" "{\"lines\":[{\"lineId\":$LB,\"countedQty\":5}]}")" >/dev/null
 expect 200 "$(req POST "/api/v1/cycle-counts/$ID21/finish" '{}' "$TCNT21")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "terminar el conteo por producto"
 # 4. Vista previa (warehouse.count; sin ella 403): cuadra, no asienta nada y no escribe.
 expect 403 "$(req GET "/api/v1/cycle-counts/$ID21/reconcile-preview" '' "$TCNT21")" >/dev/null || fail "vista previa sin warehouse.count → 403"
@@ -4763,7 +4798,7 @@ expect 200 "$(req POST "/api/v1/cycle-counts/$IDE/reconcile" '{}')" | jq -e '.co
 CCE2=$(expect 200 "$(req POST /api/v1/cycle-counts "$EMPTY_OK" "$TCNT21")"); IDE2=$(echo "$CCE2" | jq -r .count.id)
 C21E=$(req GET "/api/v1/cycle-counts/$IDE2" '' "$TB21" | tail -n1); [[ "$C21E" == 403 || "$C21E" == 404 ]] || fail "otra compañía ve un conteo vacío ajeno (dio $C21E)"
 expect 204 "$(req DELETE "/api/v1/cycle-counts/$IDE2")" >/dev/null || fail "borrar el conteo vacío abierto"
-ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; otra compañía sin acceso; adenda allowEmpty: producto sin existencia → conteo vacío (400 sin allowEmpty, 400 con filtros o dos productos, 404 inexistente, terminar vacío 422, línea nueva en provisional, terminar, reconciliar y borrar un vacío abierto)"
+ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; Cambio 2: la corrección del supervisor no se recaptura (409 por línea y en lote, todo o nada; reenviar el valor vigente pasa; el supervisor vuelve a corregir; el operario recaptura lo no corregido); otra compañía sin acceso; adenda allowEmpty: producto sin existencia → conteo vacío (400 sin allowEmpty, 400 con filtros o dos productos, 404 inexistente, terminar vacío 422, línea nueva en provisional, terminar, reconciliar y borrar un vacío abierto)"
 
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
