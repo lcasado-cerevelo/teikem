@@ -6,7 +6,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccessProvider } from '../../kernel/access'
 import { FormatProvider, getFormatSettings, resetFormatSettings } from '../../kernel/format'
 import { setLang } from '../../kernel/i18n/i18n'
@@ -14,7 +14,16 @@ import { TenantBrand } from '../../kernel/ui'
 import TenantSettingsPage from './TenantSettingsPage'
 
 type Req = { method: string; url: URL; body: unknown }
-const mock = vi.hoisted(() => ({ requests: [] as Req[], settings: {} as Record<string, unknown>, modules: [] as Record<string, unknown>[] }))
+const mock = vi.hoisted(() => ({
+  requests: [] as Req[],
+  settings: {} as Record<string, unknown>,
+  modules: [] as Record<string, unknown>[],
+  // logos de la marca (GET/PUT/DELETE /tenant/brand/logos) y el error que el servidor daría a la próxima subida o al próximo PUT de ajustes
+  logos: [] as { slot: string; contentType: string; sizeBytes: number; eTag: string; updatedAtUtc: string }[],
+  logoFail: null as null | { status: number; title: string },
+  uploads: [] as { field: string; fileName: string; type: string }[],
+  settingsFail: null as null | { status: number; title: string; field: string },
+}))
 
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -31,6 +40,10 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
     if (p === '/api/v1/tenant/settings' && req.method === 'GET') return json(mock.settings)
     if (p === '/api/v1/tenant/settings' && req.method === 'PUT') {
       const b = body as Record<string, unknown>
+      if (mock.settingsFail) {
+        const f = mock.settingsFail
+        return problem(f.status, { title: f.title, code: 'validation', errors: { [f.field]: [f.title] } })
+      }
       if (b.timeZoneId === 'America/Anchorage') {
         return problem(400, {
           title: "La zona horaria 'America/Anchorage' no la reconoce la plataforma.",
@@ -43,9 +56,27 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
       mock.settings = merged
       return json(merged)
     }
+    if (p === '/api/v1/tenant/brand/logos' && req.method === 'GET') return json(mock.logos)
+    if (p.startsWith('/api/v1/tenant/brand/logos/')) {
+      const slot = p.split('/').pop() as string
+      if (req.method === 'GET') return new Response(new Uint8Array([137, 80, 78, 71]), { status: 200, headers: { 'Content-Type': 'image/png' } })
+      if (req.method === 'DELETE') {
+        mock.logos = mock.logos.filter((l) => l.slot !== slot)
+        return new Response(null, { status: 204 })
+      }
+      if (mock.logoFail) return problem(mock.logoFail.status, { title: mock.logoFail.title, code: 'validation', errors: mock.logoFail.status === 400 ? { file: [mock.logoFail.title] } : undefined })
+      const dto = { slot, contentType: 'image/png', sizeBytes: 2048, eTag: `etag-${slot}-${mock.logos.length}`, updatedAtUtc: '2026-10-03T12:00:00' }
+      mock.logos = [...mock.logos.filter((l) => l.slot !== slot), dto]
+      return json(dto)
+    }
     if (p === '/api/v1/tenant/format-options') return json(OPTIONS)
     if (p === '/api/v1/tenant/holidays' && req.method === 'GET') return json(HOLIDAYS)
-    if (p === '/api/v1/tenant/holidays' && req.method === 'POST') return json({ id: 99, ...(body as object) })
+    if (p === '/api/v1/tenant/holidays' && req.method === 'POST') {
+      // como el servidor: una fecha ya registrada es 409 con 'Ya hay un feriado en esa fecha.'
+      const dup = HOLIDAYS.some((h) => h.date === (body as { date: string }).date)
+      if (dup) return problem(409, { title: 'Ya hay un feriado en esa fecha.', code: 'conflict', errors: { date: ['Ya hay un feriado en esa fecha.'] } })
+      return json({ id: 99, ...(body as object) })
+    }
     if (p.startsWith('/api/v1/tenant/holidays/') && req.method === 'DELETE') return new Response(null, { status: 204 })
     if (p === '/api/v1/modules') return json(mock.modules)
     if (p.startsWith('/api/v1/modules/') && req.method === 'PUT') {
@@ -168,8 +199,30 @@ function wrap(path = '/system/settings', permissions = ALL, modules = ['SYSTEM',
 
 const put = () => mock.requests.filter((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/tenant/settings')
 
-beforeAll(() => setLang('es'))
+// jsdom + el Request de Node no se entienden con un FormData con archivos (vitest copia el binario con un símbolo interno que jsdom 30
+// cambió): aquí el FormData es un registro del campo y el archivo. La codificación multipart real la prueban el humo y Playwright.
+class RecordingFormData {
+  append(field: string, file: File) {
+    mock.uploads.push({ field, fileName: file.name, type: file.type })
+  }
+}
+
+beforeAll(() => {
+  vi.stubGlobal('FormData', RecordingFormData)
+  setLang('es')
+  // jsdom no trae URL de objeto: una distinta por archivo bajado
+  let n = 0
+  URL.createObjectURL = vi.fn(() => `blob:logo-${++n}`)
+  URL.revokeObjectURL = vi.fn()
+})
+afterAll(() => {
+  vi.unstubAllGlobals()
+})
 beforeEach(() => {
+  mock.uploads = []
+  mock.logos = []
+  mock.logoFail = null
+  mock.settingsFail = null
   mock.requests = []
   mock.settings = { ...SETTINGS }
   mock.modules = MODULES.map((m) => ({ ...m }))
@@ -284,7 +337,7 @@ describe('Ajustes de la compañía', () => {
     await user.click(screen.getByRole('switch', { name: 'Sábado' }))
     await waitFor(() => expect(put().at(-1)?.body).toEqual({ workDaysMask: 126 }))
 
-    // feriados: "cada año" con día y mes; duplicado avisado sin llamar al API
+    // feriados: "cada año" con día y mes; el duplicado lo rechaza el servidor (409) y la pantalla muestra su mensaje
     expect(await screen.findByText('Año Nuevo')).toBeInTheDocument()
     expect(screen.getByText('01/01')).toBeInTheDocument()
     expect(screen.getByText('10/12/2026')).toBeInTheDocument()
@@ -293,13 +346,14 @@ describe('Ajustes de la compañía', () => {
     await user.type(screen.getByLabelText('Fecha'), '2026-10-12')
     await user.type(screen.getByLabelText('Nombre del feriado'), 'Otro')
     await user.click(screen.getByRole('button', { name: 'Agregar feriado' }))
-    expect(screen.getByText('Ya hay un feriado en esa fecha')).toBeInTheDocument()
+    expect(await screen.findByText('Ya hay un feriado en esa fecha.')).toBeInTheDocument()
+    expect(mock.requests.filter((r) => r.method === 'POST' && r.url.pathname === '/api/v1/tenant/holidays')).toHaveLength(1)
     await user.clear(screen.getByLabelText('Fecha'))
     await user.type(screen.getByLabelText('Fecha'), '2026-11-19')
     await user.click(screen.getByRole('switch', { name: 'Cada año' }))
     await user.click(screen.getByRole('button', { name: 'Agregar feriado' }))
-    await waitFor(() => expect(mock.requests.some((r) => r.method === 'POST')).toBe(true))
-    expect(mock.requests.find((r) => r.method === 'POST')?.body).toEqual({ date: '2026-11-19', name: 'Otro', isRecurring: true })
+    await waitFor(() => expect(mock.requests.filter((r) => r.method === 'POST' && r.url.pathname === '/api/v1/tenant/holidays')).toHaveLength(2))
+    expect(mock.requests.filter((r) => r.method === 'POST').at(-1)?.body).toEqual({ date: '2026-11-19', name: 'Otro', isRecurring: true })
     // eliminar con confirmación
     await user.click(screen.getAllByRole('button', { name: 'Eliminar' })[0])
     const dialog = await screen.findByRole('dialog')
@@ -365,5 +419,98 @@ describe('Ajustes de la compañía', () => {
     expect(await screen.findByText('Revisa estos puntos antes de usarla')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
     expect(put()).toHaveLength(1)
+  })
+
+  it('Marca → logos: sin logos explica el respaldo de Teikem y ofrece subir en las cuatro ranuras', async () => {
+    wrap('/system/settings?tab=brand')
+    expect(await screen.findByText('Logo')).toBeInTheDocument()
+    for (const name of ['Lockup (fondo claro)', 'Lockup (fondo oscuro)', 'Marca cuadrada (fondo claro)', 'Marca cuadrada (fondo oscuro)']) {
+      expect(screen.getByText(name)).toBeInTheDocument()
+      expect(screen.getByLabelText(`Archivo de ${name}`)).toHaveAttribute('accept', 'image/svg+xml,image/png,image/jpeg,image/webp')
+    }
+    expect(screen.getAllByText('Sin logo: se usa el de Teikem')).toHaveLength(4)
+    expect(screen.getAllByRole('button', { name: 'Subir' })).toHaveLength(4)
+    expect(screen.queryByRole('button', { name: /Quitar/ })).toBeNull()
+    // ya no se explica que falte el almacenamiento
+    expect(screen.queryByText(/todavía no se pueden cargar/)).toBeNull()
+  })
+
+  it('Marca → logos: subir (multipart por el endpoint nuevo), ver el logo y quitarlo', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=brand')
+    const input = await screen.findByLabelText('Archivo de Lockup (fondo claro)')
+    await user.upload(input, new File(['png'], 'logo.png', { type: 'image/png' }))
+    const card = screen.getByTestId('logo-lockup')
+    await waitFor(() => expect(within(card).getByRole('img', { name: 'Vista previa de Lockup (fondo claro)' })).toBeInTheDocument())
+    const sent = mock.requests.filter((r) => r.method === 'PUT' && r.url.pathname === '/api/v1/tenant/brand/logos/lockup')
+    expect(sent).toHaveLength(1)
+    expect(mock.uploads).toEqual([{ field: 'file', fileName: 'logo.png', type: 'image/png' }])
+    expect(within(card).getByText('PNG · 2 KB')).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Reemplazar' })).toBeInTheDocument()
+    // las demás ranuras siguen sin logo
+    expect(screen.getAllByText('Sin logo: se usa el de Teikem')).toHaveLength(3)
+
+    await user.click(within(card).getByRole('button', { name: 'Quitar Lockup (fondo claro)' }))
+    await waitFor(() => expect(within(card).queryByRole('img')).toBeNull())
+    expect(mock.requests.some((r) => r.method === 'DELETE' && r.url.pathname === '/api/v1/tenant/brand/logos/lockup')).toBe(true)
+    expect(screen.getAllByText('Sin logo: se usa el de Teikem')).toHaveLength(4)
+  })
+
+  it('Marca → logos: los 400, 413 y 415 del servidor salen junto a la ranura, con su mensaje exacto', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=brand')
+    const input = await screen.findByLabelText('Archivo de Marca cuadrada (fondo claro)')
+    const card = screen.getByTestId('logo-mark')
+    for (const [status, title] of [
+      [415, 'Formato no admitido: el logo debe ser SVG, PNG, JPG o WebP.'],
+      [413, 'El logo supera el tamaño máximo de 512 KB.'],
+      [400, 'El SVG no se acepta: contiene el elemento <script>, que puede ejecutar código o cargar contenido externo.'],
+    ] as const) {
+      mock.logoFail = { status, title }
+      await user.upload(input, new File(['x'], 'logo.svg', { type: 'image/svg+xml' }))
+      expect(await within(card).findByRole('alert')).toHaveTextContent(title)
+    }
+    // el error es de esa ranura: las otras no lo muestran, y no quedó ningún logo
+    expect(within(screen.getByTestId('logo-lockup')).queryByRole('alert')).toBeNull()
+    expect(screen.getAllByText('Sin logo: se usa el de Teikem')).toHaveLength(4)
+    // una subida buena limpia el aviso
+    mock.logoFail = null
+    await user.upload(input, new File(['png'], 'logo.png', { type: 'image/png' }))
+    await waitFor(() => expect(within(card).queryByRole('alert')).toBeNull())
+  })
+
+  it('Marca → logos: un archivo de más de 512 KB se avisa sin mandarlo', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=brand')
+    const input = await screen.findByLabelText('Archivo de Lockup (fondo oscuro)')
+    await user.upload(input, new File([new Uint8Array(512 * 1024 + 1)], 'grande.png', { type: 'image/png' }))
+    expect(await within(screen.getByTestId('logo-lockup-inverted')).findByRole('alert')).toHaveTextContent('El logo supera el tamaño máximo de 512 KB.')
+    expect(mock.requests.some((r) => r.method === 'PUT' && r.url.pathname.startsWith('/api/v1/tenant/brand/logos/'))).toBe(false)
+  })
+
+  it('Marca → logos: sin admin.tenant se ven los logos pero no hay cómo subir ni quitar', async () => {
+    mock.logos = [{ slot: 'mark', contentType: 'image/svg+xml', sizeBytes: 1536, eTag: 'e1', updatedAtUtc: '2026-10-03T12:00:00' }]
+    wrap('/system/settings?tab=brand', ['inventory.view'])
+    const card = await screen.findByTestId('logo-mark')
+    await waitFor(() => expect(within(card).getByRole('img', { name: 'Vista previa de Marca cuadrada (fondo claro)' })).toBeInTheDocument())
+    expect(within(card).getByText('SVG · 2 KB')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Subir' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Quitar|Reemplazar/ })).toBeNull()
+    expect(screen.queryByLabelText(/Archivo de/)).toBeNull()
+    expect(screen.getByRole('button', { name: /Bosque/ })).toBeDisabled()
+  })
+
+  it('Marca: el 400 del servidor al guardar sale junto a los colores con su mensaje', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=brand')
+    await screen.findByText('La combinación pasa las validaciones')
+    mock.settingsFail = { status: 400, field: 'brandingJson', title: 'El tema predefinido \'bosque\' no existe.' }
+    await user.click(screen.getByRole('button', { name: /Bosque/ }))
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    expect(await screen.findByTestId('brand-save-error')).toHaveTextContent("El tema predefinido 'bosque' no existe.")
+    // al guardar bien, el aviso se va
+    mock.settingsFail = null
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(screen.queryByTestId('brand-save-error')).toBeNull())
   })
 })

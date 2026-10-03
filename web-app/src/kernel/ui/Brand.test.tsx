@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { setLang } from '../i18n/i18n'
 import { BrandLockup, BrandMark } from './Brand'
 import { BRAND_SYMBOL_SRC, brandLockupSrc } from './brandAssets'
+import { NO_COMPANY_LOGOS, setCompanyLogos } from './brandLogos'
 import { setTheme, THEME_STORAGE_KEY } from './theme'
 
 describe('brandLockupSrc (regla brandLogoFor de la maqueta)', () => {
@@ -65,5 +66,56 @@ describe('BrandLockup / BrandMark', () => {
     render(<BrandMark size={24} alt="" />)
     expect(screen.queryByRole('img', { name: 'Teikem' })).toBeNull()
     expect(screen.getByTestId('brand-mark')).toHaveAttribute('width', '24')
+  })
+})
+
+describe('logos de la compañía en el lockup y la marca cuadrada', () => {
+  afterEach(() => {
+    act(() => setCompanyLogos(NO_COMPANY_LOGOS))
+    setTheme('dark')
+    localStorage.removeItem(THEME_STORAGE_KEY)
+  })
+
+  it('con logos propios los usa (invertido en oscuro) y al cambiar de tema cambia de variante sin desmontar', () => {
+    setTheme('dark')
+    render(<BrandLockup className="brand-full" />)
+    expect(screen.getByTestId('brand-lockup')).toHaveAttribute('src', '/brand/teikem-1b-horizontal-tagline-es-inv.svg')
+
+    act(() => setCompanyLogos({ urls: { lockup: 'blob:claro', 'lockup-inverted': 'blob:oscuro' }, name: 'Advance Logistics' }))
+    const img = screen.getByTestId('brand-lockup')
+    expect(img).toHaveAttribute('src', 'blob:oscuro')
+    expect(img).toHaveAttribute('alt', 'Advance Logistics')
+    expect(img).toHaveAttribute('data-company-logo', 'true')
+    expect(img).toHaveClass('brand-lockup', 'own', 'brand-full')
+
+    act(() => setTheme('light'))
+    expect(screen.getByTestId('brand-lockup')).toBe(img)
+    expect(img).toHaveAttribute('src', 'blob:claro')
+
+    // quitar los logos: vuelve el de Teikem
+    act(() => setCompanyLogos(NO_COMPANY_LOGOS))
+    expect(screen.getByTestId('brand-lockup')).toHaveAttribute('src', '/brand/teikem-1b-horizontal-tagline-es.svg')
+    expect(screen.getByTestId('brand-lockup')).not.toHaveAttribute('data-company-logo')
+  })
+
+  it('con una sola variante la reusa en ambos temas', () => {
+    act(() => setCompanyLogos({ urls: { lockup: 'blob:unico' }, name: null }))
+    setTheme('dark')
+    render(<BrandLockup />)
+    expect(screen.getByTestId('brand-lockup')).toHaveAttribute('src', 'blob:unico')
+    expect(screen.getByTestId('brand-lockup')).toHaveAttribute('alt', 'Teikem')
+    act(() => setTheme('light'))
+    expect(screen.getByTestId('brand-lockup')).toHaveAttribute('src', 'blob:unico')
+  })
+
+  it('la marca cuadrada usa su propio logo; sin él, el símbolo de Teikem aunque haya lockup', () => {
+    render(<BrandMark size={44} alt="" />)
+    act(() => setCompanyLogos({ urls: { lockup: 'blob:l' }, name: 'Advance' }))
+    expect(screen.getByTestId('brand-mark')).toHaveAttribute('src', BRAND_SYMBOL_SRC)
+    act(() => setCompanyLogos({ urls: { lockup: 'blob:l', mark: 'blob:m', 'mark-inverted': 'blob:mi' }, name: 'Advance' }))
+    const mark = screen.getByTestId('brand-mark')
+    expect(mark).toHaveAttribute('src', 'blob:mi')   // tema oscuro
+    expect(mark).toHaveAttribute('alt', '')           // decorativa sigue decorativa
+    expect(mark).toHaveAttribute('width', '44')
   })
 })

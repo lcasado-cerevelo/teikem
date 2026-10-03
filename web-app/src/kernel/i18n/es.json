@@ -3238,7 +3238,6 @@
         "needHolidayName": "Escribe la fecha y el nombre del feriado",
         "holidayAdded": "Feriado agregado",
         "holidayRemoved": "Feriado eliminado",
-        "dupHoliday": "Ya hay un feriado en esa fecha",
         "noHolidays": "Sin feriados",
         "removeHoliday": "Eliminar feriado {name}",
         "removeTitle": "¿Eliminar el feriado?",
@@ -3335,8 +3334,30 @@
         "blocked": "Corrija las validaciones antes de guardar.",
         "saved": "Marca guardada",
         "logoTitle": "Logo",
-        "logoPending": "Los logos por compañía (lockup y marca cuadrada, cada uno para fondo claro y oscuro) todavía no se pueden cargar: el API no tiene dónde guardar los archivos (BrandingJson admite hasta 200 KB y los logos van a un almacenamiento de archivos). Mientras tanto se usan los logos de Teikem.",
-        "serverNote": "Las validaciones de contraste y matiz se hacen en esta pantalla; el servidor todavía no las repite."
+        "serverNote": "El servidor repite estas validaciones al guardar: una marca que no pase se rechaza.",
+        "logoHint": "Lockup completo y marca cuadrada, cada uno con su variante para fondo oscuro. SVG, PNG, JPG o WebP de hasta 512 KB. Si falta una variante se usa la otra; sin ningún logo se usa el de Teikem.",
+        "logoTooBig": "El logo supera el tamaño máximo de 512 KB.",
+        "logoUploaded": "Logo guardado",
+        "logoRemoved": "Logo quitado",
+        "logoUpload": "Subir",
+        "logoReplace": "Reemplazar",
+        "logoRemove": "Quitar",
+        "logoNone": "Sin logo: se usa el de Teikem",
+        "logoPreview": "Vista previa de {name}",
+        "logoFile": "Archivo de {name}",
+        "logoSaveError": "No se pudo guardar la marca",
+        "slots": {
+          "lockup": "Lockup (fondo claro)",
+          "lockup-inverted": "Lockup (fondo oscuro)",
+          "mark": "Marca cuadrada (fondo claro)",
+          "mark-inverted": "Marca cuadrada (fondo oscuro)"
+        },
+        "slotHints": {
+          "lockup": "Símbolo y nombre completos: barra lateral abierta.",
+          "lockup-inverted": "El mismo lockup, invertido para el tema oscuro.",
+          "mark": "Solo el símbolo, cuadrado: barra lateral colapsada.",
+          "mark-inverted": "La marca cuadrada, invertida para el tema oscuro."
+        }
       }
     },
     "audit": {

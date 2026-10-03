@@ -72,8 +72,3 @@ export function nextWorkDay(fromIso: string, mask: number, holidays: readonly Ho
   }
   return null
 }
-
-/** ¿Ya hay un feriado en esa fecha exacta? (el servidor lo reemplazaría en silencio: la pantalla avisa antes). */
-export function holidayOnDate(date: string, holidays: readonly HolidayLike[]): boolean {
-  return holidays.some((h) => day(h.date ?? '') === date)
-}

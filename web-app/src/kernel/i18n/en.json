@@ -3238,7 +3238,6 @@
         "needHolidayName": "Enter the holiday date and name",
         "holidayAdded": "Holiday added",
         "holidayRemoved": "Holiday removed",
-        "dupHoliday": "There is already a holiday on that date",
         "noHolidays": "No holidays",
         "removeHoliday": "Remove holiday {name}",
         "removeTitle": "Remove the holiday?",
@@ -3335,8 +3334,30 @@
         "blocked": "Fix the checks before saving.",
         "saved": "Branding saved",
         "logoTitle": "Logo",
-        "logoPending": "Company logos (lockup and square mark, each for light and dark backgrounds) cannot be uploaded yet: the API has nowhere to store the files (BrandingJson allows up to 200 KB and logos belong in file storage). Teikem's logos are used meanwhile.",
-        "serverNote": "Contrast and hue checks run in this screen; the server does not repeat them yet."
+        "serverNote": "The server repeats these checks when saving: a brand that does not pass is rejected.",
+        "logoHint": "Full lockup and square mark, each with a variant for dark backgrounds. SVG, PNG, JPG or WebP up to 512 KB. If one variant is missing the other is used; with no logo at all the Teikem one is used.",
+        "logoTooBig": "The logo exceeds the 512 KB maximum size.",
+        "logoUploaded": "Logo saved",
+        "logoRemoved": "Logo removed",
+        "logoUpload": "Upload",
+        "logoReplace": "Replace",
+        "logoRemove": "Remove",
+        "logoNone": "No logo: the Teikem one is used",
+        "logoPreview": "Preview of {name}",
+        "logoFile": "File for {name}",
+        "logoSaveError": "The brand could not be saved",
+        "slots": {
+          "lockup": "Lockup (light background)",
+          "lockup-inverted": "Lockup (dark background)",
+          "mark": "Square mark (light background)",
+          "mark-inverted": "Square mark (dark background)"
+        },
+        "slotHints": {
+          "lockup": "Full symbol and name: expanded sidebar.",
+          "lockup-inverted": "The same lockup, inverted for the dark theme.",
+          "mark": "Just the square symbol: collapsed sidebar.",
+          "mark-inverted": "The square mark, inverted for the dark theme."
+        }
       }
     },
     "audit": {

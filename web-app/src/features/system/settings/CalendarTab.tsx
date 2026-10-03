@@ -7,7 +7,7 @@ import { useT } from '../../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, IconClock, IconDoc, Panel, toast, type DataColumn, type RowAction } from '../../../kernel/ui'
 import { IconTrash } from '../../../kernel/ui/actionIcons'
 import { problemText } from '../../warehouse/problemText'
-import { holidayOnDate, nextWorkDay, toggleWorkDay, weekOrder } from '../tenantCalendar'
+import { nextWorkDay, toggleWorkDay, weekOrder } from '../tenantCalendar'
 import { useHolidayAction, useHolidays, useSaveTenantSettings, type TenantHolidayDto, type TenantSettingsDto } from '../tenantSettingsApi'
 
 const NO_HOLIDAYS: TenantHolidayDto[] = []
@@ -52,10 +52,6 @@ export function CalendarTab({ settings, canEdit }: { settings: TenantSettingsDto
       setAddError(t('system.settings.calendar.needHolidayName'))
       return
     }
-    if (holidayOnDate(date, holidays)) {
-      setAddError(t('system.settings.calendar.dupHoliday'))
-      return
-    }
     try {
       await holidayAction.mutateAsync({ kind: 'add', body: { date, name: name.trim(), isRecurring: recurring } })
       toast.success(t('system.settings.calendar.holidayAdded'))
@@ -63,6 +59,7 @@ export function CalendarTab({ settings, canEdit }: { settings: TenantSettingsDto
       setName('')
       setRecurring(false)
     } catch (err) {
+      // fecha repetida: 409 'Ya hay un feriado en esa fecha.' (el servidor es quien lo decide), y cualquier otro error, tal cual
       setAddError(problemText(err))
     }
   }

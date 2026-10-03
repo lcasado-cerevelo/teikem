@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../../kernel/api/client'
 import type { components } from '../../kernel/api/schema'
 import { CATALOG_STALE_MS, catalogKeys } from '../../kernel/catalogs'
+import { brandLogoKeys, type BrandLogoDto, type LogoSlot } from '../../kernel/ui'
 
 export type TenantSettingsDto = components['schemas']['TenantSettingsDto']
 export type TenantSettingsUpdateRequest = components['schemas']['TenantSettingsUpdateRequest']
@@ -39,6 +40,34 @@ export function useSaveTenantSettings() {
     onSuccess: (dto) => {
       qc.setQueryData(catalogKeys.tenantSettings, dto)
     },
+  })
+}
+
+/**
+ * `PUT /api/v1/tenant/brand/logos/{slot}` (admin.tenant): sube o reemplaza el logo de la ranura (multipart, campo `file`).
+ * Errores del servidor con su mensaje: 400 (vacío, imagen dañada, SVG con contenido activo), 413 (más de 512 KB), 415 (formato).
+ * Invalida la lista de logos: `TenantBrand` vuelve a bajar el archivo cambiado y toda la interfaz lo usa sin recargar.
+ */
+export function useUploadBrandLogo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slot, file }: { slot: LogoSlot; file: File }): Promise<BrandLogoDto> => {
+      const form = new FormData()
+      form.append('file', file)
+      return unwrap(api.PUT('/api/v1/tenant/brand/logos/{slot}', { params: { path: { slot } }, body: {}, bodySerializer: () => form }))
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: brandLogoKeys.list }),
+  })
+}
+
+/** `DELETE /api/v1/tenant/brand/logos/{slot}` (admin.tenant): quita el logo; la interfaz vuelve al de Teikem (o a la otra variante). */
+export function useRemoveBrandLogo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (slot: LogoSlot): Promise<void> => {
+      await unwrap(api.DELETE('/api/v1/tenant/brand/logos/{slot}', { params: { path: { slot } } }))
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: brandLogoKeys.list }),
   })
 }
 

@@ -3,8 +3,11 @@
 // barra) y con el símbolo más pegado al borde izquierdo del lienzo;
 // qué archivo toca por idioma y tema lo decide `brandAssets.ts`. Idioma y tema se leen de sus almacenes, así que el
 // archivo cambia al instante sin recargar ni desmontar la pantalla.
+// Con sesión, si la compañía subió sus logos (Ajustes → Marca) se usan ellos —variante invertida en tema oscuro, la otra si falta
+// una— y el respaldo es siempre el de Teikem (`brandLogos.ts`, cargados por `TenantBrand`).
 import { useLang } from '../i18n/useT'
 import { BRAND_SYMBOL_SRC, brandLockupSrc } from './brandAssets'
+import { pickLogoUrl, useCompanyLogos } from './brandLogos'
 import { useTheme } from './theme'
 import './ui.css'
 
@@ -18,6 +21,21 @@ export interface BrandLockupProps {
 export function BrandLockup({ tagline = true, className }: BrandLockupProps) {
   const lang = useLang()
   const theme = useTheme()
+  const company = useCompanyLogos()
+  const own = pickLogoUrl(company.urls, 'lockup', theme)
+  if (own) {
+    // logo propio: proporción desconocida; el tope de alto y `contain` evitan que uno alto desfigure la barra lateral
+    return (
+      <img
+        src={own}
+        alt={company.name ?? 'Teikem'}
+        className={className ? `brand-lockup own ${className}` : 'brand-lockup own'}
+        data-testid="brand-lockup"
+        data-company-logo="true"
+        draggable={false}
+      />
+    )
+  }
   return (
     <img
       src={brandLockupSrc(lang, theme, tagline)}
@@ -40,12 +58,16 @@ export interface BrandMarkProps {
   className?: string
 }
 
-/** Solo el símbolo, para espacios chicos (barra colapsada, pantallas pendientes). Igual en ambos temas. */
+/** Solo el símbolo, para espacios chicos (barra colapsada, pantallas pendientes). El de Teikem es igual en ambos temas; el de la compañía, uno por tema. */
 export function BrandMark({ size = 44, alt = 'Teikem', className }: BrandMarkProps) {
+  const theme = useTheme()
+  const company = useCompanyLogos()
+  const own = pickLogoUrl(company.urls, 'mark', theme)
   return (
     <img
-      src={BRAND_SYMBOL_SRC}
-      alt={alt}
+      src={own ?? BRAND_SYMBOL_SRC}
+      alt={alt && own ? (company.name ?? alt) : alt}
+      data-company-logo={own ? 'true' : undefined}
       width={size}
       height={size}
       className={className ? `brand-mark ${className}` : 'brand-mark'}

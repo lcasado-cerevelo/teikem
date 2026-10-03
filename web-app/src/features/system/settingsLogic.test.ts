@@ -8,7 +8,6 @@ import { settingsTabFromParam } from './settings/settingsTabs'
 import { allowedLists, formIsCustom, previewSettings, regionCodes, regionRequestBody, toRegionForm, withCurrent } from './regionForm'
 import {
   addDays,
-  holidayOnDate,
   isHoliday,
   isWorkDay,
   maskFromWorkDays,
@@ -48,8 +47,6 @@ describe('calendario laboral', () => {
     expect(isHoliday('2027-01-01', holidays)).toBe(true)
     expect(isHoliday('2026-10-12', holidays)).toBe(true)
     expect(isHoliday('2027-10-12', holidays)).toBe(false)
-    expect(holidayOnDate('2026-10-12', holidays)).toBe(true)
-    expect(holidayOnDate('2027-01-01', holidays)).toBe(false)
   })
 
   it('próximo día hábil: salta fin de semana y feriados', () => {

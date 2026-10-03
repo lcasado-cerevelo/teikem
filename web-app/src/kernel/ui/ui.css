@@ -184,7 +184,8 @@
 /* ===== Marca (Brand.tsx) ===== */
 /* el lockup nunca pasa el ancho de su contenedor; ambas variantes (clara y -inv) son transparentes */
 .brand-lockup{display:block;max-width:100%;height:auto}
-.brand-mark{display:block;flex:none;max-width:100%;height:auto}
+.brand-lockup.own{max-height:64px;object-fit:contain;object-position:left center}
+.brand-mark{display:block;flex:none;max-width:100%;height:auto;object-fit:contain}
 
 /* ===== SummaryBar (Lote 14: franja .burst de la maqueta) ===== */
 /* cifras en fila con raya vertical entre ellas (borde izquierdo de cada una salvo la primera); envuelve a 360 px */

@@ -308,9 +308,13 @@ export const BRAND_STATUS_KEYS: readonly string[] = ['ok', 'warn', 'danger', 'in
 
 export type BrandErrorCode = 'tooLarge' | 'malformed' | 'notObject' | 'unknownField' | 'statusColor' | 'badType' | 'badHex' | 'unknownPreset' | 'contrast' | 'hue'
 
-export type BrandValidation =
-  | { ok: true; checks: BrandCheck[] }
-  | { ok: false; code: BrandErrorCode; message: string; checks: BrandCheck[] }
+/** `ok`; si no, `code` y `message` (el mismo que devuelve el servidor); `checks` = comprobaciones de color (vacío si falló antes). */
+export interface BrandValidation {
+  ok: boolean
+  code?: BrandErrorCode
+  message?: string
+  checks: BrandCheck[]
+}
 
 const BRAND_TOP_KEYS = ['preset', 'useCustom', 'custom']
 const BRAND_CUSTOM_KEYS = ['flow', 'money', 'neutral'] as const
