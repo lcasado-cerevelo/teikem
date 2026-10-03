@@ -54,6 +54,8 @@ jobs:
         working-directory: web-app
         env:
           API_URL: http://localhost:5000
+          # El navegador del recorrido le habla al API en :5000 (sin esto Vite usa web-app/.env.development: https://localhost:5001)
+          VITE_API_URL: http://localhost:5000
         run: |
           curl -sf http://localhost:5000/health
           npm ci
@@ -206,28 +208,6 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          script: |
-            set -euo pipefail
-            # Instalar Maestro CLI
-            curl -Ls "https://get.maestro.mobile.dev" | bash
-            export PATH="$HOME/.maestro/bin:$PATH"
-
-            # Instalar APK en emulador
-            adb install -r /tmp/apk/app-release.apk
-
-            FLOWS="app-almacen/e2e-maestro"
-            ENV_ARGS=(-e "E2E_ENROLL_CODE=$E2E_ENROLL_CODE" -e "E2E_CONSIGNEE_LABEL=$E2E_CONSIGNEE_LABEL" -e "E2E_SERVER_URL=$E2E_SERVER_URL")
-
-            maestro test "$FLOWS/01-registrar-y-entrar.yaml" "${ENV_ARGS[@]}"
-            maestro test "$FLOWS/02-recibir.yaml" "${ENV_ARGS[@]}"
-            maestro test "$FLOWS/03-despacho.yaml" "${ENV_ARGS[@]}"
-
-            # 04: recibo sin señal (verifica que queda pendiente) y, ya con señal, que se manda solo. Maestro no
-            # tiene un comando confiable para cortar la red del emulador, así que se hace con adb alrededor de los
-            # dos flujos (ver comentario en 04a-recibo-sin-senal.yaml).
-            adb shell svc wifi disable
-            adb shell svc data disable
-            maestro test "$FLOWS/04a-recibo-sin-senal.yaml" "${ENV_ARGS[@]}"
-            adb shell svc wifi enable
-            adb shell svc data enable
-            maestro test "$FLOWS/04b-verificar-envio.yaml" "${ENV_ARGS[@]}"
+          # El emulador ejecuta cada línea de `script:` en un shell aparte (se perderían export, set -e y arreglos):
+          # todo el recorrido vive en un archivo.
+          script: bash scripts/e2e-mobile-maestro.sh
