@@ -55,7 +55,7 @@ export default function TenantSettingsPage() {
 
   return (
     <div className="wrap">
-      <div className="head">
+      <div className="head set-head">
         <div>
           <h1>{t('nav.settings.title')}</h1>
           <p>{t('nav.settings.subtitle')}</p>

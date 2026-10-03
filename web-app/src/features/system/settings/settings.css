@@ -192,3 +192,8 @@
     position: static;
   }
 }
+/* el segmento de seis pestañas no cabe a 360 px: se desplaza dentro de su franja (.seg), nunca la página */
+.set-head .act {
+  min-width: 0;
+  max-width: 100%;
+}
