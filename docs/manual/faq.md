@@ -3812,3 +3812,84 @@ Los PDF agrupados (recibo con sus líneas) usan hoja carta horizontal; las demá
 **¿Cómo vuelvo un almacén de "Directo a posición" a "Con acomodo"?**
 Igual que al revés: Almacenes → Datos → Recepción → Modo de recepción = "Con acomodo". Necesita una posición de recepción (la del almacén o la primera zona `STAGING`) para recibir con acomodo. Los recibos directos
 abiertos siguen directos.
+
+## Lote F9 — Ajustes de la compañía (pantalla) y región y formatos en toda la web
+
+Pantalla Sistema → Ajustes de la compañía (`/system/settings`, `admin.tenant`). Detalle en
+[frontend/f9-ajustes-de-la-compania.md](frontend/f9-ajustes-de-la-compania.md). Los mensajes del servidor de Región y formatos
+están arriba, en "Región y formatos (2026-10)" (lote 18).
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "El nombre es obligatorio." al agregar un feriado? (400)**
+El feriado llegó sin nombre al servidor. Escriba el nombre (por ejemplo "Día de Reyes") y vuelva a agregarlo. La pantalla lo
+avisa antes con "Escribe la fecha y el nombre del feriado".
+
+**¿Qué significa "'COD' depende de 'LTL_GROUND', que debe encenderse primero."? (409)**
+Se intentó encender un módulo cuyo módulo requerido está apagado. Encienda primero el requerido (la pantalla lo indica con
+"Primero activa: …" y deja el interruptor deshabilitado).
+
+**¿Qué significa "'SYSTEM' es un módulo núcleo y no se puede apagar."? (409)**
+Los módulos núcleo siempre están encendidos; la pantalla los marca "Núcleo — siempre activo" y no ofrece apagarlos.
+
+**¿Qué significa "Debe ser ≥ 1." en el máximo de paradas por ruta? (400)**
+El máximo de paradas por ruta por defecto tiene que ser 1 o más. La pantalla lo avisa antes con "Debe ser 1 o más.".
+
+**¿Qué significa "Código de idioma de 2 letras."? (400)**
+El idioma por defecto debe ser un código de 2 letras (`es`, `en`). La pantalla solo ofrece Español e English.
+
+**¿Qué significa "BrandingJson no es JSON válido." o "BrandingJson demasiado grande (los logos van a blob storage)."? (400)**
+La marca guardada no es un JSON o pasa de 200 KB. La pantalla Marca siempre manda un JSON pequeño (tema y tres colores); estos
+mensajes solo aparecen si alguien llama al API a mano.
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**"Tiene que haber al menos un día laborable"** — se intentó apagar el último día laborable; deje al menos uno.
+
+**"Escribe la fecha y el nombre del feriado"** — falta la fecha o el nombre del feriado nuevo.
+
+**"Ya hay un feriado en esa fecha"** — ya existe un feriado en esa misma fecha; elimínelo primero si quiere reemplazarlo (el
+servidor lo reemplazaría sin avisar).
+
+**"El separador de miles y el decimal no pueden ser el mismo: se cambió el otro."** — es un aviso, no un error: al escoger un
+separador que chocaba con el otro, la pantalla cambió el otro. Revise la vista previa y guarde.
+
+**"Escriba un color hexadecimal, por ejemplo #1F6FE5."** — el color propio escrito a mano no es un hexadecimal de 3 o 6 dígitos.
+
+**"Corrija las validaciones antes de guardar."** — la combinación de colores no pasa el contraste mínimo o los dos acentos se
+parecen demasiado (menos de 40°); la lista marcada con ✕ dice cuál.
+
+**"Debe ser 1 o más."** — máximo de paradas por ruta vacío, decimal o menor que 1.
+
+**"El teléfono debe tener 10 dígitos: (###) ###-####."** — ver la pregunta del lote 12 (el número y la máscara salen de la
+compañía).
+
+### Preguntas frecuentes
+
+**¿Por qué las fechas en español ahora salen mes/día/año y la hora con a. m./p. m.?**
+Desde el lote F9 el formato es de la compañía (Región y formatos), no del idioma. Puerto Rico usa MM/DD/AAAA y 12 horas (el orden de
+la fecha de Puerto Rico está pendiente de confirmar con el dueño: decisión 1 del lote 18). Para día/mes/año o 24 horas, un administrador lo cambia en Ajustes de la
+compañía → Región y formatos.
+
+**Cambié los formatos y otro usuario todavía ve los anteriores.**
+Su pantalla vuelve a leer los ajustes cuando pasan 10 minutos y vuelve a la ventana o abre otra pantalla, o al cambiar de idioma
+o de compañía. Recargar la página los trae de inmediato.
+
+**¿Qué pasa con los teléfonos de proveedores ya guardados con otra máscara?**
+Se muestran con la máscara nueva si tienen los dígitos que pide (por ejemplo, 10 en Puerto Rico); los que no, se ven tal cual
+y hay que corregirlos al editarlos. Los que se guardan desde ahora llevan solo los dígitos.
+
+**Cambié la región a Estados Unidos y la hora no cambió.**
+Puerto Rico (AST) y el Este de EE. UU. (Nueva York, con horario de verano) tienen la misma hora de marzo a noviembre (UTC−4). En
+invierno Nueva York va una hora detrás. El resto de los formatos de las dos regiones es igual.
+
+**¿Dónde cambio la política de MFA o la duración de las sesiones?**
+En Seguridad y auditoría (botón "Abrir Seguridad y auditoría" de la pestaña General); no se repite en Ajustes de la compañía.
+
+**¿Dónde cambio el modo de recepción de un almacén?**
+En la ficha del almacén (Almacenes → Recepción). La pestaña Operación solo lo resume y marca en rojo los almacenes con acomodo
+sin posición de recepción.
+
+**¿Puedo cargar el logo de mi compañía?**
+Todavía no: falta en el servidor dónde guardar los archivos. Mientras tanto se usan los logos de Teikem; los colores sí se
+pueden cambiar en la pestaña Marca.

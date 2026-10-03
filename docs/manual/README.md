@@ -146,6 +146,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    organizado en dos niveles ("Organizar mi Pulso" / "Organizar el de la compañía"), Indicadores y Gráficos, Roles y
    usuarios (con el PIN de los aparatos de almacén y la contraseña temporal), Aparatos móviles (código autogenerado),
    Catálogos de valores (ajustar/restaurar) y Mi cuenta → PIN de la app.
+5. [F9 — Ajustes de la compañía y región y formatos](frontend/f9-ajustes-de-la-compania.md): cómo se ven fechas, horas,
+   números, dinero y teléfonos con la región de la compañía (no con el idioma), y la pantalla Sistema → Ajustes de la
+   compañía con sus pestañas General, Región y formatos (vista previa, Personalizada, Restaurar), Calendario (días
+   laborables y feriados), Módulos (dependencias y reautenticación), Operación (valores por defecto, pipeline de estatus,
+   recepción por almacén) y Marca (temas, colores propios y validaciones). Capturas `f9-*`.
 
 ## Preguntas frecuentes
 
@@ -168,4 +173,6 @@ tarjetas de la franja, por qué aparece "Otras", por qué un indicador de "últi
 franja fija, si vuelve un gráfico de la compañía borrado, por qué la salida de un día sale negativa y por qué no se ve la franja. La sección "Lote 16" recoge los mensajes del recibo directo (modo de recepción desconocido, falta la posición destino, zona de recepción
 o de cruce, posición que no existe, id y código a la vez, mismo producto con dos destinos, posición o zona desactivada, modo de la configuración de migración), los que solo se ven en pantalla y en la app
 (falta la posición destino, excede el cupo, sugerida, posiciones del aparato) y las preguntas sobre cómo poner un almacén en directo, qué pasa con los recibos abiertos, si se puede pasar del cupo, por
-qué la pistola no deja enviar, por qué los números llevan coma, por qué el PDF dice "Sin filtros" y cómo abrir las fechas del Excel.
+qué la pistola no deja enviar, por qué los números llevan coma, por qué el PDF dice "Sin filtros" y cómo abrir las fechas del Excel. La sección "Lote F9" recoge los mensajes de la pantalla Ajustes
+de la compañía (feriados, días laborables, separadores, colores de la marca, máximo de paradas, teléfono) y las preguntas sobre por qué
+cambió el formato de las fechas y la hora, cómo volver a día/mes/año, qué pasa con los teléfonos guardados y por qué US no cambia la hora.
