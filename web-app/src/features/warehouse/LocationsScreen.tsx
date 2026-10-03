@@ -12,6 +12,8 @@
 //   Exportar saca todo lo filtrado (`fetchAllPages`). Lógica pura en `locations.ts`.
 // - Lote 11: "Asignar cupo" (warehouse.manage) junto a "Nueva posición" abre `BinCapacityModal` (cupo máximo en bloque)
 //   sobre el almacén elegido, con la zona de `?zone=` ya puesta; al aplicar se refrescan la tabla y los recuadros.
+// - Lote F14: "Códigos de barras" en la cabecera de la tabla: PDF con un código por posición de lo filtrado (misma consulta
+//   que la tabla y Exportar), para imprimir y escanear el papel en el conteo (BarcodeReportButtons / barcodeReports.ts).
 import { useId, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
@@ -31,6 +33,7 @@ import {
   type DataColumn,
 } from '../../kernel/ui'
 import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
+import { BinBarcodeReportButton } from './BarcodeReportButtons'
 import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal } from './BinModal'
 import { formatNumber, useDebounced } from './lineRules'
@@ -133,6 +136,8 @@ function FillBar({ pct }: { pct: number }) {
 
 interface BodyProps {
   warehousePublicId: string
+  /** Almacén elegido (código y nombre) para el reporte de códigos de barras. */
+  warehouse: { code?: string | null; name?: string | null }
   zones: readonly WarehouseZoneDto[]
   zonesLoading: boolean
   zonesError: Error | null
@@ -142,7 +147,7 @@ interface BodyProps {
  * Río, filtros y tabla de UN almacén. La pantalla la monta con `key={almacén}`: al cambiar de almacén los filtros y la
  * página vuelven a cero y la tabla no enseña, mientras carga, las posiciones del almacén anterior.
  */
-function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: BodyProps) {
+function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zonesError }: BodyProps) {
   const t = useT()
   const lang = useLang()
   const [params, setParams] = useSearchParams()
@@ -359,7 +364,22 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
         <SearchSelect label={t('warehouse.locations.filters.status')} options={statusOptions} value={occupancy} onChange={withPageReset(setOccupancy)} />
       </Filters>
 
-      <Panel flush icon={<IconGrid />} title={t('warehouse.locations.columns.bin')} badge={!impossible && binsQ.isLoading ? undefined : total}>
+      <Panel
+        flush
+        icon={<IconGrid />}
+        title={t('warehouse.locations.columns.bin')}
+        badge={!impossible && binsQ.isLoading ? undefined : total}
+        actions={
+          // Lote F14: un código de barras por posición de lo filtrado (misma consulta que la tabla y Exportar)
+          <BinBarcodeReportButton
+            className="btn sm"
+            warehousePublicId={warehousePublicId}
+            warehouse={warehouse}
+            zones={zones}
+            query={impossible ? null : searchQuery}
+          />
+        }
+      >
         <DataTable
           label={t('warehouse.locations.tableLabel')}
           onRowClick={canManage ? (b) => setEditing(b) : undefined}
@@ -426,6 +446,7 @@ export default function LocationsScreen() {
       <LocationsBody
         key={warehousePublicId}
         warehousePublicId={warehousePublicId}
+        warehouse={warehouses.data?.find((w) => w.publicId === warehousePublicId) ?? {}}
         zones={zones}
         zonesLoading={zonesQ.isLoading}
         zonesError={zonesQ.error}

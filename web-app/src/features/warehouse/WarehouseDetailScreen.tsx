@@ -11,6 +11,7 @@
 //   la fila abre `BinModal`; baja/reactivación como ícono. Abrir o cerrar un modal no cambia la consulta (no recarga).
 // Lote 11: "Asignar cupo" (warehouse.manage) junto a "Nueva posición" abre `BinCapacityModal` (cupo máximo en bloque) con
 //   la Zona y los textos de Pasillo/Rack/Nivel/Posición del filtro de la pestaña ya puestos.
+// Lote F14: "Códigos de barras" (inventory.view) en la cabecera de Posiciones: PDF con un código por posición de lo filtrado.
 // Lote 16: Datos → sección "Recepción": "Modo de recepción" (Con acomodo / Directo a posición, catálogo `ReceivingMode`) y
 //   "Posición de recepción por defecto" (D12: posiciones STAGING/CROSSDOCK del almacén; vaciarla manda
 //   `clearDefaultReceivingBin`). Cambiar el modo pide confirmación con cuántos recibos abiertos y con acomodo pendiente
@@ -67,6 +68,7 @@ import {
   type WarehouseZoneDto,
 } from './api'
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
+import { BinBarcodeReportButton } from './BarcodeReportButtons'
 import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal, ReadOnlyField } from './BinModal'
 import { TextFilter, ToggleFilter } from './filterControls'
@@ -383,7 +385,7 @@ function ZonesTab({ publicId }: { publicId: string }) {
 
 const BIN_PAGE_SIZE = 25
 
-function BinsTab({ publicId, zones }: { publicId: string; zones: readonly WarehouseZoneDto[] }) {
+function BinsTab({ publicId, zones, warehouse }: { publicId: string; zones: readonly WarehouseZoneDto[]; warehouse: { code?: string | null; name?: string | null } }) {
   const t = useT()
   const lang = useLang()
   const canManage = useCan('warehouse.manage')
@@ -591,14 +593,25 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
         title={t('warehouse.bins.title')}
         badge={data ? formatNumber(data.total ?? 0, lang) : undefined}
         actions={
-          <Can perm="warehouse.manage">
-            <button type="button" className="btn sm" onClick={() => setSettingCapacity(true)}>
-              {t('warehouse.binCapacity.open')}
-            </button>
-            <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>
-              {t('warehouse.bins.new')}
-            </button>
-          </Can>
+          <>
+            {/* Lote F14: un código de barras por posición de lo filtrado (misma consulta que la tabla y Exportar) */}
+            <BinBarcodeReportButton
+              className="btn sm"
+              warehousePublicId={publicId}
+              warehouse={warehouse}
+              zones={zones}
+              query={filterQuery}
+              extraFilters={[{ label: t('warehouse.locations.warehouse'), value: warehouse.name ? `${warehouse.code ?? ''} (${warehouse.name})` : (warehouse.code ?? '') }]}
+            />
+            <Can perm="warehouse.manage">
+              <button type="button" className="btn sm" onClick={() => setSettingCapacity(true)}>
+                {t('warehouse.binCapacity.open')}
+              </button>
+              <button type="button" className="btn sm flow" onClick={() => setEditing('new')}>
+                {t('warehouse.bins.new')}
+              </button>
+            </Can>
+          </>
         }
       >
         <DataTable
@@ -936,7 +949,7 @@ export default function WarehouseDetailScreen() {
         </Panel>
       )}
       {tab === 'zones' && <ZonesTab publicId={publicId} />}
-      {tab === 'bins' && <BinsTab publicId={publicId} zones={data.zones ?? []} />}
+      {tab === 'bins' && <BinsTab publicId={publicId} zones={data.zones ?? []} warehouse={{ code: w.code, name: w.name }} />}
       {tab === 'docks' && <DocksTab publicId={publicId} />}
     </div>
   )

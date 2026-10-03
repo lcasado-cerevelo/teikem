@@ -106,13 +106,15 @@ export interface ProductFilterNames {
 /**
  * "Filtros aplicados" legibles para un reporte (en el orden de la pantalla): Almacén, SKU, Nombre, Categoría, Marca y
  * la vista del KPI. `report = 'adjustments'` agrega el tipo de movimiento y omite el KPI (no aplica a movimientos).
+ * `report = 'barcodes'` (Lote F14, códigos de barras): como el de inventario pero el almacén sin la nota de cantidades (el
+ * reporte no tiene cantidades y el almacén no quita productos de la lista).
  * Un id sin nombre conocido se muestra tal cual (nunca se inventa una etiqueta).
  */
 export function describeProductFilters(
   f: ProductFilterState,
   names: ProductFilterNames,
   t: Translate,
-  report: 'inventory' | 'adjustments',
+  report: 'inventory' | 'adjustments' | 'barcodes',
 ): { label: string; value: string }[] {
   const out: { label: string; value: string }[] = []
   const list = (values: string[]) => values.join(', ')
@@ -133,6 +135,6 @@ export function describeProductFilters(
     })
   }
   if (f.brands.length > 0) out.push({ label: t('warehouse.products.filters.brand'), value: list([...f.brands]) })
-  if (f.kpi && report === 'inventory') out.push({ label: t('warehouse.products.reports.filters.view'), value: t(`warehouse.products.kpis.view.${f.kpi}`) })
+  if (f.kpi && report !== 'adjustments') out.push({ label: t('warehouse.products.reports.filters.view'), value: t(`warehouse.products.kpis.view.${f.kpi}`) })
   return out
 }

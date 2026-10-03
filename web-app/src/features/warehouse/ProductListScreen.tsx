@@ -1,7 +1,8 @@
 // Productos e inventario (Fase 8, maqueta `inventario()`; Lote 12): `/warehouse/products`, un solo ítem de menú que reúne el
 // catálogo y sus existencias por producto. Pestañas Productos (sin parámetro) y Categorías (`?tab=categories`).
 // - Cabecera: "Reporte de inventario" y "Reporte de ajustes" (PDF generado en el cliente con los filtros de la tabla:
-//   InventoryReportButtons / inventoryReports.ts) y "Nuevo producto" (inventory.manage).
+//   InventoryReportButtons / inventoryReports.ts), "Códigos de barras" (Lote F14: un código por SKU de lo filtrado,
+//   BarcodeReportButtons / barcodeReports.ts) y "Nuevo producto" (inventory.manage).
 // - Río de KPIs de todo el catálogo (`useProductInventoryKpis`, todos con take=1): SKUs activos, Unidades totales, Bajo mínimo
 //   y Con número de serie. Cada KPI es un botón que filtra la tabla (`?kpi=active|available|low|serial`; otro clic lo quita):
 //   activos; activos con existencia en mano > 0 (`onlyOnHand`; la cifra suma solo la existencia de los productos
@@ -30,6 +31,7 @@ import {
   warehouseLabel,
   type ProductListItemDto,
 } from './api'
+import { ProductBarcodeReportButton } from './BarcodeReportButtons'
 import { TextFilter } from './filterControls'
 import { AdjustmentsReportButton, InventoryReportButton } from './InventoryReportButtons'
 import { listParam } from './kardexView'
@@ -289,6 +291,8 @@ function ProductsTab() {
         <div className="act inv-head-act">
           <InventoryReportButton filters={filters} />
           <AdjustmentsReportButton filters={filters} />
+          {/* Lote F14: un código de barras por SKU de lo filtrado, para imprimir y escanear el papel en el conteo */}
+          <ProductBarcodeReportButton filters={filters} />
           <Can perm="inventory.manage">
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('warehouse.products.new')}

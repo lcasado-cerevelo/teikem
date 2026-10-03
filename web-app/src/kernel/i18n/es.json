@@ -456,6 +456,24 @@
       "footer": "Generado con Teikem",
       "empty": "No hay registros que cumplan los filtros."
     },
+    "barcodeReport": {
+      "tooWide": "No cabe: demasiado largo para un código legible",
+      "tooWideNotice": "No caben como código de barras legible en el ancho de la hoja ({count}); salen en la lista sin código: {list}.",
+      "unsupportedNotice": "Omitidos porque tienen caracteres que el código de barras (Code 128) no admite ({count}): {list}.",
+      "unsupportedItem": "{value} (no admite: {chars})",
+      "emptyValue": "(valor vacío)",
+      "seeEndNotices": "Hay valores sin código de barras (no caben u omitidos): vea los avisos al final del reporte.",
+      "more": "{list} y {count} más",
+      "continued": "{title} (continuación)",
+      "columnsNotice": "Se usaron {columns} columnas porque hay códigos largos que no caben más angostos.",
+      "columnsNoticeOne": "Se usó una sola columna porque hay códigos largos que no caben más angostos.",
+      "summary": {
+        "rows": "Elementos",
+        "codes": "Con código",
+        "tooWide": "No caben",
+        "omitted": "Omitidos"
+      }
+    },
     "split": {
       "resize": "Cambiar el ancho de los paneles"
     }
@@ -1018,6 +1036,30 @@
       "noAccess": "Su usuario no puede consultar el catálogo de ciudades.",
       "clear": "Quitar ciudad y código postal",
       "derivedHelp": "Se llena según la ciudad elegida."
+    },
+    "barcodes": {
+      "button": "Códigos de barras",
+      "productsHint": "PDF con un código de barras por SKU de lo filtrado, para imprimir y escanear el papel con el lector en el conteo.",
+      "binsHint": "PDF con un código de barras por posición de lo filtrado, para imprimir y escanear el papel con el lector en el conteo.",
+      "productsTitle": "Códigos de barras de productos",
+      "productsSubtitle": "Un código por SKU para escanear con el lector cuando el producto no tiene etiqueta. El código contiene el SKU exacto.",
+      "binsTitle": "Códigos de barras de posiciones",
+      "binsSubtitle": "Un código por posición para escanear con el lector cuando la etiqueta de la posición falta o está mal colocada. El código contiene el código exacto de la posición.",
+      "columns": "Columnas del reporte de códigos de barras",
+      "columnsAuto": "Automático",
+      "columnsTwo": "2 columnas",
+      "productGroup": "{name} ({count})",
+      "noCategory": "Sin categoría",
+      "binGroup": "Grupo {group} ({count})",
+      "otherBins": "Otras posiciones ({count})",
+      "inactive": "Inactivo",
+      "inactiveBin": "Inactiva",
+      "zone": "Zona {zone}",
+      "warehouse": "Almacén {warehouse}",
+      "truncatedProducts": "El reporte incluye solo los primeros {count} productos (límite de lectura). Afine los filtros para ver el resto.",
+      "truncatedBins": "El reporte incluye solo las primeras {count} posiciones (límite de lectura). Afine los filtros para ver el resto.",
+      "emptyProducts": "Ningún producto cumple los filtros.",
+      "emptyBins": "Ninguna posición cumple los filtros."
     },
     "locations": {
       "title": "Posiciones",

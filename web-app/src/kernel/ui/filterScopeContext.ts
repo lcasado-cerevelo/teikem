@@ -5,7 +5,7 @@
 //   momento de exportar por `DataTable` y `ListPager`.
 import { createContext, useCallback, useContext, useEffect, useId, type RefObject } from 'react'
 import { useT } from '../i18n/useT'
-import { filtersSentence, type FilterRegistry } from './filterRegistry'
+import { filtersSentence, type AppliedFilter, type FilterRegistry } from './filterRegistry'
 
 /** Registro del ámbito actual; null = sin ámbito o apagado (los filtros no se anotan y la exportación no pone la línea). */
 export const FilterScopeContext = createContext<FilterRegistry | null>(null)
@@ -50,4 +50,13 @@ export function useExportHeading(): () => ExportHeading {
   const company = useContext(ExportCompanyContext)
   const t = useT()
   return useCallback(() => ({ company, filters: registry ? filtersSentence(registry.snapshot(), t) : null }), [registry, company, t])
+}
+
+/**
+ * Lote F14 — filtros con valor del ámbito, leídos en el momento de llamar la función devuelta (en el orden de la barra):
+ * el recuadro "Filtros aplicados" de un reporte de marca con exactamente lo que filtra la pantalla. Sin ámbito, `[]`.
+ */
+export function useAppliedFilters(): () => AppliedFilter[] {
+  const registry = useContext(FilterScopeContext)
+  return useCallback(() => (registry ? registry.snapshot().applied : []), [registry])
 }

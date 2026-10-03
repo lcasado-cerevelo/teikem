@@ -5,38 +5,22 @@
 // hallazgo 22), con sus propios filtros ya armados (fechas, dueño, dirección, motivo…):
 //   <AdjustmentsReportButton filters={{ ...EMPTY_PRODUCT_FILTERS, warehouses: [whId] }} />
 //   <AdjustmentsReportButton query={{ kardexQuery, filterLabels }} />
-import { useContext, useMemo, useState } from 'react'
-import { SessionContext } from '../../app/session'
-import { useLang, useT } from '../../kernel/i18n'
+import { useState } from 'react'
+import { useT } from '../../kernel/i18n'
 import { toast } from '../../kernel/ui'
 import { IconDoc } from '../../kernel/ui/screenIcons'
-import { useProductCategories, useWarehouses, warehouseLabel } from './api'
 import { generateAdjustmentsReport, generateInventoryReport, type AdjustmentsReportQuery, type ProductReportContext } from './inventoryReports'
-import { EMPTY_PRODUCT_FILTERS, type ProductFilterNames, type ProductFilterState } from './productFilters'
+import { EMPTY_PRODUCT_FILTERS, type ProductFilterState } from './productFilters'
+import { useProductReportContext } from './useProductReportContext'
 
 export interface ProductReportButtonProps {
   filters: ProductFilterState
   className?: string
 }
 
-/** Contexto del reporte (traducción, idioma, compañía, usuario y nombres de los filtros) para los filtros dados. */
-function useReportContext(filters: ProductFilterState): ProductReportContext {
-  const t = useT()
-  const lang = useLang()
-  const me = useContext(SessionContext)?.me
-  const { data: warehouses = [] } = useWarehouses({ includeInactive: false }, { handleAccessDenied: false })
-  const { data: categories = [] } = useProductCategories({}, { handleAccessDenied: false })
-  const names = useMemo<ProductFilterNames>(
-    () => ({
-      warehouses: new Map(warehouses.map((w) => [w.publicId ?? '', warehouseLabel(w)])),
-      categories: new Map(categories.map((c) => [String(c.id), c.path || c.name || String(c.id)])),
-    }),
-    [warehouses, categories],
-  )
-  return { t, lang, company: me?.tenantName, user: me?.fullName || me?.email, filters, names }
-}
-
-function ReportButton({ label, hint, className, run }: { label: string; hint: string; className?: string; run: () => Promise<void> }) {
+/** Botón de reporte: "Generando…" y deshabilitado mientras corre `run`; si falla, toast de error. Lo comparten los reportes
+ *  de Productos e inventario y los de códigos de barras (Lote F14). */
+export function ReportButton({ label, hint, className, run }: { label: string; hint: string; className?: string; run: () => Promise<void> }) {
   const t = useT()
   const [busy, setBusy] = useState(false)
   return (
@@ -66,7 +50,7 @@ function ReportButton({ label, hint, className, run }: { label: string; hint: st
 /** "Reporte de inventario": PDF con todos los productos que cumplen los filtros (inventario al momento). */
 export function InventoryReportButton({ filters, className }: ProductReportButtonProps) {
   const t = useT()
-  const ctx = useReportContext(filters)
+  const ctx = useProductReportContext(filters)
   return (
     <ReportButton
       className={className}
@@ -88,7 +72,7 @@ export interface AdjustmentsReportButtonProps {
 /** "Reporte de ajustes": PDF con los movimientos ADJUSTMENT que cumplen los filtros (de Productos o de la consulta dada). */
 export function AdjustmentsReportButton({ filters, query, className }: AdjustmentsReportButtonProps) {
   const t = useT()
-  const base = useReportContext(filters ?? EMPTY_PRODUCT_FILTERS)
+  const base = useProductReportContext(filters ?? EMPTY_PRODUCT_FILTERS)
   const ctx: ProductReportContext = query ? { ...base, adjustments: query } : base
   return (
     <ReportButton

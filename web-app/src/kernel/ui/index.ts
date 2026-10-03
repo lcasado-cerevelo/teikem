@@ -53,7 +53,7 @@ export type { EmptyStateProps } from './EmptyState'
 export { DateRangeFilter, Filters, SelectFilter } from './Filters'
 export { ExportCompanyProvider, FilterScope } from './FilterScope'
 export type { FilterScopeProps } from './FilterScope'
-export { useExportHeading, useRegisterFilter } from './filterScopeContext'
+export { useAppliedFilters, useExportHeading, useRegisterFilter } from './filterScopeContext'
 export type { ExportHeading } from './filterScopeContext'
 export {
   createFilterRegistry,

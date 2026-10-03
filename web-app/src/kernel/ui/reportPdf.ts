@@ -247,6 +247,14 @@ const BAND_H = 72
 const THIN_BAND_H = 28
 const FOOTER_H = 30
 
+/** Medidas compartidas con otros reportes de marca (p. ej. `barcodeReportPdf.ts`), en puntos. */
+export const REPORT_LAYOUT = { margin: MARGIN, thinBandHeight: THIN_BAND_H, footerHeight: FOOTER_H } as const
+/** Colores de la marca en los reportes (RGB). */
+export const REPORT_COLORS = { navy: NAVY, blue: BLUE, orange: ORANGE, ink: INK, muted: MUTED, line: LINE, noticeBg: NOTICE_BG, noticeInk: NOTICE_INK } as const
+
+/** Lo que pinta el encabezado de la página 1 de un reporte de marca. */
+export type ReportHeaderSpec = Pick<ReportSpec, 'title' | 'subtitle' | 'company' | 'user' | 'generatedAt' | 'locale' | 'filters' | 'summary' | 'notices'>
+
 export interface RenderReportOptions {
   /** PNG (data URL) del símbolo de la marca; null/omitido = encabezado solo con texto. */
   logo?: string | null
@@ -259,8 +267,79 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
   const [{ jsPDF: JsPdf }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const safe = (s: string) => pdfSafeText(s)
   const doc = new JsPdf({ orientation: reportOrientation(spec), unit: 'pt', format: 'a4', compress: options.compress ?? true })
+  const y = drawReportHeader(doc, spec, options.logo)
+
+  // ---- tabla ----
+  const rows = buildReportBody({ ...spec, emptyText: spec.emptyText ?? translate('ui.report.empty') })
+  const cellPadding = { top: 4.5, bottom: 4.5, left: 5, right: 5 }
+  const columnStyles: Record<number, { halign?: 'right'; cellWidth: 'wrap' }> = {}
+  spec.columns.forEach((c, i) => {
+    if (isNumericFormat(c.format)) columnStyles[i] = { halign: 'right', cellWidth: 'wrap' }
+    else if (c.noWrap) columnStyles[i] = { cellWidth: 'wrap' }
+  })
+  // con varias filas de total (entradas / salidas / neto) solo la última va en azul marino; las demás, como subtotal
+  const lastTotal = rows.map((r) => r.kind).lastIndexOf('total')
+  const body = rows.map((row, rowIndex) =>
+    row.cells.map((cell) => {
+      const base = { content: safe(cell.text), colSpan: cell.colSpan }
+      const kind = row.kind === 'total' && rowIndex !== lastTotal ? 'subtotal' : row.kind
+      switch (kind) {
+        case 'group':
+          return { ...base, styles: { fillColor: GROUP_BG, textColor: NAVY, fontStyle: 'bold' as const, fontSize: 8.5, halign: 'left' as const } }
+        case 'subtotal':
+          return {
+            ...base,
+            styles: {
+              fillColor: SUBTOTAL_BG,
+              textColor: INK,
+              fontStyle: 'bold' as const,
+              halign: cell.align,
+              lineWidth: { top: 0.8, bottom: 0, left: 0, right: 0 },
+              lineColor: [170, 182, 204] as Rgb,
+            },
+          }
+        case 'total':
+          return { ...base, styles: { fillColor: NAVY, textColor: [255, 255, 255] as Rgb, fontStyle: 'bold' as const, fontSize: 9, halign: cell.align } }
+        case 'empty':
+          return { ...base, styles: { textColor: MUTED, fontStyle: 'italic' as const, halign: 'center' as const, cellPadding: 12 } }
+        default:
+          return {
+            ...base,
+            styles: {
+              fillColor: (row.index ?? 0) % 2 === 1 ? ZEBRA : ([255, 255, 255] as Rgb),
+              halign: cell.align,
+              lineWidth: { top: 0, bottom: 0.5, left: 0, right: 0 },
+              lineColor: LINE,
+            },
+          }
+      }
+    }),
+  )
+  autoTable(doc, {
+    head: [spec.columns.map((c) => ({ content: safe(c.header), styles: { halign: isNumericFormat(c.format) ? ('right' as const) : ('left' as const) } }))],
+    body,
+    startY: y,
+    theme: 'plain',
+    margin: { left: MARGIN, right: MARGIN, top: THIN_BAND_H + 20, bottom: FOOTER_H + 14 },
+    styles: { font: 'helvetica', fontSize: 8, cellPadding, textColor: INK, overflow: 'linebreak', valign: 'middle' },
+    headStyles: { fillColor: HEAD, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    columnStyles,
+    rowPageBreak: 'avoid',
+    showHead: 'everyPage',
+  })
+
+  drawReportPageChrome(doc, spec)
+  return doc
+}
+
+/**
+ * Página 1 de un reporte de marca: banda azul marino (símbolo si hay `logo`, "TEIKEM", lema, compañía y fecha), título,
+ * subtítulo, "Generado el … por …", recuadro "Filtros aplicados", tarjetas de resumen y avisos. Devuelve la `y` (pt) donde
+ * empieza el cuerpo. Lo usan `renderReportPdf` y el reporte de códigos de barras (Lote F14).
+ */
+export function drawReportHeader(doc: jsPDF, spec: ReportHeaderSpec, logo?: string | null): number {
+  const safe = (s: string) => pdfSafeText(s)
   const W = doc.internal.pageSize.getWidth()
-  const H = doc.internal.pageSize.getHeight()
   const inner = W - MARGIN * 2
   const generatedAt = spec.generatedAt ?? new Date()
   const when = formatReportDate(generatedAt, spec.locale)
@@ -274,9 +353,9 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
   doc.setFillColor(...ORANGE)
   doc.rect(0, BAND_H, 96, 3, 'F')
   let brandX = MARGIN
-  if (options.logo) {
+  if (logo) {
     try {
-      doc.addImage(options.logo, 'PNG', MARGIN - 4, 14, 44, 44)
+      doc.addImage(logo, 'PNG', MARGIN - 4, 14, 44, 44)
       brandX = MARGIN + 48
     } catch {
       // un PNG ilegible no impide el reporte: queda solo el texto
@@ -395,81 +474,48 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
   }
 
   // ---- avisos ----
-  for (const notice of spec.notices ?? []) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    const lines = doc.splitTextToSize(safe(notice), inner - 22) as string[]
-    const h = lines.length * 11 + 10
-    doc.setFillColor(...NOTICE_BG)
-    doc.rect(MARGIN, y, inner, h, 'F')
-    doc.setFillColor(...ORANGE)
-    doc.rect(MARGIN, y, 2.5, h, 'F')
-    doc.setTextColor(...NOTICE_INK)
-    doc.text(lines, MARGIN + 12, y + 13)
-    y += h + 6
-  }
+  for (const notice of spec.notices ?? []) y += drawReportNotice(doc, reportNoticeLines(doc, notice), y) + 6
   y += 4
 
-  // ---- tabla ----
-  const rows = buildReportBody({ ...spec, emptyText: spec.emptyText ?? translate('ui.report.empty') })
-  const cellPadding = { top: 4.5, bottom: 4.5, left: 5, right: 5 }
-  const columnStyles: Record<number, { halign?: 'right'; cellWidth: 'wrap' }> = {}
-  spec.columns.forEach((c, i) => {
-    if (isNumericFormat(c.format)) columnStyles[i] = { halign: 'right', cellWidth: 'wrap' }
-    else if (c.noWrap) columnStyles[i] = { cellWidth: 'wrap' }
-  })
-  // con varias filas de total (entradas / salidas / neto) solo la última va en azul marino; las demás, como subtotal
-  const lastTotal = rows.map((r) => r.kind).lastIndexOf('total')
-  const body = rows.map((row, rowIndex) =>
-    row.cells.map((cell) => {
-      const base = { content: safe(cell.text), colSpan: cell.colSpan }
-      const kind = row.kind === 'total' && rowIndex !== lastTotal ? 'subtotal' : row.kind
-      switch (kind) {
-        case 'group':
-          return { ...base, styles: { fillColor: GROUP_BG, textColor: NAVY, fontStyle: 'bold' as const, fontSize: 8.5, halign: 'left' as const } }
-        case 'subtotal':
-          return {
-            ...base,
-            styles: {
-              fillColor: SUBTOTAL_BG,
-              textColor: INK,
-              fontStyle: 'bold' as const,
-              halign: cell.align,
-              lineWidth: { top: 0.8, bottom: 0, left: 0, right: 0 },
-              lineColor: [170, 182, 204] as Rgb,
-            },
-          }
-        case 'total':
-          return { ...base, styles: { fillColor: NAVY, textColor: [255, 255, 255] as Rgb, fontStyle: 'bold' as const, fontSize: 9, halign: cell.align } }
-        case 'empty':
-          return { ...base, styles: { textColor: MUTED, fontStyle: 'italic' as const, halign: 'center' as const, cellPadding: 12 } }
-        default:
-          return {
-            ...base,
-            styles: {
-              fillColor: (row.index ?? 0) % 2 === 1 ? ZEBRA : ([255, 255, 255] as Rgb),
-              halign: cell.align,
-              lineWidth: { top: 0, bottom: 0.5, left: 0, right: 0 },
-              lineColor: LINE,
-            },
-          }
-      }
-    }),
-  )
-  autoTable(doc, {
-    head: [spec.columns.map((c) => ({ content: safe(c.header), styles: { halign: isNumericFormat(c.format) ? ('right' as const) : ('left' as const) } }))],
-    body,
-    startY: y,
-    theme: 'plain',
-    margin: { left: MARGIN, right: MARGIN, top: THIN_BAND_H + 20, bottom: FOOTER_H + 14 },
-    styles: { font: 'helvetica', fontSize: 8, cellPadding, textColor: INK, overflow: 'linebreak', valign: 'middle' },
-    headStyles: { fillColor: HEAD, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-    columnStyles,
-    rowPageBreak: 'avoid',
-    showHead: 'everyPage',
-  })
+  return y
+}
 
-  // ---- banda delgada (páginas 2+) y pie (todas) ----
+/** Renglones de un aviso al ancho del cuerpo (texto ya seguro para el PDF). */
+export function reportNoticeLines(doc: jsPDF, notice: string): string[] {
+  const inner = doc.internal.pageSize.getWidth() - MARGIN * 2
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  return doc.splitTextToSize(pdfSafeText(notice), inner - 22) as string[]
+}
+
+/** Alto (pt) de un aviso de `lines` renglones. */
+export function reportNoticeHeight(lines: number): number {
+  return lines * 11 + 10
+}
+
+/** Recuadro de aviso (fondo crema, filete naranja) a todo el ancho del cuerpo en `y`; devuelve su alto. */
+export function drawReportNotice(doc: jsPDF, lines: readonly string[], y: number): number {
+  const inner = doc.internal.pageSize.getWidth() - MARGIN * 2
+  const h = reportNoticeHeight(lines.length)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.setFillColor(...NOTICE_BG)
+  doc.rect(MARGIN, y, inner, h, 'F')
+  doc.setFillColor(...ORANGE)
+  doc.rect(MARGIN, y, 2.5, h, 'F')
+  doc.setTextColor(...NOTICE_INK)
+  doc.text([...lines], MARGIN + 12, y + 13)
+  return h
+}
+
+/** Banda delgada con la compañía y el título en las páginas 2+ y pie "Generado con Teikem · compañía" / "Página X de Y" en
+ *  todas. Se llama al final, con todas las páginas ya armadas. */
+export function drawReportPageChrome(doc: jsPDF, spec: Pick<ReportSpec, 'title' | 'company'>): void {
+  const safe = (s: string) => pdfSafeText(s)
+  const W = doc.internal.pageSize.getWidth()
+  const H = doc.internal.pageSize.getHeight()
+  const inner = W - MARGIN * 2
+  const company = spec.company?.trim() || ''
   const pages = doc.getNumberOfPages()
   for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
@@ -498,7 +544,6 @@ export async function renderReportPdf(spec: ReportSpec, options: RenderReportOpt
     doc.text((doc.splitTextToSize(safe(left), inner - 110) as string[])[0] ?? '', MARGIN, H - FOOTER_H + 13)
     doc.text(safe(translate('ui.report.page', { page: i, pages })), W - MARGIN, H - FOOTER_H + 13, { align: 'right' })
   }
-  return doc
 }
 
 /** Arma el reporte (con el logo si se puede rasterizar) y lo descarga como `reportFileName(spec)`. */

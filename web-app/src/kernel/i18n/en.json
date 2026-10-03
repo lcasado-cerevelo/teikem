@@ -456,6 +456,24 @@
       "footer": "Generated with Teikem",
       "empty": "No records match the filters."
     },
+    "barcodeReport": {
+      "tooWide": "Does not fit: too long for a readable barcode",
+      "tooWideNotice": "Too long for a readable barcode in the page width ({count}); listed without a barcode: {list}.",
+      "unsupportedNotice": "Left out because they contain characters the barcode (Code 128) does not support ({count}): {list}.",
+      "unsupportedItem": "{value} (not supported: {chars})",
+      "emptyValue": "(empty value)",
+      "seeEndNotices": "Some values have no barcode (too long or left out): see the notices at the end of the report.",
+      "more": "{list} and {count} more",
+      "continued": "{title} (continued)",
+      "columnsNotice": "{columns} columns were used because some long barcodes do not fit narrower.",
+      "columnsNoticeOne": "A single column was used because some long barcodes do not fit narrower.",
+      "summary": {
+        "rows": "Items",
+        "codes": "With barcode",
+        "tooWide": "Too long",
+        "omitted": "Left out"
+      }
+    },
     "split": {
       "resize": "Resize panels"
     }
@@ -1018,6 +1036,30 @@
       "noAccess": "Your user cannot view the city catalog.",
       "clear": "Remove city and ZIP code",
       "derivedHelp": "Filled from the chosen city."
+    },
+    "barcodes": {
+      "button": "Barcodes",
+      "productsHint": "PDF with one barcode per SKU of the filtered list, to print and scan the paper with the scanner during a count.",
+      "binsHint": "PDF with one barcode per bin of the filtered list, to print and scan the paper with the scanner during a count.",
+      "productsTitle": "Product barcodes",
+      "productsSubtitle": "One barcode per SKU to scan when the product has no label. The barcode holds the exact SKU.",
+      "binsTitle": "Bin barcodes",
+      "binsSubtitle": "One barcode per bin to scan when the bin label is missing or misplaced. The barcode holds the exact bin code.",
+      "columns": "Barcode report columns",
+      "columnsAuto": "Automatic",
+      "columnsTwo": "2 columns",
+      "productGroup": "{name} ({count})",
+      "noCategory": "No category",
+      "binGroup": "Group {group} ({count})",
+      "otherBins": "Other bins ({count})",
+      "inactive": "Inactive",
+      "inactiveBin": "Inactive",
+      "zone": "Zone {zone}",
+      "warehouse": "Warehouse {warehouse}",
+      "truncatedProducts": "The report includes only the first {count} products (read limit). Narrow the filters to see the rest.",
+      "truncatedBins": "The report includes only the first {count} bins (read limit). Narrow the filters to see the rest.",
+      "emptyProducts": "No product matches the filters.",
+      "emptyBins": "No bin matches the filters."
     },
     "locations": {
       "title": "Bins",
