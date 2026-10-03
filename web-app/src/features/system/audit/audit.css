@@ -52,6 +52,7 @@
   display: block;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 400;
   margin-top: 2px;
 }
 .aud-when {
