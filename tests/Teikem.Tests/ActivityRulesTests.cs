@@ -449,7 +449,7 @@ public sealed class ActivityRulesTests
         var po = new Teikem.Domain.Wms.PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = f.Tenant.TenantId!.Value, SupplierId = 1, WarehouseId = w.WarehouseId, Number = number,
-            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
             IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<Teikem.Domain.Wms.PurchaseOrder>().Add(po);
@@ -552,7 +552,7 @@ public sealed class ActivityRulesTests
         var po = new Teikem.Domain.Wms.PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = f.Tenant.TenantId!.Value, SupplierId = 1, WarehouseId = w1.WarehouseId, Number = "PO-00042",
-            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Partial),
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Partial),
             IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<Teikem.Domain.Wms.PurchaseOrder>().Add(po);

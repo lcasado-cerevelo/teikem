@@ -119,7 +119,7 @@ public sealed class PickBatchServiceTests
         var pn = await f.AddProductAsync("PN", purchaseCost: 1.5m);
         var pl = await f.AddProductAsync("PL", tracking: TrackingTypes.Lot);
         var ps = await f.AddProductAsync("PS", tracking: TrackingTypes.Serial);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today;
         var late = await f.AddLotAsync(pl, "L-TARDE", today.AddDays(60));    // creado primero
         var early = await f.AddLotAsync(pl, "L-TEMPRANO", today.AddDays(10));
         InventoryPosting In(Product p, decimal q, int? lot = null, string? serial = null)

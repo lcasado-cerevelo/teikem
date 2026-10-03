@@ -454,7 +454,7 @@ public sealed class SyncRulesTests
         var po = new PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = WmsFixture.OtherTenantId, SupplierId = supplier.SupplierId, WarehouseId = foreign.WarehouseId,
-            Number = "PO-X", OrderDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Number = "PO-X", OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today,
             StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         var asn = new Asn

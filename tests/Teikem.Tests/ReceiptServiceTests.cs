@@ -787,7 +787,7 @@ internal sealed class ReceivingFixture : IAsyncDisposable
         Db.Set<PurchaseOrder>().Add(new PurchaseOrder
         {
             PurchaseOrderId = PoId, PublicId = PoPublicId, TenantId = TenantId, SupplierId = 401, WarehouseId = WarehouseId,
-            Number = "PO-00001", OrderDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Number = "PO-00001", OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today,
             StatusCodeId = StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent), IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         });
         Db.Set<PurchaseOrderLine>().Add(new PurchaseOrderLine { PurchaseOrderLineId = PoLineId, PurchaseOrderId = PoId, ProductId = ProductNoneId, QtyOrdered = 10m, UnitCost = 12.5m });

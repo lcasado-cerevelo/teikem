@@ -33,7 +33,7 @@ namespace Teikem.Tests;
 internal sealed class TripServiceFixture : IAsyncDisposable
 {
     public const int TenantId = 1;
-    public static readonly DateOnly Today = DateOnly.FromDateTime(DateTime.UtcNow);
+    public static readonly DateOnly Today = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today;
 
     private readonly Dictionary<string, int> _statusIds = new(StringComparer.OrdinalIgnoreCase);
     private int _nextOrderId = 5000;
@@ -62,7 +62,8 @@ internal sealed class TripServiceFixture : IAsyncDisposable
     public int Zone1 { get; private set; }
     public int Zone2 { get; private set; }
 
-    public static async Task<TripServiceFixture> CreateAsync()
+    /// <summary>Lote 20: <paramref name="clock"/> opcional (reloj fijo de la compañía); sin él los servicios usan el reloj por defecto.</summary>
+    public static async Task<TripServiceFixture> CreateAsync(ITenantClock? clock = null)
     {
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
         var options = new DbContextOptionsBuilder<TeikemDbContext>()
@@ -78,6 +79,7 @@ internal sealed class TripServiceFixture : IAsyncDisposable
         services.AddLogging();
         services.AddSingleton(db);
         services.AddSingleton<ITenantContext>(tenant);
+        if (clock is not null) services.AddSingleton(clock);
         services.AddSingleton<ILookupCache>(lookups);
         services.AddSingleton<IMemoryCache>(new MemoryCache(new MemoryCacheOptions()));
         services.AddSingleton<IFleetAvailabilityService>(availability);

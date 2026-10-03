@@ -36,7 +36,7 @@ public sealed class PurchaseShortageServiceTests
         var po = new PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = tenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = number,
-            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, status), IsActive = true,
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, status), IsActive = true,
             CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<PurchaseOrder>().Add(po);
@@ -244,7 +244,7 @@ public sealed class PurchaseShortageServiceTests
         var po = new PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = "PO-00004",
-            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
             IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<PurchaseOrder>().Add(po);
@@ -265,7 +265,7 @@ public sealed class PurchaseShortageServiceTests
         var po = new PurchaseOrder
         {
             PublicId = Guid.NewGuid(), TenantId = WmsFixture.TenantId, SupplierId = supplier.SupplierId, WarehouseId = w.WarehouseId, Number = number,
-            OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
+            OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = f.StatusId(StatusDomains.PurchaseOrderStatus, PurchaseOrderStatuses.Sent),
             IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         f.Db.Set<PurchaseOrder>().Add(po);
@@ -438,7 +438,7 @@ public sealed class PurchaseShortageServiceTests
         var w = await f.AddWarehouseAsync("W1");
         var supplier = await AddSupplierAsync(f);
         var pa = await f.AddProductAsync("PA");
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today;
         var late = await AddPurchaseOrderAsync(f, w, supplier, "PO-00040", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
         var sameA = await AddPurchaseOrderAsync(f, w, supplier, "PO-00041", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));
         var sameB = await AddPurchaseOrderAsync(f, w, supplier, "PO-00042", PurchaseOrderStatuses.Partial, (pa, 5m, 1m, 1m));

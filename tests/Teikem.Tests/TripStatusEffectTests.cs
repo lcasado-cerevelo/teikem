@@ -522,8 +522,8 @@ public class TripStatusEffectTests
             var trip = new TripEntity
             {
                 TripId = 1, PublicId = Guid.NewGuid(), TenantId = TenantId, Code = TripCode,
-                PlanDate = DateOnly.FromDateTime(DateTime.UtcNow), DriverId = withDriver ? 7 : null, VehicleId = withVehicle ? 9 : null,
-                StatusCodeId = Id(StatusDomains.TripStatus, tripStatus), PlannedStartUtc = DateTime.UtcNow.Date.AddHours(12),
+                PlanDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, DriverId = withDriver ? 7 : null, VehicleId = withVehicle ? 9 : null,
+                StatusCodeId = Id(StatusDomains.TripStatus, tripStatus), PlannedStartUtc = Teikem.Infrastructure.Abstractions.TenantClock.Default.StartOfDayUtc(Teikem.Infrastructure.Abstractions.TenantClock.Default.Today).AddHours(12),
                 IsActive = true, CreatedAtUtc = DateTime.UtcNow,
             };
             Db.Trips.Add(trip);

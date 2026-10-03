@@ -267,7 +267,7 @@ internal sealed class PurchasingFixture : IAsyncDisposable
         var po = new PurchaseOrder
         {
             PurchaseOrderId = poId, PublicId = Guid.NewGuid(), TenantId = tenantId, SupplierId = SupplierId, WarehouseId = WarehouseId,
-            Number = $"PO-{poId:00000}", OrderDate = DateOnly.FromDateTime(DateTime.UtcNow), StatusCodeId = StatusId(status),
+            Number = $"PO-{poId:00000}", OrderDate = Teikem.Infrastructure.Abstractions.TenantClock.Default.Today, StatusCodeId = StatusId(status),
             IsActive = true, CreatedAtUtc = DateTime.UtcNow,
         };
         Db.Set<PurchaseOrder>().Add(po);
