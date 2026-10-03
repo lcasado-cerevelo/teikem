@@ -34,8 +34,11 @@ public sealed class TripService(
     IFleetAvailabilityService availability,
     ModuleService modules,
     RouteWriter writer,
-    TripReadService reader)
+    TripReadService reader,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string DriverDoubleBookedCode = "DRIVER_DOUBLE_BOOKED";
 
     // ================================================================ numeración (antes de la transacción)
@@ -427,5 +430,5 @@ public sealed class TripService(
         return TripPlanningRules.PickDefaultDriver(new[] { new DefaultDriverCandidate(ids[0], check.Available) });
     }
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

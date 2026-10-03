@@ -17,7 +17,7 @@ public sealed record GeoPointDto(double Lat, double Lng);
 /// <summary>Último ping del chofer; LinkedToTrip = false si es el respaldo (ping del chofer sin TripId desde la salida).</summary>
 public sealed record DriverPingDto(GeoPointDto Point, decimal? SpeedKmh, int? HeadingDeg, DateTime CapturedAtUtc, DateTime ReceivedAtUtc, bool LinkedToTrip);
 
-/// <summary>Listado de rutas: sin fecha = hoy (UTC); From/To = rango; Search se aplica después de los filtros.</summary>
+/// <summary>Listado de rutas: sin fecha = hoy en la zona de la compañía; From/To = rango; Search se aplica después de los filtros.</summary>
 public sealed record TripListQuery(
     DateOnly? Date = null,
     DateOnly? From = null,
@@ -299,7 +299,7 @@ public sealed record TripBatchDispatchResultDto(int Requested, int Dispatched, I
 /// <summary>Salida de la ruta (DISPATCHED → IN_PROGRESS).</summary>
 public sealed record TripStartRequest(string? Comment = null, string? RowVersion = null);
 
-/// <summary>Monitor: sin fecha = hoy (UTC); los totales no cambian con Search.</summary>
+/// <summary>Monitor: sin fecha = hoy en la zona de la compañía; los totales no cambian con Search.</summary>
 public sealed record MonitorQuery(DateOnly? Date = null, int? DispatchZoneId = null, string? Search = null, bool IncludeCompleted = true);
 
 public sealed record MonitorTripDto(
@@ -333,7 +333,7 @@ public sealed record MonitorTotalsDto(
 
 public sealed record MonitorDto(DateOnly Date, MonitorTotalsDto Totals, IReadOnlyList<MonitorTripDto> Trips);
 
-/// <summary>Escaneo Outbound: número de orden, empaque o factura; sin fecha = hoy (UTC).</summary>
+/// <summary>Escaneo Outbound: número de orden, empaque o factura; sin fecha = hoy en la zona de la compañía.</summary>
 public sealed record OutboundScanRequest(string? Code, DateOnly? PlanDate = null);
 
 /// <summary>Resultado tipado del escaneo (Outcome), palabra de voz (found/dup/notfound) y mensaje exacto.</summary>

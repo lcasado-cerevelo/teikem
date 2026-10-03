@@ -20,7 +20,7 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class TripDispatchController(TripDispatchService dispatch, TripLifecycleService lifecycle) : ControllerBase
 {
-    /// <summary>Rutas activas en DRAFT/PLANNED del día (sin fecha = hoy UTC) con avisos, bloqueantes y canDispatch.</summary>
+    /// <summary>Rutas activas en DRAFT/PLANNED del día (sin fecha = hoy en la zona de la compañía) con avisos, bloqueantes y canDispatch.</summary>
     [HttpGet("dispatchable"), RequirePermission(PermissionCatalog.TripsDispatch)]
     public Task<IReadOnlyList<DispatchableTripDto>> Dispatchable([FromQuery] DateOnly? date, CancellationToken ct)
         => dispatch.ListDispatchableAsync(date, ct);

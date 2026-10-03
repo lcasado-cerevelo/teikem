@@ -12,7 +12,7 @@ namespace Teikem.Infrastructure.Services;
 
 /// <summary>
 /// Lote 5 (P4) — Sala de despacho: selector de rutas no despachadas, despacho individual y despacho en lote.
-/// - ListDispatchableAsync: rutas activas en DRAFT/PLANNED del día (sin fecha = hoy UTC) con sus avisos y bloqueantes
+/// - ListDispatchableAsync: rutas activas en DRAFT/PLANNED del día (sin fecha = hoy en la zona de la compañía) con sus avisos y bloqueantes
 ///   (TripIssueBuilder, incluida la elegibilidad de las órdenes). CanDispatch = sin bloqueantes. Orden: zona y código.
 /// - DispatchAsync: CATALOG (usa chofer y vehículo), comentario ≤ 500 y, dentro de la transacción con el Trip bloqueado:
 ///   RowVersion (409), estatus DRAFT/PLANNED (422), bloqueantes (422 status_rule 'La ruta … no se puede despachar: …' con
@@ -28,14 +28,17 @@ public sealed class TripDispatchService(
     StatusService statuses,
     ModuleService modules,
     TripIssueBuilder issueBuilder,
-    TripReadService reader)
+    TripReadService reader,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     // ================================================================ GET /trips/dispatchable
 
     public async Task<IReadOnlyList<DispatchableTripDto>> ListDispatchableAsync(DateOnly? date, CancellationToken ct)
     {
         ((TenantContext)tenant).RequireTenantId();
-        var day = date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var day = date ?? _clock.Today;
         var openIds = await OpenStatusIdsAsync(ct);
 
         var ids = await db.Trips.AsNoTracking()

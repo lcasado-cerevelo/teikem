@@ -19,7 +19,7 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class TripMonitorController(TripMonitorService monitor) : ControllerBase
 {
-    /// <summary>Monitor del día (sin fecha = hoy UTC), opcionalmente por zona, con búsqueda libre sobre los textos visibles.</summary>
+    /// <summary>Monitor del día (sin fecha = hoy en la zona de la compañía), opcionalmente por zona, con búsqueda libre sobre los textos visibles.</summary>
     [HttpGet("monitor"), RequirePermission(PermissionCatalog.TripsView)]
     public Task<MonitorDto> Get([FromQuery] DateOnly? date, [FromQuery] int? dispatchZoneId, [FromQuery] string? search,
         [FromQuery] bool includeCompleted = true, CancellationToken ct = default)

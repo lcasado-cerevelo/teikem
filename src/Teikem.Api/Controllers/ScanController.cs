@@ -20,7 +20,7 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class ScanController(OutboundScanService scanner) : ControllerBase
 {
-    /// <summary>Escaneo de salida: { code, planDate? } (sin fecha = hoy UTC).</summary>
+    /// <summary>Escaneo de salida: { code, planDate? } (sin fecha = hoy en la zona de la compañía).</summary>
     [HttpPost("outbound"), RequirePermission(PermissionCatalog.TripsScan)]
     public Task<OutboundScanResultDto> Outbound([FromBody] OutboundScanRequest req, CancellationToken ct)
         => scanner.ScanAsync(req, ct);

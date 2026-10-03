@@ -39,8 +39,11 @@ public sealed class SpecialDeliveryDispatchService(
     IDriverRateResolver rates,
     PermissionService permissions,
     ModuleService modules,
-    OrderReadService reader)
+    OrderReadService reader,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string NotSpecialMessage = "Solo las entregas especiales se asignan a un chofer desde aquí; las demás órdenes pasan por Sala de despacho.";
     public const string PastTransitMessage = "La entrega especial ya llegó a destino o terminó; no se puede asignar ni reasignar el chofer.";
     public const string AlreadyAssignedMessage = "La orden ya está asignada a ese chofer.";
@@ -161,5 +164,5 @@ public sealed class SpecialDeliveryDispatchService(
         return await reader.GetAsync(orderPublicId, scope, ct);
     }
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

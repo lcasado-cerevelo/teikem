@@ -18,7 +18,7 @@ namespace Teikem.Infrastructure.Services;
 ///    factura, con su ambigüedad). No se reimplementa la búsqueda.
 /// 3. Hechos de la única coincidencia: ruta vigente (TripOrder IsCurrent), elegibilidad (TripRules.CheckEligibility con el
 ///    pipeline del tenant, ASSIGN_TRIP y parada DELIVERY pendiente), zona de la parada pendiente (DispatchZoneMatcher sobre
-///    las zonas activas) y rutas abiertas (activas, DRAFT/PLANNED) de esa zona en PlanDate ?? hoy (UTC), por TripId ascendente
+///    las zonas activas) y rutas abiertas (activas, DRAFT/PLANNED) de esa zona en PlanDate ?? hoy (zona de la compañía), por TripId ascendente
 ///    (misma regla que TripRules.PickOpenTrip: gana la de menor id).
 /// 4. OutboundScanRules.Decide con la precedencia fija.
 /// 5. FOUND_ASSIGNED: dentro de una transacción se bloquea la ruta (LockTripAsync; orden de bloqueo del lote: Trip y luego
@@ -35,8 +35,11 @@ public sealed class OutboundScanService(
     ILookupCache lookups,
     StatusService statuses,
     OrderReadService orders,
-    RouteWriter writer)
+    RouteWriter writer,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     /// <summary>Intentos de asignación ante un 409 sin ruta vigente visible (p. ej. choque de RowVersion en una carrera).</summary>
     private const int MaxAssignAttempts = 2;
 
@@ -47,7 +50,7 @@ public sealed class OutboundScanService(
         // 1. Código.
         var (code, error) = OutboundScanRules.NormalizeCode(req?.Code);
         if (error is not null) throw new ValidationException("code", error);
-        var planDate = req?.PlanDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var planDate = req?.PlanDate ?? _clock.Today;
 
         // 2. Lookup exacto del Lote 3 (número > empaque > factura), reutilizado tal cual.
         var lookup = await orders.LookupAsync(code!, OrderScope.Any, ct);

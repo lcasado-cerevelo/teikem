@@ -21,8 +21,10 @@ namespace Teikem.Infrastructure.Services;
 /// - Las rutas canceladas (IsActive = 0) también se leen; el listado las oculta salvo IncludeCancelled o filtro explícito.
 /// - Ningún DTO lleva montos (Amount/Rate): este módulo no maneja dinero.
 /// </summary>
-public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, TripIssueBuilder issueBuilder)
+public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, TripIssueBuilder issueBuilder, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     // ================================================================ ficha
 
     /// <summary>Ficha de la ruta por PublicId (404 'Ruta no encontrada.').</summary>
@@ -132,7 +134,7 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
     // ================================================================ listado
 
     /// <summary>
-    /// Listado del día (sin fecha = hoy UTC) o de un rango From..To. Filtros: estatus (400 si es desconocido), zona y chofer
+    /// Listado del día (sin fecha = hoy en la zona de la compañía) o de un rango From..To. Filtros: estatus (400 si es desconocido), zona y chofer
     /// (404 si no es del tenant). La búsqueda libre (código, zona, chofer, vehículo, estatus) corre en memoria DESPUÉS de
     /// los filtros. Sin IncludeCancelled ni filtro de estatus, se ocultan las rutas eliminadas (IsActive = 0).
     /// </summary>
@@ -487,5 +489,5 @@ public sealed class TripReadService(TeikemDbContext db, ITenantContext tenant, I
     }
 
     private static string RowVersionOf(byte[]? rv) => rv is null ? string.Empty : Convert.ToBase64String(rv);
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

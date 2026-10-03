@@ -21,7 +21,7 @@ namespace Teikem.Api.Controllers;
 [RequireModule(ModuleKeys.LtlGround)]
 public sealed class TripsController(TripService trips, TripReadService reader) : ControllerBase
 {
-    /// <summary>Rutas del día (sin fecha = hoy UTC) o de un rango, con filtros de estatus, zona y chofer y búsqueda libre.</summary>
+    /// <summary>Rutas del día (sin fecha = hoy en la zona de la compañía) o de un rango, con filtros de estatus, zona y chofer y búsqueda libre.</summary>
     [HttpGet, RequirePermission(PermissionCatalog.TripsView)]
     public Task<IReadOnlyList<TripListItemDto>> List([FromQuery] DateOnly? date, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
         [FromQuery] string[]? status, [FromQuery] int? dispatchZoneId, [FromQuery] Guid? driverPublicId, [FromQuery] string? search,

@@ -39,8 +39,11 @@ public sealed class TripDayPlanningService(
     TripService trips,
     TripOrderService tripOrders,
     RouteWriter writer,
-    TripIssueBuilder issueBuilder)
+    TripIssueBuilder issueBuilder,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string ZoneLabel = "Zona de despacho";
 
     /// <summary>Resultado interno de una zona dentro de la transacción (se completa con los avisos después del commit).</summary>
@@ -206,5 +209,5 @@ public sealed class TripDayPlanningService(
             .ToListAsync(ct);
     }
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

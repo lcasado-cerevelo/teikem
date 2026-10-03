@@ -18,17 +18,19 @@ namespace Teikem.Infrastructure.Services;
 /// - Consultas por lote (sin N+1): una por tabla; los pings en UNA llamada a TripQueries.LastPingsAsync, que ya aplica el
 ///   respaldo del chofer (último ping sin TripId desde ActualStartUtc, LinkedToTrip = false).
 /// - Los totales se calculan sobre la fecha y la zona ANTES de la búsqueda libre (MonitorRules): buscar nunca los cambia.
-/// - 'Hoy' se toma en UTC; la fecha se puede indicar explícitamente. El mapa lo dibuja el front con GET /trips/{id}.
+/// - 'Hoy' es el día de la zona horaria de la compañía (ITenantClock); la fecha se puede indicar explícitamente. El mapa lo dibuja el front con GET /trips/{id}.
 /// - Ningún DTO lleva montos (Amount/Rate).
 /// </summary>
-public sealed class TripMonitorService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class TripMonitorService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private sealed record StatusInfo(string Code, string Label);
 
     public async Task<MonitorDto> ListAsync(MonitorQuery query, CancellationToken ct)
     {
         query ??= new MonitorQuery();
-        var date = query.Date ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var date = query.Date ?? _clock.Today;
 
         var tripStatuses = await StatusMapAsync(StatusDomains.TripStatus, ct);
         var stopStatuses = await StatusMapAsync(StatusDomains.RouteStopStatus, ct);

@@ -20,8 +20,10 @@ namespace Teikem.Infrastructure.Services;
 ///   tenant responde 404 'Viaje no encontrado.'. Chofer eliminado (terminal): solo se consulta (409).
 /// - El viaje de una entrega especial no se cancela directo (409): se cancela la orden o se reasigna el chofer.
 /// </summary>
-public sealed class DriverTripService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IDriverRateResolver rates)
+public sealed class DriverTripService(TeikemDbContext db, ITenantContext tenant, StatusService statuses, IDriverRateResolver rates, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     /// <summary>Choque en UX_DriverTrip_Order: otra asignación dejó un viaje vigente para la misma orden.</summary>
     public const string OrderTripTakenMessage = "La orden ya tiene un viaje vigente; recargue e intente de nuevo.";
     public const string DateRangeMessage = "La fecha inicial no puede ser posterior a la final.";
@@ -238,5 +240,5 @@ public sealed class DriverTripService(TeikemDbContext db, ITenantContext tenant,
                 .Distinct()
                 .ToList();
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }
