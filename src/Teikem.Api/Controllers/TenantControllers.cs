@@ -56,31 +56,46 @@ public sealed class TenantController(TenantService tenants) : ControllerBase
 }
 
 /// <summary>
-/// Antes de leer el cuerpo de la subida de un logo: si la petición ya declara más de lo que cabe (512 KB + holgura del multipart)
-/// responde 413 sin leerla, y limita el cuerpo sin longitud declarada (chunked) a ese máximo.
+/// Antes del enlace del formulario de la subida de un logo: si la petición ya declara más de lo que cabe (512 KB + holgura del
+/// multipart) responde 413 sin leerla; sin longitud declarada (chunked) limita el cuerpo a ese máximo y, si se pasa mientras se
+/// lee, también es un 413 con el formato de siempre (el enlace de modelos lo habría convertido en un 400 genérico).
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class BrandLogoUploadLimitAttribute : Attribute, IResourceFilter
+public sealed class BrandLogoUploadLimitAttribute : Attribute, IAsyncResourceFilter
 {
     /// <summary>Holgura para el sobre multipart (límites, cabeceras de la parte).</summary>
     public const int EnvelopeBytes = 16 * 1024;
     public const int MaxRequestBytes = BrandLogoRules.MaxBytes + EnvelopeBytes;
 
-    public void OnResourceExecuting(ResourceExecutingContext context)
+    public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
-        var req = context.HttpContext.Request;
+        var http = context.HttpContext;
+        var req = http.Request;
         if (req.ContentLength is > MaxRequestBytes) throw new PayloadTooLargeException(BrandLogoRules.TooLargeMessage);
-        var feature = context.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        var feature = http.Features.Get<IHttpMaxRequestBodySizeFeature>();
         if (feature is { IsReadOnly: false }) feature.MaxRequestBodySize = MaxRequestBytes;
+        // el formulario queda en caché de la petición: el enlace de IFormFile ya no lo vuelve a leer (un cuerpo que no sea multipart
+        // lo rechaza el enrutamiento con 415, porque el parámetro IFormFile hace que MVC infiera [Consumes("multipart/form-data")])
+        if (!req.HasFormContentType) { await next(); return; }
+        try { await req.ReadFormAsync(http.RequestAborted); }
+        catch (Exception ex) when (ex is BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge }
+                                   || ex is InvalidDataException { InnerException: BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } })
+        {
+            throw new PayloadTooLargeException(BrandLogoRules.TooLargeMessage);
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException)
+        {
+            throw new ValidationException("file", BrandLogoRules.BadUploadMessage);
+        }
+        await next();
     }
-
-    public void OnResourceExecuted(ResourceExecutedContext context) { }
 }
 
 /// <summary>
 /// Logos de la marca de la compañía (Ajustes → Marca). Cuatro ranuras: lockup, lockup-inverted, mark, mark-inverted. Escribir exige
 /// admin.tenant; leer solo sesión (es la marca de la interfaz). Subida: multipart/form-data con el campo 'file' (SVG/PNG/JPG/WebP,
-/// hasta 512 KB) → 400 (vacío, imagen dañada, SVG con contenido activo), 413 (tamaño) y 415 (formato). Lectura con ETag y
+/// hasta 512 KB) → 400 (vacío, imagen dañada, SVG con contenido activo), 413 (tamaño) y 415 (formato; un cuerpo que no es multipart
+/// lo rechaza el enrutamiento con 415 sin cuerpo). Lectura con ETag y
 /// Last-Modified (304), nosniff y una CSP restrictiva: el archivo no ejecuta nada ni abierto directamente.
 /// </summary>
 [ApiController]
@@ -111,11 +126,7 @@ public sealed class BrandLogosController(BrandLogoService logos) : ControllerBas
     [HttpPut("{slot}"), RequirePermission(PermissionCatalog.AdminTenant), BrandLogoUploadLimit]
     public async Task<BrandLogoDto> Put(string slot, IFormFile? file, CancellationToken ct)
     {
-        if (file is null)
-        {
-            if (!Request.HasFormContentType) throw new UnsupportedMediaException("Envíe el logo como multipart/form-data en el campo 'file'.");
-            throw new ValidationException("file", BrandLogoRules.FileRequiredMessage);
-        }
+        if (file is null) throw new ValidationException("file", BrandLogoRules.FileRequiredMessage);
         if (file.Length > BrandLogoRules.MaxBytes) throw new PayloadTooLargeException(BrandLogoRules.TooLargeMessage);
         using var ms = new MemoryStream((int)file.Length);
         await using (var s = file.OpenReadStream()) await s.CopyToAsync(ms, ct);

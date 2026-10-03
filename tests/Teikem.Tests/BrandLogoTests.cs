@@ -309,33 +309,40 @@ public sealed class BrandLogoTests
     }
 
     [Fact]
-    public async Task Upload_without_a_file_is_a_400_and_without_multipart_a_415_and_a_big_file_a_413()
+    public async Task Upload_without_a_file_is_a_400_and_a_big_file_a_413()
     {
         await using var f = await FixtureAsync();
         var c = Controller(f);
         var none = await Assert.ThrowsAsync<ValidationException>(() => c.Put("mark", null, default));
         Assert.Equal("Seleccione un archivo de logo.", none.Message);
 
-        var json = new BrandLogosController(f.Get<BrandLogoService>()) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() } };
-        json.Request.ContentType = "application/json";
-        var wrong = await Assert.ThrowsAsync<UnsupportedMediaException>(() => json.Put("mark", null, default));
-        Assert.Equal("Envíe el logo como multipart/form-data en el campo 'file'.", wrong.Message);
-
         await Assert.ThrowsAsync<PayloadTooLargeException>(() => c.Put("mark", Form(new byte[BrandLogoRules.MaxBytes + 1], "image/png"), default));
     }
 
     [Fact]
-    public void The_size_filter_rejects_a_declared_body_over_the_limit_before_reading_it()
+    public async Task The_size_filter_rejects_a_declared_body_over_the_limit_before_reading_it()
     {
         var http = new DefaultHttpContext();
         http.Request.ContentLength = BrandLogoUploadLimitAttribute.MaxRequestBytes + 1;
         var ctx = new Microsoft.AspNetCore.Mvc.Filters.ResourceExecutingContext(
             new ActionContext(http, new Microsoft.AspNetCore.Routing.RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor()),
             [], []);
-        var ex = Assert.Throws<PayloadTooLargeException>(() => new BrandLogoUploadLimitAttribute().OnResourceExecuting(ctx));
+        var reached = false;
+        Microsoft.AspNetCore.Mvc.Filters.ResourceExecutionDelegate next = () => { reached = true; return Task.FromResult<Microsoft.AspNetCore.Mvc.Filters.ResourceExecutedContext>(null!); };
+        var ex = await Assert.ThrowsAsync<PayloadTooLargeException>(() => new BrandLogoUploadLimitAttribute().OnResourceExecutionAsync(ctx, next));
         Assert.Equal("El logo supera el tamaño máximo de 512 KB.", ex.Message);
+        Assert.False(reached);
 
-        http.Request.ContentLength = BrandLogoRules.MaxBytes;
-        new BrandLogoUploadLimitAttribute().OnResourceExecuting(ctx);   // dentro del límite: pasa
+        http.Request.ContentLength = BrandLogoRules.MaxBytes;   // dentro del límite y sin multipart: pasa a la acción
+        await new BrandLogoUploadLimitAttribute().OnResourceExecutionAsync(ctx, next);
+        Assert.True(reached);
+
+        // multipart roto (cuerpo vacío): 400 con su mensaje, no un 500
+        reached = false;
+        http.Request.ContentType = "multipart/form-data; boundary=x";
+        http.Request.Body = new MemoryStream();
+        var broken = await Assert.ThrowsAsync<ValidationException>(() => new BrandLogoUploadLimitAttribute().OnResourceExecutionAsync(ctx, next));
+        Assert.Equal("La subida del logo llegó incompleta o mal formada. Vuelva a intentarlo.", broken.Message);
+        Assert.False(reached);
     }
 }

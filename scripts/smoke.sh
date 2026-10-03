@@ -4531,6 +4531,121 @@ grep -q '^## Saldo inicial (' "$MIG_UPDATE_MD" || fail "el reporte de --update e
 rm -f "$MIG_UPDATE_MARK"
 ok "dry-run con --update: modo marcado en el título y, en la primera carga de la compañía, con su saldo inicial (D51)"
 
+# ============================================================================================================
+# Marca por compañía (2026-10, Lote 19): la marca se valida en el servidor con las mismas reglas que la web (BrandingRules),
+# los cuatro logos viven en la base (multipart 'file', SVG/PNG/JPG/WebP hasta 512 KB, contenido real y SVG sin contenido activo;
+# 400/413/415), se leen con ETag y cabeceras de seguridad, solo admin.tenant escribe, una compañía no ve los de otra, y un
+# feriado repetido es 409. Se deja la compañía demo sin marca ni logos.
+# ============================================================================================================
+step "marca por compañía (Lote 19): validación del servidor, logos (subir/leer/reemplazar/quitar, 400/413/415), permisos, aislamiento, auditoría y feriado duplicado"
+BDIR="$REQ_TMPDIR/brand"; mkdir -p "$BDIR"
+SVG_NS='xmlns="http://www.w3.org/2000/svg"'
+printf '%s' 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==' | base64 -d > "$BDIR/logo.png"
+printf '<svg %s viewBox="0 0 10 10"><rect width="10" height="10" fill="#1F6FE5"/></svg>' "$SVG_NS" > "$BDIR/ok.svg"
+printf '<svg %s><script>alert(1)</script></svg>' "$SVG_NS" > "$BDIR/script.svg"
+printf '<svg %s onload="alert(1)"><rect width="1" height="1"/></svg>' "$SVG_NS" > "$BDIR/onload.svg"
+printf '<svg %s xmlns:xlink="http://www.w3.org/1999/xlink"><image xlink:href="https://evil.example/x.png" width="1" height="1"/></svg>' "$SVG_NS" > "$BDIR/external.svg"
+printf '<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY x "a">]><svg %s><text>&x;</text></svg>' "$SVG_NS" > "$BDIR/entity.svg"
+printf 'esto no es una imagen' > "$BDIR/fake.png"
+head -c 600000 /dev/zero | tr '\0' ' ' > "$BDIR/big.svg"
+{ printf '<svg %s>' "$SVG_NS"; head -c 525000 /dev/zero | tr '\0' ' '; printf '</svg>'; } > "$BDIR/over.svg"
+upload() { # slot archivo tipo [token]  → cuerpo + código HTTP (como req)
+  local tok=${4:-$TOKEN}
+  curl -sS -X PUT "$BASE/api/v1/tenant/brand/logos/$1" -H "Authorization: Bearer $tok" -H 'X-Lang: es' -F "file=@$2;type=$3" -w '\n%{http_code}'
+}
+# --- marca (BrandingJson) ---
+STD='{"preset":"turquesa","useCustom":false,"custom":{"flow":"#1F6FE5","money":"#FF6A1A","neutral":"#2B3A5C"}}'
+expect 200 "$(req PUT /api/v1/tenant/settings "$(jq -nc --arg b "$STD" '{brandingJson:$b}')")" | jq -e '.brandingJson|fromjson|.preset=="turquesa"' >/dev/null || fail "marca válida (tema Turquesa)"
+brand_bad() { # json mensaje
+  expect 400 "$(req PUT /api/v1/tenant/settings "$(jq -nc --arg b "$1" '{brandingJson:$b}')")" | jq -e --arg m "$2" '.title==$m and (.errors.brandingJson|index($m)!=null)' >/dev/null \
+    || fail "marca inválida → 400 '$2' ($1)"
+}
+brand_bad '{' 'La marca no es un JSON válido.'
+brand_bad '{"logoUrl":"x"}' "La marca trae un campo desconocido: 'logoUrl'."
+brand_bad '{"danger":"#00FF00"}' "Los colores de estado (ok, warn, danger, info) no se pueden personalizar: 'danger'."
+brand_bad '{"useCustom":true,"custom":{"flow":"azul"}}' "El color 'custom.flow' no es hexadecimal (use #RGB o #RRGGBB)."
+brand_bad '{"preset":"neon"}' "El tema predefinido 'neon' no existe."
+brand_bad '{"useCustom":true,"custom":{"flow":"#000000"}}' 'El contraste del color de operación en modo oscuro es 1.34:1; el mínimo es 4.5:1.'
+brand_bad '{"useCustom":true,"custom":{"flow":"#1F6FE5","money":"#1F6FE5"}}' 'Los colores de operación y de dinero son demasiado parecidos: 0° de separación y el mínimo es 40°.'
+brand_bad "$(printf '{"preset":"teikem"}%5000s' '')" 'La marca es demasiado grande (máximo 4096 caracteres); los logos se suben aparte.'
+expect 200 "$(req GET /api/v1/tenant/settings)" | jq -e '.brandingJson|fromjson|.preset=="turquesa"' >/dev/null || fail "un 400 no debe cambiar la marca guardada"
+for P in teikem marino acero carretera granate vino bosque selva oliva turquesa indigo violeta grafito; do
+  expect 200 "$(req PUT /api/v1/tenant/settings "$(jq -nc --arg b "{\"preset\":\"$P\"}" '{brandingJson:$b}')")" >/dev/null || fail "el tema predefinido '$P' debe pasar"
+done
+# --- logos ---
+R=$(expect 200 "$(upload lockup "$BDIR/logo.png" image/png)")
+echo "$R" | jq -e '.slot=="lockup" and .contentType=="image/png" and .sizeBytes>0 and (.eTag|length==64)' >/dev/null || fail "subir lockup PNG: $R"
+LOGO_ETAG=$(echo "$R" | jq -r .eTag)
+expect 200 "$(req GET /api/v1/tenant/brand/logos)" | jq -e 'map(.slot)==["lockup"]' >/dev/null || fail "lista de logos"
+HDRS="$BDIR/h.txt"
+curl -sS -D "$HDRS" -o "$BDIR/got.png" -H "Authorization: Bearer $TOKEN" "$BASE/api/v1/tenant/brand/logos/lockup" >/dev/null
+cmp -s "$BDIR/got.png" "$BDIR/logo.png" || fail "el logo leído no es el que se subió"
+grep -qi '^content-type: image/png' "$HDRS" || fail "content-type del logo"
+grep -qi '^x-content-type-options: nosniff' "$HDRS" || fail "falta X-Content-Type-Options: nosniff"
+grep -i '^content-security-policy:' "$HDRS" | grep -q "default-src 'none'" || fail "falta la CSP restrictiva"
+grep -i '^content-security-policy:' "$HDRS" | grep -q 'sandbox' || fail "la CSP del logo debe llevar sandbox"
+grep -qi "^etag: \"$LOGO_ETAG\"" "$HDRS" || fail "ETag del logo"
+grep -qi '^last-modified:' "$HDRS" || fail "Last-Modified del logo"
+grep -qi '^cache-control: private' "$HDRS" || fail "Cache-Control privado del logo"
+C304=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" -H "If-None-Match: \"$LOGO_ETAG\"" "$BASE/api/v1/tenant/brand/logos/lockup")
+[[ "$C304" == 304 ]] || fail "If-None-Match debe dar 304 (dio $C304)"
+C401=$(curl -sS -o /dev/null -w '%{http_code}' "$BASE/api/v1/tenant/brand/logos/lockup"); [[ "$C401" == 401 ]] || fail "leer un logo sin sesión → 401 (dio $C401)"
+# reemplazar por un SVG
+R=$(expect 200 "$(upload lockup "$BDIR/ok.svg" image/svg+xml)"); echo "$R" | jq -e '.contentType=="image/svg+xml" and .eTag!="'"$LOGO_ETAG"'"' >/dev/null || fail "reemplazar por SVG: $R"
+expect 200 "$(req GET /api/v1/tenant/brand/logos)" | jq -e 'length==1' >/dev/null || fail "reemplazar no debe crear otra fila"
+# rechazos: mensaje exacto y código
+logo_bad() { # codigo slot archivo tipo mensaje
+  expect "$1" "$(upload "$2" "$3" "$4")" | jq -e --arg m "$5" '.title==$m' >/dev/null || fail "subir $3 como $4 → $1 '$5'"
+}
+logo_bad 400 mark "$BDIR/script.svg" image/svg+xml 'El SVG no se acepta: contiene el elemento <script>, que puede ejecutar código o cargar contenido externo.'
+logo_bad 400 mark "$BDIR/onload.svg" image/svg+xml "El SVG no se acepta: el atributo 'onload' ejecuta código."
+logo_bad 400 mark "$BDIR/external.svg" image/svg+xml "El SVG no se acepta: el atributo 'xlink:href' apunta fuera del archivo (solo se permiten referencias internas #id)."
+logo_bad 400 mark "$BDIR/entity.svg" image/svg+xml 'El SVG no se acepta: declara DOCTYPE o entidades.'
+logo_bad 415 mark "$BDIR/fake.png" image/png 'Formato no admitido: el logo debe ser SVG, PNG, JPG o WebP.'
+logo_bad 415 mark "$BDIR/logo.png" image/jpeg 'El contenido del archivo (image/png) no coincide con el tipo declarado (image/jpeg).'
+logo_bad 413 mark "$BDIR/over.svg" image/svg+xml 'El logo supera el tamaño máximo de 512 KB.'
+logo_bad 413 mark "$BDIR/big.svg" image/svg+xml 'El logo supera el tamaño máximo de 512 KB.'
+# sin Content-Length (chunked): el tope se aplica mientras se lee, no después de recibirlo todo
+C=$(curl -sS -o "$BDIR/chunked.json" -w '%{http_code}' -X PUT "$BASE/api/v1/tenant/brand/logos/mark" -H "Authorization: Bearer $TOKEN" -H 'Transfer-Encoding: chunked' -F "file=@$BDIR/big.svg;type=image/svg+xml")
+[[ "$C" == 413 ]] || fail "subida chunked de 600 KB → 413 (dio $C: $(cat "$BDIR/chunked.json"))"
+jq -e '.code=="payload_too_large"' "$BDIR/chunked.json" >/dev/null || fail "413 chunked sin ProblemDetails: $(cat "$BDIR/chunked.json")"
+C=$(curl -sS -o "$BDIR/nofile.json" -w '%{http_code}' -X PUT "$BASE/api/v1/tenant/brand/logos/mark" -H "Authorization: Bearer $TOKEN" -F "otro=x")
+[[ "$C" == 400 ]] && jq -e '.title=="Seleccione un archivo de logo."' "$BDIR/nofile.json" >/dev/null || fail "multipart sin 'file' → 400 (dio $C: $(cat "$BDIR/nofile.json"))"
+C=$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$BASE/api/v1/tenant/brand/logos/mark" -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data '{}')
+[[ "$C" == 415 ]] || fail "subir con JSON (no multipart) → 415 sin cuerpo del enrutamiento (dio $C)"
+expect 404 "$(upload banner "$BDIR/logo.png" image/png)" | jq -e '.title=="Ranura de logo '"'"'banner'"'"' no encontrada."' >/dev/null || fail "ranura desconocida → 404"
+expect 404 "$(req GET /api/v1/tenant/brand/logos/mark)" | jq -e '.title=="Logo '"'"'mark'"'"' no encontrado."' >/dev/null || fail "ranura sin logo → 404"
+expect 200 "$(req GET /api/v1/tenant/brand/logos)" | jq -e 'map(.slot)==["lockup"]' >/dev/null || fail "un rechazo no debe guardar nada"
+# permisos: el despachador lee pero no escribe; el admin de otra compañía no ve el logo de esta
+TDB=$(login "$DISPATCH_EMAIL" "$PASS")
+expect 200 "$(req GET /api/v1/tenant/brand/logos '' "$TDB")" | jq -e 'map(.slot)==["lockup"]' >/dev/null || fail "el despachador debe poder leer la lista de logos"
+C=$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TDB" "$BASE/api/v1/tenant/brand/logos/lockup"); [[ "$C" == 200 ]] || fail "el despachador debe poder leer el logo (dio $C)"
+expect 403 "$(upload mark "$BDIR/logo.png" image/png "$TDB")" >/dev/null || fail "el despachador no debe subir logos (admin.tenant)"
+expect 403 "$(req DELETE /api/v1/tenant/brand/logos/lockup '' "$TDB")" >/dev/null || fail "el despachador no debe quitar logos"
+TB3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")
+expect 200 "$(req GET /api/v1/tenant/brand/logos '' "$TB3")" | jq -e 'length==0' >/dev/null || fail "otra compañía no debe ver los logos de esta"
+expect 404 "$(req GET /api/v1/tenant/brand/logos/lockup '' "$TB3")" >/dev/null || fail "otra compañía no debe leer el logo de esta"
+expect 404 "$(req DELETE /api/v1/tenant/brand/logos/lockup '' "$TB3")" >/dev/null || fail "otra compañía no debe quitar el logo de esta"
+# las demás ranuras y la auditoría (quién y cuándo, sin el binario)
+for SLOT in lockup-inverted mark mark-inverted; do expect 200 "$(upload $SLOT "$BDIR/logo.png" image/png)" >/dev/null || fail "subir $SLOT"; done
+expect 200 "$(req GET /api/v1/tenant/brand/logos)" | jq -e 'map(.slot)==["lockup","lockup-inverted","mark","mark-inverted"]' >/dev/null || fail "las cuatro ranuras"
+AUD=$(expect 200 "$(req GET '/api/v1/audit/changes?entityType=TENANT_LOGO&take=20')")
+echo "$AUD" | jq -e '.total >= 5' >/dev/null || fail "los logos deben quedar en la bitácora: $AUD"
+echo "$AUD" | jq -e '[.items[] | (.changesJson // "")] | all(. | contains("Content\"") | not) and all(. | contains("iVBOR") | not)' >/dev/null || fail "la bitácora no debe llevar el binario"
+for SLOT in lockup lockup-inverted mark mark-inverted; do expect 204 "$(req DELETE /api/v1/tenant/brand/logos/$SLOT)" >/dev/null || fail "quitar $SLOT"; done
+expect 404 "$(req GET /api/v1/tenant/brand/logos/lockup)" >/dev/null || fail "tras quitarlo el logo da 404"
+expect 200 "$(req GET /api/v1/tenant/brand/logos)" | jq -e 'length==0' >/dev/null || fail "sin logos tras quitarlos"
+expect 200 "$(req PUT /api/v1/tenant/settings '{"brandingJson":""}')" | jq -e '.brandingJson==null' >/dev/null || fail "quitar la marca (JSON vacío)"
+# --- feriado repetido ---
+HOLMSG='Ya hay un feriado en esa fecha.'
+HID=$(expect 200 "$(req POST /api/v1/tenant/holidays '{"date":"2027-01-01","name":"Año Nuevo","isRecurring":true}')" | jq -r .id)
+expect 409 "$(req POST /api/v1/tenant/holidays '{"date":"2027-01-01","name":"Otro nombre","isRecurring":false}')" | jq -e --arg m "$HOLMSG" '.title==$m and (.errors.date|index($m)!=null) and .code=="conflict"' >/dev/null || fail "feriado repetido → 409 '$HOLMSG'"
+expect 200 "$(req GET '/api/v1/tenant/holidays?year=2027')" | jq -e '[.[]|select(.date=="2027-01-01")]|length==1 and .[0].name=="Año Nuevo" and .[0].isRecurring==true' >/dev/null || fail "el 409 no debe pisar el feriado existente"
+expect 204 "$(req DELETE "/api/v1/tenant/holidays/$HID")" >/dev/null || fail "quitar el feriado"
+expect 200 "$(req POST /api/v1/tenant/holidays '{"date":"2027-01-01","name":"Año Nuevo (de nuevo)","isRecurring":false}')" | jq -e '.name=="Año Nuevo (de nuevo)"' >/dev/null || fail "un feriado quitado se puede volver a agregar"
+HID=$(expect 200 "$(req GET '/api/v1/tenant/holidays?year=2027')" | jq -r '.[]|select(.date=="2027-01-01")|.id'); expect 204 "$(req DELETE "/api/v1/tenant/holidays/$HID")" >/dev/null
+ok "marca: 13 temas pasan y 8 rechazos con su mensaje; logos: subir/reemplazar/leer (ETag, 304, nosniff, CSP), 400 (SVG activo, entidades, sin archivo), 413 (también chunked), 415, permisos, aislamiento entre compañías, bitácora sin binario y quitar; feriado repetido 409"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

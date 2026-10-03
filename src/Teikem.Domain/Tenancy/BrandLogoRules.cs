@@ -42,6 +42,7 @@ public static class BrandLogoRules
     public static readonly IReadOnlyList<string> ContentTypes = ["image/svg+xml", "image/png", "image/jpeg", "image/webp"];
 
     public const string FileRequiredMessage = "Seleccione un archivo de logo.";
+    public const string BadUploadMessage = "La subida del logo llegó incompleta o mal formada. Vuelva a intentarlo.";
     public const string TooLargeMessage = "El logo supera el tamaño máximo de 512 KB.";
     public const string UnsupportedMessage = "Formato no admitido: el logo debe ser SVG, PNG, JPG o WebP.";
     public const string CorruptImageMessage = "El archivo está dañado o incompleto y no se puede usar como logo.";
