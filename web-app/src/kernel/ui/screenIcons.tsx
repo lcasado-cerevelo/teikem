@@ -195,3 +195,35 @@ export function IconLock() {
     </Svg>
   )
 }
+
+// ===== Ajustes de la compañía (lote F9; `ic('pin')`, `ic('route')` e `ic('print')` de la maqueta) =====
+
+/** 'pin' de la maqueta: pestaña y panel Región y formatos. */
+export function IconPin() {
+  return (
+    <Svg>
+      <path d="M12 21s7-6.3 7-11a7 7 0 1 0-14 0c0 4.7 7 11 7 11z" />
+      <circle cx="12" cy="10" r="2.4" />
+    </Svg>
+  )
+}
+
+/** 'route' de la maqueta: pestaña Operación y pipeline de estatus de órdenes. */
+export function IconRoute() {
+  return (
+    <Svg>
+      <circle cx="6" cy="18" r="2.4" />
+      <circle cx="18" cy="6" r="2.4" />
+      <path d="M8.4 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.6" />
+    </Svg>
+  )
+}
+
+/** 'print' de la maqueta: panel Teléfono de Región y formatos. */
+export function IconPhoneFormat() {
+  return (
+    <Svg>
+      <path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M6 14h12v7H6z" />
+    </Svg>
+  )
+}

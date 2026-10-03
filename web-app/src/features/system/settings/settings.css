@@ -1,0 +1,194 @@
+/* Ajustes de la compañía (lote F9; maqueta `ajustesScreen`). Reusa .panel, .f, .r2/.r3, .sw, .seg, .note, .lst del kit; aquí
+   solo las columnas de cada pestaña (una columna bajo 900 px), la vista previa y los detalles de la maqueta. */
+.set-cols {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.set-cols.general {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+}
+.set-cols.region {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+}
+.set-cols.calendar {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+.set-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.set-gap {
+  margin-top: 16px;
+}
+/* texto descriptivo de la maqueta (`.d`) */
+.set-d {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.45;
+}
+.set-d + .set-d {
+  margin-top: 8px;
+}
+/* fieldset que vuelve de solo lectura todo un formulario sin `admin.tenant` */
+.set-fs {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.set-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 16px;
+}
+.set-actions .set-d {
+  margin-right: auto;
+}
+.set-regions,
+.set-presets,
+.set-days {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.set-days {
+  gap: 8px 14px;
+  margin-bottom: 12px;
+}
+.set-preview {
+  position: sticky;
+  top: 12px;
+}
+.set-pv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.set-pv dt {
+  color: var(--muted);
+}
+.set-pv dd {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.set-preview dl {
+  margin: 0;
+}
+.set-next {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.set-next span {
+  color: var(--muted);
+}
+.set-hol-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  padding: 16px;
+  border-top: 1px solid var(--line-2);
+}
+.set-hol-add .f {
+  margin: 0;
+}
+.set-hol-add .grow {
+  flex: 1 1 160px;
+}
+.set-hol-add .sw {
+  margin-bottom: 8px;
+}
+.set-sub {
+  font-size: 11px;
+  color: var(--faint);
+}
+.set-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  vertical-align: -2px;
+}
+.set-color {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.set-color input[type='color'] {
+  width: 44px;
+  height: 34px;
+  padding: 2px;
+  flex: none;
+}
+.set-color input.mono {
+  flex: 1;
+  min-width: 0;
+}
+.set-checks {
+  margin: 0 0 16px;
+}
+.set-checks.ok {
+  border-color: var(--money-line);
+}
+.set-checks.bad {
+  border-color: var(--danger);
+}
+.set-checks b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.set-checks b svg {
+  width: 15px;
+  height: 15px;
+}
+.set-checks div {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.set-checks div.fail {
+  color: var(--danger);
+}
+.set-h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 4px 0 10px;
+}
+.set-cap {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--flow);
+}
+@media (max-width: 900px) {
+  .set-cols,
+  .set-cols.general,
+  .set-cols.region,
+  .set-cols.calendar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .set-preview {
+    position: static;
+  }
+}

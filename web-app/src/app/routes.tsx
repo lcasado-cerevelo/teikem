@@ -315,7 +315,13 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
   pending({ path: '/system/integrations', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'integrations', order: 50 } }),
   pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 60 } }),
-  pending({ path: '/system/settings', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'settings', order: 70 } }),
+  {
+    path: '/system/settings',
+    element: lazy(() => import('../features/system/TenantSettingsPage')),
+    perm: 'admin.tenant',
+    module: ModuleKeys.System,
+    nav: { group: 'system', key: 'settings', order: 70 },
+  },
 
   // ===== Portal de clientes (sin backend todavía) =====
   pending({ path: '/portal/home', perm: 'portalusers.manage', module: ModuleKeys.ClientPortal, nav: { group: 'portal', key: 'portalHome', order: 10 } }),

@@ -186,7 +186,20 @@ const theme = useTheme()
 ## Marca (`src/kernel/ui/Brand.tsx`, archivos en `public/brand/`)
 Los archivos son copia del paquete `Logos/` (no se editan aquí: se cambian en `Logos/` y se vuelven a copiar). Regla de la
 maqueta (`brandLogoFor`): tema oscuro → variante `-inv` (trae fondo `#0B2C66`); claro → la normal; el idioma elige el lema.
-El `src` cambia al cambiar idioma o tema sin recargar ni desmontar. Sin logo por compañía (no hay backend para eso).
+El `src` cambia al cambiar idioma o tema sin recargar ni desmontar. Sin logo por compañía (no hay backend para guardar los
+archivos: pendiente). **Colores por compañía** (lote F9, Ajustes → Marca; `Tenant.BrandingJson`):
+- `brandTheme.ts` (puro, portado de la maqueta): `BRAND_PRESETS` (13 temas), `DEFAULT_BRAND`, `BrandSettings` (`{ preset,
+  useCustom, custom: { flow, money, neutral } }`), `parseBranding(json)` / `serializeBranding(b, jsonAnterior)` (conserva otras
+  claves), `brandColors`, `deriveAccent`, `deriveSurfaces`, `brandChecks(b)` (contraste WCAG contra el panel en los dos modos:
+  texto ≥ 7, atenuado y acentos ≥ 4.5; matiz entre acentos ≥ 40°) / `brandChecksPass`, `brandCssVars(b, modo)` (vacío con la
+  marca de siempre: no se toca `tokens.css`; nunca los colores de estado), `contrastRatio`, `hueDistance`, `isValidHex`.
+- `<TenantBrand enabled />` (lo monta `SessionProvider`): escribe esas variables en `<html>` según el tema activo.
+  `setBrandPreview(b | null)` (`brandPreview.ts`) = vista previa sin guardar (Ajustes → Marca); `applyBrandVars(el, b, modo)`.
+  ```tsx
+  setBrandPreview(draft)                       // toda la app se ve con el borrador
+  await save.mutateAsync({ brandingJson: serializeBranding(draft, settings.brandingJson) })
+  ```
+  La validación de contraste y matiz es solo de pantalla: el servidor debe repetirla (pendiente de backend).
 
 | Pieza | Props / firma | Uso |
 |---|---|---|
@@ -302,7 +315,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | Componente | Props | Uso |
 |---|---|---|
 | `Panel` | `title?`, `icon?` (ícono antes del título), `badge?: string \| number` (contador a la derecha, misma línea), `subtitle?` (solo texto descriptivo, en su propia línea; un conteo va en `badge`), `actions?`, `footer?`, `flush?` (cuerpo sin padding, para tablas), `children` | panel de contenido en pantalla de la maqueta: `.panel` (radio 13 px, sin sombra ni recorte: los desplegables salen) con cabecera `.ph2` de una sola línea (ícono + título `h2` + contador `.r` + acciones), cuerpo `.pb` y pie `.ft`. No es un modal: los modales son `Modal`/`ConfirmDialog` (`.scrim > .pal`, radio 15 px con sombra); nunca uses `.pal` para contenido en pantalla. `<Panel flush icon={<IconWarehouse />} title={t('warehouse.list.title')} badge={data ? rows.length : undefined}>` |
-| Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta) e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Transferencias y ajustes → `IconPencil` (Lote 14: el lugar y el ícono de la vieja 'Ajustes de inventario'), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
+| Íconos de pantalla (`screenIcons.tsx`) | `IconBox`, `IconLayers`, `IconCash`, `IconUsers`, `IconChart`, `IconGear` (grupos del menú, `NAV` de la maqueta; `app/icons.tsx` los reexporta), `IconPin` ('pin'), `IconRoute` ('route') e `IconPhoneFormat` ('print': panel Teléfono) de Ajustes de la compañía (lote F9), e `IconWarehouse`, `IconGrid`, `IconCart`, `IconCheckin`, `IconBasket`, `IconClip`, `IconSwap`, `IconDoc`, `IconClock`, `IconLock`, `IconPencil` (`ICONOF` de la maqueta), `IconTag` ('tag': KPI "Con número de serie") e `IconCheck` ('check' de la maqueta, de `icons.tsx`: estados vacíos "todo resuelto") | el `icon` de `Panel` es el que la maqueta da a la pantalla en el menú (Almacenes → `IconWarehouse`, Ubicaciones → `IconGrid`, Productos e inventario/Órdenes → `IconLayers`, Compras → `IconCart`, Recibo → `IconCheckin`, Transferencias y ajustes → `IconPencil` (Lote 14: el lugar y el ícono de la vieja 'Ajustes de inventario'), Recolección → `IconBasket`, Conteo → `IconClip`, Cruce de muelle → `IconSwap`, Kárdex → `IconDoc`, Usuarios → `IconUsers`, Roles → `IconShield` de `actionIcons`); una pantalla que no está en la maqueta usa el ícono de su grupo. `import { IconWarehouse } from '../../kernel/ui'` |
 | `DataTable<T>` | `columns: DataColumn<T>[]`, `rows`, `rowKey(row)`, `sort?`/`onSort?`, `defaultSort?`, `page?`/`pageSize?`/`total?`/`onPage?`, `onPageSize?(size)` (servidor: el usuario cambió "Filas por página"), `pagination?` (por defecto true; false = todas las filas, sin rango ni selector), `rowActions?`, `onRowClick?`, `rowClassName?(row)` (clase extra de la fila y de su tarjeta; `'dim'` = atenuada, opacidad .55 de la maqueta para inactivos: `rowClassName={(p) => (p.isActive ? undefined : 'dim')}`), `empty?`, `loading?`, `label?`, `dense?`, `exportable?` (por defecto true), `exportFileName?` (base del archivo; por defecto `label` y luego el título del `Panel`), `exportRows?()` (filas a exportar en vez de las cargadas: `Promise<T[] \| {items, truncated}>`), `exportChildren?` (exportación agrupada con filas hijas, ver `exportChildren`), `forceCards?` (Lote 13: tarjetas aunque la ventana sea ancha —tabla dentro de un panel angosto de `SplitPane`, decidido con `useElementWidth`—; el pie no cambia) | tabla (TanStack Table v9) con orden por columna (flecha ▲/▼, `aria-sort`, primer clic ascendente, vacíos al final), paginación (local por defecto, 25 filas) con pie completo y tarjetas bajo 720 px (título + "etiqueta: valor" + acciones; selector "Ordenar por"). Sin scroll horizontal de página ni scrollbar propio: las celdas y encabezados parten el texto, los números no (todos los encabezados con la misma letra, también los de columnas `align: 'end'`: solo las celdas numéricas van en monoespaciada); entre 721 y 1100 px baja el padding y con `dense` (automático desde `DENSE_COLUMNS` = 8 columnas contando acciones) usa `.densetbl` (tipografía y padding menores) |
 | `DataColumn<T>` | `id`, `header`, `cell(row)`, `sortValue?(row)` (ordenable en cliente), `sortable?` (ordenable en servidor), `align?: 'end'` (número), `card?: 'title' \| 'hidden'`, `exportValue?(row)` (valor exportado explícito), `exportable?` (false = no se exporta: casillas, columnas solo visuales), `signed?` (número con signo +5 / -3 en el PDF agrupado de `exportChildren`) | definición de columna (la primera visible es el título de la tarjeta si ninguna dice `title`). Exportación: `exportValue`, si no el texto de `cell` ("—" = vacío; un número formateado igual a `sortValue` sale como número), si la celda no tiene texto (`StatusChip`, ícono) `sortValue` |
 | `fetchAllPages(fetchPage, { pageSize?, max? })` (`kernel/api/fetchAllPages`) | `fetchPage(skip, take) → Promise<{ items, total }>` | recorre `skip/take` de a `EXPORT_PAGE_SIZE` = 200 hasta el `total` o `EXPORT_MAX_ROWS` = 10 000 y devuelve `{ items, truncated }`: es lo que recibe `exportRows` (DataTable avisa con un toast si `truncated`). `exportRows={() => fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/x', { params: { query: { ...query, skip, take } } })))}` |
@@ -1003,6 +1016,18 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   `planChartPreview` + `chartPreviewPoints` (`chartPreview.ts`, lógica pura) sobre `POST /analytics/reports/{fuente}/preview`
   vía `useChartPreview(req)`. La tarjeta de gráfico lleva el rango en línea (`my-date-range`) y un solo switch (`my-pulse`);
   la de indicador sigue con el diálogo `DefinitionRangeModal` y sus dos switches.
+
+## Ajustes de la compañía (`src/features/system`, lote F9)
+`/system/settings` (`TenantSettingsPage`, `admin.tenant` + SYSTEM; maqueta `ajustesScreen`): pestañas `.seg` en la cabecera con
+`?tab=general|region|calendar|modules|ops|brand` (General = sin parámetro; `settingsTabFromParam`). Sin `admin.tenant` todo
+queda de solo lectura (`<fieldset disabled>`, sin botones de guardar). Hooks en `tenantSettingsApi.ts`: `useFormatOptions`,
+`useSaveTenantSettings` (deja el DTO en `catalogKeys.tenantSettings`: el proveedor de formatos y la marca cambian al instante),
+`useHolidays`/`useHolidayAction`, `useModulesCatalog`/`useSetModule` (AAL2 lo resuelve el cliente), `useCapabilities`/
+`useSetCapabilities`. Puras: `regionForm.ts` (`toRegionForm`, `previewSettings`, `regionRequestBody` —siempre el juego completo
+de 13 campos—, `formIsCustom`, `allowedLists`, `TIME_ZONES`, `PHONE_MASKS`), `tenantCalendar.ts` (máscara de días
+laborables, `nextWorkDay`, feriados "cada año"), `tenantModules.ts` (`dependencyOff`, `enabledDependents`) y
+`settings/operations.ts` (`capabilityAllowed`, `recvSummaryRows`). Para abrir una pestaña desde otra pantalla:
+`<Link to="/system/settings?tab=region">…</Link>`.
 
 ## Patrones de pantalla (copiar de `src/kernel/ui/templates`)
 Plantillas completas y compilables (no montadas en rutas) sobre clientes; textos en `examples.clients.*` (una pantalla real usa su

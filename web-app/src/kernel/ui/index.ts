@@ -96,6 +96,9 @@ export {
   IconLayers,
   IconLock,
   IconPencil,
+  IconPhoneFormat,
+  IconPin,
+  IconRoute,
   IconSwap,
   IconTag,
   IconUsers,
@@ -129,3 +132,7 @@ export type { Theme } from './theme'
 export { toast } from './toast'
 export { CARDS_QUERY, useMediaQuery } from './useMediaQuery'
 export { useElementHeight, useElementWidth } from './useElementWidth'
+export { BRAND_PRESETS, brandChecks, brandChecksPass, brandColors, brandCssVars, contrastRatio, DEFAULT_BRAND, hueDistance, isDefaultBrand, isValidHex, normalizeHex, parseBranding, presetById, serializeBranding } from './brandTheme'
+export type { BrandCheck, BrandPreset, BrandSettings, ThemeMode } from './brandTheme'
+export { applyBrandVars, setBrandPreview } from './brandPreview'
+export { TenantBrand } from './TenantBrand'
