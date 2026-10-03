@@ -3,6 +3,8 @@
 // dice cuántas posiciones en blanco se toman como 0 (no hay diálogo ni paso extra); no hay "todo aquí"; el buscador aparece
 // solo con más de PRODUCT_COUNT_SEARCH_THRESHOLD posiciones. Las cantidades esperadas se muestran solo si el servidor las trajo.
 // Cada cambio se guarda en la base local (se puede cerrar la app y retomar, sin señal).
+// Lote A5 (decisión del dueño 4): Confirmar exige al menos una posición con un número escrito (0 vale); con todo en blanco no
+// se manda nada y sale el aviso grande (ScanMessage) encima de Confirmar.
 import { useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
@@ -11,7 +13,15 @@ import { BigButton } from '../../kernel/ui/BigButton'
 import { ScanMessage } from '../../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
 import type { CreatedBin } from './countApi'
-import { canConfirmProductCount, filterProductRows, hasNothingToConfirm, parseQty, showProductSearch, summarizeProductCount } from './countLogic'
+import {
+  canConfirmProductCount,
+  filterProductRows,
+  hasNothingToConfirm,
+  parseQty,
+  productCountConfirmBlock,
+  showProductSearch,
+  summarizeProductCount,
+} from './countLogic'
 import {
   addProductExtraRow,
   getProductCountRows,
@@ -48,6 +58,8 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [other, setOther] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [emptyWarning, setEmptyWarning] = useState(false)
+  // aviso de "todo en blanco" tras tocar Confirmar; se quita al escribir una cantidad o agregar una posición
+  const [blankWarning, setBlankWarning] = useState(false)
 
   const textFor = (row: ProductCountRow) => texts[row.id] ?? textOf(row)
   const summary = summarizeProductCount(rows.map(textFor))
@@ -57,6 +69,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   function changeQty(row: ProductCountRow, value: string) {
     setTexts((prev) => ({ ...prev, [row.id]: value }))
     setNotice(null)
+    setBlankWarning(false)
     if (value.trim() === '') setProductRowQty(row.id, null)
     else {
       const qty = parseQty(value)
@@ -70,15 +83,24 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   function openOther() {
     setNotice(null)
     setEmptyWarning(false)
+    setBlankWarning(false)
     setOther(true)
   }
 
-  /** Sin ninguna fila no hay nada que mandar: el servidor no termina un conteo vacío. Se avisa y se puede cancelar. */
+  /** Sin ninguna fila no hay nada que mandar: el servidor no termina un conteo vacío. Se avisa y se puede cancelar.
+   *  Con filas pero todas en blanco tampoco se manda nada: hace falta al menos un número (0 si no hay nada). */
   function confirm() {
-    if (empty) {
+    const block = productCountConfirmBlock(summary)
+    if (block === 'empty') {
       setEmptyWarning(true)
       return
     }
+    if (block === 'allBlank') {
+      setNotice(null)
+      setBlankWarning(true)
+      return
+    }
+    if (block === 'invalid') return
     onConfirm()
   }
 
@@ -86,6 +108,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
     addProductExtraRow(openCount.id, { publicId: product.publicId, sku: product.sku, name: product.name }, bin, lot)
     setOther(false)
     setEmptyWarning(false)
+    setBlankWarning(false)
     setQuery('')
     setNotice(existing ? t('count.binExistingUsed', { bin: bin.code }) : t('count.binAdded', { bin: bin.code }))
     setTick((n) => n + 1)
@@ -189,6 +212,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
       {summary.invalid > 0 ? <Text style={styles.error}>{t('count.invalidQty')}</Text> : null}
       {summaryText ? <Text style={styles.summary}>{summaryText}</Text> : null}
       {emptyWarning && empty ? <Text style={styles.error}>{t('count.confirmEmpty')}</Text> : null}
+      <ScanMessage tone="error" message={blankWarning && summary.filled === 0 && !empty ? t('count.confirmAllBlank') : null} />
       <BigButton label={t('count.confirmProduct')} onPress={confirm} disabled={!canConfirmProductCount(summary) || busy} />
       <Text style={styles.help}>{t('count.finishHelp')}</Text>
       <ScanMessage tone="error" message={error} />

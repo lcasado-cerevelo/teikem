@@ -66,7 +66,7 @@ describe('Conteo por producto — lista, captura y confirmar', () => {
     expect(screen.queryByLabelText('Buscar posición o lote')).toBeNull()
     expect(screen.queryByText(/todo aquí/i)).toBeNull()
 
-    // todo en blanco: el resumen lo dice y Confirmar ya se puede (los blancos son 0)
+    // todo en blanco: el resumen lo dice (con todo en blanco Confirmar avisa y no termina: countProductAllBlankScreen)
     expect(screen.getByText('3 posiciones en blanco se toman como 0.')).toBeTruthy()
     await fireEvent.changeText(screen.getByLabelText('Cantidad en A-01, lote L-3'), '4')
     expect(screen.getByText('2 posiciones en blanco se toman como 0.')).toBeTruthy()

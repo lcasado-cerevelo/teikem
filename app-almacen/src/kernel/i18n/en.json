@@ -180,6 +180,7 @@
     "productStartError": "Couldn't open the count for that product (needs a signal).",
     "noStockEmpty": "The system has no stock of this product. If you found it in any bin, use \"Another bin\".",
     "confirmEmpty": "An empty count can't be finished: add the bin where you found it with \"Another bin\" or cancel the count.",
+    "confirmAllBlank": "Type at least one quantity. If there is none of this product, type 0 in one bin.",
     "switchToBin": "Count by bin",
     "binLooksLikeProduct": "That code is a product. To count it that way, tap \"By product\".",
     "lotNotice": "This product is lot-tracked: each row is a bin and a lot.",

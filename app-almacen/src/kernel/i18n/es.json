@@ -180,6 +180,7 @@
     "productStartError": "No se pudo abrir el conteo de ese producto (necesita señal).",
     "noStockEmpty": "El sistema no tiene existencia de este producto. Si lo encontraste en alguna posición, usa «Otra posición».",
     "confirmEmpty": "No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.",
+    "confirmAllBlank": "Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.",
     "switchToBin": "Contar por posición",
     "binLooksLikeProduct": "Ese código es de un producto. Para contarlo así, toca «Por producto».",
     "lotNotice": "Este producto lleva lote: cada fila es una posición y un lote.",

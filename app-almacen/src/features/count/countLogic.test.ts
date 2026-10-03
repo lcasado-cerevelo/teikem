@@ -2,13 +2,16 @@ import {
   blankAsZero,
   buildBatchItems,
   canConfirmProductCount,
+  hasAnyCountedQty,
   hasNothingToConfirm,
+  isAllBlank,
   filterProductRows,
   findListedRow,
   matchExpectedLine,
   parseQty,
   PRODUCT_COUNT_SEARCH_THRESHOLD,
   productCountBlocker,
+  productCountConfirmBlock,
   remainingExpectedLines,
   resolveBinCode,
   showProductSearch,
@@ -101,17 +104,50 @@ describe('conteo por producto — reglas de captura', () => {
   })
 
   it('el resumen cuenta los blancos (se toman como 0) y lo que no es una cantidad', () => {
-    expect(summarizeProductCount(['3', '', '  ', '0', 'abc', '-1'])).toEqual({ blanks: 2, invalid: 2, total: 6 })
-    expect(summarizeProductCount(['1', '2,5'])).toEqual({ blanks: 0, invalid: 0, total: 2 })
+    expect(summarizeProductCount(['3', '', '  ', '0', 'abc', '-1'])).toEqual({ blanks: 2, invalid: 2, filled: 2, total: 6 })
+    expect(summarizeProductCount(['1', '2,5'])).toEqual({ blanks: 0, invalid: 0, filled: 2, total: 2 })
   })
 
-  it('Confirmar se puede con blancos (son 0) pero no con una cantidad inválida ni con la lista vacía', () => {
+  it('el botón Confirmar está encendido salvo con una cantidad inválida (los demás bloqueos se explican al tocarlo)', () => {
     expect(canConfirmProductCount(summarizeProductCount(['', '', '']))).toBe(true)
     expect(canConfirmProductCount(summarizeProductCount(['2', '']))).toBe(true)
     expect(canConfirmProductCount(summarizeProductCount(['2', 'x']))).toBe(false)
     expect(canConfirmProductCount(summarizeProductCount([]))).toBe(true)
     expect(hasNothingToConfirm(summarizeProductCount([]))).toBe(true)
     expect(hasNothingToConfirm(summarizeProductCount(['']))).toBe(false)
+  })
+
+  // decisión del dueño 4 (docs/decisiones-del-dueno-2026-10-03.md): al menos un número escrito; 0 vale
+  it('todo en blanco → bloqueado (allBlank), sin importar cuántas filas', () => {
+    expect(productCountConfirmBlock(summarizeProductCount(['']))).toBe('allBlank')
+    expect(productCountConfirmBlock(summarizeProductCount(['', '  ', '']))).toBe('allBlank')
+    expect(isAllBlank(summarizeProductCount(['', '']))).toBe(true)
+  })
+
+  it('solo ceros → permitido', () => {
+    expect(productCountConfirmBlock(summarizeProductCount(['0']))).toBeNull()
+    expect(productCountConfirmBlock(summarizeProductCount(['0', '0', '0,0']))).toBeNull()
+    expect(isAllBlank(summarizeProductCount(['0', '0']))).toBe(false)
+  })
+
+  it('un número y el resto en blanco → permitido (los blancos viajan como 0)', () => {
+    expect(productCountConfirmBlock(summarizeProductCount(['', '5', '']))).toBeNull()
+    expect(productCountConfirmBlock(summarizeProductCount(['', '', '0']))).toBeNull()
+  })
+
+  it('sin filas → empty (aviso del conteo vacío); algo inválido → invalid (antes que todo en blanco)', () => {
+    expect(productCountConfirmBlock(summarizeProductCount([]))).toBe('empty')
+    expect(productCountConfirmBlock(summarizeProductCount(['x', '']))).toBe('invalid')
+    expect(productCountConfirmBlock(summarizeProductCount(['x', '3']))).toBe('invalid')
+    expect(isAllBlank(summarizeProductCount([]))).toBe(false)
+    expect(isAllBlank(summarizeProductCount(['x']))).toBe(false)
+  })
+
+  it('misma regla sobre lo guardado (null = en blanco)', () => {
+    expect(hasAnyCountedQty([])).toBe(false)
+    expect(hasAnyCountedQty([null, null])).toBe(false)
+    expect(hasAnyCountedQty([null, 0])).toBe(true)
+    expect(hasAnyCountedQty([7])).toBe(true)
   })
 
   it('el buscador aparece solo con más de 6 posiciones (constante ajustable)', () => {

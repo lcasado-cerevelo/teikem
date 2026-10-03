@@ -21,7 +21,7 @@ import {
   startCountOnline,
   startProductCountOnline,
 } from '../features/count/countApi'
-import { matchExpectedLine, parseQty, productCountBlocker, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
+import { hasAnyCountedQty, matchExpectedLine, parseQty, productCountBlocker, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
 import {
   addExtraLine,
   captureExpectedLine,
@@ -237,7 +237,8 @@ export default function CountScreen() {
   function finishProduct() {
     if (!openCount) return
     const rows = getProductCountRows(openCount.id)
-    if (rows.length === 0) return
+    // la vista ya avisa; esto evita encolar un conteo vacío o todo en blanco (decisión del dueño 4) si se llegara aquí igual
+    if (rows.length === 0 || !hasAnyCountedQty(rows.map((r) => r.countedQty))) return
     enqueueFinishCount(openCount.countId, toProductEntries(rows))
     discardLocalCount()
     vibrateOk()
