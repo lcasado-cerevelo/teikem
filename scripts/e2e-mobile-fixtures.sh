@@ -8,6 +8,10 @@ EMAIL="${TEIKEM_ADMIN_EMAIL:-teikem+admin@cerevelo.com}"
 PASS="${TEIKEM_ADMIN_PASSWORD:-Teikem_Admin_2026!}"
 TS=$(date +%s)
 
+# jq: los listados pueden venir como arreglo plano o como página { total, skip, take, items } (p. ej. las posiciones del
+# almacén desde el Lote 1). Este filtro entrega siempre el arreglo de filas; se usa como `jq "$ROWS | .[] | ..."`.
+ROWS='(if type=="array" then . else (.items // []) end)'
+
 # Helpers (copiados de smoke.sh)
 step() { printf '\n\033[1;34m== %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m   ok\033[0m %s\n' "$*"; }
@@ -41,7 +45,7 @@ ok "PIN 2846 establecido"
 
 step "obtener almacén demo ALM-01"
 WAREHOUSES=$(expect 200 "$(req GET /api/v1/warehouses "" "$TOKEN")")
-WAREHOUSE_ID=$(echo "$WAREHOUSES" | jq -r '.[] | select(.code=="ALM-01" and .statusCode=="ACTIVE") | .publicId')
+WAREHOUSE_ID=$(echo "$WAREHOUSES" | jq -r "$ROWS | .[] | select(.code==\"ALM-01\" and .statusCode==\"ACTIVE\") | .publicId" | head -n1)
 [[ -n "$WAREHOUSE_ID" ]] || fail "no se encontró almacén ALM-01 ACTIVE"
 ok "almacén demo: $WAREHOUSE_ID"
 
@@ -53,7 +57,7 @@ if [[ "$DEVICE_CODE" == "409" ]]; then
   # anterior. En vez de fallar, se reusa: se busca por código y se le regenera el código de registro de un solo uso.
   ok "dispositivo E2E-DEV-1 ya existía, reutilizando (regenerando código)"
   DEVICES=$(expect 200 "$(req GET /api/v1/devices "" "$TOKEN")")
-  DEVICE_PUBLIC_ID=$(echo "$DEVICES" | jq -r '.[] | select(.code=="E2E-DEV-1") | .publicId')
+  DEVICE_PUBLIC_ID=$(echo "$DEVICES" | jq -r "$ROWS | .[] | select(.code==\"E2E-DEV-1\") | .publicId" | head -n1)
   [[ -n "$DEVICE_PUBLIC_ID" ]] || fail "no se encontró el aparato E2E-DEV-1 tras el 409"
   DEVICE=$(expect 200 "$(req POST /api/v1/devices/$DEVICE_PUBLIC_ID/enroll-code "{}" "$TOKEN")")
 else
@@ -109,7 +113,7 @@ fi
 
 step "ubicación consignatario para el cliente"
 LOCATIONS=$(expect 200 "$(req GET "/api/v1/locations?clientId=$CLIENT_ID" "" "$TOKEN")")
-LOCATION=$(echo "$LOCATIONS" | jq -c '.[] | select(.name=="Sucursal E2E" and .city=="San Juan")' | head -n1)
+LOCATION=$(echo "$LOCATIONS" | jq -c "$ROWS | .[] | select(.name==\"Sucursal E2E\" and .city==\"San Juan\")" | head -n1)
 if [[ -n "$LOCATION" ]]; then
   ok "consignatario ya existía, reutilizando"
 else
@@ -138,9 +142,10 @@ PUTAWAY_TASK_ID=$(echo "$RECEIPT" | jq -r '.putawayTasks[0].id')
 ok "recibo confirmado, tarea PUTAWAY: $PUTAWAY_TASK_ID"
 
 step "completar PUTAWAY a bin A01-R01-N1-P01"
-BINS_PCK=$(expect 200 "$(req GET /api/v1/warehouses/$WAREHOUSE_ID/bins?search=A01-R01-N1-P01 "" "$TOKEN")")
-BIN_PCK=$(echo "$BINS_PCK" | jq -r '.[0].id')
-[[ -n "$BIN_PCK" ]] || fail "bin A01-R01-N1-P01 no encontrado"
+# GET .../bins devuelve una página { total, skip, take, items }; se toma la posición de código exacto (search es "contiene").
+BINS_PCK=$(expect 200 "$(req GET "/api/v1/warehouses/$WAREHOUSE_ID/bins?search=A01-R01-N1-P01" "" "$TOKEN")")
+BIN_PCK=$(echo "$BINS_PCK" | jq -r "$ROWS | map(select(.code==\"A01-R01-N1-P01\")) | .[0].id // empty")
+[[ -n "$BIN_PCK" ]] || fail "bin A01-R01-N1-P01 no encontrado en $BINS_PCK"
 
 expect 200 "$(req POST /api/v1/warehouse-tasks/$PUTAWAY_TASK_ID/start "{}" "$TOKEN")" >/dev/null
 expect 200 "$(req POST /api/v1/warehouse-tasks/$PUTAWAY_TASK_ID/complete "{\"toBinId\":$BIN_PCK,\"quantity\":50}" "$TOKEN")" >/dev/null
