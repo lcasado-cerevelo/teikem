@@ -119,11 +119,13 @@ async function deletePendingChangeCounts(page: Page) {
   const rows = page.locator('.cc-list-items .cc-row')
   const pending = rows.filter({ hasText: 'Pendiente' }).filter({ hasText: 'Lo cambiado' })
   for (let i = 0; i < 40 && (await pending.count()) > 0; i++) {
-    const before = await rows.count()
+    // se espera a que desaparezca ESE conteo (con la página llena, la siguiente la rellena y el número de filas no cambia;
+    // Lote F12: otros recorridos siembran posiciones con movimientos que también entran en "lo cambiado")
+    const number = ((await pending.first().innerText()).match(/CC-\d+/) ?? [])[0] ?? ''
     await pending.first().getByRole('button', { name: /^Eliminar el conteo/ }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Eliminar', exact: true }).click()
     await expectToast(page, /Conteo CC-\d+ eliminado\./)
-    await expect(rows).not.toHaveCount(before)
+    await expect(rows.filter({ hasText: number })).toHaveCount(0)
   }
   await expect(pending).toHaveCount(0)
 }
@@ -403,6 +405,9 @@ test.describe('Lote 14 — escritorio', () => {
     // los ajustes del conteo llevan al Kárdex, y su detalle muestra el documento de origen
     await detail.getByRole('link', { name: 'Ver los ajustes en el Kárdex' }).click()
     await expect(page).toHaveURL(/\/warehouse\/kardex\?/)
+    // el cierre invalida saldos y Kárdex: se espera a que la lista termine de llegar antes del clic (si no, el clic cae en una
+    // fila que se vuelve a pintar y el detalle no se abre)
+    await page.waitForLoadState('networkidle')
     await page.getByRole('row').filter({ hasText: SKU }).first().click()
     const txn = page.getByRole('dialog', { name: /^Movimiento #\d+/ })
     await expect(txn.getByText('Documento de origen')).toBeVisible()
