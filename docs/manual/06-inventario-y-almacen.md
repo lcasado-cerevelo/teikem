@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
@@ -125,6 +125,13 @@ reservado).
 (`null` = sin cupo configurado). Se envía al crear (`POST .../bins`) y al editar (`PATCH .../bins/{binId}`); en el
 `PATCH`, `null` deja el cupo como está y `"clearMaxCapacity": true` lo quita (si vienen los dos, gana quitar). En la base
 lo protege `CK_WarehouseBin_MaxCapacityQty` (nulo o mayor que cero).
+
+**Posición provisional (Lote 21).** Una posición creada desde un conteo por quien cuenta (`POST /api/v1/cycle-counts/{id}/bins`, ver el
+capítulo de Conteo cíclico) nace con `isProvisional = true` (y `provisionalCycleCountId`, `provisionalCreatedAtUtc`): se usa ya, pero queda
+visible para revisión. El listado acepta `?isProvisional=true|false`; el supervisor la confirma con
+`POST .../bins/{binId}/confirm-provisional` (`warehouse.manage`; si no es provisional, 409 `La posición no está pendiente de revisión.`),
+la edita con `PATCH` o la desactiva. La base lo guarda en `WarehouseBin.IsProvisional`, `ProvisionalCreatedBy`, `ProvisionalCreatedAtUtc` y
+`ProvisionalCycleCountId`.
 
 **Estado de ocupación** (`occupancy`). Es un cálculo, no un estatus guardado: no está en un catálogo ni tiene
 transiciones. Compara la existencia en mano de la posición con su cupo:
@@ -1276,6 +1283,129 @@ El almacenista cuenta **sin ver lo esperado** y la confirmación se hace en la w
   exige además el módulo **PURCHASING** y `purchasing.view`, igual que `/api/v1/purchase-orders` (sin el permiso 403;
   con el módulo apagado 403 `El módulo 'PURCHASING' no está habilitado para esta compañía.`).
 
+### Lote 21 — Conteo por producto, corrección del supervisor, vista previa, cierre en bloque y posiciones provisionales
+
+Las posiciones del almacén no siempre están bien etiquetadas, así que además de contar **por posición** se cuenta **por producto**: se
+escanea el producto, el sistema lista las posiciones donde dice que hay existencia y quien cuenta anota lo que encuentra en cada una.
+El supervisor revisa en la web lo contado, corrige si hace falta, ve el efecto antes de confirmar y cierra de una vez los conteos que
+cuadran. Lo que **no** cambia: la unidad del conteo sigue siendo la línea (posición × producto × lote); el ajuste se calcula contra el saldo
+**actual** al confirmar y se asienta por el ledger; confirmar sigue siendo todo o nada y exige `warehouse.count`; quién ve las cantidades
+del sistema sigue dependiendo del permiso de quien consulta (conteo a ciegas sin `warehouse.count`).
+
+Quién puede (módulo **WMS_LOTSERIAL**):
+
+| Acción | Endpoint | Permiso |
+|---|---|---|
+| Crear un conteo por producto | `POST /api/v1/cycle-counts` con `productPublicIds` (sin `binIds` ni `zoneIds`) | `warehouse.count.capture` |
+| Capturar, recapturar o **corregir** una línea | `PUT /api/v1/cycle-counts/{id}/lines` y `.../lines/batch` | `warehouse.count.capture` |
+| Crear una **posición provisional** desde el conteo | `POST /api/v1/cycle-counts/{id}/bins` | `warehouse.count.capture` |
+| **Vista previa** de la reconciliación | `GET /api/v1/cycle-counts/{id}/reconcile-preview` | `warehouse.count` |
+| Lista **Por revisar** | `GET /api/v1/cycle-counts/review` | `warehouse.count` |
+| **Cerrar los que cuadran** | `POST /api/v1/cycle-counts/reconcile-matching` | `warehouse.count` |
+| **Confirmar** una posición provisional | `POST /api/v1/warehouses/{publicId}/bins/{binId}/confirm-provisional` | `warehouse.manage` |
+| Ver las posiciones provisionales | `GET /api/v1/warehouses/{publicId}/bins?isProvisional=true` | `inventory.view` |
+
+**Conteo por producto.** Se crea con el almacén y los productos; el servidor arma una línea por cada posición y lote con existencia del
+producto (el origen del conteo queda en `PRODUCT`, "Por producto"; con posiciones o zonas indicadas sigue siendo `MANUAL`). Cada línea trae
+la posición (`binId`, `binCode`, `zoneCode`), el lote (`lotId`, `lotNumber`), el tipo de seguimiento (`trackingTypeCode`: `NONE`, `LOT` o
+`SERIAL`) y el código de barras del producto. Un producto sin existencia en ninguna posición responde 400 con el mensaje de "los filtros
+no seleccionan inventario". Lo hallado donde el sistema no tenía nada se agrega como línea nueva (`PUT .../lines/batch` con `binId`,
+`productPublicId` y, si el producto lleva lote, `lotId` o `lot.number`). Los productos con serie se cuentan por número de serie (la app
+de almacén todavía no los captura; el servidor sí los admite).
+
+**Captura original y corrección.** Cada línea guarda lo que se contó originalmente y quién y cuándo (`capturedQty`, `capturedByName`,
+`capturedAtUtc`) y, si alguien la cambió después, quién y cuándo (`correctedByName`, `correctedAtUtc`, `wasCorrected`). `countedQty`
+es siempre el valor **vigente**, el que se reconcilia. Reglas:
+
+- La **primera captura** de una línea fija lo capturado originalmente.
+- La **misma persona** puede volver a capturar mientras el conteo está **Pendiente**: reemplaza su captura (no es una corrección).
+- Cualquier cambio hecho por **otra persona**, o por cualquiera una vez que el conteo está **Contado**, es una **corrección**: `countedQty`
+  toma el valor nuevo, lo capturado originalmente se conserva y se anota quién corrigió y cuándo.
+- Si el valor corregido vuelve a ser igual al capturado, la corrección se borra. Mandar otra vez el mismo valor no cambia nada.
+- Borrar la captura (sin cantidad ni series) devuelve la línea a pendiente y borra también su evidencia.
+- Una corrección **no es un ajuste ni una transferencia** y no mueve inventario: solo cambia la cantidad que se reconcilia. Toda captura y
+  corrección queda en la bitácora de cambios (entidad `CYCLE_COUNT`).
+- La evidencia llega también a quien consulta a ciegas: no revela lo que dice el sistema (`systemQty`, `currentQty` y los demás siguen en `null`).
+- Al confirmar, el motivo del movimiento de una línea corregida lleva la evidencia, por ejemplo: `Conteo CC-00001 · contó 3 (Ana Pérez,
+  2026-10-03 14:05) · corregido de 3 a 5 por Beto Ruiz (2026-10-03 15:00)` (fechas en la hora de la compañía; sin corrección el motivo es
+  el de siempre, `Conteo CC-00001`).
+
+**Vista previa de la reconciliación.** Calcula, con el mismo código que reconcilia y **sin escribir ni bloquear**, lo que pasaría si se
+confirmara ahora. Por línea: posición y zona, producto, lote, existencia **actual** (`currentQty`) y reservada (`reservedQty`), lo
+contado con su evidencia, el ajuste que se asentaría (`adjustmentQty`, con signo), el saldo resultante (`resultingQty`), cuántos
+movimientos generaría, `systemQtyChanged` (la existencia se movió desde la foto) y el error que daría la confirmación (`error`: contado
+menor que lo reservado). En productos con serie trae el plan: `serials.removals` (bajas), `serials.additions` (altas) y `serials.transfers`
+(traslados). Las líneas sin contar salen con `isPending = true` (son un dato, no un error). Totales (`totals`): líneas, pendientes, con
+diferencia, movimientos, líneas con error, `matches` y el estatus en que terminaría (`resultStatusCode`: `RECONCILED` o
+`RECONCILED_VARIANCE`; `null` si todavía no se puede confirmar). **`matches` = el conteo cuadra**: tiene líneas, ninguna pendiente, ninguna con
+error y contra la existencia actual no asentaría ningún movimiento. Un conteo ya confirmado no tiene vista previa (422).
+
+**Por revisar.** La lista de conteos **Contados** (con `includeOpen=true`, también los Pendientes con todas sus líneas capturadas), más
+recientes primero. Por conteo trae el encabezado y: quién contó (`countedByUserId`, `countedByName`; quien capturó más líneas, y
+`countedByCount` personas en total), el primer producto por SKU (`firstProductSku`, `firstProductName`) y cuántos más (`otherProducts`),
+`positions`, `lines`, `pendingLines`, `differingLines` (líneas que asentarían algo contra la existencia **actual**), `errorLines`, `movements`,
+`correctedLines` y `matches`. Filtros: `warehousePublicId`, `countedByUserId`, `search` (número, SKU o nombre), `skip` y `take` (1 a 200, por
+defecto 50). Se calcula por lotes (una consulta de líneas, saldos, productos y usuarios para toda la página).
+
+**Cerrar los que cuadran.** `POST /api/v1/cycle-counts/reconcile-matching` con `warehousePublicId`, `ids`, `comment` e `includeOpen`
+(todos opcionales). Mira los conteos Contados (o los indicados en `ids`) y **confirma solo los que cuadran**: terminan en
+**Concordancia** sin asentar ningún movimiento, cada uno en su propia transacción y comprobando otra vez con los saldos bloqueados. "Cuadra"
+se mide contra la existencia **actual**: una línea que se movió desde la foto y ahora asentaría algo **no** se cierra sola. Responde
+`examined`, `closed` (`id`, `number`, `statusCode`, `lines`), `skipped` y `truncated`. Cada omitido trae `reasonCode`, `reason` (texto en
+español) y `count`:
+
+| `reasonCode` | Significa | `count` |
+|---|---|---|
+| `WouldPost` | Asentaría movimientos: queda para revisar | movimientos |
+| `Errors` | Alguna línea daría error al confirmar (contado menor que lo reservado, serie repetida) | líneas con error |
+| `Pending` | Tiene líneas sin contar | líneas pendientes |
+| `Stale` | Cuadraba al mirarlo pero la existencia cambió antes de cerrarlo | — |
+| `NotCounted` | Está Pendiente y no se pidió `includeOpen` (solo con `ids`) | — |
+| `AlreadyReconciled` | Ya estaba confirmado | — |
+| `NotFound` | El id no existe o no es de la compañía | — |
+| `NoLines` | El conteo no tiene líneas | — |
+| `Failed` | Otro error del conteo (el motivo viene en `reason`) | — |
+
+Se miran hasta 200 conteos por llamada (`truncated = true` si había más). Los conteos de otra compañía nunca se ven ni se cierran.
+
+**Posición provisional.** Si quien cuenta halla producto donde el sistema no tenía nada y la posición no existe, la crea desde el conteo
+(`POST /api/v1/cycle-counts/{id}/bins` con `zoneId` y `code`, o `aisle`/`rack`/`level`/`position` para componer el código; mismas
+validaciones que el alta de posición) sin detener el conteo. La posición queda activa y se puede usar de inmediato en el conteo y en el
+inventario, pero marcada **provisional** (`isProvisional = true`, con `provisionalCycleCountId` y `provisionalCreatedAtUtc`) para que el
+supervisor la revise: la **confirma** (`confirm-provisional`, quita la marca), la corrige (`PATCH`) o la desactiva (`deactivate`). El listado
+de posiciones, la búsqueda de posiciones, la sincronización del aparato (`sync/bins`) y las líneas del conteo (`binIsProvisional`) la
+muestran.
+
+#### Validaciones (conteo por producto)
+
+| Campo / caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Vista previa de un conteo ya confirmado | `El conteo ya fue reconciliado; solo se consulta.` | 422 |
+| Vista previa, por revisar o cierre de un conteo de otra compañía | `Conteo no encontrado.` (en el cierre en bloque: omitido `NotFound`) | 404 |
+| Crear posición provisional en un conteo ya confirmado | `El conteo ya fue reconciliado; no admite posiciones nuevas.` | 422 |
+| Posición provisional sin zona | `Indique la zona de la posición.` | 400 |
+| Posición provisional sin código ni partes | `Indique el código de la posición o su pasillo/rack/nivel/posición.` | 400 |
+| Código con caracteres inválidos o de más de 40 | `El código de la posición solo admite letras, números, guion y guion bajo (máximo 40).` | 400 |
+| Código repetido en el almacén (también contra una posición definitiva) | `Ya existe una posición con ese código en el almacén.` | 409 |
+| Zona de otro almacén o inexistente | `Zona no encontrada.` | 404 |
+| Zona inactiva | `La zona está inactiva; reactívela primero.` | 422 |
+| Confirmar una posición que no es provisional | `La posición no está pendiente de revisión.` | 409 |
+| Cierre en bloque con más de 200 `ids` | `Se revisan como máximo 200 conteos por vez; acote por almacén o por ids.` | 400 |
+| Confirmar con líneas en error (contado menor que lo reservado) | `El conteo de {sku} en {posición} ({contado}) es menor que lo reservado ({reservado}); libere la reserva antes de reconciliar.` | 409 |
+| Una serie capturada en dos líneas | `La serie {serie} está capturada en más de una línea del conteo.` | 400 |
+| Sin el permiso | `Falta el permiso '{código}'.` | 403 |
+
+Los omitidos del cierre en bloque llevan estos textos en `reason`: `Asentaría {n} movimiento(s); revíselo.`, `Faltan {n} línea(s) por
+contar.`, `El conteo todavía no se termina de contar.`, `La existencia cambió mientras se cerraba; revíselo.`, `El conteo no existe.`,
+`El conteo ya fue reconciliado; solo se consulta.` y `El conteo no tiene líneas.`
+
+#### Estatus y efectos (conteo por producto)
+
+No hay estatus nuevos. Corregir una cantidad no cambia el estatus ni mueve inventario; el cierre en bloque lleva cada conteo que cuadra de
+**Contado** (o **Pendiente** con `includeOpen`) a **Concordancia** con la misma transición que "Confirmar conteo y ajustar" (historial,
+tarea `COUNT` en `DONE`, `reconciledSystemQty` por línea). Un conteo que no cuadra no cambia. Crear una posición provisional solo se
+permite con el conteo sin confirmar (Pendiente o Contado).
+
 ---
 
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
@@ -1570,8 +1700,8 @@ inventario) o **CANCELLED** (terminal, libera la reserva; si ya tenía algo conf
 | `warehouse.manage` | WAREHOUSE | Gestionar almacenes, zonas, posiciones, muelles; asignar/cancelar tareas |
 | `warehouse.receive` | WAREHOUSE | Recibir mercancía (ASN y recibos); completar tareas `PUTAWAY` |
 | `warehouse.pick` | WAREHOUSE | Recolectar y empacar; completar tareas `REPLENISH`; correr el reabasto |
-| `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluidas la confirmación ("Confirmar conteo y ajustar") y "Conteo de lo cambiado" |
-| `warehouse.count.capture` | WAREHOUSE | Lote 8A: contar a ciegas (alta, captura, lo encontrado y terminar) sin ver lo esperado ni reconciliar; implícito en `warehouse.count` |
+| `warehouse.count` | WAREHOUSE | Conteo cíclico completo, incluidas la confirmación ("Confirmar conteo y ajustar"), "Conteo de lo cambiado" y, desde el Lote 21, la vista previa de la reconciliación, "Por revisar" y "Cerrar los que cuadran" |
+| `warehouse.count.capture` | WAREHOUSE | Lote 8A: contar a ciegas (alta, captura, lo encontrado y terminar) sin ver lo esperado ni reconciliar; implícito en `warehouse.count`. Lote 21: también crear una posición provisional desde el conteo |
 | `warehouse.crossdock` | WAREHOUSE | Citas y planes de cruce de muelle; completar tareas `CROSSDOCK` |
 | `purchasing.view` | PURCHASING | Ver proveedores y órdenes de compra |
 | `purchasing.manage` | PURCHASING | Gestionar proveedores y órdenes de compra |

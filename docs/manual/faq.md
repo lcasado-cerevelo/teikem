@@ -4157,3 +4157,99 @@ Correcto: leer solo pide sesión (es la marca de la interfaz) y escribir pide `a
 **¿Dónde queda el archivo del logo y qué ve la bitácora?**
 En la base de datos (tabla `TenantBrandLogo`). La bitácora de cambios (entidad `TENANT_LOGO`) registra quién y cuándo subió o quitó,
 y el tipo y el tamaño, pero nunca el archivo.
+
+---
+
+## Lote 21 — Conteo cíclico por producto: corrección, vista previa, "Por revisar", cierre en bloque y posición provisional (servidor)
+
+Capítulo: [06 — Inventario y almacén](06-inventario-y-almacen.md), sección 6, "Lote 21".
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "El conteo ya fue reconciliado; solo se consulta." al pedir la vista previa? (422)**
+La vista previa solo existe mientras el conteo está Pendiente o Contado. Uno ya confirmado (Concordancia o Diferencia) se consulta con su ficha.
+
+**¿Qué significa "El conteo ya fue reconciliado; no admite posiciones nuevas." al crear una posición provisional? (422)**
+La posición provisional se crea desde un conteo sin confirmar. Si el conteo ya se confirmó, cree la posición desde Almacenes (requiere `warehouse.manage`).
+
+**¿Qué significa "Ya existe una posición con ese código en el almacén." al crear una posición provisional? (409)**
+El código es único por almacén (también frente a las posiciones definitivas y otras provisionales). Use esa posición como línea del conteo o escriba otro código.
+
+**¿Qué significa "La posición no está pendiente de revisión." al confirmar? (409)**
+Esa posición no es provisional: ya se confirmó (o nunca lo fue). No hay nada más que hacer.
+
+**¿Qué significa "Zona no encontrada." al crear una posición provisional? (404)**
+La zona no es del almacén del conteo (o no existe). Escoja una zona del mismo almacén del conteo.
+
+**¿Qué significa "La zona está inactiva; reactívela primero." al crear una posición provisional? (422)**
+La zona está dada de baja. Escoja otra o pida a un supervisor (`warehouse.manage`) que la reactive.
+
+**¿Qué significa "Indique la zona de la posición." / "Indique el código de la posición o su pasillo/rack/nivel/posición." / "El código de la posición solo admite letras, números, guion y guion bajo (máximo 40)."? (400)**
+Son las mismas validaciones del alta de posición: falta la zona, falta el código (o sus partes) o el código tiene caracteres no admitidos.
+
+**¿Qué significa "Se revisan como máximo 200 conteos por vez; acote por almacén o por ids." en el cierre en bloque? (400)**
+Mandó más de 200 `ids`. Envíe menos o use `warehousePublicId` (el servidor mira hasta 200 y marca `truncated = true` si había más).
+
+**¿Qué significa "El conteo de {sku} en {posición} ({contado}) es menor que lo reservado ({reservado}); libere la reserva antes de reconciliar."? (409)**
+Es el mismo error de siempre al confirmar, y ahora también sale **antes**, en la vista previa (`lines[].error`), y como motivo `Errors` en el cierre en bloque. Libere la reserva o corrija la cantidad contada.
+
+**¿Qué significa "La serie {serie} está capturada en más de una línea del conteo."? (400)**
+Una misma serie del mismo producto aparece en dos líneas. En la vista previa llega como `blockingError`; en el cierre en bloque como `Errors`. Quite la serie de una de las líneas.
+
+### Motivos de "omitido" del cierre en bloque (`skipped[].reasonCode`, HTTP 200)
+
+**`WouldPost` — "Asentaría {n} movimiento(s); revíselo."**
+Contra la existencia **actual** el conteo no cuadra (aunque con la foto sí cuadrara). Ábralo, vea la vista previa y corrija o confirme a mano.
+
+**`Pending` — "Faltan {n} línea(s) por contar."**
+Tiene líneas sin cantidad (por ejemplo, "Refrescar" borró las capturas de las líneas con foto vieja). Termine de contarlas.
+
+**`Errors`**
+Alguna línea daría error al confirmar (contado menor que lo reservado o una serie repetida). El texto de `reason` dice cuál.
+
+**`Stale` — "La existencia cambió mientras se cerraba; revíselo."**
+Cuadraba al mirarlo, pero un movimiento cambió la existencia antes de cerrarlo y ya no cuadra. No se cerró nada de ese conteo; vuelva a mirarlo.
+
+**`NotCounted` — "El conteo todavía no se termina de contar."**
+Está Pendiente y usted lo pidió por `ids` sin `includeOpen`. Termínelo o pase `includeOpen: true`.
+
+**`AlreadyReconciled`, `NotFound` ("El conteo no existe."), `NoLines` ("El conteo no tiene líneas."), `Failed`**
+Ya estaba confirmado; el id no existe o es de otra compañía; no tiene líneas; o falló por otra regla (el motivo viene en `reason`). Un fallo de un conteo no afecta a los demás.
+
+### Preguntas frecuentes
+
+**¿Cuál es la diferencia entre capturar, recapturar y corregir?**
+La primera vez que se cuenta una línea queda como lo "capturado" (con quién y cuándo). La misma persona puede recapturar mientras el conteo está Pendiente y reemplaza su captura. Cualquier cambio de otra persona, o de cualquiera después de terminar el conteo (Contado), es una **corrección**: la cantidad vigente cambia, lo capturado se conserva y se anota quién corrigió. Si la corrección vuelve al valor capturado, desaparece.
+
+**¿Corregir una cantidad mueve inventario?**
+No. Una corrección no es un ajuste ni una transferencia: solo cambia lo que se reconcilia. El inventario se mueve únicamente al confirmar, por la diferencia entre lo contado vigente y la existencia actual.
+
+**¿Dónde queda la evidencia de la corrección?**
+En la línea (`capturedQty`, `capturedByName`, `capturedAtUtc`, `correctedByName`, `correctedAtUtc`, `wasCorrected`), en la bitácora de cambios del conteo y, al confirmar, en el motivo del movimiento del Kárdex: `Conteo CC-00001 · contó 3 (Ana Pérez, 2026-10-03 14:05) · corregido de 3 a 5 por Beto Ruiz (2026-10-03 15:00)`.
+
+**¿Quien cuenta a ciegas puede ver lo que dice el sistema por la evidencia?**
+No. Ve lo que él capturó y si alguien lo corrigió, pero `systemQty`, `currentQty`, `varianceQty`, `reconciledSystemQty` y `adjustedQty` siguen en `null`.
+
+**¿La vista previa dice lo mismo que va a pasar al confirmar?**
+Sí: usa el mismo cálculo que la confirmación, con la existencia actual. Lo único que puede cambiar es que entre la vista previa y la confirmación otro movimiento modifique la existencia; por eso la confirmación recalcula con los saldos bloqueados.
+
+**¿Qué significa `matches`?**
+El conteo cuadra: tiene líneas, ninguna sin contar, ninguna con error y, contra la existencia **actual**, no asentaría ningún movimiento. Si aún hay líneas pendientes, `matches` es `false` aunque lo contado hasta ahora coincida.
+
+**El conteo cuadraba con la foto pero "Cerrar los que cuadran" no lo cerró.**
+Porque se mide contra la existencia actual, no contra la foto: si una línea se movió desde la foto y ahora asentaría algo, el conteo queda para revisar (`WouldPost`).
+
+**¿"Cerrar los que cuadran" puede dejar algo a medias?**
+No. Cada conteo se cierra en su propia transacción: o termina en Concordancia o queda como estaba. Los demás no se afectan.
+
+**¿Por qué la lista "Por revisar" no muestra un conteo que ya terminó el operario?**
+Solo muestra los **Contados** (el operario pulsó Terminar). Un conteo Pendiente aparece únicamente con `includeOpen=true` y cuando ya tiene todas sus líneas capturadas.
+
+**La posición que creó el operario no estaba en el sistema, ¿puede seguir contando?**
+Sí. La posición provisional se usa de inmediato como línea del conteo y en el inventario. El supervisor la ve con `isProvisional = true`, y la confirma, la corrige o la desactiva.
+
+**¿Una posición provisional con inventario se puede desactivar?**
+Se aplica la regla de siempre: una posición con existencia (en mano o reservada) o con tareas abiertas no se desactiva (409 `La posición {código} tiene inventario; no se puede desactivar.`). Muévala primero o confírmela.
+
+**¿Quién ve el origen "Por producto"?**
+Los conteos creados con `productPublicIds` y sin posiciones ni zonas llevan `originCode = PRODUCT` ("Por producto"); se puede filtrar con `origins=PRODUCT` en `GET /api/v1/cycle-counts/page`.

@@ -6789,6 +6789,233 @@
         }
       }
     },
+    "/api/v1/cycle-counts/{id}/reconcile-preview": {
+      "get": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcilePreviewDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcilePreviewDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconcilePreviewDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/review": {
+      "get": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "warehousePublicId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "countedByUserId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeOpen",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "skip",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReviewPageDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReviewPageDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReviewPageDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/reconcile-matching": {
+      "post": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountReconcileMatchingRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountReconcileMatchingRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountReconcileMatchingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReconcileMatchingResultDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReconcileMatchingResultDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CycleCountReconcileMatchingResultDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cycle-counts/{id}/bins": {
+      "post": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountProvisionalBinRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountProvisionalBinRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountProvisionalBinRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cycle-counts/{id}/refresh": {
       "post": {
         "tags": [
@@ -21843,6 +22070,13 @@
               "format": "int32",
               "default": 100
             }
+          },
+          {
+            "name": "isProvisional",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -21993,6 +22227,55 @@
                   "items": {
                     "$ref": "#/components/schemas/BinSearchItemDto"
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses/{publicId}/bins/{binId}/confirm-provisional": {
+      "post": {
+        "tags": [
+          "Warehouses"
+        ],
+        "parameters": [
+          {
+            "name": "publicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "binId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WarehouseBinDto"
                 }
               }
             }
@@ -23989,6 +24272,9 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "isProvisional": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -25428,6 +25714,63 @@
         },
         "additionalProperties": false
       },
+      "CountProvisionalBinRequest": {
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "aisle": {
+            "type": "string",
+            "nullable": true
+          },
+          "rack": {
+            "type": "string",
+            "nullable": true
+          },
+          "level": {
+            "type": "string",
+            "nullable": true
+          },
+          "position": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountReconcileMatchingRequest": {
+        "type": "object",
+        "properties": {
+          "warehousePublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "includeOpen": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "CountReconcileRequest": {
         "type": "object",
         "properties": {
@@ -26016,6 +26359,28 @@
         },
         "additionalProperties": false
       },
+      "CycleCountClosedItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "CycleCountCreateRequest": {
         "type": "object",
         "properties": {
@@ -26182,6 +26547,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "correctedLines": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -26324,6 +26693,45 @@
           "barcode": {
             "type": "string",
             "nullable": true
+          },
+          "capturedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "capturedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "capturedByUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "capturedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "correctedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "correctedByUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "correctedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "wasCorrected": {
+            "type": "boolean"
+          },
+          "binIsProvisional": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -26348,6 +26756,155 @@
             "items": {
               "$ref": "#/components/schemas/CycleCountDto"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountReconcileMatchingResultDto": {
+        "type": "object",
+        "properties": {
+          "examined": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CycleCountClosedItemDto"
+            },
+            "nullable": true
+          },
+          "skipped": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CycleCountSkippedItemDto"
+            },
+            "nullable": true
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountReviewItemDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "$ref": "#/components/schemas/CycleCountDto"
+          },
+          "countedByUserId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "countedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "countedByCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "firstProductPublicId": {
+            "type": "string",
+            "format": "uuid",
+            "nullable": true
+          },
+          "firstProductSku": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstProductName": {
+            "type": "string",
+            "nullable": true
+          },
+          "otherProducts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "positions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "differingLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "movements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "correctedLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matches": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountReviewPageDto": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "take": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CycleCountReviewItemDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CycleCountSkippedItemDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "reasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -34242,6 +34799,211 @@
         },
         "additionalProperties": false
       },
+      "ReconcilePreviewDto": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "$ref": "#/components/schemas/CycleCountDto"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconcilePreviewLineDto"
+            },
+            "nullable": true
+          },
+          "totals": {
+            "$ref": "#/components/schemas/ReconcilePreviewTotalsDto"
+          },
+          "blockingError": {
+            "type": "string",
+            "nullable": true
+          },
+          "rowVersion": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconcilePreviewLineDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "zoneCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "binIsProvisional": {
+            "type": "boolean"
+          },
+          "productPublicId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "productName": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackingTypeCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "systemQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "currentQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "reservedQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "countedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "isPending": {
+            "type": "boolean"
+          },
+          "capturedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "capturedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "capturedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "correctedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "correctedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "wasCorrected": {
+            "type": "boolean"
+          },
+          "adjustmentQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "resultingQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "movements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "systemQtyChanged": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "serials": {
+            "$ref": "#/components/schemas/ReconcilePreviewSerialsDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconcilePreviewSerialsDto": {
+        "type": "object",
+        "properties": {
+          "removals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "additions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "transfers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReconcilePreviewTotalsDto": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "linesWithDifference": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "movements": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "errorLines": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "matches": {
+            "type": "boolean"
+          },
+          "resultStatusCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ReconciliationDto": {
         "type": "object",
         "properties": {
@@ -36030,6 +36792,9 @@
             "nullable": true
           },
           "isActive": {
+            "type": "boolean"
+          },
+          "isProvisional": {
             "type": "boolean"
           }
         },
@@ -38643,6 +39408,19 @@
           },
           "singleProductName": {
             "type": "string",
+            "nullable": true
+          },
+          "isProvisional": {
+            "type": "boolean"
+          },
+          "provisionalCycleCountId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "provisionalCreatedAtUtc": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

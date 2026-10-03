@@ -54,6 +54,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    modo informado; recolección y empaque ad hoc (Pick & Pack); compras mínimas (proveedores, órdenes de compra y
    resolución de faltantes); cruce de muelle en modo demo (citas y planes), estatus y transiciones, permisos y
    módulos.
+   Lote 21 (sección 6, Conteo cíclico): **conteo por producto**, captura original y **corrección del supervisor** con evidencia,
+   **vista previa** de la reconciliación, lista **Por revisar**, **cierre en bloque** de los conteos que cuadran y **posiciones
+   provisionales** creadas desde el conteo (servidor; la web y la app lo usan en sus propios lotes).
    Lote 11 (sección 1, Almacenes y ubicaciones): **cupo máximo** de la posición y su **estado de ocupación**
    (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
    posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades

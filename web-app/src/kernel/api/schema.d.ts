@@ -5144,6 +5144,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-counts/{id}/reconcile-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ReconcilePreviewDto"];
+                        "application/json": components["schemas"]["ReconcilePreviewDto"];
+                        "text/json": components["schemas"]["ReconcilePreviewDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycle-counts/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    countedByUserId?: number;
+                    search?: string;
+                    includeOpen?: boolean;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CycleCountReviewPageDto"];
+                        "application/json": components["schemas"]["CycleCountReviewPageDto"];
+                        "text/json": components["schemas"]["CycleCountReviewPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycle-counts/reconcile-matching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountReconcileMatchingRequest"];
+                    "text/json": components["schemas"]["CountReconcileMatchingRequest"];
+                    "application/*+json": components["schemas"]["CountReconcileMatchingRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CycleCountReconcileMatchingResultDto"];
+                        "application/json": components["schemas"]["CycleCountReconcileMatchingResultDto"];
+                        "text/json": components["schemas"]["CycleCountReconcileMatchingResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cycle-counts/{id}/bins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountProvisionalBinRequest"];
+                    "text/json": components["schemas"]["CountProvisionalBinRequest"];
+                    "application/*+json": components["schemas"]["CountProvisionalBinRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseBinDto"];
+                        "application/json": components["schemas"]["WarehouseBinDto"];
+                        "text/json": components["schemas"]["WarehouseBinDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-counts/{id}/refresh": {
         parameters: {
             query?: never;
@@ -15927,6 +16098,7 @@ export interface paths {
                     binIds?: number[];
                     skip?: number;
                     take?: number;
+                    isProvisional?: boolean;
                 };
                 header?: never;
                 path: {
@@ -16022,6 +16194,46 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses/{publicId}/bins/{binId}/confirm-provisional": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                    binId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseBinDto"];
+                        "application/json": components["schemas"]["WarehouseBinDto"];
+                        "text/json": components["schemas"]["WarehouseBinDto"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -17095,6 +17307,7 @@ export interface components {
             warehousePublicId?: string;
             warehouseCode?: string | null;
             isActive?: boolean;
+            isProvisional?: boolean;
         };
         BrandLogoDto: {
             slot?: string | null;
@@ -17538,6 +17751,22 @@ export interface components {
             lines?: components["schemas"]["CountCaptureItem"][] | null;
             rowVersion?: string | null;
         };
+        CountProvisionalBinRequest: {
+            /** Format: int32 */
+            zoneId?: number | null;
+            code?: string | null;
+            aisle?: string | null;
+            rack?: string | null;
+            level?: string | null;
+            position?: string | null;
+        };
+        CountReconcileMatchingRequest: {
+            /** Format: uuid */
+            warehousePublicId?: string | null;
+            ids?: number[] | null;
+            comment?: string | null;
+            includeOpen?: boolean;
+        };
         CountReconcileRequest: {
             comment?: string | null;
             rowVersion?: string | null;
@@ -17747,6 +17976,14 @@ export interface components {
             lastChangesToUtc?: string | null;
             problem?: string | null;
         };
+        CycleCountClosedItemDto: {
+            /** Format: int32 */
+            id?: number;
+            number?: string | null;
+            statusCode?: string | null;
+            /** Format: int32 */
+            lines?: number;
+        };
         CycleCountCreateRequest: {
             /** Format: uuid */
             warehousePublicId?: string | null;
@@ -17798,6 +18035,8 @@ export interface components {
             changesToUtc?: string | null;
             /** Format: int32 */
             assignedToUserId?: number | null;
+            /** Format: int32 */
+            correctedLines?: number;
         };
         CycleCountFromChangesRequest: {
             /** Format: uuid */
@@ -17844,6 +18083,20 @@ export interface components {
             /** Format: int64 */
             adjustmentTxnId?: number | null;
             barcode?: string | null;
+            /** Format: double */
+            capturedQty?: number | null;
+            capturedByName?: string | null;
+            /** Format: int32 */
+            capturedByUserId?: number | null;
+            /** Format: date-time */
+            capturedAtUtc?: string | null;
+            correctedByName?: string | null;
+            /** Format: int32 */
+            correctedByUserId?: number | null;
+            /** Format: date-time */
+            correctedAtUtc?: string | null;
+            wasCorrected?: boolean;
+            binIsProvisional?: boolean;
         };
         CycleCountPageDto: {
             /** Format: int32 */
@@ -17853,6 +18106,60 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["CycleCountDto"][] | null;
+        };
+        CycleCountReconcileMatchingResultDto: {
+            /** Format: int32 */
+            examined?: number;
+            closed?: components["schemas"]["CycleCountClosedItemDto"][] | null;
+            skipped?: components["schemas"]["CycleCountSkippedItemDto"][] | null;
+            truncated?: boolean;
+        };
+        CycleCountReviewItemDto: {
+            count?: components["schemas"]["CycleCountDto"];
+            /** Format: int32 */
+            countedByUserId?: number | null;
+            countedByName?: string | null;
+            /** Format: int32 */
+            countedByCount?: number;
+            /** Format: uuid */
+            firstProductPublicId?: string | null;
+            firstProductSku?: string | null;
+            firstProductName?: string | null;
+            /** Format: int32 */
+            otherProducts?: number;
+            /** Format: int32 */
+            positions?: number;
+            /** Format: int32 */
+            lines?: number;
+            /** Format: int32 */
+            pendingLines?: number;
+            /** Format: int32 */
+            differingLines?: number;
+            /** Format: int32 */
+            errorLines?: number;
+            /** Format: int32 */
+            movements?: number;
+            /** Format: int32 */
+            correctedLines?: number;
+            matches?: boolean;
+        };
+        CycleCountReviewPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["CycleCountReviewItemDto"][] | null;
+        };
+        CycleCountSkippedItemDto: {
+            /** Format: int32 */
+            id?: number;
+            number?: string | null;
+            reasonCode?: string | null;
+            reason?: string | null;
+            /** Format: int32 */
+            count?: number | null;
         };
         DataFieldDto: {
             key?: string | null;
@@ -20476,6 +20783,76 @@ export interface components {
             freeQty?: number | null;
             fits?: boolean;
         };
+        ReconcilePreviewDto: {
+            count?: components["schemas"]["CycleCountDto"];
+            lines?: components["schemas"]["ReconcilePreviewLineDto"][] | null;
+            totals?: components["schemas"]["ReconcilePreviewTotalsDto"];
+            blockingError?: string | null;
+            rowVersion?: string | null;
+        };
+        ReconcilePreviewLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            binIsProvisional?: boolean;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            trackingTypeCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            systemQty?: number;
+            /** Format: double */
+            currentQty?: number;
+            /** Format: double */
+            reservedQty?: number;
+            /** Format: double */
+            countedQty?: number | null;
+            isPending?: boolean;
+            /** Format: double */
+            capturedQty?: number | null;
+            capturedByName?: string | null;
+            /** Format: date-time */
+            capturedAtUtc?: string | null;
+            correctedByName?: string | null;
+            /** Format: date-time */
+            correctedAtUtc?: string | null;
+            wasCorrected?: boolean;
+            /** Format: double */
+            adjustmentQty?: number;
+            /** Format: double */
+            resultingQty?: number;
+            /** Format: int32 */
+            movements?: number;
+            systemQtyChanged?: boolean;
+            error?: string | null;
+            serials?: components["schemas"]["ReconcilePreviewSerialsDto"];
+        };
+        ReconcilePreviewSerialsDto: {
+            removals?: string[] | null;
+            additions?: string[] | null;
+            transfers?: string[] | null;
+        };
+        ReconcilePreviewTotalsDto: {
+            /** Format: int32 */
+            lines?: number;
+            /** Format: int32 */
+            pendingLines?: number;
+            /** Format: int32 */
+            linesWithDifference?: number;
+            /** Format: int32 */
+            movements?: number;
+            /** Format: int32 */
+            errorLines?: number;
+            matches?: boolean;
+            resultStatusCode?: string | null;
+        };
         ReconciliationDto: {
             /** Format: date-time */
             checkedAtUtc?: string;
@@ -21069,6 +21446,7 @@ export interface components {
             level?: string | null;
             position?: string | null;
             isActive?: boolean;
+            isProvisional?: boolean;
         };
         SyncBinDtoSyncPage: {
             items?: components["schemas"]["SyncBinDto"][] | null;
@@ -21904,6 +22282,11 @@ export interface components {
             singleProductPublicId?: string | null;
             singleProductSku?: string | null;
             singleProductName?: string | null;
+            isProvisional?: boolean;
+            /** Format: int32 */
+            provisionalCycleCountId?: number | null;
+            /** Format: date-time */
+            provisionalCreatedAtUtc?: string | null;
         };
         WarehouseBinPageDto: {
             /** Format: int32 */
