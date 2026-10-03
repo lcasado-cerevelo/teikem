@@ -23,8 +23,10 @@ namespace Teikem.Infrastructure.Services;
 ///   Un chofer inactivo (IsActive = 0) sí admite tarifas: se puede reactivar.
 /// - Rate &gt;= 0 y precisión DECIMAL(18,4) validadas antes de guardar (nunca un 500 por desbordamiento).
 /// </summary>
-public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string RateWhat = "Tarifa";
     private const string ClosedMessage = "La tarifa ya está cerrada; agregue una nueva si necesita volver a pagarla.";
     private const string DeliveryKeysMessage = "El servicio y el paquete se fijan al crear la tarifa; quite la fila y cree una nueva.";
@@ -414,7 +416,7 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
     }
 
     /// <summary>Principio #8: una versión nueva o un cierre nunca se fechan en el pasado.</summary>
-    private static void EnsureNotPast(DateOnly date, string field)
+    private void EnsureNotPast(DateOnly date, string field)
     {
         if (date < Today()) throw new ValidationException(field, RateService.PastDateMessage);
     }
@@ -440,7 +442,7 @@ public sealed class DriverRateService(TeikemDbContext db, ITenantContext tenant,
 
     private int RequireTenantId() => tenant.TenantId ?? throw new ForbiddenException("No hay tenant activo en la sesión.");
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 
     private async Task<(string Code, string Label)> LabelAsync(int lookupCodeId, CancellationToken ct)
     {

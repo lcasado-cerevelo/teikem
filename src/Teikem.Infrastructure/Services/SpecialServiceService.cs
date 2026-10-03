@@ -23,8 +23,10 @@ namespace Teikem.Infrastructure.Services;
 /// - Escrituras: EnsureAllowedAsync(CONTRACT, contratoVigente, EDIT_CONTRACT) (422 en EXPIRED/CANCELLED por defecto)
 ///   y RunInTransactionAsync (la estrategia de reintentos limpia el tracker: todo se carga dentro del delegado).
 /// </summary>
-public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext tenant, StatusService status)
+public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext tenant, StatusService status, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string NoContractMessage = "El cliente no tiene un contrato vigente; cree o active un contrato antes de configurar servicios especiales.";
     private const string ComponentOffMessage = "El componente 'Servicios especiales' está apagado en el contrato vigente; enciéndalo en el modelo de facturación para agregar servicios especiales.";
     private const string AlreadyClosedMessage = "La tarifa ya está cerrada; agregue un servicio especial nuevo si necesita volver a cobrarlo.";
@@ -295,7 +297,7 @@ public sealed class SpecialServiceService(TeikemDbContext db, ITenantContext ten
     private static string OpenRowMessage(string typeName)
         => $"El cliente ya tiene una tarifa vigente en esa fecha para el tipo '{typeName}'; edite esa tarifa o ciérrela antes de agregar otra.";
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 
     private async Task<SpecialServiceDto> GetByIdAsync(int id, DateOnly asOf, CancellationToken ct)
     {

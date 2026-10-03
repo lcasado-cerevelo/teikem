@@ -23,8 +23,10 @@ namespace Teikem.Infrastructure.Services;
 /// - Todo cambio de estatus pasa por StatusService.TransitionAsync. Un chofer eliminado solo se consulta.
 /// - El chofer nace en el estatus inicial del tenant y SIN filas de tarifa (la 'ficha vacía' es la ausencia de filas).
 /// </summary>
-public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, PermissionService permissions)
+public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, PermissionService permissions, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private static readonly string[] ImmutableCodeKeys = ["code", "employeeCode"];
 
     // ---------------- Lista ----------------
@@ -434,5 +436,5 @@ public sealed class DriverService(TeikemDbContext db, ITenantContext tenant, ILo
 
     private string Label(LookupCode? l) => l is null ? "" : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
     private static string RowVersionOf(byte[]? rv) => rv is null ? "" : Convert.ToBase64String(rv);
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

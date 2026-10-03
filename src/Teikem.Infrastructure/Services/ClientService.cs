@@ -16,8 +16,10 @@ namespace Teikem.Infrastructure.Services;
 /// numeración, contactos, contratos), estatus vía StatusService y baja lógica.
 /// El TenantId sale siempre del principal; las hijas sin TenantId (ClientContact) se alcanzan solo a través del cliente.
 /// </summary>
-public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ContactPointService contacts)
+public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ContactPointService contacts, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string DefaultContractTitle = "Contrato marco";
 
     // ---------------- Lista ----------------
@@ -468,5 +470,5 @@ public sealed class ClientService(TeikemDbContext db, ITenantContext tenant, ILo
     private string Label(LookupCode? l) => l is null ? "" : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
     private string Label(StatusCode? s) => s is null ? "" : MultilingualText.Resolve(s.LabelJson, tenant.Lang);
     private static string? RowVersionOf(byte[]? rv) => rv is null ? null : Convert.ToBase64String(rv);
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

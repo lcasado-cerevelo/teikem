@@ -21,8 +21,10 @@ namespace Teikem.Infrastructure.Services;
 /// SOLO a través del componente del contrato, nunca por id suelto (RateTier no tiene TenantId).
 /// Toda escritura exige la capacidad EDIT_CONTRACT en el estatus actual del contrato y corre en RunInTransactionAsync.
 /// </summary>
-public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses)
+public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string ComponentOffPerService = "El componente 'Por servicio' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tarifas.";
     private const string ComponentOffExtraPiece = "El componente 'Pieza extra' está apagado en el modelo de facturación del contrato; enciéndalo antes de trabajar sus tramos.";
     private const string DuplicateOpenRow = "Ya existe una tarifa vigente en esa fecha para ese servicio y tipo de paquete en el contrato; edítela o ciérrela antes de crear otra.";
@@ -490,11 +492,11 @@ public sealed class RateService(TeikemDbContext db, ITenantContext tenant, ILook
 
     private string Label(LookupCode? l) => l is null ? "" : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
     /// <summary>Principio #8: una versión nueva o un cierre nunca se fechan en el pasado; el historial ya escrito no se reescribe.</summary>
-    private static void EnsureNotPast(DateOnly date, string field)
+    private void EnsureNotPast(DateOnly date, string field)
     {
         if (date < Today()) throw new ValidationException(field, PastDateMessage);
     }
     public const string PastDateMessage = "La fecha no puede ser anterior a hoy: el historial de tarifas no se reescribe.";
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

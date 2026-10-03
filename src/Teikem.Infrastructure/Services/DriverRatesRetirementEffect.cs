@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Abstractions;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -14,8 +15,10 @@ namespace Teikem.Infrastructure.Services;
 /// Sus viajes (DriverTrip) se conservan para pagarle lo pendiente. Trabaja sobre entidades tracked y no guarda: el
 /// servicio que transiciona persiste todo junto con el nuevo StatusCodeId, dentro de su transacción.
 /// </summary>
-public sealed class DriverRatesRetirementEffect(TeikemDbContext db) : IStatusTransitionEffect
+public sealed class DriverRatesRetirementEffect(TeikemDbContext db, ITenantClock? clock = null) : IStatusTransitionEffect
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public string StatusDomain => StatusDomains.DriverStatus;
 
     public async Task OnTransitionedAsync(StatusTransitionContext context, CancellationToken ct)
@@ -23,7 +26,7 @@ public sealed class DriverRatesRetirementEffect(TeikemDbContext db) : IStatusTra
         if (!string.Equals(context.To.StageKind?.InternalCode, StageKinds.Terminal, StringComparison.OrdinalIgnoreCase)) return;
 
         var driverId = context.EntityId;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
 
         // Bajo el filtro global de tenant: solo filas de la compañía activa.
         var delivery = await db.DriverDeliveryRates
