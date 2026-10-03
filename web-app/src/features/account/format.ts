@@ -1,12 +1,10 @@
 // Utilidades puras de "Mi cuenta": fechas y descripción corta del dispositivo de una sesión.
-import { parseApiDate } from '../../kernel/api/dates'
+import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
 /** Fecha y hora local en el idioma de la interfaz (el API manda UTC, a veces sin 'Z'); '' si no hay fecha o no es válida. */
 export function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  return formatCompanyDateTime(iso, lang)
 }
 
 const BROWSERS: readonly [RegExp, string][] = [

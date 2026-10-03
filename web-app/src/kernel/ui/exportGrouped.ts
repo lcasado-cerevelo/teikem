@@ -11,7 +11,8 @@
 // `exportTable` bajo demanda. Las funciones de armado (buildGroupedExportData, flattenGroupedExport, formatExportNumber)
 // son puras y se prueban sin DOM; `renderGroupedPdf` arma el documento en memoria y `exportGroupedTable` descarga.
 import type { jsPDF } from 'jspdf'
-import { numberLocale, t as translate } from '../i18n'
+import { formatNumber } from '../format/format'
+import { t as translate } from '../i18n'
 import type { ExportChildren } from './exportChildren'
 import {
   buildExportData,
@@ -100,9 +101,9 @@ export function flattenGroupedExport(data: GroupedExportData): ExportData {
   }
 }
 
-/** Número del PDF con los separadores del idioma (hasta 3 decimales); `signed` = "+5" / "-3" (0 sin signo). */
-export function formatExportNumber(value: number, locale: string | undefined, signed = false): string {
-  return new Intl.NumberFormat(numberLocale(locale), { maximumFractionDigits: 3, useGrouping: 'always', signDisplay: signed ? 'exceptZero' : 'auto' }).format(value)
+/** Número del PDF con los separadores de la compañía (hasta 3 decimales); `signed` = "+5" / "-3" (0 sin signo). */
+export function formatExportNumber(value: number, _locale: string | undefined, signed = false): string {
+  return formatNumber(value, { signDisplay: signed ? 'exceptZero' : 'auto' })
 }
 
 /** Texto de una celda del PDF: números formateados, texto seguro para Latin-1, vacío = `empty`. */

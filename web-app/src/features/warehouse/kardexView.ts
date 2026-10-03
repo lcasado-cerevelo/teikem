@@ -12,7 +12,7 @@ import type { SummaryItem } from '../../kernel/ui/SummaryBar'
 import type { GetQuery, KardexDocumentDto, KardexRowDto, KardexSummaryDto } from './api'
 import { formatNumber } from './lineRules'
 import type { ProductFilterItem } from './pickers'
-import { numberLocale } from '../../kernel/i18n'
+import { formatDate, formatNumber as formatCompanyNumber, formatTime } from '../../kernel/format'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Estado de filtros compartido
@@ -295,24 +295,24 @@ export function qtyClass(q: number | null | undefined): 'qty-in' | 'qty-out' | '
   return q > 0 ? 'qty-in' : 'qty-out'
 }
 
-/** Cantidad con signo explícito ("+2", "−3", "0") con los separadores del idioma. */
-export function formatSignedQty(q: number | null | undefined, lang: string): string {
+/** Cantidad con signo explícito ("+2", "−3", "0") con los separadores de la compañía. */
+export function formatSignedQty(q: number | null | undefined, _lang: string): string {
   const n = q ?? 0
-  const text = new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(Math.abs(n))
+  const text = formatCompanyNumber(Math.abs(n))
   if (n > 0) return `+${text}`
   if (n < 0) return `−${text}`
   return text
 }
 
-/** Fecha y hora por separado (columnas Fecha y Hora de la maqueta), en hora local del navegador. */
+/**
+ * Fecha y hora por separado (columnas Fecha y Hora de la maqueta) con los formatos de la compañía (orden y separador de la
+ * fecha, 12/24 h) y en su zona horaria.
+ */
 export function splitDateTime(iso: string | null | undefined, lang: string): { date: string; time: string } {
   if (!iso) return { date: '', time: '' }
   const d = parseApiDate(iso)
   if (Number.isNaN(d.getTime())) return { date: '', time: '' }
-  return {
-    date: new Intl.DateTimeFormat(lang, { dateStyle: 'short' }).format(d),
-    time: new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d),
-  }
+  return { date: formatDate(d), time: formatTime(d, lang) }
 }
 
 /** "Lote · Serie" de un movimiento ('' si no tiene). */
@@ -447,7 +447,7 @@ export function movementQtyView(
   const signed = r.signedQuantity ?? r.quantity ?? 0
   if (signed === 0 && (r.quantity ?? 0) !== 0) {
     const q = Math.abs(r.quantity ?? 0)
-    return { text: new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(q), className: 'qty-zero', value: q }
+    return { text: formatCompanyNumber(q), className: 'qty-zero', value: q }
   }
   return { text: formatSignedQty(signed, lang), className: qtyClass(signed), value: signed }
 }

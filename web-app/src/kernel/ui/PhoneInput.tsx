@@ -1,11 +1,13 @@
-// Teléfono con máscara `(xxx)xxx-xxxx` dentro de un `<Field name="…">`. Valor del formulario: el texto con máscara ('' = vacío).
+// Teléfono con la máscara de la compañía (Región y formatos) dentro de un `<Field name="…">`. Mientras se escribe se pone la
+// máscara; el valor del formulario es el texto con máscara ('' = vacío). Al guardar, `normalizePhone` deja solo los dígitos.
 import { useFormContext } from 'react-hook-form'
+import { useFormat } from '../format/useFormat'
 import { useFieldInfo } from './formContext'
-import { formatPhone } from './phone'
 
-export function PhoneInput({ placeholder = '(787)555-1234' }: { placeholder?: string }) {
+export function PhoneInput({ placeholder }: { placeholder?: string }) {
   const info = useFieldInfo('PhoneInput')
   const { register } = useFormContext()
+  const f = useFormat()
   const reg = register(info.name)
   return (
     <input
@@ -13,7 +15,7 @@ export function PhoneInput({ placeholder = '(787)555-1234' }: { placeholder?: st
       inputMode="tel"
       autoComplete="tel"
       maxLength={40}
-      placeholder={placeholder}
+      placeholder={placeholder ?? f.phonePlaceholder()}
       id={info.id}
       aria-invalid={info.invalid || undefined}
       aria-required={info.required || undefined}
@@ -21,7 +23,7 @@ export function PhoneInput({ placeholder = '(787)555-1234' }: { placeholder?: st
       {...reg}
       onChange={(e) => {
         // Se reformatea desde los dígitos: borrar un paréntesis o el guion no deja el texto atascado.
-        e.target.value = formatPhone(e.target.value)
+        e.target.value = f.phoneInput(e.target.value)
         return reg.onChange(e)
       }}
     />

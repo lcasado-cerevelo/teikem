@@ -84,8 +84,10 @@ describe('exportación de tablas con fechas', () => {
     expect(expected.z).toBe('yyyy-mm-dd')
     expect(expected.v).toBe(46297)
   })
-  it('PDF: texto legible en el idioma', () => {
+  it('PDF: texto legible con el formato de la compañía (Puerto Rico: MM/DD/AAAA, 12 h, en su zona)', () => {
     const d = toExportDate('2026-09-30')
-    expect(d && exportDateText(d, 'es')).toMatch(/30 sept 2026/)
+    expect(d && exportDateText(d, 'es')).toBe('09/30/2026')
+    const dt = toExportDate('2026-09-30T18:03:00')
+    expect(dt && exportDateText(dt, 'en')).toBe('09/30/2026 2:03 PM')
   })
 })

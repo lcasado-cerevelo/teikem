@@ -9,6 +9,9 @@ import { setLang } from '../../kernel/i18n/i18n'
 import { activityLink, activityTabs, activityTone, formatEventTime, nextActivitySkip, type ActivityEventDto } from './activity'
 import { ActivityPanel } from './ActivityPanel'
 
+/** Espacios duros (a. m. de Intl) → espacio normal, para comparar el texto. */
+const norm = (s: string) => s.replace(/[\u00a0\u202f]/g, ' ')
+
 // Cliente de la app sobre un fetch simulado (misma política que el real).
 type Handler = (url: URL) => Response | unknown
 const mock = vi.hoisted(() => ({ urls: [] as URL[], handler: null as unknown }))
@@ -139,18 +142,15 @@ describe('activity (lógica pura)', () => {
     expect(nextActivitySkip(page(0, 120), [page(50, 120), page(0, 120)])).toBeUndefined()
   })
 
-  it('hora local: de hoy solo la hora; de otro día con día y mes', () => {
-    const now = new Date(2026, 8, 27, 18, 0)
-    const today = new Date(2026, 8, 27, 9, 42)
-    const yesterday = new Date(2026, 8, 26, 9, 42)
-    expect(formatEventTime(today.toISOString(), 'es', now)).toBe(new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' }).format(today))
-    expect(formatEventTime(yesterday.toISOString(), 'es', now)).toBe(
-      new Intl.DateTimeFormat('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(yesterday),
-    )
-    // sin zona = UTC
-    expect(formatEventTime('2026-09-27T13:40:00', 'es', new Date('2026-09-27T13:40:00Z'))).toBe(
-      new Intl.DateTimeFormat('es', { hour: '2-digit', minute: '2-digit' }).format(new Date('2026-09-27T13:40:00Z')),
-    )
+  it('hora de la compañía: de hoy solo la hora; de otro día con día y mes (Puerto Rico: 12 h, MM/DD)', () => {
+    // 22:00Z del 27 = 6:00 p. m. del 27 en Puerto Rico
+    const now = new Date('2026-09-27T22:00:00Z')
+    expect(formatEventTime('2026-09-27T13:42:00Z', 'en', now)).toBe('9:42 AM')
+    expect(formatEventTime('2026-09-26T13:42:00Z', 'en', now)).toBe('09/26 9:42 AM')
+    // sin zona = UTC; el idioma pone "a. m."
+    expect(norm(formatEventTime('2026-09-27T13:40:00', 'es', new Date('2026-09-27T13:40:00Z')))).toBe('9:40 a. m.')
+    // 01:30Z del 28 todavía es el 27 en Puerto Rico: es "hoy"
+    expect(formatEventTime('2026-09-28T01:30:00Z', 'en', now)).toBe('9:30 PM')
     expect(formatEventTime(null, 'es')).toBe('')
   })
 })

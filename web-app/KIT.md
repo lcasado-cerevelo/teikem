@@ -38,14 +38,58 @@ agrégalo en `src/kernel` con una prueba y anótalo aquí en la misma pieza.
 - **Fechas del API**: el backend manda las marcas UTC sin zona (`"2026-09-27T14:00:00.123"`) y `new Date()` las leería como hora
   local. Léelas siempre con `parseApiDate(iso)` (`src/kernel/api/dates.ts`: sin zona = UTC, como la DSL) antes de formatear.
 - **Hora de la compañía** (un solo punto para toda la web, espejo de `TenantClock`/`LocalDay`): `src/kernel/api/tenantZone.ts`.
-  `TENANT_TIME_ZONE` ('America/Puerto_Rico'); `localDayOf(value)` → 'YYYY-MM-DD' del día LOCAL de un instante del API (un día
+  La zona es la de la compañía (`tenantTimeZone()`, de Región y formatos; sin ajustes, `TENANT_TIME_ZONE` = 'America/Puerto_Rico',
+  que queda solo como el valor por defecto). `localDayOf(value)` → 'YYYY-MM-DD' del día LOCAL de un instante del API (un día
   de calendario 'YYYY-MM-DD' queda igual; no fecha → null), como `AnalyticsEngine.GroupKey`; `tenantToday()` ("hoy" local);
-  `zonedInputFromUtc(iso)` / `utcFromZonedInput('YYYY-MM-DDTHH:mm')` para inputs `datetime-local` en hora de la compañía.
+  `zonedInputFromUtc(iso)` / `utcFromZonedInput('YYYY-MM-DDTHH:mm')` para inputs `datetime-local` en hora de la compañía
+  (también los usan las citas de muelle y los campos personalizados DATETIME). Todas aceptan una zona explícita al final.
   ```ts
   const day = localDayOf('2026-09-30T03:59:00')   // '2026-09-29' (23:59 en Puerto Rico)
-  const today = tenantToday()                    // 'YYYY-MM-DD' de hoy en Puerto Rico
+  const today = tenantToday()                    // 'YYYY-MM-DD' de hoy en la zona de la compañía
   const input = zonedInputFromUtc(dto.fromUtc)   // '2026-09-30T00:00'
   ```
+
+## Región y formatos de la compañía (`src/kernel/format`, lote F9)
+Toda fecha, hora, número, dinero y teléfono que se pinta pasa por aquí (espejo de `money/fmtMoney/fmtDate/fmtDayMonth/fmtTime/
+fmtDateLong/fmtPhone/todayISO` de la maqueta). Los valores salen de `GET /api/v1/tenant/settings` (los 13 campos de formato de
+`dbo.Tenant`) y, mientras cargan o sin sesión, son los de Puerto Rico (`PR_FORMAT`: `America/Puerto_Rico`, USD `$` antes, 2
+decimales, `MDY` con `/`, 12 h, domingo, `,` miles, `.` decimal, `+1`, `(###) ###-####`). **El idioma es por usuario y solo
+decide los nombres de meses y días y el texto "a. m."/"AM"; la región decide el orden y el separador de la fecha, los
+separadores de números, la hora de 12/24, la zona y la moneda.** Nunca `Intl.DateTimeFormat`/`toLocale…` sueltos en una pantalla.
+- `FormatProvider` (`enabled`): lo monta `SessionProvider` (con sesión); deja los ajustes en un estado global (`store.ts`:
+  `getFormatSettings`, `setFormatSettings`, `resetFormatSettings`, `subscribeFormat`, `tenantTimeZone`). Al guardar Ajustes →
+  Región y formatos (o invalidar `catalogKeys.tenantSettings`) cambia ahí y **toda la app se vuelve a pintar sin recargar**:
+  `useT()` y `useLang()` también se suscriben (la función `t` cambia de identidad, así que lo memorizado con `[t]` —columnas,
+  esquemas— se recalcula). Algo memorizado SOLO con `[lang]` que formatee debe usar `useFormat()`.
+- `useFormat()` → `{ settings, lang, number(n, opts?), money(n, opts?), date(v), dayMonth(v), time(v, { seconds? }), timeOfDay('HH:mm'),
+  dateTime(v), dateLong(v, opts?), phone(v), phoneInput(v), normalizePhone(v), isValidPhone(v), phonePlaceholder(), today() }`;
+  `useFormatSettings()` → `FormatSettings`.
+  ```tsx
+  const f = useFormat()
+  <td>{f.date(r.createdAtUtc)}</td><td>{f.time(r.createdAtUtc)}</td><td className="mono">{f.money(r.total)}</td>
+  ```
+- Funciones puras (los ajustes son el ÚLTIMO parámetro y por defecto los vigentes; así se prueban sin React):
+  | Función | Resultado (Puerto Rico) |
+  |---|---|
+  | `formatNumber(n, intlOpts?, s?)` | `61,023.125` (miles siempre, hasta 3 decimales solo si los tiene; acepta signo, compacto, decimales fijos) |
+  | `formatMoney(n, lang?, { currency?, unitPrice?, signed?, decimals? }?, s?)` | `$1,234.50`, `-$12.00`, `+$5.00`; símbolo después: `1.234,50 €` (espacio duro); otra moneda con su símbolo corto |
+  | `formatDate(v, s?)` | `10/02/2026` (`DMY` → `02/10/2026`, `YMD` → `2026/10/02`); un 'YYYY-MM-DD' no se corre; un instante, su día en la zona |
+  | `formatDayMonth(v, s?)` | `10/02` (`DMY` → `02/10`) |
+  | `formatTime(v, lang, { seconds? }?, s?)` / `formatTimeOfDay('14:05', lang, s?)` | `9:30 p. m.` / `9:30 PM` (24 h: `21:30`), en la zona |
+  | `formatDateTime(v, lang, s?)` | `10/02/2026 9:30 PM` (un día sin hora → solo la fecha) |
+  | `formatDateLong(v, lang, intlOpts?, s?)` / `formatDateLongTime(v, lang, s?)` | `viernes, 2 de octubre de 2026` / `2 de octubre de 2026, 9:30 p. m.` (nombres del idioma, zona de la compañía) |
+  | `todayIso(now?, s?)`, `utcNowText(now?)` | "hoy" 'YYYY-MM-DD' en la zona (1:30 UTC del 3-oct = '2026-10-02') / `2026-10-03 01:30 UTC` |
+  | `parseNumber(text, s?)`, `applySeparators(textEnUs, s?)`, `currencySymbol(code, s?)`, `withCurrencySymbol(body, sign, sym, s?)` | leer/escribir con los separadores y el símbolo de la compañía |
+  | `formatPhone(v, s?)` / `formatPhoneInput(v, s?)` / `normalizePhone(v, s?)` / `isValidPhone(v, s?)` / `phonePlaceholder(s?)` | `(787) 555-0142` (con los dígitos exactos; si no, tal cual) / máscara mientras se escribe / solo dígitos para guardar / vacío o los dígitos de la máscara (con o sin `+1`) / `(000) 000-0000` |
+- Ajustes: `FormatSettings`, `PR_FORMAT`, `US_FORMAT`, `DEFAULT_FORMAT`, `FORMAT_FIELDS` (los 13 de una región),
+  `toFormatSettings(dto, fallback?)` (campo por campo; inválido → respaldo), `regionDefaults(code, formatOptions?)`,
+  `isRegionCustom(s, region)` ("Personalizada"), `withSeparator(s, campo, valor)` (intercambio automático si los separadores
+  chocan), `sameFormat`, `isKnownTimeZone`.
+- Compatibilidad: `formatQuantity(n, lang)`/`formatMoney(n, lang)` de `kernel/i18n` y los `formatDate/formatDateTime(iso, lang)`
+  de `lineRules.ts`, `account/format.ts` y las pantallas siguen con su firma y ya usan estos formatos (`lang` solo pone "a. m.").
+  `numberLocale(lang)` queda solo para nombres de meses; no lo use para números. Los PDF/Excel (`exportTable`, `reportPdf`,
+  `exportGrouped`) formatean y leen números y fechas con los ajustes de la compañía; el nombre del archivo lleva el día de la
+  compañía.
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
 ## Shell (`src/app`)
@@ -279,7 +323,7 @@ Todos los textos que reciben (`label`, `header`, `title`…) llegan ya traducido
 | `Form` | `form` (de `useForm({ resolver: zodResolver(schema) })`), `onSubmit(values)` (async), `onError?(problem)`, `id?` (para `<button type="submit" form={id}>` en el pie del Modal) | si `onSubmit` lanza, `applyProblemDetails(err, form)` pone cada error bajo su `Field`; el título y los errores sin campo van en un aviso arriba del formulario |
 | `Field` | `name` (camelCase, como el DTO), `label`, `required?` (asterisco; la regla va en zod), `help?`, `hideLabel?` (Lote 13: la etiqueta queda solo para lectores de pantalla, `.sr-only`; el error y la ayuda se ven), `children` (un control) | etiqueta + control + ayuda + error (`.ferr`, `aria-invalid`, `aria-describedby`). `hideLabel` = campo dentro de una celda de una rejilla cuyo encabezado ya dice qué es; la etiqueta sigue siendo única por fila: `<Field name="qty" label={t('…qtyOfLine', { n: i + 1 })} hideLabel><NumberInput /></Field>` |
 | Controles de `Field` | `TextInput` (`type?`), `NumberInput` (valor `number \| null`; vacío = null → `z.number().nullable()`), `Select` (`options`, `placeholder?`; valor string, '' = sin elegir), `DateInput` ('YYYY-MM-DD'), `Toggle` (`text?`; boolean), `TextArea` (`rows?`), `ClientPickerInput` (`includeInactive?`; valor publicId o null) | se registran solos en el formulario con el `name` del `Field`; aceptan los atributos nativos (`maxLength`, `min`, `placeholder`…) |
-| `PhoneInput` + `formatPhone`/`isValidPhone`/`normalizeStoredPhone`/`phoneDigits` (`phone.ts`) | `placeholder?` | teléfono con máscara `(xxx)xxx-xxxx` mientras se escribe, dentro de un `Field` (valor con máscara; vacío = ''). Valida con `isValidPhone` (vacío o 10 dígitos) en el esquema zod; al editar un valor viejo, `normalizeStoredPhone` lo muestra con máscara solo si tiene 10 dígitos |
+| `PhoneInput` + `formatPhone`/`formatPhoneInput`/`isValidPhone`/`normalizePhone`/`phonePlaceholder`/`phoneDigits` (`phone.ts`, reexporta `kernel/format/phone`) | `placeholder?` (por defecto la máscara con ceros) | teléfono con la máscara de la COMPAÑÍA (Región y formatos; Puerto Rico `(###) ###-####`) mientras se escribe, dentro de un `Field` (valor con máscara; vacío = ''). Valida con `useFormat().isValidPhone` (vacío o los dígitos de la máscara) en el esquema zod; al editar, `formatPhone` (alias viejo `normalizeStoredPhone`) muestra con máscara un valor con los dígitos exactos; al guardar, `normalizePhone` deja solo los dígitos (si no calza, tal cual). Ejemplo: Proveedores |
 | `Tabs<K>` | `tabs: {key,label}[]`, `value`, `onChange`, `label?` | pestañas de una ficha (`.seg`, `role="tablist"`) |
 | `EmptyState` | `title`, `body?`, `icon?`, `action?` | sin datos / sin resultados |
 | `Spinner` | `label?`, `block?` (centrado) | carga (`role="status"`) |
@@ -680,11 +724,11 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   | `CountDetailPanel` | `id: number \| null` | el conteo elegido: cabecera (estatus, origen, ventana de lo cambiado, asignado), Historial, "Refrescar foto", "Agregar lo encontrado", `CountScanBox`, rejilla con TODAS las líneas (Esperado, Contado editable en la fila, Varianza, Ajustado al cerrar) y "Confirmar conteo y ajustar" (un paso, `POST /reconcile`; deshabilitado con 'Faltan {n} línea(s) por contar.'). A ciegas: solo lectura |
   | `CountScanBox` | `lines`, `onPick(match)`, `disabled?` | combobox sobre las líneas; Enter con SKU, código de barras, lote o serie exactos (`matchCountLine`) elige la línea; varias → se elige; ninguna → 'Ese código no está en este conteo…' |
   | `CountQtyModal` / `AddFoundLineModal` (`CountLineModals.tsx`) | `line`, `scannedSerial?`, `isBlind?`, `onSave(body)`, `onClose` / `detail`, `onClose` | cantidad (foco puesto, Enter guarda) o series de una línea; línea nueva (lo encontrado) |
-  | `CreateCountModal` / `ChangedCountModal` | `onClose`, `onCreated?` / `onClose`, `initialWarehousePublicId?`, `onCreated?(counts)` | alta manual (almacén, zonas, posiciones) / "lo cambiado": almacén (de solo lectura si hay uno), Desde/Hasta en hora de Puerto Rico (por defecto la ventana del servidor; tocadas se mandan en UTC), zonas, "Incluir posiciones vacías", vista previa en vivo y su `problem` tal cual (sin crear) |
+  | `CreateCountModal` / `ChangedCountModal` | `onClose`, `onCreated?` / `onClose`, `initialWarehousePublicId?`, `onCreated?(counts)` | alta manual (almacén, zonas, posiciones) / "lo cambiado": almacén (de solo lectura si hay uno), Desde/Hasta en hora de la compañía (por defecto la ventana del servidor; tocadas se mandan en UTC), zonas, "Incluir posiciones vacías", vista previa en vivo y su `problem` tal cual (sin crear) |
   | `useCountDrafts(detail)` | → `{ drafts, errors, saving, input, save, capture, flush, rowVersion }` | captura en la fila: texto por línea, guardado al salir o con Enter en FILA ÚNICA con el rowVersion más reciente; `flush()` antes de confirmar |
   Lógica pura en `countView.ts`: `CountFilterState`/`EMPTY_COUNT_FILTERS`, `countFilterQuery`, `countListQuery`, `countParam`, `countFiltersFromUrl`,
   `selectedCountId`, `countWhere`, `isCountClosed`/`isCountEditable`, `matchCountLine`, `scanOptions`, `lineVariance`,
-  `pendingLines`, `confirmBlocker`. La hora de la compañía (`TENANT_TIME_ZONE`, `zonedInputFromUtc`, `utcFromZonedInput`) vive
+  `pendingLines`, `confirmBlocker`. La hora de la compañía (`tenantTimeZone()`, `zonedInputFromUtc`, `utcFromZonedInput`) vive
   desde el Lote 15 en `src/kernel/api/tenantZone.ts` (ver "Hora de la compañía"). Estilos `.cc-*` en `warehouse.css`.
   ```tsx
   <SplitPane storageKey="cycle-counts" defaultRatio={0.34} minPx={[300, 480]}>

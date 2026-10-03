@@ -101,7 +101,7 @@ describe('Proveedores', () => {
     await user.click((await screen.findAllByText('Acme Corp'))[0])
     const dialog = await screen.findByRole('dialog', { name: 'Editar' })
     expect(within(dialog).getByLabelText(/Nombre/)).toHaveValue('Acme Corp')
-    expect(within(dialog).getByLabelText('Teléfono')).toHaveValue('(787)555-1234')
+    expect(within(dialog).getByLabelText('Teléfono')).toHaveValue('(787) 555-1234')
     view.unmount()
 
     wrap(['purchasing.view'])
@@ -121,23 +121,23 @@ describe('Proveedores', () => {
     await waitFor(() => expect(mock.calls.some((c) => c.method === 'POST' && c.url.pathname.endsWith('/deactivate'))).toBe(true))
   })
 
-  it('máscara de teléfono, validación de 10 dígitos y correo inválido', async () => {
+  it('máscara de teléfono de la compañía, validación de sus dígitos y correo inválido', async () => {
     const user = userEvent.setup()
     wrap(MANAGE)
     await user.click(await screen.findByRole('button', { name: 'Nuevo proveedor' }))
     const dialog = await screen.findByRole('dialog', { name: 'Nuevo proveedor' })
     const phone = within(dialog).getByLabelText('Teléfono')
     await user.type(phone, '78755')
-    expect(phone).toHaveValue('(787)55')
+    expect(phone).toHaveValue('(787) 55')
     await user.type(within(dialog).getByLabelText(/Nombre/), 'Nuevo')
     await user.type(within(dialog).getByLabelText('Correo electrónico'), 'no-es-correo')
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
-    expect(await within(dialog).findByText('El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx.')).toBeInTheDocument()
+    expect(await within(dialog).findByText('El teléfono debe tener 10 dígitos: (###) ###-####.')).toBeInTheDocument()
     expect(within(dialog).getByText('El correo electrónico no es válido.')).toBeInTheDocument()
     expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
     await user.type(phone, '51234999')
     // la máscara corta en 10 dígitos
-    expect(phone).toHaveValue('(787)555-1234')
+    expect(phone).toHaveValue('(787) 555-1234')
   })
 
   it('término de pago con buscador', async () => {

@@ -1798,7 +1798,7 @@
       },
       "errors": {
         "nameRequired": "El nombre del proveedor es obligatorio.",
-        "phoneInvalid": "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx.",
+        "phoneInvalid": "El teléfono debe tener {count} dígitos: {mask}.",
         "emailInvalid": "El correo electrónico no es válido."
       }
     },
@@ -2690,7 +2690,7 @@
         "warehouseRequired": "Elija el almacén.",
         "from": "Desde",
         "to": "Hasta",
-        "timeHelp": "Hora de Puerto Rico. Por defecto, desde la última vez que se generó en este almacén (la primera vez, desde el inicio del día) hasta ahora.",
+        "timeHelp": "Hora de la compañía ({zone}). Por defecto, desde la última vez que se generó en este almacén (la primera vez, desde el inicio del día) hasta ahora.",
         "resetWindow": "Volver a la ventana por defecto",
         "zones": "Zonas",
         "includeEmpty": "Incluir posiciones vacías",

@@ -1319,10 +1319,12 @@ colores que Almacenes); se ordena por nombre; los proveedores inactivos se ven a
 **El modal** («Nuevo proveedor» / «Editar»): **Nombre** (obligatorio), **Contacto**, **Teléfono**, **Correo electrónico**,
 **Término de pago** (desplegable con buscador, «Buscar término de pago…») y **Notas**. Avisos: «Proveedor creado.» /
 «Cambios guardados.».
-- **Teléfono con máscara.** Escriba solo los dígitos: el campo pone `(xxx)xxx-xxxx` mientras escribe (hasta 10 dígitos). El
-  teléfono se guarda con la máscara, por ejemplo `(787)555-1234`. Puede dejarse vacío. Un proveedor guardado antes con otro
-  formato se muestra con la máscara si tiene exactamente 10 dígitos; si no, se muestra tal cual y hay que corregirlo para
-  poder guardar (la pantalla exige 10 dígitos o vacío).
+- **Teléfono con máscara.** Escriba solo los dígitos: el campo pone la máscara de la compañía (Ajustes de la compañía →
+  Región y formatos; en Puerto Rico `(###) ###-####`) mientras escribe, hasta los dígitos que pide la máscara (10 en Puerto
+  Rico). Desde el lote F9 el teléfono **se guarda solo con dígitos** (`7875551234`) y se muestra con la máscara vigente; si la
+  compañía cambia la máscara, todos los teléfonos se ven con la nueva. Puede dejarse vacío. Un proveedor guardado antes con
+  otro formato se muestra con la máscara si tiene exactamente los dígitos de la máscara (con o sin el código de país `+1`);
+  si no, se muestra tal cual y hay que corregirlo para poder guardar.
 
 **Permiso.** `purchasing.view` (ver la lista); **`purchasing.manage`** para crear/editar/dar de baja/reactivar. Módulo
 **Compras** (`PURCHASING`).
@@ -1333,7 +1335,7 @@ colores que Almacenes); se ordena por nombre; los proveedores inactivos se ven a
 |---|---|---|---|
 | Nombre | obligatorio | "El nombre del proveedor es obligatorio." | Pantalla (y 400) |
 | Nombre | único entre proveedores activos | "Ya existe un proveedor activo con ese nombre." | Servidor, 409 |
-| Teléfono | vacío o exactamente 10 dígitos | "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx." | Pantalla |
+| Teléfono | vacío o exactamente los dígitos de la máscara de la compañía | "El teléfono debe tener {n} dígitos: {máscara}." (Puerto Rico: "El teléfono debe tener 10 dígitos: (###) ###-####.") | Pantalla |
 | Correo electrónico | formato válido | "El correo electrónico no es válido." | Pantalla (y 400) |
 
 ## Órdenes de compra

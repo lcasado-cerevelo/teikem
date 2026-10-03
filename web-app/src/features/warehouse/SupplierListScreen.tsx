@@ -1,13 +1,15 @@
 // Pantalla D (Lote F6) — Compras: proveedores. `/warehouse/suppliers`. Lectura: purchasing.view + PURCHASING (por la
 // ruta). Alta/edición/baja/reactivación: purchasing.manage. Nombre único entre los activos (409 del servidor).
 // Lote 2: filtros de texto (Nombre, Contacto, Teléfono, Correo) en el cliente, clic en la fila abre el proveedor, baja/reactivación
-// como ícono, estatus con el chip de Almacenes, teléfono con máscara (xxx)xxx-xxxx y término de pago con buscador.
+// como ícono, estatus con el chip de Almacenes, teléfono con la máscara de la compañía (Región y formatos; se guarda solo con
+// dígitos) y término de pago con buscador.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
 import { useLookups } from '../../kernel/catalogs'
+import { formatPhone, useFormat } from '../../kernel/format'
 import { useT } from '../../kernel/i18n'
 import {
   Chip,
@@ -17,10 +19,8 @@ import {
   Field,
   Filters,
   Form,
-  isValidPhone,
   matchesQ,
   Modal,
-  normalizeStoredPhone,
   Panel,
   phoneDigits,
   PhoneInput,
@@ -62,6 +62,7 @@ function matchesPhone(q: string, phone: string | null | undefined): boolean {
 // ---- Modal de alta/edición ----
 function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: () => void; supplier: SupplierDto | null }) {
   const t = useT()
+  const f = useFormat()
   const save = useSaveSupplier()
   const { data: paymentTerms = [] } = useLookups('PaymentTerm')
   const editing = supplier !== null
@@ -72,7 +73,10 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
       z.object({
         name: z.string().trim().min(1, t('warehouse.suppliers.errors.nameRequired')),
         contactName: z.string().trim(),
-        phone: z.string().trim().refine(isValidPhone, t('warehouse.suppliers.errors.phoneInvalid')),
+        phone: z
+          .string()
+          .trim()
+          .refine(f.isValidPhone, t('warehouse.suppliers.errors.phoneInvalid', { count: f.settings.phoneMask.split('#').length - 1, mask: f.settings.phoneMask })),
         email: z
           .string()
           .trim()
@@ -80,14 +84,14 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
         paymentTerm: z.string(),
         notes: z.string().trim(),
       }),
-    [t],
+    [t, f],
   )
   const form = useForm({
     resolver: zodResolver(schema),
     values: {
       name: supplier?.name ?? '',
       contactName: supplier?.contactName ?? '',
-      phone: normalizeStoredPhone(supplier?.phone),
+      phone: f.phone(supplier?.phone),
       email: supplier?.email ?? '',
       paymentTerm: supplier?.paymentTermCode ?? '',
       notes: supplier?.notes ?? '',
@@ -129,7 +133,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
               body: {
                 name: v.name,
                 contactName: v.contactName,
-                phone: v.phone,
+                phone: f.normalizePhone(v.phone),
                 email: v.email,
                 paymentTerm: v.paymentTerm,
                 notes: v.notes,
@@ -143,7 +147,7 @@ function SupplierModal({ open, onClose, supplier }: { open: boolean; onClose: ()
               body: {
                 name: v.name,
                 contactName: v.contactName || null,
-                phone: v.phone || null,
+                phone: f.normalizePhone(v.phone) || null,
                 email: v.email || null,
                 paymentTerm: v.paymentTerm || null,
                 notes: v.notes || null,
@@ -209,7 +213,7 @@ export default function SupplierListScreen() {
     () => [
       { id: 'name', header: t('warehouse.suppliers.fields.name'), cell: (s) => s.name, sortValue: (s) => s.name, card: 'title' },
       { id: 'contact', header: t('warehouse.suppliers.fields.contactName'), cell: (s) => s.contactName ?? '', card: 'hidden', sortValue: (s) => s.contactName },
-      { id: 'phone', header: t('warehouse.suppliers.fields.phone'), cell: (s) => normalizeStoredPhone(s.phone), sortValue: (s) => s.phone, card: 'hidden' },
+      { id: 'phone', header: t('warehouse.suppliers.fields.phone'), cell: (s) => formatPhone(s.phone), sortValue: (s) => s.phone, card: 'hidden' },
       { id: 'email', header: t('warehouse.suppliers.fields.email'), cell: (s) => s.email ?? '', sortValue: (s) => s.email },
       {
         id: 'active',

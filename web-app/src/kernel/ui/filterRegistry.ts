@@ -3,6 +3,7 @@
 // y su valor LEGIBLE mientras están montados; la exportación de las tablas del mismo ámbito (`FilterScope`) lo lee al
 // exportar y pone la oración "Filtros: Almacén ALM-DEPOT · Estatus Recibiendo · Creado del 01/09/2026 al 30/09/2026" en el
 // PDF y en el Excel. Este módulo es puro (sin React): el registro, cómo se escribe cada valor y la oración.
+import { formatDate } from '../format/format'
 
 /** Un filtro con valor: `value` '' = solo la etiqueta (interruptor encendido: "Solo manuales"). */
 export interface AppliedFilter {
@@ -91,14 +92,15 @@ export function joinFilterValues(values: readonly string[], t: Translate): strin
   return t('ui.filters.applied.more', { list: clean.slice(0, FILTER_LIST_MAX).join(', '), count: clean.length - FILTER_LIST_MAX })
 }
 
-/** Día 'YYYY-MM-DD' como se lee en el idioma: es → 01/09/2026 (día/mes), en → 09/01/2026 (mes/día). */
-export function formatFilterDate(day: string, lang: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day)
-  if (!m) return day
-  return lang.toLowerCase().startsWith('en') ? `${m[2]}/${m[3]}/${m[1]}` : `${m[3]}/${m[2]}/${m[1]}`
+/**
+ * Día 'YYYY-MM-DD' con el formato corto de la COMPAÑÍA (Región y formatos: orden y separador; Puerto Rico 09/01/2026). El
+ * idioma ya no decide el orden; `lang` se conserva por compatibilidad.
+ */
+export function formatFilterDate(day: string, _lang: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? formatDate(day) : day
 }
 
-/** Rango de fechas: "del 01/09/2026 al 30/09/2026", "desde 01/09/2026", "hasta 30/09/2026"; sin fechas = null. */
+/** Rango de fechas: "del 09/01/2026 al 09/30/2026" (formato de la compañía), "desde 01/09/2026", "hasta 30/09/2026"; sin fechas = null. */
 export function dateRangeFilterText(range: { from: string; to: string }, lang: string, t: Translate): string | null {
   const from = range.from ? formatFilterDate(range.from, lang) : ''
   const to = range.to ? formatFilterDate(range.to, lang) : ''

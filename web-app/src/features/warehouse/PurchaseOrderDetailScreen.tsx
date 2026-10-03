@@ -13,7 +13,6 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { z } from 'zod'
 import { Can, useCan } from '../../kernel/access'
-import { parseApiDate } from '../../kernel/api/dates'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusPipeline } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
@@ -48,6 +47,7 @@ import { ProductPickerInput, WarehousePickerInput } from './pickers'
 import { isDraftPurchaseOrder, partyErrorField, purchaseOrderPartyChanges, supplierOptionsWithCurrent } from './purchaseOrderEdit'
 import { ResolveShortageModal } from './ResolveShortageModal'
 import { IconCart } from '../../kernel/ui/screenIcons'
+import { formatDate as formatCompanyDate } from '../../kernel/format'
 
 const STATUS_DOMAIN = 'PurchaseOrderStatus'
 const ENTITY_TYPE = 'PURCHASE_ORDER'
@@ -55,11 +55,9 @@ const ENTITY_TYPE = 'PURCHASE_ORDER'
 const MANUAL_TARGETS = ['SENT', 'CANCELLED'] as const
 type TabKey = 'lines' | 'shortages'
 
-function formatDate(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium' }).format(date)
+function formatDate(iso: string | null | undefined, _lang: string): string {
+  // fecha corta de la compañía (Región y formatos); un día 'YYYY-MM-DD' no se corre de zona
+  return formatCompanyDate(iso)
 }
 
 // =====================================================================================================================

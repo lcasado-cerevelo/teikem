@@ -2,7 +2,9 @@
 // de aquí para la cabecera Accept-Language, y los componentes se suscriben con useT()/useLang().
 import en from './en.json'
 import es from './es.json'
-import { formatQuantity } from './numberFormat'
+import { formatNumber } from '../format/format'
+import type { FormatSettings } from '../format/settings'
+import { getFormatSettings } from '../format/store'
 
 export type Lang = 'es' | 'en'
 export const LANGS: readonly Lang[] = ['es', 'en']
@@ -73,9 +75,10 @@ const warned = new Set<string>()
 
 /**
  * Traduce `key` en `lang`: busca en el idioma pedido, luego en español; si falta en ambos devuelve la clave tal cual
- * (visible en pantalla para que se note) y avisa una vez en consola en desarrollo. `{nombre}` se sustituye con params.
+ * (visible en pantalla para que se note) y avisa una vez en consola en desarrollo. `{nombre}` se sustituye con params; los
+ * números con los separadores de la compañía (`format`, por defecto los vigentes de Región y formatos).
  */
-export function translate(lang: Lang, key: string, params?: TParams): string {
+export function translate(lang: Lang, key: string, params?: TParams, format: FormatSettings = getFormatSettings()): string {
   let text = lookup(DICTS[lang], key) ?? lookup(DICTS.es, key)
   if (text === undefined) {
     if (import.meta.env?.DEV && !warned.has(key)) {
@@ -84,16 +87,16 @@ export function translate(lang: Lang, key: string, params?: TParams): string {
     }
     text = key
   }
-  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? paramText(name, params[name], lang) : m))
+  if (params) text = text.replace(/\{(\w+)\}/g, (m, name: string) => (name in params ? paramText(name, params[name], format) : m))
   return text
 }
 
 /** Parámetros que son identificadores (número de documento, id, código): se pintan tal cual, sin coma de miles. */
 const RAW_NUMBER_PARAMS = new Set(['id', 'number', 'code', 'order', 'ref', 'serial', 'lot', 'sku'])
 
-/** Un número en un texto lleva coma de miles ("1,250 pendientes"), salvo que el parámetro sea un identificador. */
-function paramText(name: string, value: TParams[string], lang: Lang): string {
-  if (typeof value === 'number' && Number.isFinite(value) && !RAW_NUMBER_PARAMS.has(name)) return formatQuantity(value, lang)
+/** Un número en un texto lleva los miles de la compañía ("1,250 pendientes"), salvo que el parámetro sea un identificador. */
+function paramText(name: string, value: TParams[string], format: FormatSettings): string {
+  if (typeof value === 'number' && Number.isFinite(value) && !RAW_NUMBER_PARAMS.has(name)) return formatNumber(value, {}, format)
   return String(value)
 }
 

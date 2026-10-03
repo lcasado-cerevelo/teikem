@@ -4,7 +4,8 @@
 import type { jsPDF } from 'jspdf'
 import { isValidElement, type ReactNode } from 'react'
 import { parseApiDate } from '../api/dates'
-import { TENANT_TIME_ZONE } from '../api/tenantZone'
+import { tenantTimeZone, tenantToday } from '../api/tenantZone'
+import { formatDate, formatDateLongTime, formatDateTime, parseNumber } from '../format/format'
 import { t as translate } from '../i18n/i18n'
 import type { ExportChildren } from './exportChildren'
 
@@ -13,7 +14,7 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = ['xlsx', 'csv', 'pdf']
 
 /**
  * Fecha exportada (pedido del dueño: Excel y CSV deben leerla como FECHA, no como texto). `withTime` = fecha y hora (se
- * muestra en la hora de la compañía, Puerto Rico); sin hora = día de calendario.
+ * muestra en la hora de la compañía, su zona de Región y formatos); sin hora = día de calendario.
  */
 export interface ExportDate {
   kind: 'date'
@@ -52,7 +53,7 @@ export function toExportDate(v: unknown): ExportDate | null {
 function dateParts(d: ExportDate): [number, number, number, number, number, number] {
   if (!d.withTime) return [d.value.getFullYear(), d.value.getMonth() + 1, d.value.getDate(), 0, 0, 0]
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: TENANT_TIME_ZONE,
+    timeZone: tenantTimeZone(),
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -84,12 +85,14 @@ export function excelDateFormat(d: ExportDate): string {
   return d.withTime ? 'yyyy-mm-dd hh:mm' : 'yyyy-mm-dd'
 }
 
-/** Texto legible de la fecha para el PDF, en el idioma de la interfaz ("30 sept 2026, 14:03"). */
+/**
+ * Texto legible de la fecha para el PDF con los formatos de la compañía ("09/30/2026 2:03 p. m."; sin hora, "09/30/2026").
+ * El idioma solo pone "a. m."/"AM".
+ */
 export function exportDateText(d: ExportDate, locale?: string): string {
-  return new Intl.DateTimeFormat(
-    locale,
-    d.withTime ? { dateStyle: 'medium', timeStyle: 'short', timeZone: TENANT_TIME_ZONE } : { dateStyle: 'medium' },
-  ).format(d.value)
+  if (d.withTime) return formatDateTime(d.value, locale)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return formatDate(`${d.value.getFullYear()}-${p(d.value.getMonth() + 1)}-${p(d.value.getDate())}`)
 }
 /** Lo que puede devolver `sortValue`/`exportValue` de una columna. */
 export type ExportRawValue = string | number | boolean | Date | null | undefined
@@ -154,16 +157,12 @@ export function nodeToText(node: ReactNode): string {
   return parts.join('').replace(/\s+/g, ' ').trim()
 }
 
-/** Lee un número formateado en `locale` ("12.345,5" en es, "12,345.5" en en, "+5"); null si no es un número. */
-export function parseLocaleNumber(text: string, locale?: string): number | null {
-  const parts = new Intl.NumberFormat(locale).formatToParts(12345.6)
-  const group = parts.find((p) => p.type === 'group')?.value ?? ','
-  const decimal = parts.find((p) => p.type === 'decimal')?.value ?? '.'
-  let s = text.replace(/[\s  ]/g, '').split(group).join('')
-  if (decimal !== '.') s = s.split(decimal).join('.')
-  s = s.replace(/^\+/, '').replace(/^−/, '-')
-  if (!/^-?\d+(\.\d+)?$/.test(s)) return null
-  return Number(s)
+/**
+ * Lee un número formateado con los separadores de la COMPAÑÍA (Región y formatos: "12,345.5" en Puerto Rico, "12.345,5" si
+ * usa coma decimal; "+5"); null si no es un número. `locale` ya no cambia nada (se conserva la firma).
+ */
+export function parseLocaleNumber(text: string, _locale?: string): number | null {
+  return parseNumber(text)
 }
 
 function normalizeRaw(v: ExportRawValue, opts: ExportOptions): ExportCell {
@@ -246,8 +245,8 @@ export function exportFileName(base: string | null | undefined, ext: ExportForma
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const day = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+  // el día de la compañía (su zona), no el del navegador
+  const day = tenantToday(date)
   return `${slug || 'export'}-${day}.${ext}`
 }
 
@@ -310,9 +309,9 @@ export interface ExportHeadingSpec {
 
 export type ExportHeadingKind = 'company' | 'title' | 'generated' | 'filters'
 
-/** "Generado el 30 de septiembre de 2026, 10:15 a. m." en el idioma de la interfaz. */
+/** "Generado el 30 de septiembre de 2026, 10:15 a. m.": mes en el idioma de la interfaz; hora y zona de la compañía. */
 export function exportGeneratedText(date: Date, locale?: string): string {
-  const when = new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(date)
+  const when = formatDateLongTime(date, locale)
   return translate('ui.report.generatedAt', { date: when })
 }
 

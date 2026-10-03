@@ -7,7 +7,7 @@
 import { useMemo, useState } from 'react'
 import { useController, useForm, useFormContext } from 'react-hook-form'
 import { Can, useCan } from '../../kernel/access'
-import { parseApiDate } from '../../kernel/api/dates'
+import { utcFromZonedInput, zonedInputFromUtc } from '../../kernel/api/tenantZone'
 import { StatusChip, StatusPipeline, useLookups, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
@@ -32,9 +32,10 @@ import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useAsns, useDockAppointments, useSaveDockAppointment, useWarehouseDocks, type DockAppointmentDto } from './api'
 import { WarehousePicker, WarehousePickerInput } from './pickers'
 import { IconSwap } from '../../kernel/ui/screenIcons'
+import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
 /** Fecha y hora (`<input type="datetime-local">`; no lo tiene el kit): registrado con `useController` como
- *  WarehousePickerInput/ProductPickerInput en pickers.tsx. Valor de formulario: 'YYYY-MM-DDTHH:mm' en hora local. */
+ *  WarehousePickerInput/ProductPickerInput en pickers.tsx. Valor de formulario: 'YYYY-MM-DDTHH:mm' en hora de la compañía. */
 function DateTimeInput() {
   const info = useFieldInfo('DateTimeInput')
   const { control } = useFormContext()
@@ -58,27 +59,18 @@ const ENTITY_TYPE = 'DOCK_APPOINTMENT'
 const DIRECTION_DOMAIN = 'DockDirection'
 
 function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  return formatCompanyDateTime(iso, lang)
 }
 
-const pad = (n: number) => String(n).padStart(2, '0')
-
-/** ISO del API (sin zona = UTC) → valor de un <input type="datetime-local"> en hora local. */
+/** ISO del API (sin zona = UTC) → valor de un <input type="datetime-local"> en la hora de la COMPAÑÍA (Región y formatos). */
 function toLocalInput(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = parseApiDate(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return zonedInputFromUtc(iso)
 }
 
-/** Valor de un <input type="datetime-local"> (hora local) → ISO UTC para el request. */
+/** Valor de un <input type="datetime-local"> (hora de la compañía) → ISO UTC para el request. */
 function fromLocalInput(v: string): string | null {
-  if (!v) return null
-  const d = new Date(v)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  return v ? utcFromZonedInput(v) : null
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

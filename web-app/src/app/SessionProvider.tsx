@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AccessProvider } from '../kernel/access/AccessProvider'
+import { FormatProvider } from '../kernel/format/FormatProvider'
 import { api, setAuthLostHandler, unwrap } from '../kernel/api/client'
 import { logout as authLogout, switchTenantTokens } from '../kernel/auth/auth'
 import { clearTokens, getTokens, subscribeTokens } from '../kernel/auth/tokens'
@@ -102,7 +103,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return (
     <SessionContext.Provider value={value}>
       <AccessProvider permissions={permissionList} modules={moduleList}>
-        {children}
+        {/* Región y formatos de la compañía: un solo proveedor para fechas, horas, números, dinero y teléfonos */}
+        <FormatProvider enabled={isAuthenticated}>{children}</FormatProvider>
       </AccessProvider>
     </SessionContext.Provider>
   )

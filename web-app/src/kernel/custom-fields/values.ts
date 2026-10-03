@@ -2,6 +2,7 @@
 // (misma regla que CustomFieldService.SetValuesAsync: obligatorio, tipo y ValidationJson con el DSL).
 import type { components } from '../api/schema'
 import { toBool, toDate, toNumber, toText, validateValue, type ValidationIssue } from '../dsl'
+import { utcFromZonedInput, zonedInputFromUtc } from '../api/tenantZone'
 
 export type CustomFieldDefinitionDto = components['schemas']['CustomFieldDefinitionDto']
 export type CustomFieldValueDto = components['schemas']['CustomFieldValueDto']
@@ -35,8 +36,9 @@ export function dataTypeOf(def: Pick<CustomFieldDefinitionDto, 'dataType'>): str
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
+/** Instante → valor de un datetime-local en la hora de la COMPAÑÍA (Región y formatos), no la del navegador. */
 function toLocalInput(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return zonedInputFromUtc(d.toISOString())
 }
 
 function toUtcDateInput(d: Date): string {
@@ -57,7 +59,7 @@ export function toFormValue(dataType: string, raw: unknown): CustomFieldFormValu
       return d ? toUtcDateInput(d) : ''
     }
     case CustomFieldDataTypes.DateTime: {
-      // El servidor guarda UTC (sin zona = UTC); el control datetime-local trabaja en hora local.
+      // El servidor guarda UTC (sin zona = UTC); el control datetime-local trabaja en la hora de la compañía.
       const d = toDate(raw)
       return d ? toLocalInput(d) : ''
     }
@@ -70,8 +72,10 @@ export function isEmptyFormValue(v: CustomFieldFormValue | undefined): boolean {
   return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0)
 }
 
+/** Valor de un datetime-local (hora de la compañía) → instante; también acepta un ISO con zona. */
 function localInputToDate(v: string): Date | null {
-  const d = new Date(v)
+  const iso = utcFromZonedInput(v)
+  const d = iso ? new Date(iso) : new Date(v)
   return Number.isNaN(d.getTime()) ? null : d
 }
 

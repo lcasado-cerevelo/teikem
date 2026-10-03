@@ -7,7 +7,7 @@
 //   mayor valor primero; línea: los 30 últimos por el valor del campo). Barra/dona con SUM o COUNT piden TODOS los grupos
 //   (hasta 5 000) para juntar el resto en "Otras" aquí; con AVG/MIN/MAX, los 8 mayores (`take`). Exacto.
 // - Agrupar por el campo de fecha (tipo Date de la fuente): el motor de gráficos agrupa por DÍA LOCAL de la compañía
-//   (Lote 15: hora de Puerto Rico, `localDayOf`) y el de vistas por el valor exacto (marca de tiempo), así que se piden
+//   (Lote 15: hora de la compañía, `localDayOf`) y el de vistas por el valor exacto (marca de tiempo), así que se piden
 //   las filas sin agrupar (hasta 5 000) y se agrupan y agregan aquí. Si la fuente trae más filas, la vista previa se
 //   calcula con las primeras 5 000 (`truncated`).
 // - "Otras" (Lote 15, D11, `AnalyticsEngine.FoldOthers`): en barra, dona o pastel con SUM o COUNT, con más de 8 grupos se

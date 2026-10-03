@@ -1798,7 +1798,7 @@
       },
       "errors": {
         "nameRequired": "The supplier name is required.",
-        "phoneInvalid": "The phone must have 10 digits: (xxx)xxx-xxxx.",
+        "phoneInvalid": "The phone must have {count} digits: {mask}.",
         "emailInvalid": "The email address is not valid."
       }
     },
@@ -2690,7 +2690,7 @@
         "warehouseRequired": "Choose the warehouse.",
         "from": "From",
         "to": "To",
-        "timeHelp": "Puerto Rico time. By default, from the last time it was generated in this warehouse (the first time, from the start of the day) until now.",
+        "timeHelp": "Company time ({zone}). By default, from the last time it was generated in this warehouse (the first time, from the start of the day) until now.",
         "resetWindow": "Back to the default window",
         "zones": "Zones",
         "includeEmpty": "Include empty bins",

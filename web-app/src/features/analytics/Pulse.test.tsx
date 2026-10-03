@@ -121,7 +121,7 @@ describe('formatValue / chartKind / pulseDateTitle', () => {
     expect(apiDateToYmd(null)).toBe('')
     expect(apiDateToYmd('no-es-fecha')).toBe('')
     expect(formatYmd('', 'es')).toBe('…')
-    expect(formatYmd('2026-09-15', 'en')).toBe('9/15/2026')
+    expect(formatYmd('2026-09-15', 'en')).toBe('09/15/2026')
   })
 
   it('elige el gráfico por chartType: LINE, DONUT, PIE; el resto barras', () => {

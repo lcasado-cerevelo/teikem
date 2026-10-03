@@ -8,7 +8,6 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { z } from 'zod'
 import { Can } from '../../kernel/access'
-import { parseApiDate } from '../../kernel/api/dates'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
@@ -32,6 +31,7 @@ import {
 import { exportPurchaseOrders, useCreatePurchaseOrder, usePurchaseOrders, useSuppliers, useWarehouses, warehouseLabel, type PurchaseOrderDto } from './api'
 import { ProductPickerInput, WarehousePickerInput } from './pickers'
 import { IconCart } from '../../kernel/ui/screenIcons'
+import { formatDate as formatCompanyDate } from '../../kernel/format'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'PurchaseOrderStatus'
@@ -42,11 +42,9 @@ function decimals(n: number): number {
   return i === -1 ? 0 : s.length - i - 1
 }
 
-function formatDate(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium' }).format(date)
+function formatDate(iso: string | null | undefined, _lang: string): string {
+  // fecha corta de la compañía (Región y formatos); un día 'YYYY-MM-DD' no se corre de zona
+  return formatCompanyDate(iso)
 }
 
 // ---- Modal de alta ----

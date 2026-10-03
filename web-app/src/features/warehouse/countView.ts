@@ -16,7 +16,7 @@ export const COUNT_ORIGIN_DOMAIN = 'CycleCountOrigin'
 export const COUNT_ENTITY_TYPE = 'CYCLE_COUNT'
 
 // La zona horaria de la compañía ("hoy" y la ventana de "lo cambiado") vive en `src/kernel/api/tenantZone.ts` (Lote 15:
-// un solo punto para toda la web): `TENANT_TIME_ZONE`, `zonedInputFromUtc`, `utcFromZonedInput`.
+// un solo punto para toda la web): `tenantTimeZone()`, `zonedInputFromUtc`, `utcFromZonedInput`.
 
 /** Estatus finales del conteo (D7): Concordancia (sin ajustes) y Diferencia (asentó algún ajuste). */
 export const CLOSED_COUNT_STATUSES: readonly string[] = ['RECONCILED', 'RECONCILED_VARIANCE']

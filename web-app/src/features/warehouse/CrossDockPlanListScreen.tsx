@@ -5,7 +5,6 @@ import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Can, ModuleKeys, useModule } from '../../kernel/access'
-import { parseApiDate } from '../../kernel/api/dates'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import { DataTable, Field, Filters, Form, Modal, Panel, Select, SearchSelect, Tabs, toast, type DataColumn } from '../../kernel/ui'
@@ -14,15 +13,14 @@ import { DockAppointmentsTab } from './DockAppointmentsTab'
 import { WarehousePicker, WarehousePickerInput } from './pickers'
 import { TaskQueue } from './taskQueue'
 import { IconSwap } from '../../kernel/ui/screenIcons'
+import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
 const STATUS_DOMAIN = 'CrossDockStatus'
 const STAGING_ZONE_TYPES = new Set(['STAGING', 'CROSSDOCK'])
 
 function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  return formatCompanyDateTime(iso, lang)
 }
 
 interface CreateFormValues {

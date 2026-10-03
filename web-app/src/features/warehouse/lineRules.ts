@@ -3,7 +3,7 @@
 // `t('warehouse.lineRules.<code>', params)` (el texto en español es el mensaje exacto del manual 06). El servidor vuelve a
 // validar todo; esto solo pone el error bajo el campo antes de enviar.
 import { useEffect, useState } from 'react'
-import { parseApiDate } from '../../kernel/api/dates'
+import { formatDate as formatCompanyDate, formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 import { ApiError } from '../../kernel/api/problem'
 import { formatMoney, formatQuantity } from '../../kernel/i18n'
 
@@ -265,31 +265,26 @@ export function lineErrorsByIndex(err: unknown): Record<number, string[]> {
   return out
 }
 
-/** Cantidad con coma de miles (formato de Puerto Rico; ver kernel/i18n/numberFormat). */
+/** Cantidad con los separadores de la compañía (ver kernel/format). */
 export function formatNumber(n: number | null | undefined, lang: string): string {
   if (n == null) return ''
   return formatQuantity(n, lang)
 }
 
-/** Dinero con signo de dólar: "$1,234.50" (vacío si no hay valor). */
+/** Dinero con el símbolo de la compañía: "$1,234.50" (vacío si no hay valor). */
 export function formatMoneyValue(n: number | null | undefined, lang: string, opts?: { unitPrice?: boolean; currency?: string | null }): string {
   if (n == null) return ''
   return formatMoney(n, lang, opts)
 }
 
+/** Fecha corta y hora de la compañía (Región y formatos), en su zona; '' sin fecha. */
 export function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const d = parseApiDate(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(d)
+  return formatCompanyDateTime(iso, lang)
 }
 
-export function formatDate(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  // fecha sin hora ('YYYY-MM-DD'): se muestra tal cual el día, sin corrimiento de zona
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? new Date(`${iso}T12:00:00`) : parseApiDate(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium' }).format(d)
+/** Fecha corta de la compañía; un día 'YYYY-MM-DD' (sin hora) se muestra tal cual, sin corrimiento de zona. */
+export function formatDate(iso: string | null | undefined, _lang: string): string {
+  return formatCompanyDate(iso)
 }
 
 /** Valor con retardo (búsquedas libres que van al API: no una consulta por tecla). */

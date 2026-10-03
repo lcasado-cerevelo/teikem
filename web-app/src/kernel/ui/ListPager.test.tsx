@@ -87,7 +87,7 @@ describe('ListPager', () => {
     expect(format).toBe('csv')
     expect(cols).toBe(COLS)
     expect(rows).toEqual([{ number: 'REC-1' }, { number: 'REC-2' }])
-    expect(opts).toMatchObject({ locale: 'es-PR', title: 'Recibos' })
+    expect(opts).toMatchObject({ locale: 'es', title: 'Recibos' })
   })
 
   it('exportRows truncado avisa con un toast; exportFileName manda sobre el título del Panel', async () => {

@@ -6,7 +6,8 @@ import { Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAccess } from '../kernel/access/accessContext'
 import { applyProblemDetails } from '../kernel/api/problem'
-import { useLang, useT } from '../kernel/i18n/useT'
+import { useT } from '../kernel/i18n/useT'
+import { useFormat } from '../kernel/format/useFormat'
 import { BrandLockup, BrandMark } from '../kernel/ui/Brand'
 import { CommandPalette } from '../kernel/ui/CommandPalette'
 import { ExportCompanyProvider, FilterScope } from '../kernel/ui/FilterScope'
@@ -47,20 +48,19 @@ function useVisibleNav(): (NavGroup & { items: AppRoute[] })[] {
   return useMemo(() => visibleNav(appRoutes, permissions, modules), [permissions, modules])
 }
 
-/** "● en vivo · HH:MM:SS" con la hora del idioma activo; se repinta solo él cada segundo (oculto bajo 600 px). */
+/**
+ * "● en vivo · 2:05:09 p. m." con la hora de la COMPAÑÍA (su zona y su formato de 12/24 h de Región y formatos; el idioma
+ * solo pone "a. m."/"AM"); se repinta solo él cada segundo (oculto bajo 600 px).
+ */
 function LiveClock() {
   const t = useT()
-  const lang = useLang()
+  const f = useFormat()
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(id)
   }, [])
-  const fmt = useMemo(
-    () => new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }),
-    [lang],
-  )
-  const time = fmt.format(now)
+  const time = f.time(now, { seconds: true })
   return (
     <div className="live" data-testid="live-clock">
       <span className="dot" aria-hidden="true" />

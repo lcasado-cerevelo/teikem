@@ -11,18 +11,15 @@ import { useLang, useT } from '../../kernel/i18n'
 import { Modal, SearchMultiSelect, toast } from '../../kernel/ui'
 import { useChangesPreview, useCreateCountsFromChanges, useWarehouseZones, useWarehouses, warehouseLabel, type CycleCountDto } from './api'
 import { ReadOnlyField } from './BinModal'
-import { TENANT_TIME_ZONE, utcFromZonedInput, zonedInputFromUtc } from '../../kernel/api/tenantZone'
+import { tenantTimeZone, utcFromZonedInput, zonedInputFromUtc } from '../../kernel/api/tenantZone'
+import { formatDateTime } from '../../kernel/format'
 import { useDebounced } from './lineRules'
 import { WarehousePicker } from './pickers'
 import { problemText } from './problemText'
 
-/** Fecha y hora de un instante del API en la zona de la compañía. */
+/** Fecha y hora de un instante del API con los formatos y la zona de la compañía. */
 function formatZoned(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const s = iso.trim()
-  const d = new Date(/(?:[zZ]|[+-]\d{2}:?\d{2})$/.test(s) ? s : `${s}Z`)
-  if (Number.isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short', timeZone: TENANT_TIME_ZONE }).format(d)
+  return formatDateTime(iso, lang)
 }
 
 export interface ChangedCountModalProps {
@@ -166,7 +163,7 @@ export function ChangedCountModal({ onClose, initialWarehousePublicId, onCreated
         </div>
       </div>
       <p className="help cc-help" id={helpId}>
-        {t('warehouse.cycleCounts.changes.timeHelp')}
+        {t('warehouse.cycleCounts.changes.timeHelp', { zone: tenantTimeZone() })}
         {touched && (
           <>
             {' '}

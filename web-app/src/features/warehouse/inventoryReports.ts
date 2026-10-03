@@ -7,8 +7,7 @@
 // - Ajustes: todos los movimientos ADJUSTMENT del Kárdex con los mismos filtros trasladados (`adjustmentsKardexQuery`),
 //   del más reciente al más antiguo, con entradas, salidas y neto.
 // Los armadores (`buildInventoryReport`, `buildAdjustmentsReport`) son puros y se prueban sin DOM ni API.
-import { parseApiDate } from '../../kernel/api/dates'
-import { numberLocale } from '../../kernel/i18n'
+import { formatDateTime as formatCompanyDateTime, formatNumber as formatCompanyNumber } from '../../kernel/format'
 import { downloadReportPdf, type ReportSpec, type ReportValue } from '../../kernel/ui/reportPdf'
 import { exportInventoryTransactions, exportProducts, type GetQuery, type KardexRowDto, type ProductListItemDto } from './api'
 import {
@@ -51,9 +50,9 @@ const R = 'warehouse.products.reports'
 /** Motivo de ajuste de sistema del saldo inicial de la migración (AdjustmentReasons.OpeningBalance). */
 export const OPENING_BALANCE_REASON = 'OPENING_BALANCE'
 
-/** Cifras del resumen y los avisos: con separador de miles siempre, como las columnas del reporte. */
-function formatNumber(n: number, lang: string, opts: Intl.NumberFormatOptions = { maximumFractionDigits: 3 }): string {
-  return new Intl.NumberFormat(numberLocale(lang), { useGrouping: 'always', ...opts }).format(n)
+/** Cifras del resumen y los avisos: con los separadores de la compañía (miles siempre), como las columnas del reporte. */
+function formatNumber(n: number, _lang: string, opts: Intl.NumberFormatOptions = { maximumFractionDigits: 3 }): string {
+  return formatCompanyNumber(n, opts)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -212,12 +211,8 @@ export function buildAdjustmentsReport(allRows: readonly KardexRowDto[], truncat
   // los saldos iniciales de la migración se registran como ajustes, pero no son ajustes de la operación: se excluyen
   const rows = allRows.filter((r) => r.reasonCode !== OPENING_BALANCE_REASON)
   const openingBalances = allRows.length - rows.length
-  const dateFmt = new Intl.DateTimeFormat(lang, { dateStyle: 'short', timeStyle: 'short' })
-  const when = (iso: string | undefined) => {
-    if (!iso) return ''
-    const d = parseApiDate(iso)
-    return Number.isNaN(d.getTime()) ? '' : dateFmt.format(d)
-  }
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  const when = (iso: string | undefined) => (iso ? formatCompanyDateTime(iso, lang) : '')
   const { inQty, outQty, net } = adjustmentTotals(rows)
   const signed = (n: number) => formatNumber(n, lang, { maximumFractionDigits: 3, signDisplay: 'exceptZero' })
 

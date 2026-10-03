@@ -2,7 +2,6 @@
 // no son `DataTable` (p. ej. una lista maestra `.unrow` paginada en el servidor). `DataTable` pinta su pie con este mismo
 // componente, así que los dos se ven y se comportan igual.
 import type { FetchAllResult } from '../api/fetchAllPages'
-import { numberLocale } from '../i18n/numberFormat'
 import { useLang, useT } from '../i18n/useT'
 import type { DataColumn } from './DataTable'
 import { ExportMenu } from './ExportMenu'
@@ -83,7 +82,7 @@ export function ListPager<T>({
             toast.info(t('ui.table.export.truncated', { count: items.length }))
           }
           await exportTable(format, exportColumns, items, {
-            locale: numberLocale(lang),
+            locale: lang,
             yes: t('ui.table.export.yes'),
             no: t('ui.table.export.no'),
             title: exportFileName ?? panelTitle,

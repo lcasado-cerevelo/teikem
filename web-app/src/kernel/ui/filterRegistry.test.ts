@@ -1,5 +1,6 @@
 // Registro de filtros aplicados (lógica pura): orden de la barra, valores vacíos ignorados, cómo se escribe cada valor y
 // la oración "Filtros: …" / "Sin filtros" de las exportaciones.
+import { PR_FORMAT, resetFormatSettings, setFormatSettings } from '../format'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { setLang, t } from '../i18n/i18n'
 import {
@@ -67,13 +68,21 @@ describe('valores legibles', () => {
     expect(joinFilterValues(['ALM-01 · Principal', 'ALM-02 · Norte'], t)).toBe('ALM-01 (Principal), ALM-02 (Norte)')
   })
 
-  it('fechas: día/mes/año en español, mes/día/año en inglés; rango, desde, hasta o nada', () => {
-    expect(formatFilterDate('2026-09-01', 'es')).toBe('01/09/2026')
+  it('fechas con el formato de la COMPAÑÍA (el idioma no decide el orden); rango, desde, hasta o nada', () => {
+    // Puerto Rico (por defecto): mes/día/año en los dos idiomas
+    expect(formatFilterDate('2026-09-01', 'es')).toBe('09/01/2026')
     expect(formatFilterDate('2026-09-01', 'en')).toBe('09/01/2026')
-    expect(dateRangeFilterText({ from: '2026-09-01', to: '2026-09-30' }, 'es', t)).toBe('del 01/09/2026 al 30/09/2026')
-    expect(dateRangeFilterText({ from: '2026-09-01', to: '' }, 'es', t)).toBe('desde 01/09/2026')
-    expect(dateRangeFilterText({ from: '', to: '2026-09-30' }, 'es', t)).toBe('hasta 30/09/2026')
+    expect(dateRangeFilterText({ from: '2026-09-01', to: '2026-09-30' }, 'es', t)).toBe('del 09/01/2026 al 09/30/2026')
+    expect(dateRangeFilterText({ from: '2026-09-01', to: '' }, 'es', t)).toBe('desde 09/01/2026')
+    expect(dateRangeFilterText({ from: '', to: '2026-09-30' }, 'es', t)).toBe('hasta 09/30/2026')
     expect(dateRangeFilterText({ from: '', to: '' }, 'es', t)).toBeNull()
+    // compañía con día/mes/año y guion
+    setFormatSettings({ ...PR_FORMAT, dateOrder: 'DMY', dateSeparator: '-' })
+    try {
+      expect(formatFilterDate('2026-09-01', 'en')).toBe('01-09-2026')
+    } finally {
+      resetFormatSettings()
+    }
   })
 
   it('texto libre entre comillas; vacío o solo espacios = null', () => {

@@ -2,7 +2,6 @@
 // (aplicado por la ruta). Este lote no da de alta ni edita órdenes: sin botón 'Nuevo' ni acciones de fila.
 import { useEffect, useId, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { parseApiDate } from '../../kernel/api/dates'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { formatMoney, useLang, useT } from '../../kernel/i18n'
 import {
@@ -19,15 +18,14 @@ import {
 } from '../../kernel/ui'
 import { exportOrders, useOrdersReadonly, type OrderListItemDto } from '../warehouse/api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
+import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
 const PAGE_SIZE = 25
 const STATUS_DOMAIN = 'OrderStatus'
 
 function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  return formatCompanyDateTime(iso, lang)
 }
 
 /** `to` del filtro es exclusivo sobre CreatedAtUtc en el servidor: se manda el día siguiente para incluir el día elegido. */

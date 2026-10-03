@@ -12,7 +12,8 @@
 // reportFileName); `renderReportPdf` arma el documento en memoria y `downloadReportPdf` lo descarga.
 // Las fuentes estándar de jsPDF solo cubren Latin-1: todo texto pasa por `pdfSafeText`.
 import type { jsPDF } from 'jspdf'
-import { numberLocale, t as translate, TENANT_CURRENCY } from '../i18n'
+import { formatDateLongTime, formatMoney, formatNumber } from '../format/format'
+import { t as translate } from '../i18n'
 import { BRAND_SYMBOL_SRC } from './brandAssets'
 import { exportFileName, pdfSafeText } from './exportTable'
 
@@ -87,22 +88,18 @@ export function isNumericFormat(format: ReportFormat | undefined): boolean {
   return format !== undefined && format !== 'text'
 }
 
-// separador de miles siempre (en español Intl no agrupa 4 cifras: 1234 junto a 12.345 descuadra la columna)
-const NUMBER_OPTIONS: Record<Exclude<ReportFormat, 'text'>, Intl.NumberFormatOptions> = {
-  quantity: { maximumFractionDigits: 3, useGrouping: 'always' },
-  signed: { maximumFractionDigits: 3, signDisplay: 'exceptZero', useGrouping: 'always' },
-  // dinero con signo de dólar (pedido del dueño): "$1,234.50"
-  money: { style: 'currency', currency: TENANT_CURRENCY, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' },
-  unitCost: { style: 'currency', currency: TENANT_CURRENCY, currencyDisplay: 'narrowSymbol', minimumFractionDigits: 2, maximumFractionDigits: 4, useGrouping: 'always' },
-}
-
-/** Texto de una celda: números con los separadores del idioma según el formato; texto tal cual; vacío = ''. */
+/**
+ * Texto de una celda: números con los separadores de la compañía (miles siempre) según el formato; dinero con su símbolo
+ * y decimales ("$1,234.50"); texto tal cual; vacío = ''.
+ */
 export function formatReportValue(value: ReportValue, format: ReportFormat | undefined, locale: string): string {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value
   if (!Number.isFinite(value)) return ''
   if (!format || format === 'text') return String(value)
-  return new Intl.NumberFormat(numberLocale(locale), NUMBER_OPTIONS[format]).format(value)
+  if (format === 'money') return formatMoney(value, locale)
+  if (format === 'unitCost') return formatMoney(value, locale, { unitPrice: true })
+  return formatNumber(value, format === 'signed' ? { signDisplay: 'exceptZero' } : {})
 }
 
 /** Orientación: la pedida o, si no, horizontal con más de 6 columnas. */
@@ -115,9 +112,9 @@ export function reportFileName(spec: Pick<ReportSpec, 'title' | 'company'>, date
   return exportFileName([spec.title, spec.company].filter(Boolean).join(' '), 'pdf', date)
 }
 
-/** Fecha y hora de generación en el idioma del reporte ("30 de septiembre de 2026, 14:05"). */
+/** Fecha y hora de generación: mes en el idioma del reporte, hora y zona de la compañía ("30 de septiembre de 2026, 2:05 p. m."). */
 export function formatReportDate(date: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeStyle: 'short' }).format(date)
+  return formatDateLongTime(date, locale)
 }
 
 export type ReportRowKind = 'group' | 'data' | 'subtotal' | 'total' | 'empty'

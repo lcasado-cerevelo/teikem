@@ -5,6 +5,7 @@ import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { ModuleKeys, type ModuleKey } from '../../kernel/access'
 import { api, unwrap } from '../../kernel/api/client'
 import { parseApiDate } from '../../kernel/api/dates'
+import { formatDate, formatDayMonth, formatTime } from '../../kernel/format'
 import type { components, paths } from '../../kernel/api/schema'
 import type { ChipTone } from '../../kernel/ui'
 
@@ -139,16 +140,15 @@ export function activityTone(code: string | null | undefined): ChipTone {
 }
 
 /**
- * Hora del evento en la zona del navegador (`parseApiDate`: el API manda UTC sin zona). Del día de hoy solo la hora; de
- * otro día (ventana de 48 h) también día y mes, para no confundir las 09:00 de ayer con las de hoy.
+ * Hora del evento con los formatos de la compañía y en su zona (`parseApiDate`: el API manda UTC sin zona). Del día de hoy
+ * (día local de la compañía) solo la hora; de otro día (ventana de 48 h) también día y mes, para no confundir las 9:00 de
+ * ayer con las de hoy.
  */
 export function formatEventTime(iso: string | null | undefined, lang: string, now: Date = new Date()): string {
   if (!iso) return ''
   const date = parseApiDate(iso)
   if (Number.isNaN(date.getTime())) return ''
-  const sameDay = date.toDateString() === now.toDateString()
-  const options: Intl.DateTimeFormatOptions = sameDay
-    ? { hour: '2-digit', minute: '2-digit' }
-    : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }
-  return new Intl.DateTimeFormat(lang, options).format(date)
+  const sameDay = formatDate(date) === formatDate(now)
+  const time = formatTime(date, lang)
+  return sameDay ? time : `${formatDayMonth(date)} ${time}`
 }

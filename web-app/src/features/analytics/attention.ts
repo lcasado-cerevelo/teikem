@@ -4,7 +4,7 @@
 import type { components } from '../../kernel/api/schema'
 import type { TParams } from '../../kernel/i18n/i18n'
 import { formatEventTime } from './activity'
-import { numberLocale } from '../../kernel/i18n'
+import { formatNumber } from '../../kernel/format'
 
 export type AttentionDto = components['schemas']['AttentionDto']
 export type AttentionItemDto = components['schemas']['AttentionItemDto']
@@ -40,19 +40,19 @@ export function attentionToneClass(tone: string | null | undefined): 'tone-dange
   }
 }
 
-/** Número del servidor (cadena con punto decimal) en el formato del idioma; '' si no es número. */
-export function formatQty(value: string | null | undefined, lang: string): string {
+/** Número del servidor (cadena con punto decimal) con los separadores de la compañía; '' si no es número. */
+export function formatQty(value: string | null | undefined, _lang: string): string {
   if (value == null || value.trim() === '') return ''
   const n = Number(value)
-  return Number.isFinite(n) ? new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(n) : value
+  return Number.isFinite(n) ? formatNumber(n) : value
 }
 
 /** Diferencia con signo explícito (+1, −2,5; 0 sin signo): saldo − Kárdex. */
-export function formatSigned(value: string | null | undefined, lang: string): string {
+export function formatSigned(value: string | null | undefined, _lang: string): string {
   if (value == null || value.trim() === '') return ''
   const n = Number(value)
   if (!Number.isFinite(n)) return value
-  const abs = new Intl.NumberFormat(numberLocale(lang), { maximumFractionDigits: 3 }).format(Math.abs(n))
+  const abs = formatNumber(Math.abs(n))
   return n > 0 ? `+${abs}` : n < 0 ? `−${abs}` : abs
 }
 

@@ -20,7 +20,7 @@ import {
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import type { FetchAllResult } from '../api/fetchAllPages'
 import { useAccess } from '../access/accessContext'
-import { formatQuantity, numberLocale } from '../i18n/numberFormat'
+import { formatQuantity } from '../i18n/numberFormat'
 import { useLang, useT } from '../i18n/useT'
 import { EmptyState } from './EmptyState'
 import type { ExportChildren } from './exportChildren'
@@ -366,7 +366,7 @@ export function DataTable<T extends RowData>(props: DataTableProps<T>) {
       list = table.getPrePaginatedRowModel().rows.map((r) => r.original)
     }
     await exportTable(format, columns, list, {
-      locale: numberLocale(lang),
+      locale: lang,
       yes: t('ui.table.export.yes'),
       no: t('ui.table.export.no'),
       title: props.exportFileName ?? label ?? panelTitle,

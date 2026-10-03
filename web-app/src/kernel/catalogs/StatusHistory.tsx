@@ -1,4 +1,4 @@
-import { parseApiDate } from '../api/dates'
+import { formatDateTime } from '../format/format'
 import { applyProblemDetails } from '../api/problem'
 import { useLang, useT } from '../i18n'
 import { useStatuses, useStatusHistory } from './api'
@@ -25,7 +25,6 @@ export function StatusHistory({ entityType, entityId, domain }: StatusHistoryPro
   if (history.isError) return <p className="note">{applyProblemDetails(history.error).title}</p>
   if (history.data.length === 0) return <p className="note">{t('status.historyEmpty')}</p>
 
-  const format = new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' })
   const colorOf = (code: string | null | undefined) => statuses.data?.find((s) => sameCode(s.code, code))?.color
   const rows = [...history.data].reverse()
 
@@ -47,7 +46,7 @@ export function StatusHistory({ entityType, entityId, domain }: StatusHistoryPro
             </span>
           </div>
           <div className="meta">
-            {h.changedAtUtc ? format.format(parseApiDate(h.changedAtUtc)) : ''}
+            {formatDateTime(h.changedAtUtc, lang)}
             {' · '}
             {h.changedByName || t('status.system')}
           </div>

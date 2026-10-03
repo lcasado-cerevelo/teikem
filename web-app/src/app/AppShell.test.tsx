@@ -11,6 +11,7 @@ import { AppShell } from './AppShell'
 import { RouteGate } from './RouteGate'
 import { appRoutes } from './routes'
 import { SessionContext, type Session } from './session'
+import { PR_FORMAT, resetFormatSettings, setFormatSettings } from '../kernel/format'
 
 const SESSION: Session = {
   me: {
@@ -98,17 +99,28 @@ describe('AppShell — cabecera', () => {
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
   })
 
-  it('el reloj "en vivo" está presente con HH:MM:SS y avanza cada segundo', () => {
+  it('el reloj "en vivo" está presente con la hora de la compañía (Puerto Rico: 12 h) y avanza cada segundo', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 8, 28, 14, 5, 9))
     renderShell()
     const clock = screen.getByTestId('live-clock')
     expect(clock).toHaveTextContent('en vivo')
-    expect(within(clock).getByText('14:05:09')).toBeInTheDocument()
+    expect(within(clock).getByText(/^2:05:09\sp\.\sm\.$/)).toBeInTheDocument()
     act(() => {
       vi.advanceTimersByTime(1000)
     })
-    expect(within(clock).getByText('14:05:10')).toBeInTheDocument()
+    expect(within(clock).getByText(/^2:05:10\sp\.\sm\.$/)).toBeInTheDocument()
+  })
+
+  it('el reloj cambia al instante con los formatos de la compañía (24 h y otra zona), sin recargar', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-09-28T18:05:09Z'))
+    renderShell()
+    const clock = screen.getByTestId('live-clock')
+    act(() => setFormatSettings({ ...PR_FORMAT, timeFormat: 24, timeZoneId: 'Pacific/Honolulu' }))
+    expect(within(clock).getByText('08:05:09')).toBeInTheDocument()
+    act(() => resetFormatSettings())
+    expect(within(clock).getByText(/^2:05:09\sp\.\sm\.$/)).toBeInTheDocument()
   })
 
   it('"/" abre la paleta con los ítems visibles; filtrar + Enter navega a la pantalla pendiente', async () => {

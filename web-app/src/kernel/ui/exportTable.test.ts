@@ -1,3 +1,4 @@
+import { PR_FORMAT, resetFormatSettings, setFormatSettings } from '../format'
 import { createElement, type ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import {
@@ -64,10 +65,15 @@ describe('toCsv', () => {
 })
 
 describe('parseLocaleNumber', () => {
-  it('lee números formateados en español', () => {
-    expect(parseLocaleNumber('12.345,5', 'es')).toBe(12345.5)
-    expect(parseLocaleNumber('1.234', 'es')).toBe(1234)
-    expect(parseLocaleNumber('-3,25', 'es')).toBe(-3.25)
+  it('lee números con los separadores de la COMPAÑÍA (Región y formatos), no del idioma', () => {
+    setFormatSettings({ ...PR_FORMAT, thousandsSeparator: '.', decimalSeparator: ',' })
+    try {
+      expect(parseLocaleNumber('12.345,5', 'es')).toBe(12345.5)
+      expect(parseLocaleNumber('1.234', 'en')).toBe(1234)
+      expect(parseLocaleNumber('-3,25', 'es')).toBe(-3.25)
+    } finally {
+      resetFormatSettings()
+    }
   })
 
   it('lee números formateados en inglés', () => {

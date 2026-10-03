@@ -2,13 +2,13 @@
 // (aplicado por la ruta). Sin pestañas de edición ni StatusPipeline interactivo: solo StatusHistory de lectura.
 import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { parseApiDate } from '../../kernel/api/dates'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { formatMoney, useLang, useT } from '../../kernel/i18n'
 import { DataTable, EmptyState, Panel, Spinner, type DataColumn } from '../../kernel/ui'
 import { useOrderReadonly, type OrderDetailDto } from '../warehouse/api'
 import { IconLayers } from '../../kernel/ui/screenIcons'
+import { formatDateTime as formatCompanyDateTime } from '../../kernel/format'
 
 const STATUS_DOMAIN = 'OrderStatus'
 const ENTITY_TYPE = 'TRANSPORT_ORDER'
@@ -17,10 +17,8 @@ type Package = NonNullable<OrderDetailDto['packages']>[number]
 type Stop = OrderDetailDto['pickup']
 
 function formatDateTime(iso: string | null | undefined, lang: string): string {
-  if (!iso) return ''
-  const date = parseApiDate(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' }).format(date)
+  // fecha corta y hora de la compañía (Región y formatos), en su zona
+  return formatCompanyDateTime(iso, lang)
 }
 
 function money(v: number | null | undefined, currency: string | null | undefined, lang: string): string {

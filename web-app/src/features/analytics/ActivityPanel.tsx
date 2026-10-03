@@ -24,7 +24,7 @@ import {
   type ActivityWindow,
 } from './activity'
 import { IconClock } from '../../kernel/ui/screenIcons'
-import { numberLocale } from '../../kernel/i18n'
+import { formatNumber } from '../../kernel/format'
 
 /** Fila de la tabla: el evento del API con una clave estable (su posición en lo acumulado). */
 type ActivityRow = ActivityEventDto & { rowId: string }
@@ -237,7 +237,7 @@ function ActivityPanelBody() {
         <span>
           {total > 0 &&
             t(total === 1 ? 'analytics.activity.footerOne' : 'analytics.activity.footer', {
-              count: total.toLocaleString(numberLocale(lang)),
+              count: formatNumber(total),
               window: t(`analytics.activity.windowFooter.${win}`),
             })}
           {problem && (

@@ -2801,9 +2801,12 @@ texto; ver la sección «Lote 14».)
 Restar esa cantidad dejaría el inventario de la posición en negativo. El mensaje aparece dentro del bloque de ajuste, que
 sigue abierto. Corrija la cantidad (no puede restar más de lo disponible en esa posición) o elija otra posición.
 
-**¿Qué significa "El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx."? (pantalla)**
-El teléfono del proveedor tiene menos de 10 dígitos. Escriba los 10 (el campo pone la máscara solo) o déjelo vacío. Un
-proveedor cargado antes con otro formato tiene que corregirse para poder guardar.
+**¿Qué significa "El teléfono debe tener 10 dígitos: (###) ###-####."? (pantalla)**
+El teléfono del proveedor no tiene los dígitos que pide la máscara de la compañía (en Puerto Rico, 10; cada `#` es un
+dígito). Escriba los dígitos (el campo pone la máscara solo; puede empezar con el código de país `+1`) o déjelo vacío. Un
+proveedor cargado antes con otro formato tiene que corregirse para poder guardar. Si la compañía usa otra máscara (Ajustes de
+la compañía → Región y formatos → Teléfono), el mensaje dice su cantidad de dígitos y su máscara. Antes del lote F9 decía
+"El teléfono debe tener 10 dígitos: (xxx)xxx-xxxx.".
 
 **¿Qué significa "Indique el almacén." al crear una orden de compra? (pantalla)**
 El modal de la orden exige el almacén aunque el API lo acepte vacío cuando la compañía tiene uno solo. Elíjalo de la lista.

@@ -79,7 +79,7 @@ describe('FilterScope + controles del kit', () => {
     await user.click(screen.getByRole('button', { name: 'leer' }))
     expect(onRead).toHaveBeenLastCalledWith({
       company: 'Advance Logistics',
-      filters: 'Filtros: Almacén ALM-DEPOT, ALM-NORTE · Estatus Recibiendo · Creado del 01/09/2026 al 30/09/2026 · Buscar "caja"',
+      filters: 'Filtros: Almacén ALM-DEPOT, ALM-NORTE · Estatus Recibiendo · Creado del 09/01/2026 al 09/30/2026 · Buscar "caja"',
     })
 
     // "Limpiar": todos vacíos → la barra existe pero no filtra
@@ -98,10 +98,10 @@ describe('FilterScope + controles del kit', () => {
       </FilterScope>,
     )
     await user.click(screen.getByRole('button', { name: 'leer' }))
-    expect(onRead).toHaveBeenLastCalledWith({ company: null, filters: 'Filtros: Creado hasta 30/09/2026' })
+    expect(onRead).toHaveBeenLastCalledWith({ company: null, filters: 'Filtros: Creado hasta 09/30/2026' })
     await user.selectOptions(screen.getByRole('combobox', { name: 'Estatus' }), 'DONE')
     await user.click(screen.getByRole('button', { name: 'leer' }))
-    expect(onRead).toHaveBeenLastCalledWith({ company: null, filters: 'Filtros: Estatus Completado · Creado hasta 30/09/2026' })
+    expect(onRead).toHaveBeenLastCalledWith({ company: null, filters: 'Filtros: Estatus Completado · Creado hasta 09/30/2026' })
   })
 
   it('sin ámbito, sin controles o dentro de un Modal: sin línea de filtros (la compañía sí llega al modal)', async () => {
