@@ -25,7 +25,7 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         foreach (var r in rows)
             items.Add(new AuditLogDto(r.AuditLogId, r.CreatedAtUtc, await Label(LookupDomains.EntityType, r.EntityTypeLookupId, ct), r.EntityId,
                 await Label(LookupDomains.AuditAction, r.ActionLookupId, ct), r.UserId, r.UserId.HasValue ? names.GetValueOrDefault(r.UserId.Value) : null,
-                r.ChangesJson, r.CorrelationId, r.IpAddress));
+                r.ChangesJson, r.CorrelationId, r.IpAddress, await Code(r.ActionLookupId, ct)));
         return new PagedResult<AuditLogDto>(items, total, skip, take);
     }
 
@@ -46,7 +46,7 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         foreach (var r in rows)
             items.Add(new SecurityEventDto(r.SecurityEventId, r.CreatedAtUtc, await Label(LookupDomains.SecurityEventType, r.EventTypeLookupId, ct),
                 await Label(LookupDomains.SecurityOutcome, r.OutcomeLookupId, ct), r.UserId, r.UserId.HasValue ? names.GetValueOrDefault(r.UserId.Value) : null,
-                r.IpAddress, r.UserAgent, r.DetailJson));
+                r.IpAddress, r.UserAgent, r.DetailJson, await Code(r.EventTypeLookupId, ct), await Code(r.OutcomeLookupId, ct)));
         return new PagedResult<SecurityEventDto>(items, total, skip, take);
     }
 
@@ -60,12 +60,12 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         if (includeChanges)
         {
             var a = await GetAuditLogAsync(null, null, null, from, to, 0, limit, ct);
-            rows.AddRange(a.Items.Select(x => new ActivityRowDto("change", x.Id, x.CreatedAtUtc, $"{x.Action} · {x.EntityType} #{x.EntityId}", x.ChangesJson, x.UserId, x.UserName, x.IpAddress, x.CorrelationId)));
+            rows.AddRange(a.Items.Select(x => new ActivityRowDto("change", x.Id, x.CreatedAtUtc, $"{x.Action} · {x.EntityType} #{x.EntityId}", x.ChangesJson, x.UserId, x.UserName, x.IpAddress, x.CorrelationId, x.ActionCode)));
         }
         if (includeSecurity)
         {
             var s = await GetSecurityEventsAsync(null, null, from, to, 0, limit, ct);
-            rows.AddRange(s.Items.Select(x => new ActivityRowDto("security", x.Id, x.CreatedAtUtc, $"{x.EventType} · {x.Outcome}", x.DetailJson, x.UserId, x.UserName, x.IpAddress, null)));
+            rows.AddRange(s.Items.Select(x => new ActivityRowDto("security", x.Id, x.CreatedAtUtc, $"{x.EventType} · {x.Outcome}", x.DetailJson, x.UserId, x.UserName, x.IpAddress, null, x.EventTypeCode, x.OutcomeCode)));
         }
         if (!string.IsNullOrWhiteSpace(text))
             rows = rows.Where(r => (r.Type + " " + r.Detail + " " + r.UserName + " " + r.IpAddress).Contains(text, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -94,6 +94,9 @@ public sealed class AuditQueryService(TeikemDbContext db, ITenantContext tenant,
         var l = await lookups.GetAsync(id, ct);
         return l is null ? id.ToString() : MultilingualText.Resolve(l.LabelJson, tenant.Lang);
     }
+
+    /// <summary>InternalCode del catálogo (Lote F10: la pantalla decide por código, no por la etiqueta traducida).</summary>
+    private async Task<string?> Code(int id, CancellationToken ct) => (await lookups.GetAsync(id, ct))?.InternalCode;
 
     private async Task<Dictionary<int, string?>> UserNamesAsync(IEnumerable<int?> ids, CancellationToken ct)
     {

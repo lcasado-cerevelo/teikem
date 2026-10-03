@@ -89,8 +89,11 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
 [Route("api/v1/audit")]
 [Authorize]
 [RequirePermission(PermissionCatalog.AdminAudit)]
-public sealed class AuditController(AuditQueryService audit) : ControllerBase
+public sealed class AuditController(AuditQueryService audit, CompanySessionService sessions) : ControllerBase
 {
+    /// <summary>Id de la sesión de quien llama (claim `sid`): la marca "Esta sesión" y nunca se revoca desde la lista.</summary>
+    private long SessionId => long.TryParse(User.FindFirst(TeikemClaims.SessionId)?.Value, out var s) ? s : 0;
+
     [HttpGet("changes")]
     public Task<PagedResult<AuditLogDto>> Changes([FromQuery] string? entityType, [FromQuery] int? entityId, [FromQuery] int? userId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
         => audit.GetAuditLogAsync(entityType, entityId, userId, from, to, skip, take, ct);
@@ -110,4 +113,19 @@ public sealed class AuditController(AuditQueryService audit) : ControllerBase
         var csv = await audit.ExportActivityCsvAsync(kind, text, from, to, ct);
         return File(System.Text.Encoding.UTF8.GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(csv)).ToArray(), "text/csv", $"actividad-{DateTime.UtcNow:yyyyMMdd-HHmm}.csv");
     }
+
+    /// <summary>Lote F10: sesiones activas de todos los usuarios de la compañía activa (admin.audit), la propia marcada.</summary>
+    [HttpGet("sessions")]
+    public Task<IReadOnlyList<CompanySessionDto>> Sessions(CancellationToken ct) => sessions.ListAsync(SessionId, ct);
+
+    /// <summary>
+    /// Lote F10: revoca una sesión de la compañía. Además de admin.audit exige admin.users (es la misma acción que
+    /// DELETE /users/{id}/sessions, sobre una sola sesión). 409 'La sesión actual no se revoca desde la lista; use Salir.'; 404 si ya no está activa.
+    /// </summary>
+    [HttpDelete("sessions/{id:long}"), RequirePermission(PermissionCatalog.AdminUsers)]
+    public async Task<IActionResult> RevokeSession(long id, CancellationToken ct) { await sessions.RevokeAsync(id, SessionId, ct); return NoContent(); }
+
+    /// <summary>Lote F10: "Cerrar las demás sesiones" — todas las de la compañía salvo la propia (admin.users + AAL2: es masiva).</summary>
+    [HttpPost("sessions/revoke-others"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
+    public Task<RevokeSessionsResultDto> RevokeOtherSessions(CancellationToken ct) => sessions.RevokeOthersAsync(SessionId, ct);
 }

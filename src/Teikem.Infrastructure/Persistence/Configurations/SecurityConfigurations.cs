@@ -118,6 +118,7 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         b.Property(t => t.TokenHash).HasMaxLength(200).IsRequired();
         b.Property(t => t.DeviceInfo).HasMaxLength(200);
         b.Property(t => t.ReplacedByTokenHash).HasMaxLength(200);
+        b.Property(t => t.IpAddress).HasMaxLength(45);
         b.Ignore(t => t.IsActive);
         b.HasIndex(t => t.TokenHash);
     }

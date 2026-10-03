@@ -131,6 +131,8 @@ public class RefreshToken : ITenantScoped
     [SensitiveData] public string? ReplacedByTokenHash { get; set; }
     /// <summary>Lote 8A: aparato de almacén (UserDevice) al que quedó ligada la sesión; desactivarlo revoca sus sesiones.</summary>
     public int? UserDeviceId { get; set; }
+    /// <summary>Lote F10: IP desde la que se emitió (o se renovó por última vez) la sesión; la muestra Seguridad y auditoría → Sesiones.</summary>
+    public string? IpAddress { get; set; }
     public bool IsActive => RevokedAtUtc == null && ExpiresAtUtc > DateTime.UtcNow;
 }
 

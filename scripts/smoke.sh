@@ -172,6 +172,22 @@ echo "$ACT" | jq -e '.items | map(select(.kind=="change")) | length >= 1' >/dev/
 echo "$ACT" | jq -e '.items | map(select(.kind=="security")) | length >= 1' >/dev/null || fail "sin eventos de seguridad"
 # grep -c lee todo el CSV (grep -q cerraría la tubería en la primera coincidencia y pipefail lo marcaría como error con CSV grandes)
 expect 200 "$(req GET '/api/v1/audit/activity/export.csv')" | grep -c 'Cuando,Tipo,Usuario' >/dev/null || fail "csv"; ok "bitácora unificada + CSV"
+echo "$ACT" | jq -e '[.items[] | select(.kind=="security" and (.typeCode // "") != "" and (.outcomeCode // "") != "")] | length >= 1' >/dev/null || fail "actividad sin códigos de tipo/resultado (Lote F10)"
+
+step "sesiones de toda la compañía (Lote F10)"
+# Segunda sesión del admin: aparece en la lista de la compañía (no actual), se revoca por id y deja de aparecer; la propia → 409.
+# (No se intenta refrescar con el token revocado: AuthService lo trata como reutilización y revocaría TODAS las sesiones del admin.)
+R3=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$EMAIL\",\"password\":\"$PASS\",\"deviceInfo\":\"smoke-f10\"}")")
+T3=$(echo "$R3" | jq -r .tokens.accessToken)
+MY_SID=$(expect 200 "$(req GET /api/v1/audit/sessions)" | jq -r '[.[] | select(.isCurrent)] | if length == 1 then .[0].id else error("actual") end') || fail "una sola sesión actual"
+SID3=$(expect 200 "$(req GET /api/v1/audit/sessions '' "$T3")" | jq -r '.[] | select(.isCurrent) | .id')
+[[ -n "$SID3" && "$SID3" != "$MY_SID" ]] || fail "la segunda sesión no es distinta de la actual"
+expect 200 "$(req GET /api/v1/audit/sessions)" | jq -e --argjson id "$SID3" '[.[] | select(.id == $id and (.isCurrent | not) and .deviceInfo == "smoke-f10" and .userName != null)] | length == 1' >/dev/null || fail "la otra sesión no aparece en la lista de la compañía"
+expect 409 "$(req DELETE "/api/v1/audit/sessions/$MY_SID")" | jq -e '.title == "La sesión actual no se revoca desde la lista; use Salir."' >/dev/null || fail "409 de la sesión actual"
+expect 204 "$(req DELETE "/api/v1/audit/sessions/$SID3")" >/dev/null
+expect 404 "$(req DELETE "/api/v1/audit/sessions/$SID3")" >/dev/null
+expect 200 "$(req GET /api/v1/audit/sessions)" | jq -e --argjson id "$SID3" '[.[] | select(.id == $id)] | length == 0' >/dev/null || fail "la sesión revocada sigue en la lista"
+ok "lista de la compañía con la actual marcada, revocar una (204/404) y 409 de la propia"
 
 step "RBAC: despachador sin admin.users → 403 + PERMISSION_DENIED"
 R2=$(expect 200 "$(req POST /api/v1/auth/login "{\"email\":\"$DISPATCH_EMAIL\",\"password\":\"$PASS\"}")")

@@ -473,7 +473,8 @@ CREATE TABLE dbo.RefreshToken (
     ExpiresAtUtc DATETIME2 NOT NULL,
     RevokedAtUtc DATETIME2 NULL,
     ReplacedByTokenHash NVARCHAR(200) NULL,
-    UserDeviceId INT NULL                              -- Lote 8A: sesión de un aparato de almacén (FK diferida: UserDevice va después)
+    UserDeviceId INT NULL,                             -- Lote 8A: sesión de un aparato de almacén (FK diferida: UserDevice va después)
+    IpAddress    NVARCHAR(45) NULL                     -- Lote F10: IP de la emisión o de la última renovación (Seguridad y auditoría → Sesiones)
 );
 CREATE INDEX IX_RefreshToken_User ON dbo.RefreshToken(UserId) WHERE RevokedAtUtc IS NULL;
 GO

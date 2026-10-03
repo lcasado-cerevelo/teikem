@@ -199,6 +199,7 @@ public sealed partial class AuthService(
         {
             UserId = user.Id, TenantId = tenantId, TokenHash = JwtTokenService.HashToken(raw), DeviceInfo = deviceInfo is { Length: > 200 } d ? d[..200] : deviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = DateTime.UtcNow.AddDays(device?.SessionDays ?? t.SessionDays), Aal2VerifiedAtUtc = aal2At,
+            IpAddress = RequestIp(),
         };
         // Si UserManager dejó al usuario marcado como modificado (ResetAccessFailedCount que perdió la carrera con un intento
         // fallido concurrente: Identity no lanza, devuelve un IdentityResult fallido), se recarga para no arrastrar ese
@@ -280,6 +281,9 @@ public sealed partial class AuthService(
     /// <summary>RefreshToken.UserDeviceId: la sesión queda ligada al aparato (desactivarlo la revoca).</summary>
     private static void SetTokenDevice(RefreshToken rt, int? userDeviceId) => rt.UserDeviceId = userDeviceId;
 
+    /// <summary>Lote F10: IP de la petición para la sesión (Seguridad y auditoría → Sesiones), recortada a la columna (45).</summary>
+    private string? RequestIp() => tenant.IpAddress is { Length: > 45 } ip ? ip[..45] : tenant.IpAddress;
+
     private static int? TokenDevice(RefreshToken rt) => rt.UserDeviceId;
 
     /// <summary>
@@ -351,6 +355,7 @@ public sealed partial class AuthService(
             UserId = rt.UserId, TenantId = rt.TenantId, TokenHash = JwtTokenService.HashToken(raw),
             DeviceInfo = device is null ? deviceInfo ?? rt.DeviceInfo : rt.DeviceInfo,
             IssuedAtUtc = DateTime.UtcNow, ExpiresAtUtc = expires, Aal2VerifiedAtUtc = rt.Aal2VerifiedAtUtc,
+            IpAddress = RequestIp() ?? rt.IpAddress,
         };
         db.SuppressAudit = true;
         db.RefreshTokens.Add(next);
