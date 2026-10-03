@@ -17,8 +17,10 @@ namespace Teikem.Infrastructure.Services;
 /// Capa F: campos personalizados por tenant + entidad. Definiciones (con opciones o lista de catálogo), y valores EAV tipados
 /// por registro con validación en servicio: requerido, único por entidad, tipo, DSL (regex/min/max/longitud), opciones válidas.
 /// </summary>
-public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers, PermissionService permissions)
+public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, IEnumerable<IOwnedEntityResolver> resolvers, PermissionService permissions, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private static readonly Regex KeyRegex = new("^[a-z][a-z0-9_]{1,59}$", RegexOptions.Compiled);
 
     public async Task<IReadOnlyList<CustomFieldDefinitionDto>> GetDefinitionsAsync(string? entityType, bool includeInactive, CancellationToken ct)
@@ -170,7 +172,8 @@ public sealed class CustomFieldService(TeikemDbContext db, ITenantContext tenant
             }
             else
             {
-                fieldErrors.AddRange(RuleEvaluator.Validate(normalized is string[] a ? string.Join(",", a) : normalized, d.ValidationJson));
+                fieldErrors.AddRange(RuleEvaluator.Validate(normalized is string[] a ? string.Join(",", a) : normalized, d.ValidationJson, _clock,
+                    calendarDate: !string.Equals(d.DataType!.InternalCode, CustomFieldDataTypes.DateTime, StringComparison.OrdinalIgnoreCase)));
                 fieldErrors.AddRange(await ValidateOptionsAsync(d, normalized, ct));
                 if (d.IsUnique) fieldErrors.AddRange(await ValidateUniqueAsync(d, entityId, normalized, ct));
             }

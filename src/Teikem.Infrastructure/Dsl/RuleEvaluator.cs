@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Teikem.Infrastructure.Abstractions;
 
 namespace Teikem.Infrastructure.Dsl;
 
@@ -58,7 +59,7 @@ public static class RuleEvaluator
     }
 
     /// <summary>Valida un valor contra la spec; devuelve la lista de mensajes (vacía = válido).</summary>
-    public static IReadOnlyList<string> Validate(object? value, string? validationJson)
+    public static IReadOnlyList<string> Validate(object? value, string? validationJson, ITenantClock? clock = null, bool calendarDate = true)
     {
         var spec = ParseValidation(validationJson);
         var errors = new List<string>();
@@ -83,9 +84,17 @@ public static class RuleEvaluator
         }
         if (value is DateTime dt)
         {
-            // min/max para fechas se expresan como días relativos a hoy (negativo = pasado)
-            if (spec.Min is decimal dmin && dt < DateTime.UtcNow.Date.AddDays((double)dmin)) errors.Add("Fecha anterior a la mínima permitida.");
-            if (spec.Max is decimal dmax && dt > DateTime.UtcNow.Date.AddDays((double)dmax)) errors.Add("Fecha posterior a la máxima permitida.");
+            // min/max para fechas se expresan como días relativos a HOY (negativo = pasado). "Hoy" es el día de la zona horaria
+            // de la compañía (ITenantClock; sin reloj, la zona por defecto), no el día UTC. Un campo de tipo FECHA es un día de
+            // calendario (se compara con el día local a las 00:00); un campo FECHA Y HORA es un instante UTC (se compara con las
+            // 00:00 locales de hoy expresadas en UTC).
+            var c = clock ?? TenantClock.Default;
+            var today = c.Today;
+            DateTime Reference(decimal days) => calendarDate
+                ? today.ToDateTime(TimeOnly.MinValue).AddDays((double)days)
+                : c.StartOfDayUtc(today).AddDays((double)days);
+            if (spec.Min is decimal dmin && dt < Reference(dmin)) errors.Add("Fecha anterior a la mínima permitida.");
+            if (spec.Max is decimal dmax && dt > Reference(dmax)) errors.Add("Fecha posterior a la máxima permitida.");
         }
         return errors;
     }
