@@ -1356,6 +1356,115 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CompanySessionDto"][];
+                        "application/json": components["schemas"]["CompanySessionDto"][];
+                        "text/json": components["schemas"]["CompanySessionDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/sessions/revoke-others": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RevokeSessionsResultDto"];
+                        "application/json": components["schemas"]["RevokeSessionsResultDto"];
+                        "text/json": components["schemas"]["RevokeSessionsResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -16595,6 +16704,8 @@ export interface components {
             ipAddress?: string | null;
             /** Format: uuid */
             correlationId?: string | null;
+            typeCode?: string | null;
+            outcomeCode?: string | null;
         };
         ActivityRowDtoPagedResult: {
             items?: components["schemas"]["ActivityRowDto"][] | null;
@@ -16769,6 +16880,7 @@ export interface components {
             /** Format: uuid */
             correlationId?: string | null;
             ipAddress?: string | null;
+            actionCode?: string | null;
         };
         AuditLogDtoPagedResult: {
             items?: components["schemas"]["AuditLogDto"][] | null;
@@ -17126,6 +17238,23 @@ export interface components {
             type?: string | null;
             /** Format: double */
             value?: number;
+        };
+        CompanySessionDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int32 */
+            userId?: number;
+            userName?: string | null;
+            userEmail?: string | null;
+            deviceInfo?: string | null;
+            deviceName?: string | null;
+            isDevice?: boolean;
+            ipAddress?: string | null;
+            /** Format: date-time */
+            lastActivityUtc?: string;
+            /** Format: date-time */
+            expiresAtUtc?: string;
+            isCurrent?: boolean;
         };
         ContactPointDto: {
             /** Format: int32 */
@@ -20354,6 +20483,10 @@ export interface components {
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
         };
+        RevokeSessionsResultDto: {
+            /** Format: int32 */
+            revoked?: number;
+        };
         RoleDto: {
             /** Format: int32 */
             id?: number;
@@ -20443,6 +20576,8 @@ export interface components {
             ipAddress?: string | null;
             userAgent?: string | null;
             detailJson?: string | null;
+            eventTypeCode?: string | null;
+            outcomeCode?: string | null;
         };
         SecurityEventDtoPagedResult: {
             items?: components["schemas"]["SecurityEventDto"][] | null;
