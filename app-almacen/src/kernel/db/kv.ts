@@ -35,4 +35,6 @@ export const KvKeys = {
   countEntryMode: 'countEntryMode',
   /** Lote A7: avisos de lotes de conteo parciales (líneas que el supervisor ya había corregido), JSON de features/count/countSkipped.ts. */
   countSkippedNotices: 'countSkippedNotices',
+  /** Lote A8: permisos efectivos de cada usuario que entró en el aparato (JSON de kernel/auth/permissions.ts, por userId). */
+  myPermissions: 'myPermissions',
 } as const

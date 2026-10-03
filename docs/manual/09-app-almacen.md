@@ -30,6 +30,10 @@ Lote A6 (2026-10-03, `docs/mobile/loteA6-decisiones.md`, pendiente del cambio 2 
 captura de conteo que el servidor rechazó porque **el supervisor ya corrigió una línea** (409) se explica aparte, en grande, con los
 renglones y SKU afectados, qué hacer y el botón **Actualizar el conteo** (sección 9.1).
 
+Lote A8 (2026-10-03, `docs/mobile/loteA8-decisiones.md`): en **Consultar**, escanear una **posición** muestra en vivo la lista de lo que el
+sistema dice que hay en ella (SKU grande, nombre, lotes; cantidades solo con `warehouse.count`), complemento de la hoja impresa de la
+posición (sección 8.1).
+
 ---
 
 ## 1. Cómo funciona sin señal
@@ -488,27 +492,64 @@ duplica nada: la clave de idempotencia de cada fila de la cola protege el reinte
 
 ## 8. Consultar
 
-Qué hace: un solo campo para buscar saldos, por producto (código de barras o SKU, ya sincronizado) o por posición
-(código libre): `GET /api/v1/inventory/balances`. Guarda la última respuesta de cada código consultado
-(`balance_cache`, local) para poder responder "de hace N minutos" si se repite la misma búsqueda sin señal.
+Qué hace: un solo campo para buscar saldos, por producto (código de barras o SKU, ya sincronizado), por **posición** o por texto
+libre: `GET /api/v1/inventory/balances`. Guarda la última respuesta de cada código consultado (`balance_cache`, local) para poder
+responder "de hace N minutos" si se repite la misma búsqueda sin señal.
 
-Quién puede: `inventory.view`.
+Quién puede: `inventory.view` (módulo **WMS_LOTSERIAL**). Las **cantidades del sistema en la lista de una posición** solo las ve quien
+tiene `warehouse.count` (§8.1). La búsqueda por producto y la de texto libre siguen mostrando en mano y disponible a cualquiera con
+`inventory.view`, como antes de este lote (decisión pendiente del dueño, `docs/mobile/loteA8-decisiones.md`).
 
-Cómo se usa: se escanea o escribe un código. Si coincide con un producto ya sincronizado, busca el saldo de ese
-producto en todo el almacén (por posición, lote); si no, lo manda como texto libre (cubre también un código de
-posición) y el servidor decide la coincidencia (SKU, nombre, código de barras, lote o código de posición, capítulo
-8A). Cada fila muestra posición, lote (si aplica), lo que hay en mano y lo disponible.
+Cómo se usa: se escanea o escribe un código (escanear = Aceptar, §1.1). La app decide, en este orden:
+1. **Producto** ya sincronizado: el saldo de ese producto en todo el almacén, una fila por posición y lote, con lo que hay en mano y lo
+   disponible (como siempre).
+2. **Posición** del almacén: la lista de lo que el sistema dice que hay en ella (§8.1, Lote A8).
+3. Ninguna de las dos: se manda como texto libre y el servidor busca por SKU, nombre, código de barras o lote (título `Resultados de
+   «{código}»`); cada fila muestra posición, lote (si aplica), en mano y disponible.
+
+### 8.1 Lo que hay en una posición (Lote A8)
+
+Para qué: en racks altos los productos no se alcanzan a escanear o no tienen etiqueta; el operario escanea la **etiqueta de la
+posición** (o la teclea con ⌨) y ve **en vivo** qué productos tiene según el sistema, sin depender de que la hoja impresa de la posición
+(Lote 23/F15) esté al día.
+
+Cómo funciona:
+- La posición se reconoce primero entre las **posiciones sincronizadas** del almacén del aparato (no necesita señal para eso) y, si no
+  está, se pregunta al servidor (`GET /api/v1/warehouses/{id}/bins`, código exacto, sin distinguir mayúsculas). Los saldos se piden **por
+  la posición** (`binIds`), no por texto libre: una posición `A-01` ya no trae también lo de `A-01-01`.
+- Título `Qué hay en {posición}` y debajo `{n} productos en esta posición` (o `1 producto en esta posición`).
+- **Una fila por producto**: el **SKU en grande**, el nombre y, si lleva lote, `Lote A, B` (con más de tres: `Lote A, B, C y 2 más`). Los
+  lotes solo se muestran. Si el producto está en varios lotes, la fila es una sola (lo de los lotes se suma).
+- **Cantidades**: quien tiene `warehouse.count` ve debajo `En mano: {n} · Disponible: {n}` (suma de los lotes, con los separadores de la
+  compañía). **Quien no lo tiene no ve ninguna cantidad**, igual que en el conteo a ciegas. La app lo sabe preguntando al servidor quién
+  entró (`GET /api/v1/me`) al abrir Consultar; lo guarda en el aparato por usuario para decidir sin señal. Mientras no lo sepa (primera vez
+  sin señal), no muestra cantidades.
+- Con **más de 6 productos** aparece **Buscar producto o lote** (filtra por SKU, nombre o lote; la misma regla que la lista de "Contar por
+  producto"). La lista se desplaza con la pantalla.
+- Las filas **no se tocan** (Consultar no tenía ninguna acción sobre una fila; para ver un producto en todo el almacén, escanee su código).
+- Sin señal: si esa misma posición ya se consultó antes en el aparato, se muestra esa lista con el aviso `Datos de las {hora} (hace {N}
+  min, sin señal ahora)`.
+
+Las demás pantallas que escanean una posición **no cambian**: en Conteo por posición, la lista "Lo que se espera aquí" ya muestra los
+productos de la posición (y tocar uno llena el campo, §7); en Acomodar, Recibir directo y Despacho, escanear la posición es la acción misma
+(completar la tarea o agregar la línea), no una consulta.
 
 ### Campos y validaciones
 
 | Campo / caso | Mensaje exacto | Origen |
 |---|---|---|
-| No hay nada con ese código | `No hay nada con ese código.` | API, lista vacía |
-| Sin señal y sin una consulta anterior de ese mismo código | `Sin señal y sin una consulta anterior de esto.` | Local (caché vacía para esa clave) |
-| Sin señal, pero hay una consulta anterior guardada de ese mismo código | `Datos de las {hora} (hace {N} min, sin señal ahora)` (Lote A3: con la hora en la zona y el formato de la compañía; si no es de hoy, con la fecha), con los datos de esa consulta anterior | Local (`balance_cache`) |
+| No es un producto, ni una posición, ni el servidor encuentra nada con ese texto | `No hay un producto ni una posición con ese código.` (Lote A8; antes `No hay nada con ese código.`) | App + API, lista vacía |
+| La posición existe pero no tiene nada | `No hay productos en esta posición.` (no es un error: sale bajo `Qué hay en {posición}`) | API, lista vacía |
+| La posición solo existe dada de baja | `La posición {posición} está desactivada.` | App (posiciones sincronizadas) + API |
+| Buscador de la lista sin coincidencias | `Ningún producto coincide con «{texto}».` | App |
+| Posición con más de 1,000 renglones de saldo | `Se muestran los primeros 1,000 renglones de esta posición; el resto, en la web.` | App |
+| Sin señal y sin una consulta anterior de ese mismo código (o de esa posición) | `Sin señal y sin una consulta anterior de esto.` | Local (caché vacía para esa clave) |
+| Sin señal, pero hay una consulta anterior guardada | `Datos de las {hora} (hace {N} min, sin señal ahora)` (Lote A3: con la hora en la zona y el formato de la compañía; si no es de hoy, con la fecha), con los datos de esa consulta anterior | Local (`balance_cache`) |
+| Otro error del servidor (403, 500…) | El mensaje del servidor tal cual | API |
 
 La clave de caché es por almacén y por código exacto (mayúsculas, sin espacios extra): consultar el mismo producto
-por dos códigos distintos (SKU una vez, código de barras otra) guarda dos entradas separadas.
+por dos códigos distintos (SKU una vez, código de barras otra) guarda dos entradas separadas. La lista de una posición se guarda aparte
+de la búsqueda libre del mismo texto.
 
 ---
 
@@ -627,12 +668,12 @@ posición ya no tiene ese producto"), reintentar va a fallar otra vez con el mis
 
 | Permiso | Qué habilita en la app |
 |---|---|
-| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar; zonas de "Otra posición"), Consultar |
+| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar; zonas de "Otra posición"), Consultar (incluida la lista de lo que hay en una posición, sin cantidades) |
 | `purchasing.receive` + módulo **PURCHASING** | Recibir contra una orden de compra (sin esto, solo recibo ciego funciona) |
 | `warehouse.pick` | Recolectar y empacar en Despacho |
 | `locations.read` | Buscar los consignatarios de un cliente al empacar un despacho |
 | `warehouse.count.capture` (implícito en `warehouse.count`) | Abrir, capturar y terminar un conteo, por posición o por producto (a ciegas si falta `warehouse.count`), y crear una posición provisional en "Otra posición" |
-| `warehouse.count` | Ver las cantidades esperadas de un conteo (no a ciegas) y **cancelarlo** |
+| `warehouse.count` | Ver las cantidades esperadas de un conteo (no a ciegas) y **cancelarlo**; en Consultar, ver `En mano` y `Disponible` en la lista de una posición (Lote A8) |
 
 Todas estas rutas viven bajo el módulo **WMS_LOTSERIAL** (capítulo 8A §7); sin el módulo encendido para la
 compañía, el aparato no puede ni listar sus usuarios para entrar.
@@ -651,5 +692,5 @@ Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN
 los casos propios de la app agregados en este lote (qué pasa si se pierde la señal a mitad de un recibo, por qué
 Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización), y la sección **Lote A3** (lector del
 Zebra, teclado, formatos de la compañía en la app), la sección **Lote A4** (contar por producto) y la sección **Lote A5** (al menos
-una cantidad al contar por producto; en Despacho, la cantidad antes de la posición) y la sección **Lote A6** (captura de conteo rechazada
-porque el supervisor ya corrigió una línea).
+una cantidad al contar por producto; en Despacho, la cantidad antes de la posición), la sección **Lote A6** (captura de conteo rechazada
+porque el supervisor ya corrigió una línea) y la sección **Lote A8** (lo que hay en una posición en Consultar).

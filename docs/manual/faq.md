@@ -4716,3 +4716,51 @@ La posición sale en varias hojas de 10 (11 productos = 10 + 1), cada una con el
 **¿Las marcas de las casillas se pierden al cambiar de página?**
 No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra; al imprimir las marcadas se
 quitan solas.
+
+## Lote A8 — App de almacén: lo que hay en una posición (Consultar)
+
+Detalle en el [capítulo 9 §8.1](09-app-almacen.md#81-lo-que-hay-en-una-posición-lote-a8) y en `docs/mobile/loteA8-decisiones.md`. Ninguno de
+estos mensajes trae código HTTP propio: los arma la app (si el servidor responde un error, sale su mensaje tal cual).
+
+### Mensajes nuevos o cambiados
+
+**"No hay un producto ni una posición con ese código."** (antes "No hay nada con ese código.")
+Lo escaneado no es un producto sincronizado, no es una posición del almacén del aparato y la búsqueda libre (SKU, nombre, código de
+barras, lote) no encontró nada. Qué hacer: revise que la etiqueta sea de este almacén (el aparato consulta su almacén por defecto) y que
+se haya leído completa; si es un producto nuevo, sincronice con señal y vuelva a escanear.
+
+**"No hay productos en esta posición."**
+La posición existe y el sistema no tiene nada en ella (sin existencia en mano ni reservada). No es un error. Si usted ve producto ahí,
+avise al supervisor o cuéntela (Conteo → Por posición).
+
+**"La posición {posición} está desactivada."**
+La posición existe pero está dada de baja. Escanee otra; si debería estar activa, avise al supervisor (se reactiva en la web, pestaña Posiciones de la
+ficha del almacén).
+
+**"Ningún producto coincide con «{texto}»."**
+Lo escrito en **Buscar producto o lote** no coincide con el SKU, el nombre ni el lote de ningún producto de la lista. Borre o cambie el
+texto.
+
+**"Se muestran los primeros 1,000 renglones de esta posición; el resto, en la web."**
+La posición tiene más de 1,000 renglones de saldo (producto × lote): caso muy raro. La lista muestra los primeros; vea la posición
+completa en la web (Inventario, pestaña Saldos, filtrando por la posición).
+
+### Preguntas frecuentes
+
+**Escaneo la posición y no veo cantidades. ¿Está mal?**
+No: las cantidades del sistema solo las ve quien tiene el permiso `warehouse.count` (la misma regla que el conteo a ciegas). Si su trabajo
+las necesita, pida al administrador que se lo dé; la app lo toma la próxima vez que abra Consultar con señal.
+
+**Me dieron (o me quitaron) `warehouse.count` y la app sigue igual.**
+La app pregunta los permisos al abrir **Consultar** con señal. Salga a Inicio y vuelva a entrar a Consultar con señal.
+
+**La lista no coincide con la hoja pegada en el rack.**
+La lista es lo que el sistema dice **ahora**; la hoja es de cuando se imprimió. Si la hoja está vieja, pida que la reimpriman (web, Almacén →
+Posiciones → **Imprimir las desactualizadas**). Si lo que ve físicamente no coincide con la lista, cuente la posición.
+
+**Toco un producto de la lista y no pasa nada.**
+Es a propósito: Consultar solo muestra. Para ver ese producto en todo el almacén, escanee (o escriba con ⌨) su código.
+
+**¿Funciona sin señal?**
+Solo con una posición que ya consultó antes en el aparato: muestra esa lista con el aviso "Datos de las {hora} (hace {N} min, sin señal
+ahora)". La primera vez necesita señal.
