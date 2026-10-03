@@ -22,6 +22,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    con sus validaciones y mensajes.
    Lote F10 (secciones 1.5, 9 y 9.1): **sesiones de toda la compañía** (listar con `admin.audit`, revocar una o las demás con
    `admin.users`, IP de la sesión) y la **actividad unificada** con total real, búsqueda en la base y códigos de tipo y resultado.
+   Lote 19 (secciones 11 y 11.2): **marca por compañía en el servidor** — los colores se validan con las mismas reglas que la
+   pantalla (temas, contraste WCAG, separación de matiz, campos y tamaño) y los **cuatro logos** (lockup y marca cuadrada, cada uno
+   con su variante para fondo oscuro; SVG, PNG, JPG o WebP de hasta 512 KB) se guardan en la base y se validan por su contenido real
+   (SVG sin contenido activo ni referencias externas), con sus mensajes 400/413/415; y el **409 al repetir un feriado**.
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
@@ -160,6 +164,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    pestañas Actividad (bitácora de cambios y eventos de seguridad en una tabla: tipo Cambio/Evento/Alerta, fecha, buscador,
    orden por columna y Exportar CSV de lo filtrado) y Sesiones y MFA (sesiones activas de toda la compañía, revocar una o las
    demás, y la política: MFA obligatorio, ventana de reautenticación y duración de las sesiones). Capturas `f10-*`.
+7. [F11 — Marca por compañía: logos y colores validados por el servidor](frontend/f11-marca-por-compania.md): la pestaña Marca de
+   Ajustes de la compañía conectada al servidor: subir, reemplazar y quitar los cuatro logos, dónde se ven (barra lateral por
+   tema, colapsada), los errores 400/413/415 junto a cada ranura, el error del servidor al guardar colores y el 409 del feriado
+   repetido en Calendario. Capturas `f11-*`.
 
 ## Preguntas frecuentes
 
@@ -187,4 +195,6 @@ de la compañía (feriados, días laborables, separadores, colores de la marca, 
 cambió el formato de las fechas y la hora, cómo volver a día/mes/año, qué pasa con los teléfonos guardados y por qué US no cambia la hora. La sección "Lote F10" recoge los mensajes de las sesiones de la compañía (sesión
 actual, sesión no encontrada, reautenticación, 403 sin `admin.users`), los de la política y la exportación que solo se ven en pantalla, y las
 preguntas sobre Evento/Alerta, el total que cambiaba al paginar, la búsqueda, la IP como ubicación, por qué revocar una sesión puede cerrar todas
-y qué hace "Cerrar las demás sesiones".
+y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensajes de la marca (tamaño, JSON, campos desconocidos, colores de estado, tipos,
+hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
+feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem.

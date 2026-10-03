@@ -3345,7 +3345,6 @@
         "logoNone": "No logo: the Teikem one is used",
         "logoPreview": "Preview of {name}",
         "logoFile": "File for {name}",
-        "logoSaveError": "The brand could not be saved",
         "slots": {
           "lockup": "Lockup (light background)",
           "lockup-inverted": "Lockup (dark background)",

@@ -3901,9 +3901,9 @@ El máximo de paradas por ruta por defecto tiene que ser 1 o más. La pantalla l
 **¿Qué significa "Código de idioma de 2 letras."? (400)**
 El idioma por defecto debe ser un código de 2 letras (`es`, `en`). La pantalla solo ofrece Español e English.
 
-**¿Qué significa "BrandingJson no es JSON válido." o "BrandingJson demasiado grande (los logos van a blob storage)."? (400)**
-La marca guardada no es un JSON o pasa de 200 KB. La pantalla Marca siempre manda un JSON pequeño (tema y tres colores); estos
-mensajes solo aparecen si alguien llama al API a mano.
+**¿Qué significa "BrandingJson no es JSON válido." o "BrandingJson demasiado grande (los logos van a blob storage)."?**
+Eran los mensajes de antes del lote 19. Hoy la marca se valida con reglas propias (tamaño de 4096 caracteres, campos conocidos,
+colores, contraste y matiz) y cada mensaje está en la sección "Lote 19 — Marca por compañía" de más abajo.
 
 ### Mensajes que solo ve en la pantalla (sin código HTTP)
 
@@ -3911,8 +3911,9 @@ mensajes solo aparecen si alguien llama al API a mano.
 
 **"Escribe la fecha y el nombre del feriado"** — falta la fecha o el nombre del feriado nuevo.
 
-**"Ya hay un feriado en esa fecha"** — ya existe un feriado en esa misma fecha; elimínelo primero si quiere reemplazarlo (el
-servidor lo reemplazaría sin avisar).
+**"Ya hay un feriado en esa fecha."** — ya existe un feriado en esa misma fecha; elimínelo primero si quiere reemplazarlo. Desde
+el lote 19 esto lo decide el servidor (409) y la pantalla muestra su mensaje (antes la pantalla lo detectaba sola y el servidor
+reemplazaba el feriado sin avisar).
 
 **"El separador de miles y el decimal no pueden ser el mismo: se cambió el otro."** — es un aviso, no un error: al escoger un
 separador que chocaba con el otro, la pantalla cambió el otro. Revise la vista previa y guarde.
@@ -3954,8 +3955,7 @@ En la ficha del almacén (Almacenes → Recepción). La pestaña Operación solo
 sin posición de recepción.
 
 **¿Puedo cargar el logo de mi compañía?**
-Todavía no: falta en el servidor dónde guardar los archivos. Mientras tanto se usan los logos de Teikem; los colores sí se
-pueden cambiar en la pestaña Marca.
+Sí, desde el lote 19: Ajustes de la compañía → Marca → Logo (ver "Lote 19 — Marca por compañía" más abajo).
 
 ## Lote F10 — Seguridad y auditoría (pantalla), sesiones de toda la compañía y actividad paginada
 
@@ -4025,3 +4025,123 @@ aparatos de almacén.
 
 **Cambié la duración de la sesión y nadie tuvo que volver a entrar.**
 La duración nueva vale para las sesiones que se abren o renuevan desde ese momento; las demás conservan su vencimiento.
+
+## Lote 19 — Marca por compañía en el servidor: validación de colores, logos y feriado duplicado
+
+Pestaña Ajustes de la compañía → Marca (`/system/settings?tab=brand`, `admin.tenant`). Detalle en
+[frontend/f11-marca-por-compania.md](frontend/f11-marca-por-compania.md) y en el capítulo 01, sección 11.2. Los errores de la
+marca salen junto a los colores; los de cada logo, debajo de su ranura.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "La marca es demasiado grande (máximo 4096 caracteres); los logos se suben aparte."? (400)**
+El `brandingJson` pasa de 4096 caracteres. La marca es solo tema y tres colores (menos de 200 caracteres); los logos ya no viajan
+ahí, se suben con su propio botón. Solo aparece si alguien llama al API a mano con otro contenido.
+
+**¿Qué significa "La marca no es un JSON válido." o "La marca debe ser un objeto JSON."? (400)**
+El texto no es JSON, o es JSON pero no un objeto (`{ ... }`). La pantalla siempre manda un objeto válido.
+
+**¿Qué significa "La marca trae un campo desconocido: '<campo>'." ? (400)**
+Se mandó un campo que no es de la marca. Solo existen `preset`, `useCustom` y `custom` (con `flow`, `money` y `neutral`). Si estaba
+guardando los logos dentro de la marca, ya no se hace: use los endpoints de logos.
+
+**¿Qué significa "Los colores de estado (ok, warn, danger, info) no se pueden personalizar: '<campo>'."? (400)**
+Verde, ámbar, rojo y azul de información no se cambian a propósito (verde = bien, rojo = mal); quite ese campo.
+
+**¿Qué significa "El campo '<campo>' tiene un tipo inválido."? (400)**
+`preset` debe ser texto, `useCustom` verdadero o falso, `custom` un objeto y cada color un texto.
+
+**¿Qué significa "El color 'custom.<flow|money|neutral>' no es hexadecimal (use #RGB o #RRGGBB)."? (400)**
+El color no es un hexadecimal de 3 o 6 dígitos (el `#` es opcional; no se admiten espacios ni nombres como "rojo"). La pantalla lo
+avisa antes con "Escriba un color hexadecimal, por ejemplo #1F6FE5.".
+
+**¿Qué significa "El tema predefinido '<id>' no existe."? (400)**
+Los temas son `teikem`, `marino`, `acero`, `carretera`, `granate`, `vino`, `bosque`, `selva`, `oliva`, `turquesa`, `indigo`,
+`violeta` y `grafito`, en minúscula.
+
+**¿Qué significa "El contraste del color de operación en modo oscuro es 1.34:1; el mínimo es 4.5:1."? (400)**
+Con ese color, lo que se escribe o se pinta con él no se lee bien sobre el panel del tema. Dice cuál pieza (texto, texto atenuado,
+color de operación o color de dinero), en qué modo (oscuro o claro), el contraste real y el mínimo (7:1 para el texto principal; 4.5:1
+para el resto). Escoja un color más claro (modo oscuro) o más oscuro (modo claro); la pantalla muestra todos los contrastes en vivo.
+
+**¿Qué significa "Los colores de operación y de dinero son demasiado parecidos: 4° de separación y el mínimo es 40°."? (400)**
+Los dos acentos son «dos corrientes» (lo que sale a la calle y el dinero que vuelve) y tienen que distinguirse: sus matices deben
+estar al menos 40° separados. Cambie uno de los dos.
+
+**¿Qué significa "Ranura de logo '<slot>' no encontrada."? (404) y "Logo '<slot>' no encontrado."? (404)**
+La primera: la ranura no es una de `lockup`, `lockup-inverted`, `mark`, `mark-inverted`. La segunda: la compañía no tiene logo en esa
+ranura (leer o quitar). La interfaz entonces usa la otra variante o el logo de Teikem.
+
+**¿Qué significa "Seleccione un archivo de logo."? (400)**
+No llegó archivo (o llegó vacío). Escoja uno con el botón Subir.
+
+**¿Qué significa "El logo supera el tamaño máximo de 512 KB."? (413)**
+El archivo pesa más de 512 KB (524.288 bytes). Reduzca el PNG/JPG/WebP o simplifique el SVG. La pantalla lo avisa antes de enviarlo.
+
+**¿Qué significa "Formato no admitido: el logo debe ser SVG, PNG, JPG o WebP."? (415)**
+El contenido del archivo no es de uno de esos formatos. Se revisa el contenido, no el nombre: un archivo renombrado a `.png` no
+sirve. GIF, PDF, HTML y SVG guardados en UTF-16 tampoco se admiten. Si la petición no es `multipart/form-data` el 415 llega sin
+mensaje.
+
+**¿Qué significa "El contenido del archivo (image/png) no coincide con el tipo declarado (image/jpeg)."? (415)**
+El navegador o el programa dijo que era un tipo de imagen y los bytes son de otro. Guarde el archivo de nuevo en el formato que
+quiere.
+
+**¿Qué significa "El archivo está dañado o incompleto y no se puede usar como logo."? (400)**
+Es un PNG, JPG o WebP cortado (una descarga interrumpida, por ejemplo). Vuelva a exportarlo.
+
+**¿Qué significa "La subida del logo llegó incompleta o mal formada. Vuelva a intentarlo."? (400)**
+La petición se cortó a la mitad (sin red, por ejemplo). Reintente.
+
+**¿Qué significa "El SVG no es un XML válido."? (400)**
+El SVG tiene etiquetas sin cerrar o caracteres inválidos. Ábralo en un editor de imágenes y guárdelo de nuevo.
+
+**¿Qué significa "El SVG no se acepta: declara DOCTYPE o entidades."? (400)**
+Un SVG con `<!DOCTYPE …>` o `<!ENTITY …>` puede leer archivos del servidor o hacerlo gastar memoria; se rechaza. Exporte el SVG sin
+DOCTYPE (opción «SVG 1.1/Tiny» sin DTD, o limpie el archivo con SVGO).
+
+**¿Qué significa "El SVG no se acepta: contiene el elemento <script>, que puede ejecutar código o cargar contenido externo."? (400)**
+El SVG trae un elemento activo (`script`, `foreignObject`, `iframe`, `object`, `embed`, `link`, `animate`, `set`…). Quítelo o
+convierta el diseño a trazos y formas simples.
+
+**¿Qué significa "El SVG no se acepta: el atributo 'onload' ejecuta código."? (400)**
+Algún elemento tiene un atributo de evento (`onload`, `onclick`…). Quítelo.
+
+**¿Qué significa "El SVG no se acepta: el atributo '<atributo>' contiene un enlace de script (javascript:)."? (400)**
+Un enlace del SVG empieza con `javascript:` (o `vbscript:`). Quítelo.
+
+**¿Qué significa "El SVG no se acepta: el atributo '<atributo>' apunta fuera del archivo (solo se permiten referencias internas #id)."? (400)**
+Un `<image>`, `<use>` o `<a>` apunta a otra dirección (`https://…`, otro archivo). Incruste la imagen como `data:image/png;base64,…` o
+use solo referencias a elementos del mismo SVG (`#id`).
+
+**¿Qué significa "El SVG no se acepta: una hoja de estilos importa o referencia contenido externo."? (400)**
+Un `<style>` o `style=""` usa `@import`, `url(https://…)` o `expression(…)`. Los SVG con fuentes web hacen esto: convierta los textos
+a trazos.
+
+**¿Qué significa "Ya hay un feriado en esa fecha."? (409)**
+`POST /tenant/holidays` con una fecha que ya tiene un feriado activo. No cambia el que existe; elimínelo primero si quiere
+cambiarlo. (Uno eliminado antes sí se puede volver a agregar.)
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**"Sin logo: se usa el de Teikem"** — esa ranura no tiene archivo.
+
+**"Logo guardado" / "Logo quitado"** — confirmación de subir/reemplazar o quitar un logo (se aplica de inmediato, sin Guardar cambios).
+
+### Preguntas frecuentes
+
+**¿Los logos se guardan con "Guardar cambios"?**
+No. Cada logo se sube o se quita al instante con sus botones; "Guardar cambios" es solo para los colores.
+
+**Subí solo el lockup para fondo claro y en el tema oscuro se ve igual.**
+Es a propósito: si falta una variante se usa la otra en los dos temas. Suba la invertida si el logo no se lee sobre fondo oscuro.
+
+**Subí el lockup pero la barra colapsada sigue mostrando el símbolo de Teikem.**
+La barra colapsada usa la marca cuadrada (`mark`); suba esa pieza. El lockup no se encoge para sustituirla.
+
+**Un usuario sin `admin.tenant` ve los logos pero no los puede cambiar.**
+Correcto: leer solo pide sesión (es la marca de la interfaz) y escribir pide `admin.tenant`.
+
+**¿Dónde queda el archivo del logo y qué ve la bitácora?**
+En la base de datos (tabla `TenantBrandLogo`). La bitácora de cambios (entidad `TENANT_LOGO`) registra quién y cuándo subió o quitó,
+y el tipo y el tamaño, pero nunca el archivo.

@@ -3345,7 +3345,6 @@
         "logoNone": "Sin logo: se usa el de Teikem",
         "logoPreview": "Vista previa de {name}",
         "logoFile": "Archivo de {name}",
-        "logoSaveError": "No se pudo guardar la marca",
         "slots": {
           "lockup": "Lockup (fondo claro)",
           "lockup-inverted": "Lockup (fondo oscuro)",

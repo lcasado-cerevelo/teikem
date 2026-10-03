@@ -106,7 +106,7 @@ en la FAQ "Región y formatos (2026-10)":
 | Mensaje | Cuándo | Dónde |
 |---|---|---|
 | "Escribe la fecha y el nombre del feriado" | falta la fecha o el nombre | Pantalla |
-| "Ya hay un feriado en esa fecha" | ya existe uno en esa misma fecha (el servidor lo reemplazaría en silencio) | Pantalla |
+| "Ya hay un feriado en esa fecha." | ya existe uno en esa misma fecha; lo responde el servidor (409, lote 19) y la pantalla lo muestra | Servidor, 409 |
 | "El nombre es obligatorio." | nombre vacío | Servidor, 400 |
 | "Tiene que haber al menos un día laborable" | apagar el último día | Pantalla (aviso) |
 
@@ -159,8 +159,9 @@ repite sola. Al terminar, el menú y el buscador muestran u ocultan las pantalla
 - Mientras edita, **toda la aplicación** se ve con el borrador; **Guardar cambios** lo deja en la compañía ("Marca guardada");
   **Descartar cambios** o salir de la pestaña vuelve a lo guardado. **Restaurar** vuelve al tema Teikem (hay que guardar).
 - Los colores de estado (verde, ámbar, rojo) no se cambian a propósito.
-- **Logo:** todavía no se pueden cargar logos por compañía (falta dónde guardar los archivos en el servidor); se usan los de
-  Teikem.
+- **Logo:** los cuatro logos de la compañía se suben, se ven y se quitan desde esta pestaña desde el lote 19 (ver
+  [F11](f11-marca-por-compania.md)); sin logo propio se usan los de Teikem. El servidor también repite las validaciones de
+  los colores.
 
 ## 8. Casos frecuentes
 

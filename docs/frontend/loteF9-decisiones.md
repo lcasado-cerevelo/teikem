@@ -89,13 +89,13 @@ libre, **F9**. No se tocó el backend (`src/`), `app-almacen/` ni el mock.
 
 ## Qué quedó fuera / pendiente de backend
 
-- **Validación de la marca en el servidor**: `PUT /tenant/settings` solo exige que `BrandingJson` sea JSON ≤ 200 KB; el contraste
-  WCAG y la separación de matiz se validan solo en la pantalla. Debe repetirse en el servidor (pendiente de backend).
-- **Logos por compañía** (lockup y marca cuadrada, fondo claro y oscuro): no hay dónde guardar los archivos (BrandingJson no
-  alcanza: 4 logos de hasta 512 KB); la pestaña lo explica y se usan los logos de Teikem. Pendiente de backend (almacenamiento
-  de archivos).
-- **Feriado duplicado**: `POST /tenant/holidays` con una fecha existente la reemplaza sin avisar; la pantalla lo evita con
-  "Ya hay un feriado en esa fecha". Un 409 en el servidor sería más seguro (pendiente de backend, opcional).
+- **Validación de la marca en el servidor** — **RESUELTO en el lote 19** (`docs/lote19-decisiones.md`): `BrandingRules` (C#) repite el
+  contraste WCAG, la separación de matiz, el tema, los campos y el tamaño, con vectores compartidos con la web
+  (`tests/shared/brand-vectors.json`); `PUT /tenant/settings` responde 400 con el mensaje exacto.
+- **Logos por compañía** (lockup y marca cuadrada, fondo claro y oscuro) — **RESUELTO en el lote 19**: tabla `TenantBrandLogo`,
+  `PUT/GET/DELETE /tenant/brand/logos/{slot}`, la pestaña Marca sube y quita, y la barra lateral usa el logo de la compañía.
+- **Feriado duplicado** — **RESUELTO en el lote 19**: `POST /tenant/holidays` con una fecha existente es 409 «Ya hay un feriado en
+  esa fecha.» y la pantalla de Calendario muestra el mensaje del servidor (se quitó el aviso propio de la pantalla).
 - **Conteo de recibos por almacén en una sola llamada** (hoy 2 consultas por almacén): un resumen en el API sería mejor con
   muchos almacenes.
 - **App del Zebra (`app-almacen/`)**: no se tocó (otra sesión).

@@ -92,6 +92,23 @@ separadores de números, la hora de 12/24, la zona y la moneda.** Nunca `Intl.Da
   compañía.
 - `createApiClient({ baseUrl, fetch })` solo para pruebas (cliente con la misma política sobre un `fetch` simulado).
 
+## Marca de la compañía: colores y logos (`src/kernel/ui`, lotes F8a/F9/19)
+- **Colores** (`brandTheme.ts`, `brandPreview.ts`, `TenantBrand`): `Tenant.BrandingJson` (`{ preset, useCustom, custom: { flow, money,
+  neutral } }`) sobrescribe las variables de `tokens.css` en `<html>`. Lógica pura: `BRAND_PRESETS` (13), `brandChecks`,
+  `parseBranding`, `serializeBranding` (solo las tres claves: el servidor rechaza campos desconocidos) y `validateBrandingJson(json)`,
+  espejo de `BrandingRules` (C#) con los mismos mensajes. **La paridad con el servidor se asegura con `tests/shared/brand-vectors.json`**
+  (lo leen `brandVectors.test.ts` y `BrandingRulesTests`): si cambia un número o un mensaje, cambia en las dos implementaciones y se
+  regenera ese archivo. Los colores de estado no se personalizan.
+- **Logos** (`brandLogos.ts`, `brandLogosApi.ts`): cuatro ranuras `LOGO_SLOTS` (`lockup`, `lockup-inverted`, `mark`, `mark-inverted`;
+  las `-inverted` son para fondo oscuro), SVG/PNG/JPG/WebP hasta `LOGO_MAX_BYTES` (512 KB). `GET /tenant/brand/logos` (lista) y
+  `.../{slot}` (archivo; exige sesión, así que no va directo en `<img src>`): `TenantBrand` baja cada archivo con el token y deja una
+  URL de objeto por ranura en un almacén (`setCompanyLogos`/`useCompanyLogos`). `BrandLockup` y `BrandMark` lo usan solos
+  (`pickLogoUrl(urls, 'lockup'|'mark', theme)`: la variante del tema o, si falta, la otra; sin ninguna, el logo de Teikem). Escritura
+  (`admin.tenant`): `useUploadBrandLogo()` (multipart, campo `file`) y `useRemoveBrandLogo()` en `features/system/tenantSettingsApi.ts`;
+  los 400/413/415 llegan como `ApiError` y la pestaña Marca los muestra junto a la ranura (`problemText`). En pruebas con jsdom,
+  `FormData` con archivos no se puede enviar por el `Request` de Node: sustitúyalo con `vi.stubGlobal('FormData', …)` (ver
+  `TenantSettingsPage.test.tsx`).
+
 ## Shell (`src/app`)
 - `AppShell`: barra lateral con los 7 grupos de la maqueta (`NAV_GROUPS` en `navigation.ts`, en este orden: `ops` Operación,
   `warehouse` Almacén, `money` Contabilidad, `catalog` Catálogo, `analytics` Análisis, `system` Sistema, `portal` Portal de

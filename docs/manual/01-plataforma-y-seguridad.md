@@ -780,7 +780,9 @@ Cómo se usa:
 - `GET /api/v1/tenant/settings`
 - `PUT /api/v1/tenant/settings` (campos parciales, ej. `{ "aal2WindowMinutes": 60 }`)
 - `GET /api/v1/tenant/holidays?year=2026`
-- `POST /api/v1/tenant/holidays` `{ "date": "2026-01-01", "name": "Año Nuevo", "isRecurring": true }`
+- `POST /api/v1/tenant/holidays` `{ "date": "2026-01-01", "name": "Año Nuevo", "isRecurring": true }` — una fecha que ya tiene un
+  feriado activo es **409** (`Ya hay un feriado en esa fecha.`, también en `errors.date`) y no pisa el existente; un feriado
+  quitado antes (`DELETE`) sí se puede volver a agregar en esa fecha (se reactiva con los datos nuevos).
 - `DELETE /api/v1/tenant/holidays/{id}`
 - `GET /api/v1/tenant/work-days?n=7` — últimos N días hábiles (sin fines de semana ni feriados), para
   tendencias/SLA
@@ -795,9 +797,9 @@ Validaciones:
 | `aal2WindowMinutes` | 5-240 | `Entre 5 y 240 minutos.` | 400 |
 | `sessionDays` | 1-365 | `Entre 1 y 365 días.` | 400 |
 | `deviceSessionDays` (Lote 8A: vida en días de la sesión de los aparatos de almacén; 30 por defecto; se lee en `GET /api/v1/tenant/settings` y se cambia en `PUT /api/v1/tenant/settings` con `admin.tenant`) | 1-365 | `Entre 1 y 365 días.` | 400 |
-| `brandingJson` | JSON válido | `BrandingJson no es JSON válido.` | 400 |
-| `brandingJson` | ≤ 200.000 caracteres | `BrandingJson demasiado grande (los logos van a blob storage).` | 400 |
+| `brandingJson` | las reglas de la marca (sección 11.2: tamaño, JSON, campos, colores, contraste, matiz) | los de la tabla de la sección 11.2 | 400 |
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |
+| Fecha de feriado ya registrada | — | `Ya hay un feriado en esa fecha.` | 409 |
 | Feriado inexistente | — | `Feriado '<id>' no encontrado.` | 404 |
 
 ### 11.1 Región y formatos de la compañía (2026-10)
@@ -895,6 +897,95 @@ Casos frecuentes:
 - *La compañía aparece como Personalizada*: algún campo difiere de su región; "Restaurar valores de la región" la devuelve.
 
 ---
+
+### 11.2 Marca por compañía: colores y logos (Lote 19)
+
+Qué hace: la compañía elige el **tema de color** de su interfaz (uno de 13 predefinidos o colores propios) y sube sus **logos**.
+Los colores se guardan en `Tenant.BrandingJson`; los cuatro logos, en la tabla `TenantBrandLogo` de la base. El servidor **valida
+la marca con las mismas reglas y los mismos números que la pantalla** (un tema inválido entrado por API dejaría la interfaz
+ilegible para toda la compañía) y valida el **contenido real** de cada logo.
+
+Quién puede: **ver** la marca y los logos, cualquier usuario con sesión (es la marca de la interfaz; no exige permiso ni módulo);
+**cambiarlos**, permiso **`admin.tenant`** (módulo núcleo, siempre encendido). Los cambios quedan en la bitácora de cambios
+(entidad `TENANT` para la marca y `TENANT_LOGO` para los logos, con quién, cuándo, tipo y tamaño; **nunca el archivo**).
+
+#### Colores (`brandingJson`)
+
+Forma: `{ "preset": "bosque", "useCustom": false, "custom": { "flow": "#1F6FE5", "money": "#FF6A1A", "neutral": "#2B3A5C" } }`.
+Los tres campos son opcionales (por defecto: tema `teikem`, sin colores propios); con `useCustom: true` mandan `custom.flow`
+(color de operación), `custom.money` (color de dinero) y `custom.neutral` (tono base, de donde salen fondos, paneles, líneas y
+texto; su saturación se acota a 0.45). Temas: `teikem`, `marino`, `acero`, `carretera`, `granate`, `vino`, `bosque`, `selva`,
+`oliva`, `turquesa`, `indigo`, `violeta`, `grafito`. Los colores de estado (verde, ámbar, rojo) **no** se personalizan. Un
+`brandingJson` vacío (`""`) quita la marca (vuelve la de Teikem).
+
+Se revisa en este orden y se informa **el primer fallo** (400, campo `brandingJson` en `errors`, el mensaje también en `title`):
+
+| Regla | Mensaje exacto |
+|---|---|
+| Más de 4096 caracteres | `La marca es demasiado grande (máximo 4096 caracteres); los logos se suben aparte.` |
+| No es JSON | `La marca no es un JSON válido.` |
+| La raíz no es un objeto (arreglo, texto, número, `null`) | `La marca debe ser un objeto JSON.` |
+| Campo que no es de la marca (`<campo>` o `custom.<campo>`) | `La marca trae un campo desconocido: '<campo>'.` |
+| Color de estado (`ok`, `warn`, `danger`, `info`, `status`, `statusColors`, en cualquier mayúscula) | `Los colores de estado (ok, warn, danger, info) no se pueden personalizar: '<campo>'.` |
+| Tipo equivocado (`preset` no es texto, `useCustom` no es verdadero/falso, `custom` no es objeto, un color no es texto) | `El campo '<campo>' tiene un tipo inválido.` |
+| Color que no es hexadecimal `#RGB` o `#RRGGBB` (el `#` es opcional; sin espacios) | `El color 'custom.<flow\|money\|neutral>' no es hexadecimal (use #RGB o #RRGGBB).` |
+| Tema predefinido que no existe (se distingue mayúscula) | `El tema predefinido '<id>' no existe.` |
+| Contraste insuficiente contra el panel del propio tema: texto ≥ 7:1; texto atenuado, color de operación y color de dinero ≥ 4.5:1; en modo oscuro y luego en claro | `El contraste <del texto\|del texto atenuado\|del color de operación\|del color de dinero> en modo <oscuro\|claro> es <r>:1; el mínimo es <m>:1.` |
+| Los dos acentos a menos de 40° de matiz | `Los colores de operación y de dinero son demasiado parecidos: <d>° de separación y el mínimo es 40°.` |
+
+Los 13 temas predefinidos pasan todas las comprobaciones. Con `useCustom: false` los colores de `custom` se revisan en su formato
+pero no entran en el contraste (manda el tema).
+
+#### Logos (`/api/v1/tenant/brand/logos`)
+
+Cuatro **ranuras**: `lockup` (lockup completo para fondo claro), `lockup-inverted` (para fondo oscuro), `mark` (marca cuadrada
+para fondo claro) y `mark-inverted`. La interfaz usa la variante invertida en el tema oscuro y la normal en el claro; si la
+compañía solo subió una de las dos, se usa en ambos temas; sin ninguna, el logo de Teikem. La marca cuadrada no sustituye al
+lockup (ni al revés): sin `mark`, la barra lateral colapsada muestra el símbolo de Teikem.
+
+- `GET /api/v1/tenant/brand/logos` — los logos que tiene la compañía (sin el archivo): `slot`, `contentType`, `sizeBytes`, `eTag`
+  (SHA-256 del archivo) y `updatedAtUtc`. Solo sesión.
+- `GET /api/v1/tenant/brand/logos/{slot}` — el archivo. Solo sesión (por eso la web lo baja con el token y lo muestra como
+  imagen). Cabeceras: `ETag` y `Last-Modified` (con `If-None-Match` responde **304**), `Cache-Control: private, no-cache`,
+  `X-Content-Type-Options: nosniff` y `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox`
+  (el archivo no ejecuta nada ni abierto directamente).
+- `PUT /api/v1/tenant/brand/logos/{slot}` — sube o reemplaza (`admin.tenant`). `multipart/form-data` con el archivo en el campo
+  `file`. Responde el logo guardado.
+- `DELETE /api/v1/tenant/brand/logos/{slot}` — quita el logo (`admin.tenant`; baja lógica, el binario se libera). 204.
+
+Formatos **SVG, PNG, JPG y WebP, hasta 512 KB (524.288 bytes)**. El tipo se decide por el **contenido** (cabecera y estructura),
+nunca por la extensión ni por el tipo que declare el navegador; si se declara una imagen de otro tipo, se rechaza.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Ranura que no existe | `Ranura de logo '<slot>' no encontrada.` | 404 |
+| Leer o quitar una ranura sin logo | `Logo '<slot>' no encontrado.` | 404 |
+| Sin archivo (campo `file` ausente o vacío) | `Seleccione un archivo de logo.` | 400 |
+| Más de 512 KB (se rechaza por el largo declarado, o mientras se lee si no lo declara, sin recibir el resto) | `El logo supera el tamaño máximo de 512 KB.` | 413 |
+| No es SVG, PNG, JPG ni WebP (texto, PDF, GIF, HTML, UTF-16…) | `Formato no admitido: el logo debe ser SVG, PNG, JPG o WebP.` | 415 |
+| Declara un tipo de imagen distinto del real | `El contenido del archivo (<real>) no coincide con el tipo declarado (<declarado>).` | 415 |
+| La petición no es `multipart/form-data` | (sin cuerpo; lo rechaza el enrutamiento) | 415 |
+| PNG, JPG o WebP truncado o dañado | `El archivo está dañado o incompleto y no se puede usar como logo.` | 400 |
+| Subida multipart rota o cortada | `La subida del logo llegó incompleta o mal formada. Vuelva a intentarlo.` | 400 |
+| SVG que no es XML válido | `El SVG no es un XML válido.` | 400 |
+| SVG con `DOCTYPE` o entidades | `El SVG no se acepta: declara DOCTYPE o entidades.` | 400 |
+| SVG con un elemento activo: `script`, `foreignObject`, `iframe`, `frame`, `frameset`, `object`, `embed`, `applet`, `link`, `meta`, `base`, `audio`, `video`, `canvas`, `set`, `animate` | `El SVG no se acepta: contiene el elemento <nombre>, que puede ejecutar código o cargar contenido externo.` | 400 |
+| SVG con un atributo `on…` (`onload`, `onclick`…) | `El SVG no se acepta: el atributo '<atributo>' ejecuta código.` | 400 |
+| SVG con `javascript:` o `vbscript:` en un atributo (aunque lo disfracen con espacios o saltos) | `El SVG no se acepta: el atributo '<atributo>' contiene un enlace de script (javascript:).` | 400 |
+| SVG cuyo `href`/`src` apunta fuera del archivo (solo se permiten `#id` y `data:image/png\|jpeg\|webp\|gif;base64,…`) | `El SVG no se acepta: el atributo '<atributo>' apunta fuera del archivo (solo se permiten referencias internas #id).` | 400 |
+| SVG con una hoja de estilos (`<style>` o `style=""`) que importa o referencia contenido externo (`@import`, `url()` que no sea `#id`/imagen incrustada, `expression()`) | `El SVG no se acepta: una hoja de estilos importa o referencia contenido externo.` | 400 |
+
+Sin permiso, `PUT` y `DELETE` responden 403; sin sesión, todo responde 401. Cada compañía solo ve, lee y quita **sus** logos (el
+`TenantId` sale de la sesión; los de otra compañía responden como si no existieran).
+
+Casos frecuentes:
+- **Subí un PNG y dice que el formato no se admite.** El contenido no es un PNG (por ejemplo, un archivo renombrado, o un GIF/WebP
+  mal convertido). Ábralo y guárdelo de nuevo como PNG.
+- **El SVG de mi diseñador no se acepta.** Los SVG de Illustrator, Figma o Inkscape casi nunca traen contenido activo; el mensaje
+  dice cuál elemento o atributo lo causó (por ejemplo un `<image>` con enlace externo, o un `<style>` con `@import` de fuentes).
+  Incruste la imagen (`data:image/png;base64`) o convierta los textos a trazos.
+- **Cambié el logo y otro usuario ve el anterior.** Cada pantalla revisa los logos al abrirse y al volver a la ventana; recargar
+  la página lo trae de inmediato.
 
 ## 12. Administración de plataforma (solo administradores de Teikem)
 
