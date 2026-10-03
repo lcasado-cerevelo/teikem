@@ -55,3 +55,6 @@ Fecha: 2026-10-03. Respuestas de Luis a las decisiones que fueron quedando pendi
   la fila pasa a `rejected` con el mensaje y **no se reintenta para siempre**. Pero una fila de captura en lote rechazada pierde **todo
   el lote** (todo o nada): el operario debe volver a capturar las líneas sin la corregida. Pendiente para el agente de la app: que la
   pantalla de rechazados explique que la línea ya la corrigió el supervisor y, tras el 409, refresque el conteo.
+  **Resuelto (Lote A6 de la app, [loteA6-decisiones.md](mobile/loteA6-decisiones.md))**: Sincronización muestra la explicación con los
+  renglones y SKU, "Actualizar el conteo" (solo al tocarlo) y "Descartar este envío". La app no reabre un conteo ya enviado: queda como
+  pendiente en ese documento.

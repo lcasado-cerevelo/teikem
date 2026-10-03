@@ -4424,7 +4424,8 @@ Alguien con solo `warehouse.count.capture` (por ejemplo el operario que contó l
 corrigió. La corrección no se tocó. Qué hacer: pida al supervisor (quien corrigió, o alguien con `warehouse.count`) que la vuelva a
 corregir desde la web. En la app, la operación queda marcada "rechazada" con este mensaje y no se reintenta sola. En la captura en
 lote el mensaje agrega `Renglón(es) del lote: n (SKU)` y `No se guardó nada.`: ningún renglón del lote se guardó; envíe de nuevo el
-lote sin esa línea. Reenviar el mismo valor que ya tiene la línea no da error.
+lote sin esa línea. Reenviar el mismo valor que ya tiene la línea no da error. En la app de almacén (Lote A6), Sincronización lo
+explica en grande y ofrece "Actualizar el conteo": ver la sección **Lote A6** al final de esta página.
 
 ## Lote A5 — App de almacén: al menos una cantidad al contar por producto; en Despacho, la cantidad primero
 
@@ -4462,3 +4463,70 @@ hace lo mismo que escanear.
 **Escaneé la posición, salió el aviso de la cantidad y la posición ya no aparece. ¿Tengo que escanearla otra vez?**
 Sí: la posición no se guarda hasta que la línea se agrega, para que nunca quede una línea a medias. Escriba la cantidad y vuelva a
 escanearla.
+
+## Lote A6 — App de almacén: captura de conteo rechazada porque el supervisor ya corrigió una línea
+
+Pendiente del cambio 2 de las decisiones del dueño del 2026-10-03 (`docs/decisiones-del-dueno-2026-10-03.md`). Detalle en el
+[capítulo 9 §9.1](09-app-almacen.md) y en `docs/mobile/loteA6-decisiones.md`.
+
+### Mensajes nuevos
+
+**"La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: n (SKU). No se guardó nada." (409, en la app)**
+Lo devuelve el servidor a la captura en lote que manda la app al terminar un conteo (`PUT /api/v1/cycle-counts/{id}/lines/batch`). En
+la app, **Sincronización → Con error** muestra en su lugar la tarjeta roja `El supervisor ya corrigió una línea de este conteo.` con
+`No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.` y los renglones (`• Renglón 2: SKU-1
+(mandaste 6)`). Qué hacer: `Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al
+supervisor que lo revise).` La app no reabre un conteo ya enviado: avise al supervisor; él lo revisa en **Conteo cíclico** de la web
+(ve qué capturó usted y qué corrigió). Antes, toque **Actualizar el conteo** para ver cómo quedó. Cuando el supervisor lo resuelva,
+toque **Descartar este envío** (y descarte también el cierre del mismo conteo si quedó con error).
+
+**"El supervisor ya corrigió una línea de este conteo."** (app, sin código HTTP)
+Es el título de esa tarjeta: ver el mensaje anterior.
+
+**"El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato."** (app)
+Detrás del lote rechazado la cola mandó el cierre del conteo, y el servidor también lo rechazó (422 `Faltan {n} línea(s)
+por contar.` si el conteo seguía Pendiente, porque las cantidades del lote no se guardaron, o `El conteo ya se terminó; puede corregir la
+captura o reconciliarlo.` si ya estaba Contado). El cierre no cambió nada en el servidor. Qué hacer: lo mismo que arriba;
+la fila del cierre se descarta aparte con su propio "Descartar".
+
+**"Sin señal: no se pudo actualizar el conteo. Inténtalo de nuevo cuando haya conexión."** (app)
+Tocó **Actualizar el conteo** sin señal (o el servidor no respondió). No cambió nada; vuelva a tocarlo cuando haya conexión.
+
+**"El conteo {número} sigue abierto (Pendiente)."** (app)
+Resultado de **Actualizar el conteo**: el conteo todavía se puede capturar. Debajo se ve el resumen (`{total} líneas: {c} corregidas
+por el supervisor, {s} sin contar.`) y cada línea con `Contado: n`, `Sin contar` o `Corregida por el supervisor (nombre) · Contado: n`.
+Las líneas corregidas no se vuelven a capturar; pida al supervisor que capture o revise las demás.
+
+**"El conteo {número} ya se terminó de contar (Contado): pide al supervisor que lo revise."** (app)
+El conteo ya está Contado (alguien lo terminó). Desde la app no hay nada más que hacer: el supervisor lo revisa y lo reconcilia en la web.
+
+**"El conteo {número} ya fue reconciliado: no admite más capturas. Puedes descartar este envío."** (app)
+El conteo ya se cerró y asentó; lo que mandó este aparato ya no puede entrar. Descarte el envío. Si cree que faltó algo, avise al
+supervisor para que abra un conteo nuevo.
+
+**"El conteo ya no existe (se eliminó). Puedes descartar este envío."** (app; el servidor respondió 404 `Conteo no encontrado.`)
+Alguien eliminó el conteo (o no es de esta compañía). Descarte el envío.
+
+**"No se pudo saber de qué conteo es este envío; pide al supervisor que lo revise."** (app)
+La fila de la cola no tiene la ruta esperada (no debería pasar). No hay botón de actualizar; pida al supervisor que lo revise.
+
+**"Lo que dijo el servidor:"** (app)
+Si la lista de renglones del mensaje no tiene el formato esperado (por ejemplo, un SKU con paréntesis), la tarjeta no intenta
+interpretarla y muestra el mensaje del servidor tal cual.
+
+### Preguntas frecuentes
+
+**¿Se perdió lo que conté?**
+De ese envío no se guardó nada en el servidor (todo o nada). Lo que contó sigue en la tarjeta (los renglones bloqueados con lo que
+mandó) hasta que la descarte. Las líneas que el supervisor corrigió ya tienen su valor; las demás hay que capturarlas de nuevo.
+
+**¿Por qué no se guardaron al menos las líneas que el supervisor no corrigió?**
+Porque la captura en lote es todo o nada (decisión del dueño, cambio 2). Guardar las libres y rechazar solo la corregida sería un cambio
+del servidor (`CaptureBatchAsync`), anotado como decisión pendiente.
+
+**¿"Reintentar" sirve?**
+Vuelve a mandar exactamente el mismo lote: falla igual mientras la corrección del supervisor siga ahí. Solo funcionaría si el supervisor
+quitó su corrección o la dejó con el mismo número que usted mandó.
+
+**¿"Actualizar el conteo" me muestra las cantidades esperadas?**
+No. Solo lo contado vigente y quién corrigió, nunca lo que el sistema esperaba (igual que el conteo a ciegas).

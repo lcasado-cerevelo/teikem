@@ -26,6 +26,10 @@ Lote A5 (2026-10-03, `docs/mobile/loteA5-decisiones.md`, decisiones del dueño 4
 menos una posición con un número escrito (0 vale; sección 7.1, paso 5); en **Despacho**, la cantidad va primero: escanear la posición
 sin cantidad no agrega la línea y avisa (sección 6, paso 2).
 
+Lote A6 (2026-10-03, `docs/mobile/loteA6-decisiones.md`, pendiente del cambio 2 de las decisiones del dueño): en **Sincronización**, una
+captura de conteo que el servidor rechazó porque **el supervisor ya corrigió una línea** (409) se explica aparte, en grande, con los
+renglones y SKU afectados, qué hacer y el botón **Actualizar el conteo** (sección 9.1).
+
 ---
 
 ## 1. Cómo funciona sin señal
@@ -471,6 +475,7 @@ Cómo se usa:
 | Cancelar sin `warehouse.count` (solo conteo a ciegas) | El error de permiso del servidor (403) | API |
 | Cancelar sin señal | `No se pudo cancelar (necesita señal); se puede intentar de nuevo.` | Local, tras error de red |
 | Terminar sin señal | Se guarda igual, se manda cuando haya conexión (dos filas en la cola) | Cola de salida |
+| Al enviarse, el servidor rechaza la captura porque el supervisor ya corrigió una línea (409, Lote A6) | En Sincronización, tarjeta `El supervisor ya corrigió una línea de este conteo.` con la explicación y "Actualizar el conteo" (sección 9.1). No se guardó nada de ese envío | API, vía cola |
 
 ### Estatus y casos frecuentes
 
@@ -545,6 +550,53 @@ almacén por defecto, el tema y el **modo de recepción** del almacén del apara
 Las posiciones sirven para validar sin señal la posición destino del recibo directo: la primera vez baja la lista completa (en Advance Depot, unas 3.886 posiciones, en 8 páginas) y después solo los cambios;
 las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
 
+### 9.1 Captura de conteo rechazada: el supervisor ya corrigió una línea (Lote A6)
+
+Qué pasa: al terminar un conteo, la app encola **el lote capturado** (`countBatch`, `PUT /api/v1/cycle-counts/{id}/lines/batch`) y
+**el cierre** (`countFinish`). Si mientras tanto un supervisor **corrigió** en la web una línea que el operario vuelve a mandar con otro
+número, el servidor rechaza **todo el lote** con **409** `La línea ya fue corregida por el supervisor; no se puede volver a capturar.
+Renglón(es) del lote: n (SKU). No se guardó nada.` (capítulo [06](06-inventario-y-almacen.md), protección de la corrección). La fila
+pasa a "Con error" y **no se reintenta sola**. Normalmente el cierre del mismo conteo también queda con error justo debajo (422
+`Faltan {n} línea(s) por contar.` si el conteo seguía Pendiente, o `El conteo ya se terminó; puede corregir la captura o reconciliarlo.` si
+ya estaba Contado), porque las cantidades del lote no se guardaron.
+
+Quién la ve: cualquiera que entró con PIN en ese aparato (Sincronización no depende de permisos). "Actualizar el conteo" consulta
+`GET /api/v1/cycle-counts/{id}` con el permiso de quien está dentro (`warehouse.count.capture` o `warehouse.count`, módulo
+**WMS_LOTSERIAL**).
+
+Qué muestra la tarjeta (en lugar de la fila corta de siempre):
+
+| Parte | Texto exacto (es) |
+|---|---|
+| Aviso rojo grande | `El supervisor ya corrigió una línea de este conteo.` |
+| Debajo | `No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.` |
+| Renglones (si el mensaje del servidor trae la lista en el formato esperado) | `Líneas que ya corrigió el supervisor:` y una por renglón: `• Renglón {n}: {SKU} (mandaste {cantidad})` (la cantidad es la que este aparato mandó en ese renglón) |
+| Si la lista no se puede leer con seguridad (por ejemplo un SKU con paréntesis) | `Lo que dijo el servidor:` y el mensaje tal cual |
+| Qué hacer | `Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).` |
+| Aclaración | `Esta app no reabre un conteo ya enviado: avisa al supervisor; él lo revisa en Conteo cíclico de la web. Toca «Actualizar el conteo» para ver cómo quedó.` |
+| Si el cierre del mismo conteo también tiene error | `El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato.` |
+| Si no se reconoce de qué conteo es | `No se pudo saber de qué conteo es este envío; pide al supervisor que lo revise.` (sin botón de actualizar) |
+
+Botones: **Actualizar el conteo** (nunca se ejecuta solo), **Reintentar: countBatch** (vuelve a mandar el mismo lote; falla igual
+mientras la corrección siga ahí) y **Descartar este envío** (borra la fila del aparato sin mandarla; la fila del cierre se descarta
+aparte con su propio "Descartar").
+
+Resultado de **Actualizar el conteo**:
+
+| Caso | Texto exacto (es) |
+|---|---|
+| Sigue abierto (Pendiente) | `El conteo {número} sigue abierto (Pendiente).` + `{total} líneas: {c} corregidas por el supervisor, {s} sin contar.` + la lista de líneas |
+| Ya terminado (Contado) | `El conteo {número} ya se terminó de contar (Contado): pide al supervisor que lo revise.` + resumen y líneas |
+| Reconciliado | `El conteo {número} ya fue reconciliado: no admite más capturas. Puedes descartar este envío.` |
+| Ya no existe (404 o eliminado) | `El conteo ya no existe (se eliminó). Puedes descartar este envío.` |
+| Sin señal | `Sin señal: no se pudo actualizar el conteo. Inténtalo de nuevo cuando haya conexión.` |
+| Otro error del servidor (403, 5xx…) | El mensaje del servidor tal cual |
+
+Cada línea dice `{SKU} · {posición}` (y el lote si lo lleva) y su estado: `Contado: {n}`, `Sin contar`, o `Corregida por el
+supervisor ({nombre}) · Contado: {n}`. **Nunca muestra la cantidad esperada** (lo que el sistema tenía), aunque quien está dentro tenga
+`warehouse.count`: solo lo contado vigente y quién lo corrigió. Con más de 30 líneas se ven las primeras 30 y `… y {n} líneas más
+(míralas en la web).`
+
 ### Casos frecuentes
 
 Una operación queda "con error" cuando el servidor la rechazó por una razón que reintentarla igual no arregla
@@ -582,4 +634,5 @@ Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN
 los casos propios de la app agregados en este lote (qué pasa si se pierde la señal a mitad de un recibo, por qué
 Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización), y la sección **Lote A3** (lector del
 Zebra, teclado, formatos de la compañía en la app), la sección **Lote A4** (contar por producto) y la sección **Lote A5** (al menos
-una cantidad al contar por producto; en Despacho, la cantidad antes de la posición).
+una cantidad al contar por producto; en Despacho, la cantidad antes de la posición) y la sección **Lote A6** (captura de conteo rechazada
+porque el supervisor ya corrigió una línea).

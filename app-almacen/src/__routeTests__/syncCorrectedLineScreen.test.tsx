@@ -39,7 +39,7 @@ describe('Sincronización — captura de conteo rechazada por línea corregida',
       (c) => (c.method === 'PUT' && c.path === '/api/v1/cycle-counts/300/lines/batch' ? json(409, { title: LOCKED, status: 409, code: 'conflict' }) : null),
       (c) =>
         c.method === 'POST' && c.path === '/api/v1/cycle-counts/300/finish'
-          ? json(422, { title: 'El conteo tiene 1 línea(s) sin contar.', status: 422, code: 'status_rule' })
+          ? json(422, { title: 'Faltan 1 línea(s) por contar.', status: 422, code: 'status_rule' })
           : null,
       (c) => {
         if (c.method !== 'GET' || c.path !== '/api/v1/cycle-counts/300') return null
@@ -76,7 +76,7 @@ describe('Sincronización — captura de conteo rechazada por línea corregida',
     ).toBeTruthy()
     expect(screen.getByText('El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato.')).toBeTruthy()
     // el cierre sigue en la lista de siempre con su mensaje; el 409 no se repite ahí
-    expect(screen.getByText('El conteo tiene 1 línea(s) sin contar.')).toBeTruthy()
+    expect(screen.getByText('Faltan 1 línea(s) por contar.')).toBeTruthy()
     expect(screen.queryByText(LOCKED)).toBeNull()
 
     // nada se pidió solo
