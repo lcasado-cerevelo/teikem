@@ -10,11 +10,18 @@ import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
-import { colors, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
-import { buildPickLine, canAddPickLine, type ConsigneeChoice, newPickLineDraft, type PickLineDraft } from '../features/dispatch/dispatchLogic'
+import {
+  buildPickLine,
+  canAddPickLine,
+  type ConsigneeChoice,
+  DISPATCH_ADD_ON_BIN_SCAN,
+  newPickLineDraft,
+  type PickLineDraft,
+} from '../features/dispatch/dispatchLogic'
 
 type Step = { name: 'scan' } | { name: 'consignee' } | { name: 'error'; message: string }
 
@@ -34,6 +41,8 @@ export default function DispatchScreen() {
   const [consignees, setConsignees] = useState<ConsigneeChoice[] | null>(null)
   const [pieces, setPieces] = useState('1')
   const [busy, setBusy] = useState(false)
+  // aviso verde de la última línea agregada (se queda hasta la siguiente lectura)
+  const [notice, setNotice] = useState<string | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,6 +58,7 @@ export default function DispatchScreen() {
   }
 
   function scanProduct(code: string) {
+    setNotice(null)
     const product = findProductByCode(code)
     if (!product) {
       setScanError(t('dispatch.productNotFound'))
@@ -72,12 +82,29 @@ export default function DispatchScreen() {
     refresh()
   }
 
-  function addCurrentLine() {
-    if (!draft || !openPick || !canAddPickLine(draft)) return
-    addLocalPickLine(openPick.id, buildPickLine(draft))
+  function addLine(line: PickLineDraft) {
+    if (!openPick || !canAddPickLine(line)) return
+    const built = buildPickLine(line)
+    addLocalPickLine(openPick.id, built)
     setDraft(null)
+    setNotice(t('dispatch.lineAdded', { qty: built.quantity, sku: line.sku, bin: built.fromBinCode }))
     vibrateOk()
     refresh()
+  }
+
+  function addCurrentLine() {
+    if (draft) addLine(draft)
+  }
+
+  /** Posición de donde sale: con la cantidad ya válida, la lectura agrega la línea (DISPATCH_ADD_ON_BIN_SCAN). */
+  function scanFromBin(code: string) {
+    if (!draft) return
+    const next = { ...draft, fromBinCode: code }
+    if (DISPATCH_ADD_ON_BIN_SCAN && canAddPickLine(next)) {
+      addLine(next)
+      return
+    }
+    setDraft(next)
   }
 
   function cancelDispatch() {
@@ -157,7 +184,7 @@ export default function DispatchScreen() {
             <ScanField
               label={t('dispatch.fromBinLabel')}
               help={t('dispatch.fromBinHelp')}
-              onSubmit={(code) => setDraft((d) => (d ? { ...d, fromBinCode: code } : d))}
+              onSubmit={scanFromBin}
             />
             {draft.fromBinCode ? <Text style={styles.help}>{draft.fromBinCode}</Text> : null}
             <View style={styles.row}>
@@ -169,7 +196,7 @@ export default function DispatchScreen() {
           <>
             {/* Sin despacho abierto todavía (draft es null aquí): nada que perder, "Volver" sale directo a Inicio.
                 2026-10-01 (Luis): abajo, pegado al borde inferior (`marginTop: auto`). */}
-            <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
+            <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
             <View style={styles.bottom}>
               <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
             </View>
@@ -207,7 +234,7 @@ export default function DispatchScreen() {
   return (
     <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{openPick.clientName}</Text>
-      <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} onSubmit={scanProduct} />
+      <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
       <Text style={styles.label}>{t('dispatch.linesTitle')}</Text>
       <LineList
         items={openPick.lineRows.map((l) => ({ id: l.id, title: t('dispatch.lineQty', { qty: l.quantity, sku: l.sku }), subtitle: l.fromBinCode }))}
@@ -228,10 +255,10 @@ export default function DispatchScreen() {
 
 const styles = StyleSheet.create({
   fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
-  title: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  label: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  help: { color: colors.muted, fontSize: 13 },
-  error: { color: colors.error, fontSize: 15 },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  help: { color: colors.muted, fontSize: fontSize.message },
+  error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },

@@ -115,6 +115,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.panelAlt,
   },
-  help: { color: colors.muted, fontSize: 13 },
-  error: { color: colors.error, fontSize: 14 },
+  help: { color: colors.muted, fontSize: 16 },
+  error: { color: colors.error, fontSize: 16 },
 })

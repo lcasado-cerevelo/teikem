@@ -4,6 +4,14 @@
 // verificarla contra el servidor todavía (no hay una tabla local de posiciones, docs/lote8A-app-decisiones.md). Se
 // resuelve a su id real recién al empacar (dispatchApi.ts), que de todas formas ya necesita señal para elegir el
 // consignatario.
+/**
+ * docs/mobile/mejoras-ux-zebra.md §2 ("escanear = aceptar", sin un "Continuar" tras la lectura): escanear la posición de
+ * donde sale el producto AGREGA la línea si la cantidad ya es válida (la cantidad se escribe antes, arriba; es el paso
+ * manual). Con la cantidad vacía o inválida solo guarda la posición y se agrega con el botón, como antes.
+ * Decisión para el dueño (docs/mobile/loteA3-decisiones.md): con `false` vuelve al flujo anterior (siempre "Agregar").
+ */
+export const DISPATCH_ADD_ON_BIN_SCAN = true
+
 export interface PickLine {
   productPublicId: string
   sku: string

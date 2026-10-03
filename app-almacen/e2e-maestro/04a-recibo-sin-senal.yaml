@@ -20,7 +20,11 @@ appId: com.teikem.almacen
 - tapOn: "Agregar"
 
 - assertVisible: "Líneas capturadas"
-- hideKeyboard
+# Lote A3 (mejoras del Zebra): el campo de escaneo ya no abre el teclado en pantalla al enfocarse, así que no hay
+# teclado que cerrar (hideKeyboard en Android manda "Atrás" y sacaría de la pantalla). Si el botón queda abajo, se busca.
+- scrollUntilVisible:
+    element:
+      text: "Confirmar recibo"
 - tapOn: "Confirmar recibo"
 
 # Sin señal: vuelve a Inicio igual (se guardó local), pero el estado de sincronización muestra lo pendiente. Maestro

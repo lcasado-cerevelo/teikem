@@ -1,5 +1,5 @@
 # Flujo Maestro: completar un despacho de punta a punta (recolectar y empacar).
-# Home → Despacho → escanear producto → cantidad (default) → escanear posición → Agregar → Empacar →
+# Home → Despacho → escanear producto → cantidad (default) → escanear posición (agrega la línea) → Empacar →
 # elegir consignatario → Confirmar despacho → Home.
 # Corre después de 01-registrar-y-entrar.yaml. Variable -e E2E_CONSIGNEE_LABEL (la escribe
 # scripts/e2e-mobile-fixtures.sh: "{nombre de la ubicación} · {ciudad}", igual que dispatchApi.ts la arma).
@@ -20,12 +20,15 @@ appId: com.teikem.almacen
 - assertVisible: "Escanea de qué posición sale"
 - inputText: "A01-R01-N1-P01"
 - pressKey: Enter
-- tapOn: "Agregar"
+# Lote A3: con la cantidad ya válida, la lectura de la posición agrega la línea sola (sin "Agregar").
 
-# De vuelta en la recolección, con la línea capturada. El ScanField de producto se reenfoca (listo para la
-# siguiente línea) y el teclado tapa Empacar/Cancelar más abajo; cerrarlo antes de buscarlos.
+# De vuelta en la recolección, con la línea capturada y el aviso verde "Agregado: …".
 - assertVisible: "Líneas recolectadas"
-- hideKeyboard
+# Lote A3 (mejoras del Zebra): el campo de escaneo ya no abre el teclado en pantalla al enfocarse, así que no hay
+# teclado que cerrar (hideKeyboard en Android manda "Atrás" y sacaría de la pantalla). Si el botón queda abajo, se busca.
+- scrollUntilVisible:
+    element:
+      text: "Empacar"
 - tapOn: "Empacar"
 
 # Resuelve las posiciones y busca los consignatarios (llamadas en línea) antes de mostrar la lista.

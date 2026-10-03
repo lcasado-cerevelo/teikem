@@ -10,8 +10,8 @@ import { useT } from '../kernel/i18n/useT'
 import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
-import { ScanField } from '../kernel/ui/ScanField'
-import { colors, spacing } from '../kernel/ui/theme'
+import { ScanField, type ScanPrefill } from '../kernel/ui/ScanField'
+import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { cancelCountOnline, enqueueFinishCount, fetchExpectedLines, startCountOnline } from '../features/count/countApi'
 import { matchExpectedLine, parseQty, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
@@ -47,6 +47,9 @@ export default function CountScreen() {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [edit, setEdit] = useState<Edit | null>(null)
   const [retryTick, setRetryTick] = useState(0)
+  // docs/mobile/mejoras-ux-zebra.md §3: tocar un producto de "Lo que se espera aquí" lo pone en el campo del producto
+  // (sin enviarlo: se confirma con Aceptar). Se limpia al enviar, para que no vuelva a aparecer al regresar a este paso.
+  const [prefill, setPrefill] = useState<ScanPrefill | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -103,6 +106,7 @@ export default function CountScreen() {
   }
 
   function scanProduct(code: string) {
+    setPrefill(null)
     if (!openCount || expectedLines === null) return
     const product = findProductByCode(code)
     if (!product) {
@@ -274,7 +278,7 @@ export default function CountScreen() {
     <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
-      <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} />
+      <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} />
 
       {/* lo contado y los botones van justo debajo del escaneo (pedido del dueño): con muchas líneas esperadas quedaban
           al final de la lista y había que desplazarse para terminar o cancelar */}
@@ -303,10 +307,18 @@ export default function CountScreen() {
       {remaining.length === 0 ? (
         <Text style={styles.help}>{t('count.emptyExpected')}</Text>
       ) : (
-        <LineList
-          items={remaining.map((l) => ({ id: l.lineId, title: l.productName, subtitle: l.sku }))}
-          removeLabel={t('common.remove')}
-        />
+        <>
+          <Text style={styles.help}>{t('count.pickHint')}</Text>
+          <LineList
+            items={remaining.map((l) => ({ id: l.lineId, title: l.productName, subtitle: l.sku }))}
+            removeLabel={t('common.remove')}
+            onPressItem={(id) => {
+              const line = remaining.find((l) => l.lineId === Number(id))
+              if (line) setPrefill((p) => ({ value: line.sku, seq: (p?.seq ?? 0) + 1 }))
+            }}
+            pressLabel={(item) => t('count.useProduct', { sku: item.subtitle ?? item.title })}
+          />
+        </>
       )}
     </ScrollView>
   )
@@ -314,10 +326,10 @@ export default function CountScreen() {
 
 const styles = StyleSheet.create({
   fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
-  title: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  label: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  help: { color: colors.muted, fontSize: 13 },
-  error: { color: colors.error, fontSize: 15 },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  help: { color: colors.muted, fontSize: fontSize.message },
+  error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },
   input: {

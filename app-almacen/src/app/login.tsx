@@ -146,7 +146,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.lg },
   title: { color: colors.text, fontSize: 24, fontWeight: '700' },
-  subtitle: { color: colors.muted, fontSize: 15, textAlign: 'center' },
+  subtitle: { color: colors.muted, fontSize: 16, textAlign: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   list: { gap: spacing.sm },
   userRow: {
@@ -163,5 +163,5 @@ const styles = StyleSheet.create({
   userName: { color: colors.text, fontSize: 18, fontWeight: '600' },
   pinArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
   pinActions: { flexDirection: 'row', gap: spacing.md },
-  error: { color: colors.error, fontSize: 14, textAlign: 'center' },
+  error: { color: colors.error, fontSize: 16, textAlign: 'center' },
 })
