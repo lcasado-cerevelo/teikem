@@ -182,6 +182,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 9. [F13 — Nuevo conteo "Por producto" desde la web](frontend/f13-nuevo-conteo-por-producto.md): las dos pestañas del modal "Nuevo
    conteo" (Por posiciones / Por producto), cómo crear el conteo de un producto en una sola pantalla, el 400 de un producto sin
    existencia junto al selector y adónde va el usuario al crearlo. Capturas `f13-*`.
+10. [F14 — Códigos de barras para el conteo](frontend/f14-codigos-de-barras.md): los reportes **Códigos de barras de productos**
+   (Productos e inventario) y **de posiciones** (Posiciones y la ficha del almacén): un código Code 128 por elemento con el SKU o el
+   código exacto, en rejilla de 3/2/1 columnas, agrupados por categoría o por el primer número del código, con lo filtrado de la
+   pantalla; sus avisos ("no cabe", omitidos, truncado) y cómo imprimirlos para que el lector los lea. Capturas `f14-*` y un PDF de ejemplo.
 
 ## Preguntas frecuentes
 

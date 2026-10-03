@@ -4530,3 +4530,55 @@ quitó su corrección o la dejó con el mismo número que usted mandó.
 
 **¿"Actualizar el conteo" me muestra las cantidades esperadas?**
 No. Solo lo contado vigente y quién corrigió, nunca lo que el sistema esperaba (igual que el conteo a ciegas).
+
+## Lote F14 — Web: códigos de barras de productos y de posiciones para el conteo
+
+Pantalla: [F14 — Códigos de barras para el conteo](frontend/f14-codigos-de-barras.md). Los reportes se arman en el navegador: no hay
+mensajes nuevos del servidor (los de lectura de productos y posiciones son los de siempre).
+
+### Avisos que se ven en el reporte o en la pantalla (sin código HTTP)
+
+**"No se pudo generar el reporte. Intente de nuevo."** (toast)
+Falló la lectura del listado o el armado del PDF. Intente de nuevo; si se repite, avise a soporte con la hora y los filtros usados.
+
+**"El reporte incluye solo los primeros {n} productos (límite de lectura). Afine los filtros para ver el resto."** / **"…las primeras {n} posiciones…"**
+El filtro devuelve más de 10 000 elementos (el mismo tope que Exportar y el Reporte de inventario). Imprima por partes: por categoría,
+zona, pasillo o texto.
+
+**"Se usaron {n} columnas porque hay códigos largos que no caben más angostos."** / **"Se usó una sola columna…"**
+Algún código no cabe en 3 (o 2) columnas sin bajar de 0.25 mm por barra fina. Es informativo; para tener 3 columnas, deje fuera los
+códigos largos con los filtros.
+
+**"No caben como código de barras legible en el ancho de la hoja ({n}); salen en la lista sin código: …"** y el recuadro **"No cabe: demasiado largo para un código legible"**
+El valor es tan largo que ni a todo el ancho de la hoja se imprime legible. Ese elemento sale en su grupo pero sin código: teclee el
+valor a mano en el lector.
+
+**"Omitidos porque tienen caracteres que el código de barras (Code 128) no admite ({n}): VALOR (no admite: É)"**
+El valor tiene acentos, ñ, tabuladores u otros caracteres fuera de ASCII imprimible (los que no se ven se escriben como `U+0009`).
+No sale en el reporte; teclee el valor a mano o cambie el código de la posición.
+
+**"Hay valores sin código de barras (no caben u omitidos): vea los avisos al final del reporte."**
+Remite a los dos avisos anteriores, que van en la última página.
+
+**"Ningún producto cumple los filtros." / "Ninguna posición cumple los filtros."**
+El filtro de la pantalla no deja nada; cambie los filtros.
+
+### Preguntas frecuentes
+
+**¿Qué lleva el código de barras de un producto: su código de barras o su SKU?**
+El **SKU exacto**. La app del lector busca el producto por código de barras o por SKU, y el SKU es único y siempre existe.
+
+**¿Por qué el reporte trae productos que no tienen existencia o están inactivos?**
+Porque el reporte es exactamente lo que filtra la tabla. Use los indicadores del río (p. ej. *Unidades totales* = activos con existencia)
+o los filtros para acotarlo.
+
+**¿Cómo se agrupan las posiciones?**
+Por el primer número del código (la primera secuencia de dígitos), comparado como número: 2 antes que 10, y 01 y 1 en el mismo grupo.
+Los códigos sin dígitos van a "Otras posiciones" al final.
+
+**¿Cuántos caben por hoja?**
+Con códigos cortos, unas 24 posiciones (3 columnas × 8 filas); los productos con descripción larga ocupan un poco más. Con
+"2 columnas", menos por hoja pero códigos más anchos.
+
+**El lector no lee la hoja impresa.**
+Imprima al 100 % ("Tamaño real", sin "Ajustar a la página"), en negro sobre papel blanco, y pruebe con "2 columnas".
