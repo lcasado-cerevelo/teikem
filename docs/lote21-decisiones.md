@@ -210,3 +210,17 @@ Se actualizaron `WmsContractsTests` (firmas posicionales), `WmsControllerSecurit
 - **Bases existentes**: `CycleCountLine` se crea sin guarda; se recrean con `db-reset`. El camino `ALTER` de `WarehouseBin` no se ejerció sobre una base
   anterior (solo `db-reset` y `db-init` dos veces).
 - Web y app: lotes propios sobre esta referencia de contrato.
+
+## Verificación (resultados reales, 2026-10-03)
+
+| Comando | Resultado |
+|---|---|
+| `dotnet build Teikem.sln -c Release` | Build succeeded, 0 errores |
+| `dotnet test Teikem.sln -c Release` | Passed: 2973, Failed: 0 (incluye las 2 pruebas nuevas del lote y las existentes) |
+| `scripts/dev-sqlserver.sh` | SQL Server 2022 ya estaba corriendo en el entorno |
+| `dotnet run --project src/Teikem.Api -c Release --no-build -- db-reset --yes` y `db-init` ×2 | Terminaron bien ("Inicialización de BD completada"); comprobadas en la base `IsProvisional`, `CorrectedAtUtc`, el origen `PRODUCT` y las restricciones `CK_CycleCountLine_Evidence`, `CK_WarehouseBin_Provisional` y `FK_WarehouseBin_ProvisionalCount` |
+| API en Development (`Auth__Onboarding__Enabled=false`, `ASPNETCORE_URLS=http://localhost:5000`) + `scripts/smoke.sh` con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` | **SMOKE OK** sobre una base recién recreada, incluido el bloque nuevo "conteo por producto (Lote 21)". La primera corrida falló en ese bloque por un error de orden del propio smoke (el movimiento de la existencia se hizo antes de la primera pasada de cierre); se corrigió el smoke, no el servidor |
+| `npm run api:types` en `web-app` y `app-almacen`, `tsc -b` en ambos | Sin errores (`web-app/openapi.json` salió del Swagger del API en marcha; `schema.d.ts` generado, nunca a mano) |
+| `npm run lint` y `npm run test` en `web-app` | lint con avisos previos (0 errores); 111 archivos de prueba, 1103 pruebas, todas pasan |
+
+No se corrió Playwright (no hay cambios de pantalla en este lote).

@@ -4646,6 +4646,100 @@ expect 200 "$(req POST /api/v1/tenant/holidays '{"date":"2027-01-01","name":"Añ
 HID=$(expect 200 "$(req GET '/api/v1/tenant/holidays?year=2027')" | jq -r '.[]|select(.date=="2027-01-01")|.id'); expect 204 "$(req DELETE "/api/v1/tenant/holidays/$HID")" >/dev/null
 ok "marca: 13 temas pasan y 8 rechazos con su mensaje; logos: subir/reemplazar/leer (ETag, 304, nosniff, CSP), 400 (SVG activo, entidades, sin archivo), 413 (también chunked), 415, permisos, aislamiento entre compañías, bitácora sin binario y quitar; feriado repetido 409"
 
+step "conteo por producto (Lote 21): captura y corrección, vista previa, por revisar, cierre en bloque y posición provisional"
+TOKEN=$(login "$EMAIL" "$PASS"); TCNT21=$(login "conteo8$TS@teikem.local" "$PASS"); TREAD21=$(login "lectura6$TS@teikem.local" "$PASS")
+B21A=$(bin "$ZPCK" P-21A); B21B=$(bin "$ZPCK" P-21B)
+P21=$(prod "{\"sku\":\"P21$TS\",\"name\":\"Por producto 21 $TS\",\"purchaseCost\":1}")
+expect 200 "$(adjust "$P21" "$W6P" "$B21A" 8 FOUND)" >/dev/null; expect 200 "$(adjust "$P21" "$W6P" "$B21B" 5 FOUND)" >/dev/null
+count21() { expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$P21\"]}" "$TCNT21")"; }
+lineof() { echo "$1" | jq -r --argjson b "$2" '.lines[] | select(.binId==$b) | .id'; }
+capture21() { expect 200 "$(req PUT "/api/v1/cycle-counts/$1/lines/batch" "$2" "${3:-$TCNT21}")"; }
+
+# 1. Alta por producto (el operador solo con warehouse.count.capture: a ciegas): una línea por posición con existencia.
+CC21=$(count21); ID21=$(echo "$CC21" | jq -r .count.id)
+echo "$CC21" | jq -e '.isBlind==true and .count.originCode=="PRODUCT" and (.lines|length)==2 and all(.lines[]; .systemQty==null and .trackingTypeCode=="NONE" and .binIsProvisional==false and .capturedQty==null and .wasCorrected==false)' >/dev/null || fail "alta por producto: $(echo "$CC21" | jq -c '{o:.count.originCode,l:[.lines[]|{binId,systemQty,trackingTypeCode}]}')"
+LA=$(lineof "$CC21" "$B21A"); LB=$(lineof "$CC21" "$B21B")
+# 2. Captura en dos posiciones (8 y 3: la segunda está mal contada) y evidencia sin filtrar lo esperado.
+C21=$(capture21 "$ID21" "{\"lines\":[{\"lineId\":$LA,\"countedQty\":8},{\"lineId\":$LB,\"countedQty\":3}]}")
+echo "$C21" | jq -e --argjson b "$LB" '.isBlind==true and all(.lines[]; .systemQty==null and .wasCorrected==false and .capturedByName!=null and .capturedAtUtc!=null) and (.lines[]|select(.id==$b)|.capturedQty==3 and .countedQty==3)' >/dev/null || fail "evidencia de la captura a ciegas"
+# 3. El supervisor corrige 3 → 5 (es una CORRECCIÓN: no mueve inventario; conserva lo capturado).
+TX21=$(kardex "refEntity=CYCLE_COUNT&refId=$ID21" | jq .total)
+CORR=$(expect 200 "$(req PUT "/api/v1/cycle-counts/$ID21/lines" "{\"lines\":[{\"lineId\":$LB,\"countedQty\":5}]}")")
+echo "$CORR" | jq -e --argjson b "$LB" '.count.correctedLines==1 and (.lines[]|select(.id==$b)|.countedQty==5 and .capturedQty==3 and .wasCorrected==true and .correctedByName!=null and .correctedAtUtc!=null and .correctedByName!=.capturedByName)' >/dev/null || fail "corrección del supervisor: $(echo "$CORR" | jq -c '[.lines[]|{id,countedQty,capturedQty,wasCorrected,correctedByName}]')"
+[[ $(kardex "refEntity=CYCLE_COUNT&refId=$ID21" | jq .total) == "$TX21" ]] || fail "corregir movió inventario"
+expect 200 "$(req GET "/api/v1/cycle-counts/$ID21" '' "$TCNT21")" | jq -e --argjson b "$LB" '.isBlind==true and (.lines[]|select(.id==$b)|.systemQty==null and .capturedQty==3 and .countedQty==5 and .wasCorrected==true)' >/dev/null || fail "la ficha a ciegas conserva la evidencia sin filtrar lo esperado"
+expect 200 "$(req POST "/api/v1/cycle-counts/$ID21/finish" '{}' "$TCNT21")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "terminar el conteo por producto"
+# 4. Vista previa (warehouse.count; sin ella 403): cuadra, no asienta nada y no escribe.
+expect 403 "$(req GET "/api/v1/cycle-counts/$ID21/reconcile-preview" '' "$TCNT21")" >/dev/null || fail "vista previa sin warehouse.count → 403"
+PV=$(expect 200 "$(req GET "/api/v1/cycle-counts/$ID21/reconcile-preview")")
+echo "$PV" | jq -e '.totals.matches==true and .totals.movements==0 and .totals.pendingLines==0 and .totals.errorLines==0 and .totals.resultStatusCode=="RECONCILED" and (.lines|length)==2 and all(.lines[]; .adjustmentQty==0 and .error==null and .resultingQty==.currentQty and .isPending==false)' >/dev/null || fail "vista previa que cuadra: $(echo "$PV" | jq -c '{t:.totals,l:[.lines[]|{binCode,currentQty,countedQty,adjustmentQty}]}')"
+expect 200 "$(req GET "/api/v1/cycle-counts/$ID21")" | jq -e '.count.statusCode=="COUNTED" and all(.lines[]; .reconciledSystemQty==null)' >/dev/null || fail "la vista previa escribió"
+# 5. Otro conteo del mismo producto con una diferencia (9 en lugar de 8): no cuadra y la vista previa lo dice.
+CCD=$(count21); IDD=$(echo "$CCD" | jq -r .count.id)
+capture21 "$IDD" "{\"lines\":[{\"lineId\":$(lineof "$CCD" "$B21A"),\"countedQty\":9},{\"lineId\":$(lineof "$CCD" "$B21B"),\"countedQty\":5}]}" >/dev/null
+expect 200 "$(req POST "/api/v1/cycle-counts/$IDD/finish" '{}' "$TCNT21")" >/dev/null
+PVD=$(expect 200 "$(req GET "/api/v1/cycle-counts/$IDD/reconcile-preview")")
+echo "$PVD" | jq -e --argjson a "$B21A" '.totals.matches==false and .totals.linesWithDifference==1 and .totals.movements==1 and (.lines[]|select(.binId==$a)|.currentQty==8 and .adjustmentQty==1 and .resultingQty==9)' >/dev/null || fail "vista previa con diferencia: $(echo "$PVD" | jq -c .totals)"
+# 6. Lista "Por revisar" (warehouse.count).
+expect 403 "$(req GET "/api/v1/cycle-counts/review?warehousePublicId=$W6P" '' "$TCNT21")" >/dev/null || fail "por revisar sin warehouse.count → 403"
+RV=$(expect 200 "$(req GET "/api/v1/cycle-counts/review?warehousePublicId=$W6P&take=200")")
+echo "$RV" | jq -e --argjson a "$ID21" --argjson d "$IDD" --arg sku "P21$TS" '
+  any(.items[]; .count.id==$a and .matches==true and .differingLines==0 and .firstProductSku==$sku and .otherProducts==0 and .lines==2 and .positions==2 and .correctedLines==1 and (.countedByName|test("Conteo 8")) and .countedByCount==1)
+  and any(.items[]; .count.id==$d and .matches==false and .differingLines==1 and .movements==1)' >/dev/null || fail "lista por revisar: $(echo "$RV" | jq -c '[.items[]|{id:.count.id,matches,differingLines,firstProductSku}]')"
+# 7. Un conteo que cuadraba con la foto pero cuyo saldo se movió: ya no cuadra (se mide contra la existencia ACTUAL).
+CCM=$(count21); IDM=$(echo "$CCM" | jq -r .count.id)
+LMA=$(lineof "$CCM" "$B21A"); LMB=$(lineof "$CCM" "$B21B")
+capture21 "$IDM" "{\"lines\":[{\"lineId\":$LMA,\"countedQty\":8},{\"lineId\":$LMB,\"countedQty\":5}]}" >/dev/null
+# 8. Posición provisional creada desde el conteo por el que solo captura: zona + código; repetida 409; sin permiso 403.
+PB=$(expect 200 "$(req POST "/api/v1/cycle-counts/$IDM/bins" "{\"zoneId\":$ZPCK,\"code\":\"PROV-21-$TS\"}" "$TCNT21")")
+echo "$PB" | jq -e --argjson c "$IDM" '.isProvisional==true and .provisionalCycleCountId==$c and .id>0 and .code != null and .zoneCode=="PCK"' >/dev/null || fail "posición provisional: $PB"
+PBID=$(echo "$PB" | jq -r .id); PBCODE=$(echo "$PB" | jq -r .code)
+expect 409 "$(req POST "/api/v1/cycle-counts/$IDM/bins" "{\"zoneId\":$ZPCK,\"code\":\"$PBCODE\"}" "$TCNT21")" | jq -e '.title=="Ya existe una posición con ese código en el almacén."' >/dev/null || fail "posición provisional repetida → 409"
+expect 403 "$(req POST "/api/v1/cycle-counts/$IDM/bins" "{\"zoneId\":$ZPCK,\"code\":\"X21$TS\"}" "$TREAD21")" >/dev/null || fail "posición provisional sin warehouse.count.capture → 403"
+expect 403 "$(req POST "/api/v1/warehouses/$W6P/bins/$PBID/confirm-provisional" '' "$TCNT21")" >/dev/null || fail "confirmar sin warehouse.manage → 403"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?isProvisional=true&take=200")" | jq -e --argjson b "$PBID" 'any(.items[]; .id==$b and .isProvisional==true) and all(.items[]; .isProvisional==true)' >/dev/null || fail "el listado de posiciones filtra las provisionales"
+# Lo hallado donde el sistema no tenía nada: línea nueva en la provisional (el servidor exige binId + producto).
+CXT=$(capture21 "$IDM" "{\"lines\":[{\"binId\":$PBID,\"productPublicId\":\"$P21\",\"countedQty\":2}]}")
+echo "$CXT" | jq -e --argjson b "$PBID" '(.lines|length)==3 and (.lines[]|select(.binId==$b)|.binIsProvisional==true and .countedQty==2 and .systemQty==null and .binCode==("'"$PBCODE"'"))' >/dev/null || fail "línea nueva en la posición provisional: $(echo "$CXT" | jq -c '[.lines[]|{binId,binIsProvisional,countedQty}]')"
+expect 200 "$(req POST "/api/v1/cycle-counts/$IDM/finish" '{}' "$TCNT21")" >/dev/null
+# 9. Cierre en bloque: cierra el que cuadra (ID21) y deja los que asentarían algo con su motivo.
+expect 403 "$(req POST /api/v1/cycle-counts/reconcile-matching "{\"warehousePublicId\":\"$W6P\"}" "$TCNT21")" >/dev/null || fail "cierre en bloque sin warehouse.count → 403"
+BK=$(expect 200 "$(req POST /api/v1/cycle-counts/reconcile-matching "{\"warehousePublicId\":\"$W6P\",\"comment\":\"Cierre humo 21\"}")")
+echo "$BK" | jq -e --argjson a "$ID21" --argjson d "$IDD" --argjson m "$IDM" '
+  any(.closed[]; .id==$a and .statusCode=="RECONCILED" and .lines==2)
+  and any(.skipped[]; .id==$d and .reasonCode=="WouldPost" and .count==1)
+  and any(.skipped[]; .id==$m and .reasonCode=="WouldPost" and .count==1)
+  and (.closed|all(.id!=$d and .id!=$m)) and .truncated==false' >/dev/null || fail "cierre en bloque: $(echo "$BK" | jq -c '{closed:[.closed[]|.id],skipped:[.skipped[]|{id,reasonCode,count}]}')"
+expect 200 "$(req GET "/api/v1/cycle-counts/$ID21")" | jq -e '.count.statusCode=="RECONCILED"' >/dev/null || fail "el conteo que cuadraba debe quedar en Concordancia"
+[[ $(kardex "refEntity=CYCLE_COUNT&refId=$ID21" | jq .total) == 0 ]] || fail "un conteo que cuadra no asienta movimientos"
+expect 200 "$(req GET "/api/v1/status/history/CYCLE_COUNT/$ID21")" | jq -e 'any(.[]; .toCode=="RECONCILED" and .comment=="Cierre humo 21")' >/dev/null || fail "historial de Concordancia con el comentario del cierre en bloque"
+expect 200 "$(req GET "/api/v1/cycle-counts/$IDD")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "el que asienta algo se queda Contado"
+# Después de la foto: salen 1 de la posición B (hoy hay 4) y el conteo IDM contó 5 (la foto era 5): una línea que cuadraba con la
+# foto ya no cuadra, porque "cuadra" se mide contra la existencia ACTUAL. Por ids: lo reconciliado y lo inexistente se informan.
+expect 200 "$(adjust "$P21" "$W6P" "$B21B" -1 LOSS)" >/dev/null
+BK2=$(expect 200 "$(req POST /api/v1/cycle-counts/reconcile-matching "{\"ids\":[$ID21,$IDM,999999]}")")
+echo "$BK2" | jq -e --argjson a "$ID21" --argjson m "$IDM" '.closed==[] and any(.skipped[]; .id==$a and .reasonCode=="AlreadyReconciled") and any(.skipped[]; .id==$m and .reasonCode=="WouldPost" and .count==2) and any(.skipped[]; .id==999999 and .reasonCode=="NotFound")' >/dev/null || fail "cierre en bloque por ids: $BK2"
+# 10. La vista previa del conteo con la línea movida y la posición provisional es la misma cuenta que la reconciliación real.
+PVM=$(expect 200 "$(req GET "/api/v1/cycle-counts/$IDM/reconcile-preview")")
+echo "$PVM" | jq -e --argjson b "$B21B" --argjson p "$PBID" '.totals.matches==false and .totals.movements==2 and .totals.resultStatusCode=="RECONCILED_VARIANCE"
+  and (.lines[]|select(.binId==$b)|.currentQty==4 and .systemQty==5 and .systemQtyChanged==true and .adjustmentQty==1 and .resultingQty==5)
+  and (.lines[]|select(.binId==$p)|.binIsProvisional==true and .currentQty==0 and .adjustmentQty==2 and .resultingQty==2)' >/dev/null || fail "vista previa con línea movida y provisional: $(echo "$PVM" | jq -c '{t:.totals,l:[.lines[]|{binId,currentQty,adjustmentQty,systemQtyChanged}]}')"
+REC21=$(expect 200 "$(req POST "/api/v1/cycle-counts/$IDM/reconcile" '{}')")
+echo "$REC21" | jq -e '.count.statusCode=="RECONCILED_VARIANCE"' >/dev/null || fail "reconciliar el conteo con diferencias"
+kardex "refEntity=CYCLE_COUNT&refId=$IDM" | jq -e '.total==2 and ([.items[].quantity]|sort)==[1,2]' >/dev/null || fail "la reconciliación asienta lo mismo que la vista previa"
+[[ $(onhand "$W6P" "$PBID" "$P21") == 2 && $(onhand "$W6P" "$B21B" "$P21") == 5 ]] || fail "saldos tras reconciliar (provisional 2, B 5)"
+# 11. El supervisor confirma la provisional (una sola vez).
+expect 200 "$(req POST "/api/v1/warehouses/$W6P/bins/$PBID/confirm-provisional")" | jq -e '.isProvisional==false and .provisionalCycleCountId!=null' >/dev/null || fail "confirmar la posición provisional"
+expect 409 "$(req POST "/api/v1/warehouses/$W6P/bins/$PBID/confirm-provisional")" | jq -e '.title=="La posición no está pendiente de revisión."' >/dev/null || fail "confirmar dos veces → 409"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?isProvisional=true&take=200")" | jq -e --argjson b "$PBID" 'all(.items[]; .id!=$b)' >/dev/null || fail "confirmada ya no es provisional"
+# 12. Otra compañía: ni ve, ni previsualiza, ni cierra los conteos de esta.
+TB21=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")
+C21A=$(req GET "/api/v1/cycle-counts/$IDD/reconcile-preview" '' "$TB21" | tail -n1); [[ "$C21A" == 403 || "$C21A" == 404 ]] || fail "otra compañía previsualiza un conteo ajeno (dio $C21A)"
+C21B=$(req POST "/api/v1/cycle-counts/$IDD/bins" "{\"zoneId\":$ZPCK,\"code\":\"AJENA21\"}" "$TB21" | tail -n1); [[ "$C21B" == 403 || "$C21B" == 404 ]] || fail "otra compañía crea una posición en un conteo ajeno (dio $C21B)"
+C21C=$(req POST /api/v1/cycle-counts/reconcile-matching "{\"ids\":[$IDD]}" "$TB21" | tail -n1); [[ "$C21C" == 403 || "$C21C" == 404 || "$C21C" == 200 ]] || fail "cierre en bloque de otra compañía (dio $C21C)"
+expect 200 "$(req GET "/api/v1/cycle-counts/$IDD")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "otra compañía cerró un conteo ajeno"
+ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; otra compañía sin acceso"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?
