@@ -2561,6 +2561,11 @@
       "create": "Crear conteo",
       "created": "Conteo {number} creado con {count} línea(s).",
       "createHelp": "Sin zonas ni posiciones se toma todo el saldo en mano del almacén (máximo 1000 líneas).",
+      "createProductHelp": "Se cuenta el producto en todas las posiciones y lotes donde el sistema dice que hay existencia (una línea por posición y lote). Un producto sin existencia no se puede contar desde aquí.",
+      "modes": {
+        "bins": "Por posiciones",
+        "product": "Por producto"
+      },
       "searchPlaceholder": "Número, SKU o producto",
       "notFound": "Conteo no encontrado.",
       "deleteTitle": "Eliminar conteo",
@@ -2598,10 +2603,12 @@
         "allZones": "Todas las zonas",
         "bins": "Posiciones",
         "allBins": "Todas las posiciones",
-        "binsTruncated": "Solo se listan las primeras {count} posiciones: elija zonas para acotar la lista."
+        "binsTruncated": "Solo se listan las primeras {count} posiciones: elija zonas para acotar la lista.",
+        "product": "Producto"
       },
       "errors": {
-        "binRequired": "Indique la posición.",
+        "productRequired": "Elija el producto.",
+                "binRequired": "Indique la posición.",
         "countedRequired": "Indique la cantidad contada.",
         "lotAmbiguous": "Indique el lote por su id o por su número, no ambos."
       },

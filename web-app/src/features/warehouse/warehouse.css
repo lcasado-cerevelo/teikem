@@ -377,3 +377,6 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .cc-result ul{margin:0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
 .cc-result .linkbtn{border:none;background:none;padding:0;color:var(--flow-2);font:inherit;font-weight:600;cursor:pointer}
 .cc-result .linkbtn:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}
+
+/* Lote F13: pestañas "Por posiciones / Por producto" del modal Nuevo conteo, con aire antes del primer campo. */
+.cc-create-tabs{margin-bottom:14px}

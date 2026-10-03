@@ -18,7 +18,7 @@ interface Call {
   body: unknown
 }
 type Json = Record<string, unknown>
-const mock = vi.hoisted(() => ({ calls: [] as Call[], problem: null as string | null, lines: [] as Json[], status: 'OPEN', blind: false }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], problem: null as string | null, lines: [] as Json[], status: 'OPEN', blind: false, createProblem: null as string | null }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -33,6 +33,7 @@ vi.mock('../../kernel/api/client', async (importOriginal) => {
 })
 
 const WH = '11111111-1111-1111-1111-111111111111'
+const PRODUCT = 'aaaaaaaa-0000-0000-0000-000000000001'
 const COUNT1 = {
   id: 1,
   number: 'CC-00001',
@@ -116,6 +117,12 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
         problem: mock.problem,
       },
     ]
+  if (p === '/api/v1/cycle-counts' && method === 'POST') {
+    if (mock.createProblem && (body as { productPublicIds?: unknown }).productPublicIds)
+      return [400, { title: 'Hay errores de validación.', code: 'validation', errors: { filters: [mock.createProblem] } }]
+    return [200, { count: { ...COUNT1, id: 15, number: 'CC-00015', originCode: 'PRODUCT', origin: 'Producto' }, lines: [{ id: 301 }, { id: 302 }], rowVersion: 'RV15', isBlind: false }]
+  }
+  if (p === '/api/v1/products') return [200, { total: 1, skip: 0, take: 50, items: [{ id: 1, publicId: PRODUCT, sku: 'TORN-01', name: 'Tornillo', isOwn: true, isActive: true, trackingTypeCode: 'NONE' }] }]
   if (p === '/api/v1/cycle-counts/from-changes' && method === 'POST') return [200, { counts: [{ ...COUNT1, id: 9, number: 'CC-00009' }] }]
   const m = /^\/api\/v1\/cycle-counts\/(\d+)(\/[\w-]+)?$/.exec(p)
   if (m) {
@@ -208,6 +215,7 @@ beforeEach(() => {
   mock.lines = BASE_LINES.map((l) => ({ ...l }))
   mock.status = 'OPEN'
   mock.blind = false
+  mock.createProblem = null
   localStorage.clear()
 })
 
@@ -422,5 +430,75 @@ describe('Conteo de lo cambiado', () => {
     await waitFor(() => expect(calls('GET', '/api/v1/cycle-counts/changes-preview').at(-1)!.url.searchParams.get('fromUtc')).toBe('2026-09-30T14:00:00.000Z'))
     expect(calls('GET', '/api/v1/cycle-counts/changes-preview').at(-1)!.url.searchParams.get('toUtc')).toBe('2026-09-30T16:00:00.000Z')
     expect(calls('POST', '/api/v1/cycle-counts/from-changes')).toHaveLength(0)
+  })
+})
+
+describe('Nuevo conteo: por posiciones o por producto (Lote F13)', () => {
+  const NO_STOCK = 'Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.'
+
+  async function openModal(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(await screen.findByRole('button', { name: 'Nuevo conteo' }))
+    return screen.findByRole('dialog', { name: 'Nuevo conteo' })
+  }
+  /** El almacén queda elegido a mano (con un solo almacén el selector puede venir ya con él). */
+  async function pickWarehouse(user: ReturnType<typeof userEvent.setup>, dialog: HTMLElement) {
+    const box = within(dialog).getByRole('combobox', { name: /Almacén/ })
+    if ((box as HTMLInputElement).value === '') {
+      await user.click(box)
+      await user.click(await screen.findByRole('option', { name: /ALM-01/ }))
+    }
+  }
+
+  it('el modal ofrece las dos opciones; la de siempre sigue mandando almacén, zonas y posiciones', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    expect(within(dialog).getByRole('tab', { name: 'Por posiciones' })).toHaveAttribute('aria-selected', 'true')
+    expect(within(dialog).getByRole('tab', { name: 'Por producto' })).toHaveAttribute('aria-selected', 'false')
+    expect(within(dialog).queryByRole('combobox', { name: /Producto/ })).toBeNull()
+    await pickWarehouse(user, dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/cycle-counts')).toHaveLength(1))
+    expect(calls('POST', '/api/v1/cycle-counts')[0].body).toEqual({ warehousePublicId: WH, zoneIds: null, binIds: null })
+  })
+
+  it('por producto: exige almacén y producto, manda productPublicIds sin posiciones ni allowEmpty y abre el conteo creado', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    expect(within(dialog).queryByText('Zonas')).toBeNull()
+    expect(within(dialog).queryByText('Posiciones')).toBeNull()
+
+    // sin producto: el formulario no se envía y el error sale bajo el selector
+    await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
+    expect(await within(dialog).findByText('Elija el producto.')).toBeInTheDocument()
+    expect(calls('POST', '/api/v1/cycle-counts')).toHaveLength(0)
+
+    await pickWarehouse(user, dialog)
+    await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'torn')
+    await user.click(await screen.findByRole('option', { name: /TORN-01/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/cycle-counts')).toHaveLength(1))
+    expect(calls('POST', '/api/v1/cycle-counts')[0].body).toEqual({ warehousePublicId: WH, productPublicIds: [PRODUCT] })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.getByTestId('where').textContent).toBe('?count=15')
+    expect(await screen.findByText('Conteo CC-00015 creado con 2 línea(s).')).toBeInTheDocument()
+  })
+
+  it('un producto sin existencia: el 400 del servidor sale junto al selector y el modal sigue abierto', async () => {
+    const user = userEvent.setup()
+    mock.createProblem = NO_STOCK
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    await pickWarehouse(user, dialog)
+    await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'torn')
+    await user.click(await screen.findByRole('option', { name: /TORN-01/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
+    expect(await within(dialog).findByText(NO_STOCK)).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Nuevo conteo' })).toBeInTheDocument()
+    expect(screen.getByTestId('where').textContent).toBe('')
+    expect((calls('POST', '/api/v1/cycle-counts')[0].body as Json).allowEmpty).toBeUndefined()
   })
 })

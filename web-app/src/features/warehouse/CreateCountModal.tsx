@@ -1,5 +1,9 @@
 // Lote 14 (P8) — "Nuevo conteo" (selección manual), el modal que antes vivía en la lista: almacén, zonas y posiciones
 // (`POST /cycle-counts`, warehouse.count; sin zonas ni posiciones toma todo el saldo en mano del almacén, máx. 1000 líneas).
+// Lote F13 (decisión del dueño 2026-10-03): dos opciones con pestañas, "Por posiciones" (lo de siempre) y "Por producto": almacén +
+// un producto (`productPublicIds: [producto]`, sin posiciones ni `allowEmpty`); el servidor arma una línea por posición/lote con
+// existencia (origen PRODUCT). Si el producto no tiene existencia el servidor responde 400 en `filters` y el mensaje se muestra
+// bajo el selector de producto.
 // El selector de posiciones lee todas las páginas del listado paginado (Lote 1) con `fetchAllPages`. Al crear, avisa a la
 // pantalla (`onCreated`), que refresca la lista y elige el conteo nuevo.
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -10,10 +14,11 @@ import { z } from 'zod'
 import { api, unwrap } from '../../kernel/api/client'
 import { fetchAllPages } from '../../kernel/api/fetchAllPages'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, Modal, SearchMultiSelect, toast } from '../../kernel/ui'
+import { Field, Form, Modal, SearchMultiSelect, Tabs, toast } from '../../kernel/ui'
 import { useFieldInfo } from '../../kernel/ui/formContext'
 import { useCreateCycleCount, useWarehouseZones, warehouseKeys, type CycleCountDetailDto } from './api'
-import { WarehousePickerInput } from './pickers'
+import { remapProblemFields } from './lineRules'
+import { ProductPickerInput, WarehousePickerInput } from './pickers'
 
 /** SearchMultiSelect dentro de un <Field name="…">: el valor del formulario es un arreglo de strings. */
 export function MultiSelectInput({ options, placeholder, disabled }: { options: readonly { value: string; label: string }[]; placeholder?: string; disabled?: boolean }) {
@@ -36,22 +41,36 @@ export function MultiSelectInput({ options, placeholder, disabled }: { options: 
   )
 }
 
+type CreateMode = 'bins' | 'product'
+
 export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; onCreated?: (created: CycleCountDetailDto) => void }) {
   const t = useT()
   const create = useCreateCycleCount()
   const schema = useMemo(
     () =>
       z
-        .object({ warehousePublicId: z.string().nullable(), zoneIds: z.array(z.string()), binIds: z.array(z.string()) })
+        .object({
+          mode: z.enum(['bins', 'product']),
+          warehousePublicId: z.string().nullable(),
+          zoneIds: z.array(z.string()),
+          binIds: z.array(z.string()),
+          productPublicId: z.string().nullable(),
+        })
         .superRefine((v, ctx) => {
           if (!v.warehousePublicId) ctx.addIssue({ code: 'custom', path: ['warehousePublicId'], message: t('warehouse.receipts.errors.warehouseRequired') })
+          if (v.mode === 'product' && !v.productPublicId) ctx.addIssue({ code: 'custom', path: ['productPublicId'], message: t('warehouse.cycleCounts.errors.productRequired') })
         }),
     [t],
   )
-  const form = useForm({ resolver: zodResolver(schema), defaultValues: { warehousePublicId: null as string | null, zoneIds: [] as string[], binIds: [] as string[] } })
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { mode: 'bins' as CreateMode, warehousePublicId: null as string | null, zoneIds: [] as string[], binIds: [] as string[], productPublicId: null as string | null },
+  })
+  const mode = useWatch({ control: form.control, name: 'mode' })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const zoneIds = useWatch({ control: form.control, name: 'zoneIds' })
-  const zones = useWarehouseZones(warehousePublicId, {}, { handleAccessDenied: false })
+  const byBins = mode === 'bins'
+  const zones = useWarehouseZones(byBins ? warehousePublicId : null, {}, { handleAccessDenied: false })
   // Todas las posiciones activas del almacén (o de las zonas elegidas, filtro del servidor) en páginas de 200, hasta 10 000;
   // si se corta se avisa bajo el campo. Misma raíz de clave que useWarehouseBins: se invalida con las posiciones.
   const binsQuery = useMemo(() => ({ includeInactive: false, zoneIds: zoneIds.length > 0 ? zoneIds.map(Number) : undefined }), [zoneIds])
@@ -61,7 +80,7 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
       fetchAllPages((skip, take) =>
         unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId: warehousePublicId ?? '' }, query: { ...binsQuery, skip, take } } })),
       ),
-    enabled: Boolean(warehousePublicId),
+    enabled: Boolean(warehousePublicId) && byBins,
     meta: { handleAccessDenied: false },
   })
   const zoneOptions = useMemo(
@@ -98,29 +117,63 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
         id={formId}
         form={form}
         onSubmit={async (v) => {
-          const created = await create.mutateAsync({
-            warehousePublicId: v.warehousePublicId,
-            zoneIds: v.zoneIds.length > 0 ? v.zoneIds.map(Number) : null,
-            binIds: v.binIds.length > 0 ? v.binIds.map(Number) : null,
-          })
+          const body =
+            v.mode === 'product'
+              ? { warehousePublicId: v.warehousePublicId, productPublicIds: v.productPublicId ? [v.productPublicId] : null }
+              : {
+                  warehousePublicId: v.warehousePublicId,
+                  zoneIds: v.zoneIds.length > 0 ? v.zoneIds.map(Number) : null,
+                  binIds: v.binIds.length > 0 ? v.binIds.map(Number) : null,
+                }
+          // El 400 del servidor viene en `filters` ("no seleccionan inventario…"): por producto se pinta bajo el selector.
+          const created = await create
+            .mutateAsync(body)
+            .catch((err: unknown) => {
+              throw v.mode === 'product' ? remapProblemFields(err, (f) => (f === 'filters' ? 'productPublicId' : null)) : err
+            })
           toast.success(t('warehouse.cycleCounts.created', { number: created.count?.number ?? '', count: created.lines?.length ?? 0 }))
           onCreated?.(created)
           onClose()
         }}
       >
+        <div className="cc-create-tabs">
+          <Tabs<CreateMode>
+            label={t('warehouse.cycleCounts.new')}
+            value={mode}
+            onChange={(m) => {
+              form.setValue('mode', m)
+              form.clearErrors()
+            }}
+            tabs={[
+              { key: 'bins', label: t('warehouse.cycleCounts.modes.bins') },
+              { key: 'product', label: t('warehouse.cycleCounts.modes.product') },
+            ]}
+          />
+        </div>
         <Field name="warehousePublicId" label={t('warehouse.cycleCounts.fields.warehouse')} required>
           <WarehousePickerInput />
         </Field>
-        <div className="r2">
-          <Field name="zoneIds" label={t('warehouse.cycleCounts.fields.zones')}>
-            <MultiSelectInput options={zoneOptions} placeholder={t('warehouse.cycleCounts.fields.allZones')} disabled={!warehousePublicId} />
-          </Field>
-          <Field name="binIds" label={t('warehouse.cycleCounts.fields.bins')}>
-            <MultiSelectInput options={binOptions} placeholder={t('warehouse.cycleCounts.fields.allBins')} disabled={!warehousePublicId} />
-          </Field>
-        </div>
-        {bins.data?.truncated && <p className="note">{t('warehouse.cycleCounts.fields.binsTruncated', { count: bins.data.items.length })}</p>}
-        <p className="note">{t('warehouse.cycleCounts.createHelp')}</p>
+        {byBins ? (
+          <>
+            <div className="r2">
+              <Field name="zoneIds" label={t('warehouse.cycleCounts.fields.zones')}>
+                <MultiSelectInput options={zoneOptions} placeholder={t('warehouse.cycleCounts.fields.allZones')} disabled={!warehousePublicId} />
+              </Field>
+              <Field name="binIds" label={t('warehouse.cycleCounts.fields.bins')}>
+                <MultiSelectInput options={binOptions} placeholder={t('warehouse.cycleCounts.fields.allBins')} disabled={!warehousePublicId} />
+              </Field>
+            </div>
+            {bins.data?.truncated && <p className="note">{t('warehouse.cycleCounts.fields.binsTruncated', { count: bins.data.items.length })}</p>}
+            <p className="note">{t('warehouse.cycleCounts.createHelp')}</p>
+          </>
+        ) : (
+          <>
+            <Field name="productPublicId" label={t('warehouse.cycleCounts.fields.product')} required>
+              <ProductPickerInput />
+            </Field>
+            <p className="note">{t('warehouse.cycleCounts.createProductHelp')}</p>
+          </>
+        )}
       </Form>
     </Modal>
   )

@@ -2561,6 +2561,11 @@
       "create": "Create count",
       "created": "Count {number} created with {count} line(s).",
       "createHelp": "Without zones or bins the whole on-hand balance of the warehouse is taken (up to 1000 lines).",
+      "createProductHelp": "The product is counted in every bin and lot where the system says there is stock (one line per bin and lot). A product with no stock cannot be counted from here.",
+      "modes": {
+        "bins": "By bins",
+        "product": "By product"
+      },
       "searchPlaceholder": "Number, SKU or product",
       "notFound": "Count not found.",
       "deleteTitle": "Delete count",
@@ -2598,10 +2603,12 @@
         "allZones": "All zones",
         "bins": "Bins",
         "allBins": "All bins",
-        "binsTruncated": "Only the first {count} bins are listed: choose zones to narrow the list."
+        "binsTruncated": "Only the first {count} bins are listed: choose zones to narrow the list.",
+        "product": "Product"
       },
       "errors": {
-        "binRequired": "Enter the bin.",
+        "productRequired": "Choose the product.",
+                "binRequired": "Enter the bin.",
         "countedRequired": "Enter the counted quantity.",
         "lotAmbiguous": "Give the lot by its id or by its number, not both."
       },
