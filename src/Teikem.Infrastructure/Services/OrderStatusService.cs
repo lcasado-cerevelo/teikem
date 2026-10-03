@@ -31,8 +31,11 @@ public sealed class OrderStatusService(
     OrderReadService reader,
     IEnumerable<IStatusTransitionEffect> effects,
     PermissionService permissions,
-    ISecurityEventWriter security)
+    ISecurityEventWriter security,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     /// <summary>Permiso del ajuste C (sembrado por P0 en PermissionCatalog y en el seed).</summary>
     public const string CreditOverridePermission = "orders.credit_override";
     public const string CreditOverrideCommentPrefix = "Crédito excedido autorizado por ";
@@ -265,5 +268,5 @@ public sealed class OrderStatusService(
         return string.IsNullOrWhiteSpace(name) ? $"usuario {userId}" : name;
     }
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

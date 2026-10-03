@@ -6,6 +6,7 @@ using Teikem.Infrastructure.Clients;
 using Teikem.Infrastructure.Exceptions;
 using Teikem.Infrastructure.Orders;
 using Teikem.Infrastructure.Persistence;
+using Teikem.Infrastructure.Abstractions;
 
 namespace Teikem.Infrastructure.Services;
 
@@ -45,8 +46,10 @@ public sealed class CreditExceededException : TeikemException
 /// OrderQuoteService se resuelve de forma perezosa: OrderQuoteService → RateService → StatusService → efectos → este efecto
 /// formaría un ciclo de construcción en DI si se inyectara en el constructor.
 /// </summary>
-public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider services, IClientBalanceProvider balance) : IStatusTransitionEffect
+public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider services, IClientBalanceProvider balance, ITenantClock? clock = null) : IStatusTransitionEffect
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
 
     private readonly HashSet<int> _creditOverrides = new();
@@ -77,7 +80,7 @@ public sealed class OrderStatusEffect(TeikemDbContext db, IServiceProvider servi
         if (client.StatusCodeId == suspendedId) throw new StatusRuleException(ClientSuspendedMessage);
 
         var quotes = services.GetRequiredService<OrderQuoteService>();
-        await quotes.ApplyQuoteAsync(order, client, DateOnly.FromDateTime(DateTime.UtcNow), ct);
+        await quotes.ApplyQuoteAsync(order, client, _clock.Today, ct);
 
         var pending = await balance.PendingBalanceAsync(client.ClientId, order.TransportOrderId, ct);
         var check = new CreditCheck(client.CreditLimit, pending, order.QuotedAmount!.Value);

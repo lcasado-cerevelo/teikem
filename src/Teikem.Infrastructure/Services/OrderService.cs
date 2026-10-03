@@ -39,8 +39,11 @@ public sealed class OrderService(
     OrderStatusService orderStatuses,
     OrderReadService reader,
     PermissionService permissions,
-    SpecialDeliveryDispatchService specialDispatch)
+    SpecialDeliveryDispatchService specialDispatch,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string ClientInactiveMessage = "El cliente está dado de baja; solo se consulta su historial.";
     public const string ClientSuspendedMessage = "El cliente está suspendido; no se pueden crear ni confirmar órdenes.";
     public const string OrderNumberTakenMessage = "Ya existe una orden con ese número para este cliente.";
@@ -844,5 +847,5 @@ public sealed class OrderService(
         return ex.InnerException?.Message ?? ex.Message;
     }
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }
