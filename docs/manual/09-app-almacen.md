@@ -10,8 +10,13 @@ pantallas reales de la app.
 Decisiones de cada entrega, con más detalle técnico: `docs/lote8A-app-decisiones.md`.
 
 Lote 16: **Recibir en un almacén "Directo a posición"** (sección 4: paso "Escanea la posición destino"), descarga de las **posiciones** del almacén y **heartbeat**
-en cada pasada de sincronización (sección 9). Los números de la app llevan **coma de miles y punto decimal** (`61,023`; `1,250.5`), como en la web, sin depender de los datos de
-idioma del aparato.
+en cada pasada de sincronización (sección 9).
+
+Lote A3 (2026-10-03, `docs/mobile/loteA3-decisiones.md`): **mejoras de uso del Zebra** (lector sin teclado y "escanear = Aceptar"
+en todas las pantallas, margen para la barra de navegación, Inicio en dos columnas, letras más grandes, tocar un producto en el
+conteo) y **formatos de la compañía** (números, fechas, horas y zona horaria de Región y formatos, como en la web): secciones
+1.1 y 1.2. Desde este lote los números ya no llevan una coma de miles fija: llevan los separadores de la compañía (Puerto Rico:
+`61,023`; `1,250.5`).
 
 ---
 
@@ -36,6 +41,44 @@ demás acciones con un aviso (`Termina o cancela el recibo en curso antes de usa
 botón de la acción en curso la retoma en vez de bloquear. Acomodar y Consultar no manejan ningún documento propio, así
 que cualquiera de los otros tres en curso también los bloquea a ellos. Cerrar y volver a abrir la app no pierde el
 documento en curso: sigue guardado tal cual hasta que se confirma o se cancela.
+
+### 1.1 El lector del Zebra: escanear = Aceptar (Lote A3)
+
+En toda pantalla con campo de escaneo (Recibir, Acomodar, Despacho, Conteo —posición y producto— y Consultar), **escanear
+equivale a escribir el código y tocar "Aceptar"**: la pantalla avanza sola, sin un "Continuar" después. Los pasos de **cantidad**
+siguen siendo manuales. Detalle por pantalla en la tabla de `docs/mobile/loteA3-decisiones.md`.
+
+- **Sin teclado en pantalla**: el campo de escaneo ya no abre el teclado al enfocarse ni al escanear. Para escribir un código a
+  mano, el botón pequeño **"⌨"** junto al campo muestra el teclado (tocarlo otra vez lo esconde); luego **Aceptar** o Enter. El
+  teclado físico del Zebra escribe en el campo sin abrir el de pantalla.
+- **Perfil del lector**: al abrir una pantalla de escaneo, la app configura en DataWedge (el programa del lector de Zebra) el
+  perfil **`TeikemAlmacen`**: lector encendido, lecturas entregadas a la app ("intent") y **salida por teclas apagada** (si la
+  salida por teclas quedara encendida, cada lectura se escribiría como teclas en el campo enfocado y abriría el teclado). El
+  estado se ve en Sincronización (§9: "Lector: …").
+- **Avisos al escanear**: "no encontrado" sale en un **bloque rojo grande**; lo agregado o terminado, en un **bloque verde**.
+  Se quedan en pantalla hasta la siguiente lectura o acción.
+- **Lectura repetida**: si el aparato manda la misma lectura dos veces en menos de 400 ms, se toma una sola vez.
+- **Margen inferior**: la app deja abajo un margen de al menos 40 dp para que la barra de navegación del aparato (3 botones o
+  gestos) no tape el último botón. La barra no se oculta.
+
+### 1.2 Formatos de la compañía (Lote A3)
+
+Las fechas, horas, números y dinero de la app salen de **Región y formatos** de la compañía (web: Ajustes de la compañía,
+[F9](frontend/f9-ajustes-de-la-compania.md)), igual que en la web; el **idioma** del aparato solo decide los textos (por ejemplo
+"p. m." o "PM").
+
+- **Cuándo se actualizan**: al entrar con el PIN y en cada sincronización con señal (`GET /api/v1/tenant/settings`; no pide
+  permiso fino). Un cambio hecho en la web llega a la app en la **siguiente sincronización** (como mucho un minuto con Inicio
+  abierto, o al tocar "Sincronizar ahora").
+- **Sin señal**: se guardan en el aparato (en la base de esa compañía), así que siguen valiendo sin señal y al reabrir la app.
+  Si el aparato nunca los recibió (recién registrado y sin señal), usa los de **Puerto Rico**: MM/DD/AAAA, 12 horas, coma de
+  miles y punto decimal, `$` antes, zona `America/Puerto_Rico`.
+- **Zona horaria**: las horas en pantalla (última sincronización, hora de los datos guardados en Consultar) y lo que es "hoy"
+  se cuentan en la zona de la compañía, no en UTC ni en la del aparato. Por ejemplo, a la 1:30 UTC del 3 de octubre, en
+  Puerto Rico sigue siendo el 2 de octubre a las 9:30 p. m.
+- **Varias compañías**: cada compañía del teléfono tiene sus propios formatos.
+- **Teléfonos**: hoy la app no muestra ni pide teléfonos; cuando lo haga, se guardarán solo los dígitos y se mostrarán con la
+  máscara de la compañía.
 
 ---
 
@@ -108,9 +151,11 @@ Los mensajes de PIN, bloqueo y permisos están explicados con más detalle (por 
 
 ## 3. Inicio
 
-Qué hace: menú de 5 acciones (Recibir, Acomodar, Despacho, Conteo, Consultar), el estado de la sincronización
+Qué hace: menú de 5 acciones (Recibir, Acomodar, Despacho, Conteo, Consultar) en **dos columnas** de botones altos (icono
+arriba, nombre debajo; la quinta a todo el ancho; Lote A3), el estado de la sincronización
 ("N pendientes de enviar", "Todo enviado", o, en rojo, que la **última sincronización falló**: "No se pudo sincronizar. Toca 'Sincronizar ahora'." si no hay nada pendiente, o "N pendientes · no se pudo sincronizar"; desde 2026-10-01 ya no dice "0 con error", porque no mide elementos rechazados sino el resultado del último intento), un botón "Sincronizar ahora", y "Cambiar de usuario" (cierra la
-sesión de este usuario en el aparato, sin desregistrarlo).
+sesión de este usuario en el aparato, sin desregistrarlo). La pantalla se desplaza si el aparato es más corto: Sincronizar y
+Cambiar de usuario quedan debajo de las acciones.
 
 Quién puede: cualquiera que entró con PIN (§2.2). El menú no filtra por permiso fino: cada pantalla revisa el suyo
 al llamar al API real y, si falta, el error del servidor se muestra tal cual (por ejemplo, sin `warehouse.pick` la
@@ -152,6 +197,7 @@ Cómo se usa:
 | Código escaneado no es de una orden ni un aviso conocidos | `No se encontró una orden ni un aviso con ese código. Puede seguir con recibo ciego.` | Local (búsqueda en base local) |
 | Código de producto no coincide con ninguno sincronizado | `No hay un producto con ese código.` | Local |
 | Producto con rastreo por lote, sin número de lote o sin cantidad | Botón "Agregar" deshabilitado (`canAddLine`) | Local, sin mensaje |
+| Vencimiento (opcional) escrito con una fecha que no existe (Lote A3: se escribe en el orden de fecha de la compañía, el ejemplo del campo lo muestra —Puerto Rico `MM/DD/AAAA`—; también se acepta `AAAA-MM-DD`) | `La fecha no es válida. Escríbela así: {formato}` y "Agregar" deshabilitado | Local |
 | Producto con rastreo por serie, sin ningún número de serie capturado | Botón "Agregar" deshabilitado | Local, sin mensaje |
 | Ya hay un recibo en curso en este aparato (intento de empezar otro) | `Ya hay un recibo en curso; hay que confirmarlo o cancelarlo antes de empezar otro.` | Local (`startLocalReceipt` lanza; la pantalla siempre retoma el abierto, nunca llega a mostrarlo) |
 | Confirmar sin señal | Se guarda igual, se manda solo cuando haya conexión (`errors.network`) | Cola de salida |
@@ -218,8 +264,9 @@ Quién puede: `inventory.view` (listar, ver sugerencias, empezar y completar una
 manualmente (no disponible en esta pantalla) exige `warehouse.manage`.
 
 Cómo se usa: tocar una tarea de la lista la marca "en curso" (`POST /warehouse-tasks/{id}/start`) y pide hasta 3
-posiciones sugeridas; se escanea la posición real donde se dejó el producto (no tiene que ser la sugerida) y
-"Completar" (`POST /warehouse-tasks/{id}/complete`) cierra la tarea. "Cancelar" en esta pantalla solo deja la tarea
+posiciones sugeridas; se escanea la posición real donde se dejó el producto (no tiene que ser la sugerida) y la lectura
+cierra la tarea (`POST /warehouse-tasks/{id}/complete`); de vuelta en la lista sale el aviso verde `Listo: {sku} quedó en {bin}`
+(Lote A3). "Cancelar" en esta pantalla solo deja la tarea
 sin completar (vuelve a la lista); no la cancela en el servidor.
 
 ### Campos y validaciones
@@ -257,8 +304,10 @@ dispositivo tenga ambos permisos.
 Cómo se usa:
 1. Se escanea un producto (de un cliente 3PL); si ya hay un despacho en curso, el producto tiene que ser del mismo
    cliente que el despacho abierto.
-2. Se captura cantidad y se escanea la posición de origen (texto libre: no se verifica contra el servidor en este
-   paso, para poder recolectar sin señal); "Agregar" suma la línea.
+2. Se captura la cantidad (viene en 1) y **después** se escanea la posición de origen (texto libre: no se verifica contra el
+   servidor en este paso, para poder recolectar sin señal). Desde el Lote A3, **la lectura de la posición agrega la línea** si
+   la cantidad es válida, con el aviso verde `Agregado: {cantidad} {sku} desde {posición}`; si la cantidad está vacía o no es
+   válida, la posición queda anotada y se agrega con "Agregar". Una línea agregada por error se quita con ✕.
 3. "Empacar" resuelve todas las posiciones de origen escaneadas a su id real (una sola llamada por código distinto),
    busca los consignatarios del cliente, y pide la cantidad de bultos.
 4. Elegir un consignatario y confirmar manda la recolección y el empaque juntos; si no hay señal en ese instante, se
@@ -311,7 +360,10 @@ Cómo se usa:
 1. Se escanea la posición a contar; si no hay conteo abierto en esa posición, se abre uno nuevo y muestra lo
    esperado (o nada, si es a ciegas).
 2. Se escanea cada producto encontrado: si coincide con una línea esperada, se captura la cantidad para esa línea
-   (se puede volver a escanear y corregir); si no estaba en la lista, se agrega como línea extra.
+   (se puede volver a escanear y corregir); si no estaba en la lista, se agrega como línea extra. **Producto sin etiqueta**
+   (Lote A3): tocar el producto en "Lo que se espera aquí" pone su código (SKU) en el campo del producto; se confirma con
+   **Aceptar** y pasa a la cantidad. Tocarlo no cambia lo que se muestra: las cantidades esperadas siguen saliendo solo a quien
+   tiene `warehouse.count`.
 3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y vuelve a Inicio. "Cancelar conteo"
    (con confirmación) libera la posición en el servidor sin guardar lo capturado.
 
@@ -359,7 +411,7 @@ posición) y el servidor decide la coincidencia (SKU, nombre, código de barras,
 |---|---|---|
 | No hay nada con ese código | `No hay nada con ese código.` | API, lista vacía |
 | Sin señal y sin una consulta anterior de ese mismo código | `Sin señal y sin una consulta anterior de esto.` | Local (caché vacía para esa clave) |
-| Sin señal, pero hay una consulta anterior guardada de ese mismo código | `Datos de hace {N} min (sin señal ahora)`, con los datos de esa consulta anterior | Local (`balance_cache`) |
+| Sin señal, pero hay una consulta anterior guardada de ese mismo código | `Datos de las {hora} (hace {N} min, sin señal ahora)` (Lote A3: con la hora en la zona y el formato de la compañía; si no es de hoy, con la fecha), con los datos de esa consulta anterior | Local (`balance_cache`) |
 
 La clave de caché es por almacén y por código exacto (mayúsculas, sin espacios extra): consultar el mismo producto
 por dos códigos distintos (SKU una vez, código de barras otra) guarda dos entradas separadas.
@@ -386,8 +438,22 @@ Cómo se usa: cada fila "con error" muestra el tipo de operación y el mensaje q
 Las pendientes no tienen esas acciones: se mandan solas cuando haya señal (cada 60 segundos, o al tocar
 "Sincronizar ahora").
 
+**Última vez** (Lote A3): la hora de la última pasada, en la zona y con el formato de 12 o 24 horas de la compañía (con la fecha
+si no fue hoy).
+
+**Lector** (Lote A3): una línea dice cómo quedó el perfil del lector del Zebra (§1.1), según lo que contestó DataWedge:
+
+| Indicador | Qué quiere decir | Qué hacer |
+|---|---|---|
+| `Lector: listo` (verde) | DataWedge confirmó que el perfil activo de la app es `TeikemAlmacen` | Nada |
+| `Lector: sin perfil` (rojo) | DataWedge rechazó crear el perfil o la app está usando otro perfil (el detalle dice cuál, p. ej. `activo: Profile0`) | Tocar `Volver a configurar el lector`; si sigue, revisar el perfil en DataWedge (ver FAQ) |
+| `Lector: sin confirmar` | Se pidió el perfil pero DataWedge no contestó (todavía) | Tocar `Volver a configurar el lector`, salir y volver; si sigue, avisar a soporte |
+| `Lector: no es un Zebra (se usa el teclado)` | El aparato no tiene DataWedge | Nada: se escribe o se usa el teclado |
+
+**Formatos** (Lote A3): en cada pasada con señal también se traen la región y los formatos de la compañía (§1.2).
+
 **Qué pasa en cada pasada con señal (Lote 16).** En orden: (1) se manda la cola de salida; (2) si hubo señal, se manda el **heartbeat** (aviso de vida, capítulo 8A §2.2), que actualiza el
-almacén por defecto, el tema y el **modo de recepción** del almacén del aparato; si el servidor responde que el aparato está desactivado, se borra la identidad del aparato (hay que registrarlo de nuevo); (3) se bajan productos, órdenes de compra, avisos de llegada y **las posiciones del almacén por defecto** del aparato. Antes del Lote 16 el heartbeat no lo llamaba nadie.
+almacén por defecto, el tema y el **modo de recepción** del almacén del aparato; si el servidor responde que el aparato está desactivado, se borra la identidad del aparato (hay que registrarlo de nuevo); (2b, Lote A3) se traen la región y los formatos de la compañía; (3) se bajan productos, órdenes de compra, avisos de llegada y **las posiciones del almacén por defecto** del aparato. Antes del Lote 16 el heartbeat no lo llamaba nadie.
 Las posiciones sirven para validar sin señal la posición destino del recibo directo: la primera vez baja la lista completa (en Advance Depot, unas 3.886 posiciones, en 8 páginas) y después solo los cambios;
 las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
 
@@ -426,4 +492,5 @@ Desde el lote F8a la app lleva la marca Teikem: icono (con versión monocroma pa
 
 Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN, idempotencia, sincronización) y
 los casos propios de la app agregados en este lote (qué pasa si se pierde la señal a mitad de un recibo, por qué
-Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización).
+Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización), y la sección **Lote A3** (lector del
+Zebra, teclado, formatos de la compañía en la app).

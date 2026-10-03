@@ -2115,10 +2115,73 @@ exige, por separado, `locations.read`. Con `warehouse.pick` pero sin `locations.
 despacho, pero "Empacar" devuelve el error de permiso del servidor al pedir la lista. Pida que el rol del aparato
 tenga ambos permisos.
 
-**Consulto un producto sin señal y me sale "Datos de hace N min", pero yo no había consultado eso antes.**
+**Consulto un producto sin señal y me sale "Datos de las {hora} (hace N min, sin señal ahora)" (antes "Datos de hace N min"), pero yo no había consultado eso antes.**
 Sí lo había hecho: la app guarda la última respuesta de cada código exacto consultado (por almacén), aunque haya
 sido hace días. Si la búsqueda fue por texto libre y por producto en momentos distintos, cuenta como dos consultas
 distintas (dos claves de caché), aunque el resultado final se parezca.
+
+## Lote A3 — App de almacén: mejoras del Zebra y formatos de la compañía
+
+Detalle en el [capítulo 9](09-app-almacen.md) (§1.1 lector, §1.2 formatos, §9 Sincronización) y en
+`docs/mobile/loteA3-decisiones.md`. Ninguno de estos mensajes viene del servidor (no tienen código HTTP): son de la app.
+
+### Mensajes nuevos
+
+**¿Qué significa "La fecha no es válida. Escríbela así: MM/DD/AAAA" en Recibir?**
+El vencimiento del lote se escribe en el orden de fecha de la compañía (Región y formatos; en Puerto Rico mes/día/año) y lo
+escrito no es una fecha que exista (por ejemplo `31/01/2027` con mes 31, o un año de dos cifras). "Agregar" queda apagado hasta
+corregirla o borrarla (el vencimiento es opcional). También se acepta año-mes-día (`2027-01-31`). El formato del ejemplo cambia
+si la compañía usa otro orden (`DD/MM/AAAA`, `AAAA-MM-DD`).
+
+**¿Qué significa "Lector: sin perfil" en Sincronización?**
+DataWedge (el programa del lector de Zebra) rechazó crear el perfil `TeikemAlmacen` o la app está usando otro perfil (el
+"Detalle" dice cuál, por ejemplo `activo: Profile0`). Con otro perfil, el lector puede escribir cada lectura como teclas
+(aparece el teclado y no avanza solo). Toque **Volver a configurar el lector** con la app abierta y revise otra vez. Si sigue:
+en la app DataWedge del aparato → Perfiles, que exista `TeikemAlmacen` asociado a `com.teikem.almacen` (y que ningún otro perfil
+esté asociado a la app), con "Keystroke output" apagado e "Intent output" encendido (acción `com.teikem.almacen.SCAN`,
+broadcast). Si no, avise a soporte con el texto del "Detalle".
+
+**¿Qué significa "Lector: sin confirmar"?**
+La app pidió el perfil a DataWedge pero DataWedge no contestó (todavía). No quiere decir que el lector falle: pruebe a escanear.
+Si no avanza solo, toque **Volver a configurar el lector**, salga a Inicio y vuelva; si sigue sin confirmar, avise a soporte.
+
+**¿Qué significa "Lector: no es un Zebra (se usa el teclado)"?**
+El aparato no tiene DataWedge (un teléfono normal o un emulador). La app funciona igual: se escribe el código (botón ⌨) y se
+toca Aceptar.
+
+**¿Qué significan los bloques verdes "Agregado: … desde …" (Despacho) y "Listo: … quedó en …" (Acomodar)?**
+Son la confirmación de la lectura: en Despacho, la línea ya se agregó al escanear la posición; en Acomodar, la tarea ya se
+completó. Se quedan hasta la siguiente lectura.
+
+### Preguntas frecuentes
+
+**Al escanear aparece el teclado en pantalla, o el código se escribe en el campo de la cantidad, y no avanza solo.**
+El lector está entregando la lectura "como teclas" (el perfil de DataWedge no quedó aplicado). Vea "Lector: sin perfil" arriba.
+Con la versión del Lote A3 el campo de escaneo ya no abre el teclado al enfocarse, y la app apaga la salida por teclas del
+perfil.
+
+**¿Cómo escribo un código a mano si el teclado ya no aparece?**
+Toque el botón **⌨** junto al campo: aparece el teclado. Escriba el código y toque **Aceptar** (o Enter). Toque ⌨ otra vez para
+esconderlo. El teclado físico del Zebra escribe en el campo sin abrir el de pantalla.
+
+**En el conteo, un producto no tiene etiqueta. ¿Tengo que teclear el código?**
+No: toque el producto en "Lo que se espera aquí" y su código queda en el campo; toque **Aceptar**.
+
+**En Despacho escaneé la posición y la línea entró con cantidad 1.**
+Desde el Lote A3, escanear la posición agrega la línea con la cantidad que haya en el campo (viene en 1). Escriba la cantidad
+**antes** de escanear la posición. Para corregir, quite la línea con ✕ y vuelva a escanear el producto.
+
+**Cambié la región o los formatos en la web y la app sigue igual.**
+La app los trae en cada sincronización con señal: toque **Sincronizar ahora** (o espere un minuto con Inicio abierto). Si el
+aparato no tiene señal, sigue con los últimos que recibió.
+
+**La hora de la app no coincide con la del reloj del aparato.**
+La app muestra las horas en la zona horaria de la compañía (Región y formatos), no en la del aparato. Si el reloj del aparato
+está en otra zona, la diferencia es esperada; si la zona de la compañía está mal, la corrige un administrador en la web.
+
+**Los números salen con punto de miles (1.250) en vez de coma.**
+Es el separador de la compañía (Región y formatos). Las cantidades que se escriben a mano aceptan punto o coma como decimal,
+como antes.
 
 ## Lote F1 — Frontend: acceso, menú, Pulso y Mi cuenta
 

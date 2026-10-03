@@ -1,6 +1,6 @@
 # App de almacén (Zebra) — mejoras de uso detectadas al probar en el aparato — diseño acordado con el dueño
 
-Estado: **diseño aprobado, sin implementar**. Fecha: 2026-10-03. Origen: pruebas de Luis en el Zebra. Va junto con el lote de la app de "Contar por producto" (`docs/conteo-por-producto-diseno.md`), pero es independiente de él y del servidor: se puede hacer primero.
+Estado: **implementado en el Lote A3 (`docs/mobile/loteA3-decisiones.md`), pendiente de la lista de comprobación en el Zebra**. Fecha: 2026-10-03. Origen: pruebas de Luis en el Zebra. Va junto con el lote de la app de "Contar por producto" (`docs/conteo-por-producto-diseno.md`), pero es independiente de él y del servidor: se puede hacer primero.
 
 **Regla de diseño de todo este documento:** los usuarios del almacén no son técnicos; hay que mostrarles todo grande y claro, y quitarles toques innecesarios.
 
