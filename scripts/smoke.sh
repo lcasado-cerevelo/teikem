@@ -173,6 +173,11 @@ echo "$ACT" | jq -e '.items | map(select(.kind=="security")) | length >= 1' >/de
 # grep -c lee todo el CSV (grep -q cerraría la tubería en la primera coincidencia y pipefail lo marcaría como error con CSV grandes)
 expect 200 "$(req GET '/api/v1/audit/activity/export.csv')" | grep -c 'Cuando,Tipo,Usuario' >/dev/null || fail "csv"; ok "bitácora unificada + CSV"
 echo "$ACT" | jq -e '[.items[] | select(.kind=="security" and (.typeCode // "") != "" and (.outcomeCode // "") != "")] | length >= 1' >/dev/null || fail "actividad sin códigos de tipo/resultado (Lote F10)"
+# Lote F10: el total es el conteo real (antes salía de una ventana de skip+take filas y crecía al paginar)
+AT5=$(expect 200 "$(req GET '/api/v1/audit/activity?kind=all&take=5')" | jq .total)
+AT50=$(expect 200 "$(req GET '/api/v1/audit/activity?kind=all&skip=40&take=50')" | jq .total)
+(( AT5 > 10 && AT50 >= AT5 && AT50 - AT5 <= 2 )) || fail "el total de la actividad cambia al paginar ($AT5 vs $AT50)"
+expect 200 "$(req GET '/api/v1/audit/activity?kind=security&text=smoke&take=5')" | jq -e '.total >= 1 and ([.items[] | select(.kind != "security")] | length == 0)' >/dev/null || fail "texto + tipo en la actividad"
 
 step "sesiones de toda la compañía (Lote F10)"
 # Segunda sesión del admin: aparece en la lista de la compañía (no actual), se revoca por id y deja de aparecer; la propia → 409.
