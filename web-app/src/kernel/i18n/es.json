@@ -1179,7 +1179,12 @@
         "maxCapacityPositive": "El cupo máximo de la posición debe ser mayor que cero.",
         "maxCapacityInteger": "El cupo máximo debe ser un número entero.",
         "maxCapacityTooLarge": "El cupo máximo es demasiado grande."
-      }
+      },
+      "provisional": "Pendiente de revisión",
+      "provisionalHelp": "Posición creada desde un conteo; falta que el supervisor la confirme.",
+      "onlyProvisional": "Solo pendientes de revisión",
+      "confirmProvisional": "Confirmar posición",
+      "provisionalConfirmed": "Posición {code} confirmada."
     },
     "binCapacity": {
       "open": "Asignar cupo",
@@ -2652,7 +2657,6 @@
         "confirm": "Confirmar conteo y ajustar",
         "confirmNote": "Al confirmar, cada línea con varianza genera un ajuste enlazado a este conteo ({number}).",
         "confirmTitle": "Confirmar conteo y ajustar",
-        "confirmBody": "Se asientan en el Kárdex los ajustes del conteo {number} contra el saldo actual ({n} línea(s) con varianza). Después solo se consulta.",
         "confirmedMatch": "Conteo {number}: {status}, sin ajustes.",
         "confirmedVariance": "Conteo {number}: {status}, {n} ajuste(s) en el Kárdex.",
         "unsaved": "Hay cantidades que no se pudieron guardar; corríjalas antes de confirmar.",
@@ -2663,7 +2667,16 @@
           "noLines": "El conteo no tiene líneas.",
           "closed": "El conteo ya fue confirmado; solo se consulta.",
           "blind": "La web no confirma conteos a ciegas."
-        }
+        },
+        "adjustment": "Ajuste",
+        "adjustmentHelp": "Existencia actual {current} → saldo resultante {resulting}",
+        "showAll": "Ver todas",
+        "failingCount": "{shown} de {total} líneas: solo las que fallan",
+        "allCount": "{total} líneas",
+        "failingNone": "Ninguna línea falla: todo cuadra contra la existencia actual.",
+        "previewUpdating": "recalculando…",
+        "reviewNote": "Revisión: si cambia una cantidad queda como corrección (no es un ajuste): se conserva lo que contó el operario y se registra quién corrigió y cuándo.",
+        "correctedLines": "{n} corrección(es)"
       },
       "scan": {
         "label": "Escanear o buscar producto",
@@ -2709,6 +2722,126 @@
         "create": "Crear {n} conteo(s)",
         "createNone": "Crear conteos",
         "created": "Se crearon {n} conteo(s) de lo cambiado."
+      },
+      "tabs": {
+        "counts": "Conteos",
+        "review": "Por revisar"
+      },
+      "review": {
+        "title": "Por revisar",
+        "splitLabel": "Cambiar el ancho de la lista por revisar y del conteo elegido",
+        "intro": "Conteos que el operario ya terminó. \"Cuadra\" se mide contra la existencia actual, no contra la foto: si una posición se movió desde la foto, el conteo queda para revisar.",
+        "filters": {
+          "aria": "Filtros de conteos por revisar",
+          "warehouse": "Almacén",
+          "countedBy": "Contó"
+        },
+        "columns": {
+          "select": "Elegir",
+          "number": "Conteo",
+          "countedBy": "Contó",
+          "product": "Producto",
+          "positions": "Posiciones",
+          "lines": "Líneas",
+          "differing": "Con diferencia",
+          "corrected": "Correcciones",
+          "state": "Estado"
+        },
+        "states": {
+          "matches": "Cuadra",
+          "difference": "Con diferencia",
+          "errors": "Con errores",
+          "pending": "Faltan líneas"
+        },
+        "more": "{label} y {n} más",
+        "counters": "{name} y {n} más",
+        "selectRow": "Elegir {number} para cerrar",
+        "selectOnlyMatching": "Solo se eligen los conteos que cuadran.",
+        "selectHelp": "{n} conteo(s) de esta página cuadran. Sin elegir ninguno, \"Cerrar los que cuadran\" cierra todos los de esta página; con casillas marcadas, solo los elegidos.",
+        "closeMatching": "Cerrar los que cuadran",
+        "closeSelected": "Cerrar los elegidos ({n})",
+        "closeNone": "Ningún conteo de esta página cuadra.",
+        "closeTitle": "Cerrar los que cuadran",
+        "closeBody": "Se van a cerrar {n} conteo(s) que cuadran: {list}. Terminan en Concordancia y no mueven inventario. Antes de cerrar cada uno se vuelve a comprobar la existencia actual; si cambió, queda para revisar.",
+        "listMore": "{list} y {n} más",
+        "closePageNote": "Solo los que cuadran de la página que se ve (con los filtros de arriba).",
+        "closeSelectedNote": "Solo los conteos elegidos.",
+        "comment": "Comentario (opcional)",
+        "commentHelp": "Queda en el historial de cada conteo cerrado. Máximo 500 caracteres.",
+        "commentTooLong": "El comentario admite como máximo 500 caracteres.",
+        "closeConfirm": "Cerrar {n} conteo(s)",
+        "closedToast": "Se cerraron {closed} conteo(s); {skipped} quedan para revisar.",
+        "resultTitle": "Resultado del cierre",
+        "closedHead": "Cerrados ({n})",
+        "closedItem": "{number}: Concordancia, {n} línea(s), sin movimientos",
+        "noneClosed": "No se cerró ninguno.",
+        "skippedHead": "Quedan para revisar ({n})",
+        "truncated": "Se revisaron como máximo 200 conteos en esta llamada; repita para los demás.",
+        "skip": {
+          "WouldPost": "Asentaría {n} movimiento(s); revíselo.",
+          "Errors": "Tiene {n} línea(s) con error:",
+          "Pending": "Faltan {n} línea(s) por contar.",
+          "Stale": "La existencia cambió mientras se cerraba; revíselo.",
+          "NotCounted": "Todavía no se termina de contar.",
+          "AlreadyReconciled": "Ya estaba confirmado.",
+          "NotFound": "El conteo no existe.",
+          "NoLines": "El conteo no tiene líneas.",
+          "Failed": "No se pudo cerrar:"
+        },
+        "empty": "No hay conteos por revisar con estos filtros.",
+        "exportName": "Conteos por revisar"
+      },
+      "evidence": {
+        "column": "Evidencia",
+        "counted": "Contó {qty}",
+        "countedBy": "Contó {qty} ({who})",
+        "corrected": "Corregido a {qty}",
+        "correctedBy": "Corregido a {qty} ({who})",
+        "correction": "Corrección"
+      },
+      "provisional": {
+        "chip": "Posición pendiente de revisión",
+        "help": "Posición creada desde un conteo por quien contaba. El supervisor la confirma, la corrige o la desactiva.",
+        "confirm": "Confirmar posición",
+        "confirmOf": "Confirmar la posición {code}",
+        "confirmed": "Posición {code} confirmada."
+      },
+      "preview": {
+        "intro": "Vista previa del efecto contra la existencia actual de cada posición. No se escribe nada hasta confirmar, y se confirma todo o nada.",
+        "loading": "Calculando la vista previa…",
+        "linesLabel": "Efecto por posición",
+        "totalsLabel": "Totales de la vista previa",
+        "totals": {
+          "lines": "Líneas",
+          "pending": "Por contar",
+          "differing": "Con diferencia",
+          "movements": "Movimientos",
+          "errors": "Con error"
+        },
+        "columns": {
+          "bin": "Posición",
+          "product": "Producto",
+          "lot": "Lote",
+          "current": "Existencia actual",
+          "reserved": "Reservado",
+          "counted": "Contada",
+          "adjustment": "Ajuste",
+          "resulting": "Saldo resultante",
+          "error": "Error"
+        },
+        "pendingRow": "Sin contar",
+        "changedHelp": "La foto decía {qty}; el ajuste se calcula contra la existencia actual.",
+        "serials": "Series: {additions} alta(s), {removals} baja(s), {transfers} traslado(s)",
+        "pendingNote": "Faltan {n} línea(s) por contar: no se puede confirmar hasta contarlas.",
+        "matchNote": "Concordancia: el conteo cuadra con la existencia actual; al confirmar no se ajustará nada.",
+        "varianceNote": "Al confirmar se asentarán {n} movimiento(s) en el Kárdex y el conteo terminará en Diferencia.",
+        "changedNote": "La existencia de {n} posición(es) cambió desde la foto; el ajuste se calcula contra la existencia actual.",
+        "blockers": {
+          "errors": "Hay {n} línea(s) con error; corríjalas antes de confirmar.",
+          "pending": "Faltan {n} línea(s) por contar.",
+          "noLines": "El conteo no tiene líneas."
+        },
+        "back": "Volver a revisar"
       }
     },
     "productFilter": {

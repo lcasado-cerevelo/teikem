@@ -77,6 +77,23 @@ function detail(id: number): Json {
   return { count, lines, rowVersion: `RV${mock.calls.length}`, isBlind: mock.blind }
 }
 
+function preview(): Json {
+  const lines = mock.lines.map((l) => {
+    const counted = l.countedQty as number | null
+    const current = l.systemQty as number
+    const adj = counted == null ? 0 : counted - current
+    return { lineId: l.id, binId: l.binId, binCode: l.binCode, sku: l.sku, productName: l.productName, trackingTypeCode: 'NONE', systemQty: current, currentQty: current, reservedQty: 0, countedQty: counted, isPending: counted == null, adjustmentQty: adj, resultingQty: current + adj, movements: adj === 0 ? 0 : 1, error: null }
+  })
+  const pending = lines.filter((l) => l.isPending).length
+  const movements = lines.reduce((a, l) => a + l.movements, 0)
+  return {
+    lines,
+    totals: { lines: lines.length, pendingLines: pending, linesWithDifference: lines.filter((l) => l.adjustmentQty !== 0).length, movements, errorLines: 0, matches: pending === 0 && movements === 0, resultStatusCode: pending > 0 ? null : movements > 0 ? 'RECONCILED_VARIANCE' : 'RECONCILED' },
+    blockingError: null,
+    rowVersion: 'RVP',
+  }
+}
+
 function route(method: string, url: URL, body: unknown): [number, unknown] {
   const p = url.pathname
   if (p === '/api/v1/cycle-counts/page') return [200, { total: 42, skip: Number(url.searchParams.get('skip') ?? 0), take: 25, items: [COUNT1, COUNT2] }]
@@ -100,9 +117,11 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
       },
     ]
   if (p === '/api/v1/cycle-counts/from-changes' && method === 'POST') return [200, { counts: [{ ...COUNT1, id: 9, number: 'CC-00009' }] }]
-  const m = /^\/api\/v1\/cycle-counts\/(\d+)(\/\w+)?$/.exec(p)
+  const m = /^\/api\/v1\/cycle-counts\/(\d+)(\/[\w-]+)?$/.exec(p)
   if (m) {
     const id = Number(m[1])
+    // Lote F12: vista previa contra la existencia actual (aquí igual a la foto)
+    if (m[2] === '/reconcile-preview') return [200, preview()]
     if (method === 'DELETE') return [204, undefined]
     if (m[2] === '/lines' && method === 'PUT') {
       const item = (body as { lines: { lineId: number; countedQty: number | null }[] }).lines[0]
@@ -262,8 +281,8 @@ describe('Conteo cíclico en dos paneles', () => {
     const put = calls('PUT', '/api/v1/cycle-counts/1/lines')[0].body as { rowVersion: string; lines: unknown[] }
     expect(put.lines).toEqual([{ lineId: 101, countedQty: 6, serialNumbers: null }])
     expect(put.rowVersion).toMatch(/^RV/)
-    // varianza al vuelo con el valor guardado
-    expect(await within(detailPanel()).findByText('+1')).toBeInTheDocument()
+    // varianza al vuelo con el valor guardado y (Lote F12) el ajuste de la vista previa recalculada tras guardar
+    await waitFor(() => expect(within(detailPanel()).getAllByText('+1')).toHaveLength(2))
     await user.type(second, 'dos')
     await user.tab()
     expect(await within(detailPanel()).findByText('Escriba un número.')).toBeInTheDocument()
@@ -290,7 +309,7 @@ describe('Conteo cíclico en dos paneles', () => {
     ).toBeInTheDocument()
   })
 
-  it('"Confirmar conteo y ajustar" en un paso desde Pendiente (con confirmación) termina en Diferencia', async () => {
+  it('"Confirmar conteo y ajustar" en un paso desde Pendiente (pasa por la vista previa) termina en Diferencia', async () => {
     const user = userEvent.setup()
     mock.lines = BASE_LINES.map((l, i) => ({ ...l, countedQty: i === 0 ? 6 : 2, varianceQty: i === 0 ? 1 : 0 }))
     wrap(COUNTER)
@@ -299,9 +318,13 @@ describe('Conteo cíclico en dos paneles', () => {
     await waitFor(() => expect(button).toBeEnabled())
     await user.click(button)
     const dialog = await screen.findByRole('dialog', { name: 'Confirmar conteo y ajustar' })
-    expect(within(dialog).getByText(/1 línea\(s\) con varianza/)).toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Confirmar conteo y ajustar' }))
+    // Lote F12: la vista previa del efecto (1 movimiento) y se confirma con su rowVersion
+    expect(await within(dialog).findByText('Al confirmar se asentarán 1 movimiento(s) en el Kárdex y el conteo terminará en Diferencia.')).toBeInTheDocument()
+    const ok = within(dialog).getByRole('button', { name: 'Confirmar conteo y ajustar' })
+    await waitFor(() => expect(ok).toBeEnabled())
+    await user.click(ok)
     await waitFor(() => expect(calls('POST', '/api/v1/cycle-counts/1/reconcile')).toHaveLength(1))
+    expect(calls('POST', '/api/v1/cycle-counts/1/reconcile')[0].body).toEqual({ rowVersion: 'RVP' })
     expect(calls('POST', '/api/v1/cycle-counts/1/finish')).toHaveLength(0)
     expect(await screen.findByText('Conteo CC-00001: Diferencia, 1 ajuste(s) en el Kárdex.')).toBeInTheDocument()
     expect(await within(panel).findByText('Conteo cerrado. Los ajustes ya están en el Kárdex de movimientos.', { exact: false })).toBeInTheDocument()

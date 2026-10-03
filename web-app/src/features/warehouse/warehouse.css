@@ -346,3 +346,34 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .cc-preview-list .cc-preview-main{font-weight:600;color:var(--flow-2)}
 .cc-problem{color:var(--warn);border-color:var(--warn);margin:8px 0}
 @media(max-width:900px){.cc-list-body{max-height:300px}}
+/* Lote F12 — conteo por producto: revisión rápida, evidencia, vista previa y posición provisional */
+.cc-tabs{margin-bottom:14px}
+.cc-review{min-width:0}
+.cc-review-filters{padding:12px 16px 0}
+.cc-review .qrow{padding:0 16px}
+.cc-review-intro{margin:8px 16px 4px}
+.cc-review-help{margin:8px 16px 14px}
+.cc-review-num{display:inline-flex;flex-direction:column;gap:2px;min-width:0}
+.cc-review-check{width:18px;height:18px;accent-color:var(--flow)}
+.cc-review-check:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.cc-review .lst tr.cc-review-on td,.cc-review .dt-card.cc-review-on{background:var(--flow-bg)}
+.cc-failbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:10px 16px 0}
+.cc-failbar .sw{white-space:normal}
+.cc-bincell{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 6px;min-width:0}
+.cc-adjcell{display:inline-flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0}
+.cc-line-err{font-size:11.5px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+.cc-evidence{display:flex;flex-direction:column;gap:3px;font-size:12px;line-height:1.35;min-width:0;overflow-wrap:anywhere}
+.cc-evidence-fix{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 6px}
+.cc-serialplan{font-size:11px;white-space:normal}
+.cc-lines .lst tr.cc-row-error td,.cc-lines .dt-card.cc-row-error,.pal .lst tr.cc-row-error td,.pal .dt-card.cc-row-error{background:var(--dangerbg)}
+.cc-preview-notes{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.cc-preview-notes .note{margin:0}
+.cc-warn{color:var(--warn);border-color:var(--warn)}
+.cc-preview-foot{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%}
+.cc-preview-why{margin:0;color:var(--warn)}
+.cc-preview-btns{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.cc-result{margin:0 0 12px}
+.cc-result h3{font-size:12px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.cc-result ul{margin:0;padding-left:18px;font-size:12.5px;display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.cc-result .linkbtn{border:none;background:none;padding:0;color:var(--flow-2);font:inherit;font-weight:600;cursor:pointer}
+.cc-result .linkbtn:focus-visible{outline:2px solid var(--flow);outline-offset:2px;border-radius:4px}

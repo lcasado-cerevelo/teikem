@@ -9,7 +9,14 @@
 //   ajustes del Kárdex (`?refEntity=CYCLE_COUNT&refId=`).
 // - "Agregar lo encontrado", "Refrescar foto" (si hay fotos viejas) e Historial en la cabecera.
 // - A ciegas (sin warehouse.count: el API omite lo esperado): solo lectura; la web no cuenta a ciegas (eso es la app).
-import { useQueryClient } from '@tanstack/react-query'
+// Lote F12 (conteo por producto, revisión del supervisor):
+// - con warehouse.count y el conteo abierto se pide la vista previa (`GET /reconcile-preview`): columna "Ajuste" contra la
+//   existencia ACTUAL con el error de la línea; un conteo Contado abre mostrando SOLO LAS LÍNEAS QUE FALLAN (ajuste ≠ 0 o con
+//   error) con el interruptor "Ver todas"; la fila que se corrige en la sesión no desaparece al dejar de fallar;
+// - columna "Evidencia": *Contó X (quién, cuándo) · Corregido a Y (quién, cuándo)* (también a ciegas: no revela lo esperado);
+//   editar la cantidad de un conteo Contado es una CORRECCIÓN (no un ajuste: no mueve inventario por sí misma);
+// - posición provisional (`binIsProvisional`): chip "Posición pendiente de revisión" y, con warehouse.manage, "Confirmar posición";
+// - "Confirmar conteo y ajustar" abre la vista previa del efecto (`ReconcilePreviewModal`) y desde ahí se confirma (todo o nada).
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCan } from '../../kernel/access'
@@ -18,7 +25,6 @@ import { StatusChip, StatusHistory } from '../../kernel/catalogs'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   Chip,
-  ConfirmDialog,
   DataTable,
   EmptyState,
   IconCheck,
@@ -30,8 +36,18 @@ import {
   useElementWidth,
   type DataColumn,
 } from '../../kernel/ui'
-import { useCycleCount, useCycleCountAction, warehouseKeys, type CycleCountDetailDto, type CycleCountDto, type CycleCountLineDto } from './api'
+import {
+  useConfirmProvisionalBin,
+  useCycleCount,
+  useCycleCountAction,
+  useReconcilePreview,
+  type CycleCountDetailDto,
+  type CycleCountDto,
+  type CycleCountLineDto,
+  type ReconcilePreviewLineDto,
+} from './api'
 import { AddFoundLineModal, CountQtyModal } from './CountLineModals'
+import { adjustmentClass, evidenceText, failingLines, lineEvidence, previewByLine, signedQty } from './countReview'
 import { CountScanBox } from './CountScanBox'
 import {
   COUNT_ENTITY_TYPE,
@@ -46,6 +62,8 @@ import {
   type CountLineMatch,
 } from './countView'
 import { formatDateTime, formatNumber } from './lineRules'
+import { problemText } from './problemText'
+import { ReconcilePreviewModal } from './ReconcilePreviewModal'
 import { useCountDrafts, type CountDraftsState } from './useCountDrafts'
 
 /** Bajo este ancho del panel la rejilla pasa a tarjetas. */
@@ -59,6 +77,13 @@ interface GridContextValue {
   canCapture: boolean
   position: ReadonlyMap<number, number>
   openSerials: (line: CycleCountLineDto) => void
+  /** Lote F12: vista previa por línea (null = sin permiso, cerrado o aún no llega). */
+  preview: ReadonlyMap<number, ReconcilePreviewLineDto> | null
+  /** Lote F12: la línea se tocó en esta sesión (se queda visible en "solo las que fallan"). */
+  pin: (lineId: number) => void
+  /** Lote F12: confirmar una posición provisional (null = sin warehouse.manage). */
+  confirmBin: ((line: CycleCountLineDto) => void) | null
+  confirmingBin: number | null
 }
 const GridContext = createContext<GridContextValue | null>(null)
 
@@ -71,7 +96,7 @@ function useGrid(): GridContextValue {
 function CountedCell({ line }: { line: CycleCountLineDto }) {
   const t = useT()
   const lang = useLang()
-  const { drafts, canCapture, position, openSerials } = useGrid()
+  const { drafts, canCapture, position, openSerials, pin } = useGrid()
   const id = line.id ?? 0
   const n = position.get(id) ?? 0
   const error = drafts.errors.get(id)
@@ -107,7 +132,10 @@ function CountedCell({ line }: { line: CycleCountLineDto }) {
         aria-invalid={error ? true : undefined}
         placeholder="—"
         value={draft ?? countedText(line.countedQty)}
-        onChange={(e) => drafts.input(id, e.target.value)}
+        onChange={(e) => {
+          pin(id)
+          drafts.input(id, e.target.value)
+        }}
         onFocus={(e) => e.currentTarget.select()}
         onBlur={() => void drafts.save(id)}
         onKeyDown={(e) => {
@@ -144,18 +172,103 @@ function VarianceCell({ line }: { line: CycleCountLineDto }) {
   return <span className={d === 0 ? 'mono rcp-diff0' : 'mono rcp-diff'}>{`${d > 0 ? '+' : ''}${formatNumber(d, lang)}`}</span>
 }
 
+/** Lote F12 — ajuste contra la existencia ACTUAL (vista previa) y el error de la línea, tal cual del servidor. */
+function AdjustmentCell({ line }: { line: CycleCountLineDto }) {
+  const t = useT()
+  const lang = useLang()
+  const { preview } = useGrid()
+  const p = preview?.get(line.id ?? 0)
+  if (!p || p.isPending) return <span className="rcp-faint">—</span>
+  const num = (n: number) => formatNumber(n, lang)
+  return (
+    <span className="cc-adjcell">
+      <span
+        className={`mono ${adjustmentClass(p.adjustmentQty)}`}
+        title={t('warehouse.cycleCounts.detail.adjustmentHelp', { current: num(p.currentQty ?? 0) || '0', resulting: num(p.resultingQty ?? 0) || '0' })}
+      >
+        {signedQty(p.adjustmentQty, num)}
+      </span>
+      {p.error && <span className="ferr cc-line-err">{p.error}</span>}
+    </span>
+  )
+}
+
+/** Lote F12 — evidencia: *Contó X (quién, cuándo)* y, si se corrigió, *Corregido a Y (quién, cuándo)*. */
+function EvidenceCell({ line }: { line: CycleCountLineDto }) {
+  const t = useT()
+  const lang = useLang()
+  const ev = lineEvidence(line)
+  if (!ev.counted && !ev.corrected) return <span className="rcp-faint">—</span>
+  const num = (n: number | null | undefined) => formatNumber(n, lang) || '0'
+  const when = (iso: string | null | undefined) => formatDateTime(iso, lang)
+  const one = (key: 'counted' | 'corrected') => {
+    const step = ev[key]
+    if (!step) return null
+    const who = [step.by, step.at ? when(step.at) : null].filter(Boolean).join(', ')
+    const qty = step.qty == null ? '—' : num(step.qty)
+    return t(`warehouse.cycleCounts.evidence.${key}${who ? 'By' : ''}`, { qty, who })
+  }
+  return (
+    <span className="cc-evidence">
+      {ev.counted && <span>{one('counted')}</span>}
+      {ev.corrected && (
+        <span className="cc-evidence-fix">
+          <Chip tone="disp">{t('warehouse.cycleCounts.evidence.correction')}</Chip> {one('corrected')}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** Lote F12 — posición con el chip "Posición pendiente de revisión" y, con warehouse.manage, "Confirmar posición". */
+function BinCell({ line }: { line: CycleCountLineDto }) {
+  const t = useT()
+  const { confirmBin, confirmingBin } = useGrid()
+  if (!line.binIsProvisional) return <>{line.binCode ?? '—'}</>
+  return (
+    <span className="cc-bincell">
+      <span>{line.binCode ?? '—'}</span>
+      <Chip tone="warn" title={t('warehouse.cycleCounts.provisional.help')}>
+        {t('warehouse.cycleCounts.provisional.chip')}
+      </Chip>
+      {confirmBin && (
+        <button
+          type="button"
+          className="btn sm"
+          disabled={confirmingBin === line.binId}
+          aria-label={t('warehouse.cycleCounts.provisional.confirmOf', { code: line.binCode ?? '' })}
+          onClick={() => confirmBin(line)}
+        >
+          {confirmingBin === line.binId ? t('common.loading') : t('warehouse.cycleCounts.provisional.confirm')}
+        </button>
+      )}
+    </span>
+  )
+}
+
 function CountLinesGrid({
   detail,
+  rows,
   drafts,
   canCapture,
   hit,
   onSerials,
+  preview,
+  pin,
+  confirmBin,
+  confirmingBin,
 }: {
   detail: CycleCountDetailDto
+  /** Líneas que se pintan (todas o solo las que fallan); las posiciones `n` de las etiquetas son las de TODAS. */
+  rows: readonly CycleCountLineDto[]
   drafts: CountDraftsState
   canCapture: boolean
   hit: number | null
   onSerials: (line: CycleCountLineDto) => void
+  preview: ReadonlyMap<number, ReconcilePreviewLineDto> | null
+  pin: (lineId: number) => void
+  confirmBin: ((line: CycleCountLineDto) => void) | null
+  confirmingBin: number | null
 }) {
   const t = useT()
   const lang = useLang()
@@ -165,10 +278,23 @@ function CountLinesGrid({
   const blind = Boolean(detail.isBlind)
   const closed = isCountClosed(detail.count?.statusCode)
   const editable = isCountEditable(detail.count?.statusCode)
-  const showBin = new Set(lines.map((l) => l.binId)).size > 1
+  const showBin = new Set(lines.map((l) => l.binId)).size > 1 || lines.some((l) => l.binIsProvisional)
   const showLot = lines.some((l) => l.lotNumber)
+  // las columnas no pueden depender de lo que llega DESPUÉS de montar (la vista previa, la primera captura): `FlexRender` vuelve a
+  // montar las celdas al cambiar las columnas y el campo que se está tecleando perdería el foco. Con captura en la web, Ajuste y
+  // Evidencia van siempre; en solo lectura, Evidencia solo si alguna línea la tiene.
+  const showEvidence = canCapture || lines.some((l) => l.capturedAtUtc != null || l.capturedByName != null || l.wasCorrected)
+  const showAdjustment = canCapture && !closed && !blind
   const position = useMemo(() => new Map(lines.map((l, i) => [l.id ?? 0, i + 1])), [lines])
-  const ctx = useMemo<GridContextValue>(() => ({ drafts, canCapture, position, openSerials: onSerials }), [drafts, canCapture, position, onSerials])
+  // las columnas no cambian con cada vista previa recalculada (no se pierde el foco del campo): ordenar y exportar el ajuste leen esta ref
+  const previewRef = useRef(preview)
+  useEffect(() => {
+    previewRef.current = preview
+  }, [preview])
+  const ctx = useMemo<GridContextValue>(
+    () => ({ drafts, canCapture, position, openSerials: onSerials, preview, pin, confirmBin, confirmingBin }),
+    [drafts, canCapture, position, onSerials, preview, pin, confirmBin, confirmingBin],
+  )
 
   // el escáner lleva a la línea: se desplaza hasta ella
   useEffect(() => {
@@ -181,7 +307,15 @@ function CountLinesGrid({
       { id: 'sku', header: t('warehouse.cycleCounts.detail.sku'), cell: (l) => <span className="ref">{l.sku}</span>, sortValue: (l) => l.sku, card: 'title' },
       { id: 'product', header: t('warehouse.cycleCounts.detail.product'), cell: (l) => l.productName ?? '—', sortValue: (l) => l.productName },
       ...(showBin
-        ? [{ id: 'bin', header: t('warehouse.cycleCounts.detail.bin'), cell: (l: CycleCountLineDto) => l.binCode ?? '—', sortValue: (l: CycleCountLineDto) => l.binCode }]
+        ? [
+            {
+              id: 'bin',
+              header: t('warehouse.cycleCounts.detail.bin'),
+              cell: (l: CycleCountLineDto) => <BinCell line={l} />,
+              sortValue: (l: CycleCountLineDto) => l.binCode,
+              exportValue: (l: CycleCountLineDto) => l.binCode ?? '',
+            },
+          ]
         : []),
       ...(showLot
         ? [{ id: 'lot', header: t('warehouse.cycleCounts.detail.lot'), cell: (l: CycleCountLineDto) => l.lotNumber ?? '—', sortValue: (l: CycleCountLineDto) => l.lotNumber }]
@@ -232,6 +366,30 @@ function CountLinesGrid({
               exportValue: (l: CycleCountLineDto) => lineVariance(l),
             },
           ]),
+      ...(showAdjustment
+        ? [
+            {
+              id: 'adjustment',
+              header: t('warehouse.cycleCounts.detail.adjustment'),
+              align: 'end' as const,
+              cell: (l: CycleCountLineDto) => <AdjustmentCell line={l} />,
+              sortValue: (l: CycleCountLineDto) => previewRef.current?.get(l.id ?? 0)?.adjustmentQty ?? undefined,
+              exportValue: (l: CycleCountLineDto) => previewRef.current?.get(l.id ?? 0)?.adjustmentQty ?? null,
+            },
+          ]
+        : []),
+      ...(showEvidence
+        ? [
+            {
+              id: 'evidence',
+              header: t('warehouse.cycleCounts.evidence.column'),
+              cell: (l: CycleCountLineDto) => <EvidenceCell line={l} />,
+              sortValue: (l: CycleCountLineDto) => (l.wasCorrected ? `1 ${l.correctedAtUtc ?? ''}` : `0 ${l.capturedAtUtc ?? ''}`),
+              exportValue: (l: CycleCountLineDto) =>
+                evidenceText(lineEvidence(l), t, (n) => formatNumber(n, lang) || '0', (iso) => formatDateTime(iso, lang)),
+            },
+          ]
+        : []),
       ...(closed && !blind
         ? [
             {
@@ -245,7 +403,7 @@ function CountLinesGrid({
           ]
         : []),
     ],
-    [t, lang, showBin, showLot, blind, editable, closed],
+    [t, lang, showBin, showLot, blind, editable, closed, showAdjustment, showEvidence],
   )
 
   return (
@@ -254,13 +412,17 @@ function CountLinesGrid({
         <DataTable
           label={t('warehouse.cycleCounts.detail.lines')}
           columns={columns}
-          rows={lines}
+          rows={rows}
           rowKey={(l) => l.id ?? 0}
-          rowClassName={(l) => [l.id === hit ? 'cc-hit' : '', drafts.saving.has(l.id ?? 0) ? 'rcp-saving' : ''].filter(Boolean).join(' ') || undefined}
+          rowClassName={(l) =>
+            [l.id === hit ? 'cc-hit' : '', drafts.saving.has(l.id ?? 0) ? 'rcp-saving' : '', preview?.get(l.id ?? 0)?.error ? 'cc-row-error' : '']
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
           pagination={false}
           forceCards={width > 0 && width < CARDS_BELOW_PX}
           exportFileName={detail.count?.number ?? undefined}
-          empty={<EmptyState title={t('warehouse.cycleCounts.detail.noLines')} />}
+          empty={<EmptyState title={rows.length === 0 && lines.length > 0 ? t('warehouse.cycleCounts.detail.failingNone') : t('warehouse.cycleCounts.detail.noLines')} />}
         />
       </GridContext.Provider>
     </div>
@@ -273,9 +435,10 @@ function CountLinesGrid({
 function CountBody({ detail }: { detail: CycleCountDetailDto }) {
   const t = useT()
   const lang = useLang()
-  const qc = useQueryClient()
   const canCount = useCan('warehouse.count')
+  const canManage = useCan('warehouse.manage')
   const action = useCycleCountAction()
+  const confirmProvisional = useConfirmProvisionalBin()
   const drafts = useCountDrafts(detail)
   const count: CycleCountDto = detail.count ?? {}
   const id = count.id ?? 0
@@ -285,27 +448,57 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
   const closed = isCountClosed(count.statusCode)
   // la web cuenta en modo informado: capturar exige warehouse.count y un conteo abierto (a ciegas, solo en la app)
   const canCapture = canCount && editable && !blind
+  // Lote F12: la vista previa (existencia actual, ajuste, errores) solo con warehouse.count y el conteo abierto
+  const previewQuery = useReconcilePreview(id, { enabled: canCapture })
+  const preview = useMemo(() => (canCapture && previewQuery.data ? previewByLine(previewQuery.data) : null), [canCapture, previewQuery.data])
+  // un conteo Contado (lo terminó el operario) se abre para REVISAR: solo las líneas que fallan
+  const reviewing = canCapture && count.statusCode === 'COUNTED'
+  const [showAll, setShowAll] = useState(() => !reviewing)
+  const [pinned, setPinned] = useState<ReadonlySet<number>>(() => new Set())
+  const pin = useCallback((lineId: number) => setPinned((prev) => (prev.has(lineId) ? prev : new Set(prev).add(lineId))), [])
   const [qtyFor, setQtyFor] = useState<{ line: CycleCountLineDto; serial?: string | null } | null>(null)
   const [hit, setHit] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
   const [history, setHistory] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [confirmingBin, setConfirmingBin] = useState<number | null>(null)
   const anyStale = lines.some((l) => l.isStale)
   const blocker = confirmBlocker({ statusCode: count.statusCode, isBlind: blind, lines, drafts: drafts.drafts })
-  const varianceLines = lines.filter((l) => {
-    const d = lineVariance(l, drafts.drafts.get(l.id ?? 0))
-    return d !== null && d !== 0
-  }).length
+  const filtering = canCapture && !showAll
+  const rows = useMemo(
+    () => (filtering ? failingLines(lines, preview, (l) => lineVariance(l, drafts.drafts.get(l.id ?? 0)), pinned) : lines),
+    [filtering, lines, preview, drafts.drafts, pinned],
+  )
 
   const onPick = (m: CountLineMatch) => {
     setHit(m.line.id ?? null)
+    // el escáner lleva a la línea aunque no esté entre "las que fallan"
+    if (m.line.id != null) pin(m.line.id)
     setQtyFor({ line: m.line, serial: m.by === 'serial' ? m.serial : null })
   }
   const openSerials = useCallback((line: CycleCountLineDto) => setQtyFor({ line }), [])
 
+  const warehousePublicId = count.warehousePublicId ?? null
+  const confirmBin = useCallback(
+    async (line: CycleCountLineDto) => {
+      if (!warehousePublicId || line.binId == null) return
+      setConfirmingBin(line.binId)
+      try {
+        await confirmProvisional.mutateAsync({ publicId: warehousePublicId, binId: line.binId })
+        toast.success(t('warehouse.cycleCounts.provisional.confirmed', { code: line.binCode ?? '' }))
+      } catch (err) {
+        toast.error(problemText(err))
+      } finally {
+        setConfirmingBin(null)
+      }
+    },
+    [warehousePublicId, confirmProvisional, t],
+  )
+  const confirmBinFn = useMemo(() => (canManage && warehousePublicId ? (l: CycleCountLineDto) => void confirmBin(l) : null), [canManage, warehousePublicId, confirmBin])
+
   const startConfirm = async () => {
-    // lo tecleado se guarda antes de confirmar
+    // lo tecleado se guarda antes de la vista previa (que se recalcula con lo guardado)
     const ok = await drafts.flush()
     if (!ok) {
       toast.error(t('warehouse.cycleCounts.detail.unsaved'))
@@ -367,6 +560,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
             count.warehouseCode,
             w.kind === 'bin' && w.zone ? t('warehouse.cycleCounts.list.zone', { zone: w.zone }) : null,
             t('warehouse.cycleCounts.detail.progress', { counted: count.countedLines ?? 0, total: count.lineCount ?? 0 }),
+            (count.correctedLines ?? 0) > 0 ? t('warehouse.cycleCounts.detail.correctedLines', { n: count.correctedLines ?? 0 }) : null,
             formatDateTime(count.createdAtUtc, lang),
             count.taskId != null
               ? count.assignedToName
@@ -385,14 +579,41 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
       </div>
 
       {blind && <p className="note cc-note">{t('warehouse.cycleCounts.detail.blindNote')}</p>}
+      {reviewing && <p className="note cc-note">{t('warehouse.cycleCounts.detail.reviewNote')}</p>}
       {canCapture && anyStale && <p className="note cc-note">{t('warehouse.cycleCounts.detail.staleNote')}</p>}
       {canCapture && (
         <div className="cc-scanrow">
           <CountScanBox lines={lines} onPick={onPick} />
         </div>
       )}
+      {canCapture && lines.length > 0 && (
+        <div className="cc-failbar">
+          <label className="sw">
+            <input type="checkbox" role="switch" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
+            <span className="tk" aria-hidden="true" />
+            <span>{t('warehouse.cycleCounts.detail.showAll')}</span>
+          </label>
+          <span className="cc-head-meta" role="status">
+            {filtering
+              ? t('warehouse.cycleCounts.detail.failingCount', { shown: rows.length, total: lines.length })
+              : t('warehouse.cycleCounts.detail.allCount', { total: lines.length })}
+            {previewQuery.isFetching && ` · ${t('warehouse.cycleCounts.detail.previewUpdating')}`}
+          </span>
+        </div>
+      )}
 
-      <CountLinesGrid detail={detail} drafts={drafts} canCapture={canCapture} hit={hit} onSerials={openSerials} />
+      <CountLinesGrid
+        detail={detail}
+        rows={rows}
+        drafts={drafts}
+        canCapture={canCapture}
+        hit={hit}
+        onSerials={openSerials}
+        preview={preview}
+        pin={pin}
+        confirmBin={confirmBinFn}
+        confirmingBin={confirmingBin}
+      />
 
       {closed && (
         <div className="note rcp-note rcp-note-money cc-closed">
@@ -431,7 +652,10 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
           line={qtyFor.line}
           scannedSerial={qtyFor.serial}
           isBlind={blind}
-          onSave={(body) => drafts.capture(qtyFor.line.id ?? 0, body)}
+          onSave={(body) => {
+            pin(qtyFor.line.id ?? 0)
+            return drafts.capture(qtyFor.line.id ?? 0, body)
+          }}
           onClose={() => setQtyFor(null)}
         />
       )}
@@ -439,27 +663,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
       <Modal open={history} title={t('warehouse.cycleCounts.detail.historyTitle', { number: count.number ?? '' })} onClose={() => setHistory(false)}>
         <StatusHistory entityType={COUNT_ENTITY_TYPE} entityId={id} domain={COUNT_STATUS_DOMAIN} />
       </Modal>
-      <ConfirmDialog
-        open={confirming}
-        tone="flow"
-        title={t('warehouse.cycleCounts.detail.confirmTitle')}
-        message={t('warehouse.cycleCounts.detail.confirmBody', { number: count.number ?? '', n: varianceLines })}
-        confirmLabel={t('warehouse.cycleCounts.detail.confirm')}
-        onConfirm={async () => {
-          try {
-            const dto = await action.mutateAsync({ id, action: 'reconcile', body: { rowVersion: drafts.rowVersion() } })
-            const code = dto?.count?.statusCode
-            const adjusted = (dto?.lines ?? []).filter((l) => l.adjustedQty != null && l.adjustedQty !== 0).length
-            if (code === 'RECONCILED_VARIANCE')
-              toast.success(t('warehouse.cycleCounts.detail.confirmedVariance', { number: count.number ?? '', status: dto?.count?.status ?? '', n: adjusted }))
-            else toast.success(t('warehouse.cycleCounts.detail.confirmedMatch', { number: count.number ?? '', status: dto?.count?.status ?? '' }))
-          } catch (err) {
-            if (err instanceof ApiError && err.code === 'conflict') void qc.invalidateQueries({ queryKey: warehouseKeys.cycleCount })
-            throw err
-          }
-        }}
-        onClose={() => setConfirming(false)}
-      />
+      {confirming && <ReconcilePreviewModal count={{ id, number: count.number }} onClose={() => setConfirming(false)} />}
     </Panel>
   )
 }

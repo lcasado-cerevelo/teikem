@@ -12,14 +12,19 @@
 // - Cabecera: "Conteo de lo cambiado" (`ChangedCountModal`) y "Nuevo conteo" (`CreateCountModal`), ambos warehouse.count;
 //   al crear, la lista vuelve a la página 1 y queda elegido el primero creado.
 // Estatus (D7): Pendiente → Contado (solo a ciegas, desde la app) → Concordancia / Diferencia. Manual 06 §6.
+// Lote F12 (conteo por producto): pestaña "Por revisar" (`?tab=review`, solo con warehouse.count; sin él la pestaña no se pinta
+// y `?tab=review` abre la lista de siempre) con los conteos Contados, "Cerrar los que cuadran" y el conteo elegido a la derecha
+// (`CountReviewList` + `CountDetailPanel` en modo revisión).
 import { useCallback, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Can, useCan } from '../../kernel/access'
 import { useT } from '../../kernel/i18n'
-import { FilterScope, SplitPane } from '../../kernel/ui'
+import { FilterScope, SplitPane, Tabs } from '../../kernel/ui'
 import { exportCycleCounts, useCycleCountsPage, type CycleCountDto } from './api'
 import { ChangedCountModal } from './ChangedCountModal'
 import { CountDetailPanel } from './CountDetailPanel'
+import { CountReviewTab } from './CountReviewTab'
+import { countTabFromParam, type CountTabKey as TabKey } from './countReview'
 import { CountTaskList } from './CountTaskList'
 import { countFilterQuery, countFiltersFromUrl, countListQuery, countParam, selectedCountId, type CountFilterState } from './countView'
 import { CreateCountModal } from './CreateCountModal'
@@ -30,10 +35,15 @@ import './warehouse.css'
 const NO_ITEMS: CycleCountDto[] = []
 const DEFAULT_PAGE_SIZE = 25
 
+
 export default function CycleCountListScreen() {
   const t = useT()
   const [params, setParams] = useSearchParams()
   const countId = countParam(params)
+  const canReview = useCan('warehouse.count')
+  const tab = countTabFromParam(params.get('tab'), canReview)
+  // al cambiar de pestaña se quita el conteo elegido (cada pestaña elige el suyo)
+  const setTab = (key: TabKey) => setParams(key === 'counts' ? {} : { tab: key }, { replace: true })
   // Lote 15: filtros iniciales de la URL (una vez al montar; la franja "Almacén hoy" del Pulso manda estatus y almacén)
   const [filters, setFiltersState] = useState<CountFilterState>(() => countFiltersFromUrl(params))
   const [q, setQState] = useState('')
@@ -44,7 +54,8 @@ export default function CycleCountListScreen() {
 
   const effective = useMemo(() => ({ ...filters, search }), [filters, search])
   const query = useMemo(() => countListQuery(effective, page, pageSize), [effective, page, pageSize])
-  const list = useCycleCountsPage(query)
+  // la lista de siempre solo se pide en su pestaña
+  const list = useCycleCountsPage(query, { enabled: tab === 'counts' })
   const items = list.data?.items ?? NO_ITEMS
   const selected = selectedCountId(items, countId)
 
@@ -73,7 +84,9 @@ export default function CycleCountListScreen() {
   // al crear: la lista vuelve a la página 1 y queda elegido el primer conteo creado
   const onCreated = (first: number | null | undefined) => {
     setPage(1)
-    if (first != null) select(first)
+    // desde "Por revisar" se vuelve a la lista de siempre, con el creado elegido
+    if (first != null) setParams({ count: String(first) }, { replace: true })
+    else if (tab !== 'counts') setTab('counts')
   }
 
   const singleWarehouse = filters.warehousePublicIds.length === 1 ? filters.warehousePublicIds[0] : null
@@ -100,6 +113,71 @@ export default function CycleCountListScreen() {
 
       <p className="note cc-intro">{t('warehouse.cycleCounts.intro')}</p>
 
+      {canReview && (
+        <div className="rcp-tabs cc-tabs">
+          <Tabs<TabKey>
+            label={t('warehouse.cycleCounts.title')}
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { key: 'counts', label: t('warehouse.cycleCounts.tabs.counts') },
+              { key: 'review', label: t('warehouse.cycleCounts.tabs.review') },
+            ]}
+          />
+        </div>
+      )}
+
+      {tab === 'review' ? (
+        <CountReviewTab countId={countId} onSelect={select} />
+      ) : (
+        <CountsTab
+          filters={filters}
+          setFilters={setFilters}
+          q={q}
+          setQ={setQ}
+          list={list}
+          items={items}
+          selected={selected}
+          select={select}
+          clearSelection={clearSelection}
+          page={page}
+          setPage={setPage}
+          pageSize={pageSize}
+          setPageSize={setPageSize}
+          effective={effective}
+        />
+      )}
+
+      {creating === 'manual' && <CreateCountModal onClose={() => setCreating(null)} onCreated={(c) => onCreated(c.count?.id)} />}
+      {creating === 'changes' && (
+        <ChangedCountModal initialWarehousePublicId={singleWarehouse} onClose={() => setCreating(null)} onCreated={(counts) => onCreated(counts[0]?.id)} />
+      )}
+    </div>
+  )
+}
+
+interface CountsTabProps {
+  filters: CountFilterState
+  setFilters: (f: CountFilterState) => void
+  q: string
+  setQ: (v: string) => void
+  list: ReturnType<typeof useCycleCountsPage>
+  items: readonly CycleCountDto[]
+  selected: number | null
+  select: (id: number) => void
+  clearSelection: (id: number) => void
+  page: number
+  setPage: (n: number) => void
+  pageSize: number
+  setPageSize: (n: number) => void
+  effective: CountFilterState
+}
+
+/** Pestaña de siempre: filtros arriba, la lista de conteos y el elegido (Lote 14). */
+function CountsTab({ filters, setFilters, q, setQ, list, items, selected, select, clearSelection, page, setPage, pageSize, setPageSize, effective }: CountsTabProps) {
+  const t = useT()
+  return (
+    <>
       <CycleCountFilterBar value={filters} onChange={setFilters} q={q} onQ={setQ} />
 
       <SplitPane
@@ -133,11 +211,6 @@ export default function CycleCountListScreen() {
           <CountDetailPanel id={selected} />
         </FilterScope>
       </SplitPane>
-
-      {creating === 'manual' && <CreateCountModal onClose={() => setCreating(null)} onCreated={(c) => onCreated(c.count?.id)} />}
-      {creating === 'changes' && (
-        <ChangedCountModal initialWarehousePublicId={singleWarehouse} onClose={() => setCreating(null)} onCreated={(counts) => onCreated(counts[0]?.id)} />
-      )}
-    </div>
+    </>
   )
 }

@@ -1179,7 +1179,12 @@
         "maxCapacityPositive": "The bin's max capacity must be greater than zero.",
         "maxCapacityInteger": "Max capacity must be a whole number.",
         "maxCapacityTooLarge": "Max capacity is too large."
-      }
+      },
+      "provisional": "Pending review",
+      "provisionalHelp": "Position created from a count; a supervisor still has to confirm it.",
+      "onlyProvisional": "Only pending review",
+      "confirmProvisional": "Confirm position",
+      "provisionalConfirmed": "Position {code} confirmed."
     },
     "binCapacity": {
       "open": "Set capacity",
@@ -2652,7 +2657,6 @@
         "confirm": "Confirm count & adjust",
         "confirmNote": "On confirm, each line with variance generates an adjustment linked to this count ({number}).",
         "confirmTitle": "Confirm count & adjust",
-        "confirmBody": "The adjustments of count {number} are posted to the ledger against the current balance ({n} line(s) with variance). Afterwards it is read-only.",
         "confirmedMatch": "Count {number}: {status}, no adjustments.",
         "confirmedVariance": "Count {number}: {status}, {n} adjustment(s) in the ledger.",
         "unsaved": "Some quantities could not be saved; fix them before confirming.",
@@ -2663,7 +2667,16 @@
           "noLines": "The count has no lines.",
           "closed": "The count was already confirmed; it is read-only.",
           "blind": "The web does not confirm blind counts."
-        }
+        },
+        "adjustment": "Adjustment",
+        "adjustmentHelp": "Current stock {current} → resulting balance {resulting}",
+        "showAll": "Show all",
+        "failingCount": "{shown} of {total} lines: only the failing ones",
+        "allCount": "{total} lines",
+        "failingNone": "No line fails: everything matches the current stock.",
+        "previewUpdating": "recalculating…",
+        "reviewNote": "Review: changing a quantity is recorded as a correction (not an adjustment): what the operator counted is kept, with who corrected it and when.",
+        "correctedLines": "{n} correction(s)"
       },
       "scan": {
         "label": "Scan or search product",
@@ -2709,6 +2722,126 @@
         "create": "Create {n} count(s)",
         "createNone": "Create counts",
         "created": "{n} count(s) of what changed were created."
+      },
+      "tabs": {
+        "counts": "Counts",
+        "review": "To review"
+      },
+      "review": {
+        "title": "To review",
+        "splitLabel": "Resize the review list and the selected count",
+        "intro": "Counts the operator already finished. \"Matches\" is measured against the current stock, not the snapshot: if a position moved since the snapshot, the count stays for review.",
+        "filters": {
+          "aria": "Filters of counts to review",
+          "warehouse": "Warehouse",
+          "countedBy": "Counted by"
+        },
+        "columns": {
+          "select": "Select",
+          "number": "Count",
+          "countedBy": "Counted by",
+          "product": "Product",
+          "positions": "Positions",
+          "lines": "Lines",
+          "differing": "With difference",
+          "corrected": "Corrections",
+          "state": "State"
+        },
+        "states": {
+          "matches": "Matches",
+          "difference": "With difference",
+          "errors": "With errors",
+          "pending": "Lines missing"
+        },
+        "more": "{label} and {n} more",
+        "counters": "{name} and {n} more",
+        "selectRow": "Select {number} to close",
+        "selectOnlyMatching": "Only counts that match can be selected.",
+        "selectHelp": "{n} count(s) on this page match. With none selected, \"Close the ones that match\" closes all of them on this page; with boxes checked, only the selected ones.",
+        "closeMatching": "Close the ones that match",
+        "closeSelected": "Close selected ({n})",
+        "closeNone": "No count on this page matches.",
+        "closeTitle": "Close the ones that match",
+        "closeBody": "{n} matching count(s) will be closed: {list}. They end as Match and do not move inventory. Before closing each one the current stock is checked again; if it changed, it stays for review.",
+        "listMore": "{list} and {n} more",
+        "closePageNote": "Only the matching counts of the page shown (with the filters above).",
+        "closeSelectedNote": "Only the selected counts.",
+        "comment": "Comment (optional)",
+        "commentHelp": "Stays in the history of each closed count. Up to 500 characters.",
+        "commentTooLong": "The comment allows at most 500 characters.",
+        "closeConfirm": "Close {n} count(s)",
+        "closedToast": "{closed} count(s) closed; {skipped} stay for review.",
+        "resultTitle": "Closing result",
+        "closedHead": "Closed ({n})",
+        "closedItem": "{number}: Match, {n} line(s), no movements",
+        "noneClosed": "None was closed.",
+        "skippedHead": "Stay for review ({n})",
+        "truncated": "At most 200 counts were reviewed in this call; repeat for the rest.",
+        "skip": {
+          "WouldPost": "Would post {n} movement(s); review it.",
+          "Errors": "Has {n} line(s) with errors:",
+          "Pending": "{n} line(s) still to count.",
+          "Stale": "The stock changed while closing; review it.",
+          "NotCounted": "Counting is not finished yet.",
+          "AlreadyReconciled": "It was already confirmed.",
+          "NotFound": "The count does not exist.",
+          "NoLines": "The count has no lines.",
+          "Failed": "Could not close it:"
+        },
+        "empty": "No counts to review with these filters.",
+        "exportName": "Counts to review"
+      },
+      "evidence": {
+        "column": "Evidence",
+        "counted": "Counted {qty}",
+        "countedBy": "Counted {qty} ({who})",
+        "corrected": "Corrected to {qty}",
+        "correctedBy": "Corrected to {qty} ({who})",
+        "correction": "Correction"
+      },
+      "provisional": {
+        "chip": "Position pending review",
+        "help": "Position created from a count by the counter. The supervisor confirms, corrects or deactivates it.",
+        "confirm": "Confirm position",
+        "confirmOf": "Confirm position {code}",
+        "confirmed": "Position {code} confirmed."
+      },
+      "preview": {
+        "intro": "Preview of the effect against the current stock of each position. Nothing is written until you confirm, and it is all or nothing.",
+        "loading": "Calculating the preview…",
+        "linesLabel": "Effect by position",
+        "totalsLabel": "Preview totals",
+        "totals": {
+          "lines": "Lines",
+          "pending": "To count",
+          "differing": "With difference",
+          "movements": "Movements",
+          "errors": "With error"
+        },
+        "columns": {
+          "bin": "Position",
+          "product": "Product",
+          "lot": "Lot",
+          "current": "Current stock",
+          "reserved": "Reserved",
+          "counted": "Counted",
+          "adjustment": "Adjustment",
+          "resulting": "Resulting balance",
+          "error": "Error"
+        },
+        "pendingRow": "Not counted",
+        "changedHelp": "The snapshot said {qty}; the adjustment is calculated against the current stock.",
+        "serials": "Serials: {additions} added, {removals} removed, {transfers} moved",
+        "pendingNote": "{n} line(s) still to count: it cannot be confirmed until they are counted.",
+        "matchNote": "Match: the count agrees with the current stock; confirming adjusts nothing.",
+        "varianceNote": "Confirming will post {n} movement(s) to the ledger and the count will end as Variance.",
+        "changedNote": "The stock of {n} position(s) changed since the snapshot; the adjustment is calculated against the current stock.",
+        "blockers": {
+          "errors": "{n} line(s) have errors; fix them before confirming.",
+          "pending": "{n} line(s) still to count.",
+          "noLines": "The count has no lines."
+        },
+        "back": "Back to review"
       }
     },
     "productFilter": {
