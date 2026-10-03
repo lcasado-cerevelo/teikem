@@ -16,7 +16,6 @@ import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from 
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
 import {
   binScanOutcome,
-  canAddPickLine,
   type ConsigneeChoice,
   newPickLineDraft,
   type PickLine,
@@ -87,7 +86,7 @@ export default function DispatchScreen() {
   }
 
   function addLine(line: PickLine) {
-    if (!openPick || !canAddPickLine({ ...line, qtyText: String(line.quantity) })) return
+    if (!openPick) return
     addLocalPickLine(openPick.id, line)
     setDraft(null)
     setBinError(null)

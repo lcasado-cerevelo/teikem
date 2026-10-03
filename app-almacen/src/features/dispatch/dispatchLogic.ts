@@ -36,10 +36,6 @@ function parseQty(text: string): number {
   return Number.isFinite(n) && n > 0 ? n : 0
 }
 
-export function canAddPickLine(draft: PickLineDraft): boolean {
-  return parseQty(draft.qtyText) > 0 && draft.fromBinCode.trim().length > 0
-}
-
 /** Estado de la cantidad escrita: `missing` = en blanco; `invalid` = 0, negativa o no es un número; `ok` = mayor que 0. */
 export type PickQtyState = 'ok' | 'missing' | 'invalid'
 

@@ -1,6 +1,7 @@
 # Flujo Maestro: completar un despacho de punta a punta (recolectar y empacar).
-# Home → Despacho → escanear producto → cantidad (default) → escanear posición (agrega la línea) → Empacar →
-# elegir consignatario → Confirmar despacho → Home.
+# Home → Despacho → escanear producto → (posición sin cantidad: aviso, no agrega) → escribir la cantidad → escanear
+# posición (agrega la línea) → Empacar → elegir consignatario → Confirmar despacho → Home.
+# Lote A5 (decisión del dueño 5): la cantidad va primero; ya no hay cantidad 1 por omisión ni botón "Agregar".
 # Corre después de 01-registrar-y-entrar.yaml. Variable -e E2E_CONSIGNEE_LABEL (la escribe
 # scripts/e2e-mobile-fixtures.sh: "{nombre de la ubicación} · {ciudad}", igual que dispatchApi.ts la arma).
 appId: com.teikem.almacen
@@ -15,15 +16,31 @@ appId: com.teikem.almacen
 - inputText: "E2E-BARCODE-DISP"
 - pressKey: Enter
 
-# Borrador de línea: cantidad ya viene "1" (newPickLineDraft), el ScanField de posición se auto-enfoca.
+# Borrador de línea: la cantidad viene vacía (newPickLineDraft) y el ScanField de posición se auto-enfoca.
 - assertVisible: "Cantidad"
 - assertVisible: "Escanea de qué posición sale"
+# Posición sin cantidad: no se agrega nada y sale el aviso rojo (el cursor pasa a la cantidad).
 - inputText: "A01-R01-N1-P01"
 - pressKey: Enter
-# Lote A3: con la cantidad ya válida, la lectura de la posición agrega la línea sola (sin "Agregar").
+- assertVisible: "Escribe la cantidad primero y luego escanea la posición."
+- assertNotVisible: "Líneas recolectadas"
 
-# De vuelta en la recolección, con la línea capturada y el aviso verde "Agregado: …".
+# Primero la cantidad (testID dispatch-qty)...
+- tapOn:
+    id: "dispatch-qty"
+- inputText: "2"
+# ...y luego la posición (testID dispatch-from-bin): la lectura agrega la línea al instante (escanear = Aceptar).
+- scrollUntilVisible:
+    element:
+      id: "dispatch-from-bin"
+- tapOn:
+    id: "dispatch-from-bin"
+- inputText: "A01-R01-N1-P01"
+- pressKey: Enter
+
+# De vuelta en la recolección, con la línea capturada y el aviso verde "Agregado: …" (con la cantidad escrita, no 1).
 - assertVisible: "Líneas recolectadas"
+- assertVisible: "Agregado: 2 E2E-SKU-DISP desde A01-R01-N1-P01"
 # Lote A3 (mejoras del Zebra): el campo de escaneo ya no abre el teclado en pantalla al enfocarse, así que no hay
 # teclado que cerrar (hideKeyboard en Android manda "Atrás" y sacaría de la pantalla). Si el botón queda abajo, se busca.
 - scrollUntilVisible:
