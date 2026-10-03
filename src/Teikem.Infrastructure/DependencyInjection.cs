@@ -208,7 +208,10 @@ public static class DependencyInjection
 
         // Lote 14 — punto único de "hoy" en hora de la compañía (Puerto Rico por defecto) y conciliación Kárdex ↔ saldo con
         // descuadres (P1, síncrona; la revisión en segundo plano de P2 llamará a InventoryReconciliationService.CheckProductsAsync).
-        services.AddSingleton<ITenantClock>(TenantClock.Default);
+        // Región y formatos (2026-10): la zona es la de la compañía del contexto (Tenant.TimeZoneId, con caché por compañía).
+        services.AddSingleton<TenantZoneCache>();
+        services.AddScoped<ITenantClock>(sp => new ContextTenantClock(
+            sp.GetRequiredService<ITenantContext>(), sp.GetRequiredService<TeikemDbContext>(), sp.GetRequiredService<TenantZoneCache>()));
         services.AddScoped<InventoryReconciler>();
         services.AddScoped<InventoryReconciliationService>();
         // Lote 15 — franja "Almacén hoy" del Pulso (días locales con el mismo ITenantClock).

@@ -18,7 +18,7 @@ namespace Teikem.Infrastructure.Analytics;
 /// - CostValue/SaleValue = Round4(QtyOnHand × PurchaseCost/SalePrice) (D31).
 /// - Nombres de campo estables: los usa SystemAnalyticsSeeder (AnalyticsSeedFieldsTests lo verifica).
 /// </summary>
-public sealed class StockBalanceDataSource(TeikemDbContext db, InventoryReadService reads) : IDataSource
+public sealed class StockBalanceDataSource(TeikemDbContext db, InventoryReadService reads, Abstractions.ITenantClock? clock = null) : IDataSource
 {
     public string Key => EntityTypes.StockBalance;
     public string LabelEs => "Inventario (saldos)";
@@ -79,7 +79,7 @@ public sealed class StockBalanceDataSource(TeikemDbContext db, InventoryReadServ
         if (balances.Count == 0) return new List<DataRow>();
 
         var refs = await reads.LoadBalanceRefsAsync(balances, ct);
-        var today = ClientDataSourceHelpers.Today();
+        var today = ClientDataSourceHelpers.Today(clock);
         var rows = new List<DataRow>(balances.Count);
         foreach (var b in balances)
         {

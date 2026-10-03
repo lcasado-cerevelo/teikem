@@ -20,10 +20,11 @@ internal static class ClientDataSourceHelpers
     public const int MaxRows = 20000;
 
     /// <summary>
-    /// "Hoy" de las fuentes (contrato vigente, días para vencer, documentos por vencer). Lote 15: día LOCAL de la compañía (hora
-    /// de Puerto Rico, el reloj por defecto del Lote 14), no el día UTC.
+    /// "Hoy" de las fuentes (contrato vigente, días para vencer, documentos por vencer). Lote 15: día LOCAL de la compañía, no el
+    /// día UTC. Región y formatos (2026-10): con el reloj de la compañía del contexto (ITenantClock, su zona horaria); sin reloj
+    /// (pruebas que construyen la fuente a mano) el de la zona por defecto (Puerto Rico).
     /// </summary>
-    public static DateOnly Today() => Abstractions.TenantClock.Default.Today;
+    public static DateOnly Today(Abstractions.ITenantClock? clock) => (clock ?? Abstractions.TenantClock.Default).Today;
 
     public static Task<Dictionary<int, StatusCode>> StatusMapAsync(TeikemDbContext db, string domain, CancellationToken ct)
         => db.StatusCodes.AsNoTracking().Where(s => s.Entity == domain).ToDictionaryAsync(s => s.StatusCodeId, ct);
@@ -62,7 +63,7 @@ internal static class ClientDataSourceHelpers
 }
 
 /// <summary>Fuente: clientes del tenant (estado actual → sin rango de fecha). Admite campos personalizados de CLIENT.</summary>
-public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant) : IDataSource
+public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, Abstractions.ITenantClock? clock = null) : IDataSource
 {
     public string Key => EntityTypes.Client;
     public string LabelEs => "Clientes";
@@ -107,7 +108,7 @@ public sealed class ClientDataSource(TeikemDbContext db, ILookupCache lookups, I
 
         var ids = clients.Select(c => c.ClientId).ToList();
         var lang = tenant.Lang;
-        var today = ClientDataSourceHelpers.Today();
+        var today = ClientDataSourceHelpers.Today(clock);
         var clientStatus = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.ClientStatus, ct);
         var contractStatus = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.ContractStatus, ct);
 

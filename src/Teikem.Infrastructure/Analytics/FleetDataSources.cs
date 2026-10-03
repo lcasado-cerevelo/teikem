@@ -18,7 +18,7 @@ namespace Teikem.Infrastructure.Analytics;
 /// - No hay fuentes de tarifas ni de viajes de chofer (DECISIÓN: Análisis solo exige analytics.view y expondría la compensación).
 /// - Nombres de campo estables: los usa SystemAnalyticsSeeder (vista "Vehículos", indicador "Órdenes de trabajo abiertas").
 /// </summary>
-public sealed class VehicleDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant) : IDataSource
+public sealed class VehicleDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, Abstractions.ITenantClock? clock = null) : IDataSource
 {
     public string Key => EntityTypes.Vehicle;
     public string LabelEs => "Vehículos";
@@ -73,7 +73,7 @@ public sealed class VehicleDataSource(TeikemDbContext db, ILookupCache lookups, 
         if (vehicles.Count == 0) return new List<DataRow>();
 
         var lang = tenant.Lang;
-        var today = ClientDataSourceHelpers.Today();
+        var today = ClientDataSourceHelpers.Today(clock);
         var statusMap = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.VehicleStatus, ct);
 
         // Próximo vencimiento: documentos activos NO superados (regla "vigente por tipo" del helper compartido). Sin q.Ids
@@ -124,7 +124,7 @@ public sealed class VehicleDataSource(TeikemDbContext db, ILookupCache lookups, 
 /// (DriverZone.IsPrimary; Área = DispatchZone.Name). Tope efectivo = el propio o el default del tenant (R4).
 /// Nunca expone tarifas, viajes, usuario vinculado (solo HasUser) ni tokens de dispositivo.
 /// </summary>
-public sealed class DriverDataSource(TeikemDbContext db, ITenantContext tenant) : IDataSource
+public sealed class DriverDataSource(TeikemDbContext db, ITenantContext tenant, Abstractions.ITenantClock? clock = null) : IDataSource
 {
     public string Key => EntityTypes.Driver;
     public string LabelEs => "Choferes";
@@ -170,7 +170,7 @@ public sealed class DriverDataSource(TeikemDbContext db, ITenantContext tenant) 
         if (drivers.Count == 0) return new List<DataRow>();
 
         var lang = tenant.Lang;
-        var today = ClientDataSourceHelpers.Today();
+        var today = ClientDataSourceHelpers.Today(clock);
         var statusMap = await ClientDataSourceHelpers.StatusMapAsync(db, StatusDomains.DriverStatus, ct);
 
         // Default del tenant para el tope de paradas (R4); Tenant es la raíz, se lee por el id del principal.

@@ -18,7 +18,7 @@ namespace Teikem.Infrastructure.Analytics;
 ///   por ids devuelve vacío.
 /// - Tope ClientDataSourceHelpers.MaxRows, por vencimiento ascendente.
 /// </summary>
-public sealed class FleetDocumentDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant) : IDataSource
+public sealed class FleetDocumentDataSource(TeikemDbContext db, ILookupCache lookups, ITenantContext tenant, Abstractions.ITenantClock? clock = null) : IDataSource
 {
     public string Key => EntityTypes.FleetDocument;
     public string LabelEs => "Documentos de flota";
@@ -49,7 +49,7 @@ public sealed class FleetDocumentDataSource(TeikemDbContext db, ILookupCache loo
     {
         if (q.Ids is not null) return new List<DataRow>();
 
-        var today = ClientDataSourceHelpers.Today();   // Lote 15: día local de la compañía
+        var today = ClientDataSourceHelpers.Today(clock);   // Lote 15: día local de la compañía
         var rows = await db.LoadFleetDocumentsAsync(today, new FleetDocumentScope(IncludeVehicles: true, IncludeDrivers: true, OnlyActiveOwners: true), ct);
 
         var selected = rows
