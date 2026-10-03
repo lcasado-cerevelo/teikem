@@ -104,10 +104,10 @@ describe('migración v4 (Lote A4, contar por producto)', () => {
       .getAllSync<{ name: string; notnull: number }>(`PRAGMA table_info(${table})`)
       .reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.name]: c.notnull }), {})
 
-  it('la base nueva queda en la versión 4: la posición del conteo es opcional, cada línea guarda su posición y su lote, y la cantidad admite blanco', () => {
+  it('la base nueva incluye lo de la versión 4: la posición del conteo es opcional, cada línea guarda su posición y su lote, y la cantidad admite blanco', () => {
     const db = getDb()
-    expect(SCHEMA_VERSION).toBe(4)
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(4)
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(4)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
     const count = cols('local_count')
     expect(count).toMatchObject({ mode: 1, bin_id: 0, product_public_id: 0, tracking_type_code: 0 })
     const line = cols('local_count_line')
@@ -134,7 +134,7 @@ describe('migración v4 (Lote A4, contar por producto)', () => {
     )
 
     const db = getDb()
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(4)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
     expect(db.getFirstSync('SELECT id, count_id, mode, bin_id, bin_code, is_blind, product_public_id FROM local_count')).toEqual({
       id: 1,
       count_id: 42,
@@ -155,5 +155,41 @@ describe('migración v4 (Lote A4, contar por producto)', () => {
     db.runSync("INSERT INTO local_count (id, count_id, warehouse_public_id, is_blind, created_at_utc) VALUES (2, 43, 'wh-1', 1, 'x')")
     const info = db.runSync("INSERT INTO local_count_line (local_count_id, product_public_id) VALUES (2, 'p1')")
     expect(info.lastInsertRowId).toBeGreaterThan(8)
+  })
+})
+
+describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', () => {
+  it('la base nueva queda en la versión 5 con bin.is_provisional (por defecto 0)', () => {
+    const db = getDb()
+    expect(SCHEMA_VERSION).toBe(5)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(5)
+    const col = db.getAllSync<{ name: string; notnull: number; dflt_value: string | null }>('PRAGMA table_info(bin)').find((c) => c.name === 'is_provisional')
+    expect(col).toMatchObject({ notnull: 1, dflt_value: '0' })
+  })
+
+  it('un aparato en v4 conserva sus posiciones, conteo en curso y sincronización; las posiciones quedan sin marca y bajan completas otra vez', () => {
+    const raw = openDatabaseSync('teikem_almacen.db')
+    for (let i = 0; i < 4; i++) raw.execSync(MIGRATIONS[i])
+    raw.execSync('PRAGMA user_version = 4;')
+    raw.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, is_active) VALUES (1, 'A-01', 'wh-1', 5, 'PCK', 1)")
+    raw.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, is_active) VALUES (2, 'OLD-1', 'wh-1', 5, 'PCK', 0)")
+    raw.runSync("INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES ('bins:wh-1', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')")
+    raw.runSync("INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES ('products', '2026-10-01T00:00:00Z', '2026-10-01T00:00:00Z')")
+    raw.runSync(
+      "INSERT INTO local_count (id, count_id, warehouse_public_id, mode, product_public_id, sku, product_name, tracking_type_code, is_blind, created_at_utc) VALUES (1, 42, 'wh-1', 'PRODUCT', 'p1', 'SKU-1', 'Uno', 'NONE', 1, '2026-10-02T10:00:00Z')",
+    )
+    raw.runSync("INSERT INTO local_count_line (id, local_count_id, product_public_id, bin_id, bin_code, counted_qty, is_provisional_bin) VALUES (5, 1, 'p1', 9, 'Z-09', 3, 1)")
+
+    const db = getDb()
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(5)
+    expect(db.getAllSync('SELECT id, code, zone_code, is_active, is_provisional FROM bin ORDER BY id')).toEqual([
+      { id: 1, code: 'A-01', zone_code: 'PCK', is_active: 1, is_provisional: 0 },
+      { id: 2, code: 'OLD-1', zone_code: 'PCK', is_active: 0, is_provisional: 0 },
+    ])
+    // solo se reinicia la marca de agua de las posiciones
+    expect(db.getAllSync('SELECT resource FROM sync_watermark')).toEqual([{ resource: 'products' }])
+    // lo que había en un conteo por producto en curso sigue igual
+    expect(db.getFirstSync('SELECT count_id, mode, sku FROM local_count')).toEqual({ count_id: 42, mode: 'PRODUCT', sku: 'SKU-1' })
+    expect(db.getFirstSync('SELECT bin_code, counted_qty, is_provisional_bin FROM local_count_line')).toEqual({ bin_code: 'Z-09', counted_qty: 3, is_provisional_bin: 1 })
   })
 })

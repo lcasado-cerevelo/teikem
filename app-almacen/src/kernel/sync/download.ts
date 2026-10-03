@@ -272,18 +272,19 @@ function applyBins(db: SQLiteDatabase, items: Array<{
   level?: string | null
   position?: string | null
   isActive?: boolean
+  isProvisional?: boolean
 }>): void {
   // A diferencia de productos, la posición inactiva se GUARDA con is_active = 0 (no se borra): así Recibir distingue
   // "no existe en este almacén" de "está desactivada" sin señal (receiveLogic.validateTargetBin).
   for (const b of items) {
     if (b.id == null) continue
     db.runSync(
-      `INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, zone_type_code, aisle, rack, level, position, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, zone_type_code, aisle, rack, level, position, is_active, is_provisional)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET code = excluded.code, warehouse_public_id = excluded.warehouse_public_id,
          zone_id = excluded.zone_id, zone_code = excluded.zone_code, zone_name = excluded.zone_name,
          zone_type_code = excluded.zone_type_code, aisle = excluded.aisle, rack = excluded.rack, level = excluded.level,
-         position = excluded.position, is_active = excluded.is_active`,
+         position = excluded.position, is_active = excluded.is_active, is_provisional = excluded.is_provisional`,
       [
         b.id,
         b.code ?? '',
@@ -297,6 +298,7 @@ function applyBins(db: SQLiteDatabase, items: Array<{
         b.level ?? null,
         b.position ?? null,
         b.isActive === false ? 0 : 1,
+        b.isProvisional === true ? 1 : 0,
       ],
     )
   }

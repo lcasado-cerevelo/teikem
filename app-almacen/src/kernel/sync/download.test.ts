@@ -177,6 +177,27 @@ describe('downloadBins (Lote 16)', () => {
     expect(getDb().getFirstSync('SELECT is_active FROM bin WHERE id = 1')).toEqual({ is_active: 0 })
   })
 
+  it('copia isProvisional de la posición (y lo apaga si el supervisor la confirma)', async () => {
+    getMock.mockResolvedValueOnce(
+      page(
+        [
+          { id: 1, code: 'Z-09', warehousePublicId: 'wh-1', zoneId: 5, isActive: true, isProvisional: true },
+          { id: 2, code: 'A-01', warehousePublicId: 'wh-1', zoneId: 5, isActive: true },
+        ],
+        null,
+        '2026-01-01T00:00:00.000Z',
+      ),
+    )
+    await downloadBins('wh-1')
+    expect(getDb().getAllSync('SELECT code, is_provisional FROM bin ORDER BY id')).toEqual([
+      { code: 'Z-09', is_provisional: 1 },
+      { code: 'A-01', is_provisional: 0 },
+    ])
+    getMock.mockResolvedValueOnce(page([{ id: 1, code: 'Z-09', warehousePublicId: 'wh-1', zoneId: 5, isActive: true, isProvisional: false }], null, '2026-01-01T00:10:00.000Z'))
+    await downloadBins('wh-1')
+    expect(getDb().getFirstSync('SELECT is_provisional FROM bin WHERE id = 1')).toEqual({ is_provisional: 0 })
+  })
+
   it('la marca de agua es por almacén: otro almacén baja completo (sin since)', async () => {
     getMock.mockResolvedValueOnce(page([], null, '2026-01-01T00:10:00.000Z'))
     await downloadBins('wh-1')
