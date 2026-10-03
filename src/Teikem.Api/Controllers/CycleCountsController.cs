@@ -114,6 +114,8 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     /// Lote 21: la primera captura fija capturedQty/capturedBy/capturedAt; quien la capturó puede recapturar mientras el conteo
     /// está Pendiente; cualquier edición de otro usuario, o cualquiera con el conteo ya Contado, es una CORRECCIÓN (countedQty
     /// cambia, la captura original se conserva y se llena correctedBy/correctedAt; si vuelve al valor capturado se limpia).
+    /// Una línea ya corregida solo la vuelve a cambiar quien la corrigió o quien tiene warehouse.count; otro → 409
+    /// 'La línea ya fue corregida por el supervisor; no se puede volver a capturar.' (todo o nada).
     /// </summary>
     [HttpPut("{id:int}/lines"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<CycleCountDetailDto> Capture(int id, [FromBody] CountCaptureRequest req, CancellationToken ct)

@@ -5,12 +5,11 @@
 // resuelve a su id real recién al empacar (dispatchApi.ts), que de todas formas ya necesita señal para elegir el
 // consignatario.
 /**
- * docs/mobile/mejoras-ux-zebra.md §2 ("escanear = aceptar", sin un "Continuar" tras la lectura): escanear la posición de
- * donde sale el producto AGREGA la línea si la cantidad ya es válida (la cantidad se escribe antes, arriba; es el paso
- * manual). Con la cantidad vacía o inválida solo guarda la posición y se agrega con el botón, como antes.
- * Decisión para el dueño (docs/mobile/loteA3-decisiones.md): con `false` vuelve al flujo anterior (siempre "Agregar").
+ * docs/mobile/mejoras-ux-zebra.md §2 ("escanear = aceptar"): escanear la posición de donde sale el producto AGREGA la línea.
+ * Lote A5 — decisión del dueño 5 (docs/decisiones-del-dueno-2026-10-03.md): **la cantidad va primero**. La cantidad arranca
+ * vacía (no hay "1" por omisión); escanear la posición sin una cantidad mayor que 0 no agrega nada ni guarda la posición:
+ * la pantalla avisa y se vuelve a escanear después de escribirla (binScanOutcome).
  */
-export const DISPATCH_ADD_ON_BIN_SCAN = true
 
 export interface PickLine {
   productPublicId: string
@@ -29,7 +28,7 @@ export interface PickLineDraft {
 }
 
 export function newPickLineDraft(product: { publicId: string; sku: string; name: string }): PickLineDraft {
-  return { productPublicId: product.publicId, sku: product.sku, productName: product.name, qtyText: '1', fromBinCode: '' }
+  return { productPublicId: product.publicId, sku: product.sku, productName: product.name, qtyText: '', fromBinCode: '' }
 }
 
 function parseQty(text: string): number {
@@ -39,6 +38,26 @@ function parseQty(text: string): number {
 
 export function canAddPickLine(draft: PickLineDraft): boolean {
   return parseQty(draft.qtyText) > 0 && draft.fromBinCode.trim().length > 0
+}
+
+/** Estado de la cantidad escrita: `missing` = en blanco; `invalid` = 0, negativa o no es un número; `ok` = mayor que 0. */
+export type PickQtyState = 'ok' | 'missing' | 'invalid'
+
+export function pickQtyState(qtyText: string): PickQtyState {
+  if (qtyText.trim() === '') return 'missing'
+  return parseQty(qtyText) > 0 ? 'ok' : 'invalid'
+}
+
+/** Qué hace la lectura de la posición (decisión del dueño 5): con cantidad > 0 agrega la línea al instante; sin cantidad o con
+ *  una cantidad inválida no agrega nada (y la posición no se guarda: se vuelve a escanear tras escribir la cantidad). */
+export type BinScanOutcome = { kind: 'add'; line: PickLine } | { kind: 'needQty' } | { kind: 'invalidQty' } | { kind: 'noBin' }
+
+export function binScanOutcome(draft: PickLineDraft, binCode: string): BinScanOutcome {
+  if (binCode.trim() === '') return { kind: 'noBin' }
+  const qty = pickQtyState(draft.qtyText)
+  if (qty === 'missing') return { kind: 'needQty' }
+  if (qty === 'invalid') return { kind: 'invalidQty' }
+  return { kind: 'add', line: buildPickLine({ ...draft, fromBinCode: binCode }) }
 }
 
 export function buildPickLine(draft: PickLineDraft): PickLine {

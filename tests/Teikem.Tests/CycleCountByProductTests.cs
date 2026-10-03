@@ -113,6 +113,106 @@ public sealed class CycleCountByProductTests
         Assert.Equal(0, (await svc.GetAsync(created.Count.Id, null, default)).Count.CorrectedLines);
     }
 
+    // ---- Cambio 2 (2026-10-03): la corrección del supervisor se protege de la recaptura del operario
+
+    private const int Carla = 3;
+    private const string Locked = "La línea ya fue corregida por el supervisor; no se puede volver a capturar.";
+
+    /// <summary>Ana captura 4 y 5 en dos posiciones; Beto (warehouse.count) corrige la primera a 6. Devuelve el conteo y sus líneas.</summary>
+    private static async Task<(CycleCountFixture F, int CountId, CycleCountLineDto Corrected, CycleCountLineDto Plain)> CorrectedAsync()
+    {
+        var f = await NewAsync();
+        await f.AddUserAsync(Carla, "Carla Soto");
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin2, 5m);
+        var svc = f.Get<CycleCountService>();
+        var created = await ByProductAsync(f, f.ProductNonePublicId);
+        var l1 = created.Lines.Single(l => l.BinId == f.PickBin1);
+        var l2 = created.Lines.Single(l => l.BinId == f.PickBin2);
+        await svc.CaptureAsync(created.Count.Id, new CountCaptureRequest(new[] { Cap(l1, 4m), Cap(l2, 5m) }), default);
+        f.AsRestrictedUser(Beto, PermissionCatalog.WarehouseCount, PermissionCatalog.WarehouseCountCapture);
+        await svc.CaptureAsync(created.Count.Id, new CountCaptureRequest(new[] { Cap(l1, 6m) }), default);
+        return (f, created.Count.Id, l1, l2);
+    }
+
+    [Fact]
+    public async Task Operator_cannot_recapture_a_line_the_supervisor_corrected_and_the_correction_survives()
+    {
+        var (f, id, l1, _) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l1, 3m) }), default));
+        Assert.Equal(409, ex.StatusCode);
+        Assert.Equal(Locked, ex.Message);
+        var after = (await svc.GetAsync(id, null, default)).Lines.Single(l => l.Id == l1.Id);
+        Assert.Equal((6m, 4m, Beto, true), (after.CountedQty, after.CapturedQty, after.CorrectedByUserId, after.WasCorrected));
+
+        // Reenviar el valor vigente (reintento de la cola de salida) no cambia nada y no se rechaza.
+        await svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l1, 6m) }), default);
+    }
+
+    [Fact]
+    public async Task Supervisor_corrects_again_and_a_third_user_with_count_permission_too_but_not_one_with_only_capture()
+    {
+        var (f, id, l1, _) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+
+        // Quien corrigió, aunque ahora solo tenga capturar, vuelve a corregir.
+        f.AsRestrictedUser(Beto, PermissionCatalog.WarehouseCountCapture);
+        var again = (await svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l1, 7m) }), default)).Lines.Single(l => l.Id == l1.Id);
+        Assert.Equal((7m, 4m, Beto, true), (again.CountedQty, again.CapturedQty, again.CorrectedByUserId, again.WasCorrected));
+
+        // Otra persona con solo capturar: rechazada.
+        f.AsRestrictedUser(Carla, PermissionCatalog.WarehouseCountCapture);
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l1, 1m) }), default));
+        Assert.Equal(Locked, ex.Message);
+
+        // Otra persona con warehouse.count: corrige (sigue siendo una corrección y actualiza Corrected*).
+        f.AsRestrictedUser(Carla, PermissionCatalog.WarehouseCount, PermissionCatalog.WarehouseCountCapture);
+        var third = (await svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l1, 8m) }), default)).Lines.Single(l => l.Id == l1.Id);
+        Assert.Equal((8m, 4m, Carla, true), (third.CountedQty, third.CapturedQty, third.CorrectedByUserId, third.WasCorrected));
+    }
+
+    [Fact]
+    public async Task Operator_can_still_recapture_a_line_without_correction()
+    {
+        var (f, id, _, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
+        var line = (await svc.CaptureAsync(id, new CountCaptureRequest(new[] { Cap(l2, 2m) }), default)).Lines.Single(l => l.Id == l2.Id);
+        Assert.Equal((2m, 2m, false), (line.CountedQty, line.CapturedQty, line.WasCorrected));
+    }
+
+    [Fact]
+    public async Task Batch_with_one_corrected_line_is_rejected_whole_and_names_the_row()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l2.Id, CountedQty: 1m),      // sin corrección: por sí sola pasaría
+            new CountBatchItem(LineId: l1.Id, CountedQty: 3m),      // corregida: detiene todo el lote
+        }), default));
+        Assert.StartsWith(Locked, ex.Message);
+        Assert.Contains("2 (", ex.Message);
+        Assert.Contains("No se guardó nada.", ex.Message);
+        var lines = (await svc.GetAsync(id, null, default)).Lines;
+        Assert.Equal(5m, lines.Single(l => l.Id == l2.Id).CountedQty);   // el lote no quedó a medias
+        Assert.Equal(6m, lines.Single(l => l.Id == l1.Id).CountedQty);
+
+        // Un lote sin líneas corregidas sigue pasando.
+        var ok = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[] { new CountBatchItem(LineId: l2.Id, CountedQty: 1m) }), default);
+        Assert.Equal(1m, ok.Lines.Single(l => l.Id == l2.Id).CountedQty);
+    }
+
     [Fact]
     public async Task Any_edit_after_the_count_is_finished_is_a_correction_even_by_the_same_user()
     {

@@ -245,6 +245,18 @@ public static class CycleCountRules
         return cur with { CountedQty = value, CountedSerialsJson = serialsJson, CorrectedBy = userId, CorrectedAtUtc = nowUtc };
     }
 
+    /// <summary>Mensaje (409) cuando alguien recaptura una línea que el supervisor ya corrigió.</summary>
+    public const string CorrectedLineLocked = "La línea ya fue corregida por el supervisor; no se puede volver a capturar.";
+
+    /// <summary>
+    /// Protección de la corrección (decisión del dueño 2026-10-03): una línea con corrección solo la vuelve a tocar quien la
+    /// corrigió o quien tiene warehouse.count (sigue siendo una corrección). Cualquier otra persona que intente cambiar su valor
+    /// (recaptura del operario incluida) se rechaza; reenviar el mismo valor vigente no cambia nada y no se rechaza (reintento
+    /// idempotente de una cola de salida). Es función pura: next es el resultado de ApplyCapture sobre current.
+    /// </summary>
+    public static bool IsLockedByCorrection(CaptureState current, CaptureState next, int? userId, bool hasCountPermission)
+        => current.WasCorrected && !hasCountPermission && (current.CorrectedBy is null || current.CorrectedBy != userId) && next != current;
+
     private static string? SerialsJson(IReadOnlyList<string>? serials)
         => serials is null ? null : JsonSerializer.Serialize(serials, new JsonSerializerOptions(JsonSerializerDefaults.Web));
 

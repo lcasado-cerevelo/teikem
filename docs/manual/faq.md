@@ -4406,3 +4406,10 @@ Su usuario cuenta a ciegas (no tiene `warehouse.count`). Pida a un supervisor qu
 
 **¿Puedo crear un conteo por producto desde la web?**
 Todavía no; se crea desde la app de almacén ("Contar por producto").
+
+**"La línea ya fue corregida por el supervisor; no se puede volver a capturar." (409)**
+Alguien con solo `warehouse.count.capture` (por ejemplo el operario que contó la línea) intentó cambiar una línea que un supervisor ya
+corrigió. La corrección no se tocó. Qué hacer: pida al supervisor (quien corrigió, o alguien con `warehouse.count`) que la vuelva a
+corregir desde la web. En la app, la operación queda marcada "rechazada" con este mensaje y no se reintenta sola. En la captura en
+lote el mensaje agrega `Renglón(es) del lote: n (SKU)` y `No se guardó nada.`: ningún renglón del lote se guardó; envíe de nuevo el
+lote sin esa línea. Reenviar el mismo valor que ya tiene la línea no da error.

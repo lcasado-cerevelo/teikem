@@ -516,7 +516,7 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         configure?.Invoke(services);
         var provider = services.BuildServiceProvider();
 
-        var f = new CycleCountFixture(db, provider, lookups, tenant);
+        var f = new CycleCountFixture(db, provider, lookups, tenant) { _cache = cache };
         await f.SeedAsync();
         return f;
     }
@@ -649,7 +649,17 @@ internal sealed class CycleCountFixture : IAsyncDisposable
     }
 
     /// <summary>El usuario que captura/corrige/reconcilia a partir de ahora (el TenantId sigue saliendo del contexto).</summary>
-    public void AsUser(int userId) => Tenant.UserId = userId;
+    public void AsUser(int userId) { Tenant.UserId = userId; Tenant.IsPlatformAdmin = true; }
+
+    private MemoryCache? _cache;
+
+    /// <summary>Cambio 2 (2026-10-03): el usuario deja de ser administrador de plataforma y queda SOLO con los permisos dados.</summary>
+    public void AsRestrictedUser(int userId, params string[] permissions)
+    {
+        Tenant.UserId = userId;
+        Tenant.IsPlatformAdmin = false;
+        _cache!.Set($"perms:{userId}:{TenantId}", new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase));
+    }
 
     /// <summary>Segundo almacén del tenant con una zona y una posición (para probar que no se mezclan).</summary>
     public async Task<(int ZoneId, int BinId)> AddOtherWarehouseAsync()

@@ -52,7 +52,8 @@ public sealed class CycleCountService(
     INumberSequenceService numbers,
     InventoryLedger ledger,
     WarehouseTaskWriter taskWriter,
-    ITenantClock clock)
+    ITenantClock clock,
+    PermissionService permissions)
 {
     public const string NumberPattern = "CC-#####";
     public const string NumberTakenMessage = "Ya existe un conteo con ese número; intente de nuevo.";
@@ -637,6 +638,7 @@ public sealed class CycleCountService(
             // Primero se valida TODO; solo si no hay errores se aplica (nada queda a medias en el contexto).
             var errors = new Dictionary<string, string[]>();
             var changes = new List<(CycleCountLine Line, decimal? Counted, IReadOnlyList<string>? Serials)>();
+            var locked = false;
             for (var i = 0; i < req.Lines.Count; i++)
             {
                 var item = req.Lines[i];
@@ -645,9 +647,15 @@ public sealed class CycleCountService(
                 var code = tracking.GetValueOrDefault(p.TrackingTypeLookupId, TrackingTypes.None);
                 var (counted, serials, field, error) = CycleCountRules.Capture(code, p.Sku, item.CountedQty, item.SerialNumbers);
                 if (error is not null) errors[$"lines[{i}].{field}"] = new[] { error };
-                else changes.Add((line, counted, serials));
+                else
+                {
+                    changes.Add((line, counted, serials));
+                    locked |= await LockedByCorrectionAsync(line, counted, serials, ccStatus == CycleCountStatuses.Counted, ct2);
+                }
             }
             if (errors.Count > 0) throw new ValidationException(errors);
+            // Todo o nada: una línea corregida por el supervisor detiene la captura completa (409), sin guardar nada.
+            if (locked) throw new ConflictException(CycleCountRules.CorrectedLineLocked);
 
             var now = DateTime.UtcNow;
             foreach (var (line, counted, serials) in changes) ApplyCaptureTo(line, counted, serials, ccStatus == CycleCountStatuses.Counted, now);
@@ -662,6 +670,20 @@ public sealed class CycleCountService(
     /// recaptura del mismo usuario con el conteo abierto, o CORRECCIÓN (otro usuario, o cualquiera con el conteo ya Contado).
     /// CountedQty queda siempre con el valor vigente; la captura original se conserva. No mueve inventario.
     /// </summary>
+    /// <summary>
+    /// ¿La captura choca con una corrección del supervisor? (CycleCountRules.IsLockedByCorrection). Solo consulta el permiso
+    /// warehouse.count cuando la línea tiene corrección y la captura cambiaría algo.
+    /// </summary>
+    private async Task<bool> LockedByCorrectionAsync(CycleCountLine line, decimal? counted, IReadOnlyList<string>? serials, bool countFinished, CancellationToken ct)
+    {
+        if (line.CorrectedAtUtc is null && line.CorrectedBy is null) return false;
+        var current = new CycleCountRules.CaptureState(line.CountedQty, line.CountedSerialsJson, line.CapturedQty, line.CapturedSerialsJson,
+            line.CapturedBy, line.CapturedAtUtc, line.CorrectedBy, line.CorrectedAtUtc);
+        var next = CycleCountRules.ApplyCapture(current, counted, serials, tenant.UserId, DateTime.UtcNow, countFinished);
+        if (!CycleCountRules.IsLockedByCorrection(current, next, tenant.UserId, hasCountPermission: false)) return false;
+        return !await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct);
+    }
+
     private void ApplyCaptureTo(CycleCountLine line, decimal? counted, IReadOnlyList<string>? serials, bool countFinished, DateTime nowUtc)
     {
         var next = CycleCountRules.ApplyCapture(
@@ -744,6 +766,7 @@ public sealed class CycleCountService(
             var touched = new HashSet<CycleCountLine>(ReferenceEqualityComparer.Instance);
             var changes = new List<(CycleCountLine Line, decimal? Counted, IReadOnlyList<string>? Serials)>();
             var added = new List<CycleCountLine>();
+            var lockedRows = new List<string>();
             for (var i = 0; i < items.Count; i++)
             {
                 var item = items[i];
@@ -801,9 +824,16 @@ public sealed class CycleCountService(
                 var code = tracking.GetValueOrDefault(product.TrackingTypeLookupId, TrackingTypes.None);
                 var (counted, serials, field, error) = CycleCountRules.Capture(code, product.Sku, item.CountedQty, item.SerialNumbers);
                 if (error is not null) errors[$"lines[{i}].{field}"] = new[] { error };
-                else changes.Add((line, counted, serials));
+                else
+                {
+                    changes.Add((line, counted, serials));
+                    if (await LockedByCorrectionAsync(line, counted, serials, ccStatus == CycleCountStatuses.Counted, ct2)) lockedRows.Add($"{i + 1} ({product.Sku})");
+                }
             }
             if (errors.Count > 0) throw new ValidationException(errors);
+            // Todo o nada: si alguna línea ya fue corregida por el supervisor se rechaza el lote entero (409) y se dice cuáles.
+            if (lockedRows.Count > 0)
+                throw new ConflictException($"{CycleCountRules.CorrectedLineLocked} Renglón(es) del lote: {string.Join(", ", lockedRows)}. No se guardó nada.");
             if (lines.Count + added.Count > CycleCountRules.MaxLines) throw new ValidationException("lines", CycleCountRules.TooManyLines);
 
             var now = DateTime.UtcNow;

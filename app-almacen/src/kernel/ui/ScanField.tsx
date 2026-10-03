@@ -27,6 +27,8 @@ export interface ScanFieldProps {
   suggestedValue?: string | null
   /** Llena el campo con un valor (sin enviarlo) y deja el cursor listo al final; se confirma con Aceptar o Enter. */
   prefill?: ScanPrefill | null
+  /** Identificador del campo para los recorridos Maestro (`tapOn: id:`). */
+  testID?: string
 }
 
 /** Una misma lectura que llega dos veces seguidas (por teclas y por intent, si el perfil del lector quedara mal) se toma
@@ -50,6 +52,7 @@ export function ScanField({
   keyboardType = 'default',
   suggestedValue,
   prefill,
+  testID,
 }: ScanFieldProps) {
   const { t } = useT()
   const [value, setValue] = useState('')
@@ -121,6 +124,7 @@ export function ScanField({
           placeholder={help}
           placeholderTextColor={colors.muted}
           accessibilityLabel={label}
+          testID={testID}
         />
         <Pressable
           accessibilityRole="button"

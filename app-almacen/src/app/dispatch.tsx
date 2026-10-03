@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -15,11 +15,11 @@ import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
 import {
-  buildPickLine,
+  binScanOutcome,
   canAddPickLine,
   type ConsigneeChoice,
-  DISPATCH_ADD_ON_BIN_SCAN,
   newPickLineDraft,
+  type PickLine,
   type PickLineDraft,
 } from '../features/dispatch/dispatchLogic'
 
@@ -43,6 +43,9 @@ export default function DispatchScreen() {
   const [busy, setBusy] = useState(false)
   // aviso verde de la última línea agregada (se queda hasta la siguiente lectura)
   const [notice, setNotice] = useState<string | null>(null)
+  // aviso rojo de la lectura de la posición (sin cantidad o cantidad inválida); se quita al escribir la cantidad
+  const [binError, setBinError] = useState<string | null>(null)
+  const qtyRef = useRef<TextInput>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,34 +80,36 @@ export default function DispatchScreen() {
     }
     if (!openPick) startLocalPick(warehousePublicId!, { publicId: product.ownerClientPublicId, name: product.ownerName ?? '' })
     setScanError(null)
+    setBinError(null)
     setDraft(newPickLineDraft(product))
     vibrateOk()
     refresh()
   }
 
-  function addLine(line: PickLineDraft) {
-    if (!openPick || !canAddPickLine(line)) return
-    const built = buildPickLine(line)
-    addLocalPickLine(openPick.id, built)
+  function addLine(line: PickLine) {
+    if (!openPick || !canAddPickLine({ ...line, qtyText: String(line.quantity) })) return
+    addLocalPickLine(openPick.id, line)
     setDraft(null)
-    setNotice(t('dispatch.lineAdded', { qty: built.quantity, sku: line.sku, bin: built.fromBinCode }))
+    setBinError(null)
+    setNotice(t('dispatch.lineAdded', { qty: line.quantity, sku: line.sku, bin: line.fromBinCode }))
     vibrateOk()
     refresh()
   }
 
-  function addCurrentLine() {
-    if (draft) addLine(draft)
-  }
-
-  /** Posición de donde sale: con la cantidad ya válida, la lectura agrega la línea (DISPATCH_ADD_ON_BIN_SCAN). */
+  /** Posición de donde sale (decisión del dueño 5: la cantidad va primero). Con cantidad > 0 la lectura agrega la línea
+   *  (escanear = Aceptar); sin cantidad o con una inválida no agrega nada, avisa y deja el cursor en la cantidad para
+   *  escribirla y volver a escanear. La posición no se guarda: no queda una línea a medias. */
   function scanFromBin(code: string) {
     if (!draft) return
-    const next = { ...draft, fromBinCode: code }
-    if (DISPATCH_ADD_ON_BIN_SCAN && canAddPickLine(next)) {
-      addLine(next)
+    const outcome = binScanOutcome(draft, code)
+    if (outcome.kind === 'add') {
+      addLine(outcome.line)
       return
     }
-    setDraft(next)
+    if (outcome.kind === 'noBin') return
+    setBinError(t(outcome.kind === 'needQty' ? 'dispatch.qtyFirst' : 'dispatch.qtyInvalid'))
+    vibrateError()
+    qtyRef.current?.focus()
   }
 
   function cancelDispatch() {
@@ -174,23 +179,35 @@ export default function DispatchScreen() {
             <View style={styles.field}>
               <Text style={styles.label}>{t('dispatch.qtyLabel')}</Text>
               <TextInput
+                ref={qtyRef}
                 value={draft.qtyText}
-                onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v } : d))}
+                onChangeText={(v) => {
+                  setBinError(null)
+                  setDraft((d) => (d ? { ...d, qtyText: v } : d))
+                }}
                 keyboardType="decimal-pad"
                 style={styles.input}
                 accessibilityLabel={t('dispatch.qtyLabel')}
+                testID="dispatch-qty"
               />
+              <Text style={styles.help}>{t('dispatch.qtyFirstHelp')}</Text>
             </View>
+            {/* sin botón "Agregar": la lectura de la posición (o Aceptar del campo) es la que agrega la línea */}
             <ScanField
               label={t('dispatch.fromBinLabel')}
               help={t('dispatch.fromBinHelp')}
+              error={binError}
               onSubmit={scanFromBin}
+              testID="dispatch-from-bin"
             />
-            {draft.fromBinCode ? <Text style={styles.help}>{draft.fromBinCode}</Text> : null}
-            <View style={styles.row}>
-              <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setDraft(null)} />
-              <BigButton label={t('receive.addLine')} onPress={addCurrentLine} disabled={!canAddPickLine(draft)} />
-            </View>
+            <BigButton
+              label={t('common.cancel')}
+              variant="secondary"
+              onPress={() => {
+                setBinError(null)
+                setDraft(null)
+              }}
+            />
           </>
         ) : (
           <>
@@ -262,7 +279,6 @@ const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },
-  row: { flexDirection: 'row', gap: spacing.md },
   input: {
     minHeight: 56,
     borderWidth: 2,

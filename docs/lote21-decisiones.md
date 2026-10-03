@@ -184,7 +184,7 @@ Se actualizaron `WmsContractsTests` (firmas posicionales), `WmsControllerSecurit
 2. **Por revisar y cierre en bloque miran solo los conteos Contados** (los que el operario terminó). Los Pendientes con todas las líneas capturadas
    entran solo con `includeOpen=true`: así no se cierra un conteo que el operario todavía puede estar corrigiendo. D8 permite reconciliar desde
    Pendiente, pero el valor más seguro por defecto es el Contado.
-3. **Recapturar con el conteo Pendiente reemplaza la captura**, también si otra persona ya la había corregido: la corrección se borra de la línea (la
+3. **[CAMBIADO 2026-10-03: ahora una línea corregida no se puede recapturar por quien no la corrigió ni tiene `warehouse.count`: 409; ver `docs/decisiones-del-dueno-2026-10-03.md` #2]** **Recapturar con el conteo Pendiente reemplaza la captura**, también si otra persona ya la había corregido: la corrección se borra de la línea (la
    bitácora de cambios conserva el rastro). Borrar la captura (cantidad vacía) borra también la evidencia. Si prefiere que una recaptura nunca pise una
    corrección, es un cambio de una línea en `CycleCountRules.ApplyCapture`.
 4. **Una corrección usa el mismo permiso que capturar** (`warehouse.count.capture`): no hay un permiso aparte para corregir. Quien puede capturar

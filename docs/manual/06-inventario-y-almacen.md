@@ -1327,6 +1327,14 @@ es siempre el valor **vigente**, el que se reconcilia. Reglas:
 - Cualquier cambio hecho por **otra persona**, o por cualquiera una vez que el conteo está **Contado**, es una **corrección**: `countedQty`
   toma el valor nuevo, lo capturado originalmente se conserva y se anota quién corrigió y cuándo.
 - Si el valor corregido vuelve a ser igual al capturado, la corrección se borra. Mandar otra vez el mismo valor no cambia nada.
+- **Una línea corregida queda protegida** (decisión del dueño, 2026-10-03): solo quien la corrigió, o cualquier persona con `warehouse.count`,
+  puede volver a cambiarla (sigue siendo una corrección y actualiza quién y cuándo). Cualquier otra persona con solo `warehouse.count.capture`
+  (incluido el operario que la capturó originalmente) recibe **409** `La línea ya fue corregida por el supervisor; no se puede volver a capturar.`
+  y la corrección no se toca. Reenviar el mismo valor vigente no cambia nada y no se rechaza. En la captura en lote
+  (`PUT .../lines/batch`) es **todo o nada**: si algún renglón es de una línea corregida se rechaza el lote entero con 409
+  `La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: 2 (SKU-1). No se guardó nada.`
+  (la lista trae el número de renglón, 1 es el primero, y el SKU); las demás líneas del lote quedan sin guardar. Las líneas sin corrección se
+  recapturan como siempre. Al terminar el conteo (Contado) la regla es la misma.
 - Borrar la captura (sin cantidad ni series) devuelve la línea a pendiente y borra también su evidencia.
 - Una corrección **no es un ajuste ni una transferencia** y no mueve inventario: solo cambia la cantidad que se reconcilia. Toda captura y
   corrección queda en la bitácora de cambios (entidad `CYCLE_COUNT`).
