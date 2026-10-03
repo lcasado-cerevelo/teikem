@@ -270,7 +270,7 @@ public sealed class BrandLogoTests
         var t = typeof(BrandLogosController);
         Assert.Equal("api/v1/tenant/brand/logos", t.GetCustomAttribute<RouteAttribute>()!.Template);
         Assert.NotNull(t.GetCustomAttribute<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>());
-        string Perm(string method) => t.GetMethod(method)!.GetCustomAttribute<RequirePermissionAttribute>()!.Policy;
+        string? Perm(string method) => t.GetMethod(method)!.GetCustomAttribute<RequirePermissionAttribute>()?.Policy;
         Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.AdminTenant, Perm(nameof(BrandLogosController.Put)));
         Assert.Equal(RequirePermissionAttribute.Prefix + PermissionCatalog.AdminTenant, Perm(nameof(BrandLogosController.Remove)));
         Assert.Empty(t.GetMethod(nameof(BrandLogosController.Get))!.GetCustomAttributes<RequirePermissionAttribute>());
