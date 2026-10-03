@@ -34,11 +34,13 @@ public sealed class ProvisioningService(TeikemDbContext db, UserManager<Applicat
     {
         if (string.IsNullOrWhiteSpace(req.Name)) throw new ValidationException("name", "El nombre es obligatorio.");
         if (string.IsNullOrWhiteSpace(req.AdminEmail)) throw new ValidationException("adminEmail", "El correo del administrador es obligatorio.");
+        // Región y formatos (2026-10): se valida antes de tocar la base; la compañía nace con los valores de su región (PR por defecto).
+        var t = new Tenant { Name = req.Name.Trim(), LegalName = req.LegalName, TaxId = req.TaxId, DefaultLangCode = (req.DefaultLangCode ?? "es").ToLowerInvariant() };
+        TenantService.ApplyFormat(t, TenantFormatRules.Defaults(TenantFormatRules.DefaultRegion), FormatChanges(req));
         var tc = (TenantContext)tenant;
         using var bypass = tc.BypassTenantFilter();
 
-        if (await db.Tenants.AnyAsync(t => t.Name == req.Name.Trim(), ct)) throw new ConflictException($"Ya existe la compañía '{req.Name}'.");
-        var t = new Tenant { Name = req.Name.Trim(), LegalName = req.LegalName, TaxId = req.TaxId, DefaultLangCode = (req.DefaultLangCode ?? "es").ToLowerInvariant() };
+        if (await db.Tenants.AnyAsync(x => x.Name == req.Name.Trim(), ct)) throw new ConflictException($"Ya existe la compañía '{req.Name}'.");
         if (req.MfaRequired.HasValue) t.MfaRequired = req.MfaRequired.Value;
         db.Tenants.Add(t);
         await db.SaveChangesAsync(ct);
@@ -72,6 +74,10 @@ public sealed class ProvisioningService(TeikemDbContext db, UserManager<Applicat
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, t.TenantId, new { action = "tenant_provisioned", admin = adminId }, ct);
         return new TenantProvisionResult(new TenantSummaryDto(t.TenantId, t.PublicId, t.Name, t.LegalName, t.IsActive, t.CreatedAtUtc), adminId, temp);
     }
+
+    private static TenantFormatChanges FormatChanges(TenantProvisionRequest r) => new(
+        r.RegionCode, r.TimeZoneId, r.CurrencyCode, r.CurrencySymbol, r.CurrencySymbolPosition, r.CurrencyDecimals, r.DateOrder, r.DateSeparator,
+        r.TimeFormat, r.WeekStartDay, r.ThousandsSeparator, r.DecimalSeparator, r.PhoneCountryCode, r.PhoneMask);
 
     public async Task<(int UserId, string? TemporaryPassword)> EnsureAdminUserAsync(Tenant t, string email, string fullName, string? password, CancellationToken ct)
     {

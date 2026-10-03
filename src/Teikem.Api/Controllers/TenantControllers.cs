@@ -33,6 +33,10 @@ public sealed class TenantController(TenantService tenants) : ControllerBase
     [HttpPut("settings"), RequirePermission(PermissionCatalog.AdminTenant)]
     public Task<TenantSettingsDto> Update([FromBody] TenantSettingsUpdateRequest req, CancellationToken ct) => tenants.UpdateSettingsAsync(req, ct);
 
+    /// <summary>Región y formatos (2026-10): regiones con sus valores por defecto y valores permitidos de cada campo (solo sesión).</summary>
+    [HttpGet("format-options")]
+    public TenantFormatOptionsDto FormatOptions() => tenants.GetFormatOptions();
+
     [HttpGet("holidays")]
     public Task<IReadOnlyList<TenantHolidayDto>> Holidays([FromQuery] int? year, CancellationToken ct) => tenants.GetHolidaysAsync(year, ct);
 

@@ -9,8 +9,12 @@ using Teikem.Infrastructure.Persistence;
 
 namespace Teikem.Infrastructure.Services;
 
-/// <summary>Módulo 0B: ajustes de la compañía (defaults de captura, calendario laboral, política MFA/sesión, marca) y feriados.</summary>
-public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+/// <summary>
+/// Módulo 0B: ajustes de la compañía (defaults de captura, calendario laboral, política MFA/sesión, marca, región y formatos) y
+/// feriados. Región y formatos (2026-10): reglas en TenantFormatRules (dominio); al guardar se invalida la zona en caché del
+/// reloj de la compañía (TenantZoneCache) para que "hoy" use la zona nueva desde la siguiente petición.
+/// </summary>
+public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null, TenantZoneCache? zones = null)
 {
     public async Task<TenantSettingsDto> GetSettingsAsync(CancellationToken ct)
     {
@@ -47,9 +51,38 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             }
             t.BrandingJson = req.BrandingJson.Length == 0 ? null : req.BrandingJson;
         }
+        var formatChanges = FormatChanges(req);
+        if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
         await db.SaveChangesAsync(ct);
+        if (!formatChanges.IsEmpty) zones?.Invalidate(t.TenantId);
         return await ToDtoAsync(t, ct);
     }
+
+    /// <summary>Regiones con sus valores por defecto y valores permitidos de cada campo (pantalla Región y formatos).</summary>
+    public TenantFormatOptionsDto GetFormatOptions() => new(
+        TenantFormatRules.Regions.Select(r => ToFormatDto(TenantFormatRules.Defaults(r))).ToList(),
+        TenantFormatRules.SymbolPositions.All, TenantFormatRules.CurrencyDecimalsAllowed.Select(b => (int)b).ToList(),
+        TenantFormatRules.DateOrders.All, TenantFormatRules.DateSeparators, TenantFormatRules.TimeFormats.Select(b => (int)b).ToList(),
+        TenantFormatRules.WeekStartDays.Select(b => (int)b).ToList(), TenantFormatRules.ThousandsSeparators, TenantFormatRules.DecimalSeparators);
+
+    /// <summary>
+    /// Aplica región y formatos sobre la compañía (regla de región de TenantFormatRules.Apply) o lanza el 400 con el mensaje exacto
+    /// y el campo. Lo usa también el aprovisionamiento (partiendo de los valores por defecto de Puerto Rico).
+    /// </summary>
+    public static void ApplyFormat(Tenant t, TenantFormat current, TenantFormatChanges changes)
+    {
+        var (format, field, error) = TenantFormatRules.Apply(current, changes);
+        if (format is null) throw new ValidationException(field!, error!);
+        TenantFormatRules.Write(t, format);
+    }
+
+    private static TenantFormatChanges FormatChanges(TenantSettingsUpdateRequest r) => new(
+        r.RegionCode, r.TimeZoneId, r.CurrencyCode, r.CurrencySymbol, r.CurrencySymbolPosition, r.CurrencyDecimals, r.DateOrder, r.DateSeparator,
+        r.TimeFormat, r.WeekStartDay, r.ThousandsSeparator, r.DecimalSeparator, r.PhoneCountryCode, r.PhoneMask);
+
+    private static TenantFormatDto ToFormatDto(TenantFormat f) => new(
+        f.RegionCode, f.TimeZoneId, f.CurrencyCode, f.CurrencySymbol, f.CurrencySymbolPosition, f.CurrencyDecimals, f.DateOrder, f.DateSeparator,
+        f.TimeFormat, f.WeekStartDay, f.ThousandsSeparator, f.DecimalSeparator, f.PhoneCountryCode, f.PhoneMask);
 
     public async Task<IReadOnlyList<TenantHolidayDto>> GetHolidaysAsync(int? year, CancellationToken ct)
     {
@@ -92,11 +125,14 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         return !await db.TenantHolidays.AsNoTracking().AnyAsync(h => h.IsActive && (h.HolidayDate == date || (h.IsRecurring && h.HolidayDate.Month == date.Month && h.HolidayDate.Day == date.Day)), ct);
     }
 
-    /// <summary>Últimos N días hábiles terminando hoy (para tendencias sin barras muertas de fin de semana/feriado).</summary>
+    /// <summary>
+    /// Últimos N días hábiles terminando hoy (para tendencias sin barras muertas de fin de semana/feriado). Región y formatos
+    /// (2026-10): "hoy" es el día local de la compañía (ITenantClock, su zona horaria), ya no el día UTC.
+    /// </summary>
     public async Task<IReadOnlyList<DateOnly>> LastWorkDaysAsync(int n, CancellationToken ct)
     {
         var result = new List<DateOnly>();
-        var d = DateOnly.FromDateTime(DateTime.UtcNow);
+        var d = (clock ?? TenantClock.Default).Today;
         var guard = 0;
         while (result.Count < n && guard++ < n * 5)
         {
@@ -111,5 +147,8 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.TenantId, t.PublicId, t.Name, t.LegalName, t.TaxId, t.DefaultLangCode, t.WorkDaysMask, t.MaxStopsPerRouteDefault,
         t.DefaultServiceTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultServiceTypeLookupId.Value, ct))?.InternalCode,
         t.DefaultPackageTypeLookupId is null ? null : (await lookups.GetAsync(t.DefaultPackageTypeLookupId.Value, ct))?.InternalCode,
-        t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.DeviceSessionDays, t.BrandingJson, t.IsActive);
+        t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.DeviceSessionDays, t.BrandingJson, t.IsActive,
+        t.RegionCode, t.TimeZoneId, t.CurrencyCode, t.CurrencySymbol, t.CurrencySymbolPosition, t.CurrencyDecimals,
+        t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
+        t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)));
 }
