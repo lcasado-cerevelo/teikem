@@ -198,7 +198,8 @@ describe('Ajustes de la compañía', () => {
     expect(put()[0].body).toEqual({ legalName: 'Advance Logistics Corp.', taxId: '66-0000000', defaultLangCode: 'es' })
     // enlace a Seguridad y auditoría
     await user.click(screen.getByRole('button', { name: 'Abrir Seguridad y auditoría' }))
-    expect(screen.getAllByTestId('where').at(-1)).toHaveTextContent('/system/audit')
+    // abre directo la pestaña Sesiones y MFA (MFA, reautenticación y duración de las sesiones viven allá)
+    expect(screen.getAllByTestId('where').at(-1)).toHaveTextContent('/system/audit?tab=sessions')
   })
 
   it('Región y formatos: vista previa en vivo, intercambio de separadores, "Personalizada" y guardar cambia la app', async () => {

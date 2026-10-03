@@ -82,7 +82,7 @@ export function GeneralTab({ settings, canEdit }: { settings: TenantSettingsDto;
         <p className="set-d" style={{ marginBottom: 12 }}>
           {t('system.settings.general.secLinkHint')}
         </p>
-        <button type="button" className="btn" onClick={() => navigate('/system/audit')}>
+        <button type="button" className="btn" onClick={() => navigate('/system/audit?tab=sessions')}>
           {t('system.settings.general.secLinkBtn')}
         </button>
       </Panel>

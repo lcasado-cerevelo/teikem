@@ -308,13 +308,13 @@ export const appRoutes: readonly AppRoute[] = [
   { path: '/analytics/indicators', element: lazy(() => import('../features/analytics/IndicatorsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'indicators', order: 30 } },
   { path: '/analytics/charts', element: lazy(() => import('../features/analytics/ChartsPage')), perm: 'analytics.view', module: ModuleKeys.Analytics, nav: { group: 'analytics', key: 'charts', order: 40 } },
 
-  // ===== Sistema (Roles y usuarios: F8a P4; Aparatos móviles: P5; Catálogos de valores: P6; el resto F8b o sin backend) =====
+  // ===== Sistema (Roles y usuarios: F8a P4; Aparatos móviles: P5; Catálogos de valores: P6; Seguridad y auditoría: F10; el resto F8b o sin backend) =====
   pending({ path: '/system/printers', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'printers', order: 10 } }),
   { path: '/system/users', element: lazy(() => import('../features/system/UsersPage')), perm: 'admin.users|admin.roles', module: ModuleKeys.System, nav: { group: 'system', key: 'users', order: 20 } },
   { path: '/system/devices', element: lazy(() => import('../features/system/DevicesPage')), perm: 'devices.manage', module: ModuleKeys.WmsLotSerial, nav: { group: 'system', key: 'devices', order: 30 } },
   { path: '/system/catalogs', element: lazy(() => import('../features/system/CatalogsPage')), perm: 'admin.catalogs', module: ModuleKeys.System, nav: { group: 'system', key: 'catalogs', order: 40 } },
   pending({ path: '/system/integrations', perm: 'admin.tenant', module: ModuleKeys.System, nav: { group: 'system', key: 'integrations', order: 50 } }),
-  pending({ path: '/system/audit', perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 60 } }),
+  { path: '/system/audit', element: lazy(() => import('../features/system/AuditScreen')), perm: 'admin.audit', module: ModuleKeys.System, nav: { group: 'system', key: 'audit', order: 60 } },
   {
     path: '/system/settings',
     element: lazy(() => import('../features/system/TenantSettingsPage')),

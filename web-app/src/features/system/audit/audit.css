@@ -1,0 +1,85 @@
+/* Seguridad y auditoría (lote F10; maqueta `auditoriaScreen`). Reusa .panel, .filters, .seg, .qrow, .qbox, .lst, .sw, .f,
+   .r2 y .note del kit, y .set-fs/.set-d/.set-actions de Ajustes; aquí solo lo propio de esta pantalla. */
+
+/* Sesiones y MFA: tabla de sesiones + política (`.cols 1.4fr 1fr` de la maqueta); una columna bajo 900 px */
+.aud-cols {
+  display: grid;
+  gap: 16px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+@media (max-width: 900px) {
+  .aud-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* filtro de tipo como segmento (Todo / Cambios / Seguridad) dentro de la barra de filtros */
+.aud-kind {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+.aud-kind legend {
+  padding: 0;
+  margin-bottom: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.aud-kind .seg button:focus-visible {
+  outline: 2px solid var(--flow);
+  outline-offset: 1px;
+}
+
+/* buscador y "Exportar CSV" en la fila de arriba de la tabla: el botón queda a la derecha y envuelve a 360 px */
+.aud-qrow {
+  padding-bottom: 10px;
+}
+.aud-qrow .aud-export {
+  margin-left: auto;
+}
+
+/* detalle de una fila: el tipo arriba y los campos en tono tenue */
+.aud-detail {
+  display: block;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.aud-detail-parts {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.aud-when {
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* dispositivo de una sesión: texto y la píldora "Esta sesión" sin envolver la píldora */
+.aud-device {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  overflow-wrap: anywhere;
+}
+.aud-muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* política: interruptor con su texto (la maqueta: `label.sw` con margen inferior) */
+.aud-policy .aud-mfa {
+  margin-bottom: 4px;
+}
+.aud-policy .aud-mfa .sw {
+  white-space: normal;
+}
+.aud-policy .set-d {
+  margin: 4px 0 16px;
+}
