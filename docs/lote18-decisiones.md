@@ -39,7 +39,7 @@ Búsqueda de `LocalDay.DefaultZone` y `TenantClock.Default` en `src/`:
   `TenantClock` y `ContextTenantClock` (zona sin tenant y respaldo de una zona desconocida) y en `WarehousePulseService.ZoneName`
   (solo traduce la zona por defecto a su nombre IANA). Las pruebas existentes siguen registrando `TenantClock.Default` (zona fija):
   no cambian.
-- **Pendiente (fuera de este encargo)**: servicios que todavía toman "hoy" como `DateOnly.FromDateTime(DateTime.UtcNow)` sin pasar
+- **RESUELTO en el Lote 20 (`docs/lote20-decisiones.md`)**. Texto original del pendiente: servicios que todavía toman "hoy" como `DateOnly.FromDateTime(DateTime.UtcNow)` sin pasar
   por el reloj: `OrderService`, `OrderStatusService`, `OrderStatusEffect`, `ClientService` (contrato vigente), `RateService`,
   `DriverRateService`, `DriverRatesRetirementEffect`, `DriverService`, `DriverDocumentService`, `VehicleDocumentService`,
   `FleetDocumentService`, `MaintenanceScheduleService`, `MaintenanceWorkOrderService`, `TripService`, `TripReadService`,
@@ -112,4 +112,4 @@ Búsqueda de `LocalDay.DefaultZone` y `TenantClock.Default` en `src/`:
   sueltas a `Intl`/`toLocale`. Los tipos ya están en `schema.d.ts`.
 - **Fase siguiente — App del Zebra:** recibir los mismos valores al sincronizar (hoy puede leerlos de `GET /tenant/settings`).
 - Calendario, pestañas restantes y el resumen de recibo por almacén del mismo pedido (otras piezas del plan).
-- Pasar al reloj de la compañía los servicios listados como pendientes arriba.
+- ~~Pasar al reloj de la compañía los servicios listados como pendientes arriba.~~ Hecho en el Lote 20.

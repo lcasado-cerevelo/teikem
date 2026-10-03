@@ -364,8 +364,20 @@ región que trae `GET /api/v1/tenant/format-options` (es lo que hace el botón *
 
 **Cambié la zona horaria: ¿desde cuándo cuenta "hoy" con la zona nueva? ¿Cambian las fechas guardadas?**
 Desde la petición siguiente (con varias instancias del servidor, a más tardar en 10 minutos). Las fechas guardadas no cambian
-(están en UTC); solo cambia en qué día local cae cada una. Algunas pantallas (órdenes, rutas, flota, mantenimiento, tarifas)
-todavía toman "hoy" en UTC; pasan a la zona de la compañía en un lote posterior.
+(están en UTC); solo cambia en qué día local cae cada una. Desde el Lote 20 todas las pantallas (órdenes, rutas, flota,
+mantenimiento, tarifas, compras) cuentan "hoy" en la zona de la compañía.
+
+**A las 8 p. m. (o más tarde) la pantalla me dice que la fecha es "mañana" / no me deja usar la fecha de hoy. ¿Qué pasa?**
+Era el comportamiento anterior al Lote 20: el servidor contaba "hoy" en UTC y en Puerto Rico, entre las 8:00 p. m. y la
+medianoche, ya era "mañana" para él (ejemplos: la ruta del día, el monitor, la tarifa "no anterior a hoy", el documento que
+"vence hoy"). Ahora "hoy" es el día de la compañía y cambia a la medianoche local. Si aún lo ve, revise la zona en Ajustes de
+la compañía → Región y formatos: si es una zona al este de UTC (p. ej. Europa), su "hoy" se adelanta a la medianoche local.
+
+**Una regla de fecha de un campo personalizado (`min`/`max`) acepta o rechaza distinto cerca de la medianoche. ¿Por qué?**
+`min` y `max` de un campo de fecha son días relativos a hoy (`-1` = ayer, `0` = hoy) y "hoy" es el día de la zona de la
+compañía, no el día UTC. Un campo de tipo *fecha* compara el día de calendario; uno de *fecha y hora* compara el instante con
+la medianoche local de hoy. Los mensajes no cambian: `Fecha anterior a la mínima permitida.` y `Fecha posterior a la máxima
+permitida.` (400 con el campo).
 
 **¿El idioma del usuario cambia los formatos?**
 No. El idioma (de cada usuario) solo decide en qué idioma salen los nombres de días y meses; el orden de la fecha, los

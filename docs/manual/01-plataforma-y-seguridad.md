@@ -810,12 +810,19 @@ la región trae un juego completo de valores por defecto y **cada valor se puede
 del juego de su región, la compañía queda como *Personalizada* (`isRegionCustomized = true`).
 
 - **La zona horaria decide "hoy".** Las fechas se guardan en UTC; "hoy", los días locales y los días hábiles cuentan en la zona
-  de la compañía. Desde este cambio la usan: filtros por día del Kárdex y su resumen, fecha de detección de descuadres, "lo
-  cambiado" del conteo cíclico, la franja "Almacén hoy" del Pulso (que devuelve la zona con que contó los días en `timeZone`),
-  los rangos de fechas de vistas, indicadores y gráficos, la ventana "hoy" de Actividad reciente, el "hoy" de las fuentes de
-  análisis (contrato vigente, días para vencer, documentos por vencer, existencias) y `GET /api/v1/tenant/work-days`. Un
-  cambio de zona se aplica desde la petición siguiente. Otras pantallas que todavía toman "hoy" en UTC (órdenes, rutas, flota y
-  mantenimiento, tarifas) se pasan a la zona de la compañía en un lote posterior (ver `docs/lote18-decisiones.md`).
+  de la compañía. Lo usan: filtros por día del Kárdex y su resumen, fecha de detección de descuadres, "lo cambiado" del conteo
+  cíclico, la franja "Almacén hoy" del Pulso (que devuelve la zona con que contó los días en `timeZone`), los rangos de fechas
+  de vistas, indicadores y gráficos, la ventana "hoy" de Actividad reciente, el "hoy" de las fuentes de análisis y
+  `GET /api/v1/tenant/work-days`. Desde el Lote 20 también lo usan **todas las pantallas y servicios con fecha de negocio**:
+  órdenes (cotización y contrato vigente), rutas y trips (día de la ruta, monitor, despacho, escaneo de salida), flota y
+  mantenimiento (documentos por vencer, disponibilidad, órdenes de trabajo, programas), tarifas y contratos (vigente hoy, "no
+  puede ser anterior a hoy"), servicios especiales, choferes, productos, compras (fecha de la orden por defecto) y las reglas de
+  fecha de los campos personalizados (`min`/`max` en días relativos a hoy). **Qué significa "hoy"**: el día que marca el reloj
+  de la pared de la compañía. En Puerto Rico a las 9:00 p. m. del 2 de octubre sigue siendo 2 de octubre aunque en UTC ya sea
+  el 3; el día cambia a la medianoche local. Los **instantes** (hora de creación, de confirmación, expiración de una sesión o de
+  un código) no cambian: siguen en UTC y la pantalla los muestra en la zona de la compañía. Un cambio de zona se aplica desde la
+  petición siguiente (con varias instancias del servidor, a más tardar en 10 minutos). Sin compañía en contexto (procesos
+  automáticos, carga inicial) "hoy" se cuenta en la zona por defecto, `America/Puerto_Rico`.
 - **El idioma no es la región.** El idioma de la interfaz es de cada usuario y solo decide en qué idioma salen los nombres de
   días y meses; la región decide el orden, los separadores, la hora y la moneda. `defaultLangCode` es solo el idioma con que
   empieza un usuario nuevo.
