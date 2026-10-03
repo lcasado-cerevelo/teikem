@@ -29,6 +29,21 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.LegalName).HasMaxLength(250);
         b.Property(t => t.TaxId).HasMaxLength(50);
         b.Property(t => t.DefaultLangCode).HasColumnType("char(2)").IsRequired();
+        // Región y formatos (2026-10): 1:1 con dbo.Tenant; los valores permitidos son los CHECK (TenantFormatRules).
+        b.Property(t => t.RegionCode).HasColumnType("char(2)").IsRequired();
+        b.Property(t => t.TimeZoneId).HasColumnType("varchar(64)").IsRequired();
+        b.Property(t => t.CurrencyCode).HasColumnType("char(3)").IsRequired();
+        b.Property(t => t.CurrencySymbol).HasMaxLength(3).IsRequired();
+        b.Property(t => t.CurrencySymbolPosition).HasColumnType("char(1)").IsRequired();
+        b.Property(t => t.CurrencyDecimals).HasColumnType("tinyint");
+        b.Property(t => t.DateOrder).HasColumnType("char(3)").IsRequired();
+        b.Property(t => t.DateSeparator).HasColumnType("char(1)").IsRequired();
+        b.Property(t => t.TimeFormat).HasColumnType("tinyint");
+        b.Property(t => t.WeekStartDay).HasColumnType("tinyint");
+        b.Property(t => t.ThousandsSeparator).HasMaxLength(1).IsRequired();
+        b.Property(t => t.DecimalSeparator).HasColumnType("char(1)").IsRequired();
+        b.Property(t => t.PhoneCountryCode).HasColumnType("varchar(5)").IsRequired();
+        b.Property(t => t.PhoneMask).HasColumnType("varchar(30)").IsRequired();
         b.Property(t => t.RowVersion).IsRowVersion();
         b.HasMany(t => t.Holidays).WithOne(h => h.Tenant).HasForeignKey(h => h.TenantId);
         b.HasMany(t => t.Modules).WithOne(m => m.Tenant).HasForeignKey(m => m.TenantId);

@@ -35,6 +35,34 @@ public class Tenant : ISoftDeletable
     /// <summary>Marca por compañía: tema de color y logos (JSON libre, validado en servicio).</summary>
     public string? BrandingJson { get; set; }
 
+    // --- Región y formatos de la compañía (2026-10). Defaults = los de dbo.Tenant (Puerto Rico); reglas en TenantFormatRules. ---
+    /// <summary>Región que trae el juego de valores por defecto: 'PR' o 'US'.</summary>
+    public string RegionCode { get; set; } = TenantFormatRules.PuertoRico;
+    /// <summary>Zona horaria (nombre IANA): "hoy", los días locales y el SLA cuentan en esta zona (ITenantClock).</summary>
+    public string TimeZoneId { get; set; } = TenantFormatRules.PuertoRicoTimeZone;
+    /// <summary>Moneda base ISO 4217.</summary>
+    public string CurrencyCode { get; set; } = "USD";
+    public string CurrencySymbol { get; set; } = "$";
+    /// <summary>'B' = símbolo antes del monto, 'A' = después.</summary>
+    public string CurrencySymbolPosition { get; set; } = TenantFormatRules.SymbolPositions.Before;
+    /// <summary>0, 2 o 3.</summary>
+    public byte CurrencyDecimals { get; set; } = 2;
+    /// <summary>'MDY', 'DMY' o 'YMD'.</summary>
+    public string DateOrder { get; set; } = TenantFormatRules.PuertoRicoDateOrder;
+    /// <summary>'/', '-' o '.'.</summary>
+    public string DateSeparator { get; set; } = "/";
+    /// <summary>12 o 24 horas.</summary>
+    public byte TimeFormat { get; set; } = 12;
+    /// <summary>0 = domingo, 1 = lunes.</summary>
+    public byte WeekStartDay { get; set; }
+    /// <summary>',', '.' o espacio; nunca igual al decimal.</summary>
+    public string ThousandsSeparator { get; set; } = ",";
+    /// <summary>'.' o ','.</summary>
+    public string DecimalSeparator { get; set; } = ".";
+    public string PhoneCountryCode { get; set; } = "+1";
+    /// <summary>Cada '#' es un dígito; el teléfono se guarda solo con dígitos y se muestra con esta máscara.</summary>
+    public string PhoneMask { get; set; } = "(###) ###-####";
+
     public ICollection<TenantHoliday> Holidays { get; set; } = new List<TenantHoliday>();
     public ICollection<TenantModule> Modules { get; set; } = new List<TenantModule>();
 }
