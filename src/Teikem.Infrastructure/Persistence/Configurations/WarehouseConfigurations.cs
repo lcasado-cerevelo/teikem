@@ -74,6 +74,9 @@ public sealed class WarehouseBinConfiguration : IEntityTypeConfiguration<Warehou
         // Lote 21: posiciones provisionales pendientes de revisión.
         b.Property(x => x.IsProvisional).HasDefaultValue(false);
         b.HasIndex(x => new { x.WarehouseId, x.IsProvisional }).HasFilter("[IsProvisional] = 1").HasDatabaseName("IX_WarehouseBin_Provisional");
+        // Lote 23: hoja de posición (última impresión y último cambio del conjunto de productos).
+        b.Property(x => x.SheetPrintedAtUtc).HasColumnType("datetime2");
+        b.Property(x => x.SheetContentChangedAtUtc).HasColumnType("datetime2");
 
         b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.NoAction);
     }

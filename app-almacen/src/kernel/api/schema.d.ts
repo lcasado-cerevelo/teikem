@@ -16099,6 +16099,7 @@ export interface paths {
                     skip?: number;
                     take?: number;
                     isProvisional?: boolean;
+                    sheetStatus?: string[];
                 };
                 header?: never;
                 path: {
@@ -16148,6 +16149,107 @@ export interface paths {
                         "text/plain": components["schemas"]["WarehouseBinDto"];
                         "application/json": components["schemas"]["WarehouseBinDto"];
                         "text/json": components["schemas"]["WarehouseBinDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses/{publicId}/bin-sheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    zoneId?: number;
+                    search?: string;
+                    includeInactive?: boolean;
+                    onlyWithStock?: boolean;
+                    zoneIds?: number[];
+                    aisle?: string;
+                    rack?: string;
+                    level?: string;
+                    position?: string;
+                    productPublicIds?: string[];
+                    occupancy?: string[];
+                    binIds?: number[];
+                    skip?: number;
+                    take?: number;
+                    isProvisional?: boolean;
+                    sheetStatus?: string[];
+                };
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BinSheetPageDto"];
+                        "application/json": components["schemas"]["BinSheetPageDto"];
+                        "text/json": components["schemas"]["BinSheetPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses/{publicId}/bin-sheets/mark-printed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["BinSheetMarkPrintedRequest"];
+                    "text/json": components["schemas"]["BinSheetMarkPrintedRequest"];
+                    "application/*+json": components["schemas"]["BinSheetMarkPrintedRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["BinSheetStateDto"][];
+                        "application/json": components["schemas"]["BinSheetStateDto"][];
+                        "text/json": components["schemas"]["BinSheetStateDto"][];
                     };
                 };
             };
@@ -17308,6 +17410,60 @@ export interface components {
             warehouseCode?: string | null;
             isActive?: boolean;
             isProvisional?: boolean;
+        };
+        BinSheetDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string | null;
+            /** Format: int32 */
+            zoneId?: number;
+            zoneCode?: string | null;
+            aisle?: string | null;
+            rack?: string | null;
+            level?: string | null;
+            position?: string | null;
+            isActive?: boolean;
+            sheetStatus?: string | null;
+            /** Format: date-time */
+            sheetPrintedAtUtc?: string | null;
+            /** Format: date-time */
+            sheetContentChangedAtUtc?: string | null;
+            products?: components["schemas"]["BinSheetProductDto"][] | null;
+        };
+        BinSheetMarkPrintedRequest: {
+            binIds?: number[] | null;
+            /** Format: date-time */
+            generatedAtUtc?: string | null;
+        };
+        BinSheetPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            /** Format: int32 */
+            staleCount?: number;
+            /** Format: date-time */
+            generatedAtUtc?: string;
+            items?: components["schemas"]["BinSheetDto"][] | null;
+        };
+        BinSheetProductDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            name?: string | null;
+            barcode?: string | null;
+        };
+        BinSheetStateDto: {
+            /** Format: int32 */
+            binId?: number;
+            code?: string | null;
+            sheetStatus?: string | null;
+            /** Format: date-time */
+            sheetPrintedAtUtc?: string | null;
+            /** Format: date-time */
+            sheetContentChangedAtUtc?: string | null;
         };
         BrandLogoDto: {
             slot?: string | null;
@@ -22302,6 +22458,11 @@ export interface components {
             provisionalCycleCountId?: number | null;
             /** Format: date-time */
             provisionalCreatedAtUtc?: string | null;
+            sheetStatus?: string | null;
+            /** Format: date-time */
+            sheetPrintedAtUtc?: string | null;
+            /** Format: date-time */
+            sheetContentChangedAtUtc?: string | null;
         };
         WarehouseBinPageDto: {
             /** Format: int32 */
@@ -22311,6 +22472,8 @@ export interface components {
             /** Format: int32 */
             take?: number;
             items?: components["schemas"]["WarehouseBinDto"][] | null;
+            /** Format: int32 */
+            staleCount?: number;
         };
         WarehouseBinPatchRequest: {
             aisle?: string | null;

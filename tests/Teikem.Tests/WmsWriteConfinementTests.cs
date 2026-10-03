@@ -59,6 +59,16 @@ public class WmsWriteConfinementTests
     }
 
     [Fact]
+    public void Bin_sheet_content_change_is_written_only_by_the_ledger()
+    {
+        // Lote 23: el último cambio del conjunto de productos de la posición lo fija SOLO el ledger (mismo SaveChanges del movimiento).
+        // (Un parámetro 'DateTime? SheetContentChangedAtUtc = null' de un contrato no es una escritura.)
+        var offenders = Offenders(new Regex(@"(?<!DateTime\?\s)\bSheetContentChangedAtUtc\s*=(?![=>])"), LedgerFile);
+        Assert.True(offenders.Count == 0, "Escritura de SheetContentChangedAtUtc fuera del ledger: " + string.Join(", ", offenders));
+        Assert.Matches(@"\bSheetContentChangedAtUtc\s*=(?![=>])", SourceFiles().Single(f => f.Name == LedgerFile).Text);
+    }
+
+    [Fact]
     public void Computed_columns_are_never_read_by_the_logic()
     {
         // Solo las configuraciones EF las mencionan (HasComputedColumnSql); RateService.LineTotal es otro tipo (cotización, Lote 2).

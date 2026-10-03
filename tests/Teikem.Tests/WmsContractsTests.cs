@@ -53,9 +53,16 @@ public class WmsContractsTests
         { typeof(WarehouseZoneDto), "int Id, string Code, string Name, string? ZoneTypeCode, string? ZoneType, bool IsActive, int BinCount, int OccupiedBinCount, long CapacityQty, decimal QtyOnHandInCapacityBins, decimal QtyOnHand, int BinsWithoutCapacity" },
         { typeof(WarehouseBinRequest), "int? ZoneId, string? Code, string? Aisle, string? Rack, string? Level, string? Position, decimal? MaxWeightKg, int? MaxCapacityQty" },
         { typeof(WarehouseBinPatchRequest), "string? Aisle, string? Rack, string? Level, string? Position, decimal? MaxWeightKg, bool? ClearMaxWeight, int? MaxCapacityQty, bool? ClearMaxCapacity" },
-        { typeof(WarehouseBinQuery), "int? ZoneId, string? Search, bool IncludeInactive, bool OnlyWithStock, int[]? ZoneIds, string? Aisle, string? Rack, string? Level, string? Position, Guid[]? ProductPublicIds, string[]? Occupancy, int[]? BinIds, int Skip, int Take, bool? IsProvisional" },
-        { typeof(WarehouseBinDto), "int Id, int ZoneId, string ZoneCode, string? ZoneTypeCode, string Code, string? Aisle, string? Rack, string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount, int? MaxCapacityQty, string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName, bool IsProvisional, int? ProvisionalCycleCountId, DateTime? ProvisionalCreatedAtUtc" },
-        { typeof(WarehouseBinPageDto), "int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items" },
+        { typeof(WarehouseBinQuery), "int? ZoneId, string? Search, bool IncludeInactive, bool OnlyWithStock, int[]? ZoneIds, string? Aisle, string? Rack, string? Level, string? Position, Guid[]? ProductPublicIds, string[]? Occupancy, int[]? BinIds, int Skip, int Take, bool? IsProvisional, string[]? SheetStatus" },   // Lote 23: sheetStatus
+        { typeof(WarehouseBinDto), "int Id, int ZoneId, string ZoneCode, string? ZoneTypeCode, string Code, string? Aisle, string? Rack, string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount, int? MaxCapacityQty, string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName, bool IsProvisional, int? ProvisionalCycleCountId, DateTime? ProvisionalCreatedAtUtc, string SheetStatus, DateTime? SheetPrintedAtUtc, DateTime? SheetContentChangedAtUtc" },   // Lote 23
+        { typeof(WarehouseBinPageDto), "int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items, int StaleCount" },   // Lote 23
+        // Lote 23: hojas de posición.
+        { typeof(BinSheetQuery), "WarehouseBinQuery Filter, int Skip, int Take" },
+        { typeof(BinSheetProductDto), "Guid ProductPublicId, string Sku, string Name, string? Barcode" },
+        { typeof(BinSheetDto), "int BinId, string Code, int ZoneId, string ZoneCode, string? Aisle, string? Rack, string? Level, string? Position, bool IsActive, string SheetStatus, DateTime? SheetPrintedAtUtc, DateTime? SheetContentChangedAtUtc, IReadOnlyList<BinSheetProductDto> Products" },
+        { typeof(BinSheetPageDto), "int Total, int Skip, int Take, int StaleCount, DateTime GeneratedAtUtc, IReadOnlyList<BinSheetDto> Items" },
+        { typeof(BinSheetMarkPrintedRequest), "int[]? BinIds, DateTime? GeneratedAtUtc" },
+        { typeof(BinSheetStateDto), "int BinId, string Code, string SheetStatus, DateTime? SheetPrintedAtUtc, DateTime? SheetContentChangedAtUtc" },
         { typeof(WarehouseBinCapacityRequest), "int[]? ZoneIds, string? Aisle, string? Rack, string? Level, string? Position, string? Search, int[]? BinIds, bool IncludeInactive, bool OnlyWithoutCapacity, bool AllBins, int? MaxCapacityQty, bool Clear" },
         { typeof(WarehouseBinCapacityResultDto), "int Matched, int Changed" },
         { typeof(WarehouseDockRequest), "string? Code, string? DockType" },

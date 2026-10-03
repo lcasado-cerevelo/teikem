@@ -57,6 +57,10 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    Lote 21 (sección 6, Conteo cíclico): **conteo por producto**, captura original y **corrección del supervisor** con evidencia,
    **vista previa** de la reconciliación, lista **Por revisar**, **cierre en bloque** de los conteos que cuadran y **posiciones
    provisionales** creadas desde el conteo (servidor; la web y la app lo usan en sus propios lotes).
+   Lote 23 (sección 1.5, Almacenes y ubicaciones): **hojas de posición** — el estado de la hoja pegada en el rack (nunca impresa,
+   desactualizada, al día, vacía) calculado del último cambio de la lista de productos de la posición (lo registra el inventario en
+   cada movimiento) y de la última impresión; filtro `sheetStatus` y contador `staleCount` en el listado de posiciones, consulta de
+   las hojas para imprimir y "marcar como impresas" (servidor; la hoja en PDF y la app, en lotes siguientes).
    Lote 11 (sección 1, Almacenes y ubicaciones): **cupo máximo** de la posición y su **estado de ocupación**
    (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
    posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades
@@ -219,4 +223,7 @@ y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensa
 hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
 feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem. La sección "Lote F12" recoge los mensajes que se ven en la pantalla de revisión del conteo (reservado, conflicto al confirmar,
 conteo ya reconciliado, posición ya confirmada), los que solo se ven en pantalla y las preguntas sobre qué cierra "Cerrar los que
-cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste.
+cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Lote 23" recoge los mensajes de las hojas de posición (estado de
+hoja desconocido, más de 200 hojas por consulta, marcar sin posiciones o con más de 500, posición o almacén no encontrados) y las preguntas
+sobre qué desactualiza una hoja, por qué todo arranca "nunca impresa", para qué sirve `generatedAtUtc`, marcar dos veces, la posición vaciada
+que sale desactualizada, el permiso para marcar y por qué la hoja no lleva cantidades.

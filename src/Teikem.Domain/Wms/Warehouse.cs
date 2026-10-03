@@ -88,6 +88,17 @@ public class WarehouseBin
     public DateTime? ProvisionalCreatedAtUtc { get; set; }
     /// <summary>Lote 21: conteo cíclico desde el que se creó.</summary>
     public int? ProvisionalCycleCountId { get; set; }
+    /// <summary>
+    /// Lote 23: última impresión de la hoja de posición (POST .../bin-sheets/mark-printed). Null = nunca impresa. Marca técnica:
+    /// no se audita.
+    /// </summary>
+    [NotAudited] public DateTime? SheetPrintedAtUtc { get; set; }
+    /// <summary>
+    /// Lote 23: último cambio del CONJUNTO de productos con existencia en mano de la posición (un producto pasa de 0 a &gt; 0 o de
+    /// &gt; 0 a 0, sumando sus lotes). Lo escribe SOLO InventoryLedger, en la misma transacción del movimiento. Estado de la hoja:
+    /// BinSheetRules.Status. No se audita.
+    /// </summary>
+    [NotAudited] public DateTime? SheetContentChangedAtUtc { get; set; }
 
     public WarehouseZone? Zone { get; set; }
 }

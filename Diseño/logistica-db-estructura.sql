@@ -1214,6 +1214,8 @@ BEGIN
         ProvisionalCreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),           -- Lote 21: quién la creó
         ProvisionalCreatedAtUtc DATETIME2 NULL,                                 -- Lote 21: cuándo
         ProvisionalCycleCountId INT NULL,                                       -- Lote 21: conteo de origen (FK abajo: CycleCount se crea después)
+        SheetPrintedAtUtc DATETIME2 NULL,                                       -- Lote 23: última impresión de la hoja de posición
+        SheetContentChangedAtUtc DATETIME2 NULL,                                -- Lote 23: último cambio del CONJUNTO de productos (lo fija InventoryLedger)
         CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code),
         CONSTRAINT FK_WarehouseBin_Zone FOREIGN KEY (WarehouseZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId),  -- Lote 6
         CONSTRAINT UQ_WarehouseBin_IdWh UNIQUE (WarehouseBinId, WarehouseId),   -- Lote 6: destino de las FKs (Posición, Almacén)
@@ -1238,6 +1240,16 @@ IF COL_LENGTH('dbo.WarehouseBin', 'ProvisionalCreatedAtUtc') IS NULL
     ALTER TABLE dbo.WarehouseBin ADD ProvisionalCreatedAtUtc DATETIME2 NULL;
 IF COL_LENGTH('dbo.WarehouseBin', 'ProvisionalCycleCountId') IS NULL
     ALTER TABLE dbo.WarehouseBin ADD ProvisionalCycleCountId INT NULL;
+GO
+
+-- Lote 23: hoja de posición (papel pegado en el rack con los productos de la posición). SheetPrintedAtUtc = última impresión
+-- (POST .../bin-sheets/mark-printed); SheetContentChangedAtUtc = último cambio del CONJUNTO de productos con existencia en mano
+-- (un producto entra de 0 a > 0 o sale a 0, sumando lotes), fijado por InventoryLedger en la misma transacción del movimiento.
+-- Sin backfill: al activar la función toda posición con producto queda NEVER_PRINTED. Columnas nuevas en una base ya creada.
+IF COL_LENGTH('dbo.WarehouseBin', 'SheetPrintedAtUtc') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD SheetPrintedAtUtc DATETIME2 NULL;
+IF COL_LENGTH('dbo.WarehouseBin', 'SheetContentChangedAtUtc') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD SheetContentChangedAtUtc DATETIME2 NULL;
 GO
 
 -- Lote 21: CHECK de la marca provisional (en su propio lote: las columnas ya existen al compilarlo) e índice de las pendientes.

@@ -78,21 +78,58 @@ public sealed record WarehouseBinPatchRequest(string? Aisle = null, string? Rack
 public sealed record WarehouseBinQuery(int? ZoneId = null, string? Search = null, bool IncludeInactive = false, bool OnlyWithStock = false,
     int[]? ZoneIds = null, string? Aisle = null, string? Rack = null, string? Level = null, string? Position = null,
     Guid[]? ProductPublicIds = null, string[]? Occupancy = null, int[]? BinIds = null, int Skip = 0, int Take = 100,
-    bool? IsProvisional = null);
+    bool? IsProvisional = null, string[]? SheetStatus = null);
 
 /// <summary>
 /// Posición. QtyOnHand y ProductCount = existencia en mano y productos distintos con existencia; Occupancy = EMPTY, PARTIAL,
 /// FULL o NO_CAPACITY (WarehouseRules.Occupancy); cuando ProductCount es exactamente 1, SingleProduct* identifica ese producto.
 /// Lote 21: IsProvisional = creada desde un conteo y pendiente de revisión (confirmar con POST .../bins/{binId}/confirm-provisional);
 /// ProvisionalCycleCountId y ProvisionalCreatedAtUtc = de qué conteo y cuándo (se conservan tras confirmar).
+/// Lote 23: SheetStatus = estado de la hoja de posición (NEVER_PRINTED, STALE, CURRENT o EMPTY; BinSheetRules.Status),
+/// SheetPrintedAtUtc = última impresión, SheetContentChangedAtUtc = último cambio del conjunto de productos.
 /// </summary>
 public sealed record WarehouseBinDto(int Id, int ZoneId, string ZoneCode, string? ZoneTypeCode, string Code, string? Aisle, string? Rack,
     string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount, int? MaxCapacityQty,
     string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName,
-    bool IsProvisional = false, int? ProvisionalCycleCountId = null, DateTime? ProvisionalCreatedAtUtc = null);
+    bool IsProvisional = false, int? ProvisionalCycleCountId = null, DateTime? ProvisionalCreatedAtUtc = null,
+    string SheetStatus = Teikem.Domain.Wms.BinSheetStatuses.Empty, DateTime? SheetPrintedAtUtc = null, DateTime? SheetContentChangedAtUtc = null);
 
-/// <summary>Página del listado de posiciones (mismo sobre que productos, recibos y tareas).</summary>
-public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items);
+/// <summary>
+/// Página del listado de posiciones (mismo sobre que productos, recibos y tareas). Lote 23: StaleCount = posiciones del filtro
+/// actual (todas las páginas) cuya hoja pide imprimirse: STALE o NEVER_PRINTED.
+/// </summary>
+public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items, int StaleCount = 0);
+
+/// <summary>
+/// Lote 23 — consulta de hojas de posición (GET /warehouses/{publicId}/bin-sheets): los mismos filtros del listado de posiciones
+/// (incluidos binIds y sheetStatus) con paginación propia: take 1..200 (por defecto 50; &gt; 200 → 400).
+/// </summary>
+public sealed record BinSheetQuery(WarehouseBinQuery Filter, int Skip = 0, int Take = Teikem.Domain.Wms.BinSheetRules.DefaultSheetsPerPage);
+
+/// <summary>Lote 23 — producto de una hoja de posición (uno por producto, sin repetir por lote; solo con existencia en mano &gt; 0).</summary>
+public sealed record BinSheetProductDto(Guid ProductPublicId, string Sku, string Name, string? Barcode);
+
+/// <summary>
+/// Lote 23 — hoja de una posición: sus datos, el estado de la hoja y sus productos ordenados por SKU. Sin cantidades: la hoja
+/// pegada en el rack dice QUÉ hay, no cuánto (subir o bajar cantidades no la desactualiza).
+/// </summary>
+public sealed record BinSheetDto(int BinId, string Code, int ZoneId, string ZoneCode, string? Aisle, string? Rack, string? Level, string? Position,
+    bool IsActive, string SheetStatus, DateTime? SheetPrintedAtUtc, DateTime? SheetContentChangedAtUtc, IReadOnlyList<BinSheetProductDto> Products);
+
+/// <summary>
+/// Lote 23 — página de hojas de posición: Total y StaleCount del filtro (todas las páginas); GeneratedAtUtc = instante de los
+/// datos, para mandarlo en mark-printed (así un cambio ocurrido entre la consulta y la impresión deja la hoja STALE).
+/// </summary>
+public sealed record BinSheetPageDto(int Total, int Skip, int Take, int StaleCount, DateTime GeneratedAtUtc, IReadOnlyList<BinSheetDto> Items);
+
+/// <summary>
+/// Lote 23 — marcar hojas como impresas (POST /warehouses/{publicId}/bin-sheets/mark-printed): BinIds de posiciones del almacén
+/// (1..500); GeneratedAtUtc opcional = el de la página de hojas impresa (sin él, ahora).
+/// </summary>
+public sealed record BinSheetMarkPrintedRequest(int[]? BinIds, DateTime? GeneratedAtUtc = null);
+
+/// <summary>Lote 23 — estado de la hoja de una posición tras marcarla impresa.</summary>
+public sealed record BinSheetStateDto(int BinId, string Code, string SheetStatus, DateTime? SheetPrintedAtUtc, DateTime? SheetContentChangedAtUtc);
 
 /// <summary>
 /// Lote 14 — posición encontrada por la búsqueda entre almacenes (GET /warehouses/bins/search), para los filtros Posición del

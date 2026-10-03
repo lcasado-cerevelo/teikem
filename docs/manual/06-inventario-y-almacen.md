@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales; Almacenes y ubicaciones ampliado en el Lote 23: hojas de posición)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
@@ -158,11 +158,13 @@ transiciones. Compara la existencia en mano de la posición con su cupo:
 | `binIds` | Solo esas posiciones |
 | `includeInactive` | Incluye las dadas de baja (por defecto no) |
 | `onlyWithStock` | Solo con existencia en mano mayor que cero |
+| `sheetStatus` | Lote 23: estado de la hoja de posición, uno o varios de `NEVER_PRINTED`, `STALE`, `CURRENT`, `EMPTY` (sección 1.5) |
 
 Ejemplo: `GET /api/v1/warehouses/{publicId}/bins?search=01-A&occupancy=PARTIAL&occupancy=FULL&skip=0&take=50`.
 
 Cada posición trae `maxCapacityQty`, `occupancy`, `qtyOnHand`, `productCount` y, cuando `productCount` es exactamente 1,
-`singleProductPublicId`, `singleProductSku` y `singleProductName`.
+`singleProductPublicId`, `singleProductSku` y `singleProductName`. Lote 23: además `sheetStatus`, `sheetPrintedAtUtc` y
+`sheetContentChangedAtUtc`, y la página trae `staleCount` (sección 1.5).
 
 **Cupo en bloque** — `POST /api/v1/warehouses/{publicId}/bins/capacity` (permiso `warehouse.manage`, módulo
 `WMS_LOTSERIAL`, igual que editar una posición). Fija o quita el cupo de **todas** las posiciones del almacén que cumplen
@@ -252,6 +254,78 @@ Cómo se usa:
 
 Pantalla: ficha del almacén → **Datos** → sección **Recepción** ([F6 — Almacenes](frontend/f6-almacen-e-inventario.md#ficha-del-almacén)).
 
+### 1.5 Hojas de posición (Lote 23)
+
+Qué es: la **hoja de posición** es un papel que se pega en el rack con la lista de productos que hay en esa posición (SKU, nombre y código de
+barras). El sistema guarda **cuándo se imprimió por última vez** la hoja de cada posición y **cuándo cambió por última vez su lista de productos**,
+y con eso dice si la hoja pegada sigue sirviendo o hay que reimprimirla. Este lote es solo del servidor (el dato y el rastro); la hoja en PDF, la
+insignia, el contador y la selección en pantalla, y la app, llegan en los lotes siguientes.
+
+Quién puede: `inventory.view` para todo, también para **marcar como impresas** (decisión del dueño: imprimir no pide un permiso nuevo). Módulo
+**WMS_LOTSERIAL**, como el resto de Almacenes y ubicaciones.
+
+**Cuándo cambia la lista de productos de una posición.** Solo cuando un producto **entra** (su existencia en mano en la posición, sumando todos
+sus lotes, pasa de 0 a más de 0) o **sale** (pasa a 0). Subir o bajar la cantidad de un producto que ya estaba y sigue estando **no** cambia la
+lista. Lo registra el inventario en la misma operación que mueve la mercancía, sea cual sea el origen: recibo, acomodo, transferencia (en el
+origen y en el destino), reabasto, recolección, cruce de muelle, ajuste, conteo, corrección del saldo según el Kárdex o migración. Una salida de
+un lote cuando el mismo producto sigue en la posición con otro lote no cambia la lista. La posición guarda la fecha en
+`sheetContentChangedAtUtc` (columna `WarehouseBin.SheetContentChangedAtUtc`); nadie la edita a mano.
+
+**Estado de la hoja** (`sheetStatus`). Es un cálculo, no un estatus guardado (no está en un catálogo):
+
+| Código | Cuándo | ¿Pide imprimir? |
+|---|---|---|
+| `NEVER_PRINTED` | La posición tiene productos y su hoja nunca se marcó como impresa | Sí |
+| `STALE` (desactualizada) | La hoja se imprimió y la lista de productos cambió **después**. También cuando la posición quedó vacía después de imprimir: la hoja pegada ya no sirve | Sí |
+| `CURRENT` (al día) | Tiene productos, la hoja se imprimió y la lista no cambió desde entonces | No |
+| `EMPTY` (vacía) | No tiene productos y no hay un cambio pendiente de reimprimir | No |
+
+Al activar la función **todas las posiciones con producto quedan `NEVER_PRINTED`**: no se supuso ninguna hoja impresa de antes (decisión del dueño).
+
+Transiciones (todas automáticas salvo marcar impresa):
+
+| De → a | Quién / qué la provoca | Efecto |
+|---|---|---|
+| `EMPTY` → `NEVER_PRINTED` | Entra el primer producto a una posición que nunca se imprimió | La posición cuenta en `staleCount` |
+| `NEVER_PRINTED` / `STALE` → `CURRENT` | Alguien con `inventory.view` marca su hoja como impresa | Deja de contar en `staleCount` |
+| `CURRENT` → `STALE` | Entra un producto nuevo o sale uno (a 0) | Vuelve a contar en `staleCount` |
+| `CURRENT` → `STALE` (vacía) | Sale el último producto después de imprimir | Hay que quitar o reimprimir la hoja |
+| `STALE` (vacía) → `EMPTY` | Se marca impresa la hoja (vacía) de una posición sin productos | Deja de contar |
+| `NEVER_PRINTED` → `EMPTY` | Sale el último producto de una posición que nunca se imprimió | Nada que imprimir |
+
+Nada se bloquea por el estado de la hoja: es solo un aviso.
+
+**Cómo se usa:**
+
+- **Listado de posiciones** — `GET /api/v1/warehouses/{publicId}/bins` trae en cada posición `sheetStatus`, `sheetPrintedAtUtc` y
+  `sheetContentChangedAtUtc`, y en la página `staleCount` = cuántas posiciones **del filtro actual** (todas las páginas, no solo la visible) están
+  `STALE` o `NEVER_PRINTED`. Filtro nuevo `sheetStatus` (uno o varios de `NEVER_PRINTED`, `STALE`, `CURRENT`, `EMPTY`; repetir el parámetro o
+  separarlos por comas; sin distinguir mayúsculas). Ejemplo: `GET .../bins?sheetStatus=STALE&sheetStatus=NEVER_PRINTED&zoneIds=3`.
+- **Hojas para imprimir** — `GET /api/v1/warehouses/{publicId}/bin-sheets` acepta **los mismos filtros** que el listado (`search`, `zoneId`,
+  `zoneIds`, `aisle`, `rack`, `level`, `position`, `productPublicIds`, `occupancy`, `binIds`, `includeInactive`, `onlyWithStock`, `isProvisional`,
+  `sheetStatus`) y pagina con `skip` y `take` (por defecto 50, máximo **200**: más de 200 es 400). Ordena por código de posición. Responde
+  `{ total, skip, take, staleCount, generatedAtUtc, items }`; cada hoja trae `binId`, `code`, `zoneId`, `zoneCode`, `aisle`, `rack`, `level`,
+  `position`, `isActive`, `sheetStatus`, `sheetPrintedAtUtc`, `sheetContentChangedAtUtc` y `products`: un renglón **por producto** (los lotes no
+  se repiten) con existencia en mano mayor que cero, ordenados por SKU, con `productPublicId`, `sku`, `name` y `barcode` (vacío si el producto no
+  tiene). La hoja no lleva cantidades. Para imprimir todas las desactualizadas de una zona: `GET .../bin-sheets?zoneIds=3&sheetStatus=STALE,NEVER_PRINTED&take=200`
+  y, si `total` es mayor que 200, seguir con `skip=200`, `skip=400`…
+- **Marcar como impresas** — `POST /api/v1/warehouses/{publicId}/bin-sheets/mark-printed` con
+  `{ "binIds": [101, 102], "generatedAtUtc": "2026-10-03T14:05:00Z" }` (de 1 a **500** posiciones). `generatedAtUtc` es opcional: mande el que
+  devolvió `GET .../bin-sheets` para las hojas que imprimió; así, si la lista de una posición cambió entre que se pidieron los datos y se marcó la
+  impresión, la posición queda `STALE` (la hoja impresa ya no estaba al día). Sin `generatedAtUtc` se toma la hora actual; uno en el futuro se toma
+  como la hora actual. La marca **nunca retrocede** (marcar una hoja vieja no pisa una impresión más reciente) y repetir la misma marca no cambia
+  nada (idempotente). Todo o nada: si alguna posición no es de ese almacén, responde 404 y no marca ninguna. Responde, por código de posición,
+  `[{ binId, code, sheetStatus, sheetPrintedAtUtc, sheetContentChangedAtUtc }]`. Marcar una posición inactiva o de un almacén dado de baja se
+  permite (no cambia inventario).
+
+Datos guardados: `WarehouseBin.SheetPrintedAtUtc` y `WarehouseBin.SheetContentChangedAtUtc` (`DATETIME2` nulos, en UTC). No se auditan (son marcas
+técnicas: no aparecen en la bitácora de cambios del almacén).
+
+Casos frecuentes:
+- *"Imprimí y la posición siguió en `STALE`."* Mandó un `generatedAtUtc` anterior a un cambio de esa posición: vuelva a pedir sus hojas e imprima de nuevo.
+- *"Moví cantidad entre dos posiciones que ya tenían el producto y no cambió nada."* Correcto: la lista de productos de ninguna de las dos cambió.
+- *"Vacié una posición y aparece como desactualizada."* La hoja pegada dice que hay productos que ya no están; quítela o reimprima la hoja (vacía) y márquela.
+
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |
@@ -298,6 +372,12 @@ Pantalla: ficha del almacén → **Datos** → sección **Recepción** ([F6 — 
 | `defaultReceivingBinId` de otro almacén o inexistente | `Posición no encontrada.` | 404 |
 | `defaultReceivingBinId` en una zona que no es `STAGING` ni `CROSSDOCK` (el error va en `errors.defaultReceivingBinId`) | `La posición de recepción debe estar en una zona STAGING o CROSSDOCK.` | 400 |
 | `defaultReceivingBinId` de una posición desactivada | `La posición de recepción está desactivada.` | 422 |
+| Lote 23: `sheetStatus` desconocido en `GET .../bins` o `GET .../bin-sheets` (en `errors.sheetStatus`) | `Estado de hoja desconocido: 'X'. Use NEVER_PRINTED, STALE, CURRENT o EMPTY.` | 400 |
+| Lote 23: `take` mayor que 200 en `GET .../bin-sheets` (en `errors.take`) | `Se pueden pedir como máximo 200 hojas de posición por consulta; use skip para pedir las siguientes.` | 400 |
+| Lote 23: `mark-printed` sin `binIds` o con la lista vacía (en `errors.binIds`) | `Indique al menos una posición para marcar su hoja como impresa.` | 400 |
+| Lote 23: `mark-printed` con más de 500 posiciones (en `errors.binIds`) | `Se pueden marcar como máximo 500 posiciones por solicitud.` | 400 |
+| Lote 23: `mark-printed` con una posición de otro almacén, de otra compañía o inexistente (no marca ninguna) | `Posición no encontrada.` | 404 |
+| Lote 23: almacén de otra compañía o inexistente en `bin-sheets` o `mark-printed` | `Almacén no encontrado.` | 404 |
 
 Un `maxCapacityQty` mayor que 2.147.483.647 (el máximo de un entero de 32 bits) lo rechaza la pantalla; enviado
 directo al API no se probó qué respuesta da.
@@ -1744,6 +1824,10 @@ de compañía que ya tenían `inventory.view`. Los descuadres los ve `inventory.
 Lote 16: no hay permisos ni módulos nuevos (el total de permisos no cambia). `GET /api/v1/receipts/{publicId}/lines/{lineId}/target-suggestions` pide `inventory.view`; `POST
 /api/v1/receipts/{publicId}/targets/suggest`, `warehouse.receive`; el modo de recepción del almacén y su posición por defecto, `warehouse.manage`; el modo del recibo y el
 destino de cada línea, `warehouse.receive`. La prueba de seguridad de controladores pasa de 121 a 123 acciones.
+
+Lote 23: no hay permisos ni módulos nuevos (el total de permisos no cambia). `GET /api/v1/warehouses/{publicId}/bin-sheets` y
+`POST /api/v1/warehouses/{publicId}/bin-sheets/mark-printed` piden `inventory.view` (marcar impresa también, por decisión del dueño), módulo
+**WMS_LOTSERIAL**. La prueba de seguridad de controladores pasa de 128 a 130 acciones.
 
 Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
 /api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.

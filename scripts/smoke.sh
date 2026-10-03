@@ -4806,6 +4806,45 @@ C21E=$(req GET "/api/v1/cycle-counts/$IDE2" '' "$TB21" | tail -n1); [[ "$C21E" =
 expect 204 "$(req DELETE "/api/v1/cycle-counts/$IDE2")" >/dev/null || fail "borrar el conteo vacío abierto"
 ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; Cambio 2: la corrección del supervisor no se recaptura (409 por línea; el lote guarda las libres y omite la corregida con skippedLines, 409 si todas están corregidas; reenviar el valor vigente pasa; el supervisor vuelve a corregir; el operario recaptura lo no corregido); otra compañía sin acceso; adenda allowEmpty: producto sin existencia → conteo vacío (400 sin allowEmpty, 400 con filtros o dos productos, 404 inexistente, terminar vacío 422, línea nueva en provisional, terminar, reconciliar y borrar un vacío abierto)"
 
+step "hojas de posición (Lote 23): estado de la hoja, staleCount, hojas por posición, marcar impresas y desactualizar"
+TOKEN=$(login "$EMAIL" "$PASS"); TREAD23=$(login "lectura6$TS@teikem.local" "$PASS")
+B23A=$(bin "$ZPCK" P-23A); B23B=$(bin "$ZPCK" P-23B)
+P23=$(prod "{\"sku\":\"P23$TS\",\"name\":\"Hoja 23 $TS\",\"purchaseCost\":1,\"barcode\":\"BC23$TS\"}")
+sheetof() { expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?binIds=$1&includeInactive=true")" | jq -r '.items[0].sheetStatus'; }
+[[ $(sheetof "$B23A") == EMPTY ]] || fail "posición nueva sin producto → EMPTY"
+# Entra el producto (ajuste): el conjunto cambia y la hoja nunca se imprimió → NEVER_PRINTED.
+expect 200 "$(adjust "$P23" "$W6P" "$B23A" 5 FOUND)" >/dev/null
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?binIds=$B23A")" | jq -e '.items[0].sheetStatus=="NEVER_PRINTED" and .items[0].sheetContentChangedAtUtc!=null and .items[0].sheetPrintedAtUtc==null and .staleCount==1' >/dev/null || fail "producto nuevo → NEVER_PRINTED con sheetContentChangedAtUtc"
+# Hojas: datos de la posición y sus productos (sku, nombre, código de barras), con generatedAtUtc.
+SH23=$(expect 200 "$(req GET "/api/v1/warehouses/$W6P/bin-sheets?binIds=$B23A" '' "$TREAD23")")
+echo "$SH23" | jq -e --arg s "P23$TS" --arg b "BC23$TS" '.total==1 and .staleCount==1 and .generatedAtUtc!=null and (.items[0]|.code=="P-23A" and .zoneCode!=null and .sheetStatus=="NEVER_PRINTED" and (.products|length)==1 and .products[0].sku==$s and .products[0].barcode==$b and .products[0].productPublicId!=null)' >/dev/null || fail "hojas de posición: $(echo "$SH23" | jq -c .)"
+G23=$(echo "$SH23" | jq -r .generatedAtUtc)
+# Marcar impresa con solo inventory.view (decisión del dueño) → CURRENT; repetir es idempotente.
+MK23=$(expect 200 "$(req POST "/api/v1/warehouses/$W6P/bin-sheets/mark-printed" "{\"binIds\":[$B23A],\"generatedAtUtc\":\"$G23\"}" "$TREAD23")")
+echo "$MK23" | jq -e --argjson b "$B23A" 'length==1 and .[0].binId==$b and .[0].sheetStatus=="CURRENT" and .[0].sheetPrintedAtUtc!=null' >/dev/null || fail "marcar impresa → CURRENT: $MK23"
+expect 200 "$(req POST "/api/v1/warehouses/$W6P/bin-sheets/mark-printed" "{\"binIds\":[$B23A],\"generatedAtUtc\":\"$G23\"}" "$TREAD23")" | jq -e --argjson p "$(echo "$MK23" | jq .[0].sheetPrintedAtUtc)" '.[0].sheetStatus=="CURRENT" and .[0].sheetPrintedAtUtc==$p' >/dev/null || fail "marcar impresa dos veces no es idempotente"
+# Más cantidad del mismo producto: el conjunto no cambia (sigue CURRENT).
+expect 200 "$(adjust "$P23" "$W6P" "$B23A" 2 FOUND)" >/dev/null
+[[ $(sheetof "$B23A") == CURRENT ]] || fail "subir la cantidad no desactualiza la hoja"
+# Transferir TODO a otra posición: el origen queda vacío después de imprimir (STALE) y el destino recibe un producto nuevo.
+expect 200 "$(xfer "$P23" "$W6P" "$B23A" "$W6P" "$B23B" 7)" >/dev/null
+[[ $(sheetof "$B23A") == STALE ]] || fail "el origen vaciado después de imprimir → STALE"
+[[ $(sheetof "$B23B") == NEVER_PRINTED ]] || fail "el destino de la transferencia → NEVER_PRINTED"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?binIds=$B23A&binIds=$B23B&sheetStatus=STALE")" | jq -e --argjson a "$B23A" '.total==1 and .items[0].id==$a and .staleCount==1' >/dev/null || fail "filtro sheetStatus=STALE"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?binIds=$B23A&binIds=$B23B")" | jq -e '.staleCount==2' >/dev/null || fail "staleCount del filtro (STALE + NEVER_PRINTED)"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P/bin-sheets?binIds=$B23A&sheetStatus=STALE")" | jq -e '.total==1 and (.items[0].products|length)==0' >/dev/null || fail "la hoja nueva de la posición vaciada no lleva productos"
+# Errores: tope de 200, estado desconocido, lista vacía, posición inexistente y otra compañía.
+expect 400 "$(req GET "/api/v1/warehouses/$W6P/bin-sheets?take=201")" | jq -e '.title=="Se pueden pedir como máximo 200 hojas de posición por consulta; use skip para pedir las siguientes."' >/dev/null || fail "take > 200 → 400"
+expect 400 "$(req GET "/api/v1/warehouses/$W6P/bins?sheetStatus=OLD")" | jq -e '.title=="Estado de hoja desconocido: '"'"'OLD'"'"'. Use NEVER_PRINTED, STALE, CURRENT o EMPTY."' >/dev/null || fail "sheetStatus desconocido → 400"
+expect 400 "$(req POST "/api/v1/warehouses/$W6P/bin-sheets/mark-printed" '{"binIds":[]}')" | jq -e '.title=="Indique al menos una posición para marcar su hoja como impresa."' >/dev/null || fail "mark-printed sin posiciones → 400"
+expect 404 "$(req POST "/api/v1/warehouses/$W6P/bin-sheets/mark-printed" "{\"binIds\":[$B23A,999999999]}")" | jq -e '.title=="Posición no encontrada."' >/dev/null || fail "mark-printed con una posición ajena → 404"
+[[ $(sheetof "$B23A") == STALE ]] || fail "el 404 marcó alguna posición"
+TB23=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")
+C23M=$(req POST "/api/v1/warehouses/$W6P/bin-sheets/mark-printed" "{\"binIds\":[$B23A]}" "$TB23" | tail -n1); [[ "$C23M" == 403 || "$C23M" == 404 ]] || fail "otra compañía marca hojas ajenas (dio $C23M)"
+C23G=$(req GET "/api/v1/warehouses/$W6P/bin-sheets" '' "$TB23" | tail -n1); [[ "$C23G" == 403 || "$C23G" == 404 ]] || fail "otra compañía lee hojas ajenas (dio $C23G)"
+[[ $(sheetof "$B23A") == STALE ]] || fail "otra compañía cambió la marca"
+ok "hojas de posición: EMPTY → NEVER_PRINTED al entrar un producto; hojas con sku/nombre/código de barras y generatedAtUtc; marcar impresa con inventory.view → CURRENT (idempotente); subir cantidad no desactualiza; transferir todo deja el origen STALE y el destino NEVER_PRINTED; filtro sheetStatus y staleCount; 400 (take > 200, estado desconocido, sin posiciones), 404 sin marcar nada y otra compañía sin acceso"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

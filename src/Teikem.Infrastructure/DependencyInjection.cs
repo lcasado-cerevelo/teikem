@@ -179,6 +179,7 @@ public static class DependencyInjection
         services.AddScoped<PutawaySuggester>();
         services.AddScoped<WarehouseService>();
         services.AddScoped<WarehouseLayoutService>();
+        services.AddScoped<BinSheetService>();   // Lote 23: hojas de posición
         services.AddScoped<ProductService>();
         services.AddScoped<ProductCategoryService>();
         services.AddScoped<InventoryReadService>();

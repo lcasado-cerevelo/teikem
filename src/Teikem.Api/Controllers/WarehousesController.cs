@@ -18,7 +18,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/warehouses")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class WarehousesController(WarehouseService warehouses, WarehouseLayoutService layout) : ControllerBase
+public sealed class WarehousesController(WarehouseService warehouses, WarehouseLayoutService layout, BinSheetService sheets) : ControllerBase
 {
     // ---------------------------------------------------------------- almacenes
 
@@ -83,17 +83,48 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// ?occupancy (EMPTY, PARTIAL, FULL, NO_CAPACITY; varias, 400 si otro), ?binIds, ?includeInactive, ?onlyWithStock.
     /// Lote 21: ?isProvisional=true lista solo las posiciones creadas desde un conteo y pendientes de revisión (false, solo las
     /// confirmadas); cada posición trae isProvisional.
+    /// Lote 23: cada posición trae sheetStatus (NEVER_PRINTED, STALE, CURRENT, EMPTY), sheetPrintedAtUtc y sheetContentChangedAtUtc;
+    /// ?sheetStatus filtra (varias, 400 si otro) y la página trae staleCount (STALE + NEVER_PRINTED del filtro, todas las páginas).
     /// </summary>
     [HttpGet("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<WarehouseBinPageDto> Bins(Guid publicId, [FromQuery] int? zoneId, [FromQuery] string? search,
         [FromQuery] bool includeInactive, [FromQuery] bool onlyWithStock, [FromQuery] int[]? zoneIds, [FromQuery] string? aisle,
         [FromQuery] string? rack, [FromQuery] string? level, [FromQuery] string? position, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] string[]? occupancy, [FromQuery] int[]? binIds, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 100,
-        [FromQuery] bool? isProvisional = null)
+        [FromQuery] bool? isProvisional = null, [FromQuery] string[]? sheetStatus = null)
         => layout.ListBinsAsync(publicId, new WarehouseBinQuery(zoneId, search, includeInactive, onlyWithStock, NullIfEmpty(zoneIds), aisle, rack,
-            level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), skip, take, isProvisional), ct);
+            level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), skip, take, isProvisional,
+            NullIfEmpty(sheetStatus)), ct);
 
     private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
+
+    // ---------------------------------------------------------------- hojas de posición (Lote 23)
+
+    /// <summary>
+    /// Lote 23 — hojas de posición para imprimir: los MISMOS filtros que GET .../bins (incluidos ?binIds y ?sheetStatus), por
+    /// código de posición, paginadas con ?skip y ?take (1..200, por defecto 50; take &gt; 200 → 400). Cada hoja: datos de la
+    /// posición, estado de la hoja y sus productos con existencia en mano &gt; 0 (uno por producto, sin repetir por lote; por SKU):
+    /// productPublicId, sku, name, barcode. La página trae total, staleCount y generatedAtUtc (mandarlo en mark-printed).
+    /// </summary>
+    [HttpGet("{publicId:guid}/bin-sheets"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<BinSheetPageDto> BinSheets(Guid publicId, [FromQuery] int? zoneId, [FromQuery] string? search,
+        [FromQuery] bool includeInactive, [FromQuery] bool onlyWithStock, [FromQuery] int[]? zoneIds, [FromQuery] string? aisle,
+        [FromQuery] string? rack, [FromQuery] string? level, [FromQuery] string? position, [FromQuery] Guid[]? productPublicIds,
+        [FromQuery] string[]? occupancy, [FromQuery] int[]? binIds, CancellationToken ct, [FromQuery] int skip = 0,
+        [FromQuery] int take = Teikem.Domain.Wms.BinSheetRules.DefaultSheetsPerPage, [FromQuery] bool? isProvisional = null, [FromQuery] string[]? sheetStatus = null)
+        => sheets.ListAsync(publicId, new BinSheetQuery(new WarehouseBinQuery(zoneId, search, includeInactive, onlyWithStock, NullIfEmpty(zoneIds),
+            aisle, rack, level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), IsProvisional: isProvisional,
+            SheetStatus: NullIfEmpty(sheetStatus)), skip, take), ct);
+
+    /// <summary>
+    /// Lote 23 — registra que se imprimieron las hojas de las posiciones { binIds (1..500), generatedAtUtc? }: fija
+    /// sheetPrintedAtUtc (el generatedAtUtc de la página impresa si llega, si no ahora; nunca retrocede). Idempotente. Una
+    /// posición de otro almacén u otro tenant → 404 'Posición no encontrada.' sin marcar ninguna. Mismo permiso que ver
+    /// (inventory.view, decisión del dueño). Devuelve el estado nuevo de cada posición.
+    /// </summary>
+    [HttpPost("{publicId:guid}/bin-sheets/mark-printed"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<IReadOnlyList<BinSheetStateDto>> MarkBinSheetsPrinted(Guid publicId, [FromBody] BinSheetMarkPrintedRequest req, CancellationToken ct)
+        => sheets.MarkPrintedAsync(publicId, req, ct);
 
     /// <summary>
     /// Lote 14 — búsqueda de posiciones ENTRE almacenes (filtros Posición del Kárdex y del Conteo): ?search contiene en el código

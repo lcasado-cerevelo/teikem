@@ -4600,3 +4600,56 @@ Con códigos cortos, unas 24 posiciones (3 columnas × 8 filas); los productos c
 
 **El lector no lee la hoja impresa.**
 Imprima al 100 % ("Tamaño real", sin "Ajustar a la página"), en negro sobre papel blanco, y pruebe con "2 columnas".
+
+## Lote 23 — Hojas de posición (servidor)
+
+Detalle en el [capítulo 06 §1.5](06-inventario-y-almacen.md#15-hojas-de-posición-lote-23) y en `docs/lote23-decisiones.md`. Este lote es solo
+del servidor: los mensajes los devuelve el API (la pantalla y la app los mostrarán tal cual en sus lotes).
+
+### Mensajes nuevos
+
+**400 — "Estado de hoja desconocido: 'X'. Use NEVER_PRINTED, STALE, CURRENT o EMPTY."** (`errors.sheetStatus`)
+El filtro `sheetStatus` de `GET .../bins` o de `GET .../bin-sheets` trae un valor que no existe. Use uno o varios de los cuatro códigos
+(repitiendo el parámetro o separándolos por comas; mayúsculas o minúsculas da igual).
+
+**400 — "Se pueden pedir como máximo 200 hojas de posición por consulta; use skip para pedir las siguientes."** (`errors.take`)
+`GET .../bin-sheets` con `take` mayor que 200. Pida de 200 en 200: `take=200&skip=0`, luego `skip=200`, `skip=400`… hasta llegar a `total`.
+
+**400 — "Indique al menos una posición para marcar su hoja como impresa."** (`errors.binIds`)
+`POST .../bin-sheets/mark-printed` sin `binIds` o con la lista vacía. Mande los ids de las posiciones cuyas hojas imprimió.
+
+**400 — "Se pueden marcar como máximo 500 posiciones por solicitud."** (`errors.binIds`)
+Más de 500 posiciones (sin contar repetidas) en una sola marca. Divida la lista en varias solicitudes.
+
+**404 — "Posición no encontrada."** (al marcar impresas)
+Alguna de las posiciones no es de ese almacén, es de otra compañía o no existe. **No se marcó ninguna** (es todo o nada): quite la posición
+ajena y repita.
+
+**404 — "Almacén no encontrado."** (hojas o marcar impresas)
+El almacén de la dirección no existe o es de otra compañía.
+
+### Preguntas frecuentes
+
+**¿Qué hace que una hoja quede "desactualizada" (`STALE`)?**
+Que la lista de productos de la posición cambie después de la última impresión: entra un producto que no estaba o sale uno (su existencia
+en mano en la posición, sumando lotes, llega a 0). Cambiar solo la cantidad de un producto que sigue ahí **no** la desactualiza.
+
+**Acabamos de activar la función y todas las posiciones con producto salen "nunca impresa". ¿Es un error?**
+No. Es la decisión del dueño: no se supone ninguna hoja impresa de antes. Imprima y marque las hojas; desde ese momento quedan al día.
+
+**¿Para qué sirve `generatedAtUtc` al marcar impresas?**
+Para no dar por buena una hoja que ya salió vieja de la impresora: si mientras imprimía entró o salió un producto de la posición, al marcar con
+el `generatedAtUtc` de la consulta la posición queda `STALE`. Sin él se toma la hora actual.
+
+**Marqué dos veces la misma hoja, ¿pasa algo?**
+No. Repetir la marca con el mismo `generatedAtUtc` no cambia nada, y una marca más vieja nunca pisa una impresión más reciente.
+
+**Una posición que vacié aparece como desactualizada. ¿Por qué no "vacía"?**
+Porque la hoja pegada en el rack todavía lista productos que ya no están. Quítela o imprima la hoja nueva (sin productos) y márquela:
+entonces pasa a "vacía" (`EMPTY`).
+
+**¿Qué permiso hace falta para marcar como impresas?**
+El mismo que para ver el almacén, `inventory.view` (decisión del dueño), con el módulo WMS_LOTSERIAL encendido.
+
+**¿La hoja trae cantidades?**
+No: dice qué productos hay (SKU, nombre y código de barras), no cuántos. Por eso las cantidades no la desactualizan.
