@@ -58,3 +58,26 @@ Fecha: 2026-10-03. Respuestas de Luis a las decisiones que fueron quedando pendi
   **Resuelto (Lote A6 de la app, [loteA6-decisiones.md](mobile/loteA6-decisiones.md))**: Sincronización muestra la explicación con los
   renglones y SKU, "Actualizar el conteo" (solo al tocarlo) y "Descartar este envío". La app no reabre un conteo ya enviado: queda como
   pendiente en ese documento.
+
+
+## Segundo bloque de decisiones (2026-10-03)
+
+Respuestas de Luis a las "Decisiones para el dueño" y "Pendientes" de la implementación de los cambios 1, 2 y 3. Se implementó en el
+[lote 22](lote22-decisiones.md) (servidor + app + web).
+
+| # | Tema | Decisión | Dónde |
+|---|---|---|---|
+| 1 | Lote de captura con una línea corregida | **Que se guarden las líneas libres.** Las libres se validan y guardan; las corregidas se omiten y se informan (`skippedLines` en la respuesta 200). Si TODAS las del lote están corregidas: 409 con el mensaje de siempre ("No se guardó nada" ahora sí es cierto). Un error de validación en una libre sigue anulando todo el lote. **Cambia el "todo o nada" de la decisión 3 de la lista anterior** (cambio 2) | Servidor (`CycleCountService.CaptureBatchAsync`) |
+| 2 | Quien corrigió | **Conserva el derecho** de volver a cambiar la línea aunque solo tenga `warehouse.count.capture` (sin cambio; se confirma) | Servidor (`CycleCountRules.IsLockedByCorrection`) |
+| 3 | Selector de producto de la web | **Gana el switch "Solo con existencia", activado de entrada**; apagado se ven todos y el 400 sigue saliendo junto al selector. No se guarda la preferencia. **Cambia la decisión 1 de F13** (el selector no filtraba por existencia) | Web (`CreateCountModal.tsx`) |
+| 4 | Cómo reconoce la app el rechazo | **Por el texto exacto del mensaje del servidor** (sin cambiar la cola local para guardar el código HTTP); se confirma | App (`countRejection.ts`) |
+| 5 | Cantidad corregida por el supervisor | **Se muestra también a ciegas** (la esperada nunca): en `skippedLines.currentQty`, en la ficha y en "Actualizar el conteo" | Servidor y app |
+| 6 | Retomar un conteo ya enviado | **No se crea la función.** Si falta contar algo, el operario crea un conteo nuevo (escanea la posición otra vez) o avisa al supervisor | App (textos) |
+
+### Qué quedó superado
+
+- [`lote21-decisiones.md`](lote21-decisiones.md): la nota del cambio 2 en la decisión 3 ("todo o nada" para el lote) ya no vale: el lote guarda las libres.
+- [`frontend/loteF13-decisiones.md`](frontend/loteF13-decisiones.md): la decisión 1 ("el selector no filtra por existencia") ya no vale: hay switch, encendido de entrada.
+- [`mobile/loteA6-decisiones.md`](mobile/loteA6-decisiones.md): "todo o nada", la tarjeta de rechazo como caso general y el pendiente 1 (retomar un
+  conteo enviado) quedaron superados; el caso común es el aviso de lote parcial (Lote A7, al final de ese documento) y el 409 es solo el caso residual.
+- En la sección anterior de este mismo documento, la "Decisión para el dueño" 3 (el lote entero se rechaza) y el pendiente de la app quedan resueltos por este bloque.
