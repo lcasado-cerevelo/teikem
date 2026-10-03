@@ -1029,6 +1029,27 @@ laborables, `nextWorkDay`, feriados "cada año"), `tenantModules.ts` (`dependenc
 `settings/operations.ts` (`capabilityAllowed`, `recvSummaryRows`). Para abrir una pestaña desde otra pantalla:
 `<Link to="/system/settings?tab=region">…</Link>`.
 
+## Seguridad y auditoría (`src/features/system`, lote F10)
+`/system/audit` (`AuditScreen`, `admin.audit` + SYSTEM; maqueta `auditoriaScreen`): pestañas `.seg` en la cabecera, Actividad
+(sin parámetro) y Sesiones y MFA (`?tab=sessions`, `auditTabFromParam`; Ajustes → General abre `/system/audit?tab=sessions`).
+- Hooks en `auditApi.ts`: `useActivity(query)` (`GET /audit/activity`, `keepPreviousData`), `fetchAllActivity(query)` (todo lo
+  filtrado con `fetchAllPages`), `useCompanySessions()` (`GET /audit/sessions`: todas las sesiones de la compañía, `isCurrent`),
+  `useRevokeCompanySession()` → `mutateAsync(id)` y `useRevokeOtherSessions()` → `{ revoked }` (`admin.users`; la segunda con
+  AAL2, la resuelve el cliente); ambas invalidan sesiones y actividad (`auditKeys`). La política usa `useTenantSettings` +
+  `useSaveTenantSettings` (PUT parcial).
+- Puras en `audit/auditView.ts`: `activityQuery(filtros, skip, take, zona?)` (días locales → `from`/`to` UTC, `to` = medianoche
+  del día siguiente), `activityBadge(row)` (`change` | `event` | `alert` por `typeCode`/`outcomeCode`, nunca por la etiqueta),
+  `activityDetailParts(json, textos)` / `activityDetailText(row, textos)` ("Campo: antes → después"; sin `$key`),
+  `sortRows(rows, sort, valor)` (orden local con vacíos al final: con paginación del servidor la tabla controla `sort`/`onSort`
+  y ordena la página; la exportación ordena todo igual), `sessionLocation`, `reauthOptions`, `toPolicyValues`, `policyErrors`,
+  `policyRequestBody` (solo lo que cambió).
+- Un segmento usado como FILTRO (no como pestañas) va en `<fieldset className="aud-kind"><legend>` con botones `aria-pressed` y se
+  anota con `useRegisterFilter`; "Exportar CSV" propio = `exportTable('csv', columns, filas, { title })` con las mismas columnas.
+  ```tsx
+  const { items } = await fetchAllActivity(activityQuery(filtros, 0, 200))
+  await exportTable('csv', columns, sortRows(items, sort, sortValue), { title: t('system.audit.activity.fileName') })
+  ```
+
 ## Patrones de pantalla (copiar de `src/kernel/ui/templates`)
 Plantillas completas y compilables (no montadas en rutas) sobre clientes; textos en `examples.clients.*` (una pantalla real usa su
 propia sección `clients.*`).

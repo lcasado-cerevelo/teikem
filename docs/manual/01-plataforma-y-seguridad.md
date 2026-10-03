@@ -146,6 +146,10 @@ Validaciones: revocar la sesión actual desde esta lista → `La sesión actual 
 Un administrador puede además cerrar **todas** las sesiones de otro usuario: `DELETE /api/v1/users/{id}/sessions`
 con `admin.users`.
 
+Lote F10: el administrador también ve y revoca las sesiones de **toda la compañía** (una por una o "las demás") en
+Seguridad y auditoría → Sesiones y MFA; ver la sección 9.1. Cada sesión guarda desde el Lote F10 la **IP** desde la que se
+abrió o se renovó por última vez (se muestra como "Ubicación"; no hay geolocalización).
+
 ### 1.6 Cambio de contraseña
 
 Qué hace: cambia la contraseña propia, verificando la actual.
@@ -671,6 +675,55 @@ Lote 8A — aparatos de almacén en la bitácora:
 - Los flujos anónimos del aparato (registrar, lista de usuarios, login y heartbeat) nunca toman el usuario de un token que
   venga en la petición: la bitácora del aparato (cambio `USER_DEVICE` del registro, `TOKEN_REVOKED`, evento de registro)
   queda sin usuario.
+
+Lote F10 — la vista "Actividad" (`GET /api/v1/audit/activity`), que usa la pantalla Seguridad y auditoría:
+- `total` es el **conteo real** de las dos bitácoras con los filtros aplicados (antes salía de una ventana de `skip + take`
+  filas de cada una y crecía al pasar de página). Las páginas se continúan sin repetir ni saltar filas; el orden es por fecha,
+  lo más reciente primero. `take` llega hasta 2000.
+- `text` se busca en la base, sin distinguir mayúsculas: en el detalle (el JSON de la bitácora o del evento), la IP, el nombre o
+  el correo del usuario, la etiqueta o el código del tipo de evento, del resultado, de la acción y de la entidad (por ejemplo
+  `Permiso`, `LOGIN`, `Compañía`), y el número de la entidad (`#12` o `12`). Ya no se busca en el texto combinado
+  "Acción · Entidad #id" (por ejemplo, `Login · Éxito` no encuentra nada; `Login` sí).
+- Cada fila trae además `typeCode` (código de la acción del cambio —`CREATE`, `UPDATE`, `DELETE`, `RESTORE`— o del tipo de
+  evento —`LOGIN`, `PERMISSION_DENIED`…—) y `outcomeCode` (resultado del evento: `SUCCESS`, `FAILURE`, `BLOCKED`; vacío en un
+  cambio). `/audit/changes` trae `actionCode` y `/audit/security-events` trae `eventTypeCode` y `outcomeCode`. La pantalla
+  marca "Alerta" un evento fallido o bloqueado, un permiso denegado o un bloqueo de cuenta; "Evento" el resto; "Cambio" la
+  bitácora de cambios.
+- `export.csv` del servidor no cambia (hasta 2000 filas, columnas `Cuando,Tipo,Usuario,Detalle,IP,Correlacion`); la pantalla
+  exporta su propio CSV con lo filtrado (ver el capítulo de pantallas F10).
+
+### 9.1 Sesiones de toda la compañía (Lote F10)
+
+Qué hace: lista las sesiones activas (refresh tokens vivos de la compañía activa) de **todos** los usuarios —no solo las
+propias como `GET /auth/sessions`— y permite revocar una o todas las demás. Es la tabla "Sesiones activas" de Seguridad y
+auditoría → Sesiones y MFA (maestro, módulo D: "sesiones revocables… revocación por dispositivo o global").
+
+Quién puede: listar, `admin.audit`; revocar, además `admin.users`. "Cerrar las demás sesiones" exige además
+**reautenticación reciente** (AAL2): sin ella, 403 `aal2_required` y la web pide la contraseña y reintenta.
+
+Cómo se usa:
+- `GET /api/v1/audit/sessions` → arreglo de `{ id, userId, userName, userEmail, deviceInfo, deviceName, isDevice, ipAddress,
+  lastActivityUtc, expiresAtUtc, isCurrent }`, de la más reciente a la más vieja. `lastActivityUtc` es la última renovación
+  de la sesión (ocurre cada vez que vence el token de acceso, 15 minutos, mientras se usa). `isDevice`/`deviceName`: sesión de
+  un aparato de almacén ("ZEBRA-01 · Muelle 1"). `isCurrent`: la sesión de quien consulta.
+- `DELETE /api/v1/audit/sessions/{id}` → 204: revoca esa sesión (de cualquier usuario de la compañía).
+- `POST /api/v1/audit/sessions/revoke-others` → `{ "revoked": N }`: revoca todas las sesiones activas de la compañía salvo la
+  de quien lo pide.
+
+Efectos: la sesión revocada ya no se puede renovar; el token de acceso que ya tenía sigue vivo hasta que vence (15 minutos como
+máximo; no se cambia el sello de seguridad del usuario, que cerraría también sus sesiones en otras compañías). Cada revocación
+escribe `TOKEN_REVOKED` (una: atribuido al dueño de la sesión, detalle `scope = company_session`, `session` y `by` = quien la
+revocó; las demás: atribuido a quien lo pidió, `scope = company_others`, `count` y `users`). **Ojo:** si el aparato o navegador
+de la sesión revocada intenta renovarla, el servidor lo trata como reutilización de un token y revoca **todas** las sesiones de
+ese usuario (comportamiento previo del lote 1, igual que al revocar desde Mi cuenta): el usuario vuelve a entrar en todos sus
+aparatos.
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Revocar la propia sesión desde la lista | `La sesión actual no se revoca desde la lista; use Salir.` | 409 |
+| Sesión que no existe, ya revocada, vencida o de otra compañía | `Sesión '<id>' no encontrada.` | 404 |
+| Sin `admin.audit` (listar) o sin `admin.users` (revocar) | sin cuerpo (la web lo trata como `forbidden`); queda el evento `PERMISSION_DENIED` | 403 |
+| "Cerrar las demás" sin reautenticación reciente | `Esta acción requiere reautenticación reciente (AAL2).` (`code: aal2_required`) | 403 |
 
 FAQ:
 - **Un usuario intentó algo sin permiso, ¿queda registro?** Sí: cada intento fallido por falta de permiso

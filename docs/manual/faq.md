@@ -3956,3 +3956,72 @@ sin posición de recepción.
 **¿Puedo cargar el logo de mi compañía?**
 Todavía no: falta en el servidor dónde guardar los archivos. Mientras tanto se usan los logos de Teikem; los colores sí se
 pueden cambiar en la pestaña Marca.
+
+## Lote F10 — Seguridad y auditoría (pantalla), sesiones de toda la compañía y actividad paginada
+
+Pantalla Sistema → Seguridad y auditoría (`/system/audit`, `admin.audit`). Detalle en
+[frontend/f10-seguridad-y-auditoria.md](frontend/f10-seguridad-y-auditoria.md); backend en el capítulo 01, secciones 9 y 9.1.
+
+### Mensajes de error nuevos o cambiados
+
+**¿Qué significa "La sesión actual no se revoca desde la lista; use Salir."? (409)**
+Se intentó revocar la propia sesión desde Sesiones activas (`DELETE /api/v1/audit/sessions/{id}`). La pantalla no ofrece ese
+botón en la fila "Esta sesión"; para cerrarla use **Salir**. (En Mi cuenta → Sesiones el mensaje sigue siendo el del lote 1:
+"…; use logout.")
+
+**¿Qué significa "Sesión '<id>' no encontrada."? (404)**
+La sesión ya no está activa: otro administrador la revocó, venció, el usuario salió, o es de otra compañía. Recargue la lista.
+
+**¿Qué significa "Esta acción requiere reautenticación reciente (AAL2)."? (403, `aal2_required`)**
+"Cerrar las demás sesiones" es una acción sensible. La web abre sola la ventana de contraseña (y código MFA) y la repite; solo
+lo verá si llama al API a mano: haga `POST /api/v1/auth/reauth` y repita.
+
+**Revocar una sesión responde 403 sin mensaje.**
+Su usuario no tiene `admin.users` (revocar exige `admin.audit` y `admin.users`). En la pantalla los botones no aparecen sin
+ese permiso. Queda un evento `PERMISSION_DENIED`.
+
+**"Entre 1 y 365 días." / "Entre 5 y 240 minutos." en la política (400)**
+Son los mensajes de siempre de `PUT /api/v1/tenant/settings` (capítulo 01, sección 11); ahora la pantalla los pone bajo el
+campo. La duración debe ser un número entero de días de 1 a 365.
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**"Entre 1 y 365 días."** bajo una duración — vacía, decimal, menor que 1 o mayor que 365; no se manda nada hasta corregirla.
+
+**"Se descargaron las primeras 10000 filas; acote la fecha para exportar el resto."** — la exportación tiene un tope de 10 000
+filas; ponga una Fecha más corta y exporte por partes.
+
+**"No hay actividad con estos filtros."** — ninguna fila cumple el tipo, la fecha y la búsqueda; use **Limpiar**.
+
+**"No se pudieron leer las sesiones."** / **"No se pudieron leer los ajustes de la compañía."** — falló la lectura (red o
+permiso); **Reintentar** o recargue.
+
+### Preguntas frecuentes
+
+**¿Qué diferencia hay entre "Evento" y "Alerta"?**
+Los dos son eventos de seguridad. "Alerta" es un intento fallido o bloqueado (contraseña incorrecta, bloqueo de cuenta,
+reutilización de un token), un permiso denegado o un bloqueo; "Evento", lo que salió bien (entradas, salidas, MFA, sesiones
+revocadas a propósito). "Cambio" es la bitácora de cambios de los registros.
+
+**Antes el total de la actividad cambiaba al pasar de página.**
+Era un error del servidor (el total salía de las primeras filas leídas). Desde el lote F10 es el conteo real y las páginas llegan
+hasta el final; la búsqueda también se hace sobre toda la bitácora, no sobre las primeras filas.
+
+**Busqué "Login · Éxito" y no encontré nada.**
+La búsqueda mira cada dato por separado (tipo, resultado, usuario, detalle, IP, entidad). Busque `Login` o `Éxito`, o use el
+filtro Seguridad.
+
+**¿Por qué la "Ubicación" de una sesión es un número (o "—")?**
+Es la IP desde la que se abrió o renovó la sesión. Las sesiones abiertas antes de este lote no la tienen ("—") hasta que se
+renuevan. No se convierte en ciudad (haría falta un servicio externo).
+
+**Revoqué una sesión y el usuario perdió todas.**
+Si el aparato revocado intenta renovar su sesión, el servidor lo trata como posible robo del token y cierra todas las sesiones de
+ese usuario (regla del lote 1, también en Mi cuenta). Es una decisión pendiente del dueño (lote F10, decisión 3).
+
+**¿"Cerrar las demás sesiones" me saca también de mis otros aparatos?**
+Sí: cierra todas las sesiones de la compañía menos la de este navegador, incluidas las suyas en otros aparatos y las de los
+aparatos de almacén.
+
+**Cambié la duración de la sesión y nadie tuvo que volver a entrar.**
+La duración nueva vale para las sesiones que se abren o renuevan desde ese momento; las demás conservan su vencimiento.

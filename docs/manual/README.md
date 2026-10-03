@@ -20,6 +20,8 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    Región y formatos (2026-10, sección 11.1): región Puerto Rico o Estados Unidos con su juego de valores, zona horaria de la
    compañía (con la que cuenta "hoy"), moneda y formatos de fecha, hora, números y teléfono, cada uno cambiable por separado,
    con sus validaciones y mensajes.
+   Lote F10 (secciones 1.5, 9 y 9.1): **sesiones de toda la compañía** (listar con `admin.audit`, revocar una o las demás con
+   `admin.users`, IP de la sesión) y la **actividad unificada** con total real, búsqueda en la base y códigos de tipo y resultado.
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y
@@ -154,6 +156,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    compañía con sus pestañas General, Región y formatos (vista previa, Personalizada, Restaurar), Calendario (días
    laborables y feriados), Módulos (dependencias y reautenticación), Operación (valores por defecto, pipeline de estatus,
    recepción por almacén) y Marca (temas, colores propios y validaciones). Capturas `f9-*`.
+6. [F10 — Seguridad y auditoría](frontend/f10-seguridad-y-auditoria.md): la pantalla Sistema → Seguridad y auditoría con sus
+   pestañas Actividad (bitácora de cambios y eventos de seguridad en una tabla: tipo Cambio/Evento/Alerta, fecha, buscador,
+   orden por columna y Exportar CSV de lo filtrado) y Sesiones y MFA (sesiones activas de toda la compañía, revocar una o las
+   demás, y la política: MFA obligatorio, ventana de reautenticación y duración de las sesiones). Capturas `f10-*`.
 
 ## Preguntas frecuentes
 
@@ -178,4 +184,7 @@ o de cruce, posición que no existe, id y código a la vez, mismo producto con d
 (falta la posición destino, excede el cupo, sugerida, posiciones del aparato) y las preguntas sobre cómo poner un almacén en directo, qué pasa con los recibos abiertos, si se puede pasar del cupo, por
 qué la pistola no deja enviar, por qué los números llevan coma, por qué el PDF dice "Sin filtros" y cómo abrir las fechas del Excel. La sección "Lote F9" recoge los mensajes de la pantalla Ajustes
 de la compañía (feriados, días laborables, separadores, colores de la marca, máximo de paradas, teléfono) y las preguntas sobre por qué
-cambió el formato de las fechas y la hora, cómo volver a día/mes/año, qué pasa con los teléfonos guardados y por qué US no cambia la hora.
+cambió el formato de las fechas y la hora, cómo volver a día/mes/año, qué pasa con los teléfonos guardados y por qué US no cambia la hora. La sección "Lote F10" recoge los mensajes de las sesiones de la compañía (sesión
+actual, sesión no encontrada, reautenticación, 403 sin `admin.users`), los de la política y la exportación que solo se ven en pantalla, y las
+preguntas sobre Evento/Alerta, el total que cambiaba al paginar, la búsqueda, la IP como ubicación, por qué revocar una sesión puede cerrar todas
+y qué hace "Cerrar las demás sesiones".
