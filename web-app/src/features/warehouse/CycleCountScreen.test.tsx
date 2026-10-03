@@ -486,12 +486,73 @@ describe('Nuevo conteo: por posiciones o por producto (Lote F13)', () => {
     expect(await screen.findByText('Conteo CC-00015 creado con 2 línea(s).')).toBeInTheDocument()
   })
 
-  it('un producto sin existencia: el 400 del servidor sale junto al selector y el modal sigue abierto', async () => {
+  /** Última consulta de productos del selector (la lista se pide al abrir el desplegable). */
+  const lastProductQuery = () => {
+    const list = calls('GET', '/api/v1/products')
+    return list[list.length - 1]?.url.searchParams
+  }
+
+  it('el switch "Solo con existencia" nace encendido y el selector pide los productos con existencia en el almacén elegido', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    expect(within(dialog).queryByRole('switch', { name: 'Solo con existencia' })).toBeNull() // solo en "Por producto"
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    const sw = within(dialog).getByRole('switch', { name: 'Solo con existencia' })
+    expect(sw).toBeChecked()
+
+    await pickWarehouse(user, dialog)
+    await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'torn')
+    await screen.findByRole('option', { name: /TORN-01/ })
+    const q = lastProductQuery()
+    expect(q?.get('onlyOnHand')).toBe('true')
+    expect(q?.get('warehousePublicId')).toBe(WH)
+    expect(q?.get('activeOnly')).toBe('true')
+  })
+
+  it('con el switch apagado el selector trae todos los productos (sin filtro de existencia) y vuelve a filtrar al encenderlo', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    await pickWarehouse(user, dialog)
+    await user.click(within(dialog).getByRole('switch', { name: 'Solo con existencia' }))
+    expect(within(dialog).getByRole('switch', { name: 'Solo con existencia' })).not.toBeChecked()
+
+    await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'torn')
+    await screen.findByRole('option', { name: /TORN-01/ })
+    const off = lastProductQuery()
+    expect(off?.has('onlyOnHand')).toBe(false)
+    expect(off?.has('onlyAvailable')).toBe(false)
+    expect(off?.has('warehousePublicId')).toBe(false)
+
+    await user.click(within(dialog).getByRole('switch', { name: 'Solo con existencia' }))
+    await user.clear(within(dialog).getByRole('combobox', { name: /Producto/ }))
+    await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'tor')
+    await waitFor(() => expect(lastProductQuery()?.get('onlyOnHand')).toBe('true'))
+  })
+
+  it('la preferencia no se guarda: al abrir otra vez el switch vuelve a nacer encendido', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    let dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    await user.click(within(dialog).getByRole('switch', { name: 'Solo con existencia' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    expect(within(dialog).getByRole('switch', { name: 'Solo con existencia' })).toBeChecked()
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('un producto sin existencia (switch apagado): el 400 del servidor sale junto al selector y el modal sigue abierto', async () => {
     const user = userEvent.setup()
     mock.createProblem = NO_STOCK
     wrap(COUNTER)
     const dialog = await openModal(user)
     await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    await user.click(within(dialog).getByRole('switch', { name: 'Solo con existencia' }))
     await pickWarehouse(user, dialog)
     await user.type(within(dialog).getByRole('combobox', { name: /Producto/ }), 'torn')
     await user.click(await screen.findByRole('option', { name: /TORN-01/ }))

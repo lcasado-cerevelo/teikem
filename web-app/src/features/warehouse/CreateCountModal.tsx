@@ -4,11 +4,14 @@
 // un producto (`productPublicIds: [producto]`, sin posiciones ni `allowEmpty`); el servidor arma una línea por posición/lote con
 // existencia (origen PRODUCT). Si el producto no tiene existencia el servidor responde 400 en `filters` y el mensaje se muestra
 // bajo el selector de producto.
+// Segundo bloque de decisiones (2026-10-03): junto al selector, el switch "Solo con existencia" (activado de entrada, sin guardar la
+// preferencia) limita la lista a los productos con existencia en mano en el almacén elegido (`onlyOnHand` + `warehousePublicId` de
+// GET /products: es la misma existencia que cuenta el servidor); apagado se ven todos y el 400 sigue saliendo bajo el selector.
 // El selector de posiciones lee todas las páginas del listado paginado (Lote 1) con `fetchAllPages`. Al crear, avisa a la
 // pantalla (`onCreated`), que refresca la lista y elige el conteo nuevo.
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useController, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { api, unwrap } from '../../kernel/api/client'
@@ -67,6 +70,7 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
     defaultValues: { mode: 'bins' as CreateMode, warehousePublicId: null as string | null, zoneIds: [] as string[], binIds: [] as string[], productPublicId: null as string | null },
   })
   const mode = useWatch({ control: form.control, name: 'mode' })
+  const [onlyWithStock, setOnlyWithStock] = useState(true)
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const zoneIds = useWatch({ control: form.control, name: 'zoneIds' })
   const byBins = mode === 'bins'
@@ -169,8 +173,16 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
         ) : (
           <>
             <Field name="productPublicId" label={t('warehouse.cycleCounts.fields.product')} required>
-              <ProductPickerInput />
+              <ProductPickerInput warehousePublicId={onlyWithStock ? warehousePublicId : undefined} onlyOnHand={onlyWithStock} />
             </Field>
+            <div className="f">
+              <label className="sw cc-sw">
+                <input type="checkbox" role="switch" checked={onlyWithStock} onChange={(e) => setOnlyWithStock(e.target.checked)} />
+                <span className="tk" aria-hidden="true" />
+                <span>{t('warehouse.cycleCounts.fields.onlyWithStock')}</span>
+              </label>
+              <p className="help">{t('warehouse.cycleCounts.fields.onlyWithStockHelp')}</p>
+            </div>
             <p className="note">{t('warehouse.cycleCounts.createProductHelp')}</p>
           </>
         )}

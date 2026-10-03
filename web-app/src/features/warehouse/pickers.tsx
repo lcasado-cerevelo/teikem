@@ -654,6 +654,8 @@ export interface ProductPickerProps {
   /** Limita a productos con existencia en este almacén (junto con `onlyAvailable`). */
   warehousePublicId?: string | null
   onlyAvailable?: boolean
+  /** Solo productos con existencia en mano &gt; 0 (en el almacén indicado si hay; incluye lo reservado y la cuarentena): es lo que cuenta un conteo. */
+  onlyOnHand?: boolean
   /** Incluye productos dados de baja (marcados "Inactivo"), p. ej. para filtrar el historial del Kárdex. */
   includeInactive?: boolean
   id?: string
@@ -673,6 +675,7 @@ export function ProductPicker({
   ownerClientPublicId,
   warehousePublicId,
   onlyAvailable,
+  onlyOnHand,
   includeInactive,
   id,
   placeholder,
@@ -708,6 +711,7 @@ export function ProductPicker({
     ownerClientPublicId: ownerClientPublicId || undefined,
     warehousePublicId: warehousePublicId || undefined,
     onlyAvailable: onlyAvailable || undefined,
+    onlyOnHand: onlyOnHand || undefined,
     take: MAX_SHOWN,
   }
   const list = useQuery({
@@ -903,6 +907,7 @@ export interface ProductPickerInputProps {
   ownerClientPublicId?: string | null
   warehousePublicId?: string | null
   onlyAvailable?: boolean
+  onlyOnHand?: boolean
   placeholder?: string
   disabled?: boolean
   /** Aviso con la fila elegida (p. ej. para condicionar lote/series al `trackingTypeCode`). */

@@ -2640,6 +2640,8 @@
         "search": "Search"
       },
       "fields": {
+        "onlyWithStock": "Only with stock",
+        "onlyWithStockHelp": "With the switch on, the list shows only products that have stock in the chosen warehouse; off, all active products (if the product has no stock the server says so when creating).",
         "warehouse": "Warehouse",
         "zones": "Zones",
         "allZones": "All zones",

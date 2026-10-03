@@ -2640,6 +2640,8 @@
         "search": "Buscar"
       },
       "fields": {
+        "onlyWithStock": "Solo con existencia",
+        "onlyWithStockHelp": "Con el switch encendido la lista trae solo los productos que tienen existencia en el almacén elegido; apagado, todos los productos activos (si el producto no tiene existencia el servidor lo avisa al crear).",
         "warehouse": "Almacén",
         "zones": "Zonas",
         "allZones": "Todas las zonas",

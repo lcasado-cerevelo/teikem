@@ -26,7 +26,12 @@ Al cambiar de pestaña se limpian los errores; el almacén elegido se conserva.
 ![Por producto](img/f13-por-producto.png)
 
 1. **Nuevo conteo** → pestaña **Por producto**.
-2. Elija el **Almacén** y escriba parte del SKU o del nombre en **Producto**; elija una opción de la lista.
+2. Elija el **Almacén** y escriba parte del SKU o del nombre en **Producto**; elija una opción de la lista. Debajo del selector está el
+   switch **Solo con existencia** (segundo bloque de decisiones del dueño, 2026-10-03): **nace encendido** y la lista ofrece solo los
+   productos que tienen existencia en mano en el almacén elegido (`GET /api/v1/products?warehousePublicId=…&onlyOnHand=true`; es la misma
+   existencia que cuenta el servidor, incluida la reservada). Apáguelo para ver **todos** los productos activos, por ejemplo para
+   contar algo que el sistema cree que no existe. No se guarda la preferencia: cada vez que abre el modal vuelve a nacer encendido, y
+   al cambiar de almacén la lista se vuelve a pedir con el almacén nuevo.
 3. **Crear conteo**. Aparece el aviso *Conteo CC-00012 creado con N línea(s).*, el modal se cierra y el conteo nuevo queda abierto en el
    panel de la derecha (`?count=<id>`), con su lista de posiciones y lotes. Ya se puede contar desde la web o desde la app.
 
@@ -41,7 +46,7 @@ Productos con **número de serie**: el servidor los admite, pero la captura por 
 |---|---|---|---|
 | Sin almacén | `Seleccione un almacén.` (texto de la web) | — (no se envía) | Bajo Almacén |
 | Sin producto (pestaña Por producto) | `Elija el producto.` | — (no se envía) | Bajo Producto |
-| El producto no tiene existencia en ninguna posición del almacén | `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` | 400 | Bajo Producto; el modal sigue abierto |
+| El producto no tiene existencia en ninguna posición del almacén (solo se puede elegir con el switch **Solo con existencia** apagado) | `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` | 400 | Bajo Producto; el modal sigue abierto |
 | El producto o el almacén ya no existen | `Producto no encontrado.` / error de almacén | 404 | Aviso arriba del formulario |
 | Más de 1000 líneas | `El conteo no puede tener más de 1000 líneas…` (texto del servidor) | 400 | Aviso arriba del formulario |
 
@@ -52,7 +57,8 @@ existe, use "Contar por producto" en la app de almacén, que abre el conteo vac�
 
 ## 4. Casos frecuentes
 
-- **El producto no aparece en la lista:** el buscador solo ofrece productos activos; busque por SKU o por nombre.
+- **El producto no aparece en la lista:** el buscador solo ofrece productos activos; busque por SKU o por nombre. Con **Solo con existencia**
+  encendido tampoco salen los que no tienen existencia en el almacén elegido: apague el switch o cambie el almacén.
 - **"Los filtros no seleccionan inventario…" con un producto que sí existe:** no tiene existencia en mano en ese almacén (puede estar en
   otro almacén o toda reservada/en tránsito). Cambie el almacén o recíbalo primero.
 - **Ya hay un conteo abierto de ese producto:** se puede crear otro; cada conteo es independiente. Al confirmar, cada uno ajusta contra la

@@ -155,14 +155,29 @@ test.describe('Lote F13 — escritorio', () => {
     await dialog.getByRole('button', { name: 'Crear conteo' }).click()
     await expect(dialog.getByText('Elija el producto.')).toBeVisible()
 
-    // producto sin existencia: el 400 del servidor sale junto al selector y el modal sigue abierto
+    // switch "Solo con existencia" (segundo bloque, 2026-10-03): nace encendido y el producto sin existencia no se ofrece
     await pickWarehouse(page, dialog)
+    const sw = dialog.getByRole('switch', { name: 'Solo con existencia' })
+    await expect(sw).toBeChecked()
+    const box = dialog.getByRole('combobox', { name: /^Producto/ })
+    await box.click()
+    await box.fill(s.skuStock)
+    await expect(page.getByRole('option', { name: new RegExp(`^${s.skuStock} · `) })).toBeVisible()
+    await box.fill(s.skuEmpty)
+    await expect(page.getByText('No hay productos que coincidan', { exact: false })).toBeVisible()
+    await expect(page.getByRole('option', { name: new RegExp(`^${s.skuEmpty} · `) })).toHaveCount(0)
+
+    // switch apagado: se ve el producto sin existencia, el 400 del servidor sale junto al selector y el modal sigue abierto
+    await box.press('Escape') // cierra la lista (si no, tapa el switch)
+    await sw.uncheck()
+    await expect(sw).not.toBeChecked()
     await pickProduct(page, dialog, s.skuEmpty)
     await dialog.getByRole('button', { name: 'Crear conteo' }).click()
     await expect(dialog.getByText(NO_STOCK)).toBeVisible()
     await shot(page, 'sin-existencia')
 
-    // producto con existencia: se crea, se abre y aparece en la lista con origen Producto
+    // producto con existencia (switch encendido otra vez): se crea, se abre y aparece en la lista con origen Producto
+    await sw.check()
     await pickProduct(page, dialog, s.skuStock)
     await expect(dialog.getByText(NO_STOCK)).toHaveCount(0)
     await shot(page, 'por-producto')

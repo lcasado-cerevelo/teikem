@@ -4411,6 +4411,12 @@ Su usuario cuenta a ciegas (no tiene `warehouse.count`). Pida a un supervisor qu
 Sí (Lote F13): **Nuevo conteo** → pestaña **Por producto** → almacén y producto → **Crear conteo**. Crea el conteo con una línea por
 posición y lote con existencia (origen Producto) y lo abre. También se puede desde la app de almacén ("Contar por producto").
 
+**¿Por qué no encuentro un producto en "Nuevo conteo > Por producto"?**
+El switch **Solo con existencia** nace encendido y la lista solo trae los productos con existencia en mano en el almacén elegido
+(`GET /api/v1/products?warehousePublicId=…&onlyOnHand=true`). Apáguelo para ver todos los productos activos; si elige uno sin existencia,
+el servidor responde 400 `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` junto al
+selector. El switch no guarda su estado: al reabrir el modal vuelve a nacer encendido.
+
 **"Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano." al crear por producto (400)**
 El producto no tiene existencia en mano en ese almacén. El mensaje sale bajo el selector de producto y el modal sigue abierto. Elija
 otro almacén o producto, o recíbalo primero. La web no abre conteos vacíos; para contar algo que el sistema cree que no existe use
