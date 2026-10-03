@@ -60,9 +60,11 @@ export const EMPTY_BIN_TEXT: BinTextFilters = { code: '', aisle: '', rack: '', l
 
 export type BinsQuery = GetQuery<'/api/v1/warehouses/{publicId}/bins'>
 
-/** Consulta del API a partir de los filtros de la pestaña Posiciones (sin `skip`/`take`); vacíos = sin filtro. */
-export function binsQuery(text: BinTextFilters, zoneIds: readonly string[], includeInactive: boolean, onlyWithStock: boolean): BinsQuery {
+/** Consulta del API a partir de los filtros de la pestaña Posiciones (sin `skip`/`take`); vacíos = sin filtro. Lote F12:
+ *  `onlyProvisional` = solo las posiciones pendientes de revisión (`isProvisional=true`; apagado no filtra). */
+export function binsQuery(text: BinTextFilters, zoneIds: readonly string[], includeInactive: boolean, onlyWithStock: boolean, onlyProvisional = false): BinsQuery {
   const q: BinsQuery = { includeInactive, onlyWithStock }
+  if (onlyProvisional) q.isProvisional = true
   const code = text.code.trim()
   const aisle = text.aisle.trim()
   const rack = text.rack.trim()

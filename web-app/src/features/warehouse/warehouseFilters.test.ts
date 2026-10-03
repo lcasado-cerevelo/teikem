@@ -76,6 +76,11 @@ describe('binsQuery (pestaña Posiciones → GET .../bins)', () => {
       zoneIds: [1, 2],
     })
   })
+
+  it('Lote F12: "Solo pendientes de revisión" manda isProvisional=true; apagado no filtra', () => {
+    expect(binsQuery(EMPTY_BIN_TEXT, [], false, false, true)).toEqual({ includeInactive: false, onlyWithStock: false, isProvisional: true })
+    expect(binsQuery(EMPTY_BIN_TEXT, [], false, false, false)).not.toHaveProperty('isProvisional')
+  })
 })
 
 describe('localityOptionLabel / localityCity (catálogo USPS de localidades)', () => {

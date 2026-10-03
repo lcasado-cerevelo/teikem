@@ -42,6 +42,7 @@ const ZONES = [
   { id: 2, code: 'B', name: 'Zona B', zoneTypeCode: 'STORAGE', zoneType: 'Almacenaje', isActive: true, binCount: 0, occupiedBinCount: 0 },
 ]
 const STG_BIN = { id: 20, code: 'STG-1', zoneId: 3, zoneCode: 'R', zoneTypeCode: 'STAGING', isActive: true }
+const PROV_BIN = { id: 11, code: 'PROV-1', zoneId: 1, zoneCode: 'A', qtyOnHand: 2, productCount: 1, occupancy: 'NO_CAPACITY', isActive: true, isProvisional: true, provisionalCycleCountId: 31 }
 const BIN = { id: 10, code: 'A-01', zoneId: 1, zoneCode: 'A', aisle: 'A', rack: '01', qtyOnHand: 5, productCount: 1, singleProductSku: 'TORN-01', maxCapacityQty: 10, occupancy: 'PARTIAL', isActive: true }
 // catálogo USPS: ciudad postal en mayúsculas sin acentos; municipio (solo PR) con acentos
 const LOCALITIES = [{ id: 7, city: 'MAYAGUEZ', postalCode: '00680', state: 'PR', countryCode: 'PR', country: 'Puerto Rico', municipality: 'Mayagüez' }]
@@ -56,8 +57,11 @@ function route({ method, url }: Call): unknown {
     return { total: 1, skip: 0, take: 1, items: [STG_BIN] }
   if (method === 'GET' && p === `/api/v1/warehouses/${WH1}/bins`) {
     const skip = Number(url.searchParams.get('skip') ?? 0)
-    return { total: 120, skip, take: Number(url.searchParams.get('take') ?? 100), items: [BIN] }
+    // Lote F12: una posición creada desde un conteo, pendiente de revisión
+    const items = url.searchParams.get('isProvisional') === 'true' ? [PROV_BIN] : [BIN, PROV_BIN]
+    return { total: url.searchParams.get('isProvisional') === 'true' ? 1 : 120, skip, take: Number(url.searchParams.get('take') ?? 100), items }
   }
+  if (method === 'POST' && p === `/api/v1/warehouses/${WH1}/bins/11/confirm-provisional`) return { ...PROV_BIN, isProvisional: false }
   if (method === 'PATCH' && p === `/api/v1/warehouses/${WH1}/zones/1`)
     return new Response(JSON.stringify({ title: 'Ya existe una zona con ese código en el almacén.', status: 409, code: 'conflict' }), { status: 409 })
   if (method === 'PATCH' && p === `/api/v1/warehouses/${WH1}/bins/10`) return BIN
@@ -248,6 +252,22 @@ describe('Ficha del almacén', () => {
     // cambiar un filtro vuelve a la página 1
     expect(last?.url.searchParams.get('skip')).toBe('0')
     expect(screen.queryByPlaceholderText('Buscar…')).toBeNull()
+  })
+
+  it('Lote F12: posición provisional con su chip, filtro "Solo pendientes de revisión" (isProvisional=true) y "Confirmar posición"', async () => {
+    const user = userEvent.setup()
+    wrap(<WarehouseDetailScreen />, MANAGE, path, pattern)
+    await user.click(await screen.findByRole('tab', { name: 'Posiciones' }))
+    const table = await screen.findByRole('table', { name: 'Posiciones' })
+    expect(within(table).getByText('Pendiente de revisión')).toBeInTheDocument()
+    // solo la provisional ofrece confirmar
+    expect(within(table).getAllByRole('button', { name: 'Confirmar posición' })).toHaveLength(1)
+    expect(gets(`/api/v1/warehouses/${WH1}/bins`).at(-1)?.url.searchParams.get('isProvisional')).toBeNull()
+    await user.click(screen.getByRole('switch', { name: 'Solo pendientes de revisión' }))
+    await waitFor(() => expect(gets(`/api/v1/warehouses/${WH1}/bins`).at(-1)?.url.searchParams.get('isProvisional')).toBe('true'))
+    await user.click(within(table).getByRole('button', { name: 'Confirmar posición' }))
+    await waitFor(() => expect(mock.calls.filter((c) => c.method === 'POST' && c.url.pathname.endsWith('/bins/11/confirm-provisional'))).toHaveLength(1))
+    expect(await screen.findByText('Posición PROV-1 confirmada.')).toBeInTheDocument()
   })
 
   it('Posiciones: abrir y cerrar el modal no vuelve a pedir la lista; vaciar el cupo manda clearMaxCapacity', async () => {

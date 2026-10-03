@@ -35,6 +35,7 @@ import {
   Field,
   Filters,
   Form,
+  IconCheck,
   IconPower,
   IconRotateCcw,
   Modal,
@@ -49,6 +50,7 @@ import {
 } from '../../kernel/ui'
 import {
   exportWarehouseBins,
+  useConfirmProvisionalBin,
   useDeactivateWarehouse,
   useReceipts,
   useSaveWarehouseBin,
@@ -70,6 +72,7 @@ import { BinModal, ReadOnlyField } from './BinModal'
 import { TextFilter, ToggleFilter } from './filterControls'
 import { formatNumber, useDebounced } from './lineRules'
 import { BinPickerInput } from './pickers'
+import { problemText } from './problemText'
 import { DerivedLocalityFields, PostalLocalityPickerInput } from './PostalLocalityPicker'
 import { binsQuery, distinctOptions, EMPTY_BIN_TEXT, type BinTextFilters } from './warehouseFilters'
 import {
@@ -388,19 +391,22 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
   const [zoneIds, setZoneIds] = useState<string[]>([])
   const [includeInactive, setIncludeInactive] = useState(false)
   const [onlyWithStock, setOnlyWithStock] = useState(false)
+  // Lote F12: posiciones creadas desde un conteo que el supervisor aún no confirma
+  const [onlyProvisional, setOnlyProvisional] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(BIN_PAGE_SIZE)
   // los textos van al API con una pausa (el objeto `text` solo cambia al teclear: identidad estable entre renders)
   const debouncedText = useDebounced(text)
 
   const filterQuery = useMemo(
-    () => binsQuery(debouncedText, zoneIds, includeInactive, onlyWithStock),
-    [debouncedText, zoneIds, includeInactive, onlyWithStock],
+    () => binsQuery(debouncedText, zoneIds, includeInactive, onlyWithStock, onlyProvisional),
+    [debouncedText, zoneIds, includeInactive, onlyWithStock, onlyProvisional],
   )
   const query = useMemo(() => ({ ...filterQuery, skip: (page - 1) * pageSize, take: pageSize }), [filterQuery, page, pageSize])
   const { data, isLoading, isFetching } = useWarehouseBins(publicId, query)
   const rows = data?.items ?? NO_BINS
   const save = useSaveWarehouseBin()
+  const confirmProvisional = useConfirmProvisionalBin()
   const [editing, setEditing] = useState<WarehouseBinDto | null | 'new'>(null)
   const [confirmAction, setConfirmAction] = useState<{ bin: WarehouseBinDto; action: 'deactivate' | 'reactivate' } | null>(null)
   const [settingCapacity, setSettingCapacity] = useState(false)
@@ -415,7 +421,23 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
 
   const columns = useMemo<DataColumn<WarehouseBinDto>[]>(
     () => [
-      { id: 'code', header: t('warehouse.bins.code'), cell: (b) => <span className="ref">{b.code}</span>, sortValue: (b) => b.code, card: 'title' },
+      {
+        id: 'code',
+        header: t('warehouse.bins.code'),
+        cell: (b) => (
+          <span className="cc-bincell">
+            <span className="ref">{b.code}</span>
+            {b.isProvisional && (
+              <Chip tone="warn" title={t('warehouse.bins.provisionalHelp')}>
+                {t('warehouse.bins.provisional')}
+              </Chip>
+            )}
+          </span>
+        ),
+        sortValue: (b) => b.code,
+        exportValue: (b) => (b.isProvisional ? `${b.code ?? ''} (${t('warehouse.bins.provisional')})` : (b.code ?? '')),
+        card: 'title',
+      },
       { id: 'zone', header: t('warehouse.bins.zone'), cell: (b) => b.zoneCode, sortValue: (b) => b.zoneCode },
       {
         id: 'location',
@@ -474,6 +496,24 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
   const actions = useMemo<RowAction<WarehouseBinDto>[]>(
     () => [
       {
+        key: 'confirmProvisional',
+        label: t('warehouse.bins.confirmProvisional'),
+        perm: 'warehouse.manage',
+        visible: (b) => b.isProvisional === true,
+        disabled: () => confirmProvisional.isPending,
+        onClick: (b) => {
+          confirmProvisional.mutate(
+            { publicId, binId: b.id ?? 0 },
+            {
+              onSuccess: () => toast.success(t('warehouse.bins.provisionalConfirmed', { code: b.code ?? '' })),
+              onError: (err) => toast.error(problemText(err)),
+            },
+          )
+        },
+        tone: 'flow',
+        icon: <IconCheck />,
+      },
+      {
         key: 'deactivate',
         label: t('warehouse.bins.deactivate'),
         perm: 'warehouse.manage',
@@ -491,7 +531,7 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
         icon: <IconRotateCcw />,
       },
     ],
-    [t],
+    [t, confirmProvisional, publicId],
   )
 
   return (
@@ -502,6 +542,7 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
           setZoneIds([])
           setIncludeInactive(false)
           setOnlyWithStock(false)
+          setOnlyProvisional(false)
           setPage(1)
         }}
       >
@@ -532,6 +573,14 @@ function BinsTab({ publicId, zones }: { publicId: string; zones: readonly Wareho
           checked={onlyWithStock}
           onChange={(v) => {
             setOnlyWithStock(v)
+            setPage(1)
+          }}
+        />
+        <ToggleFilter
+          label={t('warehouse.bins.onlyProvisional')}
+          checked={onlyProvisional}
+          onChange={(v) => {
+            setOnlyProvisional(v)
             setPage(1)
           }}
         />

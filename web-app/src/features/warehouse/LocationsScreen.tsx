@@ -227,9 +227,19 @@ function LocationsBody({ warehousePublicId, zones, zonesLoading, zonesError }: B
       {
         id: 'code',
         header: t('warehouse.locations.columns.bin'),
-        cell: (b) => <span className="ref">{b.code}</span>,
+        // Lote F12: una posición creada desde un conteo, discreta, con su chip hasta que el supervisor la confirme
+        cell: (b) => (
+          <span className="cc-bincell">
+            <span className="ref">{b.code}</span>
+            {b.isProvisional && (
+              <Chip tone="warn" title={t('warehouse.bins.provisionalHelp')}>
+                {t('warehouse.bins.provisional')}
+              </Chip>
+            )}
+          </span>
+        ),
         sortValue: (b) => b.code,
-        exportValue: (b) => b.code ?? '',
+        exportValue: (b) => (b.isProvisional ? `${b.code ?? ''} (${t('warehouse.bins.provisional')})` : (b.code ?? '')),
         card: 'title',
       },
       { id: 'zone', header: t('warehouse.locations.columns.zone'), cell: (b) => zoneName(b), sortValue: (b) => zoneName(b) },
