@@ -92,6 +92,56 @@ expect 200 "$(req PUT /api/v1/tenant/settings '{"defaultServiceType":"STANDARD",
 expect 200 "$(req POST /api/v1/tenant/holidays '{"date":"2026-12-25","name":"Navidad","isRecurring":true}')" >/dev/null
 expect 200 "$(req GET '/api/v1/tenant/work-days?n=5')" | jq -e 'length==5' >/dev/null || fail "work-days"; ok "defaults, feriado y días hábiles"
 
+# ============================================================================================================
+# Región y formatos de la compañía (2026-10): la región trae el juego completo de valores (PR o US) y cada campo se cambia por
+# separado; el separador de miles y el decimal nunca son iguales; la zona debe conocerla la plataforma. "Hoy" del reloj de la
+# compañía (ITenantClock) sigue la zona del tenant: la franja del Pulso devuelve la zona con que contó los días. Se restaura
+# Puerto Rico al final (los pasos siguientes cuentan "hoy" en hora de Puerto Rico).
+# ============================================================================================================
+step "región y formatos de la compañía: defaults PR/US, campo suelto, región + campo, 400 y zona del reloj"
+FMT_PR='.regionCode=="PR" and .timeZoneId=="America/Puerto_Rico" and .currencyCode=="USD" and .currencySymbol=="$" and .currencySymbolPosition=="B"
+  and .currencyDecimals==2 and .dateOrder=="MDY" and .dateSeparator=="/" and .timeFormat==12 and .weekStartDay==0 and .thousandsSeparator==","
+  and .decimalSeparator=="." and .phoneCountryCode=="+1" and .phoneMask=="(###) ###-####"'
+TS=$(expect 200 "$(req GET /api/v1/tenant/settings)")
+echo "$TS" | jq -e "$FMT_PR and .isRegionCustomized==false" >/dev/null || fail "la demo debería estar con los valores de Puerto Rico: $TS"
+FOPT=$(expect 200 "$(req GET /api/v1/tenant/format-options)")
+echo "$FOPT" | jq -e '([.regions[].regionCode]==["PR","US"]) and (.regions[]|select(.regionCode=="US")|.timeZoneId=="America/New_York")
+  and .dateOrders==["MDY","DMY","YMD"] and .dateSeparators==["/","-","."] and .currencyDecimals==[0,2,3] and .timeFormats==[12,24]
+  and .weekStartDays==[0,1] and .thousandsSeparators==[",","."," "] and .decimalSeparators==[".",","] and .currencySymbolPositions==["B","A"]' >/dev/null \
+  || fail "opciones de región y formatos: $FOPT"
+PRDEF=$(echo "$FOPT" | jq -c '.regions[] | select(.regionCode=="PR")')
+# Región US sin campos → el juego completo de la región (zona de Nueva York, lo demás igual que PR)
+R=$(expect 200 "$(req PUT /api/v1/tenant/settings '{"regionCode":"US"}')")
+echo "$R" | jq -e '.regionCode=="US" and .timeZoneId=="America/New_York" and .currencyCode=="USD" and .dateOrder=="MDY" and .timeFormat==12
+  and .thousandsSeparator=="," and .decimalSeparator=="." and .phoneMask=="(###) ###-####" and .isRegionCustomized==false' >/dev/null || fail "región US: $R"
+# El reloj de la compañía toma la zona nueva en la siguiente petición (caché invalidada al guardar)
+expect 200 "$(req GET '/api/v1/inventory/pulse/days?days=1')" | jq -e '.timeZone=="America/New_York"' >/dev/null || fail "el reloj no usa la zona de la compañía (US)"
+# La auditoría registra el cambio de zona (Tenant lleva [AuditEntity])
+expect 200 "$(req GET '/api/v1/audit/changes?entityType=TENANT&take=20')" | jq -e '[.items[] | select((.changesJson // "") | contains("America/New_York"))] | length >= 1' >/dev/null \
+  || fail "el cambio de zona no quedó en la bitácora de cambios"
+# Un campo suelto: cambia solo ese y la región queda Personalizada
+R=$(expect 200 "$(req PUT /api/v1/tenant/settings '{"dateOrder":"DMY"}')")
+echo "$R" | jq -e '.regionCode=="US" and .timeZoneId=="America/New_York" and .dateOrder=="DMY" and .isRegionCustomized==true' >/dev/null || fail "campo suelto: $R"
+# Región distinta + campo explícito: defaults de PR y el campo explícito manda (orden de fecha vuelve a MDY, hora 24 h)
+R=$(expect 200 "$(req PUT /api/v1/tenant/settings '{"regionCode":"PR","timeFormat":24}')")
+echo "$R" | jq -e '.regionCode=="PR" and .timeZoneId=="America/Puerto_Rico" and .dateOrder=="MDY" and .timeFormat==24 and .isRegionCustomized==true' >/dev/null \
+  || fail "región + campo explícito: $R"
+# 400: separadores iguales (en el mismo request y contra el valor guardado) y zona desconocida; nada cambia
+SEPMSG='El separador de miles y el decimal no pueden ser el mismo'
+expect 400 "$(req PUT /api/v1/tenant/settings '{"thousandsSeparator":".","decimalSeparator":"."}')" | jq -e --arg m "$SEPMSG" '.title==$m and (.errors.decimalSeparator|index($m)!=null)' >/dev/null \
+  || fail "separadores iguales → 400 '$SEPMSG'"
+expect 400 "$(req PUT /api/v1/tenant/settings '{"thousandsSeparator":"."}')" | jq -e --arg m "$SEPMSG" '.title==$m' >/dev/null || fail "miles '.' contra decimal '.' guardado → 400"
+TZMSG="La zona horaria 'Mars/Olympus_Mons' no la reconoce la plataforma. Use un nombre IANA, por ejemplo America/Puerto_Rico o America/New_York."
+expect 400 "$(req PUT /api/v1/tenant/settings '{"timeZoneId":"Mars/Olympus_Mons"}')" | jq -e --arg m "$TZMSG" '.title==$m and (.errors.timeZoneId|index($m)!=null)' >/dev/null \
+  || fail "zona desconocida → 400 '$TZMSG'"
+expect 400 "$(req PUT /api/v1/tenant/settings '{"regionCode":"MX"}')" | jq -e '.errors.regionCode' >/dev/null || fail "región desconocida → 400"
+expect 200 "$(req GET /api/v1/tenant/settings)" | jq -e '.regionCode=="PR" and .timeFormat==24 and .thousandsSeparator=="," and .timeZoneId=="America/Puerto_Rico"' >/dev/null \
+  || fail "un 400 no debe cambiar los ajustes"
+# Restaurar los valores de Puerto Rico (lo que hace "Restaurar valores de la región": manda el juego de la región)
+expect 200 "$(req PUT /api/v1/tenant/settings "$PRDEF")" | jq -e "$FMT_PR and .isRegionCustomized==false" >/dev/null || fail "restaurar Puerto Rico"
+expect 200 "$(req GET '/api/v1/inventory/pulse/days?days=1')" | jq -e '.timeZone=="America/Puerto_Rico"' >/dev/null || fail "el reloj no volvió a la zona de Puerto Rico"
+ok "PR/US con sus valores, campo suelto (Personalizada), región + campo explícito, 400 de separadores iguales, zona y región desconocidas, auditoría, reloj por zona de la compañía y Puerto Rico restaurado"
+
 step "campos personalizados (F)"
 ME_ID=$(echo "$ME" | jq -r .userId)
 DEF=$(req POST /api/v1/custom-fields/definitions/USER "{\"fieldKey\":\"cost_center\",\"labels\":{\"es\":\"Centro de costo\",\"en\":\"Cost center\"},\"dataType\":\"TEXT\",\"isRequired\":false,\"isUnique\":true,\"showInList\":true,\"validationJson\":\"{\\\"regex\\\":\\\"^CC-\\\\\\\\d{3}$\\\"}\"}")
