@@ -40,4 +40,21 @@ describe('LineList', () => {
     await fireEvent.press(getByLabelText('Quitar Algodón · 3'))
     expect(onRemove).toHaveBeenCalledWith(7)
   })
+
+  it('con onPressItem la fila se puede tocar (con su texto accesible) y llama con el id; letras de 18 y 15', async () => {
+    const onPressItem = jest.fn()
+    const { getByLabelText, getByText } = await render(
+      <LineList
+        items={[{ id: 7, title: 'Tornillo', subtitle: 'SKU-7' }]}
+        removeLabel="Quitar"
+        onPressItem={onPressItem}
+        pressLabel={(item) => `Poner ${item.subtitle} en el campo`}
+      />,
+    )
+    await fireEvent.press(getByLabelText('Poner SKU-7 en el campo'))
+    expect(onPressItem).toHaveBeenCalledWith(7)
+    expect(getByText('Tornillo').props.style).toMatchObject({ fontSize: 18 })
+    expect(getByText('SKU-7').props.style).toMatchObject({ fontSize: 15 })
+  })
 })
+

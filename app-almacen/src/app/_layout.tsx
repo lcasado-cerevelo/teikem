@@ -7,15 +7,18 @@ import { StatusBar } from 'expo-status-bar'
 
 import { setAuthLostHandler } from '../kernel/api/client'
 import { hydrateSession } from '../kernel/auth/session'
+import { bottomPadding } from '../kernel/ui/insets'
 import { colors } from '../kernel/ui/theme'
 
-/** Ninguna pantalla usa SafeAreaView (serían 9 archivos idénticos); el inset superior se aplica una sola vez aquí,
- *  para que el contenido nunca quede debajo de la barra de estado. `useSafeAreaInsets` necesita un descendiente de
- *  SafeAreaProvider, de ahí el componente aparte. */
+/** Ninguna pantalla usa SafeAreaView (serían 9 archivos idénticos); los márgenes del sistema se aplican una sola vez aquí:
+ *  arriba, el de la barra de estado; abajo (docs/mobile/mejoras-ux-zebra.md §1), `max(inset, 32) + 8` para que la barra
+ *  de navegación del aparato (3 botones o gestos) nunca tape el último botón. La barra NO se oculta (modo inmersivo):
+ *  en un Zebra es la forma de salir de la app. `useSafeAreaInsets` necesita un descendiente de SafeAreaProvider, de ahí
+ *  el componente aparte. */
 function AppContent({ ready }: { ready: boolean }) {
   const insets = useSafeAreaInsets()
   return (
-    <View style={[styles.fill, { paddingTop: insets.top }]}>
+    <View testID="app-root" style={[styles.fill, { paddingTop: insets.top, paddingBottom: bottomPadding(insets.bottom) }]}>
       <StatusBar style="light" />
       {ready ? (
         <Slot />

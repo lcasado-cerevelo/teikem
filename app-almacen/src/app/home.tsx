@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
 import { clearUserSession } from '../kernel/auth/session'
@@ -11,14 +11,16 @@ import { useT } from '../kernel/i18n/useT'
 import { runSync, useAutoSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
 import { syncStatusKey } from '../kernel/sync/syncStatus'
 import { BigButton } from '../kernel/ui/BigButton'
-import { colors, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, spacing } from '../kernel/ui/theme'
 
 type OpenKind = 'receive' | 'dispatch' | 'count'
 
-/** Pantalla 2 (docs/mobile/app-almacen-plan.md §2): 6 botones grandes + estado de sincronización.
+/** Pantalla 2 (docs/mobile/app-almacen-plan.md §2): botones de las acciones + estado de sincronización.
  *  Un documento en curso (recibo, despacho o conteo) bloquea las demás acciones (decisión de Luis, 2026-09-28: uno a
  *  la vez por aparato): el botón del documento abierto lo retoma (cada pantalla nunca empieza uno nuevo mientras haya
- *  uno abierto, ver localLookup.ts/localPick.ts/localCount.ts) y los demás avisan en vez de navegar. */
+ *  uno abierto, ver localLookup.ts/localPick.ts/localCount.ts) y los demás avisan en vez de navegar.
+ *  docs/mobile/mejoras-ux-zebra.md §4: acciones en DOS columnas, botones altos (88 dp, icono arriba y texto debajo), y la
+ *  pantalla desplazable por si el aparato es más corto; Sincronizar y Cerrar sesión debajo. */
 export default function HomeScreen() {
   const { t } = useT()
   const router = useRouter()
@@ -50,39 +52,51 @@ export default function HomeScreen() {
   const syncLabel = t(syncStatusKey(pending, Boolean(lastSync?.error)), { count: pending })
 
   return (
-    <View style={styles.fill}>
+    <ScrollView contentContainerStyle={styles.fill} testID="home-scroll">
       <View style={styles.header}>
         <Text style={styles.title}>{t('home.title')}</Text>
         {session ? <Text style={styles.userName}>{session.fullName}</Text> : null}
       </View>
 
-      <View style={styles.grid}>
-        <BigButton label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
-        <BigButton label={t('home.putaway')} icon="📦" variant="secondary" onPress={() => go('/putaway')} />
-        <BigButton label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go('/dispatch', 'dispatch')} />
-        <BigButton label={t('home.count')} icon="🔢" variant="secondary" onPress={() => go('/count', 'count')} />
-        <BigButton label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
+      <View style={styles.grid} testID="home-grid">
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
+        </View>
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.putaway')} icon="📦" variant="secondary" onPress={() => go('/putaway')} />
+        </View>
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.dispatch')} icon="🚚" variant="secondary" onPress={() => go('/dispatch', 'dispatch')} />
+        </View>
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.count')} icon="🔢" variant="secondary" onPress={() => go('/count', 'count')} />
+        </View>
+        <View style={styles.cell}>
+          <BigButton layout="tile" label={t('home.lookup')} icon="🔎" variant="secondary" onPress={() => go('/lookup')} />
+        </View>
       </View>
 
       <View style={styles.syncBar}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/sync')}>
           <Text style={[styles.syncText, lastSync?.error && styles.syncError]}>{syncLabel}</Text>
         </Pressable>
-        <BigButton label={t('home.syncNow')} variant="secondary" fullWidth={false} onPress={() => void runSync()} />
+        <BigButton label={t('home.syncNow')} variant="secondary" onPress={() => void runSync()} />
       </View>
 
       <BigButton label={t('home.signOut')} variant="secondary" onPress={() => void clearUserSession().then(() => router.replace('/login'))} />
-    </View>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.lg },
+  fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.lg },
   header: { gap: spacing.xs },
   title: { color: colors.text, fontSize: 24, fontWeight: '700' },
-  userName: { color: colors.muted, fontSize: 15 },
-  grid: { gap: spacing.md, flex: 1 },
+  userName: { color: colors.muted, fontSize: fontSize.message },
+  // dos columnas: cada celda ocupa la mitad (menos el espacio entre ellas); la quinta, sola, toma todo el ancho
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  cell: { flexBasis: '45%', flexGrow: 1 },
   syncBar: { gap: spacing.sm },
-  syncText: { color: colors.muted, fontSize: 14, textAlign: 'center' },
+  syncText: { color: colors.muted, fontSize: fontSize.message, textAlign: 'center' },
   syncError: { color: colors.error },
 })

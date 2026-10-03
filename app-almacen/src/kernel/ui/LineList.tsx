@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import { colors, radius, spacing } from './theme'
+import { colors, fontSize, radius, spacing } from './theme'
 
 export interface LineListItem {
   id: string | number
@@ -16,10 +16,14 @@ export interface LineListProps {
   onEdit?: (id: LineListItem['id']) => void
   editLabel?: string
   emptyLabel?: string
+  /** Tocar la fila (p. ej. en el conteo, poner el producto en el campo de escaneo). */
+  onPressItem?: (id: LineListItem['id']) => void
+  /** Texto accesible de tocar la fila (recibe la fila; por defecto, su título). */
+  pressLabel?: (item: LineListItem) => string
 }
 
 /** Lista de líneas capturadas (Recibir, Conteo, Despacho): una fila por línea, botón grande para quitarla. */
-export function LineList({ items, onRemove, removeLabel, emptyLabel, onEdit, editLabel }: LineListProps) {
+export function LineList({ items, onRemove, removeLabel, emptyLabel, onEdit, editLabel, onPressItem, pressLabel }: LineListProps) {
   const icons = Boolean(onEdit)
   if (items.length === 0) return emptyLabel ? <Text style={styles.empty}>{emptyLabel}</Text> : null
   // lista simple (no FlatList): son pocas líneas y la pantalla ya desplaza con su ScrollView; una FlatList anidada en un
@@ -28,10 +32,22 @@ export function LineList({ items, onRemove, removeLabel, emptyLabel, onEdit, edi
     <View>
       {items.map((item) => (
         <View key={String(item.id)} style={styles.row}>
-          <View style={styles.texts}>
-            <Text style={styles.title}>{item.title}</Text>
-            {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
-          </View>
+          {onPressItem ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={pressLabel ? pressLabel(item) : item.title}
+              onPress={() => onPressItem(item.id)}
+              style={({ pressed }) => [styles.texts, styles.pressable, pressed && styles.pressed]}
+            >
+              <Text style={styles.title}>{item.title}</Text>
+              {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
+            </Pressable>
+          ) : (
+            <View style={styles.texts}>
+              <Text style={styles.title}>{item.title}</Text>
+              {item.subtitle ? <Text style={styles.subtitle}>{item.subtitle}</Text> : null}
+            </View>
+          )}
           {onEdit ? (
             <Pressable
               accessibilityRole="button"
@@ -70,11 +86,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   texts: { flex: 1, gap: 2 },
-  title: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  subtitle: { color: colors.muted, fontSize: 13 },
+  title: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },
+  subtitle: { color: colors.muted, fontSize: fontSize.listSubtitle },
+  // fila tocable: todo el bloque de texto es el área de toque (mínimo 44 dp de alto)
+  pressable: { minHeight: 44, justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
   removeBtn: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  removeLabel: { color: colors.error, fontWeight: '700' },
-  empty: { color: colors.muted, fontSize: 14, textAlign: 'center', paddingVertical: spacing.lg },
+  removeLabel: { color: colors.error, fontSize: fontSize.message, fontWeight: '700' },
+  empty: { color: colors.muted, fontSize: fontSize.message, textAlign: 'center', paddingVertical: spacing.lg },
   iconBtn: {
     minWidth: 48,
     minHeight: 44,

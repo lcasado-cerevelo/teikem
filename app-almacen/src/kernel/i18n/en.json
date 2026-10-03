@@ -105,7 +105,8 @@
     "targetNoBins": "This device doesn't have this warehouse's bins yet. Sync with a signal and try again.",
     "targetConflictTitle": "Can't send it like this",
     "targetConflict": "{sku} was already captured with destination {bin}; on a receipt with an ASN or purchase order each line goes to a single bin.",
-    "confirmHelpDirect": "Closes the receipt and leaves each line in its destination bin, with no putaway tasks."
+    "confirmHelpDirect": "Closes the receipt and leaves each line in its destination bin, with no putaway tasks.",
+    "expiryInvalid": "The date is not valid. Write it like this: {format}"
   },
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
@@ -116,7 +117,8 @@
     "empty": "No putaway tasks pending.",
     "suggestedBin": "Suggested bin",
     "scanDestLabel": "Scan the destination bin",
-    "binNotFound": "No bin matches that code."
+    "binNotFound": "No bin matches that code.",
+    "done": "Done: {sku} is now in {bin}"
   },
   "dispatch": {
     "title": "Dispatch",
@@ -142,7 +144,8 @@
     "cancelDispatch": "Cancel dispatch",
     "cancelConfirmTitle": "Cancel this dispatch?",
     "cancelConfirmBody": "Everything collected is lost. This can't be undone.",
-    "confirmedQueued": "Dispatch queued to send"
+    "confirmedQueued": "Dispatch queued to send",
+    "lineAdded": "Added: {qty} {sku} from {bin}"
   },
   "count": {
     "title": "Count",
@@ -165,7 +168,9 @@
     "confirmedQueued": "Count queued to send",
     "expectedQtyLabel": "Expected: {qty}",
     "foundLineTitle": "{name} · {qty}",
-    "editTitle": "Correct the counted quantity"
+    "editTitle": "Correct the counted quantity",
+    "pickHint": "Tap a product to put it in the field, then confirm with OK.",
+    "useProduct": "Put {sku} in the field"
   },
   "lookup": {
     "title": "Lookup",
@@ -175,14 +180,21 @@
     "binResult": "What's in {bin}",
     "notFound": "Nothing matches that code.",
     "noNetworkNoCache": "No signal and no earlier lookup of this.",
-    "cachedNote": "Data from {minutes} min ago (no signal now)",
+    "cachedNote": "Data from {time} ({minutes} min ago, no signal now)",
     "onHand": "On hand",
     "available": "Available",
     "empty": "Nothing in that bin."
   },
   "scanner": {
     "manualLabel": "Or type the code",
-    "cameraButton": "Use camera"
+    "cameraButton": "Use camera",
+    "ready": "Scanner: ready",
+    "noProfile": "Scanner: no profile",
+    "unconfirmed": "Scanner: not confirmed",
+    "unavailable": "Scanner: not a Zebra (keyboard in use)",
+    "detail": "Detail: {detail}",
+    "recheck": "Set up the scanner again",
+    "help": "If it says \"no profile\" or \"not confirmed\", tap \"Set up the scanner again\" with the app open; if it does not change, contact support."
   },
   "sync": {
     "title": "Sync",
@@ -200,6 +212,8 @@
   },
   "scan": {
     "accept": "OK",
-    "useSuggested": "Use {value}"
+    "useSuggested": "Use {value}",
+    "showKeyboard": "Show keyboard",
+    "hideKeyboard": "Hide keyboard"
   }
 }

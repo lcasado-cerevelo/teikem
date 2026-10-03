@@ -105,7 +105,8 @@
     "targetNoBins": "El aparato todavía no tiene las posiciones de este almacén. Sincroniza con señal e intenta de nuevo.",
     "targetConflictTitle": "No se puede enviar así",
     "targetConflict": "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.",
-    "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo."
+    "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.",
+    "expiryInvalid": "La fecha no es válida. Escríbela así: {format}"
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -116,7 +117,8 @@
     "empty": "No hay tareas de acomodo pendientes.",
     "suggestedBin": "Posición sugerida",
     "scanDestLabel": "Escanea la posición destino",
-    "binNotFound": "No hay una posición con ese código."
+    "binNotFound": "No hay una posición con ese código.",
+    "done": "Listo: {sku} quedó en {bin}"
   },
   "dispatch": {
     "title": "Despacho",
@@ -142,7 +144,8 @@
     "cancelDispatch": "Cancelar despacho",
     "cancelConfirmTitle": "¿Cancelar este despacho?",
     "cancelConfirmBody": "Se pierde todo lo recolectado. No se puede deshacer.",
-    "confirmedQueued": "Despacho enviado a la cola"
+    "confirmedQueued": "Despacho enviado a la cola",
+    "lineAdded": "Agregado: {qty} {sku} desde {bin}"
   },
   "count": {
     "title": "Conteo",
@@ -165,7 +168,9 @@
     "confirmedQueued": "Conteo enviado a la cola",
     "expectedQtyLabel": "Esperado: {qty}",
     "foundLineTitle": "{name} · {qty}",
-    "editTitle": "Corregir la cantidad contada"
+    "editTitle": "Corregir la cantidad contada",
+    "pickHint": "Toca un producto para ponerlo en el campo y confirma con Aceptar.",
+    "useProduct": "Poner {sku} en el campo"
   },
   "lookup": {
     "title": "Consultar",
@@ -175,14 +180,21 @@
     "binResult": "Qué hay en {bin}",
     "notFound": "No hay nada con ese código.",
     "noNetworkNoCache": "Sin señal y sin una consulta anterior de esto.",
-    "cachedNote": "Datos de hace {minutes} min (sin señal ahora)",
+    "cachedNote": "Datos de las {time} (hace {minutes} min, sin señal ahora)",
     "onHand": "En mano",
     "available": "Disponible",
     "empty": "Nada en esa posición."
   },
   "scanner": {
     "manualLabel": "O escribe el código",
-    "cameraButton": "Usar cámara"
+    "cameraButton": "Usar cámara",
+    "ready": "Lector: listo",
+    "noProfile": "Lector: sin perfil",
+    "unconfirmed": "Lector: sin confirmar",
+    "unavailable": "Lector: no es un Zebra (se usa el teclado)",
+    "detail": "Detalle: {detail}",
+    "recheck": "Volver a configurar el lector",
+    "help": "Si dice \"sin perfil\" o \"sin confirmar\", toca \"Volver a configurar el lector\" con la app abierta; si sigue igual, avisa a soporte."
   },
   "sync": {
     "title": "Sincronización",
@@ -200,6 +212,8 @@
   },
   "scan": {
     "accept": "Aceptar",
-    "useSuggested": "Usar {value}"
+    "useSuggested": "Usar {value}",
+    "showKeyboard": "Mostrar teclado",
+    "hideKeyboard": "Esconder teclado"
   }
 }

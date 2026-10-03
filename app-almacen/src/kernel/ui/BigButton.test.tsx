@@ -22,4 +22,13 @@ describe('BigButton', () => {
     const { queryByText } = await render(<BigButton label="Confirmar" onPress={jest.fn()} loading />)
     expect(queryByText('Confirmar')).toBeNull()
   })
+
+  it('layout "tile" (Inicio): 88 dp de alto, icono arriba y texto debajo, etiqueta de 20', async () => {
+    const { getByRole, getByText } = await render(<BigButton layout="tile" icon="📥" label="Recibir" onPress={jest.fn()} />)
+    const style = Object.assign({}, ...[getByRole('button').props.style].flat(3).filter(Boolean))
+    expect(style.minHeight).toBe(88)
+    expect(getByText('Recibir').props.style).toEqual(expect.arrayContaining([expect.objectContaining({ fontSize: 20 })]))
+    // icono grande del layout "tile" (arriba del texto, en columna)
+    expect(getByText('📥').props.style).toMatchObject({ fontSize: 30 })
+  })
 })

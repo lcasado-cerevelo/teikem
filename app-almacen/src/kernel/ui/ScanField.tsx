@@ -1,33 +1,69 @@
-import { useCallback, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 import { useT } from '../i18n/useT'
 import { useScanner } from '../scanner/useScanner'
-import { colors, radius, spacing } from './theme'
+import { ScanMessage } from './ScanMessage'
+import { colors, fontSize, radius, spacing, touchTarget } from './theme'
+
+/** Valor puesto desde afuera (p. ej. tocar un producto de la lista del conteo). `seq` distinto = volver a ponerlo, aunque el
+ *  valor sea el mismo de la vez anterior. */
+export interface ScanPrefill {
+  value: string
+  seq: number
+}
 
 export interface ScanFieldProps {
   label: string
   help?: string
+  /** Aviso de error de la última lectura (no encontrado, etc.): bloque grande rojo (ScanMessage). */
   error?: string | null
+  /** Aviso de éxito de la última lectura (línea agregada, acomodo hecho): bloque grande verde. */
+  notice?: string | null
   onSubmit: (code: string) => void
   autoFocus?: boolean
   keyboardType?: 'default' | 'numeric'
   /** Valor sugerido (p. ej. la posición destino): muestra el botón "Usar {valor}" que lo toma sin escribirlo. */
   suggestedValue?: string | null
+  /** Llena el campo con un valor (sin enviarlo) y deja el cursor listo al final; se confirma con Aceptar o Enter. */
+  prefill?: ScanPrefill | null
 }
+
+/** Una misma lectura que llega dos veces seguidas (por teclas y por intent, si el perfil del lector quedara mal) se toma
+ *  una sola vez. Nadie escanea el mismo código dos veces en menos de esto. */
+const DUPLICATE_WINDOW_MS = 400
 
 /**
  * Campo único de captura (docs/mobile/app-almacen-plan.md §2, "un solo campo enfocado; el escaneo escribe y avanza").
- * Recibe tanto el teclado (físico o en pantalla, Enter = escanear) como una lectura de DataWedge en modo intent.
+ * Recibe una lectura de DataWedge en modo intent (useScanner), el teclado físico del Zebra o el teclado en pantalla
+ * (Enter = escanear), y el botón Aceptar. Escanear equivale a escribir el código y tocar Aceptar.
+ * docs/mobile/mejoras-ux-zebra.md §2: el teclado en pantalla NO aparece al enfocar (`showSoftInputOnFocus={false}`); el
+ * botón "⌨" lo muestra para escribir a mano y lo vuelve a esconder.
  */
-export function ScanField({ label, help, error, onSubmit, autoFocus = true, keyboardType = 'default', suggestedValue }: ScanFieldProps) {
+export function ScanField({
+  label,
+  help,
+  error,
+  notice,
+  onSubmit,
+  autoFocus = true,
+  keyboardType = 'default',
+  suggestedValue,
+  prefill,
+}: ScanFieldProps) {
   const { t } = useT()
   const [value, setValue] = useState('')
+  const [keyboard, setKeyboard] = useState(false)
+  const inputRef = useRef<TextInput>(null)
+  const last = useRef<{ code: string; at: number } | null>(null)
 
   const submit = useCallback(
     (code: string) => {
       const trimmed = code.trim()
       if (!trimmed) return
+      const now = Date.now()
+      if (last.current && last.current.code === trimmed && now - last.current.at < DUPLICATE_WINDOW_MS) return
+      last.current = { code: trimmed, at: now }
       onSubmit(trimmed)
       setValue('')
     },
@@ -36,23 +72,65 @@ export function ScanField({ label, help, error, onSubmit, autoFocus = true, keyb
 
   useScanner(submit)
 
+  // Valor puesto desde afuera: llena el campo, lo enfoca y deja el cursor al final (sin mostrar el teclado).
+  const prefillSeq = prefill?.seq
+  useEffect(() => {
+    if (!prefill) return
+    setValue(prefill.value)
+    const input = inputRef.current
+    input?.focus()
+    input?.setSelection?.(prefill.value.length, prefill.value.length)
+    // solo cuando cambia el contador (el mismo valor dos veces seguidas también se vuelve a poner)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefillSeq])
+
+  // Al pedir el teclado: con el campo ya enfocado no basta cambiar la propiedad, hay que volver a enfocarlo.
+  function toggleKeyboard() {
+    const input = inputRef.current
+    if (keyboard) {
+      setKeyboard(false)
+      Keyboard.dismiss()
+      // vuelve a enfocar (sin teclado) para que el teclado físico del Zebra siga escribiendo aquí
+      setTimeout(() => input?.focus(), 50)
+      return
+    }
+    setKeyboard(true)
+    input?.blur()
+    setTimeout(() => input?.focus(), 50)
+  }
+
+  const keyboardLabel = t(keyboard ? 'scan.hideKeyboard' : 'scan.showKeyboard')
+
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.inputRow}>
         <TextInput
+          ref={inputRef}
           value={value}
           onChangeText={setValue}
           onSubmitEditing={(e) => submit(e.nativeEvent.text)}
           autoFocus={autoFocus}
-          blurOnSubmit={false}
+          showSoftInputOnFocus={keyboard}
+          submitBehavior="submit"
           returnKeyType="done"
+          autoCapitalize="none"
+          autoCorrect={false}
           keyboardType={keyboardType}
           style={[styles.input, error && styles.inputError]}
           placeholder={help}
           placeholderTextColor={colors.muted}
           accessibilityLabel={label}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={keyboardLabel}
+          accessibilityState={{ selected: keyboard }}
+          onPress={toggleKeyboard}
+          style={[styles.keyboardBtn, keyboard && styles.keyboardBtnOn]}
+        >
+          <Text style={styles.keyboardLabel}>⌨</Text>
+        </Pressable>
         {/* en un teléfono sin lector no hay un Enter evidente: "Aceptar" toma lo escrito como si se hubiera escaneado */}
         <Pressable
           accessibilityRole="button"
@@ -74,7 +152,8 @@ export function ScanField({ label, help, error, onSubmit, autoFocus = true, keyb
           <Text style={styles.suggestLabel}>{t('scan.useSuggested', { value: suggestedValue })}</Text>
         </Pressable>
       ) : null}
-      {error ? <Text style={styles.error}>{error}</Text> : help ? <Text style={styles.help}>{help}</Text> : null}
+      {error ? <ScanMessage tone="error" message={error} /> : notice ? <ScanMessage tone="ok" message={notice} /> : null}
+      {help && !error ? <Text style={styles.help}>{help}</Text> : null}
     </View>
   )
 }
@@ -82,10 +161,11 @@ export function ScanField({ label, help, error, onSubmit, autoFocus = true, keyb
 const styles = StyleSheet.create({
   wrap: { gap: spacing.xs },
   inputRow: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm },
-  label: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   input: {
     flex: 1,
-    minHeight: 56,
+    minWidth: 0,
+    minHeight: touchTarget,
     borderWidth: 2,
     borderColor: colors.line,
     borderRadius: radius.md,
@@ -95,8 +175,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelAlt,
   },
   inputError: { borderColor: colors.error },
+  // botón pequeño (el campo es lo importante), pero con el mínimo de toque de 44 dp de ancho y el alto del campo
+  keyboardBtn: {
+    minHeight: touchTarget,
+    width: 44,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyboardBtnOn: { borderColor: colors.brand, backgroundColor: colors.panelAlt },
+  keyboardLabel: { color: colors.text, fontSize: 22 },
   acceptBtn: {
-    minHeight: 56,
+    minHeight: touchTarget,
     minWidth: 96,
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
@@ -105,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   btnDisabled: { opacity: 0.45 },
-  acceptLabel: { color: colors.text, fontSize: 18, fontWeight: '700' },
+  acceptLabel: { color: colors.text, fontSize: fontSize.button, fontWeight: '700' },
   suggestBtn: {
     minHeight: 48,
     borderRadius: radius.md,
@@ -115,7 +207,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },
-  suggestLabel: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  help: { color: colors.muted, fontSize: 13 },
-  error: { color: colors.error, fontSize: 13 },
+  suggestLabel: { color: colors.text, fontSize: fontSize.message, fontWeight: '700' },
+  help: { color: colors.muted, fontSize: fontSize.message },
 })
