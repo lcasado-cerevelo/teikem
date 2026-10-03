@@ -1296,7 +1296,7 @@ Quién puede (módulo **WMS_LOTSERIAL**):
 
 | Acción | Endpoint | Permiso |
 |---|---|---|
-| Crear un conteo por producto | `POST /api/v1/cycle-counts` con `productPublicIds` (sin `binIds` ni `zoneIds`) | `warehouse.count.capture` |
+| Crear un conteo por producto | `POST /api/v1/cycle-counts` con `productPublicIds` (sin `binIds` ni `zoneIds`); con `allowEmpty: true` y un solo producto también si no tiene existencia | `warehouse.count.capture` |
 | Capturar, recapturar o **corregir** una línea | `PUT /api/v1/cycle-counts/{id}/lines` y `.../lines/batch` | `warehouse.count.capture` |
 | Crear una **posición provisional** desde el conteo | `POST /api/v1/cycle-counts/{id}/bins` | `warehouse.count.capture` |
 | **Vista previa** de la reconciliación | `GET /api/v1/cycle-counts/{id}/reconcile-preview` | `warehouse.count` |
@@ -1309,7 +1309,12 @@ Quién puede (módulo **WMS_LOTSERIAL**):
 producto (el origen del conteo queda en `PRODUCT`, "Por producto"; con posiciones o zonas indicadas sigue siendo `MANUAL`). Cada línea trae
 la posición (`binId`, `binCode`, `zoneCode`), el lote (`lotId`, `lotNumber`), el tipo de seguimiento (`trackingTypeCode`: `NONE`, `LOT` o
 `SERIAL`) y el código de barras del producto. Un producto sin existencia en ninguna posición responde 400 con el mensaje de "los filtros
-no seleccionan inventario". Lo hallado donde el sistema no tenía nada se agrega como línea nueva (`PUT .../lines/batch` con `binId`,
+no seleccionan inventario", **salvo** que la solicitud lleve `allowEmpty: true` con **exactamente un producto** (sin `binIds`, `zoneIds` ni
+`categoryIds`): entonces el conteo se crea **vacío** (origen `PRODUCT`, sin líneas, con su tarea COUNT) para registrar lo hallado donde el
+sistema no tenía nada (así lo abre la app de almacén). Un conteo vacío acepta líneas nuevas (`PUT .../lines/batch` y `POST .../lines`, con
+`binId` + producto + lote si lo lleva, también en una posición provisional), se puede borrar mientras esté abierto, no aparece en "Por
+revisar" hasta tener líneas y **no se puede terminar ni reconciliar mientras siga vacío** (`El conteo no tiene líneas.`, 422). Con
+`allowEmpty: false` (por defecto) nada cambia, y si el producto sí tiene existencia `allowEmpty` no cambia el resultado. Lo hallado donde el sistema no tenía nada se agrega como línea nueva (`PUT .../lines/batch` con `binId`,
 `productPublicId` y, si el producto lleva lote, `lotId` o `lot.number`). Los productos con serie se cuentan por número de serie (la app
 de almacén todavía no los captura; el servidor sí los admite).
 
@@ -1380,6 +1385,9 @@ muestran.
 
 | Campo / caso | Mensaje exacto | HTTP |
 |---|---|---|
+| `allowEmpty` con posiciones, zonas, categorías, ningún producto o más de un producto | `Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías.` (campo `allowEmpty`) | 400 |
+| `allowEmpty` con un producto que no existe (o de otra compañía) | `Producto no encontrado.` | 404 |
+| Terminar o reconciliar un conteo que sigue vacío | `El conteo no tiene líneas.` | 422 |
 | Vista previa de un conteo ya confirmado | `El conteo ya fue reconciliado; solo se consulta.` | 422 |
 | Vista previa, por revisar o cierre de un conteo de otra compañía | `Conteo no encontrado.` (en el cierre en bloque: omitido `NotFound`) | 404 |
 | Crear posición provisional en un conteo ya confirmado | `El conteo ya fue reconciliado; no admite posiciones nuevas.` | 422 |

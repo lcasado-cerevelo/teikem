@@ -26420,6 +26420,9 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "allowEmpty": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

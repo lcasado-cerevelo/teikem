@@ -224,3 +224,41 @@ Se actualizaron `WmsContractsTests` (firmas posicionales), `WmsControllerSecurit
 | `npm run lint` y `npm run test` en `web-app` | lint con avisos previos (0 errores); 111 archivos de prueba, 1103 pruebas, todas pasan |
 
 No se corrió Playwright (no hay cambios de pantalla en este lote).
+
+## Adenda 2026-10-03 (parte 5d) — conteo por producto vacío (`allowEmpty`)
+
+Cierra el hueco entre servidor y app: "Otra posición" necesita un conteo abierto, pero un producto sin existencia respondía 400 y no abría nada.
+
+**Contrato.** `CycleCountCreateRequest` gana, **al final**, `AllowEmpty` (bool, por defecto `false`; la firma posicional queda como estaba y la prueba
+`WmsContractsTests.Positional_signature_is_fixed` la fija con el campo nuevo al final).
+- `AllowEmpty = true` + **exactamente un producto** + sin `BinIds`/`ZoneIds`/`CategoryIds`: si el producto existe y no tiene existencia, el conteo se crea
+  **vacío** (sin líneas, origen `PRODUCT`, con su tarea COUNT) en vez del 400 `NothingSelected`. Si el producto tiene existencia, el resultado es el de siempre.
+- Producto inexistente (o de otra compañía) → 404 `Producto no encontrado.`, como hoy.
+- `AllowEmpty = true` con otros filtros, más de un producto o ninguno → 400 en el campo `allowEmpty`: `Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías.`
+  (`CycleCountRules.AllowEmptyOnlyOneProduct`; se valida antes de tocar la base).
+- `AllowEmpty = false`: sin cambios (incluido el 400 `NothingSelected` y el tope de 1000 líneas, que `allowEmpty` no salta).
+
+**Ciclo de un conteo vacío (revisado, sin más cambios de código).** Acepta líneas nuevas por `PUT .../lines/batch` y `POST .../lines` (también en una posición
+provisional); **terminar y reconciliar siguen fallando mientras no tenga líneas** (`El conteo no tiene líneas.`, 422); en "Por revisar" con `includeOpen` no
+aparece hasta tener todas sus líneas capturadas (la web lo ve como "Faltan líneas"); se borra con `DELETE` mientras esté abierto (la tarea COUNT se cancela); el
+cierre en bloque lo omite (`NotCounted` mientras esté abierto; `NoLines` si se incluye lo abierto). `ChangedCount` y los demás orígenes no se tocan. La compañía ajena obtiene 404 en todo.
+
+**Pruebas.** xunit en `CycleCountByProductTests` (sin `allowEmpty` sigue 400; vacío con origen/estatus/tarea; con existencia no cambia; 404 y los cinco 400 de
+filtros incompatibles; línea nueva en posición provisional, terminar y reconciliar; vacío no termina ni reconcilia; `AddLineAsync`; borrar; aislamiento por compañía)
+y un bloque 13 en `scripts/smoke.sh`. `web-app/openapi.json` y los dos `schema.d.ts` se regeneraron (solo agregan `allowEmpty`).
+
+**Decisiones para el dueño.** (1) `allowEmpty` es un indicador del request, no un permiso aparte: lo abre quien ya puede crear un conteo (`warehouse.count.capture`).
+(2) Se exige un solo producto para que "vacío" siempre tenga un propósito claro (registrar lo hallado de ese producto) y no se puedan crear conteos vacíos en masa.
+(3) `web-app/` no se tocó salvo regenerar el contrato.
+
+**Verificación de la adenda (resultados reales, 2026-10-03).**
+
+| Comando | Resultado |
+|---|---|
+| `dotnet build Teikem.sln -c Release` | Build succeeded, 0 errores |
+| `dotnet test Teikem.sln -c Release` | Passed: 2979, Failed: 0 |
+| `db-reset --yes` y `db-init` ×2 (el esquema SQL no cambió) | Terminaron bien |
+| API en Development (`Auth__Onboarding__Enabled=false`) + `scripts/smoke.sh` con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` | **SMOKE OK** sobre una base recién recreada, con el bloque 13 (allowEmpty). Una primera pasada falló en un `DELETE` del bloque nuevo hecho con un usuario sin `warehouse.count` (corregido) y una segunda, sobre la misma base ya usada, en un paso viejo que no se repite ("Ya hay un feriado en esa fecha."); se recreó la base |
+| `npm run api:types` en `web-app` y `app-almacen`; `npx tsc -b` y `npm test` en `web-app` | Sin errores; 1131 pruebas pasan |
+| `npm run check` en `app-almacen` (api:types, tsc, oxlint, jest) | Sin errores ni avisos; 53 suites y 273 pruebas, todas pasan |
+

@@ -2,8 +2,14 @@ namespace Teikem.Infrastructure.Contracts;
 
 // Lote 6 — Conteo cíclico en modo informado (D22). Firma posicional FIJA.
 
+/// <summary>
+/// Lote 21 (adenda): AllowEmpty (al final, por defecto false). Con true y exactamente UN producto (sin BinIds, ZoneIds ni
+/// CategoryIds), si el producto existe pero no tiene existencia el conteo se crea VACÍO (origen PRODUCT, sin líneas) en lugar de
+/// responder 400: sirve para registrar lo hallado donde el sistema no tenía nada ("Otra posición" de la app). Con otros filtros
+/// o más de un producto → 400.
+/// </summary>
 public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int[]? ZoneIds = null, int[]? BinIds = null,
-    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null);
+    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false);
 
 /// <summary>
 /// Encabezado del conteo. VarianceLines y NetVariance llegan null en el conteo a ciegas (Lote 8A: quien consulta no tiene

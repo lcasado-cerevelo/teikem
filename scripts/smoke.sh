@@ -4738,7 +4738,32 @@ C21A=$(req GET "/api/v1/cycle-counts/$IDD/reconcile-preview" '' "$TB21" | tail -
 C21B=$(req POST "/api/v1/cycle-counts/$IDD/bins" "{\"zoneId\":$ZPCK,\"code\":\"AJENA21\"}" "$TB21" | tail -n1); [[ "$C21B" == 403 || "$C21B" == 404 ]] || fail "otra compañía crea una posición en un conteo ajeno (dio $C21B)"
 C21C=$(req POST /api/v1/cycle-counts/reconcile-matching "{\"ids\":[$IDD]}" "$TB21" | tail -n1); [[ "$C21C" == 403 || "$C21C" == 404 || "$C21C" == 200 ]] || fail "cierre en bloque de otra compañía (dio $C21C)"
 expect 200 "$(req GET "/api/v1/cycle-counts/$IDD")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "otra compañía cerró un conteo ajeno"
-ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; otra compañía sin acceso"
+# 13. Adenda allowEmpty: producto SIN existencia → conteo vacío (origen PRODUCT) que acepta la lectura nueva en una posición provisional.
+PE21=$(prod "{\"sku\":\"PE21$TS\",\"name\":\"Sin existencia 21 $TS\",\"purchaseCost\":1}")
+EMPTY_BODY="{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"]}"
+M21NS="Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano."
+expect 400 "$(req POST /api/v1/cycle-counts "$EMPTY_BODY" "$TCNT21")" | jq -e --arg m "$M21NS" '((.title // "") + " " + ([(.errors // {})[][]] | join(" "))) | contains($m)' >/dev/null || fail "sin allowEmpty el producto sin existencia sigue dando 400"
+EMPTY_OK="{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"allowEmpty\":true}"
+CCE=$(expect 200 "$(req POST /api/v1/cycle-counts "$EMPTY_OK" "$TCNT21")"); IDE=$(echo "$CCE" | jq -r .count.id)
+echo "$CCE" | jq -e '.count.originCode=="PRODUCT" and .count.statusCode=="OPEN" and .count.lineCount==0 and (.lines|length)==0 and .count.taskId!=null' >/dev/null || fail "conteo vacío por producto: $(echo "$CCE" | jq -c '{o:.count.originCode,s:.count.statusCode,l:(.lines|length)}')"
+M21AE="Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías."
+HASAE='((.title // "") + " " + ([(.errors // {})[][]] | join(" "))) | contains($m)'
+expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"binIds\":[$B21A],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con posiciones → 400"
+expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\",\"$P21\"],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con dos productos → 400"
+expect 404 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"00000000-0000-0000-0000-000000000001\"],\"allowEmpty\":true}" "$TCNT21")" >/dev/null || fail "allowEmpty con producto inexistente → 404"
+# Vacío no se puede terminar; con la línea nueva en una posición provisional sí.
+expect 422 "$(req POST "/api/v1/cycle-counts/$IDE/finish" '{}' "$TCNT21")" | jq -e '.title=="El conteo no tiene líneas."' >/dev/null || fail "terminar vacío → 422 'El conteo no tiene líneas.'"
+expect 200 "$(req GET "/api/v1/cycle-counts/review?warehousePublicId=$W6P&take=200")" | jq -e --argjson e "$IDE" 'all(.items[]; .count.id!=$e)' >/dev/null || fail "el conteo vacío no aparece en por revisar"
+PBE=$(expect 200 "$(req POST "/api/v1/cycle-counts/$IDE/bins" "{\"zoneId\":$ZPCK,\"code\":\"PROV-21E-$TS\"}" "$TCNT21")"); PBEID=$(echo "$PBE" | jq -r .id)
+capture21 "$IDE" "{\"lines\":[{\"binId\":$PBEID,\"productPublicId\":\"$PE21\",\"countedQty\":4}]}" | jq -e --argjson b "$PBEID" '(.lines|length)==1 and (.lines[0].binId==$b and .lines[0].binIsProvisional==true and .lines[0].countedQty==4)' >/dev/null || fail "línea nueva en el conteo vacío"
+expect 200 "$(req POST "/api/v1/cycle-counts/$IDE/finish" '{}' "$TCNT21")" | jq -e '.count.statusCode=="COUNTED"' >/dev/null || fail "terminar el conteo que era vacío"
+expect 200 "$(req POST "/api/v1/cycle-counts/$IDE/reconcile" '{}')" | jq -e '.count.statusCode=="RECONCILED_VARIANCE"' >/dev/null || fail "reconciliar el conteo que era vacío"
+[[ $(onhand "$W6P" "$PBEID" "$PE21") == 4 ]] || fail "el hallazgo del conteo vacío entró al inventario"
+# Un conteo vacío abierto se puede borrar; otra compañía no lo ve.
+CCE2=$(expect 200 "$(req POST /api/v1/cycle-counts "$EMPTY_OK" "$TCNT21")"); IDE2=$(echo "$CCE2" | jq -r .count.id)
+C21E=$(req GET "/api/v1/cycle-counts/$IDE2" '' "$TB21" | tail -n1); [[ "$C21E" == 403 || "$C21E" == 404 ]] || fail "otra compañía ve un conteo vacío ajeno (dio $C21E)"
+expect 204 "$(req DELETE "/api/v1/cycle-counts/$IDE2")" >/dev/null || fail "borrar el conteo vacío abierto"
+ok "conteo por producto: alta por productPublicIds (origen PRODUCT, una línea por posición, a ciegas para quien solo captura), captura en dos posiciones, corrección del supervisor 3 → 5 con evidencia (capturedQty/capturedBy y correctedBy, sin mover inventario y visible a ciegas sin lo esperado), vista previa (403 sin warehouse.count; cuadra / con diferencia; no escribe), lista por revisar (quién contó, producto, diferencias, matches, correcciones), cierre en bloque (cierra el que cuadra en Concordancia sin movimientos, omite WouldPost n y por ids AlreadyReconciled y NotFound; 403 sin warehouse.count), conteo cuya línea se movió desde la foto ya no cuadra, posición provisional (409 repetida, 403 sin permiso, línea nueva, filtro isProvisional, confirmar una vez) y vista previa = reconciliación real; otra compañía sin acceso; adenda allowEmpty: producto sin existencia → conteo vacío (400 sin allowEmpty, 400 con filtros o dos productos, 404 inexistente, terminar vacío 422, línea nueva en provisional, terminar, reconciliar y borrar un vacío abierto)"
 
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e

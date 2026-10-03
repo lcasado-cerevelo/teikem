@@ -564,4 +564,116 @@ public sealed class CycleCountByProductTests
         Assert.True(Assert.Single(found).IsProvisional);
         Assert.False((await layout.SearchBinsAsync("A01-R01-N1-P01", null, false, 20, default)).Single().IsProvisional);
     }
+    // ================================================================ conteo vacío (adenda: allowEmpty)
+
+    private static Task<CycleCountDetailDto> EmptyByProductAsync(CycleCountFixture f, Guid productPublicId)
+        => f.Get<CycleCountService>().CreateAsync(new CycleCountCreateRequest(ProductPublicIds: new[] { productPublicId }, AllowEmpty: true), default);
+
+    [Fact]
+    public async Task Without_allow_empty_a_product_without_stock_is_still_400()
+    {
+        await using var f = await NewAsync();
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => ByProductAsync(f, f.ProductNonePublicId));
+        Assert.Contains(CycleCountRules.NothingSelected, ex.Message + string.Join(" ", ex.Errors!.SelectMany(e => e.Value)));
+        Assert.False(await f.Db.Set<CycleCount>().AnyAsync());
+    }
+
+    [Fact]
+    public async Task Allow_empty_creates_an_empty_open_count_with_origin_product_and_its_task()
+    {
+        await using var f = await NewAsync();
+        var created = await EmptyByProductAsync(f, f.ProductNonePublicId);
+        Assert.Equal((CycleCountOrigins.Product, CycleCountStatuses.Open, 0, 0), (created.Count.OriginCode, created.Count.StatusCode, created.Count.LineCount, created.Lines.Count));
+        Assert.NotNull(created.Count.TaskId);
+
+        // Con existencia, allowEmpty no cambia nada: una línea por posición, como siempre.
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        var withStock = await EmptyByProductAsync(f, f.ProductNonePublicId);
+        Assert.Single(withStock.Lines);
+        Assert.Equal(CycleCountOrigins.Product, withStock.Count.OriginCode);
+    }
+
+    [Fact]
+    public async Task Allow_empty_unknown_product_is_404_and_incompatible_filters_are_400()
+    {
+        await using var f = await NewAsync();
+        await Assert.ThrowsAsync<NotFoundException>(() => EmptyByProductAsync(f, Guid.NewGuid()));
+        var svc = f.Get<CycleCountService>();
+        var p = new[] { f.ProductNonePublicId };
+        foreach (var req in new[]
+        {
+            new CycleCountCreateRequest(ProductPublicIds: p, BinIds: new[] { f.PickBin1 }, AllowEmpty: true),
+            new CycleCountCreateRequest(ProductPublicIds: p, ZoneIds: new[] { 11 }, AllowEmpty: true),
+            new CycleCountCreateRequest(ProductPublicIds: p, CategoryIds: new[] { 1 }, AllowEmpty: true),
+            new CycleCountCreateRequest(ProductPublicIds: new[] { f.ProductNonePublicId, f.ProductLotPublicId }, AllowEmpty: true),
+            new CycleCountCreateRequest(AllowEmpty: true),
+        })
+        {
+            var ex = await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(req, default));
+            Assert.Contains(CycleCountRules.AllowEmptyOnlyOneProduct, string.Join(" ", ex.Errors!.SelectMany(e => e.Value)));
+        }
+        Assert.False(await f.Db.Set<CycleCount>().AnyAsync());
+    }
+
+    [Fact]
+    public async Task Empty_count_accepts_a_new_line_in_a_provisional_bin_and_finishes_and_reconciles()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        var layout = f.Get<WarehouseLayoutService>();
+        var created = await EmptyByProductAsync(f, f.ProductNonePublicId);
+
+        // Mientras siga vacío no se puede terminar ni aparece en "Por revisar".
+        var empty = await Assert.ThrowsAsync<StatusRuleException>(() => svc.FinishAsync(created.Count.Id, null, default));
+        Assert.Equal(CycleCountRules.NoLines, empty.Message);
+        Assert.Empty((await svc.ReviewAsync(new CycleCountReviewQuery(IncludeOpen: true), default)).Items);
+
+        var bin = await layout.CreateProvisionalBinAsync(created.Count.Id, new WarehouseBinRequest(11, "PROV-E1"), default);
+        var detail = await svc.CaptureBatchAsync(created.Count.Id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(BinId: bin.Id, ProductPublicId: f.ProductNonePublicId, CountedQty: 3m),
+        }), default);
+        var line = Assert.Single(detail.Lines);
+        Assert.Equal((0m, 3m, true), (line.SystemQty, line.CountedQty, line.BinIsProvisional));
+        Assert.Single((await svc.ReviewAsync(new CycleCountReviewQuery(IncludeOpen: true), default)).Items);
+
+        var finished = await svc.FinishAsync(created.Count.Id, null, default);
+        Assert.Equal(CycleCountStatuses.Counted, finished.Count.StatusCode);
+        var done = await svc.ReconcileAsync(created.Count.Id, null, default);
+        Assert.Equal(CycleCountStatuses.ReconciledVariance, done.Count.StatusCode);
+        Assert.Equal(3m, await f.OnHandAsync(f.ProductNoneId, bin.Id));
+    }
+
+    [Fact]
+    public async Task Empty_count_accepts_a_line_through_add_line_and_reconcile_empty_fails()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        var created = await EmptyByProductAsync(f, f.ProductNonePublicId);
+        var noLines = await Assert.ThrowsAsync<StatusRuleException>(() => svc.ReconcileAsync(created.Count.Id, null, default));
+        Assert.Equal(CycleCountRules.NoLines, noLines.Message);
+
+        var added = await svc.AddLineAsync(created.Count.Id, new CountAddLineRequest(f.PickBin1, f.ProductNonePublicId, CountedQty: 2m), default);
+        Assert.Equal(2m, Assert.Single(added.Lines).CountedQty);
+        Assert.Equal(CycleCountStatuses.Counted, (await svc.FinishAsync(created.Count.Id, null, default)).Count.StatusCode);
+    }
+
+    [Fact]
+    public async Task Empty_count_can_be_deleted_while_open_and_other_company_cannot_see_or_touch_it()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        var created = await EmptyByProductAsync(f, f.ProductNonePublicId);
+
+        using (f.Tenant.As(2))
+        {
+            await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteAsync(created.Count.Id, default));
+            await Assert.ThrowsAsync<NotFoundException>(() => svc.AddLineAsync(created.Count.Id, new CountAddLineRequest(f.PickBin1, f.ProductNonePublicId, CountedQty: 1m), default));
+        }
+
+        await svc.DeleteAsync(created.Count.Id, default);
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.GetAsync(created.Count.Id, null, default));
+        var cc = await f.Db.Set<CycleCount>().IgnoreQueryFilters().AsNoTracking().SingleAsync(c => c.CycleCountId == created.Count.Id);
+        Assert.False(cc.IsActive);
+    }
 }

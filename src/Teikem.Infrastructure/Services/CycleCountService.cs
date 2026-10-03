@@ -333,10 +333,15 @@ public sealed class CycleCountService(
     /// 1000 líneas → 400 'El conteo admite como máximo 1000 líneas; acote los filtros.'. Crea una tarea COUNT en la cola.
     /// Lote 21: con productPublicIds y sin binIds ni zoneIds es un conteo POR PRODUCTO (origen PRODUCT): una línea por cada
     /// posición y lote donde el sistema dice que hay existencia; el producto sin existencia → 400 'NothingSelected'.
+    /// Lote 21 (adenda): AllowEmpty con exactamente un producto y sin otros filtros → si el producto no tiene existencia el conteo
+    /// se crea vacío (sin líneas, origen PRODUCT); con otros filtros o más de un producto → 400 'allowEmpty'.
     /// </summary>
     public async Task<CycleCountDetailDto> CreateAsync(CycleCountCreateRequest? req, CancellationToken ct)
     {
         req ??= new CycleCountCreateRequest();
+        if (req.AllowEmpty
+            && (req.ProductPublicIds?.Distinct().Count() != 1 || req.BinIds is { Length: > 0 } || req.ZoneIds is { Length: > 0 } || req.CategoryIds is { Length: > 0 }))
+            throw new ValidationException("allowEmpty", CycleCountRules.AllowEmptyOnlyOneProduct);
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
         if (!warehouse.IsActive) throw new StatusRuleException(WarehouseInactive);
@@ -387,7 +392,9 @@ public sealed class CycleCountService(
         var lotNumbers = await LotNumbersAsync(lotIds, raw.Select(x => x.ProductId), ct);
         var (selected, selectError) = CycleCountRules.SelectLines(raw.Select(x => new CountCandidate(
             x.WarehouseBinId, x.BinCode, x.ProductId, x.Sku, x.LotId, x.LotId is int l ? lotNumbers.GetValueOrDefault(l) : null, x.QtyOnHand)));
-        if (selectError is not null) throw new ValidationException("filters", selectError);
+        // Adenda: el producto existe (ya se resolvió; si no, 404) pero no tiene existencia → conteo vacío, solo si se pidió.
+        var emptyByProduct = req.AllowEmpty && selectError == CycleCountRules.NothingSelected;
+        if (selectError is not null && !emptyByProduct) throw new ValidationException("filters", selectError);
 
         await numbers.EnsureAsync(NumberKinds.CycleCount, null, ct);
         var initial = await statuses.GetInitialAsync(StatusDomains.CycleCountStatus, ct);
