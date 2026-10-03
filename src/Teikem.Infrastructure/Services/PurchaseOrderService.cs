@@ -33,8 +33,11 @@ public sealed class PurchaseOrderService(
     ITenantContext tenant,
     ILookupCache lookups,
     StatusService statuses,
-    INumberSequenceService numbers)
+    INumberSequenceService numbers,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string ConcurrencyMessage = "La orden de compra fue modificada por otro usuario; recargue e intente de nuevo.";
     public const string NumberTakenMessage = "Ya existe una orden de compra con ese número; intente de nuevo.";
 
@@ -109,14 +112,14 @@ public sealed class PurchaseOrderService(
 
     /// <summary>
     /// Alta en DRAFT con número PO-#####: proveedor activo del tenant, almacén indicado (o el único activo), fecha de la
-    /// orden (hoy UTC por defecto), fecha esperada ≥ fecha de la orden, moneda del catálogo y líneas válidas.
+    /// orden (hoy en la zona de la compañía por defecto), fecha esperada ≥ fecha de la orden, moneda del catálogo y líneas válidas.
     /// </summary>
     public async Task<PurchaseOrderDto> CreateAsync(PurchaseOrderCreateRequest req, CancellationToken ct)
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var errors = new Dictionary<string, string[]>();
         if (req.SupplierId is null) errors["supplierId"] = new[] { PurchaseOrderRules.SupplierRequired };
-        var orderDate = req.OrderDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var orderDate = req.OrderDate ?? _clock.Today;
         if (req.ExpectedDate is DateOnly expected && expected < orderDate) errors["expectedDate"] = new[] { PurchaseOrderRules.ExpectedBeforeOrder };
         var (notes, notesError) = NormalizeNotes(req.Notes);
         if (notesError is not null) errors["notes"] = new[] { notesError };

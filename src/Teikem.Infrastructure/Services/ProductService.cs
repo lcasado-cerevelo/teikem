@@ -27,8 +27,10 @@ namespace Teikem.Infrastructure.Services;
 ///   escritura. Nunca DELETE.
 /// - QtyAvailable (columna computada) nunca se lee: el disponible se calcula en código (en mano − reservado).
 /// </summary>
-public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     /// <summary>Tope de series por consulta (use el buscador para acotar).</summary>
     public const int MaxSerialRows = 1000;
     /// <summary>Unidad base por defecto cuando el alta no la indica.</summary>
@@ -259,7 +261,7 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             .Select(g => new { LotId = g.Key, Qty = g.Sum(b => b.QtyOnHand) })
             .ToDictionaryAsync(x => x.LotId, x => x.Qty, ct);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
         return lots
             .OrderBy(l => l.ExpiryDate is null).ThenBy(l => l.ExpiryDate).ThenBy(l => l.LotNumber, StringComparer.OrdinalIgnoreCase)
             .Select(l => new LotDto(l.LotId, l.LotNumber, l.ManufactureDate, l.ExpiryDate, ProductRules.DaysToExpiry(l.ExpiryDate, today),

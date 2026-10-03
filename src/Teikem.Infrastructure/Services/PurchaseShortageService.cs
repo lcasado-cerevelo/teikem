@@ -34,8 +34,11 @@ public sealed class PurchaseShortageService(
     PermissionService permissions,
     ModuleService modules,
     InventoryLedger ledger,
-    PurchaseOrderService purchaseOrders)
+    PurchaseOrderService purchaseOrders,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string AllResolvedComment = "Faltantes resueltos: la orden de compra no tiene cantidades pendientes.";
     public static string ReorderNotes(string number) => $"Reorden del faltante de la orden de compra {number}.";
     public static string LotConcurrent(string lot) => $"El lote {lot} se está registrando en otra operación; intente de nuevo.";
@@ -230,7 +233,7 @@ public sealed class PurchaseShortageService(
         if (!warehouse.IsActive) throw new StatusRuleException(PurchaseOrderRules.WarehouseInactive);
         var product = await db.Set<Product>().AsNoTracking().FirstAsync(p => p.ProductId == line.ProductId, ct);
         if (!product.IsActive) throw new StatusRuleException(PurchaseOrderRules.ProductInactive(product.Sku));
-        return await purchaseOrders.CreateDraftAsync(po.SupplierId, po.WarehouseId, DateOnly.FromDateTime(DateTime.UtcNow), null,
+        return await purchaseOrders.CreateDraftAsync(po.SupplierId, po.WarehouseId, _clock.Today, null,
             po.CurrencyLookupId, ReorderNotes(po.Number), new[] { new PurchaseOrderLinePlan(line.ProductId, qty, line.UnitCost) }, ct);
     }
 
