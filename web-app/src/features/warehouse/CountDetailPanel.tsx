@@ -213,7 +213,8 @@ function EvidenceCell({ line }: { line: CycleCountLineDto }) {
       {ev.counted && <span>{one('counted')}</span>}
       {ev.corrected && (
         <span className="cc-evidence-fix">
-          <Chip tone="disp">{t('warehouse.cycleCounts.evidence.correction')}</Chip> {one('corrected')}
+          <Chip tone="disp">{t('warehouse.cycleCounts.evidence.correction')}</Chip>
+          <span>{one('corrected')}</span>
         </span>
       )}
     </span>
@@ -593,7 +594,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
             <span className="tk" aria-hidden="true" />
             <span>{t('warehouse.cycleCounts.detail.showAll')}</span>
           </label>
-          <span className="cc-head-meta" role="status">
+          <span className="cc-head-meta" aria-live="polite">
             {filtering
               ? t('warehouse.cycleCounts.detail.failingCount', { shown: rows.length, total: lines.length })
               : t('warehouse.cycleCounts.detail.allCount', { total: lines.length })}
