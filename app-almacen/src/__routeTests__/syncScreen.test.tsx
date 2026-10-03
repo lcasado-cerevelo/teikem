@@ -40,5 +40,8 @@ describe('navegación — Sincronización', () => {
 
     await waitFor(() => expect(screen.getByText('Sincronización')).toBeTruthy())
     expect(screen.getByText('Pendientes (0)')).toBeTruthy()
+    // indicador del lector (docs/mobile/mejoras-ux-zebra.md §2.3): en Jest no hay DataWedge
+    expect(screen.getByText('Lector: no es un Zebra (se usa el teclado)')).toBeTruthy()
+    expect(screen.getByText('Última vez: nunca')).toBeTruthy()
   })
 })
