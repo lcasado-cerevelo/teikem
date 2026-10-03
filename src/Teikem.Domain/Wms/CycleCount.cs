@@ -55,4 +55,18 @@ public class CycleCountLine
     public decimal? ReconciledSystemQty { get; set; }
     public bool SystemQtyChanged { get; set; }
     public long? AdjustmentTxnId { get; set; }
+
+    // Conteo por producto (Lote 21) — evidencia de la captura. CountedQty es SIEMPRE el valor vigente (el que se reconcilia);
+    // CapturedQty es lo que contó originalmente quien capturó (CapturedBy, CapturedAtUtc) y no se pierde si alguien lo corrige.
+    // Corrected* se llena cuando OTRO usuario, o cualquiera una vez terminado el conteo (Contado), cambia el valor. Una
+    // corrección NO mueve inventario: solo cambia la cantidad que se reconcilia.
+    /// <summary>Lote 21: cantidad capturada originalmente (null = sin captura).</summary>
+    public decimal? CapturedQty { get; set; }
+    /// <summary>Lote 21: series capturadas originalmente (JSON), solo en productos con serie.</summary>
+    public string? CapturedSerialsJson { get; set; }
+    public int? CapturedBy { get; set; }
+    public DateTime? CapturedAtUtc { get; set; }
+    /// <summary>Lote 21: quién corrigió la cantidad (null = no corregida).</summary>
+    public int? CorrectedBy { get; set; }
+    public DateTime? CorrectedAtUtc { get; set; }
 }

@@ -55,6 +55,7 @@ public class WmsControllerSecurityTests
         [(typeof(WarehousesController), nameof(WarehousesController.UpdateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.SetBinsCapacity))] = PermissionCatalog.WarehouseManage,   // Lote 11: cupo en bloque
         [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage,
+        [(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))] = PermissionCatalog.WarehouseManage,   // Lote 21
         [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.Docks))] = PermissionCatalog.InventoryView,
         [(typeof(WarehousesController), nameof(WarehousesController.CreateDock))] = PermissionCatalog.WarehouseManage,
@@ -139,6 +140,10 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Page))] = PermissionCatalog.InventoryView,   // Lote 14: a ciegas sin warehouse.count
         [(typeof(CycleCountsController), nameof(CycleCountsController.ChangesPreview))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
         [(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
+        [(typeof(CycleCountsController), nameof(CycleCountsController.ReconcilePreview))] = PermissionCatalog.WarehouseCount,   // Lote 21
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Review))] = PermissionCatalog.WarehouseCount,   // Lote 21
+        [(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))] = PermissionCatalog.WarehouseCount,   // Lote 21
+        [(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))] = PermissionCatalog.WarehouseCountCapture,   // Lote 21
 
         [(typeof(PickBatchesController), nameof(PickBatchesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Get))] = PermissionCatalog.InventoryView,
@@ -263,7 +268,14 @@ public class WmsControllerSecurityTests
         // Lote 16: + sugerencias de posición destino (inventory.view) y "Usar posiciones sugeridas" (warehouse.receive).
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.TargetSuggestions))]);
         Assert.Equal(PermissionCatalog.WarehouseReceive, Expected[(typeof(ReceiptsController), nameof(ReceiptsController.ApplySuggestedTargets))]);
-        Assert.Equal(123, Expected.Count);
+        // Lote 21 (conteo por producto): vista previa, "Por revisar" y cierre en bloque con warehouse.count; la posición provisional
+        // la crea quien captura (warehouse.count.capture) y la confirma el supervisor (warehouse.manage).
+        Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ReconcilePreview))]);
+        Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Review))]);
+        Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))]);
+        Assert.Equal(PermissionCatalog.WarehouseCountCapture, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))]);
+        Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
+        Assert.Equal(128, Expected.Count);
     }
 
     [Fact]

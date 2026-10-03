@@ -81,14 +81,17 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     /// Filtros: ?search (contiene en código, zona, pasillo, rack, nivel o posición), ?zoneId (404 si no es del almacén),
     /// ?zoneIds (varias), ?aisle, ?rack, ?level, ?position (contiene), ?productPublicIds (con existencia de esos productos),
     /// ?occupancy (EMPTY, PARTIAL, FULL, NO_CAPACITY; varias, 400 si otro), ?binIds, ?includeInactive, ?onlyWithStock.
+    /// Lote 21: ?isProvisional=true lista solo las posiciones creadas desde un conteo y pendientes de revisión (false, solo las
+    /// confirmadas); cada posición trae isProvisional.
     /// </summary>
     [HttpGet("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.InventoryView)]
     public Task<WarehouseBinPageDto> Bins(Guid publicId, [FromQuery] int? zoneId, [FromQuery] string? search,
         [FromQuery] bool includeInactive, [FromQuery] bool onlyWithStock, [FromQuery] int[]? zoneIds, [FromQuery] string? aisle,
         [FromQuery] string? rack, [FromQuery] string? level, [FromQuery] string? position, [FromQuery] Guid[]? productPublicIds,
-        [FromQuery] string[]? occupancy, [FromQuery] int[]? binIds, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 100)
+        [FromQuery] string[]? occupancy, [FromQuery] int[]? binIds, CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 100,
+        [FromQuery] bool? isProvisional = null)
         => layout.ListBinsAsync(publicId, new WarehouseBinQuery(zoneId, search, includeInactive, onlyWithStock, NullIfEmpty(zoneIds), aisle, rack,
-            level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), skip, take), ct);
+            level, position, NullIfEmpty(productPublicIds), NullIfEmpty(occupancy), NullIfEmpty(binIds), skip, take, isProvisional), ct);
 
     private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 
@@ -106,6 +109,15 @@ public sealed class WarehousesController(WarehouseService warehouses, WarehouseL
     [HttpPost("{publicId:guid}/bins"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseBinDto> CreateBin(Guid publicId, [FromBody] WarehouseBinRequest req, CancellationToken ct)
         => layout.CreateBinAsync(publicId, req, ct);
+
+    /// <summary>
+    /// Lote 21 — el supervisor confirma una posición provisional (creada desde un conteo con POST /cycle-counts/{id}/bins): quita
+    /// la marca isProvisional. Una posición que no es provisional → 409 'La posición no está pendiente de revisión.'; de otro
+    /// almacén u otro tenant → 404. Para corregirla o desactivarla se usan PATCH y deactivate de siempre.
+    /// </summary>
+    [HttpPost("{publicId:guid}/bins/{binId:int}/confirm-provisional"), RequirePermission(PermissionCatalog.WarehouseManage)]
+    public Task<WarehouseBinDto> ConfirmProvisionalBin(Guid publicId, int binId, CancellationToken ct)
+        => layout.ConfirmProvisionalBinAsync(publicId, binId, ct);
 
     /// <summary>
     /// Lote 11 — cupo máximo en bloque: { maxCapacityQty } o { clear: true } (exactamente uno) sobre TODAS las posiciones que

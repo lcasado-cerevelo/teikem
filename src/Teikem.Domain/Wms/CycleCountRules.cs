@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Teikem.Domain.Constants;
 
 namespace Teikem.Domain.Wms;
@@ -65,6 +66,11 @@ public static class CycleCountRules
     public const string LotNumberTooLong = "El número de lote admite como máximo 60 caracteres.";
     public const string LotDates = "La fecha de fabricación no puede ser posterior al vencimiento.";
     public const string CaptureRequired = "Indique las líneas a capturar.";
+    public const string ProvisionalCountClosed = "El conteo ya fue reconciliado; no admite posiciones nuevas.";
+    public const string ProvisionalWarehouseMismatch = "La zona no es del almacén del conteo.";
+    public const string BulkTooMany = "Se revisan como máximo 200 conteos por vez; acote por almacén o por ids.";
+    /// <summary>Tope de conteos que revisa o cierra una sola llamada del cierre en bloque / lista por revisar.</summary>
+    public const int MaxBulkCounts = 200;
 
     public static string CountIncomplete(int pending)
         => $"Faltan {pending.ToString(CultureInfo.InvariantCulture)} línea(s) por contar.";
@@ -195,6 +201,79 @@ public static class CycleCountRules
     /// <summary>Una fecha no capturada no se compara; las capturadas deben coincidir con las del lote existente (D34).</summary>
     public static bool LotDatesMatch(DateOnly? existingManufacture, DateOnly? existingExpiry, DateOnly? manufacture, DateOnly? expiry)
         => (manufacture is null || manufacture == existingManufacture) && (expiry is null || expiry == existingExpiry);
+
+    // ---------------------------------------------------------------- evidencia de captura y corrección (Lote 21)
+
+    /// <summary>Estado de captura de una línea: valor vigente y evidencia (captura original y corrección).</summary>
+    public sealed record CaptureState(
+        decimal? CountedQty, string? CountedSerialsJson, decimal? CapturedQty, string? CapturedSerialsJson,
+        int? CapturedBy, DateTime? CapturedAtUtc, int? CorrectedBy, DateTime? CorrectedAtUtc)
+    {
+        public static readonly CaptureState Empty = new(null, null, null, null, null, null, null, null);
+        public bool WasCorrected => CorrectedAtUtc is not null || CorrectedBy is not null;
+    }
+
+    /// <summary>
+    /// Regla única de captura y corrección (Lote 21). Un valor nuevo sobre una línea:
+    /// - sin captura previa: PRIMERA captura (fija CapturedQty/CapturedBy/CapturedAtUtc);
+    /// - igual al vigente: no cambia nada (reenviar lo mismo es idempotente, no estrena corrección);
+    /// - el mismo usuario que capturó, con el conteo abierto (no Contado): RECAPTURA (reemplaza la captura y borra la corrección);
+    /// - otro usuario, o cualquiera con el conteo ya Contado: CORRECCIÓN: CountedQty cambia, Captured* se conserva y se llenan
+    ///   Corrected*; si el valor corregido vuelve a ser el capturado, la corrección se limpia.
+    /// Sin valor (borrar la captura) la línea vuelve a pendiente y pierde toda la evidencia. Una línea con valor pero sin
+    /// evidencia (anterior al lote) toma su valor como captura original de usuario desconocido y se corrige.
+    /// Una corrección NO es un ajuste ni una transferencia: no mueve inventario.
+    /// </summary>
+    public static CaptureState ApplyCapture(CaptureState current, decimal? newCounted, IReadOnlyList<string>? newSerials,
+        int? userId, DateTime nowUtc, bool countFinished)
+    {
+        if (newCounted is not decimal value) return CaptureState.Empty;
+        var serialsJson = SerialsJson(newSerials);
+        var cur = current.CapturedQty is null && current.CountedQty is not null
+            ? current with { CapturedQty = current.CountedQty, CapturedSerialsJson = current.CountedSerialsJson }
+            : current;
+        if (cur.CapturedQty is null)
+            return new CaptureState(value, serialsJson, value, serialsJson, userId, nowUtc, null, null);
+        if (cur.CountedQty == value && SameSerials(cur.CountedSerialsJson, serialsJson)) return cur;
+
+        var isCorrection = countFinished || cur.CapturedBy != userId;
+        if (!isCorrection)
+            return new CaptureState(value, serialsJson, value, serialsJson, userId, nowUtc, null, null);
+        if (cur.CapturedQty == value && SameSerials(cur.CapturedSerialsJson, serialsJson))
+            return cur with { CountedQty = value, CountedSerialsJson = serialsJson, CorrectedBy = null, CorrectedAtUtc = null };
+        return cur with { CountedQty = value, CountedSerialsJson = serialsJson, CorrectedBy = userId, CorrectedAtUtc = nowUtc };
+    }
+
+    private static string? SerialsJson(IReadOnlyList<string>? serials)
+        => serials is null ? null : JsonSerializer.Serialize(serials, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+    private static bool SameSerials(string? a, string? b)
+    {
+        static HashSet<string> Parse(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try { return new HashSet<string>(JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>(), StringComparer.OrdinalIgnoreCase); }
+            catch (JsonException) { return new HashSet<string>(StringComparer.OrdinalIgnoreCase); }
+        }
+        return Parse(a).SetEquals(Parse(b));
+    }
+
+    /// <summary>
+    /// Motivo (Notes) del movimiento que se asienta al reconciliar una línea. Sin corrección es 'Conteo CC-00001' (como siempre);
+    /// con corrección agrega quién contó, qué contó y quién la corrigió: 'Conteo CC-00001 · contó 3 (Ana, 2026-10-03 14:05) ·
+    /// corregido de 3 a 4 por Beto (2026-10-03 15:00)'. Las fechas llegan ya en la hora de la compañía. Máximo 300 caracteres.
+    /// </summary>
+    public static string LedgerNotes(string number, CaptureState line, string? capturedByName, string? capturedAtLocal,
+        string? correctedByName, string? correctedAtLocal)
+    {
+        var baseText = $"Conteo {number}";
+        if (!line.WasCorrected || line.CapturedQty is not decimal original || line.CountedQty is not decimal now) return baseText;
+        var who = string.IsNullOrWhiteSpace(capturedByName) ? "usuario desconocido" : capturedByName;
+        var whoFixed = string.IsNullOrWhiteSpace(correctedByName) ? "usuario desconocido" : correctedByName;
+        var text = $"{baseText} · contó {FormatQty(original)} ({who}{(capturedAtLocal is null ? "" : ", " + capturedAtLocal)}) · "
+                   + $"corregido de {FormatQty(original)} a {FormatQty(now)} por {whoFixed}{(correctedAtLocal is null ? "" : " (" + correctedAtLocal + ")")}";
+        return text.Length <= 300 ? text : text[..300];
+    }
 
     // ---------------------------------------------------------------- series
 

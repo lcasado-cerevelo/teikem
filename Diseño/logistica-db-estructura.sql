@@ -1210,18 +1210,41 @@ BEGIN
         Aisle NVARCHAR(20) NULL, Rack NVARCHAR(20) NULL, Level NVARCHAR(20) NULL, Position NVARCHAR(20) NULL,
         MaxWeightKg  DECIMAL(12,3) NULL, IsActive BIT NOT NULL DEFAULT 1,
         MaxCapacityQty INT NULL,                                                -- Lote 1 de cambios de Almacén
+        IsProvisional BIT NOT NULL DEFAULT 0,                                   -- Lote 21: creada desde un conteo, pendiente de revisión
+        ProvisionalCreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id),           -- Lote 21: quién la creó
+        ProvisionalCreatedAtUtc DATETIME2 NULL,                                 -- Lote 21: cuándo
+        ProvisionalCycleCountId INT NULL,                                       -- Lote 21: conteo de origen (FK abajo: CycleCount se crea después)
         CONSTRAINT UQ_WarehouseBin UNIQUE (WarehouseZoneId, Code),
         CONSTRAINT FK_WarehouseBin_Zone FOREIGN KEY (WarehouseZoneId, WarehouseId) REFERENCES dbo.WarehouseZone(WarehouseZoneId, WarehouseId),  -- Lote 6
         CONSTRAINT UQ_WarehouseBin_IdWh UNIQUE (WarehouseBinId, WarehouseId),   -- Lote 6: destino de las FKs (Posición, Almacén)
         CONSTRAINT UQ_WarehouseBin_WhCode UNIQUE (WarehouseId, Code),           -- Lote 6: código único por almacén
         CONSTRAINT CK_WarehouseBin_MaxWeight CHECK (MaxWeightKg IS NULL OR MaxWeightKg > 0),  -- Lote 6
-        CONSTRAINT CK_WarehouseBin_MaxCapacityQty CHECK (MaxCapacityQty IS NULL OR MaxCapacityQty > 0)  -- Lote 1 de cambios de Almacén
+        CONSTRAINT CK_WarehouseBin_MaxCapacityQty CHECK (MaxCapacityQty IS NULL OR MaxCapacityQty > 0),  -- Lote 1 de cambios de Almacén
+        CONSTRAINT CK_WarehouseBin_Provisional CHECK (IsProvisional = 0 OR ProvisionalCreatedAtUtc IS NOT NULL)  -- Lote 21
     );
 END
 ELSE IF COL_LENGTH('dbo.WarehouseBin', 'MaxCapacityQty') IS NULL
 BEGIN
     ALTER TABLE dbo.WarehouseBin ADD MaxCapacityQty INT NULL;
 END
+GO
+
+-- Lote 21: posición provisional (columnas nuevas en una base ya creada; el CHECK, el índice y la FK van en lotes propios).
+IF COL_LENGTH('dbo.WarehouseBin', 'IsProvisional') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD IsProvisional BIT NOT NULL CONSTRAINT DF_WarehouseBin_IsProvisional DEFAULT 0;
+IF COL_LENGTH('dbo.WarehouseBin', 'ProvisionalCreatedBy') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD ProvisionalCreatedBy INT NULL REFERENCES dbo.AspNetUsers(Id);
+IF COL_LENGTH('dbo.WarehouseBin', 'ProvisionalCreatedAtUtc') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD ProvisionalCreatedAtUtc DATETIME2 NULL;
+IF COL_LENGTH('dbo.WarehouseBin', 'ProvisionalCycleCountId') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD ProvisionalCycleCountId INT NULL;
+GO
+
+-- Lote 21: CHECK de la marca provisional (en su propio lote: las columnas ya existen al compilarlo) e índice de las pendientes.
+IF OBJECT_ID('dbo.CK_WarehouseBin_Provisional', 'C') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD CONSTRAINT CK_WarehouseBin_Provisional CHECK (IsProvisional = 0 OR ProvisionalCreatedAtUtc IS NOT NULL);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_WarehouseBin_Provisional' AND object_id = OBJECT_ID('dbo.WarehouseBin'))
+    CREATE INDEX IX_WarehouseBin_Provisional ON dbo.WarehouseBin(WarehouseId) WHERE IsProvisional = 1;
 GO
 
 -- El CHECK del cupo en su propio lote (la columna ya existe al compilarlo); solo si todavía no está.
@@ -2376,10 +2399,24 @@ CREATE TABLE dbo.CycleCountLine (
     CountedSerialsJson NVARCHAR(MAX) NULL,                                    -- Lote 6
     ReconciledSystemQty DECIMAL(16,3) NULL,                                   -- Lote 6 (D22)
     SystemQtyChanged BIT NOT NULL DEFAULT 0,                                  -- Lote 6 (D22)
+    -- Lote 21 (conteo por producto): evidencia. CountedQty es siempre el valor vigente; Captured* = lo que contó originalmente
+    -- quien capturó; Corrected* = quién y cuándo lo corrigió (otro usuario, o cualquiera con el conteo ya Contado).
+    CapturedQty  DECIMAL(16,3) NULL,
+    CapturedSerialsJson NVARCHAR(MAX) NULL,
+    CapturedBy   INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CapturedAtUtc DATETIME2 NULL,
+    CorrectedBy  INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CorrectedAtUtc DATETIME2 NULL,
     CONSTRAINT FK_CycleCountLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),   -- Lote 6
     CONSTRAINT UQ_CycleCountLine UNIQUE (CycleCountId, WarehouseBinId, ProductId, LotId),                            -- Lote 6
-    CONSTRAINT CK_CycleCountLine_Qty CHECK (SystemQty >= 0 AND (CountedQty IS NULL OR CountedQty >= 0) AND (ReconciledSystemQty IS NULL OR ReconciledSystemQty >= 0))  -- Lote 6
+    CONSTRAINT CK_CycleCountLine_Qty CHECK (SystemQty >= 0 AND (CountedQty IS NULL OR CountedQty >= 0) AND (ReconciledSystemQty IS NULL OR ReconciledSystemQty >= 0)),  -- Lote 6
+    CONSTRAINT CK_CycleCountLine_Evidence CHECK ((CapturedQty IS NULL OR CapturedQty >= 0) AND (CorrectedAtUtc IS NULL OR CapturedQty IS NOT NULL))  -- Lote 21: no hay corrección sin captura original
 );
+GO
+
+-- Lote 21: la posición provisional apunta al conteo desde el que se creó (WarehouseBin se crea antes que CycleCount).
+IF OBJECT_ID('dbo.FK_WarehouseBin_ProvisionalCount', 'F') IS NULL
+    ALTER TABLE dbo.WarehouseBin ADD CONSTRAINT FK_WarehouseBin_ProvisionalCount FOREIGN KEY (ProvisionalCycleCountId) REFERENCES dbo.CycleCount(CycleCountId);
 GO
 
 -- Lote 14: posiciones con un conteo abierto ("lo cambiado" no repite una posición con conteo Pendiente o Contado).

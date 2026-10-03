@@ -19,12 +19,14 @@ namespace Teikem.Api.Controllers;
 /// queda para quien tiene warehouse.count (en la web).
 /// El conteo se expone por id entero (no tiene PublicId) filtrado por tenant; sus líneas SOLO dentro de su conteo.
 /// Historial de estatus: /api/v1/status/history/CYCLE_COUNT/{id}. La tarea COUNT de la cola se completa aquí (reconciliar).
+/// Lote 21 — conteo por producto: crear con productPublicIds (origen PRODUCT), evidencia de captura y corrección en cada línea,
+/// vista previa de la reconciliación, lista "Por revisar", cierre en bloque de los que cuadran y posición provisional.
 /// </summary>
 [ApiController]
 [Route("api/v1/cycle-counts")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class CycleCountsController(CycleCountService counts, PermissionService permissions) : ControllerBase
+public sealed class CycleCountsController(CycleCountService counts, PermissionService permissions, WarehouseLayoutService layout) : ControllerBase
 {
     /// <summary>
     /// Conteos activos (los 200 más recientes) con filtros: warehousePublicIds (selección múltiple, maestro L553), status (OPEN, COUNTED, RECONCILED,
@@ -42,7 +44,7 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
 
     /// <summary>
     /// Lote 14 (hallazgo 14) — página de conteos con el total: mismos filtros que la lista (from/to en días locales de la
-    /// compañía), más zoneIds (alguna línea en esas zonas), origins (MANUAL, CHANGES) y skip/take (take 1..200, por defecto
+    /// compañía), más zoneIds (alguna línea en esas zonas), origins (MANUAL, CHANGES, PRODUCT) y skip/take (take 1..200, por defecto
     /// 50). Cada fila trae binCount (y binCode/zoneCode si es de una posición), originCode/origin y su ventana, taskId de la
     /// tarea COUNT (para asignarla con POST /warehouse-tasks/{taskId}/assign) y assignedToName. Status acepta OPEN, COUNTED,
     /// RECONCILED y RECONCILED_VARIANCE. A ciegas sin warehouse.count (varianceLines y netVariance en null).
@@ -107,7 +109,12 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     public async Task<CycleCountDetailDto> Create([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CycleCountCreateRequest? req, CancellationToken ct)
         => await ForCallerAsync(await counts.CreateAsync(req, ct), ct);
 
-    /// <summary>Captura por línea: countedQty (NONE/LOT) o serialNumbers (SERIAL). Sin ninguno la captura se borra. Reconciliado → 422.</summary>
+    /// <summary>
+    /// Captura por línea: countedQty (NONE/LOT) o serialNumbers (SERIAL). Sin ninguno la captura se borra. Reconciliado → 422.
+    /// Lote 21: la primera captura fija capturedQty/capturedBy/capturedAt; quien la capturó puede recapturar mientras el conteo
+    /// está Pendiente; cualquier edición de otro usuario, o cualquiera con el conteo ya Contado, es una CORRECCIÓN (countedQty
+    /// cambia, la captura original se conserva y se llena correctedBy/correctedAt; si vuelve al valor capturado se limpia).
+    /// </summary>
     [HttpPut("{id:int}/lines"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<CycleCountDetailDto> Capture(int id, [FromBody] CountCaptureRequest req, CancellationToken ct)
         => await ForCallerAsync(await counts.CaptureAsync(id, req, ct), ct);
@@ -131,6 +138,50 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     [HttpPost("{id:int}/finish"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<CycleCountDetailDto> Finish(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CountReconcileRequest? req, CancellationToken ct)
         => await ForCallerAsync(await counts.FinishAsync(id, req, ct), ct);
+
+    /// <summary>
+    /// Lote 21 — vista previa de reconciliar (warehouse.count), SIN escribir: por línea la posición, zona, producto, lote,
+    /// existencia ACTUAL, reservado, contado (con quién contó y quién corrigió), ajuste que se asentaría, saldo resultante y el
+    /// error que daría (contado menor que lo reservado); en serie el plan (bajas, altas, traslados). Totales: líneas, pendientes
+    /// (dato, no error), con diferencia, movimientos, con error y matches (cuadra: se puede cerrar en bloque). Misma regla que
+    /// POST .../reconcile. Reconciliado → 422; otro tenant → 404.
+    /// </summary>
+    [HttpGet("{id:int}/reconcile-preview"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<ReconcilePreviewDto> ReconcilePreview(int id, CancellationToken ct) => counts.PreviewReconcileAsync(id, ct);
+
+    /// <summary>
+    /// Lote 21 — lista "Por revisar" (warehouse.count): conteos Contados (con includeOpen también los Pendientes con todas sus
+    /// líneas capturadas), más recientes primero, con quién contó, primer producto y cuántos más, posiciones, líneas, cuántas
+    /// difieren contra la existencia actual, correcciones y matches. Filtros: warehousePublicId, countedByUserId, search
+    /// (número, SKU o nombre), skip y take (1..200, por defecto 50). Calculada en lotes, sin una consulta por conteo.
+    /// </summary>
+    [HttpGet("review"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<CycleCountReviewPageDto> Review([FromQuery] Guid? warehousePublicId, [FromQuery] int? countedByUserId,
+        [FromQuery] string? search, [FromQuery] bool includeOpen = false, [FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken ct = default)
+        => counts.ReviewAsync(new CycleCountReviewQuery(warehousePublicId, countedByUserId, search, includeOpen, skip, take), ct);
+
+    /// <summary>
+    /// Lote 21 — cierra en bloque los conteos que CUADRAN (warehouse.count): { warehousePublicId?, ids?, comment?, includeOpen? }.
+    /// Cuadra = contra la existencia ACTUAL no asentaría ningún movimiento ni tiene errores; esos terminan en Concordancia, cada
+    /// uno en su propia transacción. Responde { examined, closed[], skipped[], truncated }; cada omitido trae reasonCode
+    /// (WouldPost, Errors, Pending, Stale, NotCounted, AlreadyReconciled, NotFound, NoLines, Failed), reason y count. Hasta 200
+    /// conteos por llamada (más ids → 400).
+    /// </summary>
+    [HttpPost("reconcile-matching"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    public Task<CycleCountReconcileMatchingResultDto> ReconcileMatching(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CountReconcileMatchingRequest? req, CancellationToken ct)
+        => counts.ReconcileMatchingAsync(req, ct);
+
+    /// <summary>
+    /// Lote 21 — posición provisional (warehouse.count.capture): quien cuenta halló producto donde el sistema no tenía nada y la
+    /// posición no existe. { zoneId, code } (o aisle/rack/level/position para componer el código) en una zona del almacén del
+    /// conteo; reutiliza las validaciones del alta de posición (código repetido en el almacén → 409; zona inactiva → 422; zona
+    /// de otro almacén → 404; conteo reconciliado → 422). La posición nace isProvisional y se usa de inmediato como línea nueva
+    /// (PUT .../lines/batch con binId); el supervisor la confirma en POST /warehouses/{publicId}/bins/{binId}/confirm-provisional.
+    /// </summary>
+    [HttpPost("{id:int}/bins"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
+    public Task<WarehouseBinDto> CreateProvisionalBin(int id, [FromBody] CountProvisionalBinRequest req, CancellationToken ct)
+        => layout.CreateProvisionalBinAsync(id, new WarehouseBinRequest(req?.ZoneId, req?.Code, req?.Aisle, req?.Rack, req?.Level, req?.Position), ct);
 
     /// <summary>Refrescar (opcional): las líneas con foto vieja toman el saldo actual y pierden su captura para recontarlas.</summary>
     [HttpPost("{id:int}/refresh"), RequirePermission(PermissionCatalog.WarehouseCount)]

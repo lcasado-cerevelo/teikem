@@ -114,12 +114,14 @@ public static class ReceivingModes
 /// <summary>
 /// Lote 14: valores de LookupCode 'CycleCountOrigin'. MANUAL = alta por selección (web o app, por posición); CHANGES = "Conteo
 /// de lo cambiado" (un conteo por posición con movimientos en una ventana; guarda la ventana en ChangesFromUtc/ChangesToUtc).
-/// Los conteos anteriores al Lote 14 se marcan MANUAL en el seed.
+/// Los conteos anteriores al Lote 14 se marcan MANUAL en el seed. Lote 21: PRODUCT = conteo por producto (alta con productos y
+/// sin posiciones ni zonas: una línea por cada posición donde el sistema dice que hay existencia).
 /// </summary>
 public static class CycleCountOrigins
 {
     public const string Manual = "MANUAL";
     public const string Changes = "CHANGES";
+    public const string Product = "PRODUCT";
 }
 
 /// <summary>Lote 14: valores de LookupCode 'InventoryDiscrepancyKind'.</summary>

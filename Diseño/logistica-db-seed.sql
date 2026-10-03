@@ -338,6 +338,8 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('ReconciliationTrigger','SCHEDULED','Programada','Scheduled',3),('ReconciliationTrigger','MIGRATION','Migración','Migration',4),
 -- Lote 14 (D2, D3) — origen del conteo cíclico: selección (alta normal, web o app) o "lo cambiado" (uno por posición)
 ('CycleCountOrigin','MANUAL','Selección','Selection',1),('CycleCountOrigin','CHANGES','Lo cambiado','Changed positions',2),
+-- Lote 21 — conteo por producto: una línea por cada posición donde el sistema dice que hay existencia del producto
+('CycleCountOrigin','PRODUCT','Por producto','By product',3),
 -- Lote 16 — modo de recepción (almacén y recibo): con acomodo (posición de recepción + tareas) o directo a la posición destino
 ('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1),('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2);
 

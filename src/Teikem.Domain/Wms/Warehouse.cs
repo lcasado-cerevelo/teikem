@@ -77,6 +77,17 @@ public class WarehouseBin
     /// </summary>
     public int? MaxCapacityQty { get; set; }
     public bool IsActive { get; set; } = true;
+    /// <summary>
+    /// Lote 21: posición provisional = creada por quien cuenta (warehouse.count.capture) desde un conteo, pendiente de revisión
+    /// del supervisor (warehouse.manage), que la confirma, la corrige o la desactiva. Se puede usar ya en el conteo y en el
+    /// inventario. Confirmar quita la marca (los datos de quién/cuándo/conteo que la creó se conservan).
+    /// </summary>
+    public bool IsProvisional { get; set; }
+    /// <summary>Lote 21: usuario que creó la posición provisional.</summary>
+    public int? ProvisionalCreatedBy { get; set; }
+    public DateTime? ProvisionalCreatedAtUtc { get; set; }
+    /// <summary>Lote 21: conteo cíclico desde el que se creó.</summary>
+    public int? ProvisionalCycleCountId { get; set; }
 
     public WarehouseZone? Zone { get; set; }
 }

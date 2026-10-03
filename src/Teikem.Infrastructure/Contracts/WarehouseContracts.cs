@@ -72,20 +72,24 @@ public sealed record WarehouseBinPatchRequest(string? Aisle = null, string? Rack
 /// <summary>
 /// Filtros del listado paginado de posiciones (filtrado, orden por código y paginación en SQL). Search = contiene en código,
 /// código de zona, pasillo, rack, nivel o posición. ZoneId (una, 404 si no es del almacén) y ZoneIds (varias); Aisle/Rack/Level/
-/// Position = contiene; ProductPublicIds = posiciones con existencia de alguno de esos productos; Occupancy = uno o varios de
+/// Position = contiene; Lote 21: IsProvisional = true solo las pendientes de revisión, false solo las confirmadas; ProductPublicIds = posiciones con existencia de alguno de esos productos; Occupancy = uno o varios de
 /// EMPTY, PARTIAL, FULL, NO_CAPACITY (BinOccupancies); BinIds = solo esas posiciones (resolver ids ya elegidos).
 /// </summary>
 public sealed record WarehouseBinQuery(int? ZoneId = null, string? Search = null, bool IncludeInactive = false, bool OnlyWithStock = false,
     int[]? ZoneIds = null, string? Aisle = null, string? Rack = null, string? Level = null, string? Position = null,
-    Guid[]? ProductPublicIds = null, string[]? Occupancy = null, int[]? BinIds = null, int Skip = 0, int Take = 100);
+    Guid[]? ProductPublicIds = null, string[]? Occupancy = null, int[]? BinIds = null, int Skip = 0, int Take = 100,
+    bool? IsProvisional = null);
 
 /// <summary>
 /// Posición. QtyOnHand y ProductCount = existencia en mano y productos distintos con existencia; Occupancy = EMPTY, PARTIAL,
 /// FULL o NO_CAPACITY (WarehouseRules.Occupancy); cuando ProductCount es exactamente 1, SingleProduct* identifica ese producto.
+/// Lote 21: IsProvisional = creada desde un conteo y pendiente de revisión (confirmar con POST .../bins/{binId}/confirm-provisional);
+/// ProvisionalCycleCountId y ProvisionalCreatedAtUtc = de qué conteo y cuándo (se conservan tras confirmar).
 /// </summary>
 public sealed record WarehouseBinDto(int Id, int ZoneId, string ZoneCode, string? ZoneTypeCode, string Code, string? Aisle, string? Rack,
     string? Level, string? Position, decimal? MaxWeightKg, bool IsActive, decimal QtyOnHand, int ProductCount, int? MaxCapacityQty,
-    string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName);
+    string Occupancy, Guid? SingleProductPublicId, string? SingleProductSku, string? SingleProductName,
+    bool IsProvisional = false, int? ProvisionalCycleCountId = null, DateTime? ProvisionalCreatedAtUtc = null);
 
 /// <summary>Página del listado de posiciones (mismo sobre que productos, recibos y tareas).</summary>
 public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnlyList<WarehouseBinDto> Items);
@@ -94,7 +98,8 @@ public sealed record WarehouseBinPageDto(int Total, int Skip, int Take, IReadOnl
 /// Lote 14 — posición encontrada por la búsqueda entre almacenes (GET /warehouses/bins/search), para los filtros Posición del
 /// Kárdex y del Conteo: "Código · Zona · Almacén".
 /// </summary>
-public sealed record BinSearchItemDto(int Id, string Code, string? ZoneCode, Guid WarehousePublicId, string WarehouseCode, bool IsActive = true);
+public sealed record BinSearchItemDto(int Id, string Code, string? ZoneCode, Guid WarehousePublicId, string WarehouseCode, bool IsActive = true,
+    bool IsProvisional = false);
 
 /// <summary>
 /// Lote 11 — asignación del cupo máximo en bloque (POST /warehouses/{publicId}/bins/capacity). Filtros = los mismos del listado

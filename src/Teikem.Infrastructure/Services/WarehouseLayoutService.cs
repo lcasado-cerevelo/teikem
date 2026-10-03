@@ -193,7 +193,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
             q = q.Where(x => x.Bin.Code.Contains(s) || x.ZoneCode.Contains(s));
         }
         var rows = await q.OrderBy(x => x.WarehouseCode).ThenBy(x => x.Bin.Code).ThenBy(x => x.Bin.WarehouseBinId).Take(take).ToListAsync(ct);
-        return rows.Select(x => new BinSearchItemDto(x.Bin.WarehouseBinId, x.Bin.Code, x.ZoneCode, x.WarehousePublicId, x.WarehouseCode, x.Bin.IsActive))
+        return rows.Select(x => new BinSearchItemDto(x.Bin.WarehouseBinId, x.Bin.Code, x.ZoneCode, x.WarehousePublicId, x.WarehouseCode, x.Bin.IsActive, x.Bin.IsProvisional))
             .ToList();
     }
 
@@ -248,6 +248,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
 
         if (!query.IncludeInactive) q = q.Where(x => x.Bin.IsActive);
         if (query.ZoneId is int zoneId) q = q.Where(x => x.Bin.WarehouseZoneId == zoneId);
+        if (query.IsProvisional is bool provisional) q = q.Where(x => x.Bin.IsProvisional == provisional);   // Lote 21
         if (query.ZoneIds is { Length: > 0 } zoneIds) q = q.Where(x => zoneIds.Contains(x.Bin.WarehouseZoneId));
         if (query.BinIds is { Length: > 0 } binIds) q = q.Where(x => binIds.Contains(x.Bin.WarehouseBinId));
 
@@ -304,7 +305,8 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
             list.Add(new WarehouseBinDto(r.Bin.WarehouseBinId, r.Bin.WarehouseZoneId, r.ZoneCode, await LookupCodeAsync(r.ZoneTypeLookupId, ct),
                 r.Bin.Code, r.Bin.Aisle, r.Bin.Rack, r.Bin.Level, r.Bin.Position, r.Bin.MaxWeightKg, r.Bin.IsActive,
                 r.OnHand, r.ProductCount, r.Bin.MaxCapacityQty, WarehouseRules.Occupancy(r.OnHand, r.Bin.MaxCapacityQty),
-                single?.PublicId, single?.Sku, single?.Name));
+                single?.PublicId, single?.Sku, single?.Name,
+                r.Bin.IsProvisional, r.Bin.ProvisionalCycleCountId, r.Bin.ProvisionalCreatedAtUtc));
         }
         return list;
     }
@@ -313,7 +315,13 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     /// Alta de posición en una zona ACTIVA del almacén. Código explícito o compuesto de sus partes; único por almacén (409);
     /// capacidad de peso &gt; 0. WarehouseId sale de la zona (FK compuesta (Zona, Almacén) en SQL).
     /// </summary>
-    public async Task<WarehouseBinDto> CreateBinAsync(Guid warehousePublicId, WarehouseBinRequest req, CancellationToken ct)
+    public Task<WarehouseBinDto> CreateBinAsync(Guid warehousePublicId, WarehouseBinRequest req, CancellationToken ct)
+        => CreateBinCoreAsync(warehousePublicId, req, null, ct);
+
+    /// <summary>Marca de una posición provisional: quién la crea y desde qué conteo (ver CreateProvisionalBinAsync).</summary>
+    private sealed record ProvisionalMark(int? UserId, int CycleCountId);
+
+    private async Task<WarehouseBinDto> CreateBinCoreAsync(Guid warehousePublicId, WarehouseBinRequest req, ProvisionalMark? provisional, CancellationToken ct)
     {
         var errors = new Dictionary<string, string[]>();
         if (req.ZoneId is null) errors["zoneId"] = new[] { WarehouseRules.ZoneRequiredMessage };
@@ -337,11 +345,52 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
             Level = WarehouseRules.NormalizeBinPart(req.Level).Part, Position = WarehouseRules.NormalizeBinPart(req.Position).Part,
             MaxWeightKg = req.MaxWeightKg, MaxCapacityQty = req.MaxCapacityQty, IsActive = true,
         };
+        if (provisional is not null)
+        {
+            bin.IsProvisional = true;
+            bin.ProvisionalCreatedBy = provisional.UserId;
+            bin.ProvisionalCreatedAtUtc = DateTime.UtcNow;
+            bin.ProvisionalCycleCountId = provisional.CycleCountId;
+        }
         db.WarehouseBins.Add(bin);
         await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct); // UQ_WarehouseBin_WhCode es la segunda barrera
         return new WarehouseBinDto(bin.WarehouseBinId, zone.WarehouseZoneId, zone.Code, await LookupCodeAsync(zone.ZoneTypeLookupId, ct),
             bin.Code, bin.Aisle, bin.Rack, bin.Level, bin.Position, bin.MaxWeightKg, bin.IsActive, 0, 0, bin.MaxCapacityQty,
-            WarehouseRules.Occupancy(0, bin.MaxCapacityQty), null, null, null);
+            WarehouseRules.Occupancy(0, bin.MaxCapacityQty), null, null, null,
+            bin.IsProvisional, bin.ProvisionalCycleCountId, bin.ProvisionalCreatedAtUtc);
+    }
+
+    /// <summary>
+    /// Lote 21 — posición provisional desde un conteo (warehouse.count.capture): quien cuenta encontró producto donde el sistema no
+    /// tenía nada y la posición no existe. El conteo debe ser del tenant (404), estar activo y NO reconciliado (422 'El conteo ya
+    /// fue reconciliado; no admite posiciones nuevas.'); la zona, del almacén del conteo (404). Mismas validaciones que el alta de
+    /// posición (zona activa 422, código o partes 400, código repetido en el almacén 409) pero la posición nace marcada
+    /// IsProvisional con quién, cuándo y el conteo que la creó, y se puede usar ya en el conteo y en el inventario. El supervisor
+    /// (warehouse.manage) la confirma con ConfirmProvisionalBinAsync, la corrige o la desactiva.
+    /// </summary>
+    public async Task<WarehouseBinDto> CreateProvisionalBinAsync(int cycleCountId, WarehouseBinRequest req, CancellationToken ct)
+    {
+        var count = await db.Set<CycleCount>().AsNoTracking().FirstOrDefaultAsync(c => c.CycleCountId == cycleCountId && c.IsActive, ct)
+                    ?? throw new NotFoundException("Conteo");
+        var statusCode = await db.StatusCodes.AsNoTracking().Where(s => s.StatusCodeId == count.StatusCodeId).Select(s => s.InternalCode).FirstOrDefaultAsync(ct);
+        if (CycleCountStatuses.IsReconciled(statusCode ?? string.Empty)) throw new StatusRuleException(CycleCountRules.ProvisionalCountClosed);
+        var warehouse = await db.Warehouses.AsNoTracking().FirstAsync(w => w.WarehouseId == count.WarehouseId, ct);
+        return await CreateBinCoreAsync(warehouse.PublicId, req, new ProvisionalMark(tenant.UserId, count.CycleCountId), ct);
+    }
+
+    /// <summary>
+    /// Lote 21 — el supervisor (warehouse.manage) confirma una posición provisional: quita la marca IsProvisional (conserva quién,
+    /// cuándo y el conteo que la creó). Editar o desactivar siguen siendo los de siempre. Confirmar una que no es provisional →
+    /// 409 'La posición no está pendiente de revisión.'. Posición de otro almacén u otro tenant → 404.
+    /// </summary>
+    public async Task<WarehouseBinDto> ConfirmProvisionalBinAsync(Guid warehousePublicId, int binId, CancellationToken ct)
+    {
+        var w = await ResolveWarehouseAsync(warehousePublicId, ct);
+        var bin = await ResolveBinAsync(w, binId, track: true, ct);
+        if (!bin.IsProvisional) throw new ConflictException(WarehouseRules.BinNotProvisional);
+        bin.IsProvisional = false;
+        await db.SaveGuardedAsync(WarehouseRules.DuplicateBinMessage, ct);
+        return await BinDtoAsync(w.WarehouseId, bin.WarehouseBinId, ct);
     }
 
     /// <summary>

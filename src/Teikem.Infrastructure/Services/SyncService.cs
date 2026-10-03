@@ -21,9 +21,9 @@ namespace Teikem.Infrastructure.Contracts
 
     public sealed record SyncProductCategoryDto(int Id, string Name, int? ParentId, bool IsActive);
 
-    /// <summary>Posición con su zona. IsActive = posición, zona y almacén activos (si no, el aparato la borra).</summary>
+    /// <summary>Posición con su zona. IsActive = posición, zona y almacén activos (si no, el aparato la borra). Lote 21: IsProvisional = creada desde un conteo, pendiente de revisión.</summary>
     public sealed record SyncBinDto(int Id, string Code, Guid WarehousePublicId, int ZoneId, string ZoneCode, string ZoneName,
-        string? ZoneTypeCode, string? Aisle, string? Rack, string? Level, string? Position, bool IsActive);
+        string? ZoneTypeCode, string? Aisle, string? Rack, string? Level, string? Position, bool IsActive, bool IsProvisional = false);
 
     public sealed record SyncPurchaseOrderLineDto(int Id, Guid ProductPublicId, string Sku, string ProductName, decimal QtyOrdered,
         decimal QtyReceived, decimal QtyPending);
@@ -218,7 +218,7 @@ namespace Teikem.Infrastructure.Services
             var zoneTypes = await LookupCodesAsync(page.Where(x => x.Zone.ZoneTypeLookupId != null).Select(x => x.Zone.ZoneTypeLookupId!.Value), ct);
             var items = page.Select(x => new SyncBinDto(x.Bin.WarehouseBinId, x.Bin.Code, x.Warehouse.PublicId, x.Zone.WarehouseZoneId, x.Zone.Code,
                 x.Zone.Name, x.Zone.ZoneTypeLookupId is int zt ? zoneTypes.GetValueOrDefault(zt) : null, x.Bin.Aisle, x.Bin.Rack, x.Bin.Level,
-                x.Bin.Position, x.Bin.IsActive && x.Zone.IsActive && x.Warehouse.IsActive)).ToList();
+                x.Bin.Position, x.Bin.IsActive && x.Zone.IsActive && x.Warehouse.IsActive, x.Bin.IsProvisional)).ToList();
             return new SyncPage<SyncBinDto>(items, next, w.Now);
         }
 

@@ -64,6 +64,8 @@ public static class WarehouseRules
     public const string DuplicateWarehouseMessage = "Ya existe un almacén con ese código.";
     public const string DuplicateZoneMessage = "Ya existe una zona con ese código en el almacén.";
     public const string DuplicateBinMessage = "Ya existe una posición con ese código en el almacén.";
+    /// <summary>Lote 21: confirmar una posición que no es provisional.</summary>
+    public const string BinNotProvisional = "La posición no está pendiente de revisión.";
     public const string DuplicateDockMessage = "Ya existe un muelle con ese código en el almacén.";
 
     public const string ZoneHasActiveBins = "La zona tiene posiciones activas; desactívelas primero.";

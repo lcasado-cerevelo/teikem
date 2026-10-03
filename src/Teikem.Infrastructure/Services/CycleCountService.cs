@@ -201,6 +201,7 @@ public sealed class CycleCountService(
                 Counted = g.Count(l => l.CountedQty != null),
                 WithVariance = g.Count(l => l.CountedQty != null && l.CountedQty != l.SystemQty),
                 Net = g.Sum(l => l.CountedQty != null ? l.CountedQty.Value - l.SystemQty : 0m),
+                Corrected = g.Count(l => l.CorrectedAtUtc != null),
             })
             .ToDictionaryAsync(x => x.CycleCountId, ct);
         var warehouseIds = page.Select(c => c.WarehouseId).Distinct().ToList();
@@ -250,7 +251,7 @@ public sealed class CycleCountService(
                 TaskId: task?.WarehouseTaskId,
                 AssignedToName: task?.AssignedToUserId is int uid ? users.GetValueOrDefault(uid) : null,
                 Origin: origin?.Label, ChangesFromUtc: c.ChangesFromUtc, ChangesToUtc: c.ChangesToUtc,
-                AssignedToUserId: task?.AssignedToUserId);
+                AssignedToUserId: task?.AssignedToUserId, CorrectedLines: s?.Corrected ?? 0);
         }).ToList();
     }
 
@@ -330,6 +331,8 @@ public sealed class CycleCountService(
     /// Alta OPEN con número CC-#####: una línea por saldo en mano &gt; 0 de posiciones activas del almacén (el indicado o el
     /// único activo), filtrado por zonas, posiciones, productos y categorías (con subcategorías). SystemQty = foto. Más de
     /// 1000 líneas → 400 'El conteo admite como máximo 1000 líneas; acote los filtros.'. Crea una tarea COUNT en la cola.
+    /// Lote 21: con productPublicIds y sin binIds ni zoneIds es un conteo POR PRODUCTO (origen PRODUCT): una línea por cada
+    /// posición y lote donde el sistema dice que hay existencia; el producto sin existencia → 400 'NothingSelected'.
     /// </summary>
     public async Task<CycleCountDetailDto> CreateAsync(CycleCountCreateRequest? req, CancellationToken ct)
     {
@@ -388,7 +391,11 @@ public sealed class CycleCountService(
 
         await numbers.EnsureAsync(NumberKinds.CycleCount, null, ct);
         var initial = await statuses.GetInitialAsync(StatusDomains.CycleCountStatus, ct);
-        var manualOrigin = await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual, ct);   // Lote 14
+        // Lote 14: origen MANUAL. Lote 21: PRODUCT cuando se crea con productos y sin posiciones ni zonas (conteo por producto);
+        // si el catálogo aún no trae PRODUCT, cae a MANUAL.
+        var byProduct = req.ProductPublicIds is { Length: > 0 } && req.BinIds is not { Length: > 0 } && req.ZoneIds is not { Length: > 0 };
+        var manualOrigin = (byProduct ? await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Product, ct) : null)
+                           ?? await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual, ct);
 
         var id = await db.RunInTransactionAsync(async ct2 =>
         {
@@ -607,7 +614,7 @@ public sealed class CycleCountService(
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var (cc, _) = await LockEditableAsync(current.CycleCountId, ct2);
+            var (cc, ccStatus) = await LockEditableAsync(current.CycleCountId, ct2);
             EnsureRowVersion(cc, req.RowVersion);
 
             var lineIds = req.Lines.Select(l => l.LineId).Distinct().ToList();
@@ -635,15 +642,33 @@ public sealed class CycleCountService(
             }
             if (errors.Count > 0) throw new ValidationException(errors);
 
-            foreach (var (line, counted, serials) in changes)
-            {
-                line.CountedQty = counted;
-                line.CountedSerialsJson = serials is null ? null : JsonSerializer.Serialize(serials, Json);
-            }
+            var now = DateTime.UtcNow;
+            foreach (var (line, counted, serials) in changes) ApplyCaptureTo(line, counted, serials, ccStatus == CycleCountStatuses.Counted, now);
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
 
         return await GetAsync(id, null, ct);
+    }
+
+    /// <summary>
+    /// Lote 21 — aplica una captura a la línea con la regla única de evidencia (CycleCountRules.ApplyCapture): primera captura,
+    /// recaptura del mismo usuario con el conteo abierto, o CORRECCIÓN (otro usuario, o cualquiera con el conteo ya Contado).
+    /// CountedQty queda siempre con el valor vigente; la captura original se conserva. No mueve inventario.
+    /// </summary>
+    private void ApplyCaptureTo(CycleCountLine line, decimal? counted, IReadOnlyList<string>? serials, bool countFinished, DateTime nowUtc)
+    {
+        var next = CycleCountRules.ApplyCapture(
+            new CycleCountRules.CaptureState(line.CountedQty, line.CountedSerialsJson, line.CapturedQty, line.CapturedSerialsJson,
+                line.CapturedBy, line.CapturedAtUtc, line.CorrectedBy, line.CorrectedAtUtc),
+            counted, serials, tenant.UserId, nowUtc, countFinished);
+        line.CountedQty = next.CountedQty;
+        line.CountedSerialsJson = next.CountedSerialsJson;
+        line.CapturedQty = next.CapturedQty;
+        line.CapturedSerialsJson = next.CapturedSerialsJson;
+        line.CapturedBy = next.CapturedBy;
+        line.CapturedAtUtc = next.CapturedAtUtc;
+        line.CorrectedBy = next.CorrectedBy;
+        line.CorrectedAtUtc = next.CorrectedAtUtc;
     }
 
     public const string BatchLineRepeated = "La línea se repite en la solicitud.";
@@ -686,7 +711,7 @@ public sealed class CycleCountService(
 
         await db.RunInTransactionAsync(async ct2 =>
         {
-            var (cc, _) = await LockEditableAsync(current.CycleCountId, ct2);
+            var (cc, ccStatus) = await LockEditableAsync(current.CycleCountId, ct2);
             EnsureRowVersion(cc, req.RowVersion);
 
             var lines = await db.Set<CycleCountLine>().Where(l => l.CycleCountId == cc.CycleCountId).ToListAsync(ct2);
@@ -774,11 +799,8 @@ public sealed class CycleCountService(
             if (errors.Count > 0) throw new ValidationException(errors);
             if (lines.Count + added.Count > CycleCountRules.MaxLines) throw new ValidationException("lines", CycleCountRules.TooManyLines);
 
-            foreach (var (line, counted, serials) in changes)
-            {
-                line.CountedQty = counted;
-                line.CountedSerialsJson = serials is null ? null : JsonSerializer.Serialize(serials, Json);
-            }
+            var now = DateTime.UtcNow;
+            foreach (var (line, counted, serials) in changes) ApplyCaptureTo(line, counted, serials, ccStatus == CycleCountStatuses.Counted, now);
             db.Set<CycleCountLine>().AddRange(added);
             await db.SaveGuardedAsync(CycleCountRules.LineDuplicated, ct2);
         }, ct);
@@ -849,12 +871,13 @@ public sealed class CycleCountService(
                 .Where(b => b.WarehouseId == cc.WarehouseId && b.ProductId == product.ProductId && b.WarehouseBinId == bin.WarehouseBinId && b.LotId == lotId)
                 .SumAsync(b => b.QtyOnHand, ct2);
 
-            db.Set<CycleCountLine>().Add(new CycleCountLine
+            var added = new CycleCountLine
             {
                 CycleCountId = cc.CycleCountId, WarehouseBinId = bin.WarehouseBinId, ProductId = product.ProductId, LotId = lotId,
-                SystemQty = systemQty, CountedQty = counted,
-                CountedSerialsJson = serials is null ? null : JsonSerializer.Serialize(serials, Json),
-            });
+                SystemQty = systemQty,
+            };
+            ApplyCaptureTo(added, counted, serials, false, DateTime.UtcNow);   // lo encontrado es una primera captura de quien lo agrega
+            db.Set<CycleCountLine>().Add(added);
             await db.SaveGuardedAsync(CycleCountRules.LineDuplicated, ct2);
         }, ct);
 
@@ -902,8 +925,7 @@ public sealed class CycleCountService(
                 var now = balances.GetValueOrDefault(new LineKey(line.ProductId, line.WarehouseBinId, line.LotId))?.QtyOnHand ?? 0m;
                 if (!CycleCountRules.IsStale(line.SystemQty, now)) continue;
                 line.SystemQty = now;
-                line.CountedQty = null;
-                line.CountedSerialsJson = null;
+                ApplyCaptureTo(line, null, null, false, DateTime.UtcNow);   // sin captura: la línea vuelve a pendiente y pierde la evidencia
             }
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
         }, ct);
@@ -919,20 +941,34 @@ public sealed class CycleCountService(
     /// línea SIN escribir nada; ajustes ADJUSTMENT COUNT_VARIANCE por CONTADO − ACTUAL (o bajas/altas/TRANSFER en serie)
     /// con Ref CYCLE_COUNT; AdjustmentTxnId; tarea COUNT → DONE. Lote 14 (D7, D8): en un paso desde Pendiente o Contado a
     /// RECONCILED_VARIANCE 'Diferencia' (se asentó algún movimiento) o RECONCILED 'Concordancia', con fecha y usuario.
+    /// Lote 21: el cálculo de qué se asienta es BuildPlanAsync, el MISMO que usa la vista previa (PreviewReconcileAsync) y el
+    /// cierre en bloque; el motivo del movimiento de una línea corregida lleva la evidencia (quién contó, qué y quién corrigió).
     /// </summary>
     public async Task<CycleCountDetailDto> ReconcileAsync(int id, CountReconcileRequest? req, CancellationToken ct)
     {
-        var comment = TrimComment(req?.Comment);
+        await ReconcileCoreAsync(id, TrimComment(req?.Comment), req?.RowVersion, requireMatching: false, ct);
+        return await GetAsync(id, null, ct);
+    }
+
+    /// <summary>
+    /// El conteo cuadraba al revisarlo pero, ya con los saldos bloqueados, asentaría algo o tendría errores (la existencia cambió
+    /// entre la revisión y el cierre). Solo la lanza el cierre en bloque (requireMatching); revierte la transacción de ese conteo.
+    /// </summary>
+    private sealed class CountNoLongerMatchesException() : Exception("La existencia cambió mientras se cerraba el conteo.");
+
+    /// <summary>Reconciliación en una transacción; devuelve el estatus final (RECONCILED | RECONCILED_VARIANCE).</summary>
+    private async Task<string> ReconcileCoreAsync(int id, string? comment, string? rowVersion, bool requireMatching, CancellationToken ct)
+    {
         var current = await ResolveAsync(id, ct);
 
-        await db.RunInTransactionAsync(async ct2 =>
+        return await db.RunInTransactionAsync(async ct2 =>
         {
             // 1-2. Encabezado bloqueado y re-verificación.
             var cc = await LockCountAsync(current.CycleCountId, ct2);
             if (!cc.IsActive) throw new NotFoundException(CountWhat);
             var statusCode = await StatusCodeOfAsync(cc.StatusCodeId, ct2);
             if (CycleCountStatuses.IsReconciled(statusCode)) throw new StatusRuleException(CycleCountRules.CountNotOpen);
-            EnsureRowVersion(cc, req?.RowVersion);
+            EnsureRowVersion(cc, rowVersion);
 
             // 3. Todas contadas.
             var lines = await db.Set<CycleCountLine>().Where(l => l.CycleCountId == cc.CycleCountId)
@@ -949,89 +985,35 @@ public sealed class CycleCountService(
             foreach (var pid in productIds) await LockProductBalancesAsync(pid, ct2);
             var balances = await CurrentBalancesAsync(cc.WarehouseId, productIds, tracked: true, ct2);
 
-            var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct2);
-            var tracking = await TrackingCodesAsync(products.Values.Select(p => p.TrackingTypeLookupId), ct2);
-            var binIds = lines.Select(l => l.WarehouseBinId).Distinct().ToList();
-            var binCodes = await db.Set<WarehouseBin>().AsNoTracking()
-                .Where(b => b.WarehouseId == cc.WarehouseId && binIds.Contains(b.WarehouseBinId))
-                .ToDictionaryAsync(b => b.WarehouseBinId, b => b.Code, ct2);
-            bool IsSerial(CycleCountLine l) => tracking.GetValueOrDefault(products[l.ProductId].TrackingTypeLookupId, TrackingTypes.None) == TrackingTypes.Serial;
-
-            // Series: capturadas por línea (una serie en dos líneas → 400), esperadas HOY en cada posición y ubicación
-            // actual de las contadas.
-            var countedByLine = lines.Where(IsSerial).ToDictionary(l => l.CycleCountLineId, l => ParseSerials(l.CountedSerialsJson));
-            // Una serie se identifica por producto: la repetición se busca entre las líneas del MISMO producto.
-            string? twice = null;
-            foreach (var g in lines.Where(IsSerial).GroupBy(l => l.ProductId))
-            {
-                twice = CycleCountRules.FirstSerialCountedTwice(g.Select(l => (IEnumerable<string>)countedByLine[l.CycleCountLineId]));
-                if (twice is not null) break;
-            }
-            if (twice is not null) throw new ValidationException("lines", CycleCountRules.SerialCountedTwice(twice));
-
-            var serialPlans = await SerialContextAsync(cc.WarehouseId, lines.Where(IsSerial).ToList(), countedByLine, ct2);
-
-            // 5-6. Cálculo por línea contra el saldo ACTUAL; la guarda de reservado se evalúa ANTES de escribir nada.
+            // 5-6. Cálculo por línea contra el saldo ACTUAL (regla compartida con la vista previa); la guarda de reservado se
+            // evalúa ANTES de escribir nada.
+            var inputs = await LoadPlanInputsAsync(new[] { cc }, lines, ct2);
+            var plan = await BuildPlanAsync(cc, lines, inputs, balances, ct2);
+            if (requireMatching && (plan.BlockingError is not null || plan.ErrorLines > 0 || plan.Movements > 0))
+                throw new CountNoLongerMatchesException();
+            if (plan.BlockingError is not null) throw new ValidationException("lines", plan.BlockingError);
             var errors = new Dictionary<string, string[]>();
             string? firstError = null;
-            var plans = new List<(CycleCountLine Line, decimal Current, List<InventoryPosting> Postings)>();
-            for (var i = 0; i < lines.Count; i++)
+            for (var i = 0; i < plan.Lines.Count; i++)
             {
-                var line = lines[i];
-                var product = products[line.ProductId];
-                var binCode = binCodes.GetValueOrDefault(line.WarehouseBinId, line.WarehouseBinId.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                var balance = balances.GetValueOrDefault(new LineKey(line.ProductId, line.WarehouseBinId, line.LotId));
-                var currentQty = balance?.QtyOnHand ?? 0m;
-                var reserved = balance?.QtyReserved ?? 0m;
-                var counted = line.CountedQty!.Value;
-                if (CycleCountRules.CountBelowReserved(counted, reserved))
-                {
-                    var msg = CycleCountRules.ReservedAboveCount(product.Sku, binCode, counted, reserved);
-                    errors[$"lines[{i}]"] = new[] { msg };
-                    firstError ??= msg;
-                    continue;
-                }
-
-                var postings = new List<InventoryPosting>();
-                if (IsSerial(line))
-                {
-                    var ctx = serialPlans[line.CycleCountLineId];
-                    var v = CycleCountRules.SerialVariance(ctx.Expected, countedByLine[line.CycleCountLineId], ctx.Locations,
-                        cc.WarehouseId, line.WarehouseBinId, ctx.CountedElsewhere);
-                    foreach (var s in v.Removals)
-                        postings.Add(Adjustment(cc, line, 1m, inbound: false, line.LotId, s));
-                    foreach (var s in v.Additions)
-                        postings.Add(Adjustment(cc, line, 1m, inbound: true,
-                            ctx.Locations.TryGetValue(s, out var known) && known.LotId is not null ? known.LotId : line.LotId, s));
-                    foreach (var t in v.Transfers)
-                        postings.Add(new InventoryPosting(InventoryTxnTypes.Transfer, line.ProductId, 1m,
-                            LotId: t.LotId, SerialNumber: t.SerialNumber,
-                            FromWarehouseId: t.FromWarehouseId, FromBinId: t.FromBinId,
-                            ToWarehouseId: cc.WarehouseId, ToBinId: line.WarehouseBinId,
-                            RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId, Notes: NotesFor(cc)));
-                }
-                else
-                {
-                    var adjustment = CycleCountRules.Adjustment(counted, currentQty);
-                    if (adjustment != 0m)
-                        postings.Add(Adjustment(cc, line, Math.Abs(adjustment), inbound: adjustment > 0m, line.LotId, null));
-                }
-                plans.Add((line, currentQty, postings));
+                if (plan.Lines[i].Error is not string msg) continue;
+                errors[$"lines[{i}]"] = new[] { msg };
+                firstError ??= msg;
             }
             if (errors.Count > 0) throw new ConflictException(firstError!) { Errors = errors };
 
             // 7. Ledger (única vía de escritura): bloquea y re-verifica; un faltante → 409 y se revierte todo.
-            var all = plans.SelectMany(p => p.Postings).ToList();
+            var all = plan.Lines.SelectMany(p => p.Postings).ToList();
             IReadOnlyList<long> txnIds = all.Count == 0 ? Array.Empty<long>() : await ledger.PostAsync(all, ct2);
 
             // 5 y 8. Saldo al reconciliar, marca de foto vieja y enlace al primer movimiento de la línea.
             var k = 0;
-            foreach (var (line, currentQty, postings) in plans)
+            foreach (var p in plan.Lines)
             {
-                line.ReconciledSystemQty = currentQty;
-                line.SystemQtyChanged = currentQty != line.SystemQty;
-                if (postings.Count > 0) line.AdjustmentTxnId = txnIds[k];
-                k += postings.Count;
+                p.Line.ReconciledSystemQty = p.Current;
+                p.Line.SystemQtyChanged = p.Current != p.Line.SystemQty;
+                if (p.Postings.Count > 0) p.Line.AdjustmentTxnId = txnIds[k];
+                k += p.Postings.Count;
             }
 
             // 9. Lote 14 (D7, D8): en UN paso desde Pendiente o Contado al final que corresponda: Diferencia si alguna línea
@@ -1046,9 +1028,382 @@ public sealed class CycleCountService(
             // 10. Tarea COUNT → DONE.
             if (task is not null) await CompleteCountTaskAsync(task, ct2);
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+            return target;
         }, ct);
+    }
 
-        return await GetAsync(id, null, ct);
+    // ---------------------------------------------------------------- plan de reconciliación (compartido; Lote 21)
+
+    private sealed record SerialPlanInfo(IReadOnlyList<string> Removals, IReadOnlyList<string> Additions, IReadOnlyList<string> Transfers);
+
+    /// <summary>
+    /// Qué asentaría una línea: existencia actual y reservada, lo contado, el ajuste neto con signo y los asientos del ledger.
+    /// Pending = sin contar (no se planea; no es error). Error = el mensaje de 409 de la reconciliación para esta línea.
+    /// </summary>
+    private sealed record LinePlan(CycleCountLine Line, Product Product, string Tracking, decimal Current, decimal Reserved,
+        decimal? Counted, bool Pending, decimal Adjustment, List<InventoryPosting> Postings, string? Error, SerialPlanInfo? Serials);
+
+    private sealed record CountPlan(IReadOnlyList<LinePlan> Lines, string? BlockingError)
+    {
+        public int Pending => Lines.Count(l => l.Pending);
+        public int ErrorLines => Lines.Count(l => l.Error is not null);
+        public int Movements => Lines.Sum(l => l.Postings.Count);
+        public int LinesWithDifference => Lines.Count(l => l.Postings.Count > 0);
+        /// <summary>Se puede reconciliar ya: hay líneas, todas contadas, ninguna con error ni error del conteo entero.</summary>
+        public bool CanReconcile => Lines.Count > 0 && Pending == 0 && ErrorLines == 0 && BlockingError is null;
+        /// <summary>CUADRA: se puede reconciliar y no asentaría ningún movimiento (terminaría en Concordancia).</summary>
+        public bool Matches => CanReconcile && Movements == 0;
+    }
+
+    /// <summary>Datos de apoyo del plan, cargados en lote (uno o varios conteos): productos, seguimiento, posiciones, usuarios.</summary>
+    private sealed record PlanInputs(
+        IReadOnlyDictionary<int, Product> Products,
+        IReadOnlyDictionary<int, string> Tracking,
+        IReadOnlyDictionary<int, (string Code, string ZoneCode, bool IsProvisional)> Bins,
+        IReadOnlyDictionary<int, string> UserNames,
+        IReadOnlyDictionary<int, string> LotNumbers);
+
+    private async Task<PlanInputs> LoadPlanInputsAsync(IReadOnlyCollection<CycleCount> counts, IReadOnlyCollection<CycleCountLine> lines, CancellationToken ct)
+    {
+        var productIds = lines.Select(l => l.ProductId).Distinct().ToList();
+        var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId)).ToDictionaryAsync(p => p.ProductId, ct);
+        var tracking = await TrackingCodesAsync(products.Values.Select(p => p.TrackingTypeLookupId), ct);
+        var warehouseIds = counts.Select(c => c.WarehouseId).Distinct().ToList();
+        var binIds = lines.Select(l => l.WarehouseBinId).Distinct().ToList();
+        var bins = await (from b in db.Set<WarehouseBin>().AsNoTracking()
+                          join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
+                          where warehouseIds.Contains(b.WarehouseId) && binIds.Contains(b.WarehouseBinId)
+                          select new { b.WarehouseBinId, b.Code, ZoneCode = z.Code, b.IsProvisional }).ToListAsync(ct);
+        var userIds = lines.SelectMany(l => new[] { l.CapturedBy, l.CorrectedBy }).Where(u => u != null).Select(u => u!.Value).Distinct().ToList();
+        var users = userIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email ?? string.Empty, ct);
+        var lotIds = lines.Where(l => l.LotId != null).Select(l => l.LotId!.Value).Distinct().ToList();
+        var lots = await LotNumbersAsync(lotIds, productIds, ct);
+        return new PlanInputs(products, tracking, bins.ToDictionary(b => b.WarehouseBinId, b => (b.Code, b.ZoneCode, b.IsProvisional)), users, lots);
+    }
+
+    /// <summary>
+    /// ÚNICA implementación de la regla de reconciliación (D22): por línea, ajuste = CONTADO − existencia ACTUAL (en serie,
+    /// bajas, altas y traslados contra la ubicación actual) y la guarda de reservado (contado &lt; reservado → error de la
+    /// línea). No escribe nada: la reconciliación real la ejecuta con los saldos bloqueados y la vista previa y el cierre en
+    /// bloque con los saldos sin bloquear. Las líneas sin contar quedan Pending. Una serie capturada en dos líneas del mismo
+    /// producto → BlockingError (400 al reconciliar).
+    /// </summary>
+    private async Task<CountPlan> BuildPlanAsync(CycleCount cc, IReadOnlyList<CycleCountLine> lines, PlanInputs inp,
+        IReadOnlyDictionary<LineKey, StockBalance> balances, CancellationToken ct)
+    {
+        string TrackingOf(CycleCountLine l) => inp.Tracking.GetValueOrDefault(inp.Products[l.ProductId].TrackingTypeLookupId, TrackingTypes.None);
+        bool IsSerial(CycleCountLine l) => TrackingOf(l) == TrackingTypes.Serial;
+
+        // Series: capturadas por línea (una serie en dos líneas → error del conteo), esperadas HOY en cada posición y
+        // ubicación actual de las contadas.
+        var serialLines = lines.Where(l => l.CountedQty != null && IsSerial(l)).ToList();
+        var countedByLine = serialLines.ToDictionary(l => l.CycleCountLineId, l => ParseSerials(l.CountedSerialsJson));
+        // Una serie se identifica por producto: la repetición se busca entre las líneas del MISMO producto.
+        string? twice = null;
+        foreach (var g in serialLines.GroupBy(l => l.ProductId))
+        {
+            twice = CycleCountRules.FirstSerialCountedTwice(g.Select(l => (IEnumerable<string>)countedByLine[l.CycleCountLineId]));
+            if (twice is not null) break;
+        }
+        var serialPlans = await SerialContextAsync(cc.WarehouseId, serialLines, countedByLine, ct);
+
+        var plans = new List<LinePlan>(lines.Count);
+        foreach (var line in lines)
+        {
+            var product = inp.Products[line.ProductId];
+            var tracking = TrackingOf(line);
+            var binCode = inp.Bins.TryGetValue(line.WarehouseBinId, out var bin) ? bin.Code : line.WarehouseBinId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var balance = balances.GetValueOrDefault(new LineKey(line.ProductId, line.WarehouseBinId, line.LotId));
+            var currentQty = balance?.QtyOnHand ?? 0m;
+            var reserved = balance?.QtyReserved ?? 0m;
+            if (line.CountedQty is not decimal counted)
+            {
+                plans.Add(new LinePlan(line, product, tracking, currentQty, reserved, null, true, 0m, new List<InventoryPosting>(), null, null));
+                continue;
+            }
+            if (CycleCountRules.CountBelowReserved(counted, reserved))
+            {
+                var msg = CycleCountRules.ReservedAboveCount(product.Sku, binCode, counted, reserved);
+                plans.Add(new LinePlan(line, product, tracking, currentQty, reserved, counted, false, 0m, new List<InventoryPosting>(), msg, null));
+                continue;
+            }
+
+            var notes = NotesFor(cc, line, inp);
+            var postings = new List<InventoryPosting>();
+            SerialPlanInfo? serialInfo = null;
+            decimal adjustment;
+            if (IsSerial(line))
+            {
+                var ctx = serialPlans[line.CycleCountLineId];
+                var v = CycleCountRules.SerialVariance(ctx.Expected, countedByLine[line.CycleCountLineId], ctx.Locations,
+                    cc.WarehouseId, line.WarehouseBinId, ctx.CountedElsewhere);
+                foreach (var s in v.Removals)
+                    postings.Add(Adjustment(cc, line, 1m, inbound: false, line.LotId, s, notes));
+                foreach (var s in v.Additions)
+                    postings.Add(Adjustment(cc, line, 1m, inbound: true,
+                        ctx.Locations.TryGetValue(s, out var known) && known.LotId is not null ? known.LotId : line.LotId, s, notes));
+                foreach (var t in v.Transfers)
+                    postings.Add(new InventoryPosting(InventoryTxnTypes.Transfer, line.ProductId, 1m,
+                        LotId: t.LotId, SerialNumber: t.SerialNumber,
+                        FromWarehouseId: t.FromWarehouseId, FromBinId: t.FromBinId,
+                        ToWarehouseId: cc.WarehouseId, ToBinId: line.WarehouseBinId,
+                        RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId, Notes: notes));
+                adjustment = v.Additions.Count + v.Transfers.Count - v.Removals.Count;
+                serialInfo = new SerialPlanInfo(v.Removals, v.Additions, v.Transfers.Select(t => t.SerialNumber).ToList());
+            }
+            else
+            {
+                adjustment = CycleCountRules.Adjustment(counted, currentQty);
+                if (adjustment != 0m)
+                    postings.Add(Adjustment(cc, line, Math.Abs(adjustment), inbound: adjustment > 0m, line.LotId, null, notes));
+            }
+            plans.Add(new LinePlan(line, product, tracking, currentQty, reserved, counted, false, adjustment, postings, null, serialInfo));
+        }
+        return new CountPlan(plans, twice is null ? null : CycleCountRules.SerialCountedTwice(twice));
+    }
+
+    /// <summary>Saldos actuales (sin bloquear) por almacén, para planear varios conteos de una vez.</summary>
+    private async Task<Dictionary<int, IReadOnlyDictionary<LineKey, StockBalance>>> BalancesByWarehouseAsync(
+        IReadOnlyCollection<CycleCount> counts, IReadOnlyCollection<CycleCountLine> lines, CancellationToken ct)
+    {
+        var result = new Dictionary<int, IReadOnlyDictionary<LineKey, StockBalance>>();
+        var countWarehouse = counts.ToDictionary(c => c.CycleCountId, c => c.WarehouseId);
+        foreach (var g in lines.GroupBy(l => countWarehouse[l.CycleCountId]))
+            result[g.Key] = await CurrentBalancesAsync(g.Key, g.Select(l => l.ProductId), tracked: false, ct);
+        return result;
+    }
+
+    /// <summary>
+    /// Vista previa de reconciliar (warehouse.count): lo que haría ReconcileAsync AHORA, sin escribir ni bloquear. Por línea:
+    /// existencia actual, reservado, contado (con su evidencia), ajuste, saldo resultante y el error que daría; totales y
+    /// pendientes (dato, no error). Conteo ya reconciliado → 422 'El conteo ya fue reconciliado; solo se consulta.'.
+    /// </summary>
+    public async Task<ReconcilePreviewDto> PreviewReconcileAsync(int id, CancellationToken ct)
+    {
+        var cc = await ResolveAsync(id, ct);
+        var statusCode = await StatusCodeOfAsync(cc.StatusCodeId, ct);
+        if (CycleCountStatuses.IsReconciled(statusCode)) throw new StatusRuleException(CycleCountRules.CountNotOpen);
+
+        var lines = await db.Set<CycleCountLine>().AsNoTracking().Where(l => l.CycleCountId == cc.CycleCountId)
+            .OrderBy(l => l.CycleCountLineId).ToListAsync(ct);
+        var header = (await MapHeadersAsync(new[] { cc }, ct))[0];
+        var rowVersion = Convert.ToBase64String(cc.RowVersion ?? Array.Empty<byte>());
+        if (lines.Count == 0)
+            return new ReconcilePreviewDto(header, Array.Empty<ReconcilePreviewLineDto>(), new ReconcilePreviewTotalsDto(0, 0, 0, 0, 0, false, null), null, rowVersion);
+
+        var inputs = await LoadPlanInputsAsync(new[] { cc }, lines, ct);
+        var balances = await CurrentBalancesAsync(cc.WarehouseId, lines.Select(l => l.ProductId), tracked: false, ct);
+        var plan = await BuildPlanAsync(cc, lines, inputs, balances, ct);
+        var dtos = plan.Lines.Select(p => PreviewLine(p, inputs)).ToList();
+        var totals = new ReconcilePreviewTotalsDto(plan.Lines.Count, plan.Pending, plan.LinesWithDifference, plan.Movements, plan.ErrorLines,
+            plan.Matches, plan.CanReconcile ? CycleCountRules.ReconcileTarget(plan.Movements) : null);
+        return new ReconcilePreviewDto(header, dtos, totals, plan.BlockingError, rowVersion);
+    }
+
+    private ReconcilePreviewLineDto PreviewLine(LinePlan p, PlanInputs inp)
+    {
+        var l = p.Line;
+        var bin = inp.Bins.GetValueOrDefault(l.WarehouseBinId);
+        return new ReconcilePreviewLineDto(l.CycleCountLineId, l.WarehouseBinId, bin.Code ?? string.Empty, bin.ZoneCode ?? string.Empty, bin.IsProvisional,
+            p.Product.PublicId, p.Product.Sku, p.Product.Name, p.Tracking, l.LotId, l.LotId is int lid ? inp.LotNumbers.GetValueOrDefault(lid) : null,
+            l.SystemQty, p.Current, p.Reserved, p.Counted, p.Pending,
+            l.CapturedQty, NameOf(inp, l.CapturedBy), Utc(l.CapturedAtUtc), NameOf(inp, l.CorrectedBy), Utc(l.CorrectedAtUtc), l.CorrectedAtUtc != null,
+            p.Adjustment, p.Current + p.Adjustment, p.Postings.Count, p.Current != l.SystemQty, p.Error,
+            p.Serials is null ? null : new ReconcilePreviewSerialsDto(p.Serials.Removals, p.Serials.Additions, p.Serials.Transfers));
+    }
+
+    private static string? NameOf(PlanInputs inp, int? userId) => userId is int u ? inp.UserNames.GetValueOrDefault(u) : null;
+
+    private static DateTime? Utc(DateTime? value) => value is DateTime v ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : null;
+
+    // ---------------------------------------------------------------- lista "Por revisar" (Lote 21)
+
+    /// <summary>
+    /// Lista "Por revisar" (warehouse.count): conteos ya contados (Contado; con IncludeOpen también los Pendientes con todas sus
+    /// líneas capturadas), más recientes primero, con quién contó, el primer producto (y cuántos más), posiciones, líneas,
+    /// cuántas difieren y si cuadra. Se calcula con el MISMO plan que la vista previa y en lotes: las líneas, los saldos, los
+    /// productos y los usuarios de TODA la página salen de una consulta cada uno (sin N+1 por conteo).
+    /// </summary>
+    public async Task<CycleCountReviewPageDto> ReviewAsync(CycleCountReviewQuery? q, CancellationToken ct)
+    {
+        q ??= new CycleCountReviewQuery();
+        var skip = Math.Max(0, q.Skip);
+        var take = Math.Clamp(q.Take <= 0 ? 50 : q.Take, 1, CycleCountRules.MaxListRows);
+        var statusCodes = q.IncludeOpen ? new[] { CycleCountStatuses.Counted, CycleCountStatuses.Open } : new[] { CycleCountStatuses.Counted };
+        var query = await BuildListQueryAsync(new CycleCountQuery(
+            WarehousePublicIds: q.WarehousePublicId is Guid w ? new[] { w } : null, Status: statusCodes, Search: q.Search), ct);
+
+        // Un Pendiente solo es "por revisar" si ya tiene todas sus líneas capturadas.
+        var openId = await db.StatusCodes.AsNoTracking()
+            .Where(s => s.Entity == StatusDomains.CycleCountStatus && s.InternalCode == CycleCountStatuses.Open)
+            .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+        var lineSet = db.Set<CycleCountLine>().AsNoTracking();
+        query = query.Where(c => c.StatusCodeId != openId
+                                 || (lineSet.Any(l => l.CycleCountId == c.CycleCountId) && !lineSet.Any(l => l.CycleCountId == c.CycleCountId && l.CountedQty == null)));
+        if (q.CountedByUserId is int by) query = query.Where(c => lineSet.Any(l => l.CycleCountId == c.CycleCountId && l.CapturedBy == by));
+
+        var total = await query.CountAsync(ct);
+        var page = total == 0 ? new List<CycleCount>() : await query.OrderByDescending(c => c.CreatedAtUtc).ThenByDescending(c => c.CycleCountId)
+            .Skip(skip).Take(take).ToListAsync(ct);
+        if (page.Count == 0) return new CycleCountReviewPageDto(total, skip, take, Array.Empty<CycleCountReviewItemDto>());
+
+        var headers = await MapHeadersAsync(page, ct);
+        var countIds = page.Select(c => c.CycleCountId).ToList();
+        var lines = await db.Set<CycleCountLine>().AsNoTracking().Where(l => countIds.Contains(l.CycleCountId)).OrderBy(l => l.CycleCountLineId).ToListAsync(ct);
+        var inputs = await LoadPlanInputsAsync(page, lines, ct);
+        var balances = await BalancesByWarehouseAsync(page, lines, ct);
+        var linesByCount = lines.ToLookup(l => l.CycleCountId);
+
+        var items = new List<CycleCountReviewItemDto>(page.Count);
+        for (var i = 0; i < page.Count; i++)
+        {
+            var cc = page[i];
+            var own = linesByCount[cc.CycleCountId].ToList();
+            var plan = own.Count == 0
+                ? new CountPlan(Array.Empty<LinePlan>(), null)
+                : await BuildPlanAsync(cc, own, inputs, balances.GetValueOrDefault(cc.WarehouseId) ?? new Dictionary<LineKey, StockBalance>(), ct);
+            var capturers = own.Where(l => l.CapturedBy != null).GroupBy(l => l.CapturedBy!.Value)
+                .OrderByDescending(g => g.Count()).ThenBy(g => g.Key).ToList();
+            var firstProduct = own.Select(l => inputs.Products[l.ProductId]).OrderBy(p => p.Sku, StringComparer.Ordinal).ThenBy(p => p.ProductId).FirstOrDefault();
+            var distinctProducts = own.Select(l => l.ProductId).Distinct().Count();
+            items.Add(new CycleCountReviewItemDto(headers[i],
+                capturers.Count > 0 ? capturers[0].Key : null, capturers.Count > 0 ? inputs.UserNames.GetValueOrDefault(capturers[0].Key) : null, capturers.Count,
+                firstProduct?.PublicId, firstProduct?.Sku, firstProduct?.Name, Math.Max(0, distinctProducts - 1),
+                own.Select(l => l.WarehouseBinId).Distinct().Count(), own.Count, plan.Pending, plan.LinesWithDifference, plan.ErrorLines,
+                plan.Movements, own.Count(l => l.CorrectedAtUtc != null), plan.Matches));
+        }
+        return new CycleCountReviewPageDto(total, skip, take, items);
+    }
+
+    // ---------------------------------------------------------------- cierre en bloque de los que cuadran (Lote 21)
+
+    public const string SkipWouldPost = "WouldPost";
+    public const string SkipErrors = "Errors";
+    public const string SkipPending = "Pending";
+    public const string SkipStale = "Stale";
+    public const string SkipNotCounted = "NotCounted";
+    public const string SkipAlreadyReconciled = "AlreadyReconciled";
+    public const string SkipNotFound = "NotFound";
+    public const string SkipNoLines = "NoLines";
+    public const string SkipFailed = "Failed";
+
+    /// <summary>
+    /// Cierra en bloque los conteos que CUADRAN (warehouse.count). Candidatos: los indicados en Ids o, sin ellos, los Contados del
+    /// almacén (o de todos) —con IncludeOpen también los Pendientes con todas sus líneas capturadas—, hasta 200. Cada uno se
+    /// evalúa con el MISMO plan que la reconciliación contra la existencia ACTUAL (no la foto); solo los que no asentarían
+    /// ningún movimiento y no tienen errores se reconcilian (terminan en Concordancia), cada uno en su PROPIA transacción y
+    /// volviendo a comprobar con los saldos bloqueados (si la existencia cambió en medio → Stale). Los demás se informan con el
+    /// motivo (WouldPost n, Errors n, Pending n, Stale, …) y quedan para revisar. Un fallo de uno no afecta a los demás.
+    /// </summary>
+    public async Task<CycleCountReconcileMatchingResultDto> ReconcileMatchingAsync(CountReconcileMatchingRequest? req, CancellationToken ct)
+    {
+        req ??= new CountReconcileMatchingRequest();
+        var comment = TrimComment(req.Comment);
+        var explicitIds = req.Ids is { Length: > 0 } ? req.Ids.Distinct().ToList() : null;
+        if (explicitIds is { Count: > CycleCountRules.MaxBulkCounts }) throw new ValidationException("ids", CycleCountRules.BulkTooMany);
+
+        var query = db.Set<CycleCount>().AsNoTracking().Where(c => c.IsActive);
+        if (req.WarehousePublicId is Guid wp)
+        {
+            var warehouse = await ResolveWarehouseOrDefaultAsync(wp, ct);
+            query = query.Where(c => c.WarehouseId == warehouse.WarehouseId);
+        }
+        var skipped = new List<CycleCountSkippedItemDto>();
+        var truncated = false;
+        List<CycleCount> candidates;
+        if (explicitIds is not null)
+        {
+            candidates = await query.Where(c => explicitIds.Contains(c.CycleCountId)).OrderBy(c => c.CycleCountId).ToListAsync(ct);
+            foreach (var missing in explicitIds.Except(candidates.Select(c => c.CycleCountId)).OrderBy(x => x))
+                skipped.Add(new CycleCountSkippedItemDto(missing, null, SkipNotFound, "El conteo no existe."));
+        }
+        else
+        {
+            var codes = req.IncludeOpen ? new[] { CycleCountStatuses.Counted, CycleCountStatuses.Open } : new[] { CycleCountStatuses.Counted };
+            var ids = await db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.CycleCountStatus && codes.Contains(s.InternalCode))
+                .Select(s => s.StatusCodeId).ToListAsync(ct);
+            var openId = await db.StatusCodes.AsNoTracking()
+                .Where(s => s.Entity == StatusDomains.CycleCountStatus && s.InternalCode == CycleCountStatuses.Open)
+                .Select(s => (int?)s.StatusCodeId).FirstOrDefaultAsync(ct);
+            var lineSet = db.Set<CycleCountLine>().AsNoTracking();
+            candidates = await query.Where(c => ids.Contains(c.StatusCodeId)
+                                                && (c.StatusCodeId != openId
+                                                    || (lineSet.Any(l => l.CycleCountId == c.CycleCountId) && !lineSet.Any(l => l.CycleCountId == c.CycleCountId && l.CountedQty == null))))
+                .OrderBy(c => c.CycleCountId).Take(CycleCountRules.MaxBulkCounts + 1).ToListAsync(ct);
+            if (candidates.Count > CycleCountRules.MaxBulkCounts) { truncated = true; candidates.RemoveAt(candidates.Count - 1); }
+        }
+
+        var statusMap = await StatusMapAsync(StatusDomains.CycleCountStatus, ct);
+        var countIds = candidates.Select(c => c.CycleCountId).ToList();
+        var lines = await db.Set<CycleCountLine>().AsNoTracking().Where(l => countIds.Contains(l.CycleCountId)).OrderBy(l => l.CycleCountLineId).ToListAsync(ct);
+        var evaluable = candidates.Where(c =>
+        {
+            var code = statusMap.GetValueOrDefault(c.StatusCodeId).Code;
+            return !CycleCountStatuses.IsReconciled(code);
+        }).ToList();
+        var evalLines = lines.Where(l => evaluable.Any(c => c.CycleCountId == l.CycleCountId)).ToList();
+        var inputs = evalLines.Count == 0 ? null : await LoadPlanInputsAsync(evaluable, evalLines, ct);
+        var balances = evalLines.Count == 0 ? new Dictionary<int, IReadOnlyDictionary<LineKey, StockBalance>>() : await BalancesByWarehouseAsync(evaluable, evalLines, ct);
+        var linesByCount = lines.ToLookup(l => l.CycleCountId);
+
+        var closed = new List<CycleCountClosedItemDto>();
+        foreach (var cc in candidates)
+        {
+            var code = statusMap.GetValueOrDefault(cc.StatusCodeId).Code;
+            if (CycleCountStatuses.IsReconciled(code))
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipAlreadyReconciled, CycleCountRules.CountNotOpen));
+                continue;
+            }
+            if (code == CycleCountStatuses.Open && !req.IncludeOpen)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipNotCounted, "El conteo todavía no se termina de contar."));
+                continue;
+            }
+            var own = linesByCount[cc.CycleCountId].ToList();
+            if (own.Count == 0)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipNoLines, CycleCountRules.NoLines));
+                continue;
+            }
+            var plan = await BuildPlanAsync(cc, own, inputs!, balances.GetValueOrDefault(cc.WarehouseId) ?? new Dictionary<LineKey, StockBalance>(), ct);
+            if (plan.Pending > 0) { skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipPending, CycleCountRules.CountIncomplete(plan.Pending), plan.Pending)); continue; }
+            if (plan.BlockingError is not null) { skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipErrors, plan.BlockingError, 1)); continue; }
+            if (plan.ErrorLines > 0)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipErrors, plan.Lines.First(l => l.Error is not null).Error!, plan.ErrorLines));
+                continue;
+            }
+            if (plan.Movements > 0)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipWouldPost,
+                    $"Asentaría {plan.Movements.ToString(System.Globalization.CultureInfo.InvariantCulture)} movimiento(s); revíselo.", plan.Movements));
+                continue;
+            }
+
+            // Cuadra: se cierra en su propia transacción, comprobando de nuevo con los saldos bloqueados.
+            try
+            {
+                var final = await ReconcileCoreAsync(cc.CycleCountId, comment, null, requireMatching: true, ct);
+                closed.Add(new CycleCountClosedItemDto(cc.CycleCountId, cc.Number, final, own.Count));
+            }
+            catch (CountNoLongerMatchesException)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipStale, "La existencia cambió mientras se cerraba; revíselo."));
+            }
+            catch (Exception ex) when (ex is StatusRuleException or ConflictException or NotFoundException or ValidationException)
+            {
+                skipped.Add(new CycleCountSkippedItemDto(cc.CycleCountId, cc.Number, SkipFailed, ex.Message));
+            }
+            finally
+            {
+                db.ChangeTracker.Clear();
+            }
+        }
+        return new CycleCountReconcileMatchingResultDto(candidates.Count + skipped.Count(s => s.ReasonCode == SkipNotFound), closed,
+            skipped.OrderBy(s => s.Id).ToList(), truncated);
     }
 
     // ================================================================ baja
@@ -1093,6 +1448,7 @@ public sealed class CycleCountService(
             LineCount = lines.Count, CountedLines = lines.Count(l => l.CountedQty != null),
             VarianceLines = lines.Count(l => l.CountedQty is decimal c && c != l.SystemQty),
             NetVariance = lines.Sum(l => CycleCountRules.Variance(l.CountedQty, l.SystemQty) ?? 0m),
+            CorrectedLines = lines.Count(l => l.CorrectedAtUtc != null),
         };
         var rowVersion = Convert.ToBase64String(cc.RowVersion ?? Array.Empty<byte>());
         if (lines.Count == 0) return new CycleCountDetailDto(header, Array.Empty<CycleCountLineDto>(), rowVersion);
@@ -1102,7 +1458,11 @@ public sealed class CycleCountService(
         var bins = await (from b in db.Set<WarehouseBin>().AsNoTracking()
                           join z in db.Set<WarehouseZone>().AsNoTracking() on b.WarehouseZoneId equals z.WarehouseZoneId
                           where b.WarehouseId == cc.WarehouseId && binIds.Contains(b.WarehouseBinId)
-                          select new { b.WarehouseBinId, b.Code, ZoneCode = z.Code }).ToDictionaryAsync(b => b.WarehouseBinId, ct);
+                          select new { b.WarehouseBinId, b.Code, ZoneCode = z.Code, b.IsProvisional }).ToDictionaryAsync(b => b.WarehouseBinId, ct);
+        var userIds = lines.SelectMany(l => new[] { l.CapturedBy, l.CorrectedBy }).Where(u => u != null).Select(u => u!.Value).Distinct().ToList();
+        var userNames = userIds.Count == 0
+            ? new Dictionary<int, string>()
+            : await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email ?? string.Empty, ct);
         var products = await db.Set<Product>().AsNoTracking().Where(p => productIds.Contains(p.ProductId))
             .Select(p => new { p.ProductId, p.PublicId, p.Sku, p.Name, p.ProductCategoryId, p.TrackingTypeLookupId, p.Barcode })
             .ToDictionaryAsync(p => p.ProductId, ct);
@@ -1164,7 +1524,10 @@ public sealed class CycleCountService(
                 !reconciled && CycleCountRules.IsStale(l.SystemQty, currentQty), currentQty,
                 l.ReconciledSystemQty, l.SystemQtyChanged,
                 l.ReconciledSystemQty is decimal rs && l.CountedQty is decimal cq ? cq - rs : null,
-                l.AdjustmentTxnId, p.Barcode));
+                l.AdjustmentTxnId, p.Barcode,
+                l.CapturedQty, l.CapturedBy is int cb ? userNames.GetValueOrDefault(cb) : null, l.CapturedBy, Utc(l.CapturedAtUtc),
+                l.CorrectedBy is int xb ? userNames.GetValueOrDefault(xb) : null, l.CorrectedBy, Utc(l.CorrectedAtUtc), l.CorrectedAtUtc != null,
+                bin?.IsProvisional ?? false));
         }
         return new CycleCountDetailDto(header, dtos, rowVersion);
     }
@@ -1201,14 +1564,27 @@ public sealed class CycleCountService(
 
     private static string? TrimComment(string? comment) => string.IsNullOrWhiteSpace(comment) ? null : comment.Trim();
 
-    private static string NotesFor(CycleCount cc) => $"Conteo {cc.Number}";
+    /// <summary>
+    /// Motivo del movimiento de una línea: 'Conteo CC-00001' y, si la cantidad fue corregida, la evidencia (quién contó, qué contó
+    /// y quién la corrigió, con fechas en la hora de la compañía). Ver CycleCountRules.LedgerNotes.
+    /// </summary>
+    private string NotesFor(CycleCount cc, CycleCountLine line, PlanInputs inp)
+    {
+        string? Local(DateTime? utc) => utc is DateTime v
+            ? TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(v, DateTimeKind.Utc), clock.Zone).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture)
+            : null;
+        var state = new CycleCountRules.CaptureState(line.CountedQty, line.CountedSerialsJson, line.CapturedQty, line.CapturedSerialsJson,
+            line.CapturedBy, line.CapturedAtUtc, line.CorrectedBy, line.CorrectedAtUtc);
+        return CycleCountRules.LedgerNotes(cc.Number, state, NameOf(inp, line.CapturedBy), Local(line.CapturedAtUtc),
+            NameOf(inp, line.CorrectedBy), Local(line.CorrectedAtUtc));
+    }
 
-    private static InventoryPosting Adjustment(CycleCount cc, CycleCountLine line, decimal magnitude, bool inbound, int? lotId, string? serialNumber)
+    private static InventoryPosting Adjustment(CycleCount cc, CycleCountLine line, decimal magnitude, bool inbound, int? lotId, string? serialNumber, string notes)
         => new(InventoryTxnTypes.Adjustment, line.ProductId, magnitude,
             LotId: lotId, SerialNumber: serialNumber,
             FromWarehouseId: inbound ? null : cc.WarehouseId, FromBinId: inbound ? null : line.WarehouseBinId,
             ToWarehouseId: inbound ? cc.WarehouseId : null, ToBinId: inbound ? line.WarehouseBinId : null,
-            RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId, ReasonCode: AdjustmentReasons.CountVariance, Notes: NotesFor(cc));
+            RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId, ReasonCode: AdjustmentReasons.CountVariance, Notes: notes);
 
     private static bool Contains(string? value, string search) => value is not null && value.Contains(search, StringComparison.OrdinalIgnoreCase);
 
