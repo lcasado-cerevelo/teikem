@@ -3,6 +3,7 @@ import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
 import { api, unwrap } from '../api/client'
+import { refreshTenantFormat } from '../format/tenantFormatApi'
 import { addDeviceIdentity, clearDeviceIdentity, dbNameFor, getSessionState, saveUserSession, updateDeviceIdentity } from './session'
 
 const APP_VERSION = String(Constants.expoConfig?.version ?? '1.0.0')
@@ -58,6 +59,9 @@ export async function loginWithPin(devicePublicId: string, deviceSecret: string,
     userId,
     fullName,
   })
+  // Región y formatos de la compañía para esta sesión (se guardan en la base local); sin esperar: la entrada no se
+  // detiene por esto y, si falla, se usan los guardados o los de Puerto Rico.
+  void refreshTenantFormat()
 }
 
 /** Aviso periódico de vida (docs/mobile/app-almacen-plan.md §1): actualiza el almacén, el tema y (Lote 16) el modo de

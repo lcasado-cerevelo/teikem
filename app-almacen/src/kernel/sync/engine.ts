@@ -5,6 +5,7 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
 
 import { sendHeartbeat } from '../auth/deviceAuth'
+import { refreshTenantFormat } from '../format/tenantFormatApi'
 import { downloadForReceiving, type DownloadResult } from './download'
 import { countPending, runOutbox, subscribeOutbox, type RunOutboxResult } from './outbox'
 
@@ -49,6 +50,9 @@ async function runOnce(): Promise<SyncSummary> {
       // Lote 16: el heartbeat va antes de bajar: trae el almacén por defecto y su modo de recepción (directo o con
       // acomodo), y la bajada de posiciones usa ese almacén. Hasta este lote no lo llamaba nadie.
       await sendHeartbeat()
+      // Región y formatos de la compañía: un cambio hecho en la web llega aquí en la siguiente pasada. Si falla, se
+      // siguen usando los guardados (refreshTenantFormat no lanza).
+      await refreshTenantFormat()
       download = await downloadForReceiving()
     }
   } catch (err) {

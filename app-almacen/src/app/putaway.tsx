@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -7,17 +7,19 @@ import { useT } from '../kernel/i18n/useT'
 import { ApiError } from '../kernel/api/client'
 import { BigButton } from '../kernel/ui/BigButton'
 import { ScanField } from '../kernel/ui/ScanField'
-import { colors, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { completeTask, fetchOpenPutawayTasks, fetchPutawaySuggestions, findBinByCode, startTask, type PutawaySuggestion } from '../features/putaway/putawayApi'
 import { sortTasksMineFirst, type PutawayTask } from '../features/putaway/putawayLogic'
-import { formatQuantity } from '../kernel/i18n/numberFormat'
+import { useFormat } from '../kernel/format/useFormat'
+import { ScanMessage } from '../kernel/ui/ScanMessage'
 
 /** Pantalla 4 (docs/mobile/app-almacen-plan.md §2): lista de tareas PUTAWAY (mías primero), escanear la posición
  *  destino y completar. Necesita señal (docs/lote8A-app-decisiones.md, segunda entrega): la tarea es de todo el
  *  almacén, no solo de este aparato, así que cada acción es una llamada directa, sin cola. */
 export default function PutawayScreen() {
   const { t } = useT()
+  const f = useFormat()
   const router = useRouter()
   const { device, session } = useSession()
   const warehousePublicId = device?.defaultWarehousePublicId ?? null
@@ -28,6 +30,8 @@ export default function PutawayScreen() {
   const [suggestions, setSuggestions] = useState<PutawaySuggestion[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
+  // aviso verde del último acomodo hecho, en la lista (se queda hasta abrir otra tarea)
+  const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(() => {
     if (!warehousePublicId) return
@@ -42,6 +46,7 @@ export default function PutawayScreen() {
   async function openTask(task: PutawayTask) {
     setBusy(true)
     setScanError(null)
+    setNotice(null)
     try {
       await startTask(task.id)
       const found = await fetchPutawaySuggestions(task.id)
@@ -66,6 +71,7 @@ export default function PutawayScreen() {
       }
       await completeTask(selected.id, bin.id, selected.quantity)
       vibrateOk()
+      setNotice(t('putaway.done', { sku: selected.sku, bin: code }))
       setSelected(null)
       setSuggestions(null)
       setScanError(null)
@@ -87,8 +93,9 @@ export default function PutawayScreen() {
   }
 
   if (selected) {
+    // ScrollView: con las letras grandes y la posición sugerida, en un aparato corto el botón quedaba fuera de la pantalla
     return (
-      <View style={styles.fill}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{selected.sku}</Text>
         <Text style={styles.help}>{selected.productName}</Text>
         {suggestions && suggestions.length > 0 ? (
@@ -107,13 +114,14 @@ export default function PutawayScreen() {
             setSuggestions(null)
           }}
         />
-      </View>
+      </ScrollView>
     )
   }
 
   return (
     <View style={styles.fill}>
       <Text style={styles.title}>{t('home.putaway')}</Text>
+      <ScanMessage tone="ok" message={notice} />
       {listError ? (
         <View style={styles.center}>
           <Text style={styles.error}>{listError}</Text>
@@ -135,7 +143,7 @@ export default function PutawayScreen() {
                 <Text style={styles.rowTitle}>{item.sku}</Text>
                 <Text style={styles.help}>{item.productName}</Text>
               </View>
-              <Text style={styles.rowQty}>{item.quantity != null ? formatQuantity(item.quantity) : ''}</Text>
+              <Text style={styles.rowQty}>{item.quantity != null ? f.qty(item.quantity) : ''}</Text>
             </Pressable>
           )}
         />
@@ -147,9 +155,10 @@ export default function PutawayScreen() {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
-  title: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  help: { color: colors.muted, fontSize: 13 },
-  error: { color: colors.error, fontSize: 15, textAlign: 'center' },
+  scroll: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  help: { color: colors.muted, fontSize: fontSize.message },
+  error: { color: colors.error, fontSize: fontSize.message, textAlign: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   row: {
     flexDirection: 'row',
@@ -162,9 +171,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   rowTexts: { gap: 2 },
-  rowTitle: { color: colors.text, fontSize: 17, fontWeight: '600' },
+  rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },
   rowQty: { color: colors.brand, fontSize: 18, fontWeight: '700' },
   suggestion: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
-  suggestionLabel: { color: colors.muted, fontSize: 14 },
+  suggestionLabel: { color: colors.muted, fontSize: fontSize.message },
   suggestionBin: { color: colors.brand, fontSize: 36, fontWeight: '800' },
 })

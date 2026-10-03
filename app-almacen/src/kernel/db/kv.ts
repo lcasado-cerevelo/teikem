@@ -29,4 +29,6 @@ export const KvKeys = {
   apiBaseUrl: 'apiBaseUrl',
   selectedWarehousePublicId: 'selectedWarehousePublicId',
   theme: 'theme',
+  /** Región y formatos de la compañía (JSON de kernel/format/settings.ts): en la base de la compañía, para trabajar sin señal. */
+  tenantFormat: 'tenantFormat',
 } as const

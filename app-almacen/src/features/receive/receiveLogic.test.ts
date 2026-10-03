@@ -3,6 +3,7 @@ import {
   buildLine,
   buildReceiptBody,
   canAddLine,
+  draftExpiry,
   draftQuantity,
   type DocLine,
   type DraftLine,
@@ -15,6 +16,7 @@ import {
   requiresSerials,
   validateTargetBin,
 } from './receiveLogic'
+import { PR_FORMAT } from '../../kernel/format/settings'
 
 const NONE_PRODUCT = { publicId: 'p1', sku: 'SKU-1', name: 'Producto 1', trackingTypeCode: 'NONE' as const }
 const LOT_PRODUCT = { publicId: 'p2', sku: 'SKU-2', name: 'Producto 2', trackingTypeCode: 'LOT' as const }
@@ -93,6 +95,20 @@ describe('buildLine', () => {
     expect(line.receivedQty).toBe(10)
     expect(line.lotNumber).toBe('L-9')
     expect(line.expiryDate).toBe('2027-01-01')
+  })
+
+  it('LOT: el vencimiento se escribe en el orden de fecha de la compañía (Puerto Rico: MM/DD/AAAA) y sale en ISO', () => {
+    const line = buildLine({ ...newLineDraft(LOT_PRODUCT), qtyText: '10', lot: 'L-9', expiry: '01/31/2027' })
+    expect(line.expiryDate).toBe('2027-01-31')
+    expect(buildLine({ ...newLineDraft(LOT_PRODUCT), qtyText: '10', lot: 'L-9', expiry: '' }).expiryDate).toBeNull()
+  })
+
+  it('LOT: un vencimiento que no es una fecha real no deja agregar la línea (el servidor rechazaría el recibo)', () => {
+    const draft = { ...newLineDraft(LOT_PRODUCT), qtyText: '10', lot: 'L-9', expiry: '31/01/2027' }
+    expect(draftExpiry(draft, PR_FORMAT)).toBeNull()
+    expect(canAddLine(draft)).toBe(false)
+    expect(draftExpiry({ expiry: '31/01/2027' }, { ...PR_FORMAT, dateOrder: 'DMY' })).toBe('2027-01-31')
+    expect(canAddLine({ ...draft, expiry: '' })).toBe(true)
   })
 
   it('SERIAL: la cantidad es el número de series capturadas', () => {

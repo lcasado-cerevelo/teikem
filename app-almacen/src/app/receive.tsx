@@ -9,7 +9,8 @@ import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
-import { colors, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, spacing } from '../kernel/ui/theme'
+import { useFormat } from '../kernel/format/useFormat'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import {
   addLocalReceiptLine,
@@ -29,6 +30,7 @@ import {
   buildLine,
   buildReceiptBody,
   canAddLine,
+  draftExpiry,
   draftQuantity,
   findTargetConflict,
   type LineDraft,
@@ -48,6 +50,7 @@ import {
  *  señal); la línea se agrega al escanear una posición válida y se muestra con "→ {posición}". Con acomodo, igual que antes. */
 export default function ReceiveScreen() {
   const { t } = useT()
+  const f = useFormat()
   const router = useRouter()
   const { device } = useSession()
   const warehousePublicId = device?.defaultWarehousePublicId ?? null
@@ -297,11 +300,15 @@ export default function ReceiveScreen() {
               <TextInput
                 value={draft.expiry}
                 onChangeText={(v) => setDraft((d) => (d ? { ...d, expiry: v } : d))}
-                placeholder="AAAA-MM-DD"
+                placeholder={f.datePlaceholder()}
                 placeholderTextColor={colors.muted}
                 style={styles.input}
                 accessibilityLabel={t('receive.expiryLabel')}
               />
+              {/* región y formatos: la fecha se escribe en el orden de la compañía (o en ISO) */}
+              {draftExpiry(draft, f.settings) === null ? (
+                <Text style={styles.error}>{t('receive.expiryInvalid', { format: f.datePlaceholder() })}</Text>
+              ) : null}
             </View>
           </>
         ) : null}
@@ -356,11 +363,11 @@ export default function ReceiveScreen() {
 
 const styles = StyleSheet.create({
   fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.md },
-  title: { color: colors.text, fontSize: 20, fontWeight: '700' },
-  label: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  help: { color: colors.muted, fontSize: 13 },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  help: { color: colors.muted, fontSize: fontSize.message },
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
-  error: { color: colors.error, fontSize: 15 },
+  error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },

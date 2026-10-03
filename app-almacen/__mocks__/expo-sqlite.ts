@@ -35,9 +35,10 @@ class FakeSQLiteDatabase {
     this.raw.transaction(task)()
   }
 
-  closeSync(): void {
-    this.raw.close()
-  }
+  // Un archivo real sigue existiendo después de cerrarlo: la base en memoria se conserva (se reabre con openDatabaseSync
+  // del mismo nombre, p. ej. al volver a una compañía del teléfono) y solo se libera con deleteDatabaseSync o
+  // __resetAllForTests.
+  closeSync(): void {}
 }
 
 export function openDatabaseSync(name: string): FakeSQLiteDatabase {

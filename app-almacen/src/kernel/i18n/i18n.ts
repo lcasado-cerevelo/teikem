@@ -4,7 +4,7 @@
 import { getKv, KvKeys, setKv } from '../db/kv'
 import en from './en.json'
 import es from './es.json'
-import { formatQuantity, RAW_NUMBER_PARAMS } from './numberFormat'
+import { formatQuantity } from '../format/format'
 
 export type Lang = 'es' | 'en'
 export const LANGS: readonly Lang[] = ['es', 'en']
@@ -13,6 +13,9 @@ export type TParams = Record<string, string | number>
 type Dict = { [key: string]: string | Dict }
 
 const DICTS: Record<Lang, Dict> = { es: es as Dict, en: en as Dict }
+
+/** Parámetros que son identificadores (número de documento, id, código): se pintan tal cual, sin separador de miles. */
+export const RAW_NUMBER_PARAMS: ReadonlySet<string> = new Set(['id', 'number', 'code', 'order', 'ref', 'serial', 'lot', 'sku'])
 
 function initialLang(): Lang {
   const stored = getKv(KvKeys.lang)
@@ -67,7 +70,8 @@ export function translate(lang: Lang, key: string, params?: TParams): string {
   return text
 }
 
-/** Un número en un texto lleva coma de miles ("1,250 unidades"), salvo que el parámetro sea un identificador. */
+/** Un número en un texto lleva los separadores de la compañía ("1,250 unidades" en Puerto Rico), salvo que el parámetro sea
+ *  un identificador. Región y formatos: los separadores salen de kernel/format (antes, coma de miles fija). */
 function paramText(name: string, value: TParams[string]): string {
   return typeof value === 'number' && !RAW_NUMBER_PARAMS.has(name) ? formatQuantity(value) : String(value)
 }

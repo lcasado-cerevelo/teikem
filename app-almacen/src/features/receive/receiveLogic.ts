@@ -2,6 +2,9 @@
 // datos ni API: solo construye y valida lo que se ve en pantalla, para poder probarlo sin montar nada.
 // Lote 16 (recibo directo a posición): en un almacén "Directo a posición" cada línea lleva la posición destino escaneada
 // (targetBinCode) y el recibo manda su modo; un recibo sin modo (abierto con una app anterior) entra "con acomodo" (D9-A).
+import { parseDateInput } from '../../kernel/format/format'
+import type { FormatSettings } from '../../kernel/format/settings'
+import { getFormatSettings } from '../../kernel/format/store'
 import type { TrackingType } from './localLookup'
 
 /** Modos de recepción del almacén (LookupCode ReceivingMode). */
@@ -72,10 +75,20 @@ export function requiresSerials(draft: Pick<LineDraft, 'trackingTypeCode'>): boo
   return draft.trackingTypeCode === 'SERIAL'
 }
 
+/**
+ * Vencimiento escrito en el borrador → 'YYYY-MM-DD' para el API (región y formatos: se escribe en el orden de fecha de la
+ * compañía, p. ej. 01/31/2027 en Puerto Rico, o en ISO 2027-01-31). '' = sin vencimiento (es opcional); null = no es una
+ * fecha válida (no deja agregar la línea: el servidor rechazaría el recibo entero y en la cola ya no se corrige).
+ */
+export function draftExpiry(draft: Pick<LineDraft, 'expiry'>, s: FormatSettings = getFormatSettings()): string | null {
+  const text = draft.expiry.trim()
+  return text ? parseDateInput(text, s) : ''
+}
+
 /** ¿Está completa la captura de cantidad/lote/series? (sin mirar la posición destino). */
 function hasQuantityData(draft: LineDraft): boolean {
   if (requiresSerials(draft)) return draft.serials.length > 0
-  if (requiresLot(draft)) return draft.lot.trim().length > 0 && parseQty(draft.qtyText) > 0
+  if (requiresLot(draft)) return draft.lot.trim().length > 0 && parseQty(draft.qtyText) > 0 && draftExpiry(draft) !== null
   return parseQty(draft.qtyText) > 0
 }
 
@@ -119,7 +132,7 @@ export function buildLine(draft: LineDraft): DraftLine {
     trackingTypeCode: draft.trackingTypeCode,
     receivedQty: parseQty(draft.qtyText),
     lotNumber: requiresLot(draft) ? draft.lot.trim() : null,
-    expiryDate: requiresLot(draft) && draft.expiry.trim() ? draft.expiry.trim() : null,
+    expiryDate: requiresLot(draft) ? draftExpiry(draft) || null : null,
     serialNumbers: null,
     targetBinCode,
   }
