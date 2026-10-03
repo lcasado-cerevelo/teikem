@@ -4333,3 +4333,64 @@ Abra Conteo: la lista aparece igual, con lo que ya había escrito, aun sin seña
 **Abrí el conteo de un producto equivocado.**
 Toque **Cancelar conteo** (necesita señal y el permiso `warehouse.count`). Sin ese permiso, avise al supervisor para que lo cancele
 desde la web; no lo confirme en 0.
+
+## Lote F12 — Web: "Por revisar", corrección del supervisor y vista previa del conteo
+
+Pantalla: [F12 — Conteo cíclico por producto](frontend/f12-conteo-por-producto.md). Los mensajes con código HTTP vienen del servidor
+(Lote 21, sección anterior) y la pantalla los muestra tal cual.
+
+### Mensajes de error que se ven en la pantalla
+
+**¿Qué hago con "El conteo de {sku} en {posición} ({contado}) es menor que lo reservado ({reservado}); libere la reserva antes de reconciliar."? (409)**
+En la vista previa sale en la columna Error de esa posición y Confirmar queda deshabilitado ("Hay {n} línea(s) con error; corríjalas
+antes de confirmar."). Libere la reserva (o corrija la cantidad si se contó mal) y vuelva a abrir la vista previa.
+
+**¿Qué significa "El registro fue modificado por otro usuario; recargue e intente de nuevo." al confirmar? (409)**
+Alguien cambió el conteo (una corrección, una línea nueva) después de que usted abrió la vista previa. La vista previa se recalcula
+sola: revísela y confirme de nuevo.
+
+**¿Qué significa "El conteo ya fue reconciliado; solo se consulta." en la vista previa? (422)**
+Otro usuario lo confirmó, o lo cerró "Cerrar los que cuadran", mientras usted lo revisaba. Cierre la vista previa: el conteo ya está
+en Concordancia o Diferencia.
+
+**¿Qué significa "La posición no está pendiente de revisión." al confirmar una posición? (409)**
+Ya estaba confirmada (por usted en otra pestaña o por otro supervisor). No hay nada más que hacer.
+
+### Mensajes que solo ve en la pantalla (sin código HTTP)
+
+**"Ningún conteo de esta página cuadra."**: el botón "Cerrar los que cuadran" está deshabilitado porque ningún conteo visible está
+en "Cuadra". Cambie de página o de filtros.
+
+**"Solo se eligen los conteos que cuadran."**: la casilla de un conteo con diferencia, errores o líneas faltantes no se puede marcar.
+
+**"El comentario admite como máximo 500 caracteres."**: el comentario del cierre en bloque es más largo; acórtelo.
+
+**"Hay {n} línea(s) con error; corríjalas antes de confirmar." / "Faltan {n} línea(s) por contar." / "El conteo no tiene líneas."**:
+lo que impide confirmar según la vista previa.
+
+**"Ninguna línea falla: todo cuadra contra la existencia actual."**: con "solo las que fallan" no queda ninguna; active "Ver todas".
+
+### Preguntas frecuentes
+
+**¿Por qué "Cerrar los que cuadran" no cerró conteos de otras páginas?**
+Cierra solo los que cuadran de la página que se ve (o los que marcó), para que el aviso diga exactamente cuántos y cuáles se cierran.
+Pase a la página siguiente o suba "Filas por página".
+
+**¿Corregir una cantidad en la web mueve inventario?**
+No. Es una corrección (queda "Corregido a Y" con su nombre y la hora); el inventario se mueve solo al confirmar el conteo, por la
+diferencia contra la existencia actual que muestra la vista previa.
+
+**Corregí una línea y ya no falla, pero sigue en la lista. ¿Es un error?**
+No: la línea que se corrige en la sesión se queda a la vista para que vea el resultado. Al volver a abrir el conteo ya no aparece en
+"solo las que fallan".
+
+**¿Por qué la Varianza dice −2 y el Ajuste dice +1?**
+La Varianza compara con la foto (lo que había al crear el conteo); el Ajuste compara con la existencia **actual**, que es lo que se
+asentará. Si alguien movió inventario en esa posición después de la foto, los dos números difieren (la vista previa marca "Saldo
+cambió").
+
+**¿Por qué no veo la pestaña "Por revisar" ni la vista previa?**
+Su usuario cuenta a ciegas (no tiene `warehouse.count`). Pida a un supervisor que revise y confirme.
+
+**¿Puedo crear un conteo por producto desde la web?**
+Todavía no; se crea desde la app de almacén ("Contar por producto").

@@ -171,6 +171,10 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    Ajustes de la compañía conectada al servidor: subir, reemplazar y quitar los cuatro logos, dónde se ven (barra lateral por
    tema, colapsada), los errores 400/413/415 junto a cada ranura, el error del servidor al guardar colores y el 409 del feriado
    repetido en Calendario. Capturas `f11-*`.
+8. [F12 — Conteo cíclico por producto: "Por revisar", corrección y vista previa](frontend/f12-conteo-por-producto.md): la pestaña
+   Por revisar (estado Cuadra / Con diferencia / Con errores / Faltan líneas, filtros, "Cerrar los que cuadran" con su resumen y
+   motivos), el detalle con solo las líneas que fallan, la evidencia *Contó X · Corregido a Y* y la corrección en la fila, la vista
+   previa del efecto antes de confirmar y las posiciones pendientes de revisión. Capturas `f12-*`.
 
 ## Preguntas frecuentes
 
@@ -200,4 +204,6 @@ actual, sesión no encontrada, reautenticación, 403 sin `admin.users`), los de 
 preguntas sobre Evento/Alerta, el total que cambiaba al paginar, la búsqueda, la IP como ubicación, por qué revocar una sesión puede cerrar todas
 y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensajes de la marca (tamaño, JSON, campos desconocidos, colores de estado, tipos,
 hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
-feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem.
+feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem. La sección "Lote F12" recoge los mensajes que se ven en la pantalla de revisión del conteo (reservado, conflicto al confirmar,
+conteo ya reconciliado, posición ya confirmada), los que solo se ven en pantalla y las preguntas sobre qué cierra "Cerrar los que
+cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste.

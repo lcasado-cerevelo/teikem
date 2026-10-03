@@ -765,6 +765,33 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
     <CountTaskList items={items} total={total} selectedId={id} onSelect={select} … /><CountDetailPanel id={id} />
   </SplitPane>
   ```
+  **Lote F12 — conteo por producto: revisión rápida y corrección del supervisor** (contrato del servidor en `docs/lote21-decisiones.md`).
+  Pestañas `Conteos` (sin parámetro) y `Por revisar` (`?tab=review`, solo con `warehouse.count`: sin él no se pinta y `?tab=review`
+  abre la lista de siempre; `countTabFromParam(raw, canReview)`). Al cambiar de pestaña se quita `?count=`.
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `CountReviewTab` (`CountReviewTab.tsx`) | `countId` (`?count=`; null = el primero de la página), `onSelect(id)` | la pestaña completa: `SplitPane storageKey="cycle-count-review"` (50/50) con la lista "Por revisar" (`GET /cycle-counts/review`, paginada en el servidor, orden local de la página; columnas Elegir, Conteo, Contó, Producto "y N más", Posiciones, Líneas, Con diferencia, Correcciones, Estado; tarjetas con el panel < 720 px; filtros Almacén (uno), Contó y `QBox` → `search`) y `CountDetailPanel` a la derecha. "Cerrar los que cuadran": los elegidos que cuadran o, sin elegir, todos los que cuadran de la página → `POST /cycle-counts/reconcile-matching { ids, comment }` con confirmación (cuántos y cuáles, comentario ≤ 500) y un modal de resultado (cerrados; omitidos con su motivo en español y botón para abrirlos) |
+  | `ReconcilePreviewModal` (`ReconcilePreviewModal.tsx`) | `count: { id, number? }`, `onClose`, `onConfirmed?(dto)` | "Confirmar conteo y ajustar" pasa por aquí: `GET /cycle-counts/{id}/reconcile-preview` → `SummaryBar` (Líneas, Por contar, Con diferencia, Movimientos, Con error), avisos (faltan líneas, Concordancia, saldo movido, `blockingError`) y tabla por posición (Posición con chip provisional, Producto, Lote, Existencia actual, Reservado, Contada con chip "Corrección", Ajuste ± con `qty-in/qty-out`, Saldo resultante, Error). Con algo que bloquea (`previewBlocker`), Confirmar se deshabilita con el motivo. Confirmar = `reconcile` con el `rowVersion` DE LA VISTA PREVIA (409 → recalcula ficha y vista previa) |
+  | `CountDetailPanel` (cambios) | igual | con captura en la web pide la vista previa y agrega SIEMPRE las columnas Ajuste (contra la existencia actual, con el error de la línea) y Evidencia (*Contó X (quién, cuándo) · Corrección · Corregido a Y (quién, cuándo)*; en solo lectura solo si alguna línea la tiene). Un conteo Contado abre con **solo las líneas que fallan** (interruptor "Ver todas"); la línea tocada en la sesión se queda a la vista. Posición provisional: chip "Posición pendiente de revisión" y, con `warehouse.manage`, "Confirmar posición". Las columnas no dependen de datos que llegan después de montar: `FlexRender` volvería a montar las celdas y el campo perdería el foco |
+  Hooks (`api.ts`): `useCycleCountReview(query)`, `exportCycleCountReview(query)`, `useReconcilePreview(id, { enabled })` (sin
+  `keepPreviousData`; 403 sin sacar de la pantalla), `useReconcileMatching()` → `mutateAsync({ ids?, warehousePublicId?, comment?,
+  includeOpen? })`, `useConfirmProvisionalBin()` → `mutateAsync({ publicId, binId })`. Toda escritura del conteo invalida también
+  "Por revisar" y la vista previa (`warehouseKeys.cycleCountReview`, `warehouseKeys.reconcilePreview`).
+  Lógica pura en `countReview.ts`: `reviewState(item)` (`errors` > `pending` > `difference` > `matches`; nunca "Cuadra" si el servidor
+  no dijo `matches`), `REVIEW_STATE_TONE`/`REVIEW_STATE_ORDER`, `reviewProduct`, `ReviewFilters`/`reviewFilterQuery`/`reviewListQuery`,
+  `counterOptions(seen, users)` + `rememberCounters` (opciones de "Contó": los vistos en las páginas y, con `admin.users`, los usuarios),
+  `idsToClose(items, selected)`, `keepSelection`, `skipReasonText(skip, t)` / `bulkSummary(result, t)` (motivos `WouldPost`, `Errors`,
+  `Pending`, `Stale`, `NotCounted`, `AlreadyReconciled`, `NotFound`, `NoLines`, `Failed`; desconocido → el `reason` del servidor),
+  `previewLineFails`, `previewByLine`, `failingLines(lines, preview, variance, pinned)`, `lineEvidence(line)` + `evidenceText(ev, t, num,
+  when)`, `previewBlocker(preview)`, `adjustmentClass(n)`, `signedQty(n, num)`, `BULK_COMMENT_MAX`.
+  ```tsx
+  {tab === 'review' ? <CountReviewTab countId={countId} onSelect={select} /> : <CountsTab … />}
+  {confirming && <ReconcilePreviewModal count={{ id, number: count.number }} onClose={() => setConfirming(false)} />}
+  const rows = showAll ? lines : failingLines(lines, previewByLine(preview.data), (l) => lineVariance(l), pinned)
+  ```
+  Posiciones provisionales en el listado del almacén: `binsQuery(text, zoneIds, includeInactive, onlyWithStock, onlyProvisional?)`
+  (→ `isProvisional=true`); la pestaña Posiciones de la ficha tiene el chip, el filtro "Solo pendientes de revisión" y la acción de
+  fila "Confirmar posición" (`warehouse.manage`); Ubicaciones, solo el chip.
 - Tareas de almacén (sin pantalla ni ítem de menú: la maqueta no los tiene). Cada tipo vive en la pantalla de su flujo:
   PUTAWAY → Recibo: pestaña 'Acomodo pendiente' (`?tab=putaway`, Lote 13: lista de recibos con acomodo por cerrar y las
   tareas del elegido a la derecha) y 'Tareas de acomodo' debajo del detalle de un recibo confirmado (`ReceiptPutawayTasks`);
