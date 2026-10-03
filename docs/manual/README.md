@@ -192,6 +192,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    (Productos e inventario) y **de posiciones** (Posiciones y la ficha del almacén): un código Code 128 por elemento con el SKU o el
    código exacto, en rejilla de 3/2/1 columnas, agrupados por categoría o por el primer número del código, con lo filtrado de la
    pantalla; sus avisos ("no cabe", omitidos, truncado) y cómo imprimirlos para que el lector los lea. Capturas `f14-*` y un PDF de ejemplo.
+11. [F15 — Hojas de posición](frontend/f15-hojas-de-posicion.md): en **Posiciones**, el estado de la hoja pegada en el rack por
+   posición (Sin hoja impresa, Desactualizada, Al día) con su última impresión, el filtro **Hoja**, las casillas para marcar posiciones,
+   el aviso acumulado "N posiciones con la hoja desactualizada o sin imprimir" con **Imprimir las desactualizadas**, y el PDF **Hojas de
+   posición** (una posición por hoja, hasta 10 productos con su código de barras, tamaño adaptable, "Hoja 2 de 2", "Sin productos") que al
+   terminar marca las hojas como impresas; mensajes y casos frecuentes. Capturas `f15-*`.
 
 ## Preguntas frecuentes
 

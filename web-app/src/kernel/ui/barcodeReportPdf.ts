@@ -307,8 +307,9 @@ interface CellText {
   meta: string[]
 }
 
-/** Corta a `max` renglones, con "..." al final del último si sobraba texto (con la letra ya puesta en `doc`). */
-function clampLines(doc: jsPDF, lines: string[], max: number, width: number): string[] {
+/** Corta a `max` renglones, con "..." al final del último si sobraba texto (con la letra ya puesta en `doc`). Lo reusa la
+ *  hoja de posición (`binSheetPdf.ts`, Lote F15). */
+export function clampLines(doc: jsPDF, lines: string[], max: number, width: number): string[] {
   if (lines.length <= max) return lines
   const kept = lines.slice(0, max)
   let last = kept[max - 1]

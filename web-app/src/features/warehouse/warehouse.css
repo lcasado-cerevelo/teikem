@@ -30,6 +30,37 @@
 .locations .loc-fill .loc-bar{flex:1 1 60px}
 .locations .loc-fill .loc-pct{flex:none;font-size:12px;color:var(--muted)}
 @media(max-width:480px){.locations .loc-wh{flex:1 1 100%}}
+/* Lote F15: hojas de posición en Ubicaciones. Acciones del panel que envuelven; franja con el aviso acumulado (naranja de
+   alerta, con texto: nunca solo color) y las casillas; la celda "Hoja" con la insignia (que no envuelve) y la última
+   impresión debajo. A 360 px todo envuelve en renglones (sin scroll horizontal). */
+.locations .loc-actions{display:inline-flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;min-width:0;max-width:100%}
+.locations .loc-sheetbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);min-width:0}
+.locations .loc-stale{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0;padding:6px 10px;border-radius:9px;background:var(--warnbg);border:1px solid var(--warn);font-size:13px;min-width:0;max-width:100%}
+.locations .loc-stale.ok{background:var(--okbg);border-color:var(--ok);color:var(--text)}
+.locations .loc-stale-text{display:inline-flex;gap:8px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.locations .loc-stale-text svg{flex:none;color:var(--warn)}
+.locations .loc-stale-scope{color:var(--muted)}
+.locations .loc-select{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:13px;min-width:0}
+.locations .loc-select-page{display:inline-flex;gap:7px;align-items:center;cursor:pointer}
+.locations .loc-select-count{color:var(--muted)}
+.locations .loc-check,.locations .loc-select-page input{width:16px;height:16px;margin:0;accent-color:var(--flow);cursor:pointer}
+.locations .loc-check:focus-visible,.locations .loc-select-page input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.locations .loc-sheet{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.locations .loc-sheet-when{font-size:11.5px;color:var(--muted);white-space:nowrap}
+@media(max-width:480px){.locations .loc-sheetbar{padding:10px}.locations .loc-stale{width:100%}}
+/* Modal "Hojas de posición" */
+.bs-modal{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bs-modal .note{margin:0}
+.bs-scope{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.bs-scope legend{font-size:12px;font-weight:700;padding:0 4px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.bs-opt{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;cursor:pointer;overflow-wrap:anywhere}
+.bs-opt input{margin:2px 0 0;width:16px;height:16px;flex:none;accent-color:var(--flow)}
+.bs-opt input:focus-visible,.bs-empty input:focus-visible+.tk{outline:2px solid var(--flow);outline-offset:2px}
+.bs-opt.dis{color:var(--faint);cursor:default}
+.bs-hint{margin:0;font-size:12px;color:var(--muted)}
+.bs-scope .bs-hint{margin:-4px 0 0 25px}
+.bs-empty{white-space:normal}
+.bs-progress{margin:0;font-size:13px;color:var(--flow);font-weight:600}
 
 /* Almacenes (maqueta `almacenes()`, Lote 1 de cambios de Almacén): maestro-detalle con la tabla a la izquierda y el panel
    del almacén elegido a la derecha (420 px; se encoge hasta 300 px si no cabe); una columna bajo 720 px con el panel

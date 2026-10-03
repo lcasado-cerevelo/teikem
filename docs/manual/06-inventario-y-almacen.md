@@ -259,7 +259,7 @@ Pantalla: ficha del almacén → **Datos** → sección **Recepción** ([F6 — 
 Qué es: la **hoja de posición** es un papel que se pega en el rack con la lista de productos que hay en esa posición (SKU, nombre y código de
 barras). El sistema guarda **cuándo se imprimió por última vez** la hoja de cada posición y **cuándo cambió por última vez su lista de productos**,
 y con eso dice si la hoja pegada sigue sirviendo o hay que reimprimirla. Este lote es solo del servidor (el dato y el rastro); la hoja en PDF, la
-insignia, el contador y la selección en pantalla, y la app, llegan en los lotes siguientes.
+insignia, el contador y la selección en pantalla llegaron en el Lote F15 (ver "Pantalla" al final de esta sección); la app, en un lote siguiente.
 
 Quién puede: `inventory.view` para todo, también para **marcar como impresas** (decisión del dueño: imprimir no pide un permiso nuevo). Módulo
 **WMS_LOTSERIAL**, como el resto de Almacenes y ubicaciones.
@@ -325,6 +325,10 @@ Casos frecuentes:
 - *"Imprimí y la posición siguió en `STALE`."* Mandó un `generatedAtUtc` anterior a un cambio de esa posición: vuelva a pedir sus hojas e imprima de nuevo.
 - *"Moví cantidad entre dos posiciones que ya tenían el producto y no cambió nada."* Correcto: la lista de productos de ninguna de las dos cambió.
 - *"Vacié una posición y aparece como desactualizada."* La hoja pegada dice que hay productos que ya no están; quítela o reimprima la hoja (vacía) y márquela.
+
+Pantalla (Lote F15): Almacén → **Posiciones** — columna y filtro **Hoja**, casillas, aviso acumulado, **Imprimir las desactualizadas** y
+**Hojas de posición** (PDF con una hoja por posición; al terminar marca impresas con el `generatedAtUtc` más antiguo de las tandas leídas)
+([F15 — Hojas de posición](frontend/f15-hojas-de-posicion.md)).
 
 ### Validaciones
 

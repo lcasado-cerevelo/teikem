@@ -26,9 +26,9 @@ export default defineConfig({
     env: { VITE_API_URL: process.env.VITE_API_URL ?? process.env.API_URL ?? 'http://localhost:5000' },
   },
   projects: [
-    { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|loteF15)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
-    { name: 'movil', testIgnore: /(lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    { name: 'movil', testIgnore: /(lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|loteF15)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // El recorrido de escritorio de F8a reorganiza el Pulso personal del admin y el de toda la compañía (oculta el panel
     // Almacén unos segundos): corre después de los demás para no chocar con los recorridos que leen ese Pulso cuando hay
     // varios workers en paralelo.
@@ -49,12 +49,17 @@ export default defineConfig({
     // (no deja movimientos ni conteos) y antes de F9, para que la región y los formatos de la compañía sean los de siempre.
     { name: 'escritorio-f14', testMatch: /loteF14-codigos\.spec\.ts/, dependencies: ['escritorio-f13', 'movil-f13'], use: { ...devices['Desktop Chrome'] } },
     { name: 'movil-f14', testMatch: /loteF14-codigos\.spec\.ts/, dependencies: ['escritorio-f13', 'movil-f13'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    // Lote F15 (hojas de posición): siembra posiciones y un producto propios y los MUEVE en ALM-01 (ajuste y transferencia);
+    // corre después de F14 (y por eso de F12/F13: sus movimientos no entran en el "Conteo de lo cambiado" de otros
+    // recorridos) y antes de F9, con la región y los formatos de siempre ("Impresa el …").
+    { name: 'escritorio-f15', testMatch: /loteF15\.spec\.ts/, dependencies: ['escritorio-f14', 'movil-f14'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'movil-f15', testMatch: /loteF15\.spec\.ts/, dependencies: ['escritorio-f14', 'movil-f14'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // Lote F9: cambia la región y los formatos de la compañía demo (y los restaura): al final de todo, solo, para no cambiarle
     // la hora o la fecha a otro recorrido a medio camino.
     {
       name: 'escritorio-f9',
       testMatch: /loteF9-region\.spec\.ts/,
-      dependencies: ['escritorio-f8a', 'escritorio-lote16', 'movil-lote16', 'escritorio-f12', 'movil-f12', 'escritorio-f13', 'movil-f13', 'escritorio-f14', 'movil-f14'],
+      dependencies: ['escritorio-f8a', 'escritorio-lote16', 'movil-lote16', 'escritorio-f12', 'movil-f12', 'escritorio-f13', 'movil-f13', 'escritorio-f14', 'movil-f14', 'escritorio-f15', 'movil-f15'],
       use: { ...devices['Desktop Chrome'] },
     },
     // Lote F11: sube logos y un tema a la compañía demo (y los restaura): al final de todo, después de F9, para no repintar la marca

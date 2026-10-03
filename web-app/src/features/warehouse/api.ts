@@ -1601,3 +1601,22 @@ export function useBinCapacityPreview(
   }
   return { count: q.data?.count ?? null, exact: q.data?.exact ?? true, loading: q.isFetching, error: q.error }
 }
+
+// =====================================================================================================================
+// Lote F15: hojas de posición (Lote 23 del servidor). Lectura por tandas para el PDF y "marcar impresas"; las usa
+// `printBinSheets` (binSheets.ts) desde el modal de Ubicaciones. No van en caché: cada impresión lee los datos del momento.
+// =====================================================================================================================
+export type BinSheetPageDto = Schemas['BinSheetPageDto']
+export type BinSheetDto = Schemas['BinSheetDto']
+export type BinSheetStateDto = Schemas['BinSheetStateDto']
+export type BinSheetMarkPrintedRequest = Schemas['BinSheetMarkPrintedRequest']
+/** Filtros de `GET .../bin-sheets` (los mismos del listado de posiciones, con `skip`/`take` ≤ 200). */
+export type BinSheetQuery = GetQuery<'/api/v1/warehouses/{publicId}/bin-sheets'>
+
+/** `GET /api/v1/warehouses/{publicId}/bin-sheets`: una tanda de hojas (take ≤ 200; más de 200 = 400). */
+export const fetchBinSheets = (publicId: string, query: BinSheetQuery, signal?: AbortSignal) =>
+  unwrap(api.GET('/api/v1/warehouses/{publicId}/bin-sheets', { params: { path: { publicId }, query }, signal }))
+
+/** `POST .../bin-sheets/mark-printed` { binIds (1..500), generatedAtUtc }: todo o nada; devuelve el estado nuevo de cada una. */
+export const markBinSheetsPrinted = (publicId: string, body: BinSheetMarkPrintedRequest) =>
+  unwrap(api.POST('/api/v1/warehouses/{publicId}/bin-sheets/mark-printed', { params: { path: { publicId } }, body }))

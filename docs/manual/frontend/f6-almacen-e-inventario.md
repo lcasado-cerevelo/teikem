@@ -328,6 +328,11 @@ tienen cupo).» y la cifra es un tope.
 
 **Qué bloquea.** Con el almacén dado de baja, el servidor responde 422 «El almacén está dado de baja; solo se consulta.».
 
+**Hojas de posición (Lote F15).** La tabla de Posiciones tiene además la casilla **Elegir**, la columna **Hoja** (estado de la hoja
+pegada en el rack: Sin hoja impresa, Desactualizada, Al día o "—", con la última impresión), el filtro **Hoja**, el aviso
+**"N posiciones con la hoja desactualizada o sin imprimir"** con **Imprimir las desactualizadas**, y el botón **Hojas de posición**
+junto a **Códigos de barras**. Todo se explica en [F15 — Hojas de posición](f15-hojas-de-posicion.md).
+
 ### Permisos y módulo
 
 `inventory.view` (ver Almacenes, la ficha, Posiciones y el catálogo de ciudades); **`warehouse.manage`** para crear y

@@ -476,6 +476,15 @@
     },
     "split": {
       "resize": "Resize panels"
+    },
+    "binSheet": {
+      "part": "Sheet {part} of {parts}",
+      "printedAt": "Printed on {date}",
+      "warehouse": "Warehouse {warehouse}",
+      "empty": "No products",
+      "emptyHint": "This bin had no products when the sheet was printed.",
+      "noCode": "No barcode: Code 128 does not support {chars}",
+      "nothing": "There are no sheets to print."
     }
   },
   "examples": {
@@ -1060,6 +1069,81 @@
       "truncatedBins": "The report includes only the first {count} bins (read limit). Narrow the filters to see the rest.",
       "emptyProducts": "No product matches the filters.",
       "emptyBins": "No bin matches the filters."
+    },
+    "binSheets": {
+      "button": "Bin sheets",
+      "hint": "PDF with one sheet per bin and each product's barcode, to stick on the rack and scan with the reader.",
+      "title": "Bin sheets",
+      "pdfTitle": "Bin sheets",
+      "intro": "One sheet per bin with its products (up to 10 per sheet) and each product's barcode, to stick on the rack. When done, the printed bins become \"Up to date\".",
+      "scope": {
+        "legend": "What to print",
+        "filter": "The bins in the current filter ({count})",
+        "selected": "The checked bins ({count})",
+        "stale": "Only outdated or never printed ({count})",
+        "selectedNone": "To print only some bins, check them in the list."
+      },
+      "includeEmpty": "Include empty bins",
+      "includeEmptyHint": "When off, bins without products are not printed. When on, they get a \"No products\" sheet.",
+      "tooMany": "That is {count} bins; the maximum per print is {max}. Narrow the filters or check fewer bins.",
+      "noneInScope": "There are no bins in your choice.",
+      "nothing": "There are no sheets to print: the chosen bins have no products. Turn on \"Include empty bins\" to print them.",
+      "generate": "Generate PDF",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "progress": {
+        "read": "Reading bins… {done} of {total}",
+        "render": "Generating the PDF ({sheets} sheets)…",
+        "mark": "Marking {bins} bins as printed…"
+      },
+      "result": {
+        "printed": "{sheets} sheet(s) for {bins} bin(s) were generated and marked as printed.",
+        "omittedEmpty": "{count} bin(s) without products were not printed.",
+        "withoutCode": "{count} product(s) without a readable barcode: see the notice at the bottom of their sheet.",
+        "cancelled": "Printing cancelled; no sheet was marked.",
+        "markFailed": "The PDF was downloaded, but the bins could not be marked as printed: {error} Generate it again to mark them.",
+        "error": "The bin sheets could not be generated; none was marked. {error}"
+      },
+      "details": {
+        "zone": "Zone",
+        "aisle": "Aisle",
+        "rack": "Rack",
+        "level": "Level",
+        "position": "Position",
+        "inactive": "Inactive"
+      },
+      "columns": {
+        "select": "Select",
+        "sheet": "Sheet"
+      },
+      "filter": "Sheet",
+      "filterOptions": {
+        "NEVER_PRINTED": "Never printed",
+        "STALE": "Outdated",
+        "CURRENT": "Up to date",
+        "EMPTY": "No products (no sheet needed)"
+      },
+      "status": {
+        "NEVER_PRINTED": "Never printed",
+        "STALE": "Outdated",
+        "CURRENT": "Up to date",
+        "EMPTY": "No products",
+        "EMPTY_ARIA": "No products: no sheet needed"
+      },
+      "printedShort": "Printed {date}",
+      "lastPrinted": "Last printed: {date}",
+      "neverPrinted": "Its sheet was never printed",
+      "lastChanged": "Last product change: {date}",
+      "stale": "bins with an outdated or never printed sheet",
+      "staleOne": "bin with an outdated or never printed sheet",
+      "staleFiltered": "(with the current filters)",
+      "printStale": "Print the outdated ones",
+      "allCurrent": "All bin sheets in this list are up to date.",
+      "selectRow": "Check bin {code}",
+      "selectPage": "Select all on this page",
+      "selected": "{count} checked",
+      "selectedOne": "1 checked",
+      "clearSelection": "Clear checks"
     },
     "locations": {
       "title": "Bins",
@@ -2652,7 +2736,7 @@
       },
       "errors": {
         "productRequired": "Choose the product.",
-                "binRequired": "Enter the bin.",
+        "binRequired": "Enter the bin.",
         "countedRequired": "Enter the counted quantity.",
         "lotAmbiguous": "Give the lot by its id or by its number, not both."
       },
