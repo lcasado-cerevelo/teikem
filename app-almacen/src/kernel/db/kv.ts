@@ -33,4 +33,6 @@ export const KvKeys = {
   tenantFormat: 'tenantFormat',
   /** Lote A4: última forma de contar elegida en Conteo ('BIN' por posición | 'PRODUCT' por producto); sin valor = por posición. */
   countEntryMode: 'countEntryMode',
+  /** Lote A7: avisos de lotes de conteo parciales (líneas que el supervisor ya había corregido), JSON de features/count/countSkipped.ts. */
+  countSkippedNotices: 'countSkippedNotices',
 } as const

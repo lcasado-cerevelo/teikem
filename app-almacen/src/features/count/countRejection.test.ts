@@ -172,12 +172,12 @@ describe('textos (es/en)', () => {
   })
 
   it('dice qué pasó, que no se guardó nada y qué hacer', () => {
-    expect(translate('es', 'countRejection.headline')).toBe('El supervisor ya corrigió una línea de este conteo.')
-    expect(translate('es', 'countRejection.nothingSaved')).toContain('No se guardó nada de este envío')
+    expect(translate('es', 'countRejection.headline')).toBe('El supervisor ya corrigió todas las líneas de este envío.')
+    expect(translate('es', 'countRejection.nothingSaved')).toContain('No se guardó ninguna línea de este envío')
     expect(translate('es', 'countRejection.whatToDo')).toBe(
-      'Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).',
+      'Si falta contar algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.',
     )
-    expect(translate('en', 'countRejection.whatToDo')).toContain('only the lines the supervisor did not correct')
+    expect(translate('en', 'countRejection.whatToDo')).toContain('create a new count')
     expect(translate('es', 'countRejection.refresh')).toBe('Actualizar el conteo')
     // el renglón y el SKU se pintan tal cual (sin separador de miles)
     expect(translate('es', 'countRejection.rowWithQty', { number: 1200, sku: 'SKU-1000', qty: 1500 })).toBe('• Renglón 1200: SKU-1000 (mandaste 1,500)')

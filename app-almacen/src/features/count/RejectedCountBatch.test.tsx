@@ -32,13 +32,13 @@ describe('RejectedCountBatch', () => {
     const fetchCount = jest.fn()
     const { getByText, getByRole, queryByText } = await renderCard(PARSED, fetchCount)
 
-    const headline = getByText('El supervisor ya corrigió una línea de este conteo.')
+    const headline = getByText('El supervisor ya corrigió todas las líneas de este envío.')
     expect(flat(headline.props.style).fontSize).toBeGreaterThanOrEqual(16)
-    expect(getByText('No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.')).toBeTruthy()
+    expect(getByText('No se guardó ninguna línea de este envío porque todas ya las corrigió el supervisor.')).toBeTruthy()
     expect(getByText('• Renglón 1: SKU-A (mandaste 4)')).toBeTruthy()
     expect(getByText('• Renglón 3: SKU-B')).toBeTruthy()
     const todo = getByText(
-      'Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).',
+      'Si falta contar algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.',
     )
     expect(flat(todo.props.style).fontSize).toBeGreaterThanOrEqual(16)
     expect(getByRole('button', { name: 'Actualizar el conteo' })).toBeTruthy()

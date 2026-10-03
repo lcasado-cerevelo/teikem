@@ -68,11 +68,11 @@ describe('Sincronización — captura de conteo rechazada por línea corregida',
     await waitFor(() => expect(screen.getByText('Con error (2)')).toBeTruthy())
 
     // explicación grande del 409 con el renglón, lo que mandó y qué hacer
-    expect(screen.getByText('El supervisor ya corrigió una línea de este conteo.')).toBeTruthy()
-    expect(screen.getByText('No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.')).toBeTruthy()
+    expect(screen.getByText('El supervisor ya corrigió todas las líneas de este envío.')).toBeTruthy()
+    expect(screen.getByText('No se guardó ninguna línea de este envío porque todas ya las corrigió el supervisor.')).toBeTruthy()
     expect(screen.getByText('• Renglón 2: SKU-B (mandaste 6)')).toBeTruthy()
     expect(
-      screen.getByText('Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).'),
+      screen.getByText('Si falta contar algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.'),
     ).toBeTruthy()
     expect(screen.getByText('El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato.')).toBeTruthy()
     // el cierre sigue en la lista de siempre con su mensaje; el 409 no se repite ahí
@@ -98,7 +98,7 @@ describe('Sincronización — captura de conteo rechazada por línea corregida',
     // descartar el envío rechazado: sale de la cola y de la pantalla; el cierre queda
     await fireEvent.press(screen.getByRole('button', { name: 'Descartar este envío' }))
     await waitFor(() => expect(screen.getByText('Con error (1)')).toBeTruthy())
-    expect(screen.queryByText('El supervisor ya corrigió una línea de este conteo.')).toBeNull()
+    expect(screen.queryByText('El supervisor ya corrigió todas las líneas de este envío.')).toBeNull()
     expect(listOutbox().map((r) => r.kind)).toEqual(['countFinish'])
   })
 })

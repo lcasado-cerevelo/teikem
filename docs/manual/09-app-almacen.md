@@ -475,7 +475,8 @@ Cómo se usa:
 | Cancelar sin `warehouse.count` (solo conteo a ciegas) | El error de permiso del servidor (403) | API |
 | Cancelar sin señal | `No se pudo cancelar (necesita señal); se puede intentar de nuevo.` | Local, tras error de red |
 | Terminar sin señal | Se guarda igual, se manda cuando haya conexión (dos filas en la cola) | Cola de salida |
-| Al enviarse, el servidor rechaza la captura porque el supervisor ya corrigió una línea (409, Lote A6) | En Sincronización, tarjeta `El supervisor ya corrigió una línea de este conteo.` con la explicación y "Actualizar el conteo" (sección 9.1). No se guardó nada de ese envío | API, vía cola |
+| Al enviarse, el servidor guardó las demás líneas pero omitió las que el supervisor ya corrigió (200 con `skippedLines`, Lote A7) | En Sincronización, bloque `Se guardaron las demás líneas de tu conteo.` con las líneas no guardadas (sección 9.1). No es un error: el envío queda como enviado |
+| Al enviarse, TODAS las líneas del lote ya las corrigió el supervisor (409, Lote A6/A7) | En Sincronización, tarjeta `El supervisor ya corrigió todas las líneas de este envío.` con la explicación y "Actualizar el conteo" (sección 9.1). No se guardó ninguna línea de ese envío | API, vía cola |
 
 ### Estatus y casos frecuentes
 
@@ -550,30 +551,46 @@ almacén por defecto, el tema y el **modo de recepción** del almacén del apara
 Las posiciones sirven para validar sin señal la posición destino del recibo directo: la primera vez baja la lista completa (en Advance Depot, unas 3.886 posiciones, en 8 páginas) y después solo los cambios;
 las posiciones dadas de baja se conservan marcadas como inactivas (así la app distingue "no existe" de "está desactivada"). Si el almacén por defecto del aparato cambia, el nuevo baja completo la primera vez.
 
-### 9.1 Captura de conteo rechazada: el supervisor ya corrigió una línea (Lote A6)
+### 9.1 Línea ya corregida por el supervisor: aviso de lote parcial (Lote A7) y rechazo (Lote A6)
 
 Qué pasa: al terminar un conteo, la app encola **el lote capturado** (`countBatch`, `PUT /api/v1/cycle-counts/{id}/lines/batch`) y
 **el cierre** (`countFinish`). Si mientras tanto un supervisor **corrigió** en la web una línea que el operario vuelve a mandar con otro
-número, el servidor rechaza **todo el lote** con **409** `La línea ya fue corregida por el supervisor; no se puede volver a capturar.
-Renglón(es) del lote: n (SKU). No se guardó nada.` (capítulo [06](06-inventario-y-almacen.md), protección de la corrección). La fila
-pasa a "Con error" y **no se reintenta sola**. Normalmente el cierre del mismo conteo también queda con error justo debajo (422
+número, desde el segundo bloque de decisiones del dueño (2026-10-03) el servidor **guarda las líneas libres y omite las corregidas**
+(capítulo [06](06-inventario-y-almacen.md), protección de la corrección): responde 200 con `skippedLines`. El envío queda **enviado** (no
+es un error) y el cierre del conteo sigue su camino. Solo si **todas** las líneas del lote están corregidas el servidor responde **409**
+`La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: n (SKU). No se guardó nada.`; entonces
+la fila pasa a "Con error" y **no se reintenta sola** (normalmente el cierre del mismo conteo también queda con error justo debajo: 422
 `Faltan {n} línea(s) por contar.` si el conteo seguía Pendiente, o `El conteo ya se terminó; puede corregir la captura o reconciliarlo.` si
-ya estaba Contado), porque las cantidades del lote no se guardaron.
+ya estaba Contado).
 
-Quién la ve: cualquiera que entró con PIN en ese aparato (Sincronización no depende de permisos). "Actualizar el conteo" consulta
+Quién lo ve: cualquiera que entró con PIN en ese aparato (Sincronización no depende de permisos). "Actualizar el conteo" consulta
 `GET /api/v1/cycle-counts/{id}` con el permiso de quien está dentro (`warehouse.count.capture` o `warehouse.count`, módulo
 **WMS_LOTSERIAL**).
 
-Qué muestra la tarjeta (en lugar de la fila corta de siempre):
+**Aviso de lote parcial (el caso común).** Se guarda en el aparato (no se pierde si se cierra la app) y se muestra en Sincronización,
+encima de la lista de pendientes, hasta que se toque **Descartar este aviso**:
 
 | Parte | Texto exacto (es) |
 |---|---|
-| Aviso rojo grande | `El supervisor ya corrigió una línea de este conteo.` |
-| Debajo | `No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.` |
+| Título | `Se guardaron las demás líneas de tu conteo.` |
+| Introducción | `Estas no se guardaron porque el supervisor ya las corrigió:` |
+| Una por línea | `• {SKU} · {posición} (mandaste {x} → el supervisor dejó {y})`; con lote: `• {SKU} · lote {L} · {posición} (…)`; sin valor vigente: `(mandaste {x}; el supervisor ya la corrigió)` |
+| Aclaración | `No tienes que hacer nada con ellas. Si falta contar algo, crea un conteo nuevo o pide al supervisor que lo revise.` |
+
+Botones: **Actualizar el conteo** (el mismo de abajo) y **Descartar este aviso**. Muestra la cantidad que dejó el supervisor aunque el conteo
+sea a ciegas; **nunca** la cantidad esperada. La app **no reabre un conteo ya enviado**: si falta contar algo, se crea un conteo nuevo
+(escanear la posición otra vez).
+
+**Rechazo (409 residual: todas las líneas del lote corregidas).** Qué muestra la tarjeta (en lugar de la fila corta de siempre):
+
+| Parte | Texto exacto (es) |
+|---|---|
+| Aviso rojo grande | `El supervisor ya corrigió todas las líneas de este envío.` |
+| Debajo | `No se guardó ninguna línea de este envío porque todas ya las corrigió el supervisor.` |
 | Renglones (si el mensaje del servidor trae la lista en el formato esperado) | `Líneas que ya corrigió el supervisor:` y una por renglón: `• Renglón {n}: {SKU} (mandaste {cantidad})` (la cantidad es la que este aparato mandó en ese renglón) |
 | Si la lista no se puede leer con seguridad (por ejemplo un SKU con paréntesis) | `Lo que dijo el servidor:` y el mensaje tal cual |
-| Qué hacer | `Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).` |
-| Aclaración | `Esta app no reabre un conteo ya enviado: avisa al supervisor; él lo revisa en Conteo cíclico de la web. Toca «Actualizar el conteo» para ver cómo quedó.` |
+| Qué hacer | `Si falta contar algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.` |
+| Aclaración | `Esta app no reabre un conteo ya enviado. Toca «Actualizar el conteo» para ver cómo quedó.` |
 | Si el cierre del mismo conteo también tiene error | `El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato.` |
 | Si no se reconoce de qué conteo es | `No se pudo saber de qué conteo es este envío; pide al supervisor que lo revise.` (sin botón de actualizar) |
 

@@ -112,6 +112,8 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    posición (sin cantidad, la lectura no agrega la línea y avisa).
    Lote A6: Sincronización explica la captura de conteo rechazada porque el supervisor ya corrigió una línea (409) y ofrece
    "Actualizar el conteo".
+   Lote A7: si el lote trae líneas corregidas, las libres se guardan y Sincronización muestra un aviso con las no guardadas (el 409 queda
+   solo cuando todas están corregidas).
 10. [10 — Migración de datos heredados](10-migracion-de-datos.md): comando de línea de comandos para aprovisionar
     una compañía desde QuickBooks Desktop y el WMS heredado MSWM, simulación (`--dry-run`), refresco de maestros sin
     tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`). Lote 12

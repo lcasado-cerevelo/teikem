@@ -86,7 +86,7 @@ export function RejectedCountBatch({ rowId, rejection, finishAlsoRejected, onDis
   )
 }
 
-function RefreshResult({ result }: { result: CountRefreshResult }) {
+export function RefreshResult({ result }: { result: CountRefreshResult }) {
   const { t } = useT()
   if (result.kind === 'offline') return <ScanMessage tone="error" message={t('countRejection.offline')} />
   if (result.kind === 'error') return <ScanMessage tone="error" message={result.message} />

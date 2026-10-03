@@ -261,15 +261,15 @@
     "discard": "Discard"
   },
   "countRejection": {
-    "headline": "The supervisor already corrected a line of this count.",
-    "nothingSaved": "Nothing from this submission was saved: none of the quantities you sent made it into the count.",
+    "headline": "The supervisor already corrected all the lines of this submission.",
+    "nothingSaved": "No line of this submission was saved because the supervisor already corrected all of them.",
     "rowsTitle": "Lines the supervisor already corrected:",
     "row": "• Row {number}: {sku}",
     "rowWithQty": "• Row {number}: {sku} (you sent {qty})",
     "serverSaid": "What the server said:",
     "whatToDoTitle": "What to do",
-    "whatToDo": "Open the count again and capture again only the lines the supervisor did not correct (or ask the supervisor to review it).",
-    "noReopenInApp": "This app cannot reopen a count that was already sent: tell the supervisor; they review it in Cycle count on the web. Tap “Refresh the count” to see where it stands.",
+    "whatToDo": "If something is still missing, create a new count (scan the position again) or ask the supervisor to review it.",
+    "noReopenInApp": "This app cannot reopen a count that was already sent. Tap “Refresh the count” to see where it stands.",
     "finishAlsoRejected": "Closing this same count also failed: the count was not finished from this device.",
     "refresh": "Refresh the count",
     "noCountId": "Could not tell which count this submission belongs to; ask the supervisor to review it.",
@@ -285,6 +285,17 @@
     "stateCounted": "Count {number} was already finished (Counted): ask the supervisor to review it.",
     "stateClosed": "Count {number} was already reconciled: it takes no more captures. You can discard this submission.",
     "stateNotFound": "The count no longer exists (it was deleted). You can discard this submission."
+  },
+  "countSkipped": {
+    "headline": "The rest of the lines of your count were saved.",
+    "intro": "These were not saved because the supervisor already corrected them:",
+    "line": "• {sku} · {bin} (you sent {sent} → the supervisor left {current})",
+    "lineLot": "• {sku} · lot {lot} · {bin} (you sent {sent} → the supervisor left {current})",
+    "lineNoCurrent": "• {sku} · {bin} (you sent {sent}; the supervisor already corrected it)",
+    "lineLotNoCurrent": "• {sku} · lot {lot} · {bin} (you sent {sent}; the supervisor already corrected it)",
+    "hint": "You do not need to do anything with them. If something is still missing, create a new count or ask the supervisor to review it.",
+    "refresh": "Refresh the count",
+    "dismiss": "Dismiss this notice"
   },
   "scan": {
     "accept": "OK",

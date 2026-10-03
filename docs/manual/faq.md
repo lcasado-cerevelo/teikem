@@ -4472,17 +4472,23 @@ Pendiente del cambio 2 de las decisiones del dueño del 2026-10-03 (`docs/decisi
 
 ### Mensajes nuevos
 
-**"La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: n (SKU). No se guardó nada." (409, en la app)**
-Lo devuelve el servidor a la captura en lote que manda la app al terminar un conteo (`PUT /api/v1/cycle-counts/{id}/lines/batch`). En
-la app, **Sincronización → Con error** muestra en su lugar la tarjeta roja `El supervisor ya corrigió una línea de este conteo.` con
-`No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.` y los renglones (`• Renglón 2: SKU-1
-(mandaste 6)`). Qué hacer: `Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al
-supervisor que lo revise).` La app no reabre un conteo ya enviado: avise al supervisor; él lo revisa en **Conteo cíclico** de la web
-(ve qué capturó usted y qué corrigió). Antes, toque **Actualizar el conteo** para ver cómo quedó. Cuando el supervisor lo resuelva,
-toque **Descartar este envío** (y descarte también el cierre del mismo conteo si quedó con error).
+**"Se guardaron las demás líneas de tu conteo." (app, sin código HTTP; Lote A7)**
+Lo muestra Sincronización cuando el servidor respondió 200 al lote de captura pero omitió las líneas que el supervisor ya había corregido
+(`skippedLines`). Las demás líneas sí se guardaron y el envío quedó como enviado; no es un error. Debajo salen las no guardadas:
+`• SKU · posición (mandaste x → el supervisor dejó y)`. Qué hacer: nada con esas líneas (el supervisor ya tiene su valor); si falta contar
+algo, cree un conteo nuevo o pida al supervisor que lo revise. Toque **Actualizar el conteo** para ver cómo quedó y **Descartar este aviso**
+cuando ya lo leyó (el aviso no se va solo ni al cerrar la app).
 
-**"El supervisor ya corrigió una línea de este conteo."** (app, sin código HTTP)
-Es el título de esa tarjeta: ver el mensaje anterior.
+**"La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: n (SKU). No se guardó nada." (409, en la app)**
+Ahora solo ocurre cuando **todas** las líneas del lote que mandó el aparato ya las corrigió el supervisor. En la app, **Sincronización → Con
+error** muestra en su lugar la tarjeta roja `El supervisor ya corrigió todas las líneas de este envío.` con `No se guardó ninguna línea de
+este envío porque todas ya las corrigió el supervisor.` y los renglones (`• Renglón 2: SKU-1 (mandaste 6)`). Qué hacer: `Si falta contar
+algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.` La app no reabre un conteo ya enviado.
+Antes, toque **Actualizar el conteo** para ver cómo quedó. Cuando termine, toque **Descartar este envío** (y descarte también el cierre del
+mismo conteo si quedó con error).
+
+**"El supervisor ya corrigió todas las líneas de este envío."** (app, sin código HTTP)
+Es el título de esa tarjeta (antes decía "una línea de este conteo"): ver el mensaje anterior.
 
 **"El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato."** (app)
 Detrás del lote rechazado la cola mandó el cierre del conteo, y el servidor también lo rechazó (422 `Faltan {n} línea(s)
@@ -4518,12 +4524,17 @@ interpretarla y muestra el mensaje del servidor tal cual.
 ### Preguntas frecuentes
 
 **¿Se perdió lo que conté?**
-De ese envío no se guardó nada en el servidor (todo o nada). Lo que contó sigue en la tarjeta (los renglones bloqueados con lo que
-mandó) hasta que la descarte. Las líneas que el supervisor corrigió ya tienen su valor; las demás hay que capturarlas de nuevo.
+No. Desde el Lote A7 las líneas que el supervisor no había corregido se guardan; solo se omiten las corregidas, y el aviso le dice cuáles
+(con lo que usted mandó y lo que dejó el supervisor). En el caso residual del 409 (todas corregidas) no se guardó ninguna línea de ese
+envío, pero lo que contó sigue en la tarjeta hasta que la descarte.
 
-**¿Por qué no se guardaron al menos las líneas que el supervisor no corrigió?**
-Porque la captura en lote es todo o nada (decisión del dueño, cambio 2). Guardar las libres y rechazar solo la corregida sería un cambio
-del servidor (`CaptureBatchAsync`), anotado como decisión pendiente.
+**¿Por qué no se guardaron las líneas que el supervisor corrigió?**
+Para proteger la corrección: solo quien la corrigió o quien tiene `warehouse.count` puede volver a cambiarla. Las demás líneas del mismo
+lote sí se guardan (decisión del dueño, segundo bloque, 2026-10-03; antes se rechazaba todo el lote).
+
+**¿Puedo retomar un conteo que ya envié?**
+No: el dueño decidió que la app no tiene esa función. Si falta contar algo, cree un conteo nuevo (escanee la posición otra vez) o avise al
+supervisor.
 
 **¿"Reintentar" sirve?**
 Vuelve a mandar exactamente el mismo lote: falla igual mientras la corrección del supervisor siga ahí. Solo funcionaría si el supervisor

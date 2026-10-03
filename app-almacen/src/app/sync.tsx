@@ -6,6 +6,8 @@ import { runSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
 import { discardRow, listOutbox, retryRow, type OutboxRow } from '../kernel/sync/outbox'
 import { classifyCountBatchRejection, countIdFromFinishPath, type CorrectedLineRejection } from '../features/count/countRejection'
 import { RejectedCountBatch } from '../features/count/RejectedCountBatch'
+import { dismissSkippedNotice, listSkippedNotices } from '../features/count/countSkipped'
+import { SkippedLinesNotice } from '../features/count/SkippedLinesNotice'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
@@ -32,6 +34,9 @@ export default function SyncScreen() {
   const rows = useMemo(() => listOutbox(), [tick])
   const pendingRows = rows.filter((r) => r.status === 'pending')
   const rejectedRows = rows.filter((r) => r.status === 'rejected')
+  // Lote A7: avisos de lotes de conteo parciales (el servidor guardó las libres y omitió las corregidas); persisten hasta descartarlos.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const skippedNotices = useMemo(() => listSkippedNotices(), [tick, pending, lastSync])
   // Lote A6: la captura de conteo rechazada porque el supervisor ya corrigió una línea (409) se explica aparte, en grande; el
   // resto de los rechazos sigue en la lista de siempre.
   const correctedRejections = rejectedRows
@@ -76,6 +81,17 @@ export default function SyncScreen() {
 
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       <BigButton label={t('home.syncNow')} onPress={syncNow} disabled={busy} />
+
+      {skippedNotices.map((n) => (
+        <SkippedLinesNotice
+          key={n.id}
+          notice={n}
+          onDismiss={() => {
+            dismissSkippedNotice(n.id)
+            refresh()
+          }}
+        />
+      ))}
 
       <Text style={styles.label}>{t('sync.pendingWithCount', { count: pending })}</Text>
       <LineList

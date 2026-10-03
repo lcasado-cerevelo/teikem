@@ -261,15 +261,15 @@
     "discard": "Descartar"
   },
   "countRejection": {
-    "headline": "El supervisor ya corrigió una línea de este conteo.",
-    "nothingSaved": "No se guardó nada de este envío: ninguna de las cantidades que mandaste quedó en el conteo.",
+    "headline": "El supervisor ya corrigió todas las líneas de este envío.",
+    "nothingSaved": "No se guardó ninguna línea de este envío porque todas ya las corrigió el supervisor.",
     "rowsTitle": "Líneas que ya corrigió el supervisor:",
     "row": "• Renglón {number}: {sku}",
     "rowWithQty": "• Renglón {number}: {sku} (mandaste {qty})",
     "serverSaid": "Lo que dijo el servidor:",
     "whatToDoTitle": "Qué hacer",
-    "whatToDo": "Vuelve a abrir el conteo y captura de nuevo solo las líneas que el supervisor no corrigió (o pide al supervisor que lo revise).",
-    "noReopenInApp": "Esta app no reabre un conteo ya enviado: avisa al supervisor; él lo revisa en Conteo cíclico de la web. Toca «Actualizar el conteo» para ver cómo quedó.",
+    "whatToDo": "Si falta contar algo, crea un conteo nuevo (escanea la posición otra vez) o pide al supervisor que lo revise.",
+    "noReopenInApp": "Esta app no reabre un conteo ya enviado. Toca «Actualizar el conteo» para ver cómo quedó.",
     "finishAlsoRejected": "El cierre de este mismo conteo también quedó con error: el conteo no se terminó desde este aparato.",
     "refresh": "Actualizar el conteo",
     "noCountId": "No se pudo saber de qué conteo es este envío; pide al supervisor que lo revise.",
@@ -285,6 +285,17 @@
     "stateCounted": "El conteo {number} ya se terminó de contar (Contado): pide al supervisor que lo revise.",
     "stateClosed": "El conteo {number} ya fue reconciliado: no admite más capturas. Puedes descartar este envío.",
     "stateNotFound": "El conteo ya no existe (se eliminó). Puedes descartar este envío."
+  },
+  "countSkipped": {
+    "headline": "Se guardaron las demás líneas de tu conteo.",
+    "intro": "Estas no se guardaron porque el supervisor ya las corrigió:",
+    "line": "• {sku} · {bin} (mandaste {sent} → el supervisor dejó {current})",
+    "lineLot": "• {sku} · lote {lot} · {bin} (mandaste {sent} → el supervisor dejó {current})",
+    "lineNoCurrent": "• {sku} · {bin} (mandaste {sent}; el supervisor ya la corrigió)",
+    "lineLotNoCurrent": "• {sku} · lote {lot} · {bin} (mandaste {sent}; el supervisor ya la corrigió)",
+    "hint": "No tienes que hacer nada con ellas. Si falta contar algo, crea un conteo nuevo o pide al supervisor que lo revise.",
+    "refresh": "Actualizar el conteo",
+    "dismiss": "Descartar este aviso"
   },
   "scan": {
     "accept": "Aceptar",

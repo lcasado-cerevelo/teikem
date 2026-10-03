@@ -2,6 +2,7 @@ import { __resetAllForTests } from 'expo-sqlite'
 
 import { api } from '../api/client'
 import { __resetDbForTests, getDb } from '../db/database'
+import { listSkippedNotices } from '../../features/count/countSkipped'
 import { countPending, discardRow, enqueue, listOutbox, retryRow, runOutbox } from './outbox'
 
 jest.mock('../api/client', () => {
@@ -160,5 +161,56 @@ describe('enqueue', () => {
     expect(putMock).toHaveBeenCalledTimes(1)
     expect(putMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts/42/lines/batch')
     expect(putMock.mock.calls[0][1].body).toEqual({ lines: [{ lineId: 1, countedQty: 3 }] })
+  })
+
+  describe('lote de conteo parcial (Lote A7)', () => {
+    const PATH = '/api/v1/cycle-counts/300/lines/batch'
+    const BODY = { lines: [{ lineId: 1, countedQty: 4 }, { lineId: 2, countedQty: 6 }] }
+    const SKIPPED = { lineId: 2, binCode: 'A-01', sku: 'SKU-B', lotNumber: null, sentQty: 6, currentQty: 5, reasonCode: 'CORRECTED_BY_SUPERVISOR', message: 'x' }
+
+    it('200 con skippedLines: la fila queda enviada y se guarda el aviso', async () => {
+      const id = enqueue({ kind: 'countBatch', body: BODY, path: PATH })
+      putMock.mockImplementation(() => ok({ count: { id: 300 }, lines: [], skippedLines: [SKIPPED] }))
+
+      const result = await runOutbox()
+
+      expect(result).toEqual({ sent: 1, rejected: 0, stoppedForNetwork: false, remaining: 0 })
+      expect(listOutbox().map((r) => [r.id, r.status, r.last_error])).toEqual([[id, 'sent', null]])
+      const notices = listSkippedNotices()
+      expect(notices).toHaveLength(1)
+      expect(notices[0]).toMatchObject({ outboxId: id, countId: 300 })
+      expect(notices[0].lines).toEqual([{ lineId: 2, sku: 'SKU-B', binCode: 'A-01', lotNumber: null, sentQty: 6, currentQty: 5 }])
+    })
+
+    it('200 sin skippedLines (o null o vacío): no hay aviso', async () => {
+      enqueue({ kind: 'countBatch', body: BODY, path: PATH })
+      enqueue({ kind: 'countBatch', body: BODY, path: PATH })
+      enqueue({ kind: 'countBatch', body: BODY, path: PATH })
+      putMock
+        .mockImplementationOnce(() => ok({ lines: [] }))
+        .mockImplementationOnce(() => ok({ lines: [], skippedLines: null }))
+        .mockImplementationOnce(() => ok({ lines: [], skippedLines: [] }))
+      await runOutbox()
+      expect(listOutbox().map((r) => r.status)).toEqual(['sent', 'sent', 'sent'])
+      expect(listSkippedNotices()).toEqual([])
+    })
+
+    it('solo los lotes de conteo generan aviso (un recibo con skippedLines inesperado no)', async () => {
+      enqueue({ kind: 'receipt', body: { a: 1 } })
+      postMock.mockImplementation(() => ok({ skippedLines: [SKIPPED] }))
+      await runOutbox()
+      expect(listSkippedNotices()).toEqual([])
+    })
+
+    it('el 409 residual (todas corregidas) sigue siendo un rechazo y no genera aviso', async () => {
+      enqueue({ kind: 'countBatch', body: BODY, path: PATH })
+      putMock.mockImplementation(() =>
+        problem(409, { title: 'La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: 1 (SKU-B). No se guardó nada.', code: 'conflict' }),
+      )
+      const result = await runOutbox()
+      expect(result.rejected).toBe(1)
+      expect(listOutbox()[0].status).toBe('rejected')
+      expect(listSkippedNotices()).toEqual([])
+    })
   })
 })

@@ -6,6 +6,7 @@
 // Conteo manda a un id de conteo que el servidor ya asignó en línea al escanear la posición, así que su ruta se arma
 // al encolar (`path` explícito) en vez de derivarse del tipo.
 import { api, ApiError, unwrap } from '../api/client'
+import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 
 export type OutboxKind = 'receipt' | 'pack' | 'countBatch' | 'countFinish'
@@ -135,6 +136,15 @@ export async function runOutbox(): Promise<RunOutboxResult> {
         row.id,
       ])
       sent += 1
+      // Lote A7: un lote de conteo con líneas ya corregidas por el supervisor llega 200 con `skippedLines`; la fila queda
+      // `sent` y lo omitido se guarda como aviso persistente (Sincronización lo muestra hasta que se descarte).
+      if (row.kind === 'countBatch') {
+        try {
+          recordSkippedFromResult(row.id, row.path, result)
+        } catch {
+          // el aviso es un extra: si no se pudo guardar, el envío ya quedó enviado y la cola sigue con las demás
+        }
+      }
     } catch (err) {
       if (!(err instanceof ApiError)) throw err
       if (err.code === 'network') {
