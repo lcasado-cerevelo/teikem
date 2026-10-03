@@ -456,13 +456,16 @@ internal sealed class CycleCountFixture : IAsyncDisposable
     public const int TenantId = 1;
     private readonly Dictionary<string, int> _lookupIds = new(StringComparer.OrdinalIgnoreCase);
 
-    private CycleCountFixture(TeikemDbContext db, ServiceProvider services, TripTestLookups lookups)
+    private CycleCountFixture(TeikemDbContext db, ServiceProvider services, TripTestLookups lookups, TenantContext tenant)
     {
         Db = db;
         Services = services;
         Lookups = lookups;
+        Tenant = tenant;
     }
 
+    /// <summary>Contexto del tenant y usuario activos (Lote 21: AsUser cambia el usuario que captura).</summary>
+    public TenantContext Tenant { get; }
     public TeikemDbContext Db { get; }
     public ServiceProvider Services { get; }
     public TripTestLookups Lookups { get; }
@@ -480,7 +483,7 @@ internal sealed class CycleCountFixture : IAsyncDisposable
 
     public int LookupId(string domain, string code) => _lookupIds[domain + "|" + code];
 
-    public static async Task<CycleCountFixture> CreateAsync()
+    public static async Task<CycleCountFixture> CreateAsync(Action<IServiceCollection>? configure = null)
     {
         var tenant = new TenantContext { TenantId = TenantId, UserId = 1, IsAuthenticated = true, IsPlatformAdmin = true };
         var options = new DbContextOptionsBuilder<TeikemDbContext>()
@@ -509,9 +512,11 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         services.AddSingleton<CountTaskHandler>();
         services.AddSingleton<ITenantClock>(TenantClock.Default);   // Lote 14: "hoy" en hora de Puerto Rico
         services.AddSingleton<CycleCountService>();
+        services.AddSingleton<WarehouseLayoutService>();   // Lote 21: posición provisional
+        configure?.Invoke(services);
         var provider = services.BuildServiceProvider();
 
-        var f = new CycleCountFixture(db, provider, lookups);
+        var f = new CycleCountFixture(db, provider, lookups, tenant);
         await f.SeedAsync();
         return f;
     }
@@ -630,6 +635,40 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         Db.ChangeTracker.Clear();
     }
 
+    // ---------------------------------------------------------------- apoyo del Lote 21 (conteo por producto)
+
+    /// <summary>Crea el usuario (si no existe) con su nombre completo.</summary>
+    public async Task AddUserAsync(int userId, string fullName)
+    {
+        if (!await Db.Users.AnyAsync(u => u.Id == userId))
+        {
+            Db.Users.Add(new Teikem.Domain.Identity.ApplicationUser { Id = userId, UserName = $"u{userId}", Email = $"u{userId}@example.com", FullName = fullName });
+            await Db.SaveChangesAsync();
+            Db.ChangeTracker.Clear();
+        }
+    }
+
+    /// <summary>El usuario que captura/corrige/reconcilia a partir de ahora (el TenantId sigue saliendo del contexto).</summary>
+    public void AsUser(int userId) => Tenant.UserId = userId;
+
+    /// <summary>Segundo almacén del tenant con una zona y una posición (para probar que no se mezclan).</summary>
+    public async Task<(int ZoneId, int BinId)> AddOtherWarehouseAsync()
+    {
+        var wh = new Warehouse
+        {
+            WarehouseId = 20, PublicId = Guid.NewGuid(), TenantId = TenantId, Code = "ALM-02", Name = "Otro almacén",
+            CountryLookupId = LookupId(LookupDomains.Country, "PR"), IsActive = true,
+            StatusCodeId = await Db.StatusCodes.AsNoTracking().Where(s => s.Entity == StatusDomains.WarehouseStatus).Select(s => s.StatusCodeId).FirstAsync(),
+        };
+        var zone = new WarehouseZone { WarehouseZoneId = 21, WarehouseId = 20, Code = "OTR", Name = "Otra", IsActive = true };
+        Db.Set<Warehouse>().Add(wh);
+        Db.Set<WarehouseZone>().Add(zone);
+        Db.Set<WarehouseBin>().Add(new WarehouseBin { WarehouseBinId = 201, WarehouseZoneId = 21, WarehouseId = 20, Code = "O-01", IsActive = true });
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+        return (21, 201);
+    }
+
     /// <summary>Estatus destino del historial del conteo, en orden (Lote 14).</summary>
     public async Task<string[]> HistoryAsync(int cycleCountId)
     {
@@ -700,6 +739,7 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         var country = L(LookupDomains.Country, "PR");
         L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual);    // Lote 14
         L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Changes);
+        L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Product);   // Lote 21
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
