@@ -13391,6 +13391,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tenant/format-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TenantFormatOptionsDto"];
+                        "application/json": components["schemas"]["TenantFormatOptionsDto"];
+                        "text/json": components["schemas"]["TenantFormatOptionsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tenant/holidays": {
         parameters: {
             query?: never;
@@ -20897,6 +20934,36 @@ export interface components {
             serialNumbers?: string[] | null;
             comment?: string | null;
         };
+        TenantFormatDto: {
+            regionCode?: string | null;
+            timeZoneId?: string | null;
+            currencyCode?: string | null;
+            currencySymbol?: string | null;
+            currencySymbolPosition?: string | null;
+            /** Format: int32 */
+            currencyDecimals?: number;
+            dateOrder?: string | null;
+            dateSeparator?: string | null;
+            /** Format: int32 */
+            timeFormat?: number;
+            /** Format: int32 */
+            weekStartDay?: number;
+            thousandsSeparator?: string | null;
+            decimalSeparator?: string | null;
+            phoneCountryCode?: string | null;
+            phoneMask?: string | null;
+        };
+        TenantFormatOptionsDto: {
+            regions?: components["schemas"]["TenantFormatDto"][] | null;
+            currencySymbolPositions?: string[] | null;
+            currencyDecimals?: number[] | null;
+            dateOrders?: string[] | null;
+            dateSeparators?: string[] | null;
+            timeFormats?: number[] | null;
+            weekStartDays?: number[] | null;
+            thousandsSeparators?: string[] | null;
+            decimalSeparators?: string[] | null;
+        };
         TenantHolidayDto: {
             /** Format: int32 */
             id?: number;
@@ -20930,6 +20997,23 @@ export interface components {
             adminFullName?: string | null;
             adminPassword?: string | null;
             mfaRequired?: boolean | null;
+            regionCode?: string | null;
+            timeZoneId?: string | null;
+            currencyCode?: string | null;
+            currencySymbol?: string | null;
+            currencySymbolPosition?: string | null;
+            /** Format: int32 */
+            currencyDecimals?: number | null;
+            dateOrder?: string | null;
+            dateSeparator?: string | null;
+            /** Format: int32 */
+            timeFormat?: number | null;
+            /** Format: int32 */
+            weekStartDay?: number | null;
+            thousandsSeparator?: string | null;
+            decimalSeparator?: string | null;
+            phoneCountryCode?: string | null;
+            phoneMask?: string | null;
         };
         TenantProvisionResult: {
             tenant?: components["schemas"]["TenantSummaryDto"];
@@ -20961,6 +21045,24 @@ export interface components {
             deviceSessionDays?: number;
             brandingJson?: string | null;
             isActive?: boolean;
+            regionCode?: string | null;
+            timeZoneId?: string | null;
+            currencyCode?: string | null;
+            currencySymbol?: string | null;
+            currencySymbolPosition?: string | null;
+            /** Format: int32 */
+            currencyDecimals?: number;
+            dateOrder?: string | null;
+            dateSeparator?: string | null;
+            /** Format: int32 */
+            timeFormat?: number;
+            /** Format: int32 */
+            weekStartDay?: number;
+            thousandsSeparator?: string | null;
+            decimalSeparator?: string | null;
+            phoneCountryCode?: string | null;
+            phoneMask?: string | null;
+            isRegionCustomized?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -20981,6 +21083,23 @@ export interface components {
             /** Format: int32 */
             deviceSessionDays?: number | null;
             brandingJson?: string | null;
+            regionCode?: string | null;
+            timeZoneId?: string | null;
+            currencyCode?: string | null;
+            currencySymbol?: string | null;
+            currencySymbolPosition?: string | null;
+            /** Format: int32 */
+            currencyDecimals?: number | null;
+            dateOrder?: string | null;
+            dateSeparator?: string | null;
+            /** Format: int32 */
+            timeFormat?: number | null;
+            /** Format: int32 */
+            weekStartDay?: number | null;
+            thousandsSeparator?: string | null;
+            decimalSeparator?: string | null;
+            phoneCountryCode?: string | null;
+            phoneMask?: string | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */

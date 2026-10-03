@@ -18338,6 +18338,35 @@
         }
       }
     },
+    "/api/v1/tenant/format-options": {
+      "get": {
+        "tags": [
+          "Tenant"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantFormatOptionsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantFormatOptionsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantFormatOptionsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/tenant/holidays": {
       "get": {
         "tags": [
@@ -36051,6 +36080,140 @@
         },
         "additionalProperties": false
       },
+      "TenantFormatDto": {
+        "type": "object",
+        "properties": {
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbolPosition": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateOrder": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeFormat": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weekStartDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "thousandsSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneCountryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneMask": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TenantFormatOptionsDto": {
+        "type": "object",
+        "properties": {
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TenantFormatDto"
+            },
+            "nullable": true
+          },
+          "currencySymbolPositions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "currencyDecimals": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "dateOrders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "dateSeparators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "timeFormats": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "weekStartDays": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "thousandsSeparators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "decimalSeparators": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "TenantHolidayDto": {
         "type": "object",
         "properties": {
@@ -36156,6 +36319,65 @@
           "mfaRequired": {
             "type": "boolean",
             "nullable": true
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbolPosition": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dateOrder": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeFormat": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "weekStartDay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "thousandsSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneCountryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneMask": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -36241,6 +36463,65 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbolPosition": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dateOrder": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeFormat": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weekStartDay": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "thousandsSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneCountryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneMask": {
+            "type": "string",
+            "nullable": true
+          },
+          "isRegionCustomized": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -36302,6 +36583,65 @@
             "nullable": true
           },
           "brandingJson": {
+            "type": "string",
+            "nullable": true
+          },
+          "regionCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeZoneId": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbol": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencySymbolPosition": {
+            "type": "string",
+            "nullable": true
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "dateOrder": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "timeFormat": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "weekStartDay": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "thousandsSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneCountryCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "phoneMask": {
             "type": "string",
             "nullable": true
           }
