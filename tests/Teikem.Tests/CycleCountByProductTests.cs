@@ -188,29 +188,147 @@ public sealed class CycleCountByProductTests
         Assert.Equal((2m, 2m, false), (line.CountedQty, line.CapturedQty, line.WasCorrected));
     }
 
+    // ---- Segundo bloque (2026-10-03): un lote con línea corregida guarda las libres y omite la bloqueada
+
     [Fact]
-    public async Task Batch_with_one_corrected_line_is_rejected_whole_and_names_the_row()
+    public async Task Mixed_batch_saves_the_free_lines_and_skips_the_corrected_one_with_the_exact_detail()
     {
         var (f, id, l1, l2) = await CorrectedAsync();
         await using var _f = f;
         var svc = f.Get<CycleCountService>();
         f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
 
+        var detail = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l2.Id, CountedQty: 1m),      // libre: se guarda
+            new CountBatchItem(LineId: l1.Id, CountedQty: 3m),      // corregida: se omite
+        }), default);
+
+        Assert.Equal(1m, detail.Lines.Single(l => l.Id == l2.Id).CountedQty);
+        Assert.Equal(6m, detail.Lines.Single(l => l.Id == l1.Id).CountedQty);   // la corrección sobrevive
+        var skipped = Assert.Single(detail.SkippedLines!);
+        Assert.Equal(new CountSkippedLineDto(l1.Id, l1.BinCode, l1.Sku, null, 3m, 6m, "CORRECTED_BY_SUPERVISOR", Locked), skipped);
+        // Lo guardado también está en la base (no solo en la respuesta).
+        Assert.Equal(1m, (await svc.GetAsync(id, null, default)).Lines.Single(l => l.Id == l2.Id).CountedQty);
+
+        // Un lote sin líneas corregidas no trae skippedLines.
+        var ok = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[] { new CountBatchItem(LineId: l2.Id, CountedQty: 2m) }), default);
+        Assert.Null(ok.SkippedLines);
+    }
+
+    [Fact]
+    public async Task Batch_with_all_lines_corrected_is_409_with_the_usual_message_and_saves_nothing()
+    {
+        var (f, id, l1, _) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
         var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
         {
-            new CountBatchItem(LineId: l2.Id, CountedQty: 1m),      // sin corrección: por sí sola pasaría
-            new CountBatchItem(LineId: l1.Id, CountedQty: 3m),      // corregida: detiene todo el lote
+            new CountBatchItem(LineId: l1.Id, CountedQty: 3m),
         }), default));
+        Assert.Equal(409, ex.StatusCode);
         Assert.StartsWith(Locked, ex.Message);
-        Assert.Contains("2 (", ex.Message);
-        Assert.Contains("No se guardó nada.", ex.Message);
-        var lines = (await svc.GetAsync(id, null, default)).Lines;
-        Assert.Equal(5m, lines.Single(l => l.Id == l2.Id).CountedQty);   // el lote no quedó a medias
-        Assert.Equal(6m, lines.Single(l => l.Id == l1.Id).CountedQty);
+        Assert.Contains("Renglón(es) del lote: 1 (", ex.Message);
+        Assert.EndsWith("No se guardó nada.", ex.Message);
+        Assert.Equal(6m, (await svc.GetAsync(id, null, default)).Lines.Single(l => l.Id == l1.Id).CountedQty);
+    }
 
-        // Un lote sin líneas corregidas sigue pasando.
-        var ok = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[] { new CountBatchItem(LineId: l2.Id, CountedQty: 1m) }), default);
-        Assert.Equal(1m, ok.Lines.Single(l => l.Id == l2.Id).CountedQty);
+    [Fact]
+    public async Task Supervisor_and_the_user_who_corrected_still_capture_the_corrected_line_in_a_batch()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+
+        f.AsRestrictedUser(Beto, PermissionCatalog.WarehouseCountCapture);
+        var byCorrector = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[] { new CountBatchItem(LineId: l1.Id, CountedQty: 9m) }), default);
+        Assert.Null(byCorrector.SkippedLines);
+        Assert.Equal(9m, byCorrector.Lines.Single(l => l.Id == l1.Id).CountedQty);
+
+        f.AsRestrictedUser(Carla, PermissionCatalog.WarehouseCount, PermissionCatalog.WarehouseCountCapture);
+        var bySupervisor = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l1.Id, CountedQty: 8m), new CountBatchItem(LineId: l2.Id, CountedQty: 2m),
+        }), default);
+        Assert.Null(bySupervisor.SkippedLines);
+        Assert.Equal(8m, bySupervisor.Lines.Single(l => l.Id == l1.Id).CountedQty);
+    }
+
+    [Fact]
+    public async Task Skipped_lines_survive_the_blind_mapping_without_leaking_the_expected_quantity()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+        var detail = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l2.Id, CountedQty: 1m), new CountBatchItem(LineId: l1.Id, CountedQty: 3m),
+        }), default);
+
+        var blind = CycleCountService.Blind(detail);
+        Assert.True(blind.IsBlind);
+        var skipped = Assert.Single(blind.SkippedLines!);
+        Assert.Equal((l1.Id, 3m, 6m), (skipped.LineId, skipped.SentQty, skipped.CurrentQty));   // la corregida se muestra también a ciegas
+        Assert.All(blind.Lines, l => Assert.Null(l.SystemQty));
+        // El DTO de la línea omitida no tiene ningún campo de lo esperado (8 = saldo de la posición, 5 = foto de la otra).
+        var json = System.Text.Json.JsonSerializer.Serialize(skipped);
+        Assert.DoesNotContain("systemQty", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("expected", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Resending_the_current_value_of_a_corrected_line_is_not_skipped_and_a_batch_of_only_that_passes()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
+        var detail = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l1.Id, CountedQty: 6m), new CountBatchItem(LineId: l2.Id, CountedQty: 2m),
+        }), default);
+        Assert.Null(detail.SkippedLines);
+        Assert.Equal((6m, 2m), (detail.Lines.Single(l => l.Id == l1.Id).CountedQty, detail.Lines.Single(l => l.Id == l2.Id).CountedQty));
+        var only = await svc.CaptureBatchAsync(id, new CountBatchRequest(new[] { new CountBatchItem(LineId: l1.Id, CountedQty: 6m) }), default);
+        Assert.Null(only.SkippedLines);
+    }
+
+    [Fact]
+    public async Task Validation_error_in_a_free_line_saves_nothing_even_with_a_skipped_line()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+        {
+            new CountBatchItem(LineId: l1.Id, CountedQty: 3m),
+            new CountBatchItem(LineId: l2.Id, CountedQty: -1m),     // libre pero inválida
+        }), default));
+        Assert.Contains(ex.Errors.Keys, k => k.StartsWith("lines[1]"));
+        var lines = (await svc.GetAsync(id, null, default)).Lines;
+        Assert.Equal(5m, lines.Single(l => l.Id == l2.Id).CountedQty);
+        Assert.Equal(6m, lines.Single(l => l.Id == l1.Id).CountedQty);
+    }
+
+    [Fact]
+    public async Task Batch_with_a_corrected_line_of_another_company_is_404()
+    {
+        var (f, id, l1, l2) = await CorrectedAsync();
+        await using var _f = f;
+        var svc = f.Get<CycleCountService>();
+        f.AsRestrictedUser(Ana, PermissionCatalog.WarehouseCountCapture);
+        using (f.Tenant.As(2))
+            await Assert.ThrowsAsync<NotFoundException>(() => svc.CaptureBatchAsync(id, new CountBatchRequest(new[]
+            {
+                new CountBatchItem(LineId: l2.Id, CountedQty: 1m), new CountBatchItem(LineId: l1.Id, CountedQty: 3m),
+            }), default));
+        Assert.Equal(5m, (await svc.GetAsync(id, null, default)).Lines.Single(l => l.Id == l2.Id).CountedQty);
     }
 
     [Fact]

@@ -1331,10 +1331,17 @@ es siempre el valor **vigente**, el que se reconcilia. Reglas:
   puede volver a cambiarla (sigue siendo una corrección y actualiza quién y cuándo). Cualquier otra persona con solo `warehouse.count.capture`
   (incluido el operario que la capturó originalmente) recibe **409** `La línea ya fue corregida por el supervisor; no se puede volver a capturar.`
   y la corrección no se toca. Reenviar el mismo valor vigente no cambia nada y no se rechaza. En la captura en lote
-  (`PUT .../lines/batch`) es **todo o nada**: si algún renglón es de una línea corregida se rechaza el lote entero con 409
-  `La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote: 2 (SKU-1). No se guardó nada.`
-  (la lista trae el número de renglón, 1 es el primero, y el SKU); las demás líneas del lote quedan sin guardar. Las líneas sin corrección se
-  recapturan como siempre. Al terminar el conteo (Contado) la regla es la misma.
+  (`PUT .../lines/batch`) las líneas corregidas **se omiten** y **las libres se guardan** (decisión del dueño, segundo bloque,
+  2026-10-03): la respuesta es **200** con el conteo ya actualizado y un campo extra `skippedLines` (vacío/ausente si no se omitió
+  ninguna) con, por cada línea omitida, `lineId`, `binCode`, `sku`, `lotNumber`, `sentQty` (lo que se mandó), `currentQty` (el valor
+  vigente: el que dejó el supervisor; **nunca** la cantidad esperada, también a ciegas), `reasonCode` = `CORRECTED_BY_SUPERVISOR` y
+  `message` = `La línea ya fue corregida por el supervisor; no se puede volver a capturar.` Si una línea libre del lote trae un error de
+  validación (400), no se guarda nada del lote, como en toda captura. Solo cuando **todas** las líneas del lote están corregidas (no se
+  pudo guardar nada) responde **409** `La línea ya fue corregida por el supervisor; no se puede volver a capturar. Renglón(es) del lote:
+  2 (SKU-1). No se guardó nada.` (la lista trae el número de renglón, 1 es el primero, y el SKU). Reenviar el valor vigente de una línea
+  corregida no cambia nada y no cuenta como omitida; quien corrigió y quien tiene `warehouse.count` siguen pudiendo. La captura de UNA
+  línea (`PUT .../lines`) y agregar una línea no cambian: la línea corregida sigue dando 409. Las líneas sin corrección se recapturan como
+  siempre. Al terminar el conteo (Contado) la regla es la misma.
 - Borrar la captura (sin cantidad ni series) devuelve la línea a pendiente y borra también su evidencia.
 - Una corrección **no es un ajuste ni una transferencia** y no mueve inventario: solo cambia la cantidad que se reconcilia. Toda captura y
   corrección queda en la bitácora de cambios (entidad `CYCLE_COUNT`).

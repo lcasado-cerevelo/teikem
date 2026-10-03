@@ -25785,6 +25785,46 @@
         },
         "additionalProperties": false
       },
+      "CountSkippedLineDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "binCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "lotNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "currentQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "reasonCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreditCheckDto": {
         "type": "object",
         "properties": {
@@ -26446,6 +26486,13 @@
           },
           "isBlind": {
             "type": "boolean"
+          },
+          "skippedLines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountSkippedLineDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

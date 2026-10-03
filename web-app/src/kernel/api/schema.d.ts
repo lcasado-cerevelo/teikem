@@ -17771,6 +17771,19 @@ export interface components {
             comment?: string | null;
             rowVersion?: string | null;
         };
+        CountSkippedLineDto: {
+            /** Format: int32 */
+            lineId?: number;
+            binCode?: string | null;
+            sku?: string | null;
+            lotNumber?: string | null;
+            /** Format: double */
+            sentQty?: number | null;
+            /** Format: double */
+            currentQty?: number | null;
+            reasonCode?: string | null;
+            message?: string | null;
+        };
         CreditCheckDto: {
             /** Format: double */
             creditLimit?: number | null;
@@ -17998,6 +18011,7 @@ export interface components {
             lines?: components["schemas"]["CycleCountLineDto"][] | null;
             rowVersion?: string | null;
             isBlind?: boolean;
+            skippedLines?: components["schemas"]["CountSkippedLineDto"][] | null;
         };
         CycleCountDto: {
             /** Format: int32 */

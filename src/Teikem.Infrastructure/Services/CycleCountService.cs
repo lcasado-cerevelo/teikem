@@ -738,6 +738,7 @@ public sealed class CycleCountService(
         if (shapeErrors.Count > 0) throw new ValidationException(shapeErrors);
         var current = await ResolveAsync(id, ct);
 
+        var skippedSent = new List<(int LineId, decimal? SentQty)>();
         await db.RunInTransactionAsync(async ct2 =>
         {
             var (cc, ccStatus) = await LockEditableAsync(current.CycleCountId, ct2);
@@ -767,6 +768,7 @@ public sealed class CycleCountService(
             var changes = new List<(CycleCountLine Line, decimal? Counted, IReadOnlyList<string>? Serials)>();
             var added = new List<CycleCountLine>();
             var lockedRows = new List<string>();
+            skippedSent.Clear();
             for (var i = 0; i < items.Count; i++)
             {
                 var item = items[i];
@@ -826,13 +828,19 @@ public sealed class CycleCountService(
                 if (error is not null) errors[$"lines[{i}].{field}"] = new[] { error };
                 else
                 {
-                    changes.Add((line, counted, serials));
-                    if (await LockedByCorrectionAsync(line, counted, serials, ccStatus == CycleCountStatuses.Counted, ct2)) lockedRows.Add($"{i + 1} ({product.Sku})");
+                    // Segundo bloque de decisiones del dueño (2026-10-03): la línea corregida por el supervisor se OMITE (no se toca) y
+                    // se informa; las libres se guardan. Una línea bloqueada es siempre una línea ya existente del conteo.
+                    if (await LockedByCorrectionAsync(line, counted, serials, ccStatus == CycleCountStatuses.Counted, ct2))
+                    {
+                        lockedRows.Add($"{i + 1} ({product.Sku})");
+                        skippedSent.Add((line.CycleCountLineId, counted ?? serials?.Count));
+                    }
+                    else changes.Add((line, counted, serials));
                 }
             }
             if (errors.Count > 0) throw new ValidationException(errors);
-            // Todo o nada: si alguna línea ya fue corregida por el supervisor se rechaza el lote entero (409) y se dice cuáles.
-            if (lockedRows.Count > 0)
+            // Si TODAS las líneas del lote están bloqueadas no se pudo guardar nada: 409 (aquí el "No se guardó nada" es verdad).
+            if (lockedRows.Count > 0 && changes.Count == 0)
                 throw new ConflictException($"{CycleCountRules.CorrectedLineLocked} Renglón(es) del lote: {string.Join(", ", lockedRows)}. No se guardó nada.");
             if (lines.Count + added.Count > CycleCountRules.MaxLines) throw new ValidationException("lines", CycleCountRules.TooManyLines);
 
@@ -842,7 +850,16 @@ public sealed class CycleCountService(
             await db.SaveGuardedAsync(CycleCountRules.LineDuplicated, ct2);
         }, ct);
 
-        return await GetAsync(id, null, ct);
+        var detail = await GetAsync(id, null, ct);
+        if (skippedSent.Count == 0) return detail;
+        // Líneas omitidas: lo que se mandó y el valor vigente (la corrección del supervisor, no la cantidad esperada).
+        var skipped = skippedSent.Select(x =>
+        {
+            var l = detail.Lines.Single(y => y.Id == x.LineId);
+            return new CountSkippedLineDto(l.Id, l.BinCode, l.Sku, l.LotNumber, x.SentQty, l.CountedQty,
+                CycleCountRules.SkippedReasonCorrected, CycleCountRules.CorrectedLineLocked);
+        }).ToList();
+        return detail with { SkippedLines = skipped };
     }
 
     /// <summary>

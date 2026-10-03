@@ -47,8 +47,20 @@ public sealed record CycleCountLineDto(int Id, int BinId, string BinCode, string
     string? CorrectedByName = null, int? CorrectedByUserId = null, DateTime? CorrectedAtUtc = null, bool WasCorrected = false,
     bool BinIsProvisional = false);
 
-/// <summary>Ficha del conteo. IsBlind (Lote 8A) = true cuando las cantidades esperadas de las líneas se omitieron (conteo a ciegas).</summary>
-public sealed record CycleCountDetailDto(CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion, bool IsBlind = false);
+/// <summary>
+/// Ficha del conteo. IsBlind (Lote 8A) = true cuando las cantidades esperadas de las líneas se omitieron (conteo a ciegas).
+/// SkippedLines (lote 22, al final): solo la respuesta de PUT /lines/batch cuando el lote traía líneas ya corregidas por el
+/// supervisor — se omitieron (no se tocaron) y las demás sí se guardaron; null cuando no se omitió ninguna. También llega a ciegas.
+/// </summary>
+public sealed record CycleCountDetailDto(CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion, bool IsBlind = false,
+    IReadOnlyList<CountSkippedLineDto>? SkippedLines = null);
+
+/// <summary>
+/// Línea del lote que NO se guardó porque el supervisor ya la corrigió. SentQty = lo que mandó quien captura; CurrentQty = el valor
+/// vigente de la línea (la corrección del supervisor; nunca la cantidad esperada); ReasonCode = CORRECTED_BY_SUPERVISOR.
+/// </summary>
+public sealed record CountSkippedLineDto(int LineId, string BinCode, string Sku, string? LotNumber, decimal? SentQty, decimal? CurrentQty,
+    string ReasonCode, string Message);
 
 /// <summary>
 /// Filtros de la lista de conteos. From/To = fecha de alta en días LOCALES de la compañía (Lote 14: hora de Puerto Rico), 'hasta'

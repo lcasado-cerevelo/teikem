@@ -4423,8 +4423,9 @@ Falta elegir el producto de la lista (no basta con escribir el texto). No se env
 Alguien con solo `warehouse.count.capture` (por ejemplo el operario que contó la línea) intentó cambiar una línea que un supervisor ya
 corrigió. La corrección no se tocó. Qué hacer: pida al supervisor (quien corrigió, o alguien con `warehouse.count`) que la vuelva a
 corregir desde la web. En la app, la operación queda marcada "rechazada" con este mensaje y no se reintenta sola. En la captura en
-lote el mensaje agrega `Renglón(es) del lote: n (SKU)` y `No se guardó nada.`: ningún renglón del lote se guardó; envíe de nuevo el
-lote sin esa línea. Reenviar el mismo valor que ya tiene la línea no da error. En la app de almacén (Lote A6), Sincronización lo
+lote **solo** responde 409 cuando TODAS las líneas del lote están corregidas: el mensaje agrega `Renglón(es) del lote: n (SKU)` y `No se
+guardó nada.` (es verdad: nada se guardó). Si el lote traía además líneas libres, no hay error: responde 200, se guardan las libres y la
+respuesta trae `skippedLines` con las omitidas (`reasonCode` `CORRECTED_BY_SUPERVISOR`, lo que se mandó y el valor del supervisor). Reenviar el mismo valor que ya tiene la línea no da error. En la app de almacén (Lote A6), Sincronización lo
 explica en grande y ofrece "Actualizar el conteo": ver la sección **Lote A6** al final de esta página.
 
 ## Lote A5 — App de almacén: al menos una cantidad al contar por producto; en Despacho, la cantidad primero

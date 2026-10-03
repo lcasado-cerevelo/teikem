@@ -248,6 +248,9 @@ public static class CycleCountRules
     /// <summary>Mensaje (409) cuando alguien recaptura una línea que el supervisor ya corrigió.</summary>
     public const string CorrectedLineLocked = "La línea ya fue corregida por el supervisor; no se puede volver a capturar.";
 
+    /// <summary>Código de motivo de una línea omitida del lote (CountSkippedLineDto.ReasonCode).</summary>
+    public const string SkippedReasonCorrected = "CORRECTED_BY_SUPERVISOR";
+
     /// <summary>
     /// Protección de la corrección (decisión del dueño 2026-10-03): una línea con corrección solo la vuelve a tocar quien la
     /// corrigió o quien tiene warehouse.count (sigue siendo una corrección). Cualquier otra persona que intente cambiar su valor
