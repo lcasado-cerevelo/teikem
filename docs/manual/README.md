@@ -108,6 +108,8 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    Lote A3: lector del Zebra sin teclado ("escanear = Aceptar" en todas las pantallas, botón ⌨, indicador "Lector: …" en
    Sincronización), margen para la barra del aparato, Inicio en dos columnas, letras más grandes, tocar un producto en el
    conteo, y los formatos de la compañía (Región y formatos) guardados en el aparato.
+   Lote A5: contar por producto exige al menos una cantidad escrita (0 vale); en Despacho la cantidad va antes de escanear la
+   posición (sin cantidad, la lectura no agrega la línea y avisa).
 10. [10 — Migración de datos heredados](10-migracion-de-datos.md): comando de línea de comandos para aprovisionar
     una compañía desde QuickBooks Desktop y el WMS heredado MSWM, simulación (`--dry-run`), refresco de maestros sin
     tocar el saldo inicial (`--update`) y recrear la base en blanco para repetir la migración (`db-reset`). Lote 12

@@ -2180,8 +2180,9 @@ esconderlo. El teclado físico del Zebra escribe en el campo sin abrir el de pan
 No: toque el producto en "Lo que se espera aquí" y su código queda en el campo; toque **Aceptar**.
 
 **En Despacho escaneé la posición y la línea entró con cantidad 1.**
-Desde el Lote A3, escanear la posición agrega la línea con la cantidad que haya en el campo (viene en 1). Escriba la cantidad
-**antes** de escanear la posición. Para corregir, quite la línea con ✕ y vuelva a escanear el producto.
+Pasaba con la versión del Lote A3 (la cantidad venía en 1). Desde el **Lote A5** la cantidad viene vacía y escanear la posición sin
+cantidad no agrega nada: sale `Escribe la cantidad primero y luego escanea la posición.` (ver la sección Lote A5). Si le quedó una línea
+con 1 de una versión anterior, quítela con ✕ y vuelva a escanear el producto.
 
 **Cambié la región o los formatos en la web y la app sigue igual.**
 La app los trae en cada sincronización con señal: toque **Sincronizar ahora** (o espere un minuto con Inicio abierto). Si el
@@ -4287,7 +4288,8 @@ Abrir el conteo por producto se hace en línea. Busque señal e intente de nuevo
 
 **"{n} posiciones en blanco se toman como 0."**
 No es un error: es el aviso de la regla "en blanco = 0". Si de verdad no encontró nada en esas posiciones, toque **Confirmar**. Si
-le faltó anotar alguna, escriba la cantidad antes de confirmar.
+le faltó anotar alguna, escriba la cantidad antes de confirmar. Desde el Lote A5 hace falta **al menos una** cantidad escrita: con
+todas en blanco, Confirmar avisa "Escribe al menos una cantidad…" (sección Lote A5).
 
 **"Hay cantidades que no son un número; corrígelas para confirmar."**
 Algún espacio tiene algo que no es una cantidad (queda marcado en rojo). Corríjalo o bórrelo (en blanco = 0); Confirmar se activa.
@@ -4329,7 +4331,8 @@ Por posición: escanea una posición y cuenta todo lo que hay en ella. Por produ
 posiciones (y lotes) donde el sistema dice que está; anota cuánto hay en cada una. La app recuerda la última forma que usó.
 
 **¿Qué pasa con las posiciones que dejo en blanco?**
-Cuentan como 0 (no encontró nada ahí). La línea encima de Confirmar dice cuántas son; al confirmar se mandan como 0.
+Cuentan como 0 (no encontró nada ahí). La línea encima de Confirmar dice cuántas son; al confirmar se mandan como 0. Desde el Lote
+A5 no se pueden dejar **todas** en blanco: escriba al menos una cantidad (0 si no hay nada).
 
 **¿Por qué no veo cuánto espera el sistema?**
 Igual que en el conteo por posición: solo lo ve quien tiene el permiso `warehouse.count`; con `warehouse.count.capture` el conteo es a
@@ -4413,3 +4416,40 @@ corrigió. La corrección no se tocó. Qué hacer: pida al supervisor (quien cor
 corregir desde la web. En la app, la operación queda marcada "rechazada" con este mensaje y no se reintenta sola. En la captura en
 lote el mensaje agrega `Renglón(es) del lote: n (SKU)` y `No se guardó nada.`: ningún renglón del lote se guardó; envíe de nuevo el
 lote sin esa línea. Reenviar el mismo valor que ya tiene la línea no da error.
+
+## Lote A5 — App de almacén: al menos una cantidad al contar por producto; en Despacho, la cantidad primero
+
+Decisiones del dueño 4 y 5 del 2026-10-03 (`docs/decisiones-del-dueno-2026-10-03.md`). Detalle en el
+[capítulo 9](09-app-almacen.md) (§6 Despacho, §7.1 Contar por producto) y en `docs/mobile/loteA5-decisiones.md`. Ninguno de estos
+mensajes viene del servidor (no tienen código HTTP): son de la app y no se manda nada.
+
+### Mensajes nuevos
+
+**"Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición."**
+Tocó **Confirmar** en un conteo por producto con **todas** las posiciones en blanco. No se mandó nada y el conteo sigue abierto. Qué
+hacer: escriba lo que encontró en cada posición; si de verdad no hay nada de ese producto en ninguna, escriba **0** en una posición (las
+demás en blanco se toman como 0) y toque Confirmar. Una fila de "Otra posición" con su cantidad también cuenta. Si abrió el producto
+equivocado, use **Cancelar conteo** (o avise al supervisor si no tiene `warehouse.count`).
+
+**"Escribe la cantidad primero y luego escanea la posición."**
+En **Despacho** escaneó la posición de donde sale el producto sin haber escrito la cantidad. No se agregó ninguna línea (ni con 1).
+Qué hacer: escriba la cantidad (el cursor ya está ahí) y vuelva a escanear la posición: la línea se agrega al instante con el aviso
+verde "Agregado: …".
+
+**"La cantidad debe ser un número mayor que 0. Corrígela y vuelve a escanear la posición."**
+En **Despacho** la cantidad escrita es 0, negativa o no es un número. No se agregó nada. Corrija la cantidad y vuelva a escanear la
+posición. Se acepta coma o punto para los decimales.
+
+### Preguntas frecuentes
+
+**¿Por qué ya no puedo confirmar un conteo por producto con todo en blanco?**
+Para que un conteo no se cierre en 0 por un toque sin querer (por ejemplo, al abrir un producto por error). Si de verdad no hay nada,
+escribir un 0 deja constancia de que se contó.
+
+**En Despacho, ¿dónde quedó el botón "Agregar"?**
+Ya no hace falta: con la cantidad escrita, escanear la posición agrega la línea. Si escribe la posición a mano (botón ⌨), **Aceptar**
+hace lo mismo que escanear.
+
+**Escaneé la posición, salió el aviso de la cantidad y la posición ya no aparece. ¿Tengo que escanearla otra vez?**
+Sí: la posición no se guarda hasta que la línea se agrega, para que nunca quede una línea a medias. Escriba la cantidad y vuelva a
+escanearla.

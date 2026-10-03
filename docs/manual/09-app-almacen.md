@@ -22,6 +22,10 @@ Lote A4 (2026-10-03, `docs/mobile/loteA4-decisiones.md`): **Contar por producto*
 la app lista las posiciones (y lotes) donde el sistema dice que está, con un espacio para la cantidad (en blanco = 0), y "Otra
 posición" para lo hallado donde el sistema no tenía nada.
 
+Lote A5 (2026-10-03, `docs/mobile/loteA5-decisiones.md`, decisiones del dueño 4 y 5): al **contar por producto**, Confirmar exige al
+menos una posición con un número escrito (0 vale; sección 7.1, paso 5); en **Despacho**, la cantidad va primero: escanear la posición
+sin cantidad no agrega la línea y avisa (sección 6, paso 2).
+
 ---
 
 ## 1. Cómo funciona sin señal
@@ -50,7 +54,8 @@ documento en curso: sigue guardado tal cual hasta que se confirma o se cancela.
 
 En toda pantalla con campo de escaneo (Recibir, Acomodar, Despacho, Conteo —posición y producto— y Consultar), **escanear
 equivale a escribir el código y tocar "Aceptar"**: la pantalla avanza sola, sin un "Continuar" después. Los pasos de **cantidad**
-siguen siendo manuales. Detalle por pantalla en la tabla de `docs/mobile/loteA3-decisiones.md`.
+siguen siendo manuales; en **Despacho** la cantidad se escribe **antes** de escanear la posición (Lote A5, §6). Detalle por pantalla
+en la tabla de `docs/mobile/loteA3-decisiones.md`.
 
 - **Sin teclado en pantalla**: el campo de escaneo ya no abre el teclado al enfocarse ni al escanear. Para escribir un código a
   mano, el botón pequeño **"⌨"** junto al campo muestra el teclado (tocarlo otra vez lo esconde); luego **Aceptar** o Enter. El
@@ -308,10 +313,17 @@ dispositivo tenga ambos permisos.
 Cómo se usa:
 1. Se escanea un producto (de un cliente 3PL); si ya hay un despacho en curso, el producto tiene que ser del mismo
    cliente que el despacho abierto.
-2. Se captura la cantidad (viene en 1) y **después** se escanea la posición de origen (texto libre: no se verifica contra el
-   servidor en este paso, para poder recolectar sin señal). Desde el Lote A3, **la lectura de la posición agrega la línea** si
-   la cantidad es válida, con el aviso verde `Agregado: {cantidad} {sku} desde {posición}`; si la cantidad está vacía o no es
-   válida, la posición queda anotada y se agrega con "Agregar". Una línea agregada por error se quita con ✕.
+2. **Primero la cantidad, después la posición** (Lote A5, decisión del dueño). La cantidad viene **vacía** (ya no viene en 1) y
+   debajo se lee `Escribe la cantidad y luego escanea la posición: la línea se agrega sola.` Con la cantidad escrita (mayor que 0),
+   **la lectura de la posición agrega la línea al instante** (escanear = Aceptar; escribirla con ⌨ y tocar Aceptar hace lo mismo),
+   con el aviso verde `Agregado: {cantidad} {sku} desde {posición}`. La posición es texto libre: no se verifica contra el servidor
+   en este paso, para poder recolectar sin señal.
+   - **Sin cantidad**: escanear la posición **no agrega nada**; sale el aviso rojo grande `Escribe la cantidad primero y luego
+     escanea la posición.` y el cursor pasa a la cantidad. Se escribe la cantidad y se vuelve a escanear la posición.
+   - **Cantidad 0 o que no es un número**: tampoco agrega; aviso `La cantidad debe ser un número mayor que 0. Corrígela y vuelve a
+     escanear la posición.`
+   - Ya no hay botón "Agregar" (lo agrega la lectura); "Cancelar" deja la línea sin agregar. Una línea agregada por error se quita
+     con ✕.
 3. "Empacar" resuelve todas las posiciones de origen escaneadas a su id real (una sola llamada por código distinto),
    busca los consignatarios del cliente, y pide la cantidad de bultos.
 4. Elegir un consignatario y confirmar manda la recolección y el empaque juntos; si no hay señal en ese instante, se
@@ -324,7 +336,8 @@ Cómo se usa:
 |---|---|---|
 | Código de producto no coincide con ninguno sincronizado | `No hay un producto con ese código.` | Local |
 | Producto de inventario propio (no 3PL), o de un cliente distinto al del despacho en curso | `Esta pantalla solo despacha inventario de clientes 3PL por ahora; para inventario propio se completa en la web.` | Local |
-| Cantidad o posición de origen vacías | Botón "Agregar" deshabilitado (`canAddPickLine`) | Local, sin mensaje |
+| Escanear la posición sin cantidad escrita | `Escribe la cantidad primero y luego escanea la posición.` (no se agrega nada; el cursor pasa a la cantidad) | Local |
+| Escanear la posición con cantidad 0, negativa o que no es un número | `La cantidad debe ser un número mayor que 0. Corrígela y vuelve a escanear la posición.` (no se agrega nada) | Local |
 | Ya hay un despacho en curso (intento de empezar otro) | `Ya hay un despacho en curso; hay que confirmarlo o cancelarlo antes de empezar otro.` | Local (la pantalla siempre retoma el abierto) |
 | Una posición escaneada al recolectar no existe al resolverla en "Empacar" | `No hay una posición con ese código.` + los códigos que no se encontraron | API, al empacar |
 | No se pudieron buscar los consignatarios del cliente (sin señal, falta `locations.read`, etc.) | `No se pudo consultar los consignatarios (necesita señal).`, o el título del error del servidor | API |
@@ -411,7 +424,10 @@ Cómo se usa:
    código. Una fila de "Otra posición" se puede quitar con ✕ antes de confirmar. Si la posición ya existía y el servidor la tiene
    "pendiente de revisión" (la sincronización trae la marca), la fila también la muestra.
 5. **Confirmar**: encima del botón, mientras haya espacios en blanco, se lee `{n} posiciones en blanco se toman como 0.`; un toque en
-   Confirmar lo acepta y cierra (sin diálogo). Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
+   Confirmar lo acepta y cierra (sin diálogo). **Hace falta al menos una posición con un número escrito** (Lote A5, decisión del
+   dueño; **0 vale**, y también cuenta una fila de "Otra posición" con su cantidad): con **todas** en blanco, Confirmar no manda nada y
+   sale el aviso rojo grande `Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.`; el aviso se
+   quita al escribir cualquier cantidad. Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
    posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal. Si el conteo quedó **vacío** (producto
    sin existencia y ninguna fila agregada), Confirmar no manda nada y avisa `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.`; se sale con **Cancelar conteo** (paso 7).
 6. **Retomar**: lo escrito se guarda en el aparato a cada cambio. Si se cierra la app (o se apaga el aparato), al volver a Conteo
@@ -429,7 +445,8 @@ Cómo se usa:
 | Abrir sin señal | `No se pudo abrir el conteo de ese producto (necesita señal).` | App, tras error de red |
 | Otros errores al abrir | El mensaje del servidor (p. ej. 422 `El almacén está inactivo.`, 400 `El conteo admite como máximo 1000 líneas; acote los filtros.`) | API |
 | Un espacio con algo que no es una cantidad | `Hay cantidades que no son un número; corrígelas para confirmar.` (Confirmar apagado) | App |
-| Espacios en blanco al confirmar | `{n} posiciones en blanco se toman como 0.` / `1 posición en blanco se toma como 0.` (aviso, no bloquea) | App |
+| Espacios en blanco al confirmar | `{n} posiciones en blanco se toman como 0.` / `1 posición en blanco se toma como 0.` (aviso, no bloquea si hay al menos un número escrito) | App |
+| Confirmar con **todas** las posiciones en blanco (Lote A5) | `Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.` (no se manda nada; el conteo sigue abierto) | App |
 | Buscador sin coincidencias | `Ninguna posición coincide con «{texto}».` | App |
 | Otra posición: sin zonas | `No hay zonas para elegir: sincroniza con señal e intenta de nuevo.` | App |
 | Otra posición: zonas del aparato | `Sin respuesta del servidor: se muestran las zonas guardadas en el aparato.` (aviso) | App |
@@ -564,4 +581,5 @@ Desde el lote F8a la app lleva la marca Teikem: icono (con versión monocroma pa
 Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN, idempotencia, sincronización) y
 los casos propios de la app agregados en este lote (qué pasa si se pierde la señal a mitad de un recibo, por qué
 Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización), y la sección **Lote A3** (lector del
-Zebra, teclado, formatos de la compañía en la app) y la sección **Lote A4** (contar por producto).
+Zebra, teclado, formatos de la compañía en la app), la sección **Lote A4** (contar por producto) y la sección **Lote A5** (al menos
+una cantidad al contar por producto; en Despacho, la cantidad antes de la posición).

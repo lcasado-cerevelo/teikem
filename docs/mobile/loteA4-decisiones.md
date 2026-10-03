@@ -134,7 +134,9 @@ Instalar el APK del job `android` encima de la versión actual (no hace falta de
    un toque en Confirmar cierra; en la web las otras dos quedan en 0.
 5. **Producto con más de 6 posiciones**: aparece "Buscar posición o lote"; escribir parte de un código filtra; el resumen sigue
    contando todas. Con 6 o menos no aparece.
-6. **Blanco = 0 sin escribir nada**: Confirmar con todo en blanco funciona y todas quedan en 0 (ver decisión 8).
+6. ~~**Blanco = 0 sin escribir nada**: Confirmar con todo en blanco funciona y todas quedan en 0 (ver decisión 8).~~ Reemplazado en
+   el lote A5: Confirmar con todo en blanco **no** termina y avisa "Escribe al menos una cantidad…"; con un 0 en una posición termina
+   y las demás quedan en 0 (ver la lista de `loteA5-decisiones.md`).
 7. **Otra posición**: tocar "Otra posición", elegir la zona, escribir un código nuevo (o pasillo/rack/nivel/posición) →
    "Agregar posición" → la fila aparece con "Pendiente de revisión"; escribir la cantidad y Confirmar. En la web, la posición sale
    en "pendientes de revisión" y la línea en el conteo. Repetir con un código que **ya existe** → "Ya existe una posición con ese
@@ -174,7 +176,8 @@ Instalar el APK del job `android` encima de la versión actual (no hace falta de
    de lote se manda tal como se escribe (sin pasar a mayúsculas), porque el servidor busca el lote existente por su número.
 7. **Lo escrito se guarda a cada cambio** en la base local (para poder retomar); lo que no es una cantidad no se guarda y apaga
    Confirmar.
-8. **Confirmar con todas las filas en blanco está permitido** (todo en 0: "no encontré nada"). Riesgo: un operario a ciegas que abrió
+8. **Resuelta (2026-10-03, decisión del dueño 4): se exige al menos un número** (0 vale), implementado en el lote A5
+   (`loteA5-decisiones.md`). *Texto original:* **Confirmar con todas las filas en blanco está permitido** (todo en 0: "no encontré nada"). Riesgo: un operario a ciegas que abrió
    un producto por error y no puede cancelarlo (cancelar exige `warehouse.count`) lo cerraría en 0; el ajuste nunca es automático
    (la reconciliación es del supervisor en la web), así que el riesgo es una revisión de más. Si se prefiere exigir al menos una
    cantidad escrita, es una línea en `canConfirmProductCount`.

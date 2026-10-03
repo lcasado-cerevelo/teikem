@@ -42,7 +42,7 @@ No toca el servidor, la web ni la maqueta. Manual: [capítulo 9](../manual/09-ap
      | Recibir directo: posición destino | valida y **agrega la línea** | No |
      | Acomodar: posición destino | **completa la tarea** (y aviso verde en la lista) | No |
      | Despacho: producto | pasa a la cantidad y la posición | Paso de cantidad (manual) |
-     | Despacho: posición de donde sale | **antes** solo la anotaba y había que tocar "Agregar"; **ahora agrega la línea** si la cantidad ya es válida (decisión 2) | No |
+     | Despacho: posición de donde sale | **antes** solo la anotaba y había que tocar "Agregar"; **ahora agrega la línea** si la cantidad ya es válida (decisión 2; desde el lote A5, sin cantidad no agrega y avisa) | No |
      | Conteo: posición | abre el conteo | No |
      | Conteo: producto | pasa a la cantidad encontrada | Paso de cantidad (manual) |
      | Consultar | busca y muestra el saldo | No |
@@ -124,7 +124,9 @@ Instalar el APK del job `android` encima de la versión actual (no hace falta de
    - Recibir: escanear una orden/aviso → abre el recibo; escanear un producto → pasa a la cantidad. En un almacén directo,
      tras "Siguiente", escanear la posición → la línea se agrega.
    - Acomodar: abrir una tarea, escanear la posición → aviso verde "Listo: …" y vuelve a la lista.
-   - Despacho: escanear producto → cantidad → escanear la posición → la línea se agrega con aviso verde "Agregado: …".
+   - Despacho: escanear producto → **escribir la cantidad** → escanear la posición → la línea se agrega con aviso verde "Agregado: …".
+     (Lote A5: la cantidad viene vacía; escanear la posición sin cantidad no agrega nada y avisa "Escribe la cantidad primero y luego
+     escanea la posición." — ver la lista de `loteA5-decisiones.md`.)
    - Conteo: escanear la posición → abre el conteo; escanear un producto → pasa a la cantidad.
    - Consultar: escanear un producto o una posición → muestra el saldo.
    En ningún caso debe aparecer el teclado en pantalla ni el código escrito en el campo de cantidad.
@@ -151,10 +153,11 @@ Instalar el APK del job `android` encima de la versión actual (no hace falta de
    `com.teikem.almacen.SCAN`. En un Zebra administrado (solo apps de la compañía) el riesgo es bajo. Alternativa si se
    prefiere cerrarlo: volver a `NOT_EXPORTED` y comprobar en el Zebra si DataWedge igual entrega (algunas versiones corren
    como sistema). Está en un solo método (`register` en `DatawedgeModule.kt`).
-2. **Despacho: la lectura de la posición agrega la línea** si la cantidad ya es válida (constante
-   `DISPATCH_ADD_ON_BIN_SCAN` en `src/features/dispatch/dispatchLogic.ts`). Riesgo: la cantidad viene en "1" y, si el
-   usuario escanea la posición antes de escribir la cantidad, la línea entra con 1 (se ve en la lista con el aviso verde y
-   se puede quitar con ✕). Con `false` vuelve a lo de antes (siempre "Agregar").
+2. **Resuelta (2026-10-03, decisión del dueño 5): se exige la cantidad primero.** Implementado en el lote A5
+   (`loteA5-decisiones.md`): la cantidad viene vacía (ya no en "1"), escanear la posición con cantidad mayor que 0 agrega la
+   línea al instante y sin cantidad (o con 0 o algo inválido) no agrega nada y avisa. Se quitaron la constante
+   `DISPATCH_ADD_ON_BIN_SCAN` y el botón "Agregar". *Texto original:* la lectura de la posición agregaba la línea si la
+   cantidad ya era válida; como la cantidad venía en "1", escanear la posición antes de escribirla metía la línea con 1.
 3. **Vencimiento del lote en el orden de fecha de la compañía** (Puerto Rico: `MM/DD/AAAA`), aceptando también el ISO
    `AAAA-MM-DD` que se pedía antes. Una fecha que no existe deja "Agregar" apagado y muestra "La fecha no es válida.
    Escríbela así: MM/DD/AAAA" (el servidor rechazaría el recibo entero y en la cola ya no se corrige).
