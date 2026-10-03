@@ -17,6 +17,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    usuarios y roles del tenant, catálogos, estatus, puntos de contacto, campos personalizados, vistas,
    indicadores, gráficos y Pulso del día, auditoría y seguridad, módulos por tenant, configuración de la
    compañía, administración de plataforma.
+   Región y formatos (2026-10, sección 11.1): región Puerto Rico o Estados Unidos con su juego de valores, zona horaria de la
+   compañía (con la que cuenta "hoy"), moneda y formatos de fecha, hora, números y teléfono, cada uno cambiable por separado,
+   con sus validaciones y mensajes.
 2. [02 — Clientes y contratos](02-clientes-y-contratos.md): expediente del cliente (alta compuesta, perfil, numeración,
    contactos, estatus, baja), consignatarios y localizaciones (direcciones física/postal, almacenes, compartidas), contratos
    (contrato vigente, modelo de facturación con 5 componentes, despacho, COD, SLA, estatus y efectos), tarifas por servicio y

@@ -308,6 +308,69 @@ El valor que enviaste para ese ajuste está fuera del rango permitido. Revisa el
 El bloque de marca (branding) que enviaste no es JSON válido, o pesa más de 200.000 caracteres. No subas
 imágenes en base64 dentro de este campo; los logos van a almacenamiento de archivos aparte.
 
+#### Región y formatos (2026-10)
+
+Mensajes verificados contra `src/Teikem.Domain/Tenancy/TenantFormatRules.cs` (todos son 400 con el campo en `errors`; si hay
+error no se guarda nada del pedido). Detalle en el capítulo 01, sección 11.1.
+
+**¿Qué significa "El separador de miles y el decimal no pueden ser el mismo" (400)?**
+El separador de miles y el decimal quedarían iguales (por ejemplo, punto y punto) y los números serían ambiguos. Se compara el
+resultado final: si solo cambias uno, choca con el otro valor guardado. Para 1.234,50 manda los dos en el mismo pedido:
+`{ "thousandsSeparator": ".", "decimalSeparator": "," }`. En la pantalla el otro se intercambia solo.
+
+**¿Qué significa "La zona horaria '<valor>' no la reconoce la plataforma. Use un nombre IANA, por ejemplo America/Puerto_Rico o America/New_York." (400)?**
+La zona no existe en el servidor o está mal escrita (las mayúsculas cuentan: `America/Puerto_Rico`, no `america/puerto_rico`).
+Usa el nombre IANA de la zona (Continente/Ciudad). También se acepta el nombre de Windows (`SA Western Standard Time`) y se
+guarda con su nombre IANA.
+
+**¿Qué significa "Indique la zona horaria de la compañía, por ejemplo America/Puerto_Rico." (400)?**
+Mandaste la zona vacía. La zona es obligatoria: si no quieres cambiarla, no mandes el campo.
+
+**¿Qué significa "Región desconocida: '<valor>'. Use PR (Puerto Rico) o US (Estados Unidos)." (400)?**
+Solo hay dos regiones, Puerto Rico y Estados Unidos. Para otro país escoge la más parecida y cambia los campos que hagan falta
+(zona, moneda, orden de fecha, separadores, teléfono).
+
+**¿Qué significa "El código de moneda debe ser de 3 letras mayúsculas (ISO 4217), por ejemplo USD." (400)?**
+La moneda se indica con su código ISO de 3 letras (USD, EUR, DOP). Las minúsculas se aceptan y se guardan en mayúsculas; números
+o símbolos no.
+
+**¿Qué significa "El símbolo de moneda es obligatorio y de 1 a 3 caracteres, por ejemplo $." (400)?**
+El símbolo vino vacío o con más de 3 caracteres. Ejemplos válidos: `$`, `US$`, `€`.
+
+**¿Qué significan "La posición del símbolo de moneda debe ser B (antes del monto) o A (después).", "Los decimales de la moneda deben ser 0, 2 o 3.", "El orden de la fecha debe ser MDY (mes/día/año), DMY (día/mes/año) o YMD (año/mes/día).", "El separador de fecha debe ser '/', '-' o '.'.", "El formato de hora debe ser 12 o 24." y "El primer día de la semana debe ser 0 (domingo) o 1 (lunes)." (400)?**
+El valor no es uno de los permitidos para ese campo. La lista completa la da `GET /api/v1/tenant/format-options` y la tabla del
+capítulo 01, sección 11.1.
+
+**¿Qué significan "El separador de miles debe ser coma (','), punto ('.') o espacio (' ')." y "El separador decimal debe ser punto ('.') o coma (',')." (400)?**
+El separador no es uno de los permitidos (por ejemplo, un apóstrofo o un texto vacío). El espacio sí vale como separador de
+miles (1 234,50), no como decimal.
+
+**¿Qué significa "El código de país del teléfono debe ser '+' seguido de 1 a 4 dígitos, por ejemplo +1." (400)?**
+El código de país lleva el signo `+` y de 1 a 4 dígitos: `+1` (Puerto Rico y EE. UU.) o `+34` (España) son válidos; `1` (sin
+el `+`) o `+12345` no.
+
+**¿Qué significa "La máscara de teléfono debe tener de 1 a 30 caracteres sin acentos y al menos un '#' (cada # es un dígito), por ejemplo (###) ###-####." (400)?**
+La máscara dice cómo mostrar un teléfono guardado solo con dígitos: cada `#` es un dígito y lo demás se copia tal cual. Necesita
+al menos un `#`, no más de 30 caracteres y sin letras acentuadas ni otros caracteres especiales.
+
+**Cambié la región a Estados Unidos: ¿por qué cambió también la zona horaria y los demás formatos?**
+Cambiar de región sin mandar otros campos carga el juego completo de esa región (la zona pasa a `America/New_York`). Si quieres
+la región pero con algún valor distinto, manda ese campo en el mismo pedido (manda sobre el valor de la región) o cámbialo
+después por separado; la compañía quedará como *Personalizada*.
+
+**Mandé `{ "regionCode": "PR" }` y no se restauraron los valores de Puerto Rico. ¿Por qué?**
+Si la compañía ya es de Puerto Rico no es un cambio de región, así que no se toca nada. Para restaurar, manda el juego de la
+región que trae `GET /api/v1/tenant/format-options` (es lo que hace el botón *Restaurar valores de la región*).
+
+**Cambié la zona horaria: ¿desde cuándo cuenta "hoy" con la zona nueva? ¿Cambian las fechas guardadas?**
+Desde la petición siguiente (con varias instancias del servidor, a más tardar en 10 minutos). Las fechas guardadas no cambian
+(están en UTC); solo cambia en qué día local cae cada una. Algunas pantallas (órdenes, rutas, flota, mantenimiento, tarifas)
+todavía toman "hoy" en UTC; pasan a la zona de la compañía en un lote posterior.
+
+**¿El idioma del usuario cambia los formatos?**
+No. El idioma (de cada usuario) solo decide en qué idioma salen los nombres de días y meses; el orden de la fecha, los
+separadores, la hora y la moneda los decide la región de la compañía.
+
 ### Genérico
 
 **¿Qué significa "<Recurso> '<id>' no encontrado."?**

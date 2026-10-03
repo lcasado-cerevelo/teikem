@@ -747,6 +747,100 @@ Validaciones:
 | Nombre de feriado vacío | — | `El nombre es obligatorio.` | 400 |
 | Feriado inexistente | — | `Feriado '<id>' no encontrado.` | 404 |
 
+### 11.1 Región y formatos de la compañía (2026-10)
+
+Qué hace: guarda **en la base de datos** (tabla `Tenant`) la zona horaria de la compañía, su moneda y los formatos con que se
+muestran fechas, horas, dinero, números y teléfonos. Solo hay dos regiones, **Puerto Rico (`PR`)** y **Estados Unidos (`US`)**;
+la región trae un juego completo de valores por defecto y **cada valor se puede cambiar por separado**. Si algún valor difiere
+del juego de su región, la compañía queda como *Personalizada* (`isRegionCustomized = true`).
+
+- **La zona horaria decide "hoy".** Las fechas se guardan en UTC; "hoy", los días locales y los días hábiles cuentan en la zona
+  de la compañía. Desde este cambio la usan: filtros por día del Kárdex y su resumen, fecha de detección de descuadres, "lo
+  cambiado" del conteo cíclico, la franja "Almacén hoy" del Pulso (que devuelve la zona con que contó los días en `timeZone`),
+  los rangos de fechas de vistas, indicadores y gráficos, la ventana "hoy" de Actividad reciente, el "hoy" de las fuentes de
+  análisis (contrato vigente, días para vencer, documentos por vencer, existencias) y `GET /api/v1/tenant/work-days`. Un
+  cambio de zona se aplica desde la petición siguiente. Otras pantallas que todavía toman "hoy" en UTC (órdenes, rutas, flota y
+  mantenimiento, tarifas) se pasan a la zona de la compañía en un lote posterior (ver `docs/lote18-decisiones.md`).
+- **El idioma no es la región.** El idioma de la interfaz es de cada usuario y solo decide en qué idioma salen los nombres de
+  días y meses; la región decide el orden, los separadores, la hora y la moneda. `defaultLangCode` es solo el idioma con que
+  empieza un usuario nuevo.
+- **Teléfonos:** se guardan solo con dígitos y se muestran con la máscara de la compañía (cada `#` es un dígito).
+
+Quién puede: ver, cualquier usuario con sesión (no exige permiso ni módulo); cambiar, permiso **`admin.tenant`** (módulo
+núcleo, siempre encendido). Los cambios quedan en la bitácora de cambios de la compañía (Seguridad y auditoría → Cambios,
+entidad `TENANT`, con el valor anterior y el nuevo de cada campo).
+
+Cómo se usa (pantalla Ajustes de la compañía → pestaña **Región y formatos**; la pantalla web llega en la fase de frontend):
+- `GET /api/v1/tenant/settings` — trae los 14 campos y `isRegionCustomized`.
+- `GET /api/v1/tenant/format-options` — las dos regiones con sus valores por defecto y los valores permitidos de cada campo
+  (para las listas de la pantalla y para "Restaurar valores de la región").
+- `PUT /api/v1/tenant/settings` — parcial, como el resto de los ajustes (un campo que no se manda no cambia):
+  - **Cambiar de región sin otros campos** carga el juego completo de esa región: `{ "regionCode": "US" }` deja la zona en
+    `America/New_York` y todo lo demás con los valores de Estados Unidos.
+  - **Cambiar de región con campos** parte de los valores de la región nueva y los campos enviados mandan:
+    `{ "regionCode": "PR", "timeFormat": 24 }` → valores de Puerto Rico con hora de 24 horas.
+  - **Un campo suelto** (sin `regionCode`, o con la misma región) cambia solo ese campo: `{ "dateOrder": "DMY" }`.
+  - **Restaurar valores de la región:** enviar el juego de la región que trae `format-options` (mandar solo la región actual no
+    cambia nada, porque no es un cambio de región).
+- `POST /api/v1/platform/tenants` acepta los mismos campos (sección 12): sin `regionCode` la compañía nace con Puerto Rico.
+
+Valores por región:
+
+| Campo | Significado | Puerto Rico (`PR`) | Estados Unidos (`US`) | Valores permitidos |
+|---|---|---|---|---|
+| `regionCode` | Región | `PR` | `US` | `PR`, `US` |
+| `timeZoneId` | Zona horaria (nombre IANA) | `America/Puerto_Rico` | `America/New_York` | cualquier zona que conozca la plataforma |
+| `currencyCode` | Moneda base (ISO 4217) | `USD` | `USD` | 3 letras |
+| `currencySymbol` | Símbolo de moneda | `$` | `$` | 1 a 3 caracteres |
+| `currencySymbolPosition` | Posición del símbolo | `B` (antes: $1,234.50) | `B` | `B` antes, `A` después |
+| `currencyDecimals` | Decimales del dinero | 2 | 2 | 0, 2, 3 |
+| `dateOrder` | Orden de la fecha | `MDY` (10/02/2026)* | `MDY` | `MDY`, `DMY`, `YMD` |
+| `dateSeparator` | Separador de fecha | `/` | `/` | `/`, `-`, `.` |
+| `timeFormat` | Hora | 12 (3:30 p. m.) | 12 | 12, 24 |
+| `weekStartDay` | Primer día de la semana | 0 (domingo) | 0 | 0 domingo, 1 lunes |
+| `thousandsSeparator` | Separador de miles | `,` | `,` | `,`, `.`, espacio |
+| `decimalSeparator` | Separador decimal | `.` | `.` | `.`, `,` (nunca igual al de miles) |
+| `phoneCountryCode` | Código de país del teléfono | `+1` | `+1` | `+` y 1 a 4 dígitos |
+| `phoneMask` | Máscara del teléfono | `(###) ###-####` | `(###) ###-####` | hasta 30 caracteres con al menos un `#` |
+
+\* El orden MM/DD/AAAA para Puerto Rico es un valor por defecto pendiente de confirmar con el dueño del producto.
+
+Normalización: la región, el código de moneda, la posición del símbolo y el orden de la fecha se aceptan en minúsculas y se
+guardan en mayúsculas; se quitan los espacios de las orillas (salvo en los separadores, donde el espacio es un valor válido).
+La zona horaria también se acepta con su nombre de Windows (`SA Western Standard Time`, `Eastern Standard Time`) y se guarda con
+el nombre IANA de la región de la compañía (`America/Puerto_Rico`, `America/New_York`).
+
+Validaciones (400, `ValidationException`; el mensaje sale en `title` y en `errors.<campo>`; si hay error **no se guarda nada**
+del pedido, tampoco los otros ajustes que vinieran junto):
+
+| Campo (`errors.<campo>`) | Regla | Mensaje exacto | HTTP |
+|---|---|---|---|
+| `regionCode` | `PR` o `US` | `Región desconocida: '<valor>'. Use PR (Puerto Rico) o US (Estados Unidos).` | 400 |
+| `timeZoneId` | no vacía | `Indique la zona horaria de la compañía, por ejemplo America/Puerto_Rico.` | 400 |
+| `timeZoneId` | la conoce la plataforma (máx. 64) | `La zona horaria '<valor>' no la reconoce la plataforma. Use un nombre IANA, por ejemplo America/Puerto_Rico o America/New_York.` | 400 |
+| `currencyCode` | 3 letras | `El código de moneda debe ser de 3 letras mayúsculas (ISO 4217), por ejemplo USD.` | 400 |
+| `currencySymbol` | 1 a 3 caracteres | `El símbolo de moneda es obligatorio y de 1 a 3 caracteres, por ejemplo $.` | 400 |
+| `currencySymbolPosition` | `B` o `A` | `La posición del símbolo de moneda debe ser B (antes del monto) o A (después).` | 400 |
+| `currencyDecimals` | 0, 2 o 3 | `Los decimales de la moneda deben ser 0, 2 o 3.` | 400 |
+| `dateOrder` | `MDY`, `DMY`, `YMD` | `El orden de la fecha debe ser MDY (mes/día/año), DMY (día/mes/año) o YMD (año/mes/día).` | 400 |
+| `dateSeparator` | `/`, `-`, `.` | `El separador de fecha debe ser '/', '-' o '.'.` | 400 |
+| `timeFormat` | 12 o 24 | `El formato de hora debe ser 12 o 24.` | 400 |
+| `weekStartDay` | 0 o 1 | `El primer día de la semana debe ser 0 (domingo) o 1 (lunes).` | 400 |
+| `thousandsSeparator` | `,`, `.` o espacio | `El separador de miles debe ser coma (','), punto ('.') o espacio (' ').` | 400 |
+| `decimalSeparator` | `.` o `,` | `El separador decimal debe ser punto ('.') o coma (',').` | 400 |
+| `decimalSeparator` | distinto del de miles (el resultado final, contando el valor guardado) | `El separador de miles y el decimal no pueden ser el mismo` | 400 |
+| `phoneCountryCode` | `+` y 1 a 4 dígitos | `El código de país del teléfono debe ser '+' seguido de 1 a 4 dígitos, por ejemplo +1.` | 400 |
+| `phoneMask` | 1 a 30 caracteres sin acentos, con al menos un `#` | `La máscara de teléfono debe tener de 1 a 30 caracteres sin acentos y al menos un '#' (cada # es un dígito), por ejemplo (###) ###-####.` | 400 |
+| PUT sin `admin.tenant` | — | `Falta el permiso 'admin.tenant'.` | 403 |
+
+Casos frecuentes:
+- *Quiero coma decimal y punto de miles* (1.234,50): mandar los dos en el mismo pedido,
+  `{ "thousandsSeparator": ".", "decimalSeparator": "," }`. Mandar solo uno choca con el otro valor guardado y da el 400 de
+  separadores iguales (la pantalla intercambia el otro sola).
+- *Cambié la zona y "hoy" sigue igual*: "hoy" solo cambia si en la zona nueva ya es otro día; la zona se aplica desde la
+  petición siguiente (en un servidor con varias instancias, a más tardar en 10 minutos).
+- *La compañía aparece como Personalizada*: algún campo difiere de su región; "Restaurar valores de la región" la devuelve.
+
 ---
 
 ## 12. Administración de plataforma (solo administradores de Teikem)
@@ -767,6 +861,10 @@ Cómo se usa:
   Crea el tenant, enciende los módulos núcleo y default (`LTL_GROUND`, `SYSTEM`, `CATALOG`, `ANALYTICS`,
   `CUSTOM_FIELDS`) más los pedidos explícitamente (con sus dependencias), clona las 6 plantillas de rol, crea
   el usuario administrador con el rol `TenantAdmin`, y clona las vistas/indicadores/gráficos de sistema.
+  Región y formatos (2026-10): acepta `regionCode` (`PR` o `US`; sin valor, `PR`) y los mismos campos de formato de la
+  sección 11.1; la compañía nace con los valores de su región y los campos enviados mandan sobre ellos. Se validan antes de
+  crear nada, con los mismos mensajes (400) de la sección 11.1. Ejemplo: `{ "name": "Nueva Compañía", "regionCode": "US",
+  "adminEmail": "admin@nueva.com", "adminFullName": "Admin" }`.
 
 Validaciones:
 
@@ -776,4 +874,5 @@ Validaciones:
 | Correo de administrador vacío | `El correo del administrador es obligatorio.` | 400 |
 | Nombre de compañía repetido | `Ya existe la compañía '<name>'.` | 409 |
 | Módulo pedido desconocido | `Módulo desconocido: <key>.` | 400 |
+| Región o formato inválido | los mensajes de la sección 11.1 (p. ej. `Región desconocida: 'MX'. Use PR (Puerto Rico) o US (Estados Unidos).`) | 400 |
 | Contraseña de admin inválida (Identity) | mensaje de Identity | 400 |
