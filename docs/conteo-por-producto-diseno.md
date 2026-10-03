@@ -46,9 +46,9 @@ Las posiciones del almacén no están bien etiquetadas y arreglarlo tomaría sem
 ## Lotes propuestos
 1. **Lote 19 — Conteo por producto, servidor** (puede empezar ya; solo toca `src/`, `tests/`, SQL y docs).
 2. **Lote 19 — web**: revisión rápida, corrección y vista previa (después de la fase 3, que toca `web-app/`).
-3. **Lote 19 — app**: "Contar por producto" (toca `app-almacen/`).
+3. **Lote 19 — app**: "Contar por producto" (toca `app-almacen/`). Las mejoras de uso de la app (barra de navegación, lector, tocar la lista, pantalla principal y letras) van en `docs/mobile/mejoras-ux-zebra.md`; son independientes y pueden hacerse antes.
 4. **Lote 20 — "hoy" en la zona de la compañía** en los servicios restantes.
 
 ## Pendiente de decidir
-- El rol "Operador de almacén" de Advance tiene `warehouse.count` (y por eso la app le muestra la cantidad esperada al contar). Si se quiere que el operario cuente sin ver, se le quita `warehouse.count` y se deja `warehouse.count.capture`: es configuración del rol, no código.
+- **Decidido por el dueño:** quién ve las cantidades del sistema al contar **no se toca**; se queda como está hoy.
 - Umbral del buscador (6 posiciones).
