@@ -18,6 +18,10 @@ conteo) y **formatos de la compañía** (números, fechas, horas y zona horaria 
 1.1 y 1.2. Desde este lote los números ya no llevan una coma de miles fija: llevan los separadores de la compañía (Puerto Rico:
 `61,023`; `1,250.5`).
 
+Lote A4 (2026-10-03, `docs/mobile/loteA4-decisiones.md`): **Contar por producto** en Conteo (sección 7.1): se escanea el producto,
+la app lista las posiciones (y lotes) donde el sistema dice que está, con un espacio para la cantidad (en blanco = 0), y "Otra
+posición" para lo hallado donde el sistema no tenía nada.
+
 ---
 
 ## 1. Cómo funciona sin señal
@@ -338,7 +342,11 @@ recolectadas (la posición de origen sigue guardada como texto, se vuelve a reso
 
 ## 7. Conteo
 
-Qué hace: cuenta una posición del almacén. Escanear la posición **reclama el conteo en el servidor**
+Desde el Lote A4 la pantalla empieza con **"¿Cómo vas a contar?"**: **Por posición** (lo de siempre, descrito abajo) o
+**Por producto** (sección 7.1). La app recuerda la última forma elegida; la primera vez, por posición. Si en "Por posición" se
+escanea un producto, el aviso dice `Ese código es de un producto. Para contarlo así, toca «Por producto».`
+
+Qué hace (por posición): cuenta una posición del almacén. Escanear la posición **reclama el conteo en el servidor**
 (`POST /api/v1/cycle-counts`, capítulo 8A §6): la posición es un recurso compartido (nadie más puede contarla
 mientras esté abierta), así que este primer paso necesita señal. De ahí en adelante, capturar lo encontrado es
 local y "Terminar esta posición" encola el lote capturado y el cierre, en ese orden (dos filas en la cola de
@@ -367,9 +375,69 @@ Cómo se usa:
 3. "Terminar esta posición" encola el lote capturado y el cierre del conteo, y vuelve a Inicio. "Cancelar conteo"
    (con confirmación) libera la posición en el servidor sin guardar lo capturado.
 
-Si se cerró y se volvió a abrir la app con un conteo en curso, la lista de líneas esperadas se vuelve a pedir al
+Si se cerró y se volvió a abrir la app con un conteo por posición en curso, la lista de líneas esperadas se vuelve a pedir al
 servidor (no se guarda localmente, solo el id del conteo y lo ya capturado); esta pantalla ya necesita señal en ese
-momento de todas formas.
+momento de todas formas. (Un conteo por producto, en cambio, se retoma sin señal: ver 7.1.)
+
+### 7.1 Contar por producto (Lote A4)
+
+Qué hace: cuenta **un producto en todas las posiciones** donde el sistema dice que está (pensado para cuando las posiciones no
+están bien etiquetadas). La app crea el conteo en el servidor (`POST /api/v1/cycle-counts` con el producto y sin posiciones; origen
+"Por producto") y lista **una fila por posición** (y por lote, si el producto lleva lote: el número de lote se muestra en la fila; no
+se busca ni se captura por lote). El operario anota lo que encuentra en cada una; la diferencia la calcula el sistema al reconciliar
+en la web ([06 §6](06-inventario-y-almacen.md#6-conteo-cíclico-modo-informado), revisión rápida "Por revisar").
+
+Quién puede: `warehouse.count.capture` (abrir, capturar, confirmar y crear una posición en "Otra posición"); `inventory.view` para
+la lista de zonas (ya hace falta para entrar). Cancelar exige `warehouse.count`, como en el conteo por posición. Módulo
+**WMS_LOTSERIAL**.
+
+Cómo se usa:
+1. Conteo → **Por producto** → escanear (o escribir con ⌨ y Aceptar) el código de barras o SKU del producto. Necesita señal.
+   - Producto con **número de serie**: aviso `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.` y **no se
+     crea ningún conteo** (la app no captura series).
+   - Producto **sin existencia** en ningún lado del almacén: el mensaje del servidor (400) y el botón **Contar por posición** (si lo
+     encontró en una posición que tiene otros productos, se cuenta esa posición y se agrega ahí). Hoy no se puede abrir un conteo por
+     producto vacío para usar "Otra posición".
+2. La lista: cada fila dice la **posición**, el **lote** si lo lleva, "Pendiente de revisión" si la posición es provisional y
+   "Esperado: N" **solo si** quien cuenta tiene `warehouse.count` (a ciegas no se muestra, como siempre). A la derecha, el espacio
+   para la cantidad. **Lo que se deja en blanco se toma como 0.** No hay botón "todo aquí".
+3. Con **más de 6 posiciones** aparece **Buscar posición o lote** (filtra la lista; no cambia lo que se manda).
+4. **Otra posición** (enlace al final de la lista), para lo hallado donde el sistema no tenía nada: elegir la **zona**, escribir el
+   **código** de la posición o sus partes (**pasillo, rack, nivel, posición**: se une como `A01-R02-N3-P04`) y, si el producto lleva
+   lote, el **número de lote** (obligatorio) y su **vencimiento** (opcional, en el orden de fecha de la compañía). **Agregar
+   posición** la crea en el servidor (`POST /api/v1/cycle-counts/{id}/bins`, necesita señal) como **provisional**: queda "pendiente de
+   revisión" hasta que el supervisor la confirma en la web. La fila entra a la lista con su espacio de cantidad. Si el código ya
+   existe en el almacén, se usa esa posición (sin marca provisional). Escanear la etiqueta de una posición en este paso escribe su
+   código. Una fila de "Otra posición" se puede quitar con ✕ antes de confirmar.
+5. **Confirmar**: encima del botón, mientras haya espacios en blanco, se lee `{n} posiciones en blanco se toman como 0.`; un toque en
+   Confirmar lo acepta y cierra (sin diálogo). Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
+   posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal.
+6. **Retomar**: lo escrito se guarda en el aparato a cada cambio. Si se cierra la app (o se apaga el aparato), al volver a Conteo
+   aparece la misma lista con lo ya escrito, sin necesitar señal. Un conteo a la vez por aparato (de posición o de producto).
+7. **Cancelar conteo** (con confirmación): igual que el de posición (`DELETE`, necesita señal y `warehouse.count`).
+
+#### Campos y validaciones (contar por producto)
+
+| Campo / caso | Mensaje exacto | Origen |
+|---|---|---|
+| Producto con número de serie | `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.` | App (no llama al servidor) |
+| Código no es de ningún producto sincronizado | `No hay un producto con ese código.` | App |
+| Producto sin existencia en el almacén | `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` (400) y ayuda `Si lo encontraste en una posición que tiene otros productos, cuéntala «Por posición» y agrégalo ahí. Si no, avisa al supervisor.` | API |
+| Abrir sin señal | `No se pudo abrir el conteo de ese producto (necesita señal).` | App, tras error de red |
+| Otros errores al abrir | El mensaje del servidor (p. ej. 422 `El almacén está inactivo.`, 400 `El conteo admite como máximo 1000 líneas; acote los filtros.`) | API |
+| Un espacio con algo que no es una cantidad | `Hay cantidades que no son un número; corrígelas para confirmar.` (Confirmar apagado) | App |
+| Espacios en blanco al confirmar | `{n} posiciones en blanco se toman como 0.` / `1 posición en blanco se toma como 0.` (aviso, no bloquea) | App |
+| Buscador sin coincidencias | `Ninguna posición coincide con «{texto}».` | App |
+| Otra posición: sin zonas | `No hay zonas para elegir: sincroniza con señal e intenta de nuevo.` | App |
+| Otra posición: zonas del aparato | `Sin respuesta del servidor: se muestran las zonas guardadas en el aparato.` (aviso) | App |
+| Otra posición: producto con lote sin número de lote | `Este producto lleva lote: escribe el número de lote.` ("Agregar posición" apagado) | App |
+| Otra posición: vencimiento mal escrito | `La fecha no es válida. Escríbela así: MM/DD/AAAA` (según la compañía) | App |
+| Otra posición: la posición (y lote) ya está en la lista | `La posición {bin} ya está en la lista: escribe la cantidad ahí.` | App |
+| Otra posición: código repetido en el almacén | `Ya existe una posición con ese código en el almacén.` (409) y botón `Usar {bin}, que ya existe` | API |
+| Otra posición: datos de la posición | 400 `Indique la zona de la posición.` / `Indique el código de la posición o su pasillo/rack/nivel/posición.` / `El código de la posición solo admite letras, números, guion y guion bajo (máximo 40).` | API |
+| Otra posición: zona o conteo | 404 `Zona no encontrada.` / `Conteo no encontrado.`; 422 `La zona está inactiva; reactívela primero.` / `El conteo ya fue reconciliado; no admite posiciones nuevas.` / `El almacén está inactivo.` | API |
+| Otra posición sin señal | `No se pudo crear la posición: necesita señal. Intenta de nuevo cuando haya señal.` | App, tras error de red |
+| Avisos verdes | `Posición {bin} agregada (pendiente de revisión).` / `La posición {bin} ya existía; se agregó a la lista.` | App |
 
 ### Campos y validaciones
 
@@ -470,11 +538,11 @@ posición ya no tiene ese producto"), reintentar va a fallar otra vez con el mis
 
 | Permiso | Qué habilita en la app |
 |---|---|
-| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar), Consultar |
+| `inventory.view` | Entrar con PIN (capítulo 8A §3.3), Recibir (incluida la pista "Sugerida" del recibo directo y la descarga de posiciones), Acomodar (listar/completar tareas), Conteo (ver, no reconciliar; zonas de "Otra posición"), Consultar |
 | `purchasing.receive` + módulo **PURCHASING** | Recibir contra una orden de compra (sin esto, solo recibo ciego funciona) |
 | `warehouse.pick` | Recolectar y empacar en Despacho |
 | `locations.read` | Buscar los consignatarios de un cliente al empacar un despacho |
-| `warehouse.count.capture` (implícito en `warehouse.count`) | Abrir, capturar y terminar un conteo (a ciegas si falta `warehouse.count`) |
+| `warehouse.count.capture` (implícito en `warehouse.count`) | Abrir, capturar y terminar un conteo, por posición o por producto (a ciegas si falta `warehouse.count`), y crear una posición provisional en "Otra posición" |
 | `warehouse.count` | Ver las cantidades esperadas de un conteo (no a ciegas) y **cancelarlo** |
 
 Todas estas rutas viven bajo el módulo **WMS_LOTSERIAL** (capítulo 8A §7); sin el módulo encendido para la
@@ -493,4 +561,4 @@ Desde el lote F8a la app lleva la marca Teikem: icono (con versión monocroma pa
 Ver la sección **Lote 8A** de [`faq.md`](faq.md) para el backend (aparatos, PIN, idempotencia, sincronización) y
 los casos propios de la app agregados en este lote (qué pasa si se pierde la señal a mitad de un recibo, por qué
 Despacho solo funciona con clientes 3PL, qué significa "con error" en Sincronización), y la sección **Lote A3** (lector del
-Zebra, teclado, formatos de la compañía en la app).
+Zebra, teclado, formatos de la compañía en la app) y la sección **Lote A4** (contar por producto).

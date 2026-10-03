@@ -4253,3 +4253,83 @@ Se aplica la regla de siempre: una posición con existencia (en mano o reservada
 
 **¿Quién ve el origen "Por producto"?**
 Los conteos creados con `productPublicIds` y sin posiciones ni zonas llevan `originCode = PRODUCT` ("Por producto"); se puede filtrar con `origins=PRODUCT` en `GET /api/v1/cycle-counts/page`.
+
+## Lote A4 — App de almacén: contar por producto
+
+Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los
+mensajes con código HTTP vienen del servidor (Lote 21) y la app los muestra tal cual; los demás son de la app.
+
+### Mensajes nuevos
+
+**"Este producto se cuenta por número de serie; cuéntalo desde la web por ahora."**
+El producto se controla por serie y la app todavía no captura series. No se abrió ningún conteo. Cuéntelo desde la web (Conteo
+cíclico) o cuente sus posiciones con un usuario de la web.
+
+**"Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano." (400) al contar por producto**
+El sistema no tiene existencia de ese producto en ninguna posición del almacén del aparato, así que no hay nada que listar. Si lo
+encontró en una posición que tiene otros productos, toque **Contar por posición**, escanee esa posición y agregue el producto ahí.
+Si lo encontró en una posición vacía, avise al supervisor (ajuste desde la web): hoy no se puede abrir un conteo por producto vacío.
+
+**"No se pudo abrir el conteo de ese producto (necesita señal)."**
+Abrir el conteo por producto se hace en línea. Busque señal e intente de nuevo; después, anotar y confirmar funcionan sin señal.
+
+**"{n} posiciones en blanco se toman como 0."**
+No es un error: es el aviso de la regla "en blanco = 0". Si de verdad no encontró nada en esas posiciones, toque **Confirmar**. Si
+le faltó anotar alguna, escriba la cantidad antes de confirmar.
+
+**"Hay cantidades que no son un número; corrígelas para confirmar."**
+Algún espacio tiene algo que no es una cantidad (queda marcado en rojo). Corríjalo o bórrelo (en blanco = 0); Confirmar se activa.
+
+**"Ninguna posición coincide con «…»."**
+El buscador (aparece con más de 6 posiciones) no encontró ese texto en los códigos de posición ni en los lotes. Borre el texto
+para ver toda la lista.
+
+**"La posición … ya está en la lista: escribe la cantidad ahí."**
+En "Otra posición" escribió una posición (y lote) que ya tiene su fila en la lista. Vuelva (Cancelar) y escriba la cantidad en esa
+fila: mandar la misma línea dos veces haría que el servidor rechazara todo el conteo.
+
+**"Ya existe una posición con ese código en el almacén." (409) y el botón "Usar …, que ya existe"**
+La posición que escribió ya existe en el almacén (el aparato todavía no la tenía). Si es donde encontró el producto, toque **Usar …,
+que ya existe**: entra a la lista como una fila más (sin "pendiente de revisión", porque no es nueva). Si se equivocó de código,
+corríjalo.
+
+**"Este producto lleva lote: escribe el número de lote."**
+Para una posición nueva de un producto con lote, el servidor necesita saber de qué lote es lo encontrado. Escriba el número de lote
+de la etiqueta; el vencimiento es opcional.
+
+**"No hay zonas para elegir: sincroniza con señal e intenta de nuevo." / "Sin respuesta del servidor: se muestran las zonas guardadas en el aparato."**
+"Otra posición" pide las zonas del almacén al servidor; sin respuesta usa las de las posiciones ya descargadas. Si no hay ninguna,
+sincronice con señal. Crear la posición también necesita señal.
+
+**"No se pudo crear la posición: necesita señal. Intenta de nuevo cuando haya señal."**
+La posición nueva se crea en el servidor en el momento. Lo ya anotado en la lista no se pierde.
+
+**"Indique el código de la posición o su pasillo/rack/nivel/posición." / "El código de la posición solo admite letras, números, guion y guion bajo (máximo 40)." (400)**
+Escriba el código (por ejemplo `A-01-02`) o al menos una de sus partes, sin espacios ni símbolos.
+
+**"La zona está inactiva; reactívela primero." / "El conteo ya fue reconciliado; no admite posiciones nuevas." (422), "Zona no encontrada." / "Conteo no encontrado." (404)**
+Elija otra zona; si el conteo ya se reconcilió o se canceló en la web mientras contaba, ya no admite posiciones: avise al supervisor.
+
+### Preguntas frecuentes
+
+**¿Qué diferencia hay entre "Por posición" y "Por producto"?**
+Por posición: escanea una posición y cuenta todo lo que hay en ella. Por producto: escanea un producto y la app le lista todas las
+posiciones (y lotes) donde el sistema dice que está; anota cuánto hay en cada una. La app recuerda la última forma que usó.
+
+**¿Qué pasa con las posiciones que dejo en blanco?**
+Cuentan como 0 (no encontró nada ahí). La línea encima de Confirmar dice cuántas son; al confirmar se mandan como 0.
+
+**¿Por qué no veo cuánto espera el sistema?**
+Igual que en el conteo por posición: solo lo ve quien tiene el permiso `warehouse.count`; con `warehouse.count.capture` el conteo es a
+ciegas.
+
+**Encontré el producto en una posición que no está en la lista.**
+Toque **Otra posición** al final de la lista, elija la zona y escriba la posición (y el lote si lo lleva). Si la posición no existía,
+se crea "pendiente de revisión" y el supervisor la confirma o la corrige en la web; usted sigue contando.
+
+**Cerré la app (o se apagó el aparato) a mitad de un conteo por producto.**
+Abra Conteo: la lista aparece igual, con lo que ya había escrito, aun sin señal. Termine con Confirmar o cancélelo.
+
+**Abrí el conteo de un producto equivocado.**
+Toque **Cancelar conteo** (necesita señal y el permiso `warehouse.count`). Sin ese permiso, avise al supervisor para que lo cancele
+desde la web; no lo confirme en 0.
