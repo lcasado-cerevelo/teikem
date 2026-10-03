@@ -54,7 +54,7 @@ describe('Conteo por producto — lista, captura y confirmar', () => {
     await fireEvent.press(screen.getByLabelText('Aceptar'))
 
     await waitFor(() => expect(screen.getByText('Pintura')).toBeTruthy())
-    expect(calls.find((c) => c.path === '/api/v1/cycle-counts')?.body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p-lot'] })
+    expect(calls.find((c) => c.path === '/api/v1/cycle-counts')?.body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p-lot'], allowEmpty: true })
     expect(getOpenCount()).toMatchObject({ countId: 300, mode: 'PRODUCT', binId: null })
     expect(screen.getByText('Este producto lleva lote: cada fila es una posición y un lote.')).toBeTruthy()
     // una fila por posición y lote, con el lote y lo esperado (con los separadores de la compañía)

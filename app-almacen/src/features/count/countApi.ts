@@ -66,15 +66,11 @@ export interface StartedProductCount {
 }
 
 /** Crea el conteo POR PRODUCTO (productPublicIds, sin posiciones): una línea por cada posición y lote con existencia del
- *  producto en el almacén. Sin existencia en ningún lado → 400 (ApiError con errors.filters). */
+ *  producto en el almacén. Con `allowEmpty: true` (siempre, desde esta app) un producto sin existencia en ningún lado abre el
+ *  conteo VACÍO (sin líneas) en vez de un 400: lo hallado donde el sistema no tenía nada se agrega con «Otra posición». */
 export async function startProductCountOnline(warehousePublicId: string, productPublicId: string): Promise<StartedProductCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId] } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, lines: mapProductLines(detail.lines) }
-}
-
-/** ¿El 400 de abrir el conteo por producto es "no hay existencia que contar"? (ValidationException en `filters`). */
-export function isNothingToCount(err: unknown): boolean {
-  return err instanceof ApiError && err.status === 400 && Object.prototype.hasOwnProperty.call(err.errors, 'filters')
 }
 
 /** Recupera las líneas esperadas de un conteo ya abierto (se cerró y reabrió la app: local_count guarda el id pero
@@ -169,13 +165,14 @@ export async function createProvisionalBin(countId: number, input: ProvisionalBi
   return { id: bin.id ?? 0, code: bin.code ?? '', isProvisional: bin.isProvisional ?? true }
 }
 
-/** Posición ya existente con ese código en la copia sincronizada del almacén (activa). */
+/** Posición ya existente con ese código en la copia sincronizada del almacén (activa), con su marca de "pendiente de
+ *  revisión" (provisional) tal como la trajo la sincronización. */
 export function findLocalBin(warehousePublicId: string, code: string): CreatedBin | null {
-  const row = getDb().getFirstSync<{ id: number; code: string }>(
-    'SELECT id, code FROM bin WHERE warehouse_public_id = ? AND code = ? COLLATE NOCASE AND is_active = 1 LIMIT 1',
+  const row = getDb().getFirstSync<{ id: number; code: string; is_provisional: number }>(
+    'SELECT id, code, is_provisional FROM bin WHERE warehouse_public_id = ? AND code = ? COLLATE NOCASE AND is_active = 1 LIMIT 1',
     [warehousePublicId, code.trim()],
   )
-  return row ? { id: row.id, code: row.code, isProvisional: false } : null
+  return row ? { id: row.id, code: row.code, isProvisional: row.is_provisional === 1 } : null
 }
 
 export { ApiError }

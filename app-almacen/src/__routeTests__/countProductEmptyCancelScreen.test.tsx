@@ -1,11 +1,12 @@
 // Lote A4 (adenda 5d) — producto SIN existencia: la app abre el conteo con allowEmpty, el servidor lo crea vacío y la lista
 // muestra el bloque "El sistema no tiene existencia…" con «Otra posición» en primer plano. En archivo propio: renderRouter()
 // no aísla del todo su estado global de navegación entre dos llamadas del mismo archivo.
+import { Alert } from 'react-native'
 import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 
-import { getOpenCount, getProductCountRows } from '../features/count/localCount'
+import { getOpenCount } from '../features/count/localCount'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests } from '../kernel/db/database'
 import { setKv, KvKeys } from '../kernel/db/kv'
@@ -50,40 +51,16 @@ async function openEmptyCount() {
   return calls
 }
 
-describe('Conteo por producto — sin existencia', () => {
-  it('abre el conteo vacío con allowEmpty, avisa que no se puede terminar vacío y deja agregar «Otra posición»', async () => {
+describe('Conteo por producto — sin existencia, cancelar', () => {
+  it('un conteo vacío se cancela con DELETE y no deja nada abierto', async () => {
     const calls = await openEmptyCount()
-    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/cycle-counts')?.body).toEqual({
-      warehousePublicId: 'wh-1',
-      productPublicIds: ['p1'],
-      allowEmpty: true,
-    })
-    const open = getOpenCount()
-    expect(open?.countId).toBe(400)
-    expect(getProductCountRows(open!.id)).toEqual([])
-    // «Otra posición» en primer plano (botón grande), no el enlace
-    expect(screen.getByTestId('count-empty-block')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Otra posición' })).toBeTruthy()
-
-    // confirmar sin ninguna fila: aviso y nada viaja
-    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar' }))
-    expect(
-      screen.getByText('No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.'),
-    ).toBeTruthy()
-    expect(listOutbox()).toEqual([])
     expect(getOpenCount()).not.toBeNull()
-
-    // lo hallado donde el sistema no tenía nada: posición provisional, cantidad y confirmar
-    await fireEvent.press(screen.getByRole('button', { name: 'Otra posición' }))
-    await waitFor(() => expect(screen.getByRole('radio', { name: 'PCK · Picking' })).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Código de la posición'), 'z-09')
-    await fireEvent.press(screen.getByRole('button', { name: 'Agregar posición' }))
-    await waitFor(() => expect(screen.getByText('Posición Z-09 agregada (pendiente de revisión).')).toBeTruthy())
-    // ya hay una fila: el bloque vacío desaparece y queda el enlace normal
-    expect(screen.queryByTestId('count-empty-block')).toBeNull()
-    await fireEvent.changeText(screen.getByLabelText('Cantidad en Z-09'), '3')
-    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar' }))
+    jest.spyOn(Alert, 'alert').mockImplementation((_title, _body, buttons) => {
+      void buttons?.find((b) => b.style === 'destructive')?.onPress?.()
+    })
+    await fireEvent.press(screen.getByRole('button', { name: 'Cancelar conteo' }))
     await waitFor(() => expect(getOpenCount()).toBeNull())
-    expect(JSON.parse(listOutbox()[0].body)).toEqual({ lines: [{ binId: 99, productPublicId: 'p1', countedQty: 3 }] })
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toContain('DELETE /api/v1/cycle-counts/400')
+    expect(listOutbox()).toEqual([])
   })
 })

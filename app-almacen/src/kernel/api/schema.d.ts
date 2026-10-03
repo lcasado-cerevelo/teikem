@@ -17991,6 +17991,7 @@ export interface components {
             binIds?: number[] | null;
             productPublicIds?: string[] | null;
             categoryIds?: number[] | null;
+            allowEmpty?: boolean;
         };
         CycleCountDetailDto: {
             count?: components["schemas"]["CycleCountDto"];

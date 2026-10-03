@@ -13,7 +13,6 @@ import {
   fetchExpectedLines,
   fetchZones,
   findLocalBin,
-  isNothingToCount,
   startCountOnline,
   startProductCountOnline,
 } from './countApi'
@@ -132,7 +131,7 @@ describe('startProductCountOnline', () => {
     )
     const result = await startProductCountOnline('wh-1', 'p1')
     expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts')
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'] })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true })
     expect(result.countId).toBe(77)
     expect(result.isBlind).toBe(false)
     expect(result.lines).toEqual([
@@ -141,14 +140,18 @@ describe('startProductCountOnline', () => {
     ])
   })
 
-  it('el 400 de "sin existencia" se reconoce (errors.filters) y llega con el mensaje del servidor', async () => {
-    const message = 'Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.'
-    postMock.mockResolvedValueOnce(fail(400, { title: message, status: 400, errors: { filters: [message] } }))
+  it('un producto sin existencia abre un conteo vacío (allowEmpty): sin líneas', async () => {
+    postMock.mockResolvedValueOnce(ok({ count: { id: 78, originCode: 'PRODUCT', lineCount: 0 }, isBlind: true, lines: [] }))
+    const result = await startProductCountOnline('wh-1', 'p1')
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true })
+    expect(result).toEqual({ countId: 78, isBlind: true, lines: [] })
+  })
+
+  it('un error del servidor llega con su mensaje', async () => {
+    postMock.mockResolvedValueOnce(fail(404, { title: 'Producto no encontrado.', status: 404 }))
     const err = await startProductCountOnline('wh-1', 'p1').catch((e: unknown) => e)
     expect(err).toBeInstanceOf(ApiError)
-    expect((err as ApiError).title).toBe(message)
-    expect(isNothingToCount(err)).toBe(true)
-    expect(isNothingToCount(new ApiError(404, { title: 'Producto no encontrado.' }))).toBe(false)
+    expect((err as ApiError).title).toBe('Producto no encontrado.')
   })
 })
 
@@ -195,5 +198,10 @@ describe('"Otra posición"', () => {
     getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (8, 'C-03', 'wh-1', 1, 1)")
     expect(findLocalBin('wh-1', 'c-03')).toEqual({ id: 8, code: 'C-03', isProvisional: false })
     expect(findLocalBin('wh-2', 'C-03')).toBeNull()
+  })
+
+  it('una posición sincronizada como provisional conserva su marca de "pendiente de revisión"', () => {
+    getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active, is_provisional) VALUES (9, 'Z-09', 'wh-1', 1, 1, 1)")
+    expect(findLocalBin('wh-1', 'z-09')).toEqual({ id: 9, code: 'Z-09', isProvisional: true })
   })
 })

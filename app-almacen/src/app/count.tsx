@@ -18,7 +18,6 @@ import {
   cancelCountOnline,
   enqueueFinishCount,
   fetchExpectedLines,
-  isNothingToCount,
   startCountOnline,
   startProductCountOnline,
 } from '../features/count/countApi'
@@ -69,7 +68,6 @@ export default function CountScreen() {
   // Lote A4: forma de contar elegida (se recuerda en el aparato; la primera vez, por posición).
   const [entryMode, setEntryMode] = useState<CountMode>(() => (getKv(KvKeys.countEntryMode) === 'PRODUCT' ? 'PRODUCT' : 'BIN'))
   const [productError, setProductError] = useState<string | null>(null)
-  const [noStock, setNoStock] = useState(false)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,13 +130,11 @@ export default function CountScreen() {
     setKv(KvKeys.countEntryMode, mode)
     setBinError(null)
     setProductError(null)
-    setNoStock(false)
   }
 
   /** Lote A4 — "Contar por producto": producto del catálogo local → guarda de serie → conteo en línea → lista local. */
   async function scanProductToCount(code: string) {
     setProductError(null)
-    setNoStock(false)
     const product = findProductByCode(code)
     if (!product) {
       setProductError(t('count.productNotFound'))
@@ -164,10 +160,8 @@ export default function CountScreen() {
       refresh()
     } catch (err) {
       if (isNetworkError(err)) setProductError(t('count.productStartError'))
-      else if (err instanceof ApiError) {
-        setProductError(apiErrorMessage(err))
-        setNoStock(isNothingToCount(err))
-      } else setProductError(t('count.productStartError'))
+      else if (err instanceof ApiError) setProductError(apiErrorMessage(err))
+      else setProductError(t('count.productStartError'))
       vibrateError()
     } finally {
       setBusy(false)
@@ -287,12 +281,7 @@ export default function CountScreen() {
               error={productError}
               onSubmit={(code) => void scanProductToCount(code)}
             />
-            {noStock ? (
-              <>
-                <Text style={styles.help}>{t('count.noStockHelp')}</Text>
-                <BigButton label={t('count.switchToBin')} variant="secondary" onPress={() => chooseMode('BIN')} />
-              </>
-            ) : null}
+            {productError ? <BigButton label={t('count.switchToBin')} variant="secondary" onPress={() => chooseMode('BIN')} /> : null}
           </>
         )}
         {busy ? <ActivityIndicator color={colors.brand} /> : null}

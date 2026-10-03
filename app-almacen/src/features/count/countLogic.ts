@@ -115,9 +115,16 @@ export function summarizeProductCount(texts: readonly string[]): ProductCountSum
   return { blanks, invalid, total: texts.length }
 }
 
-/** Confirmar cierra el conteo en un solo toque: basta con que no haya cantidades inválidas (los blancos son 0). */
+/** Confirmar cierra el conteo en un solo toque: basta con que no haya cantidades inválidas (los blancos son 0). Un conteo sin
+ *  filas (producto sin existencia y sin «Otra posición») también deja tocar Confirmar, pero la pantalla avisa que no se puede
+ *  terminar vacío (hasNothingToConfirm). */
 export function canConfirmProductCount(summary: ProductCountSummary): boolean {
-  return summary.total > 0 && summary.invalid === 0
+  return summary.invalid === 0
+}
+
+/** Conteo por producto sin ninguna fila: el servidor no lo termina vacío ("El conteo no tiene líneas."). */
+export function hasNothingToConfirm(summary: ProductCountSummary): boolean {
+  return summary.total === 0
 }
 
 export interface ProductRowLike {

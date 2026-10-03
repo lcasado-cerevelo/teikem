@@ -11,7 +11,7 @@ import { BigButton } from '../../kernel/ui/BigButton'
 import { ScanMessage } from '../../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
 import type { CreatedBin } from './countApi'
-import { canConfirmProductCount, filterProductRows, parseQty, showProductSearch, summarizeProductCount } from './countLogic'
+import { canConfirmProductCount, filterProductRows, hasNothingToConfirm, parseQty, showProductSearch, summarizeProductCount } from './countLogic'
 import {
   addProductExtraRow,
   getProductCountRows,
@@ -47,6 +47,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [query, setQuery] = useState('')
   const [other, setOther] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const [emptyWarning, setEmptyWarning] = useState(false)
 
   const textFor = (row: ProductCountRow) => texts[row.id] ?? textOf(row)
   const summary = summarizeProductCount(rows.map(textFor))
@@ -64,9 +65,27 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
     }
   }
 
+  const empty = hasNothingToConfirm(summary)
+
+  function openOther() {
+    setNotice(null)
+    setEmptyWarning(false)
+    setOther(true)
+  }
+
+  /** Sin ninguna fila no hay nada que mandar: el servidor no termina un conteo vacío. Se avisa y se puede cancelar. */
+  function confirm() {
+    if (empty) {
+      setEmptyWarning(true)
+      return
+    }
+    onConfirm()
+  }
+
   function added(bin: CreatedBin, lot: OtherBinLot | null, existing: boolean) {
     addProductExtraRow(openCount.id, { publicId: product.publicId, sku: product.sku, name: product.name }, bin, lot)
     setOther(false)
+    setEmptyWarning(false)
     setQuery('')
     setNotice(existing ? t('count.binExistingUsed', { bin: bin.code }) : t('count.binAdded', { bin: bin.code }))
     setTick((n) => n + 1)
@@ -155,22 +174,22 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
       </View>
 
       <ScanMessage tone="ok" message={notice} />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('count.otherBin')}
-        onPress={() => {
-          setNotice(null)
-          setOther(true)
-        }}
-        disabled={busy}
-        style={styles.link}
-      >
-        <Text style={styles.linkLabel}>{t('count.otherBin')}</Text>
-      </Pressable>
+      {empty ? (
+        // el sistema no tiene existencia de este producto: lo único que se puede hacer es registrar dónde se encontró
+        <View style={styles.emptyBlock} testID="count-empty-block">
+          <Text style={styles.emptyText}>{t('count.noStockEmpty')}</Text>
+          <BigButton label={t('count.otherBin')} onPress={openOther} disabled={busy} />
+        </View>
+      ) : (
+        <Pressable accessibilityRole="button" accessibilityLabel={t('count.otherBin')} onPress={openOther} disabled={busy} style={styles.link}>
+          <Text style={styles.linkLabel}>{t('count.otherBin')}</Text>
+        </Pressable>
+      )}
 
       {summary.invalid > 0 ? <Text style={styles.error}>{t('count.invalidQty')}</Text> : null}
       {summaryText ? <Text style={styles.summary}>{summaryText}</Text> : null}
-      <BigButton label={t('count.confirmProduct')} onPress={onConfirm} disabled={!canConfirmProductCount(summary) || busy} />
+      {emptyWarning && empty ? <Text style={styles.error}>{t('count.confirmEmpty')}</Text> : null}
+      <BigButton label={t('count.confirmProduct')} onPress={confirm} disabled={!canConfirmProductCount(summary) || busy} />
       <Text style={styles.help}>{t('count.finishHelp')}</Text>
       <ScanMessage tone="error" message={error} />
       <BigButton label={t('count.cancelCount')} variant="danger" onPress={onCancelCount} disabled={busy} />
@@ -234,6 +253,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   removeLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
+  emptyBlock: { gap: spacing.md, padding: spacing.md, borderRadius: radius.md, borderWidth: 2, borderColor: colors.warn, backgroundColor: colors.panelAlt },
+  emptyText: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   link: { minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: spacing.xs },
   linkLabel: { color: colors.brand, fontSize: fontSize.label, fontWeight: '700', textDecorationLine: 'underline' },
 })

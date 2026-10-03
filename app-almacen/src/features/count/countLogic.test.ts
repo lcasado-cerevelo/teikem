@@ -2,6 +2,7 @@ import {
   blankAsZero,
   buildBatchItems,
   canConfirmProductCount,
+  hasNothingToConfirm,
   filterProductRows,
   findListedRow,
   matchExpectedLine,
@@ -108,7 +109,9 @@ describe('conteo por producto — reglas de captura', () => {
     expect(canConfirmProductCount(summarizeProductCount(['', '', '']))).toBe(true)
     expect(canConfirmProductCount(summarizeProductCount(['2', '']))).toBe(true)
     expect(canConfirmProductCount(summarizeProductCount(['2', 'x']))).toBe(false)
-    expect(canConfirmProductCount(summarizeProductCount([]))).toBe(false)
+    expect(canConfirmProductCount(summarizeProductCount([]))).toBe(true)
+    expect(hasNothingToConfirm(summarizeProductCount([]))).toBe(true)
+    expect(hasNothingToConfirm(summarizeProductCount(['']))).toBe(false)
   })
 
   it('el buscador aparece solo con más de 6 posiciones (constante ajustable)', () => {
