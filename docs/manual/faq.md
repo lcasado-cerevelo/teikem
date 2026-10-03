@@ -4033,8 +4033,10 @@ Es la IP desde la que se abrió o renovó la sesión. Las sesiones abiertas ante
 renuevan. No se convierte en ciudad (haría falta un servicio externo).
 
 **Revoqué una sesión y el usuario perdió todas.**
-Si el aparato revocado intenta renovar su sesión, el servidor lo trata como posible robo del token y cierra todas las sesiones de
-ese usuario (regla del lote 1, también en Mi cuenta). Es una decisión pendiente del dueño (lote F10, decisión 3).
+Ya no pasa (decisión del dueño, 2026-10-03). Revocar una sesión (como administrador, desde Mi cuenta, "Cerrar las demás
+sesiones" o logout) cierra solo esa: si el aparato revocado intenta renovarse recibe `401 Refresh token inválido.` y las demás
+sesiones de la persona siguen vivas. Solo el reuso de un token ya rotado (posible robo) cierra todas las sesiones de la persona.
+Si el usuario aún perdió varias, revise en Actividad si hubo un evento `refresh_reuse`: es un posible robo y es lo esperado.
 
 **¿"Cerrar las demás sesiones" me saca también de mis otros aparatos?**
 Sí: cierra todas las sesiones de la compañía menos la de este navegador, incluidas las suyas en otros aparatos y las de los

@@ -93,8 +93,10 @@ Validaciones: código vacío o incorrecto → `Código MFA inválido.` (401).
 ### 1.3 Refresh de sesión, cambio de compañía y cierre de sesión
 
 - Refrescar tokens: `POST /api/v1/auth/refresh` `{ "refreshToken": "..." }`. El refresh token es de un solo
-  uso: cada llamada lo rota (revoca el anterior y entrega uno nuevo). Si se reutiliza uno ya usado, se revoca
-  toda la cadena de sesión (protección contra robo de token).
+  uso: cada llamada lo rota (revoca el anterior y entrega uno nuevo). Si se reutiliza uno ya **rotado**, se revoca
+  toda la cadena de sesión de la persona (protección contra robo de token). En cambio, un token que se **revocó a propósito**
+  (un administrador revocó la sesión, la persona la cerró desde Mi cuenta, "Cerrar las demás sesiones" o logout) solo falla con
+  `401 Refresh token inválido.`: se cierra únicamente esa sesión y las demás sesiones de la persona siguen vivas.
 - Cambiar de compañía activa sin volver a poner contraseña: `POST /api/v1/auth/switch-tenant`
   `{ "refreshToken": "...", "tenantId": 2 }`. Recarga menú, permisos y datos con el nuevo tenant.
 - Cerrar esta sesión: `POST /api/v1/auth/logout` `{ "refreshToken": "..." }` (204, no requiere estar

@@ -59,7 +59,7 @@ el siguiente libre, **F10**. Se tocó el backend (mínimo, ver abajo); no se toc
 2. **"Cerrar las demás sesiones" = todas las de la compañía menos la propia** (incluidas las del mismo administrador en otros
    aparatos y las de los aparatos de almacén), como la maqueta (`ACTIVE_SESSIONS.filter(x => x.current)`). Alternativa más
    conservadora: solo las demás del propio usuario (eso ya está en Mi cuenta).
-3. **Revocar una sesión puede acabar cerrando todas las del usuario**: si el aparato revocado intenta renovar la sesión, la regla
+3. **[RESUELTO 2026-10-03: solo se cierra esa sesión; la cascada queda para el reuso de un token rotado, ver `docs/decisiones-del-dueno-2026-10-03.md` #1]** **Revocar una sesión puede acabar cerrando todas las del usuario**: si el aparato revocado intenta renovar la sesión, la regla
    del lote 1 (`AuthService.FindActiveAsync`) lo trata como reutilización de un token y revoca toda la cadena del usuario (en
    todas sus compañías). No se cambió (es seguridad): distinguir "revocada a propósito" (`ReplacedByTokenHash` vacío) de
    "rotada y reutilizada" es una línea, pero lo decide el dueño. Pasa igual desde Mi cuenta.

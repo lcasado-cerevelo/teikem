@@ -1,6 +1,8 @@
 // Lote 8A-app — reglas puras de Conteo (docs/mobile/app-almacen-plan.md §2, pantalla 6). Sin API ni base.
 // Lote A4 — "Contar por producto" (docs/conteo-por-producto-diseno.md, "App móvil"): una fila por posición (y lote) con un
 // espacio para la cantidad; en blanco = 0; Confirmar cierra con una línea de resumen de los blancos; "Otra posición".
+// Lote A5 — decisión del dueño 4 (docs/decisiones-del-dueno-2026-10-03.md): Confirmar exige al menos una posición con un
+// número escrito (0 vale); con todo en blanco no se envía nada y se avisa.
 import type { LocalProduct } from '../../kernel/warehouse/productLookup'
 
 export interface ExpectedLine {
@@ -101,6 +103,8 @@ export interface ProductCountSummary {
   blanks: number
   /** Filas con algo escrito que no es una cantidad (no deja confirmar). */
   invalid: number
+  /** Filas con un número escrito (0 incluido): hace falta al menos una para terminar. */
+  filled: number
   total: number
 }
 
@@ -108,16 +112,17 @@ export interface ProductCountSummary {
 export function summarizeProductCount(texts: readonly string[]): ProductCountSummary {
   let blanks = 0
   let invalid = 0
+  let filled = 0
   for (const text of texts) {
     if (text.trim() === '') blanks += 1
     else if (parseQty(text) === null) invalid += 1
+    else filled += 1
   }
-  return { blanks, invalid, total: texts.length }
+  return { blanks, invalid, filled, total: texts.length }
 }
 
-/** Confirmar cierra el conteo en un solo toque: basta con que no haya cantidades inválidas (los blancos son 0). Un conteo sin
- *  filas (producto sin existencia y sin «Otra posición») también deja tocar Confirmar, pero la pantalla avisa que no se puede
- *  terminar vacío (hasNothingToConfirm). */
+/** El botón Confirmar está encendido mientras no haya cantidades inválidas. Los otros dos casos (conteo sin filas y todo en
+ *  blanco) dejan tocarlo para poder explicar por qué no se termina (productCountConfirmBlock). */
 export function canConfirmProductCount(summary: ProductCountSummary): boolean {
   return summary.invalid === 0
 }
@@ -125,6 +130,30 @@ export function canConfirmProductCount(summary: ProductCountSummary): boolean {
 /** Conteo por producto sin ninguna fila: el servidor no lo termina vacío ("El conteo no tiene líneas."). */
 export function hasNothingToConfirm(summary: ProductCountSummary): boolean {
   return summary.total === 0
+}
+
+/** Hay filas pero ninguna tiene un número escrito (decisión del dueño 4: hace falta al menos uno; 0 vale). */
+export function isAllBlank(summary: ProductCountSummary): boolean {
+  return summary.total > 0 && summary.filled === 0 && summary.invalid === 0
+}
+
+/** Por qué Confirmar no termina el conteo (null = se puede terminar; los blancos restantes viajan como 0):
+ *  - `invalid`: algo escrito no es una cantidad (el botón ya está apagado);
+ *  - `empty`: el conteo no tiene ninguna fila (producto sin existencia y sin «Otra posición»);
+ *  - `allBlank`: todas las filas están en blanco; hay que escribir al menos un número (0 si no hay nada). */
+export type ProductCountConfirmBlock = 'invalid' | 'empty' | 'allBlank'
+
+export function productCountConfirmBlock(summary: ProductCountSummary): ProductCountConfirmBlock | null {
+  if (summary.invalid > 0) return 'invalid'
+  if (hasNothingToConfirm(summary)) return 'empty'
+  if (isAllBlank(summary)) return 'allBlank'
+  return null
+}
+
+/** Misma regla sobre lo guardado en la base local (cantidad por fila, null = en blanco): guarda de la pantalla antes de encolar,
+ *  por si se llegara a llamar sin pasar por la vista. */
+export function hasAnyCountedQty(qtys: readonly (number | null)[]): boolean {
+  return qtys.some((q) => q !== null)
 }
 
 export interface ProductRowLike {

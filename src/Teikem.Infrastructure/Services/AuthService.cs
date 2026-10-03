@@ -418,6 +418,9 @@ public sealed partial class AuthService(
         await RevokeAsync(rt, null, ct);
         var kind = user.UserKindLookupId is null ? UserKinds.Internal : (await lookups.GetAsync(user.UserKindLookupId.Value, ct))?.InternalCode;
         var pair = await IssueAsync(user, req.TenantId, kind, rt.DeviceInfo, rt.Aal2VerifiedAtUtc, ct);
+        // El token viejo queda reemplazado por el nuevo: su reuso sí es señal de robo (igual que una rotación).
+        rt.ReplacedByTokenHash = JwtTokenService.HashToken(pair.RefreshToken);
+        db.SuppressAudit = true; await db.SaveChangesAsync(ct); db.SuppressAudit = false;
         await security.WriteAsync(SecurityEventTypes.TenantSwitch, SecurityOutcomes.Success, user.Id, req.TenantId, new { from = rt.TenantId }, ct);
         return pair;
     }
@@ -428,9 +431,15 @@ public sealed partial class AuthService(
         var hash = JwtTokenService.HashToken(refreshToken);
         var rt = await db.RefreshTokens.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
         if (rt is null) throw new UnauthorizedException("Refresh token inválido.");
+        if (rt.RevokedAtUtc is not null && rt.ReplacedByTokenHash is null)
+        {
+            // Revocado explícitamente (administrador, la persona, "cerrar las demás", logout, aparato desactivado): solo esa
+            // sesión falla con 401; NO es señal de robo y las demás sesiones de la persona siguen vivas.
+            throw new UnauthorizedException("Refresh token inválido.");
+        }
         if (rt.RevokedAtUtc is not null)
         {
-            // Reutilización de un token ya rotado = posible robo: se revoca toda la cadena del usuario.
+            // Reutilización de un token ya rotado (ReplacedByTokenHash lleno) = posible robo: se revoca toda la cadena del usuario.
             await security.WriteAsync(SecurityEventTypes.TokenRevoked, SecurityOutcomes.Blocked, rt.UserId, rt.TenantId, new { reason = "refresh_reuse" }, ct);
             var chain = await db.RefreshTokens.IgnoreQueryFilters().Where(t => t.UserId == rt.UserId && t.RevokedAtUtc == null).ToListAsync(ct);
             foreach (var t in chain) t.RevokedAtUtc = DateTime.UtcNow;
