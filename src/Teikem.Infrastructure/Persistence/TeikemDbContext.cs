@@ -45,6 +45,7 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Tenancy / módulos
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<TenantHoliday> TenantHolidays => Set<TenantHoliday>();
+    public DbSet<TenantBrandLogo> TenantBrandLogos => Set<TenantBrandLogo>();
     public DbSet<ModuleDefinition> ModuleDefinitions => Set<ModuleDefinition>();
     public DbSet<TenantModule> TenantModules => Set<TenantModule>();
     // Catálogos / estatus

@@ -6,7 +6,9 @@
 // - Estado (`--ok`, `--warn`, `--danger`, `--info`): NO se personaliza (verde = bien, rojo = mal).
 // - Superficies: solo por preset o por un "tono base" acotado; se derivan de tono y saturación del neutro.
 // Validación: contraste WCAG contra el panel en AMBOS modos (texto ≥ 7, atenuado y acentos ≥ 4.5) y separación de matiz.
-// IMPORTANTE: la misma validación debe repetirse en el servidor (hoy `PUT /tenant/settings` solo exige JSON válido ≤ 200 KB).
+// El servidor repite la MISMA validación (`BrandingRules`, src/Teikem.Domain/Tenancy): `validateBrandingJson` es su espejo, con los
+// mismos mensajes, y la paridad se asegura con los vectores compartidos `tests/shared/brand-vectors.json` (los leen esta
+// carpeta con vitest y las pruebas xunit). Si cambia un número o un mensaje aquí, cambia allá y se regeneran los vectores.
 // Lógica pura.
 
 export type ThemeMode = 'dark' | 'light'
@@ -289,14 +291,96 @@ export function parseBranding(json: string | null | undefined): BrandSettings {
   }
 }
 
-/** `BrandSettings` → `BrandingJson`, conservando otras claves que ya tuviera el JSON guardado. */
-export function serializeBranding(b: BrandSettings, previousJson?: string | null): string {
-  let base: Record<string, unknown> = {}
-  try {
-    const prev = previousJson ? (JSON.parse(previousJson) as unknown) : null
-    if (prev && typeof prev === 'object' && !Array.isArray(prev)) base = prev as Record<string, unknown>
-  } catch {
-    base = {}
+/**
+ * `BrandSettings` → `BrandingJson`. Solo las tres claves conocidas: el servidor rechaza los campos desconocidos (los logos ya no
+ * viajan aquí, van a su propio almacén), así que no se conserva nada más de lo que hubiera guardado.
+ */
+export function serializeBranding(b: BrandSettings): string {
+  return JSON.stringify({ preset: b.preset, useCustom: b.useCustom, custom: b.custom })
+}
+
+// ------------------------------------------------------------------ validación del JSON (espejo de BrandingRules, C#)
+
+/** Tamaño máximo del `BrandingJson` en caracteres (los logos no viajan aquí). */
+export const BRAND_JSON_MAX_CHARS = 4096
+/** Claves que la marca nunca acepta: los colores de estado no se personalizan. */
+export const BRAND_STATUS_KEYS: readonly string[] = ['ok', 'warn', 'danger', 'info', 'status', 'statuscolors']
+
+export type BrandErrorCode = 'tooLarge' | 'malformed' | 'notObject' | 'unknownField' | 'statusColor' | 'badType' | 'badHex' | 'unknownPreset' | 'contrast' | 'hue'
+
+export type BrandValidation =
+  | { ok: true; checks: BrandCheck[] }
+  | { ok: false; code: BrandErrorCode; message: string; checks: BrandCheck[] }
+
+const BRAND_TOP_KEYS = ['preset', 'useCustom', 'custom']
+const BRAND_CUSTOM_KEYS = ['flow', 'money', 'neutral'] as const
+const CONTRAST_LABEL: Record<'text' | 'muted' | 'flow' | 'money', string> = {
+  text: 'del texto',
+  muted: 'del texto atenuado',
+  flow: 'del color de operación',
+  money: 'del color de dinero',
+}
+
+const clip = (s: string) => (s.length > 40 ? `${s.slice(0, 40)}…` : s)
+const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const bad = (code: BrandErrorCode, message: string, checks: BrandCheck[] = []): BrandValidation => ({ ok: false, code, message, checks })
+
+/** Primer campo de `o` que no es de la marca (o es un color de estado); null si todos son conocidos. */
+function foreignKey(o: Record<string, unknown>, known: readonly string[], prefix: string): BrandValidation | null {
+  for (const k of Object.keys(o)) {
+    if (BRAND_STATUS_KEYS.includes(k.toLowerCase())) {
+      return bad('statusColor', `Los colores de estado (ok, warn, danger, info) no se pueden personalizar: '${clip(prefix + k)}'.`)
+    }
+    if (!known.includes(k)) return bad('unknownField', `La marca trae un campo desconocido: '${clip(prefix + k)}'.`)
   }
-  return JSON.stringify({ ...base, preset: b.preset, useCustom: b.useCustom, custom: b.custom })
+  return null
+}
+
+/**
+ * Valida el `BrandingJson` con las reglas del servidor (mismos mensajes; el orden de las comprobaciones es parte del contrato):
+ * tamaño → JSON → objeto → campos ajenos → tipos → colores hexadecimales → tema predefinido existente → contraste (texto,
+ * atenuado, operación y dinero; modo oscuro y luego claro) → separación de matiz. Vacío = quitar la marca (válido).
+ */
+export function validateBrandingJson(json: string): BrandValidation {
+  if (json.length === 0) return { ok: true, checks: [] }
+  if (json.length > BRAND_JSON_MAX_CHARS) {
+    return bad('tooLarge', `La marca es demasiado grande (máximo ${BRAND_JSON_MAX_CHARS} caracteres); los logos se suben aparte.`)
+  }
+  let o: unknown
+  try {
+    o = JSON.parse(json)
+  } catch {
+    return bad('malformed', 'La marca no es un JSON válido.')
+  }
+  if (!isPlainObject(o)) return bad('notObject', 'La marca debe ser un objeto JSON.')
+  const top = foreignKey(o, BRAND_TOP_KEYS, '')
+  if (top) return top
+  if ('preset' in o && typeof o.preset !== 'string') return bad('badType', "El campo 'preset' tiene un tipo inválido.")
+  if ('useCustom' in o && typeof o.useCustom !== 'boolean') return bad('badType', "El campo 'useCustom' tiene un tipo inválido.")
+  const custom = { ...DEFAULT_BRAND.custom }
+  if ('custom' in o) {
+    if (!isPlainObject(o.custom)) return bad('badType', "El campo 'custom' tiene un tipo inválido.")
+    const inner = foreignKey(o.custom, BRAND_CUSTOM_KEYS, 'custom.')
+    if (inner) return inner
+    for (const k of BRAND_CUSTOM_KEYS) {
+      if (!(k in o.custom)) continue
+      const v = o.custom[k]
+      if (typeof v !== 'string') return bad('badType', `El campo 'custom.${k}' tiene un tipo inválido.`)
+      if (!isValidHex(v)) return bad('badHex', `El color 'custom.${k}' no es hexadecimal (use #RGB o #RRGGBB).`)
+      custom[k] = normalizeHex(v)
+    }
+  }
+  const preset = typeof o.preset === 'string' ? o.preset : DEFAULT_PRESET
+  if (!presetById(preset)) return bad('unknownPreset', `El tema predefinido '${clip(preset)}' no existe.`)
+  const settings: BrandSettings = { preset, useCustom: o.useCustom === true, custom }
+  const checks = brandChecks(settings)
+  for (const c of checks) {
+    if (c.pass) continue
+    if (c.type === 'contrast') {
+      const mode = c.mode === 'dark' ? 'oscuro' : 'claro'
+      return bad('contrast', `El contraste ${CONTRAST_LABEL[c.key]} en modo ${mode} es ${c.ratio}:1; el mínimo es ${c.min}:1.`, checks)
+    }
+    return bad('hue', `Los colores de operación y de dinero son demasiado parecidos: ${c.distance}° de separación y el mínimo es ${c.min}°.`, checks)
+  }
+  return { ok: true, checks }
 }

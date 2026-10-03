@@ -61,3 +61,9 @@ public sealed record TenantProvisionResult(TenantSummaryDto Tenant, int AdminUse
 public sealed record MeDto(int UserId, string? FullName, string? Email, bool IsPlatformAdmin, int? TenantId, string? TenantName, string Lang,
     IReadOnlyList<MembershipDto> Memberships, IReadOnlyList<string> Permissions, IReadOnlyList<string> EnabledModules, IReadOnlyList<DataScopeDto> DataScopes, bool MfaEnabled, DateTime? Aal2VerifiedAtUtc);
 public sealed record MembershipDto(int TenantId, string TenantName, string Status, bool IsDefault);
+
+/// <summary>
+/// Logo de la marca de la compañía (una ranura): tipo real, tamaño, ETag (SHA-256 del archivo, el mismo del endpoint de lectura) y
+/// cuándo se subió por última vez.
+/// </summary>
+public sealed record BrandLogoDto(string Slot, string ContentType, int SizeBytes, string ETag, DateTime UpdatedAtUtc);

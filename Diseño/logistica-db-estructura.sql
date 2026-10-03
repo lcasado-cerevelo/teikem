@@ -219,6 +219,29 @@ CREATE TABLE dbo.TenantHoliday (
 );
 GO
 
+-- Logos de la marca de la compañía (Ajustes → Marca): una fila por (compañía, ranura). Ranuras: lockup (fondo claro), lockup-inverted
+-- (fondo oscuro), mark y mark-inverted (marca cuadrada). El archivo vive aquí (SVG/PNG/JPG/WebP, hasta 512 KB; el servicio valida el
+-- contenido real). Quitar el logo es soft delete (IsActive = 0, el binario se libera); subir otro reutiliza la fila. La bitácora de
+-- cambios guarda quién y cuándo sin el binario.
+CREATE TABLE dbo.TenantBrandLogo (
+    TenantBrandLogoId INT IDENTITY(1,1) PRIMARY KEY,
+    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+    Slot         VARCHAR(20) NOT NULL,
+    ContentType  VARCHAR(40) NOT NULL,            -- tipo REAL por cabecera: image/svg+xml | image/png | image/jpeg | image/webp
+    SizeBytes    INT NOT NULL,
+    ContentHash  CHAR(64) NOT NULL,               -- SHA-256 en hexadecimal (ETag)
+    Content      VARBINARY(MAX) NOT NULL,
+    IsActive     BIT NOT NULL DEFAULT 1,
+    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+    CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    UpdatedAtUtc DATETIME2 NULL,
+    UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+    CONSTRAINT UQ_TenantBrandLogo UNIQUE (TenantId, Slot),
+    CONSTRAINT CK_TenantBrandLogo_Slot CHECK (Slot IN ('lockup','lockup-inverted','mark','mark-inverted')),
+    CONSTRAINT CK_TenantBrandLogo_Size CHECK (SizeBytes BETWEEN 0 AND 524288)
+);
+GO
+
 /* =========================================================================
    CAPA 1B — CATÁLOGO DE MÓDULOS (plataforma multi-tenant, no solo Advance)
    Teikem es una plataforma para toda la industria de logística, cualquier

@@ -80,6 +80,34 @@ public class TenantHoliday : ITenantScoped, ISoftDeletable
     public Tenant? Tenant { get; set; }
 }
 
+/// <summary>
+/// Logo de la marca de la compañía (Ajustes → Marca): una fila por (compañía, ranura) —lockup, lockup-inverted, mark,
+/// mark-inverted— con el archivo en la base. Quitar el logo es soft delete (IsActive = 0, el binario se libera); subir otro
+/// reutiliza la fila. La bitácora de cambios registra quién y cuándo sin el binario (<see cref="Content"/> no se audita).
+/// Reglas: <see cref="BrandLogoRules"/>.
+/// </summary>
+[AuditEntity(Constants.EntityTypes.TenantLogo)]
+public class TenantBrandLogo : ITenantScoped, ISoftDeletable, IAuditStamped
+{
+    public int TenantBrandLogoId { get; set; }
+    public int TenantId { get; set; }
+    /// <summary>Ranura (<see cref="BrandLogoSlots"/>).</summary>
+    public string Slot { get; set; } = string.Empty;
+    /// <summary>Tipo de contenido REAL (por cabecera): image/svg+xml, image/png, image/jpeg o image/webp.</summary>
+    public string ContentType { get; set; } = string.Empty;
+    public int SizeBytes { get; set; }
+    /// <summary>SHA-256 del archivo en hexadecimal (ETag del endpoint).</summary>
+    public string ContentHash { get; set; } = string.Empty;
+    [NotAudited] public byte[] Content { get; set; } = [];
+    public bool IsActive { get; set; } = true;
+    [NotAudited] public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    [NotAudited] public int? CreatedBy { get; set; }
+    /// <summary>Cuándo se subió o quitó por última vez (Last-Modified del endpoint).</summary>
+    [NotAudited] public DateTime? UpdatedAtUtc { get; set; }
+    [NotAudited] public int? UpdatedBy { get; set; }
+    public Tenant? Tenant { get; set; }
+}
+
 /// <summary>Catálogo completo de capacidades de la plataforma (siempre vive en el esquema, activo o no).</summary>
 public class ModuleDefinition
 {

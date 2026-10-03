@@ -55,6 +55,13 @@ public sealed class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Ex
             http.Response.StatusCode = ex.StatusCode;
             await http.Response.WriteAsJsonAsync(ProblemBody(ex, tenant.CorrelationId));
         }
+        catch (Microsoft.AspNetCore.Http.BadHttpRequestException ex) when (ex.StatusCode == StatusCodes.Status413PayloadTooLarge)
+        {
+            // el cuerpo superó el máximo del endpoint (p. ej. subida de logo sin Content-Length): 413 con el formato de siempre
+            if (http.Response.HasStarted) throw;
+            http.Response.StatusCode = StatusCodes.Status413PayloadTooLarge;
+            await http.Response.WriteAsJsonAsync(new { type = "https://teikem.app/errors/payload_too_large", title = "El archivo supera el tamaño máximo permitido.", status = 413, code = "payload_too_large", correlationId = tenant.CorrelationId });
+        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             logger.LogError(ex, "Error no controlado. Correlation {Correlation}", tenant.CorrelationId);

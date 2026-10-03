@@ -10,6 +10,10 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Vectores compartidos con la web (vitest los lee desde tests/shared): la paridad de la marca se prueba contra el mismo archivo. -->
+    <None Include="..\shared\brand-vectors.json" Link="shared\brand-vectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Teikem.Api\Teikem.Api.csproj" />
   </ItemGroup>
 </Project>

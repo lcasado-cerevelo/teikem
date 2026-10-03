@@ -95,6 +95,7 @@ public static class DependencyInjection
         services.AddScoped<AnalyticsEngine>();
         services.AddScoped<ModuleService>();
         services.AddScoped<TenantService>();
+        services.AddScoped<BrandLogoService>(); // Lote 19: logos de la marca por compañía
         services.AddScoped<AuthService>();
         services.AddScoped<UserAdminService>();
         services.AddScoped<ProvisioningService>();

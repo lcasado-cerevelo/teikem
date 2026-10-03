@@ -460,6 +460,8 @@ public static class EntityTypes
     public const string IndicatorDefinition = "INDICATOR_DEFINITION";
     public const string ChartDefinition = "CHART_DEFINITION";
     public const string TenantModule = "TENANT_MODULE";
+    /// <summary>Logo de la marca de la compañía (Ajustes → Marca, Lote 19).</summary>
+    public const string TenantLogo = "TENANT_LOGO";
     public const string StatusConfig = "STATUS_CONFIG";
     public const string ApiCredential = "API_CREDENTIAL";
     public const string AuditLog = "AUDIT_LOG";

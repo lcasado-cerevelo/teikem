@@ -330,6 +330,8 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('AdjustmentReason','OPENING_BALANCE','Saldo inicial (migración)','Opening balance (migration)',10),
 -- Lote 14 — conciliación Kárdex ↔ saldo (D5, D14): descuadre auditable, tipo (por posición o total del producto) y origen de
 -- la revisión (SCHEDULED queda reservado: el barrido programado es de un lote posterior)
+-- Lote 19 — Marca por compañía: los logos (tabla TenantBrandLogo) son auditables (sin el binario).
+('EntityType','TENANT_LOGO','Logo de la compañía','Company logo',83),
 ('EntityType','INVENTORY_DISCREPANCY','Descuadre de inventario','Inventory discrepancy',82),
 ('InventoryDiscrepancyKind','BALANCE','Saldo por posición','Bin balance',1),('InventoryDiscrepancyKind','PRODUCT_TOTAL','Total del producto','Product total',2),
 ('ReconciliationTrigger','EVENT','Automática (movimiento)','Automatic (movement)',1),('ReconciliationTrigger','MANUAL','Manual','Manual',2),

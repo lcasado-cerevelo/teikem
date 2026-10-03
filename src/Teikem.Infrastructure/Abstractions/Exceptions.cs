@@ -33,6 +33,12 @@ public sealed class ValidationException : TeikemException
 
 public sealed class ConflictException(string message) : TeikemException(message, 409, "conflict");
 
+/// <summary>413: el cuerpo o archivo supera el máximo permitido.</summary>
+public sealed class PayloadTooLargeException(string message) : TeikemException(message, 413, "payload_too_large");
+
+/// <summary>415: el tipo o formato del archivo no está admitido.</summary>
+public sealed class UnsupportedMediaException(string message) : TeikemException(message, 415, "unsupported_media");
+
 public sealed class ForbiddenException(string message = "No tiene permiso para esta acción.")
     : TeikemException(message, 403, "forbidden");
 

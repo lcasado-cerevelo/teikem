@@ -62,6 +62,22 @@ public sealed class TenantHolidayConfiguration : IEntityTypeConfiguration<Tenant
     }
 }
 
+/// <summary>Logos de la marca por compañía (1:1 con dbo.TenantBrandLogo): una fila por (compañía, ranura).</summary>
+public sealed class TenantBrandLogoConfiguration : IEntityTypeConfiguration<TenantBrandLogo>
+{
+    public void Configure(EntityTypeBuilder<TenantBrandLogo> b)
+    {
+        b.ToTable("TenantBrandLogo");
+        b.HasKey(l => l.TenantBrandLogoId);
+        b.Property(l => l.Slot).HasColumnType("varchar(20)").IsRequired();
+        b.Property(l => l.ContentType).HasColumnType("varchar(40)").IsRequired();
+        b.Property(l => l.ContentHash).HasColumnType("char(64)").IsRequired();
+        b.Property(l => l.Content).HasColumnType("varbinary(max)").IsRequired();
+        b.HasIndex(l => new { l.TenantId, l.Slot }).IsUnique().HasDatabaseName("UQ_TenantBrandLogo");
+        b.HasOne(l => l.Tenant).WithMany().HasForeignKey(l => l.TenantId);
+    }
+}
+
 public sealed class ModuleDefinitionConfiguration : IEntityTypeConfiguration<ModuleDefinition>
 {
     public void Configure(EntityTypeBuilder<ModuleDefinition> b)

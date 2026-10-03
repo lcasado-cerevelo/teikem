@@ -117,7 +117,7 @@ describe('temas', () => {
 })
 
 describe('BrandingJson', () => {
-  it('lee con valores por defecto lo que no entiende y conserva otras claves al guardar', () => {
+  it('lee con valores por defecto lo que no entiende y al guardar solo escribe las claves conocidas', () => {
     expect(parseBranding(null)).toEqual(DEFAULT_BRAND)
     expect(parseBranding('no es json')).toEqual(DEFAULT_BRAND)
     expect(parseBranding('{"preset":"nada","useCustom":true,"custom":{"flow":"#abc","money":"zz"}}')).toEqual({
@@ -125,8 +125,8 @@ describe('BrandingJson', () => {
       useCustom: true,
       custom: { flow: '#AABBCC', money: '#FF6A1A', neutral: '#2B3A5C' },
     })
-    const json = serializeBranding({ ...DEFAULT_BRAND, preset: 'acero' }, '{"logoUrl":"x","preset":"teikem"}')
-    expect(JSON.parse(json)).toEqual({ logoUrl: 'x', preset: 'acero', useCustom: false, custom: DEFAULT_BRAND.custom })
+    const json = serializeBranding({ ...DEFAULT_BRAND, preset: 'acero' })
+    expect(JSON.parse(json)).toEqual({ preset: 'acero', useCustom: false, custom: DEFAULT_BRAND.custom })
     expect(parseBranding(json).preset).toBe('acero')
   })
 })

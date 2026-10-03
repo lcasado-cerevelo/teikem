@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Tenancy;
@@ -43,12 +42,9 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         if (req.DeviceSessionDays.HasValue) { if (req.DeviceSessionDays.Value is < 1 or > 365) throw new ValidationException("deviceSessionDays", "Entre 1 y 365 días."); t.DeviceSessionDays = req.DeviceSessionDays.Value; }
         if (req.BrandingJson is not null)
         {
-            if (req.BrandingJson.Length > 0)
-            {
-                try { using var _ = JsonDocument.Parse(req.BrandingJson); }
-                catch (JsonException) { throw new ValidationException("brandingJson", "BrandingJson no es JSON válido."); }
-                if (req.BrandingJson.Length > 200_000) throw new ValidationException("brandingJson", "BrandingJson demasiado grande (los logos van a blob storage).");
-            }
+            // Marca por compañía: las mismas reglas que la pantalla (BrandingRules, vectores compartidos con la web); vacío = quitarla.
+            var brand = BrandingRules.Validate(req.BrandingJson);
+            if (!brand.Ok) throw new ValidationException("brandingJson", brand.Message!);
             t.BrandingJson = req.BrandingJson.Length == 0 ? null : req.BrandingJson;
         }
         var formatChanges = FormatChanges(req);
@@ -92,11 +88,16 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         return list.Select(h => new TenantHolidayDto(h.TenantHolidayId, h.HolidayDate, h.Name, h.IsRecurring)).ToList();
     }
 
+    public const string HolidayExistsMessage = "Ya hay un feriado en esa fecha.";
+
     public async Task<TenantHolidayDto> AddHolidayAsync(TenantHolidayRequest req, CancellationToken ct)
     {
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         if (string.IsNullOrWhiteSpace(req.Name)) throw new ValidationException("name", "El nombre es obligatorio.");
         var existing = await db.TenantHolidays.FirstOrDefaultAsync(h => h.HolidayDate == req.Date, ct);
+        // Una fecha con feriado activo no se pisa en silencio: 409. Uno dado de baja (soft delete) se reactiva con los datos nuevos.
+        if (existing is { IsActive: true })
+            throw new ConflictException(HolidayExistsMessage) { Errors = new Dictionary<string, string[]> { ["date"] = [HolidayExistsMessage] } };
         if (existing is not null)
         {
             existing.Name = req.Name.Trim(); existing.IsRecurring = req.IsRecurring; existing.IsActive = true;
