@@ -31,4 +31,6 @@ export const KvKeys = {
   theme: 'theme',
   /** Región y formatos de la compañía (JSON de kernel/format/settings.ts): en la base de la compañía, para trabajar sin señal. */
   tenantFormat: 'tenantFormat',
+  /** Lote A4: última forma de contar elegida en Conteo ('BIN' por posición | 'PRODUCT' por producto); sin valor = por posición. */
+  countEntryMode: 'countEntryMode',
 } as const

@@ -58,6 +58,13 @@ export function toApiError(error: unknown, response?: Response): ApiError {
   return new ApiError(status, null)
 }
 
+/** Texto para mostrar de un ApiError: los mensajes por campo (`errors`, sin repetir) si los hay —el título de una
+ *  validación con varios campos es solo "Datos inválidos."—; si no, el título (el mensaje exacto del servidor). */
+export function apiErrorMessage(error: ApiError): string {
+  const messages = [...new Set(Object.values(error.errors ?? {}).flat().filter((m) => typeof m === 'string' && m.trim()))]
+  return messages.length > 0 ? messages.join(' ') : error.title
+}
+
 /** true si el error es de conexión (sin red o el servidor no respondió): la operación debe encolarse, no perderse. */
 export function isNetworkError(error: unknown): boolean {
   return error instanceof ApiError && error.code === 'network'

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
-import { ApiError } from '../kernel/api/client'
+import { ApiError, apiErrorMessage, isNetworkError } from '../kernel/api/client'
 import { useSession } from '../kernel/auth/useSession'
+import { getKv, KvKeys, setKv } from '../kernel/db/kv'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
@@ -11,21 +12,33 @@ import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField, type ScanPrefill } from '../kernel/ui/ScanField'
-import { colors, fontSize, spacing } from '../kernel/ui/theme'
+import { colors, fontSize, radius, spacing, touchTarget } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
-import { cancelCountOnline, enqueueFinishCount, fetchExpectedLines, startCountOnline } from '../features/count/countApi'
-import { matchExpectedLine, parseQty, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
+import {
+  cancelCountOnline,
+  enqueueFinishCount,
+  fetchExpectedLines,
+  isNothingToCount,
+  startCountOnline,
+  startProductCountOnline,
+} from '../features/count/countApi'
+import { matchExpectedLine, parseQty, productCountBlocker, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
 import {
   addExtraLine,
   captureExpectedLine,
   discardLocalCount,
   getCapturedLines,
   getOpenCount,
+  getProductCountRows,
   removeLocalCountLine,
   updateLocalCountLineQty,
   startLocalCount,
+  startLocalProductCount,
   toCapturedEntries,
+  toProductEntries,
+  type CountMode,
 } from '../features/count/localCount'
+import { ProductCountView } from '../features/count/ProductCountView'
 
 type Draft = { line: ExpectedLine | null; productPublicId: string; sku: string; productName: string; qtyText: string }
 /** Corrección de la cantidad de una línea ya contada (sin volver a escanear). */
@@ -33,7 +46,10 @@ type Edit = { id: number; sku: string; productName: string; systemQty: number | 
 
 /** Pantalla 6 (docs/mobile/app-almacen-plan.md §2): escanear la posición reclama el conteo en línea (posición
  *  compartida, igual que Acomodar); de ahí en adelante capturar lo encontrado y terminar van por la cola de salida.
- *  Un conteo a la vez por aparato (docs/lote8A-app-decisiones.md). */
+ *  Un conteo a la vez por aparato (docs/lote8A-app-decisiones.md).
+ *  Lote A4: dos caminos, "Por posición" (como antes) y "Por producto" (docs/conteo-por-producto-diseno.md): se escanea el
+ *  producto, se abre el conteo en línea y se lista una fila por posición (y lote) con su espacio de cantidad
+ *  (features/count/ProductCountView.tsx). */
 export default function CountScreen() {
   const { t } = useT()
   const router = useRouter()
@@ -50,6 +66,10 @@ export default function CountScreen() {
   // docs/mobile/mejoras-ux-zebra.md §3: tocar un producto de "Lo que se espera aquí" lo pone en el campo del producto
   // (sin enviarlo: se confirma con Aceptar). Se limpia al enviar, para que no vuelva a aparecer al regresar a este paso.
   const [prefill, setPrefill] = useState<ScanPrefill | null>(null)
+  // Lote A4: forma de contar elegida (se recuerda en el aparato; la primera vez, por posición).
+  const [entryMode, setEntryMode] = useState<CountMode>(() => (getKv(KvKeys.countEntryMode) === 'PRODUCT' ? 'PRODUCT' : 'BIN'))
+  const [productError, setProductError] = useState<string | null>(null)
+  const [noStock, setNoStock] = useState(false)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,7 +79,8 @@ export default function CountScreen() {
   // El conteo en curso solo guarda el id localmente; si se cerró y reabrió la app hay que volver a pedir las líneas
   // esperadas (ya de todas formas necesita señal para terminar). expectedLines === null es la señal de "cargando".
   useEffect(() => {
-    if (!openCount || expectedLines !== null) return
+    // el conteo por producto guarda todas sus líneas en la base local al abrirse: no se vuelven a pedir
+    if (!openCount || openCount.mode !== 'BIN' || expectedLines !== null) return
     let cancelled = false
     fetchExpectedLines(openCount.countId)
       .then((lines) => {
@@ -88,7 +109,8 @@ export default function CountScreen() {
     try {
       const bin = await findBinByCode(warehousePublicId!, code)
       if (!bin) {
-        setBinError(t('count.binNotFound'))
+        // Lote A4: si lo escaneado es un producto, se dice cómo contarlo así (en vez de solo "no hay posición")
+        setBinError(findProductByCode(code) ? t('count.binLooksLikeProduct') : t('count.binNotFound'))
         vibrateError()
         return
       }
@@ -99,6 +121,53 @@ export default function CountScreen() {
       refresh()
     } catch (err) {
       setBinError(err instanceof ApiError ? err.title : t('count.startError'))
+      vibrateError()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function chooseMode(mode: CountMode) {
+    setEntryMode(mode)
+    setKv(KvKeys.countEntryMode, mode)
+    setBinError(null)
+    setProductError(null)
+    setNoStock(false)
+  }
+
+  /** Lote A4 — "Contar por producto": producto del catálogo local → guarda de serie → conteo en línea → lista local. */
+  async function scanProductToCount(code: string) {
+    setProductError(null)
+    setNoStock(false)
+    const product = findProductByCode(code)
+    if (!product) {
+      setProductError(t('count.productNotFound'))
+      vibrateError()
+      return
+    }
+    if (productCountBlocker(product) === 'serial') {
+      // no se crea ningún conteo: no se podría terminar desde la app (no hay captura de series)
+      setProductError(t('count.serialNotSupported'))
+      vibrateError()
+      return
+    }
+    setBusy(true)
+    try {
+      const started = await startProductCountOnline(warehousePublicId!, product.publicId)
+      startLocalProductCount(
+        warehousePublicId!,
+        { publicId: product.publicId, sku: product.sku, name: product.name, trackingTypeCode: product.trackingTypeCode },
+        { countId: started.countId, isBlind: started.isBlind },
+        started.lines,
+      )
+      vibrateOk()
+      refresh()
+    } catch (err) {
+      if (isNetworkError(err)) setProductError(t('count.productStartError'))
+      else if (err instanceof ApiError) {
+        setProductError(apiErrorMessage(err))
+        setNoStock(isNothingToCount(err))
+      } else setProductError(t('count.productStartError'))
       vibrateError()
     } finally {
       setBusy(false)
@@ -164,21 +233,81 @@ export default function CountScreen() {
     if (!openCount) return
     const captured = toCapturedEntries(getCapturedLines(openCount.id))
     if (captured.length === 0) return
-    enqueueFinishCount(openCount.countId, openCount.binId, captured)
+    enqueueFinishCount(openCount.countId, captured)
     discardLocalCount()
     void runSync()
     router.replace('/home')
   }
 
-  // Sin conteo abierto: escanear la posición a contar. Nada que perder aquí, así que "Volver" sale directo a Inicio.
+  /** Conteo por producto: todas las filas (las en blanco como 0) viajan en un lote, seguido del cierre (cola de salida). */
+  function finishProduct() {
+    if (!openCount) return
+    const rows = getProductCountRows(openCount.id)
+    if (rows.length === 0) return
+    enqueueFinishCount(openCount.countId, toProductEntries(rows))
+    discardLocalCount()
+    vibrateOk()
+    void runSync()
+    router.replace('/home')
+  }
+
+  // Sin conteo abierto: elegir cómo contar y escanear la posición o el producto. Nada que perder aquí, así que "Volver" sale
+  // directo a Inicio.
   if (!openCount) {
     return (
       <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>{t('count.title')}</Text>
-        <ScanField label={t('count.scanBinLabel')} error={binError} onSubmit={scanBin} />
+        <Text style={styles.label}>{t('count.modeLabel')}</Text>
+        <View style={styles.modes} accessibilityRole="radiogroup">
+          {(['BIN', 'PRODUCT'] as const).map((mode) => {
+            const selected = entryMode === mode
+            return (
+              <Pressable
+                key={mode}
+                accessibilityRole="radio"
+                accessibilityState={{ selected, checked: selected }}
+                accessibilityLabel={t(mode === 'BIN' ? 'count.modeBin' : 'count.modeProduct')}
+                onPress={() => chooseMode(mode)}
+                disabled={busy}
+                style={[styles.mode, selected && styles.modeOn]}
+              >
+                <Text style={[styles.modeLabel, selected && styles.modeLabelOn]}>{t(mode === 'BIN' ? 'count.modeBin' : 'count.modeProduct')}</Text>
+              </Pressable>
+            )
+          })}
+        </View>
+        {entryMode === 'BIN' ? (
+          <ScanField key="bin" label={t('count.scanBinLabel')} error={binError} onSubmit={scanBin} />
+        ) : (
+          <>
+            <ScanField
+              key="product"
+              label={t('count.scanProductToCountLabel')}
+              help={t('count.scanProductToCountHelp')}
+              error={productError}
+              onSubmit={(code) => void scanProductToCount(code)}
+            />
+            {noStock ? (
+              <>
+                <Text style={styles.help}>{t('count.noStockHelp')}</Text>
+                <BigButton label={t('count.switchToBin')} variant="secondary" onPress={() => chooseMode('BIN')} />
+              </>
+            ) : null}
+          </>
+        )}
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
         {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla */}
         <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
+      </ScrollView>
+    )
+  }
+
+  // Conteo por producto abierto (recién abierto o retomado tras cerrar la app: sus líneas están en la base local).
+  if (openCount.mode === 'PRODUCT' && openCount.product) {
+    return (
+      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+        <ProductCountView openCount={openCount} busy={busy} onConfirm={finishProduct} onCancelCount={cancelCount} error={scanError} />
+        {busy ? <ActivityIndicator color={colors.brand} /> : null}
       </ScrollView>
     )
   }
@@ -332,6 +461,22 @@ const styles = StyleSheet.create({
   error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
   row: { flexDirection: 'row', gap: spacing.md },
+  // dos opciones del mismo ancho: caben en 360 px
+  modes: { flexDirection: 'row', gap: spacing.sm },
+  mode: {
+    flex: 1,
+    minHeight: touchTarget,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.panelAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+  },
+  modeOn: { borderColor: colors.brand, backgroundColor: colors.brand },
+  modeLabel: { color: colors.muted, fontSize: fontSize.label, fontWeight: '700', textAlign: 'center' },
+  modeLabelOn: { color: colors.text },
   input: {
     minHeight: 56,
     borderWidth: 2,

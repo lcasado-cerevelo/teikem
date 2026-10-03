@@ -63,7 +63,7 @@ describe('migración v3 (Lote 16, recibo directo a posición)', () => {
   it('la base nueva queda en la versión 3 con las columnas nuevas y el índice de posiciones', () => {
     const db = getDb()
     expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
-    expect(SCHEMA_VERSION).toBe(3)
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(3)
     const cols = (table: string) => db.getAllSync<{ name: string }>(`PRAGMA table_info(${table})`).map((c) => c.name)
     expect(cols('local_receipt')).toContain('receiving_mode')
     expect(cols('local_receipt_line')).toContain('target_bin_code')
@@ -86,7 +86,7 @@ describe('migración v3 (Lote 16, recibo directo a posición)', () => {
     )
 
     const db = getDb()
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(3)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
     expect(db.getFirstSync('SELECT warehouse_public_id, receiving_mode FROM local_receipt WHERE id = 1')).toEqual({
       warehouse_public_id: 'wh-1',
       receiving_mode: null,
@@ -95,5 +95,65 @@ describe('migración v3 (Lote 16, recibo directo a posición)', () => {
       received_qty: 4,
       target_bin_code: null,
     })
+  })
+})
+
+describe('migración v4 (Lote A4, contar por producto)', () => {
+  const cols = (table: string) =>
+    getDb()
+      .getAllSync<{ name: string; notnull: number }>(`PRAGMA table_info(${table})`)
+      .reduce<Record<string, number>>((acc, c) => ({ ...acc, [c.name]: c.notnull }), {})
+
+  it('la base nueva queda en la versión 4: la posición del conteo es opcional, cada línea guarda su posición y su lote, y la cantidad admite blanco', () => {
+    const db = getDb()
+    expect(SCHEMA_VERSION).toBe(4)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(4)
+    const count = cols('local_count')
+    expect(count).toMatchObject({ mode: 1, bin_id: 0, product_public_id: 0, tracking_type_code: 0 })
+    const line = cols('local_count_line')
+    expect(line).toMatchObject({ counted_qty: 0, bin_id: 0, bin_code: 0, lot_id: 0, lot_number: 0, lot_expiry_date: 0, is_provisional_bin: 1 })
+    const indexes = db.getAllSync<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'local_count_line'").map((i) => i.name)
+    expect(indexes).toContain('ix_local_count_line_count')
+    expect(db.getAllSync("SELECT name FROM sqlite_master WHERE name LIKE '%_v4'")).toEqual([])
+  })
+
+  it('un aparato en v3 con un conteo por posición en curso migra sin perderlo: el conteo queda "por posición" y sus líneas heredan la posición', () => {
+    const raw = openDatabaseSync('teikem_almacen.db')
+    raw.execSync(MIGRATIONS[0])
+    raw.execSync(MIGRATIONS[1])
+    raw.execSync(MIGRATIONS[2])
+    raw.execSync('PRAGMA user_version = 3;')
+    raw.runSync(
+      "INSERT INTO local_count (id, count_id, warehouse_public_id, bin_id, bin_code, is_blind, created_at_utc) VALUES (1, 42, 'wh-1', 5, 'A-01', 0, '2026-10-01T10:00:00Z')",
+    )
+    raw.runSync(
+      "INSERT INTO local_count_line (id, local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty, is_extra) VALUES (7, 1, 70, 'p1', 'SKU-1', 'Uno', 3, 2, 0)",
+    )
+    raw.runSync(
+      "INSERT INTO local_count_line (id, local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty, is_extra) VALUES (8, 1, NULL, 'p9', 'SKU-9', 'Extra', NULL, 1, 1)",
+    )
+
+    const db = getDb()
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(4)
+    expect(db.getFirstSync('SELECT id, count_id, mode, bin_id, bin_code, is_blind, product_public_id FROM local_count')).toEqual({
+      id: 1,
+      count_id: 42,
+      mode: 'BIN',
+      bin_id: 5,
+      bin_code: 'A-01',
+      is_blind: 0,
+      product_public_id: null,
+    })
+    expect(db.getAllSync('SELECT id, line_id, counted_qty, is_extra, bin_id, bin_code, lot_number, is_provisional_bin FROM local_count_line ORDER BY id')).toEqual([
+      { id: 7, line_id: 70, counted_qty: 2, is_extra: 0, bin_id: 5, bin_code: 'A-01', lot_number: null, is_provisional_bin: 0 },
+      { id: 8, line_id: null, counted_qty: 1, is_extra: 1, bin_id: 5, bin_code: 'A-01', lot_number: null, is_provisional_bin: 0 },
+    ])
+    // la llave foránea sigue apuntando al conteo: borrarlo borra sus líneas
+    db.runSync('DELETE FROM local_count WHERE id = 1')
+    expect(db.getAllSync('SELECT id FROM local_count_line')).toEqual([])
+    // una línea nueva sigue numerándose después de las copiadas (AUTOINCREMENT)
+    db.runSync("INSERT INTO local_count (id, count_id, warehouse_public_id, is_blind, created_at_utc) VALUES (2, 43, 'wh-1', 1, 'x')")
+    const info = db.runSync("INSERT INTO local_count_line (local_count_id, product_public_id) VALUES (2, 'p1')")
+    expect(info.lastInsertRowId).toBeGreaterThan(8)
   })
 })

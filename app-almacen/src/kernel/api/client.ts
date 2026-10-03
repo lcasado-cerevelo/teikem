@@ -18,7 +18,7 @@ import { getLang } from '../i18n/i18n'
 import { toApiError } from './problem'
 import type { paths } from './schema'
 
-export { ApiError, isNetworkError, toApiError } from './problem'
+export { ApiError, apiErrorMessage, isNetworkError, toApiError } from './problem'
 export type { ProblemDetails } from './problem'
 
 const PLACEHOLDER_ORIGIN = 'http://device.teikem.local'

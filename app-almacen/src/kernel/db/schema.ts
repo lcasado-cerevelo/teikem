@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -242,5 +242,66 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE local_receipt ADD COLUMN receiving_mode TEXT;
   ALTER TABLE local_receipt_line ADD COLUMN target_bin_code TEXT;
   CREATE INDEX IF NOT EXISTS ix_bin_warehouse_code ON bin(warehouse_public_id, code COLLATE NOCASE);
+  `,
+  // v4 (Lote A4, "Contar por producto", docs/conteo-por-producto-diseno.md): un conteo local puede ser por POSICIÓN (como
+  // antes) o por PRODUCTO (varias posiciones). La posición del conteo pasa a ser opcional (bin_id deja de ser NOT NULL) y
+  // cada línea guarda la suya (bin_id, bin_code), su lote (lot_id, lot_number y, para un lote nuevo de "Otra posición",
+  // lot_expiry_date) y si la posición es provisional; counted_qty admite NULL = espacio en blanco (se manda como 0).
+  // SQLite no quita un NOT NULL con ALTER: se reconstruyen las dos tablas copiando todo (las líneas de un conteo por posición
+  // en curso heredan la posición de su conteo). Con las llaves foráneas apagadas (si no, borrar la tabla vieja borraría en
+  // cascada las líneas) y en una transacción, que también fija user_version: o queda migrada entera o no se toca.
+  `
+  PRAGMA foreign_keys = OFF;
+  BEGIN;
+  CREATE TABLE local_count_v4 (
+    id INTEGER PRIMARY KEY NOT NULL,
+    count_id INTEGER NOT NULL,
+    warehouse_public_id TEXT NOT NULL,
+    mode TEXT NOT NULL DEFAULT 'BIN',
+    bin_id INTEGER,
+    bin_code TEXT,
+    product_public_id TEXT,
+    sku TEXT,
+    product_name TEXT,
+    tracking_type_code TEXT,
+    is_blind INTEGER NOT NULL DEFAULT 1,
+    created_at_utc TEXT NOT NULL
+  );
+  INSERT INTO local_count_v4 (id, count_id, warehouse_public_id, mode, bin_id, bin_code, is_blind, created_at_utc)
+    SELECT id, count_id, warehouse_public_id, 'BIN', bin_id, bin_code, is_blind, created_at_utc FROM local_count;
+
+  CREATE TABLE local_count_line_v4 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    local_count_id INTEGER NOT NULL,
+    line_id INTEGER,
+    product_public_id TEXT NOT NULL,
+    sku TEXT,
+    product_name TEXT,
+    system_qty REAL,
+    counted_qty REAL,
+    serial_numbers TEXT,
+    is_extra INTEGER NOT NULL DEFAULT 0,
+    bin_id INTEGER,
+    bin_code TEXT,
+    lot_id INTEGER,
+    lot_number TEXT,
+    lot_expiry_date TEXT,
+    is_provisional_bin INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (local_count_id) REFERENCES local_count(id) ON DELETE CASCADE
+  );
+  INSERT INTO local_count_line_v4 (id, local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty,
+                                   serial_numbers, is_extra, bin_id, bin_code)
+    SELECT l.id, l.local_count_id, l.line_id, l.product_public_id, l.sku, l.product_name, l.system_qty, l.counted_qty,
+           l.serial_numbers, l.is_extra, c.bin_id, c.bin_code
+    FROM local_count_line l LEFT JOIN local_count c ON c.id = l.local_count_id;
+
+  DROP TABLE local_count_line;
+  DROP TABLE local_count;
+  ALTER TABLE local_count_v4 RENAME TO local_count;
+  ALTER TABLE local_count_line_v4 RENAME TO local_count_line;
+  CREATE INDEX IF NOT EXISTS ix_local_count_line_count ON local_count_line(local_count_id);
+  PRAGMA user_version = 4;
+  COMMIT;
+  PRAGMA foreign_keys = ON;
   `,
 ]

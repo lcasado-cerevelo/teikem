@@ -4,7 +4,19 @@ import { api } from '../../kernel/api/client'
 import { __resetDbForTests } from '../../kernel/db/database'
 import { listOutbox } from '../../kernel/sync/outbox'
 import type { CapturedEntry } from './countLogic'
-import { cancelCountOnline, enqueueFinishCount, fetchExpectedLines, startCountOnline } from './countApi'
+import { getDb } from '../../kernel/db/database'
+import {
+  ApiError,
+  cancelCountOnline,
+  createProvisionalBin,
+  enqueueFinishCount,
+  fetchExpectedLines,
+  fetchZones,
+  findLocalBin,
+  isNothingToCount,
+  startCountOnline,
+  startProductCountOnline,
+} from './countApi'
 
 jest.mock('../../kernel/api/client', () => {
   const actual = jest.requireActual('../../kernel/api/client')
@@ -17,6 +29,10 @@ const deleteMock = api.DELETE as jest.Mock
 
 function ok(data: unknown) {
   return Promise.resolve({ data, response: new Response(null, { status: 200 }) })
+}
+
+function fail(status: number, error: unknown) {
+  return Promise.resolve({ error, response: new Response(null, { status }) })
 }
 
 beforeEach(() => {
@@ -71,13 +87,113 @@ describe('cancelCountOnline', () => {
 
 describe('enqueueFinishCount', () => {
   it('encola el lote y el cierre en orden, con la ruta del conteo', () => {
-    const entries: CapturedEntry[] = [{ lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false }]
-    enqueueFinishCount(42, 5, entries)
+    const entries: CapturedEntry[] = [{ lineId: 7, productPublicId: 'p1', sku: 'A', productName: 'Uno', countedQty: 3, isExtra: false, binId: 5 }]
+    enqueueFinishCount(42, entries)
     const rows = listOutbox()
     expect(rows).toHaveLength(2)
     expect(rows[0]).toMatchObject({ kind: 'countBatch', method: 'PUT', path: '/api/v1/cycle-counts/42/lines/batch' })
     expect(JSON.parse(rows[0].body)).toEqual({ lines: [{ lineId: 7, countedQty: 3 }] })
     expect(rows[1]).toMatchObject({ kind: 'countFinish', method: 'POST', path: '/api/v1/cycle-counts/42/finish' })
     expect(JSON.parse(rows[1].body)).toEqual({})
+  })
+})
+
+describe('enqueueFinishCount — conteo por producto', () => {
+  it('un solo lote con las líneas de varias posiciones y la fila nueva de "Otra posición", y luego el cierre', () => {
+    const base = { productPublicId: 'p1', sku: 'A', productName: 'Uno' }
+    enqueueFinishCount(50, [
+      { ...base, lineId: 1, countedQty: 2, isExtra: false, binId: 10 },
+      { ...base, lineId: 2, countedQty: 0, isExtra: false, binId: 11 },
+      { ...base, lineId: null, countedQty: 5, isExtra: true, binId: 99, lotNumber: 'L-1', lotExpiryDate: null },
+    ])
+    const rows = listOutbox()
+    expect(rows.map((r) => r.kind)).toEqual(['countBatch', 'countFinish'])
+    expect(JSON.parse(rows[0].body)).toEqual({
+      lines: [
+        { lineId: 1, countedQty: 2 },
+        { lineId: 2, countedQty: 0 },
+        { binId: 99, productPublicId: 'p1', countedQty: 5, lot: { number: 'L-1' } },
+      ],
+    })
+  })
+})
+
+describe('startProductCountOnline', () => {
+  it('manda el producto sin posiciones y arma una fila por posición y lote', async () => {
+    postMock.mockResolvedValueOnce(
+      ok({
+        count: { id: 77, originCode: 'PRODUCT' },
+        isBlind: false,
+        lines: [
+          { id: 1, productPublicId: 'p1', sku: 'A', productName: 'Uno', systemQty: 4, binId: 10, binCode: 'A-01', lotId: null, lotNumber: null },
+          { id: 2, productPublicId: 'p1', sku: 'A', productName: 'Uno', systemQty: 1, binId: 11, binCode: 'B-02', lotId: 5, lotNumber: 'L-5', binIsProvisional: true },
+        ],
+      }),
+    )
+    const result = await startProductCountOnline('wh-1', 'p1')
+    expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts')
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'] })
+    expect(result.countId).toBe(77)
+    expect(result.isBlind).toBe(false)
+    expect(result.lines).toEqual([
+      { lineId: 1, productPublicId: 'p1', sku: 'A', productName: 'Uno', systemQty: 4, binId: 10, binCode: 'A-01', lotId: null, lotNumber: null, binIsProvisional: false },
+      { lineId: 2, productPublicId: 'p1', sku: 'A', productName: 'Uno', systemQty: 1, binId: 11, binCode: 'B-02', lotId: 5, lotNumber: 'L-5', binIsProvisional: true },
+    ])
+  })
+
+  it('el 400 de "sin existencia" se reconoce (errors.filters) y llega con el mensaje del servidor', async () => {
+    const message = 'Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.'
+    postMock.mockResolvedValueOnce(fail(400, { title: message, status: 400, errors: { filters: [message] } }))
+    const err = await startProductCountOnline('wh-1', 'p1').catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).title).toBe(message)
+    expect(isNothingToCount(err)).toBe(true)
+    expect(isNothingToCount(new ApiError(404, { title: 'Producto no encontrado.' }))).toBe(false)
+  })
+})
+
+describe('"Otra posición"', () => {
+  it('zonas: las activas del servidor', async () => {
+    getMock.mockResolvedValueOnce(
+      ok([
+        { id: 1, code: 'PCK', name: 'Picking', isActive: true },
+        { id: 2, code: 'OLD', name: 'Vieja', isActive: false },
+      ]),
+    )
+    const result = await fetchZones('wh-1')
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/warehouses/{publicId}/zones')
+    expect(result).toEqual({ zones: [{ id: 1, code: 'PCK', name: 'Picking' }], fromLocal: false })
+  })
+
+  it('zonas: si el servidor no responde (o niega el permiso), las de las posiciones sincronizadas', async () => {
+    const db = getDb()
+    db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, is_active) VALUES (1, 'A-01', 'wh-1', 3, 'RES', 'Reserva', 1)")
+    db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, is_active) VALUES (2, 'A-02', 'wh-1', 3, 'RES', 'Reserva', 1)")
+    db.runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, zone_code, zone_name, is_active) VALUES (3, 'X-01', 'wh-2', 9, 'OTR', 'Otro', 1)")
+    getMock.mockResolvedValueOnce(fail(403, { title: 'Prohibido', status: 403 }))
+    expect(await fetchZones('wh-1')).toEqual({ zones: [{ id: 3, code: 'RES', name: 'Reserva' }], fromLocal: true })
+  })
+
+  it('crea la posición provisional con la zona y solo los datos escritos', async () => {
+    postMock.mockResolvedValueOnce(ok({ id: 501, code: 'A01-R02', zoneId: 1, isProvisional: true }))
+    const bin = await createProvisionalBin(77, { zoneId: 1, code: '  ', aisle: 'A01', rack: 'R02', level: '', position: undefined })
+    expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts/{id}/bins')
+    expect(postMock.mock.calls[0][1].params.path).toEqual({ id: 77 })
+    expect(postMock.mock.calls[0][1].body).toEqual({ zoneId: 1, aisle: 'A01', rack: 'R02' })
+    expect(bin).toEqual({ id: 501, code: 'A01-R02', isProvisional: true })
+  })
+
+  it('el 409 del servidor llega con su mensaje exacto', async () => {
+    postMock.mockResolvedValueOnce(fail(409, { title: 'Ya existe una posición con ese código en el almacén.', status: 409 }))
+    const err = await createProvisionalBin(77, { zoneId: 1, code: 'A-01' }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).status).toBe(409)
+    expect((err as ApiError).title).toBe('Ya existe una posición con ese código en el almacén.')
+  })
+
+  it('una posición ya sincronizada se encuentra por código sin distinguir mayúsculas', () => {
+    getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active) VALUES (8, 'C-03', 'wh-1', 1, 1)")
+    expect(findLocalBin('wh-1', 'c-03')).toEqual({ id: 8, code: 'C-03', isProvisional: false })
+    expect(findLocalBin('wh-2', 'C-03')).toBeNull()
   })
 })
