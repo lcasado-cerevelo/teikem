@@ -382,8 +382,8 @@ momento de todas formas. (Un conteo por producto, en cambio, se retoma sin seña
 ### 7.1 Contar por producto (Lote A4)
 
 Qué hace: cuenta **un producto en todas las posiciones** donde el sistema dice que está (pensado para cuando las posiciones no
-están bien etiquetadas). La app crea el conteo en el servidor (`POST /api/v1/cycle-counts` con el producto y sin posiciones; origen
-"Por producto") y lista **una fila por posición** (y por lote, si el producto lleva lote: el número de lote se muestra en la fila; no
+están bien etiquetadas). La app crea el conteo en el servidor (`POST /api/v1/cycle-counts` con el producto, sin posiciones y con `allowEmpty: true`;
+origen "Por producto") y lista **una fila por posición** (y por lote, si el producto lleva lote: el número de lote se muestra en la fila; no
 se busca ni se captura por lote). El operario anota lo que encuentra en cada una; la diferencia la calcula el sistema al reconciliar
 en la web ([06 §6](06-inventario-y-almacen.md#6-conteo-cíclico-modo-informado), revisión rápida "Por revisar").
 
@@ -395,9 +395,9 @@ Cómo se usa:
 1. Conteo → **Por producto** → escanear (o escribir con ⌨ y Aceptar) el código de barras o SKU del producto. Necesita señal.
    - Producto con **número de serie**: aviso `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.` y **no se
      crea ningún conteo** (la app no captura series).
-   - Producto **sin existencia** en ningún lado del almacén: el mensaje del servidor (400) y el botón **Contar por posición** (si lo
-     encontró en una posición que tiene otros productos, se cuenta esa posición y se agrega ahí). Hoy no se puede abrir un conteo por
-     producto vacío para usar "Otra posición".
+   - Producto **sin existencia** en ningún lado del almacén: el conteo se abre **vacío** y la pantalla muestra el bloque `El sistema no
+     tiene existencia de este producto. Si lo encontraste en alguna posición, usa «Otra posición».` con el botón grande **Otra posición**
+     (paso 4). Se sigue igual que con cualquier producto: cantidad en la posición agregada y Confirmar.
 2. La lista: cada fila dice la **posición**, el **lote** si lo lleva, "Pendiente de revisión" si la posición es provisional y
    "Esperado: N" **solo si** quien cuenta tiene `warehouse.count` (a ciegas no se muestra, como siempre). A la derecha, el espacio
    para la cantidad. **Lo que se deja en blanco se toma como 0.** No hay botón "todo aquí".
@@ -408,10 +408,12 @@ Cómo se usa:
    posición** la crea en el servidor (`POST /api/v1/cycle-counts/{id}/bins`, necesita señal) como **provisional**: queda "pendiente de
    revisión" hasta que el supervisor la confirma en la web. La fila entra a la lista con su espacio de cantidad. Si el código ya
    existe en el almacén, se usa esa posición (sin marca provisional). Escanear la etiqueta de una posición en este paso escribe su
-   código. Una fila de "Otra posición" se puede quitar con ✕ antes de confirmar.
+   código. Una fila de "Otra posición" se puede quitar con ✕ antes de confirmar. Si la posición ya existía y el servidor la tiene
+   "pendiente de revisión" (la sincronización trae la marca), la fila también la muestra.
 5. **Confirmar**: encima del botón, mientras haya espacios en blanco, se lee `{n} posiciones en blanco se toman como 0.`; un toque en
    Confirmar lo acepta y cierra (sin diálogo). Se encola el lote con **todas** las filas (las en blanco como 0, las de "Otra
-   posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal.
+   posición" como líneas nuevas con su posición y lote) y el cierre, y vuelve a Inicio. Funciona sin señal. Si el conteo quedó **vacío** (producto
+   sin existencia y ninguna fila agregada), Confirmar no manda nada y avisa `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.`; se sale con **Cancelar conteo** (paso 7).
 6. **Retomar**: lo escrito se guarda en el aparato a cada cambio. Si se cierra la app (o se apaga el aparato), al volver a Conteo
    aparece la misma lista con lo ya escrito, sin necesitar señal. Un conteo a la vez por aparato (de posición o de producto).
 7. **Cancelar conteo** (con confirmación): igual que el de posición (`DELETE`, necesita señal y `warehouse.count`).
@@ -422,7 +424,8 @@ Cómo se usa:
 |---|---|---|
 | Producto con número de serie | `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.` | App (no llama al servidor) |
 | Código no es de ningún producto sincronizado | `No hay un producto con ese código.` | App |
-| Producto sin existencia en el almacén | `Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.` (400) y ayuda `Si lo encontraste en una posición que tiene otros productos, cuéntala «Por posición» y agrégalo ahí. Si no, avisa al supervisor.` | API |
+| Producto sin existencia en el almacén | No es error: se abre el conteo vacío y se lee `El sistema no tiene existencia de este producto. Si lo encontraste en alguna posición, usa «Otra posición».` | App |
+| Confirmar un conteo vacío (sin ninguna fila) | `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo.` (no se manda nada) | App |
 | Abrir sin señal | `No se pudo abrir el conteo de ese producto (necesita señal).` | App, tras error de red |
 | Otros errores al abrir | El mensaje del servidor (p. ej. 422 `El almacén está inactivo.`, 400 `El conteo admite como máximo 1000 líneas; acote los filtros.`) | API |
 | Un espacio con algo que no es una cantidad | `Hay cantidades que no son un número; corrígelas para confirmar.` (Confirmar apagado) | App |

@@ -3364,6 +3364,11 @@ elija zonas, y repita: como la ventana por defecto arranca desde la última gene
 Además del alta normal, ahora sale en "lo cambiado" cuando las posiciones de la ventana no tienen nada que contar (por ejemplo, con
 "Incluir posiciones vacías" apagado y todas quedaron en cero). Encienda **Incluir posiciones vacías** o amplíe la ventana.
 
+**¿Qué significa "Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías."? (400)**
+Se pidió `allowEmpty: true` en `POST /api/v1/cycle-counts` junto con posiciones, zonas, categorías, más de un producto o ningún producto.
+`allowEmpty` es solo para abrir el conteo **vacío de un único producto** (lo usa la app para "Otra posición"). Quite `allowEmpty` o deje
+exactamente un producto y ningún otro filtro.
+
 **¿Qué significa "El conteo ya fue reconciliado; solo se consulta." ahora que hay Concordancia y Diferencia? (422)**
 Vale para los **dos** estatus finales. Un conteo Concordancia o Diferencia ya asentó sus ajustes en el Kárdex y no se edita, no se captura,
 no se vuelve a confirmar y no se elimina. Si contó mal, haga un ajuste manual o un conteo nuevo de la posición.
@@ -4265,10 +4270,15 @@ mensajes con código HTTP vienen del servidor (Lote 21) y la app los muestra tal
 El producto se controla por serie y la app todavía no captura series. No se abrió ningún conteo. Cuéntelo desde la web (Conteo
 cíclico) o cuente sus posiciones con un usuario de la web.
 
-**"Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano." (400) al contar por producto**
-El sistema no tiene existencia de ese producto en ninguna posición del almacén del aparato, así que no hay nada que listar. Si lo
-encontró en una posición que tiene otros productos, toque **Contar por posición**, escanee esa posición y agregue el producto ahí.
-Si lo encontró en una posición vacía, avise al supervisor (ajuste desde la web): hoy no se puede abrir un conteo por producto vacío.
+**"El sistema no tiene existencia de este producto. Si lo encontraste en alguna posición, usa «Otra posición»."**
+Ya no es un error: el sistema no tiene existencia de ese producto en el almacén del aparato, y la app abre el conteo **vacío** (el servidor
+ya no responde el 400 de "los filtros no seleccionan inventario" a este caso). Toque **Otra posición**, elija la zona, escriba el código
+de la posición donde lo encontró (y el lote si lo lleva), escriba la cantidad y **Confirmar**. La posición, si es nueva, queda "pendiente
+de revisión" para el supervisor. Si en realidad no lo encontró en ningún lado, toque **Cancelar conteo**.
+
+**"No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con «Otra posición» o cancela el conteo."**
+Tocó Confirmar en un conteo por producto que no tiene ninguna fila (producto sin existencia y no agregó ninguna posición). No se mandó
+nada. Use **Otra posición** para registrar dónde lo encontró o **Cancelar conteo** si no lo encontró.
 
 **"No se pudo abrir el conteo de ese producto (necesita señal)."**
 Abrir el conteo por producto se hace en línea. Busque señal e intente de nuevo; después, anotar y confirmar funcionan sin señal.

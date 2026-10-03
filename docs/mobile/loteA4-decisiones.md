@@ -200,3 +200,37 @@ Instalar el APK del job `android` encima de la versión actual (no hace falta de
   la app lo prevé en `app-almacen-plan.md` §4).
 - **Capturas** de la pantalla: no se pudieron tomar (sin emulador).
 - Lo de antes sigue igual: `package-lock.json` desincronizado para `npm ci` sin `--legacy-peer-deps`.
+
+## Adenda 2026-10-03 (parte 5d) — producto sin existencia: «Otra posición» y posición provisional sincronizada
+
+**Resuelto** (los dos primeros pendientes de arriba y la decisión 3 queda reemplazada):
+- **Producto sin existencia.** "Contar por producto" crea siempre el conteo con `allowEmpty: true` (contrato en `docs/lote21-decisiones.md`, adenda 5d). Un
+  producto sin existencia abre un conteo **vacío**; la lista muestra el bloque `El sistema no tiene existencia de este producto. Si lo encontraste en alguna
+  posición, usa «Otra posición».` con **Otra posición** como botón grande (cuando ya hay filas vuelve a ser el enlace de siempre) y el flujo normal sigue
+  (captura, blanco = 0, Confirmar, cola de salida). Se quitó el manejo especial del 400 de "sin existencia" (`isNothingToCount`, `count.noStockHelp`);
+  **Contar por posición** sigue disponible junto a cualquier error al abrir el conteo por producto.
+- **Confirmar un conteo vacío** (sin ninguna fila): no manda nada y avisa `No se puede terminar un conteo vacío: agrega la posición donde lo encontraste con
+  «Otra posición» o cancela el conteo.`; **Cancelar conteo** funciona igual (`DELETE`).
+- **Esquema local v5.** `bin.is_provisional` (migración `ALTER TABLE`, conserva los datos); la descarga de `sync/bins` copia `isProvisional` y `findLocalBin` la
+  devuelve, así que una posición provisional ya sincronizada entra a la lista con "Pendiente de revisión". La migración borra la marca de agua `bins:%` para que
+  la próxima sincronización baje las posiciones completas una vez y quede puesta la marca de las que ya eran provisionales.
+
+**Pruebas jest nuevas o ajustadas.** `countApi.test.ts` (cuerpo con `allowEmpty`, respuesta vacía, `findLocalBin` con marca), `countLogic.test.ts`
+(`canConfirmProductCount` permite el vacío; `hasNothingToConfirm`), `download.test.ts` (copia y apaga `isProvisional`), `database.test.ts` (v5 en base nueva y migración
+v4 → v5 con posiciones, conteo en curso y marcas de agua), pantallas `countProductNoStockScreen` (conteo vacío → aviso al confirmar → «Otra posición» → confirmar),
+`countProductEmptyCancelScreen` (cancelar un vacío) y `countOtherBinSyncedProvisionalScreen` (posición provisional ya sincronizada con su marca, sin llamar al servidor).
+
+**Lista de comprobación del aparato (cambios).** El punto 10 pasa a: **Producto sin existencia**: escanearlo → se abre el conteo vacío con el bloque y el botón
+**Otra posición** → elegir zona, escribir el código, cantidad → Confirmar → en la web el conteo (origen "Por producto") queda Contado con esa única línea y la
+posición en "pendientes de revisión". Variantes: Confirmar sin agregar nada → aviso de conteo vacío; **Cancelar conteo** → el conteo desaparece en la web. Y en el
+punto 7 (código que ya existe): si esa posición está "pendiente de revisión" en el servidor, la fila lleva la marca tras sincronizar.
+
+**Decisiones para el dueño.**
+1. `allowEmpty: true` va **siempre** en "Contar por producto" (no hay una opción para el operario): un producto con existencia se comporta igual que antes.
+2. **Contar por posición** se ofrece tras cualquier error al abrir (producto desconocido, sin señal, serie), no solo por "sin existencia"; para un producto con serie
+   tampoco hay captura de series por posición, así que ahí solo sirve de salida. Quitarlo de ese caso es una condición en `count.tsx`.
+3. El conteo vacío **se puede confirmar con el toque** (en vez de dejar Confirmar apagado) para poder explicar por qué no se termina y ofrecer la salida.
+
+**Pendientes.** Comprobación en el Zebra (lista de arriba), job `android` del CI y recorrido Maestro de Conteo: siguen igual. No se pudo correr jest con un
+dispositivo ni emulador; las pruebas de pantalla son las del `jest-expo` del proyecto.
+
