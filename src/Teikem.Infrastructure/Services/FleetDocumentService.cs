@@ -16,8 +16,10 @@ namespace Teikem.Infrastructure.Services;
 /// - Solo dueños activos y no terminales; los documentos superados (renovados) no aparecen.
 /// - Ventana: ExpiryDate ≤ hoy + withinDays; includeExpired=false quita los ya vencidos.
 /// </summary>
-public sealed class FleetDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class FleetDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const int MaxWithinDays = 365;
     public const string WithinDaysRangeMessage = "withinDays debe estar entre 0 y 365.";
 
@@ -46,7 +48,7 @@ public sealed class FleetDocumentService(TeikemDbContext db, ITenantContext tena
         var unknownOwner = owners.FirstOrDefault(o => !KnownOwnerKinds.Contains(o));
         if (unknownOwner is not null) throw new ValidationException("entity", UnknownEntityMessage(unknownOwner));
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
         var until = today.AddDays(q.WithinDays);
 
         // Qué dueños consultar: por el filtro entity[] y, si docType[] solo pide licencias/certificaciones (o solo tipos de

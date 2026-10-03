@@ -21,8 +21,10 @@ namespace Teikem.Infrastructure.Services;
 /// - No hay generación automática de OT (no hay job). Nunca DELETE: quitar = IsActive 0.
 /// - Ningún desbordamiento DECIMAL llega a SQL: FleetRules.DecimalError (12,1) antes de guardar.
 /// </summary>
-public sealed class MaintenanceScheduleService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class MaintenanceScheduleService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string TargetMessage = "Indique el vehículo o el tipo de vehículo del programa, no ambos.";
     public const string TriggerRequiredMessage = "El disparador del programa es obligatorio.";
     public const string LastServiceOnlyForVehicleMessage =
@@ -104,7 +106,7 @@ public sealed class MaintenanceScheduleService(TeikemDbContext db, ITenantContex
             .GroupBy(w => (w.ScheduleId, w.VehicleId))
             .ToDictionary(g => g.Key, g => g.OrderByDescending(w => w.CompletedDate ?? DateOnly.MinValue).ThenByDescending(w => w.WorkOrderId).First());
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
         var result = new List<MaintenanceDueDto>(pairs.Count);
         foreach (var (s, v) in pairs)
         {
@@ -272,10 +274,10 @@ public sealed class MaintenanceScheduleService(TeikemDbContext db, ITenantContex
             s.IntervalKm, s.IntervalDays, s.LastServiceKm, s.LastServiceDate, s.IsActive, s.CreatedAtUtc);
     }
 
-    private static void ValidateNumbers(string trigger, decimal? intervalKm, int? intervalDays, decimal? lastServiceKm, DateOnly? lastServiceDate,
+    private void ValidateNumbers(string trigger, decimal? intervalKm, int? intervalDays, decimal? lastServiceKm, DateOnly? lastServiceDate,
         IDictionary<string, string[]> errors)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
         foreach (var (field, message) in MaintenanceDue.ValidateSchedule(trigger, intervalKm, intervalDays, lastServiceKm, lastServiceDate, today))
             errors.TryAdd(field, new[] { message });
         // Precisión DECIMAL(12,1): nunca un 500 por desbordamiento.

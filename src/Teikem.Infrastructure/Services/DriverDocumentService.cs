@@ -21,8 +21,10 @@ namespace Teikem.Infrastructure.Services;
 ///   IsSuperseded con FleetDocuments.MarkSuperseded sobre los documentos ACTIVOS del chofer ('vigente por tipo').
 /// - Nunca DELETE: 'quitar' es IsActive = 0. Un chofer eliminado (estatus terminal) solo se consulta (409).
 /// </summary>
-public sealed class DriverDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class DriverDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     private const string LicenseWhat = "Licencia";
     private const string CertificationWhat = "Certificación";
 
@@ -269,5 +271,5 @@ public sealed class DriverDocumentService(TeikemDbContext db, ITenantContext ten
     }
 
     private static string Label(LookupCode? l, string lang) => l is null ? "" : MultilingualText.Resolve(l.LabelJson, lang);
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.UtcNow);
+    private DateOnly Today() => _clock.Today;
 }

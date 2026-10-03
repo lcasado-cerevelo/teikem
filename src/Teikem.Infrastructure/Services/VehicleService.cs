@@ -20,8 +20,10 @@ namespace Teikem.Infrastructure.Services;
 ///   última lectura registrada en combustible u OT cerrada (VehicleRules.ValidateManualOdometer).
 /// - Ningún desbordamiento DECIMAL llega a SQL: FleetRules.DecimalError se aplica antes de guardar (400).
 /// </summary>
-public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses)
+public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const int CodeMaxLength = 30;
     public const string CodeRequiredMessage = "El código del vehículo es obligatorio.";
     public const string DuplicateCodeMessage = "Ya existe un vehículo con ese código.";
@@ -108,7 +110,7 @@ public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, IL
         // Documentos activos del vehículo, siempre a través del vehículo resuelto (VehicleDocument no lleva TenantId).
         var docs = await db.Vehicles.AsNoTracking().Where(x => x.VehicleId == v.VehicleId)
             .SelectMany(x => x.Documents).Where(d => d.IsActive).ToListAsync(ct);
-        var documents = await VehicleDocumentService.ToDtosAsync(v, docs, lookups, tenant.Lang, ct);
+        var documents = await VehicleDocumentService.ToDtosAsync(v, docs, lookups, tenant.Lang, _clock.Today, ct);
 
         return new VehicleDetailDto(v.VehicleId, v.PublicId, v.Code, v.PlateNumber, v.MaxWeightKg, v.MaxVolumeM3, v.MaxStops,
             type?.InternalCode, OptionalLabel(type), ownership?.InternalCode, OptionalLabel(ownership), fuel?.InternalCode, OptionalLabel(fuel),
@@ -285,12 +287,12 @@ public sealed class VehicleService(TeikemDbContext db, ITenantContext tenant, IL
             .ToDictionary(g => g.Key, g => g.Min(r => r.ExpiryDate!.Value));
     }
 
-    private static void ValidateNumbers(decimal? maxWeightKg, decimal? maxVolumeM3, int? maxStops, int? modelYear, decimal? odometerKm,
+    private void ValidateNumbers(decimal? maxWeightKg, decimal? maxVolumeM3, int? maxStops, int? modelYear, decimal? odometerKm,
         IDictionary<string, string[]> errors)
     {
         foreach (var (field, message) in VehicleRules.ValidateCapacities(maxWeightKg, maxVolumeM3, maxStops)) errors[field] = new[] { message };
         if (VehicleRules.ValidateOdometer(odometerKm) is string odoError) errors["currentOdometerKm"] = new[] { odoError };
-        if (VehicleRules.ValidateModelYear(modelYear, DateTime.UtcNow.Year) is string yearError) errors["modelYear"] = new[] { yearError };
+        if (VehicleRules.ValidateModelYear(modelYear, _clock.Today.Year) is string yearError) errors["modelYear"] = new[] { yearError };
 
         // Precisión DECIMAL de las columnas: nunca un 500 por desbordamiento.
         if (!errors.ContainsKey("maxWeightKg") && FleetRules.DecimalError(maxWeightKg, 12, 3) is string w) errors["maxWeightKg"] = new[] { w };

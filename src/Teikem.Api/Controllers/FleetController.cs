@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Teikem.Api.Auth;
 using Teikem.Domain.Constants;
+using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Fleet;
 using Teikem.Infrastructure.Services;
@@ -16,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/fleet")]
 [Authorize]
 [RequireModule(ModuleKeys.Catalog)]
-public sealed class FleetController(FleetDocumentService documents, IFleetAvailabilityService availability) : ControllerBase
+public sealed class FleetController(FleetDocumentService documents, IFleetAvailabilityService availability, ITenantClock clock) : ControllerBase
 {
     /// <summary>
     /// Documentos vencidos y por vencer (vencimiento ≤ hoy + withinDays, 0..365), solo el vigente de cada tipo, de dueños
@@ -29,12 +30,12 @@ public sealed class FleetController(FleetDocumentService documents, IFleetAvaila
         => documents.GetExpiringAsync(new ExpiringDocumentsQuery(withinDays ?? 30, NullIfEmpty(docType), NullIfEmpty(entity), includeExpired ?? true), ct);
 
     /// <summary>
-    /// Disponibilidad de choferes y vehículos en una fecha (hoy UTC por defecto) con los motivos bloqueantes y los avisos.
+    /// Disponibilidad de choferes y vehículos en una fecha (hoy en la zona horaria de la compañía por defecto) con los motivos bloqueantes y los avisos.
     /// onlyAvailable=true deja solo los disponibles.
     /// </summary>
     [HttpGet("availability"), RequirePermission(PermissionCatalog.FleetView)]
     public Task<FleetAvailabilityDto> Availability([FromQuery] DateOnly? date, [FromQuery] bool onlyAvailable, CancellationToken ct)
-        => availability.GetAsync(date ?? DateOnly.FromDateTime(DateTime.UtcNow), onlyAvailable, ct);
+        => availability.GetAsync(date ?? clock.Today, onlyAvailable, ct);
 
     private static string[]? NullIfEmpty(string[]? values) => values is { Length: > 0 } ? values : null;
 }

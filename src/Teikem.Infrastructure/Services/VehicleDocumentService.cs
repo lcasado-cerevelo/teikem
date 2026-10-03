@@ -19,8 +19,10 @@ namespace Teikem.Infrastructure.Services;
 ///   los documentos activos del vehículo (documento vigente por tipo): al renovar no hay que desactivar el viejo.
 /// - Los adjuntos (FileName/StoragePath) no se exponen: no hay proveedor de archivos en este lote.
 /// </summary>
-public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
+public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const int ExpiringWithinDays = 30;
     public const int DocNumberMaxLength = 80;
     public const string DocTypeRequiredMessage = "El tipo de documento es obligatorio.";
@@ -29,7 +31,7 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
     {
         var vehicle = await db.ResolveVehicleAsync(vehiclePublicId, false, ct);
         var docs = await DocumentsOfAsync(vehicle.VehicleId, includeInactive, ct);
-        return await ToDtosAsync(vehicle, docs, lookups, tenant.Lang, ct);
+        return await ToDtosAsync(vehicle, docs, lookups, tenant.Lang, _clock.Today, ct);
     }
 
     public async Task<VehicleDocumentDto> AddAsync(Guid vehiclePublicId, VehicleDocumentRequest req, CancellationToken ct)
@@ -101,10 +103,9 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
     /// ACTIVOS de la lista (un inactivo nunca supera ni queda superado). Orden: activos primero, por tipo y vencimiento.
     /// </summary>
     internal static async Task<IReadOnlyList<VehicleDocumentDto>> ToDtosAsync(Vehicle vehicle, IReadOnlyList<VehicleDocument> docs,
-        ILookupCache lookups, string lang, CancellationToken ct)
+        ILookupCache lookups, string lang, DateOnly today, CancellationToken ct)
     {
         if (docs.Count == 0) return Array.Empty<VehicleDocumentDto>();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         var types = new Dictionary<int, (string Code, string Label)>();
         foreach (var typeId in docs.Select(d => d.DocTypeLookupId).Distinct())
@@ -151,7 +152,7 @@ public sealed class VehicleDocumentService(TeikemDbContext db, ITenantContext te
     private async Task<VehicleDocumentDto> ToDtoAsync(Vehicle vehicle, int documentId, CancellationToken ct)
     {
         var docs = await DocumentsOfAsync(vehicle.VehicleId, true, ct);
-        var dtos = await ToDtosAsync(vehicle, docs.Where(d => d.IsActive || d.VehicleDocumentId == documentId).ToList(), lookups, tenant.Lang, ct);
+        var dtos = await ToDtosAsync(vehicle, docs.Where(d => d.IsActive || d.VehicleDocumentId == documentId).ToList(), lookups, tenant.Lang, _clock.Today, ct);
         return dtos.First(d => d.Id == documentId);
     }
 

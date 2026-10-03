@@ -31,8 +31,11 @@ public sealed class MaintenanceWorkOrderService(
     ITenantContext tenant,
     ILookupCache lookups,
     StatusService statuses,
-    INumberSequenceService sequences)
+    INumberSequenceService sequences,
+    ITenantClock? clock = null)
 {
+    private readonly ITenantClock _clock = clock ?? TenantClock.Default;
+
     public const string NumberPattern = "OT-#####";
     public const int VendorMaxLength = 150;
 
@@ -387,7 +390,7 @@ public sealed class MaintenanceWorkOrderService(
         if (string.IsNullOrWhiteSpace(req.ToCode)) throw new ValidationException("toCode", ToCodeRequiredMessage);
         var toCode = req.ToCode.Trim().ToUpperInvariant();
         var closing = toCode == WorkOrderStatuses.Closed;
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = _clock.Today;
         if (closing)
         {
             var errors = new Dictionary<string, string[]>();
