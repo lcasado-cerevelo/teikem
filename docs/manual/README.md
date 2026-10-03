@@ -177,6 +177,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    Por revisar (estado Cuadra / Con diferencia / Con errores / Faltan líneas, filtros, "Cerrar los que cuadran" con su resumen y
    motivos), el detalle con solo las líneas que fallan, la evidencia *Contó X · Corregido a Y* y la corrección en la fila, la vista
    previa del efecto antes de confirmar y las posiciones pendientes de revisión. Capturas `f12-*`.
+9. [F13 — Nuevo conteo "Por producto" desde la web](frontend/f13-nuevo-conteo-por-producto.md): las dos pestañas del modal "Nuevo
+   conteo" (Por posiciones / Por producto), cómo crear el conteo de un producto en una sola pantalla, el 400 de un producto sin
+   existencia junto al selector y adónde va el usuario al crearlo. Capturas `f13-*`.
 
 ## Preguntas frecuentes
 

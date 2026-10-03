@@ -4408,7 +4408,16 @@ cambió").
 Su usuario cuenta a ciegas (no tiene `warehouse.count`). Pida a un supervisor que revise y confirme.
 
 **¿Puedo crear un conteo por producto desde la web?**
-Todavía no; se crea desde la app de almacén ("Contar por producto").
+Sí (Lote F13): **Nuevo conteo** → pestaña **Por producto** → almacén y producto → **Crear conteo**. Crea el conteo con una línea por
+posición y lote con existencia (origen Producto) y lo abre. También se puede desde la app de almacén ("Contar por producto").
+
+**"Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano." al crear por producto (400)**
+El producto no tiene existencia en mano en ese almacén. El mensaje sale bajo el selector de producto y el modal sigue abierto. Elija
+otro almacén o producto, o recíbalo primero. La web no abre conteos vacíos; para contar algo que el sistema cree que no existe use
+"Contar por producto" en la app de almacén.
+
+**"Elija el producto." al pulsar Crear conteo en la pestaña Por producto**
+Falta elegir el producto de la lista (no basta con escribir el texto). No se envió nada al servidor.
 
 **"La línea ya fue corregida por el supervisor; no se puede volver a capturar." (409)**
 Alguien con solo `warehouse.count.capture` (por ejemplo el operario que contó la línea) intentó cambiar una línea que un supervisor ya

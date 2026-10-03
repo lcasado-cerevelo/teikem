@@ -77,7 +77,7 @@ número de filas no cambia) y el clic en el Kárdex espera a que la red quede qu
 9. **Comentario del cierre en bloque opcional** (queda en el historial de cada conteo cerrado).
 10. **Lista "Por revisar" a la izquierda (50 %) y el conteo a la derecha**, como la pestaña Conteos; con el panel por debajo de
     720 px la lista va en tarjetas (en una pantalla de 1280 px, por defecto). La barra se arrastra para darle más ancho.
-11. **Crear conteos por producto desde la web: no se incluyó** (decisión pendiente del dueño). Hoy se crean desde la app.
+11. **[RESUELTO 2026-10-03 en el Lote F13: ya se puede crear un conteo por producto desde la web]** **Crear conteos por producto desde la web: no se incluyó** (decisión pendiente del dueño). Hoy se crean desde la app.
 
 ## Pendientes
 

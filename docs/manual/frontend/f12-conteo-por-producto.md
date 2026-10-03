@@ -157,4 +157,4 @@ página.
 - **Un conteo cuadraba ayer y hoy dice "Con diferencia":** alguien movió inventario en esa posición después de la foto; la vista
   previa lo marca con "Saldo cambió". Revise si el conteo sigue siendo correcto antes de confirmar.
 - **No veo la pestaña "Por revisar":** su usuario no tiene `warehouse.count` (cuenta a ciegas).
-- **Crear un conteo por producto desde la web:** todavía no; se crea desde la app (decisión pendiente del dueño).
+- **Crear un conteo por producto desde la web:** ya se puede (Lote F13, [capítulo F13](f13-nuevo-conteo-por-producto.md)).
