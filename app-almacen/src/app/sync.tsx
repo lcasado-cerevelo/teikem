@@ -3,7 +3,9 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text } from 'react-native'
 
 import { useT } from '../kernel/i18n/useT'
 import { runSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
-import { discardRow, listOutbox, retryRow } from '../kernel/sync/outbox'
+import { discardRow, listOutbox, retryRow, type OutboxRow } from '../kernel/sync/outbox'
+import { classifyCountBatchRejection, countIdFromFinishPath, type CorrectedLineRejection } from '../features/count/countRejection'
+import { RejectedCountBatch } from '../features/count/RejectedCountBatch'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
@@ -12,7 +14,8 @@ import { scannerStatusKey, useScannerStatus } from '../kernel/scanner/useScanner
 
 /** Pantalla 8 (docs/mobile/app-almacen-plan.md §2): lo que está en la cola de salida (kernel/sync/outbox.ts) y el
  *  resultado de la última pasada. Pendientes se mandan solas en la próxima pasada; con error, cada fila se puede
- *  reintentar o descartar tras revisarla. */
+ *  reintentar o descartar tras revisarla. Lote A6: la captura de conteo rechazada porque el supervisor ya corrigió una línea
+ *  (409) se muestra aparte con su explicación y "Actualizar el conteo" (features/count/RejectedCountBatch.tsx). */
 export default function SyncScreen() {
   const { t } = useT()
   const f = useFormat()
@@ -29,6 +32,16 @@ export default function SyncScreen() {
   const rows = useMemo(() => listOutbox(), [tick])
   const pendingRows = rows.filter((r) => r.status === 'pending')
   const rejectedRows = rows.filter((r) => r.status === 'rejected')
+  // Lote A6: la captura de conteo rechazada porque el supervisor ya corrigió una línea (409) se explica aparte, en grande; el
+  // resto de los rechazos sigue en la lista de siempre.
+  const correctedRejections = rejectedRows
+    .map((r) => ({ row: r, rejection: classifyCountBatchRejection(r) }))
+    .filter((x): x is { row: OutboxRow; rejection: CorrectedLineRejection } => x.rejection !== null)
+  const correctedIds = new Set(correctedRejections.map((x) => x.row.id))
+  const otherRejectedRows = rejectedRows.filter((r) => !correctedIds.has(r.id))
+  const rejectedFinishCountIds = new Set(
+    rejectedRows.filter((r) => r.kind === 'countFinish').map((r) => countIdFromFinishPath(r.path)).filter((id): id is number => id !== null),
+  )
 
   async function syncNow() {
     setBusy(true)
@@ -72,16 +85,32 @@ export default function SyncScreen() {
       />
 
       <Text style={styles.label}>{t('sync.rejectedWithCount', { count: rejectedRows.length })}</Text>
+      {correctedRejections.map(({ row, rejection }) => (
+        <RejectedCountBatch
+          key={row.id}
+          rowId={row.id}
+          rejection={rejection}
+          finishAlsoRejected={rejection.countId !== null && rejectedFinishCountIds.has(rejection.countId)}
+          onDiscard={() => {
+            discardRow(row.id)
+            refresh()
+          }}
+          onRetry={() => {
+            retryRow(row.id)
+            refresh()
+          }}
+        />
+      ))}
       <LineList
-        items={rejectedRows.map((r) => ({ id: r.id, title: r.kind, subtitle: r.last_error ?? undefined }))}
+        items={otherRejectedRows.map((r) => ({ id: r.id, title: r.kind, subtitle: r.last_error ?? undefined }))}
         removeLabel={t('sync.discard')}
-        emptyLabel={t('sync.empty')}
+        emptyLabel={correctedRejections.length > 0 ? undefined : t('sync.empty')}
         onRemove={(id) => {
           discardRow(Number(id))
           refresh()
         }}
       />
-      {rejectedRows.map((r) => (
+      {otherRejectedRows.map((r) => (
         <BigButton
           key={r.id}
           label={t('sync.retryRow', { kind: r.kind })}
