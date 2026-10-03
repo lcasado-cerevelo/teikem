@@ -66,6 +66,13 @@ export type CycleCountLineDto = Schemas['CycleCountLineDto']
 export type CycleCountPageDto = Schemas['CycleCountPageDto']
 export type CycleCountChangesPreviewDto = Schemas['CycleCountChangesPreviewDto']
 export type CycleCountFromChangesRequest = Schemas['CycleCountFromChangesRequest']
+export type CycleCountReviewItemDto = Schemas['CycleCountReviewItemDto']
+export type CycleCountReviewPageDto = Schemas['CycleCountReviewPageDto']
+export type ReconcilePreviewDto = Schemas['ReconcilePreviewDto']
+export type ReconcilePreviewLineDto = Schemas['ReconcilePreviewLineDto']
+export type CycleCountReconcileMatchingResultDto = Schemas['CycleCountReconcileMatchingResultDto']
+export type CycleCountSkippedItemDto = Schemas['CycleCountSkippedItemDto']
+export type CountReconcileMatchingRequest = Schemas['CountReconcileMatchingRequest']
 export type PickBatchDto = Schemas['PickBatchDto']
 export type SupplierDto = Schemas['SupplierDto']
 export type PurchaseOrderDto = Schemas['PurchaseOrderDto']
@@ -138,6 +145,9 @@ export const warehouseKeys = {
   // Lote 14: lista paginada con el total y vista previa de "lo cambiado"
   cycleCountsPage: ['/api/v1/cycle-counts/page'],
   changesPreview: ['/api/v1/cycle-counts/changes-preview'],
+  // Lote F12 (conteo por producto): "Por revisar" y la vista previa de reconciliar (miden contra la existencia ACTUAL)
+  cycleCountReview: ['/api/v1/cycle-counts/review'],
+  reconcilePreview: ['/api/v1/cycle-counts/{id}/reconcile-preview'],
   pickBatches: ['/api/v1/pick-batches'],
   pickBatch: ['/api/v1/pick-batches/{publicId}'],
   suppliers: ['/api/v1/suppliers'],
@@ -976,8 +986,69 @@ export function useCycleCount(id: number | null | undefined, query: GetQuery<'/a
   })
 }
 
-/** Consultas del conteo que cambian con cualquier escritura sobre un conteo (lista, página, ficha, vista previa, cola). */
-const COUNTS: KeyName[] = ['cycleCounts', 'cycleCountsPage', 'cycleCount', 'changesPreview', 'tasks']
+/** Consultas del conteo que cambian con cualquier escritura sobre un conteo (lista, página, ficha, vista previa, cola; Lote F12:
+ *  "Por revisar" y la vista previa de reconciliar, que se recalcula tras corregir una cantidad). */
+const COUNTS: KeyName[] = ['cycleCounts', 'cycleCountsPage', 'cycleCount', 'changesPreview', 'tasks', 'cycleCountReview', 'reconcilePreview']
+
+/**
+ * Lote F12 — `GET /api/v1/cycle-counts/review` (warehouse.count): conteos Contados para revisar, más recientes primero, con quién
+ * contó, primer producto y cuántos más, posiciones, líneas, cuántas difieren contra la existencia ACTUAL, correcciones, errores,
+ * pendientes y `matches`. Filtros `warehousePublicId`, `countedByUserId`, `search`, `includeOpen`; `skip`/`take` (1..200).
+ */
+export function useCycleCountReview(query: GetQuery<'/api/v1/cycle-counts/review'>, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.cycleCountReview[0], query],
+    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts/review', { params: { query } })),
+    enabled: options?.enabled ?? true,
+    placeholderData: keepPreviousData,
+    meta: meta(options),
+  })
+}
+
+/** Exportar "Por revisar": todo lo filtrado (de a 200, hasta 10 000). */
+export const exportCycleCountReview = (query: GetQuery<'/api/v1/cycle-counts/review'>) =>
+  fetchAllPages((skip, take) => unwrap(api.GET('/api/v1/cycle-counts/review', { params: { query: { ...query, skip, take } } })))
+
+/**
+ * Lote F12 — `GET /api/v1/cycle-counts/{id}/reconcile-preview` (warehouse.count): lo que asentaría confirmar, por línea (existencia
+ * actual, reservado, contado con su evidencia, ajuste, saldo resultante y error) y los totales; no escribe. 422 si ya se
+ * reconcilió. Mismo cálculo que `POST .../reconcile`. Sin `keepPreviousData`: la vista previa de otro conteo no se muestra.
+ */
+export function useReconcilePreview(id: number | null | undefined, options?: WarehouseQueryOptions) {
+  return useQuery({
+    queryKey: [warehouseKeys.reconcilePreview[0], { id }],
+    queryFn: () => unwrap(api.GET('/api/v1/cycle-counts/{id}/reconcile-preview', { params: { path: { id: id ?? 0 } } })),
+    enabled: id != null && (options?.enabled ?? true),
+    retry: false,
+    meta: { handleAccessDenied: false },
+  })
+}
+
+/**
+ * Lote F12 — `POST /api/v1/cycle-counts/reconcile-matching` (warehouse.count): cierra en Concordancia, cada uno en su transacción,
+ * los conteos que cuadran contra la existencia actual; devuelve `closed` y `skipped` (con `reasonCode`, `reason` y `count`).
+ * Invalida todo lo del conteo y el inventario (un cierre no mueve saldos, pero sí la franja del Pulso y el Kárdex por documento).
+ */
+export function useReconcileMatching() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CountReconcileMatchingRequest) => unwrap(api.POST('/api/v1/cycle-counts/reconcile-matching', { body })),
+    onSuccess: () => invalidate(qc, ...COUNTS, ...STOCK),
+  })
+}
+
+/**
+ * Lote F12 — `POST /api/v1/warehouses/{publicId}/bins/{binId}/confirm-provisional` (warehouse.manage): quita la marca "pendiente de
+ * revisión" de una posición creada desde un conteo. 409 'La posición no está pendiente de revisión.'.
+ */
+export function useConfirmProvisionalBin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { publicId: string; binId: number }) =>
+      unwrap(api.POST('/api/v1/warehouses/{publicId}/bins/{binId}/confirm-provisional', { params: { path: { publicId: v.publicId, binId: v.binId } } })),
+    onSuccess: () => invalidate(qc, 'bins', 'binSearch', 'zones', 'warehouse', ...COUNTS),
+  })
+}
 
 /**
  * Lote 14 (hallazgo 14) — `GET /api/v1/cycle-counts/page` (inventory.view): página de conteos con el total (take 1..200,
