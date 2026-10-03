@@ -408,8 +408,12 @@ test.describe('Lote 14 — escritorio', () => {
     // el cierre invalida saldos y Kárdex: se espera a que la lista termine de llegar antes del clic (si no, el clic cae en una
     // fila que se vuelve a pintar y el detalle no se abre)
     await page.waitForLoadState('networkidle')
-    await page.getByRole('row').filter({ hasText: SKU }).first().click()
     const txn = page.getByRole('dialog', { name: /^Movimiento #\d+/ })
+    // si la fila se vuelve a pintar justo al hacer clic, el detalle no se abre: se reintenta el clic hasta que abra
+    await expect(async () => {
+      if ((await txn.count()) === 0) await page.getByRole('row').filter({ hasText: SKU }).first().click()
+      await expect(txn).toBeVisible({ timeout: 3_000 })
+    }).toPass({ timeout: 20_000 })
     await expect(txn.getByText('Documento de origen')).toBeVisible()
 
     // las demás posiciones con cambios quedaron con su conteo Pendiente: se dan de baja para no dejar basura en la demo

@@ -20,6 +20,10 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: true,
     timeout: 60_000,
+    // Vite lee web-app/.env.development (VITE_API_URL=https://localhost:5001, el perfil https de launchSettings): sin esto el
+    // navegador del recorrido apunta a un puerto donde en el CI no hay nada ("No se pudo conectar con el servidor" en el login).
+    // El recorrido habla con el mismo API que las pruebas por request (API_URL, :5000 por defecto).
+    env: { VITE_API_URL: process.env.VITE_API_URL ?? process.env.API_URL ?? 'http://localhost:5000' },
   },
   projects: [
     { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
