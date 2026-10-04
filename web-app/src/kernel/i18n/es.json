@@ -1145,6 +1145,67 @@
       "selectedOne": "1 marcada",
       "clearSelection": "Quitar marcas"
     },
+    "binLabels": {
+      "button": "Etiquetas de posición",
+      "hint": "PDF con una etiqueta por posición (su código de barras y su código en grande) para impresoras de etiquetas de 4 × 2, 4 × 4 o 4 × 6 pulgadas.",
+      "title": "Etiquetas de posición",
+      "pdfTitle": "Etiquetas de posición",
+      "intro": "Una etiqueta por posición con su código de barras, su código en letra grande y los datos de la ubicación. Cada etiqueta es una página del PDF del tamaño exacto de la etiqueta. Puede volver a imprimirlas cuando quiera: no cambian nada en el sistema.",
+      "scope": {
+        "legend": "Qué imprimir",
+        "filter": "Las posiciones del filtro actual ({count})",
+        "selected": "Las posiciones marcadas ({count})",
+        "selectedNone": "Para imprimir solo algunas, márquelas en la lista con sus casillas."
+      },
+      "size": {
+        "legend": "Tamaño de la etiqueta"
+      },
+      "sizes": {
+        "4x2": {
+          "label": "4 × 2 pulgadas (10 × 5 cm)",
+          "hint": "Apaisada: 4 de ancho × 2 de alto.",
+          "short": "4 × 2 pulgadas"
+        },
+        "4x4": {
+          "label": "4 × 4 pulgadas (10 × 10 cm)",
+          "hint": "Cuadrada: 4 de ancho × 4 de alto.",
+          "short": "4 × 4 pulgadas"
+        },
+        "4x6": {
+          "label": "4 × 6 pulgadas (10 × 15 cm)",
+          "hint": "Vertical: 4 de ancho × 6 de alto.",
+          "short": "4 × 6 pulgadas"
+        }
+      },
+      "orientation": {
+        "legend": "Orientación",
+        "auto": "Automática (recomendada)",
+        "rotate": "Girar 90°",
+        "hint": "Use «Girar 90°» solo si la impresora saca la etiqueta de lado o cortada: gira la página completa del PDF."
+      },
+      "details": {
+        "warehouse": "Almacén"
+      },
+      "tooMany": "Son {count} posiciones; el máximo por PDF es {max} etiquetas. Acote con los filtros o marque menos posiciones.",
+      "noneInScope": "No hay posiciones en lo que eligió.",
+      "nothing": "No hay posiciones para imprimir con lo que eligió.",
+      "generate": "Generar PDF",
+      "generating": "Generando…",
+      "cancel": "Cancelar",
+      "close": "Listo",
+      "progress": {
+        "read": "Leyendo posiciones… {done} de {total}",
+        "render": "Generando el PDF ({labels} etiquetas)…"
+      },
+      "result": {
+        "printed": "Se generaron {count} etiquetas de {size}.",
+        "printedOne": "Se generó 1 etiqueta de {size}.",
+        "withoutCode": "{count} salieron sin código de barras (solo con el código en texto):",
+        "withoutCodeOne": "1 salió sin código de barras (solo con el código en texto):",
+        "cancelled": "Se canceló; no se generó el PDF.",
+        "error": "No se pudieron generar las etiquetas. {error}"
+      }
+    },
     "locations": {
       "title": "Posiciones",
       "subtitle": "Jerarquía del almacén: zona · pasillo · rack · posición, con su ocupación",

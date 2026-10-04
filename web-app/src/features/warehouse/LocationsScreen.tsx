@@ -19,6 +19,9 @@
 //   conserva al cambiar de página o de filtro dentro del almacén), el aviso acumulado "N posiciones con la hoja
 //   desactualizada o sin imprimir" (`staleCount` con los filtros de la tabla salvo "Hoja") con "Imprimir las
 //   desactualizadas", y "Hojas de posición" junto a "Códigos de barras" (modal: filtro actual, marcadas o desactualizadas).
+// - Lote F16: "Etiquetas de posición" junto a "Hojas de posición" (BinLabels.tsx / binLabels.ts): una etiqueta por posición
+//   (4×2, 4×4 o 4×6 pulgadas, una página del PDF cada una) del filtro actual o de las marcadas; no marca nada (reimprimir =
+//   volver a generarlas).
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
@@ -39,6 +42,8 @@ import {
 } from '../../kernel/ui'
 import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
 import { BinBarcodeReportButton } from './BarcodeReportButtons'
+import { BinLabelsButton, BinLabelsModal } from './BinLabels'
+import type { BinLabelsScope } from './binLabels'
 import { BinSheetCell, BinSheetsModal, StaleSheetsBar } from './BinSheets'
 import { BIN_SHEETS_PERMISSION, SHEET_STATUSES, sheetStatusOf, sheetStatusText, withoutSheetStatus, type BinSheetsScope } from './binSheets'
 import { BinCapacityModal } from './BinCapacityModal'
@@ -166,6 +171,8 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   const [sheetStatus, setSheetStatus] = useState<string[]>([])
   const [selected, setSelected] = useState<ReadonlyMap<number, string>>(() => new Map())
   const [sheets, setSheets] = useState<BinSheetsScope | null>(null)
+  // Lote F16: modal de etiquetas de posición (alcance con que se abrió)
+  const [labels, setLabels] = useState<BinLabelsScope | null>(null)
   // clic en la fila = editar la posición (mismo BinModal que la pestaña Posiciones de la ficha); solo con warehouse.manage
   const canManage = useCan('warehouse.manage')
   const [editing, setEditing] = useState<WarehouseBinDto | null>(null)
@@ -465,6 +472,8 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
                 {t('warehouse.binSheets.button')}
               </button>
             </Can>
+            {/* Lote F16: una etiqueta por posición (filtro actual o marcadas), sin estado: se reimprime cuando se quiera */}
+            <BinLabelsButton onOpen={() => setLabels(selected.size > 0 ? 'selected' : 'filter')} />
           </span>
         }
       >
@@ -522,6 +531,18 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
           query={impossible ? null : searchQuery}
           initialScope={sheets}
           counts={{ filter: impossible ? 0 : binsQ.isLoading ? null : total, selected: selected.size, stale: staleCount }}
+          selectedIds={[...selected.keys()]}
+        />
+      )}
+      {labels && (
+        <BinLabelsModal
+          open
+          onClose={() => setLabels(null)}
+          warehousePublicId={warehousePublicId}
+          warehouse={warehouse}
+          query={impossible ? null : searchQuery}
+          initialScope={labels}
+          counts={{ filter: impossible ? 0 : binsQ.isLoading ? null : total, selected: selected.size }}
           selectedIds={[...selected.keys()]}
         />
       )}

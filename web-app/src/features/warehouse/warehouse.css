@@ -61,6 +61,16 @@
 .bs-scope .bs-hint{margin:-4px 0 0 25px}
 .bs-empty{white-space:normal}
 .bs-progress{margin:0;font-size:13px;color:var(--flow);font-weight:600}
+/* Lote F16 — modal "Etiquetas de posición" (reúsa .bs-*): cada tamaño con la silueta de la etiqueta en su proporción real
+   (alto fijo de 22 px: 4×2 apaisada, 4×4 cuadrada, 4×6 vertical), su nombre y la ayuda debajo; avisos al terminar. */
+.bl-size{align-items:center}
+.bl-size > span:last-child{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bl-shape{flex:none;height:22px;width:auto;border:2px solid var(--text);border-radius:3px;background:var(--panel);box-sizing:border-box}
+.bl-size-name{font-weight:600}
+.bl-sizes .bl-size-hint{margin:0}
+.bl-warnings{display:flex;flex-direction:column;gap:6px;overflow-wrap:anywhere}
+.bl-warnings p{margin:0}
+.bl-warnings p:first-child{font-weight:600}
 
 /* Almacenes (maqueta `almacenes()`, Lote 1 de cambios de Almacén): maestro-detalle con la tabla a la izquierda y el panel
    del almacén elegido a la derecha (420 px; se encoge hasta 300 px si no cabe); una columna bajo 720 px con el panel

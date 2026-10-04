@@ -1145,6 +1145,67 @@
       "selectedOne": "1 checked",
       "clearSelection": "Clear checks"
     },
+    "binLabels": {
+      "button": "Location labels",
+      "hint": "PDF with one label per location (its barcode and its code in large print) for 4 × 2, 4 × 4 or 4 × 6 inch label printers.",
+      "title": "Location labels",
+      "pdfTitle": "Location labels",
+      "intro": "One label per location with its barcode, its code in large print and the location details. Each label is one PDF page of the exact label size. You can reprint them whenever you want: nothing changes in the system.",
+      "scope": {
+        "legend": "What to print",
+        "filter": "Locations in the current filter ({count})",
+        "selected": "Checked locations ({count})",
+        "selectedNone": "To print only some, check them in the list."
+      },
+      "size": {
+        "legend": "Label size"
+      },
+      "sizes": {
+        "4x2": {
+          "label": "4 × 2 inches (10 × 5 cm)",
+          "hint": "Landscape: 4 wide × 2 high.",
+          "short": "4 × 2 inches"
+        },
+        "4x4": {
+          "label": "4 × 4 inches (10 × 10 cm)",
+          "hint": "Square: 4 wide × 4 high.",
+          "short": "4 × 4 inches"
+        },
+        "4x6": {
+          "label": "4 × 6 inches (10 × 15 cm)",
+          "hint": "Portrait: 4 wide × 6 high.",
+          "short": "4 × 6 inches"
+        }
+      },
+      "orientation": {
+        "legend": "Orientation",
+        "auto": "Automatic (recommended)",
+        "rotate": "Rotate 90°",
+        "hint": "Use “Rotate 90°” only if the printer prints the label sideways or cut off: it rotates the whole PDF page."
+      },
+      "details": {
+        "warehouse": "Warehouse"
+      },
+      "tooMany": "That is {count} locations; the maximum per PDF is {max} labels. Narrow the filters or check fewer locations.",
+      "noneInScope": "There are no locations in your choice.",
+      "nothing": "There are no locations to print with your choice.",
+      "generate": "Generate PDF",
+      "generating": "Generating…",
+      "cancel": "Cancel",
+      "close": "Done",
+      "progress": {
+        "read": "Reading locations… {done} of {total}",
+        "render": "Generating the PDF ({labels} labels)…"
+      },
+      "result": {
+        "printed": "{count} labels of {size} were generated.",
+        "printedOne": "1 label of {size} was generated.",
+        "withoutCode": "{count} came out without a barcode (code in text only):",
+        "withoutCodeOne": "1 came out without a barcode (code in text only):",
+        "cancelled": "Cancelled; the PDF was not generated.",
+        "error": "The labels could not be generated. {error}"
+      }
+    },
     "locations": {
       "title": "Bins",
       "subtitle": "Warehouse hierarchy: zone · aisle · rack · slot, with occupancy",

@@ -4717,6 +4717,67 @@ La posición sale en varias hojas de 10 (11 productos = 10 + 1), cada una con el
 No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra; al imprimir las marcadas se
 quitan solas.
 
+## Lote F16 — Web: etiquetas de posición en Posiciones
+
+Pantalla: [F16 — Etiquetas de posición](frontend/f16-etiquetas-de-posicion.md). El servidor no cambió: se lee el listado de posiciones
+(`GET /api/v1/warehouses/{almacén}/bins`) y el PDF se arma en el navegador. Si el servidor responde con error, su mensaje sale tal cual al
+final de *"No se pudieron generar las etiquetas."*.
+
+### Mensajes que se ven en la pantalla (sin código HTTP propio)
+
+**"Son {n} posiciones; el máximo por PDF es 500 etiquetas. Acote con los filtros o marque menos posiciones."**
+Lo elegido pasa del tope de 500 etiquetas por PDF. Filtre por zona (recuadro del río), por el código en **Posición**, o marque menos
+casillas, e imprima por partes. **Generar PDF** queda deshabilitado.
+
+**"No hay posiciones en lo que eligió."**
+La opción elegida no tiene posiciones (p. ej. *Las posiciones del filtro actual (0)*). Cambie los filtros o marque posiciones.
+
+**"No hay posiciones para imprimir con lo que eligió."**
+Al leer, ya no había posiciones (alguien las dio de baja mientras tanto). Recargue la lista y vuelva a intentar. No se genera PDF.
+
+**"Se canceló; no se generó el PDF."**
+Pulsó **Cancelar** mientras se leían las posiciones. No se descargó nada.
+
+**"No se pudieron generar las etiquetas. {mensaje}"**
+Falló la lectura o el armado del PDF. Si el servidor respondió (p. ej. 404 **"Almacén no encontrado."** o un 400 de un filtro), su
+mensaje sale al final. Vuelva a intentar; si se repite, avise a soporte con la hora y lo que eligió.
+
+**"Se generaron {n} etiquetas de 4 × 2 pulgadas."** (o *"Se generó 1 etiqueta de …"*)
+Todo salió bien; el PDF se descargó con una página por posición.
+
+**"{n} salieron sin código de barras (solo con el código en texto):"** seguido de *"No caben como código de barras legible en el ancho de
+la hoja…"* y/o *"Omitidos porque tienen caracteres que el código de barras (Code 128) no admite…"*
+El PDF ya se descargó; esas etiquetas llevan el código en texto y, en el lugar de las barras, *"No cabe: demasiado largo para un código
+legible"* (más de ~30 caracteres en 4 pulgadas con la barra mínima de 0.25 mm) o *"Sin código de barras: Code 128 no admite Ñ"*. Si
+necesita código de barras, renombre la posición con un código más corto o sin acentos. Pulse **Listo** para cerrar.
+
+### Preguntas frecuentes
+
+**¿En qué se diferencia de la hoja de posición?**
+La **etiqueta** identifica la posición (su código) y no cambia con lo que hay en ella: no tiene estado y no se "desactualiza". La **hoja de
+posición** (F15) lista los productos y se desactualiza cuando entra o sale uno. Imprimir etiquetas no cambia la columna **Hoja**.
+
+**¿Cómo reimprimo una etiqueta?**
+Igual que la primera vez: márquela (o filtre) → **Etiquetas de posición** → **Generar PDF**. No hay nada que "desmarcar" antes.
+
+**¿Qué tamaño elijo?**
+El del rollo de su impresora: 4 × 2 pulgadas (10 × 5 cm), 4 × 4 (10 × 10 cm) o 4 × 6 (10 × 15 cm). Cada página del PDF mide exactamente
+una etiqueta de ese tamaño. Configure el mismo tamaño en el driver e imprima al 100 %.
+
+**La etiqueta sale de lado o cortada.**
+Revise que el tamaño de etiqueta del driver sea el mismo que eligió y que la escala sea 100 % ("Tamaño real"). Si sigue, genere el PDF con
+**Orientación → Girar 90°** (gira la página completa, para impresoras que alimentan la etiqueta de lado).
+
+**¿Por qué no salen todas las posiciones del almacén?**
+Salen las del **filtro actual** de la tabla (todos los filtros, también el texto de **Posición**) o las **marcadas**. Quite los filtros
+(**Limpiar**) para todas, hasta 500 por PDF.
+
+**¿Las marcas se quitan al imprimir etiquetas?**
+No (a diferencia de las hojas de posición): se quedan por si quiere reimprimir. **Quitar marcas** las borra.
+
+**¿Recuerda el tamaño que usé?**
+Sí, en ese navegador: la próxima vez el modal abre con el último tamaño y la última orientación.
+
 ## Lote A8 — App de almacén: lo que hay en una posición (Consultar)
 
 Detalle en el [capítulo 9 §8.1](09-app-almacen.md#81-lo-que-hay-en-una-posición-lote-a8) y en `docs/mobile/loteA8-decisiones.md`. Ninguno de

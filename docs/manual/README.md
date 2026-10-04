@@ -197,6 +197,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    el aviso acumulado "N posiciones con la hoja desactualizada o sin imprimir" con **Imprimir las desactualizadas**, y el PDF **Hojas de
    posición** (una posición por hoja, hasta 10 productos con su código de barras, tamaño adaptable, "Hoja 2 de 2", "Sin productos") que al
    terminar marca las hojas como impresas; mensajes y casos frecuentes. Capturas `f15-*`.
+12. [F16 — Etiquetas de posición](frontend/f16-etiquetas-de-posicion.md): en **Posiciones**, el botón **Etiquetas de posición**: una
+   etiqueta por posición (código de barras Code 128 lo más grande posible, el código en letra grande y los datos de la ubicación) para
+   impresoras de etiquetas de **4 × 2, 4 × 4 o 4 × 6 pulgadas** (una página del PDF del tamaño exacto por etiqueta, orientación Automática
+   o Girar 90°), del filtro actual o de las marcadas; sin estado (se reimprime cuando se quiera); diferencia con la hoja de posición;
+   mensajes y casos frecuentes. Capturas `f16-*`.
 
 ## Preguntas frecuentes
 

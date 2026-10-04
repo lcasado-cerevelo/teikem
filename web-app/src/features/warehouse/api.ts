@@ -245,6 +245,10 @@ export function useWarehouseBins(
   })
 }
 
+/** Lote F16: una tanda de `GET /api/v1/warehouses/{publicId}/bins` fuera de React (take ≤ 200), p. ej. las etiquetas de posición. */
+export const fetchWarehouseBins = (publicId: string, query: GetQuery<'/api/v1/warehouses/{publicId}/bins'>, signal?: AbortSignal) =>
+  unwrap(api.GET('/api/v1/warehouses/{publicId}/bins', { params: { path: { publicId }, query }, signal }))
+
 /** `GET /api/v1/warehouses/{publicId}/docks?includeInactive=`. */
 export function useWarehouseDocks(
   publicId: string | null | undefined,
