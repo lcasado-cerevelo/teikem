@@ -2793,7 +2793,10 @@
         "unassigned": "Unassigned",
         "assign": "Assign count {number}",
         "delete": "Delete count {number}",
-        "exportName": "Cycle counts"
+        "exportName": "Cycle counts",
+        "noLinesYet": "Open count: no products yet",
+        "countedBy": "Counted by: {names}",
+        "openedBy": "Opened by {name}"
       },
       "detail": {
         "select": "Select a count task",

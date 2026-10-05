@@ -26847,6 +26847,9 @@
           },
           "allowEmpty": {
             "type": "boolean"
+          },
+          "assignToMe": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -26985,6 +26988,17 @@
           "correctedLines": {
             "type": "integer",
             "format": "int32"
+          },
+          "createdByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "capturedByNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false

@@ -230,7 +230,13 @@ public sealed class CycleCountService(
 
         // Tarea COUNT del conteo: la abierta (PENDING/IN_PROGRESS) o, si no hay, la última; con su asignado.
         var tasks = await CountTasksAsync(countIds, ct);
-        var userIds = tasks.Values.Where(t => t.AssignedToUserId != null).Select(t => t.AssignedToUserId!.Value).Distinct().ToList();
+        // Quién cuenta (Lote 25): quien abrió el conteo y quienes han capturado alguna línea.
+        var capturers = await db.Set<CycleCountLine>().AsNoTracking()
+            .Where(l => countIds.Contains(l.CycleCountId) && l.CapturedBy != null)
+            .Select(l => new { l.CycleCountId, UserId = l.CapturedBy!.Value }).Distinct().ToListAsync(ct);
+        var userIds = tasks.Values.Where(t => t.AssignedToUserId != null).Select(t => t.AssignedToUserId!.Value)
+            .Concat(page.Where(c => c.CreatedBy != null).Select(c => c.CreatedBy!.Value))
+            .Concat(capturers.Select(x => x.UserId)).Distinct().ToList();
         var users = userIds.Count == 0
             ? new Dictionary<int, string>()
             : await db.Users.AsNoTracking().Where(u => userIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName ?? u.Email ?? string.Empty, ct);
@@ -252,7 +258,11 @@ public sealed class CycleCountService(
                 TaskId: task?.WarehouseTaskId,
                 AssignedToName: task?.AssignedToUserId is int uid ? users.GetValueOrDefault(uid) : null,
                 Origin: origin?.Label, ChangesFromUtc: c.ChangesFromUtc, ChangesToUtc: c.ChangesToUtc,
-                AssignedToUserId: task?.AssignedToUserId, CorrectedLines: s?.Corrected ?? 0);
+                AssignedToUserId: task?.AssignedToUserId, CorrectedLines: s?.Corrected ?? 0,
+                CreatedByName: c.CreatedBy is int creator ? users.GetValueOrDefault(creator) : null,
+                CapturedByNames: capturers.Where(x => x.CycleCountId == c.CycleCountId)
+                    .Select(x => users.GetValueOrDefault(x.UserId)).Where(n => !string.IsNullOrEmpty(n)).Select(n => n!)
+                    .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).Take(3).ToList());
         }).ToList();
     }
 
@@ -428,7 +438,7 @@ public sealed class CycleCountService(
             }));
             var born = await statuses.TransitionAsync(StatusDomains.CycleCountStatus, EntityTypes.CycleCount, cc.CycleCountId, null, initial.InternalCode, null, ct2);
             cc.StatusCodeId = born.StatusCodeId;
-            await CreateCountTaskAsync(cc, ct2);
+            await CreateCountTaskAsync(cc, ct2, req.AssignToMe ? tenant.UserId : null);
             await db.SaveGuardedAsync(CycleCountRules.LineDuplicated, ct2);
             return cc.CycleCountId;
         }, ct);
@@ -1838,11 +1848,11 @@ public sealed class CycleCountService(
     // eliminar) van por StatusService.TransitionAsync con el mismo escalonado que WarehouseTaskWriter.AdvanceAsync
     // (PENDING → IN_PROGRESS → DONE), sobre la tarea bloqueada DESPUÉS del encabezado del conteo.
 
-    private Task CreateCountTaskAsync(CycleCount cc, CancellationToken ct)
+    private Task CreateCountTaskAsync(CycleCount cc, CancellationToken ct, int? assignedToUserId = null)
         => taskWriter.CreateAsync(new WarehouseTaskSpec(
             TaskType: WarehouseTaskTypes.Count, WarehouseId: cc.WarehouseId, ProductId: null, Quantity: null,
             LotId: null, FromBinId: null, ToBinId: null,
-            RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId), ct);
+            RefEntityType: EntityTypes.CycleCount, RefId: cc.CycleCountId, AssignedToUserId: assignedToUserId), ct);
 
     /// <summary>La tarea COUNT abierta (PENDING/IN_PROGRESS) del conteo, bloqueada; null si no hay (ya cerrada o cancelada desde la cola).</summary>
     private async Task<WarehouseTask?> LockOpenCountTaskAsync(CycleCount cc, CancellationToken ct)

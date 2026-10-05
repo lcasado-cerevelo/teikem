@@ -371,6 +371,15 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
 describe('PinModal — coincidencia en cliente y mensaje del API', () => {
   const USER: UserSummaryDto = { id: 2, fullName: 'Carlos Rivera', email: 'carlos@advance.test', userKind: 'INTERNAL', isActive: true, membershipStatus: 'ACTIVE', mfaEnabled: false, lastLoginUtc: null, roles: [], extraPermissions: [], isPlatformAdmin: false, hasPin: false }
 
+  it('abre con los dos campos vacíos, sin autocompletar del navegador y con el cursor en el primero', async () => {
+    wrap(<PinModal open user={USER} onClose={() => {}} />)
+    const pin = screen.getByLabelText('PIN (4 a 6 dígitos)') as HTMLInputElement
+    const confirm = screen.getByLabelText('Confirmar PIN') as HTMLInputElement
+    expect([pin.value, confirm.value]).toEqual(['', ''])
+    expect([pin.autocomplete, confirm.autocomplete]).toEqual(['new-password', 'new-password'])
+    expect(pin).toHaveFocus()
+  })
+
   it('valida en cliente que los dos PIN coincidan (sin llamar al API)', async () => {
     const user = userEvent.setup()
     wrap(<PinModal open user={USER} onClose={() => {}} />)

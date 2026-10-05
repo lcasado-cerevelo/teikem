@@ -50,6 +50,8 @@ const COUNT1 = {
   origin: 'Lo cambiado',
   taskId: 11,
   assignedToName: 'Juan Pérez',
+  createdByName: 'Ana Ruiz',
+  capturedByNames: ['Beto Ruiz'],
   assignedToUserId: 7,
   createdAtUtc: '2026-09-30T14:00:00',
 }
@@ -65,6 +67,8 @@ const COUNT2 = {
   origin: 'Selección',
   taskId: 12,
   assignedToName: null,
+  createdByName: 'Carla Soto',
+  capturedByNames: [],
   assignedToUserId: null,
 }
 const BASE_LINES: Json[] = [
@@ -238,6 +242,9 @@ describe('Conteo cíclico en dos paneles', () => {
     expect(within(list).getByText('Lo cambiado')).toBeInTheDocument()
     expect(within(list).getByText('Asignado a Juan Pérez')).toBeInTheDocument()
     expect(within(list).getByText('Sin asignar')).toBeInTheDocument()
+    // quién cuenta: quien capturó; si nadie ha capturado, quien abrió el conteo
+    expect(within(list).getByText('Cuenta: Beto Ruiz')).toBeInTheDocument()
+    expect(within(list).getByText('Abierto por Carla Soto')).toBeInTheDocument()
     const req = calls('GET', '/api/v1/cycle-counts/page')[0]
     expect(req.url.searchParams.get('skip')).toBe('0')
     expect(req.url.searchParams.get('take')).toBe('25')

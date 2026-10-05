@@ -54,7 +54,7 @@ describe('startCountOnline', () => {
       }),
     )
     const result = await startCountOnline('wh-1', 5)
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5] })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', binIds: [5], assignToMe: true })
     expect(result).toEqual({
       countId: 42,
       isBlind: true,
@@ -133,7 +133,7 @@ describe('startProductCountOnline', () => {
     )
     const result = await startProductCountOnline('wh-1', 'p1')
     expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts')
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true, assignToMe: true })
     expect(result.countId).toBe(77)
     expect(result.isBlind).toBe(false)
     expect(result.lines).toEqual([
@@ -145,7 +145,7 @@ describe('startProductCountOnline', () => {
   it('un producto sin existencia abre un conteo vacío (allowEmpty): sin líneas', async () => {
     postMock.mockResolvedValueOnce(ok({ count: { id: 78, originCode: 'PRODUCT', lineCount: 0 }, isBlind: true, lines: [] }))
     const result = await startProductCountOnline('wh-1', 'p1')
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], allowEmpty: true, assignToMe: true })
     expect(result).toEqual({ countId: 78, isBlind: true, lines: [] })
   })
 
@@ -213,7 +213,7 @@ describe('conteo abierto (Lote 24)', () => {
     postMock.mockResolvedValueOnce(ok({ count: { id: 900 }, isBlind: false, lines: [] }))
     expect(await startOpenCountOnline('wh-1')).toEqual({ countId: 900, isBlind: false })
     expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts')
-    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', allowEmpty: true })
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', allowEmpty: true, assignToMe: true })
   })
 
   it('dónde está el producto: una opción por posición y lote, sin cantidades', async () => {
