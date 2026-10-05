@@ -3631,7 +3631,7 @@ de un solo día pueden cambiar. Siguen en UTC la validación de mínimo y máxim
 cliente y de los documentos y tarifas del chofer.
 
 **¿Por qué la franja "Almacén hoy" ya no se queda fija al desplazarse?**
-Desde el 2026-10-05 (decisión del dueño) solo queda fija la fila de la fecha con los botones de Organizar. "Almacén hoy" se desplaza con el resto
+Desde el 2026-10-05 (decisión del dueño) solo queda fijo el encabezado (fecha con los botones de Organizar, saludo y chip). "Almacén hoy" se desplaza con el resto
 del Pulso, esté donde esté. No hay nada que configurar.
 
 **Borré el gráfico de la compañía, ¿vuelve? ¿Cómo lo recupero?**

@@ -627,18 +627,18 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(onAccessDenied).not.toHaveBeenCalled()
   })
 
-  it('filas fijas (D6): solo la fila de la fecha queda fija; "Almacén hoy" no se fija; solo en .pulse-home', async () => {
+  it('encabezado fijo (D6): fecha, saludo y chip quedan fijos; "Almacén hoy" no se fija; solo en .pulse-home', async () => {
     mock.handler = dayHandler
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
     expect(container.querySelector('.wrap.pulse')).toHaveClass('pulse-home')
     expect(container.querySelector('[data-pinned]')).toBeNull()
-    // la fila de la fecha (h1 + Organizar) es la fija; el saludo y el chip van aparte y se desplazan
-    const head = screen.getByRole('heading', { level: 1 }).parentElement as HTMLElement
-    expect(head).toHaveClass('pulse-pin-head', 'pinned')
+    // el encabezado completo es el fijo: fecha + Organizar, saludo y chip van juntos en el mismo contenedor fijo
+    const head = screen.getByRole('heading', { level: 1 }).closest('.pulse-pin-wrap') as HTMLElement
+    expect(head).toHaveClass('pinned')
     expect(within(head).getByRole('button', { name: 'Organizar mi Pulso' })).toBeInTheDocument()
-    expect(within(head).queryByText('Pulso de la compañía')).toBeNull()
-    expect(container.querySelector('.pulse-greet')).toHaveTextContent('Pulso de la compañía')
+    expect(within(head).getByText('Pulso de la compañía')).toBeInTheDocument()
+    expect(head.querySelector('.pulse-greet')).toHaveTextContent('Bienvenido')
   })
 
   it('la franja Almacén hoy, esté donde esté, no se fija (solo la fecha)', async () => {
@@ -648,7 +648,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
     expect(paintedPanels(container)).toEqual(['INDICATORS', 'WAREHOUSE_DAY'])
     expect(container.querySelector('[data-pinned]')).toBeNull()
-    expect(container.querySelector('.pulse-pin-head')).toHaveClass('pinned')
+    expect(container.querySelector('.pulse-pin-wrap')).toHaveClass('pinned')
   })
 
   it('organizando: la .orgbar es la fija (ni la franja ni la fecha)', async () => {
@@ -659,6 +659,6 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(screen.queryByText(/se queda fija/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Ocultar Almacén hoy' })).toBeInTheDocument()
     expect(container.querySelector('[data-pinned]')).toBeNull()
-    expect(container.querySelector('.pulse-pin-head')).not.toHaveClass('pinned')
+    expect(container.querySelector('.pulse-pin-wrap')).not.toHaveClass('pinned')
   })
 })

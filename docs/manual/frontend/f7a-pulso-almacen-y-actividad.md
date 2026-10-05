@@ -65,11 +65,11 @@ sin sacarlo del Pulso. No hay mensajes de error propios.
 **Permiso.** Se pinta con `pulse.warehouse`, `inventory.view` y el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`) encendido. Se puede ocultar
 o mover con Organizar (ver más abajo).
 
-## Pulso del día: fila de la fecha fija al desplazarse (Lote 15; ajustado el 2026-10-05)
+## Pulso del día: encabezado fijo al desplazarse (Lote 15; ajustado el 2026-10-05)
 
-Al bajar por el Pulso queda **fija arriba solo la fila de la fecha** (con "Organizar mi Pulso" y "Organizar el de la compañía"). El saludo
-("Bienvenido… Así viene el día en su compañía.") y el chip "Pulso de la compañía" se van con el desplazamiento, igual que la franja
-"Almacén hoy", "Necesita tu atención" y todo lo demás: **ninguna sección queda fija** (decisión del dueño; en el Lote 15 original la franja
+Al bajar por el Pulso queda **fijo arriba solo el encabezado**: la fecha con "Organizar mi Pulso" y "Organizar el de la compañía", el saludo
+("Bienvenido… Así viene el día en su compañía.") y el chip "Pulso de la compañía". La franja "Almacén hoy", "Necesita tu atención" y todo lo demás
+se van con el desplazamiento: **ninguna sección queda fija** (decisión del dueño; en el Lote 15 original la franja
 "Almacén hoy" también se fijaba, y la captura `img/l15-pulso-fijas.png` puede mostrarla así).
 
 - Mientras organiza, no hay filas fijas: la barra de Organizar (con "Listo") ya se queda arriba.

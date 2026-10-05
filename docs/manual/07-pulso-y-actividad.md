@@ -413,18 +413,17 @@ ese navegador. Las cuatro tarjetas se calculan con él.
 | Conteos con diferencia | Confirmar un conteo cíclico que asienta algún movimiento: Pendiente o Contado → **Diferencia** (capítulo 06, sección 6) | Quien tenga `warehouse.count` | Lo del conteo | Estatus `RECONCILED_VARIANCE` con su fecha de cierre | Un conteo Diferencia ya no se edita |
 | Productos bajo mínimo | Cualquier movimiento que cambie lo disponible, o cambiar el mínimo de un producto | Según la acción | — | — | Nada |
 
-### 5.2 Fila de la fecha fija al desplazarse
+### 5.2 Encabezado fijo al desplazarse
 
-Qué hace: al bajar por el Pulso queda **fija arriba solo la fila de la fecha** (con los botones "Organizar mi Pulso" y "Organizar el de la
-compañía"). El saludo ("Bienvenido…") y el chip "Pulso de la compañía" se desplazan, y **todo lo demás, incluida la franja "Almacén hoy",
-también se desplaza**: ninguna sección queda fija (decisión del dueño). Solo pasa en la pantalla de inicio; Indicadores y Gráficos no cambian.
+Qué hace: al bajar por el Pulso queda **fijo arriba solo el encabezado**: la fecha con los botones "Organizar mi Pulso" y "Organizar el de la
+compañía", el saludo ("Bienvenido…") y el chip "Pulso de la compañía". **Todo lo demás, incluida la franja "Almacén hoy", se desplaza**: ninguna sección queda fija (decisión del dueño). Solo pasa en la pantalla de inicio; Indicadores y Gráficos no cambian.
 
 | Situación | Qué queda fijo |
 |---|---|
-| Lo normal | Solo la fila de la fecha |
+| Lo normal | El encabezado: fecha con botones, saludo y chip |
 | Se está organizando (modo Organizar abierto) | Nada de esto: la barra de Organizar ya es fija |
-| Celular (menos de 720 px de ancho) | Solo la fecha, compacta: el título y los botones pequeños en un renglón que envuelve |
-| Celular acostado (menos de 560 px de alto) | Solo la fecha |
+| Celular (menos de 720 px de ancho) | El encabezado, compacto: el título y los botones pequeños en un renglón que envuelve |
+| Celular acostado (menos de 560 px de alto) | Nada: el encabezado se desplaza para no ocupar la pantalla |
 
 (Antes del cambio del 2026-10-05 la franja "Almacén hoy" también quedaba fija debajo de la fecha, y Organizar traía una nota que lo explicaba.
 Esa nota ya no existe.)

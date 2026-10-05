@@ -187,15 +187,18 @@
   .pulse .wh-band-h .streamlabel,.pulse .wh-band-sel{margin-top:0;margin-bottom:6px}
 }
 
-/* ---- Lote 15 (P6, D6/D7): filas fijas, SOLO en "Pulso del día" (.pulse-home). Queda fija SOLO la fila de la fecha (con los
-   botones de organizar: clase .pinned, que falta al organizar porque la .orgbar ya es fija); ninguna sección se fija. Fondo opaco = el mismo fondo de la app (fijo al viewport, así no se nota
+/* ---- Lote 15 (P6, D6/D7): filas fijas, SOLO en "Pulso del día" (.pulse-home). Queda fijo SOLO el encabezado (fecha con los
+   botones de organizar, saludo y chip: clase .pinned de .pulse-pin-wrap, que falta al organizar porque la .orgbar ya es fija); ninguna sección se fija. Fondo opaco = el mismo fondo de la app (fijo al viewport, así no se nota
    el corte); ::before tapa la tira del relleno superior de .stage. --pulse-head-h y --pulse-pin-h los mide Pulse.tsx. ---- */
-.pulse-home .pulse-pin-head.pinned{position:sticky;top:0;z-index:16;background:var(--app-bg);background-attachment:fixed;padding:6px 0 8px}
-.pulse-home .pulse-pin-head.pinned::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:18px;background:var(--app-bg);background-attachment:fixed}
+.pulse-home .pulse-pin-wrap.pinned{position:sticky;top:0;z-index:16;background:var(--app-bg);background-attachment:fixed;padding:6px 0 12px;margin-bottom:8px}
+.pulse-home .pulse-pin-wrap.pinned .pulse-greet{margin-bottom:0}
+.pulse-home .pulse-pin-wrap.pinned::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:18px;background:var(--app-bg);background-attachment:fixed}
 /* lo que se desplaza no queda tapado al recibir el foco ni con scrollIntoView (+ 26 px: el relleno superior de .stage, 18 px, y aire) */
 .pulse-home .pulse-sec *,.pulse-home .pulse-greet *{scroll-margin-top:calc(var(--pulse-pin-h,0px) + 26px)}
-/* celular acostado (alto bajo): solo la fecha queda fija (D7) */
+/* celular acostado (alto bajo): el encabezado no se fija, para no comerse la pantalla (D7) */
 @media(max-height:560px){
+  .pulse-home .pulse-pin-wrap.pinned{position:static;margin-bottom:0;padding-bottom:0}
+  .pulse-home .pulse-pin-wrap.pinned .pulse-greet{margin-bottom:20px}
   .pulse-home .pulse-sec *,.pulse-home .pulse-greet *{scroll-margin-top:calc(var(--pulse-head-h,0px) + 26px)}
 }
 /* celular: la fila de la fecha más baja (título y botones pequeños en un renglón que envuelve) */
@@ -205,4 +208,4 @@
   .pulse-home .pulse-pin-head .act{margin-left:0;gap:6px}
   .pulse-home .pulse-pin-head .act .btn{padding:5px 9px;font-size:12px}
 }
-@media(max-width:980px){.pulse-home .pulse-pin-head.pinned::before{height:14px}}
+@media(max-width:980px){.pulse-home .pulse-pin-wrap.pinned::before{height:14px}}

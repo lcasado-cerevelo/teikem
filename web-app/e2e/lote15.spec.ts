@@ -292,7 +292,7 @@ test.describe('Lote 15 — escritorio', () => {
     await expect(card(page, 'received').getByRole('link')).not.toHaveAttribute('href', /warehousePublicIds=/)
   })
 
-  test('5. al desplazar, la fecha sigue a la vista (fija), "Almacén hoy" se va con el scroll y "Necesita tu atención" también', async ({ page }) => {
+  test('5. al desplazar, el encabezado (fecha, saludo y chip) sigue a la vista (fijo), "Almacén hoy" se va con el scroll y "Necesita tu atención" también', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await login(page)
     await waitPulse(page)
@@ -304,6 +304,8 @@ test.describe('Lote 15 — escritorio', () => {
     await scrollPulse(page, 100_000)
     await expect(attention).not.toBeInViewport()
     await expect(title).toBeInViewport()
+    await expect(page.locator('.pulse-greet')).toBeInViewport()
+    await expect(page.getByText('Pulso de la compañía')).toBeInViewport()
     // la franja "Almacén hoy" NO es fija (decisión del dueño): se desplaza con el contenido
     await expect(band).not.toBeInViewport()
     await expect(page.locator('[data-pinned]')).toHaveCount(0)

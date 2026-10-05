@@ -7,8 +7,8 @@
 // Historia: P3 (indicadores y gráficos con "Rango"), F6 (panel Almacén), F7A (filtro del panel Almacén y Actividad reciente).
 // Lote 15 (P6, D6/D7): filas fijas SOLO aquí (clase propia `.pulse-home`; `.wrap.pulse` la usan también Indicadores y
 // Gráficos). La cabecera se parte en dos: la fila de la fecha con "Organizar" (`.pulse-pin-head`, fija) y el saludo con el
-// chip (`.pulse-greet`, se desplaza). Solo la fila de la fecha queda fija; ninguna sección (ni la franja "Almacén hoy") se fija
-// (decisión del dueño). El alto de esa fila se mide (`useElementHeight`) y va en `--pulse-head-h`/`--pulse-pin-h`
+// chip (`.pulse-greet`, se desplaza). Solo el encabezado (fecha con "Organizar", saludo y chip) queda fijo; ninguna sección (ni la franja "Almacén hoy") se fija
+// (decisión del dueño). El alto del encabezado se mide (`useElementHeight`) y va en `--pulse-head-h`/`--pulse-pin-h`
 // (`scroll-margin-top` de lo que se desplaza, para que el foco no quede tapado) (pulse.css).
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -59,9 +59,10 @@ export default function Pulse() {
 
   const showControls = Boolean(data && hasPanels && !organizing)
   const head = (
-    <>
-      {/* fila fija (D6): la fecha y los botones de organizar; sin controles (organizando) no se fija: la .orgbar ya lo es */}
-      <div className={showControls ? 'head pulse-head pulse-pin-head pinned' : 'head pulse-head pulse-pin-head'} ref={setHeadEl}>
+    // Encabezado fijo (decisión del dueño): fecha + botones de organizar, saludo y chip van juntos y quedan fijos; sin controles
+    // (organizando) no se fija: la .orgbar ya lo es. Nada más del Pulso se fija (ni la franja "Almacén hoy").
+    <div className={showControls ? 'pulse-pin-wrap pinned' : 'pulse-pin-wrap'} ref={setHeadEl}>
+      <div className="head pulse-head pulse-pin-head">
         <h1>{pulseDateTitle(new Date(), lang)}</h1>
         {showControls && data && (
           <div className="act">
@@ -94,7 +95,7 @@ export default function Pulse() {
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 
   let body: ReactNode
