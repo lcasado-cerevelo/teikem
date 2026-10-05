@@ -17,7 +17,7 @@ namespace Teikem.Api.Controllers;
 [Route("api/v1/products")]
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
-public sealed class ProductsController(ProductService products) : ControllerBase
+public sealed class ProductsController(ProductService products, ProductSerialConversionService conversions) : ControllerBase
 {
     /// <summary>
     /// Lista paginada (take ≤ 200) con buscador (SKU, nombre, código de barras, dueño) y filtros: categoryIds (con
@@ -87,6 +87,17 @@ public sealed class ProductsController(ProductService products) : ControllerBase
 
     [HttpPost("{publicId:guid}/reactivate"), RequirePermission(PermissionCatalog.InventoryManage)]
     public Task<ProductDetailDto> Reactivate(Guid publicId, CancellationToken ct) => products.ReactivateAsync(publicId, ct);
+
+    /// <summary>
+    /// Lote 26 (Rentas R0) — "Convertir a serie": producto sin seguimiento (con o sin movimientos) → SERIAL, con una serie por
+    /// unidad en mano en cada posición (ADJUSTMENT − del saldo sin serie y ADJUSTMENT + por serie, motivo de sistema
+    /// TRACKING_CONVERSION, en una sola transacción). Pide inventory.manage aquí e inventory.adjust en el servicio (mueve inventario).
+    /// 400 'Capture {n} número(s) de serie para {bin} (hay {m}).'; 409 unidades reservadas o documentos abiertos; 422 si el
+    /// producto no es sin seguimiento o la existencia no es convertible.
+    /// </summary>
+    [HttpPost("{publicId:guid}/convert-to-serial"), RequirePermission(PermissionCatalog.InventoryManage)]
+    public Task<ProductSerialConversionResultDto> ConvertToSerial(Guid publicId, [FromBody] ProductSerialConversionRequest req, CancellationToken ct)
+        => conversions.ConvertAsync(publicId, req, ct);
 
     private static T[]? NullIfEmpty<T>(T[]? values) => values is { Length: > 0 } ? values : null;
 }

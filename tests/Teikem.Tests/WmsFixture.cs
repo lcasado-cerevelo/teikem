@@ -177,6 +177,8 @@ internal sealed class WmsFixture : IAsyncDisposable
             L(LookupDomains.ReconciliationTrigger, c);
         // Lote 16: modo de recepción (al final: ids previos intactos).
         foreach (var c in ReceivingModes.All) L(LookupDomains.ReceivingMode, c);
+        // Lote 26 (Rentas R0): motivo de sistema de la conversión a serie (al final: ids previos intactos).
+        L(LookupDomains.AdjustmentReason, AdjustmentReasons.TrackingConversion);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

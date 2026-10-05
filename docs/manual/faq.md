@@ -1560,7 +1560,8 @@ recolecta de otra posición o corrige el saldo con un conteo cíclico.
 
 **¿Qué significa "El motivo {código} lo asigna el sistema."? (400)**
 `RECEIPT_VARIANCE`, `COUNT_VARIANCE` y `PICK_BATCH_REVERSAL` son motivos que solo el sistema usa (recepción,
-conteo y reversa de una recolección, respectivamente). Un ajuste manual capturado por un usuario debe usar otro
+conteo y reversa de una recolección, respectivamente); también `OPENING_BALANCE` (saldo inicial de la migración, Lote 10) y
+`TRACKING_CONVERSION` (conversión a serie, Lote 26). Un ajuste manual capturado por un usuario debe usar otro
 motivo del catálogo `AdjustmentReason` (`DAMAGE`, `LOSS`, `FOUND`, `EXPIRED`, `PO_SHORTAGE`, `OTHER`).
 
 **¿Qué significa "El origen y el destino no pueden ser la misma posición."? (400)**
@@ -4292,6 +4293,64 @@ No a ciegas (sin `warehouse.count`): la lista de dónde está el producto no lle
 
 **Escaneé dos veces el mismo producto.**
 En la misma posición y lote se abre la línea ya contada para corregir la cantidad; no se suma ni se duplica. En otra posición es otra línea.
+
+## Lote 26 — Convertir un producto a serie (Rentas R0)
+
+Detalle en el [capítulo 06 §2.1](06-inventario-y-almacen.md#21-convertir-a-serie-lote-26-rentas-r0) y `docs/lote26-decisiones.md`.
+Endpoint: `POST /api/v1/products/{publicId}/convert-to-serial` (`inventory.manage` + `inventory.adjust`, módulo WMS_LOTSERIAL).
+
+### Mensajes nuevos del servidor
+
+**400 — "Capture {n} número(s) de serie para {bin} (hay {m})."**
+En la posición `{bin}` hay `{n}` unidades en mano y la solicitud trae `{m}` series (con `{m}` = 0 si la posición no vino). Capture
+exactamente una serie por unidad en cada posición con existencia; vea las posiciones en Inventario → Saldos filtrando por el producto.
+Si `{n}` es 0, quitó de la posición una serie que no corresponde: esa posición no tiene existencia del producto.
+
+**409 — "El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo."**
+Alguna unidad está apartada (recolección sin empacar, cruce de muelle u otra reserva). Termine o elimine esa recolección (o espere a
+que se despache) y vuelva a convertir.
+
+**409 — "El producto {sku} tiene recibos, tareas, recolecciones o conteos abiertos; termínelos antes de convertirlo."**
+Esos documentos moverían el producto sin series. Confirme o elimine el recibo, complete o cancele la tarea, empaque o elimine la
+recolección, y reconcilie o elimine el conteo; luego convierta.
+
+**422 — "El producto {sku} ya se controla por serie."**
+Ya está convertido (o se creó con serie). No hay nada que hacer; capture las series en los movimientos.
+
+**422 — "Solo se convierten a serie productos sin seguimiento; {sku} se controla por lote."**
+La herramienta solo convierte productos sin seguimiento. Un producto por lote no se convierte.
+
+**422 — "La existencia de {sku} en {bin} es {cantidad}; ajústela a unidades enteras antes de convertirlo."**
+Hay una fracción en esa posición (por ejemplo 1.5) y no se le puede dar una serie a media unidad. Corrija la existencia con un ajuste o
+un conteo y vuelva a convertir.
+
+**422 — "La existencia de {sku} en {posición o almacén} no está en una posición sin lote; muévala o ajústela antes de convertirlo."**
+Hay existencia sin posición (solo en el almacén) o registrada con lote. Pásela a una posición (transferencia) o corríjala con un ajuste
+antes de convertir.
+
+**403 — "Falta el permiso 'inventory.adjust'."**
+Convertir mueve inventario: además de `inventory.manage` hace falta `inventory.adjust`. Pida al administrador que se lo dé.
+
+**400 — "El motivo TRACKING_CONVERSION lo asigna el sistema."**
+"Conversión a serie" es un motivo que solo usa la herramienta de conversión; un ajuste manual debe usar otro motivo.
+
+### Preguntas frecuentes
+
+**¿Por qué no puedo cambiar el seguimiento a "Serie" en la ficha del producto?**
+Porque el producto ya tiene movimientos (409 "No se puede cambiar el tipo de seguimiento de un producto que ya tiene movimientos.").
+Use **Convertir a serie**: cambia el seguimiento y da de alta las series por el Kárdex, en una sola operación.
+
+**¿La conversión cambia las cantidades?**
+No. En cada posición sale el saldo sin serie y entra una unidad por cada serie, con el motivo "Conversión a serie": el en mano y el
+disponible quedan iguales. En el Kárdex verá esos ajustes (neto cero).
+
+**¿Puedo deshacer la conversión?**
+No: un producto con movimientos no vuelve a "sin seguimiento". Si se equivocó en un número de serie, corríjalo con un ajuste (baja de la
+serie equivocada y alta de la correcta, con nota).
+
+**¿Qué pasa si falla a mitad?**
+Nada queda a medias: la conversión es una sola transacción; si algo falla (una serie repetida, una posición que no cuadra) no se escribe
+ningún movimiento ni cambia el seguimiento.
 
 ## Lote A4 — App de almacén: contar por producto
 

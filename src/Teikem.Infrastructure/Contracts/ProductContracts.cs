@@ -71,3 +71,19 @@ public sealed record LotDto(int Id, string LotNumber, DateOnly? ManufactureDate,
 
 public sealed record SerialDto(int Id, string SerialNumber, int? LotId, string? LotNumber, string? StatusCode, string? Status,
     Guid? WarehousePublicId, string? WarehouseCode, int? BinId, string? BinCode);
+
+/// <summary>
+/// Lote 26 (Rentas R0) — series capturadas para una posición en la conversión a serie: tantas como unidades en mano tenga el
+/// producto en esa posición. La posición se identifica por su id (se resuelve dentro de su almacén filtrado por tenant).
+/// </summary>
+public sealed record SerialConversionPositionInput(int? BinId, IReadOnlyList<string>? SerialNumbers = null);
+
+/// <summary>
+/// Lote 26 (Rentas R0) — POST /products/{publicId}/convert-to-serial: un renglón por posición con existencia (con sus series);
+/// notas opcionales para los movimientos (por defecto 'Conversión a serie'); rowVersion opcional del producto (409 si cambió).
+/// </summary>
+public sealed record ProductSerialConversionRequest(IReadOnlyList<SerialConversionPositionInput>? Positions = null, string? Notes = null,
+    string? RowVersion = null);
+
+/// <summary>Resultado de la conversión: el producto ya SERIAL, cuántas series se dieron de alta y los movimientos y saldos tocados.</summary>
+public sealed record ProductSerialConversionResultDto(ProductDetailDto Product, int SerialCount, MovementResultDto Movements);

@@ -181,6 +181,7 @@ public static class DependencyInjection
         services.AddScoped<WarehouseLayoutService>();
         services.AddScoped<BinProductsService>();   // informe "Productos por posición"
         services.AddScoped<ProductService>();
+        services.AddScoped<ProductSerialConversionService>();   // Lote 26 (Rentas R0): conversión a serie
         services.AddScoped<ProductCategoryService>();
         services.AddScoped<InventoryReadService>();
         services.AddScoped<InventoryAdjustmentService>();

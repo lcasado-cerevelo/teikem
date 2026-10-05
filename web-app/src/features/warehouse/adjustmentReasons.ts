@@ -4,13 +4,15 @@
 
 /**
  * Motivos reservados al sistema: los genera el propio proceso (recepción, conteo, reversa de recolección, saldo inicial de
- * la migración), nunca a mano. Espejo de `AdjustmentRules.SystemReasons` del API, que responde 400 si llegan en un ajuste manual.
+ * la migración, conversión a serie), nunca a mano. Espejo de `AdjustmentRules.SystemReasons` del API, que responde 400 si
+ * llegan en un ajuste manual.
  */
 export const SYSTEM_RESERVED_REASONS: ReadonlySet<string> = new Set([
   'RECEIPT_VARIANCE',
   'COUNT_VARIANCE',
   'PICK_BATCH_REVERSAL',
   'OPENING_BALANCE',
+  'TRACKING_CONVERSION',
 ])
 
 /** Dirección de un ajuste manual: sube (entra) o baja (sale) el inventario de la posición. */

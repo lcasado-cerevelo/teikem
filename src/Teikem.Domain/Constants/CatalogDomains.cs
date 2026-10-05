@@ -1004,6 +1004,7 @@ public static class WarehouseTaskTypes
 /// <summary>
 /// LookupDomains.AdjustmentReason (D7). RECEIPT_VARIANCE, COUNT_VARIANCE y PICK_BATCH_REVERSAL los asigna solo el sistema.
 /// Lote 10: OPENING_BALANCE (saldo inicial de la migración) también es de sistema: solo lo escribe el importador import-legacy.
+/// Lote 26 (Rentas R0): TRACKING_CONVERSION también es de sistema: solo lo escribe la conversión de un producto a serie.
 /// </summary>
 public static class AdjustmentReasons
 {
@@ -1018,9 +1019,11 @@ public static class AdjustmentReasons
     public const string Other = "OTHER";
     /// <summary>Lote 10: saldo inicial cargado por el importador de datos heredados (import-legacy).</summary>
     public const string OpeningBalance = "OPENING_BALANCE";
+    /// <summary>Lote 26 (Rentas R0): salida del saldo sin serie y entrada de cada serie al convertir un producto a serie.</summary>
+    public const string TrackingConversion = "TRACKING_CONVERSION";
 
     /// <summary>Motivos que solo asigna el sistema (un ajuste manual no puede usarlos).</summary>
-    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance };
+    public static readonly IReadOnlyList<string> SystemAssigned = new[] { ReceiptVariance, CountVariance, PickBatchReversal, OpeningBalance, TrackingConversion };
 }
 
 /// <summary>LookupDomains.ShortageAction (D8).</summary>

@@ -578,19 +578,6 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     public async Task<ProductDetailDto> DeactivateAsync(Guid publicId, CancellationToken ct)
     {
         var current = await ResolveProductAsync(publicId, InventoryScope.Any, ct);
-        var openReceiptIds = await db.StatusIdsAsync(StatusDomains.ReceiptStatus, ReceiptStatuses.OpenCodes, ct);   // Lote 13: E/R/D
-        var openTaskIds = new List<int>
-        {
-            await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Pending, ct),
-            await db.StatusIdAsync(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.InProgress, ct),
-        };
-        var collectedPickId = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Collected, ct);
-        var packedPickId = await db.StatusIdAsync(StatusDomains.PickBatchStatus, PickBatchStatuses.Packed, ct);
-        var openCountIds = new List<int>
-        {
-            await db.StatusIdAsync(StatusDomains.CycleCountStatus, CycleCountStatuses.Open, ct),
-            await db.StatusIdAsync(StatusDomains.CycleCountStatus, CycleCountStatuses.Counted, ct),
-        };
 
         await db.RunInTransactionAsync(async ct2 =>
         {
@@ -601,33 +588,9 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             var onHand = balances.Sum(b => Math.Abs(b.QtyOnHand));
             if (onHand > 0) throw new ConflictException(ProductRules.DeactivateWithStock(product.Sku, onHand));
 
-            // ReceiptLine no lleva TenantId: se alcanza por su recibo filtrado.
-            var inOpenReceipt = await (from l in db.Set<ReceiptLine>().AsNoTracking()
-                                       join h in db.Set<ReceiptHeader>().AsNoTracking() on l.ReceiptHeaderId equals h.ReceiptHeaderId
-                                       where l.ProductId == product.ProductId && h.IsActive && openReceiptIds.Contains(h.StatusCodeId)
-                                       select l.ReceiptLineId).AnyAsync(ct2);
-            var inOpenTask = await db.Set<WarehouseTask>().AsNoTracking()
-                .AnyAsync(t => t.ProductId == product.ProductId && openTaskIds.Contains(t.StatusCodeId), ct2);
-            if (inOpenReceipt || inOpenTask) throw new ConflictException(ProductRules.DeactivateOpenDocs(product.Sku));
-
-            // Recolección que aún se puede eliminar (su reversa es una ENTRADA, que el ledger rechaza con el producto
-            // inactivo): COLLECTED, o PACKED con su orden activa y en etapa inicial (criterio de PickBatchRules.CanDelete).
-            // PickBatchLine no lleva TenantId: se alcanza por su lote filtrado.
-            var inRevertiblePick = await (from l in db.Set<PickBatchLine>().AsNoTracking()
-                                          join b in db.Set<PickBatch>().AsNoTracking() on l.PickBatchId equals b.PickBatchId
-                                          where l.ProductId == product.ProductId && l.ReversalTxnId == null && b.IsActive
-                                                && (b.StatusCodeId == collectedPickId
-                                                    || (b.StatusCodeId == packedPickId
-                                                        && db.TransportOrders.Any(o => o.TransportOrderId == b.TransportOrderId && o.IsActive
-                                                            && db.StatusCodes.Any(s => s.StatusCodeId == o.StatusCodeId && s.IsInitial))))
-                                          select l.PickBatchLineId).AnyAsync(ct2);
-            // Conteo abierto (OPEN/COUNTED) con líneas del producto: su reconciliación puede asentar entradas. La tarea COUNT
-            // nace sin ProductId, así que la verificación de tareas no la ve. CycleCountLine se alcanza por su conteo filtrado.
-            var inOpenCount = await (from cl in db.Set<CycleCountLine>().AsNoTracking()
-                                     join c in db.Set<CycleCount>().AsNoTracking() on cl.CycleCountId equals c.CycleCountId
-                                     where cl.ProductId == product.ProductId && c.IsActive && openCountIds.Contains(c.StatusCodeId)
-                                     select cl.CycleCountLineId).AnyAsync(ct2);
-            if (inRevertiblePick || inOpenCount) throw new ConflictException(ProductRules.DeactivateOpenDocs(product.Sku));
+            // Recibos abiertos, tareas abiertas, recolecciones que aún se pueden eliminar (su reversa es una ENTRADA, que el
+            // ledger rechaza con el producto inactivo) y conteos abiertos: criterio común con la conversión a serie (Lote 26).
+            if (await ProductOpenDocuments.AnyAsync(db, product.ProductId, ct2)) throw new ConflictException(ProductRules.DeactivateOpenDocs(product.Sku));
 
             product.IsActive = false;
             await SaveProductAsync(ct2);

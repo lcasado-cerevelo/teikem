@@ -1,4 +1,4 @@
-# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales; Almacenes y ubicaciones ampliado en el Lote 23: hojas de posición)
+# Capítulo 06 — Inventario y almacén (Lote 6; Almacenes y ubicaciones ampliado en el Lote 11; Productos y Compras ampliados en el Lote 12; Recibo, Tareas y Recolección y empaque ampliados en el Lote 13; Inventario y Conteo cíclico ampliados en el Lote 14; Almacenes, Recibo y Tareas ampliados en el Lote 16: recibo directo a posición; Conteo cíclico ampliado en el Lote 21: conteo por producto, corrección, vista previa, cierre en bloque y posiciones provisionales; Almacenes y ubicaciones ampliado en el Lote 23: hojas de posición; Productos ampliado en el Lote 26: convertir a serie)
 
 Este capítulo describe Almacenes y ubicaciones, Productos y categorías, Inventario (saldos, Kárdex con resumen y detalle, ajustes,
 transferencias, conciliación automática con descuadres, genealogía y rastro de serie), Recepción (avisos de llegada y recibos, incluida la
@@ -433,7 +433,7 @@ filtros de la tabla.
 | `maxPickQty` < `minPickQty` | `El máximo de la posición de picking debe ser mayor o igual al mínimo.` | 400 |
 | `minPickQty` sin posición preferida en zona PICKING | `El mínimo de picking requiere una posición preferida en una zona PICKING.` | 400 |
 | Posición preferida de otro almacén que el preferido | `La posición preferida debe pertenecer al almacén preferido.` | 400 |
-| Cambiar seguimiento, unidad base o dueño con movimientos | `No se puede cambiar {el tipo de seguimiento / la unidad de medida base / el dueño} de un producto que ya tiene movimientos.` | 409 |
+| Cambiar seguimiento, unidad base o dueño con movimientos (para pasar un producto sin seguimiento a **serie** use "Convertir a serie", sección 2.1) | `No se puede cambiar {el tipo de seguimiento / la unidad de medida base / el dueño} de un producto que ya tiene movimientos.` | 409 |
 | Baja con inventario en mano | `El producto {sku} tiene inventario en mano ({qty}); no se puede desactivar.` | 409 |
 | Baja con documentos abiertos | `El producto {sku} está en recibos abiertos, tareas pendientes, recolecciones o conteos abiertos; ciérrelos antes de desactivarlo.` | 409 |
 | Categoría: nombre vacío / > 150 | `El nombre de la categoría es obligatorio.` / `El nombre de la categoría no puede exceder 150 caracteres.` | 400 |
@@ -448,6 +448,86 @@ filtros de la tabla.
 
 `Product.IsActive` (baja lógica, sin dominio de estatus propio): activo ↔ inactivo, con las guardas de arriba.
 `InventoryLot.IsActive` y `InventorySerial` (ver sección 3) no tienen baja manual: se gobiernan por el ledger.
+
+### 2.1 Convertir a serie (Lote 26, Rentas R0)
+
+Qué hace: pasa un producto **sin seguimiento** (`NONE`) a seguimiento **por serie** (`SERIAL`) aunque ya tenga movimientos, dándole
+un número de serie a **cada unidad en mano**. Es la **única** forma de cambiar el seguimiento de un producto con movimientos: la
+edición normal (`PATCH`) lo sigue rechazando con 409 (regla D25). Pensado para los equipos de Advance Depot que llegaron de la
+migración sin series y que se van a **rentar** (las rentas solo trabajan con equipos con serie).
+
+Quién puede: hace falta **`inventory.manage`** (cambia el maestro del producto) **y `inventory.adjust`** (mueve inventario). Sin
+`inventory.manage` el API responde 403 antes de empezar; con `inventory.manage` pero sin `inventory.adjust`, 403 `Falta el permiso
+'inventory.adjust'.` (y queda un evento `PERMISSION_DENIED`). Módulo **WMS_LOTSERIAL**. La compañía sale de la sesión: un producto o una
+posición de otra compañía dan 404.
+
+Cómo se usa (servidor; el botón "Convertir a serie" de la ficha del producto llega con la web de Rentas):
+- `POST /api/v1/products/{publicId}/convert-to-serial`
+  ```json
+  { "positions": [
+      { "binId": 12, "serialNumbers": ["SN-0001", "SN-0002"] },
+      { "binId": 15, "serialNumbers": ["SN-0003"] } ],
+    "notes": "Equipos de renta", "rowVersion": "AAAAAAAAB9E=" }
+  ```
+  Un renglón por **cada posición donde hay existencia** del producto, con **tantas series como unidades en mano** en esa posición
+  (consulte las posiciones en `GET /api/v1/inventory/balances?productPublicIds=…`). `notes` es opcional (si no se escribe, los
+  movimientos dicen "Conversión a serie"); `rowVersion` es opcional (el de la ficha: si otro usuario cambió el producto, 409). Si la
+  misma posición viene en dos renglones, sus series se suman.
+- Respuesta 200: `{ product, serialCount, movements: { transactions, balances } }` — la ficha del producto ya con `trackingTypeCode =
+  "SERIAL"`, cuántas series se dieron de alta y los movimientos y saldos que tocó.
+- Producto **sin existencia** (con o sin movimientos): se manda `{}` o `positions: []` y solo cambia el seguimiento.
+
+Qué pasa por dentro (todo en **una sola transacción**: si algo falla no se escribe nada):
+1. Se bloquea el producto y todos sus saldos (ningún otro movimiento del producto entra mientras se convierte).
+2. Se verifica: el producto es sin seguimiento; **nada reservado**; sin documentos abiertos; cada posición con existencia tiene
+   unidades enteras, sin lote, y el número de series capturadas es igual a sus unidades en mano.
+3. Por cada posición, en el Kárdex: un **ajuste de salida** (`ADJUSTMENT −`) por todo el saldo sin serie y un **ajuste de entrada**
+   (`ADJUSTMENT +1`) por cada serie, todos con el motivo de sistema **`TRACKING_CONVERSION` ("Conversión a serie")**. El neto es 0:
+   **el en mano y el disponible de cada posición no cambian**. Cada serie nace `AVAILABLE` en su posición (historial de estatus de la
+   serie: alta en Disponible).
+4. El seguimiento del producto pasa a `SERIAL` (queda en la **auditoría** del producto: cambio de `TrackingTypeLookupId`).
+
+Después de convertir, el producto se trabaja como cualquier producto con serie: ajustes, transferencias, recolecciones y recibos
+piden las series. El motivo `TRACKING_CONVERSION` **no** se puede usar en un ajuste manual (400 `El motivo TRACKING_CONVERSION lo
+asigna el sistema.`) y la pantalla de ajuste no lo ofrece.
+
+#### Validaciones (convertir a serie)
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Una posición con existencia trae otro número de series que sus unidades en mano, o no viene en la solicitud (`{n}` = unidades en mano de la posición; `{m}` = series capturadas). Una posición **sin** existencia con series da el mismo mensaje con `{n}` = 0 | `Capture {n} número(s) de serie para {bin} (hay {m}).` | 400 |
+| Renglón sin `binId` (`errors["positions[i].binId"]`) | `Indique la posición.` | 400 |
+| Serie repetida en la solicitud (sin distinguir mayúsculas, aunque sea en otra posición) | `El número de serie {s} está repetido.` | 400 |
+| Serie de más de 80 caracteres / más de 500 series en un renglón | `El número de serie {s} excede 80 caracteres.` / `Una línea admite como máximo 500 números de serie.` | 400 |
+| `notes` de más de 300 caracteres | `Las notas admiten como máximo 300 caracteres.` | 400 |
+| `rowVersion` que no es base64 | `rowVersion inválido: se espera el valor base64 devuelto por la ficha.` | 400 |
+| Producto de otra compañía o inexistente | `Producto no encontrado.` | 404 |
+| `binId` de otra compañía o inexistente | `Posición no encontrada.` | 404 |
+| Sin `inventory.adjust` (con `inventory.manage`) | `Falta el permiso 'inventory.adjust'.` | 403 |
+| Alguna posición del producto tiene unidades reservadas (recolección, cruce de muelle u otra reserva) | `El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo.` | 409 |
+| El producto está en un recibo abierto, una tarea pendiente o en curso, una recolección que aún se puede eliminar o un conteo abierto (el mismo criterio que la baja del producto) | `El producto {sku} tiene recibos, tareas, recolecciones o conteos abiertos; termínelos antes de convertirlo.` | 409 |
+| Otro usuario cambió el producto (con `rowVersion`) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Una serie capturada ya está en inventario / fue dada de baja (series que el producto ya tenía registradas) | `La serie {s} ya está en inventario.` / `La serie {s} fue dada de baja; no vuelve al inventario.` | 409 |
+| El producto ya es por serie | `El producto {sku} ya se controla por serie.` | 422 |
+| El producto es por lote | `Solo se convierten a serie productos sin seguimiento; {sku} se controla por lote.` | 422 |
+| Una posición tiene existencia fraccionaria (por ejemplo 1.5) | `La existencia de {sku} en {bin} es {cantidad}; ajústela a unidades enteras antes de convertirlo.` | 422 |
+| Existencia sin posición (solo en el almacén) o con lote | `La existencia de {sku} en {posición o almacén} no está en una posición sin lote; muévala o ajústela antes de convertirlo.` | 422 |
+| Posición o almacén inactivos con existencia | `La posición {bin} está inactiva; no admite movimientos de inventario.` / `El almacén {código} está inactivo; no admite movimientos de inventario.` | 422 |
+
+#### Estatus y efectos
+
+No hay estatus propio: el producto conserva su `IsActive`. Cambia `TrackingType` de `NONE` a `SERIAL` (de una sola vía: un producto
+por serie no vuelve a `NONE` si tiene movimientos). Cada serie nueva entra a `SerialStatus` en **Disponible** (`AVAILABLE`). Bloquea:
+reservas, documentos abiertos y existencias no convertibles (tabla de arriba).
+
+#### Casos frecuentes
+
+- **Producto de Depot con 3 unidades en `01-A-24` y 1 en `02-B-10`**: capture 3 series para `01-A-24` y 1 para `02-B-10` en la misma
+  solicitud. Si falta una, el API dice exactamente cuántas faltan en qué posición y no convierte nada.
+- **Tiene unidades reservadas por una recolección**: empaque o elimine la recolección (o espere a que termine) y vuelva a intentar.
+- **La existencia está mal** (no coincide con lo físico): primero haga el conteo cíclico o el ajuste, luego convierta.
+- **Reportes**: los ajustes de la conversión aparecen en el Kárdex y en el Reporte de ajustes con el motivo "Conversión a serie"
+  (salida y entradas por el mismo total, neto 0).
 
 ---
 
@@ -546,7 +626,7 @@ Cómo se usa:
   cualquier motivo que agregue la compañía). Aplica a las pantallas, a la app móvil y a las integraciones. **No la exigen**
   los ajustes que escribe el sistema, porque no pasan por este endpoint: la diferencia de un recibo (`RECEIPT_VARIANCE`), la
   de un conteo (`COUNT_VARIANCE`), la reversa al eliminar una recolección (`PICK_BATCH_REVERSAL`) y el saldo inicial de la
-  migración (`OPENING_BALANCE`). Tampoco la exigen la transferencia ni el "ajuste manual" con que se resuelve un faltante de
+  migración (`OPENING_BALANCE`) y la conversión a serie (`TRACKING_CONVERSION`, Lote 26, sección 2.1). Tampoco la exigen la transferencia ni el "ajuste manual" con que se resuelve un faltante de
   compra (sección 8): ahí la nota sigue siendo opcional, porque el movimiento queda ligado a la orden y a su línea.
 - `POST /api/v1/inventory/transfers` — `{ "productPublicId": "...", "fromBinId": 5, "toBinId": 8, "quantity": 3 }`
   (entre almacenes: agrega `fromWarehousePublicId`/`toWarehousePublicId`; con lote o serie: `lotId` y `serialNumbers`).
@@ -560,7 +640,7 @@ pantalla**; el API acepta cualquier motivo que no sea de sistema con cualquiera 
 | Encontrado (`FOUND`) | Sí | No |
 | Daño (`DAMAGE`), Pérdida (`LOSS`), Vencido (`EXPIRED`) | No | Sí |
 | Los demás motivos de catálogo que no son de sistema (por ejemplo `PO_SHORTAGE`, `OTHER`) | Sí | Sí |
-| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE` | Nunca (los asigna el sistema) | Nunca |
+| `RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION` (Lote 26) | Nunca (los asigna el sistema) | Nunca |
 
 Al cambiar de dirección, un motivo que ya no vale se quita. El motivo se elige con un buscador. La pantalla muestra **"Disponible en la
 posición: N"** y, al bajar, **no deja bajar más de lo disponible**. Un producto **por lote** pide el número de lote al subir y elige un
@@ -634,7 +714,7 @@ Cómo se ven y se resuelven:
 | Cantidad fuera de rango | `La cantidad excede el máximo permitido.` | 400 |
 | Ajuste sin cantidad / cantidad = 0 | `Indique la cantidad del ajuste.` / `La cantidad del ajuste no puede ser cero.` | 400 |
 | Ajuste sin motivo | `Indique el motivo del ajuste.` | 400 |
-| Motivo reservado al sistema (`RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`) | `El motivo {código} lo asigna el sistema.` | 400 |
+| Motivo reservado al sistema (`RECEIPT_VARIANCE`, `COUNT_VARIANCE`, `PICK_BATCH_REVERSAL`, `OPENING_BALANCE`, `TRACKING_CONVERSION`) | `El motivo {código} lo asigna el sistema.` | 400 |
 | Ajuste sin nota, o con solo espacios (ajuste del 2026-09-30; el error va en `errors.notes`) | `Escriba una nota que explique el ajuste.` | 400 |
 | Nota del ajuste o de la transferencia de más de 300 caracteres (`errors.notes`) | `Las notas admiten como máximo 300 caracteres.` | 400 |
 | Motivo desconocido (también en el filtro `reasons` del Kárdex) | `Motivo de ajuste desconocido: 'X'.` | 400 |
@@ -1816,6 +1896,9 @@ destino de cada línea, `warehouse.receive`. La prueba de seguridad de controlad
 
 Informe Productos por posición: no hay permisos ni módulos nuevos. `GET /api/v1/warehouses/{publicId}/bin-products` pide `inventory.view`, módulo
 **WMS_LOTSERIAL** (reemplaza a `bin-sheets` y `bin-sheets/mark-printed` del Lote 23). La prueba de seguridad de controladores pasa de 130 a 129 acciones.
+
+Lote 26 (Rentas R0): `POST /api/v1/products/{publicId}/convert-to-serial` pide `inventory.manage` en el controlador e `inventory.adjust` en el
+servicio, módulo **WMS_LOTSERIAL**. No hay permisos ni módulos nuevos; la prueba de seguridad de controladores pasa de 130 a 131 acciones.
 
 Lote 12: `GET /api/v1/products/brands` pide `inventory.view` (como la lista de productos) y `POST
 /api/v1/warehouses/{publicId}/bins/capacity` pide `warehouse.manage` (como editar una posición). No hay permisos nuevos.

@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { reasonAllowed, reasonsForDirection, selectableAdjustmentReasons, signedAdjustQuantity } from './adjustmentReasons'
 
 describe('selectableAdjustmentReasons', () => {
-  it('oculta los motivos reservados al sistema, incluido el saldo inicial de la migración', () => {
+  it('oculta los motivos reservados al sistema, incluidos el saldo inicial de la migración y la conversión a serie', () => {
     const reasons = [
       { code: 'DAMAGE', label: 'Daño' },
       { code: 'RECEIPT_VARIANCE', label: 'Diferencia en recepción' },
       { code: 'COUNT_VARIANCE', label: 'Diferencia de conteo' },
       { code: 'PICK_BATCH_REVERSAL', label: 'Reversa de recolección' },
       { code: 'OPENING_BALANCE', label: 'Saldo inicial (migración)' },
+      { code: 'TRACKING_CONVERSION', label: 'Conversión a serie' },
     ]
     const visible = selectableAdjustmentReasons(reasons)
     expect(visible.map((r) => r.code)).toEqual(['DAMAGE'])

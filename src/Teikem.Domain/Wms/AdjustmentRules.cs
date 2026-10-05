@@ -54,6 +54,7 @@ public static class AdjustmentRules
     {
         AdjustmentReasons.ReceiptVariance, AdjustmentReasons.CountVariance, AdjustmentReasons.PickBatchReversal,
         AdjustmentReasons.OpeningBalance,   // Lote 10: solo el importador de datos heredados
+        AdjustmentReasons.TrackingConversion,   // Lote 26: solo la conversión de un producto a serie
     };
 
     public static string SystemReason(string code) => $"El motivo {code} lo asigna el sistema.";

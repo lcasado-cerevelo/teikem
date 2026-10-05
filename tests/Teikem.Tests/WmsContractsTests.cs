@@ -75,6 +75,10 @@ public class WmsContractsTests
         { typeof(ProductListItemDto), "int Id, Guid PublicId, string Sku, string Name, int? CategoryId, string? CategoryName, Guid? OwnerClientPublicId, string? OwnerName, bool IsOwn, string BaseUomCode, string TrackingTypeCode, string? Barcode, decimal? PurchaseCost, decimal? SalePrice, decimal QtyOnHand, decimal QtyReserved, decimal QtyAvailable, decimal? MinQty, bool IsBelowMin, bool IsActive, string? Brand, string? Model" },
         { typeof(ProductPageDto), "int Total, int Skip, int Take, IReadOnlyList<ProductListItemDto> Items" },
         { typeof(ProductDetailDto), "ProductListItemDto Product, decimal? WeightKg, decimal? VolumeM3, Guid? PreferredWarehousePublicId, string? PreferredWarehouseCode, int? PreferredBinId, string? PreferredBinCode, decimal? MinPickQty, decimal? MaxPickQty, bool HasMovements, string RowVersion" },
+        // Lote 26 (Rentas R0): conversión a serie.
+        { typeof(SerialConversionPositionInput), "int? BinId, IReadOnlyList<string>? SerialNumbers" },
+        { typeof(ProductSerialConversionRequest), "IReadOnlyList<SerialConversionPositionInput>? Positions, string? Notes, string? RowVersion" },
+        { typeof(ProductSerialConversionResultDto), "ProductDetailDto Product, int SerialCount, MovementResultDto Movements" },
         { typeof(ProductCategoryRequest), "string? Name, int? ParentId" },
         { typeof(ProductCategoryPatchRequest), "string? Name, int? ParentId, bool? ClearParent" },
         { typeof(ProductCategoryDto), "int Id, string Name, int? ParentId, string Path, bool IsActive, int ProductCount" },

@@ -11558,6 +11558,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/products/{publicId}/convert-to-serial": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ProductSerialConversionRequest"];
+                    "text/json": components["schemas"]["ProductSerialConversionRequest"];
+                    "application/*+json": components["schemas"]["ProductSerialConversionRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ProductSerialConversionResultDto"];
+                        "application/json": components["schemas"]["ProductSerialConversionResultDto"];
+                        "text/json": components["schemas"]["ProductSerialConversionResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/pulse": {
         parameters: {
             query?: never;
@@ -20490,6 +20535,17 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        ProductSerialConversionRequest: {
+            positions?: components["schemas"]["SerialConversionPositionInput"][] | null;
+            notes?: string | null;
+            rowVersion?: string | null;
+        };
+        ProductSerialConversionResultDto: {
+            product?: components["schemas"]["ProductDetailDto"];
+            /** Format: int32 */
+            serialCount?: number;
+            movements?: components["schemas"]["MovementResultDto"];
+        };
         PulseDto: {
             indicators?: components["schemas"]["IndicatorValueDto"][] | null;
             charts?: components["schemas"]["ChartDataDto"][] | null;
@@ -21263,6 +21319,11 @@ export interface components {
             skip?: number;
             /** Format: int32 */
             take?: number;
+        };
+        SerialConversionPositionInput: {
+            /** Format: int32 */
+            binId?: number | null;
+            serialNumbers?: string[] | null;
         };
         SerialDto: {
             /** Format: int32 */

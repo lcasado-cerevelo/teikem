@@ -81,6 +81,7 @@ public class WmsControllerSecurityTests
         [(typeof(ProductsController), nameof(ProductsController.Update))] = PermissionCatalog.InventoryManage,
         [(typeof(ProductsController), nameof(ProductsController.Deactivate))] = PermissionCatalog.InventoryManage,
         [(typeof(ProductsController), nameof(ProductsController.Reactivate))] = PermissionCatalog.InventoryManage,
+        [(typeof(ProductsController), nameof(ProductsController.ConvertToSerial))] = PermissionCatalog.InventoryManage,   // Lote 26: + inventory.adjust en el servicio
 
         [(typeof(InventoryController), nameof(InventoryController.Balances))] = PermissionCatalog.InventoryView,
         [(typeof(InventoryController), nameof(InventoryController.Transactions))] = PermissionCatalog.InventoryView,
@@ -279,7 +280,10 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
         // Informe "Productos por posición": se ve con inventory.view (sin permiso nuevo).
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(WarehousesController), nameof(WarehousesController.BinProducts))]);
-        Assert.Equal(130, Expected.Count);
+        // Lote 26 (Rentas R0): convertir a serie cambia el maestro (inventory.manage en el controlador) y mueve inventario
+        // (inventory.adjust lo exige ProductSerialConversionService: ProductSerialConversionTests).
+        Assert.Equal(PermissionCatalog.InventoryManage, Expected[(typeof(ProductsController), nameof(ProductsController.ConvertToSerial))]);
+        Assert.Equal(131, Expected.Count);
     }
 
     [Fact]

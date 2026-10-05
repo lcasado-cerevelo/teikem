@@ -111,7 +111,7 @@ public sealed class InventoryController(InventoryReadService reads, InventoryAdj
 
     /// <summary>
     /// Ajuste manual: quantity con signo (&gt; 0 entra a la posición, &lt; 0 sale; 0 → 400) y motivo del catálogo
-    /// AdjustmentReason (RECEIPT_VARIANCE, COUNT_VARIANCE, PICK_BATCH_REVERSAL y OPENING_BALANCE los asigna el sistema → 400).
+    /// AdjustmentReason (RECEIPT_VARIANCE, COUNT_VARIANCE, PICK_BATCH_REVERSAL, OPENING_BALANCE y TRACKING_CONVERSION los asigna el sistema → 400).
     /// notes obligatoria (vacía → 400 errors.notes 'Escriba una nota que explique el ajuste.'; máx. 300).
     /// Salida por encima del disponible → 409 insufficient_stock.
     /// </summary>

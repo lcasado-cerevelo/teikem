@@ -2736,12 +2736,12 @@ step "catálogos, permisos y almacén demo (Lote 6)"
 ME6=$(expect 200 "$(req GET /api/v1/me)")
 echo "$ME6" | jq -e '[.permissions[]] as $p | all(["inventory.view","inventory.manage","inventory.adjust","warehouse.manage"][]; . as $x | $p | index($x))' >/dev/null || fail "el admin sin los 4 permisos nuevos"
 expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="SCRAPPED" and .stageKind=="TERMINAL") and any(.[]; .code=="SHIPPED" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus (D16)"
-expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==10 and any(.[]; .code=="OPENING_BALANCE")' >/dev/null || fail "AdjustmentReason (10, con OPENING_BALANCE del Lote 10)"
+expect 200 "$(req GET /api/v1/catalogs/AdjustmentReason)" | jq -e 'length==11 and any(.[]; .code=="OPENING_BALANCE") and any(.[]; .code=="TRACKING_CONVERSION")' >/dev/null || fail "AdjustmentReason (11, con OPENING_BALANCE del Lote 10 y TRACKING_CONVERSION del Lote 26)"
 DEMO=$(expect 200 "$(req GET /api/v1/warehouses)" | jq -r '[.[] | select(.code=="ALM-01" and .statusCode=="ACTIVE")][0].publicId')
 [[ "$DEMO" =~ ^[0-9a-f-]{36}$ ]] || fail "almacén demo ALM-01 ACTIVE (D49)"
 expect 200 "$(req GET "/api/v1/warehouses/$DEMO")" | jq -e '([.zones[].code] | sort)==["PCK","QUA","RSV","STG"] and (.zones[] | select(.code=="STG") | .zoneTypeCode=="STAGING") and ([.docks[] | select(.statusCode=="FREE") | .code] | sort)==["D1","D2"]' >/dev/null || fail "zonas y muelles de ALM-01"
 expect 200 "$(req GET "/api/v1/warehouses/$DEMO/bins?search=STG-01")" | jq -e 'any(.items[]; .code=="STG-01")' >/dev/null || fail "posición STG-01 de ALM-01"
-ok "4 permisos nuevos, SerialStatus con SHIPPED lateral y SCRAPPED terminal, 9 motivos de ajuste; ALM-01 ACTIVE con STG/PCK/RSV/QUA, STG-01 y muelles D1/D2 FREE"
+ok "4 permisos nuevos, SerialStatus con SHIPPED lateral y SCRAPPED terminal, 11 motivos de ajuste (con OPENING_BALANCE y TRACKING_CONVERSION); ALM-01 ACTIVE con STG/PCK/RSV/QUA, STG-01 y muelles D1/D2 FREE"
 
 step "almacenes y ubicaciones (Lote 6): alta, zonas, posiciones, muelles y PATCH persistido"
 W6=$(expect 200 "$(req POST /api/v1/warehouses "{\"code\":\"W6$TS\",\"name\":\"Almacén smoke $TS\"}")"); W6P=$(wpid "$W6")
@@ -4787,7 +4787,7 @@ expect 400 "$(req POST /api/v1/cycle-counts "$EMPTY_BODY" "$TCNT21")" | jq -e --
 EMPTY_OK="{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"allowEmpty\":true}"
 CCE=$(expect 200 "$(req POST /api/v1/cycle-counts "$EMPTY_OK" "$TCNT21")"); IDE=$(echo "$CCE" | jq -r .count.id)
 echo "$CCE" | jq -e '.count.originCode=="PRODUCT" and .count.statusCode=="OPEN" and .count.lineCount==0 and (.lines|length)==0 and .count.taskId!=null' >/dev/null || fail "conteo vacío por producto: $(echo "$CCE" | jq -c '{o:.count.originCode,s:.count.statusCode,l:(.lines|length)}')"
-M21AE="Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías."
+M21AE="Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías."
 HASAE='((.title // "") + " " + ([(.errors // {})[][]] | join(" "))) | contains($m)'
 expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\"],\"binIds\":[$B21A],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con posiciones → 400"
 expect 400 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"productPublicIds\":[\"$PE21\",\"$P21\"],\"allowEmpty\":true}" "$TCNT21")" | jq -e --arg m "$M21AE" "$HASAE" >/dev/null || fail "allowEmpty con dos productos → 400"
@@ -4823,6 +4823,41 @@ expect 400 "$(req GET "/api/v1/warehouses/$W6P/bin-products?take=201")" | jq -e 
 TB23=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")
 C23G=$(req GET "/api/v1/warehouses/$W6P/bin-products" '' "$TB23" | tail -n1); [[ "$C23G" == 403 || "$C23G" == 404 ]] || fail "otra compañía lee productos por posición ajenos (dio $C23G)"
 ok "productos por posición: sku/nombre/código de barras y generatedAtUtc con solo inventory.view; el origen vaciado queda sin productos; paginación; 400 (take > 200); otra compañía no lee (403/404)"
+
+step "convertir a serie (Lote 26, Rentas R0): por posición con motivo de sistema, D25 intacto, 400/409/422/403 y otra compañía"
+# Producto sin seguimiento con existencia en dos posiciones: el PATCH del seguimiento sigue en 409 (D25) y la herramienta
+# "Convertir a serie" saca el saldo sin serie y mete cada serie (ADJUSTMENT −/+ con TRACKING_CONVERSION) en una transacción.
+TOKEN=$(login "$EMAIL" "$PASS"); TREAD26=$(login "lectura6$TS@teikem.local" "$PASS")
+B26A=$(bin "$ZPCK" P-26A); B26B=$(bin "$ZPCK" P-26B); B26C=$(bin "$ZPCK" P-26C)
+P26D=$(expect 200 "$(req POST /api/v1/products "{\"sku\":\"P26$TS\",\"name\":\"Equipo de renta $TS\",\"purchaseCost\":100}")")
+P26=$(echo "$P26D" | jq -r .product.publicId); P26ID=$(echo "$P26D" | jq -r .product.id)
+expect 200 "$(adjust "$P26" "$W6P" "$B26A" 2 FOUND)" >/dev/null
+expect 200 "$(adjust "$P26" "$W6P" "$B26B" 1 FOUND)" >/dev/null
+expect 409 "$(req PATCH "/api/v1/products/$P26" '{"trackingType":"SERIAL"}')" | jq -e '.title=="No se puede cambiar el tipo de seguimiento de un producto que ya tiene movimientos."' >/dev/null || fail "D25: PATCH del seguimiento con movimientos → 409"
+expect 400 "$(adjust "$P26" "$W6P" "$B26A" 1 TRACKING_CONVERSION)" | jq -e --arg m "El motivo TRACKING_CONVERSION lo asigna el sistema." "$HASM" >/dev/null || fail "TRACKING_CONVERSION en un ajuste manual → 400"
+conv26() { jq -cn --argjson a "$B26A" --argjson b "$B26B" --arg s1 "$1" --arg s2 "$2" --arg s3 "$3" '{positions:[{binId:$a,serialNumbers:([$s1,$s2]|map(select(.!="")))},{binId:$b,serialNumbers:([$s3]|map(select(.!="")))}]}'; }
+S1="SN26A$TS"; S2="SN26B$TS"; S3="SN26C$TS"
+expect 403 "$(req POST "/api/v1/products/$P26/convert-to-serial" "$(conv26 "$S1" "$S2" "$S3")" "$TREAD26")" >/dev/null
+expect 400 "$(req POST "/api/v1/products/$P26/convert-to-serial" "$(conv26 "$S1" "" "$S3")")" | jq -e --arg m "Capture 2 número(s) de serie para P-26A (hay 1)." "$HASM" >/dev/null || fail "conversión con menos series que unidades → 400"
+expect 400 "$(req POST "/api/v1/products/$P26/convert-to-serial" "$(jq -cn --argjson a "$B26A" --argjson c "$B26C" --arg s1 "$S1" --arg s2 "$S2" --arg s3 "$S3" '{positions:[{binId:$a,serialNumbers:[$s1,$s2]},{binId:$c,serialNumbers:[$s3]}]}')")" | jq -e --arg m "Capture 1 número(s) de serie para P-26B (hay 0)." "$HASM" >/dev/null || fail "posición con existencia sin series → 400"
+# Un recibo abierto del producto bloquea (409); se borra y sigue.
+R26=$(expect 200 "$(blind "$W6P" "$B_STG" "$P26" 1)" | jq -r .header.publicId)
+expect 409 "$(req POST "/api/v1/products/$P26/convert-to-serial" "$(conv26 "$S1" "$S2" "$S3")")" | jq -e --arg m "El producto P26$TS tiene recibos, tareas, recolecciones o conteos abiertos; termínelos antes de convertirlo." '.title==$m' >/dev/null || fail "conversión con un recibo abierto → 409"
+expect 204 "$(req DELETE "/api/v1/receipts/$R26")" >/dev/null
+TB26=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")
+C26=$(req POST "/api/v1/products/$P26/convert-to-serial" "$(conv26 "$S1" "$S2" "$S3")" "$TB26" | tail -n1); [[ "$C26" == 403 || "$C26" == 404 ]] || fail "otra compañía convierte un producto ajeno (dio $C26)"
+# Nada de lo anterior escribió: sigue NONE y con 3 en mano.
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.trackingTypeCode=="NONE" and .product.qtyOnHand==3' >/dev/null || fail "los rechazos no deben escribir"
+CV26=$(expect 200 "$(req POST "/api/v1/products/$P26/convert-to-serial" "$(conv26 "$S1" "$S2" "$S3")")")
+echo "$CV26" | jq -e '.product.product.trackingTypeCode=="SERIAL" and .serialCount==3 and .product.product.qtyOnHand==3 and .product.product.qtyAvailable==3 and (.movements.transactions|length)==5 and all(.movements.transactions[]; .reasonCode=="TRACKING_CONVERSION" and .typeCode=="ADJUSTMENT" and .notes=="Conversión a serie") and ([.movements.transactions[].signedQuantity]|add)==0' >/dev/null || fail "conversión a serie: $(echo "$CV26" | jq -c '{t:.product.product.trackingTypeCode,n:.serialCount,m:[.movements.transactions[]|{q:.signedQuantity,r:.reasonCode,s:.serialNumber}]}')"
+[[ $(onhand "$W6P" "$B26A" "$P26") == 2 && $(onhand "$W6P" "$B26B" "$P26") == 1 ]] || fail "el en mano por posición no cambia con la conversión"
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg a "$S1" --arg c "$S3" '(length==3) and all(.[]; .statusCode=="AVAILABLE") and (map(select(.serialNumber==$a))[0].binCode=="P-26A") and (map(select(.serialNumber==$c))[0].binCode=="P-26B")' >/dev/null || fail "series AVAILABLE en su posición"
+expect 200 "$(req GET "/api/v1/audit/changes?entityType=PRODUCT&entityId=$P26ID&take=20")" | jq -e 'any(.items[]; (.changesJson // "") | contains("TrackingTypeLookupId"))' >/dev/null || fail "AuditLog del cambio de seguimiento"
+# Ya es SERIAL: segunda conversión 422 y el ajuste sin series pide las series.
+expect 422 "$(req POST "/api/v1/products/$P26/convert-to-serial" '{}')" | jq -e --arg m "El producto P26$TS ya se controla por serie." '.title==$m' >/dev/null || fail "segunda conversión → 422"
+expect 400 "$(adjust "$P26" "$W6P" "$B26A" 1 FOUND)" | jq -e --arg m "El producto P26$TS se controla por serie; capture los números de serie." "$HASM" >/dev/null || fail "tras convertir, el ajuste exige series"
+RC26=$(reconcile); echo "$RC26" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras la conversión: $(echo "$RC26" | jq -c .mismatches)"
+ok "convertir a serie: D25 sigue en 409 en el PATCH; TRACKING_CONVERSION manual 400; 403 con solo lectura; 400 'Capture n número(s) de serie para {bin} (hay m)' (menos series y posición omitida); 409 con un recibo abierto; otra compañía 403/404; sin escrituras en los rechazos; conversión de 2+1 unidades: SERIAL, 3 series AVAILABLE en su posición, 5 ajustes con el motivo de sistema y neto 0, en mano por posición intacto, AuditLog del seguimiento; segunda conversión 422; el ajuste ya exige series; sin descuadre"
 
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e

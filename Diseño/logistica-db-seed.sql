@@ -341,7 +341,10 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 -- Lote 21 — conteo por producto: una línea por cada posición donde el sistema dice que hay existencia del producto
 ('CycleCountOrigin','PRODUCT','Por producto','By product',3),
 -- Lote 16 — modo de recepción (almacén y recibo): con acomodo (posición de recepción + tareas) o directo a la posición destino
-('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1),('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2);
+('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1),('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2),
+-- Lote 26 (Rentas R0) — motivo de ajuste de la conversión de un producto a serie (salida del saldo sin serie y entrada de cada
+-- serie), reservado al sistema: solo lo escribe POST /products/{id}/convert-to-serial; un ajuste manual con él recibe 400.
+('AdjustmentReason','TRACKING_CONVERSION','Conversión a serie','Serial tracking conversion',11);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
