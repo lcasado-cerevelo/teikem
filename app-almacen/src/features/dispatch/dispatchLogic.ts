@@ -129,7 +129,9 @@ export function buildCollectAndPackBody(
 
 // ------------------------------------------------------------------ posición sugerida (FEFO) — pedido del dueño 2026-10-05
 
-/** Existencia disponible de un producto en una posición (y lote), tal como la da GET /inventory/balances. */
+/** Existencia DISPONIBLE de un producto en una posición (y lote), con su lugar en el orden de salida. El ORDEN lo calcula el servidor
+ *  (GET /inventory/exit-options, PickBatchRules.Eligible: vence primero, zona, código; sin cuarentena ni cruce ni posiciones inactivas): la app
+ *  no lo recalcula, solo lo sigue por `rank` (1 = sale primero). */
 export interface StockOption {
   binCode: string
   zoneTypeCode: string | null
@@ -137,39 +139,19 @@ export interface StockOption {
   /** AAAA-MM-DD; null = sin vencimiento. */
   expiryDate: string | null
   available: number
+  rank: number
 }
 
-const ZONE_ORDER = ['PICKING', 'RESERVE', 'REFRIGERATED', 'STAGING']
-/** Zonas de las que nunca se despacha (misma regla del servidor, StockAllocator.IsExcludedZone, y la zona de rentas). */
-const EXCLUDED_ZONES = ['QUARANTINE', 'CROSSDOCK', 'RENTAL']
-
-function zoneRank(zone: string | null): number {
-  const i = ZONE_ORDER.indexOf(zone ?? '')
-  return i < 0 ? ZONE_ORDER.length : i
+/** Las existencias en el orden de salida del servidor (por rank), solo con disponible. */
+export function inExitOrder(options: readonly StockOption[]): StockOption[] {
+  return options.filter((o) => o.available > 0).sort((a, b) => a.rank - b.rank)
 }
 
-/** Orden de salida: la misma regla del servidor (StockAllocator, D14): vencimiento ascendente con los sin vencimiento al final
- *  (FEFO), luego tipo de zona (picking, reserva, refrigerada, preparación) y código de posición. Sin disponible ni zonas excluidas. */
-export function fefoOrder(options: readonly StockOption[]): StockOption[] {
-  return options
-    .filter((o) => o.available > 0 && !EXCLUDED_ZONES.includes(o.zoneTypeCode ?? ''))
-    .sort((a, b) => {
-      const ea = a.expiryDate ? 0 : 1
-      const eb = b.expiryDate ? 0 : 1
-      if (ea !== eb) return ea - eb
-      if (a.expiryDate && b.expiryDate && a.expiryDate !== b.expiryDate) return a.expiryDate < b.expiryDate ? -1 : 1
-      const z = zoneRank(a.zoneTypeCode) - zoneRank(b.zoneTypeCode)
-      if (z !== 0) return z
-      if (a.binCode !== b.binCode) return a.binCode < b.binCode ? -1 : 1
-      return (a.lotNumber ?? '') < (b.lotNumber ?? '') ? -1 : (a.lotNumber ?? '') > (b.lotNumber ?? '') ? 1 : 0
-    })
-}
-
-/** De dónde debe salir lo que sigue: recorre el orden de salida descontando lo que este despacho ya sacó (`alreadyPicked`, en la
+/** De dónde debe salir lo que sigue: recorre el orden de salida del servidor descontando lo que este despacho ya sacó (`alreadyPicked`, en la
  *  unidad del producto) y devuelve la primera existencia con algo disponible (con lo que queda de ella). null = no hay de dónde. */
 export function nextStockOption(options: readonly StockOption[], alreadyPicked: number): StockOption | null {
   let skip = Math.max(0, alreadyPicked)
-  for (const o of fefoOrder(options)) {
+  for (const o of inExitOrder(options)) {
     if (skip >= o.available) {
       skip -= o.available
       continue

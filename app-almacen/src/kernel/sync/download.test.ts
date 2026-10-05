@@ -5,7 +5,7 @@ import { __resetDbForTests, getDb } from '../db/database'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 
 import { __resetSessionForTests, saveDeviceIdentity } from '../auth/session'
-import { downloadAsns, downloadBins, downloadForReceiving, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
+import { downloadAsns, downloadBins, downloadForReceiving, downloadStockExit, downloadProducts, downloadPurchaseOrders, downloadPurchaseOrdersIfAllowed } from './download'
 
 jest.mock('../api/client', () => {
   const actual = jest.requireActual('../api/client')
@@ -219,7 +219,7 @@ describe('órdenes de compra sin permiso (403)', () => {
       path === '/api/v1/sync/purchase-orders' ? forbidden() : Promise.resolve(page([], null, '2026-01-01T00:00:00.000Z')),
     )
     const results = await downloadForReceiving()
-    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
+    expect(results.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'stockExit'])
     expect(results[1]).toEqual({ resource: 'purchaseOrders', pages: 0, items: 0 })
   })
 
@@ -245,6 +245,60 @@ describe('downloadForReceiving', () => {
     expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns'])
 
     await saveDeviceIdentity({ devicePublicId: 'dev-1', deviceSecret: 's', tenantName: 'T', defaultWarehousePublicId: 'wh-1', theme: null })
-    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
+    expect((await downloadForReceiving()).map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'stockExit'])
+  })
+})
+
+describe('downloadStockExit (orden de salida)', () => {
+  const row = (productPublicId: string, binCode: string, rank: number, extra: Record<string, unknown> = {}) => ({
+    productPublicId,
+    binId: rank,
+    binCode,
+    zoneCode: 'RES',
+    zoneTypeCode: 'RESERVE',
+    lotNumber: null,
+    expiryDate: null,
+    available: 5,
+    rank,
+    ...extra,
+  })
+  const exitPage = (items: unknown[], total: number) => ({
+    data: { total, skip: 0, take: 500, serverTimeUtc: '2026-10-05T12:00:00.000Z', items },
+    response: new Response(null, { status: 200 }),
+  })
+
+  it('baja todas las páginas, reemplaza la foto anterior del almacén y guarda la hora; la lectura sale en el rank del servidor', async () => {
+    getDb().runSync("INSERT INTO stock_exit (warehouse_public_id, product_public_id, rank, bin_id, bin_code, available) VALUES ('wh-1', 'viejo', 1, 9, 'OLD', 1)")
+    getMock
+      .mockResolvedValueOnce(exitPage([row('p1', 'B-02', 2), row('p1', 'A-01', 1, { lotNumber: 'L-3', expiryDate: '2027-01-31' })], 3))
+      .mockResolvedValueOnce(exitPage([row('p2', 'C-03', 1)], 3))
+    const result = await downloadStockExit('wh-1', true)
+    expect(result).toEqual({ resource: 'stockExit', pages: 2, items: 3 })
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/inventory/exit-options')
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicId: 'wh-1', skip: 0, take: 500 })
+    expect(getMock.mock.calls[1][1].params.query.skip).toBe(2)
+    expect(getDb().getAllSync('SELECT product_public_id, rank, bin_code, lot_number FROM stock_exit ORDER BY product_public_id, rank')).toEqual([
+      { product_public_id: 'p1', rank: 1, bin_code: 'A-01', lot_number: 'L-3' },
+      { product_public_id: 'p1', rank: 2, bin_code: 'B-02', lot_number: null },
+      { product_public_id: 'p2', rank: 1, bin_code: 'C-03', lot_number: null },
+    ])
+    expect(getDb().getFirstSync("SELECT resource FROM sync_watermark WHERE resource = 'stockExit:wh-1'")).toBeTruthy()
+  })
+
+  it('no vuelve a bajar antes de 5 minutos salvo que se fuerce (el aparato mandó movimientos)', async () => {
+    getMock.mockResolvedValue(exitPage([row('p1', 'A-01', 1)], 1))
+    await downloadStockExit('wh-1')
+    expect(getMock).toHaveBeenCalledTimes(1)
+    expect(await downloadStockExit('wh-1')).toEqual({ resource: 'stockExit', pages: 0, items: 0 })
+    expect(getMock).toHaveBeenCalledTimes(1)
+    await downloadStockExit('wh-1', true)
+    expect(getMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('sin permiso (403) se salta sin abortar la sincronización; otros errores se propagan', async () => {
+    getMock.mockImplementationOnce(() => Promise.reject(new ApiError(403, null)))
+    expect(await downloadStockExit('wh-1', true)).toEqual({ resource: 'stockExit', pages: 0, items: 0 })
+    getMock.mockImplementationOnce(() => Promise.reject(new ApiError(500, null)))
+    await expect(downloadStockExit('wh-1', true)).rejects.toMatchObject({ status: 500 })
   })
 })

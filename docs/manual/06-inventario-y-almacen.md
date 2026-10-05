@@ -284,6 +284,14 @@ Casos frecuentes:
 Pantalla: Almacén → **Posiciones** — botón **Productos por posición**, casillas y filtro **Pasillo**
 ([F15 — Productos por posición](frontend/f15-productos-por-posicion.md)).
 
+### 1.6 Orden de salida del inventario (2026-10-05)
+
+`GET /api/v1/inventory/exit-options?warehousePublicId=…&productPublicIds=…&skip=&take=` (`inventory.view`, módulo WMS_LOTSERIAL) devuelve, **por producto**, de dónde debe salir en el MISMO orden en que lo asigna la recolección
+(`PickBatchRules.Eligible`, FEFO D14: vence primero —los sin vencimiento al final—, luego tipo de zona picking < reserva < refrigerada < preparación y código de posición). Cada fila: `productPublicId`, `binId`, `binCode`, `zoneCode`,
+`zoneTypeCode`, `lotId`, `lotNumber`, `expiryDate`, `available` (en mano − reservado) y `rank` (1 = sale primero, reinicia por producto). Solo posiciones **activas** y recolectables (sin cuarentena ni cruce de muelle) con disponible mayor que
+cero, de productos activos. `warehousePublicId` es obligatorio (400 `Indique el almacén.`; 404 `Almacén no encontrado.` si no existe o es de otra compañía); `productPublicIds` vacío = todos; página `{ total, skip, take, serverTimeUtc, items }`,
+`take` ≤ 500 (por defecto 500). **Es la única implementación de esa regla**: la app de almacén la baja al aparato y la consulta en línea; ninguna pantalla vuelve a ordenar.
+
 ### Validaciones
 
 | Campo / caso | Mensaje exacto | HTTP |

@@ -24,9 +24,21 @@ namespace Teikem.Api.Controllers;
 [Authorize]
 [RequireModule(ModuleKeys.WmsLotSerial)]
 public sealed class InventoryController(InventoryReadService reads, InventoryAdjustmentService adjustments, TraceabilityService trace,
-    InventoryReconciliationService reconciliation, WarehousePulseService pulse)
+    InventoryReconciliationService reconciliation, WarehousePulseService pulse, StockExitService stockExit)
     : ControllerBase
 {
+    /// <summary>
+    /// Orden de salida (2026-10-05): de dónde debe salir cada producto, en el MISMO orden en que lo asigna la recolección (FEFO: vence primero, luego tipo
+    /// de zona y código de posición; sin cuarentena, cruce de muelle ni posiciones inactivas). warehousePublicId obligatorio (404 si no es de la compañía);
+    /// productPublicIds opcional (vacío = todos los productos del almacén con disponible &gt; 0). Cada fila trae la posición, el lote con su vencimiento, lo
+    /// DISPONIBLE (en mano − reservado) y rank (1 = sale primero). Paginado con skip y take (≤ 500, por defecto 500), por producto y luego por rank. La app
+    /// de almacén baja el almacén completo al aparato y lo consulta en línea por producto: una sola regla, la del servidor. inventory.view.
+    /// </summary>
+    [HttpGet("exit-options"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<StockExitPageDto> ExitOptions([FromQuery] Guid? warehousePublicId, [FromQuery] Guid[]? productPublicIds, CancellationToken ct,
+        [FromQuery] int skip = 0, [FromQuery] int take = StockExitService.DefaultTake)
+        => stockExit.ListAsync(warehousePublicId, productPublicIds is { Length: > 0 } ? productPublicIds : null, skip, take, ct);
+
     /// <summary>
     /// Lote 15 — franja "Almacén hoy" del Pulso del día: los últimos <c>days</c> días LOCALES de la compañía incluido hoy (hora de
     /// Puerto Rico; por defecto 7, D1) con, por día, unidades recibidas (recepción + diferencias de recepción), unidades de salida

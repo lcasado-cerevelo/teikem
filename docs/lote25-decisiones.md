@@ -52,9 +52,23 @@ servidor/app, no se deja sin posición. Finish y Reconcile no cambian.
 
 ## Adenda 2 (2026-10-05): despacho con posición sugerida / lote FEFO y panel "Dónde está"
 
-- **App, Despacho.** Cursor en la cantidad; posición **sugerida** (la primera según la regla de salida del servidor, calculada en la app sobre `GET /inventory/balances`, `onlyAvailable`); con producto **con lote** la posición es obligatoria
-  (la del próximo lote en salir, FEFO) y se rechaza otra o más de lo que hay; sin señal, sin sugerencia. Reglas en `dispatchLogic.ts` (`fefoOrder`, `nextStockOption`, `checkLotBin`), pantalla `dispatch.tsx`. No hay cambio de servidor.
+- **App, Despacho.** Cursor en la cantidad; posición **sugerida** (primera del orden de salida); con producto **con lote** la posición es obligatoria (la del próximo lote en salir, FEFO) y se rechaza otra o más de lo que hay.
 - **Web, Editar producto.** Panel plegable **Dónde está (existencia por posición)** (`StockByBin` en `ProductEditorModal.tsx`): en mano, reservado y disponible por posición y lote, con total; se pide solo al abrirlo.
-- **Decisiones a revisar:** (1) la regla FEFO está **replicada** en la app (no hay endpoint de sugerencia): si cambia `StockAllocator`, hay que cambiar `dispatchLogic.ts`; un endpoint de sugerencia en el servidor la dejaría en un solo lugar. (2) El FEFO obligatorio solo
-  se exige con señal. (3) Un producto con serie no se despacha desde la app (sin cambio).
+
+## Adenda 3 (2026-10-05): orden de salida en el servidor, copia en el aparato, completar sin empacar, teclado
+
+Decisiones del dueño: la regla de "qué sale primero" debe vivir **en un solo sitio** (el servidor); el FEFO obligatorio **no debe depender de la señal** (los datos de inventario se bajan al aparato); completar el despacho **sin empacar**
+(el empaque es opcional, como en la web); y el botón de teclado en todos los campos de texto.
+
+| Pieza | Qué hace | Dónde |
+|---|---|---|
+| Servidor | `GET /api/v1/inventory/exit-options`: lo disponible por producto en el orden de la recolección (`PickBatchRules.Eligible`), con `rank` | `StockExitService`, `InventoryController.ExitOptions`, `StockExitContracts` |
+| Aparato | Tabla `stock_exit` (schema v6) con la copia del almacén por defecto; se baja completa (500 por página) al abrir, cada 5 min y al momento tras mandar movimientos; sin permiso (403) se salta | `download.ts` (`downloadStockExit`), `stockExit.ts` |
+| Despacho | La app **ya no ordena**: pide la foto del producto en línea (y actualiza la copia) o lee la copia; la sugerencia sigue el `rank` y descuenta lo ya sacado; la exigencia de lote funciona también sin señal | `dispatchApi.fetchStockOptions`, `dispatchLogic.nextStockOption`, `dispatch.tsx` |
+| Completar sin empacar | Botón **Completar despacho** → `POST /pick-batches` (sin orden); posiciones del aparato primero; sin red, cola `collect` | `dispatchApi.submitCollectOnly`, `outbox.ts` |
+| Teclado | `KeyboardInput` (⌨ al lado, teclado en pantalla escondido por defecto); un solo botón para listas de cantidades; no se aplicó al registro del aparato | `kernel/ui/KeyboardInput.tsx`, `useSoftKeyboard.ts` |
+
+**Decisiones a revisar:** (1) La copia puede estar atrasada hasta 5 minutos (o hasta que el aparato mande algo); es una guía, el servidor re-verifica al recolectar. Si prefieres otro intervalo, es `STOCK_EXIT_REFRESH_MINUTES`. (2) El teclado
+en pantalla arranca **escondido** en todos los campos (como en ScanField); si en un teléfono sin teclado físico prefieres que las cantidades lo muestren solas, se cambia el valor por defecto. (3) Completar sin empacar no pide confirmación (un toque).
+(4) La copia baja todo el almacén: con muchos miles de existencias puede pesar; se puede acotar a los productos recientes si hace falta.
 

@@ -7,6 +7,7 @@
 import { api, ApiError, unwrap } from '../api/client'
 import { getSessionState } from '../auth/session'
 import { getDb, type SQLiteDatabase } from '../db/database'
+import { mapExitRow, replaceStockExit, type StockExitRow } from '../../features/dispatch/stockExit'
 
 const TAKE = 500
 
@@ -342,11 +343,61 @@ export async function downloadPurchaseOrdersIfAllowed(): Promise<DownloadResult>
   }
 }
 
+/** Cada cuánto se baja de nuevo todo el orden de salida (minutos) si no hubo movimientos propios que lo desactualicen: la foto es del almacén
+ *  completo y la sincronización corre cada minuto. */
+export const STOCK_EXIT_REFRESH_MINUTES = 5
+
+function stockExitIsFresh(db: SQLiteDatabase, resource: string): boolean {
+  const row = db.getFirstSync<{ last_run_utc: string | null }>('SELECT last_run_utc FROM sync_watermark WHERE resource = ?', [resource])
+  if (!row?.last_run_utc) return false
+  return Date.now() - new Date(row.last_run_utc).getTime() < STOCK_EXIT_REFRESH_MINUTES * 60_000
+}
+
+/**
+ * Orden de salida del almacén del aparato (GET /inventory/exit-options, paginado de 500): foto completa que reemplaza la anterior, para
+ * sugerir y exigir de dónde sale cada producto (FEFO) también sin señal. No se baja si la última pasada tiene menos de
+ * STOCK_EXIT_REFRESH_MINUTES (salvo `force`: la última sincronización mandó movimientos del aparato). Sin permiso de inventario (403) se
+ * salta (no es una falla de sincronización).
+ */
+export async function downloadStockExit(warehousePublicId: string, force = false): Promise<DownloadResult> {
+  const db = getDb()
+  const resource = `stockExit:${warehousePublicId}`
+  if (!force && stockExitIsFresh(db, resource)) return { resource: 'stockExit', pages: 0, items: 0 }
+  try {
+    const items: Array<StockExitRow & { productPublicId: string }> = []
+    let skip = 0
+    let pages = 0
+    let serverTime: string | null = null
+    for (;;) {
+      const page = await unwrap(api.GET('/api/v1/inventory/exit-options', { params: { query: { warehousePublicId, skip, take: TAKE } } }))
+      serverTime ??= page.serverTimeUtc ?? new Date().toISOString()
+      const got = page.items ?? []
+      for (const r of got) items.push(mapExitRow(r))
+      pages += 1
+      skip += got.length
+      if (got.length === 0 || skip >= (page.total ?? 0)) break
+    }
+    replaceStockExit(warehousePublicId, items)
+    db.runSync(
+      `INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES (?, ?, ?)
+       ON CONFLICT(resource) DO UPDATE SET since_utc = excluded.since_utc, last_run_utc = excluded.last_run_utc`,
+      [resource, serverTime, new Date().toISOString()],
+    )
+    return { resource: 'stockExit', pages, items: items.length }
+  } catch (err) {
+    if (!(err instanceof ApiError) || err.status !== 403) throw err
+    return { resource: 'stockExit', pages: 0, items: 0 }
+  }
+}
+
 /** Corre los recursos que usa Recibir, en orden (uno a la vez; no compite por la misma base local). Las posiciones solo
  *  si el aparato tiene almacén por defecto (Lote 16). */
-export async function downloadForReceiving(): Promise<DownloadResult[]> {
+export async function downloadForReceiving(options: { forceStockExit?: boolean } = {}): Promise<DownloadResult[]> {
   const results = [await downloadProducts(), await downloadPurchaseOrdersIfAllowed(), await downloadAsns()]
   const warehousePublicId = getSessionState().device?.defaultWarehousePublicId
-  if (warehousePublicId) results.push(await downloadBins(warehousePublicId))
+  if (warehousePublicId) {
+    results.push(await downloadBins(warehousePublicId))
+    results.push(await downloadStockExit(warehousePublicId, options.forceStockExit === true))
+  }
   return results
 }

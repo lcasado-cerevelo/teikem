@@ -79,7 +79,7 @@ describe('runSync', () => {
 
     expect(postMock).toHaveBeenCalledWith('/api/v1/devices/heartbeat', expect.anything())
     expect(getSessionState().device?.defaultWarehouseReceivingMode).toBe('DIRECT')
-    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins'])
+    expect(summary.download.map((d) => d.resource)).toEqual(['products', 'purchaseOrders', 'asns', 'bins', 'stockExit'])
     expect(getMock).toHaveBeenCalledWith('/api/v1/sync/bins', expect.objectContaining({ params: { query: expect.objectContaining({ warehousePublicId: 'wh-1' }) } }))
   })
 })

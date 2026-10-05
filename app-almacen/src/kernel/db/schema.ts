@@ -1,6 +1,6 @@
 // Lote 8A-app — esquema de la base local (expo-sqlite). Ver docs/mobile/app-almacen-plan.md §1 "Base local".
 // Migraciones por PRAGMA user_version: cada versión agrega su bloque de SQL; nunca se reescribe uno ya publicado.
-export const SCHEMA_VERSION = 5
+export const SCHEMA_VERSION = 6
 
 export const MIGRATIONS: readonly string[] = [
   // v1: kv, catálogos sincronizados, documentos abiertos, cola de salida y marcas de agua.
@@ -311,5 +311,24 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE bin ADD COLUMN is_provisional INTEGER NOT NULL DEFAULT 0;
   DELETE FROM sync_watermark WHERE resource LIKE 'bins:%';
+  `,
+  // v6 (2026-10-05, orden de salida): copia del aparato de GET /inventory/exit-options del almacén por defecto: por producto, las
+  // existencias DISPONIBLES en el orden de salida del servidor (rank 1 = sale primero, FEFO), para sugerir/exigir de dónde sale lo que se
+  // despacha también sin señal. Es una foto (se reemplaza completa o por producto), no una bajada por diferencia.
+  `
+  CREATE TABLE IF NOT EXISTS stock_exit (
+    warehouse_public_id TEXT NOT NULL,
+    product_public_id TEXT NOT NULL,
+    rank INTEGER NOT NULL,
+    bin_id INTEGER NOT NULL,
+    bin_code TEXT NOT NULL,
+    zone_code TEXT,
+    zone_type_code TEXT,
+    lot_id INTEGER,
+    lot_number TEXT,
+    expiry_date TEXT,
+    available REAL NOT NULL,
+    PRIMARY KEY (warehouse_public_id, product_public_id, rank)
+  );
   `,
 ]

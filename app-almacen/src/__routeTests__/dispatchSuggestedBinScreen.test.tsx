@@ -8,7 +8,8 @@ import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/t
 
 import { getOpenPick } from '../features/dispatch/localPick'
 import { __resetSessionForTests } from '../kernel/auth/session'
-import { __resetDbForTests } from '../kernel/db/database'
+import { mapExitRow, replaceStockExit } from '../features/dispatch/stockExit'
+import { __resetDbForTests, getDb } from '../kernel/db/database'
 import { insertProduct, json, mockFetch, setupDevice } from './countKit'
 
 beforeEach(() => {
@@ -28,8 +29,11 @@ function laterScan() {
 }
 
 const BIN_FIELD = 'Escanea de qué posición sale'
+// orden de salida del servidor: ya viene ordenado y con su rank (la app no reordena)
 const stock = (...items: Array<Record<string, unknown>>) => (c: { method: string; path: string }) =>
-  c.method === 'GET' && c.path === '/api/v1/inventory/balances' ? json(200, { total: items.length, skip: 0, take: 200, items }) : null
+  c.method === 'GET' && c.path === '/api/v1/inventory/exit-options'
+    ? json(200, { total: items.length, skip: 0, take: 500, serverTimeUtc: '2026-10-05T12:00:00Z', items: items.map((it, i) => ({ binId: i + 1, rank: i + 1, ...it })) })
+    : null
 
 async function openDraft(code: string) {
   await renderRouter('src/app', { initialUrl: '/dispatch' })
@@ -43,20 +47,16 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     await setupDevice()
     insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
     const calls = mockFetch([
-      stock(
-        { binCode: 'R-02', zoneTypeCode: 'RESERVE', qtyAvailable: 30 },
-        { binCode: 'P-01', zoneTypeCode: 'PICKING', qtyAvailable: 8 },
-        { binCode: 'Q-01', zoneTypeCode: 'QUARANTINE', qtyAvailable: 99 },
-      ),
+      stock({ binCode: 'P-01', zoneTypeCode: 'PICKING', available: 8 }, { binCode: 'R-02', zoneTypeCode: 'RESERVE', available: 30 }),
     ])
     await openDraft('7501')
 
     // consulta del disponible del producto en el almacén del aparato
-    expect(calls.find((c) => c.path === '/api/v1/inventory/balances')?.search).toContain('productPublicIds=p1')
+    expect(calls.find((c) => c.path === '/api/v1/inventory/exit-options')?.search).toContain('productPublicIds=p1')
     // el cursor cae en la cantidad (no en la posición)
     expect(screen.getByLabelText('Cantidad').props.autoFocus).toBe(true)
     expect(screen.getByLabelText(BIN_FIELD).props.autoFocus).toBeFalsy()
-    // la sugerida: picking antes que reserva; la cuarentena no cuenta
+    // la sugerida: la primera del orden de salida del servidor (rank 1)
     await waitFor(() => expect(screen.getByText('Sugerida: P-01')).toBeTruthy())
     expect(screen.getByText('Escanea la posición o toca «Usar»; puedes escanear otra.')).toBeTruthy()
 
@@ -70,7 +70,7 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
   it('«Usar» toma la sugerida y agrega la línea con la cantidad escrita', async () => {
     await setupDevice()
     insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
-    mockFetch([stock({ binCode: 'P-01', zoneTypeCode: 'PICKING', qtyAvailable: 8 })])
+    mockFetch([stock({ binCode: 'P-01', zoneTypeCode: 'PICKING', available: 8 })])
     await openDraft('7501')
     await waitFor(() => expect(screen.getByText('Sugerida: P-01')).toBeTruthy())
     await fireEvent.changeText(screen.getByLabelText('Cantidad'), '2')
@@ -84,8 +84,8 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
     mockFetch([
       stock(
-        { binCode: 'B-02', zoneTypeCode: 'RESERVE', lotNumber: 'L-9', expiryDate: '2027-03-01', qtyAvailable: 20 },
-        { binCode: 'A-01', zoneTypeCode: 'RESERVE', lotNumber: 'L-3', expiryDate: '2026-12-31', qtyAvailable: 5 },
+        { binCode: 'A-01', zoneTypeCode: 'RESERVE', lotNumber: 'L-3', expiryDate: '2026-12-31', available: 5 },
+        { binCode: 'B-02', zoneTypeCode: 'RESERVE', lotNumber: 'L-9', expiryDate: '2027-03-01', available: 20 },
       ),
     ])
     await openDraft('7601')
@@ -113,7 +113,7 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     await waitFor(() => expect(getOpenPick()?.lineRows.map((l) => [l.fromBinCode, l.quantity])).toEqual([['A-01', 5]]))
   })
 
-  it('sin señal no hay sugerencia ni se exige posición', async () => {
+  it('sin señal y sin copia en el aparato no hay sugerencia ni se exige posición', async () => {
     await setupDevice()
     insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
     mockFetch([])
@@ -123,5 +123,25 @@ describe('Despacho — posición sugerida y lote obligatorio (FEFO)', () => {
     laterScan()
     await fireEvent(screen.getByLabelText(BIN_FIELD), 'submitEditing', { nativeEvent: { text: 'X-99' } })
     await waitFor(() => expect(getOpenPick()?.lineRows.map((l) => l.fromBinCode)).toEqual(['X-99']))
+  })
+
+  it('sin señal usa lo bajado al aparato: sugiere y, con lote, exige la posición del próximo lote', async () => {
+    await setupDevice()
+    insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
+    // lo que bajó la sincronización (el orden ya viene del servidor)
+    getDb().runSync("INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES ('stockExit:wh-1', 'x', 'y')")
+    replaceStockExit('wh-1', [
+      mapExitRow({ productPublicId: 'p-lot', binId: 1, binCode: 'A-01', zoneTypeCode: 'RESERVE', lotNumber: 'L-3', expiryDate: '2026-12-31', available: 5, rank: 1 }),
+      mapExitRow({ productPublicId: 'p-lot', binId: 2, binCode: 'B-02', zoneTypeCode: 'RESERVE', lotNumber: 'L-9', expiryDate: '2027-03-01', available: 20, rank: 2 }),
+    ])
+    mockFetch([])
+    await openDraft('7601')
+    await waitFor(() => expect(screen.getByText('Debe salir de A-01')).toBeTruthy())
+    expect(screen.getByText('Según el inventario bajado al aparato (sin señal).')).toBeTruthy()
+    await fireEvent.changeText(screen.getByLabelText('Cantidad'), '2')
+    laterScan()
+    await fireEvent(screen.getByLabelText(BIN_FIELD), 'submitEditing', { nativeEvent: { text: 'B-02' } })
+    await waitFor(() => expect(screen.getByText(/debe salir de A-01/)).toBeTruthy())
+    expect(getOpenPick()?.lineRows).toEqual([])
   })
 })

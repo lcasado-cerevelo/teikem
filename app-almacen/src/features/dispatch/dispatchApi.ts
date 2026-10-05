@@ -7,25 +7,31 @@
 import { api, ApiError, isNetworkError, unwrap } from '../../kernel/api/client'
 import { enqueue } from '../../kernel/sync/outbox'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
+import { findLocalBin } from '../count/countApi'
+import { hasStockExitCopy, mapExitRow, readStockExit, replaceStockExitFor } from './stockExit'
 import { buildCollectAndPackBody, type StockOption, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
 
-/** Existencia DISPONIBLE del producto en el almacén por posición y lote (GET /inventory/balances, solo con disponible > 0): de ahí sale la
- *  posición sugerida (FEFO). Necesita señal; sin ella lanza y el despacho sigue sin sugerencia. */
-export async function fetchStockOptions(warehousePublicId: string, productPublicId: string): Promise<StockOption[]> {
-  const page = await unwrap(
-    api.GET('/api/v1/inventory/balances', {
-      params: { query: { warehousePublicIds: [warehousePublicId], productPublicIds: [productPublicId], onlyAvailable: true, take: 200 } },
-    }),
-  )
-  return (page.items ?? [])
-    .filter((b) => b.binCode)
-    .map((b) => ({
-      binCode: b.binCode ?? '',
-      zoneTypeCode: b.zoneTypeCode ?? null,
-      lotNumber: b.lotNumber ?? null,
-      expiryDate: b.expiryDate ?? null,
-      available: b.qtyAvailable ?? 0,
-    }))
+/** De dónde puede salir el producto y de qué fuente: `server` = recién preguntado (orden de salida del servidor, GET /inventory/exit-options; se
+ *  guarda también en el aparato); `device` = sin señal, la copia bajada al aparato; `none` = sin señal y nunca se bajó (no se sabe). */
+export interface StockOptionsResult {
+  options: StockOption[]
+  source: 'server' | 'device' | 'none'
+}
+
+/** Existencias DISPONIBLES del producto en el almacén, en el orden de salida del servidor (rank). En línea pide la foto actual; sin señal usa la
+ *  copia del aparato, que baja la sincronización (kernel/sync/download.ts: downloadStockExit). La regla de orden vive solo en el servidor. */
+export async function fetchStockOptions(warehousePublicId: string, productPublicId: string): Promise<StockOptionsResult> {
+  try {
+    const page = await unwrap(
+      api.GET('/api/v1/inventory/exit-options', { params: { query: { warehousePublicId, productPublicIds: [productPublicId], take: 500 } } }),
+    )
+    const rows = (page.items ?? []).map(mapExitRow)
+    replaceStockExitFor(warehousePublicId, productPublicId, rows)
+    return { options: rows, source: 'server' }
+  } catch {
+    // sin señal (o sin permiso para consultar): lo que bajó el aparato
+    return hasStockExitCopy(warehousePublicId) ? { options: readStockExit(warehousePublicId, productPublicId), source: 'device' } : { options: [], source: 'none' }
+  }
 }
 
 /** Clientes activos a quienes se puede despachar inventario PROPIO (con inventario de un cliente 3PL no hace falta: es ese). */
@@ -51,7 +57,9 @@ export async function resolveBinCodes(warehousePublicId: string, lines: PickLine
   const resolved = new Map<string, number>()
   const notFound: string[] = []
   for (const code of codes) {
-    const bin = await findBinByCode(warehousePublicId, code)
+    // primero las posiciones del aparato (sin señal); si no está, el servidor
+    const local = findLocalBin(warehousePublicId, code)
+    const bin = local ?? (await findBinByCode(warehousePublicId, code))
     if (bin) resolved.set(code, bin.id)
     else notFound.push(code)
   }
@@ -74,6 +82,22 @@ export async function submitCollectAndPack(
   } catch (err) {
     if (err instanceof ApiError && isNetworkError(err)) {
       enqueue({ kind: 'pack', body })
+      return { queued: true }
+    }
+    throw err
+  }
+}
+
+/** Completar el despacho SIN empacar (pedido del dueño 2026-10-05): recolecta (POST /pick-batches) y el inventario sale; no crea orden ni
+ *  empaque (eso es opcional y se hace después). Intenta ya mismo; sin red, lo encola (kind 'collect'). */
+export async function submitCollectOnly(warehousePublicId: string, lines: ResolvedPickLine[]): Promise<{ queued: boolean }> {
+  const body = { warehousePublicId, lines: lines.map((l) => ({ productPublicId: l.productPublicId, quantity: l.quantity, binId: l.fromBinId })) }
+  try {
+    await unwrap(api.POST('/api/v1/pick-batches', { body: body as never }))
+    return { queued: false }
+  } catch (err) {
+    if (err instanceof ApiError && isNetworkError(err)) {
+      enqueue({ kind: 'collect', body })
       return { queued: true }
     }
     throw err

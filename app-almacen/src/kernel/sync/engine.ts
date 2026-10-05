@@ -53,7 +53,8 @@ async function runOnce(): Promise<SyncSummary> {
       // Región y formatos de la compañía: un cambio hecho en la web llega aquí en la siguiente pasada. Si falla, se
       // siguen usando los guardados (refreshTenantFormat no lanza).
       await refreshTenantFormat()
-      download = await downloadForReceiving()
+      // lo que el aparato mandó (recibos, despachos, conteos) cambia el inventario: el orden de salida se vuelve a bajar sin esperar
+      download = await downloadForReceiving({ forceStockExit: outbox.sent > 0 })
     }
   } catch (err) {
     error = err instanceof Error ? err.message : String(err)

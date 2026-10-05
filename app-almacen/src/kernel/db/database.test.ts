@@ -159,10 +159,13 @@ describe('migración v4 (Lote A4, contar por producto)', () => {
 })
 
 describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', () => {
-  it('la base nueva queda en la versión 5 con bin.is_provisional (por defecto 0)', () => {
+  it('la base nueva queda en la versión 6 con bin.is_provisional (por defecto 0) y la tabla del orden de salida', () => {
     const db = getDb()
-    expect(SCHEMA_VERSION).toBe(5)
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(5)
+    expect(SCHEMA_VERSION).toBe(6)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(6)
+    expect(db.getAllSync<{ name: string }>('PRAGMA table_info(stock_exit)').map((c) => c.name)).toEqual(
+      expect.arrayContaining(['warehouse_public_id', 'product_public_id', 'rank', 'bin_code', 'lot_number', 'expiry_date', 'available']),
+    )
     const col = db.getAllSync<{ name: string; notnull: number; dflt_value: string | null }>('PRAGMA table_info(bin)').find((c) => c.name === 'is_provisional')
     expect(col).toMatchObject({ notnull: 1, dflt_value: '0' })
   })
@@ -181,7 +184,7 @@ describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', 
     raw.runSync("INSERT INTO local_count_line (id, local_count_id, product_public_id, bin_id, bin_code, counted_qty, is_provisional_bin) VALUES (5, 1, 'p1', 9, 'Z-09', 3, 1)")
 
     const db = getDb()
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(5)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
     expect(db.getAllSync('SELECT id, code, zone_code, is_active, is_provisional FROM bin ORDER BY id')).toEqual([
       { id: 1, code: 'A-01', zone_code: 'PCK', is_active: 1, is_provisional: 0 },
       { id: 2, code: 'OLD-1', zone_code: 'PCK', is_active: 0, is_provisional: 0 },

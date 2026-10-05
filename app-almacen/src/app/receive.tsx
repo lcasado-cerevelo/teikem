@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -25,6 +25,7 @@ import {
   startLocalReceipt,
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestion } from '../features/receive/receiveApi'
+import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import {
   addSerial,
   buildLine,
@@ -274,7 +275,7 @@ export default function ReceiveScreen() {
         ) : (
           <View style={styles.field}>
             <Text style={styles.label}>{t('receive.qtyLabel')}</Text>
-            <TextInput
+            <KeyboardInput
               value={draft.qtyText}
               onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v } : d))}
               keyboardType="decimal-pad"
@@ -288,7 +289,7 @@ export default function ReceiveScreen() {
           <>
             <View style={styles.field}>
               <Text style={styles.label}>{t('receive.lotLabel')}</Text>
-              <TextInput
+              <KeyboardInput
                 value={draft.lot}
                 onChangeText={(v) => setDraft((d) => (d ? { ...d, lot: v } : d))}
                 style={styles.input}
@@ -297,7 +298,7 @@ export default function ReceiveScreen() {
             </View>
             <View style={styles.field}>
               <Text style={styles.label}>{t('receive.expiryLabel')}</Text>
-              <TextInput
+              <KeyboardInput
                 value={draft.expiry}
                 onChangeText={(v) => setDraft((d) => (d ? { ...d, expiry: v } : d))}
                 placeholder={f.datePlaceholder()}
