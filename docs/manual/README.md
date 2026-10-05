@@ -134,7 +134,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     edición, equipos por serie, **programar** (reserva las series), **despachar** (transferencia a la posición **EN-RENTA**, serie "En renta":
     en mano igual, disponible 0), **extender** la fecha de recogido con bitácora y tarifa nueva (`rental.extend`), **cancelar** (solo antes
     del despacho), "por vencer" y "vencidas", estatus y transiciones, permisos (`rental.extend`, `rental.return`) y el módulo "Rentas" que
-    depende de Inventario y trazabilidad. La devolución y el proceso del equipo devuelto llegan con el bloque R2.
+    depende de Inventario y trazabilidad.
+    Lote 28 (Rentas R2, secciones 5, 6 y 7): **devolución de renta** DRN-##### (`rental.return`; total o parcial, al término o anticipada,
+    con motivo, condición, posición de destino —también otro almacén— y si pasa por proceso), **proceso configurable** del equipo devuelto
+    (Pendiente → Inspección → Limpieza → Pruebas → Lista, con Reparación y Esperando piezas; `rental.maintenance`; "Lista" libera el equipo
+    y "Dar de baja" lo saca del inventario con motivo Daño y pide además `inventory.adjust`) y los equipos en renta en el **conteo
+    cíclico** (D7: EN-RENTA no se cuenta, 422; una serie en renta en un conteo, 409).
 
 ## Manual de pantallas (frontend web)
 
@@ -219,7 +224,9 @@ Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada l
 ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar tablas, ciudades en mayúsculas y por qué el
 código y la zona de una posición no cambian. La sección "Lote 27" recoge los mensajes de las rentas (alta, equipos, tarifa, programar, despachar, extender y cancelar) y de una serie en renta, y las
 preguntas sobre por qué el en mano no baja al despachar, dónde ver lo rentado, qué es una renta vencida, si la tarifa se cobra y si una extensión necesita
-aprobación. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
+aprobación. La sección "Lote 28" recoge los mensajes de la devolución de renta, del proceso del equipo devuelto y del conteo con equipos en renta
+(D7), y las preguntas sobre por qué un equipo devuelto sigue "No disponible", devolver solo una parte o a otro almacén, quitar pasos del
+proceso y qué pasa con un equipo dado de baja. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
 reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
 posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado

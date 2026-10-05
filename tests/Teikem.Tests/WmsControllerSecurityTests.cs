@@ -35,6 +35,8 @@ public class WmsControllerSecurityTests
         [typeof(DockAppointmentsController)] = ModuleKeys.CrossDock,
         [typeof(CrossDockPlansController)] = ModuleKeys.CrossDock,
         [typeof(RentalsController)] = ModuleKeys.RentalEquipment,   // Lote 27 (Rentas R1)
+        [typeof(RentalReturnsController)] = ModuleKeys.RentalEquipment,     // Lote 28 (Rentas R2)
+        [typeof(RentalProcessesController)] = ModuleKeys.RentalEquipment,   // Lote 28 (Rentas R2)
     };
 
     /// <summary>(controlador, acción) → permiso esperado. Exactamente uno por acción.</summary>
@@ -201,6 +203,15 @@ public class WmsControllerSecurityTests
         [(typeof(RentalsController), nameof(RentalsController.Dispatch))] = PermissionCatalog.RentalManage,
         [(typeof(RentalsController), nameof(RentalsController.Cancel))] = PermissionCatalog.RentalManage,
         [(typeof(RentalsController), nameof(RentalsController.Extend))] = PermissionCatalog.RentalExtend,
+        // Lote 28 (Rentas R2): devoluciones (rental.return) y proceso (rental.maintenance; dar de baja pide además inventory.adjust
+        // en el servicio: RentalProcessEffectTests).
+        [(typeof(RentalReturnsController), nameof(RentalReturnsController.Create))] = PermissionCatalog.RentalReturn,
+        [(typeof(RentalReturnsController), nameof(RentalReturnsController.List))] = PermissionCatalog.RentalView,
+        [(typeof(RentalReturnsController), nameof(RentalReturnsController.Get))] = PermissionCatalog.RentalView,
+        [(typeof(RentalProcessesController), nameof(RentalProcessesController.List))] = PermissionCatalog.RentalView,
+        [(typeof(RentalProcessesController), nameof(RentalProcessesController.Advance))] = PermissionCatalog.RentalMaintenance,
+        [(typeof(RentalProcessesController), nameof(RentalProcessesController.Complete))] = PermissionCatalog.RentalMaintenance,
+        [(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))] = PermissionCatalog.RentalMaintenance,
     };
 
     public static IEnumerable<object[]> ActionMap() => Expected.Select(kv => new object[] { kv.Key.Controller, kv.Key.Action, kv.Value });
@@ -304,7 +315,13 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalExtend, Expected[(typeof(RentalsController), nameof(RentalsController.Extend))]);
         Assert.Equal(PermissionCatalog.RentalManage, Expected[(typeof(RentalsController), nameof(RentalsController.Cancel))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalsController)]);
-        Assert.Equal(144, Expected.Count); // 132 de master + 12 de RentalsController
+        // Lote 28 (Rentas R2): devolver es su propio permiso (rental.return); el proceso es rental.maintenance y dar de baja no lleva
+        // un segundo [RequirePermission] (inventory.adjust lo exige RentalProcessService); los dos controladores en RENTAL_EQUIPMENT.
+        Assert.Equal(PermissionCatalog.RentalReturn, Expected[(typeof(RentalReturnsController), nameof(RentalReturnsController.Create))]);
+        Assert.Equal(PermissionCatalog.RentalMaintenance, Expected[(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))]);
+        Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalReturnsController)]);
+        Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalProcessesController)]);
+        Assert.Equal(151, Expected.Count); // 132 de master + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
     }
 
     [Fact]

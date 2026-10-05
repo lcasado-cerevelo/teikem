@@ -126,6 +126,8 @@ public static class RentalReturnReasons
     public const string EarlyDamage = "EARLY_DAMAGE";
     public const string EarlyClient = "EARLY_CLIENT";
     public const string Other = "OTHER";
+    /// <summary>Lote 28 (Rentas R2): los cuatro motivos del seed (validación sin BD).</summary>
+    public static readonly string[] All = { EndOfContract, EarlyDamage, EarlyClient, Other };
 }
 
 /// <summary>Lote 27 (Rentas): valores de LookupCode 'RentalReturnCondition' (condición de cada equipo devuelto; bloque R2).</summary>
@@ -134,6 +136,8 @@ public static class RentalReturnConditions
     public const string Good = "GOOD";
     public const string Damaged = "DAMAGED";
     public const string Incomplete = "INCOMPLETE";
+    /// <summary>Lote 28 (Rentas R2): las tres condiciones del seed (validación sin BD).</summary>
+    public static readonly string[] All = { Good, Damaged, Incomplete };
 }
 
 /// <summary>

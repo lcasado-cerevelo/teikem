@@ -12548,6 +12548,317 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rental-processes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    status?: string[];
+                    open?: boolean;
+                    warehousePublicId?: string;
+                    productPublicId?: string;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalProcessPageDto"];
+                        "application/json": components["schemas"]["RentalProcessPageDto"];
+                        "text/json": components["schemas"]["RentalProcessPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rental-processes/{id}/advance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RentalProcessAdvanceRequest"];
+                    "text/json": components["schemas"]["RentalProcessAdvanceRequest"];
+                    "application/*+json": components["schemas"]["RentalProcessAdvanceRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalProcessDto"];
+                        "application/json": components["schemas"]["RentalProcessDto"];
+                        "text/json": components["schemas"]["RentalProcessDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rental-processes/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RentalProcessCompleteRequest"];
+                    "text/json": components["schemas"]["RentalProcessCompleteRequest"];
+                    "application/*+json": components["schemas"]["RentalProcessCompleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalProcessDto"];
+                        "application/json": components["schemas"]["RentalProcessDto"];
+                        "text/json": components["schemas"]["RentalProcessDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rental-processes/{id}/scrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RentalStatusRequest"];
+                    "text/json": components["schemas"]["RentalStatusRequest"];
+                    "application/*+json": components["schemas"]["RentalStatusRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalProcessDto"];
+                        "application/json": components["schemas"]["RentalProcessDto"];
+                        "text/json": components["schemas"]["RentalProcessDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rentals/{publicId}/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["RentalReturnCreateRequest"];
+                    "text/json": components["schemas"]["RentalReturnCreateRequest"];
+                    "application/*+json": components["schemas"]["RentalReturnCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalReturnDto"];
+                        "application/json": components["schemas"]["RentalReturnDto"];
+                        "text/json": components["schemas"]["RentalReturnDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rental-returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    rentalPublicId?: string;
+                    clientPublicId?: string;
+                    reason?: string[];
+                    from?: string;
+                    to?: string;
+                    early?: boolean;
+                    search?: string;
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalReturnPageDto"];
+                        "application/json": components["schemas"]["RentalReturnPageDto"];
+                        "text/json": components["schemas"]["RentalReturnPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/rental-returns/{publicId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    publicId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["RentalReturnDto"];
+                        "application/json": components["schemas"]["RentalReturnDto"];
+                        "text/json": components["schemas"]["RentalReturnDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/rentals": {
         parameters: {
             query?: never;
@@ -21861,6 +22172,157 @@ export interface components {
             rowVersion?: string | null;
         } & {
             [key: string]: unknown;
+        };
+        RentalProcessAdvanceRequest: {
+            status?: string | null;
+            comment?: string | null;
+            rowVersion?: string | null;
+        };
+        RentalProcessCompleteRequest: {
+            /** Format: int32 */
+            binId?: number | null;
+            comment?: string | null;
+            rowVersion?: string | null;
+        };
+        RentalProcessDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            serialId?: number;
+            serialNumber?: string | null;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: uuid */
+            warehousePublicId?: string;
+            warehouseCode?: string | null;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            statusCode?: string | null;
+            status?: string | null;
+            statusColor?: string | null;
+            isFinished?: boolean;
+            /** Format: uuid */
+            returnPublicId?: string | null;
+            returnNumber?: string | null;
+            /** Format: uuid */
+            rentalPublicId?: string | null;
+            rentalNumber?: string | null;
+            conditionCode?: string | null;
+            /** Format: date-time */
+            startedAtUtc?: string;
+            /** Format: date-time */
+            completedAtUtc?: string | null;
+            notes?: string | null;
+            rowVersion?: string | null;
+        };
+        RentalProcessPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["RentalProcessDto"][] | null;
+        };
+        RentalReturnCreateRequest: {
+            reason?: string | null;
+            lines?: components["schemas"]["RentalReturnLineInput"][] | null;
+            /** Format: date */
+            returnedOn?: string | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            notes?: string | null;
+            /** Format: double */
+            estimatedPickupCost?: number | null;
+            transportCurrency?: string | null;
+            rowVersion?: string | null;
+        };
+        RentalReturnDto: {
+            return?: components["schemas"]["RentalReturnListItemDto"];
+            rentalStatusCode?: string | null;
+            notes?: string | null;
+            /** Format: double */
+            estimatedPickupCost?: number | null;
+            transportCurrencyCode?: string | null;
+            /** Format: int32 */
+            pickupShipmentId?: number | null;
+            /** Format: int32 */
+            createdBy?: number | null;
+            createdByName?: string | null;
+            lines?: components["schemas"]["RentalReturnLineDto"][] | null;
+        };
+        RentalReturnLineDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            rentalLineId?: number;
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            /** Format: int32 */
+            serialId?: number;
+            serialNumber?: string | null;
+            conditionCode?: string | null;
+            condition?: string | null;
+            /** Format: uuid */
+            toWarehousePublicId?: string;
+            toWarehouseCode?: string | null;
+            /** Format: int32 */
+            toBinId?: number;
+            toBinCode?: string | null;
+            requiresProcess?: boolean;
+            /** Format: int64 */
+            returnTxnId?: number | null;
+            notes?: string | null;
+            /** Format: int32 */
+            processId?: number | null;
+            processStatusCode?: string | null;
+            processStatus?: string | null;
+        };
+        RentalReturnLineInput: {
+            serialNumber?: string | null;
+            condition?: string | null;
+            /** Format: int32 */
+            toBinId?: number | null;
+            requiresProcess?: boolean | null;
+            notes?: string | null;
+        };
+        RentalReturnListItemDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: uuid */
+            publicId?: string;
+            number?: string | null;
+            /** Format: uuid */
+            rentalPublicId?: string;
+            rentalNumber?: string | null;
+            /** Format: uuid */
+            clientPublicId?: string;
+            clientName?: string | null;
+            /** Format: date */
+            returnedOn?: string;
+            reasonCode?: string | null;
+            reason?: string | null;
+            isEarly?: boolean;
+            /** Format: int32 */
+            units?: number;
+            /** Format: int32 */
+            openProcesses?: number;
+            /** Format: date-time */
+            createdAtUtc?: string;
+        };
+        RentalReturnPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            items?: components["schemas"]["RentalReturnListItemDto"][] | null;
         };
         RentalStatusRequest: {
             comment?: string | null;

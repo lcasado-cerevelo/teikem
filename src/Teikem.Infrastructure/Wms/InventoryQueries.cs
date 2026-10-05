@@ -7,8 +7,8 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Wms;
 
 /// <summary>
-/// Lote 6 (P0) — consultas con bloqueo del inventario y del almacén. Es el ÚNICO lugar del lote con SQL crudo (18 sentencias; la 18
-/// es la renta, Lote 27)
+/// Lote 6 (P0) — consultas con bloqueo del inventario y del almacén. Es el ÚNICO lugar del lote con SQL crudo (19 sentencias; la 18
+/// es la renta, Lote 27, y la 19 el proceso del equipo devuelto, Lote 28)
 /// y cada una lleva 'TenantId =' explícito (RawSqlConfinementTests lo verifica): el SQL crudo no pasa por el filtro global.
 ///
 /// ORDEN DE BLOQUEO ÚNICO del lote (evita interbloqueos entre recibir, completar tareas, contar, recolectar, cruzar y comprar):
@@ -218,6 +218,19 @@ public static class InventoryQueries
                 () => new NotFoundException("Renta", null, true), ct);
         }
         return await LoadTrackedAsync(db, db.Rentals.Where(x => x.RentalId == rentalId), () => new NotFoundException("Renta", null, true), ct);
+    }
+
+    /// <summary>(19, Lote 28) Proceso de un equipo devuelto con UPDLOCK, tracked. 404 'Proceso no encontrado.'</summary>
+    public static async Task<RentalProcess> LockRentalProcessAsync(this TeikemDbContext db, int rentalProcessId, CancellationToken ct)
+    {
+        if (db.Database.IsRelational())
+        {
+            RequireTransaction(db, nameof(LockRentalProcessAsync));
+            var tenantId = db.CurrentTenantId;
+            await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT RentalProcessId AS Value FROM dbo.RentalProcess WITH (UPDLOCK, ROWLOCK) WHERE RentalProcessId = {rentalProcessId} AND TenantId = {tenantId}"),
+                () => new NotFoundException("Proceso"), ct);
+        }
+        return await LoadTrackedAsync(db, db.RentalProcesses.Where(x => x.RentalProcessId == rentalProcessId), () => new NotFoundException("Proceso"), ct);
     }
 
     /// <summary>(12) Producto con UPDLOCK, tracked. 404 'Producto no encontrado.'</summary>

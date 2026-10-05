@@ -444,6 +444,52 @@ public sealed class CycleCountServiceTests
         var ex = await Assert.ThrowsAsync<StatusRuleException>(() => handler.CompleteAsync(new WarehouseTask(), new TaskCompleteRequest(), default));
         Assert.Equal(handler.NotFromQueueMessage, ex.Message);
     }
+
+    [Fact]
+    public async Task D7_a_rented_serial_found_in_a_count_blocks_the_reconcile_and_the_EN_RENTA_bin_is_not_counted()
+    {
+        // Lote 28 (Rentas R2, D7): la serie S1 está EN RENTA (REN-00007, en EN-RENTA) y alguien la encuentra en A01 al contar.
+        await using var f = await CycleCountFixture.CreateAsync();
+        await f.ReceiveSerialAsync(f.ProductSerialId, f.PickBin1, "S1");
+        await f.ReceiveSerialAsync(f.ProductSerialId, f.PickBin1, "S2");
+        var (rentZone, rentBin) = await f.AddRentalZoneAsync();
+        await f.RentSerialAsync(f.ProductSerialId, f.PickBin1, rentBin, "S1", "REN-00007");
+        var svc = f.Get<CycleCountService>();
+
+        // La posición EN-RENTA no se cuenta: pedirla (posición o zona) → 422; contar todo el almacén la salta.
+        var byBin = await Assert.ThrowsAsync<StatusRuleException>(() => svc.CreateAsync(new CycleCountCreateRequest(BinIds: new[] { rentBin }), default));
+        Assert.Equal("La posición EN-RENTA es de equipos en renta; no se cuenta.", byBin.Message);
+        var byZone = await Assert.ThrowsAsync<StatusRuleException>(() => svc.CreateAsync(new CycleCountCreateRequest(ZoneIds: new[] { rentZone }), default));
+        Assert.Equal(byBin.Message, byZone.Message);
+        var created = await svc.CreateAsync(new CycleCountCreateRequest(), default);
+        Assert.DoesNotContain(created.Lines, l => l.BinId == rentBin);
+        var line = Assert.Single(created.Lines);
+        Assert.Equal((f.PickBin1, 1m), (line.BinId, line.SystemQty));
+        var addLine = await Assert.ThrowsAsync<StatusRuleException>(() => svc.AddLineAsync(created.Count.Id,
+            new CountAddLineRequest(rentBin, f.ProductSerialPublicId, SerialNumbers: new[] { "S1" }), default));
+        Assert.Equal(byBin.Message, addLine.Message);
+        // Por producto: la posición donde "está" el producto no incluye EN-RENTA.
+        Assert.Equal(new[] { f.PickBin1 }, (await svc.ProductBinsAsync(created.Count.Id, f.ProductSerialPublicId, default)).Bins.Select(b => b.BinId).ToArray());
+
+        // Se captura S1 (rentada) junto con S2 en A01: la vista previa marca la línea y reconciliar → 409 sin escribir nada.
+        await svc.CaptureAsync(created.Count.Id, new CountCaptureRequest(new[] { new CountCaptureItem(line.Id, null, new[] { "S1", "S2" }) }), default);
+        const string expected = "La serie S1 está en renta (REN-00007); registre su devolución antes de reconciliar el conteo.";
+        var preview = await svc.PreviewReconcileAsync(created.Count.Id, default);
+        Assert.Equal(expected, Assert.Single(preview.Lines).Error);
+        Assert.Equal(1, preview.Totals.ErrorLines);
+        var before = await f.TxnCountAsync();
+        var ex = await Assert.ThrowsAsync<ConflictException>(() => svc.ReconcileAsync(created.Count.Id, null, default));
+        Assert.Equal(expected, ex.Message);
+        Assert.Equal(before, await f.TxnCountAsync());
+        Assert.Equal(new[] { CycleCountStatuses.Open }, await f.HistoryAsync(created.Count.Id));
+        Assert.Equal(1m, await f.OnHandAsync(f.ProductSerialId, rentBin));
+
+        // Contando solo lo que de verdad está en A01 se reconcilia (Concordancia): la rentada sigue en EN-RENTA.
+        await svc.CaptureAsync(created.Count.Id, new CountCaptureRequest(new[] { new CountCaptureItem(line.Id, null, new[] { "S2" }) }), default);
+        var done = await svc.ReconcileAsync(created.Count.Id, null, default);
+        Assert.Equal(CycleCountStatuses.Reconciled, done.Count.StatusCode);
+        Assert.Equal(1m, await f.OnHandAsync(f.ProductSerialId, rentBin));
+    }
 }
 
 /// <summary>
@@ -679,6 +725,47 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         return (21, 201);
     }
 
+    /// <summary>Lote 28 (D7): zona RENT (tipo RENTAL) con la posición EN-RENTA (id 150); devuelve (zona, posición).</summary>
+    public async Task<(int ZoneId, int BinId)> AddRentalZoneAsync()
+    {
+        var zone = new WarehouseZone { WarehouseZoneId = 15, WarehouseId = WarehouseId, Code = "RENT", Name = "En renta", ZoneTypeLookupId = LookupId(LookupDomains.ZoneType, ZoneTypes.Rental), IsActive = true };
+        Db.Set<WarehouseZone>().Add(zone);
+        Db.Set<WarehouseBin>().Add(new WarehouseBin { WarehouseBinId = 150, WarehouseZoneId = 15, WarehouseId = WarehouseId, Code = "EN-RENTA", IsActive = true });
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+        return (15, 150);
+    }
+
+    /// <summary>
+    /// Lote 28 (D7): renta mínima en curso de una serie, como la deja el despacho de RentalService (reserva y TRANSFER a EN-RENTA
+    /// reservada, serie ON_RENT) con la renta y su línea abierta para el número del mensaje.
+    /// </summary>
+    public async Task RentSerialAsync(int productId, int fromBinId, int rentBinId, string serial, string rentalNumber)
+    {
+        var ledger = Get<InventoryLedger>();
+        await Db.RunInTransactionAsync(async ct =>
+        {
+            await ledger.ReserveAsync(new[] { new StockReservation(productId, WarehouseId, fromBinId, null, 1m, new[] { serial }) }, ct);
+            await ledger.PostAsync(new[]
+            {
+                new InventoryPosting(InventoryTxnTypes.Transfer, productId, 1m, SerialNumber: serial, FromWarehouseId: WarehouseId, FromBinId: fromBinId,
+                    ToWarehouseId: WarehouseId, ToBinId: rentBinId, FromReserved: true, TargetSerialStatus: SerialStatuses.OnRent, ReserveAtDestination: true),
+            }, ct);
+        }, default);
+        Db.ChangeTracker.Clear();
+        var serialId = await Db.Set<InventorySerial>().AsNoTracking().Where(s => s.ProductId == productId && s.SerialNumber == serial).Select(s => s.SerialId).SingleAsync();
+        var rental = new Rental
+        {
+            PublicId = Guid.NewGuid(), TenantId = TenantId, Number = rentalNumber, ClientId = 1, LocationId = 1, WarehouseId = WarehouseId,
+            StartDate = new DateOnly(2026, 10, 1), PickupDate = new DateOnly(2026, 11, 1), OriginalPickupDate = new DateOnly(2026, 11, 1), StatusCodeId = 100,
+        };
+        Db.Set<Rental>().Add(rental);
+        await Db.SaveChangesAsync();
+        Db.Set<RentalLine>().Add(new RentalLine { RentalId = rental.RentalId, ProductId = productId, SerialId = serialId, FromBinId = fromBinId, DispatchedAtUtc = DateTime.UtcNow, IsActive = true });
+        await Db.SaveChangesAsync();
+        Db.ChangeTracker.Clear();
+    }
+
     /// <summary>Estatus destino del historial del conteo, en orden (Lote 14).</summary>
     public async Task<string[]> HistoryAsync(int cycleCountId)
     {
@@ -750,6 +837,7 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual);    // Lote 14
         L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Changes);
         L(LookupDomains.CycleCountOrigin, CycleCountOrigins.Product);   // Lote 21
+        L(LookupDomains.ZoneType, ZoneTypes.Rental);                    // Lote 28 (D7): zona En renta (al final: ids previos intactos)
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -775,6 +863,8 @@ internal sealed class CycleCountFixture : IAsyncDisposable
         S(StatusDomains.SerialStatus, SerialStatuses.Reserved, lat, 2);
         S(StatusDomains.SerialStatus, SerialStatuses.Shipped, lat, 3);
         S(StatusDomains.SerialStatus, SerialStatuses.Scrapped, term, 4);
+        S(StatusDomains.SerialStatus, SerialStatuses.OnRent, lat, 5);      // Lote 28 (D7): series en renta y en proceso
+        S(StatusDomains.SerialStatus, SerialStatuses.InProcess, lat, 6);
         // Lote 14 (seed 3G): 'Diferencia' solo desde Pendiente y Contado.
         foreach (var from in new[] { CycleCountStatuses.Open, CycleCountStatuses.Counted })
             Db.StatusLateralEntries.Add(new StatusLateralEntry

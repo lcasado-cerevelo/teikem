@@ -186,6 +186,9 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.Currency, "USD");
         L(LookupDomains.Currency, "EUR");
         L(LookupDomains.LocationType, LocationTypes.Delivery);
+        // Lote 28 (Rentas R2): motivos y condiciones de la devolución (al final: ids previos intactos).
+        foreach (var c in RentalReturnReasons.All) L(LookupDomains.RentalReturnReason, c);
+        foreach (var c in RentalReturnConditions.All) L(LookupDomains.RentalReturnCondition, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -265,6 +268,15 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.RentalStatus, RentalStatuses.OnRent, pipe, 3);
         S(StatusDomains.RentalStatus, RentalStatuses.Returned, term, 4);
         S(StatusDomains.RentalStatus, RentalStatuses.Cancelled, term, 5);
+        // Lote 28 (Rentas R2): proceso del equipo devuelto, como logistica-db-seed.sql (al final: ids previos intactos).
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Pending, pipe, 1, true);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Inspection, pipe, 2);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Cleaning, pipe, 3);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Testing, pipe, 4);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Ready, term, 5);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Repair, lat, 6);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.AwaitingParts, lat, 7);
+        S(StatusDomains.RentalProcessStatus, RentalProcessStatuses.Scrapped, term, 8);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.

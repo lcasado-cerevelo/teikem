@@ -4485,6 +4485,106 @@ nueva si cambió.
 Los estatus de la renta se pueden renombrar y reordenar, pero no desactivar: vuelva a habilitarlo (422 `El estatus '{código}' no existe o
 no está habilitado para esta compañía.`).
 
+## Lote 28 — Rentas R2: devolución de renta, proceso del equipo devuelto y conteo cíclico (D7)
+
+Detalle en el [capítulo 11](11-rentas.md) (secciones 5, 6 y 7), el capítulo 06 §6.y y `docs/lote28-decisiones.md`. Endpoints
+`POST /api/v1/rentals/{publicId}/returns` (`rental.return`), `/api/v1/rental-returns` (`rental.view`) y `/api/v1/rental-processes`
+(`rental.view` / `rental.maintenance`; dar de baja también `inventory.adjust`), módulo `RENTAL_EQUIPMENT` "Rentas".
+
+### Mensajes nuevos del servidor
+
+**400 — "Con el motivo 'Otro' describa la devolución en las notas."**
+Con el motivo "Otro" las notas de la devolución son obligatorias: escriba qué pasó (o elija otro motivo).
+
+**400 — "La posición de destino no puede ser de la zona En renta."**
+El equipo devuelto (o el que termina su proceso) no puede quedar en EN-RENTA: elija una posición de picking, reserva o cuarentena. Si no
+indica ninguna, la devolución usa la posición de donde salió el equipo.
+
+**400 — "Indique el motivo de la devolución: END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER."** / **"Motivo de devolución desconocido: '{x}'. Use END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER."**
+Cada devolución lleva un motivo: fin del contrato, anticipada por daño, anticipada a pedido del cliente u otro.
+
+**400 — "Indique al menos una serie que se devuelve."** / **"Indique el número de serie del equipo devuelto."** / **"El número de serie {s} está repetido."**
+Los equipos se devuelven por su número de serie, cada uno una sola vez por devolución.
+
+**400 — "Condición desconocida: '{x}'. Use GOOD, DAMAGED o INCOMPLETE."**
+La condición del equipo es Buena (por defecto), Dañado o Incompleto.
+
+**400 — "La fecha de devolución no puede ser futura."** / **"La fecha de devolución no puede ser anterior al inicio de la renta ({aaaa-mm-dd})."**
+La fecha es la del día en que volvió el equipo (hoy por defecto, en la hora de la compañía) y no puede ser antes de que empezara la renta.
+
+**400 — "El costo de recogido estimado no puede ser negativo."** / **"Las notas del equipo admiten como máximo 500 caracteres."**
+El costo de recogido es un dato (0 o más); las notas de cada equipo, hasta 500 caracteres.
+
+**400 — "La posición de destino debe ser del almacén {código} del proceso."**
+Al terminar un proceso el equipo solo se traslada dentro de su almacén. Para llevarlo a otro almacén, termínelo y luego haga una
+transferencia normal.
+
+**400 — "Indique el estatus al que pasa el proceso."**
+"Avanzar" necesita el estatus destino (por ejemplo `CLEANING` o `REPAIR`).
+
+**403 — "Falta el permiso 'inventory.adjust'."** (al dar de baja)
+Dar de baja saca el equipo del inventario: además de `rental.maintenance` hace falta `inventory.adjust`. Pídalo al administrador o pida a
+quien lo tenga que lo dé de baja. Sin `rental.return` no se registran devoluciones y sin `rental.maintenance` no se avanza el proceso (403
+`PERMISSION_DENIED`).
+
+**404 — "Devolución de renta no encontrada."** / **"Proceso no encontrado."** / **"Posición no encontrada."**
+La devolución, el proceso o la posición no existen en su compañía. Recargue la lista.
+
+**409 — "La serie {s} no está en renta en {REN-n}."**
+Esa serie no es un equipo despachado y sin devolver de esa renta: es de otra renta, ya se devolvió o nunca salió. Revise la ficha de la
+renta (los equipos devueltos muestran su fecha de devolución).
+
+**409 — "La serie {s} está en renta ({REN-n}); registre su devolución antes de reconciliar el conteo."**
+En un conteo se capturó una serie que el sistema tiene en el cliente. Si el equipo de verdad volvió, registre la devolución de esa renta y
+recapture el conteo; si se capturó por error, quítela de la captura y confirme.
+
+**409 — "Uno de los equipos se acaba de devolver en otra operación; recargue e intente de nuevo."**
+Otra persona registró la devolución del mismo equipo al mismo tiempo. Recargue la renta.
+
+**422 — "Solo se registra la devolución de una renta En renta; la renta {n} no lo está."**
+Una renta en Borrador o Programada todavía no salió (cancélela si ya no va); una Devuelta o Cancelada ya terminó.
+
+**422 — "El proceso ya terminó; solo se consulta."**
+El proceso está en "Lista" o "Dada de baja": ya no se avanza, ni se termina, ni se da de baja otra vez.
+
+**422 — "La posición {bin} es de equipos en renta; no se cuenta."**
+La posición EN-RENTA (zona RENT) no se cuenta: lo que está ahí está en los clientes. Cuente las demás posiciones; los conteos de todo el
+almacén, por producto o de lo cambiado ya la saltan solos.
+
+**422 — "El estatus '{código}' no existe o no está habilitado para esta compañía."** / **"Salto ilegal: de '{de}' solo se puede avanzar a '{siguiente}'."**
+El paso está desactivado en la configuración del proceso, o el salto no está permitido: avance al siguiente paso habilitado, a Reparación
+/ Esperando piezas, o termine el proceso.
+
+### Preguntas frecuentes
+
+**Devolví un equipo y el producto sigue "No disponible". ¿Por qué?**
+Porque pasó por proceso: queda "En proceso", en mano pero reservado, hasta que el proceso llega a **Lista**. Si no necesitaba revisión,
+la próxima vez márquelo sin proceso (`requiresProcess: false`).
+
+**¿Puedo devolver solo uno de los equipos de una renta?**
+Sí. Registre la devolución con esa serie (por ejemplo "Anticipada por daño"). La renta sigue En renta hasta que vuelva el último equipo;
+con esa devolución pasa a **Devuelta**.
+
+**¿Puedo devolver un equipo a otro almacén?**
+Sí: indique una posición de ese almacén (`toBinId`). Lo que no se puede es dejarlo en la zona En renta.
+
+**¿Quién decide si un equipo pasa por proceso?**
+Quien recibe la devolución, equipo por equipo (por defecto sí).
+
+**¿Puedo quitar o renombrar pasos del proceso?**
+Sí, desde la configuración de estatus (`RentalProcessStatus`): renombrar, reordenar o desactivar Inspección, Limpieza, Pruebas,
+Reparación o Esperando piezas. El inventario solo cambia al llegar a **Lista** (se libera) o **Dada de baja** (sale del inventario).
+
+**¿Qué pasa con el equipo dado de baja?**
+Sale del inventario con un ajuste de salida con motivo "Daño" y la referencia del proceso; la serie queda "Dada de baja" y no puede volver
+a recibirse ni rentarse.
+
+**¿Una devolución anticipada cambia la tarifa o el cobro?**
+No: la renta solo guarda las condiciones (D3). La devolución marca si fue anticipada (`isEarly`) para los reportes de rentas.
+
+**¿Por qué no puedo contar la posición EN-RENTA?**
+Porque lo que está ahí está físicamente en los clientes (D7). Para corregir un equipo que en realidad volvió, registre su devolución.
+
 ## Lote A4 — App de almacén: contar por producto
 
 Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los

@@ -43,6 +43,12 @@ namespace Teikem.Infrastructure.Services;
 ///   en ella y las claves que quedaron en 0; salta posiciones inactivas o con un conteo abierto; tope 200 por generación; una
 ///   sola transacción; guarda origen CHANGES y ventana. "Hoy" = día local de la compañía (ITenantClock).
 /// - Lista paginada con total, origen, posición/zona de un conteo de una posición y la tarea COUNT con su asignado.
+///
+/// Lote 28 (Rentas R2, D7): la posición EN-RENTA (zona RENTAL) no se cuenta: pedirla de forma explícita (posición o zona al crear,
+/// zona de "lo cambiado", línea agregada a mano) → 422 'La posición {bin} es de equipos en renta; no se cuenta.'; las selecciones
+/// amplias (todo el almacén, por producto, lo cambiado) la saltan sin error. Una serie EN RENTA capturada en otra posición deja la
+/// línea con el error 409 'La serie {s} está en renta ({n}); registre su devolución antes de reconciliar el conteo.' (se bloquea;
+/// primero se registra la devolución de la renta).
 /// </summary>
 public sealed class CycleCountService(
     TeikemDbContext db,
@@ -382,6 +388,9 @@ public sealed class CycleCountService(
             if (productIds.Count != pubs.Count) throw new NotFoundException("Producto");
         }
         if (req.CategoryIds is { Length: > 0 }) categoryIds = await ExpandCategoriesAsync(req.CategoryIds, ct);
+        // Lote 28 (D7): la zona En renta no se cuenta: pedida de forma explícita → 422; en las selecciones amplias se salta.
+        var rentalZones = await RentalZoneIdsAsync(wid, ct);
+        await EnsureNotRentalAsync(wid, rentalZones, zoneIds, binIds, ct);
 
         // Foto del sistema (sin bloqueo: es informativa; el ajuste se calcula contra el saldo actual al reconciliar).
         var candidatesQuery =
@@ -392,6 +401,7 @@ public sealed class CycleCountService(
             select new { b.ProductId, bin.WarehouseBinId, BinCode = bin.Code, bin.WarehouseZoneId, b.LotId, b.QtyOnHand, p.Sku, p.ProductCategoryId };
         if (zoneIds is not null) candidatesQuery = candidatesQuery.Where(x => zoneIds.Contains(x.WarehouseZoneId));
         if (binIds is not null) candidatesQuery = candidatesQuery.Where(x => binIds.Contains(x.WarehouseBinId));
+        if (rentalZones.Count > 0) candidatesQuery = candidatesQuery.Where(x => !rentalZones.Contains(x.WarehouseZoneId));
         if (productIds is not null) candidatesQuery = candidatesQuery.Where(x => productIds.Contains(x.ProductId));
         if (categoryIds is not null)
         {
@@ -543,6 +553,9 @@ public sealed class CycleCountService(
             var found = await db.Set<WarehouseZone>().AsNoTracking().CountAsync(z => z.WarehouseId == wid && zoneIds.Contains(z.WarehouseZoneId), ct);
             if (found != zoneIds.Count) throw new NotFoundException("Zona", feminine: true);
         }
+        // Lote 28 (D7): la zona En renta no se cuenta (pedida → 422; si no, sus posiciones se saltan).
+        var rentalZones = await RentalZoneIdsAsync(wid, ct);
+        await EnsureNotRentalAsync(wid, rentalZones, zoneIds, null, ct);
 
         // Ventana: por defecto desde el último 'hasta' de lo cambiado de este almacén (o las 00:00 locales de hoy).
         var changesOrigin = await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Changes, ct);
@@ -570,6 +583,7 @@ public sealed class CycleCountService(
             ? new List<WarehouseBin>()
             : await db.Set<WarehouseBin>().AsNoTracking().Where(b => b.WarehouseId == wid && binIds.Contains(b.WarehouseBinId)).ToListAsync(ct);
         if (zoneIds is not null) bins = bins.Where(b => zoneIds.Contains(b.WarehouseZoneId)).ToList();
+        if (rentalZones.Count > 0) bins = bins.Where(b => !rentalZones.Contains(b.WarehouseZoneId)).ToList();
         var inactive = bins.Count(b => !b.IsActive);
         var active = bins.Where(b => b.IsActive).ToList();
         var busy = await BinsWithOpenCountAsync(wid, active.Select(b => b.WarehouseBinId).ToList(), ct);
@@ -911,6 +925,8 @@ public sealed class CycleCountService(
                           .FirstOrDefaultAsync(b => b.WarehouseBinId == binId && b.WarehouseId == cc.WarehouseId, ct2)
                       ?? throw new NotFoundException("Posición", feminine: true);
             if (!bin.IsActive) throw new StatusRuleException(BinInactive(bin.Code));
+            if ((await RentalZoneIdsAsync(cc.WarehouseId, ct2)).Contains(bin.WarehouseZoneId))
+                throw new StatusRuleException(RentalRules.RentalBinNotCounted(bin.Code));   // Lote 28 (D7)
             if (!product.IsActive) throw new StatusRuleException(CycleCountRules.ProductInactive(product.Sku));
             var code = await TrackingOfAsync(product.TrackingTypeLookupId, ct2);
 
@@ -972,15 +988,59 @@ public sealed class CycleCountService(
 
     private sealed record StockBinRow(int BinId, string BinCode, string ZoneCode, int? LotId);
 
-    /// <summary>(posición, lote) con existencia en mano del producto en posiciones activas del almacén. Sin cantidades.</summary>
+    /// <summary>
+    /// (posición, lote) con existencia en mano del producto en posiciones activas del almacén. Sin cantidades. Lote 28 (D7): sin las
+    /// posiciones de la zona En renta (no se cuentan).
+    /// </summary>
     private async Task<List<StockBinRow>> StockBinsAsync(int warehouseId, int productId, CancellationToken ct)
-        => await (from b in db.Set<StockBalance>().AsNoTracking()
-                  join bin in db.Set<WarehouseBin>().AsNoTracking() on b.WarehouseBinId equals (int?)bin.WarehouseBinId
-                  join z in db.Set<WarehouseZone>().AsNoTracking() on bin.WarehouseZoneId equals z.WarehouseZoneId
-                  where b.WarehouseId == warehouseId && bin.WarehouseId == warehouseId && bin.IsActive && b.ProductId == productId && b.QtyOnHand > 0m
-                  group new { bin, z, b.LotId } by new { bin.WarehouseBinId, bin.Code, ZoneCode = z.Code, b.LotId } into g
-                  orderby g.Key.Code, g.Key.LotId
-                  select new StockBinRow(g.Key.WarehouseBinId, g.Key.Code, g.Key.ZoneCode, g.Key.LotId)).ToListAsync(ct);
+    {
+        var rentalZones = await RentalZoneIdsAsync(warehouseId, ct);
+        return await (from b in db.Set<StockBalance>().AsNoTracking()
+                      join bin in db.Set<WarehouseBin>().AsNoTracking() on b.WarehouseBinId equals (int?)bin.WarehouseBinId
+                      join z in db.Set<WarehouseZone>().AsNoTracking() on bin.WarehouseZoneId equals z.WarehouseZoneId
+                      where b.WarehouseId == warehouseId && bin.WarehouseId == warehouseId && bin.IsActive && b.ProductId == productId && b.QtyOnHand > 0m
+                            && !rentalZones.Contains(z.WarehouseZoneId)
+                      group new { bin, z, b.LotId } by new { bin.WarehouseBinId, bin.Code, ZoneCode = z.Code, b.LotId } into g
+                      orderby g.Key.Code, g.Key.LotId
+                      select new StockBinRow(g.Key.WarehouseBinId, g.Key.Code, g.Key.ZoneCode, g.Key.LotId)).ToListAsync(ct);
+    }
+
+    /// <summary>Lote 28 (D7): zonas de tipo RENTAL ("En renta") del almacén (filtrado por tenant).</summary>
+    private async Task<List<int>> RentalZoneIdsAsync(int warehouseId, CancellationToken ct)
+    {
+        var rentalType = await lookups.TryGetIdAsync(LookupDomains.ZoneType, ZoneTypes.Rental, ct);
+        if (rentalType is not int rt) return new List<int>();
+        return await (from z in db.Set<WarehouseZone>().AsNoTracking()
+                      join w in db.Warehouses.AsNoTracking() on z.WarehouseId equals w.WarehouseId
+                      where z.WarehouseId == warehouseId && z.ZoneTypeLookupId == rt
+                      select z.WarehouseZoneId).ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Lote 28 (D7): 422 'La posición {bin} es de equipos en renta; no se cuenta.' si se pidió una posición de la zona En renta o
+    /// la zona misma (con la zona, el código es el de su primera posición; sin posiciones, el de la zona).
+    /// </summary>
+    private async Task EnsureNotRentalAsync(int warehouseId, IReadOnlyCollection<int> rentalZones, IReadOnlyCollection<int>? zoneIds,
+        IReadOnlyCollection<int>? binIds, CancellationToken ct)
+    {
+        if (rentalZones.Count == 0) return;
+        var zones = rentalZones.ToList();
+        if (binIds is { Count: > 0 })
+        {
+            var ids = binIds.ToList();
+            var hit = await db.Set<WarehouseBin>().AsNoTracking()
+                .Where(b => b.WarehouseId == warehouseId && ids.Contains(b.WarehouseBinId) && zones.Contains(b.WarehouseZoneId))
+                .OrderBy(b => b.Code).Select(b => b.Code).FirstOrDefaultAsync(ct);
+            if (hit is not null) throw new StatusRuleException(RentalRules.RentalBinNotCounted(hit));
+        }
+        if (zoneIds is { Count: > 0 } && zoneIds.FirstOrDefault(z => zones.Contains(z)) is int zoneId && zoneId != 0)
+        {
+            var code = await db.Set<WarehouseBin>().AsNoTracking().Where(b => b.WarehouseId == warehouseId && b.WarehouseZoneId == zoneId)
+                           .OrderBy(b => b.Code).Select(b => b.Code).FirstOrDefaultAsync(ct)
+                       ?? await db.Set<WarehouseZone>().AsNoTracking().Where(z => z.WarehouseZoneId == zoneId).Select(z => z.Code).FirstAsync(ct);
+            throw new StatusRuleException(RentalRules.RentalBinNotCounted(code));
+        }
+    }
 
     /// <summary>
     /// Lote 24 — dónde puede estar un producto para contarlo en este conteo (GET .../product-bins): una fila por (posición, lote)
@@ -1255,6 +1315,14 @@ public sealed class CycleCountService(
             if (IsSerial(line))
             {
                 var ctx = serialPlans[line.CycleCountLineId];
+                // Lote 28 (D7): una serie EN RENTA contada aquí no se reconcilia (el ledger no la movería): primero su devolución.
+                var rented = countedByLine[line.CycleCountLineId].FirstOrDefault(s => ctx.RentedIn.ContainsKey(s));
+                if (rented is not null)
+                {
+                    var msg = RentalRules.SerialOnRentInCount(ctx.Locations.TryGetValue(rented, out var at) ? at.SerialNumber : rented, ctx.RentedIn[rented]);
+                    plans.Add(new LinePlan(line, product, tracking, currentQty, reserved, counted, false, 0m, new List<InventoryPosting>(), msg, null));
+                    continue;
+                }
                 var v = CycleCountRules.SerialVariance(ctx.Expected, countedByLine[line.CycleCountLineId], ctx.Locations,
                     cc.WarehouseId, line.WarehouseBinId, ctx.CountedElsewhere);
                 foreach (var s in v.Removals)
@@ -1728,10 +1796,12 @@ public sealed class CycleCountService(
         return result;
     }
 
+    /// <summary>RentedIn (Lote 28, D7): series contadas que hoy están EN RENTA (fuera de esta posición) → número de su renta abierta.</summary>
     private sealed record SerialLineContext(
         IReadOnlyList<string> Expected,
         IReadOnlyDictionary<string, SerialLocation> Locations,
-        IReadOnlySet<string> CountedElsewhere);
+        IReadOnlySet<string> CountedElsewhere,
+        IReadOnlyDictionary<string, string> RentedIn);
 
     /// <summary>
     /// Por línea con serie: series esperadas HOY en su posición (en inventario), ubicación actual de las contadas que el
@@ -1757,10 +1827,24 @@ public sealed class CycleCountService(
             : await db.Set<InventorySerial>().AsNoTracking()
                 .Where(s => productIds.Contains(s.ProductId) && countedNumbers.Contains(s.SerialNumber)).ToListAsync(ct);
 
+        // Lote 28 (D7): de las contadas, las que están EN RENTA y el número de su renta abierta (despachada y sin devolver).
+        var onRentId = statusById.Where(kv => kv.Value == SerialStatuses.OnRent).Select(kv => (int?)kv.Key).FirstOrDefault();
+        var rentedIds = onRentId is int orid ? known.Where(s => s.StatusCodeId == orid).Select(s => s.SerialId).ToList() : new List<int>();
+        var rentalOf = rentedIds.Count == 0
+            ? new Dictionary<int, string>()
+            : (await (from l in db.RentalLines.AsNoTracking()
+                      join r in db.Rentals.AsNoTracking() on l.RentalId equals r.RentalId
+                      where rentedIds.Contains(l.SerialId) && l.IsActive && l.ReturnedAtUtc == null
+                      select new { l.SerialId, r.Number }).ToListAsync(ct))
+              .GroupBy(x => x.SerialId).ToDictionary(g => g.Key, g => g.First().Number);
+
         foreach (var line in serialLines)
         {
             var expected = inBins.Where(s => s.ProductId == line.ProductId && line.WarehouseBinId == s.CurrentBinId && s.LotId == line.LotId)
                 .Select(s => s.SerialNumber).ToList();
+            var rentedIn = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var s in known.Where(s => s.ProductId == line.ProductId && onRentId is int id && s.StatusCodeId == id && s.CurrentBinId != line.WarehouseBinId))
+                rentedIn[s.SerialNumber] = rentalOf.GetValueOrDefault(s.SerialId) ?? RentalRules.RentalBinCode;
             var locations = new Dictionary<string, SerialLocation>(StringComparer.OrdinalIgnoreCase);
             foreach (var s in known.Where(s => s.ProductId == line.ProductId))
                 locations[s.SerialNumber] = new SerialLocation(s.SerialNumber,
@@ -1769,7 +1853,7 @@ public sealed class CycleCountService(
                 serialLines.Where(o => o.ProductId == line.ProductId && o.CycleCountLineId != line.CycleCountLineId)
                     .SelectMany(o => countedByLine[o.CycleCountLineId]),
                 StringComparer.OrdinalIgnoreCase);
-            result[line.CycleCountLineId] = new SerialLineContext(expected, locations, elsewhere);
+            result[line.CycleCountLineId] = new SerialLineContext(expected, locations, elsewhere, rentedIn);
         }
         return result;
     }

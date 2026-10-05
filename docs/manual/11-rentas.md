@@ -3,8 +3,10 @@
 Rentas permite **rentar equipos propios con número de serie** (camas de hospital, concentradores de oxígeno, sillas de ruedas…) a una
 **localidad de un cliente**, con su contrato, su fecha de recogido (fin de la renta) y sus condiciones de cobro. Este capítulo cubre el
 **bloque R1 (Lote 27)**: la renta desde que se crea hasta que se despacha, las **extensiones** de la fecha de recogido y la
-**cancelación**. La **devolución** del equipo (con motivo y proceso de inspección, limpieza, reparación…) llega con el bloque R2; los
-reportes e indicadores, con el R3. Todo lo de este capítulo es del servidor (API); las pantallas llegan con la web de Rentas (F-R1).
+**cancelación**; y el **bloque R2 (Lote 28)**: la **devolución de renta** (con su motivo, total o parcial, al término o anticipada), el
+**proceso configurable** del equipo devuelto (inspección, limpieza, pruebas, reparación… hasta "Lista" o "Dada de baja") y los equipos
+en renta en el **conteo cíclico** (D7). Los reportes e indicadores llegan con el R3. Todo lo de este capítulo es del servidor (API); las
+pantallas llegan con la web de Rentas (F-R1 y F-R2).
 
 Decisiones del dueño que gobiernan el módulo:
 - **El equipo rentado sigue siendo nuestro** (D1): no sale del inventario. Queda en la posición **EN-RENTA** del almacén, con estatus de
@@ -16,6 +18,9 @@ Decisiones del dueño que gobiernan el módulo:
 - **Extender** una renta es un registro con permiso y bitácora (nueva fecha, motivo, tarifa si cambia), sin aprobación de un segundo
   usuario (D4).
 - El **contrato** es el número y la fecha del contrato dentro de la renta (D6).
+- La **devolución** es también un registro propio de la renta (D2), con enlace **vacío** al envío futuro de recogido.
+- Una serie en renta que aparece en un **conteo cíclico** se bloquea: primero se registra la devolución; la posición EN-RENTA no se
+  cuenta (D7).
 
 ## 1. Quién puede y dónde
 
@@ -24,8 +29,12 @@ Decisiones del dueño que gobiernan el módulo:
 | Ver la lista, la ficha y la bitácora de extensiones | `rental.view` | `GET /api/v1/rentals`, `GET /api/v1/rentals/{publicId}`, `GET /api/v1/rentals/{publicId}/extensions` |
 | Crear, editar, agregar o quitar equipos, poner la tarifa de un equipo, programar, despachar y cancelar | `rental.manage` | `POST /api/v1/rentals`, `PATCH /api/v1/rentals/{publicId}`, `POST /api/v1/rentals/{publicId}/lines`, `DELETE /api/v1/rentals/{publicId}/lines/{lineId}`, `PUT /api/v1/rentals/{publicId}/lines/{lineId}/rate`, `POST …/schedule`, `POST …/dispatch`, `POST …/cancel` |
 | Extender la fecha de recogido | `rental.extend` (nuevo) | `POST /api/v1/rentals/{publicId}/extensions` |
-| Registrar devoluciones (bloque R2) | `rental.return` (nuevo; sembrado desde ya) | — |
-| Historial de estatus de la renta | `rental.view` | `GET /api/v1/status/history/RENTAL/{id}` |
+| Registrar la devolución de una renta | `rental.return` | `POST /api/v1/rentals/{publicId}/returns` |
+| Ver las devoluciones (lista y ficha) | `rental.view` | `GET /api/v1/rental-returns`, `GET /api/v1/rental-returns/{publicId}` |
+| Ver la cola de procesos de equipos devueltos | `rental.view` | `GET /api/v1/rental-processes` |
+| Avanzar el proceso y terminarlo ("Lista") | `rental.maintenance` | `POST /api/v1/rental-processes/{id}/advance`, `POST /api/v1/rental-processes/{id}/complete` |
+| Dar de baja el equipo en su proceso | `rental.maintenance` **y** `inventory.adjust` | `POST /api/v1/rental-processes/{id}/scrap` |
+| Historial de estatus de la renta / del proceso | `rental.view` | `GET /api/v1/status/history/RENTAL/{id}`, `GET /api/v1/status/history/RENTAL_PROCESS/{id}` |
 
 - **Módulo**: `RENTAL_EQUIPMENT`, que ahora se llama **"Rentas"**, está en la categoría **Almacén** y **depende de `WMS_LOTSERIAL`**
   (Inventario y trazabilidad): no se enciende sin él y **apagar `WMS_LOTSERIAL` apaga Rentas** (y su dependiente "Facturación de
@@ -33,9 +42,13 @@ Decisiones del dueño que gobiernan el módulo:
 - **Plantillas de rol**: el **Admin de compañía** tiene todo; el **Operador de almacén** tiene `rental.view`, `rental.manage`,
   `rental.maintenance` y ahora también **`rental.extend`** y **`rental.return`**. Al actualizar la plataforma, todo rol de compañía que
   ya gestionaba rentas (`rental.manage`) recibe una sola vez `rental.extend` y `rental.return`; a los demás se les dan desde Roles.
-- La compañía sale de la sesión: una renta, un cliente, una localidad, un almacén o un producto de otra compañía responden **404**.
-- Todo cambio de la renta, sus equipos, tarifas y extensiones queda en la **auditoría** (tipo `RENTAL`); los cambios de estatus, en el
-  historial de estatus.
+- La compañía sale de la sesión: una renta, una devolución, un proceso, un cliente, una localidad, un almacén, una posición o un producto
+  de otra compañía responden **404**.
+- Todo cambio de la renta, sus equipos, tarifas y extensiones queda en la **auditoría** (tipo `RENTAL`); las devoluciones, en el tipo
+  `RENTAL_RETURN`; el proceso, en el tipo `RENTAL_PROCESS`. Los cambios de estatus, en el historial de estatus.
+- **Dar de baja** pide dos permisos: `rental.maintenance` (el de la acción) y además `inventory.adjust`, porque saca el equipo del
+  inventario (un ajuste de salida). Sin `inventory.adjust` responde 403 `Falta el permiso 'inventory.adjust'.`. El Operador de almacén
+  tiene los dos.
 
 ## 2. La renta
 
@@ -156,14 +169,102 @@ Lista (`GET /api/v1/rentals`): paginada (`skip`, `take` ≤ 200), más recientes
 - Los equipos quedan inactivos (la serie queda libre para otra renta), se sella la fecha de cierre y el comentario va al historial.
 - Una renta **despachada no se cancela**: termina con su devolución (R2).
 
-## 5. Estatus y transiciones
+## 5. Devolver una renta (bloque R2)
+
+`POST /api/v1/rentals/{publicId}/returns` (**`rental.return`**) — solo en una renta **En renta**. Registra una **devolución de renta**
+DRN-##### (numeración propia por compañía) con los equipos que vuelven:
+
+```json
+{ "reason": "EARLY_DAMAGE", "returnedOn": "2026-10-20", "notes": "Pantalla rota en el hospital",
+  "toBinId": 412, "estimatedPickupCost": 30, "transportCurrency": "USD", "rowVersion": "…",
+  "lines": [ { "serialNumber": "SN-0002", "condition": "DAMAGED", "toBinId": 415, "requiresProcess": true, "notes": "Golpe lateral" } ] }
+```
+
+- **Motivo** (uno por devolución, obligatorio): `END_OF_CONTRACT` "Fin del contrato", `EARLY_DAMAGE` "Anticipada por daño",
+  `EARLY_CLIENT` "Anticipada a pedido del cliente" u `OTHER` "Otro" (con "Otro" las **notas** son obligatorias).
+- **Equipos**: cada uno por su **número de serie**, que debe ser un equipo **despachado y sin devolver de esa renta**. Se puede devolver
+  **una parte** (por ejemplo, el equipo que se dañó) y el resto después: la renta sigue **En renta** hasta que vuelve el último equipo.
+- **Condición** de cada equipo: `GOOD` "Buena" (por defecto), `DAMAGED` "Dañado" o `INCOMPLETE` "Incompleto".
+- **Posición de destino**: la del equipo (`lines[].toBinId`), si no la del encabezado (`toBinId`) y, si no se indica ninguna, **la posición
+  de donde salió** el equipo. Puede ser de **otro almacén** de la compañía (por ejemplo, cuarentena de un taller). **Nunca** la zona En
+  renta.
+- **¿Pasa por proceso?** (`requiresProcess`, **sí por defecto**): lo decide quien recibe. Con proceso, el equipo queda **en mano pero
+  reservado** y su serie **"En proceso"** (no cuenta como disponible) y se abre su **proceso** (sección 6) en el primer paso
+  ("Pendiente"). Sin proceso, queda **Disponible** de inmediato.
+- **Fecha** de la devolución: hoy por defecto (día de la compañía); no puede ser futura ni anterior al inicio de la renta. La devolución
+  es **anticipada** (`isEarly`) si la fecha es anterior a la fecha de recogido vigente: es un dato calculado para los reportes.
+- **Costo de recogido estimado** y su moneda: solo dato; el enlace al envío futuro de recogido (`pickupShipmentId`) queda vacío (D2).
+
+En el inventario, por cada equipo se registra en el Kárdex una **transferencia** desde **EN-RENTA** hasta la posición de destino, con la
+referencia **"Devolución de renta DRN-#####"** (neutra en el total: el equipo siguió siendo de la compañía). Cuando vuelven **todos** los
+equipos despachados, la renta pasa a **Devuelta** (terminal) y se sella su fecha de cierre; el comentario del historial es
+"Devolución DRN-#####".
+
+Respuesta (la ficha de la devolución): número, renta, cliente, fecha, motivo, `isEarly`, `units`, `openProcesses` (equipos aún en
+proceso), el estatus de la renta después de la devolución (`rentalStatusCode`), notas, costo de recogido y los equipos (producto, serie,
+condición, almacén y posición de destino, si pasa por proceso, movimiento del Kárdex, notas y el proceso con su estatus).
+
+Lista: `GET /api/v1/rental-returns` (`rental.view`), paginada (`skip`, `take` ≤ 200), más recientes primero. Filtros: `rentalPublicId`,
+`clientPublicId`, `reason` (uno o varios), `from`/`to` (fecha de devolución), `early=true|false` y `search` (número DRN, número de renta o
+serie). Ficha: `GET /api/v1/rental-returns/{publicId}`. La ficha de la renta muestra en cada equipo su `returnedAtUtc`.
+
+## 6. Proceso del equipo devuelto (configurable)
+
+Cada equipo devuelto "con proceso" tiene su **proceso** (`RentalProcess`) con los estatus del pipeline **RentalProcessStatus**, que la
+compañía puede **renombrar, reordenar y desactivar** desde la configuración de estatus:
+
+| Estatus | Código | Tipo | Qué significa |
+|---|---|---|---|
+| Pendiente | `PENDING` | inicial | recién devuelto, sin revisar |
+| Inspección | `INSPECTION` | etapa | se revisa el equipo |
+| Limpieza | `CLEANING` | etapa | limpieza / desinfección |
+| Pruebas | `TESTING` | etapa | pruebas de funcionamiento |
+| Lista | `READY` | terminal | el equipo vuelve a estar **disponible** |
+| Reparación | `REPAIR` | lateral | en reparación (desde cualquier paso) |
+| Esperando piezas | `AWAITING_PARTS` | lateral | detenido por piezas (desde cualquier paso) |
+| Dada de baja | `SCRAPPED` | terminal | el equipo sale del inventario |
+
+- **Cola**: `GET /api/v1/rental-processes` (`rental.view`): abiertos primero (los más viejos arriba), luego los terminados. Filtros
+  `status` (uno o varios), `open=true|false`, `warehousePublicId`, `productPublicId` y `search` (serie, SKU, número de devolución o de
+  renta). Cada fila: serie, producto, almacén y posición actual, estatus con su color, `isFinished`, devolución y renta de origen, condición
+  con que volvió, fechas de inicio y fin, notas (las del equipo en la devolución) y `rowVersion`.
+- **Avanzar**: `POST /api/v1/rental-processes/{id}/advance` con `{ "status": "CLEANING", "comment"?, "rowVersion"? }`
+  (`rental.maintenance`). Se puede pasar a **cualquier estatus habilitado**, con las reglas de siempre de los pipelines: de un paso al
+  **siguiente** habilitado; a **Reparación** o **Esperando piezas** desde cualquier paso, y de ahí de vuelta al paso en que estaba o al
+  siguiente; a un terminal (Lista o Dada de baja). Un salto ilegal responde 422 con el mensaje del motor de estatus. Pasar a `SCRAPPED`
+  por aquí pide también `inventory.adjust` (es igual que dar de baja).
+- **Terminar** ("Lista"): `POST /api/v1/rental-processes/{id}/complete` con `{ "binId"?, "comment"?, "rowVersion"? }` (`rental.maintenance`).
+  Con `binId` (posición del **mismo almacén**, no de la zona En renta), primero se **traslada** el equipo (transferencia con la referencia
+  "Proceso #id", sigue reservado y "En proceso") y después pasa a Lista. Al llegar a **Lista** se **libera la reserva**: la serie pasa de
+  "En proceso" a **Disponible** y el disponible del producto **vuelve**.
+- **Dar de baja**: `POST /api/v1/rental-processes/{id}/scrap` con `{ "comment"?, "rowVersion"? }` (`rental.maintenance` **y**
+  `inventory.adjust`). Se registra un **ajuste de salida** (`ADJUSTMENT −1`) desde la posición del proceso con el motivo **DAMAGE**
+  ("Daño") y la referencia "Proceso #id" (nota "Baja del proceso #id"); la serie queda **Dada de baja** (no vuelve al inventario) y el en
+  mano del producto baja en uno.
+- Los efectos en el inventario dependen **solo de los terminales** (Lista libera, Dada de baja da de baja): los pasos intermedios no mueven
+  inventario, por eso la compañía puede configurarlos libremente. Llegar a Lista por "avanzar" hace lo mismo que "terminar" (sin traslado).
+- Un proceso **terminado** (Lista o Dada de baja) solo se consulta: cualquier acción responde 422 `El proceso ya terminó; solo se consulta.`
+- Historial: `GET /api/v1/status/history/RENTAL_PROCESS/{id}` (cada paso con su comentario, quién y cuándo).
+
+## 7. Equipos en renta y el conteo cíclico (D7)
+
+- La posición **EN-RENTA no se cuenta**: crear un conteo pidiendo esa posición o la zona RENT, un conteo de "lo cambiado" con la zona
+  RENT, o agregar una línea en EN-RENTA responde 422 `La posición {bin} es de equipos en renta; no se cuenta.`. Los conteos amplios (todo el
+  almacén, por producto, lo cambiado) la **saltan** sin error.
+- Una serie **En renta** capturada en otra posición **bloquea** el conteo: la vista previa marca la línea y "Confirmar conteo y ajustar"
+  responde 409 `La serie {s} está en renta ({REN-n}); registre su devolución antes de reconciliar el conteo.` sin mover nada. Si el equipo
+  de verdad volvió, registre su devolución (sección 5) y recapture; si fue un error de captura, quítela y confirme.
+- Las series "En proceso" están en su posición, en mano y **reservadas**: se cuentan como siempre; si no se encuentran, el conteo
+  responde el 409 de "lo contado es menor que lo reservado" (termine o dé de baja el proceso primero).
+
+## 8. Estatus y transiciones
 
 | Estatus | Código | Tipo | Qué permite |
 |---|---|---|---|
 | Borrador | `DRAFT` | inicial | editar, equipos, tarifas, programar, cancelar |
 | Programada | `SCHEDULED` | etapa | editar, equipos (reservan/liberan), tarifas, despachar, extender, cancelar |
-| En renta | `ON_RENT` | etapa | extender; devolver (R2) |
-| Devuelta | `RETURNED` | terminal | solo consulta (R2) |
+| En renta | `ON_RENT` | etapa | extender; devolver (total o parcial) |
+| Devuelta | `RETURNED` | terminal | solo consulta (se ven sus devoluciones) |
 | Cancelada | `CANCELLED` | terminal | solo consulta |
 
 | De → a | Quién | Efectos | Qué lo bloquea |
@@ -172,16 +273,28 @@ Lista (`GET /api/v1/rentals`): paginada (`skip`, `take` ≤ 200), más recientes
 | Borrador → Programada | `rental.manage` | reserva las series (serie Reservada; disponible baja) | sin equipos, cliente dado de baja, serie no disponible |
 | Programada → En renta | `rental.manage` | transferencia a EN-RENTA, reservada en el destino; serie En renta; fecha de despacho | cliente dado de baja; reserva perdida; posición EN-RENTA desactivada; estatus de serie `ON_RENT` desactivado por la compañía |
 | Borrador / Programada → Cancelada | `rental.manage` | libera reservas; equipos inactivos; fecha de cierre | despachada (también lo impide el sistema aunque se cambie la regla) |
-| En renta → Devuelta | `rental.return` (R2) | — | — |
+| En renta → Devuelta | `rental.return` | la **última** devolución (cuando ya no queda ningún equipo despachado sin devolver); fecha de cierre; comentario "Devolución DRN-#####" | estatus `RETURNED` desactivado por la compañía (422) |
+| (devolución) | `rental.return` | por equipo: transferencia EN-RENTA → destino; serie En proceso y reservada (con proceso) o Disponible; abre el proceso | renta no En renta; serie que no está en renta en esa renta; destino en la zona En renta |
 
-Estatus de la **serie** agregados por Rentas (laterales, del sistema): **En renta** (`ON_RENT`) y **En proceso** (`IN_PROCESS`, para el
-proceso del equipo devuelto de R2). Ambos cuentan como "en inventario" en el conteo cíclico y en el indicador "series por capturar".
+Estatus de la **serie** agregados por Rentas (laterales, del sistema): **En renta** (`ON_RENT`) y **En proceso** (`IN_PROCESS`, mientras
+el equipo devuelto está en su proceso). Ambos cuentan como "en inventario" en el conteo cíclico y en el indicador "series por capturar".
+Ciclo de la serie de un equipo rentado: Disponible → Reservada (programar) → En renta (despachar) → En proceso (devolver con proceso) →
+Disponible (Lista) o Dada de baja; sin proceso, de En renta a Disponible.
+
+Transiciones del **proceso** (sección 6):
+
+| De → a | Quién | Efectos | Qué lo bloquea |
+|---|---|---|---|
+| (devolución con proceso) → Pendiente | `rental.return` | se abre con la serie En proceso y reservada en la posición de destino | estatus inicial desactivado (422) |
+| paso → siguiente paso, paso ↔ Reparación / Esperando piezas | `rental.maintenance` | ninguno en el inventario | salto ilegal o estatus desactivado (422); proceso terminado (422) |
+| cualquiera → Lista | `rental.maintenance` | traslado opcional en el almacén y **libera la reserva** (serie Disponible); fecha de fin | posición de otro almacén o de la zona En renta (400); proceso terminado (422) |
+| cualquiera → Dada de baja | `rental.maintenance` + `inventory.adjust` | **ajuste de salida** con motivo DAMAGE; serie Dada de baja; fecha de fin | sin `inventory.adjust` (403); proceso terminado (422) |
 
 La compañía puede **renombrar** y **reordenar** los estatus de la renta, pero **no** debe desactivarlos: si desactiva "Programada", "En
 renta" (de la renta o de la serie) o "Cancelada", la acción correspondiente responde 422 `El estatus '{código}' no existe o no está
 habilitado para esta compañía.`
 
-## 6. Mensajes (servidor)
+## 9. Mensajes (servidor)
 
 | Caso | Mensaje exacto | HTTP |
 |---|---|---|
@@ -229,6 +342,32 @@ habilitado para esta compañía.`
 | Almacén de origen inactivo | `El almacén {código} está inactivo; no admite movimientos de inventario.` | 422 |
 | Posición EN-RENTA desactivada a mano | `La posición EN-RENTA está inactiva; no admite movimientos de inventario.` | 422 |
 
+Devolución, proceso y conteo (bloque R2):
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Devolución sin motivo / motivo desconocido | `Indique el motivo de la devolución: END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER.` / `Motivo de devolución desconocido: '{x}'. Use END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER.` | 400 |
+| Motivo "Otro" sin notas | `Con el motivo 'Otro' describa la devolución en las notas.` | 400 |
+| Sin equipos / equipo sin serie / serie repetida | `Indique al menos una serie que se devuelve.` / `Indique el número de serie del equipo devuelto.` / `El número de serie {s} está repetido.` | 400 |
+| Condición desconocida | `Condición desconocida: '{x}'. Use GOOD, DAMAGED o INCOMPLETE.` | 400 |
+| Notas de la devolución de más de 1000 / del equipo de más de 500 caracteres | `Las notas admiten como máximo 1000 caracteres.` / `Las notas del equipo admiten como máximo 500 caracteres.` | 400 |
+| Fecha futura / anterior al inicio | `La fecha de devolución no puede ser futura.` / `La fecha de devolución no puede ser anterior al inicio de la renta ({aaaa-mm-dd}).` | 400 |
+| Costo de recogido negativo / moneda desconocida | `El costo de recogido estimado no puede ser negativo.` / `Moneda desconocida: '{código}'.` | 400 |
+| Posición de destino en la zona En renta (devolución o terminar el proceso) | `La posición de destino no puede ser de la zona En renta.` | 400 |
+| Terminar el proceso con una posición de otro almacén | `La posición de destino debe ser del almacén {código} del proceso.` | 400 |
+| Avanzar sin estatus | `Indique el estatus al que pasa el proceso.` | 400 |
+| Dar de baja (o avanzar a SCRAPPED) sin `inventory.adjust` | `Falta el permiso 'inventory.adjust'.` | 403 |
+| Devolución / proceso / posición de otra compañía o inexistente | `Devolución de renta no encontrada.` / `Proceso no encontrado.` / `Posición no encontrada.` / `Renta no encontrada.` | 404 |
+| La serie no es un equipo despachado y sin devolver de esa renta | `La serie {s} no está en renta en {REN-n}.` | 409 |
+| Otra operación devolvió el mismo equipo al mismo tiempo | `Uno de los equipos se acaba de devolver en otra operación; recargue e intente de nuevo.` | 409 |
+| Otro usuario cambió la renta o el proceso (con `rowVersion`) | `El registro fue modificado por otro usuario; recargue e intente de nuevo.` | 409 |
+| Conteo: serie En renta capturada en otra posición | `La serie {s} está en renta ({REN-n}); registre su devolución antes de reconciliar el conteo.` | 409 |
+| Devolver una renta que no está En renta (Borrador, Programada, Devuelta, Cancelada) | `Solo se registra la devolución de una renta En renta; la renta {n} no lo está.` | 422 |
+| Cualquier acción sobre un proceso Lista o Dado de baja | `El proceso ya terminó; solo se consulta.` | 422 |
+| Avanzar a un estatus desactivado o con un salto ilegal | `El estatus '{código}' no existe o no está habilitado para esta compañía.` / `Salto ilegal: de '{de}' solo se puede avanzar a '{siguiente}'.` / `Desde el lateral '{x}' solo se puede regresar a '{paso}' o avanzar a '{siguiente}'.` | 422 |
+| Conteo: pedir la posición EN-RENTA o la zona RENT, o agregar una línea en EN-RENTA | `La posición {bin} es de equipos en renta; no se cuenta.` | 422 |
+| Destino inactivo (posición o almacén) | `La posición {código} está inactiva; no admite movimientos de inventario.` / `El almacén {código} está inactivo; no admite movimientos de inventario.` | 422 |
+
 Mensajes del inventario que se ven al intentar mover una serie rentada (por las pantallas normales):
 
 | Caso | Mensaje exacto | HTTP |
@@ -237,16 +376,21 @@ Mensajes del inventario que se ven al intentar mover una serie rentada (por las 
 | Recolectar una serie En renta | `La serie {s} no está disponible en el almacén (no existe, ya salió o está en otra posición o lote).` | 409 |
 | Recibir de nuevo (devolución normal) una serie En renta | `La serie {s} ya está en inventario.` | 409 |
 
-## 7. Kárdex, auditoría y datos
+## 10. Kárdex, auditoría y datos
 
 - Kárdex: el despacho son **transferencias** con origen la posición del equipo y destino **EN-RENTA**, referencia **"Renta REN-#####"**
   (en inglés "Rental REN-#####"); filtrar por `refEntity=RENTAL&refId={id}`. El detalle del movimiento muestra la renta (número, estatus,
-  cliente y número de contrato). Las devoluciones (R2) aparecerán como "Devolución de renta DRN-#####" y el proceso como "Proceso #id".
+  cliente y número de contrato).
+- Kárdex de la devolución: **transferencias** desde EN-RENTA a la posición de destino con la referencia **"Devolución de renta DRN-#####"**
+  (`refEntity=RENTAL_RETURN&refId={id}`); el detalle muestra la devolución (número, fecha, cliente y número de la renta).
+- Kárdex del proceso: el traslado al terminar es una **transferencia** "Proceso #id" y la baja un **ajuste −1** con motivo DAMAGE
+  (`refEntity=RENTAL_PROCESS&refId={id}`); el detalle muestra el proceso con su estatus y, como documento padre, su devolución.
 - Saldos: la posición EN-RENTA muestra lo rentado **en mano y reservado**. El producto: en mano igual, disponible sin lo rentado.
 - Series: `GET /api/v1/products/{publicId}/serials` muestra las rentadas con estatus "En renta" en EN-RENTA.
-- Auditoría: `GET /api/v1/audit/changes?entityType=RENTAL&entityId={id}`.
+- Auditoría: `GET /api/v1/audit/changes?entityType=RENTAL&entityId={id}`; devoluciones `entityType=RENTAL_RETURN`, procesos
+  `entityType=RENTAL_PROCESS`.
 
-## 8. Casos frecuentes
+## 11. Casos frecuentes
 
 - **Quiero rentar un equipo de Depot y no me deja**: el producto no se controla por serie (400). Conviértalo con **Convertir a serie**
   (capítulo 06 §2.1) capturando las series de cada unidad, y agréguelo por su serie.
@@ -256,5 +400,15 @@ Mensajes del inventario que se ven al intentar mover una serie rentada (por las 
 - **Me equivoqué de equipo antes de despachar**: quítelo (DELETE de la línea) y agregue el correcto; en Programada la reserva se libera y
   se toma la nueva.
 - **El cliente desistió antes de la entrega**: cancele la renta (solo Borrador o Programada).
-- **El equipo se dañó en el cliente / la renta terminó**: se registra con la **devolución de renta** (bloque R2); por ahora la renta
-  queda En renta.
+- **El equipo se dañó en el cliente**: registre una devolución **solo de ese equipo** con el motivo "Anticipada por daño" y la condición
+  "Dañado" (a cuarentena, por ejemplo); pasa por proceso. El resto sigue En renta hasta su devolución.
+- **La renta terminó**: devuelva todos los equipos (motivo "Fin del contrato"); la renta pasa a Devuelta. Los que no necesitan revisión,
+  con `requiresProcess: false`: quedan disponibles al momento.
+- **Devolví un equipo y aparece "No disponible"**: está en su proceso ("En proceso", reservado). Avance el proceso y termínelo ("Lista")
+  para que vuelva a estar disponible.
+- **El equipo no tiene arreglo**: en su proceso use **Dar de baja** (pide `inventory.adjust`): sale del inventario con motivo "Daño" y la
+  serie queda dada de baja.
+- **Al reconciliar un conteo dice que una serie está en renta**: el equipo está registrado en el cliente. Si de verdad volvió, registre
+  su devolución y recapture; si no, quite la serie de la captura.
+- **No quiero el paso "Limpieza"**: desactívelo en la configuración de estatus del proceso; los efectos en el inventario solo dependen de
+  "Lista" y "Dada de baja".

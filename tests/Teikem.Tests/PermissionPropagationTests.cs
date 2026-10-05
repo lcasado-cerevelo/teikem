@@ -55,6 +55,27 @@ public class PermissionPropagationTests
     }
 
     [Fact]
+    public void Lote28_returns_and_the_process_need_no_new_codes_and_the_warehouse_operator_already_holds_them()
+    {
+        // Lote 28 (Rentas R2) no siembra permisos nuevos: devolver usa rental.return (Lote 27, ya propagado), el proceso
+        // rental.maintenance (seed original) y dar de baja además inventory.adjust. El Operador de almacén los tiene todos; Facturación
+        // y Solo lectura no devuelven ni procesan.
+        var operatorTemplate = PermissionCatalog.RoleTemplates["WarehouseOperator"];
+        foreach (var code in new[] { PermissionCatalog.RentalView, PermissionCatalog.RentalReturn, PermissionCatalog.RentalMaintenance, PermissionCatalog.InventoryAdjust })
+            Assert.Contains(code, operatorTemplate);
+        foreach (var role in new[] { "Billing", "ReadOnly", "Dispatcher", "Driver" })
+        {
+            Assert.DoesNotContain(PermissionCatalog.RentalReturn, PermissionCatalog.RoleTemplates[role]);
+            Assert.DoesNotContain(PermissionCatalog.RentalMaintenance, PermissionCatalog.RoleTemplates[role]);
+        }
+        Assert.Contains(PermissionCatalog.All, p => p.Code == PermissionCatalog.RentalReturn);
+        Assert.Contains(PermissionCatalog.All, p => p.Code == PermissionCatalog.RentalMaintenance);
+        // Re-correr la propagación con los códigos de R1 no vuelve a dar nada a quien ya los tiene.
+        Assert.Empty(PermissionCatalog.CodesToPropagate("WarehouseOperator", Set(PermissionCatalog.RentalExtend, PermissionCatalog.RentalReturn),
+            Set(PermissionCatalog.RentalExtend, PermissionCatalog.RentalReturn)));
+    }
+
+    [Fact]
     public void Nothing_new_means_nothing_to_propagate()
         => Assert.Empty(PermissionCatalog.CodesToPropagate("TenantAdmin", Set(), Set()));
 }

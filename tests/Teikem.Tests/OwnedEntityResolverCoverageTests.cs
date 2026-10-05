@@ -195,4 +195,25 @@ public class OwnedEntityResolverCoverageTests
         Assert.Equal("RentalReturnOwnedEntityResolver", resolvers[EntityTypes.RentalReturn]);
         Assert.Equal("RentalProcessOwnedEntityResolver", resolvers[EntityTypes.RentalProcess]);
     }
+
+    [Fact]
+    public void Rental_return_and_process_services_and_the_process_effect_resolve_from_the_container()
+    {
+        // Lote 28 (Rentas R2): devolución, proceso y el efecto del proceso (resuelve el ledger con IServiceProvider: si formara el
+        // ciclo StatusService ↔ InventoryLedger, resolver StatusService o el ledger fallaría aquí).
+        using var sp = BuildContainer();
+        using var scope = sp.CreateScope();
+        var p = scope.ServiceProvider;
+        Assert.NotNull(p.GetRequiredService<RentalReturnService>());
+        Assert.NotNull(p.GetRequiredService<RentalProcessService>());
+        Assert.NotNull(p.GetRequiredService<StatusService>());
+        Assert.NotNull(p.GetRequiredService<Teikem.Infrastructure.Wms.InventoryLedger>());
+        var effects = p.GetServices<IStatusTransitionEffect>().ToList();
+        var effect = Assert.Single(effects, e => e.GetType().Name == "RentalProcessStatusEffect");
+        Assert.Equal(StatusDomains.RentalProcessStatus, effect.StatusDomain);
+        // Un solo efecto por dominio de rentas (sin duplicar registros).
+        Assert.Single(effects, e => e.StatusDomain == StatusDomains.RentalStatus);
+        var resolvers = p.GetServices<IOwnedEntityResolver>().Where(r => r.EntityTypeCode is EntityTypes.RentalReturn or EntityTypes.RentalProcess).ToList();
+        Assert.Equal(2, resolvers.Count);
+    }
 }

@@ -540,6 +540,34 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 var party = (await ClientNamesAsync(new[] { r.ClientId }, ct)).GetValueOrDefault(r.ClientId);
                 return new KardexDocumentDto(entity, label, id, r.PublicId, r.Number, sc, sl, r.DispatchedAtUtc ?? r.CreatedAtUtc, party, r.ContractNumber);
             }
+            case EntityTypes.RentalReturn:
+            {
+                // Lote 28 (Rentas R2): número DRN, fecha de alta, cliente y, como referencia, el número de la renta.
+                var r = await (from x in db.Set<RentalReturn>().AsNoTracking()
+                               join rent in db.Set<Rental>().AsNoTracking() on x.RentalId equals rent.RentalId
+                               where x.RentalReturnId == id
+                               select new { x.PublicId, x.Number, x.CreatedAtUtc, rent.ClientId, RentalNumber = rent.Number }).FirstOrDefaultAsync(ct);
+                if (r is null) return Missing();
+                var party = (await ClientNamesAsync(new[] { r.ClientId }, ct)).GetValueOrDefault(r.ClientId);
+                return new KardexDocumentDto(entity, label, id, r.PublicId, r.Number, null, null, r.CreatedAtUtc, party, r.RentalNumber);
+            }
+            case EntityTypes.RentalProcess:
+            {
+                // Lote 28 (Rentas R2): 'Proceso #id' con su estatus y, como padre, la devolución que lo abrió.
+                var p = await db.Set<RentalProcess>().AsNoTracking().Where(x => x.RentalProcessId == id)
+                    .Select(x => new { x.StatusCodeId, x.StartedAtUtc, x.CompletedAtUtc, x.RentalReturnLineId }).FirstOrDefaultAsync(ct);
+                if (p is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(p.StatusCodeId, ct);
+                KardexDocumentDto? parent = null;
+                if (withParent && p.RentalReturnLineId is int lineId)
+                {
+                    var returnId = await db.Set<RentalReturnLine>().AsNoTracking().Where(l => l.RentalReturnLineId == lineId)
+                        .Select(l => (int?)l.RentalReturnId).FirstOrDefaultAsync(ct);
+                    if (returnId is int rid) parent = await DocumentAsync(EntityTypes.RentalReturn, rid, false, ct);
+                }
+                return new KardexDocumentDto(entity, label, id, null, KardexRules.RefLabel(entity, id, null, tenant.Lang), sc, sl,
+                    p.CompletedAtUtc ?? p.StartedAtUtc, null, null, parent);
+            }
             case EntityTypes.Product:
             {
                 var p = await db.Set<Product>().AsNoTracking().Where(x => x.ProductId == id)

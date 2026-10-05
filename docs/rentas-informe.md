@@ -110,6 +110,58 @@ Ver los puntos 1 a 9 de la lista de abajo.
 
 Ver los puntos 10 a 27 de la lista de abajo.
 
+## Bloque R2 — Devolución de renta, proceso del equipo devuelto y conteo cíclico (Lote 28)
+
+### Qué se hizo
+
+- **Devolución de renta** (`RentalReturnService`, `POST /api/v1/rentals/{publicId}/returns`, `rental.return`): DRN-#####, motivo por
+  devolución, equipos por número de serie (cada uno despachado y sin devolver de esa renta), condición por equipo, destino (por equipo, por
+  encabezado o la posición de donde salió; otro almacén permitido; nunca la zona En renta), y si pasa por proceso (sí por defecto). Por el
+  **ledger**, una TRANSFER por equipo desde EN-RENTA (`FromReserved`, serie esperada `ON_RENT`) con referencia `RENTAL_RETURN`: con proceso
+  queda reservada e `IN_PROCESS`, sin proceso `AVAILABLE`. Abre un `RentalProcess` por equipo con proceso; con el último equipo la renta
+  pasa a **RETURNED** por `StatusService.TransitionAsync`. Lista y ficha (`GET /api/v1/rental-returns[/{publicId}]`, `rental.view`).
+- **Proceso configurable** (`RentalProcessService`, `/api/v1/rental-processes`): cola (`rental.view`), **Advance** a cualquier estatus
+  habilitado, **Complete** a READY con traslado opcional en el almacén, **Scrap** a SCRAPPED (`rental.maintenance`; dar de baja exige además
+  `inventory.adjust` en el servicio). **Efecto** `RentalProcessStatusEffect`: READY libera la reserva (IN_PROCESS → AVAILABLE); SCRAPPED hace
+  `ADJUSTMENT −` con motivo DAMAGE y la serie queda SCRAPPED; depende de los terminales y resuelve el ledger con `IServiceProvider`.
+- **Conteo cíclico (D7)**: EN-RENTA pedida de forma explícita → 422 `La posición {bin} es de equipos en renta; no se cuenta.`; las
+  selecciones amplias la saltan; una serie en renta capturada en otra posición → 409 `La serie {s} está en renta ({n}); registre su
+  devolución antes de reconciliar el conteo.` (vista previa, reconciliar y cierre en bloque).
+- Bloqueo nuevo `LockRentalProcessAsync` (sentencia 19 de `InventoryQueries`); detalle del Kárdex para `RENTAL_RETURN` y `RENTAL_PROCESS`.
+- **Contrato** regenerado (`web-app/openapi.json` + `schema.d.ts` de la web y la app; solo adiciones: 7 rutas y 10 esquemas).
+- **Documentación**: `docs/lote28-decisiones.md`, capítulo 11 (secciones 5 Devolver, 6 Proceso, 7 Conteo cíclico; estatus, mensajes,
+  Kárdex y casos frecuentes ampliados), capítulo 06 §6.y (D7), sección "Lote 28" de la FAQ e índice del manual.
+- Sin cambios de esquema, seed ni permisos (el esquema de R2 lo creó R1).
+- Archivos principales: `src/Teikem.Infrastructure/Services/RentalReturnService.cs`, `RentalProcessService.cs`,
+  `RentalProcessStatusEffect.cs`, `CycleCountService.cs`, `InventoryReadService.cs`, `Wms/InventoryQueries.cs`,
+  `src/Teikem.Domain/Wms/RentalRules.cs`, `Contracts/RentalContracts.cs`, `src/Teikem.Api/Controllers/RentalReturnsController.cs`,
+  `RentalProcessesController.cs`; pruebas `RentalReturnServiceTests`, `RentalProcessEffectTests`, `RentalReturnWorld`; paso nuevo en
+  `scripts/smoke.sh`.
+
+### Cómo se probó (resultados reales)
+
+| Comando | Resultado |
+|---|---|
+| `dotnet test tests/Teikem.Tests -o .tmp-testout` | **3133 pasan, 0 fallan** (antes 3104 en `9457d00`: +29 — 4 `RentalReturnServiceTests`, 3 `RentalProcessEffectTests`, 1 de D7 en `CycleCountServiceTests`, 1 de resolvers/servicios, 1 de propagación de permisos, 12 firmas de contratos y 7 acciones de seguridad; `WmsControllerSecurityTests` en 151 acciones, `RawSqlConfinementTests` en 19 sentencias) |
+| `scripts/dev-sqlserver.sh` (ya corriendo) + `db-init` ×2 sobre la base nueva `TeikemR2Smoke` (desde `.tmp-testout`, `ASPNETCORE_ENVIRONMENT=Development`) | Completada las dos veces; la segunda omite los scripts por hash, 68 permisos (0 nuevos), tenant demo "ya existe". Se borraron `TeikemR0Smoke` y `TeikemR1Smoke` |
+| `scripts/smoke.sh http://localhost:5180` (con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` del build de `.tmp-testout`) | **SMOKE OK: 136 pasos, 138 `ok`** a la primera, incluido el paso nuevo "devolución y proceso de rentas (Lote 28, Rentas R2)" (D7 y smoke 5–7 del plan, más la baja con SQL Server real) |
+| Consultas por `sqlcmd` a `TeikemR2Smoke` | 3 `RentalReturn`, 3 `RentalReturnLine`, 2 `RentalProcess` (READY y SCRAPPED, con `CompletedAtUtc`) |
+| `cd web-app && npm run check` | tipos, tsc, oxlint, **vitest 1252 pasan** (124 archivos), build |
+| `cd app-almacen && npm run check` | tipos, typecheck, lint, **jest 410 pasan** (72 suites) |
+
+### Qué NO se probó
+
+- Pantallas de devoluciones y procesos (F-R2); sin Playwright.
+- Concurrencia real en SQL Server (dos devoluciones del mismo equipo, dos usuarios con el mismo proceso): cubierta por diseño (bloqueo de
+  la renta y del proceso, `UQ_RentalReturnLine_Line`, RowVersion), el smoke va en serie.
+- Una compañía que desactive `READY`, `SCRAPPED`, `RETURNED` o el estatus inicial del proceso (documentado: 422).
+- "Lo cambiado" con la zona RENT pedida de forma explícita (mismo código que el alta; sin prueba propia).
+- Datos reales de Depot.
+
+### Decisiones tomadas por defecto en este bloque
+
+Ver los puntos 28 a 40 de la lista de abajo.
+
 ## Decisiones por defecto a confirmar
 
 1. **(R0) Segundo permiso en el servicio.** El endpoint pide `inventory.manage` y el servicio exige `inventory.adjust` (403 `Falta el permiso
@@ -160,3 +212,29 @@ Ver los puntos 10 a 27 de la lista de abajo.
     reenciende Rentas. Los estatus de la renta se pueden renombrar/reordenar pero **no** desactivar (422).
 27. **(R1) Esquema de R2 creado ya** (`RentalReturn`, `RentalReturnLine`, `RentalProcess` mapeados, sin servicio) con una columna extra no
     listada en el plan: `RentalReturn.TransportCurrencyLookupId` (moneda del costo de recogido). La capa vieja se retira **solo si está vacía**.
+28. **(R2, plan §2) Quién decide si un equipo pasa por proceso: el receptor, equipo por equipo, "sí" por defecto.** Alternativa: por
+    producto o por condición (por ejemplo, todo lo "Dañado" con proceso). Consecuencia: si se olvida desmarcarlo, el equipo queda "En
+    proceso" hasta terminarlo.
+29. **(R2, plan §2) Motivo por devolución** (no por equipo) y **condición por equipo** (Buena por defecto). Alternativa: motivo por equipo.
+    Consecuencia: dos motivos distintos = dos devoluciones.
+30. **(R2, plan §2) Se puede devolver a otro almacén**; sin destino, el equipo vuelve a la **posición de donde salió**; nunca a la zona En
+    renta (cuarentena sí). Alternativa: destino obligatorio.
+31. **(R2) Los equipos se devuelven por número de serie** (lo que se escanea), no por id de línea.
+32. **(R2) Devolución parcial**: la renta sigue En renta hasta que vuelve el último equipo; no hay estatus "parcialmente devuelta".
+    Alternativa: un estatus intermedio.
+33. **(R2) Fecha de devolución**: hoy por defecto, no futura ni anterior al inicio de la renta; "anticipada" = antes de la fecha de recogido
+    vigente (dato calculado, no estatus).
+34. **(R2) Devolver no exige el cliente activo.** Alternativa: bloquearlo como el alta (no recomendado: el equipo tiene que volver).
+35. **(R2) "Avanzar" respeta el motor de estatus** (siguiente paso habilitado; Reparación y Esperando piezas desde cualquier paso; los
+    terminales). No se salta entre pasos del pipeline fuera de orden. Avanzar a "Dada de baja" pide también `inventory.adjust`; a "Lista"
+    es lo mismo que terminar sin traslado. Alternativa: saltos libres entre pasos.
+36. **(R2) Terminar con traslado solo dentro del almacén del proceso**; a otro almacén, con una transferencia normal después.
+37. **(R2) Dar de baja = ajuste de salida con el motivo existente "Daño" (DAMAGE)** y la referencia del proceso; `inventory.adjust` lo exige
+    el servicio (un solo `[RequirePermission]` por acción). Alternativa: un motivo nuevo "Baja de equipo de renta".
+38. **(R2, D7) Conteo**: EN-RENTA pedida de forma explícita → 422; los conteos amplios la saltan sin error; una serie en renta capturada en
+    otra posición es un error de la línea (409 al reconciliar; el cierre en bloque no cierra ese conteo). Las series En proceso se cuentan
+    como reservadas, sin regla nueva.
+39. **(R2) Orden de bloqueo de la devolución**: Rental → contador DRN → saldos → series (el número va antes del ledger porque el movimiento
+    lleva el id de la devolución); sin ciclo posible. Nueva sentencia de bloqueo del proceso (19).
+40. **(R2) Smoke 7**: para probar el **404** de otra compañía, el smoke enciende Inventario y Rentas en la compañía de prueba (con el módulo
+    apagado la respuesta es 403 `module_disabled`).

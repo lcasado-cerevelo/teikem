@@ -4930,6 +4930,92 @@ C27=$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$(dplus 90
 RC27=$(reconcile); echo "$RC27" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras las rentas: $(echo "$RC27" | jq -c .mismatches)"
 ok "rentas: alta en Borrador (REN-#####, contrato, transporte, tarifa) sin reservar; 400 localidad/fechas, 409 serie en otra renta, 403 Solo lectura; programar reserva (disponible 3→1, en mano 3); despachar: TRANSFER neutra a EN-RENTA (zona RENT a demanda), series ON_RENT, saldo 2/2, historial y AuditLog; mover/recolectar la serie rentada 409; editar/cancelar despachada 422; extender: 400 fecha y motivo, 403 sin rental.extend, tarifa versionada y bitácora; lista por vencer; cancelar programada libera; otra compañía 403/404; sin descuadre"
 
+step "devolución y proceso de rentas (Lote 28, Rentas R2): conteo con una serie en renta (D7), devolver anticipadamente por daño, recorrer el proceso hasta Lista (el disponible vuelve), cerrar la renta, dar de baja, permisos y otra compañía"
+# Sigue con la renta $RP del paso anterior (En renta: S1 de P-26A y S3 de P-26B en EN-RENTA; S2 disponible en P-26A).
+TOKEN=$(login "$EMAIL" "$PASS"); TREN27=$(login "rentas27$TS@teikem.local" "$PASS"); TREAD26=$(login "lectura6$TS@teikem.local" "$PASS")
+# D7: la posición EN-RENTA no se cuenta (422) y una serie en renta contada en otra posición bloquea la reconciliación (409).
+expect 422 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$BRENT]}")" | jq -e '.title=="La posición EN-RENTA es de equipos en renta; no se cuenta."' >/dev/null || fail "contar EN-RENTA → 422"
+CC28=$(expect 200 "$(req POST /api/v1/cycle-counts "{\"warehousePublicId\":\"$W6P\",\"binIds\":[$B26A],\"productPublicIds\":[\"$P26\"]}")"); CC28ID=$(echo "$CC28" | jq -r .count.id)
+CL28=$(echo "$CC28" | jq -r '.lines[0].id'); echo "$CC28" | jq -e '(.lines|length)==1 and .lines[0].systemQty==1' >/dev/null || fail "conteo de P-26A con S2"
+expect 200 "$(req PUT "/api/v1/cycle-counts/$CC28ID/lines" "$(jq -cn --argjson l "$CL28" --arg a "$S1" --arg b "$S2" '{lines:[{lineId:$l,serialNumbers:[$a,$b]}]}')")" >/dev/null
+M28="La serie $S1 está en renta ($RNUM); registre su devolución antes de reconciliar el conteo."
+expect 200 "$(req GET "/api/v1/cycle-counts/$CC28ID/reconcile-preview")" | jq -e --arg m "$M28" '.lines[0].error==$m and .totals.errorLines==1' >/dev/null || fail "vista previa: la serie en renta marca la línea"
+expect 409 "$(req POST "/api/v1/cycle-counts/$CC28ID/reconcile" '{}')" | jq -e --arg m "$M28" '.title==$m' >/dev/null || fail "reconciliar con una serie en renta → 409"
+expect 204 "$(req DELETE "/api/v1/cycle-counts/$CC28ID")" >/dev/null
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg a "$S1" 'map(select(.serialNumber==$a))[0] | .statusCode=="ON_RENT" and .binCode=="EN-RENTA"' >/dev/null || fail "el conteo no movió la serie rentada"
+# Permisos: sin rental.return no se devuelve (403); sin rental.extend no se extiende (403, smoke 7).
+expect 403 "$(req POST "/api/v1/rentals/$RP/returns" "$(jq -cn --arg s "$S3" '{reason:"EARLY_DAMAGE",lines:[{serialNumber:$s}]}')" "$TREN27")" >/dev/null
+expect 403 "$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$(dplus 60)\",\"reason\":\"sin permiso\"}" "$TREN27")" >/dev/null
+expect 403 "$(req GET /api/v1/rental-returns '' "$TREAD26")" >/dev/null
+# Validaciones con el texto exacto (sin escribir): 'Otro' sin notas, destino EN-RENTA, serie que no está en la renta.
+ret28() { jq -cn --arg r "$1" --arg s "$2" --argjson b "${3:-null}" '{reason:$r,lines:[{serialNumber:$s,condition:"DAMAGED",toBinId:$b}],notes:"Pantalla rota en el hospital"}'; }
+expect 400 "$(req POST "/api/v1/rentals/$RP/returns" "$(jq -cn --arg s "$S3" '{reason:"OTHER",lines:[{serialNumber:$s}]}')")" | jq -e --arg m "Con el motivo 'Otro' describa la devolución en las notas." "$HASM" >/dev/null || fail "motivo Otro sin notas → 400"
+expect 400 "$(req POST "/api/v1/rentals/$RP/returns" "$(ret28 EARLY_DAMAGE "$S3" "$BRENT")")" | jq -e --arg m "La posición de destino no puede ser de la zona En renta." "$HASM" >/dev/null || fail "destino EN-RENTA → 400"
+expect 409 "$(req POST "/api/v1/rentals/$RP/returns" "$(ret28 EARLY_DAMAGE "$S2" "$B26C")")" | jq -e --arg m "La serie $S2 no está en renta en $RNUM." '.title==$m' >/dev/null || fail "serie que no está en la renta → 409"
+expect 200 "$(req GET "/api/v1/rental-returns?rentalPublicId=$RP")" | jq -e '.total==0' >/dev/null || fail "los rechazos no deben crear devoluciones"
+# Smoke 5: devolución ANTICIPADA POR DAÑO de S3 a P-26C, con proceso (por defecto): la renta sigue En renta (S1 sigue allá).
+DRN=$(expect 200 "$(req POST "/api/v1/rentals/$RP/returns" "$(ret28 EARLY_DAMAGE "$S3" "$B26C")")"); DRNP=$(echo "$DRN" | jq -r .return.publicId); DRNID=$(echo "$DRN" | jq -r .return.id); DRNUM=$(echo "$DRN" | jq -r .return.number)
+echo "$DRN" | jq -e --arg s "$S3" '(.return.number | test("^DRN-[0-9]{5}$")) and .return.reasonCode=="EARLY_DAMAGE" and .return.isEarly and .return.units==1 and .return.openProcesses==1 and .rentalStatusCode=="ON_RENT" and .pickupShipmentId==null and (.lines[0] | .serialNumber==$s and .conditionCode=="DAMAGED" and .toBinCode=="P-26C" and .requiresProcess and .processStatusCode=="PENDING" and .returnTxnId!=null)' >/dev/null || fail "devolución anticipada por daño: $(echo "$DRN" | jq -c '{n:.return.number,r:.rentalStatusCode,l:.lines}')"
+PROC=$(echo "$DRN" | jq -r '.lines[0].processId')
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==1' >/dev/null || fail "en proceso no cuenta como disponible"
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg c "$S3" 'map(select(.serialNumber==$c))[0] | .statusCode=="IN_PROCESS" and .binCode=="P-26C"' >/dev/null || fail "S3 En proceso en P-26C"
+[[ $(onhand "$W6P" "$B26C" "$P26") == 1 && $(reserved "$W6P" "$B26C" "$P26") == 1 && $(onhand "$W6P" "$BRENT" "$P26") == 1 ]] || fail "saldos tras la devolución (P-26C 1/1, EN-RENTA 1)"
+kardex "refEntity=RENTAL_RETURN&refId=$DRNID" | jq -e --arg r "Devolución de renta $DRNUM" '.total==1 and (.items[0] | .typeCode=="TRANSFER" and .signedQuantity==0 and .refLabel==$r and .fromBinCode=="EN-RENTA" and .toBinCode=="P-26C")' >/dev/null || fail "Kárdex de la devolución"
+expect 200 "$(req GET "/api/v1/rentals/$RP")" | jq -e --arg c "$S3" '.rental.statusCode=="ON_RENT" and (.lines[] | select(.serialNumber==$c) | .returnedAtUtc!=null)' >/dev/null || fail "la renta sigue En renta con S3 devuelta"
+expect 200 "$(req GET "/api/v1/rental-returns?early=true&reason=EARLY_DAMAGE&clientPublicId=$CR27P")" | jq -e --arg n "$DRNUM" '.total==1 and .items[0].number==$n' >/dev/null || fail "lista de devoluciones anticipadas por daño"
+expect 200 "$(req GET "/api/v1/rental-returns/$DRNP")" | jq -e '(.lines|length)==1' >/dev/null || fail "ficha de la devolución"
+expect 200 "$(req GET "/api/v1/audit/changes?entityType=RENTAL_RETURN&entityId=$DRNID&take=20")" | jq -e '.total >= 1' >/dev/null || fail "AuditLog de la devolución"
+# Smoke 6: el proceso hasta Lista. Sin rental.maintenance no se avanza (403); con él pero sin inventory.adjust no se da de baja (403).
+expect 200 "$(req GET "/api/v1/rental-processes?open=true&search=$S3")" | jq -e --argjson p "$PROC" '.total==1 and .items[0].id==$p and .items[0].statusCode=="PENDING" and .items[0].binCode=="P-26C" and .items[0].conditionCode=="DAMAGED"' >/dev/null || fail "cola de procesos"
+expect 403 "$(req POST "/api/v1/rental-processes/$PROC/advance" '{"status":"INSPECTION"}' "$TREN27")" >/dev/null
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Mantenimiento rentas $TS\",\"permissions\":[\"rental.view\",\"rental.maintenance\",\"inventory.view\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"mant28$TS@teikem.local\",\"fullName\":\"Mantenimiento 28 $TS\",\"password\":\"$PASS\",\"roles\":[\"Mantenimiento rentas $TS\"]}")" >/dev/null
+TMANT=$(login "mant28$TS@teikem.local" "$PASS")
+expect 403 "$(req POST "/api/v1/rental-processes/$PROC/scrap" '{}' "$TMANT")" | denied inventory.adjust || fail "dar de baja sin inventory.adjust → 403 del servicio"
+for st in INSPECTION CLEANING REPAIR TESTING; do
+  expect 200 "$(req POST "/api/v1/rental-processes/$PROC/advance" "{\"status\":\"$st\",\"comment\":\"paso $st\"}" "$TMANT")" | jq -e --arg s "$st" '.statusCode==$s and (.isFinished|not)' >/dev/null || fail "avanzar el proceso a $st"
+done
+expect 422 "$(req POST "/api/v1/rental-processes/$PROC/advance" '{"status":"PENDING"}' "$TMANT")" >/dev/null   # salto ilegal (StatusService)
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyAvailable==1' >/dev/null || fail "los pasos intermedios no liberan"
+DONE28=$(expect 200 "$(req POST "/api/v1/rental-processes/$PROC/complete" "{\"binId\":$B26B,\"comment\":\"Lista para rentar\"}" "$TMANT")")
+echo "$DONE28" | jq -e '.statusCode=="READY" and .isFinished and .binCode=="P-26B" and .completedAtUtc!=null' >/dev/null || fail "terminar el proceso: $(echo "$DONE28" | jq -c '{s:.statusCode,b:.binCode}')"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==2' >/dev/null || fail "Lista: el disponible vuelve"
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg c "$S3" 'map(select(.serialNumber==$c))[0] | .statusCode=="AVAILABLE" and .binCode=="P-26B"' >/dev/null || fail "S3 disponible en P-26B"
+[[ $(onhand "$W6P" "$B26C" "$P26") == 0 && $(reserved "$W6P" "$B26B" "$P26") == 0 ]] || fail "saldos tras terminar el proceso"
+kardex "refEntity=RENTAL_PROCESS&refId=$PROC" | jq -e --arg r "Proceso #$PROC" '.total==1 and (.items[0] | .typeCode=="TRANSFER" and .refLabel==$r and .fromBinCode=="P-26C" and .toBinCode=="P-26B")' >/dev/null || fail "Kárdex del traslado del proceso"
+expect 200 "$(req GET "/api/v1/status/history/RENTAL_PROCESS/$PROC")" | jq -e '[.[].toCode]==["PENDING","INSPECTION","CLEANING","REPAIR","TESTING","READY"] and .[5].comment=="Lista para rentar"' >/dev/null || fail "historial del proceso"
+expect 422 "$(req POST "/api/v1/rental-processes/$PROC/advance" '{"status":"CLEANING"}' "$TMANT")" | jq -e '.title=="El proceso ya terminó; solo se consulta."' >/dev/null || fail "proceso terminado → 422"
+# Vuelve el resto (S1, sin proceso, a P-26A): la renta pasa a Devuelta.
+DRN2=$(expect 200 "$(req POST "/api/v1/rentals/$RP/returns" "$(jq -cn --arg s "$S1" --argjson b "$B26A" '{reason:"END_OF_CONTRACT",lines:[{serialNumber:$s,toBinId:$b,requiresProcess:false}]}')")")
+echo "$DRN2" | jq -e '.rentalStatusCode=="RETURNED" and .return.openProcesses==0 and (.lines[0].processId==null)' >/dev/null || fail "segunda devolución cierra la renta"
+expect 200 "$(req GET "/api/v1/rentals/$RP")" | jq -e '.rental.statusCode=="RETURNED" and .rental.closedAtUtc!=null and (.canExtend|not)' >/dev/null || fail "renta Devuelta"
+expect 200 "$(req GET "/api/v1/status/history/RENTAL/$RID")" | jq -e '[.[].toCode][-1]=="RETURNED"' >/dev/null || fail "historial de la renta termina en Devuelta"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==3' >/dev/null || fail "renta devuelta: todo disponible"
+[[ $(onhand "$W6P" "$BRENT" "$P26") == 0 ]] || fail "EN-RENTA vacía"
+expect 422 "$(req POST "/api/v1/rentals/$RP/returns" "$(jq -cn --arg s "$S1" '{reason:"END_OF_CONTRACT",lines:[{serialNumber:$s}]}')")" | jq -e --arg m "Solo se registra la devolución de una renta En renta; la renta $RNUM no lo está." '.title==$m' >/dev/null || fail "devolver una renta Devuelta → 422"
+# Dar de baja (SCRAPPED) con SQL Server real: S2 en una renta nueva, devuelta con proceso y dada de baja por el admin.
+RS=$(expect 200 "$(req POST /api/v1/rentals "$(ren27 "$LR27" "[\"$S2\"]")")"); RSP=$(echo "$RS" | jq -r .rental.publicId)
+expect 200 "$(req POST "/api/v1/rentals/$RSP/schedule")" >/dev/null; expect 200 "$(req POST "/api/v1/rentals/$RSP/dispatch")" >/dev/null
+PROC2=$(expect 200 "$(req POST "/api/v1/rentals/$RSP/returns" "$(jq -cn --arg s "$S2" '{reason:"EARLY_CLIENT",lines:[{serialNumber:$s,condition:"INCOMPLETE"}]}')")" | jq -r '.lines[0].processId')
+SCR=$(expect 200 "$(req POST "/api/v1/rental-processes/$PROC2/scrap" '{"comment":"Sin arreglo"}')")
+echo "$SCR" | jq -e '.statusCode=="SCRAPPED" and .isFinished' >/dev/null || fail "dar de baja"
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg b "$S2" 'map(select(.serialNumber==$b))[0] | .statusCode=="SCRAPPED" and .binCode==null' >/dev/null || fail "S2 dada de baja"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==2 and .product.qtyAvailable==2' >/dev/null || fail "la baja saca la unidad del inventario"
+kardex "refEntity=RENTAL_PROCESS&refId=$PROC2" | jq -e --arg r "Proceso #$PROC2" '.total==1 and (.items[0] | .typeCode=="ADJUSTMENT" and .signedQuantity==-1 and .reasonCode=="DAMAGE" and .refLabel==$r)' >/dev/null || fail "Kárdex de la baja (ADJUSTMENT − DAMAGE)"
+# Smoke 7: otra compañía (con Rentas encendido) recibe 404 en todo lo de esta renta.
+TB28=$(expect 200 "$(req POST /api/v1/auth/reauth '{"password":"Smoke_Admin_2026!"}' "$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")")" | jq -r .accessToken)
+expect 200 "$(req PUT /api/v1/modules/WMS_LOTSERIAL '{"isEnabled":true}' "$TB28")" >/dev/null
+expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}' "$TB28")" >/dev/null
+expect 404 "$(req GET "/api/v1/rentals/$RP" '' "$TB28")" >/dev/null
+expect 404 "$(req GET "/api/v1/rental-returns/$DRNP" '' "$TB28")" >/dev/null
+expect 404 "$(req POST "/api/v1/rentals/$RSP/returns" "$(jq -cn --arg s "$S2" '{reason:"END_OF_CONTRACT",lines:[{serialNumber:$s}]}')" "$TB28")" >/dev/null
+expect 404 "$(req POST "/api/v1/rental-processes/$PROC/advance" '{"status":"CLEANING"}' "$TB28")" >/dev/null
+expect 404 "$(req POST "/api/v1/rental-processes/$PROC2/complete" '{}' "$TB28")" >/dev/null
+expect 200 "$(req GET /api/v1/rental-returns '' "$TB28")" | jq -e '.total==0' >/dev/null || fail "devoluciones ajenas en la lista"
+expect 200 "$(req GET /api/v1/rental-processes '' "$TB28")" | jq -e '.total==0' >/dev/null || fail "procesos ajenos en la lista"
+RC28=$(reconcile); echo "$RC28" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras devoluciones y procesos: $(echo "$RC28" | jq -c .mismatches)"
+ok "devolución y proceso: D7 (EN-RENTA 422, serie en renta en un conteo 409 en vista previa y al reconciliar, sin mover nada); 403 sin rental.return/rental.extend/rental.maintenance y dar de baja sin inventory.adjust; 400 'Otro' sin notas y destino EN-RENTA, 409 serie fuera de la renta; devolución anticipada por daño DRN (TRANSFER desde EN-RENTA, serie En proceso y reservada, disponible sin ella, renta sigue En renta); proceso Pendiente→Inspección→Limpieza→Reparación→Pruebas→Lista con traslado (el disponible vuelve, Kárdex 'Proceso #id', historial) y 422 al terminar; la segunda devolución cierra la renta (Devuelta); baja con ADJUSTMENT − DAMAGE y serie dada de baja; otra compañía con Rentas encendido: 404; sin descuadre"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

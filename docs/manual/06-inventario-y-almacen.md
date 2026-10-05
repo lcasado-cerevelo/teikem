@@ -1588,6 +1588,20 @@ Casos frecuentes:
 Pantallas: app de almacén ([09 §7.2](09-app-almacen.md#72-contar-varios-productos-en-un-conteo-lote-25)) y web (Conteo cíclico → Nuevo conteo → Por producto sin
 elegir producto; escáner del detalle).
 
+### 6.y Equipos en renta y el conteo cíclico (Lote 28, Rentas R2, decisión D7)
+
+Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona RENT, tipo "En renta"; capítulo 11). Esa posición
+**no se cuenta** y una serie en renta encontrada en un conteo **bloquea** la reconciliación hasta registrar su devolución:
+
+| Caso | Qué pasa | Mensaje | HTTP |
+|---|---|---|---|
+| Crear un conteo pidiendo la posición EN-RENTA o la zona RENT (`binIds`/`zoneIds`), o un conteo de "lo cambiado" con la zona RENT, o agregar una línea en EN-RENTA | No se crea / no se agrega | `La posición {bin} es de equipos en renta; no se cuenta.` | 422 |
+| Conteo de todo el almacén, por producto o de "lo cambiado" sin zona | La posición EN-RENTA se salta sin error; `product-bins` y la posición por defecto tampoco la ofrecen | — | — |
+| Se captura en otra posición una serie que está **En renta** | La vista previa marca la línea con el error y **reconciliar** responde 409 sin mover nada | `La serie {s} está en renta ({n}); registre su devolución antes de reconciliar el conteo.` ({n} = número REN de la renta abierta) | 409 |
+
+Qué hacer: si el equipo de verdad volvió, registre su **devolución de renta** (capítulo 11 §5) y vuelva a capturar el conteo; si se
+capturó por error, quite la serie de la captura y reconcilie.
+
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
 
 Qué hace: recolecta inventario (por FEFO o con posición/lote/serie explícitos) hacia una recolección con número

@@ -218,6 +218,11 @@ public static class DependencyInjection
         services.AddScoped<IOwnedEntityResolver, RentalOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, RentalReturnOwnedEntityResolver>();
         services.AddScoped<IOwnedEntityResolver, RentalProcessOwnedEntityResolver>();
+        // Lote 28 — Rentas (R2): devolución de renta y proceso configurable del equipo devuelto; el efecto del proceso usa el
+        // ledger resuelto con IServiceProvider (sin ciclo StatusService ↔ InventoryLedger).
+        services.AddScoped<RentalReturnService>();
+        services.AddScoped<RentalProcessService>();
+        services.AddScoped<IStatusTransitionEffect, RentalProcessStatusEffect>();
 
         // Lote 14 — punto único de "hoy" en hora de la compañía (Puerto Rico por defecto) y conciliación Kárdex ↔ saldo con
         // descuadres (P1, síncrona; la revisión en segundo plano de P2 llamará a InventoryReconciliationService.CheckProductsAsync).
