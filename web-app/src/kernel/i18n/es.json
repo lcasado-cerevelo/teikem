@@ -711,8 +711,7 @@
         "showFor": "Mostrar {name}",
         "hidden": "Oculto",
         "linesHint": "Los indicadores se muestran en una línea por módulo; aquí se ordenan dentro de su línea.",
-        "lineLabel": "Elementos de {name}: {line}",
-        "pinHint": "La franja que quede justo debajo de la fecha se queda fija al desplazarse; si la oculta o la baja, solo queda fija la fecha."
+        "lineLabel": "Elementos de {name}: {line}"
       },
       "warehouse": {
         "title": "Almacén",

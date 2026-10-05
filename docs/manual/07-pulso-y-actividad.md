@@ -413,27 +413,21 @@ ese navegador. Las cuatro tarjetas se calculan con él.
 | Conteos con diferencia | Confirmar un conteo cíclico que asienta algún movimiento: Pendiente o Contado → **Diferencia** (capítulo 06, sección 6) | Quien tenga `warehouse.count` | Lo del conteo | Estatus `RECONCILED_VARIANCE` con su fecha de cierre | Un conteo Diferencia ya no se edita |
 | Productos bajo mínimo | Cualquier movimiento que cambie lo disponible, o cambiar el mínimo de un producto | Según la acción | — | — | Nada |
 
-### 5.2 Filas fijas al desplazarse
+### 5.2 Fila de la fecha fija al desplazarse
 
-Qué hace: al bajar por el Pulso, quedan **fijas arriba** la fila de la fecha (con los botones "Organizar mi Pulso" y "Organizar el de la
-compañía") y, justo debajo, la franja "Almacén hoy". El saludo ("Bienvenido…") y el chip "Pulso de la compañía" se desplazan, y "Necesita
-tu atención" y todo lo demás pasan por debajo. Solo pasa en la pantalla de inicio; Indicadores y Gráficos no cambian.
-
-Cuándo deja de estar fija la franja:
+Qué hace: al bajar por el Pulso queda **fija arriba solo la fila de la fecha** (con los botones "Organizar mi Pulso" y "Organizar el de la
+compañía"). El saludo ("Bienvenido…") y el chip "Pulso de la compañía" se desplazan, y **todo lo demás, incluida la franja "Almacén hoy",
+también se desplaza**: ninguna sección queda fija (decisión del dueño). Solo pasa en la pantalla de inicio; Indicadores y Gráficos no cambian.
 
 | Situación | Qué queda fijo |
 |---|---|
-| Lo normal (la franja es el primer panel) | La fecha y la franja |
-| Con **Organizar** se oculta la franja o se baja de lugar (otro panel queda primero) | Solo la fecha |
+| Lo normal | Solo la fila de la fecha |
 | Se está organizando (modo Organizar abierto) | Nada de esto: la barra de Organizar ya es fija |
-| Cualquier otro panel que quede primero (Actividad reciente, gráficos…) | Solo la fecha: solo puede quedar fija una franja de números, nunca un panel alto |
-| Celular (menos de 720 px de ancho) | La fecha y la franja, compactas: 4 cuadros en 2×2 con el número y las barritas, sin el texto pequeño ni "· últimos 7 días" |
+| Celular (menos de 720 px de ancho) | Solo la fecha, compacta: el título y los botones pequeños en un renglón que envuelve |
 | Celular acostado (menos de 560 px de alto) | Solo la fecha |
-| Ancho de 720 a 980 px | La franja va 2×2 sin tuberías (con el texto pequeño) |
 
-Desde Organizar se explica con la nota "La franja que quede justo debajo de la fecha se queda fija al desplazarse; si la oculta o la baja,
-solo queda fija la fecha." Para quitar la franja fija: ocúltela o bájela con **Organizar mi Pulso** (solo para usted) o **Organizar el de
-la compañía** (para todos los que no tengan un Pulso propio, permiso `pulse.organize_company`).
+(Antes del cambio del 2026-10-05 la franja "Almacén hoy" también quedaba fija debajo de la fecha, y Organizar traía una nota que lo explicaba.
+Esa nota ya no existe.)
 
 ### 5.3 Indicadores en una fila por módulo
 

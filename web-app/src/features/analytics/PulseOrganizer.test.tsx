@@ -282,7 +282,7 @@ describe('PulseOrganizer', () => {
     ])
   })
 
-  it('Lote 15: "Almacén hoy" (WAREHOUSE_DAY, orden −10) va primero, se baja y se oculta; con él, la ayuda de las filas fijas', async () => {
+  it('Lote 15: "Almacén hoy" (WAREHOUSE_DAY, orden −10) va primero, se baja y se oculta; ya no hay ayuda de filas fijas', async () => {
     const user = userEvent.setup()
     const { onClose } = renderOrganizer('mine', {
       ...PULSE,
@@ -290,7 +290,7 @@ describe('PulseOrganizer', () => {
     })
     const panels = screen.getByRole('list', { name: 'Paneles del Pulso' })
     expect(rowNames(panels)).toEqual(['Almacén hoy', 'Tus indicadores', 'Tus gráficos', 'Almacén', 'Actividad reciente'])
-    expect(screen.getByText(/La franja que quede justo debajo de la fecha se queda fija al desplazarse/)).toBeInTheDocument()
+    expect(screen.queryByText(/se queda fija al desplazarse/)).not.toBeInTheDocument()
     // "Ocultar Almacén" (panel Almacén) y "Ocultar Almacén hoy" son botones distintos
     expect(screen.getByRole('button', { name: 'Ocultar Almacén' })).not.toBe(screen.getByRole('button', { name: 'Ocultar Almacén hoy' }))
     await user.click(screen.getByRole('button', { name: 'Bajar Almacén hoy' }))
@@ -302,11 +302,6 @@ describe('PulseOrganizer', () => {
       { key: 'INDICATORS', sortOrder: 0, isVisible: true },
       { key: 'WAREHOUSE_DAY', sortOrder: 10, isVisible: false },
     ])
-  })
-
-  it('Lote 15: sin franja fijable no hay ayuda de filas fijas', () => {
-    renderOrganizer('mine')
-    expect(screen.queryByText(/se queda fija al desplazarse/)).not.toBeInTheDocument()
   })
 
   it('Lote 15 (D8): indicadores en una lista por línea (Operación, Almacén, Contabilidad), con ayuda; se ordenan solo dentro de su línea', async () => {

@@ -3630,10 +3630,9 @@ gráficos agrupados por fecha, las exportaciones y la ventana "Hoy" de Actividad
 de un solo día pueden cambiar. Siguen en UTC la validación de mínimo y máximo de fechas de los campos personalizados y el "hoy" de la ficha de
 cliente y de los documentos y tarifas del chofer.
 
-**¿Cómo quito la franja fija (o dejo solo la fecha fija)?**
-Con **Organizar mi Pulso** (solo para usted) o **Organizar el de la compañía** (para todos los que no tengan un Pulso propio; permiso
-`pulse.organize_company`): oculte "Almacén hoy" o bájela debajo de otro panel. Queda fija solo la fecha. En un celular acostado también queda
-fija solo la fecha. Si quiere volver a lo anterior, muéstrela y suba la franja al primer lugar, o use "Volver al de la compañía".
+**¿Por qué la franja "Almacén hoy" ya no se queda fija al desplazarse?**
+Desde el 2026-10-05 (decisión del dueño) solo queda fija la fila de la fecha con los botones de Organizar. "Almacén hoy" se desplaza con el resto
+del Pulso, esté donde esté. No hay nada que configurar.
 
 **Borré el gráfico de la compañía, ¿vuelve? ¿Cómo lo recupero?**
 **No vuelve**: es la regla del dueño. Ni renombrarlo ni borrarlo lo recrea una actualización posterior. Para tenerlo otra vez, cree uno a mano en

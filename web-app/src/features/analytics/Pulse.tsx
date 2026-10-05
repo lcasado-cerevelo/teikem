@@ -7,11 +7,9 @@
 // Historia: P3 (indicadores y gráficos con "Rango"), F6 (panel Almacén), F7A (filtro del panel Almacén y Actividad reciente).
 // Lote 15 (P6, D6/D7): filas fijas SOLO aquí (clase propia `.pulse-home`; `.wrap.pulse` la usan también Indicadores y
 // Gráficos). La cabecera se parte en dos: la fila de la fecha con "Organizar" (`.pulse-pin-head`, fija) y el saludo con el
-// chip (`.pulse-greet`, se desplaza). La primera sección pintada queda fija justo debajo si su entrada es `pinnable` (la
-// franja "Almacén hoy") y no se está organizando (`data-pinned`, `pinnedPanelKey`); si se oculta o se baja, solo queda la
-// fecha. Los altos se miden (`useElementHeight`) y van en `--pulse-head-h` (desplazamiento de la franja) y `--pulse-pin-h`
-// (`scroll-margin-top` de lo que se desplaza, para que el foco no quede tapado). Celular: franja compacta 2×2; acostado
-// (alto bajo) solo la fecha (pulse.css).
+// chip (`.pulse-greet`, se desplaza). Solo la fila de la fecha queda fija; ninguna sección (ni la franja "Almacén hoy") se fija
+// (decisión del dueño). El alto de esa fila se mide (`useElementHeight`) y va en `--pulse-head-h`/`--pulse-pin-h`
+// (`scroll-margin-top` de lo que se desplaza, para que el foco no quede tapado) (pulse.css).
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useSession } from '../../app/session'
@@ -27,7 +25,7 @@ import { useElementHeight } from '../../kernel/ui/useElementWidth'
 import { usePulse, usePulseCompany, useResetMyLayout } from './api'
 import { pulseDateTitle } from './format'
 import { PulseOrganizer } from './PulseOrganizer'
-import { pinnedPanelKey, PULSE_PANELS, type PulsePanelContext } from './pulsePanels'
+import { PULSE_PANELS, type PulsePanelContext } from './pulsePanels'
 import { isKnownPanel, shownItems, shownPanels, type PulseScope } from './pulseLayout'
 import { INDICATORS_ROUTE } from './PulseSections'
 import './pulse.css'
@@ -55,12 +53,9 @@ export default function Pulse() {
   const hasPanels = (data?.panels ?? []).some((p) => isKnownPanel(p.key))
   const sections = ctx ? shownPanels(data?.panels).filter((p) => PULSE_PANELS[p.key].hasContent(ctx)) : []
 
-  const pinned = pinnedPanelKey(sections, organizing != null || !data || !hasPanels)
   const [headEl, setHeadEl] = useState<HTMLDivElement | null>(null)
-  const [bandEl, setBandEl] = useState<HTMLDivElement | null>(null)
   const headH = useElementHeight(headEl)
-  const bandH = useElementHeight(pinned ? bandEl : null)
-  const pinVars = { '--pulse-head-h': `${headH}px`, '--pulse-pin-h': `${headH + bandH}px` } as CSSProperties
+  const pinVars = { '--pulse-head-h': `${headH}px`, '--pulse-pin-h': `${headH}px` } as CSSProperties
 
   const showControls = Boolean(data && hasPanels && !organizing)
   const head = (
@@ -135,8 +130,6 @@ export default function Pulse() {
         key={p.key}
         className="pulse-sec"
         data-panel={p.key}
-        data-pinned={p.key === pinned ? '' : undefined}
-        ref={p.key === pinned ? setBandEl : undefined}
       >
         {PULSE_PANELS[p.key].render(ctx)}
       </div>

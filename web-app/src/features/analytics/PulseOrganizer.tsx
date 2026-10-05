@@ -275,8 +275,6 @@ export function PulseOrganizer({ scope, pulse, onClose }: PulseOrganizerProps) {
         </div>
       </div>
       {scope === 'company' && pulse.hasPersonalLayout && <p className="note orgnote">{t('analytics.pulse.organizer.personalNote')}</p>}
-      {/* Lote 15 (D6): con una franja fijable, se explica qué queda fijo según dónde quede */}
-      {state.panels.some((p) => PULSE_PANELS[p.key].pinnable) && <p className="pulse-muted orgnote">{t('analytics.pulse.organizer.pinHint')}</p>}
       <ol className="orglist" aria-label={t('analytics.pulse.organizer.panelsLabel')}>
         {state.panels.map((p, i) => {
           const entry = PULSE_PANELS[p.key]

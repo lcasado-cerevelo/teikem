@@ -627,13 +627,12 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(onAccessDenied).not.toHaveBeenCalled()
   })
 
-  it('filas fijas (D6): la franja justo debajo de la fecha queda fija con la fila de la fecha; solo en .pulse-home', async () => {
+  it('filas fijas (D6): solo la fila de la fecha queda fija; "Almacén hoy" no se fija; solo en .pulse-home', async () => {
     mock.handler = dayHandler
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     await screen.findByRole('heading', { level: 2, name: /^Almacén hoy/ })
     expect(container.querySelector('.wrap.pulse')).toHaveClass('pulse-home')
-    expect(container.querySelector('[data-panel="WAREHOUSE_DAY"]')).toHaveAttribute('data-pinned')
-    expect(container.querySelector('[data-panel="INDICATORS"]')).not.toHaveAttribute('data-pinned')
+    expect(container.querySelector('[data-pinned]')).toBeNull()
     // la fila de la fecha (h1 + Organizar) es la fija; el saludo y el chip van aparte y se desplazan
     const head = screen.getByRole('heading', { level: 1 }).parentElement as HTMLElement
     expect(head).toHaveClass('pulse-pin-head', 'pinned')
@@ -642,7 +641,7 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(container.querySelector('.pulse-greet')).toHaveTextContent('Pulso de la compañía')
   })
 
-  it('franja más abajo: no se fija ninguna sección (solo la fecha)', async () => {
+  it('la franja Almacén hoy, esté donde esté, no se fija (solo la fecha)', async () => {
     dayPulse = withIndicator([panel('INDICATORS', 0), panel('WAREHOUSE_DAY', 10)])
     mock.handler = dayHandler
     const { container } = renderPulse(WAREHOUSE_ACCESS)
@@ -652,21 +651,12 @@ describe('Pulse — franja "Almacén hoy" (Lote 15)', () => {
     expect(container.querySelector('.pulse-pin-head')).toHaveClass('pinned')
   })
 
-  it('franja oculta con Organizar: tampoco', async () => {
-    dayPulse = withIndicator([panel('WAREHOUSE_DAY', -10, false), panel('INDICATORS', 20)])
-    mock.handler = dayHandler
-    const { container } = renderPulse(WAREHOUSE_ACCESS)
-    expect(await screen.findByText('Ventas')).toBeInTheDocument()
-    expect(paintedPanels(container)).toEqual(['INDICATORS'])
-    expect(container.querySelector('[data-pinned]')).toBeNull()
-  })
-
-  it('organizando: la .orgbar es la fija (ni la franja ni la fecha) y la ayuda explica qué queda fijo', async () => {
+  it('organizando: la .orgbar es la fija (ni la franja ni la fecha)', async () => {
     mock.handler = dayHandler
     const user = userEvent.setup()
     const { container } = renderPulse(WAREHOUSE_ACCESS)
     await user.click(await screen.findByRole('button', { name: 'Organizar mi Pulso' }))
-    expect(screen.getByText(/La franja que quede justo debajo de la fecha se queda fija/)).toBeInTheDocument()
+    expect(screen.queryByText(/se queda fija/)).toBeNull()
     expect(screen.getByRole('button', { name: 'Ocultar Almacén hoy' })).toBeInTheDocument()
     expect(container.querySelector('[data-pinned]')).toBeNull()
     expect(container.querySelector('.pulse-pin-head')).not.toHaveClass('pinned')

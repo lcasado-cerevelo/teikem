@@ -711,8 +711,7 @@
         "showFor": "Show {name}",
         "hidden": "Hidden",
         "linesHint": "Indicators are shown in one row per module; here they are ordered within their row.",
-        "lineLabel": "Items of {name}: {line}",
-        "pinHint": "The band right below the date stays pinned while scrolling; if you hide it or move it down, only the date stays pinned."
+        "lineLabel": "Items of {name}: {line}"
       },
       "warehouse": {
         "title": "Warehouse",

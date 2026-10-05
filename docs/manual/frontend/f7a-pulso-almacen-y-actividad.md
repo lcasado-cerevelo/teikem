@@ -65,18 +65,15 @@ sin sacarlo del Pulso. No hay mensajes de error propios.
 **Permiso.** Se pinta con `pulse.warehouse`, `inventory.view` y el módulo **Almacén y lote/serie** (`WMS_LOTSERIAL`) encendido. Se puede ocultar
 o mover con Organizar (ver más abajo).
 
-## Pulso del día: filas fijas al desplazarse (Lote 15)
+## Pulso del día: fila de la fecha fija al desplazarse (Lote 15; ajustado el 2026-10-05)
 
-Al bajar por el Pulso quedan **fijas arriba** la fila de la fecha (con "Organizar mi Pulso" y "Organizar el de la compañía") y, justo debajo,
-la franja "Almacén hoy". El saludo ("Bienvenido… Así viene el día en su compañía.") y el chip "Pulso de la compañía" se van con el desplazamiento,
-igual que "Necesita tu atención" y todo lo demás, que pasan por debajo.
+Al bajar por el Pulso queda **fija arriba solo la fila de la fecha** (con "Organizar mi Pulso" y "Organizar el de la compañía"). El saludo
+("Bienvenido… Así viene el día en su compañía.") y el chip "Pulso de la compañía" se van con el desplazamiento, igual que la franja
+"Almacén hoy", "Necesita tu atención" y todo lo demás: **ninguna sección queda fija** (decisión del dueño; en el Lote 15 original la franja
+"Almacén hoy" también se fijaba, y la captura `img/l15-pulso-fijas.png` puede mostrarla así).
 
-![Pulso desplazado hacia abajo: la fecha y la franja quedan arriba, y debajo pasa la tabla de Actividad reciente](img/l15-pulso-fijas.png)
-
-- Si con **Organizar** oculta la franja o la baja de lugar, deja de estar fija y **solo queda fija la fecha**.
 - Mientras organiza, no hay filas fijas: la barra de Organizar (con "Listo") ya se queda arriba.
-- Solo una franja de números puede quedar fija; nunca un panel alto como Actividad reciente o los gráficos.
-- Con el teclado, el foco no queda tapado por las filas fijas: la pantalla deja un margen al desplazarse a lo que recibe el foco.
+- Con el teclado, el foco no queda tapado por la fila fija: la pantalla deja un margen al desplazarse a lo que recibe el foco.
 - Solo pasa en la pantalla de inicio: Análisis → Indicadores y Gráficos no cambian.
 
 ## Pulso del día: indicadores en una fila por módulo (Lote 15)

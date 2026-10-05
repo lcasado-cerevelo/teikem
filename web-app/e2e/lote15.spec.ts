@@ -292,7 +292,7 @@ test.describe('Lote 15 — escritorio', () => {
     await expect(card(page, 'received').getByRole('link')).not.toHaveAttribute('href', /warehousePublicIds=/)
   })
 
-  test('5. al desplazar, la fecha y la franja siguen a la vista (fijas) y "Necesita tu atención" se va', async ({ page }) => {
+  test('5. al desplazar, la fecha sigue a la vista (fija), "Almacén hoy" se va con el scroll y "Necesita tu atención" también', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await login(page)
     await waitPulse(page)
@@ -300,20 +300,14 @@ test.describe('Lote 15 — escritorio', () => {
     const band = page.locator('.wh-band')
     const attention = page.getByRole('heading', { name: 'Necesita tu atención' })
     await expect(attention).toBeInViewport()
-    const bandTopBefore = (await band.boundingBox())?.y ?? 0
 
     await scrollPulse(page, 100_000)
     await expect(attention).not.toBeInViewport()
     await expect(title).toBeInViewport()
-    await expect(band).toBeInViewport({ ratio: 0.99 })
-    // la franja queda pegada justo bajo la fila de la fecha (el saludo, que no es fijo, se fue con el scroll)
-    const bandTopAfter = (await band.boundingBox())?.y ?? -1
-    const headBottom = await page.locator('.pulse-pin-head').evaluate((el) => el.getBoundingClientRect().bottom)
-    expect(bandTopAfter).toBeGreaterThanOrEqual(0)
-    expect(bandTopAfter).toBeLessThan(200)
-    expect(Math.abs(bandTopAfter - headBottom)).toBeLessThan(24)
-    expect(bandTopAfter).toBeLessThan(bandTopBefore)
-    // "Tus gráficos" quedó a la vista debajo de las filas fijas
+    // la franja "Almacén hoy" NO es fija (decisión del dueño): se desplaza con el contenido
+    await expect(band).not.toBeInViewport()
+    await expect(page.locator('[data-pinned]')).toHaveCount(0)
+    // "Tus gráficos" quedó a la vista debajo de la fila fija de la fecha
     await expect(page.getByRole('heading', { level: 2, name: 'Tus gráficos' })).toBeAttached()
     await shot(page, 'pulso-fijas')
   })
