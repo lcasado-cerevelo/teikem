@@ -442,7 +442,47 @@ Cómo se usa:
    aparece la misma lista con lo ya escrito, sin necesitar señal. Un conteo a la vez por aparato (de posición o de producto).
 7. **Cancelar conteo** (con confirmación): igual que el de posición (`DELETE`, necesita señal y `warehouse.count`).
 
-#### Campos y validaciones (contar por producto)
+#### 7.2 Contar varios productos en un conteo (Lote 25)
+
+Desde el 2026-10-05, **Por producto** abre **un solo conteo** al que se le van agregando productos (en vez de crear un conteo por producto). El
+conteo de "un producto en todas sus posiciones" de la sección 7.1 ya no se abre desde la pantalla; un conteo de ese tipo que haya quedado abierto
+en un aparato se retoma igual que antes.
+
+Quién puede: `warehouse.count.capture`; cancelar exige `warehouse.count`. Módulo **WMS_LOTSERIAL**.
+
+Cómo se usa:
+1. Conteo → **Por producto** → escanear el primer producto. Se abre el conteo **vacío** en el servidor (necesita señal) y la pantalla pasa a la lista
+   **Lo contado**. Un producto con **serie** no se cuenta desde la app: `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.`
+2. Por cada producto escaneado la app pregunta al servidor **dónde está** (sin cantidades, también a ciegas):
+   - **una posición** con existencia: sale grande como **Posición** con el enlace **Cambiar posición**; solo falta la **cantidad** y **Agregar**;
+   - **varias**: `El producto está en varias posiciones: elige en cuál lo contaste.` y una lista de botones (posición · lote · zona);
+   - **ninguna** (o sin señal): `El sistema no tiene este producto en ninguna posición. Escanea la posición donde lo encontraste.` /
+     `Sin señal: no se pudo buscar la posición del producto. Escanea la posición donde lo contaste.` Se escanea la etiqueta (se busca primero en las posiciones
+     del aparato, sin señal) o se usa **Otra posición** (crea una provisional, necesita señal; en productos con lote pide el número de lote).
+   - **Cambiar posición**: elegir otra de la lista, escanear otra o **Otra posición**. En productos con lote sin lote conocido se escribe el **número de lote**.
+3. **Agregar** guarda la línea en el aparato (`SKU agregado en A-01.`). El producto se puede escanear otra vez en **otra** posición (otra línea). En la **misma**
+   posición y lote abre la línea ya contada para **corregir** la cantidad (`SKU ya estaba contado en A-01: corrige la cantidad.`): no se duplica ni se suma. Tocar una
+   línea de la lista la corrige; ✕ la quita.
+4. **Terminar conteo** (se enciende con al menos una línea) encola **un lote** con todas las líneas (posición + producto + cantidad + lote por número) y el cierre;
+   funciona sin señal y vuelve a Inicio. La diferencia se calcula al reconciliar en la web.
+5. **Retomar**: lo contado se guarda en el aparato; al cerrar y abrir la app el conteo sigue ahí, sin señal. Un conteo a la vez por aparato.
+6. **Cancelar conteo** (con confirmación): `DELETE`, necesita señal y `warehouse.count`.
+
+| Caso | Mensaje exacto | Origen |
+|---|---|---|
+| Código sin producto sincronizado | `No hay un producto con ese código.` | App |
+| Producto con serie | `Este producto se cuenta por número de serie; cuéntalo desde la web por ahora.` | App |
+| Abrir el conteo sin señal | `No se pudo abrir el conteo de ese producto (necesita señal).` | App |
+| Varias posiciones | `El producto está en varias posiciones: elige en cuál lo contaste.` | App |
+| Sin existencia en ninguna posición | `El sistema no tiene este producto en ninguna posición. Escanea la posición donde lo encontraste.` | App |
+| Sin señal al buscar dónde está | `Sin señal: no se pudo buscar la posición del producto. Escanea la posición donde lo contaste.` | App |
+| Posición escaneada que no existe | `No hay una posición con ese código.` | App |
+| Mismo producto, posición y lote ya contados | `SKU ya estaba contado en A-01: corrige la cantidad.` (al escanear) / `SKU ya está contado en A-01: toca su línea de la lista para corregir la cantidad.` (al cambiar la posición a una ya contada) | App |
+| Lote sin número (producto con lote) | `Este producto lleva lote: escribe el número de lote.` | App |
+| Sin líneas | `Todavía no has contado nada. Escanea un producto.` (Terminar apagado) | App |
+| Errores del servidor al buscar dónde está | El mensaje del servidor tal cual (404 `Producto no encontrado.`, 404 `Conteo no encontrado.`) | API |
+
+### Campos y validaciones (contar por producto)
 
 | Campo / caso | Mensaje exacto | Origen |
 |---|---|---|

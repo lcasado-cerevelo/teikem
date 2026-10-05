@@ -1613,6 +1613,9 @@ export function useBinCapacityPreview(
 // página con el código de barras de cada producto); lo usa `printBinProducts` (binProducts.ts) desde el modal de
 // Ubicaciones. No va en caché: cada impresión lee los datos del momento.
 // =====================================================================================================================
+/** Lote 24: producto por código escaneado (código de barras exacto o SKU exacto): `GET /api/v1/products/by-barcode/{code}`. */
+export const fetchProductByCode = (code: string) => unwrap(api.GET('/api/v1/products/by-barcode/{code}', { params: { path: { code } } }))
+
 export type BinProductsPageDto = Schemas['BinProductsPageDto']
 export type BinProductsDto = Schemas['BinProductsDto']
 /** Filtros de `GET .../bin-products` (los mismos del listado de posiciones, con `skip`/`take` ≤ 200). */

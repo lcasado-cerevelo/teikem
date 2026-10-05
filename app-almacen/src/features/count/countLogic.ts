@@ -196,3 +196,26 @@ export function findListedRow<T extends ProductRowLike>(rows: readonly T[], binC
   const code = binCode.trim().toUpperCase()
   return rows.find((r) => r.binCode.trim().toUpperCase() === code && sameLot(r.lotNumber, lotNumber)) ?? null
 }
+
+// ------------------------------------------------------------------ conteo abierto con varios productos (Lote 24)
+
+/** Dónde puede estar un producto para contarlo: posición (y lote) con existencia según el servidor. Sin cantidades. */
+export interface BinOption {
+  binId: number
+  binCode: string
+  zoneCode: string
+  lotId: number | null
+  lotNumber: string | null
+}
+
+/** Posición propuesta por defecto: solo si hay UNA opción (una posición, y un lote si lo lleva); con varias o ninguna, la elige
+ *  quien cuenta (decisión del dueño 2026-10-05). */
+export function defaultBinOption(options: readonly BinOption[]): BinOption | null {
+  return options.length === 1 ? options[0] : null
+}
+
+/** Texto de una opción de posición: código, lote (si lo lleva) y zona. */
+export function binOptionLabel(o: BinOption, t: (key: string, params?: Record<string, string | number>) => string): string {
+  const parts = [o.binCode, o.lotNumber ? t('count.rowLot', { lot: o.lotNumber }) : null, o.zoneCode || null].filter(Boolean)
+  return parts.join(' · ')
+}

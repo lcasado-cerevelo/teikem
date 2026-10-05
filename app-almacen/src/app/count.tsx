@@ -19,7 +19,7 @@ import {
   enqueueFinishCount,
   fetchExpectedLines,
   startCountOnline,
-  startProductCountOnline,
+  startOpenCountOnline,
 } from '../features/count/countApi'
 import { hasAnyCountedQty, matchExpectedLine, parseQty, productCountBlocker, remainingExpectedLines, type ExpectedLine } from '../features/count/countLogic'
 import {
@@ -32,11 +32,13 @@ import {
   removeLocalCountLine,
   updateLocalCountLineQty,
   startLocalCount,
-  startLocalProductCount,
+  startLocalOpenCount,
   toCapturedEntries,
   toProductEntries,
   type CountMode,
+  type CountProduct,
 } from '../features/count/localCount'
+import { OpenCountView } from '../features/count/OpenCountView'
 import { ProductCountView } from '../features/count/ProductCountView'
 
 type Draft = { line: ExpectedLine | null; productPublicId: string; sku: string; productName: string; qtyText: string }
@@ -68,6 +70,8 @@ export default function CountScreen() {
   // Lote A4: forma de contar elegida (se recuerda en el aparato; la primera vez, por posición).
   const [entryMode, setEntryMode] = useState<CountMode>(() => (getKv(KvKeys.countEntryMode) === 'PRODUCT' ? 'PRODUCT' : 'BIN'))
   const [productError, setProductError] = useState<string | null>(null)
+  // Lote 24: el producto cuyo escaneo abrió el conteo abierto; la vista lo procesa al montar
+  const [pendingProduct, setPendingProduct] = useState<CountProduct | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +136,8 @@ export default function CountScreen() {
     setProductError(null)
   }
 
-  /** Lote A4 — "Contar por producto": producto del catálogo local → guarda de serie → conteo en línea → lista local. */
+  /** Lote 24 — "Por producto": el primer producto escaneado abre UN conteo (vacío, en línea) y de ahí en adelante se van agregando
+   *  productos a ese mismo conteo (features/count/OpenCountView.tsx). */
   async function scanProductToCount(code: string) {
     setProductError(null)
     const product = findProductByCode(code)
@@ -149,13 +154,9 @@ export default function CountScreen() {
     }
     setBusy(true)
     try {
-      const started = await startProductCountOnline(warehousePublicId!, product.publicId)
-      startLocalProductCount(
-        warehousePublicId!,
-        { publicId: product.publicId, sku: product.sku, name: product.name, trackingTypeCode: product.trackingTypeCode },
-        { countId: started.countId, isBlind: started.isBlind },
-        started.lines,
-      )
+      const started = await startOpenCountOnline(warehousePublicId!)
+      startLocalOpenCount(warehousePublicId!, started)
+      setPendingProduct({ publicId: product.publicId, sku: product.sku, name: product.name, trackingTypeCode: product.trackingTypeCode })
       vibrateOk()
       refresh()
     } catch (err) {
@@ -292,7 +293,21 @@ export default function CountScreen() {
     )
   }
 
-  // Conteo por producto abierto (recién abierto o retomado tras cerrar la app: sus líneas están en la base local).
+  // Lote 24: conteo abierto con varios productos (recién abierto o retomado tras cerrar la app: sus líneas están en la base local).
+  if (openCount.mode === 'OPEN') {
+    return (
+      <OpenCountView
+        openCount={openCount}
+        busy={busy}
+        onConfirm={finishProduct}
+        onCancelCount={cancelCount}
+        initialProduct={pendingProduct}
+        error={scanError}
+      />
+    )
+  }
+
+  // Conteo por producto de antes del Lote 24 (un producto en todas sus posiciones), retomado desde la base local.
   if (openCount.mode === 'PRODUCT' && openCount.product) {
     return (
       <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">

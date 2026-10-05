@@ -145,6 +145,7 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Review))] = PermissionCatalog.WarehouseCount,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))] = PermissionCatalog.WarehouseCount,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))] = PermissionCatalog.WarehouseCountCapture,   // Lote 21
+        [(typeof(CycleCountsController), nameof(CycleCountsController.ProductBins))] = PermissionCatalog.WarehouseCountCapture,   // Lote 24
 
         [(typeof(PickBatchesController), nameof(PickBatchesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Get))] = PermissionCatalog.InventoryView,
@@ -278,7 +279,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
         // Informe "Productos por posición": se ve con inventory.view (sin permiso nuevo).
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(WarehousesController), nameof(WarehousesController.BinProducts))]);
-        Assert.Equal(129, Expected.Count);
+        Assert.Equal(130, Expected.Count);
     }
 
     [Fact]

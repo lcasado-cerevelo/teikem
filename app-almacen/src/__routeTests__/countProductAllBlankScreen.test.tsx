@@ -6,12 +6,11 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 
-import { getOpenCount } from '../features/count/localCount'
+import { getOpenCount, startLocalProductCount } from '../features/count/localCount'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests } from '../kernel/db/database'
-import { setKv, KvKeys } from '../kernel/db/kv'
 import { listOutbox } from '../kernel/sync/outbox'
-import { insertProduct, json, mockFetch, setupDevice } from './countKit'
+import { mockFetch, setupDevice } from './countKit'
 
 beforeEach(() => {
   __resetAllForTests()
@@ -26,32 +25,19 @@ afterEach(() => {
 })
 
 const ALL_BLANK = 'Escribe al menos una cantidad. Si no hay nada de este producto, escribe 0 en una posición.'
-const LINE = { productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', trackingTypeCode: 'NONE', lotId: null, lotNumber: null }
+const LINE = { productPublicId: 'p1', sku: 'SKU-1', productName: 'Tornillo', lotId: null, lotNumber: null }
 
 describe('Conteo por producto — Confirmar con todo en blanco', () => {
   it('todo en blanco: no viaja nada y avisa; un 0 en una posición basta y el resto viaja como 0', async () => {
     await setupDevice()
-    insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
-    setKv(KvKeys.countEntryMode, 'PRODUCT')
-    mockFetch([
-      (c) =>
-        c.method === 'POST' && c.path === '/api/v1/cycle-counts'
-          ? json(200, {
-              count: { id: 500, originCode: 'PRODUCT' },
-              isBlind: true,
-              lines: [
-                { ...LINE, id: 1, binId: 10, binCode: 'A-01', systemQty: null },
-                { ...LINE, id: 2, binId: 11, binCode: 'B-02', systemQty: null },
-                { ...LINE, id: 3, binId: 12, binCode: 'C-03', systemQty: null },
-              ],
-            })
-          : null,
+    startLocalProductCount('wh-1', { publicId: 'p1', sku: 'SKU-1', name: 'Tornillo', trackingTypeCode: 'NONE' }, { countId: 500, isBlind: true }, [
+      { ...LINE, lineId: 1, binId: 10, binCode: 'A-01', systemQty: null, binIsProvisional: false },
+      { ...LINE, lineId: 2, binId: 11, binCode: 'B-02', systemQty: null, binIsProvisional: false },
+      { ...LINE, lineId: 3, binId: 12, binCode: 'C-03', systemQty: null, binIsProvisional: false },
     ])
+    mockFetch([])
 
     await renderRouter('src/app', { initialUrl: '/count' })
-    await waitFor(() => expect(screen.getByText('Escanea el producto a contar')).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Escanea el producto a contar'), '7501')
-    await fireEvent.press(screen.getByLabelText('Aceptar'))
     await waitFor(() => expect(screen.getByText('A-01')).toBeTruthy())
 
     // el resumen sigue encima de Confirmar y el botón está encendido (para poder explicar por qué no termina)

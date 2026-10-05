@@ -185,6 +185,15 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     public Task<WarehouseBinDto> CreateProvisionalBin(int id, [FromBody] CountProvisionalBinRequest req, CancellationToken ct)
         => layout.CreateProvisionalBinAsync(id, new WarehouseBinRequest(req?.ZoneId, req?.Code, req?.Aisle, req?.Rack, req?.Level, req?.Position), ct);
 
+    /// <summary>
+    /// Lote 24 — dónde puede estar un producto para contarlo (productPublicId obligatorio): una fila por posición y lote con
+    /// existencia en una posición activa del almacén del conteo, con lineId si el conteo ya tiene esa línea. Sin cantidades (sirve
+    /// al conteo a ciegas). Con una sola posición la pantalla la propone por defecto; con varias se elige; sin ninguna se pide.
+    /// </summary>
+    [HttpGet("{id:int}/product-bins"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
+    public Task<CountProductBinsDto> ProductBins(int id, [FromQuery] Guid productPublicId, CancellationToken ct)
+        => counts.ProductBinsAsync(id, productPublicId, ct);
+
     /// <summary>Refrescar (opcional): las líneas con foto vieja toman el saldo actual y pierden su captura para recontarlas.</summary>
     [HttpPost("{id:int}/refresh"), RequirePermission(PermissionCatalog.WarehouseCount)]
     public Task<CycleCountDetailDto> Refresh(int id, CancellationToken ct) => counts.RefreshAsync(id, ct);

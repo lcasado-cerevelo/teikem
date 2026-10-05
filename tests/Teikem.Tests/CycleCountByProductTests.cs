@@ -824,7 +824,6 @@ public sealed class CycleCountByProductTests
             new CycleCountCreateRequest(ProductPublicIds: p, ZoneIds: new[] { 11 }, AllowEmpty: true),
             new CycleCountCreateRequest(ProductPublicIds: p, CategoryIds: new[] { 1 }, AllowEmpty: true),
             new CycleCountCreateRequest(ProductPublicIds: new[] { f.ProductNonePublicId, f.ProductLotPublicId }, AllowEmpty: true),
-            new CycleCountCreateRequest(AllowEmpty: true),
         })
         {
             var ex = await Assert.ThrowsAsync<ValidationException>(() => svc.CreateAsync(req, default));
@@ -893,5 +892,83 @@ public sealed class CycleCountByProductTests
         await Assert.ThrowsAsync<NotFoundException>(() => svc.GetAsync(created.Count.Id, null, default));
         var cc = await f.Db.Set<CycleCount>().IgnoreQueryFilters().AsNoTracking().SingleAsync(c => c.CycleCountId == created.Count.Id);
         Assert.False(cc.IsActive);
+    }
+
+    // ================================================================ Lote 24: conteo abierto con varios productos y posición opcional
+
+    [Fact]
+    public async Task Allow_empty_without_products_opens_an_empty_count_not_the_whole_warehouse()
+    {
+        await using var f = await NewAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);   // hay existencia: aun así el conteo nace vacío
+        var created = await f.Get<CycleCountService>().CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+        Assert.Equal((CycleCountOrigins.Product, CycleCountStatuses.Open, 0), (created.Count.OriginCode, created.Count.StatusCode, created.Lines.Count));
+        Assert.NotNull(created.Count.TaskId);
+    }
+
+    [Fact]
+    public async Task Product_bins_lists_positions_with_stock_without_quantities_and_marks_lines_already_in_the_count()
+    {
+        await using var f = await NewAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin2, 5m);
+        var svc = f.Get<CycleCountService>();
+        var count = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+
+        var before = await svc.ProductBinsAsync(count.Count.Id, f.ProductNonePublicId, default);
+        Assert.Equal(new[] { f.PickBin1, f.PickBin2 }, before.Bins.Select(b => b.BinId).OrderBy(x => x).ToArray());
+        Assert.All(before.Bins, b => Assert.Null(b.LineId));
+        Assert.Equal((TrackingTypes.None, true), (before.TrackingTypeCode, before.IsActive));
+
+        await svc.AddLineAsync(count.Count.Id, new CountAddLineRequest(f.PickBin2, f.ProductNonePublicId, CountedQty: 4m), default);
+        var after = await svc.ProductBinsAsync(count.Count.Id, f.ProductNonePublicId, default);
+        Assert.Null(after.Bins.Single(b => b.BinId == f.PickBin1).LineId);
+        Assert.NotNull(after.Bins.Single(b => b.BinId == f.PickBin2).LineId);
+
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.ProductBinsAsync(count.Count.Id, Guid.NewGuid(), default));
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.ProductBinsAsync(999_999, f.ProductNonePublicId, default));
+    }
+
+    [Fact]
+    public async Task Add_line_without_a_bin_uses_the_only_position_with_stock_and_asks_when_there_are_none_or_several()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        var count = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+
+        // Sin existencia en ninguna posición: hay que decir dónde lo encontró (400 en binId, mensaje exacto).
+        var none = await Assert.ThrowsAsync<ValidationException>(() =>
+            svc.AddLineAsync(count.Count.Id, new CountAddLineRequest(null, f.ProductNonePublicId, CountedQty: 2m), default));
+        Assert.Equal(CycleCountRules.BinRequiredNoStock("PN"), Assert.Single(none.Errors!["binId"]));
+        Assert.Equal("El producto PN no tiene existencia en ninguna posición del almacén; indique la posición donde lo encontró.", CycleCountRules.BinRequiredNoStock("PN"));
+
+        // Una sola posición con existencia: se usa sin pedirla (la línea nace con lo contado y la existencia esperada de la foto).
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        var one = await svc.AddLineAsync(count.Count.Id, new CountAddLineRequest(null, f.ProductNonePublicId, CountedQty: 2m), default);
+        var line = Assert.Single(one.Lines);
+        Assert.Equal((f.PickBin1, 8m, 2m), (line.BinId, line.SystemQty, line.CountedQty));
+
+        // Varias posiciones: hay que elegir (400 con los códigos) y con la posición dada entra normal.
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin2, 5m);
+        var count2 = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+        var many = await Assert.ThrowsAsync<ValidationException>(() =>
+            svc.AddLineAsync(count2.Count.Id, new CountAddLineRequest(null, f.ProductNonePublicId, CountedQty: 2m), default));
+        var msg = Assert.Single(many.Errors!["binId"]);
+        Assert.StartsWith("El producto PN está en varias posiciones (", msg);
+        Assert.EndsWith("); indique en cuál lo contó.", msg);
+        var picked = await svc.AddLineAsync(count2.Count.Id, new CountAddLineRequest(f.PickBin2, f.ProductNonePublicId, CountedQty: 2m), default);
+        Assert.Equal(f.PickBin2, Assert.Single(picked.Lines).BinId);
+
+        // Repetir el mismo producto en la misma posición sigue siendo 409 (la pantalla abre la línea existente en vez de duplicar).
+        await Assert.ThrowsAsync<ConflictException>(() =>
+            svc.AddLineAsync(count2.Count.Id, new CountAddLineRequest(f.PickBin2, f.ProductNonePublicId, CountedQty: 1m), default));
+    }
+
+    [Fact]
+    public void Single_bin_rule_only_returns_a_bin_when_there_is_exactly_one()
+    {
+        Assert.Null(CycleCountRules.SingleBin(Array.Empty<int>()));
+        Assert.Equal(7, CycleCountRules.SingleBin(new[] { 7, 7 }));   // dos lotes en la misma posición = una posición
+        Assert.Null(CycleCountRules.SingleBin(new[] { 7, 8 }));
     }
 }

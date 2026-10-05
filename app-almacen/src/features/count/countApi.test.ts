@@ -11,9 +11,11 @@ import {
   createProvisionalBin,
   enqueueFinishCount,
   fetchExpectedLines,
+  fetchProductBins,
   fetchZones,
   findLocalBin,
   startCountOnline,
+  startOpenCountOnline,
   startProductCountOnline,
 } from './countApi'
 
@@ -203,5 +205,27 @@ describe('"Otra posición"', () => {
   it('una posición sincronizada como provisional conserva su marca de "pendiente de revisión"', () => {
     getDb().runSync("INSERT INTO bin (id, code, warehouse_public_id, zone_id, is_active, is_provisional) VALUES (9, 'Z-09', 'wh-1', 1, 1, 1)")
     expect(findLocalBin('wh-1', 'z-09')).toEqual({ id: 9, code: 'Z-09', isProvisional: true })
+  })
+})
+
+describe('conteo abierto (Lote 24)', () => {
+  it('abre un conteo vacío: allowEmpty y nada más (ni producto ni posición)', async () => {
+    postMock.mockResolvedValueOnce(ok({ count: { id: 900 }, isBlind: false, lines: [] }))
+    expect(await startOpenCountOnline('wh-1')).toEqual({ countId: 900, isBlind: false })
+    expect(postMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts')
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', allowEmpty: true })
+  })
+
+  it('dónde está el producto: una opción por posición y lote, sin cantidades', async () => {
+    getMock.mockResolvedValueOnce(
+      ok({ bins: [{ binId: 5, binCode: 'A-01', zoneCode: 'PCK', lotId: 2, lotNumber: 'L-2', lineId: null }, { binId: 6, binCode: 'B-02', zoneCode: 'RES' }] }),
+    )
+    const options = await fetchProductBins(900, 'p1')
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/cycle-counts/{id}/product-bins')
+    expect(getMock.mock.calls[0][1].params).toEqual({ path: { id: 900 }, query: { productPublicId: 'p1' } })
+    expect(options).toEqual([
+      { binId: 5, binCode: 'A-01', zoneCode: 'PCK', lotId: 2, lotNumber: 'L-2' },
+      { binId: 6, binCode: 'B-02', zoneCode: 'RES', lotId: null, lotNumber: null },
+    ])
   })
 })

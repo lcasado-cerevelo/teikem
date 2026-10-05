@@ -5,12 +5,11 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 
-import { getOpenCount } from '../features/count/localCount'
+import { getOpenCount, startLocalProductCount } from '../features/count/localCount'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests } from '../kernel/db/database'
-import { setKv, KvKeys } from '../kernel/db/kv'
 import { listOutbox } from '../kernel/sync/outbox'
-import { insertProduct, json, mockFetch, setupDevice } from './countKit'
+import { json, mockFetch, setupDevice } from './countKit'
 
 beforeEach(() => {
   __resetAllForTests()
@@ -29,13 +28,8 @@ const ALL_BLANK = 'Escribe al menos una cantidad. Si no hay nada de este product
 describe('Conteo por producto — «Otra posición» en blanco', () => {
   it('la fila nueva en blanco no basta; con su cantidad escrita se termina', async () => {
     await setupDevice()
-    insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
-    setKv(KvKeys.countEntryMode, 'PRODUCT')
+    startLocalProductCount('wh-1', { publicId: 'p1', sku: 'SKU-1', name: 'Tornillo', trackingTypeCode: 'NONE' }, { countId: 400, isBlind: true }, [])
     mockFetch([
-      (c) =>
-        c.method === 'POST' && c.path === '/api/v1/cycle-counts'
-          ? json(200, { count: { id: 400, originCode: 'PRODUCT', lineCount: 0 }, isBlind: true, lines: [] })
-          : null,
       (c) => (c.method === 'GET' && c.path === '/api/v1/warehouses/wh-1/zones' ? json(200, [{ id: 4, code: 'PCK', name: 'Picking', isActive: true }]) : null),
       (c) =>
         c.method === 'POST' && c.path === '/api/v1/cycle-counts/400/bins'
@@ -43,9 +37,6 @@ describe('Conteo por producto — «Otra posición» en blanco', () => {
           : null,
     ])
     await renderRouter('src/app', { initialUrl: '/count' })
-    await waitFor(() => expect(screen.getByText('Escanea el producto a contar')).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Escanea el producto a contar'), 'SKU-1')
-    await fireEvent.press(screen.getByLabelText('Aceptar'))
     await waitFor(() => expect(screen.getByTestId('count-empty-block')).toBeTruthy())
 
     await fireEvent.press(screen.getByRole('button', { name: 'Otra posición' }))

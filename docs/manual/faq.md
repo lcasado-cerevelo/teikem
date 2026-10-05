@@ -4261,6 +4261,38 @@ Se aplica la regla de siempre: una posición con existencia (en mano o reservada
 **¿Quién ve el origen "Por producto"?**
 Los conteos creados con `productPublicIds` y sin posiciones ni zonas llevan `originCode = PRODUCT` ("Por producto"); se puede filtrar con `origins=PRODUCT` en `GET /api/v1/cycle-counts/page`.
 
+## Lote 25 — Conteo abierto con varios productos (servidor, app y web)
+
+Detalle en el [capítulo 06 §6.x](06-inventario-y-almacen.md), el [capítulo 09 §7.2](09-app-almacen.md#72-contar-varios-productos-en-un-conteo-lote-25) y
+`docs/lote25-decisiones.md`.
+
+### Mensajes nuevos del servidor
+
+**400 — "El producto {sku} no tiene existencia en ninguna posición del almacén; indique la posición donde lo encontró."** (`errors.binId`)
+`POST /cycle-counts/{id}/lines` sin `binId` de un producto que el sistema no tiene en ninguna posición. Mande la posición donde lo encontró.
+
+**400 — "El producto {sku} está en varias posiciones ({códigos}); indique en cuál lo contó."** (`errors.binId`)
+Sin `binId` y el producto está en varias posiciones: elija una (la web la elige en el campo Posición; la app, en la lista). `GET /cycle-counts/{id}/product-bins`
+dice cuáles son.
+
+**400 — "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías."** (`errors.allowEmpty`)
+(Antes decía "a un único producto".) `allowEmpty` con más de un producto, o con zonas, posiciones o categorías.
+
+### Preguntas frecuentes
+
+**¿Cómo cuento varios productos en un solo conteo?**
+En la app: Conteo → **Por producto** y vaya escaneando; al final **Terminar conteo**. En la web: **Nuevo conteo** → **Por producto** → déjelo sin producto →
+**Crear conteo**, y en el detalle escanee cada producto (el que no está en el conteo abre **Agregar lo encontrado** con el producto puesto).
+
+**¿Tengo que elegir la posición?**
+No: si el sistema tiene el producto en **una sola** posición se usa esa (se puede cambiar). Con varias hay que elegir; sin ninguna, escanear dónde lo encontró.
+
+**¿El conteo abierto muestra las cantidades del sistema?**
+No a ciegas (sin `warehouse.count`): la lista de dónde está el producto no lleva cantidades.
+
+**Escaneé dos veces el mismo producto.**
+En la misma posición y lote se abre la línea ya contada para corregir la cantidad; no se suma ni se duplica. En otra posición es otra línea.
+
 ## Lote A4 — App de almacén: contar por producto
 
 Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los

@@ -1466,6 +1466,40 @@ permite con el conteo sin confirmar (Pendiente o Contado).
 
 ---
 
+### 6.x Conteo abierto con varios productos y posición opcional (Lote 25)
+
+Qué es: un conteo (origen **Por producto**, `PRODUCT`) que se **abre vacío** y al que se le van agregando productos, cada uno con su cantidad y
+su posición. La posición sigue siendo parte de la línea (no cambia el esquema ni el ajuste al reconciliar); lo nuevo es que **quien cuenta no
+tiene que elegirla**: el servidor propone la única posición donde el sistema tiene el producto.
+
+Quién puede: `warehouse.count.capture` (abrir, consultar dónde está un producto, agregar y capturar); `warehouse.count` para reconciliar, como siempre.
+Módulo **WMS_LOTSERIAL**.
+
+**Abrir un conteo vacío.** `POST /api/v1/cycle-counts` con `{ "warehousePublicId": …, "allowEmpty": true }` y **sin productos, posiciones, zonas ni
+categorías** crea un conteo `OPEN` de origen `PRODUCT` **sin líneas** (no es "todo el almacén") y su tarea COUNT. Con **un** producto y `allowEmpty`
+funciona como antes (Lote 21, adenda). Con más de un producto, o con otros filtros, es 400 `allowEmpty`:
+`Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías.`
+
+**Dónde está el producto.** `GET /api/v1/cycle-counts/{id}/product-bins?productPublicId=…` (`warehouse.count.capture`) devuelve una fila por
+**posición y lote con existencia** en una posición activa del almacén del conteo: `binId`, `binCode`, `zoneCode`, `lotId`, `lotNumber` y `lineId` (la
+línea que el conteo ya tiene ahí; `null` si todavía no). **Nunca lleva cantidades**, así que sirve igual al conteo a ciegas. 404 `Producto no
+encontrado.` / `Conteo no encontrado.`
+
+**Agregar una línea sin posición.** `POST /api/v1/cycle-counts/{id}/lines` ya no exige `binId`:
+- una sola posición con existencia del producto (con el lote pedido, si se pidió) → se usa esa;
+- ninguna → 400 en `binId`: `El producto {sku} no tiene existencia en ninguna posición del almacén; indique la posición donde lo encontró.`;
+- varias → 400 en `binId`: `El producto {sku} está en varias posiciones ({códigos}); indique en cuál lo contó.`
+Con `binId` todo sigue igual (404 posición, 422 posición inactiva, 409 si esa posición, producto y lote ya están en el conteo). El lote de captura
+`PUT /lines/batch` **sí** sigue pidiendo `binId` por renglón nuevo (la app lo resuelve antes de encolar).
+
+Casos frecuentes:
+- *"Escanee dos veces el mismo producto."* Misma posición y lote: 409 `Esa posición, producto y lote ya están en el conteo.` (las pantallas abren la
+  línea ya contada para corregir la cantidad; no suman ni duplican).
+- *"El producto está en dos posiciones y conté en una."* Se agrega esa línea; la otra no cuenta: el ajuste al reconciliar solo toca las líneas del conteo.
+
+Pantallas: app de almacén ([09 §7.2](09-app-almacen.md#72-contar-varios-productos-en-un-conteo-lote-25)) y web (Conteo cíclico → Nuevo conteo → Por producto sin
+elegir producto; escáner del detalle).
+
 ## 7. Recolección y empaque ad hoc (Pick & Pack)
 
 Qué hace: recolecta inventario (por FEFO o con posición/lote/serie explícitos) hacia una recolección con número

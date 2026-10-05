@@ -46,7 +46,7 @@ public static class CycleCountRules
 
     public const string TooManyLines = "El conteo admite como máximo 1000 líneas; acote los filtros.";
     public const string NothingSelected = "Los filtros no seleccionan inventario en mano para contar; amplíe los filtros o agregue líneas a mano.";
-    public const string AllowEmptyOnlyOneProduct = "Crear un conteo vacío (allowEmpty) solo aplica a un único producto, sin posiciones, zonas ni categorías.";
+    public const string AllowEmptyOnlyOneProduct = "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías.";
     public const string CountNotOpen = "El conteo ya fue reconciliado; solo se consulta.";
     public const string CountAlreadyFinished = "El conteo ya se terminó; puede corregir la captura o reconciliarlo.";
     public const string DeleteOnlyOpen = "Solo se elimina un conteo abierto; este ya se terminó de contar.";
@@ -61,7 +61,22 @@ public static class CycleCountRules
     public const string SerialsTooMany = "Una línea admite como máximo 500 números de serie.";
     public const string LineNotFoundWhat = "Línea del conteo";
     public const string BinRequired = "Indique la posición.";
+    /// <summary>Sin posición indicada y el producto no tiene existencia en ninguna posición del almacén: hay que decir dónde está.</summary>
+    public static string BinRequiredNoStock(string sku) => $"El producto {sku} no tiene existencia en ninguna posición del almacén; indique la posición donde lo encontró.";
+    /// <summary>Sin posición indicada y el producto está en varias: hay que elegir una.</summary>
+    public static string BinAmbiguous(string sku, IEnumerable<string> binCodes)
+        => $"El producto {sku} está en varias posiciones ({string.Join(", ", binCodes)}); indique en cuál lo contó.";
     public const string ProductRequired = "Indique el producto.";
+
+    /// <summary>
+    /// Posición por defecto de un producto al contarlo sin indicar posición (Lote 24): la ÚNICA posición con existencia. Devuelve
+    /// (posición, null) si es una; (null, null) si no hay ninguna o hay varias (el llamador decide el mensaje con la cuenta).
+    /// </summary>
+    public static int? SingleBin(IEnumerable<int> binIdsWithStock)
+    {
+        var distinct = (binIdsWithStock ?? Array.Empty<int>()).Distinct().Take(2).ToList();
+        return distinct.Count == 1 ? distinct[0] : null;
+    }
     public const string LotAmbiguous = "Indique el lote por su id o por su número, no ambos.";
     public const string LotNumberRequired = "Indique el número de lote.";
     public const string LotNumberTooLong = "El número de lote admite como máximo 60 caracteres.";

@@ -1,4 +1,6 @@
 import {
+  binOptionLabel,
+  defaultBinOption,
   blankAsZero,
   buildBatchItems,
   canConfirmProductCount,
@@ -197,5 +199,35 @@ describe('conteo por producto — "Otra posición"', () => {
     expect(findListedRow(rows, 'B-02', 'l-1')).toBe(rows[1])
     expect(findListedRow(rows, 'B-02', 'L-2')).toBeNull()
     expect(findListedRow(rows, 'C-03', null)).toBeNull()
+  })
+})
+
+describe('conteo abierto (Lote 24)', () => {
+  const A = { binId: 1, binCode: 'A-01', zoneCode: 'PCK', lotId: null, lotNumber: null }
+  const B = { binId: 2, binCode: 'B-02', zoneCode: 'RES', lotId: 7, lotNumber: 'L-7' }
+
+  it('la posición por defecto solo existe con UNA opción; con varias o ninguna se elige', () => {
+    expect(defaultBinOption([A])).toBe(A)
+    expect(defaultBinOption([A, B])).toBeNull()
+    expect(defaultBinOption([])).toBeNull()
+  })
+
+  it('el texto de la opción lleva código, lote (si lo hay) y zona', () => {
+    const t = (key: string, params?: Record<string, string | number>) => (key === 'count.rowLot' ? `Lote ${params?.lot}` : key)
+    expect(binOptionLabel(A, t)).toBe('A-01 · PCK')
+    expect(binOptionLabel(B, t)).toBe('B-02 · Lote L-7 · RES')
+    expect(binOptionLabel({ ...A, zoneCode: '' }, t)).toBe('A-01')
+  })
+
+  it('una línea nueva del conteo abierto viaja por posición + producto (+ lote por número), sin lineId', () => {
+    expect(
+      buildBatchItems([
+        { lineId: null, productPublicId: 'p1', sku: 'S', productName: 'N', countedQty: 4, isExtra: true, binId: 10 },
+        { lineId: null, productPublicId: 'p2', sku: 'T', productName: 'M', countedQty: 1, isExtra: true, binId: 11, lotNumber: 'L-9' },
+      ]),
+    ).toEqual([
+      { binId: 10, productPublicId: 'p1', countedQty: 4 },
+      { binId: 11, productPublicId: 'p2', countedQty: 1, lot: { number: 'L-9' } },
+    ])
   })
 })

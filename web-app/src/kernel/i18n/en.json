@@ -2727,7 +2727,7 @@
       "create": "Create count",
       "created": "Count {number} created with {count} line(s).",
       "createHelp": "Without zones or bins the whole on-hand balance of the warehouse is taken (up to 1000 lines).",
-      "createProductHelp": "The product is counted in every bin and lot where the system says there is stock (one line per bin and lot). A product with no stock cannot be counted from here.",
+      "createProductHelp": "With a product it is counted in every position and lot where the system says there is stock (one line per position and lot). Without a product an empty count opens and you add the products you scan, each with its quantity and position.",
       "modes": {
         "bins": "By bins",
         "product": "By product"
@@ -2772,7 +2772,8 @@
         "bins": "Bins",
         "allBins": "All bins",
         "binsTruncated": "Only the first {count} bins are listed: choose zones to narrow the list.",
-        "product": "Product"
+        "product": "Product",
+        "productOptionalHelp": "Optional: leave it empty to open a count where you will add several scanned products."
       },
       "errors": {
         "productRequired": "Choose the product.",
@@ -2821,7 +2822,7 @@
         "changedHelp": "When confirmed the balance differed from the snapshot; the adjustment used the real balance.",
         "blindNote": "Your user lacks the informed-count permission: expected quantities are hidden and counting is done in the warehouse app.",
         "addLine": "Add what was found",
-        "addLineHelp": "A product that is in the bin but not in the count: it is added with the counted quantity.",
+        "addLineHelp": "A product that is in a position but not in the count: it is added with what was counted. The position is optional if the product is in only one.",
         "lineAdded": "Line added.",
         "existingLot": "Existing lot",
         "newLot": "or lot number",
@@ -2851,7 +2852,8 @@
         "failingNone": "No line fails: everything matches the current stock.",
         "previewUpdating": "recalculating…",
         "reviewNote": "Review: changing a quantity is recorded as a correction (not an adjustment): what the operator counted is kept, with who corrected it and when.",
-        "correctedLines": "{n} correction(s)"
+        "correctedLines": "{n} correction(s)",
+        "binOptionalHelp": "Optional: without a position the only one where the system has the product is used."
       },
       "scan": {
         "label": "Scan or search product",

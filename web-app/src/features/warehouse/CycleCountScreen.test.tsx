@@ -122,6 +122,10 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
       return [400, { title: 'Hay errores de validación.', code: 'validation', errors: { filters: [mock.createProblem] } }]
     return [200, { count: { ...COUNT1, id: 15, number: 'CC-00015', originCode: 'PRODUCT', origin: 'Producto' }, lines: [{ id: 301 }, { id: 302 }], rowVersion: 'RV15', isBlind: false }]
   }
+  if (p.startsWith('/api/v1/products/by-barcode/'))
+    return p.endsWith('/TORN-01')
+      ? [200, { product: { id: 1, publicId: PRODUCT, sku: 'TORN-01', name: 'Tornillo', isOwn: true, isActive: true, trackingTypeCode: 'NONE' } }]
+      : [404, { title: 'No hay un producto con ese código.', code: 'not_found' }]
   if (p === '/api/v1/products') return [200, { total: 1, skip: 0, take: 50, items: [{ id: 1, publicId: PRODUCT, sku: 'TORN-01', name: 'Tornillo', isOwn: true, isActive: true, trackingTypeCode: 'NONE' }] }]
   if (p === '/api/v1/cycle-counts/from-changes' && method === 'POST') return [200, { counts: [{ ...COUNT1, id: 9, number: 'CC-00009' }] }]
   const m = /^\/api\/v1\/cycle-counts\/(\d+)(\/[\w-]+)?$/.exec(p)
@@ -317,6 +321,23 @@ describe('Conteo cíclico en dos paneles', () => {
     ).toBeInTheDocument()
   })
 
+  it('escáner: un código que es un producto fuera del conteo abre "Agregar lo encontrado" con el producto puesto y la posición opcional', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const scan = await screen.findByRole('combobox', { name: 'Escanear o buscar producto' })
+    // el SKU del producto existe en el sistema (by-barcode) pero ninguna línea de este conteo lo trae por código exacto
+    mock.lines = mock.lines.map((l) => ({ ...l, sku: 'OTRO', barcode: null, productName: 'Otro' }))
+    await user.type(scan, 'TORN-01{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Agregar lo encontrado' })
+    expect(within(dialog).getByText('Opcional: sin posición se usa la única donde el sistema tiene el producto.')).toBeInTheDocument()
+    const qty = within(dialog).getByRole('spinbutton', { name: /Cantidad contada/ })
+    await user.type(qty, '3')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/cycle-counts/1/lines')).toHaveLength(1))
+    // sin posición: binId null (el servidor elige la única con existencia)
+    expect(calls('POST', '/api/v1/cycle-counts/1/lines')[0].body).toMatchObject({ binId: null, productPublicId: PRODUCT, countedQty: 3 })
+  })
+
   it('"Confirmar conteo y ajustar" en un paso desde Pendiente (pasa por la vista previa) termina en Diferencia', async () => {
     const user = userEvent.setup()
     mock.lines = BASE_LINES.map((l, i) => ({ ...l, countedQty: i === 0 ? 6 : 2, varianceQty: i === 0 ? 1 : 0 }))
@@ -462,7 +483,21 @@ describe('Nuevo conteo: por posiciones o por producto (Lote F13)', () => {
     expect(calls('POST', '/api/v1/cycle-counts')[0].body).toEqual({ warehousePublicId: WH, zoneIds: null, binIds: null })
   })
 
-  it('por producto: exige almacén y producto, manda productPublicIds sin posiciones ni allowEmpty y abre el conteo creado', async () => {
+  it('por producto sin elegir producto: abre un conteo vacío (allowEmpty, sin productos ni posiciones) y lo abre', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    const dialog = await openModal(user)
+    await user.click(within(dialog).getByRole('tab', { name: 'Por producto' }))
+    expect(within(dialog).getByText('Opcional: déjalo vacío para abrir un conteo al que agregarás varios productos escaneados.')).toBeInTheDocument()
+    await pickWarehouse(user, dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
+    await waitFor(() => expect(calls('POST', '/api/v1/cycle-counts')).toHaveLength(1))
+    expect(calls('POST', '/api/v1/cycle-counts')[0].body).toEqual({ warehousePublicId: WH, allowEmpty: true })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(screen.getByTestId('where').textContent).toBe('?count=15')
+  })
+
+  it('por producto: exige almacén; con un producto manda productPublicIds sin posiciones ni allowEmpty y abre el conteo creado', async () => {
     const user = userEvent.setup()
     wrap(COUNTER)
     const dialog = await openModal(user)
@@ -470,9 +505,8 @@ describe('Nuevo conteo: por posiciones o por producto (Lote F13)', () => {
     expect(within(dialog).queryByText('Zonas')).toBeNull()
     expect(within(dialog).queryByText('Posiciones')).toBeNull()
 
-    // sin producto: el formulario no se envía y el error sale bajo el selector
+    // sin almacén el formulario no se envía
     await user.click(within(dialog).getByRole('button', { name: 'Crear conteo' }))
-    expect(await within(dialog).findByText('Elija el producto.')).toBeInTheDocument()
     expect(calls('POST', '/api/v1/cycle-counts')).toHaveLength(0)
 
     await pickWarehouse(user, dialog)

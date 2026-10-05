@@ -186,7 +186,15 @@ export function CountQtyModal({ line, scannedSerial, isBlind, onSave, onClose }:
 // Agregar lo encontrado (POST /{id}/lines): una línea que no tenía foto
 // =====================================================================================================================
 
-export function AddFoundLineModal({ detail, onClose }: { detail: CycleCountDetailDto; onClose: () => void }) {
+export interface AddFoundProduct {
+  publicId: string
+  sku: string
+  trackingTypeCode: string
+}
+
+/** Lote 24: la posición es OPCIONAL; sin ella el servidor usa la única posición donde el sistema tiene el producto (si hay varias o
+ *  ninguna, responde 400 en `binId` con el mensaje exacto y se elige aquí). `initialProduct` = el producto que se escaneó. */
+export function AddFoundLineModal({ detail, onClose, initialProduct }: { detail: CycleCountDetailDto; onClose: () => void; initialProduct?: AddFoundProduct | null }) {
   const t = useT()
   const issueText = useIssueText()
   const action = useCycleCountAction()
@@ -204,7 +212,6 @@ export function AddFoundLineModal({ detail, onClose }: { detail: CycleCountDetai
           serialNumbers: z.string(),
         })
         .superRefine((v, ctx) => {
-          if (!v.binId) ctx.addIssue({ code: 'custom', path: ['binId'], message: t('warehouse.cycleCounts.errors.binRequired') })
           if (!v.productPublicId) ctx.addIssue({ code: 'custom', path: ['productPublicId'], message: t('warehouse.receipts.errors.productRequired') })
           if (v.lotId && v.lotNumber.trim()) ctx.addIssue({ code: 'custom', path: ['lotNumber'], message: t('warehouse.cycleCounts.errors.lotAmbiguous') })
           const lotIssue = countLotIssue(v.trackingTypeCode, v.sku, Boolean(v.lotId || v.lotNumber.trim()))
@@ -219,7 +226,16 @@ export function AddFoundLineModal({ detail, onClose }: { detail: CycleCountDetai
   )
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { binId: '', productPublicId: null as string | null, sku: '', trackingTypeCode: '', lotId: '', lotNumber: '', countedQty: null as number | null, serialNumbers: '' },
+    defaultValues: {
+      binId: '',
+      productPublicId: (initialProduct?.publicId ?? null) as string | null,
+      sku: initialProduct?.sku ?? '',
+      trackingTypeCode: initialProduct?.trackingTypeCode ?? '',
+      lotId: '',
+      lotNumber: '',
+      countedQty: null as number | null,
+      serialNumbers: '',
+    },
   })
   const productPublicId = useWatch({ control: form.control, name: 'productPublicId' })
   const tracking = useWatch({ control: form.control, name: 'trackingTypeCode' })
@@ -259,7 +275,7 @@ export function AddFoundLineModal({ detail, onClose }: { detail: CycleCountDetai
               id: detail.count?.id ?? 0,
               action: 'addLine',
               body: {
-                binId: Number(v.binId),
+                binId: v.binId ? Number(v.binId) : null,
                 productPublicId: v.productPublicId,
                 lotId: v.lotId ? Number(v.lotId) : null,
                 lot: lotNumber ? { number: lotNumber } : undefined,
@@ -275,7 +291,7 @@ export function AddFoundLineModal({ detail, onClose }: { detail: CycleCountDetai
         }}
       >
         <div className="r2">
-          <Field name="binId" label={t('warehouse.cycleCounts.detail.bin')} required>
+          <Field name="binId" label={t('warehouse.cycleCounts.detail.bin')} help={t('warehouse.cycleCounts.detail.binOptionalHelp')}>
             <BinPickerInput warehousePublicId={detail.count?.warehousePublicId} />
           </Field>
           <Field name="productPublicId" label={t('warehouse.receipts.fields.product')} required>

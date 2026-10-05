@@ -45,8 +45,9 @@ import {
   type CycleCountDto,
   type CycleCountLineDto,
   type ReconcilePreviewLineDto,
+  fetchProductByCode,
 } from './api'
-import { AddFoundLineModal, CountQtyModal } from './CountLineModals'
+import { AddFoundLineModal, CountQtyModal, type AddFoundProduct } from './CountLineModals'
 import { adjustmentClass, evidenceText, failingLines, lineEvidence, previewByLine, signedQty } from './countReview'
 import { CountScanBox } from './CountScanBox'
 import {
@@ -459,7 +460,8 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
   const pin = useCallback((lineId: number) => setPinned((prev) => (prev.has(lineId) ? prev : new Set(prev).add(lineId))), [])
   const [qtyFor, setQtyFor] = useState<{ line: CycleCountLineDto; serial?: string | null } | null>(null)
   const [hit, setHit] = useState<number | null>(null)
-  const [adding, setAdding] = useState(false)
+  // "Agregar lo encontrado": abierto a mano (true) o con el producto que se escaneó (Lote 24)
+  const [adding, setAdding] = useState<boolean | AddFoundProduct>(false)
   const [history, setHistory] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -478,6 +480,18 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
     if (m.line.id != null) pin(m.line.id)
     setQtyFor({ line: m.line, serial: m.by === 'serial' ? m.serial : null })
   }
+  /** Lote 24: código que no es de ninguna línea del conteo → si es un producto, se abre "Agregar lo encontrado" con él puesto. */
+  const addScanned = useCallback(async (code: string): Promise<boolean> => {
+    try {
+      const found = await fetchProductByCode(code)
+      const p = found.product
+      if (!p?.publicId) return false
+      setAdding({ publicId: p.publicId, sku: p.sku ?? '', trackingTypeCode: p.trackingTypeCode ?? '' })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
   const openSerials = useCallback((line: CycleCountLineDto) => setQtyFor({ line }), [])
 
   const warehousePublicId = count.warehousePublicId ?? null
@@ -584,7 +598,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
       {canCapture && anyStale && <p className="note cc-note">{t('warehouse.cycleCounts.detail.staleNote')}</p>}
       {canCapture && (
         <div className="cc-scanrow">
-          <CountScanBox lines={lines} onPick={onPick} />
+          <CountScanBox lines={lines} onPick={onPick} onUnknown={addScanned} />
         </div>
       )}
       {canCapture && lines.length > 0 && (
@@ -660,7 +674,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
           onClose={() => setQtyFor(null)}
         />
       )}
-      {adding && <AddFoundLineModal detail={detail} onClose={() => setAdding(false)} />}
+      {adding && <AddFoundLineModal detail={detail} initialProduct={typeof adding === 'object' ? adding : null} onClose={() => setAdding(false)} />}
       <Modal open={history} title={t('warehouse.cycleCounts.detail.historyTitle', { number: count.number ?? '' })} onClose={() => setHistory(false)}>
         <StatusHistory entityType={COUNT_ENTITY_TYPE} entityId={id} domain={COUNT_STATUS_DOMAIN} />
       </Modal>

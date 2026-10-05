@@ -57,6 +57,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    Lote 21 (sección 6, Conteo cíclico): **conteo por producto**, captura original y **corrección del supervisor** con evidencia,
    **vista previa** de la reconciliación, lista **Por revisar**, **cierre en bloque** de los conteos que cuadran y **posiciones
    provisionales** creadas desde el conteo (servidor; la web y la app lo usan en sus propios lotes).
+   Lote 25 (sección 6.x, Conteo cíclico; app §7.2): **conteo abierto con varios productos** — `allowEmpty` sin producto abre un conteo vacío,
+   `GET /cycle-counts/{id}/product-bins` dice dónde está cada producto (sin cantidades) y agregar una línea **sin posición** usa la única con
+   existencia (o pide elegir); app y web arman UN conteo escaneando productos.
    Informe **Productos por posición** (sección 1.5, Almacenes y ubicaciones; reemplaza a las hojas de posición del Lote 23): consulta
    `GET .../bin-products` con los filtros del listado de posiciones, los productos con existencia de cada posición (SKU, nombre y código de
    barras) para imprimir y escanear desde el papel; sin estado (servidor y web).

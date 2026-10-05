@@ -9,7 +9,9 @@ import type { TrackingType } from '../../kernel/warehouse/productLookup'
 import type { CapturedEntry, ExpectedLine, ProductCountLine } from './countLogic'
 import { blankAsZero } from './countLogic'
 
-export type CountMode = 'BIN' | 'PRODUCT'
+/** BIN = una posición; PRODUCT = un producto en todas sus posiciones (conteos locales anteriores al Lote 24); OPEN = conteo abierto
+ *  con varios productos, cada línea con su posición (Lote 24). */
+export type CountMode = 'BIN' | 'PRODUCT' | 'OPEN'
 
 export interface CountProduct {
   publicId: string
@@ -42,6 +44,34 @@ export function startLocalCount(
   const info = getDb().runSync(
     "INSERT INTO local_count (count_id, warehouse_public_id, mode, bin_id, bin_code, is_blind, created_at_utc) VALUES (?, ?, 'BIN', ?, ?, ?, ?)",
     [started.countId, warehousePublicId, bin.id, bin.code, started.isBlind ? 1 : 0, new Date().toISOString()],
+  )
+  return info.lastInsertRowId
+}
+
+/** Lote 24 — abre localmente el conteo abierto (vacío) ya creado en el servidor; las líneas se agregan al escanear. */
+export function startLocalOpenCount(warehousePublicId: string, started: { countId: number; isBlind: boolean }): number {
+  if (getOpenCount() !== null) throw new Error(ALREADY_OPEN)
+  const info = getDb().runSync(
+    "INSERT INTO local_count (count_id, warehouse_public_id, mode, is_blind, created_at_utc) VALUES (?, ?, 'OPEN', ?, ?)",
+    [started.countId, warehousePublicId, started.isBlind ? 1 : 0, new Date().toISOString()],
+  )
+  return info.lastInsertRowId
+}
+
+/** Lote 24 — una línea del conteo abierto: producto contado con su cantidad en la posición (y lote) elegidas. Va al servidor
+ *  como línea nueva (posición + producto + lote por número) en el lote de captura al terminar. */
+export function addOpenCountLine(
+  localCountId: number,
+  product: { publicId: string; sku: string; name: string },
+  bin: { id: number; code: string; isProvisional: boolean },
+  lot: { id: number | null; number: string; expiryDate: string | null } | null,
+  countedQty: number,
+): number {
+  const info = getDb().runSync(
+    `INSERT INTO local_count_line (local_count_id, line_id, product_public_id, sku, product_name, system_qty, counted_qty, is_extra,
+                                   bin_id, bin_code, lot_id, lot_number, lot_expiry_date, is_provisional_bin)
+     VALUES (?, NULL, ?, ?, ?, NULL, ?, 1, ?, ?, ?, ?, ?, ?)`,
+    [localCountId, product.publicId, product.sku, product.name, countedQty, bin.id, bin.code, lot?.id ?? null, lot?.number ?? null, lot?.expiryDate ?? null, bin.isProvisional ? 1 : 0],
   )
   return info.lastInsertRowId
 }
@@ -92,7 +122,7 @@ type CountRow = {
 export function getOpenCount(): OpenCount | null {
   const row = getDb().getFirstSync<CountRow>('SELECT * FROM local_count LIMIT 1')
   if (!row) return null
-  const mode: CountMode = row.mode === 'PRODUCT' ? 'PRODUCT' : 'BIN'
+  const mode: CountMode = row.mode === 'PRODUCT' ? 'PRODUCT' : row.mode === 'OPEN' ? 'OPEN' : 'BIN'
   const tracking: TrackingType = row.tracking_type_code === 'LOT' || row.tracking_type_code === 'SERIAL' ? row.tracking_type_code : 'NONE'
   return {
     id: row.id,

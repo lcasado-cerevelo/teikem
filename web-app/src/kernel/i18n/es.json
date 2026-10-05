@@ -2727,7 +2727,7 @@
       "create": "Crear conteo",
       "created": "Conteo {number} creado con {count} línea(s).",
       "createHelp": "Sin zonas ni posiciones se toma todo el saldo en mano del almacén (máximo 1000 líneas).",
-      "createProductHelp": "Se cuenta el producto en todas las posiciones y lotes donde el sistema dice que hay existencia (una línea por posición y lote). Un producto sin existencia no se puede contar desde aquí.",
+      "createProductHelp": "Con un producto se cuenta en todas las posiciones y lotes donde el sistema dice que hay existencia (una línea por posición y lote). Sin producto se abre un conteo vacío al que vas agregando los productos que escaneas, cada uno con su cantidad y su posición.",
       "modes": {
         "bins": "Por posiciones",
         "product": "Por producto"
@@ -2772,7 +2772,8 @@
         "bins": "Posiciones",
         "allBins": "Todas las posiciones",
         "binsTruncated": "Solo se listan las primeras {count} posiciones: elija zonas para acotar la lista.",
-        "product": "Producto"
+        "product": "Producto",
+        "productOptionalHelp": "Opcional: déjalo vacío para abrir un conteo al que agregarás varios productos escaneados."
       },
       "errors": {
         "productRequired": "Elija el producto.",
@@ -2821,7 +2822,7 @@
         "changedHelp": "Al confirmar el saldo era distinto de la foto; el ajuste se calculó sobre el saldo real.",
         "blindNote": "Su usuario no tiene el permiso de conteo informado: las cantidades esperadas no se muestran y la captura se hace en la app de almacén.",
         "addLine": "Agregar lo encontrado",
-        "addLineHelp": "Un producto que está en la posición pero no en el conteo: se agrega con lo contado.",
+        "addLineHelp": "Un producto que está en una posición pero no en el conteo: se agrega con lo contado. La posición es opcional si el producto está en una sola.",
         "lineAdded": "Línea agregada.",
         "existingLot": "Lote existente",
         "newLot": "o número de lote",
@@ -2851,7 +2852,8 @@
         "failingNone": "Ninguna línea falla: todo cuadra contra la existencia actual.",
         "previewUpdating": "recalculando…",
         "reviewNote": "Revisión: si cambia una cantidad queda como corrección (no es un ajuste): se conserva lo que contó el operario y se registra quién corrigió y cuándo.",
-        "correctedLines": "{n} corrección(es)"
+        "correctedLines": "{n} corrección(es)",
+        "binOptionalHelp": "Opcional: sin posición se usa la única donde el sistema tiene el producto."
       },
       "scan": {
         "label": "Escanear o buscar producto",

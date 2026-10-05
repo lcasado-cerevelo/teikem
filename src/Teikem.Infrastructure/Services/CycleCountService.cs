@@ -340,9 +340,11 @@ public sealed class CycleCountService(
     public async Task<CycleCountDetailDto> CreateAsync(CycleCountCreateRequest? req, CancellationToken ct)
     {
         req ??= new CycleCountCreateRequest();
+        // Lote 24: AllowEmpty con NINGÚN producto abre un conteo vacío al que se van agregando productos escaneados.
         if (req.AllowEmpty
-            && (req.ProductPublicIds?.Distinct().Count() != 1 || req.BinIds is { Length: > 0 } || req.ZoneIds is { Length: > 0 } || req.CategoryIds is { Length: > 0 }))
+            && ((req.ProductPublicIds?.Distinct().Count() ?? 0) > 1 || req.BinIds is { Length: > 0 } || req.ZoneIds is { Length: > 0 } || req.CategoryIds is { Length: > 0 }))
             throw new ValidationException("allowEmpty", CycleCountRules.AllowEmptyOnlyOneProduct);
+        var openEmpty = req.AllowEmpty && (req.ProductPublicIds?.Distinct().Count() ?? 0) == 0;
         var tenantId = ((TenantContext)tenant).RequireTenantId();
         var warehouse = await ResolveWarehouseOrDefaultAsync(req.WarehousePublicId, ct);
         if (!warehouse.IsActive) throw new StatusRuleException(WarehouseInactive);
@@ -386,22 +388,25 @@ public sealed class CycleCountService(
             var cats = categoryIds.ToList();
             candidatesQuery = candidatesQuery.Where(x => x.ProductCategoryId != null && cats.Contains(x.ProductCategoryId.Value));
         }
-        // Tope técnico: se leen a lo sumo MaxLines + 1 saldos para detectar el exceso sin cargar el almacén entero.
-        var raw = await candidatesQuery.OrderBy(x => x.WarehouseBinId).ThenBy(x => x.ProductId).ThenBy(x => x.LotId)
-            .Take(CycleCountRules.MaxLines + 1).ToListAsync(ct);
+        // Tope técnico: se leen a lo sumo MaxLines + 1 saldos para detectar el exceso sin cargar el almacén entero. Un conteo abierto
+        // vacío (sin producto) no lee nada: NO es "todo el almacén".
+        var raw = openEmpty
+            ? new()
+            : await candidatesQuery.OrderBy(x => x.WarehouseBinId).ThenBy(x => x.ProductId).ThenBy(x => x.LotId)
+                .Take(CycleCountRules.MaxLines + 1).ToListAsync(ct);
         var lotIds = raw.Where(x => x.LotId != null).Select(x => x.LotId!.Value).Distinct().ToList();
         var lotNumbers = await LotNumbersAsync(lotIds, raw.Select(x => x.ProductId), ct);
         var (selected, selectError) = CycleCountRules.SelectLines(raw.Select(x => new CountCandidate(
             x.WarehouseBinId, x.BinCode, x.ProductId, x.Sku, x.LotId, x.LotId is int l ? lotNumbers.GetValueOrDefault(l) : null, x.QtyOnHand)));
         // Adenda: el producto existe (ya se resolvió; si no, 404) pero no tiene existencia → conteo vacío, solo si se pidió.
-        var emptyByProduct = req.AllowEmpty && selectError == CycleCountRules.NothingSelected;
+        var emptyByProduct = req.AllowEmpty && (openEmpty || selectError == CycleCountRules.NothingSelected);
         if (selectError is not null && !emptyByProduct) throw new ValidationException("filters", selectError);
 
         await numbers.EnsureAsync(NumberKinds.CycleCount, null, ct);
         var initial = await statuses.GetInitialAsync(StatusDomains.CycleCountStatus, ct);
         // Lote 14: origen MANUAL. Lote 21: PRODUCT cuando se crea con productos y sin posiciones ni zonas (conteo por producto);
         // si el catálogo aún no trae PRODUCT, cae a MANUAL.
-        var byProduct = req.ProductPublicIds is { Length: > 0 } && req.BinIds is not { Length: > 0 } && req.ZoneIds is not { Length: > 0 };
+        var byProduct = openEmpty || (req.ProductPublicIds is { Length: > 0 } && req.BinIds is not { Length: > 0 } && req.ZoneIds is not { Length: > 0 });
         var manualOrigin = (byProduct ? await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Product, ct) : null)
                            ?? await lookups.TryGetIdAsync(LookupDomains.CycleCountOrigin, CycleCountOrigins.Manual, ct);
 
@@ -871,7 +876,7 @@ public sealed class CycleCountService(
     {
         if (req is null) throw new ValidationException("body", "El cuerpo de la solicitud es obligatorio.");
         var errors = new Dictionary<string, string[]>();
-        if (req.BinId is null) errors["binId"] = new[] { CycleCountRules.BinRequired };
+        // Lote 24: la posición es opcional; sin ella se usa la ÚNICA con existencia del producto (ver más abajo).
         if (req.ProductPublicId is null) errors["productPublicId"] = new[] { CycleCountRules.ProductRequired };
         if (req.LotId is not null && req.Lot is not null) errors["lot"] = new[] { CycleCountRules.LotAmbiguous };
         string? lotNumber = null;
@@ -889,12 +894,13 @@ public sealed class CycleCountService(
         {
             var (cc, _) = await LockEditableAsync(current.CycleCountId, ct2);
 
-            var bin = await db.Set<WarehouseBin>().AsNoTracking()
-                          .FirstOrDefaultAsync(b => b.WarehouseBinId == req.BinId!.Value && b.WarehouseId == cc.WarehouseId, ct2)
-                      ?? throw new NotFoundException("Posición", feminine: true);
-            if (!bin.IsActive) throw new StatusRuleException(BinInactive(bin.Code));
             var product = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == req.ProductPublicId!.Value, ct2)
                           ?? throw new NotFoundException("Producto");
+            var binId = req.BinId ?? await DefaultBinIdAsync(cc.WarehouseId, product, req.LotId, ct2);
+            var bin = await db.Set<WarehouseBin>().AsNoTracking()
+                          .FirstOrDefaultAsync(b => b.WarehouseBinId == binId && b.WarehouseId == cc.WarehouseId, ct2)
+                      ?? throw new NotFoundException("Posición", feminine: true);
+            if (!bin.IsActive) throw new StatusRuleException(BinInactive(bin.Code));
             if (!product.IsActive) throw new StatusRuleException(CycleCountRules.ProductInactive(product.Sku));
             var code = await TrackingOfAsync(product.TrackingTypeLookupId, ct2);
 
@@ -936,6 +942,54 @@ public sealed class CycleCountService(
         }, ct);
 
         return await GetAsync(id, null, ct);
+    }
+
+    /// <summary>
+    /// Lote 24: posición por defecto de un producto al agregarlo sin posición: la ÚNICA posición activa del almacén con existencia
+    /// (si se pidió un lote, solo cuenta la que tiene ese lote). Ninguna → 400 'binId' (indique dónde lo encontró); varias → 400
+    /// 'binId' con sus códigos (hay que elegir).
+    /// </summary>
+    private async Task<int> DefaultBinIdAsync(int warehouseId, Product product, int? lotId, CancellationToken ct)
+    {
+        var rows = await StockBinsAsync(warehouseId, product.ProductId, ct);
+        var candidates = rows.Where(r => lotId is null || r.LotId == lotId).ToList();
+        var single = CycleCountRules.SingleBin(candidates.Select(r => r.BinId));
+        if (single is int one) return one;
+        throw new ValidationException("binId", candidates.Count == 0
+            ? CycleCountRules.BinRequiredNoStock(product.Sku)
+            : CycleCountRules.BinAmbiguous(product.Sku, candidates.Select(r => r.BinCode).Distinct().OrderBy(c => c, StringComparer.Ordinal)));
+    }
+
+    private sealed record StockBinRow(int BinId, string BinCode, string ZoneCode, int? LotId);
+
+    /// <summary>(posición, lote) con existencia en mano del producto en posiciones activas del almacén. Sin cantidades.</summary>
+    private async Task<List<StockBinRow>> StockBinsAsync(int warehouseId, int productId, CancellationToken ct)
+        => await (from b in db.Set<StockBalance>().AsNoTracking()
+                  join bin in db.Set<WarehouseBin>().AsNoTracking() on b.WarehouseBinId equals (int?)bin.WarehouseBinId
+                  join z in db.Set<WarehouseZone>().AsNoTracking() on bin.WarehouseZoneId equals z.WarehouseZoneId
+                  where b.WarehouseId == warehouseId && bin.WarehouseId == warehouseId && bin.IsActive && b.ProductId == productId && b.QtyOnHand > 0m
+                  group new { bin, z, b.LotId } by new { bin.WarehouseBinId, bin.Code, ZoneCode = z.Code, b.LotId } into g
+                  orderby g.Key.Code, g.Key.LotId
+                  select new StockBinRow(g.Key.WarehouseBinId, g.Key.Code, g.Key.ZoneCode, g.Key.LotId)).ToListAsync(ct);
+
+    /// <summary>
+    /// Lote 24 — dónde puede estar un producto para contarlo en este conteo (GET .../product-bins): una fila por (posición, lote)
+    /// con existencia, con la línea que el conteo ya tiene ahí (LineId). Sin cantidades: sirve igual al conteo a ciegas.
+    /// </summary>
+    public async Task<CountProductBinsDto> ProductBinsAsync(int id, Guid productPublicId, CancellationToken ct)
+    {
+        var cc = await ResolveAsync(id, ct);
+        var product = await db.Set<Product>().AsNoTracking().FirstOrDefaultAsync(p => p.PublicId == productPublicId, ct)
+                      ?? throw new NotFoundException("Producto");
+        var tracking = await TrackingOfAsync(product.TrackingTypeLookupId, ct);
+        var rows = await StockBinsAsync(cc.WarehouseId, product.ProductId, ct);
+        var lines = await db.Set<CycleCountLine>().AsNoTracking().Where(l => l.CycleCountId == cc.CycleCountId && l.ProductId == product.ProductId)
+            .Select(l => new { l.CycleCountLineId, l.WarehouseBinId, l.LotId }).ToListAsync(ct);
+        var lotIds = rows.Where(r => r.LotId != null).Select(r => r.LotId!.Value).Distinct().ToList();
+        var lotNumbers = await LotNumbersAsync(lotIds, new[] { product.ProductId }, ct);
+        var bins = rows.Select(r => new CountBinChoiceDto(r.BinId, r.BinCode, r.ZoneCode, r.LotId, r.LotId is int l ? lotNumbers.GetValueOrDefault(l) : null,
+            lines.FirstOrDefault(x => x.WarehouseBinId == r.BinId && x.LotId == r.LotId)?.CycleCountLineId)).ToList();
+        return new CountProductBinsDto(product.PublicId, product.Sku, product.Name, tracking, product.IsActive, bins);
     }
 
     /// <summary>Terminar de contar: OPEN → COUNTED con todas las líneas capturadas (si no, 422 'Faltan {n} línea(s) por contar.').</summary>

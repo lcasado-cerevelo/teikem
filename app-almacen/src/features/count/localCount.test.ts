@@ -4,6 +4,7 @@ import { __resetDbForTests } from '../../kernel/db/database'
 import type { ExpectedLine, ProductCountLine } from './countLogic'
 import {
   addExtraLine,
+  addOpenCountLine,
   addProductExtraRow,
   captureExpectedLine,
   discardLocalCount,
@@ -12,6 +13,7 @@ import {
   getProductCountRows,
   removeLocalCountLine,
   setProductRowQty,
+  startLocalOpenCount,
   startLocalCount,
   startLocalProductCount,
   toCapturedEntries,
@@ -154,5 +156,28 @@ describe('conteo local por producto', () => {
     startLocalProductCount('wh-1', PRODUCT, { countId: 300, isBlind: true }, PLINES)
     discardLocalCount()
     expect(getOpenCount()).toBeNull()
+  })
+})
+
+describe('conteo local abierto (Lote 24)', () => {
+  it('se abre sin producto ni posición y cada línea guarda la suya, con su lote y su cantidad', () => {
+    const id = startLocalOpenCount('wh-1', { countId: 31, isBlind: true })
+    expect(getOpenCount()).toMatchObject({ id, countId: 31, mode: 'OPEN', binId: null, binCode: null, product: null, isBlind: true })
+    addOpenCountLine(id, { publicId: 'p1', sku: 'S1', name: 'Uno' }, { id: 10, code: 'A-01', isProvisional: false }, null, 4)
+    addOpenCountLine(id, { publicId: 'p2', sku: 'S2', name: 'Dos' }, { id: 11, code: 'B-02', isProvisional: true }, { id: 5, number: 'L-5', expiryDate: '2027-01-31' }, 2)
+    const rows = getProductCountRows(id)
+    expect(rows.map((r) => [r.sku, r.binId, r.binCode, r.lotNumber, r.countedQty, r.isExtra, r.isProvisionalBin])).toEqual([
+      ['S1', 10, 'A-01', null, 4, true, false],
+      ['S2', 11, 'B-02', 'L-5', 2, true, true],
+    ])
+    expect(toProductEntries(rows)).toEqual([
+      expect.objectContaining({ lineId: null, productPublicId: 'p1', binId: 10, countedQty: 4, isExtra: true }),
+      expect.objectContaining({ lineId: null, productPublicId: 'p2', binId: 11, countedQty: 2, lotNumber: 'L-5', lotExpiryDate: '2027-01-31' }),
+    ])
+  })
+
+  it('un solo conteo abierto por aparato', () => {
+    startLocalOpenCount('wh-1', { countId: 32, isBlind: false })
+    expect(() => startLocalOpenCount('wh-1', { countId: 33, isBlind: false })).toThrow('Ya hay un conteo en curso')
   })
 })

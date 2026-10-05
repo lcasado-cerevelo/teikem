@@ -1,7 +1,9 @@
 // Lote 14 (P8) — "Nuevo conteo" (selección manual), el modal que antes vivía en la lista: almacén, zonas y posiciones
 // (`POST /cycle-counts`, warehouse.count; sin zonas ni posiciones toma todo el saldo en mano del almacén, máx. 1000 líneas).
+// Lote 24 (2026-10-05): en "Por producto" el producto es OPCIONAL: vacío abre un conteo SIN líneas (`allowEmpty`, sin producto) al que se
+// van agregando los productos escaneados, cada uno con su cantidad y su posición (por defecto la única donde el sistema lo tiene).
 // Lote F13 (decisión del dueño 2026-10-03): dos opciones con pestañas, "Por posiciones" (lo de siempre) y "Por producto": almacén +
-// un producto (`productPublicIds: [producto]`, sin posiciones ni `allowEmpty`); el servidor arma una línea por posición/lote con
+// un producto (`productPublicIds: [producto]`, sin posiciones); el servidor arma una línea por posición/lote con
 // existencia (origen PRODUCT). Si el producto no tiene existencia el servidor responde 400 en `filters` y el mensaje se muestra
 // bajo el selector de producto.
 // Segundo bloque de decisiones (2026-10-03): junto al selector, el switch "Solo con existencia" (activado de entrada, sin guardar la
@@ -61,7 +63,6 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
         })
         .superRefine((v, ctx) => {
           if (!v.warehousePublicId) ctx.addIssue({ code: 'custom', path: ['warehousePublicId'], message: t('warehouse.receipts.errors.warehouseRequired') })
-          if (v.mode === 'product' && !v.productPublicId) ctx.addIssue({ code: 'custom', path: ['productPublicId'], message: t('warehouse.cycleCounts.errors.productRequired') })
         }),
     [t],
   )
@@ -123,7 +124,9 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
         onSubmit={async (v) => {
           const body =
             v.mode === 'product'
-              ? { warehousePublicId: v.warehousePublicId, productPublicIds: v.productPublicId ? [v.productPublicId] : null }
+              ? v.productPublicId
+                ? { warehousePublicId: v.warehousePublicId, productPublicIds: [v.productPublicId] }
+                : { warehousePublicId: v.warehousePublicId, allowEmpty: true }
               : {
                   warehousePublicId: v.warehousePublicId,
                   zoneIds: v.zoneIds.length > 0 ? v.zoneIds.map(Number) : null,
@@ -172,7 +175,7 @@ export function CreateCountModal({ onClose, onCreated }: { onClose: () => void; 
           </>
         ) : (
           <>
-            <Field name="productPublicId" label={t('warehouse.cycleCounts.fields.product')} required>
+            <Field name="productPublicId" label={t('warehouse.cycleCounts.fields.product')} help={t('warehouse.cycleCounts.fields.productOptionalHelp')}>
               <ProductPickerInput warehousePublicId={onlyWithStock ? warehousePublicId : undefined} onlyOnHand={onlyWithStock} />
             </Field>
             <div className="f">

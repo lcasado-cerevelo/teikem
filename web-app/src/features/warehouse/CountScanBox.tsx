@@ -3,7 +3,9 @@
 // Enter, Escape; clases `.msel.cpick`) sobre las líneas del conteo: filtra por SKU, producto, posición, lote o código de
 // barras. Enter con un código EXACTO (SKU, código de barras, lote o serie: `matchCountLine`) elige la línea aunque la lista
 // no esté abierta; si coinciden varias (mismo producto en otra posición o lote) la lista muestra solo esas para elegir; si
-// ninguna, el aviso 'Ese código no está en este conteo. Use "Agregar lo encontrado" si el producto está en la posición.'.
+// ninguna, se ofrece agregar el producto al conteo (Lote 24: `onUnknown` lo busca por código y abre "Agregar lo encontrado" con
+// el producto puesto y la posición opcional); si no es un producto, el aviso 'Ese código no está en este conteo. Use "Agregar lo
+// encontrado" si el producto está en la posición.'.
 // Al elegir, el texto se limpia y el foco se queda aquí (listo para el siguiente escaneo).
 import { useCallback, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useT } from '../../kernel/i18n'
@@ -17,10 +19,12 @@ const MAX_SHOWN = 50
 export interface CountScanBoxProps {
   lines: readonly CycleCountLineDto[]
   onPick: (match: CountLineMatch) => void
+  /** Código que no es de ninguna línea: true = se atendió (se abrió "Agregar lo encontrado" con ese producto); false = no es un producto. */
+  onUnknown?: (code: string) => Promise<boolean>
   disabled?: boolean
 }
 
-export function CountScanBox({ lines, onPick, disabled }: CountScanBoxProps) {
+export function CountScanBox({ lines, onPick, onUnknown, disabled }: CountScanBoxProps) {
   const t = useT()
   const inputId = useId()
   const listId = `${inputId}-list`
@@ -80,7 +84,15 @@ export function CountScanBox({ lines, onPick, disabled }: CountScanBoxProps) {
       if (text.trim() && open && shown[active]) return pick(shown[active])
       if (text.trim()) {
         setOpen(false)
-        setMessage(t('warehouse.cycleCounts.scan.notFound'))
+        const code = text.trim()
+        const notFound = () => setMessage(t('warehouse.cycleCounts.scan.notFound'))
+        if (!onUnknown) return notFound()
+        void onUnknown(code).then((handled) => {
+          if (handled) {
+            setText('')
+            setMessage(null)
+          } else notFound()
+        })
       }
     } else if (e.key === 'Escape' && open) {
       e.stopPropagation()

@@ -7,12 +7,11 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { __resetSecureStoreForTests } from 'expo-secure-store'
 import { cleanup, fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library'
 
-import { getOpenCount } from '../features/count/localCount'
+import { getOpenCount, startLocalProductCount } from '../features/count/localCount'
 import { __resetSessionForTests } from '../kernel/auth/session'
 import { __resetDbForTests } from '../kernel/db/database'
-import { setKv, KvKeys } from '../kernel/db/kv'
 import { listOutbox } from '../kernel/sync/outbox'
-import { insertProduct, json, mockFetch, setupDevice } from './countKit'
+import { mockFetch, setupDevice } from './countKit'
 
 beforeEach(() => {
   __resetAllForTests()
@@ -26,35 +25,20 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-const LINE = { productPublicId: 'p-lot', sku: 'LOT-1', productName: 'Pintura', trackingTypeCode: 'LOT' }
+const LINE = { productPublicId: 'p-lot', sku: 'LOT-1', productName: 'Pintura', binIsProvisional: false }
 
 describe('Conteo por producto — lista, captura y confirmar', () => {
   it('una fila por posición y lote; en blanco = 0 con resumen; Confirmar encola lote y cierre', async () => {
     await setupDevice()
-    insertProduct(1, 'p-lot', 'LOT-1', 'Pintura', '7601', 'LOT')
-    setKv(KvKeys.countEntryMode, 'PRODUCT')
-    const calls = mockFetch([
-      (c) =>
-        c.method === 'POST' && c.path === '/api/v1/cycle-counts'
-          ? json(200, {
-              count: { id: 300, originCode: 'PRODUCT' },
-              isBlind: false,
-              lines: [
-                { ...LINE, id: 1, binId: 10, binCode: 'A-01', lotId: 3, lotNumber: 'L-3', systemQty: 4 },
-                { ...LINE, id: 2, binId: 11, binCode: 'B-02', lotId: 4, lotNumber: 'L-4', systemQty: 1250 },
-                { ...LINE, id: 3, binId: 12, binCode: 'C-03', lotId: 3, lotNumber: 'L-3', systemQty: 2 },
-              ],
-            })
-          : null,
+    startLocalProductCount('wh-1', { publicId: 'p-lot', sku: 'LOT-1', name: 'Pintura', trackingTypeCode: 'LOT' }, { countId: 300, isBlind: false }, [
+      { ...LINE, lineId: 1, binId: 10, binCode: 'A-01', lotId: 3, lotNumber: 'L-3', systemQty: 4 },
+      { ...LINE, lineId: 2, binId: 11, binCode: 'B-02', lotId: 4, lotNumber: 'L-4', systemQty: 1250 },
+      { ...LINE, lineId: 3, binId: 12, binCode: 'C-03', lotId: 3, lotNumber: 'L-3', systemQty: 2 },
     ])
+    mockFetch([])
 
     await renderRouter('src/app', { initialUrl: '/count' })
-    await waitFor(() => expect(screen.getByText('Escanea el producto a contar')).toBeTruthy())
-    await fireEvent.changeText(screen.getByLabelText('Escanea el producto a contar'), '7601')
-    await fireEvent.press(screen.getByLabelText('Aceptar'))
-
     await waitFor(() => expect(screen.getByText('Pintura')).toBeTruthy())
-    expect(calls.find((c) => c.path === '/api/v1/cycle-counts')?.body).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p-lot'], allowEmpty: true })
     expect(getOpenCount()).toMatchObject({ countId: 300, mode: 'PRODUCT', binId: null })
     expect(screen.getByText('Este producto lleva lote: cada fila es una posición y un lote.')).toBeTruthy()
     // una fila por posición y lote, con el lote y lo esperado (con los separadores de la compañía)

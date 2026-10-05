@@ -7,7 +7,7 @@
 import { api, ApiError, unwrap } from '../../kernel/api/client'
 import { getDb } from '../../kernel/db/database'
 import { enqueue } from '../../kernel/sync/outbox'
-import { buildBatchItems, type CapturedEntry, type ExpectedLine, type ProductCountLine } from './countLogic'
+import { buildBatchItems, type BinOption, type CapturedEntry, type ExpectedLine, type ProductCountLine } from './countLogic'
 
 export interface StartedCount {
   countId: number
@@ -71,6 +71,20 @@ export interface StartedProductCount {
 export async function startProductCountOnline(warehousePublicId: string, productPublicId: string): Promise<StartedProductCount> {
   const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, lines: mapProductLines(detail.lines) }
+}
+
+/** Lote 24 — abre un conteo VACÍO (origen PRODUCT, sin producto ni posición) al que se van agregando los productos escaneados:
+ *  POST /cycle-counts con allowEmpty y sin filtros. Necesita señal. */
+export async function startOpenCountOnline(warehousePublicId: string): Promise<{ countId: number; isBlind: boolean }> {
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, allowEmpty: true } }))
+  return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true }
+}
+
+/** Lote 24 — dónde dice el sistema que está el producto (posición y lote con existencia, SIN cantidades): GET
+ *  /cycle-counts/{id}/product-bins. Una opción = la posición por defecto; varias = se elige; ninguna = se pide escanear. */
+export async function fetchProductBins(countId: number, productPublicId: string): Promise<BinOption[]> {
+  const dto = await unwrap(api.GET('/api/v1/cycle-counts/{id}/product-bins', { params: { path: { id: countId }, query: { productPublicId } } }))
+  return (dto.bins ?? []).map((b) => ({ binId: b.binId ?? 0, binCode: b.binCode ?? '', zoneCode: b.zoneCode ?? '', lotId: b.lotId ?? null, lotNumber: b.lotNumber ?? null }))
 }
 
 /** Recupera las líneas esperadas de un conteo ya abierto (se cerró y reabrió la app: local_count guarda el id pero

@@ -5315,6 +5315,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-counts/{id}/product-bins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    productPublicId?: string;
+                };
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CountProductBinsDto"];
+                        "application/json": components["schemas"]["CountProductBinsDto"];
+                        "text/json": components["schemas"]["CountProductBinsDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-counts/{id}/refresh": {
         parameters: {
             query?: never;
@@ -17828,6 +17869,17 @@ export interface components {
             lines?: components["schemas"]["CountBatchItem"][] | null;
             rowVersion?: string | null;
         };
+        CountBinChoiceDto: {
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: int32 */
+            lineId?: number | null;
+        };
         CountCaptureItem: {
             /** Format: int32 */
             lineId?: number;
@@ -17838,6 +17890,15 @@ export interface components {
         CountCaptureRequest: {
             lines?: components["schemas"]["CountCaptureItem"][] | null;
             rowVersion?: string | null;
+        };
+        CountProductBinsDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            sku?: string | null;
+            productName?: string | null;
+            trackingTypeCode?: string | null;
+            isActive?: boolean;
+            bins?: components["schemas"]["CountBinChoiceDto"][] | null;
         };
         CountProvisionalBinRequest: {
             /** Format: int32 */

@@ -151,9 +151,9 @@ test.describe('Lote F13 — escritorio', () => {
     await expect(dialog.getByRole('combobox', { name: /^Producto/ })).toBeVisible()
     await expect(dialog.getByText('Zonas', { exact: true })).toHaveCount(0)
 
-    // sin almacén ni producto: validación del formulario, sin llamar al API
+    // sin almacén: validación del formulario, sin llamar al API (desde el Lote 24 el producto es opcional: sin él se abre un conteo vacío)
     await dialog.getByRole('button', { name: 'Crear conteo' }).click()
-    await expect(dialog.getByText('Elija el producto.')).toBeVisible()
+    await expect(dialog.getByText('Elija el almacén.', { exact: false })).toBeVisible()
 
     // switch "Solo con existencia" (segundo bloque, 2026-10-03): nace encendido y el producto sin existencia no se ofrece
     await pickWarehouse(page, dialog)

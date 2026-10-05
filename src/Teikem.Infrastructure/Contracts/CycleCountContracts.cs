@@ -7,6 +7,8 @@ namespace Teikem.Infrastructure.Contracts;
 /// CategoryIds), si el producto existe pero no tiene existencia el conteo se crea VACÍO (origen PRODUCT, sin líneas) en lugar de
 /// responder 400: sirve para registrar lo hallado donde el sistema no tenía nada ("Otra posición" de la app). Con otros filtros
 /// o más de un producto → 400.
+/// Lote 24: AllowEmpty con NINGÚN producto (y sin otros filtros) abre un conteo VACÍO de origen PRODUCT al que se van agregando
+/// productos escaneados (cada uno con su cantidad y su posición, por defecto la única con existencia).
 /// </summary>
 public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int[]? ZoneIds = null, int[]? BinIds = null,
     Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false);
@@ -116,6 +118,17 @@ public sealed record CountBatchRequest(IReadOnlyList<CountBatchItem>? Lines, str
 
 public sealed record CountAddLineRequest(int? BinId, Guid? ProductPublicId, int? LotId = null, LotInput? Lot = null, decimal? CountedQty = null,
     IReadOnlyList<string>? SerialNumbers = null);
+
+/// <summary>
+/// Lote 24 (GET /cycle-counts/{id}/product-bins?productPublicId=): dónde puede estar un producto para contarlo sin elegir la
+/// posición a ciegas. Una fila por (posición, lote) con existencia en mano en una posición ACTIVA del almacén del conteo; LineId =
+/// la línea que ya tiene el conteo para esa posición y lote (null = todavía no está). NUNCA lleva cantidades (también sirve al
+/// conteo a ciegas).
+/// </summary>
+public sealed record CountBinChoiceDto(int BinId, string BinCode, string ZoneCode, int? LotId, string? LotNumber, int? LineId);
+
+public sealed record CountProductBinsDto(Guid ProductPublicId, string Sku, string ProductName, string TrackingTypeCode, bool IsActive,
+    IReadOnlyList<CountBinChoiceDto> Bins);
 
 public sealed record CountReconcileRequest(string? Comment = null, string? RowVersion = null);
 

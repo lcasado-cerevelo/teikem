@@ -1,5 +1,7 @@
 # F13 — Nuevo conteo "Por producto" desde la web
 
+> **Actualizado el 2026-10-05 (Lote 25):** en **Por producto** el producto es **opcional**: sin elegirlo se abre un conteo vacío al que se agregan productos escaneados (el escáner del detalle abre "Agregar lo encontrado" con el producto puesto y la posición opcional). Ver [lote25-decisiones.md](../../lote25-decisiones.md) y el FAQ "Lote 25".
+
 Pantalla **Almacén → Conteo cíclico** (`/warehouse/cycle-counts`), botón **Nuevo conteo**. Este cambio (decisión del dueño del
 2026-10-03) agrega la opción **Por producto**: se elige un almacén y **un** producto, y el servidor arma el conteo con una línea por
 cada posición y lote donde el sistema dice que hay existencia de ese producto. Es el mismo conteo que se crea desde la app de almacén
