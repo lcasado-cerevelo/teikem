@@ -29,7 +29,7 @@ Los CSV de QuickBooks contienen correos y teléfonos de clientes: **no se suben 
 | Archivo | Para qué |
 |---|---|
 | `import.depot.json` | Advance Depot: QuickBooks Depot + WMS MSWM (almacén `Main`), categorías **AxisCare** y **CARTONES**, almacén `ALM-DEPOT` con 6 zonas. |
-| `import.solutions.json` | Advance Solutions: QuickBooks Solutions (+ el SKU `00050-7` de Depot), categoría `PRODUCTOS`, 6 proveedores, almacén `ALM-SOL` con la posición única `GENERAL`. |
+| `import.solutions.json` | Advance Solutions: QuickBooks Solutions (+ el SKU `00050-7` de Depot), categoría = fabricante del ítem (columna `MANUFACTERS`; sin fabricante, `PRODUCTOS`; opción `products.categoryFromManufacturer`), 6 proveedores, almacén `ALM-SOL` con la posición única `GENERAL`. |
 | `sample/` | Muestra **sintética** (datos inventados, dominios `example.com` y teléfonos 555) con el formato exacto de QuickBooks; la usan el smoke y las pruebas. |
 
 Si los archivos están en otra carpeta, edite las rutas de `sources` (pueden ser absolutas o relativas al JSON).

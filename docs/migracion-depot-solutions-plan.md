@@ -227,6 +227,7 @@ históricas, 763 salones), que pertenece a Advance Logistics como cliente 3PL. E
    (`886-PS4`, `402-596123302`) se crean en AxisCare y se marcan en el reporte.
 4. **Lotes y vencimientos**: todo se carga con seguimiento `NONE`; el lote se activa por producto cuando haga falta.
 5. **Categorías de Solutions**: **una sola categoría general** (`PRODUCTOS`). Las cajas (`101010`, `121212`, `979`) **solo
+   > **Actualizado el 2026-10-05:** la categoría de cada producto de Solutions es su **fabricante** (columna `MANUFACTERS` de `Solutions Items.csv`); los que no tienen fabricante quedan en `PRODUCTOS`. Se aplica con `import-legacy … --update` sobre lo ya cargado.
    existen en Depot** (categoría CARTONES); no se crean en Solutions ni se carga su existencia de QuickBooks Solutions.
    El ítem `NATIONAL GUARD` (`12525556` "frexzer") se descarta.
 6. **Proveedores de Solutions**: solo los 6 de mercancía (lista fija en el JSON).

@@ -213,6 +213,28 @@ public class LegacyImportServiceTests
     }
 
     [Fact]
+    public void Category_is_the_manufacturer_when_configured_and_the_default_when_it_is_blank()
+    {
+        const string json = """
+            { "company": { "name": "Prueba" }, "sources": { "products": "p.csv" },
+              "products": { "categoryFromManufacturer": true, "defaultCategory": "PRODUCTOS" } }
+            """;
+        QbItem WithMaker(string sku, string? maker) => new("Active", "Inventory Part", sku, "Artículo", null, null, null, null, null, maker, null);
+        var src = new LegacyImportSources(new[] { WithMaker("A-1", " GLOBAL "), WithMaker("A-2", null), WithMaker("A-3", "global"), WithMaker("A-4", "PRODIGY") },
+            Array.Empty<QbItem>(), Array.Empty<QbCustomer>(), Array.Empty<QbVendor>(), Array.Empty<WmsItem>(), Array.Empty<WmsLocation>(),
+            Array.Empty<WmsInventoryRow>(), Array.Empty<WmsUpc>());
+        var plan = LegacyImportPlanner.Build(Config(json), src, new LegacyImportReport("Prueba", dryRun: true));
+        Assert.Equal(new[] { "GLOBAL", "PRODUCTOS", "global", "PRODIGY" }, plan.Products.Select(p => p.Category));
+        Assert.Equal(new[] { "GLOBAL", "PRODIGY", "PRODUCTOS" }, plan.Categories.OrderBy(c => c, StringComparer.Ordinal));   // GLOBAL y global son la misma categoría
+
+        // Sin la opción, todo va a la categoría de defecto (como antes).
+        var off = LegacyImportPlanner.Build(Config(json.Replace("\"categoryFromManufacturer\": true, ", "")), src, new LegacyImportReport("Prueba", dryRun: true));
+        Assert.All(off.Products, p => Assert.Equal("PRODUCTOS", p.Category));
+        Assert.Null(LegacyImportPlanner.ManufacturerCategory("  "));
+        Assert.Equal(150, LegacyImportPlanner.ManufacturerCategory(new string('x', 200))!.Length);
+    }
+
+    [Fact]
     public void Wms_products_follow_depot_categories_exclusions_and_unknown_skus_with_stock()
     {
         var (plan, report) = BuildWmsPlan();
@@ -488,6 +510,7 @@ public class LegacyImportServiceTests
         Assert.Null(cfg.Sources.Mswm);
         Assert.Equal(new[] { "Inventory Part" }, cfg.Products.Types);
         Assert.Equal("PRODUCTOS", cfg.Products.DefaultCategory);
+        Assert.True(cfg.Products.CategoryFromManufacturer);   // la categoría es el fabricante
         Assert.Equal(new[] { "101010", "121212", "979" }, cfg.Products.ExcludeSkus);
         Assert.Equal(new[] { "ADVANCE LOGISTICS LLC", "GLOBAL IMPORT SALES LLC", "PADIMONT HOLDINGS CORP", "SHIELD LINE", "ADVANCE DEPOT SOLUTIONS", "FARMACIA CENTRAL DRUG" },
             cfg.Suppliers.IncludeNames);

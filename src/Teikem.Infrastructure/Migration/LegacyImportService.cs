@@ -283,6 +283,8 @@ public static class LegacyImportPlanner
                     report.Warn(P, sku, LegacyImportRules.UnknownCategory(qbCategory!));
                     return;
                 }
+                // Solutions: la categoría es el fabricante; sin fabricante queda la de defecto.
+                if (cfg.Products.CategoryFromManufacturer && ManufacturerCategory(item.Manufacturer) is { } fromManufacturer) category = fromManufacturer;
             }
 
             if (byKey.ContainsKey(key)) { report.Reject(P, sku, DuplicateSku(sku)); return; }
@@ -369,6 +371,14 @@ public static class LegacyImportPlanner
             plan.Categories.Add(c!);
             report.CountRead(LegacyImportEntities.Categories);
         }
+    }
+
+    /// <summary>Fabricante recortado como nombre de categoría (hasta ProductRules.CategoryNameMaxLength); vacío = null.</summary>
+    public static string? ManufacturerCategory(string? manufacturer)
+    {
+        var m = manufacturer?.Trim();
+        if (string.IsNullOrEmpty(m)) return null;
+        return m.Length > ProductRules.CategoryNameMaxLength ? m[..ProductRules.CategoryNameMaxLength].TrimEnd() : m;
     }
 
     /// <summary>

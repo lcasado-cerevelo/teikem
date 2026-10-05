@@ -20,6 +20,8 @@
   },
   "products": {
     "types": ["Inventory Part"],
+    // La categoría es el fabricante (columna MANUFACTERS de Solutions Items); los ítems sin fabricante quedan en PRODUCTOS.
+    "categoryFromManufacturer": true,
     "defaultCategory": "PRODUCTOS",
     "categoryByQuickBooksCategory": {},
     "excludeQuickBooksCategories": [],

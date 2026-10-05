@@ -208,6 +208,8 @@ public sealed class LegacyProductsConfig
 {
     public List<string> Types { get; set; } = new() { "Inventory Part", "Inventory Assembly" };
     public string? DefaultCategory { get; set; }
+    /// <summary>true = la categoría del producto es su fabricante (columna Manufacturer / MANUFACTERS del archivo de ítems); vacío = defaultCategory.</summary>
+    public bool CategoryFromManufacturer { get; set; }
     public Dictionary<string, string> CategoryByQuickBooksCategory { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> ExcludeQuickBooksCategories { get; set; } = new();
     public List<string> ExcludeSkus { get; set; } = new();
