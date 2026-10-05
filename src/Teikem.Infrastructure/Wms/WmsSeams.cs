@@ -11,6 +11,10 @@ namespace Teikem.Infrastructure.Wms;
 /// Asiento del ledger. Quantity es la MAGNITUD (&gt; 0): el ledger guarda el signo según la dirección (D3). Ref y motivo se
 /// escriben TAL COMO LLEGAN en el INSERT (no hay UPDATE posterior, D48). FromReserved = la salida consume lo reservado
 /// (cross-dock: baja reservado y en mano juntos).
+/// Lote 27 (Rentas, plan 4.1), al final y con valor por defecto: ExpectedSerialStatus = estatus que debe tener la serie al salir
+/// de su posición (null = AVAILABLE, o RESERVED con FromReserved); TargetSerialStatus = estatus de la serie después del
+/// movimiento (null = la regla de siempre, SerialRules.TargetStatus); ReserveAtDestination = lo que entra al destino queda
+/// reservado (el despacho de una renta: la unidad sigue en mano y su disponible queda en 0).
 /// </summary>
 public sealed record InventoryPosting(
     string TxnType,
@@ -27,15 +31,21 @@ public sealed record InventoryPosting(
     int? RefId = null,
     string? ReasonCode = null,
     string? Notes = null,
-    bool FromReserved = false);
+    bool FromReserved = false,
+    string? ExpectedSerialStatus = null,
+    string? TargetSerialStatus = null,
+    bool ReserveAtDestination = false);
 
 /// <summary>
 /// Reserva (o liberación) de saldo en una posición: no escribe movimiento, solo QtyReserved. En productos con serie se
 /// nombran las series (tantas como Quantity): reservar las pasa AVAILABLE → RESERVED y liberar RESERVED → AVAILABLE
 /// (maestro L328, D16); una salida con FromReserved exige la serie RESERVED.
+/// Lote 27 (Rentas, plan 4.1), al final y con valor por defecto: ExpectedSerialStatus = estatus que deben tener las series
+/// nombradas (null = AVAILABLE al reservar, RESERVED al liberar) y TargetSerialStatus = estatus destino (null = RESERVED al
+/// reservar, AVAILABLE al liberar). Ej.: fin del proceso de un equipo devuelto = liberar IN_PROCESS → AVAILABLE.
 /// </summary>
 public sealed record StockReservation(int ProductId, int WarehouseId, int BinId, int? LotId, decimal Quantity,
-    IReadOnlyList<string>? SerialNumbers = null);
+    IReadOnlyList<string>? SerialNumbers = null, string? ExpectedSerialStatus = null, string? TargetSerialStatus = null);
 
 /// <summary>
 /// Lote 14: resultado de InventoryLedger.RebuildBalanceAsync (en mano antes y después y lo reservado). Before == After = el

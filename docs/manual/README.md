@@ -129,6 +129,12 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     (sección 4): **cupo estimado de las posiciones** de Advance Depot desde el historial del WMS anterior (regla, reporte
     `-cupos.csv` y comportamiento de `--update`).
     La marca de QuickBooks (columna `Brand`) pasa a la marca del producto (sección 1).
+11. [11 — Rentas (submódulo de Almacén)](11-rentas.md): Lote 27 (Rentas R1) — rentas de **equipos propios con número de serie** a una
+    localidad del cliente: alta en Borrador (REN-#####, contrato, transporte estimado, tarifa fija o por tiempo por equipo, solo como dato),
+    edición, equipos por serie, **programar** (reserva las series), **despachar** (transferencia a la posición **EN-RENTA**, serie "En renta":
+    en mano igual, disponible 0), **extender** la fecha de recogido con bitácora y tarifa nueva (`rental.extend`), **cancelar** (solo antes
+    del despacho), "por vencer" y "vencidas", estatus y transiciones, permisos (`rental.extend`, `rental.return`) y el módulo "Rentas" que
+    depende de Inventario y trazabilidad. La devolución y el proceso del equipo devuelto llegan con el bloque R2.
 
 ## Manual de pantallas (frontend web)
 
@@ -211,7 +217,9 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
 
 Ver [faq.md](faq.md) para las preguntas y mensajes de error acumulados de cada lote. La sección "Lote 11" recoge los mensajes nuevos de Almacén (cupo, ocupación, código de zona, catálogo de
 ciudades, exportación) y las preguntas sobre "sin cupo configurado", exportar tablas, ciudades en mayúsculas y por qué el
-código y la zona de una posición no cambian. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
+código y la zona de una posición no cambian. La sección "Lote 27" recoge los mensajes de las rentas (alta, equipos, tarifa, programar, despachar, extender y cancelar) y de una serie en renta, y las
+preguntas sobre por qué el en mano no baja al despachar, dónde ver lo rentado, qué es una renta vencida, si la tarifa se cobra y si una extensión necesita
+aprobación. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
 reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
 posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado

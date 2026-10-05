@@ -86,10 +86,10 @@ public class TripCatalogTests
     }
 
     [Fact]
-    public void Permission_catalog_has_66_codes_with_trips_view_and_scan()
+    public void Permission_catalog_has_68_codes_with_trips_view_and_scan()
     {
-        Assert.Equal(66, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention
-        Assert.Equal(66, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        Assert.Equal(68, PermissionCatalog.All.Count);   // Lote 14: + pulse.attention; Lote 27: + rental.extend, rental.return
+        Assert.Equal(68, PermissionCatalog.All.Select(p => p.Code).Distinct(StringComparer.OrdinalIgnoreCase).Count());
 
         var view = Assert.Single(PermissionCatalog.All, p => p.Code == "trips.view");
         Assert.Equal(("TRIPS", "Ver rutas y despacho", "View trips & dispatch"), (view.Category, view.LabelEs, view.LabelEn));
@@ -101,7 +101,7 @@ public class TripCatalogTests
         // Espejo en el seed: #P y el PRINT final.
         Assert.Contains("('trips.view','TRIPS','Ver rutas y despacho','View trips & dispatch')", Seed.Value);
         Assert.Contains("('trips.scan','TRIPS','Escanear salida (Outbound)','Scan outbound')", Seed.Value);
-        Assert.Contains("permisos (66)", Seed.Value);
+        Assert.Contains("permisos (68)", Seed.Value);
 
         // Cada permiso del catálogo aparece en el seed.
         foreach (var p in PermissionCatalog.All)

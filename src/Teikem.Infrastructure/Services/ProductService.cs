@@ -43,8 +43,8 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
     /// <summary>Campos que el PATCH rechaza aunque lleguen en el cuerpo (van a Extra por no estar en el contrato).</summary>
     private static readonly string[] ImmutableOnPatch = { "sku" };
 
-    /// <summary>Zonas cuyo inventario no cuenta para 'solo con disponible' (selector de recolección, R37; D14).</summary>
-    private static readonly string[] NonPickableZoneTypes = { ZoneTypes.Quarantine, ZoneTypes.CrossDock };
+    /// <summary>Zonas cuyo inventario no cuenta para 'solo con disponible' (selector de recolección, R37; D14; Lote 27: En renta).</summary>
+    private static readonly string[] NonPickableZoneTypes = { ZoneTypes.Quarantine, ZoneTypes.CrossDock, ZoneTypes.Rental };
 
     private sealed record Totals(decimal OnHand, decimal Reserved);
     private sealed record OwnerInfo(Guid PublicId, string Name);
@@ -112,15 +112,15 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
             if (q.SerialMissing)
             {
                 // Lote 12 (KPI 'series por capturar'): activos SERIAL con existencia en mano mayor que sus series en stock
-                // (AVAILABLE o RESERVED; en los almacenes indicados si los hay). Misma regla que ProductRules.IsSerialMissing.
+                // (AVAILABLE, RESERVED y, Lote 27, ON_RENT e IN_PROCESS: SerialStatuses.InStock; en los almacenes indicados si
+                // los hay). Misma regla que ProductRules.IsSerialMissing. Un estatus que no esté sembrado no cuenta.
                 if (serialTrackingId is not int sid) query = query.Where(p => false);
                 else
                 {
-                    var inStock = new List<int?>
-                    {
-                        await db.StatusIdAsync(StatusDomains.SerialStatus, SerialStatuses.Available, ct),
-                        await db.StatusIdAsync(StatusDomains.SerialStatus, SerialStatuses.Reserved, ct),
-                    };
+                    var inStockCodes = SerialStatuses.InStock.ToList();
+                    var inStock = await db.StatusCodes.AsNoTracking()
+                        .Where(s => s.Entity == StatusDomains.SerialStatus && inStockCodes.Contains(s.InternalCode))
+                        .Select(s => (int?)s.StatusCodeId).ToListAsync(ct);
                     var serialsInStock = serials.Where(s => inStock.Contains(s.StatusCodeId));
                     if (warehouseIds is not null)
                         serialsInStock = serialsInStock.Where(s => s.CurrentWarehouseId != null && warehouseIds.Contains(s.CurrentWarehouseId.Value));

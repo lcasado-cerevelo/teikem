@@ -4859,6 +4859,77 @@ expect 400 "$(adjust "$P26" "$W6P" "$B26A" 1 FOUND)" | jq -e --arg m "El product
 RC26=$(reconcile); echo "$RC26" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras la conversión: $(echo "$RC26" | jq -c .mismatches)"
 ok "convertir a serie: D25 sigue en 409 en el PATCH; TRACKING_CONVERSION manual 400; 403 con solo lectura; 400 'Capture n número(s) de serie para {bin} (hay m)' (menos series y posición omitida); 409 con un recibo abierto; otra compañía 403/404; sin escrituras en los rechazos; conversión de 2+1 unidades: SERIAL, 3 series AVAILABLE en su posición, 5 ajustes con el motivo de sistema y neto 0, en mano por posición intacto, AuditLog del seguimiento; segunda conversión 422; el ajuste ya exige series; sin descuadre"
 
+step "rentas (Lote 27, Rentas R1): alta con equipos por serie, programar y despachar (en mano igual, disponible 0), la serie en renta no se mueve ni se recolecta, extender (400 de fecha), cancelar, permisos y otra compañía"
+# Usa el producto P26 convertido a serie en el paso anterior (S1 y S2 en P-26A, S3 en P-26B). El módulo Rentas depende ahora de
+# WMS_LOTSERIAL (apagarlo en pasos anteriores lo apagó en cascada): se vuelve a encender (exige AAL2).
+TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
+expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" | jq -e '.[] | select(.key=="RENTAL_EQUIPMENT") | .isEnabled and .name=="Rentas" and .dependsOn=="WMS_LOTSERIAL" and .category=="Almacen"' >/dev/null || fail "módulo Rentas encendido, con su nombre y dependencia"
+expect 200 "$(req GET /api/v1/status/RentalStatus)" | jq -e '([.[] | select(.stageKind=="PIPELINE") | .code])==["DRAFT","SCHEDULED","ON_RENT"] and any(.[]; .code=="CANCELLED" and .stageKind=="TERMINAL")' >/dev/null || fail "RentalStatus sembrado"
+expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="ON_RENT" and .stageKind=="LATERAL") and any(.[]; .code=="IN_PROCESS" and .stageKind=="LATERAL")' >/dev/null || fail "SerialStatus ON_RENT/IN_PROCESS laterales"
+expect 200 "$(req GET /api/v1/catalogs/RentalBillingFrequency)" | jq -e 'any(.[]; .code=="DAILY") and any(.[]; .code=="ONE_TIME" and .label=="Fija")' >/dev/null || fail "frecuencias de cobro (DAILY y 'Fija')"
+CR27=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Hospital Rentas $TS\"}")"); CR27P=$(echo "$CR27" | jq -r .publicId)
+LR27=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CR27P\",\"name\":\"Sala de terapia $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle Hospital 1\",\"city\":\"Ponce\",\"country\":\"PR\"}")" | jq -r .publicId)
+D0=$(date -u +%F); D30=$(dplus 30); D45=$(dplus 45)
+ren27() { jq -cn --arg c "$CR27P" --arg l "$1" --arg w "$W6P" --arg p "$P26" --arg d0 "$D0" --arg d30 "$D30" --argjson s "$2" \
+  '{clientPublicId:$c,locationPublicId:(if $l=="" then null else $l end),warehousePublicId:$w,startDate:$d0,pickupDate:$d30,contractNumber:"CT-27",contractSignedOn:$d0,estimatedDeliveryCost:45,transportCurrency:"USD",lines:[{productPublicId:$p,serialNumbers:$s,rate:{frequency:"MONTHLY",amount:150}}]}'; }
+# 400: sin localidad / localidad de otro cliente; 400 producto sin serie; 403 Solo lectura; nada escrito.
+expect 400 "$(req POST /api/v1/rentals "$(ren27 "" "[\"$S1\"]")")" | jq -e --arg m "Indique la localidad del cliente donde estará el equipo." "$HASM" >/dev/null || fail "renta sin localidad → 400"
+expect 400 "$(req POST /api/v1/rentals "$(ren27 "$LOC_A_PID" "[\"$S1\"]")")" | jq -e --arg m "La localidad no pertenece al cliente de la renta." "$HASM" >/dev/null || fail "localidad de otro cliente → 400"
+expect 400 "$(req POST /api/v1/rentals "$(jq -cn --arg c "$CR27P" --arg l "$LR27" --arg d0 "$D0" --arg d "$(dplus -1)" '{clientPublicId:$c,locationPublicId:$l,startDate:$d0,pickupDate:$d}')")" | jq -e --arg m "La fecha de recogido no puede ser anterior a la de inicio." "$HASM" >/dev/null || fail "recogido antes del inicio → 400"
+expect 403 "$(req POST /api/v1/rentals "$(ren27 "$LR27" "[\"$S1\"]")" "$TREAD26")" >/dev/null
+expect 403 "$(req GET /api/v1/rentals '' "$TREAD26")" >/dev/null
+expect 200 "$(req GET "/api/v1/rentals?clientPublicId=$CR27P")" | jq -e '.total==0' >/dev/null || fail "los rechazos no deben crear rentas"
+# Alta en Borrador con S1 y S3 (tarifa mensual 150 USD; contrato CT-27): no reserva.
+REN=$(expect 200 "$(req POST /api/v1/rentals "$(ren27 "$LR27" "[\"$S1\",\"$S3\"]")")"); RP=$(echo "$REN" | jq -r .rental.publicId); RID=$(echo "$REN" | jq -r .rental.id); RNUM=$(echo "$REN" | jq -r .rental.number)
+echo "$REN" | jq -e '(.rental.number | test("^REN-[0-9]{5}$")) and .rental.statusCode=="DRAFT" and .rental.units==2 and .rental.contractNumber=="CT-27" and .estimatedDeliveryCost==45 and .transportCurrencyCode=="USD" and .deliveryShipmentId==null and .invoiceId==null and .canSchedule and (.canDispatch|not) and all(.lines[]; .rate.frequencyCode=="MONTHLY" and .rate.amount==150 and .rate.currencyCode=="USD")' >/dev/null || fail "alta de renta: $(echo "$REN" | jq -c '{r:.rental.number,s:.rental.statusCode,u:.rental.units}')"
+expect 409 "$(req POST /api/v1/rentals "$(ren27 "$LR27" "[\"$S1\"]")")" | jq -e --arg m "La serie $S1 ya está en la renta $RNUM." '.title==$m' >/dev/null || fail "serie en otra renta abierta → 409"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==3' >/dev/null || fail "Borrador no reserva"
+expect 422 "$(req POST "/api/v1/rentals/$RP/dispatch")" | jq -e --arg m "Solo se despacha una renta Programada; programe la renta $RNUM primero." '.title==$m' >/dev/null || fail "despachar en Borrador → 422"
+# Programar: reserva las dos series (el disponible baja, el en mano no).
+expect 200 "$(req POST "/api/v1/rentals/$RP/schedule" '{"comment":"Confirmado con el hospital"}')" | jq -e '.rental.statusCode=="SCHEDULED" and .canDispatch and .canExtend' >/dev/null || fail "programar"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==1' >/dev/null || fail "programar reserva las series"
+# Despachar: TRANSFER a EN-RENTA (zona RENT creada a demanda), serie ON_RENT; en mano 3, disponible 1.
+DSP=$(expect 200 "$(req POST "/api/v1/rentals/$RP/dispatch")")
+echo "$DSP" | jq -e '.rental.statusCode=="ON_RENT" and .rental.dispatchedAtUtc!=null and all(.lines[]; .dispatchTxnId!=null) and (.canEdit|not) and (.canCancel|not) and .canExtend' >/dev/null || fail "despachar: $(echo "$DSP" | jq -c '{s:.rental.statusCode}')"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==1' >/dev/null || fail "despachada: en mano igual y disponible sin lo rentado"
+expect 200 "$(req GET "/api/v1/products/$P26/serials")" | jq -e --arg a "$S1" --arg c "$S3" --arg b "$S2" '(map(select(.serialNumber==$a or .serialNumber==$c)) | all(.[]; .statusCode=="ON_RENT" and .binCode=="EN-RENTA")) and (map(select(.serialNumber==$b))[0].statusCode=="AVAILABLE")' >/dev/null || fail "series ON_RENT en EN-RENTA"
+expect 200 "$(req GET "/api/v1/warehouses/$W6P")" | jq -e 'any(.zones[]; .code=="RENT" and .zoneTypeCode=="RENTAL")' >/dev/null || fail "zona RENT (RENTAL) creada a demanda"
+BRENT=$(expect 200 "$(req GET "/api/v1/warehouses/$W6P/bins?search=EN-RENTA")" | jq -r '[.items[] | select(.code=="EN-RENTA")][0].id')
+expect 200 "$(req GET "/api/v1/inventory/balances?warehousePublicIds=$W6P&binIds=$BRENT&productPublicIds=$P26")" | jq -e '([.items[].qtyOnHand]|add)==2 and ([.items[].qtyReserved]|add)==2' >/dev/null || fail "saldo de EN-RENTA: 2 en mano y 2 reservados"
+kardex "refEntity=RENTAL&refId=$RID" | jq -e --arg r "Renta $RNUM" '.total==2 and all(.items[]; .typeCode=="TRANSFER" and .signedQuantity==0 and .refLabel==$r and .toBinCode=="EN-RENTA")' >/dev/null || fail "Kárdex del despacho (TRANSFER neutra con la referencia de la renta)"
+expect 200 "$(req GET "/api/v1/status/history/RENTAL/$RID")" | jq -e '[.[].toCode]==["DRAFT","SCHEDULED","ON_RENT"] and .[1].comment=="Confirmado con el hospital"' >/dev/null || fail "historial de estatus de la renta"
+expect 200 "$(req GET "/api/v1/audit/changes?entityType=RENTAL&entityId=$RID&take=20")" | jq -e '.total >= 1' >/dev/null || fail "AuditLog de la renta"
+# Smoke 3: la serie rentada no se mueve (transferencia) ni se recolecta (409); despachada ya no se edita ni se cancela (422).
+expect 409 "$(req POST /api/v1/inventory/transfers "$(jq -cn --arg p "$P26" --arg w "$W6P" --argjson f "$BRENT" --argjson t "$B26B" --arg s "$S1" '{productPublicId:$p,fromWarehousePublicId:$w,fromBinId:$f,toWarehousePublicId:$w,toBinId:$t,quantity:1,serialNumbers:[$s],notes:"humo"}')")" | jq -e --arg m "La serie $S1 no está disponible en EN-RENTA." "$HASM" >/dev/null || fail "mover la serie rentada → 409"
+expect 409 "$(collectj "$(jq -cn --arg w "$W6P" --arg p "$P26" --arg s "$S1" '{warehousePublicId:$w,lines:[{productPublicId:$p,quantity:1,serialNumbers:[$s]}]}')")" | jq -e --arg m "La serie $S1 no está disponible en el almacén (no existe, ya salió o está en otra posición o lote)." "$HASM" >/dev/null || fail "recolectar la serie rentada → 409"
+expect 422 "$(req PATCH "/api/v1/rentals/$RP" '{"notes":"x"}')" | jq -e --arg m "La renta $RNUM ya fue despachada; no se puede modificar." '.title==$m' >/dev/null || fail "editar despachada → 422"
+expect 422 "$(req POST "/api/v1/rentals/$RP/cancel")" | jq -e --arg m "Solo se cancela una renta en Borrador o Programada; para terminarla registre la devolución." '.title==$m' >/dev/null || fail "cancelar despachada → 422"
+# Smoke 4: extender — 400 con la fecha vigente, 400 sin motivo, 403 sin rental.extend; extensión con tarifa nueva para S1.
+expect 400 "$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$D30\",\"reason\":\"más tiempo\"}")" | jq -e --arg m "La nueva fecha de recogido debe ser posterior a la actual ($D30)." "$HASM" >/dev/null || fail "extender sin fecha posterior → 400"
+expect 400 "$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$D45\",\"reason\":\" \"}")" | jq -e --arg m "Indique el motivo de la extensión." "$HASM" >/dev/null || fail "extender sin motivo → 400"
+expect 200 "$(req POST /api/v1/roles "{\"name\":\"Rentas sin extender $TS\",\"permissions\":[\"rental.view\",\"rental.manage\",\"inventory.view\"]}")" >/dev/null
+expect 200 "$(req POST /api/v1/users "{\"email\":\"rentas27$TS@teikem.local\",\"fullName\":\"Rentas 27 $TS\",\"password\":\"$PASS\",\"roles\":[\"Rentas sin extender $TS\"]}")" >/dev/null
+TREN27=$(login "rentas27$TS@teikem.local" "$PASS")
+expect 200 "$(req GET "/api/v1/rentals/$RP" '' "$TREN27")" >/dev/null
+expect 403 "$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$D45\",\"reason\":\"sin permiso\"}" "$TREN27")" >/dev/null
+L1ID=$(echo "$DSP" | jq -r --arg s "$S1" '.lines[] | select(.serialNumber==$s) | .id')
+EXT=$(expect 200 "$(req POST "/api/v1/rentals/$RP/extensions" "$(jq -cn --arg d "$D45" --argjson l "$L1ID" '{newPickupDate:$d,reason:"El hospital pidió dos semanas más",rates:[{lineId:$l,frequency:"MONTHLY",amount:165}]}')")")
+echo "$EXT" | jq -e --arg d "$D45" --arg o "$D30" --argjson l "$L1ID" '.rental.pickupDate==$d and .rental.originalPickupDate==$o and .rental.extensionCount==1 and (.lines[] | select(.id==$l) | (.rateHistory|length)==2 and .rate.amount==165)' >/dev/null || fail "extensión con tarifa nueva"
+expect 200 "$(req GET "/api/v1/rentals/$RP/extensions")" | jq -e --arg d "$D45" --arg o "$D30" 'length==1 and .[0].previousPickupDate==$o and .[0].newPickupDate==$d and .[0].daysAdded==15 and (.[0].rates|length)==1' >/dev/null || fail "bitácora de extensiones"
+expect 200 "$(req GET "/api/v1/rentals?status=ON_RENT&dueWithinDays=60&clientPublicId=$CR27P")" | jq -e --arg n "$RNUM" '.total==1 and .items[0].number==$n and (.items[0].daysToPickup==45 or .items[0].daysToPickup==46) and (.items[0].isOverdue|not)' >/dev/null || fail "lista: por vencer en 60 días"
+expect 200 "$(req GET "/api/v1/rentals?overdue=true&clientPublicId=$CR27P")" | jq -e '.total==0' >/dev/null || fail "lista: sin vencidas"
+# Cancelar una renta Programada libera la reserva (S2 vuelve a estar disponible).
+REN2=$(expect 200 "$(req POST /api/v1/rentals "$(ren27 "$LR27" "[\"$S2\"]")")"); RP2=$(echo "$REN2" | jq -r .rental.publicId)
+expect 200 "$(req POST "/api/v1/rentals/$RP2/schedule")" >/dev/null
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyAvailable==0' >/dev/null || fail "segunda renta programada: disponible 0"
+expect 200 "$(req POST "/api/v1/rentals/$RP2/cancel" '{"comment":"El cliente desistió"}')" | jq -e '.rental.statusCode=="CANCELLED" and .rental.closedAtUtc!=null and all(.lines[]; .isActive|not)' >/dev/null || fail "cancelar programada"
+expect 200 "$(req GET "/api/v1/products/$P26")" | jq -e '.product.qtyOnHand==3 and .product.qtyAvailable==1' >/dev/null || fail "cancelar libera la reserva"
+# Otra compañía: 403 (módulo apagado) o 404.
+C27=$(req GET "/api/v1/rentals/$RP" '' "$TB26" | tail -n1); [[ "$C27" == 403 || "$C27" == 404 ]] || fail "otra compañía lee una renta ajena (dio $C27)"
+C27=$(req POST "/api/v1/rentals/$RP/extensions" "{\"newPickupDate\":\"$(dplus 90)\",\"reason\":\"ajena\"}" "$TB26" | tail -n1); [[ "$C27" == 403 || "$C27" == 404 ]] || fail "otra compañía extiende una renta ajena (dio $C27)"
+RC27=$(reconcile); echo "$RC27" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras las rentas: $(echo "$RC27" | jq -c .mismatches)"
+ok "rentas: alta en Borrador (REN-#####, contrato, transporte, tarifa) sin reservar; 400 localidad/fechas, 409 serie en otra renta, 403 Solo lectura; programar reserva (disponible 3→1, en mano 3); despachar: TRANSFER neutra a EN-RENTA (zona RENT a demanda), series ON_RENT, saldo 2/2, historial y AuditLog; mover/recolectar la serie rentada 409; editar/cancelar despachada 422; extender: 400 fecha y motivo, 403 sin rental.extend, tarifa versionada y bitácora; lista por vencer; cancelar programada libera; otra compañía 403/404; sin descuadre"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

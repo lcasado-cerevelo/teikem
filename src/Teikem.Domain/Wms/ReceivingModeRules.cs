@@ -67,9 +67,12 @@ public static class ReceivingModeRules
         return true;
     }
 
-    /// <summary>D5: la posición destino no puede ser de recepción (STAGING) ni de cruce de muelle (CROSSDOCK). null = permitida.</summary>
+    /// <summary>
+    /// D5: la posición destino no puede ser de recepción (STAGING) ni de cruce de muelle (CROSSDOCK); Lote 27: ni de la zona En renta
+    /// (RENTAL). null = permitida.
+    /// </summary>
     public static string? ValidateTargetZone(string binCode, string? zoneTypeCode)
-        => zoneTypeCode is ZoneTypes.Staging or ZoneTypes.CrossDock ? TargetZoneNotAllowed(binCode, zoneTypeCode) : null;
+        => zoneTypeCode is ZoneTypes.Staging or ZoneTypes.CrossDock or ZoneTypes.Rental ? TargetZoneNotAllowed(binCode, zoneTypeCode) : null;
 
     /// <summary>
     /// Espacio libre de la posición en unidades: cupo − existencia − lo reservado por otras líneas (nunca negativo); null si

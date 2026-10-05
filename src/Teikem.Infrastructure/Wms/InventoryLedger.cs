@@ -24,6 +24,9 @@ namespace Teikem.Infrastructure.Wms;
 ///   RebuildBalanceAsync (el saldo toma lo que da el Kárdex, sin escribir movimiento).
 /// - Lote 14 (P2, D14): al final de PostAsync anota los productos y el mayor movimiento en IInventoryChangeSink; la revisión en
 ///   segundo plano los recibe solo con el commit real de la transacción (InventoryChangeCommitInterceptor).
+/// - Lote 27 (Rentas, plan 4.1): un asiento puede pedir el estatus que debe tener la serie al salir (ExpectedSerialStatus), el
+///   estatus en que queda (TargetSerialStatus) y que lo que entra quede reservado en el destino (ReserveAtDestination); las
+///   reservas y liberaciones, el estatus esperado y el destino de sus series. Sin ellos, todo funciona como antes.
 /// </summary>
 public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses,
     IInventoryChangeSink changes)
@@ -67,6 +70,7 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             var msg = InventoryRules.ValidatePosting(p.TxnType, p.FromWarehouseId, p.FromBinId, p.ToWarehouseId, p.ToBinId, p.Quantity, p.ReasonCode, hasSerial);
             if (msg is not null) errors[$"postings[{i}]"] = new[] { msg };
             else if (p.FromReserved && p.FromWarehouseId is null) errors[$"postings[{i}]"] = new[] { InventoryRules.DirectionInvalid(p.TxnType) };
+            else if (p.ReserveAtDestination && p.ToWarehouseId is null) errors[$"postings[{i}]"] = new[] { InventoryRules.DirectionInvalid(p.TxnType) };
         }
         if (errors.Count > 0) throw new ValidationException(errors);
 
@@ -161,9 +165,10 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             }
             if (p.ToWarehouseId is int tw)
             {
+                // Lote 27: con ReserveAtDestination lo que entra queda reservado (en mano y reservado suben juntos).
                 var k = new BalanceKey(p.ProductId, tw, p.ToBinId, p.LotId);
                 var (onHand, reserved) = running[k];
-                running[k] = (onHand + p.Quantity, reserved);
+                running[k] = (onHand + p.Quantity, p.ReserveAtDestination ? reserved + p.Quantity : reserved);
             }
         }
         if (shortages.Count > 0) throw new InsufficientStockException(firstShortage!, shortages);
@@ -269,8 +274,10 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         }
         if (shortages.Count > 0) throw new InsufficientStockException(first!, shortages);
 
-        // Series (L328): AVAILABLE en la posición → RESERVED, con bloqueo ascendente después de los saldos.
-        var serials = await LockReservationSerialsAsync(reservations, binCodes, SerialStatuses.Available, ct);
+        // Series (L328): AVAILABLE en la posición → RESERVED, con bloqueo ascendente después de los saldos (Lote 27: o el estatus
+        // esperado y el destino que traiga la reserva).
+        var serials = await LockReservationSerialsAsync(reservations, binCodes, r => r.ExpectedSerialStatus ?? SerialStatuses.Available,
+            r => r.TargetSerialStatus ?? SerialStatuses.Reserved, ct);
 
         var now = DateTime.UtcNow;
         foreach (var (k, qty) in totals)
@@ -279,7 +286,7 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             b.QtyReserved += qty;
             b.UpdatedAtUtc = now;
         }
-        await TransitionSerialsAsync(serials, SerialStatuses.Reserved, ct);
+        await TransitionSerialsAsync(serials, ct);
         await SaveAsync(ct);
     }
 
@@ -296,9 +303,11 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         foreach (var (k, qty) in totals)
             if (locked[k] is not { } b || b.QtyReserved < qty) throw new ConflictException(InventoryRules.ReleaseExceedsReserved);
 
-        // Series (L328): RESERVED en la posición → AVAILABLE.
+        // Series (L328): RESERVED en la posición → AVAILABLE (Lote 27: o el estatus esperado y el destino de la liberación, p. ej.
+        // IN_PROCESS → AVAILABLE al terminar el proceso de un equipo devuelto).
         var binCodes = await BinCodesAsync(totals.Keys.Select(k => k.BinId), ct);
-        var serials = await LockReservationSerialsAsync(reservations, binCodes, SerialStatuses.Reserved, ct);
+        var serials = await LockReservationSerialsAsync(reservations, binCodes, r => r.ExpectedSerialStatus ?? SerialStatuses.Reserved,
+            r => r.TargetSerialStatus ?? SerialStatuses.Available, ct);
 
         var now = DateTime.UtcNow;
         foreach (var (k, qty) in totals)
@@ -307,7 +316,7 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             b.QtyReserved -= qty;
             b.UpdatedAtUtc = now;
         }
-        await TransitionSerialsAsync(serials, SerialStatuses.Available, ct);
+        await TransitionSerialsAsync(serials, ct);
         await SaveAsync(ct);
     }
 
@@ -407,12 +416,13 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
                     throw new ValidationException("serialNumbers", SerialNotOfProduct);
                 if (p.FromWarehouseId is int fw)
                 {
-                    // Sale de (o se mueve desde) una posición y está en ella: AVAILABLE; con FromReserved, RESERVED (L328).
+                    // Sale de (o se mueve desde) una posición y está en ella: AVAILABLE; con FromReserved, RESERVED (L328); Lote 27: o
+                    // el estatus que pida el asiento (p. ej. ON_RENT al devolver un equipo rentado).
                     var where = p.FromBinId is int fb ? bins[fb].Code : skus.GetValueOrDefault(p.ProductId) ?? string.Empty;
-                    var expected = p.FromReserved ? SerialStatuses.Reserved : SerialStatuses.Available;
+                    var expected = p.ExpectedSerialStatus ?? (p.FromReserved ? SerialStatuses.Reserved : SerialStatuses.Available);
                     if (plan.Serial is null || status != expected
                         || plan.Serial.CurrentWarehouseId != fw || plan.Serial.CurrentBinId != p.FromBinId)
-                        throw new ConflictException(p.FromReserved ? SerialNotReserved(plan.Number, where) : SerialRules.NotAvailable(plan.Number, where));
+                        throw new ConflictException(expected == SerialStatuses.Reserved ? SerialNotReserved(plan.Number, where) : SerialRules.NotAvailable(plan.Number, where));
                 }
                 else
                 {
@@ -445,7 +455,9 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             var p = plan.Posting;
             var serial = plan.Serial!;
             var sign = p.ToWarehouseId.HasValue ? 1 : -1;
-            var target = serial.StatusCodeId is null && sign > 0 ? SerialStatuses.Available : SerialRules.TargetStatus(p.TxnType, sign);
+            // Lote 27: el asiento puede fijar el estatus destino (p. ej. ON_RENT en el despacho de una renta).
+            var target = p.TargetSerialStatus
+                         ?? (serial.StatusCodeId is null && sign > 0 ? SerialStatuses.Available : SerialRules.TargetStatus(p.TxnType, sign));
             if (target is not null)
             {
                 var current = serial.StatusCodeId is int sc
@@ -511,39 +523,45 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
 
     /// <summary>
     /// Bloquea (por producto ascendente, SerialId ascendente) las series nombradas en las reservas y exige que estén en el
-    /// estatus esperado y en la posición de la reserva (409 NotAvailable al reservar; SerialNotReserved al liberar).
+    /// estatus esperado de su reserva y en la posición de la reserva (409 NotAvailable; SerialNotReserved si se esperaba
+    /// RESERVED). Devuelve cada serie con su estatus destino, en orden de SerialId.
     /// </summary>
-    private async Task<List<InventorySerial>> LockReservationSerialsAsync(IReadOnlyList<StockReservation> reservations,
-        IReadOnlyDictionary<int, string> binCodes, string expectedStatus, CancellationToken ct)
+    private async Task<List<(InventorySerial Serial, string Target)>> LockReservationSerialsAsync(IReadOnlyList<StockReservation> reservations,
+        IReadOnlyDictionary<int, string> binCodes, Func<StockReservation, string> expectedOf, Func<StockReservation, string> targetOf, CancellationToken ct)
     {
-        var result = new List<InventorySerial>();
+        var result = new List<(InventorySerial Serial, string Target)>();
         var withSerials = reservations.Where(r => SerialsOf(r).Count > 0).ToList();
         if (withSerials.Count == 0) return result;
-        var expectedId = await db.StatusIdAsync(StatusDomains.SerialStatus, expectedStatus, ct);
+        var expectedIds = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var code in withSerials.Select(expectedOf).Distinct(StringComparer.Ordinal))
+            expectedIds[code] = await db.StatusIdAsync(StatusDomains.SerialStatus, code, ct);
         foreach (var group in withSerials.GroupBy(r => r.ProductId).OrderBy(g => g.Key))
         {
             var numbers = group.SelectMany(SerialsOf).ToList();
             var locked = await db.LockSerialsAsync(group.Key, numbers, ct);
             var map = locked.ToDictionary(s => s.SerialNumber, StringComparer.OrdinalIgnoreCase);
             foreach (var r in group)
+            {
+                var expected = expectedOf(r);
                 foreach (var number in SerialsOf(r))
                 {
                     var where = binCodes.GetValueOrDefault(r.BinId) ?? string.Empty;
-                    if (!map.TryGetValue(number, out var serial) || serial.StatusCodeId != expectedId
+                    if (!map.TryGetValue(number, out var serial) || serial.StatusCodeId != expectedIds[expected]
                         || serial.CurrentWarehouseId != r.WarehouseId || serial.CurrentBinId != r.BinId
                         || (r.LotId.HasValue && serial.LotId != r.LotId))
-                        throw new ConflictException(expectedStatus == SerialStatuses.Reserved
+                        throw new ConflictException(expected == SerialStatuses.Reserved
                             ? SerialNotReserved(number, where)
                             : SerialRules.NotAvailable(number, where));
-                    result.Add(serial);
+                    result.Add((serial, targetOf(r)));
                 }
+            }
         }
-        return result.OrderBy(s => s.SerialId).ToList();
+        return result.OrderBy(s => s.Serial.SerialId).ToList();
     }
 
-    private async Task TransitionSerialsAsync(List<InventorySerial> serials, string target, CancellationToken ct)
+    private async Task TransitionSerialsAsync(List<(InventorySerial Serial, string Target)> serials, CancellationToken ct)
     {
-        foreach (var serial in serials)
+        foreach (var (serial, target) in serials)
         {
             var to = await statuses.TransitionAsync(StatusDomains.SerialStatus, EntityTypes.InventorySerial, serial.SerialId,
                 serial.StatusCodeId, target, null, ct);

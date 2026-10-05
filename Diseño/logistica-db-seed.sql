@@ -11,8 +11,8 @@ GO
 /* -------------------------------------------------------------------------
    0) MÓDULOS DE PLATAFORMA — catálogo completo (activo o no) + encendido
       para el tenant demo de Advance Logistics (@DemoTenantId).
-      Advance usa: última milla, COD, WMS con lote/serie, Equipos en alquiler
-      (solo tracking). NO usa: Cross-dock formal, Marítimo, Facturación de
+      Advance usa: última milla, COD, WMS con lote/serie, Rentas (Lote 27:
+      submódulo de Almacén, depende de WMS_LOTSERIAL). NO usa: Cross-dock formal, Marítimo, Facturación de
       alquiler — quedan definidos pero apagados, listos para otro tenant.
    ------------------------------------------------------------------------- */
 MERGE dbo.ModuleDefinition AS t
@@ -21,7 +21,7 @@ USING (VALUES
  ('COD','Cash on Delivery','Cash on Delivery','Cobro contra entrega, cuadre y remesa al cliente','Dinero',NULL,20),
  ('WMS_LOTSERIAL','Inventario y trazabilidad','Inventory & traceability','Almacén con lote/serie, ubicaciones, kárdex','Almacen',NULL,30),
  ('CROSSDOCK','Cross-docking','Cross-docking','Muelle a muelle con citas, sin guardar','Almacen',NULL,40),
- ('RENTAL_EQUIPMENT','Equipos en alquiler','Rental equipment','Activos serializados: ubicación, lease, mantenimiento','Equipos',NULL,50),
+ ('RENTAL_EQUIPMENT','Rentas','Rentals','Rentas de equipos propios con número de serie: despacho, extensiones, devolución y proceso','Almacen','WMS_LOTSERIAL',50),   -- Lote 27: submódulo de Almacén (antes 'Equipos en alquiler')
  ('RENTAL_BILLING','Facturación de alquiler','Rental billing','Cargos recurrentes configurables por contrato','Equipos','RENTAL_EQUIPMENT',60),
  ('MARITIME','Transporte marítimo','Maritime transport','Consolidación, viajes y manifiesto por barco','Operacion',NULL,70),
  ('CLIENT_PORTAL','Portal de clientes','Client portal','Booking, tracking y documentos para el cliente final','Catalogo',NULL,80),
@@ -34,7 +34,7 @@ USING (VALUES
 ON t.ModuleKey = s.ModuleKey
 WHEN MATCHED THEN UPDATE SET Name=s.Name,NameEn=s.NameEn,Description=s.Description,Category=s.Category,DependsOnModuleKey=s.DependsOnModuleKey,SortOrder=s.SortOrder,IsActive=1
 WHEN NOT MATCHED THEN INSERT (ModuleKey,Name,NameEn,Description,Category,DependsOnModuleKey,SortOrder) VALUES (s.ModuleKey,s.Name,s.NameEn,s.Description,s.Category,s.DependsOnModuleKey,s.SortOrder);
--- Módulos núcleo: no se pueden apagar (dependencias entre módulos: RENTAL_BILLING→RENTAL_EQUIPMENT, CUSTOM_FIELDS→ANALYTICS)
+-- Módulos núcleo: no se pueden apagar (dependencias entre módulos: RENTAL_BILLING→RENTAL_EQUIPMENT→WMS_LOTSERIAL, CUSTOM_FIELDS→ANALYTICS)
 UPDATE dbo.ModuleDefinition SET IsCore = CASE WHEN ModuleKey IN ('LTL_GROUND','SYSTEM') THEN 1 ELSE 0 END;
 
 DECLARE @DemoTenantId INT = (SELECT TOP 1 TenantId FROM dbo.Tenant ORDER BY TenantId);
@@ -134,7 +134,10 @@ GO
     -- Lote 14 — origen del conteo cíclico (selección o "lo cambiado")
     ('CycleCountOrigin',1,'Origen del conteo','Count origin'),
     -- Lote 16 — recibo directo a posición: modo de recepción del almacén y del recibo
-    ('ReceivingMode',1,'Modo de recepción','Receiving mode')
+    ('ReceivingMode',1,'Modo de recepción','Receiving mode'),
+    -- Lote 27 — Rentas: estatus de la renta y del proceso del equipo devuelto (configurable), motivo y condición de la devolución
+    ('RentalStatus',2,'Estatus de la renta','Rental status'),('RentalProcessStatus',2,'Proceso del equipo devuelto','Returned equipment process'),
+    ('RentalReturnReason',1,'Motivo de devolución de renta','Rental return reason'),('RentalReturnCondition',1,'Condición del equipo devuelto','Returned equipment condition')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -344,13 +347,30 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('ReceivingMode','PUTAWAY','Con acomodo','With put-away',1),('ReceivingMode','DIRECT','Directo a posición','Direct to bin',2),
 -- Lote 26 (Rentas R0) — motivo de ajuste de la conversión de un producto a serie (salida del saldo sin serie y entrada de cada
 -- serie), reservado al sistema: solo lo escribe POST /products/{id}/convert-to-serial; un ajuste manual con él recibe 400.
-('AdjustmentReason','TRACKING_CONVERSION','Conversión a serie','Serial tracking conversion',11);
+('AdjustmentReason','TRACKING_CONVERSION','Conversión a serie','Serial tracking conversion',11),
+-- Lote 27 (Rentas R1) — zona "En renta" (RENT/EN-RENTA, a demanda por almacén: ahí vive lo rentado, reservado), frecuencia diaria
+-- de cobro (ONE_TIME se rotula "Fija" abajo), motivos y condición de la devolución de renta (bloque R2) y entidades auditables
+-- RENTAL, RENTAL_RETURN y RENTAL_PROCESS (RENTAL_ASSET y RENTAL_CONTRACT de la capa vieja se desactivan abajo).
+('ZoneType','RENTAL','En renta','Rental',7),
+('RentalBillingFrequency','DAILY','Diaria','Daily',0),
+('RentalReturnReason','END_OF_CONTRACT','Fin del contrato','End of contract',1),('RentalReturnReason','EARLY_DAMAGE','Anticipada por daño','Early: damage',2),
+('RentalReturnReason','EARLY_CLIENT','Anticipada a pedido del cliente','Early: client request',3),('RentalReturnReason','OTHER','Otro','Other',9),
+('RentalReturnCondition','GOOD','Buena','Good',1),('RentalReturnCondition','DAMAGED','Dañado','Damaged',2),('RentalReturnCondition','INCOMPLETE','Incompleto','Incomplete',3),
+('EntityType','RENTAL','Renta','Rental',84),('EntityType','RENTAL_RETURN','Devolución de renta','Rental return',85),
+('EntityType','RENTAL_PROCESS','Proceso de equipo devuelto','Returned equipment process',86);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
 WHEN NOT MATCHED THEN
     INSERT (Entity, InternalCode, LabelJson, SortOrder, IsSystem, IsActive)
     VALUES (s.Entity, s.Code, N'{"es":"'+s.Es+'","en":"'+s.En+'"}', s.Srt, 1, 1);
+
+-- Lote 27 (Rentas): la frecuencia ONE_TIME es la tarifa "Fija" (cobro único) y las entidades de la capa 16C vieja (RENTAL_ASSET y
+-- RENTAL_CONTRACT) se desactivan (sus tablas se retiran). El MERGE solo inserta: en BD ya sembradas se corrige aquí. Idempotente.
+UPDATE dbo.LookupCode SET LabelJson = N'{"es":"Fija","en":"Fixed"}'
+WHERE Entity = 'RentalBillingFrequency' AND InternalCode = 'ONE_TIME' AND LabelJson <> N'{"es":"Fija","en":"Fixed"}';
+UPDATE dbo.LookupCode SET IsActive = 0
+WHERE Entity = 'EntityType' AND InternalCode IN ('RENTAL_ASSET','RENTAL_CONTRACT') AND IsActive = 1;
 
 -- Lote 6 (maestro L582): en español el tipo de movimiento CROSSDOCK del Kárdex es 'Cruce de muelle' (en inglés, 'Cross-dock').
 -- El MERGE solo inserta: en BD ya sembradas se corrige la etiqueta. Idempotente.
@@ -501,7 +521,26 @@ INSERT INTO #S VALUES
 ('InventoryDiscrepancyStatus','OPEN','Pendiente','Open',@PIPE,1,'#EF4444',1),
 ('InventoryDiscrepancyStatus','RESOLVED','Resuelto','Resolved',@TERM,2,'#059669',0),
 ('InventoryDiscrepancyStatus','DISMISSED','Descartado','Dismissed',@TERM,3,'#6B7280',0),
-('InventoryDiscrepancyStatus','SELF_CORRECTED','Se corrigió solo','Self-corrected',@TERM,4,'#0EA5E9',0);
+('InventoryDiscrepancyStatus','SELF_CORRECTED','Se corrigió solo','Self-corrected',@TERM,4,'#0EA5E9',0),
+-- Lote 27 (Rentas R1) — serie "En renta" (sigue siendo nuestra, reservada en EN-RENTA) y "En proceso" (devuelta, reservada hasta
+-- terminar su proceso), laterales. Renta: Borrador → Programada (reserva) → En renta → Devuelta; Cancelada solo desde Borrador o
+-- Programada (regla lateral en 3I). Proceso del equipo devuelto (configurable): Pendiente → Inspección → Limpieza → Pruebas →
+-- Lista (terminal); Reparación y Esperando piezas laterales; Dada de baja terminal.
+('SerialStatus','ON_RENT','En renta','On rent',@LAT,5,'#3B82F6',0),
+('SerialStatus','IN_PROCESS','En proceso','In process',@LAT,6,'#8B5CF6',0),
+('RentalStatus','DRAFT','Borrador','Draft',@PIPE,1,'#9CA3AF',1),
+('RentalStatus','SCHEDULED','Programada','Scheduled',@PIPE,2,'#0EA5E9',0),
+('RentalStatus','ON_RENT','En renta','On rent',@PIPE,3,'#3B82F6',0),
+('RentalStatus','RETURNED','Devuelta','Returned',@TERM,4,'#059669',0),
+('RentalStatus','CANCELLED','Cancelada','Cancelled',@TERM,5,'#6B7280',0),
+('RentalProcessStatus','PENDING','Pendiente','Pending',@PIPE,1,'#9CA3AF',1),
+('RentalProcessStatus','INSPECTION','Inspección','Inspection',@PIPE,2,'#0EA5E9',0),
+('RentalProcessStatus','CLEANING','Limpieza','Cleaning',@PIPE,3,'#06B6D4',0),
+('RentalProcessStatus','TESTING','Pruebas','Testing',@PIPE,4,'#6366F1',0),
+('RentalProcessStatus','READY','Lista','Ready',@TERM,5,'#059669',0),
+('RentalProcessStatus','REPAIR','Reparación','Repair',@LAT,6,'#F59E0B',0),
+('RentalProcessStatus','AWAITING_PARTS','Esperando piezas','Awaiting parts',@LAT,7,'#F97316',0),
+('RentalProcessStatus','SCRAPPED','Dada de baja','Scrapped',@TERM,8,'#EF4444',0);
 
 MERGE dbo.StatusCode AS t
 USING #S AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code
@@ -893,6 +932,29 @@ WHEN NOT MATCHED THEN
 GO
 
 /* -------------------------------------------------------------------------
+   3I) STATUS LATERAL ENTRY por defecto (TenantId NULL) — Lote 27, RENTAL
+       CANCELLED ('Cancelar renta') solo desde DRAFT y SCHEDULED: una renta despachada termina con su devolución
+       (RentalStatusEffect lo vuelve a exigir aunque la compañía cambie la regla). El proceso del equipo devuelto
+       (RENTAL_PROCESS) no lleva reglas: Reparación, Esperando piezas y Dada de baja se permiten desde cualquier paso.
+       El tenant lo cambia desde /status/lateral-entries/RENTAL.
+   ------------------------------------------------------------------------- */
+MERGE dbo.StatusLateralEntry AS t
+USING (
+    SELECT et.LookupCodeId AS EntityTypeLookupId, lat.StatusCodeId AS LateralStatusCodeId, frm.StatusCodeId AS FromStatusCodeId
+    FROM dbo.LookupCode et
+    CROSS JOIN dbo.StatusCode lat
+    CROSS JOIN dbo.StatusCode frm
+    WHERE et.Entity='EntityType' AND et.InternalCode='RENTAL'
+      AND lat.Entity='RentalStatus' AND lat.InternalCode='CANCELLED'
+      AND frm.Entity='RentalStatus' AND frm.InternalCode IN ('DRAFT','SCHEDULED')
+) AS s
+ON t.TenantId IS NULL AND t.EntityTypeLookupId = s.EntityTypeLookupId AND t.LateralStatusCodeId = s.LateralStatusCodeId AND t.FromStatusCodeId = s.FromStatusCodeId
+WHEN NOT MATCHED THEN
+    INSERT (TenantId, EntityTypeLookupId, LateralStatusCodeId, FromStatusCodeId, IsAllowed)
+    VALUES (NULL, s.EntityTypeLookupId, s.LateralStatusCodeId, s.FromStatusCodeId, 1);
+GO
+
+/* -------------------------------------------------------------------------
    4) PERMISOS  (vocabulario de la app — sembrado desde código)
    ------------------------------------------------------------------------- */
 IF OBJECT_ID('tempdb..#P') IS NOT NULL DROP TABLE #P;
@@ -947,7 +1009,10 @@ INSERT INTO #P VALUES
 ('pulse.activity','PULSE','Ver Actividad reciente en el Pulso','See Recent activity'),
 ('pulse.organize_company','PULSE','Organizar el Pulso de la compañía','Organize the company Pulse'),
 -- Lote 14 — "Necesita tu atención" (D6): la ve quien ve inventario; TenantAdmin la recibe por "todos"
-('pulse.attention','PULSE','Ver la sección Necesita tu atención del Pulso','See the Needs your attention section');
+('pulse.attention','PULSE','Ver la sección Necesita tu atención del Pulso','See the Needs your attention section'),
+-- Lote 27 — Rentas (R1): extender la fecha de recogido (D4) y registrar devoluciones de renta (R2)
+('rental.extend','RENTAL','Extender rentas','Extend rentals'),
+('rental.return','RENTAL','Registrar devoluciones de renta','Register rental returns');
 
 -- Lote F8a: ¿esta corrida introduce los permisos pulse.*? (se usa en 5b para completar los roles de tenant ya clonados)
 IF OBJECT_ID('tempdb..#F8aPulseIsNew') IS NOT NULL DROP TABLE #F8aPulseIsNew;
@@ -957,6 +1022,11 @@ INTO #F8aPulseIsNew;
 IF OBJECT_ID('tempdb..#L14AttentionIsNew') IS NOT NULL DROP TABLE #L14AttentionIsNew;
 SELECT CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Permission WHERE Code = 'pulse.attention') THEN 0 ELSE 1 END AS BIT) AS IsNew
 INTO #L14AttentionIsNew;
+-- Lote 27: ¿esta corrida introduce rental.extend / rental.return? (se usa en 5b3 para completar los roles de tenant ya clonados)
+IF OBJECT_ID('tempdb..#L27RentalIsNew') IS NOT NULL DROP TABLE #L27RentalIsNew;
+SELECT p.Code, CAST(CASE WHEN EXISTS (SELECT 1 FROM dbo.Permission x WHERE x.Code = p.Code) THEN 0 ELSE 1 END AS BIT) AS IsNew
+INTO #L27RentalIsNew
+FROM (VALUES ('rental.extend'),('rental.return')) AS p(Code);
 
 MERGE dbo.Permission AS t
 USING #P AS s ON t.Code = s.Code
@@ -1012,7 +1082,8 @@ INSERT INTO #RP VALUES ('WarehouseOperator','warehouse.receive'),('WarehouseOper
 ('WarehouseOperator','pulse.warehouse'),('WarehouseOperator','pulse.indicators'),('WarehouseOperator','pulse.charts'),('WarehouseOperator','pulse.activity'),   -- Lote F8a
 ('WarehouseOperator','pulse.attention'),   -- Lote 14 (D6)
 -- 2026-10-01 (Luis): como lo tenía configurado en Advance Logistics (sin cod.reconcile, que sale de la lista de arriba).
-('WarehouseOperator','inventory.adjust'),('WarehouseOperator','inventory.manage'),('WarehouseOperator','warehouse.manage');
+('WarehouseOperator','inventory.adjust'),('WarehouseOperator','inventory.manage'),('WarehouseOperator','warehouse.manage'),
+('WarehouseOperator','rental.extend'),('WarehouseOperator','rental.return');   -- Lote 27 (Rentas R1)
 -- Driver
 INSERT INTO #RP VALUES ('Driver','orders.view'),('Driver','cod.collect');
 -- ReadOnly
@@ -1089,6 +1160,24 @@ BEGIN
                   WHERE q.RoleId = r.RoleId AND iv.Code = 'inventory.view')
       AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission e WHERE e.RoleId = r.RoleId AND e.PermissionId = pa.PermissionId);
 END
+GO
+
+/* -------------------------------------------------------------------------
+   5b3) Lote 27 — rental.extend y rental.return a los roles de tenant ya clonados
+   Mismo hallazgo que 5b2: PermissionSeeder no propaga un código nuevo a los roles ya clonados (este seed espeja las plantillas
+   antes que él). Se completa aquí UNA sola vez por código (solo en la corrida que lo crea, #L27RentalIsNew): todo rol de tenant
+   activo que gestiona rentas (rental.manage: clones de TenantAdmin y de Operador de almacén, y roles propios) recibe extender y
+   registrar devoluciones. Solo agrega. En BD limpia no hay roles de tenant: no inserta nada.
+   ------------------------------------------------------------------------- */
+INSERT INTO dbo.RolePermission (RoleId, PermissionId)
+SELECT r.RoleId, pn.PermissionId
+FROM dbo.Role r
+JOIN #L27RentalIsNew n ON n.IsNew = 1
+JOIN dbo.Permission pn ON pn.Code = n.Code
+WHERE r.TenantId IS NOT NULL AND r.IsActive = 1
+  AND EXISTS (SELECT 1 FROM dbo.RolePermission q JOIN dbo.Permission rm ON rm.PermissionId = q.PermissionId
+              WHERE q.RoleId = r.RoleId AND rm.Code = 'rental.manage')
+  AND NOT EXISTS (SELECT 1 FROM dbo.RolePermission e WHERE e.RoleId = r.RoleId AND e.PermissionId = pn.PermissionId);
 GO
 
 /* -------------------------------------------------------------------------
@@ -43997,5 +44086,5 @@ JOIN dbo.LookupCode c ON c.Entity = 'Country' AND c.InternalCode = v.Country
 WHERE NOT EXISTS (SELECT 1 FROM dbo.PostalLocality p WHERE p.CountryLookupId = c.LookupCodeId AND p.PostalCode = v.PostalCode AND p.City = v.City);
 GO
 
-PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION y ASN), permisos (66), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
+PRINT 'Seed completado: módulos (13), dominios, lookups, estatus, capacidades por defecto (CONTRACT, TRANSPORT_ORDER, WORK_ORDER, TRIP y PURCHASE_ORDER), entradas laterales (TRIP, ROUTE, PICK_BATCH, WAREHOUSE_TASK, DOCK_APPOINTMENT, CROSSDOCK_ALLOCATION, ASN y RENTAL), permisos (68), roles plantilla, zonas de despacho demo y localidades postales (42522 ZIP de EE. UU. y Puerto Rico). El almacén demo ALM-01 lo siembra DemoTenantSeeder.';
 GO

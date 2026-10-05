@@ -181,7 +181,8 @@ public static class PickBatchRules
     /// <summary>¿Se recolecta de una posición de este tipo de zona? QUARANTINE y CROSSDOCK nunca.</summary>
     public static bool IsPickableZone(string? zoneTypeCode)
         => !string.Equals(zoneTypeCode, ZoneTypes.Quarantine, StringComparison.OrdinalIgnoreCase)
-           && !string.Equals(zoneTypeCode, ZoneTypes.CrossDock, StringComparison.OrdinalIgnoreCase);
+           && !string.Equals(zoneTypeCode, ZoneTypes.CrossDock, StringComparison.OrdinalIgnoreCase)
+           && !string.Equals(zoneTypeCode, ZoneTypes.Rental, StringComparison.OrdinalIgnoreCase);   // Lote 27: equipos en renta
 
     /// <summary>Rango de zona para el desempate FEFO: PICKING 0, RESERVE 1, REFRIGERATED 2, STAGING 3, otra o sin tipo 4.</summary>
     public static int ZoneRank(string? zoneTypeCode) => zoneTypeCode?.ToUpperInvariant() switch

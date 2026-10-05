@@ -70,7 +70,7 @@ public static class PutawayRules
         foreach (var c in candidates ?? Enumerable.Empty<PutawayCandidate>())
         {
             if (!c.IsActive || c.BinId == excludeBinId) continue;
-            if (c.ZoneTypeCode is ZoneTypes.Staging or ZoneTypes.CrossDock) continue;
+            if (c.ZoneTypeCode is ZoneTypes.Staging or ZoneTypes.CrossDock or ZoneTypes.Rental) continue;   // Lote 27: nunca se acomoda en En renta
             if (c.ZoneTypeCode is ZoneTypes.Quarantine && !preferQuarantine) continue;
             var fits = HasCapacity(c, quantity, unitWeightKg);
             if (!fits && !includeOverCapacity) continue;

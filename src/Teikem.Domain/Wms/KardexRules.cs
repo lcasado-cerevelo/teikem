@@ -86,7 +86,8 @@ public static class KardexRules
     /// <summary>
     /// Origen legible del movimiento por EntityType. Con número de documento: 'Recibo REC-00001', 'Recolección EMP-00001',
     /// 'Conteo CC-00001', 'Orden de compra PO-00001', 'Orden 2026-000123', 'Cruce de muelle XD-00001'; la tarea de almacén
-    /// se muestra como 'Tarea #12'. Sin número conocido: fallback 'TIPO·id'. Sin referencia: NULL.
+    /// se muestra como 'Tarea #12'. Lote 27 (Rentas): 'Renta REN-00001', 'Devolución de renta DRN-00001' y el proceso del equipo
+    /// devuelto (sin número) como 'Proceso #7'. Sin número conocido: fallback 'TIPO·id'. Sin referencia: NULL.
     /// lang = idioma del usuario (maestro L582): 'en' da 'Receipt REC-00001', 'Pick batch …', 'Cross-dock …', 'Task #12';
     /// cualquier otro valor (o NULL) da el español.
     /// </summary>
@@ -96,6 +97,8 @@ public static class KardexRules
         var id = refId?.ToString(CultureInfo.InvariantCulture) ?? "?";
         if (string.Equals(refEntityCode, EntityTypes.WarehouseTask, StringComparison.OrdinalIgnoreCase))
             return refId is null ? Fallback(refEntityCode, id) : (IsEnglish(lang) ? "Task #" : "Tarea #") + id;
+        if (string.Equals(refEntityCode, EntityTypes.RentalProcess, StringComparison.OrdinalIgnoreCase))
+            return refId is null ? Fallback(refEntityCode, id) : (IsEnglish(lang) ? "Process #" : "Proceso #") + id;
         if (string.IsNullOrWhiteSpace(documentNumber)) return Fallback(refEntityCode, id);
 
         var prefix = RefPrefix(refEntityCode, lang);
@@ -113,6 +116,8 @@ public static class KardexRules
             EntityTypes.TransportOrder => "Order",
             EntityTypes.CrossDockAllocation => "Cross-dock",
             EntityTypes.CrossDockPlan => "Cross-dock",
+            EntityTypes.Rental => "Rental",
+            EntityTypes.RentalReturn => "Rental return",
             _ => null,
         }
         : refEntityCode.ToUpperInvariant() switch
@@ -124,6 +129,8 @@ public static class KardexRules
             EntityTypes.TransportOrder => "Orden",
             EntityTypes.CrossDockAllocation => "Cruce de muelle",
             EntityTypes.CrossDockPlan => "Cruce de muelle",
+            EntityTypes.Rental => "Renta",
+            EntityTypes.RentalReturn => "Devolución de renta",
             _ => null,
         };
 

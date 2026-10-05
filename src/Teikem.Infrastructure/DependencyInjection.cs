@@ -209,6 +209,14 @@ public static class DependencyInjection
         // Efectos de estatus: resuelven sus dependencias de forma perezosa (IServiceProvider) para no formar ciclo con StatusService.
         services.AddScoped<IStatusTransitionEffect, WarehouseTaskStatusEffect>();
         services.AddScoped<IStatusTransitionEffect, DockAppointmentStatusEffect>();
+        // Lote 27 — Rentas (R1): renta hasta el despacho, extensiones y cancelación; posición EN-RENTA a demanda; efecto de estatus
+        // (sella fechas; no usa el ledger) y resolvers de pertenencia de RENTAL, RENTAL_RETURN y RENTAL_PROCESS.
+        services.AddScoped<RentalBinResolver>();
+        services.AddScoped<RentalService>();
+        services.AddScoped<IStatusTransitionEffect, RentalStatusEffect>();
+        services.AddScoped<IOwnedEntityResolver, RentalOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, RentalReturnOwnedEntityResolver>();
+        services.AddScoped<IOwnedEntityResolver, RentalProcessOwnedEntityResolver>();
 
         // Lote 14 — punto único de "hoy" en hora de la compañía (Puerto Rico por defecto) y conciliación Kárdex ↔ saldo con
         // descuadres (P1, síncrona; la revisión en segundo plano de P2 llamará a InventoryReconciliationService.CheckProductsAsync).

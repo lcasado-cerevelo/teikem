@@ -4352,6 +4352,139 @@ serie equivocada y alta de la correcta, con nota).
 Nada queda a medias: la conversión es una sola transacción; si algo falla (una serie repetida, una posición que no cuadra) no se escribe
 ningún movimiento ni cambia el seguimiento.
 
+## Lote 27 — Rentas R1: renta hasta el despacho, extensiones y cancelación
+
+Detalle en el [capítulo 11](11-rentas.md) y `docs/lote27-decisiones.md`. Endpoints `/api/v1/rentals` (`rental.view` / `rental.manage` /
+`rental.extend`, módulo `RENTAL_EQUIPMENT` "Rentas").
+
+### Mensajes nuevos del servidor
+
+**400 — "Indique la localidad del cliente donde estará el equipo."**
+La renta necesita la localidad (consignatario) del cliente donde quedará el equipo. Elija una de las localidades del cliente; si no
+existe, créela en la ficha del cliente.
+
+**400 — "La localidad no pertenece al cliente de la renta."**
+Eligió una localidad de otro cliente. Escoja una del mismo cliente de la renta.
+
+**400 — "La fecha de recogido no puede ser anterior a la de inicio."**
+La fecha de recogido (fin de la renta) debe ser el mismo día de inicio o después. Corrija una de las dos.
+
+**400 — "Solo se rentan equipos propios; {sku} pertenece a un cliente."**
+Ese producto es mercancía de un cliente 3PL. Solo se rentan equipos de la compañía (sin dueño).
+
+**400 — "El producto {sku} no se controla por serie; solo se rentan equipos con número de serie."**
+El producto no tiene seguimiento por serie. Conviértalo con **Convertir a serie** (Lote 26) y vuelva a agregar el equipo por su serie.
+
+**400 — "La tarifa no puede ser negativa."** / **"Indique el monto de la tarifa."** / **"Indique la frecuencia de cobro: DAILY, WEEKLY, MONTHLY o ONE_TIME."** / **"Frecuencia de cobro desconocida: '{x}'. Use DAILY, WEEKLY, MONTHLY o ONE_TIME."**
+La tarifa de un equipo lleva frecuencia (diaria, semanal, mensual o "Fija") y un monto de 0 o más. Es solo un dato: no se cobra todavía.
+
+**400 — "Indique el cliente de la renta."** / **"Indique la fecha de inicio de la renta."** / **"Indique la fecha de recogido."**
+Faltan datos obligatorios del alta.
+
+**400 — "El cliente de la renta no se cambia; cancele la renta y cree otra."**
+El cliente es fijo. Si se equivocó de cliente, cancele la renta (Borrador o Programada) y cree otra.
+
+**400 — "El campo '{campo}' no se puede modificar."**
+El número, el estatus, la fecha de recogido pactada, las fechas de despacho y cierre y los enlaces a envío y factura no se editan.
+
+**400 — "Indique el producto del equipo."** / **"Indique al menos un número de serie."** / **"Una renta admite como máximo 200 equipos."**
+Cada equipo se agrega con su producto y su número de serie; una renta lleva hasta 200 equipos.
+
+**400 — "La nueva fecha de recogido debe ser posterior a la actual ({aaaa-mm-dd})."**
+Una extensión solo mueve la fecha hacia adelante. La fecha entre paréntesis es la vigente: elija un día posterior.
+
+**400 — "Indique el motivo de la extensión."** / **"Indique la nueva fecha de recogido."** / **"El motivo admite como máximo 300 caracteres."** / **"Indique el equipo (lineId) de la tarifa."**
+Toda extensión lleva la nueva fecha y el motivo (queda en la bitácora); una tarifa nueva indica a qué equipo aplica.
+
+**400 — "El número de contrato admite como máximo 80 caracteres."** / **"Las notas admiten como máximo 1000 caracteres."** / **"El costo de transporte estimado no puede ser negativo."** / **"Moneda desconocida: '{código}'."** / **"Los días deben ser 0 o más."**
+Acorte el texto, use un costo de 0 o más, una moneda del catálogo, o un número de días de 0 o más en el filtro "por vencer".
+
+**404 — "Renta no encontrada."** / **"Localidad no encontrada."** / **"Contacto no encontrado."** / **"Línea no encontrada."**
+La renta, la localidad, el contacto o el equipo no existen en su compañía (o el equipo ya se quitó de la renta). Recargue la ficha.
+
+**409 — "El cliente está dado de baja; solo se consulta su historial."**
+No se crean, programan ni despachan rentas de un cliente dado de baja. Reactive el cliente o use otro.
+
+**409 — "La serie {s} ya está en la renta {REN-n}."**
+La serie está en otra renta abierta (Borrador, Programada o En renta). Use otra serie o quite la serie de esa renta (o cancélela) primero.
+
+**409 — "La serie {s} no está disponible en {posición o almacén}."**
+La serie no existe, no está Disponible (reservada, rentada, despachada, dada de baja) o no está en una posición recolectable del almacén
+de origen (por ejemplo, en cuarentena o en otro almacén). Búsquela en el rastro de serie y muévala a una posición de picking o reserva
+del almacén de la renta.
+
+**409 — "Una de las series se acaba de agregar a otra renta; recargue e intente de nuevo."**
+Otra persona agregó la misma serie a otra renta al mismo tiempo. Recargue y elija otra serie.
+
+**409 — "Quite los equipos de la renta antes de cambiar el almacén de origen."**
+Los equipos salen del almacén de origen: para cambiarlo, quite primero los equipos y vuelva a agregarlos desde el otro almacén.
+
+**409 — "El almacén {código} ya tiene una zona RENT que no es de rentas; cámbiele el código para poder despachar rentas."** / **"El almacén {código} ya tiene una posición EN-RENTA fuera de la zona En renta; cámbiele el código para poder despachar rentas."**
+El primer despacho crea la zona RENT y la posición EN-RENTA; si esos códigos ya los usa otra zona u otra posición, cambie su código en
+Almacenes y vuelva a despachar.
+
+**422 — "La renta {n} ya fue despachada; no se puede modificar."**
+Después del despacho la renta no se edita ni cambia de equipos o tarifas. La fecha (y la tarifa) cambian con una **extensión**.
+
+**422 — "La renta {n} está cancelada; solo se consulta."**
+Una renta cancelada no se edita ni se programa. Cree otra.
+
+**422 — "La renta no tiene equipos; agregue al menos uno."**
+Agregue al menos un equipo antes de programar o despachar.
+
+**422 — "Solo se programa una renta en Borrador; la renta {n} no lo está."** / **"Solo se despacha una renta Programada; programe la renta {n} primero."**
+El orden es Borrador → Programar → Despachar.
+
+**422 — "Solo se cancela una renta en Borrador o Programada; para terminarla registre la devolución."**
+Una renta despachada (En renta) termina con su devolución, que llega con el bloque R2.
+
+**422 — "Solo se extiende una renta Programada o En renta."**
+En Borrador cambie la fecha con la edición normal; una renta devuelta o cancelada ya no se extiende.
+
+**422 — "La renta ya tiene extensiones; la fecha de recogido se cambia con una extensión."**
+Cuando ya hay extensiones, las fechas no se editan: use otra extensión para moverla.
+
+**422 — "La localidad está dada de baja; elija otra."**
+Reactive la localidad en la ficha del cliente o elija otra.
+
+**422 — "La posición EN-RENTA está inactiva; no admite movimientos de inventario."**
+Alguien desactivó la posición EN-RENTA del almacén. Reactívela en Posiciones para poder despachar.
+
+**403 — sin `rental.view`, `rental.manage` o `rental.extend`** (evento `PERMISSION_DENIED`)
+Ver rentas pide `rental.view`; crearlas, programarlas, despacharlas o cancelarlas, `rental.manage`; extenderlas, `rental.extend`. Pida el
+permiso al administrador (el Operador de almacén ya los trae).
+
+### Mensajes del inventario con una serie en renta
+
+**409 — "La serie {s} no está disponible en EN-RENTA."** / **"La serie {s} no está disponible en el almacén (no existe, ya salió o está en otra posición o lote)."** / **"La serie {s} ya está en inventario."**
+La serie está **En renta**: no se transfiere, no se ajusta, no se recolecta ni se recibe de nuevo por las pantallas normales. Vuelve al
+almacén con la **devolución de renta** (R2).
+
+### Preguntas frecuentes
+
+**¿Por qué el producto sigue con las mismas unidades en mano después de despachar la renta?**
+Porque el equipo rentado sigue siendo de la compañía (decisión D1): se mueve a la posición EN-RENTA y queda reservado. Por eso el **en
+mano** no cambia y el **disponible** baja.
+
+**¿Dónde veo los equipos que están rentados?**
+En la posición **EN-RENTA** (zona RENT "En renta") de cada almacén, en las series del producto (estatus "En renta") y en la lista de rentas
+filtrando por estatus "En renta".
+
+**¿Qué es una renta "vencida"?**
+Una renta Programada o En renta cuya fecha de recogido ya pasó (antes de hoy, en la hora de la compañía). No es un estatus: se calcula
+(`isOverdue`). Use `overdue=true` en la lista; "por vencer en N días", `dueWithinDays=N`.
+
+**¿La tarifa se cobra?**
+Todavía no: solo se guardan las condiciones (fija o por tiempo, monto y moneda por equipo). El cobro llegará con Facturación.
+
+**¿Necesito que otra persona apruebe una extensión?**
+No (D4): basta el permiso `rental.extend`. Queda en la bitácora con quién, cuándo, la fecha anterior y la nueva, el motivo y la tarifa
+nueva si cambió.
+
+**Desactivé "Programada" en el pipeline de rentas y ahora no puedo programar.**
+Los estatus de la renta se pueden renombrar y reordenar, pero no desactivar: vuelva a habilitarlo (422 `El estatus '{código}' no existe o
+no está habilitado para esta compañía.`).
+
 ## Lote A4 — App de almacén: contar por producto
 
 Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los

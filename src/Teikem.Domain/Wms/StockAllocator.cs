@@ -25,7 +25,8 @@ public static class StockAllocator
 {
     private static readonly string[] ZoneOrder = { ZoneTypes.Picking, ZoneTypes.Reserve, ZoneTypes.Refrigerated, ZoneTypes.Staging };
 
-    public static bool IsExcludedZone(string? zoneType) => zoneType is ZoneTypes.Quarantine or ZoneTypes.CrossDock;
+    /// <summary>Cuarentena, cruce de muelle y (Lote 27) la zona En renta no se asignan.</summary>
+    public static bool IsExcludedZone(string? zoneType) => zoneType is ZoneTypes.Quarantine or ZoneTypes.CrossDock or ZoneTypes.Rental;
 
     public static int ZoneRank(string? zoneType)
     {

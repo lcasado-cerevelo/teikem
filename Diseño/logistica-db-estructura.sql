@@ -906,7 +906,7 @@ CREATE TABLE dbo.NumberSequence (
     ClientId     INT NULL REFERENCES dbo.Client(ClientId),
     NextValue    BIGINT NOT NULL DEFAULT 1,
     CONSTRAINT UQ_NumberSequence UNIQUE (TenantId, Kind, ClientId),
-    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE')),  -- Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL). Lote 5: TRIP = número de ruta AAAA-#### por tenant (ClientId NULL). Lote 6: RECEIPT (REC-#####), CYCLECOUNT (CC-#####), CROSSDOCK (XD-#####) y PURCHASE (PO-#####) por tenant (ClientId NULL); la recolección reutiliza PACKBATCH
+    CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN')),  -- Lote 27: RENTAL (REN-#####) y RENTALRETURN (DRN-#####) por tenant (ClientId NULL). Lote 4: WORKORDER = OT-##### por tenant (ClientId NULL). Lote 5: TRIP = número de ruta AAAA-#### por tenant (ClientId NULL). Lote 6: RECEIPT (REC-#####), CYCLECOUNT (CC-#####), CROSSDOCK (XD-#####) y PURCHASE (PO-#####) por tenant (ClientId NULL); la recolección reutiliza PACKBATCH
     CONSTRAINT CK_NumberSequence_Next CHECK (NextValue >= 1)
 );
 GO
@@ -2711,88 +2711,245 @@ CREATE TABLE dbo.CodRemittanceLine (
 GO
 
 /* =========================================================================
-   CAPA 16C — EQUIPOS EN ALQUILER (módulo RENTAL_EQUIPMENT / RENTAL_BILLING)
-   Activos serializados que salen semanas/meses con el cliente: ubicación,
-   vencimiento del lease, mantenimiento y (si el módulo de facturación está
-   encendido) cargos recurrentes configurables. El movimiento de salida/
-   devolución se ata a una TransportOrder real — usa el mismo Despacho.
+   CAPA 16C — RENTAS (módulo RENTAL_EQUIPMENT "Rentas", submódulo de Almacén) — Lote 27, reescrita
+   Una renta (REN-#####) despacha equipos PROPIOS con número de serie a una localidad del cliente. El equipo sigue en el
+   inventario (posición EN-RENTA, reservado, serie ON_RENT) y regresa con una devolución de renta (DRN-#####) que puede abrir
+   un proceso configurable. Envío y factura son enlaces nulos preparados (sin FK al envío: el módulo de Envíos no existe).
+   Guardada (IF OBJECT_ID … IS NULL) para poder aplicarse sola sobre una base ya creada (Advance Depot): este bloque, del
+   encabezado hasta CAPA 17, es autosuficiente (también amplía CK_NumberSequence_Kind y agrega las FKs a Invoice si ya existe).
+   La capa anterior (RentalAsset, RentalContract, RentalAssetMaintenance, RentalBillingRule y el RentalCharge atado a
+   RentalContract) se retira: en una base nueva no existe; en una existente se borra SOLO si está vacía (si no, se deja y se
+   avisa por PRINT).
    ========================================================================= */
-CREATE TABLE dbo.RentalAsset (
-    RentalAssetId INT IDENTITY(1,1) PRIMARY KEY,
-    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    AssetTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='RentalAssetType' (glucómetro, silla de ruedas, concentrador O2...)
-    SerialNumber NVARCHAR(80) NOT NULL,
-    Model        NVARCHAR(120) NULL, Brand NVARCHAR(120) NULL,
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='RentalAssetStatus' (disponible/en alquiler/mantenimiento/perdido/retirado)
-    CurrentWarehouseId INT NULL REFERENCES dbo.Warehouse(WarehouseId),      -- cuando está en almacén
-    CurrentClientId INT NULL REFERENCES dbo.Client(ClientId),               -- cuando está en sitio del cliente
-    CurrentLocationNote NVARCHAR(200) NULL,
-    AcquisitionDate DATE NULL, AcquisitionCost DECIMAL(18,4) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION,
-    CONSTRAINT UQ_RentalAsset_Serial UNIQUE (TenantId, SerialNumber)
-);
-CREATE INDEX IX_RentalAsset_Status ON dbo.RentalAsset(TenantId, StatusCodeId);
+
+-- Retiro de la capa anterior (Lote 27): solo si todas sus tablas están vacías. Conteo por SQL dinámico (una tabla que falte no
+-- rompe el lote).
+DECLARE @OldRentalRows INT = 0, @OldRentalCount INT;
+IF OBJECT_ID('dbo.RentalAsset') IS NOT NULL BEGIN EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.RentalAsset', N'@n INT OUTPUT', @n = @OldRentalCount OUTPUT; SET @OldRentalRows += @OldRentalCount; END
+IF OBJECT_ID('dbo.RentalContract') IS NOT NULL BEGIN EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.RentalContract', N'@n INT OUTPUT', @n = @OldRentalCount OUTPUT; SET @OldRentalRows += @OldRentalCount; END
+IF OBJECT_ID('dbo.RentalAssetMaintenance') IS NOT NULL BEGIN EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.RentalAssetMaintenance', N'@n INT OUTPUT', @n = @OldRentalCount OUTPUT; SET @OldRentalRows += @OldRentalCount; END
+IF OBJECT_ID('dbo.RentalBillingRule') IS NOT NULL BEGIN EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.RentalBillingRule', N'@n INT OUTPUT', @n = @OldRentalCount OUTPUT; SET @OldRentalRows += @OldRentalCount; END
+IF OBJECT_ID('dbo.RentalCharge') IS NOT NULL AND COL_LENGTH('dbo.RentalCharge', 'RentalContractId') IS NOT NULL
+BEGIN EXEC sp_executesql N'SELECT @n = COUNT(*) FROM dbo.RentalCharge', N'@n INT OUTPUT', @n = @OldRentalCount OUTPUT; SET @OldRentalRows += @OldRentalCount; END
+IF @OldRentalRows > 0
+    PRINT N'AVISO (Lote 27, Rentas): las tablas de la capa 16C anterior (RentalAsset, RentalContract, RentalAssetMaintenance, RentalBillingRule, RentalCharge) tienen '
+        + CAST(@OldRentalRows AS NVARCHAR(20)) + N' fila(s): no se borran. Revíselas y retírelas a mano; RentalCharge no se recrea mientras tanto.';
+ELSE
+BEGIN
+    IF OBJECT_ID('dbo.RentalCharge') IS NOT NULL AND COL_LENGTH('dbo.RentalCharge', 'RentalContractId') IS NOT NULL DROP TABLE dbo.RentalCharge;
+    IF OBJECT_ID('dbo.RentalBillingRule') IS NOT NULL DROP TABLE dbo.RentalBillingRule;
+    IF OBJECT_ID('dbo.RentalAssetMaintenance') IS NOT NULL DROP TABLE dbo.RentalAssetMaintenance;
+    IF OBJECT_ID('dbo.RentalContract') IS NOT NULL DROP TABLE dbo.RentalContract;
+    IF OBJECT_ID('dbo.RentalAsset') IS NOT NULL DROP TABLE dbo.RentalAsset;
+END
 GO
 
-CREATE TABLE dbo.RentalContract (
-    RentalContractId INT IDENTITY(1,1) PRIMARY KEY,
-    PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
-    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    RentalAssetId INT NOT NULL REFERENCES dbo.RentalAsset(RentalAssetId),
-    ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
-    ContactId    INT NULL REFERENCES dbo.ClientContact(ClientContactId),   -- corregido: la tabla es ClientContact
-    LeaseStartDate DATE NOT NULL, LeaseEndDate DATE NULL,                   -- NULL = plazo abierto
-    ExpectedReturnDate DATE NULL,
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='RentalContractStatus' (activo/devuelto/vencido/cancelado)
-    DepositAmount DECIMAL(18,4) NULL, DepositReturned BIT NOT NULL DEFAULT 0,
-    DeliveryOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId), -- entrega que lo sacó
-    ReturnOrderId INT NULL REFERENCES dbo.TransportOrder(TransportOrderId),   -- recogido que lo trajo de vuelta
-    Notes        NVARCHAR(MAX) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1, RowVersion ROWVERSION
-);
-CREATE INDEX IX_RentalContract_Overdue ON dbo.RentalContract(TenantId, StatusCodeId, ExpectedReturnDate);
+-- Lote 27: contadores RENTAL (REN-#####) y RENTALRETURN (DRN-#####) por tenant. En una base nueva el CHECK ya los trae (capa 5);
+-- en una existente se recrea con la lista completa.
+IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = 'CK_NumberSequence_Kind' AND parent_object_id = OBJECT_ID('dbo.NumberSequence')
+           AND definition NOT LIKE '%RENTALRETURN%')
+BEGIN
+    ALTER TABLE dbo.NumberSequence DROP CONSTRAINT CK_NumberSequence_Kind;
+    ALTER TABLE dbo.NumberSequence ADD CONSTRAINT CK_NumberSequence_Kind CHECK (Kind IN ('ORDER','INVOICE','PACKAGE','PACKBATCH','WORKORDER','TRIP','RECEIPT','CYCLECOUNT','CROSSDOCK','PURCHASE','RENTAL','RENTALRETURN'));
+END
 GO
 
--- Mantenimiento del equipo — mismo patrón de MaintenanceWorkOrder (Flota), tabla propia para no tocar Vehicle.
-CREATE TABLE dbo.RentalAssetMaintenance (
-    RentalAssetMaintenanceId INT IDENTITY(1,1) PRIMARY KEY,
-    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    RentalAssetId INT NOT NULL REFERENCES dbo.RentalAsset(RentalAssetId),
-    MaintenanceTypeLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- reutiliza Entity='MaintenanceType'
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),            -- reutiliza Entity='WorkOrderStatus'
-    ScheduledDate DATE NULL, CompletedDate DATE NULL,
-    Vendor       NVARCHAR(150) NULL, Cost DECIMAL(18,4) NULL,
-    Notes        NVARCHAR(MAX) NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
-);
+-- Renta: un cliente, una localidad del cliente, varios equipos de un almacén de origen. Contrato = número y fecha (D6).
+-- PickupDate = recogido vigente (lo mueven las extensiones); OriginalPickupDate = el pactado. DeliveryShipmentId sin FK hasta
+-- que exista Envíos; InvoiceId con FK a Invoice (se agrega cuando Invoice existe: abajo y en la capa 17).
+IF OBJECT_ID('dbo.Rental') IS NULL
+BEGIN
+    CREATE TABLE dbo.Rental (
+        RentalId     INT IDENTITY(1,1) PRIMARY KEY,
+        PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+        TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+        Number       NVARCHAR(40) NOT NULL,                                        -- REN-#####
+        ClientId     INT NOT NULL REFERENCES dbo.Client(ClientId),
+        LocationId   INT NOT NULL REFERENCES dbo.Location(LocationId),             -- localidad del cliente donde estará el equipo
+        ClientContactId INT NULL REFERENCES dbo.ClientContact(ClientContactId),
+        WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),           -- almacén de origen (y de su posición EN-RENTA)
+        StartDate    DATE NOT NULL,
+        PickupDate   DATE NOT NULL,                                                -- recogido vigente
+        OriginalPickupDate DATE NOT NULL,                                          -- recogido pactado al inicio
+        ContractNumber NVARCHAR(80) NULL,
+        ContractSignedOn DATE NULL,
+        EstimatedDeliveryCost DECIMAL(18,4) NULL,                                  -- solo dato (sin cálculo)
+        TransportCurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='Currency'
+        DeliveryShipmentId INT NULL,                                               -- envío futuro (sin FK: el módulo de Envíos no existe)
+        InvoiceId    INT NULL,                                                     -- factura futura (FK FK_Rental_Invoice cuando existe Invoice)
+        StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),         -- Entity='RentalStatus'
+        DispatchedAtUtc DATETIME2 NULL,
+        ClosedAtUtc  DATETIME2 NULL,
+        Notes        NVARCHAR(1000) NULL,
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+        UpdatedAtUtc DATETIME2 NULL,
+        UpdatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+        RowVersion   ROWVERSION,
+        CONSTRAINT UQ_Rental_Number UNIQUE (TenantId, Number),
+        CONSTRAINT CK_Rental_Dates CHECK (PickupDate >= StartDate AND OriginalPickupDate >= StartDate),
+        CONSTRAINT CK_Rental_DeliveryCost CHECK (EstimatedDeliveryCost IS NULL OR EstimatedDeliveryCost >= 0)
+    );
+    CREATE INDEX IX_Rental_StatusPickup ON dbo.Rental(TenantId, StatusCodeId, PickupDate);
+    CREATE INDEX IX_Rental_Client ON dbo.Rental(TenantId, ClientId);
+END
 GO
 
--- Regla de cobro recurrente (solo aplica si el tenant tiene RENTAL_BILLING encendido)
-CREATE TABLE dbo.RentalBillingRule (
-    RentalBillingRuleId INT IDENTITY(1,1) PRIMARY KEY,
-    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    RentalContractId INT NOT NULL REFERENCES dbo.RentalContract(RentalContractId),
-    FrequencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='RentalBillingFrequency' (semanal/mensual/único)
-    RateAmount   DECIMAL(18,4) NOT NULL,
-    ProrateFirstPeriod BIT NOT NULL DEFAULT 1,
-    LateFeeAmount DECIMAL(18,4) NULL, LateFeeGraceDays INT NULL,
-    NextChargeDate DATE NULL,
-    IsActive     BIT NOT NULL DEFAULT 1
-);
+-- Equipo de la renta: una serie (FK compuesta con su producto). Una serie en UNA sola línea abierta (no devuelta y activa).
+-- Sin TenantId: se alcanza por su renta filtrada. Quitar un equipo o cancelar la renta lo desactiva (IsActive = 0).
+IF OBJECT_ID('dbo.RentalLine') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalLine (
+        RentalLineId INT IDENTITY(1,1) PRIMARY KEY,
+        RentalId     INT NOT NULL REFERENCES dbo.Rental(RentalId),
+        ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
+        SerialId     INT NOT NULL,
+        LotId        INT NULL,
+        FromBinId    INT NOT NULL REFERENCES dbo.WarehouseBin(WarehouseBinId),   -- posición de donde sale
+        DispatchTxnId BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),   -- TRANSFER del despacho
+        DispatchedAtUtc DATETIME2 NULL,
+        ReturnedAtUtc DATETIME2 NULL,
+        IsActive     BIT NOT NULL DEFAULT 1,
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT FK_RentalLine_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),
+        CONSTRAINT FK_RentalLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId)
+    );
+    CREATE INDEX IX_RentalLine_Rental ON dbo.RentalLine(RentalId);
+    CREATE UNIQUE INDEX UX_RentalLine_OpenSerial ON dbo.RentalLine(SerialId) WHERE ReturnedAtUtc IS NULL AND IsActive = 1;
+END
 GO
 
-CREATE TABLE dbo.RentalCharge (
-    RentalChargeId INT IDENTITY(1,1) PRIMARY KEY,
-    TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
-    RentalContractId INT NOT NULL REFERENCES dbo.RentalContract(RentalContractId),
-    PeriodStart  DATE NOT NULL, PeriodEnd DATE NOT NULL,
-    Amount       DECIMAL(18,4) NOT NULL,
-    StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),      -- Entity='RentalChargeStatus' (pendiente/facturado/pagado)
-    InvoiceId    INT NULL,                                                  -- FK a Invoice se agrega después de crear Invoice (capa 17)
-    CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
-);
-CREATE INDEX IX_RentalCharge_Contract ON dbo.RentalCharge(RentalContractId, StatusCodeId);
+-- Extensión (D4): bitácora de SOLO INSERCIÓN; la fecha nueva siempre posterior a la anterior.
+IF OBJECT_ID('dbo.RentalExtension') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalExtension (
+        RentalExtensionId INT IDENTITY(1,1) PRIMARY KEY,
+        RentalId     INT NOT NULL REFERENCES dbo.Rental(RentalId),
+        PreviousPickupDate DATE NOT NULL,
+        NewPickupDate DATE NOT NULL,
+        Reason       NVARCHAR(300) NOT NULL,
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+        CONSTRAINT CK_RentalExtension_Dates CHECK (NewPickupDate > PreviousPickupDate)
+    );
+    CREATE INDEX IX_RentalExtension_Rental ON dbo.RentalExtension(RentalId);
+END
+GO
+
+-- Condiciones de cobro por equipo, efectivo-fechadas como RateComponent (EffectiveTo exclusivo). D3: solo se guardan.
+IF OBJECT_ID('dbo.RentalLineRate') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalLineRate (
+        RentalLineRateId INT IDENTITY(1,1) PRIMARY KEY,
+        RentalLineId INT NOT NULL REFERENCES dbo.RentalLine(RentalLineId),
+        BillingFrequencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),   -- Entity='RentalBillingFrequency'
+        RateAmount   DECIMAL(18,4) NOT NULL,
+        CurrencyLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),           -- Entity='Currency'
+        EffectiveFrom DATE NOT NULL,
+        EffectiveTo  DATE NULL,                                                          -- exclusivo; NULL = vigente
+        RentalExtensionId INT NULL REFERENCES dbo.RentalExtension(RentalExtensionId),    -- extensión que abrió esta versión
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+        CONSTRAINT CK_RentalLineRate_Amount CHECK (RateAmount >= 0),
+        CONSTRAINT CK_RentalLineRate_Dates CHECK (EffectiveTo IS NULL OR EffectiveTo >= EffectiveFrom)
+    );
+    CREATE INDEX IX_RentalLineRate_Line ON dbo.RentalLineRate(RentalLineId, EffectiveFrom);
+END
+GO
+
+-- Devolución de renta DRN-##### (bloque R2): motivo por devolución, costo de recogido estimado y enlace nulo al envío futuro.
+IF OBJECT_ID('dbo.RentalReturn') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalReturn (
+        RentalReturnId INT IDENTITY(1,1) PRIMARY KEY,
+        PublicId     UNIQUEIDENTIFIER NOT NULL DEFAULT NEWID(),
+        TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+        Number       NVARCHAR(40) NOT NULL,                                        -- DRN-#####
+        RentalId     INT NOT NULL REFERENCES dbo.Rental(RentalId),
+        ReturnedOn   DATE NOT NULL,
+        ReasonLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),       -- Entity='RentalReturnReason'
+        Notes        NVARCHAR(1000) NULL,
+        EstimatedPickupCost DECIMAL(18,4) NULL,
+        TransportCurrencyLookupId INT NULL REFERENCES dbo.LookupCode(LookupCodeId), -- Entity='Currency'
+        PickupShipmentId INT NULL,                                                 -- envío futuro del recogido (sin FK)
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CreatedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
+        CONSTRAINT UQ_RentalReturn_Number UNIQUE (TenantId, Number),
+        CONSTRAINT CK_RentalReturn_PickupCost CHECK (EstimatedPickupCost IS NULL OR EstimatedPickupCost >= 0)
+    );
+    CREATE INDEX IX_RentalReturn_Rental ON dbo.RentalReturn(RentalId);
+END
+GO
+
+-- Equipo devuelto (bloque R2): un equipo se devuelve una sola vez (UQ por línea de la renta).
+IF OBJECT_ID('dbo.RentalReturnLine') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalReturnLine (
+        RentalReturnLineId INT IDENTITY(1,1) PRIMARY KEY,
+        RentalReturnId INT NOT NULL REFERENCES dbo.RentalReturn(RentalReturnId),
+        RentalLineId INT NOT NULL REFERENCES dbo.RentalLine(RentalLineId),
+        ConditionLookupId INT NOT NULL REFERENCES dbo.LookupCode(LookupCodeId),    -- Entity='RentalReturnCondition'
+        ToWarehouseId INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+        ToBinId      INT NOT NULL,
+        RequiresProcess BIT NOT NULL DEFAULT 1,
+        ReturnTxnId  BIGINT NULL REFERENCES dbo.InventoryTransaction(InventoryTransactionId),
+        Notes        NVARCHAR(500) NULL,
+        CONSTRAINT UQ_RentalReturnLine_Line UNIQUE (RentalLineId),
+        CONSTRAINT FK_RentalReturnLine_ToBin FOREIGN KEY (ToBinId, ToWarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId)
+    );
+END
+GO
+
+-- Proceso del equipo devuelto (bloque R2): estatus RentalProcessStatus configurable; la serie queda IN_PROCESS y reservada.
+IF OBJECT_ID('dbo.RentalProcess') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalProcess (
+        RentalProcessId INT IDENTITY(1,1) PRIMARY KEY,
+        TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+        SerialId     INT NOT NULL,
+        ProductId    INT NOT NULL REFERENCES dbo.Product(ProductId),
+        WarehouseId  INT NOT NULL REFERENCES dbo.Warehouse(WarehouseId),
+        BinId        INT NOT NULL,
+        RentalReturnLineId INT NULL REFERENCES dbo.RentalReturnLine(RentalReturnLineId),
+        StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),         -- Entity='RentalProcessStatus'
+        StartedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CompletedAtUtc DATETIME2 NULL,
+        Notes        NVARCHAR(1000) NULL,
+        RowVersion   ROWVERSION,
+        CONSTRAINT FK_RentalProcess_Serial FOREIGN KEY (SerialId, ProductId) REFERENCES dbo.InventorySerial(SerialId, ProductId),
+        CONSTRAINT FK_RentalProcess_Bin FOREIGN KEY (BinId, WarehouseId) REFERENCES dbo.WarehouseBin(WarehouseBinId, WarehouseId)
+    );
+    CREATE INDEX IX_RentalProcess_Status ON dbo.RentalProcess(TenantId, StatusCodeId);
+    CREATE INDEX IX_RentalProcess_Serial ON dbo.RentalProcess(SerialId);
+END
+GO
+
+-- Cobro por período (futuro, SIN mapear): un cargo por equipo y período, con enlace a la factura (FK cuando existe Invoice).
+-- Si quedó el RentalCharge viejo (con datos, ver arriba) no se recrea.
+IF OBJECT_ID('dbo.RentalCharge') IS NULL
+BEGIN
+    CREATE TABLE dbo.RentalCharge (
+        RentalChargeId INT IDENTITY(1,1) PRIMARY KEY,
+        TenantId     INT NOT NULL REFERENCES dbo.Tenant(TenantId),
+        RentalLineId INT NOT NULL REFERENCES dbo.RentalLine(RentalLineId),
+        PeriodStart  DATE NOT NULL, PeriodEnd DATE NOT NULL,
+        Amount       DECIMAL(18,4) NOT NULL,
+        StatusCodeId INT NOT NULL REFERENCES dbo.StatusCode(StatusCodeId),         -- Entity='RentalChargeStatus' (pendiente/facturado/pagado)
+        InvoiceId    INT NULL,                                                     -- FK a Invoice (FK_RentalCharge_Invoice cuando existe Invoice)
+        CreatedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT CK_RentalCharge_Period CHECK (PeriodEnd >= PeriodStart)
+    );
+    CREATE INDEX IX_RentalCharge_Line ON dbo.RentalCharge(RentalLineId, StatusCodeId);
+END
+GO
+
+-- FKs a Invoice cuando la base ya la tiene (aplicación de este bloque sobre una base existente); en una base nueva Invoice se
+-- crea en la capa 17 y las FKs se agregan ahí.
+IF OBJECT_ID('dbo.Invoice') IS NOT NULL AND OBJECT_ID('dbo.FK_Rental_Invoice', 'F') IS NULL
+    ALTER TABLE dbo.Rental ADD CONSTRAINT FK_Rental_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
+GO
+IF OBJECT_ID('dbo.Invoice') IS NOT NULL AND OBJECT_ID('dbo.FK_RentalCharge_Invoice', 'F') IS NULL
+    ALTER TABLE dbo.RentalCharge ADD CONSTRAINT FK_RentalCharge_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
 GO
 
 /* =========================================================================
@@ -2847,8 +3004,13 @@ CREATE TABLE dbo.Invoice (
     CONSTRAINT UQ_Invoice_Number UNIQUE (TenantId, InvoiceNumber)
 );
 GO
--- FK diferida: RentalCharge (capa 16C) se crea antes que Invoice
-ALTER TABLE dbo.RentalCharge ADD CONSTRAINT FK_RentalCharge_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
+-- FKs diferidas: Rental y RentalCharge (capa 16C) se crean antes que Invoice. Guardadas (Lote 27): si la capa 16C se aplicó
+-- sobre una base existente que ya tenía Invoice, ya están.
+IF OBJECT_ID('dbo.FK_Rental_Invoice', 'F') IS NULL
+    ALTER TABLE dbo.Rental ADD CONSTRAINT FK_Rental_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
+GO
+IF OBJECT_ID('dbo.FK_RentalCharge_Invoice', 'F') IS NULL
+    ALTER TABLE dbo.RentalCharge ADD CONSTRAINT FK_RentalCharge_Invoice FOREIGN KEY (InvoiceId) REFERENCES dbo.Invoice(InvoiceId);
 GO
 
 CREATE TABLE dbo.InvoiceLine (
@@ -3015,5 +3177,5 @@ LEFT JOIN dbo.LookupCode ref ON ref.LookupCodeId = t.RefEntityLookupId
 LEFT JOIN dbo.LookupCode reason ON reason.LookupCodeId = t.ReasonLookupId;
 GO
 
-PRINT 'Estructura creada: ~136 tablas (Identity, campos personalizados, informes, indicadores, gráficos, ciclo COD, pago a choferes, faltantes de compras y recolección y empaque), en capas ordenadas por dependencias + vista de genealogía.';
+PRINT 'Estructura creada: ~139 tablas (Identity, campos personalizados, informes, indicadores, gráficos, ciclo COD, pago a choferes, faltantes de compras, recolección y empaque y rentas), en capas ordenadas por dependencias + vista de genealogía.';
 GO

@@ -219,6 +219,49 @@ public sealed class ProductBrandFilterTests
     }
 
     [Fact]
+    public async Task Serial_missing_counts_serials_on_rent_and_in_process_as_in_stock()
+    {
+        // Lote 27 (Rentas): una serie En renta (EN-RENTA, reservada) o En proceso sigue en inventario: el KPI "series por capturar"
+        // no debe marcar el producto como incompleto por ellas.
+        await using var f = await CreateAsync();
+        var w = await f.AddWarehouseAsync("W1");
+        var pick = await f.AddBinAsync(await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking), "P-01");
+        var rent = await f.AddBinAsync(await f.AddZoneAsync(w, "RENT", ZoneTypes.Rental), "EN-RENTA");
+        var rented = await f.AddProductAsync("R-FULL", TrackingTypes.Serial);    // 3 en mano: 1 AVAILABLE, 1 ON_RENT, 1 IN_PROCESS
+        var gap = await f.AddProductAsync("R-MISS", TrackingTypes.Serial);       // 2 en mano: 1 ON_RENT y una sin serie
+        void Stock(Product p, WarehouseBin bin, decimal qty, decimal reserved = 0m) => f.Db.StockBalances.Add(new StockBalance
+        {
+            TenantId = WmsFixture.TenantId, ProductId = p.ProductId, WarehouseId = w.WarehouseId, WarehouseBinId = bin.WarehouseBinId,
+            QtyOnHand = qty, QtyReserved = reserved, UpdatedAtUtc = DateTime.UtcNow,
+        });
+        void Serial(Product p, string number, string status, WarehouseBin bin) => f.Db.InventorySerials.Add(new InventorySerial
+        {
+            ProductId = p.ProductId, SerialNumber = number, StatusCodeId = f.StatusId(StatusDomains.SerialStatus, status),
+            CurrentWarehouseId = w.WarehouseId, CurrentBinId = bin.WarehouseBinId,
+        });
+        Stock(rented, pick, 2m, 1m);
+        Stock(rented, rent, 1m, 1m);
+        Serial(rented, "RF-1", SerialStatuses.Available, pick);
+        Serial(rented, "RF-2", SerialStatuses.InProcess, pick);
+        Serial(rented, "RF-3", SerialStatuses.OnRent, rent);
+        Stock(gap, pick, 1m);
+        Stock(gap, rent, 1m, 1m);
+        Serial(gap, "RM-1", SerialStatuses.OnRent, rent);
+        // Existencia (artificial) sin reservar en EN-RENTA: aun así no cuenta para "solo con disponible" (zona excluida).
+        Stock(await f.AddProductAsync("R-ZONE"), rent, 1m);
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        var products = f.Get<ProductService>();
+        var kpi = await products.ListAsync(new ProductListQuery(SerialMissing: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "R-MISS" }, kpi.Items.Select(i => i.Sku).ToArray());
+        // Lo rentado no está disponible: R-FULL tiene 3 en mano y 1 disponible; "solo con disponible" excluye la zona En renta.
+        var full = (await products.ListAsync(new ProductListQuery(Search: "R-FULL"), InventoryScope.Any, default)).Items.Single();
+        Assert.Equal((3m, 1m), (full.QtyOnHand, full.QtyAvailable));
+        Assert.Equal(new[] { "R-FULL", "R-MISS" }, (await products.ListAsync(new ProductListQuery(OnlyAvailable: true), InventoryScope.Any, default)).Items.Select(i => i.Sku).ToArray());
+    }
+
+    [Fact]
     public async Task Brands_are_distinct_sorted_and_searchable_within_the_tenant()
     {
         await using var f = await CreateAsync();

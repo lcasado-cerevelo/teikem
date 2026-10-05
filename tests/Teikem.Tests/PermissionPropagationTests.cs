@@ -41,6 +41,20 @@ public class PermissionPropagationTests
     }
 
     [Fact]
+    public void Lote27_rental_extend_and_return_go_to_tenant_admin_and_warehouse_operator_clones_only()
+    {
+        // Lote 27 (Rentas R1): los códigos nuevos llegan a los clones de las plantillas que gestionan rentas; el seed (5b3) los
+        // completa además en todo rol de tenant con rental.manage (roles propios incluidos), una sola vez.
+        var news = Set(PermissionCatalog.RentalExtend, PermissionCatalog.RentalReturn);
+        Assert.Equal(new[] { PermissionCatalog.RentalExtend, PermissionCatalog.RentalReturn },
+            PermissionCatalog.CodesToPropagate("WarehouseOperator", news, Set(PermissionCatalog.RentalManage)));
+        Assert.Equal(2, PermissionCatalog.CodesToPropagate("TenantAdmin", news, Set()).Count);
+        Assert.Equal(new[] { PermissionCatalog.RentalReturn }, PermissionCatalog.CodesToPropagate("WarehouseOperator", news, Set(PermissionCatalog.RentalExtend)));
+        foreach (var role in new[] { "Billing", "Dispatcher", "Driver", "ReadOnly" })
+            Assert.Empty(PermissionCatalog.CodesToPropagate(role, news, Set()));
+    }
+
+    [Fact]
     public void Nothing_new_means_nothing_to_propagate()
         => Assert.Empty(PermissionCatalog.CodesToPropagate("TenantAdmin", Set(), Set()));
 }

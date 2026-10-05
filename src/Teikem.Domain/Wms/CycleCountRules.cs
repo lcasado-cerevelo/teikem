@@ -308,9 +308,12 @@ public static class CycleCountRules
 
     // ---------------------------------------------------------------- series
 
-    /// <summary>Estatus de serie que significan 'en inventario' (ocupa posición).</summary>
+    /// <summary>
+    /// Estatus de serie que significan 'en inventario' (ocupa posición): AVAILABLE, RESERVED y (Lote 27, Rentas) ON_RENT e
+    /// IN_PROCESS (SerialStatuses.InStock).
+    /// </summary>
     public static bool IsInStock(string? serialStatusCode)
-        => serialStatusCode is SerialStatuses.Available or SerialStatuses.Reserved;
+        => serialStatusCode is not null && SerialStatuses.InStock.Contains(serialStatusCode);
 
     /// <summary>
     /// Conteo por serie de UNA línea (posición warehouseId/binId) contra la ubicación ACTUAL:

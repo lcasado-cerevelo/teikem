@@ -166,6 +166,14 @@ public class TeikemDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<DockAppointment> DockAppointments => Set<DockAppointment>();
     public DbSet<CrossDockPlan> CrossDockPlans => Set<CrossDockPlan>();
     public DbSet<CrossDockAllocation> CrossDockAllocations => Set<CrossDockAllocation>();
+    // Lote 27 — Rentas (capa 16C reescrita). RentalCharge (cobro por período) queda sin mapear.
+    public DbSet<Rental> Rentals => Set<Rental>();
+    public DbSet<RentalLine> RentalLines => Set<RentalLine>();
+    public DbSet<RentalLineRate> RentalLineRates => Set<RentalLineRate>();
+    public DbSet<RentalExtension> RentalExtensions => Set<RentalExtension>();
+    public DbSet<RentalReturn> RentalReturns => Set<RentalReturn>();
+    public DbSet<RentalReturnLine> RentalReturnLines => Set<RentalReturnLine>();
+    public DbSet<RentalProcess> RentalProcesses => Set<RentalProcess>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

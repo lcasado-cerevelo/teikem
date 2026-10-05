@@ -34,6 +34,7 @@ public class WmsControllerSecurityTests
         [typeof(PurchaseOrdersController)] = ModuleKeys.Purchasing,
         [typeof(DockAppointmentsController)] = ModuleKeys.CrossDock,
         [typeof(CrossDockPlansController)] = ModuleKeys.CrossDock,
+        [typeof(RentalsController)] = ModuleKeys.RentalEquipment,   // Lote 27 (Rentas R1)
     };
 
     /// <summary>(controlador, acción) → permiso esperado. Exactamente uno por acción.</summary>
@@ -185,6 +186,20 @@ public class WmsControllerSecurityTests
         [(typeof(CrossDockPlansController), nameof(CrossDockPlansController.CancelAllocation))] = PermissionCatalog.WarehouseCrossdock,
         [(typeof(CrossDockPlansController), nameof(CrossDockPlansController.Move))] = PermissionCatalog.WarehouseCrossdock,
         [(typeof(CrossDockPlansController), nameof(CrossDockPlansController.Complete))] = PermissionCatalog.WarehouseCrossdock,
+
+        // Lote 27 (Rentas R1): rental.view lee, rental.manage escribe y rental.extend extiende (D4).
+        [(typeof(RentalsController), nameof(RentalsController.List))] = PermissionCatalog.RentalView,
+        [(typeof(RentalsController), nameof(RentalsController.Get))] = PermissionCatalog.RentalView,
+        [(typeof(RentalsController), nameof(RentalsController.Extensions))] = PermissionCatalog.RentalView,
+        [(typeof(RentalsController), nameof(RentalsController.Create))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.Update))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.AddLines))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.RemoveLine))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.SetLineRate))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.Schedule))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.Dispatch))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.Cancel))] = PermissionCatalog.RentalManage,
+        [(typeof(RentalsController), nameof(RentalsController.Extend))] = PermissionCatalog.RentalExtend,
     };
 
     public static IEnumerable<object[]> ActionMap() => Expected.Select(kv => new object[] { kv.Key.Controller, kv.Key.Action, kv.Value });
@@ -283,7 +298,12 @@ public class WmsControllerSecurityTests
         // Lote 26 (Rentas R0): convertir a serie cambia el maestro (inventory.manage en el controlador) y mueve inventario
         // (inventory.adjust lo exige ProductSerialConversionService: ProductSerialConversionTests).
         Assert.Equal(PermissionCatalog.InventoryManage, Expected[(typeof(ProductsController), nameof(ProductsController.ConvertToSerial))]);
-        Assert.Equal(131, Expected.Count);
+        // Lote 27 (Rentas R1): extender es su propio permiso (D4: sin aprobación de un segundo usuario) y cancelar es rental.manage;
+        // todo el controlador en el módulo RENTAL_EQUIPMENT ("Rentas").
+        Assert.Equal(PermissionCatalog.RentalExtend, Expected[(typeof(RentalsController), nameof(RentalsController.Extend))]);
+        Assert.Equal(PermissionCatalog.RentalManage, Expected[(typeof(RentalsController), nameof(RentalsController.Cancel))]);
+        Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalsController)]);
+        Assert.Equal(143, Expected.Count);
     }
 
     [Fact]

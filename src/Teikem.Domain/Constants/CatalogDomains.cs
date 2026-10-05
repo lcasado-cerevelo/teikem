@@ -97,6 +97,43 @@ public static class LookupDomains
     // Lote 16 — recibo directo a posición
     /// <summary>Modo de recepción del almacén y del recibo (Warehouse/ReceiptHeader.ReceivingModeLookupId): PUTAWAY | DIRECT.</summary>
     public const string ReceivingMode = "ReceivingMode";
+    // Lote 27 — Rentas (R1)
+    /// <summary>Frecuencia de cobro de la tarifa de un equipo rentado (RentalLineRate.BillingFrequencyLookupId).</summary>
+    public const string RentalBillingFrequency = "RentalBillingFrequency";
+    /// <summary>Motivo de la devolución de una renta (RentalReturn.ReasonLookupId; bloque R2).</summary>
+    public const string RentalReturnReason = "RentalReturnReason";
+    /// <summary>Condición del equipo devuelto (RentalReturnLine.ConditionLookupId; bloque R2).</summary>
+    public const string RentalReturnCondition = "RentalReturnCondition";
+}
+
+/// <summary>
+/// Lote 27 (Rentas R1): valores de LookupCode 'RentalBillingFrequency'. ONE_TIME se rotula "Fija" (cobro único); DAILY, WEEKLY y
+/// MONTHLY son cobro por tiempo. Solo se guardan las condiciones: no hay cálculo ni cobro (D3).
+/// </summary>
+public static class RentalBillingFrequencies
+{
+    public const string Daily = "DAILY";
+    public const string Weekly = "WEEKLY";
+    public const string Monthly = "MONTHLY";
+    public const string OneTime = "ONE_TIME";
+    public static readonly string[] All = { Daily, Weekly, Monthly, OneTime };
+}
+
+/// <summary>Lote 27 (Rentas): valores de LookupCode 'RentalReturnReason' (motivo por devolución; bloque R2).</summary>
+public static class RentalReturnReasons
+{
+    public const string EndOfContract = "END_OF_CONTRACT";
+    public const string EarlyDamage = "EARLY_DAMAGE";
+    public const string EarlyClient = "EARLY_CLIENT";
+    public const string Other = "OTHER";
+}
+
+/// <summary>Lote 27 (Rentas): valores de LookupCode 'RentalReturnCondition' (condición de cada equipo devuelto; bloque R2).</summary>
+public static class RentalReturnConditions
+{
+    public const string Good = "GOOD";
+    public const string Damaged = "DAMAGED";
+    public const string Incomplete = "INCOMPLETE";
 }
 
 /// <summary>
@@ -202,6 +239,11 @@ public static class StatusDomains
     // Lote 14
     /// <summary>Descuadre Kárdex ↔ saldo: OPEN (inicial) → RESOLVED | DISMISSED | SELF_CORRECTED (terminales).</summary>
     public const string InventoryDiscrepancyStatus = "InventoryDiscrepancyStatus";
+    // Lote 27 — Rentas
+    /// <summary>Renta: DRAFT (inicial) → SCHEDULED → ON_RENT → RETURNED (terminal); CANCELLED terminal solo desde DRAFT o SCHEDULED.</summary>
+    public const string RentalStatus = "RentalStatus";
+    /// <summary>Proceso de un equipo devuelto (configurable): PENDING → … → READY (terminal); REPAIR y AWAITING_PARTS laterales; SCRAPPED terminal.</summary>
+    public const string RentalProcessStatus = "RentalProcessStatus";
 }
 
 public static class StageKinds
@@ -526,6 +568,11 @@ public static class EntityTypes
     public const string PulsePanelSetting = "PULSE_PANEL_SETTING";
     // Lote 14: descuadre Kárdex ↔ saldo (conciliación), con historial de estatus y bitácora.
     public const string InventoryDiscrepancy = "INVENTORY_DISCREPANCY";
+    // Lote 27 (Rentas): renta (encabezado, equipos, tarifas y extensiones), devolución de renta y proceso del equipo devuelto.
+    // RENTAL_ASSET y RENTAL_CONTRACT (capa 16C vieja) quedan desactivados en el seed.
+    public const string Rental = "RENTAL";
+    public const string RentalReturn = "RENTAL_RETURN";
+    public const string RentalProcess = "RENTAL_PROCESS";
 }
 
 // ---------------- Lote 3 — Órdenes de transporte ----------------
@@ -598,6 +645,10 @@ public static class NumberKinds
     public const string CrossDock = "CROSSDOCK";
     /// <summary>Lote 6: número de orden de compra PO-##### por tenant (ClientId NULL).</summary>
     public const string Purchase = "PURCHASE";
+    /// <summary>Lote 27 (Rentas): número de renta REN-##### por tenant (ClientId NULL).</summary>
+    public const string Rental = "RENTAL";
+    /// <summary>Lote 27 (Rentas): número de devolución de renta DRN-##### por tenant (ClientId NULL; bloque R2).</summary>
+    public const string RentalReturn = "RENTALRETURN";
 }
 
 public static class ModuleKeys
@@ -803,13 +854,54 @@ public static class DockStatuses
 
 /// <summary>
 /// Dominio SerialStatus (D16): AVAILABLE (inicial); RESERVED y SHIPPED laterales (AVAILABLE → SHIPPED → AVAILABLE es legal:
-/// reversas y devoluciones); SCRAPPED terminal (una serie dada de baja no vuelve).
+/// reversas y devoluciones); SCRAPPED terminal (una serie dada de baja no vuelve). Lote 27 (Rentas): ON_RENT "En renta" (sigue
+/// siendo nuestra, en la posición EN-RENTA, reservada) e IN_PROCESS "En proceso" (devuelta, reservada mientras pasa por su
+/// proceso), ambos laterales.
 /// </summary>
 public static class SerialStatuses
 {
     public const string Available = "AVAILABLE";
     public const string Reserved = "RESERVED";
     public const string Shipped = "SHIPPED";
+    public const string Scrapped = "SCRAPPED";
+    public const string OnRent = "ON_RENT";
+    public const string InProcess = "IN_PROCESS";
+
+    /// <summary>Estatus de una serie que sigue en inventario (ocupa posición): conteo cíclico y KPI "series por capturar".</summary>
+    public static readonly string[] InStock = { Available, Reserved, OnRent, InProcess };
+}
+
+/// <summary>
+/// Lote 27 (Rentas): dominio RentalStatus. DRAFT 'Borrador' (inicial) → SCHEDULED 'Programada' (reserva las series) → ON_RENT
+/// 'En renta' (despachada) → RETURNED 'Devuelta' (terminal, bloque R2). CANCELLED 'Cancelada' terminal, con entrada lateral solo
+/// desde DRAFT o SCHEDULED. "Vencida" no es estatus: se calcula (abierta con la fecha de recogido pasada).
+/// </summary>
+public static class RentalStatuses
+{
+    public const string Draft = "DRAFT";
+    public const string Scheduled = "SCHEDULED";
+    public const string OnRent = "ON_RENT";
+    public const string Returned = "RETURNED";
+    public const string Cancelled = "CANCELLED";
+
+    /// <summary>Abiertas: el equipo está apartado o en el cliente (cuentan para "por vencer" y "vencidas").</summary>
+    public static readonly string[] OpenCodes = { Scheduled, OnRent };
+}
+
+/// <summary>
+/// Lote 27 (Rentas): dominio RentalProcessStatus (configurable: la compañía renombra, desactiva y reordena los pasos). PENDING
+/// (inicial) → INSPECTION → CLEANING → TESTING → READY (terminal); REPAIR y AWAITING_PARTS laterales; SCRAPPED terminal. Los
+/// efectos dependen de los terminales (READY libera la serie; SCRAPPED la da de baja), no de los pasos (bloque R2).
+/// </summary>
+public static class RentalProcessStatuses
+{
+    public const string Pending = "PENDING";
+    public const string Inspection = "INSPECTION";
+    public const string Cleaning = "CLEANING";
+    public const string Testing = "TESTING";
+    public const string Ready = "READY";
+    public const string Repair = "REPAIR";
+    public const string AwaitingParts = "AWAITING_PARTS";
     public const string Scrapped = "SCRAPPED";
 }
 
@@ -934,7 +1026,11 @@ public static class InventoryDiscrepancyStatuses
     public const string SelfCorrected = "SELF_CORRECTED";
 }
 
-/// <summary>LookupDomains.ZoneType. STAGING (Lote 6, D21) es la zona de recepción.</summary>
+/// <summary>
+/// LookupDomains.ZoneType. STAGING (Lote 6, D21) es la zona de recepción. Lote 27 (Rentas): RENTAL = zona "En renta" (RENT,
+/// posición EN-RENTA) que se crea a demanda en cada almacén: ahí vive la existencia rentada (en mano y reservada); no se asigna,
+/// no se recolecta, no se acomoda ni se recibe en ella.
+/// </summary>
 public static class ZoneTypes
 {
     public const string Picking = "PICKING";
@@ -943,6 +1039,7 @@ public static class ZoneTypes
     public const string Quarantine = "QUARANTINE";
     public const string CrossDock = "CROSSDOCK";
     public const string Staging = "STAGING";
+    public const string Rental = "RENTAL";
 }
 
 /// <summary>LookupDomains.DockType.</summary>

@@ -200,6 +200,9 @@ public class CycleCountRulesTests
         Assert.Equal(new SerialTransferMove("S7", 2, 500, null), Assert.Single(result.Transfers));
         Assert.True(CycleCountRules.IsInStock(SerialStatuses.Available));
         Assert.True(CycleCountRules.IsInStock(SerialStatuses.Reserved));
+        // Lote 27 (Rentas): en renta y en proceso siguen en inventario (ocupan posición).
+        Assert.True(CycleCountRules.IsInStock(SerialStatuses.OnRent));
+        Assert.True(CycleCountRules.IsInStock(SerialStatuses.InProcess));
         Assert.False(CycleCountRules.IsInStock(SerialStatuses.Shipped));
         Assert.False(CycleCountRules.IsInStock(SerialStatuses.Scrapped));
         Assert.False(CycleCountRules.IsInStock(null));

@@ -188,11 +188,28 @@ public class WmsContractsTests
         { typeof(CrossDockPlanDto), "int Id, string Number, Guid WarehousePublicId, string WarehouseCode, int? StagingZoneId, string? StagingZoneCode, string StatusCode, string Status, int AllocationCount, decimal AllocatedQty, decimal MovedQty, decimal ShortQty, DateTime CreatedAtUtc, DateTime? CompletedAtUtc, IReadOnlyList<CrossDockAllocationDto> Allocations" },
         { typeof(CrossDockCandidateDto), "int ReceiptLineId, string ReceiptNumber, string ReceiptStatusCode, Guid ProductPublicId, string Sku, string? LotNumber, int? StagingBinId, string? StagingBinCode, decimal BaseQty, decimal AllocatedQty, decimal Allocatable" },
         { typeof(CrossDockMoveRequest), "string? Comment" },
+        // Lote 27 (Rentas R1).
+        { typeof(RentalLineRateInput), "string? Frequency, decimal? Amount, string? Currency" },
+        { typeof(RentalLinesAddRequest), "Guid? ProductPublicId, IReadOnlyList<string>? SerialNumbers, RentalLineRateInput? Rate" },
+        { typeof(RentalCreateRequest), "Guid? ClientPublicId, Guid? LocationPublicId, DateOnly? StartDate, DateOnly? PickupDate, Guid? WarehousePublicId, int? ClientContactId, string? ContractNumber, DateOnly? ContractSignedOn, decimal? EstimatedDeliveryCost, string? TransportCurrency, string? Notes, IReadOnlyList<RentalLinesAddRequest>? Lines" },
+        { typeof(RentalPatchRequest), "Guid? LocationPublicId, int? ClientContactId, bool? ClearClientContact, Guid? WarehousePublicId, DateOnly? StartDate, DateOnly? PickupDate, string? ContractNumber, DateOnly? ContractSignedOn, bool? ClearContractSignedOn, decimal? EstimatedDeliveryCost, bool? ClearEstimatedDeliveryCost, string? TransportCurrency, string? Notes, string? RowVersion" },
+        { typeof(RentalLineRateRequest), "string? Frequency, decimal? Amount, string? Currency, string? RowVersion" },
+        { typeof(RentalStatusRequest), "string? Comment, string? RowVersion" },
+        { typeof(RentalExtensionRateInput), "int? LineId, string? Frequency, decimal? Amount, string? Currency" },
+        { typeof(RentalExtendRequest), "DateOnly? NewPickupDate, string? Reason, IReadOnlyList<RentalExtensionRateInput>? Rates, string? RowVersion" },
+        { typeof(RentalQuery), "string[]? Status, Guid? ClientPublicId, int? DueWithinDays, bool Overdue, string? Search, int Skip, int Take" },
+        { typeof(RentalLineRateDto), "int Id, string FrequencyCode, string Frequency, decimal Amount, string CurrencyCode, DateOnly EffectiveFrom, DateOnly? EffectiveTo, int? ExtensionId" },
+        { typeof(RentalLineDto), "int Id, Guid ProductPublicId, string Sku, string ProductName, int SerialId, string SerialNumber, string? LotNumber, int FromBinId, string FromBinCode, bool IsActive, long? DispatchTxnId, DateTime? DispatchedAtUtc, DateTime? ReturnedAtUtc, RentalLineRateDto? Rate, IReadOnlyList<RentalLineRateDto> RateHistory" },
+        { typeof(RentalListItemDto), "int Id, Guid PublicId, string Number, Guid ClientPublicId, string ClientName, Guid LocationPublicId, string LocationName, string? LocationCity, Guid WarehousePublicId, string WarehouseCode, DateOnly StartDate, DateOnly PickupDate, DateOnly OriginalPickupDate, int DaysToPickup, bool IsOverdue, string? ContractNumber, string StatusCode, string Status, string? StatusColor, int Units, int ExtensionCount, DateTime? DispatchedAtUtc, DateTime? ClosedAtUtc, DateTime CreatedAtUtc" },
+        { typeof(RentalDto), "RentalListItemDto Rental, int? ClientContactId, string? ClientContactName, DateOnly? ContractSignedOn, decimal? EstimatedDeliveryCost, string? TransportCurrencyCode, int? DeliveryShipmentId, int? InvoiceId, string? Notes, bool CanEdit, bool CanSchedule, bool CanDispatch, bool CanExtend, bool CanCancel, IReadOnlyList<RentalLineDto> Lines, string RowVersion" },
+        { typeof(RentalPageDto), "int Total, int Skip, int Take, IReadOnlyList<RentalListItemDto> Items" },
+        { typeof(RentalExtensionRateDto), "int LineId, string SerialNumber, RentalLineRateDto Rate" },
+        { typeof(RentalExtensionDto), "int Id, DateOnly PreviousPickupDate, DateOnly NewPickupDate, int DaysAdded, string Reason, DateTime CreatedAtUtc, int? CreatedBy, string? CreatedByName, IReadOnlyList<RentalExtensionRateDto> Rates" },
         { typeof(InventoryScope), "int? OwnerClientId" },
         { typeof(OrderDeletionOptions), "string? AllowedSourceEntityType" },
     };
 
-    private static readonly Type[] WithExtra = { typeof(ProductPatchRequest), typeof(PurchaseOrderPatchRequest), typeof(WarehouseBinPatchRequest), typeof(WarehouseDockPatchRequest), typeof(WarehousePatchRequest), typeof(WarehouseZonePatchRequest) };
+    private static readonly Type[] WithExtra = { typeof(ProductPatchRequest), typeof(PurchaseOrderPatchRequest), typeof(WarehouseBinPatchRequest), typeof(WarehouseDockPatchRequest), typeof(WarehousePatchRequest), typeof(WarehouseZonePatchRequest), typeof(RentalPatchRequest) };
 
     [Theory]
     [MemberData(nameof(Signatures))]
@@ -259,10 +276,13 @@ public class WmsContractsTests
                      typeof(PurchaseOrderForReceipt), typeof(PurchaseOrderPendingLine), typeof(PurchaseOrderReceiptQty), typeof(OrderInventoryLine),
                  })
             Assert.Equal("Teikem.Infrastructure.Wms", t.Namespace);
+        // Lote 27 (Rentas, plan 4.1): estatus esperado y destino de la serie y reserva en destino, al final y con valor por defecto.
         Assert.Equal(new[] { "string TxnType", "int ProductId", "decimal Quantity", "int? LotId", "int? SerialId", "string? SerialNumber", "int? FromWarehouseId",
-            "int? FromBinId", "int? ToWarehouseId", "int? ToBinId", "string? RefEntityType", "int? RefId", "string? ReasonCode", "string? Notes", "bool FromReserved" },
+            "int? FromBinId", "int? ToWarehouseId", "int? ToBinId", "string? RefEntityType", "int? RefId", "string? ReasonCode", "string? Notes", "bool FromReserved",
+            "string? ExpectedSerialStatus", "string? TargetSerialStatus", "bool ReserveAtDestination" },
             Signature(typeof(InventoryPosting)));
-        Assert.Equal(new[] { "int ProductId", "int WarehouseId", "int BinId", "int? LotId", "decimal Quantity", "IReadOnlyList<string>? SerialNumbers" }, Signature(typeof(StockReservation)));
+        Assert.Equal(new[] { "int ProductId", "int WarehouseId", "int BinId", "int? LotId", "decimal Quantity", "IReadOnlyList<string>? SerialNumbers",
+            "string? ExpectedSerialStatus", "string? TargetSerialStatus" }, Signature(typeof(StockReservation)));
         // Lote 16: cupo, unidades en la posición y Fits al final (con valor por defecto); RotationClass sigue en su lugar.
         Assert.Equal(new[] { "int BinId", "string BinCode", "string ZoneCode", "string? ZoneTypeCode", "string ReasonCode", "string Reason", "string RotationClass",
             "int? MaxCapacityQty", "decimal BinQty", "bool Fits" }, Signature(typeof(PutawaySuggestion)));
@@ -318,6 +338,14 @@ public class WmsContractsTests
         new object?[] { typeof(InventorySerial), null },
         new object?[] { typeof(WarehouseTask), null },
         new object?[] { typeof(InventoryDiscrepancy), EntityTypes.InventoryDiscrepancy },   // Lote 14: alta, estatus y resolución (cifras de revisión [NotAudited])
+        // Lote 27 (Rentas): la renta con sus equipos, tarifas y extensiones bajo RENTAL; devolución y proceso con su propio tipo.
+        new object?[] { typeof(Rental), EntityTypes.Rental },
+        new object?[] { typeof(RentalLine), EntityTypes.Rental },
+        new object?[] { typeof(RentalLineRate), EntityTypes.Rental },
+        new object?[] { typeof(RentalExtension), EntityTypes.Rental },
+        new object?[] { typeof(RentalReturn), EntityTypes.RentalReturn },
+        new object?[] { typeof(RentalReturnLine), EntityTypes.RentalReturn },
+        new object?[] { typeof(RentalProcess), EntityTypes.RentalProcess },
     };
 
     [Theory]

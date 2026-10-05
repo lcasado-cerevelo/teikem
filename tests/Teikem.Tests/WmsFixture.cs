@@ -179,6 +179,13 @@ internal sealed class WmsFixture : IAsyncDisposable
         foreach (var c in ReceivingModes.All) L(LookupDomains.ReceivingMode, c);
         // Lote 26 (Rentas R0): motivo de sistema de la conversión a serie (al final: ids previos intactos).
         L(LookupDomains.AdjustmentReason, AdjustmentReasons.TrackingConversion);
+        // Lote 27 (Rentas R1): entidades, zona En renta, frecuencias de cobro, moneda y tipo de localidad (al final: ids previos intactos).
+        foreach (var e in new[] { EntityTypes.Rental, EntityTypes.RentalReturn, EntityTypes.RentalProcess }) L(LookupDomains.EntityType, e);
+        L(LookupDomains.ZoneType, ZoneTypes.Rental);
+        foreach (var c in RentalBillingFrequencies.All) L(LookupDomains.RentalBillingFrequency, c);
+        L(LookupDomains.Currency, "USD");
+        L(LookupDomains.Currency, "EUR");
+        L(LookupDomains.LocationType, LocationTypes.Delivery);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 
@@ -250,6 +257,14 @@ internal sealed class WmsFixture : IAsyncDisposable
         S(StatusDomains.InventoryDiscrepancyStatus, InventoryDiscrepancyStatuses.SelfCorrected, term, 4);
         // Lote 14 (D7): conteo cerrado con diferencia (al final: ids previos intactos).
         S(StatusDomains.CycleCountStatus, CycleCountStatuses.ReconciledVariance, term, 4);
+        // Lote 27 (Rentas R1): series en renta y en proceso (laterales), y el ciclo de la renta (al final: ids previos intactos).
+        S(StatusDomains.SerialStatus, SerialStatuses.OnRent, lat, 5);
+        S(StatusDomains.SerialStatus, SerialStatuses.InProcess, lat, 6);
+        S(StatusDomains.RentalStatus, RentalStatuses.Draft, pipe, 1, true);
+        S(StatusDomains.RentalStatus, RentalStatuses.Scheduled, pipe, 2);
+        S(StatusDomains.RentalStatus, RentalStatuses.OnRent, pipe, 3);
+        S(StatusDomains.RentalStatus, RentalStatuses.Returned, term, 4);
+        S(StatusDomains.RentalStatus, RentalStatuses.Cancelled, term, 5);
         ReceiptStatusSeed.AddLateralEntries(Db, LookupId(LookupDomains.EntityType, EntityTypes.Receipt), StatusId);
 
         // 3G: WAREHOUSE_TASK CANCELLED solo desde PENDING e IN_PROGRESS.
@@ -261,6 +276,16 @@ internal sealed class WmsFixture : IAsyncDisposable
                 StatusLateralEntryId = le++, TenantId = null, EntityTypeLookupId = taskType,
                 LateralStatusCodeId = StatusId(StatusDomains.WarehouseTaskStatus, WarehouseTaskStatuses.Cancelled),
                 FromStatusCodeId = StatusId(StatusDomains.WarehouseTaskStatus, from), IsAllowed = true,
+            });
+
+        // 3I (Lote 27): RENTAL CANCELLED solo desde DRAFT y SCHEDULED.
+        var rentalType = LookupId(LookupDomains.EntityType, EntityTypes.Rental);
+        foreach (var from in new[] { RentalStatuses.Draft, RentalStatuses.Scheduled })
+            Db.StatusLateralEntries.Add(new StatusLateralEntry
+            {
+                StatusLateralEntryId = 950 + le++, TenantId = null, EntityTypeLookupId = rentalType,
+                LateralStatusCodeId = StatusId(StatusDomains.RentalStatus, RentalStatuses.Cancelled),
+                FromStatusCodeId = StatusId(StatusDomains.RentalStatus, from), IsAllowed = true,
             });
 
         Db.Tenants.AddRange(

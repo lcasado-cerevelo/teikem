@@ -529,6 +529,17 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                 return new KardexDocumentDto(entity, label, id, null, KardexRules.RefLabel(entity, id, null, tenant.Lang), sc, sl,
                     t.CompletedAtUtc ?? t.CreatedAtUtc, null, typeLabel, parent);
             }
+            case EntityTypes.Rental:
+            {
+                // Lote 27 (Rentas): número, estatus, fecha de despacho (o de alta), cliente y número de contrato.
+                var r = await db.Set<Rental>().AsNoTracking().Where(x => x.RentalId == id)
+                    .Select(x => new { x.PublicId, x.Number, x.StatusCodeId, x.DispatchedAtUtc, x.CreatedAtUtc, x.ClientId, x.ContractNumber })
+                    .FirstOrDefaultAsync(ct);
+                if (r is null) return Missing();
+                var (sc, sl) = await StatusOfAsync(r.StatusCodeId, ct);
+                var party = (await ClientNamesAsync(new[] { r.ClientId }, ct)).GetValueOrDefault(r.ClientId);
+                return new KardexDocumentDto(entity, label, id, r.PublicId, r.Number, sc, sl, r.DispatchedAtUtc ?? r.CreatedAtUtc, party, r.ContractNumber);
+            }
             case EntityTypes.Product:
             {
                 var p = await db.Set<Product>().AsNoTracking().Where(x => x.ProductId == id)
@@ -706,6 +717,12 @@ public sealed class InventoryReadService(TeikemDbContext db, ITenantContext tena
                                                           where ids.Contains(a.CrossDockAllocationId)
                                                           select new { a.CrossDockAllocationId, pl.Number })
                     .ToDictionaryAsync(x => x.CrossDockAllocationId, x => x.Number, ct),
+                // Lote 27 (Rentas): renta y devolución de renta por su número; el proceso (RENTAL_PROCESS) no tiene número
+                // (KardexRules lo muestra como 'Proceso #id').
+                EntityTypes.Rental => await db.Set<Rental>().AsNoTracking().Where(x => ids.Contains(x.RentalId))
+                    .ToDictionaryAsync(x => x.RentalId, x => x.Number, ct),
+                EntityTypes.RentalReturn => await db.Set<RentalReturn>().AsNoTracking().Where(x => ids.Contains(x.RentalReturnId))
+                    .ToDictionaryAsync(x => x.RentalReturnId, x => x.Number, ct),
                 _ => null,
             };
             if (map is not null) result[group.Key] = map;

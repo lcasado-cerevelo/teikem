@@ -7,12 +7,14 @@ using Teikem.Infrastructure.Persistence;
 namespace Teikem.Infrastructure.Wms;
 
 /// <summary>
-/// Lote 6 (P0) — consultas con bloqueo del inventario y del almacén. Es el ÚNICO lugar del lote con SQL crudo (17 sentencias)
+/// Lote 6 (P0) — consultas con bloqueo del inventario y del almacén. Es el ÚNICO lugar del lote con SQL crudo (18 sentencias; la 18
+/// es la renta, Lote 27)
 /// y cada una lleva 'TenantId =' explícito (RawSqlConfinementTests lo verifica): el SQL crudo no pasa por el filtro global.
 ///
 /// ORDEN DE BLOQUEO ÚNICO del lote (evita interbloqueos entre recibir, completar tareas, contar, recolectar, cruzar y comprar):
 ///   1. Encabezado del documento, en este orden:
-///      PickBatch &lt; CrossDockPlan &lt; CycleCount &lt; ReceiptHeader &lt; Asn &lt; PurchaseOrder &lt; Product &lt; Warehouse &lt; WarehouseDock.
+///      PickBatch &lt; CrossDockPlan &lt; CycleCount &lt; ReceiptHeader &lt; Asn &lt; PurchaseOrder &lt; Rental &lt; Product &lt; Warehouse &lt; WarehouseDock.
+///      (Lote 27: la renta va antes del almacén, que el despacho bloquea para crear a demanda la posición EN-RENTA.)
 ///   2. WarehouseTask.
 ///   3. StockBalance, por clave ordenada (ProductId, WarehouseId, BinId, LotId): upsert con UPDLOCK + HOLDLOCK y bloqueo de fila.
 ///      Los rangos por producto, almacén o posición (desactivar) toman HOLDLOCK: bloquean también las filas por nacer.
@@ -203,6 +205,19 @@ public static class InventoryQueries
                 () => new NotFoundException("Orden de compra", null, true), ct);
         }
         return await LoadTrackedAsync(db, db.PurchaseOrders.Where(x => x.PurchaseOrderId == purchaseOrderId), () => new NotFoundException("Orden de compra", null, true), ct);
+    }
+
+    /// <summary>(18, Lote 27) Renta con UPDLOCK, tracked. 404 'Renta no encontrada.'</summary>
+    public static async Task<Rental> LockRentalAsync(this TeikemDbContext db, int rentalId, CancellationToken ct)
+    {
+        if (db.Database.IsRelational())
+        {
+            RequireTransaction(db, nameof(LockRentalAsync));
+            var tenantId = db.CurrentTenantId;
+            await RequireLockedAsync(db.Database.SqlQuery<int>($"SELECT RentalId AS Value FROM dbo.Rental WITH (UPDLOCK, ROWLOCK) WHERE RentalId = {rentalId} AND TenantId = {tenantId}"),
+                () => new NotFoundException("Renta", null, true), ct);
+        }
+        return await LoadTrackedAsync(db, db.Rentals.Where(x => x.RentalId == rentalId), () => new NotFoundException("Renta", null, true), ct);
     }
 
     /// <summary>(12) Producto con UPDLOCK, tracked. 404 'Producto no encontrado.'</summary>

@@ -178,4 +178,21 @@ public class OwnedEntityResolverCoverageTests
         Assert.Contains("WarehouseTaskStatusEffect", effects);
         Assert.Contains("DockAppointmentStatusEffect", effects);
     }
+
+    [Fact]
+    public void Rental_services_effect_and_resolvers_resolve_from_the_container()
+    {
+        // Lote 27 (Rentas R1): servicio, posición EN-RENTA, efecto de estatus y un resolver real (no cerrado) por cada entidad de
+        // rentas con permiso de dueño (RENTAL, RENTAL_RETURN, RENTAL_PROCESS).
+        using var sp = BuildContainer();
+        using var scope = sp.CreateScope();
+        var p = scope.ServiceProvider;
+        Assert.NotNull(p.GetRequiredService<RentalService>());
+        Assert.NotNull(p.GetRequiredService<RentalBinResolver>());
+        Assert.Contains("RentalStatusEffect", p.GetServices<IStatusTransitionEffect>().Select(e => e.GetType().Name));
+        var resolvers = p.GetServices<IOwnedEntityResolver>().ToDictionary(r => r.EntityTypeCode, r => r.GetType().Name);
+        Assert.Equal("RentalOwnedEntityResolver", resolvers[EntityTypes.Rental]);
+        Assert.Equal("RentalReturnOwnedEntityResolver", resolvers[EntityTypes.RentalReturn]);
+        Assert.Equal("RentalProcessOwnedEntityResolver", resolvers[EntityTypes.RentalProcess]);
+    }
 }

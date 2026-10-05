@@ -246,7 +246,7 @@ public class TenantIsolationModelTests
     // ================================================================ Lote 6 — Inventario y almacén
 
     [Fact]
-    public void Wms_entities_with_TenantId_have_the_filter_and_exactly_eleven_children_lack_it()
+    public void Wms_entities_with_TenantId_have_the_filter_and_exactly_fifteen_children_lack_it()
     {
         using var db = CreateSqlServerModelContext();
         var wms = DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms").ToList();
@@ -254,7 +254,7 @@ public class TenantIsolationModelTests
         Assert.Equal(new[]
         {
             "Asn", "CrossDockPlan", "CycleCount", "DockAppointment", "InventoryDiscrepancy", "InventoryTransaction", "PickBatch", "Product", "ProductCategory", "PurchaseOrder",
-            "PurchaseOrderShortageResolution", "ReceiptHeader", "StockBalance", "Supplier", "Warehouse", "WarehouseTask",
+            "PurchaseOrderShortageResolution", "ReceiptHeader", "Rental", "RentalProcess", "RentalReturn", "StockBalance", "Supplier", "Warehouse", "WarehouseTask",   // Lote 27: Rental, RentalReturn, RentalProcess
         }, withTenant);
         Assert.All(wms.Where(e => e.FindProperty("TenantId") is not null), e => Assert.NotNull(e.GetQueryFilter()));
 
@@ -262,6 +262,7 @@ public class TenantIsolationModelTests
         Assert.Equal(new[]
         {
             "AsnLine", "CrossDockAllocation", "CycleCountLine", "InventoryLot", "InventorySerial", "PickBatchLine", "PurchaseOrderLine", "ReceiptLine",
+            "RentalExtension", "RentalLine", "RentalLineRate", "RentalReturnLine",   // Lote 27: hijas de la renta y de la devolución (por su encabezado filtrado)
             "WarehouseBin", "WarehouseDock", "WarehouseZone",
         }, withoutTenant);
     }
@@ -323,7 +324,7 @@ public class TenantIsolationModelTests
         using var db = CreateSqlServerModelContext();
         foreach (var e in DomainEntities(db).Where(e => e.ClrType.Namespace == "Teikem.Domain.Wms"))
             Assert.Equal(e.ClrType == typeof(ReceiptHeader) ? "ReceiptHeader" : e.ClrType.Name, e.GetTableName());
-        Assert.Equal(27, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 14: + InventoryDiscrepancy
+        Assert.Equal(34, DomainEntities(db).Count(e => e.ClrType.Namespace == "Teikem.Domain.Wms"));   // Lote 14: + InventoryDiscrepancy; Lote 27: + 7 de rentas
 
         string Type<T>(string prop) => db.Model.FindEntityType(typeof(T))!.FindProperty(prop)!.GetColumnType();
         foreach (var (qty, type) in new[]

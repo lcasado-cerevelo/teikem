@@ -12,7 +12,7 @@ public sealed record PermissionDef(string Code, string Category, string LabelEs,
 /// inventory.manage, inventory.adjust y warehouse.manage (Lote 6, categoría WAREHOUSE) y devices.manage (Lote 8A, categoría
 /// SECURITY) y warehouse.count.capture (Lote 8A, categoría WAREHOUSE: contar a ciegas sin reconciliar) y los 5 del Pulso del día
 /// (Lote F8a, categoría PULSE: pulse.indicators, pulse.charts, pulse.warehouse, pulse.activity, pulse.organize_company) y
-/// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos.
+/// pulse.attention (Lote 14, "Necesita tu atención"): 66 códigos. Lote 27 (Rentas R1): rental.extend y rental.return → 68.
 /// Convención: recurso.acción.
 /// </summary>
 public static class PermissionCatalog
@@ -76,6 +76,10 @@ public static class PermissionCatalog
     public const string RentalManage = "rental.manage";
     public const string RentalMaintenance = "rental.maintenance";
     public const string RentalBilling = "rental.billing";
+    /// <summary>Lote 27 (Rentas, D4): extender la fecha de recogido de una renta (bitácora, sin aprobación de un segundo usuario).</summary>
+    public const string RentalExtend = "rental.extend";
+    /// <summary>Lote 27 (Rentas): registrar la devolución de los equipos rentados (bloque R2).</summary>
+    public const string RentalReturn = "rental.return";
     public const string PurchasingView = "purchasing.view";
     public const string PurchasingManage = "purchasing.manage";
     public const string PurchasingReceive = "purchasing.receive";
@@ -197,6 +201,9 @@ public static class PermissionCatalog
         new(PulseOrganizeCompany, "PULSE", "Organizar el Pulso de la compañía", "Organize the company Pulse"),
         // Lote 14 — "Necesita tu atención" (D6)
         new(PulseAttention, "PULSE", "Ver la sección Necesita tu atención del Pulso", "See the Needs your attention section"),
+        // Lote 27 — Rentas (R1)
+        new(RentalExtend, "RENTAL", "Extender rentas", "Extend rentals"),
+        new(RentalReturn, "RENTAL", "Registrar devoluciones de renta", "Register rental returns"),
     };
 
     /// <summary>
@@ -274,6 +281,10 @@ public static class PermissionCatalog
         [EntityTypes.Supplier] = PurchasingView,
         // Lote 14: descuadre Kárdex ↔ saldo (lo ve quien ve inventario, D5); sin escritura de dueño (resolver cerrado).
         [EntityTypes.InventoryDiscrepancy] = InventoryView,
+        // Lote 27 (Rentas): renta, devolución de renta y proceso del equipo devuelto con rental.view.
+        [EntityTypes.Rental] = RentalView,
+        [EntityTypes.RentalReturn] = RentalView,
+        [EntityTypes.RentalProcess] = RentalView,
     };
 
     /// <summary>
@@ -341,6 +352,10 @@ public static class PermissionCatalog
         [EntityTypes.CrossDockPlan] = WarehouseCrossdock,
         [EntityTypes.PurchaseOrder] = PurchasingManage,
         [EntityTypes.Supplier] = PurchasingManage,
+        // Lote 27 (Rentas): la renta con rental.manage, la devolución con rental.return y el proceso con rental.maintenance.
+        [EntityTypes.Rental] = RentalManage,
+        [EntityTypes.RentalReturn] = RentalReturn,
+        [EntityTypes.RentalProcess] = RentalMaintenance,
     };
 
     /// <summary>Plantillas de rol de sistema (TenantId NULL) y sus permisos por defecto — clonables al aprovisionar.</summary>
@@ -360,7 +375,8 @@ public static class PermissionCatalog
             // rol antes de llegar al servicio, y no vería "Actividad reciente" en su Pulso pese a tener pulse.activity.
             // El filtro por fuente de datos (§2.2) y el de módulo del servicio lo siguen acotando a WAREHOUSE.
             AnalyticsView, PulseWarehouse, PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
-            PulseAttention },   // Lote 14 (D6)
+            PulseAttention,   // Lote 14 (D6)
+            RentalExtend, RentalReturn },   // Lote 27 (Rentas R1)
         ["Driver"] = new[] { OrdersView, CodCollect },
         ["ReadOnly"] = new[] { OrdersView, CodView, AnalyticsView, ClientsRead, LocationsRead, ContractsRead, FleetView, TripsView, InventoryView,
             PulseIndicators, PulseCharts, PulseActivity,   // Lote F8a
