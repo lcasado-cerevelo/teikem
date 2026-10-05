@@ -19,7 +19,7 @@
 //   conserva al cambiar de página o de filtro dentro del almacén), el aviso acumulado "N posiciones con la hoja
 //   desactualizada o sin imprimir" (`staleCount` con los filtros de la tabla salvo "Hoja") con "Imprimir las
 //   desactualizadas", y "Hojas de posición" junto a "Códigos de barras" (modal: filtro actual, marcadas o desactualizadas).
-// - Lote F16: "Etiquetas de posición" junto a "Hojas de posición" (BinLabels.tsx / binLabels.ts): una etiqueta por posición
+// - Lote F16: "Etiquetas de posición" junto a "Hojas de posición" (BinLabelsPanel.tsx / binLabels.ts): una etiqueta por posición
 //   (4×2, 4×4 o 4×6 pulgadas, una página del PDF cada una) del filtro actual o de las marcadas; no marca nada (reimprimir =
 //   volver a generarlas).
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -42,9 +42,9 @@ import {
 } from '../../kernel/ui'
 import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDto, type WarehouseZoneDto } from './api'
 import { BinBarcodeReportButton } from './BarcodeReportButtons'
-import { BinLabelsButton, BinLabelsModal } from './BinLabels'
+import { BinLabelsButton, BinLabelsModal } from './BinLabelsPanel'
 import type { BinLabelsScope } from './binLabels'
-import { BinSheetCell, BinSheetsModal, StaleSheetsBar } from './BinSheets'
+import { BinSheetCell, BinSheetsModal, StaleSheetsBar } from './BinSheetsPanel'
 import { BIN_SHEETS_PERMISSION, SHEET_STATUSES, sheetStatusOf, sheetStatusText, withoutSheetStatus, type BinSheetsScope } from './binSheets'
 import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal } from './BinModal'
