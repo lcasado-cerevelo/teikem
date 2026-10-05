@@ -14,3 +14,5 @@ TestResults/
 appsettings.*.local.json
 .env
 .obsidian/
+app-almacen/modules/datawedge/android/build
+web-app/playwright.local-chrome.config.ts
