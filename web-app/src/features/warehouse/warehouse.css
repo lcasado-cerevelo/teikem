@@ -424,7 +424,3 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 
 /* Lote F14 — "Códigos de barras" con su selector de columnas (Automático / 2 columnas) pegado al botón; envuelve si no cabe
    (360 px). El selector no usa el shorthand `background` (conserva el chevron del kit a la izquierda). */
-.bc-report{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;max-width:100%;min-width:0}
-.bc-report .bc-cols{border:1px solid var(--line);background-color:var(--panel);color:var(--text);border-radius:9px;padding-top:7px;padding-bottom:7px;padding-right:10px;font-size:13px;font-weight:600;min-width:0;max-width:160px}
-.bc-report .btn.sm + .bc-cols{padding-top:4px;padding-bottom:4px;font-size:12px;border-radius:8px}
-.bc-report .bc-cols:focus-visible{outline:2px solid var(--flow);outline-offset:2px}

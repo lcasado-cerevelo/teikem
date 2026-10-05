@@ -165,6 +165,15 @@ public sealed class ProductService(TeikemDbContext db, ITenantContext tenant, IL
                                      && (stock.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) < p.MinQty);
         }
 
+        if (q.Unavailable)
+        {
+            // 2026-10-05 (tableta 'No disponibles'): activos cuyo disponible (en mano − reservado de todas las posiciones, o de los
+            // almacenes indicados; sin saldo = 0) no es mayor que cero. Es el complemento de la columna "Disponible" de la tabla.
+            var stockU = StockIn(warehouseIds);
+            query = query.Where(p => p.IsActive
+                                     && (stockU.Where(b => b.ProductId == p.ProductId).Sum(b => (decimal?)(b.QtyOnHand - b.QtyReserved)) ?? 0m) <= 0m);
+        }
+
         var total = await query.CountAsync(ct);
         IOrderedQueryable<Product> ordered;
         if (q.SelectorOrder)

@@ -15186,6 +15186,14 @@
               "type": "boolean",
               "default": false
             }
+          },
+          {
+            "name": "unavailable",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {

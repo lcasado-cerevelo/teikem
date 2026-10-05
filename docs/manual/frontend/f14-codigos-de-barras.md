@@ -21,9 +21,9 @@ permiso el botón no se ve. Los reportes se arman en el navegador (no hay endpoi
 
 1. Filtre la pantalla como siempre (en Productos: Almacén, SKU, Nombre, Categoría, Marca o un indicador del río; en Posiciones:
    Posición, Zona, Tipo, Producto, Estatus o un recuadro de zona).
-2. Junto a **Códigos de barras** elija las columnas: **Automático** (por defecto) o **2 columnas** (códigos más anchos, más fáciles de
-   leer, pero más páginas).
-3. Pulse **Códigos de barras**. El botón dice **Generando…** mientras se arma y luego se descarga el PDF, por ejemplo
+2. Pulse **Códigos de barras**: es un **menú** (desde 2026-10-05; ya no hay un selector aparte al lado) con dos opciones, **Automático** y
+   **2 columnas** (códigos más anchos, más fáciles de leer, pero más páginas). Al elegir una se genera el PDF; igual en Productos y en Posiciones.
+3. El botón dice **Generando…** mientras se arma y luego se descarga el PDF, por ejemplo
    `codigos-de-barras-de-productos-advance-logistics-2026-10-03.pdf` o `codigos-de-barras-de-posiciones-advance-logistics-2026-10-03.pdf`.
 
 ![Posiciones con el botón Códigos de barras](img/f14-ubicaciones-boton.png)
@@ -89,4 +89,4 @@ reducir la hoja las barras quedan más finas que el mínimo y el lector puede no
   Por eso el reporte de códigos (que no tiene cantidades) sale igual.
 - **¿Por qué R1 y R01 salen juntos?** Porque el primer número es el mismo (1). Es a propósito: el dueño pidió tratarlos como el mismo
   grupo.
-- **Móvil (360 px):** el botón y el selector de columnas caben (envuelven si hace falta) y el PDF se descarga igual.
+- **Móvil (360 px):** el botón y su menú caben y el PDF se descarga igual.

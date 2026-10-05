@@ -101,7 +101,7 @@ function KpiNode({
 function InventoryKpis({ kpi, onToggle }: { kpi: ProductKpi | null; onToggle: (k: ProductKpi) => void }) {
   const t = useT()
   const lang = useLang()
-  const { activeSkus, totalUnits, belowMin, serial, serialMissing } = useProductInventoryKpis()
+  const { activeSkus, totalUnits, belowMin, unavailable, serial, serialMissing } = useProductInventoryKpis()
   // separador de miles del idioma de la interfaz (367.329 en español), igual que la tabla y los reportes
   const show = (n: number | null | undefined, loading: boolean, failed: boolean) => {
     if (n != null) return formatNumber(n, lang)
@@ -144,6 +144,16 @@ function InventoryKpis({ kpi, onToggle }: { kpi: ProductKpi | null; onToggle: (k
           active={kpi === 'low'}
           hint={hint('low')}
           onToggle={() => onToggle('low')}
+        />
+        <div className="pipe" aria-hidden="true" />
+        <KpiNode
+          tone="flow"
+          icon={<IconBox />}
+          label={t('warehouse.products.kpis.unavailable')}
+          value={show(unavailable.data?.total, unavailable.isLoading, unavailable.isError)}
+          active={kpi === 'unavailable'}
+          hint={`${hint('unavailable')} ${t('warehouse.products.kpis.unavailableNote')}`}
+          onToggle={() => onToggle('unavailable')}
         />
         <div className="pipe" aria-hidden="true" />
         <KpiNode

@@ -4,39 +4,31 @@
 // (`ReportButton`: "Generando…" y deshabilitado mientras corre; error → toast) y mismo permiso que las pantallas que los
 // muestran (`inventory.view`). Lo que sale es EXACTAMENTE lo filtrado: la pantalla pasa su estado de filtros o su
 // consulta del listado; los "Filtros aplicados" de posiciones se leen de la barra de la pantalla (`useAppliedFilters`).
-// Al lado, un selector pequeño "Automático / 2 columnas" (el kit no tiene un patrón de opciones para botones de reporte):
-// automático = rejilla de 3 columnas si todos los códigos caben, si no 2 o 1; "2 columnas" = códigos más anchos.
+// 2026-10-05: el botón es un MENÚ (`ReportMenuButton`) con "Automático" y "2 columnas"; al elegir una opción se genera el PDF (antes había
+// un selector aparte al lado). Automático = rejilla de 3 columnas si todos los códigos caben, si no 2 o 1; "2 columnas" = códigos más anchos.
 //   <ProductBarcodeReportButton filters={filters} />
 //   <BinBarcodeReportButton warehousePublicId={id} warehouse={{ code, name }} zones={zones} query={impossible ? null : query} />
-import { useContext, useId, useState } from 'react'
+import { useContext } from 'react'
 import { SessionContext } from '../../app/session'
 import { Can } from '../../kernel/access'
 import { useLang, useT } from '../../kernel/i18n'
-import { useAppliedFilters } from '../../kernel/ui'
+import { IconDoc, ReportMenuButton, useAppliedFilters, type ReportMenuItem } from '../../kernel/ui'
 import type { BarcodeColumnsOption } from '../../kernel/ui/barcodeReportPdf'
 import type { ReportFilter } from '../../kernel/ui/reportPdf'
 import type { WarehouseZoneDto } from './api'
 import { generateBinBarcodeReport, generateProductBarcodeReport } from './barcodeReports'
-import { ReportButton } from './InventoryReportButtons'
 import type { BinListQuery } from './locations'
 import type { ProductFilterState } from './productFilters'
 import { useProductReportContext } from './useProductReportContext'
 
-/** Selector de columnas junto al botón (etiqueta solo para lectores de pantalla; el título la muestra al pasar el mouse). */
-function ColumnsSelect({ value, onChange }: { value: BarcodeColumnsOption; onChange: (v: BarcodeColumnsOption) => void }) {
+/** Opciones del menú del botón (2026-10-05, Luis): "Códigos de barras" es un menú; al elegir una opción se genera el PDF. Reemplaza el
+ *  selector "Automático / 2 columnas" que iba al lado. */
+function useColumnItems(run: (columns: BarcodeColumnsOption) => Promise<void>): ReportMenuItem[] {
   const t = useT()
-  const id = useId()
-  return (
-    <>
-      <label htmlFor={id} className="sr-only">
-        {t('warehouse.barcodes.columns')}
-      </label>
-      <select id={id} className="bc-cols" title={t('warehouse.barcodes.columns')} value={String(value)} onChange={(e) => onChange(e.target.value === '2' ? 2 : 'auto')}>
-        <option value="auto">{t('warehouse.barcodes.columnsAuto')}</option>
-        <option value="2">{t('warehouse.barcodes.columnsTwo')}</option>
-      </select>
-    </>
-  )
+  return [
+    { key: 'auto', label: t('warehouse.barcodes.columnsAuto'), hint: t('warehouse.barcodes.columnsAutoHint'), run: () => run('auto') },
+    { key: '2', label: t('warehouse.barcodes.columnsTwo'), hint: t('warehouse.barcodes.columnsTwoHint'), run: () => run(2) },
+  ]
 }
 
 /** Permiso de los reportes de códigos: el de las pantallas donde están (y el de sus otros reportes y Exportar). */
@@ -51,18 +43,19 @@ export interface ProductBarcodeReportButtonProps {
 export function ProductBarcodeReportButton({ filters, className }: ProductBarcodeReportButtonProps) {
   const t = useT()
   const ctx = useProductReportContext(filters)
-  const [columns, setColumns] = useState<BarcodeColumnsOption>('auto')
+  const items = useColumnItems((columns) => generateProductBarcodeReport(ctx, columns))
   return (
     <Can perm={BARCODE_REPORT_PERMISSION}>
-      <span className="bc-report">
-        <ReportButton
-          className={className}
-          label={t('warehouse.barcodes.button')}
-          hint={t('warehouse.barcodes.productsHint')}
-          run={() => generateProductBarcodeReport(ctx, columns)}
-        />
-        <ColumnsSelect value={columns} onChange={setColumns} />
-      </span>
+      <ReportMenuButton
+        className={className}
+        label={t('warehouse.barcodes.button')}
+        hint={t('warehouse.barcodes.productsHint')}
+        icon={<IconDoc />}
+        items={items}
+        errorMessage={t('warehouse.products.reports.error')}
+        workingLabel={t('warehouse.products.reports.working')}
+        menuLabel={t('warehouse.barcodes.columns')}
+      />
     </Can>
   )
 }
@@ -85,34 +78,35 @@ export function BinBarcodeReportButton({ warehousePublicId, warehouse, zones, qu
   const lang = useLang()
   const me = useContext(SessionContext)?.me
   const appliedFilters = useAppliedFilters()
-  const [columns, setColumns] = useState<BarcodeColumnsOption>('auto')
+  const items = useColumnItems((columns) =>
+    generateBinBarcodeReport(
+      warehousePublicId,
+      query,
+      {
+        t,
+        lang,
+        company: me?.tenantName,
+        user: me?.fullName || me?.email,
+        // la barra de la pantalla en el momento del clic (mismo texto que la línea de filtros de Exportar)
+        filters: [...(extraFilters ?? []), ...appliedFilters()],
+        warehouse,
+        zones,
+      },
+      columns,
+    ),
+  )
   return (
     <Can perm={BARCODE_REPORT_PERMISSION}>
-      <span className="bc-report">
-        <ReportButton
-          className={className}
-          label={t('warehouse.barcodes.button')}
-          hint={t('warehouse.barcodes.binsHint')}
-          run={() =>
-            generateBinBarcodeReport(
-              warehousePublicId,
-              query,
-              {
-                t,
-                lang,
-                company: me?.tenantName,
-                user: me?.fullName || me?.email,
-                // la barra de la pantalla en el momento del clic (mismo texto que la línea de filtros de Exportar)
-                filters: [...(extraFilters ?? []), ...appliedFilters()],
-                warehouse,
-                zones,
-              },
-              columns,
-            )
-          }
-        />
-        <ColumnsSelect value={columns} onChange={setColumns} />
-      </span>
+      <ReportMenuButton
+        className={className}
+        label={t('warehouse.barcodes.button')}
+        hint={t('warehouse.barcodes.binsHint')}
+        icon={<IconDoc />}
+        items={items}
+        errorMessage={t('warehouse.products.reports.error')}
+        workingLabel={t('warehouse.products.reports.working')}
+        menuLabel={t('warehouse.barcodes.columns')}
+      />
     </Can>
   )
 }

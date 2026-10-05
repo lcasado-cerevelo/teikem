@@ -394,6 +394,7 @@ export function useProducts(query: GetQuery<'/api/v1/products'> = {}, options?: 
  * - `activeSkus`: `GET /products?activeOnly=true&take=1` → `total`.
  * - `totalUnits`: `GET /inventory/balances?includeZero=false&take=1` → `totalOnHand` (suma de todo, no solo la página).
  * - `belowMin`: `GET /products?belowMin=true&take=1` → `total` (activo, con mínimo y disponible < mínimo).
+ * - `unavailable` (2026-10-05): `GET /products?unavailable=true&take=1` → `total` (activos con disponible = 0: sin existencia o con todo reservado).
  * - `serial`: `GET /products?serialOnly=true&activeOnly=true&take=1` → `total` (Lote 12: rastreo SERIAL o con series).
  * - `serialMissing`: `GET /products?serialMissing=true&take=1` → `total` (activos SERIAL con existencia mayor que sus series
  *   en stock: el KPI se pinta en naranja si es > 0).
@@ -403,9 +404,10 @@ export function useProductInventoryKpis(options?: WarehouseQueryOptions) {
   // solo productos activos: la cifra coincide con lo que muestra la tabla al tocar el KPI (activos con existencia en mano)
   const totalUnits = useInventoryBalances({ includeZero: false, activeProductsOnly: true, take: 1 }, options)
   const belowMin = useProducts({ belowMin: true, take: 1 }, options)
+  const unavailable = useProducts({ unavailable: true, take: 1 }, options)
   const serial = useProducts({ activeOnly: true, serialOnly: true, take: 1 }, options)
   const serialMissing = useProducts({ serialMissing: true, take: 1 }, options)
-  return { activeSkus, totalUnits, belowMin, serial, serialMissing }
+  return { activeSkus, totalUnits, belowMin, unavailable, serial, serialMissing }
 }
 
 /**

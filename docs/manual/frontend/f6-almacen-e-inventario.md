@@ -404,7 +404,7 @@ Series sigue en `/warehouse/products/:publicId` (se llega desde el modal con «V
 
 > **Captura pendiente:** el bloque «Añadir ajuste» abierto dentro del modal de producto.
 
-**Los indicadores (KPIs) son botones.** Arriba hay cuatro tarjetas: **SKUs activos**, **Unidades totales**, **Bajo mínimo** y
+**Los indicadores (KPIs) son botones.** Arriba hay cinco tarjetas: **SKUs activos**, **Unidades totales**, **Bajo mínimo**, **No disponibles** (desde 2026-10-05) y
 **Con número de serie**. Sus cifras son de todo el catálogo (no cambian al usar los filtros) y usan el separador de miles del
 idioma (367.329 en español). Cada tarjeta filtra la tabla al hacer clic; otro clic en la misma quita el filtro. El filtro
 elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o volver atrás con el navegador.
@@ -414,6 +414,7 @@ elegido queda en la dirección (`?kpi=`), así que se puede copiar el enlace o v
 | SKUs activos | Productos activos | Solo activos | `active` |
 | Unidades totales | Existencia en mano de todos los saldos **de productos activos** (los inactivos no suman) | Activos con existencia en mano mayor que cero (cuenta también la cuarentena y el cruce de muelle, y no resta lo reservado) | `available` |
 | Bajo mínimo | Productos activos con mínimo cuyo disponible es menor | Bajo mínimo | `low` |
+| No disponibles | Productos activos **sin unidades disponibles** (en mano menos reservado = 0): sin existencia o con todo reservado. Cuenta productos, no unidades | Activos con disponible = 0 | `unavailable` |
 | Con número de serie | Productos activos con rastreo por serie o con series registradas | Rastreo por serie o con series registradas (incluye los inactivos que las tengan) | `serial` |
 
 **Cuándo una tarjeta se pone naranja.** Solo cuando hay algo que atender: **Bajo mínimo** cuando su cifra es mayor que cero, y

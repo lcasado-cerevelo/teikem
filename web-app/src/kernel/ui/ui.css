@@ -88,6 +88,10 @@
 /* Exportar (ExportMenu): a la derecha del pie, antes de la paginación; el menú abre hacia arriba (el pie es lo último
    de la tabla) con el mismo aspecto que el menú de idioma (.langdd .menu de base.css) */
 .dt-export{position:relative;margin-left:auto;flex:none}
+.rm{position:relative;display:inline-block;max-width:100%}
+.rm-menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 40px -12px rgba(0,0,0,.5);padding:5px;min-width:190px;z-index:40}
+.rm-menu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;text-align:left;color:var(--text)}
+.rm-menu button:hover,.rm-menu button:focus-visible{background:var(--panel-2)}
 .dt-export-menu{position:absolute;right:0;bottom:calc(100% + 6px);background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 40px -12px rgba(0,0,0,.5);padding:5px;min-width:170px;z-index:40}
 .dt-export-menu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;border-radius:7px;padding:8px 10px;font-size:13px;font-weight:500;text-align:left;color:var(--text)}
 .dt-export-menu button:hover,.dt-export-menu button:focus-visible{background:var(--panel-2)}

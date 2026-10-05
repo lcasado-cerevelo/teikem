@@ -31,7 +31,8 @@ public sealed class ProductsController(ProductService products) : ControllerBase
     /// mayúsculas), serialOnly (rastreo SERIAL o con series registradas) y serialMissing (activos SERIAL con existencia mayor
     /// que sus series en stock: el KPI 'series por capturar' se lee con take=1 y total). onlyOnHand (ajuste del 2026-09-30,
     /// KPI 'Unidades totales') = solo productos con existencia en mano &gt; 0 en todas sus posiciones (o en los almacenes
-    /// indicados); se combina con activeOnly para 'activos con existencia'.
+    /// indicados); se combina con activeOnly para 'activos con existencia'. unavailable (2026-10-05, tableta 'No disponibles') =
+    /// activos con disponible = 0 (sin existencia o con todo reservado; se lee con take=1 y total).
     /// </summary>
     [HttpGet, RequirePermission(PermissionCatalog.InventoryView)]
     public Task<ProductPageDto> List([FromQuery] string? search, [FromQuery] int[]? categoryIds, [FromQuery] Guid? ownerClientPublicId,
@@ -39,10 +40,10 @@ public sealed class ProductsController(ProductService products) : ControllerBase
         [FromQuery] Guid[]? warehousePublicIds, [FromQuery] Guid[]? productPublicIds, [FromQuery] string? name, [FromQuery] string[]? brands,
         [FromQuery] int skip = 0, [FromQuery] int take = 100, [FromQuery] bool selectorOrder = false, [FromQuery] bool belowMin = false,
         [FromQuery] bool serialOnly = false, [FromQuery] bool serialMissing = false, [FromQuery] bool onlyOnHand = false,
-        CancellationToken ct = default)
+        [FromQuery] bool unavailable = false, CancellationToken ct = default)
         => products.ListAsync(new ProductListQuery(search, NullIfEmpty(categoryIds), ownerClientPublicId, ownOnly,
             activeOnly, warehousePublicId, onlyAvailable, skip, take, selectorOrder, belowMin, NullIfEmpty(warehousePublicIds),
-            NullIfEmpty(productPublicIds), name, NullIfEmpty(brands), serialOnly, serialMissing, onlyOnHand), InventoryScope.Any, ct);
+            NullIfEmpty(productPublicIds), name, NullIfEmpty(brands), serialOnly, serialMissing, onlyOnHand, unavailable), InventoryScope.Any, ct);
 
     /// <summary>
     /// Lote 12 — marcas distintas de los productos del tenant (para el filtro Marca), ordenadas y sin repetir sin distinguir

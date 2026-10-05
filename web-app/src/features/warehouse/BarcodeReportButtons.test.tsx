@@ -1,5 +1,5 @@
 // Lote F14 — botones "Códigos de barras": permiso (inventory.view), "Generando…" y deshabilitado mientras corre, toast si
-// falla, selector de columnas (Automático / 2 columnas) y lo que reciben los reportes (lo filtrado, agrupado, con los
+// falla, menú de columnas (Automático / 2 columnas, 2026-10-05) y lo que reciben los reportes (lo filtrado, agrupado, con los
 // "Filtros aplicados" de la barra de la pantalla). Sobre un fetch simulado; la descarga del PDF es un espía.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -81,16 +81,16 @@ beforeEach(() => {
 })
 
 describe('ProductBarcodeReportButton', () => {
-  it('sin inventory.view no se pinta (ni el selector de columnas)', () => {
+  it('sin inventory.view no se pinta', () => {
     wrap(<ProductBarcodeReportButton filters={EMPTY_PRODUCT_FILTERS} />, [])
     expect(screen.queryByRole('button', { name: 'Códigos de barras' })).toBeNull()
-    expect(screen.queryByLabelText('Columnas del reporte de códigos de barras')).toBeNull()
   })
 
   it('lee todo lo filtrado y arma el reporte agrupado por categoría (ruta), SKU en orden natural, "Sin categoría" al final', async () => {
     const user = userEvent.setup()
     wrap(<ProductBarcodeReportButton filters={{ ...EMPTY_PRODUCT_FILTERS, name: 'sku' }} />)
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Automático' }))
     await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     const read = mock.requests.find((u) => u.pathname === '/api/v1/products')!
     expect(read.searchParams.get('name')).toBe('sku')
@@ -104,13 +104,17 @@ describe('ProductBarcodeReportButton', () => {
     expect(spec.filters).toEqual([{ label: 'Nombre', value: 'contiene «sku»' }])
   })
 
-  it('"2 columnas" en el selector viaja al reporte', async () => {
+  it('el botón es un menú: sin elegir no se genera nada; "2 columnas" genera el PDF a 2 columnas y no hay selector aparte', async () => {
     const user = userEvent.setup()
     wrap(<ProductBarcodeReportButton filters={EMPTY_PRODUCT_FILTERS} />)
-    await user.selectOptions(screen.getByLabelText('Columnas del reporte de códigos de barras'), '2 columnas')
+    expect(screen.queryByRole('combobox')).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    expect(screen.getByRole('menu', { name: 'Columnas del reporte de códigos de barras' })).toBeInTheDocument()
+    expect(downloadBarcodeReportPdf).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('menuitem', { name: '2 columnas' }))
     await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     expect(lastSpec().columns).toBe(2)
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 
   it('"Generando…" y deshabilitado mientras corre; si falla, toast de error y el botón vuelve', async () => {
@@ -120,6 +124,7 @@ describe('ProductBarcodeReportButton', () => {
     vi.mocked(downloadBarcodeReportPdf).mockImplementation(() => new Promise<void>((_, reject) => (fail = reject)))
     wrap(<ProductBarcodeReportButton filters={EMPTY_PRODUCT_FILTERS} />)
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Automático' }))
     const busy = await screen.findByRole('button', { name: 'Generando…' })
     expect(busy).toBeDisabled()
     expect(busy).toHaveAttribute('aria-busy', 'true')
@@ -149,6 +154,7 @@ describe('BinBarcodeReportButton', () => {
       </FilterScope>,
     )
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Automático' }))
     await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     const read = mock.requests.find((u) => u.pathname.endsWith('/bins'))!
     expect(read.searchParams.get('search')).toBe('A')
@@ -171,6 +177,7 @@ describe('BinBarcodeReportButton', () => {
     const user = userEvent.setup()
     wrap(<BinBarcodeReportButton warehousePublicId={WH} warehouse={{ code: 'ALM-01' }} zones={zones} query={null} />)
     await user.click(screen.getByRole('button', { name: 'Códigos de barras' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Automático' }))
     await waitFor(() => expect(downloadBarcodeReportPdf).toHaveBeenCalledTimes(1))
     expect(mock.requests.some((u) => u.pathname.endsWith('/bins'))).toBe(false)
     expect(lastSpec().groups).toEqual([])

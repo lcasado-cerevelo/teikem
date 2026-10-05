@@ -14,6 +14,8 @@ export {
   IconXCircle,
 } from './actionIcons'
 export { BrandLockup, BrandMark } from './Brand'
+export { ReportMenuButton } from './ReportMenuButton'
+export type { ReportMenuButtonProps, ReportMenuItem } from './ReportMenuButton'
 export type { BrandLockupProps, BrandMarkProps } from './Brand'
 export { BRAND_SYMBOL_SRC, brandLockupSrc } from './brandAssets'
 export { ClientPicker, ClientPickerInput } from './ClientPicker'

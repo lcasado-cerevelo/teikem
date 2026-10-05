@@ -7,8 +7,8 @@ import type { GetQuery } from './api'
 import type { ProductFilterItem } from './pickers'
 
 /** KPI elegido en el río (filtra la tabla): SKU activos, Unidades totales, Bajo mínimo, Con número de serie. */
-export type ProductKpi = 'active' | 'available' | 'low' | 'serial'
-export const PRODUCT_KPIS: readonly ProductKpi[] = ['active', 'available', 'low', 'serial']
+export type ProductKpi = 'active' | 'available' | 'low' | 'unavailable' | 'serial'
+export const PRODUCT_KPIS: readonly ProductKpi[] = ['active', 'available', 'low', 'unavailable', 'serial']
 
 /** InternalCode del tipo de movimiento 'Ajuste' (catálogo InventoryTxnType, `InventoryTxnTypes.Adjustment` del dominio). */
 export const ADJUSTMENT_TXN_TYPE = 'ADJUSTMENT'
@@ -50,6 +50,9 @@ export function kpiQuery(kpi: ProductKpi | null): GetQuery<'/api/v1/products'> {
       return { activeOnly: true, onlyOnHand: true }
     case 'low':
       return { belowMin: true }
+    // 2026-10-05: activos con disponible = 0 (sin existencia o con todo reservado); la cifra y la tabla salen del mismo filtro
+    case 'unavailable':
+      return { activeOnly: true, unavailable: true }
     // igual que su cifra (activos con rastreo SERIAL o series): la tabla y el número coinciden
     case 'serial':
       return { activeOnly: true, serialOnly: true }

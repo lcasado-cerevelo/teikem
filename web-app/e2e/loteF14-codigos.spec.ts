@@ -138,8 +138,9 @@ function valuesInPdf(text: string, suffix: string): string[] {
 }
 
 async function downloadReport(page: Page, scope: Page | ReturnType<Page['locator']>): Promise<Download> {
-  const button = scope.getByRole('button', { name: 'Códigos de barras' })
-  const [download] = await Promise.all([page.waitForEvent('download'), button.click()])
+  // 2026-10-05: "Códigos de barras" es un menú; al elegir "Automático" se genera el PDF
+  await scope.getByRole('button', { name: 'Códigos de barras' }).click()
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Automático' }).click()])
   return download
 }
 
@@ -149,7 +150,6 @@ async function productsFlow(page: Page, request: APIRequestContext, s: Seed, sho
   await page.getByLabel('Nombre', { exact: true }).fill(`Etiqueta ${s.suffix}`)
   await expect(page.getByText(`${s.suffix}-10`).first()).toBeVisible()
   await expect(page.getByText(`${s.suffix}-1`, { exact: true }).first()).toBeVisible()
-  await expect(page.getByLabel('Columnas del reporte de códigos de barras')).toHaveValue('auto')
   if (shots) await shot(page, 'productos-boton')
   const download = await downloadReport(page, page)
   expect(download.suggestedFilename()).toMatch(/^codigos-de-barras-de-productos-advance-logistics-\d{4}-\d{2}-\d{2}\.pdf$/)

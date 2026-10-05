@@ -208,6 +208,7 @@ describe('ProductListScreen · Productos e inventario', () => {
     const products = mock.requests.filter((u) => u.pathname === '/api/v1/products').map((u) => u.search)
     expect(products).toContain('?activeOnly=true&take=1')
     expect(products).toContain('?belowMin=true&take=1')
+    expect(products).toContain('?unavailable=true&take=1')   // tableta "No disponibles" (2026-10-05)
     expect(products).toContain('?activeOnly=true&serialOnly=true&take=1')
     expect(products).toContain('?serialMissing=true&take=1')
     // ya no se recorre el catálogo para contar las series
@@ -254,6 +255,23 @@ describe('ProductListScreen · Productos e inventario', () => {
     await user.click(within(river).getByRole('button', { name: /^Con número de serie/ }))
     await waitFor(() => expect(lastListQuery().has('serialOnly')).toBe(false))
     expect(lastListQuery().has('activeOnly')).toBe(false)
+  })
+
+  it('tableta "No disponibles": entre Bajo mínimo y Con número de serie; al tocarla filtra la tabla con unavailable', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const river = await screen.findByRole('group', { name: 'Resumen del catálogo' })
+    const names = (await within(river).findAllByRole('button')).map((b) => (b.textContent ?? '').replace(/[\d,.…—]+.*$/, '').trim())
+    expect(names.indexOf('No disponibles')).toBe(names.indexOf('Bajo mínimo') + 1)
+    expect(names.indexOf('Con número de serie')).toBe(names.indexOf('No disponibles') + 1)
+    const tile = within(river).getByRole('button', { name: /^No disponibles/ })
+    expect(tile).toHaveAttribute('title', expect.stringContaining('sin existencia o con todo reservado'))
+    await user.click(tile)
+    await waitFor(() => expect(lastListQuery().get('unavailable')).toBe('true'))
+    expect(lastListQuery().get('activeOnly')).toBe('true')
+    expect(tile).toHaveAttribute('aria-pressed', 'true')
+    await user.click(tile)
+    await waitFor(() => expect(lastListQuery().has('unavailable')).toBe(false))
   })
 
   it('?kpi=low abre con Bajo mínimo elegido', async () => {

@@ -848,6 +848,32 @@ public sealed class ActivityRulesTests
     }
 
     [Fact]
+    public async Task Products_unavailable_filter_counts_active_products_with_zero_available()
+    {
+        // 2026-10-05, tableta 'No disponibles': activos con disponible (en mano − reservado) = 0: sin existencia o con todo reservado.
+        await using var f = await CreateAsync();
+        var w1 = await f.AddWarehouseAsync("W1");
+        var b1 = await f.AddBinAsync(await f.AddZoneAsync(w1, "PCK", ZoneTypes.Picking), "P-01");
+        var ok = await f.AddProductAsync("OK");            // 10 disponibles
+        var none = await f.AddProductAsync("NONE");        // sin saldo
+        var held = await f.AddProductAsync("HELD");        // 4 en mano y 4 reservadas
+        var part = await f.AddProductAsync("PART");        // 4 en mano y 1 reservada: aún hay 3
+        var off = await f.AddProductAsync("OFF", isActive: false);   // inactivo sin saldo: no cuenta
+        InventoryPosting In(int productId, decimal qty)
+            => new(InventoryTxnTypes.Receipt, productId, qty, ToWarehouseId: b1.WarehouseId, ToBinId: b1.WarehouseBinId);
+        await f.PostAsync(In(ok.ProductId, 10m), In(held.ProductId, 4m), In(part.ProductId, 4m));
+        await f.ReserveAsync(new StockReservation(held.ProductId, w1.WarehouseId, b1.WarehouseBinId, null, 4m));
+        await f.ReserveAsync(new StockReservation(part.ProductId, w1.WarehouseId, b1.WarehouseBinId, null, 1m));
+
+        var products = f.Get<ProductService>();
+        var list = await products.ListAsync(new ProductListQuery(Unavailable: true), InventoryScope.Any, default);
+        Assert.Equal(new[] { "HELD", "NONE" }, list.Items.Select(i => i.Sku).ToArray());
+        Assert.DoesNotContain(list.Items, i => i.Sku == off.Sku);
+        var count = await products.ListAsync(new ProductListQuery(Unavailable: true, Take: 1), InventoryScope.Any, default);
+        Assert.Equal(2, count.Total);
+    }
+
+    [Fact]
     public async Task Products_below_min_filter_matches_is_below_min()
     {
         await using var f = await CreateAsync();
