@@ -57,10 +57,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
    Lote 21 (sección 6, Conteo cíclico): **conteo por producto**, captura original y **corrección del supervisor** con evidencia,
    **vista previa** de la reconciliación, lista **Por revisar**, **cierre en bloque** de los conteos que cuadran y **posiciones
    provisionales** creadas desde el conteo (servidor; la web y la app lo usan en sus propios lotes).
-   Lote 23 (sección 1.5, Almacenes y ubicaciones): **hojas de posición** — el estado de la hoja pegada en el rack (nunca impresa,
-   desactualizada, al día, vacía) calculado del último cambio de la lista de productos de la posición (lo registra el inventario en
-   cada movimiento) y de la última impresión; filtro `sheetStatus` y contador `staleCount` en el listado de posiciones, consulta de
-   las hojas para imprimir y "marcar como impresas" (servidor; la hoja en PDF y la app, en lotes siguientes).
+   Informe **Productos por posición** (sección 1.5, Almacenes y ubicaciones; reemplaza a las hojas de posición del Lote 23): consulta
+   `GET .../bin-products` con los filtros del listado de posiciones, los productos con existencia de cada posición (SKU, nombre y código de
+   barras) para imprimir y escanear desde el papel; sin estado (servidor y web).
    Lote 11 (sección 1, Almacenes y ubicaciones): **cupo máximo** de la posición y su **estado de ocupación**
    (vacía, parcial, llena, ocupada sin cupo), ocupación calculada por zona, código de zona editable, listado de
    posiciones paginado con búsqueda por código, zona, pasillo, rack, nivel o posición, y el catálogo de **localidades
@@ -192,15 +191,14 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    (Productos e inventario) y **de posiciones** (Posiciones y la ficha del almacén): un código Code 128 por elemento con el SKU o el
    código exacto, en rejilla de 3/2/1 columnas, agrupados por categoría o por el primer número del código, con lo filtrado de la
    pantalla; sus avisos ("no cabe", omitidos, truncado) y cómo imprimirlos para que el lector los lea. Capturas `f14-*` y un PDF de ejemplo.
-11. [F15 — Hojas de posición](frontend/f15-hojas-de-posicion.md): en **Posiciones**, el estado de la hoja pegada en el rack por
-   posición (Sin hoja impresa, Desactualizada, Al día) con su última impresión, el filtro **Hoja**, las casillas para marcar posiciones,
-   el aviso acumulado "N posiciones con la hoja desactualizada o sin imprimir" con **Imprimir las desactualizadas**, y el PDF **Hojas de
-   posición** (una posición por hoja, hasta 10 productos con su código de barras, tamaño adaptable, "Hoja 2 de 2", "Sin productos") que al
-   terminar marca las hojas como impresas; mensajes y casos frecuentes. Capturas `f15-*`.
+11. [F15 — Productos por posición](frontend/f15-productos-por-posicion.md): en **Posiciones**, el filtro **Pasillo**, las casillas para marcar
+   posiciones y el botón **Productos por posición**: PDF con una posición por página y el código de barras de cada producto (hasta 10 por
+   página, tamaño adaptable, "Hoja 2 de 2", "Sin productos") para escanear desde el papel en un rack alto; la exportación de la tabla trae todo
+   lo filtrado; mensajes y casos frecuentes. Reemplaza a las hojas de posición. Capturas `f15-pdf-*`.
 12. [F16 — Etiquetas de posición](frontend/f16-etiquetas-de-posicion.md): en **Posiciones**, el botón **Etiquetas de posición**: una
    etiqueta por posición (código de barras Code 128 lo más grande posible, el código en letra grande y los datos de la ubicación) para
    impresoras de etiquetas de **4 × 2, 4 × 4 o 4 × 6 pulgadas** (una página del PDF del tamaño exacto por etiqueta, orientación Automática
-   o Girar 90°), del filtro actual o de las marcadas; sin estado (se reimprime cuando se quiera); diferencia con la hoja de posición;
+   o Girar 90°), del filtro actual o de las marcadas; sin estado (se reimprime cuando se quiera); diferencia con Productos por posición;
    mensajes y casos frecuentes. Capturas `f16-*`.
 
 ## Preguntas frecuentes
@@ -233,7 +231,4 @@ y qué hace "Cerrar las demás sesiones". La sección "Lote 19" recoge los mensa
 hexadecimales, tema inexistente, contraste y matiz), los de los logos (ranura, archivo, 413, 415, imagen dañada y cada motivo por el que un SVG se rechaza) y el 409 del
 feriado repetido, y las preguntas sobre cuándo se guardan los logos, qué variante se usa en cada tema y por qué la barra colapsada puede seguir mostrando el símbolo de Teikem. La sección "Lote F12" recoge los mensajes que se ven en la pantalla de revisión del conteo (reservado, conflicto al confirmar,
 conteo ya reconciliado, posición ya confirmada), los que solo se ven en pantalla y las preguntas sobre qué cierra "Cerrar los que
-cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Lote 23" recoge los mensajes de las hojas de posición (estado de
-hoja desconocido, más de 200 hojas por consulta, marcar sin posiciones o con más de 500, posición o almacén no encontrados) y las preguntas
-sobre qué desactualiza una hoja, por qué todo arranca "nunca impresa", para qué sirve `generatedAtUtc`, marcar dos veces, la posición vaciada
-que sale desactualizada, el permiso para marcar y por qué la hoja no lleva cantidades.
+cuadran", por qué una corrección no mueve inventario y la diferencia entre Varianza y Ajuste. La sección "Productos por posición" recoge los mensajes del informe (más de 200 posiciones por consulta, almacén no encontrado, los avisos del modal) y las preguntas sobre qué código lleva cada producto, cómo imprimir un pasillo, por qué el papel no se desactualiza y por qué Exportar trae todo lo filtrado.

@@ -6,7 +6,7 @@ reimprimir los labels de las posiciones, que me deje imprimir varios tamaños: 4
 con su barcode. En la pantalla de las posiciones, y que se filtre según el filtro de la misma pantalla."*
 
 **Dónde.** Almacén → **Posiciones** (`/warehouse/locations`), botón **Etiquetas de posición** en la cabecera de la tabla, junto a
-**Códigos de barras** y **Hojas de posición**.
+**Códigos de barras** y **Productos por posición**.
 
 **Quién puede.** Módulo **WMS_LOTSERIAL** y permiso **`inventory.view`**: el mismo de la pantalla y del reporte de códigos de barras de
 posiciones (F14). Sin el permiso el botón no se ve. No hay un permiso aparte para imprimir.
@@ -18,16 +18,16 @@ Es **genérico**: el código de la posición se imprime tal cual (no se supone n
 
 ![Posiciones filtradas y el botón Etiquetas de posición](img/f16-ubicaciones.png)
 
-## 1. Etiqueta de posición, hoja de posición y reporte de códigos: no son lo mismo
+## 1. Etiqueta de posición, productos por posición y reporte de códigos: no son lo mismo
 
-| | **Etiqueta de posición** (este capítulo) | **Hoja de posición** ([F15](f15-hojas-de-posicion.md)) | **Códigos de barras** ([F14](f14-codigos-de-barras.md)) |
+| | **Etiqueta de posición** (este capítulo) | **Productos por posición** ([F15](f15-productos-por-posicion.md)) | **Códigos de barras** ([F14](f14-codigos-de-barras.md)) |
 |---|---|---|---|
-| Qué es | Una etiqueta adhesiva por posición con su código | Una hoja carta por posición con la **lista de productos** que hay en ella | Una lista en hojas carta con un código por posición, para el conteo |
+| Qué es | Una etiqueta adhesiva por posición con su código | Una página carta por posición con la **lista de productos** que hay en ella | Una lista en hojas carta con un código por posición, para el conteo |
 | Papel | Rollo de etiquetas de 4 × 2, 4 × 4 o 4 × 6 pulgadas | Carta | Carta |
 | ¿Cambia con el contenido? | **No**: identifica la posición; vale mientras la posición exista | **Sí**: se desactualiza cuando entra o sale un producto | No |
-| ¿Tiene estado? | **No.** Imprimir no marca nada; se reimprime cuando se quiera | Sí: Sin hoja impresa / Desactualizada / Al día; al imprimir se marca | No |
+| ¿Tiene estado? | **No.** Imprimir no marca nada; se reimprime cuando se quiera | No: es un listado de lo que hay al generarlo | No |
 
-Por eso **imprimir etiquetas no cambia la columna Hoja** ni el aviso de hojas desactualizadas: son cosas distintas.
+Son cosas distintas: la etiqueta identifica la posición; el informe lista sus productos.
 
 ## 2. Elegir qué imprimir, tamaño y orientación
 
@@ -38,7 +38,7 @@ filtro actual**.
 
 - **Qué imprimir**
   - **Las posiciones del filtro actual (N)**: exactamente lo que muestra la tabla con **todos** sus filtros (Posición —el buscador—,
-    Zona o el recuadro de zona del río, Tipo, Producto, Estatus y Hoja), de todas las páginas, no solo la visible.
+    Zona o el recuadro de zona del río, Tipo, Producto, Estatus y Pasillo), de todas las páginas, no solo la visible.
   - **Las posiciones marcadas (N)**: las que marcó con la casilla **Elegir** (y **Seleccionar todas las de la página**), aunque estén en
     otras páginas o fuera del filtro actual. Deshabilitada sin marcas (*Para imprimir solo algunas, márquelas en la lista con sus casillas.*).
 - **Tamaño de la etiqueta** (con un dibujo de su forma):
@@ -70,7 +70,7 @@ Pulse **Generar PDF**:
    §4), el modal **se queda abierto** con la lista (*N salieron sin código de barras (solo con el código en texto):* y los avisos de
    siempre) y el botón **Listo**; el PDF ya se descargó igual.
 
-**Nada se marca**: no se llama a "marcar impresas" (eso es solo de las hojas de posición) y las marcas de las casillas se quedan, por si
+**Nada se marca**: no se llama a nada que no sea una lectura y las marcas de las casillas se quedan, por si
 quiere reimprimir. **Reimprimir** = volver a generar el PDF con el mismo filtro o las mismas marcas.
 
 ### Cómo imprimirlo
@@ -131,7 +131,7 @@ La pantalla nunca pide más de 200 posiciones por lectura (el máximo del listad
 - **La impresora saca la etiqueta de lado o cortada**: revise que el tamaño del driver sea el mismo que eligió y que imprima al 100 %;
   si sigue, genere con **Girar 90°**.
 - **¿La etiqueta queda "vieja" cuando cambian los productos?** No: la etiqueta solo identifica la posición. Lo que se desactualiza es la
-  **hoja de posición** (F15), que lista productos.
+  **Productos por posición** (F15), que lista productos.
 - **El lector no lee el código**: imprima al 100 % en una impresora de 203 o 300 dpi. Los códigos se validaron decodificando el PDF a
   300, 203 y 150 dpi (ver `docs/frontend/loteF16-decisiones.md`); a 150 dpi los códigos de más de ~23 caracteres no se leen (sus barras
   quedan de menos de 2 puntos de impresora); no se probó con un Zebra físico.

@@ -22,7 +22,7 @@ import {
 } from '../../kernel/ui/binLabelPdf'
 import type { WarehouseBinDto } from './api'
 import { naturalCompare } from './barcodeReports'
-import { sheetDetails } from './binSheets'
+import { binDetails } from './binProducts'
 import type { BinListQuery } from './locations'
 
 type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -59,7 +59,7 @@ export function binLabelsSources(scope: BinLabelsScope, query: BinListQuery | nu
 /** Datos de la etiqueta: almacén (código) y luego zona, pasillo, rack, nivel y posición (solo los que tienen valor). */
 export function labelDetails(bin: Pick<WarehouseBinDto, 'zoneCode' | 'aisle' | 'rack' | 'level' | 'position' | 'isActive'>, warehouseCode: string | null | undefined, t: Translate): BinSheetDetail[] {
   const wh = (warehouseCode ?? '').trim()
-  return [...(wh ? [{ label: t(`${S}.details.warehouse`), value: wh }] : []), ...sheetDetails(bin, t)]
+  return [...(wh ? [{ label: t(`${S}.details.warehouse`), value: wh }] : []), ...binDetails(bin, t)]
 }
 
 /** Una posición del listado → la etiqueta. */

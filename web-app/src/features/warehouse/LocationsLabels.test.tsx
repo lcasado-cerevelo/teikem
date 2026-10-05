@@ -1,7 +1,7 @@
-// Lote F16 — etiquetas de posición en Ubicaciones, sobre un API simulado: el botón (con inventory.view, junto a "Hojas de
-// posición"), el modal (qué imprimir, tamaño con su equivalente en cm, orientación), la impresión del filtro actual (con el
+// Lote F16 — etiquetas de posición en Ubicaciones, sobre un API simulado: el botón (con inventory.view, junto a "Productos
+// por posición"), el modal (qué imprimir, tamaño con su equivalente en cm, orientación), la impresión del filtro actual (con el
 // buscador de la tabla, lectura de a 200) y de las marcadas (binIds), el tamaño recordado, el tope de 500, los avisos de
-// las que salen sin código de barras y que NUNCA se llama a "marcar impresas" ni a las hojas.
+// las que salen sin código de barras y que NUNCA se llama a nada que no sea una lectura (GET).
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -37,10 +37,10 @@ vi.mock('../../kernel/ui/binLabelPdf', async (importOriginal) => {
 const WH = '11111111-1111-1111-1111-111111111111'
 const ZONES = [{ id: 1, code: 'A', name: 'Zona A', zoneTypeCode: 'STORAGE', isActive: true, binCount: 4, capacityQty: 0, qtyOnHand: 0, binsWithoutCapacity: 4 }]
 const initialBins = () => [
-  { id: 10, code: 'A-10', zoneId: 1, zoneCode: 'A', aisle: '01', rack: '02', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true, sheetStatus: 'EMPTY' },
-  { id: 11, code: 'A-2', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true, sheetStatus: 'EMPTY' },
-  { id: 12, code: 'B-01', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true, sheetStatus: 'EMPTY' },
-  { id: 13, code: 'A-1', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true, sheetStatus: 'EMPTY' },
+  { id: 10, code: 'A-10', zoneId: 1, zoneCode: 'A', aisle: '01', rack: '02', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true },
+  { id: 11, code: 'A-2', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true },
+  { id: 12, code: 'B-01', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true },
+  { id: 13, code: 'A-1', zoneId: 1, zoneCode: 'A', qtyOnHand: 0, productCount: 0, occupancy: 'EMPTY', isActive: true },
 ]
 
 function route(url: URL): unknown {
@@ -53,7 +53,7 @@ function route(url: URL): unknown {
     const items = mock.bins.filter((b) => (ids.length === 0 || ids.includes(b.id as number)) && String(b.code).toLowerCase().includes(search))
     const skip = Number(url.searchParams.get('skip') ?? 0)
     const take = Number(url.searchParams.get('take') ?? 100)
-    return { total: mock.total ?? items.length, skip, take, staleCount: 0, items: items.slice(skip, skip + take) }
+    return { total: mock.total ?? items.length, skip, take, items: items.slice(skip, skip + take) }
   }
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   return new Response(JSON.stringify({ title: 'Sin acceso', code: 'forbidden' }), { status: 403 })
@@ -74,9 +74,9 @@ function wrap(permissions = ['inventory.view']) {
   )
 }
 
-/** Lecturas del flujo de etiquetas (take=200; la tabla pide 25 y el aviso de hojas 1). */
+/** Lecturas del flujo de etiquetas (take=200; la tabla pide 25). */
 const labelReads = () => mock.calls.filter((c) => c.url.pathname === `/api/v1/warehouses/${WH}/bins` && c.url.searchParams.get('take') === '200')
-const sheetCalls = () => mock.calls.filter((c) => c.url.pathname.includes('bin-sheets') || c.method !== 'GET')
+const sheetCalls = () => mock.calls.filter((c) => c.url.pathname.includes('bin-products') || c.method !== 'GET')
 
 beforeAll(() => setLang('es'))
 beforeEach(() => {
@@ -92,7 +92,7 @@ describe('Ubicaciones · etiquetas de posición (Lote F16)', () => {
     const user = userEvent.setup()
     wrap()
     await screen.findByText('A-10')
-    const actions = screen.getByRole('button', { name: 'Hojas de posición' }).parentElement as HTMLElement
+    const actions = screen.getByRole('button', { name: 'Productos por posición' }).parentElement as HTMLElement
     await user.click(within(actions).getByRole('button', { name: 'Etiquetas de posición' }))
     const dialog = await screen.findByRole('dialog', { name: 'Etiquetas de posición' })
     expect(within(dialog).getByLabelText('Las posiciones del filtro actual (4)')).toBeChecked()
@@ -133,7 +133,7 @@ describe('Ubicaciones · etiquetas de posición (Lote F16)', () => {
       { label: 'Pasillo', value: '01' },
       { label: 'Rack', value: '02' },
     ])
-    // nada de "marcar impresas" ni de hojas: las etiquetas no tienen estado
+    // ni escrituras ni el informe de productos: las etiquetas no tienen estado
     expect(sheetCalls()).toEqual([])
     // el tamaño y la orientación quedan recordados para reimprimir
     await user.click(screen.getByRole('button', { name: 'Etiquetas de posición' }))

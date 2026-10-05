@@ -5,7 +5,7 @@
 // Escritorio: Ubicaciones (ALM-01) → filtro Posición = <SUF> → "Etiquetas de posición" → 4×2, 4×4 y 4×6 (y 4×2 girada):
 // cada PDF tiene UNA página por posición del filtro, del tamaño exacto de la etiqueta (/MediaBox 288×144, 288×288,
 // 288×432; girada = la misma con /Rotate 90), con el código de cada una en orden natural; volver a generarlas (reimprimir)
-// no llama a "marcar impresas" ni a las hojas y el estado de la hoja de las posiciones no cambia. Segundo caso: marcar una
+// solo lee el listado de posiciones (no escribe nada ni llama al informe de productos por posición). Segundo caso: marcar una
 // casilla e imprimir solo esa. Móvil (360 px): el modal sin scroll horizontal y un PDF 4×6.
 // Capturas para el manual: docs/manual/frontend/img/f16-<paso>.png. Con F16_PDF_DIR, guarda ahí los PDF (para pasarlos a
 // imagen y decodificar sus códigos fuera del repo).
@@ -121,15 +121,6 @@ async function seed(request: APIRequestContext, variant: 'D' | 'E' | 'M'): Promi
   return { suffix, warehousePublicId: wh, bins: [b01, b02, b10], headers }
 }
 
-/** Estado de la hoja de posición (F15) de una posición: las etiquetas no lo cambian. */
-async function sheetStatuses(request: APIRequestContext, s: Seed): Promise<string[]> {
-  const page = await ok<{ items: { code: string; sheetStatus: string }[] }>(
-    request.get(`${API_URL}/api/v1/warehouses/${s.warehousePublicId}/bins`, { headers: s.headers, params: { search: s.suffix } }),
-    'posiciones',
-  )
-  return page.items.map((b) => `${b.code}:${b.sheetStatus}`).sort()
-}
-
 /** Texto de todos los flujos del PDF (los descomprime). */
 function pdfText(bytes: Buffer): string {
   const raw = bytes.toString('latin1')
@@ -224,11 +215,10 @@ test.describe('Lote F16 — escritorio', () => {
     s = await seed(request, 'D')
   })
 
-  test('etiquetas del filtro actual: 4×2, 4×4 y 4×6 (una página por posición, del tamaño exacto), girada y reimpresa sin marcar nada', async ({ page, request }) => {
+  test('etiquetas del filtro actual: 4×2, 4×4 y 4×6 (una página por posición, del tamaño exacto), girada y reimpresa sin marcar nada', async ({ page }) => {
     await login(page)
     await openLocations(page, s)
     const codes = s.bins.map((b) => b.code)
-    const before = await sheetStatuses(request, s)
     await shot(page, 'ubicaciones')
 
     await page.getByRole('button', { name: 'Etiquetas de posición' }).click()
@@ -256,11 +246,10 @@ test.describe('Lote F16 — escritorio', () => {
       const again = await readPdf(await generate(page, '4x2'), `etiquetas-4x2-otra-vez-${s.suffix}`)
       expectLabels(again, '4x2', codes)
     })
-    // solo lecturas del listado de posiciones: nada de "marcar impresas" ni de hojas de posición
+    // solo lecturas del listado de posiciones: ninguna escritura ni el informe de productos por posición
     expect(calls.filter((c) => !c.startsWith('GET '))).toEqual([])
-    expect(calls.filter((c) => c.includes('bin-sheets'))).toEqual([])
+    expect(calls.filter((c) => c.includes('bin-products'))).toEqual([])
     expect(calls.filter((c) => c.endsWith(`/warehouses/${s.warehousePublicId}/bins`)).length).toBeGreaterThanOrEqual(5)
-    expect(await sheetStatuses(request, s)).toEqual(before)
   })
 
   test('marcadas: marcar una posición e imprimir solo su etiqueta', async ({ page }) => {

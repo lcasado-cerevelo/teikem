@@ -24,8 +24,6 @@ namespace Teikem.Infrastructure.Wms;
 ///   RebuildBalanceAsync (el saldo toma lo que da el Kárdex, sin escribir movimiento).
 /// - Lote 14 (P2, D14): al final de PostAsync anota los productos y el mayor movimiento en IInventoryChangeSink; la revisión en
 ///   segundo plano los recibe solo con el commit real de la transacción (InventoryChangeCommitInterceptor).
-/// - Lote 23: es también el ÚNICO que escribe WarehouseBin.SheetContentChangedAtUtc (hoja de posición desactualizada): cuando
-///   un producto entra a una posición (total en mano de 0 a &gt; 0) o sale de ella (a 0), en PostAsync y RebuildBalanceAsync.
 /// </summary>
 public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses,
     IInventoryChangeSink changes)
@@ -225,9 +223,6 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
             rows.Add(row);
         }
 
-        // 8b. Lote 23: hojas de posición cuyo conjunto de productos cambió (mismo SaveChanges y transacción).
-        await MarkSheetContentChangesAsync(touched, now, ct);
-
         // 9. Guardado con traducción de la última línea en SQL.
         await SaveAsync(ct);
 
@@ -362,8 +357,6 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
         balance.QtyOnHand = ledgerQty;
         var now = DateTime.UtcNow;
         balance.UpdatedAtUtc = now;
-        // Lote 23: corregir el saldo también puede meter o sacar el producto del conjunto de la posición.
-        await MarkSheetContentChangesAsync(new[] { (key, before, ledgerQty) }, now, ct);
         await SaveAsync(ct);
         return new BalanceRebuildResult(before, ledgerQty, reserved);
     }
@@ -477,47 +470,6 @@ public sealed class InventoryLedger(TeikemDbContext db, ITenantContext tenant, I
                 serial.CurrentBinId = null;
             }
         }
-    }
-
-    // ================================================================ hoja de posición (Lote 23)
-
-    /// <summary>
-    /// Lote 23 — fija WarehouseBin.SheetContentChangedAtUtc = now en las posiciones cuyo CONJUNTO de productos cambió con este
-    /// asiento: para un (posición, producto), el total en mano sumando TODOS sus lotes cruza el cero (BinSheetRules.ContentChanged).
-    /// - Se agrupan las claves tocadas por (posición, producto); si su suma no cruza el cero, nada (sin consulta).
-    /// - Solo para los candidatos: UNA consulta de los OTROS lotes del producto en la posición con existencia (no tocados por
-    ///   este asiento); si alguno tiene, el producto sigue (o ya estaba) en la posición y el conjunto no cambió.
-    /// - UNA carga (tracked) de las posiciones que cambiaron; el SaveChanges del llamador las guarda en la misma transacción.
-    /// Así un movimiento masivo (importación, conteo, transferencia de muchas líneas) hace a lo sumo dos consultas por asiento,
-    /// no una por línea. Los saldos a nivel almacén (sin posición) no tienen hoja.
-    /// </summary>
-    private async Task MarkSheetContentChangesAsync(IReadOnlyCollection<(BalanceKey Key, decimal Before, decimal After)> touched,
-        DateTime now, CancellationToken ct)
-    {
-        var candidates = touched.Where(t => t.Key.BinId.HasValue)
-            .GroupBy(t => (BinId: t.Key.BinId!.Value, t.Key.ProductId))
-            .Select(g => new { g.Key.BinId, g.Key.ProductId, Lots = g.Select(t => t.Key.LotId).ToHashSet(), Before = g.Sum(t => t.Before), After = g.Sum(t => t.After) })
-            .Where(g => BinSheetRules.ContentChanged(g.Before, g.After))
-            .ToList();
-        if (candidates.Count == 0) return;
-
-        var binIds = candidates.Select(c => c.BinId).Distinct().ToList();
-        var productIds = candidates.Select(c => c.ProductId).Distinct().ToList();
-        var others = await db.StockBalances.AsNoTracking()
-            .Where(s => s.WarehouseBinId != null && binIds.Contains(s.WarehouseBinId.Value) && productIds.Contains(s.ProductId) && s.QtyOnHand > 0)
-            .Select(s => new { BinId = s.WarehouseBinId!.Value, s.ProductId, s.LotId })
-            .ToListAsync(ct);
-        var otherStock = others.ToLookup(o => (o.BinId, o.ProductId), o => o.LotId);
-
-        var changed = candidates
-            .Where(c => !otherStock[(c.BinId, c.ProductId)].Any(lot => !c.Lots.Contains(lot)))
-            .Select(c => c.BinId)
-            .Distinct()
-            .ToList();
-        if (changed.Count == 0) return;
-
-        var bins = await db.WarehouseBins.AsTracking().Where(b => changed.Contains(b.WarehouseBinId)).ToListAsync(ct);
-        foreach (var bin in bins) bin.SheetContentChangedAtUtc = now;
     }
 
     // ================================================================ apoyo

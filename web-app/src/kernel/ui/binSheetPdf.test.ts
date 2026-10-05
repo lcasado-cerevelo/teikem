@@ -217,7 +217,7 @@ describe('binSheetPdf · tamaño adaptable', () => {
 
 describe('binSheetPdf · documento', () => {
   const spec = (bins: BinSheetBin[], includeEmpty = false): BinSheetSpec => ({
-    title: 'Hojas de posición',
+    title: 'Productos por posición',
     company: 'Advance Logistics',
     warehouse: 'ALM-01 · Almacén principal',
     locale: 'es',
@@ -261,7 +261,7 @@ describe('binSheetPdf · documento', () => {
     }
     // la posición vacía no sale sin el interruptor
     expect(text).not.toContain('(B-02)')
-    expect(reportFileName(spec(bins), spec(bins).printedAt)).toBe('hojas-de-posicion-advance-logistics-2026-10-03.pdf')
+    expect(reportFileName(spec(bins), spec(bins).printedAt)).toBe('productos-por-posicion-advance-logistics-2026-10-03.pdf')
   })
 
   it('con "Incluir posiciones vacías": la hoja "Sin productos"; aviso al pie si un producto no tiene código', async () => {

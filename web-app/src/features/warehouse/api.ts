@@ -1609,20 +1609,15 @@ export function useBinCapacityPreview(
 }
 
 // =====================================================================================================================
-// Lote F15: hojas de posición (Lote 23 del servidor). Lectura por tandas para el PDF y "marcar impresas"; las usa
-// `printBinSheets` (binSheets.ts) desde el modal de Ubicaciones. No van en caché: cada impresión lee los datos del momento.
+// Informe "Productos por posición" (servidor: `GET .../bin-products`). Lectura por tandas para el PDF (una posición por
+// página con el código de barras de cada producto); lo usa `printBinProducts` (binProducts.ts) desde el modal de
+// Ubicaciones. No va en caché: cada impresión lee los datos del momento.
 // =====================================================================================================================
-export type BinSheetPageDto = Schemas['BinSheetPageDto']
-export type BinSheetDto = Schemas['BinSheetDto']
-export type BinSheetStateDto = Schemas['BinSheetStateDto']
-export type BinSheetMarkPrintedRequest = Schemas['BinSheetMarkPrintedRequest']
-/** Filtros de `GET .../bin-sheets` (los mismos del listado de posiciones, con `skip`/`take` ≤ 200). */
-export type BinSheetQuery = GetQuery<'/api/v1/warehouses/{publicId}/bin-sheets'>
+export type BinProductsPageDto = Schemas['BinProductsPageDto']
+export type BinProductsDto = Schemas['BinProductsDto']
+/** Filtros de `GET .../bin-products` (los mismos del listado de posiciones, con `skip`/`take` ≤ 200). */
+export type BinProductsQuery = GetQuery<'/api/v1/warehouses/{publicId}/bin-products'>
 
-/** `GET /api/v1/warehouses/{publicId}/bin-sheets`: una tanda de hojas (take ≤ 200; más de 200 = 400). */
-export const fetchBinSheets = (publicId: string, query: BinSheetQuery, signal?: AbortSignal) =>
-  unwrap(api.GET('/api/v1/warehouses/{publicId}/bin-sheets', { params: { path: { publicId }, query }, signal }))
-
-/** `POST .../bin-sheets/mark-printed` { binIds (1..500), generatedAtUtc }: todo o nada; devuelve el estado nuevo de cada una. */
-export const markBinSheetsPrinted = (publicId: string, body: BinSheetMarkPrintedRequest) =>
-  unwrap(api.POST('/api/v1/warehouses/{publicId}/bin-sheets/mark-printed', { params: { path: { publicId } }, body }))
+/** `GET /api/v1/warehouses/{publicId}/bin-products`: una tanda de posiciones con sus productos (take ≤ 200; más de 200 = 400). */
+export const fetchBinProducts = (publicId: string, query: BinProductsQuery, signal?: AbortSignal) =>
+  unwrap(api.GET('/api/v1/warehouses/{publicId}/bin-products', { params: { path: { publicId }, query }, signal }))

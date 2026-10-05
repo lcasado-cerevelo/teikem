@@ -140,8 +140,6 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     /// productos distintos y el producto único de cada posición salen en la misma consulta (LEFT JOIN a la existencia
     /// agrupada por posición, sin N+1); el SKU y nombre de esos productos únicos, en UNA consulta más para toda la página.
     /// - zoneId de otro almacén → 404; occupancy desconocido → 400 UnknownOccupancy.
-    /// - Lote 23: estado de la hoja de posición por fila (BinSheetRules.Status), filtro sheetStatus (400 si desconocido) y
-    ///   StaleCount = posiciones del filtro (todas las páginas) en STALE o NEVER_PRINTED (una consulta COUNT más).
     /// </summary>
     public async Task<WarehouseBinPageDto> ListBinsAsync(Guid warehousePublicId, WarehouseBinQuery query, CancellationToken ct)
     {
@@ -149,14 +147,13 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
         var (skip, take) = WarehouseRules.BinPage(query.Skip, query.Take);
         var (_, q) = await FilteredBinRowsAsync(db, warehousePublicId, query, ct);
         var total = await q.CountAsync(ct);
-        var staleCount = total == 0 ? 0 : await q.CountAsync(NeedsSheetPrinting, ct);   // Lote 23
         var page = await q.OrderBy(x => x.Bin.Code).ThenBy(x => x.Bin.WarehouseBinId).Skip(skip).Take(take).ToListAsync(ct);
-        return new WarehouseBinPageDto(total, skip, take, await BinDtosAsync(page, ct), staleCount);
+        return new WarehouseBinPageDto(total, skip, take, await BinDtosAsync(page, ct));
     }
 
     /// <summary>
-    /// Validación y resolución comunes del listado de posiciones y de las hojas de posición (Lote 23): occupancy y sheetStatus
-    /// desconocidos → 400; almacén de otro tenant → 404; zoneId de otro almacén → 404; productPublicIds → ids del tenant. Devuelve
+    /// Validación y resolución comunes del listado de posiciones y del informe de productos por posición: occupancy
+    /// desconocido → 400; almacén de otro tenant → 404; zoneId de otro almacén → 404; productPublicIds → ids del tenant. Devuelve
     /// el almacén y la consulta filtrada (sin ordenar ni paginar).
     /// </summary>
     public static async Task<(Warehouse Warehouse, IQueryable<BinRow> Rows)> FilteredBinRowsAsync(TeikemDbContext db, Guid warehousePublicId,
@@ -164,8 +161,6 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     {
         var (occupancy, occupancyError) = WarehouseRules.ParseOccupancy(query.Occupancy);
         if (occupancyError is not null) throw new ValidationException("occupancy", occupancyError);
-        var (sheetStatuses, sheetError) = BinSheetRules.ParseStatuses(query.SheetStatus);
-        if (sheetError is not null) throw new ValidationException("sheetStatus", sheetError);
 
         var w = await db.ResolveWarehouseAsync(warehousePublicId, false, ct);
         if (query.ZoneId is int zid) await db.ResolveZoneAsync(w.WarehouseId, zid, false, ct); // 404 si la zona no es de este almacén
@@ -177,16 +172,8 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
                 .Select(p => p.ProductId)
                 .ToListAsync(ct);
 
-        return (w, BinRowsQuery(db, w.WarehouseId, query, productIds, occupancy, sheetStatuses));
+        return (w, BinRowsQuery(db, w.WarehouseId, query, productIds, occupancy));
     }
-
-    /// <summary>
-    /// Lote 23 — la hoja de la posición pide imprimirse (STALE o NEVER_PRINTED), en SQL; mismo criterio que
-    /// BinSheetRules.Status + NeedsPrinting. Es el 'staleCount' del listado y de las hojas.
-    /// </summary>
-    public static readonly System.Linq.Expressions.Expression<Func<BinRow, bool>> NeedsSheetPrinting = x =>
-        (x.Bin.SheetPrintedAtUtc != null && x.Bin.SheetContentChangedAtUtc != null && x.Bin.SheetContentChangedAtUtc > x.Bin.SheetPrintedAtUtc)
-        || (x.OnHand > 0 && x.Bin.SheetPrintedAtUtc == null);
 
     /// <summary>Tope de resultados de la búsqueda de posiciones entre almacenes (Lote 14).</summary>
     public const int MaxBinSearch = 50;
@@ -240,7 +227,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
     /// validado (null = sin filtro). La existencia cuenta solo saldos con en mano ≠ 0 (CK_StockBalance_Qty: nunca negativos).
     /// </summary>
     public static IQueryable<BinRow> BinRowsQuery(TeikemDbContext db, int warehouseId, WarehouseBinQuery query,
-        IReadOnlyCollection<int>? productIds, IReadOnlySet<string>? occupancy, IReadOnlySet<string>? sheetStatuses = null)
+        IReadOnlyCollection<int>? productIds, IReadOnlySet<string>? occupancy)
     {
         var stock = db.StockBalances.AsNoTracking().Where(s => s.WarehouseId == warehouseId && s.WarehouseBinId != null && s.QtyOnHand != 0);
         // Existencia agrupada por posición (tabla derivada) unida por LEFT JOIN: la existencia se calcula una vez por posición
@@ -306,22 +293,6 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
                              || (noCapacity && x.OnHand > 0 && x.CapacityQty == null));
         }
 
-        if (sheetStatuses is not null)
-        {
-            // Lote 23 — mismo criterio que BinSheetRules.Status (la prueba de hojas lo compara fila por fila). "Con productos" =
-            // existencia en mano > 0 en la posición (los saldos nunca son negativos: CK_StockBalance_Qty).
-            var stale = sheetStatuses.Contains(BinSheetStatuses.Stale);
-            var empty = sheetStatuses.Contains(BinSheetStatuses.Empty);
-            var never = sheetStatuses.Contains(BinSheetStatuses.NeverPrinted);
-            var current = sheetStatuses.Contains(BinSheetStatuses.Current);
-            q = q.Where(x =>
-                (stale && x.Bin.SheetPrintedAtUtc != null && x.Bin.SheetContentChangedAtUtc != null && x.Bin.SheetContentChangedAtUtc > x.Bin.SheetPrintedAtUtc)
-                || (empty && x.OnHand <= 0
-                    && (x.Bin.SheetPrintedAtUtc == null || x.Bin.SheetContentChangedAtUtc == null || x.Bin.SheetContentChangedAtUtc <= x.Bin.SheetPrintedAtUtc))
-                || (never && x.OnHand > 0 && x.Bin.SheetPrintedAtUtc == null)
-                || (current && x.OnHand > 0 && x.Bin.SheetPrintedAtUtc != null
-                    && (x.Bin.SheetContentChangedAtUtc == null || x.Bin.SheetContentChangedAtUtc <= x.Bin.SheetPrintedAtUtc)));
-        }
         return q;
     }
 
@@ -347,9 +318,7 @@ public sealed class WarehouseLayoutService(TeikemDbContext db, ITenantContext te
                 r.Bin.Code, r.Bin.Aisle, r.Bin.Rack, r.Bin.Level, r.Bin.Position, r.Bin.MaxWeightKg, r.Bin.IsActive,
                 r.OnHand, r.ProductCount, r.Bin.MaxCapacityQty, WarehouseRules.Occupancy(r.OnHand, r.Bin.MaxCapacityQty),
                 single?.PublicId, single?.Sku, single?.Name,
-                r.Bin.IsProvisional, r.Bin.ProvisionalCycleCountId, r.Bin.ProvisionalCreatedAtUtc,
-                BinSheetRules.Status(r.OnHand > 0, r.Bin.SheetPrintedAtUtc, r.Bin.SheetContentChangedAtUtc),
-                r.Bin.SheetPrintedAtUtc, r.Bin.SheetContentChangedAtUtc));
+                r.Bin.IsProvisional, r.Bin.ProvisionalCycleCountId, r.Bin.ProvisionalCreatedAtUtc));
         }
         return list;
     }

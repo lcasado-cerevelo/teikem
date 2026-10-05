@@ -51,7 +51,7 @@ describe('binLabels · alcances y datos', () => {
   })
 
   it('filtro actual: la consulta de la tabla tal cual (todos sus filtros y el buscador); marcadas: tandas de 200 ids', () => {
-    const q: BinListQuery = { includeInactive: false, zoneIds: [3], occupancy: ['FULL'], productPublicIds: ['p'], sheetStatus: ['STALE'], search: 'A-0' }
+    const q: BinListQuery = { includeInactive: false, zoneIds: [3], occupancy: ['FULL'], productPublicIds: ['p'], search: 'A-0' }
     expect(binLabelsSources('filter', q, [1, 2])).toEqual([q])
     expect(binLabelsSources('filter', null, [1, 2])).toEqual([])
     const ids = Array.from({ length: 450 }, (_, i) => 450 - i)

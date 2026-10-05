@@ -568,35 +568,30 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   (barra con el % real si hay cupo) y Estatus (Vacía/Parcial/Llena/Sin cupo). Lote F14: "Códigos de barras" (`BinBarcodeReportButton`, `inventory.view`) en la
   cabecera del panel de la tabla, con la misma consulta que la tabla y Exportar. Lógica pura en `locations.ts`
   (`zoneCapacities`, `binOccupancy`, `binFillPct`, `binProductCell`, `toggleZoneSelection`, `parseZoneParam`,
-  `buildBinListQuery` —Lote F15: `LocationFilters.sheetStatus?` → `sheetStatus`—).
-  **Lote F15 — hojas de posición** (servidor: Lote 23; manual `frontend/f15-hojas-de-posicion.md`): casilla **Elegir** por fila (primera
-  columna, `exportable: false`; la selección es un `Map` id → código que sobrevive a páginas y filtros del mismo almacén) con
-  "Seleccionar todas las de la página" (indeterminada si hay algunas), "N marcadas" y "Quitar marcas"; columna y filtro **Hoja**
-  (`sheetStatus`); aviso acumulado con `staleCount` (si el filtro Hoja está puesto, se pide aparte con `take=1` sin él) y
-  "Imprimir las desactualizadas"; y "Hojas de posición" junto a "Códigos de barras". Nunca una ventana por movimiento.
+  `buildBinListQuery`). Filtro **Pasillo** (`aisle`, texto con retardo de 300 ms) además de Posición.
+  **Informe "Productos por posición"** (servidor: `GET .../bin-products`; reemplaza a las "hojas de posición" del Lote F15, que se quitaron;
+  manual `frontend/f15-productos-por-posicion.md`): casilla **Elegir** por fila (primera columna, `exportable: false`; la selección es un
+  `Map` id → código que sobrevive a páginas y filtros del mismo almacén) con "Seleccionar todas las de la página" (indeterminada si hay
+  algunas), "N marcadas" y "Quitar marcas"; y "Productos por posición" junto a "Códigos de barras" (`inventory.view`): PDF con UNA posición
+  por página y el código de barras de cada producto que tiene (hasta 10 por página), para escanear desde el papel en un rack alto. Sin
+  estado: no marca nada ni avisa de nada.
   | Pieza | Props / firma | Uso |
   |---|---|---|
-  | `BinSheetCell` (`BinSheetsPanel.tsx`) | `bin` (`sheetStatus`, `sheetPrintedAtUtc`, `sheetContentChangedAtUtc`) | `Chip` con texto (Sin hoja impresa `warn` / Desactualizada `fail` / Al día `disp`; EMPTY = "—" con `aria-label`) y debajo *Impresa {fecha y hora}* (`useFormat().dateTime`); `title` con la última impresión y el último cambio |
-  | `StaleSheetsBar` | `count: number \| null` (null = cargando), `filtered`, `onPrint()` | "N posiciones con la hoja desactualizada o sin imprimir" (+ *(con los filtros actuales)*) y el botón (con `<Can perm="inventory.view">`); con 0, *Todas las hojas… están al día.* |
-  | `BinSheetsModal` | `open`, `onClose`, `onPrinted?(scope)`, `warehousePublicId`, `warehouse`, `query` (la de la tabla sin skip/take; null = imposible), `initialScope`, `counts: { filter, selected, stale }`, `selectedIds` | qué imprimir (radios), "Incluir posiciones vacías" (`.sw`), tope `BIN_SHEETS_MAX_BINS` (500), progreso, Cancelar (solo mientras lee) y "Generar PDF" con `printBinSheets`; al terminar invalida `warehouseKeys.bins` y avisa con `printedSummary` |
-  Puras en `binSheets.ts`: `SHEET_STATUSES`, `NEEDS_PRINTING`, `SHEET_STATUS_TONE`, `BIN_SHEETS_PERMISSION`, `sheetStatusOf`,
-  `sheetStatusText`, `needsPrinting`, `withoutSheetStatus`, `staleBinsQuery`, `binSheetsSources(scope, query, ids)` (marcadas en tandas de
-  200 `binIds`), `sheetDetails`, `toSheetBin`, `earliestUtc` y el flujo **`printBinSheets(deps, args)`** (lee de a
-  `BIN_SHEETS_PAGE_SIZE` = 200 con `skip`; más de 500 → `tooMany` sin generar; ordena por código natural; descarga; SOLO después marca
-  impresas las posiciones del PDF —`plan.printedBins`— con el `generatedAtUtc` MÁS ANTIGUO de las tandas, en llamadas de ≤ 500; cancelar o
-  un error al leer/generar no marca nada; resultados `tooMany | nothing | cancelled | printed | markFailed`). API: `fetchBinSheets(publicId,
-  query, signal?)`, `markBinSheetsPrinted(publicId, { binIds, generatedAtUtc })` y los tipos `BinSheetPageDto`, `BinSheetDto`,
-  `BinSheetStateDto`, `BinSheetQuery` (`api.ts`). Estilos `.loc-sheetbar`/`.loc-stale`/`.loc-select`/`.loc-sheet` y `.bs-*` (modal) en `warehouse.css`.
+  | `BinProductsModal` (`BinProductsPanel.tsx`) | `open`, `onClose`, `warehousePublicId`, `warehouse`, `query` (la de la tabla sin skip/take, con `search` y `aisle`; null = imposible), `initialScope`, `counts: { filter, selected }`, `selectedIds` | qué imprimir (radios: filtro actual / marcadas), "Incluir posiciones vacías" y "Generar PDF"; mientras lee se puede cancelar |
+  Puras en `binProducts.ts`: `BIN_PRODUCTS_PERMISSION`, `binProductsSources(scope, query, ids)` (marcadas en tandas de 200 `binIds`),
+  `binDetails`, `toSheetBin`, `earliestUtc` y el flujo **`printBinProducts(deps, args)`** (lee de a `BIN_PRODUCTS_PAGE_SIZE` = 200 con
+  `skip`; más de 500 → `tooMany` sin generar; ordena por código natural; descarga; cancelar o un error no descarga nada; resultados
+  `tooMany | nothing | cancelled | printed`). API: `fetchBinProducts(publicId, query, signal?)` y los tipos `BinProductsPageDto`,
+  `BinProductsDto`, `BinProductsQuery` (`api.ts`). El PDF lo arma `kernel/ui/binSheetPdf.ts` (`downloadBinSheetsPdf`). Estilos
+  `.loc-selbar`/`.loc-select` y `.bs-*` (modal) en `warehouse.css`.
   ```tsx
-  <BinSheetCell bin={b} />
-  <StaleSheetsBar count={staleCount} filtered={filtered} onPrint={() => setSheets('stale')} />
-  {sheets && <BinSheetsModal open initialScope={sheets} query={query} counts={counts} selectedIds={ids} warehousePublicId={id} warehouse={w} onClose={() => setSheets(null)} />}
+  {products && <BinProductsModal open initialScope={products} query={query} counts={counts} selectedIds={ids} warehousePublicId={id} warehouse={w} onClose={() => setProducts(null)} />}
   ```
   **Lote F16 — etiquetas de posición** (solo web; manual `frontend/f16-etiquetas-de-posicion.md`): botón **Etiquetas de posición** junto a
-  "Hojas de posición" (`inventory.view`, el del reporte de códigos de posiciones). Modal: filtro actual (la consulta de la tabla con TODOS
-  sus filtros y el buscador) o marcadas (las casillas de F15, que NO se quitan al imprimir), tamaño 4×2 / 4×4 / 4×6 con su silueta y cm,
-  orientación Automática / Girar 90° (los dos se recuerdan en localStorage `teikem.binLabels.size`/`.orientation`). Sin estado: no llama a
-  mark-printed ni a bin-sheets.
+  "Productos por posición" (`inventory.view`, el del reporte de códigos de posiciones). Modal: filtro actual (la consulta de la tabla con TODOS
+  sus filtros y el buscador) o marcadas (las casillas, que NO se quitan al imprimir), tamaño 4×2 / 4×4 / 4×6 con su silueta y cm,
+  orientación Automática / Girar 90° (los dos se recuerdan en localStorage `teikem.binLabels.size`/`.orientation`). Sin estado: solo lee el listado de
+  posiciones.
   | Pieza | Props / firma | Uso |
   |---|---|---|
   | `BinLabelsButton` (`BinLabelsPanel.tsx`) | `onOpen()` | botón con `<Can perm="inventory.view">` |

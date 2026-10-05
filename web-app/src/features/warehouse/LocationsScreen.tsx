@@ -14,12 +14,13 @@
 //   sobre el almacén elegido, con la zona de `?zone=` ya puesta; al aplicar se refrescan la tabla y los recuadros.
 // - Lote F14: "Códigos de barras" en la cabecera de la tabla: PDF con un código por posición de lo filtrado (misma consulta
 //   que la tabla y Exportar), para imprimir y escanear el papel en el conteo (BarcodeReportButtons / barcodeReports.ts).
-// - Lote F15: hojas de posición (BinSheetsPanel.tsx / binSheets.ts). Columna "Hoja" (insignia + última impresión), filtro "Hoja"
-//   (`sheetStatus`), casillas para marcar posiciones (con "Seleccionar todas las de la página" y contador; la selección se
-//   conserva al cambiar de página o de filtro dentro del almacén), el aviso acumulado "N posiciones con la hoja
-//   desactualizada o sin imprimir" (`staleCount` con los filtros de la tabla salvo "Hoja") con "Imprimir las
-//   desactualizadas", y "Hojas de posición" junto a "Códigos de barras" (modal: filtro actual, marcadas o desactualizadas).
-// - Lote F16: "Etiquetas de posición" junto a "Hojas de posición" (BinLabelsPanel.tsx / binLabels.ts): una etiqueta por posición
+// - Casillas para marcar posiciones (con "Seleccionar todas las de la página" y contador; la selección se conserva al cambiar
+//   de página o de filtro dentro del almacén): alcance "marcadas" de las etiquetas y del informe de productos por posición.
+// - Filtro "Pasillo" (`aisle`, texto con retardo) además de "Posición" (código, pasillo, rack, nivel o posición).
+// - Informe "Productos por posición" (BinProductsPanel.tsx / binProducts.ts), junto a "Códigos de barras": PDF con una
+//   posición por página y el código de barras de cada producto que tiene (filtro actual o marcadas), para escanear desde el
+//   papel en un rack alto. No guarda ningún estado.
+// - Lote F16: "Etiquetas de posición" junto a él (BinLabelsPanel.tsx / binLabels.ts): una etiqueta por posición
 //   (4×2, 4×4 o 4×6 pulgadas, una página del PDF cada una) del filtro actual o de las marcadas; no marca nada (reimprimir =
 //   volver a generarlas).
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
@@ -44,8 +45,8 @@ import { useWarehouseBins, useWarehouseZones, useWarehouses, type WarehouseBinDt
 import { BinBarcodeReportButton } from './BarcodeReportButtons'
 import { BinLabelsButton, BinLabelsModal } from './BinLabelsPanel'
 import type { BinLabelsScope } from './binLabels'
-import { BinSheetCell, BinSheetsModal, StaleSheetsBar } from './BinSheetsPanel'
-import { BIN_SHEETS_PERMISSION, SHEET_STATUSES, sheetStatusOf, sheetStatusText, withoutSheetStatus, type BinSheetsScope } from './binSheets'
+import { BinProductsModal } from './BinProductsPanel'
+import { BIN_PRODUCTS_PERMISSION, type BinProductsScope } from './binProducts'
 import { BinCapacityModal } from './BinCapacityModal'
 import { BinModal } from './BinModal'
 import { formatNumber, useDebounced } from './lineRules'
@@ -167,10 +168,9 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   const [zoneTypes, setZoneTypes] = useState<string[]>([])
   const [products, setProducts] = useState<ProductFilterItem[]>([])
   const [occupancy, setOccupancy] = useState<string[]>([])
-  // Lote F15: filtro "Hoja", posiciones marcadas (id → código) y el modal de hojas de posición (alcance con que se abrió)
-  const [sheetStatus, setSheetStatus] = useState<string[]>([])
+  // posiciones marcadas (id → código) y el modal de productos por posición (alcance con que se abrió)
   const [selected, setSelected] = useState<ReadonlyMap<number, string>>(() => new Map())
-  const [sheets, setSheets] = useState<BinSheetsScope | null>(null)
+  const [products4Bin, setProducts4Bin] = useState<BinProductsScope | null>(null)
   // Lote F16: modal de etiquetas de posición (alcance con que se abrió)
   const [labels, setLabels] = useState<BinLabelsScope | null>(null)
   // clic en la fila = editar la posición (mismo BinModal que la pestaña Posiciones de la ficha); solo con warehouse.manage
@@ -179,6 +179,9 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
   // Posición: texto al servidor (`search`: código, pasillo, rack, nivel o posición), con retardo para no consultar por tecla
   const [code, setCode] = useState('')
   const search = useDebounced(code.trim(), 300)
+  // Pasillo: texto al servidor (`aisle`), con el mismo retardo
+  const [aisleText, setAisleText] = useState('')
+  const aisle = useDebounced(aisleText.trim(), 300)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
@@ -210,21 +213,15 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     }
 
   const { query: baseQuery, impossible } = useMemo(
-    () => buildBinListQuery({ zoneIds, zoneTypes, productPublicIds: products.map((p) => p.publicId), occupancy, sheetStatus }, zones),
-    [zoneIds, zoneTypes, products, occupancy, sheetStatus, zones],
+    () => buildBinListQuery({ zoneIds, zoneTypes, productPublicIds: products.map((p) => p.publicId), occupancy }, zones),
+    [zoneIds, zoneTypes, products, occupancy, zones],
   )
-  const searchQuery = useMemo(() => ({ ...baseQuery, search: search || undefined }), [baseQuery, search])
+  const searchQuery = useMemo(() => ({ ...baseQuery, search: search || undefined, aisle: aisle || undefined }), [baseQuery, search, aisle])
   const query = useMemo(() => ({ ...searchQuery, skip: (page - 1) * pageSize, take: pageSize }), [searchQuery, page, pageSize])
   const binsQ = useWarehouseBins(warehousePublicId, query, { enabled: !impossible })
   const rows = impossible ? NO_BINS : (binsQ.data?.items ?? NO_BINS)
   const total = impossible ? 0 : (binsQ.data?.total ?? 0)
-  const filtered = zoneIds.length + zoneTypes.length + products.length + occupancy.length + sheetStatus.length > 0 || search !== ''
-  // Lote F15: hojas por imprimir con los filtros de la tabla SIN el filtro "Hoja" (el `staleCount` del servidor respeta
-  // todos los filtros: con "Hoja" puesto se pide aparte, con take=1)
-  const staleSeparately = sheetStatus.length > 0 && !impossible
-  const staleQ = useWarehouseBins(warehousePublicId, { ...withoutSheetStatus(searchQuery), take: 1 }, { enabled: staleSeparately })
-  const staleCount = impossible ? 0 : staleSeparately ? (staleQ.data?.staleCount ?? null) : binsQ.isLoading ? null : (binsQ.data?.staleCount ?? null)
-  const staleFiltered = zoneIds.length + zoneTypes.length + products.length + occupancy.length > 0 || search !== ''
+  const filtered = zoneIds.length + zoneTypes.length + products.length + occupancy.length > 0 || search !== '' || aisle !== ''
 
   // casillas: la página visible y su estado (todas / algunas / ninguna marcadas)
   const pageIds = rows.map((b) => b.id).filter((id): id is number => id != null)
@@ -261,14 +258,13 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     return [...seen].map(([value, label]) => ({ value, label }))
   }, [zones])
   const statusOptions = useMemo(() => BIN_OCCUPANCIES.map((s) => ({ value: s, label: t(`warehouse.locations.occupancy.${s}`) })), [t])
-  const sheetOptions = useMemo(() => SHEET_STATUSES.map((s) => ({ value: s, label: t(`warehouse.binSheets.filterOptions.${s}`) })), [t])
 
   const clearAll = () => {
     setCode('')
+    setAisleText('')
     setZoneTypes([])
     setProducts([])
     setOccupancy([])
-    setSheetStatus([])
     setZoneIds([])
   }
 
@@ -283,16 +279,16 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
     }
     return [
       {
-        // Lote F15: casilla para marcar la posición (imprimir sus hojas); sin orden ni exportación
+        // casilla para marcar la posición (etiquetas y productos por posición); sin orden ni exportación
         id: 'select',
-        header: t('warehouse.binSheets.columns.select'),
+        header: t('warehouse.binProducts.columns.select'),
         exportable: false,
         cell: (b) => (
           <input
             type="checkbox"
             className="loc-check"
             checked={b.id != null && selected.has(b.id)}
-            aria-label={t('warehouse.binSheets.selectRow', { code: b.code ?? '' })}
+            aria-label={t('warehouse.binProducts.selectRow', { code: b.code ?? '' })}
             // la casilla no abre la posición (clic ni Espacio/Enter llegan a la fila)
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
@@ -372,14 +368,6 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
         sortValue: (b) => t(`warehouse.locations.occupancy.${binOccupancy(b)}`),
         exportValue: (b) => t(`warehouse.locations.occupancy.${binOccupancy(b)}`),
       },
-      {
-        // Lote F15: estado de la hoja de posición y su última impresión
-        id: 'sheet',
-        header: t('warehouse.binSheets.columns.sheet'),
-        cell: (b) => <BinSheetCell bin={b} />,
-        sortValue: (b) => (sheetStatusOf(b) === 'EMPTY' ? undefined : sheetStatusText(b, t) || undefined),
-        exportValue: (b) => (sheetStatusOf(b) === 'EMPTY' ? '' : sheetStatusText(b, t)),
-      },
     ]
     // `selected` cambia las casillas: las columnas se rehacen al marcar (no hay campos de texto que pierdan el foco)
   }, [t, lang, zones, selected])
@@ -438,11 +426,19 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
             setPage(1)
           }}
         />
+        <TextFilter
+          label={t('warehouse.locations.filters.aisle')}
+          value={aisleText}
+          placeholder={t('warehouse.locations.filters.aislePlaceholder')}
+          onChange={(v) => {
+            setAisleText(v)
+            setPage(1)
+          }}
+        />
         <SearchSelect label={t('warehouse.locations.filters.zone')} options={zoneOptions} value={zoneIds} onChange={setZoneIds} />
         <SearchSelect label={t('warehouse.locations.filters.type')} options={typeOptions} value={zoneTypes} onChange={withPageReset(setZoneTypes)} />
         <ProductMultiFilter label={t('warehouse.locations.filters.product')} value={products} onChange={withPageReset(setProducts)} />
         <SearchSelect label={t('warehouse.locations.filters.status')} options={statusOptions} value={occupancy} onChange={withPageReset(setOccupancy)} />
-        <SearchSelect label={t('warehouse.binSheets.filter')} options={sheetOptions} value={sheetStatus} onChange={withPageReset(setSheetStatus)} />
       </Filters>
 
       <Panel
@@ -460,16 +456,16 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
               zones={zones}
               query={impossible ? null : searchQuery}
             />
-            {/* Lote F15: una hoja por posición con sus productos (filtro actual, marcadas o desactualizadas) */}
-            <Can perm={BIN_SHEETS_PERMISSION}>
+            {/* Una posición por página con el código de barras de cada producto (filtro actual o marcadas) */}
+            <Can perm={BIN_PRODUCTS_PERMISSION}>
               <button
                 type="button"
                 className="btn sm"
-                title={t('warehouse.binSheets.hint')}
-                onClick={() => setSheets(selected.size > 0 ? 'selected' : 'filter')}
+                title={t('warehouse.binProducts.hint')}
+                onClick={() => setProducts4Bin(selected.size > 0 ? 'selected' : 'filter')}
               >
                 <IconDoc />
-                {t('warehouse.binSheets.button')}
+                {t('warehouse.binProducts.button')}
               </button>
             </Can>
             {/* Lote F16: una etiqueta por posición (filtro actual o marcadas), sin estado: se reimprime cuando se quiera */}
@@ -477,8 +473,7 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
           </span>
         }
       >
-        <div className="loc-sheetbar">
-          <StaleSheetsBar count={staleCount} filtered={staleFiltered} onPrint={() => setSheets('stale')} />
+        <div className="loc-selbar">
           <div className="loc-select">
             <label className="loc-select-page">
               <input
@@ -488,14 +483,14 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
                 disabled={pageIds.length === 0}
                 onChange={(e) => togglePage(e.target.checked)}
               />
-              <span>{t('warehouse.binSheets.selectPage')}</span>
+              <span>{t('warehouse.binProducts.selectPage')}</span>
             </label>
             <span className="loc-select-count" aria-live="polite">
-              {selected.size === 1 ? t('warehouse.binSheets.selectedOne') : t('warehouse.binSheets.selected', { count: formatNumber(selected.size, lang) || '0' })}
+              {selected.size === 1 ? t('warehouse.binProducts.selectedOne') : t('warehouse.binProducts.selected', { count: formatNumber(selected.size, lang) || '0' })}
             </span>
             {selected.size > 0 && (
               <button type="button" className="btn sm" onClick={() => setSelected(new Map())}>
-                {t('warehouse.binSheets.clearSelection')}
+                {t('warehouse.binProducts.clearSelection')}
               </button>
             )}
           </div>
@@ -520,17 +515,15 @@ function LocationsBody({ warehousePublicId, warehouse, zones, zonesLoading, zone
         />
       </Panel>
       <BinModal publicId={warehousePublicId} zones={zones} bin={editing} open={editing !== null} onClose={() => setEditing(null)} />
-      {sheets && (
-        <BinSheetsModal
+      {products4Bin && (
+        <BinProductsModal
           open
-          onClose={() => setSheets(null)}
-          // al imprimir las marcadas se quitan las marcas (ya están al día)
-          onPrinted={(scope) => scope === 'selected' && setSelected(new Map())}
+          onClose={() => setProducts4Bin(null)}
           warehousePublicId={warehousePublicId}
           warehouse={warehouse}
           query={impossible ? null : searchQuery}
-          initialScope={sheets}
-          counts={{ filter: impossible ? 0 : binsQ.isLoading ? null : total, selected: selected.size, stale: staleCount }}
+          initialScope={products4Bin}
+          counts={{ filter: impossible ? 0 : binsQ.isLoading ? null : total, selected: selected.size }}
           selectedIds={[...selected.keys()]}
         />
       )}

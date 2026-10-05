@@ -34,20 +34,13 @@
    alerta, con texto: nunca solo color) y las casillas; la celda "Hoja" con la insignia (que no envuelve) y la última
    impresión debajo. A 360 px todo envuelve en renglones (sin scroll horizontal). */
 .locations .loc-actions{display:inline-flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;align-items:center;min-width:0;max-width:100%}
-.locations .loc-sheetbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);min-width:0}
-.locations .loc-stale{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:0;padding:6px 10px;border-radius:9px;background:var(--warnbg);border:1px solid var(--warn);font-size:13px;min-width:0;max-width:100%}
-.locations .loc-stale.ok{background:var(--okbg);border-color:var(--ok);color:var(--text)}
-.locations .loc-stale-text{display:inline-flex;gap:8px;align-items:center;min-width:0;overflow-wrap:anywhere}
-.locations .loc-stale-text svg{flex:none;color:var(--warn)}
-.locations .loc-stale-scope{color:var(--muted)}
+.locations .loc-selbar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);min-width:0}
 .locations .loc-select{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:13px;min-width:0}
 .locations .loc-select-page{display:inline-flex;gap:7px;align-items:center;cursor:pointer}
 .locations .loc-select-count{color:var(--muted)}
 .locations .loc-check,.locations .loc-select-page input{width:16px;height:16px;margin:0;accent-color:var(--flow);cursor:pointer}
 .locations .loc-check:focus-visible,.locations .loc-select-page input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
-.locations .loc-sheet{display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
-.locations .loc-sheet-when{font-size:11.5px;color:var(--muted);white-space:nowrap}
-@media(max-width:480px){.locations .loc-sheetbar{padding:10px}.locations .loc-stale{width:100%}}
+@media(max-width:480px){.locations .loc-selbar{padding:10px}}
 /* Modal "Hojas de posición" */
 .bs-modal{display:flex;flex-direction:column;gap:10px;min-width:0}
 .bs-modal .note{margin:0}

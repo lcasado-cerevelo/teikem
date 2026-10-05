@@ -1,4 +1,4 @@
-// Lote F15 — hoja de posición (PDF vectorial carta vertical) para pegar en el rack: una hoja por posición con la lista de
+// Informe "Productos por posición" (antes "hoja de posición", Lote F15; PDF vectorial carta vertical): una página por posición con la lista de
 // productos que hay en ella y el código de barras Code 128 de cada uno, para escanearlos con el lector (Zebra) cuando el
 // producto no tiene código visible o está muy alto. Genérico: el código de la posición se imprime tal cual (no se asume
 // ningún formato de pasillo, piso o nivel).
@@ -109,7 +109,7 @@ export interface BinSheetBin {
 }
 
 export interface BinSheetSpec {
-  /** Título del documento y base del nombre del archivo ("Hojas de posición"). */
+  /** Título del documento y base del nombre del archivo ("Productos por posición"). */
   title: string
   company?: string | null
   /** Almacén (código y nombre ya armados) para el pie de cada hoja. */
@@ -654,7 +654,7 @@ export async function renderBinSheetsPdf(spec: BinSheetSpec, options: RenderBinS
   return { doc, plan }
 }
 
-/** Arma las hojas y las descarga como `reportFileName(spec)` ("hojas-de-posicion-<compañía>-<día>.pdf"); devuelve el plan. */
+/** Arma las hojas y las descarga como `reportFileName(spec)` ("productos-por-posicion-<compañía>-<día>.pdf"); devuelve el plan. */
 export async function downloadBinSheetsPdf(spec: BinSheetSpec): Promise<BinSheetPlan> {
   const { doc, plan } = await renderBinSheetsPdf(spec)
   doc.save(reportFileName(spec, spec.printedAt))

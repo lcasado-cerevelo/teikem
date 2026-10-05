@@ -1071,39 +1071,36 @@
       "emptyProducts": "Ningún producto cumple los filtros.",
       "emptyBins": "Ninguna posición cumple los filtros."
     },
-    "binSheets": {
-      "button": "Hojas de posición",
-      "hint": "PDF con una hoja por posición y el código de barras de cada producto, para pegarla en el rack y escanear con el lector.",
-      "title": "Hojas de posición",
-      "pdfTitle": "Hojas de posición",
-      "intro": "Una hoja por posición con sus productos (hasta 10 por hoja) y el código de barras de cada uno, para pegarla en el rack. Al terminar, las posiciones impresas quedan «Al día».",
+    "binProducts": {
+      "button": "Productos por posición",
+      "hint": "PDF con una posición por página y el código de barras de cada producto que tiene, para escanear desde el papel (por ejemplo, en un rack alto).",
+      "title": "Productos por posición",
+      "pdfTitle": "Productos por posición",
+      "intro": "Una posición por página con sus productos (hasta 10 por página) y el código de barras de cada uno, para escanear desde el papel. Es un listado de lo que hay en el momento de generarlo.",
       "scope": {
         "legend": "Qué imprimir",
         "filter": "Las posiciones del filtro actual ({count})",
         "selected": "Las posiciones marcadas ({count})",
-        "stale": "Solo las desactualizadas o sin hoja ({count})",
         "selectedNone": "Para imprimir solo algunas, márquelas en la lista con sus casillas."
       },
       "includeEmpty": "Incluir posiciones vacías",
-      "includeEmptyHint": "Sin activarlo, las posiciones sin productos no se imprimen. Activado, salen con la hoja «Sin productos».",
+      "includeEmptyHint": "Sin activarlo, las posiciones sin productos no se imprimen. Activado, salen con la página «Sin productos».",
       "tooMany": "Son {count} posiciones; el máximo por impresión es {max}. Acote con los filtros o marque menos posiciones.",
       "noneInScope": "No hay posiciones en lo que eligió.",
-      "nothing": "No hay hojas para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas.",
+      "nothing": "No hay nada para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas.",
       "generate": "Generar PDF",
       "generating": "Generando…",
       "cancel": "Cancelar",
       "progress": {
         "read": "Leyendo posiciones… {done} de {total}",
-        "render": "Generando el PDF ({sheets} hojas)…",
-        "mark": "Marcando {bins} posiciones como impresas…"
+        "render": "Generando el PDF ({sheets} páginas)…"
       },
       "result": {
-        "printed": "Se generaron {sheets} hoja(s) de {bins} posición(es); quedaron marcadas como impresas.",
+        "printed": "Se generaron {sheets} página(s) de {bins} posición(es).",
         "omittedEmpty": "{count} posición(es) sin productos no se imprimieron.",
-        "withoutCode": "{count} producto(s) sin código de barras legible: vea el aviso al pie de su hoja.",
-        "cancelled": "Impresión cancelada; no se marcó ninguna hoja.",
-        "markFailed": "El PDF se descargó, pero las posiciones no se pudieron marcar como impresas: {error} Vuelva a generarlo para marcarlas.",
-        "error": "No se pudieron generar las hojas de posición; no se marcó ninguna. {error}"
+        "withoutCode": "{count} producto(s) sin código de barras legible: vea el aviso al pie de su página.",
+        "cancelled": "Impresión cancelada.",
+        "error": "No se pudo generar el PDF de productos por posición. {error}"
       },
       "details": {
         "zone": "Zona",
@@ -1114,32 +1111,8 @@
         "inactive": "Inactiva"
       },
       "columns": {
-        "select": "Elegir",
-        "sheet": "Hoja"
+        "select": "Elegir"
       },
-      "filter": "Hoja",
-      "filterOptions": {
-        "NEVER_PRINTED": "Sin hoja impresa",
-        "STALE": "Desactualizada",
-        "CURRENT": "Al día",
-        "EMPTY": "Sin productos (no necesita hoja)"
-      },
-      "status": {
-        "NEVER_PRINTED": "Sin hoja impresa",
-        "STALE": "Desactualizada",
-        "CURRENT": "Al día",
-        "EMPTY": "Sin productos",
-        "EMPTY_ARIA": "Sin productos: no necesita hoja"
-      },
-      "printedShort": "Impresa {date}",
-      "lastPrinted": "Última impresión: {date}",
-      "neverPrinted": "Nunca se imprimió su hoja",
-      "lastChanged": "Último cambio de productos: {date}",
-      "stale": "posiciones con la hoja desactualizada o sin imprimir",
-      "staleOne": "posición con la hoja desactualizada o sin imprimir",
-      "staleFiltered": "(con los filtros actuales)",
-      "printStale": "Imprimir las desactualizadas",
-      "allCurrent": "Todas las hojas de posición de esta lista están al día.",
       "selectRow": "Marcar la posición {code}",
       "selectPage": "Seleccionar todas las de la página",
       "selected": "{count} marcadas",
@@ -1240,6 +1213,8 @@
       "filters": {
         "bin": "Posición",
         "binPlaceholder": "Código, pasillo, rack…",
+        "aisle": "Pasillo",
+        "aislePlaceholder": "Ej.: A",
         "zone": "Zona",
         "type": "Tipo",
         "product": "Producto",

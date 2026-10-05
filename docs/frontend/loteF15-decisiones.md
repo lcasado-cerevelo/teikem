@@ -1,11 +1,14 @@
 # Lote F15 — Hojas de posición en la web (2026-10-03)
 
+> **Reemplazado el 2026-10-05** por el informe "Productos por posición" ([lote24-decisiones.md](../lote24-decisiones.md)): la columna y el filtro "Hoja", el aviso de desactualizadas y el marcado de impresas se quitaron. Este documento queda como historia.
+
+
 Pedido del dueño del 2026-10-03: imprimir, para pegar en cada posición del rack, una hoja con la lista de productos de esa posición y el
 código de barras de cada uno, para escanearlo con el Zebra (los productos no tienen código visible o están a 20–30 pies de altura); poder
 imprimir **las posiciones que él quiera**, no todas; y saber qué hojas pegadas ya no sirven con un aviso **acumulado** (insignia +
 contador), **sin ventanas emergentes** en cada movimiento. El servidor ya estaba (Lote 23, `docs/lote23-decisiones.md`, manual 06 §1.5).
 Solo se tocó `web-app/` y `docs/` (nada de `src/` ni de `app-almacen/`). Manual de pantallas:
-[f15-hojas-de-posicion.md](../manual/frontend/f15-hojas-de-posicion.md); FAQ: sección "Lote F15" de [faq.md](../manual/faq.md).
+[f15-productos-por-posicion.md](../manual/frontend/f15-productos-por-posicion.md); FAQ: sección "Lote F15" de [faq.md](../manual/faq.md).
 
 ## Qué se construyó
 

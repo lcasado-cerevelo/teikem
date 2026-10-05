@@ -98,9 +98,6 @@ describe('buildBinListQuery', () => {
   it('Zona, Producto y Estatus van al servidor', () => {
     const { query } = buildBinListQuery({ zoneIds: ['2'], zoneTypes: [], productPublicIds: ['p-1'], occupancy: ['FULL', 'NO_CAPACITY'] }, ZONES)
     expect(query).toEqual({ includeInactive: false, zoneIds: [2], productPublicIds: ['p-1'], occupancy: ['FULL', 'NO_CAPACITY'] })
-    // Lote F15: el filtro "Hoja" va como `sheetStatus` (vacío = sin el parámetro)
-    expect(buildBinListQuery({ ...EMPTY_LOCATION_FILTERS, sheetStatus: ['STALE', 'NEVER_PRINTED'] }, ZONES).query.sheetStatus).toEqual(['STALE', 'NEVER_PRINTED'])
-    expect(buildBinListQuery(EMPTY_LOCATION_FILTERS, ZONES).query.sheetStatus).toBeUndefined()
   })
 
   it('Tipo se traduce a las zonas de ese tipo y se cruza con Zona', () => {

@@ -4600,121 +4600,73 @@ Con códigos cortos, unas 24 posiciones (3 columnas × 8 filas); los productos c
 **El lector no lee la hoja impresa.**
 Imprima al 100 % ("Tamaño real", sin "Ajustar a la página"), en negro sobre papel blanco, y pruebe con "2 columnas".
 
-## Lote 23 — Hojas de posición (servidor)
+## Productos por posición (informe; reemplaza a las hojas de posición del Lote 23 y del F15)
 
-Detalle en el [capítulo 06 §1.5](06-inventario-y-almacen.md#15-hojas-de-posición-lote-23) y en `docs/lote23-decisiones.md`. Este lote es solo
-del servidor: los mensajes los devuelve el API (la pantalla y la app los mostrarán tal cual en sus lotes).
+Detalle en el [capítulo 06 §1.5](06-inventario-y-almacen.md#15-productos-por-posición-informe), la pantalla en
+[F15 — Productos por posición](frontend/f15-productos-por-posicion.md) y las decisiones en `docs/lote24-decisiones.md`. El PDF se arma en el navegador.
 
-### Mensajes nuevos
+### Mensajes del servidor
 
-**400 — "Estado de hoja desconocido: 'X'. Use NEVER_PRINTED, STALE, CURRENT o EMPTY."** (`errors.sheetStatus`)
-El filtro `sheetStatus` de `GET .../bins` o de `GET .../bin-sheets` trae un valor que no existe. Use uno o varios de los cuatro códigos
-(repitiendo el parámetro o separándolos por comas; mayúsculas o minúsculas da igual).
+**400 — "Se pueden pedir como máximo 200 posiciones por consulta; use skip para pedir las siguientes."** (`errors.take`)
+`GET .../bin-products` con `take` mayor que 200. Pida de 200 en 200: `take=200&skip=0`, luego `skip=200`, `skip=400`… hasta llegar a `total`.
+La pantalla nunca pide más de 200, así que no debería verse.
 
-**400 — "Se pueden pedir como máximo 200 hojas de posición por consulta; use skip para pedir las siguientes."** (`errors.take`)
-`GET .../bin-sheets` con `take` mayor que 200. Pida de 200 en 200: `take=200&skip=0`, luego `skip=200`, `skip=400`… hasta llegar a `total`.
-
-**400 — "Indique al menos una posición para marcar su hoja como impresa."** (`errors.binIds`)
-`POST .../bin-sheets/mark-printed` sin `binIds` o con la lista vacía. Mande los ids de las posiciones cuyas hojas imprimió.
-
-**400 — "Se pueden marcar como máximo 500 posiciones por solicitud."** (`errors.binIds`)
-Más de 500 posiciones (sin contar repetidas) en una sola marca. Divida la lista en varias solicitudes.
-
-**404 — "Posición no encontrada."** (al marcar impresas)
-Alguna de las posiciones no es de ese almacén, es de otra compañía o no existe. **No se marcó ninguna** (es todo o nada): quite la posición
-ajena y repita.
-
-**404 — "Almacén no encontrado."** (hojas o marcar impresas)
-El almacén de la dirección no existe o es de otra compañía.
-
-### Preguntas frecuentes
-
-**¿Qué hace que una hoja quede "desactualizada" (`STALE`)?**
-Que la lista de productos de la posición cambie después de la última impresión: entra un producto que no estaba o sale uno (su existencia
-en mano en la posición, sumando lotes, llega a 0). Cambiar solo la cantidad de un producto que sigue ahí **no** la desactualiza.
-
-**Acabamos de activar la función y todas las posiciones con producto salen "nunca impresa". ¿Es un error?**
-No. Es la decisión del dueño: no se supone ninguna hoja impresa de antes. Imprima y marque las hojas; desde ese momento quedan al día.
-
-**¿Para qué sirve `generatedAtUtc` al marcar impresas?**
-Para no dar por buena una hoja que ya salió vieja de la impresora: si mientras imprimía entró o salió un producto de la posición, al marcar con
-el `generatedAtUtc` de la consulta la posición queda `STALE`. Sin él se toma la hora actual.
-
-**Marqué dos veces la misma hoja, ¿pasa algo?**
-No. Repetir la marca con el mismo `generatedAtUtc` no cambia nada, y una marca más vieja nunca pisa una impresión más reciente.
-
-**Una posición que vacié aparece como desactualizada. ¿Por qué no "vacía"?**
-Porque la hoja pegada en el rack todavía lista productos que ya no están. Quítela o imprima la hoja nueva (sin productos) y márquela:
-entonces pasa a "vacía" (`EMPTY`).
-
-**¿Qué permiso hace falta para marcar como impresas?**
-El mismo que para ver el almacén, `inventory.view` (decisión del dueño), con el módulo WMS_LOTSERIAL encendido.
-
-**¿La hoja trae cantidades?**
-No: dice qué productos hay (SKU, nombre y código de barras), no cuántos. Por eso las cantidades no la desactualizan.
-
-## Lote F15 — Web: hojas de posición en Posiciones
-
-Pantalla: [F15 — Hojas de posición](frontend/f15-hojas-de-posicion.md). Los mensajes del servidor (400/404) son los del Lote 23 (arriba); la
-pantalla los muestra tal cual al final de los suyos. El PDF se arma en el navegador.
+**404 — "Almacén no encontrado."** (`GET .../bin-products`)
+El almacén no existe o es de otra compañía.
 
 ### Mensajes que se ven en la pantalla (sin código HTTP propio)
 
 **"Son {n} posiciones; el máximo por impresión es 500. Acote con los filtros o marque menos posiciones."**
-Lo elegido pasa del tope de 500 posiciones por impresión (el mismo tope que el servidor acepta al marcar impresas de una vez). Filtre
-por zona (recuadro del río), pasillo o texto en **Posición**, o marque menos casillas, e imprima por partes.
+Lo elegido pasa del tope de 500 posiciones por impresión. Filtre por zona (recuadro del río), por **Pasillo** o por texto en **Posición**, o marque
+menos casillas, e imprima por partes.
 
 **"No hay posiciones en lo que eligió."**
-La opción elegida no tiene posiciones (p. ej. *Solo las desactualizadas o sin hoja (0)*). Elija otra opción o cambie los filtros.
+La opción elegida no tiene posiciones (p. ej. *Las posiciones marcadas (0)*). Elija otra opción o cambie los filtros.
 
-**"No hay hojas para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas."**
-Todas las posiciones elegidas están vacías y el interruptor está apagado: no se genera PDF ni se marca nada. Enciéndalo si quiere la hoja
-*Sin productos* (para reemplazar el papel viejo de una posición que se vació).
+**"No hay nada para imprimir: las posiciones elegidas no tienen productos. Active «Incluir posiciones vacías» para imprimirlas."**
+Todas las posiciones elegidas están vacías y el interruptor está apagado: no se genera PDF. Enciéndalo si quiere una página *Sin productos* por posición.
 
-**"Impresión cancelada; no se marcó ninguna hoja."**
-Pulsó **Cancelar** mientras se leían las posiciones. No se descargó nada y las insignias no cambian.
+**"Impresión cancelada."**
+Pulsó **Cancelar** mientras se leían las posiciones. No se descargó nada.
 
-**"No se pudieron generar las hojas de posición; no se marcó ninguna. {mensaje}"**
-Falló la lectura o el armado del PDF. Si el servidor respondió (p. ej. 404 **"Almacén no encontrado."**, 400 **"Estado de hoja
-desconocido…"**), su mensaje sale al final. Vuelva a intentar; si se repite, avise a soporte con la hora y lo que eligió.
+**"No se pudo generar el PDF de productos por posición. {mensaje}"**
+Falló la lectura o el armado del PDF. Si el servidor respondió (p. ej. 404 **"Almacén no encontrado."**), su mensaje sale al final. Vuelva a
+intentar; si se repite, avise a soporte con la hora y lo que eligió.
 
-**"El PDF se descargó, pero las posiciones no se pudieron marcar como impresas: {mensaje} Vuelva a generarlo para marcarlas."**
-El PDF ya está en su equipo, pero la marca falló (p. ej. 404 **"Posición no encontrada."** si alguien borró una posición mientras tanto;
-es todo o nada: no se marcó ninguna). Las insignias siguen como estaban: genere de nuevo el PDF para que queden *Al día*.
-
-**"Se generaron {n} hoja(s) de {m} posición(es); quedaron marcadas como impresas."** (más *"{k} posición(es) sin productos no se
-imprimieron."* y *"{j} producto(s) sin código de barras legible: vea el aviso al pie de su hoja."*)
+**"Se generaron {n} página(s) de {m} posición(es)."** (más *"{k} posición(es) sin productos no se imprimieron."* y *"{j} producto(s) sin código de
+barras legible: vea el aviso al pie de su página."*)
 Todo salió bien. Las vacías omitidas son las que no tenían productos con el interruptor apagado.
 
-**En la hoja: "Sin código de barras: Code 128 no admite Ñ"** / **"No cabe: demasiado largo para un código legible"**
-Ni el código de barras del producto ni su SKU se pueden imprimir como Code 128 (acentos, ñ…) o son tan largos que no caben legibles. El
-producto sale en la hoja con su SKU y nombre (sin barras) y un aviso al pie de esa hoja lo lista; búsquelo a mano en el lector.
+**En la página: "Sin código de barras: Code 128 no admite Ñ"** / **"No cabe: demasiado largo para un código legible"**
+Ni el código de barras del producto ni su SKU se pueden imprimir como Code 128 (acentos, ñ…) o son tan largos que no caben legibles. El producto sale
+con su SKU y nombre (sin barras) y un aviso al pie de esa página lo lista; búsquelo a mano en el lector.
 
 ### Preguntas frecuentes
 
-**¿Qué código de barras lleva cada producto en la hoja?**
+**¿Para qué sirve?**
+Para imprimir los productos de una posición (o de todo un pasillo) con su código de barras y escanearlos desde el papel, sobre todo en racks altos
+(hasta 30 pies) donde no se alcanza el producto.
+
+**¿Qué código de barras lleva cada producto?**
 El **código de barras del producto** (el de su ficha). Si no tiene, el **SKU**. La app del lector busca el producto por los dos.
 
-**¿Por qué la posición sigue "Desactualizada" después de imprimir?**
-Porque su lista de productos cambió mientras se generaba la hoja (el sistema marca la impresión con la hora de los datos leídos). Imprímala
-de nuevo. También pasa con una posición que se vació si la imprime sin *Incluir posiciones vacías* (no sale en el PDF, así que no se marca).
+**¿Cómo imprimo solo un pasillo?**
+Escriba el pasillo en el filtro **Pasillo** (o en **Posición**), pulse **Productos por posición** → *Las posiciones del filtro actual* → **Generar PDF**.
 
-**Moví mercancía y no me salió ningún aviso.**
-Es a propósito (decisión del dueño): el aviso es **acumulado** — la insignia de la posición y el contador encima de la tabla — y se ve al
-volver a cargar la lista. Use **Imprimir las desactualizadas** cada tanto.
+**¿El papel se desactualiza?**
+El sistema no lo controla (ya no hay estado de "hoja"): el PDF muestra lo que había al generarlo. Si mueve mercancía, vuelva a generarlo.
 
-**¿El contador cuenta solo la página que veo?**
-No: cuenta todas las posiciones de la lista con los filtros puestos (salvo el filtro **Hoja**). Sin filtros, es todo el almacén.
-
-**¿Puedo reimprimir una hoja que está "Al día"?**
-Sí: márquela con su casilla y use *Las posiciones marcadas*. Queda *Al día* con la nueva fecha de impresión.
+**¿Trae cantidades?**
+No: dice qué productos hay (SKU, nombre y código de barras), no cuántos.
 
 **Tengo más de 10 productos en una posición.**
-La posición sale en varias hojas de 10 (11 productos = 10 + 1), cada una con el encabezado de la posición y *Hoja 2 de 2*. Péguelas juntas.
+La posición sale en varias páginas de 10 (11 productos = 10 + 1), cada una con el encabezado de la posición y *Hoja 2 de 2*. Péguelas juntas.
 
 **¿Las marcas de las casillas se pierden al cambiar de página?**
-No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra; al imprimir las marcadas se
-quitan solas.
+No: se conservan al cambiar de página o de filtro mientras no cambie de almacén. **Quitar marcas** las borra.
+
+**¿Por qué la exportación de la tabla trae más filas que la página?**
+**Exportar** saca **todo lo filtrado** (hasta 10 000 filas), no solo la página que se ve.
 
 ## Lote F16 — Web: etiquetas de posición en Posiciones
 
@@ -4752,9 +4704,9 @@ necesita código de barras, renombre la posición con un código más corto o si
 
 ### Preguntas frecuentes
 
-**¿En qué se diferencia de la hoja de posición?**
-La **etiqueta** identifica la posición (su código) y no cambia con lo que hay en ella: no tiene estado y no se "desactualiza". La **hoja de
-posición** (F15) lista los productos y se desactualiza cuando entra o sale uno. Imprimir etiquetas no cambia la columna **Hoja**.
+**¿En qué se diferencia de "Productos por posición"?**
+La **etiqueta** identifica la posición (su código) y no cambia con lo que hay en ella. **Productos por posición** (F15) lista los productos que
+tiene cada posición, con su código de barras, para escanearlos desde el papel.
 
 **¿Cómo reimprimo una etiqueta?**
 Igual que la primera vez: márquela (o filtre) → **Etiquetas de posición** → **Generar PDF**. No hay nada que "desmarcar" antes.
@@ -4772,7 +4724,7 @@ Salen las del **filtro actual** de la tabla (todos los filtros, también el text
 (**Limpiar**) para todas, hasta 500 por PDF.
 
 **¿Las marcas se quitan al imprimir etiquetas?**
-No (a diferencia de las hojas de posición): se quedan por si quiere reimprimir. **Quitar marcas** las borra.
+No: se quedan por si quiere reimprimir. **Quitar marcas** las borra.
 
 **¿Recuerda el tamaño que usé?**
 Sí, en ese navegador: la próxima vez el modal abre con el último tamaño y la última orientación.

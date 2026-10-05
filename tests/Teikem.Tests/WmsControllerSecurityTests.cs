@@ -57,8 +57,7 @@ public class WmsControllerSecurityTests
         [(typeof(WarehousesController), nameof(WarehousesController.DeactivateBin))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))] = PermissionCatalog.WarehouseManage,   // Lote 21
         [(typeof(WarehousesController), nameof(WarehousesController.ReactivateBin))] = PermissionCatalog.WarehouseManage,
-        [(typeof(WarehousesController), nameof(WarehousesController.BinSheets))] = PermissionCatalog.InventoryView,   // Lote 23: hojas de posición
-        [(typeof(WarehousesController), nameof(WarehousesController.MarkBinSheetsPrinted))] = PermissionCatalog.InventoryView,   // Lote 23 (decisión del dueño)
+        [(typeof(WarehousesController), nameof(WarehousesController.BinProducts))] = PermissionCatalog.InventoryView,   // informe "Productos por posición"
         [(typeof(WarehousesController), nameof(WarehousesController.Docks))] = PermissionCatalog.InventoryView,
         [(typeof(WarehousesController), nameof(WarehousesController.CreateDock))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehousesController), nameof(WarehousesController.UpdateDock))] = PermissionCatalog.WarehouseManage,
@@ -277,9 +276,9 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))]);
         Assert.Equal(PermissionCatalog.WarehouseCountCapture, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))]);
         Assert.Equal(PermissionCatalog.WarehouseManage, Expected[(typeof(WarehousesController), nameof(WarehousesController.ConfirmProvisionalBin))]);
-        // Lote 23 (hojas de posición): ver y marcar impresas con inventory.view (decisión del dueño: sin permiso nuevo).
-        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(WarehousesController), nameof(WarehousesController.MarkBinSheetsPrinted))]);
-        Assert.Equal(130, Expected.Count);
+        // Informe "Productos por posición": se ve con inventory.view (sin permiso nuevo).
+        Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(WarehousesController), nameof(WarehousesController.BinProducts))]);
+        Assert.Equal(129, Expected.Count);
     }
 
     [Fact]

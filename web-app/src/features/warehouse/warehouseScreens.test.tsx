@@ -137,8 +137,8 @@ describe('Posiciones (antes Ubicaciones; maqueta ubicaciones())', () => {
     expect(screen.getByText('Tornillo')).toBeInTheDocument()
     expect(screen.getByText('Ocupada sin cupo')).toBeInTheDocument()
     expect(screen.getByText('Vacía')).toBeInTheDocument()
-    // sin buscador dentro de la tabla: el único campo de texto es el filtro "Posición" de arriba
-    expect(screen.getAllByRole('searchbox')).toEqual([screen.getByRole('searchbox', { name: 'Posición' })])
+    // sin buscador dentro de la tabla: los únicos campos de texto son los filtros "Posición" y "Pasillo" de arriba
+    expect(screen.getAllByRole('searchbox')).toEqual([screen.getByRole('searchbox', { name: 'Posición' }), screen.getByRole('searchbox', { name: 'Pasillo' })])
   })
 
   it('el filtro "Posición" manda el texto al servidor (search) y vuelve a la página 1', async () => {

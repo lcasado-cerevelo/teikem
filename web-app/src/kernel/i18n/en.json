@@ -1071,39 +1071,36 @@
       "emptyProducts": "No product matches the filters.",
       "emptyBins": "No bin matches the filters."
     },
-    "binSheets": {
-      "button": "Bin sheets",
-      "hint": "PDF with one sheet per bin and each product's barcode, to stick on the rack and scan with the reader.",
-      "title": "Bin sheets",
-      "pdfTitle": "Bin sheets",
-      "intro": "One sheet per bin with its products (up to 10 per sheet) and each product's barcode, to stick on the rack. When done, the printed bins become \"Up to date\".",
+    "binProducts": {
+      "button": "Products by bin",
+      "hint": "PDF with one bin per page and the barcode of each product in it, to scan from paper (for example, on a high rack).",
+      "title": "Products by bin",
+      "pdfTitle": "Products by bin",
+      "intro": "One bin per page with its products (up to 10 per page) and each product's barcode, to scan from paper. It lists what is in the bins at the moment you generate it.",
       "scope": {
         "legend": "What to print",
         "filter": "The bins in the current filter ({count})",
         "selected": "The checked bins ({count})",
-        "stale": "Only outdated or never printed ({count})",
         "selectedNone": "To print only some bins, check them in the list."
       },
       "includeEmpty": "Include empty bins",
-      "includeEmptyHint": "When off, bins without products are not printed. When on, they get a \"No products\" sheet.",
+      "includeEmptyHint": "When off, bins without products are not printed. When on, they get a \"No products\" page.",
       "tooMany": "That is {count} bins; the maximum per print is {max}. Narrow the filters or check fewer bins.",
       "noneInScope": "There are no bins in your choice.",
-      "nothing": "There are no sheets to print: the chosen bins have no products. Turn on \"Include empty bins\" to print them.",
+      "nothing": "There is nothing to print: the chosen bins have no products. Turn on \"Include empty bins\" to print them.",
       "generate": "Generate PDF",
       "generating": "Generating…",
       "cancel": "Cancel",
       "progress": {
         "read": "Reading bins… {done} of {total}",
-        "render": "Generating the PDF ({sheets} sheets)…",
-        "mark": "Marking {bins} bins as printed…"
+        "render": "Generating the PDF ({sheets} pages)…"
       },
       "result": {
-        "printed": "{sheets} sheet(s) for {bins} bin(s) were generated and marked as printed.",
+        "printed": "{sheets} page(s) for {bins} bin(s) were generated.",
         "omittedEmpty": "{count} bin(s) without products were not printed.",
-        "withoutCode": "{count} product(s) without a readable barcode: see the notice at the bottom of their sheet.",
-        "cancelled": "Printing cancelled; no sheet was marked.",
-        "markFailed": "The PDF was downloaded, but the bins could not be marked as printed: {error} Generate it again to mark them.",
-        "error": "The bin sheets could not be generated; none was marked. {error}"
+        "withoutCode": "{count} product(s) without a readable barcode: see the notice at the bottom of their page.",
+        "cancelled": "Printing cancelled.",
+        "error": "The products-by-bin PDF could not be generated. {error}"
       },
       "details": {
         "zone": "Zone",
@@ -1114,32 +1111,8 @@
         "inactive": "Inactive"
       },
       "columns": {
-        "select": "Select",
-        "sheet": "Sheet"
+        "select": "Select"
       },
-      "filter": "Sheet",
-      "filterOptions": {
-        "NEVER_PRINTED": "Never printed",
-        "STALE": "Outdated",
-        "CURRENT": "Up to date",
-        "EMPTY": "No products (no sheet needed)"
-      },
-      "status": {
-        "NEVER_PRINTED": "Never printed",
-        "STALE": "Outdated",
-        "CURRENT": "Up to date",
-        "EMPTY": "No products",
-        "EMPTY_ARIA": "No products: no sheet needed"
-      },
-      "printedShort": "Printed {date}",
-      "lastPrinted": "Last printed: {date}",
-      "neverPrinted": "Its sheet was never printed",
-      "lastChanged": "Last product change: {date}",
-      "stale": "bins with an outdated or never printed sheet",
-      "staleOne": "bin with an outdated or never printed sheet",
-      "staleFiltered": "(with the current filters)",
-      "printStale": "Print the outdated ones",
-      "allCurrent": "All bin sheets in this list are up to date.",
       "selectRow": "Check bin {code}",
       "selectPage": "Select all on this page",
       "selected": "{count} checked",
@@ -1240,6 +1213,8 @@
       "filters": {
         "bin": "Slot",
         "binPlaceholder": "Code, aisle, rack…",
+        "aisle": "Aisle",
+        "aislePlaceholder": "E.g. A",
         "zone": "Zone",
         "type": "Type",
         "product": "Product",

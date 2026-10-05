@@ -6,7 +6,7 @@
 //   porcentaje. Nunca se inventa un porcentaje.
 // - Estatus de una posición (`occupancy` del API): Vacía / Parcial / Llena / Sin cupo, con la misma regla que
 //   `WarehouseRules.Occupancy` del servidor (réplica solo como respaldo si el DTO no la trae).
-// - Filtros: todos van al servidor (`zoneIds`, `productPublicIds`, `occupancy` y, Lote F15, `sheetStatus`); el filtro Tipo (de zona) no existe en el
+// - Filtros: todos van al servidor (`zoneIds`, `productPublicIds` y `occupancy`); el filtro Tipo (de zona) no existe en el
 //   API y se traduce a los ids de las zonas de ese tipo, cruzados con el filtro Zona.
 import type { GetQuery, WarehouseBinDto, WarehouseZoneDto } from './api'
 
@@ -122,11 +122,9 @@ export interface LocationFilters {
   productPublicIds: readonly string[]
   /** Estatus (vacío = todos). */
   occupancy: readonly string[]
-  /** Lote F15: estado de la hoja de posición (NEVER_PRINTED, STALE, CURRENT, EMPTY; vacío = todos). */
-  sheetStatus?: readonly string[]
 }
 
-export const EMPTY_LOCATION_FILTERS: LocationFilters = { zoneIds: [], zoneTypes: [], productPublicIds: [], occupancy: [], sheetStatus: [] }
+export const EMPTY_LOCATION_FILTERS: LocationFilters = { zoneIds: [], zoneTypes: [], productPublicIds: [], occupancy: [] }
 
 export type BinListQuery = GetQuery<'/api/v1/warehouses/{publicId}/bins'>
 
@@ -146,7 +144,6 @@ export function buildBinListQuery(f: LocationFilters, zones: readonly WarehouseZ
     zoneIds: zoneIds && zoneIds.length > 0 ? zoneIds : undefined,
     productPublicIds: f.productPublicIds.length > 0 ? [...f.productPublicIds] : undefined,
     occupancy: f.occupancy.length > 0 ? [...f.occupancy] : undefined,
-    sheetStatus: f.sheetStatus && f.sheetStatus.length > 0 ? [...f.sheetStatus] : undefined,
   }
   return { query, impossible: zoneIds !== undefined && zoneIds.length === 0 }
 }

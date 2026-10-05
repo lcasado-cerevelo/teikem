@@ -16,3 +16,4 @@ appsettings.*.local.json
 .obsidian/
 app-almacen/modules/datawedge/android/build
 web-app/playwright.local-chrome.config.ts
+.tmp-testout/

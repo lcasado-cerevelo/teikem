@@ -1,5 +1,8 @@
 # Lote 23 — Hojas de posición: el dato y el rastro de la hoja desactualizada (servidor, 2026-10-03)
 
+> **Reemplazado el 2026-10-05** por el informe "Productos por posición" ([lote24-decisiones.md](lote24-decisiones.md)): el estado de la hoja, `staleCount`, `sheetStatus`, `mark-printed` y las dos columnas se quitaron. Este documento queda como historia.
+
+
 Pedido del dueño: por posición (`WarehouseBin`) se imprimirá una **hoja de posición** en papel con los productos que hay en ella (SKU, nombre y
 código de barras) para pegarla en el rack. Este lote es **solo servidor**: da el dato de las hojas y el rastro de si la hoja de una posición está
 desactualizada. La hoja en PDF, la insignia, el contador y la selección en la web, y la app, van en lotes siguientes. Rama

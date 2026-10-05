@@ -328,12 +328,11 @@ tienen cupo).» y la cifra es un tope.
 
 **Qué bloquea.** Con el almacén dado de baja, el servidor responde 422 «El almacén está dado de baja; solo se consulta.».
 
-**Hojas de posición (Lote F15).** La tabla de Posiciones tiene además la casilla **Elegir**, la columna **Hoja** (estado de la hoja
-pegada en el rack: Sin hoja impresa, Desactualizada, Al día o "—", con la última impresión), el filtro **Hoja**, el aviso
-**"N posiciones con la hoja desactualizada o sin imprimir"** con **Imprimir las desactualizadas**, y el botón **Hojas de posición**
-junto a **Códigos de barras**. Todo se explica en [F15 — Hojas de posición](f15-hojas-de-posicion.md).
+**Productos por posición y filtro Pasillo.** La tabla de Posiciones tiene además la casilla **Elegir**, el filtro **Pasillo** (texto) y el botón
+**Productos por posición**, junto a **Códigos de barras**: un PDF con una posición por página y el código de barras de cada producto que tiene, para
+escanear desde el papel en un rack alto. Todo se explica en [F15 — Productos por posición](f15-productos-por-posicion.md).
 
-**Etiquetas de posición (Lote F16).** El botón **Etiquetas de posición**, junto a **Hojas de posición**, genera un PDF con una etiqueta
+**Etiquetas de posición (Lote F16).** El botón **Etiquetas de posición**, junto a **Productos por posición**, genera un PDF con una etiqueta
 por posición (4 × 2, 4 × 4 o 4 × 6 pulgadas, una página por etiqueta) del filtro actual o de las marcadas, para la impresora de
 etiquetas; no cambia nada en el sistema. Ver [F16 — Etiquetas de posición](f16-etiquetas-de-posicion.md).
 
