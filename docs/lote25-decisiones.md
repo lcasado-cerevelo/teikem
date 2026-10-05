@@ -37,3 +37,16 @@ servidor/app, no se deja sin posición. Finish y Reconcile no cambian.
 3. **Un conteo abierto largo** bloquea las posiciones de sus líneas para "Conteo de lo cambiado" solo cuando ya tiene líneas (como cualquier conteo Pendiente).
 4. **Tope** de 1000 líneas por conteo (el de siempre).
 5. El conteo "un producto en todas sus posiciones" (Lote A4) ya no se abre desde la app; la web lo sigue ofreciendo (Por producto con un producto elegido).
+
+## Adenda (2026-10-05): quién cuenta, asignación automática desde la app y PIN
+
+- **Quién cuenta en la lista web.** `CycleCountDto` gana `createdByName` (quien abrió el conteo) y `capturedByNames` (hasta 3 que han capturado alguna línea; sin cantidades, también a ciegas). La lista y el
+  encabezado del detalle dicen `Cuenta: …` (quienes capturaron) o, si nadie ha capturado todavía, `Abierto por …`. Lo capturado por la app llega al terminar (la app manda un solo lote), así que mientras se cuenta
+  se ve `Abierto por …`. Un conteo por producto abierto y sin líneas se titula `Conteo abierto: sin productos todavía` (antes decía "Sin posiciones").
+- **Qué es "Sin asignar".** La tarea COUNT del conteo no tiene usuario asignado (se asigna con el ícono de la lista, `warehouse.manage`).
+- **Asignación automática.** `CycleCountCreateRequest.AssignToMe` (al final, por defecto `false`): la tarea COUNT nace asignada a quien crea el conteo. La app de almacén lo manda siempre (quien abre el conteo es quien lo
+  cuenta), así que esos conteos nacen asignados y no hace falta asignarlos. El ícono de asignar se conserva para los conteos creados desde la web y para reasignar.
+- **PIN.** Los campos del PIN (asignar/restablecer en Usuarios y cambiar el propio en Mi cuenta) llevan `autocomplete="new-password"` para que el navegador no los rellene con la contraseña guardada, y el primero tiene el foco.
+- **No hecho: ver lo contado en la web mientras se cuenta en la app.** Hoy la app manda un solo lote al terminar. Enviar cada línea al servidor al agregarla es viable (hay `PUT /lines/batch` y la web se podría refrescar
+  cada pocos segundos) pero cambia reglas: quitar o corregir una línea ya enviada necesita un endpoint nuevo, y la cola de salida deja de ser todo-o-nada. Pendiente de decisión del dueño.
+

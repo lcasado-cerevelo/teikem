@@ -61,7 +61,7 @@ describe('Conteo abierto — varios productos', () => {
 
     // el conteo se abrió vacío (sin producto ni posición) y el producto ya trae su única posición
     await waitFor(() => expect(screen.getByTestId('open-count-bin')).toBeTruthy())
-    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/cycle-counts')?.body).toEqual({ warehousePublicId: 'wh-1', allowEmpty: true })
+    expect(calls.find((c) => c.method === 'POST' && c.path === '/api/v1/cycle-counts')?.body).toEqual({ warehousePublicId: 'wh-1', allowEmpty: true, assignToMe: true })
     expect(getOpenCount()).toMatchObject({ countId: 700, mode: 'OPEN', binId: null, product: null })
     expect(screen.getByText('A-01')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Cambiar posición' })).toBeTruthy()

@@ -72,6 +72,9 @@ export function PinModal({ open, user, onClose }: { open: boolean; user: UserSum
           <input
             id="pinmodal-pin"
             type="password"
+            // new-password: el navegador no rellena ni propone la contraseña guardada en un campo que NO es una contraseña (es el PIN de otra persona)
+            autoComplete="new-password"
+            autoFocus
             inputMode="numeric"
             maxLength={6}
             value={pin}
@@ -83,6 +86,7 @@ export function PinModal({ open, user, onClose }: { open: boolean; user: UserSum
           <input
             id="pinmodal-confirm"
             type="password"
+            autoComplete="new-password"
             inputMode="numeric"
             maxLength={6}
             value={confirmPin}

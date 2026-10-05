@@ -7,11 +7,13 @@ namespace Teikem.Infrastructure.Contracts;
 /// CategoryIds), si el producto existe pero no tiene existencia el conteo se crea VACÍO (origen PRODUCT, sin líneas) en lugar de
 /// responder 400: sirve para registrar lo hallado donde el sistema no tenía nada ("Otra posición" de la app). Con otros filtros
 /// o más de un producto → 400.
+/// Lote 25: AssignToMe (al final, por defecto false) = la tarea COUNT del conteo nace ASIGNADA a quien lo crea (la app de almacén lo manda: quien abre
+/// el conteo es quien lo cuenta; no hace falta asignarlo después).
 /// Lote 24: AllowEmpty con NINGÚN producto (y sin otros filtros) abre un conteo VACÍO de origen PRODUCT al que se van agregando
 /// productos escaneados (cada uno con su cantidad y su posición, por defecto la única con existencia).
 /// </summary>
 public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int[]? ZoneIds = null, int[]? BinIds = null,
-    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false);
+    Guid[]? ProductPublicIds = null, int[]? CategoryIds = null, bool AllowEmpty = false, bool AssignToMe = false);
 
 /// <summary>
 /// Encabezado del conteo. VarianceLines y NetVariance llegan null en el conteo a ciegas (Lote 8A: quien consulta no tiene
@@ -22,12 +24,14 @@ public sealed record CycleCountCreateRequest(Guid? WarehousePublicId = null, int
 /// POST /warehouse-tasks/{taskId}/assign; AssignedToUserId/AssignedToName = a quién está asignada.
 /// Lote 21: OriginCode puede ser PRODUCT (conteo por producto); CorrectedLines = líneas cuya cantidad corrigió alguien distinto de
 /// quien la capturó (o después de terminar el conteo).
+/// Lote 25 (quién cuenta): CreatedByName = quien abrió el conteo (en la app, quien lo está contando); CapturedByNames = quienes han capturado alguna
+/// línea (hasta 3, por nombre). No revelan cantidades: también llegan a ciegas.
 /// </summary>
 public sealed record CycleCountDto(int Id, string Number, Guid WarehousePublicId, string WarehouseCode, string StatusCode, string Status,
     int LineCount, int CountedLines, int? VarianceLines, decimal? NetVariance, DateTime CreatedAtUtc, DateTime? ReconciledAtUtc, bool IsActive,
     int BinCount = 0, string? BinCode = null, string? ZoneCode = null, string? OriginCode = null, int? TaskId = null, string? AssignedToName = null,
     string? Origin = null, DateTime? ChangesFromUtc = null, DateTime? ChangesToUtc = null, int? AssignedToUserId = null,
-    int CorrectedLines = 0);
+    int CorrectedLines = 0, string? CreatedByName = null, IReadOnlyList<string>? CapturedByNames = null);
 
 /// <summary>
 /// Línea del conteo. Conteo a ciegas (Lote 8A): cuando quien consulta la ficha NO tiene warehouse.count (solo inventory.view),

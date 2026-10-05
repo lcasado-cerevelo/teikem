@@ -42,11 +42,23 @@ export function CountTaskList(props: CountTaskListProps) {
   const [assigning, setAssigning] = useState<CycleCountDto | null>(null)
   const [deleting, setDeleting] = useState<CycleCountDto | null>(null)
 
+  /** Quién cuenta: quienes ya capturaron líneas y, si nadie, quien abrió el conteo (en la app, quien lo está contando). */
+  const whoCounts = useCallback(
+    (c: CycleCountDto): string | null => {
+      const counters = c.capturedByNames ?? []
+      if (counters.length > 0) return t('warehouse.cycleCounts.list.countedBy', { names: counters.join(', ') })
+      return c.createdByName ? t('warehouse.cycleCounts.list.openedBy', { name: c.createdByName }) : null
+    },
+    [t],
+  )
+
   const whereText = useCallback(
     (c: CycleCountDto) => {
       const w = countWhere(c)
       if (w.kind === 'bin') return w.code
       if (w.kind === 'many') return t('warehouse.cycleCounts.list.positions', { n: w.bins })
+      // conteo abierto (por producto) que todavía no tiene ninguna línea: no es "sin posiciones", es que aún no se cuenta nada
+      if (c.originCode === 'PRODUCT' && (c.lineCount ?? 0) === 0) return t('warehouse.cycleCounts.list.noLinesYet')
       return t('warehouse.cycleCounts.list.noBins')
     },
     [t],
@@ -129,6 +141,7 @@ export function CountTaskList(props: CountTaskListProps) {
                       {c.assignedToName ? t('warehouse.cycleCounts.list.assigned', { name: c.assignedToName }) : t('warehouse.cycleCounts.list.unassigned')}
                     </span>
                   )}
+                  {whoCounts(c) && <span className="cc-row-who">{whoCounts(c)}</span>}
                 </span>
               </button>
               {(canAssign || canDelete) && (

@@ -971,4 +971,33 @@ public sealed class CycleCountByProductTests
         Assert.Equal(7, CycleCountRules.SingleBin(new[] { 7, 7 }));   // dos lotes en la misma posición = una posición
         Assert.Null(CycleCountRules.SingleBin(new[] { 7, 8 }));
     }
+
+    [Fact]
+    public async Task Count_list_says_who_opened_it_and_who_captured_lines_without_quantities()
+    {
+        await using var f = await NewAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 8m);
+        var svc = f.Get<CycleCountService>();
+        var created = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+        Assert.Equal(("Ana Pérez", 0), (created.Count.CreatedByName, created.Count.CapturedByNames!.Count));
+
+        f.AsUser(Beto);
+        await svc.AddLineAsync(created.Count.Id, new CountAddLineRequest(null, f.ProductNonePublicId, CountedQty: 3m), default);
+        f.AsUser(Ana);
+        var page = await svc.ListPageAsync(new CycleCountQuery(), blind: true, default);
+        var item = Assert.Single(page.Items);
+        Assert.Equal("Ana Pérez", item.CreatedByName);
+        Assert.Equal(new[] { "Beto Ruiz" }, item.CapturedByNames);
+    }
+
+    [Fact]
+    public async Task Count_opened_with_assign_to_me_is_assigned_to_its_creator_and_without_it_is_not()
+    {
+        await using var f = await NewAsync();
+        var svc = f.Get<CycleCountService>();
+        var mine = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true, AssignToMe: true), default);
+        Assert.Equal((Ana, "Ana Pérez"), (mine.Count.AssignedToUserId, mine.Count.AssignedToName));
+        var plain = await svc.CreateAsync(new CycleCountCreateRequest(AllowEmpty: true), default);
+        Assert.Null(plain.Count.AssignedToUserId);
+    }
 }

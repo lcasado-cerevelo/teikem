@@ -82,13 +82,22 @@ function SetPinModal({ open, hasPin, onClose }: { open: boolean; hasPin: boolean
       </div>
       <div className="f">
         <label htmlFor="pintab-pin">{t('account.pin.pin')}</label>
-        <input id="pintab-pin" type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin1(e.target.value)} />
+        <input
+          id="pintab-pin"
+          type="password"
+          autoComplete="new-password"
+          inputMode="numeric"
+          maxLength={6}
+          value={pin}
+          onChange={(e) => setPin1(e.target.value)}
+        />
       </div>
       <div className="f">
         <label htmlFor="pintab-confirm">{t('account.pin.confirmPin')}</label>
         <input
           id="pintab-confirm"
           type="password"
+          autoComplete="new-password"
           inputMode="numeric"
           maxLength={6}
           value={confirmPin}

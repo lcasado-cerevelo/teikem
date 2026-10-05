@@ -18199,6 +18199,7 @@ export interface components {
             productPublicIds?: string[] | null;
             categoryIds?: number[] | null;
             allowEmpty?: boolean;
+            assignToMe?: boolean;
         };
         CycleCountDetailDto: {
             count?: components["schemas"]["CycleCountDto"];
@@ -18246,6 +18247,8 @@ export interface components {
             assignedToUserId?: number | null;
             /** Format: int32 */
             correctedLines?: number;
+            createdByName?: string | null;
+            capturedByNames?: string[] | null;
         };
         CycleCountFromChangesRequest: {
             /** Format: uuid */

@@ -55,7 +55,7 @@ function mapProductLines(lines: LineDto[] | null | undefined): ProductCountLine[
 
 /** Crea el conteo para esa posición (o falla si ya hay uno abierto ahí: el servidor lo rechaza). */
 export async function startCountOnline(warehousePublicId: string, binId: number): Promise<StartedCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, binIds: [binId] } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, binIds: [binId], assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, expectedLines: mapExpectedLines(detail.lines) }
 }
 
@@ -69,14 +69,14 @@ export interface StartedProductCount {
  *  producto en el almacén. Con `allowEmpty: true` (siempre, desde esta app) un producto sin existencia en ningún lado abre el
  *  conteo VACÍO (sin líneas) en vez de un 400: lo hallado donde el sistema no tenía nada se agrega con «Otra posición». */
 export async function startProductCountOnline(warehousePublicId: string, productPublicId: string): Promise<StartedProductCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true, assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, lines: mapProductLines(detail.lines) }
 }
 
 /** Lote 24 — abre un conteo VACÍO (origen PRODUCT, sin producto ni posición) al que se van agregando los productos escaneados:
  *  POST /cycle-counts con allowEmpty y sin filtros. Necesita señal. */
 export async function startOpenCountOnline(warehousePublicId: string): Promise<{ countId: number; isBlind: boolean }> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, allowEmpty: true } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, allowEmpty: true, assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true }
 }
 

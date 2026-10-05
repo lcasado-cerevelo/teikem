@@ -2793,7 +2793,10 @@
         "unassigned": "Sin asignar",
         "assign": "Asignar el conteo {number}",
         "delete": "Eliminar el conteo {number}",
-        "exportName": "Conteos cíclicos"
+        "exportName": "Conteos cíclicos",
+        "noLinesYet": "Conteo abierto: sin productos todavía",
+        "countedBy": "Cuenta: {names}",
+        "openedBy": "Abierto por {name}"
       },
       "detail": {
         "select": "Selecciona una tarea de conteo",

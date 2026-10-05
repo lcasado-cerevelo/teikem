@@ -582,6 +582,11 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
                 ? t('warehouse.cycleCounts.list.assigned', { name: count.assignedToName })
                 : t('warehouse.cycleCounts.list.unassigned')
               : null,
+            (count.capturedByNames ?? []).length > 0
+              ? t('warehouse.cycleCounts.list.countedBy', { names: (count.capturedByNames ?? []).join(', ') })
+              : count.createdByName
+                ? t('warehouse.cycleCounts.list.openedBy', { name: count.createdByName })
+                : null,
           ]
             .filter(Boolean)
             .join(' · ')}
