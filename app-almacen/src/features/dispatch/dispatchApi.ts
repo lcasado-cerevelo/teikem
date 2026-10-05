@@ -7,7 +7,26 @@
 import { api, ApiError, isNetworkError, unwrap } from '../../kernel/api/client'
 import { enqueue } from '../../kernel/sync/outbox'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
-import { buildCollectAndPackBody, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
+import { buildCollectAndPackBody, type StockOption, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
+
+/** Existencia DISPONIBLE del producto en el almacén por posición y lote (GET /inventory/balances, solo con disponible > 0): de ahí sale la
+ *  posición sugerida (FEFO). Necesita señal; sin ella lanza y el despacho sigue sin sugerencia. */
+export async function fetchStockOptions(warehousePublicId: string, productPublicId: string): Promise<StockOption[]> {
+  const page = await unwrap(
+    api.GET('/api/v1/inventory/balances', {
+      params: { query: { warehousePublicIds: [warehousePublicId], productPublicIds: [productPublicId], onlyAvailable: true, take: 200 } },
+    }),
+  )
+  return (page.items ?? [])
+    .filter((b) => b.binCode)
+    .map((b) => ({
+      binCode: b.binCode ?? '',
+      zoneTypeCode: b.zoneTypeCode ?? null,
+      lotNumber: b.lotNumber ?? null,
+      expiryDate: b.expiryDate ?? null,
+      available: b.qtyAvailable ?? 0,
+    }))
+}
 
 /** Clientes activos a quienes se puede despachar inventario PROPIO (con inventario de un cliente 3PL no hace falta: es ese). */
 export async function fetchClientsForOwnDispatch(): Promise<ClientChoice[]> {

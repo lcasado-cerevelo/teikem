@@ -36,6 +36,7 @@ import {
   useProductBrands,
   useProductCategories,
   useSetProductActive,
+  useInventoryBalances,
   useUpdateProduct,
   useWarehouseBins,
   type ProductDetailDto,
@@ -525,6 +526,8 @@ function ProductEditorForm({
         </fieldset>
       </Form>
 
+      {isEdit && publicId && <StockByBin publicId={publicId} />}
+
       {detail && canAdjust && product && <AdjustBlock detail={detail} setBusy={setBusy} disabled={submitting} />}
 
       {isEdit && product && (product.trackingTypeCode === 'LOT' || product.trackingTypeCode === 'SERIAL') && (
@@ -541,6 +544,80 @@ function ProductEditorForm({
         </div>
       )}
     </Modal>
+  )
+}
+
+// ---- Panel colapsable "Dónde está": existencia del producto por almacén, posición y lote (pedido del dueño 2026-10-05) ----
+// Se pide solo al abrirlo (`GET /inventory/balances?productPublicIds=…`, solo con existencia): en mano, reservado y disponible por
+// posición, con el lote y su vencimiento si lo lleva, y el total. Disponible = en mano − reservado (lo que se puede despachar).
+function StockByBin({ publicId }: { publicId: string }) {
+  const t = useT()
+  const lang = useLang()
+  const [open, setOpen] = useState(false)
+  return (
+    <details className="pe-more pe-where" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>{t('warehouse.products.editor.where')}</summary>
+      {open && <StockByBinRows publicId={publicId} lang={lang} />}
+    </details>
+  )
+}
+
+function StockByBinRows({ publicId, lang }: { publicId: string; lang: string }) {
+  const t = useT()
+  const q = useInventoryBalances({ productPublicIds: [publicId], includeZero: false, take: 200 }, { handleAccessDenied: false })
+  if (q.isLoading) return <p className="note">{t('common.loading')}</p>
+  if (q.error) return <p className="note ferr">{q.error.message || t('errors.generic')}</p>
+  const rows = (q.data?.items ?? []).filter((b) => (b.qtyOnHand ?? 0) > 0)
+  if (rows.length === 0) return <p className="note">{t('warehouse.products.editor.whereEmpty')}</p>
+  const sum = (pick: (b: (typeof rows)[number]) => number | undefined) => rows.reduce((acc, b) => acc + (pick(b) ?? 0), 0)
+  return (
+    <div className="pe-where-wrap">
+      <table className="pe-stock">
+        <thead>
+          <tr>
+            <th scope="col">{t('warehouse.products.editor.whereBin')}</th>
+            <th scope="col">{t('warehouse.products.editor.whereLot')}</th>
+            <th scope="col" className="num">
+              {t('warehouse.products.editor.whereOnHand')}
+            </th>
+            <th scope="col" className="num">
+              {t('warehouse.products.editor.whereReserved')}
+            </th>
+            <th scope="col" className="num">
+              {t('warehouse.products.editor.whereAvailable')}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((b) => (
+            <tr key={b.id}>
+              <td>
+                <span className="ref">{b.binCode ?? '—'}</span>
+                <span className="sub">{[b.warehouseCode, b.zoneCode].filter(Boolean).join(' · ')}</span>
+              </td>
+              <td>{b.lotNumber ? [b.lotNumber, b.expiryDate].filter(Boolean).join(' · ') : '—'}</td>
+              <td className="num mono">{formatNumber(b.qtyOnHand, lang)}</td>
+              <td className="num mono">{formatNumber(b.qtyReserved, lang)}</td>
+              <td className="num mono">
+                <strong>{formatNumber(b.qtyAvailable, lang)}</strong>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" colSpan={2}>
+              {t('warehouse.products.editor.whereTotal')}
+            </th>
+            <td className="num mono">{formatNumber(sum((b) => b.qtyOnHand), lang)}</td>
+            <td className="num mono">{formatNumber(sum((b) => b.qtyReserved), lang)}</td>
+            <td className="num mono">
+              <strong>{formatNumber(sum((b) => b.qtyAvailable), lang)}</strong>
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   )
 }
 

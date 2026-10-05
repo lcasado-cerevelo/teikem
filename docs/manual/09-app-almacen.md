@@ -361,6 +361,15 @@ recolectadas (la posición de origen sigue guardada como texto, se vuelve a reso
 
 ---
 
+### 6.x Posición sugerida y lote obligatorio (2026-10-05)
+
+Al elegir el producto, el cursor cae en la **Cantidad**. La app pregunta al servidor dónde hay **disponible** el producto en el almacén del aparato (`GET /inventory/balances`, necesita señal) y usa
+la **misma regla de salida del servidor** (D14): vence primero, luego tipo de zona (picking, reserva, refrigerada, preparación) y código de posición; nunca cuarentena, cruce de muelle ni la zona de rentas.
+- **Producto sin lote:** sale en un recuadro **Sugerida: P-01** (con disponible) y el botón **Usar P-01**; es solo una ayuda: se puede escanear **cualquier otra** posición.
+- **Producto con lote:** la posición **no es opcional**: **Debe salir de A-01** (lote, vencimiento y disponible). Escanear otra da el aviso `Este producto lleva lote y sale primero el que vence antes: debe salir de {bin} ({detalle}).`;
+  pedir más de lo que hay ahí da `En {bin} solo hay {n} disponible. Escribe {n} (o menos) y luego escanea la posición; para el resto, la siguiente.` Al agregar la línea, la siguiente sugerencia descuenta lo ya sacado en este despacho.
+- **Sin señal:** `Sin señal: no se pudo buscar de dónde sale el producto. Escanea la posición.` (no hay sugerencia ni se exige posición).
+
 ## 7. Conteo
 
 Desde el Lote A4 la pantalla empieza con **"¿Cómo vas a contar?"**: **Por posición** (lo de siempre, descrito abajo) o

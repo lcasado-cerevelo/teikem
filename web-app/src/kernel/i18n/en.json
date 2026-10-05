@@ -1526,7 +1526,15 @@
         "addAdjust": "Add adjustment",
         "cancelAdjust": "Cancel adjustment",
         "adjustNotes": "Note",
-        "adjustNotesPlaceholder": "Why the adjustment (required)"
+        "adjustNotesPlaceholder": "Why the adjustment (required)",
+        "where": "Where it is (stock by bin)",
+        "whereEmpty": "No stock in any bin.",
+        "whereBin": "Bin",
+        "whereLot": "Lot",
+        "whereOnHand": "On hand",
+        "whereReserved": "Reserved",
+        "whereAvailable": "Available",
+        "whereTotal": "Total"
       },
       "fields": {
         "sku": "SKU",

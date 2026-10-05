@@ -1526,7 +1526,15 @@
         "addAdjust": "Añadir ajuste",
         "cancelAdjust": "Cancelar ajuste",
         "adjustNotes": "Nota",
-        "adjustNotesPlaceholder": "Por qué se ajusta (obligatoria)"
+        "adjustNotesPlaceholder": "Por qué se ajusta (obligatoria)",
+        "where": "Dónde está (existencia por posición)",
+        "whereEmpty": "Sin existencia en ninguna posición.",
+        "whereBin": "Posición",
+        "whereLot": "Lote",
+        "whereOnHand": "En mano",
+        "whereReserved": "Reservado",
+        "whereAvailable": "Disponible",
+        "whereTotal": "Total"
       },
       "fields": {
         "sku": "SKU",

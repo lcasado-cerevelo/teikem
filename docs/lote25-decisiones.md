@@ -50,3 +50,11 @@ servidor/app, no se deja sin posición. Finish y Reconcile no cambian.
 - **No hecho: ver lo contado en la web mientras se cuenta en la app.** Hoy la app manda un solo lote al terminar. Enviar cada línea al servidor al agregarla es viable (hay `PUT /lines/batch` y la web se podría refrescar
   cada pocos segundos) pero cambia reglas: quitar o corregir una línea ya enviada necesita un endpoint nuevo, y la cola de salida deja de ser todo-o-nada. Pendiente de decisión del dueño.
 
+## Adenda 2 (2026-10-05): despacho con posición sugerida / lote FEFO y panel "Dónde está"
+
+- **App, Despacho.** Cursor en la cantidad; posición **sugerida** (la primera según la regla de salida del servidor, calculada en la app sobre `GET /inventory/balances`, `onlyAvailable`); con producto **con lote** la posición es obligatoria
+  (la del próximo lote en salir, FEFO) y se rechaza otra o más de lo que hay; sin señal, sin sugerencia. Reglas en `dispatchLogic.ts` (`fefoOrder`, `nextStockOption`, `checkLotBin`), pantalla `dispatch.tsx`. No hay cambio de servidor.
+- **Web, Editar producto.** Panel plegable **Dónde está (existencia por posición)** (`StockByBin` en `ProductEditorModal.tsx`): en mano, reservado y disponible por posición y lote, con total; se pide solo al abrirlo.
+- **Decisiones a revisar:** (1) la regla FEFO está **replicada** en la app (no hay endpoint de sugerencia): si cambia `StockAllocator`, hay que cambiar `dispatchLogic.ts`; un endpoint de sugerencia en el servidor la dejaría en un solo lugar. (2) El FEFO obligatorio solo
+  se exige con señal. (3) Un producto con serie no se despacha desde la app (sin cambio).
+

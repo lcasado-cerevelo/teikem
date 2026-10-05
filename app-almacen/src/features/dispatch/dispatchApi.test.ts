@@ -3,7 +3,7 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { api } from '../../kernel/api/client'
 import { __resetDbForTests } from '../../kernel/db/database'
 import { countPending, listOutbox } from '../../kernel/sync/outbox'
-import { fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import { fetchStockOptions, fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
 import type { PickLine } from './dispatchLogic'
 
 jest.mock('../../kernel/api/client', () => {
@@ -103,5 +103,26 @@ describe('fetchClientsForOwnDispatch', () => {
     expect(getMock.mock.calls[0][0]).toBe('/api/v1/clients')
     expect(getMock.mock.calls[0][1].params.query).toEqual({ includeInactive: false })
     expect(rows).toEqual([{ publicId: 'c-1', label: 'Farmacia Central · CLI-001' }, { publicId: 'c-2', label: 'Sin código' }])
+  })
+})
+
+describe('fetchStockOptions', () => {
+  it('pide el disponible del producto en el almacén y lo deja por posición y lote (sin las filas sin posición)', async () => {
+    getMock.mockResolvedValueOnce(
+      ok({
+        items: [
+          { binCode: 'A-01', zoneTypeCode: 'PICKING', lotNumber: 'L-3', expiryDate: '2027-01-31', qtyAvailable: 12 },
+          { binCode: null, qtyAvailable: 9 },
+          { binCode: 'B-02', qtyAvailable: 4 },
+        ],
+      }),
+    )
+    const rows = await fetchStockOptions('wh-1', 'p1')
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/inventory/balances')
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicIds: ['wh-1'], productPublicIds: ['p1'], onlyAvailable: true, take: 200 })
+    expect(rows).toEqual([
+      { binCode: 'A-01', zoneTypeCode: 'PICKING', lotNumber: 'L-3', expiryDate: '2027-01-31', available: 12 },
+      { binCode: 'B-02', zoneTypeCode: null, lotNumber: null, expiryDate: null, available: 4 },
+    ])
   })
 })

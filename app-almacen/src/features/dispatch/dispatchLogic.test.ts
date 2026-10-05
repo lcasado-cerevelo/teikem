@@ -1,4 +1,5 @@
-import { binScanOutcome, buildCollectAndPackBody, buildPickLine, newPickLineDraft, pickQtyState, sameOwner, uniqueBinCodes } from './dispatchLogic'
+import { checkLotBin, fefoOrder, nextStockOption, pickedQty, binScanOutcome, buildCollectAndPackBody, buildPickLine, newPickLineDraft, pickQtyState, sameOwner, uniqueBinCodes } from './dispatchLogic'
+import type { StockOption } from './dispatchLogic'
 
 const PRODUCT = { publicId: 'p1', sku: 'SKU-1', name: 'Producto 1' }
 
@@ -93,5 +94,50 @@ describe('sameOwner', () => {
     expect(sameOwner(null, 'c1')).toBe(false)
     expect(sameOwner('c1', null)).toBe(false)
     expect(sameOwner('c1', 'c2')).toBe(false)
+  })
+})
+
+describe('posición sugerida (FEFO)', () => {
+  const opt = (binCode: string, available: number, over: Partial<StockOption> = {}): StockOption => ({ binCode, zoneTypeCode: 'RESERVE', lotNumber: null, expiryDate: null, available, ...over })
+
+  it('orden de salida: vence primero, los sin vencimiento al final; luego zona (picking antes que reserva) y código; sin cuarentena, cruce, rentas ni disponible 0', () => {
+    const rows = [
+      opt('Z-9', 5),
+      opt('B-1', 5, { expiryDate: '2027-03-01', lotNumber: 'L2' }),
+      opt('A-1', 5, { expiryDate: '2027-03-01', lotNumber: 'L2', zoneTypeCode: 'PICKING' }),
+      opt('C-1', 5, { expiryDate: '2026-12-31', lotNumber: 'L1' }),
+      opt('Q-1', 5, { expiryDate: '2026-01-01', zoneTypeCode: 'QUARANTINE' }),
+      opt('X-1', 5, { zoneTypeCode: 'CROSSDOCK' }),
+      opt('R-1', 5, { zoneTypeCode: 'RENTAL' }),
+      opt('E-1', 0),
+    ]
+    expect(fefoOrder(rows).map((o) => o.binCode)).toEqual(['C-1', 'A-1', 'B-1', 'Z-9'])
+  })
+
+  it('lo que sigue descuenta lo ya sacado de este despacho y devuelve lo que queda de esa existencia', () => {
+    const rows = [opt('C-1', 10, { expiryDate: '2026-12-31', lotNumber: 'L1' }), opt('B-1', 20, { expiryDate: '2027-03-01', lotNumber: 'L2' })]
+    expect(nextStockOption(rows, 0)).toMatchObject({ binCode: 'C-1', available: 10 })
+    expect(nextStockOption(rows, 4)).toMatchObject({ binCode: 'C-1', available: 6 })
+    expect(nextStockOption(rows, 10)).toMatchObject({ binCode: 'B-1', available: 20 })
+    expect(nextStockOption(rows, 31)).toBeNull()
+    expect(nextStockOption([], 0)).toBeNull()
+  })
+
+  it('con lote la posición es la de la sugerencia: otra posición o más de lo que hay se rechazan; sin sugerencia no se exige nada', () => {
+    const expected = opt('C-1', 10, { lotNumber: 'L1', expiryDate: '2026-12-31' })
+    expect(checkLotBin(expected, 'c-1', 10)).toEqual({ kind: 'ok' })
+    expect(checkLotBin(expected, 'B-1', 1)).toEqual({ kind: 'otherBin', expected })
+    expect(checkLotBin(expected, 'C-1', 11)).toEqual({ kind: 'tooMuch', expected })
+    expect(checkLotBin(null, 'B-1', 99)).toEqual({ kind: 'ok' })
+  })
+
+  it('suma lo sacado de un producto en las líneas del despacho', () => {
+    const lines = [
+      { productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'X' },
+      { productPublicId: 'p2', sku: 'B', productName: 'B', quantity: 5, fromBinCode: 'X' },
+      { productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 3, fromBinCode: 'Y' },
+    ]
+    expect(pickedQty(lines, 'p1')).toBe(5)
+    expect(pickedQty(lines, 'p9')).toBe(0)
   })
 })
