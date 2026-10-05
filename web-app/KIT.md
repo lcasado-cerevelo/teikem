@@ -576,7 +576,7 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   "Imprimir las desactualizadas"; y "Hojas de posición" junto a "Códigos de barras". Nunca una ventana por movimiento.
   | Pieza | Props / firma | Uso |
   |---|---|---|
-  | `BinSheetCell` (`BinSheets.tsx`) | `bin` (`sheetStatus`, `sheetPrintedAtUtc`, `sheetContentChangedAtUtc`) | `Chip` con texto (Sin hoja impresa `warn` / Desactualizada `fail` / Al día `disp`; EMPTY = "—" con `aria-label`) y debajo *Impresa {fecha y hora}* (`useFormat().dateTime`); `title` con la última impresión y el último cambio |
+  | `BinSheetCell` (`BinSheetsPanel.tsx`) | `bin` (`sheetStatus`, `sheetPrintedAtUtc`, `sheetContentChangedAtUtc`) | `Chip` con texto (Sin hoja impresa `warn` / Desactualizada `fail` / Al día `disp`; EMPTY = "—" con `aria-label`) y debajo *Impresa {fecha y hora}* (`useFormat().dateTime`); `title` con la última impresión y el último cambio |
   | `StaleSheetsBar` | `count: number \| null` (null = cargando), `filtered`, `onPrint()` | "N posiciones con la hoja desactualizada o sin imprimir" (+ *(con los filtros actuales)*) y el botón (con `<Can perm="inventory.view">`); con 0, *Todas las hojas… están al día.* |
   | `BinSheetsModal` | `open`, `onClose`, `onPrinted?(scope)`, `warehousePublicId`, `warehouse`, `query` (la de la tabla sin skip/take; null = imposible), `initialScope`, `counts: { filter, selected, stale }`, `selectedIds` | qué imprimir (radios), "Incluir posiciones vacías" (`.sw`), tope `BIN_SHEETS_MAX_BINS` (500), progreso, Cancelar (solo mientras lee) y "Generar PDF" con `printBinSheets`; al terminar invalida `warehouseKeys.bins` y avisa con `printedSummary` |
   Puras en `binSheets.ts`: `SHEET_STATUSES`, `NEEDS_PRINTING`, `SHEET_STATUS_TONE`, `BIN_SHEETS_PERMISSION`, `sheetStatusOf`,
@@ -599,7 +599,7 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   mark-printed ni a bin-sheets.
   | Pieza | Props / firma | Uso |
   |---|---|---|
-  | `BinLabelsButton` (`BinLabels.tsx`) | `onOpen()` | botón con `<Can perm="inventory.view">` |
+  | `BinLabelsButton` (`BinLabelsPanel.tsx`) | `onOpen()` | botón con `<Can perm="inventory.view">` |
   | `BinLabelsModal` | `open`, `onClose`, `warehousePublicId`, `warehouse`, `query` (la de la tabla sin skip/take; null = imposible), `initialScope: 'filter' \| 'selected'`, `counts: { filter, selected }`, `selectedIds` | qué imprimir, tamaño, orientación, tope `BIN_LABELS_MAX` (500), progreso, Cancelar (mientras lee) y "Generar PDF" con `printBinLabels`; si hay etiquetas sin código se queda abierto con la lista y "Listo" |
   Puras en `binLabels.ts`: `BIN_LABELS_PERMISSION`, `BIN_LABELS_PAGE_SIZE` (200), `BIN_LABELS_MAX`, `binLabelsSources(scope, query, ids)`
   (marcadas en tandas de 200 `binIds`), `labelDetails(bin, códigoAlmacén, t)` (almacén + `sheetDetails`), `toLabelBin`, `parseLabelSize`,

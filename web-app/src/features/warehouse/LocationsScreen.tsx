@@ -14,7 +14,7 @@
 //   sobre el almacén elegido, con la zona de `?zone=` ya puesta; al aplicar se refrescan la tabla y los recuadros.
 // - Lote F14: "Códigos de barras" en la cabecera de la tabla: PDF con un código por posición de lo filtrado (misma consulta
 //   que la tabla y Exportar), para imprimir y escanear el papel en el conteo (BarcodeReportButtons / barcodeReports.ts).
-// - Lote F15: hojas de posición (BinSheets.tsx / binSheets.ts). Columna "Hoja" (insignia + última impresión), filtro "Hoja"
+// - Lote F15: hojas de posición (BinSheetsPanel.tsx / binSheets.ts). Columna "Hoja" (insignia + última impresión), filtro "Hoja"
 //   (`sheetStatus`), casillas para marcar posiciones (con "Seleccionar todas las de la página" y contador; la selección se
 //   conserva al cambiar de página o de filtro dentro del almacén), el aviso acumulado "N posiciones con la hoja
 //   desactualizada o sin imprimir" (`staleCount` con los filtros de la tabla salvo "Hoja") con "Imprimir las
