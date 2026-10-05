@@ -7,7 +7,13 @@
 import { api, ApiError, isNetworkError, unwrap } from '../../kernel/api/client'
 import { enqueue } from '../../kernel/sync/outbox'
 import { findBinByCode } from '../../kernel/warehouse/binLookup'
-import { buildCollectAndPackBody, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
+import { buildCollectAndPackBody, type ClientChoice, type ConsigneeChoice, type PickLine, type ResolvedPickLine, uniqueBinCodes } from './dispatchLogic'
+
+/** Clientes activos a quienes se puede despachar inventario PROPIO (con inventario de un cliente 3PL no hace falta: es ese). */
+export async function fetchClientsForOwnDispatch(): Promise<ClientChoice[]> {
+  const rows = await unwrap(api.GET('/api/v1/clients', { params: { query: { includeInactive: false } } }))
+  return rows.map((r) => ({ publicId: r.publicId ?? '', label: [r.name, r.code].filter(Boolean).join(' · ') }))
+}
 
 export async function fetchConsigneesForClient(clientPublicId: string): Promise<ConsigneeChoice[]> {
   const rows = await unwrap(api.GET('/api/v1/locations', { params: { query: { clientId: clientPublicId } } }))

@@ -1,6 +1,7 @@
 import { act, fireEvent, render } from '@testing-library/react-native'
 import { Platform } from 'react-native'
 
+import { placeholderFontSize } from './placeholderFont'
 import { ScanField } from './ScanField'
 
 // Lector del Zebra simulado: DataWedge "instalado" y un emisor del evento onScan (el módulo nativo no existe en Jest).
@@ -126,5 +127,19 @@ describe('ScanField — valor desde afuera (prefill, docs/mobile/mejoras-ux-zebr
 
     await rerender(<ScanField label="Producto" onSubmit={onSubmit} prefill={{ value: 'SKU-7', seq: 2 }} />)
     expect(input().props.value).toBe('SKU-7')
+  })
+})
+
+describe('placeholderFontSize', () => {
+  it('sin placeholder o con ancho de sobra queda en 20; en una pantalla angosta baja sin pasar de 12', () => {
+    expect(placeholderFontSize(411, undefined)).toBe(20)
+    expect(placeholderFontSize(800, 'Código de barras o SKU.')).toBe(20)
+    expect(placeholderFontSize(411, 'Código de barras o SKU.')).toBeLessThan(20)
+    expect(placeholderFontSize(411, 'Código de barras o SKU.')).toBeGreaterThanOrEqual(15)
+    expect(placeholderFontSize(240, 'Código de barras o SKU.')).toBe(12)
+  })
+  it('una pantalla más ancha nunca da una letra menor que una más angosta', () => {
+    const text = 'Código de barras o SKU.'
+    expect(placeholderFontSize(480, text)).toBeGreaterThanOrEqual(placeholderFontSize(360, text))
   })
 })

@@ -12,22 +12,24 @@ import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
-import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
+import { fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
 import {
   binScanOutcome,
+  type ClientChoice,
   type ConsigneeChoice,
   newPickLineDraft,
+  sameOwner,
   type PickLine,
   type PickLineDraft,
 } from '../features/dispatch/dispatchLogic'
 
-type Step = { name: 'scan' } | { name: 'consignee' } | { name: 'error'; message: string }
+type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { name: 'error'; message: string }
 
 /** Pantalla 5 (docs/mobile/app-almacen-plan.md §2): recolectar (producto, cantidad, posición) sin señal; empacar
  *  (elegir consignatario y confirmar) necesita señal un momento y luego se manda por la cola. Solo clientes 3PL por
- *  ahora (docs/lote8A-app-decisiones.md): el dueño del producto ya viene sincronizado; inventario propio se completa
- *  en la web. */
+ *  ahora (docs/lote8A-app-decisiones.md): el dueño del producto ya viene sincronizado. Inventario propio (2026-10-05): se
+ *  despacha igual; al empacar se elige primero el cliente a quien se despacha y luego su consignatario. */
 export default function DispatchScreen() {
   const { t } = useT()
   const router = useRouter()
@@ -38,6 +40,9 @@ export default function DispatchScreen() {
   const [draft, setDraft] = useState<PickLineDraft | null>(null)
   const [packing, setPacking] = useState<Step>({ name: 'scan' })
   const [consignees, setConsignees] = useState<ConsigneeChoice[] | null>(null)
+  // inventario propio: clientes a elegir y el elegido (con inventario 3PL el cliente es el dueño)
+  const [clients, setClients] = useState<ClientChoice[] | null>(null)
+  const [chosenClient, setChosenClient] = useState<ClientChoice | null>(null)
   const [pieces, setPieces] = useState('1')
   const [busy, setBusy] = useState(false)
   // aviso verde de la última línea agregada (se queda hasta la siguiente lectura)
@@ -67,17 +72,14 @@ export default function DispatchScreen() {
       vibrateError()
       return
     }
-    if (!product.ownerClientPublicId) {
-      setScanError(t('dispatch.ownedInventoryBlocked'))
+    if (openPick && !sameOwner(openPick.clientPublicId, product.ownerClientPublicId)) {
+      setScanError(t('dispatch.mixedOwners'))
       vibrateError()
       return
     }
-    if (openPick?.clientPublicId && openPick.clientPublicId !== product.ownerClientPublicId) {
-      setScanError(t('dispatch.ownedInventoryBlocked'))
-      vibrateError()
-      return
+    if (!openPick) {
+      startLocalPick(warehousePublicId!, product.ownerClientPublicId ? { publicId: product.ownerClientPublicId, name: product.ownerName ?? '' } : null)
     }
-    if (!openPick) startLocalPick(warehousePublicId!, { publicId: product.ownerClientPublicId, name: product.ownerName ?? '' })
     setScanError(null)
     setBinError(null)
     setDraft(newPickLineDraft(product))
@@ -119,6 +121,7 @@ export default function DispatchScreen() {
         style: 'destructive',
         onPress: () => {
           discardLocalPick()
+          setChosenClient(null)
           setDraft(null)
           setPacking({ name: 'scan' })
           refresh()
@@ -136,8 +139,26 @@ export default function DispatchScreen() {
         setPacking({ name: 'error', message: t('putaway.binNotFound') + ' ' + resolved.notFound.join(', ') })
         return
       }
-      const rows = await fetchConsigneesForClient(openPick.clientPublicId!)
-      setConsignees(rows)
+      if (openPick.clientPublicId) {
+        setConsignees(await fetchConsigneesForClient(openPick.clientPublicId))
+        setPacking({ name: 'consignee' })
+      } else {
+        // inventario propio: primero a qué cliente se despacha
+        setClients(await fetchClientsForOwnDispatch())
+        setPacking({ name: 'client' })
+      }
+    } catch (err) {
+      setPacking({ name: 'error', message: err instanceof ApiError ? err.title : t('dispatch.consigneesError') })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function chooseClient(client: ClientChoice) {
+    setBusy(true)
+    try {
+      setConsignees(await fetchConsigneesForClient(client.publicId))
+      setChosenClient(client)
       setPacking({ name: 'consignee' })
     } catch (err) {
       setPacking({ name: 'error', message: err instanceof ApiError ? err.title : t('dispatch.consigneesError') })
@@ -156,7 +177,9 @@ export default function DispatchScreen() {
         return
       }
       const n = Math.max(1, Math.round(Number(pieces) || 1))
-      await submitCollectAndPack(warehousePublicId!, openPick.clientPublicId!, consignee.publicId, n, resolved.lines)
+      await submitCollectAndPack(warehousePublicId!, (openPick.clientPublicId ?? chosenClient?.publicId)!, consignee.publicId, n, resolved.lines)
+      setChosenClient(null)
+      setClients(null)
       discardLocalPick()
       void runSync()
       router.replace('/home')
@@ -222,6 +245,23 @@ export default function DispatchScreen() {
     )
   }
 
+  // Inventario propio: elegir a qué cliente se despacha.
+  if (packing.name === 'client') {
+    return (
+      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+        <Text style={styles.title}>{t('dispatch.chooseClient')}</Text>
+        {busy ? (
+          <ActivityIndicator color={colors.brand} />
+        ) : clients && clients.length === 0 ? (
+          <Text style={styles.help}>{t('dispatch.noClients')}</Text>
+        ) : (
+          (clients ?? []).map((c) => <BigButton key={c.publicId} label={c.label} onPress={() => chooseClient(c)} />)
+        )}
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking({ name: 'scan' })} disabled={busy} />
+      </ScrollView>
+    )
+  }
+
   // Empacando: resolviendo posiciones y eligiendo consignatario.
   if (packing.name === 'consignee' || packing.name === 'error') {
     return (
@@ -240,7 +280,7 @@ export default function DispatchScreen() {
         ) : (
           (consignees ?? []).map((c) => <BigButton key={c.publicId} label={c.label} onPress={() => confirmPack(c)} />)
         )}
-        <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking({ name: 'scan' })} disabled={busy} />
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking(openPick.clientPublicId ? { name: 'scan' } : { name: 'client' })} disabled={busy} />
       </ScrollView>
     )
   }
@@ -249,7 +289,7 @@ export default function DispatchScreen() {
   // ScanField se reenfoca tras cada línea y, con el teclado abierto, tapaba Empacar/Cancelar.
   return (
     <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>{openPick.clientName}</Text>
+      <Text style={styles.title}>{openPick.clientName || t('dispatch.ownInventory')}</Text>
       <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
       <Text style={styles.label}>{t('dispatch.linesTitle')}</Text>
       <LineList

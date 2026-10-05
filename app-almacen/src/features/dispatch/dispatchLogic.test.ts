@@ -1,4 +1,4 @@
-import { binScanOutcome, buildCollectAndPackBody, buildPickLine, newPickLineDraft, pickQtyState, uniqueBinCodes } from './dispatchLogic'
+import { binScanOutcome, buildCollectAndPackBody, buildPickLine, newPickLineDraft, pickQtyState, sameOwner, uniqueBinCodes } from './dispatchLogic'
 
 const PRODUCT = { publicId: 'p1', sku: 'SKU-1', name: 'Producto 1' }
 
@@ -82,5 +82,16 @@ describe('buildCollectAndPackBody', () => {
         },
       },
     })
+  })
+})
+
+describe('sameOwner', () => {
+  it('inventario propio (null) solo con propio; un cliente 3PL solo con sus productos', () => {
+    expect(sameOwner(null, null)).toBe(true)
+    expect(sameOwner(undefined, null)).toBe(true)
+    expect(sameOwner('c1', 'c1')).toBe(true)
+    expect(sameOwner(null, 'c1')).toBe(false)
+    expect(sameOwner('c1', null)).toBe(false)
+    expect(sameOwner('c1', 'c2')).toBe(false)
   })
 })

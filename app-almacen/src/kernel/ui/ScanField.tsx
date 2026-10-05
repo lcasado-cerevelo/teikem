@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 
 import { useT } from '../i18n/useT'
 import { useScanner } from '../scanner/useScanner'
+import { placeholderFontSize } from './placeholderFont'
 import { ScanMessage } from './ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from './theme'
 
@@ -55,6 +56,7 @@ export function ScanField({
   testID,
 }: ScanFieldProps) {
   const { t } = useT()
+  const { width } = useWindowDimensions()
   const [value, setValue] = useState('')
   const [keyboard, setKeyboard] = useState(false)
   const inputRef = useRef<TextInput>(null)
@@ -120,7 +122,8 @@ export function ScanField({
           autoCapitalize="none"
           autoCorrect={false}
           keyboardType={keyboardType}
-          style={[styles.input, error && styles.inputError]}
+          style={[styles.input, error && styles.inputError, !value && { fontSize: placeholderFontSize(width, help) }]}
+          numberOfLines={1}
           placeholder={help}
           placeholderTextColor={colors.muted}
           accessibilityLabel={label}

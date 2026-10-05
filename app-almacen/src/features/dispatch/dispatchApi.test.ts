@@ -3,7 +3,7 @@ import { __resetAllForTests } from 'expo-sqlite'
 import { api } from '../../kernel/api/client'
 import { __resetDbForTests } from '../../kernel/db/database'
 import { countPending, listOutbox } from '../../kernel/sync/outbox'
-import { fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import { fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
 import type { PickLine } from './dispatchLogic'
 
 jest.mock('../../kernel/api/client', () => {
@@ -93,5 +93,15 @@ describe('submitCollectAndPack', () => {
     postMock.mockResolvedValueOnce({ error: { title: 'Crédito excedido.', code: 'validation' }, response: new Response(null, { status: 400 }) })
     await expect(submitCollectAndPack('wh-1', 'client-1', 'loc-1', 1, RESOLVED)).rejects.toMatchObject({ title: 'Crédito excedido.' })
     expect(countPending()).toBe(0)
+  })
+})
+
+describe('fetchClientsForOwnDispatch', () => {
+  it('lista los clientes activos con nombre y código para elegir a quién se despacha inventario propio', async () => {
+    getMock.mockResolvedValueOnce(ok([{ publicId: 'c-1', name: 'Farmacia Central', code: 'CLI-001' }, { publicId: 'c-2', name: 'Sin código', code: '' }]))
+    const rows = await fetchClientsForOwnDispatch()
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/clients')
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ includeInactive: false })
+    expect(rows).toEqual([{ publicId: 'c-1', label: 'Farmacia Central · CLI-001' }, { publicId: 'c-2', label: 'Sin código' }])
   })
 })

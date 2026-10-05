@@ -66,6 +66,17 @@ export function buildPickLine(draft: PickLineDraft): PickLine {
   }
 }
 
+/** Un despacho lleva productos de UN solo dueño (regla del servidor): el cliente 3PL del despacho abierto (null = inventario
+ *  propio) debe ser el dueño del producto escaneado (null = propio). */
+export function sameOwner(openClientPublicId: string | null | undefined, productOwnerPublicId: string | null | undefined): boolean {
+  return (openClientPublicId ?? null) === (productOwnerPublicId ?? null)
+}
+
+export interface ClientChoice {
+  publicId: string
+  label: string
+}
+
 export interface ConsigneeChoice {
   publicId: string
   label: string
