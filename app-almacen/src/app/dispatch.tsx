@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View
 import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
+import { useFormat } from '../kernel/format/useFormat'
 import { useSession } from '../kernel/auth/useSession'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
@@ -10,12 +11,18 @@ import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField } from '../kernel/ui/ScanField'
+import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
-import { fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from '../features/dispatch/dispatchApi'
+import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, resolveBinCodes, submitCollectOnly, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
 import {
   binScanOutcome,
+  checkLotBin,
+  nextStockOption,
+  pickedQty,
+  pickQtyState,
+  type StockOption,
   type ClientChoice,
   type ConsigneeChoice,
   newPickLineDraft,
@@ -23,6 +30,16 @@ import {
   type PickLine,
   type PickLineDraft,
 } from '../features/dispatch/dispatchLogic'
+
+/** De dónde dice el sistema que puede salir el producto escaneado (existencia disponible por posición y lote). `options` null = todavía
+ *  buscando; `offline` = no se pudo preguntar (sin señal): no hay sugerencia ni se exige posición. */
+interface StockHint {
+  productPublicId: string
+  lot: boolean
+  options: StockOption[] | null
+  /** `device` = sin señal, con la copia bajada al aparato; `none` = sin señal y sin copia (no hay sugerencia ni se exige posición). */
+  source: 'server' | 'device' | 'none' | null
+}
 
 type Step = { name: 'scan' } | { name: 'client' } | { name: 'consignee' } | { name: 'error'; message: string }
 
@@ -50,11 +67,29 @@ export default function DispatchScreen() {
   // aviso rojo de la lectura de la posición (sin cantidad o cantidad inválida); se quita al escribir la cantidad
   const [binError, setBinError] = useState<string | null>(null)
   const qtyRef = useRef<TextInput>(null)
+  const f = useFormat()
+  const [hint, setHint] = useState<StockHint | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const openPick = useMemo(() => getOpenPick(), [tick])
   const refresh = () => setTick((n) => n + 1)
+
+  // La sugerencia: el primer lugar de salida con disponible tras descontar lo que este despacho ya sacó de ese producto.
+  const suggestion =
+    draft && hint && hint.productPublicId === draft.productPublicId && hint.options
+      ? nextStockOption(hint.options, pickedQty(openPick?.lineRows ?? [], draft.productPublicId))
+      : null
+  /** "lote L-3, vence 12/31/2026, disponible 40" (solo lo que existe). */
+  function stockDetail(o: StockOption): string {
+    return [
+      o.lotNumber ? t('dispatch.lotNumber', { lot: o.lotNumber }) : null,
+      o.expiryDate ? t('dispatch.expires', { date: f.date(o.expiryDate) }) : null,
+      t('dispatch.availableQty', { qty: f.qty(o.available) }),
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  }
 
   if (!warehousePublicId) {
     return (
@@ -83,14 +118,23 @@ export default function DispatchScreen() {
     setScanError(null)
     setBinError(null)
     setDraft(newPickLineDraft(product))
+    void loadHint(product.publicId, product.trackingTypeCode === 'LOT')
     vibrateOk()
     refresh()
+  }
+
+  /** Posición sugerida: el orden de salida del servidor (en línea, o la copia del aparato sin señal). Sin ninguna de las dos, sin sugerencia. */
+  async function loadHint(productPublicId: string, lot: boolean) {
+    setHint({ productPublicId, lot, options: null, source: null })
+    const result = await fetchStockOptions(warehousePublicId!, productPublicId)
+    setHint((h) => (h && h.productPublicId === productPublicId ? { ...h, options: result.options, source: result.source } : h))
   }
 
   function addLine(line: PickLine) {
     if (!openPick) return
     addLocalPickLine(openPick.id, line)
     setDraft(null)
+    setHint(null)
     setBinError(null)
     setNotice(t('dispatch.lineAdded', { qty: line.quantity, sku: line.sku, bin: line.fromBinCode }))
     vibrateOk()
@@ -102,6 +146,19 @@ export default function DispatchScreen() {
    *  escribirla y volver a escanear. La posición no se guarda: no queda una línea a medias. */
   function scanFromBin(code: string) {
     if (!draft) return
+    // Producto con lote: la posición es la del próximo lote en salir (FEFO), no se escoge (pedido del dueño 2026-10-05)
+    if (hint?.lot && suggestion && pickQtyState(draft.qtyText) === 'ok') {
+      const check = checkLotBin(suggestion, code, Number(draft.qtyText.trim().replace(',', '.')))
+      if (check.kind !== 'ok') {
+        setBinError(
+          check.kind === 'otherBin'
+            ? t('dispatch.lotMustUse', { bin: suggestion.binCode, detail: stockDetail(suggestion) })
+            : t('dispatch.lotTooMuch', { bin: suggestion.binCode, qty: f.qty(suggestion.available) }),
+        )
+        vibrateError()
+        return
+      }
+    }
     const outcome = binScanOutcome(draft, code)
     if (outcome.kind === 'add') {
       addLine(outcome.line)
@@ -123,6 +180,7 @@ export default function DispatchScreen() {
           discardLocalPick()
           setChosenClient(null)
           setDraft(null)
+          setHint(null)
           setPacking({ name: 'scan' })
           refresh()
         },
@@ -167,6 +225,30 @@ export default function DispatchScreen() {
     }
   }
 
+  /** Completar el despacho SIN empacar (pedido del dueño 2026-10-05): el inventario sale (recolección) sin orden ni empaque; empacar es opcional. */
+  async function completeDispatch() {
+    if (!openPick || openPick.lineRows.length === 0) return
+    setBusy(true)
+    try {
+      const resolved = await resolveBinCodes(warehousePublicId!, openPick.lineRows)
+      if (resolved.notFound.length > 0) {
+        setScanError(t('putaway.binNotFound') + ' ' + resolved.notFound.join(', '))
+        vibrateError()
+        return
+      }
+      await submitCollectOnly(warehousePublicId!, resolved.lines)
+      discardLocalPick()
+      void runSync()
+      vibrateOk()
+      router.replace('/home')
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.title : t('errors.generic'))
+      vibrateError()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function confirmPack(consignee: ConsigneeChoice) {
     if (!openPick) return
     setBusy(true)
@@ -200,8 +282,9 @@ export default function DispatchScreen() {
             <Text style={styles.help}>{draft.productName}</Text>
             <View style={styles.field}>
               <Text style={styles.label}>{t('dispatch.qtyLabel')}</Text>
-              <TextInput
+              <KeyboardInput
                 ref={qtyRef}
+                autoFocus
                 value={draft.qtyText}
                 onChangeText={(v) => {
                   setBinError(null)
@@ -214,10 +297,21 @@ export default function DispatchScreen() {
               />
               <Text style={styles.help}>{t('dispatch.qtyFirstHelp')}</Text>
             </View>
+            {suggestion ? (
+              <View style={styles.suggest} testID="dispatch-suggestion">
+                <Text style={styles.suggestTitle}>{t(hint?.lot ? 'dispatch.mustTakeFrom' : 'dispatch.suggestedFrom', { bin: suggestion.binCode })}</Text>
+                <Text style={styles.help}>{stockDetail(suggestion)}</Text>
+              </View>
+            ) : hint?.source === 'none' ? (
+              <Text style={styles.help}>{t('dispatch.stockOffline')}</Text>
+            ) : null}
+            {suggestion && hint?.source === 'device' ? <Text style={styles.help}>{t('dispatch.stockFromDevice')}</Text> : null}
             {/* sin botón "Agregar": la lectura de la posición (o Aceptar del campo) es la que agrega la línea */}
             <ScanField
               label={t('dispatch.fromBinLabel')}
-              help={t('dispatch.fromBinHelp')}
+              help={suggestion ? t(hint?.lot ? 'dispatch.fromBinHelpLot' : 'dispatch.fromBinHelpSuggested') : t('dispatch.fromBinHelp')}
+              suggestedValue={suggestion?.binCode ?? null}
+              autoFocus={false}
               error={binError}
               onSubmit={scanFromBin}
               testID="dispatch-from-bin"
@@ -228,6 +322,7 @@ export default function DispatchScreen() {
               onPress={() => {
                 setBinError(null)
                 setDraft(null)
+                setHint(null)
               }}
             />
           </>
@@ -269,7 +364,7 @@ export default function DispatchScreen() {
         <Text style={styles.title}>{t('dispatch.chooseConsignee')}</Text>
         <View style={styles.field}>
           <Text style={styles.label}>{t('dispatch.piecesLabel')}</Text>
-          <TextInput value={pieces} onChangeText={setPieces} keyboardType="number-pad" style={styles.input} accessibilityLabel={t('dispatch.piecesLabel')} />
+          <KeyboardInput value={pieces} onChangeText={setPieces} keyboardType="number-pad" style={styles.input} accessibilityLabel={t('dispatch.piecesLabel')} />
         </View>
         {packing.name === 'error' ? (
           <Text style={styles.error}>{packing.message}</Text>
@@ -302,7 +397,9 @@ export default function DispatchScreen() {
         emptyLabel={t('dispatch.linesTitle')}
       />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
-      <BigButton label={t('dispatch.packButton')} onPress={startPacking} disabled={openPick.lineRows.length === 0 || busy} />
+      <BigButton label={t('dispatch.completeButton')} onPress={() => void completeDispatch()} disabled={openPick.lineRows.length === 0 || busy} />
+      <Text style={styles.help}>{t('dispatch.completeHelp')}</Text>
+      <BigButton label={t('dispatch.packButton')} variant="secondary" onPress={startPacking} disabled={openPick.lineRows.length === 0 || busy} />
       <Text style={styles.help}>{t('dispatch.packHelp')}</Text>
       <BigButton label={t('dispatch.cancelDispatch')} variant="danger" onPress={cancelDispatch} />
     </ScrollView>
@@ -318,6 +415,9 @@ const styles = StyleSheet.create({
   field: { gap: spacing.xs },
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },
+  // la posición sugerida (o la obligatoria, con lote): grande y a la vista, encima del campo de la posición
+  suggest: { gap: 2, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
+  suggestTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
   input: {
     minHeight: 56,
     borderWidth: 2,

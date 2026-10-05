@@ -5,7 +5,7 @@
 // cierre por la cola de salida. Escanear otra vez un producto en la misma posición abre la línea ya contada para corregirla.
 // Sin señal no se puede buscar la posición del producto: se pide escanearla (la tabla de posiciones es local).
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
@@ -21,6 +21,7 @@ import { fetchProductBins, findLocalBin, type CreatedBin } from './countApi'
 import { binOptionLabel, defaultBinOption, findListedRow, parseQty, productCountBlocker, type BinOption } from './countLogic'
 import { addOpenCountLine, getProductCountRows, removeLocalCountLine, updateLocalCountLineQty, type CountProduct, type OpenCount } from './localCount'
 import { OtherBinForm, type OtherBinLot } from './OtherBinForm'
+import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 
 export interface OpenCountViewProps {
   openCount: OpenCount
@@ -271,7 +272,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
         {needsLotText ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('count.lotLabel')}</Text>
-            <TextInput
+            <KeyboardInput
               value={draft.lotText}
               onChangeText={(v) => setDraft((d) => (d ? { ...d, lotText: v } : d))}
               style={styles.input}
@@ -285,7 +286,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
 
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
-          <TextInput
+          <KeyboardInput
             value={draft.qtyText}
             onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v, message: null } : d))}
             keyboardType="decimal-pad"

@@ -148,6 +148,7 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))] = PermissionCatalog.WarehouseCount,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))] = PermissionCatalog.WarehouseCountCapture,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.ProductBins))] = PermissionCatalog.WarehouseCountCapture,   // Lote 24
+        [(typeof(InventoryController), nameof(InventoryController.ExitOptions))] = PermissionCatalog.InventoryView,   // orden de salida
 
         [(typeof(PickBatchesController), nameof(PickBatchesController.List))] = PermissionCatalog.InventoryView,
         [(typeof(PickBatchesController), nameof(PickBatchesController.Get))] = PermissionCatalog.InventoryView,
@@ -303,7 +304,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalExtend, Expected[(typeof(RentalsController), nameof(RentalsController.Extend))]);
         Assert.Equal(PermissionCatalog.RentalManage, Expected[(typeof(RentalsController), nameof(RentalsController.Cancel))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalsController)]);
-        Assert.Equal(143, Expected.Count);
+        Assert.Equal(144, Expected.Count); // 132 de master + 12 de RentalsController
     }
 
     [Fact]

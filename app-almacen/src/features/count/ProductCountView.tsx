@@ -6,7 +6,7 @@
 // Lote A5 (decisión del dueño 4): Confirmar exige al menos una posición con un número escrito (0 vale); con todo en blanco no
 // se manda nada y sale el aviso grande (ScanMessage) encima de Confirmar.
 import { useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
@@ -31,6 +31,8 @@ import {
   type ProductCountRow,
 } from './localCount'
 import { OtherBinForm, type OtherBinLot } from './OtherBinForm'
+import { KeyboardInput, KeyboardToggleButton } from '../../kernel/ui/KeyboardInput'
+import { useSoftKeyboard } from '../../kernel/ui/useSoftKeyboard'
 
 export interface ProductCountViewProps {
   openCount: OpenCount
@@ -56,6 +58,8 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [texts, setTexts] = useState<Record<number, string>>({})
   const [query, setQuery] = useState('')
   const [other, setOther] = useState(false)
+  // un solo botón «⌨» para las cantidades de todas las filas (pedido del dueño: donde haya un campo de texto, la opción del teclado)
+  const kb = useSoftKeyboard()
   const [notice, setNotice] = useState<string | null>(null)
   const [emptyWarning, setEmptyWarning] = useState(false)
   // aviso de "todo en blanco" tras tocar Confirmar; se quita al escribir una cantidad o agregar una posición
@@ -140,7 +144,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
       {searchable ? (
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.searchLabel')}</Text>
-          <TextInput
+          <KeyboardInput
             value={query}
             onChangeText={setQuery}
             style={styles.search}
@@ -150,6 +154,10 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
           />
         </View>
       ) : null}
+
+      <View style={styles.kbRow}>
+        <KeyboardToggleButton on={kb.show} onPress={kb.toggle} />
+      </View>
 
       <View>
         {visible.map((row) => {
@@ -167,7 +175,9 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
                 <Text style={styles.rowTitle}>{row.binCode}</Text>
                 {parts.length > 0 ? <Text style={styles.rowSubtitle}>{parts.join(' · ')}</Text> : null}
               </View>
-              <TextInput
+              <KeyboardInput
+                toggle={false}
+                softKeyboard={kb.show}
                 value={text}
                 onChangeText={(v) => changeQty(row, v)}
                 keyboardType="decimal-pad"
@@ -227,6 +237,7 @@ const styles = StyleSheet.create({
   label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   help: { color: colors.muted, fontSize: fontSize.message },
   error: { color: colors.error, fontSize: fontSize.message, fontWeight: '700' },
+  kbRow: { alignItems: 'flex-end' },
   summary: { color: colors.warn, fontSize: fontSize.label, fontWeight: '700' },
   field: { gap: spacing.xs },
   search: {

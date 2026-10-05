@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../kernel/api/client'
@@ -40,6 +40,7 @@ import {
 } from '../features/count/localCount'
 import { OpenCountView } from '../features/count/OpenCountView'
 import { ProductCountView } from '../features/count/ProductCountView'
+import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 
 type Draft = { line: ExpectedLine | null; productPublicId: string; sku: string; productName: string; qtyText: string }
 /** Corrección de la cantidad de una línea ya contada (sin volver a escanear). */
@@ -349,7 +350,7 @@ export default function CountScreen() {
         {draft.line?.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: draft.line.systemQty })}</Text> : null}
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
-          <TextInput
+          <KeyboardInput
             value={draft.qtyText}
             onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v } : d))}
             keyboardType="decimal-pad"
@@ -378,7 +379,7 @@ export default function CountScreen() {
         {!openCount.isBlind && edit.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: edit.systemQty })}</Text> : null}
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.editTitle')}</Text>
-          <TextInput
+          <KeyboardInput
             value={edit.qtyText}
             onChangeText={(v) => setEdit((e) => (e ? { ...e, qtyText: v } : e))}
             keyboardType="decimal-pad"

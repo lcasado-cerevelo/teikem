@@ -1,10 +1,11 @@
 import { __resetAllForTests } from 'expo-sqlite'
 
 import { api } from '../../kernel/api/client'
-import { __resetDbForTests } from '../../kernel/db/database'
+import { __resetDbForTests, getDb } from '../../kernel/db/database'
 import { countPending, listOutbox } from '../../kernel/sync/outbox'
-import { fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
+import { fetchStockOptions, submitCollectOnly, fetchClientsForOwnDispatch, fetchConsigneesForClient, resolveBinCodes, submitCollectAndPack } from './dispatchApi'
 import type { PickLine } from './dispatchLogic'
+import { mapExitRow, readStockExit, replaceStockExit } from './stockExit'
 
 jest.mock('../../kernel/api/client', () => {
   const actual = jest.requireActual('../../kernel/api/client')
@@ -103,5 +104,51 @@ describe('fetchClientsForOwnDispatch', () => {
     expect(getMock.mock.calls[0][0]).toBe('/api/v1/clients')
     expect(getMock.mock.calls[0][1].params.query).toEqual({ includeInactive: false })
     expect(rows).toEqual([{ publicId: 'c-1', label: 'Farmacia Central · CLI-001' }, { publicId: 'c-2', label: 'Sin código' }])
+  })
+})
+
+describe('fetchStockOptions', () => {
+  const ROW = { productPublicId: 'p1', binId: 5, binCode: 'A-01', zoneCode: 'PCK', zoneTypeCode: 'PICKING', lotId: 2, lotNumber: 'L-3', expiryDate: '2027-01-31', available: 12, rank: 1 }
+
+  it('en línea pide el orden de salida del producto al servidor, lo deja en el aparato y devuelve lo que contestó (con su rank)', async () => {
+    getMock.mockResolvedValueOnce(ok({ total: 2, skip: 0, take: 500, items: [ROW, { ...ROW, binId: 6, binCode: 'B-02', lotId: null, lotNumber: null, expiryDate: null, available: 4, rank: 2 }] }))
+    const result = await fetchStockOptions('wh-1', 'p1')
+    expect(getMock.mock.calls[0][0]).toBe('/api/v1/inventory/exit-options')
+    expect(getMock.mock.calls[0][1].params.query).toEqual({ warehousePublicId: 'wh-1', productPublicIds: ['p1'], take: 500 })
+    expect(result.source).toBe('server')
+    expect(result.options.map((o) => [o.binCode, o.rank, o.available])).toEqual([['A-01', 1, 12], ['B-02', 2, 4]])
+    // la copia del aparato quedó al día para ese producto
+    expect(readStockExit('wh-1', 'p1').map((r) => r.binCode)).toEqual(['A-01', 'B-02'])
+  })
+
+  it('sin señal usa la copia del aparato (la que bajó la sincronización); sin copia no se sabe (none)', async () => {
+    getMock.mockRejectedValue(new TypeError('Network request failed'))
+    expect(await fetchStockOptions('wh-1', 'p1')).toEqual({ options: [], source: 'none' })
+    getDb().runSync("INSERT INTO sync_watermark (resource, since_utc, last_run_utc) VALUES ('stockExit:wh-1', 'x', 'y')")
+    replaceStockExit('wh-1', [mapExitRow(ROW)])
+    const offline = await fetchStockOptions('wh-1', 'p1')
+    expect(offline.source).toBe('device')
+    expect(offline.options.map((o) => [o.binCode, o.lotNumber, o.rank])).toEqual([['A-01', 'L-3', 1]])
+    // un producto sin existencia en la copia: no hay de dónde sacarlo (no es "no se sabe")
+    expect((await fetchStockOptions('wh-1', 'otro')).options).toEqual([])
+  })
+})
+
+describe('submitCollectOnly', () => {
+  const LINES = [{ productPublicId: 'p1', sku: 'A', productName: 'A', quantity: 2, fromBinCode: 'A-01', fromBinId: 5 }]
+
+  it('recolecta sin empacar: POST /pick-batches con las líneas (producto, cantidad, posición) y sin orden', async () => {
+    postMock.mockResolvedValueOnce(ok({}))
+    expect(await submitCollectOnly('wh-1', LINES)).toEqual({ queued: false })
+    expect(postMock.mock.calls[0][0]).toBe('/api/v1/pick-batches')
+    expect(postMock.mock.calls[0][1].body).toEqual({ warehousePublicId: 'wh-1', lines: [{ productPublicId: 'p1', quantity: 2, binId: 5 }] })
+  })
+
+  it('sin señal lo encola (kind collect)', async () => {
+    postMock.mockResolvedValueOnce({ response: Response.error() })
+    expect(await submitCollectOnly('wh-1', LINES)).toEqual({ queued: true })
+    const row = listOutbox()[0]
+    expect([row.kind, row.method, row.path]).toEqual(['collect', 'POST', '/api/v1/pick-batches'])
+    expect(JSON.parse(row.body).lines).toEqual([{ productPublicId: 'p1', quantity: 2, binId: 5 }])
   })
 })

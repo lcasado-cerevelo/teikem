@@ -78,6 +78,9 @@ en la tabla de `docs/mobile/loteA3-decisiones.md`.
 - **Margen inferior**: la app deja abajo un margen de al menos 40 dp para que la barra de navegación del aparato (3 botones o
   gestos) no tape el último botón. La barra no se oculta.
 
+**Botón «⌨» en todos los campos de texto (2026-10-05).** Donde haya un campo de texto (cantidades, lote, vencimiento, códigos, buscadores) hay un botón **⌨** al lado: el teclado en pantalla **no aparece solo** (el Zebra
+tiene teclado físico y lector) y el botón lo muestra y lo esconde. En las listas de cantidades (conteo por producto) hay **un solo** botón para todas las filas. El registro del aparato (dirección y código) no lo lleva: ahí se escribe siempre.
+
 ### 1.2 Formatos de la compañía (Lote A3)
 
 Las fechas, horas, números y dinero de la app salen de **Región y formatos** de la compañía (web: Ajustes de la compañía,
@@ -360,6 +363,23 @@ rastro en el servidor. Cerrar la app con un despacho en curso lo retoma tal cual
 recolectadas (la posición de origen sigue guardada como texto, se vuelve a resolver recién al empacar).
 
 ---
+
+### 6.x Posición sugerida, lote obligatorio y completar sin empacar (2026-10-05)
+
+**Posición sugerida.** Al elegir el producto, el cursor cae en la **Cantidad**. La app usa el **orden de salida del servidor** (`GET /api/v1/inventory/exit-options`, `inventory.view`): por producto, lo
+**disponible** (en mano − reservado) por posición y lote, con su `rank` (1 = sale primero). Es la **misma regla de la recolección** (vence primero, luego tipo de zona —picking, reserva, refrigerada,
+preparación— y código de posición; nunca cuarentena, cruce de muelle ni posiciones inactivas): **vive solo en el servidor**, la app no ordena nada, solo sigue el `rank` y descuenta lo que este despacho ya sacó.
+- **Producto sin lote:** recuadro **Sugerida: P-01** (con disponible) y el botón **Usar P-01**; es una ayuda: se puede escanear **cualquier otra** posición.
+- **Producto con lote:** la posición **no es opcional**: **Debe salir de A-01** (lote, vencimiento y disponible). Escanear otra da `Este producto lleva lote y sale primero el que vence antes: debe salir de {bin} ({detalle}).`;
+  pedir más de lo que hay ahí da `En {bin} solo hay {n} disponible. Escribe {n} (o menos) y luego escanea la posición; para el resto, la siguiente.`
+- **También sin señal.** El aparato guarda una **copia** del orden de salida del almacén por defecto (tabla `stock_exit`): la sincronización la baja completa (de 500 en 500) al abrir la app, **cada 5 minutos** y **al momento si
+  el aparato acaba de mandar movimientos**. En línea, al elegir el producto la app pide la foto actual de ese producto (y actualiza la copia); sin señal usa la copia y lo dice: `Según el inventario bajado al aparato (sin señal).`
+  Solo si **nunca** se ha bajado la copia: `Sin señal: no se pudo buscar de dónde sale el producto. Escanea la posición.` (sin sugerencia ni exigencia). La copia puede tener unos minutos de atraso: es una guía, el servidor
+  re-verifica el inventario al recolectar.
+
+**Completar el despacho sin empacar.** Con líneas, la pantalla ofrece **Completar despacho** (principal) y, aparte, **Empacar** (opcional). **Completar despacho** recolecta (`POST /api/v1/pick-batches`): el inventario sale, **sin orden,
+consignatario ni empaque**; las posiciones se resuelven primero con las del aparato (sin señal) y si no hay red queda en la cola de salida (`collect`) y se manda al volver la señal. Una posición que no existe no completa nada y lo avisa
+(`No hay una posición con ese código. {códigos}`). Empacar sigue igual (cliente → consignatario → `collect-and-pack`). En la web la recolección y el empaque ya eran pasos separados (**Recolectar** / **Empacar y crear orden**).
 
 ## 7. Conteo
 

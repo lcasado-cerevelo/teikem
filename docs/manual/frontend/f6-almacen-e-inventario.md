@@ -449,6 +449,8 @@ por cualquier nivel de la ruta «Raíz / Hija») y **Rastreo** (desplegable con 
 compra** y **Precio de venta**; **Almacén por defecto** y **Posición por defecto**; **Total** (solo lectura: se cambia con un
 ajuste) y **Punto de reorden**; al editar, el interruptor **Producto activo** (bloqueado mientras el producto tenga
 inventario) y, plegado en «Más datos del producto», código de barras, peso, volumen, mínimo y máximo de picking y los campos
+
+**Dónde está (Lote 25, 2026-10-05).** En «Editar producto» hay un segundo panel plegable, **Dónde está (existencia por posición)**: se pide al abrirlo y lista, por posición (con almacén y zona) y lote (con vencimiento), lo **en mano, reservado y disponible**, más el total. Solo muestra posiciones con existencia; sin ninguna dice «Sin existencia en ninguna posición.».
 personalizados. Con movimientos, Unidad, Rastreo y Dueño quedan bloqueados.
 - **Marca** es texto libre con sugerencias: al escribir ofrece las marcas ya usadas en la compañía, pero se puede escribir una
   nueva. **Modelo** es texto libre. Ambos son opcionales, de hasta 100 caracteres; los espacios de los extremos se recortan.

@@ -3,7 +3,7 @@
 // posición); si el producto lleva lote, el número de lote (y, opcional, su vencimiento). La posición se crea en el servidor
 // (POST /cycle-counts/{id}/bins, necesita señal) y queda "pendiente de revisión" hasta que el supervisor la confirma en la web.
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../../kernel/api/client'
 import { useFormat } from '../../kernel/format/useFormat'
@@ -16,6 +16,7 @@ import { findBinByCode } from '../../kernel/warehouse/binLookup'
 import { createProvisionalBin, fetchZones, findLocalBin, type CountZone, type CreatedBin } from './countApi'
 import { findListedRow, resolveBinCode, type ProductRowLike } from './countLogic'
 import type { CountProduct } from './localCount'
+import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 
 export interface OtherBinLot {
   number: string
@@ -225,7 +226,7 @@ function Field({
   return (
     <View style={[styles.field, small && styles.fieldSmall]}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
+      <KeyboardInput
         value={value}
         onChangeText={onChange}
         style={styles.input}

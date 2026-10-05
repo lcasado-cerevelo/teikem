@@ -9,7 +9,7 @@ import { api, ApiError, unwrap } from '../api/client'
 import { recordSkippedFromResult } from '../../features/count/countSkipped'
 import { getDb } from '../db/database'
 
-export type OutboxKind = 'receipt' | 'pack' | 'countBatch' | 'countFinish'
+export type OutboxKind = 'receipt' | 'pack' | 'collect' | 'countBatch' | 'countFinish'
 type OutboxMethod = 'POST' | 'PUT'
 
 interface EnqueueInput {
@@ -54,8 +54,10 @@ function newIdempotencyKey(): string {
 const DEFAULT_PATH: Partial<Record<OutboxKind, string>> = {
   receipt: '/api/v1/receipts',
   pack: '/api/v1/pick-batches/collect-and-pack',
+  // completar el despacho sin empacar: solo recolecta (el inventario sale; sin orden ni empaque)
+  collect: '/api/v1/pick-batches',
 }
-const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', countBatch: 'PUT', countFinish: 'POST' }
+const METHOD: Record<OutboxKind, OutboxMethod> = { receipt: 'POST', pack: 'POST', collect: 'POST', countBatch: 'PUT', countFinish: 'POST' }
 
 /** Encola una operación (kind + cuerpo ya armado); devuelve el id local de la fila. */
 export function enqueue(input: EnqueueInput): number {

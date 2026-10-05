@@ -184,6 +184,7 @@ public static class DependencyInjection
         services.AddScoped<ProductSerialConversionService>();   // Lote 26 (Rentas R0): conversión a serie
         services.AddScoped<ProductCategoryService>();
         services.AddScoped<InventoryReadService>();
+        services.AddScoped<StockExitService>();   // orden de salida (FEFO) de lo disponible, una sola regla para la app y las pantallas
         services.AddScoped<InventoryAdjustmentService>();
         services.AddScoped<TraceabilityService>();
         services.AddScoped<AsnService>();

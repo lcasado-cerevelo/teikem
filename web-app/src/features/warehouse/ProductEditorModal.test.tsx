@@ -18,7 +18,7 @@ interface Call {
   url: URL
   body: unknown
 }
-const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false }))
+const mock = vi.hoisted(() => ({ calls: [] as Call[], onHand: 12, adjustFails: false, balances: false }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
   const fetch = async (req: Request) => {
@@ -64,6 +64,15 @@ function route(method: string, url: URL): unknown {
     const items = BINS.filter((x) => ids.length === 0 || ids.includes(x.id))
     return { total: items.length, skip: 0, take: 100, items }
   }
+  if (p === '/api/v1/inventory/balances' && mock.balances)
+    return {
+      total: 3, skip: 0, take: 200, totalOnHand: 17, totalAvailable: 12,
+      items: [
+        { id: 1, warehouseCode: 'ALM-01', binCode: 'A-01', zoneCode: 'PCK', lotNumber: 'L-3', expiryDate: '2026-12-31', qtyOnHand: 12, qtyReserved: 2, qtyAvailable: 10 },
+        { id: 2, warehouseCode: 'ALM-01', binCode: 'B-02', zoneCode: 'RES', qtyOnHand: 5, qtyReserved: 3, qtyAvailable: 2 },
+        { id: 3, warehouseCode: 'ALM-01', binCode: 'C-03', zoneCode: 'RES', qtyOnHand: 0, qtyReserved: 0, qtyAvailable: 0 },
+      ],
+    }
   if (p === '/api/v1/products/brands') return ['Abbott', 'Roche']
   if (p === `/api/v1/products/${PID}` && method === 'GET') return { ...detail({ trackingTypeCode: 'NONE' }), product: { ...detail().product, trackingTypeCode: 'NONE', qtyOnHand: mock.onHand } }
   if (p === '/api/v1/products' && method === 'POST') return { product: { id: 99, publicId: PID } }
@@ -139,6 +148,7 @@ beforeEach(() => {
   mock.calls = []
   mock.onHand = 12
   mock.adjustFails = false
+  mock.balances = false
 })
 
 /** Abre el bloque de ajuste, elige "Bajar" (Lote 14, D11) y llena Cantidad (positiva) y Motivo (Daño, con el buscador). */
@@ -208,6 +218,28 @@ describe('ProductEditorModal', () => {
     // rastreo por lote: acceso a los lotes desde el modal, sin series
     expect(within(dialog).getByRole('link', { name: 'Ver lotes' })).toHaveAttribute('href', `/warehouse/products/${PID}?tab=lots`)
     expect(within(dialog).queryByRole('link', { name: 'Ver series' })).toBeNull()
+  })
+
+  it('panel colapsable "Dónde está": no pide nada hasta abrirlo; luego lista las posiciones con existencia (en mano, reservado, disponible) y el total', async () => {
+    const user = userEvent.setup()
+    mock.balances = true
+    wrap(<ProductEditorModal open product={detail()} onClose={() => {}} />, ['inventory.view', 'inventory.manage'])
+    const dialog = await findDialog('Editar producto')
+    await within(dialog).findByLabelText('SKU')
+    expect(mock.calls.some((c) => c.url.pathname === '/api/v1/inventory/balances')).toBe(false)
+    await user.click(within(dialog).getByText('Dónde está (existencia por posición)'))
+    const table = await within(dialog).findByRole('table')
+    expect(within(table).getByText('A-01')).toBeInTheDocument()
+    expect(within(table).getByText('L-3 · 2026-12-31')).toBeInTheDocument()
+    expect(within(table).getByText('B-02')).toBeInTheDocument()
+    // la posición sin existencia no se lista
+    expect(within(table).queryByText('C-03')).toBeNull()
+    // total: 12 + 5 en mano, 2 + 3 reservado, 10 + 2 disponible
+    const total = within(table).getByRole('row', { name: /Total/ })
+    expect(within(total).getAllByRole('cell').map((c) => c.textContent)).toEqual(['17', '5', '12'])
+    const query = mock.calls.find((c) => c.url.pathname === '/api/v1/inventory/balances')!.url.searchParams
+    expect(query.getAll('productPublicIds')).toEqual([PID])
+    expect(query.get('includeZero')).toBe('false')
   })
 
   it('edición sin saldo: el interruptor se puede apagar; serie: Ver lotes y Ver series', async () => {

@@ -8100,6 +8100,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/exit-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: {
+                    warehousePublicId?: string;
+                    productPublicIds?: string[];
+                    skip?: number;
+                    take?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["StockExitPageDto"];
+                        "application/json": components["schemas"]["StockExitPageDto"];
+                        "text/json": components["schemas"]["StockExitPageDto"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/pulse/days": {
         parameters: {
             query?: never;
@@ -22272,6 +22314,35 @@ export interface components {
             isEnabled?: boolean | null;
             /** Format: int32 */
             sortOverride?: number | null;
+        };
+        StockExitOptionDto: {
+            /** Format: uuid */
+            productPublicId?: string;
+            /** Format: int32 */
+            binId?: number;
+            binCode?: string | null;
+            zoneCode?: string | null;
+            zoneTypeCode?: string | null;
+            /** Format: int32 */
+            lotId?: number | null;
+            lotNumber?: string | null;
+            /** Format: date */
+            expiryDate?: string | null;
+            /** Format: double */
+            available?: number;
+            /** Format: int32 */
+            rank?: number;
+        };
+        StockExitPageDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            skip?: number;
+            /** Format: int32 */
+            take?: number;
+            /** Format: date-time */
+            serverTimeUtc?: string;
+            items?: components["schemas"]["StockExitOptionDto"][] | null;
         };
         StopLocationRequest: {
             /** Format: double */

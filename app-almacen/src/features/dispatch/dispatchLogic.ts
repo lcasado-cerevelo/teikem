@@ -126,3 +126,53 @@ export function buildCollectAndPackBody(
     },
   }
 }
+
+// ------------------------------------------------------------------ posición sugerida (FEFO) — pedido del dueño 2026-10-05
+
+/** Existencia DISPONIBLE de un producto en una posición (y lote), con su lugar en el orden de salida. El ORDEN lo calcula el servidor
+ *  (GET /inventory/exit-options, PickBatchRules.Eligible: vence primero, zona, código; sin cuarentena ni cruce ni posiciones inactivas): la app
+ *  no lo recalcula, solo lo sigue por `rank` (1 = sale primero). */
+export interface StockOption {
+  binCode: string
+  zoneTypeCode: string | null
+  lotNumber: string | null
+  /** AAAA-MM-DD; null = sin vencimiento. */
+  expiryDate: string | null
+  available: number
+  rank: number
+}
+
+/** Las existencias en el orden de salida del servidor (por rank), solo con disponible. */
+export function inExitOrder(options: readonly StockOption[]): StockOption[] {
+  return options.filter((o) => o.available > 0).sort((a, b) => a.rank - b.rank)
+}
+
+/** De dónde debe salir lo que sigue: recorre el orden de salida del servidor descontando lo que este despacho ya sacó (`alreadyPicked`, en la
+ *  unidad del producto) y devuelve la primera existencia con algo disponible (con lo que queda de ella). null = no hay de dónde. */
+export function nextStockOption(options: readonly StockOption[], alreadyPicked: number): StockOption | null {
+  let skip = Math.max(0, alreadyPicked)
+  for (const o of inExitOrder(options)) {
+    if (skip >= o.available) {
+      skip -= o.available
+      continue
+    }
+    return { ...o, available: o.available - skip }
+  }
+  return null
+}
+
+/** Producto con lote: la posición NO es opcional, es la del próximo lote en salir (FEFO). `ok` = la posición escaneada es esa y alcanza
+ *  la cantidad; `otherBin` = es otra; `tooMuch` = es esa pero no alcanza (hay que sacar lo que hay y escanear la siguiente). */
+export type LotBinCheck = { kind: 'ok' } | { kind: 'otherBin'; expected: StockOption } | { kind: 'tooMuch'; expected: StockOption }
+
+export function checkLotBin(expected: StockOption | null, scannedBinCode: string, qty: number): LotBinCheck {
+  if (!expected) return { kind: 'ok' }
+  if (expected.binCode.trim().toUpperCase() !== scannedBinCode.trim().toUpperCase()) return { kind: 'otherBin', expected }
+  if (qty > expected.available) return { kind: 'tooMuch', expected }
+  return { kind: 'ok' }
+}
+
+/** Cantidad ya sacada de un producto en las líneas de este despacho. */
+export function pickedQty(lines: readonly PickLine[], productPublicId: string): number {
+  return lines.filter((l) => l.productPublicId === productPublicId).reduce((sum, l) => sum + l.quantity, 0)
+}

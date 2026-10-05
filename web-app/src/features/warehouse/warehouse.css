@@ -144,6 +144,15 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .pe-more summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted);padding:4px 0;border-radius:6px}
 .pe-more summary:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
 .pe-more[open] summary{margin-bottom:10px}
+/* Panel "Dónde está" (existencia por posición): tabla compacta; a 360 px hace scroll dentro del panel, nunca de la página */
+.pe-where{margin-top:10px}
+.pe-where-wrap{overflow-x:auto;max-width:100%}
+.pe-stock{width:100%;border-collapse:collapse;font-size:13px}
+.pe-stock th,.pe-stock td{padding:6px 8px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+.pe-stock thead th{font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+.pe-stock .num{text-align:right;white-space:nowrap}
+.pe-stock .sub{display:block;font-size:11.5px;color:var(--muted)}
+.pe-stock tfoot th,.pe-stock tfoot td{border-top:2px solid var(--line);border-bottom:0;font-weight:700}
 .pe-section{display:block;font-size:11.5px;color:var(--muted);font-weight:600;margin:0 0 8px}
 .pe-adjust{border-top:1px solid var(--line-2);margin-top:14px;padding-top:14px}
 .pe-adjust .pe-apply{justify-content:center}

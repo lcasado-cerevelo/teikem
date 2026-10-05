@@ -3,13 +3,14 @@
 // juntos), SKU grande, nombre y lotes (solo se muestran); las cantidades del sistema solo si `showQty` (permiso
 // warehouse.count, kernel/auth/permissions.ts). Las filas no se tocan: Consultar no tenía ninguna acción sobre una fila.
 import { useState } from 'react'
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 
 import { useFormat } from '../../kernel/format/useFormat'
 import { useT } from '../../kernel/i18n/useT'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
 import { showProductSearch } from '../count/countLogic'
 import { filterBinContents, lotsToShow, type BinContentItem } from './lookupLogic'
+import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 
 export interface BinContentsListProps {
   items: BinContentItem[]
@@ -34,7 +35,7 @@ export function BinContentsList({ items, showQty }: BinContentsListProps) {
       {searchable ? (
         <View style={styles.field}>
           <Text style={styles.label}>{t('lookup.binSearchLabel')}</Text>
-          <TextInput
+          <KeyboardInput
             value={query}
             onChangeText={setQuery}
             style={styles.search}
