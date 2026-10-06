@@ -230,7 +230,7 @@ Cómo se usa:
    ciego" para recibir sin documento.
 2. Se escanea cada producto (por código de barras o SKU, de lo ya sincronizado); según cómo se rastree
    (`trackingTypeCode`) pide cantidad, o lote (con vencimiento opcional), o números de serie uno por uno.
-3. "Agregar" suma la línea a lo capturado; se puede quitar una línea ya agregada.
+3. "Agregar" suma la línea a lo capturado. Cada línea tiene su botón **Quitar**: pide confirmar (`¿Quitar esta línea?` / `Se quita {qty} {sku} de este recibo. Las demás líneas no cambian.`) y solo con **Quitar** en el aviso se borra; **No** la deja. Solo se quitan líneas del recibo **en curso** (antes de Confirmar recibo); un recibo ya confirmado y enviado no se edita desde la app: se corrige en la web.
 4. "Confirmar recibo" cierra el recibo y vuelve a Inicio. En un almacén **con acomodo** el servidor crea las tareas de acomodo; en uno **directo a posición**
    cada línea queda en su posición destino y no hay tareas (ver "Recibir en un almacén directo a posición", abajo).
    "Cancelar recibo" (con confirmación) descarta todo lo capturado sin mandar nada.

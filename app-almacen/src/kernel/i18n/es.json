@@ -124,7 +124,9 @@
     "expiryInvalid": "La fecha no es válida. Escríbela así: {format}",
     "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
     "removeBin": "Quitar {bin}",
-    "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual."
+    "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual.",
+    "removeLineTitle": "¿Quitar esta línea?",
+    "removeLineBody": "Se quita {qty} {sku} de este recibo. Las demás líneas no cambian."
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -205,7 +207,9 @@
     "planShort": "No alcanza: faltan {short}. Baja la cantidad.",
     "planUse": "Usar este plan",
     "planAdded": "Agregado: {sku} desde {count} posiciones",
-    "lineAdded": "Agregado: {qty} {sku} desde {bin}"
+    "lineAdded": "Agregado: {qty} {sku} desde {bin}",
+    "removeLineTitle": "¿Quitar esta línea?",
+    "removeLineBody": "Se quita {qty} {sku} (de {bin}) de este despacho. Las demás líneas no cambian."
   },
   "count": {
     "title": "Conteo",

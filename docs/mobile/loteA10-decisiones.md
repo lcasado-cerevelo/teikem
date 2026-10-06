@@ -54,3 +54,7 @@
 - La verificación **no** cubre el conteo abierto con varios productos ni las líneas agregadas a mano (por ahora).
 - **Sin** interruptor ciego/informado al crear cada conteo.
 - Rentas: **solo Depot** (Solutions sin Rentas). Decisión 70: se deja como está (el Operador de almacén no crea rentas desde la web).
+
+## Quitar líneas en Recibir y Despacho (2026-10-06)
+- Ya existía «Quitar» por línea en las dos pantallas, pero sin confirmación ni pruebas de pantalla. Ahora pide confirmar (`¿Quitar esta línea?`); «No» la deja. Pruebas: `removeLinesScreen` (493 jest en verde).
+- Alcance: solo el recibo/despacho **en curso** en el aparato. Web: en recibos sin documento la papelera ya existía; las líneas del aviso/OC no se quitan (se captura 0), igual que en el servidor (409).

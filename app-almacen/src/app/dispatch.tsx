@@ -460,8 +460,18 @@ export default function DispatchScreen() {
       <LineList
         items={openPick.lineRows.map((l) => ({ id: l.id, title: t('dispatch.lineQty', { qty: l.quantity, sku: l.sku }), subtitle: l.fromBinCode }))}
         onRemove={(id) => {
-          removeLocalPickLine(Number(id))
-          refresh()
+          const line = openPick.lineRows.find((r) => r.id === Number(id))
+          Alert.alert(t('dispatch.removeLineTitle'), t('dispatch.removeLineBody', { qty: line?.quantity ?? '', sku: line?.sku ?? '', bin: line?.fromBinCode ?? '' }), [
+            { text: t('common.no'), style: 'cancel' },
+            {
+              text: t('common.remove'),
+              style: 'destructive',
+              onPress: () => {
+                removeLocalPickLine(Number(id))
+                refresh()
+              },
+            },
+          ])
         }}
         removeLabel={t('common.remove')}
         emptyLabel={t('dispatch.linesTitle')}

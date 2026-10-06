@@ -5477,3 +5477,11 @@ Es lo esperado: «Nadie» cierra lo esperado al contar en la app para todos, tam
 
 **En el reparto me sale `Cupo para 15: recibirá 20. Se puede confirmar igual.`**
 Esa posición tiene un cupo máximo configurado (Ubicaciones) y, con lo que ya tiene, solo le caben 15; el reparto le asigna 20. Es un aviso: se puede confirmar igual (el cupo no bloquea). Si no quiere pasarse, quite esa posición con su ✕ y use otra, o baje la cantidad por posición. Sin señal o sin cupo configurado no se muestra el aviso.
+
+## Quitar líneas (recibo y despacho)
+
+**Agregué un producto que no era en un recibo (o en un despacho) de la app. ¿Cómo lo quito?**
+En la lista de líneas, toque **Quitar** junto a esa línea y confirme con **Quitar** en el aviso `¿Quitar esta línea?`. Las demás líneas no cambian. Aplica mientras el recibo o el despacho siguen **abiertos en el aparato**; una vez confirmado/enviado ya no se edita desde la app.
+
+**El recibo ya se confirmó y se recibió algo que no era.**
+Desde la app no se deshace. En la web, un recibo sin documento (ciego o devolución) abierto permite quitar una línea con la papelera; las líneas que vienen del aviso u orden de compra **no se quitan** (se captura 0 en lo recibido) y las extra sí (`Quita una línea extra (solo abiertos)`). Un recibo ya confirmado se corrige con un ajuste de inventario.

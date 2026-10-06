@@ -497,8 +497,20 @@ export default function ReceiveScreen() {
             undefined,
         }))}
         onRemove={(id) => {
-          removeLocalReceiptLine(Number(id))
-          refresh()
+          // pide confirmar: un toque sin querer no debe borrar lo contado (series o lote incluidos)
+          const index = openReceipt.lineRows.findIndex((r) => r.id === Number(id))
+          const line = index >= 0 ? openReceipt.lines[index] : null
+          Alert.alert(t('receive.removeLineTitle'), t('receive.removeLineBody', { qty: line?.receivedQty ?? '', sku: line?.sku ?? '' }), [
+            { text: t('common.no'), style: 'cancel' },
+            {
+              text: t('common.remove'),
+              style: 'destructive',
+              onPress: () => {
+                removeLocalReceiptLine(Number(id))
+                refresh()
+              },
+            },
+          ])
         }}
         removeLabel={t('common.remove')}
         emptyLabel={t('receive.linesTitle')}
