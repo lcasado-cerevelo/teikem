@@ -293,9 +293,10 @@ Campos y validaciones (recibo directo):
 
 En el paso de la posición destino de un recibo **directo** hay un campo **Cantidad por posición (opcional)** (no aparece en productos con serie).
 Con la cantidad escrita, cada posición que se escanea se suma a la lista (`RSV-A-01 · 20`) y la pantalla dice `Repartido: 40 · quedan 5 sin ubicar`;
-**Confirmar reparto** agrega **una línea por posición**. Solo caben posiciones **llenas** (45 de 20 → 2); una tercera se rechaza con
-`No caben más posiciones: con {per} por posición caben {max} y quedan {left} por ubicar. El resto se ubica aparte.` Lo que no cupo (los 5 sueltos)
-**sigue en la captura**: se escanea la posición donde quedan (una sola). Una posición repetida dice `Esa posición ya está en el reparto.`
+**Confirmar reparto** agrega **una línea por posición**. Caben las posiciones llenas y **una más con el resto** (45 de 20 → 20, 20 y 5): esa última muestra la
+**alerta fija** `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (se queda arriba aunque se desplace la pantalla; se cierra con la ✕); una cuarta se rechaza con
+`Ya no hay unidades por ubicar: los {total} están repartidos. Confirma el reparto.` Si se confirma con menos posiciones de las que caben, lo que falta
+**sigue en la captura**: se escanea la posición donde queda (una sola).
 En un recibo con aviso u orden de compra, el mismo producto no puede quedar en dos posiciones: si el reparto lo causara muestra el aviso de
 conflicto de siempre y no agrega nada (use un recibo ciego o de devolución para repartir).
 
@@ -327,7 +328,7 @@ sin completar (vuelve a la lista); no la cancela en el servidor.
 ### Repartir en varias posiciones (acomodo con cantidad por posición)
 
 Qué hace: acomoda una tarea en **varias posiciones con la misma cantidad** sin teclear cantidades una por una. Ejemplo: 185 unidades
-de 20 en 20 → 9 posiciones de 20 y 5 sueltos.
+de 20 en 20 → 9 posiciones de 20 y una décima con los 5 que quedaban.
 
 Cómo se usa:
 1. Abrir la tarea. Arriba sale `Pendiente de acomodar: N`.
@@ -335,16 +336,17 @@ Cómo se usa:
 3. Escanear las posiciones, una por una. Cada una se suma a la lista (`A-01 · 20`) y la pantalla dice `Repartido: 180 · quedan 5 sin acomodar`.
    **Nada se mueve todavía.** "Quitar la última" corrige un escaneo equivocado.
 4. **Confirmar reparto** manda todo junto (`POST /warehouse-tasks/{id}/distribute`): o se acomoda todo o no se mueve nada.
-5. Lo que no cupo en posiciones llenas (los 5 sueltos) queda como **tarea nueva** en la lista, para acomodarlo aparte (por ejemplo con otra cantidad por posición).
+5. La posición que ya no se llena (la décima de 185 de 20) recibe **lo que quedaba** (5) y la pantalla muestra una **alerta fija** (`{bin} recibe solo {qty} (lo que quedaba), no {per}.`): se queda arriba aunque se desplace la pantalla y se cierra con la ✕. Si se confirma con menos posiciones de las que caben, lo que falta queda como **tarea nueva** en la lista.
 
-Reglas: solo caben las posiciones **llenas** (185 de 20 → 9; la décima se rechaza); si la tarea es menor que la cantidad por posición
+Reglas: caben las posiciones llenas **y una más con el resto** (185 de 20 → 9 de 20 y una décima de 5; una undécima se rechaza); si la tarea es menor que la cantidad por posición
 (5 de 20), una sola posición recibe todo; cada posición se usa **una sola vez**; los productos con **serie** no se reparten (se acomodan
 indicando las series, desde la web). Quien acomoda necesita `warehouse.receive` (lo revisa el servidor).
 
 | Caso | Mensaje exacto | Código | Qué hacer |
 |---|---|---|---|
 | La posición ya está en el reparto | `Esa posición ya está en el reparto.` | Local | Escanear otra |
-| Ya no cabe otra posición | `No caben más posiciones: con {per} por posición caben {max} y quedan {left} por acomodar. El resto se acomoda aparte.` | Local (y 400 del servidor `Solo caben {max} posición(es) de {per}; quedan {left} por acomodar. El resto se acomoda aparte.`) | Confirmar el reparto; los sueltos son otra tarea |
+| Ya no hay unidades por repartir | `Ya no hay unidades por acomodar: los {total} están repartidos. Confirma el reparto.` | Local (y 400 del servidor `Con {per} por posición caben {max} posición(es) para {pending}; no hay más unidades por repartir.`) | Confirmar el reparto |
+| La posición recibe menos que la cantidad por posición | `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (alerta fija, cerrable) | Local | Informativa: revisar que esa posición pueda recibir ese resto |
 | Hay posiciones repetidas (llamada directa al API) | `Hay posiciones repetidas; cada posición se usa una sola vez.` | 400 | Quitar la repetida |
 | Falta la cantidad por posición | `Indique la cantidad por posición.` | 400 | Escribirla |
 | Falta indicar posiciones | `Indique al menos una posición.` | 400 | Escanear al menos una |

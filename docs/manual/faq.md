@@ -5408,12 +5408,15 @@ con "Mostrar en mi Pulso"; mientras tanto se ven en **Reportes de rentas**.
 
 ## Acomodo repartido en varias posiciones (tarea 24)
 
-**Acomodé 9 posiciones de 20 y quedaron 5 sueltos. ¿Dónde están?**
-Son una tarea de acomodo nueva en la lista de Acomodar (el reparto no cierra lo que no cupo en posiciones llenas). Ábrala y acomódela
-en una posición, o repita el reparto con otra cantidad por posición.
+**Acomodé 9 posiciones de 20 y me quedaron 5 sueltos. ¿Dónde están?**
+Si escaneó una décima posición, esa recibió los 5 (alerta fija `{bin} recibe solo 5 (lo que quedaba), no 20.`). Si confirmó con solo las 9, los 5 son una
+tarea de acomodo nueva en la lista de Acomodar: ábrala y acomódela en una posición.
 
-**Me dice `No caben más posiciones: con 20 por posición caben 9 y quedan 185 por acomodar. El resto se acomoda aparte.` al escanear la décima.**
-Es lo esperado: con 185 y 20 por posición solo caben 9 posiciones llenas. Confirme el reparto; los 5 sueltos quedan como tarea nueva.
+**Me dice `Ya no hay unidades por acomodar: los 185 están repartidos. Confirma el reparto.` al escanear una posición más.**
+Es lo esperado: con 185 y 20 por posición caben 9 de 20 y una décima con 5; ya no queda nada por repartir. Confirme el reparto.
+
+**Me salió una alerta fija arriba, ¿qué hago?**
+Es el aviso de que esa posición recibe solo lo que quedaba (por ejemplo 5 y no 20). Se queda a la vista aunque desplace la pantalla; ciérrela con la ✕ cuando la haya leído.
 
 **Escaneé una posición equivocada en el reparto.**
 Toque **Quitar la última** (quita la última escaneada); nada se ha movido hasta **Confirmar reparto**.
@@ -5422,8 +5425,8 @@ Toque **Quitar la última** (quita la última escaneada); nada se ha movido hast
 No se movió nada: el reparto es todo o nada. Escanee las posiciones correctas y confírmelo de nuevo.
 
 **En el recibo directo repartí 45 de 20 en 20 y me quedaron 5 sin ubicar.**
-Después de **Confirmar reparto** la captura sigue con `5` y el campo de posición: escanee la posición donde quedan los sueltos (o toque Cancelar
-para descartarlos de este recibo; las 2 líneas ya agregadas se quedan).
+Escanee una tercera posición: recibe los 5 (con la alerta fija). Si confirmó solo con 2, la captura sigue con `5` y el campo de posición: escanee dónde quedan
+(o toque Cancelar para descartarlos de este recibo; las 2 líneas ya agregadas se quedan).
 
 **Repartir en un recibo con aviso me muestra el conflicto de posición.**
 Con aviso u orden de compra cada línea entra a una sola posición (`Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.`). Para repartir un producto en varias posiciones use un recibo ciego o de devolución.

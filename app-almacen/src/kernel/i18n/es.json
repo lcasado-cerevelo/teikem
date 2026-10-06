@@ -13,7 +13,8 @@
     "no": "No",
     "pending": "pendientes",
     "warehouse": "Almacén",
-    "edit": "Editar"
+    "edit": "Editar",
+    "closeAlert": "Cerrar aviso"
   },
   "errors": {
     "generic": "Ocurrió un error. Intente de nuevo.",
@@ -79,7 +80,7 @@
     "perBinHelpOn": "Escanea cada posición: en cada una entra esta cantidad.",
     "scanNextTargetLabel": "Escanea la siguiente posición destino",
     "splitRepeated": "Esa posición ya está en el reparto.",
-    "splitNoRoom": "No caben más posiciones: con {per} por posición caben {max} y quedan {left} por ubicar. El resto se ubica aparte.",
+    "splitNoRoom": "Ya no hay unidades por ubicar: los {total} están repartidos. Confirma el reparto.",
     "splitLine": "{bin} · {qty}",
     "splitTotal": "Repartido: {total} · quedan {left} sin ubicar",
     "splitRemoveLast": "Quitar la última",
@@ -121,7 +122,8 @@
     "targetConflictTitle": "No se puede enviar así",
     "targetConflict": "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.",
     "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.",
-    "expiryInvalid": "La fecha no es válida. Escríbela así: {format}"
+    "expiryInvalid": "La fecha no es válida. Escríbela así: {format}",
+    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}."
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -138,14 +140,15 @@
     "perBinHelpOn": "Escanea cada posición: en cada una se deja esta cantidad.",
     "scanNextLabel": "Escanea la siguiente posición",
     "binRepeated": "Esa posición ya está en el reparto.",
-    "noRoomLeft": "No caben más posiciones: con {per} por posición caben {max} y quedan {left} por acomodar. El resto se acomoda aparte.",
+    "noRoomLeft": "Ya no hay unidades por acomodar: los {total} están repartidos. Confirma el reparto.",
     "distLine": "{bin} · {qty}",
     "distTotal": "Repartido: {total} · quedan {left} sin acomodar",
     "removeLast": "Quitar la última",
     "confirmDist": "Confirmar reparto",
     "distributed": "Listo: {sku}, {qty} en {count} posición(es); quedan {left} pendientes",
     "binNotFound": "No hay una posición con ese código.",
-    "done": "Listo: {sku} quedó en {bin}"
+    "done": "Listo: {sku} quedó en {bin}",
+    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}."
   },
   "dispatch": {
     "title": "Despacho",

@@ -67,7 +67,7 @@ public sealed class WarehouseTasksController(WarehouseTaskService tasks, Repleni
 
     /// <summary>
     /// Reparte una tarea PUTAWAY en varias posiciones de la misma cantidad (quantityPerBin) y en el orden de toBinIds, todo en una
-    /// transacción. Solo caben las posiciones llenas (185 de 20 → 9 posiciones; los 5 sueltos quedan como tarea nueva). 400 si la
+    /// transacción. Caben las posiciones llenas y una más que recibe el resto (185 de 20 → 9 de 20 y una décima con 5). 400 si la
     /// cantidad o las posiciones no cuadran o se repiten; 422 si la tarea no es PUTAWAY, es de un producto con serie o ya no está abierta.
     /// </summary>
     [HttpPost("{id:int}/distribute"), RequirePermission(PermissionCatalog.InventoryView)]

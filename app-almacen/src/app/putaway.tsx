@@ -18,11 +18,12 @@ import {
   startTask,
   type PutawaySuggestion,
 } from '../features/putaway/putawayApi'
-import { addDistBin, chunkQty, distSummary, maxBins, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
+import { addDistBin, chunkAt, distSummary, isRestBin, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
 import { useFormat } from '../kernel/format/useFormat'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
+import { StickyAlert } from '../kernel/ui/StickyAlert'
 
 /** Pantalla 4 (docs/mobile/app-almacen-plan.md §2): lista de tareas PUTAWAY (mías primero), escanear la posición
  *  destino y completar. Necesita señal (docs/lote8A-app-decisiones.md, segunda entrega): la tarea es de todo el
@@ -47,12 +48,17 @@ export default function PutawayScreen() {
   const [distBins, setDistBins] = useState<DistBin[]>([])
   const perBin = parsePerBin(perBinText)
   const pending = selected?.quantity ?? 0
+  // La posición que recibe solo lo que quedaba (la décima de 185 de 20): alerta fija, cerrable, mientras esa posición esté en el reparto.
+  const [closedAlertBin, setClosedAlertBin] = useState<number | null>(null)
+  const restAt = perBin > 0 ? distBins.findIndex((_, i) => isRestBin(pending, perBin, i)) : -1
+  const restBin = restAt >= 0 ? distBins[restAt] : null
 
   function closeTask() {
     setSelected(null)
     setSuggestions(null)
     setPerBinText('')
     setDistBins([])
+    setClosedAlertBin(null)
     setScanError(null)
   }
 
@@ -99,7 +105,7 @@ export default function PutawayScreen() {
           setScanError(
             added.reason === 'duplicate'
               ? t('putaway.binRepeated')
-              : t('putaway.noRoomLeft', { max: maxBins(pending, perBin), per: f.qty(chunkQty(pending, perBin)), left: f.qty(pending) }),
+              : t('putaway.noRoomLeft', { total: f.qty(pending) }),
           )
           vibrateError()
           return
@@ -153,7 +159,17 @@ export default function PutawayScreen() {
   if (selected) {
     // ScrollView: con las letras grandes y la posición sugerida, en un aparato corto el botón quedaba fuera de la pantalla
     return (
-      <KeyboardScreen contentContainerStyle={styles.scroll}>
+      <KeyboardScreen
+        contentContainerStyle={styles.scroll}
+        banner={
+          restBin && closedAlertBin !== restBin.id ? (
+            <StickyAlert
+              message={t('putaway.restAlert', { bin: restBin.code, qty: f.qty(chunkAt(pending, perBin, restAt)), per: f.qty(perBin) })}
+              onClose={() => setClosedAlertBin(restBin.id)}
+            />
+          ) : null
+        }
+      >
         <Text style={styles.title}>{selected.sku}</Text>
         <Text style={styles.help}>{selected.productName}</Text>
         {suggestions && suggestions.length > 0 ? (
@@ -182,7 +198,7 @@ export default function PutawayScreen() {
           <View style={styles.field}>
             {distBins.map((b) => (
               <Text key={b.id} style={styles.rowTitle}>
-                {t('putaway.distLine', { bin: b.code, qty: f.qty(chunkQty(pending, perBin)) })}
+                {t('putaway.distLine', { bin: b.code, qty: f.qty(chunkAt(pending, perBin, distBins.indexOf(b))) })}
               </Text>
             ))}
             <Text style={styles.help}>

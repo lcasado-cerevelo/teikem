@@ -24,15 +24,28 @@ export function parsePerBin(text: string): number {
   return Number.isFinite(n) && n > 0 && Math.round(n * 1000) / 1000 === n ? n : 0
 }
 
-/** Cuántas posiciones caben: solo las llenas (185 de 20 → 9); si la tarea es menor que la cantidad por posición, una sola. */
-export function maxBins(pending: number, perBin: number): number {
-  if (pending <= 0 || perBin <= 0) return 0
-  return perBin >= pending ? 1 : Math.floor(pending / perBin)
+/** Posiciones llenas que caben (185 de 20 → 9) y lo que sobra (5): la posición siguiente recibe ese resto. */
+export function fullAndRest(pending: number, perBin: number): { full: number; rest: number } {
+  if (pending <= 0 || perBin <= 0) return { full: 0, rest: 0 }
+  const full = Math.floor(Math.round((pending / perBin) * 1e6) / 1e6)
+  return { full, rest: Math.round((pending - full * perBin) * 1000) / 1000 }
 }
 
-/** Lo que recibe cada posición: la cantidad por posición, o todo lo pendiente si es menor. */
-export function chunkQty(pending: number, perBin: number): number {
-  return perBin >= pending ? pending : perBin
+/** Cuántas posiciones caben: las llenas y UNA más con el resto, si lo hay (185 de 20 → 10; 180 de 20 → 9; 5 de 20 → 1). */
+export function maxBins(pending: number, perBin: number): number {
+  const { full, rest } = fullAndRest(pending, perBin)
+  return full + (rest > 0 ? 1 : 0)
+}
+
+/** Lo que recibe la posición número `index` (0 = la primera): la cantidad por posición, o el resto si es la que ya no se llena. */
+export function chunkAt(pending: number, perBin: number, index: number): number {
+  const { full, rest } = fullAndRest(pending, perBin)
+  return index < full ? perBin : rest
+}
+
+/** ¿Esa posición recibe menos que la cantidad por posición (la del resto)? Es la que lleva la alerta. */
+export function isRestBin(pending: number, perBin: number, index: number): boolean {
+  return chunkAt(pending, perBin, index) < perBin
 }
 
 export interface DistBin {
@@ -42,7 +55,7 @@ export interface DistBin {
 
 export type AddBinResult = { ok: true; bins: DistBin[] } | { ok: false; reason: 'duplicate' | 'full' | 'perBin' }
 
-/** Suma una posición al reparto: rechaza la repetida y la que ya no cabe (los sueltos se acomodan aparte). */
+/** Suma una posición al reparto: rechaza la repetida y la que ya no cabe (no quedan unidades por repartir). */
 export function addDistBin(bins: readonly DistBin[], bin: DistBin, pending: number, perBin: number): AddBinResult {
   if (perBin <= 0) return { ok: false, reason: 'perBin' }
   if (bins.some((b) => b.id === bin.id)) return { ok: false, reason: 'duplicate' }
@@ -50,8 +63,10 @@ export function addDistBin(bins: readonly DistBin[], bin: DistBin, pending: numb
   return { ok: true, bins: [...bins, bin] }
 }
 
-/** Total repartido y lo que queda pendiente tras confirmar. */
+/** Total repartido con `count` posiciones y lo que queda pendiente tras confirmar. */
 export function distSummary(pending: number, perBin: number, count: number): { total: number; left: number } {
-  const total = Math.round(chunkQty(pending, perBin) * count * 1000) / 1000
+  let total = 0
+  for (let i = 0; i < count; i++) total += chunkAt(pending, perBin, i)
+  total = Math.round(total * 1000) / 1000
   return { total, left: Math.round((pending - total) * 1000) / 1000 }
 }

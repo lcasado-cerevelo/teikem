@@ -33,3 +33,9 @@
 - App: `ScanField` acepta `pick` (`product` | `bin` | `any`) y muestra "☰ Buscar en la lista" (debajo del campo, para no apretar la fila de 360 dp); abre `PickerModal` con buscador sobre la base local (`pickerSearch.ts`: LIKE sin distinguir mayúsculas, tope de 50). Aplicado a 12 campos: Recibir (producto, posición destino), Acomodar (destino), Despacho (producto x2, posición de salida), Conteo (posición, producto x2, otra posición) y Consultar (`any`). Los campos de documento y de series no lo llevan.
 - Pruebas: `pickerSearch` (4) y `pickerScreen` (2); 474 jest en verde. No probado en el Zebra.
 - Decisiones a revisar: (1) busca solo en lo sincronizado (sin llamada al servidor); (2) la lista de posiciones no filtra por existencia (en Despacho sería útil mostrar solo las que tienen el producto: queda como mejora); (3) límite de 50 filas.
+
+## Regla del reparto cambiada por el dueño (2026-10-06)
+- Antes: solo cabían posiciones llenas (la décima de 185 de 20 se rechazaba). **Ahora:** caben las llenas **y una más que recibe el resto** (9 de 20 y una décima con 5); una undécima se rechaza. Servidor (`WarehouseTaskRules.DistributionPlan`, 400 `Con {per} por posición caben {max} posición(es) para {pending}; no hay más unidades por repartir.`), Acomodar y recibo directo.
+- **Alerta fija:** `StickyAlert` (`KeyboardScreen`, propiedad `banner`): se dibuja fuera del área desplazable, así que no se va al desplazarse, y se cierra con la ✕. Sale cuando entra la posición que recibe menos que la cantidad por posición (`{bin} recibe solo {qty} (lo que quedaba), no {per}.`).
+- Pruebas: servidor 3201 en verde (reglas y servicio actualizados); app 475 (lógica, pantallas de Acomodar y recibo, StickyAlert).
+- A revisar: la alerta también sale cuando la tarea entera es menor que la cantidad por posición (5 de 20 en una posición); al quitar la última posición la alerta desaparece sola.

@@ -111,12 +111,12 @@ public static class WarehouseTaskRules
     public const string DistributeOnlyPutaway = "El reparto por posición solo aplica a tareas de acomodo (PUTAWAY).";
     public const string DistributeNoSerials = "Los productos con serie no se reparten por posición; complete la tarea indicando las series.";
     public static string DistributeTooManyBins(decimal perBin, decimal pending, int maxBins)
-        => $"Solo caben {maxBins} posición(es) de {FormatQty(perBin)}; quedan {FormatQty(pending)} por acomodar. El resto se acomoda aparte.";
+        => $"Con {FormatQty(perBin)} por posición caben {maxBins} posición(es) para {FormatQty(pending)}; no hay más unidades por repartir.";
 
     /// <summary>
-    /// Reparto de una tarea de acomodo en posiciones de la misma cantidad (p. ej. 185 de 20 en 20 → 9 posiciones de 20 y 5 sueltos que
-    /// quedan como tarea nueva). Solo cabe el número de posiciones llenas; si la tarea es menor que la cantidad por posición, una sola
-    /// posición recibe todo. Devuelve la cantidad de cada posición (en el orden dado) o el error listo para un 400.
+    /// Reparto de una tarea de acomodo en posiciones de la misma cantidad (p. ej. 185 de 20 en 20 → 9 posiciones de 20 y una décima con los 5
+    /// que quedaban). Caben las posiciones llenas y UNA más que recibe el resto (si lo hay); si la tarea es menor que la cantidad por posición,
+    /// una sola posición recibe todo. Devuelve la cantidad de cada posición (en el orden dado) o el error listo para un 400.
     /// </summary>
     public static (IReadOnlyList<decimal> Chunks, string? Error) DistributionPlan(decimal? taskQty, decimal perBin, int binCount)
     {
@@ -124,10 +124,13 @@ public static class WarehouseTaskRules
         if (perBin <= 0m) return (Array.Empty<decimal>(), DistributePerBinRequired);
         if (decimal.Round(perBin, 3) != perBin) return (Array.Empty<decimal>(), QtyDecimals);
         if (binCount <= 0) return (Array.Empty<decimal>(), DistributeBinsRequired);
-        var maxBins = perBin >= tq ? 1 : (int)Math.Floor(tq / perBin);
+        var full = (int)Math.Floor(tq / perBin);
+        var rest = tq - full * perBin;
+        var maxBins = full + (rest > 0m ? 1 : 0);
         if (binCount > maxBins) return (Array.Empty<decimal>(), DistributeTooManyBins(perBin, tq, maxBins));
-        var chunk = perBin >= tq ? tq : perBin;
-        return (Enumerable.Repeat(chunk, binCount).ToList(), null);
+        var chunks = new List<decimal>(binCount);
+        for (var i = 0; i < binCount; i++) chunks.Add(i < full ? perBin : rest);
+        return (chunks, null);
     }
 
     /// <summary>Orden de la cola: prioridad ascendente (1 = más urgente), luego la más antigua primero; desempate por id.</summary>

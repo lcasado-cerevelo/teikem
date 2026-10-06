@@ -108,19 +108,24 @@ public class WarehouseTaskRulesTests
         Assert.Equal((0, 25), WarehouseTaskRules.Page(0, 25));
     }
     [Fact]
-    public void Distribution_plan_fills_whole_bins_and_leaves_the_loose_units_for_another_putaway()
+    public void Distribution_plan_lets_the_tenth_bin_take_the_loose_units()
     {
-        // 185 de 20 en 20: caben 9 posiciones; una décima no cabe (los 5 sueltos se acomodan aparte).
-        var (chunks, error) = WarehouseTaskRules.DistributionPlan(185m, 20m, 9);
+        // 185 de 20 en 20: 9 posiciones de 20 y una décima con los 5 que quedaban; una undécima ya no cabe.
+        var (chunks, error) = WarehouseTaskRules.DistributionPlan(185m, 20m, 10);
         Assert.Null(error);
-        Assert.Equal(9, chunks.Count);
-        Assert.All(chunks, c => Assert.Equal(20m, c));
+        Assert.Equal(10, chunks.Count);
+        Assert.All(chunks.Take(9), c => Assert.Equal(20m, c));
+        Assert.Equal(5m, chunks[9]);
+        Assert.Equal(185m, chunks.Sum());
 
-        var (_, tooMany) = WarehouseTaskRules.DistributionPlan(185m, 20m, 10);
-        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 185m, 9), tooMany);
+        var (_, tooMany) = WarehouseTaskRules.DistributionPlan(185m, 20m, 11);
+        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 185m, 10), tooMany);
 
         // Menos posiciones que las que caben es válido (parcial): lo demás queda pendiente.
         Assert.Null(WarehouseTaskRules.DistributionPlan(185m, 20m, 3).Error);
+        // Exacto: 180 de 20 son 9 posiciones y no hay décima.
+        Assert.Null(WarehouseTaskRules.DistributionPlan(180m, 20m, 9).Error);
+        Assert.NotNull(WarehouseTaskRules.DistributionPlan(180m, 20m, 10).Error);
     }
 
     [Fact]

@@ -21,7 +21,7 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-const BINS = ['A-01', 'A-02', 'A-03']
+const BINS = ['A-01', 'A-02', 'A-03', 'A-04']
 
 function routes(taskQty: number) {
   return [
@@ -53,7 +53,7 @@ const scan = (label: string, code: string) => fireEvent(screen.getByLabelText(la
 describe('Acomodar — reparto por posición', () => {
   it('acumula posiciones, rechaza la repetida y la que no cabe, y confirma todo junto', async () => {
     await setupDevice()
-    const calls = mockFetch(routes(45)) // 45 de 20 → caben 2 posiciones; los 5 sueltos se acomodan aparte
+    const calls = mockFetch(routes(45)) // 45 de 20 → 20 + 20 y una tercera con los 5 que quedaban
     await openTask()
     expect(screen.getByText('Pendiente de acomodar: 45')).toBeTruthy()
 
@@ -71,17 +71,27 @@ describe('Acomodar — reparto por posición', () => {
     await scan('Escanea la siguiente posición', 'A-02')
     await waitFor(() => expect(screen.getByText('A-02 · 20')).toBeTruthy())
     expect(screen.getByText('Repartido: 40 · quedan 5 sin acomodar')).toBeTruthy()
+    expect(screen.queryByTestId('sticky-alert')).toBeNull()
 
+    // la tercera recibe lo que quedaba (5) y sale la alerta fija, que se puede cerrar
     await scan('Escanea la siguiente posición', 'A-03')
-    await waitFor(() => expect(screen.getByText(/No caben más posiciones/)).toBeTruthy())
-    expect(screen.queryByText('A-03 · 20')).toBeNull()
+    await waitFor(() => expect(screen.getByText('A-03 · 5')).toBeTruthy())
+    expect(screen.getByText('Repartido: 45 · quedan 0 sin acomodar')).toBeTruthy()
+    expect(screen.getByText('A-03 recibe solo 5 (lo que quedaba), no 20.')).toBeTruthy()
+    await fireEvent.press(screen.getByLabelText('Cerrar aviso'))
+    await waitFor(() => expect(screen.queryByTestId('sticky-alert')).toBeNull())
+
+    // una cuarta ya no cabe
+    await scan('Escanea la siguiente posición', 'A-04')
+    await waitFor(() => expect(screen.getByText(/Ya no hay unidades por acomodar/)).toBeTruthy())
+    expect(screen.queryByText('A-04 · 20')).toBeNull()
 
     // nada se mandó hasta confirmar
     expect(calls.some((c) => c.path.endsWith('/distribute'))).toBe(false)
     await fireEvent.press(screen.getByText('Confirmar reparto'))
     await waitFor(() => expect(calls.some((c) => c.path === '/api/v1/warehouse-tasks/5/distribute')).toBe(true))
-    expect(calls.find((c) => c.path.endsWith('/distribute'))?.body).toEqual({ quantityPerBin: 20, toBinIds: [1, 2] })
-    await waitFor(() => expect(screen.getByText('Listo: SKU-1, 40 en 2 posición(es); quedan 5 pendientes')).toBeTruthy())
+    expect(calls.find((c) => c.path.endsWith('/distribute'))?.body).toEqual({ quantityPerBin: 20, toBinIds: [1, 2, 3] })
+    await waitFor(() => expect(screen.getByText('Listo: SKU-1, 45 en 3 posición(es); quedan 0 pendientes')).toBeTruthy())
   })
 
   it('sin cantidad por posición acomoda todo en la posición escaneada, como siempre', async () => {

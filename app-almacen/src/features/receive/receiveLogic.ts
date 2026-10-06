@@ -5,7 +5,7 @@
 import { parseDateInput } from '../../kernel/format/format'
 import type { FormatSettings } from '../../kernel/format/settings'
 import { getFormatSettings } from '../../kernel/format/store'
-import { chunkQty, maxBins } from '../putaway/putawayLogic'
+import { chunkAt, distSummary, maxBins } from '../putaway/putawayLogic'
 import type { TrackingType } from './localLookup'
 
 /** Modos de recepción del almacén (LookupCode ReceivingMode). */
@@ -175,9 +175,8 @@ export function validateTargetBin(code: string, localBins: readonly LocalBin[]):
  */
 export function splitDraftLines(draft: LineDraft, perBin: number, codes: readonly string[]): { lines: DraftLine[]; left: number } {
   const total = draftQuantity(draft)
-  const chunk = chunkQty(total, perBin)
-  const lines = codes.map((code) => buildLine({ ...draft, qtyText: String(chunk), targetBinCode: code }))
-  return { lines, left: Math.round((total - chunk * codes.length) * 1000) / 1000 }
+  const lines = codes.map((code, i) => buildLine({ ...draft, qtyText: String(chunkAt(total, perBin, i)), targetBinCode: code }))
+  return { lines, left: distSummary(total, perBin, codes.length).left }
 }
 
 export type AddSplitResult = { ok: true; codes: string[] } | { ok: false; reason: 'duplicate' | 'full' }

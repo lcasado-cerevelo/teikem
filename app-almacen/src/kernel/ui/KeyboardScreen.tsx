@@ -7,6 +7,8 @@ import { KeyboardScrollContext, useFieldFocus, useKeyboardScroll, type KeyboardS
 
 export interface KeyboardScreenProps extends ScrollViewProps {
   children?: ReactNode
+  /** Aviso fijo (StickyAlert) que se dibuja encima del área desplazable: no se va al desplazarse. */
+  banner?: ReactNode
   /** Solo para pruebas: de dónde sale el campo enfocado. */
   getFocused?: () => MeasurableField | null
 }
@@ -16,11 +18,12 @@ export interface KeyboardScreenProps extends ScrollViewProps {
  * ya viene en "handled" para que tocar un botón no solo cierre el teclado). `KeyboardAvoidingView` con `behavior="padding"` en las dos
  * plataformas + desplazamiento automático hasta el campo enfocado.
  */
-export function KeyboardScreen({ children, getFocused, onScroll, onLayout, keyboardShouldPersistTaps = 'handled', ...props }: KeyboardScreenProps) {
+export function KeyboardScreen({ children, banner, getFocused, onScroll, onLayout, keyboardShouldPersistTaps = 'handled', ...props }: KeyboardScreenProps) {
   const { scrollRef, onScroll: trackScroll, onLayout: trackLayout, onFieldFocus } = useKeyboardScroll({ getFocused })
   const ctx = useMemo<KeyboardScrollContextValue>(() => ({ onFieldFocus }), [onFieldFocus])
   return (
     <KeyboardAvoidingView style={styles.fill} behavior="padding" testID="keyboard-screen">
+      {banner}
       <ScrollView
         ref={scrollRef}
         keyboardShouldPersistTaps={keyboardShouldPersistTaps}

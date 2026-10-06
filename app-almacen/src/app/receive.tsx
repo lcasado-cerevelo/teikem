@@ -25,7 +25,8 @@ import {
   startLocalReceipt,
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestion } from '../features/receive/receiveApi'
-import { chunkQty, distSummary, maxBins, parsePerBin } from '../features/putaway/putawayLogic'
+import { chunkAt, distSummary, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
+import { StickyAlert } from '../kernel/ui/StickyAlert'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
@@ -78,6 +79,8 @@ export default function ReceiveScreen() {
   const [perBinText, setPerBinText] = useState('')
   const [splitCodes, setSplitCodes] = useState<string[]>([])
   const perBin = parsePerBin(perBinText)
+  // La posición que recibe solo lo que quedaba (la décima de 185 de 20): alerta fija, cerrable, mientras esa posición esté en el reparto.
+  const [closedAlertBin, setClosedAlertBin] = useState<string | null>(null)
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,6 +148,7 @@ export default function ReceiveScreen() {
     setSuggestion(null)
     setPerBinText('')
     setSplitCodes([])
+    setClosedAlertBin(null)
   }
 
   function addCurrentLine() {
@@ -185,7 +189,7 @@ export default function ReceiveScreen() {
         return fail(
           added.reason === 'duplicate'
             ? t('receive.splitRepeated')
-            : t('receive.splitNoRoom', { max: maxBins(total, perBin), per: f.qty(chunkQty(total, perBin)), left: f.qty(total) }),
+            : t('receive.splitNoRoom', { total: f.qty(total) }),
         )
       }
       setSplitCodes(added.codes)
@@ -305,8 +309,21 @@ export default function ReceiveScreen() {
   // Paso 3b (Lote 16, solo recibo directo): la posición destino de la línea. Un solo campo de captura en pantalla (el
   // lector escribe en todos los ScanField montados), por eso es un paso aparte y no un campo más del paso 3.
   if (draft && askTarget) {
+    const total = draftQuantity(draft)
+    const restAt = perBin > 0 ? splitCodes.findIndex((_, i) => isRestBin(total, perBin, i)) : -1
+    const restCode = restAt >= 0 ? splitCodes[restAt] : null
     return (
-      <KeyboardScreen contentContainerStyle={styles.fill}>
+      <KeyboardScreen
+        contentContainerStyle={styles.fill}
+        banner={
+          restCode && closedAlertBin !== restCode ? (
+            <StickyAlert
+              message={t('receive.restAlert', { bin: restCode, qty: f.qty(chunkAt(total, perBin, restAt)), per: f.qty(perBin) })}
+              onClose={() => setClosedAlertBin(restCode)}
+            />
+          ) : null
+        }
+      >
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
         {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
@@ -337,7 +354,7 @@ export default function ReceiveScreen() {
           <View style={styles.field}>
             {splitCodes.map((c) => (
               <Text key={c} style={styles.label}>
-                {t('receive.splitLine', { bin: c, qty: f.qty(chunkQty(draftQuantity(draft), perBin)) })}
+                {t('receive.splitLine', { bin: c, qty: f.qty(chunkAt(draftQuantity(draft), perBin, splitCodes.indexOf(c))) })}
               </Text>
             ))}
             <Text style={styles.help}>

@@ -292,25 +292,36 @@ public sealed class WarehouseTaskServiceTests
     }
 
     [Fact]
-    public async Task Distribute_rejects_more_bins_than_fit_and_repeated_bins_without_moving_anything()
+    public async Task Distribute_puts_the_loose_units_in_the_last_bin_and_rejects_one_more_or_repeated_bins_without_moving_anything()
     {
         var s = await PutawayAsync(45m);
         await using var f = s.F;
         var zone = await f.Db.WarehouseZones.AsNoTracking().FirstAsync(z => z.Code == "RSV" && z.WarehouseId == s.W.WarehouseId);
         var b2 = await f.AddBinAsync(zone, "R-02");
         var b3 = await f.AddBinAsync(zone, "R-03");
+        var b4 = await f.AddBinAsync(zone, "R-04");
         var svc = f.Get<WarehouseTaskService>();
 
-        // 45 de 20 caben 2 posiciones; una tercera se rechaza (los 5 sueltos van aparte).
+        // 45 de 20 caben 3 posiciones (20, 20 y 5); una cuarta se rechaza.
         var ex = await Assert.ThrowsAsync<ValidationException>(() => svc.DistributeAsync(s.Task.WarehouseTaskId,
-            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, b2.WarehouseBinId, b3.WarehouseBinId }), default));
-        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 45m, 2), Assert.Single(ex.Errors!["quantityPerBin"]));
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, b2.WarehouseBinId, b3.WarehouseBinId, b4.WarehouseBinId }), default));
+        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 45m, 3), Assert.Single(ex.Errors!["quantityPerBin"]));
         var dup = await Assert.ThrowsAsync<ValidationException>(() => svc.DistributeAsync(s.Task.WarehouseTaskId,
             new TaskDistributeRequest(20m, new[] { b2.WarehouseBinId, b2.WarehouseBinId }), default));
         Assert.Equal(WarehouseTaskRules.DistributeBinsDuplicated, Assert.Single(dup.Errors!["toBinIds"]));
-
         Assert.Equal(45m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
         Assert.Equal(WarehouseTaskStatuses.Pending, f.StatusCodeOf((await f.TaskAsync(s.Task.WarehouseTaskId)).StatusCodeId));
+
+        // Con las tres: 20 + 20 + 5 y no queda remanente.
+        var dto = await svc.DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, b2.WarehouseBinId, b3.WarehouseBinId }), default);
+        Assert.Equal(WarehouseTaskStatuses.Done, dto.StatusCode);
+        Assert.Equal(20m, await f.OnHandAsync(s.Product.ProductId, s.Reserve.WarehouseBinId));
+        Assert.Equal(20m, await f.OnHandAsync(s.Product.ProductId, b2.WarehouseBinId));
+        Assert.Equal(5m, await f.OnHandAsync(s.Product.ProductId, b3.WarehouseBinId));
+        Assert.Equal(0m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
+        Assert.Equal(1, await f.Db.WarehouseTasks.AsNoTracking().CountAsync()); // sin tarea nueva
+        Assert.Equal(ReceiptStatuses.Putaway, await ReceiptStatusAsync(s));
     }
 
     [Fact]
