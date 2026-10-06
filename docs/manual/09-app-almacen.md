@@ -550,6 +550,16 @@ duplica nada: la clave de idempotencia de cada fila de la cola protege el reinte
 
 ---
 
+### 7.3 Calculadora de cantidad (2026-10-05)
+
+En el conteo, junto a la **cantidad** hay un botón **🧮 Calculadora** para contar estibas sin sumar de cabeza. Al tocarlo, el campo único se **cambia en el mismo lugar** por **Filas × Columnas** y **Sueltas**; debajo se ve la
+cuenta armada y el **Total** (por ejemplo `(5 × 3) + 10` → `Total: 25`), que va llenando la cantidad a medida que se escribe. Para una estiba de varias capas, **+ Otro bloque** agrega otro filas × columnas (y ✕ lo quita).
+**Cantidad directa** vuelve al campo normal con el total ya puesto; lo que ya estaba escrito al abrir pasa a «sueltas». Solo se guarda **la cantidad** (no la fórmula).
+- Dónde: la cantidad del conteo por posición (encontrada y corrección), la del conteo abierto con varios productos y, en el conteo de un producto en todas sus posiciones, un botón 🧮 en cada fila que abre la calculadora en una ventana con **Usar {total}**.
+- Reglas: filas y columnas son **enteros**; las sueltas admiten decimales (coma o punto, hasta 3). Un bloque necesita **las dos** medidas (`Cada bloque necesita filas y columnas.`); algo que no es número da
+  `Filas y columnas son números enteros; las sueltas, un número.`; más de 9 999 999 da `Ese total es demasiado grande.` Mientras el cálculo esté incompleto la cantidad queda **en blanco** (no deja guardar un número a medias).
+- El botón **⌨** de la calculadora muestra el teclado para todos sus campos a la vez.
+
 ## 8. Consultar
 
 Qué hace: un solo campo para buscar saldos, por producto (código de barras o SKU, ya sincronizado), por **posición** o por texto

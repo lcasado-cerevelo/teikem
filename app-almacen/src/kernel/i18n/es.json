@@ -253,6 +253,25 @@
     "openEditing": "{sku} ya estaba contado en {bin}: corrige la cantidad.",
     "openAlreadyListed": "{sku} ya está contado en {bin}: toca su línea de la lista para corregir la cantidad."
   },
+  "calc": {
+    "open": "Calculadora",
+    "openFor": "Calculadora de {bin}",
+    "title": "Calculadora",
+    "direct": "Cantidad directa",
+    "rows": "Filas",
+    "cols": "Columnas",
+    "rowsAt": "Filas del bloque {n}",
+    "colsAt": "Columnas del bloque {n}",
+    "extra": "Sueltas",
+    "addBlock": "+ Otro bloque",
+    "removeBlock": "Quitar el bloque {n}",
+    "total": "Total: {total}",
+    "hint": "Escribe filas, columnas y las sueltas.",
+    "incompleteBlock": "Cada bloque necesita filas y columnas.",
+    "invalid": "Filas y columnas son números enteros; las sueltas, un número.",
+    "tooLarge": "Ese total es demasiado grande.",
+    "useTotal": "Usar {total}"
+  },
   "lookup": {
     "title": "Consultar",
     "scanLabel": "Escanea un producto o una posición",
