@@ -1,10 +1,14 @@
 // Cantidad con calculadora (pedido del dueño 2026-10-05): el campo de cantidad trae al lado un botón de calculadora; al tocarlo el campo único se CAMBIA
 // por «filas × columnas + sueltas» (con «+ otro bloque» para estibas de varias capas) y debajo se ve la cuenta y el total. El total va llenando la
 // cantidad a medida que se escribe; al volver a «Cantidad directa» queda ese número. Solo la cantidad se guarda (no la fórmula). Lógica en quantityCalc.ts.
+// Lote A9 (pruebas en el Zebra, 2026-10-06): el botón trae un icono claro dibujado (CalculatorIcon) sobre fondo azul oscuro (el emoji 🧮 no se
+// veía sobre el fondo oscuro); en la cabecera, «Calculadora» va en una sola línea y el enlace de texto «Cantidad directa» pasó a ser un botón
+// con flecha (←) cuyo nombre accesible sigue siendo «Cantidad directa».
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View, type TextInputProps } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
+import { CalculatorIcon } from '../../kernel/ui/CalculatorIcon'
 import { KeyboardInput, KeyboardToggleButton } from '../../kernel/ui/KeyboardInput'
 import { useSoftKeyboard } from '../../kernel/ui/useSoftKeyboard'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
@@ -51,8 +55,14 @@ export function QuantityField({ value, onChangeText, accessibilityLabel, testID,
           selectTextOnFocus={selectTextOnFocus}
         />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('calc.open')} onPress={() => setCalc(calcFromText(value))} style={styles.calcBtn}>
-        <Text style={styles.calcIcon}>🧮</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('calc.open')}
+        onPress={() => setCalc(calcFromText(value))}
+        style={({ pressed }) => [styles.calcBtn, pressed && styles.pressed]}
+        testID="quantity-calc-open"
+      >
+        <CalculatorIcon />
       </Pressable>
     </View>
   )
@@ -81,12 +91,24 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
 
   return (
     <View style={styles.panel} testID="quantity-calculator">
+      {/* volver (flecha) · título en UNA línea (se achica antes que partirse) · teclado en pantalla */}
       <View style={styles.head}>
-        <Text style={styles.title}>{t('calc.title')}</Text>
-        <KeyboardToggleButton on={kb.show} onPress={kb.toggle} />
-        <Pressable accessibilityRole="button" accessibilityLabel={t('calc.direct')} onPress={onClose} style={styles.directBtn}>
-          <Text style={styles.directLabel}>{t('calc.direct')}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('calc.direct')}
+          onPress={onClose}
+          hitSlop={4}
+          style={({ pressed }) => [styles.backBtn, pressed && styles.pressed]}
+          testID="quantity-calculator-back"
+        >
+          <Text style={styles.backIcon}>←</Text>
         </Pressable>
+        <View style={styles.titleBox}>
+          <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} testID="quantity-calculator-title">
+            {t('calc.title')}
+          </Text>
+        </View>
+        <KeyboardToggleButton on={kb.show} onPress={kb.toggle} />
       </View>
 
       {state.blocks.map((b, i) => (
@@ -164,13 +186,34 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'stretch', gap: spacing.sm },
   grow: { flex: 1, minWidth: 0 },
-  calcBtn: { minHeight: touchTarget, width: 52, borderRadius: radius.md, borderWidth: 2, borderColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
-  calcIcon: { fontSize: 24 },
+  // fondo azul oscuro con icono blanco (contraste ~8:1) y borde azul: se distingue del campo y del fondo de la app; 56 × 56 dp
+  calcBtn: {
+    minHeight: touchTarget,
+    width: touchTarget,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.brand,
+    backgroundColor: colors.brandDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: { opacity: 0.8 },
   panel: { gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  title: { flex: 1, color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
-  directBtn: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  directLabel: { color: colors.brand, fontSize: fontSize.message, fontWeight: '700', textDecorationLine: 'underline' },
+  // el título toma el espacio que sobra y se encoge (nunca empuja a los botones ni se parte en dos líneas)
+  titleBox: { flex: 1, flexShrink: 1, minWidth: 0 },
+  title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
+  backBtn: {
+    width: touchTarget,
+    minHeight: touchTarget,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.brand,
+    backgroundColor: colors.brandDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backIcon: { color: colors.onStrong, fontSize: 28, fontWeight: '800', lineHeight: 32 },
   blockRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   cell: { flex: 1, minWidth: 0, gap: 2 },
   cellFull: { gap: 2 },
@@ -186,9 +229,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.bg,
   },
-  removeBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm },
+  removeBtn: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm },
   removeLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
-  link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: spacing.xs },
+  link: { minHeight: 48, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: spacing.xs },
   linkLabel: { color: colors.brand, fontSize: fontSize.label, fontWeight: '700', textDecorationLine: 'underline' },
   sum: { gap: 2, paddingTop: spacing.xs },
   expression: { color: colors.muted, fontSize: fontSize.message },

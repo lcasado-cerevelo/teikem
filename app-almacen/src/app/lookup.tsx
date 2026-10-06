@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { canSeeSystemQty, useMyPermissions } from '../kernel/auth/permissions'
@@ -12,6 +12,7 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { useFormat } from '../kernel/format/useFormat'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { ApiError, BIN_CONTENT_MAX_PAGES, BIN_CONTENT_PAGE, fetchBinContents, resolveLookupBin, searchBalances } from '../features/lookup/lookupApi'
 import { aggregateBinContents, minutesAgo, type BalanceRow, type BinContentItem } from '../features/lookup/lookupLogic'
 import { BinContentsList } from '../features/lookup/BinContentsList'
@@ -93,7 +94,7 @@ export default function LookupScreen() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+    <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{t('lookup.title')}</Text>
       <ScanField label={t('lookup.scanLabel')} help={t('lookup.scanHelp')} error={error} onSubmit={scan} />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
@@ -121,7 +122,7 @@ export default function LookupScreen() {
       ) : null}
       {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla, también debajo del resultado */}
       <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
-    </ScrollView>
+    </KeyboardScreen>
   )
 }
 

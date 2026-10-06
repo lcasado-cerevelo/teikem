@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -13,6 +13,7 @@ import { completeTask, fetchOpenPutawayTasks, fetchPutawaySuggestions, findBinBy
 import { sortTasksMineFirst, type PutawayTask } from '../features/putaway/putawayLogic'
 import { useFormat } from '../kernel/format/useFormat'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 
 /** Pantalla 4 (docs/mobile/app-almacen-plan.md §2): lista de tareas PUTAWAY (mías primero), escanear la posición
  *  destino y completar. Necesita señal (docs/lote8A-app-decisiones.md, segunda entrega): la tarea es de todo el
@@ -95,7 +96,7 @@ export default function PutawayScreen() {
   if (selected) {
     // ScrollView: con las letras grandes y la posición sugerida, en un aparato corto el botón quedaba fuera de la pantalla
     return (
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>{selected.sku}</Text>
         <Text style={styles.help}>{selected.productName}</Text>
         {suggestions && suggestions.length > 0 ? (
@@ -114,7 +115,7 @@ export default function PutawayScreen() {
             setSuggestions(null)
           }}
         />
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 

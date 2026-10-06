@@ -5,7 +5,7 @@
 // cierre por la cola de salida. Escanear otra vez un producto en la misma posición abre la línea ya contada para corregirla.
 // Sin señal no se puede buscar la posición del producto: se pide escanearla (la tabla de posiciones es local).
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n/useT'
@@ -23,6 +23,7 @@ import { addOpenCountLine, getProductCountRows, removeLocalCountLine, updateLoca
 import { OtherBinForm, type OtherBinLot } from './OtherBinForm'
 import { QuantityField } from './QuantityField'
 import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
+import { KeyboardScreen } from '../../kernel/ui/KeyboardScreen'
 
 export interface OpenCountViewProps {
   openCount: OpenCount
@@ -210,7 +211,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
   // ------------------------------------------------------------------ "Otra posición" (nueva) dentro del producto
   if (draft?.other) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <OtherBinForm
           warehousePublicId={openCount.warehousePublicId}
           countId={openCount.countId}
@@ -219,7 +220,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
           onAdded={otherAdded}
           onCancel={() => setDraft((d) => (d ? { ...d, other: false } : d))}
         />
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
@@ -233,7 +234,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
     const editingRow = draft.editingRowId !== null ? rows.find((r) => r.id === draft.editingRowId) : null
     const shownBin = editingRow ? editingRow.binCode : draft.choice?.binCode ?? null
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.product.name}</Text>
         <Text style={styles.help}>{draft.product.sku}</Text>
         {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
@@ -304,13 +305,13 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
             <BigButton label={draft.editingRowId !== null ? t('common.save') : t('count.addFound')} onPress={save} disabled={!canSave} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // ------------------------------------------------------------------ escaneando productos y viendo lo contado
   return (
-    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+    <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{t('count.title')}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField
@@ -362,7 +363,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
       <Text style={styles.help}>{t('count.finishHelp')}</Text>
       <ScanMessage tone="error" message={error} />
       <BigButton label={t('count.cancelCount')} variant="danger" onPress={onCancelCount} disabled={busy} />
-    </ScrollView>
+    </KeyboardScreen>
   )
 }
 

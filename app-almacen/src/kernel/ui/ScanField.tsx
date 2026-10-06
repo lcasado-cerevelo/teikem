@@ -3,6 +3,7 @@ import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, 
 
 import { useT } from '../i18n/useT'
 import { useScanner } from '../scanner/useScanner'
+import { useFieldFocus, type MeasurableField } from './keyboardScroll'
 import { placeholderFontSize } from './placeholderFont'
 import { ScanMessage } from './ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from './theme'
@@ -77,6 +78,10 @@ export function ScanField({
 
   useScanner(submit)
 
+  // Lote A9: con el teclado en pantalla pedido (⌨), dentro de un KeyboardScreen la pantalla se desplaza hasta este campo
+  const getField = useCallback(() => inputRef.current as unknown as MeasurableField | null, [])
+  const handleFocus = useFieldFocus(getField)
+
   // Valor puesto desde afuera: llena el campo, lo enfoca y deja el cursor al final (sin mostrar el teclado).
   const prefillSeq = prefill?.seq
   useEffect(() => {
@@ -115,6 +120,7 @@ export function ScanField({
           value={value}
           onChangeText={setValue}
           onSubmitEditing={(e) => submit(e.nativeEvent.text)}
+          onFocus={handleFocus}
           autoFocus={autoFocus}
           showSoftInputOnFocus={keyboard}
           submitBehavior="submit"

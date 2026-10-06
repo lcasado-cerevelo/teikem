@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -26,6 +26,7 @@ import {
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestion } from '../features/receive/receiveApi'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   addSerial,
   buildLine,
@@ -215,7 +216,7 @@ export default function ReceiveScreen() {
   // abajo del todo, debajo del texto de ayuda de "Recibo ciego" (con `marginTop: auto` queda pegado al borde inferior).
   if (!openReceipt) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('receive.title')}</Text>
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
@@ -223,7 +224,7 @@ export default function ReceiveScreen() {
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
@@ -231,7 +232,7 @@ export default function ReceiveScreen() {
   // lector escribe en todos los ScanField montados), por eso es un paso aparte y no un campo más del paso 3.
   if (draft && askTarget) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
         {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
@@ -247,14 +248,14 @@ export default function ReceiveScreen() {
           />
           <BigButton label={t('common.cancel')} variant="danger" onPress={closeDraft} />
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // Paso 3: capturando cantidad/lote/series de un producto ya escaneado.
   if (draft) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{draft.sku}</Text>
 
@@ -318,14 +319,14 @@ export default function ReceiveScreen() {
           <BigButton label={t('common.cancel')} variant="secondary" onPress={closeDraft} />
           <BigButton label={t(direct ? 'common.next' : 'receive.addLine')} onPress={addCurrentLine} disabled={!canAddLine(draft)} />
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // Paso 2: recibo abierto, escaneando productos y viendo lo ya capturado. ScrollView (no View, como los otros dos
   // pasos): el ScanField se reenfoca tras cada línea agregada y, con el teclado abierto, tapaba Confirmar/Cancelar.
   return (
-    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+    <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>
         {openReceipt.doc
           ? t(openReceipt.doc.kind === 'asn' ? 'receive.docLabelAsn' : 'receive.docLabelPo', {
@@ -358,7 +359,7 @@ export default function ReceiveScreen() {
       />
       <Text style={styles.help}>{t(direct ? 'receive.confirmHelpDirect' : 'receive.confirmHelp')}</Text>
       <BigButton label={t('receive.cancelReceipt')} variant="danger" onPress={cancelReceipt} />
-    </ScrollView>
+    </KeyboardScreen>
   )
 }
 

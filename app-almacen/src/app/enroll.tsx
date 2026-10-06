@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError, getApiBaseUrl, setApiBaseUrl } from '../kernel/api/client'
@@ -8,6 +8,7 @@ import { useSession } from '../kernel/auth/useSession'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
 import { BrandLockup } from '../kernel/ui/BrandLockup'
+import { KeyboardScreen, KeyboardScreenInput } from '../kernel/ui/KeyboardScreen'
 import { colors, spacing } from '../kernel/ui/theme'
 
 /** Pantalla 1 (parte 1): registrar este aparato con el código de un solo uso del administrador (docs/mobile/
@@ -49,53 +50,53 @@ export default function EnrollScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <BrandLockup />
-        <Text style={styles.title}>{t('enroll.title')}</Text>
+    // Lote A9: KeyboardScreen (antes KeyboardAvoidingView sin `behavior` en Android + ScrollView): con la app de borde a borde, Android ya no
+    // encoge la ventana al salir el teclado y el campo del código y el botón quedaban debajo del teclado.
+    <KeyboardScreen style={styles.fill} contentContainerStyle={styles.content} testID="enroll-scroll">
+      <BrandLockup />
+      <Text style={styles.title}>{t('enroll.title')}</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('server.urlLabel')}</Text>
-          <TextInput
-            value={serverUrl}
-            onChangeText={setServerUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="url"
-            placeholder="http://192.168.1.20:5000/"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            accessibilityLabel={t('server.urlLabel')}
-            testID="server-url-input"
-          />
-          <Text style={styles.help}>{t('server.urlHelp')}</Text>
-        </View>
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('server.urlLabel')}</Text>
+        <KeyboardScreenInput
+          value={serverUrl}
+          onChangeText={setServerUrl}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          placeholder="http://192.168.1.20:5000/"
+          placeholderTextColor={colors.muted}
+          style={styles.input}
+          accessibilityLabel={t('server.urlLabel')}
+          testID="server-url-input"
+        />
+        <Text style={styles.help}>{t('server.urlHelp')}</Text>
+      </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>{t('enroll.codeLabel')}</Text>
-          <TextInput
-            value={code}
-            onChangeText={(v) => setCode(v.toUpperCase())}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={8}
-            placeholder="ABCD1234"
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            accessibilityLabel={t('enroll.codeLabel')}
-            testID="enroll-code-input"
-          />
-          <Text style={styles.help}>{t('enroll.codeHelp')}</Text>
-        </View>
+      <View style={styles.field}>
+        <Text style={styles.label}>{t('enroll.codeLabel')}</Text>
+        <KeyboardScreenInput
+          value={code}
+          onChangeText={(v) => setCode(v.toUpperCase())}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          maxLength={8}
+          placeholder="ABCD1234"
+          placeholderTextColor={colors.muted}
+          style={styles.input}
+          accessibilityLabel={t('enroll.codeLabel')}
+          testID="enroll-code-input"
+        />
+        <Text style={styles.help}>{t('enroll.codeHelp')}</Text>
+      </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <BigButton label={t('enroll.submit')} onPress={submit} loading={busy} disabled={!code.trim()} />
-        {devices.length > 0 ? (
-          <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/login')} />
-        ) : null}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <BigButton label={t('enroll.submit')} onPress={submit} loading={busy} disabled={!code.trim()} />
+      {devices.length > 0 ? (
+        <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/login')} />
+      ) : null}
+    </KeyboardScreen>
   )
 }
 

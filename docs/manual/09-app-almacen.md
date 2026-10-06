@@ -133,6 +133,11 @@ Cómo se usa: la lista de usuarios del aparato se pide sola al entrar a esta pan
 teclado numérico del PIN (4 a 6 dígitos). "Entrar" llama a `POST /api/v1/auth/device/login`. Si el PIN es
 incorrecto, se borra el PIN escrito y hay que volver a teclearlo (no vuelve a la lista).
 
+Pantalla chica (Lote A9, 2026-10-06): la pantalla del PIN **se desplaza** (deslizar hacia arriba) si no cabe entera, así
+"Volver" y "Entrar" siempre se pueden ver completos; en aparatos de poca altura (menos de 640 dp, como un Zebra de 4") las
+teclas del PIN se achican un poco (60 dp en vez de 72) para que todo quepa sin desplazar. El PIN se define en la web
+(Mi cuenta); la app solo lo pide para entrar.
+
 ### 2.3 Un teléfono en varias compañías (2026-09-30)
 
 Un mismo teléfono puede trabajar en varias compañías (por ejemplo Advance Depot y Advance Solutions), **una vez en cada
@@ -552,13 +557,16 @@ duplica nada: la clave de idempotencia de cada fila de la cola protege el reinte
 
 ### 7.3 Calculadora de cantidad (2026-10-05)
 
-En el conteo, junto a la **cantidad** hay un botón **🧮 Calculadora** para contar estibas sin sumar de cabeza. Al tocarlo, el campo único se **cambia en el mismo lugar** por **Filas × Columnas** y **Sueltas**; debajo se ve la
+En el conteo, junto a la **cantidad** hay un botón **Calculadora** (cuadro azul con el dibujo blanco de una calculadora) para contar estibas sin sumar de cabeza. Al tocarlo, el campo único se **cambia en el mismo lugar** por **Filas × Columnas** y **Sueltas**; debajo se ve la
 cuenta armada y el **Total** (por ejemplo `(5 × 3) + 10` → `Total: 25`), que va llenando la cantidad a medida que se escribe. Para una estiba de varias capas, **+ Otro bloque** agrega otro filas × columnas (y ✕ lo quita).
-**Cantidad directa** vuelve al campo normal con el total ya puesto; lo que ya estaba escrito al abrir pasa a «sueltas». Solo se guarda **la cantidad** (no la fórmula).
-- Dónde: la cantidad del conteo por posición (encontrada y corrección), la del conteo abierto con varios productos y, en el conteo de un producto en todas sus posiciones, un botón 🧮 en cada fila que abre la calculadora en una ventana con **Usar {total}**.
+El botón con la **flecha ←** (arriba a la izquierda, junto al título «Calculadora»; para el lector de pantalla se llama **Cantidad directa**) vuelve al campo normal con el total ya puesto; lo que ya estaba escrito al abrir pasa a «sueltas». Solo se guarda **la cantidad** (no la fórmula).
+- Dónde: la cantidad del conteo por posición (encontrada y corrección), la del conteo abierto con varios productos y, en el conteo de un producto en todas sus posiciones, un botón de calculadora en cada fila que abre la calculadora **en la misma pantalla** (en lugar de la lista; Lote A9: antes era una ventana encima y el teclado tapaba «Sueltas») con **Usar {total}** y **Cancelar**; la flecha ← también cancela sin cambiar la fila.
 - Reglas: filas y columnas son **enteros**; las sueltas admiten decimales (coma o punto, hasta 3). Un bloque necesita **las dos** medidas (`Cada bloque necesita filas y columnas.`); algo que no es número da
   `Filas y columnas son números enteros; las sueltas, un número.`; más de 9 999 999 da `Ese total es demasiado grande.` Mientras el cálculo esté incompleto la cantidad queda **en blanco** (no deja guardar un número a medias).
 - El botón **⌨** de la calculadora muestra el teclado para todos sus campos a la vez.
+- Teclado en pantalla (Lote A9): con el teclado en pantalla abierto, el campo que se está escribiendo (por ejemplo **Sueltas**) sube solo para quedar
+  **encima del teclado**; si algo queda tapado, se puede deslizar la pantalla. Esto vale para todas las pantallas con campos (Recibir, Acomodar, Despacho,
+  Conteo, Consultar y Registrar el aparato). Con el lector o el teclado físico del Zebra el teclado en pantalla no sale y la pantalla no se mueve.
 
 ## 8. Consultar
 

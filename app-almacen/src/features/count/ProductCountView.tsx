@@ -6,9 +6,10 @@
 // Lote A5 (decisión del dueño 4): Confirmar exige al menos una posición con un número escrito (0 vale); con todo en blanco no
 // se manda nada y sale el aviso grande (ScanMessage) encima de Confirmar.
 import { useMemo, useState } from 'react'
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
+import { CalculatorIcon } from '../../kernel/ui/CalculatorIcon'
 import { BigButton } from '../../kernel/ui/BigButton'
 import { ScanMessage } from '../../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from '../../kernel/ui/theme'
@@ -62,7 +63,9 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [other, setOther] = useState(false)
   // un solo botón «⌨» para las cantidades de todas las filas (pedido del dueño: donde haya un campo de texto, la opción del teclado)
   const kb = useSoftKeyboard()
-  // calculadora de una fila (filas × columnas + sueltas): ventana con el total que se pasa a la cantidad de esa fila
+  // calculadora de una fila (filas × columnas + sueltas): con el total que se pasa a la cantidad de esa fila. Lote A9: ya no es una ventana
+  // (Modal) sino que ocupa la pantalla en el mismo lugar (como «Otra posición»): dentro de un Modal de Android el teclado en pantalla tapaba
+  // «Sueltas» y la ventana no se podía desplazar; aquí la pantalla (KeyboardScreen de count.tsx) se desplaza hasta el campo.
   const [calcRow, setCalcRow] = useState<{ row: ProductCountRow; state: CalcState } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [emptyWarning, setEmptyWarning] = useState(false)
@@ -120,6 +123,27 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
     setQuery('')
     setNotice(existing ? t('count.binExistingUsed', { bin: bin.code }) : t('count.binAdded', { bin: bin.code }))
     setTick((n) => n + 1)
+  }
+
+  if (calcRow) {
+    const calcTotalNow = calcTotal(calcRow.state).total
+    return (
+      <View style={styles.wrap} testID="count-row-calculator">
+        <Text style={styles.title}>{calcRow.row.lotNumber ? t('count.qtyAtLot', { bin: calcRow.row.binCode, lot: calcRow.row.lotNumber }) : t('count.qtyAt', { bin: calcRow.row.binCode })}</Text>
+        <QuantityCalculator state={calcRow.state} onChange={(next) => setCalcRow({ row: calcRow.row, state: next })} onClose={() => setCalcRow(null)} />
+        <View style={styles.calcActions}>
+          <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setCalcRow(null)} />
+          <BigButton
+            label={t('calc.useTotal', { total: totalToText(calcTotalNow) })}
+            disabled={calcTotalNow === null}
+            onPress={() => {
+              changeQty(calcRow.row, totalToText(calcTotalNow))
+              setCalcRow(null)
+            }}
+          />
+        </View>
+      </View>
+    )
   }
 
   if (other) {
@@ -195,9 +219,9 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
                 accessibilityRole="button"
                 accessibilityLabel={t('calc.openFor', { bin: row.binCode })}
                 onPress={() => setCalcRow({ row, state: calcFromText(text) })}
-                style={styles.calcBtn}
+                style={({ pressed }) => [styles.calcBtn, pressed && styles.pressed]}
               >
-                <Text style={styles.calcIcon}>🧮</Text>
+                <CalculatorIcon size={24} />
               </Pressable>
               {row.isExtra ? (
                 <Pressable
@@ -218,27 +242,6 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
         {searchable && visible.length === 0 ? <Text style={styles.help}>{t('count.searchEmpty', { query: query.trim() })}</Text> : null}
       </View>
 
-      <Modal visible={calcRow !== null} transparent animationType="fade" onRequestClose={() => setCalcRow(null)}>
-        <View style={styles.modalBack}>
-          {calcRow ? (
-            <View style={styles.modalCard}>
-              <Text style={styles.title}>{calcRow.row.lotNumber ? t('count.qtyAtLot', { bin: calcRow.row.binCode, lot: calcRow.row.lotNumber }) : t('count.qtyAt', { bin: calcRow.row.binCode })}</Text>
-              <QuantityCalculator state={calcRow.state} onChange={(next) => setCalcRow({ row: calcRow.row, state: next })} onClose={() => setCalcRow(null)} />
-              <View style={styles.modalActions}>
-                <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setCalcRow(null)} />
-                <BigButton
-                  label={t('calc.useTotal', { total: totalToText(calcTotal(calcRow.state).total) })}
-                  disabled={calcTotal(calcRow.state).total === null}
-                  onPress={() => {
-                    changeQty(calcRow.row, totalToText(calcTotal(calcRow.state).total))
-                    setCalcRow(null)
-                  }}
-                />
-              </View>
-            </View>
-          ) : null}
-        </View>
-      </Modal>
 
       <ScanMessage tone="ok" message={notice} />
       {empty ? (
@@ -272,11 +275,19 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: fontSize.message },
   error: { color: colors.error, fontSize: fontSize.message, fontWeight: '700' },
   kbRow: { alignItems: 'flex-end' },
-  calcBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.brand, borderRadius: radius.sm },
-  calcIcon: { fontSize: 20 },
-  modalBack: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
-  modalCard: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.bg, borderWidth: 2, borderColor: colors.line },
-  modalActions: { gap: spacing.sm },
+  // Lote A9: icono blanco sobre azul oscuro (antes 🧮 sobre fondo oscuro, no se veía); 48 × 48 dp de toque
+  calcBtn: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.brand,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brandDark,
+  },
+  pressed: { opacity: 0.8 },
+  calcActions: { gap: spacing.sm },
   summary: { color: colors.warn, fontSize: fontSize.label, fontWeight: '700' },
   field: { gap: spacing.xs },
   search: {
@@ -318,8 +329,8 @@ const styles = StyleSheet.create({
   },
   qtyInvalid: { borderColor: colors.error },
   removeBtn: {
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: 48,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

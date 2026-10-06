@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
@@ -14,6 +14,7 @@ import { ScanField } from '../kernel/ui/ScanField'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import { fetchClientsForOwnDispatch, fetchConsigneesForClient, fetchStockOptions, resolveBinCodes, submitCollectOnly, submitCollectAndPack } from '../features/dispatch/dispatchApi'
 import { addLocalPickLine, discardLocalPick, getOpenPick, removeLocalPickLine, startLocalPick } from '../features/dispatch/localPick'
 import {
@@ -275,7 +276,7 @@ export default function DispatchScreen() {
   // Sin despacho abierto o capturando líneas.
   if (!openPick || draft) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('dispatch.title')}</Text>
         {draft ? (
           <>
@@ -336,14 +337,14 @@ export default function DispatchScreen() {
             </View>
           </>
         )}
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // Inventario propio: elegir a qué cliente se despacha.
   if (packing.name === 'client') {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('dispatch.chooseClient')}</Text>
         {busy ? (
           <ActivityIndicator color={colors.brand} />
@@ -353,14 +354,14 @@ export default function DispatchScreen() {
           (clients ?? []).map((c) => <BigButton key={c.publicId} label={c.label} onPress={() => chooseClient(c)} />)
         )}
         <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking({ name: 'scan' })} disabled={busy} />
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // Empacando: resolviendo posiciones y eligiendo consignatario.
   if (packing.name === 'consignee' || packing.name === 'error') {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('dispatch.chooseConsignee')}</Text>
         <View style={styles.field}>
           <Text style={styles.label}>{t('dispatch.piecesLabel')}</Text>
@@ -376,14 +377,14 @@ export default function DispatchScreen() {
           (consignees ?? []).map((c) => <BigButton key={c.publicId} label={c.label} onPress={() => confirmPack(c)} />)
         )}
         <BigButton label={t('common.back')} variant="secondary" onPress={() => setPacking(openPick.clientPublicId ? { name: 'scan' } : { name: 'client' })} disabled={busy} />
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
   // Despacho abierto: viendo lo recolectado. ScrollView (no View, mismo motivo que receive.tsx paso 2): el
   // ScanField se reenfoca tras cada línea y, con el teclado abierto, tapaba Empacar/Cancelar.
   return (
-    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+    <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{openPick.clientName || t('dispatch.ownInventory')}</Text>
       <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
       <Text style={styles.label}>{t('dispatch.linesTitle')}</Text>
@@ -402,7 +403,7 @@ export default function DispatchScreen() {
       <BigButton label={t('dispatch.packButton')} variant="secondary" onPress={startPacking} disabled={openPick.lineRows.length === 0 || busy} />
       <Text style={styles.help}>{t('dispatch.packHelp')}</Text>
       <BigButton label={t('dispatch.cancelDispatch')} variant="danger" onPress={cancelDispatch} />
-    </ScrollView>
+    </KeyboardScreen>
   )
 }
 

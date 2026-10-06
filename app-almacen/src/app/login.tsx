@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError } from '../kernel/api/client'
@@ -10,7 +10,7 @@ import { useSession } from '../kernel/auth/useSession'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
 import { BrandLockup } from '../kernel/ui/BrandLockup'
-import { NumericKeypad, PinDots } from '../kernel/ui/NumericKeypad'
+import { NumericKeypad, PIN_COMPACT_HEIGHT, PinDots } from '../kernel/ui/NumericKeypad'
 import { colors, spacing } from '../kernel/ui/theme'
 
 /** Pantalla 1 (parte 2): elegir usuario del aparato y teclear su PIN (docs/mobile/app-almacen-plan.md §2). Sin
@@ -26,6 +26,7 @@ export default function LoginScreen() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const { height } = useWindowDimensions()
 
   const fetchUsers = useCallback(() => {
     if (!device) return
@@ -85,21 +86,34 @@ export default function LoginScreen() {
     )
   }
 
+  // Lote A9 (pruebas en el Zebra, 2026-10-06): poner el PIN. Antes era un View fijo centrado (`justifyContent: center`) con el teclado de
+  // 4 × 72 dp: en la pantalla chica del Zebra el contenido medía más que la pantalla, se cortaba abajo (Volver/Entrar a la mitad) y no
+  // había desplazamiento. El margen inferior del aparato sí se aplicaba (esta pantalla está dentro de app/_layout.tsx); faltaba poder
+  // desplazar. Ahora es un ScrollView que centra cuando cabe y se desplaza cuando no, y en pantallas bajas el teclado del PIN se
+  // compacta (teclas de 60 dp, siguen siendo más grandes que el mínimo de 56) para que en lo posible no haga falta desplazar.
   if (selected) {
+    const compact = height < PIN_COMPACT_HEIGHT
     return (
-      <View style={styles.fill}>
-        <View style={styles.pinArea}>
-          <Text style={styles.title}>{selected.fullName}</Text>
-          <Text style={styles.subtitle}>{t('login.pinLabel')}</Text>
-          <PinDots length={PIN_MAX_LENGTH} filled={pin.length} />
-          <NumericKeypad value={pin} onChange={setPin} maxLength={PIN_MAX_LENGTH} />
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-          <View style={styles.pinActions}>
+      <ScrollView
+        style={styles.pinScroll}
+        contentContainerStyle={[styles.pinArea, compact && styles.pinAreaCompact]}
+        keyboardShouldPersistTaps="handled"
+        testID="pin-scroll"
+      >
+        <Text style={styles.title}>{selected.fullName}</Text>
+        <Text style={styles.subtitle}>{t('login.pinLabel')}</Text>
+        <PinDots length={PIN_MAX_LENGTH} filled={pin.length} />
+        <NumericKeypad value={pin} onChange={setPin} maxLength={PIN_MAX_LENGTH} keySize={compact ? 60 : undefined} />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <View style={styles.pinActions}>
+          <View style={styles.pinAction}>
             <BigButton label={t('common.back')} variant="secondary" onPress={() => { setSelected(null); setPin(''); setError(null) }} />
+          </View>
+          <View style={styles.pinAction}>
             <BigButton label={t('login.submit')} onPress={submit} loading={busy} disabled={pin.length < PIN_MIN_LENGTH} />
           </View>
         </View>
-      </View>
+      </ScrollView>
     )
   }
 
@@ -161,7 +175,12 @@ const styles = StyleSheet.create({
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
   avatarLabel: { color: colors.text, fontWeight: '700' },
   userName: { color: colors.text, fontSize: 18, fontWeight: '600' },
-  pinArea: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  pinActions: { flexDirection: 'row', gap: spacing.md },
+  pinScroll: { flex: 1, backgroundColor: colors.bg },
+  // flexGrow (no flex): centrado si cabe, y si no cabe el contenido crece y se desplaza; el padding de abajo deja el último botón completo
+  pinArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },
+  pinAreaCompact: { gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md },
+  // Volver y Entrar del mismo ancho, juntos ocupan el ancho del teclado (caben en 320 dp)
+  pinActions: { flexDirection: 'row', gap: spacing.md, alignSelf: 'stretch', maxWidth: 360, width: '100%' },
+  pinAction: { flex: 1 },
   error: { color: colors.error, fontSize: 16, textAlign: 'center' },
 })

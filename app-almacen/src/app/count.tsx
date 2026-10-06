@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../kernel/api/client'
@@ -14,6 +14,7 @@ import { LineList } from '../kernel/ui/LineList'
 import { ScanField, type ScanPrefill } from '../kernel/ui/ScanField'
 import { colors, fontSize, radius, spacing, touchTarget } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
+import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   cancelCountOnline,
   enqueueFinishCount,
@@ -252,7 +253,7 @@ export default function CountScreen() {
   // directo a Inicio.
   if (!openCount) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('count.title')}</Text>
         <Text style={styles.label}>{t('count.modeLabel')}</Text>
         <View style={styles.modes} accessibilityRole="radiogroup">
@@ -290,7 +291,7 @@ export default function CountScreen() {
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
         {/* 2026-10-01 (Luis): al final de todo lo que hay en pantalla */}
         <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} disabled={busy} />
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
@@ -311,10 +312,10 @@ export default function CountScreen() {
   // Conteo por producto de antes del Lote 24 (un producto en todas sus posiciones), retomado desde la base local.
   if (openCount.mode === 'PRODUCT' && openCount.product) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <ProductCountView openCount={openCount} busy={busy} onConfirm={finishProduct} onCancelCount={cancelCount} error={scanError} />
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
@@ -344,7 +345,7 @@ export default function CountScreen() {
   // Capturando la cantidad encontrada de un producto ya escaneado.
   if (draft) {
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{draft.sku}</Text>
         {draft.line?.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: draft.line.systemQty })}</Text> : null}
@@ -362,7 +363,7 @@ export default function CountScreen() {
           <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setDraft(null)} />
           <BigButton label={t('count.addFound')} onPress={addFound} disabled={parseQty(draft.qtyText) === null} />
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
 
@@ -372,7 +373,7 @@ export default function CountScreen() {
   if (edit) {
     const qty = parseQty(edit.qtyText)
     return (
-      <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+      <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{edit.productName}</Text>
         <Text style={styles.help}>{edit.sku}</Text>
         {!openCount.isBlind && edit.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: edit.systemQty })}</Text> : null}
@@ -400,7 +401,7 @@ export default function CountScreen() {
             }}
           />
         </View>
-      </ScrollView>
+      </KeyboardScreen>
     )
   }
   const capturedLineIds = new Set(capturedRows.map((r) => r.lineId).filter((id): id is number => id != null))
@@ -408,7 +409,7 @@ export default function CountScreen() {
 
   // Conteo abierto: escaneando productos y viendo lo ya capturado.
   return (
-    <ScrollView contentContainerStyle={styles.fill} keyboardShouldPersistTaps="handled">
+    <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} />
@@ -453,7 +454,7 @@ export default function CountScreen() {
           />
         </>
       )}
-    </ScrollView>
+    </KeyboardScreen>
   )
 }
 

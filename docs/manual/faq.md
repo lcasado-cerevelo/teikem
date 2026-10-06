@@ -5197,6 +5197,34 @@ Es a propósito: Consultar solo muestra. Para ver ese producto en todo el almac�
 Solo con una posición que ya consultó antes en el aparato: muestra esa lista con el aviso "Datos de las {hora} (hace {N} min, sin señal
 ahora)". La primera vez necesita señal.
 
+## Lote A9 — App de almacén: pantalla chica (PIN, teclado en pantalla y calculadora)
+
+Detalle en el [capítulo 9 §2.2 y §7.3](09-app-almacen.md#73-calculadora-de-cantidad-2026-10-05) y en `docs/mobile/loteA9-decisiones.md`. Este lote
+**no agrega ni cambia mensajes**: solo cambia cómo se ven y se mueven las pantallas. El único texto nuevo es el nombre del botón de volver de la
+calculadora para el lector de pantalla (**"Cantidad directa"**, el mismo texto que tenía el enlace).
+
+**En la pantalla del PIN no veo completos "Volver" y "Entrar".**
+Deslice la pantalla hacia arriba: la pantalla del PIN se desplaza. En aparatos bajos las teclas se achican para que todo quepa; si aun así no
+cabe (por ejemplo con la letra del sistema muy grande), deslice.
+
+**Toco "Sueltas" (o cualquier campo) con el teclado en pantalla y el teclado lo tapa.**
+La pantalla debe subir sola hasta dejar el campo encima del teclado. Si no sube, deslice la pantalla hacia arriba con el teclado abierto: el
+espacio de abajo permite llevar el campo arriba. Si pasa siempre en su aparato, avise a soporte con el modelo y la versión de Android (es un
+punto de la lista de comprobación del lote).
+
+**¿Dónde quedó "Cantidad directa" en la calculadora?**
+Ahora es el botón con la **flecha ←**, arriba a la izquierda, junto al título "Calculadora". Hace lo mismo: vuelve al campo de la cantidad con
+el total ya puesto. En la calculadora de una fila (conteo de un producto en todas sus posiciones) la flecha cierra sin cambiar la fila; para
+pasar el total use **Usar {total}**.
+
+**La calculadora de una fila ya no sale en una ventana.**
+Es a propósito: ahora ocupa la pantalla en el mismo lugar (como "Otra posición"), para que el teclado no tape los campos. Al terminar
+(**Usar {total}**, **Cancelar** o la flecha ←) vuelve a la lista.
+
+**No encuentro el botón de la calculadora.**
+Es el cuadro **azul** con el dibujo **blanco** de una calculadora, a la derecha del campo de la cantidad (y en cada fila del conteo de un
+producto en todas sus posiciones).
+
 ## Lote F17 — Web: Rentas (lista, ficha, alta con equipos por serie, extensión) y "Convertir a serie"
 
 Pantalla: [F17 — Rentas (web) y "Convertir a serie"](frontend/f17-rentas.md). El servidor no cambió; sus mensajes (capítulo 11 §9 y
