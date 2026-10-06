@@ -421,13 +421,30 @@ test.describe('Lote 14 — escritorio', () => {
     await deletePendingChangeCounts(page)
   })
 
-  test('7. Pulso: "Necesita tu atención" se ve y, sin descuadres, dice "Todo en orden"', async ({ page }) => {
+  // Lote F18: desde Rentas R3 (Lote 29) el smoke deja rentas vencidas o por vencer, y "Necesita tu atención" también muestra el
+  // aviso RENTAL_DUE: el panel ya no está vacío en el CI. Lo que este paso comprueba sigue igual —el panel se ve y no queda ningún
+  // DESCUADRE pendiente (INVENTORY_DISCREPANCY: ni filas "Descuadre en …" ni el grupo "Descuadres de inventario")—, y además que el
+  // panel cuenta lo mismo que el API; "Todo en orden" se exige cuando el API no tiene ningún aviso.
+  test('7. Pulso: "Necesita tu atención" se ve, sin descuadres pendientes, y cuenta lo mismo que el API', async ({ page, request }) => {
+    const headers = { Authorization: `Bearer ${await apiToken(request)}` }
+    const res = await request.get(`${API_URL}/api/v1/analytics/attention`, { headers })
+    expect(res.ok()).toBeTruthy()
+    const attention = (await res.json()) as { total?: number; groups?: { code?: string; total?: number }[] }
+    expect(attention.groups?.find((g) => g.code === 'INVENTORY_DISCREPANCY')?.total ?? 0).toBe(0)
     await login(page)
     await page.goto('/')
     const panel = page.locator('section.inbox').filter({ has: page.getByRole('heading', { name: 'Necesita tu atención' }) })
     await expect(panel).toBeVisible()
-    await expect(panel.getByText('Todo en orden')).toBeVisible()
-    await expect(panel.getByText('No hay nada pendiente de revisar.')).toBeVisible()
+    await expect(panel.getByText(/^Descuadre en /)).toHaveCount(0)
+    await expect(panel.getByRole('link', { name: /Descuadres de inventario/ })).toHaveCount(0)
+    const total = attention.total ?? 0
+    if (total === 0) {
+      await expect(panel.getByText('Todo en orden')).toBeVisible()
+      await expect(panel.getByText('No hay nada pendiente de revisar.')).toBeVisible()
+    } else {
+      await expect(panel.locator('.ih .ct')).toHaveText(total === 1 ? '1 pendiente' : new RegExp(`^${total} pendientes$`))
+      await expect(panel.getByText('Todo en orden')).toHaveCount(0)
+    }
     await shot(page, 'pulso-atencion')
   })
 })

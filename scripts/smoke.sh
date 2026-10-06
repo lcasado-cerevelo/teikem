@@ -227,9 +227,13 @@ expect 200 "$(req GET '/api/v1/audit/security-events?eventType=PERMISSION_DENIED
 ok "permiso denegado registrado"
 
 # ============================================================================================================
-# Lote 2 — Clientes y contratos. Re-ejecutable: TS como sufijo de nombres/correos; TODAY (UTC) para las vigencias.
+# Lote 2 — Clientes y contratos. Re-ejecutable: TS como sufijo de nombres/correos; TODAY para las vigencias.
+# Los días de calendario (TODAY, YESTERDAY, dplus, D0…) se calculan en la hora de Puerto Rico (PRDAY), la zona de la compañía
+# demo con la que el servidor decide "hoy": en UTC, entre las 00:00 y las 04:00 "ayer" sería "hoy" para el API (y el paso
+# de tarifas fallaba). Los instantes (+%FT%T) siguen en UTC.
 # ============================================================================================================
-TS=$(date +%s); TODAY=$(date -u +%F)
+PRDAY() { TZ=America/Puerto_Rico date "$@" +%F; }   # día de calendario de la compañía (Puerto Rico, UTC−4 sin horario de verano)
+TS=$(date +%s); TODAY=$(PRDAY)
 anon() { TOKEN= req "$@"; }   # petición sin Authorization (accept-invite y logins)
 PLATFORM_EMAIL="${TEIKEM_PLATFORM_EMAIL:-teikem+support@cerevelo.com}"
 
@@ -374,7 +378,7 @@ step "tarifas por servicio (Lote 2): historial efectivo-fechado"
 RC_ID=$(expect 200 "$(req POST "/api/v1/contracts/$CONTRACT_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":6.5,"effectiveFrom":"2026-01-01"}')" | jq -r .id)
 expect 409 "$(req POST "/api/v1/contracts/$CONTRACT_PID/rate-components" '{"kind":"PER_SERVICE","serviceType":"STANDARD","packageType":"BOX","rate":9}')" >/dev/null
 expect 400 "$(req PATCH "/api/v1/contracts/$CONTRACT_PID/rate-components/$RC_ID" '{"rate":8,"effectiveFrom":"2025-01-01"}')" | jq -e '.errors.effectiveFrom' >/dev/null || fail "nueva versión anterior al inicio"
-YESTERDAY=$(date -u -d yesterday +%F)
+YESTERDAY=$(PRDAY -d yesterday)
 expect 400 "$(req PATCH "/api/v1/contracts/$CONTRACT_PID/rate-components/$RC_ID" "{\"rate\":8,\"effectiveFrom\":\"$YESTERDAY\"}")" | jq -e '.errors.effectiveFrom' >/dev/null || fail "nueva versión fechada en el pasado (principio #8)"
 expect 400 "$(req POST "/api/v1/contracts/$CONTRACT_PID/rate-components/$RC_ID/close" "{\"effectiveTo\":\"$YESTERDAY\"}")" | jq -e '.errors.effectiveTo' >/dev/null || fail "cierre fechado en el pasado (principio #8)"
 RC2=$(expect 200 "$(req PATCH "/api/v1/contracts/$CONTRACT_PID/rate-components/$RC_ID" "{\"rate\":7,\"effectiveFrom\":\"$TODAY\"}")")
@@ -1011,7 +1015,8 @@ expect 400 "$(req GET "/api/v1/orders?status=NOPE")" | jq -e '.errors.status' >/
 expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&take=2")" | jq -e '(.items | length)==2 and .total >= 12' >/dev/null || fail "paginación"
 expect 200 "$(req GET "/api/v1/orders?take=1000")" | jq -e '.total as $t | (.items | length) == ([$t, 500] | min)' >/dev/null || fail "take acotado a 500 (sin cortar por debajo)"
 expect 200 "$(req GET "/api/v1/orders?take=0")" | jq -e '.total as $t | (.items | length) == ([$t, 100] | min)' >/dev/null || fail "take=0 usa el default 100"
-expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&from=$TODAY&to=$(date -u -d tomorrow +%F)")" | jq -e '.total >= 1 and all(.items[]; (.packBatchNumber | length) > 0 and (.clientInvoiceNumber | length) > 0)' >/dev/null || fail "rango de fechas / columnas siempre pobladas"
+# from/to de órdenes son instantes UTC sobre CreatedAtUtc (to exclusivo): aquí van días UTC, no los de Puerto Rico
+expect 200 "$(req GET "/api/v1/orders?clientId=$CLIENT_O_PID&from=$(date -u +%F)&to=$(date -u -d tomorrow +%F)")" | jq -e '.total >= 1 and all(.items[]; (.packBatchNumber | length) > 0 and (.clientInvoiceNumber | length) > 0)' >/dev/null || fail "rango de fechas / columnas siempre pobladas"
 ok "lookup exacto por orden/empaque/factura (CI, sin parciales), filtros y buscador parciales (factura, consignatario, empaque, número de orden), estatus validado, paginación y rango"
 
 step "órdenes (Lote 3): entrega especial"
@@ -1360,12 +1365,12 @@ ok "plantilla por posición (repetida 400), 415 sin Content-Type, validar sin gu
 
 # ============================================================================================================
 # Lote 4 — Flota, choferes y mantenimiento. Re-ejecutable: TS en códigos de vehículos, choferes y zonas; las fechas se
-# calculan desde TODAY (UTC). Reutiliza del Lote 3: T2 (despachador), T3 (otro tenant, recién creado en cada corrida:
+# calculan desde TODAY (día de Puerto Rico). Reutiliza del Lote 3: T2 (despachador), T3 (otro tenant, recién creado en cada corrida:
 # ahí se prueban niveles de intento y fórmula sin arrastrar estado), T7 (contacts.manage sin fleet.*), CLIENT_O_PID +
 # LOC_A_PID + ob(), el tipo 'Vagón $TS' (SS_O_ID quedó cerrado en el Lote 3: se crea un servicio nuevo de ese tipo) y pdtotal().
 # ============================================================================================================
 HASM='([.title] + [(.errors // {})[][]]) | index($m) != null'   # el mensaje llega como título o como error del campo
-dplus() { date -u -d "$1 days" +%F; }                    # fecha relativa a hoy (UTC)
+dplus() { PRDAY -d "$1 days"; }                         # fecha relativa a hoy (día de Puerto Rico)
 mago() { date -u -d "$1 minutes ago" +%FT%T; }          # instante UTC de hace N minutos
 T2=$(login "$DISPATCH_EMAIL" "$PASS"); T3=$(login "admin$TS@smoke.local" "Smoke_Admin_2026!"); T7=$(login "contactos$TS@teikem.local" "$PASS")
 RE=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")"); TOKEN=$(echo "$RE" | jq -r .accessToken)
@@ -2951,7 +2956,8 @@ CODES=$(codes "$TMP6"/1 "$TMP6"/2); rm -rf "$TMP6"
 [[ $(onhand "$W7P" "$B7" "$PD") == 2 ]] || fail "la eliminación no restauró el inventario"
 expect 200 "$(req GET "/api/v1/orders/$OP7")" | jq -e '.isActive==false' >/dev/null || fail "eliminar la recolección empacada no quitó la orden (L780)"
 kardex "productPublicIds=$PD&types=ADJUSTMENT" | jq -e 'any(.items[]; .reasonCode=="PICK_BATCH_REVERSAL" and .quantity==2)' >/dev/null || fail "reversa PICK_BATCH_REVERSAL"
-expect 200 "$(req GET "/api/v1/pick-batches?from=$TODAY&to=$TODAY&status=COLLECTED&productPublicIds=$PC&take=200")" | jq -e '.total==5' >/dev/null || fail "filtros de recolecciones (fecha, estatus, producto)"
+# from/to de recolecciones son días UTC sobre CollectedAtUtc (no los de Puerto Rico)
+expect 200 "$(req GET "/api/v1/pick-batches?from=$(date -u +%F)&to=$(date -u +%F)&status=COLLECTED&productPublicIds=$PC&take=200")" | jq -e '.total==5' >/dev/null || fail "filtros de recolecciones (fecha, estatus, producto)"
 expect 200 "$(req GET "/api/v1/pick-batches?includeDeleted=true&productPublicIds=$PD")" | jq -e '.total==1 and .items[0].statusCode=="CANCELLED"' >/dev/null || fail "includeDeleted"
 PK=$(prod "{\"sku\":\"PK$TS\",\"name\":\"Orden avanzada $TS\",\"purchaseCost\":1}")
 expect 200 "$(adjust "$PK" "$W7P" "$B7" 1 FOUND)" >/dev/null
@@ -4869,7 +4875,7 @@ expect 200 "$(req GET /api/v1/status/SerialStatus)" | jq -e 'any(.[]; .code=="ON
 expect 200 "$(req GET /api/v1/catalogs/RentalBillingFrequency)" | jq -e 'any(.[]; .code=="DAILY") and any(.[]; .code=="ONE_TIME" and .label=="Fija")' >/dev/null || fail "frecuencias de cobro (DAILY y 'Fija')"
 CR27=$(expect 200 "$(req POST /api/v1/clients "{\"name\":\"Hospital Rentas $TS\"}")"); CR27P=$(echo "$CR27" | jq -r .publicId)
 LR27=$(expect 200 "$(req POST /api/v1/locations "{\"clientPublicId\":\"$CR27P\",\"name\":\"Sala de terapia $TS\",\"locationType\":\"DELIVERY\",\"line1\":\"Calle Hospital 1\",\"city\":\"Ponce\",\"country\":\"PR\"}")" | jq -r .publicId)
-D0=$(date -u +%F); D30=$(dplus 30); D45=$(dplus 45)
+D0=$(PRDAY); D30=$(dplus 30); D45=$(dplus 45)
 ren27() { jq -cn --arg c "$CR27P" --arg l "$1" --arg w "$W6P" --arg p "$P26" --arg d0 "$D0" --arg d30 "$D30" --argjson s "$2" \
   '{clientPublicId:$c,locationPublicId:(if $l=="" then null else $l end),warehousePublicId:$w,startDate:$d0,pickupDate:$d30,contractNumber:"CT-27",contractSignedOn:$d0,estimatedDeliveryCost:45,transportCurrency:"USD",lines:[{productPublicId:$p,serialNumbers:$s,rate:{frequency:"MONTHLY",amount:150}}]}'; }
 # 400: sin localidad / localidad de otro cliente; 400 producto sin serie; 403 Solo lectura; nada escrito.
