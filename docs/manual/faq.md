@@ -5291,3 +5291,89 @@ uno."* (agregue equipos) o *"La serie {s} no está disponible en {posición}."* 
 **¿"Convertir a serie" cambia mi inventario?**
 No en cantidades: es un **movimiento neto cero** (salida de las unidades sin serie y una entrada por serie, con el motivo "Conversión a
 serie"). Lo que cambia es que el producto, desde entonces, se controla por serie.
+
+## Lote F18 — Web: devoluciones de renta, proceso de equipos y reportes de rentas
+
+Pantalla: [F18 — Devoluciones de renta, proceso de equipos y reportes de rentas](frontend/f18-devoluciones-y-proceso-de-rentas.md). El
+servidor no cambió; sus mensajes (capítulo 11 §9, "Devolución, proceso y conteo") se muestran **tal cual**, bajo su campo o arriba del
+formulario o del diálogo, que no se cierra.
+
+### Mensajes que la web revisa antes de enviar (mismo texto que el servidor)
+
+**"Indique el motivo de la devolución: END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER."** (400)
+Elija el **Motivo** en Registrar devolución (Fin del contrato, Anticipada por daño, Anticipada a pedido del cliente u Otro).
+
+**"Con el motivo 'Otro' describa la devolución en las notas."** (400)
+Con el motivo Otro, escriba en **Notas** qué pasó.
+
+**"La fecha de devolución no puede ser futura."** / **"La fecha de devolución no puede ser anterior al inicio de la renta ({aaaa-mm-dd})."** (400)
+Corrija la **Fecha de devolución** (hoy por defecto, en el día de la compañía).
+
+**"El costo de recogido estimado no puede ser negativo."** (400)
+Deje el costo vacío o en 0 o más.
+
+**"Indique al menos una serie que se devuelve."** (400)
+Marque al menos un equipo en **Equipos que vuelven**.
+
+**"Las notas admiten como máximo 1000 caracteres."** / **"Las notas del equipo admiten como máximo 500 caracteres."** (400)
+Acorte las notas de la devolución o del equipo.
+
+**"Indique el estatus al que pasa el proceso."** (400)
+En **Avanzar**, elija el estatus en "Pasa a".
+
+### Mensajes del servidor que se ven en estas pantallas
+
+**"La serie {s} no está en renta en {REN-n}."** (409)
+El equipo ya se devolvió (otra persona lo registró) o no es de esa renta. Cierre el diálogo: la ficha se recarga con lo que queda por devolver.
+
+**"Uno de los equipos se acaba de devolver en otra operación; recargue e intente de nuevo."** / **"El registro fue modificado por otro
+usuario; recargue e intente de nuevo."** (409)
+Alguien cambió la renta o el proceso al mismo tiempo. Cierre el diálogo, recargue y vuelva a intentar.
+
+**"La posición de destino no puede ser de la zona En renta."** (400)
+Elija otra posición de destino (la web no ofrece la zona En renta; puede salir si se escribe el código de EN-RENTA).
+
+**"La posición de destino debe ser del almacén {código} del proceso."** (400)
+Al **Completar**, el traslado es solo dentro del almacén del proceso; para llevarlo a otro almacén use una transferencia después.
+
+**"Salto ilegal: de '{de}' solo se puede avanzar a '{siguiente}'."** / **"Desde el lateral '{x}' solo se puede regresar a '{paso}' o
+avanzar a '{siguiente}'."** / **"El estatus '{código}' no existe o no está habilitado para esta compañía."** (422)
+En **Avanzar**, elija el paso que corresponde (el marcado "(siguiente)", o Reparación / Esperando piezas).
+
+**"El proceso ya terminó; solo se consulta."** (422)
+El proceso llegó a Lista o Dada de baja (quizá en otra pestaña). Recargue la cola: la fila queda atenuada, solo con Historial.
+
+**"Falta el permiso 'inventory.adjust'."** (403)
+Dar de baja también es un ajuste de inventario. Pida `inventory.adjust` al administrador.
+
+**"Solo se registra la devolución de una renta En renta; la renta {n} no lo está."** (422)
+La renta ya está Devuelta (o nunca se despachó). Recargue la ficha.
+
+### Mensajes solo de la web
+
+**"Escriba la serie {s} para confirmar la baja."**
+En **Dar de baja**, escriba la serie del equipo (sin importar mayúsculas) para confirmar: la baja no se deshace.
+
+**"Escriba un número válido."**
+El costo de recogido no es un número.
+
+**"Dar de baja exige además el permiso inventory.adjust (ajustes de inventario), que su usuario no tiene: pídalo a un administrador."**
+Nota de la cola de proceso cuando su rol puede avanzar y completar (`rental.maintenance`) pero no dar de baja.
+
+### Preguntas frecuentes
+
+**¿Dónde registro que volvió un equipo rentado?**
+En la ficha de la renta (En renta) → **Registrar devolución**. No use un recibo de devolución normal: el equipo nunca salió del inventario.
+
+**¿Puedo devolver solo un equipo?**
+Sí: desmarque los demás. La renta sigue En renta hasta que vuelve el último.
+
+**Devolví un equipo y no aparece disponible.**
+Pasó por proceso. En **Proceso de equipos** avance sus pasos y termínelo con **Completar** (queda Lista y disponible).
+
+**¿Dónde veo qué equipos llevan más días en revisión?**
+En **Proceso de equipos** ordene por "Días en proceso", o en Reportes de rentas la vista "Equipos en proceso".
+
+**¿Los indicadores de rentas salen en el Pulso?**
+Vienen apagados (el aviso de "Necesita tu atención" ya muestra cada renta vencida o por vencer). Enciéndalos en Análisis → Indicadores
+con "Mostrar en mi Pulso"; mientras tanto se ven en **Reportes de rentas**.

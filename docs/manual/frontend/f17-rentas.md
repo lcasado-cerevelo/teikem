@@ -4,7 +4,8 @@ Pantallas del submódulo **Rentas** de Almacén (bloque F-R1 de `docs/rentas-pla
 una renta con sus acciones (programar, despachar, extender, cancelar), el **alta y la edición** con el **selector de equipos por serie** y la
 tarifa por equipo, y el botón **Convertir a serie** en la ficha del producto. Las reglas del servidor (qué hace cada acción, efectos en el
 inventario, todos los mensajes) están en el capítulo [11 — Rentas](../11-rentas.md) y en el capítulo 06 §2.1 (Convertir a serie); aquí se
-explica cómo se usan desde la web. Las devoluciones de renta y el proceso del equipo devuelto llegan con F-R2.
+explica cómo se usan desde la web. Las devoluciones de renta, el proceso del equipo devuelto y los reportes de rentas están en
+[F18](f18-devoluciones-y-proceso-de-rentas.md).
 
 **Servidor.** No cambió: la web usa `/api/v1/rentals` (lista, ficha, alta, edición, equipos, tarifa, programar, despachar, cancelar,
 extensiones), `/api/v1/status/history/RENTAL/{id}` (historial) y `POST /api/v1/products/{publicId}/convert-to-serial`.
@@ -117,7 +118,7 @@ En el celular el formulario es de una columna:
 |---|---|
 | Borrador | Editar, Agregar equipos, **Programar**, Cancelar renta |
 | Programada | Editar, Agregar equipos (se reservan al momento), **Despachar**, Extender, Cancelar renta |
-| En renta | **Extender** (la devolución llega con F-R2) |
+| En renta | **Extender** y **Registrar devolución** ([F18](f18-devoluciones-y-proceso-de-rentas.md)) |
 | Devuelta / Cancelada | Solo consulta |
 
 Todas piden confirmación y aceptan un **comentario** opcional que queda en el historial:
@@ -182,4 +183,4 @@ que el usuario vea exactamente el mismo texto: ver la FAQ, sección "Lote F17".
   muelle, o ya está en esta renta; si es otro almacén, cambie el almacén de origen (sin equipos agregados).
 - **Programé y el producto sale "No disponible"**: es lo esperado: las series quedan reservadas.
 - **Despaché y el en mano no bajó**: correcto: el equipo sigue siendo de la compañía, en la posición EN-RENTA.
-- **La renta sale "Vencida"**: extiéndala (si el cliente lo sigue usando) o registre su devolución (F-R2).
+- **La renta sale "Vencida"**: extiéndala (si el cliente lo sigue usando) o registre su devolución ([F18](f18-devoluciones-y-proceso-de-rentas.md)).

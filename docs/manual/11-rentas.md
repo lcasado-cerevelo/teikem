@@ -8,7 +8,8 @@ Rentas permite **rentar equipos propios con número de serie** (camas de hospita
 en renta en el **conteo cíclico** (D7); y el **bloque R3 (Lote 29)**: los **reportes, indicadores y el gráfico** de rentas en Análisis y
 el aviso de **rentas vencidas o por vencer** en "Necesita tu atención" del Pulso (sección 10). Todo lo de este capítulo es del servidor
 (API); las pantallas de la renta (lista, ficha, alta, programar, despachar, extender, cancelar) y "Convertir a serie" están en el capítulo
-de pantallas [F17](frontend/f17-rentas.md); las de devoluciones y procesos llegan con F-R2.
+de pantallas [F17](frontend/f17-rentas.md); las de devoluciones, el proceso de los equipos y los reportes de rentas (bloque F-R2), en
+[F18](frontend/f18-devoluciones-y-proceso-de-rentas.md).
 
 Decisiones del dueño que gobiernan el módulo:
 - **El equipo rentado sigue siendo nuestro** (D1): no sale del inventario. Queda en la posición **EN-RENTA** del almacén, con estatus de
@@ -466,6 +467,12 @@ renta) que está **vencida** o que **vence en los próximos 7 días** (recogido 
 Desde la web de Rentas (Lote F17, bloque F-R1) el panel muestra la fila con su texto (*"Renta REN-… vencida"*, *"…: se recoge hoy"* o
 *"…: vence en N días"*, cliente · localidad · almacén, recogido, equipos y días vencida) y "Revisar"/"Ver todos" abren la ficha y la lista
 de Almacén → Rentas (capítulo de pantallas [F17](frontend/f17-rentas.md)).
+
+**En la web (Lote F18, bloque F-R2)**: la devolución se registra desde la ficha de la renta (**Registrar devolución**), las devoluciones se
+consultan en Almacén → **Devoluciones de renta**, la cola de procesos en Almacén → **Proceso de equipos** (Avanzar, Completar, Dar de baja)
+y las vistas, los indicadores y el gráfico de esta sección en **Reportes de rentas** (desde la lista de rentas; pide además `analytics.view`).
+La lista de rentas muestra arriba los totales En renta hoy, Por vencer (7 días) y Vencidas. Capítulo de pantallas
+[F18](frontend/f18-devoluciones-y-proceso-de-rentas.md).
 
 ### 10.6 Mensajes
 

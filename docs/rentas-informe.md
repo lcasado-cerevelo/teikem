@@ -323,6 +323,62 @@ lotes que regeneró la corrida se descartaron con `git checkout --`).
 
 Ver los puntos 61 a 72 de la lista de abajo.
 
+## Bloque F-R2 — Web de devoluciones, proceso de equipos y reportes de rentas (Lote F18)
+
+### Qué se hizo
+
+- **Registrar devolución** desde la ficha de una renta En renta (`rental.return`): fecha (hoy de la compañía, no futura ni anterior al
+  inicio), motivo del catálogo (con "Otro" las notas son obligatorias), notas, costo de recogido y moneda, destino común (almacén + posición;
+  vacío = la posición de origen de cada equipo; nunca la zona En renta; puede ser otro almacén) y, por equipo pendiente, incluirlo
+  (devolución parcial), condición (Buena por defecto), posición propia, "¿Pasa por proceso?" (sí por defecto) y notas. Validación previa con
+  el texto exacto del servidor; los errores del servidor salen tal cual.
+- Almacén → **Devoluciones de renta** (lista con filtros motivo, cliente, renta, fechas, anticipada y buscador; columnas ordenables;
+  Exportar) y su **ficha** (renta de origen, equipos con condición, destino y proceso); enlaces cruzados renta ↔ devolución (panel
+  Devoluciones en la ficha de la renta).
+- Almacén → **Proceso de equipos**: cola con estatus de la compañía (etiquetas y colores del catálogo), días en proceso, filtros
+  (estatus, abiertos/terminados, almacén, buscador) y acciones **Avanzar** (el motor decide; el 422 sale tal cual), **Completar** (Lista,
+  traslado opcional en el almacén) y **Dar de baja** (además `inventory.adjust`; oculta sin él, con nota; confirmación escribiendo la serie),
+  más Historial.
+- **Resumen** en la lista de rentas (En renta hoy, Por vencer 7 días, Vencidas, con el API de rentas) y **Reportes de rentas**: indicadores,
+  gráfico y las 5 vistas de sistema de R3 (y las de la compañía sobre esas fuentes) leídos del motor de Análisis, sin un segundo motor
+  (`ReportResultTable` genérico). El Pulso no cambió (los indicadores siguen apagados; el aviso `RENTAL_DUE` ya funcionaba).
+- Pestañas del submódulo (Rentas · Devoluciones · Proceso de equipos · Reportes) y dos ítems de menú nuevos después de Rentas (el Kárdex
+  sigue último).
+- **Correcciones del CI (commit aparte)**: `scripts/smoke.sh` calcula los días de calendario en la hora de Puerto Rico (`PRDAY`; los filtros
+  de órdenes y recolecciones, que el servidor lee en UTC, siguen con días UTC); el paso 7 de `e2e/lote14.spec.ts` ya no depende de que
+  "Necesita tu atención" esté vacío (sigue exigiendo cero descuadres y compara el contador con el API).
+- Sin cambios en el servidor ni en el contrato (`schema.d.ts` igual). Documentación: `docs/frontend/loteF18-decisiones.md`, capítulo de
+  pantallas `docs/manual/frontend/f18-devoluciones-y-proceso-de-rentas.md` con capturas `f18-*`, sección "Lote F18" de la FAQ, índice del
+  manual, referencias en los capítulos 11 y F17, `web-app/KIT.md`.
+- Archivos principales: `web-app/src/features/rentals/` (`RentalReturnModal`, `RentalReturnListScreen`, `RentalReturnDetailScreen`,
+  `RentalProcessListScreen`, `ProcessDialogs`, `RentalReportsScreen`, `RentalTabs`, `returnRules.ts`, `api.ts`, `RentalListScreen`,
+  `RentalDetailScreen`), `web-app/src/features/analytics/ReportResultTable.tsx` y `reportResult.ts`, `app/routes.tsx`, `e2e/loteF18.spec.ts`,
+  `playwright.config.ts`; `scripts/smoke.sh`, `e2e/lote14.spec.ts`.
+
+### Cómo se probó (resultados reales)
+
+| Comando | Resultado |
+|---|---|
+| `dotnet test tests/Teikem.Tests -o .tmp-testout` (servidor sin cambios, para el API de las pruebas) | **3172 pasan, 0 fallan** |
+| `scripts/dev-sqlserver.sh` (ya corriendo) + base **nueva** `TeikemF18` + `db-init` ×2 (desde `.tmp-testout`, `ASPNETCORE_ENVIRONMENT=Development`, `Auth__Onboarding__Enabled=false`) | Completada las dos veces |
+| `scripts/smoke.sh http://localhost:5000` con el arreglo `PRDAY` (con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` del build de `.tmp-testout`), **dentro de la ventana 00:00–04:00 UTC** | Con el arreglo a medias (solo `TODAY`/`YESTERDAY`), la primera corrida (02:40 UTC) ya pasó "tarifas por servicio (Lote 2)" pero falló en "órdenes (Lote 3)", un filtro que el servidor lee en UTC (se dejó en días UTC, igual que el de recolecciones); con el arreglo completo, **SMOKE OK: 137 pasos, 139 `ok`** dos veces sobre bases nuevas (02:45–02:48 y 03:04–03:07 UTC) |
+| `cd web-app && npm run check` (api:types, tsc -b, oxlint, vitest, build) | **pasó**: `schema.d.ts` sin cambios, tsc, oxlint (9 avisos que ya existían; ninguno en archivos de este lote), vitest **132 archivos / 1323 pruebas** (antes 129 / 1297: +3 archivos y +26 pruebas: `returnRules.test.ts` 12, `reportResult.test.ts` 3, `RentalReturnScreens.test.tsx` 10 y +1 en `navigation.test.ts`; se ajustaron `RentalScreens.test.tsx` y `navigation.test.ts` por el resumen y los ítems nuevos), build |
+| `npx playwright test e2e/loteF18.spec.ts --project=escritorio-f18 --no-deps --workers=1` y lo mismo con `--project=movil-f18` (API real sobre `TeikemF18`, Vite con `VITE_API_URL=http://localhost:5000`, Chromium de `/opt/pw-browsers`) | **escritorio 1 pasó (25.8 s), móvil 1 pasó (24.4 s)** |
+| **Suite completa en el orden del CI**: base nueva → `db-init` ×2 → smoke OK → `npx playwright test` (todos los proyectos, workers por defecto) | Tres corridas sobre bases nuevas (smoke OK las tres). **1.ª y 2.ª: 50 pasaron, 1 falló, 58 omitidos por proyecto, 66 no corrieron**: falla `lote15.spec.ts` paso 9 móvil (*"franja compacta 2×2, fija al desplazar"*: espera la franja "Almacén hoy" fija al desplazar, pero desde el commit `bdc892e` "la franja Almacén hoy ya no se fija" —y `3b50351`, encabezado completo fijo— eso cambió a propósito y la prueba no se actualizó; falla igual sola con `--no-deps`; ajena a Rentas) y, por las dependencias de `movil`, no corren F8a, Lote 16, F12–F18, F9 ni F11. `lote14` paso 7 (corregido) **pasó**; `lote15` paso 6 también (con el smoke completo). **3.ª, con ese paso marcado `test.fixme` solo para la corrida (no se comiteó; `git checkout` después): 90 pasaron, 0 fallaron, 85 omitidos por proyecto** (6.3 min), incluidos `escritorio-f18` (28.9 s) y `movil-f18` (29.3 s). `--grep-invert` no excluyó el paso en Playwright 1.63 (se comprobó con `--list`) |
+
+### Qué NO se probó
+
+- El recorrido con un **Operador de almacén** (solo administrador; las variantes de permiso —sin `rental.return`, sin `inventory.adjust`,
+  sin `analytics.view`— están en vitest).
+- Recorrido en inglés, lectores de pantalla, concurrencia de dos usuarios sobre la misma renta o proceso y una compañía que renombre o
+  desactive pasos del proceso.
+- CI de GitHub Actions (no se hizo push). **Riesgo para el CI**: `lote15.spec.ts` paso 9 (móvil) falla por un cambio de diseño anterior a
+  Rentas (decisión 87) y, mientras falle, el job no corre los proyectos que dependen de `movil` (entre ellos F17 y F18).
+
+### Decisiones tomadas por defecto en este bloque
+
+Ver los puntos 73 a 87 de la lista de abajo.
+
 ## Decisiones por defecto a confirmar
 
 1. **(R0) Segundo permiso en el servicio.** El endpoint pide `inventory.manage` y el servicio exige `inventory.adjust` (403 `Falta el permiso
@@ -465,3 +521,34 @@ Ver los puntos 61 a 72 de la lista de abajo.
 72. **(F-R1) Smoke y hora del día**: `scripts/smoke.sh` falla entre las 00:00 y las 04:00 UTC en "tarifas por servicio (Lote 2)" porque
     calcula "ayer" en UTC y el servidor usa el día de Puerto Rico (para el API "ayer UTC" es "hoy"). No es de este lote ni se cambió; se
     corrió el smoke fuera de esa ventana. Recomendación: calcular las fechas del smoke con `TZ=America/Puerto_Rico`.
+73. **(F-R2) Devoluciones y Proceso de equipos son pantallas propias con su dirección y su ítem de menú** después de Rentas (Kárdex sigue
+    último), unidas por una franja de pestañas-enlace (Rentas · Devoluciones · Proceso de equipos · Reportes). Alternativa: pestañas `?tab=`
+    dentro de Rentas. Consecuencia: dos ítems más en Almacén.
+74. **(F-R2) La devolución tiene ficha propia** (`/warehouse/rental-returns/{devolución}`), como la renta (decisión 61).
+75. **(F-R2) Registrar devolución marca todos los equipos pendientes**; la parcial se hace desmarcando. Alternativa: ninguno marcado.
+76. **(F-R2) Un almacén de destino por devolución** (el de la renta por defecto), con posición común y posición propia por equipo en ese
+    almacén. El API admite almacenes distintos por equipo; en la web se hacen dos devoluciones.
+77. **(F-R2) Tras registrar, la web se queda en la ficha de la renta** (aviso con el DRN y panel Devoluciones), sin abrir la devolución.
+78. **(F-R2) "Avanzar" ofrece los estatus habilitados no finales y el servidor decide** (salto ilegal → 422 tal cual); Lista y Dada de baja
+    solo por Completar y Dar de baja. Alternativa: ofrecer solo las transiciones que el motor aceptaría.
+79. **(F-R2) "Dar de baja" se oculta sin `inventory.adjust`** (nota bajo los filtros) y se confirma **escribiendo la serie**.
+80. **(F-R2) Reportes de rentas en Almacén** (`/warehouse/rental-reports`, sin ítem) leyendo del motor de Análisis, porque Análisis →
+    Vistas e informes sigue pendiente; pide además `analytics.view` y el módulo Análisis; no edita definiciones ni enciende el Pulso (enlaza a
+    Análisis → Indicadores).
+81. **(F-R2) Resumen de la lista con el API de rentas** (`total`, `take=1`), visible con solo `rental.view`; "En renta hoy" cuenta rentas,
+    no equipos.
+82. **(F-R2) El Pulso no cambia**: indicadores de rentas apagados (decisión 42); el aviso `RENTAL_DUE` ya funcionaba.
+83. **(F-R2) Días en proceso y etiqueta de la condición se calculan en la web** (el DTO de la cola no los trae), con el día de la compañía.
+    Hallazgo de contrato (no se cambió el servidor): `RentalProcessDto` sin cliente, días ni etiqueta de condición; `RentalLineDto` sin la
+    devolución en que volvió.
+84. **(F-R2, CI) El smoke calcula los días en la hora de Puerto Rico** (`PRDAY`) salvo los filtros que el servidor lee en UTC (órdenes por
+    `CreatedAtUtc`, recolecciones por `CollectedAtUtc`). Resuelve la decisión 72. Riesgo: si se agregan pasos con fechas, elegir `PRDAY`
+    (día de la compañía) o `date -u` (filtro sobre instantes UTC) según cómo los lea el servidor.
+85. **(F-R2, CI) Paso 7 de `lote14.spec.ts`**: ya no exige "Todo en orden"; exige cero descuadres (API y pantalla) y que el contador del
+    panel coincida con el API; "Todo en orden" solo cuando el API no tiene avisos.
+86. **(F-R2) Atribución de los commits**: el encargo pedía `Co-Authored-By: Claude Sonnet 5.5`; se usó `Claude Opus 5.5`, el modelo que
+    hizo el trabajo según la indicación de atribución del entorno.
+87. **(F-R2, hallazgo de otra prueba) `lote15.spec.ts` paso 9 móvil** espera que la franja "Almacén hoy" quede fija al desplazar el Pulso,
+    pero los commits `bdc892e` y `3b50351` hicieron fijo solo el encabezado (fecha, Organizar, saludo y chip) a propósito. No se cambió esa
+    prueba (no es de este lote ni de Rentas): hay que actualizarla (esperar el h1 fijo y la franja fuera de la vista) o revertir el diseño.
+    `KIT.md` ("Filas fijas") también describe todavía la franja fija.
