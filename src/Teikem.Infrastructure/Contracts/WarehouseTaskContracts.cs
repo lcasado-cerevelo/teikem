@@ -17,6 +17,9 @@ public sealed record TaskAssignRequest(int? UserId);
 
 public sealed record TaskCompleteRequest(int? ToBinId = null, decimal? Quantity = null, IReadOnlyList<string>? SerialNumbers = null, string? Comment = null);
 
+/// <summary>Reparto de una tarea de acomodo: la misma cantidad en cada posición, en el orden dado (ids de posición del almacén de la tarea).</summary>
+public sealed record TaskDistributeRequest(decimal QuantityPerBin, IReadOnlyList<int>? ToBinIds = null, string? Comment = null);
+
 public sealed record TaskCancelRequest(string? Comment = null);
 
 public sealed record ReplenishmentRunRequest(Guid? WarehousePublicId = null);

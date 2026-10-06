@@ -107,4 +107,37 @@ public class WarehouseTaskRulesTests
         Assert.Equal((20, 200), WarehouseTaskRules.Page(20, 5000));
         Assert.Equal((0, 25), WarehouseTaskRules.Page(0, 25));
     }
+    [Fact]
+    public void Distribution_plan_fills_whole_bins_and_leaves_the_loose_units_for_another_putaway()
+    {
+        // 185 de 20 en 20: caben 9 posiciones; una décima no cabe (los 5 sueltos se acomodan aparte).
+        var (chunks, error) = WarehouseTaskRules.DistributionPlan(185m, 20m, 9);
+        Assert.Null(error);
+        Assert.Equal(9, chunks.Count);
+        Assert.All(chunks, c => Assert.Equal(20m, c));
+
+        var (_, tooMany) = WarehouseTaskRules.DistributionPlan(185m, 20m, 10);
+        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 185m, 9), tooMany);
+
+        // Menos posiciones que las que caben es válido (parcial): lo demás queda pendiente.
+        Assert.Null(WarehouseTaskRules.DistributionPlan(185m, 20m, 3).Error);
+    }
+
+    [Fact]
+    public void Distribution_plan_with_a_task_smaller_than_the_per_bin_quantity_uses_one_bin()
+    {
+        var (chunks, error) = WarehouseTaskRules.DistributionPlan(5m, 20m, 1);
+        Assert.Null(error);
+        Assert.Equal(new[] { 5m }, chunks);
+        Assert.NotNull(WarehouseTaskRules.DistributionPlan(5m, 20m, 2).Error);
+    }
+
+    [Fact]
+    public void Distribution_plan_validates_inputs()
+    {
+        Assert.Equal(WarehouseTaskRules.QuantityMissing, WarehouseTaskRules.DistributionPlan(null, 20m, 1).Error);
+        Assert.Equal(WarehouseTaskRules.DistributePerBinRequired, WarehouseTaskRules.DistributionPlan(100m, 0m, 1).Error);
+        Assert.Equal(WarehouseTaskRules.QtyDecimals, WarehouseTaskRules.DistributionPlan(100m, 1.2345m, 1).Error);
+        Assert.Equal(WarehouseTaskRules.DistributeBinsRequired, WarehouseTaskRules.DistributionPlan(100m, 20m, 0).Error);
+    }
 }

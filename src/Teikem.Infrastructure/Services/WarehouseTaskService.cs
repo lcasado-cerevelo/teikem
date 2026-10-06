@@ -199,6 +199,74 @@ public sealed class WarehouseTaskService(
         return await GetAsync(id, ct);
     }
 
+    // ================================================================ repartir por posición
+
+    /// <summary>
+    /// Acomodo repartido: la misma cantidad en cada posición dada (un TRANSFER por posición) dentro de UNA transacción; si algo
+    /// falla no se mueve nada. El remanente (lo que no cupo en posiciones llenas) queda como tarea nueva, igual que un completado
+    /// parcial. Solo PUTAWAY y sin series (400/422 con los mensajes de WarehouseTaskRules).
+    /// </summary>
+    public async Task<WarehouseTaskDto> DistributeAsync(int id, TaskDistributeRequest? req, CancellationToken ct)
+    {
+        req ??= new TaskDistributeRequest(0m);
+        if (req.Comment is { Length: > StatusService.CommentMaxLength })
+            throw new ValidationException("comment", StatusService.CommentTooLongMessage);
+        var binIds = req.ToBinIds ?? Array.Empty<int>();
+        if (binIds.Distinct().Count() != binIds.Count) throw new ValidationException("toBinIds", WarehouseTaskRules.DistributeBinsDuplicated);
+
+        var snapshot = await SnapshotAsync(id, ct);
+        var type = await TypeCodeAsync(snapshot, ct);
+        if (!string.Equals(type, WarehouseTaskTypes.Putaway, StringComparison.OrdinalIgnoreCase))
+            throw new StatusRuleException(WarehouseTaskRules.DistributeOnlyPutaway);
+        var handler = HandlerFor(type) ?? throw new StatusRuleException(WarehouseTaskRules.NoHandler(type));
+        await permissions.EnsureAsync(handler.RequiredPermission, ct);
+
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            await handler.LockReferencesAsync(snapshot, ct2);
+            var task = await LockTaskAsync(id, ct2);
+            var code = await EnsureOpenAsync(task, ct2);
+            var taskQty = task.Quantity;
+            var suggestedTo = task.ToBinId;
+
+            if (task.ProductId is int productId)
+            {
+                var trackingId = await db.Set<Product>().AsNoTracking().Where(p => p.ProductId == productId)
+                    .Select(p => p.TrackingTypeLookupId).FirstOrDefaultAsync(ct2);
+                var tracking = (await lookups.GetAsync(trackingId, ct2))?.InternalCode;
+                if (string.Equals(tracking, TrackingTypes.Serial, StringComparison.OrdinalIgnoreCase))
+                    throw new StatusRuleException(WarehouseTaskRules.DistributeNoSerials);
+            }
+
+            var (chunks, planError) = WarehouseTaskRules.DistributionPlan(taskQty, req.QuantityPerBin, binIds.Count);
+            if (planError is not null)
+                throw planError == WarehouseTaskRules.QuantityMissing ? new StatusRuleException(planError) : new ValidationException("quantityPerBin", planError);
+
+            // Todas las posiciones deben ser del almacén de la tarea ANTES de mover nada (otra → 404 sin oráculo, como al completar).
+            var inWarehouse = await db.Set<WarehouseBin>().AsNoTracking()
+                .Where(b => binIds.Contains(b.WarehouseBinId) && b.WarehouseId == task.WarehouseId)
+                .Select(b => b.WarehouseBinId).ToListAsync(ct2);
+            if (inWarehouse.Count != binIds.Count) throw new NotFoundException("Posición", feminine: true);
+
+            decimal moved = 0m;
+            for (var i = 0; i < binIds.Count; i++)
+                moved += await handler.CompleteAsync(task, new TaskCompleteRequest(ToBinId: binIds[i], Quantity: chunks[i]), ct2);
+
+            var tq = taskQty!.Value;
+            var remainder = WarehouseTaskRules.Split(tq, moved);
+            if (remainder > 0m)
+            {
+                task.Quantity = moved;
+                await CreateRemainderAsync(task, remainder, suggestedTo, ct2);
+            }
+            await AdvanceToDoneAsync(task, code, req.Comment, ct2);
+            task.CompletedAtUtc = DateTime.UtcNow;
+            task.AssignedToUserId ??= tenant.UserId;
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+        }, ct);
+        return await GetAsync(id, ct);
+    }
+
     // ================================================================ cancelar
 
     public async Task<WarehouseTaskDto> CancelAsync(int id, TaskCancelRequest? req, CancellationToken ct)

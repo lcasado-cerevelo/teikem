@@ -65,6 +65,15 @@ public sealed class WarehouseTasksController(WarehouseTaskService tasks, Repleni
         CancellationToken ct)
         => tasks.CompleteAsync(id, req, ct);
 
+    /// <summary>
+    /// Reparte una tarea PUTAWAY en varias posiciones de la misma cantidad (quantityPerBin) y en el orden de toBinIds, todo en una
+    /// transacción. Solo caben las posiciones llenas (185 de 20 → 9 posiciones; los 5 sueltos quedan como tarea nueva). 400 si la
+    /// cantidad o las posiciones no cuadran o se repiten; 422 si la tarea no es PUTAWAY, es de un producto con serie o ya no está abierta.
+    /// </summary>
+    [HttpPost("{id:int}/distribute"), RequirePermission(PermissionCatalog.InventoryView)]
+    public Task<WarehouseTaskDto> Distribute(int id, [FromBody] TaskDistributeRequest req, CancellationToken ct)
+        => tasks.DistributeAsync(id, req, ct);
+
     /// <summary>Cancela una PUTAWAY o REPLENISH abierta (el comentario queda en el historial). COUNT y CROSSDOCK se cancelan en su pantalla.</summary>
     [HttpPost("{id:int}/cancel"), RequirePermission(PermissionCatalog.WarehouseManage)]
     public Task<WarehouseTaskDto> Cancel(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] TaskCancelRequest? req, CancellationToken ct)

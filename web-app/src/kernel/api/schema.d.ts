@@ -17881,6 +17881,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/warehouse-tasks/{id}/distribute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TaskDistributeRequest"];
+                    "text/json": components["schemas"]["TaskDistributeRequest"];
+                    "application/*+json": components["schemas"]["TaskDistributeRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["WarehouseTaskDto"];
+                        "application/json": components["schemas"]["WarehouseTaskDto"];
+                        "text/json": components["schemas"]["WarehouseTaskDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouse-tasks/{id}/cancel": {
         parameters: {
             query?: never;
@@ -23034,6 +23079,12 @@ export interface components {
             /** Format: double */
             quantity?: number | null;
             serialNumbers?: string[] | null;
+            comment?: string | null;
+        };
+        TaskDistributeRequest: {
+            /** Format: double */
+            quantityPerBin?: number;
+            toBinIds?: number[] | null;
             comment?: string | null;
         };
         TenantFormatDto: {

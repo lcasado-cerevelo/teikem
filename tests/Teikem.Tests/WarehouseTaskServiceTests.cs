@@ -268,4 +268,59 @@ public sealed class WarehouseTaskServiceTests
         // Una tarea cerrada ya no se cancela ni se asigna.
         await Assert.ThrowsAsync<StatusRuleException>(() => f.Get<WarehouseTaskService>().CancelAsync(s.Task.WarehouseTaskId, null, default));
     }
+
+    [Fact]
+    public async Task Distribute_moves_the_same_quantity_to_each_bin_in_one_transaction_and_leaves_the_remainder()
+    {
+        var s = await PutawayAsync(185m);
+        await using var f = s.F;
+        var rsv2 = await f.AddBinAsync(await f.Db.WarehouseZones.AsNoTracking().FirstAsync(z => z.Code == "RSV" && z.WarehouseId == s.W.WarehouseId), "R-02");
+
+        var dto = await f.Get<WarehouseTaskService>().DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, rsv2.WarehouseBinId }), default);
+
+        Assert.Equal(WarehouseTaskStatuses.Done, dto.StatusCode);
+        Assert.Equal(20m, await f.OnHandAsync(s.Product.ProductId, s.Reserve.WarehouseBinId));
+        Assert.Equal(20m, await f.OnHandAsync(s.Product.ProductId, rsv2.WarehouseBinId));
+        Assert.Equal(145m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
+        var done = await f.TaskAsync(s.Task.WarehouseTaskId);
+        Assert.Equal(40m, done.Quantity);
+        var remainder = await f.Db.WarehouseTasks.AsNoTracking().SingleAsync(t => t.WarehouseTaskId != s.Task.WarehouseTaskId);
+        Assert.Equal(145m, remainder.Quantity);
+        Assert.Equal(WarehouseTaskStatuses.Pending, f.StatusCodeOf(remainder.StatusCodeId));
+        Assert.Equal(ReceiptStatuses.Received, await ReceiptStatusAsync(s));
+    }
+
+    [Fact]
+    public async Task Distribute_rejects_more_bins_than_fit_and_repeated_bins_without_moving_anything()
+    {
+        var s = await PutawayAsync(45m);
+        await using var f = s.F;
+        var zone = await f.Db.WarehouseZones.AsNoTracking().FirstAsync(z => z.Code == "RSV" && z.WarehouseId == s.W.WarehouseId);
+        var b2 = await f.AddBinAsync(zone, "R-02");
+        var b3 = await f.AddBinAsync(zone, "R-03");
+        var svc = f.Get<WarehouseTaskService>();
+
+        // 45 de 20 caben 2 posiciones; una tercera se rechaza (los 5 sueltos van aparte).
+        var ex = await Assert.ThrowsAsync<ValidationException>(() => svc.DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, b2.WarehouseBinId, b3.WarehouseBinId }), default));
+        Assert.Equal(WarehouseTaskRules.DistributeTooManyBins(20m, 45m, 2), Assert.Single(ex.Errors!["quantityPerBin"]));
+        var dup = await Assert.ThrowsAsync<ValidationException>(() => svc.DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { b2.WarehouseBinId, b2.WarehouseBinId }), default));
+        Assert.Equal(WarehouseTaskRules.DistributeBinsDuplicated, Assert.Single(dup.Errors!["toBinIds"]));
+
+        Assert.Equal(45m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
+        Assert.Equal(WarehouseTaskStatuses.Pending, f.StatusCodeOf((await f.TaskAsync(s.Task.WarehouseTaskId)).StatusCodeId));
+    }
+
+    [Fact]
+    public async Task Distribute_fails_atomically_when_one_bin_is_from_another_warehouse()
+    {
+        var s = await PutawayAsync(60m);
+        await using var f = s.F;
+        await Assert.ThrowsAsync<NotFoundException>(() => f.Get<WarehouseTaskService>().DistributeAsync(s.Task.WarehouseTaskId,
+            new TaskDistributeRequest(20m, new[] { s.Reserve.WarehouseBinId, s.OtherWarehouseBin.WarehouseBinId }), default));
+        Assert.Equal(60m, await f.OnHandAsync(s.Product.ProductId, s.Staging.WarehouseBinId));
+        Assert.Equal(0m, await f.OnHandAsync(s.Product.ProductId, s.Reserve.WarehouseBinId));
+    }
 }

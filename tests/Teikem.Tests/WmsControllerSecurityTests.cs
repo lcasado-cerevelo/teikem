@@ -129,6 +129,7 @@ public class WmsControllerSecurityTests
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.Assign))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.Start))] = PermissionCatalog.InventoryView,
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.Complete))] = PermissionCatalog.InventoryView,
+        [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.Distribute))] = PermissionCatalog.InventoryView,   // reparto por posición
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.Cancel))] = PermissionCatalog.WarehouseManage,
         [(typeof(WarehouseTasksController), nameof(WarehouseTasksController.RunReplenishment))] = PermissionCatalog.WarehousePick,
 
@@ -321,7 +322,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalMaintenance, Expected[(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalReturnsController)]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalProcessesController)]);
-        Assert.Equal(151, Expected.Count); // 132 de master + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
+        Assert.Equal(152, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
     }
 
     [Fact]
