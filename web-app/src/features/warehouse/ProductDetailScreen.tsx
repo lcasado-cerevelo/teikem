@@ -3,15 +3,19 @@
 // ProductEditorModal (la maqueta no tiene ficha aparte): al entrar sin `?tab=` (p. ej. un enlace de Actividad reciente) el
 // modal se abre solo; "Editar producto" lo vuelve a abrir. `?tab=lots|serials` (lo que usan "Ver lotes"/"Ver series" del
 // modal) abre esa pestaña sin el modal. Aquí la pestaña siempre va en la URL: sin parámetro significa "abrir el modal".
+// Lote F17 (Rentas F-R1): botón "Convertir a serie" (ConvertToSerialModal) para un producto sin seguimiento con existencia,
+// solo con inventory.manage + inventory.adjust y WMS_LOTSERIAL.
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useCan } from '../../kernel/access'
+import { ModuleKeys, useCan, useModule } from '../../kernel/access'
 import { ApiError } from '../../kernel/api/problem'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
 import { Chip, DataTable, EmptyState, Filters, Panel, QBox, SelectFilter, Spinner, Tabs, matchesQ, type DataColumn } from '../../kernel/ui'
 import { useProduct, useProductLots, useProductSerials, type LotDto, type SerialDto } from './api'
+import { ConvertToSerialModal } from './ConvertToSerialModal'
 import { ProductEditorModal } from './ProductEditorModal'
+import { canConvertToSerial } from './serialConversion'
 import { IconLayers } from '../../kernel/ui/screenIcons'
 
 type TabKey = 'lots' | 'serials'
@@ -101,6 +105,11 @@ export default function ProductDetailScreen() {
   const { publicId = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const canManage = useCan('inventory.manage')
+  // Lote F17: "Convertir a serie" pide inventory.manage + inventory.adjust y el módulo de inventario
+  const canConvertPerm = useCan('inventory.manage', 'inventory.adjust')
+  const wmsOn = useModule(ModuleKeys.WmsLotSerial)
+  const canConvert = canConvertPerm && wmsOn
+  const [converting, setConverting] = useState(false)
   const { data: detail, isLoading, error } = useProduct(publicId)
   const tab: TabKey = searchParams.get('tab') === 'serials' ? 'serials' : 'lots'
   // sin `?tab=` al entrar, el producto se muestra en su modal (la maqueta no tiene ficha aparte)
@@ -135,6 +144,11 @@ export default function ProductDetailScreen() {
           <Link className="btn" to="/warehouse/products">
             {t('warehouse.products.back')}
           </Link>
+          {canConvert && canConvertToSerial(product) && (
+            <button type="button" className="btn" onClick={() => setConverting(true)}>
+              {t('warehouse.convertSerial.button')}
+            </button>
+          )}
           <button type="button" className="btn flow" onClick={() => setEditing(true)}>
             {canManage ? t('warehouse.products.editor.editTitle') : t('warehouse.products.editor.viewData')}
           </button>
@@ -165,6 +179,7 @@ export default function ProductDetailScreen() {
       )}
 
       <ProductEditorModal open={editing} product={detail} onClose={() => setEditing(false)} />
+      <ConvertToSerialModal open={converting} product={detail} onClose={() => setConverting(false)} />
     </div>
   )
 }

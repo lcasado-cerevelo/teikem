@@ -1,10 +1,11 @@
 // Lote 14 (D6) — lógica pura del panel "Necesita tu atención" del Pulso (GET /api/v1/analytics/attention). Sin React: arma
 // el enlace de "Revisar"/"Ver todos" con la ruta y los parámetros que manda el servidor, el tono de la fila (clases de la
 // maqueta .work.tone-*) y el texto de cada tipo de aviso con `t('analytics.attention.items.<code>.*', params)`.
+// Tipos: INVENTORY_DISCREPANCY (Lote 14) y RENTAL_DUE (rentas vencidas o por vencer, Lote 29; texto desde F17).
 import type { components } from '../../kernel/api/schema'
 import type { TParams } from '../../kernel/i18n/i18n'
 import { formatEventTime } from './activity'
-import { formatNumber } from '../../kernel/format'
+import { formatDate, formatNumber } from '../../kernel/format'
 
 export type AttentionDto = components['schemas']['AttentionDto']
 export type AttentionItemDto = components['schemas']['AttentionItemDto']
@@ -13,7 +14,7 @@ export type AttentionGroupDto = components['schemas']['AttentionGroupDto']
 type Translate = (key: string, params?: TParams) => string
 
 /** Tipos de aviso que esta web sabe describir (el resto se pinta con su código y su "Revisar"). */
-export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY'] as const
+export const ATTENTION_CODES = ['INVENTORY_DISCREPANCY', 'RENTAL_DUE'] as const
 export type AttentionCode = (typeof ATTENTION_CODES)[number]
 
 export function isKnownAttention(code: string | null | undefined): code is AttentionCode {
@@ -104,8 +105,41 @@ export function attentionRowText(item: AttentionItemDto, t: Translate, lang: str
     }
   }
 
+  if (item.code === 'RENTAL_DUE') return rentalDueText(p, t, lang, since)
+
   const title = item.code ?? ''
   return { title, detail: '', figures: [], since, reviewLabel: title ? `${review} ${title}` : review }
+}
+
+/**
+ * Lote F17 (Rentas F-R1) — renta abierta vencida o por vencer en 7 días (RENTAL_DUE, Lote 29). Params del servidor: number,
+ * client, location, warehouse, pickupDate (aaaa-mm-dd), daysToPickup (negativo = vencida), overdue, units y status. Título
+ * "Renta REN-… vencida" / "se recoge hoy" / "vence en N días"; cliente · localidad · almacén; cifras Recogido, Equipos y (si
+ * está vencida) Días vencida. "Revisar" abre la renta (`/warehouse/rentals?rental=`), "Ver todos" la lista filtrada.
+ */
+function rentalDueText(p: Record<string, string>, t: Translate, lang: string, since: string): AttentionRowText {
+  const base = 'analytics.attention.items.RENTAL_DUE'
+  const number = p.number ?? ''
+  const days = Number(p.daysToPickup ?? '0')
+  const overdue = (p.overdue ?? '').toLowerCase() === 'true' || days < 0
+  const abs = Math.abs(Number.isFinite(days) ? days : 0)
+  const title = overdue
+    ? t(`${base}.titleOverdue`, { number })
+    : abs === 0
+      ? t(`${base}.titleToday`, { number })
+      : t(abs === 1 ? `${base}.titleSoonOne` : `${base}.titleSoon`, { number, days: formatNumber(abs) })
+  const figures: AttentionFigure[] = [
+    { label: t(`${base}.pickup`), value: p.pickupDate ? formatDate(p.pickupDate) : '' },
+    { label: t(`${base}.units`), value: formatQty(p.units, lang) },
+  ]
+  if (overdue) figures.push({ label: t(`${base}.overdueDays`), value: formatNumber(abs), emphasis: true })
+  return {
+    title,
+    detail: [p.client, p.location, p.warehouse].filter(Boolean).join(' · '),
+    figures: figures.filter((f) => f.value !== ''),
+    since,
+    reviewLabel: t(`${base}.reviewLabel`, { number, client: p.client ?? '' }),
+  }
 }
 
 /** Nombre de un grupo para "Ver todos" cuando hay más de un tipo de aviso. */

@@ -1,4 +1,4 @@
-// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`.
+// Menú completo de la maqueta (Lote F8a P0): 7 grupos, 41 ítems con permiso y módulo, ítems pendientes y `perm: 'a|b'`; Lote F17 suma Rentas (42).
 import { describe, expect, it } from 'vitest'
 import { permAllowed } from '../kernel/access/accessContext'
 import { ModuleKeys } from '../kernel/access/modules'
@@ -37,11 +37,11 @@ describe('NAV_GROUPS', () => {
 })
 
 describe('menú completo (routes.tsx)', () => {
-  it('con todos los permisos y módulos se ven los 7 grupos y los 41 ítems, en el orden de la maqueta', () => {
+  it('con todos los permisos y módulos se ven los 7 grupos y los 42 ítems, en el orden de la maqueta', () => {
     const groups = visibleNav(appRoutes, ALL_PERMS, ALL_MODULES)
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ['ops', 5],
-      ['warehouse', 11],
+      ['warehouse', 12],
       ['money', 5],
       ['catalog', 4],
       ['analytics', 4],
@@ -64,6 +64,7 @@ describe('menú completo (routes.tsx)', () => {
       'Transferencias y ajustes',
       'Conteo cíclico',
       'Cruce de muelle',
+      'Rentas',
       'Kárdex de movimientos',
       'Contabilización de compras',
       'Contabilización de despachos',
@@ -94,7 +95,7 @@ describe('menú completo (routes.tsx)', () => {
   })
 
   it('cada ítem tiene título y subtítulo en español e inglés, y `order` = posición × 10', () => {
-    expect(navRoutes).toHaveLength(41)
+    expect(navRoutes).toHaveLength(42)
     for (const r of navRoutes) {
       for (const lang of ['es', 'en'] as const) {
         expect(translate(lang, navTitleKey(r.nav!.key)), `${lang} ${r.path}`).not.toBe(navTitleKey(r.nav!.key))
@@ -150,6 +151,7 @@ describe('menú completo (routes.tsx)', () => {
       '/warehouse/transfers-adjustments',
       '/warehouse/cycle-counts',
       '/warehouse/cross-dock-plans',
+      '/warehouse/rentals',
       '/warehouse/kardex',
     ])
     expect(translate('en', navTitleKey('products'))).toBe('Products & inventory')
@@ -160,6 +162,20 @@ describe('menú completo (routes.tsx)', () => {
     expect(byPath('/warehouse/inventory')).toMatchObject({ path: '/warehouse/inventory' })
     expect(byPath('/warehouse/inventory').nav).toBeUndefined()
     expect(byPath('/warehouse/inventory').perm).toBeUndefined()
+  })
+
+  it("Lote F17 (Rentas F-R1): 'Rentas' va en Almacén justo antes del Kárdex (que sigue siendo el último), con rental.view y el módulo RENTAL_EQUIPMENT; la ficha es /warehouse/rentals/:publicId", () => {
+    const rentals = byPath('/warehouse/rentals')
+    expect(rentals).toMatchObject({ perm: 'rental.view', module: 'RENTAL_EQUIPMENT', nav: { group: 'warehouse', key: 'rentals', order: 110 } })
+    expect(rentals.pending).toBeUndefined()
+    expect(byPath('/warehouse/kardex').nav).toMatchObject({ order: 120 })
+    expect(byPath('/warehouse/rentals/:publicId')).toMatchObject({ perm: 'rental.view', module: 'RENTAL_EQUIPMENT' })
+    expect(byPath('/warehouse/rentals/:publicId').nav).toBeUndefined()
+    expect(routeAllowed(rentals, new Set(['rental.view']), new Set(['RENTAL_EQUIPMENT']))).toBe(true)
+    expect(routeAllowed(rentals, new Set(['rental.view']), new Set(['WMS_LOTSERIAL']))).toBe(false)
+    expect(routeAllowed(rentals, new Set(['inventory.view']), new Set(['RENTAL_EQUIPMENT']))).toBe(false)
+    expect(translate('es', navTitleKey('rentals'))).toBe('Rentas')
+    expect(translate('en', navTitleKey('rentals'))).toBe('Rentals')
   })
 
   it('legacyInventorySearch: sin pestaña era Saldos (tab=balances); tab=kardex pasa a no llevar parámetro; los filtros se quedan', () => {

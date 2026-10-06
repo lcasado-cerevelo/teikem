@@ -296,6 +296,10 @@
     "transfersAdjustments": {
       "title": "Transferencias y ajustes",
       "subtitle": "mueve inventario entre posiciones y corrige cantidades con motivo"
+    },
+    "rentals": {
+      "title": "Rentas",
+      "subtitle": "equipos con serie rentados a la localidad del cliente"
     }
   },
   "status": {
@@ -782,6 +786,17 @@
           "balance": "Saldo",
           "difference": "Diferencia",
           "reviewLabel": "Revisar el descuadre de {sku} ({where})"
+        },
+        "RENTAL_DUE": {
+          "titleOverdue": "Renta {number} vencida",
+          "titleToday": "Renta {number}: se recoge hoy",
+          "titleSoon": "Renta {number}: vence en {days} días",
+          "titleSoonOne": "Renta {number}: vence en 1 día",
+          "group": "Rentas vencidas o por vencer",
+          "pickup": "Recogido",
+          "units": "Equipos",
+          "overdueDays": "Días vencida",
+          "reviewLabel": "Revisar la renta {number} ({client})"
         }
       }
     },
@@ -3194,6 +3209,35 @@
     "receivingModes": {
       "PUTAWAY": "Con acomodo",
       "DIRECT": "Directo a posición"
+    },
+    "convertSerial": {
+      "button": "Convertir a serie",
+      "title": "Convertir {sku} a serie",
+      "intro": "{sku} no tiene seguimiento y tiene {units} unidad(es) en mano. Capture un número de serie por unidad, en la posición donde está.",
+      "positionLabel": "Series para {bin} · {warehouse} ({count} en mano)",
+      "counter": "{m} de {n} series",
+      "pasteHelp": "Una serie por renglón (puede pegar varias líneas; también separadas por coma). No se repiten, ni entre posiciones.",
+      "notes": "Nota (opcional)",
+      "notesHelp": "Si la deja vacía, los movimientos dicen «Conversión a serie».",
+      "noStock": "El producto no tiene existencia en posiciones.",
+      "review": "Revisar y convertir",
+      "back": "Volver a la captura",
+      "confirm": "Convertir a serie",
+      "confirmBody": "Se darán de alta {serials} series de {sku} en {positions} posición(es).",
+      "netZero": "Es un movimiento neto cero: por cada posición se registra un ajuste de salida de las unidades sin serie y un ajuste de entrada por cada serie, con el motivo «Conversión a serie». El en mano y el disponible no cambian.",
+      "oneWay": "Después, el producto se controla por serie (ajustes, transferencias, recolecciones y recibos piden las series) y no vuelve a «sin seguimiento».",
+      "summaryLine": "{count} serie(s)",
+      "done": "{sku} ahora se controla por serie: {count} series dadas de alta.",
+      "errors": {
+        "count": "Capture {n} número(s) de serie para {bin} (hay {m}).",
+        "duplicate": "El número de serie {serial} está repetido.",
+        "tooLong": "El número de serie {serial} excede 80 caracteres.",
+        "tooMany": "Una línea admite como máximo 500 números de serie.",
+        "notesTooLong": "Las notas admiten como máximo 300 caracteres.",
+        "reserved": "El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo.",
+        "notInBin": "La existencia de {sku} en {where} no está en una posición sin lote; muévala o ajústela antes de convertirlo.",
+        "fractional": "La existencia de {sku} en {bin} es {qty}; ajústela a unidades enteras antes de convertirlo."
+      }
     }
   },
   "system": {
@@ -3757,6 +3801,236 @@
         "loadError": "No se pudieron leer los ajustes de la compañía."
       },
       "note": "«Actividad» junta en una sola tabla dos bitácoras que el sistema guarda por separado: qué cambió (bitácora de cambios) y quién intentó qué (eventos de seguridad); cada fila conserva su tipo. Las fechas y horas están en la zona de la compañía (Región y formatos)."
+    }
+  },
+  "rentals": {
+    "title": "Rentas",
+    "subtitle": "Equipos propios con número de serie rentados a una localidad del cliente: contrato, fecha de recogido y extensiones",
+    "new": "Nueva renta",
+    "back": "Volver a rentas",
+    "notFound": "La renta no existe o no pertenece a su compañía.",
+    "empty": "No hay rentas con estos filtros.",
+    "emptyBody": "Cambie o quite los filtros, o cree una renta con «Nueva renta».",
+    "filters": {
+      "status": "Estatus",
+      "client": "Cliente",
+      "allClients": "Todos los clientes",
+      "dueWithinDays": "Vencen en (días)",
+      "dueWithinDaysValue": "{days} días",
+      "overdue": "Solo vencidas",
+      "bothNote": "Con los dos filtros se ven las vencidas y las que vencen en los próximos {days} días.",
+      "searchPlaceholder": "Número, contrato, cliente, localidad o serie"
+    },
+    "columns": {
+      "number": "Número",
+      "client": "Cliente",
+      "location": "Localidad",
+      "warehouse": "Almacén",
+      "startDate": "Inicio",
+      "pickupDate": "Recogido",
+      "due": "Vencimiento",
+      "status": "Estatus",
+      "units": "Equipos",
+      "contract": "Contrato"
+    },
+    "due": {
+      "overdue": "Vencida hace {days} días",
+      "overdueOne": "Vencida hace 1 día",
+      "today": "Se recoge hoy",
+      "soon": "Vence en {days} días",
+      "soonOne": "Vence en 1 día",
+      "later": "En {days} días",
+      "none": "Sin vencimiento: la renta no está abierta"
+    },
+    "fields": {
+      "client": "Cliente",
+      "location": "Localidad del cliente",
+      "contact": "Contacto del cliente",
+      "warehouse": "Almacén de origen",
+      "startDate": "Fecha de inicio",
+      "pickupDate": "Fecha de recogido",
+      "originalPickupDate": "Recogido pactado",
+      "extensions": "Extensiones",
+      "contractNumber": "Número de contrato",
+      "contractSignedOn": "Contrato firmado el",
+      "deliveryCost": "Costo de transporte estimado",
+      "transportCurrency": "Moneda del transporte",
+      "notes": "Notas",
+      "units": "Equipos activos",
+      "dispatchedAt": "Despachada el",
+      "closedAt": "Cerrada el",
+      "deliveryShipment": "Envío de entrega",
+      "invoice": "Factura"
+    },
+    "form": {
+      "newTitle": "Nueva renta (Borrador)",
+      "editTitle": "Editar la renta {number}",
+      "create": "Crear renta con {count} equipo(s)",
+      "save": "Guardar cambios",
+      "clientLocked": "El cliente de la renta no se cambia; cancele la renta y cree otra.",
+      "pickClientFirst": "Elija primero el cliente.",
+      "locationPlaceholder": "Buscar localidad",
+      "noLocations": "El cliente no tiene localidades propias activas.",
+      "locationsForbidden": "Su usuario no puede consultar localidades (permiso locations.read y módulo Catálogo).",
+      "contactsForbidden": "Su usuario no puede consultar los contactos del cliente (permiso clients.read).",
+      "noContact": "Sin contacto",
+      "warehouseLocked": "Quite los equipos de la renta antes de cambiar el almacén de origen.",
+      "datesLocked": "La renta ya tiene extensiones; la fecha de recogido se cambia con una extensión.",
+      "deliveryCostHelp": "Solo un dato: el envío llegará con el módulo de Envíos.",
+      "equipmentTitle": "Equipos a rentar ({count})",
+      "equipmentEmpty": "Aún no hay equipos. Puede agregarlos ahora o después, en la ficha de la renta.",
+      "equipmentCleared": "Cambió el almacén de origen: se quitaron los equipos elegidos (eran de otro almacén)."
+    },
+    "picker": {
+      "title": "Agregar equipos por serie",
+      "modalTitle": "Agregar equipos a la renta {number}",
+      "product": "Equipo (SKU o nombre)",
+      "productPlaceholder": "Buscar por SKU o nombre",
+      "pickWarehouseFirst": "Elija primero el almacén de origen.",
+      "convertHint": "Conviértalo con «Convertir a serie» en la ficha del producto.",
+      "serialSearch": "Buscar o escanear serie",
+      "serialSearchHint": "Filtra la lista; Enter con la serie exacta la elige (lector de código de barras).",
+      "available": "Series disponibles en {warehouse} ({count})",
+      "none": "No hay series disponibles de este equipo en {warehouse}.",
+      "selectAll": "Elegir todas las mostradas",
+      "clear": "Quitar selección",
+      "selected": "{count} elegida(s)",
+      "more": "y {count} más: use el buscador.",
+      "hidden": "{count} serie(s) en zonas que no se rentan (cuarentena o cruce de muelle) no se muestran.",
+      "rate": "Tarifa para estos equipos (opcional)",
+      "add": "Agregar {count} equipo(s)",
+      "remove": "Quitar equipo",
+      "duplicates": "Ya estaban en la lista: {serials}",
+      "scheduledNote": "La renta está Programada: los equipos que agregue quedan reservados al momento."
+    },
+    "rate": {
+      "frequency": "Frecuencia de cobro",
+      "amount": "Monto",
+      "currency": "Moneda",
+      "none": "Sin tarifa",
+      "pickFrequency": "Elija la frecuencia",
+      "companyCurrency": "La de la compañía",
+      "companyCurrencyCode": "La de la compañía ({code})",
+      "noRate": "Sin tarifa",
+      "title": "Tarifa del equipo {serial}",
+      "help": "La tarifa es solo un dato (no se calcula ni se cobra). Antes del despacho se corrige la vigente; después cambia con una extensión.",
+      "save": "Guardar tarifa"
+    },
+    "frequencies": {
+      "DAILY": "Diaria",
+      "WEEKLY": "Semanal",
+      "MONTHLY": "Mensual",
+      "ONE_TIME": "Fija"
+    },
+    "lines": {
+      "serial": "Serie",
+      "sku": "SKU",
+      "product": "Producto",
+      "lot": "Lote",
+      "fromBin": "Posición de origen",
+      "rate": "Tarifa vigente",
+      "dispatchedAt": "Despachado",
+      "state": "Estado"
+    },
+    "lineStates": {
+      "inactive": "Inactivo",
+      "returned": "Devuelto",
+      "dispatched": "En renta",
+      "pending": "Por despachar"
+    },
+    "detail": {
+      "data": "Datos de la renta",
+      "equipment": "Equipos",
+      "extensions": "Extensiones",
+      "history": "Historial de estatus",
+      "noEquipment": "La renta no tiene equipos.",
+      "noEquipmentBody": "Agréguelos con «Agregar equipos» antes de programarla.",
+      "cancelledLines": "Renta cancelada: estos son los equipos que tenía (inactivos).",
+      "noShipment": "Sin envío (llegará con el módulo de Envíos)",
+      "noInvoice": "Sin factura (llegará con Facturación)"
+    },
+    "extensions": {
+      "when": "Fecha",
+      "previous": "Recogido anterior",
+      "next": "Nuevo recogido",
+      "days": "Días agregados",
+      "reason": "Motivo",
+      "user": "Usuario",
+      "rates": "Tarifas nuevas",
+      "empty": "Sin extensiones."
+    },
+    "actions": {
+      "edit": "Editar",
+      "addEquipment": "Agregar equipos",
+      "schedule": "Programar",
+      "dispatch": "Despachar",
+      "extend": "Extender",
+      "cancel": "Cancelar la renta",
+      "cancelRental": "Cancelar renta",
+      "editRate": "Tarifa",
+      "removeLine": "Quitar equipo"
+    },
+    "confirm": {
+      "scheduleTitle": "¿Programar la renta {number}?",
+      "scheduleBody": "Los {units} equipo(s) quedan reservados para esta renta: el disponible del producto baja y el en mano no cambia.",
+      "dispatchTitle": "¿Despachar la renta {number}?",
+      "dispatchBody": "Cada equipo pasa con una transferencia a la posición EN-RENTA del almacén {warehouse}: sigue siendo de la compañía (en mano), no cuenta como disponible y su serie queda «En renta». La renta pasa a En renta.",
+      "cancelTitle": "¿Cancelar la renta {number}?",
+      "cancelBodyDraft": "La renta queda Cancelada (solo consulta) y sus equipos inactivos. Nada estaba reservado.",
+      "cancelBodyScheduled": "La renta queda Cancelada (solo consulta): se liberan las reservas y las series vuelven a estar disponibles.",
+      "comment": "Comentario (opcional; queda en el historial)",
+      "back": "Volver",
+      "removeTitle": "¿Quitar el equipo {serial}?",
+      "removeBody": "El equipo queda inactivo en la renta (queda en la auditoría) y la serie se libera para otra renta.",
+      "removeBodyScheduled": "El equipo queda inactivo en la renta (queda en la auditoría) y se libera su reserva: la serie vuelve a estar disponible."
+    },
+    "extend": {
+      "title": "Extender la renta {number}",
+      "current": "Recogido vigente: {date} (pactado: {original}).",
+      "newPickupDate": "Nueva fecha de recogido",
+      "newPickupHelp": "Debe ser posterior a la vigente.",
+      "reason": "Motivo",
+      "rateSection": "Tarifa nueva (opcional)",
+      "rateHelp": "Solo si cambia: se cierra la vigente y se abre otra desde el día siguiente al recogido anterior. Una tarifa igual a la vigente no cambia nada.",
+      "applyTo": "Equipos con la tarifa nueva",
+      "submit": "Extender"
+    },
+    "toast": {
+      "created": "Renta {number} creada en Borrador.",
+      "saved": "Cambios guardados.",
+      "schedule": "Renta {number} programada: equipos reservados.",
+      "dispatch": "Renta {number} despachada: equipos en renta.",
+      "cancel": "Renta {number} cancelada.",
+      "extended": "Renta {number} extendida hasta el {date}.",
+      "rateSaved": "Tarifa de {serial} guardada.",
+      "lineRemoved": "Equipo {serial} quitado de la renta.",
+      "linesAdded": "{count} equipo(s) agregado(s)."
+    },
+    "errors": {
+      "clientRequired": "Indique el cliente de la renta.",
+      "locationRequired": "Indique la localidad del cliente donde estará el equipo.",
+      "warehouseRequired": "Elija el almacén de origen.",
+      "startDateRequired": "Indique la fecha de inicio de la renta.",
+      "pickupDateRequired": "Indique la fecha de recogido.",
+      "pickupBeforeStart": "La fecha de recogido no puede ser anterior a la de inicio.",
+      "contractTooLong": "El número de contrato admite como máximo 80 caracteres.",
+      "notesTooLong": "Las notas admiten como máximo 1000 caracteres.",
+      "negativeDeliveryCost": "El costo de transporte estimado no puede ser negativo.",
+      "numberInvalid": "Escriba un número válido.",
+      "newPickupRequired": "Indique la nueva fecha de recogido.",
+      "newPickupNotLater": "La nueva fecha de recogido debe ser posterior a la actual ({date}).",
+      "reasonRequired": "Indique el motivo de la extensión.",
+      "reasonTooLong": "El motivo admite como máximo 300 caracteres.",
+      "frequencyRequired": "Indique la frecuencia de cobro: DAILY, WEEKLY, MONTHLY o ONE_TIME.",
+      "rateAmountRequired": "Indique el monto de la tarifa.",
+      "negativeRate": "La tarifa no puede ser negativa.",
+      "notSerial": "El producto {sku} no se controla por serie; solo se rentan equipos con número de serie.",
+      "notOwn": "Solo se rentan equipos propios; {sku} pertenece a un cliente.",
+      "serialAlreadyPicked": "La serie {serial} ya está en esta renta.",
+      "serialNotAvailable": "La serie {serial} no está disponible en {where}.",
+      "tooManyLines": "Una renta admite como máximo 200 equipos.",
+      "commentTooLong": "El comentario admite como máximo 500 caracteres.",
+      "noRateLines": "Elija al menos un equipo para la tarifa nueva."
     }
   }
 }

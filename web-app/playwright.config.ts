@@ -26,9 +26,9 @@ export default defineConfig({
     env: { VITE_API_URL: process.env.VITE_API_URL ?? process.env.API_URL ?? 'http://localhost:5000' },
   },
   projects: [
-    { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+    { name: 'escritorio', testIgnore: /(f8a|lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17)\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
     // Móvil al ancho mínimo que exige el kit (360 px), con el resto del perfil de Pixel 7 (táctil, isMobile).
-    { name: 'movil', testIgnore: /(lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    { name: 'movil', testIgnore: /(lote16|loteF9-region|loteF11-marca|loteF12-conteo|loteF13-conteo-web|loteF14-codigos|productosPorPosicion|loteF16|loteF17)\.spec\.ts/, use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // El recorrido de escritorio de F8a reorganiza el Pulso personal del admin y el de toda la compañía (oculta el panel
     // Almacén unos segundos): corre después de los demás para no chocar con los recorridos que leen ese Pulso cuando hay
     // varios workers en paralelo.
@@ -58,12 +58,18 @@ export default defineConfig({
     // corre después de Productos por posición y antes de F9.
     { name: 'escritorio-f16', testMatch: /loteF16\.spec\.ts/, dependencies: ['escritorio-pp', 'movil-pp'], use: { ...devices['Desktop Chrome'] } },
     { name: 'movil-f16', testMatch: /loteF16\.spec\.ts/, dependencies: ['escritorio-pp', 'movil-pp'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
+    // Lote F17 (Rentas F-R1): siembra un cliente con su localidad y un producto con existencia en posiciones propias de ALM-01,
+    // lo convierte a serie y crea, programa, despacha y extiende una renta (reserva y mueve esas series a EN-RENTA). Corre
+    // después de F16 (sus movimientos no entran en el "Conteo de lo cambiado" de otros recorridos) y antes de F9, con la región
+    // y los formatos de siempre (fechas "Vence en N días" en el día de Puerto Rico).
+    { name: 'escritorio-f17', testMatch: /loteF17\.spec\.ts/, dependencies: ['escritorio-f16', 'movil-f16'], use: { ...devices['Desktop Chrome'] } },
+    { name: 'movil-f17', testMatch: /loteF17\.spec\.ts/, dependencies: ['escritorio-f16', 'movil-f16'], use: { ...devices['Pixel 7'], viewport: { width: 360, height: 780 } } },
     // Lote F9: cambia la región y los formatos de la compañía demo (y los restaura): al final de todo, solo, para no cambiarle
     // la hora o la fecha a otro recorrido a medio camino.
     {
       name: 'escritorio-f9',
       testMatch: /loteF9-region\.spec\.ts/,
-      dependencies: ['escritorio-f8a', 'escritorio-lote16', 'movil-lote16', 'escritorio-f12', 'movil-f12', 'escritorio-f13', 'movil-f13', 'escritorio-f14', 'movil-f14', 'escritorio-pp', 'movil-pp', 'escritorio-f16', 'movil-f16'],
+      dependencies: ['escritorio-f8a', 'escritorio-lote16', 'movil-lote16', 'escritorio-f12', 'movil-f12', 'escritorio-f13', 'movil-f13', 'escritorio-f14', 'movil-f14', 'escritorio-pp', 'movil-pp', 'escritorio-f16', 'movil-f16', 'escritorio-f17', 'movil-f17'],
       use: { ...devices['Desktop Chrome'] },
     },
     // Lote F11: sube logos y un tema a la compañía demo (y los restaura): al final de todo, después de F9, para no repintar la marca

@@ -296,6 +296,10 @@
     "transfersAdjustments": {
       "title": "Transfers & adjustments",
       "subtitle": "move stock between bins and correct quantities with a reason"
+    },
+    "rentals": {
+      "title": "Rentals",
+      "subtitle": "serial-tracked equipment rented to a client location"
     }
   },
   "status": {
@@ -782,6 +786,17 @@
           "balance": "Balance",
           "difference": "Difference",
           "reviewLabel": "Review the discrepancy of {sku} ({where})"
+        },
+        "RENTAL_DUE": {
+          "titleOverdue": "Rental {number} overdue",
+          "titleToday": "Rental {number}: pickup today",
+          "titleSoon": "Rental {number}: due in {days} days",
+          "titleSoonOne": "Rental {number}: due in 1 day",
+          "group": "Overdue or due rentals",
+          "pickup": "Pickup",
+          "units": "Units",
+          "overdueDays": "Days overdue",
+          "reviewLabel": "Review rental {number} ({client})"
         }
       }
     },
@@ -3194,6 +3209,35 @@
     "receivingModes": {
       "PUTAWAY": "With put-away",
       "DIRECT": "Direct to bin"
+    },
+    "convertSerial": {
+      "button": "Convert to serial",
+      "title": "Convert {sku} to serial",
+      "intro": "{sku} is not tracked and has {units} unit(s) on hand. Enter one serial number per unit, in the bin where it is.",
+      "positionLabel": "Serials for {bin} · {warehouse} ({count} on hand)",
+      "counter": "{m} of {n} serials",
+      "pasteHelp": "One serial per line (you can paste several lines; commas also separate). No repeats, not even across bins.",
+      "notes": "Note (optional)",
+      "notesHelp": "If left empty, the movements say “Serial conversion”.",
+      "noStock": "The product has no stock in bins.",
+      "review": "Review and convert",
+      "back": "Back to entry",
+      "confirm": "Convert to serial",
+      "confirmBody": "{serials} serials of {sku} will be created in {positions} bin(s).",
+      "netZero": "It is a net-zero movement: for each bin an outbound adjustment of the untracked units and an inbound adjustment per serial are posted, with the reason “Serial conversion”. On hand and available do not change.",
+      "oneWay": "Afterwards the product is serial-tracked (adjustments, transfers, picks and receipts ask for serials) and does not go back to “not tracked”.",
+      "summaryLine": "{count} serial(s)",
+      "done": "{sku} is now serial-tracked: {count} serials created.",
+      "errors": {
+        "count": "Enter {n} serial number(s) for {bin} (there are {m}).",
+        "duplicate": "Serial number {serial} is repeated.",
+        "tooLong": "Serial number {serial} exceeds 80 characters.",
+        "tooMany": "A line allows at most 500 serial numbers.",
+        "notesTooLong": "Notes allow at most 300 characters.",
+        "reserved": "Product {sku} has reserved units; release them before converting it.",
+        "notInBin": "The stock of {sku} in {where} is not in a bin without lot; move or adjust it before converting it.",
+        "fractional": "The stock of {sku} in {bin} is {qty}; adjust it to whole units before converting it."
+      }
     }
   },
   "system": {
@@ -3757,6 +3801,236 @@
         "loadError": "The tenant settings could not be loaded."
       },
       "note": "\"Activity\" combines, in one table, two logs the system keeps separately: what changed (change log) and who attempted what (security events); each row keeps its type. Dates and times are in the tenant's time zone (Region & formats)."
+    }
+  },
+  "rentals": {
+    "title": "Rentals",
+    "subtitle": "Own serial-tracked equipment rented to a client location: contract, pickup date and extensions",
+    "new": "New rental",
+    "back": "Back to rentals",
+    "notFound": "The rental does not exist or does not belong to your company.",
+    "empty": "No rentals match these filters.",
+    "emptyBody": "Change or clear the filters, or create a rental with “New rental”.",
+    "filters": {
+      "status": "Status",
+      "client": "Client",
+      "allClients": "All clients",
+      "dueWithinDays": "Due within (days)",
+      "dueWithinDaysValue": "{days} days",
+      "overdue": "Overdue only",
+      "bothNote": "With both filters you see the overdue ones and those due in the next {days} days.",
+      "searchPlaceholder": "Number, contract, client, location or serial"
+    },
+    "columns": {
+      "number": "Number",
+      "client": "Client",
+      "location": "Location",
+      "warehouse": "Warehouse",
+      "startDate": "Start",
+      "pickupDate": "Pickup",
+      "due": "Due",
+      "status": "Status",
+      "units": "Units",
+      "contract": "Contract"
+    },
+    "due": {
+      "overdue": "Overdue by {days} days",
+      "overdueOne": "Overdue by 1 day",
+      "today": "Pickup today",
+      "soon": "Due in {days} days",
+      "soonOne": "Due in 1 day",
+      "later": "In {days} days",
+      "none": "No due date: the rental is not open"
+    },
+    "fields": {
+      "client": "Client",
+      "location": "Client location",
+      "contact": "Client contact",
+      "warehouse": "Source warehouse",
+      "startDate": "Start date",
+      "pickupDate": "Pickup date",
+      "originalPickupDate": "Agreed pickup",
+      "extensions": "Extensions",
+      "contractNumber": "Contract number",
+      "contractSignedOn": "Contract signed on",
+      "deliveryCost": "Estimated transport cost",
+      "transportCurrency": "Transport currency",
+      "notes": "Notes",
+      "units": "Active units",
+      "dispatchedAt": "Dispatched on",
+      "closedAt": "Closed on",
+      "deliveryShipment": "Delivery shipment",
+      "invoice": "Invoice"
+    },
+    "form": {
+      "newTitle": "New rental (Draft)",
+      "editTitle": "Edit rental {number}",
+      "create": "Create rental with {count} unit(s)",
+      "save": "Save changes",
+      "clientLocked": "The rental's client cannot be changed; cancel the rental and create another.",
+      "pickClientFirst": "Choose the client first.",
+      "locationPlaceholder": "Search location",
+      "noLocations": "The client has no active locations of its own.",
+      "locationsForbidden": "Your user cannot read locations (locations.read permission and Catalog module).",
+      "contactsForbidden": "Your user cannot read the client's contacts (clients.read permission).",
+      "noContact": "No contact",
+      "warehouseLocked": "Remove the rental's equipment before changing the source warehouse.",
+      "datesLocked": "The rental already has extensions; the pickup date changes with an extension.",
+      "deliveryCostHelp": "Data only: shipments will come with the Shipments module.",
+      "equipmentTitle": "Equipment to rent ({count})",
+      "equipmentEmpty": "No equipment yet. Add it now or later, on the rental's page.",
+      "equipmentCleared": "The source warehouse changed: the chosen equipment was removed (it belonged to another warehouse)."
+    },
+    "picker": {
+      "title": "Add equipment by serial",
+      "modalTitle": "Add equipment to rental {number}",
+      "product": "Equipment (SKU or name)",
+      "productPlaceholder": "Search by SKU or name",
+      "pickWarehouseFirst": "Choose the source warehouse first.",
+      "convertHint": "Convert it with “Convert to serial” on the product page.",
+      "serialSearch": "Search or scan serial",
+      "serialSearchHint": "Filters the list; Enter with the exact serial picks it (barcode scanner).",
+      "available": "Available serials in {warehouse} ({count})",
+      "none": "No available serials of this equipment in {warehouse}.",
+      "selectAll": "Pick all shown",
+      "clear": "Clear selection",
+      "selected": "{count} picked",
+      "more": "and {count} more: use the search box.",
+      "hidden": "{count} serial(s) in zones that are not rented (quarantine or cross-dock) are not shown.",
+      "rate": "Rate for these units (optional)",
+      "add": "Add {count} unit(s)",
+      "remove": "Remove unit",
+      "duplicates": "Already in the list: {serials}",
+      "scheduledNote": "The rental is Scheduled: the units you add are reserved right away."
+    },
+    "rate": {
+      "frequency": "Billing frequency",
+      "amount": "Amount",
+      "currency": "Currency",
+      "none": "No rate",
+      "pickFrequency": "Choose the frequency",
+      "companyCurrency": "Company currency",
+      "companyCurrencyCode": "Company currency ({code})",
+      "noRate": "No rate",
+      "title": "Rate of unit {serial}",
+      "help": "The rate is data only (nothing is calculated or billed). Before dispatch the current rate is corrected; afterwards it changes with an extension.",
+      "save": "Save rate"
+    },
+    "frequencies": {
+      "DAILY": "Daily",
+      "WEEKLY": "Weekly",
+      "MONTHLY": "Monthly",
+      "ONE_TIME": "Fixed"
+    },
+    "lines": {
+      "serial": "Serial",
+      "sku": "SKU",
+      "product": "Product",
+      "lot": "Lot",
+      "fromBin": "Source bin",
+      "rate": "Current rate",
+      "dispatchedAt": "Dispatched",
+      "state": "State"
+    },
+    "lineStates": {
+      "inactive": "Inactive",
+      "returned": "Returned",
+      "dispatched": "On rent",
+      "pending": "To dispatch"
+    },
+    "detail": {
+      "data": "Rental data",
+      "equipment": "Equipment",
+      "extensions": "Extensions",
+      "history": "Status history",
+      "noEquipment": "The rental has no equipment.",
+      "noEquipmentBody": "Add it with “Add equipment” before scheduling.",
+      "cancelledLines": "Cancelled rental: this is the equipment it had (inactive).",
+      "noShipment": "No shipment (coming with the Shipments module)",
+      "noInvoice": "No invoice (coming with Billing)"
+    },
+    "extensions": {
+      "when": "Date",
+      "previous": "Previous pickup",
+      "next": "New pickup",
+      "days": "Days added",
+      "reason": "Reason",
+      "user": "User",
+      "rates": "New rates",
+      "empty": "No extensions."
+    },
+    "actions": {
+      "edit": "Edit",
+      "addEquipment": "Add equipment",
+      "schedule": "Schedule",
+      "dispatch": "Dispatch",
+      "extend": "Extend",
+      "cancel": "Cancel the rental",
+      "cancelRental": "Cancel rental",
+      "editRate": "Rate",
+      "removeLine": "Remove unit"
+    },
+    "confirm": {
+      "scheduleTitle": "Schedule rental {number}?",
+      "scheduleBody": "The {units} unit(s) are reserved for this rental: the product's available quantity goes down and on hand does not change.",
+      "dispatchTitle": "Dispatch rental {number}?",
+      "dispatchBody": "Each unit moves with a transfer to the EN-RENTA bin of warehouse {warehouse}: it still belongs to the company (on hand), does not count as available and its serial becomes “On rent”. The rental becomes On rent.",
+      "cancelTitle": "Cancel rental {number}?",
+      "cancelBodyDraft": "The rental becomes Cancelled (read only) and its units inactive. Nothing was reserved.",
+      "cancelBodyScheduled": "The rental becomes Cancelled (read only): the reservations are released and the serials are available again.",
+      "comment": "Comment (optional; goes to the history)",
+      "back": "Back",
+      "removeTitle": "Remove unit {serial}?",
+      "removeBody": "The unit becomes inactive in the rental (kept in the audit log) and the serial is free for another rental.",
+      "removeBodyScheduled": "The unit becomes inactive in the rental (kept in the audit log) and its reservation is released: the serial is available again."
+    },
+    "extend": {
+      "title": "Extend rental {number}",
+      "current": "Current pickup: {date} (agreed: {original}).",
+      "newPickupDate": "New pickup date",
+      "newPickupHelp": "Must be later than the current one.",
+      "reason": "Reason",
+      "rateSection": "New rate (optional)",
+      "rateHelp": "Only if it changes: the current rate closes and a new one starts the day after the previous pickup. A rate equal to the current one changes nothing.",
+      "applyTo": "Units with the new rate",
+      "submit": "Extend"
+    },
+    "toast": {
+      "created": "Rental {number} created as Draft.",
+      "saved": "Changes saved.",
+      "schedule": "Rental {number} scheduled: units reserved.",
+      "dispatch": "Rental {number} dispatched: units on rent.",
+      "cancel": "Rental {number} cancelled.",
+      "extended": "Rental {number} extended to {date}.",
+      "rateSaved": "Rate of {serial} saved.",
+      "lineRemoved": "Unit {serial} removed from the rental.",
+      "linesAdded": "{count} unit(s) added."
+    },
+    "errors": {
+      "clientRequired": "Enter the rental's client.",
+      "locationRequired": "Enter the client location where the equipment will be.",
+      "warehouseRequired": "Choose the source warehouse.",
+      "startDateRequired": "Enter the rental's start date.",
+      "pickupDateRequired": "Enter the pickup date.",
+      "pickupBeforeStart": "The pickup date cannot be earlier than the start date.",
+      "contractTooLong": "The contract number allows at most 80 characters.",
+      "notesTooLong": "Notes allow at most 1000 characters.",
+      "negativeDeliveryCost": "The estimated transport cost cannot be negative.",
+      "numberInvalid": "Enter a valid number.",
+      "newPickupRequired": "Enter the new pickup date.",
+      "newPickupNotLater": "The new pickup date must be later than the current one ({date}).",
+      "reasonRequired": "Enter the reason for the extension.",
+      "reasonTooLong": "The reason allows at most 300 characters.",
+      "frequencyRequired": "Enter the billing frequency: DAILY, WEEKLY, MONTHLY or ONE_TIME.",
+      "rateAmountRequired": "Enter the rate amount.",
+      "negativeRate": "The rate cannot be negative.",
+      "notSerial": "Product {sku} is not serial-tracked; only equipment with a serial number is rented.",
+      "notOwn": "Only own equipment is rented; {sku} belongs to a client.",
+      "serialAlreadyPicked": "Serial {serial} is already in this rental.",
+      "serialNotAvailable": "Serial {serial} is not available in {where}.",
+      "tooManyLines": "A rental allows at most 200 units.",
+      "commentTooLong": "The comment allows at most 500 characters.",
+      "noRateLines": "Choose at least one unit for the new rate."
     }
   }
 }

@@ -205,10 +205,10 @@ export function zoneRank(zoneTypeCode: string | null | undefined): number {
   }
 }
 
-/** ¿Se recolecta de este tipo de zona? QUARANTINE y CROSSDOCK nunca. */
+/** ¿Se recolecta de este tipo de zona? QUARANTINE, CROSSDOCK y RENTAL (equipos en renta, Lote 27) nunca: espejo de PickBatchRules.IsPickableZone. */
 export function isPickableZone(zoneTypeCode: string | null | undefined): boolean {
   const z = (zoneTypeCode ?? '').toUpperCase()
-  return z !== 'QUARANTINE' && z !== 'CROSSDOCK'
+  return z !== 'QUARANTINE' && z !== 'CROSSDOCK' && z !== 'RENTAL'
 }
 
 /** Comparación ordinal (como StringComparer.Ordinal), sin reglas del idioma. */

@@ -1012,6 +1012,49 @@ No es núcleo, pero lo comparten todas las pantallas del almacén, de compras, d
   `remapProblemFields(err, rename)` (renombra campos de un `ApiError`, p. ej. `lines[0].countedQty` → `countedQty`),
   `lineErrorsByIndex(err)`, `formatNumber/formatDate/formatDateTime` y `useDebounced` (búsqueda libre que va al API). Pruebas en `lineRules.test.ts`.
 
+- **Convertir a serie** (Lote F17, Rentas F-R1; servidor Lote 26, manual 06 §2.1): botón en la cabecera de `ProductDetailScreen` solo
+  con `inventory.manage` + `inventory.adjust`, WMS_LOTSERIAL y `canConvertToSerial(product)` (sin seguimiento y con existencia).
+  | Pieza | Props / firma | Uso |
+  |---|---|---|
+  | `ConvertToSerialModal` (`ConvertToSerialModal.tsx`) | `open`, `product: ProductDetailDto`, `onClose` | una caja por posición con existencia (`useInventoryBalances` con `includeZero=false`) para capturar tantas series como unidades en mano (una por renglón, se pueden pegar varias líneas o separadas por coma), contador "n de m", repetidas (en cualquier posición, sin distinguir mayúsculas), largas y conteo con el mensaje exacto del servidor; bloqueos (reservado 409, lote/sin posición/fraccionaria 422) antes de capturar; "Revisar y convertir" → confirmación de **neto cero** (motivo "Conversión a serie") → `useConvertToSerial()`; los 400/409/422 del servidor vuelven a la captura tal cual |
+  Puras en `serialConversion.ts`: `canConvertToSerial`, `conversionPlan(sku, balances)` → `{ positions, blockers }`, `capturedSerials`,
+  `conversionIssues(positions, texts)` → `{ byBin, first, total, captured }` (códigos para `warehouse.convertSerial.errors.<code>`),
+  `conversionBody(positions, texts, notes, rowVersion)`, `CONVERSION_LIMITS`. API (`api.ts`): `useConvertToSerial()` →
+  `mutateAsync({ publicId, body })` (deja la ficha en caché e invalida la existencia) e `invalidateStock(qc)` (lo que depende de la
+  existencia, para escrituras de otros módulos que mueven inventario, p. ej. Rentas).
+  ```tsx
+  {canConvert && canConvertToSerial(product) && <button className="btn" onClick={() => setConverting(true)}>{t('warehouse.convertSerial.button')}</button>}
+  <ConvertToSerialModal open={converting} product={detail} onClose={() => setConverting(false)} />
+  ```
+- `isPickableZone` (`collectForm.ts`) excluye también la zona `RENTAL` (espejo de `PickBatchRules.IsPickableZone`, Lote 27).
+
+## Rentas (`src/features/rentals`, Lote F17 — Rentas F-R1)
+Submódulo de Almacén (servidor: manual 11). Rutas `/warehouse/rentals` (lista; `?status=`, `?clientPublicId=`, `?dueWithinDays=`,
+`?overdue=true`, `?search=` se leen una vez; `?rental=<publicId>` —"Revisar" del aviso `RENTAL_DUE`— abre la ficha) y
+`/warehouse/rentals/:publicId` (ficha), ambas con `rental.view` + `RENTAL_EQUIPMENT`; ítem "Rentas" de Almacén justo antes del
+Kárdex. "Vencida" / "por vencer" es un dato calculado del servidor (`daysToPickup`, `isOverdue`), nunca un estatus.
+| Pieza | Props / firma | Uso |
+|---|---|---|
+| `RentalListScreen` / `RentalDetailScreen` | pantallas (default) | lista paginada en el servidor con filtros Estatus, Cliente, "Vencen en (días)", "Solo vencidas" y `QBox` (al API), columnas ordenables, `StatusChip`, `DueChip` y Exportar (`exportRentals`); ficha con acciones según las capacidades del DTO (`canEdit`/`canSchedule`/`canDispatch`/`canExtend`/`canCancel`) y el permiso (`rental.manage`; Extender `rental.extend`), datos, equipos (inactivos atenuados), extensiones e historial (`StatusHistory` de `RENTAL`) |
+| `DueChip` | `rental` (`statusCode`, `daysToPickup`, `isOverdue`) | "Vencida hace N días" (rojo), "Se recoge hoy" / "Vence en N días" (ámbar, ≤ 7), "En N días" (neutro); sin renta abierta "—" |
+| `RentalFormModal` | `open`, `rental: RentalDto \| null` (null = alta en Borrador), `onClose` | encabezado (cliente, localidad PROPIA del cliente, contacto, almacén de origen, fechas, contrato, transporte, notas); en el alta también `EquipmentPicker` y la lista de equipos que van en el mismo POST; en la edición el PATCH solo con lo que cambió (`rentalPatchBody`), cliente fijo, almacén solo sin equipos, fechas solo sin extensiones |
+| `EquipmentPicker` | `warehousePublicId`, `warehouseCode?`, `excluded: ReadonlySet<string>` (claves `serialKey`), `onAdd(items)` (si lanza, conserva lo elegido), `busy?` | selector de equipos por serie: `ProductPicker` (propios con disponible en el almacén; si no es SERIAL, el mensaje exacto del servidor), series DISPONIBLES del almacén en zonas que se rentan (`isPickableZone`), casillas + buscador (Enter con la serie exacta la elige), sin repetir, tarifa opcional común (`RateFields`). No es un `<form>`: va al lado del `<Form>` |
+| `RateFields` | `value: RateDraft`, `onChange`, `error?`, `defaultCurrency?`, `required?`, `disabled?` | frecuencia (Diaria, Semanal, Mensual, Fija; vacía = sin tarifa), monto y moneda (la de la compañía si vacía) |
+| `RentalStatusActionModal` / `RentalExtendModal` / `RentalRateModal` / `AddEquipmentModal` (`RentalDialogs.tsx`) | `kind: 'schedule' \| 'dispatch' \| 'cancel'`, `rental`, `onClose` / `rental`, `onClose` / `rental`, `line`, `onClose` / `rental`, `onClose` | confirmación con comentario (va al historial); extensión (nueva fecha, motivo, tarifa opcional para los equipos elegidos: solo los que cambian); tarifa de un equipo antes del despacho; agregar equipos. Todos muestran el error del servidor tal cual y no se cierran |
+Hooks (`api.ts`): `useRentals(query)`, `exportRentals(query)`, `useRental(publicId)`, `useRentalExtensions(publicId)`,
+`useClientLocations(clientPublicId)` (`/locations?clientId=&includeShared=false`, 403 sin sacar), `useClientContacts(clientPublicId)`,
+`useCreateRental()` y `useRentalAction()` → `mutateAsync({ action: 'patch' | 'addLines' | 'removeLine' | 'setRate' | 'schedule' |
+'dispatch' | 'cancel' | 'extend', publicId, … })`: dejan la ficha en caché e invalidan lista, extensiones, historial, "Necesita tu
+atención" y (las que reservan o mueven series) la existencia. `useFrequencyOptions()` / `useFrequencyLabel()`
+(`useFrequencyOptions.ts`). Puras en `rentalRules.ts`: `rentalFiltersFromUrl`, `rentalListQuery`, `parseDueDays`, `dueState`,
+`dueLabel`, `datesIssue`, `extensionIssues`, `rateIssue`, `rateInput`, `rateChanged`, `rateDraftOf`, `addEquipment`,
+`equipmentLines`, `scannedSerialIssue`, `serialKey`, `lineState`, `activeLines`, `createRentalBody`, `headerValuesOf`,
+`rentalPatchBody`, `extendBody` (códigos para `rentals.errors.<code>`: en español, el mensaje exacto del servidor).
+```tsx
+<EquipmentPicker warehousePublicId={wh} warehouseCode="ALM-01" excluded={new Set(lines.map((l) => serialKey(l.serialNumber)))} onAdd={add} />
+{statusAction && <RentalStatusActionModal kind="dispatch" rental={rental} onClose={() => setStatusAction(null)} />}
+```
+
 ## Pulso del día por paneles (`src/features/analytics`, Lote F8a)
 No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agregue un panel sin tocar la pantalla.
 - El servidor decide qué ve cada quien: `GET /api/v1/analytics/pulse` → `PulseDto { panels, indicators, charts, hasPersonalLayout,
@@ -1039,7 +1082,9 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   panel no se pinta) → `{ total, items (5 más antiguos), groups }`. Cada ítem trae `code`, `tone`, `params` (cadenas), `route` +
   `query` ("Revisar") y `sinceUtc`; cada grupo, su `total`, `route` + `query` ("Ver todos (N)"). Sin pendientes: "Todo en orden".
   El texto de un tipo nuevo de aviso = `analytics.attention.items.<code>.*` en i18n + su rama en `attentionRowText`
-  (`attention.ts`, pura: `attentionHref`, `attentionToneClass`, `formatSigned`); uno desconocido se pinta con su código.
+  (`attention.ts`, pura: `attentionHref`, `attentionToneClass`, `formatSigned`); uno desconocido se pinta con su código. Tipos con
+  texto: `INVENTORY_DISCREPANCY` (Lote 14) y `RENTAL_DUE` (Lote F17: "Renta REN-… vencida / se recoge hoy / vence en N días",
+  cliente · localidad · almacén, Recogido, Equipos y Días vencida; "Revisar" abre `/warehouse/rentals?rental=`).
   Estilos `.inbox`/`.work.tone-*` de la maqueta en `pulse.css` ("Revisar" baja bajo el texto a 480 px).
   ```tsx
   const text = attentionRowText(item, t, lang)        // { title, detail, figures, since, reviewLabel }

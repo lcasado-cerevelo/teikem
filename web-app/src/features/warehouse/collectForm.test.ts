@@ -7,6 +7,7 @@ import { t } from '../../kernel/i18n/i18n'
 import { setLang } from '../../kernel/i18n/i18n'
 import type { components } from '../../kernel/api/schema'
 import {
+  isPickableZone,
   buildCollectBody,
   collectSchema,
   compactPickLines,
@@ -199,5 +200,15 @@ describe('collectSchema', () => {
       'lines.2.serialNumbers': 'La serie s-1 está repetida en la recolección.',
       'lines.3.productPublicId': 'Una recolección solo puede tener productos de un mismo dueño.',
     })
+  })
+})
+
+describe('isPickableZone (espejo de PickBatchRules.IsPickableZone)', () => {
+  it('no se recolecta ni se renta de cuarentena, cruce de muelle ni En renta (Lote 27)', () => {
+    expect(isPickableZone('QUARANTINE')).toBe(false)
+    expect(isPickableZone('crossdock')).toBe(false)
+    expect(isPickableZone('RENTAL')).toBe(false)
+    expect(isPickableZone('RESERVE')).toBe(true)
+    expect(isPickableZone(null)).toBe(true)
   })
 })

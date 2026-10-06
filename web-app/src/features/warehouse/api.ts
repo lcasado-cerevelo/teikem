@@ -491,6 +491,28 @@ export function useUpdateProduct() {
   })
 }
 
+/**
+ * Lote F17 — `POST /api/v1/products/{publicId}/convert-to-serial` ("Convertir a serie", Lote 26: `inventory.manage` +
+ * `inventory.adjust`, WMS_LOTSERIAL). Neto cero en el Kárdex (ajustes con el motivo TRACKING_CONVERSION) y el producto pasa a
+ * SERIAL: deja en caché la ficha devuelta e invalida productos, series, saldos y Kárdex.
+ */
+export function useConvertToSerial() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ publicId, body }: { publicId: string; body: Schemas['ProductSerialConversionRequest'] }) =>
+      unwrap(api.POST('/api/v1/products/{publicId}/convert-to-serial', { params: { path: { publicId } }, body })),
+    onSuccess: (result, { publicId }) => {
+      if (result.product) qc.setQueryData([warehouseKeys.product[0], publicId], result.product)
+      return invalidate(qc, ...STOCK)
+    },
+  })
+}
+
+/** Invalida todo lo que depende de la existencia (saldos, Kárdex, productos, series…): para escrituras de otros módulos que mueven inventario (Rentas). */
+export function invalidateStock(qc: QueryClient) {
+  return invalidate(qc, ...STOCK)
+}
+
 /** `POST /api/v1/products/{publicId}/deactivate|reactivate` (`inventory.manage`). */
 export function useSetProductActive() {
   const qc = useQueryClient()

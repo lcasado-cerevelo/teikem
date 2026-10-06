@@ -1,0 +1,19 @@
+/* Lote F17 (Rentas F-R1) — estilos propios de las pantallas de rentas. Todo envuelve a 360 px (sin scroll horizontal). */
+.ren-h3{font-size:13px;margin:14px 0 8px}
+.ren-headline{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.ren-act{flex-wrap:wrap}
+.ren-confirm{margin:0 0 12px;overflow-wrap:anywhere}
+.ren-notes{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.ren-equipment{margin-top:16px;border-top:1px solid var(--line);padding-top:4px;min-width:0}
+.ren-picker{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:12px;min-width:0}
+.ren-picker .ren-h3{margin-top:2px}
+.ren-serials,.ren-rate{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:10px 0;min-width:0}
+.ren-serials legend,.ren-rate legend{font-size:12px;font-weight:600;padding:0 4px}
+.ren-serials-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin-bottom:6px}
+.ren-count{font-size:12px;color:var(--muted)}
+.ren-serial-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:4px 12px;max-height:260px;overflow-y:auto}
+.ren-serial-list label{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;cursor:pointer;padding:3px 0}
+.ren-serial-list label .mono{overflow-wrap:anywhere;min-width:0}
+.ren-serial-list input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.ren-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.ren-rate-fields{margin:0}

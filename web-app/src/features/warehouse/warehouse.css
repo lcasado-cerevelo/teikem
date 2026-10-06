@@ -426,3 +426,10 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 
 /* Lote F14 — "Códigos de barras" con su selector de columnas (Automático / 2 columnas) pegado al botón; envuelve si no cabe
    (360 px). El selector no usa el shorthand `background` (conserva el chevron del kit a la izquierda). */
+
+/* ===== Lote F17 (Rentas F-R1) — Convertir a serie (ficha del producto, ConvertToSerialModal) ===== */
+.cs-pos textarea{font-family:var(--mono, ui-monospace, monospace);width:100%;resize:vertical}
+.cs-count.ok{color:var(--flow)}
+.cs-errs{margin:4px 0 0;padding-left:18px}
+.cs-confirm p{margin:0 0 10px;overflow-wrap:anywhere}
+.cs-summary{margin:0;padding-left:18px;overflow-wrap:anywhere}

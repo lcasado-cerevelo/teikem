@@ -1,7 +1,7 @@
 // Rutas de la aplicación. Una ruta por pantalla, con carga diferida: `lazy(() => import('../features/<modulo>/<Pantalla>'))`
 // (la pantalla exporta `default`). `perm` y `module` usan los códigos exactos del API; `nav` la pone en el menú lateral.
 // Para agregar una pantalla: añade una entrada a `appRoutes` (internas, dentro del shell) o `publicRoutes` (sin sesión).
-// El menú es el de la maqueta completo (7 grupos, 41 ítems, `nav.order` = posición en la maqueta × 10). Un ítem cuya
+// El menú es el de la maqueta completo (7 grupos, 41 ítems + Rentas del Lote F17, `nav.order` = posición en la maqueta × 10). Un ítem cuya
 // pantalla aún no existe se declara con `pending({...})` (pantalla `Placeholder` con su título y subtítulo): al llegar
 // la pantalla real se cambia `pending({ ... })` por `{ ..., element: lazy(...) }` sin tocar ruta, permiso, módulo ni orden.
 import { lazy, type ComponentType } from 'react'
@@ -276,13 +276,29 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'inventory.view',
     module: ModuleKeys.CrossDock,
   },
+  // Lote F17 (Rentas F-R1): Rentas (submódulo de Almacén, manual 11), justo antes del Kárdex (que sigue siendo el último de
+  // Almacén). Lista con filtros (?status=, ?clientPublicId=, ?dueWithinDays=, ?overdue=true, ?search=) y `?rental=<publicId>`
+  // ("Revisar" del aviso RENTAL_DUE) que abre la ficha; la ficha es /warehouse/rentals/:publicId.
+  {
+    path: '/warehouse/rentals',
+    element: lazy(() => import('../features/rentals/RentalListScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+    nav: { group: 'warehouse', key: 'rentals', order: 110 },
+  },
+  {
+    path: '/warehouse/rentals/:publicId',
+    element: lazy(() => import('../features/rentals/RentalDetailScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+  },
   // Kárdex de movimientos (maqueta ledger()): pestañas Kárdex, Saldos (?tab=balances) y Conciliación (?tab=reconciliation).
   {
     path: '/warehouse/kardex',
     element: lazy(() => import('../features/warehouse/InventoryScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'kardex', order: 110 },
+    nav: { group: 'warehouse', key: 'kardex', order: 120 },
   },
   // Direcciones anteriores (sin ítem de menú): 'Tareas de almacén', 'Citas de muelle' e 'Inventario' ya no son pantallas propias.
   { path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },
