@@ -398,5 +398,14 @@
     "useSuggested": "Use {value}",
     "showKeyboard": "Show keyboard",
     "hideKeyboard": "Hide keyboard"
+  },
+  "picker": {
+    "open": "Search the list",
+    "search": "Search",
+    "titleProduct": "Find product",
+    "titleBin": "Find bin",
+    "titleAny": "Find product or bin",
+    "empty": "No matches on this device. Sync if something is missing.",
+    "more": "Showing the first {max}; type more to narrow down."
   }
 }

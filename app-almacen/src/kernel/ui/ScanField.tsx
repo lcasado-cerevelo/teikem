@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 
+import { useSession } from '../auth/useSession'
 import { useT } from '../i18n/useT'
+import type { PickKind } from '../warehouse/pickerSearch'
+import { PickerModal } from './PickerModal'
 import { useScanner } from '../scanner/useScanner'
 import { useFieldFocus, type MeasurableField } from './keyboardScroll'
 import { placeholderFontSize } from './placeholderFont'
@@ -30,6 +33,8 @@ export interface ScanFieldProps {
   suggestedValue?: string | null
   /** Llena el campo con un valor (sin enviarlo) y deja el cursor listo al final; se confirma con Aceptar o Enter. */
   prefill?: ScanPrefill | null
+  /** Tarea 26: además de escanear, "Buscar en la lista" abre un buscador de productos, posiciones o ambos; elegir una fila equivale a escanear su código. */
+  pick?: PickKind
   /** Identificador del campo para los recorridos Maestro (`tapOn: id:`). */
   testID?: string
 }
@@ -55,9 +60,12 @@ export function ScanField({
   keyboardType = 'default',
   suggestedValue,
   prefill,
+  pick,
   testID,
 }: ScanFieldProps) {
   const { t } = useT()
+  const { device } = useSession()
+  const [picking, setPicking] = useState(false)
   const { width } = useWindowDimensions()
   const [value, setValue] = useState('')
   const [keyboard, setKeyboard] = useState(false)
@@ -191,6 +199,23 @@ export function ScanField({
         >
           <Text style={styles.suggestLabel}>{t('scan.useSuggested', { value: suggestedValue })}</Text>
         </Pressable>
+      ) : null}
+      {pick ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={t('picker.open')} onPress={() => setPicking(true)} style={styles.suggestBtn}>
+          <Text style={styles.suggestLabel}>☰ {t('picker.open')}</Text>
+        </Pressable>
+      ) : null}
+      {pick ? (
+        <PickerModal
+          visible={picking}
+          kind={pick}
+          warehousePublicId={device?.defaultWarehousePublicId ?? null}
+          onClose={() => setPicking(false)}
+          onSelect={(code) => {
+            setPicking(false)
+            submit(code)
+          }}
+        />
       ) : null}
       {error ? <ScanMessage tone="error" message={error} /> : notice ? <ScanMessage tone="ok" message={notice} /> : null}
       {help && !error ? <Text style={styles.help}>{help}</Text> : null}

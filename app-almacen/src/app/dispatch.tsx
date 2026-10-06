@@ -383,6 +383,7 @@ export default function DispatchScreen() {
               autoFocus={false}
               error={binError}
               onSubmit={scanFromBin}
+              pick="bin"
               testID="dispatch-from-bin"
             />
             <BigButton
@@ -399,7 +400,7 @@ export default function DispatchScreen() {
           <>
             {/* Sin despacho abierto todavía (draft es null aquí): nada que perder, "Volver" sale directo a Inicio.
                 2026-10-01 (Luis): abajo, pegado al borde inferior (`marginTop: auto`). */}
-            <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
+            <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} pick="product" />
             <View style={styles.bottom}>
               <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
             </View>
@@ -454,7 +455,7 @@ export default function DispatchScreen() {
   return (
     <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{openPick.clientName || t('dispatch.ownInventory')}</Text>
-      <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} />
+      <ScanField label={t('dispatch.scanProductLabel')} help={t('dispatch.scanProductHelp')} error={scanError} notice={notice} onSubmit={scanProduct} pick="product" />
       <Text style={styles.label}>{t('dispatch.linesTitle')}</Text>
       <LineList
         items={openPick.lineRows.map((l) => ({ id: l.id, title: t('dispatch.lineQty', { qty: l.quantity, sku: l.sku }), subtitle: l.fromBinCode }))}

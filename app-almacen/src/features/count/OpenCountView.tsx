@@ -265,7 +265,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
         ) : null}
         {draft.editingRowId === null && (draft.picking || !draft.choice) ? (
           <View style={styles.pick}>
-            <ScanField key="other-bin" label={t('count.openScanOtherBin')} onSubmit={(c) => void scanOtherBin(c)} autoFocus={false} />
+            <ScanField key="other-bin" label={t('count.openScanOtherBin')} onSubmit={(c) => void scanOtherBin(c)} autoFocus={false} pick="bin" />
             <BigButton label={t('count.otherBin')} variant="secondary" onPress={() => setDraft({ ...draft, other: true })} />
           </View>
         ) : null}
@@ -321,6 +321,7 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
         error={scanError}
         notice={notice}
         onSubmit={(c) => void scanProduct(c)}
+        pick="product"
       />
       {loading ? <ActivityIndicator color={colors.brand} /> : null}
 

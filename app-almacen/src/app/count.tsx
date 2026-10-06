@@ -275,7 +275,7 @@ export default function CountScreen() {
           })}
         </View>
         {entryMode === 'BIN' ? (
-          <ScanField key="bin" label={t('count.scanBinLabel')} error={binError} onSubmit={scanBin} />
+          <ScanField key="bin" label={t('count.scanBinLabel')} error={binError} onSubmit={scanBin} pick="bin" />
         ) : (
           <>
             <ScanField
@@ -284,6 +284,7 @@ export default function CountScreen() {
               help={t('count.scanProductToCountHelp')}
               error={productError}
               onSubmit={(code) => void scanProductToCount(code)}
+              pick="product"
             />
             {productError ? <BigButton label={t('count.switchToBin')} variant="secondary" onPress={() => chooseMode('BIN')} /> : null}
           </>
@@ -412,7 +413,7 @@ export default function CountScreen() {
     <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
-      <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} />
+      <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} pick="product" />
 
       {/* lo contado y los botones van justo debajo del escaneo (pedido del dueño): con muchas líneas esperadas quedaban
           al final de la lista y había que desplazarse para terminar o cancelar */}

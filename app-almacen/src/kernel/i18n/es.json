@@ -398,5 +398,14 @@
     "useSuggested": "Usar {value}",
     "showKeyboard": "Mostrar teclado",
     "hideKeyboard": "Esconder teclado"
+  },
+  "picker": {
+    "open": "Buscar en la lista",
+    "search": "Buscar",
+    "titleProduct": "Buscar producto",
+    "titleBin": "Buscar posición",
+    "titleAny": "Buscar producto o posición",
+    "empty": "No hay coincidencias en este aparato. Sincroniza si falta algo.",
+    "more": "Mostrando las primeras {max}; escribe más para acotar."
   }
 }

@@ -177,7 +177,7 @@ export default function PutawayScreen() {
           />
           <Text style={styles.help}>{t(perBin > 0 ? 'putaway.perBinHelpOn' : 'putaway.perBinHelp')}</Text>
         </View>
-        <ScanField label={t(perBin > 0 ? 'putaway.scanNextLabel' : 'putaway.scanDestLabel')} error={scanError} onSubmit={scanDestination} />
+        <ScanField label={t(perBin > 0 ? 'putaway.scanNextLabel' : 'putaway.scanDestLabel')} error={scanError} onSubmit={scanDestination} pick="bin" />
         {perBin > 0 && distBins.length > 0 ? (
           <View style={styles.field}>
             {distBins.map((b) => (

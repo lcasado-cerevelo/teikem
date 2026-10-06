@@ -5435,3 +5435,13 @@ Sí: toque **Cambiar** en el renglón y escanee la posición de donde sacará. S
 **En Despacho no me sale el plan de salida.**
 Solo sale cuando la cantidad no cabe en una posición y el producto **no** es por lote (con lote la posición la manda el vencimiento). Sin señal y sin
 copia del orden de salida en el aparato tampoco hay sugerencia.
+
+## Buscar en la lista (tarea 26)
+
+**Toco "Buscar en la lista" y me dice `No hay coincidencias en este aparato. Sincroniza si falta algo.`**
+El buscador mira lo que el aparato ya bajó. Si el producto o la posición son nuevos, toque **Sincronizar ahora** en Inicio y busque de nuevo; si no existen en
+el sistema, se crean en la web.
+
+**¿Elegir de la lista es lo mismo que escanear?**
+Sí: entrega el código al campo igual que un escaneo y pasa por las mismas validaciones (por ejemplo, en Despacho con producto por lote la posición sigue
+siendo la del lote que vence primero).

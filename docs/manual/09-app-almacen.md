@@ -102,6 +102,22 @@ Las fechas, horas, números y dinero de la app salen de **Región y formatos** d
 
 ---
 
+### 1.3 Buscar en la lista (tarea 26)
+
+Qué hace: en **todo campo de producto o de posición** (Recibir, Acomodar, Despacho, Conteo —incluida "otra posición"— y Consultar) hay, debajo del campo,
+el botón **☰ Buscar en la lista**. Además de escanear o escribir el código, abre un buscador: se escribe cualquier cosa y la lista se filtra al instante;
+tocar una fila equivale a escanear su código (hace lo mismo que el escaneo, con sus mismas validaciones).
+
+- **Productos:** busca por SKU, nombre o código de barras (solo productos activos).
+- **Posiciones:** busca por código, zona, pasillo, rack, nivel o posición (solo posiciones activas del almacén del aparato).
+- **Consultar** busca en las dos cosas a la vez (productos primero).
+- Busca en lo **ya sincronizado en el aparato**: funciona sin señal. Muestra las primeras 50 coincidencias; escribir más acota.
+
+| Caso | Mensaje exacto | Qué hacer |
+|---|---|---|
+| Nada coincide | `No hay coincidencias en este aparato. Sincroniza si falta algo.` | Revisar lo escrito o sincronizar (el producto o la posición pudo crearse después de la última sincronización) |
+| Hay más de 50 | `Mostrando las primeras 50; escribe más para acotar.` | Escribir más |
+
 ## 2. Registrar el aparato y entrar
 
 ### 2.1 Registrar este aparato

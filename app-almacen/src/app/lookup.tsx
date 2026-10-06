@@ -96,7 +96,7 @@ export default function LookupScreen() {
   return (
     <KeyboardScreen contentContainerStyle={styles.fill}>
       <Text style={styles.title}>{t('lookup.title')}</Text>
-      <ScanField label={t('lookup.scanLabel')} help={t('lookup.scanHelp')} error={error} onSubmit={scan} />
+      <ScanField label={t('lookup.scanLabel')} help={t('lookup.scanHelp')} error={error} onSubmit={scan} pick="any" />
       {busy ? <ActivityIndicator color={colors.brand} /> : null}
       {result ? (
         <>

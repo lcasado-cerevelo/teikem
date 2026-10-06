@@ -28,3 +28,8 @@
 - App: `planExit` reparte la cantidad en el orden de salida del servidor (20 de P-01 + 30 de R-02); "Cambiar" reemplaza una posición escaneando otra con existencia; "Usar este plan" agrega las líneas. Sin cambios de servidor.
 - Pruebas: `dispatchLogic` (5 nuevas) y `dispatchPlanScreen` (2). No probado en el Zebra.
 - Decisiones a revisar: (1) con producto por lote no hay plan (manda el FEFO, como pidió el dueño el 2026-10-05); (2) sin existencia suficiente no se deja usar el plan (hay que bajar la cantidad); (3) el plan se calcula con la foto de existencias del momento (en línea o la copia del aparato).
+
+## Buscar en la lista (tarea 26)
+- App: `ScanField` acepta `pick` (`product` | `bin` | `any`) y muestra "☰ Buscar en la lista" (debajo del campo, para no apretar la fila de 360 dp); abre `PickerModal` con buscador sobre la base local (`pickerSearch.ts`: LIKE sin distinguir mayúsculas, tope de 50). Aplicado a 12 campos: Recibir (producto, posición destino), Acomodar (destino), Despacho (producto x2, posición de salida), Conteo (posición, producto x2, otra posición) y Consultar (`any`). Los campos de documento y de series no lo llevan.
+- Pruebas: `pickerSearch` (4) y `pickerScreen` (2); 474 jest en verde. No probado en el Zebra.
+- Decisiones a revisar: (1) busca solo en lo sincronizado (sin llamada al servidor); (2) la lista de posiciones no filtra por existencia (en Despacho sería útil mostrar solo las que tienen el producto: queda como mejora); (3) límite de 50 filas.

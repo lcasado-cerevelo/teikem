@@ -331,6 +331,7 @@ export default function ReceiveScreen() {
           error={targetError}
           onSubmit={scanTarget}
           suggestedValue={perBin > 0 ? null : suggestion}
+          pick="bin"
         />
         {perBin > 0 && splitCodes.length > 0 ? (
           <View style={styles.field}>
@@ -449,7 +450,7 @@ export default function ReceiveScreen() {
             })
           : t('receive.startBlind')}
       </Text>
-      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} />
+      <ScanField label={t('receive.scanProductLabel')} help={t('receive.scanProductHelp')} error={productError} onSubmit={scanProduct} pick="product" />
       <Text style={styles.label}>{t('receive.linesTitle')}</Text>
       <LineList
         items={openReceipt.lines.map((l, i) => ({
