@@ -41,3 +41,9 @@ Estado: **implementado en el Lote A3 (`docs/mobile/loteA3-decisiones.md`), pendi
 - Pruebas unitarias y de pantalla de la app (jest) para cada punto; `lint`, `tsc` y el APK por el CI.
 - Documento de decisiones del lote y capítulo del manual de la app (`docs/manual/09-app-almacen.md`) con la lista de comprobación para el Zebra.
 - No toca el servidor ni la web.
+
+## Adenda (2026-10-06): el gatillo acepta aunque el lector escriba como teclas, y el campo sube sobre el teclado
+
+- **Gatillo = Aceptar.** Luis probó en Conteo y Consultar: al disparar, el código aparecía en el campo pero no se aceptaba. Eso pasa cuando el lector entrega **teclas** (no el intent del perfil `TeikemAlmacen`). `ScanField` ahora detecta la ráfaga (`kernel/ui/scanBurst.ts`: 3 o más caracteres de golpe, o caracteres a menos de 60 ms entre sí) y, tras 150 ms de silencio, acepta solo, como si se hubiera tocado Aceptar. Escribir a mano (más lento) o con el teclado en pantalla visible no se acepta solo. Si además llega el Enter del lector, se acepta una vez (el filtro de 400 ms de lecturas repetidas). Aplica a todo lo que usa `ScanField` (Conteo, Consultar, Recibir, Acomodar, Despacho). Si el lector sí entrega por intent, no cambia nada.
+- **Registro del aparato.** El teclado en pantalla tapaba el campo del código. `useKeyboardAwareScroll` mide el teclado, agrega ese alto como espacio al final y sube el campo enfocado (servidor o código) para verlo mientras se teclea.
+- Pruebas: `scanBurst.test.ts`, `ScanField.test.tsx` (4 casos), `useKeyboardAwareScroll.test.tsx`; jest completo 433 pasan. **No probado en un Zebra real** (hace falta un APK nuevo: `scripts\construir-apk.ps1`). Si con el APK nuevo el gatillo aún no acepta, mire «Lector:» en Sincronización: `noProfile` indica que DataWedge rechazó el perfil (por ejemplo otro perfil ya asociado a la app).

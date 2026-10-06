@@ -5,6 +5,7 @@ import { useT } from '../i18n/useT'
 import { useScanner } from '../scanner/useScanner'
 import { placeholderFontSize } from './placeholderFont'
 import { ScanMessage } from './ScanMessage'
+import { BURST_QUIET_MS, NO_BURST, stepBurst, type BurstState } from './scanBurst'
 import { colors, fontSize, radius, spacing, touchTarget } from './theme'
 
 /** Valor puesto desde afuera (p. ej. tocar un producto de la lista del conteo). `seq` distinto = volver a ponerlo, aunque el
@@ -61,26 +62,52 @@ export function ScanField({
   const [keyboard, setKeyboard] = useState(false)
   const inputRef = useRef<TextInput>(null)
   const last = useRef<{ code: string; at: number } | null>(null)
+  const valueRef = useRef('')
+  const burst = useRef<BurstState>(NO_BURST)
+  const burstTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearBurstTimer = useCallback(() => {
+    if (burstTimer.current) clearTimeout(burstTimer.current)
+    burstTimer.current = null
+  }, [])
 
   const submit = useCallback(
     (code: string) => {
+      clearBurstTimer()
+      burst.current = NO_BURST
       const trimmed = code.trim()
       if (!trimmed) return
       const now = Date.now()
       if (last.current && last.current.code === trimmed && now - last.current.at < DUPLICATE_WINDOW_MS) return
       last.current = { code: trimmed, at: now }
       onSubmit(trimmed)
+      valueRef.current = ''
       setValue('')
     },
-    [onSubmit],
+    [onSubmit, clearBurstTimer],
   )
 
   useScanner(submit)
+
+  // El lector que escribe como TECLAS (sin intent): el código llega de golpe y se acepta solo al terminar la ráfaga (scanBurst.ts). Con el
+  // teclado en pantalla visible no se hace: ahí escribe una persona.
+  function onChangeText(text: string) {
+    const step = stepBurst(burst.current, valueRef.current, text, Date.now())
+    burst.current = step.state
+    valueRef.current = text
+    setValue(text)
+    clearBurstTimer()
+    if (keyboard || !step.scanning) return
+    burstTimer.current = setTimeout(() => submit(valueRef.current), BURST_QUIET_MS)
+  }
+  useEffect(() => clearBurstTimer, [clearBurstTimer])
 
   // Valor puesto desde afuera: llena el campo, lo enfoca y deja el cursor al final (sin mostrar el teclado).
   const prefillSeq = prefill?.seq
   useEffect(() => {
     if (!prefill) return
+    valueRef.current = prefill.value
+    burst.current = NO_BURST
     setValue(prefill.value)
     const input = inputRef.current
     input?.focus()
@@ -113,7 +140,7 @@ export function ScanField({
         <TextInput
           ref={inputRef}
           value={value}
-          onChangeText={setValue}
+          onChangeText={onChangeText}
           onSubmitEditing={(e) => submit(e.nativeEvent.text)}
           autoFocus={autoFocus}
           showSoftInputOnFocus={keyboard}

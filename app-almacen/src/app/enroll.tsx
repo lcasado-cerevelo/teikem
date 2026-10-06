@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { ApiError, getApiBaseUrl, setApiBaseUrl } from '../kernel/api/client'
@@ -9,6 +9,7 @@ import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
 import { BrandLockup } from '../kernel/ui/BrandLockup'
 import { colors, spacing } from '../kernel/ui/theme'
+import { useKeyboardAwareScroll } from '../kernel/ui/useKeyboardAwareScroll'
 
 /** Pantalla 1 (parte 1): registrar este aparato con el código de un solo uso del administrador (docs/mobile/
  *  app-almacen-plan.md §2). El servidor se configura aquí la primera vez; después se cambia desde Sincronización.
@@ -26,6 +27,7 @@ export default function EnrollScreen() {
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const { scrollRef, keyboardHeight, wrapperProps, inputProps } = useKeyboardAwareScroll()
 
   const serverValid = /^https?:\/\/.+/i.test(serverUrl.trim())
 
@@ -49,14 +51,16 @@ export default function EnrollScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={styles.fill}>
+      {/* el espacio de abajo crece con el teclado en pantalla y el campo enfocado sube: lo que se teclea siempre se ve */}
+      <ScrollView ref={scrollRef} contentContainerStyle={[styles.content, { paddingBottom: spacing.lg + keyboardHeight }]} keyboardShouldPersistTaps="handled">
         <BrandLockup />
         <Text style={styles.title}>{t('enroll.title')}</Text>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...wrapperProps('server')}>
           <Text style={styles.label}>{t('server.urlLabel')}</Text>
           <TextInput
+            {...inputProps('server')}
             value={serverUrl}
             onChangeText={setServerUrl}
             autoCapitalize="none"
@@ -71,9 +75,10 @@ export default function EnrollScreen() {
           <Text style={styles.help}>{t('server.urlHelp')}</Text>
         </View>
 
-        <View style={styles.field}>
+        <View style={styles.field} {...wrapperProps('code')}>
           <Text style={styles.label}>{t('enroll.codeLabel')}</Text>
           <TextInput
+            {...inputProps('code')}
             value={code}
             onChangeText={(v) => setCode(v.toUpperCase())}
             autoCapitalize="characters"
@@ -95,7 +100,7 @@ export default function EnrollScreen() {
           <BigButton label={t('common.back')} variant="secondary" onPress={() => router.replace('/login')} />
         ) : null}
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 

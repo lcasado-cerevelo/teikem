@@ -143,3 +143,69 @@ describe('placeholderFontSize', () => {
     expect(placeholderFontSize(480, text)).toBeGreaterThanOrEqual(placeholderFontSize(360, text))
   })
 })
+
+// Pedido del dueño (2026-10-06): «si le doy al gatillo, que le dé Aceptar». Si el lector escribe como TECLAS (sin intent), el código llega de golpe
+// y el campo lo acepta solo al terminar la ráfaga; escribir a mano (lento, o con el teclado en pantalla) nunca se acepta solo.
+describe('ScanField: lector que escribe como teclas', () => {
+  beforeEach(() => jest.useFakeTimers())
+  afterEach(() => jest.useRealTimers())
+
+  it('un código que aparece de golpe se acepta solo cuando termina la ráfaga', async () => {
+    const onSubmit = jest.fn()
+    const { getByLabelText } = await render(<ScanField label="Producto" onSubmit={onSubmit} />)
+    const input = getByLabelText('Producto')
+    await fireEvent.changeText(input, '7501031311309')
+    expect(onSubmit).not.toHaveBeenCalled()
+    await act(async () => {
+      jest.advanceTimersByTime(200)
+    })
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+    expect(onSubmit).toHaveBeenCalledWith('7501031311309')
+    expect(getByLabelText('Producto').props.value).toBe('')
+  })
+
+  it('si además llega el Enter del lector, se acepta una sola vez', async () => {
+    const onSubmit = jest.fn()
+    const { getByLabelText } = await render(<ScanField label="Producto" onSubmit={onSubmit} />)
+    const input = getByLabelText('Producto')
+    await fireEvent.changeText(input, 'SKU-123')
+    await fireEvent(input, 'submitEditing', { nativeEvent: { text: 'SKU-123' } })
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    expect(onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('alguien escribiendo a mano (un carácter cada vez, con pausas) no se acepta solo', async () => {
+    const onSubmit = jest.fn()
+    const { getByLabelText } = await render(<ScanField label="Producto" onSubmit={onSubmit} />)
+    const input = getByLabelText('Producto')
+    let text = ''
+    for (const ch of '12345') {
+      text += ch
+      await fireEvent.changeText(input, text)
+      await act(async () => {
+        jest.advanceTimersByTime(120) // más lento que una ráfaga del lector, pero antes del silencio de aceptar
+      })
+    }
+    await act(async () => {
+      jest.advanceTimersByTime(1000)
+    })
+    expect(onSubmit).not.toHaveBeenCalled()
+    expect(getByLabelText('Producto').props.value).toBe('12345')
+  })
+
+  it('con el teclado en pantalla visible tampoco se acepta solo', async () => {
+    const onSubmit = jest.fn()
+    const { getByLabelText } = await render(<ScanField label="Producto" onSubmit={onSubmit} />)
+    await fireEvent.press(getByLabelText('Mostrar teclado'))
+    await act(async () => {
+      jest.advanceTimersByTime(100)
+    })
+    await fireEvent.changeText(getByLabelText('Producto'), 'ABCDEFG')
+    await act(async () => {
+      jest.advanceTimersByTime(1000)
+    })
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+})
