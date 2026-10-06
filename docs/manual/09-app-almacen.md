@@ -206,6 +206,10 @@ Quién puede: `inventory.view` (para el aparato en general); recibir contra una 
 módulo **PURCHASING** y `purchasing.receive`, revisado por el servidor al confirmar (no antes).
 
 Cómo se usa:
+0. **Modo de este recibo** (arriba de la pantalla): dos botones, "Con acomodo" y "Directo a posición". Viene marcado el modo del
+   almacén del aparato; si se toca el otro, solo ese recibo se abre en ese modo (el del almacén no cambia). Se elige **antes** de escanear
+   el documento o tocar "Recibo ciego"; ya abierto el recibo no se cambia desde la app (se cambia en la web, encabezado del recibo).
+   Pasar a "Con acomodo" exige que el almacén tenga posición de recepción (si no, el servidor responde 422 al enviar).
 1. Se escanea la orden de compra o el aviso de llegada (busca en lo ya sincronizado localmente), o se toca "Recibo
    ciego" para recibir sin documento.
 2. Se escanea cada producto (por código de barras o SKU, de lo ya sincronizado); según cómo se rastree

@@ -69,6 +69,11 @@
   },
   "receive": {
     "title": "Recibir",
+    "modeLabel": "Modo de este recibo",
+    "modePutaway": "Con acomodo",
+    "modeDirect": "Directo a posición",
+    "modePutawayHelp": "Entra a la zona de recepción y se acomoda después con tareas.",
+    "modeDirectHelp": "Cada línea lleva su posición y entra directo.",
     "startBlind": "Recibo ciego",
     "startBlindHelp": "Sin orden de compra ni aviso: se recibe libre.",
     "scanDocLabel": "Escanea la orden o el aviso",

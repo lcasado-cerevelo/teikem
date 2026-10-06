@@ -69,6 +69,11 @@
   },
   "receive": {
     "title": "Receive",
+    "modeLabel": "This receipt's mode",
+    "modePutaway": "With putaway",
+    "modeDirect": "Direct to bin",
+    "modePutawayHelp": "Goes to the receiving area and is put away later with tasks.",
+    "modeDirectHelp": "Each line gets its bin and goes in directly.",
     "startBlind": "Blind receipt",
     "startBlindHelp": "No purchase order or ASN: receive freely.",
     "scanDocLabel": "Scan the order or ASN",

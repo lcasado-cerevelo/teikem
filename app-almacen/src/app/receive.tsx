@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
@@ -39,6 +39,7 @@ import {
   linesMissingTarget,
   newLineDraft,
   parseReceivingMode,
+  type ReceivingMode,
   removeSerial,
   requiresLot,
   requiresSerials,
@@ -57,6 +58,11 @@ export default function ReceiveScreen() {
   const { device } = useSession()
   const warehousePublicId = device?.defaultWarehousePublicId ?? null
   const deviceMode = parseReceivingMode(device?.defaultWarehouseReceivingMode)
+  // Modo de este recibo: por defecto el del almacén; se puede cambiar antes de abrirlo (solo vale para ese recibo).
+  const [modeChoice, setModeChoice] = useState<ReceivingMode | null>(null)
+  // Sin elección y sin modo conocido del almacén se manda null, como antes (el servidor usa el del almacén).
+  const sentMode: ReceivingMode | null = modeChoice ?? deviceMode
+  const startMode: ReceivingMode = sentMode ?? 'PUTAWAY'
   const [tick, setTick] = useState(0)
   const [docError, setDocError] = useState<string | null>(null)
   const [productError, setProductError] = useState<string | null>(null)
@@ -95,7 +101,7 @@ export default function ReceiveScreen() {
   }
 
   function startBlind() {
-    startLocalReceipt(warehousePublicId!, null, deviceMode)
+    startLocalReceipt(warehousePublicId!, null, sentMode)
     setDocError(null)
     refresh()
   }
@@ -107,7 +113,7 @@ export default function ReceiveScreen() {
       vibrateError()
       return
     }
-    startLocalReceipt(warehousePublicId!, doc, deviceMode)
+    startLocalReceipt(warehousePublicId!, doc, sentMode)
     setDocError(null)
     vibrateOk()
     refresh()
@@ -218,6 +224,22 @@ export default function ReceiveScreen() {
     return (
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{t('receive.title')}</Text>
+        <Text style={styles.label}>{t('receive.modeLabel')}</Text>
+        <View style={styles.row}>
+          {(['PUTAWAY', 'DIRECT'] as const).map((m) => (
+            <Pressable
+              key={m}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: startMode === m }}
+              testID={`receive-mode-${m}`}
+              onPress={() => setModeChoice(m)}
+              style={[styles.modeBtn, startMode === m && styles.modeBtnOn]}
+            >
+              <Text style={styles.modeText}>{t(m === 'DIRECT' ? 'receive.modeDirect' : 'receive.modePutaway')}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.help}>{t(startMode === 'DIRECT' ? 'receive.modeDirectHelp' : 'receive.modePutawayHelp')}</Text>
         <ScanField label={t('receive.scanDocLabel')} help={t('receive.scanDocHelp')} error={docError} onSubmit={scanDoc} />
         <BigButton label={t('receive.startBlind')} variant="secondary" onPress={startBlind} />
         <Text style={styles.help}>{t('receive.startBlindHelp')}</Text>
@@ -371,6 +393,19 @@ const styles = StyleSheet.create({
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
   error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
+  modeBtn: {
+    flex: 1,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.panelAlt,
+  },
+  modeBtnOn: { borderColor: colors.brand },
+  modeText: { color: colors.text, fontSize: fontSize.label, fontWeight: '600', textAlign: 'center' },
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },
   row: { flexDirection: 'row', gap: spacing.md },
