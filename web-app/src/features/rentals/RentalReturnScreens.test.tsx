@@ -285,8 +285,8 @@ describe('Devoluciones: lista y ficha', () => {
     await user.click(screen.getByRole('button', { name: 'Quitar este filtro' }))
     await waitFor(() => expect(gets('/api/v1/rental-returns').at(-1)!.url.searchParams.get('rentalPublicId')).toBeNull())
     // pestañas del submódulo
-    expect(screen.getByRole('link', { name: 'Devoluciones' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Proceso de equipos' })).toHaveAttribute('href', '/warehouse/rental-processes')
+    expect(screen.getByRole('tab', { name: 'Devoluciones' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tab', { name: 'Proceso de equipos' })).toHaveAttribute('aria-selected', 'false')
   })
 
   it('ficha: equipos con condición, destino y proceso (enlace a la cola con la serie) y enlace a la renta de origen', async () => {
@@ -397,8 +397,8 @@ describe('Resumen de la lista y reportes de rentas', () => {
 
   it('reportes sin analytics.view: "Sin permiso" y sin pestaña Reportes', async () => {
     wrap('/warehouse/rental-reports', ['rental.view'])
-    expect(await screen.findByRole('link', { name: 'Proceso de equipos' })).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Reportes' })).toBeNull()
+    expect(await screen.findByRole('tab', { name: 'Proceso de equipos' })).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Reportes' })).toBeNull()
     expect(gets('/api/v1/analytics/reports')).toHaveLength(0)
   })
 })

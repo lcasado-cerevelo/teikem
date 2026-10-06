@@ -300,14 +300,6 @@
     "rentals": {
       "title": "Rentas",
       "subtitle": "equipos con serie rentados a la localidad del cliente"
-    },
-    "rentalReturns": {
-      "title": "Devoluciones de renta",
-      "subtitle": "equipos que vuelven de una renta, con motivo y condición"
-    },
-    "rentalProcesses": {
-      "title": "Proceso de equipos",
-      "subtitle": "inspección, limpieza y pruebas de los equipos devueltos"
     }
   },
   "status": {

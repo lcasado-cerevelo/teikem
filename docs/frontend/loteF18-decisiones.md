@@ -104,3 +104,8 @@ horizontal en cada paso. Capturas `f18-*` (las de otros lotes que regeneró la s
 - El CI de GitHub Actions (no se hizo push). Mientras `lote15.spec.ts` paso 9 (móvil) siga esperando la franja "Almacén hoy" fija (diseño
   cambiado a propósito en `bdc892e`/`3b50351`, prueba sin actualizar), el CI no correrá los proyectos que dependen de `movil` (F17, F18…).
   No se tocó esa prueba: decisión 87 del informe.
+
+
+## Ajuste del 2026-10-06 (decisión del dueño): un solo ítem de menú
+
+En el menú lateral de Almacén queda **un solo ítem, "Rentas"**. "Devoluciones de renta" y "Proceso de equipos" ya no tienen ítem propio: son **pestañas** dentro de Rentas, junto con "Reportes" (el `Tabs` del kit, igual que Productos/Categorías). Las direcciones no cambian (`/warehouse/rental-returns`, `/warehouse/rental-processes`, `/warehouse/rental-reports`), y en esas pantallas el ítem "Rentas" del menú queda marcado. El Kárdex pasa a order 120.

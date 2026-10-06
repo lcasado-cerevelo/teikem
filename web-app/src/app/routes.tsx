@@ -284,7 +284,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/rentals/RentalListScreen')),
     perm: 'rental.view',
     module: ModuleKeys.RentalEquipment,
-    nav: { group: 'warehouse', key: 'rentals', order: 110 },
+    nav: { group: 'warehouse', key: 'rentals', order: 110, alsoActive: ['/warehouse/rental-returns', '/warehouse/rental-processes', '/warehouse/rental-reports'] },
   },
   {
     path: '/warehouse/rentals/:publicId',
@@ -294,14 +294,14 @@ export const appRoutes: readonly AppRoute[] = [
   },
   // Lote F18 (Rentas F-R2): Devoluciones de renta (lista con ?reason=, ?clientPublicId=, ?rentalPublicId=, ?from=, ?to=, ?early=,
   // ?search=; ficha /warehouse/rental-returns/:publicId) y Proceso de equipos (cola con ?status=, ?open=true|false|all,
-  // ?warehousePublicId=, ?search=), justo después de Rentas; Reportes de rentas (/warehouse/rental-reports, sin ítem: se llega por
-  // las pestañas del submódulo y "Reportes de rentas"; además pide analytics.view + ANALYTICS dentro de la pantalla).
+  // ?warehousePublicId=, ?search=) y Reportes de rentas (/warehouse/rental-reports): SIN ítem propio en el menú (decisión del dueño: un solo
+  // ítem "Rentas"); son pestañas de Rentas (`RentalTabs`) y dejan marcado el ítem Rentas (`nav.alsoActive`). Reportes pide además
+  // analytics.view + ANALYTICS dentro de la pantalla.
   {
     path: '/warehouse/rental-returns',
     element: lazy(() => import('../features/rentals/RentalReturnListScreen')),
     perm: 'rental.view',
     module: ModuleKeys.RentalEquipment,
-    nav: { group: 'warehouse', key: 'rentalReturns', order: 120 },
   },
   {
     path: '/warehouse/rental-returns/:publicId',
@@ -314,7 +314,6 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/rentals/RentalProcessListScreen')),
     perm: 'rental.view',
     module: ModuleKeys.RentalEquipment,
-    nav: { group: 'warehouse', key: 'rentalProcesses', order: 130 },
   },
   {
     path: '/warehouse/rental-reports',
@@ -328,7 +327,7 @@ export const appRoutes: readonly AppRoute[] = [
     element: lazy(() => import('../features/warehouse/InventoryScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'kardex', order: 140 },
+    nav: { group: 'warehouse', key: 'kardex', order: 120 },
   },
   // Direcciones anteriores (sin ítem de menú): 'Tareas de almacén', 'Citas de muelle' e 'Inventario' ya no son pantallas propias.
   { path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },

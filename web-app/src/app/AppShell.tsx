@@ -22,7 +22,7 @@ import { setTheme, useTheme, type Theme } from '../kernel/ui/theme'
 import { IconChev, IconCollapse, IconLogout, IconMenu, IconMoon, IconSearch, IconSun } from './icons'
 import { LangSelect } from './LangSelect'
 import { switchableMemberships } from './memberships'
-import { navSubtitleKey, navTitleKey, visibleNav, type NavGroup, type NavGroupKey } from './navigation'
+import { isNavActive, navSubtitleKey, navTitleKey, visibleNav, type NavGroup, type NavGroupKey } from './navigation'
 import { appRoutes, type AppRoute } from './routes'
 import { useSession } from './session'
 import { Splash } from './Splash'
@@ -110,7 +110,7 @@ export function AppShell() {
   const groups = useVisibleNav()
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [drawer, setDrawer] = useState(false)
-  const activeGroup = groups.find((g) => g.items.some((r) => r.path === location.pathname))?.key
+  const activeGroup = groups.find((g) => g.items.some((r) => isNavActive(r, location.pathname)))?.key
   const [openGroup, setOpenGroup] = useState<NavGroupKey | undefined>(activeGroup ?? groups[0]?.key)
   const [switchError, setSwitchError] = useState<string | null>(null)
   const paletteOpen = useCommandPaletteOpen()
@@ -203,7 +203,7 @@ export function AppShell() {
                 </button>
                 <div className="grp-items">
                   {g.items.map((r) => (
-                    <NavLink key={r.path} to={r.path} end className={({ isActive }) => (isActive ? 'navit on' : 'navit')}>
+                    <NavLink key={r.path} to={r.path} end className={({ isActive }) => (isActive || isNavActive(r, location.pathname) ? 'navit on' : 'navit')}>
                       <span className="di" />
                       <span>{t(navTitleKey(r.nav?.key ?? ''))}</span>
                     </NavLink>

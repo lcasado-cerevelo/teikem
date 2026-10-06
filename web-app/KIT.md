@@ -1060,7 +1060,7 @@ Rutas (todas `rental.view` + `RENTAL_EQUIPMENT`): `/warehouse/rental-returns` (�
 `?clientPublicId=`, `?rentalPublicId=`, `?from=`, `?to=`, `?early=true|false`, `?search=` se leen una vez), `/warehouse/rental-returns/:publicId`
 (ficha), `/warehouse/rental-processes` (ítem "Proceso de equipos", order 130; `?status=`, `?open=true|false|all` —abiertos por defecto—,
 `?warehousePublicId=`, `?search=`) y `/warehouse/rental-reports` (sin ítem; dentro pide `analytics.view` + ANALYTICS con `ModuleGate`;
-`?view=<id>` abre una vista). El Kárdex pasa a order 140 y sigue siendo el último de Almacén.
+`?view=<id>` abre una vista). El Kárdex sigue siendo el último de Almacén (order 120 desde el 2026-10-06: Devoluciones y Proceso de equipos ya no tienen ítem propio en el menú; son pestañas de Rentas, `RentalTabs` con el `Tabs` del kit, y `nav.alsoActive` + `isNavActive` dejan marcado el ítem Rentas en esas pantallas).
 | Pieza | Props / firma | Uso |
 |---|---|---|
 | `RentalTabs` | `current: 'rentals' \| 'returns' \| 'processes' \| 'reports'` | franja `.seg` de enlaces (no `?tab=`) entre las cuatro pantallas del submódulo, `aria-current="page"`; "Reportes" solo con `analytics.view` + ANALYTICS |

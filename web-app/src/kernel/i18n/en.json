@@ -300,14 +300,6 @@
     "rentals": {
       "title": "Rentals",
       "subtitle": "serial-tracked equipment rented to a client location"
-    },
-    "rentalReturns": {
-      "title": "Rental returns",
-      "subtitle": "equipment coming back from a rental, with reason and condition"
-    },
-    "rentalProcesses": {
-      "title": "Equipment processing",
-      "subtitle": "inspection, cleaning and testing of returned equipment"
     }
   },
   "status": {

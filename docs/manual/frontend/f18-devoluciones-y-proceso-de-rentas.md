@@ -148,3 +148,6 @@ proceso."*. Solo de la web:
   piezas.
 - **No aparece "Dar de baja"**: falta `inventory.adjust` (la nota bajo los filtros lo dice) o el proceso ya terminó.
 - **No veo la pestaña Reportes**: hace falta `analytics.view` y el módulo Análisis encendido.
+
+
+> **Menú (ajuste del 2026-10-06):** en Almacén hay un solo ítem, **Rentas**. Dentro, las pestañas **Rentas · Devoluciones · Proceso de equipos · Reportes** (Reportes solo con `analytics.view` y el módulo Análisis). Donde este capítulo dice "el ítem de menú Devoluciones de renta / Proceso de equipos", léase "la pestaña".

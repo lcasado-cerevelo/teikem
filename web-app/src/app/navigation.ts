@@ -29,6 +29,8 @@ export interface NavEntry {
   key: string
   /** Orden dentro del grupo (menor primero): posición en la maqueta × 10. */
   order?: number
+  /** Prefijos de dirección que también dejan este ítem marcado (pantallas hermanas del mismo submódulo, p. ej. las pestañas de Rentas). */
+  alsoActive?: readonly string[]
 }
 
 /** Clave i18n del título del ítem (menú, paleta, pantalla pendiente). */
@@ -39,6 +41,12 @@ export function navTitleKey(key: string): string {
 /** Clave i18n del subtítulo del ítem (paleta, pantalla pendiente). */
 export function navSubtitleKey(key: string): string {
   return `nav.${key}.subtitle`
+}
+
+/** true si la dirección actual pertenece al ítem del menú: la suya, sus fichas (`<ruta>/...`) o las de `nav.alsoActive`. */
+export function isNavActive(route: { path: string; nav?: NavEntry }, pathname: string): boolean {
+  if (pathname === route.path || pathname.startsWith(`${route.path}/`)) return true
+  return (route.nav?.alsoActive ?? []).some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
 /** Lo que el menú necesita de una ruta (AppRoute lo cumple). */
