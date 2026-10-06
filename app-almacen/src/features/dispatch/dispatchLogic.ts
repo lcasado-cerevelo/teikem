@@ -176,3 +176,52 @@ export function checkLotBin(expected: StockOption | null, scannedBinCode: string
 export function pickedQty(lines: readonly PickLine[], productPublicId: string): number {
   return lines.filter((l) => l.productPublicId === productPublicId).reduce((sum, l) => sum + l.quantity, 0)
 }
+
+// ------------------------------------------------------------------ plan de salida con varias posiciones (tarea 24d)
+
+/** Una parte del plan: cuánto sacar de una posición (y lote). */
+export interface PlanRow {
+  binCode: string
+  lotNumber: string | null
+  expiryDate: string | null
+  qty: number
+}
+
+/**
+ * Reparte la cantidad a despachar siguiendo el orden de salida del servidor, descontando lo que este despacho ya sacó del producto
+ * (`alreadyPicked`): 50 con 20 en A-01 y 40 en B-03 → 20 de A-01 y 30 de B-03. `short` = lo que no alcanza (0 si hay suficiente).
+ */
+export function planExit(options: readonly StockOption[], qty: number, alreadyPicked: number): { rows: PlanRow[]; short: number } {
+  const rows: PlanRow[] = []
+  let left = Math.max(0, qty)
+  let skip = Math.max(0, alreadyPicked)
+  for (const o of inExitOrder(options)) {
+    if (left <= 0) break
+    let avail = o.available
+    if (skip > 0) {
+      const used = Math.min(skip, avail)
+      skip -= used
+      avail -= used
+    }
+    if (avail <= 0) continue
+    const take = Math.min(avail, left)
+    rows.push({ binCode: o.binCode, lotNumber: o.lotNumber, expiryDate: o.expiryDate, qty: take })
+    left = Math.round((left - take) * 1000) / 1000
+  }
+  return { rows, short: left }
+}
+
+export type ReplaceBinResult = { ok: true; rows: PlanRow[] } | { ok: false; reason: 'noStock'; available: number }
+
+/** Cambia la posición de una parte del plan por otra escaneada: debe tener existencia disponible del producto para lo que ya
+ *  se sacará de ella en el plan (las demás partes que usan esa posición cuentan). Sin existencia suficiente → rechazo con lo que hay. */
+export function replacePlanBin(rows: readonly PlanRow[], index: number, binCode: string, options: readonly StockOption[]): ReplaceBinResult {
+  const wanted = binCode.trim().toUpperCase()
+  const here = options.filter((o) => o.binCode.trim().toUpperCase() === wanted && o.available > 0)
+  const available = here.reduce((sum, o) => sum + o.available, 0)
+  const usedElsewhere = rows.reduce((sum, r, i) => (i !== index && r.binCode.trim().toUpperCase() === wanted ? sum + r.qty : sum), 0)
+  if (here.length === 0 || available - usedElsewhere < rows[index].qty) return { ok: false, reason: 'noStock', available: Math.max(0, available - usedElsewhere) }
+  const first = here.sort((a, b) => a.rank - b.rank)[0]
+  const next = rows.map((r, i) => (i === index ? { ...r, binCode: first.binCode, lotNumber: first.lotNumber, expiryDate: first.expiryDate } : r))
+  return { ok: true, rows: next }
+}

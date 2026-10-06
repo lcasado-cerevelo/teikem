@@ -22,6 +22,9 @@ import {
   checkLotBin,
   nextStockOption,
   pickedQty,
+  planExit,
+  type PlanRow,
+  replacePlanBin,
   pickQtyState,
   type StockOption,
   type ClientChoice,
@@ -70,6 +73,9 @@ export default function DispatchScreen() {
   const qtyRef = useRef<TextInput>(null)
   const f = useFormat()
   const [hint, setHint] = useState<StockHint | null>(null)
+  // Plan de salida con varias posiciones (tarea 24d): cambios del usuario por renglón y el renglón que espera una posición nueva.
+  const [planOverride, setPlanOverride] = useState<Record<number, PlanRow>>({})
+  const [editRow, setEditRow] = useState<number | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenPick() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,6 +87,14 @@ export default function DispatchScreen() {
     draft && hint && hint.productPublicId === draft.productPublicId && hint.options
       ? nextStockOption(hint.options, pickedQty(openPick?.lineRows ?? [], draft.productPublicId))
       : null
+  // El plan: la cantidad escrita repartida en el orden de salida (solo si hace falta más de una posición y el producto no es por lote:
+  // con lote la posición la manda el FEFO). Los cambios del usuario se superponen renglón por renglón.
+  const typedQty = draft && pickQtyState(draft.qtyText) === 'ok' ? Number(draft.qtyText.trim().replace(',', '.')) : 0
+  const plan =
+    draft && hint && !hint.lot && hint.productPublicId === draft.productPublicId && hint.options && typedQty > 0
+      ? planExit(hint.options, typedQty, pickedQty(openPick?.lineRows ?? [], draft.productPublicId))
+      : null
+  const planRows: PlanRow[] | null = plan && plan.rows.length > 1 ? plan.rows.map((r, i) => planOverride[i] ?? r) : null
   /** "lote L-3, vence 12/31/2026, disponible 40" (solo lo que existe). */
   function stockDetail(o: StockOption): string {
     return [
@@ -136,6 +150,8 @@ export default function DispatchScreen() {
     addLocalPickLine(openPick.id, line)
     setDraft(null)
     setHint(null)
+    setPlanOverride({})
+    setEditRow(null)
     setBinError(null)
     setNotice(t('dispatch.lineAdded', { qty: line.quantity, sku: line.sku, bin: line.fromBinCode }))
     vibrateOk()
@@ -147,6 +163,20 @@ export default function DispatchScreen() {
    *  escribirla y volver a escanear. La posición no se guarda: no queda una línea a medias. */
   function scanFromBin(code: string) {
     if (!draft) return
+    // Un renglón del plan espera su posición nueva: la escaneada la reemplaza si tiene existencia de este producto.
+    if (editRow !== null && planRows && hint?.options) {
+      const result = replacePlanBin(planRows, editRow, code, hint.options)
+      if (!result.ok) {
+        setBinError(t('dispatch.planNoStock', { bin: code.trim(), qty: f.qty(planRows[editRow].qty), have: f.qty(result.available) }))
+        vibrateError()
+        return
+      }
+      setPlanOverride((o) => ({ ...o, [editRow]: result.rows[editRow] }))
+      setEditRow(null)
+      setBinError(null)
+      vibrateOk()
+      return
+    }
     // Producto con lote: la posición es la del próximo lote en salir (FEFO), no se escoge (pedido del dueño 2026-10-05)
     if (hint?.lot && suggestion && pickQtyState(draft.qtyText) === 'ok') {
       const check = checkLotBin(suggestion, code, Number(draft.qtyText.trim().replace(',', '.')))
@@ -169,6 +199,22 @@ export default function DispatchScreen() {
     setBinError(t(outcome.kind === 'needQty' ? 'dispatch.qtyFirst' : 'dispatch.qtyInvalid'))
     vibrateError()
     qtyRef.current?.focus()
+  }
+
+  /** Usa el plan: agrega una línea por posición, de una vez. */
+  function usePlan() {
+    if (!draft || !openPick || !planRows || (plan?.short ?? 0) > 0) return
+    for (const r of planRows) {
+      addLocalPickLine(openPick.id, { productPublicId: draft.productPublicId, sku: draft.sku, productName: draft.productName, quantity: r.qty, fromBinCode: r.binCode })
+    }
+    setDraft(null)
+    setHint(null)
+    setPlanOverride({})
+    setEditRow(null)
+    setBinError(null)
+    setNotice(t('dispatch.planAdded', { sku: draft.sku, count: planRows.length }))
+    vibrateOk()
+    refresh()
   }
 
   function cancelDispatch() {
@@ -307,6 +353,28 @@ export default function DispatchScreen() {
               <Text style={styles.help}>{t('dispatch.stockOffline')}</Text>
             ) : null}
             {suggestion && hint?.source === 'device' ? <Text style={styles.help}>{t('dispatch.stockFromDevice')}</Text> : null}
+            {planRows ? (
+              <View style={styles.suggest} testID="dispatch-plan">
+                <Text style={styles.suggestTitle}>{t('dispatch.planTitle')}</Text>
+                {planRows.map((r, i) => (
+                  <View key={`${r.binCode}-${i}`} style={styles.planRow}>
+                    <Text style={styles.label}>{t('dispatch.planLine', { qty: f.qty(r.qty), bin: r.binCode })}</Text>
+                    <BigButton
+                      label={t(editRow === i ? 'dispatch.planScanNow' : 'dispatch.planChange')}
+                      variant="secondary"
+                      fullWidth={false}
+                      onPress={() => {
+                        setBinError(null)
+                        setEditRow(editRow === i ? null : i)
+                      }}
+                    />
+                  </View>
+                ))}
+                {editRow !== null ? <Text style={styles.help}>{t('dispatch.planChangeHelp', { qty: f.qty(planRows[editRow].qty) })}</Text> : null}
+                {(plan?.short ?? 0) > 0 ? <Text style={styles.error}>{t('dispatch.planShort', { short: f.qty(plan?.short ?? 0) })}</Text> : null}
+                <BigButton label={t('dispatch.planUse')} onPress={usePlan} disabled={(plan?.short ?? 0) > 0} testID="dispatch-plan-use" />
+              </View>
+            ) : null}
             {/* sin botón "Agregar": la lectura de la posición (o Aceptar del campo) es la que agrega la línea */}
             <ScanField
               label={t('dispatch.fromBinLabel')}
@@ -419,6 +487,7 @@ const styles = StyleSheet.create({
   // la posición sugerida (o la obligatoria, con lote): grande y a la vista, encima del campo de la posición
   suggest: { gap: 2, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
   suggestTitle: { color: colors.text, fontSize: fontSize.label, fontWeight: '700' },
+  planRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   input: {
     minHeight: 56,
     borderWidth: 2,

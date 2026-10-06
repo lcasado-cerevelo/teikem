@@ -5427,3 +5427,11 @@ para descartarlos de este recibo; las 2 líneas ya agregadas se quedan).
 
 **Repartir en un recibo con aviso me muestra el conflicto de posición.**
 Con aviso u orden de compra cada línea entra a una sola posición (`Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.`). Para repartir un producto en varias posiciones use un recibo ciego o de devolución.
+
+**En Despacho pedí 50 y me sale "20 de P-01 y 30 de R-02". ¿Puedo cambiar de dónde saco?**
+Sí: toque **Cambiar** en el renglón y escanee la posición de donde sacará. Se acepta si tiene existencia de ese producto; si no, dice
+`{bin} no tiene {qty} disponibles de este producto (hay {have}). Escanea otra posición.`
+
+**En Despacho no me sale el plan de salida.**
+Solo sale cuando la cantidad no cabe en una posición y el producto **no** es por lote (con lote la posición la manda el vencimiento). Sin señal y sin
+copia del orden de salida en el aparato tampoco hay sugerencia.

@@ -23,3 +23,8 @@
 - App: en el paso de posición destino, "Cantidad por posición (opcional)"; cada escaneo suma una posición y "Confirmar reparto" agrega una línea por posición; los sueltos quedan en la captura para una posición aparte. Sin cambios de servidor (cada línea ya lleva su posición).
 - Pruebas: `receiveSplitScreen` (461 jest en verde). No probado en el Zebra.
 - Decisiones a revisar: (1) en recibos con aviso/OC el reparto choca con la regla de "una posición por línea" (H11) y se avisa; (2) productos con serie no se reparten.
+
+## Despacho con plan de salida (tarea 24d)
+- App: `planExit` reparte la cantidad en el orden de salida del servidor (20 de P-01 + 30 de R-02); "Cambiar" reemplaza una posición escaneando otra con existencia; "Usar este plan" agrega las líneas. Sin cambios de servidor.
+- Pruebas: `dispatchLogic` (5 nuevas) y `dispatchPlanScreen` (2). No probado en el Zebra.
+- Decisiones a revisar: (1) con producto por lote no hay plan (manda el FEFO, como pidió el dueño el 2026-10-05); (2) sin existencia suficiente no se deja usar el plan (hay que bajar la cantidad); (3) el plan se calcula con la foto de existencias del momento (en línea o la copia del aparato).

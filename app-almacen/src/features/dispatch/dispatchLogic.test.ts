@@ -1,5 +1,5 @@
 import { checkLotBin, inExitOrder, nextStockOption, pickedQty, binScanOutcome, buildCollectAndPackBody, buildPickLine, newPickLineDraft, pickQtyState, sameOwner, uniqueBinCodes } from './dispatchLogic'
-import type { StockOption } from './dispatchLogic'
+import { planExit, replacePlanBin, type PlanRow, type StockOption } from './dispatchLogic'
 
 const PRODUCT = { publicId: 'p1', sku: 'SKU-1', name: 'Producto 1' }
 
@@ -138,5 +138,47 @@ describe('posición sugerida (orden de salida del servidor)', () => {
     ]
     expect(pickedQty(lines, 'p1')).toBe(5)
     expect(pickedQty(lines, 'p9')).toBe(0)
+  })
+})
+
+describe('plan de salida con varias posiciones', () => {
+  const opt = (binCode: string, available: number, rank: number, lotNumber: string | null = null): StockOption => ({
+    binCode,
+    zoneTypeCode: 'PICKING',
+    lotNumber,
+    expiryDate: null,
+    available,
+    rank,
+  })
+  const OPTIONS = [opt('A-01', 20, 1), opt('B-03', 40, 2), opt('C-09', 100, 3)]
+
+  it('50 con 20 en A-01 y 40 en B-03 → 20 de A-01 y 30 de B-03', () => {
+    const plan = planExit(OPTIONS, 50, 0)
+    expect(plan.rows.map((r) => [r.binCode, r.qty])).toEqual([['A-01', 20], ['B-03', 30]])
+    expect(plan.short).toBe(0)
+  })
+
+  it('descuenta lo que este despacho ya sacó del producto', () => {
+    expect(planExit(OPTIONS, 30, 25).rows.map((r) => [r.binCode, r.qty])).toEqual([['B-03', 30]])
+  })
+
+  it('con menos existencia que lo pedido dice cuánto falta', () => {
+    const plan = planExit([opt('A-01', 20, 1)], 50, 0)
+    expect(plan.rows).toHaveLength(1)
+    expect(plan.short).toBe(30)
+  })
+
+  it('una sola posición alcanza: un solo renglón', () => {
+    expect(planExit(OPTIONS, 15, 0).rows.map((r) => [r.binCode, r.qty])).toEqual([['A-01', 15]])
+  })
+
+  it('replacePlanBin cambia la posición si hay existencia suficiente y rechaza si no', () => {
+    const rows: PlanRow[] = planExit(OPTIONS, 50, 0).rows
+    const ok = replacePlanBin(rows, 1, 'c-09', OPTIONS)
+    expect(ok.ok).toBe(true)
+    if (ok.ok) expect(ok.rows.map((r) => r.binCode)).toEqual(['A-01', 'C-09'])
+    // A-01 solo tiene 20 y la parte 1 necesita 30
+    expect(replacePlanBin(rows, 1, 'A-01', OPTIONS)).toEqual({ ok: false, reason: 'noStock', available: 0 })
+    expect(replacePlanBin(rows, 1, 'Z-99', OPTIONS)).toEqual({ ok: false, reason: 'noStock', available: 0 })
   })
 })

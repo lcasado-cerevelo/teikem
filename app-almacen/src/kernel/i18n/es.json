@@ -191,6 +191,15 @@
     "cancelConfirmTitle": "¿Cancelar este despacho?",
     "cancelConfirmBody": "Se pierde todo lo recolectado. No se puede deshacer.",
     "confirmedQueued": "Despacho enviado a la cola",
+    "planTitle": "Plan de salida",
+    "planLine": "{qty} de {bin}",
+    "planChange": "Cambiar",
+    "planScanNow": "Escanea la posición",
+    "planChangeHelp": "Escanea la posición de donde sacarás las {qty}.",
+    "planNoStock": "{bin} no tiene {qty} disponibles de este producto (hay {have}). Escanea otra posición.",
+    "planShort": "No alcanza: faltan {short}. Baja la cantidad.",
+    "planUse": "Usar este plan",
+    "planAdded": "Agregado: {sku} desde {count} posiciones",
     "lineAdded": "Agregado: {qty} {sku} desde {bin}"
   },
   "count": {

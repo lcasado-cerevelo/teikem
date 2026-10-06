@@ -389,6 +389,22 @@ Cómo se usa:
    encola (misma cola de salida, mismas garantías de FIFO e idempotencia).
 5. "Cancelar despacho" (con confirmación) descarta todo lo recolectado.
 
+### Plan de salida con varias posiciones (tarea 24d)
+
+Cuando la cantidad escrita **no cabe en la primera posición** (producto sin lote), la pantalla muestra un **Plan de salida** con de dónde sacar,
+siguiendo el orden de salida del servidor y descontando lo que este despacho ya sacó: con 50 y existencias de 20 en `P-01` y 40 en `R-02`,
+`20 de P-01` y `30 de R-02`. **Usar este plan** agrega una línea por posición, de una vez.
+
+Cambiar una posición: tocar **Cambiar** en el renglón y escanear otra. Se acepta si esa posición tiene existencia disponible del producto para
+esa cantidad (contando lo que otros renglones ya sacan de ella). Si no alcanza la existencia total muestra `No alcanza: faltan {n}. Baja la cantidad.`
+y **Usar este plan** queda deshabilitado. Con producto por **lote** no hay plan: la posición la manda el lote que vence primero (FEFO), como antes.
+Escanear una posición sin tocar nada sigue agregando una sola línea con toda la cantidad, como siempre.
+
+| Caso | Mensaje exacto | Qué hacer |
+|---|---|---|
+| La posición escaneada no tiene suficiente | `{bin} no tiene {qty} disponibles de este producto (hay {have}). Escanea otra posición.` | Escanear otra o bajar la cantidad |
+| No alcanza la existencia | `No alcanza: faltan {short}. Baja la cantidad.` | Bajar la cantidad |
+
 ### Campos y validaciones
 
 | Campo / caso | Mensaje exacto | Origen |

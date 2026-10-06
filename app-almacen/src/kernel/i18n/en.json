@@ -191,6 +191,15 @@
     "cancelConfirmTitle": "Cancel this dispatch?",
     "cancelConfirmBody": "Everything collected is lost. This can't be undone.",
     "confirmedQueued": "Dispatch queued to send",
+    "planTitle": "Pick plan",
+    "planLine": "{qty} from {bin}",
+    "planChange": "Change",
+    "planScanNow": "Scan the bin",
+    "planChangeHelp": "Scan the bin you will take the {qty} from.",
+    "planNoStock": "{bin} does not have {qty} available of this product ({have} there). Scan another bin.",
+    "planShort": "Not enough stock: {short} short. Lower the quantity.",
+    "planUse": "Use this plan",
+    "planAdded": "Added: {sku} from {count} bins",
     "lineAdded": "Added: {qty} {sku} from {bin}"
   },
   "count": {
