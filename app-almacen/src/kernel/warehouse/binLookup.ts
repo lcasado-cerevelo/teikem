@@ -10,6 +10,13 @@ import { api, unwrap } from '../api/client'
 export interface FoundBin {
   id: number
   code: string
+  /** Espacio libre según el cupo de la posición (cupo − existencia, nunca negativo); null = la posición no tiene cupo configurado. */
+  freeQty?: number | null
+}
+
+/** Espacio libre de una posición del listado: null sin cupo configurado. */
+export function freeQtyOf(maxCapacityQty: number | null | undefined, qtyOnHand: number | null | undefined): number | null {
+  return maxCapacityQty == null ? null : Math.max(0, maxCapacityQty - (qtyOnHand ?? 0))
 }
 
 /** Filas por página (tope del API). */
@@ -30,7 +37,7 @@ export async function findBinByCode(warehousePublicId: string, code: string): Pr
     )
     const items = result.items ?? []
     const match = items.find((b) => (b.code ?? '').toUpperCase() === wanted)
-    if (match?.id != null) return { id: match.id, code: match.code ?? code }
+    if (match?.id != null) return { id: match.id, code: match.code ?? code, freeQty: freeQtyOf(match.maxCapacityQty, match.qtyOnHand) }
     if (items.length === 0 || skip + items.length >= (result.total ?? 0)) return null
   }
   return null

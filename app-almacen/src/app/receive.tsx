@@ -25,7 +25,8 @@ import {
   startLocalReceipt,
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestion } from '../features/receive/receiveApi'
-import { chunkAt, distSummary, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
+import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
+import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
@@ -81,6 +82,8 @@ export default function ReceiveScreen() {
   const perBin = parsePerBin(perBinText)
   // La posición que recibe solo lo que quedaba (la décima de 185 de 20): alerta fija, cerrable, mientras esa posición esté en el reparto.
   const [closedAlertBin, setClosedAlertBin] = useState<string | null>(null)
+  // Espacio libre (cupo) de cada posición del reparto, consultado al servidor si hay señal; sin señal no hay aviso de cupo.
+  const [freeByBin, setFreeByBin] = useState<Record<string, number | null>>({})
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,6 +198,9 @@ export default function ReceiveScreen() {
       setSplitCodes(added.codes)
       setTargetError(null)
       vibrateOk()
+      void findBinByCode(openReceipt.warehousePublicId, check.code)
+        .then((found) => setFreeByBin((m) => ({ ...m, [check.code]: found?.freeQty ?? null })))
+        .catch(() => undefined)
       return
     }
     const withTarget = { ...draft, targetBinCode: check.code }
@@ -354,7 +360,12 @@ export default function ReceiveScreen() {
           <View style={styles.field}>
             {splitCodes.map((c, i) => (
               <View key={c} style={styles.splitRow}>
-                <Text style={[styles.label, styles.splitText]}>{t('receive.splitLine', { bin: c, qty: f.qty(chunkAt(draftQuantity(draft), perBin, i)) })}</Text>
+                <View style={styles.splitText}>
+                  <Text style={styles.label}>{t('receive.splitLine', { bin: c, qty: f.qty(chunkAt(draftQuantity(draft), perBin, i)) })}</Text>
+                  {exceedsCapacity(freeByBin[c], chunkAt(draftQuantity(draft), perBin, i)) ? (
+                    <Text style={styles.capWarn}>{t('receive.capacityWarn', { free: f.qty(freeByBin[c] ?? 0), qty: f.qty(chunkAt(draftQuantity(draft), perBin, i)) })}</Text>
+                  ) : null}
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('receive.removeBin', { bin: c })}
@@ -512,7 +523,8 @@ const styles = StyleSheet.create({
   error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
   splitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  splitText: { flex: 1 },
+  splitText: { flex: 1, gap: 2 },
+  capWarn: { color: colors.warn, fontSize: fontSize.listSubtitle, fontWeight: '700' },
   splitRemove: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.panelAlt },
   splitRemoveLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
   modeBtn: {

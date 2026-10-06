@@ -51,6 +51,8 @@ export function isRestBin(pending: number, perBin: number, index: number): boole
 export interface DistBin {
   id: number
   code: string
+  /** Espacio libre de la posición según su cupo (null/ausente = sin cupo o no se pudo consultar). */
+  free?: number | null
 }
 
 export type AddBinResult = { ok: true; bins: DistBin[] } | { ok: false; reason: 'duplicate' | 'full' | 'perBin' }
@@ -69,4 +71,9 @@ export function distSummary(pending: number, perBin: number, count: number): { t
   for (let i = 0; i < count; i++) total += chunkAt(pending, perBin, i)
   total = Math.round(total * 1000) / 1000
   return { total, left: Math.round((pending - total) * 1000) / 1000 }
+}
+
+/** ¿Lo que recibirá la posición excede su espacio libre? Sin cupo o sin dato nunca avisa (el cupo solo avisa, no bloquea: D4). */
+export function exceedsCapacity(free: number | null | undefined, qty: number): boolean {
+  return free != null && qty > free
 }

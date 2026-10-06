@@ -5474,3 +5474,6 @@ El margen es un porcentaje de 0 a 100 con hasta 2 decimales.
 
 **Soy supervisor y con la compañía en «Nadie» la app me cuenta a ciegas.**
 Es lo esperado: «Nadie» cierra lo esperado al contar en la app para todos, también para quien tiene el permiso Contar (por ejemplo, durante una auditoría). Para reconciliar, la web sigue mostrando lo esperado. Cambie el ajuste en Sistema → Ajustes → Operación si quiere que el supervisor lo vea.
+
+**En el reparto me sale `Cupo para 15: recibirá 20. Se puede confirmar igual.`**
+Esa posición tiene un cupo máximo configurado (Ubicaciones) y, con lo que ya tiene, solo le caben 15; el reparto le asigna 20. Es un aviso: se puede confirmar igual (el cupo no bloquea). Si no quiere pasarse, quite esa posición con su ✕ y use otra, o baje la cantidad por posición. Sin señal o sin cupo configurado no se muestra el aviso.

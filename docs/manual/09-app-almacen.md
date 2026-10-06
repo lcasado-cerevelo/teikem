@@ -294,7 +294,7 @@ Campos y validaciones (recibo directo):
 En el paso de la posición destino de un recibo **directo** hay un campo **Cantidad por posición (opcional)** (no aparece en productos con serie).
 Con la cantidad escrita, cada posición que se escanea se suma a la lista (`RSV-A-01 · 20`) y la pantalla dice `Repartido: 40 · quedan 5 sin ubicar`;
 Cada renglón tiene su **✕** (`Quitar {bin}`) y las cantidades se recalculan. **Confirmar reparto** agrega **una línea por posición**. Caben las posiciones llenas y **una más con el resto** (45 de 20 → 20, 20 y 5): esa última muestra la
-**alerta fija** `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (se queda arriba aunque se desplace la pantalla; se cierra con la ✕); una cuarta se rechaza con
+**alerta fija** `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (y, si la posición tiene cupo y no alcanza, debajo de su renglón `Cupo para {free}: recibirá {qty}. Se puede confirmar igual.`: solo avisa, con señal) (se queda arriba aunque se desplace la pantalla; se cierra con la ✕); una cuarta se rechaza con
 `Ya no hay unidades por ubicar: los {total} están repartidos. Confirma el reparto.` Si se confirma con menos posiciones de las que caben, lo que falta
 **sigue en la captura**: se escanea la posición donde queda (una sola).
 En un recibo con aviso u orden de compra, el mismo producto no puede quedar en dos posiciones: si el reparto lo causara muestra el aviso de
@@ -347,6 +347,7 @@ indicando las series, desde la web). Quien acomoda necesita `warehouse.receive` 
 | La posición ya está en el reparto | `Esa posición ya está en el reparto.` | Local | Escanear otra |
 | Ya no hay unidades por repartir | `Ya no hay unidades por acomodar: los {total} están repartidos. Confirma el reparto.` | Local (y 400 del servidor `Con {per} por posición caben {max} posición(es) para {pending}; no hay más unidades por repartir.`) | Confirmar el reparto |
 | La posición recibe menos que la cantidad por posición | `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (alerta fija, cerrable) | Local | Informativa: revisar que esa posición pueda recibir ese resto |
+| La posición tiene cupo configurado y lo que recibirá lo excede | `Cupo para {free}: recibirá {qty}. Se puede confirmar igual.` (debajo del renglón) | Local, con el cupo y la existencia que trae el listado de posiciones | **Solo avisa; no bloquea.** Sin señal o sin cupo configurado no hay aviso |
 | Hay posiciones repetidas (llamada directa al API) | `Hay posiciones repetidas; cada posición se usa una sola vez.` | 400 | Quitar la repetida |
 | Falta la cantidad por posición | `Indique la cantidad por posición.` | 400 | Escribirla |
 | Falta indicar posiciones | `Indique al menos una posición.` | 400 | Escanear al menos una |

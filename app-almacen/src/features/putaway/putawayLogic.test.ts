@@ -1,4 +1,4 @@
-import { addDistBin, chunkAt, distSummary, isRestBin, maxBins, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from './putawayLogic'
+import { addDistBin, chunkAt, distSummary, exceedsCapacity, isRestBin, maxBins, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from './putawayLogic'
 
 function task(id: number, assignedToUserId: number | null): PutawayTask {
   return { id, sku: `SKU-${id}`, productName: `P${id}`, quantity: 1, toBinCode: null, assignedToUserId }
@@ -56,5 +56,15 @@ describe('reparto por posición', () => {
     expect(distSummary(185, 20, 9)).toEqual({ total: 180, left: 5 })
     expect(distSummary(185, 20, 10)).toEqual({ total: 185, left: 0 })
     expect(distSummary(5, 20, 1)).toEqual({ total: 5, left: 0 })
+  })
+})
+
+describe('cupo de la posición en el reparto', () => {
+  it('solo avisa cuando hay cupo y lo que recibirá lo excede', () => {
+    expect(exceedsCapacity(15, 20)).toBe(true)
+    expect(exceedsCapacity(20, 20)).toBe(false)
+    expect(exceedsCapacity(0, 1)).toBe(true)
+    expect(exceedsCapacity(null, 999)).toBe(false)
+    expect(exceedsCapacity(undefined, 999)).toBe(false)
   })
 })

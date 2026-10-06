@@ -35,7 +35,8 @@ function routes(taskQty: number) {
       if (c.method !== 'GET' || c.path !== '/api/v1/warehouses/wh-1/bins') return null
       const code = new URLSearchParams(c.search).get('search') ?? ''
       const i = BINS.indexOf(code.toUpperCase())
-      return json(200, { total: i < 0 ? 0 : 1, skip: 0, take: 200, items: i < 0 ? [] : [{ id: i + 1, code: BINS[i] }] })
+      // A-01 tiene cupo de 25 con 10 en existencia (15 libres); las demás no tienen cupo
+      return json(200, { total: i < 0 ? 0 : 1, skip: 0, take: 200, items: i < 0 ? [] : [{ id: i + 1, code: BINS[i], ...(i === 0 ? { maxCapacityQty: 25, qtyOnHand: 10 } : {}) }] })
     },
     (c: FetchCall) => (c.method === 'POST' && c.path === '/api/v1/warehouse-tasks/5/distribute' ? json(200, { id: 5 }) : null),
   ]
@@ -72,6 +73,10 @@ describe('Acomodar — reparto por posición', () => {
     await waitFor(() => expect(screen.getByText('A-02 · 20')).toBeTruthy())
     expect(screen.getByText('Repartido: 40 · quedan 5 sin acomodar')).toBeTruthy()
     expect(screen.queryByTestId('sticky-alert')).toBeNull()
+
+    // A-01 tiene cupo para 15 y recibirá 20: avisa (sin bloquear); A-02 no tiene cupo configurado y no avisa
+    expect(screen.getByText('Cupo para 15: recibirá 20. Se puede confirmar igual.')).toBeTruthy()
+    expect(screen.getAllByText(/^Cupo para/)).toHaveLength(1)
 
     // la tercera recibe lo que quedaba (5) y sale la alerta fija, que se puede cerrar
     await scan('Escanea la siguiente posición', 'A-03')

@@ -80,7 +80,7 @@ describe('resolveLookupBin', () => {
 
   it('no está en el aparato: la busca en el servidor por código exacto', async () => {
     getMock.mockResolvedValueOnce(ok({ total: 2, items: [{ id: 8, code: 'B-02-01' }, { id: 9, code: 'B-02' }] }))
-    await expect(resolveLookupBin('wh-1', 'B-02')).resolves.toEqual({ kind: 'bin', bin: { id: 9, code: 'B-02' } })
+    await expect(resolveLookupBin('wh-1', 'B-02')).resolves.toEqual({ kind: 'bin', bin: { id: 9, code: 'B-02', freeQty: null } })
     expect(getMock.mock.calls[0][0]).toBe('/api/v1/warehouses/{publicId}/bins')
   })
 

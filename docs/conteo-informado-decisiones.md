@@ -16,9 +16,9 @@
 2. **La compañía en «Nadie» también cierra al supervisor al contar desde la app** (decisión del dueño, 2026-10-06): la app manda `forCounting=true` y el servidor responde a ciegas; `…/check` da 403 a todos; la web (reconciliar) no manda ese parámetro y sigue viendo lo esperado.
 3. **Defecto de la compañía: «Solo los marcados»** (nadie lo ve hasta que se marque a alguien).
 4. **Margen en %** de lo esperado (0 = cualquier diferencia); esperado 0 → cualquier cantidad es diferencia.
-5. **Un reconteo máximo:** primera cifra → (si fuera del margen) segunda cifra → línea cerrada (FINAL aunque siga sin coincidir; queda para revisión del supervisor, que ve ambas cifras en la bitácora).
+5. **Un reconteo máximo (confirmado por el dueño):** primera cifra → (si fuera del margen) segunda cifra → línea cerrada (FINAL aunque siga sin coincidir; queda para revisión del supervisor, que ve ambas cifras en la bitácora).
 6. **El esperado nunca se manda con RECOUNT;** con MATCH/FINAL solo si la compañía muestra el número.
 7. **Sin señal no se verifica** (se captura a ciegas, como antes): el servidor solo puede revelar lo que verifica en línea. Un 403 apaga la verificación para ese conteo en la app.
 8. **Series no se verifican** (el conteo por serie va por lista de números).
-9. **Fuera de esta versión:** conteo abierto con varios productos (7.2), líneas agregadas a mano, opción «ciego/informado» al crear cada conteo y la marca «Conteo informado» en la pantalla. La app ya recibe `reveal` en la ficha para usarlo después.
+9. **Fuera de esta versión (confirmado por el dueño):** conteo abierto con varios productos (7.2), líneas agregadas a mano, opción «ciego/informado» al crear cada conteo y la marca «Conteo informado» en la pantalla. La app ya recibe `reveal` en la ficha para usarlo después.
 10. **Conteo por producto:** la verificación ocurre al Confirmar y ese toque no confirma (para que se lea lo que pide recontar); el siguiente sí.

@@ -16,7 +16,16 @@ beforeEach(() => {
   __resetSecureStoreForTests()
   __resetSessionForTests()
   setApiBaseUrl('http://api.test')
-  jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+  // solo responde la consulta de posiciones (cupo de RSV-A-01: 25 con 10 en existencia → 15 libres); lo demás, sin señal
+  jest.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = new URL((input as Request).url)
+    if (url.pathname === '/api/v1/warehouses/wh-1/bins') {
+      const code = url.searchParams.get('search') ?? ''
+      return new Response(JSON.stringify({ total: 1, skip: 0, take: 200, items: [{ id: 1, code, ...(code === 'RSV-A-01' ? { maxCapacityQty: 25, qtyOnHand: 10 } : {}) }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
     throw new TypeError('Network request failed')
   })
 })
@@ -62,6 +71,9 @@ describe('Recibir directo — reparto por posición', () => {
     expect(screen.getByText('Repartido: 40 · quedan 5 sin ubicar')).toBeTruthy()
 
     expect(screen.queryByTestId('sticky-alert')).toBeNull()
+    // el cupo de la primera (15 libres) no alcanza para 20: avisa sin bloquear
+    await waitFor(() => expect(screen.getByText('Cupo para 15: recibirá 20. Se puede confirmar igual.')).toBeTruthy())
+    expect(screen.getAllByText(/^Cupo para/)).toHaveLength(1)
 
     // la tercera recibe lo que quedaba (5) con la alerta fija, cerrable
     await scan('Escanea la siguiente posición destino', 'RSV-A-03')

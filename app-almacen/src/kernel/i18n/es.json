@@ -123,7 +123,8 @@
     "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.",
     "expiryInvalid": "La fecha no es válida. Escríbela así: {format}",
     "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
-    "removeBin": "Quitar {bin}"
+    "removeBin": "Quitar {bin}",
+    "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual."
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -148,7 +149,8 @@
     "binNotFound": "No hay una posición con ese código.",
     "done": "Listo: {sku} quedó en {bin}",
     "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
-    "removeBin": "Quitar {bin}"
+    "removeBin": "Quitar {bin}",
+    "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual."
   },
   "dispatch": {
     "title": "Despacho",

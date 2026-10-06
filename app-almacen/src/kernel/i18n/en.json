@@ -123,7 +123,8 @@
     "confirmHelpDirect": "Closes the receipt and leaves each line in its destination bin, with no putaway tasks.",
     "expiryInvalid": "The date is not valid. Write it like this: {format}",
     "restAlert": "{bin} gets only {qty} (what was left), not {per}.",
-    "removeBin": "Remove {bin}"
+    "removeBin": "Remove {bin}",
+    "capacityWarn": "Room for {free}: it will receive {qty}. You can confirm anyway."
   },
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
@@ -148,7 +149,8 @@
     "binNotFound": "No bin matches that code.",
     "done": "Done: {sku} is now in {bin}",
     "restAlert": "{bin} gets only {qty} (what was left), not {per}.",
-    "removeBin": "Remove {bin}"
+    "removeBin": "Remove {bin}",
+    "capacityWarn": "Room for {free}: it will receive {qty}. You can confirm anyway."
   },
   "dispatch": {
     "title": "Dispatch",

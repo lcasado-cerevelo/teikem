@@ -18,7 +18,7 @@ import {
   startTask,
   type PutawaySuggestion,
 } from '../features/putaway/putawayApi'
-import { addDistBin, chunkAt, distSummary, isRestBin, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
+import { addDistBin, chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
 import { useFormat } from '../kernel/format/useFormat'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
@@ -100,7 +100,7 @@ export default function PutawayScreen() {
       }
       if (perBin > 0) {
         // Modo reparto: se acumula la posición; nada se manda hasta "Confirmar reparto".
-        const added = addDistBin(distBins, { id: bin.id, code }, pending, perBin)
+        const added = addDistBin(distBins, { id: bin.id, code, free: bin.freeQty ?? null }, pending, perBin)
         if (!added.ok) {
           setScanError(
             added.reason === 'duplicate'
@@ -198,7 +198,12 @@ export default function PutawayScreen() {
           <View style={styles.field}>
             {distBins.map((b, i) => (
               <View key={b.id} style={styles.distRow}>
-                <Text style={[styles.rowTitle, styles.distText]}>{t('putaway.distLine', { bin: b.code, qty: f.qty(chunkAt(pending, perBin, i)) })}</Text>
+                <View style={styles.distText}>
+                  <Text style={styles.rowTitle}>{t('putaway.distLine', { bin: b.code, qty: f.qty(chunkAt(pending, perBin, i)) })}</Text>
+                  {exceedsCapacity(b.free, chunkAt(pending, perBin, i)) ? (
+                    <Text style={styles.capWarn}>{t('putaway.capacityWarn', { free: f.qty(b.free ?? 0), qty: f.qty(chunkAt(pending, perBin, i)) })}</Text>
+                  ) : null}
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={t('putaway.removeBin', { bin: b.code })}
@@ -295,7 +300,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.panelAlt,
   },
   distRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  distText: { flex: 1 },
+  distText: { flex: 1, gap: 2 },
+  capWarn: { color: colors.warn, fontSize: fontSize.listSubtitle, fontWeight: '700' },
   distRemove: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.panelAlt },
   distRemoveLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
   row2: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },

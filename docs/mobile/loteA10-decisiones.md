@@ -44,3 +44,13 @@
 - Cada renglón del reparto (Acomodar y recibo directo) tiene su ✕ (`Quitar {bin}`) en lugar del botón "Quitar la última"; al quitar una, las cantidades se recalculan por orden (la posición de resto es siempre la última que ya no se llena) y la alerta fija se ajusta.
 - Después de la posición del resto no se acepta ninguna más (`Ya no hay unidades por acomodar…` / `…por ubicar…`), en la app y en el servidor.
 - Pruebas: 476 jest en verde (una nueva de quitar posición en Acomodar y el paso equivalente en el recibo).
+
+## Cupo de la posición en el reparto (decisión del dueño, 2026-10-06)
+- El reparto (Acomodar y recibo directo) **avisa sin bloquear** cuando una posición con cupo configurado recibirá más de su espacio libre (`Cupo para {free}: recibirá {qty}. Se puede confirmar igual.`). El espacio libre sale del listado de posiciones (`maxCapacityQty − qtyOnHand`) al escanear con señal; sin señal o sin cupo no hay aviso. No cuenta lo que otras líneas del mismo reparto ya reservan (cada posición se usa una sola vez).
+- Pruebas: 492 jest en verde (`binLookup`, `exceedsCapacity`, pantallas de Acomodar y recibo).
+
+## Decisiones cerradas por el dueño (2026-10-06)
+- Reconteos: **1** (primera cifra y una segunda; luego la línea se cierra para el contador).
+- La verificación **no** cubre el conteo abierto con varios productos ni las líneas agregadas a mano (por ahora).
+- **Sin** interruptor ciego/informado al crear cada conteo.
+- Rentas: **solo Depot** (Solutions sin Rentas). Decisión 70: se deja como está (el Operador de almacén no crea rentas desde la web).
