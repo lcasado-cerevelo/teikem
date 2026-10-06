@@ -72,3 +72,9 @@ Decisiones del dueño: la regla de "qué sale primero" debe vivir **en un solo s
 en pantalla arranca **escondido** en todos los campos (como en ScanField); si en un teléfono sin teclado físico prefieres que las cantidades lo muestren solas, se cambia el valor por defecto. (3) Completar sin empacar no pide confirmación (un toque).
 (4) La copia baja todo el almacén: con muchos miles de existencias puede pesar; se puede acotar a los productos recientes si hace falta.
 
+## Adenda 4 (2026-10-05): calculadora de cantidad en el conteo (app)
+
+Pedido del dueño: un botón de calculadora junto a la cantidad para estibas («5 filas de 3 columnas y 10 sueltas»). Decisión: el campo se **cambia en el mismo lugar** (no otra pantalla), con filas × columnas + sueltas y **+ otro bloque** para
+estibas de varias capas; solo se guarda el total. Piezas: `quantityCalc.ts` (lógica pura), `QuantityField.tsx` (campo con calculadora y el cuerpo `QuantityCalculator`), usados en `count.tsx`, `OpenCountView.tsx` y `ProductCountView.tsx` (ventana por fila).
+Pruebas: `quantityCalc.test.ts`, `QuantityField.test.tsx` y un caso en `countOpenProductsScreen.test.tsx`. No se aplicó (aún) a Despacho ni Recibir; es reutilizable (`QuantityField`). Sin cambio de servidor.
+

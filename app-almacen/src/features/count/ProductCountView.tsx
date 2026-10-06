@@ -6,7 +6,7 @@
 // Lote A5 (decisión del dueño 4): Confirmar exige al menos una posición con un número escrito (0 vale); con todo en blanco no
 // se manda nada y sale el aviso grande (ScanMessage) encima de Confirmar.
 import { useMemo, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useT } from '../../kernel/i18n/useT'
 import { BigButton } from '../../kernel/ui/BigButton'
@@ -33,6 +33,8 @@ import {
 import { OtherBinForm, type OtherBinLot } from './OtherBinForm'
 import { KeyboardInput, KeyboardToggleButton } from '../../kernel/ui/KeyboardInput'
 import { useSoftKeyboard } from '../../kernel/ui/useSoftKeyboard'
+import { calcFromText, calcTotal, totalToText, type CalcState } from './quantityCalc'
+import { QuantityCalculator } from './QuantityField'
 
 export interface ProductCountViewProps {
   openCount: OpenCount
@@ -60,6 +62,8 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [other, setOther] = useState(false)
   // un solo botón «⌨» para las cantidades de todas las filas (pedido del dueño: donde haya un campo de texto, la opción del teclado)
   const kb = useSoftKeyboard()
+  // calculadora de una fila (filas × columnas + sueltas): ventana con el total que se pasa a la cantidad de esa fila
+  const [calcRow, setCalcRow] = useState<{ row: ProductCountRow; state: CalcState } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [emptyWarning, setEmptyWarning] = useState(false)
   // aviso de "todo en blanco" tras tocar Confirmar; se quita al escribir una cantidad o agregar una posición
@@ -187,6 +191,14 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
                 placeholderTextColor={colors.muted}
                 selectTextOnFocus
               />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t('calc.openFor', { bin: row.binCode })}
+                onPress={() => setCalcRow({ row, state: calcFromText(text) })}
+                style={styles.calcBtn}
+              >
+                <Text style={styles.calcIcon}>🧮</Text>
+              </Pressable>
               {row.isExtra ? (
                 <Pressable
                   accessibilityRole="button"
@@ -205,6 +217,28 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
         })}
         {searchable && visible.length === 0 ? <Text style={styles.help}>{t('count.searchEmpty', { query: query.trim() })}</Text> : null}
       </View>
+
+      <Modal visible={calcRow !== null} transparent animationType="fade" onRequestClose={() => setCalcRow(null)}>
+        <View style={styles.modalBack}>
+          {calcRow ? (
+            <View style={styles.modalCard}>
+              <Text style={styles.title}>{calcRow.row.lotNumber ? t('count.qtyAtLot', { bin: calcRow.row.binCode, lot: calcRow.row.lotNumber }) : t('count.qtyAt', { bin: calcRow.row.binCode })}</Text>
+              <QuantityCalculator state={calcRow.state} onChange={(next) => setCalcRow({ row: calcRow.row, state: next })} onClose={() => setCalcRow(null)} />
+              <View style={styles.modalActions}>
+                <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setCalcRow(null)} />
+                <BigButton
+                  label={t('calc.useTotal', { total: totalToText(calcTotal(calcRow.state).total) })}
+                  disabled={calcTotal(calcRow.state).total === null}
+                  onPress={() => {
+                    changeQty(calcRow.row, totalToText(calcTotal(calcRow.state).total))
+                    setCalcRow(null)
+                  }}
+                />
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Modal>
 
       <ScanMessage tone="ok" message={notice} />
       {empty ? (
@@ -238,6 +272,11 @@ const styles = StyleSheet.create({
   help: { color: colors.muted, fontSize: fontSize.message },
   error: { color: colors.error, fontSize: fontSize.message, fontWeight: '700' },
   kbRow: { alignItems: 'flex-end' },
+  calcBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.brand, borderRadius: radius.sm },
+  calcIcon: { fontSize: 20 },
+  modalBack: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: spacing.lg },
+  modalCard: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.bg, borderWidth: 2, borderColor: colors.line },
+  modalActions: { gap: spacing.sm },
   summary: { color: colors.warn, fontSize: fontSize.label, fontWeight: '700' },
   field: { gap: spacing.xs },
   search: {

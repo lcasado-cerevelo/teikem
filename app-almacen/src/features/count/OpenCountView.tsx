@@ -21,6 +21,7 @@ import { fetchProductBins, findLocalBin, type CreatedBin } from './countApi'
 import { binOptionLabel, defaultBinOption, findListedRow, parseQty, productCountBlocker, type BinOption } from './countLogic'
 import { addOpenCountLine, getProductCountRows, removeLocalCountLine, updateLocalCountLineQty, type CountProduct, type OpenCount } from './localCount'
 import { OtherBinForm, type OtherBinLot } from './OtherBinForm'
+import { QuantityField } from './QuantityField'
 import { KeyboardInput } from '../../kernel/ui/KeyboardInput'
 
 export interface OpenCountViewProps {
@@ -286,10 +287,9 @@ export function OpenCountView({ openCount, busy, onConfirm, onCancelCount, initi
 
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
-          <KeyboardInput
+          <QuantityField
             value={draft.qtyText}
             onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v, message: null } : d))}
-            keyboardType="decimal-pad"
             style={styles.input}
             accessibilityLabel={t('count.foundQtyLabel')}
             autoFocus

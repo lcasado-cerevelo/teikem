@@ -145,4 +145,29 @@ describe('Conteo abierto — varios productos', () => {
     await waitFor(() => expect(screen.getByText('Todavía no has contado nada. Escanea un producto.')).toBeTruthy())
     expect(screen.getByRole('button', { name: 'Terminar conteo' }).props.accessibilityState).toMatchObject({ disabled: true })
   })
+
+  it('la calculadora de la cantidad: 5 filas × 3 columnas + 10 sueltas agrega la línea con 25', async () => {
+    await setupDevice()
+    insertProduct(1, 'p1', 'SKU-1', 'Tornillo', '7501', 'NONE')
+    setKv(KvKeys.countEntryMode, 'PRODUCT')
+    mockFetch([
+      (c) => (c.method === 'POST' && c.path === '/api/v1/cycle-counts' ? json(200, { count: { id: 703, originCode: 'PRODUCT' }, isBlind: true, lines: [] }) : null),
+      (c) => (c.method === 'GET' && c.path === '/api/v1/cycle-counts/703/product-bins' ? json(200, bins({ binId: 10, binCode: 'A-01' })) : null),
+    ])
+    await renderRouter('src/app', { initialUrl: '/count' })
+    await waitFor(() => expect(screen.getByLabelText('Escanea el producto a contar')).toBeTruthy())
+    await scan('Escanea el producto a contar', '7501')
+    await waitFor(() => expect(screen.getByTestId('open-count-bin')).toBeTruthy())
+
+    await fireEvent.press(screen.getByLabelText('Calculadora'))
+    await fireEvent.changeText(screen.getByLabelText('Filas del bloque 1'), '5')
+    await fireEvent.changeText(screen.getByLabelText('Columnas del bloque 1'), '3')
+    await fireEvent.changeText(screen.getByLabelText('Sueltas'), '10')
+    expect(screen.getByText('(5 × 3) + 10')).toBeTruthy()
+    // la línea entra con el total (25) aunque se agregue sin volver a la cantidad directa
+    await fireEvent.press(screen.getByRole('button', { name: 'Agregar' }))
+    await waitFor(() => expect(screen.getByText('Tornillo · 25')).toBeTruthy())
+    expect(getProductCountRows(getOpenCount()!.id).map((r) => [r.binId, r.countedQty])).toEqual([[10, 25]])
+  })
 })
+

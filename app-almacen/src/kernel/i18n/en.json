@@ -253,6 +253,25 @@
     "openEditing": "{sku} was already counted at {bin}: correct the quantity.",
     "openAlreadyListed": "{sku} is already counted at {bin}: tap its line in the list to correct the quantity."
   },
+  "calc": {
+    "open": "Calculator",
+    "openFor": "Calculator for {bin}",
+    "title": "Calculator",
+    "direct": "Direct quantity",
+    "rows": "Rows",
+    "cols": "Columns",
+    "rowsAt": "Rows of block {n}",
+    "colsAt": "Columns of block {n}",
+    "extra": "Loose units",
+    "addBlock": "+ Another block",
+    "removeBlock": "Remove block {n}",
+    "total": "Total: {total}",
+    "hint": "Enter rows, columns and the loose units.",
+    "incompleteBlock": "Each block needs rows and columns.",
+    "invalid": "Rows and columns are whole numbers; loose units, a number.",
+    "tooLarge": "That total is too large.",
+    "useTotal": "Use {total}"
+  },
   "lookup": {
     "title": "Lookup",
     "scanLabel": "Scan a product or a bin",
