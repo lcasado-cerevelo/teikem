@@ -624,3 +624,17 @@ Cada una tiene su número en la lista de arriba ("Decisiones por defecto a confi
 3. **En producción: aplicar el esquema nuevo antes de desplegar el API nuevo** (las tablas de rentas son nuevas; la capa vieja se retira solo si está vacía y, si tiene datos, avisa y no la toca).
 4. Detener cualquier `npm run dev` anterior (un servidor viejo en el puerto 5173 sirve lo viejo), arrancar uno solo desde `web-app`, y hacer recarga forzada del navegador.
 5. Encender el módulo **Rentas** de la compañía (depende de "Inventario y trazabilidad") y dar `rental.*` a los roles que lo necesiten.
+
+### 7. Resultado real del CI de GitHub (actualizado el 2026-10-06 05:05 UTC)
+
+Corrida 224, commit `3a5fabd` en `master` (incluye todo lo de rentas y los arreglos de CI de `docs/ci-verde-decisiones.md`):
+
+| Trabajo | Resultado |
+|---|---|
+| `build-test` (pruebas del servidor, `db-init` ×2, smoke y Playwright escritorio + móvil) | **Verde** |
+| `frontend` (tipos, tsc, lint, vitest, build) | **Verde** |
+| `mobile` (tipos, tsc, lint, jest de la app) | **Verde** (antes fallaba por el tiempo límite de jest con la caché vacía) |
+| `android` (APK release) | **Verde** |
+| `android-e2e` (Maestro en emulador) | En curso al escribir esto; es opcional (`continue-on-error`) y en corridas anteriores falló por su cuenta |
+
+Las corridas previas en `master` (207 a 222) fallaron por (a) el tiempo límite de jest en `mobile` y (b) el paso de smoke/Playwright, ya corregidos. No se pudo leer el log del paso del smoke en GitHub, así que la causa exacta del fallo de la corrida 220 (corte silencioso del conteo de PIN en paralelo) es la explicación más probable, no una certeza; la corrida 224 pasó el smoke fuera de la ventana 00:00–04:00 UTC y los agentes lo probaron dentro de ella con reloj simulado.
