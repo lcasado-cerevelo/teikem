@@ -7,7 +7,7 @@
     "legalName": "Advance Depot Solutions",
     "taxId": null,
     "lang": "es",
-    "modules": ["WMS_LOTSERIAL", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS"],
+    "modules": ["WMS_LOTSERIAL", "RENTAL_EQUIPMENT", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS"],
     "adminEmail": "teikem+admin@cerevelo.com",
     "adminFullName": "Administrador Advance"
   },
