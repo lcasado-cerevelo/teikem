@@ -273,6 +273,16 @@ Campos y validaciones (recibo directo):
 
 **Recibos abiertos antes de actualizar la app.** Un recibo que se empezó con la app anterior se manda sin modo y sin posiciones. El servidor, en un almacén directo, lo recibe **"Con acomodo"** (con tareas de acomodo): no se pierde.
 
+### Repartir en varias posiciones (recibo directo, tarea 24c)
+
+En el paso de la posición destino de un recibo **directo** hay un campo **Cantidad por posición (opcional)** (no aparece en productos con serie).
+Con la cantidad escrita, cada posición que se escanea se suma a la lista (`RSV-A-01 · 20`) y la pantalla dice `Repartido: 40 · quedan 5 sin ubicar`;
+**Confirmar reparto** agrega **una línea por posición**. Solo caben posiciones **llenas** (45 de 20 → 2); una tercera se rechaza con
+`No caben más posiciones: con {per} por posición caben {max} y quedan {left} por ubicar. El resto se ubica aparte.` Lo que no cupo (los 5 sueltos)
+**sigue en la captura**: se escanea la posición donde quedan (una sola). Una posición repetida dice `Esa posición ya está en el reparto.`
+En un recibo con aviso u orden de compra, el mismo producto no puede quedar en dos posiciones: si el reparto lo causara muestra el aviso de
+conflicto de siempre y no agrega nada (use un recibo ciego o de devolución para repartir).
+
 ### Estatus y casos frecuentes
 
 El recibo local no tiene estatus propio: existe ("en curso") o no. Al confirmar, pasa a ser un recibo real del

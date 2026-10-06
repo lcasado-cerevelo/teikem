@@ -18,3 +18,8 @@
 - **App:** pantalla Acomodar con "Cantidad por posición (opcional)"; cada escaneo suma una posición y "Confirmar reparto" las manda juntas. Pruebas: `putawaySplitScreen` y lógica pura (460 en verde).
 - **Decisiones a revisar:** (1) solo caben posiciones llenas: la décima de 185 de 20 se rechaza y los 5 sueltos son otra tarea; (2) cada posición una vez; (3) series fuera de esta versión; (4) el permiso es el del acomodo (`warehouse.receive`); (5) el cupo de la posición no bloquea el reparto (D4: solo avisa, y aquí ni avisa todavía).
 - No probado en el Zebra.
+
+## Recibo directo con reparto (tarea 24c)
+- App: en el paso de posición destino, "Cantidad por posición (opcional)"; cada escaneo suma una posición y "Confirmar reparto" agrega una línea por posición; los sueltos quedan en la captura para una posición aparte. Sin cambios de servidor (cada línea ya lleva su posición).
+- Pruebas: `receiveSplitScreen` (461 jest en verde). No probado en el Zebra.
+- Decisiones a revisar: (1) en recibos con aviso/OC el reparto choca con la regla de "una posición por línea" (H11) y se avisa; (2) productos con serie no se reparten.

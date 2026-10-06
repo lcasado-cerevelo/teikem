@@ -25,11 +25,13 @@ import {
   startLocalReceipt,
 } from '../features/receive/localLookup'
 import { fetchTargetSuggestion } from '../features/receive/receiveApi'
+import { chunkQty, distSummary, maxBins, parsePerBin } from '../features/putaway/putawayLogic'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   addSerial,
   buildLine,
+  addSplitBin,
   buildReceiptBody,
   canAddLine,
   draftExpiry,
@@ -43,6 +45,7 @@ import {
   removeSerial,
   requiresLot,
   requiresSerials,
+  splitDraftLines,
   validateTargetBin,
 } from '../features/receive/receiveLogic'
 
@@ -71,6 +74,10 @@ export default function ReceiveScreen() {
   const [askTarget, setAskTarget] = useState(false)
   const [targetError, setTargetError] = useState<string | null>(null)
   const [suggestion, setSuggestion] = useState<string | null>(null)
+  // Reparto por posición (tarea 24c): cantidad por posición y las posiciones escaneadas, que se mandan juntas al confirmar el reparto.
+  const [perBinText, setPerBinText] = useState('')
+  const [splitCodes, setSplitCodes] = useState<string[]>([])
+  const perBin = parsePerBin(perBinText)
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -136,6 +143,8 @@ export default function ReceiveScreen() {
     setAskTarget(false)
     setTargetError(null)
     setSuggestion(null)
+    setPerBinText('')
+    setSplitCodes([])
   }
 
   function addCurrentLine() {
@@ -168,6 +177,22 @@ export default function ReceiveScreen() {
         check.reason === 'notStorage' ? 'receive.targetNotStorage' : check.reason === 'inactive' ? 'receive.targetInactive' : 'receive.targetNotFound'
       return fail(t(key))
     }
+    if (perBin > 0 && !requiresSerials(draft)) {
+      // Modo reparto: se acumula la posición; las líneas se agregan al confirmar el reparto.
+      const total = draftQuantity(draft)
+      const added = addSplitBin(splitCodes, check.code, total, perBin)
+      if (!added.ok) {
+        return fail(
+          added.reason === 'duplicate'
+            ? t('receive.splitRepeated')
+            : t('receive.splitNoRoom', { max: maxBins(total, perBin), per: f.qty(chunkQty(total, perBin)), left: f.qty(total) }),
+        )
+      }
+      setSplitCodes(added.codes)
+      setTargetError(null)
+      vibrateOk()
+      return
+    }
     const withTarget = { ...draft, targetBinCode: check.code }
     if (!canAddLine(withTarget, true)) return
     const line = buildLine(withTarget)
@@ -180,6 +205,33 @@ export default function ReceiveScreen() {
     closeDraft()
     vibrateOk()
     refresh()
+  }
+
+  /** Confirma el reparto: agrega una línea por posición; lo que no cupo en posiciones llenas queda en la captura para ubicarlo aparte. */
+  function confirmSplit() {
+    if (!draft || !openReceipt || splitCodes.length === 0 || perBin <= 0) return
+    const { lines: added, left } = splitDraftLines(draft, perBin, splitCodes)
+    if (openReceipt.doc) {
+      const conflict = findTargetConflict(getDocLines(openReceipt.doc), [...openReceipt.lines, ...added])
+      if (conflict) {
+        setTargetError(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
+        vibrateError()
+        return
+      }
+    }
+    for (const line of added) addLocalReceiptLine(openReceipt.id, line)
+    vibrateOk()
+    refresh()
+    if (left > 0) {
+      // Los sueltos siguen en la captura: se escanea la posición donde quedan (una sola).
+      setDraft({ ...draft, qtyText: String(left) })
+      setPerBinText('')
+      setSplitCodes([])
+      setTargetError(null)
+      setSuggestion(null)
+      return
+    }
+    closeDraft()
   }
 
   function cancelReceipt() {
@@ -258,7 +310,47 @@ export default function ReceiveScreen() {
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
         {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
-        <ScanField label={t('receive.scanTargetLabel')} error={targetError} onSubmit={scanTarget} suggestedValue={suggestion} />
+        {!requiresSerials(draft) ? (
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('receive.perBinLabel')}</Text>
+            <KeyboardInput
+              value={perBinText}
+              onChangeText={(v) => {
+                setPerBinText(v)
+                setSplitCodes([])
+              }}
+              keyboardType="decimal-pad"
+              style={styles.input}
+              accessibilityLabel={t('receive.perBinLabel')}
+            />
+            <Text style={styles.help}>{t(perBin > 0 ? 'receive.perBinHelpOn' : 'receive.perBinHelp')}</Text>
+          </View>
+        ) : null}
+        <ScanField
+          label={t(perBin > 0 ? 'receive.scanNextTargetLabel' : 'receive.scanTargetLabel')}
+          error={targetError}
+          onSubmit={scanTarget}
+          suggestedValue={perBin > 0 ? null : suggestion}
+        />
+        {perBin > 0 && splitCodes.length > 0 ? (
+          <View style={styles.field}>
+            {splitCodes.map((c) => (
+              <Text key={c} style={styles.label}>
+                {t('receive.splitLine', { bin: c, qty: f.qty(chunkQty(draftQuantity(draft), perBin)) })}
+              </Text>
+            ))}
+            <Text style={styles.help}>
+              {t('receive.splitTotal', {
+                total: f.qty(distSummary(draftQuantity(draft), perBin, splitCodes.length).total),
+                left: f.qty(distSummary(draftQuantity(draft), perBin, splitCodes.length).left),
+              })}
+            </Text>
+            <View style={styles.row}>
+              <BigButton label={t('receive.splitRemoveLast')} variant="secondary" fullWidth={false} onPress={() => setSplitCodes((c) => c.slice(0, -1))} />
+              <BigButton label={t('receive.splitConfirm')} fullWidth={false} onPress={confirmSplit} />
+            </View>
+          </View>
+        ) : null}
         <View style={styles.row}>
           <BigButton
             label={t('common.back')}

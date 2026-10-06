@@ -5,6 +5,7 @@
 import { parseDateInput } from '../../kernel/format/format'
 import type { FormatSettings } from '../../kernel/format/settings'
 import { getFormatSettings } from '../../kernel/format/store'
+import { chunkQty, maxBins } from '../putaway/putawayLogic'
 import type { TrackingType } from './localLookup'
 
 /** Modos de recepción del almacén (LookupCode ReceivingMode). */
@@ -166,6 +167,26 @@ export function validateTargetBin(code: string, localBins: readonly LocalBin[]):
   if (!bin.isActive) return { ok: false, reason: 'inactive' }
   if (bin.zoneTypeCode && NON_TARGET_ZONE_TYPES.includes(bin.zoneTypeCode.toUpperCase())) return { ok: false, reason: 'notStorage' }
   return { ok: true, code: bin.code }
+}
+
+/**
+ * Reparto en recibo directo (tarea 24c): una línea por posición con la misma cantidad (la última posición no recibe de más: solo caben
+ * posiciones llenas, como en Acomodar). Devuelve las líneas y lo que queda sin ubicar de la captura (los sueltos).
+ */
+export function splitDraftLines(draft: LineDraft, perBin: number, codes: readonly string[]): { lines: DraftLine[]; left: number } {
+  const total = draftQuantity(draft)
+  const chunk = chunkQty(total, perBin)
+  const lines = codes.map((code) => buildLine({ ...draft, qtyText: String(chunk), targetBinCode: code }))
+  return { lines, left: Math.round((total - chunk * codes.length) * 1000) / 1000 }
+}
+
+export type AddSplitResult = { ok: true; codes: string[] } | { ok: false; reason: 'duplicate' | 'full' }
+
+/** Suma una posición al reparto del recibo: no repetida y dentro de las posiciones llenas que caben. */
+export function addSplitBin(codes: readonly string[], code: string, total: number, perBin: number): AddSplitResult {
+  if (codes.some((c) => c.toUpperCase() === code.toUpperCase())) return { ok: false, reason: 'duplicate' }
+  if (codes.length >= maxBins(total, perBin)) return { ok: false, reason: 'full' }
+  return { ok: true, codes: [...codes, code] }
 }
 
 /** Líneas de un recibo directo que todavía no tienen posición destino (no debería pasar: el paso la exige). */

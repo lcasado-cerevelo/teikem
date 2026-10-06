@@ -5420,3 +5420,10 @@ Toque **Quitar la última** (quita la última escaneada); nada se ha movido hast
 
 **Confirmé el reparto y una posición era de otro almacén (`Posición no encontrada.`).**
 No se movió nada: el reparto es todo o nada. Escanee las posiciones correctas y confírmelo de nuevo.
+
+**En el recibo directo repartí 45 de 20 en 20 y me quedaron 5 sin ubicar.**
+Después de **Confirmar reparto** la captura sigue con `5` y el campo de posición: escanee la posición donde quedan los sueltos (o toque Cancelar
+para descartarlos de este recibo; las 2 líneas ya agregadas se quedan).
+
+**Repartir en un recibo con aviso me muestra el conflicto de posición.**
+Con aviso u orden de compra cada línea entra a una sola posición (`Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.`). Para repartir un producto en varias posiciones use un recibo ciego o de devolución.
