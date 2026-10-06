@@ -99,6 +99,33 @@ export function rentalListQuery(f: RentalFilterState, search: string = f.search)
   return q
 }
 
+/** Lote F18 — tarjetas de resumen de la lista: En renta hoy, por vencer (7 días) y vencidas. */
+export type RentalSummaryKey = 'onRent' | 'dueSoon' | 'overdue'
+
+/** Filtros que aplica cada tarjeta (los demás quedan vacíos). */
+export function summaryFilters(key: RentalSummaryKey, soonDays: number = RENTAL_DUE_SOON_DAYS): RentalFilterState {
+  switch (key) {
+    case 'onRent':
+      return { ...EMPTY_RENTAL_FILTERS, status: ['ON_RENT'] }
+    case 'dueSoon':
+      return { ...EMPTY_RENTAL_FILTERS, dueWithinDays: String(soonDays) }
+    case 'overdue':
+      return { ...EMPTY_RENTAL_FILTERS, overdue: true }
+  }
+}
+
+/** Tarjeta cuyo filtro es EXACTAMENTE el activo (para `aria-pressed`); null si los filtros son otros. */
+export function summaryCardOf(f: RentalFilterState, soonDays: number = RENTAL_DUE_SOON_DAYS): RentalSummaryKey | null {
+  const keys: RentalSummaryKey[] = ['onRent', 'dueSoon', 'overdue']
+  const same = (a: RentalFilterState, b: RentalFilterState) =>
+    a.status.join(',') === b.status.join(',') &&
+    a.clientPublicId === b.clientPublicId &&
+    (parseDueDays(a.dueWithinDays) ?? -1) === (parseDueDays(b.dueWithinDays) ?? -1) &&
+    a.overdue === b.overdue &&
+    a.search.trim() === b.search.trim()
+  return keys.find((k) => same(f, summaryFilters(k, soonDays))) ?? null
+}
+
 export function hasRentalFilters(f: RentalFilterState): boolean {
   return f.status.length > 0 || Boolean(f.clientPublicId) || parseDueDays(f.dueWithinDays) !== null || f.overdue || f.search.trim() !== ''
 }

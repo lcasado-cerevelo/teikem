@@ -17,3 +17,36 @@
 .ren-serial-list input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
 .ren-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
 .ren-rate-fields{margin:0}
+/* Lote F18 (Rentas F-R2) — devolución, devoluciones, proceso y reportes. Todo envuelve a 360 px (sin scroll horizontal). */
+.ren-tabs{margin:0 0 12px}
+.ren-tabs a{border-radius:6px;padding:5px 9px;font-size:12px;font-weight:600;color:var(--muted);display:flex;align-items:center;white-space:nowrap;text-decoration:none}
+.ren-tabs a[aria-current="page"]{background:var(--panel);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}
+.ren-tabs a:focus-visible{outline:2px solid var(--flow);outline-offset:1px}
+.ren-ret-lines{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.ren-ret-line{border:1px solid var(--line);border-radius:9px;padding:8px 10px;margin:0;min-width:0}
+.ren-ret-line.off .ren-ret-grid{opacity:.55}
+.ren-ret-line legend{padding:0 4px;max-width:100%}
+.ren-ret-include{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;cursor:pointer;min-width:0}
+.ren-ret-include .mono{font-weight:700;overflow-wrap:anywhere}
+.ren-ret-product{font-size:12px;color:var(--muted);overflow-wrap:anywhere;min-width:0}
+.ren-ret-include input:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.ren-ret-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:4px 12px;min-width:0}
+.ren-ret-grid > .f{min-width:0}
+.ren-ret-proc .sw{margin-top:22px}
+.ren-ret-proc .help{margin:4px 0 0}
+.ren-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:10px;margin:0 0 12px}
+.ren-kpi{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 14px;color:var(--text);min-width:0;cursor:pointer}
+.ren-kpi .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);overflow-wrap:anywhere}
+.ren-kpi .v{font-family:var(--mono);font-size:24px;font-weight:700}
+.ren-kpi .s{font-size:12px;color:var(--muted)}
+.ren-kpi.warn .v{color:var(--warn)}
+.ren-kpi.fail .v{color:var(--danger)}
+.ren-kpi[aria-pressed="true"]{border-color:var(--flow);box-shadow:0 0 0 1px var(--flow) inset}
+.ren-kpi:focus-visible{outline:2px solid var(--flow);outline-offset:2px}
+.ren-links{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.ren-proc-actions{display:flex;flex-wrap:wrap;gap:6px}
+.ren-scrap-warn{border:1px solid var(--danger);border-radius:9px;padding:8px 10px;margin:0 0 12px;overflow-wrap:anywhere}
+.ren-report-defs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin:0 0 12px}
+.ren-report-card{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 14px;min-width:0}
+.ren-report-card .v{font-family:var(--mono);font-size:26px;font-weight:700}
+.ren-report-card p{margin:4px 0 0;overflow-wrap:anywhere}

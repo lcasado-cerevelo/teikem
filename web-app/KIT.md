@@ -1055,6 +1055,33 @@ atención" y (las que reservan o mueven series) la existencia. `useFrequencyOpti
 {statusAction && <RentalStatusActionModal kind="dispatch" rental={rental} onClose={() => setStatusAction(null)} />}
 ```
 
+### Devoluciones, proceso y reportes de rentas (Lote F18 — Rentas F-R2)
+Rutas (todas `rental.view` + `RENTAL_EQUIPMENT`): `/warehouse/rental-returns` (ítem "Devoluciones de renta", order 120; `?reason=`,
+`?clientPublicId=`, `?rentalPublicId=`, `?from=`, `?to=`, `?early=true|false`, `?search=` se leen una vez), `/warehouse/rental-returns/:publicId`
+(ficha), `/warehouse/rental-processes` (ítem "Proceso de equipos", order 130; `?status=`, `?open=true|false|all` —abiertos por defecto—,
+`?warehousePublicId=`, `?search=`) y `/warehouse/rental-reports` (sin ítem; dentro pide `analytics.view` + ANALYTICS con `ModuleGate`;
+`?view=<id>` abre una vista). El Kárdex pasa a order 140 y sigue siendo el último de Almacén.
+| Pieza | Props / firma | Uso |
+|---|---|---|
+| `RentalTabs` | `current: 'rentals' \| 'returns' \| 'processes' \| 'reports'` | franja `.seg` de enlaces (no `?tab=`) entre las cuatro pantallas del submódulo, `aria-current="page"`; "Reportes" solo con `analytics.view` + ANALYTICS |
+| `RentalReturnModal` | `rental: RentalDto`, `onClose` | "Registrar devolución" (`rental.return`, `canRegisterReturn(rental)`): fecha (hoy, `max` hoy, `min` inicio), motivo (`RentalReturnReason`; "Otro" exige notas), notas, costo de recogido y moneda, destino común (almacén + posición, sin zona `RENTAL`) y por equipo pendiente: incluir, condición (`RentalReturnCondition`), posición propia, "¿Pasa por proceso?" y notas. Mensajes del servidor; no se cierra si el API rechaza |
+| `RentalReturnListScreen` / `RentalReturnDetailScreen` / `RentalProcessListScreen` / `RentalReportsScreen` | pantallas (default) | lista paginada en el servidor con filtros y Exportar; ficha con renta ↔ devolución y proceso por equipo; cola con Avanzar / Completar / Dar de baja / Historial; vistas, indicadores y gráfico de rentas del motor de Análisis |
+| `AdvanceProcessModal` / `CompleteProcessModal` / `ScrapProcessModal` / `ProcessHistoryModal` (`ProcessDialogs.tsx`) | `process: RentalProcessDto`, `onClose` | avanzar a un estatus habilitado no terminal (sugiere el siguiente; el 422 del motor sale tal cual), completar con traslado opcional en el mismo almacén, baja con confirmación escribiendo la serie (además `inventory.adjust`: sin él la acción no se pinta), historial `RENTAL_PROCESS` |
+| `ReportResultTable` (`features/analytics/ReportResultTable.tsx`) | `result: ReportRunResultDto`, `name`, `loading?`, `emptyText?` | pinta el resultado de `POST /analytics/reports/{id}/run` tal cual (columnas del servidor, texto por tipo con los formatos de la compañía, totales en `SummaryBar`); no recalcula. Puras en `reportResult.ts`: `reportCellText`, `reportSortValue`, `reportTotalsItems` |
+Hooks (`rentals/api.ts`): `useRentalReturns(query)`, `exportRentalReturns`, `useRentalReturn(publicId)`, `useCreateRentalReturn()` →
+`mutateAsync({ publicId, body })`, `useRentalProcesses(query)`, `exportRentalProcesses`, `useRentalProcessAction()` → `mutateAsync({ action:
+'advance' | 'complete' | 'scrap', id, body })` (invalidan rentas, devoluciones, procesos, vistas corridas, historial, aviso y existencia),
+`useRentalSummary(días)` (En renta hoy / por vencer / vencidas: `total` de `GET /rentals` con `take=1`), `useRentalReports()` (vistas de
+Análisis cuyas fuentes son `RENTAL_SOURCES`) y `useReportRun(id)` (rango "Todo", 500 filas). Puras en `returnRules.ts`: `pendingReturnLines`,
+`canRegisterReturn`, `initialReturnLines`, `returnHeaderIssues`, `returnIssues` (códigos `rentalReturns.errors.*` = mensaje exacto del servidor),
+`returnBody`, `isEarlyReturn`, `returnFiltersFromUrl`, `returnListQuery`, `processFiltersFromUrl`, `processListQuery`, `daysInProcess`,
+`advanceOptions`, `suggestedAdvance`, `scrapConfirmed`; en `rentalRules.ts`: `summaryFilters`, `summaryCardOf`.
+```tsx
+<Can perm="rental.return">{canRegisterReturn(rental) && <button className="btn flow" onClick={() => setReturning(true)}>{t('rentalReturns.actions.register')}</button>}</Can>
+{returning && <RentalReturnModal rental={rental} onClose={() => setReturning(false)} />}
+<ReportResultTable result={run.data} name={view.name ?? ''} loading={run.isLoading} />
+```
+
 ## Pulso del día por paneles (`src/features/analytics`, Lote F8a)
 No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agregue un panel sin tocar la pantalla.
 - El servidor decide qué ve cada quien: `GET /api/v1/analytics/pulse` → `PulseDto { panels, indicators, charts, hasPersonalLayout,

@@ -300,6 +300,14 @@
     "rentals": {
       "title": "Rentas",
       "subtitle": "equipos con serie rentados a la localidad del cliente"
+    },
+    "rentalReturns": {
+      "title": "Devoluciones de renta",
+      "subtitle": "equipos que vuelven de una renta, con motivo y condición"
+    },
+    "rentalProcesses": {
+      "title": "Proceso de equipos",
+      "subtitle": "inspección, limpieza y pruebas de los equipos devueltos"
     }
   },
   "status": {
@@ -955,6 +963,12 @@
         "groupByRequired": "Elija un campo para agrupar."
       },
       "filterUnrepresentable": "Este filtro usa reglas avanzadas que esta pantalla no puede mostrar como filas. Se conserva tal cual hasta que agregues una fila nueva; a partir de ahí, guardar lo reemplaza."
+    },
+    "reportRun": {
+      "yes": "Sí",
+      "no": "No",
+      "empty": "Sin filas.",
+      "totals": "Totales"
     }
   },
   "orders": {
@@ -3947,7 +3961,10 @@
       "noEquipmentBody": "Agréguelos con «Agregar equipos» antes de programarla.",
       "cancelledLines": "Renta cancelada: estos son los equipos que tenía (inactivos).",
       "noShipment": "Sin envío (llegará con el módulo de Envíos)",
-      "noInvoice": "Sin factura (llegará con Facturación)"
+      "noInvoice": "Sin factura (llegará con Facturación)",
+      "returns": "Devoluciones",
+      "returnsLink": "Ver en Devoluciones",
+      "noReturns": "Esta renta no tiene devoluciones."
     },
     "extensions": {
       "when": "Fecha",
@@ -4031,6 +4048,210 @@
       "tooManyLines": "Una renta admite como máximo 200 equipos.",
       "commentTooLong": "El comentario admite como máximo 500 caracteres.",
       "noRateLines": "Elija al menos un equipo para la tarifa nueva."
+    },
+    "tabs": {
+      "label": "Secciones de Rentas",
+      "rentals": "Rentas",
+      "returns": "Devoluciones",
+      "processes": "Proceso de equipos",
+      "reports": "Reportes"
+    },
+    "summary": {
+      "label": "Resumen de rentas",
+      "onRent": "En renta hoy",
+      "onRentHint": "rentas con el equipo en el cliente",
+      "dueSoon": "Por vencer ({days} días)",
+      "dueSoonHint": "se recogen de hoy a {days} días",
+      "overdue": "Vencidas",
+      "overdueHint": "el recogido ya pasó"
+    },
+    "reportsLink": "Reportes de rentas"
+  },
+  "rentalReturns": {
+    "title": "Devoluciones de renta",
+    "subtitle": "equipos que vuelven de una renta: motivo, condición, destino y proceso",
+    "back": "Volver a Devoluciones",
+    "notFound": "Devolución de renta no encontrada.",
+    "empty": "No hay devoluciones con estos filtros.",
+    "emptyBody": "Una devolución se registra desde la ficha de una renta En renta (Registrar devolución).",
+    "yes": "Sí",
+    "no": "No",
+    "earlyChip": "Anticipada",
+    "onTime": "Al término",
+    "columns": {
+      "number": "Número",
+      "returnedOn": "Fecha de devolución",
+      "rental": "Renta",
+      "client": "Cliente",
+      "reason": "Motivo",
+      "early": "Anticipada",
+      "units": "Equipos",
+      "openProcesses": "En proceso",
+      "createdAt": "Registrada el"
+    },
+    "filters": {
+      "reason": "Motivo",
+      "client": "Cliente",
+      "returnedOn": "Fecha de devolución",
+      "early": "Anticipada",
+      "earlyYes": "Solo anticipadas",
+      "earlyNo": "Solo al término",
+      "onlyRental": "Solo las devoluciones de la renta {number}.",
+      "removeRental": "Quitar este filtro",
+      "searchPlaceholder": "Número DRN, número de renta o serie"
+    },
+    "fields": {
+      "returnedOn": "Fecha de devolución",
+      "reason": "Motivo",
+      "notes": "Notas",
+      "pickupCost": "Costo de recogido estimado",
+      "currency": "Moneda del recogido",
+      "toWarehouse": "Almacén de destino",
+      "toBinAll": "Posición de destino para todos",
+      "toBin": "Posición de destino",
+      "condition": "Condición",
+      "requiresProcess": "¿Pasa por proceso?",
+      "lineNotes": "Notas del equipo",
+      "destination": "Destino",
+      "process": "Proceso",
+      "rental": "Renta",
+      "client": "Cliente",
+      "rentalStatus": "Estatus de la renta después",
+      "pickupShipment": "Envío de recogido",
+      "createdBy": "Registrada por"
+    },
+    "form": {
+      "title": "Registrar devolución de la renta {number}",
+      "submit": "Registrar devolución ({count})",
+      "intro": "Equipos que vuelven de {client}. Fecha de recogido vigente: {pickup}.",
+      "returnedOnHelp": "Hoy por defecto; no puede ser futura ni anterior al inicio de la renta.",
+      "reasonPlaceholder": "Elija el motivo…",
+      "earlyNote": "Devolución anticipada: la fecha es anterior al recogido ({pickup}).",
+      "notesOtherHelp": "Con el motivo «Otro» describa la devolución.",
+      "pickupCostHelp": "Solo un dato: el recogido saldrá de un envío cuando exista el módulo.",
+      "destination": "Destino",
+      "destinationHelp": "Vacío = cada equipo vuelve a la posición de donde salió. Puede ser otro almacén (p. ej. cuarentena de un taller); nunca la zona En renta.",
+      "originBin": "La posición de origen de cada equipo",
+      "linesTitle": "Equipos que vuelven ({included} de {total})",
+      "none": "Ninguno",
+      "all": "Todos",
+      "effects": "Cada equipo vuelve con una transferencia desde EN-RENTA a su destino. Con proceso queda en mano pero reservado («En proceso») hasta terminarlo; sin proceso queda disponible al momento. Puede devolver solo una parte: la renta sigue En renta hasta que vuelve el último equipo.",
+      "noPending": "No quedan equipos por devolver en esta renta.",
+      "commonBin": "La posición para todos",
+      "originBinOf": "Origen: {bin}",
+      "requiresProcessOf": "¿Pasa por proceso? {serial}",
+      "processYes": "Sí: queda «En proceso» (reservado).",
+      "processNo": "No: queda disponible al momento."
+    },
+    "actions": {
+      "register": "Registrar devolución"
+    },
+    "toast": {
+      "created": "Devolución {number} registrada: {count} equipo(s).",
+      "createdClosed": "Devolución {number} registrada: {count} equipo(s). La renta {rental} quedó Devuelta."
+    },
+    "detail": {
+      "data": "Datos de la devolución",
+      "lines": "Equipos devueltos",
+      "noLines": "Sin equipos.",
+      "openProcess": "Ver proceso",
+      "noProcess": "Sin proceso (disponible)",
+      "rentalLink": "Renta {number}"
+    },
+    "errors": {
+      "reasonRequired": "Indique el motivo de la devolución: END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT u OTHER.",
+      "otherNeedsNotes": "Con el motivo 'Otro' describa la devolución en las notas.",
+      "notesTooLong": "Las notas admiten como máximo 1000 caracteres.",
+      "lineNotesTooLong": "Las notas del equipo admiten como máximo 500 caracteres.",
+      "returnedOnFuture": "La fecha de devolución no puede ser futura.",
+      "returnedOnBeforeStart": "La fecha de devolución no puede ser anterior al inicio de la renta ({date}).",
+      "negativePickupCost": "El costo de recogido estimado no puede ser negativo.",
+      "numberInvalid": "Escriba un número válido.",
+      "noLines": "Indique al menos una serie que se devuelve."
     }
+  },
+  "rentalProcesses": {
+    "title": "Proceso de equipos",
+    "subtitle": "equipos devueltos en revisión hasta quedar listos (o dados de baja)",
+    "empty": "No hay procesos con estos filtros.",
+    "emptyOpen": "No hay equipos en proceso.",
+    "emptyBody": "Un proceso se abre al registrar la devolución de un equipo con «¿Pasa por proceso?».",
+    "scrapNeedsAdjust": "Dar de baja exige además el permiso inventory.adjust (ajustes de inventario), que su usuario no tiene: pídalo a un administrador.",
+    "columns": {
+      "product": "Producto",
+      "where": "Almacén · posición",
+      "status": "Estatus",
+      "days": "Días en proceso",
+      "condition": "Condición al volver",
+      "return": "Devolución",
+      "rental": "Renta",
+      "started": "Iniciado el",
+      "completed": "Terminado el"
+    },
+    "filters": {
+      "status": "Estatus",
+      "state": "Abiertos o terminados",
+      "open": "Abiertos",
+      "finished": "Terminados",
+      "all": "Todos",
+      "warehouse": "Almacén",
+      "allWarehouses": "Todos los almacenes",
+      "searchPlaceholder": "Serie, SKU, devolución o renta"
+    },
+    "actions": {
+      "advance": "Avanzar",
+      "complete": "Completar",
+      "scrap": "Dar de baja",
+      "history": "Historial"
+    },
+    "dialog": {
+      "where": "{warehouse} · {bin}",
+      "comment": "Comentario (opcional, va al historial)"
+    },
+    "advance": {
+      "title": "Avanzar el proceso de {serial}",
+      "help": "Elija el paso al que pasa. Va al siguiente paso habilitado, a Reparación o Esperando piezas desde cualquier paso, y de ahí de vuelta; un salto fuera de orden lo rechaza el servidor con su mensaje. Para terminar use «Completar» o «Dar de baja».",
+      "to": "Pasa a",
+      "pick": "Elija el estatus…",
+      "suggested": "{label} (siguiente)"
+    },
+    "complete": {
+      "title": "Completar el proceso de {serial}",
+      "body": "El proceso pasa a «Lista»: se libera la reserva, la serie queda Disponible y el disponible del producto vuelve.",
+      "bin": "Trasladar a otra posición de {warehouse} (opcional)",
+      "stay": "Se queda en {bin}",
+      "binHelp": "Solo posiciones del mismo almacén y fuera de la zona En renta; a otro almacén, con una transferencia después."
+    },
+    "scrap": {
+      "title": "Dar de baja {serial}",
+      "body": "Se registra un ajuste de salida (−1) de {sku} desde {bin} con el motivo «Daño» y la serie {serial} queda dada de baja: sale del inventario y no vuelve. No se puede deshacer.",
+      "confirmLabel": "Para confirmar, escriba la serie {serial}"
+    },
+    "history": {
+      "title": "Historial del proceso de {serial}"
+    },
+    "toast": {
+      "advanced": "{serial} pasó a {status}.",
+      "completed": "{serial} quedó Lista y disponible.",
+      "scrapped": "{serial} quedó dada de baja."
+    },
+    "errors": {
+      "statusRequired": "Indique el estatus al que pasa el proceso.",
+      "scrapConfirm": "Escriba la serie {serial} para confirmar la baja."
+    }
+  },
+  "rentalReports": {
+    "title": "Reportes de rentas",
+    "subtitle": "vistas, indicadores y gráfico de rentas, devoluciones y procesos (Análisis)",
+    "indicators": "Indicadores",
+    "toAnalytics": "Ir a Análisis → Indicadores",
+    "pulseHint": "Para verlos en su Pulso, encienda «Mostrar en mi Pulso» en Análisis → Indicadores (vienen apagados: «Necesita tu atención» ya muestra cada renta vencida o por vencer).",
+    "noIndicators": "No hay indicadores de rentas.",
+    "views": "Vistas de rentas",
+    "noViews": "No hay vistas de rentas.",
+    "pickView": "Vista",
+    "system": "Sistema",
+    "company": "Compañía",
+    "emptyView": "La vista no tiene filas hoy."
   }
 }

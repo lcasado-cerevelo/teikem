@@ -157,7 +157,8 @@ function wrap(path: string, permissions: string[]) {
 const VIEW = ['rental.view']
 const MANAGE = ['rental.view', 'rental.manage', 'inventory.view']
 const ALL = [...MANAGE, 'rental.extend']
-const listGets = () => mock.calls.filter((c) => c.method === 'GET' && c.url.pathname === '/api/v1/rentals')
+// la lista (las tarjetas de resumen de F18 piden solo el total con take=1)
+const listGets = () => mock.calls.filter((c) => c.method === 'GET' && c.url.pathname === '/api/v1/rentals' && c.url.searchParams.get('take') !== '1')
 const posts = (suffix: string) => mock.calls.filter((c) => c.method !== 'GET' && c.url.pathname.endsWith(suffix))
 
 beforeAll(() => setLang('es'))

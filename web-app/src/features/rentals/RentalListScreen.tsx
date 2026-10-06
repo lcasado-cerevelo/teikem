@@ -5,9 +5,12 @@
 // aviso RENTAL_DUE) abre la ficha. Tabla paginada en el servidor con orden por columna en la página, insignia de estatus con
 // su color y texto, "Vencida"/"Vence en N días" como dato calculado (no es estatus) y Exportar con todo lo filtrado.
 // "Nueva renta" con `rental.manage`.
+// Lote F18 (Rentas F-R2): pestañas del submódulo (Rentas · Devoluciones · Proceso de equipos · Reportes), tarjetas de resumen
+// (En renta hoy, Por vencer en 7 días, Vencidas: totales del mismo API con `take=1`; un clic aplica ese filtro) y el enlace
+// "Reportes de rentas" (vistas, indicadores y gráfico de Análisis; `analytics.view` + módulo Análisis).
 import { useMemo, useRef, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { Can } from '../../kernel/access'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Can, useModule } from '../../kernel/access'
 import { StatusChip, useStatuses } from '../../kernel/catalogs'
 import { useFormat } from '../../kernel/format/useFormat'
 import { useT } from '../../kernel/i18n'
@@ -15,16 +18,21 @@ import { ClientPicker, DataTable, EmptyState, Filters, Panel, QBox, SearchSelect
 import { IconWarehouse } from '../../kernel/ui/screenIcons'
 import { ToggleFilter } from '../warehouse/filterControls'
 import { useDebounced } from '../warehouse/lineRules'
-import { exportRentals, useRentals } from './api'
+import { exportRentals, useRentals, useRentalSummary } from './api'
 import { DueChip } from './DueChip'
 import { RentalFormModal } from './RentalFormModal'
+import { RentalTabs } from './RentalTabs'
 import {
   dueLabel,
   dueState,
   EMPTY_RENTAL_FILTERS,
   parseDueDays,
+  RENTAL_DUE_SOON_DAYS,
   RENTAL_STATUS_DOMAIN,
   rentalFiltersFromUrl,
+  summaryCardOf,
+  summaryFilters,
+  type RentalSummaryKey,
   rentalListQuery,
   type RentalFilterState,
   type RentalListItemDto,
@@ -47,6 +55,31 @@ function DueDaysFilter({ label, value, onChange, hint }: { label: string; value:
   )
 }
 
+/** Tarjetas de resumen: cada una es un botón que aplica su filtro (`aria-pressed` = el filtro activo es el suyo). */
+function RentalSummaryCards({ filters, onPick }: { filters: RentalFilterState; onPick: (key: RentalSummaryKey) => void }) {
+  const t = useT()
+  const f = useFormat()
+  const { data, isLoading, error } = useRentalSummary(RENTAL_DUE_SOON_DAYS)
+  const active = summaryCardOf(filters)
+  const cards: { key: RentalSummaryKey; value: number | undefined; tone?: string }[] = [
+    { key: 'onRent', value: data?.onRent },
+    { key: 'dueSoon', value: data?.dueSoon, tone: data?.dueSoon ? 'warn' : undefined },
+    { key: 'overdue', value: data?.overdue, tone: data?.overdue ? 'fail' : undefined },
+  ]
+  if (error) return null
+  return (
+    <div className="ren-kpis" role="group" aria-label={t('rentals.summary.label')} aria-busy={isLoading || undefined}>
+      {cards.map((c) => (
+        <button key={c.key} type="button" className={c.tone ? `ren-kpi ${c.tone}` : 'ren-kpi'} aria-pressed={active === c.key} onClick={() => onPick(c.key)}>
+          <span className="k">{t(`rentals.summary.${c.key}`, { days: RENTAL_DUE_SOON_DAYS })}</span>
+          <span className="v">{c.value === undefined ? '—' : f.number(c.value)}</span>
+          <span className="s">{t(`rentals.summary.${c.key}Hint`, { days: RENTAL_DUE_SOON_DAYS })}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function RentalListScreen() {
   const [params] = useSearchParams()
   const pinned = params.get('rental')
@@ -65,6 +98,7 @@ function RentalList({ initial }: { initial: URLSearchParams }) {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [creating, setCreating] = useState(false)
+  const analyticsOn = useModule('ANALYTICS')
 
   const { data: statuses = [] } = useStatuses(RENTAL_STATUS_DOMAIN)
   const statusOptions = useMemo(() => statuses.map((s) => ({ value: s.code, label: s.label })), [statuses])
@@ -123,6 +157,13 @@ function RentalList({ initial }: { initial: URLSearchParams }) {
           <p>{t('rentals.subtitle')}</p>
         </div>
         <div className="act">
+          {analyticsOn && (
+            <Can perm="analytics.view">
+              <Link className="btn" to="/warehouse/rental-reports">
+                {t('rentals.reportsLink')}
+              </Link>
+            </Can>
+          )}
           <Can perm="rental.manage">
             <button type="button" className="btn flow" onClick={() => setCreating(true)}>
               {t('rentals.new')}
@@ -130,6 +171,16 @@ function RentalList({ initial }: { initial: URLSearchParams }) {
           </Can>
         </div>
       </div>
+
+      <RentalTabs current="rentals" />
+      <RentalSummaryCards
+        filters={{ ...filters, search: q }}
+        onPick={(key) => {
+          setPage(1)
+          setQ('')
+          setFilters(summaryFilters(key))
+        }}
+      />
 
       <Filters
         onClear={() => {

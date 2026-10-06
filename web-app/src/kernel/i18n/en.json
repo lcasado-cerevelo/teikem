@@ -300,6 +300,14 @@
     "rentals": {
       "title": "Rentals",
       "subtitle": "serial-tracked equipment rented to a client location"
+    },
+    "rentalReturns": {
+      "title": "Rental returns",
+      "subtitle": "equipment coming back from a rental, with reason and condition"
+    },
+    "rentalProcesses": {
+      "title": "Equipment processing",
+      "subtitle": "inspection, cleaning and testing of returned equipment"
     }
   },
   "status": {
@@ -955,6 +963,12 @@
         "groupByRequired": "Choose a field to group by."
       },
       "filterUnrepresentable": "This filter uses advanced rules this screen can't show as rows. It's kept as-is until you add a new row; from then on, saving replaces it."
+    },
+    "reportRun": {
+      "yes": "Yes",
+      "no": "No",
+      "empty": "No rows.",
+      "totals": "Totals"
     }
   },
   "orders": {
@@ -3947,7 +3961,10 @@
       "noEquipmentBody": "Add it with “Add equipment” before scheduling.",
       "cancelledLines": "Cancelled rental: this is the equipment it had (inactive).",
       "noShipment": "No shipment (coming with the Shipments module)",
-      "noInvoice": "No invoice (coming with Billing)"
+      "noInvoice": "No invoice (coming with Billing)",
+      "returns": "Returns",
+      "returnsLink": "See in Returns",
+      "noReturns": "This rental has no returns."
     },
     "extensions": {
       "when": "Date",
@@ -4031,6 +4048,210 @@
       "tooManyLines": "A rental allows at most 200 units.",
       "commentTooLong": "The comment allows at most 500 characters.",
       "noRateLines": "Choose at least one unit for the new rate."
+    },
+    "tabs": {
+      "label": "Rentals sections",
+      "rentals": "Rentals",
+      "returns": "Returns",
+      "processes": "Equipment processing",
+      "reports": "Reports"
+    },
+    "summary": {
+      "label": "Rentals summary",
+      "onRent": "On rent today",
+      "onRentHint": "rentals with the equipment at the client",
+      "dueSoon": "Due ({days} days)",
+      "dueSoonHint": "picked up from today to {days} days",
+      "overdue": "Overdue",
+      "overdueHint": "the pickup date has passed"
+    },
+    "reportsLink": "Rental reports"
+  },
+  "rentalReturns": {
+    "title": "Rental returns",
+    "subtitle": "equipment coming back from a rental: reason, condition, destination and processing",
+    "back": "Back to Returns",
+    "notFound": "Rental return not found.",
+    "empty": "No returns match these filters.",
+    "emptyBody": "A return is registered from the detail of an On rent rental (Register return).",
+    "yes": "Yes",
+    "no": "No",
+    "earlyChip": "Early",
+    "onTime": "At term",
+    "columns": {
+      "number": "Number",
+      "returnedOn": "Return date",
+      "rental": "Rental",
+      "client": "Client",
+      "reason": "Reason",
+      "early": "Early",
+      "units": "Units",
+      "openProcesses": "In processing",
+      "createdAt": "Registered on"
+    },
+    "filters": {
+      "reason": "Reason",
+      "client": "Client",
+      "returnedOn": "Return date",
+      "early": "Early",
+      "earlyYes": "Early only",
+      "earlyNo": "At term only",
+      "onlyRental": "Only the returns of rental {number}.",
+      "removeRental": "Remove this filter",
+      "searchPlaceholder": "DRN number, rental number or serial"
+    },
+    "fields": {
+      "returnedOn": "Return date",
+      "reason": "Reason",
+      "notes": "Notes",
+      "pickupCost": "Estimated pickup cost",
+      "currency": "Pickup currency",
+      "toWarehouse": "Destination warehouse",
+      "toBinAll": "Destination location for all",
+      "toBin": "Destination location",
+      "condition": "Condition",
+      "requiresProcess": "Goes through processing?",
+      "lineNotes": "Unit notes",
+      "destination": "Destination",
+      "process": "Processing",
+      "rental": "Rental",
+      "client": "Client",
+      "rentalStatus": "Rental status afterwards",
+      "pickupShipment": "Pickup shipment",
+      "createdBy": "Registered by"
+    },
+    "form": {
+      "title": "Register return of rental {number}",
+      "submit": "Register return ({count})",
+      "intro": "Equipment coming back from {client}. Current pickup date: {pickup}.",
+      "returnedOnHelp": "Today by default; it cannot be in the future nor before the rental start.",
+      "reasonPlaceholder": "Choose the reason…",
+      "earlyNote": "Early return: the date is before the pickup date ({pickup}).",
+      "notesOtherHelp": "With the reason “Other”, describe the return.",
+      "pickupCostHelp": "Data only: the pickup will come from a shipment once that module exists.",
+      "destination": "Destination",
+      "destinationHelp": "Empty = each unit goes back to the location it left from. It can be another warehouse (e.g. a workshop quarantine); never the On rent zone.",
+      "originBin": "Each unit's origin location",
+      "linesTitle": "Units coming back ({included} of {total})",
+      "none": "None",
+      "all": "All",
+      "effects": "Each unit comes back with a transfer from EN-RENTA to its destination. With processing it stays on hand but reserved (“In processing”) until finished; without processing it is available right away. You can return only part: the rental stays On rent until the last unit comes back.",
+      "noPending": "There are no units left to return in this rental.",
+      "commonBin": "The location for all",
+      "originBinOf": "Origin: {bin}",
+      "requiresProcessOf": "Goes through processing? {serial}",
+      "processYes": "Yes: it stays “In processing” (reserved).",
+      "processNo": "No: it is available right away."
+    },
+    "actions": {
+      "register": "Register return"
+    },
+    "toast": {
+      "created": "Return {number} registered: {count} unit(s).",
+      "createdClosed": "Return {number} registered: {count} unit(s). Rental {rental} is now Returned."
+    },
+    "detail": {
+      "data": "Return details",
+      "lines": "Returned units",
+      "noLines": "No units.",
+      "openProcess": "See processing",
+      "noProcess": "No processing (available)",
+      "rentalLink": "Rental {number}"
+    },
+    "errors": {
+      "reasonRequired": "Enter the return reason: END_OF_CONTRACT, EARLY_DAMAGE, EARLY_CLIENT or OTHER.",
+      "otherNeedsNotes": "With the reason 'Other', describe the return in the notes.",
+      "notesTooLong": "Notes allow at most 1000 characters.",
+      "lineNotesTooLong": "Unit notes allow at most 500 characters.",
+      "returnedOnFuture": "The return date cannot be in the future.",
+      "returnedOnBeforeStart": "The return date cannot be before the rental start ({date}).",
+      "negativePickupCost": "The estimated pickup cost cannot be negative.",
+      "numberInvalid": "Enter a valid number.",
+      "noLines": "Enter at least one serial being returned."
     }
+  },
+  "rentalProcesses": {
+    "title": "Equipment processing",
+    "subtitle": "returned equipment under review until ready (or scrapped)",
+    "empty": "No processes match these filters.",
+    "emptyOpen": "No equipment in processing.",
+    "emptyBody": "A process opens when a unit is returned with “Goes through processing?”.",
+    "scrapNeedsAdjust": "Scrapping also requires the inventory.adjust permission (inventory adjustments), which your user does not have: ask an administrator.",
+    "columns": {
+      "product": "Product",
+      "where": "Warehouse · location",
+      "status": "Status",
+      "days": "Days in processing",
+      "condition": "Condition on return",
+      "return": "Return",
+      "rental": "Rental",
+      "started": "Started on",
+      "completed": "Finished on"
+    },
+    "filters": {
+      "status": "Status",
+      "state": "Open or finished",
+      "open": "Open",
+      "finished": "Finished",
+      "all": "All",
+      "warehouse": "Warehouse",
+      "allWarehouses": "All warehouses",
+      "searchPlaceholder": "Serial, SKU, return or rental"
+    },
+    "actions": {
+      "advance": "Advance",
+      "complete": "Complete",
+      "scrap": "Scrap",
+      "history": "History"
+    },
+    "dialog": {
+      "where": "{warehouse} · {bin}",
+      "comment": "Comment (optional, goes to the history)"
+    },
+    "advance": {
+      "title": "Advance the processing of {serial}",
+      "help": "Choose the step it moves to. It goes to the next enabled step, to Repair or Awaiting parts from any step, and back from there; an out-of-order jump is rejected by the server with its message. To finish use “Complete” or “Scrap”.",
+      "to": "Moves to",
+      "pick": "Choose the status…",
+      "suggested": "{label} (next)"
+    },
+    "complete": {
+      "title": "Complete the processing of {serial}",
+      "body": "The process becomes “Ready”: the reservation is released, the serial is Available and the product's available quantity comes back.",
+      "bin": "Move to another location of {warehouse} (optional)",
+      "stay": "Stays in {bin}",
+      "binHelp": "Only locations of the same warehouse and outside the On rent zone; to another warehouse, with a transfer afterwards."
+    },
+    "scrap": {
+      "title": "Scrap {serial}",
+      "body": "An outbound adjustment (−1) of {sku} from {bin} is recorded with the reason “Damage” and serial {serial} is scrapped: it leaves inventory and does not come back. This cannot be undone.",
+      "confirmLabel": "To confirm, type the serial {serial}"
+    },
+    "history": {
+      "title": "Processing history of {serial}"
+    },
+    "toast": {
+      "advanced": "{serial} moved to {status}.",
+      "completed": "{serial} is Ready and available.",
+      "scrapped": "{serial} was scrapped."
+    },
+    "errors": {
+      "statusRequired": "Enter the status the process moves to.",
+      "scrapConfirm": "Type the serial {serial} to confirm the scrap."
+    }
+  },
+  "rentalReports": {
+    "title": "Rental reports",
+    "subtitle": "views, indicators and chart of rentals, returns and processing (Analytics)",
+    "indicators": "Indicators",
+    "toAnalytics": "Go to Analytics → Indicators",
+    "pulseHint": "To see them on your Pulse, turn on “Show on my Pulse” in Analytics → Indicators (they come off: “Needs your attention” already shows every overdue or due rental).",
+    "noIndicators": "There are no rental indicators.",
+    "views": "Rental views",
+    "noViews": "There are no rental views.",
+    "pickView": "View",
+    "system": "System",
+    "company": "Company",
+    "emptyView": "The view has no rows today."
   }
 }

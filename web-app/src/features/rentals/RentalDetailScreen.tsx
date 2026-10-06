@@ -6,6 +6,8 @@
 // contrato, transporte, enlaces vacíos a envío y factura, notas), Equipos por serie (posición de origen, tarifa vigente y
 // estado; inactivos atenuados en una renta cancelada; tarifa y quitar antes del despacho), Extensiones (bitácora) e
 // Historial de estatus (`/status/history/RENTAL/{id}`).
+// Lote F18 (Rentas F-R2): "Registrar devolución" (`rental.return`, renta En renta con equipos sin devolver) y el panel
+// Devoluciones de la renta (`GET /rental-returns?rentalPublicId=`) con enlace a la ficha de cada una (renta ↔ devolución).
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Can, useCan } from '../../kernel/access'
@@ -16,11 +18,13 @@ import { useT } from '../../kernel/i18n'
 import { Chip, ConfirmDialog, DataTable, EmptyState, Panel, Spinner, toast, type DataColumn, type RowAction } from '../../kernel/ui'
 import { IconEdit, IconTrash } from '../../kernel/ui/actionIcons'
 import { IconClock, IconDoc, IconWarehouse } from '../../kernel/ui/screenIcons'
-import { useRental, useRentalAction, useRentalExtensions } from './api'
+import { useRental, useRentalAction, useRentalExtensions, useRentalReturns } from './api'
 import { DueChip } from './DueChip'
 import { AddEquipmentModal, RentalExtendModal, RentalRateModal, RentalStatusActionModal, type StatusActionKind } from './RentalDialogs'
 import { RentalFormModal } from './RentalFormModal'
+import { RentalReturnModal } from './RentalReturnModal'
 import { lineState, RENTAL_ENTITY_TYPE, RENTAL_STATUS_DOMAIN, type RentalDto, type RentalExtensionDto, type RentalLineDto, type RentalLineRateDto } from './rentalRules'
+import { canRegisterReturn, type RentalReturnListItemDto } from './returnRules'
 import { useFrequencyLabel } from './useFrequencyOptions'
 import '../warehouse/warehouse.css'
 import './rentals.css'
@@ -72,6 +76,8 @@ function RentalDetail({ rental }: { rental: RentalDto }) {
   const [statusAction, setStatusAction] = useState<StatusActionKind | null>(null)
   const [rateLine, setRateLine] = useState<RentalLineDto | null>(null)
   const [removing, setRemoving] = useState<RentalLineDto | null>(null)
+  const [returning, setReturning] = useState(false)
+  const returns = useRentalReturns({ rentalPublicId: r.publicId, skip: 0, take: 100 }, { enabled: Boolean(r.publicId) })
 
   const rateText = useCallback(
     (rate: RentalLineRateDto | null | undefined) =>
@@ -150,6 +156,35 @@ function RentalDetail({ rental }: { rental: RentalDto }) {
     [t, f, rateText],
   )
 
+  const returnColumns = useMemo<DataColumn<RentalReturnListItemDto>[]>(
+    () => [
+      {
+        id: 'number',
+        header: t('rentalReturns.columns.number'),
+        cell: (x) => (
+          <Link className="ref" to={`/warehouse/rental-returns/${x.publicId}`}>
+            {x.number}
+          </Link>
+        ),
+        sortValue: (x) => x.number,
+        exportValue: (x) => x.number ?? '',
+        card: 'title',
+      },
+      { id: 'returnedOn', header: t('rentalReturns.columns.returnedOn'), cell: (x) => f.date(x.returnedOn), sortValue: (x) => x.returnedOn, exportValue: (x) => f.date(x.returnedOn) },
+      {
+        id: 'reason',
+        header: t('rentalReturns.columns.reason'),
+        cell: (x) => <Chip tone={x.isEarly ? 'warn' : 'neutral'}>{x.reason ?? x.reasonCode}</Chip>,
+        sortValue: (x) => x.reason ?? x.reasonCode,
+        exportValue: (x) => x.reason ?? x.reasonCode ?? '',
+      },
+      { id: 'early', header: t('rentalReturns.columns.early'), cell: (x) => (x.isEarly ? t('rentalReturns.yes') : t('rentalReturns.no')), sortValue: (x) => (x.isEarly ? 1 : 0) },
+      { id: 'units', header: t('rentalReturns.columns.units'), cell: (x) => f.number(x.units ?? 0), sortValue: (x) => x.units ?? 0, align: 'end' },
+      { id: 'open', header: t('rentalReturns.columns.openProcesses'), cell: (x) => f.number(x.openProcesses ?? 0), sortValue: (x) => x.openProcesses ?? 0, align: 'end' },
+    ],
+    [t, f],
+  )
+
   const lines = rental.lines ?? []
   const hasActive = lines.some((l) => l.isActive !== false)
   const transport =
@@ -193,6 +228,13 @@ function RentalDetail({ rental }: { rental: RentalDto }) {
             {rental.canDispatch && (
               <button type="button" className="btn flow" onClick={() => setStatusAction('dispatch')}>
                 {t('rentals.actions.dispatch')}
+              </button>
+            )}
+          </Can>
+          <Can perm="rental.return">
+            {canRegisterReturn(rental) && (
+              <button type="button" className="btn flow" onClick={() => setReturning(true)}>
+                {t('rentalReturns.actions.register')}
               </button>
             )}
           </Can>
@@ -272,6 +314,36 @@ function RentalDetail({ rental }: { rental: RentalDto }) {
         )}
       </Panel>
 
+      <Panel
+        flush
+        icon={<IconDoc />}
+        title={t('rentals.detail.returns')}
+        badge={returns.data?.total}
+        actions={
+          (returns.data?.total ?? 0) > 0 ? (
+            <Link className="btn sm" to={`/warehouse/rental-returns?rentalPublicId=${r.publicId}`}>
+              {t('rentals.detail.returnsLink')}
+            </Link>
+          ) : undefined
+        }
+      >
+        {returns.error ? (
+          <p className="pb ferr" role="alert">
+            {returns.error.message}
+          </p>
+        ) : (
+          <DataTable
+            label={t('rentals.detail.returns')}
+            columns={returnColumns}
+            rows={returns.data?.items ?? []}
+            rowKey={(x) => x.publicId ?? String(x.id)}
+            loading={returns.isLoading}
+            exportFileName={`${t('rentals.detail.returns')} ${r.number ?? ''}`}
+            empty={<EmptyState title={t('rentals.detail.noReturns')} />}
+          />
+        )}
+      </Panel>
+
       <Panel icon={<IconDoc />} title={t('rentals.detail.history')}>
         <StatusHistory entityType={RENTAL_ENTITY_TYPE} entityId={r.id ?? 0} domain={RENTAL_STATUS_DOMAIN} />
       </Panel>
@@ -280,6 +352,7 @@ function RentalDetail({ rental }: { rental: RentalDto }) {
       {adding && <AddEquipmentModal rental={rental} onClose={() => setAdding(false)} />}
       {extending && <RentalExtendModal rental={rental} onClose={() => setExtending(false)} />}
       {statusAction && <RentalStatusActionModal kind={statusAction} rental={rental} onClose={() => setStatusAction(null)} />}
+      {returning && <RentalReturnModal rental={rental} onClose={() => setReturning(false)} />}
       {rateLine && <RentalRateModal rental={rental} line={rateLine} onClose={() => setRateLine(null)} />}
       <ConfirmDialog
         open={removing !== null}

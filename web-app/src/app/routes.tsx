@@ -292,13 +292,43 @@ export const appRoutes: readonly AppRoute[] = [
     perm: 'rental.view',
     module: ModuleKeys.RentalEquipment,
   },
+  // Lote F18 (Rentas F-R2): Devoluciones de renta (lista con ?reason=, ?clientPublicId=, ?rentalPublicId=, ?from=, ?to=, ?early=,
+  // ?search=; ficha /warehouse/rental-returns/:publicId) y Proceso de equipos (cola con ?status=, ?open=true|false|all,
+  // ?warehousePublicId=, ?search=), justo después de Rentas; Reportes de rentas (/warehouse/rental-reports, sin ítem: se llega por
+  // las pestañas del submódulo y "Reportes de rentas"; además pide analytics.view + ANALYTICS dentro de la pantalla).
+  {
+    path: '/warehouse/rental-returns',
+    element: lazy(() => import('../features/rentals/RentalReturnListScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+    nav: { group: 'warehouse', key: 'rentalReturns', order: 120 },
+  },
+  {
+    path: '/warehouse/rental-returns/:publicId',
+    element: lazy(() => import('../features/rentals/RentalReturnDetailScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+  },
+  {
+    path: '/warehouse/rental-processes',
+    element: lazy(() => import('../features/rentals/RentalProcessListScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+    nav: { group: 'warehouse', key: 'rentalProcesses', order: 130 },
+  },
+  {
+    path: '/warehouse/rental-reports',
+    element: lazy(() => import('../features/rentals/RentalReportsScreen')),
+    perm: 'rental.view',
+    module: ModuleKeys.RentalEquipment,
+  },
   // Kárdex de movimientos (maqueta ledger()): pestañas Kárdex, Saldos (?tab=balances) y Conciliación (?tab=reconciliation).
   {
     path: '/warehouse/kardex',
     element: lazy(() => import('../features/warehouse/InventoryScreen')),
     perm: 'inventory.view',
     module: ModuleKeys.WmsLotSerial,
-    nav: { group: 'warehouse', key: 'kardex', order: 120 },
+    nav: { group: 'warehouse', key: 'kardex', order: 140 },
   },
   // Direcciones anteriores (sin ítem de menú): 'Tareas de almacén', 'Citas de muelle' e 'Inventario' ya no son pantallas propias.
   { path: '/warehouse/tasks', element: redirectTo('/warehouse/receipts?tab=putaway') },
