@@ -5405,3 +5405,18 @@ En **Proceso de equipos** ordene por "Días en proceso", o en Reportes de rentas
 **¿Los indicadores de rentas salen en el Pulso?**
 Vienen apagados (el aviso de "Necesita tu atención" ya muestra cada renta vencida o por vencer). Enciéndalos en Análisis → Indicadores
 con "Mostrar en mi Pulso"; mientras tanto se ven en **Reportes de rentas**.
+
+## Acomodo repartido en varias posiciones (tarea 24)
+
+**Acomodé 9 posiciones de 20 y quedaron 5 sueltos. ¿Dónde están?**
+Son una tarea de acomodo nueva en la lista de Acomodar (el reparto no cierra lo que no cupo en posiciones llenas). Ábrala y acomódela
+en una posición, o repita el reparto con otra cantidad por posición.
+
+**Me dice `No caben más posiciones: con 20 por posición caben 9 y quedan 185 por acomodar. El resto se acomoda aparte.` al escanear la décima.**
+Es lo esperado: con 185 y 20 por posición solo caben 9 posiciones llenas. Confirme el reparto; los 5 sueltos quedan como tarea nueva.
+
+**Escaneé una posición equivocada en el reparto.**
+Toque **Quitar la última** (quita la última escaneada); nada se ha movido hasta **Confirmar reparto**.
+
+**Confirmé el reparto y una posición era de otro almacén (`Posición no encontrada.`).**
+No se movió nada: el reparto es todo o nada. Escanee las posiciones correctas y confírmelo de nuevo.

@@ -1,4 +1,4 @@
-import { sortTasksMineFirst, type PutawayTask } from './putawayLogic'
+import { addDistBin, chunkQty, distSummary, maxBins, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from './putawayLogic'
 
 function task(id: number, assignedToUserId: number | null): PutawayTask {
   return { id, sku: `SKU-${id}`, productName: `P${id}`, quantity: 1, toBinCode: null, assignedToUserId }
@@ -13,5 +13,44 @@ describe('sortTasksMineFirst', () => {
   it('sin ninguna mía, conserva el orden original', () => {
     const tasks = [task(1, 5), task(2, 6)]
     expect(sortTasksMineFirst(tasks, 99).map((t) => t.id)).toEqual([1, 2])
+  })
+})
+
+describe('reparto por posición', () => {
+  const bin = (id: number): DistBin => ({ id, code: `A-${id}` })
+
+  it('parsePerBin acepta coma y punto y rechaza vacío, cero y más de 3 decimales', () => {
+    expect(parsePerBin('20')).toBe(20)
+    expect(parsePerBin(' 2,5 ')).toBe(2.5)
+    expect(parsePerBin('')).toBe(0)
+    expect(parsePerBin('0')).toBe(0)
+    expect(parsePerBin('1.2345')).toBe(0)
+    expect(parsePerBin('abc')).toBe(0)
+  })
+
+  it('maxBins: solo caben las posiciones llenas (185 de 20 → 9) y una sola si la tarea es menor', () => {
+    expect(maxBins(185, 20)).toBe(9)
+    expect(maxBins(180, 20)).toBe(9)
+    expect(maxBins(5, 20)).toBe(1)
+    expect(maxBins(0, 20)).toBe(0)
+    expect(chunkQty(185, 20)).toBe(20)
+    expect(chunkQty(5, 20)).toBe(5)
+  })
+
+  it('addDistBin rechaza la repetida y la décima de 185 de 20; acepta hasta 9', () => {
+    let bins: DistBin[] = []
+    for (let i = 1; i <= 9; i++) {
+      const r = addDistBin(bins, bin(i), 185, 20)
+      expect(r.ok).toBe(true)
+      if (r.ok) bins = r.bins
+    }
+    expect(addDistBin(bins, bin(3), 185, 20)).toEqual({ ok: false, reason: 'duplicate' })
+    expect(addDistBin(bins, bin(10), 185, 20)).toEqual({ ok: false, reason: 'full' })
+    expect(addDistBin([], bin(1), 185, 0)).toEqual({ ok: false, reason: 'perBin' })
+  })
+
+  it('distSummary: 9 posiciones de 20 de 185 → 180 repartidos, 5 pendientes', () => {
+    expect(distSummary(185, 20, 9)).toEqual({ total: 180, left: 5 })
+    expect(distSummary(5, 20, 1)).toEqual({ total: 5, left: 0 })
   })
 })

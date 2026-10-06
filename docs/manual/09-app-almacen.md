@@ -298,6 +298,35 @@ cierra la tarea (`POST /warehouse-tasks/{id}/complete`); de vuelta en la lista s
 (Lote A3). "Cancelar" en esta pantalla solo deja la tarea
 sin completar (vuelve a la lista); no la cancela en el servidor.
 
+### Repartir en varias posiciones (acomodo con cantidad por posición)
+
+Qué hace: acomoda una tarea en **varias posiciones con la misma cantidad** sin teclear cantidades una por una. Ejemplo: 185 unidades
+de 20 en 20 → 9 posiciones de 20 y 5 sueltos.
+
+Cómo se usa:
+1. Abrir la tarea. Arriba sale `Pendiente de acomodar: N`.
+2. Escribir la **Cantidad por posición** (opcional; con la tecla ⌨ si hace falta). Vacía = el acomodo de siempre (todo en la posición que se escanea).
+3. Escanear las posiciones, una por una. Cada una se suma a la lista (`A-01 · 20`) y la pantalla dice `Repartido: 180 · quedan 5 sin acomodar`.
+   **Nada se mueve todavía.** "Quitar la última" corrige un escaneo equivocado.
+4. **Confirmar reparto** manda todo junto (`POST /warehouse-tasks/{id}/distribute`): o se acomoda todo o no se mueve nada.
+5. Lo que no cupo en posiciones llenas (los 5 sueltos) queda como **tarea nueva** en la lista, para acomodarlo aparte (por ejemplo con otra cantidad por posición).
+
+Reglas: solo caben las posiciones **llenas** (185 de 20 → 9; la décima se rechaza); si la tarea es menor que la cantidad por posición
+(5 de 20), una sola posición recibe todo; cada posición se usa **una sola vez**; los productos con **serie** no se reparten (se acomodan
+indicando las series, desde la web). Quien acomoda necesita `warehouse.receive` (lo revisa el servidor).
+
+| Caso | Mensaje exacto | Código | Qué hacer |
+|---|---|---|---|
+| La posición ya está en el reparto | `Esa posición ya está en el reparto.` | Local | Escanear otra |
+| Ya no cabe otra posición | `No caben más posiciones: con {per} por posición caben {max} y quedan {left} por acomodar. El resto se acomoda aparte.` | Local (y 400 del servidor `Solo caben {max} posición(es) de {per}; quedan {left} por acomodar. El resto se acomoda aparte.`) | Confirmar el reparto; los sueltos son otra tarea |
+| Hay posiciones repetidas (llamada directa al API) | `Hay posiciones repetidas; cada posición se usa una sola vez.` | 400 | Quitar la repetida |
+| Falta la cantidad por posición | `Indique la cantidad por posición.` | 400 | Escribirla |
+| Falta indicar posiciones | `Indique al menos una posición.` | 400 | Escanear al menos una |
+| Una posición no es de este almacén | `Posición no encontrada.` | 404 | Escanear una del almacén; no se movió nada |
+| La tarea no es de acomodo | `El reparto por posición solo aplica a tareas de acomodo (PUTAWAY).` | 422 | Usar la pantalla de esa tarea |
+| Producto con serie | `Los productos con serie no se reparten por posición; complete la tarea indicando las series.` | 422 | Completar desde la web con las series |
+| La tarea ya se completó o canceló | `La tarea ya fue completada o cancelada.` | 422 | Volver a la lista |
+
 ### Campos y validaciones
 
 | Campo / caso | Mensaje exacto | Origen |

@@ -48,3 +48,13 @@ export async function completeTask(taskId: number, toBinId: number, quantity: nu
     }),
   )
 }
+
+/** Reparto atómico: la misma cantidad en cada posición, en el orden dado; lo que no cupo queda como tarea nueva. */
+export async function distributeTask(taskId: number, quantityPerBin: number, toBinIds: number[]): Promise<void> {
+  await unwrap(
+    api.POST('/api/v1/warehouse-tasks/{id}/distribute', {
+      params: { path: { id: taskId } },
+      body: { quantityPerBin, toBinIds },
+    }),
+  )
+}

@@ -9,10 +9,19 @@ import { BigButton } from '../kernel/ui/BigButton'
 import { ScanField } from '../kernel/ui/ScanField'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
-import { completeTask, fetchOpenPutawayTasks, fetchPutawaySuggestions, findBinByCode, startTask, type PutawaySuggestion } from '../features/putaway/putawayApi'
-import { sortTasksMineFirst, type PutawayTask } from '../features/putaway/putawayLogic'
+import {
+  completeTask,
+  distributeTask,
+  fetchOpenPutawayTasks,
+  fetchPutawaySuggestions,
+  findBinByCode,
+  startTask,
+  type PutawaySuggestion,
+} from '../features/putaway/putawayApi'
+import { addDistBin, chunkQty, distSummary, maxBins, parsePerBin, sortTasksMineFirst, type DistBin, type PutawayTask } from '../features/putaway/putawayLogic'
 import { useFormat } from '../kernel/format/useFormat'
 import { ScanMessage } from '../kernel/ui/ScanMessage'
+import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 
 /** Pantalla 4 (docs/mobile/app-almacen-plan.md §2): lista de tareas PUTAWAY (mías primero), escanear la posición
@@ -33,6 +42,19 @@ export default function PutawayScreen() {
   const [scanError, setScanError] = useState<string | null>(null)
   // aviso verde del último acomodo hecho, en la lista (se queda hasta abrir otra tarea)
   const [notice, setNotice] = useState<string | null>(null)
+  // Reparto por posición: con cantidad por posición, cada escaneo suma una posición y "Confirmar reparto" las manda todas juntas.
+  const [perBinText, setPerBinText] = useState('')
+  const [distBins, setDistBins] = useState<DistBin[]>([])
+  const perBin = parsePerBin(perBinText)
+  const pending = selected?.quantity ?? 0
+
+  function closeTask() {
+    setSelected(null)
+    setSuggestions(null)
+    setPerBinText('')
+    setDistBins([])
+    setScanError(null)
+  }
 
   const load = useCallback(() => {
     if (!warehousePublicId) return
@@ -70,12 +92,47 @@ export default function PutawayScreen() {
         vibrateError()
         return
       }
+      if (perBin > 0) {
+        // Modo reparto: se acumula la posición; nada se manda hasta "Confirmar reparto".
+        const added = addDistBin(distBins, { id: bin.id, code }, pending, perBin)
+        if (!added.ok) {
+          setScanError(
+            added.reason === 'duplicate'
+              ? t('putaway.binRepeated')
+              : t('putaway.noRoomLeft', { max: maxBins(pending, perBin), per: f.qty(chunkQty(pending, perBin)), left: f.qty(pending) }),
+          )
+          vibrateError()
+          return
+        }
+        setDistBins(added.bins)
+        setScanError(null)
+        vibrateOk()
+        return
+      }
       await completeTask(selected.id, bin.id, selected.quantity)
       vibrateOk()
       setNotice(t('putaway.done', { sku: selected.sku, bin: code }))
       setSelected(null)
       setSuggestions(null)
       setScanError(null)
+      load()
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.title : t('errors.network'))
+      vibrateError()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmDistribution() {
+    if (!selected || distBins.length === 0 || perBin <= 0) return
+    setBusy(true)
+    try {
+      await distributeTask(selected.id, perBin, distBins.map((b) => b.id))
+      const { total, left } = distSummary(pending, perBin, distBins.length)
+      vibrateOk()
+      setNotice(t('putaway.distributed', { sku: selected.sku, qty: f.qty(total), count: distBins.length, left: f.qty(left) }))
+      closeTask()
       load()
     } catch (err) {
       setScanError(err instanceof ApiError ? err.title : t('errors.network'))
@@ -105,16 +162,43 @@ export default function PutawayScreen() {
             <Text style={styles.suggestionBin}>{suggestions[0].binCode}</Text>
           </View>
         ) : null}
-        <ScanField label={t('putaway.scanDestLabel')} error={scanError} onSubmit={scanDestination} />
+        {selected.quantity != null ? <Text style={styles.help}>{t('putaway.pendingQty', { qty: f.qty(selected.quantity) })}</Text> : null}
+        <View style={styles.field}>
+          <Text style={styles.label}>{t('putaway.perBinLabel')}</Text>
+          <KeyboardInput
+            value={perBinText}
+            onChangeText={(v) => {
+              setPerBinText(v)
+              setDistBins([])
+            }}
+            keyboardType="decimal-pad"
+            style={styles.input}
+            accessibilityLabel={t('putaway.perBinLabel')}
+          />
+          <Text style={styles.help}>{t(perBin > 0 ? 'putaway.perBinHelpOn' : 'putaway.perBinHelp')}</Text>
+        </View>
+        <ScanField label={t(perBin > 0 ? 'putaway.scanNextLabel' : 'putaway.scanDestLabel')} error={scanError} onSubmit={scanDestination} />
+        {perBin > 0 && distBins.length > 0 ? (
+          <View style={styles.field}>
+            {distBins.map((b) => (
+              <Text key={b.id} style={styles.rowTitle}>
+                {t('putaway.distLine', { bin: b.code, qty: f.qty(chunkQty(pending, perBin)) })}
+              </Text>
+            ))}
+            <Text style={styles.help}>
+              {t('putaway.distTotal', {
+                total: f.qty(distSummary(pending, perBin, distBins.length).total),
+                left: f.qty(distSummary(pending, perBin, distBins.length).left),
+              })}
+            </Text>
+            <View style={styles.row2}>
+              <BigButton label={t('putaway.removeLast')} variant="secondary" fullWidth={false} onPress={() => setDistBins((b) => b.slice(0, -1))} />
+              <BigButton label={t('putaway.confirmDist')} fullWidth={false} loading={busy} onPress={confirmDistribution} />
+            </View>
+          </View>
+        ) : null}
         {busy ? <ActivityIndicator color={colors.brand} /> : null}
-        <BigButton
-          label={t('common.cancel')}
-          variant="secondary"
-          onPress={() => {
-            setSelected(null)
-            setSuggestions(null)
-          }}
-        />
+        <BigButton label={t('common.cancel')} variant="secondary" onPress={closeTask} />
       </KeyboardScreen>
     )
   }
@@ -174,6 +258,19 @@ const styles = StyleSheet.create({
   rowTexts: { gap: 2 },
   rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '600' },
   rowQty: { color: colors.brand, fontSize: 18, fontWeight: '700' },
+  field: { gap: spacing.xs },
+  label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
+  input: {
+    minHeight: 56,
+    borderWidth: 2,
+    borderColor: colors.line,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    fontSize: 20,
+    color: colors.text,
+    backgroundColor: colors.panelAlt,
+  },
+  row2: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
   suggestion: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
   suggestionLabel: { color: colors.muted, fontSize: fontSize.message },
   suggestionBin: { color: colors.brand, fontSize: 36, fontWeight: '800' },
