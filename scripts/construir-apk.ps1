@@ -64,9 +64,30 @@ npx expo prebuild --platform android --clean
 if ($LASTEXITCODE -ne 0) { Fallar 'expo prebuild falló.' }
 
 Paso 'Compilando el APK (la primera vez tarda varios minutos)'
+# Esta computadora (Intel i9-14900K) ha reportado errores de hardware del procesador (WHEA «Processor Core»: paridad interna y TLB) y con
+# la carga completa de la compilación se le cierran Java (Gradle) y clang (código 0xC0000005) al azar, aunque el código esté bien.
+# Para no cargarla de más: sin tareas en paralelo, pocos hilos, solo las arquitecturas de los aparatos (el Zebra es ARM; x86 es de
+# emuladores y duplica la compilación nativa) y hasta 3 intentos (Gradle retoma lo ya compilado). Si Java se cae, guarda su hs_err*.log
+# en la carpeta de salida (antes se perdía al restaurar android\).
+$gradleArgs = @('assembleRelease', '--no-parallel', '-Dorg.gradle.workers.max=4', '-PreactNativeArchitectures=armeabi-v7a,arm64-v8a')
 Push-Location android
-& .\gradlew.bat assembleRelease
-$ok = ($LASTEXITCODE -eq 0)
+$ok = $false
+for ($intento = 1; $intento -le 3 -and -not $ok; $intento++) {
+    if ($intento -gt 1) {
+        Write-Host ''
+        Write-Host "Reintento $intento de 3 (Gradle sigue desde lo ya compilado)..." -ForegroundColor Yellow
+        & .\gradlew.bat --stop | Out-Null
+    }
+    & .\gradlew.bat @gradleArgs
+    $ok = ($LASTEXITCODE -eq 0)
+    if (-not $ok) {
+        $caidas = Get-ChildItem . -Filter 'hs_err_pid*.log' -ErrorAction SilentlyContinue
+        if ($caidas) {
+            New-Item -ItemType Directory -Force $Salida | Out-Null
+            $caidas | ForEach-Object { Copy-Item $_.FullName (Join-Path $Salida $_.Name) -Force; Write-Host "Registro de la caída de Java guardado en $(Join-Path $Salida $_.Name)" -ForegroundColor Yellow }
+        }
+    }
+}
 Pop-Location
 
 $apkOrigen = Join-Path $app 'android\app\build\outputs\apk\release\app-release.apk'
