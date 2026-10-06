@@ -398,7 +398,7 @@ test.describe('Lote 15 — escritorio', () => {
 test.describe('Lote 15 — móvil (360 px)', () => {
   test.skip(({ isMobile }) => !isMobile, 'recorrido móvil (360 px)')
 
-  test('9. franja compacta 2×2, fija al desplazar y sin scroll horizontal', async ({ page }) => {
+  test('9. franja compacta 2×2, el encabezado queda fijo (la franja no) y sin scroll horizontal', async ({ page }) => {
     await login(page)
     expect(page.viewportSize()?.width).toBe(360)
     await waitPulse(page)
@@ -413,12 +413,14 @@ test.describe('Lote 15 — móvil (360 px)', () => {
     await expectNoHorizontalScroll(page)
     await shot(page, 'pulso-franja-movil')
 
-    // fija: tras desplazar la franja sigue a la vista y "Necesita tu atención" no
+    // tras desplazar queda fijo el encabezado (fecha con Organizar, saludo y chip); la franja (decisión del dueño) y
+    // "Necesita tu atención" se van con el desplazamiento
     const attention = page.getByRole('heading', { name: 'Necesita tu atención' })
     await scrollPulse(page, 100_000)
     await expect(attention).not.toBeInViewport()
-    await expect(band).toBeInViewport({ ratio: 0.99 })
+    await expect(band).not.toBeInViewport()
     await expect(page.getByRole('heading', { level: 1 })).toBeInViewport()
+    await expect(page.locator('.pulse-greet')).toBeInViewport()
     await expectNoHorizontalScroll(page)
 
     // los gráficos se apilan (uno debajo del otro) y los indicadores siguen sin desbordar

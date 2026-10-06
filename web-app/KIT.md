@@ -1172,15 +1172,13 @@ No es núcleo, pero es el contrato para que un lote posterior (F3, F5, 7C) agreg
   const { filter, setFilter } = useWarehouseFilter()
   setFilter({ ...filter, warehousePublicId: e.target.value || null })
   ```
-- **Filas fijas** (D6/D7, solo en "Pulso del día": raíz `wrap pulse pulse-home`; Indicadores y Gráficos usan `.wrap.pulse` sin
-  filas fijas): la cabecera se parte en `.pulse-pin-head` (h1 con la fecha + botones "Organizar"; fija con `.pinned`, que falta
-  al organizar porque la `.orgbar` ya es fija) y `.pulse-greet` (saludo y chip, se desplaza). La primera sección pintada queda
-  fija justo debajo (`data-pinned`) solo si su entrada es `pinnable` y no se organiza (`pinnedPanelKey(sections, organizing)`);
-  oculta o más abajo, solo queda la fecha. Altos medidos con `useElementHeight` en `--pulse-head-h` (desplazamiento de la franja)
-  y `--pulse-pin-h` (`scroll-margin-top` de lo que se desplaza: el foco no queda tapado). Fondo = `var(--app-bg)` fijo al
-  viewport (opaco, sin corte). Celular (≤ 720 px): franja compacta 2×2 (número y barritas, sin texto pequeño ni "· últimos 7
-  días"); alto ≤ 560 px (acostado): solo la fecha. Un panel nuevo que sea una franja de números: `pinnable: true`; nunca un
-  panel alto.
+- **Encabezado fijo** (D6/D7, ajustado el 2026-10-05 por decisión del dueño; solo en "Pulso del día": raíz `wrap pulse pulse-home`;
+  Indicadores y Gráficos usan `.wrap.pulse` sin fijar nada): la cabecera completa va en `.pulse-pin-wrap` (fija con `.pinned`, que
+  falta al organizar porque la `.orgbar` ya es fija) y contiene la fila `.pulse-pin-head` (h1 con la fecha + botones "Organizar") y
+  `.pulse-greet` (saludo y chip). **Ninguna sección se fija**, ni la franja "Almacén hoy". Alto medido con `useElementHeight` en
+  `--pulse-head-h` y `--pulse-pin-h` (`scroll-margin-top` de lo que se desplaza: el foco no queda tapado). Fondo = `var(--app-bg)`
+  fijo al viewport (opaco, sin corte). Celular (≤ 720 px): franja compacta 2×2 (número y barritas, sin texto pequeño ni "· últimos 7
+  días"); alto ≤ 560 px (acostado): el encabezado no se fija.
 - Gráficos "de la compañía" (Lote 15, D9/D14): `isCompanyChart(dto)` (`definitions.ts`: no es de sistema y no tiene dueño) →
   chip `analytics.charts.companyBadge` en Análisis → Gráficos; Editar/Eliminar salen con `canEdit` del API (`analytics.manage`)
   y la confirmación avisa que, borrado, no vuelve (`deleteCompanyBody`).
