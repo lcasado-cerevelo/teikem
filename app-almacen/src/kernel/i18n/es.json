@@ -290,7 +290,14 @@
     "openAdded": "{sku} agregado en {bin}.",
     "openUpdated": "Cantidad de {sku} corregida.",
     "openEditing": "{sku} ya estaba contado en {bin}: corrige la cantidad.",
-    "openAlreadyListed": "{sku} ya está contado en {bin}: toca su línea de la lista para corregir la cantidad."
+    "openAlreadyListed": "{sku} ya está contado en {bin}: toca su línea de la lista para corregir la cantidad.",
+    "revealRecount": "No coincide con lo esperado. Vuelve a contar y acepta de nuevo.",
+    "revealMatch": "Coincide con lo esperado.",
+    "revealMatchNumber": "Coincide: contaste {counted} y se esperaba {expected}.",
+    "revealFinalNumber": "Contaste {counted} y se esperaba {expected}. Queda para revisión.",
+    "revealFinalNoNumber": "No coincide con lo esperado. Queda para revisión.",
+    "lineChecked": "Esa línea ya se verificó; no se puede cambiar ni quitar.",
+    "verifyHint": "Revisa el resultado de cada posición. Las que piden recontar se corrigen; toca Confirmar de nuevo para seguir."
   },
   "calc": {
     "open": "Calculadora",

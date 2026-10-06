@@ -290,7 +290,14 @@
     "openAdded": "{sku} added at {bin}.",
     "openUpdated": "Quantity of {sku} corrected.",
     "openEditing": "{sku} was already counted at {bin}: correct the quantity.",
-    "openAlreadyListed": "{sku} is already counted at {bin}: tap its line in the list to correct the quantity."
+    "openAlreadyListed": "{sku} is already counted at {bin}: tap its line in the list to correct the quantity.",
+    "revealRecount": "It does not match what was expected. Count again and accept again.",
+    "revealMatch": "It matches what was expected.",
+    "revealMatchNumber": "Matches: you counted {counted} and {expected} was expected.",
+    "revealFinalNumber": "You counted {counted} and {expected} was expected. It goes to review.",
+    "revealFinalNoNumber": "It does not match what was expected. It goes to review.",
+    "lineChecked": "That line was already verified; it cannot be changed or removed.",
+    "verifyHint": "Review the result of each bin. Those asking for a recount are corrected; tap Confirm again to continue."
   },
   "calc": {
     "open": "Calculator",

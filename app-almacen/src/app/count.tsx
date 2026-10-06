@@ -12,6 +12,7 @@ import { runSync } from '../kernel/sync/engine'
 import { BigButton } from '../kernel/ui/BigButton'
 import { LineList } from '../kernel/ui/LineList'
 import { ScanField, type ScanPrefill } from '../kernel/ui/ScanField'
+import { ScanMessage } from '../kernel/ui/ScanMessage'
 import { colors, fontSize, radius, spacing, touchTarget } from '../kernel/ui/theme'
 import { vibrateError, vibrateOk } from '../kernel/ui/feedback'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
@@ -42,6 +43,7 @@ import {
 import { OpenCountView } from '../features/count/OpenCountView'
 import { ProductCountView } from '../features/count/ProductCountView'
 import { QuantityField } from '../features/count/QuantityField'
+import { checkCountLine, checkStateOf, forgetChecks, isClosedState, isCountOff, markCountOff, rememberCheck, revealMessage } from '../features/count/lineCheck'
 
 type Draft = { line: ExpectedLine | null; productPublicId: string; sku: string; productName: string; qtyText: string }
 /** Corrección de la cantidad de una línea ya contada (sin volver a escanear). */
@@ -74,6 +76,8 @@ export default function CountScreen() {
   const [productError, setProductError] = useState<string | null>(null)
   // Lote 24: el producto cuyo escaneo abrió el conteo abierto; la vista lo procesa al montar
   const [pendingProduct, setPendingProduct] = useState<CountProduct | null>(null)
+  // Tarea 25 (conteo informado al capturar): resultado de verificar la última cantidad aceptada contra lo esperado (se quita al escanear otro producto).
+  const [reveal, setReveal] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
 
   // tick fuerza releer la base local tras cada mutación; getOpenCount() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -173,6 +177,7 @@ export default function CountScreen() {
 
   function scanProduct(code: string) {
     setPrefill(null)
+    setReveal(null)
     if (!openCount || expectedLines === null) return
     const product = findProductByCode(code)
     if (!product) {
@@ -186,10 +191,40 @@ export default function CountScreen() {
     setDraft({ line, productPublicId: product.publicId, sku: product.sku, productName: product.name, qtyText: '' })
   }
 
-  function addFound() {
+  async function addFound() {
     if (!draft || !openCount) return
     const qty = parseQty(draft.qtyText)
     if (qty === null) return
+    // Conteo informado al capturar: con una línea esperada del servidor y un contador (conteo a ciegas), la cantidad aceptada se verifica con señal;
+    // sin señal o sin permiso se captura como siempre. RECOUNT pide volver a contar sin decir lo esperado y no captura todavía.
+    if (draft.line && draft.line.lineId > 0 && openCount.isBlind && !isCountOff(openCount.countId)) {
+      setBusy(true)
+      const outcome = await checkCountLine(openCount.countId, draft.line.lineId, qty)
+      setBusy(false)
+      if (outcome.kind === 'off') markCountOff(openCount.countId)
+      else if (outcome.kind === 'rejected') {
+        setReveal({ tone: 'error', text: outcome.message })
+        vibrateError()
+        return
+      } else if (outcome.kind === 'result') {
+        rememberCheck(draft.line.lineId, outcome.result.state)
+        const m = revealMessage(outcome.result)
+        const text = t(m.key, m.params)
+        if (outcome.result.state === 'RECOUNT') {
+          setReveal({ tone: 'error', text })
+          setDraft({ ...draft, qtyText: '' })
+          vibrateError()
+          return
+        }
+        captureExpectedLine(openCount.id, draft.line, qty)
+        setReveal({ tone: m.tone === 'ok' ? 'ok' : 'error', text })
+        setDraft(null)
+        if (m.tone === 'ok') vibrateOk()
+        else vibrateError()
+        refresh()
+        return
+      }
+    }
     if (draft.line) {
       captureExpectedLine(openCount.id, draft.line, qty)
     } else {
@@ -212,6 +247,7 @@ export default function CountScreen() {
           try {
             await cancelCountOnline(openCount.countId)
             discardLocalCount()
+            forgetChecks()
             setDraft(null)
             setExpectedLines(null)
             refresh()
@@ -232,6 +268,7 @@ export default function CountScreen() {
     if (captured.length === 0) return
     enqueueFinishCount(openCount.countId, captured)
     discardLocalCount()
+    forgetChecks()
     void runSync()
     router.replace('/home')
   }
@@ -244,6 +281,7 @@ export default function CountScreen() {
     if (rows.length === 0 || !hasAnyCountedQty(rows.map((r) => r.countedQty))) return
     enqueueFinishCount(openCount.countId, toProductEntries(rows))
     discardLocalCount()
+    forgetChecks()
     vibrateOk()
     void runSync()
     router.replace('/home')
@@ -349,6 +387,7 @@ export default function CountScreen() {
       <KeyboardScreen contentContainerStyle={styles.fill}>
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{draft.sku}</Text>
+        <ScanMessage message={reveal?.text} tone={reveal?.tone ?? 'error'} />
         {draft.line?.systemQty != null ? <Text style={styles.help}>{t('count.expectedQtyLabel', { qty: draft.line.systemQty })}</Text> : null}
         <View style={styles.field}>
           <Text style={styles.label}>{t('count.foundQtyLabel')}</Text>
@@ -361,8 +400,15 @@ export default function CountScreen() {
           />
         </View>
         <View style={styles.row}>
-          <BigButton label={t('common.cancel')} variant="secondary" onPress={() => setDraft(null)} />
-          <BigButton label={t('count.addFound')} onPress={addFound} disabled={parseQty(draft.qtyText) === null} />
+          <BigButton
+            label={t('common.cancel')}
+            variant="secondary"
+            onPress={() => {
+              setReveal(null)
+              setDraft(null)
+            }}
+          />
+          <BigButton label={t('count.addFound')} onPress={() => void addFound()} disabled={parseQty(draft.qtyText) === null || busy} />
         </View>
       </KeyboardScreen>
     )
@@ -414,6 +460,7 @@ export default function CountScreen() {
       <Text style={styles.title}>{openCount.binCode}</Text>
       {openCount.isBlind ? <Text style={styles.help}>{t('count.blindNotice')}</Text> : null}
       <ScanField label={t('count.scanProductLabel')} error={scanError} onSubmit={scanProduct} prefill={prefill} pick="product" />
+      <ScanMessage message={reveal?.text} tone={reveal?.tone ?? 'error'} />
 
       {/* lo contado y los botones van justo debajo del escaneo (pedido del dueño): con muchas líneas esperadas quedaban
           al final de la lista y había que desplazarse para terminar o cancelar */}
@@ -421,12 +468,21 @@ export default function CountScreen() {
       <LineList
         items={capturedRows.map((r) => ({ id: r.id, title: t('count.foundLineTitle', { name: r.productName, qty: r.countedQty }), subtitle: r.sku }))}
         onRemove={(id) => {
+          // una línea ya verificada (coincidió o ya se recontó) no se quita ni se cambia: el servidor solo aceptaría la cifra verificada
+          if (isClosedState(checkStateOf(capturedRows.find((r) => r.id === Number(id))?.lineId))) {
+            setReveal({ tone: 'error', text: t('count.lineChecked') })
+            return
+          }
           removeLocalCountLine(Number(id))
           refresh()
         }}
         removeLabel={t('common.remove')}
         onEdit={(id) => {
           const row = capturedRows.find((r) => r.id === Number(id))
+          if (row && isClosedState(checkStateOf(row.lineId))) {
+            setReveal({ tone: 'error', text: t('count.lineChecked') })
+            return
+          }
           if (row) setEdit({ id: row.id, sku: row.sku, productName: row.productName, systemQty: row.systemQty, qtyText: String(row.countedQty) })
         }}
         editLabel={t('common.edit')}

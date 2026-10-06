@@ -1588,6 +1588,53 @@ Casos frecuentes:
 Pantallas: app de almacén ([09 §7.2](09-app-almacen.md#72-contar-varios-productos-en-un-conteo-lote-25)) y web (Conteo cíclico → Nuevo conteo → Por producto sin
 elegir producto; escáner del detalle).
 
+### 6.z Conteo informado al capturar: quién ve lo esperado al contar (tarea 25)
+
+Qué hace: separa **ver lo esperado** del permiso **Contar**. El supervisor (permiso `warehouse.count`) lo ve desde el inicio, como siempre. Un **contador**
+(solo `warehouse.count.capture`) puede ver, **después de aceptar la cantidad de cada línea**, si coincidió con lo esperado; lo esperado nunca se le muestra
+antes de contar. Fuera del margen se le pide **recontar** sin decirle el esperado; tras recontar (o al coincidir) la línea se **cierra** y el contador ya no
+puede cambiar esa cifra.
+
+Quién lo configura: `admin.tenant` (la compañía) y `admin.users` (cada persona); módulo **WMS_LOTSERIAL**.
+
+**Ajuste de la compañía** (Sistema → Ajustes → **Operación** → «Conteo cíclico: lo esperado al contar»; `PUT /api/v1/tenant/settings`):
+
+| Campo | Valores | Qué hace |
+|---|---|---|
+| ¿Quién ve lo esperado al contar? (`countExpectedReveal`) | **Nadie** (`NONE`) · **Solo los marcados** (`MARKED`, valor por defecto) · **Todos** (`ALL`) | Nadie: ningún contador. Solo los marcados: los contadores con «Sí» en Usuarios. Todos: todos los contadores salvo los marcados con «No». |
+| Margen para no pedir reconteo (%) (`countRecountTolerancePct`) | 0 a 100 (por defecto 0) | 0 = cualquier diferencia pide reconteo. Con 5, una cantidad dentro del 5 % de lo esperado se da por buena. |
+| Mostrar el número esperado (`countRevealShowsNumber`) | Sí (por defecto) / No | Con No solo se dice «Coincide» o «No coincide». |
+
+**Marca por persona** (Sistema → Usuarios → acciones de la fila → «Ve lo esperado al contar: Sí / No / sin marcar»; `PUT /api/v1/users/{id}/count-see-expected`
+con `{ "value": true | false | null }`): la columna «Ve lo esperado al contar» muestra Sí / No / —. Solo cuenta cuando la compañía está en «Solo los marcados» o «Todos».
+
+| Compañía \ Usuario | sin marcar | No | Sí |
+|---|---|---|---|
+| **Nadie** | no ve | no ve | no ve |
+| **Solo los marcados** | no ve | no ve | ve al capturar |
+| **Todos** | ve al capturar | no ve | ve al capturar |
+
+Cómo funciona (servidor): `POST /api/v1/cycle-counts/{id}/lines/{lineId}/check` con `{ "countedQty": n }` (permiso `warehouse.count.capture`). Responde `state`:
+**MATCH** (dentro del margen; línea cerrada), **RECOUNT** (fuera del margen: recontar; **no** trae lo esperado) o **FINAL** (ya recontó; cerrada). `expectedQty` solo
+llega con MATCH/FINAL y si la compañía muestra el número. Se guardan la primera y la última cifra verificadas (`firstCheckQty`, `lastCheckQty`; quedan en la bitácora de
+cambios). Después de verificar, la captura de esa línea (`PUT …/lines` y `PUT …/lines/batch`) **solo acepta la última cifra verificada** (409 si es otra); quien tiene
+`warehouse.count` siempre puede corregir. La ficha del conteo trae `reveal`: `FULL` (supervisor), `AT_CAPTURE` (contador habilitado) o `NONE`.
+
+| Caso | Mensaje exacto | Código |
+|---|---|---|
+| El contador no está habilitado (compañía en «Nadie» o sin marcar/marcado «No») | `No está habilitado ver lo esperado al contar.` | 403 |
+| La línea ya está cerrada (coincidió o ya se recontó) | `La línea ya se verificó; no se puede cambiar su cantidad.` | 409 |
+| La línea ya la corrigió el supervisor | `La línea ya fue corregida por el supervisor; no se puede volver a capturar.` | 409 |
+| Se intenta guardar otra cantidad distinta de la verificada | `La cantidad no es la que se verificó en la línea; no se puede cambiar después de ver el resultado.` | 409 |
+| Producto con serie | `Los productos con serie no se verifican contra lo esperado.` | 400 (`lineId`) |
+| Cantidad negativa o con más de 3 decimales | `La cantidad contada no puede ser negativa.` / `La cantidad admite como máximo 3 decimales.` | 400 (`countedQty`) |
+| Margen fuera de 0–100 | `El margen de reconteo debe estar entre 0 y 100 %.` | 400 (`countRecountTolerancePct`) |
+| Modo desconocido | `Modo desconocido: '{valor}'. Use NONE, MARKED o ALL.` | 400 (`countExpectedReveal`) |
+| Conteo ya terminado o reconciliado | (los de siempre del conteo) | 422 |
+
+Notas: un supervisor que también cuenta ve lo esperado desde el inicio (para contar a ciegas debe usar una persona o rol de solo captura); la compañía en «Nadie» no cierra
+lo que ve el supervisor. Los pasos de la app están en [09 §7.4](09-app-almacen.md#74-conteo-informado-al-capturar-tarea-25).
+
 ### 6.y Equipos en renta y el conteo cíclico (Lote 28, Rentas R2, decisión D7)
 
 Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona RENT, tipo "En renta"; capítulo 11). Esa posición

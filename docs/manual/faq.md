@@ -5448,3 +5448,26 @@ el sistema, se crean en la web.
 **¿Elegir de la lista es lo mismo que escanear?**
 Sí: entrega el código al campo igual que un escaneo y pasa por las mismas validaciones (por ejemplo, en Despacho con producto por lote la posición sigue
 siendo la del lote que vence primero).
+
+## Conteo informado al capturar (tarea 25)
+
+**Cuento en la app y me dice `No coincide con lo esperado. Vuelve a contar y acepta de nuevo.` ¿Cuánto era lo esperado?**
+No se dice a propósito: así el recuento es una cuenta real. Vuelva a contar y acepte; al segundo intento la línea se cierra y, si la compañía muestra el número, verá `Contaste {n} y se esperaba {m}`.
+
+**Me dice `Esa línea ya se verificó; no se puede cambiar ni quitar.`**
+La línea ya coincidió o ya se recontó. Su cifra quedó fija; si hay un error real, el supervisor la corrige en la web (Conteo cíclico → Por revisar).
+
+**El servidor me responde `La cantidad no es la que se verificó en la línea; no se puede cambiar después de ver el resultado.` al enviar el conteo.**
+Se intentó guardar una cantidad distinta de la que se verificó. Cierre ese conteo y avise al supervisor; solo quien tiene el permiso Contar puede corregir la línea.
+
+**No me aparece ninguna verificación al contar.**
+Revise (1) que haya señal, (2) que la compañía no esté en «Nadie» (Sistema → Ajustes → Operación), (3) que su usuario esté marcado «Sí» en Usuarios si la compañía está en «Solo los marcados» (o no esté en «No» si está en «Todos») y (4) que no tenga el permiso Contar (el supervisor ve lo esperado desde el inicio). Sin señal o sin permiso la app captura sin verificar.
+
+**Me sale `No está habilitado ver lo esperado al contar.`**
+La compañía o su usuario no tienen habilitado ver lo esperado. Pida al administrador que lo marque en Sistema → Usuarios («Ve lo esperado al contar: Sí») si corresponde.
+
+**¿Cómo hago que todos los contadores vean el resultado al capturar?**
+Sistema → Ajustes → Operación → «¿Quién ve lo esperado al contar?» = **Todos**, y que ningún contador tenga el permiso Contar (solo «Capturar conteo»). Para un grupo: **Solo los marcados** y «Sí» a esas personas.
+
+**Escribí un margen y no lo acepta (`El margen de reconteo debe estar entre 0 y 100 %.`).**
+El margen es un porcentaje de 0 a 100 con hasta 2 decimales.

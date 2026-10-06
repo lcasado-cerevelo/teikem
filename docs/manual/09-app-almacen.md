@@ -632,6 +632,24 @@ duplica nada: la clave de idempotencia de cada fila de la cola protege el reinte
 
 ---
 
+### 7.4 Conteo informado al capturar (tarea 25)
+
+Qué hace: si la compañía y tu ajuste lo permiten (06 §6.z), después de **aceptar** la cantidad de una línea del servidor la app la verifica con el servidor, **con señal**,
+y te dice si coincide **sin haberte mostrado antes lo esperado**. No cambia nada para quien tiene el permiso Contar (ve lo esperado desde el inicio, como siempre).
+
+- **Contar por posición:** escaneas el producto, escribes la cantidad y tocas **Agregar**.
+  - Coincide → la línea se captura y sale `Coincide: contaste {n} y se esperaba {m}.` (o `Coincide con lo esperado.` si la compañía no muestra el número).
+  - Fuera del margen → **no** se captura todavía: sale `No coincide con lo esperado. Vuelve a contar y acepta de nuevo.` (nunca el esperado), la cantidad queda vacía y se vuelve a escribir.
+  - Segunda cifra → se captura y sale `Contaste {n} y se esperaba {m}. Queda para revisión.` (o `No coincide con lo esperado. Queda para revisión.`). El supervisor reconcilia con las dos cifras.
+  - Una línea ya verificada **no se edita ni se quita**: `Esa línea ya se verificó; no se puede cambiar ni quitar.`
+- **Contar por producto:** al tocar **Confirmar**, cada posición del servidor se verifica y el resultado sale **debajo de su fila**; ese toque **no** confirma. Las que piden recontar se
+  corrigen (la nota se quita al escribir) y se vuelve a tocar Confirmar; las cerradas ya no se editan. Con todo cerrado, el toque siguiente confirma. Mensaje de apoyo:
+  `Revisa el resultado de cada posición. Las que piden recontar se corrigen; toca Confirmar de nuevo para seguir.` Las posiciones en blanco se verifican como 0.
+- **Sin señal** o con el permiso no habilitado (403): se captura **sin verificar**, como antes; en este último caso la app no vuelve a preguntar en ese conteo.
+- **Fuera de esta versión:** el conteo abierto con varios productos (7.2) y las líneas agregadas a mano (no existen en el servidor hasta enviar el lote) no se verifican.
+
+Mensajes del servidor que puede mostrar (por ejemplo `La línea ya se verificó; no se puede cambiar su cantidad.`): ver 06 §6.z.
+
 ### 7.3 Calculadora de cantidad (2026-10-05)
 
 En el conteo, junto a la **cantidad** hay un botón **Calculadora** (cuadro azul con el dibujo blanco de una calculadora) para contar estibas sin sumar de cabeza. Al tocarlo, el campo único se **cambia en el mismo lugar** por **Filas × Columnas** y **Sueltas**; debajo se ve la

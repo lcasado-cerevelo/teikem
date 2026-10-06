@@ -36,6 +36,7 @@ import { KeyboardInput, KeyboardToggleButton } from '../../kernel/ui/KeyboardInp
 import { useSoftKeyboard } from '../../kernel/ui/useSoftKeyboard'
 import { calcFromText, calcTotal, totalToText, type CalcState } from './quantityCalc'
 import { QuantityCalculator } from './QuantityField'
+import { checkCountLine, checkStateOf, isClosedState, isCountOff, markCountOff, rememberCheck, revealMessage } from './lineCheck'
 
 export interface ProductCountViewProps {
   openCount: OpenCount
@@ -71,6 +72,11 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
   const [emptyWarning, setEmptyWarning] = useState(false)
   // aviso de "todo en blanco" tras tocar Confirmar; se quita al escribir una cantidad o agregar una posición
   const [blankWarning, setBlankWarning] = useState(false)
+  // Tarea 25 (conteo informado al capturar): al confirmar, un contador (conteo a ciegas) verifica cada línea del servidor contra lo esperado; el resultado de cada
+  // posición se ve debajo de su fila y la confirmación se hace en el toque siguiente (así se alcanza a leer lo que pide recontar).
+  const [verifying, setVerifying] = useState(false)
+  const [notes, setNotes] = useState<Record<number, { tone: 'ok' | 'error'; text: string }>>({})
+  const [verifyHint, setVerifyHint] = useState(false)
 
   const textFor = (row: ProductCountRow) => texts[row.id] ?? textOf(row)
   const summary = summarizeProductCount(rows.map(textFor))
@@ -79,6 +85,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
 
   function changeQty(row: ProductCountRow, value: string) {
     setTexts((prev) => ({ ...prev, [row.id]: value }))
+    setNotes((prev) => (prev[row.id] ? Object.fromEntries(Object.entries(prev).filter(([k]) => Number(k) !== row.id)) : prev))
     setNotice(null)
     setBlankWarning(false)
     if (value.trim() === '') setProductRowQty(row.id, null)
@@ -100,7 +107,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
 
   /** Sin ninguna fila no hay nada que mandar: el servidor no termina un conteo vacío. Se avisa y se puede cancelar.
    *  Con filas pero todas en blanco tampoco se manda nada: hace falta al menos un número (0 si no hay nada). */
-  function confirm() {
+  async function confirm() {
     const block = productCountConfirmBlock(summary)
     if (block === 'empty') {
       setEmptyWarning(true)
@@ -112,6 +119,41 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
       return
     }
     if (block === 'invalid') return
+    if (openCount.isBlind && !isCountOff(openCount.countId)) {
+      // líneas del servidor aún sin cerrar (las en blanco cuentan como 0, igual que al confirmar)
+      const pending = rows.filter((r) => r.lineId != null && r.lineId > 0 && !isClosedState(checkStateOf(r.lineId)))
+      if (pending.length > 0) {
+        setVerifying(true)
+        let stop = false
+        const next: Record<number, { tone: 'ok' | 'error'; text: string }> = {}
+        for (const row of pending) {
+          const text = textFor(row)
+          const qty = text.trim() === '' ? 0 : parseQty(text)
+          if (qty === null) continue
+          const outcome = await checkCountLine(openCount.countId, row.lineId!, qty)
+          if (outcome.kind === 'off') {
+            markCountOff(openCount.countId)
+            break
+          }
+          if (outcome.kind === 'offline') break
+          if (outcome.kind === 'rejected') {
+            next[row.id] = { tone: 'error', text: outcome.message }
+            stop = true
+            continue
+          }
+          rememberCheck(row.lineId!, outcome.result.state)
+          const m = revealMessage(outcome.result)
+          next[row.id] = { tone: m.tone === 'ok' ? 'ok' : 'error', text: t(m.key, m.params) }
+          stop = true
+        }
+        setVerifying(false)
+        if (stop) {
+          setNotes((prev) => ({ ...prev, ...next }))
+          setVerifyHint(true)
+          return
+        }
+      }
+    }
     onConfirm()
   }
 
@@ -202,6 +244,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
               <View style={styles.texts}>
                 <Text style={styles.rowTitle}>{row.binCode}</Text>
                 {parts.length > 0 ? <Text style={styles.rowSubtitle}>{parts.join(' · ')}</Text> : null}
+                {notes[row.id] ? <Text style={[styles.rowNote, notes[row.id].tone === 'ok' ? styles.noteOk : styles.noteWarn]}>{notes[row.id].text}</Text> : null}
               </View>
               <KeyboardInput
                 toggle={false}
@@ -214,6 +257,7 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
                 placeholder="0"
                 placeholderTextColor={colors.muted}
                 selectTextOnFocus
+                editable={!isClosedState(checkStateOf(row.lineId))}
               />
               <Pressable
                 accessibilityRole="button"
@@ -260,7 +304,8 @@ export function ProductCountView({ openCount, busy, onConfirm, onCancelCount, er
       {summaryText ? <Text style={styles.summary}>{summaryText}</Text> : null}
       {emptyWarning && empty ? <Text style={styles.error}>{t('count.confirmEmpty')}</Text> : null}
       <ScanMessage tone="error" message={blankWarning && summary.filled === 0 && !empty ? t('count.confirmAllBlank') : null} />
-      <BigButton label={t('count.confirmProduct')} onPress={confirm} disabled={!canConfirmProductCount(summary) || busy} />
+      {verifyHint ? <Text style={styles.summary}>{t('count.verifyHint')}</Text> : null}
+      <BigButton label={t('count.confirmProduct')} onPress={() => void confirm()} disabled={!canConfirmProductCount(summary) || busy || verifying} loading={verifying} />
       <Text style={styles.help}>{t('count.finishHelp')}</Text>
       <ScanMessage tone="error" message={error} />
       <BigButton label={t('count.cancelCount')} variant="danger" onPress={onCancelCount} disabled={busy} />
@@ -313,6 +358,9 @@ const styles = StyleSheet.create({
   // el texto se envuelve si el código es largo; nunca empuja el espacio de la cantidad fuera de la pantalla (360 px)
   texts: { flex: 1, minWidth: 0, gap: 2 },
   rowTitle: { color: colors.text, fontSize: fontSize.listTitle, fontWeight: '700' },
+  rowNote: { fontSize: fontSize.listSubtitle, fontWeight: '700' },
+  noteOk: { color: colors.ok },
+  noteWarn: { color: colors.warn },
   rowSubtitle: { color: colors.muted, fontSize: fontSize.listSubtitle },
   qty: {
     width: 96,
