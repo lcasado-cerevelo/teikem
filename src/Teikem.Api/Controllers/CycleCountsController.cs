@@ -88,13 +88,15 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     /// Lote 8A — conteo a ciegas: con solo inventory.view (sin warehouse.count) la ficha llega con isBlind = true y las
     /// cantidades esperadas de las líneas en null (systemQty, varianceQty, currentQty, reconciledSystemQty, adjustedQty;
     /// expectedSerials vacío), count.varianceLines y count.netVariance en null; onlyVariance se ignora.
+    /// Tarea 25: con forCounting = true (lo manda la app de almacén al contar) y la compañía en «Nadie» ver lo esperado, la ficha llega a ciegas también
+    /// para quien tiene warehouse.count; la web (reconciliación) no lo manda y sigue viendo todo.
     /// </summary>
     [HttpGet("{id:int}"), RequirePermission(PermissionCatalog.InventoryView)]
     public async Task<CycleCountDetailDto> Get(int id, [FromQuery] int[]? binIds, [FromQuery] Guid[]? productPublicIds,
         [FromQuery] int[]? categoryIds, [FromQuery] bool? onlyVariance, [FromQuery] bool? onlyPending, [FromQuery] string? search,
-        CancellationToken ct = default)
+        [FromQuery] bool forCounting = false, CancellationToken ct = default)
     {
-        var blind = await IsBlindAsync(ct);
+        var blind = await IsBlindAsync(ct, forCounting);
         var detail = await counts.GetAsync(id, new CycleCountLinesQuery(binIds is { Length: > 0 } ? binIds : null,
             productPublicIds is { Length: > 0 } ? productPublicIds : null, categoryIds is { Length: > 0 } ? categoryIds : null,
             onlyVariance, onlyPending, search), blind, ct);
@@ -107,8 +109,9 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     /// 1000 líneas → 400.
     /// </summary>
     [HttpPost, RequirePermission(PermissionCatalog.WarehouseCountCapture)]
-    public async Task<CycleCountDetailDto> Create([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CycleCountCreateRequest? req, CancellationToken ct)
-        => await ForCallerAsync(await counts.CreateAsync(req, ct), ct);
+    public async Task<CycleCountDetailDto> Create([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CycleCountCreateRequest? req,
+        [FromQuery] bool forCounting = false, CancellationToken ct = default)
+        => await ForCallerAsync(await counts.CreateAsync(req, ct), ct, forCounting);
 
     /// <summary>
     /// Captura por línea: countedQty (NONE/LOT) o serialNumbers (SERIAL). Sin ninguno la captura se borra. Reconciliado → 422.
@@ -229,12 +232,13 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     }
 
     /// <summary>Conteo a ciegas para quien consulta: sin warehouse.count (Lote 8A).</summary>
-    private async Task<bool> IsBlindAsync(CancellationToken ct) => !await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct);
+    private async Task<bool> IsBlindAsync(CancellationToken ct, bool forCounting = false)
+        => !await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct) || (forCounting && await counts.ExpectedClosedAsync(ct));
 
     /// <summary>La respuesta de alta, captura y terminar llega a ciegas a quien no tiene warehouse.count (no filtra lo esperado).</summary>
-    private async Task<CycleCountDetailDto> ForCallerAsync(CycleCountDetailDto detail, CancellationToken ct)
+    private async Task<CycleCountDetailDto> ForCallerAsync(CycleCountDetailDto detail, CancellationToken ct, bool forCounting = false)
     {
-        var shaped = await IsBlindAsync(ct) ? CycleCountService.Blind(detail) : detail;
+        var shaped = await IsBlindAsync(ct, forCounting) ? CycleCountService.Blind(detail) : detail;
         return shaped with { Reveal = await counts.RevealViewAsync(ct) };
     }
 }

@@ -6128,6 +6128,16 @@
         "tags": [
           "CycleCounts"
         ],
+        "parameters": [
+          {
+            "name": "forCounting",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -6507,6 +6517,14 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "forCounting",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],

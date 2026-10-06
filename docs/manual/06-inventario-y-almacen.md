@@ -1601,7 +1601,7 @@ Quién lo configura: `admin.tenant` (la compañía) y `admin.users` (cada person
 
 | Campo | Valores | Qué hace |
 |---|---|---|
-| ¿Quién ve lo esperado al contar? (`countExpectedReveal`) | **Nadie** (`NONE`) · **Solo los marcados** (`MARKED`, valor por defecto) · **Todos** (`ALL`) | Nadie: ningún contador. Solo los marcados: los contadores con «Sí» en Usuarios. Todos: todos los contadores salvo los marcados con «No». |
+| ¿Quién ve lo esperado al contar? (`countExpectedReveal`) | **Nadie** (`NONE`) · **Solo los marcados** (`MARKED`, valor por defecto) · **Todos** (`ALL`) | Nadie: nadie al contar en la app, **tampoco el supervisor** (la reconciliación en la web sigue mostrando lo esperado). Solo los marcados: los contadores con «Sí» en Usuarios. Todos: todos los contadores salvo los marcados con «No». |
 | Margen para no pedir reconteo (%) (`countRecountTolerancePct`) | 0 a 100 (por defecto 0) | 0 = cualquier diferencia pide reconteo. Con 5, una cantidad dentro del 5 % de lo esperado se da por buena. |
 | Mostrar el número esperado (`countRevealShowsNumber`) | Sí (por defecto) / No | Con No solo se dice «Coincide» o «No coincide». |
 
@@ -1632,8 +1632,8 @@ cambios). Después de verificar, la captura de esa línea (`PUT …/lines` y `PU
 | Modo desconocido | `Modo desconocido: '{valor}'. Use NONE, MARKED o ALL.` | 400 (`countExpectedReveal`) |
 | Conteo ya terminado o reconciliado | (los de siempre del conteo) | 422 |
 
-Notas: un supervisor que también cuenta ve lo esperado desde el inicio (para contar a ciegas debe usar una persona o rol de solo captura); la compañía en «Nadie» no cierra
-lo que ve el supervisor. Los pasos de la app están en [09 §7.4](09-app-almacen.md#74-conteo-informado-al-capturar-tarea-25).
+Notas: con «Solo los marcados» o «Todos», un supervisor que también cuenta ve lo esperado desde el inicio (para contar a ciegas debe usar una persona o rol de solo captura). Con «Nadie»
+el conteo desde la app llega a ciegas también para el supervisor (la app manda `forCounting=true` en `POST /cycle-counts` y `GET /cycle-counts/{id}`; la web no, y sigue viendo todo para reconciliar) y `…/check` responde 403 a todos. Los pasos de la app están en [09 §7.4](09-app-almacen.md#74-conteo-informado-al-capturar-tarea-25).
 
 ### 6.y Equipos en renta y el conteo cíclico (Lote 28, Rentas R2, decisión D7)
 

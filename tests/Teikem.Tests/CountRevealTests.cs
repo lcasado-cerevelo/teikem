@@ -210,4 +210,31 @@ public sealed class CountRevealTests
         await Assert.ThrowsAsync<ValidationException>(() => svc.CheckLineAsync(count.Count.Id, lineId, new CountLineCheckRequest(null), default));
         await Assert.ThrowsAsync<NotFoundException>(() => svc.CheckLineAsync(count.Count.Id, 9999, new CountLineCheckRequest(1m), default));
     }
+
+    [Fact]
+    public async Task With_nobody_the_supervisor_is_closed_too_for_counting_but_not_for_reconciling()
+    {
+        var (f, svc, count, lineId) = await NewAsync("NONE", true);
+        await using var _ = f;
+        f.AsRestrictedUser(Supervisor, PermissionCatalog.InventoryView, PermissionCatalog.WarehouseCount, PermissionCatalog.WarehouseCountCapture);
+
+        Assert.True(await svc.ExpectedClosedAsync(default));
+        Assert.Equal(CountRevealViews.None, await svc.RevealViewAsync(default));
+        var ex = await Assert.ThrowsAsync<ForbiddenException>(() => svc.CheckLineAsync(count.Count.Id, lineId, new CountLineCheckRequest(20m), default));
+        Assert.Equal(CountRevealRules.NotAllowed, ex.Message);
+
+        // la ficha completa (la que usa la web para reconciliar) sigue trayendo lo esperado
+        var detail = await svc.GetAsync(count.Count.Id, null, default);
+        Assert.Equal(20m, detail.Lines.Single().SystemQty);
+    }
+
+    [Fact]
+    public async Task With_a_mode_other_than_nobody_the_supervisor_still_sees_everything()
+    {
+        var (f, svc, _, _) = await NewAsync("MARKED", null);
+        await using var _f = f;
+        f.AsRestrictedUser(Supervisor, PermissionCatalog.InventoryView, PermissionCatalog.WarehouseCount);
+        Assert.False(await svc.ExpectedClosedAsync(default));
+        Assert.Equal(CountRevealViews.Full, await svc.RevealViewAsync(default));
+    }
 }

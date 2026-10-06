@@ -5471,3 +5471,6 @@ Sistema → Ajustes → Operación → «¿Quién ve lo esperado al contar?» = 
 
 **Escribí un margen y no lo acepta (`El margen de reconteo debe estar entre 0 y 100 %.`).**
 El margen es un porcentaje de 0 a 100 con hasta 2 decimales.
+
+**Soy supervisor y con la compañía en «Nadie» la app me cuenta a ciegas.**
+Es lo esperado: «Nadie» cierra lo esperado al contar en la app para todos, también para quien tiene el permiso Contar (por ejemplo, durante una auditoría). Para reconciliar, la web sigue mostrando lo esperado. Cambie el ajuste en Sistema → Ajustes → Operación si quiere que el supervisor lo vea.

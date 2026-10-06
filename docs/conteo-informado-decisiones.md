@@ -13,7 +13,7 @@
 
 ## Decisiones tomadas (a revisar)
 1. **Supervisor = quien tiene `warehouse.count`**: ve lo esperado desde el inicio y no pasa por estos ajustes. No existe un «rol supervisor» aparte (se recomienda crear «Supervisor de conteo» con Contar).
-2. **La compañía en «Nadie» no cierra lo que ve el supervisor** (pendiente tu decisión: si debe cerrarlo también durante una auditoría).
+2. **La compañía en «Nadie» también cierra al supervisor al contar desde la app** (decisión del dueño, 2026-10-06): la app manda `forCounting=true` y el servidor responde a ciegas; `…/check` da 403 a todos; la web (reconciliar) no manda ese parámetro y sigue viendo lo esperado.
 3. **Defecto de la compañía: «Solo los marcados»** (nadie lo ve hasta que se marque a alguien).
 4. **Margen en %** de lo esperado (0 = cualquier diferencia); esperado 0 → cualquier cantidad es diferencia.
 5. **Un reconteo máximo:** primera cifra → (si fuera del margen) segunda cifra → línea cerrada (FINAL aunque siga sin coincidir; queda para revisión del supervisor, que ve ambas cifras en la bitácora).

@@ -754,13 +754,23 @@ public sealed class CycleCountService(
         return new RevealSettings(CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, flag);
     }
 
-    /// <summary>Cómo ve lo esperado quien llama (CycleCountDetailDto.Reveal): FULL con warehouse.count; AT_CAPTURE si su compañía y su ajuste lo permiten; NONE.</summary>
+    /// <summary>
+    /// Cómo ve lo esperado quien llama (CycleCountDetailDto.Reveal): con la compañía en «Nadie» (NONE) nadie, tampoco el supervisor; si no, FULL con
+    /// warehouse.count; AT_CAPTURE si su compañía y su ajuste lo permiten; NONE.
+    /// </summary>
     public async Task<string> RevealViewAsync(CancellationToken ct)
     {
-        if (await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct)) return CountRevealViews.Full;
         var s = await RevealSettingsAsync(ct);
+        if (s.Mode == CountRevealModes.None) return CountRevealViews.None;
+        if (await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct)) return CountRevealViews.Full;
         return CountRevealRules.ViewFor(false, CountRevealRules.CanRevealAtCapture(s.Mode, s.UserFlag));
     }
+
+    /// <summary>
+    /// ¿La compañía cerró «lo esperado al contar» para todos (modo NONE)? Con eso, quien cuenta desde la app (forCounting) ve el conteo a ciegas aunque
+    /// tenga warehouse.count; la reconciliación en la web no depende de esto.
+    /// </summary>
+    public async Task<bool> ExpectedClosedAsync(CancellationToken ct) => (await RevealSettingsAsync(ct)).Mode == CountRevealModes.None;
 
     /// <summary>
     /// Verifica la cantidad que el contador acaba de aceptar contra lo esperado, sin habérselo mostrado antes. Dentro del margen de la compañía la línea
@@ -775,7 +785,9 @@ public sealed class CycleCountService(
         var current = await ResolveAsync(id, ct);
         var hasCount = await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct);
         var settings = await RevealSettingsAsync(ct);
-        if (!hasCount && !CountRevealRules.CanRevealAtCapture(settings.Mode, settings.UserFlag)) throw new ForbiddenException(CountRevealRules.NotAllowed);
+        // «Nadie» cierra a todos, también al supervisor; si no, el supervisor siempre puede y el contador según sus ajustes.
+        if (settings.Mode == CountRevealModes.None || (!hasCount && !CountRevealRules.CanRevealAtCapture(settings.Mode, settings.UserFlag)))
+            throw new ForbiddenException(CountRevealRules.NotAllowed);
 
         CountLineCheckDto? result = null;
         await db.RunInTransactionAsync(async ct2 =>

@@ -1,3 +1,4 @@
+// Tarea 25: todas las lecturas del conteo que hace la app mandan forCounting=true, para que la compañía en «Nadie» (ver lo esperado) también deje a ciegas al supervisor.
 // Lote 8A-app — Conteo empieza en línea: escanear la posición reclama el conteo en el servidor (POST /cycle-counts,
 // docs/lote8A-app-decisiones.md, decisión heredada de que las posiciones son un recurso compartido); de ahí en
 // adelante capturar lo encontrado y terminar van por la cola de salida (kernel/sync/outbox.ts), referenciando el id
@@ -55,7 +56,7 @@ function mapProductLines(lines: LineDto[] | null | undefined): ProductCountLine[
 
 /** Crea el conteo para esa posición (o falla si ya hay uno abierto ahí: el servidor lo rechaza). */
 export async function startCountOnline(warehousePublicId: string, binId: number): Promise<StartedCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, binIds: [binId], assignToMe: true } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, binIds: [binId], assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, expectedLines: mapExpectedLines(detail.lines) }
 }
 
@@ -69,14 +70,14 @@ export interface StartedProductCount {
  *  producto en el almacén. Con `allowEmpty: true` (siempre, desde esta app) un producto sin existencia en ningún lado abre el
  *  conteo VACÍO (sin líneas) en vez de un 400: lo hallado donde el sistema no tenía nada se agrega con «Otra posición». */
 export async function startProductCountOnline(warehousePublicId: string, productPublicId: string): Promise<StartedProductCount> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true, assignToMe: true } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, productPublicIds: [productPublicId], allowEmpty: true, assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true, lines: mapProductLines(detail.lines) }
 }
 
 /** Lote 24 — abre un conteo VACÍO (origen PRODUCT, sin producto ni posición) al que se van agregando los productos escaneados:
  *  POST /cycle-counts con allowEmpty y sin filtros. Necesita señal. */
 export async function startOpenCountOnline(warehousePublicId: string): Promise<{ countId: number; isBlind: boolean }> {
-  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { body: { warehousePublicId, allowEmpty: true, assignToMe: true } }))
+  const detail = await unwrap(api.POST('/api/v1/cycle-counts', { params: { query: { forCounting: true } }, body: { warehousePublicId, allowEmpty: true, assignToMe: true } }))
   return { countId: detail.count?.id ?? 0, isBlind: detail.isBlind ?? true }
 }
 
@@ -91,7 +92,7 @@ export async function fetchProductBins(countId: number, productPublicId: string)
  *  no la lista, así que se vuelve a pedir; de todas formas esta pantalla ya necesita señal). Solo conteo por posición: el
  *  de producto guarda sus líneas localmente al abrirse. */
 export async function fetchExpectedLines(countId: number): Promise<ExpectedLine[]> {
-  const detail = await unwrap(api.GET('/api/v1/cycle-counts/{id}', { params: { path: { id: countId } } }))
+  const detail = await unwrap(api.GET('/api/v1/cycle-counts/{id}', { params: { path: { id: countId }, query: { forCounting: true } } }))
   return mapExpectedLines(detail.lines)
 }
 

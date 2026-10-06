@@ -4747,7 +4747,9 @@ export interface paths {
         put?: never;
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    forCounting?: boolean;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -4931,6 +4933,7 @@ export interface paths {
                     onlyVariance?: boolean;
                     onlyPending?: boolean;
                     search?: string;
+                    forCounting?: boolean;
                 };
                 header?: never;
                 path: {

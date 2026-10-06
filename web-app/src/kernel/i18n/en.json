@@ -3684,7 +3684,7 @@
           "ALL": "Everybody"
         },
         "countRevealHelp": {
-          "NONE": "No counter sees the expected quantity, no exceptions.",
+          "NONE": "Nobody sees the expected quantity while counting in the app, not even the supervisor. Reconciling on the web still shows it.",
           "MARKED": "Only counters marked «Yes» in Users see it, after capturing each line.",
           "ALL": "All counters see it after capturing each line, except those marked «No» in Users."
         },
@@ -3694,7 +3694,7 @@
         "countNumberLabel": "Show the expected number",
         "countNumberText": "Show the number (otherwise just «Matches» or «Does not match»)",
         "countNumberHelp": "Outside the margin the expected quantity is never shown: a recount is requested. The number is only seen on a match or after recounting.",
-        "countRevealHint": "Whoever has the «Count» permission (supervisor) sees the expected quantity from the start and does not depend on this setting. The counter (only «Capture count») sees it after accepting each line; outside the margin a recount is requested and the line closes."
+        "countRevealHint": "With «Only marked users» or «Everybody», whoever has the «Count» permission (supervisor) sees the expected quantity from the start. The counter (only «Capture count») sees it after accepting each line; outside the margin a recount is requested and the line closes. With «Nobody» nobody sees it while counting in the app."
       },
       "brand": {
         "brandTitle": "Company colors and logo",
