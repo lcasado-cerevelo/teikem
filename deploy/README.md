@@ -121,7 +121,8 @@ docker compose restart api        # reiniciar el API
 ```
 
 - **Estructura de la base de datos:** el API **no** la modifica al arrancar. Si una versión nueva cambia la estructura, hay que
-  aplicar el cambio a la base antes de actualizar (el instalador no corre `db-init`; ver `docs/` del lote correspondiente).
+  aplicar el cambio a la base antes de actualizar (este instalador no corre `db-init`; ver `docs/` del lote correspondiente). El instalador
+  de Windows (`deploy/windows`) sí lo hace por usted con `db-update`, que agrega lo que falta sin borrar datos.
 - **Seguridad:** el API no se publica fuera de la red de Docker; la llave de sesiones se genera en el servidor y el API se niega a
   arrancar en Producción con la llave de desarrollo. Cambiar `Jwt__SigningKey` cierra todas las sesiones.
 - Los primeros usuarios que entren pasan por el **primer ingreso** (correo, contraseña propia y MFA).

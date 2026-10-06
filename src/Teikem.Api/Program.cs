@@ -130,6 +130,21 @@ if (args.Contains("db-init", StringComparer.OrdinalIgnoreCase))
     await app.Services.GetRequiredService<DatabaseInitializer>().RunAsync();
     return;
 }
+// --- Modo CLI: `dotnet Teikem.Api.dll db-update [--dry-run]` actualiza una base YA CREADA (staging/producción) a la versión actual
+// sin borrar nada: agrega lo que falta del esquema y corre el seed y los seeders. Salida: 0 bien, 1 error, 2 quedó algo por revisar. ---
+if (args.Contains("db-update", StringComparer.OrdinalIgnoreCase))
+{
+    try
+    {
+        Environment.ExitCode = await app.Services.GetRequiredService<DatabaseInitializer>().UpdateAsync(args.Contains("--dry-run", StringComparer.OrdinalIgnoreCase));
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"db-update FALLÓ (la base no quedó a medias: los cambios de esquema van en una transacción): {ex.Message}");
+        Environment.ExitCode = 1;
+    }
+    return;
+}
 // --- Modo CLI (Lote 10): `dotnet run -- db-reset --yes [--allow-remote]` borra la base de ConnectionStrings:Teikem y la vuelve a
 // inicializar como db-init sobre servidor limpio (para repetir la migración desde cero). Nunca toca MSWM*. ---
 if (args.Contains(DbResetRules.Verb, StringComparer.OrdinalIgnoreCase))
