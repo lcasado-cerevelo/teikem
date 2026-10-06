@@ -79,6 +79,13 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
     [HttpPut("{id:int}/mfa"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
     public Task<UserSummaryDto> SetMfaRequired(int id, [FromBody] MfaRequiredRequest req, CancellationToken ct) => users.SetMfaRequiredAsync(id, req.Required, ct);
 
+    /// <summary>
+    /// Tarea 25: marca si este usuario ve lo esperado al contar, después de capturar cada línea (value true/false; null = sin marcar, vale el ajuste de la
+    /// compañía). Solo cuenta si la compañía lo deja "según el usuario" o "todos"; con "nadie" ninguno lo ve.
+    /// </summary>
+    [HttpPut("{id:int}/count-see-expected"), RequirePermission(PermissionCatalog.AdminUsers)]
+    public Task<UserSummaryDto> SetCountSeeExpected(int id, [FromBody] CountSeeExpectedRequest req, CancellationToken ct) => users.SetCountSeeExpectedAsync(id, req.Value, ct);
+
     /// <summary>Lote F8a: resetea el MFA de otro usuario (perdió su dispositivo) — vuelve a enrolar en su próximo login.</summary>
     [HttpDelete("{id:int}/mfa"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
     public async Task<IActionResult> ResetMfa(int id, CancellationToken ct) { await auth.AdminResetMfaAsync(id, ct); return NoContent(); }

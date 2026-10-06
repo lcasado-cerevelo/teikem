@@ -191,6 +191,11 @@ CREATE TABLE dbo.Tenant (
     DecimalSeparator CHAR(1)      NOT NULL DEFAULT '.',           -- '.' o ','; nunca igual al de miles
     PhoneCountryCode VARCHAR(5)   NOT NULL DEFAULT '+1',
     PhoneMask       VARCHAR(30)   NOT NULL DEFAULT '(###) ###-####',   -- cada # es un dígito; el teléfono se guarda solo con dígitos y se muestra con esta máscara
+    -- Conteo informado al capturar (tarea 25): quién ve lo esperado al contar. NONE = nadie; MARKED = solo los contadores con UserTenant.CountSeeExpected = 1
+    -- (defecto: nadie hasta que se marque); ALL = todos salvo los marcados con 0. Se ve DESPUÉS de capturar la línea; fuera del margen se pide reconteo.
+    CountExpectedReveal VARCHAR(6) NOT NULL DEFAULT 'MARKED',
+    CountRecountTolerancePct DECIMAL(5,2) NOT NULL DEFAULT 0,     -- margen (%) de lo esperado dentro del cual NO se pide reconteo; 0 = cualquier diferencia
+    CountRevealShowsNumber BIT NOT NULL DEFAULT 1,                -- 1 = muestra el número esperado; 0 = solo "Coincide" / "No coincide"
     IsActive        BIT NOT NULL DEFAULT 1,
     CreatedAtUtc    DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
     RowVersion      ROWVERSION,
@@ -202,7 +207,8 @@ CREATE TABLE dbo.Tenant (
     CONSTRAINT CK_Tenant_TimeFormat CHECK (TimeFormat IN (12,24)),
     CONSTRAINT CK_Tenant_WeekStartDay CHECK (WeekStartDay IN (0,1)),
     CONSTRAINT CK_Tenant_Separators CHECK (ThousandsSeparator IN (N',',N'.',N' ') AND DecimalSeparator IN ('.',',') AND ThousandsSeparator <> DecimalSeparator),
-    CONSTRAINT CK_Tenant_PhoneMask CHECK (PhoneMask LIKE '%#%')
+    CONSTRAINT CK_Tenant_PhoneMask CHECK (PhoneMask LIKE '%#%'),
+    CONSTRAINT CK_Tenant_CountReveal CHECK (CountExpectedReveal IN ('NONE','MARKED','ALL') AND CountRecountTolerancePct BETWEEN 0 AND 100)
 );
 GO
 
@@ -394,6 +400,7 @@ CREATE TABLE dbo.UserTenant (
     InvitedBy    INT NULL REFERENCES dbo.AspNetUsers(Id),
     JoinedAtUtc  DATETIME2 NULL,
     MfaRequired  BIT NOT NULL DEFAULT 0,  -- Lote F8a: exige MFA a esta persona en esta compañía, aparte de Tenant.MfaRequired
+    CountSeeExpected BIT NULL,            -- Tarea 25: ve lo esperado al contar (después de capturar la línea): 1 = sí, 0 = no, NULL = sin marcar (vale el ajuste de la compañía)
     CONSTRAINT UQ_UserTenant UNIQUE (UserId, TenantId)
 );
 CREATE INDEX IX_UserTenant_Tenant ON dbo.UserTenant(TenantId);
@@ -2408,6 +2415,12 @@ CREATE TABLE dbo.CycleCountLine (
     CapturedAtUtc DATETIME2 NULL,
     CorrectedBy  INT NULL REFERENCES dbo.AspNetUsers(Id),
     CorrectedAtUtc DATETIME2 NULL,
+    -- Tarea 25 (conteo informado al capturar): verificación de la línea contra lo esperado, sin que el contador lo vea antes. CheckState: MATCH (dentro del
+    -- margen, cerrada) | RECOUNT (fuera del margen, debe recontar) | FINAL (ya recontó, cerrada). FirstCheckQty = su primera cifra; LastCheckQty = la última verificada.
+    CheckState   VARCHAR(8) NULL,
+    FirstCheckQty DECIMAL(16,3) NULL,
+    LastCheckQty DECIMAL(16,3) NULL,
+    CONSTRAINT CK_CycleCountLine_Check CHECK (CheckState IS NULL OR (CheckState IN ('MATCH','RECOUNT','FINAL') AND FirstCheckQty IS NOT NULL AND LastCheckQty IS NOT NULL)),
     CONSTRAINT FK_CycleCountLine_Lot FOREIGN KEY (LotId, ProductId) REFERENCES dbo.InventoryLot(LotId, ProductId),   -- Lote 6
     CONSTRAINT UQ_CycleCountLine UNIQUE (CycleCountId, WarehouseBinId, ProductId, LotId),                            -- Lote 6
     CONSTRAINT CK_CycleCountLine_Qty CHECK (SystemQty >= 0 AND (CountedQty IS NULL OR CountedQty >= 0) AND (ReconciledSystemQty IS NULL OR ReconciledSystemQty >= 0)),  -- Lote 6

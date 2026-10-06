@@ -150,6 +150,7 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Review))] = PermissionCatalog.WarehouseCount,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.ReconcileMatching))] = PermissionCatalog.WarehouseCount,   // Lote 21
         [(typeof(CycleCountsController), nameof(CycleCountsController.CreateProvisionalBin))] = PermissionCatalog.WarehouseCountCapture,   // Lote 21
+        [(typeof(CycleCountsController), nameof(CycleCountsController.CheckLine))] = PermissionCatalog.WarehouseCountCapture,   // tarea 25 (conteo informado al capturar)
         [(typeof(CycleCountsController), nameof(CycleCountsController.ProductBins))] = PermissionCatalog.WarehouseCountCapture,   // Lote 24
         [(typeof(InventoryController), nameof(InventoryController.ExitOptions))] = PermissionCatalog.InventoryView,   // orden de salida
 
@@ -322,7 +323,7 @@ public class WmsControllerSecurityTests
         Assert.Equal(PermissionCatalog.RentalMaintenance, Expected[(typeof(RentalProcessesController), nameof(RentalProcessesController.Scrap))]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalReturnsController)]);
         Assert.Equal(ModuleKeys.RentalEquipment, ModuleOf[typeof(RentalProcessesController)]);
-        Assert.Equal(152, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
+        Assert.Equal(153, Expected.Count); // 132 de master + 1 de reparto por posición (Distribute) + 1 de verificación de línea (CheckLine) + 12 de RentalsController + 3 de RentalReturnsController + 4 de RentalProcessesController
     }
 
     [Fact]

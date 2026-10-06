@@ -5099,6 +5099,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cycle-counts/{id}/lines/{lineId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    lineId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountLineCheckRequest"];
+                    "text/json": components["schemas"]["CountLineCheckRequest"];
+                    "application/*+json": components["schemas"]["CountLineCheckRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["CountLineCheckDto"];
+                        "application/json": components["schemas"]["CountLineCheckDto"];
+                        "text/json": components["schemas"]["CountLineCheckDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/cycle-counts/{id}/finish": {
         parameters: {
             query?: never;
@@ -16203,6 +16249,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/count-see-expected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CountSeeExpectedRequest"];
+                    "text/json": components["schemas"]["CountSeeExpectedRequest"];
+                    "application/*+json": components["schemas"]["CountSeeExpectedRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["UserSummaryDto"];
+                        "application/json": components["schemas"]["UserSummaryDto"];
+                        "text/json": components["schemas"]["UserSummaryDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles": {
         parameters: {
             query?: never;
@@ -18808,6 +18899,20 @@ export interface components {
             lines?: components["schemas"]["CountCaptureItem"][] | null;
             rowVersion?: string | null;
         };
+        CountLineCheckDto: {
+            /** Format: int32 */
+            lineId?: number;
+            state?: string | null;
+            matches?: boolean;
+            /** Format: double */
+            countedQty?: number;
+            /** Format: double */
+            expectedQty?: number | null;
+        };
+        CountLineCheckRequest: {
+            /** Format: double */
+            countedQty?: number | null;
+        };
         CountProductBinsDto: {
             /** Format: uuid */
             productPublicId?: string;
@@ -18836,6 +18941,9 @@ export interface components {
         CountReconcileRequest: {
             comment?: string | null;
             rowVersion?: string | null;
+        };
+        CountSeeExpectedRequest: {
+            value?: boolean | null;
         };
         CountSkippedLineDto: {
             /** Format: int32 */
@@ -19079,6 +19187,7 @@ export interface components {
             rowVersion?: string | null;
             isBlind?: boolean;
             skippedLines?: components["schemas"]["CountSkippedLineDto"][] | null;
+            reveal?: string | null;
         };
         CycleCountDto: {
             /** Format: int32 */
@@ -23216,6 +23325,10 @@ export interface components {
             phoneCountryCode?: string | null;
             phoneMask?: string | null;
             isRegionCustomized?: boolean;
+            countExpectedReveal?: string | null;
+            /** Format: double */
+            countRecountTolerancePct?: number;
+            countRevealShowsNumber?: boolean;
         };
         TenantSettingsUpdateRequest: {
             name?: string | null;
@@ -23253,6 +23366,10 @@ export interface components {
             decimalSeparator?: string | null;
             phoneCountryCode?: string | null;
             phoneMask?: string | null;
+            countExpectedReveal?: string | null;
+            /** Format: double */
+            countRecountTolerancePct?: number | null;
+            countRevealShowsNumber?: boolean | null;
         };
         TenantSummaryDto: {
             /** Format: int32 */
@@ -23592,6 +23709,7 @@ export interface components {
             isPlatformAdmin?: boolean;
             hasPin?: boolean;
             mfaRequired?: boolean;
+            countSeeExpected?: boolean | null;
         };
         UserUpdateRequest: {
             fullName?: string | null;

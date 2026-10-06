@@ -63,6 +63,14 @@ public class Tenant : ISoftDeletable
     /// <summary>Cada '#' es un dígito; el teléfono se guarda solo con dígitos y se muestra con esta máscara.</summary>
     public string PhoneMask { get; set; } = "(###) ###-####";
 
+    // --- Conteo informado al capturar (tarea 25); reglas en CountRevealRules. ---
+    /// <summary>'NONE' | 'MARKED' | 'ALL': quién ve lo esperado al contar, después de capturar cada línea.</summary>
+    public string CountExpectedReveal { get; set; } = "MARKED";
+    /// <summary>Margen (%) dentro del cual no se pide reconteo; 0 = cualquier diferencia.</summary>
+    public decimal CountRecountTolerancePct { get; set; }
+    /// <summary>true = muestra el número esperado; false = solo "Coincide" / "No coincide".</summary>
+    public bool CountRevealShowsNumber { get; set; } = true;
+
     public ICollection<TenantHoliday> Holidays { get; set; } = new List<TenantHoliday>();
     public ICollection<TenantModule> Modules { get; set; } = new List<TenantModule>();
 }

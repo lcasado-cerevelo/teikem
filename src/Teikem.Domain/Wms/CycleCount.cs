@@ -69,4 +69,12 @@ public class CycleCountLine
     /// <summary>Lote 21: quién corrigió la cantidad (null = no corregida).</summary>
     public int? CorrectedBy { get; set; }
     public DateTime? CorrectedAtUtc { get; set; }
+
+    // Tarea 25 — conteo informado al capturar (CountRevealRules): verificación de la línea contra lo esperado.
+    /// <summary>MATCH | RECOUNT | FINAL (CountCheckStates); null = no verificada.</summary>
+    public string? CheckState { get; set; }
+    /// <summary>Primera cifra verificada (la que vio el contador antes de saber si coincidía).</summary>
+    public decimal? FirstCheckQty { get; set; }
+    /// <summary>Última cifra verificada: la única que el contador puede guardar en la línea.</summary>
+    public decimal? LastCheckQty { get; set; }
 }

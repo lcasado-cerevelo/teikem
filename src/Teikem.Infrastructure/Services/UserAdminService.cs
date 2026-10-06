@@ -33,7 +33,7 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
             m.Status?.InternalCode ?? "", m.User.TwoFactorEnabled, m.User.LastLoginUtc,
             roles.Where(r => r.UserId == m.UserId).Select(r => r.Name).OrderBy(n => n).ToList(),
             extras.Where(e => e.UserId == m.UserId).Select(e => e.Code).OrderBy(c => c).ToList(), m.User.IsPlatformAdmin,
-            withPin.Contains(m.UserId), m.MfaRequired)).ToList();
+            withPin.Contains(m.UserId), m.MfaRequired, m.CountSeeExpected)).ToList();
     }
 
     public async Task<UserSummaryDto> GetUserAsync(int userId, CancellationToken ct)
@@ -228,6 +228,19 @@ public sealed class UserAdminService(TeikemDbContext db, UserManager<Application
         m.MfaRequired = required;
         await db.SaveChangesAsync(ct);
         await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, m.TenantId, new { user = userId, mfaRequired = required }, ct);
+        return await GetUserAsync(userId, ct);
+    }
+
+    /// <summary>
+    /// Tarea 25 (conteo informado al capturar): marca si esta persona ve lo esperado al contar, después de capturar cada línea (true = sí, false = no,
+    /// null = sin marcar: vale el ajuste de la compañía). No cambia sus permisos; quien tiene warehouse.count ve todo y no depende de esto.
+    /// </summary>
+    public async Task<UserSummaryDto> SetCountSeeExpectedAsync(int userId, bool? value, CancellationToken ct)
+    {
+        var m = await db.UserTenants.FirstOrDefaultAsync(x => x.UserId == userId, ct) ?? throw new NotFoundException("Usuario", userId);
+        m.CountSeeExpected = value;
+        await db.SaveChangesAsync(ct);
+        await security.WriteAsync(SecurityEventTypes.RoleChange, SecurityOutcomes.Success, tenant.UserId, m.TenantId, new { user = userId, countSeeExpected = value }, ct);
         return await GetUserAsync(userId, ct);
     }
 

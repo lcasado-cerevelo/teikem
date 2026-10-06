@@ -59,7 +59,16 @@ public sealed record CycleCountLineDto(int Id, int BinId, string BinCode, string
 /// supervisor — se omitieron (no se tocaron) y las demás sí se guardaron; null cuando no se omitió ninguna. También llega a ciegas.
 /// </summary>
 public sealed record CycleCountDetailDto(CycleCountDto Count, IReadOnlyList<CycleCountLineDto> Lines, string RowVersion, bool IsBlind = false,
-    IReadOnlyList<CountSkippedLineDto>? SkippedLines = null);
+    IReadOnlyList<CountSkippedLineDto>? SkippedLines = null, string? Reveal = null);
+
+/// <summary>
+/// Tarea 25 — verificación de una línea contra lo esperado (POST /cycle-counts/{id}/lines/{lineId}/check, warehouse.count.capture). El contador manda
+/// la cantidad que acaba de aceptar. State: MATCH (dentro del margen; cerrada), RECOUNT (fuera del margen: recontar; no trae lo esperado) o FINAL
+/// (ya recontó; cerrada). ExpectedQty solo viene con MATCH/FINAL y si la compañía muestra el número; Matches dice si quedó dentro del margen.
+/// </summary>
+public sealed record CountLineCheckRequest(decimal? CountedQty);
+
+public sealed record CountLineCheckDto(int LineId, string State, bool Matches, decimal CountedQty, decimal? ExpectedQty);
 
 /// <summary>
 /// Línea del lote que NO se guardó porque el supervisor ya la corrigió. SentQty = lo que mandó quien captura; CurrentQty = el valor

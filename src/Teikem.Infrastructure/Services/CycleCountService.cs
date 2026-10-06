@@ -680,6 +680,7 @@ public sealed class CycleCountService(
                 {
                     changes.Add((line, counted, serials));
                     locked |= await LockedByCorrectionAsync(line, counted, serials, ccStatus == CycleCountStatuses.Counted, ct2);
+                    await EnsureCheckedQtyAsync(line, counted, ct2);
                 }
             }
             if (errors.Count > 0) throw new ValidationException(errors);
@@ -727,6 +728,79 @@ public sealed class CycleCountService(
         line.CapturedAtUtc = next.CapturedAtUtc;
         line.CorrectedBy = next.CorrectedBy;
         line.CorrectedAtUtc = next.CorrectedAtUtc;
+    }
+
+    // ================================================================ conteo informado al capturar (tarea 25)
+
+    /// <summary>
+    /// Línea ya verificada (POST …/check): el contador (sin warehouse.count) solo puede guardar la cantidad que verificó, para que nadie ajuste lo
+    /// contado a lo esperado después de verlo (CountRevealRules.CanSaveChecked). El supervisor siempre puede. 409 sin guardar nada.
+    /// </summary>
+    private async Task EnsureCheckedQtyAsync(CycleCountLine line, decimal? counted, CancellationToken ct)
+    {
+        if (line.CheckState is null || CountRevealRules.CanSaveChecked(line.LastCheckQty, counted, hasCountPermission: false)) return;
+        if (await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct)) return;
+        throw new ConflictException(CountRevealRules.CheckedQtyMismatch);
+    }
+
+    private sealed record RevealSettings(string Mode, decimal TolerancePct, bool ShowsNumber, bool? UserFlag);
+
+    private async Task<RevealSettings> RevealSettingsAsync(CancellationToken ct)
+    {
+        var t = await db.Set<Teikem.Domain.Tenancy.Tenant>().AsNoTracking().Where(x => x.TenantId == tenant.TenantId)
+            .Select(x => new { x.CountExpectedReveal, x.CountRecountTolerancePct, x.CountRevealShowsNumber }).SingleAsync(ct);
+        var flag = await db.UserTenants.AsNoTracking().IgnoreQueryFilters()
+            .Where(m => m.UserId == tenant.UserId && m.TenantId == tenant.TenantId).Select(m => m.CountSeeExpected).FirstOrDefaultAsync(ct);
+        return new RevealSettings(CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber, flag);
+    }
+
+    /// <summary>Cómo ve lo esperado quien llama (CycleCountDetailDto.Reveal): FULL con warehouse.count; AT_CAPTURE si su compañía y su ajuste lo permiten; NONE.</summary>
+    public async Task<string> RevealViewAsync(CancellationToken ct)
+    {
+        if (await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct)) return CountRevealViews.Full;
+        var s = await RevealSettingsAsync(ct);
+        return CountRevealRules.ViewFor(false, CountRevealRules.CanRevealAtCapture(s.Mode, s.UserFlag));
+    }
+
+    /// <summary>
+    /// Verifica la cantidad que el contador acaba de aceptar contra lo esperado, sin habérselo mostrado antes. Dentro del margen de la compañía la línea
+    /// queda MATCH (cerrada); fuera, RECOUNT (debe recontar, no se le dice el esperado); tras recontar, FINAL (cerrada, sea cual sea la cifra). Guarda la
+    /// primera y la última cifra verificadas; no cambia lo contado (eso lo hace la captura, que después solo acepta la última cifra verificada). Solo con el
+    /// conteo abierto y sin series. Quien no tiene warehouse.count y no está habilitado → 403.
+    /// </summary>
+    public async Task<CountLineCheckDto> CheckLineAsync(int id, int lineId, CountLineCheckRequest? req, CancellationToken ct)
+    {
+        if (req?.CountedQty is not decimal counted) throw new ValidationException("countedQty", CycleCountRules.CountedNegative);
+        if (CycleCountRules.ValidateCountedQty(counted) is string qtyError) throw new ValidationException("countedQty", qtyError);
+        var current = await ResolveAsync(id, ct);
+        var hasCount = await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct);
+        var settings = await RevealSettingsAsync(ct);
+        if (!hasCount && !CountRevealRules.CanRevealAtCapture(settings.Mode, settings.UserFlag)) throw new ForbiddenException(CountRevealRules.NotAllowed);
+
+        CountLineCheckDto? result = null;
+        await db.RunInTransactionAsync(async ct2 =>
+        {
+            await LockEditableAsync(current.CycleCountId, ct2);
+            var line = await db.Set<CycleCountLine>().SingleOrDefaultAsync(l => l.CycleCountId == current.CycleCountId && l.CycleCountLineId == lineId, ct2)
+                       ?? throw new NotFoundException(CycleCountRules.LineNotFoundWhat, feminine: true);
+            var trackingId = await db.Set<Product>().AsNoTracking().Where(p => p.ProductId == line.ProductId).Select(p => p.TrackingTypeLookupId).SingleAsync(ct2);
+            var tracking = (await TrackingCodesAsync(new[] { trackingId }, ct2)).GetValueOrDefault(trackingId, TrackingTypes.None);
+            if (tracking == TrackingTypes.Serial) throw new ValidationException("lineId", CountRevealRules.SerialNotSupported);
+            if (line.CorrectedBy is not null || line.CorrectedAtUtc is not null) throw new ConflictException(CycleCountRules.CorrectedLineLocked);
+            if (CountRevealRules.IsClosed(line.CheckState)) throw new ConflictException(CountRevealRules.LineLocked);
+
+            var within = CountRevealRules.WithinTolerance(line.SystemQty, counted, settings.TolerancePct);
+            var state = CountRevealRules.Next(line.CheckState, within);
+            line.FirstCheckQty ??= counted;
+            line.LastCheckQty = counted;
+            line.CheckState = state;
+            await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
+
+            // Con RECOUNT nunca se dice el esperado; con MATCH/FINAL solo si la compañía muestra el número.
+            var expected = state != CountCheckStates.Recount && settings.ShowsNumber ? line.SystemQty : (decimal?)null;
+            result = new CountLineCheckDto(line.CycleCountLineId, state, within, counted, expected);
+        }, ct);
+        return result!;
     }
 
     public const string BatchLineRepeated = "La línea se repite en la solicitud.";
@@ -864,7 +938,11 @@ public sealed class CycleCountService(
                         lockedRows.Add($"{i + 1} ({product.Sku})");
                         skippedSent.Add((line.CycleCountLineId, counted ?? serials?.Count));
                     }
-                    else changes.Add((line, counted, serials));
+                    else
+                    {
+                        await EnsureCheckedQtyAsync(line, counted, ct2);
+                        changes.Add((line, counted, serials));
+                    }
                 }
             }
             if (errors.Count > 0) throw new ValidationException(errors);

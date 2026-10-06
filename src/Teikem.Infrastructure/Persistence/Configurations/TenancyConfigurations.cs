@@ -44,6 +44,8 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         b.Property(t => t.DecimalSeparator).HasColumnType("char(1)").IsRequired();
         b.Property(t => t.PhoneCountryCode).HasColumnType("varchar(5)").IsRequired();
         b.Property(t => t.PhoneMask).HasColumnType("varchar(30)").IsRequired();
+        b.Property(t => t.CountExpectedReveal).HasColumnType("varchar(6)").IsRequired();
+        b.Property(t => t.CountRecountTolerancePct).HasColumnType("decimal(5,2)");
         b.Property(t => t.RowVersion).IsRowVersion();
         b.HasMany(t => t.Holidays).WithOne(h => h.Tenant).HasForeignKey(h => h.TenantId);
         b.HasMany(t => t.Modules).WithOne(m => m.Tenant).HasForeignKey(m => m.TenantId);

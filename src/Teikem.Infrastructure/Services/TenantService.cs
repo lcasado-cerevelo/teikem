@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Constants;
 using Teikem.Domain.Tenancy;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Contracts;
 using Teikem.Infrastructure.Exceptions;
@@ -47,6 +48,19 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
             if (!brand.Ok) throw new ValidationException("brandingJson", brand.Message!);
             t.BrandingJson = req.BrandingJson.Length == 0 ? null : req.BrandingJson;
         }
+        if (req.CountExpectedReveal is not null)
+        {
+            var (mode, modeError) = CountRevealRules.ParseMode(req.CountExpectedReveal);
+            if (modeError is not null || mode is null) throw new ValidationException("countExpectedReveal", modeError ?? CountRevealRules.UnknownMode(req.CountExpectedReveal));
+            t.CountExpectedReveal = mode;
+        }
+        if (req.CountRecountTolerancePct.HasValue)
+        {
+            var pct = req.CountRecountTolerancePct.Value;
+            if (pct is < 0m or > 100m || decimal.Round(pct, 2) != pct) throw new ValidationException("countRecountTolerancePct", CountRevealRules.TolerancePctRange);
+            t.CountRecountTolerancePct = pct;
+        }
+        if (req.CountRevealShowsNumber.HasValue) t.CountRevealShowsNumber = req.CountRevealShowsNumber.Value;
         var formatChanges = FormatChanges(req);
         if (!formatChanges.IsEmpty) ApplyFormat(t, TenantFormatRules.Read(t), formatChanges);
         await db.SaveChangesAsync(ct);
@@ -151,5 +165,6 @@ public sealed class TenantService(TeikemDbContext db, ITenantContext tenant, ILo
         t.MfaRequired, t.Aal2WindowMinutes, t.SessionDays, t.DeviceSessionDays, t.BrandingJson, t.IsActive,
         t.RegionCode, t.TimeZoneId, t.CurrencyCode, t.CurrencySymbol, t.CurrencySymbolPosition, t.CurrencyDecimals,
         t.DateOrder, t.DateSeparator, t.TimeFormat, t.WeekStartDay, t.ThousandsSeparator, t.DecimalSeparator,
-        t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)));
+        t.PhoneCountryCode, t.PhoneMask, !TenantFormatRules.MatchesRegionDefaults(TenantFormatRules.Read(t)),
+        CountRevealRules.Normalize(t.CountExpectedReveal), t.CountRecountTolerancePct, t.CountRevealShowsNumber);
 }

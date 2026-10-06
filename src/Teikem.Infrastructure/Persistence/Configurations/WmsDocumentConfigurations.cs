@@ -209,6 +209,10 @@ public sealed class CycleCountLineConfiguration : IEntityTypeConfiguration<Cycle
         b.Property(l => l.ReconciledSystemQty).HasColumnType("decimal(16,3)");
         // Lote 21: evidencia de la captura original y de la corrección.
         b.Property(l => l.CapturedQty).HasColumnType("decimal(16,3)");
+        // Tarea 25: verificación contra lo esperado (conteo informado al capturar).
+        b.Property(l => l.CheckState).HasColumnType("varchar(8)");
+        b.Property(l => l.FirstCheckQty).HasColumnType("decimal(16,3)");
+        b.Property(l => l.LastCheckQty).HasColumnType("decimal(16,3)");
 
         b.HasIndex(l => new { l.CycleCountId, l.WarehouseBinId, l.ProductId, l.LotId }).IsUnique().HasFilter(null).HasDatabaseName("UQ_CycleCountLine");
         // Lote 14: posiciones con un conteo abierto ("lo cambiado" no las repite).

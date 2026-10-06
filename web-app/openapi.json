@@ -6730,6 +6730,74 @@
         }
       }
     },
+    "/api/v1/cycle-counts/{id}/lines/{lineId}/check": {
+      "post": {
+        "tags": [
+          "CycleCounts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountLineCheckRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountLineCheckRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountLineCheckRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountLineCheckDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountLineCheckDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountLineCheckDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cycle-counts/{id}/finish": {
       "post": {
         "tags": [
@@ -22182,6 +22250,65 @@
         }
       }
     },
+    "/api/v1/users/{id}/count-see-expected": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountSeeExpectedRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountSeeExpectedRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CountSeeExpectedRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSummaryDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSummaryDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSummaryDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/vehicles": {
       "get": {
         "tags": [
@@ -27413,6 +27540,43 @@
         },
         "additionalProperties": false
       },
+      "CountLineCheckDto": {
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "state": {
+            "type": "string",
+            "nullable": true
+          },
+          "matches": {
+            "type": "boolean"
+          },
+          "countedQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountLineCheckRequest": {
+        "type": "object",
+        "properties": {
+          "countedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CountProductBinsDto": {
         "type": "object",
         "properties": {
@@ -27511,6 +27675,16 @@
           },
           "rowVersion": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CountSeeExpectedRequest": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -28226,6 +28400,10 @@
             "items": {
               "$ref": "#/components/schemas/CountSkippedLineDto"
             },
+            "nullable": true
+          },
+          "reveal": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -40676,6 +40854,17 @@
           },
           "isRegionCustomized": {
             "type": "boolean"
+          },
+          "countExpectedReveal": {
+            "type": "string",
+            "nullable": true
+          },
+          "countRecountTolerancePct": {
+            "type": "number",
+            "format": "double"
+          },
+          "countRevealShowsNumber": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -40797,6 +40986,19 @@
           },
           "phoneMask": {
             "type": "string",
+            "nullable": true
+          },
+          "countExpectedReveal": {
+            "type": "string",
+            "nullable": true
+          },
+          "countRecountTolerancePct": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "countRevealShowsNumber": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -41828,6 +42030,10 @@
           },
           "mfaRequired": {
             "type": "boolean"
+          },
+          "countSeeExpected": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false

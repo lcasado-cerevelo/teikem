@@ -95,9 +95,10 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
         CancellationToken ct = default)
     {
         var blind = await IsBlindAsync(ct);
-        return await counts.GetAsync(id, new CycleCountLinesQuery(binIds is { Length: > 0 } ? binIds : null,
+        var detail = await counts.GetAsync(id, new CycleCountLinesQuery(binIds is { Length: > 0 } ? binIds : null,
             productPublicIds is { Length: > 0 } ? productPublicIds : null, categoryIds is { Length: > 0 } ? categoryIds : null,
             onlyVariance, onlyPending, search), blind, ct);
+        return detail with { Reveal = await counts.RevealViewAsync(ct) };
     }
 
     /// <summary>
@@ -135,6 +136,17 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     [HttpPost("{id:int}/lines"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<CycleCountDetailDto> AddLine(int id, [FromBody] CountAddLineRequest req, CancellationToken ct)
         => await ForCallerAsync(await counts.AddLineAsync(id, req, ct), ct);
+
+    /// <summary>
+    /// Conteo informado al capturar (tarea 25): el contador manda la cantidad que acaba de aceptar de una línea y recibe si coincide con lo esperado
+    /// SIN haberlo visto antes. state MATCH (dentro del margen de la compañía; línea cerrada), RECOUNT (fuera del margen: debe recontar; no trae lo
+    /// esperado) o FINAL (ya recontó; cerrada). expectedQty solo con MATCH/FINAL y si la compañía muestra el número. Después, la captura de esa línea
+    /// solo acepta la última cifra verificada (409 si es otra). 403 si ni la compañía ni su ajuste lo permiten; 409 si la línea ya está cerrada o
+    /// corregida; 400 con series o cantidad inválida; 422 con el conteo terminado.
+    /// </summary>
+    [HttpPost("{id:int}/lines/{lineId:int}/check"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
+    public Task<CountLineCheckDto> CheckLine(int id, int lineId, [FromBody] CountLineCheckRequest req, CancellationToken ct)
+        => counts.CheckLineAsync(id, lineId, req, ct);
 
     /// <summary>Terminar de contar: OPEN → COUNTED con todas las líneas capturadas (si no, 422 'Faltan {n} línea(s) por contar.').</summary>
     [HttpPost("{id:int}/finish"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
@@ -221,5 +233,8 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
 
     /// <summary>La respuesta de alta, captura y terminar llega a ciegas a quien no tiene warehouse.count (no filtra lo esperado).</summary>
     private async Task<CycleCountDetailDto> ForCallerAsync(CycleCountDetailDto detail, CancellationToken ct)
-        => await IsBlindAsync(ct) ? CycleCountService.Blind(detail) : detail;
+    {
+        var shaped = await IsBlindAsync(ct) ? CycleCountService.Blind(detail) : detail;
+        return shaped with { Reveal = await counts.RevealViewAsync(ct) };
+    }
 }

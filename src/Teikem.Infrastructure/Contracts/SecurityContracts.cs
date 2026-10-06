@@ -6,7 +6,7 @@ public sealed record RoleUpsertRequest(string Name, IDictionary<string, string>?
 
 /// <summary>HasPin (Lote 8A): el usuario tiene PIN para los aparatos de almacén en la compañía activa.</summary>
 public sealed record UserSummaryDto(int Id, string? FullName, string? Email, string? UserKind, bool IsActive, string MembershipStatus, bool MfaEnabled, DateTime? LastLoginUtc, IReadOnlyList<string> Roles, IReadOnlyList<string> ExtraPermissions, bool IsPlatformAdmin,
-    bool HasPin = false, bool MfaRequired = false);
+    bool HasPin = false, bool MfaRequired = false, bool? CountSeeExpected = null);
 /// <remarks>2026-10-01: AlsoTenantIds = otras compañías (de GET /users/assignable-companies) a las que se agrega también al usuario,
 /// con los mismos roles por nombre en cada una.</remarks>
 public sealed record UserCreateRequest(string Email, string FullName, string? Password, IList<string>? Roles, string? UserKind, IList<int>? AlsoTenantIds = null);
@@ -22,6 +22,8 @@ public sealed record UserExtraPermissionsRequest(IList<string> Permissions);
 public sealed record MembershipStatusRequest(string Status);
 /// <summary>Lote F8a: exige (o deja de exigir) MFA a este usuario en la compañía activa, aparte de Tenant.MfaRequired.</summary>
 public sealed record MfaRequiredRequest(bool Required);
+/// <summary>Tarea 25: ve lo esperado al contar, después de capturar cada línea: true = sí, false = no, null = sin marcar (vale el ajuste de la compañía).</summary>
+public sealed record CountSeeExpectedRequest(bool? Value);
 public sealed record DataScopeDto(string ScopeEntity, int ScopeId);
 public sealed record DataScopesRequest(IList<DataScopeDto> Scopes);
 

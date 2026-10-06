@@ -17,6 +17,8 @@ public class UserTenant : ITenantScoped, IHasStatus
     public DateTime? JoinedAtUtc { get; set; }
     /// <summary>Lote F8a: exige MFA a esta persona en esta compañía en particular, aparte de Tenant.MfaRequired.</summary>
     public bool MfaRequired { get; set; }
+    /// <summary>Tarea 25: ve lo esperado al contar (después de capturar la línea): true = sí, false = no, null = sin marcar (vale el ajuste de la compañía).</summary>
+    public bool? CountSeeExpected { get; set; }
     public ApplicationUser? User { get; set; }
     public Tenancy.Tenant? Tenant { get; set; }
     public Catalogs.StatusCode? Status { get; set; }

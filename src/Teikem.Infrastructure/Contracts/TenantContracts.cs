@@ -14,18 +14,21 @@ public sealed record TenantSettingsDto(
     string? DefaultServiceType, string? DefaultPackageType, bool MfaRequired, int Aal2WindowMinutes, int SessionDays, int DeviceSessionDays, string? BrandingJson, bool IsActive,
     string RegionCode, string TimeZoneId, string CurrencyCode, string CurrencySymbol, string CurrencySymbolPosition, byte CurrencyDecimals,
     string DateOrder, string DateSeparator, byte TimeFormat, byte WeekStartDay, string ThousandsSeparator, string DecimalSeparator,
-    string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized);
+    string PhoneCountryCode, string PhoneMask, bool IsRegionCustomized,
+    string CountExpectedReveal = "MARKED", decimal CountRecountTolerancePct = 0m, bool CountRevealShowsNumber = true);
 
 /// <summary>
 /// Cambio parcial de los ajustes: null = sin cambio. Región y formatos: si RegionCode es distinto del actual se cargan los valores
 /// por defecto de esa región y los campos de formato que vengan mandan sobre ellos (sin campos = la región completa).
+/// Conteo informado al capturar (tarea 25): CountExpectedReveal ('NONE' | 'MARKED' | 'ALL'), CountRecountTolerancePct (0 a 100) y CountRevealShowsNumber.
 /// </summary>
 public sealed record TenantSettingsUpdateRequest(
     string? Name, string? LegalName, string? TaxId, string? DefaultLangCode, byte? WorkDaysMask, int? MaxStopsPerRouteDefault,
     string? DefaultServiceType, string? DefaultPackageType, bool? MfaRequired, int? Aal2WindowMinutes, int? SessionDays, int? DeviceSessionDays, string? BrandingJson,
     string? RegionCode = null, string? TimeZoneId = null, string? CurrencyCode = null, string? CurrencySymbol = null, string? CurrencySymbolPosition = null,
     byte? CurrencyDecimals = null, string? DateOrder = null, string? DateSeparator = null, byte? TimeFormat = null, byte? WeekStartDay = null,
-    string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null);
+    string? ThousandsSeparator = null, string? DecimalSeparator = null, string? PhoneCountryCode = null, string? PhoneMask = null,
+    string? CountExpectedReveal = null, decimal? CountRecountTolerancePct = null, bool? CountRevealShowsNumber = null);
 
 /// <summary>Juego de valores de región y formatos (los de una región en <see cref="TenantFormatOptionsDto"/>).</summary>
 public sealed record TenantFormatDto(
