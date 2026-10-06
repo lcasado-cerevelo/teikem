@@ -399,6 +399,33 @@ describe('Ajustes de la compañía', () => {
     expect(screen.getAllByTestId('where').at(-1)).toHaveTextContent(/^\/warehouse\/warehouses\/w\d$/)
   })
 
+  it('Operación → conteo cíclico: quién ve lo esperado, margen de reconteo y número; se guarda parcial y valida el margen', async () => {
+    const user = userEvent.setup()
+    wrap('/system/settings?tab=ops')
+    const panel = (await screen.findByRole('heading', { name: 'Conteo cíclico: lo esperado al contar' })).closest('.panel') as HTMLElement
+    // sin valores guardados: «Solo los marcados», margen 0 y número visible
+    expect(within(panel).getByLabelText('¿Quién ve lo esperado al contar?')).toHaveValue('MARKED')
+    expect(within(panel).getByLabelText('Margen para no pedir reconteo (%)')).toHaveValue(0)
+    expect(within(panel).getByRole('switch', { name: /Mostrar el número/ })).toBeChecked()
+    expect(within(panel).getByText(/Solo los contadores marcados con «Sí» en Usuarios/)).toBeInTheDocument()
+
+    await user.selectOptions(within(panel).getByLabelText('¿Quién ve lo esperado al contar?'), 'ALL')
+    expect(within(panel).getByText(/Todos los contadores lo ven después de capturar cada línea/)).toBeInTheDocument()
+    const pct = within(panel).getByLabelText('Margen para no pedir reconteo (%)')
+    await user.clear(pct)
+    await user.type(pct, '150')
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    expect(await within(panel).findByText('El margen debe estar entre 0 y 100 %.')).toBeInTheDocument()
+    expect(put()).toHaveLength(0)
+
+    await user.clear(pct)
+    await user.type(pct, '5')
+    await user.click(within(panel).getByRole('switch', { name: /Mostrar el número/ }))
+    await user.click(within(panel).getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(put()).toHaveLength(1))
+    expect(put()[0].body).toEqual({ countExpectedReveal: 'ALL', countRecountTolerancePct: 5, countRevealShowsNumber: false })
+  })
+
   it('Marca: tema predefinido con validaciones y BrandingJson al guardar', async () => {
     const user = userEvent.setup()
     wrap('/system/settings?tab=brand')

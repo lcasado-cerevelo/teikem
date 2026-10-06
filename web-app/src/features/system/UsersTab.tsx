@@ -19,6 +19,7 @@ import {
   Field,
   Form,
   IconEdit,
+  IconEye,
   IconKey,
   IconLogOut,
   IconRotateCcw,
@@ -38,6 +39,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { formatDateTime } from '../account/format'
+import { problemText } from '../warehouse/problemText'
 import { copyCode } from './EnrollCodeModal'
 import { PinModal } from './PinModal'
 import {
@@ -47,6 +49,7 @@ import {
   useResetUserMfa,
   useRoles,
   useSetMembership,
+  useSetCountSeeExpected,
   useSetMfaRequired,
   useSetUserExtraPermissions,
   useSetUserRoles,
@@ -436,6 +439,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
   const setMembership = useSetMembership()
   const closeSessions = useCloseUserSessions()
   const setMfaRequired = useSetMfaRequired()
+  const setCountSeeExpected = useSetCountSeeExpected()
   const resetMfa = useResetUserMfa()
   const canManagePin = useCanAny('devices.manage', 'admin.users')
   const wmsOn = useModule(ModuleKeys.WmsLotSerial)
@@ -560,6 +564,21 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
           </span>
         ),
       },
+      ...(wmsOn
+        ? [
+            {
+              id: 'countSee',
+              header: t('system.users.users.colCountSee'),
+              sortValue: (u: UserSummaryDto) => (u.countSeeExpected === true ? 2 : u.countSeeExpected === false ? 0 : 1),
+              cell: (u: UserSummaryDto) =>
+                u.countSeeExpected == null ? (
+                  '—'
+                ) : (
+                  <Chip tone={u.countSeeExpected ? 'deliv' : 'cap'}>{u.countSeeExpected ? t('system.users.users.yes') : t('system.users.users.no')}</Chip>
+                ),
+            } satisfies DataColumn<UserSummaryDto>,
+          ]
+        : []),
       {
         id: 'lastLogin',
         header: t('system.users.users.colLastLogin'),
@@ -576,7 +595,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       })
     }
     return cols
-  }, [t, lang, canPin, setMembership, me?.userId])
+  }, [t, lang, canPin, wmsOn, setMembership, me?.userId])
 
   const actions = useMemo<RowAction<UserSummaryDto>[]>(() => {
     const list: RowAction<UserSummaryDto>[] = [
@@ -599,6 +618,20 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
           icon: <IconKey />,
           onClick: (u) => setPinFor(u),
         },
+      )
+    }
+    if (wmsOn) {
+      const mark = (u: UserSummaryDto, value: boolean | null) => {
+        if (!u.id) return
+        setCountSeeExpected
+          .mutateAsync({ id: u.id, value })
+          .then(() => toast.success(t('system.users.users.countSeeSaved')))
+          .catch((err) => toast.error(problemText(err)))
+      }
+      list.push(
+        { key: 'countSeeYes', label: t('system.users.users.countSeeYes'), perm: 'admin.users', visible: (u) => u.countSeeExpected !== true, icon: <IconEye />, onClick: (u) => mark(u, true) },
+        { key: 'countSeeNo', label: t('system.users.users.countSeeNo'), perm: 'admin.users', visible: (u) => u.countSeeExpected !== false, icon: <IconEye />, onClick: (u) => mark(u, false) },
+        { key: 'countSeeClear', label: t('system.users.users.countSeeClear'), perm: 'admin.users', visible: (u) => u.countSeeExpected != null, icon: <IconEye />, onClick: (u) => mark(u, null) },
       )
     }
     list.push(
@@ -628,7 +661,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
       },
     )
     return list
-  }, [t, canPin])
+  }, [t, canPin, wmsOn, setCountSeeExpected])
 
   return (
     <>

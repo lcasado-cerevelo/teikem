@@ -3389,7 +3389,12 @@
         "closeSessionsBody": "Se cerrarán todas las sesiones abiertas de {name}.",
         "closeSessionsDone": "Sesiones cerradas.",
         "membershipSaved": "Estado actualizado.",
-        "note": "Cada usuario hereda los permisos de su rol. «Permisos extra» es la excepción puntual: un permiso concedido directo a una persona, sin tener que crear o cambiar un rol solo para ella."
+        "note": "Cada usuario hereda los permisos de su rol. «Permisos extra» es la excepción puntual: un permiso concedido directo a una persona, sin tener que crear o cambiar un rol solo para ella.",
+        "colCountSee": "Ve lo esperado al contar",
+        "countSeeYes": "Ve lo esperado al contar: Sí",
+        "countSeeNo": "Ve lo esperado al contar: No",
+        "countSeeClear": "Ve lo esperado al contar: sin marcar",
+        "countSeeSaved": "Guardado."
       },
       "pin": {
         "assignTitle": "Asignar PIN — {name}",
@@ -3670,7 +3675,26 @@
         "inactive": "Inactivo",
         "recvSumHint": "Solo lectura. El modo se cambia en cada almacén (Almacenes → Recepción), porque la zona de recepción es física. Con acomodo: la mercancía entra a la posición de recepción y luego se acomoda. Directo: quien recibe escoge la posición final y no hay acomodo. Un almacén con acomodo necesita una posición de recepción para poder recibir.",
         "recvNoAccess": "Su usuario no puede consultar los almacenes.",
-        "recvEmpty": "No hay almacenes."
+        "recvEmpty": "No hay almacenes.",
+        "countRevealTitle": "Conteo cíclico: lo esperado al contar",
+        "countRevealLabel": "¿Quién ve lo esperado al contar?",
+        "countReveal": {
+          "NONE": "Nadie",
+          "MARKED": "Solo los marcados",
+          "ALL": "Todos"
+        },
+        "countRevealHelp": {
+          "NONE": "Ningún contador ve lo esperado, sin excepciones.",
+          "MARKED": "Solo los contadores marcados con «Sí» en Usuarios lo ven, después de capturar cada línea.",
+          "ALL": "Todos los contadores lo ven después de capturar cada línea, salvo los marcados con «No» en Usuarios."
+        },
+        "countTolLabel": "Margen para no pedir reconteo (%)",
+        "countTolHelp": "0 = cualquier diferencia pide reconteo. Con 5, una cantidad dentro del 5 % de lo esperado se da por buena.",
+        "countTolRange": "El margen debe estar entre 0 y 100 %.",
+        "countNumberLabel": "Mostrar el número esperado",
+        "countNumberText": "Mostrar el número (si no, solo «Coincide» o «No coincide»)",
+        "countNumberHelp": "Fuera del margen nunca se muestra el esperado: se pide recontar. El número solo se ve al coincidir o tras recontar.",
+        "countRevealHint": "Quien tiene el permiso «Contar» (supervisor) ve lo esperado desde el inicio y no depende de este ajuste. El contador (solo «Capturar conteo») lo ve después de aceptar cada línea; si queda fuera del margen se le pide recontar y la línea se cierra."
       },
       "brand": {
         "brandTitle": "Colores y logo de la compañía",

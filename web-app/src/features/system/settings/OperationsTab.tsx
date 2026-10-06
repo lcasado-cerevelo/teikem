@@ -2,6 +2,7 @@
 // - Valores por defecto: tipo de servicio y de paquete (catálogo; '' = sin valor) y máximo de paradas por ruta (≥ 1).
 // - Pipeline de estatus de órdenes: matriz estatus × acción (`StatusCapability` de TRANSPORT_ORDER / OrderStatus); se lee
 //   con sesión y se cambia con `admin.statusconfig` (una celda por clic). Solo con el módulo de órdenes (LTL_GROUND).
+// - Conteo cíclico (módulo WMS_LOTSERIAL, tarea 25): quién ve lo esperado al contar, margen de reconteo y si se muestra el número.
 // - Recepción por almacén (solo lectura, módulo WMS_LOTSERIAL): modo, posición de recepción, recibos abiertos y acomodos
 //   pendientes, aviso rojo si es con acomodo y no tiene posición de recepción, y "Abrir almacén" (ficha del almacén).
 import { useQueries } from '@tanstack/react-query'
@@ -25,6 +26,7 @@ import {
   NumberInput,
   Panel,
   Select,
+  Toggle,
   toast,
   type DataColumn,
   type RowAction,
@@ -91,6 +93,72 @@ function DefaultsPanel({ settings, canEdit }: { settings: TenantSettingsDto; can
           <Field name="maxStopsPerRouteDefault" label={t('system.settings.ops.maxStopsLabel')} help={t('system.settings.ops.maxStopsHint')}>
             <NumberInput min={1} step={1} className="mono" />
           </Field>
+        </fieldset>
+        {canEdit && (
+          <div className="set-actions">
+            <button type="button" className="btn" disabled={!dirty || form.formState.isSubmitting} onClick={() => form.reset()}>
+              {t('system.settings.discard')}
+            </button>
+            <button type="submit" className="btn flow" disabled={!dirty || form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? t('system.settings.saving') : t('system.settings.save')}
+            </button>
+          </div>
+        )}
+      </Form>
+    </Panel>
+  )
+}
+
+// ------------------------------------------------------------------ conteo cíclico: lo esperado al contar (tarea 25)
+
+interface CountRevealValues {
+  countExpectedReveal: string
+  countRecountTolerancePct: number | null
+  countRevealShowsNumber: boolean
+}
+
+/** Quién ve lo esperado al contar (después de capturar cada línea), cuánto margen hay antes de pedir reconteo y si se muestra el número. */
+function CountRevealPanel({ settings, canEdit }: { settings: TenantSettingsDto; canEdit: boolean }) {
+  const t = useT()
+  const save = useSaveTenantSettings()
+  const form = useForm<CountRevealValues>({
+    values: {
+      countExpectedReveal: settings.countExpectedReveal ?? 'MARKED',
+      countRecountTolerancePct: settings.countRecountTolerancePct ?? 0,
+      countRevealShowsNumber: settings.countRevealShowsNumber ?? true,
+    },
+  })
+  const dirty = form.formState.isDirty
+  const options = ['NONE', 'MARKED', 'ALL'].map((v) => ({ value: v, label: t(`system.settings.ops.countReveal.${v}`) }))
+  const mode = form.watch('countExpectedReveal')
+
+  return (
+    <Panel className="set-gap" icon={<IconCheckin />} title={t('system.settings.ops.countRevealTitle')}>
+      <Form
+        form={form}
+        onSubmit={async (v) => {
+          const pct = v.countRecountTolerancePct
+          if (pct == null || pct < 0 || pct > 100) {
+            form.setError('countRecountTolerancePct', { message: t('system.settings.ops.countTolRange') })
+            return
+          }
+          await save.mutateAsync({ countExpectedReveal: v.countExpectedReveal, countRecountTolerancePct: pct, countRevealShowsNumber: v.countRevealShowsNumber })
+          toast.success(t('system.settings.saved'))
+        }}
+      >
+        <fieldset className="set-fs" disabled={!canEdit}>
+          <Field name="countExpectedReveal" label={t('system.settings.ops.countRevealLabel')} help={t(`system.settings.ops.countRevealHelp.${mode}`)}>
+            <Select options={options} />
+          </Field>
+          <div className="r2">
+            <Field name="countRecountTolerancePct" label={t('system.settings.ops.countTolLabel')} help={t('system.settings.ops.countTolHelp')}>
+              <NumberInput min={0} max={100} step={0.01} className="mono" />
+            </Field>
+            <Field name="countRevealShowsNumber" label={t('system.settings.ops.countNumberLabel')} help={t('system.settings.ops.countNumberHelp')}>
+              <Toggle text={t('system.settings.ops.countNumberText')} />
+            </Field>
+          </div>
+          <p className="set-d">{t('system.settings.ops.countRevealHint')}</p>
         </fieldset>
         {canEdit && (
           <div className="set-actions">
@@ -305,6 +373,7 @@ export function OperationsTab({ settings, canEdit }: { settings: TenantSettingsD
         <DefaultsPanel settings={settings} canEdit={canEdit} />
         {orders && <PipelinePanel />}
       </div>
+      {wms && <CountRevealPanel settings={settings} canEdit={canEdit} />}
       {wms && <RecvSummaryPanel />}
     </>
   )

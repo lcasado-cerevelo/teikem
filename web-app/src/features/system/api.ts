@@ -170,6 +170,16 @@ export function useSetMfaRequired() {
   })
 }
 
+/** `PUT /api/v1/users/{id}/count-see-expected` (admin.users): ve lo esperado al contar, después de capturar cada línea (true = sí, false = no, null = sin marcar). */
+export function useSetCountSeeExpected() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, value }: { id: number; value: boolean | null }) =>
+      unwrap(api.PUT('/api/v1/users/{id}/count-see-expected', { params: { path: { id } }, body: { value } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  })
+}
+
 /** `DELETE /api/v1/users/{id}/mfa` (AAL2): resetea el MFA de otro usuario que perdió su dispositivo. */
 export function useResetUserMfa() {
   const qc = useQueryClient()

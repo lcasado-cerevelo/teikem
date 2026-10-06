@@ -3389,7 +3389,12 @@
         "closeSessionsBody": "All of {name}'s open sessions will be signed out.",
         "closeSessionsDone": "Sessions signed out.",
         "membershipSaved": "Status updated.",
-        "note": "Each user inherits their role's permissions. \"Extra permissions\" is the one-off exception: a permission granted directly to a person, without creating or changing a role just for them."
+        "note": "Each user inherits their role's permissions. \"Extra permissions\" is the one-off exception: a permission granted directly to a person, without creating or changing a role just for them.",
+        "colCountSee": "Sees expected while counting",
+        "countSeeYes": "Sees expected while counting: Yes",
+        "countSeeNo": "Sees expected while counting: No",
+        "countSeeClear": "Sees expected while counting: unmarked",
+        "countSeeSaved": "Saved."
       },
       "pin": {
         "assignTitle": "Set PIN — {name}",
@@ -3670,7 +3675,26 @@
         "inactive": "Inactive",
         "recvSumHint": "Read-only. The mode is changed in each warehouse (Warehouses → Receiving), because the receiving area is physical. With putaway: goods enter the receiving location and are put away afterwards. Direct: the receiver picks the final location and there is no putaway. A warehouse with putaway needs a receiving location in order to receive.",
         "recvNoAccess": "Your user cannot read the warehouses.",
-        "recvEmpty": "There are no warehouses."
+        "recvEmpty": "There are no warehouses.",
+        "countRevealTitle": "Cycle count: expected quantity while counting",
+        "countRevealLabel": "Who sees the expected quantity while counting?",
+        "countReveal": {
+          "NONE": "Nobody",
+          "MARKED": "Only marked users",
+          "ALL": "Everybody"
+        },
+        "countRevealHelp": {
+          "NONE": "No counter sees the expected quantity, no exceptions.",
+          "MARKED": "Only counters marked «Yes» in Users see it, after capturing each line.",
+          "ALL": "All counters see it after capturing each line, except those marked «No» in Users."
+        },
+        "countTolLabel": "Margin before asking for a recount (%)",
+        "countTolHelp": "0 = any difference asks for a recount. With 5, a quantity within 5 % of the expected one is accepted.",
+        "countTolRange": "The margin must be between 0 and 100 %.",
+        "countNumberLabel": "Show the expected number",
+        "countNumberText": "Show the number (otherwise just «Matches» or «Does not match»)",
+        "countNumberHelp": "Outside the margin the expected quantity is never shown: a recount is requested. The number is only seen on a match or after recounting.",
+        "countRevealHint": "Whoever has the «Count» permission (supervisor) sees the expected quantity from the start and does not depend on this setting. The counter (only «Capture count») sees it after accepting each line; outside the margin a recount is requested and the line closes."
       },
       "brand": {
         "brandTitle": "Company colors and logo",

@@ -300,6 +300,33 @@ describe('UsersTab — estado, columna PIN y permisos', () => {
     expect(screen.getByText('PIN app')).toBeInTheDocument()
   })
 
+  it('conteo informado: la columna y las acciones "Ve lo esperado al contar" solo con WMS; marcar Sí manda el valor', async () => {
+    const user = userEvent.setup()
+    const marked: UserSummaryDto[] = [{ ...USERS[0], countSeeExpected: false }]
+    mock.handler = ((method: string, url: URL) => {
+      if (method === 'GET' && url.pathname === '/api/v1/users') return marked
+      if (method === 'GET' && url.pathname === '/api/v1/roles') return [ROLE]
+      if (method === 'GET' && url.pathname === '/api/v1/permissions') return PERMISSIONS
+      if (method === 'PUT' && url.pathname === '/api/v1/users/2/count-see-expected') return { ...marked[0], countSeeExpected: true }
+      return undefined
+    }) satisfies Handler
+
+    const withoutModule = wrap(<UsersTab />, { permissions: ['admin.users'], modules: [] })
+    await screen.findByText('Carlos Rivera')
+    expect(screen.queryByText('Ve lo esperado al contar')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ve lo esperado al contar: Sí' })).toBeNull()
+    withoutModule.unmount()
+
+    wrap(<UsersTab />, { permissions: ['admin.users'], modules: ['WMS_LOTSERIAL'] })
+    await screen.findByText('Carlos Rivera')
+    expect(screen.getByText('Ve lo esperado al contar')).toBeInTheDocument()
+    // marcado en No: ofrece Sí y sin marcar, no repite No
+    expect(screen.queryByRole('button', { name: 'Ve lo esperado al contar: No' })).toBeNull()
+    await user.click(await screen.findByRole('button', { name: 'Ve lo esperado al contar: Sí' }))
+    await waitFor(() => expect(mock.calls.some((c) => c.method === 'PUT' && c.path === '/api/v1/users/2/count-see-expected')).toBe(true))
+    expect(mock.calls.find((c) => c.path === '/api/v1/users/2/count-see-expected')?.body).toEqual({ value: true })
+  })
+
   it('"Nuevo usuario" sin contraseña muestra la temporal una sola vez (hallazgo S2)', async () => {
     const user = userEvent.setup()
     mock.handler = ((method: string, url: URL) => {
