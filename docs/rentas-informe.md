@@ -257,6 +257,72 @@ Ver los puntos 41 a 51 de la lista de abajo.
 
 Ver los puntos 52 a 60 de la lista de abajo.
 
+## Bloque F-R1 — Web de rentas y "Convertir a serie" (Lote F17)
+
+### Qué se hizo
+
+- **Almacén → Rentas** (`/warehouse/rentals`, `rental.view` + módulo `RENTAL_EQUIPMENT`), antes del Kárdex. **Lista** con filtros al API
+  (estatus, cliente, "vencen en N días", "solo vencidas", buscador libre), columnas ordenables, insignia de estatus con color y texto,
+  **vencimiento calculado** (no es estatus), paginación y Exportar; los filtros se leen de la URL (así llega "Ver todos" del aviso) y
+  `?rental=` abre la ficha ("Revisar" del aviso `RENTAL_DUE`).
+- **Ficha** (`/warehouse/rentals/{renta}`): datos (cliente, localidad, contacto, almacén, inicio, recogido vigente y pactado, contrato,
+  transporte y moneda, envío y factura vacíos, notas), **equipos por serie** con posición de origen, tarifa vigente y estado (inactivos
+  atenuados en una cancelada), **extensiones** e **historial de estatus**. Acciones según el estatus y el permiso, con confirmación y el
+  mensaje exacto del servidor: Editar, Agregar equipos, Tarifa y Quitar equipo, **Programar**, **Despachar**, **Cancelar** (`rental.manage`)
+  y **Extender** (`rental.extend`: nueva fecha, motivo y tarifa opcional; el 400 de fecha y el de motivo bajo su campo).
+- **Alta en Borrador y edición** con el **selector de equipos por serie** (producto propio → series disponibles del almacén de origen en
+  zonas que se rentan, sin repetir; buscador y lector de código de barras; los 409 del servidor tal cual) y la **tarifa por equipo** (fija o
+  por día/semana/mes, monto, moneda).
+- **Convertir a serie** en la ficha del producto (`inventory.manage` + `inventory.adjust`, WMS_LOTSERIAL, producto sin seguimiento con
+  existencia): una caja por posición (pegar varias líneas, contador, repetidas y conteo con el mensaje exacto 400; bloqueos 409/422 al
+  abrir) y confirmación de **movimiento neto cero** con el motivo "Conversión a serie".
+- Texto del aviso **`RENTAL_DUE`** en "Necesita tu atención" (vencida / se recoge hoy / vence en N días). `isPickableZone` de la web excluye
+  la zona `RENTAL` (paridad con el servidor desde R1).
+- Sin cambios en el servidor ni en el contrato (`schema.d.ts` igual). Documentación: `docs/frontend/loteF17-decisiones.md`, capítulo de
+  pantallas `docs/manual/frontend/f17-rentas.md` con capturas `f17-*`, sección "Lote F17" de la FAQ, índice del manual, referencias en los
+  capítulos 06 y 11, `web-app/KIT.md`.
+- Archivos principales: `web-app/src/features/rentals/` (`RentalListScreen`, `RentalDetailScreen`, `RentalFormModal`, `RentalDialogs`,
+  `EquipmentPicker`, `RateFields`, `DueChip`, `rentalRules.ts`, `api.ts`), `web-app/src/features/warehouse/ConvertToSerialModal.tsx`,
+  `serialConversion.ts`, `ProductDetailScreen.tsx`, `features/analytics/attention.ts`, `app/routes.tsx`, `e2e/loteF17.spec.ts`,
+  `playwright.config.ts`.
+
+### Cómo se probó (resultados reales)
+
+| Comando | Resultado |
+|---|---|
+| `npm run check` en `web-app/` (api:types, tsc -b, oxlint, vitest, build) | **pasó**: `schema.d.ts` sin cambios, tsc, oxlint (9 avisos que ya existían; ninguno en archivos de este lote), vitest **129 archivos / 1297 pruebas** (antes 124 / 1252: +5 archivos y +45 pruebas: `rentalRules.test.ts` 15, `serialConversion.test.ts` 7, `RentalScreens.test.tsx` 13, `ConvertToSerial.test.tsx` 5, `attentionRental.test.ts` 3, +1 en `collectForm.test.ts` y +1 en `navigation.test.ts`), build |
+| `dotnet test tests/Teikem.Tests -o .tmp-testout` (servidor sin cambios, para el API del recorrido) | **3172 pasan, 0 fallan** |
+| `db-init` ×2 sobre la base nueva `TeikemF17` (desde `.tmp-testout`, `ASPNETCORE_ENVIRONMENT=Development`) | Completada las dos veces (la segunda, "ya existe") |
+| `scripts/smoke.sh http://localhost:5000` (con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` del build de `.tmp-testout`) a las 01:26 UTC | **FALLÓ en el paso 20** ("tarifas por servicio (Lote 2)", 21 `ok` antes): el smoke calcula "ayer" en UTC y entre las 00:00 y las 04:00 UTC ese día es "hoy" en Puerto Rico para el API (falla previa, independiente de este lote; ver decisión 72 del informe). No se repitió fuera de esa ventana: el orquestador pidió cerrar antes |
+| `npx playwright test e2e/loteF17.spec.ts --project=escritorio-f17 --no-deps --workers=1` y lo mismo con `--project=movil-f17` (API real en :5000 sobre `TeikemF17`, Vite con `VITE_API_URL=http://localhost:5000`, Chromium de `/opt/pw-browsers`) | **escritorio 1 pasó, móvil 1 pasó** (25.6 s y 19.7 s; cada uno con 1 omitido por proyecto) |
+| Suite completa `npx playwright test --workers=1` sobre esa misma base (smoke incompleto y con las rentas de F17 ya creadas) | **46 pasaron, 3 fallaron, 58 omitidos por proyecto, 64 no corrieron** (por las dependencias de los fallidos): `lote14` 7 (espera "Todo en orden" en "Necesita tu atención", pero había rentas por vencer: las de F17 de corridas anteriores; en el CI también las deja el paso R3 del smoke, ver "No verificado"), `lote15` 6 (gráfico "Valor de inventario por categoría" sin total: depende de los datos del smoke, ya documentado en F15) y `lote15` 9 móvil (franja fija; sin investigar). No es la corrida en el orden del CI |
+
+Recorrido `e2e/loteF17.spec.ts` (escritorio y móvil, cada uno con sus datos): siembra por API un cliente con su localidad y un producto sin
+seguimiento con 2 + 1 unidades en dos posiciones RSV de ALM-01; **Convertir a serie** (repetida sin distinguir mayúsculas y conteo con el
+mensaje exacto, confirmación de neto cero, aviso final; por API queda SERIAL con 3 en mano y 3 disponibles); Almacén → **Rentas** → **Nueva
+renta** (cliente, localidad, almacén, fechas, contrato, transporte; equipo por SKU, una serie por casilla y otra escaneada con Enter, tarifa
+mensual; escanear una ya elegida avisa) → ficha REN-##### en Borrador → **Programar** con comentario (por API: en mano 3, disponible 1) →
+**Despachar** (estatus En renta, sin "Cancelar renta"; por API las dos series ON_RENT en EN-RENTA) → **Extender** (el 400 de fecha
+"…posterior a la actual (aaaa-mm-dd)." y el de motivo, luego bien con tarifa nueva; aparece en Extensiones y "Vence en 5 días") → lista
+con `?dueWithinDays=7&overdue=true` (filtros leídos, la renta con "Vence en 5 días" y "En renta") → Pulso: "Necesita tu atención" con
+"Renta REN-…: vence en 5 días" y "Revisar" abre la ficha. En móvil, sin scroll horizontal en cada paso. Capturas `f17-*` (las de otros
+lotes que regeneró la corrida se descartaron con `git checkout --`).
+
+### Qué NO se probó
+
+- Devoluciones y procesos (F-R2).
+- El alta con un usuario **Operador de almacén**: no trae `clients.read` ni `locations.read` (ver decisión 70); solo se probó el aviso en
+  vitest.
+- Recorrido en inglés, lectores de pantalla y concurrencia de dos usuarios sobre la misma renta.
+- **La suite completa de Playwright en el orden del CI** con el smoke completo (el smoke falló por la ventana de 00:00–04:00 UTC, decisión 72,
+  y se pidió cerrar). Riesgo: `lote14.spec.ts` 7 ("Todo en orden" en "Necesita tu atención") probablemente falla en el CI desde R3, porque el
+  smoke deja dos rentas por vencer; no se cambió esa prueba.
+- CI de GitHub Actions (no se hizo push).
+
+### Decisiones tomadas por defecto en este bloque
+
+Ver los puntos 61 a 72 de la lista de abajo.
+
 ## Decisiones por defecto a confirmar
 
 1. **(R0) Segundo permiso en el servicio.** El endpoint pide `inventory.manage` y el servicio exige `inventory.adjust` (403 `Falta el permiso
@@ -375,3 +441,27 @@ Ver los puntos 52 a 60 de la lista de abajo.
 59. **(RM) Casilla verdadera de QuickBooks = `TRUE`, `YES`, `Y` o `1`** (sin distinguir mayúsculas); cualquier otro valor es falso.
 60. **(RM) Sin "Convertir a lote" ni carga de números de serie desde archivo**: no hay origen de series ni de lotes; la columna `Lot` no se
     recomienda para Depot (500 de 576 marcados). Recomendación al dueño: **no recrear la base de Depot** para esto y usar "Convertir a serie".
+61. **(F-R1) La ficha de la renta es una pantalla propia** (`/warehouse/rentals/{renta}`) y `?rental=` (enlace del aviso) lleva a ella.
+    Alternativa: lista y ficha lado a lado (maestro-detalle, como Recibo). Consecuencia: en el celular la ficha se lee sola.
+62. **(F-R1) "Rentas" va en Almacén antes del Kárdex**, que sigue siendo el último (Fase 8). Alternativa: al final del grupo.
+63. **(F-R1) La web exige el almacén de origen** ("Elija el almacén de origen."), preelegido si la compañía tiene uno solo; el servidor lo
+    tomaría por defecto en ese caso. Motivo: el selector de series necesita el almacén.
+64. **(F-R1) Equipos: se elige el producto (SKU o nombre) y luego sus series** (casillas, buscador y lector). El API no busca series entre
+    productos. Las series en cuarentena o cruce de muelle no se ofrecen (se cuentan en una nota). Alternativa: un endpoint de búsqueda de
+    series disponibles por almacén (servidor).
+65. **(F-R1) Una tarifa común por tanda de equipos agregados**; cada equipo se corrige después con "Tarifa" antes del despacho.
+66. **(F-R1) Extender con una sola tarifa nueva** para los equipos elegidos (todos por defecto); solo se envían los que cambian.
+    Alternativa: una tarifa distinta por equipo en el mismo diálogo.
+67. **(F-R1) Programar, despachar y cancelar piden confirmación con un comentario opcional** (va al historial, ≤ 500).
+68. **(F-R1) "Convertir a serie" solo aparece con existencia** (como se pidió) y en dos pasos (captura → confirmación de neto cero); un
+    producto sin existencia se cambia por la edición (sin movimientos) o por el API.
+69. **(F-R1) La web valida antes de enviar con el mismo texto del servidor** (español) y tiene pocos mensajes propios (almacén de origen,
+    serie ya elegida o no disponible, tope de 200, equipos para la tarifa nueva, comentario largo), todos en la FAQ.
+70. **(F-R1, hallazgo de servidor) El Operador de almacén puede gestionar rentas pero no consultar clientes ni localidades** (`clients.read`,
+    `locations.read`, módulo Catálogo): no puede crear una renta desde la web. Opciones: agregar esos permisos a la plantilla, o un endpoint
+    de búsqueda de clientes y localidades bajo `rental.manage`. No se cambió el servidor.
+71. **(F-R1) Vencimiento en la lista y la ficha**: "Vencida hace N días" (rojo), "Se recoge hoy" / "Vence en N días" (ámbar, hasta 7 días,
+    la ventana del aviso) y "En N días" (neutro); el dato es el del servidor (día de la compañía).
+72. **(F-R1) Smoke y hora del día**: `scripts/smoke.sh` falla entre las 00:00 y las 04:00 UTC en "tarifas por servicio (Lote 2)" porque
+    calcula "ayer" en UTC y el servidor usa el día de Puerto Rico (para el API "ayer UTC" es "hoy"). No es de este lote ni se cambió; se
+    corrió el smoke fuera de esa ventana. Recomendación: calcular las fechas del smoke con `TZ=America/Puerto_Rico`.

@@ -7,7 +7,8 @@ Rentas permite **rentar equipos propios con número de serie** (camas de hospita
 **proceso configurable** del equipo devuelto (inspección, limpieza, pruebas, reparación… hasta "Lista" o "Dada de baja") y los equipos
 en renta en el **conteo cíclico** (D7); y el **bloque R3 (Lote 29)**: los **reportes, indicadores y el gráfico** de rentas en Análisis y
 el aviso de **rentas vencidas o por vencer** en "Necesita tu atención" del Pulso (sección 10). Todo lo de este capítulo es del servidor
-(API); las pantallas llegan con la web de Rentas (F-R1 y F-R2).
+(API); las pantallas de la renta (lista, ficha, alta, programar, despachar, extender, cancelar) y "Convertir a serie" están en el capítulo
+de pantallas [F17](frontend/f17-rentas.md); las de devoluciones y procesos llegan con F-R2.
 
 Decisiones del dueño que gobiernan el módulo:
 - **El equipo rentado sigue siendo nuestro** (D1): no sale del inventario. Queda en la posición **EN-RENTA** del almacén, con estatus de
@@ -462,8 +463,9 @@ renta) que está **vencida** o que **vence en los próximos 7 días** (recogido 
 - El aviso desaparece solo cuando la renta deja de estar vencida o por vencer: al **extenderla** (si la nueva fecha queda a más de 7
   días), al **devolver** todos sus equipos o al **cancelarla** (si estaba Programada).
 
-Mientras llegan las pantallas de Rentas (bloques F-R1 y F-R2), la web todavía no tiene la pantalla `/warehouse/rentals` ni el texto de este
-aviso: el panel muestra la fila con su código `RENTAL_DUE`. Los datos ya los da el servidor.
+Desde la web de Rentas (Lote F17, bloque F-R1) el panel muestra la fila con su texto (*"Renta REN-… vencida"*, *"…: se recoge hoy"* o
+*"…: vence en N días"*, cliente · localidad · almacén, recogido, equipos y días vencida) y "Revisar"/"Ver todos" abren la ficha y la lista
+de Almacén → Rentas (capítulo de pantallas [F17](frontend/f17-rentas.md)).
 
 ### 10.6 Mensajes
 

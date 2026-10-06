@@ -225,6 +225,11 @@ capturas. Formato y decisiones de cada lote de frontend en `docs/frontend/loteFN
    impresoras de etiquetas de **4 × 2, 4 × 4 o 4 × 6 pulgadas** (una página del PDF del tamaño exacto por etiqueta, orientación Automática
    o Girar 90°), del filtro actual o de las marcadas; sin estado (se reimprime cuando se quiera); diferencia con Productos por posición;
    mensajes y casos frecuentes. Capturas `f16-*`.
+13. [F17 — Rentas (web) y "Convertir a serie"](frontend/f17-rentas.md): Almacén → **Rentas**: la lista (filtros por estatus, cliente,
+   "vencen en N días", "solo vencidas" y buscador; vencimiento calculado; Exportar), la ficha (datos, equipos por serie con su tarifa y
+   estado, extensiones, historial) con Programar, Despachar, Extender y Cancelar, el alta con el **selector de equipos por serie** y la
+   tarifa por equipo, el aviso de rentas vencidas o por vencer en "Necesita tu atención", y el botón **Convertir a serie** de la ficha del
+   producto (captura por posición y confirmación de neto cero). Capturas `f17-*`.
 
 ## Preguntas frecuentes
 
@@ -236,7 +241,9 @@ aprobación. La sección "Lote 28" recoge los mensajes de la devolución de rent
 (D7), y las preguntas sobre por qué un equipo devuelto sigue "No disponible", devolver solo una parte o a otro almacén, quitar pasos del
 proceso y qué pasa con un equipo dado de baja. La sección "Lote 29" recoge los 404 de los reportes de rentas (sin `rental.view` o con el módulo
 apagado) y las preguntas sobre dónde ver las rentas que vencen, por qué una Programada aparece vencida, el día de la compañía y el aviso
-`RENTAL_DUE` mientras llegan las pantallas. La sección "Lote 30" recoge el error de configuración `products.trackingType`, las tres
+`RENTAL_DUE` mientras llegan las pantallas. La sección "Lote F17" recoge los mensajes que las pantallas de Rentas y "Convertir a serie" revisan antes de enviar (el mismo texto del
+servidor), los propios de la web (almacén de origen, serie ya elegida o no disponible, tope de 200 equipos) y preguntas sobre el selector
+de equipos, "vencida" y la conversión neta cero. La sección "Lote 30" recoge el error de configuración `products.trackingType`, las tres
 advertencias de seguimiento de la migración y las preguntas sobre si se pueden traer las series de Depot, por qué un producto marcado de
 serie quedó sin seguimiento y si conviene recrear la base para esto. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el

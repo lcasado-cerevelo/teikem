@@ -5196,3 +5196,98 @@ Es a propósito: Consultar solo muestra. Para ver ese producto en todo el almac�
 **¿Funciona sin señal?**
 Solo con una posición que ya consultó antes en el aparato: muestra esa lista con el aviso "Datos de las {hora} (hace {N} min, sin señal
 ahora)". La primera vez necesita señal.
+
+## Lote F17 — Web: Rentas (lista, ficha, alta con equipos por serie, extensión) y "Convertir a serie"
+
+Pantalla: [F17 — Rentas (web) y "Convertir a serie"](frontend/f17-rentas.md). El servidor no cambió; sus mensajes (capítulo 11 §9 y
+capítulo 06 §2.1) se muestran **tal cual**, bajo su campo o arriba del formulario o del diálogo. Para no esperar al servidor, la web revisa
+antes de enviar con **el mismo texto** los que siguen.
+
+### Mensajes que la web revisa antes de enviar (mismo texto que el servidor)
+
+**"Indique el cliente de la renta."** / **"Indique la localidad del cliente donde estará el equipo."** / **"Indique la fecha de inicio de
+la renta."** / **"Indique la fecha de recogido."** (400 del servidor)
+Falta ese dato en **Nueva renta**. La localidad se elige después del cliente (solo sus localidades propias).
+
+**"La fecha de recogido no puede ser anterior a la de inicio."** (400)
+Corrija la fecha de recogido (puede ser el mismo día del inicio).
+
+**"El costo de transporte estimado no puede ser negativo."** / **"El número de contrato admite como máximo 80 caracteres."** / **"Las notas
+admiten como máximo 1000 caracteres."** (400)
+Corrija el dato marcado.
+
+**"El producto {sku} no se controla por serie; solo se rentan equipos con número de serie."** (400)
+El equipo elegido no tiene seguimiento por serie. Conviértalo con **Convertir a serie** en la ficha del producto y vuelva a elegirlo.
+
+**"Solo se rentan equipos propios; {sku} pertenece a un cliente."** (400)
+El producto es de un cliente 3PL; solo se rentan equipos de la compañía.
+
+**"Indique la frecuencia de cobro: DAILY, WEEKLY, MONTHLY o ONE_TIME."** / **"Indique el monto de la tarifa."** / **"La tarifa no puede ser
+negativa."** (400)
+La tarifa está a medias: elija la frecuencia (Diaria, Semanal, Mensual o Fija) y un monto de 0 o más, o deje los dos vacíos (sin tarifa).
+
+**"La nueva fecha de recogido debe ser posterior a la actual ({aaaa-mm-dd})."** / **"Indique el motivo de la extensión."** / **"El motivo
+admite como máximo 300 caracteres."** (400)
+Al **Extender**: la nueva fecha debe ser posterior al recogido vigente y el motivo es obligatorio.
+
+**"Capture {n} número(s) de serie para {posición} (hay {m})."** (400)
+En **Convertir a serie**, la caja de esa posición tiene {m} series y la posición tiene {n} unidades en mano. Escriba una serie por unidad.
+
+**"El número de serie {s} está repetido."** (400) / **"El número de serie {s} excede 80 caracteres."** (400) / **"Una línea admite como
+máximo 500 números de serie."** (400) / **"Las notas admiten como máximo 300 caracteres."** (400)
+Corrija las series (no se repiten, ni entre posiciones ni con otras mayúsculas) o la nota.
+
+**"El producto {sku} tiene unidades reservadas; libérelas antes de convertirlo."** (409)
+Sale al abrir **Convertir a serie** si alguna posición tiene reservado. Empaque o elimine la recolección (o lo que reserve) y vuelva a
+intentar.
+
+**"La existencia de {sku} en {posición} no está en una posición sin lote; muévala o ajústela antes de convertirlo."** / **"La existencia de
+{sku} en {posición} es {cantidad}; ajústela a unidades enteras antes de convertirlo."** (422)
+La existencia no se puede convertir así: muévala a una posición sin lote o ajústela a unidades enteras.
+
+### Mensajes solo de la web
+
+**"Elija el almacén de origen."**
+Nueva renta sin almacén de origen: la web lo pide para ofrecer las series disponibles de ese almacén.
+
+**"La serie {s} ya está en esta renta."**
+Escaneó (o escribió y Enter) una serie que ya eligió o que ya está en la renta.
+
+**"La serie {s} no está disponible en {almacén}."**
+La serie escaneada no está disponible en el almacén de origen (no existe, está reservada, en renta, en cuarentena o en otro almacén). Es el
+mismo texto del 409 del servidor.
+
+**"Una renta admite como máximo 200 equipos."**
+Agregar esos equipos pasaría del tope de 200 por renta.
+
+**"Elija al menos un equipo para la tarifa nueva."**
+En **Extender** puso tarifa nueva y quitó todos los equipos de "Equipos con la tarifa nueva".
+
+**"El comentario admite como máximo 500 caracteres."** / **"Escriba un número válido."**
+Acorte el comentario de la confirmación o corrija el costo de transporte.
+
+**"Su usuario no puede consultar localidades (permiso locations.read y módulo Catálogo)."** / **"Su usuario no puede consultar los
+contactos del cliente (permiso clients.read)."** / **"Su usuario no puede consultar clientes."**
+Para crear una renta hace falta consultar clientes y sus localidades (módulo Catálogo). Pida esos permisos al administrador.
+
+### Preguntas frecuentes
+
+**¿Dónde están las rentas en la web?**
+Almacén → **Rentas** (antes del Kárdex), con el módulo Rentas encendido y `rental.view`.
+
+**¿Por qué no me deja elegir un equipo?**
+El selector ofrece solo productos **propios con serie** que tengan disponible en el **almacén de origen**, y de ellos las series
+**disponibles** en zonas que se rentan (no cuarentena ni cruce de muelle) que no estén ya en la renta. Si el producto no tiene serie,
+conviértalo primero.
+
+**¿"Vencida" es un estatus?**
+No: es un dato calculado con el día de la compañía. La lista lo muestra en la columna **Vencimiento** y se filtra con "Vencen en (días)" y
+"Solo vencidas".
+
+**Al programar o despachar sale un error. ¿Qué hago?**
+El diálogo se queda abierto con el mensaje exacto del servidor (capítulo 11 §9): por ejemplo, *"La renta no tiene equipos; agregue al menos
+uno."* (agregue equipos) o *"La serie {s} no está disponible en {posición}."* (la serie se movió o se reservó: quítela y agregue otra).
+
+**¿"Convertir a serie" cambia mi inventario?**
+No en cantidades: es un **movimiento neto cero** (salida de las unidades sin serie y una entrada por serie, con el motivo "Conversión a
+serie"). Lo que cambia es que el producto, desde entonces, se controla por serie.

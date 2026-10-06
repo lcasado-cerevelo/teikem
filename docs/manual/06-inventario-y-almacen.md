@@ -469,7 +469,7 @@ Quién puede: hace falta **`inventory.manage`** (cambia el maestro del producto)
 'inventory.adjust'.` (y queda un evento `PERMISSION_DENIED`). Módulo **WMS_LOTSERIAL**. La compañía sale de la sesión: un producto o una
 posición de otra compañía dan 404.
 
-Cómo se usa (servidor; el botón "Convertir a serie" de la ficha del producto llega con la web de Rentas):
+Cómo se usa (servidor; en la web, el botón "Convertir a serie" de la ficha del producto, capítulo de pantallas [F17](frontend/f17-rentas.md) §2):
 - `POST /api/v1/products/{publicId}/convert-to-serial`
   ```json
   { "positions": [

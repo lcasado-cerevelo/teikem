@@ -22,6 +22,7 @@ const mock = vi.hoisted(() => ({
   calls: [] as Call[],
   rental: null as unknown,
   post: null as null | ((call: { method: string; url: URL; body: unknown }) => Response | unknown),
+  clientsForbidden: false,
 }))
 vi.mock('../../kernel/api/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../kernel/api/client')>()
@@ -131,6 +132,7 @@ function route(call: Call): unknown {
       ],
     }
   if (method === 'GET' && p === '/api/v1/tenant/settings') return { currencyCode: 'USD' }
+  if (method === 'GET' && p === '/api/v1/clients' && mock.clientsForbidden) return problem(403, 'Falta el permiso.', 'forbidden')
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   if (method === 'GET') return []
   return mock.rental ?? rental('DRAFT')
@@ -163,6 +165,7 @@ beforeEach(() => {
   mock.calls = []
   mock.rental = null
   mock.post = null
+  mock.clientsForbidden = false
 })
 
 describe('Rentas: lista', () => {
@@ -294,6 +297,28 @@ describe('Rentas: ficha', () => {
     })
   })
 
+  it('Tarifa de un equipo (antes del despacho): monto negativo con el mensaje exacto; luego PUT con el rowVersion', async () => {
+    const user = userEvent.setup()
+    wrap(`/warehouse/rentals/${R}`, MANAGE)
+    await user.click((await screen.findAllByRole('button', { name: 'Tarifa' }))[0])
+    const dialog = screen.getByRole('dialog', { name: 'Tarifa del equipo SN-1' })
+    expect(within(dialog).getByLabelText(/Frecuencia de cobro/)).toHaveValue('MONTHLY')
+    const amount = within(dialog).getByLabelText('Monto')
+    await user.clear(amount)
+    await user.type(amount, '-1')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar tarifa' }))
+    expect(within(dialog).getByText('La tarifa no puede ser negativa.')).toBeInTheDocument()
+    await user.clear(amount)
+    await user.type(amount, '99')
+    await user.selectOptions(within(dialog).getByLabelText(/Frecuencia de cobro/), 'ONE_TIME')
+    mock.post = () => rental('DRAFT')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar tarifa' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    const put = mock.calls.find((c) => c.method === 'PUT')!
+    expect(put.url.pathname).toBe(`/api/v1/rentals/${R}/lines/31/rate`)
+    expect(put.body).toEqual({ frequency: 'ONE_TIME', amount: 99, currency: 'USD', rowVersion: 'AAAA' })
+  })
+
   it('renta cancelada: sus equipos se ven inactivos (atenuados) y no hay acciones', async () => {
     mock.rental = rental('CANCELLED')
     wrap(`/warehouse/rentals/${R}`, ALL)
@@ -355,5 +380,16 @@ describe('Rentas: alta', () => {
     for (const msg of ['Indique el cliente de la renta.', 'Indique la localidad del cliente donde estará el equipo.', 'Indique la fecha de recogido.', 'El costo de transporte estimado no puede ser negativo.'])
       expect(await within(dialog).findByText(msg)).toBeInTheDocument()
     expect(mock.calls.filter((c) => c.method === 'POST')).toHaveLength(0)
+  })
+
+  it('sin clients.read (p. ej. Operador de almacén): el cliente avisa sin sacar de la pantalla', async () => {
+    const user = userEvent.setup()
+    mock.clientsForbidden = true
+    wrap('/warehouse/rentals', MANAGE)
+    await user.click(await screen.findByRole('button', { name: 'Nueva renta' }))
+    const dialog = screen.getByRole('dialog', { name: 'Nueva renta (Borrador)' })
+    await user.click(within(dialog).getByRole('combobox', { name: /^Cliente/ }))
+    expect(await within(dialog).findByText('Su usuario no puede consultar clientes.')).toBeInTheDocument()
+    expect(within(dialog).getByText('Elija primero el cliente.')).toBeInTheDocument()
   })
 })
