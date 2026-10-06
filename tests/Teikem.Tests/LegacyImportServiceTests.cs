@@ -469,7 +469,7 @@ public class LegacyImportServiceTests
     {
         var cfg = RealConfig("import.depot.json");
         Assert.Equal(("Advance Depot", "Advance Depot Solutions", (string?)null), (cfg.Company.Name, cfg.Company.LegalName, cfg.Company.TaxId));
-        Assert.Equal(new[] { "WMS_LOTSERIAL", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS" }, cfg.Company.Modules);
+        Assert.Equal(new[] { "WMS_LOTSERIAL", "RENTAL_EQUIPMENT", "PURCHASING", "CATALOG", "ANALYTICS", "SYSTEM", "CUSTOM_FIELDS" }, cfg.Company.Modules);
         Assert.Equal(("teikem+admin@cerevelo.com", "Administrador Advance", "es"), (cfg.Company.AdminEmail, cfg.Company.AdminFullName, cfg.Company.Lang));
         Assert.Equal("AxisCare", cfg.Products.DefaultCategory);   // no 'ASSIST CARE'
         Assert.Equal("CARTONES", cfg.Products.CategoryByQuickBooksCategory["CARTONES"]);
