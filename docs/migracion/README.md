@@ -183,6 +183,10 @@ La muestra sintética escribe en `TestResults/migracion/` (ignorado por git).
 
 - SKU: se quitan todos los espacios y se pasa a mayúsculas (`NECH 1001` → `NECH1001`, `171-ac-426-b` → `171-AC-426-B`);
   cada cambio se lista. Sin descripción, el nombre es el SKU. Seguimiento `NONE` y unidad `UN` para todo.
+- Seguimiento (Lote 30, Rentas RM): la opción `products.trackingFromColumns` (`{ "serial": true, "lot": false }`, apagada en los JSON
+  del repositorio) usa las casillas `Serial`/`Lot` de QuickBooks para **crear** productos con seguimiento SERIAL o LOT; un producto con
+  saldo inicial se crea igual con `NONE` (ninguna fuente trae series ni lotes) y queda como "Candidato a Convertir a serie"; uno que ya
+  existe nunca cambia. Evaluación y procedimiento: [depot-series-y-rentas.md](depot-series-y-rentas.md).
 - Depot: Category vacía → **AxisCare**; `CARTONES` → **CARTONES**; `SOLUTIONS` y `NATIONAL GUARD` no van a Depot. Los
   SKU del WMS con existencia que no están en QuickBooks se crean en AxisCare y se marcan en el reporte.
 - Posiciones del WMS: `01-a-24` → `01-A-24` (pasillo 01, nivel A, posición 24); si dos ids coinciden al pasarlos a

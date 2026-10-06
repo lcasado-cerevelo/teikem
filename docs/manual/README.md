@@ -129,6 +129,9 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     (sección 4): **cupo estimado de las posiciones** de Advance Depot desde el historial del WMS anterior (regla, reporte
     `-cupos.csv` y comportamiento de `--update`).
     La marca de QuickBooks (columna `Brand`) pasa a la marca del producto (sección 1).
+    Lote 30 (Rentas RM, sección 6): **seguimiento al migrar** — opción `products.trackingFromColumns` (casillas `Serial`/`Lot` de
+    QuickBooks, apagada por defecto), un producto con saldo inicial se crea sin seguimiento y queda como "Candidato a Convertir a serie",
+    uno existente nunca cambia; evaluación de las series de Depot en `docs/migracion/depot-series-y-rentas.md`.
 11. [11 — Rentas (submódulo de Almacén)](11-rentas.md): Lote 27 (Rentas R1) — rentas de **equipos propios con número de serie** a una
     localidad del cliente: alta en Borrador (REN-#####, contrato, transporte estimado, tarifa fija o por tiempo por equipo, solo como dato),
     edición, equipos por serie, **programar** (reserva las series), **despachar** (transferencia a la posición **EN-RENTA**, serie "En renta":
@@ -233,7 +236,9 @@ aprobación. La sección "Lote 28" recoge los mensajes de la devolución de rent
 (D7), y las preguntas sobre por qué un equipo devuelto sigue "No disponible", devolver solo una parte o a otro almacén, quitar pasos del
 proceso y qué pasa con un equipo dado de baja. La sección "Lote 29" recoge los 404 de los reportes de rentas (sin `rental.view` o con el módulo
 apagado) y las preguntas sobre dónde ver las rentas que vencen, por qué una Programada aparece vencida, el día de la compañía y el aviso
-`RENTAL_DUE` mientras llegan las pantallas. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
+`RENTAL_DUE` mientras llegan las pantallas. La sección "Lote 30" recoge el error de configuración `products.trackingType`, las tres
+advertencias de seguimiento de la migración y las preguntas sobre si se pueden traer las series de Depot, por qué un producto marcado de
+serie quedó sin seguimiento y si conviene recrear la base para esto. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
 reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
 posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado

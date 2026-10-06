@@ -136,6 +136,7 @@ Solutions no tiene WMS: sus posiciones no reciben cupo.
 | `db-reset` con sintaxis distinta a `--yes [--allow-remote]` | `Uso: dotnet run --project src/Teikem.Api -- db-reset --yes [--allow-remote]` | 2 |
 | Advertencia (no detiene la carga): ninguna posición del almacén del WMS tiene historial | `Ninguna posición de {almacén} tiene historial de existencias en el WMS; las posiciones quedan sin cupo.` | 0 |
 | `warehouse.receivingMode` distinto de `PUTAWAY` y `DIRECT` (Lote 16) | `warehouse.receivingMode debe ser PUTAWAY o DIRECT.` | 1 |
+| `products.trackingType` distinto de `NONE`, `LOT` y `SERIAL` (Lote 30, sección 6) | `products.trackingType debe ser NONE, LOT o SERIAL.` | 1 |
 | `warehouse.defaultReceivingBin` que no es el código de una posición creada para el almacén (Lote 16) | `La posición de recepción por defecto {code} no existe en el almacén.` (rechazo del almacén en el reporte; la posición por defecto no se fija) | — |
 
 ## 5. Modo de recepción y posición de recepción por defecto del almacén (Lote 16)
@@ -153,6 +154,49 @@ Qué hace: la configuración del almacén (`warehouse`) acepta dos claves opcion
 - El reporte de la corrida informa "Modo de recepción" y "Posición de recepción por defecto" cuando se configuran. En `--dry-run` solo se informa; no se escribe nada.
 - Ejemplos: `docs/migracion/import.solutions.json` (`"receivingMode": "DIRECT"`) y `docs/migracion/import.depot.json` (`"defaultReceivingBin": "R1"`).
 - Mensajes exactos: `warehouse.receivingMode debe ser PUTAWAY o DIRECT.` (error de configuración, código de salida 1) y `La posición de recepción por defecto {code} no existe en el almacén.` (rechazo del almacén); ver la tabla de la sección 4.
+
+## 6. Seguimiento de los productos: casillas Serial y Lot de QuickBooks (Lote 30, Rentas RM)
+
+Qué hace: decide con qué **seguimiento** (sin seguimiento `NONE`, por lote `LOT` o por serie `SERIAL`) se **crea** cada producto. Pensado
+para los equipos de renta de Advance Depot (las rentas solo trabajan con equipos con serie). Evaluación completa y procedimiento para el
+dueño: [`docs/migracion/depot-series-y-rentas.md`](../migracion/depot-series-y-rentas.md).
+
+Quién puede: igual que el resto del comando (línea de comandos del servidor, sin permiso del sitio).
+
+| Clave del JSON | Valores | Qué hace |
+|---|---|---|
+| `products.trackingType` | `NONE` (por defecto), `LOT` o `SERIAL` | Seguimiento con el que se crean los productos. Otro valor detiene la corrida (tabla de abajo). |
+| `products.trackingFromColumns` | `{ "serial": true/false, "lot": true/false }`; las dos `false` por defecto | Con `serial: true`, un ítem cuya casilla `Serial` de QuickBooks está en `TRUE` se crea **SERIAL**; con `lot: true`, uno con `Lot` en `TRUE` se crea **LOT**; con las dos marcadas gana SERIAL; si no, vale `trackingType`. Se aceptan `TRUE`, `YES`, `Y` y `1`. |
+
+Reglas:
+- **Solo al crear.** Un producto que ya existe **nunca** cambia de seguimiento por la migración, ni con `--update` (regla D25: con
+  movimientos solo "Convertir a serie", capítulo 6 §2.1, lo cambia). Si el origen pide otro, el reporte lo advierte.
+- **Saldo inicial sin series.** Ninguna fuente trae números de serie ni lotes (QuickBooks solo tiene las casillas; el WMS MSWM de Depot
+  no tiene series). Un producto que pediría `SERIAL` o `LOT` y **tiene saldo inicial** se crea con **`NONE`** y su saldo se carga igual;
+  el reporte lo lista como **"Candidato a Convertir a serie"** (si pedía SERIAL). Vale también cuando el SERIAL o LOT viene de
+  `products.trackingType`. Sin saldo inicial se crea con el seguimiento pedido.
+- La decisión usa el saldo inicial **del plan**: si en la corrida el saldo no se carga (ya estaba cargado, o `--update` sobre una compañía
+  que ya existía), el producto nuevo con existencia en el origen igual se crea `NONE`.
+- **Advance Depot y Advance Solutions no cambian**: sus JSON siguen con `NONE` y la opción apagada. Para Depot **no** se recomienda
+  encender `lot` (500 de 576 ítems traen `Lot = TRUE` por defecto).
+- El reporte (también en `--dry-run`) suma dos tipos de **mapeo**: **Seguimiento** (`{sku}` → `SERIAL` o `LOT`: producto creado con ese
+  seguimiento) y **Candidato a Convertir a serie** (`{sku}` → `{n} unidades en {m} posición(es); se crea con NONE`, o `ya existe con NONE;
+  no se cambia`).
+
+Mensajes exactos:
+
+| Caso | Mensaje exacto | Código de salida / dónde |
+|---|---|---|
+| `products.trackingType` distinto de `NONE`, `LOT` y `SERIAL` | `products.trackingType debe ser NONE, LOT o SERIAL.` | 1 |
+| Ítem que pide SERIAL con saldo inicial | `El ítem {sku} está marcado como de serie pero tiene saldo inicial ({n} unidades) y la fuente no trae sus números de serie; se crea con seguimiento NONE. Conviértalo después con "Convertir a serie".` | Advertencia (0) |
+| Ítem que pide LOT con saldo inicial | `El ítem {sku} está marcado por lote pero tiene saldo inicial ({n} unidades) y la fuente no trae sus lotes; se crea con seguimiento NONE.` | Advertencia (0) |
+| Producto que ya existe con otro seguimiento | `El producto {sku} ya existe con seguimiento {actual}; la migración no cambia el seguimiento de un producto existente (en el origen está marcado {pedido}). Si es un equipo con número de serie, use "Convertir a serie".` (la última frase solo si el origen pide SERIAL) | Advertencia (0) |
+
+Casos frecuentes:
+- *"Quiero rentar equipos de Depot que ya están en el almacén."* → "Convertir a serie" (capítulo 6 §2.1) con los números de cada equipo;
+  no hace falta reimportar.
+- *"Encendí `trackingFromColumns.serial` y el reporte dice que ya existen."* → Es lo esperado sobre una base ya cargada: la lista de
+  "Candidato a Convertir a serie" es su lista de trabajo para R0.
 
 ## Preguntas frecuentes
 

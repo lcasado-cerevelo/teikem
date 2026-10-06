@@ -80,6 +80,20 @@ public sealed class PlannedProduct
     public string Origin { get; init; } = OriginQuickBooks;
     /// <summary>Inactivo en QuickBooks y sin existencia: se crea y se da de baja al final.</summary>
     public bool DeactivateAtEnd { get; set; }
+    /// <summary>
+    /// RM (Rentas, D5-b): seguimiento que pide el origen (columnas Serial/Lot de QuickBooks si están habilitadas, o
+    /// products.trackingType). Solo se usa para informar; el que se aplica al crear es <see cref="TrackingType"/>.
+    /// </summary>
+    public string RequestedTracking { get; init; } = TrackingTypes.None;
+    /// <summary>
+    /// RM: seguimiento con el que se CREA el producto: el pedido, salvo que tenga saldo inicial (ninguna fuente trae series ni
+    /// lotes) → NONE. Un producto que ya existe en Teikem nunca cambia de seguimiento (D25).
+    /// </summary>
+    public string TrackingType { get; set; } = TrackingTypes.None;
+    /// <summary>RM: saldo inicial planeado del producto (unidades y posiciones) cuando bajó a NONE; 0 si no bajó.</summary>
+    public decimal DowngradedQuantity { get; set; }
+    public int DowngradedBins { get; set; }
+    public bool TrackingDowngraded => RequestedTracking != TrackingTypes.None && TrackingType == TrackingTypes.None;
 }
 
 /// <summary>Lote 16: ReceivingMode (PUTAWAY | DIRECT) y DefaultReceivingBin (código) solo se aplican al crear el almacén.</summary>
@@ -228,6 +242,7 @@ public static class LegacyImportPlanner
         PlanProducts(cfg, src, report, plan);
         PlanWarehouse(cfg, src, report, plan);
         PlanOpeningBalances(cfg, src, report, plan);
+        ApplyTrackingGuard(plan);
         PlanSuppliers(cfg, src, report, plan);
         PlanClients(cfg, src, report, plan);
         return plan;
@@ -308,6 +323,9 @@ public static class LegacyImportPlanner
                 report.Warn(P, sku, NameTruncated(sku));
             }
 
+            // RM (Rentas, D5-b): las casillas Serial/Lot de QuickBooks fijan el seguimiento si la configuración lo pide.
+            var tracking = LegacyImportRules.TrackingFromColumns(cfg.Products.TrackingType, cfg.Products.TrackingFromColumns.Serial,
+                cfg.Products.TrackingFromColumns.Lot, item.Serial, item.Lot);
             var product = new PlannedProduct
             {
                 Sku = sku, Key = key, Name = name, Category = category,
@@ -317,6 +335,8 @@ public static class LegacyImportPlanner
                 IsActiveInSource = item.IsActive,
                 SourceQuantity = LegacyImportRules.ParseQuickBooksNumber(item.QuantityOnHand),
                 Origin = extra ? PlannedProduct.OriginExtra : PlannedProduct.OriginQuickBooks,
+                RequestedTracking = tracking,
+                TrackingType = tracking,
             };
             byKey[key] = product;
             plan.Products.Add(product);
@@ -357,6 +377,7 @@ public static class LegacyImportPlanner
                 var product = new PlannedProduct
                 {
                     Sku = validSku!, Key = key, Name = name, Category = Blank(cfg.Products.DefaultCategory), Origin = PlannedProduct.OriginWms,
+                    RequestedTracking = cfg.Products.TrackingType, TrackingType = cfg.Products.TrackingType,
                 };
                 byKey[key] = product;
                 plan.Products.Add(product);
@@ -561,6 +582,26 @@ public static class LegacyImportPlanner
         {
             if (withStock.Contains(p.Key)) report.Warn(LegacyImportEntities.Products, p.Sku, InactiveWithStock(p.Sku));
             else p.DeactivateAtEnd = true;
+        }
+    }
+
+    /// <summary>
+    /// RM (Rentas, D5-b): ninguna fuente de la migración trae números de serie ni lotes (QuickBooks solo tiene las casillas
+    /// Serial/Lot por ítem; el MSWM de Depot no tiene series y su lote es '§' o '0'), y el ledger no exige series en los
+    /// asientos. Un producto SERIAL o LOT con saldo inicial quedaría con existencia sin series o sin lote: se crea con NONE y el
+    /// servicio lo informa (advertencia y "Candidato a Convertir a serie"). Sin saldo inicial se crea con el seguimiento pedido.
+    /// Se decide con el plan, antes de saber si el producto ya existe; uno que ya existe nunca cambia de seguimiento.
+    /// </summary>
+    public static void ApplyTrackingGuard(LegacyImportPlan plan)
+    {
+        var stock = plan.Balances.GroupBy(b => b.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => (Qty: g.Sum(b => b.Quantity), Bins: g.Count()), StringComparer.Ordinal);
+        foreach (var p in plan.Products)
+        {
+            if (p.TrackingType == TrackingTypes.None || !stock.TryGetValue(p.Key, out var s)) continue;
+            p.TrackingType = TrackingTypes.None;
+            p.DowngradedQuantity = s.Qty;
+            p.DowngradedBins = s.Bins;
         }
     }
 
@@ -1153,7 +1194,8 @@ public sealed class LegacyImportService(
         const string E = LegacyImportEntities.Products;
         var existing = s.ReadDb
             ? (await db.Products.AsNoTracking().Where(p => p.ClientId == null)
-                .Select(p => new ExistingProduct(p.ProductId, p.PublicId, p.Sku, p.Name, p.ProductCategoryId, p.PurchaseCost, p.SalePrice, p.Barcode)).ToListAsync(ct))
+                .Select(p => new ExistingProduct(p.ProductId, p.PublicId, p.Sku, p.Name, p.ProductCategoryId, p.PurchaseCost, p.SalePrice, p.Barcode,
+                    p.TrackingTypeLookupId)).ToListAsync(ct))
                 .GroupBy(p => LegacyImportRules.SkuKey(p.Sku)).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal)
             : new Dictionary<string, ExistingProduct>(StringComparer.Ordinal);
         var barcodesInUse = s.ReadDb
@@ -1166,6 +1208,7 @@ public sealed class LegacyImportService(
             if (existing.TryGetValue(p.Key, out var found))
             {
                 s.ProductIds[p.Key] = (found.ProductId, found.PublicId);
+                await ReportExistingTrackingAsync(p, found, report, ct);
                 if (s.Update) await UpdateProductAsync(p, found, s, barcodesInUse, report, ct); else report.CountExisting(E);
                 continue;
             }
@@ -1175,14 +1218,16 @@ public sealed class LegacyImportService(
                 report.Warn(E, p.Sku, LegacyImportPlanner.BarcodeInUse(p.Sku, barcode));
                 barcode = null;
             }
-            if (s.DryRun) { report.CountCreated(E); s.ProductsWouldExist.Add(p.Key); continue; }
+            if (s.DryRun) { report.CountCreated(E); s.ProductsWouldExist.Add(p.Key); ReportNewTracking(p, report); continue; }
 
             var categoryId = p.Category is not null && s.CategoryIds.TryGetValue(p.Category, out var cid) ? cid : null;
+            // RM (Rentas, D5-b): el seguimiento del plan (columnas Serial/Lot o configuración; NONE si tiene saldo inicial).
             var dto = await TryAsync(report, E, p.Sku, () => products.CreateAsync(new ProductCreateRequest(
-                Sku: p.Sku, Name: p.Name, CategoryId: categoryId, BaseUom: cfg.Products.BaseUom, TrackingType: cfg.Products.TrackingType,
+                Sku: p.Sku, Name: p.Name, CategoryId: categoryId, BaseUom: cfg.Products.BaseUom, TrackingType: p.TrackingType,
                 Barcode: barcode, PurchaseCost: p.PurchaseCost, SalePrice: p.SalePrice, Brand: p.Brand), ct));
             if (dto is null) continue;
             report.CountCreated(E);
+            ReportNewTracking(p, report);
             s.ProductIds[p.Key] = (dto.Product.Id, dto.Product.PublicId);
             if (barcode is not null) barcodesInUse.Add(barcode);
             if (p.DeactivateAtEnd) s.ToDeactivate.Add((p.Sku, dto.Product.PublicId));
@@ -1190,7 +1235,47 @@ public sealed class LegacyImportService(
         }
     }
 
-    private sealed record ExistingProduct(int ProductId, Guid PublicId, string Sku, string Name, int? ProductCategoryId, decimal? PurchaseCost, decimal? SalePrice, string? Barcode);
+    private sealed record ExistingProduct(int ProductId, Guid PublicId, string Sku, string Name, int? ProductCategoryId, decimal? PurchaseCost, decimal? SalePrice, string? Barcode,
+        int TrackingLookupId);
+
+    /// <summary>Tipo del mapeo del reporte para los productos con seguimiento distinto de NONE al crearlos (RM).</summary>
+    public const string TrackingMapKind = "Seguimiento";
+    /// <summary>Tipo del mapeo del reporte para los productos marcados de serie que quedan sin series (RM; herramienta de R0).</summary>
+    public const string SerialCandidateMapKind = "Candidato a Convertir a serie";
+
+    /// <summary>
+    /// RM (Rentas, D5-b): producto que se crea (o se crearía en dry-run). Con seguimiento distinto de NONE → mapeo "Seguimiento";
+    /// marcado de serie o por lote pero con saldo inicial → advertencia y, si era de serie, "Candidato a Convertir a serie".
+    /// </summary>
+    private static void ReportNewTracking(PlannedProduct p, LegacyImportReport report)
+    {
+        if (p.TrackingDowngraded)
+        {
+            report.Warn(LegacyImportEntities.Products, p.Sku, LegacyImportRules.TrackingDowngraded(p.Sku, p.RequestedTracking, p.DowngradedQuantity));
+            if (p.RequestedTracking == TrackingTypes.Serial)
+                report.Map(SerialCandidateMapKind, p.Sku, SerialCandidateDetail(p.DowngradedQuantity, p.DowngradedBins));
+        }
+        else if (p.TrackingType != TrackingTypes.None)
+            report.Map(TrackingMapKind, p.Sku, p.TrackingType);
+    }
+
+    /// <summary>
+    /// RM: producto que ya existe en Teikem. La migración nunca cambia su seguimiento (D25: con movimientos solo "Convertir a serie"
+    /// lo cambia); si el origen pide otro, se advierte y, si pide SERIAL, se lista como candidato.
+    /// </summary>
+    private async Task ReportExistingTrackingAsync(PlannedProduct p, ExistingProduct found, LegacyImportReport report, CancellationToken ct)
+    {
+        if (p.RequestedTracking == TrackingTypes.None) return;
+        var current = (await lookups.GetAsync(found.TrackingLookupId, ct))?.InternalCode ?? TrackingTypes.None;
+        if (string.Equals(current, p.RequestedTracking, StringComparison.OrdinalIgnoreCase)) return;
+        report.Warn(LegacyImportEntities.Products, p.Sku, LegacyImportRules.TrackingNotChanged(p.Sku, current, p.RequestedTracking));
+        if (p.RequestedTracking == TrackingTypes.Serial && current == TrackingTypes.None)
+            report.Map(SerialCandidateMapKind, p.Sku, SerialCandidateExisting);
+    }
+
+    public static string SerialCandidateDetail(decimal qty, int bins)
+        => $"{ProductRules.FormatQty(qty)} unidades en {bins.ToString(CultureInfo.InvariantCulture)} posición(es); se crea con NONE";
+    public const string SerialCandidateExisting = "ya existe con NONE; no se cambia";
 
     /// <summary>
     /// Modo --update: nombre, categoría, costo, precio y código de barras desde QuickBooks/WMS. Nunca cambia el SKU, la unidad

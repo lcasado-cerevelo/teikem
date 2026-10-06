@@ -22,6 +22,10 @@ Decisiones del dueño que gobiernan el módulo:
 - La **devolución** es también un registro propio de la renta (D2), con enlace **vacío** al envío futuro de recogido.
 - Una serie en renta que aparece en un **conteo cíclico** se bloquea: primero se registra la devolución; la posición EN-RENTA no se
   cuenta (D7).
+- **Series de los equipos de Advance Depot** (D5): los productos llegaron de la migración sin seguimiento y **ninguna fuente de la
+  migración trae números de serie**; se ponen con serie con **"Convertir a serie"** (capítulo 6 §2.1). Reimportar no las trae: la
+  migración solo puede crear con serie productos **nuevos sin existencia** (Lote 30; capítulo 10 §6 y
+  `docs/migracion/depot-series-y-rentas.md`).
 
 ## 1. Quién puede y dónde
 

@@ -4635,6 +4635,52 @@ fecha de recogido y los días; la web mostrará el texto y la pantalla de la ren
 "Anticipada" compara la fecha de devolución con la fecha de recogido **vigente** de la renta (la de hoy, con sus extensiones), igual que la
 lista de devoluciones.
 
+## Lote 30 — Rentas RM: seguimiento de los productos al migrar (series de Advance Depot)
+
+Detalle en el [capítulo 10](10-migracion-de-datos.md) (sección 6), `docs/migracion/depot-series-y-rentas.md` y `docs/lote30-decisiones.md`.
+Son mensajes del comando `import-legacy` (línea de comandos del servidor): el error de configuración termina con código de salida 1; las
+advertencias quedan en el reporte y la carga sigue.
+
+### Mensajes nuevos
+
+**"products.trackingType debe ser NONE, LOT o SERIAL." (código de salida 1)**
+El JSON de configuración trae en `products.trackingType` un valor que no es `NONE`, `LOT` ni `SERIAL` (por ejemplo `"SERIE"`). No se leyó
+ninguna fuente ni se escribió nada. Corrija el valor (mayúsculas o minúsculas da igual) y repita.
+
+**"El ítem {sku} está marcado como de serie pero tiene saldo inicial ({n} unidades) y la fuente no trae sus números de serie; se crea con seguimiento NONE. Conviértalo después con "Convertir a serie"." (advertencia)**
+Con `products.trackingFromColumns.serial` encendido (o `trackingType` en `SERIAL`), el ítem pedía serie pero tiene existencia que cargar, y
+ni QuickBooks ni el WMS traen los números. Para no dejar existencia "de serie" sin series, se creó sin seguimiento con su saldo. Si es un
+equipo de renta, cuente las unidades, anote sus números de serie y use "Convertir a serie" (capítulo 6 §2.1). Aparece también en el mapeo
+"Candidato a Convertir a serie".
+
+**"El ítem {sku} está marcado por lote pero tiene saldo inicial ({n} unidades) y la fuente no trae sus lotes; se crea con seguimiento NONE." (advertencia)**
+Igual que el anterior, con la casilla `Lot` (opción `trackingFromColumns.lot`). No hay herramienta "Convertir a lote": el producto queda sin
+seguimiento. Para Depot no se recomienda encender `lot` (la casilla viene marcada por defecto en casi todos los ítems).
+
+**"El producto {sku} ya existe con seguimiento {actual}; la migración no cambia el seguimiento de un producto existente (en el origen está marcado {pedido}). …" (advertencia)**
+La migración nunca cambia el seguimiento de un producto que ya existe (regla D25), ni con `--update`. Si el origen pide SERIAL y el producto
+está sin seguimiento, el mensaje termina con "Si es un equipo con número de serie, use "Convertir a serie"." y el producto queda en el mapeo
+"Candidato a Convertir a serie": esa es la vía.
+
+### Preguntas frecuentes
+
+**¿Puedo traer de la migración los números de serie de los equipos de Depot?**
+No: ninguna fuente los tiene. QuickBooks solo marca por producto si es "de serie" (una casilla), y el WMS anterior no guarda series. Los
+números se capturan en Teikem con "Convertir a serie", leyéndolos de cada equipo.
+
+**¿Conviene recrear la base de Depot para que los productos queden con serie?**
+No. Los productos con existencia se crearían igual sin seguimiento (no hay series que cargar) y recrear borra todo lo hecho en la base
+(rentas, conversiones, ajustes). Use "Convertir a serie" sobre la base actual. La opción del importador solo sirve para crear con serie
+los productos **nuevos sin existencia**.
+
+**Encendí `trackingFromColumns.serial`, corrí el dry-run y no cambió nada.**
+Es lo esperado sobre una base ya cargada: todos los productos ya existen y no cambian. El reporte le deja la lista "Candidato a Convertir a
+serie" para trabajar con R0.
+
+**¿Por qué un producto que en QuickBooks dice Serial quedó "sin seguimiento"?**
+Porque tenía existencia y no había números de serie que cargarle (o porque la opción `trackingFromColumns.serial` está apagada, que es lo
+normal en Depot y Solutions). Conviértalo con "Convertir a serie".
+
 ## Lote A4 — App de almacén: contar por producto
 
 Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los

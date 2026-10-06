@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Exceptions;
 
@@ -89,6 +90,9 @@ public sealed class LegacyImportConfig
     /// <summary>Mensaje exacto de archivo inexistente.</summary>
     public static string FileNotFound(string path) => $"El archivo no existe: {path}.";
 
+    /// <summary>RM: mensaje exacto de products.trackingType fuera del catálogo.</summary>
+    public const string TrackingTypeInvalid = "products.trackingType debe ser NONE, LOT o SERIAL.";
+
     /// <summary>Rellena nulos con sus valores por defecto, resuelve rutas y normaliza textos y diccionarios.</summary>
     private void Normalize()
     {
@@ -115,7 +119,8 @@ public sealed class LegacyImportConfig
         Products.CategoryByQuickBooksCategory = new Dictionary<string, string>(
             Products.CategoryByQuickBooksCategory ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
         if (string.IsNullOrWhiteSpace(Products.BaseUom)) Products.BaseUom = "UN";
-        if (string.IsNullOrWhiteSpace(Products.TrackingType)) Products.TrackingType = "NONE";
+        Products.TrackingType = string.IsNullOrWhiteSpace(Products.TrackingType) ? TrackingTypes.None : Products.TrackingType.Trim().ToUpperInvariant();
+        Products.TrackingFromColumns ??= new();
 
         Suppliers.ExcludeNames ??= new();
         Clients.ExcludeNames ??= new();
@@ -153,6 +158,10 @@ public sealed class LegacyImportConfig
             foreach (var file in new[] { Sources.Products, Sources.Customers, Sources.Vendors, Sources.ExtraProducts?.Path })
                 if (file is not null && !File.Exists(file)) throw new ValidationException(FileNotFound(file));
         }
+
+        // RM (Rentas, D5-b): un seguimiento desconocido se rechaza aquí y no producto por producto en la carga.
+        if (Products.TrackingType is not (TrackingTypes.None or TrackingTypes.Lot or TrackingTypes.Serial))
+            throw new ValidationException(TrackingTypeInvalid);
 
         if (OpeningBalances.Source is not (SourceMswm or SourceQuickBooks or SourceNone))
             throw new ValidationException("openingBalances.source debe ser mswm, quickbooks o none.");
@@ -214,9 +223,26 @@ public sealed class LegacyProductsConfig
     public List<string> ExcludeQuickBooksCategories { get; set; } = new();
     public List<string> ExcludeSkus { get; set; } = new();
     public string BaseUom { get; set; } = "UN";
+    /// <summary>Seguimiento con el que se CREAN los productos (NONE | LOT | SERIAL; por defecto NONE). Un producto existente nunca cambia.</summary>
     public string TrackingType { get; set; } = "NONE";
+    /// <summary>
+    /// RM (Rentas, D5-b): columnas Serial/Lot de la lista de ítems de QuickBooks que fijan el seguimiento al CREAR un producto
+    /// (TRUE → SERIAL o LOT; si no, trackingType). Las dos apagadas por defecto: así se comporta como antes.
+    /// </summary>
+    public LegacyTrackingColumnsConfig TrackingFromColumns { get; set; } = new();
     public bool NameFallbackToSku { get; set; } = true;
     public bool CreateUnknownWmsSkusWithStock { get; set; }
+}
+
+/// <summary>
+/// RM (Rentas, D5-b): qué casillas de QuickBooks fijan el seguimiento al crear el producto. Serial = TRUE → SERIAL; Lot = TRUE →
+/// LOT; con las dos marcadas gana SERIAL. Un producto con saldo inicial se crea igual con NONE (ninguna fuente trae sus series
+/// ni sus lotes) y se informa como candidato a "Convertir a serie".
+/// </summary>
+public sealed class LegacyTrackingColumnsConfig
+{
+    public bool Serial { get; set; }
+    public bool Lot { get; set; }
 }
 
 public sealed class LegacySuppliersConfig

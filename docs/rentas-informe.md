@@ -211,6 +211,52 @@ Ver los puntos 28 a 40 de la lista de abajo.
 
 Ver los puntos 41 a 51 de la lista de abajo.
 
+## Bloque RM — Reimportación de Depot con seguimiento SERIAL (D5-b) (Lote 30)
+
+### Qué se hizo
+
+- **Investigación** (documento para el dueño: `docs/migracion/depot-series-y-rentas.md`): **ninguna fuente de la migración trae números de
+  serie**. `Depot Products.csv` solo tiene las casillas `Serial`/`Lot` por ítem (análisis 2026-09-28: `Lot` = TRUE en 500 de 576 y `Serial`
+  = TRUE en 3, "parecen valores por defecto"); el MSWM de Depot no tiene series (su lote es `§` o `0`) y el importador no lee tablas de
+  series. Antes de RM el importador ni leía las casillas: `products.trackingType` (NONE) valía para todo. **Riesgo latente encontrado**: con
+  `trackingType: SERIAL` se habrían creado productos SERIAL con saldo inicial sin series (el ledger no exige series en los asientos).
+- **Cambio chico** (`docs/lote30-decisiones.md`): opción `products.trackingFromColumns` `{ serial, lot }` (apagada por defecto) que usa las
+  casillas de QuickBooks para **crear** productos con SERIAL o LOT; un producto que pediría SERIAL/LOT y **tiene saldo inicial se crea NONE**
+  con su saldo (también si viene de `trackingType`) y el reporte lo lista como **"Candidato a Convertir a serie"**; un producto **existente
+  nunca cambia** de seguimiento (advertencia y candidato); `products.trackingType` se valida al leer el JSON. Los JSON de Depot, Solutions y
+  la muestra **no cambian** (NONE, opción apagada).
+- **Lo que queda para R0 ("Convertir a serie")**: toda serie de un equipo que ya está en existencia (todo Depot hoy), y los equipos de renta
+  que QuickBooks no marca como `Serial`. Recomendación: no recrear la base de Depot para esto.
+- Documentación: `docs/migracion/depot-series-y-rentas.md` (evaluación y procedimiento paso a paso), `docs/lote30-decisiones.md`, capítulo 10
+  §6 del manual (opción, reglas y mensajes exactos), nota en el capítulo 11 (D5), sección "Lote 30" de la FAQ, índice del manual y
+  `docs/migracion/README.md`.
+- Archivos de código: `src/Teikem.Infrastructure/Migration/QuickBooksCsvReader.cs`, `LegacyImportConfig.cs`, `LegacyImportService.cs`,
+  `src/Teikem.Domain/Migration/LegacyImportRules.cs`; prueba nueva `tests/Teikem.Tests/LegacyImportTrackingTests.cs`. Sin cambios de
+  esquema, seed, permisos, endpoints ni contrato.
+
+### Cómo se probó (resultados reales)
+
+| Comando | Resultado |
+|---|---|
+| `dotnet test tests/Teikem.Tests -o .tmp-testout` | **3172 pasan, 0 fallan** (antes 3145 en `caf41ce`: +27, todas en `LegacyImportTrackingTests`). `RawSqlConfinementTests` (19) y `WmsControllerSecurityTests` (151) sin cambios; la confinación de `TrackingTypeLookupId` sigue verde |
+| `db-init` ×2 sobre la base nueva `TeikemRMSmoke` (desde `.tmp-testout`, `ASPNETCORE_ENVIRONMENT=Development`) | Completada las dos veces; la segunda omite los scripts por hash, 68 permisos (0 nuevos), tenant demo "ya existe" |
+| `import-legacy` (build de `.tmp-testout`) de una copia de la muestra con 3 ítems agregados y `trackingFromColumns.serial` encendido: `--dry-run`, carga real y `--update` sobre `TeikemRMSmoke` | Código 0 las tres. Carga real: 8 productos creados, 0 rechazos, 5 asientos de saldo inicial, conciliación sin diferencias; advertencia y "Candidato a Convertir a serie" para `EQ-RM1` (`3 unidades en 1 posición(es); se crea con NONE`), "Seguimiento" `EQ-RM2` → `SERIAL`. `--update`: `EQ-RM1` sigue NONE con la advertencia "ya existe con seguimiento NONE…" |
+| Consultas por `sqlcmd` a `TeikemRMSmoke` | `EQ-RM1` NONE con 3 en mano y 0 series; `EQ-RM2` SERIAL sin existencia; `EQ-RM3` (solo Lot, columna Lot apagada) NONE; **0 productos SERIAL con más unidades en mano que series** |
+| `scripts/smoke.sh http://localhost:5180` | SMOKE_PENDIENTE |
+
+### Qué NO se probó
+
+- Datos reales de Depot: no se tocó la base `Teikem` del dueño; el `Depot Products.csv` real y el `MSWM.sql` no están en el repositorio. No
+  se sabe cuáles son los 3 ítems marcados `Serial` ni si tienen existencia (los lista el dry-run del procedimiento, sección 5.1).
+- Que MSWM no tenga ninguna tabla de series: se apoya en el análisis documentado; la consulta de verificación de solo lectura queda en el
+  documento de Depot.
+- `scripts\recrear-base.ps1` con la opción encendida (Windows).
+- La conversión R0 de un producto importado concreto (el paso R0 del smoke la cubre con un producto creado por el API).
+
+### Decisiones tomadas por defecto en este bloque
+
+Ver los puntos 52 a 60 de la lista de abajo.
+
 ## Decisiones por defecto a confirmar
 
 1. **(R0) Segundo permiso en el servicio.** El endpoint pide `inventory.manage` y el servicio exige `inventory.adjust` (403 `Falta el permiso
@@ -309,3 +355,23 @@ Ver los puntos 41 a 51 de la lista de abajo.
 50. **(R3) Bloque SQL para las compañías ya creadas** en `logistica-db-seed.sql` (Depot y Solutions reciben el contenido al aplicar el seed),
     con el criterio del Lote 15: solo compañías con contenido de análisis, idempotente por nombre.
 51. **(R3) Días en proceso en días de calendario de la compañía** (del inicio al fin, o a hoy si sigue abierto).
+52. **(RM, D5-b) La opción `products.trackingFromColumns` queda apagada en `import.depot.json`** (y en Solutions y la muestra). Las 3
+    casillas `Serial` de Depot parecen valores por defecto y la decisión 4 de la migración fue "todo NONE". Alternativa: encender `serial`
+    (una línea; procedimiento en `docs/migracion/depot-series-y-rentas.md` §5.3). Consecuencia de encenderla: en la próxima recreación de la
+    base, los ítems marcados **sin existencia** nacen SERIAL (sus recibos pedirán series); los que tienen existencia quedan igual (NONE).
+53. **(RM) Marcado SERIAL o LOT con saldo inicial → se crea NONE con su saldo** y queda como "Candidato a Convertir a serie". Alternativas:
+    rechazar el producto (se perdería su existencia y la conciliación con el WMS), omitir solo el saldo, o crearlo SERIAL sin series (no se
+    podría recolectar, rentar ni convertir). Consecuencia: esos equipos se convierten después con R0.
+54. **(RM) Con las casillas `Serial` y `Lot` marcadas gana SERIAL.** Alternativa: LOT, o NONE por ambigüedad.
+55. **(RM) La regla usa el saldo planeado**: un producto nuevo con existencia en el origen se crea NONE aunque esa corrida no cargue el saldo
+    (ya cargado, o `--update` de una compañía existente). Alternativa: crearlo SERIAL cuando el saldo no se va a cargar (pero físicamente
+    hay unidades sin series).
+56. **(RM) La regla también protege `products.trackingType`** SERIAL/LOT (antes dejaba existencia sin series). Alternativa: dejar
+    `trackingType` como estaba (riesgo descrito en el bloque RM).
+57. **(RM) Producto existente con otro seguimiento en el origen: solo advertencia** (y candidato si pide SERIAL); ni se cambia ni se rechaza,
+    y con `--update` no cuenta como actualizado. Alternativa: rechazarlo en el reporte (no aporta: la vía es R0).
+58. **(RM) `products.trackingType` se valida al leer el JSON** (`products.trackingType debe ser NONE, LOT o SERIAL.`, código de salida 1),
+    en lugar de un rechazo por producto en la carga.
+59. **(RM) Casilla verdadera de QuickBooks = `TRUE`, `YES`, `Y` o `1`** (sin distinguir mayúsculas); cualquier otro valor es falso.
+60. **(RM) Sin "Convertir a lote" ni carga de números de serie desde archivo**: no hay origen de series ni de lotes; la columna `Lot` no se
+    recomienda para Depot (500 de 576 marcados). Recomendación al dueño: **no recrear la base de Depot** para esto y usar "Convertir a serie".

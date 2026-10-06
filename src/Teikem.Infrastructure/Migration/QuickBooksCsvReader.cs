@@ -56,6 +56,12 @@ public sealed record QbItem(
     /// <summary>Línea física de la fila en el archivo, para el reporte.</summary>
     public int Line { get; init; }
 
+    /// <summary>RM (Rentas, D5-b): casilla 'Serial' de la lista de ítems (TRUE/FALSE); null si la columna no existe o viene vacía.</summary>
+    public string? Serial { get; init; }
+
+    /// <summary>RM (Rentas, D5-b): casilla 'Lot' de la lista de ítems (TRUE/FALSE); null si la columna no existe o viene vacía.</summary>
+    public string? Lot { get; init; }
+
     public bool IsActive => QuickBooksCsvReader.IsActiveStatus(ActiveStatus);
 }
 
@@ -299,7 +305,7 @@ public static class QuickBooksCsvReader
             // Solutions exporta la columna con la errata 'MANUFACTERS'
             r.GetOrNull("Manufacturer") ?? r.GetOrNull("MANUFACTERS"),
             r.GetOrNull("MPN"))
-        { Line = r.Line }).ToList();
+        { Line = r.Line, Serial = r.GetOrNull("Serial"), Lot = r.GetOrNull("Lot") }).ToList();
     }
 
     private static IReadOnlyList<QbCustomer> ToCustomers(QbTable table)

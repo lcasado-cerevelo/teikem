@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Teikem.Domain.Constants;
 using Teikem.Domain.Wms;
 
 namespace Teikem.Domain.Migration;
@@ -293,6 +294,38 @@ public static partial class LegacyImportRules
         var phone = WhitespaceRunRegex().Replace(raw.Trim(), " ");
         if (phone.Count(char.IsAsciiDigit) < PhoneMinDigits) return null;
         return phone.Length > PhoneMaxLength ? phone[..PhoneMaxLength].TrimEnd() : phone;
+    }
+
+    // ---------------------------------------------------------------- seguimiento (Rentas RM, D5-b)
+
+    /// <summary>
+    /// RM: el producto pedía seguimiento SERIAL o LOT (columnas Serial/Lot de QuickBooks o products.trackingType) pero tiene saldo
+    /// inicial y ninguna fuente de la migración trae sus números de serie ni sus lotes: se crea con seguimiento NONE.
+    /// </summary>
+    public static string TrackingDowngraded(string sku, string tracking, decimal qty) => tracking == TrackingTypes.Serial
+        ? $"El ítem {sku} está marcado como de serie pero tiene saldo inicial ({ProductRules.FormatQty(qty)} unidades) y la fuente no trae sus números de serie; se crea con seguimiento NONE. Conviértalo después con \"Convertir a serie\"."
+        : $"El ítem {sku} está marcado por lote pero tiene saldo inicial ({ProductRules.FormatQty(qty)} unidades) y la fuente no trae sus lotes; se crea con seguimiento NONE.";
+
+    /// <summary>RM: el producto ya existe en Teikem con otro seguimiento; la migración nunca lo cambia (D25).</summary>
+    public static string TrackingNotChanged(string sku, string current, string marked) => marked == TrackingTypes.Serial
+        ? $"El producto {sku} ya existe con seguimiento {current}; la migración no cambia el seguimiento de un producto existente (en el origen está marcado {marked}). Si es un equipo con número de serie, use \"Convertir a serie\"."
+        : $"El producto {sku} ya existe con seguimiento {current}; la migración no cambia el seguimiento de un producto existente (en el origen está marcado {marked}).";
+
+    /// <summary>Casilla verdadera de QuickBooks: TRUE, YES, Y o 1 (sin distinguir mayúsculas); cualquier otra cosa o vacío → false.</summary>
+    public static bool IsQuickBooksTrue(string? raw)
+        => raw?.Trim().ToUpperInvariant() is "TRUE" or "YES" or "Y" or "1";
+
+    /// <summary>
+    /// RM: seguimiento pedido para un ítem de QuickBooks. Con la columna Serial habilitada y en TRUE → SERIAL; si no, con la columna
+    /// Lot habilitada y en TRUE → LOT; si no, el de la configuración (products.trackingType). SERIAL gana a LOT cuando las dos
+    /// casillas están marcadas (un producto tiene un solo seguimiento). Solo decide qué se pediría al CREAR el producto: la regla
+    /// del saldo inicial sin series (TrackingDowngraded) se aplica después.
+    /// </summary>
+    public static string TrackingFromColumns(string defaultTracking, bool serialColumn, bool lotColumn, string? serialCell, string? lotCell)
+    {
+        if (serialColumn && IsQuickBooksTrue(serialCell)) return TrackingTypes.Serial;
+        if (lotColumn && IsQuickBooksTrue(lotCell)) return TrackingTypes.Lot;
+        return defaultTracking;
     }
 
     // ---------------------------------------------------------------- claves
