@@ -94,6 +94,32 @@ describe('Acomodar — reparto por posición', () => {
     await waitFor(() => expect(screen.getByText('Listo: SKU-1, 45 en 3 posición(es); quedan 0 pendientes')).toBeTruthy())
   })
 
+  it('cada posición del reparto se puede quitar y las cantidades se recalculan (la que queda de resto cambia)', async () => {
+    await setupDevice()
+    mockFetch(routes(45))
+    await openTask()
+    await fireEvent.changeText(screen.getByLabelText('Cantidad por posición (opcional)'), '20')
+    for (const code of ['A-01', 'A-02', 'A-03']) {
+      await scan('Escanea la siguiente posición', code)
+      await waitFor(() => expect(screen.getByLabelText(`Quitar ${code}`)).toBeTruthy())
+    }
+    expect(screen.getByText('A-03 · 5')).toBeTruthy()
+    expect(screen.getByText('A-03 recibe solo 5 (lo que quedaba), no 20.')).toBeTruthy()
+
+    // quitar la primera: A-02 y A-03 pasan a llevar 20 y 20, ya no hay posición de resto ni alerta
+    await fireEvent.press(screen.getByLabelText('Quitar A-01'))
+    await waitFor(() => expect(screen.queryByLabelText('Quitar A-01')).toBeNull())
+    expect(screen.getByText('A-02 · 20')).toBeTruthy()
+    expect(screen.getByText('A-03 · 20')).toBeTruthy()
+    expect(screen.getByText('Repartido: 40 · quedan 5 sin acomodar')).toBeTruthy()
+    expect(screen.queryByTestId('sticky-alert')).toBeNull()
+
+    // la siguiente que se escanee es la del resto
+    await scan('Escanea la siguiente posición', 'A-04')
+    await waitFor(() => expect(screen.getByText('A-04 · 5')).toBeTruthy())
+    expect(screen.getByText('A-04 recibe solo 5 (lo que quedaba), no 20.')).toBeTruthy()
+  })
+
   it('sin cantidad por posición acomoda todo en la posición escaneada, como siempre', async () => {
     await setupDevice()
     const calls = mockFetch([

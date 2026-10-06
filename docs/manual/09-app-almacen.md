@@ -293,7 +293,7 @@ Campos y validaciones (recibo directo):
 
 En el paso de la posición destino de un recibo **directo** hay un campo **Cantidad por posición (opcional)** (no aparece en productos con serie).
 Con la cantidad escrita, cada posición que se escanea se suma a la lista (`RSV-A-01 · 20`) y la pantalla dice `Repartido: 40 · quedan 5 sin ubicar`;
-**Confirmar reparto** agrega **una línea por posición**. Caben las posiciones llenas y **una más con el resto** (45 de 20 → 20, 20 y 5): esa última muestra la
+Cada renglón tiene su **✕** (`Quitar {bin}`) y las cantidades se recalculan. **Confirmar reparto** agrega **una línea por posición**. Caben las posiciones llenas y **una más con el resto** (45 de 20 → 20, 20 y 5): esa última muestra la
 **alerta fija** `{bin} recibe solo {qty} (lo que quedaba), no {per}.` (se queda arriba aunque se desplace la pantalla; se cierra con la ✕); una cuarta se rechaza con
 `Ya no hay unidades por ubicar: los {total} están repartidos. Confirma el reparto.` Si se confirma con menos posiciones de las que caben, lo que falta
 **sigue en la captura**: se escanea la posición donde queda (una sola).
@@ -334,7 +334,7 @@ Cómo se usa:
 1. Abrir la tarea. Arriba sale `Pendiente de acomodar: N`.
 2. Escribir la **Cantidad por posición** (opcional; con la tecla ⌨ si hace falta). Vacía = el acomodo de siempre (todo en la posición que se escanea).
 3. Escanear las posiciones, una por una. Cada una se suma a la lista (`A-01 · 20`) y la pantalla dice `Repartido: 180 · quedan 5 sin acomodar`.
-   **Nada se mueve todavía.** "Quitar la última" corrige un escaneo equivocado.
+   **Nada se mueve todavía.** Cada renglón tiene su **✕** (`Quitar {bin}`) para quitar esa posición; las cantidades se recalculan (si se quita una intermedia, la que recibe el resto cambia).
 4. **Confirmar reparto** manda todo junto (`POST /warehouse-tasks/{id}/distribute`): o se acomoda todo o no se mueve nada.
 5. La posición que ya no se llena (la décima de 185 de 20) recibe **lo que quedaba** (5) y la pantalla muestra una **alerta fija** (`{bin} recibe solo {qty} (lo que quedaba), no {per}.`): se queda arriba aunque se desplace la pantalla y se cierra con la ✕. Si se confirma con menos posiciones de las que caben, lo que falta queda como **tarea nueva** en la lista.
 

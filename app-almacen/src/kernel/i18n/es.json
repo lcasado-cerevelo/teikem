@@ -83,7 +83,6 @@
     "splitNoRoom": "Ya no hay unidades por ubicar: los {total} están repartidos. Confirma el reparto.",
     "splitLine": "{bin} · {qty}",
     "splitTotal": "Repartido: {total} · quedan {left} sin ubicar",
-    "splitRemoveLast": "Quitar la última",
     "splitConfirm": "Confirmar reparto",
     "startBlind": "Recibo ciego",
     "startBlindHelp": "Sin orden de compra ni aviso: se recibe libre.",
@@ -123,7 +122,8 @@
     "targetConflict": "Ya se capturó {sku} con destino {bin}; en un recibo con aviso u orden de compra cada línea entra a una sola posición.",
     "confirmHelpDirect": "Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.",
     "expiryInvalid": "La fecha no es válida. Escríbela así: {format}",
-    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}."
+    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
+    "removeBin": "Quitar {bin}"
   },
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
@@ -143,12 +143,12 @@
     "noRoomLeft": "Ya no hay unidades por acomodar: los {total} están repartidos. Confirma el reparto.",
     "distLine": "{bin} · {qty}",
     "distTotal": "Repartido: {total} · quedan {left} sin acomodar",
-    "removeLast": "Quitar la última",
     "confirmDist": "Confirmar reparto",
     "distributed": "Listo: {sku}, {qty} en {count} posición(es); quedan {left} pendientes",
     "binNotFound": "No hay una posición con ese código.",
     "done": "Listo: {sku} quedó en {bin}",
-    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}."
+    "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
+    "removeBin": "Quitar {bin}"
   },
   "dispatch": {
     "title": "Despacho",

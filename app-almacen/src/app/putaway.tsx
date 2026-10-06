@@ -196,10 +196,19 @@ export default function PutawayScreen() {
         <ScanField label={t(perBin > 0 ? 'putaway.scanNextLabel' : 'putaway.scanDestLabel')} error={scanError} onSubmit={scanDestination} pick="bin" />
         {perBin > 0 && distBins.length > 0 ? (
           <View style={styles.field}>
-            {distBins.map((b) => (
-              <Text key={b.id} style={styles.rowTitle}>
-                {t('putaway.distLine', { bin: b.code, qty: f.qty(chunkAt(pending, perBin, distBins.indexOf(b))) })}
-              </Text>
+            {distBins.map((b, i) => (
+              <View key={b.id} style={styles.distRow}>
+                <Text style={[styles.rowTitle, styles.distText]}>{t('putaway.distLine', { bin: b.code, qty: f.qty(chunkAt(pending, perBin, i)) })}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('putaway.removeBin', { bin: b.code })}
+                  onPress={() => setDistBins((bins) => bins.filter((x) => x.id !== b.id))}
+                  style={styles.distRemove}
+                  hitSlop={8}
+                >
+                  <Text style={styles.distRemoveLabel}>✕</Text>
+                </Pressable>
+              </View>
             ))}
             <Text style={styles.help}>
               {t('putaway.distTotal', {
@@ -208,7 +217,6 @@ export default function PutawayScreen() {
               })}
             </Text>
             <View style={styles.row2}>
-              <BigButton label={t('putaway.removeLast')} variant="secondary" fullWidth={false} onPress={() => setDistBins((b) => b.slice(0, -1))} />
               <BigButton label={t('putaway.confirmDist')} fullWidth={false} loading={busy} onPress={confirmDistribution} />
             </View>
           </View>
@@ -286,6 +294,10 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.panelAlt,
   },
+  distRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  distText: { flex: 1 },
+  distRemove: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.panelAlt },
+  distRemoveLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
   row2: { flexDirection: 'row', gap: spacing.md, flexWrap: 'wrap' },
   suggestion: { alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.md },
   suggestionLabel: { color: colors.muted, fontSize: fontSize.message },

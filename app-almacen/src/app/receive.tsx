@@ -352,10 +352,19 @@ export default function ReceiveScreen() {
         />
         {perBin > 0 && splitCodes.length > 0 ? (
           <View style={styles.field}>
-            {splitCodes.map((c) => (
-              <Text key={c} style={styles.label}>
-                {t('receive.splitLine', { bin: c, qty: f.qty(chunkAt(draftQuantity(draft), perBin, splitCodes.indexOf(c))) })}
-              </Text>
+            {splitCodes.map((c, i) => (
+              <View key={c} style={styles.splitRow}>
+                <Text style={[styles.label, styles.splitText]}>{t('receive.splitLine', { bin: c, qty: f.qty(chunkAt(draftQuantity(draft), perBin, i)) })}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('receive.removeBin', { bin: c })}
+                  onPress={() => setSplitCodes((codes) => codes.filter((x) => x !== c))}
+                  style={styles.splitRemove}
+                  hitSlop={8}
+                >
+                  <Text style={styles.splitRemoveLabel}>✕</Text>
+                </Pressable>
+              </View>
             ))}
             <Text style={styles.help}>
               {t('receive.splitTotal', {
@@ -364,7 +373,6 @@ export default function ReceiveScreen() {
               })}
             </Text>
             <View style={styles.row}>
-              <BigButton label={t('receive.splitRemoveLast')} variant="secondary" fullWidth={false} onPress={() => setSplitCodes((c) => c.slice(0, -1))} />
               <BigButton label={t('receive.splitConfirm')} fullWidth={false} onPress={confirmSplit} />
             </View>
           </View>
@@ -503,6 +511,10 @@ const styles = StyleSheet.create({
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
   error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },
+  splitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  splitText: { flex: 1 },
+  splitRemove: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.panelAlt },
+  splitRemoveLabel: { color: colors.error, fontSize: 22, fontWeight: '700' },
   modeBtn: {
     flex: 1,
     minHeight: 56,

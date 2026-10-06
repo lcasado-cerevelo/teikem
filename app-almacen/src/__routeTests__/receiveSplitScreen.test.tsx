@@ -75,12 +75,20 @@ describe('Recibir directo — reparto por posición', () => {
     await waitFor(() => expect(screen.getByText(/Ya no hay unidades por ubicar/)).toBeTruthy())
     expect(getOpenReceipt()?.lines).toHaveLength(0) // nada se agrega hasta confirmar
 
+    // cada posición se puede quitar: sin A-02 el resto pasa a A-03 con 20 y vuelve a caber una más
+    await fireEvent.press(screen.getByLabelText('Quitar RSV-A-02'))
+    await waitFor(() => expect(screen.queryByLabelText('Quitar RSV-A-02')).toBeNull())
+    expect(screen.getByText('RSV-A-03 · 20')).toBeTruthy()
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000)
+    await scan('Escanea la siguiente posición destino', 'RSV-A-02')
+    await waitFor(() => expect(screen.getByText('RSV-A-02 · 5')).toBeTruthy())
+
     await fireEvent.press(screen.getByText('Confirmar reparto'))
     await waitFor(() => expect(getOpenReceipt()?.lines).toHaveLength(3))
     expect(getOpenReceipt()?.lines.map((l) => [l.receivedQty, l.targetBinCode])).toEqual([
       [20, 'RSV-A-01'],
-      [20, 'RSV-A-02'],
-      [5, 'RSV-A-03'],
+      [20, 'RSV-A-03'],
+      [5, 'RSV-A-02'],
     ])
   })
 })

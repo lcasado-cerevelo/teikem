@@ -5419,7 +5419,7 @@ Es lo esperado: con 185 y 20 por posición caben 9 de 20 y una décima con 5; ya
 Es el aviso de que esa posición recibe solo lo que quedaba (por ejemplo 5 y no 20). Se queda a la vista aunque desplace la pantalla; ciérrela con la ✕ cuando la haya leído.
 
 **Escaneé una posición equivocada en el reparto.**
-Toque **Quitar la última** (quita la última escaneada); nada se ha movido hasta **Confirmar reparto**.
+Toque la **✕** del renglón de esa posición (`Quitar {bin}`); las cantidades de las demás se recalculan. Nada se ha movido hasta **Confirmar reparto**.
 
 **Confirmé el reparto y una posición era de otro almacén (`Posición no encontrada.`).**
 No se movió nada: el reparto es todo o nada. Escanee las posiciones correctas y confírmelo de nuevo.

@@ -39,3 +39,8 @@
 - **Alerta fija:** `StickyAlert` (`KeyboardScreen`, propiedad `banner`): se dibuja fuera del área desplazable, así que no se va al desplazarse, y se cierra con la ✕. Sale cuando entra la posición que recibe menos que la cantidad por posición (`{bin} recibe solo {qty} (lo que quedaba), no {per}.`).
 - Pruebas: servidor 3201 en verde (reglas y servicio actualizados); app 475 (lógica, pantallas de Acomodar y recibo, StickyAlert).
 - A revisar: la alerta también sale cuando la tarea entera es menor que la cantidad por posición (5 de 20 en una posición); al quitar la última posición la alerta desaparece sola.
+
+## Quitar posiciones del reparto (2026-10-06)
+- Cada renglón del reparto (Acomodar y recibo directo) tiene su ✕ (`Quitar {bin}`) en lugar del botón "Quitar la última"; al quitar una, las cantidades se recalculan por orden (la posición de resto es siempre la última que ya no se llena) y la alerta fija se ajusta.
+- Después de la posición del resto no se acepta ninguna más (`Ya no hay unidades por acomodar…` / `…por ubicar…`), en la app y en el servidor.
+- Pruebas: 476 jest en verde (una nueva de quitar posición en Acomodar y el paso equivalente en el recibo).

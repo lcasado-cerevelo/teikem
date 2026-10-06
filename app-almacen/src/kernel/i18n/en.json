@@ -83,7 +83,6 @@
     "splitNoRoom": "No units left to place: all {total} are split. Confirm the split.",
     "splitLine": "{bin} · {qty}",
     "splitTotal": "Split: {total} · {left} not placed yet",
-    "splitRemoveLast": "Remove last",
     "splitConfirm": "Confirm split",
     "startBlind": "Blind receipt",
     "startBlindHelp": "No purchase order or ASN: receive freely.",
@@ -123,7 +122,8 @@
     "targetConflict": "{sku} was already captured with destination {bin}; on a receipt with an ASN or purchase order each line goes to a single bin.",
     "confirmHelpDirect": "Closes the receipt and leaves each line in its destination bin, with no putaway tasks.",
     "expiryInvalid": "The date is not valid. Write it like this: {format}",
-    "restAlert": "{bin} gets only {qty} (what was left), not {per}."
+    "restAlert": "{bin} gets only {qty} (what was left), not {per}.",
+    "removeBin": "Remove {bin}"
   },
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
@@ -143,12 +143,12 @@
     "noRoomLeft": "No units left to put away: all {total} are split. Confirm the split.",
     "distLine": "{bin} · {qty}",
     "distTotal": "Split: {total} · {left} not put away yet",
-    "removeLast": "Remove last",
     "confirmDist": "Confirm split",
     "distributed": "Done: {sku}, {qty} in {count} bin(s); {left} still pending",
     "binNotFound": "No bin matches that code.",
     "done": "Done: {sku} is now in {bin}",
-    "restAlert": "{bin} gets only {qty} (what was left), not {per}."
+    "restAlert": "{bin} gets only {qty} (what was left), not {per}.",
+    "removeBin": "Remove {bin}"
   },
   "dispatch": {
     "title": "Dispatch",
