@@ -133,10 +133,12 @@ public sealed class AnalyticsService(TeikemDbContext db, ITenantContext tenant, 
 
     /// <summary>
     /// ¿Puede el usuario leer la fuente? Su EntityType (o su clave, que es el código EntityType) se traduce al permiso de lectura
-    /// con PermissionCatalog.DataSourceReadPermission; una fuente sin permiso registrado se trata como visible.
+    /// con PermissionCatalog.DataSourceReadPermission; una fuente sin permiso registrado se trata como visible. Lote 29 (Rentas
+    /// R3): si la fuente declara un módulo de la compañía (IDataSource.TenantModule), ese módulo debe estar encendido.
     /// </summary>
     private static bool CanReadSource(IDataSource source, ReadAccess access)
     {
+        if (source.TenantModule is string module && !access.ModuleOn(module)) return false;
         var perm = PermissionCatalog.DataSourceReadPermission(source.EntityTypeCode ?? source.Key);
         return perm is null || access.Has(perm);
     }

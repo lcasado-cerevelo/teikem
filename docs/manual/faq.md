@@ -4585,6 +4585,56 @@ No: la renta solo guarda las condiciones (D3). La devolución marca si fue antic
 **¿Por qué no puedo contar la posición EN-RENTA?**
 Porque lo que está ahí está físicamente en los clientes (D7). Para corregir un equipo que en realidad volvió, registre su devolución.
 
+## Lote 29 — Rentas R3: reportes, indicadores y aviso de rentas vencidas o por vencer
+
+Detalle en el [capítulo 11](11-rentas.md) (sección 10) y `docs/lote29-decisiones.md`. Fuentes de Análisis `RENTAL`, `RENTAL_RETURN` y
+`RENTAL_PROCESS`; vistas "Equipos en renta por cliente", "Rentas por vencer (7 días)", "Rentas vencidas", "Devoluciones de renta por
+motivo" y "Equipos en proceso"; indicadores "Rentas por vencer (7 días)" y "Rentas vencidas"; gráfico "Devoluciones de renta por motivo";
+aviso `RENTAL_DUE` en "Necesita tu atención". Todo pide `rental.view` y el módulo `RENTAL_EQUIPMENT` "Rentas" encendido.
+
+### Mensajes nuevos o que cambian de motivo
+
+**404 — "Indicador '{id}' no encontrado."** / **"Gráfico '{id}' no encontrado."** / **"Vista '{id}' no encontrado."** (de rentas)
+El indicador, gráfico o vista usa una fuente de rentas y usted no tiene `rental.view`, o el módulo **Rentas** está apagado en la compañía.
+Pida el permiso al administrador, o que el administrador de la compañía encienda el módulo (Administración › Módulos): al encenderlo
+vuelve todo lo que había.
+
+**404 — "Fuente de datos 'RENTAL' no encontrado."** (también `RENTAL_RETURN` o `RENTAL_PROCESS`)
+Al crear o previsualizar una vista, indicador o gráfico sobre una fuente de rentas sin `rental.view` o con el módulo Rentas apagado. Mismo
+remedio que el anterior.
+
+### Preguntas frecuentes
+
+**¿Dónde veo las rentas que vencen esta semana?**
+En el Pulso, en "Necesita tu atención" (una fila por renta vencida o que vence en 7 días, las más vencidas arriba), o en Análisis con la
+vista "Rentas por vencer (7 días)". Las ya vencidas, en la vista "Rentas vencidas".
+
+**¿Por qué una renta Programada aparece como vencida?**
+Porque su fecha de recogido ya pasó y el equipo sigue apartado para ella. Despáchela y extiéndala, o cancélela si ya no va.
+
+**Registré la devolución y la renta sigue en el aviso. ¿Por qué?**
+Porque todavía le queda algún equipo sin devolver (devolución parcial): la renta sigue En renta. Registre la devolución del resto o
+extienda la renta.
+
+**¿El aviso usa la hora de Puerto Rico?**
+Usa el día de la zona horaria de la compañía (Ajustes de la compañía); por defecto, Puerto Rico. Una renta que se recoge hoy está "por
+vencer" hasta la medianoche de la compañía, no la de UTC.
+
+**Apagué el módulo Rentas y desaparecieron sus reportes. ¿Se borraron?**
+No. Con el módulo apagado se ocultan; al encenderlo vuelven, con las vistas, indicadores y gráficos que la compañía haya creado sobre
+rentas.
+
+**¿Por qué los indicadores de rentas no salen en mi Pulso?**
+Vienen apagados porque "Necesita tu atención" ya muestra cada renta vencida o por vencer. Encienda "mostrar en Pulso" en el indicador.
+
+**En la web el aviso dice "RENTAL_DUE" y "Revisar" no abre nada.**
+Las pantallas de Rentas todavía no están en la web (bloques F-R1 y F-R2). El servidor ya entrega el aviso con la renta, el cliente, la
+fecha de recogido y los días; la web mostrará el texto y la pantalla de la renta cuando lleguen esos bloques.
+
+**¿Cuenta una devolución como "anticipada" si después extendieron la renta?**
+"Anticipada" compara la fecha de devolución con la fecha de recogido **vigente** de la renta (la de hoy, con sus extensiones), igual que la
+lista de devoluciones.
+
 ## Lote A4 — App de almacén: contar por producto
 
 Detalle en el [capítulo 9 §7.1](09-app-almacen.md#71-contar-por-producto-lote-a4) y en `docs/mobile/loteA4-decisiones.md`. Los

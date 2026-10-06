@@ -20,7 +20,8 @@ internal sealed record RentalReturnWorld(WmsFixture F, Warehouse W, WarehouseBin
 {
     public static readonly DateOnly Today = new(2026, 10, 5);
 
-    public static async Task<RentalReturnWorld> CreateAsync()
+    /// <param name="configure">Lote 29 (Rentas R3): servicios adicionales (fuentes de datos, Análisis, "Necesita tu atención").</param>
+    public static async Task<RentalReturnWorld> CreateAsync(Action<IServiceCollection>? configure = null)
     {
         var f = await WmsFixture.CreateAsync(s =>
         {
@@ -31,6 +32,7 @@ internal sealed record RentalReturnWorld(WmsFixture F, Warehouse W, WarehouseBin
             s.AddSingleton<RentalProcessService>();
             s.AddSingleton<IStatusTransitionEffect, RentalStatusEffect>();
             s.AddSingleton<IStatusTransitionEffect, RentalProcessStatusEffect>();
+            configure?.Invoke(s);
         });
         var w = await f.AddWarehouseAsync("W1");
         var pick = await f.AddZoneAsync(w, "PCK", ZoneTypes.Picking);

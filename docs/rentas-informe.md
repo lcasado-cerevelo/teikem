@@ -162,6 +162,55 @@ Ver los puntos 10 a 27 de la lista de abajo.
 
 Ver los puntos 28 a 40 de la lista de abajo.
 
+## Bloque R3 — Reportes, indicadores y aviso de rentas vencidas o por vencer (Lote 29)
+
+### Qué se hizo
+
+- **Fuentes de datos** de Análisis (`Analytics/RentalDataSources.cs`, registradas en `DependencyInjection.cs` por su código EntityType):
+  `RENTAL` (DateField `StartDate`; recogido vigente y pactado, `DaysToPickup`, `IsOverdue` e `IsOpen` con el día de la compañía
+  —`ITenantClock`—, equipos, equipos en el cliente y devueltos, extensiones, cliente, localidad, almacén, estatus, contrato, transporte),
+  `RENTAL_RETURN` (DateField `ReturnedOn`; motivo, condición resumida de sus equipos, `IsEarly` y días de anticipación, equipos por
+  condición, procesos) y `RENTAL_PROCESS` (DateField `StartedAtUtc`; serie, producto, posición, estatus, `IsOpen`, devolución, renta,
+  cliente, condición al volver, días en proceso). Filtro por compañía (filtro global), lectura con `rental.view` (ya estaba en
+  `OwnerReadPermission`) y **módulo Rentas**: miembro nuevo `IDataSource.TenantModule` (por defecto `null`) que `AnalyticsService` exige
+  encendido; con Rentas apagado no se listan las fuentes ni sus vistas, indicadores y gráficos (404 al leerlos).
+- **Aviso "Necesita tu atención"** `RentalDueAttentionProvider` (código `RENTAL_DUE`, `RENTAL_EQUIPMENT` + `rental.view`): una fila por
+  renta abierta vencida o que vence en ≤ 7 días, las más vencidas primero, rojo/ámbar, con "Revisar" y "Ver todos" hacia
+  `/warehouse/rentals` (pantalla de F-R1).
+- **Contenido de sistema** (`SystemAnalyticsSeeder`, idempotente por nombre; nombres y filtros en `Domain/Wms/RentalAnalyticsRules.cs`):
+  indicadores "Rentas por vencer (7 días)" y "Rentas vencidas", gráfico "Devoluciones de renta por motivo" y las vistas "Equipos en renta
+  por cliente", "Rentas por vencer (7 días)", "Rentas vencidas", "Devoluciones de renta por motivo" y "Equipos en proceso". Bloque "Lote
+  29" en `Diseño/logistica-db-seed.sql` con el mismo contenido para las compañías ya creadas (Depot, Solutions), como el del Lote 15.
+- Sin cambios de esquema, permisos, endpoints ni contrato (`swagger.json` idéntico a `web-app/openapi.json`): no se tocó la web ni la app.
+- **Documentación**: `docs/lote29-decisiones.md`, capítulo 11 sección 10 (fuentes, vistas, indicadores, gráfico, aviso y mensajes; las
+  secciones Kárdex y Casos frecuentes pasan a ser 11 y 12, con casos nuevos), sección "Lote 29" de la FAQ e índice del manual.
+- Archivos principales: `src/Teikem.Infrastructure/Analytics/RentalDataSources.cs`, `Analytics/DataSources.cs`,
+  `Services/Attention/RentalDueAttentionProvider.cs`, `Services/AnalyticsService.cs`, `Seeding/SystemAnalyticsSeeder.cs`,
+  `src/Teikem.Domain/Wms/RentalAnalyticsRules.cs`; pruebas `RentalAnalyticsTests`, ampliadas `AnalyticsSeedFieldsTests`,
+  `OwnedEntityResolverCoverageTests` y `RentalReturnWorld`; paso nuevo en `scripts/smoke.sh`.
+
+### Cómo se probó (resultados reales)
+
+| Comando | Resultado |
+|---|---|
+| `dotnet test tests/Teikem.Tests -o .tmp-testout` | **3145 pasan, 0 fallan** (antes 3133 en `0656645`: +12 — 7 `RentalAnalyticsTests`, 4 en `AnalyticsSeedFieldsTests`, 1 en `OwnedEntityResolverCoverageTests`). Sin cambios en `WmsControllerSecurityTests` (151 acciones: no hay endpoints nuevos) ni en `RawSqlConfinementTests` (19 sentencias: sin SQL crudo) |
+| `scripts/dev-sqlserver.sh` (ya corriendo) + `db-init` ×2 sobre la base nueva `TeikemR3Smoke` (desde `.tmp-testout`, `ASPNETCORE_ENVIRONMENT=Development`) | Completada las dos veces; la segunda omite los scripts por hash, 68 permisos (0 nuevos), tenant demo "ya existe" y contenido de análisis verificado. Se borró `TeikemR2Smoke` (tenía sesiones huérfanas: `SINGLE_USER WITH ROLLBACK IMMEDIATE`) |
+| `scripts/smoke.sh http://localhost:5180` (con `SMOKE_SQL` y `SMOKE_MIGRATION_RUN` del build de `.tmp-testout`) | **SMOKE OK: 137 pasos, 139 `ok`** a la primera, incluido el paso nuevo "reportes, indicadores y avisos de rentas (Lote 29, Rentas R3)": el aviso aparece con una renta vencida y una que vence en 3 días, indicadores 1/1, las 5 vistas y el gráfico con datos reales, otra compañía sin nada, módulo apagado sin fuentes/indicadores (404)/aviso y de vuelta al encenderlo |
+| Bloque SQL del Lote 29 con `sqlcmd -I` sobre `TeikemR3Smoke`, con el contenido de rentas borrado de la compañía 1 (simula una compañía anterior al lote), aplicado dos veces | Primera vez: 2 indicadores, 1 gráfico y 5 vistas; segunda: 0 filas (la compañía 2 no duplicó). Leído por el API: indicadores 1 y 1, vista por cliente y gráfico por motivo con los 3 motivos |
+| Contrato: `GET /swagger/v1/swagger.json` del API nuevo contra `web-app/openapi.json` | Idénticos (no se regeneraron tipos; `npm run check` no hacía falta: ni la web ni la app cambiaron) |
+
+### Qué NO se probó
+
+- Pantallas (F-R1/F-R2): la web aún no tiene `/warehouse/rentals` ni el texto del aviso `RENTAL_DUE` (el panel lo muestra con su código);
+  sin Playwright.
+- El bloque SQL del Lote 29 sobre la base REAL de Depot (solo la simulación descrita arriba).
+- Rendimiento con muchas rentas reales (tope de 20 000 filas por fuente, consultas por lote).
+- Una compañía con una zona horaria distinta de Puerto Rico en SQL Server (las pruebas cubren el día local con relojes fijos en InMemory).
+
+### Decisiones tomadas por defecto en este bloque
+
+Ver los puntos 41 a 51 de la lista de abajo.
+
 ## Decisiones por defecto a confirmar
 
 1. **(R0) Segundo permiso en el servicio.** El endpoint pide `inventory.manage` y el servicio exige `inventory.adjust` (403 `Falta el permiso
@@ -238,3 +287,25 @@ Ver los puntos 28 a 40 de la lista de abajo.
     lleva el id de la devolución); sin ciclo posible. Nueva sentencia de bloqueo del proceso (19).
 40. **(R2) Smoke 7**: para probar el **404** de otra compañía, el smoke enciende Inventario y Rentas en la compañía de prueba (con el módulo
     apagado la respuesta es 403 `module_disabled`).
+41. **(R3) El contenido de rentas se siembra en toda compañía y se oculta con el módulo Rentas apagado** (`IDataSource.TenantModule` en la
+    regla de lectura de Análisis), en lugar de sembrarlo solo donde Rentas está encendido. Consecuencia: al encender Rentas aparece todo sin
+    resembrar, y la regla también oculta las vistas, indicadores y gráficos que la compañía haya creado sobre rentas.
+42. **(R3) Indicadores y gráfico de rentas apagados en el Pulso** (como "Descuadres pendientes", D16): "Necesita tu atención" ya muestra
+    cada renta vencida o por vencer. Alternativa: encendidos por defecto.
+43. **(R3) Ventana fija de 7 días** para "por vencer" (aviso, indicador y vista). Alternativa: configurable por compañía.
+44. **(R3) Abiertas = Programadas o En renta** también en reportes y aviso (decisión 14): una Programada con el recogido pasado sale como
+    vencida.
+45. **(R3) Aviso: una fila por renta**, roja si está vencida y ámbar si está por vencer; `SinceUtc` = medianoche (hora de la compañía) del
+    día de recogido (las vencidas quedan entre los avisos más antiguos). "Revisar" y "Ver todos" apuntan a `/warehouse/rentals` (con
+    `rental=` y con `dueWithinDays=7&overdue=true`), la pantalla de F-R1: hasta entonces la web muestra el código `RENTAL_DUE`.
+    Alternativa: una sola fila resumen ("N rentas vencidas").
+46. **(R3) La fuente de devoluciones es por devolución**, con la condición resumida (condiciones distintas de sus equipos y conteo por
+    condición). Alternativa: una fuente por equipo devuelto (para agrupar por condición de cada equipo).
+47. **(R3) "Anticipada" se mide contra la fecha de recogido vigente** (como la lista de devoluciones de R2), no contra la que tenía la renta
+    el día de la devolución.
+48. **(R3) "Equipos en renta por cliente" = rentas En renta** (no Programadas) y suma de equipos despachados sin devolver.
+49. **(R3) Las fuentes muestran la etiqueta de estatus del catálogo** (como todas las fuentes de Análisis), no el nombre que la compañía le
+    haya puesto al estatus.
+50. **(R3) Bloque SQL para las compañías ya creadas** en `logistica-db-seed.sql` (Depot y Solutions reciben el contenido al aplicar el seed),
+    con el criterio del Lote 15: solo compañías con contenido de análisis, idempotente por nombre.
+51. **(R3) Días en proceso en días de calendario de la compañía** (del inicio al fin, o a hoy si sigue abierto).

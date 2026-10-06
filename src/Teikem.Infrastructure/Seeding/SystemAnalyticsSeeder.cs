@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Teikem.Domain.Analytics;
 using Teikem.Domain.Common;
 using Teikem.Domain.Constants;
+using Teikem.Domain.Wms;
 using Teikem.Infrastructure.Abstractions;
 using Teikem.Infrastructure.Persistence;
 
@@ -17,7 +18,8 @@ namespace Teikem.Infrastructure.Seeding;
 /// de almacén del Pulso (INVENTORY_TRANSACTION, CYCLE_COUNT); cada lote de negocio agrega los suyos.
 /// Idempotente por nombre. Lote 15: los 2 gráficos de almacén del Pulso son DE LA COMPAÑÍA (no de sistema, sin dueño) y además
 /// idempotentes por clave de siembra (ChartDefinition.SeedKey): ni renombrados ni borrados se vuelven a crear; se agrega el
-/// indicador 'Descuadres pendientes' (apagado en el Pulso).
+/// indicador 'Descuadres pendientes' (apagado en el Pulso). Lote 29 (Rentas R3): reportes, indicadores y el gráfico de rentas
+/// (RENTAL, RENTAL_RETURN, RENTAL_PROCESS); se siembran en toda compañía y se ocultan con el módulo Rentas apagado.
 /// </summary>
 public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups)
 {
@@ -222,6 +224,23 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
             new[] { "ExpiryDate", "DaysToExpiry", "Sku", "ProductName", "LotNumber", "WarehouseCode", "BinCode", "QtyOnHand" }, ExpiringSoonFilter, null, "[{\"field\":\"ExpiryDate\",\"dir\":\"asc\"}]");
         await Report(EntityTypes.Receipt, "Recepciones con diferencia", "Recibos con diferencia entre lo esperado y lo recibido", "Receipts with a difference between expected and received",
             new[] { "Number", "Type", "Origin", "WarehouseCode", "ExpectedQty", "ReceivedQty", "VarianceQty", "Status", "ReceivedAtUtc" }, ReceiptsWithVarianceFilter, null, "[{\"field\":\"ReceivedAtUtc\",\"dir\":\"desc\"}]");
+        // Lote 29 (Rentas R3) — reportes mínimos de rentas (los nombres de campo son los de RentalDataSource, RentalReturnDataSource y
+        // RentalProcessDataSource; no cambiarlos sin cambiar ambos). Se siembran en toda compañía y se ocultan con el módulo Rentas
+        // apagado (IDataSource.TenantModule), como el contenido de almacén se oculta sin WMS_LOTSERIAL. Estado actual: las vistas
+        // corren con rango ALL por defecto.
+        var rentalColumns = new[] { "Number", "ClientName", "LocationName", "WarehouseCode", "Status", "PickupDate", "DaysToPickup", "Units", "UnitsOnRent", "ContractNumber" };
+        await Report(EntityTypes.Rental, RentalAnalyticsRules.OnRentByClientReportName, "Rentas En renta y equipos en el cliente, por cliente",
+            "Rentals on rent and units at the client, by client", Array.Empty<string>(), RentalAnalyticsRules.OnRentFilter, RentalAnalyticsRules.OnRentByClientGroup, null);
+        await Report(EntityTypes.Rental, RentalAnalyticsRules.DueSoonReportName, "Rentas abiertas cuya fecha de recogido es hoy o en los próximos 7 días",
+            "Open rentals due for pickup today or within the next 7 days", rentalColumns, RentalAnalyticsRules.DueSoonFilter, null, "[{\"field\":\"PickupDate\",\"dir\":\"asc\"}]");
+        await Report(EntityTypes.Rental, RentalAnalyticsRules.OverdueReportName, "Rentas abiertas cuya fecha de recogido ya pasó",
+            "Open rentals whose pickup date has passed", rentalColumns, RentalAnalyticsRules.OverdueFilter, null, "[{\"field\":\"PickupDate\",\"dir\":\"asc\"}]");
+        await Report(EntityTypes.RentalReturn, RentalAnalyticsRules.ReturnsByReasonReportName, "Devoluciones de renta y equipos devueltos por motivo",
+            "Rental returns and returned units by reason", Array.Empty<string>(), null, RentalAnalyticsRules.ReturnsByReasonGroup, null);
+        await Report(EntityTypes.RentalProcess, RentalAnalyticsRules.InProcessReportName, "Equipos devueltos con su proceso abierto (inspección, limpieza, pruebas, reparación…)",
+            "Returned equipment with an open process (inspection, cleaning, testing, repair…)",
+            new[] { "SerialNumber", "Sku", "ProductName", "WarehouseCode", "BinCode", "Status", "Condition", "ReturnNumber", "RentalNumber", "ClientName", "StartedAtUtc", "DaysInProcess" },
+            RentalAnalyticsRules.OpenProcessFilter, null, "[{\"field\":\"StartedAtUtc\",\"dir\":\"asc\"}]");
 
         // ---- Indicadores ----
         var existingInd = await db.IndicatorDefinitions.Where(i => i.TenantId == tenantId).Select(i => i.Name).ToListAsync(ct);
@@ -292,6 +311,15 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         // fuente tiene DateField y con null el motor aplicaría LAST7). Apagado en el Pulso ("Necesita tu atención" ya los muestra).
         Indicator(PendingDiscrepanciesIndicatorName, "Descuadres entre el Kárdex y el saldo pendientes de revisar", "Ledger vs. balance discrepancies pending review",
             EntityTypes.InventoryDiscrepancy, null, count, PendingDiscrepanciesFilter, all, false, 99, module: wh);
+        // Lote 29 (Rentas R3): rentas por vencer y vencidas (fuente RENTAL, día de la compañía). Estado actual: rango ALL (la fuente
+        // tiene DateField StartDate y con null el motor aplicaría LAST7). Apagados en el Pulso, como 'Descuadres pendientes' (D16):
+        // "Necesita tu atención" ya muestra cada renta vencida o por vencer.
+        Indicator(RentalAnalyticsRules.DueSoonIndicatorName, "Rentas abiertas (Programadas o En renta) cuya fecha de recogido es hoy o en los próximos 7 días",
+            "Open rentals (scheduled or on rent) due for pickup today or within the next 7 days",
+            EntityTypes.Rental, null, count, RentalAnalyticsRules.DueSoonFilter, all, false, 100, module: wh);
+        Indicator(RentalAnalyticsRules.OverdueIndicatorName, "Rentas abiertas (Programadas o En renta) cuya fecha de recogido ya pasó",
+            "Open rentals (scheduled or on rent) whose pickup date has passed",
+            EntityTypes.Rental, null, count, RentalAnalyticsRules.OverdueFilter, all, false, 101, module: wh);
 
         // Corrección idempotente de tenants ya sembrados con la versión anterior (rango null / COD en Operación).
         var orderIndicators = await db.IndicatorDefinitions
@@ -407,6 +435,11 @@ public sealed class SystemAnalyticsSeeder(TeikemDbContext db, ITenantContext ten
         Chart(MovementsByTypeChartName, MovementsByTypeChartDescriptionEs, MovementsByTypeChartDescriptionEn,
             EntityTypes.InventoryTransaction, "TxnType", bar, null, last7, true, MovementsByTypeChartSortOrder, field: "Units", fn: sum, module: wh,
             isSystem: false, seedKey: ChartSeedKeys.MovementsByType);
+
+        // Lote 29 (Rentas R3): devoluciones de renta por motivo (fuente RENTAL_RETURN, por fecha de devolución), dona de 30 días, de
+        // sistema y apagada en el Pulso (cada usuario la enciende); oculta con el módulo Rentas apagado.
+        Chart(RentalAnalyticsRules.ReturnsByReasonChartName, "Devoluciones de renta de los últimos 30 días por motivo", "Rental returns of the last 30 days by reason",
+            EntityTypes.RentalReturn, "Reason", donut, null, last30, false, 100, module: wh);
 
         await db.SaveChangesAsync(ct);
         db.SuppressAudit = false;

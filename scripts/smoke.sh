@@ -5016,6 +5016,54 @@ expect 200 "$(req GET /api/v1/rental-processes '' "$TB28")" | jq -e '.total==0' 
 RC28=$(reconcile); echo "$RC28" | jq -e '.mismatches==[]' >/dev/null || fail "descuadre Kárdex ↔ saldo tras devoluciones y procesos: $(echo "$RC28" | jq -c .mismatches)"
 ok "devolución y proceso: D7 (EN-RENTA 422, serie en renta en un conteo 409 en vista previa y al reconciliar, sin mover nada); 403 sin rental.return/rental.extend/rental.maintenance y dar de baja sin inventory.adjust; 400 'Otro' sin notas y destino EN-RENTA, 409 serie fuera de la renta; devolución anticipada por daño DRN (TRANSFER desde EN-RENTA, serie En proceso y reservada, disponible sin ella, renta sigue En renta); proceso Pendiente→Inspección→Limpieza→Reparación→Pruebas→Lista con traslado (el disponible vuelve, Kárdex 'Proceso #id', historial) y 422 al terminar; la segunda devolución cierra la renta (Devuelta); baja con ADJUSTMENT − DAMAGE y serie dada de baja; otra compañía con Rentas encendido: 404; sin descuadre"
 
+step "reportes, indicadores y avisos de rentas (Lote 29, Rentas R3): fuentes, vistas, indicadores y gráfico de sistema, 'Necesita tu atención' con una renta que vence, módulo apagado, permiso y otra compañía"
+# Al terminar el paso anterior ninguna renta de la compañía está abierta (RP y RS Devueltas, RP2 Cancelada); S1 y S3 están disponibles.
+# Se abren dos: una Programada VENCIDA (S3, recogido hace 3 días) y una En renta que VENCE en 3 días (S1). Fechas con margen para que
+# el día UTC de dplus y el día de la compañía (Puerto Rico) no cambien el resultado.
+TOKEN=$(login "$EMAIL" "$PASS"); TREAD26=$(login "lectura6$TS@teikem.local" "$PASS")
+DS29=$(expect 200 "$(req GET /api/v1/analytics/data-sources)")
+echo "$DS29" | jq -e '(map(select(.key=="RENTAL"))[0].dateField=="StartDate") and (map(select(.key=="RENTAL_RETURN"))[0].dateField=="ReturnedOn") and (map(select(.key=="RENTAL_PROCESS"))[0].dateField=="StartedAtUtc") and (map(select(.key=="RENTAL"))[0].fields | map(.key) | index("DaysToPickup") != null and index("IsOverdue") != null and index("UnitsOnRent") != null)' >/dev/null || fail "fuentes RENTAL, RENTAL_RETURN y RENTAL_PROCESS"
+ren29() { jq -cn --arg c "$CR27P" --arg l "$LR27" --arg w "$W6P" --arg p "$P26" --arg d0 "$1" --arg d1 "$2" --arg s "$3" '{clientPublicId:$c,locationPublicId:$l,warehousePublicId:$w,startDate:$d0,pickupDate:$d1,contractNumber:"CT-29",lines:[{productPublicId:$p,serialNumbers:[$s]}]}'; }
+RV29=$(expect 200 "$(req POST /api/v1/rentals "$(ren29 "$(dplus -10)" "$(dplus -3)" "$S3")")"); RV29P=$(echo "$RV29" | jq -r .rental.publicId); RV29N=$(echo "$RV29" | jq -r .rental.number)
+expect 200 "$(req POST "/api/v1/rentals/$RV29P/schedule")" | jq -e '.rental.statusCode=="SCHEDULED" and .rental.isOverdue' >/dev/null || fail "renta programada vencida"
+RD29=$(expect 200 "$(req POST /api/v1/rentals "$(ren29 "$D0" "$(dplus 3)" "$S1")")"); RD29P=$(echo "$RD29" | jq -r .rental.publicId); RD29N=$(echo "$RD29" | jq -r .rental.number)
+expect 200 "$(req POST "/api/v1/rentals/$RD29P/schedule")" >/dev/null
+expect 200 "$(req POST "/api/v1/rentals/$RD29P/dispatch")" | jq -e '.rental.statusCode=="ON_RENT" and (.rental.isOverdue|not)' >/dev/null || fail "renta despachada que vence en 3 días"
+# "Necesita tu atención": el grupo RENTAL_DUE con las dos y la vencida como fila 'danger' (es la más antigua de las rentas).
+AT29=$(expect 200 "$(req GET /api/v1/analytics/attention)")
+echo "$AT29" | jq -e '([.groups[] | select(.code=="RENTAL_DUE")][0] | .total==2 and .route=="/warehouse/rentals" and .query.dueWithinDays=="7" and .query.overdue=="true") and ([.groups[].total] | add)==.total' >/dev/null || fail "grupo RENTAL_DUE: $(echo "$AT29" | jq -c '.groups')"
+echo "$AT29" | jq -e --arg n "$RV29N" --arg p "$RV29P" '(any(.items[]; .code=="RENTAL_DUE" and .params.number==$n and .tone=="danger" and .params.overdue=="true" and .query.rental==$p and .params.units=="1")) or .total>5' >/dev/null || fail "la renta vencida no aparece en 'Necesita tu atención': $(echo "$AT29" | jq -c '[.items[] | {code, n: .params.number}]')"
+expect 200 "$(req GET /api/v1/analytics/attention '' "$TREAD26")" | jq -e 'all(.groups[]; .code!="RENTAL_DUE")' >/dev/null || fail "sin rental.view no debe ver el aviso de rentas"
+# Indicadores, vistas y gráfico de sistema con los datos reales.
+[[ $(indval "Rentas por vencer (7 días)") == 1 ]] || fail "indicador 'Rentas por vencer (7 días)' ($(indval "Rentas por vencer (7 días)"))"
+[[ $(indval "Rentas vencidas") == 1 ]] || fail "indicador 'Rentas vencidas' ($(indval "Rentas vencidas"))"
+REPS29=$(expect 200 "$(req GET /api/v1/analytics/reports)")
+run29() { local id; id=$(echo "$REPS29" | jq -r --arg n "$1" '[.[] | select(.name==$n and .isSystem==true)][0].id'); [[ "$id" =~ ^[0-9]+$ ]] || fail "vista '$1' no sembrada"; expect 200 "$(req POST "/api/v1/analytics/reports/$id/run" '{}')"; }
+run29 "Rentas vencidas" | jq -e --arg n "$RV29N" '.total==1 and .rows[0].Number==$n and .rows[0].DaysToPickup<0' >/dev/null || fail "vista 'Rentas vencidas'"
+run29 "Rentas por vencer (7 días)" | jq -e --arg n "$RD29N" '.total==1 and .rows[0].Number==$n and .rows[0].UnitsOnRent==1' >/dev/null || fail "vista 'Rentas por vencer (7 días)'"
+run29 "Equipos en renta por cliente" | jq -e --arg c "Hospital Rentas $TS" '.total==1 and .rows[0].ClientName==$c and .rows[0].count_rows==1 and .rows[0].sum_UnitsOnRent==1 and .totals.sum_UnitsOnRent==1' >/dev/null || fail "vista 'Equipos en renta por cliente'"
+run29 "Devoluciones de renta por motivo" | jq -e '.total==3 and any(.rows[]; .Reason=="Anticipada por daño" and .count_rows==1 and .sum_Units==1) and .totals.count_rows==3' >/dev/null || fail "vista 'Devoluciones de renta por motivo'"
+run29 "Equipos en proceso" | jq -e '.total==0' >/dev/null || fail "vista 'Equipos en proceso' (los dos procesos de R2 ya terminaron)"
+CH29=$(expect 200 "$(req GET /api/v1/analytics/charts)" | jq -r '[.[] | select(.name=="Devoluciones de renta por motivo" and .isSystem==true)][0].id')
+[[ "$CH29" =~ ^[0-9]+$ ]] || fail "gráfico 'Devoluciones de renta por motivo' no sembrado"
+expect 200 "$(req GET "/api/v1/analytics/charts/$CH29/data")" | jq -e '([.points[].value] | add)==3 and (.points|length)==3' >/dev/null || fail "datos del gráfico 'Devoluciones de renta por motivo'"
+IND29=$(expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -r '[.[] | select(.name=="Rentas vencidas")][0].id')
+# Otra compañía (con Rentas encendido) no ve nada de esta: sin aviso y sin filas en la fuente.
+TB29=$(expect 200 "$(req POST /api/v1/auth/reauth '{"password":"Smoke_Admin_2026!"}' "$(login "admin$TS@smoke.local" "Smoke_Admin_2026!")")" | jq -r .accessToken)
+expect 200 "$(req PUT /api/v1/modules/ANALYTICS '{"isEnabled":true}' "$TB29")" >/dev/null
+expect 200 "$(req GET /api/v1/analytics/attention '' "$TB29")" | jq -e 'all(.groups[]; .code!="RENTAL_DUE")' >/dev/null || fail "otra compañía ve el aviso de rentas ajeno"
+expect 200 "$(req POST '/api/v1/analytics/reports/RENTAL/preview?dateRangeMode=ALL' '{"name":"x","columns":["Number"]}' "$TB29")" | jq -e '.total==0' >/dev/null || fail "otra compañía ve rentas ajenas en la fuente RENTAL"
+# Módulo Rentas apagado: ni fuentes, ni indicadores, ni aviso (404 al leer el indicador); al encenderlo vuelve todo.
+TOKEN=$(expect 200 "$(req POST /api/v1/auth/reauth "{\"password\":\"$PASS\"}")" | jq -r .accessToken)
+expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":false}')" >/dev/null
+expect 200 "$(req GET /api/v1/analytics/data-sources)" | jq -e 'all(.[]; .key!="RENTAL" and .key!="RENTAL_RETURN" and .key!="RENTAL_PROCESS")' >/dev/null || fail "fuentes de rentas con el módulo apagado"
+expect 200 "$(req GET /api/v1/analytics/indicators)" | jq -e 'all(.[]; .dataSource!="RENTAL")' >/dev/null || fail "indicadores de rentas con el módulo apagado"
+expect 404 "$(req GET "/api/v1/analytics/indicators/$IND29/value")" >/dev/null
+expect 200 "$(req GET /api/v1/analytics/attention)" | jq -e 'all(.groups[]; .code!="RENTAL_DUE")' >/dev/null || fail "aviso de rentas con el módulo apagado"
+expect 200 "$(req PUT /api/v1/modules/RENTAL_EQUIPMENT '{"isEnabled":true}')" >/dev/null
+expect 200 "$(req GET "/api/v1/analytics/indicators/$IND29/value")" | jq -e '.value==1' >/dev/null || fail "indicador de rentas al volver a encender el módulo"
+ok "fuentes RENTAL/RENTAL_RETURN/RENTAL_PROCESS con su campo de fecha; una renta vencida (Programada) y una que vence en 3 días (En renta): 'Necesita tu atención' con el grupo RENTAL_DUE (2, 'Ver todos' con dueWithinDays=7&overdue=true) y la vencida en 'danger'; Solo lectura sin rental.view no lo ve; indicadores 'Rentas por vencer (7 días)' 1 y 'Rentas vencidas' 1; vistas 'Rentas vencidas', 'Rentas por vencer (7 días)', 'Equipos en renta por cliente' (1 cliente, 1 equipo), 'Devoluciones de renta por motivo' (3) y 'Equipos en proceso' (0); gráfico por motivo (3); otra compañía sin aviso ni filas; módulo apagado: sin fuentes, sin indicadores (404) y sin aviso, y al encenderlo vuelve"
+
 step "db-reset (Lote 10): sin --yes rehúsa borrar la base"
 set +e
 DBRESET_LOG=$(cd "$ROOT" && "${MIG_CMD[@]}" -- db-reset 2>&1); DBRESET_RC=$?

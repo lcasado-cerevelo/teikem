@@ -737,6 +737,87 @@ END
 GO
 
 /* -------------------------------------------------------------------------
+   Lote 29 (Rentas R3) — reportes, indicadores y gráfico de rentas en las compañías YA CREADAS (incluidas las migradas: Advance
+   Depot y Advance Solutions). Mismo contenido que SystemAnalyticsSeeder (que siembra las compañías nuevas y la demo) y mismo
+   criterio que el bloque del Lote 15: solo compañías con contenido de análisis sembrado, idempotente por nombre (un elemento de
+   sistema no se renombra ni se borra), sin AuditLog (SQL). Se siembra en toda compañía: con el módulo Rentas apagado el API oculta
+   las fuentes RENTAL, RENTAL_RETURN y RENTAL_PROCESS y todo lo que las usa.
+   - Indicadores 'Rentas por vencer (7 días)' y 'Rentas vencidas' (RENTAL, conteo, rango ALL, apagados en el Pulso, orden 100/101).
+   - Gráfico 'Devoluciones de renta por motivo' (RENTAL_RETURN por Reason, dona, últimos 30 días, apagado en el Pulso, orden 100).
+   - Vistas 'Equipos en renta por cliente', 'Rentas por vencer (7 días)', 'Rentas vencidas', 'Devoluciones de renta por motivo' y
+     'Equipos en proceso'.
+   ------------------------------------------------------------------------- */
+DECLARE @L29Count   INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'AggregateFn' AND InternalCode = 'COUNT');
+DECLARE @L29Donut   INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReportChartType' AND InternalCode = 'DONUT');
+DECLARE @L29Wh      INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'BusinessModule' AND InternalCode = 'WAREHOUSE');
+DECLARE @L29Tenant  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'ReportVisibility' AND InternalCode = 'TENANT');
+DECLARE @L29All     INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'DateRangeMode' AND InternalCode = 'ALL');
+DECLARE @L29Last30  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'DateRangeMode' AND InternalCode = 'LAST30');
+DECLARE @L29Rental  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RENTAL');
+DECLARE @L29Return  INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RENTAL_RETURN');
+DECLARE @L29Process INT = (SELECT LookupCodeId FROM dbo.LookupCode WHERE Entity = 'EntityType' AND InternalCode = 'RENTAL_PROCESS');
+IF @L29Count IS NOT NULL AND @L29Donut IS NOT NULL AND @L29Wh IS NOT NULL AND @L29Tenant IS NOT NULL AND @L29All IS NOT NULL
+   AND @L29Last30 IS NOT NULL AND @L29Rental IS NOT NULL AND @L29Return IS NOT NULL AND @L29Process IS NOT NULL
+BEGIN
+    -- 1) Indicadores (sistema, módulo Almacén, rango ALL, apagados en el Pulso).
+    INSERT INTO dbo.IndicatorDefinition (TenantId, Name, DescriptionJson, DataSourceKey, FieldKey, AggregateFnLookupId, FilterJson,
+        BusinessModuleLookupId, IsMoney, IsSystem, OwnerUserId, VisibilityLookupId, DateRangeModeLookupId, ShowInPulse, SortOrder, IsActive)
+    SELECT t.TenantId, v.Name, v.DescriptionJson, 'RENTAL', NULL, @L29Count, v.FilterJson, @L29Wh, 0, 1, NULL, @L29Tenant, @L29All, 0, v.SortOrder, 1
+    FROM dbo.Tenant t
+    CROSS JOIN (VALUES
+        (N'Rentas por vencer (7 días)',
+         N'{"es":"Rentas abiertas (Programadas o En renta) cuya fecha de recogido es hoy o en los próximos 7 días","en":"Open rentals (scheduled or on rent) due for pickup today or within the next 7 days"}',
+         N'{"and":[{"field":"IsOpen","op":"isTrue"},{"field":"DaysToPickup","op":"gte","value":0},{"field":"DaysToPickup","op":"lte","value":7}]}', 100),
+        (N'Rentas vencidas',
+         N'{"es":"Rentas abiertas (Programadas o En renta) cuya fecha de recogido ya pasó","en":"Open rentals (scheduled or on rent) whose pickup date has passed"}',
+         N'{"and":[{"field":"IsOverdue","op":"isTrue"}]}', 101)
+    ) AS v(Name, DescriptionJson, FilterJson, SortOrder)
+    WHERE EXISTS (SELECT 1 FROM dbo.IndicatorDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition i WHERE i.TenantId = t.TenantId AND i.Name = v.Name);
+
+    -- 2) Gráfico (sistema, dona de 30 días, apagado en el Pulso).
+    INSERT INTO dbo.ChartDefinition (TenantId, Name, DescriptionJson, DataSourceKey, GroupByField, FieldKey, AggregateFnLookupId, ChartTypeLookupId,
+        FilterJson, BusinessModuleLookupId, IsMoney, IsSystem, OwnerUserId, VisibilityLookupId, DateRangeModeLookupId, ShowInPulse, SortOrder, IsActive)
+    SELECT t.TenantId, N'Devoluciones de renta por motivo',
+        N'{"es":"Devoluciones de renta de los últimos 30 días por motivo","en":"Rental returns of the last 30 days by reason"}',
+        'RENTAL_RETURN', 'Reason', NULL, @L29Count, @L29Donut, NULL, @L29Wh, 0, 1, NULL, @L29Tenant, @L29Last30, 0, 100, 1
+    FROM dbo.Tenant t
+    WHERE EXISTS (SELECT 1 FROM dbo.ChartDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition c WHERE c.TenantId = t.TenantId AND c.Name = N'Devoluciones de renta por motivo');
+
+    -- 3) Vistas (sistema, visibles a la compañía).
+    INSERT INTO dbo.ReportDefinition (TenantId, BaseEntityTypeLookupId, Name, DescriptionJson, VisibilityLookupId, OwnerUserId, IsSystem,
+        ColumnsJson, FilterJson, GroupJson, SortJson, IsActive)
+    SELECT t.TenantId, v.EntityTypeLookupId, v.Name, v.DescriptionJson, @L29Tenant, NULL, 1, v.ColumnsJson, v.FilterJson, v.GroupJson, v.SortJson, 1
+    FROM dbo.Tenant t
+    CROSS JOIN (VALUES
+        (@L29Rental, N'Equipos en renta por cliente',
+         N'{"es":"Rentas En renta y equipos en el cliente, por cliente","en":"Rentals on rent and units at the client, by client"}',
+         N'[]', N'{"and":[{"field":"StatusCode","op":"eq","value":"ON_RENT"}]}',
+         N'{"by":["ClientName"],"aggregates":[{"fn":"COUNT"},{"fn":"SUM","field":"UnitsOnRent"}],"totals":true}', NULL),
+        (@L29Rental, N'Rentas por vencer (7 días)',
+         N'{"es":"Rentas abiertas cuya fecha de recogido es hoy o en los próximos 7 días","en":"Open rentals due for pickup today or within the next 7 days"}',
+         N'["Number","ClientName","LocationName","WarehouseCode","Status","PickupDate","DaysToPickup","Units","UnitsOnRent","ContractNumber"]',
+         N'{"and":[{"field":"IsOpen","op":"isTrue"},{"field":"DaysToPickup","op":"gte","value":0},{"field":"DaysToPickup","op":"lte","value":7}]}',
+         NULL, N'[{"field":"PickupDate","dir":"asc"}]'),
+        (@L29Rental, N'Rentas vencidas',
+         N'{"es":"Rentas abiertas cuya fecha de recogido ya pasó","en":"Open rentals whose pickup date has passed"}',
+         N'["Number","ClientName","LocationName","WarehouseCode","Status","PickupDate","DaysToPickup","Units","UnitsOnRent","ContractNumber"]',
+         N'{"and":[{"field":"IsOverdue","op":"isTrue"}]}', NULL, N'[{"field":"PickupDate","dir":"asc"}]'),
+        (@L29Return, N'Devoluciones de renta por motivo',
+         N'{"es":"Devoluciones de renta y equipos devueltos por motivo","en":"Rental returns and returned units by reason"}',
+         N'[]', NULL, N'{"by":["Reason"],"aggregates":[{"fn":"COUNT"},{"fn":"SUM","field":"Units"}],"totals":true}', NULL),
+        (@L29Process, N'Equipos en proceso',
+         N'{"es":"Equipos devueltos con su proceso abierto (inspección, limpieza, pruebas, reparación…)","en":"Returned equipment with an open process (inspection, cleaning, testing, repair…)"}',
+         N'["SerialNumber","Sku","ProductName","WarehouseCode","BinCode","Status","Condition","ReturnNumber","RentalNumber","ClientName","StartedAtUtc","DaysInProcess"]',
+         N'{"and":[{"field":"IsOpen","op":"isTrue"}]}', NULL, N'[{"field":"StartedAtUtc","dir":"asc"}]')
+    ) AS v(EntityTypeLookupId, Name, DescriptionJson, ColumnsJson, FilterJson, GroupJson, SortJson)
+    WHERE EXISTS (SELECT 1 FROM dbo.ReportDefinition x WHERE x.TenantId = t.TenantId AND x.IsSystem = 1)
+      AND NOT EXISTS (SELECT 1 FROM dbo.ReportDefinition r WHERE r.TenantId = t.TenantId AND r.BaseEntityTypeLookupId = v.EntityTypeLookupId AND r.Name = v.Name);
+END
+GO
+
+/* -------------------------------------------------------------------------
    3B) STATUS CAPABILITY por defecto (TenantId NULL) — Lote 2
        EDIT_CONTRACT no permitido en contratos EXPIRED/CANCELLED (el tenant lo
        puede cambiar desde /status/capabilities/CONTRACT).

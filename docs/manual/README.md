@@ -140,6 +140,11 @@ por capítulo, lo que cada lote deja disponible para el usuario final y para sop
     (Pendiente → Inspección → Limpieza → Pruebas → Lista, con Reparación y Esperando piezas; `rental.maintenance`; "Lista" libera el equipo
     y "Dar de baja" lo saca del inventario con motivo Daño y pide además `inventory.adjust`) y los equipos en renta en el **conteo
     cíclico** (D7: EN-RENTA no se cuenta, 422; una serie en renta en un conteo, 409).
+    Lote 29 (Rentas R3, sección 10): **reportes, indicadores y avisos** — fuentes de Análisis Rentas, Devoluciones de renta y Proceso de
+    equipos devueltos (campos, fechas y relaciones), vistas de sistema "Equipos en renta por cliente", "Rentas por vencer (7 días)",
+    "Rentas vencidas", "Devoluciones de renta por motivo" y "Equipos en proceso", indicadores "Rentas por vencer (7 días)" y "Rentas
+    vencidas", gráfico "Devoluciones de renta por motivo" y el aviso de rentas vencidas o por vencer en "Necesita tu atención"; todo con
+    `rental.view` y oculto con el módulo Rentas apagado.
 
 ## Manual de pantallas (frontend web)
 
@@ -226,7 +231,9 @@ código y la zona de una posición no cambian. La sección "Lote 27" recoge los 
 preguntas sobre por qué el en mano no baja al despachar, dónde ver lo rentado, qué es una renta vencida, si la tarifa se cobra y si una extensión necesita
 aprobación. La sección "Lote 28" recoge los mensajes de la devolución de renta, del proceso del equipo devuelto y del conteo con equipos en renta
 (D7), y las preguntas sobre por qué un equipo devuelto sigue "No disponible", devolver solo una parte o a otro almacén, quitar pasos del
-proceso y qué pasa con un equipo dado de baja. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
+proceso y qué pasa con un equipo dado de baja. La sección "Lote 29" recoge los 404 de los reportes de rentas (sin `rental.view` o con el módulo
+apagado) y las preguntas sobre dónde ver las rentas que vencen, por qué una Programada aparece vencida, el día de la compañía y el aviso
+`RENTAL_DUE` mientras llegan las pantallas. La sección "Lote 12" recoge los mensajes de marca y modelo, del ajuste con
 nota, del teléfono de proveedor, de la orden de compra, del cupo en bloque y de los reportes PDF, y las preguntas sobre el
 reporte de inventario (productos con 0, valor "—"), el reporte de ajustes (saldos iniciales), el origen del cupo de las
 posiciones y cómo corregirlo en bloque. La sección "Lote 13" recoge los mensajes del ciclo de estatus del recibo, del encabezado

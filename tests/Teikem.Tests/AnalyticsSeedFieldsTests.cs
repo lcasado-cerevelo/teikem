@@ -12,6 +12,7 @@ using Xunit;
 using Trip = Teikem.Domain.Trips.Trip;
 using TripRoute = Teikem.Domain.Trips.Route;
 using RouteStop = Teikem.Domain.Trips.RouteStop;
+using RentalAnalyticsRules = Teikem.Domain.Wms.RentalAnalyticsRules;
 using TripOrder = Teikem.Domain.Trips.TripOrder;
 
 namespace Teikem.Tests;
@@ -840,5 +841,156 @@ public class AnalyticsSeedFieldsTests
             Assert.Equal(expected, counts.FilterJson);
         }
         Assert.Equal("{\"and\":[{\"field\":\"StatusCode\",\"op\":\"eq\",\"value\":\"RECONCILED_VARIANCE\"}]}", SystemAnalyticsSeeder.ReconciledCountsWithVarianceFilter);
+    }
+
+    // ================================================================ Lote 29 — Rentas (R3)
+
+    private static readonly string[] RentalSources = { EntityTypes.Rental, EntityTypes.RentalReturn, EntityTypes.RentalProcess };
+
+    private static Teikem.Infrastructure.Analytics.IDataSource RentalSource(string key)
+    {
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var db = InMemoryDb(tenant);
+        var lookups = new FakeLookups();
+        return key switch
+        {
+            EntityTypes.Rental => new RentalDataSource(db, lookups, tenant),
+            EntityTypes.RentalReturn => new RentalReturnDataSource(db, lookups, tenant),
+            EntityTypes.RentalProcess => new RentalProcessDataSource(db, lookups, tenant),
+            _ => throw new ArgumentOutOfRangeException(nameof(key)),
+        };
+    }
+
+    [Fact]
+    public async Task Lote29_rental_reports_indicators_and_chart_are_seeded_in_the_warehouse_module_off_the_pulse()
+    {
+        var (_, reports, indicators, charts) = await SeedAsync(RentalSources, null);
+        Assert.Equal(new[]
+        {
+            RentalAnalyticsRules.OnRentByClientReportName, RentalAnalyticsRules.DueSoonReportName, RentalAnalyticsRules.OverdueReportName,
+            RentalAnalyticsRules.ReturnsByReasonReportName, RentalAnalyticsRules.InProcessReportName,
+        }.OrderBy(n => n, StringComparer.Ordinal), reports.OrderBy(n => n, StringComparer.Ordinal));
+        Assert.Equal(new[] { (RentalAnalyticsRules.DueSoonIndicatorName, EntityTypes.Rental), (RentalAnalyticsRules.OverdueIndicatorName, EntityTypes.Rental) },
+            indicators.OrderBy(i => i.Name, StringComparer.Ordinal));
+        Assert.Equal((RentalAnalyticsRules.ReturnsByReasonChartName, EntityTypes.RentalReturn), Assert.Single(charts));
+        Assert.Equal(("Rentas por vencer (7 días)", "Rentas vencidas", "Devoluciones de renta por motivo"),
+            (RentalAnalyticsRules.DueSoonIndicatorName, RentalAnalyticsRules.OverdueIndicatorName, RentalAnalyticsRules.ReturnsByReasonChartName));
+
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        foreach (var name in new[] { RentalAnalyticsRules.DueSoonIndicatorName, RentalAnalyticsRules.OverdueIndicatorName })
+        {
+            var i = await db.IndicatorDefinitions.AsNoTracking().SingleAsync(x => x.Name == name);
+            Assert.Equal((AggregateFns.Count, DateRangeModes.All, BusinessModules.Warehouse, ReportVisibilities.Tenant),
+                (lookups.CodeOf(i.AggregateFnLookupId), lookups.CodeOf(i.DateRangeModeLookupId!.Value), lookups.CodeOf(i.BusinessModuleLookupId), lookups.CodeOf(i.VisibilityLookupId)));
+            Assert.True(i.IsSystem && i.IsActive);
+            Assert.False(i.ShowInPulse);   // como 'Descuadres pendientes' (D16): "Necesita tu atención" ya las muestra
+            Assert.Null(i.FieldKey);
+        }
+        Assert.Equal(RentalAnalyticsRules.DueSoonFilter, (await db.IndicatorDefinitions.AsNoTracking().SingleAsync(x => x.Name == RentalAnalyticsRules.DueSoonIndicatorName)).FilterJson);
+        Assert.Equal(RentalAnalyticsRules.OverdueFilter, (await db.IndicatorDefinitions.AsNoTracking().SingleAsync(x => x.Name == RentalAnalyticsRules.OverdueIndicatorName)).FilterJson);
+
+        var chart = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.Name == RentalAnalyticsRules.ReturnsByReasonChartName);
+        Assert.Equal(("Reason", (string?)null, AggregateFns.Count, ChartTypes.Donut, DateRangeModes.Last30, BusinessModules.Warehouse),
+            (chart.GroupByField, chart.FieldKey, lookups.CodeOf(chart.AggregateFnLookupId), lookups.CodeOf(chart.ChartTypeLookupId),
+             lookups.CodeOf(chart.DateRangeModeLookupId!.Value), lookups.CodeOf(chart.BusinessModuleLookupId)));
+        Assert.True(chart.IsSystem);
+        Assert.False(chart.ShowInPulse);
+
+        var byClient = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == RentalAnalyticsRules.OnRentByClientReportName);
+        Assert.Equal((EntityTypes.Rental, RentalAnalyticsRules.OnRentFilter, RentalAnalyticsRules.OnRentByClientGroup, "[]"),
+            (lookups.CodeOf(byClient.BaseEntityTypeLookupId), byClient.FilterJson, byClient.GroupJson, byClient.ColumnsJson));
+        var byReason = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == RentalAnalyticsRules.ReturnsByReasonReportName);
+        Assert.Equal((EntityTypes.RentalReturn, RentalAnalyticsRules.ReturnsByReasonGroup), (lookups.CodeOf(byReason.BaseEntityTypeLookupId), byReason.GroupJson));
+        var inProcess = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == RentalAnalyticsRules.InProcessReportName);
+        Assert.Equal((EntityTypes.RentalProcess, RentalAnalyticsRules.OpenProcessFilter), (lookups.CodeOf(inProcess.BaseEntityTypeLookupId), inProcess.FilterJson));
+        var dueView = await db.ReportDefinitions.AsNoTracking().SingleAsync(r => r.Name == RentalAnalyticsRules.DueSoonReportName && r.BaseEntityTypeLookupId == byClient.BaseEntityTypeLookupId);
+        Assert.Equal(RentalAnalyticsRules.DueSoonFilter, dueView.FilterJson);
+        Assert.Contains("\"PickupDate\"", dueView.SortJson);
+        Assert.All(await db.ReportDefinitions.AsNoTracking().Where(r => r.BaseEntityTypeLookupId == byClient.BaseEntityTypeLookupId).ToListAsync(),
+            r => Assert.True(r.IsSystem && r.OwnerUserId == null && lookups.CodeOf(r.VisibilityLookupId) == ReportVisibilities.Tenant));
+    }
+
+    [Fact]
+    public async Task Every_lote29_seeded_field_exists_in_its_rental_data_source()
+    {
+        var (uses, _, _, _) = await SeedAsync(RentalSources, null);
+        Assert.NotEmpty(uses);
+        var known = RentalSources.ToDictionary(s => s, s => RentalSource(s).Fields.Select(f => f.Key).ToHashSet(StringComparer.OrdinalIgnoreCase));
+        var missing = uses.Where(u => !known[u.Source].Contains(u.Field)).Select(u => $"{u.Source} · {u.Where}: '{u.Field}'").Distinct().ToList();
+        Assert.True(missing.Count == 0, "Campos sembrados que la fuente no expone:\n" + string.Join("\n", missing));
+        // Los campos de los filtros tienen el tipo que el filtro compara.
+        var rental = RentalSource(EntityTypes.Rental).Fields.ToDictionary(f => f.Key, f => f.Type);
+        Assert.Equal((DataFieldType.Bool, DataFieldType.Number, DataFieldType.Bool), (rental["IsOpen"], rental["DaysToPickup"], rental["IsOverdue"]));
+    }
+
+    [Fact]
+    public async Task Lote29_reseeding_is_idempotent_and_does_not_depend_on_the_rentals_module()
+    {
+        // El seeder no lee los módulos de la compañía (aquí no hay ninguno encendido: Rentas "apagado") y siembra igual; el API oculta
+        // el contenido con el módulo apagado (RentalAnalyticsTests). Sembrar dos veces no duplica.
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        Assert.False(await db.TenantModules.AnyAsync());
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+
+        foreach (var name in new[] { RentalAnalyticsRules.DueSoonIndicatorName, RentalAnalyticsRules.OverdueIndicatorName })
+            Assert.Equal(1, await db.IndicatorDefinitions.CountAsync(i => i.TenantId == TenantId && i.Name == name));
+        Assert.Equal(1, await db.ChartDefinitions.CountAsync(c => c.TenantId == TenantId && c.Name == RentalAnalyticsRules.ReturnsByReasonChartName));
+        foreach (var name in new[] { RentalAnalyticsRules.OnRentByClientReportName, RentalAnalyticsRules.DueSoonReportName, RentalAnalyticsRules.OverdueReportName,
+                     RentalAnalyticsRules.ReturnsByReasonReportName, RentalAnalyticsRules.InProcessReportName })
+            Assert.Equal(1, await db.ReportDefinitions.CountAsync(r => r.TenantId == TenantId && r.Name == name));
+
+        // Un indicador de sistema que la compañía apagó en su Pulso o al que le cambió el rango no se pisa al resembrar.
+        var due = await db.IndicatorDefinitions.SingleAsync(i => i.Name == RentalAnalyticsRules.DueSoonIndicatorName);
+        due.ShowInPulse = true;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        Assert.True((await db.IndicatorDefinitions.AsNoTracking().SingleAsync(i => i.Name == RentalAnalyticsRules.DueSoonIndicatorName)).ShowInPulse);
+    }
+
+    [Fact]
+    public async Task Lote29_the_sql_seed_gives_the_same_rental_content_to_existing_companies()
+    {
+        var seed = File.ReadAllText(Path.Combine(TripCatalogTests.RepoRoot(), "Diseño", "logistica-db-seed.sql")).Replace("\r\n", "\n");
+        var start = seed.IndexOf("Lote 29 (Rentas R3) — reportes, indicadores y gráfico de rentas en las compañías YA CREADAS", StringComparison.Ordinal);
+        Assert.True(start > 0, "Falta el bloque del Lote 29 en logistica-db-seed.sql");
+        var block = seed[start..];
+        block = block[..block.IndexOf("\nGO", StringComparison.Ordinal)];
+
+        // Mismos filtros, agrupaciones, columnas y nombres que SystemAnalyticsSeeder (las compañías nuevas).
+        var tenant = new TenantContext { TenantId = TenantId, UserId = 1 };
+        var lookups = new FakeLookups();
+        using var db = InMemoryDb(tenant);
+        await new SystemAnalyticsSeeder(db, tenant, lookups).SeedForTenantAsync(TenantId, default);
+        foreach (var i in await db.IndicatorDefinitions.AsNoTracking().Where(i => i.DataSourceKey == EntityTypes.Rental).ToListAsync())
+        {
+            Assert.Contains($"N'{i.Name}'", block);
+            Assert.Contains($"N'{i.FilterJson}', {i.SortOrder})", block);
+        }
+        var chart = await db.ChartDefinitions.AsNoTracking().SingleAsync(c => c.DataSourceKey == EntityTypes.RentalReturn);
+        Assert.Contains($"N'{chart.Name}'", block);
+        Assert.Contains("'RENTAL_RETURN', 'Reason', NULL, @L29Count, @L29Donut, NULL, @L29Wh, 0, 1, NULL, @L29Tenant, @L29Last30, 0, 100, 1", block);
+        var rentalTypes = RentalSources.Select(s => lookups.GetIdAsync(LookupDomains.EntityType, s).Result).ToList();
+        var reports = await db.ReportDefinitions.AsNoTracking().Where(r => rentalTypes.Contains(r.BaseEntityTypeLookupId)).ToListAsync();
+        Assert.Equal(5, reports.Count);
+        foreach (var r in reports)
+        {
+            Assert.Contains($"N'{r.Name}'", block);
+            Assert.Contains($"N'{r.ColumnsJson}'", block);
+            if (r.FilterJson is not null) Assert.Contains($"N'{r.FilterJson}'", block);
+            if (r.GroupJson is not null) Assert.Contains($"N'{r.GroupJson}'", block);
+            if (r.SortJson is not null) Assert.Contains($"N'{r.SortJson}'", block);
+        }
+        // Solo compañías con contenido de análisis sembrado e idempotente por nombre (como el bloque del Lote 15).
+        Assert.Contains("AND NOT EXISTS (SELECT 1 FROM dbo.IndicatorDefinition i WHERE i.TenantId = t.TenantId AND i.Name = v.Name)", block);
+        Assert.Contains("AND NOT EXISTS (SELECT 1 FROM dbo.ChartDefinition c WHERE c.TenantId = t.TenantId AND c.Name = N'Devoluciones de renta por motivo')", block);
+        Assert.Contains("AND NOT EXISTS (SELECT 1 FROM dbo.ReportDefinition r WHERE r.TenantId = t.TenantId AND r.BaseEntityTypeLookupId = v.EntityTypeLookupId AND r.Name = v.Name)", block);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(block, @"WHERE EXISTS \(SELECT 1 FROM dbo\.\w+Definition x WHERE x\.TenantId = t\.TenantId AND x\.IsSystem = 1\)").Count);
     }
 }

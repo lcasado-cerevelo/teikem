@@ -216,4 +216,27 @@ public class OwnedEntityResolverCoverageTests
         var resolvers = p.GetServices<IOwnedEntityResolver>().Where(r => r.EntityTypeCode is EntityTypes.RentalReturn or EntityTypes.RentalProcess).ToList();
         Assert.Equal(2, resolvers.Count);
     }
+
+    [Fact]
+    public void Rental_data_sources_and_the_attention_provider_resolve_from_the_container()
+    {
+        // Lote 29 (Rentas R3): las tres fuentes por su código EntityType (sin ellas, un indicador sembrado haría fallar el Pulso) y el
+        // aviso de rentas vencidas o por vencer en "Necesita tu atención", una sola vez cada uno.
+        using var sp = BuildContainer();
+        using var scope = sp.CreateScope();
+        var p = scope.ServiceProvider;
+        var registry = p.GetRequiredService<IDataSourceRegistry>();
+        foreach (var (key, type) in new[] { (EntityTypes.Rental, "RentalDataSource"), (EntityTypes.RentalReturn, "RentalReturnDataSource"), (EntityTypes.RentalProcess, "RentalProcessDataSource") })
+        {
+            Assert.True(registry.TryGet(key, out var source), $"Falta la fuente {key}");
+            Assert.Equal(type, source.GetType().Name);
+            Assert.Equal(ModuleKeys.RentalEquipment, source.TenantModule);
+        }
+        Assert.Equal(registry.All.Count, p.GetServices<IDataSource>().Count());   // claves únicas
+        var providers = p.GetServices<IAttentionItemProvider>().ToList();
+        var rental = Assert.Single(providers, x => x.Code == RentalDueAttentionProvider.ItemCode);
+        Assert.Equal((ModuleKeys.RentalEquipment, PermissionCatalog.RentalView, BusinessModules.Warehouse), (rental.TenantModule, rental.RequiredPermission, rental.BusinessModule));
+        Assert.Equal(providers.Count, providers.Select(x => x.Code).Distinct().Count());
+        Assert.NotNull(p.GetRequiredService<AttentionFeedService>());
+    }
 }

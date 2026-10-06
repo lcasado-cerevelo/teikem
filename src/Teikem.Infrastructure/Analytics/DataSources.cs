@@ -52,6 +52,13 @@ public interface IDataSource
     string DefaultBusinessModule { get; }
     IReadOnlyList<DataField> Fields { get; }
     IReadOnlyList<DataRelation> Relations { get; }
+    /// <summary>
+    /// Lote 29 (Rentas R3): módulo de la compañía (ModuleKeys) que debe estar encendido para leer la fuente, además del permiso de
+    /// su EntityType y del módulo de negocio de cada definición. null (por defecto) = sin requisito propio. Lo usan las fuentes de
+    /// un submódulo que se apaga aparte de su módulo de negocio (Rentas dentro de Almacén): con el módulo apagado la fuente, sus
+    /// vistas, indicadores y gráficos no se listan ni se leen (404), igual que una fuente sin permiso.
+    /// </summary>
+    string? TenantModule => null;
     Task<List<DataRow>> LoadAsync(DataQuery query, CancellationToken ct);
 }
 

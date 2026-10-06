@@ -5,8 +5,9 @@ Rentas permite **rentar equipos propios con número de serie** (camas de hospita
 **bloque R1 (Lote 27)**: la renta desde que se crea hasta que se despacha, las **extensiones** de la fecha de recogido y la
 **cancelación**; y el **bloque R2 (Lote 28)**: la **devolución de renta** (con su motivo, total o parcial, al término o anticipada), el
 **proceso configurable** del equipo devuelto (inspección, limpieza, pruebas, reparación… hasta "Lista" o "Dada de baja") y los equipos
-en renta en el **conteo cíclico** (D7). Los reportes e indicadores llegan con el R3. Todo lo de este capítulo es del servidor (API); las
-pantallas llegan con la web de Rentas (F-R1 y F-R2).
+en renta en el **conteo cíclico** (D7); y el **bloque R3 (Lote 29)**: los **reportes, indicadores y el gráfico** de rentas en Análisis y
+el aviso de **rentas vencidas o por vencer** en "Necesita tu atención" del Pulso (sección 10). Todo lo de este capítulo es del servidor
+(API); las pantallas llegan con la web de Rentas (F-R1 y F-R2).
 
 Decisiones del dueño que gobiernan el módulo:
 - **El equipo rentado sigue siendo nuestro** (D1): no sale del inventario. Queda en la posición **EN-RENTA** del almacén, con estatus de
@@ -35,6 +36,8 @@ Decisiones del dueño que gobiernan el módulo:
 | Avanzar el proceso y terminarlo ("Lista") | `rental.maintenance` | `POST /api/v1/rental-processes/{id}/advance`, `POST /api/v1/rental-processes/{id}/complete` |
 | Dar de baja el equipo en su proceso | `rental.maintenance` **y** `inventory.adjust` | `POST /api/v1/rental-processes/{id}/scrap` |
 | Historial de estatus de la renta / del proceso | `rental.view` | `GET /api/v1/status/history/RENTAL/{id}`, `GET /api/v1/status/history/RENTAL_PROCESS/{id}` |
+| Reportes, indicadores y gráfico de rentas (Análisis) | `analytics.view` **y** `rental.view` | `GET /api/v1/analytics/reports`, `POST /api/v1/analytics/reports/{id}/run`, `GET /api/v1/analytics/indicators/{id}/value`, `GET /api/v1/analytics/charts/{id}/data`, `POST /api/v1/analytics/reports/RENTAL/preview` (sección 10) |
+| Aviso de rentas vencidas o por vencer en "Necesita tu atención" | `pulse.attention` **y** `rental.view` | `GET /api/v1/analytics/attention` (sección 10.5) |
 
 - **Módulo**: `RENTAL_EQUIPMENT`, que ahora se llama **"Rentas"**, está en la categoría **Almacén** y **depende de `WMS_LOTSERIAL`**
   (Inventario y trazabilidad): no se enciende sin él y **apagar `WMS_LOTSERIAL` apaga Rentas** (y su dependiente "Facturación de
@@ -376,7 +379,98 @@ Mensajes del inventario que se ven al intentar mover una serie rentada (por las 
 | Recolectar una serie En renta | `La serie {s} no está disponible en el almacén (no existe, ya salió o está en otra posición o lote).` | 409 |
 | Recibir de nuevo (devolución normal) una serie En renta | `La serie {s} ya está en inventario.` | 409 |
 
-## 10. Kárdex, auditoría y datos
+## 10. Reportes, indicadores y avisos (bloque R3)
+
+Las rentas, sus devoluciones y los procesos de los equipos devueltos se pueden consultar en **Análisis** (vistas, indicadores y gráficos,
+con los filtros, columnas y agrupaciones de siempre) y en el **Pulso** ("Necesita tu atención"). Reglas que aplican a todo lo de esta
+sección:
+
+- **Quién**: hace falta `rental.view` (además de `analytics.view` para Análisis o `pulse.attention` para el Pulso). Sin `rental.view` las
+  fuentes de rentas no aparecen en la lista de fuentes y sus vistas, indicadores y gráficos no se listan ni se leen (404, como una fuente
+  sin permiso).
+- **Módulo**: con el módulo **Rentas** (`RENTAL_EQUIPMENT`) **apagado**, las fuentes de rentas, sus vistas, indicadores y gráficos (los de
+  sistema y los que haya creado la compañía) y el aviso **desaparecen**; leer uno por su id responde 404 (`Indicador '{id}' no
+  encontrado.`, `Gráfico '{id}' no encontrado.`, `Vista '{id}' no encontrado.`). Al volver a encender el módulo, todo vuelve tal como
+  estaba (no se borra nada). Como Rentas depende de Inventario y trazabilidad, apagar `WMS_LOTSERIAL` también las oculta.
+- **Compañía**: cada compañía ve solo sus rentas, devoluciones y procesos.
+- **"Hoy"** es el día de la **zona horaria de la compañía** (Ajustes de la compañía): "vencida", "por vencer", "días para el recogido" y
+  "días en proceso" se calculan al momento de leer, no se guardan. "Vencida" no es un estatus.
+
+### 10.1 Fuentes de datos
+
+| Fuente (clave) | Una fila por | Campo de fecha (rango) | Campos |
+|---|---|---|---|
+| **Rentas** (`RENTAL`) | renta | **Fecha de inicio** (`StartDate`) | Número, cliente, localidad, almacén de origen, estatus y su código, **Abierta** (Programada o En renta), fecha de inicio, **fecha de recogido** (vigente), recogido pactado, **Días para el recogido** (negativo = ya pasó), **Vencida** (abierta con el recogido antes de hoy), extensiones, días extendidos (recogido vigente − pactado), **Equipos** (activos), **Equipos en el cliente** (despachados y sin devolver), equipos devueltos, número y fecha del contrato, transporte estimado (dinero) y su moneda, fechas de despacho, cierre y alta. Relaciones: Cliente, Localidad, Almacén |
+| **Devoluciones de renta** (`RENTAL_RETURN`) | devolución DRN | **Fecha de devolución** (`ReturnedOn`) | Número, renta, cliente, localidad, fecha de devolución, fecha de recogido de la renta, **Motivo** y su código, **Anticipada** (antes de la fecha de recogido vigente), días de anticipación, **Condición** (las condiciones de sus equipos, en orden Buena, Dañado, Incompleto; p. ej. "Buena, Incompleto") y su código, **Con equipo dañado**, equipos (total, en buena condición, dañados, incompletos), equipos con proceso, procesos abiertos, recogido estimado (dinero) y su moneda, fecha de registro. Relaciones: Renta, Cliente |
+| **Proceso de equipos devueltos** (`RENTAL_PROCESS`) | proceso de un equipo | **Iniciado el** (`StartedAtUtc`) | Serie, producto (SKU y nombre), almacén, posición actual, estatus y su código, **Abierto** (no llegó a Lista ni a Dada de baja), devolución, renta, cliente, **Condición al volver**, inicio, fin, **Días en proceso** (de la compañía, hasta el fin o hasta hoy). Relaciones: Producto, Almacén, Devolución, Renta |
+
+- Las tres fuentes admiten los **campos personalizados** de su entidad (`RENTAL`, `RENTAL_RETURN`, `RENTAL_PROCESS`) como columnas.
+- El **rango de fechas** de un indicador o gráfico filtra por el campo de fecha de la fuente (días de la compañía). Para el estado actual
+  (lo que está vencido hoy, lo que está en proceso hoy) se usa el rango **"Todo"** (ALL): así vienen sembrados.
+- Tope: 20 000 filas por fuente (las más recientes por su fecha), como el resto de las fuentes.
+
+### 10.2 Vistas (reportes) de sistema
+
+Se siembran en cada compañía (son de sistema: no se editan ni se borran). Corren con el rango "Todo" salvo que se
+indique otro al correrlas.
+
+| Vista | Fuente | Qué muestra | Filtro | Columnas / agrupación | Orden |
+|---|---|---|---|---|---|
+| **Equipos en renta por cliente** | Rentas | Lo que está **en renta hoy**, por cliente | Estatus = En renta | Agrupada por **Cliente**: número de rentas y **suma de equipos en el cliente**, con fila de totales | — |
+| **Rentas por vencer (7 días)** | Rentas | Rentas abiertas que se recogen **hoy o en los próximos 7 días** | Abierta y días para el recogido entre 0 y 7 | Número, cliente, localidad, almacén, estatus, fecha de recogido, días para el recogido, equipos, equipos en el cliente, contrato | Fecha de recogido (las más próximas arriba) |
+| **Rentas vencidas** | Rentas | Rentas abiertas con la fecha de recogido **ya pasada** | Vencida | Las mismas columnas | Fecha de recogido (las más vencidas arriba) |
+| **Devoluciones de renta por motivo** | Devoluciones de renta | Devoluciones por **motivo** | — | Agrupada por **Motivo**: número de devoluciones y suma de equipos devueltos, con totales | — |
+| **Equipos en proceso** | Proceso de equipos devueltos | Los equipos devueltos que **siguen en su proceso** | Abierto | Serie, SKU, producto, almacén, posición, estatus, condición, devolución, renta, cliente, iniciado el, días en proceso | Iniciado el (los más viejos arriba) |
+
+"Abiertas" = **Programadas o En renta** (una renta Programada cuyo recogido ya pasó también cuenta como vencida: el equipo está apartado).
+
+### 10.3 Indicadores de sistema
+
+| Indicador | Fuente | Cálculo | Rango | Pulso |
+|---|---|---|---|---|
+| **Rentas por vencer (7 días)** | Rentas | Conteo de rentas abiertas con el recogido entre hoy y hoy + 7 | Todo | Apagado (cada usuario lo puede encender con "mostrar en Pulso") |
+| **Rentas vencidas** | Rentas | Conteo de rentas abiertas con el recogido antes de hoy | Todo | Apagado |
+
+Están en el módulo de negocio **Almacén** y vienen apagados en el Pulso porque "Necesita tu atención" ya muestra cada renta vencida o
+por vencer (mismo criterio que "Descuadres pendientes").
+
+### 10.4 Gráfico de sistema
+
+**Devoluciones de renta por motivo**: dona con el número de devoluciones de los **últimos 30 días** (por fecha de devolución) por motivo
+(Fin del contrato, Anticipada por daño, Anticipada a pedido del cliente, Otro). Apagado en el Pulso; cada usuario puede cambiar el rango o
+encenderlo.
+
+### 10.5 Aviso "Necesita tu atención" (Pulso)
+
+`GET /api/v1/analytics/attention` suma, al lado de los descuadres del inventario, una fila por cada renta **abierta** (Programada o En
+renta) que está **vencida** o que **vence en los próximos 7 días** (recogido entre hoy y hoy + 7, ambos incluidos):
+
+- **Quién lo ve**: quien tiene `pulse.attention` y `rental.view`, con el módulo Rentas encendido. Sin `rental.view` o con el módulo
+  apagado, el aviso no aporta filas ni cuenta en el total (no da error).
+- **Orden**: las de recogido más antiguo primero (las más vencidas arriba); junto con los demás avisos, el panel muestra los 5 más
+  antiguos.
+- **Tono**: rojo (`danger`) si está vencida; ámbar (`warn`) si está por vencer.
+- **Datos de la fila** (`params`): número de renta, cliente, localidad, almacén, fecha de recogido (aaaa-mm-dd), días para el recogido
+  (negativo = vencida), `overdue` (true/false), equipos sin devolver y estatus. `sinceUtc` = medianoche (hora de la compañía) del día de
+  recogido. Código del aviso: **`RENTAL_DUE`**.
+- **"Revisar"** abre `/warehouse/rentals?rental={publicId}` y **"Ver todos (N)"** `/warehouse/rentals?dueWithinDays=7&overdue=true` (la lista
+  de rentas con los filtros "por vencer" y "vencidas" juntos, sección 2.6).
+- El aviso desaparece solo cuando la renta deja de estar vencida o por vencer: al **extenderla** (si la nueva fecha queda a más de 7
+  días), al **devolver** todos sus equipos o al **cancelarla** (si estaba Programada).
+
+Mientras llegan las pantallas de Rentas (bloques F-R1 y F-R2), la web todavía no tiene la pantalla `/warehouse/rentals` ni el texto de este
+aviso: el panel muestra la fila con su código `RENTAL_DUE`. Los datos ya los da el servidor.
+
+### 10.6 Mensajes
+
+| Caso | Mensaje exacto | HTTP |
+|---|---|---|
+| Leer un indicador, gráfico o vista de rentas sin `rental.view` o con el módulo Rentas apagado | `Indicador '{id}' no encontrado.` / `Gráfico '{id}' no encontrado.` / `Vista '{id}' no encontrado.` | 404 |
+| Vista previa o alta de una vista, indicador o gráfico sobre una fuente de rentas sin `rental.view` o con el módulo apagado | `Fuente de datos 'RENTAL' no encontrado.` (o `RENTAL_RETURN`, `RENTAL_PROCESS`) | 404 |
+| Análisis sin `analytics.view` / panel sin `pulse.attention` | (403 `PERMISSION_DENIED`) | 403 |
+| Análisis con el módulo Análisis apagado | `El módulo 'ANALYTICS' no está habilitado para esta compañía.` | 403 |
+
+## 11. Kárdex, auditoría y datos
 
 - Kárdex: el despacho son **transferencias** con origen la posición del equipo y destino **EN-RENTA**, referencia **"Renta REN-#####"**
   (en inglés "Rental REN-#####"); filtrar por `refEntity=RENTAL&refId={id}`. El detalle del movimiento muestra la renta (número, estatus,
@@ -390,7 +484,7 @@ Mensajes del inventario que se ven al intentar mover una serie rentada (por las 
 - Auditoría: `GET /api/v1/audit/changes?entityType=RENTAL&entityId={id}`; devoluciones `entityType=RENTAL_RETURN`, procesos
   `entityType=RENTAL_PROCESS`.
 
-## 11. Casos frecuentes
+## 12. Casos frecuentes
 
 - **Quiero rentar un equipo de Depot y no me deja**: el producto no se controla por serie (400). Conviértalo con **Convertir a serie**
   (capítulo 06 §2.1) capturando las series de cada unidad, y agréguelo por su serie.
@@ -412,3 +506,16 @@ Mensajes del inventario que se ven al intentar mover una serie rentada (por las 
   su devolución y recapture; si no, quite la serie de la captura.
 - **No quiero el paso "Limpieza"**: desactívelo en la configuración de estatus del proceso; los efectos en el inventario solo dependen de
   "Lista" y "Dada de baja".
+- **¿Qué rentas tengo que recoger esta semana?** Corra la vista **"Rentas por vencer (7 días)"** (o mire "Necesita tu atención"):
+  salen las abiertas que se recogen de hoy a 7 días, la más próxima arriba.
+- **Una renta sale como vencida y el equipo ya volvió**: falta registrar su devolución (sección 5). Si el cliente lo sigue usando, extienda
+  la renta (sección 3): con la nueva fecha deja de estar vencida.
+- **Una renta Programada sale como vencida**: el recogido ya pasó y nunca se despachó; despáchela y extiéndala, o cancélela si ya no va.
+- **¿Cuántos equipos tengo en cada cliente hoy?** Vista **"Equipos en renta por cliente"** (suma de equipos en el cliente por cliente,
+  con total).
+- **¿Por qué se devuelven los equipos antes de tiempo?** Vista o gráfico **"Devoluciones de renta por motivo"**; filtre "Anticipada" para
+  ver solo las anticipadas, o agrupe por "Condición" para ver cuántas volvieron dañadas.
+- **¿Qué equipos llevan más días en revisión?** Vista **"Equipos en proceso"** (columna "Días en proceso"; los más viejos arriba).
+- **No veo los reportes de rentas**: revise que el módulo **Rentas** esté encendido y que su rol tenga `rental.view` (y `analytics.view`).
+- **Quiero ver las rentas vencidas en mi Pulso**: encienda "mostrar en Pulso" en el indicador "Rentas vencidas" (viene apagado porque el
+  aviso de "Necesita tu atención" ya las muestra).

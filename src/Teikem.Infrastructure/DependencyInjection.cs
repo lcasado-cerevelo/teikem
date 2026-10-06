@@ -335,6 +335,12 @@ public static class DependencyInjection
         // Lote 14: descuadres Kárdex ↔ saldo (fuente con DateField DetectedAtUtc); sin escritura de dueño → resolver cerrado.
         services.AddScoped<IDataSource, InventoryDiscrepancyDataSource>();
         services.AddScoped<IOwnedEntityResolver>(_ => new ClosedOwnedEntityResolver(Domain.Constants.EntityTypes.InventoryDiscrepancy));
+        // Lote 29 (Rentas R3): fuentes RENTAL (DateField StartDate), RENTAL_RETURN (ReturnedOn) y RENTAL_PROCESS (StartedAtUtc), solo
+        // con el módulo Rentas encendido (IDataSource.TenantModule), y el aviso de rentas vencidas o por vencer en "Necesita tu atención".
+        services.AddScoped<IDataSource, RentalDataSource>();
+        services.AddScoped<IDataSource, RentalReturnDataSource>();
+        services.AddScoped<IDataSource, RentalProcessDataSource>();
+        services.AddScoped<IAttentionItemProvider, RentalDueAttentionProvider>();
 
         // Seeders e inicialización
         services.AddScoped<PermissionSeeder>();
