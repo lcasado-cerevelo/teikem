@@ -518,7 +518,7 @@ Ver los puntos 73 a 87 de la lista de abajo.
     de búsqueda de clientes y localidades bajo `rental.manage`. No se cambió el servidor.
 71. **(F-R1) Vencimiento en la lista y la ficha**: "Vencida hace N días" (rojo), "Se recoge hoy" / "Vence en N días" (ámbar, hasta 7 días,
     la ventana del aviso) y "En N días" (neutro); el dato es el del servidor (día de la compañía).
-72. **(F-R1) Smoke y hora del día**: `scripts/smoke.sh` falla entre las 00:00 y las 04:00 UTC en "tarifas por servicio (Lote 2)" porque
+72. **(F-R1) Smoke y hora del día — RESUELTA por la 84:** `scripts/smoke.sh` falla entre las 00:00 y las 04:00 UTC en "tarifas por servicio (Lote 2)" porque
     calcula "ayer" en UTC y el servidor usa el día de Puerto Rico (para el API "ayer UTC" es "hoy"). No es de este lote ni se cambió; se
     corrió el smoke fuera de esa ventana. Recomendación: calcular las fechas del smoke con `TZ=America/Puerto_Rico`.
 73. **(F-R2) Devoluciones y Proceso de equipos son pantallas propias con su dirección y su ítem de menú** después de Rentas (Kárdex sigue
@@ -546,9 +546,81 @@ Ver los puntos 73 a 87 de la lista de abajo.
     (día de la compañía) o `date -u` (filtro sobre instantes UTC) según cómo los lea el servidor.
 85. **(F-R2, CI) Paso 7 de `lote14.spec.ts`**: ya no exige "Todo en orden"; exige cero descuadres (API y pantalla) y que el contador del
     panel coincida con el API; "Todo en orden" solo cuando el API no tiene avisos.
-86. **(F-R2) Atribución de los commits**: el encargo pedía `Co-Authored-By: Claude Sonnet 5.5`; se usó `Claude Opus 5.5`, el modelo que
+86. **(F-R2) Atribución de los commits — CORREGIDA por el orquestador:** los commits de F-R1 y F-R2 se reescribieron antes de subirlos para decir `Claude Sonnet 5.5`. Texto original del agente: el encargo pedía `Co-Authored-By: Claude Sonnet 5.5`; se usó `Claude Opus 5.5`, el modelo que
     hizo el trabajo según la indicación de atribución del entorno.
-87. **(F-R2, hallazgo de otra prueba) `lote15.spec.ts` paso 9 móvil** espera que la franja "Almacén hoy" quede fija al desplazar el Pulso,
+87. **(F-R2, hallazgo de otra prueba — RESUELTA por el orquestador: se actualizaron el paso 9 y `KIT.md`) `lote15.spec.ts` paso 9 móvil** espera que la franja "Almacén hoy" quede fija al desplazar el Pulso,
     pero los commits `bdc892e` y `3b50351` hicieron fijo solo el encabezado (fecha, Organizar, saludo y chip) a propósito. No se cambió esa
     prueba (no es de este lote ni de Rentas): hay que actualizarla (esperar el h1 fijo y la franja fuera de la vista) o revertir el diseño.
     `KIT.md` ("Filas fijas") también describe todavía la franja fija.
+
+## Informe final
+
+Fecha: 2026-10-06. Todo el trabajo está en `master` (y en la rama `claude/company-settings-screen-plan-uajc2i`, idéntica) hasta el commit `8abec97`.
+
+### 1. Lo construido, por bloque
+
+| Bloque | Qué es | Commit | Archivos principales |
+|---|---|---|---|
+| R0 (Lote 26) | Herramienta "Convertir a serie": `POST /products/{publicId}/convert-to-serial`, una sola transacción, ajustes de neto cero con el motivo de sistema `TRACKING_CONVERSION` | `d5fdf78` | `ProductSerialConversionService`, `SerialConversionRules`, `ProductsController` |
+| R1 (Lote 27) | Esquema nuevo de rentas (capa 16C con guardas), seed, ledger con series En renta/En proceso y reserva en destino, renta hasta el despacho, extensiones y cancelación; `RentalsController` (12 acciones) | `777a285` | `RentalService`, `InventoryLedger`, `RentalBinResolver`, `RentalStatusEffect`, SQL de estructura y seed |
+| R2 (Lote 28) | Devolución de renta (parcial, anticipada, por daño), proceso configurable del equipo devuelto, conteo cíclico (D7) | `0656645` | `RentalReturnService`, `RentalProcessService`, `RentalProcessStatusEffect`, `CycleCountService` |
+| R3 (Lote 29) | Fuentes de datos de rentas, aviso "Necesita tu atención", indicadores, gráfico y 5 vistas de sistema | `caf41ce` | `RentalDataSources`, `RentalDueAttentionProvider`, `SystemAnalyticsSeeder` |
+| RM (Lote 30) | Evaluación y ajuste de la migración de Depot: el seguimiento no puede dejar existencia sin series | `7867c0b` | `LegacyImportService`, `docs/migracion/depot-series-y-rentas.md` |
+| F-R1 (Lote F17) | Web: Rentas (lista, ficha, alta con series, programar, despachar, cancelar, extender) y "Convertir a serie" en el producto | `c0124fa` y `41eb6ca` | `web-app/src/features/rentals/`, `ConvertToSerialModal.tsx` |
+| F-R2 (Lote F18) | Web: devoluciones, cola de proceso, reportes de rentas; dos arreglos de CI | `3577a4f` y `3f7e546` | `RentalReturnModal`, `RentalProcessListScreen`, `RentalReportsScreen` |
+
+Después de F-R2, el orquestador actualizó `lote15.spec.ts` (paso 9, móvil) y `KIT.md` a la regla vigente del Pulso (solo el encabezado queda fijo).
+
+### 2. Lo probado (resultados reales, verificados por el orquestador al empujar)
+
+- **Servidor:** `dotnet test tests/Teikem.Tests -o .tmp-testout` = **3172 pruebas, 0 fallan** (antes de rentas, 3014).
+- **Web:** `cd web-app && npm run check` = **132 archivos, 1323 pruebas**, build verde (antes de rentas, 1250; oxlint con los mismos 9 avisos que ya había).
+- **App (solo contrato regenerado):** `cd app-almacen && npm run check` = **74 suites, 422 pruebas**.
+- **Smoke contra SQL Server real** (por cada bloque de servidor, sobre una base nueva con `db-init` dos veces): SMOKE OK; el último, 137 pasos. Tras el arreglo del bloque F-R2 pasó tres veces dentro de la ventana 00:00–04:00 UTC que antes lo rompía.
+- **Playwright contra el API real:** F17 y F18 (escritorio y móvil Pixel 7) pasan. Suite completa en el orden del CI: con una prueba marcada `fixme` solo para la corrida, 90 pasaron y 0 fallaron; sin ella fallaba el paso 9 de `lote15` (ya corregido por el orquestador, sin volver a correrlo).
+- **Esquema sobre una base existente (simulada):** la capa vieja de rentas se retira solo si está vacía; con datos se conserva y avisa; aplicarla dos veces no falla.
+
+### 3. Lo NO probado
+
+- **El CI de GitHub Actions** de estos commits (es el árbitro final; ver el estado al final de esta sección).
+- **El paso 9 móvil de `lote15` tras mi corrección** y, con ella, la suite completa de Playwright de una sola corrida en verde.
+- **Datos reales de Depot** (el esquema solo se simuló) y el rendimiento con miles de rentas.
+- **Concurrencia real en SQL Server** (dos despachos o devoluciones sobre la misma serie al mismo tiempo; el smoke es en serie).
+- Recorridos como **Operador de almacén**, en **inglés**, con lector de lectura, y con una compañía que desactive estatus de la renta o del proceso.
+- La **app móvil** (series): fuera de alcance por decisión del plan.
+- **Impresión y escaneo** de nada de esto: no aplica a rentas.
+
+### 4. Decisiones que debe tomar o confirmar el dueño
+
+Cada una tiene su número en la lista de arriba ("Decisiones por defecto a confirmar", 1 a 87, con la opción tomada, la alternativa y la consecuencia). Las que más pesan, en orden de importancia:
+
+1. **(70) El Operador de almacén no puede crear rentas desde la web**: tiene `rental.manage` pero no `clients.read` ni `locations.read`. Por defecto no se cambió. Opciones: dar esos permisos a la plantilla, o un endpoint de búsqueda acotado bajo `rental.manage`. **Recomendado: el endpoint acotado** (no abre el Catálogo completo).
+2. **(52, 53, 60) Series de Depot**: la migración deja todo en NONE y Depot no trae series individuales. Por defecto **no se recrea la base de Depot**; las series entran con "Convertir a serie". Confirmar que es lo que quiere.
+3. **(10) Una renta = un cliente, una localidad, solo equipos con serie.** Para dos localidades, dos rentas.
+4. **(11, 12) Cancelar solo antes del despacho; "Programada" reserva las series** (el equipo deja de estar disponible desde ahí).
+5. **(14, 44) "Vencida" es un dato calculado e incluye las Programadas** que ya pasaron su fecha.
+6. **(28, 29, 30) Devolución**: el receptor decide por equipo si pasa por proceso (sí por defecto); motivo por devolución; se puede devolver a otro almacén.
+7. **(37) Dar de baja usa el motivo "Daño"** y exige además `inventory.adjust`; confirmar o pedir un motivo propio.
+8. **(15, 16) Una posición EN-RENTA por almacén; permisos nuevos `rental.extend` y `rental.return`** (también se dieron una sola vez a todo rol que ya tenía `rental.manage`).
+9. **(26) Rentas depende de "Inventario y trazabilidad"**: apagarlo apaga Rentas en cascada y volver a encenderlo no reenciende Rentas.
+10. **(18) Cliente dado de baja = 409** (el plan decía 422; se reutilizó el mensaje que es 409 en toda la plataforma).
+11. **(42, 43) Indicadores de rentas apagados en el Pulso y ventana fija de 7 días** para "por vencer".
+12. **(73–82) Pantallas**: Devoluciones y Proceso son pantallas propias con menú propio; reportes de rentas en Almacén porque Análisis → Vistas e informes sigue pendiente.
+13. **(83) Hallazgo de contrato**: `RentalProcessDto` no trae cliente, días ni etiqueta de condición, y `RentalLineDto` no enlaza su devolución. La web lo calcula; conviene agregarlos al servidor en un lote futuro.
+14. **(86) Atribución**: los agentes usaron `Opus 5.5` en los commits; el orquestador los reescribió a `Sonnet 5.5` antes de subirlos.
+
+### 5. Pendientes y siguientes pasos
+
+- Envíos (el enlace `DeliveryShipmentId` / `PickupShipmentId` está preparado, sin FK) y facturación (`Rental.InvoiceId`, `RentalCharge` por período sin mapear): módulos futuros.
+- Series en la app móvil (hoy se capturan solo en la web).
+- Series de Depot: usar "Convertir a serie" por producto (`docs/migracion/depot-series-y-rentas.md`).
+- Endpoint de búsqueda de series disponibles por almacén (decisión 64) y de clientes y localidades acotado (decisión 70).
+- Pantalla Análisis → Vistas e informes (decisión 80).
+
+### 6. Qué debe hacer el dueño para ver el trabajo
+
+1. `git checkout master` y `git pull` (en su cliente: Fetch, activar `master`, Pull).
+2. **Recrear la base local** con `scripts\recrear-base.ps1` (el esquema ganó 8 tablas de rentas, columnas en posiciones y en series).
+3. **En producción: aplicar el esquema nuevo antes de desplegar el API nuevo** (las tablas de rentas son nuevas; la capa vieja se retira solo si está vacía y, si tiene datos, avisa y no la toca).
+4. Detener cualquier `npm run dev` anterior (un servidor viejo en el puerto 5173 sirve lo viejo), arrancar uno solo desde `web-app`, y hacer recarga forzada del navegador.
+5. Encender el módulo **Rentas** de la compañía (depende de "Inventario y trazabilidad") y dar `rental.*` a los roles que lo necesiten.
