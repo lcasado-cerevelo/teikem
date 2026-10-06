@@ -3932,8 +3932,10 @@ fi
 ok2xx "$(req PUT /api/v1/me/pin "{\"currentPassword\":\"$PASS\",\"pin\":\"4826\"}")" "PUT /me/pin quita el bloqueo"
 # Decisión 9: 10 PIN incorrectos en paralelo → ningún 200, a lo más 4 × 401 y el resto 423 (UPDATE atómico); luego el PIN
 # correcto → 423. Volver a guardar el PIN deja el contador en 0.
+# Cero 401 es válido (los 5 fallos que se cuentan releen el bloqueo del 5.º y todos responden 423): con pipefail, grep sin
+# coincidencias devuelve 1 y cortaba el script sin mensaje (set -e); `|| true` conserva el 0 que imprime wc.
 TMPP=$(mktemp -d); for i in $(seq 1 10); do DLOGIN 1397 > "$TMPP/$i" & done; wait
-CPP8=$(codes "$TMPP"/*); N401=$(grep -o 401 <<<"$CPP8" | wc -l); N423=$(grep -o 423 <<<"$CPP8" | wc -l); rm -rf "$TMPP"
+CPP8=$(codes "$TMPP"/*); N401=$(grep -o 401 <<<"$CPP8" | wc -l || true); N423=$(grep -o 423 <<<"$CPP8" | wc -l || true); rm -rf "$TMPP"
 (( N401 <= 4 && N401 + N423 == 10 )) || fail "PIN en paralelo sin bloqueo atómico: $CPP8"
 expect 423 "$(DLOGIN 4826)" | jq -e --arg m "PIN bloqueado por 15 minutos." "$HASM" >/dev/null || fail "tras 10 fallos en paralelo el PIN correcto entra"
 ok2xx "$(req PUT /api/v1/me/pin "{\"currentPassword\":\"$PASS\",\"pin\":\"4826\"}")" "PUT /me/pin quita el bloqueo (paralelo)"

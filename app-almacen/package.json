@@ -55,6 +55,7 @@
   "private": true,
   "jest": {
     "preset": "jest-expo",
+    "testTimeout": 60000,
     "moduleNameMapper": {
       "(.*)/modules/datawedge$": "<rootDir>/modules/datawedge/src/DatawedgeModule.web.ts"
     }

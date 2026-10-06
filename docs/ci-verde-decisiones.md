@@ -72,3 +72,52 @@ Leídos los cinco YAML contra el código: los textos y `testID` que usan existen
   :5000 por su cuenta. Si prefiere que `npm run dev` use http :5000 por defecto, es un cambio de una línea.
 - La prueba 6 de `lote14.spec.ts` es sensible al estado de la base (el "Conteo de lo cambiado" cuenta posiciones con cambios);
   en el CI arranca limpia, pero repetirla varias veces seguidas en una base sucia puede fallar en la vista previa.
+
+# CI en verde — segunda ronda (2026-10-06, master 78e8b31)
+
+## 4. Job `mobile`: pruebas jest por encima de 5 s en el runner
+**Qué fallaba.** `Exceeded timeout of 5000 ms` en `countOpenProductsScreen.test.tsx` ("abre el conteo vacío al primer escaneo…"),
+`receiveDirectScreen.test.tsx` y una tercera, desde varias corridas atrás (también en commits anteriores a rentas).
+**Por qué.** El CI corre jest con la caché de transformación vacía (checkout nuevo): la primera prueba de cada pantalla paga la
+transformación con Babel de todo lo que la ruta carga, y ese tiempo cuenta dentro de la prueba. Reproducido aquí con
+`npx jest --no-cache --maxWorkers=2` y la configuración anterior: la misma prueba falla por los 5 s (1 fallida, 421 pasaron);
+con la caché caliente tarda menos de 1 s, por eso localmente nadie lo veía. Ninguna prueba fija un tiempo propio y el job no
+limita workers.
+**Cambio.** `app-almacen/package.json` → `jest.testTimeout: 60000` (global). No se salta ni se recorta ninguna prueba. Se eligió
+60 s y no 30 s porque el runner llegó a 16–19 s (≈4× lo medido aquí en frío) y la prueba más lenta aquí en frío ya ronda los 5 s.
+**Verificado.** `--no-cache` con el cambio: 74 suites, 422 pruebas, 0 fallaron; `npm run check` completo: código 0, 422 pruebas.
+
+## 5. Job `build-test`, paso del smoke: corte silencioso en "aparatos y sincronización (Lote 8A)"
+**Qué se buscó.** La corrida 220 falló en el smoke entre las 03:36 y 03:39 UTC (día UTC ≠ día de Puerto Rico). Se reprodujo como en
+el CI: base nueva (`TeikemCI*`), `db-init` dos veces, API en :5000 (Development, `Auth__Onboarding__Enabled=false`) y el smoke con
+`SMOKE_SQL` y `SMOKE_MIGRATION_RUN`.
+**Lo que se encontró.** Una de las corridas murió justo después del encabezado "aparatos y sincronización (Lote 8A)" **sin ningún
+mensaje FAIL**. La bitácora de seguridad de esa base mostró que los 10 PIN incorrectos en paralelo respondieron los 10 con 423
+(cero 401). Eso es válido para el servidor (`PinService.VerifyForLoginAsync` relee el bloqueo tras contar: si el 5.º fallo se asienta
+antes de que los otros relean, todos ven el bloqueo) y la aserción del smoke lo admite ("a lo más 4 × 401"), pero
+`N401=$(grep -o 401 <<<"$CPP8" | wc -l)` con `set -euo pipefail` sale con código 1 cuando grep no encuentra nada y el script se corta
+sin mensaje. Es una carrera: salió 1 vez en 10 corridas aquí; un runner con otro reparto de hilos la puede ver más seguido.
+**Cambio.** `scripts/smoke.sh`: `… | wc -l || true` en los dos conteos (conserva el 0). No se toca la aserción.
+**Fechas en la ventana 00:00–04:00 UTC.** Se revisaron todos los usos de fechas (`PRDAY`, `TODAY`, `YESTERDAY`, `dplus`, `D0`,
+`TODAYPR`, `date -u` de órdenes y recolecciones, rentas R1/R2/R3 con `DaysToPickup`, vencidas y "devolución no futura"). No se
+encontró ninguno que falle en la ventana:
+- reloj real: dos corridas completas entre 03:50 y 04:00 UTC (rentas R1–R3 cayeron a las 04:00:07, justo fuera);
+- reloj simulado con libfaketime (API, `db-init`, `date` y `jq`; bash no, porque los subshells borran el semáforo de libfaketime):
+  SMOKE OK a las 01:30–01:33 UTC (sin `SMOKE_SQL`: el reloj de SQL Server no se desplaza) y SMOKE OK a las 03:33–03:36 UTC del día
+  siguiente con `SMOKE_SQL` (desfase hacia adelante, para que los `SYSUTCDATETIME()` del humo queden en el pasado del API).
+- `db-init` dos veces no afecta: todas las corridas fueron sobre base nueva con las dos pasadas, como el CI.
+**No comprobable aquí.** No hay log del paso en GitHub: que la corrida 220 muriera exactamente por este corte es la explicación más
+probable (falló sin que la ventana horaria reproduzca nada), no una certeza.
+
+## 6. Playwright tras el smoke
+Base nueva + `db-init` x2 + smoke (SMOKE OK) y `npm run e2e` con `CI=true`, `API_URL`/`VITE_API_URL=http://localhost:5000` y el
+Chromium de `/opt/pw-browsers`: **91 pasaron, 84 omitidos por proyecto, 0 fallaron (6.5 min)**. Las capturas regeneradas se
+descartaron.
+
+## Resumen de corridas (resultado real)
+- Smoke sobre base nueva, reloj real: 5 corridas completas SMOKE OK, 1 corte silencioso (el del punto 5, antes del cambio) y 1 que
+  falló solo en la migración por correrse aquí con `dotnet <dll>` desde otra carpeta (falta de appsettings; en el CI usa
+  `dotnet run --project`, no aplica).
+- Smoke con reloj simulado: 2 SMOKE OK (01:30 y 03:33 UTC); las corridas descartadas fallaron por la propia simulación
+  (semáforo de libfaketime, reloj de SQL Server sin desplazar), no por el humo.
+- NO se pudo correr: el CI de GitHub.
