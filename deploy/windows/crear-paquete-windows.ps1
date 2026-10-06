@@ -11,7 +11,7 @@ $repo = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 function Paso([string]$m) { Write-Host ''; Write-Host "== $m" -ForegroundColor Cyan }
 function Fallar([string]$m) { Write-Host ''; Write-Host $m -ForegroundColor Red; exit 1 }
 
-$sucio = git -C $repo status --porcelain -- src web-app deploy
+$sucio = git -C $repo status --porcelain -- src web-app deploy Diseño
 if ($sucio) {
     Write-Host 'Hay cambios sin commit en lo que va al paquete (el paquete se compila de lo que hay en su carpeta):' -ForegroundColor Yellow
     $sucio | ForEach-Object { Write-Host "  $_" }
@@ -37,6 +37,10 @@ Paso 'Juntando la web con el API (wwwroot)'
 Copy-Item (Join-Path $repo 'web-app\dist') (Join-Path $stage 'app\wwwroot') -Recurse
 # por seguridad: nada de configuraciones locales ni de desarrollo en el paquete
 Get-ChildItem (Join-Path $stage 'app') -Filter 'appsettings.*.json' | Remove-Item -Force
+# Scripts de la base (los usa «db-update» del instalador para dejar la base al día; el mismo set de scripts de todo el proyecto)
+New-Item -ItemType Directory -Force (Join-Path $stage 'db') | Out-Null
+Copy-Item (Join-Path $repo 'Diseño\logistica-db-estructura.sql') (Join-Path $stage 'db')
+Copy-Item (Join-Path $repo 'Diseño\logistica-db-seed.sql') (Join-Path $stage 'db')
 Copy-Item (Join-Path $PSScriptRoot 'instalar.ps1') $stage
 Copy-Item (Join-Path $PSScriptRoot 'README.md') $stage
 
@@ -52,4 +56,4 @@ Write-Host 'Siguientes pasos:' -ForegroundColor Cyan
 Write-Host '  1) Copie el .zip al servidor (Escritorio remoto: pegar archivo, o  scp / carpeta compartida).'
 Write-Host '  2) En el servidor: descomprímalo (Expand-Archive) y, en una PowerShell como Administrador, dentro de esa carpeta:'
 Write-Host '       powershell -ExecutionPolicy Bypass -File .\instalar.ps1'
-Write-Host '     (para actualizar una versión: lo mismo con el .zip nuevo)'
+Write-Host '     (para actualizar una versión: lo mismo con el .zip nuevo; también actualiza la base: simula, pide el respaldo y aplica)'

@@ -62,21 +62,49 @@ public sealed partial class SqlScriptRunner(string connectionString, ILogger log
         return dropped;
     }
 
+    private const string EnsureVersionTableSql = """
+        IF OBJECT_ID('dbo.__SchemaVersion') IS NULL
+        CREATE TABLE dbo.__SchemaVersion (
+            Id INT IDENTITY(1,1) PRIMARY KEY,
+            ScriptName NVARCHAR(200) NOT NULL,
+            Sha256 CHAR(64) NOT NULL,
+            AppliedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+            CONSTRAINT UQ___SchemaVersion UNIQUE (ScriptName, Sha256));
+        """;
+
+    /// <summary>¿Existe la tabla indicada (por ejemplo dbo.Tenant) en la base de la cadena de conexión?</summary>
+    public async Task<bool> TableExistsAsync(string table, CancellationToken ct = default)
+    {
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT CASE WHEN OBJECT_ID(@t, 'U') IS NULL THEN 0 ELSE 1 END";
+        cmd.Parameters.AddWithValue("@t", table);
+        return (int)(await cmd.ExecuteScalarAsync(ct))! == 1;
+    }
+
+    /// <summary>Anota el script como aplicado (nombre y hash) sin ejecutarlo; lo usa db-update tras igualar el esquema.</summary>
+    public async Task MarkAppliedAsync(SqlScript script, CancellationToken ct = default)
+    {
+        var sql = await File.ReadAllTextAsync(script.Path, ct);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sql))).ToLowerInvariant();
+        await using var conn = new SqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+        await ExecAsync(conn, null, EnsureVersionTableSql, ct);
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "IF NOT EXISTS (SELECT 1 FROM dbo.__SchemaVersion WHERE ScriptName=@n AND Sha256=@h) INSERT INTO dbo.__SchemaVersion (ScriptName, Sha256) VALUES (@n, @h)";
+        cmd.Parameters.AddWithValue("@n", script.Name);
+        cmd.Parameters.AddWithValue("@h", hash);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     public async Task<IReadOnlyList<string>> ApplyAsync(IEnumerable<SqlScript> scripts, CancellationToken ct = default)
     {
         var applied = new List<string>();
         await using var conn = new SqlConnection(connectionString);
         conn.InfoMessage += (_, e) => logger.LogInformation("SQL: {Message}", e.Message);
         await conn.OpenAsync(ct);
-        await ExecAsync(conn, null, """
-            IF OBJECT_ID('dbo.__SchemaVersion') IS NULL
-            CREATE TABLE dbo.__SchemaVersion (
-                Id INT IDENTITY(1,1) PRIMARY KEY,
-                ScriptName NVARCHAR(200) NOT NULL,
-                Sha256 CHAR(64) NOT NULL,
-                AppliedAtUtc DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
-                CONSTRAINT UQ___SchemaVersion UNIQUE (ScriptName, Sha256));
-            """, ct);
+        await ExecAsync(conn, null, EnsureVersionTableSql, ct);
 
         foreach (var script in scripts)
         {

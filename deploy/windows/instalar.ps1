@@ -9,11 +9,17 @@
   - HTTPS: NO instala ni emite certificados. El sitio nuevo queda con su nombre de dominio en el puerto 80 y toma el
     certificado del proceso de Let's Encrypt que ya tiene el servidor. Cuando el sitio ya tenga el enlace HTTPS, vuelva a correr
     este script para activar la redirección de http a https.
+  - BASE DE DATOS: antes de copiar los archivos nuevos, lleva la base a la versión del paquete (db-update: agrega las tablas, columnas,
+    índices y datos de referencia que falten; nunca borra datos). Primero simula y muestra qué cambiaría; pide confirmar que ya hay un
+    respaldo de la base. Si la base falla, el sitio sigue con la versión anterior (no se copia nada).
   Opciones: -Sitio <nombre> (por defecto Teikem)  -Carpeta <ruta> (por defecto C:\inetpub\teikem)
+            -SinBase (no toca la base de datos)  -RespaldoHecho (no pregunta por el respaldo; para correrlo sin teclado)
 #>
 param(
     [string]$Sitio = 'Teikem',
-    [string]$Carpeta = 'C:\inetpub\teikem'
+    [string]$Carpeta = 'C:\inetpub\teikem',
+    [switch]$SinBase,
+    [switch]$RespaldoHecho
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,6 +39,8 @@ function Permisos([string[]]$argumentos) {
     $ErrorActionPreference = $anterior
     return ($LASTEXITCODE -eq 0)
 }
+# Quita el aviso de mantenimiento (si lo pusimos) y termina sin haber cambiado nada del sitio.
+function Cancelar([string]$m) { Remove-Item (Join-Path $Carpeta 'app_offline.htm') -ErrorAction SilentlyContinue; Fallar $m }
 function Texto-Seguro($seguro) { [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($seguro)) }
 
 $origen = Join-Path $PSScriptRoot 'app'
@@ -130,6 +138,54 @@ if ($hayPool) {
     Set-Content (Join-Path $Carpeta 'app_offline.htm') '<html><body><h2>Teikem se está actualizando. Vuelva en un minuto.</h2></body></html>' -Encoding UTF8
     Start-Sleep -Seconds 3
 }
+# --------------------------------------------------------------------------------------------------------- base de datos
+# Se corre con el API NUEVO (el del paquete, sin copiarlo todavía) y la cadena de conexión de la configuración. Si algo falla, el
+# sitio sigue con los archivos anteriores. db-update va en una transacción: un fallo no deja la base a medias.
+function Correr-DbUpdate([string[]]$extra) {
+    $dotnet = 'C:\Program Files\dotnet\dotnet.exe'
+    if (-not (Test-Path $dotnet)) { $dotnet = (Get-Command dotnet -ErrorAction SilentlyContinue).Source }
+    if (-not $dotnet) { Cancelar 'No encuentro dotnet.exe (el .NET 8 Hosting Bundle).' }
+    if ($escribirCfg) { $cadena = $cfg.ConnectionStrings.Teikem; $llave = $cfg.Jwt.SigningKey }
+    else { $c = [IO.File]::ReadAllText($cfgArchivo, [Text.Encoding]::UTF8) | ConvertFrom-Json; $cadena = $c.ConnectionStrings.Teikem; $llave = $c.Jwt.SigningKey }
+    $nombres = 'ASPNETCORE_ENVIRONMENT', 'ConnectionStrings__Teikem', 'Jwt__SigningKey', 'Database__RepoRoot', 'Database__DesignFolder', 'Logging__LogLevel__Default', 'Logging__LogLevel__Teikem'
+    $antes = @{}; foreach ($n in $nombres) { $antes[$n] = [Environment]::GetEnvironmentVariable($n, 'Process') }
+    try {
+        $env:ASPNETCORE_ENVIRONMENT = 'Production'; $env:ConnectionStrings__Teikem = $cadena; $env:Jwt__SigningKey = $llave
+        $env:Database__RepoRoot = $PSScriptRoot; $env:Database__DesignFolder = 'db'
+        $env:Logging__LogLevel__Default = 'Warning'; $env:Logging__LogLevel__Teikem = 'Warning'
+        Push-Location $origen
+        & $dotnet (Join-Path $origen 'Teikem.Api.dll') db-update @extra | Out-Host   # Out-Host: que la salida no se mezcle con el código que devuelve la función
+        return $LASTEXITCODE
+    } finally {
+        Pop-Location
+        foreach ($n in $nombres) { [Environment]::SetEnvironmentVariable($n, $antes[$n], 'Process') }
+    }
+}
+Paso 'Base de datos'
+if ($SinBase) {
+    Aviso 'Se omite la base de datos (-SinBase). Si el paquete nuevo necesita tablas o columnas que la base no tiene, el API fallará.'
+} elseif (-not (Test-Path (Join-Path $PSScriptRoot 'db\logistica-db-estructura.sql'))) {
+    Cancelar "Falta la carpeta 'db' del paquete (los scripts de la base) junto a este script."
+} else {
+    Write-Host 'Primero se SIMULA (no cambia nada): esto es lo que le falta a la base para estar al día.'
+    Write-Host ''
+    $codigo = Correr-DbUpdate @('--dry-run')
+    if ($codigo -eq 1) { Cancelar 'No se pudo revisar la base (mensaje arriba). No se cambió nada del sitio ni de la base.' }
+    if ($codigo -eq 2) { Aviso 'Hay diferencias marcadas «REVISAR A MANO»: no se arreglan solas; el resto sí se aplica.' }
+    Write-Host ''
+    if (-not $RespaldoHecho) {
+        Aviso 'Antes de seguir haga un respaldo de la base. En SQL Server, por ejemplo:'
+        Write-Host "    BACKUP DATABASE [<nombre de la base>] TO DISK = N'C:\Respaldos\Teikem-antes.bak' WITH COMPRESSION"
+        if ((Read-Host '¿Ya hizo el respaldo y quiere aplicar estos cambios a la base? (s/N)') -notmatch '^[sS]') {
+            Cancelar 'Cancelado. No se cambió nada del sitio ni de la base.'
+        }
+    }
+    $codigo = Correr-DbUpdate @()
+    if ($codigo -eq 1) { Cancelar 'La actualización de la base falló (mensaje arriba). La base quedó como estaba y el sitio sigue con la versión anterior.' }
+    if ($codigo -eq 2) { Aviso 'La base se actualizó, con diferencias para revisar a mano (arriba). Se sigue con el sitio.' } else { Ok 'Base de datos al día.' }
+}
+
+Paso 'Copiando los archivos'
 robocopy $origen $Carpeta /MIR /XF appsettings.Production.local.json app_offline.htm /XD logs /NFL /NDL /NJH /NJS /NP | Out-Null
 if ($LASTEXITCODE -ge 8) { Fallar "robocopy falló (código $LASTEXITCODE)." }
 
