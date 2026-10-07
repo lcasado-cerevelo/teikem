@@ -4,7 +4,8 @@ import { Platform } from 'react-native'
 
 import { api, unwrap } from '../api/client'
 import { refreshTenantFormat } from '../format/tenantFormatApi'
-import { addDeviceIdentity, clearDeviceIdentity, dbNameFor, getSessionState, saveUserSession, updateDeviceIdentity } from './session'
+import { removeCompany } from './companies'
+import { addDeviceIdentity, dbNameFor, getSessionState, saveUserSession, updateDeviceIdentity } from './session'
 
 const APP_VERSION = String(Constants.expoConfig?.version ?? '1.0.0')
 
@@ -77,7 +78,7 @@ export async function sendHeartbeat(): Promise<{ isActive: boolean }> {
       }),
     )
     if (beat.isActive === false) {
-      await clearDeviceIdentity()
+      await removeCompany(device)
       return { isActive: false }
     }
     const next = {

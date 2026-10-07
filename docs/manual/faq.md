@@ -5513,3 +5513,17 @@ La existencia disponible del almacén (y del lote, si lo indicó) es menor a lo 
 
 **El reparto del recibo se quedó a medias.**
 Se guarda línea por línea; revise las líneas del recibo, corrija la que falló y repita **Repartir** sobre el resto.
+
+## Sesión, bloqueo y compañías de la app (2026-10-07)
+
+**Abrí la app y me pide el PIN aunque ya había entrado.**
+Es a propósito: al abrir la app siempre se pide el PIN del usuario que dejó la sesión (así quien llegue detrás no usa su sesión). Lo capturado no se pierde. Si no es su usuario, toque «Cerrar sesión».
+
+**¿Para qué sirve el candado?**
+Bloquea al instante sin cerrar la sesión: para dejar el aparato un momento. Con el PIN sigue en la misma pantalla de Inicio.
+
+**Una compañía quedó en la lista y da error; no la puedo sacar.**
+Si el servidor ya no reconoce el aparato (`El aparato no está registrado o fue desactivado.`, 401), la app la quita sola al intentar entrar. Si prefiere quitarla antes, deslice su fila a la izquierda → «Quitar».
+
+**Al quitar una compañía dice que tiene capturas sin sincronizar.**
+Esas capturas viven solo en este teléfono; si confirma, se pierden. Cancele, sincronice con señal («Sincronizar ahora») y vuelva a quitarla.

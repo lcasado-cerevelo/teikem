@@ -35,6 +35,8 @@ interface State {
   /** Registro activo (null con varios registros y ninguno elegido todavía). */
   device: DeviceIdentity | null
   session: UserSession | null
+  /** Bloqueada: la sesión sigue guardada pero pide el PIN otra vez (botón Bloquear, o arranque en frío de la app). Solo en memoria. */
+  locked: boolean
   hydrated: boolean
 }
 
@@ -46,7 +48,7 @@ const KEYS = {
   session: 'teikem.user.session',
 }
 
-let state: State = { devices: [], device: null, session: null, hydrated: false }
+let state: State = { devices: [], device: null, session: null, locked: false, hydrated: false }
 const listeners = new Set<() => void>()
 function emit(): void {
   listeners.forEach((l) => l())
@@ -100,6 +102,8 @@ export async function hydrateSession(): Promise<void> {
     device,
     // Una sesión sin registro activo no sirve (otra compañía o ninguna elegida).
     session: device && sessionRaw ? (JSON.parse(sessionRaw) as UserSession) : null,
+    // 2026-10-07: al abrir la app (aunque quede una sesión guardada) se pide el PIN de nuevo.
+    locked: Boolean(device && sessionRaw),
     hydrated: true,
   }
   emit()
@@ -110,7 +114,7 @@ export async function addDeviceIdentity(device: DeviceIdentity): Promise<void> {
   const devices = [...state.devices.filter((d) => d.devicePublicId !== device.devicePublicId), device]
   await persist(devices, device.devicePublicId)
   await SecureStore.deleteItemAsync(KEYS.session)
-  state = { ...state, devices, device, session: null }
+  state = { ...state, devices, device, session: null, locked: false }
   emit()
 }
 
@@ -130,43 +134,51 @@ export async function selectDevice(devicePublicId: string | null): Promise<void>
   const device = devicePublicId ? (state.devices.find((d) => d.devicePublicId === devicePublicId) ?? null) : null
   await persist(state.devices, device?.devicePublicId ?? null)
   await SecureStore.deleteItemAsync(KEYS.session)
-  state = { ...state, device, session: null }
+  state = { ...state, device, session: null, locked: false }
   emit()
 }
 
-/** Da de baja en este teléfono el registro ACTIVO (el servidor lo desactivó): los demás registros siguen. Su base SQLite
- *  no se borra aquí (puede tener pendientes); se pierde solo al desinstalar. */
-export async function clearDeviceIdentity(): Promise<void> {
-  const current = state.device
-  const devices = current ? state.devices.filter((d) => d.devicePublicId !== current.devicePublicId) : state.devices
-  const device = devices.length === 1 ? devices[0] : null
+/** Quita de este teléfono el registro de UNA compañía (la que sea, no solo la activa); los demás siguen. Si era la activa,
+ *  la sesión de usuario se cierra. No toca su base SQLite (eso lo hace `kernel/auth/companies.ts`). */
+export async function removeDeviceIdentity(devicePublicId: string): Promise<void> {
+  const devices = state.devices.filter((d) => d.devicePublicId !== devicePublicId)
+  if (devices.length === state.devices.length) return
+  const wasActive = state.device?.devicePublicId === devicePublicId
+  const device = wasActive ? (devices.length === 1 ? devices[0] : null) : state.device
   await persist(devices, device?.devicePublicId ?? null)
-  await SecureStore.deleteItemAsync(KEYS.session)
-  state = { ...state, devices, device, session: null }
+  if (wasActive) await SecureStore.deleteItemAsync(KEYS.session)
+  state = wasActive ? { ...state, devices, device, session: null, locked: false } : { ...state, devices }
   emit()
 }
 
 export async function saveUserSession(session: UserSession): Promise<void> {
   await SecureStore.setItemAsync(KEYS.session, JSON.stringify(session))
-  state = { ...state, session }
+  state = { ...state, session, locked: false }
   emit()
 }
 
-/** Cambiar de usuario: el aparato sigue registrado, solo se pide PIN de nuevo. Con varias compañías, el siguiente usuario
+/** Bloqueo rápido: la sesión y todo lo capturado se conservan; solo se pide el PIN de nuevo. */
+export function lockSession(): void {
+  if (!state.session || state.locked) return
+  state = { ...state, locked: true }
+  emit()
+}
+
+/** Cerrar sesión: el aparato sigue registrado, solo se pide PIN de nuevo. Con varias compañías, el siguiente usuario
  *  vuelve a elegir la suya. */
 export async function clearUserSession(): Promise<void> {
   await SecureStore.deleteItemAsync(KEYS.session)
   if (state.devices.length > 1) {
     await persist(state.devices, null)
-    state = { ...state, device: null, session: null }
+    state = { ...state, device: null, session: null, locked: false }
   } else {
-    state = { ...state, session: null }
+    state = { ...state, session: null, locked: false }
   }
   emit()
 }
 
 export function __resetSessionForTests(): void {
-  state = { devices: [], device: null, session: null, hydrated: false }
+  state = { devices: [], device: null, session: null, locked: false, hydrated: false }
   listeners.clear()
 }
 

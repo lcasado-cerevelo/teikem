@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
-import { clearUserSession } from '../kernel/auth/session'
+import { clearUserSession, lockSession } from '../kernel/auth/session'
 import { useSession } from '../kernel/auth/useSession'
 import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
@@ -55,7 +55,25 @@ export default function HomeScreen() {
     <ScrollView contentContainerStyle={styles.fill} testID="home-scroll">
       <View style={styles.header}>
         <Text style={styles.title}>{t('home.title')}</Text>
-        {session ? <Text style={styles.userName}>{session.fullName}</Text> : null}
+        {session ? (
+          // Nombre del usuario y, a la derecha, un candado pequeño (bloqueo rápido): sin ocupar una fila más.
+          <View style={styles.userRow}>
+            <Text style={styles.userName} numberOfLines={1}>{session.fullName}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('home.lock')}
+              hitSlop={8}
+              onPress={() => {
+                lockSession()
+                router.replace('/lock')
+              }}
+              style={styles.lockBtn}
+            >
+              <Text style={styles.lockIcon}>🔒</Text>
+              <Text style={styles.lockLabel}>{t('home.lock')}</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
 
       <View style={styles.grid} testID="home-grid">
@@ -92,7 +110,11 @@ const styles = StyleSheet.create({
   fill: { flexGrow: 1, backgroundColor: colors.bg, padding: spacing.lg, gap: spacing.lg },
   header: { gap: spacing.xs },
   title: { color: colors.text, fontSize: 24, fontWeight: '700' },
-  userName: { color: colors.muted, fontSize: fontSize.message },
+  userRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  userName: { color: colors.muted, fontSize: fontSize.message, flexShrink: 1 },
+  lockBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, borderRadius: 22, backgroundColor: colors.panelAlt },
+  lockIcon: { fontSize: 16 },
+  lockLabel: { color: colors.text, fontSize: 16, fontWeight: '600' },
   // dos columnas: cada celda ocupa la mitad (menos el espacio entre ellas); la quinta, sola, toma todo el ancho
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   cell: { flexBasis: '45%', flexGrow: 1 },

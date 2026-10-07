@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import { Swipeable } from 'react-native-gesture-handler'
 
 import { ApiError } from '../kernel/api/client'
-import { selectDevice } from '../kernel/auth/session'
+import { pendingForCompany, removeCompany } from '../kernel/auth/companies'
+import { type DeviceIdentity, selectDevice } from '../kernel/auth/session'
 import { type DeviceUser, fetchDeviceUsers, loginWithPin } from '../kernel/auth/deviceAuth'
 import { PIN_MAX_LENGTH, PIN_MIN_LENGTH } from '../kernel/auth/pinRules'
 import { useSession } from '../kernel/auth/useSession'
@@ -32,8 +34,27 @@ export default function LoginScreen() {
     if (!device) return
     fetchDeviceUsers(device.devicePublicId, device.deviceSecret)
       .then(setUsers)
-      .catch((err: unknown) => setLoadError(err instanceof ApiError ? err.title : t('errors.generic')))
+      .catch((err: unknown) => {
+        // 401 = el servidor ya no conoce este aparato (base reiniciada o aparato desactivado): se quita la compañía sin preguntar.
+        if (err instanceof ApiError && err.status === 401) void removeCompany(device)
+        else setLoadError(err instanceof ApiError ? err.title : t('errors.generic'))
+      })
   }, [device, t])
+
+  // Sin ninguna compañía registrada (se quitaron todas) → a registrar una.
+  useEffect(() => {
+    if (devices.length === 0) router.replace('/enroll')
+  }, [devices.length, router])
+
+  /** Quitar una compañía a mano (deslizando su fila a la izquierda): pide confirmación y avisa si hay capturas sin enviar. */
+  function askRemove(d: DeviceIdentity) {
+    const pending = pendingForCompany(d)
+    const body = [t('login.removeCompanyBody'), pending > 0 ? t('login.removeCompanyPending', { count: pending }) : null].filter(Boolean).join('\n')
+    Alert.alert(t('login.removeCompanyTitle', { name: d.tenantName }), body, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('login.removeCompany'), style: 'destructive', onPress: () => void removeCompany(d) },
+    ])
+  }
 
   useEffect(() => {
     fetchUsers()
@@ -67,19 +88,34 @@ export default function LoginScreen() {
         <Text style={styles.title}>{t('login.chooseCompany')}</Text>
         <ScrollView contentContainerStyle={styles.list}>
           {devices.map((d) => (
-            <Pressable
+            <Swipeable
               key={d.devicePublicId}
-              accessibilityRole="button"
-              onPress={() => {
-                setUsers(null)
-                setLoadError(null)
-                void selectDevice(d.devicePublicId)
+              overshootRight={false}
+              renderRightActions={() => (
+                <View style={styles.removeAction}>
+                  <Text style={styles.removeLabel}>{t('login.removeCompany')}</Text>
+                </View>
+              )}
+              onSwipeableOpen={(_direction, swipeable) => {
+                swipeable.close()
+                askRemove(d)
               }}
-              style={styles.userRow}
             >
-              <Text style={styles.userName}>{d.tenantName}</Text>
-            </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setUsers(null)
+                  setLoadError(null)
+                  void selectDevice(d.devicePublicId)
+                }}
+                onLongPress={() => askRemove(d)}
+                style={styles.userRow}
+              >
+                <Text style={styles.userName}>{d.tenantName}</Text>
+              </Pressable>
+            </Swipeable>
           ))}
+          <Text style={styles.hint}>{t('login.swipeHint')}</Text>
         </ScrollView>
         <BigButton label={t('login.addCompany')} variant="secondary" onPress={() => router.push('/enroll')} />
       </View>
@@ -175,6 +211,9 @@ const styles = StyleSheet.create({
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center' },
   avatarLabel: { color: colors.text, fontWeight: '700' },
   userName: { color: colors.text, fontSize: 18, fontWeight: '600' },
+  removeAction: { justifyContent: 'center', alignItems: 'center', minWidth: 96, paddingHorizontal: spacing.md, backgroundColor: colors.error, borderRadius: 12 },
+  removeLabel: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  hint: { color: colors.muted, fontSize: 14, textAlign: 'center' },
   pinScroll: { flex: 1, backgroundColor: colors.bg },
   // flexGrow (no flex): centrado si cabe, y si no cabe el contenido crece y se desplaza; el padding de abajo deja el último botón completo
   pinArea: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing.lg, paddingBottom: spacing.xl },

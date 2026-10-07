@@ -50,7 +50,15 @@
     "noUsers": "No hay usuarios con acceso a este aparato.",
     "chooseCompany": "¿En qué compañía vas a trabajar?",
     "addCompany": "Registrar otra compañía",
-    "changeCompany": "Cambiar de compañía"
+    "changeCompany": "Cambiar de compañía",
+    "lockedTitle": "Sesión bloqueada",
+    "lockedHelp": "Escribe tu PIN para seguir. Lo que capturaste se conserva.",
+    "unlock": "Desbloquear",
+    "removeCompany": "Quitar",
+    "removeCompanyTitle": "¿Quitar {name} de este teléfono?",
+    "removeCompanyBody": "Se borran sus datos locales.",
+    "removeCompanyPending": "Tiene {count} captura(s) sin sincronizar que se perderán.",
+    "swipeHint": "Desliza a la izquierda para quitar una compañía."
   },
   "home": {
     "title": "Teikem Almacén",
@@ -65,7 +73,8 @@
     "syncStatusError": "No se pudo sincronizar. Toca \"Sincronizar ahora\".",
     "syncStatusErrorPending": "{count} pendientes · no se pudo sincronizar",
     "syncNow": "Sincronizar ahora",
-    "signOut": "Cambiar de usuario",
+    "signOut": "Cerrar sesión",
+    "lock": "Bloquear",
     "warehouseLabel": "Almacén: {name}"
   },
   "receive": {

@@ -44,7 +44,7 @@ describe('navegación — Inicio bloqueado por un recibo en curso', () => {
     startLocalReceipt('wh-1', null)
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
-    renderRouter('src/app', { initialUrl: '/' })
+    renderRouter('src/app', { initialUrl: '/home' })
     await waitFor(() => expect(screen.getByText('Teikem Almacén')).toBeTruthy())
 
     await fireEvent.press(screen.getByText('Acomodar'))

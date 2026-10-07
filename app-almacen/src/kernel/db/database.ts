@@ -61,3 +61,34 @@ export function __resetDbForTests(): void {
   instanceName = null
   shared = null
 }
+
+/** Pendientes de enviar de la base de una compañía (sea o no la activa). 0 si no se puede leer. */
+export function countPendingIn(dbName: string): number {
+  try {
+    if (instance && instanceName === dbName) {
+      return instance.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE status = 'pending'")?.n ?? 0
+    }
+    const db = SQLite.openDatabaseSync(dbName)
+    try {
+      return db.getFirstSync<{ n: number }>("SELECT COUNT(*) AS n FROM outbox WHERE status = 'pending'")?.n ?? 0
+    } finally {
+      db.closeSync()
+    }
+  } catch {
+    return 0
+  }
+}
+
+/** Borra el archivo de la base de una compañía (cierra la abierta si es esa). */
+export function deleteLocalDatabase(dbName: string): void {
+  if (instance && instanceName === dbName) {
+    instance.closeSync()
+    instance = null
+    instanceName = null
+  }
+  try {
+    SQLite.deleteDatabaseSync(dbName)
+  } catch {
+    // ya no existía
+  }
+}

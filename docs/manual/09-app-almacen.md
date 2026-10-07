@@ -194,9 +194,9 @@ Los mensajes de PIN, bloqueo y permisos están explicados con más detalle (por 
 
 Qué hace: menú de 5 acciones (Recibir, Acomodar, Despacho, Conteo, Consultar) en **dos columnas** de botones altos (icono
 arriba, nombre debajo; la quinta a todo el ancho; Lote A3), el estado de la sincronización
-("N pendientes de enviar", "Todo enviado", o, en rojo, que la **última sincronización falló**: "No se pudo sincronizar. Toca 'Sincronizar ahora'." si no hay nada pendiente, o "N pendientes · no se pudo sincronizar"; desde 2026-10-01 ya no dice "0 con error", porque no mide elementos rechazados sino el resultado del último intento), un botón "Sincronizar ahora", y "Cambiar de usuario" (cierra la
+("N pendientes de enviar", "Todo enviado", o, en rojo, que la **última sincronización falló**: "No se pudo sincronizar. Toca 'Sincronizar ahora'." si no hay nada pendiente, o "N pendientes · no se pudo sincronizar"; desde 2026-10-01 ya no dice "0 con error", porque no mide elementos rechazados sino el resultado del último intento), un botón "Sincronizar ahora", y "Cerrar sesión" (cierra la
 sesión de este usuario en el aparato, sin desregistrarlo). La pantalla se desplaza si el aparato es más corto: Sincronizar y
-Cambiar de usuario quedan debajo de las acciones.
+Cerrar sesión quedan debajo de las acciones.
 
 Quién puede: cualquiera que entró con PIN (§2.2). El menú no filtra por permiso fino: cada pantalla revisa el suyo
 al llamar al API real y, si falta, el error del servidor se muestra tal cual (por ejemplo, sin `warehouse.pick` la
@@ -727,6 +727,13 @@ por dos códigos distintos (SKU una vez, código de barras otra) guarda dos entr
 de la búsqueda libre del mismo texto.
 
 ---
+
+### Cerrar sesión, bloquear y quitar una compañía (2026-10-07)
+
+- **Cerrar sesión** (antes «Cambiar de usuario»): sale del usuario; el siguiente elige su nombre y teclea su PIN. Lo capturado y pendiente de enviar se conserva.
+- **Bloquear** (candado pequeño junto al nombre en Inicio): la sesión sigue, pero la pantalla pide el PIN del mismo usuario. **También se pide el PIN cada vez que se abre la app**, aunque haya quedado una sesión guardada. PIN incorrecto: mensaje del servidor (`PIN incorrecto.`, 401; 5 fallos seguidos → `PIN bloqueado por 15 minutos.`, 423). En esa pantalla, «Cerrar sesión» sale por completo.
+- **Quitar una compañía de este teléfono**: en «¿En qué compañía vas a trabajar?», deslice la fila a la izquierda (o mantenga pulsada) → «Quitar». Pide confirmación (`¿Quitar {compañía} de este teléfono?`) y, si tiene capturas sin enviar, avisa cuántas se perderán. Borra su registro y su base local; las demás compañías siguen.
+- **Compañía que el servidor ya no reconoce** (por ejemplo, se reinició la base de datos o se desactivó el aparato): al entrar a ella el servidor responde 401 `El aparato no está registrado o fue desactivado.` y la app la **quita sola, sin preguntar**. Sin ninguna compañía registrada, la app va a la pantalla de registro.
 
 ## 9. Sincronización
 

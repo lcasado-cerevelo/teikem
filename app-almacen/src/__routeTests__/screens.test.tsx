@@ -36,7 +36,7 @@ describe('navegación', () => {
       fullName: 'Ana Ruiz',
     })
 
-    renderRouter('src/app', { initialUrl: '/' })
+    renderRouter('src/app', { initialUrl: '/home' })
 
     await waitFor(() => expect(screen.getByText('Teikem Almacén')).toBeTruthy())
     expect(screen.getByText('Ana Ruiz')).toBeTruthy()

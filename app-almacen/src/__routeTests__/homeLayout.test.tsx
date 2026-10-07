@@ -39,9 +39,9 @@ describe('navegación — Inicio y márgenes de la app', () => {
       expect(StyleSheet.flatten(button.props.style).minHeight).toBe(88)
     }
 
-    // Desplazable (por si la pantalla del aparato es más corta) y con Sincronizar y Cambiar de usuario debajo.
+    // Desplazable (por si la pantalla del aparato es más corta) y con Sincronizar y Cerrar sesión debajo.
     expect(screen.getByTestId('home-scroll').type).toBe('RCTScrollView')
     expect(screen.getByText('Sincronizar ahora')).toBeTruthy()
-    expect(screen.getByText('Cambiar de usuario')).toBeTruthy()
+    expect(screen.getByText('Cerrar sesión')).toBeTruthy()
   })
 })

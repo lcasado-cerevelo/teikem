@@ -50,7 +50,15 @@
     "noUsers": "No users have access to this device.",
     "chooseCompany": "Which company are you working for?",
     "addCompany": "Register another company",
-    "changeCompany": "Change company"
+    "changeCompany": "Change company",
+    "lockedTitle": "Session locked",
+    "lockedHelp": "Enter your PIN to continue. What you captured is kept.",
+    "unlock": "Unlock",
+    "removeCompany": "Remove",
+    "removeCompanyTitle": "Remove {name} from this phone?",
+    "removeCompanyBody": "Its local data is deleted.",
+    "removeCompanyPending": "It has {count} unsynced capture(s) that will be lost.",
+    "swipeHint": "Swipe left to remove a company."
   },
   "home": {
     "title": "Teikem Warehouse",
@@ -65,7 +73,8 @@
     "syncStatusError": "Could not sync. Tap \"Sync now\".",
     "syncStatusErrorPending": "{count} pending · could not sync",
     "syncNow": "Sync now",
-    "signOut": "Switch user",
+    "signOut": "Sign out",
+    "lock": "Lock",
     "warehouseLabel": "Warehouse: {name}"
   },
   "receive": {
