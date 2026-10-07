@@ -15,37 +15,37 @@ await prepareZXingModule({ overrides: { wasmBinary: readFileSync(join(zx, 'dist'
 
 // Productos (código = su código de barras si lo tiene; si no, su SKU) y posiciones, por escenario. Datos de la base local (2026-10-07).
 const P = {
-  tourniquet: { tipo: 'Producto', nombre: '171-AC-100-A · TOURNIQUET', codigo: '3726918104001', nota: 'Depot · hoy 60 en 09-C-15 y 60 en 10-C-15' },
+  guante: { tipo: 'Producto', nombre: '171-AC-201-M · GLOVE NITRILE PF N/ST MEDIUM', codigo: '3022123181425', nota: 'Depot · sin existencia: se recibe 100 con recibo ciego' },
+  tourniquet: { tipo: 'Producto', nombre: '171-AC-100-A · TOURNIQUET', codigo: '3726918104001', nota: 'Depot · ya repartido en 7 posiciones (60, 60 y 5 de 20): sirve para despachar de muchas posiciones' },
   underpad: { tipo: 'Producto', nombre: '171-DU-1724 · UNDERPAD 17X24 3PK/100EA', codigo: '1201804326993', nota: 'Depot · 60 en 13-C-20 y 60 en 14-C-20' },
   colchon: { tipo: 'Producto', nombre: '56-CM-100F-42 · COMFORD ZONE FOAM MATRESS 6X42', codigo: '+B676CM100F420+', nota: 'Depot · 8 en cada una de 6 posiciones' },
   alta: { tipo: 'Producto', nombre: '53350 · PRODIGY CONTROL SOLUTION HIGH 4ML', codigo: '53350', nota: 'Solutions · sin código de barras: se imprime el SKU · 20 en GENERAL' },
   baja: { tipo: 'Producto', nombre: '53310 · PRODIGY CONTROL SOLUTION LOW 4ML', codigo: '53310', nota: 'Solutions · sin código de barras: se imprime el SKU · 19 en GENERAL' },
-  hisopos: { tipo: 'Producto', nombre: '00050-7 · GLOBAL COTTON SWABS 300CT.', codigo: '00050-7', nota: 'Solutions · sin código de barras: se imprime el SKU · 50 en GENERAL (pasar 20 a A-01)' },
+  hisopos: { tipo: 'Producto', nombre: '00050-7 · GLOBAL COTTON SWABS 300CT.', codigo: '00050-7', nota: 'Solutions · sin código de barras: se imprime el SKU · 50 en GENERAL' },
 }
 const pos = (codigo, nota = '') => ({ tipo: 'Posición', nombre: codigo, codigo, nota })
 
 const escenarios = [
   {
     id: 'A',
-    titulo: 'Depot: recibo con acomodo y reparto por posición',
-    texto: 'Se recibe la orden con acomodo y en Acomodar se escanean las posiciones: en cada una se deja la cantidad por posición (20) hasta repartir las 100.',
+    titulo: 'Depot: recibo ciego con acomodo y reparto por posición',
+    texto: 'Recibir → Recibo ciego (sin orden de compra), modo «Con acomodo»: se reciben 100 y en Acomodar se escanean las posiciones; en cada una se dejan 20.',
     items: [
-      P.tourniquet,
-      pos('09-A-01', 'cupo 50 · vacía'),
-      pos('09-A-03', 'cupo 70 · vacía'),
-      pos('09-A-07', 'cupo 70 · vacía'),
-      pos('09-A-09', 'cupo 40 · vacía'),
-      pos('09-A-15', 'cupo 70 · vacía'),
+      P.guante,
+      pos('01-E-03', 'cupo 40 · vacía'),
+      pos('01-E-04', 'cupo 40 · vacía'),
+      pos('01-E-05', 'cupo 40 · vacía'),
+      pos('01-E-06', 'cupo 40 · vacía'),
+      pos('01-E-09', 'cupo 40 · vacía'),
       pos('09-A-08', 'cupo 10 · vacía · para mostrar el aviso de cupo'),
     ],
-    aviso: 'La orden de compra se crea en la web; cuando tenga su número se puede escanear en Recibir (no está aquí porque todavía no existe).',
   },
   {
     id: 'B',
     titulo: 'Depot: despacho que sale de varias posiciones',
-    texto: 'Se escanea el producto, se piden 100 y salen 60 de una posición y 40 de la otra.',
-    items: [P.underpad, pos('13-C-20', '60 disponibles'), pos('14-C-20', '60 disponibles')],
-    aviso: 'Para más posiciones usar el colchón (escenario F): 30 unidades salen 8 + 8 + 8 + 6.',
+    texto: 'Se escanea el producto, se piden 100 y salen 60 de una posición y 40 de la otra. Con el TOURNIQUET (7 posiciones) se puede pedir 150 y salen de cuatro.',
+    items: [P.underpad, pos('13-C-20', '60 disponibles'), pos('14-C-20', '60 disponibles'), P.tourniquet],
+    aviso: 'TOURNIQUET: 09-C-15 y 10-C-15 con 60; 09-A-01, 09-A-03, 09-A-07, 09-A-09 y 09-A-15 con 20 (todas se muestran en «Posiciones con existencia»).',
   },
   {
     id: 'C',
@@ -62,8 +62,8 @@ const escenarios = [
   {
     id: 'E',
     titulo: 'Solutions: conteo por producto con el producto en varias posiciones',
-    texto: 'Se escanea el producto; la app pide elegir la posición. Contar 30 en GENERAL y 20 en A-01 (después de pasar 20 unidades a A-01).',
-    items: [P.hisopos, pos('GENERAL', '30 después de la transferencia'), pos('A-01', 'posición nueva · 20 después de la transferencia')],
+    texto: 'Primero se recibe 20 de este producto directo a A-01 (Recibir → Directo a posición → Recibo ciego). Luego, Conteo → Por producto: la app pide elegir la posición; contar 50 en GENERAL y 20 en A-01.',
+    items: [P.hisopos, pos('GENERAL', '50 existentes'), pos('A-01', 'posición nueva · recibir 20 aquí (directo)')],
   },
   {
     id: 'F',
