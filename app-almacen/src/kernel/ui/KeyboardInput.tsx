@@ -39,6 +39,23 @@ export const KeyboardInput = forwardRef<TextInput, KeyboardInputProps>(function 
   const handleFocus = useFieldFocus(getField, onFocus)
   // Pedido del dueño 2026-10-07: en todo campo numérico (cantidades) el valor que traiga sale seleccionado al enfocar, para reemplazarlo escribiendo.
   const selectAll = selectTextOnFocus ?? (props.keyboardType === 'decimal-pad' || props.keyboardType === 'number-pad' || props.keyboardType === 'numeric')
+  // Con autoFocus, el foco y la selección completa del valor se piden también por código: en Android `autoFocus` + `selectTextOnFocus` no siempre
+  // seleccionan lo que ya estaba escrito (el 1 de la cantidad). Se intenta de nuevo un instante después por si la pantalla aún se acomodaba.
+  const wantsFocus = Boolean(props.autoFocus)
+  const initialLength = String(props.value ?? props.defaultValue ?? '').length
+  useEffect(() => {
+    if (!wantsFocus) return undefined
+    const run = () => {
+      const input = inner.current
+      if (!input) return
+      input.focus()
+      if (selectAll && initialLength > 0) input.setSelection?.(0, initialLength)
+    }
+    const ids = [setTimeout(run, 60), setTimeout(run, 300)]
+    return () => ids.forEach(clearTimeout)
+    // solo al montar
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [own, setOwn] = useState(false)
   const visible = toggle ? own : softKeyboard === true
 

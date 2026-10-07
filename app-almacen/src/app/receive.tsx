@@ -510,6 +510,7 @@ export default function ReceiveScreen() {
           <View style={styles.field}>
             <Text style={styles.label}>{t('receive.qtyLabel')}</Text>
             <KeyboardInput
+              autoFocus
               value={draft.qtyText}
               onChangeText={(v) => setDraft((d) => (d ? { ...d, qtyText: v } : d))}
               keyboardType="decimal-pad"

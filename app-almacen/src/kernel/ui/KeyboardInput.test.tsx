@@ -1,12 +1,26 @@
 // Pedido del dueño 2026-10-05: donde haya un campo de texto, la opción del teclado en pantalla (el botón «⌨»). Por defecto el teclado NO aparece al
 // enfocar (el Zebra tiene teclado físico y lector); el botón lo muestra y lo esconde. Con un solo botón compartido para una lista de campos.
 import { fireEvent, render } from '@testing-library/react-native'
-import { View } from 'react-native'
+import { createRef } from 'react'
+import { TextInput, View } from 'react-native'
 
 import { KeyboardInput, KeyboardToggleButton } from './KeyboardInput'
 import { useSoftKeyboard } from './useSoftKeyboard'
 
 describe('KeyboardInput', () => {
+  it('con autoFocus pide el foco y selecciona todo el valor que trae (el 1 de la cantidad)', async () => {
+    jest.useFakeTimers()
+    const ref = createRef<TextInput>()
+    await render(<KeyboardInput ref={ref} autoFocus accessibilityLabel="Cantidad" keyboardType="decimal-pad" value="125" />)
+    const input = ref.current as unknown as { focus: jest.Mock; setSelection: jest.Mock }
+    input.focus = jest.fn()
+    input.setSelection = jest.fn()
+    jest.advanceTimersByTime(400)
+    expect(input.focus).toHaveBeenCalled()
+    expect(input.setSelection).toHaveBeenCalledWith(0, 3)
+    jest.useRealTimers()
+  })
+
   it('en los campos numéricos (cantidades) el valor sale seleccionado al enfocar; en los de texto, no', async () => {
     const { getByLabelText } = await render(
       <View>
