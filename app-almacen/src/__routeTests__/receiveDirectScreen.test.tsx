@@ -77,7 +77,7 @@ describe('Recibir — directo a posición', () => {
 
     // Paso de destino: cantidad con coma de miles y la pista del servidor.
     await waitFor(() => expect(screen.getByLabelText('Escanea la posición destino')).toBeTruthy())
-    expect(screen.getByText('1,250 SKU-1')).toBeTruthy()
+    expect(screen.getByText('1,250 × SKU-1')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Sugerida: RSV-A-01')).toBeTruthy())
 
     // Posición de recepción: rechazada, la línea no se agrega.
@@ -93,7 +93,7 @@ describe('Recibir — directo a posición', () => {
     // Posición de guardado (sin distinguir mayúsculas): se agrega y vuelve a la lista con "→ RSV-A-01".
     await fireEvent(screen.getByLabelText('Escanea la posición destino'), 'submitEditing', { nativeEvent: { text: 'rsv-a-01' } })
     await waitFor(() => expect(screen.getByText('→ RSV-A-01')).toBeTruthy())
-    expect(screen.getByText('1,250 SKU-1')).toBeTruthy()
+    expect(screen.getByText('1,250 × SKU-1')).toBeTruthy()
     expect(screen.getByText('Cierra el recibo y deja cada línea en su posición destino, sin tareas de acomodo.')).toBeTruthy()
     expect(getOpenReceipt()?.lines[0]).toMatchObject({ receivedQty: 1250, targetBinCode: 'RSV-A-01' })
 

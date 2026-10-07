@@ -225,3 +225,27 @@ export function replacePlanBin(rows: readonly PlanRow[], index: number, binCode:
   const next = rows.map((r, i) => (i === index ? { ...r, binCode: first.binCode, lotNumber: first.lotNumber, expiryDate: first.expiryDate } : r))
   return { ok: true, rows: next }
 }
+
+// ------------------------------------------------------------------ listado de posiciones marcables (2026-10-07)
+
+/** Clave de una existencia en el listado: posición + lote. */
+export function stockKey(o: { binCode: string; lotNumber: string | null }): string {
+  return `${o.binCode.trim().toUpperCase()}|${o.lotNumber ?? ''}`
+}
+
+/** Las existencias con algo disponible, en el orden de salida, descontando lo que este despacho ya sacó del producto (primero lo del principio del orden,
+ *  igual que `planExit` y `nextStockOption`). */
+export function availableAfterPicked(options: readonly StockOption[], alreadyPicked: number): StockOption[] {
+  let skip = Math.max(0, alreadyPicked)
+  const out: StockOption[] = []
+  for (const o of inExitOrder(options)) {
+    let avail = o.available
+    if (skip > 0) {
+      const used = Math.min(skip, avail)
+      skip -= used
+      avail -= used
+    }
+    if (avail > 0) out.push({ ...o, available: avail })
+  }
+  return out
+}

@@ -109,7 +109,7 @@
     "serialsRequired": "Este producto necesita {count} números de serie.",
     "addLine": "Agregar",
     "linesTitle": "Líneas capturadas",
-    "lineQty": "{qty} {sku}",
+    "lineQty": "{qty} × {sku}",
     "confirmReceipt": "Confirmar recibo",
     "confirmHelp": "Cierra el recibo y crea las tareas de acomodo.",
     "confirmed": "Recibo enviado a la cola",
@@ -194,7 +194,7 @@
     "binNotFound": "No hay una posición con ese código.",
     "addLine": "Agregar",
     "linesTitle": "Líneas recolectadas",
-    "lineQty": "{qty} {sku}",
+    "lineQty": "{qty} × {sku}",
     "packButton": "Empacar",
     "packHelp": "Elige el consignatario y confirma; se manda cuando haya señal.",
     "chooseConsignee": "¿A quién se despacha?",
@@ -435,5 +435,19 @@
     "titleAny": "Buscar producto o posición",
     "empty": "No hay coincidencias en este aparato. Sincroniza si falta algo.",
     "more": "Mostrando las primeras {max}; escribe más para acotar."
+  },
+  "positions": {
+    "listTitle": "Posiciones con existencia",
+    "tally": "Tomado {taken} de {total}",
+    "recommended": "sugerida",
+    "markRecommended": "Marcar las sugeridas",
+    "showAll": "Ver otras posiciones",
+    "hideAll": "Ocultar posiciones",
+    "doesNotFit": "No alcanza sola: faltan {short}. Marca más posiciones abajo.",
+    "useDispatch": "Usar estas posiciones",
+    "useReceive": "Recibir en estas posiciones",
+    "tapToUse": "Toca para usarla",
+    "free": "libre {qty}",
+    "capacityWarn": "{bin}: caben {free} y se pondrán {qty}."
   }
 }

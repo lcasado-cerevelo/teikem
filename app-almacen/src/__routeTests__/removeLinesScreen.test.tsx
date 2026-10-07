@@ -51,13 +51,13 @@ describe('Quitar líneas', () => {
     await waitFor(() => expect(getOpenReceipt()?.lines).toHaveLength(2))
 
     const no = answerAlert('cancel')
-    await fireEvent.press(screen.getByLabelText('Quitar 3 SKU-1'))
+    await fireEvent.press(screen.getByLabelText('Quitar 3 × SKU-1'))
     expect(no).toHaveBeenCalledWith('¿Quitar esta línea?', 'Se quita 3 SKU-1 de este recibo. Las demás líneas no cambian.', expect.any(Array))
     expect(getOpenReceipt()?.lines).toHaveLength(2)
 
     no.mockRestore()
     answerAlert('destructive')
-    await fireEvent.press(screen.getByLabelText('Quitar 3 SKU-1'))
+    await fireEvent.press(screen.getByLabelText('Quitar 3 × SKU-1'))
     await waitFor(() => expect(getOpenReceipt()?.lines.map((l) => l.sku)).toEqual(['SKU-2']))
   })
 
@@ -75,13 +75,13 @@ describe('Quitar líneas', () => {
     await waitFor(() => expect(getOpenPick()?.lineRows).toHaveLength(1))
 
     const no = answerAlert('cancel')
-    await fireEvent.press(screen.getByLabelText('Quitar 2 SKU-1'))
+    await fireEvent.press(screen.getByLabelText('Quitar 2 × SKU-1'))
     expect(no).toHaveBeenCalledWith('¿Quitar esta línea?', 'Se quita 2 SKU-1 (de A-01) de este despacho. Las demás líneas no cambian.', expect.any(Array))
     expect(getOpenPick()?.lineRows).toHaveLength(1)
 
     no.mockRestore()
     answerAlert('destructive')
-    await fireEvent.press(screen.getByLabelText('Quitar 2 SKU-1'))
+    await fireEvent.press(screen.getByLabelText('Quitar 2 × SKU-1'))
     await waitFor(() => expect(getOpenPick()?.lineRows).toHaveLength(0))
   })
 })

@@ -57,7 +57,7 @@ describe('Recibir — con acomodo', () => {
     await waitFor(() => expect(screen.getByText('Agregar')).toBeTruthy())
     await fireEvent.press(screen.getByText('Agregar'))
 
-    await waitFor(() => expect(screen.getByText('1 SKU-1')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('1 × SKU-1')).toBeTruthy())
     expect(screen.queryByLabelText('Escanea la posición destino')).toBeNull()
     expect(screen.getByText('Cierra el recibo y crea las tareas de acomodo.')).toBeTruthy()
     expect(getOpenReceipt()).toMatchObject({ receivingMode: 'PUTAWAY' })

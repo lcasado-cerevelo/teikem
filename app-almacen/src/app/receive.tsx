@@ -24,10 +24,12 @@ import {
   removeLocalReceiptLine,
   startLocalReceipt,
 } from '../features/receive/localLookup'
-import { fetchTargetSuggestion } from '../features/receive/receiveApi'
+import { fetchTargetSuggestions, type TargetSuggestion } from '../features/receive/receiveApi'
 import { chunkAt, distSummary, exceedsCapacity, isRestBin, parsePerBin } from '../features/putaway/putawayLogic'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
+import { BinMarkList } from '../features/positions/BinMarkList'
+import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
@@ -75,7 +77,12 @@ export default function ReceiveScreen() {
   // Lote 16: paso de posición destino del borrador (solo recibo directo), su error y la pista del servidor.
   const [askTarget, setAskTarget] = useState(false)
   const [targetError, setTargetError] = useState<string | null>(null)
-  const [suggestion, setSuggestion] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<TargetSuggestion[]>([])
+  const suggestion = suggestions[0]?.binCode ?? null
+  // Listado de posiciones marcables (2026-10-07): lo marcado, si se ve aunque la cantidad quepa en la sugerida, y lo que la sugerida pone en el campo.
+  const [marks, setMarks] = useState<Marks>({})
+  const [showAll, setShowAll] = useState(false)
+  const [prefill, setPrefill] = useState<{ value: string; seq: number } | null>(null)
   // Reparto por posición (tarea 24c): cantidad por posición y las posiciones escaneadas, que se mandan juntas al confirmar el reparto.
   const [perBinText, setPerBinText] = useState('')
   const [splitCodes, setSplitCodes] = useState<string[]>([])
@@ -97,8 +104,8 @@ export default function ReceiveScreen() {
   useEffect(() => {
     if (!suggestProduct || !warehousePublicId) return undefined
     let alive = true
-    void fetchTargetSuggestion(suggestProduct, warehousePublicId, suggestQty).then((bin) => {
-      if (alive) setSuggestion(bin)
+    void fetchTargetSuggestions(suggestProduct, warehousePublicId, suggestQty).then((rows) => {
+      if (alive) setSuggestions(rows)
     })
     return () => {
       alive = false
@@ -148,10 +155,12 @@ export default function ReceiveScreen() {
     setDraft(null)
     setAskTarget(false)
     setTargetError(null)
-    setSuggestion(null)
+    setSuggestions([])
     setPerBinText('')
     setSplitCodes([])
     setClosedAlertBin(null)
+    setMarks({})
+    setShowAll(false)
   }
 
   function addCurrentLine() {
@@ -159,7 +168,7 @@ export default function ReceiveScreen() {
     if (direct) {
       // Recibo directo: la cantidad está lista; falta dónde queda la mercancía.
       setTargetError(null)
-      setSuggestion(null)
+      setSuggestions([])
       setAskTarget(true)
       return
     }
@@ -217,6 +226,24 @@ export default function ReceiveScreen() {
     refresh()
   }
 
+  /** Recibe en las posiciones marcadas del listado: una línea por posición con lo que se tomó de cada una. */
+  function receiveInMarkedBins(rows: Array<{ binCode: string; qty: number }>) {
+    if (!draft || !openReceipt || rows.length === 0) return
+    const added = rows.map((r) => buildLine({ ...draft, qtyText: String(r.qty), targetBinCode: r.binCode }))
+    if (openReceipt.doc) {
+      const conflict = findTargetConflict(getDocLines(openReceipt.doc), [...openReceipt.lines, ...added])
+      if (conflict) {
+        setTargetError(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
+        vibrateError()
+        return
+      }
+    }
+    for (const line of added) addLocalReceiptLine(openReceipt.id, line)
+    closeDraft()
+    vibrateOk()
+    refresh()
+  }
+
   /** Confirma el reparto: agrega una línea por posición; lo que no cupo en posiciones llenas queda en la captura para ubicarlo aparte. */
   function confirmSplit() {
     if (!draft || !openReceipt || splitCodes.length === 0 || perBin <= 0) return
@@ -238,7 +265,7 @@ export default function ReceiveScreen() {
       setPerBinText('')
       setSplitCodes([])
       setTargetError(null)
-      setSuggestion(null)
+      setSuggestions([])
       return
     }
     closeDraft()
@@ -318,6 +345,26 @@ export default function ReceiveScreen() {
     const total = draftQuantity(draft)
     const restAt = perBin > 0 ? splitCodes.findIndex((_, i) => isRestBin(total, perBin, i)) : -1
     const restCode = restAt >= 0 ? splitCodes[restAt] : null
+    // Listado de posiciones marcables: las sugeridas por el servidor con su espacio libre; son "sugeridas" las primeras que juntas completan la cantidad.
+    let covered = 0
+    const markOptions: MarkOption[] =
+      perBin === 0 && !requiresSerials(draft)
+        ? suggestions.map((sg) => {
+            const recommended = covered < total
+            covered += sg.freeQty ?? total
+            return {
+              key: sg.binCode,
+              binCode: sg.binCode,
+              capacity: sg.freeQty,
+              recommended,
+              detail: [sg.freeQty != null ? t('positions.free', { qty: f.qty(sg.freeQty) }) : null, sg.reason || null].filter(Boolean).join(' · '),
+            }
+          })
+        : []
+    const effectiveMarks = capMarks(markOptions, marks, total)
+    const first = suggestions[0]
+    const doesNotFit = Boolean(first && first.freeQty != null && total > first.freeQty && perBin === 0)
+    const listVisible = markOptions.length > 0 && (doesNotFit || showAll)
     return (
       <KeyboardScreen
         contentContainerStyle={styles.fill}
@@ -332,7 +379,41 @@ export default function ReceiveScreen() {
       >
         <Text style={styles.title}>{draft.productName}</Text>
         <Text style={styles.help}>{t('receive.lineQty', { qty: draftQuantity(draft), sku: draft.sku })}</Text>
-        {suggestion ? <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text> : null}
+        {suggestion ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('positions.tapToUse')}
+            testID="receive-suggestion"
+            onPress={() => {
+              if (doesNotFit) {
+                setMarks(toggleMark(markOptions, effectiveMarks, suggestion, total))
+                return
+              }
+              setTargetError(null)
+              setPrefill((p) => ({ value: suggestion, seq: (p?.seq ?? 0) + 1 }))
+            }}
+            style={styles.suggestCard}
+          >
+            <Text style={styles.hint}>{t('receive.targetHint', { bin: suggestion })}</Text>
+            {first?.freeQty != null ? <Text style={styles.help}>{t('positions.free', { qty: f.qty(first.freeQty) })}</Text> : null}
+            {doesNotFit && first?.freeQty != null ? <Text style={styles.warnText}>{t('positions.doesNotFit', { short: f.qty(total - first.freeQty) })}</Text> : null}
+          </Pressable>
+        ) : null}
+        {markOptions.length > 1 && !doesNotFit ? (
+          <BigButton label={t(showAll ? 'positions.hideAll' : 'positions.showAll')} variant="secondary" onPress={() => setShowAll((v) => !v)} />
+        ) : null}
+        {listVisible ? (
+          <BinMarkList
+            testID="receive-marks"
+            options={markOptions}
+            marks={effectiveMarks}
+            total={total}
+            onToggle={(key) => setMarks(toggleMark(markOptions, effectiveMarks, key, total))}
+            onMarkRecommended={() => setMarks(markRecommended(markOptions, effectiveMarks, total))}
+            onUse={() => receiveInMarkedBins(marksToRows(markOptions, effectiveMarks))}
+            useLabel={t('positions.useReceive')}
+          />
+        ) : null}
         {!requiresSerials(draft) ? (
           <View style={styles.field}>
             <Text style={styles.label}>{t('receive.perBinLabel')}</Text>
@@ -354,6 +435,7 @@ export default function ReceiveScreen() {
           error={targetError}
           onSubmit={scanTarget}
           suggestedValue={perBin > 0 ? null : suggestion}
+          prefill={prefill}
           pick="bin"
         />
         {perBin > 0 && splitCodes.length > 0 ? (
@@ -531,6 +613,8 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: fontSize.title, fontWeight: '700' },
   label: { color: colors.text, fontSize: fontSize.label, fontWeight: '600' },
   help: { color: colors.muted, fontSize: fontSize.message },
+  suggestCard: { gap: 2, padding: spacing.md, borderRadius: 12, borderWidth: 2, borderColor: colors.brand, backgroundColor: colors.panelAlt },
+  warnText: { color: colors.warn, fontSize: fontSize.message, fontWeight: '700' },
   hint: { color: colors.warn, fontSize: 18, fontWeight: '700' },
   error: { color: colors.error, fontSize: fontSize.message },
   field: { gap: spacing.xs },

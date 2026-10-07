@@ -5527,3 +5527,20 @@ Si el servidor ya no reconoce el aparato (`El aparato no está registrado o fue 
 
 **Al quitar una compañía dice que tiene capturas sin sincronizar.**
 Esas capturas viven solo en este teléfono; si confirma, se pierden. Cancele, sincronice con señal («Sincronizar ahora») y vuelva a quitarla.
+
+## Posición sugerida y listado de posiciones en la app (2026-10-07)
+
+**Toqué «Sugerida: X» y no se agregó la línea.**
+Es a propósito: pone la posición en el campo y enciende **Aceptar**; al tocar Aceptar (o escanear la posición) se agrega la línea. Escribir la cantidad antes es obligatorio en Despacho.
+
+**Dice `No alcanza sola: faltan N. Marca más posiciones abajo.`**
+La cantidad es mayor que lo que hay (Despacho) o cabe (Recibo) en la posición sugerida. En el listado de abajo marque las posiciones; el contador «Tomado X de Y» debe llegar al total para usar el botón.
+
+**No me deja marcar otra posición.**
+Ya se tomó el total (Tomado X de X). Desmarque una o suba la cantidad.
+
+**Cambié la cantidad y las marcas cambiaron.**
+Es lo esperado: las marcas se recortan para no pasarse del total, empezando por las del final del listado.
+
+**¿Por qué no sale el listado en un producto con lote?**
+Con lote la posición es la del lote que vence primero y no se escoge.

@@ -7,6 +7,19 @@ import { KeyboardInput, KeyboardToggleButton } from './KeyboardInput'
 import { useSoftKeyboard } from './useSoftKeyboard'
 
 describe('KeyboardInput', () => {
+  it('en los campos numéricos (cantidades) el valor sale seleccionado al enfocar; en los de texto, no', async () => {
+    const { getByLabelText } = await render(
+      <View>
+        <KeyboardInput accessibilityLabel="Cantidad" keyboardType="decimal-pad" defaultValue="1" />
+        <KeyboardInput accessibilityLabel="Piezas" keyboardType="number-pad" defaultValue="1" />
+        <KeyboardInput accessibilityLabel="Nota" defaultValue="x" />
+      </View>,
+    )
+    expect(getByLabelText('Cantidad').props.selectTextOnFocus).toBe(true)
+    expect(getByLabelText('Piezas').props.selectTextOnFocus).toBe(true)
+    expect(getByLabelText('Nota').props.selectTextOnFocus).toBe(false)
+  })
+
   it('trae su botón «⌨»: el teclado en pantalla arranca escondido y el botón lo muestra y lo vuelve a esconder', async () => {
     const { getByLabelText } = await render(<KeyboardInput accessibilityLabel="Cantidad" keyboardType="decimal-pad" />)
     expect(getByLabelText('Cantidad').props.showSoftInputOnFocus).toBe(false)

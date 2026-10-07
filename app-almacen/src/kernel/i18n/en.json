@@ -109,7 +109,7 @@
     "serialsRequired": "This product requires {count} serial numbers.",
     "addLine": "Add",
     "linesTitle": "Captured lines",
-    "lineQty": "{qty} {sku}",
+    "lineQty": "{qty} × {sku}",
     "confirmReceipt": "Confirm receipt",
     "confirmHelp": "Closes the receipt and creates putaway tasks.",
     "confirmed": "Receipt queued to send",
@@ -194,7 +194,7 @@
     "binNotFound": "No bin matches that code.",
     "addLine": "Add",
     "linesTitle": "Collected lines",
-    "lineQty": "{qty} {sku}",
+    "lineQty": "{qty} × {sku}",
     "packButton": "Pack",
     "packHelp": "Choose the consignee and confirm; it sends once there is a signal.",
     "chooseConsignee": "Who is this dispatched to?",
@@ -435,5 +435,19 @@
     "titleAny": "Find product or bin",
     "empty": "No matches on this device. Sync if something is missing.",
     "more": "Showing the first {max}; type more to narrow down."
+  },
+  "positions": {
+    "listTitle": "Positions with stock",
+    "tally": "Taken {taken} of {total}",
+    "recommended": "suggested",
+    "markRecommended": "Mark the suggested ones",
+    "showAll": "Show other positions",
+    "hideAll": "Hide positions",
+    "doesNotFit": "Not enough in this one: {short} short. Mark more positions below.",
+    "useDispatch": "Use these positions",
+    "useReceive": "Receive into these positions",
+    "tapToUse": "Tap to use it",
+    "free": "free {qty}",
+    "capacityWarn": "{bin}: {free} fit and {qty} will be put."
   }
 }

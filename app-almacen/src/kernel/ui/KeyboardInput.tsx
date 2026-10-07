@@ -31,12 +31,14 @@ export function KeyboardToggleButton({ on, onPress }: { on: boolean; onPress: ()
   )
 }
 
-export const KeyboardInput = forwardRef<TextInput, KeyboardInputProps>(function KeyboardInput({ toggle = true, softKeyboard, style, onFocus, ...props }, ref) {
+export const KeyboardInput = forwardRef<TextInput, KeyboardInputProps>(function KeyboardInput({ toggle = true, softKeyboard, style, onFocus, selectTextOnFocus, ...props }, ref) {
   const inner = useRef<TextInput>(null)
   useImperativeHandle(ref, () => inner.current as TextInput)
   // Lote A9: dentro de un KeyboardScreen, al enfocarse con el teclado en pantalla ya fuera, la pantalla se desplaza hasta este campo
   const getField = useCallback(() => inner.current as unknown as MeasurableField | null, [])
   const handleFocus = useFieldFocus(getField, onFocus)
+  // Pedido del dueño 2026-10-07: en todo campo numérico (cantidades) el valor que traiga sale seleccionado al enfocar, para reemplazarlo escribiendo.
+  const selectAll = selectTextOnFocus ?? (props.keyboardType === 'decimal-pad' || props.keyboardType === 'number-pad' || props.keyboardType === 'numeric')
   const [own, setOwn] = useState(false)
   const visible = toggle ? own : softKeyboard === true
 
@@ -62,10 +64,10 @@ export const KeyboardInput = forwardRef<TextInput, KeyboardInputProps>(function 
     setTimeout(() => inner.current?.focus(), 50)
   }
 
-  if (!toggle) return <TextInput ref={inner} {...props} onFocus={handleFocus} style={style} showSoftInputOnFocus={visible} />
+  if (!toggle) return <TextInput ref={inner} {...props} selectTextOnFocus={selectAll} onFocus={handleFocus} style={style} showSoftInputOnFocus={visible} />
   return (
     <View style={styles.row}>
-      <TextInput ref={inner} {...props} onFocus={handleFocus} style={[style, styles.grow]} showSoftInputOnFocus={visible} />
+      <TextInput ref={inner} {...props} selectTextOnFocus={selectAll} onFocus={handleFocus} style={[style, styles.grow]} showSoftInputOnFocus={visible} />
       <KeyboardToggleButton on={own} onPress={toggleOwn} />
     </View>
   )

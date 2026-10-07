@@ -728,6 +728,14 @@ de la búsqueda libre del mismo texto.
 
 ---
 
+### Posición sugerida que se toca y listado de posiciones (2026-10-07)
+
+- **Cantidades:** en todo campo de cantidad el valor que trae (por ejemplo el 1) sale **seleccionado** al entrar: lo que escriba lo reemplaza, sin tener que borrar.
+- **Línea de la lista:** ahora dice `100 × 00050-7` (cantidad, «×», SKU) para no confundir la cantidad con el número del producto.
+- **Despacho y Recibo directo — la sugerida se toca:** la tarjeta «Sugerida: X» es un botón. Si la cantidad cabe en esa posición, al tocarla su código se pone en el campo de la posición y queda lista la tecla **Aceptar** (escanear sigue agregando la línea al instante). Si no cabe, la tarjeta dice `No alcanza sola: faltan N. Marca más posiciones abajo.` y al tocarla se **marca** en el listado.
+- **Listado de posiciones:** aparece solo cuando la cantidad no cabe en la sugerida; con «Ver otras posiciones» se abre también cuando sí cabe. Despacho lista las posiciones con existencia (con lote y vencimiento); Recibo directo, las posiciones que propone el sistema con su espacio libre. Las **sugeridas** (las que juntas completan la cantidad) salen primero y en otro azul. Tocar una la marca con lo que falte (hasta su existencia o espacio libre); el contador **Tomado X de Y** sube; nunca se puede marcar más del total. Si cambia la cantidad, las marcas se recortan solas. «Marcar las sugeridas» marca todas las sugeridas de una vez. **Usar estas posiciones** (Despacho) o **Recibir en estas posiciones** (Recibo) se enciende cuando lo tomado es igual al total y agrega una línea por posición.
+- **Con lote** (Despacho): sin listado; la posición la manda el lote que vence primero. En Recibo directo, productos con serie y el modo «cantidad por posición» no muestran este listado.
+
 ### Cerrar sesión, bloquear y quitar una compañía (2026-10-07)
 
 - **Cerrar sesión** (antes «Cambiar de usuario»): sale del usuario; el siguiente elige su nombre y teclea su PIN. Lo capturado y pendiente de enviar se conserva.
