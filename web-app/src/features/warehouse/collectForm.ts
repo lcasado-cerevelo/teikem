@@ -265,3 +265,48 @@ export function fefoBinOptions(balances: readonly BalanceDto[], lotId?: number |
 export function fefoAvailable(balances: readonly BalanceDto[], lotId?: number | null): number {
   return fefoCandidates(balances, lotId).reduce((s, b) => s + (b.qtyAvailable ?? 0), 0)
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Plan de salida (pedido del dueño 2026-10-07; en la app ya existía): dada la cantidad de un producto, de dónde sacarla siguiendo el orden FEFO del
+// servidor (20 de A-01 y 30 de B-03), descontando lo que otras líneas del mismo despacho ya toman de esas posiciones.
+// ---------------------------------------------------------------------------------------------------------------------
+export interface PlanPart {
+  binId: number
+  binCode: string
+  lotId: number | null
+  lotNumber: string | null
+  qty: number
+}
+
+/** Lo que otra línea del despacho ya toma de una posición (y lote); lotId null = sin lote elegido. */
+export interface TakenQty {
+  binId: number
+  lotId: number | null
+  qty: number
+}
+
+export function planCollect(
+  balances: readonly BalanceDto[],
+  qty: number,
+  opts: { lotId?: number | null; taken?: readonly TakenQty[] } = {},
+): { parts: PlanPart[]; short: number } {
+  const parts: PlanPart[] = []
+  let left = Math.max(0, qty)
+  const taken = (opts.taken ?? []).map((t) => ({ ...t }))
+  for (const b of fefoCandidates(balances, opts.lotId ?? null)) {
+    if (left <= 0) break
+    let avail = b.qtyAvailable ?? 0
+    // lo que otras líneas ya toman de esta posición (de este lote, o de cualquiera si no tenían lote elegido)
+    for (const t of taken) {
+      if (t.qty <= 0 || t.binId !== b.binId || (t.lotId != null && t.lotId !== (b.lotId ?? null))) continue
+      const used = Math.min(t.qty, avail)
+      t.qty -= used
+      avail -= used
+    }
+    if (avail <= 0) continue
+    const take = Math.min(avail, left)
+    parts.push({ binId: b.binId as number, binCode: b.binCode ?? '', lotId: b.lotId ?? null, lotNumber: b.lotNumber ?? null, qty: take })
+    left = Math.round((left - take) * 1000) / 1000
+  }
+  return { parts, short: left }
+}

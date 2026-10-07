@@ -18,11 +18,12 @@ import { createContext, useContext, useMemo, useRef, useState } from 'react'
 import type { components } from '../../kernel/api/schema'
 import { useLang, useT } from '../../kernel/i18n'
 import { formatQuantity } from '../../kernel/i18n/numberFormat'
-import { ConfirmDialog, DataTable, EmptyState, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
+import { ConfirmDialog, DataTable, EmptyState, IconGrid, IconTag, IconTrash, toast, useElementWidth, type DataColumn, type RowAction } from '../../kernel/ui'
 import { productLabel, useReceiptTargetSuggestions, type ReceiptDetailDto } from './api'
 import { formatNumber } from './lineRules'
 import { BinPicker, ProductPicker } from './pickers'
 import { ReceiptLineCaptureModal } from './ReceiptLineCaptureModal'
+import { ReceiptSplitModal } from './ReceiptSplitModal'
 import { isEmptyRow, parseQtyText, rowNeedsTarget, rowVariance, type LineRow } from './receiptLineEdit'
 import { exceedsCapacity, TARGET_EXCLUDED_ZONE_TYPES, topSuggestion } from './receivingMode'
 import type { ReceiptLineRowsState } from './useReceiptLineRows'
@@ -205,6 +206,8 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
   const width = useElementWidth(boxRef)
   const [capturing, setCapturing] = useState<LineDto | null>(null)
   const [removing, setRemoving] = useState<LineRow | null>(null)
+  // repartir una línea en varias posiciones (recibo directo sin documento)
+  const [splitting, setSplitting] = useState<LineRow | null>(null)
 
   const position = useMemo(() => new Map(rows.map((r, i) => [r.key, i + 1])), [rows])
   const ctx = useMemo<EditorContextValue>(() => ({ state, receipt, position }), [state, receipt, position])
@@ -279,6 +282,16 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         onClick: (r) => setCapturing((receipt.lines ?? []).find((l) => l.id === r.lineId) ?? null),
       },
       {
+        key: 'split',
+        label: t('warehouse.receipts.lines.split'),
+        icon: <IconGrid />,
+        perm: 'warehouse.receive',
+        // solo en un recibo directo sin documento (con aviso u orden de compra cada línea entra a una sola posición), líneas ya guardadas sin lote ni serie
+        visible: (r) => editable && direct && manual && r.lineId !== null && r.trackingTypeCode === 'NONE' && r.allocatedToCrossDock <= 0 && (parseQtyText(r.received) ?? 0) > 0,
+        disabled: (r) => r.saving,
+        onClick: (r) => setSplitting(r),
+      },
+      {
         key: 'remove',
         label: t('warehouse.receipts.lines.remove'),
         icon: <IconTrash />,
@@ -293,7 +306,7 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
         },
       },
     ],
-    [t, editable, receipt.lines, state],
+    [t, editable, direct, manual, receipt.lines, state],
   )
 
   return (
@@ -323,6 +336,7 @@ export function ReceiptLinesEditor({ receipt, state }: ReceiptLinesEditorProps) 
           }}
         />
       )}
+      {splitting && <ReceiptSplitModal receipt={receipt} row={splitting} onClose={() => setSplitting(null)} />}
       <ConfirmDialog
         open={removing !== null}
         tone="danger"

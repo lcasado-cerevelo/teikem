@@ -2160,7 +2160,9 @@
         "suggestion": "Suggested bin:",
         "noSuggestion": "There is no suggested bin for this task.",
         "saved": "Task completed.",
-        "anyBin": "Not selected"
+        "anyBin": "Not selected",
+        "splitSwitch": "Split across several bins",
+        "splitSaved": "Putaway split."
       },
       "replenish": {
         "title": "Run replenishment",
@@ -2514,7 +2516,8 @@
         "targetOf": "Target bin of line {n}",
         "targetSuggested": "Suggested: {bin} · {reason}",
         "targetPlaceholder": "Choose where it is stored…",
-        "overCapacity": "Exceeds the capacity of {bin}: {free} fit"
+        "overCapacity": "Exceeds the capacity of {bin}: {free} fit",
+        "split": "Split across several bins"
       },
       "header": {
         "newTitle": "New receipt",
@@ -2742,7 +2745,11 @@
         "addLine": "Add line",
         "maxLines": "Up to 100 lines per pick batch.",
         "clear": "Clear",
-        "submit": "Pick (take out of inventory)"
+        "submit": "Pick (take out of inventory)",
+        "suggest": "Suggest bins",
+        "planNeedsQty": "Pick the product and enter the quantity to suggest where to take it from.",
+        "planShort": "Not enough stock: {short} short. Lower the quantity.",
+        "planApplied": "Suggested: {count} bin(s). You can change each one with its picker."
       }
     },
     "cycleCounts": {
@@ -3266,6 +3273,24 @@
         "notInBin": "The stock of {sku} in {where} is not in a bin without lot; move or adjust it before converting it.",
         "fractional": "The stock of {sku} in {bin} is {qty}; adjust it to whole units before converting it."
       }
+    },
+    "split": {
+      "perBinLabel": "Quantity per bin",
+      "perBinHelp": "To split {total} across several bins, enter how much goes in each. Empty = everything in one bin.",
+      "perBinHelpOn": "Pick the bins one by one: this quantity is left in each.",
+      "addBin": "Add bin",
+      "repeated": "That bin is already in the split.",
+      "noRoom": "No units left to split: all {total} are split.",
+      "line": "{bin} · {qty}",
+      "removeBin": "Remove {bin}",
+      "summary": "Split: {total} · {left} not split yet",
+      "restAlert": "{bin} gets only {qty} (what was left), not {per}.",
+      "closeAlert": "Close alert",
+      "capacityWarn": "Room for {free}: it will receive {qty}. You can confirm anyway.",
+      "receiptTitle": "Split {product} across several bins",
+      "receiptIntro": "The {qty} received on this line are split. Whatever does not fit in full bins stays in a line without a bin, to pick one in the grid.",
+      "receiptSaved": "Line split into {count} line(s).",
+      "receiptFailed": "{done} change(s) were made and one failed: {message} Check the receipt lines."
     }
   },
   "system": {

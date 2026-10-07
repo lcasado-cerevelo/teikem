@@ -448,3 +448,11 @@ button.whs-zone-main:focus-visible{outline:2px solid var(--flow);outline-offset:
 .qcalc-expr{font-size:12px;color:var(--muted);font-family:var(--mono)}
 .qcalc-total{font-size:22px;font-family:var(--mono)}
 .cc-calc-btn{margin-left:4px}
+
+/* Reparto por posición (editor compartido por Acomodo y el recibo directo) */
+.split{display:grid;gap:10px}
+.split-alert{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;gap:8px;justify-content:space-between;padding:8px 10px;border:2px solid var(--warn,#e0a800);border-radius:8px;background:var(--bg-2);font-weight:600}
+.split-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.split-list li{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;background:var(--bg-2);border-radius:6px}
+.split-list li .mono{flex:1 1 140px}
+.split-cap{color:var(--warn,#e0a800);font-size:12px;font-weight:600}

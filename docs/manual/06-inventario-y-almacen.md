@@ -1649,6 +1649,16 @@ cambios). Después de verificar, la captura de esa línea (`PUT …/lines` y `PU
 Notas: con «Solo los marcados» o «Todos», un supervisor que también cuenta ve lo esperado desde el inicio (para contar a ciegas debe usar una persona o rol de solo captura). Con «Nadie»
 el conteo desde la app llega a ciegas también para el supervisor (la app manda `forCounting=true` en `POST /cycle-counts` y `GET /cycle-counts/{id}`; la web no, y sigue viendo todo para reconciliar) y `…/check` responde 403 a todos. Los pasos de la app están en [09 §7.4](09-app-almacen.md#74-conteo-informado-al-capturar-tarea-25).
 
+### 4.2 Reparto por posición en la web: recibo directo, Acomodar y despacho (2026-10-07)
+
+La web ofrece lo mismo que la app de almacén para repartir cantidades grandes entre posiciones.
+
+**Regla del reparto** (igual en servidor, app y web): con *N por posición* se llenan posiciones completas y, si sobra, **una posición más** recibe el resto; no se admiten más posiciones después de esa (`Con {per} por posición caben {max} posición(es) para {pending}; no hay más unidades por repartir.`, 400). Un aviso fijo en pantalla (se puede cerrar) avisa cuando el resto cae en la posición extra; cada fila tiene ✕ para quitarla. Si una posición no tiene espacio libre suficiente solo **avisa**, no bloquea.
+
+- **Acomodar (tareas de almacén)** → al completar una tarea, interruptor «Repartir por posición»: cantidad por posición + posiciones (con buscador). Usa el endpoint `distribute` de la tarea. Permiso: el mismo de completar la tarea.
+- **Recibo directo** → en la línea del recibo abierto, acción **Repartir** (icono de cuadrícula): la primera línea conserva lo recibido y su posición; las demás se agregan como líneas nuevas. Solo recibos ciegos o de devolución, productos sin serie. Se hace con llamadas seguidas (no es una sola transacción): si una falla, el mensaje lo indica y las anteriores quedan guardadas.
+- **Despacho / recolección** → en una línea con producto y cantidad y sin posición, acción **Sugerir posiciones**: propone de qué posiciones sacar (por el orden de salida del almacén, respetando el lote si se indicó y lo ya asignado en otras líneas) y deja una línea por posición. Errores: `Elija el producto y escriba la cantidad para sugerir de dónde sacarla.`; `No alcanza la existencia: faltan {short}. Baje la cantidad.` No aplica a productos con serie.
+
 ### 6.y Equipos en renta y el conteo cíclico (Lote 28, Rentas R2, decisión D7)
 
 Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona RENT, tipo "En renta"; capítulo 11). Esa posición

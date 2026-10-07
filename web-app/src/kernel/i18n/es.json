@@ -2160,7 +2160,9 @@
         "suggestion": "Posición sugerida:",
         "noSuggestion": "No hay una posición sugerida para esta tarea.",
         "saved": "Tarea completada.",
-        "anyBin": "Sin elegir"
+        "anyBin": "Sin elegir",
+        "splitSwitch": "Repartir en varias posiciones",
+        "splitSaved": "Acomodo repartido."
       },
       "replenish": {
         "title": "Correr reabasto",
@@ -2514,7 +2516,8 @@
         "targetOf": "Posición destino de la línea {n}",
         "targetSuggested": "Sugerida: {bin} · {reason}",
         "targetPlaceholder": "Elija dónde se guarda…",
-        "overCapacity": "Excede el cupo de {bin}: caben {free}"
+        "overCapacity": "Excede el cupo de {bin}: caben {free}",
+        "split": "Repartir en varias posiciones"
       },
       "header": {
         "newTitle": "Nuevo recibo",
@@ -2742,7 +2745,11 @@
         "addLine": "Añadir línea",
         "maxLines": "Máximo 100 líneas por recolección.",
         "clear": "Limpiar",
-        "submit": "Recolectar (bajar de inventario)"
+        "submit": "Recolectar (bajar de inventario)",
+        "suggest": "Sugerir posiciones",
+        "planNeedsQty": "Elija el producto y escriba la cantidad para sugerir de dónde sacarla.",
+        "planShort": "No alcanza la existencia: faltan {short}. Baje la cantidad.",
+        "planApplied": "Sugerido: {count} posición(es). Puede cambiar cada una con su selector."
       }
     },
     "cycleCounts": {
@@ -3266,6 +3273,24 @@
         "notInBin": "La existencia de {sku} en {where} no está en una posición sin lote; muévala o ajústela antes de convertirlo.",
         "fractional": "La existencia de {sku} en {bin} es {qty}; ajústela a unidades enteras antes de convertirlo."
       }
+    },
+    "split": {
+      "perBinLabel": "Cantidad por posición",
+      "perBinHelp": "Para repartir {total} en varias posiciones, escriba cuánto va en cada una. Vacío = todo en una sola posición.",
+      "perBinHelpOn": "Elija las posiciones una por una: en cada una se deja esta cantidad.",
+      "addBin": "Agregar posición",
+      "repeated": "Esa posición ya está en el reparto.",
+      "noRoom": "Ya no hay unidades por repartir: las {total} están repartidas.",
+      "line": "{bin} · {qty}",
+      "removeBin": "Quitar {bin}",
+      "summary": "Repartido: {total} · quedan {left} sin repartir",
+      "restAlert": "{bin} recibe solo {qty} (lo que quedaba), no {per}.",
+      "closeAlert": "Cerrar aviso",
+      "capacityWarn": "Cupo para {free}: recibirá {qty}. Se puede confirmar igual.",
+      "receiptTitle": "Repartir {product} en varias posiciones",
+      "receiptIntro": "Se reparten las {qty} recibidas en esta línea. Lo que no quepa en posiciones llenas queda en una línea sin posición para elegirla en la rejilla.",
+      "receiptSaved": "Línea repartida en {count} línea(s).",
+      "receiptFailed": "Se hicieron {done} cambio(s) y falló uno: {message} Revise las líneas del recibo."
     }
   },
   "system": {

@@ -14,6 +14,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useController, useFieldArray, useForm, useFormContext, useWatch } from 'react-hook-form'
+import { applyProblemDetails } from '../../kernel/api/problem'
 import { useLang, useT } from '../../kernel/i18n'
 import {
   ComboSelectInput,
@@ -21,6 +22,7 @@ import {
   Field,
   Form,
   IconBasket,
+  IconGrid,
   IconTrash,
   Modal,
   NumberInput,
@@ -31,6 +33,7 @@ import {
   type RowAction,
 } from '../../kernel/ui'
 import { useFieldInfo } from '../../kernel/ui/formContext'
+import { api, unwrap } from '../../kernel/api/client'
 import { useCreatePickBatch, useInventoryBalances, useProductLots, useWarehouses, type PickBatchDto, type ProductListItemDto } from './api'
 import {
   buildCollectBody,
@@ -44,6 +47,7 @@ import {
   needsTrailingBlank,
   OWN,
   ownerFilterFor,
+  planCollect,
   remapCollectErrors,
   type CollectFormValues,
   type CollectLine,
@@ -270,6 +274,7 @@ export interface CollectPanelProps {
 
 export function CollectPanel({ onCollected }: CollectPanelProps) {
   const t = useT()
+  const lang = useLang()
   const create = useCreatePickBatch()
   const boxRef = useRef<HTMLDivElement>(null)
   const width = useElementWidth(boxRef)
@@ -279,7 +284,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
     resolver: zodResolver(schema),
     defaultValues: { warehousePublicId: null, lines: [EMPTY_COLLECT_LINE] } as CollectFormValues,
   })
-  const { fields, append, remove } = useFieldArray({ control: form.control, name: 'lines' })
+  const { fields, append, remove, insert } = useFieldArray({ control: form.control, name: 'lines' })
   const warehousePublicId = useWatch({ control: form.control, name: 'warehousePublicId' })
   const lines = useWatch({ control: form.control, name: 'lines' })
 
@@ -318,6 +323,50 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
     [form, remove, addTrailingBlank],
   )
 
+  /**
+   * Plan de salida de una línea (pedido del dueño 2026-10-07): dada la cantidad, sugiere de qué posiciones (y lotes) sacarla en el orden FEFO, p. ej. 20 de A-01 y
+   * 30 de B-03: la línea toma la primera parte y las demás entran como líneas nuevas justo debajo (cada una se puede cambiar con su selector de posición).
+   * Descuenta lo que otras líneas del mismo producto ya toman de una posición. Sin existencia suficiente avisa cuánto falta y no cambia nada.
+   */
+  const suggestPositions = useCallback(
+    async (index: number) => {
+      const all = form.getValues('lines')
+      const line = all[index]
+      const wh = form.getValues('warehousePublicId')
+      const qty = Number(line?.quantity)
+      if (!wh || !line?.productPublicId || !(qty > 0)) {
+        toast.error(t('warehouse.pickBatches.collectPanel.planNeedsQty'))
+        return
+      }
+      try {
+        const page = await unwrap(
+          api.GET('/api/v1/inventory/balances', {
+            params: { query: { warehousePublicIds: [wh], productPublicIds: [line.productPublicId], onlyAvailable: true, take: 200 } },
+          }),
+        )
+        const taken = all
+          .filter((l, i) => i !== index && l.productPublicId === line.productPublicId && l.binId)
+          .map((l) => ({ binId: Number(l.binId), lotId: l.lotId ? Number(l.lotId) : null, qty: Number(l.quantity) || 0 }))
+        const plan = planCollect(page.items ?? [], qty, { lotId: line.lotId ? Number(line.lotId) : null, taken })
+        if (plan.short > 0) {
+          toast.error(t('warehouse.pickBatches.collectPanel.planShort', { short: formatNumber(plan.short, lang) }))
+          return
+        }
+        const [first, ...rest] = plan.parts
+        if (!first) return
+        const fill = (p: (typeof plan.parts)[number]) => ({ binId: String(p.binId), lotId: p.lotId != null && isLotTracked(line.trackingTypeCode) ? String(p.lotId) : '', quantity: p.qty })
+        form.setValue(`lines.${index}.binId`, fill(first).binId)
+        form.setValue(`lines.${index}.lotId`, fill(first).lotId)
+        form.setValue(`lines.${index}.quantity`, first.qty)
+        if (rest.length > 0) insert(index + 1, rest.map((p) => ({ ...line, ...fill(p), serialNumbers: '' })))
+        toast.success(t('warehouse.pickBatches.collectPanel.planApplied', { count: plan.parts.length }))
+      } catch (err) {
+        toast.error(applyProblemDetails(err).title)
+      }
+    },
+    [form, insert, t, lang],
+  )
+
   const clearAll = () => {
     form.reset({ warehousePublicId: form.getValues('warehousePublicId'), lines: [{ ...EMPTY_COLLECT_LINE }] })
   }
@@ -346,6 +395,17 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
   const rowActions = useMemo<RowAction<GridRow>[]>(
     () => [
       {
+        key: 'suggest',
+        label: t('warehouse.pickBatches.collectPanel.suggest'),
+        icon: <IconGrid />,
+        // producto y cantidad puestos, sin posición elegida y sin series (las series se escogen una por una)
+        visible: (r) => {
+          const l = lines?.[r.index]
+          return Boolean(l?.productPublicId && Number(l.quantity) > 0 && !l.binId && l.trackingTypeCode !== 'SERIAL')
+        },
+        onClick: (r) => void suggestPositions(r.index),
+      },
+      {
         key: 'remove',
         label: t('warehouse.pickBatches.collectPanel.removeLine'),
         icon: <IconTrash />,
@@ -355,7 +415,7 @@ export function CollectPanel({ onCollected }: CollectPanelProps) {
         onClick: (r) => removeLine(r.index),
       },
     ],
-    [t, rows.length, lines, removeLine],
+    [t, rows.length, lines, removeLine, suggestPositions],
   )
 
   const submitting = form.formState.isSubmitting

@@ -7,6 +7,7 @@ import { t } from '../../kernel/i18n/i18n'
 import { setLang } from '../../kernel/i18n/i18n'
 import type { components } from '../../kernel/api/schema'
 import {
+  planCollect,
   isPickableZone,
   buildCollectBody,
   collectSchema,
@@ -210,5 +211,40 @@ describe('isPickableZone (espejo de PickBatchRules.IsPickableZone)', () => {
     expect(isPickableZone('RENTAL')).toBe(false)
     expect(isPickableZone('RESERVE')).toBe(true)
     expect(isPickableZone(null)).toBe(true)
+  })
+})
+
+describe('planCollect (plan de salida)', () => {
+  const bal = (binId: number, binCode: string, qtyAvailable: number, extra: Record<string, unknown> = {}) =>
+    ({ binId, binCode, qtyAvailable, zoneTypeCode: 'PICKING', lotId: null, ...extra }) as components['schemas']['BalanceDto']
+
+  it('50 con 20 en A-01 y 40 en B-03 → 20 de A-01 y 30 de B-03', () => {
+    const plan = planCollect([bal(1, 'A-01', 20), bal(2, 'B-03', 40)], 50)
+    expect(plan.parts.map((p) => [p.binCode, p.qty])).toEqual([['A-01', 20], ['B-03', 30]])
+    expect(plan.short).toBe(0)
+  })
+
+  it('con menos existencia dice cuánto falta; una sola posición alcanza: un solo renglón', () => {
+    expect(planCollect([bal(1, 'A-01', 20)], 50).short).toBe(30)
+    expect(planCollect([bal(1, 'A-01', 20), bal(2, 'B-03', 40)], 15).parts.map((p) => [p.binCode, p.qty])).toEqual([['A-01', 15]])
+  })
+
+  it('descuenta lo que otras líneas del despacho ya toman de esa posición', () => {
+    const plan = planCollect([bal(1, 'A-01', 20), bal(2, 'B-03', 40)], 30, { taken: [{ binId: 1, lotId: null, qty: 15 }] })
+    expect(plan.parts.map((p) => [p.binCode, p.qty])).toEqual([['A-01', 5], ['B-03', 25]])
+  })
+
+  it('con lote: sigue el vencimiento y reparte por posición y lote; un lote elegido solo usa ese lote', () => {
+    const balances = [
+      bal(1, 'A-01', 5, { lotId: 7, lotNumber: 'L-7', expiryDate: '2026-12-01' }),
+      bal(2, 'B-02', 10, { lotId: 8, lotNumber: 'L-8', expiryDate: '2027-03-01' }),
+    ]
+    const plan = planCollect(balances, 12)
+    expect(plan.parts.map((p) => [p.binCode, p.lotNumber, p.qty])).toEqual([['A-01', 'L-7', 5], ['B-02', 'L-8', 7]])
+    expect(planCollect(balances, 12, { lotId: 8 }).short).toBe(2)
+  })
+
+  it('las zonas no recolectables (cuarentena, recepción) no entran', () => {
+    expect(planCollect([bal(1, 'Q-01', 99, { zoneTypeCode: 'QUARANTINE' })], 5).short).toBe(5)
   })
 })

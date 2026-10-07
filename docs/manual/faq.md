@@ -5496,3 +5496,20 @@ Filas, columnas y fondo solo admiten números enteros (el fondo, 1 o más); las 
 
 **¿Dónde está la calculadora en el conteo de la web?**
 Conteo cíclico → elija el conteo → en cada línea el botón **∑** (o «Calculadora» dentro de la ventana de Cantidad contada). Las líneas con serie se cuentan por lista de números de serie y no la llevan.
+
+## Reparto por posición en la web (2026-10-07)
+
+**¿Cómo reparto 185 unidades de 20 en 20 en la web?**
+Acomodar: al completar la tarea active «Repartir por posición», escriba 20 y elija las posiciones (9 completas y una décima con 5). En un recibo directo abierto use **Repartir** en la línea. Una posición de más recibe el resto y no se admiten más.
+
+**Sale `Con {per} por posición caben {max} posición(es) para {pending}; no hay más unidades por repartir.`**
+Eligió más posiciones de las que caben. Quite las filas sobrantes (✕) o suba la cantidad por posición.
+
+**En el despacho dice `Elija el producto y escriba la cantidad para sugerir de dónde sacarla.`**
+La acción **Sugerir posiciones** necesita producto y cantidad en la línea y que la posición esté vacía.
+
+**Dice `No alcanza la existencia: faltan {short}. Baje la cantidad.`**
+La existencia disponible del almacén (y del lote, si lo indicó) es menor a lo pedido; revise el saldo o baje la cantidad.
+
+**El reparto del recibo se quedó a medias.**
+Se guarda línea por línea; revise las líneas del recibo, corrija la que falló y repita **Repartir** sobre el resto.

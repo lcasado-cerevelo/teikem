@@ -1,13 +1,15 @@
 // Diálogos de las acciones sobre una tarea de almacén: Asignar (usuario del tenant) y Completar (posición destino con las
 // sugeridas del acomodo primero, cantidad parcial y series). Los abre `useTaskRowActions` (taskActions.tsx).
 import { useQuery } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { api, unwrap } from '../../kernel/api/client'
 import { useT } from '../../kernel/i18n'
 import { Field, Form, Modal, NumberInput, Select, TextArea, toast } from '../../kernel/ui'
 import { usePutawaySuggestions, useWarehouseTaskAction, type WarehouseTaskDto } from './api'
 import { BinPickerInput } from './pickers'
+import { SplitBinsEditor } from './SplitBinsEditor'
+import { parsePerBin, type SplitBin } from './splitPlan'
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Asignar (Select de usuario del tenant; GET /api/v1/users exige admin.users — sin ese permiso se avisa sin sacar de la
@@ -89,12 +91,21 @@ export function CompleteTaskModal({ task, open, onClose }: { task: WarehouseTask
   const suggestedBinIds = useMemo(() => (suggestions.data ?? []).map((s) => s.binId), [suggestions.data])
   const form = useForm<CompleteFormValues>({ defaultValues: { toBinId: '', quantity: null, serialNumbers: '' } })
   const formId = 'warehouse-task-complete'
+  // Reparto por posición (2026-10-07): una tarea de acomodo con cantidad y sin serie se puede repartir en varias posiciones de la misma cantidad.
+  const [split, setSplit] = useState(false)
+  const [perBinText, setPerBinText] = useState('')
+  const [splitBins, setSplitBins] = useState<SplitBin[]>([])
   if (!task) return null
+  const canSplit = isPutaway && (task.quantity ?? 0) > 0 && !task.serialNumber
 
   const close = () => {
     form.reset({ toBinId: '', quantity: null, serialNumbers: '' })
+    setSplit(false)
+    setPerBinText('')
+    setSplitBins([])
     onClose()
   }
+  const splitReady = split && parsePerBin(perBinText) > 0 && splitBins.length > 0
 
   return (
     <Modal
@@ -107,7 +118,7 @@ export function CompleteTaskModal({ task, open, onClose }: { task: WarehouseTask
           <button type="button" className="btn" onClick={close}>
             {t('common.cancel')}
           </button>
-          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting}>
+          <button type="submit" form={formId} className="btn flow" disabled={form.formState.isSubmitting || (split && !splitReady)}>
             {form.formState.isSubmitting ? t('common.loading') : t('ui.form.save')}
           </button>
         </>
@@ -131,6 +142,13 @@ export function CompleteTaskModal({ task, open, onClose }: { task: WarehouseTask
         id={formId}
         form={form}
         onSubmit={async (v) => {
+          if (split) {
+            // reparto: una sola llamada, todo o nada (lo que no cupo en posiciones llenas y la posición del resto lo decide el servidor)
+            await action.mutateAsync({ id: task.id ?? 0, action: 'distribute', body: { quantityPerBin: parsePerBin(perBinText), toBinIds: splitBins.map((b) => b.id) } })
+            toast.success(t('warehouse.tasks.complete.splitSaved'))
+            close()
+            return
+          }
           await action.mutateAsync({
             id: task.id ?? 0,
             action: 'complete',
@@ -144,6 +162,25 @@ export function CompleteTaskModal({ task, open, onClose }: { task: WarehouseTask
           close()
         }}
       >
+        {canSplit && (
+          <label className="sw" style={{ marginBottom: 10 }}>
+            <input type="checkbox" role="switch" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+            <span className="tk" aria-hidden="true" />
+            <span>{t('warehouse.tasks.complete.splitSwitch')}</span>
+          </label>
+        )}
+        {split ? (
+          <SplitBinsEditor
+            total={task.quantity ?? 0}
+            perBinText={perBinText}
+            onPerBinChange={setPerBinText}
+            bins={splitBins}
+            onBinsChange={setSplitBins}
+            warehousePublicId={task.warehousePublicId}
+            suggestedBinIds={suggestedBinIds}
+          />
+        ) : (
+        <>
         <div className="r2">
           <Field name="toBinId" label={t('warehouse.tasks.complete.toBin')} help={isPutaway ? t('warehouse.tasks.complete.toBinHelp') : undefined}>
             <BinPickerInput warehousePublicId={task.warehousePublicId} suggestedBinIds={suggestedBinIds} placeholder={t('warehouse.tasks.complete.anyBin')} />
@@ -155,6 +192,8 @@ export function CompleteTaskModal({ task, open, onClose }: { task: WarehouseTask
         <Field name="serialNumbers" label={t('warehouse.tasks.complete.serials')} help={t('warehouse.tasks.complete.serialsHelp')}>
           <TextArea rows={2} />
         </Field>
+        </>
+        )}
       </Form>
     </Modal>
   )

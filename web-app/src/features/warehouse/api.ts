@@ -955,6 +955,7 @@ export function useWarehouseTaskAction() {
         | { id: number; action: 'assign'; body: Schemas['TaskAssignRequest'] }
         | { id: number; action: 'start' }
         | { id: number; action: 'complete'; body: Schemas['TaskCompleteRequest'] }
+        | { id: number; action: 'distribute'; body: Schemas['TaskDistributeRequest'] }
         | { id: number; action: 'cancel'; body: Schemas['TaskCancelRequest'] },
     ) => {
       const path = { id: v.id }
@@ -965,6 +966,8 @@ export function useWarehouseTaskAction() {
           return unwrap(api.POST('/api/v1/warehouse-tasks/{id}/start', { params: { path } }))
         case 'complete':
           return unwrap(api.POST('/api/v1/warehouse-tasks/{id}/complete', { params: { path }, body: v.body }))
+        case 'distribute':
+          return unwrap(api.POST('/api/v1/warehouse-tasks/{id}/distribute', { params: { path }, body: v.body }))
         case 'cancel':
           return unwrap(api.POST('/api/v1/warehouse-tasks/{id}/cancel', { params: { path }, body: v.body }))
       }
@@ -973,7 +976,7 @@ export function useWarehouseTaskAction() {
     // asignaciones (completar la tarea CROSSDOCK = mover la asignación): se invalidan junto con la cola.
     // Lote 14 (D10): la lista de conteos muestra a quién está asignada la tarea COUNT de cada conteo.
     onSuccess: (_data, v) =>
-      v.action === 'complete'
+      v.action === 'complete' || v.action === 'distribute'
         ? invalidate(qc, 'tasks', 'putawaySuggestions', 'receipt', 'receipts', 'crossDockPlan', 'crossDockPlans', 'cycleCountsPage', ...STOCK)
         : invalidate(qc, 'tasks', 'receipt', 'cycleCountsPage'),
   })

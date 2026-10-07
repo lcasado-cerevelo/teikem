@@ -161,6 +161,7 @@ function route(method: string, url: URL, body: unknown): [number, unknown] {
     const bin = DIRECT_BINS.find((x) => x.id === b.targetBinId)
     return [200, detail(H4, [{ ...L41, targetBinId: bin?.id ?? null, targetBinCode: bin?.code ?? null, targetZoneTypeCode: 'RESERVE' }, L42], { rowVersion: 'AB==' })]
   }
+  if (p === `/api/v1/receipts/${R4}/lines` && method === 'POST') return [200, detail(H4, [L41, L42], { rowVersion: 'AD==' })]
   if (p === `/api/v1/receipts/${R4}`) return [200, mock.applied ? detail(H4, [WITH_TARGET_41, L42]) : detail(H4, [L41, L42])]
   if (p === `/api/v1/warehouses/${WHD}/zones`)
     return [
@@ -400,6 +401,29 @@ describe('Lote 16: recibo directo a posición', () => {
     expect(screen.getByText('Falta la posición destino en 1 línea(s).')).toBeInTheDocument()
     // en la lista, la etiqueta "Directo"
     expect(await rowButton('REC-0004')).toHaveTextContent('Directo')
+  })
+
+  it('repartir una línea en varias posiciones: 4 de 3 → 3 + 1 (la del resto con alerta fija); manda el PUT de la línea y el POST de la nueva', async () => {
+    const user = userEvent.setup()
+    wrap(`/warehouse/receipts?receipt=${R4}`)
+    const row = (await screen.findByRole('textbox', { name: 'Recibido de la línea 1' })).closest('tr, article, .card, li') as HTMLElement
+    await user.click(within(row).getByRole('button', { name: 'Repartir en varias posiciones' }))
+    const dialog = await screen.findByRole('dialog', { name: /Repartir A-1 en varias posiciones/ })
+    expect(within(dialog).getByRole('button', { name: 'Guardar' })).toBeDisabled()
+    await user.type(within(dialog).getByLabelText('Cantidad por posición'), '3')
+    for (const code of ['RSV-A-01', 'R-02']) {
+      const box = within(dialog).getByRole('combobox', { name: 'Agregar posición' })
+      await user.clear(box)
+      await user.type(box, code)
+      await user.click(await within(dialog).findByRole('option', { name: new RegExp(code) }))
+    }
+    expect(await within(dialog).findByText('RSV-A-01 · 3')).toBeInTheDocument()
+    expect(within(dialog).getByText('R-02 · 1')).toBeInTheDocument()
+    expect(within(dialog).getByText('R-02 recibe solo 1 (lo que quedaba), no 3.')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(calls('POST', `/api/v1/receipts/${R4}/lines`)).toHaveLength(1))
+    expect(calls('PUT', `/api/v1/receipts/${R4}/lines/41`)[0].body).toEqual({ receivedQty: 3, expectedQty: 3, targetBinId: 70 })
+    expect(calls('POST', `/api/v1/receipts/${R4}/lines`)[0].body).toEqual({ productPublicId: P1, receivedQty: 1, expectedQty: 1, targetBinId: 71 })
   })
 
   it('con acomodo no hay columna "Posición destino" ni "Usar posiciones sugeridas"', async () => {
