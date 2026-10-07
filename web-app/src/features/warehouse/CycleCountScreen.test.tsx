@@ -328,6 +328,44 @@ describe('Conteo cíclico en dos paneles', () => {
     ).toBeInTheDocument()
   })
 
+  it('calculadora de cantidad: filas × columnas × fondo + sueltas llena la cantidad y guarda el total; también se abre desde "Cantidad contada"', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    await user.click(await screen.findByRole('button', { name: 'Calculadora de la línea 1' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Contar A-1 · Tornillo' })
+    // abre directo en la calculadora: sin el campo de cantidad
+    expect(within(dialog).queryByRole('textbox', { name: 'Cantidad contada' })).toBeNull()
+    await user.type(within(dialog).getByRole('textbox', { name: 'Filas del bloque 1' }), '5')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Columnas del bloque 1' }), '3')
+    // un bloque con filas y columnas sin fondo vale 1: (5 × 3) = 15
+    expect(within(dialog).getByTestId('quantity-calculator-total')).toHaveTextContent('Total: 15')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Fondo del bloque 1' }), '2')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Sueltas' }), '10')
+    expect(within(dialog).getByTestId('quantity-calculator-total')).toHaveTextContent('Total: 40')
+    expect(within(dialog).getByText('(5 × 3 × 2) + 10')).toBeInTheDocument()
+    // otro bloque (otra estiba)
+    await user.click(within(dialog).getByRole('button', { name: '+ otro bloque' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'Filas del bloque 2' }), '2')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Columnas del bloque 2' }), '2')
+    expect(within(dialog).getByTestId('quantity-calculator-total')).toHaveTextContent('Total: 44')
+    // volver a «Cantidad directa»: el total queda en el campo
+    await user.click(within(dialog).getByRole('button', { name: 'Cantidad directa' }))
+    expect(within(dialog).getByRole('textbox', { name: 'Cantidad contada' })).toHaveValue('44')
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }))
+    await waitFor(() => expect(calls('PUT', '/api/v1/cycle-counts/1/lines')).toHaveLength(1))
+    expect((calls('PUT', '/api/v1/cycle-counts/1/lines')[0].body as { lines: unknown[] }).lines).toEqual([{ lineId: 101, countedQty: 44, serialNumbers: null }])
+  })
+
+  it('calculadora: un bloque incompleto avisa y no hay total', async () => {
+    const user = userEvent.setup()
+    wrap(COUNTER)
+    await user.click(await screen.findByRole('button', { name: 'Calculadora de la línea 1' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Contar A-1 · Tornillo' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'Filas del bloque 1' }), '5')
+    expect(within(dialog).getByText('Cada bloque necesita filas y columnas.')).toBeInTheDocument()
+    expect(within(dialog).queryByTestId('quantity-calculator-total')).toBeNull()
+  })
+
   it('escáner: un código que es un producto fuera del conteo abre "Agregar lo encontrado" con el producto puesto y la posición opcional', async () => {
     const user = userEvent.setup()
     wrap(COUNTER)

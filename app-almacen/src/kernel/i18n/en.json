@@ -322,7 +322,10 @@
     "incompleteBlock": "Each block needs rows and columns.",
     "invalid": "Rows and columns are whole numbers; loose units, a number.",
     "tooLarge": "That total is too large.",
-    "useTotal": "Use {total}"
+    "useTotal": "Use {total}",
+    "depth": "Depth",
+    "depthAt": "Depth of block {n}",
+    "depthHelp": "Depth: how many are one behind another (blank = 1)."
   },
   "lookup": {
     "title": "Lookup",

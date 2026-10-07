@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest'
 import { addBlock, calcFromText, calcTotal, emptyCalc, removeBlock, setBlock, totalToText, CALC_MAX, type CalcState } from './quantityCalc'
 
 const st = (blocks: Array<[string, string] | [string, string, string]>, extra = ''): CalcState => ({ blocks: blocks.map(([rows, cols, depth]) => ({ rows, cols, depth: depth ?? '' })), extra })

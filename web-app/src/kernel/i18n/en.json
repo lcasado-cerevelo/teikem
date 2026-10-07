@@ -3051,6 +3051,28 @@
           "noLines": "The count has no lines."
         },
         "back": "Back to review"
+      },
+      "calc": {
+        "open": "Calculator",
+        "openFor": "Calculator for line {n}",
+        "direct": "Direct quantity",
+        "title": "Quantity calculator",
+        "rows": "Rows",
+        "cols": "Columns",
+        "depth": "Depth",
+        "rowsAt": "Rows of block {n}",
+        "colsAt": "Columns of block {n}",
+        "depthAt": "Depth of block {n}",
+        "depthHelp": "Depth: how many are one behind another (blank = 1).",
+        "extra": "Loose",
+        "addBlock": "+ another block",
+        "removeBlock": "Remove block {n}",
+        "total": "Total: {total}",
+        "hint": "Enter rows, columns and, if any, depth; or just the loose ones.",
+        "incompleteBlock": "Each block needs rows and columns.",
+        "invalid": "Enter whole numbers in rows, columns and depth (depth 1 or more) and a number in loose.",
+        "tooLarge": "The total is too large.",
+        "useTotal": "Use the total ({total})"
       }
     },
     "productFilter": {

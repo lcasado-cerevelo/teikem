@@ -1588,6 +1588,20 @@ Casos frecuentes:
 Pantallas: app de almacén ([09 §7.2](09-app-almacen.md#72-contar-varios-productos-en-un-conteo-lote-25)) y web (Conteo cíclico → Nuevo conteo → Por producto sin
 elegir producto; escáner del detalle).
 
+### 6.w Calculadora de cantidad en el conteo de la web (2026-10-07)
+
+En el panel del conteo (Conteo cíclico), junto a la cantidad de cada línea (no series) hay un botón **∑** («Calculadora de la línea {n}») y, dentro de la ventana de **Cantidad contada**, el botón **Calculadora**. Abre la misma forma de contar estibas que la app:
+cada **bloque** es **Filas × Columnas × Fondo** (el fondo es cuántas hay una detrás de otra; en blanco vale 1) y se suman las **Sueltas**; **+ otro bloque** agrega otra estiba (✕ la quita).
+Debajo salen la cuenta (`(5 × 3 × 2) + 10`) y el **Total**, que va llenando la cantidad a medida que se escribe; **Cantidad directa** vuelve al campo con ese número y **Guardar** (o Enter) guarda la cantidad como siempre (`PUT /cycle-counts/{id}/lines`): solo se guarda la cantidad, no la fórmula.
+
+| Caso | Mensaje exacto |
+|---|---|
+| Un bloque con filas o columnas pero no ambas | `Cada bloque necesita filas y columnas.` |
+| Algo que no es entero en filas, columnas o fondo (el fondo, 1 o más), o que no es número en sueltas | `Escriba números enteros en filas, columnas y fondo (el fondo, 1 o más) y un número en sueltas.` |
+| Total mayor que 9 999 999 | `El total es demasiado grande.` |
+
+Quién puede: quien puede capturar el conteo en la web (`warehouse.count`, conteo abierto). Módulo **WMS_LOTSERIAL**.
+
 ### 6.z Conteo informado al capturar: quién ve lo esperado al contar (tarea 25)
 
 Qué hace: separa **ver lo esperado** del permiso **Contar**. El supervisor (permiso `warehouse.count`) lo ve desde el inicio, como siempre. Un **contador**

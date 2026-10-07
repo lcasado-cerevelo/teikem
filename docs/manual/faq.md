@@ -5485,3 +5485,14 @@ En la lista de líneas, toque **Quitar** junto a esa línea y confirme con **Qui
 
 **El recibo ya se confirmó y se recibió algo que no era.**
 Desde la app no se deshace. En la web, un recibo sin documento (ciego o devolución) abierto permite quitar una línea con la papelera; las líneas que vienen del aviso u orden de compra **no se quitan** (se captura 0 en lo recibido) y las extra sí (`Quita una línea extra (solo abiertos)`). Un recibo ya confirmado se corrige con un ajuste de inventario.
+
+## Calculadora de cantidad: fondo y conteo de la web (2026-10-07)
+
+**¿Qué es el «Fondo» de la calculadora?**
+Cuántas hay una detrás de otra. Una estiba de 5 filas × 3 columnas con 2 de fondo son 5 × 3 × 2 = 30. Es opcional: en blanco vale 1. Para estibas distintas use **+ otro bloque**, cada uno con su fondo.
+
+**La calculadora dice `Escriba números enteros en filas, columnas y fondo (el fondo, 1 o más) y un número en sueltas.`**
+Filas, columnas y fondo solo admiten números enteros (el fondo, 1 o más); las sueltas pueden tener decimales. Revise que no haya letras, decimales ni un 0 en el fondo.
+
+**¿Dónde está la calculadora en el conteo de la web?**
+Conteo cíclico → elija el conteo → en cada línea el botón **∑** (o «Calculadora» dentro de la ventana de Cantidad contada). Las líneas con serie se cuentan por lista de números de serie y no la llevan.

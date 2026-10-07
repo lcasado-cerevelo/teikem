@@ -141,6 +141,22 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
               selectTextOnFocus
             />
           </View>
+          <Text style={styles.times}>×</Text>
+          <View style={styles.cell}>
+            <Text style={styles.cellLabel}>{t('calc.depth')}</Text>
+            <KeyboardInput
+              toggle={false}
+              softKeyboard={kb.show}
+              value={b.depth}
+              onChangeText={(v) => onChange(setBlock(state, i, { depth: v }))}
+              keyboardType="number-pad"
+              style={styles.input}
+              accessibilityLabel={t('calc.depthAt', { n: i + 1 })}
+              placeholder="1"
+              placeholderTextColor={colors.muted}
+              selectTextOnFocus
+            />
+          </View>
           {state.blocks.length > 1 ? (
             <Pressable accessibilityRole="button" accessibilityLabel={t('calc.removeBlock', { n: i + 1 })} onPress={() => onChange(removeBlock(state, i))} style={styles.removeBtn}>
               <Text style={styles.removeLabel}>✕</Text>
@@ -148,6 +164,8 @@ export function QuantityCalculator({ state, onChange, onClose }: QuantityCalcula
           ) : null}
         </View>
       ))}
+
+      <Text style={styles.help}>{t('calc.depthHelp')}</Text>
 
       <Pressable accessibilityRole="button" accessibilityLabel={t('calc.addBlock')} onPress={() => onChange(addBlock(state))} style={styles.link}>
         <Text style={styles.linkLabel}>{t('calc.addBlock')}</Text>

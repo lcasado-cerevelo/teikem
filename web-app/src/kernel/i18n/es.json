@@ -3051,6 +3051,28 @@
           "noLines": "El conteo no tiene líneas."
         },
         "back": "Volver a revisar"
+      },
+      "calc": {
+        "open": "Calculadora",
+        "openFor": "Calculadora de la línea {n}",
+        "direct": "Cantidad directa",
+        "title": "Calculadora de cantidad",
+        "rows": "Filas",
+        "cols": "Columnas",
+        "depth": "Fondo",
+        "rowsAt": "Filas del bloque {n}",
+        "colsAt": "Columnas del bloque {n}",
+        "depthAt": "Fondo del bloque {n}",
+        "depthHelp": "Fondo: cuántas hay una detrás de otra (en blanco = 1).",
+        "extra": "Sueltas",
+        "addBlock": "+ otro bloque",
+        "removeBlock": "Quitar el bloque {n}",
+        "total": "Total: {total}",
+        "hint": "Escriba filas, columnas y, si hay, el fondo; o solo las sueltas.",
+        "incompleteBlock": "Cada bloque necesita filas y columnas.",
+        "invalid": "Escriba números enteros en filas, columnas y fondo (el fondo, 1 o más) y un número en sueltas.",
+        "tooLarge": "El total es demasiado grande.",
+        "useTotal": "Usar el total ({total})"
       }
     },
     "productFilter": {

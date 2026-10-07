@@ -78,6 +78,8 @@ interface GridContextValue {
   canCapture: boolean
   position: ReadonlyMap<number, number>
   openSerials: (line: CycleCountLineDto) => void
+  /** Calculadora de cantidad de una línea (filas × columnas × fondo + sueltas). */
+  openCalc: (line: CycleCountLineDto) => void
   /** Lote F12: vista previa por línea (null = sin permiso, cerrado o aún no llega). */
   preview: ReadonlyMap<number, ReconcilePreviewLineDto> | null
   /** Lote F12: la línea se tocó en esta sesión (se queda visible en "solo las que fallan"). */
@@ -97,7 +99,7 @@ function useGrid(): GridContextValue {
 function CountedCell({ line }: { line: CycleCountLineDto }) {
   const t = useT()
   const lang = useLang()
-  const { drafts, canCapture, position, openSerials, pin } = useGrid()
+  const { drafts, canCapture, position, openSerials, openCalc, pin } = useGrid()
   const id = line.id ?? 0
   const n = position.get(id) ?? 0
   const error = drafts.errors.get(id)
@@ -151,6 +153,9 @@ function CountedCell({ line }: { line: CycleCountLineDto }) {
           }
         }}
       />
+      <button type="button" className="btn sm cc-calc-btn" aria-label={t('warehouse.cycleCounts.calc.openFor', { n })} title={t('warehouse.cycleCounts.calc.open')} onClick={() => openCalc(line)}>
+        ∑
+      </button>
       {savingLine && (
         <span className="rcp-faint" role="status">
           {t('warehouse.cycleCounts.detail.saving')}
@@ -255,6 +260,7 @@ function CountLinesGrid({
   canCapture,
   hit,
   onSerials,
+  onCalc,
   preview,
   pin,
   confirmBin,
@@ -267,6 +273,7 @@ function CountLinesGrid({
   canCapture: boolean
   hit: number | null
   onSerials: (line: CycleCountLineDto) => void
+  onCalc: (line: CycleCountLineDto) => void
   preview: ReadonlyMap<number, ReconcilePreviewLineDto> | null
   pin: (lineId: number) => void
   confirmBin: ((line: CycleCountLineDto) => void) | null
@@ -294,8 +301,8 @@ function CountLinesGrid({
     previewRef.current = preview
   }, [preview])
   const ctx = useMemo<GridContextValue>(
-    () => ({ drafts, canCapture, position, openSerials: onSerials, preview, pin, confirmBin, confirmingBin }),
-    [drafts, canCapture, position, onSerials, preview, pin, confirmBin, confirmingBin],
+    () => ({ drafts, canCapture, position, openSerials: onSerials, openCalc: onCalc, preview, pin, confirmBin, confirmingBin }),
+    [drafts, canCapture, position, onSerials, onCalc, preview, pin, confirmBin, confirmingBin],
   )
 
   // el escáner lleva a la línea: se desplaza hasta ella
@@ -458,7 +465,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
   const [showAll, setShowAll] = useState(() => !reviewing)
   const [pinned, setPinned] = useState<ReadonlySet<number>>(() => new Set())
   const pin = useCallback((lineId: number) => setPinned((prev) => (prev.has(lineId) ? prev : new Set(prev).add(lineId))), [])
-  const [qtyFor, setQtyFor] = useState<{ line: CycleCountLineDto; serial?: string | null } | null>(null)
+  const [qtyFor, setQtyFor] = useState<{ line: CycleCountLineDto; serial?: string | null; calc?: boolean } | null>(null)
   const [hit, setHit] = useState<number | null>(null)
   // "Agregar lo encontrado": abierto a mano (true) o con el producto que se escaneó (Lote 24)
   const [adding, setAdding] = useState<boolean | AddFoundProduct>(false)
@@ -629,6 +636,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
         canCapture={canCapture}
         hit={hit}
         onSerials={openSerials}
+        onCalc={(line) => setQtyFor({ line, calc: true })}
         preview={preview}
         pin={pin}
         confirmBin={confirmBinFn}
@@ -672,6 +680,7 @@ function CountBody({ detail }: { detail: CycleCountDetailDto }) {
           line={qtyFor.line}
           scannedSerial={qtyFor.serial}
           isBlind={blind}
+          startInCalculator={qtyFor.calc}
           onSave={(body) => {
             pin(qtyFor.line.id ?? 0)
             return drafts.capture(qtyFor.line.id ?? 0, body)

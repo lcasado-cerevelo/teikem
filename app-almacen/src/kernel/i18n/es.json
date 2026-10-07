@@ -322,7 +322,10 @@
     "incompleteBlock": "Cada bloque necesita filas y columnas.",
     "invalid": "Filas y columnas son números enteros; las sueltas, un número.",
     "tooLarge": "Ese total es demasiado grande.",
-    "useTotal": "Usar {total}"
+    "useTotal": "Usar {total}",
+    "depth": "Fondo",
+    "depthAt": "Fondo del bloque {n}",
+    "depthHelp": "Fondo: cuántas hay una detrás de otra (en blanco = 1)."
   },
   "lookup": {
     "title": "Consultar",

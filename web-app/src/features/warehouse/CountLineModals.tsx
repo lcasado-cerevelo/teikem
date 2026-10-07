@@ -16,6 +16,8 @@ import { countedText, parseCounted } from './countView'
 import { countLineIssues, countLotIssue, formatNumber, parseSerials, remapProblemFields, type LineIssue } from './lineRules'
 import { BinPickerInput, ProductPickerInput } from './pickers'
 import { problemText } from './problemText'
+import { QuantityCalculator } from './QuantityCalculator'
+import { calcFromText, calcTotal, totalToText, type CalcState } from './quantityCalc'
 import type { CountCaptureBody } from './useCountDrafts'
 
 function useIssueText() {
@@ -33,17 +35,21 @@ export interface CountQtyModalProps {
   scannedSerial?: string | null
   /** Sin permiso de ver lo esperado (a ciegas) no se muestra el "Esperado". */
   isBlind?: boolean
+  /** Abre directo con la calculadora (filas × columnas × fondo + sueltas) en lugar del campo de cantidad. */
+  startInCalculator?: boolean
   onSave: (body: CountCaptureBody) => Promise<unknown>
   onClose: () => void
 }
 
-export function CountQtyModal({ line, scannedSerial, isBlind, onSave, onClose }: CountQtyModalProps) {
+export function CountQtyModal({ line, scannedSerial, isBlind, startInCalculator, onSave, onClose }: CountQtyModalProps) {
   const t = useT()
   const lang = useLang()
   const issueText = useIssueText()
   const formId = useId()
   const serial = line.trackingTypeCode === 'SERIAL'
   const [qty, setQty] = useState(() => countedText(line.countedQty))
+  // calculadora de cantidad: el total llena la cantidad a medida que se escribe; al volver a «Cantidad directa» queda ese número
+  const [calc, setCalc] = useState<CalcState | null>(() => (startInCalculator && !line.trackingTypeCode?.includes('SERIAL') ? calcFromText(countedText(line.countedQty)) : null))
   const [serials, setSerials] = useState(() => {
     const current = [...(line.countedSerials ?? [])]
     if (scannedSerial && !current.some((s) => s.toLowerCase() === scannedSerial.toLowerCase())) current.push(scannedSerial)
@@ -143,6 +149,22 @@ export function CountQtyModal({ line, scannedSerial, isBlind, onSave, onClose }:
         ) : (
           <div className="f">
             <label htmlFor={fieldId}>{t('warehouse.cycleCounts.qty.counted')}</label>
+            {calc ? (
+              <>
+                <QuantityCalculator
+                  state={calc}
+                  onChange={(next) => {
+                    setCalc(next)
+                    setQty(totalToText(calcTotal(next).total))
+                  }}
+                  onEnter={() => void submit()}
+                />
+                <button type="button" className="btn sm cc-calc-btn" onClick={() => setCalc(null)}>
+                  {t('warehouse.cycleCounts.calc.direct')}
+                </button>
+              </>
+            ) : (
+            <>
             <input
               id={fieldId}
               type="text"
@@ -162,6 +184,11 @@ export function CountQtyModal({ line, scannedSerial, isBlind, onSave, onClose }:
                 }
               }}
             />
+            <button type="button" className="btn sm cc-calc-btn" onClick={() => setCalc(calcFromText(qty))}>
+              {t('warehouse.cycleCounts.calc.open')}
+            </button>
+            </>
+            )}
             <p className="help" id={helpId}>
               {t('warehouse.cycleCounts.qty.countedHelp')}
             </p>
