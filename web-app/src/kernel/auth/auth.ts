@@ -127,3 +127,13 @@ export async function switchTenantTokens(tenantId: number): Promise<void> {
   const pair = await unwrap(api.POST('/api/v1/auth/switch-tenant', { body: { refreshToken, tenantId } }))
   storeTokenPair(pair)
 }
+
+/** `POST /api/v1/auth/forgot-password` (anónimo): manda el enlace por correo; la respuesta es la misma exista o no el correo. */
+export function requestPasswordReset(email: string) {
+  return unwrap(api.POST('/api/v1/auth/forgot-password', { body: { email } }))
+}
+
+/** `POST /api/v1/auth/reset-password` (anónimo): pone la contraseña nueva con el enlace del correo. */
+export async function resetPassword(email: string, token: string, newPassword: string): Promise<void> {
+  await unwrap(api.POST('/api/v1/auth/reset-password', { body: { email, token, newPassword } }))
+}

@@ -30,7 +30,8 @@
     "login": {
       "title": "Sign in",
       "subtitle": "Use your email and password.",
-      "submit": "Sign in"
+      "submit": "Sign in",
+      "forgot": "Forgot your password?"
     },
     "onboarding": {
       "title": "First sign-in",
@@ -72,6 +73,23 @@
       "title": "Confirm your identity",
       "help": "This is a sensitive action and requires you to enter your password again.",
       "submit": "Confirm"
+    },
+    "forgot": {
+      "title": "Reset password",
+      "subtitle": "Enter your email and we will send you a link to choose a new password.",
+      "submit": "Send link",
+      "sent": "If the email is registered, we sent you a link to reset your password.",
+      "devLink": "Link (development only):"
+    },
+    "reset": {
+      "title": "Choose your new password",
+      "subtitle": "Account: {email}",
+      "submit": "Save password",
+      "badLink": "The link is not valid or has expired. Ask for a new one.",
+      "askAgain": "Ask for another link",
+      "doneTitle": "Password changed",
+      "done": "Done. You can now sign in with your new password.",
+      "goLogin": "Go to sign in"
     }
   },
   "access": {
@@ -3455,6 +3473,20 @@
         "removeTitle": "Remove the PIN",
         "removeBody": "{name} will no longer be able to sign in to Teikem Almacén with a PIN.",
         "removed": "PIN removed."
+      },
+      "tempPw": {
+        "action": "Temporary password",
+        "title": "Temporary password",
+        "body": "{name} will get a temporary password.",
+        "rule1": "It lasts 10 minutes. If nobody signs in with it by then, the previous password comes back.",
+        "rule2": "When they sign in with it, the system makes them choose their own password.",
+        "rule3": "Their open sessions are closed.",
+        "customLabel": "Password (optional)",
+        "customHelp": "Leave blank to have the system generate one. At least 12 characters.",
+        "apply": "Set temporary password",
+        "resultTitle": "Temporary password",
+        "resultHint": "Give this password to {name} now: it lasts {minutes} minutes and is not shown again.",
+        "expiresAt": "Expires at {time}."
       }
     },
     "catalogs": {

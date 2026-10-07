@@ -79,6 +79,7 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
         services.Configure<OnboardingOptions>(config.GetSection("Auth:Onboarding"));
+        services.Configure<PasswordResetOptions>(config.GetSection("Auth:PasswordReset"));
         services.AddSingleton<JwtTokenService>();
 
         // Servicios transversales

@@ -5544,3 +5544,26 @@ Es lo esperado: las marcas se recortan para no pasarse del total, empezando por 
 
 **¿Por qué no sale el listado en un producto con lote?**
 Con lote la posición es la del lote que vence primero y no se escoge.
+
+## Recuperar la contraseña (2026-10-07)
+
+**Olvidé mi contraseña.**
+En el login toque «¿Olvidó su contraseña?», escriba su correo y use el enlace que le llega (vale 60 minutos, una sola vez). Si no llega, revise correo no deseado; por seguridad la pantalla responde lo mismo aunque el correo no exista.
+
+**Dice `El enlace no es válido o venció. Pida uno nuevo.`**
+El enlace ya se usó, pasó una hora, se pidió otro enlace después (el último invalida al anterior) o se copió incompleto. Pida uno nuevo con «Pedir otro enlace».
+
+**Dice `Demasiados intentos; espere un minuto e intente de nuevo.`**
+El límite es de 5 solicitudes por minuto desde la misma conexión. Espere un minuto.
+
+**Un administrador me puso una contraseña temporal; ¿cuánto dura?**
+10 minutos desde que se la pusieron. Entre con ella y el sistema le pedirá elegir la suya. Si pasan los 10 minutos sin entrar, vale otra vez su contraseña de siempre.
+
+**Dice `No puede ponerse una contraseña temporal a sí mismo.`**
+Un administrador no puede ponerse la temporal a sí mismo; para cambiar la suya use Mi cuenta, o pida a otro administrador que se la ponga.
+
+**La temporal se entregó pero ya pasaron más de 10 minutos.**
+Vuelva a ponerla (Sistema → Usuarios → Contraseña temporal). Es nueva y cuenta otros 10 minutos.
+
+**¿Por qué la temporal no llega por correo?**
+Es a propósito: la entrega el administrador en persona. El correo con enlace es solo para «Olvidé mi contraseña».

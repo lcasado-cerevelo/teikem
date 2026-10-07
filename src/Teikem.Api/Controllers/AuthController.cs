@@ -32,6 +32,17 @@ public sealed class AuthController(AuthService auth, DeviceService devices) : Co
     [HttpPost("login"), AllowAnonymous]
     public Task<AuthResultDto> Login([FromBody] LoginRequest req, CancellationToken ct) => auth.LoginAsync(req, ct);
 
+    /// <summary>
+    /// 2026-10-07 «Olvidé mi contraseña»: manda al correo un enlace de un solo uso (vale 60 minutos). Responde siempre lo mismo exista o no el correo.
+    /// 429 'Demasiados intentos; espere un minuto e intente de nuevo.' (5 por minuto por IP).
+    /// </summary>
+    [HttpPost("forgot-password"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.PasswordReset)]
+    public Task<ForgotPasswordResultDto> ForgotPassword([FromBody] ForgotPasswordRequest req, CancellationToken ct) => auth.RequestPasswordResetAsync(req, ct);
+
+    /// <summary>Pone la contraseña nueva con el enlace del correo. 400 'El enlace no es válido o venció. Pida uno nuevo.' o el motivo de la contraseña.</summary>
+    [HttpPost("reset-password"), AllowAnonymous, EnableRateLimiting(DeviceRateLimits.PasswordReset)]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest req, CancellationToken ct) { await auth.ResetPasswordWithLinkAsync(req, ct); return NoContent(); }
+
     /// <summary>Paso 2 (con el challenge token como Bearer): código TOTP o de recuperación.</summary>
     [HttpPost("mfa/verify"), Authorize(Policy = Policies.MfaChallenge)]
     public Task<AuthResultDto> VerifyMfa([FromBody] MfaVerifyRequest req, CancellationToken ct)

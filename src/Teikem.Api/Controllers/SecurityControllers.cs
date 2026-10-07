@@ -86,6 +86,14 @@ public sealed class UsersController(UserAdminService users, AuthService auth) : 
     [HttpPut("{id:int}/count-see-expected"), RequirePermission(PermissionCatalog.AdminUsers)]
     public Task<UserSummaryDto> SetCountSeeExpected(int id, [FromBody] CountSeeExpectedRequest req, CancellationToken ct) => users.SetCountSeeExpectedAsync(id, req.Value, ct);
 
+    /// <summary>
+    /// 2026-10-07: contraseña temporal de 10 minutos (se la da el administrador al usuario). Si nadie entra con ella en ese tiempo vuelve la anterior; si entra, debe
+    /// poner la suya. Cierra las sesiones del usuario. Sin contraseña en el cuerpo el servidor genera una (se devuelve una sola vez).
+    /// 409 'No puede ponerse una contraseña temporal a sí mismo.'
+    /// </summary>
+    [HttpPost("{id:int}/temporary-password"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
+    public Task<TemporaryPasswordDto> SetTemporaryPassword(int id, [FromBody] TemporaryPasswordRequest? req, CancellationToken ct) => auth.AdminSetTemporaryPasswordAsync(id, req, ct);
+
     /// <summary>Lote F8a: resetea el MFA de otro usuario (perdió su dispositivo) — vuelve a enrolar en su próximo login.</summary>
     [HttpDelete("{id:int}/mfa"), RequirePermission(PermissionCatalog.AdminUsers), RequireAal2]
     public async Task<IActionResult> ResetMfa(int id, CancellationToken ct) { await auth.AdminResetMfaAsync(id, ct); return NoContent(); }

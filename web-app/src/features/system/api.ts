@@ -180,6 +180,16 @@ export function useSetCountSeeExpected() {
   })
 }
 
+/** `POST /api/v1/users/{id}/temporary-password` (AAL2): contraseña temporal de 10 minutos; sin contraseña en el cuerpo el servidor genera una. */
+export function useSetTemporaryPassword() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password?: string }) =>
+      unwrap(api.POST('/api/v1/users/{id}/temporary-password', { params: { path: { id } }, body: { password: password?.trim() ? password : null } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  })
+}
+
 /** `DELETE /api/v1/users/{id}/mfa` (AAL2): resetea el MFA de otro usuario que perdió su dispositivo. */
 export function useResetUserMfa() {
   const qc = useQueryClient()

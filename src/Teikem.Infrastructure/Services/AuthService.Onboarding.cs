@@ -134,6 +134,7 @@ public sealed partial class AuthService
         }
         user = await OnboardingUserAsync(userId);
         user.MustChangePassword = false;
+        ClearTempPassword(user); // puso la suya: la temporal del administrador ya no se puede restaurar
         await users.UpdateAsync(user);
         // El sello rotó: se quita el que el API tiene en caché (60 s) para que el challenge nuevo, firmado con el sello nuevo, se
         // acepte ya en la siguiente petición (antes, "Comenzar configuración" fallaba la primera vez).

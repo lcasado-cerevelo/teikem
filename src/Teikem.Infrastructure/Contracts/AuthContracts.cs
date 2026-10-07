@@ -31,3 +31,13 @@ public sealed record MfaConfirmResultDto(IReadOnlyList<string> RecoveryCodes);
 public sealed record ReauthRequest(string Password, string? MfaCode);
 public sealed record ReauthResultDto(string AccessToken, DateTime AccessExpiresAtUtc, DateTime Aal2VerifiedAtUtc);
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
+
+/// <summary>2026-10-07: «Olvidé mi contraseña» en el login (anónimo).</summary>
+public sealed record ForgotPasswordRequest(string? Email);
+/// <summary>Respuesta siempre igual exista o no el correo; <c>Link</c> solo en desarrollo (sin proveedor de correo).</summary>
+public sealed record ForgotPasswordResultDto(string Message, string? Link);
+/// <summary>Poner la contraseña nueva con el enlace del correo.</summary>
+public sealed record ResetPasswordRequest(string? Email, string? Token, string? NewPassword);
+/// <summary>Administración de usuarios: contraseña temporal (vacía = el servidor genera una).</summary>
+public sealed record TemporaryPasswordRequest(string? Password);
+public sealed record TemporaryPasswordDto(string Password, DateTime ExpiresAtUtc, int ValidMinutes);

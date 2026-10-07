@@ -120,6 +120,8 @@ export function legacyInventorySearch(params: URLSearchParams): URLSearchParams 
 /** Pantallas sin sesión (fuera del shell). */
 export const publicRoutes: readonly AppRoute[] = [
   { path: '/login', element: lazy(() => import('../features/auth/LoginPage')) },
+  { path: '/forgot-password', element: lazy(() => import('../features/auth/ForgotPasswordPage')) },
+  { path: '/reset-password', element: lazy(() => import('../features/auth/ResetPasswordPage')) },
   { path: '/mfa', element: lazy(() => import('../features/auth/MfaPage')) },
   { path: '/onboarding', element: lazy(() => import('../features/auth/OnboardingPage')) },
 ]

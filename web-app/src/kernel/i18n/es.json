@@ -30,7 +30,8 @@
     "login": {
       "title": "Iniciar sesión",
       "subtitle": "Entre con su correo y contraseña.",
-      "submit": "Entrar"
+      "submit": "Entrar",
+      "forgot": "¿Olvidó su contraseña?"
     },
     "onboarding": {
       "title": "Primer ingreso",
@@ -72,6 +73,23 @@
       "title": "Confirme su identidad",
       "help": "Esta acción es sensible y requiere que vuelva a escribir su contraseña.",
       "submit": "Confirmar"
+    },
+    "forgot": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Escriba su correo y le enviaremos un enlace para elegir una contraseña nueva.",
+      "submit": "Enviar enlace",
+      "sent": "Si el correo está registrado, le enviamos un enlace para restablecer su contraseña.",
+      "devLink": "Enlace (solo en desarrollo):"
+    },
+    "reset": {
+      "title": "Elija su contraseña nueva",
+      "subtitle": "Cuenta: {email}",
+      "submit": "Guardar contraseña",
+      "badLink": "El enlace no es válido o venció. Pida uno nuevo.",
+      "askAgain": "Pedir otro enlace",
+      "doneTitle": "Contraseña cambiada",
+      "done": "Listo. Ya puede entrar con su contraseña nueva.",
+      "goLogin": "Ir a iniciar sesión"
     }
   },
   "access": {
@@ -3455,6 +3473,20 @@
         "removeTitle": "Quitar el PIN",
         "removeBody": "{name} ya no podrá entrar en Teikem Almacén con PIN.",
         "removed": "PIN quitado."
+      },
+      "tempPw": {
+        "action": "Contraseña temporal",
+        "title": "Contraseña temporal",
+        "body": "Se le pondrá a {name} una contraseña temporal.",
+        "rule1": "Vale 10 minutos. Si nadie entra con ella en ese tiempo, vuelve la contraseña anterior.",
+        "rule2": "Al entrar con ella, el sistema le obliga a poner una contraseña propia.",
+        "rule3": "Se cierran sus sesiones abiertas.",
+        "customLabel": "Contraseña (opcional)",
+        "customHelp": "Déjela en blanco para que el sistema genere una. Mínimo 12 caracteres.",
+        "apply": "Poner contraseña temporal",
+        "resultTitle": "Contraseña temporal",
+        "resultHint": "Dele esta contraseña a {name} ahora: vale {minutes} minutos y no se vuelve a mostrar.",
+        "expiresAt": "Vence a las {time}."
       }
     },
     "catalogs": {

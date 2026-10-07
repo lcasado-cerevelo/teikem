@@ -25,6 +25,14 @@ public class ApplicationUser : IdentityUser<int>, ISoftDeletable
     public bool MustChangePassword { get; set; } = true;
     /// <summary>Cuándo el usuario confirmó su correo con el código de 6 dígitos (null = sin verificar).</summary>
     public DateTime? EmailVerifiedUtc { get; set; }
+    /// <summary>2026-10-07: hasta cuándo vale la contraseña temporal que puso un administrador (null = no hay). Pasado ese momento, el siguiente intento de
+    /// entrar restaura la contraseña anterior (<see cref="PreviousPasswordHash"/>).</summary>
+    [NotAudited] public DateTime? TempPasswordExpiresUtc { get; set; }
+    /// <summary>Hash de la contraseña que tenía antes de la temporal; vuelve si la temporal vence sin usarse.</summary>
+    [SensitiveData] public string? PreviousPasswordHash { get; set; }
+    /// <summary>Cómo estaban OnboardingRequired y MustChangePassword antes de la contraseña temporal (la temporal los enciende para forzar el cambio).</summary>
+    [NotAudited] public bool? PreviousOnboardingRequired { get; set; }
+    [NotAudited] public bool? PreviousMustChangePassword { get; set; }
 
     [SensitiveData] public override string? PasswordHash { get => base.PasswordHash; set => base.PasswordHash = value; }
     [SensitiveData] public override string? SecurityStamp { get => base.SecurityStamp; set => base.SecurityStamp = value; }

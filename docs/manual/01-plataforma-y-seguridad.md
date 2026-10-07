@@ -79,6 +79,25 @@ FAQ:
 - **Cada intento fallido queda registrado.** Sí, en el evento de seguridad `LOGIN` (fallo) o `LOCKOUT`
   (bloqueo), visible en `/api/v1/audit/security-events` para quien tenga `admin.audit`.
 
+### 1.1b Recuperar la contraseña (2026-10-07)
+
+**Quien la olvidó — «¿Olvidó su contraseña?» en el login** (sin sesión, no pide permiso)
+1. En la pantalla de inicio de sesión toque **¿Olvidó su contraseña?** y escriba su correo (`/forgot-password`, `POST /api/v1/auth/forgot-password`).
+2. Siempre responde lo mismo, exista o no el correo: `Si el correo está registrado, le enviamos un enlace para restablecer su contraseña.` (no se puede averiguar qué correos existen).
+3. El correo trae un enlace que **vale 60 minutos y se usa una sola vez**. El enlace lleva a `/reset-password`: escriba la contraseña nueva dos veces (`POST /api/v1/auth/reset-password`, 204).
+4. Al cambiarla se cierran todas las sesiones abiertas de esa cuenta, se levanta un bloqueo por intentos fallidos y se pide el segundo factor (MFA) como siempre al entrar. Recibir el correo cuenta como correo verificado.
+- Errores: `El enlace no es válido o venció. Pida uno nuevo.` (400: enlace vencido, ya usado, alterado o de otro correo); contraseña con menos de 12 caracteres o en brechas conocidas (400, con el motivo); `Demasiados intentos; espere un minuto e intente de nuevo.` (429: 5 por minuto por IP).
+- Configuración (administrador del sistema): `Auth:PasswordReset:WebBaseUrl` (dirección de la web, obligatoria para mandar el correo; el enlace nunca se arma con datos de la petición), `LinkMinutes` (60) y, solo en desarrollo, `ReturnLinkInResponse`.
+
+**Administración de usuarios — «Contraseña temporal»** (permiso `admin.users`, requiere reautenticación AAL2; `POST /api/v1/users/{id}/temporary-password`)
+1. En **Sistema → Usuarios**, en la fila de la persona, acción **Contraseña temporal**. Puede dejar el campo en blanco (el sistema genera una) o escribir una de al menos 12 caracteres.
+2. La ventana muestra la contraseña **una sola vez** y su vencimiento; entréguesela a la persona en persona o por un canal seguro. No se manda por correo.
+3. **Vale 10 minutos.** Si nadie entra con ella en ese tiempo, al siguiente intento de entrar **vuelve la contraseña anterior** y todo queda como estaba. Mientras vale, la anterior no funciona.
+4. Si la persona entra con la temporal, el sistema la lleva al **cambio obligatorio**: debe poner una contraseña propia (distinta de la temporal) antes de recibir sesión, y luego pasa por su segundo factor como siempre.
+5. Se cierran las sesiones abiertas de esa persona. Poner otra temporal encima de una vigente conserva la contraseña de antes de la primera.
+- Errores: `No puede ponerse una contraseña temporal a sí mismo.` (409); usuario que no es de su compañía (404); contraseña corta o en brechas conocidas (400, con el motivo).
+- Queda en la bitácora de seguridad (cambio de contraseña: quién la puso, y si venció y se restauró).
+
 ### 1.2 Verificación MFA (paso 2 del login)
 
 Qué hace: completa el login cuando el paso 1 devolvió `mfa_required`, con el código TOTP o un código de

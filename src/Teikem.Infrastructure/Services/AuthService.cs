@@ -70,7 +70,8 @@ public sealed partial class AuthService(
     TeikemDbContext db, UserManager<ApplicationUser> users, ITenantContext tenant, JwtTokenService jwt, ILookupCache lookups,
     ISecurityEventWriter security, IDataProtectionProvider dataProtection, IPasswordBreachChecker breachChecker, PermissionService permissions,
     DeviceService devices, PinService pins, Microsoft.Extensions.Options.IOptions<OnboardingOptions> onboarding, ITransactionalEmailSender email,
-    Microsoft.Extensions.Caching.Memory.IMemoryCache cache)
+    Microsoft.Extensions.Caching.Memory.IMemoryCache cache,
+    Microsoft.Extensions.Options.IOptions<PasswordResetOptions>? passwordReset = null)
 {
     private const string InvalidCredentials = "Credenciales inválidas.";
 
@@ -93,6 +94,8 @@ public sealed partial class AuthService(
             await security.WriteAsync(SecurityEventTypes.Lockout, SecurityOutcomes.Blocked, user.Id, null, null, ct);
             throw new UnauthorizedException(InvalidCredentials);
         }
+        // 2026-10-07: si la contraseña temporal de un administrador venció sin usarse, vuelve la anterior antes de comparar.
+        await ExpireTempPasswordIfDueAsync(user);
         if (!await users.CheckPasswordAsync(user, req.Password ?? string.Empty))
         {
             await users.AccessFailedAsync(user);

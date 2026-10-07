@@ -22,6 +22,9 @@ public static class DeviceRateLimits
 {
     public const string Enroll = "device-enroll";
     public const string DeviceAuth = "device-auth";
+    /// <summary>2026-10-07: POST /auth/forgot-password y /auth/reset-password: 5 por minuto por IP y ruta (RateLimiting:PasswordResetPerMinute).</summary>
+    public const string PasswordReset = "password-reset";
+    public const int DefaultPasswordResetPerMinute = 5;
     public const int DefaultEnrollPerMinute = 10;
     public const int DefaultDeviceAuthPerMinute = 60;
     public const string RejectedMessage = "Demasiados intentos; espere un minuto e intente de nuevo.";
@@ -30,11 +33,13 @@ public static class DeviceRateLimits
     {
         var enroll = Positive(config.GetValue<int?>("RateLimiting:DeviceEnrollPerMinute"), DefaultEnrollPerMinute);
         var auth = Positive(config.GetValue<int?>("RateLimiting:DeviceAuthPerMinute"), DefaultDeviceAuthPerMinute);
+        var reset = Positive(config.GetValue<int?>("RateLimiting:PasswordResetPerMinute"), DefaultPasswordResetPerMinute);
         return services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             o.AddPolicy(Enroll, ctx => PerIpAndPath(ctx, enroll));
             o.AddPolicy(DeviceAuth, ctx => PerIpAndPath(ctx, auth));
+            o.AddPolicy(PasswordReset, ctx => PerIpAndPath(ctx, reset));
             o.OnRejected = async (context, ct) =>
             {
                 var http = context.HttpContext;

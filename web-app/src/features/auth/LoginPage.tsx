@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { z } from 'zod'
 import { useSession } from '../../app/session'
 import { applyProblemDetails } from '../../kernel/api/problem'
@@ -91,6 +91,9 @@ export default function LoginPage() {
         <button type="submit" className="btn flow block" disabled={isSubmitting}>
           {isSubmitting ? t('common.loading') : t('auth.login.submit')}
         </button>
+        <p style={{ textAlign: 'center', marginTop: 12 }}>
+          <Link to="/forgot-password">{t('auth.login.forgot')}</Link>
+        </p>
       </form>
     </AuthLayout>
   )

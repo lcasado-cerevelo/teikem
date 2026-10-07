@@ -1508,6 +1508,88 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ForgotPasswordRequest"];
+                    "text/json": components["schemas"]["ForgotPasswordRequest"];
+                    "application/*+json": components["schemas"]["ForgotPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["ForgotPasswordResultDto"];
+                        "application/json": components["schemas"]["ForgotPasswordResultDto"];
+                        "text/json": components["schemas"]["ForgotPasswordResultDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["ResetPasswordRequest"];
+                    "text/json": components["schemas"]["ResetPasswordRequest"];
+                    "application/*+json": components["schemas"]["ResetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/mfa/verify": {
         parameters: {
             query?: never;
@@ -16297,6 +16379,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/temporary-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["TemporaryPasswordRequest"];
+                    "text/json": components["schemas"]["TemporaryPasswordRequest"];
+                    "application/*+json": components["schemas"]["TemporaryPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": components["schemas"]["TemporaryPasswordDto"];
+                        "application/json": components["schemas"]["TemporaryPasswordDto"];
+                        "text/json": components["schemas"]["TemporaryPasswordDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/vehicles": {
         parameters: {
             query?: never;
@@ -19945,6 +20072,13 @@ export interface components {
             drivers?: components["schemas"]["DriverAvailabilityDto"][] | null;
             vehicles?: components["schemas"]["VehicleAvailabilityDto"][] | null;
         };
+        ForgotPasswordRequest: {
+            email?: string | null;
+        };
+        ForgotPasswordResultDto: {
+            message?: string | null;
+            link?: string | null;
+        };
         FuelLogCreateRequest: {
             /** Format: uuid */
             vehiclePublicId?: string;
@@ -22572,6 +22706,11 @@ export interface components {
             deliveryEmails?: string | null;
             shares?: components["schemas"]["ShareDto"][] | null;
         };
+        ResetPasswordRequest: {
+            email?: string | null;
+            token?: string | null;
+            newPassword?: string | null;
+        };
         RevokeSessionsResultDto: {
             /** Format: int32 */
             revoked?: number;
@@ -23198,6 +23337,16 @@ export interface components {
             quantityPerBin?: number;
             toBinIds?: number[] | null;
             comment?: string | null;
+        };
+        TemporaryPasswordDto: {
+            password?: string | null;
+            /** Format: date-time */
+            expiresAtUtc?: string;
+            /** Format: int32 */
+            validMinutes?: number;
+        };
+        TemporaryPasswordRequest: {
+            password?: string | null;
         };
         TenantFormatDto: {
             regionCode?: string | null;

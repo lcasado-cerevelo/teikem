@@ -42,6 +42,7 @@ import { formatDateTime } from '../account/format'
 import { problemText } from '../warehouse/problemText'
 import { copyCode } from './EnrollCodeModal'
 import { PinModal } from './PinModal'
+import { TemporaryPasswordDialog } from './TemporaryPasswordDialog'
 import {
   useCloseUserSessions,
   useAssignableCompanies,
@@ -457,6 +458,7 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
   const [closingSessions, setClosingSessions] = useState<UserSummaryDto | null>(null)
   const [mfaRequiredFor, setMfaRequiredFor] = useState<UserSummaryDto | null>(null)
   const [resettingMfaFor, setResettingMfaFor] = useState<UserSummaryDto | null>(null)
+  const [tempPasswordFor, setTempPasswordFor] = useState<UserSummaryDto | null>(null)
 
   const roleNames = useMemo(() => roles.map((r) => r.name ?? '').filter(Boolean), [roles])
 
@@ -652,6 +654,13 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         onClick: (u) => setMfaRequiredFor(u),
       },
       {
+        key: 'tempPassword',
+        label: t('system.users.tempPw.action'),
+        perm: 'admin.users',
+        icon: <IconKey />,
+        onClick: (u) => setTempPasswordFor(u),
+      },
+      {
         key: 'resetMfa',
         label: t('system.users.users.resetMfa'),
         perm: 'admin.users',
@@ -723,6 +732,8 @@ export function UsersTab({ creating = false, onCreateClose }: UsersTabProps) {
         }}
         onClose={() => setMfaRequiredFor(null)}
       />
+
+      <TemporaryPasswordDialog user={tempPasswordFor} onClose={() => setTempPasswordFor(null)} />
 
       <ConfirmDialog
         open={resettingMfaFor !== null}

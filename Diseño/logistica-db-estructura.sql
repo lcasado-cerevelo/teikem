@@ -74,7 +74,12 @@ BEGIN
         -- 2026-09-30: primer ingreso obligatorio (verificar correo → contraseña propia → MFA). 1 = pendiente.
         OnboardingRequired   BIT NOT NULL CONSTRAINT DF_AspNetUsers_OnboardingRequired DEFAULT 1,
         MustChangePassword   BIT NOT NULL CONSTRAINT DF_AspNetUsers_MustChangePassword DEFAULT 1,
-        EmailVerifiedUtc     DATETIME2 NULL
+        EmailVerifiedUtc     DATETIME2 NULL,
+        -- 2026-10-07: contraseña temporal puesta por un administrador (vale unos minutos; si nadie entra con ella, vuelve la anterior)
+        TempPasswordExpiresUtc DATETIME2 NULL,
+        PreviousPasswordHash   NVARCHAR(MAX) NULL,
+        PreviousOnboardingRequired BIT NULL,
+        PreviousMustChangePassword BIT NULL
     );
     CREATE INDEX EmailIndex ON dbo.AspNetUsers(NormalizedEmail);
     CREATE UNIQUE INDEX UserNameIndex ON dbo.AspNetUsers(NormalizedUserName) WHERE NormalizedUserName IS NOT NULL;
@@ -92,6 +97,15 @@ IF COL_LENGTH('dbo.AspNetUsers', 'MustChangePassword') IS NULL
     ALTER TABLE dbo.AspNetUsers ADD MustChangePassword BIT NOT NULL CONSTRAINT DF_AspNetUsers_MustChangePassword DEFAULT 1;
 IF COL_LENGTH('dbo.AspNetUsers', 'EmailVerifiedUtc') IS NULL
     ALTER TABLE dbo.AspNetUsers ADD EmailVerifiedUtc DATETIME2 NULL;
+-- 2026-10-07: contraseña temporal del administrador (ver ApplicationUser.TempPasswordExpiresUtc)
+IF COL_LENGTH('dbo.AspNetUsers', 'TempPasswordExpiresUtc') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD TempPasswordExpiresUtc DATETIME2 NULL;
+IF COL_LENGTH('dbo.AspNetUsers', 'PreviousPasswordHash') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD PreviousPasswordHash NVARCHAR(MAX) NULL;
+IF COL_LENGTH('dbo.AspNetUsers', 'PreviousOnboardingRequired') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD PreviousOnboardingRequired BIT NULL;
+IF COL_LENGTH('dbo.AspNetUsers', 'PreviousMustChangePassword') IS NULL
+    ALTER TABLE dbo.AspNetUsers ADD PreviousMustChangePassword BIT NULL;
 GO
 
 IF OBJECT_ID('dbo.AspNetRoleClaims') IS NULL
