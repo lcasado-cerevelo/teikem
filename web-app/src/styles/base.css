@@ -196,6 +196,11 @@ h1,h2,h3{letter-spacing:-.01em}
 .pwd-field input{padding-right:40px}
 .pwd-field .iconbtn{position:absolute;top:50%;right:3px;transform:translateY(-50%);width:28px;height:28px}
 .pwd-field .iconbtn svg{width:17px;height:17px}
+/* Usuarios → «Ve lo esperado al contar»: ojo abierto = sí, ojo con la línea = no */
+.see-flag{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.see-flag svg{width:18px;height:18px;flex:none}
+.see-flag.yes{color:var(--ok)}
+.see-flag.no{color:var(--danger)}
 .help{font-size:11.5px;color:var(--faint);margin-top:4px}
 .ferr{color:var(--danger);font-size:12px;font-weight:600;margin:5px 0 0}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:11px}

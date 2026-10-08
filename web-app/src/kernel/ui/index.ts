@@ -82,7 +82,7 @@ export { Panel } from './Panel'
 export type { PanelProps } from './Panel'
 export { QBox } from './QBox'
 // 'check' de la maqueta (el mismo del aviso de éxito): estados vacíos "todo resuelto".
-export { IconCheck, IconEye } from './icons'
+export { IconCheck, IconEye, IconEyeOff } from './icons'
 export {
   IconBasket,
   IconBox,
