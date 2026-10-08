@@ -142,7 +142,7 @@ public class WmsControllerSecurityTests
         [(typeof(CycleCountsController), nameof(CycleCountsController.Finish))] = PermissionCatalog.WarehouseCountCapture,   // Lote 8A: a ciegas
         [(typeof(CycleCountsController), nameof(CycleCountsController.Refresh))] = PermissionCatalog.WarehouseCount,
         [(typeof(CycleCountsController), nameof(CycleCountsController.Reconcile))] = PermissionCatalog.WarehouseCount,
-        [(typeof(CycleCountsController), nameof(CycleCountsController.Delete))] = PermissionCatalog.WarehouseCount,
+        [(typeof(CycleCountsController), nameof(CycleCountsController.Delete))] = PermissionCatalog.WarehouseCountCapture,   // 2026-10-08: quien solo captura cancela los suyos
         [(typeof(CycleCountsController), nameof(CycleCountsController.Page))] = PermissionCatalog.InventoryView,   // Lote 14: a ciegas sin warehouse.count
         [(typeof(CycleCountsController), nameof(CycleCountsController.ChangesPreview))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
         [(typeof(CycleCountsController), nameof(CycleCountsController.FromChanges))] = PermissionCatalog.WarehouseCount,   // Lote 14 (D3)
@@ -270,12 +270,12 @@ public class WmsControllerSecurityTests
         // D28: citas y planes de cruce de muelle en el módulo CROSSDOCK.
         Assert.Equal(ModuleKeys.CrossDock, ModuleOf[typeof(DockAppointmentsController)]);
         // Lote 8A: la ficha del conteo se lee con inventory.view (a ciegas sin warehouse.count); alta, captura y terminar piden
-        // warehouse.count.capture (implícito en warehouse.count); refrescar, reconciliar y la baja siguen con warehouse.count.
+        // warehouse.count.capture (implícito en warehouse.count); refrescar y reconciliar siguen con warehouse.count; la baja (cancelar) la hace quien captura, solo de sus conteos.
         Assert.Equal(PermissionCatalog.InventoryView, Expected[(typeof(CycleCountsController), nameof(CycleCountsController.Get))]);
         foreach (var a in new[] { nameof(CycleCountsController.Create), nameof(CycleCountsController.Capture), nameof(CycleCountsController.CaptureBatch),
-                     nameof(CycleCountsController.AddLine), nameof(CycleCountsController.Finish) })
+                     nameof(CycleCountsController.AddLine), nameof(CycleCountsController.Finish), nameof(CycleCountsController.Delete) })
             Assert.Equal(PermissionCatalog.WarehouseCountCapture, Expected[(typeof(CycleCountsController), a)]);
-        foreach (var a in new[] { nameof(CycleCountsController.Refresh), nameof(CycleCountsController.Reconcile), nameof(CycleCountsController.Delete) })
+        foreach (var a in new[] { nameof(CycleCountsController.Refresh), nameof(CycleCountsController.Reconcile) })
             Assert.Equal(PermissionCatalog.WarehouseCount, Expected[(typeof(CycleCountsController), a)]);
         Assert.Contains(PermissionCatalog.WarehouseCountCapture, PermissionCatalog.Implied[PermissionCatalog.WarehouseCount]);
         // Lote 8A: recolectar y empacar en una llamada tiene su propia ruta y su propio tipo de respuesta.

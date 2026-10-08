@@ -49,6 +49,7 @@ public static class CycleCountRules
     public const string AllowEmptyOnlyOneProduct = "Crear un conteo vacío (allowEmpty) solo aplica a uno o ningún producto, sin posiciones, zonas ni categorías.";
     public const string CountNotOpen = "El conteo ya fue reconciliado; solo se consulta.";
     public const string CountAlreadyFinished = "El conteo ya se terminó; puede corregir la captura o reconciliarlo.";
+    public const string DeleteOnlyOwn = "Solo puede cancelar los conteos que usted abrió.";
     public const string DeleteOnlyOpen = "Solo se elimina un conteo abierto; este ya se terminó de contar.";
     public const string NoLines = "El conteo no tiene líneas.";
     public const string SerialCountedByList = "En productos con serie se capturan los números de serie, no la cantidad.";

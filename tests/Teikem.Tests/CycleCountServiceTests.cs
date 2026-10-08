@@ -396,6 +396,26 @@ public sealed class CycleCountServiceTests
     }
 
     [Fact]
+    public async Task A_capture_only_user_can_cancel_their_own_open_count_but_not_someone_elses()
+    {
+        await using var f = await CycleCountFixture.CreateAsync();
+        await f.ReceiveAsync(f.ProductNoneId, f.PickBin1, 2m);
+        var svc = f.Get<CycleCountService>();
+        // dos conteos abiertos: el de un supervisor (usuario 1) y el del contador (usuario 5, solo captura: sin warehouse.count)
+        var others = await svc.CreateAsync(new CycleCountCreateRequest(), default);
+        f.AsRestrictedUser(5, PermissionCatalog.WarehouseCountCapture, PermissionCatalog.InventoryView);
+        var mine = await svc.CreateAsync(new CycleCountCreateRequest(), default);
+
+        var denied = await Assert.ThrowsAsync<ForbiddenException>(() => svc.DeleteAsync(others.Count.Id, default));
+        Assert.Equal(CycleCountRules.DeleteOnlyOwn, denied.Message);
+        await svc.DeleteAsync(mine.Count.Id, default);
+        Assert.Equal(WarehouseTaskStatuses.Cancelled, await f.CountTaskStatusAsync(mine.Count.Id));
+        // el del supervisor sigue abierto
+        f.AsUser(1);
+        Assert.NotEqual(WarehouseTaskStatuses.Cancelled, await f.CountTaskStatusAsync(others.Count.Id));
+    }
+
+    [Fact]
     public async Task Delete_open_count_cancels_its_task_and_hides_it()
     {
         await using var f = await CycleCountFixture.CreateAsync();

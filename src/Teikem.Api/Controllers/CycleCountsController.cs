@@ -223,8 +223,11 @@ public sealed class CycleCountsController(CycleCountService counts, PermissionSe
     public Task<CycleCountDetailDto> Reconcile(int id, [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CountReconcileRequest? req, CancellationToken ct)
         => counts.ReconcileAsync(id, req, ct);
 
-    /// <summary>Baja de un conteo OPEN (204); su tarea COUNT se cancela. Terminado o reconciliado → 422.</summary>
-    [HttpDelete("{id:int}"), RequirePermission(PermissionCatalog.WarehouseCount)]
+    /// <summary>
+    /// Baja de un conteo OPEN (204); su tarea COUNT se cancela. Terminado o reconciliado → 422. 2026-10-08: quien solo captura (warehouse.count.capture, sin
+    /// warehouse.count) cancela los conteos que él mismo abrió; los de otra persona → 403 'Solo puede cancelar los conteos que usted abrió.'.
+    /// </summary>
+    [HttpDelete("{id:int}"), RequirePermission(PermissionCatalog.WarehouseCountCapture)]
     public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
         await counts.DeleteAsync(id, ct);

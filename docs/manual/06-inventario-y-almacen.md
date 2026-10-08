@@ -1659,6 +1659,13 @@ La web ofrece lo mismo que la app de almacén para repartir cantidades grandes e
 - **Recibo directo** → en la línea del recibo abierto, acción **Repartir** (icono de cuadrícula): la primera línea conserva lo recibido y su posición; las demás se agregan como líneas nuevas. Solo recibos ciegos o de devolución, productos sin serie. Se hace con llamadas seguidas (no es una sola transacción): si una falla, el mensaje lo indica y las anteriores quedan guardadas.
 - **Despacho / recolección** → en una línea con producto y cantidad y sin posición, acción **Sugerir posiciones**: propone de qué posiciones sacar (por el orden de salida del almacén, respetando el lote si se indicó y lo ya asignado en otras líneas) y deja una línea por posición. Errores: `Elija el producto y escriba la cantidad para sugerir de dónde sacarla.`; `No alcanza la existencia: faltan {short}. Baje la cantidad.` No aplica a productos con serie.
 
+### 6.v Cancelar un conteo sin el permiso de supervisor (2026-10-08)
+
+Quien tiene solo **Capturar conteo (a ciegas)** (`warehouse.count.capture`), sin `warehouse.count`, **puede cancelar los conteos abiertos que él mismo abrió** (app: Cancelar en la pantalla del conteo; `DELETE /api/v1/cycle-counts/{id}`, 204). Así puede quitarle a un contador el permiso de supervisor para que no vea lo esperado y aun así rectificar un conteo abierto por error.
+- Un conteo que abrió **otra persona** → 403 `Solo puede cancelar los conteos que usted abrió.` (lo cancela quien tenga `warehouse.count`).
+- Un conteo ya terminado o reconciliado no se cancela, con ningún permiso → 422 `Solo se elimina un conteo abierto; este ya se terminó de contar.`
+- Cancelar libera la posición y cierra la tarea de conteo, como siempre. Necesita señal.
+
 ### 6.y Equipos en renta y el conteo cíclico (Lote 28, Rentas R2, decisión D7)
 
 Los equipos rentados siguen en el inventario, en la posición **EN-RENTA** (zona RENT, tipo "En renta"; capítulo 11). Esa posición

@@ -1688,6 +1688,9 @@ public sealed class CycleCountService(
     public async Task DeleteAsync(int id, CancellationToken ct)
     {
         var current = await ResolveAsync(id, ct);
+        // 2026-10-08: quien solo captura (sin warehouse.count: cuenta a ciegas) puede cancelar, pero solo los conteos que él abrió.
+        if (current.CreatedBy != tenant.UserId && !await permissions.HasPermissionAsync(PermissionCatalog.WarehouseCount, ct))
+            throw new ForbiddenException(CycleCountRules.DeleteOnlyOwn);
         await db.RunInTransactionAsync(async ct2 =>
         {
             var (cc, code) = await LockEditableAsync(current.CycleCountId, ct2);
