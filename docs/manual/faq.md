@@ -5615,10 +5615,7 @@ Es a propósito: la entrega el administrador en persona. El correo con enlace es
 ## Cancelar un conteo con permiso de solo capturar (2026-10-08)
 
 **Le quité `warehouse.count` a un contador para que no vea lo esperado y ya no podía cancelar.**
-Corregido: con `warehouse.count.capture` puede cancelar los conteos abiertos que él abrió. Si el servidor responde 403 es otro caso (conteo de otra persona).
-
-**Dice `Solo puede cancelar los conteos que usted abrió.`**
-Ese conteo lo abrió otra persona. Pídale que lo cancele o pida a un supervisor (`warehouse.count`) que lo haga.
+Corregido: cancelar pide el permiso de capturar (`warehouse.count.capture`), igual que capturar y terminar. Ya no hace falta `warehouse.count`.
 
 **Dice `Solo se elimina un conteo abierto; este ya se terminó de contar.`**
 Un conteo terminado ya no se cancela; el supervisor lo reconcilia desde la web.

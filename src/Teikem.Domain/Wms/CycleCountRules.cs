@@ -51,7 +51,6 @@ public static class CycleCountRules
     /// <summary>2026-10-07 (app, retomar): la posición ya la tiene abierta otro contador (POST /cycle-counts con resumeOpen).</summary>
     public static string BinBeingCounted(string countedBy, string number) => $"Esa posición la está contando {countedBy} ({number}).";
     public const string CountAlreadyFinished = "El conteo ya se terminó; puede corregir la captura o reconciliarlo.";
-    public const string DeleteOnlyOwn = "Solo puede cancelar los conteos que usted abrió.";
     public const string DeleteOnlyOpen = "Solo se elimina un conteo abierto; este ya se terminó de contar.";
     public const string NoLines = "El conteo no tiene líneas.";
     public const string SerialCountedByList = "En productos con serie se capturan los números de serie, no la cantidad.";
