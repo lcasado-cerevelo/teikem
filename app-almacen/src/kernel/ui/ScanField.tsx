@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 
-import { useSession } from '../auth/useSession'
+import { useActiveWarehouse } from '../warehouse/activeWarehouse'
 import { useT } from '../i18n/useT'
 import type { PickKind } from '../warehouse/pickerSearch'
 import { PickerModal } from './PickerModal'
@@ -64,7 +64,7 @@ export function ScanField({
   testID,
 }: ScanFieldProps) {
   const { t } = useT()
-  const { device } = useSession()
+  const activeWarehouse = useActiveWarehouse()
   const [picking, setPicking] = useState(false)
   const { width } = useWindowDimensions()
   const [value, setValue] = useState('')
@@ -209,7 +209,7 @@ export function ScanField({
         <PickerModal
           visible={picking}
           kind={pick}
-          warehousePublicId={device?.defaultWarehousePublicId ?? null}
+          warehousePublicId={activeWarehouse.publicId}
           onClose={() => setPicking(false)}
           onSelect={(code) => {
             setPicking(false)

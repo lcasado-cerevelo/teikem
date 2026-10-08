@@ -205,6 +205,25 @@ pantalla de Despacho igual abre, pero "Empacar" falla con el error del permiso).
 Cómo se usa: tocar una acción navega a su pantalla, salvo que haya otro documento en curso (§1): entonces avisa en
 vez de navegar. Tocar el texto del estado de sincronización lleva a la pantalla de Sincronización (§8).
 
+### 3.1 Trabajar en más de un almacén (2026-10-07)
+
+Un aparato registrado en una compañía puede trabajar en **cualquier almacén activo de esa compañía**, no solo en el «por defecto» que
+se le fijó desde la web (Sistema → Aparatos). Debajo del título, Inicio muestra **«Almacén: <nombre>»** y, si la compañía tiene más de
+uno, el botón **«Cambiar»**. Al tocarlo aparece la lista de almacenes (el actual marcado y el «por defecto del aparato» indicado); tocar uno
+lo deja activo y la app avisa «Ahora trabajas en <nombre>.» y sincroniza al momento.
+
+- **Qué cambia con el almacén activo:** Recibir (y su modo: «con acomodo» o «directo a posición», que es propio de cada almacén),
+  Acomodar, Despacho, Conteo, Consultar, el buscador de listas y la bajada de posiciones y existencias de la sincronización. Cada almacén
+  guarda sus propias copias locales, así que volver a uno ya usado no baja todo de nuevo.
+- **Quién puede:** quien tenga `inventory.view` (el permiso con que el API entrega la lista de almacenes). Sin ese permiso o si nunca hubo señal,
+  no aparece «Cambiar» y el aparato sigue en su almacén por defecto.
+- **Con un recibo, despacho o conteo en curso no se puede cambiar:** «Termina o cancela el documento en curso antes de cambiar de almacén.»
+  (aviso de la app, sin llamada al servidor).
+- **Sin señal:** la lista de almacenes queda guardada en el aparato (se renueva cada vez que se abre Inicio con señal), así que se puede cambiar sin red.
+- **La elección es de ese aparato y esa compañía** (cada compañía registrada en el teléfono recuerda la suya). Se descarta sola cuando
+  (a) desde la web se cambia el almacén por defecto del aparato, o (b) el almacén elegido se da de baja: entonces el aparato vuelve al por defecto.
+- **Servidor:** no cambió nada. Las llamadas ya llevaban el almacén en la petición; el aparato no está limitado a su almacén por defecto.
+
 ---
 
 ## 4. Recibir

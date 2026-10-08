@@ -3,6 +3,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { useFocusEffect, useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { useT } from '../kernel/i18n/useT'
 import { ApiError } from '../kernel/api/client'
 import { BigButton } from '../kernel/ui/BigButton'
@@ -33,7 +34,8 @@ export default function PutawayScreen() {
   const f = useFormat()
   const router = useRouter()
   const { device, session } = useSession()
-  const warehousePublicId = device?.defaultWarehousePublicId ?? null
+  const activeWarehouse = useActiveWarehouse()
+  const warehousePublicId = activeWarehouse.publicId
 
   const [tasks, setTasks] = useState<PutawayTask[] | null>(null)
   const [listError, setListError] = useState<string | null>(null)

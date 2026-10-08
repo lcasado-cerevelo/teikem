@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { canSeeSystemQty, useMyPermissions } from '../kernel/auth/permissions'
 import { useSession } from '../kernel/auth/useSession'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
 import { useT } from '../kernel/i18n/useT'
 import { BigButton } from '../kernel/ui/BigButton'
@@ -31,7 +32,8 @@ export default function LookupScreen() {
   const f = useFormat()
   const router = useRouter()
   const { device } = useSession()
-  const warehousePublicId = device?.defaultWarehousePublicId ?? null
+  const activeWarehouse = useActiveWarehouse()
+  const warehousePublicId = activeWarehouse.publicId
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 
 import { ApiError, apiErrorMessage, isNetworkError } from '../kernel/api/client'
 import { useSession } from '../kernel/auth/useSession'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { getKv, KvKeys, setKv } from '../kernel/db/kv'
 import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { findProductByCode } from '../kernel/warehouse/productLookup'
@@ -59,7 +60,8 @@ export default function CountScreen() {
   const { t } = useT()
   const router = useRouter()
   const { device } = useSession()
-  const warehousePublicId = device?.defaultWarehousePublicId ?? null
+  const activeWarehouse = useActiveWarehouse()
+  const warehousePublicId = activeWarehouse.publicId
   const [tick, setTick] = useState(0)
   const [binError, setBinError] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)

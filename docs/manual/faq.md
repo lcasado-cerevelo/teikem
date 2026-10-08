@@ -5567,3 +5567,22 @@ Vuelva a ponerla (Sistema → Usuarios → Contraseña temporal). Es nueva y cue
 
 **¿Por qué la temporal no llega por correo?**
 Es a propósito: la entrega el administrador en persona. El correo con enlace es solo para «Olvidé mi contraseña».
+
+## Varios almacenes en un mismo aparato (2026-10-07)
+
+**¿Puedo usar el mismo aparato en más de un almacén de la misma compañía?**
+Sí. En Inicio toque **«Cambiar»** (junto a «Almacén: …») y elija el almacén. Todas las pantallas pasan a trabajar con ese almacén. Cada compañía
+registrada en el teléfono recuerda el suyo.
+
+**No me aparece el botón «Cambiar».**
+Solo aparece si la compañía tiene más de un almacén activo y el usuario tiene `inventory.view`. Si es un aparato nuevo, abra Inicio con señal
+una vez para que baje la lista de almacenes.
+
+**«Termina o cancela el documento en curso antes de cambiar de almacén.»**
+Hay un recibo, despacho o conteo abierto, y ese documento es de su almacén. Termínelo o cancélelo y cambie después.
+
+**Cambié de almacén y volvió al de antes.**
+Desde la web se cambió el almacén por defecto del aparato (manda la web) o el almacén elegido se dio de baja. Elíjalo otra vez.
+
+**Recibir me pide otro modo (directo o con acomodo) después de cambiar.**
+Es normal: el modo de recepción es de cada almacén (Almacenes → modo de recepción en la web).

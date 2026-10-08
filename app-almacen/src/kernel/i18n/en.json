@@ -75,7 +75,16 @@
     "syncNow": "Sync now",
     "signOut": "Sign out",
     "lock": "Lock",
-    "warehouseLabel": "Warehouse: {name}"
+    "warehouseLabel": "Warehouse: {name}",
+    "warehouseNone": "No warehouse",
+    "changeWarehouse": "Change"
+  },
+  "warehousePick": {
+    "title": "Which warehouse are you working in?",
+    "current": "Current warehouse",
+    "isDefault": "Device default",
+    "empty": "There are no other warehouses to choose. Connect to the server at least once.",
+    "changed": "You are now working in {name}."
   },
   "receive": {
     "title": "Receive",
@@ -140,7 +149,8 @@
   "lock": {
     "receiveInProgress": "Finish or cancel the receipt in progress before using this.",
     "dispatchInProgress": "Finish or cancel the dispatch in progress before using this.",
-    "countInProgress": "Finish or cancel the count in progress before using this."
+    "countInProgress": "Finish or cancel the count in progress before using this.",
+    "warehouseInProgress": "Finish or cancel the document in progress before changing warehouse."
   },
   "putaway": {
     "empty": "No putaway tasks pending.",

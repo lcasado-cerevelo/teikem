@@ -17,6 +17,16 @@ export interface DeviceIdentity {
   defaultWarehouseReceivingMode?: string | null
   /** Archivo SQLite de esta compañía. Sin valor = la base única de antes de 2026-09-30 (`teikem_almacen.db`). */
   dbName?: string
+  /** 2026-10-07 (varios almacenes): almacén elegido en el aparato para trabajar, distinto del «por defecto» que fija la web.
+   *  Sin valor = se trabaja en el por defecto. Se borra si la web cambia el por defecto o si el almacén deja de estar activo. */
+  selectedWarehouse?: SelectedWarehouse | null
+}
+
+export interface SelectedWarehouse {
+  publicId: string
+  name: string
+  /** Modo de recepción de ESE almacén ('PUTAWAY' | 'DIRECT'); el del por defecto viaja en `defaultWarehouseReceivingMode`. */
+  receivingMode: string | null
 }
 
 export interface UserSession {

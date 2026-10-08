@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 
@@ -8,9 +8,17 @@ import { getOpenReceipt } from '../features/receive/localLookup'
 import { getOpenPick } from '../features/dispatch/localPick'
 import { getOpenCount } from '../features/count/localCount'
 import { useT } from '../kernel/i18n/useT'
+import {
+  getCachedWarehouseOptions,
+  refreshWarehouseOptions,
+  selectActiveWarehouse,
+  useActiveWarehouse,
+  type WarehouseOption,
+} from '../kernel/warehouse/activeWarehouse'
 import { runSync, useAutoSync, useLastSync, usePendingCount } from '../kernel/sync/engine'
 import { syncStatusKey } from '../kernel/sync/syncStatus'
 import { BigButton } from '../kernel/ui/BigButton'
+import { WarehousePickerModal } from '../kernel/ui/WarehousePickerModal'
 import { colors, fontSize, spacing } from '../kernel/ui/theme'
 
 type OpenKind = 'receive' | 'dispatch' | 'count'
@@ -24,7 +32,8 @@ type OpenKind = 'receive' | 'dispatch' | 'count'
 export default function HomeScreen() {
   const { t } = useT()
   const router = useRouter()
-  const { session } = useSession()
+  const { session, device } = useSession()
+  const activeWarehouse = useActiveWarehouse()
   const pending = usePendingCount()
   const lastSync = useLastSync()
   useAutoSync()
@@ -38,6 +47,38 @@ export default function HomeScreen() {
       else setOpenKind(null)
     }, []),
   )
+
+  // 2026-10-07 (varios almacenes): la lista de almacenes de la compañía se baja al entrar (queda guardada para elegir sin señal).
+  const [warehouses, setWarehouses] = useState<WarehouseOption[]>(() => getCachedWarehouseOptions())
+  const [pickingWarehouse, setPickingWarehouse] = useState(false)
+  const deviceId = device?.devicePublicId
+  useEffect(() => {
+    let alive = true
+    void refreshWarehouseOptions().then((list) => {
+      if (alive) setWarehouses(list)
+    })
+    return () => {
+      alive = false
+    }
+  }, [deviceId])
+
+  /** Cambiar de almacén no se hace con un recibo, despacho o conteo abierto: ese documento es de su almacén. */
+  function changeWarehouse() {
+    if (openKind) {
+      Alert.alert(t('lock.warehouseInProgress'))
+      return
+    }
+    setPickingWarehouse(true)
+  }
+
+  function pickWarehouse(option: WarehouseOption) {
+    setPickingWarehouse(false)
+    if (option.publicId === activeWarehouse.publicId) return
+    void selectActiveWarehouse(option).then(() => {
+      Alert.alert(t('warehousePick.changed', { name: option.name }))
+      void runSync() // baja las posiciones y existencias del almacén nuevo
+    })
+  }
 
   /** Navega a `path`, salvo que haya un documento distinto abierto (avisa cuál en vez de navegar). `ownKind` es el
    *  tipo de documento que esa pantalla retoma (undefined si no maneja ninguno, como Acomodar o Consultar). */
@@ -76,6 +117,19 @@ export default function HomeScreen() {
         ) : null}
       </View>
 
+      {activeWarehouse.publicId ? (
+        <View style={styles.warehouseRow} testID="home-warehouse">
+          <Text style={styles.warehouseText} numberOfLines={1}>
+            {t('home.warehouseLabel', { name: activeWarehouse.name ?? t('home.warehouseNone') })}
+          </Text>
+          {warehouses.length > 1 ? (
+            <Pressable accessibilityRole="button" accessibilityLabel={t('home.changeWarehouse')} hitSlop={8} onPress={changeWarehouse} style={styles.lockBtn}>
+              <Text style={styles.lockLabel}>{t('home.changeWarehouse')}</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={styles.grid} testID="home-grid">
         <View style={styles.cell}>
           <BigButton layout="tile" label={t('home.receive')} icon="📥" onPress={() => go('/receive', 'receive')} />
@@ -101,6 +155,15 @@ export default function HomeScreen() {
         <BigButton label={t('home.syncNow')} variant="secondary" onPress={() => void runSync()} />
       </View>
 
+      <WarehousePickerModal
+        visible={pickingWarehouse}
+        options={warehouses}
+        currentPublicId={activeWarehouse.publicId}
+        defaultPublicId={device?.defaultWarehousePublicId ?? null}
+        onSelect={pickWarehouse}
+        onClose={() => setPickingWarehouse(false)}
+      />
+
       <BigButton label={t('home.signOut')} variant="secondary" onPress={() => void clearUserSession().then(() => router.replace('/login'))} />
     </ScrollView>
   )
@@ -115,6 +178,8 @@ const styles = StyleSheet.create({
   lockBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, minHeight: 44, paddingHorizontal: spacing.md, borderRadius: 22, backgroundColor: colors.panelAlt },
   lockIcon: { fontSize: 16 },
   lockLabel: { color: colors.text, fontSize: 16, fontWeight: '600' },
+  warehouseRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  warehouseText: { color: colors.text, fontSize: fontSize.message, fontWeight: '600', flexShrink: 1 },
   // dos columnas: cada celda ocupa la mitad (menos el espacio entre ellas); la quinta, sola, toma todo el ancho
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   cell: { flexBasis: '45%', flexGrow: 1 },

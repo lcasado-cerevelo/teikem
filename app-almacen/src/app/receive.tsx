@@ -3,6 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useSession } from '../kernel/auth/useSession'
+import { useActiveWarehouse } from '../kernel/warehouse/activeWarehouse'
 import { useT } from '../kernel/i18n/useT'
 import { enqueue } from '../kernel/sync/outbox'
 import { runSync } from '../kernel/sync/engine'
@@ -63,8 +64,9 @@ export default function ReceiveScreen() {
   const f = useFormat()
   const router = useRouter()
   const { device } = useSession()
-  const warehousePublicId = device?.defaultWarehousePublicId ?? null
-  const deviceMode = parseReceivingMode(device?.defaultWarehouseReceivingMode)
+  const activeWarehouse = useActiveWarehouse()
+  const warehousePublicId = activeWarehouse.publicId
+  const deviceMode = parseReceivingMode(activeWarehouse.receivingMode)
   // Modo de este recibo: por defecto el del almacén; se puede cambiar antes de abrirlo (solo vale para ese recibo).
   const [modeChoice, setModeChoice] = useState<ReceivingMode | null>(null)
   // Sin elección y sin modo conocido del almacén se manda null, como antes (el servidor usa el del almacén).

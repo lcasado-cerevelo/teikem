@@ -75,7 +75,16 @@
     "syncNow": "Sincronizar ahora",
     "signOut": "Cerrar sesión",
     "lock": "Bloquear",
-    "warehouseLabel": "Almacén: {name}"
+    "warehouseLabel": "Almacén: {name}",
+    "warehouseNone": "Sin almacén",
+    "changeWarehouse": "Cambiar"
+  },
+  "warehousePick": {
+    "title": "¿En qué almacén trabajas?",
+    "current": "Almacén actual",
+    "isDefault": "Por defecto del aparato",
+    "empty": "No hay otros almacenes para elegir. Conéctate al servidor al menos una vez.",
+    "changed": "Ahora trabajas en {name}."
   },
   "receive": {
     "title": "Recibir",
@@ -140,7 +149,8 @@
   "lock": {
     "receiveInProgress": "Termina o cancela el recibo en curso antes de usar esto.",
     "dispatchInProgress": "Termina o cancela el despacho en curso antes de usar esto.",
-    "countInProgress": "Termina o cancela el conteo en curso antes de usar esto."
+    "countInProgress": "Termina o cancela el conteo en curso antes de usar esto.",
+    "warehouseInProgress": "Termina o cancela el documento en curso antes de cambiar de almacén."
   },
   "putaway": {
     "empty": "No hay tareas de acomodo pendientes.",
