@@ -20,3 +20,10 @@ Servidor: `ReceiptDamageTests` (11: cuarentena, desechar, sin cuarentena, posici
 6. **Productos con serie: no** (igual que en Daños).
 7. **Cruce de muelle:** si parte de la línea se reparte a cruce de muelle, el reparto no sabe de las dañadas; en esa combinación rara conviene reportar el daño aparte.
 8. **Daños en el menú:** pestaña dentro de Productos e inventario; quien no tiene `warehouse.damage` no la ve.
+
+## Adenda — reserva de lo dañado y destino final (2026-10-08)
+- **Reserva.** Lo dañado que queda EN CUARENTENA en una posición que **no** está ya fuera de la asignación (cuarentena, cruce de muelle y renta lo están) se **reserva** en el saldo (`StockBalance.QtyReserved`, marca `DamageReport.IsReserved`): sigue en inventario y se cuenta, pero el disponible baja y no se despacha. Aplica al reporte suelto y al daño declarado en la línea del recibo. **Desechar** y **Recuperar** liberan la reserva antes de mover. Dejar el daño en la misma posición donde estaba ya no intenta una transferencia a sí misma.
+- **Conteo cíclico.** No se excluye lo dañado: se cuenta (es físico). No se tocó el conteo.
+- **Destino final al desechar.** Nuevo catálogo editable `DamageFinalDestination` (*Tirado*, *Devuelto al proveedor*, *Donado*, *Vendido como saldo*); obligatorio al desechar desde cuarentena; se guarda en `DamageReport.FinalDestinationLookupId`, va en la nota del Kárdex y en la lista web. Sin cambios en la app (resolver sigue siendo de la web). Un desecho inmediato al reportar no lleva destino.
+- **Riesgo conocido.** Si al confirmar un recibo parte de la línea ya fue tomada por cruce de muelle, la reserva de lo dañado puede fallar con inventario insuficiente y rechazar la confirmación.
+- **Pruebas.** Servidor 3292 verdes (+5 de reserva/destino); web 1374 verdes. Sin probar contra SQL Server ni en el Zebra.

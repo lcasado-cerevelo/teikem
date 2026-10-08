@@ -129,11 +129,13 @@ public sealed record DamageReportRequest(string? Origin, Guid? WarehousePublicId
     string? Cause, string? Disposition, int? QuarantineBinId = null, Guid? ReceiptPublicId = null, string? Notes = null);
 
 /// <summary>Desechar (nota opcional) o recuperar (posición de guardado a la que vuelve) lo que está en cuarentena.</summary>
-public sealed record DamageResolveRequest(int? ToBinId = null, string? Notes = null);
+/// <summary>FinalDestination (obligatorio al desechar lo que está en cuarentena): DISCARDED_WASTE, RETURNED_TO_SUPPLIER, DONATED, SOLD_AS_SALVAGE u otro del catálogo DamageFinalDestination.</summary>
+public sealed record DamageResolveRequest(int? ToBinId = null, string? Notes = null, string? FinalDestination = null);
 
 public sealed record DamageReportDto(int Id, Guid PublicId, string Code, string OriginCode, string Origin, string CauseCode, string Cause,
     Guid WarehousePublicId, string WarehouseCode, Guid ProductPublicId, string Sku, string ProductName, string? LotNumber, decimal Quantity,
     int? FromBinId, string? FromBinCode, int? QuarantineBinId, string? QuarantineBinCode, Guid? ReceiptPublicId, string? ReceiptNumber, string? Notes,
-    string StatusCode, string Status, DateTime ReportedAtUtc, string? ReportedByName, DateTime? ResolvedAtUtc, string? ResolvedByName, string? ResolutionNotes);
+    string StatusCode, string Status, DateTime ReportedAtUtc, string? ReportedByName, DateTime? ResolvedAtUtc, string? ResolvedByName, string? ResolutionNotes,
+    string? FinalDestinationCode = null, string? FinalDestination = null, bool IsReserved = false);
 
 public sealed record DamageReportPageDto(int Total, int Skip, int Take, IReadOnlyList<DamageReportDto> Items);

@@ -23,7 +23,7 @@ namespace Teikem.Infrastructure.Services;
 /// La causa (vino así / accidente en el camino / accidente en el almacén / otro) es informativa: no hay reclamo a nadie. Productos con serie: por ahora
 /// con un ajuste de inventario (422).
 /// </summary>
-public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, InventoryAdjustmentService inventory)
+public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILookupCache lookups, StatusService statuses, InventoryAdjustmentService inventory, InventoryLedger ledger)
 {
     // ================================================================ reportar
 
@@ -101,7 +101,11 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
             if (DamageRules.MovesInventory(origin, disposition!))
             {
                 if (origin == DamageOrigins.Warehouse && disposition == DamageDispositions.Quarantine)
-                    await inventory.TransferAsync(new TransferRequest(product.PublicId, fromBin!.WarehouseBinId, quarantine!.WarehouseBinId, damageQty, warehouse.PublicId, null, lotId, null, note), ct2);
+                {
+                    // dejarlo en la misma posición donde estaba no mueve nada (queda reservado más abajo si no es de cuarentena)
+                    if (fromBin!.WarehouseBinId != quarantine!.WarehouseBinId)
+                        await inventory.TransferAsync(new TransferRequest(product.PublicId, fromBin.WarehouseBinId, quarantine.WarehouseBinId, damageQty, warehouse.PublicId, null, lotId, null, note), ct2);
+                }
                 else if (origin == DamageOrigins.Warehouse)
                     await inventory.AdjustAsync(new AdjustmentRequest(product.PublicId, warehouse.PublicId, fromBin!.WarehouseBinId, -damageQty, AdjustmentReasons.Damage, note, lotId), ct2);
                 else
@@ -115,6 +119,8 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
                     .Select(l => (int?)l.LotId).FirstOrDefaultAsync(ct2);
 
             var target = disposition == DamageDispositions.Quarantine ? DamageStatuses.Quarantined : DamageStatuses.Discarded;
+            if (target == DamageStatuses.Quarantined) await ReserveIfNeededAsync(damageId, product.ProductId, warehouse.WarehouseId, quarantine!, ct2);
+            d = await db.Set<DamageReport>().FirstAsync(x => x.DamageReportId == damageId, ct2);
             await TransitionAsync(d, initial.StatusCodeId, target, null, ct2);
             if (target == DamageStatuses.Discarded) { d.ResolvedAtUtc = DateTime.UtcNow; d.ResolvedBy = tenant.UserId; }
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
@@ -176,6 +182,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
                 else if (destination!.WarehouseBinId != from)
                     await inventory.TransferAsync(new TransferRequest(product.PublicId, from, destination.WarehouseBinId, quantity, warehouse.PublicId, null, lotId, null, note), ct2);
             }
+            if (!discard) await ReserveIfNeededAsync(damageId, productId, warehouseId, destination!, ct2);
             d = await db.Set<DamageReport>().FirstAsync(x => x.DamageReportId == damageId, ct2);
             var target = discard ? DamageStatuses.Discarded : DamageStatuses.Quarantined;
             await TransitionAsync(d, initial.StatusCodeId, target, null, ct2);
@@ -191,13 +198,20 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
     {
         var (notes, notesError) = DamageRules.NormalizeNotes(req?.Notes);
         if (notesError is not null) throw new ValidationException("notes", notesError);
+        var (destinationCode, destinationError) = DamageRules.ParseFinalDestination(req?.FinalDestination);
+        if (destinationError is not null) throw new ValidationException("finalDestination", destinationError);
+        var finalDestinationId = await lookups.TryGetIdAsync(LookupDomains.DamageFinalDestination, destinationCode!, ct)
+            ?? throw new ValidationException("finalDestination", DamageRules.UnknownFinalDestination(req!.FinalDestination!.Trim()));
         await db.RunInTransactionAsync(async ct2 =>
         {
             var d = await LoadQuarantinedAsync(id, ct2);
             var (product, warehouse, lotId) = await RefsAsync(d, ct2);
-            var note = DamageRules.MovementNote(d.DamageReportId, "Desechado", notes ?? d.Notes);
+            await ReleaseIfReservedAsync(d, ct2);
+            var destinationLabel = LabelOf(await lookups.GetAsync(finalDestinationId, ct2));
+            var note = DamageRules.MovementNote(d.DamageReportId, string.IsNullOrEmpty(destinationLabel) ? "Desechado" : $"Desechado: {destinationLabel}", notes ?? d.Notes);
             await inventory.AdjustAsync(new AdjustmentRequest(product.PublicId, warehouse.PublicId, d.QuarantineBinId, -d.Quantity, AdjustmentReasons.Damage, note, lotId), ct2);
             d = await ReloadAsync(id, ct2);
+            d.FinalDestinationLookupId = finalDestinationId;
             await TransitionAsync(d, d.StatusCodeId, DamageStatuses.Discarded, notes, ct2);
             Resolve(d, notes);
             await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct2);
@@ -217,6 +231,7 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
             var toBin = await ResolveBinAsync(d.WarehouseId, req.ToBinId.Value, ct2);
             var zoneType = await ZoneTypeOfAsync(toBin.WarehouseZoneId, ct2);
             if (DamageRules.ValidateRecoverZone(toBin.Code, zoneType) is { } zoneError) throw new ValidationException("toBinId", zoneError);
+            await ReleaseIfReservedAsync(d, ct2);
             var note = DamageRules.MovementNote(d.DamageReportId, "Recuperado", notes ?? d.Notes);
             await inventory.TransferAsync(new TransferRequest(product.PublicId, d.QuarantineBinId, toBin.WarehouseBinId, d.Quantity, warehouse.PublicId, null, lotId, null, note), ct2);
             d = await ReloadAsync(id, ct2);
@@ -289,13 +304,15 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
             var (statusCode, statusLabel) = statusMap.GetValueOrDefault(r.StatusCodeId);
             var originLookup = await lookups.GetAsync(r.OriginLookupId, ct);
             var causeLookup = await lookups.GetAsync(r.CauseLookupId, ct);
+            var finalLookup = r.FinalDestinationLookupId is int fid ? await lookups.GetAsync(fid, ct) : null;
             receipts.TryGetValue(r.ReceiptHeaderId ?? 0, out var receipt);
             result.Add(new DamageReportDto(r.DamageReportId, r.PublicId, DamageRules.Code(r.DamageReportId), originLookup?.InternalCode ?? string.Empty,
                 LabelOf(originLookup), causeLookup?.InternalCode ?? string.Empty, LabelOf(causeLookup), w.PublicId, w.Code, p.PublicId, p.Sku, p.Name,
                 r.LotId is int l && lots.TryGetValue(l, out var ln) ? ln : null, r.Quantity,
                 r.FromBinId, r.FromBinId is int fb ? bins.GetValueOrDefault(fb) : null, r.QuarantineBinId, r.QuarantineBinId is int qb ? bins.GetValueOrDefault(qb) : null,
                 r.ReceiptHeaderId is null ? null : receipt.PublicId, r.ReceiptHeaderId is null ? null : receipt.Number, r.Notes, statusCode ?? string.Empty, statusLabel ?? string.Empty,
-                r.ReportedAtUtc, r.ReportedBy is int rb ? users.GetValueOrDefault(rb) : null, r.ResolvedAtUtc, r.ResolvedBy is int rs ? users.GetValueOrDefault(rs) : null, r.ResolutionNotes));
+                r.ReportedAtUtc, r.ReportedBy is int rb ? users.GetValueOrDefault(rb) : null, r.ResolvedAtUtc, r.ResolvedBy is int rs ? users.GetValueOrDefault(rs) : null, r.ResolutionNotes,
+                finalLookup?.InternalCode, LabelOf(finalLookup), r.IsReserved));
         }
         return result;
     }
@@ -332,6 +349,32 @@ public sealed class DamageService(TeikemDbContext db, ITenantContext tenant, ILo
         d.ResolvedAtUtc = DateTime.UtcNow;
         d.ResolvedBy = tenant.UserId;
         d.ResolutionNotes = notes;
+    }
+
+    /// <summary>
+    /// Reserva las unidades de un daño que queda EN CUARENTENA en una posición que no es de cuarentena (guardado, recepción…): el saldo conserva la existencia
+    /// (se cuenta y se ve) pero no queda disponible, así que no se despacha ni se asigna. En zonas de cuarentena, cruce de muelle o renta no hace falta: ya
+    /// están fuera de la asignación. Marca IsReserved para liberarlo al desechar o recuperar.
+    /// </summary>
+    private async Task ReserveIfNeededAsync(int damageId, int productId, int warehouseId, WarehouseBin bin, CancellationToken ct)
+    {
+        if (!DamageRules.NeedsReservation(await ZoneTypeOfAsync(bin.WarehouseZoneId, ct))) return;
+        var d = await db.Set<DamageReport>().AsNoTracking().FirstAsync(x => x.DamageReportId == damageId, ct);
+        await ledger.ReserveAsync(new[] { new StockReservation(productId, warehouseId, bin.WarehouseBinId, d.LotId, d.Quantity) }, ct);
+        var fresh = await db.Set<DamageReport>().FirstAsync(x => x.DamageReportId == damageId, ct);
+        fresh.IsReserved = true;
+        await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
+    }
+
+    /// <summary>Libera la reserva de un daño en cuarentena (si la tenía) ANTES de moverlo: el ajuste o la transferencia piden disponible.</summary>
+    private async Task ReleaseIfReservedAsync(DamageReport d, CancellationToken ct)
+    {
+        if (!d.IsReserved) return;
+        var id = d.DamageReportId;
+        await ledger.ReleaseAsync(new[] { new StockReservation(d.ProductId, d.WarehouseId, d.QuarantineBinId!.Value, d.LotId, d.Quantity) }, ct);
+        var fresh = await db.Set<DamageReport>().FirstAsync(x => x.DamageReportId == id, ct);
+        fresh.IsReserved = false;
+        await db.SaveGuardedAsync(DbExtensions.ConcurrencyMessage, ct);
     }
 
     /// <summary>Vuelve a leer el reporte con seguimiento (el ledger puede limpiar el del contexto al mover inventario).</summary>

@@ -62,6 +62,11 @@ function route({ method, url }: Call): unknown {
       { code: 'ARRIVED_DAMAGED', label: 'Vino así' },
       { code: 'WAREHOUSE_ACCIDENT', label: 'Accidente en el almacén' },
     ]
+  if (p === '/api/v1/catalogs/DamageFinalDestination')
+    return [
+      { code: 'DISCARDED_WASTE', label: 'Tirado' },
+      { code: 'RETURNED_TO_SUPPLIER', label: 'Devuelto al proveedor' },
+    ]
   if (p.startsWith('/api/v1/catalogs/') || p.startsWith('/api/v1/status/')) return []
   if (p === '/api/v1/warehouses') return [{ publicId: WH, code: 'ALM-01', name: 'Almacén', isActive: true }]
   return new Response(JSON.stringify({ title: 'No encontrado', code: 'not_found' }), { status: 404, headers: { 'Content-Type': 'application/problem+json' } })
@@ -111,17 +116,27 @@ describe('Daños', () => {
     await waitFor(() => expect(mock.calls.some((c) => c.url.searchParams.get('q') === 'SKU-1')).toBe(true))
   })
 
-  it('desechar manda la nota al endpoint de desechar', async () => {
+  it('desechar exige el destino final y lo manda con la nota al endpoint de desechar', async () => {
     const user = userEvent.setup()
     wrap(['warehouse.damage'])
     await screen.findByRole('table')
     await user.click(screen.getByRole('button', { name: 'Desechar' }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText(/Se desechan 4 de SKU-1 que están en Q-01/)).toBeInTheDocument()
-    await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'se tiró')
+    expect(within(dialog).getByText(/Se sacan 4 de SKU-1 que están en Q-01/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Desechar' }))
+    expect(await within(dialog).findByText('Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…).')).toBeInTheDocument()
+    expect(mock.calls.some((c) => c.method === 'POST')).toBe(false)
+
+    await user.click(within(dialog).getByRole('combobox', { name: /Destino final/ }))
+    await user.click(await screen.findByRole('option', { name: 'Devuelto al proveedor' }))
+    await user.type(within(dialog).getByLabelText('Nota (opcional)'), 'lo recogió el proveedor')
     await user.click(within(dialog).getByRole('button', { name: 'Desechar' }))
     await waitFor(() => expect(mock.calls.find((c) => c.method === 'POST' && c.url.pathname === '/api/v1/damage-reports/1/discard')).toBeTruthy())
-    expect(mock.calls.find((c) => c.url.pathname.endsWith('/discard'))?.body).toEqual({ toBinId: null, notes: 'se tiró' })
+    expect(mock.calls.find((c) => c.url.pathname.endsWith('/discard'))?.body).toEqual({
+      toBinId: null,
+      finalDestination: 'RETURNED_TO_SUPPLIER',
+      notes: 'lo recogió el proveedor',
+    })
   })
 
   it('recuperar exige la posición de guardado antes de llamar al API', async () => {

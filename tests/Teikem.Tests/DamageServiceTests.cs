@@ -81,6 +81,85 @@ public class DamageServiceTests
         Assert.Equal(0m, await OnHandAsync(w, w.Quarantine));
     }
 
+    // ---- reserva de lo dañado que queda en una posición que no es de cuarentena
+
+    [Fact]
+    public async Task Damage_left_in_a_storage_bin_is_reserved_so_it_cannot_be_dispatched_and_it_stays_counted()
+    {
+        var w = await SeedAsync();
+        var dto = await w.F.Get<DamageService>().ReportAsync(
+            Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId, quarantineBin: w.Reserve.WarehouseBinId), default);
+
+        var balance = await w.F.BalanceAsync(w.P.ProductId, w.Reserve.WarehouseBinId);
+        Assert.Equal(4m, balance!.QtyOnHand);      // sigue en inventario (se cuenta)
+        Assert.Equal(4m, balance.QtyReserved);     // pero no está disponible
+        Assert.True(dto.IsReserved);
+    }
+
+    [Fact]
+    public async Task Damage_in_a_quarantine_bin_needs_no_reservation_because_that_zone_is_already_out_of_allocation()
+    {
+        var w = await SeedAsync();
+        var dto = await w.F.Get<DamageService>().ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId), default);
+
+        Assert.False(dto.IsReserved);
+        Assert.Equal(0m, (await w.F.BalanceAsync(w.P.ProductId, w.Quarantine.WarehouseBinId))!.QtyReserved);
+    }
+
+    [Fact]
+    public async Task Leaving_the_damage_in_the_same_bin_reserves_it_without_moving_anything()
+    {
+        var w = await SeedAsync();
+        var dto = await w.F.Get<DamageService>().ReportAsync(
+            Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId, quarantineBin: w.Pick.WarehouseBinId), default);
+
+        var balance = await w.F.BalanceAsync(w.P.ProductId, w.Pick.WarehouseBinId);
+        Assert.Equal(10m, balance!.QtyOnHand);
+        Assert.Equal(4m, balance.QtyReserved);
+        Assert.True(dto.IsReserved);
+    }
+
+    [Fact]
+    public async Task Discarding_or_recovering_releases_the_reservation_first()
+    {
+        var w = await SeedAsync();
+        var svc = w.F.Get<DamageService>();
+        var a = await svc.ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, qty: 3m, fromBin: w.Pick.WarehouseBinId, quarantineBin: w.Reserve.WarehouseBinId), default);
+        var b = await svc.ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, qty: 2m, fromBin: w.Pick.WarehouseBinId, quarantineBin: w.Reserve.WarehouseBinId), default);
+        Assert.Equal(5m, (await w.F.BalanceAsync(w.P.ProductId, w.Reserve.WarehouseBinId))!.QtyReserved);
+
+        var discarded = await svc.DiscardAsync(a.Id, new DamageResolveRequest(FinalDestination: DamageFinalDestinations.ReturnedToSupplier), default);
+        Assert.False(discarded.IsReserved);
+        var afterDiscard = await w.F.BalanceAsync(w.P.ProductId, w.Reserve.WarehouseBinId);
+        Assert.Equal(2m, afterDiscard!.QtyOnHand);
+        Assert.Equal(2m, afterDiscard.QtyReserved);
+
+        var recovered = await svc.RecoverAsync(b.Id, new DamageResolveRequest(w.Pick.WarehouseBinId), default);
+        Assert.False(recovered.IsReserved);
+        var afterRecover = await w.F.BalanceAsync(w.P.ProductId, w.Reserve.WarehouseBinId);
+        Assert.Equal(0m, afterRecover!.QtyOnHand);
+        Assert.Equal(0m, afterRecover.QtyReserved);
+    }
+
+    // ---- destino final al desechar lo que está en cuarentena
+
+    [Fact]
+    public async Task Discarding_from_quarantine_requires_a_known_final_destination_and_records_it()
+    {
+        var w = await SeedAsync();
+        var svc = w.F.Get<DamageService>();
+        var d = await svc.ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId), default);
+
+        var missing = await Assert.ThrowsAsync<ValidationException>(() => svc.DiscardAsync(d.Id, new DamageResolveRequest(), default));
+        Assert.Equal(DamageRules.FinalDestinationRequired, missing.Errors["finalDestination"][0]);
+        var unknown = await Assert.ThrowsAsync<ValidationException>(() => svc.DiscardAsync(d.Id, new DamageResolveRequest(FinalDestination: "NOPE"), default));
+        Assert.Equal(DamageRules.UnknownFinalDestination("NOPE"), unknown.Errors["finalDestination"][0]);
+
+        var done = await svc.DiscardAsync(d.Id, new DamageResolveRequest(Notes: "lo recogió el proveedor", FinalDestination: DamageFinalDestinations.ReturnedToSupplier), default);
+        Assert.Equal(DamageFinalDestinations.ReturnedToSupplier, done.FinalDestinationCode);
+        Assert.Contains("Desechado: RETURNED_TO_SUPPLIER", (await w.F.TransactionsAsync()).Last().Notes);   // queda en el Kárdex
+    }
+
     [Fact]
     public async Task Warehouse_damage_can_be_discarded_right_away_with_a_damage_adjustment()
     {
@@ -134,14 +213,14 @@ public class DamageServiceTests
         var svc = w.F.Get<DamageService>();
         var d = await svc.ReportAsync(Req(w, DamageOrigins.Warehouse, DamageDispositions.Quarantine, fromBin: w.Pick.WarehouseBinId), default);
 
-        var done = await svc.DiscardAsync(d.Id, new DamageResolveRequest(Notes: "se tiró"), default);
+        var done = await svc.DiscardAsync(d.Id, new DamageResolveRequest(Notes: "se tiró", FinalDestination: DamageFinalDestinations.Discarded), default);
 
         Assert.Equal(DamageStatuses.Discarded, done.StatusCode);
         Assert.Equal("se tiró", done.ResolutionNotes);
         Assert.Equal(0m, await OnHandAsync(w, w.Quarantine));
         Assert.Equal(6m, await OnHandAsync(w, w.Pick));
         // ya está resuelto: no se vuelve a resolver
-        var again = await Assert.ThrowsAsync<StatusRuleException>(() => svc.DiscardAsync(d.Id, null, default));
+        var again = await Assert.ThrowsAsync<StatusRuleException>(() => svc.DiscardAsync(d.Id, new DamageResolveRequest(FinalDestination: DamageFinalDestinations.Discarded), default));
         Assert.Equal(DamageRules.ResolveOnlyQuarantined, again.Message);
     }
 

@@ -29439,6 +29439,17 @@
           "resolutionNotes": {
             "type": "string",
             "nullable": true
+          },
+          "finalDestinationCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "finalDestination": {
+            "type": "string",
+            "nullable": true
+          },
+          "isReserved": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -29537,6 +29548,10 @@
             "nullable": true
           },
           "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "finalDestination": {
             "type": "string",
             "nullable": true
           }

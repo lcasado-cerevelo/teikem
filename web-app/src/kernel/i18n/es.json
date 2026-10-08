@@ -3372,7 +3372,7 @@
       "recover": "Recuperar",
       "discardTitle": "Desechar {code}",
       "recoverTitle": "Recuperar {code}",
-      "discardBody": "Se desechan {qty} de {sku} que están en {bin}: salen del inventario con un ajuste de motivo Daño.",
+      "discardBody": "Se sacan {qty} de {sku} que están en {bin}: salen del inventario con un ajuste de motivo Daño. Diga a dónde van.",
       "recoverBody": "Se sacan {qty} de {sku} de {bin} y vuelven a una posición de guardado.",
       "discarded": "{code} desechado.",
       "recovered": "{code} recuperado.",
@@ -3391,7 +3391,8 @@
         "notes": "Nota (opcional)",
         "toBin": "Posición a la que vuelve",
         "resolutionNotes": "Nota (opcional)",
-        "quarantineBin": "Posición donde queda"
+        "quarantineBin": "Posición donde queda",
+        "finalDestination": "Destino final"
       },
       "cols": {
         "code": "Número",
@@ -3403,7 +3404,8 @@
         "status": "Estatus",
         "reported": "Reportado",
         "by": "Por",
-        "notes": "Notas"
+        "notes": "Notas",
+        "finalDestination": "Destino final"
       },
       "status": {
         "QUARANTINED": "En cuarentena",
@@ -3421,12 +3423,16 @@
         "fromBinRequired": "Indique la posición donde está lo dañado.",
         "receiptRequired": "Indique el recibo del que llegó dañado.",
         "lotRequired": "Indique el lote.",
-        "toBinRequired": "Indique la posición a la que vuelve lo recuperado."
+        "toBinRequired": "Indique la posición a la que vuelve lo recuperado.",
+        "finalDestinationRequired": "Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…)."
       },
       "reportFromReceipt": "Reportar daño",
       "tab": "Daños",
       "quarantineBinHelp": "Vacía: la primera posición de cuarentena del almacén. Puede ser cualquier posición activa.",
-      "quarantineBinPlaceholder": "Cuarentena (la primera)"
+      "quarantineBinPlaceholder": "Cuarentena (la primera)",
+      "finalDestinationHelp": "A dónde va lo que sale de cuarentena. Queda en el Kárdex y en los reportes de daños.",
+      "finalDestinationPlaceholder": "Escoja el destino",
+      "reserved": "reservado (no se despacha)"
     }
   },
   "system": {

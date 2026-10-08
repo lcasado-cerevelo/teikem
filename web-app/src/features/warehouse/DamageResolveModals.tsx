@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { useLookups } from '../../kernel/catalogs'
 import { useT } from '../../kernel/i18n'
-import { Field, Form, Modal, TextArea, toast } from '../../kernel/ui'
+import { ComboSelectInput, Field, Form, Modal, TextArea, toast } from '../../kernel/ui'
 import { useResolveDamage, type DamageReportDto } from './api'
 import { BinPickerInput } from './pickers'
 
@@ -18,6 +19,8 @@ export interface DamageResolveModalProps {
 
 interface ResolveValues {
   toBinId: string
+  /** Destino final al desecharlo (catálogo DamageFinalDestination): tirado, devuelto al proveedor, donado, vendido como saldo… */
+  finalDestination: string
   notes: string
 }
 
@@ -30,15 +33,18 @@ function ResolveBody({ damage, action, onClose }: { damage: DamageReportDto; act
   const t = useT()
   const resolve = useResolveDamage()
   const recover = action === 'recover'
+  const destinations = useLookups('DamageFinalDestination')
+  const destinationOptions = useMemo(() => (destinations.data ?? []).map((c) => ({ value: c.code, label: c.label })), [destinations.data])
   const schema = useMemo(
     () =>
       z.object({
         toBinId: z.string().refine((v) => !recover || v !== '', t('warehouse.damage.errors.toBinRequired')),
+        finalDestination: z.string().refine((v) => recover || v !== '', t('warehouse.damage.errors.finalDestinationRequired')),
         notes: z.string().max(300, t('warehouse.damage.errors.notesMax')),
       }),
     [t, recover],
   )
-  const form = useForm<ResolveValues>({ resolver: zodResolver(schema) as never, defaultValues: { toBinId: '', notes: '' } })
+  const form = useForm<ResolveValues>({ resolver: zodResolver(schema) as never, defaultValues: { toBinId: '', finalDestination: '', notes: '' } })
   const formId = 'damage-resolve'
   const busy = form.formState.isSubmitting
   const quantity = String(damage.quantity ?? '')
@@ -68,7 +74,7 @@ function ResolveBody({ damage, action, onClose }: { damage: DamageReportDto; act
           await resolve.mutateAsync({
             action,
             id: damage.id ?? 0,
-            body: { toBinId: recover ? Number(v.toBinId) : null, notes: v.notes.trim() || null },
+            body: { toBinId: recover ? Number(v.toBinId) : null, finalDestination: recover ? null : v.finalDestination, notes: v.notes.trim() || null },
           })
           toast.success(t(recover ? 'warehouse.damage.recovered' : 'warehouse.damage.discarded', { code: damage.code ?? '' }))
           onClose()
@@ -84,6 +90,11 @@ function ResolveBody({ damage, action, onClose }: { damage: DamageReportDto; act
         {recover && (
           <Field name="toBinId" label={t('warehouse.damage.fields.toBin')} required help={t('warehouse.damage.toBinHelp')}>
             <BinPickerInput warehousePublicId={damage.warehousePublicId} excludeZoneTypeCodes={['QUARANTINE', 'STAGING', 'CROSSDOCK', 'RENTAL']} />
+          </Field>
+        )}
+        {!recover && (
+          <Field name="finalDestination" label={t('warehouse.damage.fields.finalDestination')} required help={t('warehouse.damage.finalDestinationHelp')}>
+            <ComboSelectInput options={destinationOptions} loading={destinations.isLoading} placeholder={t('warehouse.damage.finalDestinationPlaceholder')} />
           </Field>
         )}
         <Field name="notes" label={t('warehouse.damage.fields.resolutionNotes')}>

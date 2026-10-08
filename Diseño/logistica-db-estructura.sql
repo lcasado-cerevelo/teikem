@@ -2313,6 +2313,14 @@ CREATE INDEX IX_DamageReport_Tenant_Status ON dbo.DamageReport(TenantId, StatusC
 END
 GO
 
+-- 2026-10-08 — IsReserved: lo dañado EN CUARENTENA en una posición que no es de cuarentena queda RESERVADO en el saldo (no se despacha) hasta que se desecha o
+-- se recupera. FinalDestinationLookupId: a dónde fue a parar al desecharlo desde cuarentena (LookupCode 'DamageFinalDestination').
+IF COL_LENGTH('dbo.DamageReport', 'IsReserved') IS NULL
+    ALTER TABLE dbo.DamageReport ADD IsReserved BIT NOT NULL CONSTRAINT DF_DamageReport_IsReserved DEFAULT 0;
+IF COL_LENGTH('dbo.DamageReport', 'FinalDestinationLookupId') IS NULL
+    ALTER TABLE dbo.DamageReport ADD FinalDestinationLookupId INT NULL CONSTRAINT FK_DamageReport_FinalDestination REFERENCES dbo.LookupCode(LookupCodeId);
+GO
+
 -- 2026-10-08 — Daño declarado en la línea del recibo: de lo recibido, cuántas unidades vinieron dañadas, por qué (causa del catálogo + comentario),
 -- dónde se dejan (NULL = cuarentena si existe, si no donde aterrizó) o si se desechan de una vez. Al confirmar el recibo se crea el reporte DAN-#####
 -- (DamageReportId). Guardado con COL_LENGTH para agregar las columnas a una base ya creada sin tocar sus datos.

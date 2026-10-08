@@ -107,6 +107,9 @@ public class ReceiptDamageTests
         Assert.Equal(10m, await OnHandAsync(x, x.Staging));
         var report = await ReportAsync(x);
         Assert.Equal(x.Staging.WarehouseBinId, report.QuarantineBinId);
+        // quedó en una posición de recepción, mezclada con lo bueno: se reserva para que no se despache
+        Assert.True(report.IsReserved);
+        Assert.Equal(2m, (await x.F.BalanceAsync(x.P.ProductId, x.Staging.WarehouseBinId))!.QtyReserved);
         var putawayId = f.LookupId(LookupDomains.WarehouseTaskType, WarehouseTaskTypes.Putaway);
         Assert.Equal(8m, Assert.Single(await f.Db.WarehouseTasks.AsNoTracking().Where(t => t.TaskTypeLookupId == putawayId).ToListAsync()).Quantity);
     }

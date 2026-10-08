@@ -19725,6 +19725,9 @@ export interface components {
             resolvedAtUtc?: string | null;
             resolvedByName?: string | null;
             resolutionNotes?: string | null;
+            finalDestinationCode?: string | null;
+            finalDestination?: string | null;
+            isReserved?: boolean;
         };
         DamageReportPageDto: {
             /** Format: int32 */
@@ -19760,6 +19763,7 @@ export interface components {
             /** Format: int32 */
             toBinId?: number | null;
             notes?: string | null;
+            finalDestination?: string | null;
         };
         DataFieldDto: {
             key?: string | null;

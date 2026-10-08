@@ -3372,7 +3372,7 @@
       "recover": "Recover",
       "discardTitle": "Discard {code}",
       "recoverTitle": "Recover {code}",
-      "discardBody": "{qty} of {sku} in {bin} will be discarded: they leave inventory with a Damage adjustment.",
+      "discardBody": "{qty} of {sku} in {bin} are taken out: they leave the inventory with a Damage adjustment. Say where they go.",
       "recoverBody": "{qty} of {sku} leave {bin} and return to a storage position.",
       "discarded": "{code} discarded.",
       "recovered": "{code} recovered.",
@@ -3391,7 +3391,8 @@
         "notes": "Note (optional)",
         "toBin": "Position it returns to",
         "resolutionNotes": "Note (optional)",
-        "quarantineBin": "Bin where it stays"
+        "quarantineBin": "Bin where it stays",
+        "finalDestination": "Final destination"
       },
       "cols": {
         "code": "Number",
@@ -3403,7 +3404,8 @@
         "status": "Status",
         "reported": "Reported",
         "by": "By",
-        "notes": "Notes"
+        "notes": "Notes",
+        "finalDestination": "Final destination"
       },
       "status": {
         "QUARANTINED": "In quarantine",
@@ -3421,12 +3423,16 @@
         "fromBinRequired": "Say the position where the damaged goods are.",
         "receiptRequired": "Say the receipt it arrived damaged in.",
         "lotRequired": "Say the lot.",
-        "toBinRequired": "Say the position the recovered goods return to."
+        "toBinRequired": "Say the position the recovered goods return to.",
+        "finalDestinationRequired": "Say where the discarded goods go (thrown away, returned to supplier, donated…)."
       },
       "reportFromReceipt": "Report damage",
       "tab": "Damage",
       "quarantineBinHelp": "Empty: the first quarantine bin of the warehouse. It can be any active bin.",
-      "quarantineBinPlaceholder": "Quarantine (the first one)"
+      "quarantineBinPlaceholder": "Quarantine (the first one)",
+      "finalDestinationHelp": "Where what leaves quarantine goes. It is recorded in the ledger and in the damage reports.",
+      "finalDestinationPlaceholder": "Choose the destination",
+      "reserved": "reserved (not dispatched)"
     }
   },
   "system": {

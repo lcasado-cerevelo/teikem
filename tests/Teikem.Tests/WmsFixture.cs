@@ -193,6 +193,7 @@ internal sealed class WmsFixture : IAsyncDisposable
         L(LookupDomains.EntityType, EntityTypes.DamageReport);
         foreach (var c in DamageOrigins.All) L(LookupDomains.DamageOrigin, c);
         foreach (var c in DamageCauses.All) L(LookupDomains.DamageCause, c);
+        foreach (var c in DamageFinalDestinations.All) L(LookupDomains.DamageFinalDestination, c);
         Db.LookupCodes.AddRange(all);
         Lookups.Load(all);
 

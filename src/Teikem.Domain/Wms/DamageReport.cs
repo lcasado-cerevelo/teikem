@@ -36,6 +36,13 @@ public class DamageReport : ITenantScoped, ISoftDeletable, IHasStatus
     public DateTime? ResolvedAtUtc { get; set; }
     public int? ResolvedBy { get; set; }
     public string? ResolutionNotes { get; set; }
+    /// <summary>
+    /// Mientras está EN CUARENTENA en una posición que no es de cuarentena (guardado, recepción…) sus unidades están RESERVADAS en el saldo
+    /// (StockBalance.QtyReserved) para que no se despachen ni se asignen; al desecharlas o recuperarlas se libera la reserva.
+    /// </summary>
+    public bool IsReserved { get; set; }
+    /// <summary>A dónde fue a parar al desecharlo desde cuarentena (LookupCode 'DamageFinalDestination'); null = desechado de una vez, sin dato.</summary>
+    public int? FinalDestinationLookupId { get; set; }
     public bool IsActive { get; set; } = true;
     [NotAudited] public byte[]? RowVersion { get; set; }
 

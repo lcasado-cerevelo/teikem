@@ -108,6 +108,8 @@ public static class LookupDomains
     public const string DamageOrigin = "DamageOrigin";
     /// <summary>2026-10-08 — Daños: cómo ocurrió (vino así, accidente en el camino, accidente en el almacén, otro).</summary>
     public const string DamageCause = "DamageCause";
+    /// <summary>2026-10-08 — Daños: destino final de lo que sale de cuarentena al desecharlo (tirado, devuelto al proveedor, donado, vendido como saldo).</summary>
+    public const string DamageFinalDestination = "DamageFinalDestination";
 }
 
 /// <summary>
@@ -1185,6 +1187,16 @@ public static class DamageCauses
     public const string WarehouseAccident = "WAREHOUSE_ACCIDENT";
     public const string Other = "OTHER";
     public static readonly string[] All = { ArrivedDamaged, TransitAccident, WarehouseAccident, Other };
+}
+
+/// <summary>LookupCode 'DamageFinalDestination' (editable por compañía): a dónde fue a parar lo dañado al sacarlo de cuarentena.</summary>
+public static class DamageFinalDestinations
+{
+    public const string Discarded = "DISCARDED_WASTE";
+    public const string ReturnedToSupplier = "RETURNED_TO_SUPPLIER";
+    public const string Donated = "DONATED";
+    public const string SoldAsSalvage = "SOLD_AS_SALVAGE";
+    public static readonly string[] All = { Discarded, ReturnedToSupplier, Donated, SoldAsSalvage };
 }
 
 /// <summary>Qué se hace con lo dañado al reportarlo: mandarlo a una posición de cuarentena o desecharlo de una vez.</summary>

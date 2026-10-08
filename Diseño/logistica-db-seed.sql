@@ -139,7 +139,8 @@ GO
     ('RentalStatus',2,'Estatus de la renta','Rental status'),('RentalProcessStatus',2,'Proceso del equipo devuelto','Returned equipment process'),
     ('RentalReturnReason',1,'Motivo de devolución de renta','Rental return reason'),('RentalReturnCondition',1,'Condición del equipo devuelto','Returned equipment condition'),
     -- 2026-10-08 — Daños: dónde se detectó, cómo ocurrió y estatus del reporte
-    ('DamageOrigin',1,'Origen del daño','Damage origin'),('DamageCause',1,'Causa del daño','Damage cause'),('DamageStatus',2,'Estatus del daño','Damage status')
+    ('DamageOrigin',1,'Origen del daño','Damage origin'),('DamageCause',1,'Causa del daño','Damage cause'),('DamageStatus',2,'Estatus del daño','Damage status'),
+    ('DamageFinalDestination',1,'Destino final de lo dañado','Damaged goods final destination')
     ) v(DomainKey,Scope,Es,En)
 )
 MERGE dbo.CatalogDomain AS t
@@ -364,7 +365,9 @@ INSERT INTO #L (Entity, Code, Es, En, Srt) VALUES
 ('EntityType','DAMAGE_REPORT','Daño','Damage report',87),
 ('DamageOrigin','RECEIPT','Llegó dañado en un recibo','Arrived damaged in a receipt',1),('DamageOrigin','WAREHOUSE','Se dañó en el almacén','Damaged in the warehouse',2),
 ('DamageCause','ARRIVED_DAMAGED','Vino así','Came that way',1),('DamageCause','TRANSIT_ACCIDENT','Accidente en el camino','Accident in transit',2),
-('DamageCause','WAREHOUSE_ACCIDENT','Accidente en el almacén','Warehouse accident',3),('DamageCause','OTHER','Otra','Other',9);
+('DamageCause','WAREHOUSE_ACCIDENT','Accidente en el almacén','Warehouse accident',3),('DamageCause','OTHER','Otra','Other',9),
+('DamageFinalDestination','DISCARDED_WASTE','Tirado','Thrown away',1),('DamageFinalDestination','RETURNED_TO_SUPPLIER','Devuelto al proveedor','Returned to supplier',2),
+('DamageFinalDestination','DONATED','Donado','Donated',3),('DamageFinalDestination','SOLD_AS_SALVAGE','Vendido como saldo','Sold as salvage',4);
 
 MERGE dbo.LookupCode AS t
 USING #L AS s ON t.Entity = s.Entity AND t.InternalCode = s.Code

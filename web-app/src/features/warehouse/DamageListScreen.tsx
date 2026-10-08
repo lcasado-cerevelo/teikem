@@ -34,7 +34,7 @@ export function DamagePanel() {
       { id: 'qty', header: t('warehouse.damage.cols.quantity'), cell: (d) => formatNumber(d.quantity ?? 0, f.lang), sortValue: (d) => d.quantity, align: 'end' },
       { id: 'origin', header: t('warehouse.damage.cols.origin'), cell: (d) => (d.receiptNumber ? `${d.origin} · ${d.receiptNumber}` : d.origin), sortValue: (d) => d.origin, card: 'hidden' },
       { id: 'cause', header: t('warehouse.damage.cols.cause'), cell: (d) => d.cause, sortValue: (d) => d.cause },
-      { id: 'where', header: t('warehouse.damage.cols.where'), cell: (d) => [d.fromBinCode, d.quarantineBinCode].filter(Boolean).join(' → '), sortValue: (d) => d.quarantineBinCode ?? d.fromBinCode, card: 'hidden' },
+      { id: 'where', header: t('warehouse.damage.cols.where'), cell: (d) => [[d.fromBinCode, d.quarantineBinCode].filter(Boolean).join(' → '), d.isReserved && d.statusCode === 'QUARANTINED' ? t('warehouse.damage.reserved') : null].filter(Boolean).join(' · '), sortValue: (d) => d.quarantineBinCode ?? d.fromBinCode, card: 'hidden' },
       {
         id: 'status',
         header: t('warehouse.damage.cols.status'),
@@ -43,6 +43,7 @@ export function DamagePanel() {
       },
       { id: 'reported', header: t('warehouse.damage.cols.reported'), cell: (d) => f.dateTime(d.reportedAtUtc), sortValue: (d) => d.reportedAtUtc, card: 'hidden' },
       { id: 'by', header: t('warehouse.damage.cols.by'), cell: (d) => d.reportedByName ?? '', sortValue: (d) => d.reportedByName, card: 'hidden' },
+      { id: 'final', header: t('warehouse.damage.cols.finalDestination'), cell: (d) => d.finalDestination ?? '', sortValue: (d) => d.finalDestination, card: 'hidden' },
       { id: 'notes', header: t('warehouse.damage.cols.notes'), cell: (d) => [d.notes, d.resolutionNotes].filter(Boolean).join(' · '), card: 'hidden' },
     ],
     [t, f],

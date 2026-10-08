@@ -5653,6 +5653,15 @@ Escogió la razón *Otra*: escriba en el cuadro qué pasó. Con las otras razone
 **¿Qué pasa con lo dañado si el recibo es «con acomodo»?**
 Entra con el resto a la posición de recepción y, al confirmar, sale de ahí hacia la posición que indicó (la de cuarentena por defecto) o se descarta. La tarea de acomodo solo lleva las unidades buenas. Si no hay posición de cuarentena y no indicó otra, se queda en la posición de recepción pero ya no se acomoda: es el daño en espera de decidir.
 
+**¿Lo dañado se cuenta en el conteo cíclico? ¿Se puede vender?**
+Se **cuenta** (es existencia física de esa posición) pero **no se puede despachar**: en una zona de Cuarentena ya queda fuera de la asignación y, si lo dejó en otra posición (guardado, recepción), el sistema lo **reserva** y baja el disponible; la lista de Daños dice «reservado (no se despacha)». Al desecharlo o recuperarlo la reserva se libera.
+
+**Vienen a recoger lo dañado de cuarentena. ¿Qué hago?**
+En la pestaña Daños use **Desechar** sobre ese daño y escoja el **destino final**: *Tirado*, *Devuelto al proveedor*, *Donado* o *Vendido como saldo*. No es un despacho: baja el inventario con un ajuste de motivo Daño y queda el destino en el Kárdex y en la lista. Si necesita otro destino, agréguelo en Sistema → Catálogos (Destino final de lo dañado).
+
+**Dice `Indique a dónde va lo desechado (tirado, devuelto al proveedor, donado…).`**
+Al desechar lo que está en cuarentena hay que escoger el destino final. Elíjalo en la lista y vuelva a desechar.
+
 **¿Puedo dejar lo dañado en una posición que no sea de cuarentena?**
 Sí, cualquier posición activa del almacén (en la app: escanee o escoja de la lista; en la web: «Posición donde queda»). El daño queda «En cuarentena» en esa posición hasta que lo desecha o lo recupera desde la pestaña Daños.
 
