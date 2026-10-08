@@ -175,7 +175,7 @@ public class PasswordRecoveryTests
         var sent = Assert.Single(f.Get<NoEmailSender>().Sent);
         Assert.Equal("ana@t.local", sent.To);
         Assert.Contains("reset-password", sent.Html);
-        // 2026-10-08: ana pertenece a UNA sola compañía, así que el remitente es «Advance Solutions vía Teikem»
+        // 2026-10-08: ana pertenece a UNA sola compañía, así que el remitente es «Advance Solutions»
         Assert.Equal("Advance Solutions", f.Get<NoEmailSender>().Companies.Single());
     }
 

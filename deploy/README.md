@@ -89,7 +89,7 @@ usuario). Las busca en el entorno de quien corre el script y, si no están ahí,
 
 - Si encuentra `Brevo__ApiKey` y `Brevo__FromEmail` (y opcionalmente `Brevo__FromName`), **las usa sin preguntar**.
 - `bash update.sh` las vuelve a copiar cada vez: si cambia la llave en el servidor, basta con actualizar.
-- **Nombre del remitente (2026-10-08):** los correos salen como **«{Compañía} vía Teikem»** (por ejemplo «Advance Logistics vía Teikem»). Si no se sabe de qué compañía es el correo
+- **Nombre del remitente (2026-10-08):** los correos salen con el **nombre de la compañía** como remitente (por ejemplo «Advance Logistics»); el «via Teikem» que Gmail muestra al lado lo agrega Gmail (ver abajo), no la aplicación. Si no se sabe de qué compañía es el correo
   (usuario en varias compañías, o administrador de plataforma) sale con `Brevo__FromName` (por defecto «Teikem»). La **dirección** del remitente es siempre `Brevo__FromEmail`.
 - **El aviso «vía …» que pone Gmail** al lado del remitente es otra cosa: aparece cuando el dominio que firma el correo (DKIM/SPF) no coincide con el de `Brevo__FromEmail`.
   Se quita **autenticando el dominio del remitente en Brevo** (Senders, Domains & Dedicated IPs → Domains → agregar los registros DKIM/DMARC en el DNS). No depende del código.

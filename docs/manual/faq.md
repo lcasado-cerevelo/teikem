@@ -5576,8 +5576,8 @@ Es a propósito: solo se ofrecen las posiciones que aún no contaste. Para corre
 
 ## Nombre del remitente de los correos (2026-10-08)
 
-**¿Por qué el correo dice «Advance Solutions vía Teikem» y no solo «Teikem»?**
-El nombre del remitente lleva la compañía a la que pertenece el correo: el código de verificación del primer ingreso usa la compañía con la que se está entrando; «Olvidé mi contraseña» usa la
+**¿Por qué el correo dice «Advance Solutions» y no «Teikem»?** (y de dónde sale el «via Teikem» que muestra Gmail)
+El nombre del remitente es el de la compañía a la que pertenece el correo (la aplicación no le agrega nada más; el «via Teikem» que Gmail pone al lado lo pone Gmail porque el dominio que firma el correo no es el de la dirección del remitente, ver abajo): el código de verificación del primer ingreso usa la compañía con la que se está entrando; «Olvidé mi contraseña» usa la
 compañía del usuario **si pertenece a una sola**; el aviso de «verificación en dos pasos reiniciada» usa la compañía del administrador que la reinició.
 
 **Un usuario que está en varias compañías recibe el correo como «Teikem».**

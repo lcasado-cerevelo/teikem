@@ -178,7 +178,7 @@ public sealed partial class AuthService(
     }
 
     /// <summary>
-    /// Compañía que se muestra como remitente del correo («{compañía} vía Teikem», 2026-10-08): la indicada, o si no se indica (por ejemplo «olvidé mi contraseña», sin
+    /// Compañía que se muestra como remitente del correo (nombre de la compañía, 2026-10-08): la indicada, o si no se indica (por ejemplo «olvidé mi contraseña», sin
     /// compañía elegida), la ÚNICA compañía activa del usuario. Con varias (o un administrador de plataforma) o ninguna: null y sale el remitente general «Teikem».
     /// </summary>
     private async Task<string?> CompanyNameForEmailAsync(ApplicationUser user, int? tenantId, CancellationToken ct)

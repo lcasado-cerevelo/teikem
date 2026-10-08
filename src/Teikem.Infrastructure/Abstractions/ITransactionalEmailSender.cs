@@ -15,7 +15,7 @@ public interface ITransactionalEmailSender
     bool IsConfigured { get; }
 
     /// <summary>
-    /// <paramref name="companyName"/> (2026-10-08): la compañía a la que pertenece el correo; el remitente se muestra «{compañía} vía Teikem».
+    /// <paramref name="companyName"/> (2026-10-08): la compañía a la que pertenece el correo; el remitente se muestra con el nombre de la compañía («Advance Logistics»); el «via Teikem» que se ve junto lo agrega el propio Gmail (autenticación del dominio), no la aplicación.
     /// Sin compañía (usuario en varias, o ninguna conocida) se usa el nombre general (Brevo:FromName, por defecto «Teikem»).
     /// La DIRECCIÓN del remitente es siempre la misma (Brevo:FromEmail).
     /// </summary>
@@ -27,13 +27,13 @@ public static class EmailSenderNames
     /// <summary>Máximo de caracteres de la compañía en el nombre del remitente (el resto se corta).</summary>
     public const int MaxCompanyChars = 80;
 
-    /// <summary>Nombre que ve quien recibe el correo: «{compañía} vía Teikem», o <paramref name="defaultName"/> sin compañía.</summary>
+    /// <summary>Nombre que ve quien recibe el correo: el de la compañía (sin agregarle nada), o <paramref name="defaultName"/> sin compañía.</summary>
     public static string Resolve(string? companyName, string defaultName)
     {
         var clean = new string((companyName ?? string.Empty).Where(c => !char.IsControl(c) && c is not '<' and not '>' and not '"').ToArray()).Trim();
         if (clean.Length == 0) return defaultName;
         if (clean.Length > MaxCompanyChars) clean = clean[..MaxCompanyChars].TrimEnd();
-        return $"{clean} vía Teikem";
+        return clean;
     }
 }
 
