@@ -103,7 +103,7 @@ describe('Recibir — directo a posición', () => {
     const body = JSON.parse(listOutbox()[0].body)
     expect(body).toMatchObject({ warehousePublicId: 'wh-1', confirm: true, receivingMode: 'DIRECT' })
     expect(body.lines).toEqual([
-      { productPublicId: 'p1', receivedQty: 1250, lot: null, serialNumbers: null, targetBinCode: 'RSV-A-01' },
+      { productPublicId: 'p1', receivedQty: 1250, lot: null, serialNumbers: null, targetBinCode: 'RSV-A-01', damagedQty: null, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: null },
     ])
   })
 })

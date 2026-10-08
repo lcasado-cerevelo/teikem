@@ -37180,6 +37180,39 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "damagedQty": {
+            "type": "number",
+            "format": "double"
+          },
+          "damageCauseCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "damageBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageDiscard": {
+            "type": "boolean"
+          },
+          "damageReportId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "damageReportCode": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -37224,6 +37257,32 @@
           },
           "targetBinCode": {
             "type": "string",
+            "nullable": true
+          },
+          "damagedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "damageCause": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "damageBinCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageDiscard": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -37276,6 +37335,32 @@
             "nullable": true
           },
           "clearTargetBin": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "damagedQty": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "damageCause": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "damageBinId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "damageDiscard": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "clearDamage": {
             "type": "boolean",
             "nullable": true
           }

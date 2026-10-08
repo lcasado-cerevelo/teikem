@@ -1,8 +1,12 @@
 import {
   addSerial,
+  attachDamage,
   buildLine,
   buildReceiptBody,
   canAddLine,
+  DAMAGE_CAUSE_OTHER,
+  damageBlock,
+  draftDamagedQty,
   draftExpiry,
   draftQuantity,
   type DocLine,
@@ -14,6 +18,7 @@ import {
   removeSerial,
   requiresLot,
   requiresSerials,
+  validateDamageBin,
   validateTargetBin,
 } from './receiveLogic'
 import { PR_FORMAT } from '../../kernel/format/settings'
@@ -87,6 +92,11 @@ describe('buildLine', () => {
       expiryDate: null,
       serialNumbers: null,
       targetBinCode: null,
+      damagedQty: 0,
+      damageCause: null,
+      damageNote: null,
+      damageBinCode: null,
+      damageDiscard: false,
     })
   })
 
@@ -129,7 +139,20 @@ describe('buildReceiptBody', () => {
   it('recibo ciego: sin orden ni aviso', () => {
     const body = buildReceiptBody('wh-1', null, [LINE])
     expect(body).toMatchObject({ warehousePublicId: 'wh-1', purchaseOrderPublicId: null, asnId: null, confirm: true, receivingMode: null })
-    expect(body.lines).toEqual([{ productPublicId: 'p1', receivedQty: 2, lot: null, serialNumbers: null, targetBinCode: null }])
+    expect(body.lines).toEqual([
+      {
+        productPublicId: 'p1',
+        receivedQty: 2,
+        lot: null,
+        serialNumbers: null,
+        targetBinCode: null,
+        damagedQty: null,
+        damageCause: null,
+        damageNote: null,
+        damageBinCode: null,
+        damageDiscard: null,
+      },
+    ])
   })
 
   it('contra una orden de compra: manda purchaseOrderPublicId', () => {
@@ -245,6 +268,11 @@ describe('findTargetConflict (H11)', () => {
     expiryDate: null,
     serialNumbers: null,
     targetBinCode: target,
+    damagedQty: 0,
+    damageCause: null,
+    damageNote: null,
+    damageBinCode: null,
+    damageDiscard: false,
   })
 
   it('el mismo producto dos veces con destinos distintos en un documento de una sola línea choca en la segunda', () => {
@@ -302,5 +330,70 @@ describe('buildReceiptBody con modo de recepción', () => {
     const body = buildReceiptBody('wh-1', null, [direct])
     expect(body.receivingMode).toBeNull()
     expect(body.lines[0].targetBinCode).toBeNull()
+  })
+})
+
+describe('daño declarado en la captura', () => {
+  const base = { ...newLineDraft(NONE_PRODUCT), qtyText: '10', damaged: true }
+
+  it('sin marcar, no hay daño ni bloquea', () => {
+    expect(damageBlock(newLineDraft(NONE_PRODUCT))).toBeNull()
+    expect(draftDamagedQty(newLineDraft(NONE_PRODUCT))).toBe(0)
+  })
+
+  it('pide una cantidad mayor que 0 y no mayor que lo recibido, la razón y, con Otra, escribirla', () => {
+    expect(damageBlock({ ...base, damagedQtyText: '0', damageCause: 'ARRIVED_DAMAGED' })).toBe('qty')
+    expect(damageBlock({ ...base, damagedQtyText: '11', damageCause: 'ARRIVED_DAMAGED' })).toBe('qty')
+    expect(damageBlock({ ...base, damagedQtyText: '3', damageCause: '' })).toBe('cause')
+    expect(damageBlock({ ...base, damagedQtyText: '3', damageCause: DAMAGE_CAUSE_OTHER, damageNote: '  ' })).toBe('note')
+    expect(damageBlock({ ...base, damagedQtyText: '3', damageCause: DAMAGE_CAUSE_OTHER, damageNote: 'se mojó' })).toBeNull()
+    expect(damageBlock({ ...base, damagedQtyText: '3,5', damageCause: 'TRANSIT_ACCIDENT' })).toBeNull()
+  })
+
+  it('un daño incompleto no deja agregar la línea; completo sí', () => {
+    expect(canAddLine({ ...base, damagedQtyText: '3', damageCause: '' })).toBe(false)
+    expect(canAddLine({ ...base, damagedQtyText: '3', damageCause: 'TRANSIT_ACCIDENT' })).toBe(true)
+  })
+
+  it('los productos con serie no declaran daño aquí', () => {
+    const serial = { ...addSerial(newLineDraft(SERIAL_PRODUCT), 'A'), damaged: true, damagedQtyText: '9' }
+    expect(draftDamagedQty(serial)).toBe(0)
+    expect(damageBlock(serial)).toBeNull()
+  })
+
+  it('attachDamage reparte lo dañado en orden sin pasar de lo que trae cada línea y devuelve lo que sobra', () => {
+    const draft = { ...base, qtyText: '10', damagedQtyText: '7', damageCause: DAMAGE_CAUSE_OTHER, damageNote: ' se mojó ' }
+    const lines = [buildLine({ ...draft, qtyText: '4', targetBinCode: 'R-01' }), buildLine({ ...draft, qtyText: '4', targetBinCode: 'R-02' })]
+    const placed = attachDamage(draft, lines, { binCode: 'Q-01', discard: false })
+    expect(placed.lines.map((l) => l.damagedQty)).toEqual([4, 3])
+    expect(placed.leftover).toBe(0)
+    expect(placed.lines[0]).toMatchObject({ damageCause: DAMAGE_CAUSE_OTHER, damageNote: 'se mojó', damageBinCode: 'Q-01', damageDiscard: false })
+    expect(attachDamage(draft, [lines[0]], { binCode: null, discard: true })).toMatchObject({ leftover: 3, lines: [{ damagedQty: 4, damageBinCode: null, damageDiscard: true }] })
+  })
+
+  it('la nota solo viaja con la causa Otra', () => {
+    const draft = { ...base, damagedQtyText: '2', damageCause: 'ARRIVED_DAMAGED', damageNote: 'ruido' }
+    expect(attachDamage(draft, [buildLine(draft)], { binCode: 'Q-01', discard: false }).lines[0].damageNote).toBeNull()
+  })
+
+  it('el cuerpo del envío lleva el daño de la línea (y nada si no hay)', () => {
+    const draft = { ...base, damagedQtyText: '2', damageCause: 'TRANSIT_ACCIDENT' }
+    const [damaged] = attachDamage(draft, [buildLine(draft)], { binCode: 'Q-01', discard: false }).lines
+    const [discarded] = attachDamage(draft, [buildLine(draft)], { binCode: null, discard: true }).lines
+    const body = buildReceiptBody('wh-1', null, [damaged, discarded, buildLine({ ...newLineDraft(NONE_PRODUCT), qtyText: '1' })])
+    expect(body.lines[0]).toMatchObject({ damagedQty: 2, damageCause: 'TRANSIT_ACCIDENT', damageBinCode: 'Q-01', damageDiscard: null })
+    expect(body.lines[1]).toMatchObject({ damagedQty: 2, damageBinCode: null, damageDiscard: true })
+    expect(body.lines[2]).toMatchObject({ damagedQty: null, damageCause: null, damageBinCode: null, damageDiscard: null })
+  })
+
+  it('la posición de lo dañado puede ser de cualquier zona pero activa y existente', () => {
+    const bins = [
+      { code: 'Q-01', zoneTypeCode: 'QUARANTINE', isActive: true },
+      { code: 'STG-01', zoneTypeCode: 'STAGING', isActive: true },
+      { code: 'OLD', zoneTypeCode: 'STORAGE', isActive: false },
+    ]
+    expect(validateDamageBin('stg-01', bins)).toEqual({ ok: true, code: 'STG-01' })
+    expect(validateDamageBin('OLD', bins)).toEqual({ ok: false, reason: 'inactive' })
+    expect(validateDamageBin('NOPE', bins)).toEqual({ ok: false, reason: 'notFound' })
   })
 })

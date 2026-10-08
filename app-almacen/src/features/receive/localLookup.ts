@@ -64,8 +64,8 @@ export function startLocalReceipt(warehousePublicId: string, doc: LocalDoc | nul
 export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
   getDb().runSync(
     `INSERT INTO local_receipt_line (receipt_id, product_public_id, sku, product_name, tracking_type_code, received_qty, lot_number, expiry_date,
-                                     serial_numbers, target_bin_code)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                                     serial_numbers, target_bin_code, damaged_qty, damage_cause, damage_note, damage_bin_code, damage_discard)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       receiptId,
       line.productPublicId,
@@ -77,6 +77,11 @@ export function addLocalReceiptLine(receiptId: number, line: DraftLine): void {
       line.expiryDate,
       line.serialNumbers ? JSON.stringify(line.serialNumbers) : null,
       line.targetBinCode,
+      line.damagedQty,
+      line.damageCause,
+      line.damageNote,
+      line.damageBinCode,
+      line.damageDiscard ? 1 : 0,
     ],
   )
 }
@@ -113,6 +118,11 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       expiry_date: string | null
       serial_numbers: string | null
       target_bin_code: string | null
+      damaged_qty: number
+      damage_cause: string | null
+      damage_note: string | null
+      damage_bin_code: string | null
+      damage_discard: number
     }>('SELECT * FROM local_receipt_line WHERE receipt_id = ? ORDER BY id', [header.id])
     .map((r) => ({
       id: r.id,
@@ -125,6 +135,11 @@ export function getOpenReceipt(): (OpenReceipt & { lineRows: LocalReceiptLineRow
       expiryDate: r.expiry_date,
       serialNumbers: r.serial_numbers ? (JSON.parse(r.serial_numbers) as string[]) : null,
       targetBinCode: r.target_bin_code,
+      damagedQty: r.damaged_qty ?? 0,
+      damageCause: r.damage_cause,
+      damageNote: r.damage_note,
+      damageBinCode: r.damage_bin_code,
+      damageDiscard: r.damage_discard === 1,
     }))
   const doc =
     header.purchase_order_public_id || header.asn_id
@@ -165,6 +180,16 @@ export function findLocalBinsByCode(warehousePublicId: string, code: string): Lo
       [warehousePublicId, wanted],
     )
     .map((b) => ({ code: b.code, zoneTypeCode: b.zone_type_code, isActive: b.is_active === 1 }))
+}
+
+/** Primera posición activa del almacén en una zona de ese tipo, por código (la misma que elige el servidor: la de cuarentena para lo dañado, la de recepción como segunda opción). */
+export function findLocalBinCodeByZoneType(warehousePublicId: string, zoneTypeCode: string): string | null {
+  return (
+    getDb().getFirstSync<{ code: string }>(
+      'SELECT code FROM bin WHERE warehouse_public_id = ? AND zone_type_code = ? AND is_active = 1 ORDER BY code LIMIT 1',
+      [warehousePublicId, zoneTypeCode],
+    )?.code ?? null
+  )
 }
 
 /** Cuántas posiciones del almacén tiene el aparato (0 = todavía no se bajaron: hace falta sincronizar con señal). */

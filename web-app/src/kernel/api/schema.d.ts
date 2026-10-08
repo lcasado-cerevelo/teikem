@@ -22295,6 +22295,17 @@ export interface components {
             targetZoneTypeCode?: string | null;
             /** Format: double */
             targetFreeQty?: number | null;
+            /** Format: double */
+            damagedQty?: number;
+            damageCauseCode?: string | null;
+            damageNote?: string | null;
+            /** Format: int32 */
+            damageBinId?: number | null;
+            damageBinCode?: string | null;
+            damageDiscard?: boolean;
+            /** Format: int32 */
+            damageReportId?: number | null;
+            damageReportCode?: string | null;
         };
         ReceiptLineRequest: {
             /** Format: uuid */
@@ -22310,6 +22321,14 @@ export interface components {
             /** Format: int32 */
             targetBinId?: number | null;
             targetBinCode?: string | null;
+            /** Format: double */
+            damagedQty?: number | null;
+            damageCause?: string | null;
+            damageNote?: string | null;
+            /** Format: int32 */
+            damageBinId?: number | null;
+            damageBinCode?: string | null;
+            damageDiscard?: boolean | null;
         };
         ReceiptLineUpdateRequest: {
             /** Format: double */
@@ -22327,6 +22346,14 @@ export interface components {
             /** Format: int32 */
             targetBinId?: number | null;
             clearTargetBin?: boolean | null;
+            /** Format: double */
+            damagedQty?: number | null;
+            damageCause?: string | null;
+            damageNote?: string | null;
+            /** Format: int32 */
+            damageBinId?: number | null;
+            damageDiscard?: boolean | null;
+            clearDamage?: boolean | null;
         };
         ReceiptListItemDto: {
             /** Format: int32 */

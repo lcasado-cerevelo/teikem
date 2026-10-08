@@ -28,6 +28,13 @@ export interface DraftLine {
   serialNumbers: string[] | null
   /** Lote 16: posición destino (solo en recibo directo); null con acomodo. */
   targetBinCode: string | null
+  /** 2026-10-08: de lo recibido, las unidades dañadas (0 = ninguna), su causa del catálogo, el comentario (causa Otra), la posición donde se dejan
+   *  (null = que decida el servidor) o si se desechan de una vez. */
+  damagedQty: number
+  damageCause: string | null
+  damageNote: string | null
+  damageBinCode: string | null
+  damageDiscard: boolean
 }
 
 export interface LineDraft {
@@ -41,7 +48,15 @@ export interface LineDraft {
   serials: string[]
   /** Lote 16: posición destino ya validada (validateTargetBin); null mientras no se escanee. */
   targetBinCode: string | null
+  /** 2026-10-08: «Vinieron unidades dañadas»: cuántas, causa del catálogo y, si la causa es Otra, el comentario. */
+  damaged: boolean
+  damagedQtyText: string
+  damageCause: string
+  damageNote: string
 }
+
+/** Causas del daño (catálogo DamageCause); «Otra» pide el comentario. */
+export const DAMAGE_CAUSE_OTHER = 'OTHER'
 
 export function newLineDraft(product: { publicId: string; sku: string; name: string; trackingTypeCode: TrackingType }): LineDraft {
   return {
@@ -54,6 +69,10 @@ export function newLineDraft(product: { publicId: string; sku: string; name: str
     expiry: '',
     serials: [],
     targetBinCode: null,
+    damaged: false,
+    damagedQtyText: '1',
+    damageCause: '',
+    damageNote: '',
   }
 }
 
@@ -65,6 +84,23 @@ function parseQty(text: string): number {
 /** Cantidad del borrador tal como quedaría en la línea (series = cuántas; si no, la escrita; 0 si no es válida). */
 export function draftQuantity(draft: LineDraft): number {
   return requiresSerials(draft) ? draft.serials.length : parseQty(draft.qtyText)
+}
+
+/** Unidades dañadas declaradas (0 si no se marcó o la cantidad no es válida). Los productos con serie no declaran daño aquí. */
+export function draftDamagedQty(draft: LineDraft): number {
+  return draft.damaged && !requiresSerials(draft) ? parseQty(draft.damagedQtyText) : 0
+}
+
+export type DamageBlock = 'qty' | 'cause' | 'note' | null
+
+/** Qué le falta al daño declarado (null = completo o no se marcó): cantidad mayor que 0 y no mayor que lo recibido, causa y, si es Otra, el comentario. */
+export function damageBlock(draft: LineDraft): DamageBlock {
+  if (!draft.damaged || requiresSerials(draft)) return null
+  const damaged = parseQty(draft.damagedQtyText)
+  if (damaged <= 0 || damaged > parseQty(draft.qtyText)) return 'qty'
+  if (!draft.damageCause) return 'cause'
+  if (draft.damageCause === DAMAGE_CAUSE_OTHER && !draft.damageNote.trim()) return 'note'
+  return null
 }
 
 /** El producto necesita lote o series antes de poder agregar la línea. */
@@ -88,6 +124,7 @@ export function draftExpiry(draft: Pick<LineDraft, 'expiry'>, s: FormatSettings 
 
 /** ¿Está completa la captura de cantidad/lote/series? (sin mirar la posición destino). */
 function hasQuantityData(draft: LineDraft): boolean {
+  if (damageBlock(draft) !== null) return false
   if (requiresSerials(draft)) return draft.serials.length > 0
   if (requiresLot(draft)) return draft.lot.trim().length > 0 && parseQty(draft.qtyText) > 0 && draftExpiry(draft) !== null
   return parseQty(draft.qtyText) > 0
@@ -124,6 +161,7 @@ export function buildLine(draft: LineDraft): DraftLine {
       expiryDate: null,
       serialNumbers: draft.serials,
       targetBinCode,
+      ...NO_DAMAGE,
     }
   }
   return {
@@ -136,7 +174,45 @@ export function buildLine(draft: LineDraft): DraftLine {
     expiryDate: requiresLot(draft) ? draftExpiry(draft) || null : null,
     serialNumbers: null,
     targetBinCode,
+    ...NO_DAMAGE,
   }
+}
+
+const NO_DAMAGE = { damagedQty: 0, damageCause: null, damageNote: null, damageBinCode: null, damageDiscard: false } as const
+
+/** Dónde quedan las unidades dañadas: una posición escaneada o se desechan de una vez. */
+export type DamagePlacement = { binCode: string; discard: false } | { binCode: null; discard: true }
+
+/**
+ * Reparte lo dañado del borrador entre las líneas que salen de él (una por posición en un reparto): se asigna en orden, sin pasar de lo que trae cada
+ * línea (el servidor no admite más dañadas que recibidas por línea). Devuelve las líneas con el daño puesto y lo que quedó sin asignar (cuando el
+ * reparto no cubrió toda la cantidad, lo dañado que falta sigue en la captura).
+ */
+export function attachDamage(draft: LineDraft, lines: readonly DraftLine[], placement: DamagePlacement): { lines: DraftLine[]; leftover: number } {
+  let remaining = draftDamagedQty(draft)
+  const out = lines.map((l) => {
+    const take = Math.min(remaining, l.receivedQty)
+    if (take <= 0) return l
+    remaining = Math.round((remaining - take) * 1000) / 1000
+    return {
+      ...l,
+      damagedQty: take,
+      damageCause: draft.damageCause,
+      damageNote: draft.damageCause === DAMAGE_CAUSE_OTHER ? draft.damageNote.trim() : null,
+      damageBinCode: placement.binCode,
+      damageDiscard: placement.discard,
+    }
+  })
+  return { lines: out, leftover: remaining }
+}
+
+/** Posición escaneada para dejar lo dañado: cualquier posición activa del almacén (cuarentena, recepción, guardado…). */
+export function validateDamageBin(code: string, localBins: readonly LocalBin[]): TargetBinCheck {
+  const wanted = code.trim().toUpperCase()
+  const bin = wanted ? localBins.find((b) => b.code.trim().toUpperCase() === wanted) : undefined
+  if (!bin) return { ok: false, reason: 'notFound' }
+  if (!bin.isActive) return { ok: false, reason: 'inactive' }
+  return { ok: true, code: bin.code }
 }
 
 // ------------------------------------------------------------------ Lote 16: posición destino
@@ -277,6 +353,11 @@ export function buildReceiptBody(
       lot: l.lotNumber ? { number: l.lotNumber, expiryDate: l.expiryDate || null } : null,
       serialNumbers: l.serialNumbers,
       targetBinCode: receivingMode === 'DIRECT' ? l.targetBinCode : null,
+      damagedQty: l.damagedQty > 0 ? l.damagedQty : null,
+      damageCause: l.damagedQty > 0 ? l.damageCause : null,
+      damageNote: l.damagedQty > 0 ? l.damageNote : null,
+      damageBinCode: l.damagedQty > 0 && !l.damageDiscard ? l.damageBinCode : null,
+      damageDiscard: l.damagedQty > 0 && l.damageDiscard ? true : null,
     })),
   }
 }

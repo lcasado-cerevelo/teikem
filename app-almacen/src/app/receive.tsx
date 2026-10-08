@@ -18,6 +18,7 @@ import {
   countLocalBins,
   discardLocalReceipt,
   findDocByCode,
+  findLocalBinCodeByZoneType,
   findLocalBinsByCode,
   findProductByCode,
   getDocLines,
@@ -31,14 +32,20 @@ import { findBinByCode } from '../kernel/warehouse/binLookup'
 import { StickyAlert } from '../kernel/ui/StickyAlert'
 import { BinMarkList } from '../features/positions/BinMarkList'
 import { capMarks, markRecommended, marksToRows, toggleMark, type MarkOption, type Marks } from '../features/positions/binMarks'
+import { CauseSelect } from '../features/damage/CauseSelect'
 import { KeyboardInput } from '../kernel/ui/KeyboardInput'
 import { KeyboardScreen } from '../kernel/ui/KeyboardScreen'
 import {
   addSerial,
+  attachDamage,
   buildLine,
   addSplitBin,
   buildReceiptBody,
   canAddLine,
+  DAMAGE_CAUSE_OTHER,
+  type DamagePlacement,
+  type DraftLine,
+  draftDamagedQty,
   draftExpiry,
   draftQuantity,
   findTargetConflict,
@@ -51,6 +58,7 @@ import {
   requiresLot,
   requiresSerials,
   splitDraftLines,
+  validateDamageBin,
   validateTargetBin,
 } from '../features/receive/receiveLogic'
 
@@ -93,6 +101,10 @@ export default function ReceiveScreen() {
   const [closedAlertBin, setClosedAlertBin] = useState<string | null>(null)
   // Espacio libre (cupo) de cada posición del reparto, consultado al servidor si hay señal; sin señal no hay aviso de cupo.
   const [freeByBin, setFreeByBin] = useState<Record<string, number | null>>({})
+  // 2026-10-08: unidades dañadas declaradas. Con ellas, las líneas ya armadas esperan aquí a que se diga dónde se dejan lo dañado (o que se desecha).
+  const [pending, setPending] = useState<{ lines: DraftLine[]; left: LineDraft | null } | null>(null)
+  const [damageError, setDamageError] = useState<string | null>(null)
+  const [damagePrefill, setDamagePrefill] = useState<{ value: string; seq: number } | null>(null)
 
   // tick fuerza releer la base local tras cada mutación (start/add/remove/confirm); getOpenReceipt() no usa tick.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,6 +175,66 @@ export default function ReceiveScreen() {
     setClosedAlertBin(null)
     setMarks({})
     setShowAll(false)
+    setPending(null)
+    setDamageError(null)
+    setDamagePrefill(null)
+  }
+
+  /**
+   * Agrega al recibo las líneas armadas de la captura. Con unidades dañadas declaradas primero se pregunta dónde se dejan (paso aparte, con un solo
+   * campo de escaneo): las líneas esperan en `pending` y, ya con la posición (o el desecho), se les reparte lo dañado y se agregan. `left` es la
+   * captura que sigue después de un reparto que no cubrió toda la cantidad.
+   */
+  function commitLines(lines: DraftLine[], left: LineDraft | null = null, placement?: DamagePlacement) {
+    if (!draft || !openReceipt) return
+    let toAdd = lines
+    let rest = left
+    if (draftDamagedQty(draft) > 0) {
+      if (!placement) {
+        setPending({ lines, left })
+        setDamageError(null)
+        setDamagePrefill(null)
+        return
+      }
+      const attached = attachDamage(draft, lines, placement)
+      toAdd = attached.lines
+      if (rest) rest = attached.leftover > 0 ? { ...rest, damagedQtyText: String(attached.leftover) } : { ...rest, damaged: false }
+    }
+    for (const line of toAdd) addLocalReceiptLine(openReceipt.id, line)
+    setPending(null)
+    vibrateOk()
+    refresh()
+    if (rest) {
+      // Los sueltos siguen en la captura: se escanea la posición donde quedan (una sola).
+      setDraft(rest)
+      setPerBinText('')
+      setSplitCodes([])
+      setTargetError(null)
+      setSuggestions([])
+      return
+    }
+    closeDraft()
+  }
+
+  /** La posición escaneada para lo dañado: cualquier posición activa del almacén (cuarentena, recepción, guardado…). */
+  function scanDamageBin(code: string) {
+    if (!pending || !openReceipt) return
+    const fail = (message: string) => {
+      setDamageError(message)
+      vibrateError()
+    }
+    if (countLocalBins(openReceipt.warehousePublicId) === 0) return fail(t('receive.targetNoBins'))
+    const check = validateDamageBin(code, findLocalBinsByCode(openReceipt.warehousePublicId, code))
+    if (!check.ok) return fail(t(check.reason === 'inactive' ? 'receive.damageBinInactive' : 'receive.damageBinNotFound'))
+    commitLines(pending.lines, pending.left, { binCode: check.code, discard: false })
+  }
+
+  function discardDamaged() {
+    if (!pending || !draft) return
+    Alert.alert(t('receive.damageDiscardTitle'), t('receive.damageDiscardBody', { qty: f.qty(draftDamagedQty(draft)) }), [
+      { text: t('common.no'), style: 'cancel' },
+      { text: t('receive.damageDiscard'), style: 'destructive', onPress: () => commitLines(pending.lines, pending.left, { binCode: null, discard: true }) },
+    ])
   }
 
   function addCurrentLine() {
@@ -174,10 +246,7 @@ export default function ReceiveScreen() {
       setAskTarget(true)
       return
     }
-    addLocalReceiptLine(openReceipt.id, buildLine(draft))
-    closeDraft()
-    vibrateOk()
-    refresh()
+    commitLines([buildLine(draft)])
   }
 
   /** Lote 16: la posición destino escaneada. Valida sin señal contra las posiciones locales y, en recibos con aviso u
@@ -222,10 +291,7 @@ export default function ReceiveScreen() {
       const conflict = findTargetConflict(getDocLines(openReceipt.doc), lines)
       if (conflict && conflict.index === lines.length - 1) return fail(t('receive.targetConflict', { sku: conflict.sku, bin: conflict.bin }))
     }
-    addLocalReceiptLine(openReceipt.id, line)
-    closeDraft()
-    vibrateOk()
-    refresh()
+    commitLines([line])
   }
 
   /** Recibe en las posiciones marcadas del listado: una línea por posición con lo que se tomó de cada una. */
@@ -240,10 +306,7 @@ export default function ReceiveScreen() {
         return
       }
     }
-    for (const line of added) addLocalReceiptLine(openReceipt.id, line)
-    closeDraft()
-    vibrateOk()
-    refresh()
+    commitLines(added)
   }
 
   /** Confirma el reparto: agrega una línea por posición; lo que no cupo en posiciones llenas queda en la captura para ubicarlo aparte. */
@@ -258,19 +321,7 @@ export default function ReceiveScreen() {
         return
       }
     }
-    for (const line of added) addLocalReceiptLine(openReceipt.id, line)
-    vibrateOk()
-    refresh()
-    if (left > 0) {
-      // Los sueltos siguen en la captura: se escanea la posición donde quedan (una sola).
-      setDraft({ ...draft, qtyText: String(left) })
-      setPerBinText('')
-      setSplitCodes([])
-      setTargetError(null)
-      setSuggestions([])
-      return
-    }
-    closeDraft()
+    commitLines(added, left > 0 ? { ...draft, qtyText: String(left) } : null)
   }
 
   function cancelReceipt() {
@@ -337,6 +388,54 @@ export default function ReceiveScreen() {
         <View style={styles.bottom}>
           <BigButton label={t('common.back')} variant="danger" onPress={() => router.replace('/home')} />
         </View>
+      </KeyboardScreen>
+    )
+  }
+
+  // Paso 3c (2026-10-08): dónde se dejan las unidades dañadas declaradas (cualquier posición, la sugerida es la de cuarentena si existe; si no, donde
+  // quedó lo bueno), o se desechan de una vez. Un solo campo de captura en pantalla, por eso es un paso aparte.
+  if (draft && pending) {
+    const damagedQty = draftDamagedQty(draft)
+    const suggestedDamageBin =
+      findLocalBinCodeByZoneType(openReceipt.warehousePublicId, 'QUARANTINE') ??
+      pending.lines[0]?.targetBinCode ??
+      findLocalBinCodeByZoneType(openReceipt.warehousePublicId, 'STAGING')
+    return (
+      <KeyboardScreen contentContainerStyle={styles.fill}>
+        <Text style={styles.title}>{t('receive.damageTitle')}</Text>
+        <Text style={styles.help}>{t('receive.damageIntro', { qty: f.qty(damagedQty), sku: draft.sku })}</Text>
+        {suggestedDamageBin ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('positions.tapToUse')}
+            testID="receive-damage-suggestion"
+            onPress={() => {
+              setDamageError(null)
+              setDamagePrefill((p) => ({ value: suggestedDamageBin, seq: (p?.seq ?? 0) + 1 }))
+            }}
+            style={styles.suggestCard}
+          >
+            <Text style={styles.hint}>{t('receive.damageHint', { bin: suggestedDamageBin })}</Text>
+          </Pressable>
+        ) : null}
+        <ScanField
+          label={t('receive.damageScanLabel')}
+          error={damageError}
+          onSubmit={scanDamageBin}
+          suggestedValue={suggestedDamageBin}
+          prefill={damagePrefill}
+          pick="bin"
+        />
+        <BigButton label={t('receive.damageDiscard')} variant="danger" onPress={discardDamaged} />
+        <Text style={styles.help}>{t('receive.damageDiscardHelp')}</Text>
+        <BigButton
+          label={t('common.back')}
+          variant="secondary"
+          onPress={() => {
+            setPending(null)
+            setDamageError(null)
+          }}
+        />
       </KeyboardScreen>
     )
   }
@@ -522,6 +621,62 @@ export default function ReceiveScreen() {
           </View>
         )}
 
+        {/* 2026-10-08: «Vinieron unidades dañadas» → cantidad dañada y razón (catálogo; «Otra» pide escribirla), uno al lado del otro. */}
+        {!requiresSerials(draft) ? (
+          <View style={styles.field}>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: draft.damaged }}
+              accessibilityLabel={t('receive.damageCheck')}
+              testID="receive-damage-check"
+              onPress={() => setDraft((d) => (d ? { ...d, damaged: !d.damaged } : d))}
+              style={styles.checkRow}
+            >
+              <View style={[styles.box, draft.damaged && styles.boxOn]}>{draft.damaged ? <Text style={styles.boxMark}>✓</Text> : null}</View>
+              <Text style={styles.label}>{t('receive.damageCheck')}</Text>
+            </Pressable>
+            {draft.damaged ? (
+              <>
+                <View style={styles.row}>
+                  <View style={[styles.field, styles.half]}>
+                    <Text style={styles.label}>{t('receive.damagedQtyLabel')}</Text>
+                    <KeyboardInput
+                      autoFocus
+                      value={draft.damagedQtyText}
+                      onChangeText={(v) => setDraft((d) => (d ? { ...d, damagedQtyText: v } : d))}
+                      keyboardType="decimal-pad"
+                      style={styles.input}
+                      accessibilityLabel={t('receive.damagedQtyLabel')}
+                    />
+                  </View>
+                  <View style={[styles.field, styles.half]}>
+                    <Text style={styles.label}>{t('receive.damageCauseLabel')}</Text>
+                    <CauseSelect
+                      testID="receive-damage-cause"
+                      value={draft.damageCause}
+                      onChange={(code) => setDraft((d) => (d ? { ...d, damageCause: code } : d))}
+                      placeholder={t('receive.damageCausePlaceholder')}
+                      label={t('receive.damageCauseLabel')}
+                    />
+                  </View>
+                </View>
+                {draft.damageCause === DAMAGE_CAUSE_OTHER ? (
+                  <View style={styles.field}>
+                    <Text style={styles.label}>{t('receive.damageNoteLabel')}</Text>
+                    <KeyboardInput
+                      value={draft.damageNote}
+                      onChangeText={(v) => setDraft((d) => (d ? { ...d, damageNote: v } : d))}
+                      maxLength={300}
+                      style={styles.input}
+                      accessibilityLabel={t('receive.damageNoteLabel')}
+                    />
+                  </View>
+                ) : null}
+              </>
+            ) : null}
+          </View>
+        ) : null}
+
         {requiresLot(draft) ? (
           <>
             <View style={styles.field}>
@@ -578,8 +733,13 @@ export default function ReceiveScreen() {
           id: openReceipt.lineRows[i].id,
           title: t('receive.lineQty', { qty: l.receivedQty, sku: l.sku }),
           subtitle:
-            [l.lotNumber, l.targetBinCode ? t('receive.lineTarget', { bin: l.targetBinCode }) : null].filter(Boolean).join(' · ') ||
-            undefined,
+            [
+              l.lotNumber,
+              l.targetBinCode ? t('receive.lineTarget', { bin: l.targetBinCode }) : null,
+              l.damagedQty > 0 ? t(l.damageDiscard ? 'receive.lineDamagedDiscard' : 'receive.lineDamaged', { qty: f.qty(l.damagedQty) }) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || undefined,
         }))}
         onRemove={(id) => {
           // pide confirmar: un toque sin querer no debe borrar lo contado (series o lote incluidos)
@@ -642,6 +802,11 @@ const styles = StyleSheet.create({
   // Pega el botón al borde inferior cuando el contenido es corto (el contenedor del ScrollView crece: flexGrow 1).
   bottom: { marginTop: 'auto' },
   row: { flexDirection: 'row', gap: spacing.md },
+  half: { flex: 1 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56 },
+  box: { width: 32, height: 32, borderRadius: 8, borderWidth: 2, borderColor: colors.line, backgroundColor: colors.panelAlt, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { borderColor: colors.brand, backgroundColor: colors.brand },
+  boxMark: { color: colors.onStrong, fontSize: 20, fontWeight: '700' },
   input: {
     minHeight: 56,
     borderWidth: 2,

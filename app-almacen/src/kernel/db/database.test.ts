@@ -59,6 +59,15 @@ describe('kv', () => {
   })
 })
 
+describe('migración v7 (daño en el recibo)', () => {
+  it('la línea del recibo local guarda lo dañado, su causa, comentario, posición y desecho', () => {
+    const db = getDb()
+    const cols = db.getAllSync<{ name: string }>('PRAGMA table_info(local_receipt_line)').map((c) => c.name)
+    expect(cols).toEqual(expect.arrayContaining(['damaged_qty', 'damage_cause', 'damage_note', 'damage_bin_code', 'damage_discard']))
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(7)
+  })
+})
+
 describe('migración v3 (Lote 16, recibo directo a posición)', () => {
   it('la base nueva queda en la versión 3 con las columnas nuevas y el índice de posiciones', () => {
     const db = getDb()
@@ -161,8 +170,8 @@ describe('migración v4 (Lote A4, contar por producto)', () => {
 describe('migración v5 (Lote A4, adenda: posición provisional sincronizada)', () => {
   it('la base nueva queda en la versión 6 con bin.is_provisional (por defecto 0) y la tabla del orden de salida', () => {
     const db = getDb()
-    expect(SCHEMA_VERSION).toBe(6)
-    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(6)
+    expect(SCHEMA_VERSION).toBeGreaterThanOrEqual(6)
+    expect(db.getFirstSync<{ user_version: number }>('PRAGMA user_version')?.user_version).toBe(SCHEMA_VERSION)
     expect(db.getAllSync<{ name: string }>('PRAGMA table_info(stock_exit)').map((c) => c.name)).toEqual(
       expect.arrayContaining(['warehouse_public_id', 'product_public_id', 'rank', 'bin_code', 'lot_number', 'expiry_date', 'available']),
     )
