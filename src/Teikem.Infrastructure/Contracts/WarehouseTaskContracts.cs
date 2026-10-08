@@ -6,7 +6,14 @@ namespace Teikem.Infrastructure.Contracts;
 public sealed record WarehouseTaskDto(int Id, string TypeCode, string Type, string StatusCode, string Status, int Priority, Guid WarehousePublicId,
     string WarehouseCode, Guid? ProductPublicId, string? Sku, string? ProductName, int? LotId, string? LotNumber, string? SerialNumber,
     decimal? Quantity, int? FromBinId, string? FromBinCode, int? ToBinId, string? ToBinCode, string? RefEntityCode, int? RefId,
-    string? RefLabel, int? AssignedToUserId, string? AssignedToName, bool CompletableFromQueue, DateTime CreatedAtUtc, DateTime? CompletedAtUtc);
+    string? RefLabel, int? AssignedToUserId, string? AssignedToName, bool CompletableFromQueue, DateTime CreatedAtUtc, DateTime? CompletedAtUtc,
+    IReadOnlyList<WarehouseTaskMoveDto>? Moves = null);
+
+/// <summary>
+/// Un movimiento del ledger hecho por la tarea (2026-10-07): un acomodo repartido en varias posiciones deja una línea por posición (la tarea guarda una sola
+/// posición destino; el detalle real vive aquí). Vacío mientras la tarea no mueva nada.
+/// </summary>
+public sealed record WarehouseTaskMoveDto(long TransactionId, string? FromBinCode, string? ToBinCode, decimal Quantity, string? LotNumber, DateTime AtUtc);
 
 public sealed record WarehouseTaskQuery(Guid? WarehousePublicId = null, string[]? Types = null, string[]? Status = null, bool AssignedToMe = false,
     int? AssignedUserId = null, bool IncludeClosed = false, int Skip = 0, int Take = 100);

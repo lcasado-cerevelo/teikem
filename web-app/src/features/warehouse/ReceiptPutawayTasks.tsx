@@ -10,6 +10,7 @@ import { DataTable, EmptyState, IconCheckin, Panel, type DataColumn } from '../.
 import { productLabel, type WarehouseTaskDto } from './api'
 import { formatNumber } from './lineRules'
 import { useTaskRowActions } from './taskActions'
+import { TaskBins, taskBinsSort } from './TaskBins'
 
 const TASK_STATUS_DOMAIN = 'WarehouseTaskStatus'
 const NO_TASKS: WarehouseTaskDto[] = []
@@ -46,8 +47,8 @@ export function ReceiptPutawayTasks({ tasks, title, queueLink }: ReceiptPutawayT
       {
         id: 'bins',
         header: t('warehouse.receipts.detail.columns.bins'),
-        cell: (r) => [r.fromBinCode, r.toBinCode].filter(Boolean).join(' → ') || '—',
-        sortValue: (r) => r.fromBinCode ?? r.toBinCode,
+        cell: (r) => <TaskBins task={r} />,
+        sortValue: taskBinsSort,
       },
       { id: 'assigned', header: t('warehouse.receipts.detail.columns.assignedTo'), cell: (r) => r.assignedToName ?? '—', sortValue: (r) => r.assignedToName },
     ],

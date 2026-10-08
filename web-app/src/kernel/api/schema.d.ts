@@ -24268,6 +24268,18 @@ export interface components {
             createdAtUtc?: string;
             /** Format: date-time */
             completedAtUtc?: string | null;
+            moves?: components["schemas"]["WarehouseTaskMoveDto"][] | null;
+        };
+        WarehouseTaskMoveDto: {
+            /** Format: int64 */
+            transactionId?: number;
+            fromBinCode?: string | null;
+            toBinCode?: string | null;
+            /** Format: double */
+            quantity?: number;
+            lotNumber?: string | null;
+            /** Format: date-time */
+            atUtc?: string;
         };
         WarehouseTaskPageDto: {
             /** Format: int32 */

@@ -566,6 +566,8 @@ Puerto Rico** (America/Puerto_Rico, UTC−4), no días UTC. Aplica al Kárdex, a
 
 ### 3.1 Kárdex: filtros, resumen y detalle del movimiento
 
+**Tipo «Acomodo» (2026-10-07).** Un movimiento que viene de una **tarea de acomodo** (PUTAWAY) se ve en el Kárdex como **«Acomodo»** (`typeCode = PUTAWAY`), no como «Transferencia»: así no se confunde con un traslado entre almacenes. Solo cambia lo que se ve: en el ledger el movimiento sigue siendo una TRANSFER con referencia a la tarea (`refEntity = WAREHOUSE_TASK`, «Tarea #n»), así que los saldos, la conciliación y la trazabilidad no cambian. El filtro **Tipo** ofrece «Acomodo»; **«Transferencia»** trae solo las transferencias que no son acomodos (las de Transferencias y ajustes, conteo, rentas…). Las transferencias de una tarea de reabasto siguen como Transferencia.
+
 Cómo se usa:
 - `GET /api/v1/inventory/balances?warehousePublicIds=&binIds=&productPublicIds=&categoryIds=&lotNumber=&
   includeZero=&onlyAvailable=&search=&skip=&take=` (`take` ≤ 200). La respuesta trae, además de las filas, `totalOnHand` y
@@ -1198,6 +1200,8 @@ pertenece: `PUTAWAY` en Recibo (pestaña "Acomodo pendiente" y el detalle del re
 (pestaña "Reabasto"), `COUNT` en Conteo cíclico y `CROSSDOCK` en Cruce de muelle. En todas, las acciones de cada fila son íconos
 con tooltip: Asignar, Iniciar, Completar y Cancelar. Los permisos y endpoints de arriba no cambian. Ver
 [F6 — Tareas de almacén](frontend/f6-almacen-e-inventario.md#tareas-de-almacén).
+
+**Detalle de una tarea de acomodo repartido (2026-10-07).** La tarea guarda una sola posición destino, pero un acomodo repartido (la cantidad por posición del aparato o `POST /warehouse-tasks/{id}/distribute`) movió el inventario a varias. `WarehouseTaskDto.moves` trae **una línea por posición** tomada del ledger (`transactionId`, `fromBinCode`, `toBinCode`, `quantity`, `lotNumber`, `atUtc`); vacío mientras la tarea no mueva nada. En la lista de tareas y en el detalle del recibo la columna «De → a» dice **«R1 → 5 posiciones»** y debajo cada posición con su cantidad (`01-E-03 · 20, 01-E-04 · 20…`); con una sola posición se ve «De → a» como siempre.
 
 **Acomodo pendiente en los almacenes directos (Lote 16).** Un recibo **directo a posición** (sección 4.1) no genera tareas `PUTAWAY`: la mercancía entra a su posición destino al
 confirmar y el recibo pasa a Acomodado. Por eso, en un almacén directo, la pestaña "Acomodo pendiente" solo muestra (a) los recibos **anteriores al cambio de modo** que seguían con tareas,
