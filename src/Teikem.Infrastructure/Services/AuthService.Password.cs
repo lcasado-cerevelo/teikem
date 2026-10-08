@@ -139,7 +139,7 @@ public sealed partial class AuthService
             """;
         if (!string.IsNullOrWhiteSpace(opts.WebBaseUrl))
         {
-            try { await email.SendAsync(user.Email, user.FullName, "Restablecer su contraseña de Teikem", html, ct); }
+            try { await email.SendAsync(user.Email, user.FullName, "Restablecer su contraseña de Teikem", html, ct, await CompanyNameForEmailAsync(user, null, ct)); }
             catch (Exception ex) when (ex is not OperationCanceledException) { /* misma respuesta: el log del proveedor registra el fallo */ }
         }
         await security.WriteAsync(SecurityEventTypes.PasswordChange, SecurityOutcomes.Success, user.Id, null, new { stage = "forgot_sent", provider = email.IsConfigured }, ct);

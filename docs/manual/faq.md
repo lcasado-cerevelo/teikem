@@ -5574,6 +5574,21 @@ El cierre fue rechazado en el servidor (por ejemplo, una línea ya corregida por
 **«Por producto»: la posición donde ya conté ese producto ya no aparece.**
 Es a propósito: solo se ofrecen las posiciones que aún no contaste. Para corregir una cantidad ya contada, toca ✎ en su línea de la lista. Para contar el mismo producto en otra posición, toca el producto en la lista (se pone en el campo de escaneo) y da Aceptar.
 
+## Nombre del remitente de los correos (2026-10-08)
+
+**¿Por qué el correo dice «Advance Solutions vía Teikem» y no solo «Teikem»?**
+El nombre del remitente lleva la compañía a la que pertenece el correo: el código de verificación del primer ingreso usa la compañía con la que se está entrando; «Olvidé mi contraseña» usa la
+compañía del usuario **si pertenece a una sola**; el aviso de «verificación en dos pasos reiniciada» usa la compañía del administrador que la reinició.
+
+**Un usuario que está en varias compañías recibe el correo como «Teikem».**
+Es a propósito: sin saber cuál elegir, se usa el nombre general (`Brevo__FromName`).
+
+**¿Se puede cambiar la dirección de correo por compañía?**
+No: la dirección es una sola (`Brevo__FromEmail`). Cambiarla por compañía exigiría autenticar un dominio por cada una en Brevo.
+
+**Gmail muestra «vía …» junto al remitente.**
+Es la autenticación del dominio (DKIM/SPF) en Brevo, no el nombre. Se corrige agregando los registros del dominio del remitente en el DNS (ver `deploy/README.md`).
+
 ## Recuperar la contraseña (2026-10-07)
 
 **Olvidé mi contraseña.**

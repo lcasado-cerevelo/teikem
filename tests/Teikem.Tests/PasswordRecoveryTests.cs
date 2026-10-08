@@ -1,3 +1,4 @@
+using Teikem.Domain.Tenancy;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -61,6 +62,7 @@ public class PasswordRecoveryTests
             f.Db.Users.Add(u);
         }
         await f.Db.SaveChangesAsync();
+        (await f.Db.Tenants.IgnoreQueryFilters().SingleAsync(t => t.TenantId == WmsFixture.TenantId)).Name = "Advance Solutions";
         foreach (var id in new[] { 1, 2 }) f.Db.UserTenants.Add(new UserTenant { UserId = id, TenantId = WmsFixture.TenantId, StatusCodeId = 900, IsDefault = true });
         await f.Db.SaveChangesAsync();
         f.Lookups.Load(f.Db.LookupCodes.IgnoreQueryFilters().AsNoTracking().ToList());
@@ -173,6 +175,22 @@ public class PasswordRecoveryTests
         var sent = Assert.Single(f.Get<NoEmailSender>().Sent);
         Assert.Equal("ana@t.local", sent.To);
         Assert.Contains("reset-password", sent.Html);
+        // 2026-10-08: ana pertenece a UNA sola compañía, así que el remitente es «Advance Solutions vía Teikem»
+        Assert.Equal("Advance Solutions", f.Get<NoEmailSender>().Companies.Single());
+    }
+
+    [Fact]
+    public async Task Forgot_password_uses_the_general_sender_when_the_user_belongs_to_several_companies()
+    {
+        await using var f = await FixtureAsync();
+        f.Db.Tenants.Add(new Tenant { TenantId = 9001, Name = "Advance Depot", IsActive = true });
+        f.Db.UserTenants.Add(new UserTenant { UserId = 2, TenantId = 9001, StatusCodeId = 900, IsDefault = false });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+
+        await f.Get<AuthService>().RequestPasswordResetAsync(new ForgotPasswordRequest("ana@t.local"), default);
+
+        Assert.Null(f.Get<NoEmailSender>().Companies.Single());
     }
 
     [Fact]
